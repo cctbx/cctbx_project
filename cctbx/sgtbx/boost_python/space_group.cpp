@@ -98,6 +98,8 @@ namespace {
             arg_("pedantic")=false,
             arg_("no_centring_type_symbol")=false)))
         .def("change_basis", &w_t::change_basis, (arg_("cb_op")))
+        .def("change_of_origin_realising_origin_centricity",
+             &w_t::change_of_origin_realising_origin_centricity)
         .def("r_den", &w_t::r_den)
         .def("t_den", &w_t::t_den)
         .def("order_p", &w_t::order_p)

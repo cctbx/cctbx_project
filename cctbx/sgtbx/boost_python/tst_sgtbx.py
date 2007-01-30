@@ -953,6 +953,14 @@ cctbx Error: Parse error: unexpected character:
     assert not show_diff(str(e), """\
 cctbx Error: Rotation matrix is not invertible.""")
   else: raise RuntimeError("Exception expected.")
+  sg = space_group("-P 2ac 2ab")
+  cb = sgtbx.change_of_basis_op( sgtbx.rt_mx( sgtbx.tr_vec((1, 1, -1)) ) )
+  sg1 = sg.change_basis(cb)
+  assert sg1.is_centric() and not sg1.is_origin_centric()
+  icb = sg1.change_of_origin_realising_origin_centricity()
+  sg2 = sg1.change_basis(icb)
+  assert sg2.is_origin_centric()
+  assert cb * icb
 
 def exercise_space_group_type():
   space_group = sgtbx.space_group
