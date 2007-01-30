@@ -287,8 +287,7 @@ class least_squares_residual(object):
     @param compute_derivatives: whether to compute the derivatives of the
     least square residual or not
     @rtype: Boost.Python binding of
-    U{least_squares_residual<CCTBX_DOXYGEN_DOC_ROOT
-    /classcctbx_1_1xray_1_1targets_1_1least__squares__residual.html>}
+    U{least_squares_residual<DOXYCLASS:cctbx::xray::targets::least_squares_residual>}
     @return: An object holding the residual value, derivatives and scale
     factor
     """
