@@ -3,7 +3,7 @@
 """
 Synopsis
 
-epydoc --conf=<path/to/configuration/file>
+my_epydoc --conf=<path/to/configuration/file>
 
 Description
 
