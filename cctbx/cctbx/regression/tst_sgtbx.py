@@ -384,6 +384,20 @@ def exercise_space_group_contains():
   assert n_c == 11, n_c
   assert n_nc == 53, n_nc
 
+def exercise_inversion_centring():
+  cb = sgtbx.change_of_basis_op( sgtbx.rt_mx( sgtbx.tr_vec((1, 1, -1)) ) )
+  for symb in sgtbx.space_group_symbol_iterator():
+    sg = sgtbx.space_group(space_group_symbols=symb)
+    sg1 = sg.change_basis(cb)
+    icb = sg1.change_of_origin_realising_origin_centricity()
+    if sg1.is_centric():
+      assert not sg1.is_origin_centric()
+      sg2 = sg1.change_basis(icb)
+      assert sg2.is_origin_centric()
+    else:
+      assert str(icb) == "a,b,c"
+
+
 def run(args):
   exercise_space_group_info()
   test_enantiomorphic_pairs()
@@ -392,6 +406,7 @@ def run(args):
   exercise_orthorhombic_hm_qualifier_as_cb_symbol()
   exercise_tensor_constraints()
   exercise_space_group_contains()
+  exercise_inversion_centring()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

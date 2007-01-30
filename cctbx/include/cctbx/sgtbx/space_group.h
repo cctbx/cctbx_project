@@ -197,6 +197,11 @@ namespace cctbx { namespace sgtbx {
       space_group
       change_basis(change_of_basis_op const& cb_op) const;
 
+      //! The change of origin which moves the inversion centre to the origin
+      /*! The basis axes are therefore not altered */
+      change_of_basis_op
+      change_of_origin_realising_origin_centricity() const;
+
       //! Rotation part denominator of the Seitz matrices.
       int r_den() const { return smx_[0].r().den(); }
       //! Translation part denominator of the Seitz matrices.

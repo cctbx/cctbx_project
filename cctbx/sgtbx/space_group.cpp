@@ -574,6 +574,17 @@ namespace cctbx { namespace sgtbx {
     return result;
   }
 
+  change_of_basis_op
+  space_group::change_of_origin_realising_origin_centricity() const
+  {
+    if(!is_centric() or is_origin_centric()){
+      return change_of_basis_op();
+    }
+    else{
+      return change_of_basis_op( rt_mx( tr_vec(inv_t().num(), -inv_t().den()*2) ) );
+    }
+  }
+
   bool
   space_group::is_chiral() const
   {
