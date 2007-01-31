@@ -198,8 +198,10 @@ def sfcalc(args):
                                 r_free_flags     = flags,
                                 target_name      = "ls_wunit_k1",
                                 f_obs            = dummy,
-                                k_sol = params.sfcalc.parameters.solvent.k_sol,
-                                b_sol = params.sfcalc.parameters.solvent.b_sol )
+                                b_cart           = b_cart,
+                                k_sol            = params.sfcalc.parameters.solvent.k_sol,
+                                b_sol            = params.sfcalc.parameters.solvent.b_sol )
+
       calc_data_with_solvent_contrib = fmodel.f_model()
       calc_data_with_solvent_contrib = calc_data_with_solvent_contrib.array(
         data=calc_data_with_solvent_contrib.data()*params.sfcalc.parameters.overall.k_overall)
