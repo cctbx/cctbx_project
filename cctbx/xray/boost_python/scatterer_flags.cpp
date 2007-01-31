@@ -84,6 +84,7 @@ namespace {
         .def("set_tan_u_iso", &w_t::set_tan_u_iso, (arg_("state")), return_self<>())
         .def("set_use_u", (void(w_t::*)(bool, bool)) &w_t::set_use_u, (arg_("iso"),arg_("aniso")))
         .def("set_use_u", (void(w_t::*)(bool)) &w_t::set_use_u, (arg_("iso")))
+        .def("set_grads", (void(w_t::*)(bool)) &w_t::set_grads, (arg_("state")))
         .def_readonly("bits", &w_t::bits)
         .def_readwrite("param", &w_t::param)
       ;
@@ -143,21 +144,6 @@ namespace {
           arg_("fdp")=false,
           arg_("tan_u_iso")=false,
           arg_("param")=0));
-    def("set_selected_scatterer_grad_flags",(void
-      (*)(scitbx::af::ref<scatterer<> > const&,
-          scitbx::af::ref<bool> const&,
-          scitbx::af::ref<bool> const&,
-          scitbx::af::ref<bool> const&,
-          scitbx::af::ref<bool> const&,
-          scitbx::af::ref<bool> const&,
-          scitbx::af::ref<bool> const&)) set_selected_scatterer_grad_flags<scatterer<> >,
-         (arg_("scatterers"),
-          arg_("site"),
-          arg_("u_iso"),
-          arg_("u_aniso"),
-          arg_("occupancy"),
-          arg_("fp"),
-          arg_("fdp")));
   }
 
 }}} // namespace cctbx::xray::boost_python

@@ -54,30 +54,34 @@ class lbfgs(object):
     self.d_selection = self.model.atoms_selection(scattering_type = "D")
     self.h_selection = self.model.atoms_selection(scattering_type = "H")
     self.hd_selection = self.d_selection | self.h_selection
-    if(refine_xyz):
-       site = self.model.refinement_flags.sites_individual[0]
-       if(self.h_params.riding):
-          site = site.set_selected(self.hd_selection, False)
-       xray.set_selected_scatterer_grad_flags(
-                  scatterers = self.xray_structure.scatterers(),
-                  site       = site)
-    if(refine_occ):
-       occupancy  = self.model.refinement_flags.occupancies_individual[0]
-       if(self.h_params.riding):
-          occupancy = occupancy.set_selected(self.hd_selection, False)
-       xray.set_selected_scatterer_grad_flags(
-            scatterers = self.xray_structure.scatterers(),
-            occupancy  = occupancy)
-    if(refine_adp):
-       u_iso  = self.model.refinement_flags.adp_individual_iso[0]
-       u_aniso= self.model.refinement_flags.adp_individual_aniso[0]
-       if(self.h_params.riding):
-          u_iso   = u_iso.set_selected(self.hd_selection, False)
-          u_aniso = u_aniso.set_selected(self.hd_selection, False)
-       xray.set_selected_scatterer_grad_flags(
-            scatterers = self.xray_structure.scatterers(),
-            u_iso      = u_iso,
-            u_aniso    = u_aniso)
+    self.xray_structure.scatterers().flags_set_grads(state=False)
+    if (refine_xyz):
+      sel = self.model.refinement_flags.sites_individual[0]
+      if (self.h_params.riding):
+        sel.set_selected(self.hd_selection, False)
+      self.xray_structure.scatterers().flags_set_grad_site(
+        iselection=sel.iselection())
+      del sel
+    if (refine_occ):
+      sel = self.model.refinement_flags.occupancies_individual[0]
+      if (self.h_params.riding):
+        sel.set_selected(self.hd_selection, False)
+      self.xray_structure.scatterers().flags_set_grad_occupancy(
+        iselection=sel.iselection())
+      del sel
+    if (refine_adp):
+      sel = self.model.refinement_flags.adp_individual_iso[0]
+      if (self.h_params.riding):
+        sel.set_selected(self.hd_selection, False)
+      self.xray_structure.scatterers().flags_set_grad_u_iso(
+        iselection=sel.iselection())
+      #
+      sel = self.model.refinement_flags.adp_individual_aniso[0]
+      if (self.h_params.riding):
+        sel.set_selected(self.hd_selection, False)
+      self.xray_structure.scatterers().flags_set_grad_u_aniso(
+        iselection=sel.iselection())
+      del sel
     self.neutron_refinement = (self.fmodel_neutron is not None and
                                self.wn is not None)
     if(self.neutron_refinement):

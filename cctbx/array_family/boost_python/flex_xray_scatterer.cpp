@@ -610,6 +610,24 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("count_anomalous", cctbx::xray::count_anomalous)
       .def("sites_mod_positive", cctbx::xray::sites_mod_positive)
       .def("sites_mod_short", cctbx::xray::sites_mod_short)
+      .def("flags_set_grads",
+        (void(*)(
+          af::ref<cctbx::xray::scatterer<> > const&, bool))
+            cctbx::xray::flags_set_grads, (
+              arg_("state")))
+#define CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(attr) \
+      .def("flags_set_" #attr, \
+        (void(*)( \
+          af::ref<cctbx::xray::scatterer<> > const&, \
+          af::const_ref<std::size_t> const&)) \
+            cctbx::xray::flags_set_##attr, ( \
+              arg_("iselection")))
+      CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_site)
+      CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_u_iso)
+      CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_u_aniso)
+      CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_occupancy)
+      CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_fp)
+      CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_fdp)
     ;
   }
 

@@ -106,12 +106,11 @@ def run():
                                         log                      = out)
   geo = processed_pdb_file.geometry_restraints_manager()
   xray_structure = processed_pdb_file.xray_structure()
-  use_u_iso = xray_structure.use_u_iso()
-  use_u_aniso = xray_structure.use_u_aniso()
-  xray.set_selected_scatterer_grad_flags(
-                                      scatterers = xray_structure.scatterers(),
-                                      u_iso      = use_u_iso,
-                                      u_aniso    = use_u_aniso)
+  xray_structure.scatterers().flags_set_grads(state=False)
+  xray_structure.scatterers().flags_set_grad_u_iso(
+    iselection=xray_structure.use_u_iso().iselection())
+  xray_structure.scatterers().flags_set_grad_u_aniso(
+    iselection=xray_structure.use_u_aniso().iselection())
   adp_rm = cctbx.adp_restraints.adp_aniso_restraints(
                                            xray_structure     = xray_structure,
                                            restraints_manager = geo)
@@ -119,8 +118,7 @@ def run():
   assert approx_equal(flex.mean(adp_rm.gradients_aniso_cart.as_double()), -0.118959432097)
   assert approx_equal(adp_rm.target, 8.97112989232)
   fd(xray_structure = xray_structure, restraints_manager = geo, eps=1.e-4)
-  os.system("rm -rf %s"%file_name)
+  print "OK"
 
 if (__name__ == "__main__"):
   run()
-  print "OK"
