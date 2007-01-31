@@ -954,13 +954,13 @@ cctbx Error: Parse error: unexpected character:
 cctbx Error: Rotation matrix is not invertible.""")
   else: raise RuntimeError("Exception expected.")
   sg = space_group("-P 2ac 2ab")
-  cb = sgtbx.change_of_basis_op( sgtbx.rt_mx( sgtbx.tr_vec((1, 1, -1)) ) )
+  cb = sgtbx.change_of_basis_op("x+1/12,y+1/12,z-1/12")
   sg1 = sg.change_basis(cb)
   assert sg1.is_centric() and not sg1.is_origin_centric()
   icb = sg1.change_of_origin_realising_origin_centricity()
   sg2 = sg1.change_basis(icb)
   assert sg2.is_origin_centric()
-  assert cb * icb
+  assert str(cb * icb) == "a,b,c+1/2"
 
 def exercise_space_group_type():
   space_group = sgtbx.space_group
