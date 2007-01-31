@@ -128,6 +128,7 @@ class structure(crystal.special_position_settings):
       b_iso = values
       u_iso_values = b_iso*adptbx.b_as_u(1)
       self.set_u_iso(values = u_iso_values, selection = selection)
+    return self
 
   def random_remove_sites_selection(self, fraction):
     scatterers_size = self._scatterers.size()
