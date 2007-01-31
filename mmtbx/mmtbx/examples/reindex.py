@@ -18,7 +18,7 @@ import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 from scitbx.math import matrix
-import mmtbx.model
+from cctbx import adptbx
 import sys, os
 
 def chain_name_modifier(chain_id, increment):
@@ -61,12 +61,14 @@ def write_as_pdb_file( input_xray_structure = None,
     print >> out, pdb.format_scale_records(
       unit_cell = xs.unit_cell() )
 
+    u_iso_array = input_xray_structure.scatterers().extract_u_iso().as_double()
 
-  for serial, label, atom, xyz in zip(input_pdb.atom_serial_number_strings(),
-                                      input_pdb.input_atom_labels_list(),
-                                      input_pdb.atoms(),
-                                      input_xray_structure.sites_cart(),
-                                      ):
+  for serial, label, atom, xyz, adp in zip(input_pdb.atom_serial_number_strings(),
+                                           input_pdb.input_atom_labels_list(),
+                                           input_pdb.atoms(),
+                                           input_xray_structure.sites_cart(),
+                                           u_iso_array
+                                           ):
     print >> out, iotbx.pdb.format_atom_record(
       record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
       serial=int(serial),
@@ -78,7 +80,7 @@ def write_as_pdb_file( input_xray_structure = None,
       iCode=label.icode(),
       site=xyz,
       occupancy=atom.occ,
-      tempFactor=atom.b,
+      tempFactor=adptbx.u_as_b( adp ),
       segID=atom.segid,
       element=atom.element,
       charge=atom.charge)
@@ -105,7 +107,7 @@ reindex_utils{
     }
   }
   parameters{
-    action = *reindex operator
+    action = *reindex operator manipulate_pdb
     .type=choice
     chain_id_increment = 0
     .type=int
@@ -125,7 +127,12 @@ reindex_utils{
       concatenate_model=False
       .type=bool
     }
-
+    manipulate_pdb{
+      set_b = True
+      .type=bool
+      b_iso = 30
+      .type=float
+    }
   }
   output{
     logfile=reindex.log
@@ -450,6 +457,24 @@ def reindex_utils(args):
 
       pdb_file.close()
 
+    if params.reindex_utils.parameters.action=="manipulate_pdb":
+      #rest all the b values
+      if params.reindex_utils.parameters.manipulate_pdb.set_b:
+        b_iso = params.reindex_utils.parameters.manipulate_pdb.b_iso
+        new_model = model.set_b_iso( value = b_iso )
+        print >> log
+        print >> log, "All B-values have been set to %5.3f"%(b_iso)
+        print >> log, "Writing PDB file %s"%(params.reindex_utils.output.xyzout)
+        print >> log
+
+      pdb_file = open( params.reindex_utils.output.xyzout, 'w')
+      write_as_pdb_file( input_pdb = pdb_model,
+                         input_xray_structure = new_model,
+                         out = pdb_file,
+                         chain_id_increment = 0,
+                         additional_remark = None,
+                         print_cryst_and_scale=True)
+      pdb_file.close()
 
 
 
@@ -458,7 +483,7 @@ def reindex_utils(args):
 
     #write the logfile
     logger = open( params.reindex_utils.output.logfile, 'w')
-    print >> log, "writing log file with name %s"%(params.reindex_utils.output.logfile)
+    print >> log, "Writing log file with name %s"%(params.reindex_utils.output.logfile)
     print >> log
     print >> logger, string_buffer.getvalue()
 
