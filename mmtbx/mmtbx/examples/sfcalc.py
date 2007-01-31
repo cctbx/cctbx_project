@@ -9,16 +9,11 @@ from cctbx.eltbx.xray_scattering import wk1995
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time, multi_out
 import iotbx.phil
-from iotbx import reflection_file_reader
-from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 from iotbx.pdb import xray_structure
 from iotbx import pdb
 import libtbx.phil.command_line
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
-from scitbx.math import matrix
-import mmtbx.model
 from mmtbx import f_model
 import sys, os
 
