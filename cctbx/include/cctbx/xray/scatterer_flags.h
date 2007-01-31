@@ -3,6 +3,7 @@
 
 #include <scitbx/array_family/ref.h>
 #include <scitbx/sym_mat3.h>
+#include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
 
 namespace cctbx { namespace xray {
@@ -178,6 +179,16 @@ namespace cctbx { namespace xray {
       set_use_u_aniso(!state);
     };
 
+    void
+    set_grads(bool state)
+    {
+      set_grad_site(state);
+      set_grad_u_iso(state);
+      set_grad_u_aniso(state);
+      set_grad_occupancy(state);
+      set_grad_fp(state);
+      set_grad_fdp(state);
+    }
   };
 
   class scatterer_grad_flags_counts {
@@ -196,7 +207,7 @@ namespace cctbx { namespace xray {
 
       template <typename ScattererType>
       scatterer_grad_flags_counts(
-                        scitbx::af::const_ref<ScattererType> const& scatterers)
+                        af::const_ref<ScattererType> const& scatterers)
       :
         site(0),
         u_iso(0),
@@ -232,7 +243,7 @@ namespace cctbx { namespace xray {
   template <typename ScattererType>
   void
   set_scatterer_grad_flags(
-                    scitbx::af::ref<ScattererType> const& scatterers,
+                    af::ref<ScattererType> const& scatterers,
                     bool site      = false,
                     bool u_iso     = false,
                     bool u_aniso   = false,
@@ -272,66 +283,51 @@ namespace cctbx { namespace xray {
 
   template <typename ScattererType>
   void
-  set_selected_scatterer_grad_flags(
-                    scitbx::af::ref<ScattererType> const& scatterers,
-                    scitbx::af::ref<bool> const& site,
-                    scitbx::af::ref<bool> const& u_iso,
-                    scitbx::af::ref<bool> const& u_aniso,
-                    scitbx::af::ref<bool> const& occupancy,
-                    scitbx::af::ref<bool> const& fp,
-                    scitbx::af::ref<bool> const& fdp)
+  flags_set_grads(
+    af::ref<ScattererType> const& self,
+    bool state)
   {
-    CCTBX_ASSERT(scatterers.size() == site.size()      || site.size()     ==0);
-    CCTBX_ASSERT(scatterers.size() == u_iso.size()     || u_iso.size()    ==0);
-    CCTBX_ASSERT(scatterers.size() == u_aniso.size()   || u_aniso.size()  ==0);
-    CCTBX_ASSERT(scatterers.size() == occupancy.size() || occupancy.size()==0);
-    CCTBX_ASSERT(scatterers.size() == fp.size()        || fp.size()       ==0);
-    CCTBX_ASSERT(scatterers.size() == fdp.size()       || fdp.size()      ==0);
-    for(std::size_t i=0;i<scatterers.size();i++) {
-        ScattererType& sc = scatterers[i];
-        if(sc.flags.use()) {
-           if(site.size() != 0) {
-              sc.flags.set_grad_site(site[i]);
-           }
-           else {
-              sc.flags.set_grad_site(false);
-           }
-           if(sc.flags.use_u_iso() && u_iso.size() != 0) {
-              sc.flags.set_grad_u_iso(u_iso[i]);
-              CCTBX_ASSERT(sc.u_iso != -1.0);
-           }
-           else {
-              sc.flags.set_grad_u_iso(false);
-           }
-           if(sc.flags.use_u_aniso() && u_aniso.size() != 0) {
-              sc.flags.set_grad_u_aniso(u_aniso[i]);
-              CCTBX_ASSERT(
-                     sc.u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
-           }
-           else {
-              sc.flags.set_grad_u_aniso(false);
-           }
-           if(occupancy.size() !=0) {
-              sc.flags.set_grad_occupancy(occupancy[i]);
-           }
-           else {
-              sc.flags.set_grad_occupancy(false);
-           }
-           if(fp.size() != 0) {
-              sc.flags.set_grad_fp(fp[i]);
-           }
-           else {
-              sc.flags.set_grad_fp(false);
-           }
-           if(fdp.size() != 0) {
-              sc.flags.set_grad_fdp(fdp[i]);
-           }
-           else {
-              sc.flags.set_grad_fdp(false);
-           }
-        }
+    for(std::size_t i=0;i<self.size();i++) {
+      self[i].flags.set_grads(state);
     }
   }
+
+#define CCTBX_XRAY_SCATTERERS_FLAGS_SET_GRAD(attr) \
+  template <typename ScattererType> \
+  void \
+  flags_set_grad_##attr( \
+    af::ref<ScattererType> const& self, \
+    af::const_ref<std::size_t> const& iselection) \
+  { \
+    for(std::size_t i=0;i<iselection.size();i++) { \
+      std::size_t i_seq = iselection[i]; \
+      CCTBX_ASSERT(i_seq < self.size()); \
+      self[i_seq].flags.set_grad_##attr(true); \
+    } \
+  }
+
+#define CCTBX_XRAY_SCATTERERS_FLAGS_SET_GRAD_U(attr) \
+  template <typename ScattererType> \
+  void \
+  flags_set_grad_##attr( \
+    af::ref<ScattererType> const& self, \
+    af::const_ref<std::size_t> const& iselection) \
+  { \
+    for(std::size_t i=0;i<iselection.size();i++) { \
+      std::size_t i_seq = iselection[i]; \
+      CCTBX_ASSERT(i_seq < self.size()); \
+      scatterer_flags& f = self[i_seq].flags; \
+      CCTBX_ASSERT(f.use_##attr()); \
+      f.set_grad_##attr(true); \
+    } \
+  }
+
+  CCTBX_XRAY_SCATTERERS_FLAGS_SET_GRAD(site)
+  CCTBX_XRAY_SCATTERERS_FLAGS_SET_GRAD_U(u_iso)
+  CCTBX_XRAY_SCATTERERS_FLAGS_SET_GRAD_U(u_aniso)
+  CCTBX_XRAY_SCATTERERS_FLAGS_SET_GRAD(occupancy)
+  CCTBX_XRAY_SCATTERERS_FLAGS_SET_GRAD(fp)
+  CCTBX_XRAY_SCATTERERS_FLAGS_SET_GRAD(fdp)
 
 }} // namespace cctbx::xray
 
