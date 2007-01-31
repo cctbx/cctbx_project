@@ -385,7 +385,7 @@ def exercise_space_group_contains():
   assert n_nc == 53, n_nc
 
 def exercise_inversion_centring():
-  cb = sgtbx.change_of_basis_op( sgtbx.rt_mx( sgtbx.tr_vec((1, 1, -1)) ) )
+  cb = sgtbx.change_of_basis_op("x+1/12,y+1/12,z-1/12")
   for symb in sgtbx.space_group_symbol_iterator():
     sg = sgtbx.space_group(space_group_symbols=symb)
     sg1 = sg.change_basis(cb)
@@ -396,7 +396,6 @@ def exercise_inversion_centring():
       assert sg2.is_origin_centric()
     else:
       assert str(icb) == "a,b,c"
-
 
 def run(args):
   exercise_space_group_info()
