@@ -294,6 +294,14 @@ namespace cctbx { namespace xray { namespace twin_targets {
          return(alpha_);
       }
 
+      void set_weights( scitbx::af::const_ref<FloatType> const& weights  ){
+        for (int ii=0;ii<w_obs_.size();ii++){
+          w_obs_[ii] = weights[ii];
+        }
+      }
+
+
+
 
  protected:
       scitbx::af::shared<FloatType> i_obs_;
@@ -325,8 +333,8 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
     least_squares_hemihedral_twinning_on_f(
       scitbx::af::const_ref< cctbx::miller::index<> >  const& hkl_obs,       //1 indices for calculated data
       scitbx::af::const_ref< FloatType >               const& f_obs,         //2 f calc
-      scitbx::af::const_ref< FloatType >               const& w_obs,         //3 f bulk solvent
-      scitbx::af::const_ref< cctbx::miller::index<> >  const& hkl_calc,      //4 f_model; not const to avoid CV issues
+      scitbx::af::const_ref< FloatType >               const& w_obs,         //3 weights
+      scitbx::af::const_ref< cctbx::miller::index<> >  const& hkl_calc,      //4 f_model
       sgtbx::space_group                               const& space_group,   //5 space group
       bool                                             const& anomalous_flag,//6 anomalous_flag
       FloatType                                        const& alpha,         //7 twin fraction
@@ -487,6 +495,13 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       {
          return(alpha_);
       }
+
+      void set_weights(scitbx::af::const_ref<FloatType> const& weights  ){
+        for (int ii=0;ii<w_obs_.size();ii++){
+          w_obs_[ii] = weights[ii];
+        }
+      }
+
 
 
  protected:
