@@ -285,10 +285,8 @@ class tls_xray_target_minimizer(object):
     xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
                                   u_aniso     = True)
     if(self.run_finite_differences_test): self.correct_adp = False
-    if(self.fmodel.target_name in ["ml","lsm"]):
-       self.alpha, self.beta = self.fmodel.alpha_beta_w()
-    else:
-       self.alpha, self.beta = None, None
+    self.alpha, self.beta = self.fmodel.alpha_beta_w(
+      only_if_required_by_target=True)
     self.run_finite_differences_test_counter = 0
     self.T_initial = []
     self.L_initial = []
