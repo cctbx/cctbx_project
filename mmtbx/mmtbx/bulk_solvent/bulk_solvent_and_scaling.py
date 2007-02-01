@@ -274,7 +274,7 @@ def aniso_scale_minimizer(fmodel, symm_constr, alpha=None, beta=None,
   elif(fmodel.target_name == "ls_wunit_k1"):
      alpha_data, beta_data = None, None
   else:
-     raise RuntimeError("requested target for aniso scaling is not navailable")
+     raise RuntimeError("requested target for aniso scaling is not available")
   f_c_d = fmodel.f_calc_w().data()
   f_o_d = fmodel.f_ordered_solvent_w().data()
   f_calc_new = miller.array(miller_set = fmodel.f_calc_w(), data = f_c_d + f_o_d)
@@ -308,7 +308,7 @@ def k_sol_b_sol_minimizer(fmodel):
      alpha_data, beta_data = None, None
   else:
      print fmodel.target_name
-     raise RuntimeError("requested target for aniso scaling is not navailable")
+     raise RuntimeError("requested target for aniso scaling is not available")
   f_c_d = fmodel.f_calc_w().data()
   f_o_d = fmodel.f_ordered_solvent_w().data()
   f_calc_new = miller.array(miller_set = fmodel.f_calc_w(), data = f_c_d + f_o_d)
