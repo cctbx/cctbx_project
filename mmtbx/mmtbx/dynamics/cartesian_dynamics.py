@@ -151,10 +151,7 @@ class cartesian_dynamics(object):
     return gradient * obj.number_of_restraints # XXX BIGGEST MYSTERY !!!
 
   def xray_grads(self):
-    if(self.target.count("ls") == 1):
-      alpha_w, beta_w = None, None
-    elif(self.target == "ml" or self.target == "mlhl"):
-      alpha_w, beta_w = self.fmodel.alpha_beta_w()
+    alpha_w, beta_w = self.fmodel.alpha_beta_w(only_if_required_by_target=True)
     self.fmodel_copy.update_xray_structure(xray_structure = self.structure,
                                            update_f_calc            = True,
                                            update_f_mask            = False,

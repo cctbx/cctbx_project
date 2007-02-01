@@ -512,14 +512,12 @@ class rigid_body_minimizer(object):
                euler_angle_convention = "xyz",
                lbfgs_maxfev = 10):
     adopt_init_args(self, locals())
-    if(self.fmodel.target_name in ["ml","lsm"]):
-       self.alpha, self.beta = self.fmodel.alpha_beta_w()
-    else:
-       self.alpha, self.beta = None, None
+    self.alpha, self.beta = self.fmodel.alpha_beta_w(
+      only_if_required_by_target=True)
     self.fmodel_copy = self.fmodel.deep_copy()
     self.atomic_weights = self.fmodel.xray_structure.atomic_weights()
-    self.sites_cart = self.fmodel.xray_structure.sites_cart().deep_copy()
-    self.sites_frac = self.fmodel.xray_structure.sites_frac().deep_copy()
+    self.sites_cart = self.fmodel.xray_structure.sites_cart()
+    self.sites_frac = self.fmodel.xray_structure.sites_frac()
     self.n_groups = len(self.selections)
     assert self.n_groups > 0
     self.counter=0

@@ -119,18 +119,20 @@ class lbfgs(object):
           self.scale_ml = self.fmodel.alpha_beta_params.fix_scale_for_calc_option
     if(self.fmodel.alpha_beta_params.method == "est"):
        self.scale_ml = 1.0
-    self.f_obs_w = self.fmodel.f_obs_w
-    self.target_name = self.fmodel.target_name
-    assert self.target_name in ("ml","mlhl") or self.target_name.count("ls") == 1
-    if(self.target_name in ("ml","mlhl", "lsm")):
-       if(self.alpha_w is None or self.beta_w is None):
-          self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w()
-          if(self.neutron_refinement):
-             self.alpha_w_neutron, self.beta_w_neutron = \
-                                             self.fmodel_neutron.alpha_beta_w()
-       else:
-          assert self.alpha_w.data().size() == self.f_obs_w.data().size()
-          assert self.beta_w.data().size() == self.f_obs_w.data().size()
+    if (self.alpha_w is None or self.beta_w is None):
+      self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w(
+        only_if_required_by_target=True)
+      if (self.neutron_refinement):
+        self.alpha_w_neutron, self.beta_w_neutron = \
+          self.fmodel_neutron.alpha_beta_w(
+            only_if_required_by_target=True)
+    else:
+      n_refl_work = self.fmodel.f_obs_w.data().size()
+      assert self.alpha_w.data().size() == n_refl_work
+      assert self.beta_w.data().size() == n_refl_work
+      if (self.neutron_refinement):
+        assert self.alpha_w_neutron.data().size() == n_refl_work
+        assert self.beta_w_neutron.data().size() == n_refl_work
     self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self._lock_for_line_search = False

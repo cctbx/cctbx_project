@@ -147,10 +147,8 @@ class group_minimizer(object):
                max_number_of_iterations,
                run_finite_differences_test = False):
     adopt_init_args(self, locals())
-    if(self.fmodel.target_name in ["ml","lsm", "mlhl"]):
-       self.alpha, self.beta = self.fmodel.alpha_beta_w()
-    else:
-       self.alpha, self.beta = None, None
+    self.alpha, self.beta = self.fmodel.alpha_beta_w(
+      only_if_required_by_target=True)
     self.fmodel_copy = self.fmodel.deep_copy()
     self.counter=0
     assert len(self.selections) == len(self.par_initial)
