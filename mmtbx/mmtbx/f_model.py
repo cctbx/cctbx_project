@@ -743,12 +743,12 @@ class manager(object):
                                        beta.data(),
                                        scale_ml,
                                        compute_gradients)
-    if(self.target_name.count("ls") == 1):
-       alpha is None and beta is None
+    if(self.target_name.startswith("ls")):
        if(flag == "work"):
           return self.target_functor_w(f_model, compute_gradients)
        else:
           return self.target_functor_t(f_model, compute_gradients)
+    raise RuntimeError
 
   def target_w(self, alpha=None, beta=None, scale_ml=None):
     global time_target
