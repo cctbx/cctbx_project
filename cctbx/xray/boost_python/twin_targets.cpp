@@ -99,6 +99,7 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
           .def("d_target_d_alpha", &w_t::d_target_d_alpha )
           .def("alpha", (void(w_t::*)(double)) &w_t::alpha)
           .def("alpha", (double(w_t::*)()) &w_t::alpha)
+          .def("set_weights", &w_t::set_weights)
           ;
       }
     };
@@ -149,6 +150,7 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
           .def("d_target_d_alpha", &w_t::d_target_d_alpha )
           .def("alpha", (void(w_t::*)(double)) &w_t::alpha)
           .def("alpha", (double(w_t::*)()) &w_t::alpha)
+          .def("set_weights", &w_t::set_weights)
           ;
       }
     };
