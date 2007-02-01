@@ -70,15 +70,17 @@ class manager(object):
                      max_number_of_iterations    = max_number_of_iterations,
                      run_finite_differences_test = run_finite_differences_test)
         if(minimized is not None): par_initial = minimized.par_min
-        new_xrs = apply_transformation(xray_structure = fmodel.xray_structure,
-                                       par            = par_initial,
-                                       sc_start       = sc_start,
-                                       selections     = selections,
-                                       refine_adp     = refine_adp,
-                                       refine_occ     = refine_occ)
-        fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                          update_f_calc  = True,
-                                          out            = log)
+        apply_transformation(
+          xray_structure = fmodel.xray_structure,
+          par            = par_initial,
+          sc_start       = sc_start,
+          selections     = selections,
+          refine_adp     = refine_adp,
+          refine_occ     = refine_occ)
+        fmodel_copy.update_xray_structure(
+          xray_structure = fmodel.xray_structure,
+          update_f_calc  = True,
+          out            = log)
         rwork = minimized.fmodel_copy.r_work()
         rfree = minimized.fmodel_copy.r_free()
         assert approx_equal(rwork, fmodel_copy.r_work())
@@ -186,14 +188,16 @@ class group_minimizer(object):
   def compute_functional_and_gradients(self):
     self.unpack_x()
     self.counter += 1
-    new_xrs = apply_transformation(xray_structure = self.fmodel.xray_structure,
-                                   par            = self.par_min,
-                                   sc_start       = self.sc_start,
-                                   selections     = self.selections,
-                                   refine_adp     = self.refine_adp,
-                                   refine_occ     = self.refine_occ)
-    self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                           update_f_calc  = True)
+    apply_transformation(
+      xray_structure = self.fmodel.xray_structure,
+      par            = self.par_min,
+      sc_start       = self.sc_start,
+      selections     = self.selections,
+      refine_adp     = self.refine_adp,
+      refine_occ     = self.refine_occ)
+    self.fmodel_copy.update_xray_structure(
+      xray_structure = self.fmodel.xray_structure,
+      update_f_calc  = True)
     tg_obj = target_and_grads(fmodel        = self.fmodel_copy,
                               alpha         = self.alpha,
                               beta          = self.beta,
@@ -209,14 +213,16 @@ class group_minimizer(object):
        for i_seq, pari in enumerate(self.par_min):
          if(i_seq == 0): pari += eps
          par.append(pari)
-       new_xrs = apply_transformation(xray_structure = fmodel.xray_structure,
-                                      par            = par,
-                                      sc_start       = self.sc_start,
-                                      selections     = self.selections,
-                                      refine_adp     = self.refine_adp,
-                                      refine_occ     = self.refine_occ)
-       fmodel.update_xray_structure(xray_structure = new_xrs,
-                                    update_f_calc  = True)
+       apply_transformation(
+         xray_structure = fmodel.xray_structure,
+         par            = par,
+         sc_start       = self.sc_start,
+         selections     = self.selections,
+         refine_adp     = self.refine_adp,
+         refine_occ     = self.refine_occ)
+       fmodel.update_xray_structure(
+         xray_structure = fmodel.xray_structure,
+         update_f_calc  = True)
        tg_obj = target_and_grads(fmodel        = fmodel,
                                  alpha         = self.alpha,
                                  beta          = self.beta,
@@ -229,14 +235,16 @@ class group_minimizer(object):
        for i_seq, pari in enumerate(self.par_min):
          if(i_seq == 0): pari -= eps
          par.append(pari)
-       new_xrs = apply_transformation(xray_structure = fmodel.xray_structure,
-                                      par            = par,
-                                      sc_start       = self.sc_start,
-                                      selections     = self.selections,
-                                      refine_adp     = self.refine_adp,
-                                      refine_occ     = self.refine_occ)
-       fmodel.update_xray_structure(xray_structure = new_xrs,
-                                    update_f_calc  = True)
+       apply_transformation(
+         xray_structure = fmodel.xray_structure,
+         par            = par,
+         sc_start       = self.sc_start,
+         selections     = self.selections,
+         refine_adp     = self.refine_adp,
+         refine_occ     = self.refine_occ)
+       fmodel.update_xray_structure(
+         xray_structure = fmodel.xray_structure,
+         update_f_calc  = True)
        tg_obj = target_and_grads(fmodel        = fmodel,
                                  alpha         = self.alpha,
                                  beta          = self.beta,
@@ -280,7 +288,6 @@ def apply_transformation(xray_structure,
                                 q_shift    = pari,
                                 selection  = sel)
   xray_structure.replace_scatterers(new_sc)
-  return xray_structure
 
 class target_and_grads(object):
   def __init__(self, fmodel,
