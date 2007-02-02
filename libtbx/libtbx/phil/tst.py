@@ -1708,7 +1708,12 @@ c=a *d c
 """)
   try: fetched = master.fetch(source=source)
   except Sorry, e:
-    assert str(e) == "Not a possible choice for c: *d (input line 1)"
+    assert not show_diff(str(e), """\
+Not a possible choice for c: d (input line 1)
+  Possible choices are:
+    a
+    *b
+    c""")
   else: raise RuntimeError("Exception expected.")
   #
   master = phil.parse(input_string="""\
@@ -3421,14 +3426,22 @@ def exercise_choice_multi_plus_support():
   for arg,err in [("u=a+d", "d"), ("u=e + b", "e")]:
     try: master_params.fetch(source=cai.process(arg=arg))
     except Sorry, e:
-      assert str(e) == "Not a possible choice for u: %s" \
-        " (command line argument, line 1)" % err
+      assert not show_diff(str(e), """\
+Not a possible choice for u: %s (command line argument, line 1)
+  Possible choices are:
+    a
+    b
+    c""" % err)
     else: raise RuntimeError("Exception expected.")
   for val in ["++a", "a++", "a++b", "a+b+"]:
     try: master_params.fetch(source=cai.process(arg="u="+val))
     except Sorry, e:
-      assert str(e) == "Not a possible choice for u: %s" \
-        " (command line argument, line 1)" % val
+      assert not show_diff(str(e), """\
+Not a possible choice for u: %s (command line argument, line 1)
+  Possible choices are:
+    a
+    b
+    c""" % val)
     else: raise RuntimeError("Exception expected.")
 
 def exercise_scope_call():

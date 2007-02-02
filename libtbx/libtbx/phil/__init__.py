@@ -290,13 +290,18 @@ class choice_converters(object):
           break
       else:
         process_plus = True
+    def raise_not_a_possible_choice(value):
+      raise Sorry(
+        "Not a possible choice for %s: %s%s\n" % (
+          master.full_path(), value, word.where_str())
+        + "  Possible choices are:\n"
+        + "    " + "\n    ".join([w.value for w in master.words]))
     if (process_plus):
       for word in source_words:
         for value in word.value.split("+"):
           if (len(value) == 0): continue
           if (value not in flags):
-            raise Sorry("Not a possible choice for %s: %s%s" % (
-              master.full_path(), value, word.where_str()))
+            raise_not_a_possible_choice(value)
           flags[value] = True
     else:
       for word in source_words:
@@ -310,8 +315,7 @@ class choice_converters(object):
           else:
             flag = False
         if (flag and value not in flags):
-          raise Sorry("Not a possible choice for %s: %s%s" % (
-            master.full_path(), str(word), word.where_str()))
+          raise_not_a_possible_choice(value)
         flags[value] = flag
     words = []
     for word in master.words:
