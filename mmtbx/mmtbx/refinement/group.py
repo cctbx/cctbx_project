@@ -54,14 +54,13 @@ class manager(object):
         else:
            selections_.append(sel)
     selections = selections_
-    fmodel_copy = fmodel.deep_copy()
     rworks = flex.double()
     sc_start = fmodel.xray_structure.scatterers().deep_copy()
     minimized = None
     for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
         if(minimized is not None): par_initial = minimized.par_min
         minimized = group_minimizer(
-                     fmodel                      = fmodel_copy,
+                     fmodel                      = fmodel,
                      sc_start                    = sc_start,
                      selections                  = selections,
                      par_initial                 = par_initial,
@@ -77,14 +76,10 @@ class manager(object):
           selections     = selections,
           refine_adp     = refine_adp,
           refine_occ     = refine_occ)
-        fmodel_copy.update_xray_structure(
-          xray_structure = fmodel.xray_structure,
-          update_f_calc  = True,
-          out            = log)
-        rwork = minimized.fmodel_copy.r_work()
-        rfree = minimized.fmodel_copy.r_free()
-        assert approx_equal(rwork, fmodel_copy.r_work())
-        self.show(f     = fmodel_copy.f_obs_w,
+        fmodel.update_xray_structure(update_f_calc=True)
+        rwork = minimized.fmodel.r_work()
+        rfree = minimized.fmodel.r_free()
+        self.show(f     = fmodel.f_obs_w,
                   rw    = rwork,
                   rf    = rfree,
                   tw    = minimized.fmodel_copy.target_w(),
@@ -100,8 +95,6 @@ class manager(object):
               size = rworks.size() - 1
               if(abs(rworks[size]-rworks[size-1])<convergence_delta):
                  break
-    fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
-                                 update_f_calc  = True)
     self.fmodel = fmodel
     time_group_py += timer.elapsed()
 
