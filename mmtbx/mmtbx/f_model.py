@@ -411,7 +411,7 @@ class manager(object):
        return update_f_mask
 
   def update_xray_structure(self,
-                            xray_structure,
+                            xray_structure           = None,
                             update_f_calc            = False,
                             update_f_mask            = False,
                             update_f_ordered_solvent = False,
@@ -420,14 +420,15 @@ class manager(object):
                             k_sol                    = None,
                             b_sol                    = None,
                             b_cart                   = None):
+    if (xray_structure is not None):
+      self.xray_structure = xray_structure
     if(update_f_mask):
        if(force_update_f_mask):
           consider_mask_update = True
        else:
           consider_mask_update = self._update_f_mask_flag(
-                  xray_structure = xray_structure,
+                  xray_structure = self.xray_structure,
                   mean_shift     = self.mask_params.mean_shift_for_mask_update)
-    self.xray_structure = xray_structure
     step = self._get_step(update_f_ordered_solvent = update_f_ordered_solvent)
     f_calc = None
     if(update_f_calc):
