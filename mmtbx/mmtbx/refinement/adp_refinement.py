@@ -183,7 +183,7 @@ class manager(object):
                                         out = log)
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
-       fmodel.xray_structure.approx_equal(other = model.xray_structure)
+       assert fmodel.xray_structure is model.xray_structure
        self.minimized = minimization.lbfgs(
                           restraints_manager       = restraints_manager,
                           fmodel                   = fmodel,
@@ -203,12 +203,7 @@ class manager(object):
                           wxnu_scale               = wxnu_scale,
                           h_params                 = h_params)
        self.minimized.collector.show(text = "LBFGS minimization", out  = log)
-       fmodel.update_xray_structure(
-                                xray_structure = self.minimized.xray_structure,
-                                update_f_calc  = True,
-                                out            = log)
-       model.xray_structure = fmodel.xray_structure
-       fmodel.xray_structure.approx_equal(other = model.xray_structure)
+       assert fmodel.xray_structure is model.xray_structure
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
                                         out = log)

@@ -154,21 +154,24 @@ class lbfgs(object):
     if(self.neutron_refinement):
        self.xray_structure.scattering_type_registry(
                                        custom_dict = self.xray_scattering_dict)
-    self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
-                                      update_f_calc  = True)
+    self.fmodel.update_xray_structure(update_f_calc=True)
     self.collector.collect(et   = self.f,
                            iter = self.minimizer.iter(),
                            nfun = self.minimizer.nfun(),
                            rxw  = self.fmodel.r_work(),
                            rxf  = self.fmodel.r_free())
     if(self.neutron_refinement):
+       # XXX UNSAFE: invalidates self.fmodel
        self.xray_structure.scattering_type_registry(
                                     custom_dict = self.neutron_scattering_dict)
        self.fmodel_neutron.update_xray_structure(
-                                         xray_structure = self.xray_structure,
-                                         update_f_calc  = True)
+         xray_structure = self.xray_structure,
+         update_f_calc  = True)
        self.collector.collect(rnw = self.fmodel_neutron.r_work(),
                               rnf = self.fmodel_neutron.r_free())
+       # XXX UNSAFE: invalidates self.fmodel_neutron (but fixes self.fmodel)
+       self.xray_structure.scattering_type_registry(
+                                       custom_dict = self.xray_scattering_dict)
     time_site_individual += timer.elapsed()
 
   def apply_shifts(self):
