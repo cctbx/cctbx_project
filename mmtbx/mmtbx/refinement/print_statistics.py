@@ -7,7 +7,6 @@ from libtbx import adopt_init_args
 import sys, os, time
 from libtbx.str_utils import prefix_each_line_suffix
 from libtbx.itertbx import count
-from libtbx.test_utils import approx_equal
 from libtbx import introspection
 from cctbx import adptbx
 from stdlib import math
@@ -254,11 +253,7 @@ class refinement_monitor(object):
                     rigid_body_shift_accumulator = None):
     global time_collect_and_process
     t1 = time.time()
-    fmodel.xray_structure.approx_equal(other = model.xray_structure)
-    #XXX doesn't work when automatic adjustment was performed.
-    #if(target_weights is not None):
-    #   target_weights.fmodel.xray_structure.approx_equal(other =
-    #                                                     fmodel.xray_structure)
+    assert fmodel.xray_structure is model.xray_structure
     if(self.model_ini is None): self.model_ini = model.deep_copy()
     if(wilson_b is not None): self.wilson_b = wilson_b
     self.steps.append(step)
