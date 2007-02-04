@@ -5,6 +5,7 @@ def run():
   tst_list = (
   "$D/mmtbx/rotamer/rotamer_eval.py",
   "$D/mmtbx/real_space/tst.py",
+  ["$D/mmtbx/refinement/tst_anomalous_scatterer_groups.py", "P3"],
   "$D/mmtbx/refinement/tst_rigid_body.py",
   "$D/mmtbx/tst_model.py",
   "$D/mmtbx/tst_fmodel.py",
