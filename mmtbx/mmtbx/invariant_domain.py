@@ -8,7 +8,7 @@ from libtbx.test_utils import approx_equal
 
 class find_domain(object):
   """This class tries to find pseudo invariant domain given a set of sites.
-It requires an empirical parameter named max_level to be set to a sensible
+It requires an empirical parameter named match_radius to be set to a sensible
 value. For large movements, having this value set to 2.5 is probably okai.
 If the movements are more subtle, more problem dedicated software might be
 the best course of action."""
@@ -17,21 +17,21 @@ the best course of action."""
                set_a,
                set_b,
                initial_rms=0.5,
-               max_level=2.0,
+               match_radius=2.0,
                overlap_thres=0.75,
                minimum_size=25):
     assert set_a.size() == set_b.size()
     assert set_a.size() > 3
     assert minimum_size <= set_a.size()
     assert minimum_size <= set_b.size()
-    assert initial_rms < max_level
+    assert initial_rms < match_radius
 
     self.matches = []
     self.set_a = set_a
     self.set_b = set_b
     self.n = set_a.size()
     self.max_iter = 10
-    tmp_match = self.zipper(initial_rms,max_level)
+    tmp_match = self.zipper(initial_rms,match_radius)
     self.matches = self.process( tmp_match,
                                  overlap_thres=overlap_thres,
                                  minimum_size=minimum_size)
@@ -60,7 +60,6 @@ the best course of action."""
       print >> out, "rmsd: %5.3f; number of sites: %i"%(rmsd,n)
       print >> out
       count += 1
-
 
   def process(self,matches, overlap_thres=0.75,minimum_size=10):
     #convert the booleans iubnto doubles
@@ -210,7 +209,7 @@ def exercise_core(n=10, verbose=0):
   tmp = find_domain(set_a,
                     set_b,
                     initial_rms=0.02,
-                    max_level=0.03,
+                    match_radius=0.03,
                     minimum_size=1)
   if (verbose):
     tmp.show()
