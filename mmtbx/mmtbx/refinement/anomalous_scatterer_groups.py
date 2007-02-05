@@ -35,9 +35,11 @@ class minimizer(object):
         exception_handling_params=lbfgs.exception_handling_parameters(
           ignore_line_search_failed_step_at_lower_bound = True))
       if (call_back_after_minimizer_cycle is not None):
+        self.unpack()
         if (not call_back_after_minimizer_cycle(minimizer=self)):
           break
-    self.unpack()
+    if (call_back_after_minimizer_cycle is None):
+      self.unpack()
     del self.i_cycle
     del self.lbfgs
     del self.x
