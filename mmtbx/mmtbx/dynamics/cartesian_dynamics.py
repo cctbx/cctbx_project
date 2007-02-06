@@ -54,6 +54,10 @@ class cartesian_dynamics(object):
     if(self.fmodel is not None):
       assert self.fmodel.target_name in ("ml","mlhl") or \
              self.fmodel.target_name.count("ls") == 1
+      if(self.fmodel.target_name.count("ls") == 1):
+         self.alpha_w, self.beta_w = None, None
+      elif(self.fmodel.target_name == "ml" or self.fmodel.target_name == "mlhl"):
+         self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w(only_if_required_by_target=True)
       self.target = self.fmodel.target_name
       assert self.fmodel.target_functors is not None
       self.xray_target_functor = self.fmodel.target_functors.target_functor_w()
@@ -122,16 +126,14 @@ class cartesian_dynamics(object):
                           "after final integration step")
 
   def set_velocities(self):
-    #self.vxyz = flex.vec3_double()
-    g = random.gauss
     mean = 0.0
     j=0
     for atom_weight in self.weights:
+      g = random.gauss
       factor = math.sqrt(self.k_boltz / atom_weight)
       sigma = factor * math.sqrt(self.temperature)
       self.vxyz[j] = [g(mean,sigma) for i in (1,2,3)]
       j+=1
-      #self.vxyz.append([g(mean,sigma) for i in (1,2,3)])
 
   def residuals(self):
     obj = self.restraints_manager.energies_sites(
@@ -151,14 +153,13 @@ class cartesian_dynamics(object):
     return gradient * obj.number_of_restraints # XXX BIGGEST MYSTERY !!!
 
   def xray_grads(self):
-    alpha_w, beta_w = self.fmodel.alpha_beta_w(only_if_required_by_target=True)
     self.fmodel_copy.update_xray_structure(xray_structure = self.structure,
                                            update_f_calc            = True,
                                            update_f_mask            = False,
                                            update_f_ordered_solvent = False)
     sf = self.fmodel_copy.gradient_wrt_atomic_parameters(site  = True,
-                                                         alpha = alpha_w,
-                                                         beta  = beta_w)
+                                                         alpha = self.alpha_w,
+                                                         beta  = self.beta_w)
     return flex.vec3_double(sf.packed())
 
   def center_mass_info(self, verbose = -1):

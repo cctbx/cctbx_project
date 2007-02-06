@@ -50,6 +50,7 @@ class lbfgs(object):
     if(refine_xyz): self.wr = wc
     if(refine_adp): self.wr = wu
     if(refine_occ): self.wr = None
+    self.wxc_dbe = None
     del self.wc, self.wu
     self.d_selection = self.model.atoms_selection(scattering_type = "D")
     self.h_selection = self.model.atoms_selection(scattering_type = "H")
@@ -219,6 +220,17 @@ class lbfgs(object):
        #   if(self.refine_adp):
        #      sf = sf.set_selected(self.hd_selection, 0.0)
        self.g = sf * self.wx
+#######################
+    if(self.refine_xyz and self.model.use_dbe):
+       self.model.dbe_manager.target_and_gradients(
+                              sites_cart    = self.xray_structure.sites_cart(),
+                              dbe_selection = self.model.dbe_selection)
+       erdbe = self.model.dbe_manager
+       if(self.wxc_dbe is None):
+          self.wxc_dbe = erdbe.gradients.norm() / sf.norm()
+       self.f *= self.wxc_dbe
+       self.g *= self.wxc_dbe
+##########################
 
     if(self.neutron_refinement):
        self.xray_structure.scattering_type_registry(
@@ -286,7 +298,15 @@ class lbfgs(object):
                              scatterers     = self.xray_structure.scatterers(),
                              xray_gradients = self.g,
                              site_gradients = sgc*self.wr)
-
+#######################
+    if(self.refine_xyz and self.model.use_dbe):
+       self.f += erdbe.target
+       if(compute_gradients):
+          xray.minimization.add_gradients(
+                             scatterers     = self.xray_structure.scatterers(),
+                             xray_gradients = self.g,
+                             site_gradients = erdbe.gradients)
+##########################
     if(self.refine_adp and self.restraints_manager.geometry is not None
                         and self.wr > 0.0 and self.iso_restraints is not None):
        if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):
