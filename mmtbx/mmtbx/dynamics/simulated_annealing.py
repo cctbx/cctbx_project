@@ -101,7 +101,7 @@ def run_simulated_annealing(simulated_annealing_params,
                             out):
   assert fmodel.sf_algorithm is not None
   sf_algorithm = fmodel.sf_algorithm
-  fmodel_copy = fmodel.deep_copy()
+  fmodel_copy = fmodel#.deep_copy()
   fmodel_copy_1 = fmodel.deep_copy()
   xray_structure_start        = model.xray_structure.deep_copy_scatterers()
   xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()

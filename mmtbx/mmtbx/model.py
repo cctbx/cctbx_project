@@ -13,6 +13,8 @@ from cctbx.geometry_restraints.lbfgs import lbfgs as cctbx_geometry_restraints_l
 import scitbx.lbfgs
 from libtbx.utils import Sorry, user_plus_sys_time
 from mmtbx.tls import tools
+from cctbx import adp_restraints
+
 
 time_model_show = 0.0
 
@@ -24,6 +26,7 @@ class manager(object):
                      atom_attributes_list,
                      dbe_xray_structure = None,
                      refinement_flags = None,
+                     dbe_manager = None,
                      log = None):
     self.log = log
     self.restraints_manager = restraints_manager
@@ -36,6 +39,7 @@ class manager(object):
     self.solvent_selection = self._solvent_selection()
     self.solvent_selection_ini = self._solvent_selection()
     # DBE related
+    self.dbe_manager = dbe_manager
     self.dbe_xray_structure = dbe_xray_structure
     self.use_dbe = False
     self.dbe_selection = None
@@ -110,25 +114,29 @@ class manager(object):
     self.use_dbe_true_ = True
     self.use_dbe_false_ = False
     #
-    self.refinement_flags.individual_sites       = True
-    self.refinement_flags.rigid_body             = False
-    self.refinement_flags.individual_adp         = True
-    self.refinement_flags.group_adp              = False
-    self.refinement_flags.tls                    = False
-    self.refinement_flags.individual_occupancies = True
-    self.refinement_flags.group_occupancies      = False
-    self.refinement_flags.sites_individual       = [self.dbe_selection]
-    self.refinement_flags.sites_rigid_body       = None
-    self.refinement_flags.adp_individual_iso     = [self.dbe_selection]
-    self.refinement_flags.adp_individual_aniso   = [self.dbe_selection]
-    self.refinement_flags.adp_group              = None
-    self.refinement_flags.adp_tls                = None
-    self.refinement_flags.occupancies_individual = [self.dbe_selection]
-    self.refinement_flags.occupancies_group      = None
+    if(not self.inflated):
+       self.refinement_flags.inflate(
+               size = self.dbe_xray_structure.scatterers().size(), flag = True)
+       self.inflated = True
+       self.refinement_flags.sites_individual[0].set_selected(
+                                                      self.dbe_selection, True)
+       self.refinement_flags.sites_individual[0].set_selected(
+                                                    ~self.dbe_selection, False)
+       self.refinement_flags.individual_occupancies = True
+       self.refinement_flags.occupancies_individual = [flex.bool(
+                                self.xray_structure.scatterers().size(), True)]
+       self.refinement_flags.adp_individual_aniso[0].set_selected(
+                                                      self.dbe_selection, False)
+       self.refinement_flags.adp_individual_iso[0].set_selected(
+                                                      self.dbe_selection, True)
 
   def write_dbe_pdb_file(self, out = None):
     if(out is None):
        out = sys.stdout
+    print >> out, pdb.format_cryst1_record(
+                                      crystal_symmetry = self.crystal_symmetry)
+    print >> out, pdb.format_scale_records(
+                                 unit_cell = self.crystal_symmetry.unit_cell())
     sites_cart = self.xray_structure.select(self.dbe_selection).sites_cart()
     for i_seq, sc in enumerate(self.xray_structure.select(self.dbe_selection).scatterers()):
         print >> out, pdb.format_atom_record(
@@ -141,6 +149,31 @@ class manager(object):
                                     occupancy   = sc.occupancy,
                                     tempFactor  = adptbx.u_as_b(sc.u_iso),
                                     element     = sc.label)
+
+  def show_rigid_bond_test(self, out=None):
+    if(out is None): out = sys.stdout
+    bond_proxies_simple = \
+            self.restraints_manager.geometry.pair_proxies().bond_proxies.simple
+    scatterers = self.xray_structure.scatterers()
+    unit_cell = self.xray_structure.unit_cell()
+    for proxy in bond_proxies_simple:
+        i_seqs = proxy.i_seqs
+        i,j = proxy.i_seqs
+        atom_i = self.atom_attributes_list[i]
+        atom_j = self.atom_attributes_list[j]
+        if(atom_i.element.strip() not in ["H","D"] and
+                                      atom_j.element.strip() not in ["H","D"]):
+           sc_i = scatterers[i]
+           sc_j = scatterers[j]
+           if(sc_i.flags.use_u_aniso() and sc_j.flags.use_u_aniso()):
+              p = adp_restraints.rigid_bond_pair(sc_i.site,
+                                                 sc_j.site,
+                                                 sc_i.u_star,
+                                                 sc_j.u_star,
+                                                 unit_cell)
+              print >> out, "%s %s %10.3f" % (atom_i.name, atom_j.name,
+                                                            p.delta_z()*10000.)
+
 
   def restraints_manager_energies_sites(self,
                                         sites_cart           = None,

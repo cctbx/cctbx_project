@@ -37,6 +37,9 @@ class manager(object):
      n_bonds = len(bond_proxies_simple)
      n_dbe = 0
      n_non_h = 0
+     self.atom_indices = []
+     self.target = None
+     self.gradients = None
      for proxy in bond_proxies_simple:
          i_seqs = proxy.i_seqs
          i,j = proxy.i_seqs
@@ -52,6 +55,7 @@ class manager(object):
                                       site_i = flex.double(atom_i.coordinates),
                                       site_j = flex.double(atom_j.coordinates))
             if(label is not None):
+               self.atom_indices.append([i,j,n_dbe])
                n_dbe += 1
                dbe_site = (dbe_site[0],dbe_site[1],dbe_site[2])
                dbe_site = self.xray_structure.unit_cell().fractionalize(dbe_site)
@@ -88,7 +92,7 @@ class manager(object):
     main_can = ["CA","N"]
     main_co  = ["C","O","OXT","CZ","OH"]
     main_cac = ["CA","C"]
-    #main_hhh = ["H"]
+    main_hhh = ["H"]
     label = None
     if(name_i in phe_ring and name_j in phe_ring):
        label = "RIN"
@@ -102,8 +106,8 @@ class manager(object):
        label = "MCO"
     elif(name_i in main_cac and name_j in main_cac):
        label = "MCAC"
-    #elif(name_i[0] in main_hhh or name_j[0] in main_hhh):
-    #   label = "HHH"
+    elif(name_i[0] in main_hhh or name_j[0] in main_hhh):
+       label = "HHH"
     if(label is not None):
        dbe_site = (site_i + site_j)*0.5
     else:
@@ -125,3 +129,27 @@ class manager(object):
                                     occupancy   = sc.occupancy,
                                     tempFactor  = adptbx.u_as_b(sc.u_iso),
                                     element     = sc.label)
+
+  def target_and_gradients(self, sites_cart, dbe_selection):
+    mac = sites_cart.select(~dbe_selection)
+    dbe = sites_cart.select(dbe_selection)
+    mac_offset = mac.size()
+    self.target = 0.0
+    self.gradients = flex.vec3_double(sites_cart.size())
+    self.number_of_restraints = 0
+    for index in self.atom_indices:
+      sa = mac[index[0]]
+      sb = mac[index[1]]
+      sd = mac[index[2]]
+      d0 = math.sqrt( (sa[0]-sb[0])**2 + (sa[1]-sb[1])**2 + (sa[2]-sb[2])**2 )
+      dad= math.sqrt( (sa[0]-sd[0])**2 + (sa[1]-sd[1])**2 + (sa[2]-sd[2])**2 )
+      ddb= math.sqrt( (sb[0]-sd[0])**2 + (sb[1]-sd[1])**2 + (sb[2]-sd[2])**2 )
+      delta = dad + ddb - d0
+      self.target = delta**2
+      g1 = -2.*(sa[0]+sb[0]-2.*sd[0])
+      g2 = -2.*(sa[1]+sb[1]-2.*sd[1])
+      g3 = -2.*(sa[2]+sb[2]-2.*sd[2])
+      self.gradients[mac_offset+index[2]] = [g1,g2,g3]
+      self.number_of_restraints += 1
+    self.target *= (1./self.number_of_restraints)
+    self.gradients *= (1./self.number_of_restraints)
