@@ -18,6 +18,10 @@ def chebyshev_nodes(n,
     span = (flex.max(x)-flex.min(x))/2.0
     x = x/span
   x = 0.5*(low+high) + 0.5*(high-low)*x
+  if include_limits:
+    x[0]=low
+    x[n-1]=high
+
   return(x)
 
 class chebyshev_lsq_fit(object):
