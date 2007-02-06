@@ -106,7 +106,42 @@ def another_example(np=41,nt=5):
   print list( fit_nw.coefs )
   assert flex.max( fit_nw.coefs-fit_w.coefs) > 0
 
+def runge_phenomenon(self,n=41,nt=35,print_it=False):
+  x_e = 2.0*(flex.double( xrange(n) )/float(n-1)-0.5)
+  y_e = 1/(1+x_e*x_e*25)
+  fit_e = chebyshev_lsq_fit.chebyshev_lsq_fit(nt,
+                                              x_e,
+                                              y_e,
+                                              )
+  fit_e = chebyshev_polynome(
+    nt, fit_e.low_limit, fit_e.high_limit, fit_e.coefs)
+
+
+  x_c = chebyshev_lsq_fit.chebyshev_nodes(n, -1, 1, True)
+  y_c = 1/(1+x_c*x_c*25)
+  fit_c = chebyshev_lsq_fit.chebyshev_lsq_fit(nt,
+                                              x_c,
+                                              y_c,
+                                              )
+  fit_c = chebyshev_polynome(
+    nt, fit_c.low_limit, fit_c.high_limit, fit_c.coefs)
+
+
+  x_plot = 2.0*(flex.double( xrange(3*n) )/float(3*n-1)-0.5)
+  y_plot_e = fit_e.f( x_plot )
+  y_plot_c = fit_c.f( x_plot )
+  y_id =  1/(1+x_plot*x_plot*25)
+  if print_it:
+    for x,y,yy,yyy in zip(x_plot,y_id,y_plot_e,y_plot_c):
+      print x,y,yy,yyy
+
+
+
+
+
+
 
 if (__name__ == "__main__"):
   example()
   another_example()
+  runge_phenomenon(10)
