@@ -128,7 +128,7 @@ namespace chebyshev{
   {
     typedef FloatType f_t;
     f_t epsilon;
-    epsilon = 1.0E-6;
+    epsilon = 1.0E-12;
     f_t result=0;
     //std::cout << low_limit_ << " " << high_limit_ << std::endl;
     result = (x_in - (low_limit_ + high_limit_)*0.5)
@@ -602,10 +602,10 @@ namespace chebyshev{
                   scitbx::af::const_ref<FloatType> const& w_obs,
                   scitbx::af::const_ref<bool> const& free_flags)
     :
-    x_obs_(x_obs.size(),0),
-    y_obs_(x_obs.size(),0),
-    w_obs_(x_obs.size(),0),
-    free_flags_(x_obs.size(),0),
+    shrd_x_obs_(x_obs.size(),0),
+    shrd_y_obs_(x_obs.size(),0),
+    shrd_w_obs_(x_obs.size(),0),
+    shrd_free_flags_(x_obs.size(),0),
     n_terms_(n_terms),
     cheby_(n_terms, low_limit, high_limit)
     {
@@ -614,12 +614,15 @@ namespace chebyshev{
       SCITBX_ASSERT ( x_obs.size()==free_flags.size() );
 
       for (unsigned ii=0; ii<x_obs.size();ii++){
-        x_obs_[ii]=x_obs[ii];
-        y_obs_[ii]=y_obs[ii];
-        w_obs_[ii]=w_obs[ii];
-        free_flags_[ii] = free_flags[ii];
+        shrd_x_obs_[ii]=x_obs[ii];
+        shrd_y_obs_[ii]=y_obs[ii];
+        shrd_w_obs_[ii]=w_obs[ii];
+        shrd_free_flags_[ii] = free_flags[ii];
       }
-
+      x_obs_ = shrd_x_obs_.const_ref();
+      y_obs_ = shrd_y_obs_.const_ref();
+      w_obs_ = shrd_w_obs_.const_ref();
+      free_flags_ = shrd_free_flags_.const_ref();
     }
 
     FloatType residual();
@@ -640,10 +643,17 @@ namespace chebyshev{
 
 
     private:
-    scitbx::af::shared<FloatType> x_obs_;
-    scitbx::af::shared<FloatType> y_obs_;
-    scitbx::af::shared<FloatType> w_obs_;
-    scitbx::af::shared<bool> free_flags_;
+    scitbx::af::shared<FloatType> shrd_x_obs_;
+    scitbx::af::shared<FloatType> shrd_y_obs_;
+    scitbx::af::shared<FloatType> shrd_w_obs_;
+    scitbx::af::shared<bool> shrd_free_flags_;
+
+    scitbx::af::const_ref<FloatType> x_obs_;
+    scitbx::af::const_ref<FloatType> y_obs_;
+    scitbx::af::const_ref<FloatType> w_obs_;
+    scitbx::af::const_ref<bool> free_flags_;
+
+
     unsigned n_terms_;
     chebyshev_fitter<FloatType> cheby_;
 
