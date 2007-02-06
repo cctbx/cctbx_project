@@ -527,6 +527,9 @@ class environment:
         self.command_version_suffix = \
           command_line.options.command_version_suffix
         self.write_command_version_suffix()
+    if (command_line.options.build_boost_python_extensions is not None):
+      self.build_options.build_boost_python_extensions \
+        = command_line.options.build_boost_python_extensions
     self.reset_module_registry()
     module_names.append("libtbx")
     module_names.reverse()
@@ -1269,7 +1272,8 @@ class build_options:
         warning_level,
         static_libraries,
         static_exe,
-        scan_boost):
+        scan_boost,
+        build_boost_python_extensions=True):
     adopt_init_args(self, locals())
     assert self.mode in ["release", "quick", "debug", "debug_optimized"]
     assert self.warning_level >= 0
@@ -1286,6 +1290,8 @@ class build_options:
     print >> f, "Static libraries:", self.static_libraries
     print >> f, "Static exe:", self.static_exe
     print >> f, "Scan Boost headers:", self.scan_boost
+    print >> f, "Build Boost.Python extensions:", \
+      self.build_boost_python_extensions
 
 class include_registry:
 
@@ -1402,6 +1408,12 @@ class pre_process_args:
         default=None,
         help="version suffix for commands in bin directory",
         metavar="STRING")
+    parser.option(None, "--build_boost_python_extensions",
+      action="store",
+      type="bool",
+      default=None,
+      help="build Boost.Python extension modules",
+      metavar="True|False")
     self.command_line = parser.process(args=args)
     if (not hasattr(os.path, "samefile")):
       self.command_line.options.current_working_directory = None
@@ -1461,6 +1473,9 @@ def unpickle():
   env = pickle.load(libtbx_env)
   if (env.python_version_major_minor != sys.version_info[:2]):
     env.raise_python_version_incompatible()
+  # XXX backward compatibility 2007-02-06
+  if (not hasattr(env.build_options, "build_boost_python_extensions")):
+    env.build_options.build_boost_python_extensions = True
   return env
 
 def warm_start(args):
