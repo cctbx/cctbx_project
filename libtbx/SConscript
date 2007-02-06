@@ -39,7 +39,9 @@ def darwin_framework_path():
   return os.sep.join(os.path.realpath(sys.executable).split(os.sep)[:-5])
 
 env_etc = empty()
-env_etc.no_boost_python = ARGUMENTS.get("no_boost_python", 0)
+env_etc.no_boost_python = ARGUMENTS.get(
+  "no_boost_python",
+  not libtbx.env.build_options.build_boost_python_extensions)
 env_etc.norm_join = norm_join
 env_etc.darwin_framework_path = darwin_framework_path
 
