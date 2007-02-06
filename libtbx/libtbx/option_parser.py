@@ -1,6 +1,23 @@
+import copy
 import sys, os
 
 from optik import *
+
+def check_bool(option, opt, value):
+  v = value.strip().lower()
+  if (v in ["false", "no", "off", "0"]): return False
+  if (v in ["true", "yes", "on", "1"]): return True
+  raise OptionValueError(
+    "option %s: invalid bool value: %r" % (opt, value))
+
+DefaultOption = Option
+assert not "bool" in DefaultOption.TYPE_CHECKER
+
+class Option(DefaultOption):
+  TYPES = Option.TYPES + ("bool",)
+  TYPE_CHECKER = copy.copy(Option.TYPE_CHECKER)
+  TYPE_CHECKER["bool"] = check_bool
+
 make_option = Option
 
 class option_parser(OptionParser):
