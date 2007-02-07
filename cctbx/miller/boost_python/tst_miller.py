@@ -1,5 +1,3 @@
-import math
-import random
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import miller
@@ -7,6 +5,9 @@ from cctbx.array_family import flex
 import scitbx.math
 from libtbx.complex_math import polar
 from libtbx.test_utils import approx_equal
+import pickle
+import random
+import math
 
 def exercise_sym_equiv():
   s = sgtbx.space_group("P 31")
@@ -226,6 +227,11 @@ def exercise_bins():
   assert binning1.n_bins_used() == n_bins
   assert binning1.limits().size() == n_bins + 1
   assert binning1.n_bins_all() == n_bins + 2
+  s = pickle.dumps(binning1)
+  l = pickle.loads(s)
+  assert str(l.unit_cell()) == "(11, 11, 13, 90, 90, 120)"
+  assert approx_equal(l.limits(), binning1.limits())
+  #
   binner1 = miller.ext.binner(binning1, m)
   assert binner1.miller_indices().id() == m.id()
   assert binner1.count(binner1.i_bin_d_too_large()) == 0
@@ -273,6 +279,13 @@ def exercise_bins():
     assert approx_equal(
       r.coefficient(), (0.946401,0.990764,1.0)[d_star_power-1],
       eps=1.e-4, multiplier=None)
+  #
+  s = pickle.dumps(binner2)
+  l = pickle.loads(s)
+  assert str(l.unit_cell()) == "(11, 11, 13, 90, 90, 120)"
+  assert approx_equal(l.limits(), binner2.limits())
+  assert l.miller_indices().all_eq(binner2.miller_indices())
+  assert l.bin_indices().all_eq(binner2.bin_indices())
   #
   limits = flex.random_double(size=10)
   bng = miller.binning(uc, limits)
