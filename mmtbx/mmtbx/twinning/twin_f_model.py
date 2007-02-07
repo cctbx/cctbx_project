@@ -37,6 +37,11 @@ from scitbx import differential_evolution
 import sys, os, math, time
 
 
+master_params =  iotbx.phil.parse("""
+  twin_law = None
+  .type=str
+  """)
+
 
 class twin_fraction_object(object):
   """provides methods for derivatives and
@@ -362,9 +367,13 @@ class bulk_solvent_scaler(object):
     self.compute_functional_and_gradients()
     term_parameters = scitbx.lbfgs.termination_parameters(
       max_iterations = 30)
+    exception_handling_parameters = scitbx.lbfgs.exception_handling_parameters(
+      ignore_line_search_failed_step_at_lower_bound=True,
+      ignore_line_search_failed_step_at_upper_bound=True)
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
-      termination_params=term_parameters)
+      termination_params=term_parameters,
+      exception_handling_params=exception_handling_parameters)
 
   def update_x(self):
     # this is only need when starting,
@@ -608,6 +617,9 @@ class bulk_solvent_scaling_manager(object):
         self.best_scaling_parameters.k_overall = scaling_parameters.k_overall
         self.best_twin_fraction.twin_fraction = twin_fraction.twin_fraction
 
+    print "INITIALISE"
+    print self.best_scaling_parameters.k_overall
+    print self.best_twin_fraction.twin_fraction
 
   def update_best(self):
     self.best_scaling_parameters = scaling_parameters_object( object = self.scaling_parameters )
@@ -763,12 +775,9 @@ class bulk_solvent_scaling_manager(object):
 
 
 
-
-
-
 class twin_model_manager(object):
   def __init__(self,
-               f_obs_array        = None,
+               f_obs        = None,
                free_array         = None,
                xray_structure     = None,
                scaling_parameters = None,
@@ -781,6 +790,9 @@ class twin_model_manager(object):
                sf_algorithm       = "fft",
                sf_cos_sin_table   = True,
                perform_local_scaling = False):
+    self.alpha_beta_params=None
+
+    self.target_name="twin_lsq_f"
     self.out = out
     if self.out is None:
       self.out = sys.stdout
@@ -791,28 +803,30 @@ class twin_model_manager(object):
     self.perform_local_scaling = perform_local_scaling
 
     assert (self.twin_law is not None)
-    self.f_obs_array = f_obs_array.map_to_asu()
+    self.f_obs = f_obs.map_to_asu()
     self.free_array = free_array.map_to_asu()
 
-    self.f_obs_array_work = self.f_obs_array.select( ~self.free_array.data() )
-    self.f_obs_array_free = self.f_obs_array.select( self.free_array.data() )
+    self.f_obs_w = self.f_obs.select( ~self.free_array.data() )
+    self.f_obs_f = self.f_obs.select( self.free_array.data() )
 
     #setup the binners if this has not been done yet
     self.max_bins = max_bins
     self.n_refl_bin = n_refl_bin
-    if self.f_obs_array.binner() is None:
-      if self.f_obs_array.indices().size()/float(n_refl_bin) > max_bins:
-        self.f_obs_array.setup_binner(n_bins = max_bins)
+    if self.f_obs.binner() is None:
+      if self.f_obs.indices().size()/float(n_refl_bin) > max_bins:
+        self.f_obs.setup_binner(n_bins = max_bins)
       else:
-        self.f_obs_array.setup_binner( reflections_per_bin=n_refl_bin )
+        self.f_obs.setup_binner( reflections_per_bin=n_refl_bin )
 
-    self.f_obs_array_work.use_binning_of( self.f_obs_array )
-    self.f_obs_array_free.use_binning_of( self.f_obs_array )
+    self.f_obs_w.use_binning_of( self.f_obs )
+    self.f_obs_f.use_binning_of( self.f_obs )
 
     self.xray_structure = xray_structure
-    self.xs = crystal.symmetry( unit_cell=f_obs_array.unit_cell(),
-                                space_group=f_obs_array.space_group() )
-    self.scaling_parameters = scaling_parameters
+    self.xs = crystal.symmetry( unit_cell=f_obs.unit_cell(),
+                                space_group=f_obs.space_group() )
+    self.scaling_parameters = scaling_parameters_object(
+      xs = self.xs,
+      object = scaling_parameters)
     if self.scaling_parameters is None:
       self.scaling_parameters = scaling_parameters_object(self.xs)
 
@@ -823,25 +837,23 @@ class twin_model_manager(object):
       self.mask_params = mmtbx.masks.mask_master_params.extract()
 
 
+    self.norma_sum_f_sq = flex.sum( self.f_obs.data() * self.f_obs.data() )
+    self.norma_sum_f_sq_w = flex.sum( self.f_obs_w.data() * self.f_obs_w.data() )
+    self.norma_sum_f_sq_f = flex.sum( self.f_obs_f.data() * self.f_obs_f.data() )
     #-------------------
     self.miller_set = None
     self.f_atoms = None
     self.free_flags_for_f_atoms = None
     self.miller_set = None
-    print "updating f atoms"
     self.f_atoms = self.compute_f_atoms()
-
-
 
     #-------------------
     self.f_mask_array = None
-    print "updating mask"
     self.update_f_mask()
     #-------------------
     self.f_partial_array = None
 
     #-------------------
-    print "make data core"
     self.data_core = xray.f_model_core_data(
       hkl = self.f_atoms.indices(),
       f_atoms= self.f_atoms.data(),
@@ -856,28 +868,26 @@ class twin_model_manager(object):
       u_part=self.scaling_parameters.u_part )
 
 
-    print "Making target evaluators (free and work)"
     self.target_evaluator = xray.least_squares_hemihedral_twinning_on_f(
-      hkl_obs       = self.f_obs_array_work.indices(),
-      f_obs         = self.f_obs_array_work.data(),
-      w_obs         = self.f_obs_array_work.sigmas(),
+      hkl_obs       = self.f_obs_w.indices(),
+      f_obs         = self.f_obs_w.data(),
+      w_obs         = self.f_obs_w.sigmas(),
       hkl_calc      = self.f_atoms.indices(),
-      space_group   = self.f_obs_array.space_group(),
-      anomalous_flag= self.f_obs_array.anomalous_flag(),
+      space_group   = self.f_obs.space_group(),
+      anomalous_flag= self.f_obs.anomalous_flag(),
       alpha         = self.twin_fraction,
       twin_law      = self.twin_law.as_double_array()[0:9] )
 
     self.free_target_evaluator = xray.least_squares_hemihedral_twinning_on_f(
-      hkl_obs        = self.f_obs_array_free.indices(),
-      f_obs          = self.f_obs_array_free.data(),
-      w_obs          = self.f_obs_array_free.sigmas(),
+      hkl_obs        = self.f_obs_f.indices(),
+      f_obs          = self.f_obs_f.data(),
+      w_obs          = self.f_obs_f.sigmas(),
       hkl_calc       = self.f_atoms.indices(),
-      space_group    = self.f_obs_array.space_group(),
-      anomalous_flag = self.f_obs_array.anomalous_flag(),
+      space_group    = self.f_obs.space_group(),
+      anomalous_flag = self.f_obs.anomalous_flag(),
       alpha          = self.twin_fraction,
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
-    print "Making bulk solvent scaler"
     self.bss=bulk_solvent_scaling_manager(
       self.target_evaluator,
       self.data_core,
@@ -889,42 +899,39 @@ class twin_model_manager(object):
     self.scaling_parameters = self.bss.best_scaling_parameters
     self.twin_fraction_object = self.bss.best_twin_fraction
     ###
-    print "Making r-value objects"
     self.r_work_object = xray.hemihedral_r_values(
-      hkl_obs        = self.f_obs_array_work.indices(),
+      hkl_obs        = self.f_obs_w.indices(),
       hkl_calc       = self.f_atoms.indices(),
-      space_group    = self.f_obs_array_work.space_group(),
-      anomalous_flag = self.f_obs_array.anomalous_flag(),
+      space_group    = self.f_obs_w.space_group(),
+      anomalous_flag = self.f_obs.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
     self.r_free_object = xray.hemihedral_r_values(
-      hkl_obs        = self.f_obs_array_free.indices(),
+      hkl_obs        = self.f_obs_f.indices(),
       hkl_calc       = self.f_atoms.indices(),
-      space_group    = self.f_obs_array_free.space_group(),
-      anomalous_flag = self.f_obs_array_free.anomalous_flag(),
+      space_group    = self.f_obs_f.space_group(),
+      anomalous_flag = self.f_obs_f.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
-    print "Making detwinning objects"
     self.work_detwinner = xray.hemihedral_detwinner(
-      hkl_obs        = self.f_obs_array_work.indices(),
+      hkl_obs        = self.f_obs_w.indices(),
       hkl_calc       = self.f_atoms.indices(),
-      space_group    = self.f_obs_array_work.space_group(),
-      anomalous_flag = self.f_obs_array_work.anomalous_flag(),
+      space_group    = self.f_obs_w.space_group(),
+      anomalous_flag = self.f_obs_w.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
     self.free_detwinner = xray.hemihedral_detwinner(
-      hkl_obs        = self.f_obs_array_free.indices(),
+      hkl_obs        = self.f_obs_f.indices(),
       hkl_calc       = self.f_atoms.indices(),
-      space_group    = self.f_obs_array_free.space_group(),
-      anomalous_flag = self.f_obs_array_free.anomalous_flag(),
+      space_group    = self.f_obs_f.space_group(),
+      anomalous_flag = self.f_obs_f.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
     self.full_detwinner = xray.hemihedral_detwinner(
-      hkl_obs        = self.f_obs_array.indices(),
+      hkl_obs        = self.f_obs.indices(),
       hkl_calc       = self.f_atoms.indices(),
-      space_group    = self.f_obs_array.space_group(),
-      anomalous_flag = self.f_obs_array.anomalous_flag(),
+      space_group    = self.f_obs.space_group(),
+      anomalous_flag = self.f_obs.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
-    print "Making atomic parameter gradient engine"
     self.sf_algorithm = sf_algorithm
     self.sf_cos_sin_table = sf_cos_sin_table
     self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
@@ -934,9 +941,16 @@ class twin_model_manager(object):
     self.sigmaa_object_cache = None
     self.update_sigmaa_object = True
 
+    self.xray_structure_mask_cache = None
+    if self.xray_structure is not None:
+      self.xray_structure_mask_cache = self.xray_structure.deep_copy_scatterers()
+
+    self.epsilons_w = self.f_obs_w.epsilons().data().as_double()
+    self.epsilons_f = self.f_obs_f.epsilons().data().as_double()
+
   def deep_copy(self):
     new_object = twin_model_manager(
-      f_obs_array        = self.f_obs_array.deep_copy(),
+      f_obs        = self.f_obs.deep_copy(),
       free_array         = self.free_array.deep_copy(),
       xray_structure     = self.xray_structure,
       scaling_parameters = self.scaling_parameters.deep_copy(),
@@ -949,12 +963,13 @@ class twin_model_manager(object):
       sf_algorithm       = self.sf_algorithm,
       sf_cos_sin_table   = self.sf_cos_sin_table,
       perform_local_scaling = self.perform_local_scaling)
+    new_object.update()
     return new_object
 
   def resolution_filter(self,d_max=None,d_min=None):
     dc = self.deep_copy()
     new_object = twin_model_manager(
-      f_obs_array        = dc.f_obs_array.resolution_filter(d_max,d_min) ,
+      f_obs        = dc.f_obs.resolution_filter(d_max,d_min) ,
       free_array         = dc.free_array.resolution_filter(d_max,d_min),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
@@ -967,12 +982,13 @@ class twin_model_manager(object):
       sf_algorithm       = dc.sf_algorithm,
       sf_cos_sin_table   = dc.sf_cos_sin_table,
       perform_local_scaling = dc.perform_local_scaling)
+    new_object.update()
     return new_object
 
   def select(self, selection):
     dc = self.deep_copy()
     new_object = twin_model_manager(
-      f_obs_array        = dc.f_obs_array.select(selection) ,
+      f_obs        = dc.f_obs.select(selection) ,
       free_array         = dc.free_array.selection(selection),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
@@ -1015,15 +1031,19 @@ class twin_model_manager(object):
     tmp = self.f_calc()
     return tmp.select( self.free_flags_for_f_atoms.data() )
 
-
+  def setup_target_functors(self):
+    print >>self.out, "NO TARGET FUNCTORS TO SET UP"
 
   def update_solvent_and_scale(self,
+                               params=None,
                                bulk_solvent_parameters=None,
                                twin_fraction_parameters=None,
                                refine=False,
                                grid_search=False,
                                initialise=False,
                                de_search=False,
+                               out=None,
+                               verbose=None
                                ):
     if initialise:
       self.bss.initial_scale_and_twin_fraction()
@@ -1070,13 +1090,14 @@ class twin_model_manager(object):
       self.data_core.renew_fatoms( f_calc.data() )
       self.f_atoms = f_calc
     else:
+      assert self.f_atoms.indices().all_eq( self.miller_set.indices() )
       self.data_core.renew_fatoms( self.f_atoms.data() )
 
     if f_mask is not None:
       self.data_core.renew_fmask( f_mask.data() )
       self.f_mask_array = f_mask
     else:
-      self.data_core.renew_fmask( self.f_mask.data() )
+      self.data_core.renew_fmask( self.f_mask_array.data() )
 
     if f_part is not None:
       self.data_core.renew_fpart( f_part.calc() )
@@ -1101,17 +1122,63 @@ class twin_model_manager(object):
     else:
       self.data_core.ksol( self.scaling_parameters.k_sol )
 
+    if b_cart is not None:
+      assert u_star is None
+      u_star = adptbx.b_as_u( b_cart, self.unit_cell )
+
+
+  def update(self, f_calc              = None,
+                   f_obs               = None,
+                   f_mask              = None,
+                   f_ordered_solvent   = None,
+                   r_free_flags        = None,
+                   b_cart              = None,
+                   k_sol               = None,
+                   b_sol               = None,
+                   sf_algorithm        = None,
+                   target_name         = None,
+                   abcd                = None,
+                   alpha_beta_params   = None,
+                   xray_structure      = None,
+                   mask_params         = None):
+
+    if(f_calc is not None):
+       assert f_calc.indices().all_eq(self.f_model.indices())
+       self.update_core(f_calc = f_calc)
+
+    if(mask_params is not None):
+       self.mask_params = mask_params
+    if(f_obs is not None):
+       assert f_obs.data().size() == self.f_obs.data().size()
+       self.f_obs = f_obs
+       self.f_obs_w = self.f_obs.select(~self.free_array.data() )
+       self.f_obs_f = self.f_obs.select( self.free_array.data() )
+    if(f_mask is not None):
+      assert f_mask.indices().all_eq( self.f_mask_array().indices() )
+      assert f_mask.data().size() == self.f_mask_array().data().size()
+      self.update_core(f_mask = f_mask)
+
+    if(r_free_flags is not None):
+      self.update_r_free_flags(r_free_flags)
+      self.update_core(r_free_flags = r_free_flags)
+    if(b_cart is not None):
+      try: assert b_cart.size() == 6
+      except: assert len(b_cart) == 6
+      #XXXXX
+      #self.update_core(b_cart = b_cart)
+
+
 
   def construct_miller_set(self, return_free_f_atoms_array=False):
-    completion = xray.twin_completion( self.f_obs_array.indices(),
+    completion = xray.twin_completion( self.f_obs.indices(),
                                        self.xs.space_group(),
-                                       self.f_obs_array.anomalous_flag(),
+                                       self.f_obs.anomalous_flag(),
                                        self.twin_law.as_double_array()[0:9] )
     indices = completion.twin_complete()
     miller_set = miller.set(
       crystal_symmetry = self.xs,
       indices =indices,
-      anomalous_flag = self.f_obs_array.anomalous_flag() ).map_to_asu()
+      anomalous_flag = self.f_obs.anomalous_flag() ).map_to_asu()
 
     assert miller_set.is_unique_set_under_symmetry()
     if not return_free_f_atoms_array:
@@ -1136,10 +1203,11 @@ class twin_model_manager(object):
 
 
 
-  def _get_step(self):
-    step = self.f_obs_array.d_min()/self.mask_params.grid_step_factor
+  def _get_step(self, update_f_ordered_solvent = False):
+    step = self.f_obs.d_min()/self.mask_params.grid_step_factor
     if(step < 0.3): step = 0.3
     step = min(0.8, step)
+    if(update_f_ordered_solvent): step = 0.3
     return step
 
   def _update_f_mask_flag(self, xray_structure, mean_shift):
@@ -1158,51 +1226,58 @@ class twin_model_manager(object):
           update_f_mask = True
        return update_f_mask
 
+  def print_diffs(self):
+    sites_cart_1 = self.xray_structure_mask_cache.sites_cart()
+    sites_cart_2 = self.xray_structure.sites_cart()
+    atom_atom_distances = flex.sqrt((sites_cart_1 - sites_cart_2).dot())
+    mean_shift_ = flex.mean(atom_atom_distances)
+    print "MEAN SHIFT", mean_shift_
+
 
   def update_xray_structure(self,
-                            xray_structure,
+                            xray_structure           = None,
                             update_f_calc            = False,
                             update_f_mask            = False,
+                            update_f_ordered_solvent = False,
                             force_update_f_mask      = False,
+                            out                      = None,
                             k_sol                    = None,
                             b_sol                    = None,
                             b_cart                   = None):
     consider_mask_update = None
-    set_core_flag=True
+    set_core_flag =True
+    if xray_structure is not None:
+      self.xray_structure = xray_structure
+
     if(update_f_mask):
-      if(force_update_f_mask):
-        consider_mask_update = True
-      else:
-        consider_mask_update = self._update_f_mask_flag(
-          xray_structure = xray_structure,
-          mean_shift     = self.mask_params.mean_shift_for_mask_update)
-
-    self.xray_structure = xray_structure
-
-    step = self._get_step()
+       if(force_update_f_mask):
+          consider_mask_update = True
+       else:
+          consider_mask_update = self._update_f_mask_flag(
+                  xray_structure = xray_structure,
+                  mean_shift     = self.mask_params.mean_shift_for_mask_update)
+    step = self._get_step(update_f_ordered_solvent=update_f_ordered_solvent)
     f_calc = None
     f_mask = None
     if(update_f_calc):
        assert self.xray_structure is not None
        self.f_atoms = self.compute_f_atoms()
     if(update_f_mask and consider_mask_update):
-       number_mask += 1
        bulk_solvent_mask_obj = self.bulk_solvent_mask()
-       f_mask = bulk_solvent_mask_obj.structure_factors(miller_set=self.miller_set)
+       f_mask = bulk_solvent_mask_obj.structure_factors(self.miller_set)
+       assert f_mask.indices().all_eq( self.miller_set.indices() )
 
     if([f_calc, f_mask].count(None) == 2):
       set_core_flag = False
     if(f_calc is None):
       f_calc = self.f_atoms
     if(f_mask is None):
-      f_mask = self.f_mask
-    if(set_core_flag):
-      self.update_core(f_calc = f_calc,
-                       f_mask = f_mask,
-                       b_cart = b_cart,
-                       k_sol  = k_sol,
-                       b_sol  = b_sol)
-
+      f_mask = self.f_mask_array
+    self.update_core(f_calc = f_calc,
+                     f_mask = f_mask,
+                     b_cart = b_cart,
+                     k_sol  = k_sol,
+                     b_sol  = b_sol)
 
 
   def bulk_solvent_mask(self):
@@ -1214,23 +1289,39 @@ class twin_model_manager(object):
           shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
     return result
 
-
   def update_f_mask(self):
     mask = self.bulk_solvent_mask()
     self.f_mask_array = mask.structure_factors( self.miller_set )
 
+  def r_values(self, table=True, d_min=None, d_max=None):
+    additional_selection_w = flex.bool(self.f_obs_w.data().size(), True)
+    d_w = self.f_obs_w.d_spacings().data()
+    if d_max is not None:
+      exclude_low_w  = flex.bool(d_w<d_max)
+      additional_selection_w = additional_selection_w&exclude_low_w
+    if d_min is not None:
+      exclude_high_w = flex.bool(d_w>d_min)
+      additional_selection_w = additional_selection_w&exclude_high_w
 
-  def r_values(self, table=True):
+    additional_selection_f = flex.bool(self.f_obs_f.data().size(), True)
+    d_f = self.f_obs_f.d_spacings().data()
+    if d_max is not None:
+      exclude_low_f  = flex.bool(d_f<d_max)
+      additional_selection_f = additional_selection_f&exclude_low_f
+    if d_min is not None:
+      exclude_high_f = flex.bool(d_f>d_min)
+      additional_selection_f = additional_selection_f&exclude_high_f
+
     r_abs_work_f_overall = self.r_work_object.r_amplitude_abs(
-      f_obs         = self.f_obs_array_work.data(),
+      f_obs         = self.f_obs_w.data(),
       f_model       = self.data_core.f_model(),
-      selection     = None,
+      selection     = additional_selection_w,
       twin_fraction = self.twin_fraction_object.twin_fraction)
 
     r_abs_free_f_overall = self.r_free_object.r_amplitude_abs(
-      self.f_obs_array_free.data(),
+      self.f_obs_f.data(),
       self.data_core.f_model(),
-      None,
+      additional_selection_f,
       self.twin_fraction_object.twin_fraction)
 
     if table:
@@ -1241,25 +1332,27 @@ class twin_model_manager(object):
       n_free = []
       n_work = []
       rows = []
-      for i_bin in self.f_obs_array_free.binner().range_used():
-        selection = flex.bool( self.f_obs_array_work.binner().bin_indices() == i_bin )
+      for i_bin in self.f_obs_f.binner().range_used():
+        selection = flex.bool( self.f_obs_w.binner().bin_indices() == i_bin )
+        #combine selection
         n_work = selection.count(True)
         tmp_work = self.r_work_object.r_amplitude_abs(
-          f_obs         = self.f_obs_array_work.data(),
+          f_obs         = self.f_obs_w.data(),
           f_model       = self.data_core.f_model(),
           selection     = selection,
           twin_fraction = self.twin_fraction_object.twin_fraction)
-        selection = flex.bool( self.f_obs_array_free.binner().bin_indices() == i_bin )
+        selection = flex.bool( self.f_obs_f.binner().bin_indices() == i_bin )
+        selection = selection&additional_selection_f
         n_free = selection.count(True)
         tmp_free = self.r_free_object.r_amplitude_abs(
-          f_obs         = self.f_obs_array_free.data(),
+          f_obs         = self.f_obs_f.data(),
           f_model       = self.data_core.f_model(),
           selection     = selection,
           twin_fraction = self.twin_fraction_object.twin_fraction)
 
         r_abs_work_f_bin.append(tmp_work)
         r_abs_free_f_bin.append(tmp_free)
-        d_max,d_min = self.f_obs_array_work.binner().bin_d_range( i_bin )
+        d_max,d_min = self.f_obs_w.binner().bin_d_range( i_bin )
         tmp = [ str( "%3i"%(i_bin)    ),
                 str( "%5.2f"%(d_max)  ),
                 str( "%5.2f"%(d_min)  ),
@@ -1293,6 +1386,9 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
       print >> self.out, table_txt
       print >> self.out, "-----------------------------------------------------------"
       print >> self.out
+      self.r_work_in_lowest_resolution_bin(show=True)
+      self.r_overall_low_high(show=True)
+
     else:
       return r_abs_work_f_overall, r_abs_free_f_overall
 
@@ -1304,6 +1400,74 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     w,f = self.r_values(False)
     return f
 
+
+  def r_work_in_lowest_resolution_bin(self, reflections_per_bin=200, show=False):
+    d_star_sq = self.f_obs_w.d_star_sq().data()
+    sort_permut = flex.sort_permutation( d_star_sq )
+    if sort_permut.size() < reflections_per_bin:
+      reflections_per_bin = sort_permut.size()
+    i_select = sort_permut[:reflections_per_bin-1]
+    b_select = flex.bool(sort_permut.size(), False )
+    b_select = b_select.set_selected( i_select, True )
+
+    tmp_work = self.r_work_object.r_amplitude_abs(
+      f_obs         = self.f_obs_w.data(),
+      f_model       = self.data_core.f_model(),
+      selection     = b_select,
+      twin_fraction = self.twin_fraction_object.twin_fraction)
+
+    if not show:
+      return tmp_work
+    else:
+      print >> self.out, "-----------------------------------------------------------"
+      print >> self.out, "  R-value for the %i lowest resolution reflections:"%(reflections_per_bin)
+      print >> self.out, "    %4.3f" %(self.r_work_in_lowest_resolution_bin(reflections_per_bin))
+      print >> self.out, "-----------------------------------------------------------"
+
+
+  def r_overall_low_high(self, d = 6.0, show=False):
+    r_work = self.r_work()
+    d_max, d_min = self.f_obs_w.d_max_min()
+    if(d_max < d): d = d_max
+    if(d_min > d): d = d_min
+
+    n_low = self.f_obs_w.resolution_filter(d_min = d, d_max = 999.9).data().size()
+    if(n_low > 0):
+       r_work_l = self.r_values(d_min = d, d_max = 999.9, table=False )[0]
+    else:
+       r_work_l = None
+
+
+    n_high = self.f_obs_w.resolution_filter(d_min = 0.0, d_max = d).data().size()
+    if(n_high > 0):
+       r_work_h = self.r_values(d_min = 0.0, d_max = d,table=False)[0]
+    else:
+       r_work_h = None
+
+
+    if(r_work_l is not None):
+       r_work_l = r_work_l
+    else:
+       r_work_l = 0.0
+
+    if(r_work_h is not None):
+       r_work_h = r_work_h
+    else:
+       r_work_h = 0.0
+    if not show:
+      return r_work, r_work_l, r_work_h, n_low, n_high
+    else:
+      print >> self.out, "----------------------------------------------------------"
+      print >> self.out, "Overall, low and high resolution R-work values"
+      print >> self.out
+      print >> self.out, "Limits: Overall: %6.2f -- %6.2f"%(d_max,d_min)
+      print >> self.out, "        Low    : %6.2f -- %6.2f"%(d_max,d)
+      print >> self.out, "        High   : %6.2f -- %6.2f"%(d,d_min)
+      print >> self.out
+      print >> self.out, "R values    : Overall    low    high"
+      print >> self.out, "              %6.3f   %6.3f  %6.3f"%(r_work,r_work_l,r_work_h)
+      print >> self.out, "Contributors:%7i  %7i %7i"%(n_low+n_high, n_low,n_high)
+      print >> self.out, "----------------------------------------------------------"
 
 
 
@@ -1348,22 +1512,25 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
 
 
   def target(self, print_it=True):
-    tmp_w=self.target_evaluator.target( self.data_core.f_model() )
-    tmp_f=self.free_target_evaluator.target( self.data_core.f_model() )
+    tmp_w=self.target_evaluator.target( self.data_core.f_model() )/self.norma_sum_f_sq_w
+    tmp_f=self.free_target_evaluator.target( self.data_core.f_model() )/self.norma_sum_f_sq_f
     if print_it:
       print >> self.out
       print >> self.out, "----------------- Target values -----------------"
-      print >> self.out, " Basic values "
       print >> self.out, "   working set  : %8.6e "%(tmp_w)
       print >> self.out, "   free set     : %8.6e "%(tmp_f)
-      print >> self.out
-      print >> self.out, " Target values devided by number of contributers"
-      print >> self.out, "    working set : %8.6e "%(tmp_w/self.f_obs_array_work.data().size() )
-      print >> self.out, "    free set    : %8.6e "%(tmp_f/self.f_obs_array_free.data().size() )
       print >> self.out, "-------------------------------------------------"
     else:
       return(tmp_w,tmp_f)
 
+  def target_w(self, alpha=None, beta=None, scale_ml=None):
+    return self.target(False)[0]
+
+  def target_f(self, alpha=None, beta=None, scale_ml=None):
+    return self.target(False)[1]
+
+  def target_t(self, alpha=None, beta=None, scale_ml=None):
+    return self.target(False)[1]
 
   def gradient_wrt_atomic_parameters(self,
                                      selection     = None,
@@ -1380,11 +1547,10 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     if(selection is not None):
        xrs = xrs.select(selection)
     # please compute dTarget/d(A_tot,B_tot)
-    dtdab_model = self.target_evaluator.d_target_d_f_model(
-      self.core_data.f_model()  )
+    dtdab_model = self.target_evaluator.d_target_d_fmodel(
+      self.data_core.f_model()  )
     # chain rule it to dTarget/d(A_atom,B_atom); the multiplier is the scale factor.
-    dtdab_atoms = dtdab_model*self.core_data.d_f_model_core_data_d_f_atoms()
-
+    dtdab_atoms = dtdab_model*self.data_core.d_f_model_core_data_d_f_atoms()/self.norma_sum_f_sq
     result = None
     if(u_aniso):
        result = self.structure_factor_gradients_w(
@@ -1400,15 +1566,14 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
                 d_target_d_f_calc  = dtdab_atoms,
                 xray_structure     = xrs,
                 n_parameters       = xrs.n_parameters_XXX(),
-                miller_set         = self.f_obs_w,
+                miller_set         = self.miller_set,
                 algorithm          = self.sf_algorithm)
-    time_gradient_wrt_atomic_parameters += timer.elapsed()
     return result
 
 
   def detwin_data(self, perform_local_scaling=True, ):
     #first make a detwinned fobs
-    tmp_i_obs = self.f_obs_array.f_as_f_sq()
+    tmp_i_obs = self.f_obs.f_as_f_sq()
     dt_iobs, dt_isigma = self.full_detwinner.detwin_with_model_data(
       tmp_i_obs.data(),
       tmp_i_obs.sigmas(),
@@ -1449,47 +1614,47 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         r_free_flags = self.free_array,
         kernel_width_free_reflections=200,
         )
-      self.sigmaa_object_cache.show(out=self.out)
     return self.sigmaa_object_cache
 
   def alpha_beta(self):
     sigmaa_object = self.sigmaa_object()
     return sigmaa_object.alpha_beta()
 
-  def alpha_beta_w(self):
+  def alpha_beta_w(self, only_if_required_by_target=False):
     a,b = self.alpha_beta()
-    a = a.select( self.free_flags )
-    b = b.select( self.free_flags )
+    a = a.select( self.free_array.data() )
+    b = b.select( self.free_array.data() )
     return a,b
 
-  def alpha_beta_f(self):
+  def alpha_beta_f(self,only_if_required_by_target=False):
     a,b = self.alpha_beta()
-    a = a.select( ~self.free_flags )
-    b = b.select( ~self.free_flags )
+    a = a.select( ~self.free_array.data() )
+    b = b.select( ~self.free_array.data() )
     return a,b
 
   def figures_of_merit(self):
     sigmaa_object = self.sigmaa_object()
-    return sigmaa_object.fom()
+    return sigmaa_object.fom().data()
 
   def figures_of_merit_w(self):
     fom = self.figures_of_merit().select(
-      self.self.free_flags)
+      self.free_array.data())
     return fom
+
   def figures_of_merit_t(self):
     fom = self.figures_of_merit().select(
-      ~self.self.free_flags)
+      ~self.free_array.data())
     return fom
 
   def phase_errors(self):
     sigmaa_object = self.sigmaa_object()
-    return sigmaa_object.phase_errors()
+    return sigmaa_object.phase_errors().data()
 
   def phase_errors_work(self):
-    pher = self.phase_errors().select(self.self.free_flags)
+    pher = self.phase_errors().select(self.free_array.data())
     return pher
   def phase_errors_test(self):
-    pher = self.phase_errors().select(~self.self.free_flags)
+    pher = self.phase_errors().select(~self.free_array.data())
     return pher
 
   def map_coefficients(self,
@@ -1504,6 +1669,8 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
                         "m*Fobs-D*Fmodel",
                         "gradient"
                         )
+    if map_type == "m*Fobs-D*Fmodel":
+      map_type = "gradient"
 
     if map_type is not "gradient":
       dt_f_obs, f_model = self.detwin_data(perform_local_scaling=self.perform_local_scaling)
@@ -1533,7 +1700,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         self.data_core.f_model() )
 
       gradients = self.f_atoms.customized_copy(
-        data = -flex.conj(gradients) ).common_set( self.f_obs_array )
+        data = -gradients).common_set( self.f_obs )
 
       return gradients
 
@@ -1565,7 +1732,8 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
 
   def u_cart(self):
     tmp = self.u_star()
-    tmp = adptbx.u_star_as_u_cart(self.unit_cell,tmp)
+    tmp = adptbx.u_star_as_u_cart(self.xs.unit_cell(),tmp)
+    return tmp
 
   def b_cart(self):
     b_cart = adptbx.u_as_b( self.u_cart() )
@@ -1636,3 +1804,185 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
   def fb_bulk_w(self):
     tmp = self.f_bulk()
     return tmp.select(~self.free_flags_for_f_atoms.data() )
+
+  def scale_k1_w(self):
+    return self.data_core.koverall()
+  def scale_k1_t(self):
+    return self.data_core.koverall()
+  def scale_k3_t(self):
+    return self.data_core.koverall()
+  def scale_k3_w(self):
+    return self.data_core.koverall()
+
+
+
+  def show_k_sol_b_sol_b_cart_target(self, header=None,target=None,out=None):
+    if(out is None): out = self.out
+    p = " "
+    if(header is None): header = ""
+    line_len = len("|-"+"|"+header)
+    fill_len = 80-line_len-1
+    print >> out, "|-"+header+"-"*(fill_len)+"|"
+    k_sol = self.k_sol()
+    b_sol = self.b_sol()
+    u0,u1,u2,u3,u4,u5 = self.b_cart()
+
+    target_w=self.target_w()
+
+    alpha, beta = self.alpha_beta_w()
+    alpha_d = alpha.data()
+    a_mean = flex.mean(alpha_d)
+    a_zero = (alpha_d <= 0.0).count(True)
+    r_work = self.r_work()
+    u_isos = self.xray_structure.extract_u_iso_or_u_equiv()
+    b_iso_mean = flex.mean(u_isos * math.pi**2*8)
+    print >> out, "| k_sol=%5.2f b_sol=%7.2f target_w =%20.6f r_work=%7.4f" % \
+                  (k_sol, b_sol, target_w, r_work) + 5*p+"|"
+    print >> out, "| B(11,22,33,12,13,23)=%9.4f%9.4f%9.4f%9.4f%9.4f%9.4f |" % \
+                  (u0,u1,u2,u3,u4,u5)
+    print >> out, "| trace(B) = (B11 + B22 + B33)/3 = %-10.3f                                 |"%self.u_iso()
+    print >> out, "| mean alpha:%8.4f  number of alpha <= 0.0:%7d" % \
+                  (a_mean, a_zero)+25*p+"|"
+    print >> out, "|"+"-"*77+"|"
+    out.flush()
+
+
+  def show_essential(self, header = None, out=None):
+    if(out is None): out = self.out
+    out.flush()
+    p = " "
+    if(header is None): header = ""
+    d_max, d_min = self.f_obs.d_max_min()
+    line1 = "---(resolution: "
+    line2 = n_as_s("%6.2f",d_min)
+    line3 = n_as_s("%6.2f",d_max)
+    line4 = " - "
+    line5 = " A)"
+    tl = header+line1+line2+line4+line3+line5
+    line_len = len("|-"+"|"+tl)
+    fill_len = 80-line_len-1
+    print >> out, "|-"+tl+"-"*(fill_len)+"|"
+    print >> out, "| "+"  "*38+"|"
+    r_work = n_as_s("%6.4f",self.r_work()    )
+    r_free = n_as_s("%6.4f",self.r_free()    )
+    scale  = n_as_s("%6.3f",self.scale_k1_w())
+    k_sol  = n_as_s("%4.2f",self.k_sol())
+    b_sol  = n_as_s("%6.2f",self.b_sol())
+    b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart())
+    b_iso  = n_as_s("%7.2f",self.u_iso())
+    #XXXX Model error analyses required
+    #err    = n_as_s("%6.2f",self.model_error_ml())
+    err=" None "
+    try:    target_work = n_as_s("%.4g",self.target_w())
+    except: target_work = str(None)
+
+    line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
+           "   Bsol= "+b_sol+"   scale= "+scale
+    np = 79 - (len(line) + 1)
+    if(np < 0): np = 0
+    print >> out, line + p*np + "|"
+    print >> out, "| "+"  "*38+"|"
+    print >> out, "| overall anisotropic scale matrix (Cartesian basis):    "\
+                  "                     |"
+    c = ","
+    line4 = "| (B11,B22,B33,B12,B13,B23)= ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+")"
+    np = 79 - (len(line4) + 1)
+    line4 = line4 + " "*np + "|"
+    print >> out, line4
+    line5 = "| (B11+B22+B33)/3 = "+b_iso
+    np = 79 - (len(line5) + 1)
+    line5 = line5 + " "*np + "|"
+    print >> out, line5
+    print >> out, "| "+"  "*38+"|"
+    line6="| Target ("+self.target_name+")= "+target_work+\
+          " | ML estimate for coordinates error: "+err+" A"
+    np = 79 - (len(line6) + 1)
+    line6 = line6 + " "*np + "|"
+    print >> out, line6
+    print >> out, "|"+"-"*77+"|"
+    out.flush()
+
+  def show_comprehensive(self,
+                         header = "",
+                         free_reflections_per_bin = 140,
+                         max_number_of_bins  = 30,
+                         out=None):
+    self.r_values(table=True)
+    self.sigmaa_object().show()
+
+
+
+
+  def statistics_in_resolution_bins(self,
+                                    free_reflections_per_bin = 200,
+                                    max_number_of_bins  = 30,
+                                    out=None):
+    self.r_values(table=True)
+    self.sigmaa_object().show()
+
+  def r_factors_in_resolution_bins(self,
+                                   free_reflections_per_bin = 200,
+                                   max_number_of_bins  = 30,
+                                   out=None):
+    #actively ignoring input
+    self.r_values(table=True)
+
+
+
+  def show_fom_phase_error_alpha_beta_in_bins(self,
+                                              free_reflections_per_bin = 200,
+                                              max_number_of_bins  = 30,
+                                              out=None):
+    self.sigmaa_object().show()
+
+
+  def show_targets(self, out=None, text=""):
+    if(out is None): out = self.out
+    part1 = "|-"+text
+    part2 = "-|"
+    n = 79 - len(part1+part2)
+    print >> out, part1 + "-"*n + part2
+    part3 = "| target_work(%s"%self.target_name+") = %.6e  r_work = %6.4f  r_free = %6.4f"%\
+                                (self.target_w(), self.r_work(), self.r_free())
+    n = 78 - len(str(part3)+"|")
+    print >> out, part3, " "*n +"|"
+    print >> out, "|" +"-"*77+"|"
+    out.flush()
+
+
+
+
+
+def ls_ff_weights(f_obs, atom, B):
+  d_star_sq_data = f_obs.d_star_sq().data()
+  table = wk1995(atom).fetch()
+  ff = table.at_d_star_sq(d_star_sq_data) * flex.exp(-B/4.0*d_star_sq_data)
+  weights = 1.0/flex.pow2(ff)
+  return weights
+
+def ls_sigma_weights(f_obs):
+  if(f_obs.sigmas() is not None):
+     sigmas_squared = flex.pow2(f_obs.sigmas())
+  else:
+     sigmas_squared = flex.double(f_obs.data().size(), 1.0)
+  assert sigmas_squared.all_gt(0)
+  weights = 1 / sigmas_squared
+  return weights
+
+def kb_range(x_max, x_min, step):
+  x_range = []
+  x = x_min
+  while x <= x_max + 0.0001:
+    x_range.append(x)
+    x += step
+  return x_range
+
+def n_as_s(format, value):
+  vt = type(value).__name__
+  if(vt in ["int","float"]):
+     return str(format%value).strip()
+  else:
+     new = []
+     for item in value:
+       new.append( str(format%item).strip() )
+  return new
