@@ -113,13 +113,17 @@ class lbfgs(object):
        self.collector.collect(rxw = self.fmodel.r_work(),
                               rxf = self.fmodel.r_free())
 
-    if(self.fmodel.alpha_beta_params.method == "calc"):
-       if(self.fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
-          self.scale_ml = self.fmodel.scale_ml()
-       else:
-          self.scale_ml = self.fmodel.alpha_beta_params.fix_scale_for_calc_option
-    if(self.fmodel.alpha_beta_params.method == "est"):
-       self.scale_ml = 1.0
+    self.scale_ml = None
+    if fmodel.target_name == "twin_lsq_f":
+      self.scale_ml = 1.0
+    else:
+      if(self.fmodel.alpha_beta_params.method == "calc"):
+         if(self.fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
+            self.scale_ml = self.fmodel.scale_ml()
+         else:
+            self.scale_ml = self.fmodel.alpha_beta_params.fix_scale_for_calc_option
+      if(self.fmodel.alpha_beta_params.method == "est"):
+         self.scale_ml = 1.0
     if (self.alpha_w is None or self.beta_w is None):
       self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w(
         only_if_required_by_target=True)

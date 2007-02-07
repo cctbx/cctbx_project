@@ -347,13 +347,20 @@ class refinement_monitor(object):
     self.k1s_t           .append(fmodel.scale_k1_t()              )
     self.k3s_w           .append(fmodel.scale_k3_w()              )
     self.k3s_t           .append(fmodel.scale_k3_t()              )
-    if(fmodel.alpha_beta_params.method == "calc"):
-       if(fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
-          scale_ml = fmodel.scale_ml()
-       else:
-          scale_ml =fmodel.alpha_beta_params.fix_scale_for_calc_option
-    if(fmodel.alpha_beta_params.method == "est"):
-       scale_ml = 1.0
+
+
+    scale_ml = None
+    if (fmodel.target_name=="twin_lsq_f"):
+      scale_ml = 1
+    else:
+      if(fmodel.alpha_beta_params.method == "calc"):
+         if(fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
+            scale_ml = fmodel.scale_ml()
+         else:
+            scale_ml =fmodel.alpha_beta_params.fix_scale_for_calc_option
+      if(fmodel.alpha_beta_params.method == "est"):
+         scale_ml = 1.0
+
     self.scale_ml        .append(scale_ml                         )
     self.n_solv          .append(model.number_of_ordered_solvent_molecules())
     if([self.bond_start,self.angle_start].count(None) == 2):
