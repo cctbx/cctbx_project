@@ -3,8 +3,10 @@ import mmtbx.f_model
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import sgtbx
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
+import pickle
+from cStringIO import StringIO
 import random
 import sys, math
 
@@ -137,6 +139,14 @@ def test_1(xray_structure):
                       assert fmodel.f_ordered_solvent_w().data().all_eq(0)
                       assert fmodel.f_ordered_solvent_t().data().all_eq(0)
                       fmodel.model_error_ml()
+                      #
+                      p = pickle.dumps(fmodel, 1)
+                      l = pickle.loads(p)
+                      s = StringIO()
+                      sl = StringIO()
+                      fmodel.show_fom_phase_error_alpha_beta_in_bins(out=s)
+                      l.show_fom_phase_error_alpha_beta_in_bins(out=sl)
+                      assert not show_diff(sl.getvalue(), s.getvalue())
                       ###
                       ### instantiate fmodel only, then use deep_copy
                       ###

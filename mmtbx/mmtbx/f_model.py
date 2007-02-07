@@ -90,9 +90,9 @@ class set_core(object):
                      ss,
                      work,
                      test):
+    adopt_init_args(self, locals())
     global time_fmodel_core_data
     timer = user_plus_sys_time()
-    adopt_init_args(self, locals())
     self.f_mask.indices().all_eq(self.f_calc.indices())
     self.core = ext.core(f_calc        = self.f_calc.data(),
                          f_mask        = self.f_mask.data(),
@@ -111,8 +111,8 @@ class set_core(object):
     self.fb_cart_t = self.core.fb_cart.select(self.test)
     time_fmodel_core_data += timer.elapsed()
 
-  def __getinitargs__(self):
-    return (
+  def __getstate__(self):
+    return {"args": (
       self.f_calc,
       self.f_mask,
       self.b_cart,
@@ -122,13 +122,11 @@ class set_core(object):
       self.uc,
       self.ss,
       self.work,
-      self.test)
+      self.test)}
 
-  def __getstate__(self):
-    return None
-
-  def __setstate(self, state):
-    assert state is None
+  def __setstate__(self, state):
+    assert len(state) == 1
+    self.__init__(*state["args"])
 
 class manager(object):
   def __init__(self, f_obs                 = None,
