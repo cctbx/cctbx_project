@@ -111,6 +111,25 @@ class set_core(object):
     self.fb_cart_t = self.core.fb_cart.select(self.test)
     time_fmodel_core_data += timer.elapsed()
 
+  def __getinitargs__(self):
+    return (
+      self.f_calc,
+      self.f_mask,
+      self.b_cart,
+      self.k_sol,
+      self.b_sol,
+      self.overall_scale,
+      self.uc,
+      self.ss,
+      self.work,
+      self.test)
+
+  def __getstate__(self):
+    return None
+
+  def __setstate(self, state):
+    assert state is None
+
 class manager(object):
   def __init__(self, f_obs                 = None,
                      r_free_flags          = None,
