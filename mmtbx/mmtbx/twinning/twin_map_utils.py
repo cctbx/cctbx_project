@@ -333,13 +333,11 @@ def run(command_name,args):
       operator_count += 1
       operator_hkl = sgtbx.change_of_basis_op( twin_law.operator ).as_hkl()
       twin_model = twin_f_model.twin_model_manager(
-        f_obs_array=miller_array,
+        f_obs=miller_array,
         free_array = free_flags,
         xray_structure=model,
         twin_law = twin_law.operator,
         out=log)
-
-
 
 
       print >> log, "--- bulk solvent scaling ---"
@@ -348,6 +346,9 @@ def run(command_name,args):
       twin_model.r_values()
       twin_model.target()
       twin_model.twin_fraction_scan()
+      twin_model.show_k_sol_b_sol_b_cart_target()
+      twin_model.show_essential()
+
       tfofc  = twin_model.map_coefficients(map_type="k*Fobs-n*Fmodel",k=2,n=1)
       wtfofc = twin_model.map_coefficients(map_type="2m*Fobs-D*Fmodel" )
       grad   = twin_model.map_coefficients(map_type="gradient" )
@@ -377,7 +378,6 @@ def run(command_name,args):
         name = params.twin_utils.output.obs_and_calc
         mtz_dataset.mtz_object().write(
           file_name=name)
-
 
     if len(twin_laws.operators)==0:
       print >> log
