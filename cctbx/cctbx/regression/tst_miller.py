@@ -328,19 +328,13 @@ bin  2: 14.1305 - 11.4473 [0/3] 0.000
 bin  3: 11.4473 - 10.0715 [0/2] 0.000
 unused: 10.0715 -         [0/0]
 """
-  try:
-    pickle.dumps(set1.binner())
-  except RuntimeError, e:
-    assert str(e).startswith(
-      "cctbx.miller.binner instances are not picklable.")
-  else: raise RuntimeError("Exception expected.")
-  bng = miller.binning(set1.unit_cell(), 10, set1.indices(), 0, 0)
-  try:
-    pickle.dumps(bng)
-  except RuntimeError, e:
-    assert str(e).startswith(
-      "cctbx.miller.binning instances are not picklable.")
-  else: raise RuntimeError("Exception expected.")
+  p = pickle.dumps(set1.binner())
+  l = pickle.loads(p)
+  s = StringIO()
+  set1.binner().show_summary(f=s)
+  sl = StringIO()
+  l.show_summary(f=sl)
+  assert not show_diff(sl.getvalue(), s.getvalue())
   #
   expected_counts = iter([
     [0,1,0], [0,1,0], [0,1,0],
@@ -827,14 +821,16 @@ bin  8:  3.2139 -  3.0759 [11/10]  0.9134
 unused:  3.0759 -         [ 0/0 ]
 """
   assert ma.binner() is not None
-  try:
-    pickle.dumps(ma)
-  except RuntimeError, e:
-    assert str(e).startswith(
-      "cctbx.miller.binner instances are not picklable.")
-  else: raise RuntimeError("Exception expected.")
-  ma.clear_binner()
   ml = pickle.loads(pickle.dumps(ma))
+  sa = StringIO()
+  sl = StringIO()
+  ma.binner().show_summary(f=sa)
+  ml.binner().show_summary(f=sl)
+  assert not show_diff(sl.getvalue(), sa.getvalue())
+  ma.clear_binner()
+  assert ma.binner() is None
+  ml = pickle.loads(pickle.dumps(ma))
+  assert ml.binner() is None
   sa = StringIO()
   sl = StringIO()
   ma.show_summary(f=sa).show_array(f=sa)

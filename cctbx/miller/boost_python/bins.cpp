@@ -3,6 +3,7 @@
 #include <cctbx/miller/bins.h>
 #include <scitbx/boost_python/utils.h>
 #include <boost/python/class.hpp>
+#include <boost/python/tuple.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -14,6 +15,12 @@ namespace {
   struct binning_wrappers
   {
     typedef binning w_t;
+
+    static boost::python::tuple
+    getinitargs(w_t const& o)
+    {
+      return boost::python::make_tuple(o.unit_cell(), o.limits());
+    }
 
     static boost::python::object
     range_used(w_t const& o)
@@ -35,6 +42,7 @@ namespace {
       typedef return_internal_reference<> rir;
       class_<w_t>("binning", no_init)
         .enable_pickling()
+        .def("__getinitargs__", getinitargs)
         .def(init<uctbx::unit_cell const&,
                   std::size_t,
                   double,
@@ -78,6 +86,14 @@ namespace {
   {
     typedef binner w_t;
 
+    static boost::python::tuple
+    getinitargs(w_t const& o)
+    {
+      return boost::python::make_tuple(
+        *static_cast<const binning*>(&o),
+        o.miller_indices());
+    }
+
     static void
     wrap()
     {
@@ -85,6 +101,7 @@ namespace {
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t, bases<binning> >("binner", no_init)
         .enable_pickling()
+        .def("__getinitargs__", getinitargs)
         .def(init<binning const&,
                   af::shared<index<> > const&>())
         .def("miller_indices", &w_t::miller_indices, ccr())

@@ -31,15 +31,6 @@ def _slice_or_none(array, slice_object):
   if (array is None): return None
   return array.__getitem__(slice_object)
 
-class _binning(boost.python.injector, ext.binning):
-
-  def __getinitargs__(self):
-    raise RuntimeError(
-      "cctbx.miller.binning instances are not picklable."
-      " If this error appears while pickling a cctbx.miller.set"
-      " or cctbx.miller.array instance use the clear_binner()"
-      " method before pickling.")
-
 class binner(ext.binner):
 
   def __init__(self, binning, miller_set):
@@ -55,11 +46,16 @@ class binner(ext.binner):
     self._have_format_strings = False
 
   def __getinitargs__(self):
-    raise RuntimeError(
-      "cctbx.miller.binner instances are not picklable."
-      " If this error appears while pickling a cctbx.miller.set"
-      " or cctbx.miller.array instance use the clear_binner()"
-      " method before pickling.")
+    return (
+      binning(
+        self.unit_cell(),
+        self.limits()),
+      set(
+        crystal_symmetry=crystal.symmetry(
+          unit_cell=self.unit_cell(),
+          space_group_info=self.space_group_info),
+        indices=self.miller_indices(),
+        anomalous_flag=self.anomalous_flag))
 
   def counts_given(self):
     if (self._counts_given is None):
