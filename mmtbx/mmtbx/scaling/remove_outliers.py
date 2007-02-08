@@ -23,7 +23,6 @@ import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
 from mmtbx.scaling import basic_analyses, pair_analyses
-from mmtbx.scaling import twin_detwin_data
 from mmtbx.scaling import outlier_rejection
 from mmtbx import f_model
 import libtbx.phil.command_line
