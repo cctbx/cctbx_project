@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 import math, time
 from cctbx import miller
@@ -882,7 +883,7 @@ class manager(object):
     if (n_free != 0):
       n_refl_per_bin *= n_refl / n_free
     n_refl_per_bin = min(n_refl, iround(n_refl_per_bin))
-    result = max(1, n_refl / max(1, n_refl_per_bin))
+    result = max(1, iround(n_refl / max(1, n_refl_per_bin)))
     if (min_n_bins is not None):
       result = max(result, min(min_n_bins, iround(n_refl / min_refl_per_bin)))
     if (max_n_bins is not None):
