@@ -1835,7 +1835,8 @@ def show_fom_phase_error_alpha_beta_in_bins(fmodel,
   if(out is None): out = sys.stdout
   mi_fom = fmodel.f_obs.array(data = fmodel.figures_of_merit())
   mi_fom.setup_binner(n_bins=fmodel.determine_n_bins(
-    free_reflections_per_bin=free_reflections_per_bin))
+    free_reflections_per_bin=free_reflections_per_bin,
+    max_n_bins=max_number_of_bins))
   phase_errors_work = fmodel.phase_errors_work()
   phase_errors_test = fmodel.phase_errors_test()
   alpha, beta = fmodel.alpha_beta()
