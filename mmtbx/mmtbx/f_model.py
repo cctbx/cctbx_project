@@ -145,7 +145,14 @@ class manager(object):
                      mask_params           = None,
                      trust_xray_structure  = False,
                      update_xray_structure = True,
-                     use_f_model_scaled    = False):
+                     use_f_model_scaled    = False,
+                     overall_scale         = 1.0,
+                     f_ordered_solvent     = None,
+                     f_ordered_solvent_dist = None,
+                     n_ordered_water = 0,
+                     b_ordered_water = 0.0):
+    assert f_obs is not None
+    assert f_obs.is_real_array()
     self.f_obs             = f_obs
     self.r_free_flags      = None
     self.sf_algorithm      = sf_algorithm
@@ -153,15 +160,24 @@ class manager(object):
     self.abcd              = abcd
     self.alpha_beta_params = alpha_beta_params
     self.xray_structure    = xray_structure
-    self.overall_scale     = 1.0
     self.use_f_model_scaled= use_f_model_scaled
+    self.overall_scale     = overall_scale
+    if (f_ordered_solvent is None):
+      self.f_ordered_solvent = self.f_obs.array(
+        data=flex.complex_double(self.f_obs.data().size(), 0.0))
+    else:
+      self.f_ordered_solvent = f_ordered_solvent
+    if (f_ordered_solvent_dist is None):
+      self.f_ordered_solvent_dist = self.f_obs.array(
+        data=flex.complex_double(self.f_obs.data().size(), 0.0))
+    else:
+      self.f_ordered_solvent_dist = f_ordered_solvent_dist
+    self.n_ordered_water = n_ordered_water
+    self.b_ordered_water = b_ordered_water
     if(mask_params is not None):
        self.mask_params = mask_params
     else:
        self.mask_params = mmtbx.masks.mask_master_params.extract()
-    zero = flex.complex_double(self.f_obs.data().size(), 0.0)
-    assert self.f_obs is not None
-    assert self.f_obs.is_real_array()
     if(r_free_flags is not None):
        assert r_free_flags.indices().all_eq(self.f_obs.indices())
        self.update_r_free_flags(r_free_flags)
@@ -212,10 +228,6 @@ class manager(object):
     if(self.sf_algorithm not in ("fft", "direct")):
        raise RuntimeError("Unknown s.f. calculation method: %s"%
                                                              self.sf_algorithm)
-    self.f_ordered_solvent = self.f_obs.array(data = zero)
-    self.f_ordered_solvent_dist = self.f_obs.array(data = zero)
-    self.n_ordered_water = 0.0
-    self.b_ordered_water = 0.0
     self._setup_target_functors(target_name=target_name)
 
   def update_core(self, f_calc        = None,
@@ -260,7 +272,7 @@ class manager(object):
        xrs = None
     else:
        xrs = self.xray_structure.deep_copy_scatterers()
-    new=manager(f_obs                 = self.f_obs.deep_copy(),
+    return manager(f_obs              = self.f_obs.deep_copy(),
                 r_free_flags          = self.r_free_flags.deep_copy(),
                 b_cart                = self.b_cart(),
                 f_mask                = self.f_mask().deep_copy(),
@@ -275,20 +287,20 @@ class manager(object):
                 f_calc                = self.f_calc().deep_copy(),
                 mask_params           = self.mask_params,
                 trust_xray_structure  = True,
-                update_xray_structure = False)
-    new.f_ordered_solvent      = self.f_ordered_solvent.deep_copy()
-    new.f_ordered_solvent_dist = self.f_ordered_solvent_dist.deep_copy()
-    new.n_ordered_water        = self.n_ordered_water
-    new.b_ordered_water        = self.b_ordered_water
-    return new
+                update_xray_structure = False,
+      overall_scale         = self.overall_scale,
+      f_ordered_solvent      = self.f_ordered_solvent.deep_copy(),
+      f_ordered_solvent_dist = self.f_ordered_solvent_dist.deep_copy(),
+      n_ordered_water        = self.n_ordered_water,
+      b_ordered_water        = self.b_ordered_water)
 
   def select(self, selection, update_xray_structure = False):
-    dc = self.deep_copy()
+    dc = self.deep_copy() # XXX XXX XXX avoid this copy
     if(dc.abcd  is not None):
        abcd = dc.abcd.select(selection = selection)
     else:
        abcd = None
-    new  = manager(
+    return manager(
        f_obs                 = dc.f_obs.select(selection = selection),
        r_free_flags          = dc.r_free_flags.select(selection = selection),
        b_cart                = dc.b_cart(),
@@ -304,23 +316,23 @@ class manager(object):
        f_mask                = dc.f_mask().select(selection = selection),
        mask_params           = dc.mask_params,
        trust_xray_structure  = True,
-       update_xray_structure = update_xray_structure)
-    new.f_ordered_solvent      = \
-                           dc.f_ordered_solvent.select(selection = selection)
-    new.f_ordered_solvent_dist = \
-                      dc.f_ordered_solvent_dist.select(selection = selection)
-    new.n_ordered_water = dc.n_ordered_water
-    new.b_ordered_water = dc.b_ordered_water
-    return new
+       update_xray_structure = update_xray_structure,
+       overall_scale         = self.overall_scale,
+       f_ordered_solvent
+         = dc.f_ordered_solvent.select(selection = selection),
+       f_ordered_solvent_dist
+         = dc.f_ordered_solvent_dist.select(selection = selection),
+       n_ordered_water = dc.n_ordered_water,
+       b_ordered_water = dc.b_ordered_water)
 
   def resolution_filter(self, d_max = None, d_min = None,
                               update_xray_structure = False):
-    dc = self.deep_copy()
+    dc = self.deep_copy() # XXX XXX XXX the whole function body needs to go
     if(dc.abcd  is not None):
        abcd = dc.abcd.resolution_filter(d_max, d_min)
     else:
        abcd = None
-    new  = manager(
+    return manager(
        f_obs                 = dc.f_obs.resolution_filter(d_max, d_min),
        r_free_flags          = dc.r_free_flags.resolution_filter(d_max, d_min),
        b_cart                = dc.b_cart(),
@@ -336,14 +348,14 @@ class manager(object):
        f_mask                = dc.f_mask().resolution_filter(d_max, d_min),
        mask_params           = dc.mask_params,
        trust_xray_structure  = True,
-       update_xray_structure = update_xray_structure)
-    new.f_ordered_solvent      = \
-                           dc.f_ordered_solvent.resolution_filter(d_max, d_min)
-    new.f_ordered_solvent_dist = \
-                      dc.f_ordered_solvent_dist.resolution_filter(d_max, d_min)
-    new.n_ordered_water = dc.n_ordered_water
-    new.b_ordered_water = dc.b_ordered_water
-    return new
+       update_xray_structure = update_xray_structure,
+       overall_scale         = dc.overall_scale,
+       f_ordered_solvent
+         = dc.f_ordered_solvent.resolution_filter(d_max, d_min),
+       f_ordered_solvent_dist
+         = dc.f_ordered_solvent_dist.resolution_filter(d_max, d_min),
+       n_ordered_water = dc.n_ordered_water,
+       b_ordered_water = dc.b_ordered_water)
 
   def apply_back_b_iso(self):
     b_iso = self.b_iso()
