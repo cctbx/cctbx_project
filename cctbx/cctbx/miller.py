@@ -535,12 +535,17 @@ class set(crystal.symmetry):
       selection=self.sys_absent_flags().data(),
       negate=not negate)
 
-  def resolution_filter(self, d_max=0, d_min=0, negate=0):
+  def resolution_filter_selection(self, d_max=0, d_min=0):
     d = self.d_spacings().data()
-    keep = self.all_selection()
-    if (d_max): keep &= d <= d_max
-    if (d_min): keep &= d >= d_min
-    return self.select(keep, negate)
+    result = self.all_selection()
+    if (d_max): result &= d <= d_max
+    if (d_min): result &= d >= d_min
+    return result
+
+  def resolution_filter(self, d_max=0, d_min=0, negate=0):
+    return self.select(
+      selection=self.resolution_filter_selection(d_max=d_max, d_min=d_min),
+      negate=negate)
 
   def apply_scaling(self, target_max=None, factor=None):
     assert [target_max, factor].count(None) == 1
