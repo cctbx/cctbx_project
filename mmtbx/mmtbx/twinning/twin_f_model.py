@@ -616,10 +616,6 @@ class bulk_solvent_scaling_manager(object):
         self.best_scaling_parameters.k_overall = scaling_parameters.k_overall
         self.best_twin_fraction.twin_fraction = twin_fraction.twin_fraction
 
-    print "INITIALISE"
-    print self.best_scaling_parameters.k_overall
-    print self.best_twin_fraction.twin_fraction
-
   def update_best(self):
     self.best_scaling_parameters = scaling_parameters_object( object = self.scaling_parameters )
     self.best_twin_fraction.twin_fraction = float(self.twin_fraction.twin_fraction)
@@ -1122,8 +1118,8 @@ class twin_model_manager(object):
       self.data_core.ksol( self.scaling_parameters.k_sol )
 
     if b_cart is not None:
-      assert u_star is None
-      u_star = adptbx.b_as_u( b_cart, self.unit_cell )
+      u_star = adptbx.u_cart_as_u_star( self.xs.unit_cell(), adptbx.b_as_u( list(b_cart) ) )
+      self.data_core.ustar(u_star)
 
 
   def update(self, f_calc              = None,
@@ -1163,8 +1159,7 @@ class twin_model_manager(object):
     if(b_cart is not None):
       try: assert b_cart.size() == 6
       except: assert len(b_cart) == 6
-      #XXXXX
-      #self.update_core(b_cart = b_cart)
+      self.update_core(b_cart = b_cart)
 
 
 
