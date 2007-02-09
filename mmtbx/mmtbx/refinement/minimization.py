@@ -304,12 +304,12 @@ class lbfgs(object):
                              site_gradients = sgc*self.wr)
 #######################
     if(self.refine_xyz and self.model.use_dbe):
-       self.f += erdbe.target
+       self.f += erdbe.target * erdbe.params.restraints.weight_scale
        if(compute_gradients):
           xray.minimization.add_gradients(
                              scatterers     = self.xray_structure.scatterers(),
                              xray_gradients = self.g,
-                             site_gradients = erdbe.gradients)
+                             site_gradients = erdbe.gradients * erdbe.params.restraints.weight_scale)
 ##########################
     if(self.refine_adp and self.restraints_manager.geometry is not None
                         and self.wr > 0.0 and self.iso_restraints is not None):

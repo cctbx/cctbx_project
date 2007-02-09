@@ -603,7 +603,7 @@ class bulk_solvent_and_scales(object):
           if(fmodel.alpha_beta_params is not None):
              fmodel.alpha_beta_params.interpolation = save_interpolation_flag
           r_work_final = fmodel.r_work()
-          if(r_work_final - r_work > 0.001):
+          if(r_work_final - r_work > 0.0001):
              print >> log, "***Strategy manager: r-work went up after ML ksol, bsol minimization:"
              print >> log, "   r_start = ", r_work
              print >> log, "   r_final = ", r_work_final
@@ -639,7 +639,7 @@ class bulk_solvent_and_scales(object):
                                        max_iterations = max_iterations)
         fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
-    if(r_final - r_start > 0.001):
+    if(r_final - r_start > 0.0001):
        print >> out, "***Strategy manager: r-work went up after anisotropic scaling:"
        print >> out, "   r_start = ", r_start
        print >> out, "   r_final = ", r_final

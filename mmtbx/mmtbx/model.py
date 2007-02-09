@@ -129,6 +129,8 @@ class manager(object):
                                                       self.dbe_selection, False)
        self.refinement_flags.adp_individual_iso[0].set_selected(
                                                       self.dbe_selection, True)
+       occs = flex.double(self.xray_structure.scatterers().size(), 0.96)
+       self.xray_structure.scatterers().set_occupancies(occs, ~self.dbe_selection)
 
   def write_dbe_pdb_file(self, out = None):
     if(out is None):

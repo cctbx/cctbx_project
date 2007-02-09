@@ -903,7 +903,8 @@ class manager(object):
                    abcd                = None,
                    alpha_beta_params   = None,
                    xray_structure      = None,
-                   mask_params         = None):
+                   mask_params         = None,
+                   overall_scale       = None):
     if(f_calc is not None):
        assert f_calc.indices().all_eq(self.core.f_calc.indices())
        self.update_core(f_calc = f_calc)
@@ -946,6 +947,9 @@ class manager(object):
        self.update_xray_structure(xray_structure = xray_structure,
                                   update_f_mask  = True,
                                   update_f_calc  = True)
+    if(overall_scale is not None):
+       self.overall_scale = overall_scale
+       self.update_core()
     return self
 
   def f_ordered_solvent_w(self):
@@ -1691,7 +1695,7 @@ class manager(object):
     indices            = self.f_obs.indices()
     resolution         = self.f_obs.d_spacings().data()
     format="inde= %5d%5d%5d Fobs= %10.3f Fcalc= %10.3f %9.3f Fmask= %10.3f %9.3f"\
-           " Fmodel= %10.3f %9.3f fom= %5.3f alpha= %8.4f beta= %12.4f"\
+           " Fmodel= %13.6f %12.6f fom= %5.3f alpha= %8.4f beta= %12.4f"\
            " R-free-flags= %1d resol= %7.3f"
     for ind, f_obs_i, f_calc_amplitudes_i, f_calc_phases_i, f_mask_amplitudes_i,\
         f_mask_phases_i, f_model_amplitudes_i, f_model_phases_i, fom_i, alpha_i,\
