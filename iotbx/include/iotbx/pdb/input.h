@@ -832,7 +832,7 @@ namespace iotbx { namespace pdb {
     return field_as_int(line_info,10,14);
   }
 
-  //! Efficient processing of input atom lables.
+  //! Efficient processing of input atom labels.
   struct input_atom_labels
   {
     int32_t resseq;

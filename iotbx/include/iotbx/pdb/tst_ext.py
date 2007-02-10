@@ -1800,7 +1800,7 @@ ENDMDL
 %#  number of residue names: 1
 %#  histogram of residue name frequency:
 %#    "MET " 3
-%#  number of groups of duplicate atom lables:    1
+%#  number of groups of duplicate atom labels:    1
 %#    total number of affected atoms:             2
 %#    group " N   MET A   1 "
 %#          " N   MET A   1 "

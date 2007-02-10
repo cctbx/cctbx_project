@@ -75,7 +75,7 @@ def show_summary(
   #
   dup = pdb_inp.find_duplicate_atom_labels()
   if (dup.size() > 0):
-    print >> out, prefix+"  number of groups of duplicate atom lables:  %3d" \
+    print >> out, prefix+"  number of groups of duplicate atom labels:  %3d" \
       % dup.size()
     print >> out, prefix+"    total number of affected atoms:           %3d" \
       % sum([i_seqs.size() for i_seqs in dup])
