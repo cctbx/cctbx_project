@@ -9,6 +9,8 @@ import scitbx.stl.set
 from libtbx.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx.itertbx import count
+try: import gzip
+except ImportError: gzip = None
 import sys
 
 def show_summary(
@@ -21,7 +23,16 @@ def show_summary(
       prefix=""):
   if (file_name is not None):
     assert source_info is None and lines is None
-    pdb_inp = input(file_name=file_name)
+    if (not file_name.endswith(".gz")):
+      pdb_inp = input(file_name=file_name)
+    else:
+      if (gzip is None):
+        raise RuntimeError(
+          "gzip module not available: cannot uncompress file %s"
+            % show_string(file_name))
+      pdb_inp = input(
+        source_info=file_name,
+        lines=flex.split_lines(gzip.open(file_name).read()))
   else:
     assert file_name is None
     pdb_inp = input(source_info=source_info, lines=lines)
