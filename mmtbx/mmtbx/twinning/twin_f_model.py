@@ -958,6 +958,8 @@ class twin_model_manager(object):
       sf_algorithm       = self.sf_algorithm,
       sf_cos_sin_table   = self.sf_cos_sin_table,
       perform_local_scaling = self.perform_local_scaling)
+    new_object.twin_fraction_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
+    new_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
     new_object.update()
     return new_object
 
