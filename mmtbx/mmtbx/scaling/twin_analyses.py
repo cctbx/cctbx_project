@@ -449,18 +449,26 @@ class detect_pseudo_translations(object):
     tmp_space_group = sgtbx.space_group_info( group=self.space_group )
     tmp_space_group = sgtbx.space_group_info( str(tmp_space_group), space_group_t_den=t_den)
     for so in symops:
-      new_tmp_sg = tmp_space_group.group().make_tidy()
-      smx = sgtbx.rt_mx( so )
-      smx = smx.new_denominators( new_tmp_sg.r_den(), new_tmp_sg.t_den() )
-      new_tmp_sg.expand_smx( smx )
-      sg_str = str( sgtbx.space_group_info( group = new_tmp_sg,  space_group_t_den=t_den  ) )
-      to_ref_set = sgtbx.space_group_info(
-        group = new_tmp_sg,  space_group_t_den=t_den  ).change_of_basis_op_to_reference_setting()
+      sg_str = None
+      try:
+        new_tmp_sg = tmp_space_group.group().make_tidy()
+        smx = sgtbx.rt_mx( so )
+        smx = smx.new_denominators( new_tmp_sg.r_den(), new_tmp_sg.t_den() )
+        new_tmp_sg.expand_smx( smx )
+        sg_str = str( sgtbx.space_group_info( group = new_tmp_sg,  space_group_t_den=t_den  ) )
+        to_ref_set = sgtbx.space_group_info(
+          group = new_tmp_sg,  space_group_t_den=t_den  ).change_of_basis_op_to_reference_setting()
+      except: pass
       if sg_str not in sgs:
-        sgs.append( sg_str )
-        with_operator.append( so )
-        new_cell.append( self.unit_cell.change_basis( to_ref_set.c_inv().r().as_double() ) )
-    if len(symops)>0:
+        if sg_str is not None:
+          sgs.append( sg_str )
+          with_operator.append( so )
+          new_cell.append( self.unit_cell.change_basis( to_ref_set.c_inv().r().as_double() ) )
+        else:
+          sgs.append( None )
+          new_cell.append( self.unit_cell )
+    number_of_new_sgs = len(symops)-sgs.count(None)
+    if number_of_new_sgs>0:
       print >> out
       print >> out, " If the observed pseudo translationals are crystallographic"
       print >> out, " the following spacegroups and unit cells are possible: "
@@ -468,16 +476,17 @@ class detect_pseudo_translations(object):
       print >> out, " %s                %s         %s  "%("space group", "operator", "unit cell of reference setting")
 
       for sg,op,uc in zip(sgs,with_operator,new_cell):
-        print >> out, " %20s  %20s  (%5.2f, %5.2f, %5.2f,  %5.2f, %5.2f, %5.2f)"%(
-          sg,
-          op,
-          uc.parameters()[0],
-          uc.parameters()[1],
-          uc.parameters()[2],
-          uc.parameters()[3],
-          uc.parameters()[4],
-          uc.parameters()[5] )
-      print >> out
+        if sg is not None:
+          print >> out, " %20s  %20s  (%5.2f, %5.2f, %5.2f,  %5.2f, %5.2f, %5.2f)"%(
+            sg,
+            op,
+            uc.parameters()[0],
+            uc.parameters()[1],
+            uc.parameters()[2],
+            uc.parameters()[3],
+            uc.parameters()[4],
+            uc.parameters()[5] )
+        print >> out
 
 
   def guesstimate_mod_hkl(self):
