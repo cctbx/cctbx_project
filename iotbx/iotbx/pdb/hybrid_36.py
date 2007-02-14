@@ -71,7 +71,7 @@ documentation and unit tests.
 
 To update an existing program to support the hybrid-36 counting system,
 simply replace the existing read/write source code for integer values
-with equivalents of the hydecode() and hyencode() functions below.
+with equivalents of the hy36decode() and hy36encode() functions below.
 
 This file is unrestricted Open Source (cctbx.sf.net).
 Please send corrections and enhancements to cctbx@cci.lbl.gov .
@@ -108,7 +108,7 @@ def decode_pure(digits_values, s):
     result += digits_values[c]
   return result
 
-def hyencode(value, width):
+def hy36encode(value, width):
   "encodes value as base-10/upper-case base-36/lower-case base-36 hybrid"
   i = value
   if (i >= 1-10**(width-1)):
@@ -124,7 +124,7 @@ def hyencode(value, width):
       return encode_pure(digits_lower, i)
   raise RuntimeError("value out of range.")
 
-def hydecode(s, width):
+def hy36decode(s, width):
   "decodes base-10/upper-case base-36/lower-case base-36 hybrid"
   if (len(s) == width):
     f = s[0]
@@ -151,12 +151,12 @@ def exercise():
       assert d == value
   #
   def recycle4(value, encoded):
-    s = hyencode(value=value, width=4)
+    s = hy36encode(value=value, width=4)
     assert s == encoded
-    d = hydecode(s=s, width=4)
+    d = hy36decode(s=s, width=4)
     assert d == value
   #
-  assert hydecode(s="    ", width=4) == 0
+  assert hy36decode(s="    ", width=4) == 0
   recycle4(-999, "-999")
   recycle4(-78, " -78")
   recycle4(-6, "  -6")
@@ -218,12 +218,12 @@ def exercise():
   recycle4(10000+2*26*36**3-1, "zzzz")
   #
   def recycle5(value, encoded):
-    s = hyencode(value=value, width=5)
+    s = hy36encode(value=value, width=5)
     assert s == encoded
-    d = hydecode(s=s, width=5)
+    d = hy36decode(s=s, width=5)
     assert d == value
   #
-  assert hydecode("     ", width=5) == 0
+  assert hy36decode("     ", width=5) == 0
   recycle5(-9999, "-9999")
   recycle5(-123, " -123")
   recycle5(-45, "  -45")
@@ -262,7 +262,7 @@ def exercise():
   #
   for width in [4,5]:
     for value in [-(10**(width-1)), 10**width+2*26*36**(width-1)]:
-      try: hyencode(value=value, width=width)
+      try: hy36encode(value=value, width=width)
       except RuntimeError, e:
         assert str(e) == "value out of range."
       else: raise RuntimeError("Exception expected.")
@@ -270,7 +270,7 @@ def exercise():
   for width,ss in [(4, ["", "    0", " abc", "abc-"]),
                    (5, ["", "     0", " abcd", "abcd-"])]:
     for s in ss:
-      try: hydecode(s=s, width=width)
+      try: hy36decode(s=s, width=width)
       except RuntimeError, e:
         assert str(e) == "invalid number literal."
       else: raise RuntimeError("Exception expected.")
@@ -279,8 +279,8 @@ def exercise():
   value = -9999
   while value < 100000+2*26*36**4:
     try:
-      s = hyencode(value=value, width=5)
-      d = hydecode(s=s, width=5)
+      s = hy36encode(value=value, width=5)
+      d = hy36decode(s=s, width=5)
     except:
       print "value:", value
       raise
@@ -296,10 +296,10 @@ def run():
     print "usage examples:"
     print "  python %s info" % c
     print "  python %s exercise" % c
-    print "  python %s hyencode 4 10000" % c
-    print "  python %s hydecode 4 zzzz" % c
-    print "  python %s hyencode 5 100000" % c
-    print "  python %s hydecode 5 zzzzz" % c
+    print "  python %s hy36encode 4 10000" % c
+    print "  python %s hy36decode 4 zzzz" % c
+    print "  python %s hy36encode 5 100000" % c
+    print "  python %s hy36decode 5 zzzzz" % c
     sys.exit(1)
   if (len(sys.argv) < 2):
     usage()
@@ -311,13 +311,13 @@ def run():
     exercise()
   else:
     if (   len(sys.argv) != 4
-        or task not in ["hyencode", "hydecode"]):
+        or task not in ["hy36encode", "hy36decode"]):
       usage()
     f = globals()[task]
     width = int(sys.argv[2])
     assert width > 0
     s = sys.argv[3]
-    if (task[2] == "e"):
+    if (task == "hy36encode"):
       print f(value=int(s), width=width)
     else:
       s = " "*max(0, width-len(s)) + s
