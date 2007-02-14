@@ -157,10 +157,10 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
     assert d == value
   #
   assert hy36dec(width=4, s="    ") == 0
+  assert hy36dec(width=4, s="  -0") == 0
   recycle4(-999, "-999")
   recycle4(-78, " -78")
   recycle4(-6, "  -6")
-  recycle4(-0, "   0")
   recycle4(0, "   0")
   recycle4(9999, "9999")
   recycle4(10000, "A000")
@@ -224,11 +224,11 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
     assert d == value
   #
   assert hy36dec(width=5, s="     ") == 0
+  assert hy36dec(width=5, s="   -0") == 0
   recycle5(-9999, "-9999")
   recycle5(-123, " -123")
   recycle5(-45, "  -45")
   recycle5(-6, "   -6")
-  recycle5(-0, "    0")
   recycle5(0, "    0")
   recycle5(12, "   12")
   recycle5(345, "  345")
@@ -267,8 +267,8 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
         assert str(e) == "value out of range."
       else: raise RuntimeError("Exception expected.")
   #
-  for width,ss in [(4, ["", "    0", " abc", "abc-"]),
-                   (5, ["", "     0", " abcd", "abcd-"])]:
+  for width,ss in [(4, ["", "    0", " abc", "abc-", "A=BC"]),
+                   (5, ["", "     0", " abcd", "ABCD-", "a=bcd"])]:
     for s in ss:
       try: hy36dec(width, s=s)
       except RuntimeError, e:
