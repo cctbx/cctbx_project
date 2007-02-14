@@ -19,7 +19,6 @@
 #include <iotbx/pdb/hybrid_36_c.h>
 
 #include <stdio.h>
-#include <ctype.h>
 
 static const char* digits_upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static const char* digits_lower = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -134,9 +133,9 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
   static int digits_values_upper[128U];
   static int digits_values_lower[128U];
   static const char*
-    ie_range = "internal error: int value of base-36 digits out of range.";
+    ie_range = "internal error hy36decode: integer value out of range.";
   unsigned i;
-  int di, f, neg;
+  int di, neg;
   const char* diag;
   if (first_call) {
     first_call = 0;
@@ -154,42 +153,44 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
     }
   }
   if (s_size == width) {
-    f = s[0];
-    if (f == '-' || f == ' ' || isdigit(f)) {
-      i = 0;
-      while (i < s_size && s[i] == ' ') i++;
-      if (i == s_size) {
-        *result = 0;
-        return NULL;
+    di = s[0];
+    if (di >= 0 && di <= 127) {
+      if (digits_values_upper[di] >= 10) {
+        diag = decode_pure(digits_values_upper, 36U, s, s_size, result);
+        if (diag == 0) {
+          /* result - 10*36**(width-1) + 10**width */
+          if      (width == 4U) (*result) -= 456560;
+          else if (width == 5U) (*result) -= 16696160;
+          else return unsupported_width;
+          return NULL;
+        }
       }
-      neg = 0;
-      if (s[i] == '-') {
-        neg = 1;
-        i++;
-        if (i == s_size) return invalid_number_literal;
+      else if (digits_values_lower[di] >= 10) {
+        diag = decode_pure(digits_values_lower, 36U, s, s_size, result);
+        if (diag == 0) {
+          /* result + 16*36**(width-1) + 10**width */
+          if      (width == 4U) (*result) += 756496;
+          else if (width == 5U) (*result) += 26973856;
+          else return unsupported_width;
+          return NULL;
+        }
       }
-      diag = decode_pure(digits_values_upper, 10U, s+i, s_size-i, result);
-      if (diag) return diag;
-      if (neg) *result = -(*result);
-      return NULL;
-    }
-    else if (isupper(f)) {
-      diag = decode_pure(digits_values_upper, 36U, s, s_size, result);
-      if (diag == 0) {
-        /* result - 10*36**(width-1) + 10**width */
-        if      (width == 4U) (*result) -= 456560;
-        else if (width == 5U) (*result) -= 16696160;
-        else return unsupported_width;
-        return NULL;
-      }
-    }
-    else if (islower(f)) {
-      diag = decode_pure(digits_values_lower, 36U, s, s_size, result);
-      if (diag == 0) {
-        /* result + 16*36**(width-1) + 10**width */
-        if      (width == 4U) (*result) += 756496;
-        else if (width == 5U) (*result) += 26973856;
-        else return unsupported_width;
+      else {
+        i = 0;
+        while (i < s_size && s[i] == ' ') i++;
+        if (i == s_size) {
+          *result = 0;
+          return NULL;
+        }
+        neg = 0;
+        if (s[i] == '-') {
+          neg = 1;
+          i++;
+          if (i == s_size) return invalid_number_literal;
+        }
+        diag = decode_pure(digits_values_upper, 10U, s+i, s_size-i, result);
+        if (diag) return diag;
+        if (neg) *result = -(*result);
         return NULL;
       }
     }
