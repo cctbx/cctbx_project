@@ -20,12 +20,23 @@
 
 #include <stdio.h>
 
-static const char* digits_upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static const char* digits_lower = "0123456789abcdefghijklmnopqrstuvwxyz";
+static
+const char*
+digits_upper() { return "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
 
-static const char* value_out_of_range = "value out of range.";
-static const char* invalid_number_literal = "invalid number literal.";
-static const char* unsupported_width = "unsupported width.";
+static
+const char*
+digits_lower() { return "0123456789abcdefghijklmnopqrstuvwxyz"; }
+
+static
+const char*
+value_out_of_range() { return "value out of range."; }
+
+static
+const char* invalid_number_literal() { return "invalid number literal."; }
+
+static
+const char* unsupported_width() { return "unsupported width."; }
 
 static
 const char*
@@ -37,7 +48,7 @@ encode_pure(
 {
   char buf[16];
   unsigned i;
-  if (value < 0) return value_out_of_range;
+  if (value < 0) return value_out_of_range();
   if (value == 0) {
     result[0] = digits[0];
     result[1] = '\0';
@@ -71,9 +82,9 @@ decode_pure(
   for(;i<s_size;i++) {
     value *= digits_size;
     si = s[i];
-    if (si < 0 || si > 127) return invalid_number_literal;
+    if (si < 0 || si > 127) return invalid_number_literal();
     dv = digits_values[si];
-    if (dv < 0) return invalid_number_literal;
+    if (dv < 0) return invalid_number_literal();
     value += dv;
   }
   *result = value;
@@ -93,12 +104,12 @@ hy36encode(unsigned width, int value, char* result)
       i -= 10000;
       if (i < 1213056 /* 26*36**3 */) {
         i += 466560 /* 10*36**3 */;
-        return encode_pure(digits_upper, 36U, i, result);
+        return encode_pure(digits_upper(), 36U, i, result);
       }
       i -= 1213056;
       if (i < 1213056) {
         i += 466560;
-        return encode_pure(digits_lower, 36U, i, result);
+        return encode_pure(digits_lower(), 36U, i, result);
       }
     }
   }
@@ -111,19 +122,19 @@ hy36encode(unsigned width, int value, char* result)
       i -= 100000;
       if (i < 43670016 /* 26*36**4 */) {
         i += 16796160 /* 10*36**4 */;
-        return encode_pure(digits_upper, 36U, i, result);
+        return encode_pure(digits_upper(), 36U, i, result);
       }
       i -= 43670016;
       if (i < 43670016) {
         i += 16796160;
-        return encode_pure(digits_lower, 36U, i, result);
+        return encode_pure(digits_lower(), 36U, i, result);
       }
     }
   }
   else {
-    return unsupported_width;
+    return unsupported_width();
   }
-  return value_out_of_range;
+  return value_out_of_range();
 }
 
 const char*
@@ -142,12 +153,12 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
     for(i=0;i<128U;i++) digits_values_upper[i] = -1;
     for(i=0;i<128U;i++) digits_values_lower[i] = -1;
     for(i=0;i<36U;i++) {
-      di = digits_upper[i];
+      di = digits_upper()[i];
       if (di < 0 || di > 127) return ie_range;
       digits_values_upper[di] = i;
     }
     for(i=0;i<36U;i++) {
-      di = digits_lower[i];
+      di = digits_lower()[i];
       if (di < 0 || di > 127) return ie_range;
       digits_values_lower[di] = i;
     }
@@ -161,7 +172,7 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
           /* result - 10*36**(width-1) + 10**width */
           if      (width == 4U) (*result) -= 456560;
           else if (width == 5U) (*result) -= 16696160;
-          else return unsupported_width;
+          else return unsupported_width();
           return NULL;
         }
       }
@@ -171,7 +182,7 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
           /* result + 16*36**(width-1) + 10**width */
           if      (width == 4U) (*result) += 756496;
           else if (width == 5U) (*result) += 26973856;
-          else return unsupported_width;
+          else return unsupported_width();
           return NULL;
         }
       }
@@ -186,7 +197,7 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
         if (s[i] == '-') {
           neg = 1;
           i++;
-          if (i == s_size) return invalid_number_literal;
+          if (i == s_size) return invalid_number_literal();
         }
         diag = decode_pure(digits_values_upper, 10U, s+i, s_size-i, result);
         if (diag) return diag;
@@ -195,5 +206,5 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
       }
     }
   }
-  return invalid_number_literal;
+  return invalid_number_literal();
 }
