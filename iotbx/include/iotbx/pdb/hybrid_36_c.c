@@ -77,16 +77,32 @@ decode_pure(
   int* result)
 {
   int si, dv;
+  int have_minus = 0;
+  int have_non_blank = 0;
   int value = 0;
   unsigned i = 0;
   for(;i<s_size;i++) {
-    value *= digits_size;
     si = s[i];
     if (si < 0 || si > 127) return invalid_number_literal();
-    dv = digits_values[si];
-    if (dv < 0) return invalid_number_literal();
-    value += dv;
+    if (si == ' ') {
+      if (!have_non_blank) continue;
+      value *= digits_size;
+    }
+    else if (si == '-') {
+      if (have_non_blank) return invalid_number_literal();
+      have_non_blank = 1;
+      have_minus = 1;
+      continue;
+    }
+    else {
+      have_non_blank = 1;
+      dv = digits_values[si];
+      if (dv < 0) return invalid_number_literal();
+      value *= digits_size;
+      value += dv;
+    }
   }
+  if (have_minus) value = -value;
   *result = value;
   return NULL;
 }
@@ -146,7 +162,7 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
   static const char*
     ie_range = "internal error hy36decode: integer value out of range.";
   unsigned i;
-  int di, neg;
+  int di;
   const char* diag;
   if (first_call) {
     first_call = 0;
@@ -187,21 +203,9 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
         }
       }
       else {
-        i = 0;
-        while (i < s_size && s[i] == ' ') i++;
-        if (i == s_size) {
-          *result = 0;
-          return NULL;
-        }
-        neg = 0;
-        if (s[i] == '-') {
-          neg = 1;
-          i++;
-          if (i == s_size) return invalid_number_literal();
-        }
-        diag = decode_pure(digits_values_upper, 10U, s+i, s_size-i, result);
+        diag = decode_pure(digits_values_upper, 10U, s, s_size, result);
         if (diag) return diag;
-        if (neg) *result = -(*result);
+        if (!(width == 4U || width == 5U)) return unsupported_width();
         return NULL;
       }
     }
