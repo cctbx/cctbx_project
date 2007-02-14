@@ -142,7 +142,7 @@ def hy36decode(width, s):
       except KeyError: pass
   raise RuntimeError("invalid number literal.")
 
-def exercise():
+def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
   for digits,digits_values in [(digits_upper, digits_upper_values),
                                (digits_lower, digits_lower_values)]:
     for value in xrange(1000):
@@ -151,12 +151,12 @@ def exercise():
       assert d == value
   #
   def recycle4(value, encoded):
-    s = hy36encode(width=4, value=value)
+    s = hy36enc(width=4, value=value)
     assert s == encoded
-    d = hy36decode(width=4, s=s)
+    d = hy36dec(width=4, s=s)
     assert d == value
   #
-  assert hy36decode(width=4, s="    ") == 0
+  assert hy36dec(width=4, s="    ") == 0
   recycle4(-999, "-999")
   recycle4(-78, " -78")
   recycle4(-6, "  -6")
@@ -218,12 +218,12 @@ def exercise():
   recycle4(10000+2*26*36**3-1, "zzzz")
   #
   def recycle5(value, encoded):
-    s = hy36encode(width=5, value=value)
+    s = hy36enc(width=5, value=value)
     assert s == encoded
-    d = hy36decode(width=5, s=s)
+    d = hy36dec(width=5, s=s)
     assert d == value
   #
-  assert hy36decode(width=5, s="     ") == 0
+  assert hy36dec(width=5, s="     ") == 0
   recycle5(-9999, "-9999")
   recycle5(-123, " -123")
   recycle5(-45, "  -45")
@@ -262,7 +262,7 @@ def exercise():
   #
   for width in [4,5]:
     for value in [-(10**(width-1)), 10**width+2*26*36**(width-1)]:
-      try: hy36encode(width=width, value=value)
+      try: hy36enc(width=width, value=value)
       except RuntimeError, e:
         assert str(e) == "value out of range."
       else: raise RuntimeError("Exception expected.")
@@ -270,7 +270,7 @@ def exercise():
   for width,ss in [(4, ["", "    0", " abc", "abc-"]),
                    (5, ["", "     0", " abcd", "abcd-"])]:
     for s in ss:
-      try: hy36decode(width, s=s)
+      try: hy36dec(width, s=s)
       except RuntimeError, e:
         assert str(e) == "invalid number literal."
       else: raise RuntimeError("Exception expected.")
@@ -279,15 +279,13 @@ def exercise():
   value = -9999
   while value < 100000+2*26*36**4:
     try:
-      s = hy36encode(width=5, value=value)
-      d = hy36decode(width=5, s=s)
+      s = hy36enc(width=5, value=value)
+      d = hy36dec(width=5, s=s)
     except:
       print "value:", value
       raise
     assert d == value
     value += random.randint(0, 10000)
-  #
-  print "OK"
 
 def run():
   import sys
@@ -309,6 +307,7 @@ def run():
     return
   if (task == "exercise"):
     exercise()
+    print "OK"
   else:
     if (   len(sys.argv) != 4
         or task not in ["hy36encode", "hy36decode"]):

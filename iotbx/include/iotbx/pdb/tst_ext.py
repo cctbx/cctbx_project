@@ -1,12 +1,31 @@
 from iotbx import pdb
+from iotbx.pdb import hybrid_36
 import iotbx.pdb.parser
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
-from libtbx.utils import format_cpu_times
+from libtbx.utils import user_plus_sys_time, format_cpu_times
 from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
+
+def exercise_hybrid_36():
+  hybrid_36.exercise(hy36enc=pdb.hy36encode, hy36dec=pdb.hy36decode)
+  for width,s in [(3,"AAA"), (6,"zzzzzz")]:
+    try: pdb.hy36encode(width=width, value=0)
+    except RuntimeError, e:
+      assert str(e) == "unsupported width."
+    else: raise RuntimeError("Exception expected.")
+    try: pdb.hy36decode(width=width, s=s)
+    except RuntimeError, e:
+      assert str(e) == "unsupported width."
+    else: raise RuntimeError("Exception expected.")
+  ups = user_plus_sys_time()
+  n_ok = pdb.hy36recode_width_4_all()
+  ups = ups.elapsed()
+  print "time hy36recode_width_4_all: %.2f s" \
+    " (%.3f micro s per encode-decode cycle)" % (ups, 1.e6*ups/max(1,n_ok))
+  assert n_ok == 999+10000+2*26*36**3
 
 def exercise_atom():
   a = pdb.atom()
@@ -2346,6 +2365,7 @@ ATOM      8  O   MET A   5       6.215  22.789  24.067  1.00  0.00            -2
 def exercise(args):
   forever = "--forever" in args
   while True:
+    exercise_hybrid_36()
     exercise_atom()
     exercise_residue()
     exercise_chain()

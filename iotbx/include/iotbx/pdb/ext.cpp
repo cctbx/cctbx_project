@@ -2,6 +2,7 @@
 
 namespace iotbx { namespace pdb { namespace boost_python {
 
+  void wrap_hybrid_36();
   void wrap_common_residue_names();
   void wrap_hierarchy();
   void wrap_input();
@@ -11,6 +12,7 @@ namespace {
 
   void init_module()
   {
+    wrap_hybrid_36();
     wrap_common_residue_names();
     wrap_hierarchy();
     wrap_input();
