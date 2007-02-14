@@ -40,6 +40,7 @@ encode_pure(
   if (value == 0) {
     result[0] = digits[0];
     result[1] = '\0';
+    return NULL;
   }
   char buf[16];
   unsigned i = 0;
