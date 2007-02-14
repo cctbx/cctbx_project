@@ -108,7 +108,7 @@ def decode_pure(digits_values, s):
     result += digits_values[c]
   return result
 
-def hy36encode(value, width):
+def hy36encode(width, value):
   "encodes value as base-10/upper-case base-36/lower-case base-36 hybrid"
   i = value
   if (i >= 1-10**(width-1)):
@@ -124,7 +124,7 @@ def hy36encode(value, width):
       return encode_pure(digits_lower, i)
   raise RuntimeError("value out of range.")
 
-def hy36decode(s, width):
+def hy36decode(width, s):
   "decodes base-10/upper-case base-36/lower-case base-36 hybrid"
   if (len(s) == width):
     f = s[0]
@@ -151,12 +151,12 @@ def exercise():
       assert d == value
   #
   def recycle4(value, encoded):
-    s = hy36encode(value=value, width=4)
+    s = hy36encode(width=4, value=value)
     assert s == encoded
-    d = hy36decode(s=s, width=4)
+    d = hy36decode(width=4, s=s)
     assert d == value
   #
-  assert hy36decode(s="    ", width=4) == 0
+  assert hy36decode(width=4, s="    ") == 0
   recycle4(-999, "-999")
   recycle4(-78, " -78")
   recycle4(-6, "  -6")
@@ -218,12 +218,12 @@ def exercise():
   recycle4(10000+2*26*36**3-1, "zzzz")
   #
   def recycle5(value, encoded):
-    s = hy36encode(value=value, width=5)
+    s = hy36encode(width=5, value=value)
     assert s == encoded
-    d = hy36decode(s=s, width=5)
+    d = hy36decode(width=5, s=s)
     assert d == value
   #
-  assert hy36decode("     ", width=5) == 0
+  assert hy36decode(width=5, s="     ") == 0
   recycle5(-9999, "-9999")
   recycle5(-123, " -123")
   recycle5(-45, "  -45")
@@ -262,7 +262,7 @@ def exercise():
   #
   for width in [4,5]:
     for value in [-(10**(width-1)), 10**width+2*26*36**(width-1)]:
-      try: hy36encode(value=value, width=width)
+      try: hy36encode(width=width, value=value)
       except RuntimeError, e:
         assert str(e) == "value out of range."
       else: raise RuntimeError("Exception expected.")
@@ -270,7 +270,7 @@ def exercise():
   for width,ss in [(4, ["", "    0", " abc", "abc-"]),
                    (5, ["", "     0", " abcd", "abcd-"])]:
     for s in ss:
-      try: hy36decode(s=s, width=width)
+      try: hy36decode(width, s=s)
       except RuntimeError, e:
         assert str(e) == "invalid number literal."
       else: raise RuntimeError("Exception expected.")
@@ -279,8 +279,8 @@ def exercise():
   value = -9999
   while value < 100000+2*26*36**4:
     try:
-      s = hy36encode(value=value, width=5)
-      d = hy36decode(s=s, width=5)
+      s = hy36encode(width=5, value=value)
+      d = hy36decode(width=5, s=s)
     except:
       print "value:", value
       raise
