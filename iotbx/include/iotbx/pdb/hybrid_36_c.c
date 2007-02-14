@@ -33,19 +33,20 @@ const char*
 encode_pure(
   const char* digits,
   unsigned digits_size,
-  unsigned value,
+  int value,
   char* result)
 {
+  char buf[16];
+  unsigned i;
   if (value < 0) return value_out_of_range;
   if (value == 0) {
     result[0] = digits[0];
     result[1] = '\0';
     return NULL;
   }
-  char buf[16];
-  unsigned i = 0;
+  i = 0;
   while (value != 0) {
-    unsigned rest = value / digits_size;
+    int rest = value / digits_size;
     buf[i++] = digits[value - rest * digits_size];
     value = rest;
   }
@@ -65,15 +66,16 @@ decode_pure(
   unsigned s_size,
   int* result)
 {
-  unsigned value = 0;
+  int si, dv;
+  int value = 0;
   unsigned i = 0;
   for(;i<s_size;i++) {
     value *= digits_size;
-    int si = s[i];
+    si = s[i];
     if (si < 0 || si > 127) return invalid_number_literal;
-    int dv = digits_values[si];
+    dv = digits_values[si];
     if (dv < 0) return invalid_number_literal;
-    value += (unsigned) dv;
+    value += dv;
   }
   *result = value;
   return NULL;
@@ -92,12 +94,12 @@ hy36encode(unsigned width, int value, char* result)
       i -= 10000;
       if (i < 1213056 /* 26*36**3 */) {
         i += 466560 /* 10*36**3 */;
-        return encode_pure(digits_upper, 36U, (unsigned) i, result);
+        return encode_pure(digits_upper, 36U, i, result);
       }
       i -= 1213056;
       if (i < 1213056) {
         i += 466560;
-        return encode_pure(digits_lower, 36U, (unsigned) i, result);
+        return encode_pure(digits_lower, 36U, i, result);
       }
     }
   }
@@ -110,12 +112,12 @@ hy36encode(unsigned width, int value, char* result)
       i -= 100000;
       if (i < 43670016 /* 26*36**4 */) {
         i += 16796160 /* 10*36**4 */;
-        return encode_pure(digits_upper, 36U, (unsigned) i, result);
+        return encode_pure(digits_upper, 36U, i, result);
       }
       i -= 43670016;
       if (i < 43670016) {
         i += 16796160;
-        return encode_pure(digits_lower, 36U, (unsigned) i, result);
+        return encode_pure(digits_lower, 36U, i, result);
       }
     }
   }
