@@ -131,6 +131,7 @@ def hydecode(s, width):
     if (f == "-" or f == " " or f.isdigit()):
       try: return int(s)
       except ValueError: pass
+      if (s == " "*width): return 0
     elif (f in digits_upper_values):
       try: return decode_pure(
         digits_values=digits_upper_values, s=s) - 10*36**(width-1) + 10**width
@@ -139,19 +140,7 @@ def hydecode(s, width):
       try: return decode_pure(
         digits_values=digits_lower_values, s=s) + 16*36**(width-1) + 10**width
       except KeyError: pass
-  raise RuntimeError("not a valid number literal.")
-
-def hy4encode(value):
-  return hyencode(value=value, width=4)
-
-def hy4decode(s):
-  return hydecode(s=s, width=4)
-
-def hy5encode(value):
-  return hyencode(value=value, width=5)
-
-def hy5decode(s):
-  return hydecode(s=s, width=5)
+  raise RuntimeError("invalid number literal.")
 
 def exercise():
   for digits,digits_values in [(digits_upper, digits_upper_values),
@@ -162,11 +151,12 @@ def exercise():
       assert d == value
   #
   def recycle4(value, encoded):
-    s = hy4encode(value=value)
+    s = hyencode(value=value, width=4)
     assert s == encoded
-    d = hy4decode(s=s)
+    d = hydecode(s=s, width=4)
     assert d == value
   #
+  assert hydecode(s="    ", width=4) == 0
   recycle4(-999, "-999")
   recycle4(-78, " -78")
   recycle4(-6, "  -6")
@@ -228,11 +218,12 @@ def exercise():
   recycle4(10000+2*26*36**3-1, "zzzz")
   #
   def recycle5(value, encoded):
-    s = hy5encode(value=value)
+    s = hyencode(value=value, width=5)
     assert s == encoded
-    d = hy5decode(s=s)
+    d = hydecode(s=s, width=5)
     assert d == value
   #
+  assert hydecode("     ", width=5) == 0
   recycle5(-9999, "-9999")
   recycle5(-123, " -123")
   recycle5(-45, "  -45")
@@ -269,24 +260,27 @@ def exercise():
   recycle5(100000+26*36**4+36**4, "b0000")
   recycle5(100000+2*26*36**4-1, "zzzzz")
   #
-  for value in [-10000, 100000+2*26*36**4]:
-    try: hy5encode(value=value)
-    except RuntimeError, e:
-      assert str(e) == "value out of range."
-    else: raise RuntimeError("Exception expected.")
+  for width in [4,5]:
+    for value in [-(10**(width-1)), 10**width+2*26*36**(width-1)]:
+      try: hyencode(value=value, width=width)
+      except RuntimeError, e:
+        assert str(e) == "value out of range."
+      else: raise RuntimeError("Exception expected.")
   #
-  for s in ["", "     0", " abcd", "abcd-"]:
-    try: hy5decode(s="abcd_")
-    except RuntimeError, e:
-      assert str(e) == "not a valid number literal."
-    else: raise RuntimeError("Exception expected.")
+  for width,ss in [(4, ["", "    0", " abc", "abc-"]),
+                   (5, ["", "     0", " abcd", "abcd-"])]:
+    for s in ss:
+      try: hydecode(s=s, width=width)
+      except RuntimeError, e:
+        assert str(e) == "invalid number literal."
+      else: raise RuntimeError("Exception expected.")
   #
   import random
   value = -9999
   while value < 100000+2*26*36**4:
     try:
-      s = hy5encode(value=value)
-      d = hy5decode(s=s)
+      s = hyencode(value=value, width=5)
+      d = hydecode(s=s, width=5)
     except:
       print "value:", value
       raise
@@ -302,10 +296,10 @@ def run():
     print "usage examples:"
     print "  python %s info" % c
     print "  python %s exercise" % c
-    print "  python %s hy4encode 10000" % c
-    print "  python %s hy4decode zzzz" % c
-    print "  python %s hy5encode 100000" % c
-    print "  python %s hy5decode zzzzz" % c
+    print "  python %s hyencode 4 10000" % c
+    print "  python %s hydecode 4 zzzz" % c
+    print "  python %s hyencode 5 100000" % c
+    print "  python %s hydecode 5 zzzzz" % c
     sys.exit(1)
   if (len(sys.argv) < 2):
     usage()
@@ -316,17 +310,18 @@ def run():
   if (task == "exercise"):
     exercise()
   else:
-    if (   len(sys.argv) != 3
-        or task not in ["hy4encode", "hy4decode", "hy5encode", "hy5decode"]):
+    if (   len(sys.argv) != 4
+        or task not in ["hyencode", "hydecode"]):
       usage()
     f = globals()[task]
-    s = sys.argv[2]
-    if (task[3] == "e"):
-      print f(value=int(s))
+    width = int(sys.argv[2])
+    assert width > 0
+    s = sys.argv[3]
+    if (task[2] == "e"):
+      print f(value=int(s), width=width)
     else:
-      width = int(task[2])
       s = " "*max(0, width-len(s)) + s
-      print f(s=s)
+      print f(s=s, width=width)
 
 if (__name__ == "__main__"):
   run()
