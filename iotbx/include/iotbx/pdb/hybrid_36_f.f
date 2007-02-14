@@ -80,29 +80,52 @@ C Output
       character diag*(*)
       integer diag_size
 C Local
+      logical first_call
+      save first_call
+      data first_call /.true./
+      integer iblank
+      save iblank
+      integer iminus
+      save iminus
       integer si, dv
+      logical have_minus
+      logical have_non_blank
       integer value
       integer i
 C
+      if (first_call) then
+        first_call = .false.
+        iblank = ichar(' ')
+        iminus = ichar('-')
+      endif
+      have_minus = .false.
+      have_non_blank = .false.
       value = 0
       do 1 i=1,s_size
-        value = value * digits_size
         si = ichar(s(i:i))
-        if (si .lt. 0 .or. si .gt. 127) then
-          diag = 'invalid number literal.'
-          diag_size = 23
-          return
+        if (si .lt. 0 .or. si .gt. 127) goto 2
+        if (si .eq. iblank) then
+          if (.not. have_non_blank) goto 1
+          value = value * digits_size
+        else if (si .eq. iminus) then
+          if (have_non_blank) goto 2
+          have_non_blank = .true.
+          have_minus = .true.
+          goto 1
+        else
+          have_non_blank = .true.
+          dv = digits_values(si)
+          if (dv .lt. 0) goto 2
+          value = value * digits_size
+          value = value + dv
         endif
-        dv = digits_values(si)
-        if (dv .lt. 0) then
-          diag = 'invalid number literal.'
-          diag_size = 23
-          return
-        endif
-        value = value + dv
     1 continue
+      if (have_minus) value = -value
       result = value
       diag_size = 0
+      return
+    2 diag = 'invalid number literal.'
+      diag_size = 23
       return
       end
 
@@ -259,8 +282,7 @@ C                             - 10*36**(width-1) + 10**width
               result = result - 16696160
               diag_size = 0
             else
-              diag = 'unsupported width.'
-              diag_size = 18
+              goto 4
             endif
             return
           else if (digits_values_lower(di) .ge. 10) then
@@ -276,27 +298,23 @@ C                             + 16*36**(width-1) + 10**width
               result = result + 26973856
               diag_size = 0
             else
-              diag = 'unsupported width.'
-              diag_size = 18
+              goto 4
             endif
             return
           else
-            if (width .eq. 4) then
-              read(s, '(I4)', err=3) result
-              diag_size = 0
-            else if (width .eq. 5) then
-              read(s, '(I5)', err=3) result
-              diag_size = 0
-            else
-              diag = 'unsupported width.'
-              diag_size = 18
-            endif
+            call decode_pure(
+     &        digits_values_upper, 10, s, s_size,
+     &        result, diag, diag_size)
+            if (.not. (width .eq. 4 .or. width .eq. 5)) goto 4
             return
           endif
         endif
       endif
     3 diag = 'invalid number literal.'
       diag_size = 23
+      return
+    4 diag = 'unsupported width.'
+      diag_size = 18
       return
       end
 
