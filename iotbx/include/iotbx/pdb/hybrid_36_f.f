@@ -9,8 +9,11 @@ C
 C This file is unrestricted Open Source (cctbx.sf.net).
 C Please send corrections and enhancements to cctbx@cci.lbl.gov .
 C
+C See also: http://cci.lbl.gov/hybrid_36/
+C
 C Ralf W. Grosse-Kunstleve, Feb 2007.
 
+C This subroutine is an implementation detail.
       subroutine encode_pure(
      &  digits,
      &  digits_size,
@@ -61,10 +64,10 @@ C
         i = i - 1
         k = k + 1
         if (i .gt. 0) goto 2
-      result(k:) = ' '
       return
       end
 
+C This subroutine is an implementation detail.
       subroutine decode_pure(
      &  digits_values,
      &  digits_size,
@@ -133,6 +136,27 @@ C
       return
       end
 
+C
+C hybrid-36 encoder: converts integer value to string result
+C
+C   width: must be 4 (e.g. for residue sequence numbers)
+C               or 5 (e.g. for atom serial numbers)
+C
+C   value: integer value to be converted
+C
+C   result: string holding the result (len(result) must be >= width)
+C           result(width+1:len(result)) is NOT modified in order
+C           to maximize runtime performance!
+C
+C   diag: string holding error message, if any
+C         len(diag) should be >= 80
+C         diag is not modified if diag_size below is 0
+C         DO NOT use if (diag .eq. ' ') to check for errors!
+C         It is not supported because it would be too slow.
+C
+C   diag_size: length of error message, or 0 on success
+C              use if (diag_size .ne. 0) to check for errors
+C
       subroutine hy36encode(
      &  width,
      &  value,
@@ -211,6 +235,22 @@ C
       return
       end
 
+C
+C hybrid-36 decoder: converts string s to integer result
+C
+C   width: must be 4 (e.g. for residue sequence numbers)
+C               or 5 (e.g. for atom serial numbers)
+C
+C   s: string to be converted
+C
+C   s_size: length of string to be converted
+C           s_size must be <= len(s)
+C           s(s_size+1:len(s)) is ignored
+C
+C   result: integer holding the conversion result
+C
+C   diag, diag_size: see hy36encode documentation above
+C
       subroutine hy36decode(
      &  width,
      &  s,
@@ -319,13 +359,24 @@ C                             + 16*36**(width-1) + 10**width
       return
       end
 
+C
+C Unit tests for hy36encode and hy36decode
+C
+C   Can be safely ignored, but to guard yourself against
+C   compiler bugs add
+C
+C     call tst_hybrid_36_f(.true.)
+C
+C   to your main program. The runtime in quick mode is in the
+C   range of 0.01 seconds or less.
+C
       subroutine tst_hybrid_36_f(quick)
       implicit none
 C Input
       logical quick
 C Local
       integer value
-      character diag*128
+      character diag*80
       integer diag_size
       character s4*4
       character s5*5
@@ -453,7 +504,14 @@ C
       return
       end
 
+C
+C Calls unit tests above. To use this file in your project,
+C comment out all lines below.
+C
+C To compile and run the unit tests use, e.g.:
+C   f77 -o hy36 hybrid_36_f.f
+C   ./hy36
+C
       program exercise
       call tst_hybrid_36_f(.false.)
-      write(6, '(A2)') 'OK'
       end
