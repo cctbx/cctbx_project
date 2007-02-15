@@ -327,7 +327,8 @@ C Local
       integer value
       character diag*128
       integer diag_size
-      character s*16
+      character s4*4
+      character s5*5
       integer decoded
 C
       call hy36decode(4, '    ', 4, decoded, diag, diag_size)
@@ -383,31 +384,31 @@ C
       if (.not. quick) then
         do 1, value=-999,2436111
           diag_size = -1
-          call hy36encode(4, value, s, diag, diag_size)
+          call hy36encode(4, value, s4, diag, diag_size)
           if (diag_size .ne. 0) stop 'error hy36encode'
           decoded = -1000
           diag_size = -1
-          call hy36decode(4, s, 4, decoded, diag, diag_size)
+          call hy36decode(4, s4, 4, decoded, diag, diag_size)
           if (diag_size .ne. 0) stop 'error hy36decode'
           if (decoded .ne. value) stop 'error decoded value'
     1   continue
 C
         do 2, value=-9999,110000
           diag_size = -1
-          call hy36encode(5, value, s, diag, diag_size)
+          call hy36encode(5, value, s5, diag, diag_size)
           if (diag_size .ne. 0) stop 'error hy36encode'
           decoded = -10000
           diag_size = -1
-          call hy36decode(5, s, 5, decoded, diag, diag_size)
+          call hy36decode(5, s5, 5, decoded, diag, diag_size)
           if (diag_size .ne. 0) stop 'error hy36decode'
           if (decoded .ne. value) stop 'error decoded value'
     2   continue
       endif
 C
-      call hy36encode(4, -1000, s, diag, diag_size)
+      call hy36encode(4, -1000, s4, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode range'
       if (diag .ne. 'value out of range.') stop 'error diag range'
-      call hy36encode(4, 2436112, s, diag, diag_size)
+      call hy36encode(4, 2436112, s4, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode range'
       if (diag .ne. 'value out of range.') stop 'error diag range'
       call hy36decode(4, ' abc', 4, decoded, diag, diag_size)
@@ -420,10 +421,10 @@ C
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
 C
-      call hy36encode(5, -10000, s, diag, diag_size)
+      call hy36encode(5, -10000, s5, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode range'
       if (diag .ne. 'value out of range.') stop 'error diag range'
-      call hy36encode(5, 87440032, s, diag, diag_size)
+      call hy36encode(5, 87440032, s5, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode range'
       if (diag .ne. 'value out of range.') stop 'error diag range'
       call hy36decode(5, ' abcd', 5, decoded, diag, diag_size)
@@ -436,7 +437,7 @@ C
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
 C
-      call hy36encode(3, 0, s, diag, diag_size)
+      call hy36encode(3, 0, s5, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode width'
       if (diag .ne. 'unsupported width.') stop 'error diag width'
       call hy36decode(3, '  0', 3, decoded, diag, diag_size)
