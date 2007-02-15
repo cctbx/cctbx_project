@@ -14,50 +14,54 @@ C Ralf W. Grosse-Kunstleve, Feb 2007.
       subroutine encode_pure(
      &  digits,
      &  digits_size,
+     &  width,
      &  value,
-     &  result,
-     &  diag,
-     &  diag_size)
+     &  result)
       implicit none
 C Input
       character digits*(*)
       integer digits_size
+      integer width
       integer value
 C Output
       character result*(*)
-      character diag*(*)
-      integer diag_size
 C Local
       character buf*16
-      integer i, j, rest, val
+      integer i, j, k, rest, val
 C
       val = value
-      if (val .lt. 0) then
-        diag = 'value out of range.'
-        diag_size = 19
-        return
-      endif
-      if (val .eq. 0) then
-        result = digits(1:1)
-        diag_size = 0
-        return
-      endif
       i = 0
+      j = 0
+      if (val .lt. 0) then
+        j = 1
+        val = -val
+      endif
     1 continue
         rest = val / digits_size
-        j = val - rest * digits_size + 1
+        k = val - rest * digits_size + 1
         i = i + 1
-        buf(i:i) = digits(j:j)
-        val = rest
-        if (val .ne. 0) goto 1
-      j = 1
+        buf(i:i) = digits(k:k)
+        if (rest .ne. 0) then
+          val = rest
+          goto 1
+        endif
+      if (j .ne. 0) then
+        i = i + 1
+        buf(i:i) = '-'
+      endif
+      if (i .ge. width) then
+        k = 1
+      else
+        k = width - i
+        result(1:k) = ' '
+        k = k + 1
+      endif
     2 continue
-        result(j:j) = buf(i:i)
+        result(k:k) = buf(i:i)
         i = i - 1
-        j = j + 1
+        k = k + 1
         if (i .gt. 0) goto 2
-      result(j:) = ' '
-      diag_size = 0
+      result(k:) = ' '
       return
       end
 
@@ -156,44 +160,44 @@ C
       if (width .eq. 4) then
         if (i .ge. -999) then
           if (i .lt. 10000) then
-            write(result, '(I4)') i
+            call encode_pure(digits_upper, 10, 4, i, result)
             diag_size = 0
             return
           endif
           i = i - 10000
           if (i .lt. 1213056) then
             i = i + 466560
-            call encode_pure(
-     &        digits_upper, 36, i, result, diag, diag_size)
+            call encode_pure(digits_upper, 36, 0, i, result)
+            diag_size = 0
             return
           endif
           i = i - 1213056
           if (i .lt. 1213056) then
             i = i + 466560
-            call encode_pure(
-     &        digits_lower, 36, i, result, diag, diag_size)
+            call encode_pure(digits_lower, 36, 0, i, result)
+            diag_size = 0
             return
           endif
         endif
       else if (width .eq. 5) then
         if (i .ge. -9999) then
           if (i .lt. 100000) then
-            write(result, '(I5)') i
+            call encode_pure(digits_upper, 10, 5, i, result)
             diag_size = 0
             return
           endif
           i = i - 100000
           if (i .lt. 43670016) then
             i = i + 16796160
-            call encode_pure(
-     &        digits_upper, 36, i, result, diag, diag_size)
+            call encode_pure(digits_upper, 36, 0, i, result)
+            diag_size = 0
             return
           endif
           i = i - 43670016
           if (i .lt. 43670016) then
             i = i + 16796160
-            call encode_pure(
-     &        digits_lower, 36, i, result, diag, diag_size)
+            call encode_pure(digits_lower, 36, 0, i, result)
+            diag_size = 0
             return
           endif
         endif
@@ -282,7 +286,7 @@ C                             - 10*36**(width-1) + 10**width
               result = result - 16696160
               diag_size = 0
             else
-              goto 4
+              goto 3
             endif
             return
           else if (digits_values_lower(di) .ge. 10) then
@@ -298,22 +302,19 @@ C                             + 16*36**(width-1) + 10**width
               result = result + 26973856
               diag_size = 0
             else
-              goto 4
+              goto 3
             endif
             return
           else
             call decode_pure(
      &        digits_values_upper, 10, s, s_size,
      &        result, diag, diag_size)
-            if (.not. (width .eq. 4 .or. width .eq. 5)) goto 4
+            if (.not. (width .eq. 4 .or. width .eq. 5)) goto 3
             return
           endif
         endif
       endif
-    3 diag = 'invalid number literal.'
-      diag_size = 23
-      return
-    4 diag = 'unsupported width.'
+    3 diag = 'unsupported width.'
       diag_size = 18
       return
       end

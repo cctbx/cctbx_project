@@ -2,7 +2,7 @@
     hybrid_36.py Python prototype/reference implementation.
     See the Python script for more information.
 
-    This file has no dependencies other than ANSI C headers.
+    This file has no external dependencies, NOT even standard C headers.
     Optionally, use hybrid_36_c.h, or simply copy the declarations
     into your code.
 
@@ -17,8 +17,6 @@
    and the definitions.
  */
 #include <iotbx/pdb/hybrid_36_c.h>
-
-#include <stdio.h>
 
 static
 const char*
@@ -39,32 +37,33 @@ static
 const char* unsupported_width() { return "unsupported width."; }
 
 static
-const char*
+void
 encode_pure(
   const char* digits,
   unsigned digits_size,
+  unsigned width,
   int value,
   char* result)
 {
   char buf[16];
-  unsigned i;
-  if (value < 0) return value_out_of_range();
-  if (value == 0) {
-    result[0] = digits[0];
-    result[1] = '\0';
-    return NULL;
-  }
+  int rest;
+  unsigned i, j;
   i = 0;
-  while (value != 0) {
-    int rest = value / digits_size;
+  j = 0;
+  if (value < 0) {
+    j = 1;
+    value = -value;
+  }
+  while (1) {
+    rest = value / digits_size;
     buf[i++] = digits[value - rest * digits_size];
+    if (rest == 0) break;
     value = rest;
   }
-  while (i != 0) {
-    *result++ = buf[--i];
-  }
+  if (j) buf[i++] = '-';
+  for(j=i;j<width;j++) *result++ = ' ';
+  while (i != 0) *result++ = buf[--i];
   *result = '\0';
-  return NULL;
 }
 
 static
@@ -104,7 +103,7 @@ decode_pure(
   }
   if (have_minus) value = -value;
   *result = value;
-  return NULL;
+  return 0;
 }
 
 const char*
@@ -114,36 +113,40 @@ hy36encode(unsigned width, int value, char* result)
   if (width == 4U) {
     if (i >= -999) {
       if (i < 10000) {
-        sprintf(result, "%4d", i);
-        return NULL;
+        encode_pure(digits_upper(), 10U, 4U, i, result);
+        return 0;
       }
       i -= 10000;
       if (i < 1213056 /* 26*36**3 */) {
         i += 466560 /* 10*36**3 */;
-        return encode_pure(digits_upper(), 36U, i, result);
+        encode_pure(digits_upper(), 36U, 0U, i, result);
+        return 0;
       }
       i -= 1213056;
       if (i < 1213056) {
         i += 466560;
-        return encode_pure(digits_lower(), 36U, i, result);
+        encode_pure(digits_lower(), 36U, 0U, i, result);
+        return 0;
       }
     }
   }
   else if (width == 5U) {
     if (i >= -9999) {
       if (i < 100000) {
-        sprintf(result, "%5d", i);
-        return NULL;
+        encode_pure(digits_upper(), 10U, 5U, i, result);
+        return 0;
       }
       i -= 100000;
       if (i < 43670016 /* 26*36**4 */) {
         i += 16796160 /* 10*36**4 */;
-        return encode_pure(digits_upper(), 36U, i, result);
+        encode_pure(digits_upper(), 36U, 0U, i, result);
+        return 0;
       }
       i -= 43670016;
       if (i < 43670016) {
         i += 16796160;
-        return encode_pure(digits_lower(), 36U, i, result);
+        encode_pure(digits_lower(), 36U, 0U, i, result);
+        return 0;
       }
     }
   }
@@ -189,7 +192,7 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
           if      (width == 4U) (*result) -= 456560;
           else if (width == 5U) (*result) -= 16696160;
           else return unsupported_width();
-          return NULL;
+          return 0;
         }
       }
       else if (digits_values_lower[di] >= 10) {
@@ -199,14 +202,14 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
           if      (width == 4U) (*result) += 756496;
           else if (width == 5U) (*result) += 26973856;
           else return unsupported_width();
-          return NULL;
+          return 0;
         }
       }
       else {
         diag = decode_pure(digits_values_upper, 10U, s, s_size, result);
         if (diag) return diag;
         if (!(width == 4U || width == 5U)) return unsupported_width();
-        return NULL;
+        return 0;
       }
     }
   }
