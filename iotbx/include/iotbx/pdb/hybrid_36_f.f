@@ -455,4 +455,5 @@ C
 
       program exercise
       call tst_hybrid_36_f(.false.)
+      write(6, '(A2)') 'OK'
       end
