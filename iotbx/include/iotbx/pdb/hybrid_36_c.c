@@ -9,6 +9,8 @@
     This file is unrestricted Open Source (cctbx.sf.net).
     Please send corrections and enhancements to cctbx@cci.lbl.gov .
 
+    See also: http://cci.lbl.gov/hybrid_36/
+
     Ralf W. Grosse-Kunstleve, Feb 2007.
  */
 
@@ -17,6 +19,10 @@
    and the definitions.
  */
 #include <iotbx/pdb/hybrid_36_c.h>
+
+/* All static functions below are implementation details
+   (and not accessible from other translation units).
+ */
 
 static
 const char*
@@ -106,6 +112,19 @@ decode_pure(
   return 0;
 }
 
+/*! hybrid-36 encoder: converts integer value to string result
+
+      width: must be 4 (e.g. for residue sequence numbers)
+                  or 5 (e.g. for atom serial numbers)
+
+      value: integer value to be converted
+
+      result: pointer to char array of size width+1 or greater
+              on return result is null-terminated
+
+      return value: pointer to error message, if any,
+                    or 0 on success
+ */
 const char*
 hy36encode(unsigned width, int value, char* result)
 {
@@ -156,6 +175,23 @@ hy36encode(unsigned width, int value, char* result)
   return value_out_of_range();
 }
 
+/*! hybrid-36 decoder: converts string s to integer result
+
+      width: must be 4 (e.g. for residue sequence numbers)
+                  or 5 (e.g. for atom serial numbers)
+
+      s: string to be converted
+         does not have to be null-terminated
+
+      s_size: size of s
+              must be equal to width, or an error message is
+              returned otherwise
+
+      result: integer holding the conversion result
+
+      return value: pointer to error message, if any,
+                    or 0 on success
+ */
 const char*
 hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
 {

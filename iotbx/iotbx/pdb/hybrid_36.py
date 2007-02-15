@@ -43,8 +43,8 @@ atoms can be stored and uniquely referenced via CONECT records.
 The counting system is designed to avoid lower-case letters until the
 range of numbers addressable by upper-case letters is exhausted.
 Importantly, with this counting system the distinction between
-"traditional" and "extended" PDB files only becomes evident if there
-are in fact more than 99999 atoms to be stored. Programs that are
+"traditional" and "extended" PDB files becomes evident only if there
+are more than 99999 atoms to be stored. Programs that are
 updated to support the hybrid-36 counting system will continue to
 interoperate with programs that do not as long as there are less than
 100000 atoms.
@@ -76,7 +76,9 @@ with equivalents of the hy36decode() and hy36encode() functions below.
 This file is unrestricted Open Source (cctbx.sf.net).
 Please send corrections and enhancements to cctbx@cci.lbl.gov .
 
-See also: http://www.pdb.org/ "Dictionary & File Formats"
+See also:
+  http://cci.lbl.gov/hybrid_36/
+  http://www.pdb.org/ "Dictionary & File Formats"
 
 Ralf W. Grosse-Kunstleve, Feb 2007.
 """
