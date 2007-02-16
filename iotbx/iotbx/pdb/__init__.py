@@ -13,29 +13,35 @@ try: import gzip
 except ImportError: gzip = None
 import sys
 
+class Please_pass_string_or_None(object): pass
+
+def input(
+    file_name=None,
+    source_info=Please_pass_string_or_None,
+    lines=None):
+  if (file_name is not None):
+    assert source_info is Please_pass_string_or_None and lines is None
+    if (not file_name.endswith(".gz")):
+      return ext.input(file_name=file_name)
+    if (gzip is None):
+      raise RuntimeError(
+        "gzip module not available: cannot uncompress file %s"
+          % show_string(file_name))
+    return ext.input(
+      source_info=file_name,
+      lines=flex.split_lines(gzip.open(file_name).read()))
+  assert source_info is not Please_pass_string_or_None
+  return ext.input(source_info=source_info, lines=lines)
+
 def show_summary(
       file_name=None,
-      source_info=None,
+      source_info=Please_pass_string_or_None,
       lines=None,
       level_id=None,
       level_id_exception=ValueError,
       out=None,
       prefix=""):
-  if (file_name is not None):
-    assert source_info is None and lines is None
-    if (not file_name.endswith(".gz")):
-      pdb_inp = input(file_name=file_name)
-    else:
-      if (gzip is None):
-        raise RuntimeError(
-          "gzip module not available: cannot uncompress file %s"
-            % show_string(file_name))
-      pdb_inp = input(
-        source_info=file_name,
-        lines=flex.split_lines(gzip.open(file_name).read()))
-  else:
-    assert file_name is None
-    pdb_inp = input(source_info=source_info, lines=lines)
+  pdb_inp = input(file_name=file_name, source_info=source_info, lines=lines)
   print >> out, prefix+"source info:", pdb_inp.source_info()
   hierarchy = pdb_inp.construct_hierarchy()
   overall_counts = hierarchy.overall_counts()
