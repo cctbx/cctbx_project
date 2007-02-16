@@ -44,6 +44,17 @@ const char* unsupported_width() { return "unsupported width."; }
 
 static
 void
+fill_with_stars(unsigned width, char* result)
+{
+  while (width) {
+    *result++ = '*';
+    width--;
+  }
+  *result = '\0';
+}
+
+static
+void
 encode_pure(
   const char* digits,
   unsigned digits_size,
@@ -88,13 +99,19 @@ decode_pure(
   unsigned i = 0;
   for(;i<s_size;i++) {
     si = s[i];
-    if (si < 0 || si > 127) return invalid_number_literal();
+    if (si < 0 || si > 127) {
+      *result = 0;
+      return invalid_number_literal();
+    }
     if (si == ' ') {
       if (!have_non_blank) continue;
       value *= digits_size;
     }
     else if (si == '-') {
-      if (have_non_blank) return invalid_number_literal();
+      if (have_non_blank) {
+        *result = 0;
+        return invalid_number_literal();
+      }
       have_non_blank = 1;
       have_minus = 1;
       continue;
@@ -102,7 +119,10 @@ decode_pure(
     else {
       have_non_blank = 1;
       dv = digits_values[si];
-      if (dv < 0) return invalid_number_literal();
+      if (dv < 0) {
+        *result = 0;
+        return invalid_number_literal();
+      }
       value *= digits_size;
       value += dv;
     }
@@ -170,8 +190,10 @@ hy36encode(unsigned width, int value, char* result)
     }
   }
   else {
+    fill_with_stars(width, result);
     return unsupported_width();
   }
+  fill_with_stars(width, result);
   return value_out_of_range();
 }
 
@@ -209,12 +231,18 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
     for(i=0;i<128U;i++) digits_values_lower[i] = -1;
     for(i=0;i<36U;i++) {
       di = digits_upper()[i];
-      if (di < 0 || di > 127) return ie_range;
+      if (di < 0 || di > 127) {
+        *result = 0;
+        return ie_range;
+      }
       digits_values_upper[di] = i;
     }
     for(i=0;i<36U;i++) {
       di = digits_lower()[i];
-      if (di < 0 || di > 127) return ie_range;
+      if (di < 0 || di > 127) {
+        *result = 0;
+        return ie_range;
+      }
       digits_values_lower[di] = i;
     }
   }
@@ -227,7 +255,10 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
           /* result - 10*36**(width-1) + 10**width */
           if      (width == 4U) (*result) -= 456560;
           else if (width == 5U) (*result) -= 16696160;
-          else return unsupported_width();
+          else {
+            *result = 0;
+            return unsupported_width();
+          }
           return 0;
         }
       }
@@ -237,17 +268,24 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
           /* result + 16*36**(width-1) + 10**width */
           if      (width == 4U) (*result) += 756496;
           else if (width == 5U) (*result) += 26973856;
-          else return unsupported_width();
+          else {
+            *result = 0;
+            return unsupported_width();
+          }
           return 0;
         }
       }
       else {
         diag = decode_pure(digits_values_upper, 10U, s, s_size, result);
         if (diag) return diag;
-        if (!(width == 4U || width == 5U)) return unsupported_width();
+        if (!(width == 4U || width == 5U)) {
+          *result = 0;
+          return unsupported_width();
+        }
         return 0;
       }
     }
   }
+  *result = 0;
   return invalid_number_literal();
 }
