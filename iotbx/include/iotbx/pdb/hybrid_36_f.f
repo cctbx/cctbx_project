@@ -15,13 +15,13 @@ C Ralf W. Grosse-Kunstleve, Feb 2007.
 
 C This subroutine is an implementation detail.
       subroutine encode_pure(
-     &  digits,
+     &  digit_set,
      &  width,
      &  value,
      &  result)
       implicit none
 C Input
-      character digits*(*)
+      character digit_set*(*)
       integer width
       integer value
 C Output
@@ -31,7 +31,7 @@ C Local
       integer digits_size
       integer i, j, k, rest, val
 C
-      digits_size = len(digits)
+      digits_size = len(digit_set)
       val = value
       i = 0
       j = 0
@@ -43,7 +43,7 @@ C
         rest = val / digits_size
         k = val - rest * digits_size + 1
         i = i + 1
-        buf(i:i) = digits(k:k)
+        buf(i:i) = digit_set(k:k)
         if (rest .ne. 0) then
           val = rest
           goto 1
