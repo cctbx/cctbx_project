@@ -10,17 +10,30 @@ namespace {
   hy36encode_wrapper(unsigned width, int value)
   {
     char result[16];
+    result[0] = ' ';
     const char* diag = hy36encode(width, value, result);
-    if (diag) throw std::runtime_error(diag);
+    if (diag) {
+      for(unsigned i=0;i<width;i++) {
+        if (result[i] != '*') {
+          throw std::runtime_error("internal error: result not reset.");
+        }
+      }
+      throw std::runtime_error(diag);
+    }
     return std::string(result);
   }
 
   int
   hy36decode_wrapper(unsigned width, std::string const& s)
   {
-    int result;
+    int result = -1;
     const char* diag = hy36decode(width, s.c_str(), s.size(), &result);
-    if (diag) throw std::runtime_error(diag);
+    if (diag) {
+      if (result != 0) {
+        throw std::runtime_error("internal error: result not reset.");
+      }
+      throw std::runtime_error(diag);
+    }
     return result;
   }
 

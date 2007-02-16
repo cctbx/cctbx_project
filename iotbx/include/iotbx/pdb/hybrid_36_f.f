@@ -129,7 +129,8 @@ C
       result = value
       diag_size = 0
       return
-    2 diag = 'invalid number literal.'
+    2 result = 0
+      diag = 'invalid number literal.'
       diag_size = 23
       return
       end
@@ -226,10 +227,13 @@ C
       else
         diag = 'unsupported width.'
         diag_size = 18
-        return
+        goto 1
       endif
       diag = 'value out of range.'
       diag_size = 19
+    1 do 2, i=1,min(max(1,width),len(result))
+        result(i:i) = '*'
+    2 continue
       return
       end
 
@@ -288,6 +292,7 @@ C
         do 1, i=1,36
           di = ichar(digits_upper(i:i))
           if (di .lt. 0 .or. di .gt. 127) then
+            result = 0
             diag = ie_range
             diag_size = len(ie_range)
             return
@@ -297,6 +302,7 @@ C
         do 2, i=1,36
           di = ichar(digits_lower(i:i))
           if (di .lt. 0 .or. di .gt. 127) then
+            result = 0
             diag = ie_range
             diag_size = len(ie_range)
             return
@@ -345,7 +351,8 @@ C                             + 16*36**(width-1) + 10**width
           endif
         endif
       endif
-    3 diag = 'unsupported width.'
+    3 result = 0
+      diag = 'unsupported width.'
       diag_size = 18
       return
       end
@@ -447,50 +454,78 @@ C
     2   continue
       endif
 C
+      s4 = ' '
       call hy36encode(4, -1000, s4, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode range'
       if (diag .ne. 'value out of range.') stop 'error diag range'
+      if (s4 .ne. '****') stop 'no stars range'
+      s4 = ' '
       call hy36encode(4, 2436112, s4, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode range'
       if (diag .ne. 'value out of range.') stop 'error diag range'
+      if (s4 .ne. '****') stop 'no stars range'
+      decoded = -1
       call hy36decode(4, ' abc', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
       call hy36decode(4, 'abc-', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
       call hy36decode(4, 'A=BC', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
 C
+      s5 = ' '
       call hy36encode(5, -10000, s5, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode range'
       if (diag .ne. 'value out of range.') stop 'error diag range'
+      if (s5 .ne. '*****') stop 'no stars range'
+      s5 = ' '
       call hy36encode(5, 87440032, s5, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode range'
       if (diag .ne. 'value out of range.') stop 'error diag range'
+      if (s5 .ne. '*****') stop 'no stars range'
+      decoded = -1
       call hy36decode(5, ' abcd', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
       call hy36decode(5, 'ABCD-', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
       call hy36decode(5, 'a=bcd', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
 C
+      s5 = '====='
       call hy36encode(3, 0, s5(1:3), diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode width'
       if (diag .ne. 'unsupported width.') stop 'error diag width'
+      if (s5 .ne. '***==') stop 'no stars range'
+      decoded = -1
       call hy36decode(3, '  0', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode width'
       if (diag .ne. 'unsupported width.') stop 'error diag width'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
       call hy36decode(3, 'A00', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode width'
       if (diag .ne. 'unsupported width.') stop 'error diag width'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
       call hy36decode(3, 'a00', decoded, diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36decode width'
       if (diag .ne. 'unsupported width.') stop 'error diag width'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
 C
       return
       end
