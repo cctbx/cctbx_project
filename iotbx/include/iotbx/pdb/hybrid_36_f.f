@@ -479,7 +479,7 @@ C
       if (diag_size .eq. 0) stop 'error hy36decode invalid'
       if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
 C
-      call hy36encode(3, 0, s5, diag, diag_size)
+      call hy36encode(3, 0, s5(1:3), diag, diag_size)
       if (diag_size .eq. 0) stop 'error hy36encode width'
       if (diag .ne. 'unsupported width.') stop 'error diag width'
       call hy36decode(3, '  0', decoded, diag, diag_size)
