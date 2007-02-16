@@ -536,6 +536,20 @@ def exercise():
       time_in_seconds=time_in_seconds)
     assert approx_equal(
       human_readable_time_as_seconds(time_units, time_unit), time_in_seconds)
+  #
+  for s,i in {"2000000" : 2000000,
+              "2k" : 2048,
+              "2Kb" : 2048,
+              "2 Kb" : 2048,
+              "5Mb" : 5*1024*1024,
+              "2.5Gb" : 2.5*1024*1024*1024,
+              "1T": 1024*1024*1024*1024,
+              10000 : 10000,
+              5.5 : 5.5,
+              "ten mb" : 0,
+              "ralf" : 0}.items():
+    assert get_memory_from_string(s) == i
+  #
   print "OK"
 
 if (__name__ == "__main__"):
