@@ -87,6 +87,19 @@ namespace mmtbx { namespace masks {
         return scitbx::math::float_int_conversions<f_t, int>::iceil(x);
       }
 
+      static
+      double
+      approx_surface_fraction_under_symmetry(
+        std::size_t n,
+        std::size_t n_solvent,
+        std::size_t space_group_order_z)
+      {
+        std::size_t n_non_solvent = (n - n_solvent)
+                                  * space_group_order_z;
+        if (n_non_solvent >= n) return 0;
+        return static_cast<double>(n - n_non_solvent) / n;
+      }
+
       std::size_t
       compute_accessible_surface(
         cctbx::uctbx::unit_cell const& unit_cell,
@@ -209,9 +222,8 @@ namespace mmtbx { namespace masks {
             s1xz += w3;
           }
         }
-        std::size_t n = data_ref.size();
-        accessible_surface_fraction
-          = static_cast<double>(n - (n - n_solvent) * space_group_order_z) / n;
+        accessible_surface_fraction = approx_surface_fraction_under_symmetry(
+          data_ref.size(), n_solvent, space_group_order_z);
         return n_solvent;
       }
 
@@ -335,9 +347,8 @@ namespace mmtbx { namespace masks {
             end_of_neighbors_loop:;
           }
         }
-        std::size_t n = data_size;
-        contact_surface_fraction
-          = static_cast<double>(n - (n - n_solvent) * space_group_order_z) / n;
+        contact_surface_fraction = approx_surface_fraction_under_symmetry(
+          data_ref.size(), n_solvent, space_group_order_z);
       }
   };
 
