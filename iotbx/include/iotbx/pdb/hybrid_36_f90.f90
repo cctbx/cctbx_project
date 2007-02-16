@@ -112,7 +112,7 @@ contains
 ! Output
     character(len=*), intent(out) :: result
 ! Local
-    integer :: i, j, k, n, rest, val
+    integer :: i, k, n, rest, val
     logical :: negative
 
     n=len(digits)
@@ -238,6 +238,7 @@ contains
     integer :: i, si, dv
     character(len=*), parameter :: invalid_literal_error = 'invalid number literal.'
 ! begin
+    negative=.false.
     i=1
   ! First remove leading blanks, checking for bad characters,
   ! and check if the first non-blank is '-'
@@ -252,7 +253,6 @@ contains
         i=i+1
         exit
       case default
-        negative=.false.
         exit
       end select
       i=i+1
