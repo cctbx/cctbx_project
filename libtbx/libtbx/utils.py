@@ -11,6 +11,33 @@ windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
 
+def get_memory_from_string(mem_str):
+  if type(mem_str)==type(1): return mem_str
+  if type(mem_str)==type(1.): return mem_str
+  mem_str = mem_str.replace(" ","").strip().upper()
+  if mem_str == "": return 0
+  factor=1024
+  for i, greek in enumerate(["K","M","G","T","E","Z","Y","B"]):
+    num_str=None
+    if mem_str[-1]==greek:
+      num_str = mem_str[:-1]
+    if mem_str.find("%sB" % greek)==len(mem_str)-2:
+      num_str = mem_str[:-2]
+    if num_str is not None:
+      try:
+        num = float(num_str)
+      except ValueError, e:
+        num = 0
+      break
+    factor*=1024
+  else:
+    try:
+      num = int(mem_str)
+    except ValueError, e:
+      num = 0
+    factor=1
+  return num*factor
+
 def getenv_bool(variable_name, default=False):
   value = os.environ.get(variable_name, None)
   if (value is None): return default
