@@ -27,14 +27,18 @@ def get_memory_from_string(mem_str):
       try:
         num = float(num_str)
       except ValueError, e:
-        num = 0
+        raise RuntimeError("""
+   The numerical portion of %s is not a valid float
+""" % mem_str)
       break
     factor*=1024
   else:
     try:
       num = int(mem_str)
     except ValueError, e:
-      num = 0
+      raise RuntimeError("""
+   There is no memory unit or valid float in %s
+""" % mem_str)
     factor=1
   return num*factor
 
@@ -546,8 +550,9 @@ def exercise():
               "1T": 1024*1024*1024*1024,
               10000 : 10000,
               5.5 : 5.5,
-              "ten mb" : 0,
-              "ralf" : 0}.items():
+              #"ten mb" : 0,
+              #"ralf" : 0,
+              }.items():
     assert get_memory_from_string(s) == i
   #
   print "OK"
