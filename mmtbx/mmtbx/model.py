@@ -27,6 +27,7 @@ class manager(object):
                      dbe_xray_structure = None,
                      refinement_flags = None,
                      dbe_manager = None,
+                     wilson_b = None,
                      log = None):
     self.log = log
     self.restraints_manager = restraints_manager
@@ -38,6 +39,7 @@ class manager(object):
     self.refinement_flags = refinement_flags
     self.solvent_selection = self._solvent_selection()
     self.solvent_selection_ini = self._solvent_selection()
+    self.wilson_b = wilson_b
     # DBE related
     self.dbe_manager = dbe_manager
     self.dbe_xray_structure = dbe_xray_structure
@@ -125,11 +127,12 @@ class manager(object):
        self.refinement_flags.individual_occupancies = True
        self.refinement_flags.occupancies_individual = [flex.bool(
                                 self.xray_structure.scatterers().size(), True)]
+       #self.xray_structure.convert_to_anisotropic(selection = self.dbe_selection)
        self.refinement_flags.adp_individual_aniso[0].set_selected(
-                                                      self.dbe_selection, False)
+                                                      self.dbe_selection, False) # False
        self.refinement_flags.adp_individual_iso[0].set_selected(
-                                                      self.dbe_selection, True)
-       occs = flex.double(self.xray_structure.scatterers().size(), 0.96)
+                                                      self.dbe_selection, True) # True
+       occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
        self.xray_structure.scatterers().set_occupancies(occs, ~self.dbe_selection)
 
   def write_dbe_pdb_file(self, out = None):
@@ -140,6 +143,9 @@ class manager(object):
     print >> out, pdb.format_scale_records(
                                  unit_cell = self.crystal_symmetry.unit_cell())
     sites_cart = self.xray_structure.select(self.dbe_selection).sites_cart()
+    scatterers = self.xray_structure.select(self.dbe_selection).scatterers()
+    u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(self.xray_structure.unit_cell())
+    u_isos      = self.xray_structure.extract_u_iso_or_u_equiv()
     for i_seq, sc in enumerate(self.xray_structure.select(self.dbe_selection).scatterers()):
         print >> out, pdb.format_atom_record(
                                     record_name = "HETATM",
@@ -149,7 +155,15 @@ class manager(object):
                                     resSeq      = i_seq+1,
                                     site        = sites_cart[i_seq],
                                     occupancy   = sc.occupancy,
-                                    tempFactor  = adptbx.u_as_b(sc.u_iso),
+                                    tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
+                                    element     = sc.label)
+        if(scatterers[i_seq].flags.use_u_aniso()):
+           print >> out, pdb.format_anisou_record(
+                                    serial      = i_seq+1,
+                                    name        = sc.label,
+                                    resName     = "DBE",
+                                    resSeq      = i_seq+1,
+                                    u_cart      = u_carts[i_seq],
                                     element     = sc.label)
 
   def show_rigid_bond_test(self, out=None):
@@ -608,195 +622,285 @@ class manager(object):
     time_model_show += timer.elapsed()
     return stereochemistry_statistics_obj
 
-  def adp_statistics(self, iso_restraints,
-                           other    = None,
-                           wilson_b = None,
-                           tan_b_iso_max= None,
-                           show     = False,
-                           text     = ""):
+  def geometry_statistics_simple(self, show = False, prefix = "", out = None):
     global time_model_show
     timer = user_plus_sys_time()
-    if(other is not None):
-       adp_statistics_obj = adp_statistics(
-                             xray_structure         = self.xray_structure,
-                             #anisotropic_flags      = self.anisotropic_flags,
-                             xray_structure_ref     = other.xray_structure,
-                             restraints_manager     = self.restraints_manager,
-                             restraints_manager_ref = other.restraints_manager,
-                             iso_restraints         = iso_restraints,
-                             wilson_b               = wilson_b,
-                             tan_b_iso_max          = tan_b_iso_max,
-                             use_dbe                = self.use_dbe,
-                             dbe_selection          = self.dbe_selection,
-                             text                   = text)
+    if(out == None): out = self.log
+    if(self.dbe_selection is not None and self.dbe_selection.count(True) > 0):
+       xray_structure = self.xray_structure.select(~self.dbe_selection)
+       solvent_selection = self.solvent_selection.select(~self.dbe_selection)
     else:
-       adp_statistics_obj = adp_statistics(
-                          xray_structure         = self.xray_structure,
-                          #anisotropic_flags      = self.anisotropic_flags,
-                          xray_structure_ref     = self.xray_structure_ini,
-                          restraints_manager     = self.restraints_manager,
-                          restraints_manager_ref = self.restraints_manager_ini,
-                          iso_restraints         = iso_restraints,
-                          tan_b_iso_max          = tan_b_iso_max,
-                          wilson_b               = wilson_b,
-                          use_dbe                = self.use_dbe,
-                          dbe_selection          = self.dbe_selection,
-                          text                   = text)
-    if(show == 1): adp_statistics_obj.show_short(out = self.log)
-    if(show == 2): adp_statistics_obj.show(out = self.log)
+       xray_structure = self.xray_structure
+       solvent_selection = self.solvent_selection
+    geometry_statistics_obj = geometry_statistics(
+                    xray_structure     = xray_structure.deep_copy_scatterers(),
+                    restraints_manager = self.restraints_manager,
+                    prefix             = prefix,
+                    out                = out)
+    if(show): geometry_statistics_obj.show()
+    time_model_show += timer.elapsed()
+    return geometry_statistics_obj
+
+  def adp_statistics(self, show     = False,
+                           prefix   = "",
+                           padded   = False,
+                           out      = None):
+    global time_model_show
+    timer = user_plus_sys_time()
+    if(out == None): out = self.log
+    if(self.dbe_selection is not None and self.dbe_selection.count(True) > 0):
+       xray_structure = self.xray_structure.select(~self.dbe_selection)
+       solvent_selection = self.solvent_selection.select(~self.dbe_selection)
+    else:
+       xray_structure = self.xray_structure
+       solvent_selection = self.solvent_selection
+    adp_statistics_obj = adp_statistics(
+                     xray_structure    = xray_structure.deep_copy_scatterers(),
+                     solvent_selection = solvent_selection.deep_copy(),
+                     wilson_b          = self.wilson_b,
+                     prefix            = prefix,
+                     padded            = padded,
+                     out               = out)
+    if(show): adp_statistics_obj.show()
     time_model_show += timer.elapsed()
     return adp_statistics_obj
 
+class geometry_statistics(object):
+  def __init__(self,
+               xray_structure,
+               restraints_manager,
+               prefix        = "",
+               out           = None):
+    if(out is None): out = sys.stdout
+    self.out = out
+    self.prefix = prefix
+    self.xray_structure = xray_structure
+    self.restraints_manager = restraints_manager
+    self.a_target, self.a_mean, self.a_max, self.a_min = 0.,0.,0.,0.
+    self.b_target, self.b_mean, self.b_max, self.b_min = 0.,0.,0.,0.
+    self.c_target, self.c_mean, self.c_max, self.c_min = 0.,0.,0.,0.
+    self.d_target, self.d_mean, self.d_max, self.d_min = 0.,0.,0.,0.
+    self.p_target, self.p_mean, self.p_max, self.p_min = 0.,0.,0.,0.
+    self.n_target, self.n_mean, self.n_max, self.n_min = 0.,0.,0.,0.
+    self.target = 0.
+    energies_sites = restraints_manager.energies_sites(
+                               sites_cart        = xray_structure.sites_cart(),
+                               compute_gradients = False)
+    self.esg      = energies_sites.geometry
+    self.b_target = self.esg.bond_residual_sum
+    self.a_target = self.esg.angle_residual_sum
+    self.d_target = self.esg.dihedral_residual_sum
+    self.c_target = self.esg.chirality_residual_sum
+    self.n_target = self.esg.nonbonded_residual_sum
+    self.p_target = self.esg.planarity_residual_sum
+    self.b_min, self.b_max, self.b_mean = self.esg.bond_deviations()
+    self.n_min, self.n_max, self.n_mean = self.esg.nonbonded_deviations()
+    self.a_min, self.a_max, self.a_mean = self.esg.angle_deviations()
+    self.d_min, self.d_max, self.d_mean = self.esg.dihedral_deviations()
+    self.c_min, self.c_max, self.c_mean = self.esg.chirality_deviations()
+    self.p_min, self.p_max, self.p_mean = self.esg.planarity_deviations()
+    self.target               = self.esg.target # XXX not normalized, I presume ?!
+    self.number_of_restraints = self.esg.number_of_restraints # XXX not normalized !
+
+  def show_bond_angle_nonbonded_histogram(self, n_slots = 10, out = None):
+    if(out is None): out = self.out
+    prefix = self.prefix
+    rmg = self.restraints_manager.geometry
+    bond_deltas = geometry_restraints.bond_deltas(
+                         sites_cart         = self.xray_structure.sites_cart(),
+                         sorted_asu_proxies = rmg.pair_proxies().bond_proxies)
+    angle_deltas = geometry_restraints.angle_deltas(
+                                 sites_cart = self.xray_structure.sites_cart(),
+                                 proxies    = rmg.angle_proxies)
+    nonbonded_distances = self.esg.nonbonded_distances()
+    h_1 = flex.histogram(data = flex.abs(bond_deltas),  n_slots = n_slots)
+    h_2 = flex.histogram(data = flex.abs(angle_deltas), n_slots = n_slots)
+    h_3 = flex.histogram(data = flex.abs(nonbonded_distances), n_slots=n_slots)
+    print >> out, prefix+"|------------------------------------------------------------|"
+    print >> out, prefix+"|        Histogram of deviations from ideal values for       |"
+    print >> out, prefix+"|Bonds             |Angles                |Nonbonded contacts|"
+    format = "|%5.3f-%5.3f:%6d|%7.3f-%7.3f:%6d|%5.3f-%5.3f:%6d|"
+    lc_1 = h_1.data_min()
+    lc_2 = h_2.data_min()
+    lc_3 = h_3.data_min()
+    s_1 = enumerate(h_1.slots())
+    s_2 = enumerate(h_2.slots())
+    s_3 = enumerate(h_3.slots())
+    for (i_1,n_1),(i_2,n_2),(i_3,n_3) in zip(s_1, s_2, s_3):
+        hc_1 = h_1.data_min() + h_1.slot_width() * (i_1+1)
+        hc_2 = h_2.data_min() + h_2.slot_width() * (i_2+1)
+        hc_3 = h_3.data_min() + h_3.slot_width() * (i_3+1)
+        print >> out, prefix+format % (lc_1,hc_1,n_1, lc_2,hc_2,n_2, lc_3,hc_3,n_3)
+        lc_1 = hc_1
+        lc_2 = hc_2
+        lc_3 = hc_3
+    out.flush()
+    print >> out, prefix+"|------------------------------------------------------------|"
+    out.flush()
+
+  def show(self, out = None):
+    if(out is None): out = self.out
+    prefix = self.prefix
+    fmt1 = "|%7.3f%8.3f%7.3f|%12.3f|              |"
+    fmt2 = "|%7.3f%8.3f%7.3f|%12.3f|%12.3f  |"
+    print >> out, prefix+"|-Geometry statistics----------------------------------------|"
+    print >> out, prefix+"|Type     | Deviation from ideal |   Targets  |Target (sum)  |"
+    print >> out, prefix+"|         |  mean     max    min |            |              |"
+    print >> out, prefix+"|bond     "+fmt1%(self.b_mean,self.b_max,self.b_min,self.b_target)
+    print >> out, prefix+"|angle    "+fmt1%(self.a_mean,self.a_max,self.a_min,self.a_target)
+    print >> out, prefix+"|chirality"+fmt2%(self.c_mean,self.c_max,self.c_min,self.c_target,self.target)
+    print >> out, prefix+"|planarity"+fmt1%(self.p_mean,self.p_max,self.p_min,self.p_target)
+    print >> out, prefix+"|dihedral "+fmt1%(self.d_mean,self.d_max,self.d_min,self.d_target)
+    print >> out, prefix+"|nonbonded"+fmt1%(self.n_mean,self.n_max,self.n_min,self.n_target)
+    print >> out, prefix+"|------------------------------------------------------------|"
+    self.show_bond_angle_nonbonded_histogram(out = out)
+    out.flush()
 
 class adp_statistics(object):
   def __init__(self,
                xray_structure,
-               xray_structure_ref,
-               #anisotropic_flags,
-               restraints_manager,
-               restraints_manager_ref,
-               iso_restraints,
-               wilson_b = None,
-               tan_b_iso_max = None,
-               use_dbe=None,
-               dbe_selection=None,
-               text = ""):
-    adopt_init_args(self, locals())
-    if(self.use_dbe):
-       xray_structure = xray_structure.select(~self.dbe_selection)
-       xray_structure_ref = xray_structure_ref.select(~self.dbe_selection)
-    energies_adp_iso = restraints_manager.energies_adp_iso(
-                                            xray_structure    = xray_structure,
-                                            parameters        = iso_restraints,
-                                            wilson_b          = wilson_b,
-                                            use_u_local_only  = iso_restraints.use_u_local_only,
-                                            tan_b_iso_max     = tan_b_iso_max,
-                                            compute_gradients = True)
-    energies_adp_iso_ref = restraints_manager_ref.energies_adp_iso(
-                                        xray_structure    = xray_structure_ref,
-                                        parameters        = iso_restraints,
-                                        wilson_b          = wilson_b,
-                                        use_u_local_only  = iso_restraints.use_u_local_only,
-                                        tan_b_iso_max     = tan_b_iso_max,
-                                        compute_gradients = True)
+               solvent_selection,
+               wilson_b      = None,
+               prefix        = "",
+               padded        = False,
+               out           = None):
+    if(out is None): out = sys.stdout
+    self.out = out
+    self.wilson_b = wilson_b
+    self.prefix = prefix
+    self.padded = padded
     eps = math.pi**2*8
-    self.b_isos = xray_structure.extract_u_iso_or_u_equiv() * eps
-    self.b_isos_ref = xray_structure_ref.extract_u_iso_or_u_equiv() * eps
-    # XXX TODO NCS restraints
-    # XXX RALF/PAVEL show NCS statistics
-    self.b_iso_min  = flex.min_default(self.b_isos, 0)
-    self.b_iso_max  = flex.max_default(self.b_isos, 0)
-    self.b_iso_mean = flex.mean_default(self.b_isos, 0)
-    self.b_iso_min_ref  = flex.min_default(self.b_isos_ref, 0)
-    self.b_iso_max_ref  = flex.max_default(self.b_isos_ref, 0)
-    self.b_iso_mean_ref = flex.mean_default(self.b_isos_ref, 0)
-    self.target_adp_iso = energies_adp_iso.target
-    self.grad_adp_iso = energies_adp_iso.gradients
-    self.target_adp_iso_ref = energies_adp_iso_ref.target
-    self.grad_adp_iso_ref = energies_adp_iso_ref.gradients
-    self.norm_of_grad_adp_iso = self.grad_adp_iso.norm()
-    self.norm_of_grad_adp_iso_ref = self.grad_adp_iso_ref.norm()
-    self.n_zero = (self.b_isos < 1.0).count(True)
-    self.n_zero_ref = (self.b_isos_ref < 1.0).count(True)
-    self.n_100 = (self.b_isos > 100.0).count(True)
-    self.n_100_ref = (self.b_isos_ref > 100.0).count(True)
+    scattering_types = xray_structure.scatterers().extract_scattering_types()
+    hd_selection = (scattering_types == "D") | (scattering_types == "H")
+    # XXX too generous but safe and quick
+    xs_all = xray_structure.deep_copy_scatterers()
+    xs_hyd = xs_all.select(hd_selection)
+    xs_all = xs_all.select(~hd_selection)
+    solvent_selection = solvent_selection.select(~hd_selection)
+    xs_sol = xs_all.select(solvent_selection)
+    xs_mac = xs_all.select(~solvent_selection)
+    #
+    self.b_isos_all = xs_all.extract_u_iso_or_u_equiv() * eps
+    b_isos_sol = xs_sol.extract_u_iso_or_u_equiv() * eps
+    b_isos_mac = xs_mac.extract_u_iso_or_u_equiv() * eps
+    b_isos_hyd = xs_hyd.extract_u_iso_or_u_equiv() * eps
+    #
+    self.b_min_all, self.b_max_all, self.b_mean_all = \
+                              self._min_max_mean_default(self.b_isos_all, None)
+    self.b_min_sol, self.b_max_sol, self.b_mean_sol = \
+                                   self._min_max_mean_default(b_isos_sol, None)
+    self.b_min_mac, self.b_max_mac, self.b_mean_mac = \
+                                   self._min_max_mean_default(b_isos_mac, None)
+    self.b_min_hyd, self.b_max_hyd, self.b_mean_hyd = \
+                                   self._min_max_mean_default(b_isos_hyd, None)
+    #
+    sel_aniso_all = xs_all.use_u_aniso()
+    sel_aniso_sol = xs_sol.use_u_aniso()
+    sel_aniso_mac = xs_mac.use_u_aniso()
+    sel_aniso_hyd = xs_hyd.use_u_aniso()
+    sel_iso_all   = xs_all.use_u_iso()
+    sel_iso_sol   = xs_sol.use_u_iso()
+    sel_iso_mac   = xs_mac.use_u_iso()
+    sel_iso_hyd   = xs_hyd.use_u_iso()
+    self.n_aniso_all = sel_aniso_all.count(True)
+    self.n_aniso_sol = sel_aniso_sol.count(True)
+    self.n_aniso_mac = sel_aniso_mac.count(True)
+    self.n_aniso_hyd = sel_aniso_hyd.count(True)
+    self.n_iso_all = sel_iso_all.count(True)
+    self.n_iso_sol = sel_iso_sol.count(True)
+    self.n_iso_mac = sel_iso_mac.count(True)
+    self.n_iso_hyd = sel_iso_hyd.count(True)
+    #
+    uc = xs_all.unit_cell()
+    self.a_all = xs_all.scatterers().anisotropy(unit_cell = uc).select(sel_aniso_all)
+    a_sol      = xs_sol.scatterers().anisotropy(unit_cell = uc).select(sel_aniso_sol)
+    a_mac      = xs_mac.scatterers().anisotropy(unit_cell = uc).select(sel_aniso_mac)
+    a_hyd      = xs_hyd.scatterers().anisotropy(unit_cell = uc).select(sel_aniso_hyd)
+    self.a_min_all, self.a_max_all, self.a_mean_all = \
+                                   self._min_max_mean_default(self.a_all, None)
+    self.a_min_sol, self.a_max_sol, self.a_mean_sol = \
+                                        self._min_max_mean_default(a_sol, None)
+    self.a_min_mac, self.a_max_mac, self.a_mean_mac = \
+                                        self._min_max_mean_default(a_mac, None)
+    self.a_min_hyd, self.a_max_hyd, self.a_mean_hyd = \
+                                        self._min_max_mean_default(a_hyd, None)
 
-  def show(self, out=None):
-    if (out is None): out = sys.stdout
-    line_len = len("| "+self.text+"|")
-    fill_len = 80 - line_len-1
-    ends1 = " "*36 + "|"
-    ends2 = " "*32 + "|"
-    p = " "
-    v = "|"
-    print >> out
-    print >> out, "|-"+self.text+"-"*(fill_len)+"|"
-    if(self.wilson_b is not None):
-       print >> out, "| Wilson B =%8.3f | target = %12.5f | norm of gradient "\
-                  "= %11.5f |"%(self.wilson_b,self.target_adp_iso,
-                                                     self.norm_of_grad_adp_iso)
-    else:
-       print >> out, "| Wilson B = %7s | target = %12.5f | norm of gradient "\
-                  "= %11.5f |"%(str(None),self.target_adp_iso,
-                                                     self.norm_of_grad_adp_iso)
-    print >> out, "|"+"-"*77+"|"
-    print >> out, "|"+12*" "+"Reference model"+" "*10+"|"+" "*12+\
-                  "Current model"+" "*14+"|"
-    print >> out, "| "+"- "*38+"|"
-    print >> out, "|                           Isotropic B-factors:        "\
-                  "                      |"
-    print >> out, "|     min      max      mean          |     min      max "\
-                  "     mean            |"
-    print >> out, "| %7.3f  %7.3f   %7.3f   "%\
-                  (self.b_iso_min_ref,self.b_iso_max_ref,self.b_iso_mean_ref),\
-                  "      | %7.3f  %7.3f   %7.3f            |"%\
-                  (self.b_iso_min,self.b_iso_max,self.b_iso_mean)
-    print >> out, "| number of B < 0.5:%6d"%self.n_zero_ref,"           | ",\
-                  "number of B < 0.5:%6d             |"%self.n_zero
-    print >> out, "| "+"- "*38+"|"
-    print >> out, "|                     Distribution of isotropic B-factors:"\
-                  "                    |"
-    histogram_1 = flex.histogram(data = self.b_isos_ref, n_slots = 10)
-    low_cutoff_1 = histogram_1.data_min()
-    histogram_2 = flex.histogram(data = self.b_isos, n_slots = 10)
-    low_cutoff_2 = histogram_2.data_min()
-    for (i_1,n_1),(i_2,n_2) in zip(enumerate(histogram_1.slots()),
-                                   enumerate(histogram_2.slots())):
-      high_cutoff_1 = histogram_1.data_min() + histogram_1.slot_width()*(i_1+1)
-      high_cutoff_2 = histogram_2.data_min() + histogram_2.slot_width()*(i_2+1)
-      print >> out, "|  %9.3f -%9.3f:%8d      |    %9.3f -%9.3f:%8d      |" % \
-             (low_cutoff_1,high_cutoff_1,n_1,low_cutoff_2,high_cutoff_2,n_2)
+  def _min_max_mean_default(self, values, default):
+    return flex.min_default(values, default), \
+           flex.max_default(values, default), \
+           flex.mean_default(values, default)
+
+  def _fmtl(self,a,b,c,d,e,f,g,h, pad):
+    n = []
+    for item in [a,b,c,d,e,f,g,h]:
+      if(item is None): item = str(item)
+      elif(str(item).count(".")): item = str("%8.2f"%item).strip()
+      else: item = str("%6d"%item).strip()
+      n.append(item)
+    fmt = "%-6s %-6s %-8s%-8s%-8s %-6s%-7s%-7s"+pad+"|"
+    return fmt%(n[0],n[1],n[2],n[3],n[4],n[5],n[6],n[7])
+
+  def _histogram(self, values, out, pad_l,pad_r):
+    result = []
+    histogram = flex.histogram(data = values, n_slots = 10)
+    # n_slots must be even
+    low_cutoff_1 = histogram.data_min()
+    for (i_1,n_1) in enumerate(histogram.slots()):
+      high_cutoff_1 = histogram.data_min() + histogram.slot_width()*(i_1+1)
+      result.append([i_1,low_cutoff_1,high_cutoff_1,n_1])
       low_cutoff_1 = high_cutoff_1
-      low_cutoff_2 = high_cutoff_2
-    print >> out, "| "+"- "*38+"|"
-    #p0 = "| Number of anisotropically refinable ADP = "
-    #p1 = str("%d"%self.anisotropic_flags.count(True))
-    #p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
-    #n = 79 - len(p0+p1+p2+"|")
-    #print >> out, p0+p1+p2+" "*n+"|"
-    print >> out, "|"+"-"*77+"|"
-    print >> out
-    out.flush()
+    result1, result2 = result[:len(result)/2], result[len(result)/2:]
+    fmt = "|"+pad_l+"   %d:%10.3f -%8.3f:%5d   |   %d:%10.3f -%8.3f:%5d    "+pad_r+"|"
+    for r1, r2 in zip(result1, result2):
+      print >> out, self.prefix+fmt%(r1[0],r1[1],r1[2],r1[3], r2[0],r2[1],r2[2],r2[3])
+    print >> out, self.prefix+"|"+pad_l+"                            =>continue=>                              "+pad_r+"|"
 
-  def show_short(self, out = None):
-    if (out is None): out = sys.stdout
-    line_len = len("| "+self.text+"|")
-    fill_len = 80 - line_len-1
-    ends1 = " "*36 + "|"
-    ends2 = " "*32 + "|"
-    p = " "
-    v = "|"
-    print >> out
-    print >> out, "|-"+self.text+"-"*(fill_len)+"|"
+  def show(self, out = None, padded = None):
+    prefix = self.prefix
+    if(padded is None): padded = self.padded
+    if(out is None): out = self.out
+    pad_l, pad_r = "", ""
+    if(padded):
+       pad_l = " "*3
+       pad_r = " "*4
+    #
     if(self.wilson_b is not None):
-       line = "|                             Wilson B = "+\
-              str("%6.2f"%self.wilson_b).strip()
-       np = 79 - (len(line) + 1)
-       line = line + " "*np + "|"
-       print >> out, line
-    print >> out, "| "+"  "*38+"|"
-    print >> out, "| Reference model:                    | Current model:   "\
-                  "                     |"
-    print >> out, "|     min      max      mean          |     min      max "\
-                  "     mean            |"
-    print >> out, "| %7.3f  %7.3f   %7.3f   "%\
-                  (self.b_iso_min_ref,self.b_iso_max_ref,self.b_iso_mean_ref),\
-                  "      | %7.3f  %7.3f   %7.3f            |"%\
-                  (self.b_iso_min,self.b_iso_max,self.b_iso_mean)
-    print >> out, "| number of B <   1.0: %-6d"%self.n_zero_ref,"        | ",\
-                  "number of B <   1.0: %-6d          |"%self.n_zero
-    print >> out, "| number of B > 100.0: %-6d"%self.n_100_ref,"        | ",\
-                  "number of B > 100.0: %-6d          |"%self.n_100
-    print >> out, "| "+"  "*38+"|"
-    #p0 = "| Number of anisotropically refinable ADP = "
-    #p1 = str("%d"%self.anisotropic_flags.count(True))
-    #p2 = " out of "+str("%d"%self.anisotropic_flags.size())+" total"
-    #n = 79 - len(p0+p1+p2+"|")
-    #print >> out, p0+p1+p2+" "*n+"|"
-    print >> out, "|"+"-"*77+"|"
-    print >> out
+       bw = str("%9.3f"%self.wilson_b).strip()
+       s1 = "|-ADP statistics (Wilson B = "+bw+")"
+    else:
+       s1 = "|-ADP statistics"
+    if(padded): s1 = s1 + "-"*( 79-len(s1+"|") ) + "|"
+    else: s1 = s1 + "-"*( 72-len(s1+"|") ) + "|"
+    print >> out, prefix+s1
+    #
+    print >> out, prefix+"|"+pad_l+" Atom    | Number of   | Isotropic or equivalent| Anisotropy lmin/max "+pad_r+"|"
+    print >> out, prefix+"|"+pad_l+" type    |iso    aniso | min     max     mean   | min   max    mean   "+pad_r+"|"
+    print >> out, prefix+"|"+pad_l+" - - - - |- - - - - - -| - - - - - - - - - - - -| - - - - - - - - - - "+pad_r+"|"
+    #
+    print >> out, prefix+"|"+pad_l+" Solv+Mac: "+self._fmtl(self.n_iso_all,self.n_aniso_all,self.b_min_all,self.b_max_all,self.b_mean_all,self.a_min_all,self.a_max_all,self.a_mean_all,pad_r)
+    print >> out, prefix+"|"+pad_l+" Sol.    : "+self._fmtl(self.n_iso_sol,self.n_aniso_sol,self.b_min_sol,self.b_max_sol,self.b_mean_sol,self.a_min_sol,self.a_max_sol,self.a_mean_sol,pad_r)
+    print >> out, prefix+"|"+pad_l+" Mac.    : "+self._fmtl(self.n_iso_mac,self.n_aniso_mac,self.b_min_mac,self.b_max_mac,self.b_mean_mac,self.a_min_mac,self.a_max_mac,self.a_mean_mac,pad_r)
+    print >> out, prefix+"|"+pad_l+" Hyd.    : "+self._fmtl(self.n_iso_hyd,self.n_aniso_hyd,self.b_min_hyd,self.b_max_hyd,self.b_mean_hyd,self.a_min_hyd,self.a_max_hyd,self.a_mean_hyd,pad_r)
+    print >> out, prefix+"|"+pad_l+" "+"- "*34+pad_r+" |"
+    #
+    name = "|"+pad_l+"    Distribution of isotropic (or equivalent) ADP for non-H atoms:    "+pad_r+"|"
+    print >> out, self.prefix+name
+    print >> out, self.prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|"
+    self._histogram(values = self.b_isos_all, out = out, pad_l=pad_l,pad_r=pad_r)
+    #
+    if([self.a_min_all,self.a_max_all,self.a_mean_all].count(None) == 0 and
+       abs(self.a_min_all+self.a_max_all+self.a_mean_all-3) > 0.001):
+       print >> out, prefix+"|"+pad_l+" "+"- "*34+pad_r+" |"
+       name = "|"+pad_l+"                     Distribution of anisotropy:                      "+pad_r+"|"
+       print >> out, self.prefix+name
+       print >> out, self.prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|"
+       self._histogram(values = self.a_all, out = out, pad_l=pad_l,pad_r=pad_r)
+    #
+    if(padded): print >> out, prefix+"|"+"-"*77+"|"
+    else: print >> out, prefix+"|"+"-"*70+"|"
     out.flush()
 
+# XXX This below will retire soon: too complex, hard to maintain
 class stereochemistry_statistics(object):
   def __init__(self,
                xray_structure,
