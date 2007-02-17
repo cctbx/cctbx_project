@@ -57,6 +57,8 @@ class twin_fraction_object(object):
   def twin_fraction_to_ref( self ):
     tmp = self.twin_fraction - self.min_frac
     tmp = (self.max_frac-self.min_frac)/tmp -1.0
+    if tmp < 1e-70:
+      tmp = 1e-70
     tmp = -math.log( tmp )
     return tmp
 
@@ -178,17 +180,19 @@ class scaling_parameters_object(object):
     if self.k_part > 0:
       return math.log( self.k_part )
     else:
-      return None
+      return 0
   def u_sol_to_ref(self):
     if self.u_sol > 0:
       return math.log( self.u_sol )
     else:
-     return None
+     return -1000.0
+
   def u_part_to_ref(self):
     if self.u_part>0:
       return math.log( self.u_part )
     else:
-      return None
+      return -1000.0
+
   def u_star_to_ref(self):
     # first we pick the independent parameters
     tmp = self.xs.space_group().adp_constraints(
@@ -277,7 +281,7 @@ class de_bulk_solvent_scaler(object):
      cr=0.7,
      n_cross=2,
      eps=1e-12,
-     show_progress=True
+     show_progress=False#True
     )
 
   def update_parameters(self, vector):
@@ -1081,6 +1085,7 @@ class twin_model_manager(object):
                   k_sol         = None,
                   b_sol         = None,
                   u_sol         = None,
+                  k_overall     = None,
                   twin_fraction = None,
                   r_free_flags  = None):
     if f_calc is not None:
@@ -1119,6 +1124,12 @@ class twin_model_manager(object):
     else:
       self.data_core.ksol( self.scaling_parameters.k_sol )
 
+    if k_overall is not None:
+      self.scaling_parameters.k_overall = k_overall
+      self.data_core.koverall( self.scaling_parameters.k_overall )
+    else:
+      self.data_core.koverall( self.scaling_parameters.k_overall )
+
     if b_cart is not None:
       u_star = adptbx.u_cart_as_u_star( self.xs.unit_cell(), adptbx.b_as_u( list(b_cart) ) )
       self.data_core.ustar(u_star)
@@ -1137,7 +1148,8 @@ class twin_model_manager(object):
                    abcd                = None,
                    alpha_beta_params   = None,
                    xray_structure      = None,
-                   mask_params         = None):
+                   mask_params         = None,
+                   overall_scale       = None):
 
     if(f_calc is not None):
        assert f_calc.indices().all_eq(self.f_model.indices())
@@ -1162,6 +1174,9 @@ class twin_model_manager(object):
       try: assert b_cart.size() == 6
       except: assert len(b_cart) == 6
       self.update_core(b_cart = b_cart)
+    if overall_scale is not None:
+      self.scaling_parameters.k_overall = overall_scale
+      self.update_core()
 
 
 
@@ -1889,6 +1904,11 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     np = 79 - (len(line5) + 1)
     line5 = line5 + " "*np + "|"
     print >> out, line5
+    print >> out, "| "+"  "*38+"|"
+    line5_and_a_half = "| Twin law : %s     Twin fraction: %4.3f"%(self.twin_law.r().as_hkl(),self.twin_fraction_object.twin_fraction)
+    np = 79 - (len(line5_and_a_half) + 1)
+    line5_and_a_half = line5_and_a_half + " "*np + "|"
+    print >> out, line5_and_a_half
     print >> out, "| "+"  "*38+"|"
     line6="| Target ("+self.target_name+")= "+target_work+\
           " | ML estimate for coordinates error: "+err+" A"
