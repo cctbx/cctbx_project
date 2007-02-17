@@ -9,6 +9,7 @@ import sys, time
 from libtbx.test_utils import approx_equal
 from libtbx.utils import user_plus_sys_time
 import cctbx.adp_restraints
+from cctbx import adptbx
 
 time_site_individual = 0.0
 
@@ -39,7 +40,9 @@ class lbfgs(object):
                      wxnu_scale               = None,
                      occupancy_max            = None,
                      occupancy_min            = None,
-                     h_params                 = None):
+                     h_params                 = None,
+                     u_min                    = adptbx.b_as_u(-100.0),
+                     u_max                    = adptbx.b_as_u(1000.0)):
     global time_site_individual
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
@@ -180,6 +183,12 @@ class lbfgs(object):
     time_site_individual += timer.elapsed()
 
   def apply_shifts(self):
+    # XXX inefficient
+    if(self.refine_adp):
+       sel = self.x < self.u_min
+       if(sel.count(True) > 0): self.x.set_selected(sel, self.u_min)
+       sel = self.x > self.u_max
+       if(sel.count(True) > 0): self.x.set_selected(sel, self.u_max)
     apply_shifts_result = xray.ext.minimization_apply_shifts(
                               unit_cell      = self.xray_structure.unit_cell(),
                               scatterers     = self._scatterers_start,
@@ -225,12 +234,13 @@ class lbfgs(object):
        #      sf = sf.set_selected(self.hd_selection, 0.0)
        self.g = sf * self.wx
 #######################
-    if(self.refine_xyz and self.model.use_dbe):
+    if(self.refine_xyz and self.model.use_dbe and
+                  self.model.dbe_manager.restraints_selection.count(True) > 0):
        self.model.dbe_manager.target_and_gradients(
                               sites_cart    = self.xray_structure.sites_cart(),
                               dbe_selection = self.model.dbe_selection)
        erdbe = self.model.dbe_manager
-       if(self.wxc_dbe is None):
+       if(self.wxc_dbe is None and not (self.wxc_dbe > 0.0)):
           self.wxc_dbe = erdbe.gradients.norm() / sf.norm()
        self.f *= self.wxc_dbe
        self.g *= self.wxc_dbe
@@ -303,7 +313,8 @@ class lbfgs(object):
                              xray_gradients = self.g,
                              site_gradients = sgc*self.wr)
 #######################
-    if(self.refine_xyz and self.model.use_dbe):
+    if(self.refine_xyz and self.model.use_dbe and
+                  self.model.dbe_manager.restraints_selection.count(True) > 0):
        self.f += erdbe.target * erdbe.params.restraints.weight_scale
        if(compute_gradients):
           xray.minimization.add_gradients(
