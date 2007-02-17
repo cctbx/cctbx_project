@@ -8,8 +8,7 @@ import libtbx.load_env
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-
-
+from cStringIO import StringIO
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
@@ -93,9 +92,9 @@ def exercise():
   iso.use_u_local_only = False
 #####
 
-  mol.adp_statistics(iso_restraints = iso, show = True, other = None, wilson_b = None)
+  mol.adp_statistics(show = True)
   print
-  mol.adp_statistics(iso_restraints = iso, show = True, other = mol, wilson_b = None)
+  mol.adp_statistics(show = True)
 
   rm = mol.restraints_manager
 
@@ -104,8 +103,72 @@ def exercise():
   mol_copy.write_pdb_file(out = open("XXXr.pdb","w"))
 
 
+def exercise_2():
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  pdb_file = libtbx.env.find_in_repositories(
+                   relative_path="phenix_regression/pdb/adp_out_stat.pdb", test=os.path.isfile)
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+                                       mon_lib_srv               = mon_lib_srv,
+                                       ener_lib                  = ener_lib,
+                                       file_name                 = pdb_file,
+                                       raw_records               = None,
+                                       force_symmetry            = True)
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  xray_structure = processed_pdb_file.xray_structure()
+  selection = flex.bool(xray_structure.scatterers().size(), True)
+  restraints_manager_ini = mmtbx.restraints.manager(
+                                  geometry      = geometry.select(selection),
+                                  normalization = False)
+  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  mol = mmtbx.model.manager(
+             restraints_manager     = restraints_manager,
+             restraints_manager_ini = restraints_manager_ini,
+             xray_structure         = xray_structure,
+             atom_attributes_list   = aal)
+  mol.xray_structure.scattering_type_registry(table = "wk1995")
+
+  out = StringIO()
+  adp_stat = mol.adp_statistics(show = False, out = out)
+  adp_stat.show()
+  expected_result = \
+  """|-ADP statistics-------------------------------------------------------|
+| Atom    | Number of   | Isotropic or equivalent| Anisotropy lmin/max |
+| type    |iso    aniso | min     max     mean   | min   max    mean   |
+| - - - - |- - - - - - -| - - - - - - - - - - - -| - - - - - - - - - - |
+| Solv+Mac: 9      5      1.45    18.27   15.14    0.03  0.73   0.18   |
+| Sol.    : 1      1      1.45    2.00    1.73     0.73  0.73   0.73   |
+| Mac.    : 8      4      15.00   18.27   17.38    0.03  0.05   0.04   |
+| Hyd.    : 5      2      1.31    17.15   9.04     0.02  0.50   0.26   |
+| - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|
+|    Distribution of isotropic (or equivalent) ADP for non-H atoms:    |
+| Bin#      value range     #atoms | Bin#      value range     #atoms  |
+|   0:     1.450 -   3.132:    2   |   5:     9.860 -  11.542:    0    |
+|   1:     3.132 -   4.814:    0   |   6:    11.542 -  13.224:    0    |
+|   2:     4.814 -   6.496:    0   |   7:    13.224 -  14.906:    0    |
+|   3:     6.496 -   8.178:    0   |   8:    14.906 -  16.588:    1    |
+|   4:     8.178 -   9.860:    0   |   9:    16.588 -  18.270:   11    |
+|                            =>continue=>                              |
+| - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -|
+|                     Distribution of anisotropy:                      |
+| Bin#      value range     #atoms | Bin#      value range     #atoms  |
+|   0:     0.028 -   0.098:    4   |   5:     0.377 -   0.447:    0    |
+|   1:     0.098 -   0.168:    0   |   6:     0.447 -   0.517:    0    |
+|   2:     0.168 -   0.238:    0   |   7:     0.517 -   0.587:    0    |
+|   3:     0.238 -   0.307:    0   |   8:     0.587 -   0.657:    0    |
+|   4:     0.307 -   0.377:    0   |   9:     0.657 -   0.726:    1    |
+|                            =>continue=>                              |
+|----------------------------------------------------------------------|
+"""
+  assert out.getvalue() == expected_result
+
 def run():
   exercise()
+  exercise_2()
 
 if (__name__ == "__main__"):
   run()
