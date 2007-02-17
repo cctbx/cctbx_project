@@ -90,10 +90,10 @@ class manager(object):
                self.dbe_xray_structure.add_scatterer(dbe_scatterer)
      self.restraints_selection = flex.bool(
                             self.dbe_xray_structure.scatterers().size(), False)
-     for i_seq, sc in enumerate(self.dbe_xray_structure.scatterers()):
-         if(sc.label in self.params.restraints.selection):
-            self.restraints_selection[i_seq] = True
-     print self.restraints_selection.count(True),self.restraints_selection.count(False)
+     if(self.params.restraints.selection is not None):
+        for i_seq, sc in enumerate(self.dbe_xray_structure.scatterers()):
+            if(sc.label in self.params.restraints.selection):
+               self.restraints_selection[i_seq] = True
      print >> log, "Total number of"
      print >> log, "   DBE built:            ", n_dbe
      print >> log, "   covalent bonds:       ", n_bonds
@@ -154,27 +154,27 @@ class manager(object):
     elif(name_i in main_cac and name_j in main_cac):
        label = "D4"
        dbe_site = self.dbe_site_position(site_i, site_j, 1.0)
-    elif(name_i[0] in any_ch and name_j[0] in any_ch):
-       label = "D1"
-       alp = 0.856968 / 0.244483
-       if(name_j[0] == "H"):
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-       else:
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
-    elif(name_i[0] in any_nh and name_j[0] in any_nh):
-       label = "D2"
-       alp = 0.760400 / 0.267816
-       if(name_j[0] == "H"):
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-       else:
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
-    elif(name_i[0] in any_oh and name_j[0] in any_oh):
-       label = "D3"
-       alp = 0.716517 / 0.288733
-       if(name_j[0] == "H"):
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-       else:
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
+    #elif(name_i[0] in any_ch and name_j[0] in any_ch):
+    #   label = "D1"
+    #   alp = 0.856968 / 0.244483
+    #   if(name_j[0] == "H"):
+    #      dbe_site = self.dbe_site_position(site_i, site_j, alp)
+    #   else:
+    #      dbe_site = self.dbe_site_position(site_j, site_i, alp)
+    #elif(name_i[0] in any_nh and name_j[0] in any_nh):
+    #   label = "D2"
+    #   alp = 0.760400 / 0.267816
+    #   if(name_j[0] == "H"):
+    #      dbe_site = self.dbe_site_position(site_i, site_j, alp)
+    #   else:
+    #      dbe_site = self.dbe_site_position(site_j, site_i, alp)
+    #elif(name_i[0] in any_oh and name_j[0] in any_oh):
+    #   label = "D3"
+    #   alp = 0.716517 / 0.288733
+    #   if(name_j[0] == "H"):
+    #      dbe_site = self.dbe_site_position(site_i, site_j, alp)
+    #   else:
+    #      dbe_site = self.dbe_site_position(site_j, site_i, alp)
     return dbe_site, label
 
   def dbe_site_position(self, site_i, site_j, alp):
@@ -207,20 +207,22 @@ class manager(object):
     self.target = 0.0
     self.gradients = flex.vec3_double(sites_cart.size())
     self.number_of_restraints = 0
-    for index in self.atom_indices:
-      if(self.restraints_selection[index[2]]):
-         sa = mac[index[0]]
-         sb = mac[index[1]]
-         sd = mac[index[2]]
-         d0 = math.sqrt((sa[0]-sb[0])**2 + (sa[1]-sb[1])**2 + (sa[2]-sb[2])**2)
-         dad= math.sqrt((sa[0]-sd[0])**2 + (sa[1]-sd[1])**2 + (sa[2]-sd[2])**2)
-         ddb= math.sqrt((sb[0]-sd[0])**2 + (sb[1]-sd[1])**2 + (sb[2]-sd[2])**2)
-         delta = dad + ddb - d0
-         self.target = delta**2
-         g1 = -2.*(sa[0]+sb[0]-2.*sd[0])
-         g2 = -2.*(sa[1]+sb[1]-2.*sd[1])
-         g3 = -2.*(sa[2]+sb[2]-2.*sd[2])
-         self.gradients[mac_offset+index[2]] = [g1,g2,g3]
-         self.number_of_restraints += 1
-    self.target *= (1./self.number_of_restraints)
-    self.gradients *= (1./self.number_of_restraints)
+    need_restraints = self.restraints_selection.count(True)
+    if(need_restraints):
+       for index in self.atom_indices:
+         if(self.restraints_selection[index[2]]):
+            sa = mac[index[0]]
+            sb = mac[index[1]]
+            sd = mac[index[2]]
+            d0 = math.sqrt((sa[0]-sb[0])**2 + (sa[1]-sb[1])**2 + (sa[2]-sb[2])**2)
+            dad= math.sqrt((sa[0]-sd[0])**2 + (sa[1]-sd[1])**2 + (sa[2]-sd[2])**2)
+            ddb= math.sqrt((sb[0]-sd[0])**2 + (sb[1]-sd[1])**2 + (sb[2]-sd[2])**2)
+            delta = dad + ddb - d0
+            self.target = delta**2
+            g1 = -2.*(sa[0]+sb[0]-2.*sd[0])
+            g2 = -2.*(sa[1]+sb[1]-2.*sd[1])
+            g3 = -2.*(sa[2]+sb[2]-2.*sd[2])
+            self.gradients[mac_offset+index[2]] = [g1,g2,g3]
+            self.number_of_restraints += 1
+       self.target *= (1./self.number_of_restraints)
+       self.gradients *= (1./self.number_of_restraints)
