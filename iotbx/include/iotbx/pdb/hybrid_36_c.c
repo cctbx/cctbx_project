@@ -224,7 +224,7 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
     ie_range = "internal error hy36decode: integer value out of range.";
   unsigned i;
   int di;
-  const char* diag;
+  const char* errmsg;
   if (first_call) {
     first_call = 0;
     for(i=0;i<128U;i++) digits_values_upper[i] = -1;
@@ -250,8 +250,8 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
     di = s[0];
     if (di >= 0 && di <= 127) {
       if (digits_values_upper[di] >= 10) {
-        diag = decode_pure(digits_values_upper, 36U, s, s_size, result);
-        if (diag == 0) {
+        errmsg = decode_pure(digits_values_upper, 36U, s, s_size, result);
+        if (errmsg == 0) {
           /* result - 10*36**(width-1) + 10**width */
           if      (width == 4U) (*result) -= 456560;
           else if (width == 5U) (*result) -= 16696160;
@@ -263,8 +263,8 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
         }
       }
       else if (digits_values_lower[di] >= 10) {
-        diag = decode_pure(digits_values_lower, 36U, s, s_size, result);
-        if (diag == 0) {
+        errmsg = decode_pure(digits_values_lower, 36U, s, s_size, result);
+        if (errmsg == 0) {
           /* result + 16*36**(width-1) + 10**width */
           if      (width == 4U) (*result) += 756496;
           else if (width == 5U) (*result) += 26973856;
@@ -276,8 +276,8 @@ hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
         }
       }
       else {
-        diag = decode_pure(digits_values_upper, 10U, s, s_size, result);
-        if (diag) return diag;
+        errmsg = decode_pure(digits_values_upper, 10U, s, s_size, result);
+        if (errmsg) return errmsg;
         if (!(width == 4U || width == 5U)) {
           *result = 0;
           return unsupported_width();

@@ -73,8 +73,8 @@ C This subroutine is an implementation detail.
      &  digits_size,
      &  s,
      &  result,
-     &  diag,
-     &  diag_size)
+     &  errmsg,
+     &  errmsg_len)
       implicit none
 C Input
       integer digits_values(0:*)
@@ -82,8 +82,8 @@ C Input
       character s*(*)
 C Output
       integer result
-      character diag*(*)
-      integer diag_size
+      character errmsg*(*)
+      integer errmsg_len
 C Local
       logical first_call
       save first_call
@@ -127,11 +127,11 @@ C
     1 continue
       if (have_minus) value = -value
       result = value
-      diag_size = 0
+      errmsg_len = 0
       return
     2 result = 0
-      diag = 'invalid number literal.'
-      diag_size = 23
+      errmsg = 'invalid number literal.'
+      errmsg_len = 23
       return
       end
 
@@ -147,29 +147,29 @@ C   result: string holding the result (len(result) must be >= width)
 C           result(width+1:len(result)) is NOT modified in order
 C           to maximize runtime performance!
 C
-C   diag: string holding error message, if any
-C         len(diag) should be >= 80
-C         diag is not modified if diag_size below is 0
-C         DO NOT use if (diag .eq. ' ') to check for errors!
-C         It is not supported because it would be too slow.
+C   errmsg: string holding error message, if any
+C           len(errmsg) should be >= 80
+C           errmsg is not modified if errmsg_len below is 0
+C           DO NOT use if (errmsg .eq. ' ') to check for errors!
+C           It is not supported because it would be too slow.
 C
-C   diag_size: length of error message, or 0 on success
-C              use if (diag_size .ne. 0) to check for errors
+C   errmsg_len: length of error message, or 0 on success
+C               use if (errmsg_len .ne. 0) to check for errors
 C
       subroutine hy36encode(
      &  width,
      &  value,
      &  result,
-     &  diag,
-     &  diag_size)
+     &  errmsg,
+     &  errmsg_len)
       implicit none
 C Input
       integer width
       integer value
 C Output
       character result*(*)
-      character diag*(*)
-      integer diag_size
+      character errmsg*(*)
+      integer errmsg_len
 C Local
       character digits_upper*36
       character digits_lower*36
@@ -184,21 +184,21 @@ C
         if (i .ge. -999) then
           if (i .lt. 10000) then
             call encode_pure(digits_upper(1:10), 4, i, result)
-            diag_size = 0
+            errmsg_len = 0
             return
           endif
           i = i - 10000
           if (i .lt. 1213056) then
             i = i + 466560
             call encode_pure(digits_upper, 0, i, result)
-            diag_size = 0
+            errmsg_len = 0
             return
           endif
           i = i - 1213056
           if (i .lt. 1213056) then
             i = i + 466560
             call encode_pure(digits_lower, 0, i, result)
-            diag_size = 0
+            errmsg_len = 0
             return
           endif
         endif
@@ -206,31 +206,31 @@ C
         if (i .ge. -9999) then
           if (i .lt. 100000) then
             call encode_pure(digits_upper(1:10), 5, i, result)
-            diag_size = 0
+            errmsg_len = 0
             return
           endif
           i = i - 100000
           if (i .lt. 43670016) then
             i = i + 16796160
             call encode_pure(digits_upper, 0, i, result)
-            diag_size = 0
+            errmsg_len = 0
             return
           endif
           i = i - 43670016
           if (i .lt. 43670016) then
             i = i + 16796160
             call encode_pure(digits_lower, 0, i, result)
-            diag_size = 0
+            errmsg_len = 0
             return
           endif
         endif
       else
-        diag = 'unsupported width.'
-        diag_size = 18
+        errmsg = 'unsupported width.'
+        errmsg_len = 18
         goto 1
       endif
-      diag = 'value out of range.'
-      diag_size = 19
+      errmsg = 'value out of range.'
+      errmsg_len = 19
     1 do 2, i=1,min(max(1,width),len(result))
         result(i:i) = '*'
     2 continue
@@ -249,22 +249,22 @@ C        returned otherwise
 C
 C   result: integer holding the conversion result
 C
-C   diag, diag_size: see hy36encode documentation above
+C   errmsg, errmsg_len: see hy36encode documentation above
 C
       subroutine hy36decode(
      &  width,
      &  s,
      &  result,
-     &  diag,
-     &  diag_size)
+     &  errmsg,
+     &  errmsg_len)
       implicit none
 C Input
       integer width
       character s*(*)
 C Output
       integer result
-      character diag*(*)
-      integer diag_size
+      character errmsg*(*)
+      integer errmsg_len
 C Local
       character digits_upper*36
       character digits_lower*36
@@ -293,8 +293,8 @@ C
           di = ichar(digits_upper(i:i))
           if (di .lt. 0 .or. di .gt. 127) then
             result = 0
-            diag = ie_range
-            diag_size = len(ie_range)
+            errmsg = ie_range
+            errmsg_len = len(ie_range)
             return
           endif
           digits_values_upper(di) = i-1
@@ -303,8 +303,8 @@ C
           di = ichar(digits_lower(i:i))
           if (di .lt. 0 .or. di .gt. 127) then
             result = 0
-            diag = ie_range
-            diag_size = len(ie_range)
+            errmsg = ie_range
+            errmsg_len = len(ie_range)
             return
           endif
           digits_values_lower(di) = i-1
@@ -315,45 +315,45 @@ C
         if (di .ge. 0 .and. di .le. 127) then
           if (digits_values_upper(di) .ge. 10) then
             call decode_pure(
-     &        digits_values_upper, 36, s, result, diag, diag_size)
-            if (diag_size .ne. 0) return
+     &        digits_values_upper, 36, s, result, errmsg, errmsg_len)
+            if (errmsg_len .ne. 0) return
             if (width .eq. 4) then
 C                             - 10*36**(width-1) + 10**width
               result = result - 456560
-              diag_size = 0
+              errmsg_len = 0
             else if (width .eq. 5) then
               result = result - 16696160
-              diag_size = 0
+              errmsg_len = 0
             else
               goto 3
             endif
             return
           else if (digits_values_lower(di) .ge. 10) then
             call decode_pure(
-     &        digits_values_lower, 36, s, result, diag, diag_size)
-            if (diag_size .ne. 0) return
+     &        digits_values_lower, 36, s, result, errmsg, errmsg_len)
+            if (errmsg_len .ne. 0) return
             if (width .eq. 4) then
 C                             + 16*36**(width-1) + 10**width
               result = result + 756496
-              diag_size = 0
+              errmsg_len = 0
             else if (width .eq. 5) then
               result = result + 26973856
-              diag_size = 0
+              errmsg_len = 0
             else
               goto 3
             endif
             return
           else
             call decode_pure(
-     &        digits_values_upper, 10, s, result, diag, diag_size)
+     &        digits_values_upper, 10, s, result, errmsg, errmsg_len)
             if (.not. (width .eq. 4 .or. width .eq. 5)) goto 3
             return
           endif
         endif
       endif
     3 result = 0
-      diag = 'unsupported width.'
-      diag_size = 18
+      errmsg = 'unsupported width.'
+      errmsg_len = 18
       return
       end
 
@@ -374,157 +374,165 @@ C Input
       logical quick
 C Local
       integer value
-      character diag*80
-      integer diag_size
+      character errmsg*80
+      integer errmsg_len
       character s4*4
       character s5*5
       integer decoded
 C
-      call hy36decode(4, '    ', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode empty'
+      call hy36decode(4, '    ', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode empty'
       if (decoded .ne. 0) stop 'error decoded value empty'
-      call hy36decode(4, '  -0', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode empty'
+      call hy36decode(4, '  -0', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode empty'
       if (decoded .ne. 0) stop 'error decoded value -0'
-      call hy36decode(4, '-999', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode -999'
+      call hy36decode(4, '-999', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode -999'
       if (decoded .ne. -999) stop 'error decoded value -999'
-      call hy36decode(4, '9999', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode 9999'
+      call hy36decode(4, '9999', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode 9999'
       if (decoded .ne. 9999) stop 'error decoded value 9999'
-      call hy36decode(4, 'A000', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode A000'
+      call hy36decode(4, 'A000', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode A000'
       if (decoded .ne. 10000) stop 'error decoded value A000'
-      call hy36decode(4, 'ZZZZ', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode ZZZZ'
+      call hy36decode(4, 'ZZZZ', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode ZZZZ'
       if (decoded .ne. 1223055) stop 'error decoded value ZZZZ'
-      call hy36decode(4, 'a000', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode a000'
+      call hy36decode(4, 'a000', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode a000'
       if (decoded .ne. 1223056) stop 'error decoded value a000'
-      call hy36decode(4, 'zzzz', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode zzzz'
+      call hy36decode(4, 'zzzz', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode zzzz'
       if (decoded .ne. 2436111) stop 'error decoded value zzzz'
 C
-      call hy36decode(5, '     ', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode empty'
+      call hy36decode(5, '     ', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode empty'
       if (decoded .ne. 0) stop 'error decoded value empty'
-      call hy36decode(5, '   -0', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode empty'
+      call hy36decode(5, '   -0', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode empty'
       if (decoded .ne. 0) stop 'error decoded value -0'
-      call hy36decode(5, '-9999', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode -9999'
+      call hy36decode(5, '-9999', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode -9999'
       if (decoded .ne. -9999) stop 'error decoded value -9999'
-      call hy36decode(5, '99999', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode 99999'
+      call hy36decode(5, '99999', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode 99999'
       if (decoded .ne. 99999) stop 'error decoded value 99999'
-      call hy36decode(5, 'A0000', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode A0000'
+      call hy36decode(5, 'A0000', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode A0000'
       if (decoded .ne. 100000) stop 'error decoded value A0000'
-      call hy36decode(5, 'ZZZZZ', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode ZZZZZ'
+      call hy36decode(5, 'ZZZZZ', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode ZZZZZ'
       if (decoded .ne. 43770015) stop 'error decoded value ZZZZZ'
-      call hy36decode(5, 'a0000', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode a0000'
+      call hy36decode(5, 'a0000', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode a0000'
       if (decoded .ne. 43770016) stop 'error decoded value a0000'
-      call hy36decode(5, 'zzzzz', decoded, diag, diag_size)
-      if (diag_size .ne. 0) stop 'error hy36decode zzzzz'
+      call hy36decode(5, 'zzzzz', decoded, errmsg, errmsg_len)
+      if (errmsg_len .ne. 0) stop 'error hy36decode zzzzz'
       if (decoded .ne. 87440031) stop 'error decoded value zzzzz'
 C
       if (.not. quick) then
         do 1, value=-999,2436111
-          diag_size = -1
-          call hy36encode(4, value, s4, diag, diag_size)
-          if (diag_size .ne. 0) stop 'error hy36encode'
+          errmsg_len = -1
+          call hy36encode(4, value, s4, errmsg, errmsg_len)
+          if (errmsg_len .ne. 0) stop 'error hy36encode'
           decoded = -1000
-          diag_size = -1
-          call hy36decode(4, s4, decoded, diag, diag_size)
-          if (diag_size .ne. 0) stop 'error hy36decode'
+          errmsg_len = -1
+          call hy36decode(4, s4, decoded, errmsg, errmsg_len)
+          if (errmsg_len .ne. 0) stop 'error hy36decode'
           if (decoded .ne. value) stop 'error decoded value'
     1   continue
 C
         do 2, value=-9999,110000
-          diag_size = -1
-          call hy36encode(5, value, s5, diag, diag_size)
-          if (diag_size .ne. 0) stop 'error hy36encode'
+          errmsg_len = -1
+          call hy36encode(5, value, s5, errmsg, errmsg_len)
+          if (errmsg_len .ne. 0) stop 'error hy36encode'
           decoded = -10000
-          diag_size = -1
-          call hy36decode(5, s5, decoded, diag, diag_size)
-          if (diag_size .ne. 0) stop 'error hy36decode'
+          errmsg_len = -1
+          call hy36decode(5, s5, decoded, errmsg, errmsg_len)
+          if (errmsg_len .ne. 0) stop 'error hy36decode'
           if (decoded .ne. value) stop 'error decoded value'
     2   continue
       endif
 C
       s4 = ' '
-      call hy36encode(4, -1000, s4, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36encode range'
-      if (diag .ne. 'value out of range.') stop 'error diag range'
+      call hy36encode(4, -1000, s4, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36encode range'
+      if (errmsg .ne. 'value out of range.') stop 'error errmsg range'
       if (s4 .ne. '****') stop 'no stars range'
       s4 = ' '
-      call hy36encode(4, 2436112, s4, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36encode range'
-      if (diag .ne. 'value out of range.') stop 'error diag range'
+      call hy36encode(4, 2436112, s4, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36encode range'
+      if (errmsg .ne. 'value out of range.') stop 'error errmsg range'
       if (s4 .ne. '****') stop 'no stars range'
       decoded = -1
-      call hy36decode(4, ' abc', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode invalid'
-      if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      call hy36decode(4, ' abc', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
       decoded = -1
-      call hy36decode(4, 'abc-', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode invalid'
-      if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      call hy36decode(4, 'abc-', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
       decoded = -1
-      call hy36decode(4, 'A=BC', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode invalid'
-      if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      call hy36decode(4, 'A=BC', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
 C
       s5 = ' '
-      call hy36encode(5, -10000, s5, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36encode range'
-      if (diag .ne. 'value out of range.') stop 'error diag range'
+      call hy36encode(5, -10000, s5, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36encode range'
+      if (errmsg .ne. 'value out of range.')
+     &  stop 'error errmsg range'
       if (s5 .ne. '*****') stop 'no stars range'
       s5 = ' '
-      call hy36encode(5, 87440032, s5, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36encode range'
-      if (diag .ne. 'value out of range.') stop 'error diag range'
+      call hy36encode(5, 87440032, s5, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36encode range'
+      if (errmsg .ne. 'value out of range.')
+     &  stop 'error errmsg range'
       if (s5 .ne. '*****') stop 'no stars range'
       decoded = -1
-      call hy36decode(5, ' abcd', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode invalid'
-      if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      call hy36decode(5, ' abcd', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
       decoded = -1
-      call hy36decode(5, 'ABCD-', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode invalid'
-      if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      call hy36decode(5, 'ABCD-', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
       decoded = -1
-      call hy36decode(5, 'a=bcd', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode invalid'
-      if (diag .ne. 'invalid number literal.') stop 'error diag invalid'
+      call hy36decode(5, 'a=bcd', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
 C
       s5 = '====='
-      call hy36encode(3, 0, s5(1:3), diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36encode width'
-      if (diag .ne. 'unsupported width.') stop 'error diag width'
+      call hy36encode(3, 0, s5(1:3), errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36encode width'
+      if (errmsg .ne. 'unsupported width.') stop 'error errmsg width'
       if (s5 .ne. '***==') stop 'no stars range'
       decoded = -1
-      call hy36decode(3, '  0', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode width'
-      if (diag .ne. 'unsupported width.') stop 'error diag width'
+      call hy36decode(3, '  0', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode width'
+      if (errmsg .ne. 'unsupported width.') stop 'error errmsg width'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
       decoded = -1
-      call hy36decode(3, 'A00', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode width'
-      if (diag .ne. 'unsupported width.') stop 'error diag width'
+      call hy36decode(3, 'A00', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode width'
+      if (errmsg .ne. 'unsupported width.') stop 'error errmsg width'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
       decoded = -1
-      call hy36decode(3, 'a00', decoded, diag, diag_size)
-      if (diag_size .eq. 0) stop 'error hy36decode width'
-      if (diag .ne. 'unsupported width.') stop 'error diag width'
+      call hy36decode(3, 'a00', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode width'
+      if (errmsg .ne. 'unsupported width.') stop 'error errmsg width'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
 C
       return
