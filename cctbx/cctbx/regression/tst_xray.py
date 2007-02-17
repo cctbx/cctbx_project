@@ -594,7 +594,7 @@ def exercise_u_base():
     xray.scatterer("o", site=(0.5, 1.0, 0),u=0.1),
     xray.scatterer("o", site=(0.5, 1.0, 10),u=0.7),
     xray.scatterer("n", site=(0.5,-1.0, 0),u=adptbx.u_cart_as_u_star(uc,(1,2,3,0,0,0))),
-    xray.scatterer("c", site=(0, 0, 0),u=adptbx.u_cart_as_u_star(uc,(-1,-2,-3,0,0,0)))))
+    xray.scatterer("c", site=(0, 0, 0),u=adptbx.u_cart_as_u_star(uc,(6,7,9,0,0,0)))))
   xs = xray.structure(sp, scatterers)
   assert xs.n_grad_u_iso()==0
   assert xs.n_grad_u_aniso()==0
@@ -606,8 +606,10 @@ def exercise_u_base():
   assert xs.use_u_iso().count(True) == 3
   assert xs.use_u_aniso().count(True) == 2
   answer = [(1.0, 1.0, 1.0), (0.1, 0.1, 0.1), (0.7, 0.7, 0.7), (3., 2., 1.),
-                                                               (-1., -2., -3.)]
+                                                               (9., 7., 6.)]
   assert approx_equal(answer, list(xs.scatterers().u_cart_eigenvalues(uc)))
+  assert approx_equal(list(xs.scatterers().anisotropy(uc)),
+                      [1.0, 1.0, 1.0, 1./3, 6./9])
 
 def exercise_from_scatterers_direct(space_group_info,
                                     element_type,
