@@ -335,13 +335,24 @@ class manager(object):
       update_xray_structure=update_xray_structure)
 
   def apply_back_b_iso(self):
+    eps = math.pi**2*8
+    uc = self.xray_structure.unit_cell()
+    b_min = adptbx.u_as_b(flex.min(
+          self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double()))
+    assert b_min >= 0.0
     b_iso = self.b_iso()
+    b_test = b_min+b_iso
+    if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
+    else: b_adj = b_iso
     b_cart = self.b_cart()
-    b_cart_new = [b_cart[0]-b_iso,b_cart[1]-b_iso,b_cart[2]-b_iso,
+    b_cart_new = [b_cart[0]-b_adj,b_cart[1]-b_adj,b_cart[2]-b_adj,
                   b_cart[3],      b_cart[4],      b_cart[5]]
     self.update(b_cart = b_cart_new)
-    self.update(b_sol = self.k_sol_b_sol()[1] + b_iso)
-    self.xray_structure.shift_us(b_shift = b_iso)
+    self.update(b_sol = self.k_sol_b_sol()[1] + b_adj)
+    self.xray_structure.shift_us(b_shift = b_adj)
+    b_min = adptbx.u_as_b(flex.min(
+          self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double()))
+    assert b_min >= 0.0
     self.xray_structure.tidy_us(u_min = 1.e-6)
     self.update_xray_structure(xray_structure           = self.xray_structure,
                                update_f_calc            = True,
@@ -937,6 +948,7 @@ class manager(object):
     if(sf_algorithm is not None):
       assert sf_algorithm in ("fft", "direct")
       self.sf_algorithm = sf_algorithm
+      self.update_xray_structure(update_f_calc  = True)
     if(target_name is not None):
       self._setup_target_functors(target_name=target_name)
     if(abcd is not None):
@@ -1115,9 +1127,11 @@ class manager(object):
   def k_sol_b_sol(self):
     return self.k_sol(), self.b_sol()
 
-  def alpha_beta(self):
+  def alpha_beta(self, f_obs = None, f_model = None):
     global time_alpha_beta
     timer = user_plus_sys_time()
+    if(f_obs is None): f_obs = self.f_obs
+    if(f_model is None): f_model = self.f_model()
     alpha, beta = None, None
     ab_params = self.alpha_beta_params
     if(self.alpha_beta_params is not None):
@@ -1127,8 +1141,8 @@ class manager(object):
        if (self.alpha_beta_params.method == "est"):
          if (self.alpha_beta_params.estimation_algorithm == "analytical"):
            alpha, beta = maxlik.alpha_beta_est_manager(
-             f_obs           = self.f_obs,
-             f_calc          = self.f_model(),
+             f_obs           = f_obs,
+             f_calc          = f_model,
              free_reflections_per_bin
                = self.alpha_beta_params.free_reflections_per_bin,
              flags           = self.r_free_flags.data(),
@@ -1137,8 +1151,8 @@ class manager(object):
          else:
            p = self.alpha_beta_params.sigmaa_estimator
            alpha, beta = sigmaa_estimator(
-             miller_obs=self.f_obs,
-             miller_calc=self.f_model(),
+             miller_obs  = f_obs,
+             miller_calc = f_model,
              r_free_flags=self.r_free_flags,
              kernel_width_free_reflections=p.kernel_width_free_reflections,
              kernel_on_chebyshev_nodes=p.kernel_on_chebyshev_nodes,
@@ -1151,7 +1165,7 @@ class manager(object):
             n_atoms_missed = ab_params.number_of_macromolecule_atoms_absent + \
                              ab_params.number_of_waters_absent
             alpha, beta = maxlik.alpha_beta_calc(
-                    f                = self.f_obs,
+                    f                = f_obs,
                     n_atoms_absent   = n_atoms_missed,
                     n_atoms_included = ab_params.n_atoms_included,
                     bf_atoms_absent  = ab_params.bf_atoms_absent,
@@ -1168,8 +1182,8 @@ class manager(object):
              absent_atom_type         = ab_params.absent_atom_type)
     else:
        alpha, beta = maxlik.alpha_beta_est_manager(
-                                    f_obs           = self.f_obs,
-                                    f_calc          = self.f_model(),
+                                    f_obs           = f_obs,
+                                    f_calc          = f_model,
                                     free_reflections_per_bin = 140,
                                     flags           = self.r_free_flags.data(),
                                     interpolation   = False).alpha_beta()
@@ -1262,50 +1276,68 @@ class manager(object):
     return omega_mean
     #return flex.mean(omega), flex.max(omega), flex.min(omega)
 
-  def r_work(self, d_min = None, d_max = None):
+  def _r_factor(self, f_obs, f_model, d_min=None, d_max=None, d_spacings=None,
+                                                               selection=None):
     global time_r_factors
+    if(selection is not None):
+       assert [d_min, d_max].count(None) == 2
+    if([d_min, d_max].count(None) < 2):
+       assert selection is None and d_spacings is not None
     timer = user_plus_sys_time()
-    f_obs   = self.f_obs_w.data()
-    f_model = self.core.f_model_w.data()
     if([d_min, d_max].count(None) == 0):
-       keep = flex.bool(self.d_spacings_w.size(), True)
-       if (d_max): keep &= self.d_spacings_w <= d_max
-       if (d_min): keep &= self.d_spacings_w >= d_min
+       keep = flex.bool(d_spacings.size(), True)
+       if (d_max): keep &= d_spacings <= d_max
+       if (d_min): keep &= d_spacings >= d_min
        f_obs   = f_obs.select(keep)
        f_model = f_model.select(keep)
+    if(selection is not None):
+       f_obs   = f_obs.select(selection)
+       f_model = f_model.select(selection)
     result = bulk_solvent.r_factor(f_obs, f_model)
     time_r_factors += timer.elapsed()
     return result
 
-  def r_free(self, d_min = None, d_max = None):
-    global time_r_factors
-    timer = user_plus_sys_time()
-    f_obs   = self.f_obs_t.data()
-    f_model = self.core.f_model_t.data()
-    if([d_min, d_max].count(None) == 0):
-       keep = flex.bool(self.d_spacings_t.size(), True)
-       if (d_max): keep &= self.d_spacings_t <= d_max
-       if (d_min): keep &= self.d_spacings_t >= d_min
-       f_obs   = f_obs.select(keep)
-       f_model = f_model.select(keep)
-    result = bulk_solvent.r_factor(f_obs, f_model)
-    time_r_factors += timer.elapsed()
-    return result
+  def r_work(self, d_min = None, d_max = None, selection = None):
+    return self._r_factor(f_obs      = self.f_obs_w.data(),
+                          f_model    = self.core.f_model_w.data(),
+                          d_min      = d_min,
+                          d_max      = d_max,
+                          d_spacings = self.d_spacings_w,
+                          selection  = selection)
 
-  def scale_k1(self):
+  def r_free(self, d_min = None, d_max = None, selection = None):
+    return self._r_factor(f_obs      = self.f_obs_t.data(),
+                          f_model    = self.core.f_model_t.data(),
+                          d_min      = d_min,
+                          d_max      = d_max,
+                          d_spacings = self.d_spacings_t,
+                          selection  = selection)
+
+  def scale_k1(self, selection = None):
     fo = self.f_obs.data()
     fc = flex.abs(self.core.f_model.data())
+    if(selection is not None):
+       fo = fo.select(selection)
+       fc = fc.select(selection)
     return flex.sum(fo*fc) / flex.sum(fc*fc)
 
-  def scale_k1_w(self):
+  def scale_k1_w(self, selection = None):
     fo = self.f_obs_w.data()
     fc = flex.abs(self.core.f_model_w.data())
+    if(selection is not None):
+       fo = fo.select(selection)
+       fc = fc.select(selection)
     return flex.sum(fo*fc) / flex.sum(fc*fc)
 
   def scale_k1_t(self):
     fo = self.f_obs_t.data()
     fc = flex.abs(self.core.f_model_t.data())
     return flex.sum(fo*fc) / flex.sum(fc*fc)
+
+  def scale_k2(self):
+    fo = self.f_obs.data()
+    fc = flex.abs(self.core.f_model.data())
+    return flex.sum(fo*fc) / flex.sum(fo*fo)
 
   def scale_k2_w(self):
     fo = self.f_obs_w.data()
@@ -1426,6 +1458,14 @@ class manager(object):
     else:
       return pher
 
+  def _map_coeff(self, f_obs, f_model, f_obs_scale, f_model_scale):
+    d_obs = miller.array(miller_set = f_model,
+                         data       = f_obs.data()*f_obs_scale
+                        ).phase_transfer(phase_source = f_model)
+    return miller.array(miller_set = f_model,
+                        data       = d_obs.data()-f_model.data()*f_model_scale)
+
+
   def map_coefficients(self,
                        map_type          = None,
                        k                 = None,
@@ -1438,28 +1478,33 @@ class manager(object):
     if(map_type == "k*Fobs-n*Fmodel"):
        if([k,n].count(None) != 0):
           raise Sorry("Map coefficients (k and n) must be provided.")
-    f_model = self.f_model()
+    fb_cart  = self.fb_cart()
+    scale_k2 = self.scale_k2()
+    f_obs_scale   = 1.0 / fb_cart * scale_k2
+    f_model_scale = 1.0 / fb_cart
     if(map_type == "k*Fobs-n*Fmodel"):
-       d_obs = miller.array(miller_set = f_model,
-                            data       = self.f_obs.data()*k
-                           ).phase_transfer(phase_source = f_model)
-       d_model = self.f_model_scaled_with_k1().data()*n
-       return miller.array(miller_set = f_model,
-                           data       = d_obs.data() - d_model)
+       return self._map_coeff(f_obs         = self.f_obs,
+                              f_model       = self.f_model(),
+                              f_obs_scale   = k * f_obs_scale,
+                              f_model_scale = n * f_model_scale)
     if(map_type == "2m*Fobs-D*Fmodel"):
-      alpha, beta = self.alpha_beta()
-      d_obs = miller.array(miller_set = f_model,
-                           data       = self.f_obs.data()*2.*self.figures_of_merit()
-                          ).phase_transfer(phase_source = f_model)
-      d_model = f_model.data()*alpha.data()
-      return miller.array(miller_set = self.f_model(),
-                          data       = d_obs.data() - d_model)
+      alpha, beta = self.alpha_beta(
+        f_obs   = self.f_obs.array(data = self.f_obs.data() * f_obs_scale),
+        f_model = self.f_model().array(data = self.f_model().data()*f_model_scale))
+      return self._map_coeff(
+                        f_obs         = self.f_obs,
+                        f_model       = self.f_model(),
+                        f_obs_scale   = 2.*self.figures_of_merit()*f_obs_scale,
+                        f_model_scale = alpha.data() * f_model_scale)
     if(map_type == "m*Fobs-D*Fmodel"):
-      alpha, beta = self.alpha_beta()
-      d_obs = miller.array(miller_set = f_model,
-                           data       = self.f_obs.data()*self.figures_of_merit()
-                          ).phase_transfer(phase_source = f_model)
-      d_model = f_model.data()*alpha.data()
+      alpha, beta = self.alpha_beta(
+        f_obs   = self.f_obs.array(data = self.f_obs.data() * f_obs_scale),
+        f_model = self.f_model().array(data = self.f_model().data()*f_model_scale))
+      return self._map_coeff(
+                        f_obs         = self.f_obs,
+                        f_model       = self.f_model(),
+                        f_obs_scale   = self.figures_of_merit() * f_obs_scale,
+                        f_model_scale = alpha.data() * f_model_scale)
       ####
       #result = miller.array(miller_set = self.f_calc,
       #                      data       = d_obs.data() - d_model)
@@ -1476,8 +1521,8 @@ class manager(object):
       #fom = self.figures_of_merit()
       #for i, a, b in zip(self.f_calc.indices(), fom, alpha.data()):
       #    print >> f, "%5d%5d%5d %10.3f %10.3f" % (i[0], i[1], i[2], a, b)
-      return miller.array(miller_set = f_model,
-                          data       = d_obs.data() - d_model)
+      #return miller.array(miller_set = f_model,
+      #                    data       = d_obs.data() - d_model)
 
   def electron_density_map(self,
                            map_type          = "k*Fobs-n*Fmodel",
@@ -1625,6 +1670,79 @@ class manager(object):
     out.flush()
     time_show += timer.elapsed()
 
+  def r_work_scale_k1_completeness_in_bins(self, reflections_per_bin = 500,
+                                                 n_bins              = 0,
+                                                 prefix              = "",
+                                                 out                 = None):
+    if(out is None): out = sys.stdout
+    f_obs_w = self.f_obs_w
+    reflections_per_bin = min(f_obs_w.data().size(), reflections_per_bin)
+    f_obs_w.setup_binner(reflections_per_bin = reflections_per_bin,
+                         n_bins              = n_bins)
+    print >> out, prefix+"Bin     Resolution    Compl.  No.   Scale_k1(work) R-factor(work)"
+    print >> out, prefix+"number     range              refl."
+    for i_bin in f_obs_w.binner().range_used():
+        sel         = f_obs_w.binner().selection(i_bin)
+        r_work      = self.r_work(selection = sel)
+        scale_k1    = self.scale_k1_w(selection = sel)
+        f_obs_sel   = f_obs_w.select(sel)
+        d_max,d_min = f_obs_sel.d_max_min()
+        compl       = f_obs_sel.completeness(d_max = d_max)
+        n_ref       = sel.count(True)
+        d_range     = f_obs_w.binner().bin_legend(
+                   i_bin = i_bin, show_bin_number = False, show_counts = False)
+        format = "%3d: %-17s %5.2f %6d %6.3f     %10.4f"
+        print >> out, prefix+format % (i_bin,d_range,compl,n_ref,scale_k1,
+                                                                        r_work)
+    print >> out, prefix+"where:"
+    print >> out, prefix+"   R-factor = SUM(||Fobs|-Scale_k1*|Fmodel||)/SUM(|Fobs|)"
+    print >> out, prefix+"   Scale_k1 = SUM(|Fobs|*|Fmodel|)/SUM(|Fmodel|**2)"
+    print >> out, prefix+"   Fmodel   = fb_cart * (Fcalc + Fbulk)"
+    print >> out, prefix+"   Fbulk    = k_sol * exp(-b_sol*s**2/4) * Fmask"
+    print >> out, prefix+"   Fcalc    = structure factors calculated from atomic model"
+    print >> out, prefix+"   fb_cart  = exp(-h(t) * A(-1) * B_cart * A(-1t) * h), "
+    print >> out, prefix+"   A - orthogonalization matrix"
+    out.flush()
+
+
+  def fft_vs_direct(self, reflections_per_bin = 250,
+                          n_bins              = 0,
+                          out                 = None):
+    if(out is None): out = sys.stdout
+    f_obs_w = self.f_obs_w
+    f_obs_w.setup_binner(reflections_per_bin = reflections_per_bin,
+                         n_bins              = n_bins)
+    fmodel_dc = self.deep_copy()
+    if(self.sf_algorithm=="fft"):      fmodel_dc.update(sf_algorithm="direct")
+    elif(self.sf_algorithm=="direct"): fmodel_dc.update(sf_algorithm="fft")
+    print >> out, "|"+"-"*77+"|"
+    print >> out, "| Bin     Resolution   Compl.  No.       Scale_k1             R-work          |"
+    print >> out, "|number     range              Refl.      direct       fft direct fft-direct,%|"
+    deltas = flex.double()
+    for i_bin in f_obs_w.binner().range_used():
+        sel         = f_obs_w.binner().selection(i_bin)
+        r_work_1    = self.r_work(selection = sel)
+        scale_k1_1  = self.scale_k1_w(selection = sel)
+        r_work_2    = fmodel_dc.r_work(selection = sel)
+        scale_k1_2  = fmodel_dc.scale_k1_w(selection = sel)
+        f_obs_sel   = f_obs_w.select(sel)
+        d_max,d_min = f_obs_sel.d_max_min()
+        compl       = f_obs_sel.completeness(d_max = d_max)
+        n_ref       = sel.count(True)
+        delta       = abs(r_work_1-r_work_2)*100.
+        deltas.append(delta)
+        d_range     = f_obs_w.binner().bin_legend(
+                   i_bin = i_bin, show_bin_number = False, show_counts = False)
+        format = "|%3d: %-17s %4.2f %6d %14.3f %6.4f %6.4f   %9.4f  |"
+        if(self.sf_algorithm == "fft"):
+           print >> out, format % (i_bin,d_range,compl,n_ref,
+                                            scale_k1_2,r_work_1,r_work_2,delta)
+        else:
+           print >> out, format % (i_bin,d_range,compl,n_ref,
+                                            scale_k1_1,r_work_2,r_work_1,delta)
+    print >> out, "|"+"-"*77+"|"
+    out.flush()
+
   def show_comprehensive(self, header = "",
                                free_reflections_per_bin = 140,
                                max_number_of_bins  = 30,
@@ -1675,37 +1793,50 @@ class manager(object):
 
   def dump(self, out = None):
     if(out is None): out = sys.stdout
-    print >> out, "k_sol    = %10.4f"%self.k_sol()
-    print >> out, "b_sol    = %10.4f"%self.b_sol()
-    print >> out, "scale_k1 = %10.4f"%self.scale_k1()
-    b0,b1,b2,b3,b4,b5 = n_as_s("%7.4f",self.b_cart())
-    c=","
-    print >>out,"(B11,B22,B33,B12,B13,B23) = ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+")"
-    f_model            = self.f_model()
+    f_model            = self.f_model_scaled_with_k1()
     f_model_amplitudes = f_model.amplitudes().data()
     f_model_phases     = f_model.phases(deg=True).data()
     f_calc_amplitudes  = self.f_calc().amplitudes().data()
     f_calc_phases      = self.f_calc().phases(deg=True).data()
     f_mask_amplitudes  = self.f_mask().amplitudes().data()
     f_mask_phases      = self.f_mask().phases(deg=True).data()
+    f_bulk_amplitudes  = self.f_bulk().amplitudes().data()
+    f_bulk_phases      = self.f_bulk().phases(deg=True).data()
     fom                = self.figures_of_merit()
     alpha, beta        = [item.data() for item in self.alpha_beta()]
     f_obs              = self.f_obs.data()
     flags              = self.r_free_flags.data()
     indices            = self.f_obs.indices()
     resolution         = self.f_obs.d_spacings().data()
-    format="inde= %5d%5d%5d Fobs= %10.3f Fcalc= %10.3f %9.3f Fmask= %10.3f %9.3f"\
+    fb_cart            = self.fb_cart()
+    scale_k1           = self.scale_k1()
+    print >> out, "Fmodel   = scale_k1 * fb_cart * (Fcalc + Fbulk)"
+    print >> out, "Fbulk    = k_sol * exp(-b_sol*s**2/4) * Fmask"
+    print >> out, "Fcalc    = structure factors calculated from atomic model"
+    print >> out, "fb_cart  = exp(-h(t) * A(-1) * B_cart * A(-1t) * h), "+\
+                  "A - orthogonalization matrix"
+    print >> out, "scale_k1 = SUM(Fobs * Fmodel) / SUM(Fmodel**2)"
+    print >> out, "k_sol    = %10.4f"%self.k_sol()
+    print >> out, "b_sol    = %10.4f"%self.b_sol()
+    print >> out, "scale_k1 = %10.4f"%self.scale_k1()
+    b0,b1,b2,b3,b4,b5 = n_as_s("%7.4f",self.b_cart())
+    c=","
+    print >>out,"(B11,B22,B33,B12,B13,B23) = ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+")"
+    format="inde= %5d%5d%5d Fobs= %11.4f Fcalc= %10.3f %9.3f Fmask= %10.3f %9.3f"\
            " Fmodel= %13.6f %12.6f fom= %5.3f alpha= %8.4f beta= %12.4f"\
-           " R-free-flags= %1d resol= %7.3f"
+           " R-free-flags= %1d resol= %7.3f Fbulk= %10.3f %9.3f fb_cart= %8.4f "
     for ind, f_obs_i, f_calc_amplitudes_i, f_calc_phases_i, f_mask_amplitudes_i,\
         f_mask_phases_i, f_model_amplitudes_i, f_model_phases_i, fom_i, alpha_i,\
-        beta_i, flags_i, resolution_i in zip(indices, f_obs, f_calc_amplitudes, \
+        beta_i, flags_i, resolution_i, f_bulk_amplitudes_i, f_bulk_phases_i, fb_cart_i in \
+        zip(indices, f_obs, f_calc_amplitudes, \
         f_calc_phases, f_mask_amplitudes, f_mask_phases, f_model_amplitudes,    \
-        f_model_phases, fom, alpha, beta, flags, resolution):
+        f_model_phases, fom, alpha, beta, flags, resolution, f_bulk_amplitudes, \
+        f_bulk_phases, fb_cart):
         print >> out, format%(ind[0], ind[1], ind[2], f_obs_i,
           f_calc_amplitudes_i, f_calc_phases_i, f_mask_amplitudes_i,
           f_mask_phases_i, f_model_amplitudes_i, f_model_phases_i, fom_i,
-          alpha_i, beta_i, flags_i, resolution_i)
+          alpha_i, beta_i, flags_i, resolution_i, f_bulk_amplitudes_i,
+          f_bulk_phases_i, fb_cart_i)
 
 def statistics_in_resolution_bins(fmodel,
                                   target_functors,
@@ -1753,8 +1884,8 @@ def statistics_in_resolution_bins(fmodel,
     d_max_,d_min_ = sel_fo_all.d_max_min()
     ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
     if(fmodel.target_name.count("ls") == 1):
-      target_w = xray_target_functor_w(sel_fc_w, False).target()
-      target_t = xray_target_functor_t(sel_fc_t, False).target()
+      target_w = "%11.5g" % xray_target_functor_w(sel_fc_w, False).target()
+      target_t = "%11.5g" % xray_target_functor_t(sel_fc_t, False).target()
     elif(fmodel.target_name in ["ml", "mlhl"]):
       if (sel_fc_w.indices().size() != 0):
         target_w = "%11.5g" % xray_target_functor_w(
@@ -1862,7 +1993,8 @@ def show_fom_phase_error_alpha_beta_in_bins(fmodel,
     sel = mi_fom.binner().selection(i_bin).iselection()
     sel_work = mi_per_work.binner().selection(i_bin).iselection()
     sel_test = mi_per_test.binner().selection(i_bin).iselection()
-    assert sel.size() == sel_work.size() + sel_test.size()
+    assert sel.size() == sel_work.size() + sel_test.size() or \
+           2*sel.size() == sel_work.size() + sel_test.size()
     print >> out, "|%3d: %-17s%6d%6d%s%s%s%s%s|" % (
       i_bin,
       mi_fom.binner().bin_legend(
