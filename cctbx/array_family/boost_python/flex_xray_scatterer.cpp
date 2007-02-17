@@ -279,6 +279,34 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
+  af::shared<double>
+  anisotropy(
+    af::ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell)
+  {
+    af::shared<double> result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+        scitbx::sym_mat3<double> u_cart;
+        if(self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1)) {
+           u_cart = adptbx::u_star_as_u_cart(unit_cell, self[i].u_star);
+           scitbx::vec3<double> ev = adptbx::eigenvalues(u_cart);
+           double ev_max = af::max(ev);
+           double ev_min = af::min(ev);
+           if(ev_max == ev_min) {
+              result.push_back( 1.0 );
+           }
+           else {
+              CCTBX_ASSERT(ev_max != 0.0);
+              result.push_back( af::min(ev)/ev_max );
+           }
+        }
+        else {
+           result.push_back( 1.0 );
+        }
+    }
+    return result;
+  }
+
   void
   set_u_iso(
     af::ref<scatterer<> > const& self,
@@ -570,6 +598,8 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_u_iso_or_u_equiv", cctbx::xray::extract_u_iso_or_u_equiv,
         (arg_("unit_cell")))
       .def("u_cart_eigenvalues", cctbx::xray::u_cart_eigenvalues,
+        (arg_("unit_cell")))
+      .def("anisotropy", cctbx::xray::anisotropy,
         (arg_("unit_cell")))
       .def("extract_u_cart_or_u_cart_plus_u_iso",
                               cctbx::xray::extract_u_cart_or_u_cart_plus_u_iso,
