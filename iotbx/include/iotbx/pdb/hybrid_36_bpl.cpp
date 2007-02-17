@@ -11,14 +11,14 @@ namespace {
   {
     char result[16];
     result[0] = ' ';
-    const char* diag = hy36encode(width, value, result);
-    if (diag) {
+    const char* errmsg = hy36encode(width, value, result);
+    if (errmsg) {
       for(unsigned i=0;i<width;i++) {
         if (result[i] != '*') {
           throw std::runtime_error("internal error: result not reset.");
         }
       }
-      throw std::runtime_error(diag);
+      throw std::runtime_error(errmsg);
     }
     return std::string(result);
   }
@@ -27,12 +27,12 @@ namespace {
   hy36decode_wrapper(unsigned width, std::string const& s)
   {
     int result = -1;
-    const char* diag = hy36decode(width, s.c_str(), s.size(), &result);
-    if (diag) {
+    const char* errmsg = hy36decode(width, s.c_str(), s.size(), &result);
+    if (errmsg) {
       if (result != 0) {
         throw std::runtime_error("internal error: result not reset.");
       }
-      throw std::runtime_error(diag);
+      throw std::runtime_error(errmsg);
     }
     return result;
   }
@@ -43,11 +43,11 @@ namespace {
     unsigned n_ok = 0;
     for(int value=-999;value<10000+2*26*36*36*36;value++) {
       char encoded[16];
-      const char* diag = hy36encode(4U, value, encoded);
-      if (!diag) {
+      const char* errmsg = hy36encode(4U, value, encoded);
+      if (!errmsg) {
         int decoded;
-        const char* diag = hy36decode(4U, encoded, 4U, &decoded);
-        if (!diag && decoded == value) {
+        const char* errmsg = hy36decode(4U, encoded, 4U, &decoded);
+        if (!errmsg && decoded == value) {
           n_ok++;
         }
       }
