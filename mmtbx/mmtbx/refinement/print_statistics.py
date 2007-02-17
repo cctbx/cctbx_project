@@ -317,10 +317,8 @@ class refinement_monitor(object):
        self.bs_iso_max_s .append(flex.max_default( b_isos_s, 0)   )
        self.bs_iso_min_s .append(flex.min_default( b_isos_s, 0)   )
        self.bs_iso_ave_s .append(flex.mean_default(b_isos_s, 0)   )
-    adp = model.adp_statistics(iso_restraints = self.params.adp_restraints.iso,
-                               wilson_b       = self.wilson_b,
-                               tan_b_iso_max  = tan_b_iso_max)
-    self.tus             .append(adp.target_adp_iso               )
+    adp = model.adp_statistics()
+    #self.tus             .append(adp.target_adp_iso               )
     if(target_weights is not None):
        self.wus             .append(target_weights.wu()              )
     rem = relative_errors(
@@ -373,14 +371,7 @@ class refinement_monitor(object):
       self.bond_final  = self.bs_ave[0]
       self.angle_final = self.as_ave[0]
     ###
-    xrs                      = model.xray_structure
-    self.natoms              = xrs.scatterers().size()
-    self.volume              = xrs.unit_cell().volume()
-    self.sg                  = xrs.space_group().type().number()
-    self.sg_symbol           = xrs.space_group().type().lookup_symbol()
-    self.nsym                = xrs.space_group().n_smx()
-    self.target_name         = fmodel.target_name
-    self.number_of_restraints= geom.number_of_restraints
+    xrs = model.xray_structure
     ###
     if(rigid_body_shift_accumulator is not None):
        self.rigid_body_shift_accumulator = rigid_body_shift_accumulator
@@ -396,21 +387,6 @@ class refinement_monitor(object):
     if(out is None): out = self.out
     separator = "-"*72
     if(not self.short):
-       print >> out, remark + "*"*72
-       print >> out, remark + "Refinement target            :  %s"   % self.target_name
-       if("rigid_body" in self.params.refine.strategy):
-          print >> out, remark + "Rigid body refinement target :  %s"   % self.params.rigid_body.target
-       print >> out, remark + "Number of atoms              : %7d"   % self.natoms
-       print >> out, remark + "Number of geometry restraints: %7d"   % self.number_of_restraints
-       print >> out, remark + "Unit cell volume             : %15.3f"% self.volume
-       print >> out, remark + "Space group                  : %4d (%s)"% (self.sg,self.sg_symbol)
-       print >> out, remark + "Number of symmetries         : %4d"   % self.nsym
-       if(self.wilson_b is not None):
-          print >> out, remark + "Wilson B-factor              : %10.3f"% self.wilson_b
-       else:
-          print >> out, remark + "Wilson B-factor              : undefined"
-       print >> out, remark + "Isotropic ADP: distance_power: %5.2f" % self.params.adp_restraints.iso.distance_power
-       print >> out, remark + "Isotropic ADP: average_power : %5.2f" % self.params.adp_restraints.iso.average_power
        #
        if(self.rigid_body_shift_accumulator is not None):
           print >> out, remark + "Information about total rigid body shift of selected groups:"
@@ -423,7 +399,6 @@ class refinement_monitor(object):
             rotations=self.rigid_body_shift_accumulator.rotations,
             translations=self.rigid_body_shift_accumulator.translations)
     #
-    #
     if(self.short):
        print >> out
        print >> out, remark + "*********** REFINEMENT STATISTICS STEP BY STEP: NEUTRON DATA ***********"
@@ -431,15 +406,24 @@ class refinement_monitor(object):
        print >> out, remark + "****************** REFINEMENT STATISTICS STEP BY STEP ******************"
        print >> out, remark + "leading digit, like 1_, means number of macro-cycle                     "
        print >> out, remark + "0    : statistics at the very beginning when nothing is done yet        "
-       print >> out, remark + "1_bss: bulk solvent correction and/or (anisotropic) scaling             "
-       print >> out, remark + "1_xyz: refinement of coordinates                                        "
-       print >> out, remark + "1_adp: refinement of ADPs (Atomic Displacement Parameters)              "
-       print >> out, remark + "1_sar: simulated annealing refinement of x,y,z                          "
-       print >> out, remark + "1_wat: ordered solvent update (add / remove)                            "
-       print >> out, remark + "1_rbr: rigid body refinement                                            "
-       print >> out, remark + "1_gbr: group B-factor refinement                                        "
-       print >> out, remark + "1_occ: refinement of individual occupancies                             "
-       print >> out, remark + "1_gor: refinement of grouped occupancies                                "
+       if(self.params.main.bulk_solvent_and_scale):
+          print >> out, remark + "1_bss: bulk solvent correction and/or (anisotropic) scaling             "
+       if("individual_sites" in self.params.refine.strategy):
+          print >> out, remark + "1_xyz: refinement of coordinates                                        "
+       if("individual_adp" in self.params.refine.strategy):
+          print >> out, remark + "1_adp: refinement of ADPs (Atomic Displacement Parameters)              "
+       if(self.params.main.simulated_annealing):
+          print >> out, remark + "1_sar: simulated annealing refinement of x,y,z                          "
+       if(self.params.main.ordered_solvent):
+          print >> out, remark + "1_wat: ordered solvent update (add / remove)                            "
+       if("rigid_body" in self.params.refine.strategy):
+          print >> out, remark + "1_rbr: rigid body refinement                                            "
+       if("group_adp" in self.params.refine.strategy):
+          print >> out, remark + "1_gbr: group B-factor refinement                                        "
+       if("individual_occupancies" in self.params.refine.strategy):
+          print >> out, remark + "1_occ: refinement of individual occupancies                             "
+       if("group_occupancies" in self.params.refine.strategy):
+          print >> out, remark + "1_gor: refinement of grouped occupancies                                "
        print >> out, remark + separator
     #
     #
@@ -679,20 +663,20 @@ class refinement_monitor(object):
           print >> out, remark + separator
     #
     #
-    if(not self.short):
-       a,b,c,d,e,f,g,h,i,j = [None,]*10
-       if(len(self.wus) > 0):
-          print >> out, remark + " stage      adp_target      wu"
-          format = remark + "%9s %12.4e %7.3f"
-          for a,b,c in zip(self.steps,self.tus,self.wus):
-              print >> out, format % (a,b,c)
-       else:
-          print >> out, remark + " stage      adp_target"
-          format = remark + "%9s %12.4e"
-          for a,b in zip(self.steps,self.tus):
-              print >> out, format % (a,b)
-       print >> out, remark + separator
-    out.flush()
+#    if(not self.short):
+#       a,b,c,d,e,f,g,h,i,j = [None,]*10
+#       if(len(self.wus) > 0):
+#          print >> out, remark + " stage      adp_target      wu"
+#          format = remark + "%9s %12.4e %7.3f"
+#          for a,b,c in zip(self.steps,self.tus,self.wus):
+#              print >> out, format % (a,b,c)
+#       else:
+#          print >> out, remark + " stage      adp_target"
+#          format = remark + "%9s %12.4e"
+#          for a,b in zip(self.steps,self.tus):
+#              print >> out, format % (a,b)
+#       print >> out, remark + separator
+#    out.flush()
     #
     #
     t2 = time.time()
