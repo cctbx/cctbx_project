@@ -604,14 +604,16 @@ class bulk_solvent_and_scales(object):
              fmodel.alpha_beta_params.interpolation = save_interpolation_flag
           r_work_final = fmodel.r_work()
           if(r_work_final - r_work > 0.0001):
-             print >> log, "***Strategy manager: r-work went up after ML ksol, bsol minimization:"
-             print >> log, "   r_start = ", r_work
-             print >> log, "   r_final = ", r_work_final
-             print >> log, "   start k_sol, b_sol = %8.4f %8.4f"%(ksol,bsol)
-             print >> log, "   final k_sol, b_sol = %8.4f %8.4f"%(fmodel.k_sol(),fmodel.b_sol())
+             if(0):
+               print >> log, "***Strategy manager: r-work went up after ML ksol, bsol minimization:"
+               print >> log, "   r_start = ", r_work
+               print >> log, "   r_final = ", r_work_final
+               print >> log, "   start k_sol, b_sol = %8.4f %8.4f"%(ksol,bsol)
+               print >> log, "   final k_sol, b_sol = %8.4f %8.4f"%(fmodel.k_sol(),fmodel.b_sol())
              fmodel.update(k_sol = ksol, b_sol = bsol)
-             print >> log, "   recovering previous step..."
-             print >> log, "   r_final = ", fmodel.r_work()
+             if(0):
+               print >> log, "   recovering previous step..."
+               print >> log, "   r_final = ", fmodel.r_work()
        if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
           fmodel.apply_back_b_iso()
           if(params.verbose > 0):
@@ -640,14 +642,16 @@ class bulk_solvent_and_scales(object):
         fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
     if(r_final - r_start > 0.0001):
-       print >> out, "***Strategy manager: r-work went up after anisotropic scaling:"
-       print >> out, "   r_start = ", r_start
-       print >> out, "   r_final = ", r_final
-       print >> out, "   u_start = ", ["%9.3f"%u for u in u_start]
-       print >> out, "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart()]
+       if(0):
+         print >> out, "***Strategy manager: r-work went up after anisotropic scaling:"
+         print >> out, "   r_start = ", r_start
+         print >> out, "   r_final = ", r_final
+         print >> out, "   u_start = ", ["%9.3f"%u for u in u_start]
+         print >> out, "   u_final = ", ["%9.3f"%u for u in fmodel.b_cart()]
        fmodel.update(b_cart = u_start)
-       print >> out, "   recovering previous step..."
-       print >> out, "   r_final = ", fmodel.r_work()
+       if(0):
+         print >> out, "   recovering previous step..."
+         print >> out, "   r_final = ", fmodel.r_work()
 
   def _k_sol_b_sol_minimization_helper(self, params, fmodel):
     ksol_orig, bsol_orig = fmodel.k_sol_b_sol()
