@@ -20,6 +20,15 @@ class target_functor_base(object):
 
 class target_functors_manager(object):
 
+  target_names = (
+    "ls_wunit_k1", "ls_wunit_k2", "ls_wunit_kunit", "ls_wunit_k1_fixed",
+    "ls_wunit_k1ask3_fixed",
+    "ls_wexp_k1", "ls_wexp_k2", "ls_wexp_kunit",
+    "ls_wff_k1", "ls_wff_k2", "ls_wff_kunit", "ls_wff_k1_fixed",
+    "ls_wff_k1ask3_fixed",
+    "lsm_k1", "lsm_k2", "lsm_kunit", "lsm_k1_fixed", "lsm_k1ask3_fixed",
+    "ml", "mlhl")
+
   def __init__(self, target_name,
                      f_obs,
                      flags,
@@ -27,16 +36,10 @@ class target_functors_manager(object):
                      weights                = None,
                      use_sigmas_as_weights  = False,
                      scale_factor           = 0):
+    assert target_name in target_functors_manager.target_names
+    assert flags.size() == f_obs.data().size()
+    assert abcd is None or abcd.data().size() == f_obs.data().size()
     adopt_init_args(self, locals())
-    assert self.target_name in (
-      "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
-      "ls_wunit_k1ask3_fixed",
-      "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
-      "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
-      "ls_wff_k1ask3_fixed",
-      "lsm_k1"     ,"lsm_k2"     ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
-      "ml","mlhl")
-    assert self.f_obs.data().size() == self.flags.size()
     if(self.flags.count(True) > 0):
       self.f_obs_w = self.f_obs.select(~self.flags)
       self.f_obs_t = self.f_obs.select( self.flags)
