@@ -71,15 +71,6 @@ def show_times(out = None):
   print >> out, "    TOTAL for micro-tasks          = %-7.2f" % total
   return total
 
-target_names = (
-      "ls_wunit_k1","ls_wunit_k2","ls_wunit_kunit","ls_wunit_k1_fixed",
-      "ls_wunit_k1ask3_fixed",
-      "ls_wexp_k1" ,"ls_wexp_k2" ,"ls_wexp_kunit",
-      "ls_wff_k1"  ,"ls_wff_k2"  ,"ls_wff_kunit","ls_wff_k1_fixed",
-      "ls_wff_k1ask3_fixed",
-      "lsm_k1"     ,"lsm_k2"    ,"lsm_kunit","lsm_k1_fixed","lsm_k1ask3_fixed",
-      "ml","mlhl")
-
 class set_core(object):
   def __init__(self, f_calc,
                      f_mask,
@@ -572,7 +563,7 @@ class manager(object):
       self._target_name = None
       return
     if (target_name == "ls"): target_name = "ls_wunit_k1"
-    if (target_name not in target_names):
+    if (target_name not in xray.target_functors_manager.target_names):
       raise RuntimeError("Unknown target name: %s" % show_string(target_name))
     if (target_name == "ml"):
        self.target_functors = xray.target_functors.target_functors_manager(
