@@ -2,6 +2,7 @@ from __future__ import division
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import ext
 from cctbx.array_family import flex
+from mmtbx import max_lik
 import scitbx.lbfgs
 from scitbx.math import chebyshev_polynome
 from scitbx.math import chebyshev_lsq_fit
@@ -212,6 +213,7 @@ class sigmaa_estimator(object):
                            beta           = beta.data(),
                            space_group    = self.miller_obs.space_group(),
                            miller_indices = self.miller_obs.indices() ).phase_error()
+    result =  self.miller_obs.customized_copy(data=result)
     return result
 
   def alpha_beta(self):
