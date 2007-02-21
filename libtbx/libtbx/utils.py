@@ -17,7 +17,7 @@ def get_memory_from_string(mem_str):
   mem_str = mem_str.replace(" ","").strip().upper()
   if mem_str == "": return 0
   factor=1024
-  for i, greek in enumerate(["K","M","G","T","E","Z","Y","B"]):
+  for i, greek in enumerate(["K","M","G","T","E","Z","Y"]):
     num_str=None
     if mem_str[-1]==greek:
       num_str = mem_str[:-1]
