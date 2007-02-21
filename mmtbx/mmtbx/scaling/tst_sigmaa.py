@@ -24,7 +24,7 @@ from libtbx import table_utils
 from scitbx.python_utils import easy_pickle
 import scitbx.lbfgs
 import sys, os
-import math
+import math, time
 import string
 from cStringIO import StringIO
 import mmtbx.f_model
@@ -49,7 +49,20 @@ def tst_sigmaa():
   assert approx_equal(tmp_a.target_and_gradient(0.5,0.5)[0], tmp_a.target(0.5, 0.5) )
   assert approx_equal(tmp_a.target_and_gradient(0.5,0.5)[1], tmp_a.dtarget(0.5, 0.5) )
 
+  N=100000
+  start = time.time()
+  for ii in xrange(N):
+    tmp_a.target(0.5, 0.5)
+    tmp_a.dtarget(0.5, 0.5)
 
+  end = time.time()
+  print end-start
+
+  start = time.time()
+  for ii in xrange(N):
+    tmp_a.target_and_gradient(0.5, 0.5)
+  end = time.time()
+  print end-start
 
   tmp_c = scaling.sigmaa_estimator(
     e_obs     = eo,
@@ -63,6 +76,43 @@ def tst_sigmaa():
 
   assert approx_equal(tmp_c.target_and_gradient(0.5,0.5)[0], tmp_c.target(0.5, 0.5) )
   assert approx_equal(tmp_c.target_and_gradient(0.5,0.5)[1], tmp_c.dtarget(0.5, 0.5) )
+
+
+  # timings for large arrays
+  N=100000
+  eo = flex.double([1]*N)
+  ec = flex.double([1.2]*N)
+  dsc = flex.double([0.5]*N)
+  centric = flex.bool( [False]*N )
+  tmp_large = scaling.sigmaa_estimator(
+    e_obs     = eo,
+    e_calc    = ec,
+    centric   = centric,
+    d_star_cubed = dsc,
+    width=0.1)
+
+  start = time.time()
+  for trial in xrange(100):
+    a = tmp_large.target(0.5,0.5)
+    a = tmp_large.dtarget(0.5,0.5)
+  end = time.time()
+  print  end-start
+
+  tmp_large = scaling.sigmaa_estimator(
+    e_obs     = eo,
+    e_calc    = ec,
+    centric   = centric,
+    d_star_cubed = dsc,
+    width=0.1)
+
+
+  start = time.time()
+  for trial in xrange(100):
+    a = tmp_large.target_and_gradient(0.5,0.5)
+  end = time.time()
+  print  end-start
+
+
 
 
 
