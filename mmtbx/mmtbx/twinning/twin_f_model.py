@@ -1945,6 +1945,15 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
 
 
 
+  def r_work_scale_k1_completeness_in_bins(self, reflections_per_bin = 500,
+                                                 n_bins              = 0,
+                                                 prefix              = "",
+                                                 out                 = None):
+    #actively ignoring input
+    self.r_values(table=True)
+
+
+
   def show_fom_phase_error_alpha_beta_in_bins(self,
                                               free_reflections_per_bin = 200,
                                               max_number_of_bins  = 30,
