@@ -98,6 +98,11 @@ namespace scitbx { namespace serialization { namespace double_buffered {
   {
     const char* str_ptr;
 
+    from_string()
+    : str_ptr(0)
+    {
+    }
+
     from_string(const char* str_ptr_)
     : str_ptr(str_ptr_)
     {
