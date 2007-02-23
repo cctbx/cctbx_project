@@ -147,7 +147,7 @@ gly_interpreter = interpreter(
 ala_interpreter = interpreter(
   peptide_expected_patterns + [
     "hA",
-    "CB", "1hB", "3hB", "2hB"],
+    "CB", "1hB", "2hB", "3hB"],
   peptide_synonym_patterns)
 
 val_interpreter = interpreter(
