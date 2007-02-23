@@ -90,7 +90,7 @@ def exercise(space_group_info,
       #flags = flags.array(data = flex.bool(f_obs.data().size(), False))
       xrs = xray_structure.deep_copy_scatterers()
       xrs.shake_sites_in_place(rms_difference=0.3)
-      for target in xray.target_functors_manager.target_names:
+      for target in xray.target_functors.manager.target_names:
           #XXX Must find out why ml-tolerance is so BIG.
           if(target == "ml"): tolerance = 1.5
           else: tolerance = 1.e-6
