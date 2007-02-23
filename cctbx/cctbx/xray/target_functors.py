@@ -71,18 +71,12 @@ class target_functors_manager(object):
     else:
       self.weights_w, self.weights_t = None, None
 
-  def target_functor_w(self, selection = None):
-    if(selection is None):
-      f_obs   = self.f_obs_w
-      weights = self.weights_w
-      abcd = self.abcd_w
-    else:
-      assert selection.size() == self.f_obs_w.data().size()
-      f_obs   = self.f_obs_w.select(selection)
-      if(self.weights_w is not None): weights = self.weights_w.select(selection)
-      else:                           weights = self.weights_w
-      if(self.abcd_w is not None): abcd = self.abcd_w.select(selection)
-      else:                        abcd = self.abcd_w
+  def _target_functor(self, f_obs, weights, abcd, selection):
+    if (selection is not None):
+      assert selection.size() == f_obs.data().size()
+      f_obs = f_obs.select(selection)
+      if (weights is not None): weights = weights.select(selection)
+      if (abcd is not None): abcd = abcd.select(selection)
     if(self.target_name.count("k1") == 1 and self.target_name.count("k1as") == 0):
        if(self.scale_factor == 0): fix_scale_factor = False
        else: fix_scale_factor = True
@@ -119,53 +113,19 @@ class target_functors_manager(object):
                               f_obs         = f_obs,
                               abcd          = abcd.data())
 
-  def target_functor_t(self, selection = None):
-    if(selection is None):
-      f_obs   = self.f_obs_t
-      weights = self.weights_t
-      abcd = self.abcd_t
-    else:
-      assert selection.size() == self.f_obs_t.data().size()
-      f_obs   = self.f_obs_t.select(selection)
-      if(self.weights_t is not None): weights = self.weights_t.select(selection)
-      else:                           weights = self.weights_t
-      if(self.abcd_t is not None): abcd = self.abcd_t.select(selection)
-      else:                        abcd = self.abcd_t
-    if(self.target_name.count("k1") == 1 and self.target_name.count("k1as") == 0):
-       if(self.scale_factor == 0): fix_scale_factor = False
-       else: fix_scale_factor = True
-       return ls_k1(f_obs            = f_obs,
-                    weights          = weights,
-                    scale_factor     = self.scale_factor,
-                    fix_scale_factor = fix_scale_factor)
-    if(self.target_name.count("k2") == 1 and self.target_name.count("k2as") == 0):
-       if(self.scale_factor == 0): fix_scale_factor = False
-       else: fix_scale_factor = True
-       return ls_k2(f_obs            = f_obs,
-                    weights          = weights,
-                    scale_factor     = self.scale_factor,
-                    fix_scale_factor = fix_scale_factor)
-    if(self.target_name.count("kunit") == 1 or self.target_name.count("ask") == 1):
-       assert self.scale_factor != 0.0
-       return ls_k1(f_obs            = f_obs,
-                    weights          = weights,
-                    scale_factor     = self.scale_factor,
-                    fix_scale_factor = True)
-    if(self.target_name == "ml"):
-      epsilons      = f_obs.epsilons().data()
-      centric_flags = f_obs.centric_flags().data()
-      return maximum_likelihood_criterion(
-                              epsilons      = epsilons,
-                              centric_flags = centric_flags,
-                              f_obs         = f_obs)
-    if(self.target_name == "mlhl"):
-      epsilons      = f_obs.epsilons().data()
-      centric_flags = f_obs.centric_flags().data()
-      return maximum_likelihood_criterion_hl(
-                              epsilons      = epsilons,
-                              centric_flags = centric_flags,
-                              f_obs         = f_obs,
-                              abcd          = abcd.data())
+  def target_functor_w(self, selection=None):
+    return self._target_functor(
+      f_obs=self.f_obs_w,
+      weights=self.weights_w,
+      abcd=self.abcd_w,
+      selection=selection)
+
+  def target_functor_t(self, selection=None):
+    return self._target_functor(
+      f_obs=self.f_obs_t,
+      weights=self.weights_t,
+      abcd=self.abcd_t,
+      selection=selection)
 
 class ls_k1(object):
 
