@@ -1,4 +1,5 @@
 from libtbx import easy_run
+from libtbx import introspection
 import difflib
 from stdlib import math
 import sys
@@ -139,14 +140,22 @@ def eps_eq(a1, a2, eps=1.e-6, out=Default, prefix=""):
 def not_eps_eq(a1, a2, eps=1.e-6):
   return not eps_eq(a1, a2, eps, None)
 
-def is_below_limit(value, limit, eps=1.e-6, info_low_eps=None, out=Default):
-  if (value < limit + eps):
+def is_below_limit(
+      value,
+      limit,
+      eps=1.e-6,
+      info_low_eps=None,
+      out=Default,
+      info_prefix="INFO LOW VALUE: "):
+  if (isinstance(value, (int, float)) and value < limit + eps):
     if (info_low_eps is not None and value < limit - info_low_eps):
       if (out is not None):
         if (out is Default): out = sys.stdout
-        print >> out, "INFO LOW VALUE:", \
-          "is_below_limit(value=%s, limit=%s, info_low_eps=%s)" % (
-            str(value), str(limit), str(info_low_eps))
+        introspection.show_stack(
+          frames_back=1, reverse=True, out=out, prefix=info_prefix)
+        print >> out, \
+          "%sis_below_limit(value=%s, limit=%s, info_low_eps=%s)" % (
+            info_prefix, str(value), str(limit), str(info_low_eps))
     return True
   if (out is not None):
     if (out is Default): out = sys.stdout
@@ -155,14 +164,22 @@ def is_below_limit(value, limit, eps=1.e-6, info_low_eps=None, out=Default):
         str(value), str(limit), str(eps))
   return False
 
-def is_above_limit(value, limit, eps=1.e-6, info_high_eps=None, out=Default):
-  if (value > limit - eps):
+def is_above_limit(
+      value,
+      limit,
+      eps=1.e-6,
+      info_high_eps=None,
+      out=Default,
+      info_prefix="INFO HIGH VALUE: "):
+  if (isinstance(value, (int, float)) and value > limit - eps):
     if (info_high_eps is not None and value > limit + info_high_eps):
       if (out is not None):
         if (out is Default): out = sys.stdout
-        print >> out, "INFO HIGH VALUE:", \
-          "is_above_limit(value=%s, limit=%s, info_high_eps=%s)" % (
-            str(value), str(limit), str(info_high_eps))
+        introspection.show_stack(
+          frames_back=1, reverse=True, out=out, prefix=info_prefix)
+        print >> out, \
+          "%sis_above_limit(value=%s, limit=%s, info_high_eps=%s)" % (
+            info_prefix, str(value), str(limit), str(info_high_eps))
     return True
   if (out is not None):
     if (out is Default): out = sys.stdout
@@ -171,8 +188,10 @@ def is_above_limit(value, limit, eps=1.e-6, info_high_eps=None, out=Default):
         str(value), str(limit), str(eps))
   return False
 
-def show_diff(a, b, selections=None):
-  if (selections is not None):
+def show_diff(a, b, selections=None, expected_number_of_lines=None):
+  if (selections is None):
+    assert expected_number_of_lines is None
+  else:
     a_lines = a.splitlines(1)
     a = []
     for selection in selections:
@@ -181,9 +200,16 @@ def show_diff(a, b, selections=None):
         a.append(a_lines[i])
       a.append("...\n")
     a = "".join(a[:-1])
-  if (a == b): return False
-  print "".join(diff_function(b.splitlines(1), a.splitlines(1)))
-  return True
+  if (a != b):
+    print "".join(diff_function(b.splitlines(1), a.splitlines(1)))
+    return True
+  if (    expected_number_of_lines is not None
+      and len(a_lines) != expected_number_of_lines):
+    print \
+      "show_diff: expected_number_of_lines != len(a.splitlines()): %d != %d" \
+        % (expected_number_of_lines, len(a_lines))
+    return True
+  return False
 
 def exercise():
   from cStringIO import StringIO
@@ -281,23 +307,38 @@ $%
   assert is_below_limit(value=5, limit=10, eps=2, info_low_eps=1, out=out)
   assert not show_diff(out.getvalue(), """\
 INFO LOW VALUE: is_below_limit(value=5, limit=10, info_low_eps=1)
-""")
+""", selections=[[-1]], expected_number_of_lines=3)
   out = StringIO()
   assert not is_below_limit(value=15, limit=10, eps=2, out=out)
   assert not show_diff(out.getvalue(), """\
 ERROR: is_below_limit(value=15, limit=10, eps=2)
+""")
+  out = StringIO()
+  assert not is_below_limit(value=None, limit=3, eps=1, out=out)
+  assert not is_below_limit(value=None, limit=-3, eps=1, out=out)
+  assert not show_diff(out.getvalue(), """\
+ERROR: is_below_limit(value=None, limit=3, eps=1)
+ERROR: is_below_limit(value=None, limit=-3, eps=1)
 """)
   assert is_above_limit(value=10, limit=5, eps=2)
   out = StringIO()
   assert is_above_limit(value=10, limit=5, eps=2, info_high_eps=1, out=out)
   assert not show_diff(out.getvalue(), """\
 INFO HIGH VALUE: is_above_limit(value=10, limit=5, info_high_eps=1)
-""")
+""", selections=[[-1]], expected_number_of_lines=3)
   out = StringIO()
   assert not is_above_limit(value=10, limit=15, eps=2, out=out)
   assert not show_diff(out.getvalue(), """\
 ERROR: is_above_limit(value=10, limit=15, eps=2)
 """)
+  out = StringIO()
+  assert not is_above_limit(value=None, limit=-3, eps=1, out=out)
+  assert not is_above_limit(value=None, limit=3, eps=1, out=out)
+  assert not show_diff(out.getvalue(), """\
+ERROR: is_above_limit(value=None, limit=-3, eps=1)
+ERROR: is_above_limit(value=None, limit=3, eps=1)
+""")
+  print "OK"
 
 if (__name__ == "__main__"):
   exercise()
