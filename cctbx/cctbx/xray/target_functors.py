@@ -2,194 +2,169 @@ from cctbx.xray import ext
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 
-class target_functor_base(object):
+class manager(object):
 
-  def __call__(self, f_calc, compute_derivatives):
-    assert f_calc.unit_cell().is_similar_to(
-           self.f_obs().unit_cell())
-    assert f_calc.space_group() == self.f_obs().space_group()
-    if (self.weights() is not None):
-      return self._target_calculator(self.f_obs().data(),
-                                     self.weights(),
-                                     f_calc.data(),
-                                     compute_derivatives)
-    else:
-      return self._target_calculator(self.f_obs().data(),
-                                     f_calc.data(),
-                                     compute_derivatives)
+  target_names = {
+    "ls_wunit_k1": 1,
+    "ls_wunit_k2": 2,
+    "ls_wunit_kunit": -1,
+    "ls_wunit_k1_fixed": 1,
+    "ls_wunit_k1ask3_fixed": -1,
+    "ls_wexp_k1": 1,
+    "ls_wexp_k2": 2,
+    "ls_wexp_kunit": -1,
+    "ls_wff_k1": 1,
+    "ls_wff_k2": 2,
+    "ls_wff_kunit": -1,
+    "ls_wff_k1_fixed": 1,
+    "ls_wff_k1ask3_fixed": -1,
+    "lsm_k1": 1,
+    "lsm_k2": 2,
+    "lsm_kunit": -1,
+    "lsm_k1_fixed": 1,
+    "lsm_k1ask3_fixed": -1,
+    "ml": 0,
+    "mlhl": 0}
 
-class target_functors_manager(object):
-
-  target_names = (
-    "ls_wunit_k1", "ls_wunit_k2", "ls_wunit_kunit", "ls_wunit_k1_fixed",
-    "ls_wunit_k1ask3_fixed",
-    "ls_wexp_k1", "ls_wexp_k2", "ls_wexp_kunit",
-    "ls_wff_k1", "ls_wff_k2", "ls_wff_kunit", "ls_wff_k1_fixed",
-    "ls_wff_k1ask3_fixed",
-    "lsm_k1", "lsm_k2", "lsm_kunit", "lsm_k1_fixed", "lsm_k1ask3_fixed",
-    "ml", "mlhl")
-
-  def __init__(self, target_name,
-                     f_obs,
-                     flags,
-                     abcd                   = None,
-                     weights                = None,
-                     use_sigmas_as_weights  = False,
-                     scale_factor           = 0):
-    assert target_name in target_functors_manager.target_names
-    assert flags.size() == f_obs.data().size()
-    assert abcd is None or abcd.data().size() == f_obs.data().size()
+  def __init__(self,
+        target_name,
+        f_obs,
+        r_free_flags,
+        experimental_phases=None,
+        weights=None,
+        use_sigmas_as_weights=False,
+        scale_factor=0):
+    assert target_name in manager.target_names
+    assert r_free_flags.data().size() == f_obs.data().size()
+    if (experimental_phases is not None):
+      assert experimental_phases.data().size() == f_obs.data().size()
+    if (target_name == "mlhl"):
+      assert experimental_phases is not None
     adopt_init_args(self, locals())
-    if(self.flags.count(True) > 0):
-      self.f_obs_w = self.f_obs.select(~self.flags)
-      self.f_obs_t = self.f_obs.select( self.flags)
+    rffd = r_free_flags.data()
+    rffd_true = self.r_free_flags.data().count(True)
+    if (rffd_true > 0):
+      self.f_obs_w = self.f_obs.select(~rffd)
+      self.f_obs_t = self.f_obs.select( rffd)
     else:
       self.f_obs_w = self.f_obs
-      self.f_obs_t = self.f_obs
-    if(self.target_name == "mlhl"):
-      assert self.abcd is not None
-    if(self.abcd is not None):
-      if(self.target_name == "mlhl"):
-        if(self.flags.count(True) > 0):
-          self.abcd_w = self.abcd.select(~self.flags)
-          self.abcd_t = self.abcd.select( self.flags)
+      self.f_obs_t = self.f_obs # XXX very misleading
+    self.experimental_phases_w, self.experimental_phases_t = None, None
+    if (self.experimental_phases is not None):
+      if (self.target_name == "mlhl"):
+        if (rffd_true > 0):
+          self.experimental_phases_w = self.experimental_phases.select(~rffd)
+          self.experimental_phases_t = self.experimental_phases.select( rffd)
         else:
-          self.abcd_w = self.abcd
-          self.abcd_t = self.abcd
-      else:
-        self.abcd_w, self.abcd_t = None, None
-    else:
-      self.abcd_w, self.abcd_t = None, None
-    if(self.weights is not None):
-      assert self.target_name.count("ls") == 1
-      if(self.flags.count(True) > 0):
-        self.weights_w = self.weights.select(~self.flags)
-        self.weights_t = self.weights.select( self.flags)
+          self.experimental_phases_w = self.experimental_phases
+          # XXX very misleading
+          self.experimental_phases_t = self.experimental_phases
+    if (self.weights is not None):
+      assert self.target_name.startswith("ls")
+      if (rffd_true):
+        self.weights_w = self.weights.select(~rffd)
+        self.weights_t = self.weights.select( rffd)
       else:
         self.weights_w = self.weights
-        self.weights_t = self.weights
+        self.weights_t = self.weights # XXX very misleading
     else:
       self.weights_w, self.weights_t = None, None
+    code = manager.target_names[self.target_name]
+    self.scale_factor_must_be_greater_than_zero = (code < 0)
+    self.ext_ls_target = [
+      None,
+      ext.ls_target_with_scale_k1,
+      ext.ls_target_with_scale_k2][abs(code)]
 
-  def _target_functor(self, f_obs, weights, abcd, selection):
+  def _target_functor(self, f_obs, weights, experimental_phases, selection):
     if (selection is not None):
       assert selection.size() == f_obs.data().size()
       f_obs = f_obs.select(selection)
-      if (weights is not None): weights = weights.select(selection)
-      if (abcd is not None): abcd = abcd.select(selection)
-    if(self.target_name.count("k1") == 1 and self.target_name.count("k1as") == 0):
-       if(self.scale_factor == 0): fix_scale_factor = False
-       else: fix_scale_factor = True
-       return ls_k1(f_obs            = f_obs,
-                    weights          = weights,
-                    scale_factor     = self.scale_factor,
-                    fix_scale_factor = fix_scale_factor)
-    if(self.target_name.count("k2") == 1 and self.target_name.count("k2as") == 0):
-       if(self.scale_factor == 0): fix_scale_factor = False
-       else: fix_scale_factor = True
-       return ls_k2(f_obs            = f_obs,
-                    weights          = weights,
-                    scale_factor     = self.scale_factor,
-                    fix_scale_factor = fix_scale_factor)
-    if(self.target_name.count("kunit") == 1 or self.target_name.count("ask") == 1):
-       assert self.scale_factor != 0.0
-       return ls_k1(f_obs            = f_obs,
-                    weights          = weights,
-                    scale_factor     = self.scale_factor,
-                    fix_scale_factor = True)
-    if(self.target_name == "ml"):
-      epsilons      = f_obs.epsilons().data()
-      centric_flags = f_obs.centric_flags().data()
-      return maximum_likelihood_criterion(
-                               epsilons      = epsilons,
-                               centric_flags = centric_flags,
-                               f_obs         = f_obs)
-    if(self.target_name == "mlhl"):
-      epsilons      = f_obs.epsilons().data()
-      centric_flags = f_obs.centric_flags().data()
-      return maximum_likelihood_criterion_hl(
-                              epsilons      = epsilons,
-                              centric_flags = centric_flags,
-                              f_obs         = f_obs,
-                              abcd          = abcd.data())
+      if (weights is not None):
+        weights = weights.select(selection)
+      if (experimental_phases is not None):
+        experimental_phases = experimental_phases.select(selection)
+    if (self.ext_ls_target is not None):
+       if (self.scale_factor_must_be_greater_than_zero):
+         assert self.scale_factor > 0
+       return _ls_functor(
+         f_obs=f_obs,
+         weights=weights,
+         scale_factor=self.scale_factor,
+         ext_ls_target=self.ext_ls_target)
+    return _ml_functor(
+      f_obs=f_obs,
+      experimental_phases=experimental_phases)
 
   def target_functor_w(self, selection=None):
     return self._target_functor(
       f_obs=self.f_obs_w,
       weights=self.weights_w,
-      abcd=self.abcd_w,
+      experimental_phases=self.experimental_phases_w,
       selection=selection)
 
   def target_functor_t(self, selection=None):
     return self._target_functor(
       f_obs=self.f_obs_t,
       weights=self.weights_t,
-      abcd=self.abcd_t,
+      experimental_phases=self.experimental_phases_t,
       selection=selection)
 
-class ls_k1(object):
+class _ls_functor(object):
 
-  def __init__(self, f_obs,
-                     weights,
-                     scale_factor,
-                     fix_scale_factor):
-    adopt_init_args(self, locals(), hide=True)
-    if(self._fix_scale_factor == True):
-       assert self._scale_factor > 0.0
-
-  def f_obs(self):
-    return self._f_obs
-
-  def weights(self):
-    return self._weights
-
-  def scale_factor(self):
-    return self._scale_factor
+  def __init__(self, f_obs, weights, scale_factor, ext_ls_target):
+    assert scale_factor >= 0
+    adopt_init_args(self, locals())
 
   def __call__(self, f_calc, compute_derivatives):
-    assert f_calc.unit_cell().is_similar_to(
-           self.f_obs().unit_cell())
-    assert f_calc.space_group() == self.f_obs().space_group()
-    assert f_calc.data().size() == self.f_obs().data().size()
-    return ext.ls_target_with_scale_k1(
-                                  f_obs               = self.f_obs().data(),
-                                  weights             = self.weights(),
-                                  f_calc              = f_calc.data(),
-                                  compute_derivatives = compute_derivatives,
-                                  fix_scale           = self._fix_scale_factor,
-                                  scale               = self._scale_factor)
+    assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
+    assert f_calc.space_group() == self.f_obs.space_group()
+    return self.ext_ls_target(
+      f_obs=self.f_obs.data(),
+      weights=self.weights,
+      f_calc=f_calc.data(),
+      compute_derivatives=compute_derivatives,
+      fix_scale=self.scale_factor != 0,
+      scale=self.scale_factor)
 
-class ls_k2(object):
+class _ml_functor(object):
 
-  def __init__(self, f_obs,
-                     weights,
-                     scale_factor,
-                     fix_scale_factor):
-    adopt_init_args(self, locals(), hide=True)
-    if(self._fix_scale_factor == True):
-       assert self._scale_factor > 0.0
+  def __init__(self,
+        f_obs,
+        experimental_phases=None,
+        step_for_integration=5.0):
+    adopt_init_args(self, locals())
+    self.epsilons = f_obs.epsilons().data()
+    self.centric_flags = f_obs.centric_flags().data()
 
-  def f_obs(self):
-    return self._f_obs
-
-  def weights(self):
-    return self._weights
-
-  def scale_factor(self):
-    return self._scale_factor
-
-  def __call__(self, f_calc, compute_derivatives):
-    assert f_calc.unit_cell().is_similar_to(
-           self.f_obs().unit_cell())
-    assert f_calc.space_group() == self.f_obs().space_group()
-    assert f_calc.data().size() == self.f_obs().data().size()
-    return ext.ls_target_with_scale_k2(
-                                  f_obs               = self.f_obs().data(),
-                                  weights             = self.weights(),
-                                  f_calc              = f_calc.data(),
-                                  compute_derivatives = compute_derivatives,
-                                  fix_scale           = self._fix_scale_factor,
-                                  scale               = self._scale_factor)
+  def __call__(self,
+        f_calc,
+        alpha,
+        beta,
+        k,
+        compute_derivatives):
+    assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
+    assert f_calc.space_group() == self.f_obs.space_group()
+    if (self.experimental_phases is None):
+      return ext.targets_maximum_likelihood_criterion(
+        self.f_obs.data(),
+        f_calc.data(),
+        alpha,
+        beta,
+        k,
+        self.epsilons,
+        self.centric_flags,
+        compute_derivatives)
+    return ext.targets_maximum_likelihood_criterion_hl(
+      self.f_obs.data(),
+      f_calc.data(),
+      alpha,
+      beta,
+      self.epsilons,
+      self.centric_flags,
+      compute_derivatives,
+      self.experimental_phases.data(),
+      self.step_for_integration)
 
 class least_squares_residual(object):
   """ A least-square residual functor. """
@@ -271,7 +246,7 @@ class least_squares_residual(object):
         compute_derivatives,
         self._scale_factor)
 
-class intensity_correlation(target_functor_base):
+class intensity_correlation(object):
 
   def __init__(self, f_obs, weights=None,
                use_multiplicities_as_weights=False):
@@ -290,66 +265,19 @@ class intensity_correlation(target_functor_base):
   def use_multiplicities_as_weights(self):
     return self._use_multiplicities_as_weights
 
-class maximum_likelihood_criterion(object):
-
-  def __init__(self, f_obs, epsilons, centric_flags):
-    adopt_init_args(self, locals(), hide=True)
-
-  def f_obs(self):
-    return self._f_obs
-
-  def __call__(self, f_calc,
-                     alpha,
-                     beta,
-                     k,
-                     compute_derivatives):
-    assert f_calc.unit_cell().is_similar_to(self.f_obs().unit_cell())
+  def __call__(self, f_calc, compute_derivatives):
+    assert f_calc.unit_cell().is_similar_to(
+           self.f_obs().unit_cell())
     assert f_calc.space_group() == self.f_obs().space_group()
-    return ext.targets_maximum_likelihood_criterion(
-        self.f_obs().data(),
-        f_calc.data(),
-        alpha,
-        beta,
-        k,
-        self._epsilons,
-        self._centric_flags,
-        compute_derivatives)
-
-class maximum_likelihood_criterion_hl(object):
-
-  def __init__(self, epsilons,
-                     centric_flags,
-                     f_obs,
-                     abcd,
-                     step_for_integration = 5.0):
-    adopt_init_args(self, locals(), hide=True)
-
-  def f_obs(self):
-    return self._f_obs
-
-  def abcd(self):
-    return self._abcd
-
-  def step_for_integration(self):
-    return self._step_for_integration
-
-  def __call__(self, f_calc,
-                     alpha,
-                     beta,
-                     k,
-                     compute_derivatives):
-    assert f_calc.unit_cell().is_similar_to(self.f_obs().unit_cell())
-    assert f_calc.space_group() == self.f_obs().space_group()
-    return ext.targets_maximum_likelihood_criterion_hl(
-        self.f_obs().data(),
-        f_calc.data(),
-        alpha,
-        beta,
-        self._epsilons,
-        self._centric_flags,
-        compute_derivatives,
-        self.abcd(),
-        self.step_for_integration())
+    if (self.weights() is not None):
+      return self._target_calculator(self.f_obs().data(),
+                                     self.weights(),
+                                     f_calc.data(),
+                                     compute_derivatives)
+    else:
+      return self._target_calculator(self.f_obs().data(),
+                                     f_calc.data(),
+                                     compute_derivatives)
 
 def registry():
   return {
