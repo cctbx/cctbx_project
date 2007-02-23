@@ -563,141 +563,141 @@ class manager(object):
       self._target_name = None
       return
     if (target_name == "ls"): target_name = "ls_wunit_k1"
-    if (target_name not in xray.target_functors_manager.target_names):
+    if (target_name not in xray.target_functors.manager.target_names):
       raise RuntimeError("Unknown target name: %s" % show_string(target_name))
     if (target_name == "ml"):
-       self.target_functors = xray.target_functors.target_functors_manager(
-                                        target_name = target_name,
-                                        f_obs       = self.f_obs,
-                                        flags       = self.r_free_flags.data())
+       self.target_functors = xray.target_functors.manager(
+         target_name=target_name,
+         f_obs=self.f_obs,
+         r_free_flags=self.r_free_flags)
     elif (target_name == "mlhl"):
        assert self.abcd is not None
-       self.target_functors = xray.target_functors.target_functors_manager(
-                                        target_name = target_name,
-                                        f_obs       = self.f_obs,
-                                        flags       = self.r_free_flags.data(),
-                                        abcd        = self.abcd)
+       self.target_functors = xray.target_functors.manager(
+         target_name=target_name,
+         f_obs=self.f_obs,
+         r_free_flags=self.r_free_flags,
+         experimental_phases=self.abcd)
     elif (target_name == "ls_wunit_k1"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = flex.double(self.f_obs.data().size(), 1.0))
     elif (target_name == "ls_wunit_k1_fixed"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = flex.double(self.f_obs.data().size(), 1.0),
                      scale_factor = self.scale_k1_w())
     elif (target_name == "ls_wunit_k2"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = flex.double(self.f_obs.data().size(), 1.0))
     elif (target_name == "ls_wunit_kunit"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = flex.double(self.f_obs.data().size(), 1.0),
                      scale_factor = 1.0)
     elif (target_name == "ls_wunit_k1ask3_fixed"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = flex.double(self.f_obs.data().size(), 1.0),
                      scale_factor = self.scale_k3_w())
     elif (target_name == "ls_wexp_k1"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = ls_sigma_weights(self.f_obs))
     elif (target_name == "ls_wexp_k2"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = ls_sigma_weights(self.f_obs))
     elif (target_name == "ls_wexp_kunit"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = ls_sigma_weights(self.f_obs),
                      scale_factor = 1.0)
     elif (target_name == "ls_wff_k1"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = ls_ff_weights(self.f_obs, "N", 25.0))
     elif (target_name == "ls_wff_k1_fixed"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = ls_ff_weights(self.f_obs, "N", 25.0),
                      scale_factor = self.scale_k1_w())
     elif (target_name == "ls_wff_k1ask3_fixed"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = ls_ff_weights(self.f_obs, "N", 25.0),
                      scale_factor = self.scale_k3_w())
     elif (target_name == "ls_wff_k2"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = ls_ff_weights(self.f_obs, "N", 25.0))
     elif (target_name == "ls_wff_kunit"):
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = self.f_obs,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = ls_ff_weights(self.f_obs, "N", 25.0),
                      scale_factor = 1.0)
     elif (target_name == "lsm_k1"):
        f_star, w_star = self.f_star_w_star()
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = f_star,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = w_star.data())
     elif (target_name == "lsm_k1ask3_fixed"):
        f_star, w_star = self.f_star_w_star()
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = f_star,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = w_star.data(),
                      scale_factor = self.scale_k3_w())
     elif (target_name == "lsm_k1_fixed"):
        f_star, w_star = self.f_star_w_star()
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = f_star,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = w_star.data(),
                      scale_factor = self.scale_k1_w())
     elif (target_name == "lsm_k2"):
        f_star, w_star = self.f_star_w_star()
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = f_star,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = w_star.data())
     elif (target_name == "lsm_kunit"):
        f_star, w_star = self.f_star_w_star()
-       self.target_functors = xray.target_functors.target_functors_manager(
+       self.target_functors = xray.target_functors.manager(
                      target_name  = target_name,
                      f_obs        = f_star,
-                     flags        = self.r_free_flags.data(),
+                     r_free_flags = self.r_free_flags,
                      weights      = w_star.data(),
                      scale_factor = 1.0)
     else:
