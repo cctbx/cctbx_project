@@ -66,8 +66,8 @@ public:
   {
     // avoid "left shift count >= with of type" warning
     result_type res = 0;
-    for(int i = 0; i < w; ++i)
-      res |= (1u << i);
+    for(int j = 0; j < w; ++j)
+      res |= (1u << j);
     return res;
   }
 
