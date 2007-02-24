@@ -2,44 +2,52 @@ from cctbx.xray import ext
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 
-class manager(object):
-
-  target_names = {
-    "ls_wunit_k1": 1,
-    "ls_wunit_k2": 2,
-    "ls_wunit_kunit": -1,
-    "ls_wunit_k1_fixed": 1,
-    "ls_wunit_k1ask3_fixed": -1,
-    "ls_wexp_k1": 1,
-    "ls_wexp_k2": 2,
-    "ls_wexp_kunit": -1,
-    "ls_wff_k1": 1,
-    "ls_wff_k2": 2,
-    "ls_wff_kunit": -1,
-    "ls_wff_k1_fixed": 1,
-    "ls_wff_k1ask3_fixed": -1,
-    "lsm_k1": 1,
-    "lsm_k2": 2,
-    "lsm_kunit": -1,
-    "lsm_k1_fixed": 1,
-    "lsm_k1ask3_fixed": -1,
-    "ml": 0,
-    "mlhl": 0}
+class target_attributes_base(object):
 
   def __init__(self,
-        target_name,
+        family,
+        specialization=None,
+        requires_external_scale=False):
+    adopt_init_args(self, locals())
+    assert self.validate()
+
+  def validate(self):
+    raise RuntimeError("Internal error: missing override.")
+
+class target_attributes(target_attributes_base):
+
+  def validate(self):
+    if (self.family == "ls"):
+      assert self.specialization in [None, "k1", "k2"]
+      return True
+    if (self.family == "ml"):
+      assert self.specialization in [None, "hl"]
+      return True
+    return False
+
+  def requires_experimental_phases(self):
+    return (self.family == "ml" and self.specialization == "hl")
+
+  def ext_ls_target(self):
+    if (self.family == "ls"):
+      return getattr(ext, "ls_target_with_scale_"+self.specialization)
+    return None
+
+class manager(object):
+
+  target_attributes_validate = target_attributes.validate
+
+  def __init__(self,
+        target_attributes,
         f_obs,
         r_free_flags,
         experimental_phases=None,
         weights=None,
-        use_sigmas_as_weights=False,
         scale_factor=0):
-    assert target_name in manager.target_names
+    assert manager.target_attributes_validate(target_attributes)
     assert r_free_flags.data().size() == f_obs.data().size()
     if (experimental_phases is not None):
       assert experimental_phases.data().size() == f_obs.data().size()
-    if (target_name == "mlhl"):
-      assert experimental_phases is not None
     adopt_init_args(self, locals())
     rffd = r_free_flags.data()
     rffd_true = self.r_free_flags.data().count(True)
@@ -50,17 +58,17 @@ class manager(object):
       self.f_obs_w = self.f_obs
       self.f_obs_t = self.f_obs # XXX very misleading
     self.experimental_phases_w, self.experimental_phases_t = None, None
-    if (self.experimental_phases is not None):
-      if (self.target_name == "mlhl"):
-        if (rffd_true > 0):
-          self.experimental_phases_w = self.experimental_phases.select(~rffd)
-          self.experimental_phases_t = self.experimental_phases.select( rffd)
-        else:
-          self.experimental_phases_w = self.experimental_phases
-          # XXX very misleading
-          self.experimental_phases_t = self.experimental_phases
+    if (target_attributes.requires_experimental_phases()):
+      assert experimental_phases is not None
+      if (rffd_true > 0):
+        self.experimental_phases_w = self.experimental_phases.select(~rffd)
+        self.experimental_phases_t = self.experimental_phases.select( rffd)
+      else:
+        self.experimental_phases_w = self.experimental_phases
+        # XXX very misleading
+        self.experimental_phases_t = self.experimental_phases
     if (self.weights is not None):
-      assert self.target_name.startswith("ls")
+      assert self.target_attributes.family == "ls"
       if (rffd_true):
         self.weights_w = self.weights.select(~rffd)
         self.weights_t = self.weights.select( rffd)
@@ -69,12 +77,8 @@ class manager(object):
         self.weights_t = self.weights # XXX very misleading
     else:
       self.weights_w, self.weights_t = None, None
-    code = manager.target_names[self.target_name]
-    self.scale_factor_must_be_greater_than_zero = (code < 0)
-    self.ext_ls_target = [
-      None,
-      ext.ls_target_with_scale_k1,
-      ext.ls_target_with_scale_k2][abs(code)]
+    self.requires_external_scale = target_attributes.requires_external_scale
+    self.ext_ls_target = target_attributes.ext_ls_target()
 
   def _target_functor(self, f_obs, weights, experimental_phases, selection):
     if (selection is not None):
@@ -85,7 +89,7 @@ class manager(object):
       if (experimental_phases is not None):
         experimental_phases = experimental_phases.select(selection)
     if (self.ext_ls_target is not None):
-       if (self.scale_factor_must_be_greater_than_zero):
+       if (self.requires_external_scale):
          assert self.scale_factor > 0
        return _ls_functor(
          f_obs=f_obs,
