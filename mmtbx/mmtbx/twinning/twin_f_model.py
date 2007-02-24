@@ -1924,7 +1924,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
                          max_number_of_bins  = 30,
                          out=None):
     self.r_values(table=True)
-    self.sigmaa_object().show()
+    self.sigmaa_object().show(out=self.out)
 
 
 
@@ -1934,7 +1934,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
                                     max_number_of_bins  = 30,
                                     out=None):
     self.r_values(table=True)
-    self.sigmaa_object().show()
+    self.sigmaa_object().show(out=self.out)
 
   def r_factors_in_resolution_bins(self,
                                    free_reflections_per_bin = 200,
@@ -1958,7 +1958,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
                                               free_reflections_per_bin = 200,
                                               max_number_of_bins  = 30,
                                               out=None):
-    self.sigmaa_object().show()
+    self.sigmaa_object().show(out=self.out)
 
 
   def show_targets(self, out=None, text=""):
