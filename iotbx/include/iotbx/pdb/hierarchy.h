@@ -788,6 +788,9 @@ namespace pdb {
         if (class_name == "common_rna_dna")
           return residue_class_selection(
             common_residue_names::rna_dna_set(), negate);
+        if (class_name == "ccp4_mon_lib_rna_dna")
+          return residue_class_selection(
+            common_residue_names::ccp4_mon_lib_rna_dna_set(), negate);
         if (class_name == "common_water")
           return residue_class_selection(
             common_residue_names::water_set(), negate);
