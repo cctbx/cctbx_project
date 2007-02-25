@@ -1863,6 +1863,8 @@ ATOM         O   TIP3   12
   f = hierarchy.models()[0].chains()[0].conformers()[0]
   assert list(f.residue_class_selection(class_name="common_amino_acid")) == [0,2,9]
   assert list(f.residue_class_selection(class_name="common_rna_dna")) == [6]
+  assert list(f.residue_class_selection(class_name="ccp4_mon_lib_rna_dna")) \
+      == []
   assert list(f.residue_class_selection(class_name="common_water")) \
       == [1,3,4,5,7,8,10,11]
   assert f.residue_class_selection(
@@ -2042,6 +2044,7 @@ model id=0 #chains=1
   #
   assert "HIS " in pdb.common_residue_names_amino_acid
   assert "GUA " in pdb.common_residue_names_rna_dna
+  assert "CD  " in pdb.common_residue_names_ccp4_mon_lib_rna_dna
   assert "HOH " in pdb.common_residue_names_water
   assert "SO4 " in pdb.common_residue_names_small_molecule
   assert " FE " in pdb.common_residue_names_element
@@ -2052,6 +2055,9 @@ model id=0 #chains=1
   assert get_class(name="SO4") == "common_small_molecule"
   assert get_class(name="CL ") == "common_element"
   assert get_class(name="ABC") == "other"
+  assert get_class(name="CD ") == "common_element"
+  assert get_class(name="CD ", consider_ccp4_mon_lib_rna_dna=True) \
+    == "ccp4_mon_lib_rna_dna"
 
 def exercise_xray_structure_simple():
   pdb_inp = pdb.input(
