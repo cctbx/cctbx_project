@@ -336,7 +336,7 @@ class refinement_monitor(object):
     if(self.params.main.compute_optimal_errors):
        self.dopts_ic     .append(rem.dopt_ic                      )
        self.dopts_rc     .append(rem.dopt_rc                      )
-    if(fmodel.target_name.count("lsm") == 1):
+    if(fmodel.target_attributes().pseudo_ml):
        n_zero = fmodel.f_star_w_star_obj().number_of_f_star_zero()
        percent = n_zero*100./fmodel.f_obs.data().size()
        self.n_zeros      .append(n_zero                           )
