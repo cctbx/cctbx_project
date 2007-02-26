@@ -6,6 +6,7 @@ from libtbx.utils import format_cpu_times
 
 def exercise_pair_registry_basic():
   registry = ncs.restraints.pair_registry(30, 3)
+  assert registry.n_seq() == 30
   assert registry.number_of_additional_isolated_sites == 0
   selection_pairs = registry.selection_pairs()
   assert len(selection_pairs) == 2

@@ -25,6 +25,9 @@ namespace mmtbx { namespace ncs { namespace restraints {
       number_of_additional_isolated_sites(0)
     {}
 
+    std::size_t
+    n_seq() const { return table_.size(); }
+
     void
     register_additional_isolated_sites(unsigned number)
     {

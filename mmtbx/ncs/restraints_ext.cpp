@@ -28,6 +28,7 @@ namespace {
       using namespace boost::python;
       class_<w_t, boost::noncopyable>("pair_registry", no_init)
         .def(init<unsigned, unsigned>((arg_("n_seq"), arg_("n_ncs"))))
+        .def("n_seq", &w_t::n_seq)
         .def_readonly("number_of_additional_isolated_sites",
           &w_t::number_of_additional_isolated_sites)
         .def("register_additional_isolated_sites",
