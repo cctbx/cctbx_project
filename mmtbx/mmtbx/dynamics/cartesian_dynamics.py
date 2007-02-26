@@ -52,12 +52,13 @@ class cartesian_dynamics(object):
     self.weights = self.structure.atomic_weights()
     self.vxyz = flex.vec3_double(self.weights.size(),(0,0,0))
     if(self.fmodel is not None):
-      assert self.fmodel.target_name in ("ml","mlhl") or \
-             self.fmodel.target_name.count("ls") == 1
-      if(self.fmodel.target_name.count("ls") == 1):
+      attr = self.fmodel.target_attributes()
+      if (attr.family == "ls"):
          self.alpha_w, self.beta_w = None, None
-      elif(self.fmodel.target_name == "ml" or self.fmodel.target_name == "mlhl"):
+      elif (attr.family == "ml"):
          self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w(only_if_required_by_target=True)
+      else:
+        raise RuntimeError
       self.target = self.fmodel.target_name
       assert self.fmodel.target_functors is not None
       self.xray_target_functor = self.fmodel.target_functors.target_functor_w()

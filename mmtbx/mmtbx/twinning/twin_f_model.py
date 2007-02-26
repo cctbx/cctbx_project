@@ -772,7 +772,12 @@ class bulk_solvent_scaling_manager(object):
     self.scaling_parameters.u_sol     = u_sol
     self.twin_fraction.twin_fraction  = self.best_twin_fraction.twin_fraction
 
+class target_attributes(xray.target_functors.target_attributes):
 
+  def __init__(self):
+    xray.target_functors.target_attributes.__init__(self, family="ls")
+    self.twin = "amplitudes"
+    self.pseudo_ml = False
 
 class twin_model_manager(object):
   def __init__(self,
@@ -792,6 +797,7 @@ class twin_model_manager(object):
     self.alpha_beta_params=None
 
     self.target_name="twin_lsq_f"
+    self._target_attributes = target_attributes()
     self.out = out
     if self.out is None:
       self.out = sys.stdout
@@ -1032,8 +1038,8 @@ class twin_model_manager(object):
     tmp = self.f_calc()
     return tmp.select( self.free_flags_for_f_atoms.data() )
 
-  def setup_target_functors(self):
-    print >>self.out, "NO TARGET FUNCTORS TO SET UP"
+  def target_attributes(self):
+    return self._target_attributes
 
   def update_solvent_and_scale(self,
                                params=None,

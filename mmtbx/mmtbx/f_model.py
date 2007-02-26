@@ -789,7 +789,8 @@ class manager(object):
     #                                     miller_set    = self.f_obs_w,
     #                                     cos_sin_table = self.sf_cos_sin_table)
     #XXX clear with target names
-    if(self.target_name.count("ml") > 0 or self.target_name.count("lsm") > 0):
+    attr = self.target_attributes()
+    if(attr.family == "ml" or attr.pseudo_ml):
        if([alpha, beta].count(None) == 2):
           alpha, beta = self.alpha_beta_w()
     else:
@@ -1844,7 +1845,7 @@ def statistics_in_resolution_bins(fmodel,
     xray_target_functor_t = target_functors.target_functor_t(selection = sel_t)
     d_max_,d_min_ = sel_fo_all.d_max_min()
     ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
-    if(fmodel.target_name.count("ls") == 1):
+    if(fmodel.target_attributes().family == "ls"):
       target_w = "%11.5g" % xray_target_functor_w(sel_fc_w, False).target()
       target_t = "%11.5g" % xray_target_functor_t(sel_fc_t, False).target()
     elif(fmodel.target_name in ["ml", "mlhl"]):
