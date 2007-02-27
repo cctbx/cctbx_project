@@ -671,7 +671,7 @@ class manager(object):
         raise RuntimeError
     self.target_functors = xray.target_functors.manager(
       target_attributes=attr,
-      f_obs=self.f_obs,
+      f_obs=f_obs,
       r_free_flags=self.r_free_flags,
       experimental_phases=self.abcd,
       weights=weights,
