@@ -39,6 +39,12 @@ import sys, os, math, time
 master_params =  iotbx.phil.parse("""
   twin_law = None
   .type=str
+  detwin{
+    mode = algebraic proportional *auto
+    .type= choice
+    local_scaling = False
+    .type=bool
+  }
   """)
 
 
@@ -793,7 +799,8 @@ class twin_model_manager(object):
                max_bins           = 20,
                sf_algorithm       = "fft",
                sf_cos_sin_table   = True,
-               perform_local_scaling = False):
+               perform_local_scaling = False,
+               detwin_mode = "auto" ):
     self.alpha_beta_params=None
 
     self.target_name="twin_lsq_f"
@@ -806,6 +813,14 @@ class twin_model_manager(object):
     self.twin_fraction=start_fraction
 
     self.perform_local_scaling = perform_local_scaling
+    self.possible_detwin_modes = ["proportional",
+                                  "algebraic",
+                                  "gradient",
+                                  "auto"]
+    assert detwin_mode in self.possible_detwin_modes
+    self.detwin_mode = detwin_mode
+    self.detwin_switch_twin_fraction = 0.45
+
 
     assert (self.twin_law is not None)
     self.f_obs = f_obs.map_to_asu()
@@ -1588,24 +1603,49 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     return result
 
 
-  def detwin_data(self, perform_local_scaling=True, ):
-    #first make a detwinned fobs
+  def detwin_data(self, perform_local_scaling=True, mode=None):
+    if mode is None:
+      mode = self.detwin_mode
+    if mode == "auto":
+      if self.twin_fraction_object.twin_fraction > self.detwin_switch_twin_fraction:
+        mode = "proportional"
+      else:
+        mode = "algebraic"
+    assert mode in self.possible_detwin_modes
     tmp_i_obs = self.f_obs.f_as_f_sq()
-    dt_iobs, dt_isigma = self.full_detwinner.detwin_with_model_data(
-      tmp_i_obs.data(),
-      tmp_i_obs.sigmas(),
-      self.data_core.f_model(),
-      self.twin_fraction_object.twin_fraction )
-    tmp_i_obs = tmp_i_obs.customized_copy(
-      data = dt_iobs,
-      sigmas = dt_isigma ).set_observation_type( tmp_i_obs )
-    dt_f_obs = tmp_i_obs.f_sq_as_f()
+    dt_f_obs = None
+    if mode == "proportional":
+      dt_iobs, dt_isigma = self.full_detwinner.detwin_with_model_data(
+        tmp_i_obs.data(),
+        tmp_i_obs.sigmas(),
+        self.data_core.f_model(),
+        self.twin_fraction_object.twin_fraction )
+      tmp_i_obs = tmp_i_obs.customized_copy(
+        data = dt_iobs,
+        sigmas = dt_isigma ).set_observation_type( tmp_i_obs )
+      dt_f_obs = tmp_i_obs.f_sq_as_f()
+
+    if mode == "algebraic":
+      dt_iobs, dt_isigma = self.full_detwinner.detwin_with_twin_fraction(
+        i_obs = tmp_i_obs.data(),
+        sigma_obs = tmp_i_obs.sigmas(),
+        twin_fraction = self.twin_fraction_object.twin_fraction )
+      zero_level = flex.min(self.f_obs.data())
+      zeros = flex.bool(dt_iobs<zero_level/10.0)
+      dt_iobs = dt_iobs.set_selected(zeros, zero_level/10.0)
+
+      tmp_i_obs = tmp_i_obs.customized_copy(
+        data = dt_iobs,
+        sigmas = dt_isigma ).set_observation_type( tmp_i_obs ).map_to_asu()
+      dt_f_obs = tmp_i_obs.f_sq_as_f()
 
     tmp_f_model = self.f_atoms.customized_copy(
       data = self.data_core.f_model() ).common_set(
       dt_f_obs )
     tmp_abs_f_model = tmp_f_model.customized_copy(
       data = flex.abs( tmp_f_model.data()) ).set_observation_type( dt_f_obs )
+
+
     if perform_local_scaling: # do local scaling against fmodel
       local_scaler = relative_scaling.local_scaling_driver(
         miller_native=tmp_abs_f_model,
@@ -1886,7 +1926,8 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     k_sol  = n_as_s("%4.2f",self.k_sol())
     b_sol  = n_as_s("%6.2f",self.b_sol())
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart())
-    b_iso  = n_as_s("%7.2f",self.u_iso())
+    b_iso  = n_as_s("%7.2f",self.b_iso())
+
     #XXXX Model error analyses required
     #err    = n_as_s("%6.2f",self.model_error_ml())
     err=" None "
