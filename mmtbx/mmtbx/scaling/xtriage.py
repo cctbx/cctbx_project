@@ -426,7 +426,7 @@ def run(command_name, args):
         print >> log, "## Unknown phil-file or phil-command:", arg
         print >> log, "##--------------------------------------------------------------------##"
         print >> log
-        #raise Sorry("Unknown file format or phil command: %s" % arg)
+        raise Sorry("Unknown file format or phil command: %s" % arg)
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
