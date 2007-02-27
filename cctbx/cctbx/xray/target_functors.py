@@ -18,19 +18,17 @@ class target_attributes(target_attributes_base):
 
   def validate(self):
     if (self.family == "ls"):
-      assert self.specialization in [None, "k1", "k2"]
-      return True
+      return self.specialization in [None, "k1", "k2"]
     if (self.family == "ml"):
-      assert self.specialization in [None, "hl"]
-      return True
+      return self.specialization in [None, "hl"]
     return False
 
   def requires_experimental_phases(self):
     return (self.family == "ml" and self.specialization == "hl")
 
-  def ext_ls_target(self):
+  def ls_apply_scale_to_f_calc(self):
     if (self.family == "ls"):
-      return getattr(ext, "ls_target_with_scale_"+self.specialization)
+      return (self.specialization == "k1")
     return None
 
 class manager(object):
@@ -78,7 +76,7 @@ class manager(object):
     else:
       self.weights_w, self.weights_t = None, None
     self.requires_external_scale = target_attributes.requires_external_scale
-    self.ext_ls_target = target_attributes.ext_ls_target()
+    self.ls_apply_scale_to_f_calc =target_attributes.ls_apply_scale_to_f_calc()
 
   def _target_functor(self, f_obs, weights, experimental_phases, selection):
     if (selection is not None):
@@ -88,14 +86,14 @@ class manager(object):
         weights = weights.select(selection)
       if (experimental_phases is not None):
         experimental_phases = experimental_phases.select(selection)
-    if (self.ext_ls_target is not None):
+    if (self.ls_apply_scale_to_f_calc is not None):
        if (self.requires_external_scale):
          assert self.scale_factor > 0
        return _ls_functor(
+         apply_scale_to_f_calc=self.ls_apply_scale_to_f_calc,
          f_obs=f_obs,
          weights=weights,
-         scale_factor=self.scale_factor,
-         ext_ls_target=self.ext_ls_target)
+         scale_factor=self.scale_factor)
     return _ml_functor(
       f_obs=f_obs,
       experimental_phases=experimental_phases)
@@ -116,20 +114,20 @@ class manager(object):
 
 class _ls_functor(object):
 
-  def __init__(self, f_obs, weights, scale_factor, ext_ls_target):
+  def __init__(self, apply_scale_to_f_calc, f_obs, weights, scale_factor):
     assert scale_factor >= 0
     adopt_init_args(self, locals())
 
   def __call__(self, f_calc, compute_derivatives):
     assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
     assert f_calc.space_group() == self.f_obs.space_group()
-    return self.ext_ls_target(
+    return ext.ls_with_scale(
+      apply_scale_to_f_calc=self.apply_scale_to_f_calc,
       f_obs=self.f_obs.data(),
       weights=self.weights,
       f_calc=f_calc.data(),
       compute_derivatives=compute_derivatives,
-      fix_scale=self.scale_factor != 0,
-      scale=self.scale_factor)
+      scale_factor=self.scale_factor)
 
 class _ml_functor(object):
 
