@@ -26,6 +26,7 @@ def finite_differences_site(cartesian_flag, fmodel, delta=0.00001):
   unit_cell = structure.unit_cell()
   abc = unit_cell.parameters()[:3]
   derivatives = flex.vec3_double()
+  alpha, beta = fmodel.alpha_beta_w(only_if_required_by_target=True)
   for i_scatterer in xrange(structure.scatterers().size()):
     d_target_d_site = [0,0,0]
     for ix in xrange(3):
@@ -43,13 +44,12 @@ def finite_differences_site(cartesian_flag, fmodel, delta=0.00001):
         ms.site = site
         fmodel.update_xray_structure(xray_structure = modified_structure,
                                      update_f_calc = True)
-        target_values.append(fmodel.target_w())
+        target_values.append(fmodel.target_w(alpha=alpha, beta=beta))
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       if (not cartesian_flag): derivative *= abc[ix]
       d_target_d_site[ix] = derivative
     derivatives.append(d_target_d_site)
   return derivatives
-
 
 def exercise(space_group_info,
              n_elements       = 10,
@@ -59,7 +59,8 @@ def exercise(space_group_info,
              d_min            = 2.0,
              k_sol            = 0.35,
              b_sol            = 45.0,
-             b_cart           = None):
+             b_cart           = None,
+             verbose=0):
   xray_structure = random_structure.xray_structure(
          space_group_info       = space_group_info,
          elements               =(("O","N","C")*(n_elements/3+1))[:n_elements],
@@ -92,9 +93,6 @@ def exercise(space_group_info,
       xrs.shake_sites_in_place(rms_difference=0.3)
       for target in mmtbx.f_model.manager.target_names:
           if(target == "mlhl"): continue
-          #XXX Must find out why ml-tolerance is so BIG.
-          if(target == "ml"): tolerance = 1.5
-          else: tolerance = 1.e-6
           print "  ",target
           xray.set_scatterer_grad_flags(
                                    scatterers = xrs.scatterers(),
@@ -113,10 +111,10 @@ def exercise(space_group_info,
           fmodel.update_xray_structure(xray_structure = xrs,
                                        update_f_calc = True,
                                        update_f_mask = True)
-          if(0):
+          if (0 or verbose):
              fmodel.show_essential()
              print  f_obs.data().size()
-          if(0):
+          if (0 or verbose):
              fmodel.show_comprehensive()
              print  f_obs.data().size()
           gs = flex.vec3_double(
@@ -126,15 +124,24 @@ def exercise(space_group_info,
                             site       = True)
           gfd = finite_differences_site(cartesian_flag = True,
                                         fmodel = fmodel)
-          diff = (gs - gfd).as_double()
+          gs = gs.as_double()
+          gfd = gfd.as_double()
+          cc = flex.linear_correlation(gs, gfd).coefficient()
+          if (0 or verbose):
+            print "ana:", list(gs)
+            print "fin:", list(gfd)
+            print "cc:", cc
+            print
+          diff = gs - gfd
+          tolerance = 1.e-6
           assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
           assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
           assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
+          assert approx_equal(cc, 1.0, tolerance)
           fmodel.model_error_ml()
 
-
 def run_call_back(flags, space_group_info):
-  exercise(space_group_info = space_group_info)
+  exercise(space_group_info=space_group_info, verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
