@@ -14,6 +14,7 @@ import scitbx.lbfgs
 from libtbx.utils import Sorry, user_plus_sys_time
 from mmtbx.tls import tools
 from cctbx import adp_restraints
+from mmtbx import dbe
 
 
 time_model_show = 0.0
@@ -82,6 +83,18 @@ class manager(object):
        new.refinement_flags     = self.refinement_flags.select(selection)
     return new
 
+  def setup_dbe_manager(self, fmodel = None, show = False, dbe_params = None):
+    assert self.dbe_manager is None
+    assert self.dbe_xray_structure is None
+    self.dbe_manager = dbe.manager(
+                       geometry             = self.restraints_manager.geometry,
+                       atom_attributes_list = self.atom_attributes_list,
+                       xray_structure       = self.xray_structure,
+                       fmodel               = fmodel,
+                       params               = dbe_params)
+    if(show): self.dbe_manager.write_pdb_file()
+    self.dbe_xray_structure = self.dbe_manager.dbe_xray_structure
+
   def add_dbe(self):
     if(not self.dbe_added):
        self.use_dbe = True
@@ -109,21 +122,29 @@ class manager(object):
        self.inflated = True
 
   def use_dbe_true(self):
-    self.old_refinement_flags = self.refinement_flags.deep_copy()
+    if(self.refinement_flags is not None):
+       self.old_refinement_flags = self.refinement_flags.deep_copy()
     assert self.dbe_xray_structure is not None
     if(self.use_dbe_false_ is None):
        self.add_dbe()
     self.use_dbe_true_ = True
     self.use_dbe_false_ = False
     #
-    if(not self.inflated):
+    if(not self.inflated and self.refinement_flags is not None):
        self.refinement_flags.inflate(
                size = self.dbe_xray_structure.scatterers().size(), flag = True)
        self.inflated = True
+       # refining simultaneously make convergence slower
+       #self.refinement_flags.sites_individual[0].set_selected(
+       #                                               self.dbe_selection, True)
+       #self.refinement_flags.sites_individual[0].set_selected(
+       #                                             ~self.dbe_selection, False)
+
        self.refinement_flags.sites_individual[0].set_selected(
-                                                      self.dbe_selection, True)
+                                                      self.dbe_selection, False)
        self.refinement_flags.sites_individual[0].set_selected(
-                                                    ~self.dbe_selection, False)
+                                                    ~self.dbe_selection, True)
+
        self.refinement_flags.individual_occupancies = True
        self.refinement_flags.occupancies_individual = [flex.bool(
                                 self.xray_structure.scatterers().size(), True)]
@@ -134,6 +155,11 @@ class manager(object):
                                                       self.dbe_selection, True) # True
        occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
        self.xray_structure.scatterers().set_occupancies(occs, ~self.dbe_selection)
+       # D9
+       sel = self.xray_structure.scatterers().extract_scattering_types() == "D9"
+       self.xray_structure.convert_to_anisotropic(selection = sel)
+       self.refinement_flags.adp_individual_aniso[0].set_selected(sel, True)
+       self.refinement_flags.adp_individual_iso[0].set_selected(sel, False)
 
   def write_dbe_pdb_file(self, out = None):
     if(out is None):

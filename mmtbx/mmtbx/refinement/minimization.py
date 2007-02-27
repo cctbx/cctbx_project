@@ -26,6 +26,7 @@ class lbfgs(object):
                      refine_xyz               = False,
                      refine_adp               = False,
                      refine_occ               = False,
+                     refine_dbe               = False,
                      lbfgs_termination_params = None,
                      use_fortran              = False,
                      verbose                  = 0,
@@ -58,13 +59,19 @@ class lbfgs(object):
     self.d_selection = self.model.atoms_selection(scattering_type = "D")
     self.h_selection = self.model.atoms_selection(scattering_type = "H")
     self.hd_selection = self.d_selection | self.h_selection
+    if(self.hd_selection.count(True) > 0):
+       self.xh_connectivity_table = xh_connectivity_table(
+                                    geometry       = restraints_manager,
+                                    xray_structure = self.xray_structure).table
     self.xray_structure.scatterers().flags_set_grads(state=False)
+    #self.xray_structure.show_scatterer_flags_summary()
     if (refine_xyz):
       sel = self.model.refinement_flags.sites_individual[0]
       if (self.h_params.riding):
         sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_site(
         iselection=sel.iselection())
+      #self.xray_structure.show_scatterer_flags_summary()
       del sel
     if (refine_occ):
       sel = self.model.refinement_flags.occupancies_individual[0]
@@ -183,12 +190,21 @@ class lbfgs(object):
     time_site_individual += timer.elapsed()
 
   def apply_shifts(self):
-    # XXX inefficient
+    # XXX inefficient ?
     if(self.refine_adp):
        sel = self.x < self.u_min
        if(sel.count(True) > 0): self.x.set_selected(sel, self.u_min)
        sel = self.x > self.u_max
        if(sel.count(True) > 0): self.x.set_selected(sel, self.u_max)
+    # XXX inefficient ?
+    # XXX Fix for normal cases at normal resolutions
+    if(self.refine_xyz and not self.model.use_dbe and self.refine_dbe):
+       v3d_x = flex.vec3_double(self.x)
+       for bond in self.xh_connectivity_table:
+           xsh = v3d_x[bond[0]]
+           v3d_x[bond[1]] = xsh
+       sel = flex.bool(self.x.size(), True)
+       self.x.set_selected(sel, v3d_x.as_double())
     apply_shifts_result = xray.ext.minimization_apply_shifts(
                               unit_cell      = self.xray_structure.unit_cell(),
                               scatterers     = self._scatterers_start,
@@ -235,13 +251,14 @@ class lbfgs(object):
        self.g = sf * self.wx
 #######################
     if(self.refine_xyz and self.model.use_dbe and
-                  self.model.dbe_manager.restraints_selection.count(True) > 0):
+                                       self.model.dbe_manager.need_restraints):
        self.model.dbe_manager.target_and_gradients(
                               sites_cart    = self.xray_structure.sites_cart(),
                               dbe_selection = self.model.dbe_selection)
        erdbe = self.model.dbe_manager
        if(self.wxc_dbe is None and not (self.wxc_dbe > 0.0)):
           self.wxc_dbe = erdbe.gradients.norm() / sf.norm()
+       #print self.wxc_dbe
        self.f *= self.wxc_dbe
        self.g *= self.wxc_dbe
 ##########################
@@ -314,13 +331,13 @@ class lbfgs(object):
                              site_gradients = sgc*self.wr)
 #######################
     if(self.refine_xyz and self.model.use_dbe and
-                  self.model.dbe_manager.restraints_selection.count(True) > 0):
+                                       self.model.dbe_manager.need_restraints):
        self.f += erdbe.target * erdbe.params.restraints.weight_scale
        if(compute_gradients):
           xray.minimization.add_gradients(
-                             scatterers     = self.xray_structure.scatterers(),
-                             xray_gradients = self.g,
-                             site_gradients = erdbe.gradients * erdbe.params.restraints.weight_scale)
+            scatterers     = self.xray_structure.scatterers(),
+            xray_gradients = self.g,
+            site_gradients = erdbe.gradients * erdbe.params.restraints.weight_scale)
 ##########################
     if(self.refine_adp and self.restraints_manager.geometry is not None
                         and self.wr > 0.0 and self.iso_restraints is not None):
@@ -554,3 +571,20 @@ class minimization_history(object):
       while len(result) < 8: result += "0"
     except: result = "undef"
     return result
+
+class xh_connectivity_table(object):
+  def __init__(self, geometry, xray_structure):
+    bond_proxies_simple = geometry.geometry.pair_proxies().bond_proxies.simple
+    self.table = []
+    scatterers = xray_structure.scatterers()
+    for proxy in bond_proxies_simple:
+        i_seq, j_seq = proxy.i_seqs
+        i_x, i_h = None, None
+        if(scatterers[i_seq].element_symbol() == "H"):
+           i_h = i_seq
+           i_x = j_seq
+           self.table.append([i_x, i_h])
+        if(scatterers[j_seq].element_symbol() == "H"):
+           i_h = j_seq
+           i_x = i_seq
+           self.table.append([i_x, i_h])
