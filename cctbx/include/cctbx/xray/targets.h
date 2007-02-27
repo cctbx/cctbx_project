@@ -14,6 +14,88 @@ namespace cctbx { namespace xray {
 
 /// X-ray target function of structure factors namespace
 namespace targets {
+
+  class ls_with_scale
+  {
+    public:
+      ls_with_scale(
+        bool apply_scale_to_f_calc,
+        af::const_ref<double> const& f_obs,
+        af::const_ref<double> const& weights,
+        af::const_ref<std::complex<double> > const& f_calc,
+        bool compute_derivatives,
+        double scale_factor)
+      :
+        apply_scale_to_f_calc_(apply_scale_to_f_calc)
+      {
+        CCTBX_ASSERT(weights.size() == f_obs.size());
+        CCTBX_ASSERT(f_calc.size() == f_obs.size());
+        CCTBX_ASSERT(scale_factor >= 0);
+        double num = 0;
+        double denom = 0;
+        double sum_w_fo_sq = 0;
+        for(std::size_t i=0;i<f_obs.size();i++) {
+          double fc_abs = std::abs(f_calc[i]);
+          num += f_obs[i] * fc_abs * weights[i];
+          if (apply_scale_to_f_calc_) {
+            denom += fc_abs * fc_abs * weights[i];
+          }
+          else {
+            denom += f_obs[i] * f_obs[i] * weights[i];
+          }
+          sum_w_fo_sq += weights[i] * f_obs[i] * f_obs[i];
+        }
+        if (scale_factor == 0) {
+          CCTBX_ASSERT(denom > 0);
+          scale_factor_ = num / denom;
+        }
+        else {
+          scale_factor_ = scale_factor;
+        }
+        CCTBX_ASSERT(sum_w_fo_sq > 0);
+        if (compute_derivatives) {
+          derivatives_.resize(f_obs.size());
+        }
+        double grad_factor = -2;
+        if (apply_scale_to_f_calc_) grad_factor *= scale_factor_;
+        target_ = 0;
+        for(std::size_t i=0;i<f_obs.size();i++) {
+          double fc_abs = std::abs(f_calc[i]);
+          double delta;
+          if (apply_scale_to_f_calc_) {
+            delta = f_obs[i] - scale_factor_ * fc_abs;
+          }
+          else {
+            delta = scale_factor_ * f_obs[i] - fc_abs;
+          }
+          target_ += weights[i] * delta * delta;
+          if(compute_derivatives && fc_abs != 0) {
+             derivatives_[i] = grad_factor * weights[i] * delta
+                             / (sum_w_fo_sq * fc_abs) * f_calc[i];
+          }
+        }
+        target_ /= sum_w_fo_sq;
+      }
+
+      bool
+      apply_scale_to_f_calc() const { return apply_scale_to_f_calc_; }
+
+      double
+      scale_factor() const { return scale_factor_; }
+
+      double
+      target() const { return target_; }
+
+      af::shared<std::complex<double> > const&
+      derivatives() { return derivatives_; }
+
+    private:
+      bool apply_scale_to_f_calc_;
+      double target_;
+      double scale_factor_;
+      af::shared<std::complex<double> > derivatives_;
+  };
+
   namespace detail {
 
     template <typename FobsValueType,
@@ -73,7 +155,6 @@ namespace targets {
     }
 
   } // namespace detail
-
 
   /// A functor representing a least-squares residual.
   /**
@@ -867,120 +948,6 @@ mlhl_d_target_dfcalc_one_h(
   }
   };
 // max-like_hl end
-
-//! Least-squares target and its derivatives w.r.t. fc
-//! ls = sum( w*(fo - k*fc)**2 ) / sum( w*fo**2 )
-//! scale k can be fixed or recalculated
-class ls_target_with_scale_k1 {
-public:
-   ls_target_with_scale_k1(af::const_ref<double> const& fo,
-                           af::const_ref<double> const& w,
-                           af::const_ref< std::complex<double> > const& fc,
-                           bool const& compute_derivatives,
-                           bool const& fix_scale,
-                           double const& scale=0.0)
-
-   {
-       CCTBX_ASSERT(fo.size() == fc.size() && fo.size() == w.size());
-       double num         = 0.0;
-       double denum       = 0.0;
-       double sum_w_fo_sq = 0.0;
-       for(std::size_t i=0; i < fo.size(); i++) {
-           double fc_abs = std::abs(fc[i]);
-           num += fo[i] * fc_abs * w[i];
-           denum += fc_abs * fc_abs * w[i];
-           sum_w_fo_sq += w[i]*fo[i]*fo[i];
-       }
-       if(fix_scale) {
-          CCTBX_ASSERT(scale > 0.0);
-          scale_ = scale;
-       }
-       else {
-          CCTBX_ASSERT(scale == 0.0);
-          CCTBX_ASSERT(denum > 0.0);
-          scale_ = num/denum;
-       }
-       CCTBX_ASSERT(sum_w_fo_sq > 0.0);
-       if(compute_derivatives) {
-          derivatives_ = af::shared<std::complex<double> >(fo.size());
-       }
-       target_ = 0.0;
-       for(std::size_t i=0; i < fo.size(); i++) {
-          double fc_abs = std::abs(fc[i]);
-          double delta = fo[i] - scale_ * fc_abs;
-          target_ += w[i] * delta * delta;
-          if(compute_derivatives && fc_abs != 0) {
-             derivatives_[i] = -2. * scale_ * w[i] * delta
-                        / (sum_w_fo_sq * fc_abs) * fc[i];
-          }
-       }
-       target_ /= sum_w_fo_sq;
-   }
-
-   double target() const { return target_; }
-   af::shared<std::complex<double> > derivatives() { return derivatives_; }
-   double scale() const { return scale_; }
-private:
-   double target_, scale_;
-   af::shared<std::complex<double> > derivatives_;
-};
-
-//! Least-squares target and its derivatives w.r.t. fc
-//! ls = sum( w*(k*fo - fc)**2 ) / sum( w*fo**2 )
-//! scale k can be fixed or recalculated
-class ls_target_with_scale_k2 {
-public:
-   ls_target_with_scale_k2(af::const_ref<double> const& fo,
-                           af::const_ref<double> const& w,
-                           af::const_ref< std::complex<double> > const& fc,
-                           bool const& compute_derivatives,
-                           bool const& fix_scale,
-                           double const& scale=0.0)
-
-   {
-       CCTBX_ASSERT(fo.size() == fc.size() && fo.size() == w.size());
-       double num         = 0.0;
-       double denum       = 0.0;
-       double sum_w_fo_sq = 0.0;
-       for(std::size_t i=0; i < fo.size(); i++) {
-           double fc_abs = std::abs(fc[i]);
-           num += fo[i] * fc_abs * w[i];
-           denum += fo[i] * fo[i] * w[i];
-           sum_w_fo_sq += w[i] * fo[i] * fo[i];
-       }
-       if(fix_scale) {
-          CCTBX_ASSERT(scale > 0.0);
-          scale_ = scale;
-       }
-       else {
-          CCTBX_ASSERT(scale == 0.0);
-          CCTBX_ASSERT(denum > 0.0);
-          scale_ = num/denum;
-       }
-       CCTBX_ASSERT(sum_w_fo_sq > 0.0);
-       if(compute_derivatives) {
-          derivatives_ = af::shared<std::complex<double> >(fo.size());
-       }
-       target_ = 0.0;
-       for(std::size_t i=0; i < fo.size(); i++) {
-          double fc_abs = std::abs(fc[i]);
-          double delta = scale_ * fo[i] - fc_abs;
-          target_ += w[i] * delta * delta;
-          if(compute_derivatives && fc_abs != 0) {
-             derivatives_[i] = -2. * w[i] * delta
-                        / (sum_w_fo_sq * fc_abs) * fc[i];
-          }
-       }
-       target_ /= sum_w_fo_sq;
-   }
-
-   double target() const { return target_; }
-   af::shared<std::complex<double> > derivatives() { return derivatives_; }
-   double scale() const { return scale_; }
-private:
-   double target_, scale_;
-   af::shared<std::complex<double> > derivatives_;
-};
 
 }}} // namespace cctbx::xray::targets
 
