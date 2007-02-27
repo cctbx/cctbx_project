@@ -59,13 +59,9 @@ class cartesian_dynamics(object):
          self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w(only_if_required_by_target=True)
       else:
         raise RuntimeError
-      self.target = self.fmodel.target_name
-      assert self.fmodel.target_functors is not None
-      self.xray_target_functor = self.fmodel.target_functors.target_functor_w()
       self.fmodel_copy = self.fmodel.deep_copy()
       assert self.chem_target_weight is not None
       assert self.xray_target_weight is not None
-      assert self.xray_target_functor is not None
       if(self.xray_gradient is None):
         self.xray_gradient = self.xray_grads()
     self()
