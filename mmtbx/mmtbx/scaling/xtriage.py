@@ -229,7 +229,7 @@ The program options are summarized below
                             and specifying aniso.b_iso
          * symmetry.action :: Whether to twin, detwin or leave the data alone (do nothing)
          * symmetry.twinning_parameters.twin_law :: using this twin law (h,k,l or  a,b,c or x,y,z notation)
-         * twinning.twinning_parameters.fraction :: The detwinning fraction.
+         * symmetry.twinning_parameters.fraction :: The detwinning fraction.
          * outlier.action :: what type of outlier rejection to perform.
                              extreme: uses extreme value statistics
                              basic: uses normal wilson statistics
