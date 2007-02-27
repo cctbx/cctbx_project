@@ -194,6 +194,7 @@ class detwin_data(object):
     assert self.miller_array.is_xray_intensity_array()
 
   def detwin_it(self,alpha):
+    print alpha
     print >> self.out, "Detwinning the data with fraction %3.2f"%(alpha)
 
     assert alpha is not None
@@ -317,6 +318,8 @@ class massage_data(object):
     self.final_array = self.new_miller_array
 
     if self.params.symmetry.action == "twin":
+      if self.params.symmetry.twinning_parameters.fraction is None:
+        raise Sorry("Twin fraction not specified, not twinning data")
       twinner = twin_data(miller_array = self.new_miller_array,
                             twin_law = self.params.symmetry.twinning_parameters.twin_law,
                             out = self.out)
@@ -324,6 +327,9 @@ class massage_data(object):
 
 
     if self.params.symmetry.action == "detwin":
+      if self.params.symmetry.twinning_parameters.fraction is None:
+        raise Sorry("Twin fraction not specified, not detwinning data")
+
       detwinner = detwin_data(miller_array = self.new_miller_array,
                             twin_law = self.params.symmetry.twinning_parameters.twin_law,
                             out = self.out)
