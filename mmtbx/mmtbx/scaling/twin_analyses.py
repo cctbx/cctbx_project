@@ -2564,14 +2564,16 @@ def twin_analyses_brief(miller_array,
   out_tmp_plot = StringIO()
   twin_results = None
   twinned=None
-  try:
-    twin_results = twin_analyses(miller_array,
-                                 d_star_sq_low_limit=1.0/100.0,
-                                 d_star_sq_high_limit=1.0/(0.001**2.0),
-                                 out = out_tmp,
-                                 out_plots = out_tmp_plot,
-                                 verbose=verbose)
-  except Sorry, RuntimeError: pass
+
+  if not miller_array.space_group().is_centric():
+    try:
+      twin_results = twin_analyses(miller_array,
+                                   d_star_sq_low_limit=1.0/100.0,
+                                   d_star_sq_high_limit=1.0/(0.001**2.0),
+                                   out = out_tmp,
+                                   out_plots = out_tmp_plot,
+                                   verbose=verbose)
+    except Sorry, RuntimeError: pass
 
   if out is None:
     out = sys.stdout
