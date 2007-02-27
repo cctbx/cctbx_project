@@ -91,46 +91,46 @@ def exercise(space_group_info,
       xrs = xray_structure.deep_copy_scatterers()
       xrs.shake_sites_in_place(rms_difference=0.3)
       for target in mmtbx.f_model.manager.target_names:
+          if(target == "mlhl"): continue
           #XXX Must find out why ml-tolerance is so BIG.
           if(target == "ml"): tolerance = 1.5
           else: tolerance = 1.e-6
-          if(target != "mlhl"):
-             print "  ",target
-             xray.set_scatterer_grad_flags(
-                                      scatterers = xrs.scatterers(),
-                                      site       = True)
-             fmodel = mmtbx.f_model.manager(
-                                          xray_structure    = xrs,
-                                          f_obs             = f_obs,
-                                          r_free_flags      = flags,
-                                          target_name       = target,
-                                          sf_cos_sin_table  = sf_cos_sin_table,
-                                          sf_algorithm      = sf_algorithm,
-                                          k_sol             = k_sol,
-                                          b_sol             = b_sol,
-                                          b_cart            = b_cart,
-                                          mask_params       = mask_params())
-             fmodel.update_xray_structure(xray_structure = xrs,
-                                          update_f_calc = True,
-                                          update_f_mask = True)
-             if(0):
-                fmodel.show_essential()
-                print  f_obs.data().size()
-             if(0):
-                fmodel.show_comprehensive()
-                print  f_obs.data().size()
-             gs = flex.vec3_double(
-                   fmodel.gradient_wrt_atomic_parameters(site = True).packed())
-             xray.set_scatterer_grad_flags(
-                               scatterers = fmodel.xray_structure.scatterers(),
-                               site       = True)
-             gfd = finite_differences_site(cartesian_flag = True,
-                                           fmodel = fmodel)
-             diff = (gs - gfd).as_double()
-             assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
-             assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
-             assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
-             fmodel.model_error_ml()
+          print "  ",target
+          xray.set_scatterer_grad_flags(
+                                   scatterers = xrs.scatterers(),
+                                   site       = True)
+          fmodel = mmtbx.f_model.manager(
+                                       xray_structure    = xrs,
+                                       f_obs             = f_obs,
+                                       r_free_flags      = flags,
+                                       target_name       = target,
+                                       sf_cos_sin_table  = sf_cos_sin_table,
+                                       sf_algorithm      = sf_algorithm,
+                                       k_sol             = k_sol,
+                                       b_sol             = b_sol,
+                                       b_cart            = b_cart,
+                                       mask_params       = mask_params())
+          fmodel.update_xray_structure(xray_structure = xrs,
+                                       update_f_calc = True,
+                                       update_f_mask = True)
+          if(0):
+             fmodel.show_essential()
+             print  f_obs.data().size()
+          if(0):
+             fmodel.show_comprehensive()
+             print  f_obs.data().size()
+          gs = flex.vec3_double(
+                fmodel.gradient_wrt_atomic_parameters(site = True).packed())
+          xray.set_scatterer_grad_flags(
+                            scatterers = fmodel.xray_structure.scatterers(),
+                            site       = True)
+          gfd = finite_differences_site(cartesian_flag = True,
+                                        fmodel = fmodel)
+          diff = (gs - gfd).as_double()
+          assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
+          assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
+          assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
+          fmodel.model_error_ml()
 
 
 def run_call_back(flags, space_group_info):
