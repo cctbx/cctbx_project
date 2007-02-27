@@ -279,12 +279,11 @@ class manager(object):
        else:
           dbe_site = self.dbe_site_position(site_j, site_i, alp)
     if(label is not None and self.fmodel is not None):
-       #print
-       #print name_i, name_j
        site_cart, gof = self.find_dbe(fft_map_data = fft_map_data,
                                       site_cart_1  = site_i,
                                       site_cart_2  = site_j,
-                                      step         = 0.01)
+                                      step         = 0.01,
+                                      label        = label)
        dbe_site = site_cart
     return dbe_site, label
 
@@ -428,14 +427,18 @@ class manager(object):
        self.target *= (1./self.number_of_restraints)
        self.gradients *= (1./self.number_of_restraints)
 
-  def find_dbe(self, fft_map_data, site_cart_1, site_cart_2, step = 0.01):
+  def find_dbe(self, fft_map_data, site_cart_1, site_cart_2, label, step = 0.01):
     x1,y1,z1 = site_cart_1
     x2,y2,z2 = site_cart_2
     ed = -1.e+6
     result = None
     d = math.sqrt((x1-x2)**2+(y1-y2)**2+(z1-z2)**2)
-    alp = 0.2 / d
-    alp_end = (d - 0.2) / d
+    if(label in B_type):
+       d_lim = 0.4
+    if(label in BH_type):
+       d_lim = 0.2
+    alp = d_lim / d
+    alp_end = (d - d_lim) / d
     data = flex.double()
     dist = flex.double()
     i_seq = 0
@@ -494,7 +497,12 @@ class manager(object):
     fft_map.apply_volume_scaling()
     fft_map_data = fft_map.real_map_unpadded()
     for index in self.atom_indices:
-        if(scat_types[mac_offset+index[2]] in B_type+BH_type):
+        dbe_scat_type = scat_types[mac_offset+index[2]]
+        if(dbe_scat_type in B_type):
+           d_lim = 0.4
+        if(dbe_scat_type in BH_type):
+           d_lim = 0.2
+        if(dbe_scat_type in B_type+BH_type):
            i_atom_i, i_atom_j, i_dbe = index[0], index[1], index[2]
            dbe_site = sites_cart[mac_offset+i_dbe]
            dbe_site_frac = unit_cell.fractionalize(dbe_site)
@@ -507,13 +515,13 @@ class manager(object):
                                         fft_map_data = fft_map_data,
                                         site_cart_1  = sites_cart[i_atom_i],
                                         site_cart_2  = sites_cart[i_atom_j],
-                                        step         = 0.01)
+                                        step         = 0.01,
+                                        label        = dbe_scat_type)
            new_dbe_site_frac = unit_cell.fractionalize(new_dbe_site)
            d1 = unit_cell.distance(site_i_frac, new_dbe_site_frac)
            d2 = unit_cell.distance(site_j_frac, new_dbe_site_frac)
            shift = unit_cell.distance(new_dbe_site_frac, dbe_site_frac)
-           #if(d1 > 0.2 and d2 > 0.2 and gof < 25.0):
-           if((d1 > 0.2 and d2 > 0.2 and gof < 25.0) and (d1s+d2s-d12 > 0.1 or d1s < 0.2 or d2s < 0.2)):
+           if((d1 > d_lim and d2 > d_lim and gof < 25.0) and (d1s+d2s-d12 > 0.1 or d1s < 0.2 or d2s < 0.2)):
               n_shifted += 1
               fmodel.xray_structure.scatterers()[mac_offset+i_dbe].site = \
                     self.xray_structure.unit_cell().fractionalize(new_dbe_site)
