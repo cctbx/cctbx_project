@@ -350,7 +350,7 @@ target_gradients_aniso_ml::target_gradients_aniso_ml(
     double* gxu = gtgx_u.begin();
     double coeff_1 = 0.0;
     for(std::size_t i=0; i < fo.size(); i++) {
-      int cs = int(cf[i]);
+      bool cs = cf[i];
       double eps_beta = eps[i]*beta[i];
       double alpha_sqr = alpha[i]*alpha[i];
       double fmodel = fmodel_complex_abs[i];
