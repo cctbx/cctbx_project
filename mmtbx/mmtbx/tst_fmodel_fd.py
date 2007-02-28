@@ -1,5 +1,6 @@
 from cctbx.array_family import flex
 import mmtbx.f_model
+from cctbx.regression.tst_miller import generate_random_hl
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx import sgtbx
@@ -92,7 +93,10 @@ def exercise(space_group_info,
       xrs = xray_structure.deep_copy_scatterers()
       xrs.shake_sites_in_place(rms_difference=0.3)
       for target in mmtbx.f_model.manager.target_names:
-          if(target == "mlhl"): continue
+          if (target == "mlhl"):
+            experimental_phases = generate_random_hl(miller_set=f_obs)
+          else:
+            experimental_phases = None
           print "  ",target
           xray.set_scatterer_grad_flags(
                                    scatterers = xrs.scatterers(),
@@ -102,6 +106,7 @@ def exercise(space_group_info,
                                        f_obs             = f_obs,
                                        r_free_flags      = flags,
                                        target_name       = target,
+                                       abcd=experimental_phases,
                                        sf_cos_sin_table  = sf_cos_sin_table,
                                        sf_algorithm      = sf_algorithm,
                                        k_sol             = k_sol,
