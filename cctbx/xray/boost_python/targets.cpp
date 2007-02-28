@@ -94,7 +94,7 @@ namespace {
 
   struct maximum_likelihood_criterion_wrappers
   {
-    typedef maximum_likelihood_criterion<> w_t;
+    typedef maximum_likelihood_criterion w_t;
 
     static void
     wrap()
@@ -117,7 +117,7 @@ namespace {
 
   struct maximum_likelihood_criterion_hl_wrappers
   {
-    typedef maximum_likelihood_criterion_hl<> w_t;
+    typedef maximum_likelihood_criterion_hl w_t;
 
     static void
     wrap()
