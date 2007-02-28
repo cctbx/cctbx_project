@@ -845,7 +845,6 @@ namespace targets {
         CCTBX_ASSERT(step_for_integration > 0.);
         CCTBX_ASSERT(abcd.size() == fobs.size());
         target_ = 0;
-        targets_ = af::shared<double>(fobs.size());
         if (compute_derivatives) {
           derivatives_ = af::shared<std::complex<double> >(fobs.size());
         }
@@ -869,7 +868,7 @@ namespace targets {
           double pc = std::arg(fcalc[i_h]);
           double ac = std::real(fcalc[i_h]);
           double bc = std::imag(fcalc[i_h]);
-          double tmp1 = detail::mlhl_target_one_h(
+          target_ += detail::mlhl_target_one_h(
             fo,
             fc,
             pc,
@@ -883,8 +882,6 @@ namespace targets {
             n_steps,
             step_for_integration,
             &*workspace.begin());
-          target_ += tmp1;
-          targets_[i_h] = tmp1;
           if(compute_derivatives) {
             derivatives_[i_h] = std::conj(detail::mlhl_d_target_dfcalc_one_h(
               fo,
@@ -913,13 +910,9 @@ namespace targets {
       af::shared<std::complex<double> >
       derivatives() const { return derivatives_; }
 
-      af::shared<double>
-      targets() const { return targets_; }
-
     protected:
       double target_;
       af::shared<std::complex<double> > derivatives_;
-      af::shared<double> targets_;
   };
 
 }}} // namespace cctbx::xray::targets

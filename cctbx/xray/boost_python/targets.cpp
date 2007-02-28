@@ -134,7 +134,6 @@ namespace {
                   af::const_ref<cctbx::hendrickson_lattman<double> > const&,
                   double const& >())
         .def("target", &w_t::target)
-        .def("targets", &w_t::targets)
         .def("derivatives", &w_t::derivatives)
       ;
     }
