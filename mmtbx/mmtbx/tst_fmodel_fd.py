@@ -61,6 +61,7 @@ def exercise(space_group_info,
              k_sol            = 0.35,
              b_sol            = 45.0,
              b_cart           = None,
+             quick=False,
              verbose=0):
   xray_structure = random_structure.xray_structure(
          space_group_info       = space_group_info,
@@ -93,6 +94,8 @@ def exercise(space_group_info,
       xrs = xray_structure.deep_copy_scatterers()
       xrs.shake_sites_in_place(rms_difference=0.3)
       for target in mmtbx.f_model.manager.target_names:
+          if (quick):
+            if (target not in ["ls_wunit_k1", "ml", "mlhl"]): continue
           if (target == "mlhl"):
             experimental_phases = generate_random_hl(miller_set=f_obs)
           else:
@@ -146,10 +149,14 @@ def exercise(space_group_info,
           fmodel.model_error_ml()
 
 def run_call_back(flags, space_group_info):
-  exercise(space_group_info=space_group_info, verbose=flags.Verbose)
+  exercise(
+    space_group_info=space_group_info,
+    verbose=flags.Verbose,
+    quick=flags.quick)
 
 def run():
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  debug_utils.parse_options_loop_space_groups(
+    argv=sys.argv[1:], call_back=run_call_back, keywords=("quick",))
 
 if (__name__ == "__main__"):
   run()
