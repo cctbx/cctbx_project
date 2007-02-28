@@ -21,6 +21,8 @@ from libtbx.test_utils import approx_equal
 
 
 def get_manager(fmodel, model, solvent_selection, log = None, params = None):
+  if(params.mode == "filter_only"): filter_only = True
+  else: filter_only = False
   if(params is not None):
      return manager(
        fmodel                             = fmodel,
@@ -48,7 +50,7 @@ def get_manager(fmodel, model, solvent_selection, log = None, params = None):
        max_solv_macromol_dist             = params.max_solv_macromol_dist,
        max_number_of_peaks                = params.max_number_of_peaks,
        solvent_pdb_file_name              = None,
-       filter_only                        = params.filter_only,
+       filter_only                        = filter_only,
        verbose                            = params.verbose,
        log                                = log,
        peak_search_level           = params.peak_search.peak_search_level,
