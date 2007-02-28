@@ -135,16 +135,10 @@ class manager(object):
                size = self.dbe_xray_structure.scatterers().size(), flag = True)
        self.inflated = True
        # refining simultaneously make convergence slower
-       #self.refinement_flags.sites_individual[0].set_selected(
-       #                                               self.dbe_selection, True)
-       #self.refinement_flags.sites_individual[0].set_selected(
-       #                                             ~self.dbe_selection, False)
-
        self.refinement_flags.sites_individual[0].set_selected(
-                                                      self.dbe_selection, False)
+                                                      self.dbe_selection, True)
        self.refinement_flags.sites_individual[0].set_selected(
-                                                    ~self.dbe_selection, True)
-
+                                                    ~self.dbe_selection, False)
        self.refinement_flags.individual_occupancies = True
        self.refinement_flags.occupancies_individual = [flex.bool(
                                 self.xray_structure.scatterers().size(), True)]
