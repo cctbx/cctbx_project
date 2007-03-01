@@ -1813,6 +1813,29 @@ class manager(object):
           alpha_i, beta_i, flags_i, resolution_i, f_bulk_amplitudes_i,
           f_bulk_phases_i, fb_cart_i)
 
+class phaser_sad_target_functor(object):
+
+  def __init__(self, f_obs, r_free_flags, xray_structure, f_calc):
+    adopt_init_args(self, locals())
+    self.refine_sad_object = phaser.phenix_adaptors.sad_target.data_adaptor(
+      f_obs=f_obs,
+      r_free_flags=r_free_flags,
+      verbose=False).target(xray_structure=xray_structure)
+    self.refine_sad_object.set_f_calc(f_calc=f_calc)
+    if (not f_obs.space_group().is_centric()):
+      self.refine_sad_object.refine_variance_terms()
+
+  def __call__(self, f_calc, compute_gradients):
+    rso = self.refine_sad_object
+    self.refine_sad_object.set_f_calc(f_calc=f_calc)
+    target_work = rso.functional(use_working_set=True)
+    gradients_work = rso.gradients()
+    target_test = rso.functional(use_working_set=False)
+    return xray.targets_common_results(
+      target_work=target_work,
+      target_test=target_test,
+      gradients_work=gradients_work.data())
+
 class target_functor(object):
 
   def __init__(self, manager):
@@ -1821,20 +1844,14 @@ class target_functor(object):
     assert target_name is not None
     attr = manager.target_attributes()
     if (target_name == "ml_sad"):
-      if (0): # XXX
-        if (phaser is None):
-          raise Sorry(
-            "ml_sad target requires phaser extension, which is not available"
-            " in this installation.")
-        self.core = phaser.phenix_adaptors.sad_target \
-          .mmtbx_f_model_target_functor_core(manager=manager)
-      # XXX placeholder to enable testing of everything but the phaser target
-      self.core = xray.target_functors.least_squares(
-        apply_scale_to_f_calc=True,
+      if (phaser is None):
+        raise Sorry(
+          "ml_sad target requires phaser extension, which is not available"
+          " in this installation.")
+      self.core = phaser_sad_target_functor(
         f_obs=manager.f_obs,
         r_free_flags=manager.r_free_flags,
-        weights=flex.double(manager.f_obs.data().size(), 1.0),
-        scale_factor=0,
+        xray_structure=manager.xray_structure,
         f_calc=manager.f_model())
     elif (attr.family == "ml"):
       if (attr.requires_experimental_phases()):
