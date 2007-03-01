@@ -1360,6 +1360,22 @@ def exercise_asu_mappings():
     site_symmetry_table=structure.site_symmetry_table())
   assert asu_mappings.mappings().size() == structure.scatterers().size()
 
+def exercise_targets_common_results():
+  r = xray.common_results(
+    target_work=13,
+    target_test=None,
+    gradients_work=flex.complex_double([1+2j,2+3j,3-4j]))
+  assert approx_equal(r.target_work(), 13)
+  assert r.target_test() is None
+  assert approx_equal(r.gradients_work(), [1+2j,2+3j,3-4j])
+  r = xray.common_results(
+    target_work=42,
+    target_test=53,
+    gradients_work=flex.complex_double())
+  assert approx_equal(r.target_work(), 42)
+  assert approx_equal(r.target_test(), 53)
+  assert r.gradients_work().size() == 0
+
 def exercise_ls_with_scale():
   f_obs = flex.double((1,2,3,4,5))
   w = flex.double((1,1,1,1,1))
@@ -1707,6 +1723,7 @@ def run():
   exercise_minimization_apply_shifts()
   exercise_minimization_add_gradients()
   exercise_asu_mappings()
+  exercise_targets_common_results()
   exercise_ls_with_scale()
   exercise_maximum_likelihood_targets()
   print "OK"
