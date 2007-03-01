@@ -19,7 +19,6 @@ namespace targets {
   class common_results
   {
     public:
-
       common_results()
       :
         target_work_(0)
@@ -523,7 +522,7 @@ namespace targets {
       bool
       is_work_refl(std::size_t i) const
       {
-        if (flags) return flags[i];
+        if (flags) return !flags[i];
         return true;
       }
     };
@@ -977,7 +976,7 @@ namespace targets {
             workspace.get());
           if (rffs.is_work_refl(i)) {
             target_work_ += t;
-            if(compute_gradients) {
+            if (compute_gradients) {
               gradients_work_.push_back(std::conj(
                 detail::mlhl_d_target_d_f_calc_one_h(
                   fo,
