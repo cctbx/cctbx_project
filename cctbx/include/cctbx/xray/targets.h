@@ -8,6 +8,7 @@
 #include <cmath>
 #include <scitbx/math/bessel.h>
 #include <cctbx/hendrickson_lattman.h>
+#include <boost/scoped_array.hpp>
 #include <boost/optional.hpp>
 
 namespace cctbx { namespace xray {
@@ -755,7 +756,7 @@ namespace targets {
       int epsilon,
       bool cf,
       cctbx::hendrickson_lattman<double> const& abcd,
-      const af::tiny<double, 4>* cos_sin_table,
+      const af::tiny_plain<double, 4>* cos_sin_table,
       int n_steps,
       double integration_step_size,
       double* workspace)
@@ -830,7 +831,7 @@ namespace targets {
       int epsilon,
       bool cf,
       cctbx::hendrickson_lattman<double> const& abcd,
-      const af::tiny<double, 4>* cos_sin_table,
+      const af::tiny_plain<double, 4>* cos_sin_table,
       int n_steps,
       double integration_step_size,
       double* workspace)
@@ -955,20 +956,11 @@ namespace targets {
         if (compute_gradients) {
           gradients_work_.reserve(rffs.n_work);
         }
-        int n_steps = scitbx::math::iround(360 / integration_step_size);
-        CCTBX_ASSERT(n_steps > 0);
-        double angular_step = scitbx::constants::two_pi / n_steps;
-        std::vector<af::tiny<double, 4> > cos_sin_table;
-        cos_sin_table.reserve(n_steps);
-        for(int i_step=0;i_step<n_steps;i_step++) {
-          double angle = i_step * angular_step;
-          cos_sin_table.push_back(af::tiny<double, 4>(
-            std::cos(angle),
-            std::sin(angle),
-            std::cos(angle+angle),
-            std::sin(angle+angle)));
-        }
-        std::vector<double> workspace(n_steps);
+        hendrickson_lattman<double>::phase_integration_cos_sin_table
+          cos_sin_table(scitbx::math::iround(360 / integration_step_size));
+        CCTBX_ASSERT(cos_sin_table.n_steps > 0);
+        boost::scoped_array<double> workspace(
+          new double[cos_sin_table.n_steps]);
         double target_test = 0;
         for(std::size_t i=0;i<f_obs.size();i++) {
           double fo = f_obs[i];
@@ -986,10 +978,10 @@ namespace targets {
             epsilons[i],
             centric_flags[i],
             experimental_phases[i],
-            &*cos_sin_table.begin(),
-            n_steps,
+            cos_sin_table.data.get(),
+            cos_sin_table.n_steps,
             integration_step_size,
-            &*workspace.begin());
+            workspace.get());
           if (rffs.is_work_refl(i)) {
             target_work_ += t;
             if(compute_gradients) {
@@ -1005,10 +997,10 @@ namespace targets {
                   epsilons[i],
                   centric_flags[i],
                   experimental_phases[i],
-                  &*cos_sin_table.begin(),
-                  n_steps,
+                  cos_sin_table.data.get(),
+                  cos_sin_table.n_steps,
                   integration_step_size,
-                  &*workspace.begin())) * one_over_n_work);
+                  workspace.get())) * one_over_n_work);
             }
           }
           else {

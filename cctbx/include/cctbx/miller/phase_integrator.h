@@ -8,33 +8,23 @@ namespace cctbx { namespace miller {
   /*! Conversion of Hendrickson-Lattman coefficients to
       centroid phases and figures of merit.
    */
+  template <typename FloatType=double>
   class phase_integrator
   {
     public:
       //! Initialization of internal cos and sin lookup table.
       phase_integrator(unsigned n_steps=360/5)
       :
-        n_steps_(n_steps)
+        cos_sin_table_(n_steps)
       {
         CCTBX_ASSERT(n_steps > 0);
-        angular_step_ = scitbx::constants::two_pi / n_steps_;
-        cos_sin_table_.reserve(n_steps_);
-        for(unsigned i_step=0;i_step<n_steps_;i_step++) {
-          double angle = i_step * angular_step_;
-          cos_sin_table_.push_back(af::tiny<double, 4>(
-            std::cos(angle),
-            std::sin(angle),
-            std::cos(angle+angle),
-            std::sin(angle+angle)));
-        }
       }
 
       //! Number of integration steps as passed to the constructor.
       unsigned
-      n_steps() const { return n_steps_; }
+      n_steps() const { return cos_sin_table_.n_steps; }
 
       //! Computation of phase integral.
-      template <typename FloatType>
       std::complex<FloatType>
       operator()(
         sgtbx::phase_info const& phase_info,
@@ -58,35 +48,36 @@ namespace cctbx { namespace miller {
                   - std::exp(-exp_arg - arg_term);
           return std::complex<f_t>(fom*cos_angle, fom*sin_angle);
         }
-        std::vector<f_t> exp_args;
-        exp_args.reserve(n_steps_);
+        boost::scoped_array<f_t> exp_args(new f_t[cos_sin_table_.n_steps]);
+        const af::tiny_plain<FloatType, 4>*
+          table_data = cos_sin_table_.data.get();
         f_t max_exp_arg = 0;
-        for(unsigned i_step=0;i_step<n_steps_;i_step++) {
+        for(unsigned i_step=0;i_step<cos_sin_table_.n_steps;i_step++) {
           f_t exp_arg = 0;
           for(unsigned i=0;i<4;i++) {
-            exp_arg += hendrickson_lattman[i] * cos_sin_table_[i_step][i];
+            exp_arg += hendrickson_lattman[i] * table_data[i_step][i];
           }
-          exp_args.push_back(exp_arg);
+          exp_args[i_step] = exp_arg;
           max_exp_arg = std::max(max_exp_arg, exp_arg);
         }
         f_t sum_exp = 0;
-        for(unsigned i_step=0;i_step<n_steps_;i_step++) {
+        for(unsigned i_step=0;i_step<cos_sin_table_.n_steps;i_step++) {
           sum_exp += std::exp(exp_args[i_step] - max_exp_arg);
         }
-        f_t arg_term = std::log(sum_exp * angular_step_) + max_exp_arg;
+        f_t arg_term = std::log(sum_exp * cos_sin_table_.angular_step)
+                     + max_exp_arg;
         std::complex<f_t> result;
-        for(unsigned i_step=0;i_step<n_steps_;i_step++) {
+        for(unsigned i_step=0;i_step<cos_sin_table_.n_steps;i_step++) {
           f_t fom = std::exp(exp_args[i_step] - arg_term);
           result += std::complex<f_t>(
-            fom * cos_sin_table_[i_step][0],
-            fom * cos_sin_table_[i_step][1]);
+            fom * table_data[i_step][0],
+            fom * table_data[i_step][1]);
         }
-        result *= angular_step_;
+        result *= cos_sin_table_.angular_step;
         return result;
       }
 
       //! Computation of phase integrals.
-      template <typename FloatType>
       af::shared<std::complex<FloatType> >
       operator()(
         sgtbx::space_group const& space_group,
@@ -107,9 +98,8 @@ namespace cctbx { namespace miller {
       }
 
     protected:
-      unsigned n_steps_;
-      double angular_step_;
-      std::vector<af::tiny<double, 4> > cos_sin_table_;
+      typename hendrickson_lattman<FloatType>::phase_integration_cos_sin_table
+        cos_sin_table_;
   };
 
 }} // namespace cctbx::miller
