@@ -96,12 +96,15 @@ def exercise(space_group_info,
       xrs.shake_sites_in_place(rms_difference=0.3)
       for target in mmtbx.f_model.manager.target_names:
           if (quick):
-            if (target not in ["ls_wunit_k1", "ml", "mlhl"]): continue
+            if (target not in ["ls_wunit_k1", "ml", "mlhl", "ml_sad"]):
+              continue
           if (target == "mlhl"):
             experimental_phases = generate_random_hl(miller_set=f_obs)
           else:
             experimental_phases = None
-          if (target == "ml_sad" and not anomalous_flag): continue
+          if (target == "ml_sad"
+                and (not anomalous_flag or mmtbx.f_model.phaser is None)):
+            continue
           print "  ",target
           xray.set_scatterer_grad_flags(
                                    scatterers = xrs.scatterers(),
@@ -122,10 +125,10 @@ def exercise(space_group_info,
             xray_structure=xrs,
             update_f_calc=True,
             update_f_mask=True)
-          if (0 or verbose):
+          if ((0 or verbose) and fmodel.target_name != "ml_sad"):
             fmodel.show_essential()
             print  f_obs.data().size()
-          if (0 or verbose):
+          if ((0 or verbose) and fmodel.target_name != "ml_sad"):
             fmodel.show_comprehensive()
             print  f_obs.data().size()
           xray.set_scatterer_grad_flags(
