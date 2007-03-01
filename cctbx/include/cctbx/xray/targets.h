@@ -16,7 +16,31 @@ namespace cctbx { namespace xray {
 /// X-ray target function of structure factors namespace
 namespace targets {
 
-  class ls_with_scale
+  class common_results
+  {
+    public:
+
+      common_results()
+      :
+        target_work_(0)
+      {}
+
+      double
+      target_work() const { return target_work_; }
+
+      boost::optional<double>
+      target_test() const { return target_test_; }
+
+      af::shared<std::complex<double> > const&
+      gradients_work() { return gradients_work_; }
+
+    protected:
+      double target_work_;
+      boost::optional<double> target_test_;
+      af::shared<std::complex<double> > gradients_work_;
+  };
+
+  class ls_with_scale : public common_results
   {
     public:
       ls_with_scale(
@@ -72,7 +96,6 @@ namespace targets {
         if (compute_gradients) {
           gradients_work_.reserve(n_work);
         }
-        target_work_ = 0;
         double target_test = 0;
         double grad_factor = -2;
         if (apply_scale_to_f_calc_) grad_factor *= scale_factor_;
@@ -116,21 +139,9 @@ namespace targets {
       double
       scale_factor() const { return scale_factor_; }
 
-      double
-      target_work() const { return target_work_; }
-
-      boost::optional<double>
-      target_test() const { return target_test_; }
-
-      af::shared<std::complex<double> > const&
-      gradients_work() { return gradients_work_; }
-
-    private:
+    protected:
       bool apply_scale_to_f_calc_;
-      double target_work_;
-      boost::optional<double> target_test_;
       double scale_factor_;
-      af::shared<std::complex<double> > gradients_work_;
   };
 
   namespace detail {
@@ -668,7 +679,7 @@ namespace targets {
   //! maximum-likelihood target function and gradients
   /*! Pavel Afonine, 26-MAY-2004
    */
-  class maximum_likelihood_criterion
+  class maximum_likelihood_criterion : public common_results
   {
     public:
       maximum_likelihood_criterion(
@@ -681,8 +692,6 @@ namespace targets {
         af::const_ref<int> const& epsilons,
         af::const_ref<bool> const& centric_flags,
         bool compute_gradients)
-      :
-        target_work_(0)
       {
         CCTBX_ASSERT(r_free_flags.size() == 0
                   || r_free_flags.size() == f_obs.size());
@@ -726,20 +735,6 @@ namespace targets {
           target_test_ = boost::optional<double>(target_test / rffs.n_test);
         }
       }
-
-      double
-      target_work() const { return target_work_; }
-
-      boost::optional<double>
-      target_test() const { return target_test_; }
-
-      af::shared<std::complex<double> >
-      gradients_work() const { return gradients_work_; }
-
-    protected:
-      double target_work_;
-      boost::optional<double> target_test_;
-      af::shared<std::complex<double> > gradients_work_;
   };
 
   namespace detail {
@@ -922,7 +917,7 @@ namespace targets {
       All the equations are reformulated in terms of alpha/beta.
       Pavel Afonine // 14-DEC-2004
    */
-  class maximum_likelihood_criterion_hl
+  class maximum_likelihood_criterion_hl : public common_results
   {
     public:
       maximum_likelihood_criterion_hl(
@@ -937,8 +932,6 @@ namespace targets {
         af::const_ref<bool> const& centric_flags,
         double integration_step_size,
         bool compute_gradients)
-      :
-        target_work_(0)
       {
         CCTBX_ASSERT(r_free_flags.size() == 0
                   || r_free_flags.size() == f_obs.size());
@@ -1012,20 +1005,6 @@ namespace targets {
           target_test_ = boost::optional<double>(target_test / rffs.n_test);
         }
       }
-
-      double
-      target_work() const { return target_work_; }
-
-      boost::optional<double>
-      target_test() const { return target_test_; }
-
-      af::shared<std::complex<double> >
-      gradients_work() const { return gradients_work_; }
-
-    protected:
-      double target_work_;
-      boost::optional<double> target_test_;
-      af::shared<std::complex<double> > gradients_work_;
   };
 
 }}} // namespace cctbx::xray::targets

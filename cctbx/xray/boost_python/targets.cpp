@@ -11,6 +11,23 @@ namespace cctbx { namespace xray { namespace targets { namespace boost_python {
 
 namespace {
 
+  struct common_results_wrappers
+  {
+    typedef common_results w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
+      class_<w_t>("common_results", no_init)
+        .def("target_work", &w_t::target_work)
+        .def("target_test", &w_t::target_test)
+        .def("gradients_work", &w_t::gradients_work, ccr())
+      ;
+    }
+  };
+
   struct ls_with_scale_wrappers
   {
     typedef ls_with_scale w_t;
@@ -20,7 +37,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("ls_with_scale", no_init)
+      class_<w_t, bases<common_results> >("ls_with_scale", no_init)
         .def(init<
           bool,
           af::const_ref<double> const&,
@@ -37,9 +54,6 @@ namespace {
             arg_("compute_gradients"),
             arg_("scale_factor"))))
         .def("apply_scale_to_f_calc", &w_t::apply_scale_to_f_calc)
-        .def("target_work", &w_t::target_work)
-        .def("target_test", &w_t::target_test)
-        .def("gradients_work", &w_t::gradients_work, ccr())
         .def("scale_factor", &w_t::scale_factor)
       ;
     }
@@ -103,7 +117,8 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("targets_maximum_likelihood_criterion", no_init)
+      class_<w_t, bases<common_results> >(
+          "targets_maximum_likelihood_criterion", no_init)
         .def(init<
           af::const_ref<double> const&,
           af::const_ref<bool> const&,
@@ -123,9 +138,6 @@ namespace {
             arg_("epsilons"),
             arg_("centric_flags"),
             arg_("compute_gradients"))))
-        .def("target_work", &w_t::target_work)
-        .def("target_test", &w_t::target_test)
-        .def("gradients_work", &w_t::gradients_work)
       ;
     }
   };
@@ -138,7 +150,8 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("targets_maximum_likelihood_criterion_hl", no_init)
+      class_<w_t, bases<common_results> >(
+          "targets_maximum_likelihood_criterion_hl", no_init)
         .def(init<
           af::const_ref<double> const&,
           af::const_ref<bool>,
@@ -160,9 +173,6 @@ namespace {
             arg_("centric_flags"),
             arg_("integration_step_size"),
             arg_("compute_gradients"))))
-        .def("target_work", &w_t::target_work)
-        .def("target_test", &w_t::target_test)
-        .def("gradients_work", &w_t::gradients_work)
       ;
     }
   };
@@ -175,6 +185,7 @@ namespace boost_python {
 
   void wrap_targets()
   {
+    targets::boost_python::common_results_wrappers::wrap();
     targets::boost_python::ls_with_scale_wrappers::wrap();
     targets::boost_python::least_squares_residual_wrappers::wrap();
     targets::boost_python::intensity_correlation_wrappers::wrap();
