@@ -1,10 +1,12 @@
 #ifndef CCTBX_HENDRICKSON_LATTMAN_H
 #define CCTBX_HENDRICKSON_LATTMAN_H
 
-#include <scitbx/array_family/tiny.h>
+#include <scitbx/array_family/tiny_plain.h>
+#include <cctbx/import_scitbx_af.h>
 #include <scitbx/math/bessel.h>
 #include <scitbx/math/atanh.h>
-#include <cctbx/import_scitbx_af.h>
+#include <scitbx/constants.h>
+#include <boost/shared_array.hpp>
 #include <complex>
 
 namespace cctbx {
@@ -169,6 +171,33 @@ namespace cctbx {
         }
         return true;
       }
+
+      struct phase_integration_cos_sin_table
+      {
+        unsigned n_steps;
+        FloatType angular_step;
+        boost::shared_array<af::tiny_plain<FloatType, 4> > data;
+
+        phase_integration_cos_sin_table() {}
+
+        phase_integration_cos_sin_table(
+          unsigned n_steps_)
+        :
+          n_steps(n_steps_),
+          angular_step(scitbx::constants::two_pi / n_steps),
+          data(new af::tiny_plain<FloatType, 4>[n_steps])
+        {
+          af::tiny_plain<FloatType, 4>* d = data.get();
+          for(unsigned i_step=0;i_step<n_steps_;i_step++) {
+            FloatType angle = i_step * angular_step;
+            *d++ = af::tiny_plain<FloatType, 4>(
+              std::cos(angle),
+              std::sin(angle),
+              std::cos(angle+angle),
+              std::sin(angle+angle));
+          }
+        }
+      };
   };
 
 } // namespace cctbx

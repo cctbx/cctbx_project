@@ -10,7 +10,7 @@ namespace {
 
   struct phase_integrator_wrappers
   {
-    typedef phase_integrator w_t;
+    typedef phase_integrator<> w_t;
 
     static void
     wrap()
