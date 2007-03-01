@@ -135,7 +135,7 @@ class _ml_functor(object):
   def __init__(self,
         f_obs,
         experimental_phases=None,
-        step_for_integration=5.0):
+        integration_step_size=5.0):
     adopt_init_args(self, locals())
     self.epsilons = f_obs.epsilons().data()
     self.centric_flags = f_obs.centric_flags().data()
@@ -150,24 +150,26 @@ class _ml_functor(object):
     assert f_calc.space_group() == self.f_obs.space_group()
     if (self.experimental_phases is None):
       return ext.targets_maximum_likelihood_criterion(
-        self.f_obs.data(),
-        f_calc.data(),
-        alpha,
-        beta,
-        k,
-        self.epsilons,
-        self.centric_flags,
-        compute_gradients)
+        f_obs=self.f_obs.data(),
+        r_free_flags=None,
+        f_calc=f_calc.data(),
+        alpha=alpha,
+        beta=beta,
+        scale_factor=k,
+        epsilons=self.epsilons,
+        centric_flags=self.centric_flags,
+        compute_gradients=compute_gradients)
     return ext.targets_maximum_likelihood_criterion_hl(
-      self.f_obs.data(),
-      f_calc.data(),
-      alpha,
-      beta,
-      self.epsilons,
-      self.centric_flags,
-      compute_gradients,
-      self.experimental_phases.data(),
-      self.step_for_integration)
+      f_obs=self.f_obs.data(),
+      r_free_flags=None,
+      experimental_phases=self.experimental_phases.data(),
+      f_calc=f_calc.data(),
+      alpha=alpha,
+      beta=beta,
+      epsilons=self.epsilons,
+      centric_flags=self.centric_flags,
+      integration_step_size=self.integration_step_size,
+      compute_gradients=compute_gradients)
 
 class least_squares_residual(object):
   """ A least-square residual functor. """
