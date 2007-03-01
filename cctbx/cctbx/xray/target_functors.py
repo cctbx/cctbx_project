@@ -171,6 +171,80 @@ class _ml_functor(object):
       integration_step_size=self.integration_step_size,
       compute_gradients=compute_gradients)
 
+class least_squares(object):
+
+  def __init__(self,
+        apply_scale_to_f_calc,
+        f_obs,
+        weights,
+        r_free_flags,
+        scale_factor,
+        f_calc):
+    assert scale_factor >= 0
+    assert scale_factor > 0 or (r_free_flags is None or f_calc is not None)
+    if (scale_factor == 0 and f_calc is not None):
+      # XXX too much work done here, need separate scale factor call
+      scale_factor = ext.ls_with_scale(
+        apply_scale_to_f_calc=apply_scale_to_f_calc,
+        f_obs=f_obs.data(),
+        weights=weights,
+        r_free_flags=r_free_flags.data(),
+        f_calc=f_calc.data(),
+        compute_gradients=False,
+        scale_factor=0).scale_factor()
+    adopt_init_args(self, locals())
+
+  def __call__(self, f_calc, compute_gradients):
+    assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
+    assert f_calc.space_group() == self.f_obs.space_group()
+    return ext.ls_with_scale(
+      apply_scale_to_f_calc=self.apply_scale_to_f_calc,
+      f_obs=self.f_obs.data(),
+      weights=self.weights,
+      r_free_flags=self.r_free_flags.data(),
+      f_calc=f_calc.data(),
+      compute_gradients=compute_gradients,
+      scale_factor=self.scale_factor)
+
+class max_like(object):
+
+  def __init__(self,
+        f_obs,
+        r_free_flags,
+        experimental_phases,
+        alpha_beta,
+        scale_factor,
+        integration_step_size=5.0):
+    adopt_init_args(self, locals())
+    self.epsilons = f_obs.epsilons().data()
+    self.centric_flags = f_obs.centric_flags().data()
+
+  def __call__(self, f_calc, compute_gradients):
+    assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
+    assert f_calc.space_group() == self.f_obs.space_group()
+    if (self.experimental_phases is None):
+      return ext.targets_maximum_likelihood_criterion(
+        f_obs=self.f_obs.data(),
+        r_free_flags=self.r_free_flags.data(),
+        f_calc=f_calc.data(),
+        alpha=self.alpha_beta[0].data(),
+        beta=self.alpha_beta[1].data(),
+        scale_factor=self.scale_factor,
+        epsilons=self.epsilons,
+        centric_flags=self.centric_flags,
+        compute_gradients=compute_gradients)
+    return ext.targets_maximum_likelihood_criterion_hl(
+      f_obs=self.f_obs.data(),
+      r_free_flags=self.r_free_flags.data(),
+      experimental_phases=self.experimental_phases.data(),
+      f_calc=f_calc.data(),
+      alpha=self.alpha_beta[0].data(),
+      beta=self.alpha_beta[1].data(),
+      epsilons=self.epsilons,
+      centric_flags=self.centric_flags,
+      integration_step_size=self.integration_step_size,
+      compute_gradients=compute_gradients)
+
 class least_squares_residual(object):
   """ A least-square residual functor. """
 
