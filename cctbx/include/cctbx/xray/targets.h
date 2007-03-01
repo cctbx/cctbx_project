@@ -509,7 +509,7 @@ namespace targets {
             if (flags[i]) n_work++;
           }
           if (n_work != 0) {
-            n_test = n_work - n_refl;
+            n_test = n_refl - n_work;
           }
           else {
             flags = 0;
