@@ -24,6 +24,16 @@ namespace targets {
         target_work_(0)
       {}
 
+      common_results(
+        double target_work,
+        boost::optional<double> const& target_test,
+        af::shared<std::complex<double> > const& gradients_work)
+      :
+        target_work_(target_work),
+        target_test_(target_test),
+        gradients_work_(gradients_work)
+      {}
+
       double
       target_work() const { return target_work_; }
 

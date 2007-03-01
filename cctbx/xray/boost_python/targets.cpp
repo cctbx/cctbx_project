@@ -21,6 +21,13 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("common_results", no_init)
+        .def(init<
+          double,
+          boost::optional<double> const&,
+          af::shared<std::complex<double> > const&>((
+            arg_("target_work"),
+            arg_("target_test"),
+            arg_("gradients_work"))))
         .def("target_work", &w_t::target_work)
         .def("target_test", &w_t::target_test)
         .def("gradients_work", &w_t::gradients_work, ccr())
