@@ -103,16 +103,28 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("targets_maximum_likelihood_criterion",
-             init<af::const_ref<double> const&,
-                  af::const_ref<std::complex<double> > const&,
-                  af::const_ref<double> const&,
-                  af::const_ref<double> const&,
-                  double const&,
-                  af::const_ref<int> const&,
-                  af::const_ref<bool> const&,
-                  bool const& >())
+      class_<w_t>("targets_maximum_likelihood_criterion", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool> const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          double,
+          af::const_ref<int> const&,
+          af::const_ref<bool> const&,
+          bool>((
+            arg_("f_obs"),
+            arg_("r_free_flags"),
+            arg_("f_calc"),
+            arg_("alpha"),
+            arg_("beta"),
+            arg_("scale_factor"),
+            arg_("epsilons"),
+            arg_("centric_flags"),
+            arg_("compute_gradients"))))
         .def("target_work", &w_t::target_work)
+        .def("target_test", &w_t::target_test)
         .def("gradients_work", &w_t::gradients_work)
       ;
     }
@@ -126,17 +138,30 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("targets_maximum_likelihood_criterion_hl",
-             init<af::const_ref<double> const&,
-                  af::const_ref<std::complex<double> > const&,
-                  af::const_ref<double> const&,
-                  af::const_ref<double> const&,
-                  af::const_ref<int> const&,
-                  af::const_ref<bool> const&,
-                  bool const&,
-                  af::const_ref<cctbx::hendrickson_lattman<double> > const&,
-                  double const& >())
+      class_<w_t>("targets_maximum_likelihood_criterion_hl", no_init)
+        .def(init<
+          af::const_ref<double> const&,
+          af::const_ref<bool>,
+          af::const_ref<cctbx::hendrickson_lattman<double> > const&,
+          af::const_ref<std::complex<double> > const&,
+          af::const_ref<double> const&,
+          af::const_ref<double> const&,
+          af::const_ref<int> const&,
+          af::const_ref<bool> const&,
+          double,
+          bool>((
+            arg_("f_obs"),
+            arg_("r_free_flags"),
+            arg_("experimental_phases"),
+            arg_("f_calc"),
+            arg_("alpha"),
+            arg_("beta"),
+            arg_("epsilons"),
+            arg_("centric_flags"),
+            arg_("integration_step_size"),
+            arg_("compute_gradients"))))
         .def("target_work", &w_t::target_work)
+        .def("target_test", &w_t::target_test)
         .def("gradients_work", &w_t::gradients_work)
       ;
     }

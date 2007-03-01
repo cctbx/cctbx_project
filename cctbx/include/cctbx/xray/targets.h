@@ -476,6 +476,46 @@ namespace targets {
       return tot0;
     }
 
+    struct r_free_flags_stats
+    {
+      const bool* flags;
+      std::size_t n_work;
+      std::size_t n_test;
+
+      r_free_flags_stats(
+        std::size_t n_refl,
+        const bool* r_free_flags_begin)
+      :
+        flags(r_free_flags_begin)
+      {
+        if (!flags) {
+          n_work = n_refl;
+          n_test = 0;
+        }
+        else {
+          n_work = 0;
+          for(std::size_t i=0;i<n_refl;i++) {
+            if (flags[i]) n_work++;
+          }
+          if (n_work != 0) {
+            n_test = n_work - n_refl;
+          }
+          else {
+            flags = 0;
+            n_work = n_refl;
+            n_test = 0;
+          }
+        }
+      }
+
+      bool
+      is_work_refl(std::size_t i) const
+      {
+        if (flags) return flags[i];
+        return true;
+      }
+    };
+
   } // namespace detail
 
   //! Amplitude based Maximum-Likelihood target for one miller index.
@@ -631,50 +671,73 @@ namespace targets {
   {
     public:
       maximum_likelihood_criterion(
-        af::const_ref<double> const& fobs,
-        af::const_ref<std::complex<double> > const& fcalc,
+        af::const_ref<double> const& f_obs,
+        af::const_ref<bool> const& r_free_flags,
+        af::const_ref<std::complex<double> > const& f_calc,
         af::const_ref<double> const& alpha,
         af::const_ref<double> const& beta,
-        double k,
-        af::const_ref<int> const& eps,
-        af::const_ref<bool> const& cs,
+        double scale_factor,
+        af::const_ref<int> const& epsilons,
+        af::const_ref<bool> const& centric_flags,
         bool compute_gradients)
+      :
+        target_work_(0)
       {
-        CCTBX_ASSERT(fcalc.size() == fobs.size());
-        CCTBX_ASSERT(alpha.size() == fobs.size());
-        CCTBX_ASSERT(beta.size() == fobs.size());
-        CCTBX_ASSERT(beta.size() == eps.size());
-        CCTBX_ASSERT(eps.size() == fobs.size());
-        CCTBX_ASSERT(cs.size() == fobs.size());
-        target_work_ = 0;
+        CCTBX_ASSERT(r_free_flags.size() == 0
+                  || r_free_flags.size() == f_obs.size());
+        CCTBX_ASSERT(f_calc.size() == f_obs.size());
+        CCTBX_ASSERT(alpha.size() == f_obs.size());
+        CCTBX_ASSERT(beta.size() == f_obs.size());
+        CCTBX_ASSERT(beta.size() == epsilons.size());
+        CCTBX_ASSERT(epsilons.size() == f_obs.size());
+        CCTBX_ASSERT(centric_flags.size() == f_obs.size());
+        if (f_obs.size() == 0) return;
+        detail::r_free_flags_stats rffs(f_obs.size(), r_free_flags.begin());
+        CCTBX_ASSERT(rffs.n_work != 0);
+        double one_over_n_work = 1./ rffs.n_work;
         if (compute_gradients) {
-          gradients_work_ = af::shared<std::complex<double> >(fobs.size());
+          gradients_work_.reserve(rffs.n_work);
         }
-        for(std::size_t i=0;i<fobs.size();i++) {
-          double fo = fobs[i];
-          double fc = std::abs(fcalc[i]);
+        double target_test = 0;
+        for(std::size_t i=0;i<f_obs.size();i++) {
+          double fo = f_obs[i];
+          double fc = std::abs(f_calc[i]);
           double a  = alpha[i];
           double b  = beta[i];
-          int e  = eps[i];
-          bool c = cs[i];
-          target_work_ += maximum_likelihood_target_one_h(fo,fc,a,b,k,e,c);
-          if(compute_gradients) {
-            gradients_work_[i] = std::conj(
-              d_maximum_likelihood_target_one_h_over_fc(
-                fo,fcalc[i],a,b,k,e,c)) * (1./ fobs.size());
+          int e  = epsilons[i];
+          bool c = centric_flags[i];
+          double t = maximum_likelihood_target_one_h(
+            fo, fc, a, b, scale_factor, e, c);
+          if (rffs.is_work_refl(i)) {
+            target_work_ += t;
+            if (compute_gradients) {
+              gradients_work_.push_back(std::conj(
+                d_maximum_likelihood_target_one_h_over_fc(
+                  fo, f_calc[i], a, b, scale_factor, e, c)) * one_over_n_work);
+            }
+          }
+          else {
+            target_test += t;
           }
         }
-        target_work_ /= fobs.size();
+        target_work_ *= one_over_n_work;
+        if (rffs.n_test != 0) {
+          target_test_ = boost::optional<double>(target_test / rffs.n_test);
+        }
       }
 
       double
       target_work() const { return target_work_; }
+
+      boost::optional<double>
+      target_test() const { return target_test_; }
 
       af::shared<std::complex<double> >
       gradients_work() const { return gradients_work_; }
 
     protected:
       double target_work_;
+      boost::optional<double> target_test_;
       af::shared<std::complex<double> > gradients_work_;
   };
 
@@ -694,7 +757,7 @@ namespace targets {
       cctbx::hendrickson_lattman<double> const& abcd,
       const af::tiny<double, 4>* cos_sin_table,
       int n_steps,
-      double step_for_integration,
+      double integration_step_size,
       double* workspace)
     {
       CCTBX_ASSERT(fo >= 0);
@@ -737,7 +800,7 @@ namespace targets {
           for(int i=0;i<n_steps;i++) {
             target += std::exp(-maxv+workspace[i]);
           }
-          target *= step_for_integration;
+          target *= integration_step_size;
           target = std::log(target) + maxv;
         }
         target = (fo*fo+alpha*alpha*fc*fc)/(beta*epsilon) - target;
@@ -756,7 +819,7 @@ namespace targets {
 
     inline
     std::complex<double>
-    mlhl_d_target_dfcalc_one_h(
+    mlhl_d_target_d_f_calc_one_h(
       double fo,
       double fc,
       double pc,
@@ -764,21 +827,18 @@ namespace targets {
       double bc,
       double alpha,
       double beta,
-      double k,
       int epsilon,
       bool cf,
       cctbx::hendrickson_lattman<double> const& abcd,
       const af::tiny<double, 4>* cos_sin_table,
       int n_steps,
-      double step_for_integration,
+      double integration_step_size,
       double* workspace)
     {
       const double small = 1.e-9;
       if (fc < small || alpha <= 0 || beta <= 0) {
         return std::complex<double>(0,0);
       }
-      alpha *= k;
-      beta *= k*k;
       double derfc = 0;
       double derpc = 0;
       double cos_pc = std::cos(pc);
@@ -820,7 +880,7 @@ namespace targets {
           for(int i=0;i<n_steps;i++) {
             target += std::exp(-maxv+workspace[i]);
           }
-          target *= step_for_integration;
+          target *= integration_step_size;
           target = -std::log(target) - maxv;
           double deranot = 0;
           double derbnot = 0;
@@ -830,8 +890,8 @@ namespace targets {
             deranot += tab[0] * exp_t_w;
             derbnot += tab[1] * exp_t_w;
           }
-          deranot *= step_for_integration;
-          derbnot *= step_for_integration;
+          deranot *= integration_step_size;
+          derbnot *= integration_step_size;
           derfc = arg*(deranot*cos_pc + derbnot*sin_pc);
           derpc = arg*(deranot*sin_pc - derbnot*cos_pc)*fc;
         }
@@ -865,26 +925,37 @@ namespace targets {
   {
     public:
       maximum_likelihood_criterion_hl(
-        af::const_ref<double> const& fobs,
-        af::const_ref<std::complex<double> > const& fcalc,
+        af::const_ref<double> const& f_obs,
+        af::const_ref<bool> const& r_free_flags,
+        af::const_ref<cctbx::hendrickson_lattman<double> > const&
+          experimental_phases,
+        af::const_ref<std::complex<double> > const& f_calc,
         af::const_ref<double> const& alpha,
         af::const_ref<double> const& beta,
-        af::const_ref<int> const& eps,
-        af::const_ref<bool> const& cs,
-        bool compute_gradients,
-        af::const_ref<cctbx::hendrickson_lattman<double> > const& abcd,
-        double step_for_integration)
+        af::const_ref<int> const& epsilons,
+        af::const_ref<bool> const& centric_flags,
+        double integration_step_size,
+        bool compute_gradients)
+      :
+        target_work_(0)
       {
-        CCTBX_ASSERT(fobs.size()==fcalc.size()&&alpha.size()==beta.size());
-        CCTBX_ASSERT(beta.size()==eps.size()&&eps.size()==cs.size());
-        CCTBX_ASSERT(fobs.size()==alpha.size());
-        CCTBX_ASSERT(step_for_integration > 0.);
-        CCTBX_ASSERT(abcd.size() == fobs.size());
-        target_work_ = 0;
+        CCTBX_ASSERT(r_free_flags.size() == 0
+                  || r_free_flags.size() == f_obs.size());
+        CCTBX_ASSERT(experimental_phases.size() == f_obs.size());
+        CCTBX_ASSERT(f_calc.size() == f_obs.size());
+        CCTBX_ASSERT(alpha.size() == f_obs.size());
+        CCTBX_ASSERT(beta.size() == f_obs.size());
+        CCTBX_ASSERT(epsilons.size() == f_obs.size());
+        CCTBX_ASSERT(centric_flags.size() == f_obs.size());
+        CCTBX_ASSERT(integration_step_size > 0);
+        if (f_obs.size() == 0) return;
+        detail::r_free_flags_stats rffs(f_obs.size(), r_free_flags.begin());
+        CCTBX_ASSERT(rffs.n_work != 0);
+        double one_over_n_work = 1./ rffs.n_work;
         if (compute_gradients) {
-          gradients_work_ = af::shared<std::complex<double> >(fobs.size());
+          gradients_work_.reserve(rffs.n_work);
         }
-        int n_steps = static_cast<int>(360./step_for_integration);
+        int n_steps = scitbx::math::iround(360 / integration_step_size);
         CCTBX_ASSERT(n_steps > 0);
         double angular_step = scitbx::constants::two_pi / n_steps;
         std::vector<af::tiny<double, 4> > cos_sin_table;
@@ -898,56 +969,70 @@ namespace targets {
             std::sin(angle+angle)));
         }
         std::vector<double> workspace(n_steps);
-        for(std::size_t i_h=0;i_h<fobs.size();i_h++) {
-          double fo = fobs[i_h];
-          double fc = std::abs(fcalc[i_h]);
-          double pc = std::arg(fcalc[i_h]);
-          double ac = std::real(fcalc[i_h]);
-          double bc = std::imag(fcalc[i_h]);
-          target_work_ += detail::mlhl_target_one_h(
+        double target_test = 0;
+        for(std::size_t i=0;i<f_obs.size();i++) {
+          double fo = f_obs[i];
+          double fc = std::abs(f_calc[i]);
+          double pc = std::arg(f_calc[i]);
+          double ac = std::real(f_calc[i]);
+          double bc = std::imag(f_calc[i]);
+          double t = detail::mlhl_target_one_h(
             fo,
             fc,
             pc,
-            alpha[i_h],
-            beta[i_h],
+            alpha[i],
+            beta[i],
             1.0,
-            eps[i_h],
-            cs[i_h],
-            abcd[i_h],
+            epsilons[i],
+            centric_flags[i],
+            experimental_phases[i],
             &*cos_sin_table.begin(),
             n_steps,
-            step_for_integration,
+            integration_step_size,
             &*workspace.begin());
-          if(compute_gradients) {
-            gradients_work_[i_h]=std::conj(detail::mlhl_d_target_dfcalc_one_h(
-              fo,
-              fc,
-              pc,
-              ac,
-              bc,
-              alpha[i_h],
-              beta[i_h],
-              1.0,
-              eps[i_h],
-              cs[i_h],
-              abcd[i_h],
-              &*cos_sin_table.begin(),
-              n_steps,
-              step_for_integration,
-              &*workspace.begin())) * (1./ fobs.size());
+          if (rffs.is_work_refl(i)) {
+            target_work_ += t;
+            if(compute_gradients) {
+              gradients_work_.push_back(std::conj(
+                detail::mlhl_d_target_d_f_calc_one_h(
+                  fo,
+                  fc,
+                  pc,
+                  ac,
+                  bc,
+                  alpha[i],
+                  beta[i],
+                  epsilons[i],
+                  centric_flags[i],
+                  experimental_phases[i],
+                  &*cos_sin_table.begin(),
+                  n_steps,
+                  integration_step_size,
+                  &*workspace.begin())) * one_over_n_work);
+            }
+          }
+          else {
+            target_test += t;
           }
         }
-        target_work_ /= fobs.size();
+        target_work_ *= one_over_n_work;
+        if (rffs.n_test != 0) {
+          target_test_ = boost::optional<double>(target_test / rffs.n_test);
+        }
       }
 
       double
       target_work() const { return target_work_; }
+
+      boost::optional<double>
+      target_test() const { return target_test_; }
 
       af::shared<std::complex<double> >
       gradients_work() const { return gradients_work_; }
 
     protected:
       double target_work_;
+      boost::optional<double> target_test_;
       af::shared<std::complex<double> > gradients_work_;
   };
 
