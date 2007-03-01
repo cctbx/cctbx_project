@@ -1,4 +1,7 @@
 from __future__ import division
+try: import phaser
+except ImportError: phaser = None
+else: import phaser.phenix_adaptors.sad_target
 from cctbx.array_family import flex
 import math, time
 from cctbx import miller
@@ -128,7 +131,11 @@ class target_attributes(xray.target_functors.target_attributes):
       self.pseudo_ml = True
     else:
       self.pseudo_ml = False
-    return xray.target_functors.target_attributes.validate(self)
+    if (xray.target_functors.target_attributes.validate(self)):
+      return True
+    if (self.family == "ml" and self.specialization == "sad"):
+      return True
+    return False
 
 class manager(object):
 
@@ -152,7 +159,8 @@ class manager(object):
     "lsm_k1_fixed": target_attributes("lsm", "k1"),
     "lsm_k1ask3_fixed": target_attributes("lsm", "k1", True),
     "ml": target_attributes("ml"),
-    "mlhl": target_attributes("ml", "hl")}
+    "mlhl": target_attributes("ml", "hl"),
+    "ml_sad": target_attributes("ml", "sad")}
 
   def __init__(self, f_obs                 = None,
                      r_free_flags          = None,
@@ -601,6 +609,9 @@ class manager(object):
       raise RuntimeError(
         "Unknown target name: %s" % show_string(self.target_name))
 
+  def target_functor(self):
+    return target_functor(manager=self)
+
   def _setup_target_functors(self, target_name):
     if (target_name is None):
       self._target_name = None
@@ -669,15 +680,20 @@ class manager(object):
           raise RuntimeError
       else:
         raise RuntimeError
-    self.target_functors = xray.target_functors.manager(
-      target_attributes=attr,
-      f_obs=f_obs,
-      r_free_flags=self.r_free_flags,
-      experimental_phases=self.abcd,
-      weights=weights,
-      scale_factor=scale_factor)
-    self.target_functor_w = self.target_functors.target_functor_w()
-    self.target_functor_t = self.target_functors.target_functor_t()
+    if (attr.specialization == "sad"): # XXX
+      self.target_functors = None
+      self.target_functor_w = None
+      self.target_functor_t = None
+    else:
+      self.target_functors = xray.target_functors.manager(
+        target_attributes=attr,
+        f_obs=f_obs,
+        r_free_flags=self.r_free_flags,
+        experimental_phases=self.abcd,
+        weights=weights,
+        scale_factor=scale_factor)
+      self.target_functor_w = self.target_functors.target_functor_w()
+      self.target_functor_t = self.target_functors.target_functor_t()
 
   def xray_target_functor_result(self, compute_gradients = None,
                                        alpha             = None,
@@ -699,17 +715,8 @@ class manager(object):
        else:
           assert alpha.data().size() == f_model.data().size()
           assert beta.data().size()  == f_model.data().size()
-       if(scale_ml is None):
-          if(self.alpha_beta_params is not None):
-             if(self.alpha_beta_params.method == "calc"):
-                if(self.alpha_beta_params.fix_scale_for_calc_option is None):
-                   scale_ml = self.scale_ml()
-                else:
-                   scale_ml=self.alpha_beta_params.fix_scale_for_calc_option
-             else:
-                scale_ml = 1.0
-          else:
-             scale_ml = 1.0
+       if (scale_ml is None):
+         scale_ml = self.scale_ml_wrapper()
        if(flag == "work"):
           return self.target_functor_w(f_model,
                                        alpha.data(),
@@ -1352,6 +1359,12 @@ class manager(object):
        r_work_h = 0.0
     return r_work, r_work_l, r_work_h, n_low, n_high
 
+  def scale_ml_wrapper(self):
+    if (self.alpha_beta_params is None): return 1.0
+    if (self.alpha_beta_params.method != "calc"): return 1.0
+    if (self.alpha_beta_params.fix_scale_for_calc_option is None):
+      return self.scale_ml()
+    return self.alpha_beta_params.fix_scale_for_calc_option
 
   def scale_ml(self):
     #assert self.alpha_beta_params.method == "calc"
@@ -1799,6 +1812,152 @@ class manager(object):
           f_mask_phases_i, f_model_amplitudes_i, f_model_phases_i, fom_i,
           alpha_i, beta_i, flags_i, resolution_i, f_bulk_amplitudes_i,
           f_bulk_phases_i, fb_cart_i)
+
+class target_functor(object):
+
+  def __init__(self, manager):
+    self.manager = manager
+    target_name = manager.target_name
+    assert target_name is not None
+    attr = manager.target_attributes()
+    if (target_name == "ml_sad"):
+      if (0): # XXX
+        if (phaser is None):
+          raise Sorry(
+            "ml_sad target requires phaser extension, which is not available"
+            " in this installation.")
+        self.core = phaser.phenix_adaptors.sad_target \
+          .mmtbx_f_model_target_functor_core(manager=manager)
+      # XXX placeholder to enable testing of everything but the phaser target
+      self.core = xray.target_functors.least_squares(
+        apply_scale_to_f_calc=True,
+        f_obs=manager.f_obs,
+        r_free_flags=manager.r_free_flags,
+        weights=flex.double(manager.f_obs.data().size(), 1.0),
+        scale_factor=0,
+        f_calc=manager.f_model())
+    elif (attr.family == "ml"):
+      if (attr.requires_experimental_phases()):
+        experimental_phases = manager.abcd
+      else:
+        experimental_phases = None
+      self.core = xray.target_functors.max_like(
+        f_obs=manager.f_obs,
+        r_free_flags=manager.r_free_flags,
+        experimental_phases=experimental_phases,
+        alpha_beta=manager.alpha_beta(),
+        scale_factor=manager.scale_ml_wrapper(),
+        integration_step_size=5.0)
+    else:
+      if (attr.pseudo_ml):
+        f_obs, weights = manager.f_star_w_star()
+        weights = weights.data()
+        if   (target_name == "lsm_k1"):
+          scale_factor = 0
+        elif (target_name == "lsm_k2"):
+          scale_factor = 0
+        elif (target_name == "lsm_k1ask3_fixed"):
+          scale_factor = manager.scale_k3_w()
+        elif (target_name == "lsm_k1_fixed"):
+          scale_factor = manager.scale_k1_w()
+        elif (target_name == "lsm_kunit"):
+          scale_factor = 1.0
+        else:
+          raise RuntimeError
+      else:
+        f_obs = manager.f_obs
+        if (target_name.startswith("ls_wunit_")):
+          weights = flex.double(f_obs.data().size(), 1.0)
+          if   (target_name == "ls_wunit_k1"):
+            scale_factor = 0
+          elif (target_name == "ls_wunit_k1_fixed"):
+            scale_factor = manager.scale_k1_w()
+          elif (target_name == "ls_wunit_k2"):
+            scale_factor = 0
+          elif (target_name == "ls_wunit_kunit"):
+            scale_factor = 1.0
+          elif (target_name == "ls_wunit_k1ask3_fixed"):
+            scale_factor = manager.scale_k3_w()
+          else:
+            raise RuntimeError
+        elif (target_name.startswith("ls_wexp_")):
+          weights = ls_sigma_weights(f_obs)
+          if   (target_name == "ls_wexp_k1"):
+            scale_factor = 0
+          elif (target_name == "ls_wexp_k2"):
+            scale_factor = 0
+          elif (target_name == "ls_wexp_kunit"):
+            scale_factor = 1.0
+          else:
+            raise RuntimeError
+        elif (target_name.startswith("ls_wff_")):
+          weights = ls_ff_weights(f_obs, "N", 25.0)
+          if   (target_name == "ls_wff_k1"):
+            scale_factor = 0
+          elif (target_name == "ls_wff_k1_fixed"):
+            scale_factor = manager.scale_k1_w()
+          elif (target_name == "ls_wff_k1ask3_fixed"):
+            scale_factor = manager.scale_k3_w()
+          elif (target_name == "ls_wff_k2"):
+            scale_factor = 0
+          elif (target_name == "ls_wff_kunit"):
+            scale_factor = 1.0
+          else:
+            raise RuntimeError
+        else:
+          raise RuntimeError
+      if (scale_factor == 0):
+        f_calc = self.manager.f_model()
+      else:
+        f_calc = None
+      self.core = xray.target_functors.least_squares(
+        apply_scale_to_f_calc=attr.ls_apply_scale_to_f_calc(),
+        f_obs=f_obs,
+        r_free_flags=manager.r_free_flags,
+        weights=weights,
+        scale_factor=scale_factor,
+        f_calc=f_calc)
+
+  def __call__(self, compute_gradients=False):
+    return target_result(
+      manager=self.manager,
+      core_result=self.core(
+        f_calc=self.manager.f_model(),
+        compute_gradients=compute_gradients))
+
+class target_result(object):
+
+  def __init__(self, manager, core_result):
+    self.manager = manager
+    self.core_result = core_result
+
+  def target_work(self):
+    return self.core_result.target_work()
+
+  def target_test(self):
+    return self.core_result.target_test()
+
+  def d_target_d_f_model_work(self):
+    return self.manager.f_obs_w.array(
+      data=self.core_result.gradients_work())
+
+  def d_target_d_f_calc_work(self):
+    return self.manager.f_obs_w.array(
+      data=self.core_result.gradients_work() * self.manager.core.fb_cart_w)
+
+  def d_target_d_site_cart(self):
+    manager = self.manager
+    xray.set_scatterer_grad_flags(
+      scatterers=manager.xray_structure.scatterers(),
+      site=True)
+    d_t_d_fc = self.d_target_d_f_calc_work()
+    return manager.structure_factor_gradients_w(
+      u_iso_refinable_params=None,
+      d_target_d_f_calc=d_t_d_fc.data(),
+      xray_structure=manager.xray_structure,
+      n_parameters=0,
+      miller_set=d_t_d_fc,
+      algorithm=manager.sf_algorithm).d_target_d_site_cart()
 
 def statistics_in_resolution_bins(fmodel,
                                   target_functors,

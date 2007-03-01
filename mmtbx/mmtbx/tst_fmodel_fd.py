@@ -22,35 +22,36 @@ class mask_params:
     self.verbose = 1
     self.mean_shift_for_mask_update = 0.1
 
-def finite_differences_site(cartesian_flag, fmodel, delta=0.00001):
+def finite_differences_site(fmodel, eps=1.e-5):
   structure = fmodel.xray_structure
   unit_cell = structure.unit_cell()
-  abc = unit_cell.parameters()[:3]
-  derivatives = flex.vec3_double()
+  if (fmodel.target_name != "ml_sad"):
+    gs_old = flex.double()
+  else:
+    gs_old = None
+  gs_new = flex.double()
   alpha, beta = fmodel.alpha_beta_w(only_if_required_by_target=True)
+  target_functor = fmodel.target_functor()
   for i_scatterer in xrange(structure.scatterers().size()):
-    d_target_d_site = [0,0,0]
+    sc = structure.scatterers()[i_scatterer]
+    site_orig = sc.site
+    d_target_d_site = []
     for ix in xrange(3):
-      target_values = []
-      for d_sign in (-1, 1):
-        modified_structure = structure.deep_copy_scatterers()
-        ms = modified_structure.scatterers()[i_scatterer]
-        site = list(ms.site)
-        if (not cartesian_flag):
-          site[ix] += d_sign * delta / abc[ix]
-        else:
-          site_cart = list(unit_cell.orthogonalize(site))
-          site_cart[ix] += d_sign * delta
-          site = unit_cell.fractionalize(site_cart)
-        ms.site = site
-        fmodel.update_xray_structure(xray_structure = modified_structure,
-                                     update_f_calc = True)
-        target_values.append(fmodel.target_w(alpha=alpha, beta=beta))
-      derivative = (target_values[1] - target_values[0]) / (2 * delta)
-      if (not cartesian_flag): derivative *= abc[ix]
-      d_target_d_site[ix] = derivative
-    derivatives.append(d_target_d_site)
-  return derivatives
+      ts_old = []
+      ts_new = []
+      for signed_eps in [eps, -eps]:
+        site_cart = list(unit_cell.orthogonalize(site_orig))
+        site_cart[ix] += signed_eps
+        sc.site = unit_cell.fractionalize(site_cart)
+        fmodel.update_xray_structure(update_f_calc=True)
+        if (gs_old is not None):
+          ts_old.append(fmodel.target_w(alpha=alpha, beta=beta))
+        ts_new.append(target_functor().target_work())
+      if (gs_old is not None):
+        gs_old.append((ts_old[0]-ts_old[1])/(2*eps))
+      gs_new.append((ts_new[0]-ts_new[1])/(2*eps))
+    sc.site = site_orig
+  return gs_old, gs_new
 
 def exercise(space_group_info,
              n_elements       = 10,
@@ -64,13 +65,13 @@ def exercise(space_group_info,
              quick=False,
              verbose=0):
   xray_structure = random_structure.xray_structure(
-         space_group_info       = space_group_info,
-         elements               =(("O","N","C")*(n_elements/3+1))[:n_elements],
-         volume_per_atom        = 100,
-         min_distance           = 1.5,
-         general_positions_only = True,
-         random_u_iso           = False,
-         random_occupancy       = False)
+    space_group_info       = space_group_info,
+    elements               =(("O","N","C")*(n_elements/3+1))[:n_elements],
+    volume_per_atom        = 100,
+    min_distance           = 1.5,
+    general_positions_only = True,
+    random_u_iso           = False,
+    random_occupancy       = False)
   xray_structure.scattering_type_registry(table = table)
   sg = xray_structure.space_group()
   uc = xray_structure.unit_cell()
@@ -100,6 +101,7 @@ def exercise(space_group_info,
             experimental_phases = generate_random_hl(miller_set=f_obs)
           else:
             experimental_phases = None
+          if (target == "ml_sad" and not anomalous_flag): continue
           print "  ",target
           xray.set_scatterer_grad_flags(
                                    scatterers = xrs.scatterers(),
@@ -116,36 +118,42 @@ def exercise(space_group_info,
                                        b_sol             = b_sol,
                                        b_cart            = b_cart,
                                        mask_params       = mask_params())
-          fmodel.update_xray_structure(xray_structure = xrs,
-                                       update_f_calc = True,
-                                       update_f_mask = True)
+          fmodel.update_xray_structure(
+            xray_structure=xrs,
+            update_f_calc=True,
+            update_f_mask=True)
           if (0 or verbose):
-             fmodel.show_essential()
-             print  f_obs.data().size()
+            fmodel.show_essential()
+            print  f_obs.data().size()
           if (0 or verbose):
-             fmodel.show_comprehensive()
-             print  f_obs.data().size()
-          gs = flex.vec3_double(
-                fmodel.gradient_wrt_atomic_parameters(site = True).packed())
+            fmodel.show_comprehensive()
+            print  f_obs.data().size()
           xray.set_scatterer_grad_flags(
-                            scatterers = fmodel.xray_structure.scatterers(),
-                            site       = True)
-          gfd = finite_differences_site(cartesian_flag = True,
-                                        fmodel = fmodel)
-          gs = gs.as_double()
-          gfd = gfd.as_double()
-          cc = flex.linear_correlation(gs, gfd).coefficient()
-          if (0 or verbose):
-            print "ana:", list(gs)
-            print "fin:", list(gfd)
-            print "cc:", cc
-            print
-          diff = gs - gfd
-          tolerance = 1.e-6
-          assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
-          assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
-          assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
-          assert approx_equal(cc, 1.0, tolerance)
+            scatterers=fmodel.xray_structure.scatterers(),
+            site=True)
+          if (fmodel.target_name != "ml_sad"):
+            gs_old = fmodel.gradient_wrt_atomic_parameters(site=True).packed()
+          else:
+            gs_old = None
+          gs_new = fmodel.target_functor()(
+            compute_gradients=True).d_target_d_site_cart().as_double()
+          gfd_old, gfd_new = finite_differences_site(fmodel=fmodel)
+          for which,gs,gfd in [("old", gs_old, gfd_old),
+                               ("new", gs_new, gfd_new)]:
+            if (gs is None): continue
+            cc = flex.linear_correlation(gs, gfd).coefficient()
+            if (0 or verbose):
+              print which
+              print "ana:", list(gs)
+              print "fin:", list(gfd)
+              print target, "corr:", cc
+              print
+            diff = gs - gfd
+            tolerance = 1.e-6
+            assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
+            assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
+            assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
+            assert approx_equal(cc, 1.0, tolerance)
           fmodel.model_error_ml()
 
 def run_call_back(flags, space_group_info):
