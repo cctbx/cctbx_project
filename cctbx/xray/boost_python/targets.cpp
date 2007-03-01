@@ -20,7 +20,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("common_results", no_init)
+      class_<w_t>("targets_common_results", no_init)
         .def(init<
           double,
           boost::optional<double> const&,
@@ -44,7 +44,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t, bases<common_results> >("ls_with_scale", no_init)
+      class_<w_t, bases<common_results> >("targets_ls_with_scale", no_init)
         .def(init<
           bool,
           af::const_ref<double> const&,

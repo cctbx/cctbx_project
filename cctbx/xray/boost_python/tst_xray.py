@@ -1361,14 +1361,14 @@ def exercise_asu_mappings():
   assert asu_mappings.mappings().size() == structure.scatterers().size()
 
 def exercise_targets_common_results():
-  r = xray.common_results(
+  r = xray.targets_common_results(
     target_work=13,
     target_test=None,
     gradients_work=flex.complex_double([1+2j,2+3j,3-4j]))
   assert approx_equal(r.target_work(), 13)
   assert r.target_test() is None
   assert approx_equal(r.gradients_work(), [1+2j,2+3j,3-4j])
-  r = xray.common_results(
+  r = xray.targets_common_results(
     target_work=42,
     target_test=53,
     gradients_work=flex.complex_double())
@@ -1376,12 +1376,12 @@ def exercise_targets_common_results():
   assert approx_equal(r.target_test(), 53)
   assert r.gradients_work().size() == 0
 
-def exercise_ls_with_scale():
+def exercise_targets_ls_with_scale():
   f_obs = flex.double((1,2,3,4,5))
   w = flex.double((1,1,1,1,1))
   f_calc = flex.complex_double((1,2,3,4,5))
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
     f_obs=f_obs,
     weights=w,
@@ -1395,7 +1395,7 @@ def exercise_ls_with_scale():
   assert ls.target_test() is None
   assert ls.gradients_work().size() == 0
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
     f_obs=f_obs,
     weights=w,
@@ -1411,7 +1411,7 @@ def exercise_ls_with_scale():
   w = flex.double((3,2,1))
   f_calc = flex.complex_double((4,5,6))
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
     f_obs=f_obs,
     weights=w,
@@ -1424,7 +1424,7 @@ def exercise_ls_with_scale():
   assert approx_equal(ls.gradients_work(),
                      ((0.0551347738+0j),(-0.0100245043+0j),(-0.0284027623+0j)) )
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
     f_obs=f_obs,
     weights=w,
@@ -1440,7 +1440,7 @@ def exercise_ls_with_scale():
   w = flex.double((3,2,1))
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j))
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
     f_obs=f_obs,
     weights=w,
@@ -1459,7 +1459,7 @@ def exercise_ls_with_scale():
   w = flex.double((1,1,1,1,1))
   f_calc = flex.complex_double((1,2,3,4,5))
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
     f_obs=f_obs,
     weights=w,
@@ -1472,7 +1472,7 @@ def exercise_ls_with_scale():
   assert approx_equal(ls.target_work(), 0)
   assert ls.gradients_work().size() == 0
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
     f_obs=f_obs,
     weights=w,
@@ -1488,7 +1488,7 @@ def exercise_ls_with_scale():
   w = flex.double((3,2,1))
   f_calc = flex.complex_double((4,5,6))
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
     f_obs=f_obs,
     weights=w,
@@ -1501,7 +1501,7 @@ def exercise_ls_with_scale():
   assert approx_equal(ls.gradients_work(),
                      ((0.45000000000000001+0j), 0j, (-0.15000000000000002+0j)) )
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
     f_obs=f_obs,
     weights=w,
@@ -1517,7 +1517,7 @@ def exercise_ls_with_scale():
   w = flex.double((3,2,1))
   f_calc = flex.complex_double((1+2j,3+4j,-1-2j))
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
     f_obs=f_obs,
     weights=w,
@@ -1537,7 +1537,7 @@ def exercise_ls_with_scale():
   w = flex.double((1,1,1,1,1))
   r_free_flags = flex.bool([False,True,False,True,False])
   f_calc = flex.complex_double((2,3,4,5,6))
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
     f_obs=f_obs,
     weights=w,
@@ -1553,7 +1553,7 @@ def exercise_ls_with_scale():
     0.0049382716049382741+0j,
     -0.014814814814814802-0j])
   #
-  ls = xray.ls_with_scale(
+  ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
     f_obs=f_obs,
     weights=w,
@@ -1724,7 +1724,7 @@ def run():
   exercise_minimization_add_gradients()
   exercise_asu_mappings()
   exercise_targets_common_results()
-  exercise_ls_with_scale()
+  exercise_targets_ls_with_scale()
   exercise_maximum_likelihood_targets()
   print "OK"
 

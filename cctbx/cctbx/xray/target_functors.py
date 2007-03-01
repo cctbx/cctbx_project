@@ -121,7 +121,7 @@ class _ls_functor(object):
   def __call__(self, f_calc, compute_gradients):
     assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
     assert f_calc.space_group() == self.f_obs.space_group()
-    return ext.ls_with_scale(
+    return ext.targets_ls_with_scale(
       apply_scale_to_f_calc=self.apply_scale_to_f_calc,
       f_obs=self.f_obs.data(),
       weights=self.weights,
@@ -184,7 +184,7 @@ class least_squares(object):
     assert scale_factor > 0 or (r_free_flags is None or f_calc is not None)
     if (scale_factor == 0 and f_calc is not None):
       # XXX too much work done here, need separate scale factor call
-      scale_factor = ext.ls_with_scale(
+      scale_factor = ext.targets_ls_with_scale(
         apply_scale_to_f_calc=apply_scale_to_f_calc,
         f_obs=f_obs.data(),
         weights=weights,
@@ -197,7 +197,7 @@ class least_squares(object):
   def __call__(self, f_calc, compute_gradients):
     assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
     assert f_calc.space_group() == self.f_obs.space_group()
-    return ext.ls_with_scale(
+    return ext.targets_ls_with_scale(
       apply_scale_to_f_calc=self.apply_scale_to_f_calc,
       f_obs=self.f_obs.data(),
       weights=self.weights,
