@@ -504,18 +504,12 @@ namespace targets {
           n_test = 0;
         }
         else {
-          n_work = 0;
+          n_test = 0;
           for(std::size_t i=0;i<n_refl;i++) {
-            if (flags[i]) n_work++;
+            if (flags[i]) n_test++;
           }
-          if (n_work != 0) {
-            n_test = n_refl - n_work;
-          }
-          else {
-            flags = 0;
-            n_work = n_refl;
-            n_test = 0;
-          }
+          n_work = n_refl - n_test;
+          if (n_test == 0) flags = 0;
         }
       }
 
