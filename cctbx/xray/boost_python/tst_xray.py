@@ -1550,6 +1550,146 @@ def exercise_ls_with_scale():
   assert approx_equal(ls.target_test(), 1)
   assert approx_equal(ls.gradients_work(), [0j,0j,0j])
 
+def exercise_maximum_likelihood_targets():
+  f_obs = flex.double([
+    35.6965, 308.042, 128.949, 35.4385, 29.259, 108.11, 35.3133, 67.2968,
+    109.585, 130.959, 78.7692, 138.602])
+  r_free_flags = flex.bool([
+    False, False, True, True, False, False, False, False, False, False,
+    False, False])
+  experimental_phases = flex.hendrickson_lattman([
+    [0.457488,0,0,0], [-0.769364,0,0,0], [1.19222,0,0,0], [-0.0931637,0,0,0],
+    [0.890576,0,0,0], [-1.66137,1.69479,-0.107808,1.41357],
+    [-0.00674594,0.847689,-1.4854,0.547142],
+    [-0.0295139,-0.00293545,0.130557,0.0780442], [-0.409673,0,0,0],
+    [-0.416943,0,0,0], [0.101886,2.88433,2.87327,2.71556], [0.901622,0,0,0]])
+  f_calc = flex.complex_double([
+    -19.5412, -171.232, 69.435, -32.7787, -41.0725, 32.8168+39.3201j,
+    36.8631-10.3995j, -7.23216-79.5072j, 71.4597, 69.1851,
+    41.9767-14.4786j, 73.0327])
+  alpha = flex.double([
+    0.211893, 0.368057, 0.71595, 0.6732, 0.858985, 0.987573, 0.973331,
+    0.161511, 0.439952, 0.530318, 0.272504, 0.95601])
+  beta = flex.double([
+    0.963688, 0.243077, 0.755248, 0.98828, 0.668677, 0.0767036, 0.745345,
+    0.55896, 0.415472, 0.0690112, 0.563668, 0.329134])
+  epsilons = flex.int([2, 4, 1, 8, 1, 1, 2, 1, 4, 1, 8, 1])
+  centric_flags = flex.bool([
+    True, True, True, True, True, False, False, False, True, True,
+    False, True])
+  for rff in [None, r_free_flags]:
+    for compute_gradients in [False, True]:
+      ml = xray.targets_maximum_likelihood_criterion(
+        f_obs=f_obs,
+        r_free_flags=rff,
+        f_calc=f_calc,
+        alpha=alpha,
+        beta=beta,
+        scale_factor=1,
+        epsilons=epsilons,
+        centric_flags=centric_flags,
+        compute_gradients=compute_gradients)
+      tw, tt, gw = ml.target_work(), ml.target_test(), ml.gradients_work()
+      if (not compute_gradients):
+        assert gw.size() == 0
+      if (rff is None):
+        assert approx_equal(tw, 13181.2792135)
+        assert tt is None
+        if (compute_gradients):
+          assert approx_equal(gw, [
+            (0.28910053111650247+0j), (7.7291101812048604+0j),
+            (-6.2595044456051188+0j), (0.094882323440219324+0j),
+            (-0.64462074968137506+0j), (-79.103928224377-94.779941011168859j),
+            (0.20707720782494976-0.058418836798195622j),
+            (0.23728742278013587+2.6086340153515435j),
+            (-1.7239709842603137+0j), (-60.367607555268741+0j),
+            (-0.63389304157017523+0.21864233709838887j),
+            (-16.648813735508114+0j)])
+      else:
+        assert approx_equal(tw, 15400.4726889)
+        assert approx_equal(tt, 2085.31183651)
+        if (compute_gradients):
+          assert approx_equal(gw, [
+            (0.34692063733980305+0j), (9.2749322174458335+0j),
+            (-0.77354489961765016+0j),
+            (-94.924713869252415-113.73592921340264j),
+            (0.24849264938993973-0.070102604157834744j),
+            (0.28474490733616309+3.1303608184218525j),
+            (-2.0687651811123766+0j), (-72.441129066322489+0j),
+            (-0.76067164988421032+0.26237080451806666j),
+            (-19.978576482609739+0j)])
+        mlw = xray.targets_maximum_likelihood_criterion(
+          f_obs=f_obs.select(~rff),
+          r_free_flags=None,
+          f_calc=f_calc.select(~rff),
+          alpha=alpha.select(~rff),
+          beta=beta.select(~rff),
+          scale_factor=1,
+          epsilons=epsilons.select(~rff),
+          centric_flags=centric_flags.select(~rff),
+          compute_gradients=compute_gradients)
+        assert approx_equal(mlw.target_work(), ml.target_work())
+        assert mlw.target_test() is None
+        assert approx_equal(mlw.gradients_work(), ml.gradients_work())
+      ml = xray.targets_maximum_likelihood_criterion_hl(
+        f_obs=f_obs,
+        r_free_flags=rff,
+        experimental_phases=experimental_phases,
+        f_calc=f_calc,
+        alpha=alpha,
+        beta=beta,
+        epsilons=epsilons,
+        centric_flags=centric_flags,
+        integration_step_size=5,
+        compute_gradients=compute_gradients)
+      tw, tt, gw = ml.target_work(), ml.target_test(), ml.gradients_work()
+      if (not compute_gradients):
+        assert gw.size() == 0
+      if (rff is None):
+        assert approx_equal(tw, 13180.6763657)
+        assert tt is None
+        if (compute_gradients):
+          assert approx_equal(gw, [
+            (0.28910053111650247-4.778461360683447e-19j),
+            (7.7291101812048604+9.1707854448857317e-20j),
+            (-6.2595044456051188+0j),
+            (0.094882323440219324+5.8011567980489493e-20j),
+            (-0.64462074968137495-4.4256743068048503e-19j),
+            (-79.574611695327491-94.387109668225506j),
+            (0.19351597841962068-0.10406336738042934j),
+            (0.22621461424524394+2.6101454947879947j),
+            (-1.7239709842603133+0j), (-60.367607555268734+0j),
+            (-0.64001526423037869+0.20000512034506801j),
+            (-16.648813735508117+0j)])
+      else:
+        assert approx_equal(tw, 15400.0123154)
+        assert approx_equal(tt, 2083.9966175)
+        if (compute_gradients):
+          assert approx_equal(gw, [
+            (0.34692063733980305-5.7341536328201376e-19j),
+            (9.2749322174458335+1.100494253386288e-19j),
+            (-0.77354489961765005-5.3108091681658213e-19j),
+            (-95.489534034392989-113.26453160187062j),
+            (0.23221917410354484-0.12487604085651523j),
+            (0.27145753709429277+3.132174593745594j),
+            (-2.0687651811123762+0j), (-72.441129066322489+0j),
+            (-0.76801831707645452+0.24000614441408163j),
+            (-19.978576482609743+0j)])
+        mlw = xray.targets_maximum_likelihood_criterion_hl(
+          f_obs=f_obs.select(~rff),
+          r_free_flags=None,
+          experimental_phases=experimental_phases.select(~rff),
+          f_calc=f_calc.select(~rff),
+          alpha=alpha.select(~rff),
+          beta=beta.select(~rff),
+          epsilons=epsilons.select(~rff),
+          centric_flags=centric_flags.select(~rff),
+          integration_step_size=5,
+          compute_gradients=compute_gradients)
+        assert approx_equal(mlw.target_work(), ml.target_work())
+        assert mlw.target_test() is None
+        assert approx_equal(mlw.gradients_work(), ml.gradients_work())
+
 def run():
   exercise_scatterer_flags()
   exercise_set_selected_scatterer_grad_flags()
@@ -1568,6 +1708,7 @@ def run():
   exercise_minimization_add_gradients()
   exercise_asu_mappings()
   exercise_ls_with_scale()
+  exercise_maximum_likelihood_targets()
   print "OK"
 
 if (__name__ == "__main__"):
