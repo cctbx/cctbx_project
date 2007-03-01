@@ -25,18 +25,21 @@ namespace {
           bool,
           af::const_ref<double> const&,
           af::const_ref<double> const&,
+          af::const_ref<bool> const&,
           af::const_ref< std::complex<double> > const&,
           bool const&,
           double>((
             arg_("apply_scale_to_f_calc"),
             arg_("f_obs"),
             arg_("weights"),
+            arg_("r_free_flags"),
             arg_("f_calc"),
-            arg_("compute_derivatives"),
+            arg_("compute_gradients"),
             arg_("scale_factor"))))
         .def("apply_scale_to_f_calc", &w_t::apply_scale_to_f_calc)
-        .def("target", &w_t::target)
-        .def("derivatives", &w_t::derivatives, ccr())
+        .def("target_work", &w_t::target_work)
+        .def("target_test", &w_t::target_test)
+        .def("gradients_work", &w_t::gradients_work, ccr())
         .def("scale_factor", &w_t::scale_factor)
       ;
     }
@@ -109,8 +112,8 @@ namespace {
                   af::const_ref<int> const&,
                   af::const_ref<bool> const&,
                   bool const& >())
-        .def("target", &w_t::target)
-        .def("derivatives", &w_t::derivatives)
+        .def("target_work", &w_t::target_work)
+        .def("gradients_work", &w_t::gradients_work)
       ;
     }
   };
@@ -133,8 +136,8 @@ namespace {
                   bool const&,
                   af::const_ref<cctbx::hendrickson_lattman<double> > const&,
                   double const& >())
-        .def("target", &w_t::target)
-        .def("derivatives", &w_t::derivatives)
+        .def("target_work", &w_t::target_work)
+        .def("gradients_work", &w_t::gradients_work)
       ;
     }
   };

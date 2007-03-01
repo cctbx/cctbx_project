@@ -118,15 +118,16 @@ class _ls_functor(object):
     assert scale_factor >= 0
     adopt_init_args(self, locals())
 
-  def __call__(self, f_calc, compute_derivatives):
+  def __call__(self, f_calc, compute_gradients):
     assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
     assert f_calc.space_group() == self.f_obs.space_group()
     return ext.ls_with_scale(
       apply_scale_to_f_calc=self.apply_scale_to_f_calc,
       f_obs=self.f_obs.data(),
       weights=self.weights,
+      r_free_flags=None,
       f_calc=f_calc.data(),
-      compute_derivatives=compute_derivatives,
+      compute_gradients=compute_gradients,
       scale_factor=self.scale_factor)
 
 class _ml_functor(object):
@@ -144,7 +145,7 @@ class _ml_functor(object):
         alpha,
         beta,
         k,
-        compute_derivatives):
+        compute_gradients):
     assert f_calc.unit_cell().is_similar_to(self.f_obs.unit_cell())
     assert f_calc.space_group() == self.f_obs.space_group()
     if (self.experimental_phases is None):
@@ -156,7 +157,7 @@ class _ml_functor(object):
         k,
         self.epsilons,
         self.centric_flags,
-        compute_derivatives)
+        compute_gradients)
     return ext.targets_maximum_likelihood_criterion_hl(
       self.f_obs.data(),
       f_calc.data(),
@@ -164,7 +165,7 @@ class _ml_functor(object):
       beta,
       self.epsilons,
       self.centric_flags,
-      compute_derivatives,
+      compute_gradients,
       self.experimental_phases.data(),
       self.step_for_integration)
 
