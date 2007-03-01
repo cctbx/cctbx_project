@@ -66,10 +66,10 @@ class minimizer(object):
       alpha=self.alpha_w,
       beta=self.beta_w,
       flag="work")
-    f = t_w.target()
+    f = t_w.target_work()
     sfg = fmodel.structure_factor_gradients_w(
       u_iso_refinable_params=None,
-      d_target_d_f_calc=t_w.derivatives() * fmodel.core.fb_cart_w,
+      d_target_d_f_calc=t_w.gradients_work() * fmodel.core.fb_cart_w,
       xray_structure=fmodel.xray_structure,
       n_parameters=0,
       miller_set=fmodel.f_obs_w,
@@ -100,7 +100,7 @@ class minimizer(object):
             alpha=self.alpha_w,
             beta=self.beta_w,
             flag="work")
-          fs.append(t_w.target())
+          fs.append(t_w.target_work())
         g_fin.append((fs[0]-fs[1])/(2*eps))
       self.unpack()
       assert approx_equal(g_fin, g)

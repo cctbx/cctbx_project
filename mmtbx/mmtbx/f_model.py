@@ -733,11 +733,11 @@ class manager(object):
     global time_target
     timer = user_plus_sys_time()
     result = self.xray_target_functor_result(
-                                           compute_gradients = False,
-                                           alpha             = alpha,
-                                           beta              = beta,
-                                           scale_ml          = scale_ml,
-                                           flag              = "work").target()
+      compute_gradients = False,
+      alpha             = alpha,
+      beta              = beta,
+      scale_ml          = scale_ml,
+      flag              = "work").target_work()
     time_target += timer.elapsed()
     return result
 
@@ -745,11 +745,11 @@ class manager(object):
     global time_target
     timer = user_plus_sys_time()
     result = self.xray_target_functor_result(
-                                           compute_gradients = False,
-                                           alpha             = alpha,
-                                           beta              = beta,
-                                           scale_ml          = scale_ml,
-                                           flag              = "test").target()
+      compute_gradients = False,
+      alpha             = alpha,
+      beta              = beta,
+      scale_ml          = scale_ml,
+      flag              = "test").target_work()
     time_target += timer.elapsed()
     return result
 
@@ -814,20 +814,20 @@ class manager(object):
     result = None
     if(u_aniso):
        result = self.structure_factor_gradients_w(
-                u_iso_refinable_params = None,
-                d_target_d_f_calc  = xrtfr.derivatives() * self.core.fb_cart_w,
-                xray_structure     = xrs,
-                n_parameters       = 0,
-                miller_set         = self.f_obs_w,
-                algorithm          = self.sf_algorithm).d_target_d_u_cart()
+         u_iso_refinable_params = None,
+         d_target_d_f_calc  = xrtfr.gradients_work() * self.core.fb_cart_w,
+         xray_structure     = xrs,
+         n_parameters       = 0,
+         miller_set         = self.f_obs_w,
+         algorithm          = self.sf_algorithm).d_target_d_u_cart()
     else:
        result = self.structure_factor_gradients_w(
-                u_iso_refinable_params = u_iso_refinable_params,
-                d_target_d_f_calc  = xrtfr.derivatives() * self.core.fb_cart_w,
-                xray_structure     = xrs,
-                n_parameters       = xrs.n_parameters_XXX(),
-                miller_set         = self.f_obs_w,
-                algorithm          = self.sf_algorithm)
+         u_iso_refinable_params = u_iso_refinable_params,
+         d_target_d_f_calc  = xrtfr.gradients_work() * self.core.fb_cart_w,
+         xray_structure     = xrs,
+         n_parameters       = xrs.n_parameters_XXX(),
+         miller_set         = self.f_obs_w,
+         algorithm          = self.sf_algorithm)
     time_gradient_wrt_atomic_parameters += timer.elapsed()
     return result
 
@@ -1846,8 +1846,8 @@ def statistics_in_resolution_bins(fmodel,
     d_max_,d_min_ = sel_fo_all.d_max_min()
     ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
     if(fmodel.target_attributes().family == "ls"):
-      target_w = "%11.5g" % xray_target_functor_w(sel_fc_w, False).target()
-      target_t = "%11.5g" % xray_target_functor_t(sel_fc_t, False).target()
+      target_w = "%11.5g" % xray_target_functor_w(sel_fc_w, False).target_work()
+      target_t = "%11.5g" % xray_target_functor_t(sel_fc_t, False).target_work()
     elif(fmodel.target_name in ["ml", "mlhl"]):
       if (sel_fc_w.indices().size() != 0):
         target_w = "%11.5g" % xray_target_functor_w(
@@ -1855,7 +1855,7 @@ def statistics_in_resolution_bins(fmodel,
           sel_alpha_w.data(),
           sel_beta_w.data(),
           1.0,
-          False).target()
+          False).target_work()
       else:
         target_w = "%11s" % "None"
       if (sel_fc_t.indices().size() != 0):
@@ -1864,7 +1864,7 @@ def statistics_in_resolution_bins(fmodel,
           sel_alpha_t.data(),
           sel_beta_t.data(),
           1.0,
-          False).target()
+          False).target_work()
       else:
         target_t = "%11s" % "None"
     nw = sel_fo_w.data().size()

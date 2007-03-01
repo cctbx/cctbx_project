@@ -8,7 +8,7 @@
 #include <cmath>
 #include <scitbx/math/bessel.h>
 #include <cctbx/hendrickson_lattman.h>
-
+#include <boost/optional.hpp>
 
 namespace cctbx { namespace xray {
 
@@ -22,28 +22,43 @@ namespace targets {
         bool apply_scale_to_f_calc,
         af::const_ref<double> const& f_obs,
         af::const_ref<double> const& weights,
+        af::const_ref<bool> const& r_free_flags,
         af::const_ref<std::complex<double> > const& f_calc,
-        bool compute_derivatives,
+        bool compute_gradients,
         double scale_factor)
       :
         apply_scale_to_f_calc_(apply_scale_to_f_calc)
       {
         CCTBX_ASSERT(weights.size() == f_obs.size());
+        CCTBX_ASSERT(r_free_flags.size() == 0
+                  || r_free_flags.size() == f_obs.size());
         CCTBX_ASSERT(f_calc.size() == f_obs.size());
         CCTBX_ASSERT(scale_factor >= 0);
+        const bool* rff = r_free_flags.begin();
         double num = 0;
         double denom = 0;
-        double sum_w_fo_sq = 0;
+        std::size_t n_work = 0;
+        double sum_w_fo_sq_work = 0;
+        double sum_w_fo_sq_test = 0;
+        // scale factor computation uses all f_obs and f_calc
         for(std::size_t i=0;i<f_obs.size();i++) {
           double fc_abs = std::abs(f_calc[i]);
-          num += f_obs[i] * fc_abs * weights[i];
+          double w_fo = weights[i] * f_obs[i];
+          num += w_fo * fc_abs;
+          double w_fo_sq = w_fo * f_obs[i];
           if (apply_scale_to_f_calc_) {
-            denom += fc_abs * fc_abs * weights[i];
+            denom += weights[i] * fc_abs * fc_abs;
           }
           else {
-            denom += f_obs[i] * f_obs[i] * weights[i];
+            denom += w_fo_sq;
           }
-          sum_w_fo_sq += weights[i] * f_obs[i] * f_obs[i];
+          if (!rff || !rff[i]) {
+            n_work++;
+            sum_w_fo_sq_work += w_fo_sq;
+          }
+          else {
+            sum_w_fo_sq_test += w_fo_sq;
+          }
         }
         if (scale_factor == 0) {
           CCTBX_ASSERT(denom > 0);
@@ -52,13 +67,14 @@ namespace targets {
         else {
           scale_factor_ = scale_factor;
         }
-        CCTBX_ASSERT(sum_w_fo_sq > 0);
-        if (compute_derivatives) {
-          derivatives_.resize(f_obs.size());
+        CCTBX_ASSERT(sum_w_fo_sq_work > 0);
+        if (compute_gradients) {
+          gradients_work_.reserve(n_work);
         }
+        target_work_ = 0;
+        double target_test = 0;
         double grad_factor = -2;
         if (apply_scale_to_f_calc_) grad_factor *= scale_factor_;
-        target_ = 0;
         for(std::size_t i=0;i<f_obs.size();i++) {
           double fc_abs = std::abs(f_calc[i]);
           double delta;
@@ -68,13 +84,29 @@ namespace targets {
           else {
             delta = scale_factor_ * f_obs[i] - fc_abs;
           }
-          target_ += weights[i] * delta * delta;
-          if(compute_derivatives && fc_abs != 0) {
-             derivatives_[i] = grad_factor * weights[i] * delta
-                             / (sum_w_fo_sq * fc_abs) * f_calc[i];
+          double wd =  weights[i] * delta;
+          if (!rff || !rff[i]) {
+            target_work_ += wd * delta;
+            if (compute_gradients) {
+              if (fc_abs == 0) {
+                gradients_work_.push_back(std::complex<double>(0,0));
+              }
+              else {
+                gradients_work_.push_back(
+                  grad_factor * wd / (sum_w_fo_sq_work * fc_abs) * f_calc[i]);
+              }
+            }
+          }
+          else {
+            target_test += wd * delta;
           }
         }
-        target_ /= sum_w_fo_sq;
+        target_work_ /= sum_w_fo_sq_work;
+        if (rff) {
+          CCTBX_ASSERT(sum_w_fo_sq_test > 0);
+          target_test_ = boost::optional<double>(
+            target_test / sum_w_fo_sq_test);
+        }
       }
 
       bool
@@ -84,16 +116,20 @@ namespace targets {
       scale_factor() const { return scale_factor_; }
 
       double
-      target() const { return target_; }
+      target_work() const { return target_work_; }
+
+      boost::optional<double>
+      target_test() const { return target_test_; }
 
       af::shared<std::complex<double> > const&
-      derivatives() { return derivatives_; }
+      gradients_work() { return gradients_work_; }
 
     private:
       bool apply_scale_to_f_calc_;
-      double target_;
+      double target_work_;
+      boost::optional<double> target_test_;
       double scale_factor_;
-      af::shared<std::complex<double> > derivatives_;
+      af::shared<std::complex<double> > gradients_work_;
   };
 
   namespace detail {
@@ -602,7 +638,7 @@ namespace targets {
         double k,
         af::const_ref<int> const& eps,
         af::const_ref<bool> const& cs,
-        bool compute_derivatives)
+        bool compute_gradients)
       {
         CCTBX_ASSERT(fcalc.size() == fobs.size());
         CCTBX_ASSERT(alpha.size() == fobs.size());
@@ -610,9 +646,9 @@ namespace targets {
         CCTBX_ASSERT(beta.size() == eps.size());
         CCTBX_ASSERT(eps.size() == fobs.size());
         CCTBX_ASSERT(cs.size() == fobs.size());
-        target_ = 0;
-        if (compute_derivatives) {
-          derivatives_ = af::shared<std::complex<double> >(fobs.size());
+        target_work_ = 0;
+        if (compute_gradients) {
+          gradients_work_ = af::shared<std::complex<double> >(fobs.size());
         }
         for(std::size_t i=0;i<fobs.size();i++) {
           double fo = fobs[i];
@@ -621,25 +657,25 @@ namespace targets {
           double b  = beta[i];
           int e  = eps[i];
           bool c = cs[i];
-          target_ += maximum_likelihood_target_one_h(fo,fc,a,b,k,e,c);
-          if(compute_derivatives) {
-            derivatives_[i] = std::conj(
+          target_work_ += maximum_likelihood_target_one_h(fo,fc,a,b,k,e,c);
+          if(compute_gradients) {
+            gradients_work_[i] = std::conj(
               d_maximum_likelihood_target_one_h_over_fc(
                 fo,fcalc[i],a,b,k,e,c)) * (1./ fobs.size());
           }
         }
-        target_ /= fobs.size();
+        target_work_ /= fobs.size();
       }
 
       double
-      target() const { return target_; }
+      target_work() const { return target_work_; }
 
       af::shared<std::complex<double> >
-      derivatives() const { return derivatives_; }
+      gradients_work() const { return gradients_work_; }
 
     protected:
-      double target_;
-      af::shared<std::complex<double> > derivatives_;
+      double target_work_;
+      af::shared<std::complex<double> > gradients_work_;
   };
 
   namespace detail {
@@ -768,7 +804,7 @@ namespace targets {
             derpc = sim*arg*fc*(hl_a*sin_pc - hl_b*cos_pc)/val;
           }
         }
-        // calculate derivative numerically
+        // calculate gradients numerically
         else {
           double maxv = 0;
           for(int i=0;i<n_steps;i++) {
@@ -835,7 +871,7 @@ namespace targets {
         af::const_ref<double> const& beta,
         af::const_ref<int> const& eps,
         af::const_ref<bool> const& cs,
-        bool compute_derivatives,
+        bool compute_gradients,
         af::const_ref<cctbx::hendrickson_lattman<double> > const& abcd,
         double step_for_integration)
       {
@@ -844,9 +880,9 @@ namespace targets {
         CCTBX_ASSERT(fobs.size()==alpha.size());
         CCTBX_ASSERT(step_for_integration > 0.);
         CCTBX_ASSERT(abcd.size() == fobs.size());
-        target_ = 0;
-        if (compute_derivatives) {
-          derivatives_ = af::shared<std::complex<double> >(fobs.size());
+        target_work_ = 0;
+        if (compute_gradients) {
+          gradients_work_ = af::shared<std::complex<double> >(fobs.size());
         }
         int n_steps = static_cast<int>(360./step_for_integration);
         CCTBX_ASSERT(n_steps > 0);
@@ -868,7 +904,7 @@ namespace targets {
           double pc = std::arg(fcalc[i_h]);
           double ac = std::real(fcalc[i_h]);
           double bc = std::imag(fcalc[i_h]);
-          target_ += detail::mlhl_target_one_h(
+          target_work_ += detail::mlhl_target_one_h(
             fo,
             fc,
             pc,
@@ -882,8 +918,8 @@ namespace targets {
             n_steps,
             step_for_integration,
             &*workspace.begin());
-          if(compute_derivatives) {
-            derivatives_[i_h] = std::conj(detail::mlhl_d_target_dfcalc_one_h(
+          if(compute_gradients) {
+            gradients_work_[i_h]=std::conj(detail::mlhl_d_target_dfcalc_one_h(
               fo,
               fc,
               pc,
@@ -901,18 +937,18 @@ namespace targets {
               &*workspace.begin())) * (1./ fobs.size());
           }
         }
-        target_ /= fobs.size();
+        target_work_ /= fobs.size();
       }
 
       double
-      target() const { return target_; }
+      target_work() const { return target_work_; }
 
       af::shared<std::complex<double> >
-      derivatives() const { return derivatives_; }
+      gradients_work() const { return gradients_work_; }
 
     protected:
-      double target_;
-      af::shared<std::complex<double> > derivatives_;
+      double target_work_;
+      af::shared<std::complex<double> > gradients_work_;
   };
 
 }}} // namespace cctbx::xray::targets
