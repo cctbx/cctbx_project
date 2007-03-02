@@ -1938,7 +1938,51 @@ class target_functor(object):
         f_calc=self.manager.f_model(),
         compute_gradients=compute_gradients))
 
-class target_result(object):
+class target_result_mixin(object):
+
+  def gradients_wrt_atomic_parameters(self,
+        selection=None,
+        site=False,
+        u_iso=False,
+        u_aniso=False,
+        occupancy=False,
+        alpha=None,
+        beta=None,
+        tan_b_iso_max=None,
+        u_iso_refinable_params=None):
+    manager = self.manager
+    xray_structure = manager.xray_structure
+    if (selection is not None):
+      xray_structure = xray_structure.select(selection)
+    d_target_d_f_calc = self.d_target_d_f_calc_work()
+    result = None
+    if (u_aniso):
+      result = manager.structure_factor_gradients_w(
+        u_iso_refinable_params=None,
+        d_target_d_f_calc=d_target_d_f_calc.data(),
+        xray_structure=xray_structure,
+        n_parameters=0,
+        miller_set=d_target_d_f_calc,
+        algorithm=manager.sf_algorithm).d_target_d_u_cart()
+    else:
+      result = manager.structure_factor_gradients_w(
+        u_iso_refinable_params=u_iso_refinable_params,
+        d_target_d_f_calc=d_target_d_f_calc.data(),
+        xray_structure=xray_structure,
+        n_parameters=xray_structure.n_parameters_XXX(),
+        miller_set=d_target_d_f_calc,
+        algorithm=manager.sf_algorithm)
+    return result
+
+  def d_target_d_site_cart(self):
+    manager = self.manager
+    xray.set_scatterer_grad_flags(
+      scatterers=manager.xray_structure.scatterers(),
+      site=True)
+    return flex.vec3_double(
+      self.gradients_wrt_atomic_parameters().packed())
+
+class target_result(target_result_mixin):
 
   def __init__(self, manager, core_result):
     self.manager = manager
@@ -1957,20 +2001,6 @@ class target_result(object):
   def d_target_d_f_calc_work(self):
     return self.manager.f_obs_w.array(
       data=self.core_result.gradients_work() * self.manager.core.fb_cart_w)
-
-  def d_target_d_site_cart(self):
-    manager = self.manager
-    xray.set_scatterer_grad_flags(
-      scatterers=manager.xray_structure.scatterers(),
-      site=True)
-    d_t_d_fc = self.d_target_d_f_calc_work()
-    return manager.structure_factor_gradients_w(
-      u_iso_refinable_params=None,
-      d_target_d_f_calc=d_t_d_fc.data(),
-      xray_structure=manager.xray_structure,
-      n_parameters=0,
-      miller_set=d_t_d_fc,
-      algorithm=manager.sf_algorithm).d_target_d_site_cart()
 
 def statistics_in_resolution_bins(fmodel,
                                   target_functors,

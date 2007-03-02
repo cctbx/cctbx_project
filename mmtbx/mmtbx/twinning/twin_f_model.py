@@ -26,6 +26,7 @@ from mmtbx.scaling import sigmaa_estimation
 from mmtbx import masks
 from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
+import mmtbx.f_model
 from libtbx import table_utils
 from libtbx.utils import Sorry, user_plus_sys_time
 import scitbx.lbfgs
@@ -1555,6 +1556,9 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     else:
       return(tmp_w,tmp_f)
 
+  def target_functor(self):
+    return target_functor(manager=self)
+
   def target_w(self, alpha=None, beta=None, scale_ml=None):
     return self.target(False)[0]
 
@@ -2031,6 +2035,38 @@ def ls_ff_weights(f_obs, atom, B):
   ff = table.at_d_star_sq(d_star_sq_data) * flex.exp(-B/4.0*d_star_sq_data)
   weights = 1.0/flex.pow2(ff)
   return weights
+
+class target_functor(object):
+
+  def __init__(self, manager):
+    self.manager = manager
+
+  def __call__(self, compute_gradients=False):
+    return target_result(manager=self.manager)
+
+class target_result(mmtbx.f_model.target_result_mixin):
+
+  def __init__(self, manager):
+    self.manager = manager
+
+  def target_work(self):
+    return self.manager.target_w()
+
+  def target_test(self):
+    return self.manager.target_t()
+
+  def d_target_d_f_model_work(self):
+    manager = self.manager
+    return manager.miller_set.array(
+      data=manager.target_evaluator.d_target_d_fmodel(
+             manager.data_core.f_model()))
+
+  def d_target_d_f_calc_work(self):
+    manager = self.manager
+    d_t_d_f_m = self.d_target_d_f_model_work()
+    return d_t_d_f_m.array(
+      data=d_t_d_f_m.data() * manager.data_core.d_f_model_core_data_d_f_atoms()
+                            / manager.norma_sum_f_sq)
 
 def ls_sigma_weights(f_obs):
   if(f_obs.sigmas() is not None):
