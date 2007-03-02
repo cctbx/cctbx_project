@@ -11,6 +11,8 @@ from libtbx.utils import user_plus_sys_time
 
 time_group_py  = 0.0
 
+OLD_STYLE_TARGET = False # XXX
+
 def show_times(out = None):
   if(out is None): out = sys.stdout
   total = time_group_py
@@ -54,13 +56,14 @@ class manager(object):
         else:
            selections_.append(sel)
     selections = selections_
+    fmodel_copy = fmodel.deep_copy()
     rworks = flex.double()
     sc_start = fmodel.xray_structure.scatterers().deep_copy()
     minimized = None
     for macro_cycle in xrange(1,number_of_macro_cycles+1,1):
         if(minimized is not None): par_initial = minimized.par_min
         minimized = group_minimizer(
-                     fmodel                      = fmodel,
+                     fmodel                      = fmodel_copy,
                      sc_start                    = sc_start,
                      selections                  = selections,
                      par_initial                 = par_initial,
@@ -76,13 +79,17 @@ class manager(object):
           selections     = selections,
           refine_adp     = refine_adp,
           refine_occ     = refine_occ)
-        fmodel.update_xray_structure(update_f_calc=True)
+        fmodel_copy.update_xray_structure(
+          xray_structure = fmodel.xray_structure,
+          update_f_calc  = True,
+          out            = log)
         rwork = minimized.fmodel.r_work()
         rfree = minimized.fmodel.r_free()
-        self.show(f     = fmodel.f_obs_w,
+        assert approx_equal(rwork, fmodel_copy.r_work())
+        self.show(f     = fmodel_copy.f_obs_w,
                   rw    = rwork,
                   rf    = rfree,
-                  tw    = minimized.fmodel_copy.target_w(),
+                  tw    = minimized.fmodel.target_w(),
                   mc    = macro_cycle,
                   it    = minimized.counter,
                   ct    = convergence_test,
@@ -95,6 +102,8 @@ class manager(object):
               size = rworks.size() - 1
               if(abs(rworks[size]-rworks[size-1])<convergence_delta):
                  break
+    fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
+                                 update_f_calc  = True)
     self.fmodel = fmodel
     time_group_py += timer.elapsed()
 
@@ -142,9 +151,13 @@ class group_minimizer(object):
                max_number_of_iterations,
                run_finite_differences_test = False):
     adopt_init_args(self, locals())
-    self.alpha, self.beta = self.fmodel.alpha_beta_w(
-      only_if_required_by_target=True)
-    self.fmodel_copy = self.fmodel.deep_copy()
+    if (OLD_STYLE_TARGET):
+      self.alpha, self.beta = self.fmodel.alpha_beta_w(
+        only_if_required_by_target=True)
+      self.target_functor = None
+    else:
+      self.alpha, self.beta = None, None
+      self.target_functor = fmodel.target_functor()
     self.counter=0
     assert len(self.selections) == len(self.par_initial)
     self.par_min = copy.deepcopy(self.par_initial)
@@ -188,78 +201,80 @@ class group_minimizer(object):
       selections     = self.selections,
       refine_adp     = self.refine_adp,
       refine_occ     = self.refine_occ)
-    self.fmodel_copy.update_xray_structure(
-      xray_structure = self.fmodel.xray_structure,
-      update_f_calc  = True)
-    tg_obj = target_and_grads(fmodel        = self.fmodel_copy,
-                              alpha         = self.alpha,
-                              beta          = self.beta,
-                              selections    = self.selections,
-                              refine_adp    = self.refine_adp,
-                              refine_occ    = self.refine_occ)
+    self.fmodel.update_xray_structure(update_f_calc=True)
+    tg_obj = target_and_grads(
+      fmodel=self.fmodel,
+      target_functor=self.target_functor,
+      alpha=self.alpha,
+      beta=self.beta,
+      selections=self.selections,
+      refine_adp=self.refine_adp,
+      refine_occ=self.refine_occ)
     self.f = tg_obj.target()
-    ##########################################################################
-    if(self.run_finite_differences_test):
+    self.g = flex.double(tg_obj.gradients_wrt_par())
+    compare = False
+    if (self.run_finite_differences_test):
+      for pari in self.par_min:
+        if (self.refine_adp):
+          pari = adptbx.u_as_b(pari)
+          if (pari < 0 or pari > 100):
+            break
+        if (self.refine_occ and (pari < 0 or pari > 10)):
+          break
+      else:
+        compare = True
+    if (compare):
+       i_g_max = flex.max_index(flex.abs(self.g))
        eps = 1.e-5
-       fmodel = self.fmodel_copy.deep_copy()
-       par = []
-       for i_seq, pari in enumerate(self.par_min):
-         if(i_seq == 0): pari += eps
-         par.append(pari)
+       par_eps = list(self.par_min)
+       par_eps[i_g_max] = self.par_min[i_g_max] + eps
        apply_transformation(
-         xray_structure = fmodel.xray_structure,
-         par            = par,
+         xray_structure = self.fmodel.xray_structure,
+         par            = par_eps,
          sc_start       = self.sc_start,
          selections     = self.selections,
          refine_adp     = self.refine_adp,
          refine_occ     = self.refine_occ)
-       fmodel.update_xray_structure(
-         xray_structure = fmodel.xray_structure,
-         update_f_calc  = True)
-       tg_obj = target_and_grads(fmodel        = fmodel,
-                                 alpha         = self.alpha,
-                                 beta          = self.beta,
-                                 selections    = self.selections,
-                                 refine_adp    = self.refine_adp,
-                                 refine_occ    = self.refine_occ)
-       t1 = tg_obj.target()
-       #################
-       par = []
-       for i_seq, pari in enumerate(self.par_min):
-         if(i_seq == 0): pari -= eps
-         par.append(pari)
+       self.fmodel.update_xray_structure(update_f_calc=True)
+       t1 = target_and_grads(
+         fmodel=self.fmodel,
+         target_functor=self.target_functor,
+         alpha=self.alpha,
+         beta=self.beta,
+         selections=self.selections,
+         refine_adp=self.refine_adp,
+         refine_occ=self.refine_occ,
+         compute_gradients=False).target()
+       par_eps[i_g_max] = self.par_min[i_g_max] - eps
        apply_transformation(
-         xray_structure = fmodel.xray_structure,
-         par            = par,
+         xray_structure = self.fmodel.xray_structure,
+         par            = par_eps,
          sc_start       = self.sc_start,
          selections     = self.selections,
          refine_adp     = self.refine_adp,
          refine_occ     = self.refine_occ)
-       fmodel.update_xray_structure(
-         xray_structure = fmodel.xray_structure,
-         update_f_calc  = True)
-       tg_obj = target_and_grads(fmodel        = fmodel,
-                                 alpha         = self.alpha,
-                                 beta          = self.beta,
-                                 selections    = self.selections,
-                                 refine_adp    = self.refine_adp,
-                                 refine_occ    = self.refine_occ)
-       t2 = tg_obj.target()
-    ##########################################################################
-    grads = tg_obj.gradients_wrt_par()
-
-    if(self.run_finite_differences_test):
-       compare = True
-       for pari in self.par_min:
-         if(self.refine_adp): pari = abs(adptbx.u_as_b(pari))
-         if(self.refine_adp and (pari < 0.5 or pari > 70.0)): compare = False
-         if(self.refine_occ and (pari < 0.0 or pari > 10.0)): compare = False
-       if(compare):
-          self.buffer_ana.append(grads[0])
-          self.buffer_fin.append((t1-t2)/(eps*2))
-    self.g = flex.double(grads)
+       del par_eps
+       self.fmodel.update_xray_structure(update_f_calc=True)
+       t2 = target_and_grads(
+         fmodel=self.fmodel,
+         target_functor=self.target_functor,
+         alpha=self.alpha,
+         beta=self.beta,
+         selections=self.selections,
+         refine_adp=self.refine_adp,
+         refine_occ=self.refine_occ,
+         compute_gradients=False).target()
+       apply_transformation(
+         xray_structure = self.fmodel.xray_structure,
+         par            = self.par_min,
+         sc_start       = self.sc_start,
+         selections     = self.selections,
+         refine_adp     = self.refine_adp,
+         refine_occ     = self.refine_occ)
+       self.fmodel.update_xray_structure(update_f_calc=True)
+       self.buffer_ana.append(self.g[i_g_max])
+       self.buffer_fin.append((t1-t2)/(eps*2))
     return self.f, self.g
-
 
 def apply_transformation(xray_structure,
                          par,
@@ -283,25 +298,39 @@ def apply_transformation(xray_structure,
   xray_structure.replace_scatterers(new_sc)
 
 class target_and_grads(object):
-  def __init__(self, fmodel,
+  def __init__(self, fmodel, # OLD_STYLE_TARGET
+                     target_functor,
                      alpha,
                      beta,
                      selections,
                      refine_adp,
-                     refine_occ):
-    self.grads_wrt_par = []
+                     refine_occ,
+                     compute_gradients=True):
     assert [refine_adp, refine_occ].count(True) == 1
-    target_grads_wrt_par = fmodel.gradient_wrt_atomic_parameters(
-                                                    u_iso         = refine_adp,
-                                                    occupancy     = refine_occ,
-                                                    alpha         = alpha,
-                                                    beta          = beta,
-                                                    tan_b_iso_max = 0.0)
-    target_grads_wrt_par = target_grads_wrt_par.packed()
-    self.f = fmodel.target_w(alpha = alpha, beta = beta)
-    for sel in selections:
+    if (OLD_STYLE_TARGET):
+      self.f = fmodel.target_w(alpha = alpha, beta = beta)
+      if (compute_gradients):
+        target_grads_wrt_par = fmodel.gradient_wrt_atomic_parameters(
+          u_iso         = refine_adp,
+          occupancy     = refine_occ,
+          alpha         = alpha,
+          beta          = beta,
+          tan_b_iso_max = 0.0).packed()
+    else:
+      t_r = target_functor(compute_gradients=compute_gradients)
+      self.f = t_r.target_work()
+      if (compute_gradients):
+        target_grads_wrt_par = t_r.gradients_wrt_atomic_parameters(
+          u_iso=refine_adp,
+          occupancy=refine_occ,
+          tan_b_iso_max=0).packed()
+    if (compute_gradients):
+      self.grads_wrt_par = []
+      for sel in selections:
         target_grads_wrt_par_sel = target_grads_wrt_par.select(sel)
         self.grads_wrt_par.append(flex.sum(target_grads_wrt_par_sel))
+    else:
+      self.grads_wrt_par = None
 
   def target(self):
     return self.f
