@@ -204,6 +204,10 @@ def exercise_flex_xray_scatterer():
     (-0.1,-0.2,-0.3),
     (-0.2,-0.3,-0.4),
     (-0.3,-0.4,0.4)])
+  #
+  assert a.extract_grad_u_iso().all_eq(False)
+  a[1].flags.set_grad_u_iso(state=True)
+  assert list(a.extract_grad_u_iso()) == [False, True, False]
 
 def run():
   exercise_flex_miller_index()
