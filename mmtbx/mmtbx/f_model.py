@@ -1946,8 +1946,6 @@ class target_result_mixin(object):
         u_iso=False,
         u_aniso=False,
         occupancy=False,
-        alpha=None,
-        beta=None,
         tan_b_iso_max=None,
         u_iso_refinable_params=None):
     manager = self.manager
