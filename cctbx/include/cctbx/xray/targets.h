@@ -54,6 +54,7 @@ namespace targets {
     public:
       ls_with_scale(
         bool apply_scale_to_f_calc,
+        bool compute_scale_using_all_data,
         af::const_ref<double> const& f_obs,
         af::const_ref<double> const& weights,
         af::const_ref<bool> const& r_free_flags,
@@ -61,7 +62,8 @@ namespace targets {
         bool compute_gradients,
         double scale_factor)
       :
-        apply_scale_to_f_calc_(apply_scale_to_f_calc)
+        apply_scale_to_f_calc_(apply_scale_to_f_calc),
+        compute_scale_using_all_data_(compute_scale_using_all_data)
       {
         CCTBX_ASSERT(weights.size() == f_obs.size());
         CCTBX_ASSERT(r_free_flags.size() == 0
@@ -69,22 +71,24 @@ namespace targets {
         CCTBX_ASSERT(f_calc.size() == f_obs.size());
         CCTBX_ASSERT(scale_factor >= 0);
         const bool* rff = r_free_flags.begin();
+        if (!rff) compute_scale_using_all_data = true;
         double num = 0;
         double denom = 0;
         std::size_t n_work = 0;
         double sum_w_fo_sq_work = 0;
         double sum_w_fo_sq_test = 0;
-        // scale factor computation uses all f_obs and f_calc
         for(std::size_t i=0;i<f_obs.size();i++) {
           double fc_abs = std::abs(f_calc[i]);
           double w_fo = weights[i] * f_obs[i];
-          num += w_fo * fc_abs;
           double w_fo_sq = w_fo * f_obs[i];
-          if (apply_scale_to_f_calc_) {
-            denom += weights[i] * fc_abs * fc_abs;
-          }
-          else {
-            denom += w_fo_sq;
+          if (compute_scale_using_all_data || !rff[i]) {
+            num += w_fo * fc_abs;
+            if (apply_scale_to_f_calc_) {
+              denom += weights[i] * fc_abs * fc_abs;
+            }
+            else {
+              denom += w_fo_sq;
+            }
           }
           if (!rff || !rff[i]) {
             n_work++;
@@ -103,6 +107,11 @@ namespace targets {
         }
         CCTBX_ASSERT(sum_w_fo_sq_work > 0);
         if (compute_gradients) {
+          if (compute_scale_using_all_data && n_work != f_obs.size()) {
+            throw std::runtime_error(
+              "Sorry: cctbx::xray::targets::ls_with_scale:"
+              " gradients for compute_scale_using_all_data not implemented.");
+          }
           gradients_work_.reserve(n_work);
         }
         double target_test = 0;
@@ -135,8 +144,7 @@ namespace targets {
           }
         }
         target_work_ /= sum_w_fo_sq_work;
-        if (rff) {
-          CCTBX_ASSERT(sum_w_fo_sq_test > 0);
+        if (rff && sum_w_fo_sq_test > 0) {
           target_test_ = boost::optional<double>(
             target_test / sum_w_fo_sq_test);
         }
@@ -145,11 +153,18 @@ namespace targets {
       bool
       apply_scale_to_f_calc() const { return apply_scale_to_f_calc_; }
 
+      bool
+      compute_scale_using_all_data() const
+      {
+        return compute_scale_using_all_data_;
+      }
+
       double
       scale_factor() const { return scale_factor_; }
 
     protected:
       bool apply_scale_to_f_calc_;
+      bool compute_scale_using_all_data_;
       double scale_factor_;
   };
 

@@ -123,6 +123,7 @@ class _ls_functor(object):
     assert f_calc.space_group() == self.f_obs.space_group()
     return ext.targets_ls_with_scale(
       apply_scale_to_f_calc=self.apply_scale_to_f_calc,
+      compute_scale_using_all_data=False,
       f_obs=self.f_obs.data(),
       weights=self.weights,
       r_free_flags=None,
@@ -175,23 +176,12 @@ class least_squares(object):
 
   def __init__(self,
         apply_scale_to_f_calc,
+        compute_scale_using_all_data,
         f_obs,
         weights,
         r_free_flags,
-        scale_factor,
-        f_calc):
+        scale_factor):
     assert scale_factor >= 0
-    assert scale_factor > 0 or (r_free_flags is None or f_calc is not None)
-    if (scale_factor == 0 and f_calc is not None):
-      # XXX too much work done here, need separate scale factor call
-      scale_factor = ext.targets_ls_with_scale(
-        apply_scale_to_f_calc=apply_scale_to_f_calc,
-        f_obs=f_obs.data(),
-        weights=weights,
-        r_free_flags=r_free_flags.data(),
-        f_calc=f_calc.data(),
-        compute_gradients=False,
-        scale_factor=0).scale_factor()
     adopt_init_args(self, locals())
 
   def __call__(self, f_calc, compute_gradients):
@@ -199,6 +189,7 @@ class least_squares(object):
     assert f_calc.space_group() == self.f_obs.space_group()
     return ext.targets_ls_with_scale(
       apply_scale_to_f_calc=self.apply_scale_to_f_calc,
+      compute_scale_using_all_data=self.compute_scale_using_all_data,
       f_obs=self.f_obs.data(),
       weights=self.weights,
       r_free_flags=self.r_free_flags.data(),
