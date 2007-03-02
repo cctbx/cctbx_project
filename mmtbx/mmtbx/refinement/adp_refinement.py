@@ -95,6 +95,7 @@ class manager(object):
             fmodel,
             model,
             group_adp_selections      = None,
+            group_adp_selections_h    = None,
             group_adp_params          = group_adp_master_params.extract(),
             tls_selections            = None,
             tls_params                = tls_master_params.extract(),
@@ -213,6 +214,19 @@ class manager(object):
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = group_adp_params.max_number_of_iterations,
           number_of_macro_cycles   = group_adp_params.number_of_macro_cycles,
+          run_finite_differences_test = group_adp_params.run_finite_differences_test,
+          refine_adp               = True,
+          log                      = log)
+    if(fmodel.xray_structure.hd_selection().count(True) > 0 and
+       not model.use_dbe and h_params.riding):
+       print_statistics.make_sub_header(text= "group isotropic ADP refinement for H atoms",
+                                        out = log)
+       group_b_manager = mmtbx.refinement.group.manager(
+          fmodel                   = fmodel,
+          selections               = group_adp_selections_h,
+          convergence_test         = group_adp_params.convergence_test,
+          max_number_of_iterations = 30,
+          number_of_macro_cycles   = 1,
           run_finite_differences_test = group_adp_params.run_finite_differences_test,
           refine_adp               = True,
           log                      = log)

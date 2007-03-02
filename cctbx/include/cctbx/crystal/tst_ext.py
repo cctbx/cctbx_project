@@ -829,11 +829,15 @@ class adp_iso_local_sphere_restraints_energies_functor(object):
         average_power=0.5,
         compute_gradients=False,
         collect=False):
+    sel = flex.bool(u_isos.size(),True)
     return crystal.adp_iso_local_sphere_restraints_energies(
       pair_sym_table=self.pair_sym_table,
       orthogonalization_matrix=self.orthogonalization_matrix,
       sites_frac=self.sites_frac,
       u_isos=u_isos,
+      selection = sel,
+      use_u_iso = sel,
+      grad_u_iso= sel,
       sphere_radius=sphere_radius,
       distance_power=distance_power,
       average_power=average_power,
