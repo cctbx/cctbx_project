@@ -13,6 +13,8 @@ from cctbx import adptbx
 
 time_site_individual = 0.0
 
+OLD_STYLE_TARGET = False # XXX
+
 class lbfgs(object):
 
   def __init__(self, restraints_manager,
@@ -123,17 +125,23 @@ class lbfgs(object):
        self.collector.collect(rxw = self.fmodel.r_work(),
                               rxf = self.fmodel.r_free())
 
-    self.scale_ml = None
-    if fmodel.target_name == "twin_lsq_f":
-      self.scale_ml = 1.0
+    if (OLD_STYLE_TARGET):
+      self.scale_ml = None
+      if fmodel.target_name == "twin_lsq_f":
+        self.scale_ml = 1.0
+      else:
+        if(self.fmodel.alpha_beta_params.method == "calc"):
+           if(self.fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
+              self.scale_ml = self.fmodel.scale_ml()
+           else:
+              self.scale_ml = self.fmodel.alpha_beta_params.fix_scale_for_calc_option
+        if(self.fmodel.alpha_beta_params.method == "est"):
+           self.scale_ml = 1.0
+    self.target_functor_xray = self.fmodel.target_functor()
+    if (self.neutron_refinement):
+      self.target_functor_neutron = self.fmodel_neutron.target_functor()
     else:
-      if(self.fmodel.alpha_beta_params.method == "calc"):
-         if(self.fmodel.alpha_beta_params.fix_scale_for_calc_option == None):
-            self.scale_ml = self.fmodel.scale_ml()
-         else:
-            self.scale_ml = self.fmodel.alpha_beta_params.fix_scale_for_calc_option
-      if(self.fmodel.alpha_beta_params.method == "est"):
-         self.scale_ml = 1.0
+      self.target_functor_neutron = None
     if (self.alpha_w is None or self.beta_w is None):
       self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w(
         only_if_required_by_target=True)
@@ -187,6 +195,8 @@ class lbfgs(object):
        # XXX UNSAFE: invalidates self.fmodel_neutron (but fixes self.fmodel)
        self.xray_structure.scattering_type_registry(
                                        custom_dict = self.xray_scattering_dict)
+    del self.target_functor_xray
+    del self.target_functor_neutron
     time_site_individual += timer.elapsed()
 
   def apply_shifts(self):
@@ -230,16 +240,24 @@ class lbfgs(object):
                                        custom_dict = self.xray_scattering_dict)
     self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                       update_f_calc  = True)
-    ex = self.fmodel.target_w(alpha    = self.alpha_w,
-                              beta     = self.beta_w,
-                              scale_ml = self.scale_ml)
+    if (OLD_STYLE_TARGET):
+      ex = self.fmodel.target_w(alpha    = self.alpha_w,
+                                beta     = self.beta_w,
+                                scale_ml = self.scale_ml)
+    else:
+      t_r = self.target_functor_xray(compute_gradients=compute_gradients)
+      ex = t_r.target_work()
     self.collector.collect(ex = ex)
     self.f = ex * self.wx
     if(compute_gradients):
-       sf = self.fmodel.gradient_wrt_atomic_parameters(
-                        alpha                 = self.alpha_w,
-                        beta                  = self.beta_w,
-                        u_iso_refinable_params = u_iso_refinable_params).packed()
+       if (OLD_STYLE_TARGET):
+         sf = self.fmodel.gradient_wrt_atomic_parameters(
+           alpha                 = self.alpha_w,
+           beta                  = self.beta_w,
+           u_iso_refinable_params = u_iso_refinable_params).packed()
+       else:
+         sf = t_r.gradients_wrt_atomic_parameters(
+           u_iso_refinable_params=u_iso_refinable_params).packed()
        #XXX do not count grads for H or D:
        #if(self.hd_selection.count(True) > 0):
        #   if(self.refine_xyz):
@@ -269,16 +287,25 @@ class lbfgs(object):
        self.fmodel_neutron.update_xray_structure(
                                          xray_structure = self.xray_structure,
                                          update_f_calc  = True)
-       en = self.fmodel_neutron.target_w(alpha    = self.alpha_w_neutron,
-                                         beta     = self.beta_w_neutron,
-                                         scale_ml = self.scale_ml)
+       if (OLD_STYLE_TARGET):
+         en = self.fmodel_neutron.target_w(
+           alpha    = self.alpha_w_neutron,
+           beta     = self.beta_w_neutron,
+           scale_ml = self.scale_ml)
+       else:
+         t_r = self.target_functor_neutron(compute_gradients=compute_gradients)
+         en = t_r.target_work()
        self.collector.collect(en = en)
        self.f += en * self.wn
        if(compute_gradients):
-          sf = self.fmodel_neutron.gradient_wrt_atomic_parameters(
-                        alpha                 = self.alpha_w_neutron,
-                        beta                  = self.beta_w_neutron,
-                        u_iso_refinable_params = u_iso_refinable_params).packed()
+          if (OLD_STYLE_TARGET):
+            sf = self.fmodel_neutron.gradient_wrt_atomic_parameters(
+              alpha                 = self.alpha_w_neutron,
+              beta                  = self.beta_w_neutron,
+              u_iso_refinable_params = u_iso_refinable_params).packed()
+          else:
+            sf = t_r.gradients_wrt_atomic_parameters(
+              u_iso_refinable_params=u_iso_refinable_params).packed()
           self.g = self.g + sf * self.wn
 
           ii = 0

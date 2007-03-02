@@ -13,8 +13,6 @@ class minimizer(object):
         lbfgs_max_iterations=20,
         number_of_finite_difference_tests=0):
     adopt_init_args(self, locals())
-    self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w(
-      only_if_required_by_target=True)
     self.x = flex.double()
     for group in groups:
       if (not group.fix_f_prime): self.x.append(group.f_prime)
@@ -27,6 +25,7 @@ class minimizer(object):
       if (not group.fix_f_double_prime):
         fmodel.xray_structure.scatterers().flags_set_grad_fdp(
           iselection=group.iselection)
+    self.target_functor = fmodel.target_functor()
     for self.i_cycle in xrange(number_of_minimizer_cycles):
       self.lbfgs = lbfgs.run(
         target_evaluator=self,
@@ -43,8 +42,7 @@ class minimizer(object):
     del self.i_cycle
     del self.lbfgs
     del self.x
-    del self.alpha_w
-    del self.beta_w
+    del self.target_functor
     del self.fmodel
     del self.groups
 
@@ -60,19 +58,16 @@ class minimizer(object):
 
   def compute_functional_and_gradients(self):
     self.unpack()
+    t_r = self.target_functor(compute_gradients=True)
     fmodel = self.fmodel
-    t_w = fmodel.xray_target_functor_result(
-      compute_gradients=True,
-      alpha=self.alpha_w,
-      beta=self.beta_w,
-      flag="work")
-    f = t_w.target_work()
+    f = t_r.target_work()
+    d_target_d_f_calc = t_r.d_target_d_f_calc_work()
     sfg = fmodel.structure_factor_gradients_w(
       u_iso_refinable_params=None,
-      d_target_d_f_calc=t_w.gradients_work() * fmodel.core.fb_cart_w,
+      d_target_d_f_calc=d_target_d_f_calc.data(),
       xray_structure=fmodel.xray_structure,
       n_parameters=0,
-      miller_set=fmodel.f_obs_w,
+      miller_set=d_target_d_f_calc,
       algorithm=fmodel.sf_algorithm)
     d_t_d_fp = sfg.d_target_d_fp()
     d_t_d_fdp = sfg.d_target_d_fdp()
@@ -95,12 +90,8 @@ class minimizer(object):
           x[i] = xi0 + signed_eps
           self.unpack()
           x[i] = xi0
-          t_w = fmodel.xray_target_functor_result(
-            compute_gradients=False,
-            alpha=self.alpha_w,
-            beta=self.beta_w,
-            flag="work")
-          fs.append(t_w.target_work())
+          t_r = self.target_functor(compute_gradients=False)
+          fs.append(t_r.target_work())
         g_fin.append((fs[0]-fs[1])/(2*eps))
       self.unpack()
       assert approx_equal(g_fin, g)
