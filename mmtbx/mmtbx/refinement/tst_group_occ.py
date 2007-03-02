@@ -1,6 +1,7 @@
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from libtbx import easy_run
 import libtbx.load_env
 import random
 import time
@@ -47,7 +48,7 @@ def exercise_1(hkl = "enk_gor.mtz"):
   opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false  output.prefix=occ_ref1"
   cmd = " ".join(["phenix.refine", pdb, hkl, opt0, opt1, opt2, opt3, opt4, opt5, opt6])
-  os.system(cmd)
+  easy_run.call(cmd)
 
 def exercise_2(hkl = "enk_gor.mtz"):
   pdb = libtbx.env.find_in_repositories(
@@ -62,7 +63,7 @@ def exercise_2(hkl = "enk_gor.mtz"):
   opt7= "occupancies.group="+""""chain A" """+" occupancies.group="+""""chain B" """
   opt8= "occupancies.group="+""""chain C" """+" occupancies.group="+""""chain D" """+" output.prefix=occ_ref2"
   cmd = " ".join(["phenix.refine", pdb, hkl, opt0, opt1, opt2, opt3, opt5, opt6, opt7, opt8])
-  os.system(cmd)
+  easy_run.call(cmd)
 
 def check_result():
   for st in open("occ_ref1_001.pdb","r").read().splitlines():
@@ -73,7 +74,6 @@ def check_result():
     if(st.count("REMARK Final: r_work =")==1):
        st = st.split()
        r2 = float(st[4])
-  os.system("rm -rf occ_ref1* occ_ref2*")
   print r1, r2
   assert approx_equal(r1,r2, 0.001)
   assert r1 < 0.005 and r2 < 0.005
