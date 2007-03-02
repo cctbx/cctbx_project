@@ -354,6 +354,12 @@ class structure(crystal.special_position_settings):
     return self._scatterers.extract_u_iso_or_u_equiv(
       unit_cell=self.unit_cell())
 
+  def hd_selection(self):
+    scattering_types = self._scatterers.extract_scattering_types()
+    d_selection = (scattering_types == "D")
+    h_selection = (scattering_types == "H")
+    return (d_selection | h_selection)
+
   def apply_rigid_body_shift(self, rot, trans, selection = None):
     if(selection is None):
        selection = flex.bool(self._scatterers.size(), True).iselection()
@@ -397,20 +403,24 @@ class structure(crystal.special_position_settings):
       self._scatterers.convert_to_anisotropic(unit_cell=self.unit_cell(),
                                               selection=selection)
 
-  def show_u_statistics(self, text="", out=None):
+  def show_u_statistics(self, text="", out=None, use_hydrogens=False):
     if(out is None): out = sys.stdout
     size = self._scatterers.size()
+    if(use_hydrogens):
+       hd_selection = flex.bool(size, True)
+    else:
+       hd_selection = self.hd_selection()
     epis = 8*math.pi**2
-    use_u_aniso = self.use_u_aniso()
-    use_u_iso   = self.use_u_iso()
+    use_u_aniso = self.use_u_aniso().select(~hd_selection)
+    use_u_iso   = self.use_u_iso().select(~hd_selection)
     sel_used = use_u_aniso | use_u_iso
     n_anisotropic = use_u_aniso.count(True)
     n_isotropic   = use_u_iso.count(True)
-    ipd = self.is_positive_definite_u()
+    ipd = self.is_positive_definite_u().select(~hd_selection)
     npd = ipd.count(True)
     nnpd = ipd.count(False)
-    beq = (self.extract_u_iso_or_u_equiv() * epis).select(sel_used)
-    bisos = (self.scatterers().extract_u_iso() * epis).select(use_u_iso)
+    beq = (self.extract_u_iso_or_u_equiv() * epis).select(~hd_selection).select(sel_used)
+    bisos = (self.scatterers().extract_u_iso() * epis).select(~hd_selection).select(use_u_iso)
     if(bisos.size() == 0): bisos = beq
     part1 = "|-"+text
     part2 = "-|"

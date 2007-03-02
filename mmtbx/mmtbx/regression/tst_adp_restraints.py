@@ -6,6 +6,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 import sys, os
+from cctbx.array_family import flex
 
 def run():
   pdb_file_name = libtbx.env.find_in_repositories(
@@ -23,6 +24,8 @@ def run():
     distance_power = 0.0
     average_power = 0.0
     min_u_sum = 1.e-6
+  sel = flex.bool(xray_structure.scatterers().size(), True)
+  xray_structure.scatterers().flags_set_grad_u_iso(sel.iselection())
   energies_adp = cctbx.adp_restraints.energies_iso(
     geometry_restraints_manager=grm,
     xray_structure=xray_structure,

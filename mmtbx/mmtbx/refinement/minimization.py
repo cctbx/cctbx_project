@@ -58,9 +58,7 @@ class lbfgs(object):
     if(refine_occ): self.wr = None
     self.wxc_dbe = None
     del self.wc, self.wu
-    self.d_selection = self.model.atoms_selection(scattering_type = "D")
-    self.h_selection = self.model.atoms_selection(scattering_type = "H")
-    self.hd_selection = self.d_selection | self.h_selection
+    self.hd_selection = self.xray_structure.hd_selection()
     if(self.hd_selection.count(True) > 0):
        self.xh_connectivity_table = xh_connectivity_table(
                                     geometry       = restraints_manager,
@@ -69,8 +67,8 @@ class lbfgs(object):
     #self.xray_structure.show_scatterer_flags_summary()
     if (refine_xyz):
       sel = self.model.refinement_flags.sites_individual[0]
-      if (self.h_params.riding):
-        sel.set_selected(self.hd_selection, False)
+      #if (self.h_params.riding):
+      #  sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_site(
         iselection=sel.iselection())
       #self.xray_structure.show_scatterer_flags_summary()
@@ -259,13 +257,13 @@ class lbfgs(object):
          sf = t_r.gradients_wrt_atomic_parameters(
            u_iso_refinable_params=u_iso_refinable_params).packed()
        #XXX do not count grads for H or D:
-       #if(self.hd_selection.count(True) > 0):
-       #   if(self.refine_xyz):
-       #      sf_v3d = flex.vec3_double(sf)
-       #      sf_v3d_sel = sf_v3d.set_selected(self.hd_selection, [0,0,0])
-       #      sf = sf_v3d_sel.as_double()
-       #   if(self.refine_adp):
-       #      sf = sf.set_selected(self.hd_selection, 0.0)
+       if(self.hd_selection.count(True) > 0 and not self.model.use_dbe):
+          if(self.refine_xyz):
+             sf_v3d = flex.vec3_double(sf)
+             sf_v3d_sel = sf_v3d.set_selected(self.hd_selection, [0,0,0])
+             sf = sf_v3d_sel.as_double()
+          #if(self.refine_adp):
+          #   sf = sf.set_selected(self.hd_selection, 0.0)
        self.g = sf * self.wx
 #######################
     if(self.refine_xyz and self.model.use_dbe and
@@ -312,7 +310,7 @@ class lbfgs(object):
           if(self.refine_xyz):
              tt = flex.vec3_double(self.g)
              rr = flex.vec3_double(sf)
-             for i, j, fd in zip(tt, rr, self.d_selection):
+             for i, j, fd in zip(tt, rr, self.hd_selection):
                angle = flex.double(i).angle(flex.double(j), deg = True)
                if(angle >= 90.0):
                   if(fd): tt[ii] = [0,0,0]
@@ -328,7 +326,7 @@ class lbfgs(object):
           if(self.refine_adp):
              tt = self.g
              rr = sf
-             for i, j, fd in zip(tt, rr, self.d_selection):
+             for i, j, fd in zip(tt, rr, self.hd_selection):
                if(i*j < 0):
                   if(fd): tt[ii] = 0.
                   else:   rr[ii] = 0.

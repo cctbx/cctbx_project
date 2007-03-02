@@ -183,6 +183,17 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
+  af::shared<bool>
+  extract_grad_u_iso(
+    af::const_ref<scatterer<> > const& self)
+  {
+    af::shared<bool> result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i].flags.grad_u_iso());
+    }
+    return result;
+  }
+
   af::shared<double>
   extract_u_iso(
     af::const_ref<scatterer<> > const& self)
@@ -580,6 +591,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("set_sites", cctbx::xray::set_sites,
         (arg_("sites")))
       .def("extract_occupancies", cctbx::xray::extract_occupancies)
+      .def("extract_grad_u_iso", cctbx::xray::extract_grad_u_iso)
       .def("set_occupancies", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               af::const_ref<double> const&)) cctbx::xray::set_occupancies,

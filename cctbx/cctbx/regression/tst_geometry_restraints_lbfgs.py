@@ -378,6 +378,8 @@ def exercise(verbose=0):
         assert adp_energies.u_j == None
         assert adp_energies.r_ij == None
       finite_difference_gradients.append((rs[0]-rs[1])/(2*eps))
+    sel = flex.bool(xray_structure.scatterers().size(), True)
+    xray_structure.scatterers().flags_set_grad_u_iso(sel.iselection())
     adp_energies = adp_restraints.energies_iso(
       geometry_restraints_manager=manager,
       xray_structure=xray_structure,

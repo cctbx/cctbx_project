@@ -59,6 +59,9 @@ namespace cctbx { namespace crystal {
         scitbx::mat3<double> const& orthogonalization_matrix,
         af::const_ref<scitbx::vec3<double> > const& sites_frac,
         af::const_ref<double> const& u_isos,
+        af::const_ref<bool> const& selection,
+        af::const_ref<bool> const& use_u_iso,
+        af::const_ref<bool> const& grad_u_iso,
         double sphere_radius,
         double distance_power,
         double average_power,
@@ -68,57 +71,63 @@ namespace cctbx { namespace crystal {
       {
         CCTBX_ASSERT(sites_frac.size() == pair_sym_table.size());
         CCTBX_ASSERT(u_isos.size() == pair_sym_table.size());
+        CCTBX_ASSERT(use_u_iso.size() == pair_sym_table.size());
+        CCTBX_ASSERT(grad_u_iso.size() == pair_sym_table.size());
+        CCTBX_ASSERT(selection.size() == pair_sym_table.size());
         number_of_restraints = 0;
         residual_sum = 0;
         if (compute_gradients) {
           gradients.resize(u_isos.size());
         }
         for(unsigned i_seq=0;i_seq<pair_sym_table.size();i_seq++) {
-          crystal::pair_sym_dict const& pair_sym_dict = pair_sym_table[i_seq];
-          scitbx::vec3<double> const& site_i = sites_frac[i_seq];
-          for(crystal::pair_sym_dict::const_iterator
-                pair_sym_dict_i=pair_sym_dict.begin();
-                pair_sym_dict_i!=pair_sym_dict.end();
-                pair_sym_dict_i++) {
-            unsigned j_seq = pair_sym_dict_i->first;
-            scitbx::vec3<double> const& site_j = sites_frac[j_seq];
-            af::const_ref<sgtbx::rt_mx> rt_mx_list = af::make_const_ref(
-              pair_sym_dict_i->second);
-            for(unsigned i_op=0;i_op<rt_mx_list.size();i_op++) {
-              double dist = (orthogonalization_matrix
-                          * (site_i - rt_mx_list[i_op] * site_j)).length();
-              if (dist <= sphere_radius && dist > 0.0) {
-                double one_over_weight = std::pow(dist, distance_power);
-                CCTBX_ASSERT(one_over_weight != 0);
-                double weight = 1./one_over_weight;
-                double u1 = u_isos[i_seq];
-                double u2 = u_isos[j_seq];
-                if(u1 >= 0.0 && u2 >= 0) {
-                   double sum = u1 + u2;
-                   if (sum >= min_u_sum) {
-                     double ave_pow = std::pow(sum/2, average_power);
-                     CCTBX_ASSERT(ave_pow != 0);
-                     double u_diff = u1 - u2;
-                     double u_diff_sq = u_diff * u_diff;
-                     number_of_restraints++;
-                     residual_sum += (weight * u_diff_sq / ave_pow);
-                     if (compute_gradients) {
-                       double mem1 = 2.* u_diff / ave_pow;
-                       CCTBX_ASSERT(sum * ave_pow != 0);
-                       double mem2 = average_power * u_diff_sq / (sum*ave_pow);
-                       gradients[i_seq] += weight * (mem1 - mem2);
-                       gradients[j_seq] += weight * (-mem1 - mem2);
-                     }
-                     if (collect) {
-                       u_i.push_back(u1);
-                       u_j.push_back(u2);
-                       r_ij.push_back(dist);
+          if(use_u_iso[i_seq] && selection[i_seq]) {
+            crystal::pair_sym_dict const& pair_sym_dict = pair_sym_table[i_seq];
+            scitbx::vec3<double> const& site_i = sites_frac[i_seq];
+            for(crystal::pair_sym_dict::const_iterator
+                  pair_sym_dict_i=pair_sym_dict.begin();
+                  pair_sym_dict_i!=pair_sym_dict.end();
+                  pair_sym_dict_i++) {
+              unsigned j_seq = pair_sym_dict_i->first;
+              scitbx::vec3<double> const& site_j = sites_frac[j_seq];
+              af::const_ref<sgtbx::rt_mx> rt_mx_list = af::make_const_ref(
+                pair_sym_dict_i->second);
+              for(unsigned i_op=0;i_op<rt_mx_list.size();i_op++) {
+                double dist = (orthogonalization_matrix
+                            * (site_i - rt_mx_list[i_op] * site_j)).length();
+                if (dist <= sphere_radius && dist > 0.0) {
+                  double one_over_weight = std::pow(dist, distance_power);
+                  CCTBX_ASSERT(one_over_weight != 0);
+                  double weight = 1./one_over_weight;
+                  double u1 = u_isos[i_seq];
+                  double u2 = u_isos[j_seq];
+                  if(u1 >= 0.0 && u2 >= 0) {
+                     double sum = u1 + u2;
+                     if (sum >= min_u_sum) {
+                       double ave_pow = std::pow(sum/2, average_power);
+                       CCTBX_ASSERT(ave_pow != 0);
+                       double u_diff = u1 - u2;
+                       double u_diff_sq = u_diff * u_diff;
+                       number_of_restraints++;
+                       residual_sum += (weight * u_diff_sq / ave_pow);
+                       if (compute_gradients && grad_u_iso[i_seq] &&
+                           grad_u_iso[j_seq]) {
+                         double mem1 = 2.* u_diff / ave_pow;
+                         CCTBX_ASSERT(sum * ave_pow != 0);
+                         double mem2 = average_power * u_diff_sq / (sum*ave_pow);
+                         gradients[i_seq] += weight * (mem1 - mem2);
+                         gradients[j_seq] += weight * (-mem1 - mem2);
+                       }
+                       if (collect) {
+                         u_i.push_back(u1);
+                         u_j.push_back(u2);
+                         r_ij.push_back(dist);
                      }
                    }
                 }
               }
             }
           }
+         }
         }
       }
 
