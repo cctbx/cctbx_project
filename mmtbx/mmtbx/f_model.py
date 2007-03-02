@@ -1923,17 +1923,13 @@ class target_functor(object):
             raise RuntimeError
         else:
           raise RuntimeError
-      if (scale_factor == 0):
-        f_calc = self.manager.f_model()
-      else:
-        f_calc = None
       self.core = xray.target_functors.least_squares(
         apply_scale_to_f_calc=attr.ls_apply_scale_to_f_calc(),
+        compute_scale_using_all_data=False,
         f_obs=f_obs,
         r_free_flags=manager.r_free_flags,
         weights=weights,
-        scale_factor=scale_factor,
-        f_calc=f_calc)
+        scale_factor=scale_factor)
 
   def __call__(self, compute_gradients=False):
     return target_result(
