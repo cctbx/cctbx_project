@@ -47,6 +47,7 @@ namespace {
       class_<w_t, bases<common_results> >("targets_ls_with_scale", no_init)
         .def(init<
           bool,
+          bool,
           af::const_ref<double> const&,
           af::const_ref<double> const&,
           af::const_ref<bool> const&,
@@ -54,6 +55,7 @@ namespace {
           bool const&,
           double>((
             arg_("apply_scale_to_f_calc"),
+            arg_("compute_scale_using_all_data"),
             arg_("f_obs"),
             arg_("weights"),
             arg_("r_free_flags"),
@@ -61,6 +63,7 @@ namespace {
             arg_("compute_gradients"),
             arg_("scale_factor"))))
         .def("apply_scale_to_f_calc", &w_t::apply_scale_to_f_calc)
+        .def("compute_scale_using_all_data",&w_t::compute_scale_using_all_data)
         .def("scale_factor", &w_t::scale_factor)
       ;
     }

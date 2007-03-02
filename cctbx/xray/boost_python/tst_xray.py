@@ -1383,6 +1383,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1397,6 +1398,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1413,6 +1415,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1426,6 +1429,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1442,6 +1446,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1461,6 +1466,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1468,12 +1474,14 @@ def exercise_targets_ls_with_scale():
     compute_gradients=False,
     scale_factor           = 0)
   assert not ls.apply_scale_to_f_calc()
+  assert ls.compute_scale_using_all_data()
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target_work(), 0)
   assert ls.gradients_work().size() == 0
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1490,6 +1498,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1503,6 +1512,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1519,6 +1529,7 @@ def exercise_targets_ls_with_scale():
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=False,
+    compute_scale_using_all_data=True,
     f_obs=f_obs,
     weights=w,
     r_free_flags=None,
@@ -1539,22 +1550,25 @@ def exercise_targets_ls_with_scale():
   f_calc = flex.complex_double((2,3,4,5,6))
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
+    compute_scale_using_all_data=False,
     f_obs=f_obs,
     weights=w,
     r_free_flags=r_free_flags,
     f_calc=f_calc,
     compute_gradients=True,
     scale_factor=0)
-  assert approx_equal(ls.scale_factor(), 7/9.)
-  assert approx_equal(ls.target_work(), 0.0123456790123)
-  assert approx_equal(ls.target_test(), 0.00617283950617)
+  assert not ls.compute_scale_using_all_data()
+  assert approx_equal(ls.scale_factor(), 0.785714285714)
+  assert approx_equal(ls.target_work(), 0.0122448979592)
+  assert approx_equal(ls.target_test(), 0.00663265306122)
   assert approx_equal(ls.gradients_work(), [
-    0.02469135802469136+0j,
-    0.0049382716049382741+0j,
-    -0.014814814814814802-0j])
+    0.025655976676384838+0j,
+    0.0064139941690962068+0j,
+    -0.012827988338192414-0j])
   #
   ls = xray.targets_ls_with_scale(
     apply_scale_to_f_calc=True,
+    compute_scale_using_all_data=False,
     f_obs=f_obs,
     weights=w,
     r_free_flags=r_free_flags,
