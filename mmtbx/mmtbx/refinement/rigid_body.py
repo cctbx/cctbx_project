@@ -10,8 +10,6 @@ from libtbx.utils import Sorry
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 
-OLD_STYLE_TARGET = False # XXX
-
 time_initialization          = 0.0
 time_apply_transformation    = 0.0
 time_target_and_grads        = 0.0
@@ -515,13 +513,7 @@ class rigid_body_minimizer(object):
                lbfgs_maxfev = 10):
     adopt_init_args(self, locals())
     self.fmodel_copy = self.fmodel.deep_copy()
-    if (OLD_STYLE_TARGET):
-      self.alpha, self.beta = self.fmodel.alpha_beta_w(
-        only_if_required_by_target=True)
-      self.target_functor = None
-    else:
-      self.alpha, self.beta = None, None
-      self.target_functor = self.fmodel_copy.target_functor()
+    self.target_functor = self.fmodel_copy.target_functor()
     self.atomic_weights = self.fmodel.xray_structure.atomic_weights()
     self.sites_cart = self.fmodel.xray_structure.sites_cart()
     self.sites_frac = self.fmodel.xray_structure.sites_frac()
@@ -601,10 +593,7 @@ class rigid_body_minimizer(object):
     tg_obj = target_and_grads(
                    centers_of_mass = centers_of_mass,
                    sites_cart      = new_sites_cart,
-                   fmodel          = self.fmodel_copy,
                    target_functor  = self.target_functor,
-                   alpha           = self.alpha,
-                   beta            = self.beta,
                    rot_objs        = rot_objs,
                    selections      = self.selections,
                    suppress_gradients = suppress_gradients)
@@ -664,29 +653,19 @@ def apply_transformation(xray_structure,
 class target_and_grads(object):
   def __init__(self, centers_of_mass,
                      sites_cart,
-                     fmodel,
                      target_functor,
-                     alpha,
-                     beta,
                      rot_objs,
                      selections,
                      suppress_gradients):
     global time_target_and_grads
     timer = user_plus_sys_time()
-    if (OLD_STYLE_TARGET):
-      self.f = fmodel.target_w(alpha = alpha, beta = beta)
-    else:
-      t_r = target_functor(compute_gradients=not suppress_gradients)
-      self.f = t_r.target_work()
+    t_r = target_functor(compute_gradients=not suppress_gradients)
+    self.f = t_r.target_work()
     if (suppress_gradients):
       self.grads_wrt_r = None
       self.grads_wrt_t = None
       return
-    if (OLD_STYLE_TARGET):
-      target_grads_wrt_xyz = fmodel.gradient_wrt_atomic_parameters(
-        site=True, alpha=alpha, beta=beta)
-    else:
-      target_grads_wrt_xyz = t_r.gradients_wrt_atomic_parameters(site=True)
+    target_grads_wrt_xyz = t_r.gradients_wrt_atomic_parameters(site=True)
     self.grads_wrt_r = []
     self.grads_wrt_t = []
     target_grads_wrt_xyz = flex.vec3_double(target_grads_wrt_xyz.packed())

@@ -414,10 +414,7 @@ def finite_differences_test(sf_algorithm = "direct"):
       tg_obj = mmtbx.refinement.rigid_body.target_and_grads(
         centers_of_mass = centers_of_mass,
         sites_cart      = fmodel_copy.xray_structure.sites_cart(),
-        fmodel          = fmodel_copy,
         target_functor  = fmodel_copy.target_functor(),
-        alpha           = None,
-        beta            = None,
         rot_objs        = [rot_obj],
         selections      = selections,
         suppress_gradients = False)
@@ -441,16 +438,10 @@ def fd_translation(fmodel, e):
       xrs_g1_2 = xrs2.translate(x =-shift[0], y =-shift[1], z =-shift[2])
       fm.update_xray_structure(xray_structure = xrs_g1_1,
                                update_f_calc  = True)
-      if (mmtbx.refinement.rigid_body.OLD_STYLE_TARGET):
-        t1 = fm.target_w()
-      else:
-        t1 = fm.target_functor()().target_work()
+      t1 = fm.target_functor()().target_work()
       fm.update_xray_structure(xray_structure = xrs_g1_2,
                                update_f_calc  = True)
-      if (mmtbx.refinement.rigid_body.OLD_STYLE_TARGET):
-        t2 = fm.target_w()
-      else:
-        t2 = fm.target_functor()().target_work()
+      t2 = fm.target_functor()().target_work()
       grads.append( (t1-t2)/(2*e) )
   return grads
 
@@ -484,16 +475,10 @@ def fd_rotation(fmodel, e, convention):
                          selections          = selections)
       fm.update_xray_structure(xray_structure = xrs_g1_1,
                                update_f_calc  = True)
-      if (mmtbx.refinement.rigid_body.OLD_STYLE_TARGET):
-        t1 = fm.target_w()
-      else:
-        t1 = fm.target_functor()().target_work()
+      t1 = fm.target_functor()().target_work()
       fm.update_xray_structure(xray_structure = xrs_g1_2,
                                update_f_calc  = True)
-      if (mmtbx.refinement.rigid_body.OLD_STYLE_TARGET):
-        t2 = fm.target_w()
-      else:
-        t2 = fm.target_functor()().target_work()
+      t2 = fm.target_functor()().target_work()
       grads.append( (t1-t2)/(2*e*math.pi/180)  )
   return grads
 

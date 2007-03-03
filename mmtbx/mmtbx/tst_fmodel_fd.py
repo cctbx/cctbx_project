@@ -11,8 +11,6 @@ import random
 import sys, math
 from cctbx import xray
 
-OLD_STYLE_TARGET = False # XXX
-
 random.seed(0)
 flex.set_random_seed(0)
 
@@ -24,36 +22,26 @@ class mask_params:
     self.verbose = 1
     self.mean_shift_for_mask_update = 0.1
 
-def finite_differences_site(fmodel, eps=1.e-5):
+def finite_differences_site(target_functor, eps=1.e-5):
+  fmodel = target_functor.manager
   structure = fmodel.xray_structure
   unit_cell = structure.unit_cell()
-  if (OLD_STYLE_TARGET and fmodel.target_name != "ml_sad"):
-    gs_old = flex.double()
-    alpha, beta = fmodel.alpha_beta_w(only_if_required_by_target=True)
-  else:
-    gs_old = None
-  gs_new = flex.double()
-  target_functor = fmodel.target_functor()
+  gs = flex.double()
   for i_scatterer in xrange(structure.scatterers().size()):
     sc = structure.scatterers()[i_scatterer]
     site_orig = sc.site
     d_target_d_site = []
     for ix in xrange(3):
-      ts_old = []
-      ts_new = []
+      ts = []
       for signed_eps in [eps, -eps]:
         site_cart = list(unit_cell.orthogonalize(site_orig))
         site_cart[ix] += signed_eps
         sc.site = unit_cell.fractionalize(site_cart)
         fmodel.update_xray_structure(update_f_calc=True)
-        if (gs_old is not None):
-          ts_old.append(fmodel.target_w(alpha=alpha, beta=beta))
-        ts_new.append(target_functor().target_work())
-      if (gs_old is not None):
-        gs_old.append((ts_old[0]-ts_old[1])/(2*eps))
-      gs_new.append((ts_new[0]-ts_new[1])/(2*eps))
+        ts.append(target_functor().target_work())
+      gs.append((ts[0]-ts[1])/(2*eps))
     sc.site = site_orig
-  return gs_old, gs_new
+  return gs
 
 def exercise(space_group_info,
              n_elements       = 10,
@@ -136,29 +124,22 @@ def exercise(space_group_info,
           xray.set_scatterer_grad_flags(
             scatterers=fmodel.xray_structure.scatterers(),
             site=True)
-          if (OLD_STYLE_TARGET and fmodel.target_name != "ml_sad"):
-            gs_old = fmodel.gradient_wrt_atomic_parameters(site=True).packed()
-          else:
-            gs_old = None
-          gs_new = fmodel.target_functor()(
-            compute_gradients=True).d_target_d_site_cart().as_double()
-          gfd_old, gfd_new = finite_differences_site(fmodel=fmodel)
-          for which,gs,gfd in [("old", gs_old, gfd_old),
-                               ("new", gs_new, gfd_new)]:
-            if (gs is None): continue
-            cc = flex.linear_correlation(gs, gfd).coefficient()
-            if (0 or verbose):
-              print which
-              print "ana:", list(gs)
-              print "fin:", list(gfd)
-              print target, "corr:", cc
-              print
-            diff = gs - gfd
-            tolerance = 1.e-6
-            assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
-            assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
-            assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
-            assert approx_equal(cc, 1.0, tolerance)
+          t_f = fmodel.target_functor()
+          gs = t_f(compute_gradients=True).d_target_d_site_cart().as_double()
+          gfd = finite_differences_site(target_functor=t_f)
+          cc = flex.linear_correlation(gs, gfd).coefficient()
+          if (0 or verbose):
+            print which
+            print "ana:", list(gs)
+            print "fin:", list(gfd)
+            print target, "corr:", cc
+            print
+          diff = gs - gfd
+          tolerance = 1.e-6
+          assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
+          assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
+          assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
+          assert approx_equal(cc, 1.0, tolerance)
           fmodel.model_error_ml()
 
 def run_call_back(flags, space_group_info):

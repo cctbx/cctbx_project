@@ -795,7 +795,7 @@ class target_attributes(xray.target_functors.target_attributes):
     self.twin = "amplitudes"
     self.pseudo_ml = False
 
-class twin_model_manager(object):
+class twin_model_manager(mmtbx.f_model.manager_mixin):
   def __init__(self,
                f_obs              = None,
                free_array         = None,
@@ -1600,66 +1600,8 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
   def target_functor(self):
     return target_functor(manager=self)
 
-  def one_time_gradients_wrt_atomic_parameters(self, **keyword_args):
-    return self.target_functor()(compute_gradients=True) \
-      .gradients_wrt_atomic_parameters(**keyword_args)
-
-  def target_w(self, *args, **keyword_args):
-    if (len(args) != 0 or len(keyword_args) != 0):
-      raise RuntimeError("OLD_STYLE_TARGET twin_f_model.py target_w: %s %s" % (
-        str(args), str(keyword_args)))
-    return self.target(False)[0]
-
-  def target_f(self, *args, **keyword_args):
-    if (len(args) != 0 or len(keyword_args) != 0):
-      raise RuntimeError("OLD_STYLE_TARGET twin_f_model.py target_f: %s %s" % (
-        str(args), str(keyword_args)))
-    return self.target(False)[1]
-
-  def target_t(self, *args, **keyword_args):
-    if (len(args) != 0 or len(keyword_args) != 0):
-      raise RuntimeError("OLD_STYLE_TARGET twin_f_model.py target_t: %s %s" % (
-        str(args), str(keyword_args)))
-    return self.target(False)[1]
-
-  def gradient_wrt_atomic_parameters(self,
-                                     selection     = None,
-                                     site          = False,
-                                     u_iso         = False,
-                                     u_aniso       = False,
-                                     occupancy     = False,
-                                     alpha         = None,
-                                     beta          = None,
-                                     tan_b_iso_max = None,
-                                     u_iso_refinable_params = None):
-
-    xrs = self.xray_structure
-    if(selection is not None):
-       xrs = xrs.select(selection)
-    # please compute dTarget/d(A_tot,B_tot)
-    dtdab_model = self.target_evaluator.d_target_d_fmodel(
-      self.data_core.f_model()  )
-    # chain rule it to dTarget/d(A_atom,B_atom); the multiplier is the scale factor.
-    dtdab_atoms = dtdab_model*self.data_core.d_f_model_core_data_d_f_atoms()/self.norma_sum_f_sq
-    result = None
-    if(u_aniso):
-       result = self.structure_factor_gradients_w(
-                u_iso_refinable_params = None,
-                d_target_d_f_calc  = dtdab_atoms,
-                xray_structure     = xrs,
-                n_parameters       = 0,
-                miller_set         = self.miller_set,
-                algorithm          = self.sf_algorithm).d_target_d_u_cart()
-    else:
-       result = self.structure_factor_gradients_w(
-                u_iso_refinable_params = u_iso_refinable_params,
-                d_target_d_f_calc  = dtdab_atoms,
-                xray_structure     = xrs,
-                n_parameters       = xrs.n_parameters_XXX(),
-                miller_set         = self.miller_set,
-                algorithm          = self.sf_algorithm)
-    return result
-
+  def target_f(self):
+    return self.target_t()
 
   def detwin_data(self, perform_local_scaling=True, mode=None):
     if mode is None:
@@ -2136,10 +2078,10 @@ class target_result(mmtbx.f_model.target_result_mixin):
     self.manager = manager
 
   def target_work(self):
-    return self.manager.target_w()
+    return self.manager.target(False)[0]
 
   def target_test(self):
-    return self.manager.target_t()
+    return self.manager.target(False)[1]
 
   def d_target_d_f_model_work(self):
     manager = self.manager
