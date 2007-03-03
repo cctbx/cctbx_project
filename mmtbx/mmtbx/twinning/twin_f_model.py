@@ -48,9 +48,9 @@ master_params =  iotbx.phil.parse("""
     map_types{
       twofofc = *two_m_dtfo_d_fc two_dtfo_fc
       .type = choice
-      fofc = m_dtfo_d_fc gradient *m_gradient
+      fofc = m_dtfo_d_fc *gradient m_gradient
       .type = choice
-      aniso_correct = True
+      aniso_correct = False
       .type=bool
 
     }
@@ -1798,11 +1798,12 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         m = sigmaa_object.fom().data()
         d = sigmaa_object.alpha_beta()[0].data()
         if map_type == "m*Fobs-D*Fmodel":
-          result = dt_f_obs.data()*m - abs(f_model).data()*d
+          result = (dt_f_obs.data()*m - abs(f_model).data()*d)
         if map_type == "2m*Fobs-D*Fmodel":
-          result = dt_f_obs.data()*m*2 - abs(f_model).data()*d
+          result = dt_f_obs.data()*2*m - abs(f_model).data()*d
         assert result is not None
       assert result != None
+
       result = dt_f_obs.customized_copy( data = result, sigmas=None )
       result = result.phase_transfer( f_model )
 
