@@ -1600,13 +1600,26 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
   def target_functor(self):
     return target_functor(manager=self)
 
-  def target_w(self, alpha=None, beta=None, scale_ml=None):
+  def one_time_gradients_wrt_atomic_parameters(self, **keyword_args):
+    return self.target_functor()(compute_gradients=True) \
+      .gradients_wrt_atomic_parameters(**keyword_args)
+
+  def target_w(self, *args, **keyword_args):
+    if (len(args) != 0 or len(keyword_args) != 0):
+      raise RuntimeError("OLD_STYLE_TARGET twin_f_model.py target_w: %s %s" % (
+        str(args), str(keyword_args)))
     return self.target(False)[0]
 
-  def target_f(self, alpha=None, beta=None, scale_ml=None):
+  def target_f(self, *args, **keyword_args):
+    if (len(args) != 0 or len(keyword_args) != 0):
+      raise RuntimeError("OLD_STYLE_TARGET twin_f_model.py target_f: %s %s" % (
+        str(args), str(keyword_args)))
     return self.target(False)[1]
 
-  def target_t(self, alpha=None, beta=None, scale_ml=None):
+  def target_t(self, *args, **keyword_args):
+    if (len(args) != 0 or len(keyword_args) != 0):
+      raise RuntimeError("OLD_STYLE_TARGET twin_f_model.py target_t: %s %s" % (
+        str(args), str(keyword_args)))
     return self.target(False)[1]
 
   def gradient_wrt_atomic_parameters(self,

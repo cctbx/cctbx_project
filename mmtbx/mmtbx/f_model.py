@@ -41,7 +41,7 @@ number_mask                         = 0
 time_f_calc                         = 0.0
 time_alpha_beta                     = 0.0
 time_target                         = 0.0
-time_gradient_wrt_atomic_parameters = 0.0
+time_gradients_wrt_atomic_parameters = 0.0
 time_fmodel_core_data               = 0.0
 time_r_factors                      = 0.0
 time_phase_errors                   = 0.0
@@ -54,19 +54,19 @@ def show_times(out = None):
           time_f_calc                         +\
           time_alpha_beta                     +\
           time_target                         +\
-          time_gradient_wrt_atomic_parameters +\
+          time_gradients_wrt_atomic_parameters +\
           time_fmodel_core_data               +\
           time_r_factors                      +\
           time_phase_errors                   +\
           time_foms
   print >> out, "  Micro-tasks:"
-  print >> out, "    mask                           = %-7.2f number of calls = %3d " % \
-                (time_mask,number_mask)
-  print >> out, "    f_calc                         = %-7.2f" % time_f_calc
-  print >> out, "    alpha_beta                     = %-7.2f" % time_alpha_beta
-  print >> out, "    target                         = %-7.2f" % time_target
-  print >> out, "    gradient_wrt_atomic_parameters = %-7.2f" % \
-                                            time_gradient_wrt_atomic_parameters
+  print >> out, "    mask                            = %-7.2f" \
+    " number of calls = %3d " % (time_mask, number_mask)
+  print >> out, "    f_calc                          = %-7.2f" % time_f_calc
+  print >> out, "    alpha_beta                      = %-7.2f" % time_alpha_beta
+  print >> out, "    target                          = %-7.2f" % time_target
+  print >> out, "    gradients_wrt_atomic_parameters = %-7.2f" % \
+    time_gradients_wrt_atomic_parameters
   print >> out, "    fmodel                         = %-7.2f" % time_fmodel_core_data
   print >> out, "    r_factors                      = %-7.2f" % time_r_factors
   print >> out, "    phase_errors                   = %-7.2f" % time_phase_errors
@@ -612,6 +612,10 @@ class manager(object):
   def target_functor(self):
     return target_functor(manager=self)
 
+  def one_time_gradients_wrt_atomic_parameters(self, **keyword_args):
+    return self.target_functor()(compute_gradients=True) \
+      .gradients_wrt_atomic_parameters(**keyword_args)
+
   def _setup_target_functors(self, target_name):
     if (target_name is None):
       self._target_name = None
@@ -695,7 +699,7 @@ class manager(object):
       self.target_functor_w = self.target_functors.target_functor_w()
       self.target_functor_t = self.target_functors.target_functor_t()
 
-  def xray_target_functor_result(self, compute_gradients = None,
+  def __xray_target_functor_result(self, compute_gradients = None,
                                        alpha             = None,
                                        beta              = None,
                                        scale_ml          = None,
@@ -736,26 +740,32 @@ class manager(object):
           return self.target_functor_t(f_model, compute_gradients)
     raise RuntimeError
 
-  def target_w(self, alpha=None, beta=None, scale_ml=None):
+  def target_w(self, *args, **keyword_args):
+    if (len(args) != 0 or len(keyword_args) != 0):
+      raise RuntimeError("OLD_STYLE_TARGET f_model.py target_w: %s %s" % (
+        str(args), str(keyword_args)))
     global time_target
     timer = user_plus_sys_time()
-    result = self.xray_target_functor_result(
+    result = self.__xray_target_functor_result(
       compute_gradients = False,
-      alpha             = alpha,
-      beta              = beta,
-      scale_ml          = scale_ml,
+      alpha             = None,
+      beta              = None,
+      scale_ml          = None,
       flag              = "work").target_work()
     time_target += timer.elapsed()
     return result
 
-  def target_t(self, alpha=None, beta=None, scale_ml=None):
+  def target_t(self, *args, **keyword_args):
+    if (len(args) != 0 or len(keyword_args) != 0):
+      raise RuntimeError("OLD_STYLE_TARGET f_model.py target_t: %s %s" % (
+        str(args), str(keyword_args)))
     global time_target
     timer = user_plus_sys_time()
-    result = self.xray_target_functor_result(
+    result = self.__xray_target_functor_result(
       compute_gradients = False,
-      alpha             = alpha,
-      beta              = beta,
-      scale_ml          = scale_ml,
+      alpha             = None,
+      beta              = None,
+      scale_ml          = None,
       flag              = "test").target_work()
     time_target += timer.elapsed()
     return result
@@ -769,7 +779,8 @@ class manager(object):
                                            beta          = None,
                                            tan_b_iso_max = None,
                                            u_iso_refinable_params = None):
-    global time_gradient_wrt_atomic_parameters
+    raise RuntimeError("OLD_STYLE_TARGET")
+    global time_gradients_wrt_atomic_parameters
     timer = user_plus_sys_time()
     xrs = self.xray_structure
     if([site, u_iso, u_aniso, occupancy].count(True) > 0):
@@ -805,7 +816,7 @@ class manager(object):
     if(selection is not None):
        xrs = xrs.select(selection)
     #XXX make it general
-    xrtfr = self.xray_target_functor_result(compute_gradients = True,
+    xrtfr = self.__xray_target_functor_result(compute_gradients = True,
                                             alpha             = alpha,
                                             beta              = beta,
                                             scale_ml          = None,
@@ -835,7 +846,7 @@ class manager(object):
          n_parameters       = xrs.n_parameters_XXX(),
          miller_set         = self.f_obs_w,
          algorithm          = self.sf_algorithm)
-    time_gradient_wrt_atomic_parameters += timer.elapsed()
+    time_gradients_wrt_atomic_parameters += timer.elapsed()
     return result
 
   def update_r_free_flags(self, r_free_flags):
@@ -1948,6 +1959,8 @@ class target_result_mixin(object):
         occupancy=False,
         tan_b_iso_max=None,
         u_iso_refinable_params=None):
+    global time_gradients_wrt_atomic_parameters
+    timer = user_plus_sys_time()
     manager = self.manager
     xray_structure = manager.xray_structure
     if (selection is not None):
@@ -1970,6 +1983,7 @@ class target_result_mixin(object):
         n_parameters=xray_structure.n_parameters_XXX(),
         miller_set=d_target_d_f_calc,
         algorithm=manager.sf_algorithm)
+    time_gradients_wrt_atomic_parameters += timer.elapsed()
     return result
 
   def d_target_d_site_cart(self):
