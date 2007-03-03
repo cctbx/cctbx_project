@@ -1713,6 +1713,12 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
       dt_f_obs = dt_f_obs.customized_copy(
         data =  dt_f_obs.data()*local_scaler.local_scaler.get_scales()
         ).set_observation_type( dt_f_obs )
+    else:
+      k = flex.sum( tmp_abs_f_model.data() ) / flex.sum( tmp_abs_f_model.data() )
+      dt_f_obs = dt_f_obs.customized_copy(
+        data =  dt_f_obs.data()*k
+        ).set_observation_type( dt_f_obs )
+
 
     return dt_f_obs, tmp_f_model
 
@@ -1795,7 +1801,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     if map_type == "m*Fobs-D*Fmodel":
       if self.map_types.fofc == "gradient":
         map_type = "gradient"
-      if self.map_types.fofc == "gradient":
+      if self.map_types.fofc == "m_gradient":
         map_type = "m_gradient"
 
     if map_type not in ["gradient","m_gradient"]:
@@ -1838,7 +1844,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
           data = gradients.data()*m )
 
       if self.map_types.aniso_correct:
-        gradients = gradients.customized_copy( data = result.data()*aniso_scale )
+        gradients = gradients.customized_copy( data = gradients.data()*aniso_scale )
 
       return gradients
 
