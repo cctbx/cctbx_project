@@ -1925,13 +1925,17 @@ def statistics_in_resolution_bins(fmodel,
     sel_beta_t  = beta_t.select(sel_t)
     sel_alpha_w = alpha_w.select(sel_w)
     sel_beta_w  = beta_w.select(sel_w)
-    xray_target_functor_w = target_functors.target_functor_w(selection = sel_w)
-    xray_target_functor_t = target_functors.target_functor_t(selection = sel_t)
+    if (target_functors is not None):
+      xray_target_functor_w = target_functors.target_functor_w(selection = sel_w)
+      xray_target_functor_t = target_functors.target_functor_t(selection = sel_t)
     d_max_,d_min_ = sel_fo_all.d_max_min()
     ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
     if(fmodel.target_attributes().family == "ls"):
       target_w = "%11.5g" % xray_target_functor_w(sel_fc_w, False).target_work()
       target_t = "%11.5g" % xray_target_functor_t(sel_fc_t, False).target_work()
+    elif (fmodel.target_name == "ml_sad"):
+      target_w = "%11s" % "None"
+      target_t = "%11s" % "None"
     elif(fmodel.target_name in ["ml", "mlhl"]):
       if (sel_fc_w.indices().size() != 0):
         target_w = "%11.5g" % xray_target_functor_w(
