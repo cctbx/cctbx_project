@@ -17,8 +17,6 @@ from mmtbx import bulk_solvent
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import sys
 
-OLD_STYLE_TARGET = False # XXX
-
 class cartesian_dynamics(object):
   def __init__(self,
                structure,
@@ -53,13 +51,7 @@ class cartesian_dynamics(object):
     self.vxyz = flex.vec3_double(self.weights.size(),(0,0,0))
     if(self.fmodel is not None):
       self.fmodel_copy = self.fmodel.deep_copy()
-      if (OLD_STYLE_TARGET):
-        self.alpha_w, self.beta_w = self.fmodel.alpha_beta_w(
-          only_if_required_by_target=True)
-        self.target_functor = None
-      else:
-        self.alpha, self.beta = None, None
-        self.target_functor = self.fmodel_copy.target_functor()
+      self.target_functor = self.fmodel_copy.target_functor()
       assert self.chem_target_weight is not None
       assert self.xray_target_weight is not None
       if(self.xray_gradient is None):
@@ -154,12 +146,8 @@ class cartesian_dynamics(object):
                                            update_f_calc            = True,
                                            update_f_mask            = False,
                                            update_f_ordered_solvent = False)
-    if (OLD_STYLE_TARGET):
-      sf = self.fmodel_copy.gradient_wrt_atomic_parameters(
-        site=True, alpha=self.alpha_w, beta=self.beta_w)
-    else:
-      sf = self.target_functor(
-        compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
+    sf = self.target_functor(
+      compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
     return flex.vec3_double(sf.packed())
 
   def center_mass_info(self, verbose = -1):

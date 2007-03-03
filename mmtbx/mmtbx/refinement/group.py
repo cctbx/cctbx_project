@@ -11,8 +11,6 @@ from libtbx.utils import user_plus_sys_time
 
 time_group_py  = 0.0
 
-OLD_STYLE_TARGET = False # XXX
-
 def show_times(out = None):
   if(out is None): out = sys.stdout
   total = time_group_py
@@ -151,13 +149,7 @@ class group_minimizer(object):
                max_number_of_iterations,
                run_finite_differences_test = False):
     adopt_init_args(self, locals())
-    if (OLD_STYLE_TARGET):
-      self.alpha, self.beta = self.fmodel.alpha_beta_w(
-        only_if_required_by_target=True)
-      self.target_functor = None
-    else:
-      self.alpha, self.beta = None, None
-      self.target_functor = fmodel.target_functor()
+    self.target_functor = fmodel.target_functor()
     self.counter=0
     assert len(self.selections) == len(self.par_initial)
     self.par_min = copy.deepcopy(self.par_initial)
@@ -203,10 +195,7 @@ class group_minimizer(object):
       refine_occ     = self.refine_occ)
     self.fmodel.update_xray_structure(update_f_calc=True)
     tg_obj = target_and_grads(
-      fmodel=self.fmodel,
       target_functor=self.target_functor,
-      alpha=self.alpha,
-      beta=self.beta,
       selections=self.selections,
       refine_adp=self.refine_adp,
       refine_occ=self.refine_occ)
@@ -237,10 +226,7 @@ class group_minimizer(object):
          refine_occ     = self.refine_occ)
        self.fmodel.update_xray_structure(update_f_calc=True)
        t1 = target_and_grads(
-         fmodel=self.fmodel,
          target_functor=self.target_functor,
-         alpha=self.alpha,
-         beta=self.beta,
          selections=self.selections,
          refine_adp=self.refine_adp,
          refine_occ=self.refine_occ,
@@ -256,10 +242,7 @@ class group_minimizer(object):
        del par_eps
        self.fmodel.update_xray_structure(update_f_calc=True)
        t2 = target_and_grads(
-         fmodel=self.fmodel,
          target_functor=self.target_functor,
-         alpha=self.alpha,
-         beta=self.beta,
          selections=self.selections,
          refine_adp=self.refine_adp,
          refine_occ=self.refine_occ,
@@ -298,33 +281,18 @@ def apply_transformation(xray_structure,
   xray_structure.replace_scatterers(new_sc)
 
 class target_and_grads(object):
-  def __init__(self, fmodel, # OLD_STYLE_TARGET
-                     target_functor,
-                     alpha,
-                     beta,
+  def __init__(self, target_functor,
                      selections,
                      refine_adp,
                      refine_occ,
                      compute_gradients=True):
     assert [refine_adp, refine_occ].count(True) == 1
-    if (OLD_STYLE_TARGET):
-      self.f = fmodel.target_w(alpha = alpha, beta = beta)
-      if (compute_gradients):
-        target_grads_wrt_par = fmodel.gradient_wrt_atomic_parameters(
-          u_iso         = refine_adp,
-          occupancy     = refine_occ,
-          alpha         = alpha,
-          beta          = beta,
-          tan_b_iso_max = 0.0).packed()
-    else:
-      t_r = target_functor(compute_gradients=compute_gradients)
-      self.f = t_r.target_work()
-      if (compute_gradients):
-        target_grads_wrt_par = t_r.gradients_wrt_atomic_parameters(
-          u_iso=refine_adp,
-          occupancy=refine_occ,
-          tan_b_iso_max=0).packed()
+    t_r = target_functor(compute_gradients=compute_gradients)
+    self.f = t_r.target_work()
     if (compute_gradients):
+      target_grads_wrt_par = t_r.gradients_wrt_atomic_parameters(
+        u_iso=refine_adp,
+        occupancy=refine_occ).packed()
       self.grads_wrt_par = []
       for sel in selections:
         target_grads_wrt_par_sel = target_grads_wrt_par.select(sel)

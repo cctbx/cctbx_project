@@ -137,7 +137,27 @@ class target_attributes(xray.target_functors.target_attributes):
       return True
     return False
 
-class manager(object):
+class manager_mixin(object):
+
+  def target_w(self):
+    global time_target
+    timer = user_plus_sys_time()
+    result = self.target_functor()(compute_gradients=False).target_work()
+    time_target += timer.elapsed()
+    return result
+
+  def target_t(self):
+    global time_target
+    timer = user_plus_sys_time()
+    result = self.target_functor()(compute_gradients=False).target_work()
+    time_target += timer.elapsed()
+    return result
+
+  def one_time_gradients_wrt_atomic_parameters(self, **keyword_args):
+    return self.target_functor()(compute_gradients=True) \
+      .gradients_wrt_atomic_parameters(**keyword_args)
+
+class manager(manager_mixin):
 
   target_names = {
     "ls_wunit_k1": target_attributes("ls", "k1"),
@@ -612,10 +632,6 @@ class manager(object):
   def target_functor(self):
     return target_functor(manager=self)
 
-  def one_time_gradients_wrt_atomic_parameters(self, **keyword_args):
-    return self.target_functor()(compute_gradients=True) \
-      .gradients_wrt_atomic_parameters(**keyword_args)
-
   def _setup_target_functors(self, target_name):
     if (target_name is None):
       self._target_name = None
@@ -698,156 +714,6 @@ class manager(object):
         scale_factor=scale_factor)
       self.target_functor_w = self.target_functors.target_functor_w()
       self.target_functor_t = self.target_functors.target_functor_t()
-
-  def __xray_target_functor_result(self, compute_gradients = None,
-                                       alpha             = None,
-                                       beta              = None,
-                                       scale_ml          = None,
-                                       flag              = None):
-    assert compute_gradients in (True,False)
-    assert flag in ("work", "test")
-    if(flag == "work"):
-       f_model = self.f_model_w()
-    else:
-       f_model = self.f_model_t()
-    if(self.target_name in ("ml","mlhl")):
-       if(alpha is None and beta is None):
-          if(flag == "work"):
-             alpha, beta = self.alpha_beta_w()
-          else:
-             alpha, beta = self.alpha_beta_t()
-       else:
-          assert alpha.data().size() == f_model.data().size()
-          assert beta.data().size()  == f_model.data().size()
-       if (scale_ml is None):
-         scale_ml = self.scale_ml_wrapper()
-       if(flag == "work"):
-          return self.target_functor_w(f_model,
-                                       alpha.data(),
-                                       beta.data(),
-                                       scale_ml,
-                                       compute_gradients)
-       else:
-          return self.target_functor_t(f_model,
-                                       alpha.data(),
-                                       beta.data(),
-                                       scale_ml,
-                                       compute_gradients)
-    if(self.target_name.startswith("ls")):
-       if(flag == "work"):
-          return self.target_functor_w(f_model, compute_gradients)
-       else:
-          return self.target_functor_t(f_model, compute_gradients)
-    raise RuntimeError
-
-  def target_w(self, *args, **keyword_args):
-    if (len(args) != 0 or len(keyword_args) != 0):
-      raise RuntimeError("OLD_STYLE_TARGET f_model.py target_w: %s %s" % (
-        str(args), str(keyword_args)))
-    global time_target
-    timer = user_plus_sys_time()
-    result = self.__xray_target_functor_result(
-      compute_gradients = False,
-      alpha             = None,
-      beta              = None,
-      scale_ml          = None,
-      flag              = "work").target_work()
-    time_target += timer.elapsed()
-    return result
-
-  def target_t(self, *args, **keyword_args):
-    if (len(args) != 0 or len(keyword_args) != 0):
-      raise RuntimeError("OLD_STYLE_TARGET f_model.py target_t: %s %s" % (
-        str(args), str(keyword_args)))
-    global time_target
-    timer = user_plus_sys_time()
-    result = self.__xray_target_functor_result(
-      compute_gradients = False,
-      alpha             = None,
-      beta              = None,
-      scale_ml          = None,
-      flag              = "test").target_work()
-    time_target += timer.elapsed()
-    return result
-
-  def gradient_wrt_atomic_parameters(self, selection     = None,
-                                           site          = False,
-                                           u_iso         = False,
-                                           u_aniso       = False,
-                                           occupancy     = False,
-                                           alpha         = None,
-                                           beta          = None,
-                                           tan_b_iso_max = None,
-                                           u_iso_refinable_params = None):
-    raise RuntimeError("OLD_STYLE_TARGET")
-    global time_gradients_wrt_atomic_parameters
-    timer = user_plus_sys_time()
-    xrs = self.xray_structure
-    if([site, u_iso, u_aniso, occupancy].count(True) > 0):
-       tan_u_iso = False
-       param = 0
-       if(u_iso):
-          assert tan_b_iso_max is not None
-          if(tan_b_iso_max > 0.0):
-             tan_u_iso = True
-             param = int(tan_b_iso_max)
-       assert [site, u_iso, u_aniso].count(None) == 0
-       if(selection is not None):
-          xrs = self.xray_structure.deep_copy_scatterers()
-       else:
-          xrs = self.xray_structure
-       ##XXX very inefficient code:
-       #xray.set_scatterer_grad_flags(scatterers = xrs.scatterers(),
-       #                              site       = site,
-       #                              u_iso      = u_iso,
-       #                              u_aniso    = u_aniso,
-       #                              tan_u_iso  = tan_u_iso,
-       #                              param      = param)
-    #structure_factor_gradients = cctbx.xray.structure_factors.gradients(
-    #                                     miller_set    = self.f_obs_w,
-    #                                     cos_sin_table = self.sf_cos_sin_table)
-    #XXX clear with target names
-    attr = self.target_attributes()
-    if(attr.family == "ml" or attr.pseudo_ml):
-       if([alpha, beta].count(None) == 2):
-          alpha, beta = self.alpha_beta_w()
-    else:
-       assert [alpha, beta].count(None) == 2
-    if(selection is not None):
-       xrs = xrs.select(selection)
-    #XXX make it general
-    xrtfr = self.__xray_target_functor_result(compute_gradients = True,
-                                            alpha             = alpha,
-                                            beta              = beta,
-                                            scale_ml          = None,
-                                            flag              = "work")
-    if(u_iso and u_iso_refinable_params is None):
-       # XXX here is not clean too
-       if(tan_b_iso_max != 0):
-          u_iso_max = adptbx.b_as_u(tan_b_iso_max)
-          u_iso_refinable_params = flex.tan(math.pi*
-            (self.xray_structure.scatterers().extract_u_iso()/u_iso_max-1./2.))
-       if(tan_b_iso_max == 0):
-          u_iso_refinable_params = None
-    result = None
-    if(u_aniso):
-       result = self.structure_factor_gradients_w(
-         u_iso_refinable_params = None,
-         d_target_d_f_calc  = xrtfr.gradients_work() * self.core.fb_cart_w,
-         xray_structure     = xrs,
-         n_parameters       = 0,
-         miller_set         = self.f_obs_w,
-         algorithm          = self.sf_algorithm).d_target_d_u_cart()
-    else:
-       result = self.structure_factor_gradients_w(
-         u_iso_refinable_params = u_iso_refinable_params,
-         d_target_d_f_calc  = xrtfr.gradients_work() * self.core.fb_cart_w,
-         xray_structure     = xrs,
-         n_parameters       = xrs.n_parameters_XXX(),
-         miller_set         = self.f_obs_w,
-         algorithm          = self.sf_algorithm)
-    time_gradients_wrt_atomic_parameters += timer.elapsed()
-    return result
 
   def update_r_free_flags(self, r_free_flags):
     assert r_free_flags.indices().size() == self.f_obs.indices().size()
@@ -1959,6 +1825,10 @@ class target_result_mixin(object):
         occupancy=False,
         tan_b_iso_max=None,
         u_iso_refinable_params=None):
+    if (tan_b_iso_max is not None and tan_b_iso_max != 0):
+      raise RuntimeError("Not implemented:\n"
+        "  See CVS revision 1.87, 2007/03/03 01:53:05\n"
+        "  method: manager.gradient_wrt_atomic_parameters()")
     global time_gradients_wrt_atomic_parameters
     timer = user_plus_sys_time()
     manager = self.manager

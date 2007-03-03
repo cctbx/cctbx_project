@@ -11,8 +11,6 @@ from cctbx import adptbx
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 
-OLD_STYLE_TARGET = False # XXX
-
 time_uanisos_from_tls                              = 0.0
 time_tls_from_uanisos                              = 0.0
 time_update_xray_structure_with_tls                = 0.0
@@ -288,13 +286,7 @@ class tls_xray_target_minimizer(object):
                                   u_aniso     = True)
     if(self.run_finite_differences_test): self.correct_adp = False
     self.fmodel_copy = self.fmodel.deep_copy()
-    if (OLD_STYLE_TARGET):
-      self.alpha, self.beta = self.fmodel.alpha_beta_w(
-        only_if_required_by_target=True)
-      self.target_functor = None
-    else:
-      self.alpha, self.beta = None, None
-      self.target_functor = self.fmodel_copy.target_functor()
+    self.target_functor = self.fmodel_copy.target_functor()
     self.run_finite_differences_test_counter = 0
     self.T_initial = []
     self.L_initial = []
@@ -367,19 +359,12 @@ class tls_xray_target_minimizer(object):
       tlsos          = tlsos,
       correct_adp    = self.correct_adp)
     self.fmodel_copy.update_xray_structure(update_f_calc=True)
-    if (OLD_STYLE_TARGET):
-      t_r = None
-      self.f = self.fmodel_copy.target_w(alpha = self.alpha, beta = self.beta)
-    else:
-      t_r = self.target_functor(compute_gradients=True)
-      self.f = t_r.target_work()
+    t_r = self.target_functor(compute_gradients=True)
+    self.f = t_r.target_work()
     grad_manager = tls_xray_grads(
-      fmodel=self.fmodel_copy,
       target_result=t_r,
       selections=self.selections,
-      tlsos=tlsos,
-      alpha=self.alpha,
-      beta=self.beta)
+      tlsos=tlsos)
     self.g = self.pack(grad_manager.grad_T,
                        grad_manager.grad_L,
                        grad_manager.grad_S)
@@ -388,7 +373,6 @@ class tls_xray_target_minimizer(object):
        tolerance = 1.e-3
        self.run_finite_differences_test_counter += 1
        GT,GL,GS = finite_differences_grads_of_xray_target_wrt_tls(
-         fmodel=self.fmodel_copy,
          target_functor=self.target_functor,
          T=self.T_min,
          L=self.L_min,
@@ -419,23 +403,19 @@ class tls_xray_target_minimizer(object):
 
 class tls_xray_grads(object):
 
-   def __init__(self, fmodel, target_result, selections, tlsos, alpha, beta):
+   def __init__(self, target_result, selections, tlsos):
      self.grad_T = []
      self.grad_L = []
      self.grad_S = []
-     if (OLD_STYLE_TARGET):
-       d_target_d_uaniso = fmodel.gradient_wrt_atomic_parameters(
-         u_aniso=True, alpha=alpha, beta=beta)
-     else:
-       d_target_d_uaniso = target_result.gradients_wrt_atomic_parameters(
-         u_aniso=True)
+     d_target_d_uaniso = target_result.gradients_wrt_atomic_parameters(
+       u_aniso=True)
      for sel, tlso in zip(selections, tlsos):
          d_target_d_tls_manager = d_target_d_tls(
-            sites             = fmodel.xray_structure.sites_cart().select(sel),
-            origin            = tlso.origin,
-            d_target_d_uaniso = d_target_d_uaniso.select(sel),
-            scale_l_and_s     = True,# False will brake f.d. test
-            use_trace_s_zero_constraint = True)
+           sites=target_result.manager.xray_structure.sites_cart().select(sel),
+           origin            = tlso.origin,
+           d_target_d_uaniso = d_target_d_uaniso.select(sel),
+           scale_l_and_s     = True,# False will brake f.d. test
+           use_trace_s_zero_constraint = True)
          self.grad_T.append(list(d_target_d_tls_manager.grad_T()))
          self.grad_L.append(list(d_target_d_tls_manager.grad_L()))
          self.grad_S.append(list(d_target_d_tls_manager.grad_S()))
@@ -730,14 +710,14 @@ def generate_tlsos(selections,
   time_generate_tlsos += (t2 - t1)
   return tlsos
 
-def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
-                                                    target_functor,
+def finite_differences_grads_of_xray_target_wrt_tls(target_functor,
                                                     T,
                                                     L,
                                                     S,
                                                     origins,
                                                     selections,
                                                     delta=0.00001):
+  fmodel = target_functor.manager
   derivative_T = []
   for j in xrange(len(T)):
     dT = []
@@ -762,10 +742,7 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
           tlsos          = tlsos,
           correct_adp    = False)
         fmodel.update_xray_structure(update_f_calc=True)
-        if (OLD_STYLE_TARGET):
-          t_w = fmodel.target_w()
-        else:
-          t_w = target_functor(compute_gradients=False).target_work()
+        t_w = target_functor(compute_gradients=False).target_work()
         #
         target_values.append(t_w)
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -796,10 +773,7 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
           tlsos          = tlsos,
           correct_adp    = False)
         fmodel.update_xray_structure(update_f_calc=True)
-        if (OLD_STYLE_TARGET):
-          t_w = fmodel.target_w()
-        else:
-          t_w = target_functor(compute_gradients=False).target_work()
+        t_w = target_functor(compute_gradients=False).target_work()
         #
         target_values.append(t_w)
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
@@ -830,10 +804,7 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
           tlsos          = tlsos,
           correct_adp    = False)
         fmodel.update_xray_structure(update_f_calc=True)
-        if (OLD_STYLE_TARGET):
-          t_w = fmodel.target_w()
-        else:
-          t_w = target_functor(compute_gradients=False).target_work()
+        t_w = target_functor(compute_gradients=False).target_work()
         #
         target_values.append(t_w)
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
