@@ -11,6 +11,8 @@ from cctbx import adptbx
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 
+OLD_STYLE_TARGET = False # XXX
+
 time_uanisos_from_tls                              = 0.0
 time_tls_from_uanisos                              = 0.0
 time_update_xray_structure_with_tls                = 0.0
@@ -285,8 +287,14 @@ class tls_xray_target_minimizer(object):
     xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
                                   u_aniso     = True)
     if(self.run_finite_differences_test): self.correct_adp = False
-    self.alpha, self.beta = self.fmodel.alpha_beta_w(
-      only_if_required_by_target=True)
+    self.fmodel_copy = self.fmodel.deep_copy()
+    if (OLD_STYLE_TARGET):
+      self.alpha, self.beta = self.fmodel.alpha_beta_w(
+        only_if_required_by_target=True)
+      self.target_functor = None
+    else:
+      self.alpha, self.beta = None, None
+      self.target_functor = self.fmodel_copy.target_functor()
     self.run_finite_differences_test_counter = 0
     self.T_initial = []
     self.L_initial = []
@@ -297,7 +305,6 @@ class tls_xray_target_minimizer(object):
         self.L_initial.append(tlso_.l)
         self.S_initial.append(tlso_.s)
         self.origins.append(tlso_.origin)
-    self.fmodel_copy = self.fmodel.deep_copy()
     self.counter = 0
     self.n_groups = len(self.T_initial)
     self.dim_T = len(self.T_initial[0])
@@ -354,19 +361,25 @@ class tls_xray_target_minimizer(object):
                            T              = self.T_min,
                            L              = self.L_min,
                            S              = self.S_min)
-    new_xrs = update_xray_structure_with_tls(
-                              xray_structure = self.fmodel_copy.xray_structure,
-                              selections     = self.selections,
-                              tlsos          = tlsos,
-                              correct_adp    = self.correct_adp)
-    self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                           update_f_calc  = True)
-    grad_manager = tls_xray_grads(fmodel     = self.fmodel_copy,
-                                  selections = self.selections,
-                                  tlsos      = tlsos,
-                                  alpha      = self.alpha,
-                                  beta       = self.beta)
-    self.f = self.fmodel_copy.target_w(alpha = self.alpha, beta = self.beta)
+    update_xray_structure_with_tls(
+      xray_structure = self.fmodel_copy.xray_structure,
+      selections     = self.selections,
+      tlsos          = tlsos,
+      correct_adp    = self.correct_adp)
+    self.fmodel_copy.update_xray_structure(update_f_calc=True)
+    if (OLD_STYLE_TARGET):
+      t_r = None
+      self.f = self.fmodel_copy.target_w(alpha = self.alpha, beta = self.beta)
+    else:
+      t_r = self.target_functor(compute_gradients=True)
+      self.f = t_r.target_work()
+    grad_manager = tls_xray_grads(
+      fmodel=self.fmodel_copy,
+      target_result=t_r,
+      selections=self.selections,
+      tlsos=tlsos,
+      alpha=self.alpha,
+      beta=self.beta)
     self.g = self.pack(grad_manager.grad_T,
                        grad_manager.grad_L,
                        grad_manager.grad_S)
@@ -375,13 +388,14 @@ class tls_xray_target_minimizer(object):
        tolerance = 1.e-3
        self.run_finite_differences_test_counter += 1
        GT,GL,GS = finite_differences_grads_of_xray_target_wrt_tls(
-                                                 fmodel     = self.fmodel_copy,
-                                                 T          = self.T_min,
-                                                 L          = self.L_min,
-                                                 S          = self.S_min,
-                                                 origins    = self.origins,
-                                                 selections = self.selections,
-                                                 delta      = 0.00001)
+         fmodel=self.fmodel_copy,
+         target_functor=self.target_functor,
+         T=self.T_min,
+         L=self.L_min,
+         S=self.S_min,
+         origins=self.origins,
+         selections=self.selections,
+         delta=0.00001)
        format   = "%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
        formats="%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f %10.6f"
        for m1,m2 in zip(grad_manager.grad_T, GT):
@@ -404,13 +418,17 @@ class tls_xray_target_minimizer(object):
     return self.f, self.g
 
 class tls_xray_grads(object):
-   def __init__(self, fmodel, selections, tlsos, alpha, beta):
+
+   def __init__(self, fmodel, target_result, selections, tlsos, alpha, beta):
      self.grad_T = []
      self.grad_L = []
      self.grad_S = []
-     d_target_d_uaniso = fmodel.gradient_wrt_atomic_parameters(u_aniso = True,
-                                                               alpha   = alpha,
-                                                               beta    = beta)
+     if (OLD_STYLE_TARGET):
+       d_target_d_uaniso = fmodel.gradient_wrt_atomic_parameters(
+         u_aniso=True, alpha=alpha, beta=beta)
+     else:
+       d_target_d_uaniso = target_result.gradients_wrt_atomic_parameters(
+         u_aniso=True)
      for sel, tlso in zip(selections, tlsos):
          d_target_d_tls_manager = d_target_d_tls(
             sites             = fmodel.xray_structure.sites_cart().select(sel),
@@ -435,8 +453,6 @@ def update_xray_structure_with_tls(xray_structure,
                                          u_cart_from_tls)
   if(correct_adp): xray_structure.tidy_us(u_min = 1.e-6)
   time_update_xray_structure_with_tls += timer.elapsed()
-  return xray_structure
-
 
 def split_u(xray_structure, tls_selections, offset):
   global time_split_u
@@ -660,10 +676,10 @@ def make_tlso_compatible_with_u_positive_definite(
   t1 = time.time()
   if(out is None): out = sys.stdout
   for i in range(1, max_iterations+1):
-      xray_structure = update_xray_structure_with_tls(
-                                  xray_structure = xray_structure,
-                                  selections     = selections,
-                                  tlsos          = tlsos)
+      update_xray_structure_with_tls(
+        xray_structure = xray_structure,
+        selections     = selections,
+        tlsos          = tlsos)
       ipd_1 = xray_structure.is_positive_definite_u()
       if(i == 1 or i == max_iterations):
          xray_structure.show_u_statistics(out = out)
@@ -715,13 +731,13 @@ def generate_tlsos(selections,
   return tlsos
 
 def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
+                                                    target_functor,
                                                     T,
                                                     L,
                                                     S,
                                                     origins,
                                                     selections,
                                                     delta=0.00001):
-  fmodel_copy = fmodel.deep_copy()
   derivative_T = []
   for j in xrange(len(T)):
     dT = []
@@ -740,16 +756,18 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
                               l      = Li,
                               s      = Si,
                               origin = origini))
-        new_xrs = update_xray_structure_with_tls(
-                                  xray_structure = fmodel_copy.xray_structure,
-                                  selections     = selections,
-                                  tlsos          = tlsos,
-                                  correct_adp    = False)
-        fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                          update_f_calc  = True)
-        target_result = fmodel_copy.target_w()
+        update_xray_structure_with_tls(
+          xray_structure = fmodel.xray_structure,
+          selections     = selections,
+          tlsos          = tlsos,
+          correct_adp    = False)
+        fmodel.update_xray_structure(update_f_calc=True)
+        if (OLD_STYLE_TARGET):
+          t_w = fmodel.target_w()
+        else:
+          t_w = target_functor(compute_gradients=False).target_work()
         #
-        target_values.append(target_result)
+        target_values.append(t_w)
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       dT.append(derivative)
     derivative_T.append(dT)
@@ -772,16 +790,18 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
                               l      = Li,
                               s      = Si,
                               origin = origini))
-        new_xrs = update_xray_structure_with_tls(
-                                  xray_structure = fmodel_copy.xray_structure,
-                                  selections     = selections,
-                                  tlsos          = tlsos,
-                                  correct_adp    = False)
-        fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                          update_f_calc  = True)
-        target_result = fmodel_copy.target_w()
+        update_xray_structure_with_tls(
+          xray_structure = fmodel.xray_structure,
+          selections     = selections,
+          tlsos          = tlsos,
+          correct_adp    = False)
+        fmodel.update_xray_structure(update_f_calc=True)
+        if (OLD_STYLE_TARGET):
+          t_w = fmodel.target_w()
+        else:
+          t_w = target_functor(compute_gradients=False).target_work()
         #
-        target_values.append(target_result)
+        target_values.append(t_w)
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       dL.append(derivative)
     derivative_L.append(dL)
@@ -804,16 +824,18 @@ def finite_differences_grads_of_xray_target_wrt_tls(fmodel,
                               l      = Li,
                               s      = Si,
                               origin = origini))
-        new_xrs = update_xray_structure_with_tls(
-                                  xray_structure = fmodel_copy.xray_structure,
-                                  selections     = selections,
-                                  tlsos          = tlsos,
-                                  correct_adp    = False)
-        fmodel_copy.update_xray_structure(xray_structure = new_xrs,
-                                          update_f_calc  = True)
-        target_result = fmodel_copy.target_w()
+        update_xray_structure_with_tls(
+          xray_structure = fmodel.xray_structure,
+          selections     = selections,
+          tlsos          = tlsos,
+          correct_adp    = False)
+        fmodel.update_xray_structure(update_f_calc=True)
+        if (OLD_STYLE_TARGET):
+          t_w = fmodel.target_w()
+        else:
+          t_w = target_functor(compute_gradients=False).target_work()
         #
-        target_values.append(target_result)
+        target_values.append(t_w)
       derivative = (target_values[1] - target_values[0]) / (2 * delta)
       dS.append(derivative)
     derivative_S.append(dS)
