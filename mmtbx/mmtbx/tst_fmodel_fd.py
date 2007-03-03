@@ -11,6 +11,8 @@ import random
 import sys, math
 from cctbx import xray
 
+OLD_STYLE_TARGET = False # XXX
+
 random.seed(0)
 flex.set_random_seed(0)
 
@@ -25,12 +27,12 @@ class mask_params:
 def finite_differences_site(fmodel, eps=1.e-5):
   structure = fmodel.xray_structure
   unit_cell = structure.unit_cell()
-  if (fmodel.target_name != "ml_sad"):
+  if (OLD_STYLE_TARGET and fmodel.target_name != "ml_sad"):
     gs_old = flex.double()
+    alpha, beta = fmodel.alpha_beta_w(only_if_required_by_target=True)
   else:
     gs_old = None
   gs_new = flex.double()
-  alpha, beta = fmodel.alpha_beta_w(only_if_required_by_target=True)
   target_functor = fmodel.target_functor()
   for i_scatterer in xrange(structure.scatterers().size()):
     sc = structure.scatterers()[i_scatterer]
@@ -134,7 +136,7 @@ def exercise(space_group_info,
           xray.set_scatterer_grad_flags(
             scatterers=fmodel.xray_structure.scatterers(),
             site=True)
-          if (fmodel.target_name != "ml_sad"):
+          if (OLD_STYLE_TARGET and fmodel.target_name != "ml_sad"):
             gs_old = fmodel.gradient_wrt_atomic_parameters(site=True).packed()
           else:
             gs_old = None
