@@ -1781,7 +1781,7 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         data = -gradients).common_set( self.f_obs )
       if map_type == "m_gradient":
         # get the FOMs please
-        m = sigmaa_object.fom().common_set(self.f_obs).data()
+        m = self.sigmaa_object().fom().common_set(self.f_obs).data()
         gradients = gradients.customized_copy(
           data = gradients.data()*m )
 
