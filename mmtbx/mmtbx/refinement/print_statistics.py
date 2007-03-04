@@ -260,8 +260,9 @@ class refinement_monitor(object):
     ###
     self.r_works         .append(fmodel.r_work()                  )
     self.r_frees         .append(fmodel.r_free()                  )
-    self.targets_w       .append(fmodel.target_w()                )
-    self.targets_t       .append(fmodel.target_t()                )
+    t_r = fmodel.target_functor()(compute_gradients=False)
+    self.targets_w       .append(t_r.target_work())
+    self.targets_t       .append(t_r.target_test())
     self.k_sols          .append(fmodel.k_sol_b_sol()[0]          )
     self.b_sols          .append(fmodel.k_sol_b_sol()[1]          )
     self.b_anisos        .append(fmodel.b_cart()                  )
@@ -432,12 +433,14 @@ class refinement_monitor(object):
       " R-factors, x-ray target values and norm of gradient of x-ray target"
     print >> out, remark + \
       " stage     r-work r-free  xray_target_w  xray_target_t"
-    format = remark + "%9s  %6.4f %6.4f %14.6e %14.6e"
+    format = remark + "%9s  %6.4f %6.4f %14.6e %14s"
     for a,b,c,d,e in zip(self.steps,
                            self.r_works,
                            self.r_frees,
                            self.targets_w,
                            self.targets_t):
+        if (e is None): e = "None"
+        else:           e = "%14.6e" % e
         print >> out, format % (a,b,c,d,e)
     print >> out, remark + separator
     #
