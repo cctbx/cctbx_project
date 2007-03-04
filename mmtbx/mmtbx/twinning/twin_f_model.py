@@ -788,10 +788,10 @@ class bulk_solvent_scaling_manager(object):
     self.scaling_parameters.u_sol     = u_sol
     self.twin_fraction.twin_fraction  = self.best_twin_fraction.twin_fraction
 
-class target_attributes(xray.target_functors.target_attributes):
+class target_attributes(mmtbx.f_model.target_attributes):
 
   def __init__(self):
-    xray.target_functors.target_attributes.__init__(self, family="ls")
+    mmtbx.f_model.target_attributes.__init__(self, family="ls")
     self.twin = "amplitudes"
     self.pseudo_ml = False
 

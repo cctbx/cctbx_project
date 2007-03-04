@@ -123,7 +123,14 @@ class set_core(object):
     assert len(state) == 1
     self.__init__(*state["args"])
 
-class target_attributes(xray.target_functors.target_attributes):
+class target_attributes(object):
+
+  def __init__(self,
+        family,
+        specialization=None,
+        requires_external_scale=False):
+    adopt_init_args(self, locals())
+    assert self.validate()
 
   def validate(self):
     if (self.family == "lsm"):
@@ -131,11 +138,19 @@ class target_attributes(xray.target_functors.target_attributes):
       self.pseudo_ml = True
     else:
       self.pseudo_ml = False
-    if (xray.target_functors.target_attributes.validate(self)):
-      return True
-    if (self.family == "ml" and self.specialization == "sad"):
-      return True
+    if (self.family == "ls"):
+      return self.specialization in [None, "k1", "k2"]
+    if (self.family == "ml"):
+      return self.specialization in [None, "hl", "sad"]
     return False
+
+  def requires_experimental_phases(self):
+    return (self.family == "ml" and self.specialization == "hl")
+
+  def ls_apply_scale_to_f_calc(self):
+    if (self.family == "ls"):
+      return (self.specialization == "k1")
+    return None
 
 class manager_mixin(object):
 
@@ -281,7 +296,7 @@ class manager(manager_mixin):
     if(self.sf_algorithm not in ("fft", "direct")):
        raise RuntimeError("Unknown s.f. calculation method: %s"%
                                                              self.sf_algorithm)
-    self._setup_target_functors(target_name=target_name)
+    self.set_target_name(target_name=target_name)
 
   def update_core(self, f_calc        = None,
                         f_mask        = None,
@@ -632,88 +647,9 @@ class manager(manager_mixin):
   def target_functor(self):
     return target_functor(manager=self)
 
-  def _setup_target_functors(self, target_name):
-    if (target_name is None):
-      self._target_name = None
-      return
+  def set_target_name(self, target_name):
     if (target_name == "ls"): target_name = "ls_wunit_k1"
     self._target_name = target_name
-    attr = self.target_attributes()
-    if (attr.family == "ml"):
-      f_obs = self.f_obs
-      weights = None
-      scale_factor = 0
-    elif (attr.pseudo_ml):
-      f_obs, weights = self.f_star_w_star()
-      weights = weights.data()
-      if   (target_name == "lsm_k1"):
-        scale_factor = 0
-      elif (target_name == "lsm_k2"):
-        scale_factor = 0
-      elif (target_name == "lsm_k1ask3_fixed"):
-        scale_factor = self.scale_k3_w()
-      elif (target_name == "lsm_k1_fixed"):
-        scale_factor = self.scale_k1_w()
-      elif (target_name == "lsm_kunit"):
-        scale_factor = 1.0
-      else:
-        raise RuntimeError
-    else:
-      f_obs = self.f_obs
-      if (target_name.startswith("ls_wunit_")):
-        weights = flex.double(self.f_obs.data().size(), 1.0)
-        if   (target_name == "ls_wunit_k1"):
-          scale_factor = 0
-        elif (target_name == "ls_wunit_k1_fixed"):
-          scale_factor = self.scale_k1_w()
-        elif (target_name == "ls_wunit_k2"):
-          scale_factor = 0
-        elif (target_name == "ls_wunit_kunit"):
-          scale_factor = 1.0
-        elif (target_name == "ls_wunit_k1ask3_fixed"):
-          scale_factor = self.scale_k3_w()
-        else:
-          raise RuntimeError
-      elif (target_name.startswith("ls_wexp_")):
-        weights = ls_sigma_weights(self.f_obs)
-        if   (target_name == "ls_wexp_k1"):
-          scale_factor = 0
-        elif (target_name == "ls_wexp_k2"):
-          scale_factor = 0
-        elif (target_name == "ls_wexp_kunit"):
-          scale_factor = 1.0
-        else:
-          raise RuntimeError
-      elif (target_name.startswith("ls_wff_")):
-        weights = ls_ff_weights(self.f_obs, "N", 25.0)
-        if   (target_name == "ls_wff_k1"):
-          scale_factor = 0
-        elif (target_name == "ls_wff_k1_fixed"):
-          scale_factor = self.scale_k1_w()
-        elif (target_name == "ls_wff_k1ask3_fixed"):
-          scale_factor = self.scale_k3_w()
-        elif (target_name == "ls_wff_k2"):
-          scale_factor = 0
-        elif (target_name == "ls_wff_kunit"):
-          scale_factor = 1.0
-        else:
-          raise RuntimeError
-      else:
-        raise RuntimeError
-    if (attr.specialization == "sad"): # XXX
-      self.target_functors = None
-      self.target_functor_w = None
-      self.target_functor_t = None
-    else:
-      self.target_functors = xray.target_functors.manager(
-        target_attributes=attr,
-        f_obs=f_obs,
-        r_free_flags=self.r_free_flags,
-        experimental_phases=self.abcd,
-        weights=weights,
-        scale_factor=scale_factor)
-      self.target_functor_w = self.target_functors.target_functor_w()
-      self.target_functor_t = self.target_functors.target_functor_t()
 
   def update_r_free_flags(self, r_free_flags):
     assert r_free_flags.indices().size() == self.f_obs.indices().size()
@@ -796,7 +732,7 @@ class manager(manager_mixin):
       self.sf_algorithm = sf_algorithm
       self.update_xray_structure(update_f_calc  = True)
     if(target_name is not None):
-      self._setup_target_functors(target_name=target_name)
+      self.set_target_name(target_name=target_name)
     if(abcd is not None):
       self.abcd = abcd
     if(alpha_beta_params is not None):
@@ -1493,8 +1429,6 @@ class manager(manager_mixin):
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart())
     b_iso  = n_as_s("%7.2f",self.b_iso())
     err    = n_as_s("%6.2f",self.model_error_ml())
-    try:    target_work = n_as_s("%.4g",self.target_w())
-    except: target_work = str(None)
     line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
            "   Bsol= "+b_sol+"   scale= "+scale
     np = 79 - (len(line) + 1)
@@ -1513,8 +1447,7 @@ class manager(manager_mixin):
     line5 = line5 + " "*np + "|"
     print >> out, line5
     print >> out, "| "+"  "*38+"|"
-    line6="| Target ("+self.target_name+")= "+target_work+\
-          " | ML estimate for coordinates error: "+err+" A"
+    line6="| maximum likelihood estimate for coordinate error: "+err+" A"
     np = 79 - (len(line6) + 1)
     line6 = line6 + " "*np + "|"
     print >> out, line6
@@ -1616,8 +1549,7 @@ class manager(manager_mixin):
                                           max_number_of_bins  = 30,
                                           out=None):
     statistics_in_resolution_bins(
-      fmodel          = self,
-      target_functors = self.target_functors,
+      target_functor = self.target_functor(),
       free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins  = max_number_of_bins,
       out=out)
@@ -1709,6 +1641,7 @@ class phaser_sad_target_functor(object):
     gradients_work = rso.gradients()
     target_test = rso.functional(use_working_set=False)
     return xray.targets_common_results(
+      target_per_reflection=flex.double(),
       target_work=target_work,
       target_test=target_test,
       gradients_work=gradients_work.data())
@@ -1870,6 +1803,9 @@ class target_result(target_result_mixin):
     self.manager = manager
     self.core_result = core_result
 
+  def target_per_reflection(self):
+    return self.core_result.target_per_reflection()
+
   def target_work(self):
     return self.core_result.target_work()
 
@@ -1884,14 +1820,14 @@ class target_result(target_result_mixin):
     return self.manager.f_obs_w.array(
       data=self.core_result.gradients_work() * self.manager.core.fb_cart_w)
 
-def statistics_in_resolution_bins(fmodel,
-                                  target_functors,
+def statistics_in_resolution_bins(target_functor,
                                   free_reflections_per_bin,
                                   max_number_of_bins,
                                   out=None):
   global time_show
   timer = user_plus_sys_time()
   if(out is None): out = sys.stdout
+  fmodel = target_functor.manager
   fo_t = fmodel.f_obs_t
   fc_t = fmodel.f_model_t()
   fo_w = fmodel.f_obs_w
@@ -1909,6 +1845,11 @@ def statistics_in_resolution_bins(fmodel,
   alpha_t.use_binning_of(fo_t)
   beta_w.use_binning_of(fo_t)
   beta_t.use_binning_of(fo_t)
+  target_result = target_functor(compute_gradients=False)
+  tpr = target_result.target_per_reflection()
+  if (tpr.size() != 0):
+    tpr_w = tpr.select(fmodel.work)
+    tpr_t = tpr.select(fmodel.test)
   print >> out, "|"+"-"*77+"|"
   print >> out, "| Bin     Resolution   Compl.  No. Refl.    R-factors          Targets        |"
   print >> out, "|number     range              work test   work   test        work        test|"
@@ -1925,36 +1866,22 @@ def statistics_in_resolution_bins(fmodel,
     sel_beta_t  = beta_t.select(sel_t)
     sel_alpha_w = alpha_w.select(sel_w)
     sel_beta_w  = beta_w.select(sel_w)
-    if (target_functors is not None):
-      xray_target_functor_w = target_functors.target_functor_w(selection = sel_w)
-      xray_target_functor_t = target_functors.target_functor_t(selection = sel_t)
+    if (tpr.size() == 0):
+      sel_tpr_w_mean = None
+      sel_tpr_t_mean = None
+    else:
+      sel_tpr_w_mean = flex.mean_default(tpr_w.select(sel_w), None)
+      sel_tpr_t_mean = flex.mean_default(tpr_t.select(sel_t), None)
+    if (sel_tpr_w_mean is None):
+      target_w = "%11s" % "None"
+    else:
+      target_w = "%11.5g" % sel_tpr_w_mean
+    if (sel_tpr_t_mean is None):
+      target_t = "%11s" % "None"
+    else:
+      target_t = "%11.5g" % sel_tpr_t_mean
     d_max_,d_min_ = sel_fo_all.d_max_min()
     ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
-    if(fmodel.target_attributes().family == "ls"):
-      target_w = "%11.5g" % xray_target_functor_w(sel_fc_w, False).target_work()
-      target_t = "%11.5g" % xray_target_functor_t(sel_fc_t, False).target_work()
-    elif (fmodel.target_name == "ml_sad"):
-      target_w = "%11s" % "None"
-      target_t = "%11s" % "None"
-    elif(fmodel.target_name in ["ml", "mlhl"]):
-      if (sel_fc_w.indices().size() != 0):
-        target_w = "%11.5g" % xray_target_functor_w(
-          sel_fc_w,
-          sel_alpha_w.data(),
-          sel_beta_w.data(),
-          1.0,
-          False).target_work()
-      else:
-        target_w = "%11s" % "None"
-      if (sel_fc_t.indices().size() != 0):
-        target_t = "%11.5g" % xray_target_functor_t(
-          sel_fc_t,
-          sel_alpha_t.data(),
-          sel_beta_t.data(),
-          1.0,
-          False).target_work()
-      else:
-        target_t = "%11s" % "None"
     nw = sel_fo_w.data().size()
     nt = sel_fo_t.data().size()
     if (nw != 0):
