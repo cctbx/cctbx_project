@@ -1362,16 +1362,20 @@ def exercise_asu_mappings():
 
 def exercise_targets_common_results():
   r = xray.targets_common_results(
+    target_per_reflection=flex.double([1,2,3]),
     target_work=13,
     target_test=None,
     gradients_work=flex.complex_double([1+2j,2+3j,3-4j]))
+  assert approx_equal(r.target_per_reflection(), [1,2,3])
   assert approx_equal(r.target_work(), 13)
   assert r.target_test() is None
   assert approx_equal(r.gradients_work(), [1+2j,2+3j,3-4j])
   r = xray.targets_common_results(
+    target_per_reflection=flex.double(),
     target_work=42,
     target_test=53,
     gradients_work=flex.complex_double())
+  assert r.target_per_reflection().size() == 0
   assert approx_equal(r.target_work(), 42)
   assert approx_equal(r.target_test(), 53)
   assert r.gradients_work().size() == 0
@@ -1392,6 +1396,7 @@ def exercise_targets_ls_with_scale():
     scale_factor=0)
   assert ls.apply_scale_to_f_calc()
   assert approx_equal(ls.scale_factor(), 1)
+  assert approx_equal(ls.target_per_reflection(), [0]*5)
   assert approx_equal(ls.target_work(), 0)
   assert ls.target_test() is None
   assert ls.gradients_work().size() == 0
@@ -1406,6 +1411,7 @@ def exercise_targets_ls_with_scale():
     compute_gradients=False,
     scale_factor=2.0)
   assert approx_equal(ls.scale_factor(), 2.0)
+  assert approx_equal(ls.target_per_reflection(), [1,4,9,16,25])
   assert approx_equal(ls.target_work(),1.0)
   assert ls.gradients_work().size() == 0
   #
@@ -1619,7 +1625,15 @@ def exercise_maximum_likelihood_targets():
         epsilons=epsilons,
         centric_flags=centric_flags,
         compute_gradients=compute_gradients)
-      tw, tt, gw = ml.target_work(), ml.target_test(), ml.gradients_work()
+      tpr = ml.target_per_reflection()
+      tw = ml.target_work()
+      tt = ml.target_test()
+      gw = ml.gradients_work()
+      assert approx_equal(tpr, [
+        259.57027227308151, 30872.934956654299, 4157.3629318162803,
+        13.260741195206734, 27.831255194364076, 43149.780572387972,
+        3.3949285154155859, 5294.345206664615, 1838.4876581905569,
+        64384.962967657091, 986.06706016214844, 7187.3520116172294])
       if (not compute_gradients):
         assert gw.size() == 0
       if (rff is None):
@@ -1658,9 +1672,10 @@ def exercise_maximum_likelihood_targets():
           epsilons=epsilons.select(~rff),
           centric_flags=centric_flags.select(~rff),
           compute_gradients=compute_gradients)
-        assert approx_equal(mlw.target_work(), ml.target_work())
+        assert approx_equal(mlw.target_per_reflection(), tpr.select(~rff))
+        assert approx_equal(mlw.target_work(), tw)
         assert mlw.target_test() is None
-        assert approx_equal(mlw.gradients_work(), ml.gradients_work())
+        assert approx_equal(mlw.gradients_work(), gw)
       ml = xray.targets_maximum_likelihood_criterion_hl(
         f_obs=f_obs,
         r_free_flags=rff,
@@ -1672,7 +1687,15 @@ def exercise_maximum_likelihood_targets():
         centric_flags=centric_flags,
         integration_step_size=5,
         compute_gradients=compute_gradients)
-      tw, tt, gw = ml.target_work(), ml.target_test(), ml.gradients_work()
+      tpr = ml.target_per_reflection()
+      tw = ml.target_work()
+      tt = ml.target_test()
+      gw = ml.gradients_work()
+      assert approx_equal(tpr, [
+        259.4738891742619, 30871.95384262779, 4156.0852750170579,
+        11.907959982009571, 28.697266914523933, 43148.119151934428,
+        2.9161647472283221, 5293.4083862783209, 1838.4175626851754,
+        64386.490862538834, 983.86578354410517, 7186.7802434227397])
       if (not compute_gradients):
         assert gw.size() == 0
       if (rff is None):
@@ -1716,9 +1739,10 @@ def exercise_maximum_likelihood_targets():
           centric_flags=centric_flags.select(~rff),
           integration_step_size=5,
           compute_gradients=compute_gradients)
-        assert approx_equal(mlw.target_work(), ml.target_work())
+        assert approx_equal(mlw.target_per_reflection(), tpr.select(~rff))
+        assert approx_equal(mlw.target_work(), tw)
         assert mlw.target_test() is None
-        assert approx_equal(mlw.gradients_work(), ml.gradients_work())
+        assert approx_equal(mlw.gradients_work(), gw)
 
 def run():
   exercise_scatterer_flags()

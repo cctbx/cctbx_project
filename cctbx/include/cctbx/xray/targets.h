@@ -24,15 +24,31 @@ namespace targets {
         target_work_(0)
       {}
 
+      common_results(std::size_t n_refl)
+      :
+        target_work_(0),
+        target_per_reflection_(n_refl, af::init_functor_null<double>())
+      {}
+
       common_results(
+        af::shared<double> const& target_per_reflection,
         double target_work,
         boost::optional<double> const& target_test,
         af::shared<std::complex<double> > const& gradients_work)
       :
+        target_per_reflection_(target_per_reflection),
         target_work_(target_work),
         target_test_(target_test),
         gradients_work_(gradients_work)
-      {}
+      {
+        if (   target_per_reflection.size() != 0
+            && gradients_work.size() != 0) {
+          CCTBX_ASSERT(gradients_work.size() <= target_per_reflection.size());
+        }
+      }
+
+      af::shared<double> const&
+      target_per_reflection() const { return target_per_reflection_; }
 
       double
       target_work() const { return target_work_; }
@@ -44,6 +60,7 @@ namespace targets {
       gradients_work() { return gradients_work_; }
 
     protected:
+      af::shared<double> target_per_reflection_;
       double target_work_;
       boost::optional<double> target_test_;
       af::shared<std::complex<double> > gradients_work_;
@@ -62,6 +79,7 @@ namespace targets {
         bool compute_gradients,
         double scale_factor)
       :
+        common_results(f_obs.size()),
         apply_scale_to_f_calc_(apply_scale_to_f_calc),
         compute_scale_using_all_data_(compute_scale_using_all_data)
       {
@@ -127,8 +145,10 @@ namespace targets {
             delta = scale_factor_ * f_obs[i] - fc_abs;
           }
           double wd =  weights[i] * delta;
+          double t = wd * delta;
+          target_per_reflection_[i] = t;
           if (!rff || !rff[i]) {
-            target_work_ += wd * delta;
+            target_work_ += t;
             if (compute_gradients) {
               if (fc_abs == 0) {
                 gradients_work_.push_back(std::complex<double>(0,0));
@@ -140,7 +160,7 @@ namespace targets {
             }
           }
           else {
-            target_test += wd * delta;
+            target_test += t;
           }
         }
         target_work_ /= sum_w_fo_sq_work;
@@ -710,6 +730,8 @@ namespace targets {
         af::const_ref<int> const& epsilons,
         af::const_ref<bool> const& centric_flags,
         bool compute_gradients)
+      :
+        common_results(f_obs.size())
       {
         CCTBX_ASSERT(r_free_flags.size() == 0
                   || r_free_flags.size() == f_obs.size());
@@ -736,6 +758,7 @@ namespace targets {
           bool c = centric_flags[i];
           double t = maximum_likelihood_target_one_h(
             fo, fc, a, b, scale_factor, e, c);
+          target_per_reflection_[i] = t;
           if (rffs.is_work_refl(i)) {
             target_work_ += t;
             if (compute_gradients) {
@@ -950,6 +973,8 @@ namespace targets {
         af::const_ref<bool> const& centric_flags,
         double integration_step_size,
         bool compute_gradients)
+      :
+        common_results(f_obs.size())
       {
         CCTBX_ASSERT(r_free_flags.size() == 0
                   || r_free_flags.size() == f_obs.size());
@@ -993,6 +1018,7 @@ namespace targets {
             cos_sin_table.n_steps,
             integration_step_size,
             workspace.get());
+          target_per_reflection_[i] = t;
           if (rffs.is_work_refl(i)) {
             target_work_ += t;
             if (compute_gradients) {
