@@ -784,6 +784,14 @@ class manager(manager_mixin):
   def fb_cart_t(self):
     return self.fb_cart().select(self.test)
 
+  def f_obs_scaled_with_k2(self):
+    scale_k2 = self.scale_k2()
+    f_obs = self.f_obs
+    d = f_obs.data() * scale_k2
+    s = f_obs.sigmas()
+    if (s is not None): s = s * scale_k2
+    return f_obs.array(data=d, sigmas=s)
+
   def f_model(self):
     return self.core.f_model
 
@@ -1629,7 +1637,7 @@ class phaser_sad_target_functor(object):
     self.refine_sad_object = phaser.phenix_adaptors.sad_target.data_adaptor(
       f_obs=f_obs,
       r_free_flags=r_free_flags,
-      verbose=False).target(xray_structure=xray_structure)
+      verbose=True).target(xray_structure=xray_structure)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
     if (not f_obs.space_group().is_centric()):
       self.refine_sad_object.refine_variance_terms()
@@ -1659,7 +1667,7 @@ class target_functor(object):
           "ml_sad target requires phaser extension, which is not available"
           " in this installation.")
       self.core = phaser_sad_target_functor(
-        f_obs=manager.f_obs,
+        f_obs=manager.f_obs_scaled_with_k2(),
         r_free_flags=manager.r_free_flags,
         xray_structure=manager.xray_structure,
         f_calc=manager.f_model())
