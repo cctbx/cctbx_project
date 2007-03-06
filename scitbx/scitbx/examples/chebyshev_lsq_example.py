@@ -104,7 +104,7 @@ def another_example(np=41,nt=5):
   print list( fit_w.coefs )
   print "Coefficients from non-weighted lsq"
   print list( fit_nw.coefs )
-  assert flex.max( fit_nw.coefs-fit_w.coefs) > 0
+  assert flex.max( flex.abs(fit_nw.coefs-fit_w.coefs) ) > 0
 
 def runge_phenomenon(self,n=41,nt=35,print_it=False):
   x_e = 2.0*(flex.double( xrange(n) )/float(n-1)-0.5)
