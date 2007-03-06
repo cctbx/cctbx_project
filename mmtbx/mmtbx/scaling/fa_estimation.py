@@ -69,7 +69,6 @@ class combined_scaling(object):
     self.s1 = self.x1.deep_copy().map_to_asu()
     self.s2 = self.x2.deep_copy().map_to_asu()
 
-
     scaling_tasks={'lsq':False, 'local':False }
 
     if self.overall_protocol=='ls':
@@ -198,6 +197,7 @@ class combined_scaling(object):
 
     self.x1 = local_scaling.native.deep_copy()
     self.x2 = local_scaling.derivative.deep_copy()
+
 
   def perform_outlier_rejection(self):
     print >> self.out
@@ -553,7 +553,7 @@ class twmad_fa_driver(object):
     if self.out==None:
       self.out=sys.stdout
 
-
+    self.options = options
     print >> self.out, "FA estimation"
     print >> self.out, "============="
 
