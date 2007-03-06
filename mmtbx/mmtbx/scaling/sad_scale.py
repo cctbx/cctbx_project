@@ -201,6 +201,7 @@ def run(args):
     positive_miller = scaler.x1p.deep_copy()
     negative_miller = scaler.x1n.deep_copy()
 
+
     print >> log
     print >> log, "Making delta f's"
     print >> log, "----------------"
@@ -225,7 +226,6 @@ def run(args):
     mtz_dataset.mtz_object().write(
       file_name=params.scaling.input.output.hklout)
 
-    print dir(params.scaling.input)
     if params.scaling.input.omit.perform_omit:
       print >> log
       print >> log, "writing omit files"

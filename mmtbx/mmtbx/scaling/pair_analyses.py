@@ -219,6 +219,7 @@ class outlier_rejection(object):
     ## Just make sure that we have the common sets
     self.nat = nat.deep_copy()
     self.der = der.deep_copy()
+
     self.nat, self.der = self.nat.common_sets(self.der)
     #Make sure we have amplitudes
     assert self.nat.is_real_array()

@@ -408,11 +408,11 @@ class local_scaling_driver(object):
 
     ## make new symmetry object
     self.nat_primset=self.native.change_basis(
-     self.native.change_of_basis_op_to_minimum_cell()
+     self.native.change_of_basis_op_to_niggli_cell()
      ).set_observation_type( self.native ).map_to_asu()
 
     self.der_primset=self.derivative.change_basis(
-      self.derivative.change_of_basis_op_to_minimum_cell()
+      self.derivative.change_of_basis_op_to_niggli_cell()
       ).set_observation_type(  self.derivative ).map_to_asu()
 
     ## Get the symmetry of the intensity group
@@ -482,7 +482,7 @@ class local_scaling_driver(object):
     ## We now have to transform the thing back please
 
     self.derivative = self.der_primset.change_basis(
-        self.native.change_of_basis_op_to_minimum_cell().inverse()
+        self.native.change_of_basis_op_to_niggli_cell().inverse()
       ).set_observation_type( self.der_primset ).map_to_asu()
 
     del self.der_primset
