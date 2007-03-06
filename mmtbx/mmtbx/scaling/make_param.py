@@ -142,13 +142,13 @@ outlier_level_wilson=1e-6
     self.omit="""omit
 .expert_level=__EXPERT_LEVEL__
 {
-   perform_omit=True
+   perform_omit=False
    .type=bool
    fraction=0.15
    .type=float
    max_number=1e5
    .type=int
-   number_of_sets=100
+   number_of_sets=10
    .type=int
    root_name='omit_'
    .type=str
