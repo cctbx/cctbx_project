@@ -846,11 +846,13 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     #setup the binners if this has not been done yet
     self.max_bins = max_bins
     self.n_refl_bin = n_refl_bin
+    if (self.n_refl_bin>self.f_obs.data().size() ) or (self.n_refl_bin is None):
+      self.n_refl_bin = self.f_obs.data().size()
     if self.f_obs.binner() is None:
       if self.f_obs.indices().size()/float(n_refl_bin) > max_bins:
         self.f_obs.setup_binner(n_bins = max_bins)
       else:
-        self.f_obs.setup_binner( reflections_per_bin=n_refl_bin )
+        self.f_obs.setup_binner( reflections_per_bin=self.n_refl_bin )
 
     self.f_obs_w.use_binning_of( self.f_obs )
     self.f_obs_f.use_binning_of( self.f_obs )
@@ -1631,8 +1633,8 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         sigma_obs = tmp_i_obs.sigmas(),
         twin_fraction = self.twin_fraction_object.twin_fraction )
       zero_level = flex.min(self.f_obs.data())
-      zeros = flex.bool(dt_iobs<zero_level/10.0)
-      dt_iobs = dt_iobs.set_selected(zeros, zero_level/10.0)
+      zeros = flex.bool(dt_iobs<zero_level)
+      dt_iobs = dt_iobs.set_selected(zeros, zero_level)
 
       tmp_i_obs = tmp_i_obs.customized_copy(
         data = dt_iobs,
@@ -1656,12 +1658,11 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         data =  dt_f_obs.data()*local_scaler.local_scaler.get_scales()
         ).set_observation_type( dt_f_obs )
     else:
-      k = flex.sum( tmp_abs_f_model.data() ) / flex.sum( tmp_abs_f_model.data() )
+      k = flex.sum( tmp_abs_f_model.data()*dt_f_obs.data() ) / flex.sum( dt_f_obs.data()*dt_f_obs.data() )
       dt_f_obs = dt_f_obs.customized_copy(
-        data =  dt_f_obs.data()*k
+        data =  dt_f_obs.data()*k,
+        sigmas = dt_f_obs.sigmas()*k
         ).set_observation_type( dt_f_obs )
-
-
     return dt_f_obs, tmp_f_model
 
   def sigmaa_object(self, detwinned_data=None, f_model_data=None, forced_update=False):
