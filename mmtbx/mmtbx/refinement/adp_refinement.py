@@ -221,9 +221,10 @@ class manager(object):
        not model.use_dbe and h_params.riding):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement for H atoms",
                                         out = log)
+       # XXX FUTURE: smart decision about which selection to use and at which resolution.
        group_b_manager = mmtbx.refinement.group.manager(
           fmodel                   = fmodel,
-          selections               = group_adp_selections_h,
+          selections               = [fmodel.xray_structure.hd_selection().iselection()],#group_adp_selections_h,
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = 30,
           number_of_macro_cycles   = 1,
