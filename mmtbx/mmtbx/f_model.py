@@ -1313,12 +1313,6 @@ class manager(manager_mixin):
       #          data    = acentrics_data.concatenate(centrics_data) )
       ####
       #return new
-      #f = open("qq","w")
-      #fom = self.figures_of_merit()
-      #for i, a, b in zip(self.f_calc.indices(), fom, alpha.data()):
-      #    print >> f, "%5d%5d%5d %10.3f %10.3f" % (i[0], i[1], i[2], a, b)
-      #return miller.array(miller_set = f_model,
-      #                    data       = d_obs.data() - d_model)
 
   def electron_density_map(self,
                            map_type          = "k*Fobs-n*Fmodel",
