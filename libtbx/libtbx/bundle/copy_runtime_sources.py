@@ -27,6 +27,7 @@ def copy_dist_files(dist_copy, dirname, names):
         or name.endswith(".pdb")
         or name.endswith(".pl")
         or name.endswith(".pm")
+        or name.endswith(".scm")
         or name.endswith(".html")
         or name.endswith(".txt")
         or name.endswith(".csh")
