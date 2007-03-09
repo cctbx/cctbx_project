@@ -6,13 +6,12 @@ from libtbx.str_utils import show_string
 from mmtbx.rotamer.n_dim_table import NDimTable
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.rotamer import ramachandran_eval
-import sys
+import sys, os
 
 # NB:  this can be run from the command line as "mmtbx.rebuild_rotarama_cache"
-# if PHENIX paths have been initialized, but it only works properly
-# when run from inside the $PHENIX/ext_ref_files/rotarama_data/ directory.
 def run():
     rotamer_data_dir = rotamer_eval.find_rotamer_data_dir()
+    os.chdir(rotamer_data_dir)
     print "Processing data files in %s:" % show_string(rotamer_data_dir)
     target_db = rotamer_eval.open_rotarama_dlite(
       rotamer_data_dir=rotamer_data_dir)
@@ -37,6 +36,7 @@ def run():
         sys.stdout.flush()
     target_db.write()
     ramachandran_data_dir = ramachandran_eval.find_ramachandran_data_dir()
+    os.chdir(ramachandran_data_dir)
     print "Processing data files in %s:" % show_string(ramachandran_data_dir)
     target_db = ramachandran_eval.open_rotarama_dlite(
       rama_data_dir=ramachandran_data_dir)
