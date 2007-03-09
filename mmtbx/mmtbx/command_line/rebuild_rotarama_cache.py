@@ -10,6 +10,7 @@ import sys, os
 
 # NB:  this can be run from the command line as "mmtbx.rebuild_rotarama_cache"
 def run():
+    initial_current_working_directory = os.getcwd()
     rotamer_data_dir = rotamer_eval.find_rotamer_data_dir()
     os.chdir(rotamer_data_dir)
     print "Processing data files in %s:" % show_string(rotamer_data_dir)
@@ -60,6 +61,7 @@ def run():
             print "done."
         sys.stdout.flush()
     target_db.write()
+    os.chdir(initial_current_working_directory)
     print format_cpu_times()
 
 if __name__ == "__main__":
