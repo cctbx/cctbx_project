@@ -136,8 +136,8 @@ if (not env_etc.no_boost_python):
     jamfile = "\n".join(open(jamfile_path).read().splitlines())
     m = md5.new()
     m.update(jamfile)
-    # based on boost/libs/python/test/Jamfile.v2 revision 1.23
-    jamfile_md5 = "3201be488d0cfda293d3e6bdc2d5c171"
+    # based on boost/libs/python/test/Jamfile.v2 revision 1.24
+    jamfile_md5 = "392272a7eb1eefa2a7b39760328d9eea"
     if (m.hexdigest() != jamfile_md5):
       print "******************************************************"
       print "Warning: boost/libs/python/test/Jamfile.v2 has changed"
