@@ -1,6 +1,8 @@
 from __future__ import division
 from __future__ import generators
 from libtbx import sge_utils
+from libtbx.str_utils import show_string
+import md5
 import glob
 import time
 import atexit
@@ -10,6 +12,29 @@ import sys, os
 windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
+
+def warn_if_unexpected_md5_hexdigest(
+      path,
+      expected_md5_hexdigests,
+      hints=[],
+      out=None):
+  m = md5.new()
+  m.update("\n".join(open(path).read().splitlines()))
+  current_md5_hexdigest = m.hexdigest()
+  if (m.hexdigest() in expected_md5_hexdigests): return False
+  warning = "Warning: unexpected md5 hexdigest:"
+  file_name = "  File: %s" % show_string(path)
+  new_hexdigest = "  New md5 hexdigest: %s" % m.hexdigest()
+  width = max([len(s) for s in [warning, file_name, new_hexdigest]])
+  if (out is None): out = sys.stdout
+  print >> out, "*"*width
+  print >> out, warning
+  print >> out, file_name
+  print >> out, new_hexdigest
+  for hint in hints:
+    print >> out, hint
+  print >> out, "*"*width
+  return True
 
 def get_memory_from_string(mem_str):
   if type(mem_str)==type(1): return mem_str
