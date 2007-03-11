@@ -31,16 +31,16 @@ def exercise_anomalous_scatterer_group():
       iselection=flex.size_t([1]),
       f_prime=-3,
       f_double_prime=4,
-      fix=[]),
+      refine=["f_double_prime", "f_prime"]),
     xray.anomalous_scatterer_group(
       iselection=flex.size_t([0,3]),
       f_prime=-1,
       f_double_prime=2,
-      fix=["f_double_prime", "f_prime"],
+      refine=[],
       selection_string="name S")
   ]
-  assert groups[0].labels_fixed() == []
-  assert groups[1].labels_fixed() == ["f_prime", "f_double_prime"]
+  assert groups[0].labels_refine() == ["f_prime", "f_double_prime"]
+  assert groups[1].labels_refine() == []
   for i_pass in [0,1]:
     s = StringIO()
     for group in groups:
@@ -50,13 +50,13 @@ def exercise_anomalous_scatterer_group():
 {.  Number of selected scatterers: 1
 {.  f_prime:        -3
 {.  f_double_prime: 4
-{.  fix: None
+{.  refine: f_prime f_double_prime
 {.Anomalous scatterer group:
 {.  Selection: "name S"
 {.  Number of selected scatterers: 2
 {.  f_prime:        -1
 {.  f_double_prime: 2
-{.  fix: f_prime f_double_prime
+{.  refine: None
 """)
     for group in groups:
       group.copy_to_scatterers_in_place(scatterers=scatterers)

@@ -90,25 +90,25 @@ class anomalous_scatterer_group:
         iselection,
         f_prime,
         f_double_prime,
-        fix,
+        refine,
         selection_string=None):
     self.iselection = iselection
     self.f_prime = f_prime
     self.f_double_prime = f_double_prime
-    self.fix_f_prime = False
-    self.fix_f_double_prime = False
-    for fix_item in fix:
-      assert fix_item in ["f_prime", "f_double_prime"]
-      if (fix_item == "f_prime"):
-        self.fix_f_prime = True
+    self.refine_f_prime = False
+    self.refine_f_double_prime = False
+    for refine_item in refine:
+      assert refine_item in ["f_prime", "f_double_prime"]
+      if (refine_item == "f_prime"):
+        self.refine_f_prime = True
       else:
-        self.fix_f_double_prime = True
+        self.refine_f_double_prime = True
     self.selection_string = selection_string
 
-  def labels_fixed(self):
+  def labels_refine(self):
     result = []
-    if (self.fix_f_prime): result.append("f_prime")
-    if (self.fix_f_double_prime): result.append("f_double_prime")
+    if (self.refine_f_prime): result.append("f_prime")
+    if (self.refine_f_double_prime): result.append("f_double_prime")
     return result
 
   def show_summary(self, out=None, prefix=""):
@@ -120,10 +120,10 @@ class anomalous_scatterer_group:
       self.iselection.size()
     print >> out, prefix+"  f_prime:        %.6g" % self.f_prime
     print >> out, prefix+"  f_double_prime: %.6g" % self.f_double_prime
-    labels_fixed = self.labels_fixed()
-    print >> out, prefix+"  fix:",
-    if (len(labels_fixed) == 0): print >> out, "None"
-    else: print >> out, " ".join(labels_fixed)
+    labels_refine = self.labels_refine()
+    print >> out, prefix+"  refine:",
+    if (len(labels_refine) == 0): print >> out, "None"
+    else: print >> out, " ".join(labels_refine)
 
   def copy_to_scatterers_in_place(self, scatterers):
     for i_seq in self.iselection:

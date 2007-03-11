@@ -15,14 +15,14 @@ class minimizer(object):
     adopt_init_args(self, locals())
     self.x = flex.double()
     for group in groups:
-      if (not group.fix_f_prime): self.x.append(group.f_prime)
-      if (not group.fix_f_double_prime): self.x.append(group.f_double_prime)
+      if (group.refine_f_prime): self.x.append(group.f_prime)
+      if (group.refine_f_double_prime): self.x.append(group.f_double_prime)
     fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     for group in groups:
-      if (not group.fix_f_prime):
+      if (group.refine_f_prime):
         fmodel.xray_structure.scatterers().flags_set_grad_fp(
           iselection=group.iselection)
-      if (not group.fix_f_double_prime):
+      if (group.refine_f_double_prime):
         fmodel.xray_structure.scatterers().flags_set_grad_fdp(
           iselection=group.iselection)
     self.target_functor = fmodel.target_functor()
@@ -49,8 +49,8 @@ class minimizer(object):
   def unpack(self):
     xi = iter(self.x)
     for group in self.groups:
-      if (not group.fix_f_prime): group.f_prime = xi.next()
-      if (not group.fix_f_double_prime): group.f_double_prime = xi.next()
+      if (group.refine_f_prime): group.f_prime = xi.next()
+      if (group.refine_f_double_prime): group.f_double_prime = xi.next()
     for group in self.groups:
       group.copy_to_scatterers_in_place(
         scatterers=self.fmodel.xray_structure.scatterers())
@@ -74,9 +74,9 @@ class minimizer(object):
     del sfg
     g = flex.double()
     for group in self.groups:
-      if (not group.fix_f_prime):
+      if (group.refine_f_prime):
         g.append(flex.sum(d_t_d_fp.select(group.iselection)))
-      if (not group.fix_f_double_prime):
+      if (group.refine_f_double_prime):
         g.append(flex.sum(d_t_d_fdp.select(group.iselection)))
     if (self.number_of_finite_difference_tests != 0):
       self.number_of_finite_difference_tests -= 1

@@ -27,7 +27,7 @@ def run_call_back(flags, space_group_info):
       iselection=flex.size_t(),
       f_prime=fp,
       f_double_prime=fdp,
-      fix=[]) for fp,fdp in fp_fdp_targets]
+      refine=["f_prime", "f_double_prime"]) for fp,fdp in fp_fdp_targets]
   for i_seq,scatterer in enumerate(structure.scatterers()):
     if (scatterer.scattering_type == "S"):
       anomalous_scatterer_groups[0].iselection.append(i_seq)
