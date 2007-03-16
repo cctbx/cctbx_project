@@ -290,7 +290,9 @@ def select_crystal_symmetry(
       result = result.join_symmetry(other_symmetry=crystal_symmetry, force=False)
   if (result.space_group_info() is None):
     for crystal_symmetry in from_reflection_files:
-      space_group_info = crystal_symmetry.space_group_info()
+      space_group_info = None
+      if crystal_symmetry is not None:
+        space_group_info = crystal_symmetry.space_group_info()
       if (space_group_info is not None):
         result = symmetry(
           unit_cell=result.unit_cell(),
