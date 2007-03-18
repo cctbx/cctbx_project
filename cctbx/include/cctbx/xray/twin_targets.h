@@ -62,6 +62,7 @@ namespace cctbx { namespace xray { namespace twin_targets {
 
       }
 
+
       scitbx::af::shared< cctbx::miller::index<> > twin_complete()
       {
         scitbx::af::shared< cctbx::miller::index<> > tmp;
@@ -426,10 +427,10 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
               dt1dba = -ba*(1-alpha_)/calc;
               dt1dab = -ab*(alpha_)/calc;
               dt1dbb = -bb*(alpha_)/calc;
-              dqdaa = 2.0*t1*dt1daa;
-              dqdba = 2.0*t1*dt1dba;
-              dqdab = 2.0*t1*dt1dab;
-              dqdbb = 2.0*t1*dt1dbb;
+              dqdaa = t1*dt1daa;
+              dqdba = t1*dt1dba;
+              dqdab = t1*dt1dab;
+              dqdbb = t1*dt1dbb;
             }else{
               dqdaa = 0;
               dqdba = 0;
@@ -787,8 +788,8 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       scitbx::af::shared<FloatType> i_detwin;
       scitbx::af::shared<FloatType> s_detwin;
 
-      CCTBX_ASSERT( i_obs.size() == sig_obs.size() );
       CCTBX_ASSERT( i_obs.size() == obs_size_ );
+      CCTBX_ASSERT( (sig_obs.size() == obs_size_) || (sig_obs.size()==0) );
 
 
 
@@ -803,17 +804,20 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
         n_s = 0.0; // new sigma
         if (tmp_loc>=0){
            i_a = i_obs[ ii ];
-           s_a = sig_obs[ ii ];
            i_b = i_obs[ tmp_loc ];
-           s_b = sig_obs[ tmp_loc ];
-
+           s_a = 0.0;
+           s_b = 0.0;
+           if (sig_obs.size()==0){
+             s_a = sig_obs[ ii ];
+             s_b = sig_obs[ tmp_loc ];
+           }
            n_i = ((1.0-twin_fraction)*i_a - twin_fraction*i_b)/(1-2.0*twin_fraction);
            n_s =  tmp_mult*std::sqrt((s_a*s_a*(1-twin_fraction) + s_b*s_b*twin_fraction));
         } else { // twin related reflection is not there. do 'equipartitioning'
            i_a = i_obs[ii];
            s_a = sig_obs[ii];
-           n_i = i_a*(1-twin_fraction);
-           n_s = s_a*(1-twin_fraction);
+           n_i = i_a*(1-twin_fraction)/(1-2.0*twin_fraction);
+           n_s = s_a*(1-twin_fraction)/(1-2.0*twin_fraction);
         }
         i_detwin.push_back( n_i );
         s_detwin.push_back( n_s );
