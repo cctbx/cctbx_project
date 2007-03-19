@@ -23,7 +23,9 @@ def display(
   if (pairs.pair_counts.size() <= 15):
     print "Pair counts:", list(pairs.pair_counts)
     print
-  if (max_shell is not None):
+  if (max_shell is None):
+    term_table = None
+  else:
     term_table = crystal.coordination_sequences.simple(
       pair_asu_table=pairs.pair_asu_table,
       max_shell=max_shell)
@@ -32,6 +34,7 @@ def display(
       term_table=term_table,
       coseq_dict=coseq_dict)
     print
+  return pairs, term_table
 
 def run(args):
   command_line = (option_parser(
