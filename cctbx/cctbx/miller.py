@@ -1634,8 +1634,7 @@ class array(set):
     assert self.is_real_array()
     assert f_calc.is_complex_array()
     assert self.indices().all_eq(f_calc.indices())
-    assert not self.anomalous_flag()
-    assert not f_calc.anomalous_flag()
+    assert self.anomalous_flag() is f_calc.anomalous_flag()
     return array(
       miller_set=self,
       data=f_obs_factor*self.data()-flex.abs(f_calc.data())).phase_transfer(
