@@ -2,6 +2,15 @@ from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.str_utils import show_string
 
+def crystal_symmetry_as_cns_comments(crystal_symmetry, out):
+  uc = crystal_symmetry.unit_cell()
+  if (uc is not None):
+    print >> out, "{ Unit cell: %s }" % " ".join(["%.6g" % p
+      for p in uc.parameters()])
+  sg = crystal_symmetry.space_group_info()
+  if (sg is not None):
+    print >> out, "{ Space group: %s }" % show_string(str(sg))
+
 def export_as_cns_hkl(self,
       file_object,
       file_name,
@@ -12,12 +21,7 @@ def export_as_cns_hkl(self,
   if (file_name): print >> out, "{ file:", file_name, "}"
   if (self.info() is not None):
     print >> out, "{", self.info(), "}"
-  if (self.unit_cell() is not None):
-    print >> out, "{ Unit cell: %s }" % " ".join(["%.6g" % p
-      for p in self.unit_cell().parameters()])
-  if (self.space_group_info() is not None):
-    print >> out, "{ Space group: %s }" % show_string(
-      str(self.space_group_info()))
+  crystal_symmetry_as_cns_comments(crystal_symmetry=self, out=out)
   for line in info: print >> out, "{", line, "}"
   print >> out, "NREFlections=%d" % self.indices().size()
   if (self.anomalous_flag()):
