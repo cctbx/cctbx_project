@@ -20,8 +20,10 @@ from mmtbx.refinement import print_statistics
 from cctbx.eltbx.xray_scattering import wk1995
 from mmtbx.max_lik import max_like_non_uniform
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-import sys, random
+import sys, os
+import random
 from cctbx import miller
+from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
 from stdlib import math
@@ -30,8 +32,10 @@ from cctbx import adptbx
 import boost.python
 import mmtbx
 from libtbx.math_utils import iround
-from libtbx.utils import Sorry, user_plus_sys_time
+from libtbx.utils import Sorry, user_plus_sys_time, date_and_time
 from libtbx.str_utils import show_string
+import libtbx.path
+from cStringIO import StringIO
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -251,9 +255,6 @@ class manager(manager_mixin):
        self.update_r_free_flags(r_free_flags)
     self.f_obs_w = self.f_obs.select(self.work)
     self.f_obs_t = self.f_obs.select(self.test)
-    self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
-                                         miller_set    = self.f_obs_w,
-                                         cos_sin_table = self.sf_cos_sin_table)
     self.uc = self.f_obs.unit_cell()
     self.d_spacings = self.f_obs.d_spacings().data()
     self.d_spacings_w = self.d_spacings.select(self.work)
@@ -297,6 +298,25 @@ class manager(manager_mixin):
        raise RuntimeError("Unknown s.f. calculation method: %s"%
                                                              self.sf_algorithm)
     self.set_target_name(target_name=target_name)
+    self._structure_factor_gradients_w = None
+
+  def __getstate__(self):
+    self._structure_factor_gradients_w = None
+    return (self.__dict__,)
+
+  def __setstate__(self, state):
+    assert len(state) == 1
+    self.__dict__.update(state[0])
+
+  def _get_structure_factor_gradients_w(self):
+    if (self._structure_factor_gradients_w is None):
+      self._structure_factor_gradients_w \
+        = cctbx.xray.structure_factors.gradients(
+            miller_set=self.f_obs_w,
+            cos_sin_table=self.sf_cos_sin_table)
+    return self._structure_factor_gradients_w
+
+  structure_factor_gradients_w = property(_get_structure_factor_gradients_w)
 
   def update_core(self, f_calc        = None,
                         f_mask        = None,
@@ -1577,52 +1597,140 @@ class manager(manager_mixin):
       max_number_of_bins  = max_number_of_bins,
       out=out)
 
-  def dump(self, out = None):
-    if(out is None): out = sys.stdout
-    f_model            = self.f_model_scaled_with_k1()
-    f_model_amplitudes = f_model.amplitudes().data()
-    f_model_phases     = f_model.phases(deg=True).data()
-    f_calc_amplitudes  = self.f_calc().amplitudes().data()
-    f_calc_phases      = self.f_calc().phases(deg=True).data()
-    f_mask_amplitudes  = self.f_mask().amplitudes().data()
-    f_mask_phases      = self.f_mask().phases(deg=True).data()
-    f_bulk_amplitudes  = self.f_bulk().amplitudes().data()
-    f_bulk_phases      = self.f_bulk().phases(deg=True).data()
-    fom                = self.figures_of_merit()
-    alpha, beta        = [item.data() for item in self.alpha_beta()]
-    f_obs              = self.f_obs.data()
-    flags              = self.r_free_flags.data()
-    indices            = self.f_obs.indices()
-    resolution         = self.f_obs.d_spacings().data()
-    fb_cart            = self.fb_cart()
-    scale_k1           = self.scale_k1()
-    print >> out, "Fmodel   = scale_k1 * fb_cart * (Fcalc + Fbulk)"
-    print >> out, "Fbulk    = k_sol * exp(-b_sol*s**2/4) * Fmask"
-    print >> out, "Fcalc    = structure factors calculated from atomic model"
-    print >> out, "fb_cart  = exp(-h(t) * A(-1) * B_cart * A(-1t) * h), "+\
-                  "A - orthogonalization matrix"
-    print >> out, "scale_k1 = SUM(Fobs * Fmodel) / SUM(Fmodel**2)"
-    print >> out, "k_sol    = %10.4f"%self.k_sol()
-    print >> out, "b_sol    = %10.4f"%self.b_sol()
-    print >> out, "scale_k1 = %10.4f"%self.scale_k1()
-    b0,b1,b2,b3,b4,b5 = n_as_s("%7.4f",self.b_cart())
-    c=","
-    print >>out,"(B11,B22,B33,B12,B13,B23) = ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+")"
-    format="inde= %5d%5d%5d Fobs= %11.4f Fcalc= %10.3f %9.3f Fmask= %10.3f %9.3f"\
-           " Fmodel= %13.6f %12.6f fom= %5.3f alpha= %8.4f beta= %12.4f"\
-           " R-free-flags= %1d resol= %7.3f Fbulk= %10.3f %9.3f fb_cart= %8.4f "
-    for ind, f_obs_i, f_calc_amplitudes_i, f_calc_phases_i, f_mask_amplitudes_i,\
-        f_mask_phases_i, f_model_amplitudes_i, f_model_phases_i, fom_i, alpha_i,\
-        beta_i, flags_i, resolution_i, f_bulk_amplitudes_i, f_bulk_phases_i, fb_cart_i in \
-        zip(indices, f_obs, f_calc_amplitudes, \
-        f_calc_phases, f_mask_amplitudes, f_mask_phases, f_model_amplitudes,    \
-        f_model_phases, fom, alpha, beta, flags, resolution, f_bulk_amplitudes, \
-        f_bulk_phases, fb_cart):
-        print >> out, format%(ind[0], ind[1], ind[2], f_obs_i,
-          f_calc_amplitudes_i, f_calc_phases_i, f_mask_amplitudes_i,
-          f_mask_phases_i, f_model_amplitudes_i, f_model_phases_i, fom_i,
-          alpha_i, beta_i, flags_i, resolution_i, f_bulk_amplitudes_i,
-          f_bulk_phases_i, fb_cart_i)
+  def explain_members(self, out=None, prefix="", suffix=""):
+    if (out is None): out = sys.stdout
+    def zero_if_almost_zero(v, eps=1.e-6):
+      if (abs(v) < eps): return 0
+      return v
+    for line in [
+          "Fmodel   = scale_k1 * fb_cart * (Fcalc + Fbulk)",
+          "Fcalc    = structure factors calculated from atomic model",
+          "Fbulk    = k_sol * exp(-b_sol*s**2/4) * Fmask",
+          "scale_k1 = SUM(Fobs * Fmodel) / SUM(Fmodel**2)",
+          "fb_cart  = exp(-h^t * A^-1 * B_cart * A^-t * h)",
+          "A        = orthogonalization matrix",
+          "k_sol    = %.6g" % self.k_sol(),
+          "b_sol    = %.6g" % zero_if_almost_zero(self.b_sol()),
+          "scale_k1 = %.6g" % self.scale_k1(),
+          "B_cart = (B11, B22, B33, B12, B13, B23)",
+          "       = (%s)" % ", ".join(
+            ["%.6g" % zero_if_almost_zero(v) for v in self.b_cart()])]:
+      print >> out, prefix + line + suffix
+
+  def export(self, out=None, format="mtz"):
+    assert format in ["mtz", "cns"]
+    file_name = None
+    if (out is None):
+      out = sys.stdout
+    elif (hasattr(out, "name")):
+      file_name = libtbx.path.canonical_path(file_name=out.name)
+    warning = [
+      "DO NOT USE THIS FILE AS INPUT FOR REFINEMENT!",
+      "Resolution and sigma cutoffs may have been applied to FOBS."]
+    width = max([len(line) for line in warning])
+    warning.insert(0, "*" * width)
+    warning.append(warning[0])
+    if (format == "cns"):
+      for line in warning:
+        print >> out, "{ %s%s }" % (line, " "*(width-len(line)))
+      print >> out, "{ %s }" % date_and_time()
+      if (file_name is not None):
+        print >> out, "{ file name: %s }" % os.path.basename(file_name)
+        print >> out, "{ directory: %s }" % os.path.dirname(file_name)
+      self.explain_members(out=out, prefix="{ ", suffix=" }")
+      crystal_symmetry_as_cns_comments(
+        crystal_symmetry=self.f_obs, out=out)
+      print >> out, "NREFlection=%d" % self.f_obs.indices().size()
+      print >> out, "ANOMalous=%s" % {0: "FALSE"}.get(
+        int(self.f_obs.anomalous_flag()), "TRUE")
+      have_sigmas = self.f_obs.sigmas() is not None
+      for n_t in [("FOBS", "REAL"),
+                  ("SIGFOBS", "REAL"),
+                  ("R_FREE_FLAGS", "INTEGER"),
+                  ("FMODEL", "COMPLEX"),
+                  ("FCALC", "COMPLEX"),
+                  ("FMASK", "COMPLEX"),
+                  ("FBULK", "COMPLEX"),
+                  ("FB_CART", "REAL"),
+                  ("FOM", "REAL"),
+                  ("ALPHA", "REAL"),
+                  ("BETA", "REAL")]:
+        if (not have_sigmas and n_t[0] == "SIGFOBS"): continue
+        print >> out, "DECLare NAME=%s DOMAin=RECIprocal TYPE=%s END" % n_t
+      f_model            = self.f_model_scaled_with_k1()
+      f_model_amplitudes = f_model.amplitudes().data()
+      f_model_phases     = f_model.phases(deg=True).data()
+      f_calc_amplitudes  = self.f_calc().amplitudes().data()
+      f_calc_phases      = self.f_calc().phases(deg=True).data()
+      f_mask_amplitudes  = self.f_mask().amplitudes().data()
+      f_mask_phases      = self.f_mask().phases(deg=True).data()
+      f_bulk_amplitudes  = self.f_bulk().amplitudes().data()
+      f_bulk_phases      = self.f_bulk().phases(deg=True).data()
+      alpha, beta        = [item.data() for item in self.alpha_beta()]
+      arrays = [
+        self.f_obs.indices(), self.f_obs.data(), self.f_obs.sigmas(),
+        self.r_free_flags.data(),
+        f_model_amplitudes, f_model_phases,
+        f_calc_amplitudes, f_calc_phases,
+        f_mask_amplitudes, f_mask_phases,
+        f_bulk_amplitudes, f_bulk_phases,
+        self.fb_cart(),
+        self.figures_of_merit(),
+        alpha, beta]
+      if (not have_sigmas):
+        del arrays[2]
+        i_r_free_flags = 2
+      else:
+        i_r_free_flags = 3
+      for values in zip(*arrays):
+        print >> out, "INDE %d %d %d" % values[0]
+        print >> out, " FOBS= %.6g" % values[1],
+        if (have_sigmas):
+          print >> out, " SIGFOBS= %.6g" % values[2],
+        print >> out, \
+          " R_FREE_FLAGS= %d FMODEL= %.6g %.6g\n" \
+          " FCALC= %.6g %.6g FMASK= %.6g %.6g FBULK= %.6g %.6g\n" \
+          " FB_CART= %.6g FOM= %.6g ALPHA= %.6g BETA= %.6g"  \
+            % values[i_r_free_flags:]
+      if (file_name is not None):
+        out.close()
+    else:
+      assert file_name is not None
+      mtz_dataset = self.f_obs.as_mtz_dataset(column_root_label="FOBS")
+      mtz_dataset.add_miller_array(
+        miller_array=self.r_free_flags, column_root_label="R_FREE_FLAGS")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_model_scaled_with_k1(), column_root_label="FMODEL")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_calc(), column_root_label="FCALC")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_mask(), column_root_label="FMASK")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_bulk(), column_root_label="FBULK")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_obs.array(data=self.fb_cart()),
+        column_root_label="FB_CART", column_types="W")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_obs.array(data=self.figures_of_merit()),
+        column_root_label="FOM", column_types="W")
+      alpha, beta = self.alpha_beta()
+      mtz_dataset.add_miller_array(
+        miller_array=alpha, column_root_label="ALPHA", column_types="W")
+      mtz_dataset.add_miller_array(
+        miller_array=beta, column_root_label="BETA", column_types="W")
+      mtz_history_buffer = flex.std_string(warning)
+      ha = mtz_history_buffer.append
+      ha(date_and_time())
+      ha("file name: %s" % os.path.basename(file_name))
+      ha("directory: %s" % os.path.dirname(file_name))
+      s = StringIO()
+      self.explain_members(out=s)
+      for line in s.getvalue().splitlines():
+        ha(line)
+      mtz_object = mtz_dataset.mtz_object()
+      mtz_object.add_history(lines=mtz_history_buffer)
+      out.close()
+      mtz_object.write(file_name=file_name)
 
 class phaser_sad_target_functor(object):
 
@@ -2038,11 +2146,6 @@ def kb_range(x_max, x_min, step):
   return x_range
 
 def n_as_s(format, value):
-  vt = type(value).__name__
-  if(vt in ["int","float"]):
-     return str(format%value).strip()
-  else:
-     new = []
-     for item in value:
-       new.append( str(format%item).strip() )
-     return new
+  if (isinstance(value, (int, float))):
+    return (format % value).strip()
+  return [(format % v).strip() for v in value]
