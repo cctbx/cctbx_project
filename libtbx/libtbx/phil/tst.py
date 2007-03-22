@@ -2303,6 +2303,24 @@ s {
 d (input line 4)
 s.e (input line 11)
 s.t.y (input line 13)""")
+  #
+  master = phil.parse(input_string="""\
+a = *x y
+  .optional = True
+  .type = choice
+b = *p *q
+  .optional = True
+  .type = choice(multi=True)
+""")
+  custom = phil.parse(input_string="""\
+a = none
+b = NoNe
+""")
+  working = master.fetch(source=custom)
+  assert not show_diff(working.as_str(), """\
+a = x y
+b = p q
+""")
 
 def exercise_extract():
   parameters = phil.parse(input_string="""\
