@@ -35,15 +35,17 @@ def is_standard_identifier(string):
       if (not is_standard_identifier(sub)): return False
   return True
 
+def is_plain_none(words):
+  return (len(words) == 1
+          and words[0].quote_token is None
+          and words[0].value.lower() == "none")
+
 class words_converters(object):
 
   def __str__(self): return "words"
 
   def from_words(self, words, master):
-    if (len(words) == 1
-        and words[0].quote_token is None
-        and words[0].value.lower() == "none"):
-      return None
+    if (is_plain_none(words=words)): return None
     return words
 
   def as_words(self, python_object, master):
@@ -54,10 +56,7 @@ class words_converters(object):
     return python_object
 
 def strings_from_words(words):
-  if (len(words) == 1
-      and words[0].quote_token is None
-      and words[0].value.lower() == "none"):
-    return None
+  if (is_plain_none(words=words)): return None
   return [word.value for word in words]
 
 def strings_as_words(python_object):
@@ -82,8 +81,7 @@ class strings_converters(object):
     return strings_as_words(python_object)
 
 def str_from_words(words):
-  if (len(words) == 1 and words[0].value.lower() == "none"):
-    return None
+  if (is_plain_none(words=words)): return None
   return " ".join([word.value for word in words])
 
 class str_converters(object):
@@ -110,7 +108,6 @@ def bool_from_words(words):
   value_string = str_from_words(words)
   if (value_string is None): return None
   word_lower = words[0].value.lower()
-  if (word_lower == "none"): return None
   if (word_lower in ["false", "no", "off", "0"]): return False
   if (word_lower in ["true", "yes", "on", "1"]): return True
   assert len(words) > 0
@@ -272,49 +269,50 @@ class choice_converters(object):
       if (word.value.startswith("*")): value = word.value[1:]
       else: value = word.value
       flags[value] = False
-    have_quote_or_star = False
-    have_plus = False
-    for word in source_words:
-      if (word.quote_token is not None or word.value.startswith("*")):
-        have_quote_or_star = True
-        break
-      if (word.value.find("+") >= 0):
-        have_plus = True
-    process_plus = False
-    if (not have_quote_or_star and have_plus):
-      values = "".join([word.value for word in source_words]).split("+")
-      for value in values[1:]:
-        if (len(value.strip()) == 0):
+    if (not master.optional or not is_plain_none(words=source_words)):
+      have_quote_or_star = False
+      have_plus = False
+      for word in source_words:
+        if (word.quote_token is not None or word.value.startswith("*")):
+          have_quote_or_star = True
           break
-      else:
-        process_plus = True
-    def raise_not_a_possible_choice(value):
-      raise Sorry(
-        "Not a possible choice for %s: %s%s\n" % (
-          master.full_path(), value, word.where_str())
-        + "  Possible choices are:\n"
-        + "    " + "\n    ".join([w.value for w in master.words]))
-    if (process_plus):
-      for word in source_words:
-        for value in word.value.split("+"):
-          if (len(value) == 0): continue
-          if (value not in flags):
-            raise_not_a_possible_choice(value)
-          flags[value] = True
-    else:
-      for word in source_words:
-        if (word.value.startswith("*")):
-          value = word.value[1:]
-          flag = True
+        if (word.value.find("+") >= 0):
+          have_plus = True
+      process_plus = False
+      if (not have_quote_or_star and have_plus):
+        values = "".join([word.value for word in source_words]).split("+")
+        for value in values[1:]:
+          if (len(value.strip()) == 0):
+            break
         else:
-          value = word.value
-          if (len(source_words) == 1):
+          process_plus = True
+      def raise_not_a_possible_choice(value):
+        raise Sorry(
+          "Not a possible choice for %s: %s%s\n" % (
+            master.full_path(), value, word.where_str())
+          + "  Possible choices are:\n"
+          + "    " + "\n    ".join([w.value for w in master.words]))
+      if (process_plus):
+        for word in source_words:
+          for value in word.value.split("+"):
+            if (len(value) == 0): continue
+            if (value not in flags):
+              raise_not_a_possible_choice(value)
+            flags[value] = True
+      else:
+        for word in source_words:
+          if (word.value.startswith("*")):
+            value = word.value[1:]
             flag = True
           else:
-            flag = False
-        if (flag and value not in flags):
-          raise_not_a_possible_choice(value)
-        flags[value] = flag
+            value = word.value
+            if (len(source_words) == 1):
+              flag = True
+            else:
+              flag = False
+          if (flag and value not in flags):
+            raise_not_a_possible_choice(value)
+          flags[value] = flag
     words = []
     for word in master.words:
       if (word.value.startswith("*")): value = word.value[1:]
@@ -363,10 +361,7 @@ def definition_converters_from_words(
       words,
       converter_registry,
       converter_cache):
-  name = words[0].value
-  if (len(words) == 1
-      and name.lower() == "none" and words[0].quote_token is None):
-    return None
+  if (is_plain_none(words=words)): return None
   call_expression_raw = str_from_words(words).strip()
   try:
     call_expression = normalize_call_expression(expression=call_expression_raw)
@@ -719,10 +714,7 @@ class scope_extract_call_proxy_object:
     return self.expression
 
 def scope_extract_call_proxy(full_path, words, cache):
-  name = words[0].value
-  if (len(words) == 1
-      and name.lower() == "none" and words[0].quote_token is None):
-    return None
+  if (is_plain_none(words=words)): return None
   call_expression_raw = str_from_words(words).strip()
   try:
     call_expression = normalize_call_expression(expression=call_expression_raw)
