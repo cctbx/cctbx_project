@@ -3145,6 +3145,46 @@ s {
   clone.s.b = 20
   assert orig.a == 1
   assert orig.s.b == 2
+  #
+  master = phil.parse(input_string="""\
+a = x y
+  .optional = True
+  .type = choice
+b = *p q
+  .optional = True
+  .type = choice
+c = *r s
+  .optional = True
+  .type = choice
+d = g h
+  .optional = True
+  .type = choice(multi=True)
+e = *j *k
+  .optional = True
+  .type = choice(multi=True)
+f = *l *m
+  .optional = True
+  .type = choice(multi=True)
+""")
+  extracted = master.extract()
+  assert extracted.a is None
+  assert extracted.b == "p"
+  assert extracted.c == "r"
+  assert extracted.d == []
+  assert extracted.e == ["j", "k"]
+  assert extracted.f == ["l", "m"]
+  extracted.c = None
+  del extracted.f[:]
+  out = StringIO()
+  master.format(extracted).show(out=out)
+  assert not show_diff(out.getvalue(), """\
+a = x y
+b = *p q
+c = r s
+d = g h
+e = *j *k
+f = l m
+""")
 
 def exercise_tidy_master():
   master = phil.parse("""\

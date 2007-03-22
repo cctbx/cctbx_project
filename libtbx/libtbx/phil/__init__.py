@@ -226,14 +226,14 @@ class choice_converters(object):
     if (self.multi):
       use_flags = dict([(value, False) for value in python_object])
     n_choices = 0
-    if (python_object is not None):
-      def raise_improper_master():
-        raise RuntimeError("Improper master choice definition: %s%s" % (
-          master.as_str().rstrip(), master.words[0].where_str()))
-      words = []
-      for word in master.words:
-        if (word.value.startswith("*")): value = word.value[1:]
-        else: value = word.value
+    def raise_improper_master():
+      raise RuntimeError("Improper master choice definition: %s%s" % (
+        master.as_str().rstrip(), master.words[0].where_str()))
+    words = []
+    for word in master.words:
+      if (word.value.startswith("*")): value = word.value[1:]
+      else: value = word.value
+      if (python_object is not None):
         if (not self.multi):
           if (value == python_object):
             value = "*" + value
@@ -245,8 +245,8 @@ class choice_converters(object):
             use_flags[value] = True
             value = "*" + value
             n_choices += 1
-        words.append(tokenizer.word(
-          value=value, quote_token=word.quote_token))
+      words.append(tokenizer.word(
+        value=value, quote_token=word.quote_token))
     if (not self.multi):
       if (n_choices == 0
           and (not master.optional or python_object is not None)):
@@ -264,8 +264,6 @@ class choice_converters(object):
         raise RuntimeError(
           "Empty list for mandatory %s: %s" % (
             str(self), master.full_path()))
-    if (python_object is None):
-      return [tokenizer.word(value="None")]
     return words
 
   def fetch(self, source_words, master):
