@@ -5,13 +5,20 @@ import shutil
 import sys, os
 
 def copy_dist_files(dist_copy, dirname, names):
-  if (dirname.lower().endswith("cvs")):
-    cvs_entries = libtbx.path.norm_join(dirname, "Entries")
-    if (os.path.isfile(cvs_entries)):
-      return
   create_target_dir = True
+  names_keep = []
   for file_name in names:
     name = file_name.lower()
+    def name_is_sub_dir_with_file(sub_dir, file_in_subdir):
+      if (sub_dir != name): return False
+      path = os.path.join(dirname, name)
+      if (not os.path.isdir(path)): return False
+      path = os.path.join(path, file_in_subdir)
+      return os.path.isfile(path)
+    if (   name_is_sub_dir_with_file("cvs", "Entries")
+        or name_is_sub_dir_with_file(".svn", "README.txt")):
+      continue
+    names_keep.append(file_name)
     if (   name == "libtbx_config"
         or (name == "windows_dispatcher.exe" and os.name == "nt")
         or name.startswith("authors")
@@ -39,6 +46,9 @@ def copy_dist_files(dist_copy, dirname, names):
           libtbx.path.create_target_dir(dest)
           create_target_dir = False
         shutil.copy(src, dest)
+  if (len(names_keep) != len(names)):
+    del names[:]
+    names.extend(names_keep)
 
 def run(target_root):
   cwd = os.getcwd()
