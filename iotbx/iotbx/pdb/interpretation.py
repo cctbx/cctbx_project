@@ -176,8 +176,15 @@ class residue(object):
     if (class_name == "common_rna_dna"):
       return True
     if (class_name == "ccp4_mon_lib_rna_dna"):
+      had_cno = False
       for i_seq in isel:
-        if (aal[i_seq].name.strip() == "P"): return True
+        name = aal[i_seq].name.strip()
+        if (name == "P"): return True
+        if (len(name) >= 2
+            and name[0] in "CNO"
+            and name[1] in "123456789"):
+          if (had_cno): return True
+          had_cno = True
     return False
 
 class stage_1(object):
