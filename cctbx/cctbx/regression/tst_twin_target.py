@@ -74,7 +74,7 @@ def tst_ls_on_i():
     old_derivs = old_target_evaluator.d_target_d_ab( sfs.data() )
 
     new_data =  sfs.data()
-    h=0.0000001
+    h=0.0001
 
     for N_test in xrange(sfs.data().size() ):
       ori = complex( sfs.data()[N_test] )
@@ -92,11 +92,11 @@ def tst_ls_on_i():
       if old_derivs[0][N_test]>0:
         #print "real", N_test, fdif_real,old_derivs[0][N_test], (fdif_real-old_derivs[0][N_test])/old_derivs[0][N_test]
         if old_derivs[0][N_test]>2500:
-          assert approx_equal( (fdif_real-old_derivs[0][N_test])/fdif_real,0, eps=5e-1)
+          assert approx_equal( (fdif_real-old_derivs[0][N_test])/fdif_real,0, eps=1e-2)
       if old_derivs[1][N_test]>0:
         #print  "Imag", N_test, fdif_imag,old_derivs[1][N_test], (fdif_imag-old_derivs[1][N_test])/old_derivs[1][N_test]
         if old_derivs[1][N_test]>2500:
-          assert approx_equal( (fdif_imag-old_derivs[1][N_test])/fdif_imag,0, eps=5e-1)
+          assert approx_equal( (fdif_imag-old_derivs[1][N_test])/fdif_imag,0, eps=1e-2)
       new_data[N_test] = ori
 
   #-------------------------------------
@@ -190,8 +190,8 @@ def tst_ls_on_f():
     old_derivs = old_target_evaluator.d_target_d_ab( sfs.data() )
 
     new_data =  sfs.data()
-    h=0.0000001
-
+    h=0.0001
+    checked=0
     for N_test in xrange(sfs.data().size() ):
       ori = complex( sfs.data()[N_test] )
       #print "----------------"
@@ -204,20 +204,22 @@ def tst_ls_on_f():
       new_data[N_test] = ori+complex(0,h)
       new_target_value = old_target_evaluator.target( new_data )
       fdif_imag = float( (new_target_value-old_target_value)/h )
-      # only use 'large' first derivatives.
-      if old_derivs[0][N_test]>0:
+      # only use 'large' first derivative
+      if 1: #old_derivs[0][N_test]>0:
         #print "real", N_test, fdif_real,old_derivs[0][N_test], (fdif_real-old_derivs[0][N_test])/old_derivs[0][N_test]
-        if old_derivs[0][N_test]>2500:
-          assert approx_equal( (fdif_real-old_derivs[0][N_test])/fdif_real,0, eps=1e-1)
-      if old_derivs[1][N_test]>0:
+        if old_derivs[0][N_test]>1:
+          checked+=1
+          assert approx_equal( (fdif_real-old_derivs[0][N_test])/fdif_real,0, eps=1e-3)
+      if abs(old_derivs[1][N_test])>0:
         #print  "Imag", N_test, fdif_imag,old_derivs[1][N_test], (fdif_imag-old_derivs[1][N_test])/old_derivs[1][N_test]
-        if old_derivs[1][N_test]>2500:
-          assert approx_equal( (fdif_imag-old_derivs[1][N_test])/fdif_imag,0, eps=1e-1)
+        if old_derivs[1][N_test]>1:
+          checked+=1
+          assert approx_equal( (fdif_imag-old_derivs[1][N_test])/fdif_imag,0, eps=1e-3)
       new_data[N_test] = ori
-
+      assert checked>0
   #-------------------------------------
   # use fin diffs to test derivatives wrst alpha, the twin fraction
-  h=0.0000000001
+  h=0.00001
 
   target_evaluator = xray.least_squares_hemihedral_twinning_on_f(
     hkl_obs=sfs.indices(),
@@ -240,7 +242,6 @@ def tst_ls_on_f():
     fd = (new_target-old_target)/h
     target_evaluator.alpha(ii)
     an = target_evaluator.d_target_d_alpha(sfs.data()*1.0)
-    #print ii, fd, an
     assert approx_equal( fd/an , 1.0, eps=1e-2 )
 
 
@@ -479,6 +480,7 @@ def tst_twin_completion():
 
   selection_array = checker.get_free_model_selection( lattice_flags.indices(), lattice_flags.data() )
   assert selection_array.all_eq( lattice_flags.data()  )
+
 
 
 
