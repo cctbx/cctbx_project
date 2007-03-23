@@ -644,6 +644,12 @@ class _crystal(boost.python.injector, ext.crystal):
       unit_cell=self.unit_cell(),
       space_group_info=self.mtz_object().space_group_info())
 
+  def miller_set(self, anomalous_flag=None):
+    return miller.set(
+      crystal_symmetry=self.crystal_symmetry(),
+      indices=self.mtz_object().extract_miller_indices(),
+      anomalous_flag=anomalous_flag)
+
 class _dataset(boost.python.injector, ext.dataset):
 
   def column_labels(self):

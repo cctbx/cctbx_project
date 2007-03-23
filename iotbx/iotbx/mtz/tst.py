@@ -62,6 +62,8 @@ def recycle(miller_array, column_root_label, column_types=None, verbose=0):
       assert rd.name() == wd.name()
       assert rd.wavelength() == wd.wavelength()
       assert rd.n_columns() == wd.n_columns()
+  miller_set = restored.crystals()[1].miller_set()
+  assert miller_set.indices().size() == restored.n_reflections()
   crystal_symmetry = restored.crystals()[1].crystal_symmetry()
   restored_dataset = restored.crystals()[1].datasets()[0]
   if (not miller_array.anomalous_flag()):
