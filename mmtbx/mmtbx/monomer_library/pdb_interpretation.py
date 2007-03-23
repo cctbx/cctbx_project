@@ -459,31 +459,33 @@ class monomer_mapping(object):
 
   def resolve_unexpected(self, mon_lib_srv):
     mod_mod_ids = []
+    u = self.unexpected_atom_i_seqs
     if (self.monomer.classification == "peptide"):
-      if ("OXT" in self.unexpected_atom_i_seqs):
+      if ("OXT" in u):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["COO"])
-      if (      "H1" in self.unexpected_atom_i_seqs
-            and "H2" in self.unexpected_atom_i_seqs
-            and "H3" in self.unexpected_atom_i_seqs):
+      if (      ("H1" in u or "1H" in u)
+            and ("H2" in u or "2H" in u)
+            and ("H3" in u or "3H" in u)):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
-      elif (    "HN1" in self.unexpected_atom_i_seqs
-            and "HN2" in self.unexpected_atom_i_seqs):
+      elif (    ("HN1" in u or "1HN" in u)
+            and ("HN2" in u or "2HN" in u)):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
-      elif (    "HN" in self.unexpected_atom_i_seqs):
+      elif (    "HN" in u):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH1"])
-      elif (    "H1" in self.unexpected_atom_i_seqs
-            or  "H2" in self.unexpected_atom_i_seqs
-            or  "H3" in self.unexpected_atom_i_seqs):
+      elif (    ("H1" in u or "1H" in u)
+            or  ("H2" in u or "2H" in u)
+            or  ("H3" in u or "3H" in u)):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
-      elif (    "HN1" in self.unexpected_atom_i_seqs
-            or  "HN2" in self.unexpected_atom_i_seqs):
+      elif (    ("HN1" in u or "1HN" in u)
+            or  ("HN2" in u or "2HN" in u)):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
     elif (self.monomer.classification in ["RNA", "DNA"]):
-      if (    not "P"   in self.expected_atom_i_seqs
-          and not "OP1" in self.expected_atom_i_seqs
-          and not "OP2" in self.expected_atom_i_seqs):
+      e = self.expected_atom_i_seqs
+      if (    not "P"   in e
+          and not "OP1" in e
+          and not "OP2" in e):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["5*END"])
-      if ("HO3*" in self.unexpected_atom_i_seqs):
+      if ("HO3*" in u):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["3*END"])
     for mod_mod_id in mod_mod_ids:
       self.apply_mod(mon_lib_srv=mon_lib_srv, mod_mod_id=mod_mod_id)
