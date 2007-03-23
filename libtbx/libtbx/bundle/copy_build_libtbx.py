@@ -40,14 +40,21 @@ def copy_base_files(target_root_dir, dirname, names):
 def run(target_root):
   cwd = os.getcwd()
   abs_target_root = os.path.normpath(os.path.abspath(target_root))
-  for sub_dir,visitor in (("lib", copy_lib_and_exe_files),
-                          ("exe", copy_lib_and_exe_files),
-                          ("base", copy_base_files)):
+  def copy_sub_dir(sub_dir, visitor):
     source_dir = libtbx.env.under_build(sub_dir)
     if (os.path.isdir(source_dir)):
       target_dir = libtbx.path.norm_join(abs_target_root, sub_dir)
       os.chdir(source_dir)
       os.path.walk(".", visitor, target_dir)
+  for sub_dir,visitor in (("lib", copy_lib_and_exe_files),
+                          ("exe", copy_lib_and_exe_files),
+                          ("base", copy_base_files)):
+    copy_sub_dir(sub_dir=sub_dir, visitor=visitor)
+  for module in libtbx.env.module_list:
+    for name in module.names:
+      copy_sub_dir(
+        sub_dir=os.path.join(name, "exe"),
+        visitor=copy_lib_and_exe_files)
   libtbx.bundle.utils.write_bundle_info(
     abs_target_root, write_build_options=True)
   file_name = "command_version_suffix"
