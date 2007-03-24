@@ -343,7 +343,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       ):
       space_group_( space_group ),
       twin_law_(twin_law),
-      eps_(1e-10),
+      eps_(1e-5),
       alpha_(alpha)
       {
         CCTBX_ASSERT( (alpha >=0) && (alpha<=0.50) );
@@ -427,10 +427,10 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
               dt1dba = -ba*(1-alpha_)/calc;
               dt1dab = -ab*(alpha_)/calc;
               dt1dbb = -bb*(alpha_)/calc;
-              dqdaa = t1*dt1daa;
-              dqdba = t1*dt1dba;
-              dqdab = t1*dt1dab;
-              dqdbb = t1*dt1dbb;
+              dqdaa = 2.0*t1*dt1daa;
+              dqdba = 2.0*t1*dt1dba;
+              dqdab = 2.0*t1*dt1dab;
+              dqdbb = 2.0*t1*dt1dbb;
             }else{
               dqdaa = 0;
               dqdba = 0;
