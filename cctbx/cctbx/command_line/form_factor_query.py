@@ -58,7 +58,8 @@ def run(args, command_name="cctbx.form_factor_query"):
     if (table not in params.form_factor_query.table): continue
     t = eval(table).table(element)
     print "Information from %s table about %s (Z = %s) at %s %s" % (
-      table.capitalize(), t.label(), t.atomic_number(), wavelength, unit)
+      table.capitalize(), t.label(), t.atomic_number(), wavelength,
+      {"angstroms": "A"}.get(unit, unit))
     if (unit == "angstroms"):
       f = t.at_angstrom(wavelength)
     elif (unit == "ev"):
