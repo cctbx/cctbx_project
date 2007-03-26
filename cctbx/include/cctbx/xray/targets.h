@@ -188,134 +188,120 @@ namespace targets {
       double scale_factor_;
   };
 
-  namespace detail {
-
-    template <typename FobsValueType,
-              typename WeightValueType,
-              typename FcalcValueType>
-    FobsValueType
-    scale_factor_calculation(
-      af::const_ref<FobsValueType> const& fobs,
-      af::const_ref<WeightValueType> const& weights,
-      af::const_ref<FcalcValueType> const& fcalc)
-    {
-      CCTBX_ASSERT(fobs.size() == weights.size() || weights.size() == 0);
-      CCTBX_ASSERT(fobs.size() == fcalc.size());
-      FobsValueType sum_w_fobs_fcalc(0);
-      FobsValueType sum_w_fcalc2(0);
-      if (weights.size()) {
-        for(std::size_t i=0;i<fobs.size();i++) {
-          FobsValueType abs_fcalc = std::abs(fcalc[i]);
-          sum_w_fobs_fcalc += weights[i] * fobs[i] * abs_fcalc;
-          sum_w_fcalc2 += weights[i] * abs_fcalc * abs_fcalc;
-        }
-      }
-      else {
-        for(std::size_t i=0;i<fobs.size();i++) {
-          FobsValueType abs_fcalc = std::abs(fcalc[i]);
-          sum_w_fobs_fcalc += fobs[i] * abs_fcalc;
-          sum_w_fcalc2 += abs_fcalc * abs_fcalc;
-        }
-      }
-      if (sum_w_fcalc2 == 0) {
-        throw cctbx::error(
-          "Cannot calculate scale factor: sum of weights * fcalc^2 == 0.");
-      }
-      return sum_w_fobs_fcalc / sum_w_fcalc2;
+  /// The modulus of complex structure factors
+  /**
+  This is a policy to be passed as a template argument to least_squares_residual. The type T is to be like std::complex<>
+  */ 
+  template<class T>
+  struct FcalcModulus
+  {
+    /// The value |f|
+    static typename T::value_type value(T f) {
+      return std::abs(f); 
     }
-
-    template <typename ValueValueType,
-              typename WeightValueType>
-    ValueValueType
-    sum_weighted_values_squared(
-      af::const_ref<ValueValueType> const& values,
-      af::const_ref<WeightValueType> const& weights)
-    {
-      CCTBX_ASSERT(values.size() == weights.size() || weights.size() == 0);
-      ValueValueType result = 0.;
-      if (weights.size()) {
-        for(std::size_t i=0;i<values.size();i++) {
-          result += weights[i] * values[i] * values[i];
-        }
-      }
-      else {
-        for(std::size_t i=0;i<values.size();i++) {
-          result += values[i] * values[i];
-        }
-      }
-      return result;
+    
+    /// The derivatives of |f| wrt to respectively the real part and the imaginary part of f.
+    /**
+    They are packaged into the complex number of type T, respectively in its real and imaginary part.
+    */
+    static T derivative(T f) {
+      return f / std::abs(f); 
     }
-
-  } // namespace detail
-
+  };
+  
+  
+  /// The modulus squared of complex structure factors
+  /**
+    This is a policy to be passed as a template argument to least_squares_residual. The type T is to be like std::complex<>
+   */ 
+  template<class T>
+  struct FcalcModulusSquare
+  {
+    /// The value |f|^2
+    static typename T::value_type value(T f) {
+      return std::norm(f); 
+    }
+    
+    /// The derivatives of |f|^2 wrt to respectively the real part and the imaginary part of f.
+    /**
+    They are packaged into the complex number of type T, respectively in its real and imaginary part.
+    */
+    static T derivative(T f) {
+      return 2. * f; 
+    }
+  };
+  
   /// A functor representing a least-squares residual.
   /**
   The least-square residual is defined as
   \f[
     \frac
-    {\sum_i w_i \left( F_{o,i} - k \left| F_{c,i} \right| \right)^2}
-    {\sum_i w_i F_{o,i}^2}
+    {\sum_i w_i \left( y_{o,i} - k f(F_{c,i}) \right)^2}
+    {\sum_i w_i y_{o,i}}
   \f]
-   where \f$F_{o,i}\f$ is the i-th observed F whereas \f$F_{c,i}\f$ is the calculated F
-   corresponding to \f$F_{o,i}\f$.
+   where \f$y_{o,i}\f$ is the i-th observed piece of data (i.e. F or F^2 in practice) 
+   whereas \f$F_{c,i}\f$ is the corresponding computed structure factor and \f$f\f$ is any function
+   (in practice the modulus or the modulus squared), which is represented by the policy FcalcFunctor.
    It also features the weights \f$\{w_i\}\f$ and the scale factor \f$k\f$.
   */
-  template <typename FobsValueType = double,
-            typename WeightValueType = FobsValueType,
-            typename FcalcValueType = std::complex<FobsValueType> >
+  template <template<typename> class FcalcFunctor,
+            typename YobsValueType = double,
+            typename WeightValueType = YobsValueType,
+            typename FcalcValueType = std::complex<YobsValueType> >
   class least_squares_residual
   {
-    public:
+    public:      
       /// Construct an uninitialised object.
       least_squares_residual() {}
 
       /// Construct a weighted least-squares residual.
       /**
-      @param f_obs  a reference to the array containing the observed F's
+      @param yobs  a reference to the array containing the observed data
       @param weights  a reference to the array containing the weights
-      @param f_calc  a reference to the array containing the calculated F's
+      @param fcalc  a reference to the array containing the calculated F's
       @param compute_derivative  whether to compute the derivatives of the residual
-      w.r.t. the \f$F_{c,i}\f$
+      w.r.t. the real and imaginary parts of \f$F_{c,i}\f$
       @param scale_factor  the scale factor k; if 0 then k is computed
 
       */
       least_squares_residual(
-        af::const_ref<FobsValueType> const& fobs,
+        af::const_ref<YobsValueType> const& yobs,
         af::const_ref<WeightValueType> const& weights,
         af::const_ref<FcalcValueType> const& fcalc,
         bool compute_derivatives=false,
-        FobsValueType const& scale_factor=0)
+        YobsValueType const& scale_factor=0)
       :
         scale_factor_(scale_factor)
       {
-        init(fobs, weights, fcalc, compute_derivatives);
+        init(yobs, weights, fcalc, compute_derivatives);
       }
 
       /// Construct an unit weights least-square residual.
       /** Same as the other constructor but with all weights equal to unity */
       least_squares_residual(
-        af::const_ref<FobsValueType> const& fobs,
+        af::const_ref<YobsValueType> const& yobs,
         af::const_ref<FcalcValueType> const& fcalc,
         bool compute_derivatives=false,
-        FobsValueType const& scale_factor=0)
+        YobsValueType const& scale_factor=0)
       :
         scale_factor_(scale_factor)
       {
-        init(fobs, af::const_ref<WeightValueType>(0,0),
+        init(yobs, af::const_ref<WeightValueType>(0,0),
              fcalc, compute_derivatives);
       }
 
       /// The scale factor
-      FobsValueType
+      YobsValueType
       scale_factor() const { return scale_factor_; }
 
       /// The value of the residual
-      FobsValueType
+      YobsValueType
       target() const { return target_; }
 
       /// The vector of derivatives
-      /** with respect to of the residual w.r.t. \f$F_{c,i}\f$ and only if the object
-      was constructed with the flag compute_derivatives==true
+      /**  Only if the object was constructed with the flag compute_derivatives==true. The i-th element of the returned array is a complex number whose real (resp. imaginary) part 
+      contains the derivative of the residual with respect to the real (resp. imaginary) part of
+      of \f$F_{c,i}\f$.
       */
       af::shared<FcalcValueType>
       derivatives() const
@@ -324,57 +310,121 @@ namespace targets {
       }
 
     protected:
-      FobsValueType scale_factor_;
-      FobsValueType target_;
+      YobsValueType scale_factor_;
+      YobsValueType target_;
       af::shared<FcalcValueType> derivatives_;
+            
+      YobsValueType
+      new_scale_factor(
+                       af::const_ref<YobsValueType> const& yobs,
+                       af::const_ref<WeightValueType> const& weights,
+                       af::const_ref<FcalcValueType> const& fcalc);
+      
+      YobsValueType
+      sum_weighted_yobs_squared(
+                                af::const_ref<YobsValueType> const& values,
+                                af::const_ref<WeightValueType> const& weights);
 
       void init(
-        af::const_ref<FobsValueType> const& fobs,
-        af::const_ref<WeightValueType> const& weights,
-        af::const_ref<FcalcValueType> const& fcalc,
-        bool compute_derivatives);
+                af::const_ref<YobsValueType> const& yobs,
+                af::const_ref<WeightValueType> const& weights,
+                af::const_ref<FcalcValueType> const& fcalc,
+                bool compute_derivatives);
   };
 
-  template <typename FobsValueType,
+  template <template<typename> class FcalcFunctor,
+            typename YobsValueType,
+            typename WeightValueType,
+            typename FcalcValueType>
+  YobsValueType
+  least_squares_residual<FcalcFunctor, YobsValueType, WeightValueType, FcalcValueType>  
+  ::new_scale_factor(
+                   af::const_ref<YobsValueType> const& yobs,
+                   af::const_ref<WeightValueType> const& weights,
+                   af::const_ref<FcalcValueType> const& fcalc)
+  {
+    CCTBX_ASSERT(yobs.size() == weights.size() || weights.size() == 0);
+    CCTBX_ASSERT(yobs.size() == fcalc.size());
+    YobsValueType sum_w_yobs_ycalc(0);
+    YobsValueType sum_w_ycalc2(0);
+    WeightValueType w(1);
+    for(std::size_t i=0;i<yobs.size();i++) {
+      YobsValueType ycalc = FcalcFunctor<FcalcValueType>::value(fcalc[i]);
+      if (weights.size()) w = weights[i];
+      sum_w_yobs_ycalc += w * yobs[i] * ycalc;
+      sum_w_ycalc2 += w * ycalc * ycalc;
+    }
+    if (sum_w_ycalc2 == 0) {
+      throw cctbx::error(
+                         "Cannot calculate scale factor: sum of weights * fcalc^2 == 0.");
+    }
+    return sum_w_yobs_ycalc / sum_w_ycalc2;
+  }
+  
+  template <template<typename> class FcalcFunctor,
+            typename YobsValueType,
+            typename WeightValueType,
+            typename FcalcValueType>
+  YobsValueType
+  least_squares_residual<FcalcFunctor, YobsValueType, WeightValueType, FcalcValueType>  
+  ::sum_weighted_yobs_squared(
+                            af::const_ref<YobsValueType> const& yobs,
+                            af::const_ref<WeightValueType> const& weights
+                            )
+  {
+    CCTBX_ASSERT(yobs.size() == weights.size() || weights.size() == 0);
+    YobsValueType result = 0.;
+    WeightValueType w(1);
+    for(std::size_t i=0;i<yobs.size();i++) {
+      if (weights.size()) w = weights[i];
+      result += w * yobs[i] * yobs[i];
+    }
+    return result;
+  }
+
+
+  template <template<typename> class FcalcFunctor,
+            typename YobsValueType,
             typename WeightValueType,
             typename FcalcValueType>
   void
-  least_squares_residual<FobsValueType, WeightValueType, FcalcValueType>
+  least_squares_residual<FcalcFunctor, YobsValueType, WeightValueType, FcalcValueType>
   ::init(
-    af::const_ref<FobsValueType> const& fobs,
+    af::const_ref<YobsValueType> const& yobs,
     af::const_ref<WeightValueType> const& weights,
     af::const_ref<FcalcValueType> const& fcalc,
     bool compute_derivatives)
   {
     if (scale_factor_ == 0) {
-      scale_factor_ = detail::scale_factor_calculation(
-        fobs, weights, fcalc);
+      scale_factor_ = new_scale_factor(yobs, weights, fcalc);
     }
-    FobsValueType sum_w_fobs2 = detail::sum_weighted_values_squared(
-      fobs, weights);
-    if (sum_w_fobs2 == 0) {
+    YobsValueType sum_w_yobs2 = sum_weighted_yobs_squared(yobs, weights);
+    if (sum_w_yobs2 == 0) {
       throw cctbx::error(
         "Cannot calculate least-squares residual:"
-        " sum of weights * fobs^2 == 0.");
+        " sum of weights * yobs^2 == 0.");
     }
+    YobsValueType one_over_sum_w_yobs2 = 1./sum_w_yobs2;
     target_ = 0;
     if (compute_derivatives) {
-      derivatives_ = af::shared<FcalcValueType>(fobs.size());
+      derivatives_ = af::shared<FcalcValueType>(yobs.size());
     }
     WeightValueType w(1);
-    for(std::size_t i=0;i<fobs.size();i++) {
-      FobsValueType abs_fcalc = std::abs(fcalc[i]);
-      FobsValueType delta = fobs[i] - scale_factor_ * abs_fcalc;
+    for(std::size_t i=0;i<yobs.size();i++) {
+      YobsValueType ycalc = FcalcFunctor<FcalcValueType>::value(fcalc[i]);
+      YobsValueType delta = yobs[i] - scale_factor_ * ycalc;
       if (weights.size()) w = weights[i];
       target_ += w * delta * delta;
-      if (compute_derivatives && abs_fcalc != 0) {
+      if (compute_derivatives && ycalc != 0) {
         derivatives_[i] = -2. * scale_factor_ * w * delta
-                        / (sum_w_fobs2 * abs_fcalc) * fcalc[i];
+                        * FcalcFunctor<FcalcValueType>::derivative(fcalc[i])
+                        * one_over_sum_w_yobs2;
       }
     }
-    target_ /= sum_w_fobs2;
+    target_ /= sum_w_yobs2;
   }
 
+  
   template <typename FobsValueType = double,
             typename WeightValueType = int,
             typename FcalcValueType = std::complex<FobsValueType>,

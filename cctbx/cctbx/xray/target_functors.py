@@ -66,10 +66,11 @@ class max_like(object):
       integration_step_size=self.integration_step_size,
       compute_gradients=compute_gradients)
 
-class least_squares_residual(object):
-  """ A least-square residual functor. """
+class unified_least_squares_residual(object):
+  """ A least-square residual functor for refinement against F or F^2. """
 
-  def __init__(self, f_obs,
+  def __init__(self, f_obs                 = None,
+                     f_obs_square          = None,
                      weights               = None,
                      use_sigmas_as_weights = False,
                      scale_factor          = 0):
@@ -79,23 +80,34 @@ class least_squares_residual(object):
     S{sum} w[i] ( f_obs.data[i] - k abs(f_calc.data[i]) )^2
     / S{sum} w[i] f_obs.data[i]^2
 
-    where
+    or
+
+    S{sum} w[i] ( f_obs_square.data[i] - k abs(f_calc.data[i])^2 )^2
+    / S{sum} w[i] f_obs_square.data[i]^2
+
+    depending on which of f_obs and f_obs_square is not None.
+
+    Note that
       - the sums are over the indices i of the reflections,
       - f_calc is to be passed to the __call__ method,
       - the weights w and the scale factor k are discussed below.
 
     @type f_obs: real miller.array
     @param f_obs: the observed reflections, with F and sigma(F)
-    respectively in f_obs.data() and f_obs.sigmas()
+    respectively in f_obs.data() and f_obs.sigmas() or None
+    @type f_obs_square: real miller.array
+    @param f_obs_square: the observed reflections, with F^2 and sigma(F^2)
+    respectively in f_obs_square.data() and f_obs_square.sigmas()
     @type weights: flex.double
     @param weights: the weights w or None in which case w = 1
     @type use_sigmas_as_weights: bool
-    @param use_sigmas_as_weights: whether to use w = 1/f_obs.sigmas()^2
+    @param use_sigmas_as_weights: whether to use w = 1/sigmas()^2
     @type scale_factor: number
-    @param scale_factor: the scale factor k is not null, otherwise k will
+    @param scale_factor: the scale factor k if not null, otherwise k will
     be computed as a by-product by the __call__ method
     """
     adopt_init_args(self, locals(), hide=True)
+    assert self._f_obs is not None or self._f_obs_square is not None
     assert self._weights is None or self._use_sigmas_as_weights == False
     if (self._use_sigmas_as_weights):
       sigmas_squared = flex.pow2(self._f_obs.sigmas())
@@ -104,6 +116,10 @@ class least_squares_residual(object):
 
   def f_obs(self):
     """ The f_obs passed to the constructor """
+    return self._f_obs
+
+  def f_obs_square(self):
+    """ The f_obs_square passed to the constructor """
     return self._f_obs
 
   def weights(self):
@@ -129,22 +145,43 @@ class least_squares_residual(object):
     @return: An object holding the residual value, derivatives and scale
     factor
     """
+    if(self.f_obs() is not None):
+      ext_ls_residual = ext.targets_least_squares_residual
+      y_obs = self.f_obs()
+    else:
+      ext_ls_residual = ext.targets_least_squares_residual_for_F_square
+      y_obs = self.f_obs_square()
     assert f_calc.unit_cell().is_similar_to(
-           self.f_obs().unit_cell())
-    assert f_calc.space_group() == self.f_obs().space_group()
+           y_obs.unit_cell())
+    assert f_calc.space_group() == y_obs.space_group()
     if (self.weights() is not None):
-      return ext.targets_least_squares_residual(
-        self.f_obs().data(),
+      return ext_ls_residual(
+        y_obs().data(),
         self.weights(),
         f_calc.data(),
         compute_derivatives,
         self._scale_factor)
     else:
-      return ext.targets_least_squares_residual(
-        self.f_obs().data(),
+      return ext_ls_residual(
+        y_obs.data(),
         f_calc.data(),
         compute_derivatives,
         self._scale_factor)
+
+
+class least_squares_residual(unified_least_squares_residual):
+  """ A least-square residual functor for F refinement. """
+
+  def __init__(self, f_obs,
+                     weights               = None,
+                     use_sigmas_as_weights = False,
+                     scale_factor          = 0):
+    super(least_squares_residual, self).__init__(f_obs,
+                                                 None,
+                                                 weights,
+                                                 use_sigmas_as_weights,
+                                                 scale_factor)
+
 
 class intensity_correlation(object):
 
