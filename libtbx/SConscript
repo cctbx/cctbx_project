@@ -49,7 +49,7 @@ env_etc.include_registry = libtbx.config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
 
 def disable_strict_aliasing(env):
-  if (env_etc.compiler in ["unix_gcc", "darwin_c++", "darwin_gcc"]):
+  if (env_etc.compiler in ["unix_gcc", "darwin_c++"]):
     opt = ["-fno-strict-aliasing"]
     env.Append(
       CXXFLAGS=opt,
@@ -112,7 +112,6 @@ supported_compilers = (
   "hp_ux11_aCC",
   "irix_CC",
   "darwin_c++",
-  "darwin_gcc",
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
@@ -436,54 +435,6 @@ else:
       static_exe = None
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "darwin_gcc"):
-    env_etc.static_libraries = 1
-    env_etc.static_bpl = 0
-    env_base.Replace(
-      CC="gcc",
-      SHCC="gcc",
-      CXX="g++",
-      LINK="g++",
-      SHCXX="g++",
-      SHLINK="g++",
-      SHLIBSUFFIX=env_etc.shlibsuffix,
-    )
-    env_etc.cxxflags_base = Split("""
-      -fPIC
-      -ftemplate-depth-130
-      -w
-      -DBOOST_DISABLE_THREADS
-    """)
-    env_etc.ccflags_base = Split("""
-      -fPIC
-      -w
-    """)
-    cxx_version = easy_run.fully_buffered(command="c++ -dumpversion") \
-      .raise_if_errors() \
-      .stdout_lines[0].strip()
-    cxx_major = cxx_version.split(".")[:1]
-    if (len(cxx_major) == 1):
-      try: cxx_major = int(cxx_major[0])
-      except ValueError: pass
-    if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
-      if (cxx_version == "4.0.0"):
-        opts[1] = "-O2" # Apple's optimizer is broken
-    else:
-      opts = ["-O0", "-fno-inline"]
-    if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g")
-    env_etc.cxxflags_base.extend(opts)
-    env_etc.ccflags_base.extend(opts)
-    env_etc.shlinkflags = []
-    env_etc.shlinkflags_bpl = [
-      "-w", # for some odd reason -bundle cannot be the first option
-      "-bundle",
-      "-F"+darwin_framework_path(),
-      "-framework", "Python"]
-    if (static_exe):
-      # no action required
-      static_exe = None
   elif (env_etc.compiler == "darwin_c++"):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
