@@ -858,6 +858,53 @@ def exercise_targets():
     (0.0013784963+0.002756992j), (0.0103982354+0.013864313j),
     (0.0160141831+0.032028366j), (0.0004572786-0.000365822j),
     (0.0014117387-0.001694086j)))
+
+  import cmath
+  f_obs_sqr = flex.double((1,2,3,4,5))
+  w = flex.double((1,1,1,1,1))
+  f_calc = flex.complex_double([ cmath.sqrt(x) for x in f_obs_sqr ])
+  ls = xray.targets_least_squares_residual_for_F_square(f_obs_sqr, w, f_calc)
+  assert approx_equal(ls.scale_factor(), 1)
+  assert approx_equal(ls.target(), 0)
+  assert ls.derivatives().size() == 0
+  ls = xray.targets_least_squares_residual_for_F_square(
+    f_obs_sqr, w, f_calc, True)
+  assert approx_equal(ls.scale_factor(), 1)
+  assert approx_equal(ls.target(), 0)
+  assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
+  ls = xray.targets_least_squares_residual_for_F_square(
+    f_obs_sqr, w, f_calc, False, 3)
+  assert approx_equal(ls.scale_factor(), 3)
+  assert approx_equal(ls.target(), 4)
+  assert ls.derivatives().size() == 0
+  ls = xray.targets_least_squares_residual_for_F_square(
+    f_obs_sqr, f_calc)
+  assert approx_equal(ls.scale_factor(), 1)
+  assert approx_equal(ls.target(), 0)
+  assert ls.derivatives().size() == 0
+  f_calc = flex.complex_double([ cmath.sqrt(x) for x in (10,20,30,40,50) ])
+  ls = xray.targets_least_squares_residual_for_F_square(
+    f_obs_sqr, f_calc, True)
+  assert approx_equal(ls.scale_factor(), 1/10.)
+  assert approx_equal(ls.target(), 0)
+  assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
+  ls = xray.targets_least_squares_residual_for_F_square(
+    f_obs_sqr, f_calc, False, 3/10.)
+  assert approx_equal(ls.scale_factor(), 3/10.)
+  assert approx_equal(ls.target(), 4)
+  assert ls.derivatives().size() == 0
+  f_calc = flex.complex_double([ cmath.sqrt(x)
+                                 for x in (1+2j,3+4j,-1-2j,5-4j,-5+6j) ])
+  w = flex.double((1,2,3,2,4))
+  ls = xray.targets_least_squares_residual_for_F_square(
+    f_obs_sqr, w, f_calc, True)
+  assert approx_equal(ls.scale_factor(), 0.6307845)
+  assert approx_equal(ls.target(), 0.06211855)
+  assert approx_equal(tuple(ls.derivatives()), (
+    (0.00784178+0.00484648j), (0.0693216+0.0346608j),
+    (-0.0563023+0.091099j), (0.0027966-0.000980993j),
+    (-0.00522801-0.011162j)))
+
   f_obs = flex.double((1,2,3,4,5))
   w = flex.int((1,1,1,1,1))
   f_calc = flex.complex_double((1,2,3,4,5))

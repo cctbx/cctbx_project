@@ -72,15 +72,16 @@ namespace {
     }
   };
 
+  template <template<typename> class FcalcFunctor>
   struct least_squares_residual_wrappers
   {
-    typedef least_squares_residual<> w_t;
+    typedef least_squares_residual<FcalcFunctor> w_t;
 
     static void
-    wrap()
+    wrap(const char* python_name)
     {
       using namespace boost::python;
-      class_<w_t>("targets_least_squares_residual",
+      class_<w_t>(python_name,
                   "Boost.Python wrapping of the C++ class"
                   "U{least_squares_residual<c_plus_plus/"
                   "classcctbx_1_1xray_1_1targets_1_1least__squares__residual.html>}",
@@ -200,7 +201,12 @@ namespace boost_python {
   {
     targets::boost_python::common_results_wrappers::wrap();
     targets::boost_python::ls_with_scale_wrappers::wrap();
-    targets::boost_python::least_squares_residual_wrappers::wrap();
+    targets::boost_python::least_squares_residual_wrappers<
+      cctbx::xray::targets::FcalcModulus>::wrap(
+      "targets_least_squares_residual");
+    targets::boost_python::least_squares_residual_wrappers<
+      cctbx::xray::targets::FcalcModulusSquare>::wrap(
+      "targets_least_squares_residual_for_F_square");
     targets::boost_python::intensity_correlation_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_hl_wrappers::wrap();
