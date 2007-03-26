@@ -84,10 +84,6 @@ if (not env_etc.no_boost_python):
     env.Replace(SHLINK="libtbx.mac_os_x_ld_bpl_dll")
     env.Prepend(SHLINKFLAGS=[
       "c++", "-F"+env_etc.darwin_framework_path(), "-framework", "Python"])
-  elif (env_etc.compiler == "darwin_gcc"):
-    env.Replace(SHLINK="libtbx.mac_os_x_ld_bpl_dll")
-    env.Prepend(SHLINKFLAGS=[
-      "g++", "-F"+env_etc.darwin_framework_path(), "-framework", "Python"])
 
   bpl_dll_sources = []
   prefix = "#"+os.path.join(
