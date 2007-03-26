@@ -526,7 +526,11 @@ class _energies_sites(scitbx.restraints.energies):
     if (self.gradients is not None):
       return (2 * self.weight) * diff
 
-  def show_distances_to_average(self, site_labels, out=None, prefix=""):
+  def show_distances_to_average(self,
+        site_labels,
+        excessive_distance_limit=None,
+        out=None,
+        prefix=""):
     if (out is None): out = sys.stdout
     assert len(site_labels) == self.sites_cart.size()
     max_label_size = 1
@@ -543,15 +547,23 @@ class _energies_sites(scitbx.restraints.energies):
         sites_average = self.sites_average.select(pair[0])
       else:
         sites_average = op.inverse() * self.sites_average.select(pair[0])
+      n_excessive = 0
       for i,c,a in zip(pair[1], sites_current, sites_average):
-        diff = matrix.col(c) - matrix.col(a)
-        print >> out, prefix + fmt % (site_labels[i], abs(diff))
+        abs_diff = abs(matrix.col(c) - matrix.col(a))
+        print >> out, prefix + fmt % (site_labels[i], abs_diff),
+        if (excessive_distance_limit is not None
+            and abs_diff >= excessive_distance_limit):
+          print >> out, "EXCESSIVE",
+          n_excessive += 1
+        print >> out
+      return n_excessive
     sel = (self.sites_count != 0).iselection()
-    show_selection(i_ncs=0, pair=[sel, sel], op=None)
+    n_excessive = show_selection(i_ncs=0, pair=[sel, sel], op=None)
     for i_ncs,pair,op in zip(count(1),
                              self.operators.group.selection_pairs,
                              self.operators.matrices):
-      show_selection(i_ncs=i_ncs, pair=pair, op=op)
+      n_excessive += show_selection(i_ncs=i_ncs, pair=pair, op=op)
+    return n_excessive
 
 class groups(object):
 
@@ -668,8 +680,10 @@ class groups(object):
   def show_sites_distances_to_average(self,
          sites_cart,
          site_labels,
+         excessive_distance_limit=None,
          out=None,
          prefix=""):
+    n_excessive = 0
     for i_group,group in enumerate(self.members):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
       if (    group.coordinate_sigma is not None
@@ -681,12 +695,16 @@ class groups(object):
           sites_cart=sites_cart,
           compute_gradients=False)
         print >> out, prefix + "  weight:  %.6g" % energies_sites.weight
-        energies_sites.show_distances_to_average(
-          site_labels=site_labels, out=out, prefix=prefix+"  ")
+        n_excessive += energies_sites.show_distances_to_average(
+          site_labels=site_labels,
+          excessive_distance_limit=excessive_distance_limit,
+          out=out,
+          prefix=prefix+"  ")
       else:
         print >> out, \
           prefix+"  coordinate_sigma: %s  =>  restraints disabled" % (
             str(group.coordinate_sigma))
+    return n_excessive
 
   def selection_restrained(self, n_seq=None):
     if (n_seq is None):
