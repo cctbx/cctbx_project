@@ -1,6 +1,7 @@
 from libtbx import test_utils
 import libtbx.load_env
 
+
 def run():
   tst_list = (
   "$D/tst_rational.py",
