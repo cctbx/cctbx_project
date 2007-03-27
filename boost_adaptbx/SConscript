@@ -81,9 +81,15 @@ if (not env_etc.no_boost_python):
     paths=[env_etc.boost_include, env_etc.python_include])
 
   if (env_etc.compiler == "darwin_c++"):
-    env.Replace(SHLINK="libtbx.mac_os_x_ld_bpl_dll")
-    env.Prepend(SHLINKFLAGS=[
-      "c++", "-F"+env_etc.darwin_framework_path(), "-framework", "Python"])
+    if (env_etc.mac_os_version == "10.3"):
+      dylib1 = "-ldylib1.o "
+    else:
+      dylib1 = ""
+    lo = "boost/libs/python/src/libboost_python.lo"
+    env.Replace(SHLINKCOM=[
+      "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
+      "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
+        " %s-o lib/libboost_python.dylib %s" % (dylib1, lo)])
 
   bpl_dll_sources = []
   prefix = "#"+os.path.join(
