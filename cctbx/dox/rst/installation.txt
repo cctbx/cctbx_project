@@ -6,7 +6,7 @@ Installation overview
 
 Periodically the most recent cctbx source code including all
 its dependencies is automatically exported from the source code
-databases (CVS) and bundled into self-extracting files that are
+databases (SVN) and bundled into self-extracting files that are
 published at:
 
   - http://cci.lbl.gov/cctbx_build/
@@ -159,6 +159,10 @@ for problems.
 ----------------
 Migrating to CVS
 ----------------
+
+THIS SECTION IS OUT OF DATE!
+
+On March 27, 2007 the cctbx CVS trees were migrated to SVN.
 
 To participate in the development of the cctbx modules or to get easy
 access to the most recent changes it may be useful to checkout some
