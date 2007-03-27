@@ -118,7 +118,7 @@ Links
 
 - `cctbx - Automatic multi-platform builds`_
 
-- `cctbx - Public CVS repository`_
+- `cctbx - Public SVN repository`_
 
 - `cctbx - Project page at SourceForge`_
 
@@ -126,7 +126,7 @@ Links
 
 .. _`cctbx - Automatic multi-platform builds`: http://cci.lbl.gov/cctbx_build/
 
-.. _`cctbx - Public CVS repository`: http://cctbx.cvs.sourceforge.net/cctbx/
+.. _`cctbx - Public SVN repository`: http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/
 
 .. _`cctbx - Project page at SourceForge`: http://sourceforge.net/projects/cctbx/
 
@@ -144,7 +144,7 @@ source code fragments. Our work was funded in part by the US
 Department of Energy under Contract No. DE-AC03-76SF00098. We
 gratefully acknowledge the financial support of NIH/NIGMS.
 
-The cctbx CVS development tree is hosted by
+The cctbx SVN development tree is hosted by
 
 .. image:: http://sourceforge.net/sflogo.php?group_id=24107
 
