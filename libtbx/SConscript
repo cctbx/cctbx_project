@@ -35,15 +35,11 @@ def set_python_include_and_libs(env_etc):
     env_etc.python_framework = "/".join(
       env_etc.python_include.split("/")[:-2] + ["Python"])
 
-def darwin_framework_path():
-  return os.sep.join(os.path.realpath(sys.executable).split(os.sep)[:-5])
-
 env_etc = empty()
 env_etc.no_boost_python = ARGUMENTS.get(
   "no_boost_python",
   not libtbx.env.build_options.build_boost_python_extensions)
 env_etc.norm_join = norm_join
-env_etc.darwin_framework_path = darwin_framework_path
 
 env_etc.include_registry = libtbx.config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
@@ -168,6 +164,14 @@ if (sys.platform == "win32"):
     sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
 else:
+  env_etc.mac_os_version = None
+  if (sys.platform.startswith("darwin")):
+    env_etc.mac_os_version = ".".join(easy_run.fully_buffered(
+      command="/usr/bin/sw_vers -productVersion") \
+      .raise_if_errors() \
+      .stdout_lines[0].strip().split(".")[:2])
+    if (env_etc.mac_os_version == "10.3"):
+      os.environ["MACOSX_DEPLOYMENT_TARGET"] = env_etc.mac_os_version
   env_base = Environment(
     ENV=os.environ,
     tools=['cc','g++','gnulink','ar'])
@@ -487,8 +491,7 @@ else:
     env_etc.shlinkflags_bpl = [
       "-w", # suppress "source/lib does not exist" warning
       "-bundle",
-      "-F"+darwin_framework_path(),
-      "-framework", "Python"]
+      "-undefined", "dynamic_lookup"]
     if (static_exe):
       # no action required
       static_exe = None
