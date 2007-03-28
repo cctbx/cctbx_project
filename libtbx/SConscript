@@ -164,11 +164,16 @@ if (sys.platform == "win32"):
     sys.tracebacklimit = 0
     raise RuntimeError("Unknown compiler choice: %s" % env_etc.compiler)
 else:
+  env_etc.mac_cpu = None
   env_etc.mac_os_version = None
   if (sys.platform.startswith("darwin")):
-    env_etc.mac_os_version = ".".join(easy_run.fully_buffered(
-      command="/usr/bin/sw_vers -productVersion") \
+    env_etc.mac_cpu = easy_run.fully_buffered(
+      command="/usr/bin/uname -p") \
       .raise_if_errors() \
+      .stdout_lines[0].strip()
+    env_etc.mac_os_version = ".".join(easy_run.fully_buffered(
+      command="/usr/bin/sw_vers -productVersion")
+      .raise_if_errors()
       .stdout_lines[0].strip().split(".")[:2])
     if (env_etc.mac_os_version == "10.3"):
       os.environ["MACOSX_DEPLOYMENT_TARGET"] = env_etc.mac_os_version
