@@ -50,7 +50,7 @@ def run(args, command_name="libtbx.list_files"):
     elif (os.path.isfile(path)):
       show_status(path=path, text=text, binary=binary, quotes=quotes)
     else:
-      for file_path in walk_source_tree(path):
+      for file_path in walk_source_tree(top=path):
         show_status(path=file_path, text=text, binary=binary, quotes=quotes)
 
 if (__name__ == "__main__"):
