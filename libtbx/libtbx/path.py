@@ -53,3 +53,25 @@ class directory(object):
     if (must_exist and not os.path.isdir(result.path)):
       raise RuntimeError("Not a directory: %s" % show_string(result.path))
     return result
+
+def walk_source_tree(top, arg=None):
+  def visitor(result, dirname, names):
+    names_keep = []
+    for name in names:
+      path = os.path.join(dirname, name)
+      if (not os.path.isdir(path)):
+        if (not name.endswith(".pyc")):
+          result.append(path)
+        continue
+      def is_file_in_subdir(name):
+        return os.path.isfile(os.path.join(path, name))
+      if (   (name == "CVS" and is_file_in_subdir("Entries"))
+          or (name == ".svn" and is_file_in_subdir("README.txt"))):
+        continue
+      names_keep.append(name)
+    if (len(names_keep) != len(names)):
+      del names[:]
+      names.extend(names_keep)
+  result = []
+  os.path.walk(top, visitor, result)
+  return result
