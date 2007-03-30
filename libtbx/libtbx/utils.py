@@ -587,6 +587,19 @@ class detect_binary_file(object):
           break
     return self.status
 
+  def from_initial_block(
+        file_name,
+        monitor_initial=None,
+        max_fraction_non_ascii=None):
+    detector = detect_binary_file(
+      monitor_initial=monitor_initial,
+      max_fraction_non_ascii=max_fraction_non_ascii)
+    block = open(file_name, "rb").read(detector.monitor_initial)
+    if (len(block) == 0): return False
+    detector.monitor_initial = min(len(block), detector.monitor_initial)
+    return detector.is_binary_file(block=block)
+  from_initial_block = staticmethod(from_initial_block)
+
 def exercise():
   from libtbx.test_utils import approx_equal
   host_and_user().show(prefix="### ")

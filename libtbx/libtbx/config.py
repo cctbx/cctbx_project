@@ -2,7 +2,7 @@ from __future__ import generators
 import libtbx.path
 from libtbx.option_parser import option_parser
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, detect_binary_file
 from libtbx import adopt_init_args
 from libtbx import easy_run
 import shutil
@@ -653,11 +653,17 @@ class environment:
     print >> f, 'unset PYTHONHOME'
     print >> f, 'LIBTBX_BUILD="%s"' % self.build_path
     print >> f, 'export LIBTBX_BUILD'
+    source_is_py = False
     if (source_file is not None):
       dispatcher_name = os.path.basename(target_file)
       assert dispatcher_name.find('"') < 0
       print >> f, 'LIBTBX_DISPATCHER_NAME="%s"' % os.path.basename(target_file)
       print >> f, 'export LIBTBX_DISPATCHER_NAME'
+      if (source_file.lower().endswith(".py")):
+        source_is_py = True
+        pyexe_dirname, pyexe_basename = os.path.split(self.python_exe)
+        print >> f, 'LIBTBX_PYEXE_BASENAME=%s' % show_string(pyexe_basename)
+        print >> f, 'export LIBTBX_PYEXE_BASENAME'
     for line in self.dispatcher_include(where="at_start"):
       print >> f, line
     essentials = [("PYTHONPATH", self.pythonpath)]
@@ -684,22 +690,31 @@ class environment:
     if (precall_commands is not None):
       for line in precall_commands:
         print >> f, line
-    if (source_file is not None):
+    if (source_file is None):
+      source_is_binary = True
+    elif (source_is_py):
+      source_is_binary = False
+    else:
+      source_is_binary = detect_binary_file.from_initial_block(
+        file_name=source_file)
+    if (not source_is_binary):
       for line in source_specific_dispatcher_include(
                     pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
         print >> f, line
     for line in self.dispatcher_include(where="before_command"):
       print >> f, line
-    if (source_file is not None):
+    if (not source_is_binary):
       for line in source_specific_dispatcher_include(
                     pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
         print >> f, line
+    if (source_file is not None):
       start_python = False
       cmd = ""
-      if (source_file.lower().endswith(".py")):
-        cmd += " '"+self.python_exe+"'"
+      if (source_is_py):
+        assert pyexe_dirname.count('"') == 0
+        cmd += ' "%s%s$LIBTBX_PYEXE_BASENAME"' % (pyexe_dirname, os.sep)
         if (len(source_specific_dispatcher_include(
                   pattern="LIBTBX_START_PYTHON",
                   source_file=source_file)) > 3):
