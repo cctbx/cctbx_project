@@ -555,6 +555,38 @@ def count_max(assert_less_than):
     i += 1
     assert i < assert_less_than
 
+class detect_binary_file(object):
+
+  def __init__(self, monitor_initial=None, max_fraction_non_ascii=None):
+    if (monitor_initial is None):
+      self.monitor_initial = 1000
+    else:
+      self.monitor_initial = monitor_initial
+    if (max_fraction_non_ascii is None):
+      self.max_fraction_non_ascii = 0.05
+    else:
+      self.max_fraction_non_ascii = max_fraction_non_ascii
+    self.n_ascii_characters = 0
+    self.n_non_ascii_characters = 0
+    self.status = None
+
+  def is_binary_file(self, block):
+    if (self.monitor_initial > 0):
+      for c in block:
+        if (1 < ord(c) < 128):
+          self.n_ascii_characters += 1
+        else:
+          self.n_non_ascii_characters += 1
+        self.monitor_initial -= 1
+        if (self.monitor_initial == 0):
+          if (  self.n_non_ascii_characters
+              > self.n_ascii_characters * self.max_fraction_non_ascii):
+            self.status = True
+          else:
+            self.status = False
+          break
+    return self.status
+
 def exercise():
   from libtbx.test_utils import approx_equal
   host_and_user().show(prefix="### ")
