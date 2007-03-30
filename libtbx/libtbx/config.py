@@ -1016,7 +1016,7 @@ class environment:
       else:
         if (libtbx_cvs_root.lower().find("ccp") >= 0): return False
     for module in self.module_list:
-      if (module.has_top_level_cvs_directory()):
+      if (module.has_top_level_cvs_or_svn_directory()):
         return True
     return False
 
@@ -1177,9 +1177,15 @@ class module:
           break
     return result
 
-  def has_top_level_cvs_directory(self):
+  def has_top_level_directory(self, directory_name):
     for dist_path in self.dist_paths_active():
-      if (os.path.isdir(os.path.join(dist_path, "CVS"))):
+      if (os.path.isdir(os.path.join(dist_path, directory_name))):
+        return True
+    return False
+
+  def has_top_level_cvs_or_svn_directory(self):
+    for directory_name in ["CVS", ".svn"]:
+      if (self.has_top_level_directory(directory_name=directory_name)):
         return True
     return False
 
