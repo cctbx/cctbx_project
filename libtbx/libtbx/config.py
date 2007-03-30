@@ -11,6 +11,11 @@ from cStringIO import StringIO
 import re
 import sys, os
 
+def escape_sh_double_quoted(s):
+  "the result is supposed to be double-quoted when passed to sh"
+  if (s is None): return None
+  return s.replace('\\','\\\\').replace('"','\\"')
+
 def get_hostname():
   try: import socket
   except KeyboardInterrupt: raise
@@ -713,8 +718,8 @@ class environment:
       start_python = False
       cmd = ""
       if (source_is_py):
-        assert pyexe_dirname.count('"') == 0
-        cmd += ' "%s%s$LIBTBX_PYEXE_BASENAME"' % (pyexe_dirname, os.sep)
+        cmd += ' "%s%s$LIBTBX_PYEXE_BASENAME"' % (
+          escape_sh_double_quoted(pyexe_dirname), os.sep)
         if (len(source_specific_dispatcher_include(
                   pattern="LIBTBX_START_PYTHON",
                   source_file=source_file)) > 3):
