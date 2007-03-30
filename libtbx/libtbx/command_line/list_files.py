@@ -11,9 +11,8 @@ def show_status(path, text, binary, quotes):
   if (text and binary):
     show()
   else:
-    detector = detect_binary_file()
-    if (detector.is_binary_file(
-          block=open(path, "rb").read(detector.monitor_initial)) is binary):
+    status = detect_binary_file.from_initial_block(file_name=path)
+    if (status is None or status is binary):
       show()
 
 def run(args, command_name="libtbx.list_files"):
