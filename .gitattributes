@@ -1,5 +1,4 @@
 * text=auto !eol
-cctbx/dox/rst/python_cpp_mix.png svneol=native#unset
 libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx_refresh.py -text
 libtbx/windows_dispatcher.exe -text
