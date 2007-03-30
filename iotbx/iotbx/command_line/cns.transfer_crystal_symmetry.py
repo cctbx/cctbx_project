@@ -1,9 +1,8 @@
 from iotbx import cns
 import iotbx.cns.space_group_symbols
-from iotbx.misc import detect_binary_file
 from iotbx import crystal_symmetry_from_any
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry, Usage, plural_s
+from libtbx.utils import Sorry, Usage, plural_s, detect_binary_file
 import sys, os
 
 def run(args):
@@ -42,7 +41,7 @@ iotbx.cns.transfer_crystal_symmetry any_symmetry_source_file cns_input_file
   end_block_parameter_definition = False
   for line in cns_inp:
     if (detect_binary is not None):
-      is_binary = detect_binary.is_binary_file(line)
+      is_binary = detect_binary.is_binary_file(block=line)
       if (is_binary is not None):
         if (is_binary):
           raise Sorry("%s appears to be a binary file." % show_string(target))
