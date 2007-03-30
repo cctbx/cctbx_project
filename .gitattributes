@@ -1,5 +1,6 @@
 * text=auto !eol
 cctbx/dox/rst/python_cpp_mix.png -text
+libtbx/libtbx/command_line/find_files.py -text
 libtbx/libtbx/command_line/list_files.py -text
 libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx_refresh.py -text
