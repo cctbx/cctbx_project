@@ -9,7 +9,7 @@ def run(args):
   assert args in [[], ["--verbose"]]
   verbose = "--verbose" in args
   exercise_core_LS(xray.targets_least_squares_residual, verbose)
-  exercise_core_LS(xray.targets_least_squares_residual_for_F_square, verbose)
+  exercise_core_LS(xray.targets_least_squares_residual_for_intensity, verbose)
 
   crystal_symmetry = crystal.symmetry(
     unit_cell=(10,11,12,85,95,100),
@@ -79,7 +79,7 @@ def exercise_py_LS(obs, f_calc, weighting, verbose):
   if obs.is_xray_amplitude_array():
     assert(isinstance(rt, xray.targets_least_squares_residual))
   elif obs.is_xray_intensity_array():
-    assert(isinstance(rt, xray.targets_least_squares_residual_for_F_square))
+    assert(isinstance(rt, xray.targets_least_squares_residual_for_intensity))
   scale_factor = rt.scale_factor()
   gr_ana = rt.derivatives()
   gr_fin = flex.complex_double()

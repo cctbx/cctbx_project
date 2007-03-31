@@ -164,7 +164,7 @@ class unified_least_squares_residual(object):
     if self.obs().is_xray_amplitude_array():
       ext_ls_residual = ext.targets_least_squares_residual
     elif self.obs().is_xray_intensity_array():
-      ext_ls_residual = ext.targets_least_squares_residual_for_F_square
+      ext_ls_residual = ext.targets_least_squares_residual_for_intensity
     if (self._weights is not None):
       result = ext_ls_residual(
         self.obs().data(),
