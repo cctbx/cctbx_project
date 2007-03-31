@@ -1,4 +1,7 @@
 from cctbx.xray import ext
+from cctbx.xray import weighting_schemes
+from cctbx.xray import observation_types
+from cctbx import miller
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 
@@ -69,11 +72,10 @@ class max_like(object):
 class unified_least_squares_residual(object):
   """ A least-square residual functor for refinement against F or F^2. """
 
-  def __init__(self, f_obs                 = None,
-                     f_obs_square          = None,
-                     weights               = None,
-                     use_sigmas_as_weights = False,
-                     scale_factor          = 0):
+  def __init__(self, obs,
+               is_amplitude=True,
+               weighting=weighting_schemes.unit_weighting()
+               ):
     """
     Construct a least-square residuals
 
@@ -92,45 +94,48 @@ class unified_least_squares_residual(object):
       - f_calc is to be passed to the __call__ method,
       - the weights w and the scale factor k are discussed below.
 
-    @type f_obs: real miller.array
-    @param f_obs: the observed reflections, with F and sigma(F)
-    respectively in f_obs.data() and f_obs.sigmas() or None
-    @type f_obs_square: real miller.array
-    @param f_obs_square: the observed reflections, with F^2 and sigma(F^2)
-    respectively in f_obs_square.data() and f_obs_square.sigmas()
-    @type weights: flex.double
-    @param weights: the weights w or None in which case w = 1
-    @type use_sigmas_as_weights: bool
-    @param use_sigmas_as_weights: whether to use w = 1/sigmas()^2
-    @type scale_factor: number
-    @param scale_factor: the scale factor k if not null, otherwise k will
-    be computed as a by-product by the __call__ method
+    @type obs: real miller.array
+    @param obs: the observed reflections, with F and sigma(F) (or F^2 and
+    sigma(F^2)) respectively in obs.data() and obs.sigmas()
+    @param is_amplitude: a flag to discriminate the type of data in obs if the
+    latter does not spell out whether it contains amplitudes or intensities; 
+    the default means that in the latter case, one falls back for amplitudes
+    obs do not 
+    @param weighting: a weighting scheme for the data (c.f. 
+    cctbx.xray.weighting for common ones) or None, which means no weights
     """
-    adopt_init_args(self, locals(), hide=True)
-    assert self._f_obs is not None or self._f_obs_square is not None
-    assert self._weights is None or self._use_sigmas_as_weights == False
-    if (self._use_sigmas_as_weights):
-      sigmas_squared = flex.pow2(self._f_obs.sigmas())
-      assert sigmas_squared.all_gt(0)
-      self._weights = 1 / sigmas_squared
+    if not(obs.is_xray_amplitude_array() or obs.is_xray_intensity_array()):
+      self._obs = miller.array(obs, data=obs.data(), sigmas=obs.sigmas())
+      if is_amplitude:
+        self._obs.set_observation_type_xray_amplitude()
+      else:
+        self._obs.set_observation_type_xray_intensity()
+    else:
+      self._obs = obs
+    assert(self._obs.is_xray_amplitude_array() 
+           or self._obs.is_xray_intensity_array())
+    self._weighting = weighting
+    self._weights = None
+    self._scale_factor = None
+    if self._weighting is not None and self._weighting.depends_only_on_obs:
+      self._reweight()
+      
+  def _reweight(self, f_calc=None):
+    if self._weighting is None: return
+    if self.obs().is_xray_amplitude_array():
+      self._weights = self.weighting().amplitude_weights(self.obs(), f_calc)
+    elif self.obs().is_xray_intensity_array():
+      self._weights = self.weighting().intensity_weights(self.obs(), f_calc)
+      
+  def obs(self):
+    """ The obs passed to the constructor """
+    return self._obs
 
-  def f_obs(self):
-    """ The f_obs passed to the constructor """
-    return self._f_obs
+  def weighting(self):
+    """ The weighting scheme """
+    return self._weighting
 
-  def f_obs_square(self):
-    """ The f_obs_square passed to the constructor """
-    return self._f_obs
-
-  def weights(self):
-    """ The weights w """
-    return self._weights
-
-  def use_sigmas_as_weights(self):
-    """ The flag with the same name passed to the constructor """
-    return self._use_sigmas_as_weights
-
-  def __call__(self, f_calc, compute_derivatives):
+  def __call__(self, f_calc, compute_derivatives, scale_factor=0):
     """
     Compute the least-squares residual value and perhaps its derivatives
     wrt to the calculated structure factor F_c of the i-th reflection
@@ -140,47 +145,61 @@ class unified_least_squares_residual(object):
     @type compute_derivatives: bool
     @param compute_derivatives: whether to compute the derivatives of the
     least square residual or not
+    @type scale_factor: number
+    @param scale_factor: the scale factor k if not null, otherwise k will
+    be computed as a by-product by the call of this method
     @rtype: Boost.Python binding of
     U{least_squares_residual<DOXYCLASS:cctbx::xray::targets::least_squares_residual>}
     @return: An object holding the residual value, derivatives and scale
     factor
     """
-    if(self.f_obs() is not None):
+    assert f_calc.unit_cell().is_similar_to(self.obs().unit_cell())
+    assert f_calc.space_group() == self.obs().space_group()
+    if self._scale_factor is None or scale_factor != 0:
+      self._scale_factor = 0
+    else:
+      self._scale_factor = scale_factor
+    if self._weighting is not None and not self._weighting.depends_only_on_obs:
+      self._reweight(f_calc)
+    if self.obs().is_xray_amplitude_array():
       ext_ls_residual = ext.targets_least_squares_residual
-      y_obs = self.f_obs()
-    else:
+    elif self.obs().is_xray_intensity_array():
       ext_ls_residual = ext.targets_least_squares_residual_for_F_square
-      y_obs = self.f_obs_square()
-    assert f_calc.unit_cell().is_similar_to(
-           y_obs.unit_cell())
-    assert f_calc.space_group() == y_obs.space_group()
-    if (self.weights() is not None):
-      return ext_ls_residual(
-        y_obs().data(),
-        self.weights(),
+    if (self._weights is not None):
+      result = ext_ls_residual(
+        self.obs().data(),
+        self._weights,
         f_calc.data(),
         compute_derivatives,
         self._scale_factor)
     else:
-      return ext_ls_residual(
-        y_obs.data(),
+      result = ext_ls_residual(
+        self.obs().data(),
         f_calc.data(),
         compute_derivatives,
         self._scale_factor)
+    self._scale_factor = result.scale_factor()
+    return result
 
 
-class least_squares_residual(unified_least_squares_residual):
+class least_squares_residual_for_amplitude(unified_least_squares_residual):
   """ A least-square residual functor for F refinement. """
+  
+  statistical_weighting = weighting_schemes.pure_statistical_weighting()
 
-  def __init__(self, f_obs,
-                     weights               = None,
-                     use_sigmas_as_weights = False,
-                     scale_factor          = 0):
-    super(least_squares_residual, self).__init__(f_obs,
-                                                 None,
-                                                 weights,
-                                                 use_sigmas_as_weights,
-                                                 scale_factor)
+  def __init__(self, f_obs, use_sigmas_as_weights = False):
+    if use_sigmas_as_weights:
+      weighting = self.statistical_weighting()
+    else: 
+      weighting = None
+    super(least_squares_residual, self).__init__(f_obs, True, weighting)
+    
+  f_obs = unified_least_squares_residual.obs
+    
+  def use_sigmas_as_weights(self):
+    return isinstance(self._weighting, statistical_weighting)
+  
+least_squares_residual = least_squares_residual_for_amplitude
 
 
 class intensity_correlation(object):

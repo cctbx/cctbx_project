@@ -1,4 +1,5 @@
 * text=auto !eol
+cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 libtbx/libtbx/command_line/find_files.py -text
 libtbx/libtbx/command_line/list_files.py -text
