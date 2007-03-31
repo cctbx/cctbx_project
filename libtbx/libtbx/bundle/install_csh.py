@@ -13,7 +13,7 @@ set bundle="%(bundle)s"
 set sources="$cwd/${bundle}_sources"
 set build="$cwd/${bundle}_build"
 
-set build_mode=release
+set build_mode=max_optimized
 
 set minimum_python_version=%(minimum_python_version)s
 
