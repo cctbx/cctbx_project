@@ -1292,6 +1292,9 @@ class module:
 
 class build_options:
 
+  supported_modes = [
+    "release", "max_optimized", "quick", "debug", "debug_optimized"]
+
   def __init__(self,
         compiler,
         mode,
@@ -1301,9 +1304,11 @@ class build_options:
         scan_boost,
         build_boost_python_extensions=True):
     adopt_init_args(self, locals())
-    assert self.mode in ["release", "quick", "debug", "debug_optimized"]
+    assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
-    self.optimization = (self.mode in ["release", "debug_optimized"])
+    self.optimization = (self.mode in [
+      "release", "max_optimized", "debug_optimized"])
+    self.max_optimized = (self.mode in ["max_optimized", "debug_optimized"])
     self.debug_symbols = (self.mode in ["debug", "debug_optimized"])
     if (self.static_exe):
       self.static_libraries = True
@@ -1401,10 +1406,10 @@ class pre_process_args:
           help="preferred spelling of current working directory",
           metavar="DIRECTORY")
       parser.option(None, "--build",
-        choices=("release", "quick", "debug", "debug_optimized"),
+        choices=build_options.supported_modes,
         default="release",
         help="build mode",
-        metavar="release|quick|debug|debug_optimized")
+        metavar="|".join(build_options.supported_modes))
       parser.option(None, "--compiler",
         action="store",
         type="string",
