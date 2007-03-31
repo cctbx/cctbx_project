@@ -202,11 +202,11 @@ namespace boost_python {
     targets::boost_python::common_results_wrappers::wrap();
     targets::boost_python::ls_with_scale_wrappers::wrap();
     targets::boost_python::least_squares_residual_wrappers<
-      cctbx::xray::targets::FcalcModulus>::wrap(
+      cctbx::xray::targets::f_calc_modulus>::wrap(
       "targets_least_squares_residual");
     targets::boost_python::least_squares_residual_wrappers<
-      cctbx::xray::targets::FcalcModulusSquare>::wrap(
-      "targets_least_squares_residual_for_F_square");
+      cctbx::xray::targets::f_calc_modulus_square>::wrap(
+      "targets_least_squares_residual_for_intensity");
     targets::boost_python::intensity_correlation_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_wrappers::wrap();
     targets::boost_python::maximum_likelihood_criterion_hl_wrappers::wrap();

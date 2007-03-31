@@ -193,7 +193,7 @@ namespace targets {
   This is a policy to be passed as a template argument to least_squares_residual. The type T is to be like std::complex<>
   */ 
   template<class T>
-  struct FcalcModulus
+  struct f_calc_modulus
   {
     /// The value |f|
     static typename T::value_type value(T f) {
@@ -215,7 +215,7 @@ namespace targets {
     This is a policy to be passed as a template argument to least_squares_residual. The type T is to be like std::complex<>
    */ 
   template<class T>
-  struct FcalcModulusSquare
+  struct f_calc_modulus_square
   {
     /// The value |f|^2
     static typename T::value_type value(T f) {
