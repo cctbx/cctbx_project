@@ -695,21 +695,21 @@ class environment:
     if (precall_commands is not None):
       for line in precall_commands:
         print >> f, line
-    if (source_file is None):
-      source_is_binary = True
-    elif (source_is_py):
-      source_is_binary = False
+    if (source_is_py):
+      scan_for_dispatcher_includes = True
+    elif (source_file is None or not os.path.isfile(source_file)):
+      scan_for_dispatcher_includes = False
     else:
-      source_is_binary = detect_binary_file.from_initial_block(
+      scan_for_dispatcher_includes = not detect_binary_file.from_initial_block(
         file_name=source_file)
-    if (not source_is_binary):
+    if (scan_for_dispatcher_includes):
       for line in source_specific_dispatcher_include(
                     pattern="LIBTBX_PRE_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
         print >> f, line
     for line in self.dispatcher_include(where="before_command"):
       print >> f, line
-    if (not source_is_binary):
+    if (scan_for_dispatcher_includes):
       for line in source_specific_dispatcher_include(
                     pattern="LIBTBX_POST_DISPATCHER_INCLUDE_SH",
                     source_file=source_file):
