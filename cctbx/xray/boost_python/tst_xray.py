@@ -863,32 +863,32 @@ def exercise_targets():
   f_obs_sqr = flex.double((1,2,3,4,5))
   w = flex.double((1,1,1,1,1))
   f_calc = flex.complex_double([ cmath.sqrt(x) for x in f_obs_sqr ])
-  ls = xray.targets_least_squares_residual_for_F_square(f_obs_sqr, w, f_calc)
+  ls = xray.targets_least_squares_residual_for_intensity(f_obs_sqr, w, f_calc)
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
   assert ls.derivatives().size() == 0
-  ls = xray.targets_least_squares_residual_for_F_square(
+  ls = xray.targets_least_squares_residual_for_intensity(
     f_obs_sqr, w, f_calc, True)
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
   assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
-  ls = xray.targets_least_squares_residual_for_F_square(
+  ls = xray.targets_least_squares_residual_for_intensity(
     f_obs_sqr, w, f_calc, False, 3)
   assert approx_equal(ls.scale_factor(), 3)
   assert approx_equal(ls.target(), 4)
   assert ls.derivatives().size() == 0
-  ls = xray.targets_least_squares_residual_for_F_square(
+  ls = xray.targets_least_squares_residual_for_intensity(
     f_obs_sqr, f_calc)
   assert approx_equal(ls.scale_factor(), 1)
   assert approx_equal(ls.target(), 0)
   assert ls.derivatives().size() == 0
   f_calc = flex.complex_double([ cmath.sqrt(x) for x in (10,20,30,40,50) ])
-  ls = xray.targets_least_squares_residual_for_F_square(
+  ls = xray.targets_least_squares_residual_for_intensity(
     f_obs_sqr, f_calc, True)
   assert approx_equal(ls.scale_factor(), 1/10.)
   assert approx_equal(ls.target(), 0)
   assert approx_equal(tuple(ls.derivatives()), (0j,0j,0j,0j,0j))
-  ls = xray.targets_least_squares_residual_for_F_square(
+  ls = xray.targets_least_squares_residual_for_intensity(
     f_obs_sqr, f_calc, False, 3/10.)
   assert approx_equal(ls.scale_factor(), 3/10.)
   assert approx_equal(ls.target(), 4)
@@ -896,7 +896,7 @@ def exercise_targets():
   f_calc = flex.complex_double([ cmath.sqrt(x)
                                  for x in (1+2j,3+4j,-1-2j,5-4j,-5+6j) ])
   w = flex.double((1,2,3,2,4))
-  ls = xray.targets_least_squares_residual_for_F_square(
+  ls = xray.targets_least_squares_residual_for_intensity(
     f_obs_sqr, w, f_calc, True)
   assert approx_equal(ls.scale_factor(), 0.6307845)
   assert approx_equal(ls.target(), 0.06211855)
