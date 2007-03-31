@@ -199,7 +199,7 @@ namespace scitbx { namespace math { namespace eigensystem {
 
   //! Group of associated eigenvectors and eigenvalues.
   /**
-    The Cyclic Jacobi algorith is used (Algorithm 8.4.3 in the Golub and Van Loan, 
+    The Cyclic Jacobi algorith is used (Algorithm 8.4.3 in the Golub and Van Loan,
     3rd edition), with the termination criteria described at the end of section 8.4.5.
     It is not generally competitive with the symmetric QR method (c.f. Golub and Van Loan,
     section 8.3), which can be found in LAPACK, but this should not be very dramatic for
