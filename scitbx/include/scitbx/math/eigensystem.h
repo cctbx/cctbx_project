@@ -200,12 +200,17 @@ namespace scitbx { namespace math { namespace eigensystem {
   //! Group of associated eigenvectors and eigenvalues.
   /**
     The Cyclic Jacobi algorith is used (Algorithm 8.4.3 in the Golub and Van Loan,
-    3rd edition), with the termination criteria described at the end of section 8.4.5.
+    3rd edition).
+
     It is not generally competitive with the symmetric QR method (c.f. Golub and Van Loan,
     section 8.3), which can be found in LAPACK, but this should not be very dramatic for
     small matrices. The main focus of the modern interest in the Jacobi method is that it
     can be heavily parallelised, but the implementation in this class does not take advantage
     of that.
+
+    The algorithm could be tuned to achieve the same precision with less iterations by using
+    the element-wise convergence criteria described in section 8.4.5, instead of the norm-wise
+    one used here.
   */
   template <typename FloatType = double>
   class real_symmetric
