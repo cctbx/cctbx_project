@@ -10,7 +10,7 @@ def run(args):
   verbose = "--verbose" in args
   exercise_core_LS(xray.targets_least_squares_residual, verbose)
   exercise_core_LS(xray.targets_least_squares_residual_for_F_square, verbose)
-  
+
   crystal_symmetry = crystal.symmetry(
     unit_cell=(10,11,12,85,95,100),
     space_group_symbol="P 1")
@@ -29,7 +29,7 @@ def run(args):
   obs.set_observation_type_xray_amplitude()
   weighting = xray.weighting_schemes.unit_weighting()
   exercise_py_LS(obs, f_calc, weighting, verbose)
-  
+
   obs = miller_set.array(
     data=flex.pow2(flex.abs(f_calc.data())) + (flex.random_double(miller_set.size())*2-1),
     sigmas=flex.random_double(miller_set.size()))
@@ -37,7 +37,7 @@ def run(args):
   weighting = xray.weighting_schemes.unit_weighting()
   exercise_py_LS(obs, f_calc, weighting, verbose)
 
-  
+
 def exercise_core_LS(target_class, verbose):
   n_refl = 10
   f_calc = flex.polar(

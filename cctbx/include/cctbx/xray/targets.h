@@ -191,46 +191,46 @@ namespace targets {
   /// The modulus of complex structure factors
   /**
   This is a policy to be passed as a template argument to least_squares_residual. The type T is to be like std::complex<>
-  */ 
+  */
   template<class T>
   struct f_calc_modulus
   {
     /// The value |f|
     static typename T::value_type value(T f) {
-      return std::abs(f); 
+      return std::abs(f);
     }
-    
+
     /// The derivatives of |f| wrt to respectively the real part and the imaginary part of f.
     /**
     They are packaged into the complex number of type T, respectively in its real and imaginary part.
     */
     static T derivative(T f) {
-      return f / std::abs(f); 
+      return f / std::abs(f);
     }
   };
-  
-  
+
+
   /// The modulus squared of complex structure factors
   /**
     This is a policy to be passed as a template argument to least_squares_residual. The type T is to be like std::complex<>
-   */ 
+   */
   template<class T>
   struct f_calc_modulus_square
   {
     /// The value |f|^2
     static typename T::value_type value(T f) {
-      return std::norm(f); 
+      return std::norm(f);
     }
-    
+
     /// The derivatives of |f|^2 wrt to respectively the real part and the imaginary part of f.
     /**
     They are packaged into the complex number of type T, respectively in its real and imaginary part.
     */
     static T derivative(T f) {
-      return 2. * f; 
+      return 2. * f;
     }
   };
-  
+
   /// A functor representing a least-squares residual.
   /**
   The least-square residual is defined as
@@ -239,7 +239,7 @@ namespace targets {
     {\sum_i w_i \left( y_{o,i} - k f(F_{c,i}) \right)^2}
     {\sum_i w_i y_{o,i}}
   \f]
-   where \f$y_{o,i}\f$ is the i-th observed piece of data (i.e. F or F^2 in practice) 
+   where \f$y_{o,i}\f$ is the i-th observed piece of data (i.e. F or F^2 in practice)
    whereas \f$F_{c,i}\f$ is the corresponding computed structure factor and \f$f\f$ is any function
    (in practice the modulus or the modulus squared), which is represented by the policy FcalcFunctor.
    It also features the weights \f$\{w_i\}\f$ and the scale factor \f$k\f$.
@@ -250,7 +250,7 @@ namespace targets {
             typename FcalcValueType = std::complex<YobsValueType> >
   class least_squares_residual
   {
-    public:      
+    public:
       /// Construct an uninitialised object.
       least_squares_residual() {}
 
@@ -299,7 +299,7 @@ namespace targets {
       target() const { return target_; }
 
       /// The vector of derivatives
-      /**  Only if the object was constructed with the flag compute_derivatives==true. The i-th element of the returned array is a complex number whose real (resp. imaginary) part 
+      /**  Only if the object was constructed with the flag compute_derivatives==true. The i-th element of the returned array is a complex number whose real (resp. imaginary) part
       contains the derivative of the residual with respect to the real (resp. imaginary) part of
       of \f$F_{c,i}\f$.
       */
@@ -313,13 +313,13 @@ namespace targets {
       YobsValueType scale_factor_;
       YobsValueType target_;
       af::shared<FcalcValueType> derivatives_;
-            
+
       YobsValueType
       new_scale_factor(
                        af::const_ref<YobsValueType> const& yobs,
                        af::const_ref<WeightValueType> const& weights,
                        af::const_ref<FcalcValueType> const& fcalc);
-      
+
       YobsValueType
       sum_weighted_yobs_squared(
                                 af::const_ref<YobsValueType> const& values,
@@ -337,7 +337,7 @@ namespace targets {
             typename WeightValueType,
             typename FcalcValueType>
   YobsValueType
-  least_squares_residual<FcalcFunctor, YobsValueType, WeightValueType, FcalcValueType>  
+  least_squares_residual<FcalcFunctor, YobsValueType, WeightValueType, FcalcValueType>
   ::new_scale_factor(
                    af::const_ref<YobsValueType> const& yobs,
                    af::const_ref<WeightValueType> const& weights,
@@ -360,13 +360,13 @@ namespace targets {
     }
     return sum_w_yobs_ycalc / sum_w_ycalc2;
   }
-  
+
   template <template<typename> class FcalcFunctor,
             typename YobsValueType,
             typename WeightValueType,
             typename FcalcValueType>
   YobsValueType
-  least_squares_residual<FcalcFunctor, YobsValueType, WeightValueType, FcalcValueType>  
+  least_squares_residual<FcalcFunctor, YobsValueType, WeightValueType, FcalcValueType>
   ::sum_weighted_yobs_squared(
                             af::const_ref<YobsValueType> const& yobs,
                             af::const_ref<WeightValueType> const& weights
@@ -424,7 +424,7 @@ namespace targets {
     target_ /= sum_w_yobs2;
   }
 
-  
+
   template <typename FobsValueType = double,
             typename WeightValueType = int,
             typename FcalcValueType = std::complex<FobsValueType>,

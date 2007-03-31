@@ -98,10 +98,10 @@ class unified_least_squares_residual(object):
     @param obs: the observed reflections, with F and sigma(F) (or F^2 and
     sigma(F^2)) respectively in obs.data() and obs.sigmas()
     @param is_amplitude: a flag to discriminate the type of data in obs if the
-    latter does not spell out whether it contains amplitudes or intensities; 
+    latter does not spell out whether it contains amplitudes or intensities;
     the default means that in the latter case, one falls back for amplitudes
-    obs do not 
-    @param weighting: a weighting scheme for the data (c.f. 
+    obs do not
+    @param weighting: a weighting scheme for the data (c.f.
     cctbx.xray.weighting for common ones) or None, which means no weights
     """
     if not(obs.is_xray_amplitude_array() or obs.is_xray_intensity_array()):
@@ -112,21 +112,21 @@ class unified_least_squares_residual(object):
         self._obs.set_observation_type_xray_intensity()
     else:
       self._obs = obs
-    assert(self._obs.is_xray_amplitude_array() 
+    assert(self._obs.is_xray_amplitude_array()
            or self._obs.is_xray_intensity_array())
     self._weighting = weighting
     self._weights = None
     self._scale_factor = None
     if self._weighting is not None and self._weighting.depends_only_on_obs:
       self._reweight()
-      
+
   def _reweight(self, f_calc=None):
     if self._weighting is None: return
     if self.obs().is_xray_amplitude_array():
       self._weights = self.weighting().amplitude_weights(self.obs(), f_calc)
     elif self.obs().is_xray_intensity_array():
       self._weights = self.weighting().intensity_weights(self.obs(), f_calc)
-      
+
   def obs(self):
     """ The obs passed to the constructor """
     return self._obs
@@ -184,21 +184,21 @@ class unified_least_squares_residual(object):
 
 class least_squares_residual_for_amplitude(unified_least_squares_residual):
   """ A least-square residual functor for F refinement. """
-  
+
   statistical_weighting = weighting_schemes.pure_statistical_weighting()
 
   def __init__(self, f_obs, use_sigmas_as_weights = False):
     if use_sigmas_as_weights:
       weighting = self.statistical_weighting()
-    else: 
+    else:
       weighting = None
     super(least_squares_residual, self).__init__(f_obs, True, weighting)
-    
+
   f_obs = unified_least_squares_residual.obs
-    
+
   def use_sigmas_as_weights(self):
     return isinstance(self._weighting, statistical_weighting)
-  
+
 least_squares_residual = least_squares_residual_for_amplitude
 
 
