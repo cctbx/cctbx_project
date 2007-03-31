@@ -35,3 +35,15 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
 
 if (os.environ.has_key("LIBTBX_PRINT_TRACE")):
   import libtbx.start_print_trace
+
+if (sys.platform == "cygwin"):
+  # work around cygwin problem: open() doesn't work on symbolic links
+  builtin_open = __builtins__["open"]
+  def open_realpath(name, mode="r", buffering=-1):
+    try: return builtin_open(name, mode, buffering)
+    except KeyboardInterrupt: raise
+    except: pass
+    name = os.path.realpath(name)
+    return builtin_open(name, mode, buffering)
+  __builtins__["open"] = open_realpath
+  __builtins__["file"] = open_realpath
