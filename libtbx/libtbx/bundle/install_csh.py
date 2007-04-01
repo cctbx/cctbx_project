@@ -31,6 +31,10 @@ unalias sort
 unalias tr
 unalias uname
 
+if ("`uname`" == "Darwin") then
+  limit stacksize 8192k
+endif
+
 if (-f "$sources/TAG") then
   echo "Build tag:"
   cat "$sources/TAG"
@@ -45,12 +49,6 @@ endif
 set required_python_version=None
 if (-e "$build/lib/PYTHON_VERSION_MAJOR_MINOR") then
   set required_python_version=`cat "$build/lib/PYTHON_VERSION_MAJOR_MINOR"`
-endif
-
-set mac_os_version=None
-if ("`uname`" == "Darwin") then
-  set mac_os_version="`/usr/bin/sw_vers -productVersion | cut -d'.' -f-2`"
-  limit stacksize 8192k
 endif
 
 set aborted="Installation aborted."
@@ -68,17 +66,13 @@ def_try_python_exe:
   set python_version_full=None
   set python_version=None
   set ok_minimum_python_version=0
-  set is_python_framework=0
-  set q=`("$trial_python_exe" -c 'import sys; from string import upper, split, find, join; print upper("ok"); v=split(sys.version)[0]; print v; ac,ic=split(v, ".")[:2]; print ac+"."+ic; am,im=split("'"$minimum_python_version"'", ".")[:2]; print int(int(ac) < int(am)); print int(int(ac) == int(am) and int(ic) < int(im)); print {-1: "False"}.get(find(join(sys.path, " "), "/Python.framework/"), "True")' |& cat)`
-  if ($#q == 6) then
+  set q=`("$trial_python_exe" -c 'import sys; from string import upper, split, find, join; print upper("ok"); v=split(sys.version)[0]; print v; ac,ic=split(v, ".")[:2]; print ac+"."+ic; am,im=split("'"$minimum_python_version"'", ".")[:2]; print int(int(ac) < int(am)); print int(int(ac) == int(am) and int(ic) < int(im))' |& cat)`
+  if ($#q == 5) then
     if (X"$q[1]" == X"OK") then
       set python_version_full="$q[2]"
       set python_version="$q[3]"
       if (X"$q[4]" == X"0" && X"$q[5]" == X"0") then
         set ok_minimum_python_version=1
-      endif
-      if (X"$q[6]" == X"True") then
-        set is_python_framework=1
       endif
     endif
   endif
@@ -118,13 +112,6 @@ def_cmdln_python:
          "$python_version_full) is not the required version" \
          "($required_python_version)."
     exit 1
-  endif
-  if ("$mac_os_version" != "None") then
-    if (! $is_python_framework) then
-      echo "$0"": command line argument $python_exe is not a Python" \
-           "framework build."
-      exit 1
-    endif
   endif
   goto have_python_exe
 
@@ -183,11 +170,8 @@ endif
 
 set python_sources=None
 if ("$required_python_version" == "None") then
-  set python_sources=(`ls | grep Python-`)
+  set python_sources=(`ls | grep '^Python-'`)
   if ($#python_sources == 0) then
-    set python_sources=None
-  else if ("$mac_os_version" != "None") then
-    echo "INFO: Python installation from sources not supported under Mac OS."
     set python_sources=None
   else if ($#python_sources == 1) then
     set python_sources="$python_sources[1]"
@@ -249,38 +233,6 @@ if ("$python_sources" != "None") then
   goto have_python_exe
 endif
 
-if ($mac_os_version != "None") then
-
-  set lib_fw_vers="/Library/Frameworks/Python.framework/Versions"
-  set sys_lib_fw_vers="/System/Library/Frameworks/Python.framework/Versions"
-
-  set pyv="$required_python_version"
-  if ("$pyv" == "None") then
-    set pyv="`ls "$lib_fw_vers" "$sys_lib_fw_vers" | grep '^[1-9]' | sort -r | head -1`"
-    if ("X$pyv" == "X") goto no_suitable_python_exe
-  endif
-  if (-d "$lib_fw_vers/$pyv") then
-    set python_exe="$lib_fw_vers/$pyv/bin/python"
-    if (-x "$python_exe") goto have_python_exe
-    if (-f "$python_exe") then
-      echo "INFO: $python_exe is not executable."
-    else
-      echo "INFO: $python_exe does not exist."
-    endif
-  endif
-  if (-d "$sys_lib_fw_vers/$pyv") then
-    set python_exe="$sys_lib_fw_vers/$pyv/bin/python"
-    if (-x "$python_exe") goto have_python_exe
-    if (-f "$python_exe") then
-      echo "INFO: $python_exe is not executable."
-    else
-      echo "INFO: $python_exe does not exist."
-    endif
-  endif
-  goto no_suitable_python_exe
-
-endif
-
 set trial_python_exe="$build/base/bin/python"
 if (-e "$trial_python_exe") then
   set try_python_rtnpt=try_python_bb_return
@@ -312,6 +264,37 @@ if ("$python_version" != "None") then
     echo "INFO: python on PATH (version $python_version_full) is not the" \
          "required version ($required_python_version)."
   endif
+endif
+#
+if ("`uname`" == "Darwin") then
+
+  set lib_fw_vers="/Library/Frameworks/Python.framework/Versions"
+  set sys_lib_fw_vers="/System/Library/Frameworks/Python.framework/Versions"
+
+  set pyv="$required_python_version"
+  if ("$pyv" == "None") then
+    set pyv="`ls "$lib_fw_vers" "$sys_lib_fw_vers" | grep '^[1-9]' | sort -r | head -1`"
+    if ("X$pyv" == "X") set pyv=None
+  endif
+  if (-d "$lib_fw_vers/$pyv") then
+    set python_exe="$lib_fw_vers/$pyv/bin/python"
+    if (-x "$python_exe") goto have_python_exe
+    if (-f "$python_exe") then
+      echo "INFO: $python_exe is not executable."
+    else
+      echo "INFO: $python_exe does not exist."
+    endif
+  endif
+  if (-d "$sys_lib_fw_vers/$pyv") then
+    set python_exe="$sys_lib_fw_vers/$pyv/bin/python"
+    if (-x "$python_exe") goto have_python_exe
+    if (-f "$python_exe") then
+      echo "INFO: $python_exe is not executable."
+    else
+      echo "INFO: $python_exe does not exist."
+    endif
+  endif
+#
 endif
 #
 if ("$required_python_version" != "None") then
@@ -347,8 +330,6 @@ if ("$required_python_version" != "None") then
   endif
 endif
 
-no_suitable_python_exe:
-
 if ("$required_python_version" == "None") then
   set pyv=""
 else
@@ -357,12 +338,7 @@ endif
 echo ""
 echo "Sorry: Cannot find a suitable Python interpreter$pyv."
 echo ""
-if ($mac_os_version != "None") then
-  echo "  Please install a Python framework, e.g. using python-*-macosx.dmg"
-  echo "  as available at http://www.python.org/download/, or"
-else
-  echo "  Please download an installer with Python included or"
-endif
+echo "  Please download an installer with Python included or"
 echo "  run this command with the full path to a suitable Python"
 echo "  executable as an argument, e.g.:"
 echo ""
