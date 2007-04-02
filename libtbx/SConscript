@@ -180,7 +180,9 @@ else:
         .stdout_lines
       for line in lines:
         line = line.strip()
-        if (line.startswith("Machine Model: ")):
+        if (   line.startswith("Machine Name: ")
+            or line.startswith("Machine Model: ")
+            or line.startswith("CPU Type: ")):
           if (line.find(" G4 ") > 0 or line.endswith(" G4")):
             return True
           break
