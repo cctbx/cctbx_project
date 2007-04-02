@@ -32,10 +32,10 @@ def run(args, command_name="libtbx.find_files"):
       action="store_true",
       default=False,
       help="with -g/--grep: show file names only, not the matching lines")
-    .option("-n", "--no_quotes",
+    .option("-q", "--quote",
       action="store_true",
       default=False,
-      help="do not quote file names")
+      help="quote file names")
   ).process(args=args)
   fn_patterns = command_line.args
   co = command_line.options
@@ -54,8 +54,8 @@ def run(args, command_name="libtbx.find_files"):
       file_name = os.path.basename(file_path)
       for fn_pattern in fn_patterns:
         if (fnmatch(file_name, fn_pattern)):
-          if (co.no_quotes): fp = file_path
-          else: fp = show_string(file_path)
+          if (co.quote): fp = show_string(file_path)
+          else: fp = file_path
           if (co.grep is None):
             print fp
           else:
