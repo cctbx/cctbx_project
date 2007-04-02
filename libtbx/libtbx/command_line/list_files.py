@@ -4,9 +4,9 @@ from libtbx.option_parser import option_parser
 from libtbx.str_utils import show_string
 import sys, os
 
-def show_status(path, text, binary, quotes):
+def show_status(path, text, binary, quote):
   def show():
-    if (quotes): print show_string(path)
+    if (quote): print show_string(path)
     else: print path
   if (text and binary):
     show()
@@ -29,16 +29,16 @@ def run(args, command_name="libtbx.list_files"):
       action="store_true",
       default=False,
       help="list binary files only")
-    .option("-n", "--no_quotes",
+    .option("-q", "--quote",
       action="store_true",
       default=False,
-      help="do not quote file names")
+      help="quote file names")
   ).process(args=args)
   paths = command_line.args
   co = command_line.options
   text = co.text
   binary = co.binary
-  quotes = not co.no_quotes
+  quote = co.quote
   if (not (text or binary)):
     binary = True
     text = True
@@ -47,10 +47,10 @@ def run(args, command_name="libtbx.list_files"):
     if (not os.path.exists(path)):
       print >> sys.stderr, "No such file or directory:", path
     elif (os.path.isfile(path)):
-      show_status(path=path, text=text, binary=binary, quotes=quotes)
+      show_status(path=path, text=text, binary=binary, quote=quote)
     else:
       for file_path in walk_source_tree(top=path):
-        show_status(path=file_path, text=text, binary=binary, quotes=quotes)
+        show_status(path=file_path, text=text, binary=binary, quote=quote)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
