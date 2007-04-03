@@ -1,3 +1,4 @@
+from __future__ import generators
 import os
 
 def marked_for_commit():
