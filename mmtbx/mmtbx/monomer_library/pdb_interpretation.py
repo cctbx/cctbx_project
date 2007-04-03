@@ -101,6 +101,23 @@ bond
   sigma = None
     .type = float
 }
+angle
+  .optional = True
+  .multiple = True
+{
+  action = *add delete change
+    .type = choice
+  atom_selection_1 = None
+    .type = str
+  atom_selection_2 = None
+    .type = str
+  atom_selection_3 = None
+    .type = str
+  angle_ideal = None
+    .type = float
+  sigma = None
+    .type = float
+}
 """)
 
 def flush_log(log):
@@ -1736,9 +1753,9 @@ class build_all_chain_proxies(object):
       self.special_position_settings = crystal.non_crystallographic_symmetry(
         sites_cart=self.sites_cart).special_position_settings()
     if (self.special_position_settings is None):
-      special_position_indices = None
+      self.special_position_indices = None
     else:
-      special_position_indices = \
+      self.special_position_indices = \
         self.site_symmetry_table().special_position_indices()
     self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
     self.process_apply_cif_link(mon_lib_srv=mon_lib_srv, log=log)
@@ -1803,7 +1820,7 @@ class build_all_chain_proxies(object):
             link_distance_cutoff=self.params.link_distance_cutoff,
             stage_1=self.stage_1,
             sites_cart=self.sites_cart,
-            special_position_indices=special_position_indices,
+            special_position_indices=self.special_position_indices,
             keep_monomer_mappings=keep_monomer_mappings,
             scattering_type_registry=self.scattering_type_registry,
             nonbonded_energy_type_registry=self.nonbonded_energy_type_registry,
@@ -2160,7 +2177,26 @@ class build_all_chain_proxies(object):
         parameter_name(), show_string(string)))
     return result
 
-  def process_geometry_restraints_edits(self, sel_cache, edits, log):
+  def phil_atom_selections_as_i_seqs(self, cache, scope_extract, sel_attrs):
+    result = []
+    for attr in sel_attrs:
+      iselection = self.phil_atom_selection(
+        cache=cache,
+        scope_extract=scope_extract,
+        attr=attr,
+        raise_if_empty_selection=False).iselection()
+      if (iselection.size() != 1):
+        atom_sel = getattr(scope_extract, attr)
+        if (iselection.size() == 0):
+          raise Sorry("No atom selected: %s" % show_string(atom_sel))
+        raise Sorry(
+          "More than one atom selected: %s\n"
+          "  Number of selected atoms: %d" % (
+            show_string(atom_sel), iselection.size()))
+      result.append(iselection[0])
+    return result
+
+  def process_geometry_restraints_edits_bond(self, sel_cache, edits, log):
     result = []
     bonds = []
     for bond in edits.bond:
@@ -2206,21 +2242,8 @@ class build_all_chain_proxies(object):
         raise Sorry("%s.action = %s not implemented." % (
           bond.__phil_path__(), bond.action))
       else:
-        i_seqs = []
-        for attr in sel_attrs:
-          iselection = self.phil_atom_selection(
-            cache=sel_cache,
-            scope_extract=bond,
-            attr=attr).iselection()
-          if (iselection.size() != 1):
-            atom_sel = getattr(bond, attr)
-            if (iselection.size() == 0):
-              raise Sorry("No atom selected: %s" % show_string(atom_sel))
-            raise Sorry(
-              "More than one atom selected: %s\n"
-              "  Number of selected atoms: %d" % (
-                show_string(atom_sel), iselection.size()))
-          i_seqs.append(iselection[0])
+        i_seqs = self.phil_atom_selections_as_i_seqs(
+          cache=sel_cache, scope_extract=bond, sel_attrs=sel_attrs)
         if (bond.symmetry_operation is None):
           s = "x,y,z"
         else:
@@ -2261,6 +2284,86 @@ class build_all_chain_proxies(object):
         "  Please check the log file for details." % n_excessive)
     print >> log, "    Total number of custom bonds:", len(result)
     return result
+
+  def process_geometry_restraints_edits_angle(self, sel_cache, edits, log):
+    result = []
+    angles = []
+    for angle in edits.angle:
+      if (   angle.action != "add"
+          or angle.atom_selection_1 is not None
+          or angle.atom_selection_2 is not None
+          or angle.atom_selection_3 is not None
+          or angle.angle_ideal is not None
+          or angle.sigma is not None):
+        angles.append(angle)
+    if (len(angles) == 0): return result
+    del edits.angle[:]
+    edits.angle.extend(angles)
+    if (self.special_position_indices is None):
+      special_position_indices = []
+    else:
+      special_position_indices = self.special_position_indices
+    print >> log, "  Custom angles:"
+    aal = self.stage_1.atom_attributes_list
+    sel_attrs = ["atom_selection_"+n for n in ["1", "2", "3"]]
+    for angle in angles:
+      def show_atom_selections():
+        for attr in sel_attrs:
+          print >> log, "      %s = %s" % (
+            attr, show_string(getattr(angle, attr, None)))
+      if (angle.angle_ideal is None):
+        print >> log, "    Warning: Ignoring angle with angle_ideal = None:"
+        show_atom_selections()
+      elif (angle.sigma is None):
+        print >> log, "    Warning: Ignoring angle with sigma = None:"
+        show_atom_selections()
+        print >> log, "      angle_ideal = %.6g" % angle.angle_ideal
+      elif (angle.sigma is None or angle.sigma <= 0):
+        print >> log, "    Warning: Ignoring angle with sigma <= 0:"
+        show_atom_selections()
+        print >> log, "      angle_ideal = %.6g" % angle.angle_ideal
+        print >> log, "      sigma = %.6g" % angle.sigma
+      elif (angle.action != "add"):
+        raise Sorry("%s.action = %s not implemented." % (
+          angle.__phil_path__(), angle.action))
+      else:
+        i_seqs = self.phil_atom_selections_as_i_seqs(
+          cache=sel_cache, scope_extract=angle, sel_attrs=sel_attrs)
+        p = geometry_restraints.angle_proxy(
+          i_seqs=i_seqs,
+          angle_ideal=angle.angle_ideal,
+          weight=geometry_restraints.sigma_as_weight(sigma=angle.sigma))
+        a = geometry_restraints.angle(
+          sites_cart=self.sites_cart,
+          proxy=p)
+        print >> log, "    angle:"
+        n_special = 0
+        for i,i_seq in enumerate(p.i_seqs):
+          print >> log, "      atom %d:" % (i+1), aal[i_seq].pdb_format(),
+          if (i_seq in special_position_indices):
+            n_special += 1
+            print >> log, "# SPECIAL POSITION",
+          print >> log
+        print >> log, "      angle_model: %7.2f" % a.angle_model
+        print >> log, "      angle_ideal: %7.2f" % a.angle_ideal
+        print >> log, "      ideal - model:  %7.2f" % a.delta
+        print >> log, "      sigma: %.6g" % \
+          geometry_restraints.weight_as_sigma(weight=a.weight)
+        if (n_special != 0):
+          raise Sorry(
+            "Custom angle involves %d special position%s:\n"
+            "  Please inspect the output for details."
+              % plural_s(n_special))
+        result.append(p)
+    print >> log, "    Total number of custom angles:", len(result)
+    return result
+
+  def process_geometry_restraints_edits(self, sel_cache, edits, log):
+    return group_args(
+      bond_sym_proxies=self.process_geometry_restraints_edits_bond(
+        sel_cache=sel_cache, edits=edits, log=log),
+      angle_proxies=self.process_geometry_restraints_edits_angle(
+        sel_cache=sel_cache, edits=edits, log=log))
 
   def construct_geometry_restraints_manager(self,
         ener_lib,
@@ -2337,9 +2440,9 @@ class build_all_chain_proxies(object):
         rt_mx_ji=sym_pair.rt_mx_ji)
     #
     if (edits is not None):
-      bond_sym_proxies = self.process_geometry_restraints_edits(
+      processed_edits = self.process_geometry_restraints_edits(
         sel_cache=sel_cache, edits=edits, log=log)
-      for proxy in bond_sym_proxies:
+      for proxy in processed_edits.bond_sym_proxies:
         if (proxy.weight <= 0): continue
         i_seq, j_seq = proxy.i_seqs
         bond_params_table.update(i_seq=i_seq, j_seq=j_seq, params=proxy)
@@ -2347,6 +2450,8 @@ class build_all_chain_proxies(object):
           i_seq=i_seq,
           j_seq=j_seq,
           rt_mx_ji=proxy.rt_mx_ji)
+      for proxy in processed_edits.angle_proxies:
+        self.geometry_proxy_registries.angle.append_custom_proxy(proxy=proxy)
     #
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=bond_asu_table,
