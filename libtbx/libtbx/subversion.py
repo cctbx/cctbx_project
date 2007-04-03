@@ -8,7 +8,6 @@ def marked_for_commit():
     path = li[5:].strip()
     if status in ('A','M','R'): yield path
 
-
 ### References:
 
 ### [1] http://svnbook.red-bean.com/en/1.1/ch03s05.html#svn-ch-3-sect-5.3.1
