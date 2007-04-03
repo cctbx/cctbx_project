@@ -1,12 +1,14 @@
 from __future__ import generators
-import os
+from libtbx import easy_run
 
 def marked_for_commit():
-  pipe = os.popen('svn status')
-  for li in pipe:
+  lines = easy_run.fully_buffered(
+    command="svn status").raise_if_errors().stdout_lines
+  for li in lines:
     status = li[0] # c.f. [1]
-    path = li[5:].strip()
-    if status in ('A','M','R'): yield path
+    if status in ('A','M','R'):
+      path = li[5:].strip()
+      yield path
 
 ### References:
 
@@ -15,3 +17,6 @@ def marked_for_commit():
 ### followed by several whitespace characters, followed by a file or directory
 ### name. The first column tells the status of a file or directory
 ### and/or its contents. ...."
+
+if (__name__ == "__main__"):
+  print "\n".join(marked_for_commit())
