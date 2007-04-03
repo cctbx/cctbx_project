@@ -63,6 +63,11 @@ class proxy_registry_base(object):
     self.source_labels = None
     self.source_n_expected_atoms = None
 
+  def append_custom_proxy(self, proxy):
+    assert self.table is None
+    self.proxies.append(proxy)
+    self.counts.append(1)
+
   def _append_proxy(self, source_info, proxy, process_result):
     self.proxies.append(proxy)
     self.counts.append(1)
