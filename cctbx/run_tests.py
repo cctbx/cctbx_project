@@ -1,5 +1,6 @@
 from libtbx import test_utils
 import libtbx.load_env
+import sys
 
 def run():
   tst_list = (
@@ -83,18 +84,8 @@ def run():
   build_dir = libtbx.env.under_build("cctbx")
   dist_dir = libtbx.env.dist_path("cctbx")
 
-  from libtbx.option_parser import option_parser
-  command_line = (option_parser(
-    usage="run_tests [-j n]",
-    description="Run tests in parallel")
-    .option("-j", "--threads",
-      action="store",
-      type="int",
-      default=1,
-      help="number of threads",)
-  ).process()
-  n_threads = command_line.options.threads
-  test_utils.run_tests(build_dir, dist_dir, tst_list, threads=n_threads)
+  test_utils.run_tests(build_dir, dist_dir, tst_list,
+                       cmd_line_args=sys.argv[1:])
 
 if (__name__ == "__main__"):
   run()
