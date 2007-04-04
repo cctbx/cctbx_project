@@ -45,7 +45,6 @@ level0
   abc
   def hij
 """)
-  print "OK"
 
 def exercise_approx_equal():
   from libtbx.test_utils import approx_equal
@@ -75,9 +74,9 @@ def exercise():
     assert s.startswith("AssertionError: ")
     assert s.find("tst_utils.py line ") >= 0
   else: raise RuntimeError("Exception expected.")
-  print "OK"
   exercise_indented_display()
   exercise_approx_equal()
+  print "OK"
 
 if (__name__ == "__main__"):
   exercise()
