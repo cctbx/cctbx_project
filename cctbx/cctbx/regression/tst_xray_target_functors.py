@@ -27,16 +27,22 @@ def run(args):
     data=flex.abs(f_calc.data()) + (flex.random_double(miller_set.size())*2-1),
     sigmas=flex.random_double(miller_set.size()))
   obs.set_observation_type_xray_amplitude()
-  weighting = xray.weighting_schemes.unit_weighting()
+  weighting = xray.weighting_schemes.amplitude_unit_weighting()
   exercise_py_LS(obs, f_calc, weighting, verbose)
 
   obs = miller_set.array(
-    data=flex.pow2(flex.abs(f_calc.data())) + (flex.random_double(miller_set.size())*2-1),
+    data=flex.norm(f_calc.data()) + (flex.random_double(miller_set.size())*2-1),
     sigmas=flex.random_double(miller_set.size()))
   obs.set_observation_type_xray_intensity()
-  weighting = xray.weighting_schemes.unit_weighting()
+
+  weighting = xray.weighting_schemes.intensity_quasi_unit_weighting()
   exercise_py_LS(obs, f_calc, weighting, verbose)
 
+  weighting = xray.weighting_schemes.simple_shelx_weighting(a=100, b=150)
+  exercise_py_LS(obs, f_calc, weighting, verbose)
+
+  weighting = xray.weighting_schemes.shelx_weighting(a=100, b=150)
+  exercise_py_LS(obs, f_calc, weighting, verbose)
 
 def exercise_core_LS(target_class, verbose):
   n_refl = 10
@@ -74,6 +80,7 @@ def exercise_core_LS(target_class, verbose):
   print "OK"
 
 def exercise_py_LS(obs, f_calc, weighting, verbose):
+  weighting.computing_derivatives_wrt_f_c = True
   r = xray.unified_least_squares_residual(obs, weighting=weighting)
   rt = r(f_calc, compute_derivatives=True)
   if obs.is_xray_amplitude_array():
@@ -82,6 +89,26 @@ def exercise_py_LS(obs, f_calc, weighting, verbose):
     assert(isinstance(rt, xray.targets_least_squares_residual_for_intensity))
   scale_factor = rt.scale_factor()
   gr_ana = rt.derivatives()
+  K = scale_factor
+  w = weighting.weights
+  if w is not None: w = w.deep_copy()
+  dw_dfc = weighting.derivatives_wrt_f_c
+  if dw_dfc is not None: dw_dfc = dw_dfc.deep_copy()
+
+  y_o = obs.data()
+  if w is None: w = flex.double(obs.size(), 1)
+  sum_w_y_o_sqr = flex.sum(w * y_o * y_o)
+  f_c = f_calc.data().deep_copy()
+  if obs.is_xray_amplitude_array():
+    y_c = flex.abs(f_c)
+    der = f_c * (1/y_c)
+  elif obs.is_xray_intensity_array():
+    y_c = flex.norm(f_c)
+    der = 2 * f_c
+  gr_explicit = w*2*K*(K*y_c - y_o) * der / sum_w_y_o_sqr
+  sum_w_squares = flex.sum(w*flex.pow2(K*y_c - y_o))
+  assert approx_equal(gr_ana, gr_explicit)
+
   gr_fin = flex.complex_double()
   eps = 1.e-6
   for i_refl in xrange(obs.size()):
@@ -102,7 +129,13 @@ def exercise_py_LS(obs, f_calc, weighting, verbose):
   if (verbose):
     print "ana:", list(gr_ana)
     print "fin:", list(gr_fin)
-  assert approx_equal(gr_fin, gr_ana)
+  if dw_dfc is None:
+    assert approx_equal(gr_fin, gr_ana)
+  else:
+    gr_total_ana = ( gr_ana
+                     + dw_dfc*(flex.pow2(K*y_c - y_o)/sum_w_y_o_sqr
+                        - sum_w_squares*flex.pow2(y_o)/sum_w_y_o_sqr**2) )
+    assert approx_equal(gr_fin, gr_total_ana)
   print "OK"
 
 if (__name__ == "__main__"):

@@ -74,7 +74,7 @@ class unified_least_squares_residual(object):
 
   def __init__(self, obs,
                is_amplitude=True,
-               weighting=weighting_schemes.unit_weighting()
+               weighting=None
                ):
     """
     Construct a least-square residuals
@@ -114,18 +114,16 @@ class unified_least_squares_residual(object):
       self._obs = obs
     assert(self._obs.is_xray_amplitude_array()
            or self._obs.is_xray_intensity_array())
-    self._weighting = weighting
-    self._weights = None
-    self._scale_factor = None
-    if self._weighting is not None and self._weighting.depends_only_on_obs:
-      self._reweight()
-
-  def _reweight(self, f_calc=None):
-    if self._weighting is None: return
     if self.obs().is_xray_amplitude_array():
-      self._weights = self.weighting().amplitude_weights(self.obs(), f_calc)
+      self._ext_ls_residual = ext.targets_least_squares_residual
+      default_weighting = weighting_schemes.amplitude_unit_weighting()
     elif self.obs().is_xray_intensity_array():
-      self._weights = self.weighting().intensity_weights(self.obs(), f_calc)
+      self._ext_ls_residual = ext.targets_least_squares_residual_for_intensity
+      default_weighting = weighting_schemes.intensity_quasi_unit_weighting()
+    if weighting is None: weighting = default_weighting
+    self._weighting = weighting
+    self._weighting.observed = self._obs
+    self._scale_factor = None
 
   def obs(self):
     """ The obs passed to the constructor """
@@ -155,25 +153,21 @@ class unified_least_squares_residual(object):
     """
     assert f_calc.unit_cell().is_similar_to(self.obs().unit_cell())
     assert f_calc.space_group() == self.obs().space_group()
-    if self._scale_factor is None or scale_factor != 0:
+    if self._scale_factor is None:
       self._scale_factor = 0
     else:
       self._scale_factor = scale_factor
-    if self._weighting is not None and not self._weighting.depends_only_on_obs:
-      self._reweight(f_calc)
-    if self.obs().is_xray_amplitude_array():
-      ext_ls_residual = ext.targets_least_squares_residual
-    elif self.obs().is_xray_intensity_array():
-      ext_ls_residual = ext.targets_least_squares_residual_for_intensity
-    if (self._weights is not None):
-      result = ext_ls_residual(
+    self.weighting().calculated = f_calc
+    self.weighting().compute()
+    if (self.weighting().weights is not None):
+      result = self._ext_ls_residual(
         self.obs().data(),
-        self._weights,
+        self.weighting().weights,
         f_calc.data(),
         compute_derivatives,
         self._scale_factor)
     else:
-      result = ext_ls_residual(
+      result = self._ext_ls_residual(
         self.obs().data(),
         f_calc.data(),
         compute_derivatives,
