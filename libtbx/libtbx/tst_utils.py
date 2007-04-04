@@ -45,6 +45,16 @@ level0
   abc
   def hij
 """)
+  print "OK"
+
+def exercise_approx_equal():
+  from libtbx.test_utils import approx_equal
+  assert approx_equal(1., 1. + 1e-11)
+  assert approx_equal(1+1j, 0.997+1.004j, eps=1e-2)
+  assert approx_equal(1, 0.997+0.004j, eps=1e-2)
+  assert approx_equal(1+0.003j, 0.997, eps=1e-2)
+  assert approx_equal([ 2.5, 3.4+5.8j, 7.89],
+                      [ 2.4+0.1j, 3.5+5.9j, 7.90], eps=0.2)
 
 def exercise():
   assert utils.flat_list(0) == [0]
@@ -65,8 +75,9 @@ def exercise():
     assert s.startswith("AssertionError: ")
     assert s.find("tst_utils.py line ") >= 0
   else: raise RuntimeError("Exception expected.")
-  exercise_indented_display()
   print "OK"
+  exercise_indented_display()
+  exercise_approx_equal()
 
 if (__name__ == "__main__"):
   exercise()

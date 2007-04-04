@@ -49,19 +49,35 @@ def run_tests(build_dir, dist_dir, tst_list):
     sys.stdout.flush()
 
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
-  if (hasattr(a1, "__len__")): # traverse list
+  if hasattr(a1, "__len__"): # traverse list
     assert len(a1) == len(a2)
     for i in xrange(len(a1)):
-      if (not approx_equal_core(
-                a1[i], a2[i], eps, multiplier, out, prefix+"  ")):
+      if not approx_equal_core(
+                a1[i], a2[i], eps, multiplier, out, prefix+"  "):
         return False
     return True
-  if (hasattr(a1, "real")): # complex numbers
-    if (not approx_equal_core(
-              a1.real, a2.real, eps, multiplier, out, prefix+"real ")):
+  if hasattr(a1, "real") and hasattr(a2, "real"): # complex & complex
+    if not approx_equal_core(
+              a1.real, a2.real, eps, multiplier, out, prefix+"real "):
       return False
-    if (not approx_equal_core(
-              a1.imag, a2.imag, eps, multiplier, out, prefix+"imag ")):
+    if not approx_equal_core(
+              a1.imag, a2.imag, eps, multiplier, out, prefix+"imag "):
+      return False
+    return True
+  elif hasattr(a1, "real"): # complex & number
+    if not approx_equal_core(
+              a1.real, a2, eps, multiplier, out, prefix+"real "):
+      return False
+    if not approx_equal_core(
+              a1.imag, 0, eps, multiplier, out, prefix+"imag "):
+      return False
+    return True
+  elif hasattr(a2, "real"): #number & complex
+    if not approx_equal_core(
+              a1, a2.real, eps, multiplier, out, prefix+"real "):
+      return False
+    if not approx_equal_core(
+              0, a2.imag, eps, multiplier, out, prefix+"imag "):
       return False
     return True
   ok = True
