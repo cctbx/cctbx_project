@@ -1,14 +1,71 @@
+from __future__ import generators
 from libtbx import easy_run
 from libtbx import introspection
 import difflib
 from stdlib import math
 import sys
+import os
+import Queue
 
 diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
 class Default: pass
 
-def run_tests(build_dir, dist_dir, tst_list):
+def run_tests(build_dir, dist_dir, tst_list, threads=1):
+  import threading
+  if threads == 1:
+    for cmd in iter_tests_cmd(build_dir, dist_dir, tst_list):
+      print cmd
+      sys.stdout.flush()
+      easy_run.call(command=cmd)
+      print
+      sys.stderr.flush()
+      sys.stdout.flush()
+  else:
+    cmd_queue = Queue.Queue()
+    for cmd in iter_tests_cmd(build_dir, dist_dir, tst_list):
+      cmd_queue.put(cmd)
+    threads_pool = []
+    logs_pool = []
+    for i in xrange(threads):
+      log_name = os.tempnam('.', 'log-')
+      logs_pool.append(log_name)
+      t = threading.Thread(
+        target=make_pick_and_run_tests(log_name, cmd_queue))
+      threads_pool.append(t)
+    for t in threads_pool:
+      t.start()
+    for t in threads_pool:
+      t.join()
+    final_log = ""
+    for name in logs_pool:
+      log = open(name)
+      final_log += log.read()
+    print final_log
+
+
+def make_pick_and_run_tests(log_name, cmd_queue):
+  def func():
+    log = open(log_name, 'w')
+    while(1):
+      try:
+        cmd = cmd_queue.get(block=True, timeout=0.2)
+        log.write(cmd)
+        log.write("\n")
+        log.flush()
+        easy_run.subprocess.Popen(cmd,
+                                  shell=True,
+                                  stdout=log,
+                                  stderr=easy_run.subprocess.STDOUT).wait()
+        log.flush()
+        log.write("\n")
+      except Queue.Empty:
+        log.close()
+        break
+  return func
+
+
+def iter_tests_cmd(build_dir, dist_dir, tst_list):
   import sys, os, os.path
   if (os.name == "nt"):
     python_exe = sys.executable
@@ -41,12 +98,7 @@ def run_tests(build_dir, dist_dir, tst_list):
         cmd = os.environ["LIBTBX_VALGRIND"] + " "
       cmd += tst_path
     cmd += cmd_args
-    print cmd
-    sys.stdout.flush()
-    easy_run.call(command=cmd)
-    print
-    sys.stderr.flush()
-    sys.stdout.flush()
+    yield cmd
 
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
   if hasattr(a1, "__len__"): # traverse list
