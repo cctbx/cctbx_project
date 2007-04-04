@@ -5,15 +5,34 @@ import difflib
 from stdlib import math
 import sys
 import os
-import Queue
+from libtbx.option_parser import option_parser
+try:
+  import threading
+  import Queue
+  __threading_available = True
+except:
+  __threading_available = False
+
 
 diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
 class Default: pass
 
-def run_tests(build_dir, dist_dir, tst_list, threads=1):
-  import threading
-  if threads == 1:
+def run_tests(build_dir, dist_dir, tst_list, cmd_line_args=""):
+  command_line = (option_parser(
+    usage="run_tests [-j n]",
+    description="Run several threads in parallel, each picking and then"
+                "running tests one at a time.")
+    .option("-j", "--threads",
+      action="store",
+      type="int",
+      default=1,
+      help="number of threads",
+      metavar="INT",
+    )
+  ).process()
+  threads = command_line.options.threads
+  if not __threading_available or threads == 1:
     for cmd in iter_tests_cmd(build_dir, dist_dir, tst_list):
       print cmd
       sys.stdout.flush()
@@ -29,9 +48,11 @@ def run_tests(build_dir, dist_dir, tst_list, threads=1):
     logs_pool = []
     for i in xrange(threads):
       log_name = os.tempnam('.', 'log-')
+      working_dir = os.tempnam()
+      os.mkdir(working_dir)
       logs_pool.append(log_name)
       t = threading.Thread(
-        target=make_pick_and_run_tests(log_name, cmd_queue))
+        target=make_pick_and_run_tests(log_name, working_dir, cmd_queue))
       threads_pool.append(t)
     for t in threads_pool:
       t.start()
@@ -41,10 +62,12 @@ def run_tests(build_dir, dist_dir, tst_list, threads=1):
     for name in logs_pool:
       log = open(name)
       final_log += log.read()
+      log.close()
+      os.remove(name)
     print final_log
 
 
-def make_pick_and_run_tests(log_name, cmd_queue):
+def make_pick_and_run_tests(log_name, working_dir, cmd_queue):
   def func():
     log = open(log_name, 'w')
     while(1):
@@ -56,7 +79,8 @@ def make_pick_and_run_tests(log_name, cmd_queue):
         easy_run.subprocess.Popen(cmd,
                                   shell=True,
                                   stdout=log,
-                                  stderr=easy_run.subprocess.STDOUT).wait()
+                                  stderr=easy_run.subprocess.STDOUT,
+                                  cwd=working_dir).wait()
         log.flush()
         log.write("\n")
       except Queue.Empty:
