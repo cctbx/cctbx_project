@@ -44,6 +44,9 @@ def run(args):
   weighting = xray.weighting_schemes.shelx_weighting(a=100, b=150)
   exercise_py_LS(obs, f_calc, weighting, verbose)
 
+  print "OK"
+
+
 def exercise_core_LS(target_class, verbose):
   n_refl = 10
   f_calc = flex.polar(
@@ -77,7 +80,6 @@ def exercise_core_LS(target_class, verbose):
     print "ana:", list(gr_ana)
     print "fin:", list(gr_fin)
   assert approx_equal(gr_fin, gr_ana)
-  print "OK"
 
 def exercise_py_LS(obs, f_calc, weighting, verbose):
   weighting.computing_derivatives_wrt_f_c = True
@@ -136,7 +138,6 @@ def exercise_py_LS(obs, f_calc, weighting, verbose):
                      + dw_dfc*(flex.pow2(K*y_c - y_o)/sum_w_y_o_sqr
                         - sum_w_squares*flex.pow2(y_o)/sum_w_y_o_sqr**2) )
     assert approx_equal(gr_fin, gr_total_ana)
-  print "OK"
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])

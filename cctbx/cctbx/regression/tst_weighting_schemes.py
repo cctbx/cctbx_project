@@ -22,6 +22,9 @@ def run():
   obs.set_observation_type_xray_intensity()
 
   exercise_shelx_weighting(f_calc, obs)
+  
+  print 'OK'
+
 
 def exercise_shelx_weighting(f_calc, obs):
   a,b = 10, 100
@@ -38,8 +41,6 @@ def exercise_shelx_weighting(f_calc, obs):
     w.compute()
   assert approx_equal(weighting.derivatives_wrt_f_c,
                       weighting_ref.derivatives_wrt_f_c)
-  print 'OK'
-
 
 if __name__ == '__main__':
   run()
