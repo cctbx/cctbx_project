@@ -22,7 +22,7 @@ def run():
   obs.set_observation_type_xray_intensity()
 
   exercise_shelx_weighting(f_calc, obs)
-  
+
   print 'OK'
 
 
