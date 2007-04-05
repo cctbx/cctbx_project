@@ -1,39 +1,47 @@
 from __future__ import generators
+from libtbx.option_parser import option_parser
 from libtbx import easy_run
 from libtbx import introspection
 import difflib
 from stdlib import math
-import sys
-import os
-from libtbx.option_parser import option_parser
+import sys, os
+
 try:
   import threading
+except ImportError:
+  threading = None
+else:
   import Queue
-  __threading_available = True
-except:
-  __threading_available = False
-
 
 diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
 class Default: pass
 
-def run_tests(build_dir, dist_dir, tst_list, cmd_line_args=""):
+def run_tests(build_dir, dist_dir, tst_list):
+  args = [arg.lower() for arg in sys.argv[1:]]
   command_line = (option_parser(
     usage="run_tests [-j n]",
     description="Run several threads in parallel, each picking and then"
-                "running tests one at a time.")
+                " running tests one at a time.")
     .option("-j", "--threads",
       action="store",
       type="int",
       default=1,
       help="number of threads",
-      metavar="INT",
-    )
-  ).process()
-  threads = command_line.options.threads
-  if not __threading_available or threads == 1:
-    for cmd in iter_tests_cmd(build_dir, dist_dir, tst_list):
+      metavar="INT")
+    .option("-v", "--verbose",
+      action="store_true",
+      default=False)
+    .option("-q", "--quick",
+      action="store_true",
+      default=False)
+    .option("-g", "--valgrind",
+      action="store_true",
+      default=False)
+  ).process(args=args, max_nargs=0)
+  co = command_line.options
+  if (threading is None or co.threads == 1):
+    for cmd in iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       print cmd
       sys.stdout.flush()
       easy_run.call(command=cmd)
@@ -42,11 +50,11 @@ def run_tests(build_dir, dist_dir, tst_list, cmd_line_args=""):
       sys.stdout.flush()
   else:
     cmd_queue = Queue.Queue()
-    for cmd in iter_tests_cmd(build_dir, dist_dir, tst_list):
+    for cmd in iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       cmd_queue.put(cmd)
     threads_pool = []
     logs_pool = []
-    for i in xrange(threads):
+    for i in xrange(co.threads):
       log_name = os.tempnam('.', 'log-')
       working_dir = os.tempnam()
       os.mkdir(working_dir)
@@ -65,7 +73,6 @@ def run_tests(build_dir, dist_dir, tst_list, cmd_line_args=""):
       log.close()
       os.remove(name)
     print final_log
-
 
 def make_pick_and_run_tests(log_name, working_dir, cmd_queue):
   def func():
@@ -88,9 +95,7 @@ def make_pick_and_run_tests(log_name, working_dir, cmd_queue):
         break
   return func
 
-
-def iter_tests_cmd(build_dir, dist_dir, tst_list):
-  import sys, os, os.path
+def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
   if (os.name == "nt"):
     python_exe = sys.executable
   else:
@@ -98,14 +103,13 @@ def iter_tests_cmd(build_dir, dist_dir, tst_list):
   for tst in tst_list:
     cmd_args = ""
     if (type(tst) == type([])):
-      if ("--Verbose" in sys.argv[1:]):
+      if (co.verbose):
         cmd_args = " " + " ".join(["--Verbose"] + tst[1:])
-      elif ("--Quick" in sys.argv[1:]):
+      elif (co.quick):
         cmd_args = " " + " ".join(tst[1:])
       tst = tst[0]
-    else:
-      if ("--Verbose" in sys.argv[1:]):
-        continue
+    elif (co.verbose):
+      continue
     if (tst.startswith("$B")):
       tst_path = tst.replace("$B", build_dir)
     else:
@@ -114,11 +118,11 @@ def iter_tests_cmd(build_dir, dist_dir, tst_list):
     tst_path = os.path.normpath(tst_path)
     cmd = ""
     if (tst_path.endswith(".py")):
-      if ("--valgrind" in sys.argv[1:]):
+      if (co.valgrind):
         cmd = "libtbx.valgrind "
       cmd += python_exe + " " + tst_path
     else:
-      if ("--valgrind" in sys.argv[1:]):
+      if (co.valgrind):
         cmd = os.environ["LIBTBX_VALGRIND"] + " "
       cmd += tst_path
     cmd += cmd_args
