@@ -84,8 +84,7 @@ def run():
   build_dir = libtbx.env.under_build("cctbx")
   dist_dir = libtbx.env.dist_path("cctbx")
 
-  test_utils.run_tests(build_dir, dist_dir, tst_list,
-                       cmd_line_args=sys.argv[1:])
+  test_utils.run_tests(build_dir, dist_dir, tst_list)
 
 if (__name__ == "__main__"):
   run()
