@@ -398,7 +398,7 @@ planarity: (0, 8, 10, 15)
 ...
 nonbonded asu: (36, 46) -x+1,y+1/2,-z+1/2
   distance_model: 4.89425
-  vdw_distance: 2.9
+  vdw_distance: 2.95
 nonbonded simple: (0, 23)
   distance_model: 4.89852
   vdw_distance: 3.75
@@ -457,7 +457,7 @@ nonbonded asu: (36, 46)
   " C   LEU A   5 "
   " H1  HOH B   3 " -x+1,y+1/2,-z+1/2
   distance_model: 4.89425
-  vdw_distance: 2.9
+  vdw_distance: 2.95
 nonbonded simple: (0, 23)
   " CA  TYR A   1 "
   " CD1 PHE A   4 "
@@ -500,7 +500,7 @@ planarity: (0, 8, 10, 15)
   weight: 2500
 ...
 nonbonded simple: (5, 39)
-  vdw_distance: 3.22
+  vdw_distance: 3.26
 ...
 nonbonded asu: (7, 29) x+1,y,z
   vdw_distance: 3.55
@@ -553,7 +553,7 @@ planarity: (0, 8, 10, 15)
 nonbonded simple: (5, 39)
   " CZ  TYR A   1 "
   " O   HOH B   1 "
-  vdw_distance: 3.22
+  vdw_distance: 3.26
 ...
 nonbonded asu: (7, 29)
   " CD1 TYR A   1 "
