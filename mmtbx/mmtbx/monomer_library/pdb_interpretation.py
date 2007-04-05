@@ -1070,6 +1070,7 @@ class add_planarity_proxies(object):
 # XXX TODO synonymes
 def ener_lib_as_nonbonded_params(
       ener_lib,
+      assume_hydrogens_all_missing,
       factor_1_4_interactions,
       default_distance,
       minimum_distance):
@@ -1078,12 +1079,28 @@ def ener_lib_as_nonbonded_params(
     const_shrink_1_4_interactions=0,
     default_distance=default_distance,
     minimum_distance=minimum_distance)
+  vdw_h = []
   for vdw in ener_lib.lib_vdw:
-    entry = params.distance_table.setdefault(
-      vdw.atom_type_1)[vdw.atom_type_2] = vdw.radius_min
+    assert vdw.H_flag in ["", "h"]
+    if (vdw.H_flag == "h"):
+      if (assume_hydrogens_all_missing): vdw_h.append(vdw)
+      continue
+    atom_types = [vdw.atom_type_1, vdw.atom_type_2]
+    atom_types.sort()
+    params.distance_table.setdefault(
+      atom_types[0])[atom_types[1]] = vdw.radius_min
+  if (assume_hydrogens_all_missing):
+    for vdw in vdw_h:
+      atom_types = [vdw.atom_type_1, vdw.atom_type_2]
+      atom_types.sort()
+      params.distance_table.setdefault(
+        atom_types[0])[atom_types[1]] = vdw.radius_min
   for atom_type,energy_lib_atom in ener_lib.lib_atom.items():
     if (len(atom_type) == 0): continue
-    if (energy_lib_atom.vdw_radius is not None):
+    if (    assume_hydrogens_all_missing
+        and energy_lib_atom.vdwh_radius is not None):
+      params.radius_table[atom_type] = energy_lib_atom.vdwh_radius
+    elif (energy_lib_atom.vdw_radius is not None):
       params.radius_table[atom_type] = energy_lib_atom.vdw_radius
   return params
 
@@ -2370,6 +2387,7 @@ class build_all_chain_proxies(object):
         disulfide_link,
         plain_pairs_radius=None,
         edits=None,
+        assume_hydrogens_all_missing=True,
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
@@ -2461,6 +2479,7 @@ class build_all_chain_proxies(object):
     #
     nonbonded_params = ener_lib_as_nonbonded_params(
       ener_lib=ener_lib,
+      assume_hydrogens_all_missing=assume_hydrogens_all_missing,
       factor_1_4_interactions=self.params.vdw_1_4_factor,
       default_distance=self.params.default_vdw_distance,
       minimum_distance=self.params.min_vdw_distance)
@@ -2538,6 +2557,7 @@ class process(object):
   def geometry_restraints_manager(self,
         plain_pairs_radius=None,
         edits=None,
+        assume_hydrogens_all_missing=True,
         show_energies=True,
         hard_minimum_bond_distance_model=0.001):
     if (    self.all_chain_proxies.sites_cart is not None
@@ -2549,6 +2569,7 @@ class process(object):
             disulfide_link=self.mon_lib_srv.link_link_id_dict["SS"],
             plain_pairs_radius=plain_pairs_radius,
             edits=edits,
+            assume_hydrogens_all_missing=assume_hydrogens_all_missing,
             log=self.log)
       if (self.log is not None):
         print >> self.log, \
