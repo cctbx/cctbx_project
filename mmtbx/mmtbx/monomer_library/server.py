@@ -394,19 +394,3 @@ class ener_lib(process_cif_mixin):
     for row in get_rows(cif_object, "energy", "lib_vdw"):
       vdw = cif_types.energy_lib_vdw(**row)
       self.lib_vdw.append(vdw)
-
-  def vdw_lookup(self, atom_energy_types_pair):
-    atom_energy_types_pair = [self.lib_synonym.get(t,t)
-      for t in atom_energy_types_pair]
-    for vdw in self.lib_vdw:
-      if (   (    vdw.atom_type_1 == atom_energy_types_pair[0]
-              and vdw.atom_type_2 == atom_energy_types_pair[1])
-          or (    vdw.atom_type_1 == atom_energy_types_pair[1]
-              and vdw.atom_type_2 == atom_energy_types_pair[0])):
-        return vdw.radius_min
-    entries = [self.lib_atom.get(t,None) for t in atom_energy_types_pair]
-    if (None not in entries):
-      radii = [entry.vdw_radius for entry in entries]
-      if (None not in radii):
-        return radii[0] + radii[1]
-    return None
