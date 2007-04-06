@@ -52,6 +52,19 @@ master_params = iotbx.phil.parse("""\
   disulfide_distance_cutoff = 3
     .type=float
     .optional=False
+  chir_volume_esd = 0.2
+    .type=float
+    .optional=False
+  peptide_link {
+    cis_threshold = 45
+      .type = float
+      .optional = False
+    discard_psi_phi = True
+      .type = bool
+      .optional = False
+    omega_esd_override_value = None
+      .type = float
+  }
   nonbonded_distance_cutoff = None
     .type=float
   default_vdw_distance = 1
@@ -570,18 +583,21 @@ class monomer_mapping(object):
       m_i=self,
       m_j=None,
       tor_list=self.monomer.tor_list,
+      peptide_link_params=None,
       dihedral_proxy_registry=dihedral_proxy_registry,
       special_position_indices=special_position_indices).counters
 
   def add_chirality_proxies(self, special_position_indices,
-                                  chirality_proxy_registry):
+                                  chirality_proxy_registry,
+                                  chir_volume_esd):
     self.chirality_counters = add_chirality_proxies(
       counters=counters(label="chirality"),
       m_i=self,
       m_j=None,
       chir_list=self.monomer.chir_list,
       chirality_proxy_registry=chirality_proxy_registry,
-      special_position_indices=special_position_indices).counters
+      special_position_indices=special_position_indices,
+      chir_volume_esd=chir_volume_esd).counters
 
   def add_planarity_proxies(self, special_position_indices,
                                   planarity_proxy_registry):
@@ -859,12 +875,11 @@ class add_dihedral_proxies(object):
         m_i,
         m_j,
         tor_list,
+        peptide_link_params,
         dihedral_proxy_registry,
         special_position_indices,
         sites_cart=None,
-        chem_link_id=None,
-        discard_peptide_psi_phi=True,
-        cis_threshold=45):
+        chem_link_id=None):
     self.counters = counters
     self.chem_link_id = chem_link_id
     if (chem_link_id not in ["TRANS", "PTRANS", "NMTRANS"]):
@@ -906,10 +921,10 @@ class add_dihedral_proxies(object):
         counters.resolved += 1
         if (involves_special_positions(special_position_indices, i_seqs)):
           counters.discarded_because_of_special_positions += 1
-        elif (discard_peptide_psi_phi
-              and tor.id in ["psi", "phi"]
+        elif (    tor.id in ["psi", "phi"]
               and self.chem_link_id in ["TRANS", "PTRANS", "NMTRANS",
-                                        "CIS",   "PCIS",   "NMCIS"]):
+                                        "CIS",   "PCIS",   "NMCIS"]
+              and peptide_link_params.discard_psi_phi):
           pass
         else:
           proxy = geometry_restraints.dihedral_proxy(
@@ -919,10 +934,13 @@ class add_dihedral_proxies(object):
             periodicity=max(1,tor.period))
           if (sites_cart is not None and tor.id == "omega"):
             assert abs(tor.value_angle - 180) < 1.e-6
+            if (peptide_link_params.omega_esd_override_value is not None):
+              assert peptide_link_params.omega_esd_override_value > 0
+              proxy.weight = 1/peptide_link_params.omega_esd_override_value**2
             r = geometry_restraints.dihedral(
               sites_cart=sites_cart,
               proxy=proxy)
-            if (abs(r.delta) > 180-cis_threshold):
+            if (abs(r.delta) > 180-peptide_link_params.cis_threshold):
               self.chem_link_id = self.chem_link_id.replace("TRANS", "CIS")
               proxy.angle_ideal = 0
           registry_process_result = dihedral_proxy_registry.process(
@@ -942,8 +960,8 @@ class add_chirality_proxies(object):
         chir_list,
         chirality_proxy_registry,
         special_position_indices,
-        lib_link=None,
-        chir_volume_esd=0.2):
+        chir_volume_esd,
+        lib_link=None):
     self.counters = counters
     self.counters.unsupported_volume_sign = dicts.with_default_value(0)
     if (m_j is None):
@@ -1079,29 +1097,30 @@ def ener_lib_as_nonbonded_params(
     const_shrink_1_4_interactions=0,
     default_distance=default_distance,
     minimum_distance=minimum_distance)
-  vdw_h = []
+  tables = {"": [], "h": []}
   for vdw in ener_lib.lib_vdw:
     assert vdw.H_flag in ["", "h"]
-    if (vdw.H_flag == "h"):
-      if (assume_hydrogens_all_missing): vdw_h.append(vdw)
-      continue
-    atom_types = [vdw.atom_type_1, vdw.atom_type_2]
-    atom_types.sort()
-    params.distance_table.setdefault(
-      atom_types[0])[atom_types[1]] = vdw.radius_min
   if (assume_hydrogens_all_missing):
-    for vdw in vdw_h:
+    reverse_prefs = ["", "h"]
+  else:
+    reverse_prefs = ["h", ""]
+  for code in reverse_prefs:
+    for vdw in tables[code]:
       atom_types = [vdw.atom_type_1, vdw.atom_type_2]
       atom_types.sort()
       params.distance_table.setdefault(
         atom_types[0])[atom_types[1]] = vdw.radius_min
+  if (assume_hydrogens_all_missing):
+    pref1, pref2 = ["vdwh_radius", "vdw_radius"]
+  else:
+    pref1, pref2 = ["vdw_radius", "vdwh_radius"]
   for atom_type,energy_lib_atom in ener_lib.lib_atom.items():
     if (len(atom_type) == 0): continue
-    if (    assume_hydrogens_all_missing
-        and energy_lib_atom.vdwh_radius is not None):
-      params.radius_table[atom_type] = energy_lib_atom.vdwh_radius
-    elif (energy_lib_atom.vdw_radius is not None):
-      params.radius_table[atom_type] = energy_lib_atom.vdw_radius
+    r = getattr(energy_lib_atom, pref1)
+    if (r is None):
+      r = getattr(energy_lib_atom, pref2)
+    if (r is not None):
+      params.radius_table[atom_type] = r
   return params
 
 def is_same_model_as_before(model_type_indices, i_model, models):
@@ -1209,6 +1228,8 @@ class build_chain_proxies(object):
         apply_cif_links,
         apply_cif_links_labels_mm_dict,
         link_distance_cutoff,
+        chir_volume_esd,
+        peptide_link_params,
         stage_1,
         sites_cart,
         special_position_indices,
@@ -1349,6 +1370,7 @@ class build_chain_proxies(object):
               m_i=prev_mm,
               m_j=mm,
               tor_list=prev_mm.lib_link.tor_list,
+              peptide_link_params=peptide_link_params,
               dihedral_proxy_registry=geometry_proxy_registries.dihedral,
               special_position_indices=special_position_indices,
               sites_cart=sites_cart,
@@ -1363,6 +1385,7 @@ class build_chain_proxies(object):
               chir_list=prev_mm.lib_link.chir_list,
               chirality_proxy_registry=geometry_proxy_registries.chirality,
               special_position_indices=special_position_indices,
+              chir_volume_esd=chir_volume_esd,
               lib_link=prev_mm.lib_link)
             n_unresolved_chain_link_chiralities \
               += link_resolution.counters.unresolved_non_hydrogen
@@ -1431,7 +1454,8 @@ class build_chain_proxies(object):
           += mm.dihedral_counters.discarded_because_of_special_positions
         mm.add_chirality_proxies(
           special_position_indices=special_position_indices,
-          chirality_proxy_registry=geometry_proxy_registries.chirality)
+          chirality_proxy_registry=geometry_proxy_registries.chirality,
+          chir_volume_esd=chir_volume_esd)
         if (mm.chirality_counters.corrupt_monomer_library_definitions > 0):
           corrupt_monomer_library_definitions[mm.residue_name] \
             += mm.chirality_counters.corrupt_monomer_library_definitions
@@ -1516,6 +1540,7 @@ class build_chain_proxies(object):
           m_i=mms[0],
           m_j=mms[1],
           tor_list=link.tor_list,
+          peptide_link_params=peptide_link_params,
           dihedral_proxy_registry=geometry_proxy_registries.dihedral,
           special_position_indices=special_position_indices,
           sites_cart=sites_cart,
@@ -1531,6 +1556,7 @@ class build_chain_proxies(object):
           chir_list=link.chir_list,
           chirality_proxy_registry=geometry_proxy_registries.chirality,
           special_position_indices=special_position_indices,
+          chir_volume_esd=chir_volume_esd,
           lib_link=link)
         raise_if_corrupt(link_resolution)
         n_unresolved_apply_cif_link_chiralities \
@@ -1835,6 +1861,8 @@ class build_all_chain_proxies(object):
             apply_cif_links=self.apply_cif_links,
             apply_cif_links_labels_mm_dict=self.apply_cif_links_labels_mm_dict,
             link_distance_cutoff=self.params.link_distance_cutoff,
+            chir_volume_esd=self.params.chir_volume_esd,
+            peptide_link_params=self.params.peptide_link,
             stage_1=self.stage_1,
             sites_cart=self.sites_cart,
             special_position_indices=self.special_position_indices,
