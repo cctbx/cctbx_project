@@ -183,7 +183,7 @@ class least_squares_residual_for_amplitude(unified_least_squares_residual):
 
   def __init__(self, f_obs, use_sigmas_as_weights = False):
     if use_sigmas_as_weights:
-      weighting = self.statistical_weighting()
+      weighting = self.statistical_weighting
     else:
       weighting = None
     super(least_squares_residual, self).__init__(f_obs, True, weighting)

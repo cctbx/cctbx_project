@@ -3,11 +3,13 @@ from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from cctbx.development import random_structure
 import sys
 
 def run(args):
   assert args in [[], ["--verbose"]]
   verbose = "--verbose" in args
+  exercise_least_squares_residual()
   exercise_core_LS(xray.targets_least_squares_residual, verbose)
   exercise_core_LS(xray.targets_least_squares_residual_for_intensity, verbose)
 
@@ -138,6 +140,24 @@ def exercise_py_LS(obs, f_calc, weighting, verbose):
                      + dw_dfc*(flex.pow2(K*y_c - y_o)/sum_w_y_o_sqr
                         - sum_w_squares*flex.pow2(y_o)/sum_w_y_o_sqr**2) )
     assert approx_equal(gr_fin, gr_total_ana)
+
+def exercise_least_squares_residual():
+  crystal_symmetry = crystal.symmetry(
+    unit_cell=(6,3,8,90,90,90),
+    space_group_symbol="P222")
+  miller_set = miller.build_set(
+    crystal_symmetry=crystal_symmetry,
+    anomalous_flag=False,
+    d_min=0.7)
+  f_obs = miller_set.array(
+    data=flex.random_double(miller_set.size()),
+    sigmas=flex.random_double(miller_set.size())*0.05)
+  ls = xray.least_squares_residual(
+    f_obs,
+    use_sigmas_as_weights=True,
+  )
+
+
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
