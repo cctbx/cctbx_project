@@ -401,7 +401,7 @@ nonbonded asu: (36, 46) -x+1,y+1/2,-z+1/2
   vdw_distance: 2.95
 nonbonded simple: (0, 23)
   distance_model: 4.89852
-  vdw_distance: 3.75
+  vdw_distance: 3.77
 """,
     selections=[range(4), range(184,188), range(404,409), range(459,464),
       range(488,493), range(-6,0)])
@@ -462,7 +462,7 @@ nonbonded simple: (0, 23)
   " CA  TYR A   1 "
   " CD1 PHE A   4 "
   distance_model: 4.89852
-  vdw_distance: 3.75
+  vdw_distance: 3.77
 """,
     selections=[range(7), range(276,283), range(661,670), range(760,769),
       range(805,810), range(-10,0)])
@@ -503,7 +503,7 @@ nonbonded simple: (5, 39)
   vdw_distance: 3.26
 ...
 nonbonded asu: (7, 29) x+1,y,z
-  vdw_distance: 3.55
+  vdw_distance: 3.42
 """,
     selections=[range(3), range(138,141), range(303,307), range(347,351),
       range(372,377), range(400,402), range(-2,0)])
@@ -558,7 +558,7 @@ nonbonded simple: (5, 39)
 nonbonded asu: (7, 29)
   " CD1 TYR A   1 "
   " N   PHE A   4 " x+1,y,z
-  vdw_distance: 3.55
+  vdw_distance: 3.42
 """,
     selections=[range(5), range(230,236), range(560,568), range(648,656),
       range(689,694), range(717,721), range(-4,0)])
