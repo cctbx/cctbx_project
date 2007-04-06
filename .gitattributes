@@ -8,3 +8,6 @@ libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx/subversion.py -text
 libtbx/libtbx_refresh.py -text
 libtbx/windows_dispatcher.exe -text
+smtbx/__init__.py -text
+smtbx/refinement/__init__.py -text
+smtbx/refinement/minimization.py -text
