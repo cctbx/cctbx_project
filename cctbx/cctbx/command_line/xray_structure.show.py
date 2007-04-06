@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from cctbx import xray
 from libtbx import easy_pickle
 import sys

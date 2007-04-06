@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from libtbx import easy_pickle
 from scitbx.python_utils import dicts
 from cctbx import euclidean_model_matching as emma
