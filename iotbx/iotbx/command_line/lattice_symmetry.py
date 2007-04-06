@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 # Comments by Phil Evans, MRC-LMB, Cambridge, U.K.
 
 from cctbx import crystal

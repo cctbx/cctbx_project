@@ -1,5 +1,3 @@
-#! /usr/bin/env python
-
 from iotbx import crystal_symmetry_from_any
 from iotbx import format
 import sys
