@@ -1,0 +1,566 @@
+from cctbx import miller
+from cctbx import crystal
+from cctbx import uctbx
+from cctbx import sgtbx
+from cctbx import xray
+from cctbx import eltbx
+import cctbx.xray.structure_factors
+from cctbx.eltbx.xray_scattering import wk1995
+from cctbx.array_family import flex
+from libtbx.utils import Sorry, date_and_time, multi_out
+import iotbx.phil
+from iotbx import reflection_file_reader
+from iotbx import reflection_file_utils
+from iotbx import crystal_symmetry_from_any
+from iotbx.pdb import xray_structure
+from iotbx import pdb
+import libtbx.phil.command_line
+from cStringIO import StringIO
+from scitbx.python_utils import easy_pickle
+from scitbx.math import matrix
+from cctbx import adptbx
+import sys, os
+
+
+def construct_output_labels(labels, label_appendix, out=None ):
+  if out is None:
+    out = sys.stdout
+
+  new_label_root = []
+  standard_prefix = ["F","I","SIG", "HLA", "HL"]
+  standard_postfix = ["(+)","(-)","PLUS", "MINUS","+","-","MINU" ]
+
+  for label, app in zip(labels,label_appendix):
+    if app is None:
+      app=""
+    #for each label, check if the prefix is present
+    tmp_root = str(label[0])
+    for pre in standard_prefix:
+      if tmp_root.startswith( pre ):
+        tmp_root = tmp_root[len(pre)-1:]
+        break
+    for post in standard_postfix:
+      if tmp_root.endswith( pre ):
+        tmp_root = tmp_root[len(pre)-1:]
+        break
+
+    if len(tmp_root)==0:
+      tmp_root = label[0]
+
+    new_label_root.append( tmp_root+app )
+
+  return new_label_root
+
+
+def read_data(file_name, labels, xs, log=None):
+  if log is None:
+    log=sys.stdout
+  if not os.path.isfile(file_name):
+    raise Sorry("No such file: >%s<"%(file_name) )
+  reflection_file = reflection_file_reader.any_reflection_file(
+    file_name= file_name)
+
+  miller_arrays = reflection_file.as_miller_arrays(crystal_symmetry=xs)
+  label_table = reflection_file_utils.label_table(miller_arrays)
+  #now select a miller array or set of miller arrays
+  miller_array = label_table.match_data_label(
+    label=labels,
+    command_line_switch="xray_data.label",
+    f=log)
+  return miller_array
+
+
+def chain_name_modifier(chain_id, increment):
+  ids=["A","B","C","D","E","F","G","H","I","J","K",
+       "L","M","N","O","P","Q","R","S","T","U","V",
+       "W","X","Y","Z","0","1","2","3","4","5","6",
+       "7","8","9"]
+  result=chain_id
+  if chain_id in ids:
+    new_index = (ids.index( chain_id ) + increment)%len(ids)
+    result = ids[new_index]
+  return result
+
+
+def write_as_pdb_file( input_xray_structure = None,
+                       input_crystal_symmetry = None,
+                       input_pdb = None,
+                       out = None,
+                       chain_id_increment=5,
+                       additional_remark=None,
+                       print_cryst_and_scale=True
+                       ):
+  assert chain_id_increment is not None
+  if out is None:
+    out = sys.stdout
+
+  xs = input_crystal_symmetry
+  if xs is None:
+    xs = crystal.symmetry( unit_cell = input_xray_structure.unit_cell(),
+                           space_group = input_xray_structure.space_group() )
+
+
+  sg_info_object = sgtbx.space_group_info(group=xs.space_group() )
+  if additional_remark is not None:
+    print >> out, "REMARK     %s"%(additional_remark)
+  if print_cryst_and_scale:
+    print >> out, "REMARK    SYMMETRY: %s"%( str(sg_info_object) )
+    print >> out, pdb.format_cryst1_record(
+      crystal_symmetry = xs )
+    print >> out, pdb.format_scale_records(
+      unit_cell = xs.unit_cell() )
+
+    u_iso_array = input_xray_structure.scatterers().extract_u_iso().as_double()
+
+  for serial, label, atom, xyz, adp in zip(input_pdb.atom_serial_number_strings(),
+                                           input_pdb.input_atom_labels_list(),
+                                           input_pdb.atoms(),
+                                           input_xray_structure.sites_cart(),
+                                           u_iso_array
+                                           ):
+    print >> out, iotbx.pdb.format_atom_record(
+      record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
+      serial=int(serial),
+      name=label.name(),
+      altLoc=label.altloc(),
+      resName=label.resname(),
+      resSeq=label.resseq,
+      chainID=chain_name_modifier(label.chain(),chain_id_increment),
+      iCode=label.icode(),
+      site=xyz,
+      occupancy=atom.occ,
+      tempFactor=adptbx.u_as_b( adp ),
+      segID=atom.segid,
+      element=atom.element,
+      charge=atom.charge)
+
+
+
+
+master_params = iotbx.phil.parse("""\
+xmanip{
+  input{
+    unit_cell=None
+    .type=unit_cell
+    space_group=None
+    .type=space_group
+    xray_data
+    .multiple=True
+    {
+      file_name=None
+      .type=path
+      labels=None
+      .type=str
+      label_appendix=None
+      .type=str
+      name = None
+      .type = str
+    }
+    model{
+      file_name=None
+      .type=path
+    }
+  }
+  parameters{
+    action = *reindex operator manipulate_pdb xray_algebra
+    .type=choice
+    chain_id_increment = 0
+    .type=int
+    inverse=False
+    .type=bool
+    reindex{
+      standard_laws = niggli *reference_setting invert user_supplied
+      .type=choice
+      user_supplied_law='h,k,l'
+      .type=str
+    }
+    apply_operator{
+      standard_operators = *user_supplied
+      .type=choice
+      user_supplied_operator="x,y,z"
+      .type=str
+      concatenate_model=False
+      .type=bool
+    }
+    manipulate_pdb{
+      set_b = True
+      .type=bool
+      b_iso = 30
+      .type=float
+    }
+  }
+  output{
+    logfile=xmanip.log
+    .type=str
+    hklout=xmanip.mtz
+    .type=str
+    xyzout=xmanip.pdb
+    .type=str
+  }
+}
+""")
+
+def print_help(name="phenix.xmanip"):
+  print """
+\t\t%s
+
+Allows one to quickly reindex a dataset and apply the effect on the atomic coordinates as well.
+
+The keywords are sumarized below:
+
+xmanip{
+  input{
+    unit_cell=None
+    space_group=None
+    xray_data
+    {
+      file_name=None
+      labels=None
+      label_appendix=None
+      name = None
+    }
+    model{
+      file_name=None
+    }
+  }
+  parameters{
+    action = *reindex operator manipulate_pdb xray_algebra
+    chain_id_increment = 0
+    inverse=False
+    reindex{
+      standard_laws = niggli *reference_setting invert user_supplied
+      user_supplied_law='h,k,l'
+    }
+    apply_operator{
+      standard_operators = *user_supplied
+      user_supplied_operator="x,y,z"
+      concatenate_model=False
+    }
+    manipulate_pdb{
+      set_b = True
+      b_iso = 30
+    }
+  }
+  output{
+    logfile=xmanip.log
+    hklout=xmanip.mtz
+    xyzout=xmanip.pdb
+  }
+}
+
+  """%(name)
+
+
+def xmanip(args):
+  if len(args)==0:
+    print_help()
+  elif ( "--help" in args ):
+    print_help()
+  elif ( "--h" in args ):
+    print_help()
+  elif ("-h" in args ):
+    print_help()
+  else:
+    log = multi_out()
+    if (not "--quiet" in args):
+      log.register(label="stdout", file_object=sys.stdout)
+    string_buffer = StringIO()
+    string_buffer_plots = StringIO()
+    log.register(label="log_buffer", file_object=string_buffer)
+
+    phil_objects = []
+    argument_interpreter = libtbx.phil.command_line.argument_interpreter(
+      master_params=master_params,
+      home_scope="map_coefs")
+
+    print >> log, "#phil __OFF__"
+    print >> log, "================="
+    print >> log, "    REINDEX      "
+    print >> log, "A reindexing tool"
+    print >> log, "================="
+    print >> log
+
+
+    for arg in args:
+      command_line_params = None
+      arg_is_processed = False
+      # is it a file?
+      if (os.path.isfile(arg)): ## is this a file name?
+        # check if it is a phil file
+        try:
+          command_line_params = iotbx.phil.parse(file_name=arg)
+          if command_line_params is not None:
+            phil_objects.append(command_line_params)
+            arg_is_processed = True
+        except KeyboardInterrupt: raise
+        except : pass
+      else:
+        try:
+          command_line_params = argument_interpreter.process(arg=arg)
+          if command_line_params is not None:
+            phil_objects.append(command_line_params)
+            arg_is_processed = True
+        except KeyboardInterrupt: raise
+        except : pass
+
+      if not arg_is_processed:
+        print >> log, "##----------------------------------------------##"
+        print >> log, "## Unknown file or keyword:", arg
+        print >> log, "##----------------------------------------------##"
+        print >> log
+        raise Sorry("Unknown file or keyword: %s" % arg)
+
+    effective_params = master_params.fetch(sources=phil_objects)
+    params = effective_params.extract()
+
+    # now get the unit cell from the files
+    hkl_xs = []
+    pdb_xs = None
+
+    #multiple file names are allowed
+    for xray_data in params.xmanip.input.xray_data:
+      hkl_xs.append( crystal_symmetry_from_any.extract_from(
+         file_name=xray_data.file_name) )
+
+    if params.xmanip.input.model.file_name is not None:
+      pdb_xs = crystal_symmetry_from_any.extract_from(
+        file_name=params.xmanip.input.model.file_name)
+
+    phil_xs = crystal.symmetry(
+      unit_cell=params.xmanip.input.unit_cell,
+      space_group_info=params.xmanip.input.space_group  )
+
+    combined_xs = crystal.select_crystal_symmetry(
+      None,phil_xs, [pdb_xs],hkl_xs)
+
+    # inject the unit cell and symmetry in the phil scope please
+    params.xmanip.input.unit_cell = combined_xs.unit_cell()
+    params.xmanip.input.space_group = \
+      sgtbx.space_group_info( group = combined_xs.space_group() )
+
+    print >> log, "#phil __ON__"
+    new_params =  master_params.format(python_object=params)
+    new_params.show(out=log)
+    print >> log, "#phil __END__"
+
+    if params.xmanip.input.unit_cell is None:
+      raise Sorry("unit cell not specified")
+    if params.xmanip.input.space_group is None:
+      raise Sorry("space group not specified")
+
+    #-----------------------------------------------------------
+    #
+    # step 1: read in the reflection file
+    #
+
+    miller_arrays = []
+    labels = []
+    label_appendix = []
+    names = {}
+
+    if len(params.xmanip.input.xray_data)>0:
+
+      phil_xs = crystal.symmetry(
+        unit_cell=params.xmanip.input.unit_cell,
+        space_group_info=params.xmanip.input.space_group  )
+
+      xray_data_server =  reflection_file_utils.reflection_file_server(
+        crystal_symmetry = phil_xs,
+        force_symmetry = True,
+        reflection_files=[])
+
+      count=0
+      for xray_data in params.xmanip.input.xray_data:
+
+        miller_array = None
+        miller_array = read_data(xray_data.file_name,
+                                 xray_data.labels,
+                                 phil_xs)
+        print >> log
+        print >> log, "Summary info of observed data"
+        print >> log, "============================="
+        miller_array.show_summary(f=log)
+        print >> log
+
+        miller_arrays.append( miller_array )
+        labels.append( miller_array.info().labels )
+        label_appendix.append( xray_data.label_appendix )
+
+        this_name = "COL "+str(count)
+        if xray_data.name is not None:
+          this_name = xray_data.name
+        #check if this name is allready used
+        if names.has_key( this_name ):
+          raise Sorry( "Non unique dataset name. Please change the input script" )
+        names.update( {this_name:count} )
+        count += 1
+
+
+      output_label_root = construct_output_labels( labels, label_appendix )
+
+    #----------------------------------------------------------------
+    # Step 2: get an xray structure from the PDB file
+    #
+    pdb_model = None
+
+    if params.xmanip.input.model.file_name is not None:
+      pdb_model = pdb.input(file_name=params.xmanip.input.model.file_name)
+      model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
+      print >> log, "Atomic model summary"
+      print >> log, "===================="
+      model.show_summary()
+      print >> log
+
+
+    if params.xmanip.parameters.action=="reindex":
+      #----------------------------------------------------------------
+      # step 3: get the reindex laws
+      to_niggli    = phil_xs.change_of_basis_op_to_niggli_cell()
+      to_reference = phil_xs.change_of_basis_op_to_reference_setting()
+      to_inverse   = phil_xs.change_of_basis_op_to_inverse_hand()
+      cb_op = None
+      if (params.xmanip.parameters.reindex.standard_laws == "niggli"):
+        cb_op = to_niggli
+      if (params.xmanip.parameters.reindex.standard_laws == "reference_setting"):
+        cb_op = to_reference
+      if (params.xmanip.parameters.reindex.standard_laws == "invert"):
+        cb_op = to_inverse
+      if (params.xmanip.parameters.reindex.standard_laws == "user_supplied"):
+        cb_op = sgtbx.change_of_basis_op( params.xmanip.parameters.reindex.user_supplied_law )
+
+      if cb_op is None:
+        raise Sorry("No change of basis operation is supplied.")
+      if params.xmanip.parameters.inverse:
+        cb_op = cb_op.inverse()
+
+      print >> log, "Supplied reindexing law:"
+      print >> log, "========================"
+      print >> log, "hkl notation: ", cb_op.as_hkl()
+      print >> log, "xyz notation: ", cb_op.as_xyz()
+      print >> log, "abc notation: ", cb_op.as_abc()
+      #----------------------------------------------------------------
+      # step 4: do the reindexing
+      #
+      # step 4a: first do the miller array object
+      new_miller_arrays = []
+      for miller_array in miller_arrays:
+        new_miller_array = None
+        if miller_array is not None:
+          new_miller_array = miller_array.change_basis( cb_op )
+          new_miller_arrays.append( new_miller_array )
+      #
+      # step 4b: the xray structure
+      new_model = None
+      if pdb_model is not None:
+        new_model = model.change_basis( cb_op )
+
+      #-----------------------------------------------------------------------
+      # step 4c: do the requiered manipulations no the suggested miller arrays
+
+
+
+
+      #----------------------------------------------------------------
+      # step 5a: write the new mtz file
+      print >> log
+      print >> log, "The data and model have been reindexed"
+      print >> log, "--------------------------------------"
+      print >> log
+      print >> log, "Writing output files...."
+
+      mtz_dataset=None
+      if len(new_miller_arrays)>0:
+        mtz_dataset = new_miller_arrays[0].as_mtz_dataset(
+          column_root_label=output_label_root[0])
+
+      for miller_array, new_root in zip(new_miller_arrays[1:], output_label_root[1:]):
+        if miller_array is not None:
+          mtz_dataset = mtz_dataset.add_miller_array(
+            miller_array = miller_array,
+            column_root_label = new_root)
+
+      print >> log, "writing mtz file with name %s"%(params.xmanip.output.hklout)
+      mtz_dataset.mtz_object().write(
+        file_name=params.xmanip.output.hklout)
+
+      #step 5b: write the new pdb file
+      if new_model is not None:
+        pdb_file = open( params.xmanip.output.xyzout, 'w')
+        print >> log, "Wring pdb file to: %s"%(params.xmanip.output.xyzout)
+        write_as_pdb_file( input_pdb = pdb_model,
+                           input_xray_structure = new_model,
+                           out = pdb_file,
+                           chain_id_increment=params.xmanip.parameters.chain_id_increment,
+                           additional_remark = "GENERATED BY PHENIX.XMANIP")
+
+        pdb_file.close()
+      if ( [miller_array,new_model]).count(None)==2:
+        print >>log, "No input reflection of coordinate files have been given"
+
+    if params.xmanip.parameters.action=="operator":
+      rt_mx = sgtbx.rt_mx(
+        params.xmanip.parameters.apply_operator.user_supplied_operator,t_den=12*8 )
+      if params.xmanip.parameters.inverse:
+        rt_mx = rt_mx.inverse()
+      print >> log
+      print >> log, "Applied operator : ", rt_mx.as_xyz()
+      print >> log
+
+      sites = model.sites_frac()
+      new_sites = flex.vec3_double()
+      for site in sites:
+        new_site = rt_mx.r()*matrix.col(site)
+        new_site = flex.double(new_site)+flex.double( rt_mx.t().as_double() )
+        new_sites.push_back( tuple(new_site) )
+      new_model = model.deep_copy_scatterers()
+
+      new_model.set_sites_frac( new_sites )
+      # write the new [pdb file please
+      pdb_file = open( params.xmanip.output.xyzout, 'w')
+      print >> log, "Wring pdb file to: %s"%(params.xmanip.output.xyzout)
+      if params.xmanip.parameters.apply_operator.concatenate_model:
+        write_as_pdb_file( input_pdb = pdb_model,
+                           input_xray_structure = model,
+                           out = pdb_file,
+                           chain_id_increment = 0,
+                           additional_remark = None,
+                           print_cryst_and_scale=True )
+
+      write_as_pdb_file( input_pdb = pdb_model,
+                         input_xray_structure = new_model,
+                         out = pdb_file,
+                         chain_id_increment = params.xmanip.parameters.chain_id_increment,
+                         additional_remark = None,
+                         print_cryst_and_scale=False )
+
+      pdb_file.close()
+
+    if params.xmanip.parameters.action=="manipulate_pdb":
+      #rest all the b values
+      if params.xmanip.parameters.manipulate_pdb.set_b:
+        b_iso = params.xmanip.parameters.manipulate_pdb.b_iso
+        new_model = model.set_b_iso( value = b_iso )
+        print >> log
+        print >> log, "All B-values have been set to %5.3f"%(b_iso)
+        print >> log, "Writing PDB file %s"%(params.xmanip.output.xyzout)
+        print >> log
+
+      pdb_file = open( params.xmanip.output.xyzout, 'w')
+      write_as_pdb_file( input_pdb = pdb_model,
+                         input_xray_structure = new_model,
+                         out = pdb_file,
+                         chain_id_increment = 0,
+                         additional_remark = None,
+                         print_cryst_and_scale=True)
+      pdb_file.close()
+
+    #write the logfile
+    logger = open( params.xmanip.output.logfile, 'w')
+    print >> log, "Writing log file with name %s"%(params.xmanip.output.logfile)
+    print >> log
+    print >> logger, string_buffer.getvalue()
+
+
+
+if (__name__ == "__main__" ):
+  xmanip(sys.argv[1:])
