@@ -51,6 +51,8 @@ namespace cctbx {
 
 } // namespace cctbx
 
+//! For throwing an error exception with file name, line number, and message.
+#define CCTBX_ERROR(msg) ::cctbx::error(__FILE__, __LINE__, msg, false)
 //! For throwing an "Internal Error" exception.
 #define CCTBX_INTERNAL_ERROR() ::cctbx::error(__FILE__, __LINE__)
 //! For throwing a "Not implemented" exception.
