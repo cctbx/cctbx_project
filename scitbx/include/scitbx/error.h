@@ -102,6 +102,8 @@ namespace scitbx {
 
 } // namespace scitbx
 
+//! For throwing an error exception with file name, line number, and message.
+#define SCITBX_ERROR(msg) ::scitbx::error(__FILE__, __LINE__, msg, false)
 //! For throwing an "Internal Error" exception.
 #define SCITBX_INTERNAL_ERROR() ::scitbx::error(__FILE__, __LINE__)
 //! For throwing a "Not implemented" exception.
