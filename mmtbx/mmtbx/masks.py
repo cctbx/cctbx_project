@@ -30,17 +30,16 @@ class bulk_solvent(around_atoms):
   def __init__(self,
         xray_structure,
         gridding_n_real=None,
-        grid_step =None,
+        grid_step=None,
         solvent_radius=1.0,
         shrink_truncation_radius=1.0):
      assert [gridding_n_real, grid_step].count(None) == 1
      self.xray_structure = xray_structure
-     self.grid_step = grid_step
-     if(self.grid_step is not None): self.grid_step = min(0.8, self.grid_step)
-     if(gridding_n_real is None):
+     if (grid_step is not None): grid_step = min(0.8, grid_step) # XXX VERY BAD
+     if (gridding_n_real is None):
        gridding_n_real = maptbx.crystal_gridding(
          unit_cell=xray_structure.unit_cell(),
-         step= self.grid_step).n_real()
+         step=grid_step).n_real()
      atom_radii = flex.double()
      # XXX use scattering dictionary and set_selected
      selection = flex.size_t()
@@ -52,6 +51,7 @@ class bulk_solvent(around_atoms):
          selection.append(i_seq)
      sites_frac = xray_structure.sites_frac()
      if(selection.size() > 0):
+        # XXX VERY BAD
         print "WARNING: Number of atoms with unknown van der Waals rad.:", \
                                                                selection.size()
         selection_bool = flex.bool(sites_frac.size(), selection)
@@ -68,19 +68,29 @@ class bulk_solvent(around_atoms):
 
   def show_summary(self, out=None):
     if (out is None): out = sys.stdout
-    print >> out, "|-mask parameters----------------------------------------"\
+    print >> out, "|- mask summary -----------------------------------------"\
                   "---------------------|"
-    print >> out, "| solvent radius        = %4.2f A           shrink truncat"\
-                  "ion radius = %4.2f A  |"%(self.solvent_radius,\
-                  self.shrink_truncation_radius)
-    print >> out, "| solvent content       = %.1f %%           grid_step     "\
-                  "           = %5.3f A | "%(self.contact_surface_fraction*100,
-                  self.grid_step)
-    part_1 = "| number of grid points = %s"%(str(self.data.accessor().focus()))
-    n = 78 - len(part_1)
-    print >> out, part_1 + " "*n +"|"
+    sr = "solvent radius:            %4.2f A" % self.solvent_radius
+    st = "shrink truncation radius:  %4.2f A" % self.shrink_truncation_radius
+    na = "number of atoms: %d" % self.xray_structure.scatterers().size()
+    n_real = self.data.accessor().focus()
+    gr = "gridding:   %s" % str(n_real)
+    gs = "grid steps: (%s) A" % ", ".join(["%.2f" % (l/n) for l,n in zip(
+      self.xray_structure.unit_cell().parameters()[:3],
+      n_real)])
+    sc = "estimated solvent content: %.1f %%" % (
+      self.contact_surface_fraction*100)
+    l = max(len(sr), len(st), len(na))
+    sr += " "*(l-len(sr))
+    st += " "*(l-len(st))
+    na += " "*(l-len(na))
+    def show_line(s):
+      print >> out, "| " + s + " " * max(0, 75-len(s)) + " |"
+    gap = 6
+    show_line(s=sr+" "*gap+gr)
+    show_line(s=st+" "*gap+gs)
+    show_line(s=na+" "*gap+sc)
     print >> out, "|"+"-"*77+"|"
-    print >> out
 
   def mask_as_xplor_map(self, file_name):
     gridding = iotbx.xplor.map.gridding(n     = self.data.focus(),
