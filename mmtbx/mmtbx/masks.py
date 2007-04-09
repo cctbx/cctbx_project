@@ -105,14 +105,12 @@ class bulk_solvent(around_atoms):
     scale = miller_set.unit_cell().volume() \
           / matrix.col(fft_manager.n_real()).product()
     map_of_coeff *= scale # XXX scale from_map.data() instead
-    anomalous_flag = False
-    conjugate_flag = True
     from_map = maptbx.structure_factors.from_map(
-      miller_set.space_group(),
-      anomalous_flag,
-      miller_set.indices(),
-      map_of_coeff,
-      conjugate_flag)
+      space_group=miller_set.space_group(),
+      anomalous_flag=False,
+      miller_indices=miller_set.indices(),
+      complex_map=map_of_coeff,
+      conjugate_flag=True)
     return miller_set.array(data=from_map.data())
 
   def subtract_non_uniform_solvent_region_in_place(self, non_uniform_mask):
