@@ -207,6 +207,7 @@ class _input(boost.python.injector, ext.input):
     for line in self.crystallographic_section():
       if (line.startswith("CRYST1")):
         return cryst1_interpretation.crystal_symmetry(cryst1_record=line)
+    return None
 
   def scale_matrix(self):
     if (not hasattr(self, "_scale_matrix")):
