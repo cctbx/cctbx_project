@@ -87,17 +87,15 @@ class gradients_fft(gradients_base):
       n_complex = self.manager().rfft().n_complex()
     else:
       n_complex = self.manager().rfft().n_real()
-    conjugate_flag = True
-    treat_restricted = False
     return maptbx.structure_factors.to_map(
-      coeff.space_group(),
-      coeff.anomalous_flag(),
-      coeff.indices(),
-      coeff.data(),
-      self.manager().rfft().n_real(),
-      flex.grid(n_complex),
-      conjugate_flag,
-      treat_restricted)
+      space_group=coeff.space_group(),
+      anomalous_flag=coeff.anomalous_flag(),
+      miller_indices=coeff.indices(),
+      structure_factors=coeff.data(),
+      n_real=self.manager().rfft().n_real(),
+      map_grid=flex.grid(n_complex),
+      conjugate_flag=True,
+      treat_restricted=False)
 
   def d_target_d_site_cart(self):
     return self.check_size(self._results.d_target_d_site_cart())

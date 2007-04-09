@@ -190,29 +190,56 @@ def exercise_structure_factors():
   for anomalous_flag in (False, True):
     for conjugate_flag in (False, True):
       t = maptbx.structure_factors.to_map(
-        sg.group(), anomalous_flag, mi, d,
-        (11,11,9), flex.grid(11,11,9), conjugate_flag)
+        space_group=sg.group(),
+        anomalous_flag=anomalous_flag,
+        miller_indices=mi,
+        structure_factors=d,
+        n_real=(11,11,9),
+        map_grid=flex.grid(11,11,9),
+        conjugate_flag=conjugate_flag)
       assert t.complex_map().focus() == (11,11,9)
       t = maptbx.structure_factors.to_map(
-        sg.group(), anomalous_flag, mi, d,
-        (11,11,9), flex.grid(11,11,9), conjugate_flag, False)
+        space_group=sg.group(),
+        anomalous_flag=anomalous_flag,
+        miller_indices=mi,
+        structure_factors=d,
+        n_real=(11,11,9),
+        map_grid=flex.grid(11,11,9),
+        conjugate_flag=conjugate_flag,
+        treat_restricted=False)
       assert t.complex_map().focus() == (11,11,9)
       f = maptbx.structure_factors.from_map(
-        uc, sg.type(), anomalous_flag, 5., t.complex_map(), conjugate_flag)
+        unit_cell=uc,
+        space_group_type=sg.type(),
+        anomalous_flag=anomalous_flag,
+        d_min=5.,
+        complex_map=t.complex_map(),
+        conjugate_flag=conjugate_flag)
       assert f.miller_indices().size() > 0
       assert f.miller_indices().size() == f.data().size()
       f = maptbx.structure_factors.from_map(
-        anomalous_flag, mi, t.complex_map(), conjugate_flag)
+        anomalous_flag=anomalous_flag,
+        miller_indices=mi,
+        complex_map=t.complex_map(),
+        conjugate_flag=conjugate_flag)
       assert f.miller_indices().size() == 0
       assert f.data().size() == mi.size()
       f = maptbx.structure_factors.from_map(
-        anomalous_flag, mi, t.complex_map(), conjugate_flag, True)
+        anomalous_flag=anomalous_flag,
+        miller_indices=mi,
+        complex_map=t.complex_map(),
+        conjugate_flag=conjugate_flag,
+        allow_miller_indices_outside_map=True)
       assert f.miller_indices().size() == 0
       assert f.data().size() == mi.size()
       assert f.n_indices_affected_by_aliasing() == 0
       assert f.outside_map().size() == 0
       f = maptbx.structure_factors.from_map(
-        sg.group(), anomalous_flag, mi, t.complex_map(), conjugate_flag)
+        space_group=sg.group(),
+        anomalous_flag=anomalous_flag,
+        miller_indices=mi,
+        complex_map=t.complex_map(),
+        conjugate_flag=conjugate_flag)
       assert f.miller_indices().size() == 0
       assert f.data().size() == mi.size()
       assert f.n_indices_affected_by_aliasing() == 0

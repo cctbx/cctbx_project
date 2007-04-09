@@ -921,10 +921,10 @@ class set(crystal.symmetry):
     map = fft.forward(map)
     conjugate_flag = True
     from_map = maptbx.structure_factors.from_map(
-      self.anomalous_flag(),
-      self.indices(),
-      map,
-      conjugate_flag)
+      anomalous_flag=self.anomalous_flag(),
+      miller_indices=self.indices(),
+      complex_map=map,
+      conjugate_flag=conjugate_flag)
     return array(miller_set=self, data=from_map.data())
 
   def structure_factors_from_scatterers(self, xray_structure,
@@ -2533,15 +2533,14 @@ class fft_map(maptbx.crystal_gridding):
     else:
       cfft = fftpack.complex_to_complex_3d(self.n_real())
       n_complex = cfft.n()
-    conjugate_flag = True
     map = maptbx.structure_factors.to_map(
-      self.space_group(),
-      self.anomalous_flag(),
-      fourier_coefficients.indices(),
-      fourier_coefficients.data(),
-      self.n_real(),
-      flex.grid(n_complex),
-      conjugate_flag)
+      space_group=self.space_group(),
+      anomalous_flag=self.anomalous_flag(),
+      miller_indices=fourier_coefficients.indices(),
+      structure_factors=fourier_coefficients.data(),
+      n_real=self.n_real(),
+      map_grid=flex.grid(n_complex),
+      conjugate_flag=True)
     if (f_000 is not None):
       assert map.complex_map()[0] == 0j
       map.complex_map()[0] = complex(f_000)
