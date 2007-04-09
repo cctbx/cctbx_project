@@ -119,14 +119,12 @@ class ordered_solvent_distribution(object):
                                        self._structure,
                                        n_real)
 
-    collect_conj = True
-    anomalous_flag = False
     from_map = maptbx.structure_factors.from_map(
-       self._structure.space_group_info().group(),
-       anomalous_flag,
-       fo.indices(),
-       map_of_coeff,
-       collect_conj)
+       space_group=self._structure.space_group_info().group(),
+       anomalous_flag=False,
+       miller_indices=fo.indices(),
+       complex_map=map_of_coeff,
+       conjugate_flag=True)
     self._f = miller.array(
                 miller_set = miller.set(
                    crystal_symmetry = crystal.symmetry(
