@@ -46,14 +46,14 @@ def exercise_f000():
           n_complex = cfft.n()
         for treat_restricted in [False, True]:
           map = maptbx.structure_factors.to_map(
-            space_group,
-            anomalous_flag,
-            miller_indices,
-            data,
-            n_real,
-            flex.grid(n_complex),
-            conjugate_flag,
-            treat_restricted)
+            space_group=space_group,
+            anomalous_flag=anomalous_flag,
+            miller_indices=miller_indices,
+            structure_factors=data,
+            n_real=n_real,
+            map_grid=flex.grid(n_complex),
+            conjugate_flag=conjugate_flag,
+            treat_restricted=treat_restricted)
           if (treat_restricted):
             assert approx_equal(
               map.complex_map()[0], data[0])
@@ -87,22 +87,22 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
     cfft = fftpack.complex_to_complex_3d(n_real)
     n_complex = cfft.n()
   map = maptbx.structure_factors.to_map(
-    f_calc.space_group(),
-    anomalous_flag,
-    f_calc.indices(),
-    f_calc.data(),
-    n_real,
-    flex.grid(n_complex),
-    conjugate_flag)
+    space_group=f_calc.space_group(),
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc.indices(),
+    structure_factors=f_calc.data(),
+    n_real=n_real,
+    map_grid=flex.grid(n_complex),
+    conjugate_flag=conjugate_flag)
   f_calc_p1 = f_calc.expand_to_p1()
   map_p1 = maptbx.structure_factors.to_map(
-    f_calc_p1.space_group(),
-    anomalous_flag,
-    f_calc_p1.indices(),
-    f_calc_p1.data(),
-    n_real,
-    flex.grid(n_complex),
-    conjugate_flag)
+    space_group=f_calc_p1.space_group(),
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc_p1.indices(),
+    structure_factors=f_calc_p1.data(),
+    n_real=n_real,
+    map_grid=flex.grid(n_complex),
+    conjugate_flag=conjugate_flag)
   assert flex.max(flex.abs(map_p1.complex_map() - map.complex_map())) < 1.e-10
   if (not anomalous_flag):
     real_map = rfft.backward(map.complex_map())
@@ -116,12 +116,12 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
   assert real_map.focus() == n_real
   assert complex_map.focus() == n_complex
   from_map = maptbx.structure_factors.from_map(
-    f_calc.unit_cell(),
-    f_calc.space_group_info().type(),
-    anomalous_flag,
-    d_min,
-    complex_map,
-    conjugate_flag)
+    unit_cell=f_calc.unit_cell(),
+    space_group_type=f_calc.space_group_info().type(),
+    anomalous_flag=anomalous_flag,
+    d_min=d_min,
+    complex_map=complex_map,
+    conjugate_flag=conjugate_flag)
   from_map = f_calc.customized_copy(
     indices=from_map.miller_indices(),
     data=from_map.data())
@@ -133,10 +133,10 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
   assert flex.max(flex.abs(common_sets[0].data()
                          - common_sets[1].data())) < 1.e-10
   from_map = maptbx.structure_factors.from_map(
-    anomalous_flag,
-    f_calc.indices(),
-    complex_map,
-    conjugate_flag)
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc.indices(),
+    complex_map=complex_map,
+    conjugate_flag=conjugate_flag)
   assert from_map.miller_indices().size() == 0
   assert flex.max(flex.abs(f_calc.data()-from_map.data())) < 1.e-10
   structure_p1 = structure.asymmetric_unit_in_p1()
@@ -144,19 +144,19 @@ def exercise_shannon_sampled(space_group_info, anomalous_flag, conjugate_flag,
     xray_structure=structure_p1,
     algorithm="direct").f_calc()
   map = maptbx.structure_factors.to_map(
-    f_calc_p1.space_group(),
-    anomalous_flag,
-    f_calc_p1.indices(),
-    f_calc_p1.data(),
-    n_real,
-    flex.grid(n_complex),
-    conjugate_flag)
+    space_group=f_calc_p1.space_group(),
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc_p1.indices(),
+    structure_factors=f_calc_p1.data(),
+    n_real=n_real,
+    map_grid=flex.grid(n_complex),
+    conjugate_flag=conjugate_flag)
   from_map = maptbx.structure_factors.from_map(
-    f_calc.space_group(),
-    anomalous_flag,
-    f_calc.indices(),
-    map.complex_map(),
-    conjugate_flag)
+    space_group=f_calc.space_group(),
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc.indices(),
+    complex_map=map.complex_map(),
+    conjugate_flag=conjugate_flag)
   assert from_map.miller_indices().size() == 0
   assert flex.max(flex.abs(f_calc.data()-from_map.data())) < 1.e-10
 
@@ -188,22 +188,22 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     cfft = fftpack.complex_to_complex_3d(n_real)
     n_complex = cfft.n()
   map = maptbx.structure_factors.to_map(
-    f_calc.space_group(),
-    anomalous_flag,
-    f_calc.indices(),
-    f_calc.data(),
-    n_real,
-    flex.grid(n_complex),
-    conjugate_flag)
+    space_group=f_calc.space_group(),
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc.indices(),
+    structure_factors=f_calc.data(),
+    n_real=n_real,
+    map_grid=flex.grid(n_complex),
+    conjugate_flag=conjugate_flag)
   f_calc_p1 = f_calc.expand_to_p1()
   map_p1 = maptbx.structure_factors.to_map(
-    f_calc_p1.space_group(),
-    anomalous_flag,
-    f_calc_p1.indices(),
-    f_calc_p1.data(),
-    n_real,
-    flex.grid(n_complex),
-    conjugate_flag)
+    space_group=f_calc_p1.space_group(),
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc_p1.indices(),
+    structure_factors=f_calc_p1.data(),
+    n_real=n_real,
+    map_grid=flex.grid(n_complex),
+    conjugate_flag=conjugate_flag)
   assert flex.max(flex.abs(map_p1.complex_map() - map.complex_map())) < 1.e-10
   if (not anomalous_flag):
     real_map = rfft.backward(map.complex_map())
@@ -226,21 +226,21 @@ def exercise_under_sampled(space_group_info, anomalous_flag, conjugate_flag,
     cfft = fftpack.complex_to_complex_3d(n_real_under_sampled)
     n_complex_under_sampled = cfft.n()
   under_sampled_map = maptbx.structure_factors.to_map(
-    f_calc.space_group(),
-    anomalous_flag,
-    f_calc.indices(),
-    f_calc.data(),
-    n_real_under_sampled,
-    flex.grid(n_complex_under_sampled),
-    conjugate_flag)
+    space_group=f_calc.space_group(),
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc.indices(),
+    structure_factors=f_calc.data(),
+    n_real=n_real_under_sampled,
+    map_grid=flex.grid(n_complex_under_sampled),
+    conjugate_flag=conjugate_flag)
   under_sampled_map_p1 = maptbx.structure_factors.to_map(
-    f_calc_p1.space_group(),
-    anomalous_flag,
-    f_calc_p1.indices(),
-    f_calc_p1.data(),
-    n_real_under_sampled,
-    flex.grid(n_complex_under_sampled),
-    conjugate_flag)
+    space_group=f_calc_p1.space_group(),
+    anomalous_flag=anomalous_flag,
+    miller_indices=f_calc_p1.indices(),
+    structure_factors=f_calc_p1.data(),
+    n_real=n_real_under_sampled,
+    map_grid=flex.grid(n_complex_under_sampled),
+    conjugate_flag=conjugate_flag)
   assert flex.max(flex.abs(under_sampled_map_p1.complex_map()
                          - under_sampled_map.complex_map())) < 1.e-10
   if (not anomalous_flag):

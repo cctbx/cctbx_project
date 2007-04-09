@@ -163,11 +163,11 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
     assert sf_map.focus() == cfft.n()
     collect_conj = 0
   f_fft_data = maptbx.structure_factors.from_map(
-    f_direct.space_group(),
-    sampled_density.anomalous_flag(),
-    f_direct.indices(),
-    sf_map,
-    collect_conj).data()
+    space_group=f_direct.space_group(),
+    anomalous_flag=sampled_density.anomalous_flag(),
+    miller_indices=f_direct.indices(),
+    complex_map=sf_map,
+    conjugate_flag=collect_conj).data()
   sampled_density.eliminate_u_extra_and_normalize(
     f_direct.indices(),
     f_fft_data)

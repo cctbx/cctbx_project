@@ -34,18 +34,18 @@ class from_scatterers_fft(managed_calculation_base):
     time_fft = user_plus_sys_time()
     if (not sampled_density.anomalous_flag()):
       sf_map = manager.rfft().forward(sampled_density.real_map())
-      collect_conj = 1
+      collect_conj = True
     else:
       sf_map = manager.cfft().backward(sampled_density.complex_map())
-      collect_conj = 0
+      collect_conj = False
     time_fft = time_fft.elapsed()
     time_from_map = user_plus_sys_time()
     self._f_calc_data = maptbx.structure_factors.from_map(
-      miller_set.space_group(),
-      sampled_density.anomalous_flag(),
-      miller_set.indices(),
-      sf_map,
-      collect_conj).data()
+      space_group=miller_set.space_group(),
+      anomalous_flag=sampled_density.anomalous_flag(),
+      miller_indices=miller_set.indices(),
+      complex_map=sf_map,
+      conjugate_flag=collect_conj).data()
     time_from_map = time_from_map.elapsed()
     time_apply_u_extra = user_plus_sys_time()
     sampled_density.eliminate_u_extra_and_normalize(

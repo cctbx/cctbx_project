@@ -24,23 +24,23 @@ def direct_space_squaring(start, selection_fixed):
   rfft = fftpack.real_to_complex_3d([n*3//2 for n in map_gridding])
   conjugate_flag = True
   structure_factor_map = maptbx.structure_factors.to_map(
-    fixed.space_group(),
-    fixed.anomalous_flag(),
-    fixed.indices(),
-    fixed.data(),
-    rfft.n_real(),
-    flex.grid(rfft.n_complex()),
-    conjugate_flag)
+    space_group=fixed.space_group(),
+    anomalous_flag=fixed.anomalous_flag(),
+    miller_indices=fixed.indices(),
+    structure_factors=fixed.data(),
+    n_real=rfft.n_real(),
+    map_grid=flex.grid(rfft.n_complex()),
+    conjugate_flag=conjugate_flag)
   real_map = rfft.backward(structure_factor_map.complex_map())
   squared_map = flex.pow2(real_map)
   squared_sf_map = rfft.forward(squared_map)
   allow_miller_indices_outside_map = False
   from_map = maptbx.structure_factors.from_map(
-    var.anomalous_flag(),
-    var.indices(),
-    squared_sf_map,
-    conjugate_flag,
-    allow_miller_indices_outside_map)
+    anomalous_flag=var.anomalous_flag(),
+    miller_indices=var.indices(),
+    complex_map=squared_sf_map,
+    conjugate_flag=conjugate_flag,
+    allow_miller_indices_outside_map=allow_miller_indices_outside_map)
   if (selection_fixed is None):
     return from_map.data()
   result = start.data().deep_copy()
