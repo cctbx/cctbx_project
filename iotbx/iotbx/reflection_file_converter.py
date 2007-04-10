@@ -68,6 +68,10 @@ def run(args, simply_return_all_miller_arrays=False):
            " or to_reference_setting, to_primitive_setting, to_niggli_cell,"
            " to_inverse_hand",
       metavar="STRING")
+    .option(None, "--eliminate_invalid_indices",
+      action="store_true",
+      default=False,
+      help="Remove indices which are invalid given the change of basis desired")
     .option(None, "--expand_to_p1",
       action="store_true",
       default=False,
@@ -275,6 +279,16 @@ def run(args, simply_return_all_miller_arrays=False):
       print "  **************************************************************"
       print "  W A R N I N G: This change of basis operator changes the hand!"
       print "  **************************************************************"
+    if(command_line.options.eliminate_invalid_indices):
+      sel = cb_op.apply_results_in_non_integral_indices(
+        miller_indices=processed_array.indices())
+      toss = flex.bool(processed_array.indices().size(),sel)
+      keep = ~toss
+      keep_array = processed_array.select(keep)
+      toss_array = processed_array.select(toss)
+      print "  Mean value for kept reflections:", flex.mean(keep_array.data())
+      print "  Mean value for invalid reflections:", flex.mean(toss_array.data())
+      processed_array=keep_array
     processed_array = processed_array.change_basis(cb_op=cb_op)
     print "  Crystal symmetry after change of basis:"
     crystal.symmetry.show_summary(processed_array, prefix="    ")
