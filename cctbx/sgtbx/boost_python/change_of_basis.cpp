@@ -91,6 +91,11 @@ namespace {
           (af::shared<miller::index<> >(w_t::*)
             (af::const_ref<miller::index<> > const&) const)
               &w_t::apply, (arg_("miller_indices")))
+        .def("apply_results_in_non_integral_indices",
+          (af::shared<std::size_t>(w_t::*)
+            (af::const_ref<miller::index<> > const&) const)
+              &w_t::apply_results_in_non_integral_indices, (
+                arg_("miller_indices")))
         .def("__call__",
           (fractional<>(w_t::*)(fractional<> const&) const)
           &w_t::operator(), (arg_("site_frac")))
