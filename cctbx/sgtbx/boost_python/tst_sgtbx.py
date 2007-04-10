@@ -665,6 +665,11 @@ def exercise_change_of_basis_op():
   assert c.apply((1,2,3)) == (3,1,2)
   i = flex.miller_index(((1,2,3),(2,3,4)))
   assert tuple(c.apply(i)) == ((3,1,2),(4,2,3))
+  assert c.apply_results_in_non_integral_indices(miller_indices=i).size() == 0
+  d = change_of_basis_op("-x,-y,2z")
+  assert list(d.apply_results_in_non_integral_indices(miller_indices=i)) == [0]
+  i = i.select(flex.size_t([1,0]))
+  assert list(d.apply_results_in_non_integral_indices(miller_indices=i)) == [1]
   s = pickle.dumps(c)
   l = pickle.loads(s)
   assert str(c.c()) == str(l.c())

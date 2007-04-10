@@ -225,21 +225,18 @@ namespace cctbx { namespace sgtbx {
       /*! result = miller_index * c_inv()
        */
       miller::index<>
-      apply(miller::index<> const& miller_index) const
-      {
-        miller::index<> hr = miller_index * c_inv_.r().num();
-        if (utils::change_denominator(
-              hr.begin(), c_inv_.r().den(), hr.begin(), 1, 3) != 0) {
-          throw error("Change of basis yields non-integral Miller index.");
-        }
-        return hr;
-      }
+      apply(miller::index<> const& miller_index) const;
 
       //! Transforms an array of Miller indices.
       /*! result = miller_indices * c_inv()
        */
       af::shared<miller::index<> >
       apply(af::const_ref<miller::index<> > const& miller_indices) const;
+
+      //! Flags Miller indices for which apply() leads to non-integral indices.
+      af::shared<std::size_t>
+      apply_results_in_non_integral_indices(
+        af::const_ref<miller::index<> > const& miller_indices) const;
 
       //! c() * (rt_mx(rot_mx(sign_identity), t)) * c_inv()
       /*! Not available in Python.
