@@ -975,6 +975,7 @@ def exercise_sampled_model_density():
   assert d.max_sampling_box_edges() == (6,6,6)
   assert approx_equal(d.max_sampling_box_edges_frac(), (6/20.,6/20.,6/22.))
   assert d.excessive_sampling_radius_i_seqs().size() == 0
+  assert d.grid_indices_for_each_scatterer().size() == 0
   i = flex.miller_index(((1,2,3), (2,3,4)))
   f = flex.complex_double((1+2j, 2+3j))
   d.eliminate_u_extra_and_normalize(i, f)
@@ -983,6 +984,24 @@ def exercise_sampled_model_density():
   f_elim = f.deep_copy()
   xray.apply_u_extra(d.unit_cell(), -0.2, i, f, 1)
   assert approx_equal(f, f_orig)
+  #
+  scatterers[0].fdp = 0
+  d = xray.sampled_model_density(
+    unit_cell=uc,
+    scatterers=scatterers,
+    scattering_type_registry=scattering_type_registry,
+    fft_n_real=(20,20,22),
+    fft_m_real=(20,20,23),
+    store_grid_indices_for_each_scatterer=True)
+  assert d.real_map().size() == 20*20*23
+  assert d.complex_map().size() == 0
+  assert d.grid_indices_for_each_scatterer().size() == scatterers.size()
+  map = d.real_map()
+  for gi,expected_size in zip(d.grid_indices_for_each_scatterer(), [88,33]):
+    assert gi.size() == expected_size
+    for i_map in gi:
+      assert map[i_map] > 0
+  assert map.count(0) + 88 + 33 == 20*20*23
 
 def exercise_minimization_apply_shifts():
   uc = uctbx.unit_cell((20, 20, 23))

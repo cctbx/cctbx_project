@@ -38,7 +38,8 @@ namespace cctbx { namespace xray {
         bool force_complex=false,
         bool sampled_density_must_be_positive=false,
         FloatType const& tolerance_positive_definite=1.e-5,
-        bool use_u_base_as_u_extra=false);
+        bool use_u_base_as_u_extra=false,
+        bool store_grid_indices_for_each_scatterer=false);
 
       real_map_type
       real_map() { return real_map_; }
@@ -58,9 +59,16 @@ namespace cctbx { namespace xray {
           miller_indices, structure_factors, multiplier);
       }
 
-    private:
+      af::shared<std::vector<unsigned> > const&
+      grid_indices_for_each_scatterer() const
+      {
+        return grid_indices_for_each_scatterer_;
+      }
+
+    protected:
       real_map_type real_map_;
       complex_map_type complex_map_;
+      af::shared<std::vector<unsigned> > grid_indices_for_each_scatterer_;
   };
 
   template <typename FloatType,
@@ -78,7 +86,8 @@ namespace cctbx { namespace xray {
     bool force_complex,
     bool sampled_density_must_be_positive,
     FloatType const& tolerance_positive_definite,
-    bool use_u_base_as_u_extra)
+    bool use_u_base_as_u_extra,
+    bool store_grid_indices_for_each_scatterer)
   :
     base_t(unit_cell, scatterers, scattering_type_registry,
            u_base, wing_cutoff,
@@ -97,6 +106,12 @@ namespace cctbx { namespace xray {
       complex_map_.resize(this->map_accessor_);
       map_begin = reinterpret_cast<FloatType*>(complex_map_.begin());
     }
+    std::vector<unsigned>* gifes = 0;
+    if (store_grid_indices_for_each_scatterer) {
+      grid_indices_for_each_scatterer_.resize(scatterers.size());
+      gifes = grid_indices_for_each_scatterer_.begin();
+    }
+    std::vector<unsigned> grid_indices_for_one_scatterer;
     grid_point_type const& grid_f = this->map_accessor_.focus();
     grid_point_type const& grid_a = this->map_accessor_.all();
     detail::exponent_table<FloatType> exp_table(exp_table_one_over_step_size);
@@ -147,8 +162,14 @@ namespace cctbx { namespace xray {
           gaussian, scatterer.fp, scatterer.fdp, scatterer.weight(),
           *u_cart++, this->u_extra_);
       }
+      if (gifes != 0) {
+        grid_indices_for_one_scatterer.reserve(sampling_box.n_points);
+      }
       std::size_t exp_tab_size = exp_table.table_.size();
 #     include <cctbx/xray/sampling_loop.h>
+        if (gifes != 0) {
+          grid_indices_for_one_scatterer.push_back(i_map);
+        }
         if (this->anomalous_flag_) i_map *= 2;
         if (!scatterer.flags.use_u_aniso()) {
 #ifdef CCTBX_READABLE_CODE
@@ -189,6 +210,12 @@ namespace cctbx { namespace xray {
           }
         }
       CCTBX_XRAY_SAMPLING_LOOP_END
+      if (gifes != 0) {
+        gifes[i_seq].assign(
+          grid_indices_for_one_scatterer.begin(),
+          grid_indices_for_one_scatterer.end());
+        grid_indices_for_one_scatterer.clear();
+      }
     }
     CCTBX_ASSERT(u_radius == this->u_radius_cache_.end());
     CCTBX_ASSERT(u_cart == this->u_cart_cache_.end());
