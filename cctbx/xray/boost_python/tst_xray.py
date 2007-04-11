@@ -996,12 +996,15 @@ def exercise_sampled_model_density():
   assert d.real_map().size() == 20*20*23
   assert d.complex_map().size() == 0
   assert d.grid_indices_for_each_scatterer().size() == scatterers.size()
+  n_non_zero = 0
   map = d.real_map()
-  for gi,expected_size in zip(d.grid_indices_for_each_scatterer(), [88,33]):
-    assert gi.size() == expected_size
+  for gi,expected_sizes in zip(d.grid_indices_for_each_scatterer(),
+                               [[88], [33,31]]):
+    assert gi.size() in expected_sizes
     for i_map in gi:
       assert map[i_map] > 0
-  assert map.count(0) + 88 + 33 == 20*20*23
+    n_non_zero += gi.size()
+  assert map.count(0) + n_non_zero == 20*20*23
 
 def exercise_minimization_apply_shifts():
   uc = uctbx.unit_cell((20, 20, 23))
