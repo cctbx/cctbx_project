@@ -2,6 +2,8 @@
 
 #include <cctbx/xray/sampled_model_density.h>
 #include <boost/python/class.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace xray { namespace boost_python {
 
@@ -16,6 +18,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t, bases<w_t::base_t> >("sampled_model_density", no_init)
         .def(init<uctbx::unit_cell const&,
                   af::const_ref<scatterer<> > const&,
@@ -28,6 +31,7 @@ namespace {
                            bool,
                            bool,
                            double const&,
+                           bool,
                            bool> >(
           (arg_("unit_cell"),
            arg_("scatterers"),
@@ -40,12 +44,15 @@ namespace {
            arg_("force_complex")=false,
            arg_("sampled_density_must_be_positive")=false,
            arg_("tolerance_positive_definite")=1.e-5,
-           arg_("use_u_base_as_u_extra")=false)))
+           arg_("use_u_base_as_u_extra")=false,
+           arg_("store_grid_indices_for_each_scatterer")=false)))
         .def("real_map", &w_t::real_map)
         .def("complex_map", &w_t::complex_map)
         .def("eliminate_u_extra_and_normalize",
           &w_t::eliminate_u_extra_and_normalize,
           (arg_("miller_indices"), arg_("structure_factors")))
+        .def("grid_indices_for_each_scatterer",
+          &w_t::grid_indices_for_each_scatterer, ccr())
       ;
     }
   };
