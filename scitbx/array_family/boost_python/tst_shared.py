@@ -68,7 +68,25 @@ def exercise_stl_set_unsigned():
   assert a.size() == 1
   assert tuple(a[0]) == (1, 2)
   a = shared.stl_set_unsigned([(2,1),(3,5,2)])
-  assert [tuple(s) for s in a] == [(1, 2), (2, 3, 5)]
+  assert native(a) == [(1, 2), (2, 3, 5)]
+  #
+  from scitbx.array_family import flex
+  b = shared.stl_vector_unsigned()
+  s = flex.size_t()
+  a.append_union_of_selected_arrays(arrays=b, selection=s)
+  assert a.size() == 3
+  assert a[2].size() == 0
+  b.append([2,1])
+  b.append([])
+  b.append([4,3,2])
+  s.append(2)
+  s.append(1)
+  a.append_union_of_selected_arrays(arrays=b, selection=s)
+  assert tuple(a[3]) == (2,3,4)
+  s[1] = 0
+  a.append_union_of_selected_arrays(arrays=b, selection=s)
+  assert tuple(a[4]) == (1,2,3,4)
+  assert native(a) == [(1, 2), (2, 3, 5), (), (2, 3, 4), (1, 2, 3, 4)]
 
 def exercise_mat3_int():
   from scitbx.array_family import flex
