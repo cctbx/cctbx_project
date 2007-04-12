@@ -595,6 +595,10 @@ def exercise_select():
   assert iselection_intersection([2,3], [1,2,3,4]) == [2,3]
   assert iselection_intersection([1,2,3,4], [2,4]) == [2,4]
   assert iselection_intersection([2,4], [1,2,3,4]) == [2,4]
+  #
+  a = flex.double(range(3,12))
+  assert a.select(selection=stl.set.unsigned()).size() == 0
+  assert approx_equal(a.select(selection=stl.set.unsigned([2,3,7])), [5,6,10])
 
 def exercise_from_stl_vector():
   from scitbx import stl

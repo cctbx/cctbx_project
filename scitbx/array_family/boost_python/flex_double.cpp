@@ -243,6 +243,23 @@ namespace {
     return result;
   }
 
+  shared<double>
+  select_stl_set_unsigned(
+    const_ref<double> const& self,
+    std::set<unsigned> const& selection)
+  {
+    shared<double> result(selection.size(), init_functor_null<double>());
+    std::set<unsigned>::const_iterator sel_end = selection.end();
+    double* r = result.begin();
+    for(std::set<unsigned>::const_iterator
+          sel=selection.begin();sel!=sel_end;sel++) {
+      SCITBX_ASSERT(*sel < self.size());
+      *r++ = self[*sel];
+    }
+    SCITBX_ASSERT(r == result.end());
+    return result;
+  }
+
 } // namespace <anonymous>
 
 namespace boost_python {
@@ -297,6 +314,7 @@ namespace boost_python {
       .def("round", round, round_overloads((
         arg_("self"),
         arg_("n_digits")=0)))
+      .def("select", select_stl_set_unsigned, (arg_("selection")))
     ;
     range_wrappers<double, long>::wrap("double_range");
 
