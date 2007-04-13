@@ -2,7 +2,7 @@ from __future__ import division
 
 try:
   from stdlib import math
-except:
+except ImportError:
   import math
 
 class rec(object):
@@ -180,11 +180,18 @@ class rec(object):
   def normalize(self):
     return self / abs(self)
 
-  def dot(self, other):
-    assert len(self.elems) == len(other.elems)
+  def dot(self, other=None):
     result = 0
-    for i in xrange(len(self.elems)):
-      result += self.elems[i] * other.elems[i]
+    a = self.elems
+    if (other is None):
+      for i in xrange(len(a)):
+        v = a[i]
+        result += v * v
+    else:
+      assert len(self.elems) == len(other.elems)
+      b = other.elems
+      for i in xrange(len(a)):
+        result += a[i] * b[i]
     return result
 
   def cross(self, other):
@@ -466,6 +473,7 @@ if (__name__ == "__main__"):
   assert (-2*a).mathematica_form() == "{{-2, -4}, {-6, -8}, {-10, -12}}"
   b = rec(range(1,7), (2,3))
   assert a.dot(b) == 91
+  assert col((3,4)).dot() == 25
   c = a * b
   d = rt((c, (1,2,3)))
   assert (-a).mathematica_form() == "{{-1, -2}, {-3, -4}, {-5, -6}}"
