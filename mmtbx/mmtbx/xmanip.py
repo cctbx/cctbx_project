@@ -5,7 +5,6 @@ from cctbx import sgtbx
 from cctbx import xray
 from cctbx import eltbx
 import cctbx.xray.structure_factors
-from cctbx.eltbx.xray_scattering import wk1995
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time, multi_out
 import iotbx.phil
@@ -19,7 +18,9 @@ from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 from scitbx.math import matrix
 from cctbx import adptbx
+from mmtbx import xmanip_tasks
 import sys, os
+
 
 
 def construct_output_labels(labels, label_appendix, out=None ):
@@ -31,21 +32,26 @@ def construct_output_labels(labels, label_appendix, out=None ):
   standard_postfix = ["(+)","(-)","PLUS", "MINUS","+","-","MINU" ]
 
   for label, app in zip(labels,label_appendix):
+    print label
     if app is None:
       app=""
     #for each label, check if the prefix is present
     tmp_root = str(label[0])
+    for post in standard_postfix:
+      if tmp_root.endswith( post ):
+        tmp_root = tmp_root[:len(post)-1]
+        break
+
     for pre in standard_prefix:
       if tmp_root.startswith( pre ):
-        tmp_root = tmp_root[len(pre)-1:]
-        break
-    for post in standard_postfix:
-      if tmp_root.endswith( pre ):
         tmp_root = tmp_root[len(pre)-1:]
         break
 
     if len(tmp_root)==0:
       tmp_root = label[0]
+
+    if tmp_root[ len(tmp_root)-1 ]=="_":
+      tmp_root = tmp_root[: len(tmp_root)-1 ]
 
     new_label_root.append( tmp_root+app )
 
@@ -62,11 +68,14 @@ def read_data(file_name, labels, xs, log=None):
 
   miller_arrays = reflection_file.as_miller_arrays(crystal_symmetry=xs)
   label_table = reflection_file_utils.label_table(miller_arrays)
-  #now select a miller array or set of miller arrays
-  miller_array = label_table.match_data_label(
-    label=labels,
-    command_line_switch="xray_data.label",
-    f=log)
+
+  #now select a miller array or set of miller arrays if needed
+  miller_array = miller_arrays[0]
+  if len(miller_arrays)>1:
+    miller_array = label_table.match_data_label(
+      label=labels,
+      command_line_switch="xray_data.label",
+      f=log)
   return miller_array
 
 
@@ -142,63 +151,103 @@ xmanip{
   input{
     unit_cell=None
     .type=unit_cell
+    .help="Unit cell parameters"
     space_group=None
     .type=space_group
+    .help="space group"
     xray_data
     .multiple=True
+    .help="Scope defining xray data. Multiple scopes are allowed"
     {
       file_name=None
       .type=path
+      .help="file name"
       labels=None
       .type=str
+      .help="A unique label or unique substring of a label"
       label_appendix=None
       .type=str
+      .help="Label appendix for output mtz file"
       name = None
       .type = str
+      .help="An identifier of this particular miller array"
+      write_out=None
+      .type=bool
+      .help="Determines if this data is written to the output file"
+
     }
-    model{
+    model
+    .help="A model associated with the miller arrays. Only one model can be defined."
+    {
       file_name=None
       .type=path
+      .help="A model file"
     }
   }
   parameters{
-    action = *reindex operator manipulate_pdb xray_algebra
+    action = *reindex operator manipulate_pdb manipulate_miller
     .type=choice
+    .help="Defines which action will be carried out."
     chain_id_increment = 0
     .type=int
+    .help="Increment chain id by this offset"
     inverse=False
     .type=bool
-    reindex{
+    .help="Invert coordinates"
+    reindex
+    .help="Reindexing parameters. Acts on coordinates and miller arrays."
+    {
       standard_laws = niggli *reference_setting invert user_supplied
       .type=choice
+      .help="Choices of reindexing operators. Will be applied on structure and miller arrays."
       user_supplied_law='h,k,l'
       .type=str
+      .help="User supplied operator."
     }
-    apply_operator{
+    apply_operator
+    .help="Applies an operator on the coordinates."
+    {
       standard_operators = *user_supplied
       .type=choice
+      .help="Choice of operators."
       user_supplied_operator="x,y,z"
       .type=str
+      .help="The symmetry operator."
       concatenate_model=False
       .type=bool
+      .help="Switch that determines whether or not to append the new model to the old model."
     }
-    manipulate_pdb{
+    manipulate_miller
+    .help="Acts on a single miller array or a set of miller arrays."
+    {
+      include scope mmtbx.xmanip_tasks.master_params
+    }
+    manipulate_pdb
+    .help="Manipulate elements of a pdb file"
+    {
       set_b = True
       .type=bool
+      .help="Whether or not to set B values."
       b_iso = 30
       .type=float
+      .help="new B value"
     }
   }
-  output{
+  output
+  .help="Output files"
+  {
     logfile=xmanip.log
     .type=str
+    .help="Logfile"
     hklout=xmanip.mtz
     .type=str
+    .help="Ouptut miller indices and data"
     xyzout=xmanip.pdb
     .type=str
+    .help="output PDB file"
   }
 }
-""")
+""", process_includes=True)
 
 def print_help(name="phenix.xmanip"):
   print """
@@ -312,15 +361,16 @@ def xmanip(args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
-
     # now get the unit cell from the files
     hkl_xs = []
     pdb_xs = None
 
     #multiple file names are allowed
     for xray_data in params.xmanip.input.xray_data:
-      hkl_xs.append( crystal_symmetry_from_any.extract_from(
-         file_name=xray_data.file_name) )
+      print dir(xray_data)
+      if xray_data.file_name is not None:
+        hkl_xs.append( crystal_symmetry_from_any.extract_from(
+           file_name=xray_data.file_name) )
 
     if params.xmanip.input.model.file_name is not None:
       pdb_xs = crystal_symmetry_from_any.extract_from(
@@ -356,6 +406,7 @@ def xmanip(args):
     miller_arrays = []
     labels = []
     label_appendix = []
+    write_it = []
     names = {}
 
     if len(params.xmanip.input.xray_data)>0:
@@ -395,9 +446,10 @@ def xmanip(args):
         names.update( {this_name:count} )
         count += 1
 
+        write_it.append( xray_data.write_out)
 
       output_label_root = construct_output_labels( labels, label_appendix )
-
+      print output_label_root
     #----------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
     #
@@ -412,7 +464,27 @@ def xmanip(args):
       print >> log
 
 
+    write_miller_array = False
+    write_pdb_file = False
+    # define some output holder thingamebobs
+    new_miller_arrays = []
+    new_model = None
+
+    #manipulate miller arrays
+    if params.xmanip.parameters.action == "manipulate_miller":
+      write_miller_array = True
+      new_miller = xmanip_tasks.manipulate_miller(names, miller_arrays, params.xmanip.parameters.manipulate_miller )
+      miller_arrays.append( new_miller )
+      # not very smart to rely here on a phil defintion defined in another file
+      output_label_root.append(
+        params.xmanip.parameters.manipulate_miller.output_label_root )
+      write_it.append(True)
+
+
+
+
     if params.xmanip.parameters.action=="reindex":
+      write_miller_array = True
       #----------------------------------------------------------------
       # step 3: get the reindex laws
       to_niggli    = phil_xs.change_of_basis_op_to_niggli_cell()
@@ -442,7 +514,7 @@ def xmanip(args):
       # step 4: do the reindexing
       #
       # step 4a: first do the miller array object
-      new_miller_arrays = []
+      #new_miller_arrays = []
       for miller_array in miller_arrays:
         new_miller_array = None
         if miller_array is not None:
@@ -450,30 +522,35 @@ def xmanip(args):
           new_miller_arrays.append( new_miller_array )
       #
       # step 4b: the xray structure
-      new_model = None
       if pdb_model is not None:
+        write_pdb_file=True
         new_model = model.change_basis( cb_op )
 
-      #-----------------------------------------------------------------------
-      # step 4c: do the requiered manipulations no the suggested miller arrays
 
 
-
-
+    if write_miller_array:
+      if len(new_miller_arrays)==0:
+        new_miller_arrays = miller_arrays
       #----------------------------------------------------------------
-      # step 5a: write the new mtz file
       print >> log
-      print >> log, "The data and model have been reindexed"
+      print >> log, "The data has been reindexed/manipulated"
       print >> log, "--------------------------------------"
       print >> log
       print >> log, "Writing output files...."
 
       mtz_dataset=None
       if len(new_miller_arrays)>0:
-        mtz_dataset = new_miller_arrays[0].as_mtz_dataset(
-          column_root_label=output_label_root[0])
+        first=0
+        for item in range(len(write_it)):
+          if write_it[item]:
+            first=item
 
-      for miller_array, new_root in zip(new_miller_arrays[1:], output_label_root[1:]):
+        mtz_dataset = new_miller_arrays[first].as_mtz_dataset(
+          column_root_label=output_label_root[first])
+
+
+      for miller_array, new_root in zip(new_miller_arrays[first+1:],
+                                        output_label_root[first+1:]):
         if miller_array is not None:
           mtz_dataset = mtz_dataset.add_miller_array(
             miller_array = miller_array,
@@ -553,6 +630,10 @@ def xmanip(args):
                          additional_remark = None,
                          print_cryst_and_scale=True)
       pdb_file.close()
+
+
+
+
 
     #write the logfile
     logger = open( params.xmanip.output.logfile, 'w')
