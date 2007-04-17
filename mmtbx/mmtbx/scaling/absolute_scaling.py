@@ -358,8 +358,11 @@ def anisotropic_correction(cache_0,
   if work_array is None:
     work_array = cache_0.select( cache_0.data() > 0 )
 
+  change_back_to_intensity=False
   if work_array.is_xray_intensity_array():
     work_array = work_array.f_sq_as_f()
+    change_back_to_intensity=True
+
   assert not work_array.is_xray_intensity_array()
 
   if b_add is not None:
@@ -387,6 +390,8 @@ def anisotropic_correction(cache_0,
   work_array = work_array.customized_copy(
     data = corrected_amplitudes,
     sigmas = corrected_sigmas ).set_observation_type(work_array)
+  if change_back_to_intensity:
+    work_array = work_array.f_as_f_sq()
   return work_array
 
 
