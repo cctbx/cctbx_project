@@ -9,6 +9,7 @@ libtbx/libtbx/subversion.py -text
 libtbx/libtbx_refresh.py -text
 libtbx/windows_dispatcher.exe -text
 mmtbx/mmtbx/xmanip.py -text
+mmtbx/mmtbx/xmanip_tasks.py -text
 smtbx/__init__.py -text
 smtbx/refinement/__init__.py -text
 smtbx/refinement/minimization.py -text
