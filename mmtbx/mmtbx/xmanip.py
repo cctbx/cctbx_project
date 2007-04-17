@@ -32,7 +32,6 @@ def construct_output_labels(labels, label_appendix, out=None ):
   standard_postfix = ["(+)","(-)","PLUS", "MINUS","+","-","MINU" ]
 
   for label, app in zip(labels,label_appendix):
-    print label
     if app is None:
       app=""
     #for each label, check if the prefix is present
