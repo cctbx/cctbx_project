@@ -33,7 +33,7 @@ import epydoc.cli
 options, names = epydoc.cli.parse_arguments()
 epydoc.cli.main(options, names)
 output_dir = options.target
-doxyfile = open('../dox/Doxyfile')
+doxyfile = open('Doxyfile')
 import re
 html_output_pat = re.compile(r'^HTML_OUTPUT\s*=\s*(.*)$')
 for li in doxyfile:
