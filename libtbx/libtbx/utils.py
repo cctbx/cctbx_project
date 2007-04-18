@@ -13,6 +13,11 @@ windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
 LPT1 LPT2 LPT3 LPT4 LPT5 LPT6 LPT7 LPT8 LPT9""".split()
 
+def escape_sh_double_quoted(s):
+  "the result is supposed to be double-quoted when passed to sh"
+  if (s is None): return None
+  return s.replace('\\','\\\\').replace('"','\\"')
+
 def warn_if_unexpected_md5_hexdigest(
       path,
       expected_md5_hexdigests,
