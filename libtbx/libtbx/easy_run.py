@@ -19,9 +19,17 @@ class fully_buffered_base(object):
     return self
 
   def raise_if_output(self, show_output_threshold=10):
-    if (len(self.stdout_lines) != 0):
-      msg = ["unexpected child process output:"]
-      msg.append("  command: " + repr(self.command))
+    def start_msg():
+      result = ["unexpected child process output:"]
+      result.append("  command: " + repr(self.command))
+      return result
+    if (self.stdout_buffer is not None):
+      if (len(self.stdout_buffer) != 0):
+        msg = start_msg()
+        msg.append("  length of output: %d bytes" % len(self.stdout_buffer))
+        raise RuntimeError("\n".join(msg))
+    elif (len(self.stdout_lines) != 0):
+      msg = start_msg()
       for line in self.stdout_lines[:show_output_threshold]:
         msg.append("  " + line)
       n = len(self.stdout_lines)
@@ -45,6 +53,7 @@ class fully_buffered_base(object):
     _show_lines(lines=self.stderr_lines, out=out, prefix=prefix)
 
   def show_stdout(self, out=None, prefix=""):
+    assert self.stdout_lines is not None
     _show_lines(lines=self.stdout_lines, out=out, prefix=prefix)
 
 class fully_buffered_simple(fully_buffered_base):
@@ -66,6 +75,7 @@ implementation should cover most practical situations.
         command,
         stdin_lines=None,
         join_stdout_stderr=False,
+        stdout_splitlines=True,
         bufsize=-1):
     self.command = command
     self.join_stdout_stderr = join_stdout_stderr
@@ -81,7 +91,12 @@ implementation should cover most practical situations.
           stdin_lines += os.linesep
       child_stdin.write(stdin_lines)
     child_stdin.close()
-    self.stdout_lines = child_stdout.read().splitlines()
+    if (stdout_splitlines):
+      self.stdout_buffer = None
+      self.stdout_lines = child_stdout.read().splitlines()
+    else:
+      self.stdout_buffer = child_stdout.read()
+      self.stdout_lines = None
     if (child_stderr is not None):
       self.stderr_lines = child_stderr.read().splitlines()
     else:
@@ -98,6 +113,7 @@ class fully_buffered_subprocess(fully_buffered_base):
         command,
         stdin_lines=None,
         join_stdout_stderr=False,
+        stdout_splitlines=True,
         bufsize=-1):
     self.command = command
     self.join_stdout_stderr = join_stdout_stderr
@@ -122,7 +138,12 @@ class fully_buffered_subprocess(fully_buffered_base):
       universal_newlines=True,
       close_fds=not subprocess.mswindows)
     o, e = p.communicate(input=stdin_lines)
-    self.stdout_lines = o.splitlines()
+    if (stdout_splitlines):
+      self.stdout_buffer = None
+      self.stdout_lines = o.splitlines()
+    else:
+      self.stdout_buffer = o
+      self.stdout_lines = None
     if (join_stdout_stderr):
       self.stderr_lines = []
     else:
@@ -216,9 +237,18 @@ def exercise(args=None):
     for line in result.stdout_lines:
       assert not line.startswith("PYTHONPATH") or line == "PYTHONPATH="
   #
-  result = fb(command="%s -V" % pyexe).raise_if_output()
-  if (verbose): print result.stderr_lines
-  assert result.stderr_lines == ["Python " + sys.version.split()[0]]
+  for stdout_splitlines in [True, False]:
+    result = fb(
+      command="%s -V" % pyexe,
+      stdout_splitlines=stdout_splitlines).raise_if_output()
+    if (verbose): print result.stderr_lines
+    assert result.stderr_lines == ["Python " + sys.version.split()[0]]
+    if (stdout_splitlines):
+      assert result.stdout_buffer is None
+      assert result.stdout_lines == []
+    else:
+      assert result.stdout_buffer == ""
+      assert result.stdout_lines is None
   result = go(command="%s -V" % pyexe)
   if (verbose): print result.stdout_lines
   assert result.stdout_lines == ["Python " + sys.version.split()[0]]
@@ -333,19 +363,24 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
     assert str(e).startswith("child process stderr output:\n")
   else: raise RuntimeError("Exception expected.")
   #
-  for n in [10,11,12,13]:
-    try:
-      fb(
-        command=cat_command,
-        stdin_lines=[str(i) for i in xrange(n)]).raise_if_output()
-    except RuntimeError, e:
-      if (verbose): print e
-      assert str(e).startswith("unexpected child process output:\n")
-      if (n != 13):
-        assert str(e).endswith(str(n-1))
-      else:
-        assert str(e).endswith("remaining 3 lines omitted.")
-    else: raise RuntimeError("Exception expected.")
+  for stdout_splitlines in [True, False]:
+    for n,b in [(10,20),(11,23),(12,26),(13,29)]:
+      try:
+        fb(
+          command=cat_command,
+          stdin_lines=[str(i) for i in xrange(n)],
+          stdout_splitlines=stdout_splitlines).raise_if_output()
+      except RuntimeError, e:
+        if (verbose): print e
+        assert str(e).startswith("unexpected child process output:\n")
+        if (stdout_splitlines):
+          if (n != 13):
+            assert str(e).endswith(str(n-1))
+          else:
+            assert str(e).endswith("  remaining 3 lines omitted.")
+        else:
+          assert str(e).endswith("  length of output: %d bytes" % b)
+      else: raise RuntimeError("Exception expected.")
   #
   fb(command=cat_command).raise_if_errors_or_output()
   #
