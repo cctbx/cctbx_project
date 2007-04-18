@@ -2,7 +2,7 @@ from __future__ import generators
 import libtbx.path
 from libtbx.option_parser import option_parser
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry, detect_binary_file
+from libtbx.utils import escape_sh_double_quoted, Sorry, detect_binary_file
 from libtbx import adopt_init_args
 from libtbx import easy_run
 import shutil
@@ -10,11 +10,6 @@ import pickle
 from cStringIO import StringIO
 import re
 import sys, os
-
-def escape_sh_double_quoted(s):
-  "the result is supposed to be double-quoted when passed to sh"
-  if (s is None): return None
-  return s.replace('\\','\\\\').replace('"','\\"')
 
 def get_hostname():
   try: import socket
