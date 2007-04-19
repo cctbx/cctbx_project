@@ -129,6 +129,10 @@ class unified_least_squares_residual(object):
     """ The obs passed to the constructor """
     return self._obs
 
+  f_obs = obs
+  """ For compatibility with the optimiser's interface
+  (as minimization.lbfgs) """
+
   def weighting(self):
     """ The weighting scheme """
     return self._weighting
@@ -188,8 +192,6 @@ class least_squares_residual_for_amplitude(unified_least_squares_residual):
       weighting = None
     super(least_squares_residual, self).__init__(f_obs, True, weighting)
 
-  f_obs = unified_least_squares_residual.obs
-
   def use_sigmas_as_weights(self):
     return isinstance(self._weighting, statistical_weighting)
 
@@ -232,5 +234,6 @@ class intensity_correlation(object):
 def registry():
   return {
     "least_squares_residual": least_squares_residual,
+    "unified_least_squares_residual": unified_least_squares_residual,
     "intensity_correlation": intensity_correlation,
   }

@@ -18,10 +18,13 @@ def shift_u_aniso(structure, shift):
            u_star[i] += (shift * random.random())
          sc.u_star = u_star
 
-def exercise(target_functor, space_group_info, anomalous_flag,
+def exercise(target_functor, data_type, space_group_info, anomalous_flag,
              gradient_flags, occupancy_penalty,
              n_elements=9, d_min=None, shake_sigma=0.1,
              verbose=0,tan_u_iso=False, param = 0):
+  assert data_type == 'F' or data_type == 'F^2'
+  if (data_type == 'F^2'
+       and not target_functor == xray.unified_least_squares_residual): return
   structure_ideal = random_structure.xray_structure(
     space_group_info,
     elements=(("O","N","C")*(n_elements))[:n_elements],#("Se",)*n_elements,
@@ -30,11 +33,10 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     random_u_cart_scale=.3,
     random_occupancy=True,
     use_u_aniso = True)
-
   random_structure.random_modify_adp_and_adp_flags(
-                             scatterers         = structure_ideal.scatterers(),
-                             random_u_iso_scale = 0.3,
-                             random_u_iso_min   = 0.0)
+                           scatterers         = structure_ideal.scatterers(),
+                           random_u_iso_scale = 0.3,
+                           random_u_iso_min   = 0.0)
   xray.set_scatterer_grad_flags(scatterers = structure_ideal.scatterers(),
                                 site       = gradient_flags.site,
                                 u_iso      = gradient_flags.u_iso,
@@ -50,12 +52,18 @@ def exercise(target_functor, space_group_info, anomalous_flag,
       print sc.flags.use_u_iso(),sc.flags.grad_u_iso(),sc.flags.use_u_aniso(),\
             sc.flags.grad_u_aniso(),sc.u_iso, sc.u_star,sc.flags.tan_u_iso(),\
             sc.flags.param, sc.occupancy
-
-  f_obs = abs(structure_ideal.structure_factors(
+  rnd_f_calc = structure_ideal.structure_factors(
     anomalous_flag=anomalous_flag,
     d_min=d_min,
     algorithm="direct",
-    cos_sin_table=True).f_calc())
+    cos_sin_table=True).f_calc()
+  if data_type == "F":
+     y_obs = abs(rnd_f_calc)
+  elif data_type == "F^2":
+     y_obs = rnd_f_calc.norm()
+     y_obs.set_observation_type_xray_intensity()
+  else:
+     raise "Error: invalid data type: %s" % data_type
   if (0 or verbose):
     print "structure_ideal:"
     structure_ideal.show_summary().show_scatterers()
@@ -83,7 +91,7 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     structure_shake.show_summary().show_scatterers()
     print
   minimizer = xray.minimization.lbfgs(
-    target_functor=target_functor(f_obs),
+    target_functor=target_functor(y_obs),
     xray_structure=structure_shake,
     occupancy_penalty=occupancy_penalty,
     structure_factor_algorithm="direct")
@@ -96,11 +104,15 @@ def exercise(target_functor, space_group_info, anomalous_flag,
     print "minimized structure_shake:"
     structure_shake.show_summary().show_scatterers()
     print
-  f_final = abs(f_obs.structure_factors_from_scatterers(
+  f_final = y_obs.structure_factors_from_scatterers(
     xray_structure=structure_shake,
     algorithm="direct",
-    cos_sin_table=True).f_calc())
-  c = flex.linear_correlation(f_obs.data(), f_final.data())
+    cos_sin_table=True).f_calc()
+  if data_type == 'F':
+     f_final = abs(f_final)
+  elif data_type == 'F^2':
+     f_final = f_final.norm()
+  c = flex.linear_correlation(y_obs.data(), f_final.data())
   assert c.is_well_defined()
   if (0 or verbose):
     label = gradient_flags.string_of_true()
@@ -111,7 +123,10 @@ def exercise(target_functor, space_group_info, anomalous_flag,
   c_coefficient = c.coefficient()
   if(c_coefficient <= 0.999):
      print c_coefficient
-  assert c_coefficient > 0.999
+  if data_type == 'F':
+    assert c_coefficient > 0.999
+  elif data_type == 'F^2':
+    assert c_coefficient > 0.9
 
 def run_call_back(flags, space_group_info):
   options = ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1),(0,1,1,1))
@@ -139,15 +154,17 @@ def run_call_back(flags, space_group_info):
           for occupancy_penalty in occupancy_penalty_types:
             if(0):
                print fsite,fu_iso,foccupancy,fu_aniso,anomalous_flag,tan_u_iso
-            exercise(target_functor,
-                     space_group_info,
-                     anomalous_flag,
-                     gradient_flags,
-                     occupancy_penalty=occupancy_penalty,
-                     verbose=flags.Verbose,
-                     tan_u_iso=tan_u_iso,
-                     param = param,
-                     d_min = 2.5)
+            for data_type in ('F', 'F^2'):
+               exercise(target_functor,
+                        data_type,
+                        space_group_info,
+                        anomalous_flag,
+                        gradient_flags,
+                        occupancy_penalty=occupancy_penalty,
+                        verbose=flags.Verbose,
+                        tan_u_iso=tan_u_iso,
+                        param = param,
+                        d_min = 2.5)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
