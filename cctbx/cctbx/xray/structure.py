@@ -669,7 +669,7 @@ class structure(crystal.special_position_settings):
 
   def show_scatterers(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso"
+    print >> f, "Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso"
     for scatterer in self.scatterers():
       scatterer.show(f=f, unit_cell=self.unit_cell())
     return self
