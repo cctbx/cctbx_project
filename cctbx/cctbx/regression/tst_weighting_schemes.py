@@ -22,6 +22,7 @@ def run():
   obs.set_observation_type_xray_intensity()
 
   exercise_shelx_weighting(f_calc, obs)
+  exercise_quasi_unit_weighting(obs)
 
   print 'OK'
 
@@ -41,6 +42,12 @@ def exercise_shelx_weighting(f_calc, obs):
     w.compute()
   assert approx_equal(weighting.derivatives_wrt_f_c,
                       weighting_ref.derivatives_wrt_f_c)
+
+def exercise_quasi_unit_weighting(obs):
+  w = xray.weighting_schemes.intensity_quasi_unit_weighting()
+  w.observed = obs.discard_sigmas()
+  w.compute()
+  assert approx_equal(list(w.weights), list(1/(4.*obs.data())))
 
 if __name__ == '__main__':
   run()
