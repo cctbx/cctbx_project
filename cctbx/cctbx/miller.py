@@ -1284,17 +1284,20 @@ class array(set):
         indices=Keep,
         anomalous_flag=Keep,
         unit_cell=Keep,
-        space_group_info=Keep):
+        space_group_info=Keep,
+        observation_type=Keep):
     if (miller_set is Keep): miller_set = self
     if (data is Keep): data = self.data()
     if (sigmas is Keep): sigmas = self.sigmas()
+    if observation_type is Keep: observation_type = self.observation_type()
     miller_set = set.customized_copy(miller_set,
       crystal_symmetry=crystal_symmetry,
       indices=indices,
       anomalous_flag=anomalous_flag,
       unit_cell=unit_cell,
       space_group_info=space_group_info)
-    return array(miller_set=miller_set, data=data, sigmas=sigmas)
+    return array(miller_set=miller_set, data=data, sigmas=sigmas)\
+           .set_observation_type(observation_type)
 
   def set(self,
         crystal_symmetry=Keep,
@@ -2115,6 +2118,10 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
 
   def __abs__(self):
     return array(self, flex.abs(self.data()), self.sigmas())
+
+  def norm(self):
+    assert isinstance(self.data(), flex.complex_double)
+    return array(self, flex.norm(self.data()))
 
   def arg(self, deg=False):
     return array(self, flex.arg(self.data(), deg))
