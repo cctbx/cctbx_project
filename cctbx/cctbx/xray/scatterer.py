@@ -72,17 +72,22 @@ class _scatterer(boost.python.injector, ext.scatterer):
     print >> f, "%3d" % self.multiplicity(),
     print >> f, "(%7.4f %7.4f %7.4f)" % self.site,
     print >> f, "%4.2f" % self.occupancy,
-    if (not self.anisotropic_flag):
-      print >> f, "%6.4f" % self.u_iso
+    if self.flags.use_u_iso():
+      print >> f, "%6.4f" % self.u_iso,
     else:
+      print >> f, '[ - ]',
+    if self.flags.use_u_aniso():
       assert unit_cell is not None
       u_cart = adptbx.u_star_as_u_cart(unit_cell, self.u_star)
       print >> f, "%6.4f" % adptbx.u_cart_as_u_iso(u_cart)
-      print >> f, "     u_cart =", ("%6.3f " * 5 + "%6.3f") % u_cart
+      print >> f, "     u_cart =", ("%6.3f " * 5 + "%6.3f") % u_cart,
+    else:
+      print >> f, '[ - ]',
     if (self.fp != 0 or self.fdp != 0):
-      print >> f, "     fp,fdp = %6.4f,%6.4f" % (
+      print >> f, "\n     fp,fdp = %6.4f,%6.4f" % (
         self.fp,
-        self.fdp)
+        self.fdp),
+    print >> f
 
 class anomalous_scatterer_group:
 
