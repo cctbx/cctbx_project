@@ -25,13 +25,17 @@ class intensity_quasi_unit_weighting(object):
     f_sqr = self.observed.data()
     sig_f_sqr = self.observed.sigmas()
     w = flex.double(f_sqr.size())
-    if self.n_sigma == 1:
-      strongs = f_sqr > sig_f_sqr
+    if sig_f_sqr is None:
+      strongs = flex.bool(f_sqr.size(), True)
     else:
-      strongs = f_sqr > self.n_sigma * sig_f_sqr
+      if self.n_sigma == 1:
+        strongs = f_sqr > sig_f_sqr
+      else:
+        strongs = f_sqr > self.n_sigma * sig_f_sqr
     weaks = ~strongs
     w.set_selected(strongs, 0.25/f_sqr.select(strongs))
-    w.set_selected(weaks,   0.25/flex.pow2( sig_f_sqr.select(weaks) ))
+    if sig_f_sqr is not None:
+      w.set_selected(weaks,   0.25/flex.pow2( sig_f_sqr.select(weaks) ))
     self.weights = w
     self.derivatives_wrt_f_c = None
 
