@@ -127,13 +127,16 @@ def linear_regression_test(d_analytical, d_numerical, test_hard=True,
         print a, n
     assert not test_hard
 
-def exercise(target_functor, parameter_name, space_group_info,
+def exercise(target_functor, data_type, parameter_name, space_group_info,
              anomalous_flag,
              cartesian_flag,
              n_elements=9,
              d_min=2.5,
              shake_sigma=0.25,
              test_hard=True, verbose=0):
+  assert data_type == 'F' or data_type == 'F^2'
+  if (data_type == 'F^2'
+       and not target_functor == xray.unified_least_squares_residual): return
   if (parameter_name != "site" and cartesian_flag == True): return
   if (parameter_name == "fdp" and not anomalous_flag): return
   structure_ideal = random_structure.xray_structure(
@@ -153,16 +156,20 @@ def exercise(target_functor, parameter_name, space_group_info,
                              random_u_iso_scale = 0.3,
                              random_u_iso_min   = 0.0,
                              parameter_name     = parameter_name)
-  f_obs = abs(structure_ideal.structure_factors(
-    anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc())
-
+  rnd_f_calc = structure_ideal.structure_factors(
+    anomalous_flag=anomalous_flag, d_min=d_min, algorithm="direct").f_calc()
+  if data_type == 'F':
+    y_obs = abs(rnd_f_calc)
+  elif data_type == 'F^2':
+    y_obs = rnd_f_calc.norm()
+    y_obs.set_observation_type_xray_intensity()
   structure_shake = structure_ideal.random_modify_parameters(
         parameter_name, shake_sigma, vary_z_only=False)
   assert tuple(structure_ideal.special_position_indices()) \
       == tuple(structure_shake.special_position_indices())
-  target_ftor = target_functor(f_obs)
+  target_ftor = target_functor(y_obs)
   for structure in (structure_ideal, structure_shake)[:]: #SWITCH
-    f_calc = f_obs.structure_factors_from_scatterers(
+    f_calc = y_obs.structure_factors_from_scatterers(
       xray_structure=structure,
       algorithm="direct").f_calc()
     target_result = target_ftor(f_calc, compute_derivatives=True)
@@ -187,7 +194,7 @@ def exercise(target_functor, parameter_name, space_group_info,
   sf = xray.structure_factors.gradients_direct(
     xray_structure=structure,
     u_iso_refinable_params=None,
-    miller_set=f_obs,
+    miller_set=y_obs,
     d_target_d_f_calc=target_result.derivatives(),
     n_parameters=0)
   if (parameter_name == "site"):
@@ -230,7 +237,7 @@ def exercise(target_functor, parameter_name, space_group_info,
     sf = xray.structure_factors.gradients_direct(
       xray_structure=structure,
       u_iso_refinable_params = u_iso_refinable_params,
-      miller_set=f_obs,
+      miller_set=y_obs,
       d_target_d_f_calc=target_result.derivatives(),
       n_parameters=0)
     d_analytical = sf.d_target_d_u_iso()
@@ -251,12 +258,14 @@ def run_call_back(flags, space_group_info):
          for target_functor in xray.target_functors.registry().values():
            if(parameter_name == "u_iso"):  use_u_iso = True
            if(parameter_name == "u_star"): use_u_aniso = True
-           exercise(target_functor,
-                    parameter_name,
-                    space_group_info,
-                    anomalous_flag,
-                    cartesian_flag,
-                    verbose=flags.Verbose)
+           for data_type in ('F', 'F^2'):
+            exercise(target_functor,
+                     data_type,
+                     parameter_name,
+                     space_group_info,
+                     anomalous_flag,
+                     cartesian_flag,
+                     verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
