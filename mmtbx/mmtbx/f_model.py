@@ -1489,18 +1489,23 @@ class manager(manager_mixin):
     print >> out, prefix+"Bin     Resolution    Compl.  No.   Scale_k1(work) R-factor(work)"
     print >> out, prefix+"number     range              refl."
     for i_bin in f_obs_w.binner().range_used():
-        sel         = f_obs_w.binner().selection(i_bin)
-        r_work      = self.r_work(selection = sel)
-        scale_k1    = self.scale_k1_w(selection = sel)
-        f_obs_sel   = f_obs_w.select(sel)
-        d_max,d_min = f_obs_sel.d_max_min()
-        compl       = f_obs_sel.completeness(d_max = d_max)
-        n_ref       = sel.count(True)
-        d_range     = f_obs_w.binner().bin_legend(
-                   i_bin = i_bin, show_bin_number = False, show_counts = False)
-        format = "%3d: %-17s %5.2f %6d %6.3f     %10.4f"
-        print >> out, prefix+format % (i_bin,d_range,compl,n_ref,scale_k1,
-                                                                        r_work)
+        sel = f_obs_w.binner().selection(i_bin)
+        n_ref = sel.count(True)
+        d_range = f_obs_w.binner().bin_legend(
+          i_bin = i_bin, show_bin_number = False, show_counts = False)
+        if (n_ref > 0):
+          r_work      = "%10.4f" % self.r_work(selection = sel)
+          scale_k1    = "%6.3f" % self.scale_k1_w(selection = sel)
+          f_obs_sel   = f_obs_w.select(sel)
+          d_max,d_min = f_obs_sel.d_max_min()
+          compl       = "%5.2f" % f_obs_sel.completeness(d_max = d_max)
+        else:
+          compl = " None"
+          scale_k1 = "  None"
+          r_work = "      None"
+        format = "%3d: %-17s %s %6d %s     %s"
+        print >> out, prefix+format % (
+          i_bin,d_range,compl,n_ref,scale_k1, r_work)
     print >> out, prefix+"where:"
     print >> out, prefix+"   R-factor = SUM(||Fobs|-Scale_k1*|Fmodel||)/SUM(|Fobs|)"
     print >> out, prefix+"   Scale_k1 = SUM(|Fobs|*|Fmodel|)/SUM(|Fmodel|**2)"
