@@ -890,8 +890,10 @@ class environment:
       print >> f, 'Repository(r"%s")' % path
     for module in self.module_list:
       name,path  = list(module.name_and_dist_path_pairs())[-1]
-      if (os.path.isfile(os.path.join(path, "SConscript"))):
-        print >> f, 'SConscript("%s/SConscript")' % name
+      for script_name in ["libtbx_SConscript", "SConscript"]:
+        if (os.path.isfile(os.path.join(path, script_name))):
+          print >> f, 'SConscript("%s/%s")' % (name, script_name)
+          break
     f.close()
 
   def collect_test_scripts(self):
