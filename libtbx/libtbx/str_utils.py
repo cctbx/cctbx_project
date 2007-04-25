@@ -1,6 +1,15 @@
 from __future__ import generators
 import sys
 
+def format_none(format, null_value=0):
+  return " " * max(0, len(format % null_value) - 4) + "None"
+
+def format_value(format, value, null_value=0):
+  if (format is None): return str(value)
+  if (value is None):
+    return format_none(format=format, null_value=null_value)
+  return format % value
+
 def size_as_string_with_commas(sz):
   if (sz is None): return "unknown"
   if (sz < 0):
