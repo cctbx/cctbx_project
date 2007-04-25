@@ -1,25 +1,16 @@
 #ifndef MMTBX_BULK_SOLVENT_BULK_SOLVENT_H
 #define MMTBX_BULK_SOLVENT_BULK_SOLVENT_H
 
+#include <mmtbx/error.h>
+#include <mmtbx/import_scitbx_af.h>
 #include <cctbx/sgtbx/space_group.h>
-#include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
-#include <vector>
-#include <scitbx/array_family/shared.h>
-#include <cctbx/import_scitbx_af.h>
-#include <cctbx/error.h>
-#include <cmath>
-#include <cctbx/miller.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/c_grid.h>
-
-
-using scitbx::vec3;
-namespace af=scitbx::af;
-using scitbx::mat3;
-using scitbx::sym_mat3;
 
 namespace mmtbx { namespace bulk_solvent {
+
+using scitbx::vec3;
+using scitbx::mat3;
+using scitbx::sym_mat3;
 
 template <typename DataType, typename TagType>
 void
@@ -27,7 +18,7 @@ void
       af::ref<DataType, af::c_grid<3> > const& data,
       af::const_ref<TagType, af::c_grid<3> > const& tags)
   {
-    CCTBX_ASSERT(tags.accessor().all_eq(data.accessor()));
+    MMTBX_ASSERT(tags.accessor().all_eq(data.accessor()));
     for(std::size_t i=0;i<data.size();i++) {
       if (tags[i] < 0) continue;
       if (data[i] == 0) data[tags[i]] = 0;
@@ -79,8 +70,10 @@ af::shared<double> fb_cart(sym_mat3<double> const& b_cart,
 double scale(af::const_ref<double> const& fo,
              af::const_ref< std::complex<double> > const& fc);
 
-double r_factor(af::const_ref<double> const& fo,
-                af::const_ref< std::complex<double> > const& fc);
+boost::optional<double>
+r_factor(
+  af::const_ref<double> const& fo,
+  af::const_ref< std::complex<double> > const& fc);
 
 double r_factor_aniso_fast(af::const_ref<double> const& fo,
                            af::const_ref< std::complex<double> > const& fc,
