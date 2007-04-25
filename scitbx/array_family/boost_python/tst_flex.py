@@ -870,6 +870,9 @@ def exercise_functions():
   assert stats.max is None
   assert stats.mean is None
   for format in ["%.6g", None]:
+    assert values.format_min(format=format) == "None"
+    assert values.format_max(format=format) == "None"
+    assert values.format_mean(format=format) == "None"
     s = StringIO()
     stats.show(out=s, prefix="values ", format=format)
     assert not show_diff(s.getvalue(), """\
@@ -894,6 +897,9 @@ mean:   None
   assert approx_equal(stats.sum, 12)
   assert approx_equal(stats.mean, 2)
   for format,p0 in [("%.6g", ""), (None, ".0")]:
+    assert values.format_min(format=format) == "-7"+p0
+    assert values.format_max(format=format) == "14"+p0
+    assert values.format_mean(format=format) == "2"+p0
     s = StringIO()
     stats.show(out=s, format=format)
     assert not show_diff(s.getvalue(), """\
