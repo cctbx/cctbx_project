@@ -8,6 +8,7 @@ from scitbx_array_family_flex_ext import *
 import scitbx_array_family_flex_ext as ext
 
 import scitbx.stl.map
+from libtbx.str_utils import format_value
 import md5
 import time
 import sys, os
@@ -79,20 +80,17 @@ def mean_default(values, default):
   if (values.size() == 0): return default
   return mean(values)
 
-def _format_none(format):
-  return " " * builtin_max(0, len(format % 0) - 4) + "None"
-
 def _format_min(values, format):
-  if (values.size() == 0): return _format_none(format)
-  return format % min(values)
+  return format_value(
+    format=format, value=min_default(values=values, default=None))
 
 def _format_max(values, format):
-  if (values.size() == 0): return _format_none(format)
-  return format % max(values)
+  return format_value(
+    format=format, value=max_default(values=values, default=None))
 
 def _format_mean(values, format):
-  if (values.size() == 0): return _format_none(format)
-  return format % mean(values)
+  return format_value(
+    format=format, value=mean_default(values=values, default=None))
 
 class _min_max_mean_double(boost.python.injector, ext.min_max_mean_double):
 
@@ -101,9 +99,7 @@ class _min_max_mean_double(boost.python.injector, ext.min_max_mean_double):
     if (show_n):
       print >> out, prefix + "n:", self.n
     def f(v):
-      if (format is None): return str(v)
-      if (v is None): return _format_none(format)
-      return format % v
+      return format_value(format=format, value=v)
     print >> out, prefix + "min: ", f(self.min)
     print >> out, prefix + "max: ", f(self.max)
     print >> out, prefix + "mean:", f(self.mean)
