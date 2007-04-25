@@ -1,17 +1,6 @@
-#include <assert.h>
-#include <math.h>
-#include <iostream>
 #include <mmtbx/bulk_solvent/bulk_solvent.h>
-#include <mmtbx/error.h>
-#include <cmath>
-#include <scitbx/math/bessel.h>
 #include <cctbx/xray/targets.h>
-#include <cctbx/sgtbx/space_group.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/c_grid.h>
 
-
-using namespace std;
 namespace mmtbx { namespace bulk_solvent {
 
 vec3<double> ksol_bsol_grid_search(
@@ -265,8 +254,10 @@ double r_factor_aniso_fast(af::const_ref<double> const& fo,
     return num/denum;
 }
 
-double r_factor(af::const_ref<double> const& fo,
-                af::const_ref< std::complex<double> > const& fc)
+boost::optional<double>
+r_factor(
+  af::const_ref<double> const& fo,
+  af::const_ref< std::complex<double> > const& fc)
 {
     MMTBX_ASSERT(fo.size()==fc.size());
     double num=0.0;
@@ -284,8 +275,8 @@ double r_factor(af::const_ref<double> const& fo,
       num += std::abs(fo[i] - fc_abs[i] * sc);
       denum += fo[i];
     }
-    MMTBX_ASSERT(denum > 0.0);
-    return num/denum;
+    if (denum == 0) return boost::optional<double>();
+    return boost::optional<double>(num/denum);
 }
 
 double scale(af::const_ref<double> const& fo,

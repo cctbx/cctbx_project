@@ -33,7 +33,7 @@ import boost.python
 import mmtbx
 from libtbx.math_utils import iround
 from libtbx.utils import Sorry, user_plus_sys_time, date_and_time
-from libtbx.str_utils import show_string
+from libtbx.str_utils import format_value, show_string
 import libtbx.path
 from cStringIO import StringIO
 
@@ -607,7 +607,7 @@ class manager(manager_mixin):
                                 out                      = None)
           self.update_solvent_and_scale(params=params, out=None, verbose=-1)
           rw_ = self.r_work()
-          if(rw_ < rw):
+          if(rw_ is not None and (rw is None or rw_ < rw)):
              rw = rw_
              r_solv_ = r_solv
              r_shrink_ = r_shrink
@@ -629,9 +629,11 @@ class manager(manager_mixin):
     line_len = len("|-"+"|"+prefix)
     fill_len = 80-line_len-1
     print >> out, "|-"+prefix+"-"*(fill_len)+"|"
-    print >> out, "| r_work= %6.4f     r_free= %6.4f     Rad_solv= %4.2f     Rad_shrink= %4.2f   |"%\
-     (self.r_work(), self.r_free(), self.mask_params.solvent_radius,
-     self.mask_params.shrink_truncation_radius)
+    print >> out, "| r_work= %s     r_free= %s     Rad_solv= %4.2f     Rad_shrink= %4.2f   |"%\
+     (format_value(format="%6.4f", value=self.r_work()),
+      format_value(format="%6.4f", value=self.r_free()),
+      self.mask_params.solvent_radius,
+      self.mask_params.shrink_truncation_radius)
     print >> out, "|"+"-"*77+"|"
     print >> out
 
@@ -877,22 +879,6 @@ class manager(manager_mixin):
   def b_iso(self):
     b_cart = self.b_cart()
     return (b_cart[0]+b_cart[1]+b_cart[2])/3.0
-
-  def r_work_in_lowest_resolution_bin(self, free_reflections_per_bin=140):
-    fo_w = self.f_obs_w
-    fc_w = self.f_model_w()
-    fo_w.setup_binner(
-      n_bins=self.determine_n_bins(
-        free_reflections_per_bin=free_reflections_per_bin))
-    fo_w.use_binning_of(fo_w)
-    fc_w.use_binning_of(fo_w)
-    r = []
-    for i_bin in fo_w.binner().range_used():
-        sel_w = fo_w.binner().selection(i_bin)
-        sel_fo_w = fo_w.select(sel_w)
-        sel_fc_w = fc_w.select(sel_w)
-        r.append(bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data()))
-    return r[0]
 
   def f_mask(self):
     return self.core.f_mask
@@ -1363,8 +1349,11 @@ class manager(manager_mixin):
     part2 = "-|"
     n = 79 - len(part1+part2)
     print >> out, part1 + "-"*n + part2
-    part3 = "| target_work(%s"%self.target_name+") = %.6e  r_work = %6.4f  r_free = %6.4f"%\
-                                (self.target_w(), self.r_work(), self.r_free())
+    part3 = "| target_work(%s) = %.6g  r_work = %s  r_free = %s" % (
+      self.target_name,
+      self.target_w(),
+      format_value(format="%6.4f", value=self.r_work()),
+      format_value(format="%6.4f", value=self.r_free()))
     n = 78 - len(str(part3)+"|")
     print >> out, part3, " "*n +"|"
     print >> out, "|" +"-"*77+"|"
@@ -1407,10 +1396,10 @@ class manager(manager_mixin):
     alpha_d = alpha.data()
     a_mean = flex.mean(alpha_d)
     a_zero = (alpha_d <= 0.0).count(True)
-    r_work = self.r_work()
+    r_work = format_value(format="%7.4f", value=self.r_work())
     u_isos = self.xray_structure.extract_u_iso_or_u_equiv()
     b_iso_mean = flex.mean(u_isos * math.pi**2*8)
-    print >> out, "| k_sol=%5.2f b_sol=%7.2f target_w =%20.6f r_work=%7.4f" % \
+    print >> out, "| k_sol=%5.2f b_sol=%7.2f target_w =%20.6g r_work=%s" % \
                   (k_sol, b_sol, target_w, r_work) + 5*p+"|"
     print >> out, "| B(11,22,33,12,13,23)=%9.4f%9.4f%9.4f%9.4f%9.4f%9.4f |" % \
                   (u0,u1,u2,u3,u4,u5)
@@ -1494,7 +1483,8 @@ class manager(manager_mixin):
         d_range = f_obs_w.binner().bin_legend(
           i_bin = i_bin, show_bin_number = False, show_counts = False)
         if (n_ref > 0):
-          r_work      = "%10.4f" % self.r_work(selection = sel)
+          r_work = format_value(
+            format="%10.4f", value=self.r_work(selection = sel))
           scale_k1    = "%6.3f" % self.scale_k1_w(selection = sel)
           f_obs_sel   = f_obs_w.select(sel)
           d_max,d_min = f_obs_sel.d_max_min()
@@ -1999,14 +1989,12 @@ def statistics_in_resolution_bins(target_functor,
     ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
     nw = sel_fo_w.data().size()
     nt = sel_fo_t.data().size()
-    if (nw != 0):
-      r_w = "%6.4f" % bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data())
-    else:
-      r_w = "  None"
-    if (nt != 0):
-      r_t = "%6.4f" % bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data())
-    else:
-      r_t = "  None"
+    r_w = format_value(
+      format="%6.4f",
+      value=bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data()))
+    r_t = format_value(
+      format="%6.4f",
+      value=bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data()))
     d_range = fo_t.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_counts=False)
     print >> out, "|%3d: %-17s %4.2f %6d %4d %s %s %s %s|" % (
@@ -2041,13 +2029,17 @@ def r_factors_in_resolution_bins(fmodel,
     sel_fc_t = fc_t.select(sel_t)
     sel_fo_w = fo_w.select(sel_w)
     sel_fc_w = fc_w.select(sel_w)
-    r_w = bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data())
-    r_t = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data())
     nt = sel_fo_t.data().size()
     nw = sel_fo_w.data().size()
+    r_w = format_value(
+      format="%6.4f",
+      value=bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data()))
+    r_t = format_value(
+      format="%6.4f",
+      value=bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data()))
     d_range = fo_t.binner().bin_legend(
       i_bin=i_bin, show_bin_number=False, show_counts=False)
-    print >> out, "%3d: %-17s %6d %6d   %6.4f %6.4f" % (
+    print >> out, "%3d: %-17s %6d %6d   %s %s" % (
       i_bin, d_range, nw, nt, r_w, r_t)
   out.flush()
   time_show += timer.elapsed()
@@ -2151,6 +2143,8 @@ def kb_range(x_max, x_min, step):
   return x_range
 
 def n_as_s(format, value):
+  if (value is None):
+    return format_value(format=format, value=value)
   if (isinstance(value, (int, float))):
     return (format % value).strip()
   return [(format % v).strip() for v in value]
