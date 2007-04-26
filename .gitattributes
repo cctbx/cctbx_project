@@ -2,8 +2,12 @@
 cctbx/cctbx/regression/tst_weighting_schemes.py -text
 cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
+libtbx/libtbx/command_line/bash.sh -text
+libtbx/libtbx/command_line/csh.sh -text
 libtbx/libtbx/command_line/find_files.py -text
 libtbx/libtbx/command_line/list_files.py -text
+libtbx/libtbx/command_line/sh.sh -text
+libtbx/libtbx/command_line/tcsh.sh -text
 libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx/subversion.py -text
 libtbx/libtbx_refresh.py -text
