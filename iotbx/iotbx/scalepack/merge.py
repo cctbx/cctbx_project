@@ -155,7 +155,7 @@ def write(file_name=None, file_object=None, miller_array=None,
     miller_array = miller_array.f_as_f_sq()
   if (space_group_symbol is None):
     space_group_symbol = str(miller_array.space_group_info())
-    if (not space_group_symbol.startswith("Hall:")):
+    if (not space_group_symbol.endswith(")")): # not universal Hermann-Mauguin
       space_group_symbol = space_group_symbol.replace(" ", "").lower()
   print >> file_object, line_1
   print >> file_object, line_2
