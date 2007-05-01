@@ -124,7 +124,42 @@ def exercise_select_crystal_symmetry():
     assert str(e)=="No unit cell and symmetry information supplied"
   else: raise RuntimeError("Exception expected.")
 
-
+def verify_definitions_in_paper_zwart_2007():
+  # Verification of definitions in Peter Zwart's paper for the
+  # CCP4 Study Weekend Jan 2007.
+  #
+  cb_symbol_xyz = "x-y,x+y,z"
+  cb_symbol_abc = "1/2*a-1/2*b,1/2*a+1/2*b,c"
+  #
+  # Verify the claim that cb_symbol_abc is the inverse transpose of
+  # cb_symbol_xyz.
+  cb_mx_xyz = sgtbx.rt_mx(cb_symbol_xyz, r_den=12, t_den=144)
+  assert sgtbx.rt_mx(cb_mx_xyz.r().inverse().transpose()).as_xyz(
+    symbol_letters="abc") == cb_symbol_abc
+  #
+  uhmx = "C 1 2 1 (%s)" % cb_symbol_xyz
+  uhma = "C 1 2 1 (%s)" % cb_symbol_abc
+  sx = sgtbx.space_group_info(symbol=uhmx)
+  sa = sgtbx.space_group_info(symbol=uhma)
+  assert sx.group() == sa.group()
+  #
+  # We trust that the cctbx is self-consistent.
+  structure_unconv = random_structure.xray_structure(
+    space_group_info=sx,
+    elements=["C"],
+    volume_per_atom=100,
+    general_positions_only=True)
+  assert str(structure_unconv.space_group_info()) == uhmx
+  cb_op = structure_unconv.change_of_basis_op_to_reference_setting()
+  structure_reference = structure_unconv.change_basis(cb_op=cb_op)
+  assert str(structure_reference.space_group_info()) == "C 1 2 1"
+  #
+  # Verify the definitions in the paper based on the assumption
+  # that the cctbx is self-consistent.
+  site_reference = structure_reference.scatterers()[0].site
+  site_unconv_direct = cb_mx_xyz * site_reference
+  assert approx_equal(
+    site_unconv_direct, structure_unconv.scatterers()[0].site)
 
 def exercise_non_crystallographic_symmetry():
   sites_cart = flex.vec3_double(
@@ -238,6 +273,7 @@ def run():
   exercise_non_crystallographic_symmetry()
   exercise_special_position_settings()
   exercise_select_crystal_symmetry()
+  verify_definitions_in_paper_zwart_2007()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
