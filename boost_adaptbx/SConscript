@@ -80,8 +80,8 @@ if (not env_etc.no_boost_python):
     env=env,
     paths=[env_etc.boost_include, env_etc.python_include])
 
-  if (env_etc.compiler == "darwin_c++"):
-    if (env_etc.mac_cpu == "powerpc"):
+  if (env_etc.compiler in ["darwin_c++", "darwin_gcc"]):
+    if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
       dylib1 = "-ldylib1.o "
     else:
       dylib1 = ""

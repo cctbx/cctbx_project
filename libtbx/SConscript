@@ -45,7 +45,7 @@ env_etc.include_registry = libtbx.config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
 
 def disable_strict_aliasing(env):
-  if (env_etc.compiler in ["unix_gcc", "darwin_c++"]):
+  if (env_etc.compiler in ["unix_gcc", "darwin_c++", "darwin_gcc"]):
     opt = ["-fno-strict-aliasing"]
     env.Append(
       CXXFLAGS=opt,
@@ -108,6 +108,7 @@ supported_compilers = (
   "hp_ux11_aCC",
   "irix_CC",
   "darwin_c++",
+  "darwin_gcc",
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
@@ -461,47 +462,48 @@ else:
       static_exe = None
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "darwin_c++"):
+  elif (env_etc.compiler in ["darwin_c++", "darwin_gcc"]):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
+    need_fcoalesce_templates = False
+    if (env_etc.compiler == "darwin_gcc"):
+      cc = "gcc"
+      cxx = "g++"
+    else:
+      cc = "cc"
+      cxx = "c++"
+      cxx_version = easy_run.fully_buffered(command="c++ -dumpversion") \
+        .raise_if_errors() \
+        .stdout_lines[0].strip()
+      cxx_major = cxx_version.split(".")[:1]
+      if (len(cxx_major) == 1):
+        try: cxx_major = int(cxx_major[0])
+        except ValueError: pass
+        else:
+          if (cxx_major <= 3):
+            need_fcoalesce_templates = True
     env_base.Replace(
-      CC="cc",
-      SHCC="cc",
-      CXX="c++",
-      LINK="c++",
+      CC=cc,
+      SHCC=cc,
+      CXX=cxx,
+      LINK=cxx,
       LINKFLAGS=["-w"], # suppress "source/lib does not exist" warning
-      SHCXX="c++",
-      SHLINK="c++",
+      SHCXX=cxx,
+      SHLINK=cxx,
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
-    env_etc.cxxflags_base = Split("""
-      -fPIC
-      -no-cpp-precomp
-      -ftemplate-depth-130
-      -fcoalesce-templates
-      -Wno-long-double
-      -w
-      -DBOOST_DISABLE_THREADS
-    """)
-    cxx_version = easy_run.fully_buffered(command="c++ -dumpversion") \
-      .raise_if_errors() \
-      .stdout_lines[0].strip()
-    cxx_major = cxx_version.split(".")[:1]
-    if (len(cxx_major) == 1):
-      try: cxx_major = int(cxx_major[0])
-      except ValueError: pass
-      else:
-        if (cxx_major > 3):
-          env_etc.cxxflags_base.remove("-fcoalesce-templates")
-    env_etc.ccflags_base = Split("""
-      -fPIC
-      -no-cpp-precomp
-      -Wno-long-double
-      -w
-    """)
+    env_etc.ccflags_base = ["-fPIC", "-w"]
+    if (cxx == "c++"):
+      env_etc.ccflags_base.extend(["-no-cpp-precomp", "-Wno-long-double"])
+    env_etc.cxxflags_base = list(env_etc.ccflags_base)
+    if (need_fcoalesce_templates):
+      env_etc.cxxflags_base.append("-fcoalesce-templates")
+    env_etc.cxxflags_base.extend([
+      "-ftemplate-depth-130",
+      "-DBOOST_DISABLE_THREADS"])
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
-      if (cxx_version == "4.0.0"):
+      if (cxx == "c++" and cxx_version == "4.0.0"):
         opts[1] = "-O2" # Apple's optimizer is broken
       elif (libtbx.env.build_options.max_optimized):
         opts[1] = "-fast"
