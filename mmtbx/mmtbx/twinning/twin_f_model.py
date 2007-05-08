@@ -48,7 +48,7 @@ master_params =  iotbx.phil.parse("""
     map_types{
       twofofc = *two_m_dtfo_d_fc two_dtfo_fc
       .type = choice
-      fofc = m_dtfo_d_fc *gradient m_gradient
+      fofc = *gradient m_gradient
       .type = choice
       aniso_correct = False
       .type=bool
