@@ -62,7 +62,9 @@ class lbfgs(object):
     self.xray_structure.scatterers().flags_set_grads(state=False)
     #self.xray_structure.show_scatterer_flags_summary()
     if (refine_xyz):
-      sel = self.model.refinement_flags.sites_individual[0]
+      sel = flex.bool(self.model.refinement_flags.sites_individual[0].size(), False)
+      for m in self.model.refinement_flags.sites_individual:
+         sel = sel | m
       #if (self.h_params.riding):
       #  sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_site(
@@ -70,7 +72,9 @@ class lbfgs(object):
       #self.xray_structure.show_scatterer_flags_summary()
       del sel
     if (refine_occ):
-      sel = self.model.refinement_flags.occupancies_individual[0]
+      sel = flex.bool(self.model.refinement_flags.occupancies_individual[0].size(), False)
+      for m in self.model.refinement_flags.occupancies_individual:
+         sel = sel | m
       if (self.h_params.riding):
         sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_occupancy(
