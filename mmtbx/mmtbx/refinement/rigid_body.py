@@ -284,7 +284,10 @@ def setup_resolution_range(f, nref_min, high_resolution, low_high_res_limit,
         if(d_max_start >= max_low_high_res_limit):
            return [max_low_high_res_limit, low_high_res_limit, d_min_end]
         else:
-           return [min(low_high_res_limit,d_max_start), d_min_end]
+          if(d_max_start > low_high_res_limit):
+             return [d_max_start, low_high_res_limit, d_min_end]
+          else:
+             return [d_max_start, d_min_end]
   else:
      return [d_min,]
 
@@ -312,6 +315,9 @@ class manager(object):
     global time_initialization
     global time_fmodel_update_xray_structure
     global time_rbbss
+    save_r_work = fmodel.r_work()
+    save_r_free = fmodel.r_free()
+    save_xray_structure = fmodel.xray_structure.deep_copy_scatterers()
     timer_rigid_body_total = user_plus_sys_time()
     xray.set_scatterer_grad_flags(
                                scatterers = fmodel.xray_structure.scatterers(),
@@ -449,9 +455,32 @@ class manager(object):
     print >> log
     fmodel.show_essential(header = "rigid body end", out = log)
     print >> log
+    self.evaluate_after_end(fmodel, save_r_work, save_r_free,
+                                                      save_xray_structure, log)
     time_fmodel_update_xray_structure += timer_uxs.elapsed()
     self.fmodel = fmodel
     time_rigid_body_total += timer_rigid_body_total.elapsed()
+
+  def evaluate_after_end(self, fmodel, save_r_work, save_r_free,
+                                                     save_xray_structure, log):
+    r_work = fmodel.r_work()
+    r_free = fmodel.r_free()
+    if((r_work > save_r_work and abs(r_work-save_r_work) > 0.005) or
+       (r_free > save_r_free and abs(r_free-save_r_free) > 0.005)):
+       print >> log
+       print >> log, "The model after this rigid-body refinement step is not accepted."
+       print >> log, "Reason: increase in R-factors after refinement."
+       print >> log, "Start/final R-work: %6.4f/%-6.4f"%(save_r_work, r_work)
+       print >> log, "Start/final R-free: %6.4f/%-6.4f"%(save_r_free, r_free)
+       print >> log, "Return to the previous model."
+       print >> log
+       fmodel.update_xray_structure(xray_structure = save_xray_structure,
+                                    update_f_calc  = True,
+                                    update_f_mask  = True)
+       fmodel.show_essential(header = "rigid body after step back", out = log)
+       print >> log
+
+
 
   def rotation(self):
     return self.total_rotation
