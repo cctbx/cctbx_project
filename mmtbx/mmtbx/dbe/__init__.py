@@ -104,17 +104,22 @@ class manager(object):
                atom_j.element.strip() not in ["H","D"]):
                self.dbe_counters.n_bonds_non_h += 1
             if(self._check_b_and_q(i) and self._check_b_and_q(j)):
-               dbe_site, dbe_label = self._dbe_position_B(
+               dbe_site, dbe_label, b_estimated, q_estimated = self._dbe_position_B(
                                       name_i = atom_i.name.strip(),
                                       name_j = atom_j.name.strip(),
                                       site_i = flex.double(atom_i.coordinates),
                                       site_j = flex.double(atom_j.coordinates))
                if(dbe_label is not None):
                   self.dbe_counters.n_dbe_b += 1
+                  if(b_estimated is not None):
+                     u = adptbx.b_as_u(b_estimated)
+                  else: u=None
                   self._add_dbe_scatterer(anchor_i  = i,
                                           anchor_j  = j,
                                           dbe_site  = dbe_site,
-                                          dbe_label = dbe_label)
+                                          dbe_label = dbe_label,
+                                          u = u,
+                                          occupancy = q_estimated)
      ###> Locate DBE type "R" and "L" => loop over planarity proxies:
      need_L = "L" in self.params.build_dbe_types
      need_R = "R" in self.params.build_dbe_types
@@ -166,15 +171,20 @@ class manager(object):
            self.q[i_seq]     <= self.params.occupancy_max and \
            self.q[i_seq]     >= self.params.occupancy_min
 
-  def _add_dbe_scatterer(self, anchor_i, anchor_j, dbe_site, dbe_label):
+  def _add_dbe_scatterer(self, anchor_i, anchor_j, dbe_site, dbe_label,
+                                                    u = None,occupancy = None):
     self.atom_indices.append([anchor_i, anchor_j, self.dbe_counters.n_dbe])
     self.dbe_counters.n_dbe += 1
+    if(u is None):
+       u = (self.u_iso[anchor_i] + self.u_iso[anchor_j])*0.5
+    if(occupancy is None):
+       occupancy = self.params.initial_dbe_occupancy
     dbe_scatterer = xray.scatterer(
      label           = dbe_label,
      scattering_type = dbe_label,
      site            = self.xray_structure.unit_cell().fractionalize(dbe_site),
-     u               = (self.u_iso[anchor_i] + self.u_iso[anchor_j])*0.5,
-     occupancy       = self.params.initial_dbe_occupancy)
+     u               = u,
+     occupancy       = occupancy)
     self.dbe_xray_structure.add_scatterer(dbe_scatterer)
 
   def _is_phe_tyr_ring(self, i_seqs):
@@ -278,14 +288,16 @@ class manager(object):
           dbe_site = self.dbe_site_position(site_i, site_j, alp)
        else:
           dbe_site = self.dbe_site_position(site_j, site_i, alp)
+    b_estimated, q_estimated = None, None
     if(label is not None and self.fmodel is not None):
-       site_cart, gof = self.find_dbe(fft_map_data = fft_map_data,
+       site_cart, gof, b_estimated, q_estimated = \
+                        self.find_dbe(fft_map_data = fft_map_data,
                                       site_cart_1  = site_i,
                                       site_cart_2  = site_j,
                                       step         = 0.01,
                                       label        = label)
        dbe_site = site_cart
-    return dbe_site, label
+    return dbe_site, label, b_estimated, q_estimated
 
   def _dbe_position_at_ring_center(self, i_seqs):
     ring_atoms = ["CZ","CE1","CE2","CD1","CD2","CG"]
@@ -464,6 +476,7 @@ class manager(object):
     sel = data > 0.0
     data = data.select(sel)
     dist = dist.select(sel)
+    b_estimated, q_estimated = None, None
     if(data.size() > 20):
        approx_obj = maptbx.one_gaussian_peak_approximation(
                                               data_at_grid_points    = data,
@@ -473,10 +486,18 @@ class manager(object):
        a_real = approx_obj.a_real_space()
        b_real = approx_obj.b_real_space()
        gof = approx_obj.gof()
-       print "%8.3f %8.3f %6.2f" % (a_real, b_real, gof)
+
+       a = dbe_scattering_dict[label].array_of_a()[0]
+       b = dbe_scattering_dict[label].array_of_b()[0]
+       b_estimated = approx_obj.b_reciprocal_space()-b
+       q_estimated = approx_obj.a_reciprocal_space()/a
+
+       print "%8.3f %8.3f %6.2f %6.2f %6.2f %s %6.2f %6.2f %6.2f %6.2f" % (a_real, b_real, gof,
+               approx_obj.a_reciprocal_space(), approx_obj.b_reciprocal_space(),
+               label, a, b, b_estimated, q_estimated)
     else:
        print "No peak"
-    return result, gof
+    return result, gof, b_estimated, q_estimated
 
   def refresh_dbe_positions(self, fmodel, dbe_selection):
     assert fmodel.xray_structure is self.xray_structure
@@ -511,7 +532,7 @@ class manager(object):
            d1s = unit_cell.distance(site_i_frac, dbe_site_frac)
            d2s = unit_cell.distance(site_j_frac, dbe_site_frac)
            d12 = unit_cell.distance(site_i_frac, site_j_frac)
-           new_dbe_site,gof = self.find_dbe(
+           new_dbe_site,gof, b_estimated, q_estimated = self.find_dbe(
                                         fft_map_data = fft_map_data,
                                         site_cart_1  = sites_cart[i_atom_i],
                                         site_cart_2  = sites_cart[i_atom_j],
@@ -525,6 +546,8 @@ class manager(object):
               n_shifted += 1
               fmodel.xray_structure.scatterers()[mac_offset+i_dbe].site = \
                     self.xray_structure.unit_cell().fractionalize(new_dbe_site)
+              #fmodel.xray_structure.scatterers()[mac_offset+i_dbe].occupancy = q_estimated
+              #fmodel.xray_structure.scatterers()[mac_offset+i_dbe].u = adptbx.b_as_u(b_estimated)
            else:
               if(d1s+d2s-d12 > 0.2 or d1s < 0.15 or d2s < 0.15):
                  n_shifted += 1
