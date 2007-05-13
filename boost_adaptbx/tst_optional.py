@@ -15,6 +15,10 @@ def exercise(args):
       assert str(e).splitlines()[2] == "did not match C++ signature:"
     else:
       raise RuntimeError("Exception expected.")
+    exercise_wstring = getattr(boost.optional, "exercise_wstring", None)
+    if (not forever): print "exercise_wstring:", exercise_wstring
+    if (exercise_wstring is not None):
+      assert boost.optional.exercise_wstring(u"abc") == u"abcabc"
     if (not forever): break
   print "OK"
 
