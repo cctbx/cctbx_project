@@ -106,13 +106,16 @@ class manager(object):
     self.xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
     self.sites = None
     self.heights = None
-    if(self.max_number_of_peaks is None):
+    if(self.max_number_of_peaks is None and self.solvent_selection.count(False) > 0):
        self.max_number_of_peaks= int(self.solvent_selection.count(False)/10*10)
+    else:
+       self.max_number_of_peaks=1000
     if(self.verbose > 0): self.show_current_state(header = "Start model:")
     self.check_existing_solvent()
     if(self.filter_only == False):
        self.find_peaks()
-       self.filter_peaks_with_bulk_solvent_mask()
+       if(solvent_selection.count(False) > 0):
+          self.filter_peaks_with_bulk_solvent_mask()
        self.sites, self.heights, dummy = self.filter_by_distance(
                                  self.xray_structure, self.sites, self.heights)
        self.filter_close_peak_peak_contacts()
@@ -125,8 +128,6 @@ class manager(object):
     if(self.verbose > 0): self.show_current_state(header = "Final model:")
 
   def check_existing_solvent(self):
-    #for sc, s in zip(self.xray_structure.scatterers(), self.model.solvent_selection):
-    #  print sc.element_symbol(), s
     scatterers      = self.xray_structure.scatterers()
     non_solvent_sel = self.solvent_selection.select(~self.solvent_selection)
     solvent_sel     = self.solvent_selection.select(self.solvent_selection)
@@ -143,8 +144,10 @@ class manager(object):
     xrs = self.xray_structure.deep_copy_scatterers()
     xrs.erase_scatterers()
     xrs.add_scatterers(non_solvent_scatterers)
-    dummy, dummy, sel_by_dist = self.filter_by_distance(
+    if(solvent_sel.count(False) > 0):
+       dummy, dummy, sel_by_dist = self.filter_by_distance(
                                        xrs, solvent_scatterers.extract_sites())
+    else: sel_by_dist = flex.bool(solvent_sel.size(), True)
     ############################
     new_solvent_sel &= sel_by_dist
     ###
@@ -172,12 +175,6 @@ class manager(object):
     self.xray_structure = self.model.xray_structure.deep_copy_scatterers()
     self.solvent_selection = self.model.solvent_selection.deep_copy()
     #################
-
-    ###
-    #for sc1, s1, sc2, s2, aal in zip(self.xray_structure.scatterers(), self.solvent_selection,
-    #         self.model.xray_structure.scatterers(), self.model.solvent_selection, self.model.atom_attributes_list):
-    #    print sc1.element_symbol(), s1, sc2.element_symbol(), s2, aal
-
     assert approx_equal(self.solvent_selection, self.model.solvent_selection)
 
   def show_current_state(self, header):
@@ -196,25 +193,30 @@ class manager(object):
     n_tot  = self.xray_structure.scatterers().size()
     st1 = (n_solv,n_prot,n_tot)
     if(n_solv > 0):
-       st2 = (flex.max(b_solv),flex.max(b_prot))
-       st3 = (flex.min(b_solv),flex.min(b_prot))
-       st4 = (flex.mean(b_solv),flex.mean(b_prot))
-       st5 = (flex.max(q_solv),flex.min(q_prot))
-       st6 = (flex.min(q_solv),flex.max(q_prot))
+       st2 = (flex.max(b_solv),flex.max_default(b_prot, None))
+       st3 = (flex.min(b_solv),flex.min_default(b_prot, None))
+       st4 = (flex.mean(b_solv),flex.mean_default(b_prot, None))
+       st5 = (flex.max(q_solv),flex.min_default(q_prot, None))
+       st6 = (flex.min(q_solv),flex.max_default(q_prot, None))
     else:
-       st2 = (0,flex.max(b_prot))
-       st3 = (0,flex.min(b_prot))
-       st4 = (0,flex.mean(b_prot))
-       st5 = (0,flex.min(q_prot))
-       st6 = (0,flex.max(q_prot))
+       st2 = (0,flex.max_default(b_prot, None))
+       st3 = (0,flex.min_default(b_prot, None))
+       st4 = (0,flex.mean_default(b_prot, None))
+       st5 = (0,flex.min_default(q_prot, None))
+       st6 = (0,flex.max_default(q_prot, None))
     print >> out, header
     print >> out, "                   solvent non-solvent       total"
     print >> out, "   number    =%12d%12d%12d" % st1
-    print >> out, "   b_iso_max =%12.2f%12.2f" % st2
-    print >> out, "   b_iso_min =%12.2f%12.2f" % st3
-    print >> out, "   b_iso_ave =%12.2f%12.2f" % st4
-    print >> out, "   q_min     =%12.2f%12.2f" % st5
-    print >> out, "   q_max     =%12.2f%12.2f" % st6
+    try: print >> out, "   b_iso_max =%12.2f%12.2f" % st2
+    except: print >> out, "   b_iso_max =%12.2f%12s" % st2
+    try: print >> out, "   b_iso_min =%12.2f%12.2f" % st3
+    except: print >> out, "   b_iso_min =%12.2f%12s" % st3
+    try: print >> out, "   b_iso_ave =%12.2f%12.2f" % st4
+    except: print >> out, "   b_iso_ave =%12.2f%12s" % st4
+    try: print >> out, "   q_min     =%12.2f%12.2f" % st5
+    except: print >> out, "   q_min     =%12.2f%12s" % st5
+    try: print >> out, "   q_max     =%12.2f%12.2f" % st6
+    except: print >> out, "   q_max     =%12.2f%12s" % st6
 
   def find_peaks(self):
     out = self.log
@@ -417,8 +419,8 @@ class manager(object):
   def create_solvent_xray_structure(self):
     if(self.b_iso is None):
        b = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
-       b_solv = flex.mean(b)
-       if(b_solv < self.b_iso_min or b_solv > self.b_iso_max):
+       b_solv = flex.mean_default(b, None)
+       if(b_solv is not None and b_solv < self.b_iso_min or b_solv > self.b_iso_max):
           b_solv = (self.b_iso_min + self.b_iso_max) / 2.
     else:
        b_solv = self.b_iso
