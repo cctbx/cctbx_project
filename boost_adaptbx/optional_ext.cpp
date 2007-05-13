@@ -14,6 +14,15 @@ namespace {
     }
     return boost::optional<int>(42);
   }
+
+#if !defined(BOOST_NO_STD_WSTRING) && defined(Py_USING_UNICODE)
+  boost::optional<std::wstring>
+  exercise_wstring(
+    boost::optional<std::wstring> const& value)
+  {
+    return boost::optional<std::wstring>(*value + *value);
+  }
+#endif
 }
 
 BOOST_PYTHON_MODULE(boost_optional_ext)
@@ -25,4 +34,9 @@ BOOST_PYTHON_MODULE(boost_optional_ext)
   to_and_from_python<double>();
   to_and_from_python<std::string>();
   boost::python::def("exercise", exercise);
+
+#if !defined(BOOST_NO_STD_WSTRING) && defined(Py_USING_UNICODE)
+  to_and_from_python<std::wstring>();
+  boost::python::def("exercise_wstring", exercise_wstring);
+#endif
 }
