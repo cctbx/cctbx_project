@@ -493,7 +493,7 @@ class manager(manager_mixin):
 
   def _get_step(self, update_f_ordered_solvent = False):
     step = self.f_obs.d_min()/self.mask_params.grid_step_factor
-    if(step < 0.2): step = 0.2
+    if(step < 0.19): step = 0.19
     step = min(0.8, step)
     if(update_f_ordered_solvent): step = 0.3
     return step
@@ -1462,6 +1462,11 @@ class manager(manager_mixin):
     np = 79 - (len(line6) + 1)
     line6 = line6 + " "*np + "|"
     print >> out, line6
+    line7="| x-ray target function (%s) for work reflections: %s"% (
+      self.target_name, n_as_s("%15.6f",self.target_w()))
+    np = 79 - (len(line7) + 1)
+    line7 = line7 + " "*np + "|"
+    print >> out, line7
     print >> out, "|"+"-"*77+"|"
     out.flush()
     time_show += timer.elapsed()
@@ -1972,19 +1977,27 @@ def statistics_in_resolution_bins(target_functor,
     sel_alpha_w = alpha_w.select(sel_w)
     sel_beta_w  = beta_w.select(sel_w)
     if (tpr.size() == 0):
-      sel_tpr_w_mean = None
-      sel_tpr_t_mean = None
+      sel_tpr_w = None
+      sel_tpr_t = None
     else:
-      sel_tpr_w_mean = flex.mean_default(tpr_w.select(sel_w), None)
-      sel_tpr_t_mean = flex.mean_default(tpr_t.select(sel_t), None)
-    if (sel_tpr_w_mean is None):
+      denom_w = flex.sum(sel_fo_w.data()*sel_fo_w.data())
+      denom_t = flex.sum(sel_fo_t.data()*sel_fo_t.data())
+      if(denom_w != 0):
+         sel_tpr_w = flex.sum(tpr_w.select(sel_w))/denom_w
+      else:
+         sel_tpr_w = flex.sum(tpr_w.select(sel_w))
+      if(denom_t != 0):
+         sel_tpr_t = flex.sum(tpr_t.select(sel_t))/denom_t
+      else:
+         sel_tpr_t = flex.sum(tpr_t.select(sel_t))
+    if (sel_tpr_w is None):
       target_w = "%11s" % "None"
     else:
-      target_w = "%11.5g" % sel_tpr_w_mean
-    if (sel_tpr_t_mean is None):
+      target_w = "%11.5g" % sel_tpr_w
+    if (sel_tpr_t is None):
       target_t = "%11s" % "None"
     else:
-      target_t = "%11.5g" % sel_tpr_t_mean
+      target_t = "%11.5g" % sel_tpr_t
     d_max_,d_min_ = sel_fo_all.d_max_min()
     ch = fmodel.f_obs.resolution_filter(d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
     nw = sel_fo_w.data().size()
