@@ -18,95 +18,132 @@ import libtbx.load_env
 import iotbx.xplor.map
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
+import iotbx.phil
 
-
-def get_manager(fmodel, model, solvent_selection, log = None, params = None):
-  if(params.mode == "filter_only"): filter_only = True
-  else: filter_only = False
-  if(params is not None):
-     return manager(
-       fmodel                             = fmodel,
-       model                              = model,
-       solvent_selection                  = solvent_selection,
-       b_iso_min                          = params.b_iso_min,
-       b_iso_max                          = params.b_iso_max,
-       b_iso                              = params.b_iso,
-       scattering_type                    = params.scattering_type,
-       occupancy_min                      = params.occupancy_min,
-       occupancy_max                      = params.occupancy_max,
-       occupancy                          = params.occupancy,
-       use_sigma_scaled_maps              = params.use_sigma_scaled_maps,
-       primary_map_type                   = params.primary_map_type,
-       primary_map_k                      = params.primary_map_k,
-       primary_map_n                      = params.primary_map_n,
-       primary_map_cutoff                 = params.primary_map_cutoff,
-       secondary_map_type                 = params.secondary_map_type,
-       secondary_map_k                    = params.secondary_map_k,
-       secondary_map_n                    = params.secondary_map_n,
-       secondary_map_cutoff               = params.secondary_map_cutoff,
-       peak_map_matching_tolerance        = params.peak_map_matching_tolerance,
-       resolution_factor                  = params.resolution_factor,
-       min_solv_macromol_dist             = params.min_solv_macromol_dist,
-       max_solv_macromol_dist             = params.max_solv_macromol_dist,
-       max_number_of_peaks                = params.max_number_of_peaks,
-       solvent_pdb_file_name              = None,
-       filter_only                        = filter_only,
-       verbose                            = params.verbose,
-       log                                = log,
-       peak_search_level           = params.peak_search.peak_search_level,
-       max_peaks                   = params.peak_search.max_peaks,
-       interpolate                 = params.peak_search.interpolate,
-       min_distance_sym_equiv      = params.peak_search.min_distance_sym_equiv,
-       general_positions_only      = params.peak_search.general_positions_only,
-       min_cross_distance          = params.peak_search.min_cross_distance,
-       params                      = params)
-  else:
-     return manager(fmodel, solvent_selection, params = params)
+master_params = iotbx.phil.parse("""\
+  low_resolution = 2.8
+    .type = float
+  mode = *auto filter_only every_macro_cycle
+    .type=choice
+  output_residue_name = HOH
+    .type=str
+  output_chain_id = S
+    .type=str
+  output_atom_name = O
+    .type=str
+  b_iso_min = 1.0
+    .type=float
+  b_iso_max = 50.0
+    .type=float
+  b_iso = None
+    .type=float
+  scattering_type = O
+    .type=str
+  occupancy_min = 1.0
+    .type=float
+  occupancy_max = 1.0
+    .type=float
+  occupancy = 1.0
+    .type=float
+  bulk_solvent_mask_exclusions = True
+    .type = bool
+  use_sigma_scaled_maps = True
+    .type=bool
+  primary_map_type = m*Fobs-D*Fmodel
+    .type=str
+  primary_map_k = None
+    .type=float
+  primary_map_n = None
+    .type=float
+  primary_map_cutoff = 3.0
+    .type=float
+  secondary_map_type = 2m*Fobs-D*Fmodel
+    .type=str
+  secondary_map_k = None
+    .type=float
+  secondary_map_n = None
+    .type=float
+  secondary_map_cutoff = 1.0
+    .type=float
+  peak_map_matching_tolerance = 2.0
+    .type=float
+  resolution_factor = 1./4.
+    .type=float
+  min_solv_macromol_dist = 1.8
+    .type=float
+  max_solv_macromol_dist = 6.0
+    .type=float
+  min_solv_solv_dist = 1.8
+    .type=float
+  max_number_of_peaks = None
+    .type=int
+  verbose = 1
+    .type=int
+  peak_search
+    .expert_level=1
+  {
+    peak_search_level = 1
+      .type=int
+    max_peaks = 0
+      .type=int
+    interpolate = True
+      .type=bool
+    min_distance_sym_equiv = 1.e-6
+      .type=float
+    general_positions_only = False
+      .type=bool
+    min_cross_distance = 2.0
+      .type=float
+  }
+""")
 
 class manager(object):
   def __init__(self, fmodel,
                      model,
                      solvent_selection,
-                     b_iso_min                   = 1.0,
-                     b_iso_max                   = 50.0,
-                     b_iso                       = None,
-                     scattering_type             = "O",
-                     occupancy_min               = 0.1,
-                     occupancy_max               = 2.0,
-                     occupancy                   = 1.0,
-                     use_sigma_scaled_maps       = True,
-                     primary_map_type            = "m*Fobs-D*Fmodel",
-                     primary_map_k               = None,
-                     primary_map_n               = None,
-                     primary_map_cutoff          = 3.0,
-                     secondary_map_type          = "2m*Fobs-D*Fmodel",
-                     secondary_map_k             = None,
-                     secondary_map_n             = None,
-                     secondary_map_cutoff        = 1.0,
-                     peak_map_matching_tolerance = 2.0,
-                     resolution_factor           = 1./4.,
-                     min_solv_macromol_dist      = 1.8,
-                     max_solv_macromol_dist      = 6.0,
-                     min_solv_solv_dist          = 1.8,
-                     max_number_of_peaks         = None,
-                     solvent_pdb_file_name       = None,
-                     filter_only                 = False,
-                     verbose                     = 1,
-                     log                         = None,
-                     peak_search_level           = 1,
-                     max_peaks                   = 0,
-                     peak_cutoff                 = 1.0,
-                     interpolate                 = True,
-                     min_distance_sym_equiv      = 1.e-6,
-                     general_positions_only      = False,
-                     min_cross_distance          = 2.0,
-                     params                      = None):
+                     params = master_params.extract(),
+                     log    = None):
     adopt_init_args(self, locals())
+    #
+    self.b_iso_min                   = self.params.b_iso_min
+    self.b_iso_max                   = self.params.b_iso_max
+    self.b_iso                       = self.params.b_iso
+    self.scattering_type             = self.params.scattering_type
+    self.occupancy_min               = self.params.occupancy_min
+    self.occupancy_max               = self.params.occupancy_max
+    self.occupancy                   = self.params.occupancy
+    self.use_sigma_scaled_maps       = self.params.use_sigma_scaled_maps
+    self.bulk_solvent_mask_exclusions= self.params.bulk_solvent_mask_exclusions
+    self.primary_map_type            = self.params.primary_map_type
+    self.primary_map_k               = self.params.primary_map_k
+    self.primary_map_n               = self.params.primary_map_n
+    self.primary_map_cutoff          = self.params.primary_map_cutoff
+    self.secondary_map_type          = self.params.secondary_map_type
+    self.secondary_map_k             = self.params.secondary_map_k
+    self.secondary_map_n             = self.params.secondary_map_n
+    self.secondary_map_cutoff        = self.params.secondary_map_cutoff
+    self.peak_map_matching_tolerance = self.params.peak_map_matching_tolerance
+    self.resolution_factor           = self.params.resolution_factor
+    self.min_solv_macromol_dist      = self.params.min_solv_macromol_dist
+    self.max_solv_macromol_dist      = self.params.max_solv_macromol_dist
+    self.min_solv_solv_dist          = self.params.min_solv_solv_dist
+    self.max_number_of_peaks         = self.params.max_number_of_peaks
+    if(self.params.mode == "filter_only"): self.filter_only = True
+    else: self.filter_only = False
+    self.verbose                     = self.params.verbose
+    self.peak_search_level     = self.params.peak_search.peak_search_level
+    self.max_peaks             = self.params.peak_search.max_peaks
+    self.interpolate           = self.params.peak_search.interpolate
+    self.min_distance_sym_equiv= self.params.peak_search.min_distance_sym_equiv
+    self.general_positions_only= self.params.peak_search.general_positions_only
+    self.min_cross_distance    = self.params.peak_search.min_cross_distance
+    #
     if (self.log is None): self.log = sys.stdout
     self.xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
     self.sites = None
     self.heights = None
-    if(self.max_number_of_peaks is None and self.solvent_selection.count(False) > 0):
+    if(self.max_number_of_peaks is None and
+                                      self.solvent_selection.count(False) > 0):
        self.max_number_of_peaks= int(self.solvent_selection.count(False)/10*10)
     else:
        self.max_number_of_peaks=1000
@@ -115,14 +152,13 @@ class manager(object):
     if(self.filter_only == False):
        self.find_peaks()
        if(solvent_selection.count(False) > 0):
-          self.filter_peaks_with_bulk_solvent_mask()
+          if(self.bulk_solvent_mask_exclusions):
+             self.filter_peaks_with_bulk_solvent_mask()
        self.sites, self.heights, dummy = self.filter_by_distance(
                                  self.xray_structure, self.sites, self.heights)
        self.filter_close_peak_peak_contacts()
        self.create_solvent_xray_structure()
        self.update_xray_structure()
-    if(self.solvent_pdb_file_name is not None):
-       open(self.solvet_pdb_file_name, "w").write(self.xray_structure.as_pdb_file())
     if(self.filter_only == False):
        self.solvent_selection.extend(flex.bool(self.sites.size(), True))
     if(self.verbose > 0): self.show_current_state(header = "Final model:")
@@ -144,10 +180,14 @@ class manager(object):
     xrs = self.xray_structure.deep_copy_scatterers()
     xrs.erase_scatterers()
     xrs.add_scatterers(non_solvent_scatterers)
-    if(solvent_sel.count(False) > 0):
-       dummy, dummy, sel_by_dist = self.filter_by_distance(
+    # XXX work-around to allow filling of an empty unit cell
+    #if(solvent_sel.count(False) > 0):
+    #   dummy, dummy, sel_by_dist = self.filter_by_distance(
+    #                                   xrs, solvent_scatterers.extract_sites())
+    #else:
+    #   sel_by_dist = flex.bool(solvent_sel.size(), True)
+    dummy, dummy, sel_by_dist = self.filter_by_distance(
                                        xrs, solvent_scatterers.extract_sites())
-    else: sel_by_dist = flex.bool(solvent_sel.size(), True)
     ############################
     new_solvent_sel &= sel_by_dist
     ###
