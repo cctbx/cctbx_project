@@ -145,8 +145,10 @@ class adp_aniso_restraints(object):
                if(fl_i.grad_u_aniso()): g_i[i_seq] +=  2.0 * diff
                if(fl_j.grad_u_iso()):   g_j[i_seq] += -2.0 * diff
                self.number_of_restraints += 1
-           self.gradients_aniso_cart[i] = list(g_i)
-           self.gradients_iso[j] += (g_j[0]+g_j[1]+g_j[2])
+           if(fl_i.grad_u_aniso()):
+              self.gradients_aniso_cart[i] = list(g_i)
+           if(fl_j.grad_u_iso()):
+              self.gradients_iso[j] += (g_j[0]+g_j[1]+g_j[2])
         if(fl_i.use_u_iso() and fl_j.use_u_aniso()):
            u_i = u_iso[i]
            u_j = u_cart[j]
@@ -159,8 +161,10 @@ class adp_aniso_restraints(object):
                if(fl_i.grad_u_iso()):   g_i[i_seq] +=  2.0 * diff
                if(fl_j.grad_u_aniso()): g_j[i_seq] += -2.0 * diff
                self.number_of_restraints += 1
-           self.gradients_aniso_cart[j] = list(g_j)
-           self.gradients_iso[i] += (g_i[0]+g_i[1]+g_i[2])
+           if(fl_j.grad_u_aniso()):
+              self.gradients_aniso_cart[j] = list(g_j)
+           if(fl_i.grad_u_iso()):
+              self.gradients_iso[i] += (g_i[0]+g_i[1]+g_i[2])
     self.gradients_aniso_star = adptbx.grad_u_cart_as_u_star(unit_cell,
                                                      self.gradients_aniso_cart)
 
