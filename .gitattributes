@@ -1,4 +1,5 @@
 * text=auto !eol
+cctbx/cctbx/regression/random_generator_state.pickle -text
 cctbx/cctbx/regression/structure_ideal.pickle -text
 cctbx/cctbx/regression/structure_start.pickle -text
 cctbx/cctbx/regression/tst_weighting_schemes.py -text
