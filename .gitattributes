@@ -1,5 +1,8 @@
 * text=auto !eol
+cctbx/cctbx/regression/structure_ideal.pickle -text
+cctbx/cctbx/regression/structure_start.pickle -text
 cctbx/cctbx/regression/tst_weighting_schemes.py -text
+cctbx/cctbx/regression/tst_xray_minimization_failure.py -text
 cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 libtbx/libtbx/command_line/bash.sh -text
