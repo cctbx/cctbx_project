@@ -36,7 +36,7 @@ def run():
   assert c.is_well_defined()
   c_coefficient = c.coefficient()
   assert c_coefficient > 0.999
-  
+
 
 if __name__ == '__main__':
   run()
