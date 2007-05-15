@@ -31,31 +31,26 @@ class bulk_solvent(around_atoms):
         xray_structure,
         gridding_n_real=None,
         grid_step=None,
-        solvent_radius=1.0,
-        shrink_truncation_radius=1.0):
+        solvent_radius=1.0, # XXX consolidate with params above
+        shrink_truncation_radius=1.0): # XXX consolidate with params above
      assert [gridding_n_real, grid_step].count(None) == 1
      self.xray_structure = xray_structure
-     if (grid_step is not None): grid_step = min(0.8, grid_step) # XXX VERY BAD
      if (gridding_n_real is None):
        gridding_n_real = maptbx.crystal_gridding(
          unit_cell=xray_structure.unit_cell(),
          step=grid_step).n_real()
      atom_radii = flex.double()
      # XXX use scattering dictionary and set_selected
-     selection = flex.size_t()
+     unknown = []
      for i_seq, scatterer in enumerate(xray_structure.scatterers()):
        try:
          atom_radii.append(
            van_der_waals_radii.vdw.table[scatterer.element_symbol()])
        except:
-         selection.append(i_seq)
+         unknown.append(scatterer.element_symbol())
      sites_frac = xray_structure.sites_frac()
-     if(selection.size() > 0):
-        # XXX VERY BAD
-        print "WARNING: Number of atoms with unknown van der Waals rad.:", \
-                                                               selection.size()
-        selection_bool = flex.bool(sites_frac.size(), selection)
-        sites_frac = sites_frac.select(~selection_bool)
+     if(len(unknown) > 0):
+        raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
      around_atoms.__init__(self,
        unit_cell=xray_structure.unit_cell(),
        space_group_order_z=xray_structure.space_group().order_z(),
