@@ -65,7 +65,7 @@ class lbfgs(object):
       sel = flex.bool(self.model.refinement_flags.sites_individual[0].size(), False)
       for m in self.model.refinement_flags.sites_individual:
          sel = sel | m
-      #if (self.h_params.riding):
+      #if (self.h_params.mode == "riding"):
       #  sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_site(
         iselection=sel.iselection())
@@ -75,20 +75,20 @@ class lbfgs(object):
       sel = flex.bool(self.model.refinement_flags.occupancies_individual[0].size(), False)
       for m in self.model.refinement_flags.occupancies_individual:
          sel = sel | m
-      if (self.h_params.riding):
+      if (self.h_params.mode == "riding"):
         sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_occupancy(
         iselection=sel.iselection())
       del sel
     if (refine_adp):
       sel = self.model.refinement_flags.adp_individual_iso[0]
-      if (self.h_params.riding):
+      if (self.h_params.mode == "riding"):
         sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_u_iso(
         iselection=sel.iselection())
       #
       sel = self.model.refinement_flags.adp_individual_aniso[0]
-      if (self.h_params.riding):
+      if (self.h_params.mode == "riding"):
         sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection=sel.iselection())
