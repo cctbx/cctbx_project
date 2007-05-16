@@ -218,7 +218,7 @@ class manager(object):
           refine_adp               = True,
           log                      = log)
     if(fmodel.xray_structure.hd_selection().count(True) > 0 and
-       not model.use_dbe and h_params.riding):
+       not model.use_dbe and h_params.mode == "riding"):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement for H atoms",
                                         out = log)
        # XXX FUTURE: smart decision about which selection to use and at which resolution.
