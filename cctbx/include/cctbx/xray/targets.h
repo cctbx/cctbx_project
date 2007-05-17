@@ -765,7 +765,12 @@ namespace targets {
   }
 
   //! maximum-likelihood target function and gradients
-  /*! Pavel Afonine, 26-MAY-2004
+  /*! References:
+      Lunin, V.Y., Afonine, P.V. & Urzhumtsev, A. (2002).
+        Acta Cryst. A58, 270-282.
+      Lunin, V.Y. & Skovoroda, T.P. (1995).
+        Acta Cryst. A51, 880-887.
+      Pavel Afonine, 26-MAY-2004
    */
   class maximum_likelihood_criterion : public common_results
   {
