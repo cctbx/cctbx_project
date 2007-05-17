@@ -19,8 +19,8 @@ class gradients(manager):
     @type xray_structure: cctbx.xray.structure
     @param xray_structure: the structure to differentiate the structure
     factors of
-    @type u_iso_reinable_params: ??
-    @param u_iso_reinable_params: ??
+    @type u_iso_refinable_params: ??
+    @param u_iso_refinable_params: ??
     @type miller_set: L{cctbx.miller.set}
     @param miller_set: the set of miller indicies to evaluate the structure
     factors at
