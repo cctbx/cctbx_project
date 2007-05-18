@@ -649,7 +649,6 @@ def scale_from_ml(d_min = 2.2,
   # create fmodel with dummy f_obs
   #
   fmodel = mmtbx.f_model.manager(
-        sf_algorithm   = "fft",
         r_free_flags   = r_free_flags,
         f_obs          = f_calc.array(data=flex.double(f_calc.data().size(),1.0)),
         xray_structure = xray_structure,

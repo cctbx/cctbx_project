@@ -3,7 +3,7 @@ try: import phaser
 except ImportError: phaser = None
 else: import phaser.phenix_adaptors.sad_target
 from cctbx.array_family import flex
-import math, time
+import math, time, sys, os, random
 from cctbx import miller
 from cctbx import crystal
 from cctbx import adptbx
@@ -20,8 +20,6 @@ from mmtbx.refinement import print_statistics
 from cctbx.eltbx.xray_scattering import wk1995
 from mmtbx.max_lik import max_like_non_uniform
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-import sys, os
-import random
 from cctbx import miller
 from iotbx.cns.miller_array import crystal_symmetry_as_cns_comments
 import cctbx.xray.structure_factors
@@ -36,6 +34,7 @@ from libtbx.utils import Sorry, user_plus_sys_time, date_and_time
 from libtbx.str_utils import format_value, show_string
 import libtbx.path
 from cStringIO import StringIO
+import iotbx.phil
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -176,6 +175,25 @@ class manager_mixin(object):
     return self.target_functor()(compute_gradients=True) \
       .gradients_wrt_atomic_parameters(**keyword_args)
 
+sf_and_grads_accuracy_params = iotbx.phil.parse("""\
+  algorithm = *fft direct
+    .type = choice
+  cos_sin_table = False
+    .type = bool
+  grid_resolution_factor=1/3.
+    .type = float
+  quality_factor = None
+    .type = float
+  u_base = None
+    .type = float
+  b_base = None
+    .type = float
+  wing_cutoff = None
+    .type = float
+  exp_table_one_over_step_size = None
+    .type = float
+""")
+
 class manager(manager_mixin):
 
   target_names = {
@@ -201,34 +219,33 @@ class manager(manager_mixin):
     "mlhl": target_attributes("ml", "hl"),
     "ml_sad": target_attributes("ml", "sad")}
 
-  def __init__(self, f_obs                 = None,
-                     r_free_flags          = None,
-                     b_cart                = [0.,0.,0.,0.,0.,0.],
-                     k_sol                 = 0.0,
-                     b_sol                 = 0.0,
-                     sf_algorithm          = "fft",
-                     sf_cos_sin_table      = True,
-                     target_name           = None,
-                     abcd                  = None,
-                     alpha_beta_params     = None,
-                     xray_structure        = None,
-                     f_mask                = None,
-                     f_calc                = None,
-                     mask_params           = None,
-                     trust_xray_structure  = False,
-                     update_xray_structure = True,
-                     use_f_model_scaled    = False,
-                     overall_scale         = 1.0,
-                     f_ordered_solvent     = None,
-                     f_ordered_solvent_dist = None,
-                     n_ordered_water = 0,
-                     b_ordered_water = 0.0):
+  def __init__(self,
+         f_obs                        = None,
+         r_free_flags                 = None,
+         b_cart                       = [0.,0.,0.,0.,0.,0.],
+         k_sol                        = 0.0,
+         b_sol                        = 0.0,
+         sf_and_grads_accuracy_params = sf_and_grads_accuracy_params.extract(),
+         target_name                  = None,
+         abcd                         = None,
+         alpha_beta_params            = None,
+         xray_structure               = None,
+         f_mask                       = None,
+         f_calc                       = None,
+         mask_params                  = None,
+         trust_xray_structure         = False,
+         update_xray_structure        = True,
+         use_f_model_scaled           = False,
+         overall_scale                = 1.0,
+         f_ordered_solvent            = None,
+         f_ordered_solvent_dist       = None,
+         n_ordered_water              = 0,
+         b_ordered_water              = 0.0):
     assert f_obs is not None
     assert f_obs.is_real_array()
     self.f_obs             = f_obs
     self.r_free_flags      = None
-    self.sf_algorithm      = sf_algorithm
-    self.sf_cos_sin_table  = sf_cos_sin_table
+    self.sfg_params = sf_and_grads_accuracy_params
     self.abcd              = abcd
     self.alpha_beta_params = alpha_beta_params
     self.xray_structure    = xray_structure
@@ -294,9 +311,6 @@ class manager(manager_mixin):
     assert len(b_cart) == 6
     if(self.abcd is not None):
        assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
-    if(self.sf_algorithm not in ("fft", "direct")):
-       raise RuntimeError("Unknown s.f. calculation method: %s"%
-                                                             self.sf_algorithm)
     self.set_target_name(target_name=target_name)
     self._structure_factor_gradients_w = None
 
@@ -312,8 +326,15 @@ class manager(manager_mixin):
     if (self._structure_factor_gradients_w is None):
       self._structure_factor_gradients_w \
         = cctbx.xray.structure_factors.gradients(
-            miller_set=self.f_obs_w,
-            cos_sin_table=self.sf_cos_sin_table)
+         miller_set                   = self.f_obs_w,
+         cos_sin_table                = self.sfg_params.cos_sin_table,
+         grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+         quality_factor               = self.sfg_params.quality_factor,
+         u_base                       = self.sfg_params.u_base,
+         b_base                       = self.sfg_params.b_base,
+         wing_cutoff                  = self.sfg_params.wing_cutoff,
+         exp_table_one_over_step_size =
+                                  self.sfg_params.exp_table_one_over_step_size)
     return self._structure_factor_gradients_w
 
   structure_factor_gradients_w = property(_get_structure_factor_gradients_w)
@@ -360,22 +381,22 @@ class manager(manager_mixin):
        xrs = None
     else:
        xrs = self.xray_structure.deep_copy_scatterers()
-    return manager(f_obs              = self.f_obs.deep_copy(),
-                r_free_flags          = self.r_free_flags.deep_copy(),
-                b_cart                = self.b_cart(),
-                f_mask                = self.f_mask().deep_copy(),
-                k_sol                 = self.k_sol(),
-                b_sol                 = self.b_sol(),
-                sf_algorithm          = self.sf_algorithm,
-                sf_cos_sin_table      = self.sf_cos_sin_table,
-                target_name           = self.target_name,
-                abcd                  = abcd,
-                alpha_beta_params     = self.alpha_beta_params,
-                xray_structure        = xrs,
-                f_calc                = self.f_calc().deep_copy(),
-                mask_params           = self.mask_params,
-                trust_xray_structure  = True,
-                update_xray_structure = False,
+    return manager(
+              f_obs                        = self.f_obs.deep_copy(),
+              r_free_flags                 = self.r_free_flags.deep_copy(),
+              b_cart                       = self.b_cart(),
+              f_mask                       = self.f_mask().deep_copy(),
+              k_sol                        = self.k_sol(),
+              b_sol                        = self.b_sol(),
+              sf_and_grads_accuracy_params = self.sfg_params,  # XXX deep_copy ?
+              target_name                  = self.target_name,
+              abcd                         = abcd,
+              alpha_beta_params            = self.alpha_beta_params,
+              xray_structure               = xrs,
+              f_calc                       = self.f_calc().deep_copy(),
+              mask_params                  = self.mask_params,  # XXX deep_copy ?
+              trust_xray_structure         = True,
+              update_xray_structure        = False,
       overall_scale         = self.overall_scale,
       f_ordered_solvent      = self.f_ordered_solvent.deep_copy(),
       f_ordered_solvent_dist = self.f_ordered_solvent_dist.deep_copy(),
@@ -393,8 +414,7 @@ class manager(manager_mixin):
       b_cart=tuple(self.b_cart()),
       k_sol=self.k_sol(),
       b_sol=self.b_sol(),
-      sf_algorithm=self.sf_algorithm,
-      sf_cos_sin_table=self.sf_cos_sin_table,
+      sf_and_grads_accuracy_params = self.sfg_params,
       target_name=self.target_name,
       abcd=abcd,
       alpha_beta_params=self.alpha_beta_params,
@@ -540,9 +560,16 @@ class manager(manager_mixin):
        timer = user_plus_sys_time()
        assert self.xray_structure is not None
        f_calc = self.f_obs.structure_factors_from_scatterers(
-                               xray_structure = self.xray_structure,
-                               algorithm      = self.sf_algorithm,
-                               cos_sin_table  = self.sf_cos_sin_table).f_calc()
+         xray_structure = self.xray_structure,
+         algorithm                    = self.sfg_params.algorithm,
+         cos_sin_table                = self.sfg_params.cos_sin_table,
+         grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+         quality_factor               = self.sfg_params.quality_factor,
+         u_base                       = self.sfg_params.u_base,
+         b_base                       = self.sfg_params.b_base,
+         wing_cutoff                  = self.sfg_params.wing_cutoff,
+         exp_table_one_over_step_size =
+                         self.sfg_params.exp_table_one_over_step_size).f_calc()
        time_f_calc += timer.elapsed()
     if(update_f_ordered_solvent):
        nu_manager = max_like_non_uniform.ordered_solvent_distribution(
@@ -705,21 +732,21 @@ class manager(manager_mixin):
       result = min(max_n_bins, result)
     return result
 
-  def update(self, f_calc              = None,
-                   f_obs               = None,
-                   f_mask              = None,
-                   f_ordered_solvent   = None,
-                   r_free_flags        = None,
-                   b_cart              = None,
-                   k_sol               = None,
-                   b_sol               = None,
-                   sf_algorithm        = None,
-                   target_name         = None,
-                   abcd                = None,
-                   alpha_beta_params   = None,
-                   xray_structure      = None,
-                   mask_params         = None,
-                   overall_scale       = None):
+  def update(self, f_calc                       = None,
+                   f_obs                        = None,
+                   f_mask                       = None,
+                   f_ordered_solvent            = None,
+                   r_free_flags                 = None,
+                   b_cart                       = None,
+                   k_sol                        = None,
+                   b_sol                        = None,
+                   sf_and_grads_accuracy_params = None,
+                   target_name                  = None,
+                   abcd                         = None,
+                   alpha_beta_params            = None,
+                   xray_structure               = None,
+                   mask_params                  = None,
+                   overall_scale                = None):
     if(f_calc is not None):
        assert f_calc.indices().all_eq(self.core.f_calc.indices())
        self.update_core(f_calc = f_calc)
@@ -749,9 +776,8 @@ class manager(manager_mixin):
        self.update_core(k_sol = k_sol)
     if(b_sol is not None):
        self.update_core(b_sol = b_sol)
-    if(sf_algorithm is not None):
-      assert sf_algorithm in ("fft", "direct")
-      self.sf_algorithm = sf_algorithm
+    if(sf_and_grads_accuracy_params is not None):
+      self.sfg_params = sf_and_grads_accuracy_params
       self.update_xray_structure(update_f_calc  = True)
     if(target_name is not None):
       self.set_target_name(target_name=target_name)
@@ -1371,7 +1397,6 @@ class manager(manager_mixin):
     print >> out, "b_cart          = ", self.b_cart()
     print >> out, "k_sol           = ", self.k_sol()
     print >> out, "b_sol           = ", self.b_sol()
-    print >> out, "sf_algorithm    = ", self.sf_algorithm
     print >> out, "target_name     = ", self.target_name
     out.flush()
     time_show += timer.elapsed()
@@ -1520,8 +1545,14 @@ class manager(manager_mixin):
     f_obs_w.setup_binner(reflections_per_bin = reflections_per_bin,
                          n_bins              = n_bins)
     fmodel_dc = self.deep_copy()
-    if(self.sf_algorithm=="fft"):      fmodel_dc.update(sf_algorithm="direct")
-    elif(self.sf_algorithm=="direct"): fmodel_dc.update(sf_algorithm="fft")
+    fft_p = sf_and_grads_accuracy_params.extract()
+    fft_p.algorithm = "fft"
+    dir_p = sf_and_grads_accuracy_params.extract()
+    dir_p.algorithm = "direct"
+    if(self.sfg_params.algorithm == "fft"):
+       fmodel_dc.update(sf_and_grads_accuracy_params = dir_p)
+    elif(self.sfg_params.algorithm == "direct"):
+       fmodel_dc.update(sf_and_grads_accuracy_params = fft_p)
     print >> out, "|"+"-"*77+"|"
     print >> out, "| Bin     Resolution   Compl.  No.       Scale_k1             R-work          |"
     print >> out, "|number     range              Refl.      direct       fft direct fft-direct,%|"
@@ -1541,7 +1572,7 @@ class manager(manager_mixin):
         d_range     = f_obs_w.binner().bin_legend(
                    i_bin = i_bin, show_bin_number = False, show_counts = False)
         format = "|%3d: %-17s %4.2f %6d %14.3f %6.4f %6.4f   %9.4f  |"
-        if(self.sf_algorithm == "fft"):
+        if(self.sfg_params.algorithm == "fft"):
            print >> out, format % (i_bin,d_range,compl,n_ref,
                                             scale_k1_2,r_work_1,r_work_2,delta)
         else:
@@ -1887,7 +1918,7 @@ class target_result_mixin(object):
         xray_structure=xray_structure,
         n_parameters=0,
         miller_set=d_target_d_f_calc,
-        algorithm=manager.sf_algorithm).d_target_d_u_cart()
+        algorithm=manager.sfg_params.algorithm).d_target_d_u_cart()
     else:
       result = manager.structure_factor_gradients_w(
         u_iso_refinable_params=u_iso_refinable_params,
@@ -1895,7 +1926,7 @@ class target_result_mixin(object):
         xray_structure=xray_structure,
         n_parameters=xray_structure.n_parameters_XXX(),
         miller_set=d_target_d_f_calc,
-        algorithm=manager.sf_algorithm)
+        algorithm=manager.sfg_params.algorithm)
     time_gradients_wrt_atomic_parameters += timer.elapsed()
     return result
 

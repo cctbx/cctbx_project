@@ -283,7 +283,10 @@ def test_6(fmodel, model):
   assert approx_equal(fmodel.r_work(), 0.0, 1.e-3)
   assert approx_equal(fmodel.r_free(), 0.0, 1.e-3)
 
-def run_tests(sf_algorithm = "fft"):
+def run_tests():
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sfg_params.algorithm = "fft"
+  sfg_params.cos_sin_table = False
   pdb_file = libtbx.env.find_in_repositories(
         relative_path="phenix_regression/pdb/lys_rigid_body.pdb", test=os.path.isfile)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
@@ -311,20 +314,18 @@ def run_tests(sf_algorithm = "fft"):
              atom_attributes_list   = aal)
   model.xray_structure.scattering_type_registry(table = "wk1995")
 ################
-  dummy = model.xray_structure.structure_factors(algorithm = sf_algorithm,
+  dummy = model.xray_structure.structure_factors(algorithm = sfg_params.algorithm,
                                                  d_min     = 2.0).f_calc()
   f_obs = abs(dummy.structure_factors_from_scatterers(
                                          xray_structure = model.xray_structure,
-                                         algorithm      = sf_algorithm,
+                                         algorithm      = sfg_params.algorithm,
                                          cos_sin_table  = False).f_calc())
   flags =f_obs.array(data=flex.size_t(xrange(1,f_obs.data().size()+1))%10 == 0)
   fmodel = mmtbx.f_model.manager(xray_structure    = model.xray_structure,
                                  f_obs             = f_obs,
                                  r_free_flags      = flags,
                                  target_name       = "ls_wunit_k1",
-                                 sf_cos_sin_table  = False,
-                                 #target_name       = "ml",
-                                 sf_algorithm      = sf_algorithm)
+                                 sf_and_grads_accuracy_params = sfg_params)
   fmodel.show_comprehensive(free_reflections_per_bin = 250,
                             max_number_of_bins  = 30)
 
@@ -343,7 +344,10 @@ def run_tests(sf_algorithm = "fft"):
   test_6(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
 
 
-def finite_differences_test(sf_algorithm = "direct"):
+def finite_differences_test():
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sfg_params.algorithm = "direct"
+  sfg_params.cos_sin_table = False
   print "finite_differences_test: "
   pdb_file = libtbx.env.find_in_repositories(
         relative_path="phenix_regression/pdb/enk_rbr.pdb", test=os.path.isfile)
@@ -372,20 +376,19 @@ def finite_differences_test(sf_algorithm = "direct"):
              atom_attributes_list   = aal)
   model.xray_structure.scattering_type_registry(table = "wk1995")
 ################
-  dummy = model.xray_structure.structure_factors(algorithm = sf_algorithm,
+  dummy = model.xray_structure.structure_factors(algorithm = sfg_params.algorithm,
                                                  d_min     = 1.0).f_calc()
   f_obs = abs(dummy.structure_factors_from_scatterers(
-                                         xray_structure = model.xray_structure,
-                                         algorithm      = sf_algorithm,
-                                         cos_sin_table  = False).f_calc())
+                           xray_structure = model.xray_structure,
+                           algorithm      = sfg_params.algorithm,
+                           cos_sin_table  = sfg_params.cos_sin_table).f_calc())
   flags = f_obs.array(data = flex.bool(f_obs.data().size(), False))
   model.xray_structure.shake_sites_in_place(rms_difference=0.1)
   fmodel = mmtbx.f_model.manager(xray_structure    = model.xray_structure,
                                  f_obs             = f_obs,
                                  r_free_flags      = flags,
                                  target_name       = "ls_wunit_k1",
-                                 sf_cos_sin_table  = False,
-                                 sf_algorithm      = sf_algorithm)
+                                 sf_and_grads_accuracy_params = sfg_params)
   fmodel.show_essential()
   xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
                                 site       = True)

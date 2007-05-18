@@ -41,8 +41,7 @@ def exercise():
                             xray_structure         = xray_structure,
                             atom_attributes_list   = aal)
   # get dbe manager
-  mol.setup_dbe_manager(fmodel = None, show = False, dbe_params = None)
-  mol.use_dbe_true()
+  mol.add_dbe(fmodel = None, dbe_params = None)
   assert mol.dbe_manager.need_restraints
   assert mol.dbe_selection.size() == 86
   assert mol.dbe_selection.count(True) == 45
@@ -87,3 +86,4 @@ def run():
 
 if (__name__ == "__main__"):
   run()
+  print "OK"

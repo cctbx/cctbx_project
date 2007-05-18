@@ -9,7 +9,7 @@ import math
 import sys, os
 
 def calculate_fobs(resolution   = 1.0,
-                   sf_algorithm = "direct"):
+                   algorithm = "direct"):
   pdb_file = libtbx.env.find_in_repositories(
                               relative_path="phenix_regression/pdb/enk_gor.pdb", test=os.path.isfile)
   xray_structure = pdb.input(file_name=pdb_file).xray_structure_simple()
@@ -18,7 +18,7 @@ def calculate_fobs(resolution   = 1.0,
                                         d_min          = resolution,
                                         anomalous_flag = False,
                                         cos_sin_table  = False,
-                                        algorithm      = sf_algorithm).f_calc()
+                                        algorithm      = algorithm).f_calc()
   f_calc = abs(f_calc.structure_factors_from_scatterers(
                                      xray_structure = xray_structure).f_calc())
   r_free_flags = f_calc.generate_r_free_flags(fraction = 0.01,
@@ -39,13 +39,13 @@ def calculate_fobs(resolution   = 1.0,
 def exercise_1(hkl = "enk_gor.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="phenix_regression/pdb/enk_gor_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 strategy=group_occupancies sf_cos_sin_table=false"
+  opt0= "main.number_of_macro_cycles=3 strategy=group_occupancies cos_sin_table=false"
   opt1= "main.target=ls ls_target_names.target_name=ls_wunit_kunit group_occupancy.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false "
   opt3= "output.write_eff_file=false "
   opt4= "one_occupancy_group_per_residue=true "
-  opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
+  opt5= "structure_factors_and_gradients_accuracy.algorithm=direct scattering_table=wk1995 --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false  output.prefix=occ_ref1"
   cmd = " ".join(["phenix.refine", pdb, hkl, opt0, opt1, opt2, opt3, opt4, opt5, opt6])
   easy_run.call(cmd)
@@ -53,12 +53,12 @@ def exercise_1(hkl = "enk_gor.mtz"):
 def exercise_2(hkl = "enk_gor.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="phenix_regression/pdb/enk_gor_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 strategy=group_occupancies sf_cos_sin_table=false"
+  opt0= "main.number_of_macro_cycles=3 strategy=group_occupancies cos_sin_table=false"
   opt1= "main.target=ls ls_target_names.target_name=ls_wunit_kunit group_occupancy.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false "
   opt3= "output.write_eff_file=false "
-  opt5= "main.sf_algorithm=direct scattering_table=wk1995 --overwrite"
+  opt5= "structure_factors_and_gradients_accuracy.algorithm=direct scattering_table=wk1995 --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false"
   opt7= "occupancies.group="+""""chain A" """+" occupancies.group="+""""chain B" """
   opt8= "occupancies.group="+""""chain C" """+" occupancies.group="+""""chain D" """+" output.prefix=occ_ref2"

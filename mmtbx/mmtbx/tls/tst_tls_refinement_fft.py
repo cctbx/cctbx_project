@@ -100,7 +100,8 @@ def exercise_2(eps = 1.e-6):
   u_cart_answer = tools.uanisos_from_tls(sites_cart = xray_structure.sites_cart(),
                                          selections = selections,
                                          tlsos      = tlsos)
-  xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(), u_cart_answer)
+  xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(),
+                                                                 u_cart_answer)
 
   assert approx_equal(u_cart_answer,
         xray_structure.scatterers().extract_u_cart(xray_structure.unit_cell()))
@@ -109,21 +110,22 @@ def exercise_2(eps = 1.e-6):
   tools.show_tls(tlsos = tlsos, text = "ANSWER")
 
 ###> Set up fmodel
-  sf_algorithm = "direct"
-  dummy = xray_structure.structure_factors(algorithm = sf_algorithm,
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sfg_params.algorithm = "direct"
+  sfg_params.cos_sin_table = False
+  dummy = xray_structure.structure_factors(algorithm = sfg_params.algorithm,
                                            d_min     = 1.5).f_calc()
   f_obs = abs(dummy.structure_factors_from_scatterers(
-                                         xray_structure = xray_structure,
-                                         algorithm      = sf_algorithm,
-                                         cos_sin_table  = False).f_calc())
+                           xray_structure = xray_structure,
+                           algorithm      = sfg_params.algorithm,
+                           cos_sin_table  = sfg_params.cos_sin_table).f_calc())
   flags = f_obs.generate_r_free_flags(fraction=0.01, max_free=2000)
 
   fmodel = mmtbx.f_model.manager(xray_structure    = xray_structure,
                                  f_obs             = f_obs,
                                  r_free_flags      = flags,
                                  target_name       = "ls_wunit_k1",
-                                 sf_algorithm      = sf_algorithm,
-                                 sf_cos_sin_table  = False)
+                                 sf_and_grads_accuracy_params = sfg_params)
   fmodel.show_comprehensive(free_reflections_per_bin = 250,
                             max_number_of_bins  = 30)
   xray_structure.convert_to_isotropic()
