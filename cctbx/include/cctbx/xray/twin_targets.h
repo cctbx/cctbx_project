@@ -1,6 +1,8 @@
 #ifndef CCTBX_XRAY_TWIN_TARGETS_H
 #define CCTBX_XRAY_TWIN_TARGETS_H
 
+#include <iostream>
+
 #include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
@@ -766,7 +768,6 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           obs_to_twin_calc_.push_back( tmp_loc );
        }
        twin_completeness_/=FloatType(hkl_obs.size());
-
        // do similar stuff for calculated data
        for (std::size_t ii=0;ii<hkl_calc.size();ii++){
          tmp_loc = tmp_calc.find_hkl( twin_mate(hkl_calc[ii],twin_law) );
@@ -780,6 +781,28 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
     }
 
+    scitbx::af::shared<long> obs_to_twin_obs()
+    {
+      return ( obs_to_twin_obs_ );
+    }
+
+    scitbx::af::shared<long> obs_to_calc()
+    {
+      return ( obs_to_calc_ );
+    }
+
+    scitbx::af::shared<long> obs_to_twin_calc()
+    {
+      return ( obs_to_twin_calc_ );
+    }
+
+    scitbx::af::shared<long> calc_to_twin_calc()
+    {
+      return (calc_to_twin_calc_ );
+    }
+
+
+
     scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 >
     detwin_with_twin_fraction(scitbx::af::const_ref<FloatType> const& i_obs,
                               scitbx::af::const_ref<FloatType> const& sig_obs,
@@ -790,8 +813,6 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
       CCTBX_ASSERT( i_obs.size() == obs_size_ );
       CCTBX_ASSERT( (sig_obs.size() == obs_size_) || (sig_obs.size()==0) );
-
-
 
       FloatType i_a,s_a,i_b,s_b, n_i, n_s;
       int tmp_loc;
@@ -811,13 +832,13 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
              s_a = sig_obs[ ii ];
              s_b = sig_obs[ tmp_loc ];
            }
-           n_i = ((1.0-twin_fraction)*i_a - twin_fraction*i_b)/(1-2.0*twin_fraction);
-           n_s =  tmp_mult*std::sqrt((s_a*s_a*(1-twin_fraction) + s_b*s_b*twin_fraction));
-        } else { // twin related reflection is not there. do 'equipartitioning'
+           n_i = ((1.0-twin_fraction)*i_a - twin_fraction*i_b)/(1.0-2.0*twin_fraction);
+           n_s =  tmp_mult*std::sqrt((s_a*s_a*(1.0-twin_fraction) + s_b*s_b*twin_fraction));
+        } else { // twin related reflection is not there. set things to zero
            i_a = i_obs[ii];
            s_a = sig_obs[ii];
-           n_i = i_a*(1-twin_fraction)/(1-2.0*twin_fraction);
-           n_s = s_a*(1-twin_fraction)/(1-2.0*twin_fraction);
+           n_i = 0.0; // i_a*(1.0-twin_fraction)/(1-2.0*twin_fraction);
+           n_s = s_a*(1.0-twin_fraction)/(1-2.0*twin_fraction);
         }
         i_detwin.push_back( n_i );
         s_detwin.push_back( n_s );
@@ -828,6 +849,41 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       scitbx::af::tiny< scitbx::af::shared<FloatType>, 2> result( i_detwin, s_detwin );
 
       return( result );
+    }
+
+    scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 >
+    twin_with_twin_fraction( scitbx::af::const_ref<FloatType> const& i_obs,
+                             scitbx::af::const_ref<FloatType> const& sig_obs,
+                             FloatType const& twin_fraction ) const
+    {
+      scitbx::af::shared<FloatType> i_twinned;
+      scitbx::af::shared<FloatType> s_twinned;
+
+      CCTBX_ASSERT( i_obs.size() == obs_size_ );
+      CCTBX_ASSERT( (sig_obs.size() == 0) || (sig_obs.size() == obs_size_) );
+
+      int tmp_loc;
+      FloatType i_out, s_out, s_a, s_b;
+      for (std::size_t ii=0; ii<obs_size_; ii++){
+        tmp_loc = obs_to_twin_obs_[ii];
+        CCTBX_ASSERT(tmp_loc<obs_size_);
+        i_out = -10;
+        s_out = 100;
+        if (tmp_loc>=0){
+          s_a = 0.0;
+          s_b = 0.0;
+          if ( sig_obs.size() > 0 ){
+            s_a = sig_obs[ii];
+            s_b = sig_obs[ tmp_loc ];
+          }
+          i_out = (1.0-twin_fraction)*i_obs[ii] + twin_fraction*i_obs[ tmp_loc ];
+          s_out = std::sqrt( (1.0-twin_fraction)*s_a*s_a + twin_fraction*s_b*s_b );
+        }
+        i_twinned.push_back( i_out );
+        s_twinned.push_back( s_out );
+      }
+      scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 > result( i_twinned, s_twinned );
+      return ( result );
     }
 
 
