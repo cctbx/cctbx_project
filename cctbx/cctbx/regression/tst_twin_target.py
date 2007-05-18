@@ -482,9 +482,47 @@ def tst_twin_completion():
   assert selection_array.all_eq( lattice_flags.data()  )
 
 
+def tst_detwin():
+  tmp = rs.xray_structure(sgtbx.space_group_info( 'P4' ),
+                          elements=['C']*310,
+                          n_scatterers=310)
+
+  sfs = abs( tmp.structure_factors( False, 2.5  ).f_calc() )
+  tmp_detwin = xray.hemihedral_detwinner(
+     hkl_obs = sfs.indices() ,
+     hkl_calc= sfs.indices(),
+     space_group = sfs.space_group(),
+     anomalous_flag = False,
+     twin_law = [-1,0,0,  0,1,0,  0,0,-1] )#"-h,k,-l" )
+
+  sfs = sfs.f_as_f_sq()
+
+  tf = [0.1,0.2,0.3,0.4,0.49]
+  for t in tf:
+    i,s = tmp_detwin.twin_with_twin_fraction( i_obs = sfs.data(),
+                                              sigma_obs = sfs.sigmas(),
+                                              twin_fraction = t )
+    diff = sfs.data() - i
+    diff = flex.sum( flex.abs(diff) )
+    assert diff>1e-3
+
+    dti,dts = tmp_detwin.detwin_with_twin_fraction( i_obs = i,
+                                                    sigma_obs = s,
+                                                    twin_fraction= t )
+    diff = sfs.data() - dti
+    diff = flex.sum( flex.abs(diff) ) # / flex.sum( sfs.data() )
+    assert approx_equal( diff, 0, eps=1e-5 )
+    permut = tmp_detwin.obs_to_twin_obs()
+    ind = range( permut.size() )
+    for ii, jj, kk, pp, mm  in zip( sfs.data(), i, dti, ind, permut ):
+      no = (1-t)*sfs.data()[pp] + t*sfs.data()[mm]
+      assert approx_equal( jj-no, 0, eps=1e-5)
+      assert approx_equal( ii-kk, 0, eps=1e-5)
+      #print sfs.indices()[pp], sfs.indices()[ mm ] , ii, jj, kk, pp,mm, jj-no
 
 
 def run():
+  tst_detwin()
   tst_twin_completion()
 
   tst_ls_on_i()
