@@ -930,6 +930,7 @@ class set(crystal.symmetry):
   def structure_factors_from_scatterers(self, xray_structure,
                                         algorithm=None,
                                         cos_sin_table=False,
+                                        grid_resolution_factor=1/3.,
                                         quality_factor=None,
                                         u_base=None,
                                         b_base=None,
@@ -944,6 +945,7 @@ class set(crystal.symmetry):
     return xray.structure_factors.from_scatterers(
       miller_set=self,
       cos_sin_table=cos_sin_table,
+      grid_resolution_factor=grid_resolution_factor,
       quality_factor=quality_factor,
       u_base=u_base,
       b_base=b_base,
