@@ -1,8 +1,6 @@
 #ifndef CCTBX_XRAY_TWIN_TARGETS_H
 #define CCTBX_XRAY_TWIN_TARGETS_H
 
-#include <iostream>
-
 #include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
