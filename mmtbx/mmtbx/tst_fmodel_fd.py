@@ -43,10 +43,12 @@ def finite_differences_site(target_functor, eps=1.e-5):
     sc.site = site_orig
   return gs
 
+sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+sfg_params.algorithm = "direct"
+sfg_params.cos_sin_table = False
+
 def exercise(space_group_info,
              n_elements       = 10,
-             sf_cos_sin_table = False,
-             sf_algorithm     = "direct",
              table            = "wk1995",
              d_min            = 2.0,
              k_sol            = 0.35,
@@ -70,14 +72,14 @@ def exercise(space_group_info,
   b_cart   = adptbx.u_star_as_u_cart(uc, sg.average_u_star(u_star = u_star_1))
   for anomalous_flag in [False, True]:
       f_obs = abs(xray_structure.structure_factors(
-                                       d_min          = d_min,
-                                       anomalous_flag = anomalous_flag,
-                                       cos_sin_table  = sf_cos_sin_table,
-                                       algorithm      = sf_algorithm).f_calc())
+                               d_min          = d_min,
+                               anomalous_flag = anomalous_flag,
+                               cos_sin_table  = sfg_params.cos_sin_table,
+                               algorithm      = sfg_params.algorithm).f_calc())
       f_obs_comp = f_obs.structure_factors_from_scatterers(
-                                    xray_structure = xray_structure,
-                                    algorithm      = sf_algorithm,
-                                    cos_sin_table  = sf_cos_sin_table).f_calc()
+                            xray_structure = xray_structure,
+                            algorithm      = sfg_params.algorithm,
+                            cos_sin_table  = sfg_params.cos_sin_table).f_calc()
       f_obs = abs(f_obs_comp)
       flags = f_obs.generate_r_free_flags(fraction = 0.1,
                                           max_free = 99999999)
@@ -100,17 +102,16 @@ def exercise(space_group_info,
                                    scatterers = xrs.scatterers(),
                                    site       = True)
           fmodel = mmtbx.f_model.manager(
-                                       xray_structure    = xrs,
-                                       f_obs             = f_obs,
-                                       r_free_flags      = flags,
-                                       target_name       = target,
-                                       abcd=experimental_phases,
-                                       sf_cos_sin_table  = sf_cos_sin_table,
-                                       sf_algorithm      = sf_algorithm,
-                                       k_sol             = k_sol,
-                                       b_sol             = b_sol,
-                                       b_cart            = b_cart,
-                                       mask_params       = mask_params())
+                            xray_structure               = xrs,
+                            f_obs                        = f_obs,
+                            r_free_flags                 = flags,
+                            target_name                  = target,
+                            abcd                         = experimental_phases,
+                            sf_and_grads_accuracy_params = sfg_params,
+                            k_sol                        = k_sol,
+                            b_sol                        = b_sol,
+                            b_cart                       = b_cart,
+                            mask_params                  = mask_params())
           fmodel.update_xray_structure(
             xray_structure=xrs,
             update_f_calc=True,

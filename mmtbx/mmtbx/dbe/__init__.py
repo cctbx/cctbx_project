@@ -69,6 +69,12 @@ class dbe_counters(object):
     print >> out, "   non-H covalent bonds: ", self.n_bonds_non_h
     assert self.n_dbe == self.n_dbe_b + self.n_dbe_r + self.n_dbe_l
 
+class ias_structure(object):
+  def __init__(self, bond_proxies_simple):
+    for proxy in bond_proxies_simple:
+      print proxy
+    assert 0
+
 class manager(object):
   def __init__(self, geometry,
                      atom_attributes_list,
@@ -94,6 +100,10 @@ class manager(object):
      ###> Locate DBE type "B" => loop over bond proxies:
      need_B = "B"  in self.params.build_dbe_types
      need_BH= "BH" in self.params.build_dbe_types
+     # XXX
+     #print dir(xray_structure)
+     #ias = ias_structure(bond_proxies_simple = bond_proxies_simple)
+     # XXX
      if(need_B or need_BH):
         for proxy in bond_proxies_simple:
             i_seqs = proxy.i_seqs
@@ -109,7 +119,12 @@ class manager(object):
                                       name_j = atom_j.name.strip(),
                                       site_i = flex.double(atom_i.coordinates),
                                       site_j = flex.double(atom_j.coordinates))
-               if(dbe_label is not None):
+               if([b_estimated, q_estimated].count(None) == 0):
+                  is_qb_ok = q_estimated < 1.2 and q_estimated > 0.0 and \
+                             b_estimated > 0.0 and b_estimated < 6.0
+               else:
+                  is_qb_ok = True
+               if(dbe_label is not None and is_qb_ok):
                   self.dbe_counters.n_dbe_b += 1
                   if(b_estimated is not None):
                      u = adptbx.b_as_u(b_estimated)
@@ -210,11 +225,12 @@ class manager(object):
   def _dbe_position_B(self, name_i, name_j, site_i, site_j):
     #
     if(self.fmodel is not None):
-       fft_map = self.fmodel.electron_density_map(
+       fmodel_ = self.fmodel.resolution_filter(d_min = 0.75)
+       fft_map = fmodel_.electron_density_map(
                               map_type          = "k*Fobs-n*Fmodel",
                               k                 = 1,
                               n                 = 1,
-                              resolution_factor = 1/5.)
+                              resolution_factor = 1/10.)
        fft_map.apply_volume_scaling()
        fft_map_data = fft_map.real_map_unpadded()
     #

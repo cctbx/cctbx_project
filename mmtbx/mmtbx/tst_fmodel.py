@@ -15,19 +15,22 @@ flex.set_random_seed(0)
 
 def test_1(xray_structure):
   # exercise almost all without dealing with particular values
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
   for d_min in [2.0, 2.5]:
-      for sf_algorithm in ["direct", "fft"]:
+      for algorithm in ["direct", "fft"]:
+          sfg_params.algorithm = algorithm
           for anomalous_flag in [True, False]:
-              for sf_cos_sin_table in [True, False]:
+              for cos_sin_table in [True, False]:
+                  sfg_params.cos_sin_table = cos_sin_table
                   f_obs = abs(xray_structure.structure_factors(
                                        d_min          = d_min,
                                        anomalous_flag = anomalous_flag,
-                                       cos_sin_table  = sf_cos_sin_table,
-                                       algorithm      = sf_algorithm).f_calc())
+                                       cos_sin_table  = cos_sin_table,
+                                       algorithm      = algorithm).f_calc())
                   f_obs_comp = f_obs.structure_factors_from_scatterers(
                               xray_structure = xray_structure,
-                              algorithm      = sf_algorithm,
-                              cos_sin_table  = sf_cos_sin_table).f_calc()
+                              algorithm      = algorithm,
+                              cos_sin_table  = cos_sin_table).f_calc()
                   f_obs = abs(f_obs_comp)
                   flags = f_obs.generate_r_free_flags(fraction = 0.1,
                                                       max_free = 99999999)
@@ -47,8 +50,7 @@ def test_1(xray_structure):
                                               f_obs             = f_obs,
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
-                                              sf_cos_sin_table  = sf_cos_sin_table,
-                                              sf_algorithm      = sf_algorithm)
+                                              sf_and_grads_accuracy_params = sfg_params)
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
@@ -116,8 +118,7 @@ def test_1(xray_structure):
                                               f_mask            = f_mask,
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
-                                              sf_cos_sin_table  = sf_cos_sin_table,
-                                              sf_algorithm      = sf_algorithm)
+                                              sf_and_grads_accuracy_params = sfg_params)
                       fmodel.update(k_sol = 0.5, b_sol = 35.0)
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
@@ -158,8 +159,7 @@ def test_1(xray_structure):
                                               f_obs             = f_obs,
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
-                                              sf_cos_sin_table  = sf_cos_sin_table,
-                                              sf_algorithm      = sf_algorithm)
+                                              sf_and_grads_accuracy_params = sfg_params)
                       fmodel = fmodel_.deep_copy()
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
@@ -231,8 +231,7 @@ def test_1(xray_structure):
                                               f_obs             = f_obs,
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
-                                              sf_cos_sin_table  = sf_cos_sin_table,
-                                              sf_algorithm      = sf_algorithm)
+                                              sf_and_grads_accuracy_params = sfg_params)
                       fmodel_1 = fmodel_.resolution_filter(d_max = d_max_, d_min = d_min_, update_xray_structure=True)
                       if(fc is not None):
                          fc_ = fc.resolution_filter(d_max = d_max_, d_min = d_min_)
@@ -247,8 +246,7 @@ def test_1(xray_structure):
                                 f_obs             = f_obs.resolution_filter(d_max = d_max_, d_min = d_min_),
                                 r_free_flags      = flags.resolution_filter(d_max = d_max_, d_min = d_min_),
                                 target_name       = "ls_wunit_k1",
-                                sf_cos_sin_table  = sf_cos_sin_table,
-                                sf_algorithm      = sf_algorithm)
+                                sf_and_grads_accuracy_params = sfg_params)
                       assert fmodel_1.f_obs.data().all_eq(fmodel_2.f_obs.data())
                       assert fmodel_1.r_free_flags.data().all_eq(fmodel_2.r_free_flags.data())
                       assert abs(fmodel_1.f_calc()).data().all_eq(abs(fmodel_2.f_calc()).data())
@@ -295,7 +293,7 @@ def test_1(xray_structure):
                       fmodel_1.model_error_ml()
                       fmodel_2.model_error_ml()
 
-def run():
+def exercise_1():
   n_elements = 70
   sgs = ["P 1", "P 4", "C 1 2/c 1"]
   for sg in sgs:
@@ -310,6 +308,47 @@ def run():
              random_occupancy       = False)
       xray_structure.scattering_type_registry(table="wk1995")
       test_1(xray_structure)
+
+def exercise_2():
+  xray_structure = random_structure.xray_structure(
+             space_group_info       = sgtbx.space_group_info("C 1 2/c 1"),
+             elements               =("O","N","C")*50,
+             volume_per_atom        = 100,
+             min_distance           = 1.5,
+             general_positions_only = True,
+             random_u_iso           = True,
+             random_occupancy       = True)
+  xray_structure.scattering_type_registry(table="wk1995")
+  f_obs = abs(xray_structure.structure_factors(d_min = 2.0).f_calc())
+  sfg_params = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  for algorithm in ["fft", "direct"]:
+      sfg_params.algorithm=algorithm
+      sfg_params.cos_sin_table = True
+      sfg_params.grid_resolution_factor=1/7.
+      sfg_params.wing_cutoff = 1.e-8
+      flags = f_obs.generate_r_free_flags(fraction = 0.1,max_free = 99999999)
+      fmodel = mmtbx.f_model.manager(xray_structure    = xray_structure,
+                                     f_obs             = f_obs,
+                                     r_free_flags      = flags,
+                                     sf_and_grads_accuracy_params = sfg_params)
+      f_calc_1 = abs(fmodel.f_calc()).data()
+      f_calc_2 = abs(f_obs.structure_factors_from_scatterers(
+        xray_structure = xray_structure,
+        algorithm                    = sfg_params.algorithm,
+        cos_sin_table                = sfg_params.cos_sin_table,
+        grid_resolution_factor       = sfg_params.grid_resolution_factor,
+        quality_factor               = sfg_params.quality_factor,
+        u_base                       = sfg_params.u_base,
+        b_base                       = sfg_params.b_base,
+        wing_cutoff                  = sfg_params.wing_cutoff,
+        exp_table_one_over_step_size = sfg_params.exp_table_one_over_step_size
+                                                             ).f_calc()).data()
+      delta = flex.abs(f_calc_1-f_calc_2)
+      assert approx_equal(flex.sum(delta), 0.0)
+
+def run():
+  #exercise_1()
+  exercise_2()
 
 if (__name__ == "__main__"):
   run()

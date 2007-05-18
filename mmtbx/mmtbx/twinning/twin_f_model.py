@@ -35,6 +35,7 @@ from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 from scitbx import differential_evolution
 import sys, os, math, time
+import mmtbx.f_model
 
 
 master_params =  iotbx.phil.parse("""
@@ -801,20 +802,24 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                free_array         = None,
                xray_structure     = None,
                scaling_parameters = None,
+               sf_and_grads_accuracy_params =
+                           mmtbx.f_model.sf_and_grads_accuracy_params.extract(),
                mask_params        = None,
                out                = None,
                twin_law           = None,
                start_fraction     = 0.1,
                n_refl_bin         = 2000,
                max_bins           = 20,
-               sf_algorithm       = "fft",
+               sf_algorithm       = "fft", # XXX never used.
                sf_cos_sin_table   = True,
                perform_local_scaling = False,
                detwin_mode = "auto",
                map_types = master_params.extract().detwin.map_types
                 ):
     self.alpha_beta_params=None
-
+    # XXX Temporary work-around. Pavel.
+    self.sfg_params = sf_and_grads_accuracy_params
+    #
     self.target_name="twin_lsq_f"
     self._target_attributes = target_attributes()
     self.out = out

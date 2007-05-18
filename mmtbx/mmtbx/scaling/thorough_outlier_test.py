@@ -24,8 +24,6 @@ def exercise(d_min            = 3.5,
              k_sol            = 0.3,
              b_sol            = 60.0,
              b_cart           = [0,0,0,0,0,0],
-             sf_algorithm     = "fft",
-             sf_cos_sin_table = False,
              anomalous_flag   = False,
              scattering_table = "it1992",
              space_group_info = None):
@@ -46,14 +44,10 @@ def exercise(d_min            = 3.5,
       for scale in [0.0001, 1.0, 1000.0]:
           dummy = abs(xray_structure.structure_factors(
                                    d_min          = d_min,
-                                   anomalous_flag = anomalous_flag,
-                                   cos_sin_table  = sf_cos_sin_table,
-                                   algorithm      = sf_algorithm).f_calc())
+                                   anomalous_flag = anomalous_flag).f_calc())
           flags = dummy.generate_r_free_flags(fraction = 0.1,
                                               max_free = 99999999)
           fmodel = mmtbx.f_model.manager(xray_structure   = xray_structure,
-                                         sf_algorithm     = sf_algorithm,
-                                         sf_cos_sin_table = sf_cos_sin_table,
                                          r_free_flags     = flags,
                                          target_name      = "ls_wunit_k1",
                                          f_obs            = dummy,
@@ -89,8 +83,6 @@ def exercise(d_min            = 3.5,
                 xrs_dc.scattering_type_registry(table = scattering_table)
 
                 fmodel = mmtbx.f_model.manager(xray_structure    = xrs_dc,
-                                               sf_algorithm      = sf_algorithm,
-                                               sf_cos_sin_table  = sf_cos_sin_table,
                                                r_free_flags      = flags,
                                                target_name       = "ls_wunit_k1",
                                                f_obs             = f_obs,
