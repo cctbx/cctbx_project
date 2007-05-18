@@ -237,6 +237,20 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
         return boost::python::make_tuple( result[0], result[1] );
       }
 
+      static boost::python::tuple
+      twin_with_twin_fraction(w_t const& self,
+                                scitbx::af::const_ref<double> const& i_obs,
+                                scitbx::af::const_ref<double> const& sig_obs,
+                                double const& twin_fraction)
+      {
+        scitbx::af::tiny<scitbx::af::shared<double>, 2> result;
+        result = self.twin_with_twin_fraction(i_obs,sig_obs,twin_fraction);
+        return boost::python::make_tuple( result[0], result[1] );
+      }
+
+
+
+
 
       static boost::python::tuple
       detwin_with_model_data(w_t const& self,
@@ -279,23 +293,39 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
                   arg_("anomalous_flag"),
                   arg_("twin_law")
                 )))
+
        .def("detwin_with_twin_fraction", detwin_with_twin_fraction,
              ( arg_("i_obs"),
                arg_("sigma_obs"),
                arg_("twin_fraction")
              ) )
+
+       .def("twin_with_twin_fraction", twin_with_twin_fraction,
+             ( arg_("i_obs"),
+               arg_("sigma_obs"),
+               arg_("twin_fraction")
+             ) )
+
        .def("detwin_with_model_data", detwin_with_model_data,
              ( arg_("i_obs"),
                arg_("sigma_obs"),
                arg_("f_model"),
                arg_("twin_fraction")
              ) )
+
        .def("detwin_with_abs_model_data", detwin_with_abs_model_data,
              ( arg_("i_obs"),
                arg_("sigma_obs"),
                arg_("f_model"),
                arg_("twin_fraction")
              ) )
+       .def("obs_to_twin_obs", &w_t::obs_to_twin_obs)
+
+       .def("obs_to_calc", &w_t::obs_to_calc )
+
+       .def("obs_to_twin_calc", &w_t::obs_to_twin_calc)
+
+       .def("calc_to_twin_calc", &w_t::calc_to_twin_calc)
 
          ;
      }
