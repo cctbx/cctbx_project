@@ -407,7 +407,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnRedrawGL(self, event=None):
     gltbx.util.handle_error()
     s = self.minimum_covering_sphere
-    r = (1+1.e-6)*s.radius()
+    r = self.buffer_factor*s.radius()
     z = -gltbx.util.object_as_eye_coordinates(s.center())[2]
     self.near = max(self.min_near, z-r)
     self.far = max(self.near*(1.e-6), z+r)
@@ -422,46 +422,45 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.SwapBuffers()
     if (event is not None): event.Skip()
 
-class show_cube(wxGLWindow):
+class show_points_and_lines_mixin(wxGLWindow):
 
   def __init__(self, *args, **keyword_args):
     wxGLWindow.__init__(self, *args, **keyword_args)
-    self.labels = None
-    self.points = None
-    self.lines = None
-
-  def set_points(self, atom_attributes_list):
-    self.labels = [atom.pdb_format() for atom in atom_attributes_list]
-    self.points = flex.vec3_double([atom.coordinates
-      for atom in atom_attributes_list])
-    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
-    self.minimum_covering_sphere = s
-    self.buffer_factor = 1.20
+    self.buffer_factor = 2.0
+    self.flag_show_minimum_covering_sphere = True
+    self.flag_show_labels = True
+    self.flag_show_points = True
+    self.flag_show_lines = True
+    self.flag_show_rotation_center = True
+    self.flag_show_spheres = True
+    self.labels = []
+    self.points = flex.vec3_double()
+    self.line_i_seqs = []
+    self.spheres = []
     self.labels_display_list = None
     self.points_display_list = None
-
-  def set_lines(self, bond_proxies):
     self.lines_display_list = None
-    self.bond_proxies = bond_proxies
 
   def InitGL(self):
     gltbx.util.handle_error()
     glClearColor(self.r_back, self.g_back, self.b_back, 0.0)
-    self.cube_display_list = None
-    self.labels_display_list = None
-    self.points_display_list = None
-    self.lines_display_list = None
     self.minimum_covering_sphere_display_list = None
     self.initialize_modelview()
     gltbx.util.handle_error()
 
   def DrawGL(self):
-    #self.draw_cube()
-    self.draw_minimum_covering_sphere()
-    self.draw_points()
-    self.draw_lines()
-    self.draw_rotation_center()
-    #self.draw_labels()
+    if (self.flag_show_minimum_covering_sphere):
+      self.draw_minimum_covering_sphere()
+    if (self.flag_show_points):
+      self.draw_points()
+    if (self.flag_show_lines):
+      self.draw_lines()
+    if (self.flag_show_rotation_center):
+      self.draw_rotation_center()
+    if (self.flag_show_labels):
+      self.draw_labels()
+    if (self.flag_show_spheres):
+      self.draw_spheres()
 
   def draw_minimum_covering_sphere(self):
     if (self.minimum_covering_sphere_display_list is None):
@@ -498,8 +497,7 @@ class show_cube(wxGLWindow):
       self.lines_display_list.compile()
       glColor3f(1,0,1)
       glBegin(GL_LINES)
-      for proxy in self.bond_proxies.simple:
-        i_seq, j_seq = proxy.i_seqs
+      for i_seq,j_seq in self.line_i_seqs:
         glVertex3f(*self.points[i_seq])
         glVertex3f(*self.points[j_seq])
       glEnd()
@@ -518,55 +516,6 @@ class show_cube(wxGLWindow):
       self.labels_display_list.end()
     self.labels_display_list.call()
 
-  def draw_cube(self, f=1):
-    if (self.cube_display_list is None):
-      font = gltbx.fonts.ucs_bitmap_10x20
-      font.setup_call_lists()
-      self.cube_display_list = gltbx.gl_managed.display_list()
-      self.cube_display_list.compile()
-      glBegin(GL_LINES)
-      glColor3f(0,f,0)
-      glVertex3f(0,0,0)
-      glVertex3f(0,f,0)
-      glColor3f(f,f,f)
-      glVertex3f(0,f,0)
-      glVertex3f(f,f,0)
-      glVertex3f(f,f,0)
-      glVertex3f(f,0,0)
-      glColor3f(f,0,0)
-      glVertex3f(f,0,0)
-      glVertex3f(0,0,0)
-      glColor3f(f,f,f)
-      glVertex3f(0,0,f)
-      glVertex3f(0,f,f)
-      glVertex3f(0,f,f)
-      glVertex3f(f,f,f)
-      glVertex3f(f,f,f)
-      glVertex3f(f,0,f)
-      glVertex3f(f,0,f)
-      glVertex3f(0,0,f)
-      glColor3f(0,0,f)
-      glVertex3f(0,0,0)
-      glVertex3f(0,0,f)
-      glColor3f(f,f,f)
-      glVertex3f(f,0,0)
-      glVertex3f(f,0,f)
-      glVertex3f(0,f,0)
-      glVertex3f(0,f,f)
-      glVertex3f(f,f,0)
-      glVertex3f(f,f,f)
-      glEnd()
-      glRasterPos3f(0, 0, 0)
-      font.render_string("O")
-      glRasterPos3f(1, 0, 0)
-      font.render_string("x")
-      glRasterPos3f(0, 1, 0)
-      font.render_string("y")
-      glRasterPos3f(0, 0, 1)
-      font.render_string("z")
-      self.cube_display_list.end()
-    self.cube_display_list.call()
-
   def draw_cross_at(self, (x,y,z), color=(1,1,1), f=0.1):
     glBegin(GL_LINES)
     glColor3f(*color)
@@ -580,6 +529,33 @@ class show_cube(wxGLWindow):
 
   def draw_rotation_center(self):
     self.draw_cross_at(self.rotation_center, color=(0,1,0))
+
+  def draw_spheres(self, solid=False):
+    glMatrixMode(GL_MODELVIEW)
+    gray = 0.3
+    glColor3f(gray,gray,gray)
+    if (solid):
+      glEnable(GL_LIGHTING)
+      glEnable(GL_LIGHT0)
+      glLightfv(GL_LIGHT0, GL_AMBIENT, [1, 1, 1, 1])
+      glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
+      glEnable(GL_BLEND)
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+      glMaterialfv(GL_FRONT, GL_DIFFUSE, [1,1,1,0.5])
+      sphere = gltbx.util.SolidSphere
+      grid = 50
+    else:
+      sphere = gltbx.util.WireSphere
+      grid = 20
+    for x,r in self.spheres:
+      glPushMatrix()
+      glTranslated(*(x))
+      sphere(radius=r, slices=grid, stacks=grid)
+      glPopMatrix()
+    if (solid):
+      glDisable(GL_LIGHTING)
+      glDisable(GL_LIGHT0)
+      glDisable(GL_BLEND)
 
   def process_pick_points(self):
     line = line_given_points(self.pick_points)
@@ -610,12 +586,109 @@ def pdb_interpretation(file_name):
   processed_pdb.geometry_restraints_manager()
   return processed_pdb
 
+class show_pdb(show_points_and_lines_mixin):
+
+  def __init__(self, *args, **keyword_args):
+    show_points_and_lines_mixin.__init__(self, *args, **keyword_args)
+    self.flag_show_labels = False
+
+  def set_points(self, atom_attributes_list):
+    self.labels.extend([atom.pdb_format() for atom in atom_attributes_list])
+    self.points.extend(flex.vec3_double([atom.coordinates
+      for atom in atom_attributes_list]))
+    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
+    self.minimum_covering_sphere = s
+    self.labels_display_list = None
+    self.points_display_list = None
+
+  def set_lines(self, bond_proxies):
+    self.line_i_seqs = []
+    for proxy in bond_proxies.simple:
+      self.line_i_seqs.append(proxy.i_seqs)
+    self.lines_display_list = None
+
+class show_tripod(show_points_and_lines_mixin):
+
+  def __init__(self, *args, **keyword_args):
+    show_points_and_lines_mixin.__init__(self, *args, **keyword_args)
+    self.flag_show_minimum_covering_sphere = False
+    self.flag_show_rotation_center = False
+    p0 = matrix.col((1,1,0))
+    p1 = p0 + matrix.col((1,0,0))
+    p2 = p0 + matrix.col((0,2,0))
+    p3 = p0 + matrix.col((0,0,3))
+    self.points = flex.vec3_double([p0, p1, p2])
+    self.labels = ["p0", "p1", "p2"]
+    self.line_i_seqs = [(0,1),(1,2),(2,0)]
+    d0 = abs(p3-p0)
+    d1 = abs(p3-p1)
+    d2 = abs(p3-p2)
+    from tripod import tripod_node
+    tripod = tripod_node(
+      points=[p0, p1, p2],
+      distances=[d0, d1, d2],
+      p3_sign=1)
+    self.labels.append("p3+")
+    self.points.append(tripod.p3)
+    self.line_i_seqs.extend([(0,3),(1,3),(2,3)])
+    tripod = tripod_node(
+      points=[p0, p1, p2],
+      distances=[d0, d1, d2],
+      p3_sign=-1)
+    self.labels.append("p3-")
+    self.points.append(tripod.p3)
+    self.line_i_seqs.extend([(0,4),(1,4),(2,4)])
+    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
+    self.minimum_covering_sphere = s
+    self.labels_display_list = None
+    self.lines_display_list = None
+    self.points_display_list = None
+
+class show_tripod_refine(show_points_and_lines_mixin):
+
+  def __init__(self, *args, **keyword_args):
+    show_points_and_lines_mixin.__init__(self, *args, **keyword_args)
+    self.flag_show_minimum_covering_sphere = False
+    self.flag_show_rotation_center = False
+    self.points = flex.vec3_double()
+    self.labels = []
+    self.line_i_seqs = []
+    self.refinery_call_back_counter = 0
+    from tripod import exercise_random
+    exercise_random(refinery_call_back=self.refinery_call_back)
+    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
+    self.minimum_covering_sphere = s
+    self.labels_display_list = None
+    self.lines_display_list = None
+    self.points_display_list = None
+
+  def refinery_call_back(self, tripod, homes):
+    self.refinery_call_back_counter += 1
+    rcc = self.refinery_call_back_counter
+    print "refinery_call_back", rcc
+    if (rcc >= 8):
+      nppts = self.points.size()
+      for p in tripod.points: self.points.append(p)
+      self.labels.extend(["p%d.%d" % (i, rcc) for i in xrange(3)])
+      self.line_i_seqs.extend(
+        [(nppts+i,nppts+j) for i,j in [(0,1),(1,2),(2,0)]])
+      if (tripod.p3 is not None):
+        self.points.append(tripod.p3)
+        self.labels.append("p3.%d" % rcc)
+        self.line_i_seqs.extend(
+          [(nppts+i,nppts+j) for i,j in [(0,3),(1,3),(2,3)]])
+      else:
+        for p,d in zip(tripod.points, tripod.distances):
+          self.spheres.append((p,d))
+
 class App(wx.App):
 
   def __init__(self, args):
-    assert len(args) == 1
-    self.args = args
-    self.processed_pdb = pdb_interpretation(file_name=args[0])
+    assert len(args) in [0, 1]
+    if (len(args) == 1):
+      self.processed_pdb = pdb_interpretation(file_name=args[0])
+    else:
+      self.processed_pdb = None
     wx.App.__init__(self, 0)
 
   def OnInit(self):
@@ -680,12 +753,16 @@ class App(wx.App):
 
     self.frame.SetMenuBar(menuBar)
     self.frame.Show(True)
-    self.cube = show_cube(self.frame, -1, wx.Point(0,0), wx.Size(400,400))
-    self.cube.set_points(
-      self.processed_pdb.all_chain_proxies.stage_1.atom_attributes_list)
-    self.cube.set_lines(
-      self.processed_pdb.geometry_restraints_manager()
-        .pair_proxies().bond_proxies)
+    if (self.processed_pdb is not None):
+      self.cube = show_pdb(self.frame, -1, wx.Point(0,0), wx.Size(400,400))
+      self.cube.set_points(
+        self.processed_pdb.all_chain_proxies.stage_1.atom_attributes_list)
+      self.cube.set_lines(
+        self.processed_pdb.geometry_restraints_manager()
+          .pair_proxies().bond_proxies)
+    else:
+      self.cube = show_tripod_refine(
+        self.frame, -1, wx.Point(0,0), wx.Size(400,400))
     self.cube.SetFocus()
     self.SetTopWindow(self.frame)
     return True

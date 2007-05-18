@@ -4,6 +4,8 @@
 #include <boost/python/list.hpp>
 
 #include <scitbx/mat3.h>
+#include <scitbx/constants.h>
+#include <boost/shared_array.hpp>
 
 #include <gltbx/error.h>
 
@@ -258,6 +260,131 @@ namespace gltbx { namespace util {
     glMultMatrixd(mat);
   }
 
+  //! Based on freeglut-2.4.0/src/freeglut_geometry.c
+  /* Compute lookup table of cos and sin values forming a cirle
+   *
+   * Notes:
+   *    It is the responsibility of the caller to free these tables
+   *    The size of the table is (n+1) to form a connected loop
+   *    The last entry is exactly the same as the first
+   *    The sign of n can be flipped to get the reverse loop
+   */
+  struct CircleTable
+  {
+    boost::shared_array<double> memory;
+    double* s;
+    double* c;
+
+    CircleTable(int n)
+    {
+      /* Table size, the sign of n flips the circle direction */
+      unsigned size = std::abs(n);
+      memory = boost::shared_array<double>(new double[2*(size+1)]);
+      s = memory.get();
+      c = s + (size+1);
+
+      /* Determine the angle between samples */
+      double angle = scitbx::constants::two_pi / (n == 0 ? 1 : n);
+
+      /* Compute cos and sin around the circle */
+      s[0] = 0;
+      c[0] = 1;
+      for (unsigned i=1; i<size; i++) {
+        s[i] = std::sin(angle*i);
+        c[i] = std::cos(angle*i);
+      }
+
+      /* Last sample is duplicate of the first */
+      s[size] = 0;
+      c[size] = 1;
+    }
+  };
+
+  //! Based on freeglut-2.4.0/src/freeglut_geometry.c
+  void
+  SolidSphere(double radius, int slices, int stacks)
+  {
+    CircleTable ct1(-slices);
+    CircleTable ct2(stacks*2);
+
+    /* The top stack is covered with a triangle fan */
+    double z0 = 1;
+    double z1 = ct2.c[stacks > 0 ? 1 : 0];
+    double r0 = 0;
+    double r1 = ct2.s[stacks > 0 ? 1 : 0];
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3d(0,0,1);
+    glVertex3d(0,0,radius);
+    for (int j=slices; j>=0; j--) {
+      glNormal3d(ct1.c[j]*r1,        ct1.s[j]*r1,        z1       );
+      glVertex3d(ct1.c[j]*r1*radius, ct1.s[j]*r1*radius, z1*radius);
+    }
+    glEnd();
+
+    /* Cover each stack with a quad strip, except the top and bottom stacks */
+    for(int i=1; i<stacks-1; i++) {
+      z0 = z1;
+      z1 = ct2.c[i+1];
+      r0 = r1;
+      r1 = ct2.s[i+1];
+      glBegin(GL_QUAD_STRIP);
+      for(int j=0; j<=slices; j++) {
+        glNormal3d(ct1.c[j]*r1,        ct1.s[j]*r1,        z1       );
+        glVertex3d(ct1.c[j]*r1*radius, ct1.s[j]*r1*radius, z1*radius);
+        glNormal3d(ct1.c[j]*r0,        ct1.s[j]*r0,        z0       );
+        glVertex3d(ct1.c[j]*r0*radius, ct1.s[j]*r0*radius, z0*radius);
+      }
+      glEnd();
+    }
+
+    /* The bottom stack is covered with a triangle fan */
+    z0 = z1;
+    r0 = r1;
+    glBegin(GL_TRIANGLE_FAN);
+    glNormal3d(0,0,-1);
+    glVertex3d(0,0,-radius);
+    for (int j=0; j<=slices; j++) {
+      glNormal3d(ct1.c[j]*r0,        ct1.s[j]*r0,        z0       );
+      glVertex3d(ct1.c[j]*r0*radius, ct1.s[j]*r0*radius, z0*radius);
+    }
+    glEnd();
+  }
+
+  //! Based on freeglut-2.4.0/src/freeglut_geometry.c
+  void
+  WireSphere(double radius, int slices, int stacks)
+  {
+    CircleTable ct1(-slices);
+    CircleTable ct2(stacks*2);
+
+    /* Draw a line loop for each stack */
+    for (int i=1; i<stacks; i++) {
+      double z = ct2.c[i];
+      double r = ct2.s[i];
+      glBegin(GL_LINE_LOOP);
+      for(int j=0; j<=slices; j++) {
+        double x = ct1.c[j];
+        double y = ct1.s[j];
+        glNormal3d(x,y,z);
+        glVertex3d(x*r*radius, y*r*radius, z*radius);
+      }
+      glEnd();
+    }
+
+    /* Draw a line loop for each slice */
+    for (int i=0; i<slices; i++) {
+      glBegin(GL_LINE_STRIP);
+      for(int j=0; j<=stacks; j++) {
+        double x = ct1.c[i] * ct2.s[j];
+        double y = ct1.s[i] * ct2.s[j];
+        double z = ct2.c[j];
+        glNormal3d(x,y,z);
+        glVertex3d(x*radius, y*radius, z*radius);
+      }
+      glEnd();
+    }
+  }
+
   void
   init_module()
   {
@@ -325,6 +452,14 @@ namespace gltbx { namespace util {
       arg_("yvector"),
       arg_("zvector"),
       arg_("angle")));
+    def("SolidSphere", SolidSphere, (
+      arg_("radius"),
+      arg_("slices"),
+      arg_("stacks")));
+    def("WireSphere", WireSphere, (
+      arg_("radius"),
+      arg_("slices"),
+      arg_("stacks")));
   }
 
 }} // namespace gltbx::util
