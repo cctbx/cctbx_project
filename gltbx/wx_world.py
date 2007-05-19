@@ -654,7 +654,7 @@ class show_tripod_refine(show_points_and_lines_mixin):
     self.labels = []
     self.line_i_seqs = []
     self.refinery_call_back_counter = 0
-    from tripod import exercise_random
+    from sandbx.tripod import exercise_random
     exercise_random(refinery_call_back=self.refinery_call_back)
     s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
     self.minimum_covering_sphere = s
@@ -681,14 +681,41 @@ class show_tripod_refine(show_points_and_lines_mixin):
         for p,d in zip(tripod.points, tripod.distances):
           self.spheres.append((p,d))
 
+class show_msd(show_points_and_lines_mixin):
+
+  def __init__(self, *args, **keyword_args):
+    show_points_and_lines_mixin.__init__(self, *args, **keyword_args)
+    self.flag_show_minimum_covering_sphere = False
+    self.flag_show_rotation_center = False
+    self.points = flex.vec3_double()
+    self.labels = []
+    self.line_i_seqs = []
+
+  def set_points_and_lines(self, processed_msd):
+    for atom in processed_msd.atom_list:
+      self.labels.append(atom.label)
+      self.points.append(atom.site)
+    for i_seq,bond_list in enumerate(processed_msd.bond_lists):
+      for bond in bond_list:
+        self.line_i_seqs.append((i_seq,bond.j_seq))
+    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
+    self.minimum_covering_sphere = s
+    self.labels_display_list = None
+    self.lines_display_list = None
+    self.points_display_list = None
+
 class App(wx.App):
 
   def __init__(self, args):
     assert len(args) in [0, 1]
+    self.processed_pdb = None
+    self.processed_msd = None
     if (len(args) == 1):
-      self.processed_pdb = pdb_interpretation(file_name=args[0])
-    else:
-      self.processed_pdb = None
+      if (os.path.isfile(args[0])):
+        self.processed_pdb = pdb_interpretation(file_name=args[0])
+      else:
+        from sandbx import msd_as_graphs
+        self.processed_msd = msd_as_graphs.process(code=args[0])
     wx.App.__init__(self, 0)
 
   def OnInit(self):
@@ -760,6 +787,9 @@ class App(wx.App):
       self.cube.set_lines(
         self.processed_pdb.geometry_restraints_manager()
           .pair_proxies().bond_proxies)
+    elif (self.processed_msd is not None):
+      self.cube = show_msd(self.frame, -1, wx.Point(0,0), wx.Size(400,400))
+      self.cube.set_points_and_lines(processed_msd=self.processed_msd)
     else:
       self.cube = show_tripod_refine(
         self.frame, -1, wx.Point(0,0), wx.Size(400,400))
