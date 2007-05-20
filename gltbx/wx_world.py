@@ -716,6 +716,7 @@ class App(wx.App):
       else:
         from sandbx import msd_as_graphs
         self.processed_msd = msd_as_graphs.process(code=args[0])
+        self.processed_msd.as_graph()
     wx.App.__init__(self, 0)
 
   def OnInit(self):
