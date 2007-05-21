@@ -128,7 +128,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnChar(self,event):
     key = event.GetKeyCode()
-    if   (key == ord('c')):
+    if   (key == ord('m')):
+      self.move_rotation_center_to_mcs_center()
+    elif (key == ord('c')):
       self.move_to_center_of_viewport(self.rotation_center)
     elif (key == ord('f')):
       self.fit_into_viewport()
@@ -266,6 +268,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glTranslated(*[o-n for o,n in zip(co,cn)])
     glMultMatrixd(mvm)
     self.OnRedraw()
+
+  def move_rotation_center_to_mcs_center(self):
+    self.rotation_center = self.minimum_covering_sphere.center()
 
   def move_to_center_of_viewport(self, obj_coor):
     dx,dy = [-x for x in gltbx.util.object_as_eye_coordinates(obj_coor)[:2]]
@@ -436,6 +441,7 @@ class show_points_and_lines_mixin(wxGLWindow):
     self.labels = []
     self.points = flex.vec3_double()
     self.line_i_seqs = []
+    self.line_colors = {}
     self.spheres = []
     self.labels_display_list = None
     self.points_display_list = None
@@ -495,12 +501,13 @@ class show_points_and_lines_mixin(wxGLWindow):
     if (self.lines_display_list is None):
       self.lines_display_list = gltbx.gl_managed.display_list()
       self.lines_display_list.compile()
-      glColor3f(1,0,1)
-      glBegin(GL_LINES)
-      for i_seq,j_seq in self.line_i_seqs:
-        glVertex3f(*self.points[i_seq])
-        glVertex3f(*self.points[j_seq])
-      glEnd()
+      for i_seqs in self.line_i_seqs:
+        color = self.line_colors.get(tuple(i_seqs), (1,0,1))
+        glColor3f(*color)
+        glBegin(GL_LINES)
+        glVertex3f(*self.points[i_seqs[0]])
+        glVertex3f(*self.points[i_seqs[1]])
+        glEnd()
       self.lines_display_list.end()
     self.lines_display_list.call()
 
@@ -695,9 +702,16 @@ class show_msd(show_points_and_lines_mixin):
     for atom in processed_msd.atom_list:
       self.labels.append(atom.label)
       self.points.append(atom.site)
-    for i_seq,bond_list in enumerate(processed_msd.bond_lists):
-      for bond in bond_list:
-        self.line_i_seqs.append((i_seq,bond.j_seq))
+    if (processed_msd.bonds_forward is None):
+      for i_seq,bond_list in enumerate(processed_msd.bond_lists):
+        for bond in bond_list:
+          self.line_i_seqs.append((i_seq,bond.j_seq))
+    else:
+      self.line_i_seqs = processed_msd.bonds_forward + processed_msd.bonds_back
+      for i_seqs in processed_msd.bonds_forward:
+        self.line_colors[tuple(i_seqs)] = (0,1,0)
+      for i_seqs in processed_msd.bonds_back:
+        self.line_colors[tuple(i_seqs)] = (1,0,0)
     s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
     self.minimum_covering_sphere = s
     self.labels_display_list = None
@@ -710,6 +724,7 @@ class App(wx.App):
     assert len(args) in [0, 1]
     self.processed_pdb = None
     self.processed_msd = None
+    self.default_size = wx.Size(600,600)
     if (len(args) == 1):
       if (os.path.isfile(args[0])):
         self.processed_pdb = pdb_interpretation(file_name=args[0])
@@ -720,12 +735,11 @@ class App(wx.App):
     wx.App.__init__(self, 0)
 
   def OnInit(self):
-    # XXX gltbx.images.create_encoded("align.bmp")
     self.frame = wx.Frame(
       None, -1,
       "Wire World",
       wx.DefaultPosition,
-      wx.Size(400,400))
+      self.default_size)
 
     self.frame.CreateStatusBar()
 
@@ -733,26 +747,32 @@ class App(wx.App):
       style = wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
     tb.SetToolBitmapSize(wx.Size(20,20))
 
+    sphere_blue_bmp = gltbx.images.sphere_blue_img.as_wx_Bitmap()
     center_bmp = gltbx.images.center_img.as_wx_Bitmap()
     fit_bmp = gltbx.images.fit_img.as_wx_Bitmap()
     align_bmp = gltbx.images.align_img.as_wx_Bitmap()
     spiral_bmp = gltbx.images.spiral_img.as_wx_Bitmap()
 
-    tb.AddSimpleTool(10, center_bmp, "Center",
-      "Moves center of rotation to center of window. Keyboard shortcut: c")
+    tb.AddSimpleTool(10, sphere_blue_bmp, "MCS center",
+      "Moves center of rotation to center of minimum covering sphere (MCS)."
+      " Keyboard shortcut: m")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=10)
 
-    tb.AddSimpleTool(20, fit_bmp, "Fit size",
-      "Resize object to fit into window. Keyboard shortcut: f")
+    tb.AddSimpleTool(20, center_bmp, "Center",
+      "Moves center of rotation to center of window. Keyboard shortcut: c")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=20)
 
-    tb.AddSimpleTool(30, align_bmp, "Align",
-      "Aligns object and eye coordinate systems. Keyboard shortcut: a")
+    tb.AddSimpleTool(30, fit_bmp, "Fit size",
+      "Resize object to fit into window. Keyboard shortcut: f")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=30)
 
-    tb.AddSimpleTool(40, spiral_bmp, "Spin on/off",
-      "Turns auto-spin on/off. Keyboard shortcut: s")
+    tb.AddSimpleTool(40, align_bmp, "Align",
+      "Aligns object and eye coordinate systems. Keyboard shortcut: a")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=40)
+
+    tb.AddSimpleTool(50, spiral_bmp, "Spin on/off",
+      "Turns auto-spin on/off. Keyboard shortcut: s")
+    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=50)
 
     tb.AddSeparator()
     tb.AddControl(wx.StaticText(tb, -1, "Pick:"))
@@ -782,18 +802,18 @@ class App(wx.App):
     self.frame.SetMenuBar(menuBar)
     self.frame.Show(True)
     if (self.processed_pdb is not None):
-      self.cube = show_pdb(self.frame, -1, wx.Point(0,0), wx.Size(400,400))
+      self.cube = show_pdb(self.frame, -1, wx.Point(0,0), self.default_size)
       self.cube.set_points(
         self.processed_pdb.all_chain_proxies.stage_1.atom_attributes_list)
       self.cube.set_lines(
         self.processed_pdb.geometry_restraints_manager()
           .pair_proxies().bond_proxies)
     elif (self.processed_msd is not None):
-      self.cube = show_msd(self.frame, -1, wx.Point(0,0), wx.Size(400,400))
+      self.cube = show_msd(self.frame, -1, wx.Point(0,0), self.default_size)
       self.cube.set_points_and_lines(processed_msd=self.processed_msd)
     else:
       self.cube = show_tripod_refine(
-        self.frame, -1, wx.Point(0,0), wx.Size(400,400))
+        self.frame, -1, wx.Point(0,0), self.default_size)
     self.cube.SetFocus()
     self.SetTopWindow(self.frame)
     return True
@@ -804,16 +824,20 @@ class App(wx.App):
   def OnToolClick(self, event):
     id = event.GetId()
     if (id == 10):
-      self.cube.move_to_center_of_viewport(self.cube.rotation_center)
+      self.cube.move_rotation_center_to_mcs_center()
     elif (id == 20):
+      self.cube.move_to_center_of_viewport(self.cube.rotation_center)
+    elif (id == 30):
       self.cube.fit_into_viewport()
-    if (id == 30):
-      self.cube.reset_rotation()
     elif (id == 40):
+      self.cube.reset_rotation()
+    elif (id == 50):
       self.cube.autospin_allowed = not self.cube.autospin_allowed
       self.cube.autospin = False
       self.frame.SetStatusText(
         "Auto Spin %s" % ["Off", "On"][int(self.cube.autospin_allowed)])
+    else:
+      raise RuntimeError("Unknown event Id: %d" % id)
 
   def OnPickActionSelect(self, event):
     self.frame.SetStatusText(event.GetString())
