@@ -163,7 +163,7 @@ namespace cctbx { namespace xray { namespace twin_targets {
       twin_law_(twin_law),
       alpha_(alpha)
       {
-        CCTBX_ASSERT( (alpha >=0) && (alpha<=0.50) );
+        CCTBX_ASSERT( (alpha >=0) && (alpha<=1.00) );
         CCTBX_ASSERT( hkl_obs.size() > 0);
         CCTBX_ASSERT( hkl_obs.size() == i_obs.size() );
         CCTBX_ASSERT( (hkl_obs.size() == w_obs.size()) || (w_obs.size()==0) );
@@ -346,7 +346,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       eps_(1e-5),
       alpha_(alpha)
       {
-        CCTBX_ASSERT( (alpha >=0) && (alpha<=0.50) );
+        CCTBX_ASSERT( (alpha >=0) && (alpha<=1.00) );
         CCTBX_ASSERT( hkl_obs.size() > 0);
         CCTBX_ASSERT( hkl_obs.size() == f_obs.size() );
         CCTBX_ASSERT( (hkl_obs.size() == w_obs.size()) || (w_obs.size()==0) );
@@ -811,6 +811,11 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
       CCTBX_ASSERT( i_obs.size() == obs_size_ );
       CCTBX_ASSERT( (sig_obs.size() == obs_size_) || (sig_obs.size()==0) );
+      FloatType eps=1e-3;
+      CCTBX_ASSERT( (twin_fraction<0.5-eps) || (twin_fraction>0.5+eps) );
+      CCTBX_ASSERT( twin_fraction >= 0.0 );
+      CCTBX_ASSERT( twin_fraction <= 1.0 );
+
 
       FloatType i_a,s_a,i_b,s_b, n_i, n_s;
       int tmp_loc;
@@ -859,6 +864,8 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
       CCTBX_ASSERT( i_obs.size() == obs_size_ );
       CCTBX_ASSERT( (sig_obs.size() == 0) || (sig_obs.size() == obs_size_) );
+      CCTBX_ASSERT( twin_fraction >= 0 );
+      CCTBX_ASSERT( twin_fraction <= 1 );
 
       int tmp_loc;
       FloatType i_out, s_out, s_a, s_b;
@@ -885,48 +892,48 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
     }
 
 
-    scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 >
-    detwin_with_model_data(scitbx::af::const_ref<FloatType> const& i_obs,
-                           scitbx::af::const_ref<FloatType> const& sig_obs,
-                           scitbx::af::const_ref<FloatType> const& f_model,
-                           FloatType const& twin_fraction) const
-    {
-       CCTBX_ASSERT( i_obs.size() == sig_obs.size() );
-       CCTBX_ASSERT( f_model.size() == calc_size_ );
-       CCTBX_ASSERT( i_obs.size() == obs_size_ );
+     scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 >
+     detwin_with_model_data(scitbx::af::const_ref<FloatType> const& i_obs,
+                            scitbx::af::const_ref<FloatType> const& sig_obs,
+                            scitbx::af::const_ref<FloatType> const& f_model,
+                            FloatType const& twin_fraction) const
+     {
+        CCTBX_ASSERT( i_obs.size() == sig_obs.size() );
+        CCTBX_ASSERT( f_model.size() == calc_size_ );
+        CCTBX_ASSERT( i_obs.size() == obs_size_ );
 
-       scitbx::af::shared<FloatType> detwinned_i;
-       scitbx::af::shared<FloatType> detwinned_s;
+        scitbx::af::shared<FloatType> detwinned_i;
+        scitbx::af::shared<FloatType> detwinned_s;
 
-       FloatType o_a, s_a, o_b, s_b, c_a, c_b, frac1, frac2, n_i, n_s;
-       int loc_twin_obs, loc_calc, loc_twin_calc;
-       for (std::size_t ii=0;ii<i_obs.size();ii++){
-         loc_twin_obs = obs_to_twin_obs_[ ii ];
-         loc_calc = obs_to_calc_[ ii ];
-         loc_twin_calc = obs_to_twin_calc_[ ii ];
-         o_a = i_obs[ii];
-         o_b = i_obs[ loc_twin_obs ];
-         s_a = sig_obs[ii];
-         s_b = sig_obs[ loc_twin_obs ];
+        FloatType o_a, s_a, o_b, s_b, c_a, c_b, frac1, frac2, n_i, n_s;
+        int loc_twin_obs, loc_calc, loc_twin_calc;
+        for (std::size_t ii=0;ii<i_obs.size();ii++){
+          loc_twin_obs = obs_to_twin_obs_[ ii ];
+          loc_calc = obs_to_calc_[ ii ];
+          loc_twin_calc = obs_to_twin_calc_[ ii ];
+          o_a = i_obs[ii];
+          o_b = i_obs[ loc_twin_obs ];
+          s_a = sig_obs[ii];
+          s_b = sig_obs[ loc_twin_obs ];
 
-         c_a = f_model[ loc_calc ];
-         c_a = c_a*c_a;
+          c_a = f_model[ loc_calc ];
+          c_a = c_a*c_a;
 
-         c_b = f_model[ loc_twin_calc ];
-         c_b = c_b*c_b;
+          c_b = f_model[ loc_twin_calc ];
+          c_b = c_b*c_b;
 
-         frac1 = c_a * (1-twin_fraction) / ( c_a*(1.0-twin_fraction) + c_b*twin_fraction );
-         frac2 = c_a * twin_fraction / ( c_b*(1.0-twin_fraction) + c_a*twin_fraction );
+          frac1 = c_a * (1-twin_fraction) / ( c_a*(1.0-twin_fraction) + c_b*twin_fraction );
+          frac2 = c_a * twin_fraction / ( c_b*(1.0-twin_fraction) + c_a*twin_fraction );
 
-         n_i = o_a*frac1 + o_b*frac2;
-         n_s = std::sqrt( s_a*s_a*frac1*frac1 + s_b*s_b*frac2*frac2 );
+          n_i = o_a*frac1 + o_b*frac2;
+          n_s = std::sqrt( s_a*s_a*frac1*frac1 + s_b*s_b*frac2*frac2 );
 
-         detwinned_i.push_back( n_i );
-         detwinned_s.push_back( n_s );
-       }
-       scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 > result( detwinned_i, detwinned_s );
-       return( result );
-    }
+          detwinned_i.push_back( n_i );
+          detwinned_s.push_back( n_s );
+        }
+        scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 > result( detwinned_i, detwinned_s );
+        return( result );
+     }
 
 
     scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 >
@@ -938,6 +945,9 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
        CCTBX_ASSERT( i_obs.size() == sig_obs.size() );
        CCTBX_ASSERT( f_model.size() == calc_size_ );
        CCTBX_ASSERT( i_obs.size() == obs_size_ );
+
+       CCTBX_ASSERT( twin_fraction >= 0 );
+       CCTBX_ASSERT( twin_fraction <= 1 );
 
        scitbx::af::shared<FloatType> detwinned_i;
        scitbx::af::shared<FloatType> detwinned_s;
