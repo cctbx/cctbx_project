@@ -19,9 +19,13 @@ import sys,os
 
 
 def reference_setting_choices(space_group):
+  # we used to have
   cyclic_permutations =  ['x,y,z',
                           'y,z,x',
                           'z,x,y' ]
+
+
+
 
   adams_group = sgtbx.space_group_info(
     group=space_group.build_derived_group(False,False) )
@@ -94,9 +98,11 @@ def coset_lookup(pg_low,
 class sub_super_point_group_relations(object):
   def __init__(self,
                sg_low,
-               sg_high):
-    assert ( sg_low == sg_low.build_derived_point_group() )
-    assert ( sg_high == sg_high.build_derived_point_group() )
+               sg_high,
+               enforce_point_groups=True):
+    if enforce_point_groups:
+      assert ( sg_low == sg_low.build_derived_point_group() )
+      assert ( sg_high == sg_high.build_derived_point_group() )
     self.sg_low = sg_low
     self.sg_high = sg_high
 
@@ -210,7 +216,7 @@ class sub_super_point_group_relations(object):
       print >> out,   "Supergroup : %s"%( sgtbx.space_group_info( group=group ) )
       print >> out,   "             Used symops:"
       for symop in set:
-        print >> out, "             (%s)  "%( symop.r().as_hkl() )
+        print >> out, "             (%s)    "%( symop.r().as_hkl() )
       print >> out
       print >> out,   "             Left over symops:"
       for symop in leftover:
@@ -225,11 +231,12 @@ class sub_super_point_group_relations(object):
 
 
 class edge_object(object):
-  def __init__(self, used, unused):
+  def __init__(self, used, unused,as_xyz=False):
     # This object characterises a spacegroup transformation
     # by listing: used symops, unused symops
     self.symops_used = used
     self.symops_unused = unused
+    self.as_xyz = as_xyz
 
   def return_used(self):
     for symop in self.symops_used:
@@ -243,7 +250,10 @@ class edge_object(object):
     repr = str()
     repr += "  using: "
     for symop in self.symops_used:
-      repr+="("+symop.r().as_hkl()+")  "
+      if self.as_xyz:
+        repr+="("+symop.as_xyz()+")  "
+      else:
+        repr+="("+symop.r().as_hkl()+")  "
     repr +="  symops left: " +str( len(self.symops_unused) )
     return repr
 
@@ -251,7 +261,10 @@ class edge_object(object):
     repr = str()
     repr += "  using: "
     for symop in self.symops_used:
-      repr+="("+symop.r().as_hkl()+")  "
+      if self.as_xyz:
+        repr+="("+symop.as_xyz()+")  "
+      else:
+        repr+="("+symop.r().as_hkl()+")  "
     repr +="  symops left: " +str( len(self.symops_unused) )
     return repr
 
@@ -260,25 +273,31 @@ class edge_object(object):
 class point_group_graph(object):
   def __init__(self,
                pg_low,
-               pg_high):
+               pg_high,
+               enforce_point_group=True,
+               as_xyz = False):
 
     # It is rather import (i think) to make sure
     # that point groups are supplied. This might prevent later surprises.
     # hopefully.
+    self.as_xyz = as_xyz
 
     low_point_group_check = (
       pg_low ==
       pg_low.build_derived_point_group() )
-    if not low_point_group_check:
-      raise Sorry("Input spacegroup not a point group")
+    if enforce_point_group:
+      if not low_point_group_check:
+        raise Sorry("Input spacegroup not a point group")
 
     high_point_group_check = (
       pg_high ==
       pg_high.build_derived_point_group() )
-    if not high_point_group_check:
-      raise Sorry("Input spacegroup not a point group")
 
+    if enforce_point_group:
+      if not high_point_group_check:
+        raise Sorry("Input spacegroup not a point group")
 
+    self.assert_pg = enforce_point_group
     self.graph = graph_tools.graph()
     self.pg_low = pg_low
     self.pg_high = pg_high
@@ -305,7 +324,8 @@ class point_group_graph(object):
     name = str(object)
     sg_relations = sub_super_point_group_relations(
       input_sg,
-      self.pg_high)
+      self.pg_high,
+      self.assert_pg)
 
     # loop over the possible outgoing edges
     edge_list = {}
@@ -316,7 +336,8 @@ class point_group_graph(object):
 
       # This is enough info to make connections from the given node
       edge = edge_object( used =used_symops,
-                          unused = unused_symops)
+                          unused = unused_symops,
+                          as_xyz = self.as_xyz )
       edge_list.update(
         { str(sgtbx.space_group_info(group=possible_super_sg)) : edge }
       )
@@ -362,20 +383,43 @@ class point_group_graph(object):
 
 class find_compatible_space_groups(object):
   def __init__(self,
-               likely_pointgroup,
-               xtal_sg,
-               unit_cell,
-               sys_abs_flag=True):
+               likely_pointgroup=None,
+               xtal_sg=None,
+               unit_cell=None,
+               sys_abs_flag=True,
+               miller_array=None):
+    # we have the choice of supplynig either a dataset
+    # or just cell, symmetry and likely point group
+    # when supplynig data, an attempt will bhe made to detemine
+    # the most likely spacegroup
 
-    self.x_sg = xtal_sg
-    self.x_uc = unit_cell
+    self.miller_array = None
+    self.x_sg = None
+    self.x_uc = None
+    self.x_lpg = None
+
+    if (xtal_sg is None) or (unit_cell is None):
+      assert miller_array is not None
+      self.miller_array = miller_array
+      assert likely_pointgroup is None
+      self.miller_array = miller_array
+      self.x_sg = miller_array.space_group()
+      self.x_uc = miller_array.unit_cell()
+      self.x_lpg = miller_array.space_group().build_derived_group(True,True)
+
+    if miller_array is None:
+      assert xtal_sg is not None
+      assert unit_cell is not None
+      assert likely_pointgroup is not None
+      self.x_lpg = likely_pointgroup
+      self.x_sg = xtal_sg
+      self.x_uc = unit_cell
 
     self.xs = crystal.symmetry( self.x_uc,
                                 space_group=self.x_sg)
 
     self.cb_op_xs_to_niggli = self.xs.change_of_basis_op_to_niggli_cell()
 
-    self.x_lpg = likely_pointgroup
     self.cb_op_lpg_to_ref_set = sgtbx.space_group_info(
       group=self.x_lpg).change_of_basis_op_to_reference_setting()
 
@@ -418,7 +462,16 @@ class find_compatible_space_groups(object):
                             self.cb_op_xs_to_niggli)
             self.allowed_under_pg_and_sys_abs.append( (final_xs,
                                                         final_cb_op) )
+    #-------------------------------------------
+    self.full_mask=None
+    if self.miller_array is not None:
+      self.full_mask = flex.bool(self.miller_array.data().size(), True ) # True when present, false when absent
+      for xs_and_cb_op in self.allowed_under_pg_and_sys_abs:
+        xs_and_cb_op[0].show_summary()
+        xs_and_cb_op[1].as_xyz()
 
+  def find_absent_indices():
+    print
 
   def get_space_groups_compatible_with_likely_point_group(self):
     # loop over all standard sg's
@@ -452,6 +505,13 @@ class find_compatible_space_groups(object):
         contains=False
     return contains
 
+  def full_sys_abs_mask(self):
+    # here we make a
+    print
+    print
+
+
+
   def show(self, out=None):
     if out == None:
       out=sys.stdout
@@ -478,7 +538,8 @@ class space_group_graph_from_cell_and_sg(object):
   def __init__(self,
                unit_cell,
                sg_low,
-               max_delta=5.0):
+               max_delta=5.0,
+               ):
     # No primitive settings assumed
     self.unit_cell = unit_cell
     self.sg_low = sg_low
@@ -510,9 +571,9 @@ class space_group_graph_from_cell_and_sg(object):
 
       # now find out the possible space groups please
       tmp_allowed_sgs = find_compatible_space_groups(
-        pg_object, # point group
-        self.sg_low, # sg of given system
-        self.unit_cell) # uc of given system
+        likely_pointgroup=pg_object, # point group
+        xtal_sg=self.sg_low, # sg of given system
+        unit_cell=self.unit_cell) # uc of given system
 
       new_node = node_object(
         self.pg_graph.graph.node_objects[ pg_name ],
