@@ -44,12 +44,10 @@ master_params =  iotbx.phil.parse("""
   detwin{
     mode = algebraic proportional *auto
     .type= choice
-    local_scaling = False
-    .type=bool
     map_types{
       twofofc = *two_m_dtfo_d_fc two_dtfo_fc
       .type = choice
-      fofc = *gradient m_gradient
+      fofc = *m_dtfo_d_fc gradient m_gradient
       .type = choice
       aniso_correct = False
       .type=bool
@@ -64,7 +62,7 @@ class twin_fraction_object(object):
   transformastion of twin fraction"""
   def __init__(self, twin_fraction = 0):
     self.min_frac = 0.001
-    self.max_frac = 0.499
+    self.max_frac = 0.999
     self.twin_fraction = float(twin_fraction)
     if (self.twin_fraction<=self.min_frac):
       self.twin_fraction = self.min_frac + self.min_frac/10.0
@@ -445,29 +443,6 @@ class bulk_solvent_scaler(object):
     target = self.target_evaluator.target( self.f_model_core_data.f_model() )
     return target
 
-  def compute_gradients_fin_diff(self, h=0.001):
-    # obsolete code, will be removed at one stage
-    fo = self.compute_functional()
-    fd = []
-    for ii in xrange( self.x.size() ):
-      old = float(self.x[ii])
-      self.x[ii] = self.x[ii]+h
-      self.update_parameters()
-      tmp = self.compute_functional()
-      fd.append( tmp )
-      self.x[ii] = float(old)
-    fd = flex.double(fd)
-    fd = (fd-fo)/h
-    #print list(fd)
-    fd[0] = fd[0]*self.parameter_mask.twin_fraction
-    fd[1] = fd[1]*self.parameter_mask.k_overall
-    fd[2] = fd[2]*self.parameter_mask.k_sol
-    fd[3] = fd[3]*self.parameter_mask.u_sol
-    for ii in xrange(3,self.x.size()):
-      fd[ii] = fd[ii]*self.parameter_mask.u_star
-    #print list(fd)
-    return fd
-
   def compute_gradients(self):
     dtdab =  self.target_evaluator.d_target_d_ab(
       self.f_model_core_data.f_model() )
@@ -810,16 +785,11 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                start_fraction     = 0.1,
                n_refl_bin         = 2000,
                max_bins           = 20,
-               sf_algorithm       = "fft", # XXX never used.
-               sf_cos_sin_table   = True,
-               perform_local_scaling = False,
                detwin_mode = "auto",
                map_types = master_params.extract().detwin.map_types
                 ):
     self.alpha_beta_params=None
-    # XXX Temporary work-around. Pavel.
     self.sfg_params = sf_and_grads_accuracy_params
-    #
     self.target_name="twin_lsq_f"
     self._target_attributes = target_attributes()
     self.out = out
@@ -829,11 +799,11 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.twin_law=twin_law
     self.twin_fraction=start_fraction
 
-    self.perform_local_scaling = perform_local_scaling
     self.possible_detwin_modes = ["proportional",
                                   "algebraic",
                                   "gradient",
-                                  "auto"]
+                                  "auto"
+                                  ]
     assert detwin_mode in self.possible_detwin_modes
     self.detwin_mode = detwin_mode
     self.detwin_switch_twin_fraction = 0.45
@@ -844,6 +814,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     assert (self.twin_law is not None)
     self.f_obs = f_obs.map_to_asu()
     self.free_array = free_array.map_to_asu()
+    assert self.f_obs.indices().all_eq( self.free_array.indices() )
+
+
 
     self.f_obs_w = self.f_obs.select( ~self.free_array.data() )
     self.f_obs_f = self.f_obs.select( self.free_array.data() )
@@ -973,11 +946,15 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       anomalous_flag = self.f_obs.anomalous_flag(),
       twin_law       = self.twin_law.as_double_array()[0:9] )
 
-    self.sf_algorithm = sf_algorithm
-    self.sf_cos_sin_table = sf_cos_sin_table
     self.structure_factor_gradients_w = cctbx.xray.structure_factors.gradients(
-      miller_set    = self.miller_set,
-      cos_sin_table = self.sf_cos_sin_table)
+      miller_set                   = self.miller_set,
+      cos_sin_table                = self.sfg_params.cos_sin_table,
+      grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+      quality_factor               = self.sfg_params.quality_factor,
+      u_base                       = self.sfg_params.u_base,
+      b_base                       = self.sfg_params.b_base,
+      wing_cutoff                  = self.sfg_params.wing_cutoff,
+      exp_table_one_over_step_size = self.sfg_params.exp_table_one_over_step_size)
 
     self.sigmaa_object_cache = None
     self.update_sigmaa_object = True
@@ -1001,11 +978,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       start_fraction     = self.twin_fraction,
       n_refl_bin         = self.n_refl_bin,
       max_bins           = self.max_bins,
-      sf_algorithm       = self.sf_algorithm,
-      sf_cos_sin_table   = self.sf_cos_sin_table,
-      perform_local_scaling = self.perform_local_scaling,
       detwin_mode        = self.detwin_mode,
-      map_types          = self.map_types
+      map_types          = self.map_types,
+      sf_and_grads_accuracy_params = self.sfg_params,
       )
     new_object.twin_fraction_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
     new_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
@@ -1025,11 +1000,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       start_fraction     = dc.twin_fraction,
       n_refl_bin         = dc.n_refl_bin,
       max_bins           = dc.max_bins,
-      sf_algorithm       = dc.sf_algorithm,
-      sf_cos_sin_table   = dc.sf_cos_sin_table,
-      perform_local_scaling = dc.perform_local_scaling,
       detwin_mode        = dc.detwin_mode,
-      map_types          = dc.map_types
+      map_types          = dc.map_types,
+      sf_and_grads_accuracy_params = dc.sfg_params
       )
 
     new_object.update()
@@ -1048,11 +1021,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       start_fraction     = dc.twin_fraction,
       n_refl_bin         = dc.n_refl_bin,
       max_bins           = dc.max_bins,
-      sf_algorithm       = dc.sf_algorithm,
-      sf_cos_sin_table   = dc.sf_cos_sin_table,
-      perform_local_scaling = dc.perform_local_scaling,
       detwin_mode        = dc.detwin_mode,
-      map_types          = dc.map_types
+      map_types          = dc.map_types,
+      sf_and_grads_accuracy_params = dc.sfg_params
       )
     return new_object
 
@@ -1213,13 +1184,16 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                    b_cart              = None,
                    k_sol               = None,
                    b_sol               = None,
-                   sf_algorithm        = None,
+                   sf_and_grads_accuracy_params = None,
                    target_name         = None,
                    abcd                = None,
                    alpha_beta_params   = None,
                    xray_structure      = None,
                    mask_params         = None,
                    overall_scale       = None):
+    if(sf_and_grads_accuracy_params is not None):
+      self.sfg_params = sf_and_grads_accuracy_params
+      self.update_xray_structure(update_f_calc  = True)
 
     if(f_calc is not None):
        assert f_calc.indices().all_eq(self.f_model.indices())
@@ -1278,7 +1252,17 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if self.miller_set is None:
       self.miller_set, self.free_flags_for_f_atoms = self.construct_miller_set(True)
     tmp = self.miller_set.structure_factors_from_scatterers(
-      xray_structure = self.xray_structure )
+      xray_structure = self.xray_structure,
+      algorithm                    = self.sfg_params.algorithm,
+      cos_sin_table                = self.sfg_params.cos_sin_table,
+      grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+      quality_factor               = self.sfg_params.quality_factor,
+      u_base                       = self.sfg_params.u_base,
+      b_base                       = self.sfg_params.b_base,
+      wing_cutoff                  = self.sfg_params.wing_cutoff,
+      exp_table_one_over_step_size =
+                      self.sfg_params.exp_table_one_over_step_size
+    )
     f_atoms = tmp.f_calc()
     return f_atoms
 
@@ -1610,17 +1594,31 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
   def target_f(self):
     return self.target_t()
 
-  def detwin_data(self, perform_local_scaling=True, mode=None):
+  def detwin_data(self, mode=None):
+    #determine how to detwin
     if mode is None:
-      mode = self.detwin_mode
+      mode = "auto"
     if mode == "auto":
       if self.twin_fraction_object.twin_fraction > self.detwin_switch_twin_fraction:
         mode = "proportional"
+        if self.twin_fraction_object.twin_fraction > 1.0 - self.detwin_switch_twin_fraction:
+          mode = "algebraic"
       else:
         mode = "algebraic"
+
+    if mode == "algebraic":
+      if  abs(self.twin_fraction_object.twin_fraction-0.5)<1e-3:
+        print >> self.out, "Automatic adjustment: detwinning mode set to proportional"
+
     assert mode in self.possible_detwin_modes
-    tmp_i_obs = self.f_obs.f_as_f_sq()
+    mode = "algebraic"
+    #detwinning should be done against
+    tmp_i_obs = self.f_obs.deep_copy().f_as_f_sq()
+    untouched = self.f_obs.deep_copy().f_as_f_sq()
     dt_f_obs = None
+    tmp_free = self.free_array.deep_copy()
+
+    # now please detwin the data
     if mode == "proportional":
       dt_iobs, dt_isigma = self.full_detwinner.detwin_with_model_data(
         tmp_i_obs.data(),
@@ -1628,59 +1626,48 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         self.data_core.f_model(),
         self.twin_fraction_object.twin_fraction )
       tmp_i_obs = tmp_i_obs.customized_copy(
-        data = dt_iobs,
-        sigmas = dt_isigma ).set_observation_type( tmp_i_obs )
+        data = dt_iobs, sigmas = dt_isigma).set_observation_type( tmp_i_obs )
       dt_f_obs = tmp_i_obs.f_sq_as_f()
 
     if mode == "algebraic":
       dt_iobs, dt_isigma = self.full_detwinner.detwin_with_twin_fraction(
-        i_obs = tmp_i_obs.data(),
-        sigma_obs = tmp_i_obs.sigmas(),
-        twin_fraction = self.twin_fraction_object.twin_fraction )
-      zero_level = flex.min(self.f_obs.data())
-      zeros = flex.bool(dt_iobs<zero_level)
-      dt_iobs = dt_iobs.set_selected(zeros, zero_level)
+        tmp_i_obs.data(),
+        tmp_i_obs.sigmas(),
+        self.twin_fraction_object.twin_fraction )
+
+      # find out which intensities are zero or negative, they will be eliminated later on
+      zeros = flex.bool( dt_iobs < 0 )
+      x = dt_iobs.select( ~zeros )
+      y = tmp_i_obs.data().select( ~zeros )
 
       tmp_i_obs = tmp_i_obs.customized_copy(
-        data = dt_iobs,
-        sigmas = dt_isigma ).set_observation_type( tmp_i_obs ).map_to_asu()
-      dt_f_obs = tmp_i_obs.f_sq_as_f()
+        data = dt_iobs, sigmas = dt_isigma).set_observation_type( tmp_i_obs )
+      dt_f_obs = tmp_i_obs.select( ~zeros ).f_sq_as_f()
+      tmp_free = tmp_free.select( ~zeros )
+      untouched = untouched.select( ~zeros )
 
-    tmp_f_model = self.f_atoms.customized_copy(
-      data = self.data_core.f_model() ).common_set(
-      dt_f_obs )
-    tmp_abs_f_model = tmp_f_model.customized_copy(
-      data = flex.abs( tmp_f_model.data()) ).set_observation_type( dt_f_obs )
-
-
-    if perform_local_scaling: # do local scaling against fmodel
-      local_scaler = relative_scaling.local_scaling_driver(
-        miller_native=tmp_abs_f_model,
-        miller_derivative=dt_f_obs,
-        use_intensities=False,
-        local_scaling_dict={'local_nikonov':True, 'local_moment':False, 'local_lsq':False} )
-      dt_f_obs = dt_f_obs.customized_copy(
-        data =  dt_f_obs.data()*local_scaler.local_scaler.get_scales()
-        ).set_observation_type( dt_f_obs )
-    else:
-      k = flex.sum( tmp_abs_f_model.data()*dt_f_obs.data() ) / flex.sum( dt_f_obs.data()*dt_f_obs.data() )
-      dt_f_obs = dt_f_obs.customized_copy(
-        data =  dt_f_obs.data()*k,
-        sigmas = dt_f_obs.sigmas()*k
-        ).set_observation_type( dt_f_obs )
-    return dt_f_obs, tmp_f_model
+    #we can now quickly scale the two and see what hapens.
+    abs_tmp_f_model = abs( self.f_model() ).common_set( dt_f_obs ).set_observation_type( dt_f_obs )
+    tmp_f_model = self.f_model().common_set( dt_f_obs )
+    scaler = relative_scaling.ls_rel_scale_driver(
+      miller_native = abs_tmp_f_model,
+      miller_derivative = dt_f_obs,
+      use_intensities = False,
+      scale_weight = False,
+      use_weights = False )
+    return dt_f_obs, tmp_f_model, tmp_free
 
   def sigmaa_object(self, detwinned_data=None, f_model_data=None, forced_update=False):
     assert ( [detwinned_data,f_model_data] ).count(None) != 1
+    tmp_free = self.free_array
     if (detwinned_data is None) or forced_update:
       self.update_sigmaa_object = True
-      detwinned_data,f_model = self.detwin_data(
-        perform_local_scaling=self.perform_local_scaling)
+      detwinned_data,f_model,tmp_free = self.detwin_data()
     if self.update_sigmaa_object:
       self.sigmaa_object_cache = sigmaa_estimation.sigmaa_estimator(
         miller_obs   = detwinned_data,
         miller_calc  = f_model,
-        r_free_flags = self.free_array,
+        r_free_flags = tmp_free,
         kernel_width_free_reflections=200,
         )
     return self.sigmaa_object_cache
@@ -1726,6 +1713,17 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     pher = self.phase_errors().select(~self.free_array.data())
     return pher
 
+
+
+  def _map_coeff(self, f_obs, f_model, f_obs_scale, f_model_scale):
+    d_obs = miller.array(miller_set = f_model,
+                         data       = f_obs.data()*f_obs_scale
+                        ).phase_transfer(phase_source = f_model)
+    return miller.array(miller_set = f_model,
+                        data       = d_obs.data()-f_model.data()*f_model_scale)
+
+
+
   def map_coefficients(self,
                        map_type = None,
                        k        = None,
@@ -1739,40 +1737,67 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
                         "gradient",
                         "m_gradient"
                         )
-    aniso_scale = 1.0/self.data_core.overall_scale() # anisotropy correction
-    aniso_scale = self.f_atoms.customized_copy(
-      data = aniso_scale ).common_set( self.f_obs )
-    aniso_scale = aniso_scale.data()
-
-
     # this is to modify default behavoir of phenix.refine
     if map_type == "m*Fobs-D*Fmodel":
       if self.map_types.fofc == "gradient":
         map_type = "gradient"
       if self.map_types.fofc == "m_gradient":
         map_type = "m_gradient"
+      if self.map_types.fofc == "m_dtfo_d_fc":
+        map_type = "m_dtfo_d_fc"
+
+    if map_type == "2m*Fobs-D*Fmodel":
+      if self.map_types.twofofc == "two_m_dtfo_d_fc":
+        map_type = "two_m_dtfo_d_fc"
+      if  self.map_types.twofofc == "two_dtfo_fc":
+        map_type = "two_dtfo_fc"
+
+    #detwin
+    dt_f_obs, tmp_f_model, tmp_free = self.detwin_data()
+    #for aniso correction
+    aniso_scale = 1.0/self.data_core.overall_scale() # anisotropy correction
+    aniso_scale = self.f_atoms.customized_copy(
+      data = aniso_scale ).common_set( dt_f_obs )
+    aniso_scale = aniso_scale.data()
 
     if map_type not in ["gradient","m_gradient"]:
-      dt_f_obs, f_model = self.detwin_data(perform_local_scaling=self.perform_local_scaling)
       result = None
       if map_type == "k*Fobs-n*Fmodel":
         if ([k,n]).count(None) > 0:
           raise Sorry("Map coefficient multipliers (k and n) must be provided to generate detwinned maps")
-        result = dt_f_obs.data()*k - abs(f_model).data()*n
+        result = self._map_coeff( f_obs         = dt_f_obs,
+                                  f_model       = tmp_f_model,
+                                  f_obs_scale   = k,
+                                  f_model_scale = n )
+
         assert result is not None
       else:
         sigmaa_object = self.sigmaa_object()
         m = sigmaa_object.fom().data()
         d = sigmaa_object.alpha_beta()[0].data()
-        if map_type == "m*Fobs-D*Fmodel":
-          result = (dt_f_obs.data()*m - abs(f_model).data()*d)
-        if map_type == "2m*Fobs-D*Fmodel":
-          result = dt_f_obs.data()*2*m - abs(f_model).data()*d
+        if map_type == "m_dtfo_d_fc":
+          result = self._map_coeff( f_obs   = dt_f_obs,
+                                    f_model = tmp_f_model,
+                                    f_obs_scale  = m ,
+                                    f_model_scale =d )
+        if map_type == "dtfo_fc":
+          result = self._map_coeff( f_obs   = dt_f_obs,
+                                    f_model = tmp_f_model,
+                                    f_obs_scale  = 1.0,
+                                    f_model_scale =1.0 )
+        if map_type == "two_m_dtfo_d_fc":
+          result = self._map_coeff( f_obs   = dt_f_obs,
+                                    f_model = tmp_f_model,
+                                    f_obs_scale  = 2*m,
+                                    f_model_scale = d )
+        if map_type == "two_dtfo_fc":
+          result = self._map_coeff( f_obs   = dt_f_obs,
+                                    f_model = tmp_f_model,
+                                    f_obs_scale  = 2,
+                                    f_model_scale = 1 )
+
         assert result is not None
       assert result != None
-
-      result = dt_f_obs.customized_copy( data = result, sigmas=None )
-      result = result.phase_transfer( f_model )
 
       if self.map_types.aniso_correct:
         result = result.customized_copy( data = result.data()*aniso_scale )
@@ -1793,7 +1818,6 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
 
       if self.map_types.aniso_correct:
         gradients = gradients.customized_copy( data = gradients.data()*aniso_scale )
-
       return gradients
 
 
