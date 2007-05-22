@@ -46,17 +46,26 @@ class combined_scaling(object):
     self.x1 = miller_array_x1.deep_copy().map_to_asu()
     self.x2 = miller_array_x2.deep_copy().map_to_asu()
     ## Get the scaling and rejection options
-    self.lsq_options = options.least_squares_options
-    self.loc_options = options.local_scaling_options
-    self.out_options = options.outlier_rejection_options
-    self.overall_protocol = options.target
+    self.lsq_options = None
+    self.loc_options = None
+    self.out_options = None
+    self.overall_protocol = None
     self.cut_level_rms = None
+    if options is not None:
+      self.lsq_options = options.least_squares_options
+      self.loc_options = options.local_scaling_options
+      self.out_options = options.outlier_rejection_options
+      self.overall_protocol = options.target
+      self.cut_level_rms = None
     ## cycling options
     self.auto_cycle=False
-    if options.iterations=='auto':
-      self.auto_cycle=True
+    if options is not None:
+      if options.iterations=='auto':
+        self.auto_cycle=True
 
-    self.max_iterations = options.max_iterations
+    self.max_iterations = 10
+    if options is not None:
+      self.max_iterations = options.max_iterations
     if not self.auto_cycle:
       assert self.max_iterations > 0
 
@@ -104,9 +113,13 @@ class combined_scaling(object):
       print >> self.out, "--------------------------"
 
       if counter == 0:
-        self.cut_level_rms = self.out_options.cut_level_rms_primary
+        self.cut_level_rms = 3
+        if options is not None:
+          self.cut_level_rms = self.out_options.cut_level_rms_primary
       if counter > 0:
-        self.cut_level_rms = self.out_options.cut_level_rms_secondary
+        self.cut_level_rms = 3
+        if options is not None:
+          self.cut_level_rms = self.out_options.cut_level_rms_secondary
 
       ## take the common sets
       self.s1 = self.s1.common_set(  self.x1 )
@@ -235,7 +248,7 @@ class combined_scaling(object):
 class ano_scaling(object):
   def __init__(self,
                miller_array_x1,
-               options,
+               options=None,
                out=None):
     ## These are the tasks ahead
     ##
@@ -263,16 +276,16 @@ class ano_scaling(object):
 
     ## Now we have a 'native' and a 'derivative'
     ##
-    ## Submit these things too the combined scaler
-    ano_scaler=combined_scaling(
-      self.x1p,
-      self.x1n,
-      options,
-      out)
-    self.s1p = ano_scaler.x1.deep_copy()
-    self.s1n = ano_scaler.x2.deep_copy()
-
-    del ano_scaler
+    ## Submit these things to the combined scaler
+    if self.options is not None:
+      ano_scaler=combined_scaling(
+        self.x1p,
+        self.x1n,
+        options,
+        out)
+      self.s1p = ano_scaler.x1.deep_copy()
+      self.s1n = ano_scaler.x2.deep_copy()
+      del ano_scaler
 
 
 
