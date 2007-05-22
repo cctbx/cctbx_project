@@ -35,10 +35,9 @@ class manager(object):
     timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
     assert [refine_adp, refine_occ].count(True) == 1
-    xray.set_scatterer_grad_flags(
-                               scatterers = fmodel.xray_structure.scatterers(),
-                               u_iso      = refine_adp,
-                               occupancy  = refine_occ)
+
+
+
     if(selections is None):
        selections = []
        selections.append(
@@ -54,6 +53,13 @@ class manager(object):
         else:
            selections_.append(sel)
     selections = selections_
+    scatterers = fmodel.xray_structure.scatterers()
+    scatterers.flags_set_grads(state=False)
+    for sel in selections:
+      if(refine_adp):
+         scatterers.flags_set_grad_u_iso(iselection = sel)
+      if(refine_occ):
+         scatterers.flags_set_grad_occupancy(iselection = sel)
     fmodel_copy = fmodel.deep_copy()
     rworks = flex.double()
     sc_start = fmodel.xray_structure.scatterers().deep_copy()
@@ -295,7 +301,7 @@ class target_and_grads(object):
     if (compute_gradients):
       target_grads_wrt_par = t_r.gradients_wrt_atomic_parameters(
         u_iso=refine_adp,
-        occupancy=refine_occ).packed()
+        occupancy=refine_occ)
       self.grads_wrt_par = []
       for sel in selections:
         target_grads_wrt_par_sel = target_grads_wrt_par.select(sel)
