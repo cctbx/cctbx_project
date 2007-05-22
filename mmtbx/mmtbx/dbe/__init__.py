@@ -22,6 +22,10 @@ dbe_master_params = iotbx.phil.parse("""\
     .type = strings
   number_of_macro_cycles = 10
     .type = int
+  use_map = True
+    .type = bool
+  resolution_factor = 1/10.
+    .type = float
   restraints {
     selection = D1 D2 D3 D4 D5 D6 D7 D8 D9 D10
       .type = strings
@@ -121,7 +125,7 @@ class manager(object):
                                       site_j = flex.double(atom_j.coordinates))
                if([b_estimated, q_estimated].count(None) == 0):
                   is_qb_ok = q_estimated < 1.2 and q_estimated > 0.0 and \
-                             b_estimated > 0.0 and b_estimated < 6.0
+                             b_estimated > 0.0 and b_estimated < 10.0
                else:
                   is_qb_ok = True
                if(dbe_label is not None and is_qb_ok):
@@ -224,20 +228,20 @@ class manager(object):
 
   def _dbe_position_B(self, name_i, name_j, site_i, site_j):
     #
-    if(self.fmodel is not None):
-       fmodel_ = self.fmodel.resolution_filter(d_min = 0.75)
+    if(self.fmodel is not None and self.params.use_map):
+       fmodel_ = self.fmodel.resolution_filter(d_min = 0.7)
        fft_map = fmodel_.electron_density_map(
-                              map_type          = "k*Fobs-n*Fmodel",
-                              k                 = 1,
-                              n                 = 1,
-                              resolution_factor = 1/10.)
+                             map_type          = "k*Fobs-n*Fmodel",
+                             k                 = 1,
+                             n                 = 1,
+                             resolution_factor = self.params.resolution_factor)
        fft_map.apply_volume_scaling()
        fft_map_data = fft_map.real_map_unpadded()
     #
     phe_ring = ["CZ","CE1","CE2","CD1","CD2","CG"]
     elbow    = ["CA","CB","CG"]
     main_cn  = ["C","N"]
-    main_can = ["CA","N"]
+    main_can = ["CA","N","CD"]
     main_cod = ["C","O","OXT"]
     main_cos = ["CZ","OH", "CB","OG1"]
     main_cac = ["CA","C"]
@@ -305,7 +309,7 @@ class manager(object):
        else:
           dbe_site = self.dbe_site_position(site_j, site_i, alp)
     b_estimated, q_estimated = None, None
-    if(label is not None and self.fmodel is not None):
+    if(label is not None and self.fmodel is not None and self.params.use_map):
        site_cart, gof, b_estimated, q_estimated = \
                         self.find_dbe(fft_map_data = fft_map_data,
                                       site_cart_1  = site_i,

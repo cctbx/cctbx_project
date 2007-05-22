@@ -222,9 +222,15 @@ class manager(object):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement for H atoms",
                                         out = log)
        # XXX FUTURE: smart decision about which selection to use and at which resolution.
+       if(h_params.refine == "one_b_per_residue"):
+          sel_mode = group_adp_selections_h
+       elif(h_params.refine == "one_b_per_molecule"):
+          sel_mode = [fmodel.xray_structure.hd_selection().iselection()]
+       else:
+          raise RuntimeError("No refinement mode.")
        group_b_manager = mmtbx.refinement.group.manager(
           fmodel                   = fmodel,
-          selections               = [fmodel.xray_structure.hd_selection().iselection()],#group_adp_selections_h,
+          selections               = sel_mode,
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = 30,
           number_of_macro_cycles   = 1,

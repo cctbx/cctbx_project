@@ -1919,6 +1919,22 @@ class target_result_mixin(object):
         n_parameters=0,
         miller_set=d_target_d_f_calc,
         algorithm=manager.sfg_params.algorithm).d_target_d_u_cart()
+    elif(u_iso):
+      result = manager.structure_factor_gradients_w(
+        u_iso_refinable_params=None,
+        d_target_d_f_calc=d_target_d_f_calc.data(),
+        xray_structure=xray_structure,
+        n_parameters=0,
+        miller_set=d_target_d_f_calc,
+        algorithm=manager.sfg_params.algorithm).d_target_d_u_iso()
+    elif(occupancy):
+      result = manager.structure_factor_gradients_w(
+        u_iso_refinable_params=None,
+        d_target_d_f_calc=d_target_d_f_calc.data(),
+        xray_structure=xray_structure,
+        n_parameters=0,
+        miller_set=d_target_d_f_calc,
+        algorithm=manager.sfg_params.algorithm).d_target_d_occupancy()
     else:
       result = manager.structure_factor_gradients_w(
         u_iso_refinable_params=u_iso_refinable_params,
