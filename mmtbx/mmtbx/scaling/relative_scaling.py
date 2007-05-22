@@ -299,11 +299,8 @@ class ls_rel_scale_driver(object):
                use_intensities=True,
                scale_weight=True,
                use_weights=True):
-
-    self.native = miller_native.deep_copy()
-    self.derivative = miller_derivative.deep_copy()
-
-
+    self.native = miller_native.deep_copy().map_to_asu()
+    self.derivative = miller_derivative.deep_copy().map_to_asu()
 
     lsq_object = refinery(self.native,
                           self.derivative,
@@ -327,13 +324,15 @@ class ls_rel_scale_driver(object):
       self.derivative,self.p_scale,self.u_star )
 
     self.scaled_original_derivative = self.derivative.deep_copy().set_observation_type(
-      self.derivative )
+      self.derivative ).map_to_asu()
 
+    tmp_nat = self.native
+    tmp_der = self.derivative
 
-    tmp_nat, tmp_der = self.native.common_sets(self.derivative)
-
-    self.r_val_after = flex.sum( flex.abs(tmp_nat.data()-
-                                          tmp_der.data()) )
+    tmp_nat, tmp_der = self.native.map_to_asu().common_sets(self.derivative.map_to_asu())
+    self.r_val_after = flex.sum( flex.abs( tmp_nat.data()-
+                                           tmp_der.data()   )
+                               )
     self.r_val_after /=(flex.sum( flex.abs(tmp_nat.data()) ) +
                         flex.sum( flex.abs(tmp_der.data()) ))/2.0
 
@@ -348,6 +347,7 @@ class ls_rel_scale_driver(object):
 
     print >> out
     print >> out, "p_scale                    : %5.3f"%(self.p_scale)
+    print >> out, "                            (%5.3f)"%(math.exp( self.p_scale ) )
     print >> out, "B_cart trace               : %5.3f, %5.3f, %5.3f"%(
       self.b_cart[0],
       self.b_cart[1],
