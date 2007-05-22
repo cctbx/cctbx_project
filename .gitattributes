@@ -26,6 +26,7 @@ smtbx/import_scitbx_af.h -text
 smtbx/libtbx_config -text
 smtbx/refinement/SConscript -text
 smtbx/refinement/__init__.py -text
+smtbx/refinement/ext.py -text
 smtbx/refinement/import_cctbx_xray.h -text
 smtbx/refinement/minimization.cpp -text
 smtbx/refinement/minimization.h -text
