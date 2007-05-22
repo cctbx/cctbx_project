@@ -837,11 +837,11 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
            }
            n_i = ((1.0-twin_fraction)*i_a - twin_fraction*i_b)/(1.0-2.0*twin_fraction);
            n_s =  tmp_mult*std::sqrt((s_a*s_a*(1.0-twin_fraction) + s_b*s_b*twin_fraction));
-        } else { // twin related reflection is not there. set things to zero
+        } else { // twin related reflection is not there. set things to a negative value
            i_a = i_obs[ii];
            s_a = sig_obs[ii];
-           n_i = 0.0; // i_a*(1.0-twin_fraction)/(1-2.0*twin_fraction);
-           n_s = s_a*(1.0-twin_fraction)/(1-2.0*twin_fraction);
+           n_i = -100000.0; // i_a*(1.0-twin_fraction)/(1-2.0*twin_fraction);
+           n_s = s_a*10;
         }
         i_detwin.push_back( n_i );
         s_detwin.push_back( n_s );
