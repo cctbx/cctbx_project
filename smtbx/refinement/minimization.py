@@ -1,5 +1,6 @@
 import cctbx.xray.structure_factors
-from cctbx.xray import ext
+import cctbx.xray.ext
+import smtbx.refinement.ext
 from cctbx.xray.structure import structure as cctbx_xray_structure
 from cctbx import crystal
 from cctbx.array_family import flex
@@ -16,12 +17,13 @@ def add_gradients(
       u_iso_gradients     = None,
       u_aniso_gradients   = None,
       occupancy_gradients = None):
-  ext.minimization_add_gradients(scatterers          = scatterers,
-                                 xray_gradients      = xray_gradients,
-                                 site_gradients      = site_gradients,
-                                 u_iso_gradients     = u_iso_gradients,
-                                 u_aniso_gradients   = u_aniso_gradients,
-                                 occupancy_gradients = occupancy_gradients)
+  smtbx.refinement.ext.minimization_add_gradients(
+    scatterers          = scatterers,
+    xray_gradients      = xray_gradients,
+    site_gradients      = site_gradients,
+    u_iso_gradients     = u_iso_gradients,
+    u_aniso_gradients   = u_aniso_gradients,
+    occupancy_gradients = occupancy_gradients)
 
 class lbfgs(object):
   """
@@ -41,6 +43,7 @@ class lbfgs(object):
                      lbfgs_termination_params=None,
                      lbfgs_core_params=None,
                      correct_special_position_tolerance=1.e-2,
+                     use_special_position_constraints=False,
                      cos_sin_table=True,
                      structure_factor_algorithm=None,
                      verbose=0):
@@ -72,10 +75,12 @@ class lbfgs(object):
     print an increasing amount of information
     """
     adopt_init_args(self, locals())
-    self.scatterer_grad_flags_counts = ext.scatterer_grad_flags_counts(
-                                              self.xray_structure.scatterers())
+    self.scatterer_grad_flags_counts = \
+        cctbx.xray.ext.scatterer_grad_flags_counts(
+          self.xray_structure.scatterers())
     self.grad_flags_counts = \
-              ext.scatterer_grad_flags_counts(self.xray_structure.scatterers())
+        cctbx.xray.ext.scatterer_grad_flags_counts(
+          self.xray_structure.scatterers())
     self.structure_factors_from_scatterers = \
       cctbx.xray.structure_factors.from_scatterers(
         miller_set=self.target_functor.f_obs(),
@@ -100,7 +105,7 @@ class lbfgs(object):
     self.final_target_value = self.target_result.target()
 
   def apply_shifts(self):
-    apply_shifts_result = ext.minimization_apply_shifts(
+    apply_shifts_result = smtbx.refinement.ext.minimization_apply_shifts(
       unit_cell=self.xray_structure.unit_cell(),
       scatterers=self._scatterers_start,
       shifts=self.x)
