@@ -32,3 +32,8 @@ smtbx/refinement/minimization.cpp -text
 smtbx/refinement/minimization.h -text
 smtbx/refinement/minimization.py -text
 smtbx/refinement/refinement_ext.cpp -text
+smtbx/refinement/tests/6-ring-twist-disorder.hkl -text
+smtbx/refinement/tests/6-ring-twist-disorder.res -text
+smtbx/refinement/tests/__init__.py -text
+smtbx/refinement/tests/tst_minimization.py -text
+smtbx/refinement/tests/tst_minimization_at_random.py -text
