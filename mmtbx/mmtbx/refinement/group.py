@@ -33,11 +33,17 @@ class manager(object):
                      log                         = None):
     global time_group_py
     timer = user_plus_sys_time()
+    self.show(rw         = fmodel.r_work(),
+              rf         = fmodel.r_free(),
+              tw         = fmodel.target_w(),
+              mc         = 0,
+              it         = 0,
+              ct         = convergence_test,
+              refine_adp = refine_adp,
+              refine_occ = refine_occ,
+              out        = log)
     if(log is None): log = sys.stdout
     assert [refine_adp, refine_occ].count(True) == 1
-
-
-
     if(selections is None):
        selections = []
        selections.append(
@@ -90,8 +96,7 @@ class manager(object):
         rwork = minimized.fmodel.r_work()
         rfree = minimized.fmodel.r_free()
         assert approx_equal(rwork, fmodel_copy.r_work())
-        self.show(f     = fmodel_copy.f_obs_w,
-                  rw    = rwork,
+        self.show(rw    = rwork,
                   rf    = rfree,
                   tw    = minimized.fmodel.target_w(),
                   mc    = macro_cycle,
@@ -106,7 +111,7 @@ class manager(object):
               size = rworks.size() - 1
               if(abs(rworks[size]-rworks[size-1])<convergence_delta):
                  break
-    # XXX absence of it will lead to crash in very rare cases; fixing requires too
+    # XXX absence of tidy_us will lead to crash in very rare cases; fixing requires too
     # XXX much of time and brain investment.
     #fmodel_copy.xray_structure.tidy_us()
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
@@ -114,8 +119,7 @@ class manager(object):
     self.fmodel = fmodel
     time_group_py += timer.elapsed()
 
-  def show(self, f,
-                 rw,
+  def show(self, rw,
                  rf,
                  tw,
                  mc,
@@ -125,8 +129,6 @@ class manager(object):
                  refine_occ,
                  out = None):
     if(out is None): out = sys.stdout
-    d_max, d_min = f.d_max_min()
-    nref = f.data().size()
     mc = str(mc)
     it = str(it)
     if(refine_adp): part1 = "|-group b-factor refinement (macro cycle = "
@@ -139,8 +141,8 @@ class manager(object):
     if(ct): ct = "on"
     else:   ct = "off"
     part4 = " convergence test = "+str("%s"%ct)
-    rw = "| r_work = "+str("%.6f"%rw)
-    rf = " r_free = "+str("%.6f"%rf)
+    rw = "| r_work = "+str("%.4f"%rw)
+    rf = " r_free = "+str("%.4f"%rf)
     tw = " target = "+str("%.6f"%tw)
     n = 78 - len(rw+rf+tw+part4)
     end = " "*n+"|"
