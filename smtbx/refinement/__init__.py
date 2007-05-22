@@ -1,1 +1,2 @@
-from smtbx.refinement.minimization import *
+import smtbx.refinement.tests
+import smtbx.refinement.minimization

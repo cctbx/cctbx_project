@@ -1,0 +1,36 @@
+import libtbx.load_env
+Import("env_base", "env_etc")
+
+env_etc.smtbx_dist = libtbx.env.dist_path("smtbx")
+env_etc.smtbx_common_includes = [
+  env_etc.libtbx_include,
+  env_etc.cctbx_include,
+  env_etc.scitbx_include,
+  env_etc.chiltbx_include,
+  env_etc.boost_include,
+]
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
+)
+
+envlm = env.Copy(
+  LIBS=env_etc.libm
+)
+if (env_etc.static_libraries): builder = envlm.StaticLibrary
+else:                          builder = envlm.SharedLibrary
+
+if (not env_etc.no_boost_python):
+  Import("env_no_includes_boost_python_ext")
+
+  env_smtbx_boost_python_ext = env_no_includes_boost_python_ext.Copy()
+  env_etc.include_registry.append(
+    env=env_smtbx_boost_python_ext,
+    paths=env_etc.smtbx_common_includes + [env_etc.python_include])
+  env_smtbx_boost_python_ext.Prepend(LIBS=["cctbx"])
+  Export("env_smtbx_boost_python_ext")
+
+  SConscript("refinement/SConscript")
+

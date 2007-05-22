@@ -19,6 +19,15 @@ libtbx/libtbx_refresh.py -text
 libtbx/windows_dispatcher.exe -text
 mmtbx/mmtbx/xmanip.py -text
 mmtbx/mmtbx/xmanip_tasks.py -text
+smtbx/SConscript -text
 smtbx/__init__.py -text
+smtbx/import_cctbx.h -text
+smtbx/import_scitbx_af.h -text
+smtbx/libtbx_config -text
+smtbx/refinement/SConscript -text
 smtbx/refinement/__init__.py -text
+smtbx/refinement/import_cctbx_xray.h -text
+smtbx/refinement/minimization.cpp -text
+smtbx/refinement/minimization.h -text
 smtbx/refinement/minimization.py -text
+smtbx/refinement/refinement_ext.cpp -text
