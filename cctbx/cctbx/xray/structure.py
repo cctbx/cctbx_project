@@ -205,15 +205,13 @@ class structure(crystal.special_position_settings):
               r = max(0, random.randrange(b_min, b_max, 1) + random.random())
               sc.u_iso=adptbx.b_as_u(r)
            if(sc.flags.use_u_aniso() and not keep_anisotropic):
-              assert not is_special_position(i_seq=i_seq) # XXX not implemented
-              m = sc.u_star
-              m = [m[0]+m[0]*random.choice((-aniso_spread,aniso_spread)),
-                   m[1]+m[1]*random.choice((-aniso_spread,aniso_spread)),
-                   m[2]+m[2]*random.choice((-aniso_spread,aniso_spread)),
-                   m[3]+m[3]*random.choice((-aniso_spread,aniso_spread)),
-                   m[4]+m[4]*random.choice((-aniso_spread,aniso_spread)),
-                   m[5]+m[5]*random.choice((-aniso_spread,aniso_spread))]
-              sc.u_star = m
+              result = []
+              for i in xrange(6):
+                result.append(sc.u_star[i]+sc.u_star[i]*random.choice(
+                                                 (-aniso_spread,aniso_spread)))
+              if(is_special_position(i_seq=i_seq)):
+                 result = self.space_group().average_u_star(result)
+              sc.u_star = result
 
   def shake_adp_if_all_equal(self, b_iso_tolerance = 0.1):
     performed = False
