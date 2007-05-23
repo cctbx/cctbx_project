@@ -3,9 +3,11 @@ from iotbx.shelx.from_ins import from_ins
 from iotbx.reflection_file_reader import any_reflection_file
 from cctbx import xray
 
+tests_data_dir = '../smtbx_tests_data/refinement'
+
 def exercise_disorder(name):
-  xs0 = from_ins('%s.res' % name)
-  data_file = any_reflection_file('hklf4=%s.hkl' % name)
+  xs0 = from_ins('%s/%s.res' % (tests_data_dir, name))
+  data_file = any_reflection_file('hklf4=%s/%s.hkl' % (tests_data_dir, name))
   f_obs_sqr = data_file.as_miller_arrays(xs0.crystal_symmetry())[0]
   xs = refinement.tests.shaked_structure(xs0,
                                          thermal_shift=0.01, # in %
