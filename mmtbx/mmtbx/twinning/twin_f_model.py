@@ -774,6 +774,7 @@ class target_attributes(mmtbx.f_model.target_attributes):
 class twin_model_manager(mmtbx.f_model.manager_mixin):
   def __init__(self,
                f_obs              = None,
+               f_mask             = None,
                free_array         = None,
                xray_structure     = None,
                scaling_parameters = None,
@@ -793,6 +794,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.target_name="twin_lsq_f"
     self._target_attributes = target_attributes()
     self.out = out
+
+
+
     if self.out is None:
       self.out = sys.stdout
     self.twin_fraction_object = twin_fraction_object(twin_fraction=start_fraction)
@@ -863,7 +867,11 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
     #-------------------
     self.f_mask_array = None
-    self.update_f_mask()
+    if f_mask is not None:
+      self.f_mask_array = f_mask
+    else:
+      self.update_f_mask()
+
     #-------------------
     self.f_partial_array = None
 
@@ -966,9 +974,37 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.epsilons_w = self.f_obs_w.epsilons().data().as_double()
     self.epsilons_f = self.f_obs_f.epsilons().data().as_double()
 
+  def show_parameter_summary(self, manager=None):
+    # print bulk solvent parameters
+    print >> self.out, "Usol           ", self.scaling_parameters.u_sol, self.data_core.usol()
+    print >> self.out, "Ksol           ", self.scaling_parameters.k_sol, self.data_core.ksol()
+    print >> self.out, "Koverall       ", self.scaling_parameters.k_overall, self.data_core.koverall()
+    print >> self.out, "Ustar          ", self.scaling_parameters.u_star, self.data_core.ustar()
+    print >> self.out, "Twin fraction  ", self.twin_fraction_object.twin_fraction, self.twin_fraction, self.target_evaluator.alpha()
+    print >> self.out, "mask step      ", self.mask_params.grid_step_factor
+    print >> self.out, "mask shift     ", self.mask_params.mean_shift_for_mask_update
+    print >> self.out, "mask trunk rad ", self.mask_params.shrink_truncation_radius
+    print >> self.out, "mask solv rad  ", self.mask_params.solvent_radius
+
+    if manager is not None:
+      x = self.f_model().data()
+      y = manager.f_model().data()
+      print >> self.out, "Fmodel delta  " , flex.sum( flex.abs(x - y) )
+      x = self.f_calc().data()
+      y = manager.f_calc().data()
+      print >> self.out, "Fatoms delta ", flex.sum( flex.abs(x - y) )
+      x = self.f_mask_array.data()
+      y = manager.f_mask_array.data()
+      print >> self.out, "Fmask delta  ", flex.sum( flex.abs(x - y) )
+      x = flex.abs( self.bulk_solvent_mask().data - manager.bulk_solvent_mask().data )
+      print >> self.out, "Bit wise diff mask ", flex.sum( x )
+
+
+
   def deep_copy(self):
     new_object = twin_model_manager(
-      f_obs        = self.f_obs.deep_copy(),
+      f_obs              = self.f_obs.deep_copy(),
+      f_mask             = self.f_mask_array.deep_copy(),
       free_array         = self.free_array.deep_copy(),
       xray_structure     = self.xray_structure,
       scaling_parameters = self.scaling_parameters.deep_copy(),
@@ -991,6 +1027,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     dc = self.deep_copy()
     new_object = twin_model_manager(
       f_obs        = dc.f_obs.resolution_filter(d_max,d_min) ,
+      f_mask             = dc.f_mask_array.resolution_filer(d_max,d_min),
       free_array         = dc.free_array.resolution_filter(d_max,d_min),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
@@ -1012,6 +1049,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     dc = self.deep_copy()
     new_object = twin_model_manager(
       f_obs        = dc.f_obs.select(selection) ,
+      f_mask             = dc.f_mask_array.selection(selection),
       free_array         = dc.free_array.selection(selection),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
@@ -1108,6 +1146,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     # convert u_cart back to u_star
     self.scaling_parameters.u_star= adptbx.u_cart_as_u_star(self.xs.unit_cell(), u_cart)
 
+    self.twin_fraction = self.twin_fraction_object.twin_fraction
     self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
     self.free_target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
     self.data_core.koverall( self.scaling_parameters.k_overall )
@@ -1175,6 +1214,15 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       u_star = adptbx.u_cart_as_u_star( self.xs.unit_cell(), adptbx.b_as_u( list(b_cart) ) )
       self.data_core.ustar(u_star)
 
+    if twin_fraction is None:
+      self.twin_fraction = self.twin_fraction_object.twin_fraction
+      self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
+      self.free_target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
+    else:
+      self.twin_fraction = twin_fraction
+      self.target_evaluator.alpha( twin_fraction )
+      self.free_target_evaluator.alpha( twin_fraction )
+
 
   def update(self, f_calc              = None,
                    f_obs               = None,
@@ -1190,7 +1238,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                    alpha_beta_params   = None,
                    xray_structure      = None,
                    mask_params         = None,
-                   overall_scale       = None):
+                   overall_scale       = None,
+                   twin_fraction       = None ):
     if(sf_and_grads_accuracy_params is not None):
       self.sfg_params = sf_and_grads_accuracy_params
       self.update_xray_structure(update_f_calc  = True)
@@ -1221,6 +1270,19 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if overall_scale is not None:
       self.scaling_parameters.k_overall = overall_scale
       self.update_core()
+
+    if twin_fraction is None:
+      self.twin_fraction = self.twin_fraction_object.twin_fraction
+      self.target
+
+    if twin_fraction is None:
+      self.twin_fraction = self.twin_fraction_object.twin_fraction
+      self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
+      self.free_target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
+    else:
+      self.twin_fraction = twin_fraction
+      self.target_evaluator.alpha( twin_fraction )
+      self.free_target_evaluator.alpha( twin_fraction )
 
 
 
@@ -1296,7 +1358,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     sites_cart_2 = self.xray_structure.sites_cart()
     atom_atom_distances = flex.sqrt((sites_cart_1 - sites_cart_2).dot())
     mean_shift_ = flex.mean(atom_atom_distances)
-    print "MEAN SHIFT", mean_shift_
+    print >> self.out, "MEAN SHIFT: ", mean_shift_
 
 
   def update_xray_structure(self,
@@ -1304,45 +1366,50 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                             update_f_calc            = False,
                             update_f_mask            = False,
                             update_f_ordered_solvent = False,
-                            force_update_f_mask      = False,
+                            force_update_f_mask      = True,
                             out                      = None,
                             k_sol                    = None,
                             b_sol                    = None,
                             b_cart                   = None):
-    consider_mask_update = None
-    set_core_flag =True
-    if xray_structure is not None:
+    if (xray_structure is not None):
       self.xray_structure = xray_structure
-
     if(update_f_mask):
        if(force_update_f_mask):
           consider_mask_update = True
        else:
           consider_mask_update = self._update_f_mask_flag(
-                  xray_structure = xray_structure,
+                  xray_structure = self.xray_structure,
                   mean_shift     = self.mask_params.mean_shift_for_mask_update)
-    step = self._get_step(update_f_ordered_solvent=update_f_ordered_solvent)
     f_calc = None
-    f_mask = None
     if(update_f_calc):
+       timer = user_plus_sys_time()
        assert self.xray_structure is not None
-       self.f_atoms = self.compute_f_atoms()
+       f_calc = self.miller_set.structure_factors_from_scatterers(
+         xray_structure = self.xray_structure,
+         algorithm                    = self.sfg_params.algorithm,
+         cos_sin_table                = self.sfg_params.cos_sin_table,
+         grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
+         quality_factor               = self.sfg_params.quality_factor,
+         u_base                       = self.sfg_params.u_base,
+         b_base                       = self.sfg_params.b_base,
+         wing_cutoff                  = self.sfg_params.wing_cutoff,
+         exp_table_one_over_step_size =
+                         self.sfg_params.exp_table_one_over_step_size).f_calc()
+    f_mask = None
+    set_core_flag=True
     if(update_f_mask and consider_mask_update):
        bulk_solvent_mask_obj = self.bulk_solvent_mask()
-       f_mask = bulk_solvent_mask_obj.structure_factors(self.miller_set)
-       assert f_mask.indices().all_eq( self.miller_set.indices() )
-
-    if([f_calc, f_mask].count(None) == 2):
-      set_core_flag = False
-    if(f_calc is None):
-      f_calc = self.f_atoms
-    if(f_mask is None):
-      f_mask = self.f_mask_array
-    self.update_core(f_calc = f_calc,
-                     f_mask = f_mask,
-                     b_cart = b_cart,
-                     k_sol  = k_sol,
-                     b_sol  = b_sol)
+       f_mask = bulk_solvent_mask_obj.structure_factors(miller_set= self.miller_set)
+    if([f_calc, f_mask].count(None) == 2): set_core_flag = False
+    else: set_core_flag = True
+    if(f_calc is None): f_calc = self.f_calc()
+    if(f_mask is None): f_mask = self.f_mask()
+    if(set_core_flag):
+       self.update_core(f_calc = f_calc,
+                        f_mask = f_mask,
+                        b_cart = b_cart,
+                        k_sol  = k_sol,
+                        b_sol  = b_sol)
 
 
   def bulk_solvent_mask(self):
@@ -1357,6 +1424,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def update_f_mask(self):
     mask = self.bulk_solvent_mask()
     self.f_mask_array = mask.structure_factors( self.miller_set )
+
 
   def r_values(self, table=True, d_min=None, d_max=None):
     additional_selection_w = flex.bool(self.f_obs_w.data().size(), True)
