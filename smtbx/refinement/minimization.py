@@ -1,8 +1,9 @@
 import cctbx.xray.structure_factors
 import cctbx.xray.ext
 import smtbx.refinement.ext
-from cctbx.xray.structure import structure as cctbx_xray_structure
 from cctbx import crystal
+from cctbx import xray
+import cctbx.xray.minimization
 from cctbx.array_family import flex
 import scitbx.lbfgs
 import scitbx.math
@@ -10,20 +11,6 @@ from libtbx import adopt_init_args
 from stdlib import math
 from cctbx import adptbx
 
-def add_gradients(
-      scatterers,
-      xray_gradients,
-      site_gradients      = None,
-      u_iso_gradients     = None,
-      u_aniso_gradients   = None,
-      occupancy_gradients = None):
-  smtbx.refinement.ext.minimization_add_gradients(
-    scatterers          = scatterers,
-    xray_gradients      = xray_gradients,
-    site_gradients      = site_gradients,
-    u_iso_gradients     = u_iso_gradients,
-    u_aniso_gradients   = u_aniso_gradients,
-    occupancy_gradients = occupancy_gradients)
 
 class lbfgs(object):
   """
@@ -153,7 +140,7 @@ class lbfgs(object):
       for occupancy in occupancies:
         g.append(self.occupancy_penalty.gradient(occupancy=occupancy))
       del occupancies
-      add_gradients(
+      xray.minimization.add_gradients(
         scatterers=self.xray_structure.scatterers(),
         xray_gradients=self.g,
         occupancy_gradients=g)
