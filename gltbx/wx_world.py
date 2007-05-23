@@ -702,6 +702,8 @@ class show_msd(show_points_and_lines_mixin):
     for atom in processed_msd.atom_list:
       self.labels.append(atom.label)
       self.points.append(atom.site)
+    if (len(self.labels) > 30):
+      self.flag_show_labels = False
     if (processed_msd.bonds_forward is None):
       for i_seq,bond_list in enumerate(processed_msd.bond_lists):
         for bond in bond_list:
