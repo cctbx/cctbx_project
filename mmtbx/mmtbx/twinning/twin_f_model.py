@@ -2003,6 +2003,19 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
 
 
 
+
+  def fft_vs_direct(self, reflections_per_bin = 250,
+                          n_bins              = 0,
+                          out                 = None):
+    print >> self.out, "Direct vs FFT comparison not yet implemented. "
+
+  def r_work_scale_k1_completeness_in_bins(self, reflections_per_bin = 500,
+                                                 n_bins              = 0,
+                                                 prefix              = "",
+                                                 out                 = None):
+    self.r_values(table=True)
+
+
   def show_k_sol_b_sol_b_cart_target(self, header=None,target=None,out=None):
     if(out is None): out = self.out
     p = " "
@@ -2138,6 +2151,140 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
                                               max_number_of_bins  = 30,
                                               out=None):
     self.sigmaa_object().show(out=self.out)
+
+
+  def export(self, out=None, format="mtz"):
+    assert format in ["mtz", "cns"]
+    file_name = None
+    if (out is None):
+      out = sys.stdout
+    elif (hasattr(out, "name")):
+      file_name = libtbx.path.canonical_path(file_name=out.name)
+    warning = [
+      "DO NOT USE THIS FILE AS INPUT FOR REFINEMENT!",
+      "Resolution and sigma cutoffs may have been applied to FOBS."]
+    width = max([len(line) for line in warning])
+    warning.insert(0, "*" * width)
+    warning.append(warning[0])
+
+
+    if (format == "cns"):
+      for line in warning:
+        print >> out, "{ %s%s }" % (line, " "*(width-len(line)))
+      print >> out, "{ %s }" % date_and_time()
+      if (file_name is not None):
+        print >> out, "{ file name: %s }" % os.path.basename(file_name)
+        print >> out, "{ directory: %s }" % os.path.dirname(file_name)
+      self.explain_members(out=out, prefix="{ ", suffix=" }")
+      crystal_symmetry_as_cns_comments(
+        crystal_symmetry=self.f_obs, out=out)
+      print >> out, "NREFlection=%d" % self.f_obs.indices().size()
+      print >> out, "ANOMalous=%s" % {0: "FALSE"}.get(
+        int(self.f_obs.anomalous_flag()), "TRUE")
+      have_sigmas = self.f_obs.sigmas() is not None
+      for n_t in [("FOBS", "REAL"),
+                  ("SIGFOBS", "REAL"),
+                  ("R_FREE_FLAGS", "INTEGER"),
+                  ("FMODEL", "COMPLEX"),
+                  ("FCALC", "COMPLEX"),
+                  ("FMASK", "COMPLEX"),
+                  ("FBULK", "COMPLEX"),
+                  ("FOM", "REAL"),
+                  ("ALPHA", "REAL"),
+                  ("BETA", "REAL")]:
+        if (not have_sigmas and n_t[0] == "SIGFOBS"): continue
+        print >> out, "DECLare NAME=%s DOMAin=RECIprocal TYPE=%s END" % n_t
+      f_model            = self.f_model_scaled_with_k1()
+      f_model_amplitudes = f_model.amplitudes().data()
+      f_model_phases     = f_model.phases(deg=True).data()
+      f_calc_amplitudes  = self.f_calc().amplitudes().data()
+      f_calc_phases      = self.f_calc().phases(deg=True).data()
+      f_mask_amplitudes  = self.f_mask().amplitudes().data()
+      f_mask_phases      = self.f_mask().phases(deg=True).data()
+      f_bulk_amplitudes  = self.f_bulk().amplitudes().data()
+      f_bulk_phases      = self.f_bulk().phases(deg=True).data()
+      alpha, beta        = [item.data() for item in self.alpha_beta()]
+      arrays = [
+        self.f_obs.indices(), self.f_obs.data(), self.f_obs.sigmas(),
+        self.free_array.data(),
+        f_model_amplitudes, f_model_phases,
+        f_calc_amplitudes, f_calc_phases,
+        f_mask_amplitudes, f_mask_phases,
+        f_bulk_amplitudes, f_bulk_phases,
+        self.figures_of_merit(),
+        alpha, beta]
+      if (not have_sigmas):
+        del arrays[2]
+        i_r_free_flags = 2
+      else:
+        i_r_free_flags = 3
+      for values in zip(*arrays):
+        print >> out, "INDE %d %d %d" % values[0]
+        print >> out, " FOBS= %.6g" % values[1],
+        if (have_sigmas):
+          print >> out, " SIGFOBS= %.6g" % values[2],
+        print >> out, \
+          " R_FREE_FLAGS= %d FMODEL= %.6g %.6g\n" \
+          " FCALC= %.6g %.6g FMASK= %.6g %.6g FBULK= %.6g %.6g\n" \
+          " FB_CART= %.6g FOM= %.6g ALPHA= %.6g BETA= %.6g"  \
+            % values[i_r_free_flags:]
+      if (file_name is not None):
+        out.close()
+
+    else:
+      assert file_name is not None
+      mtz_dataset = self.f_obs.as_mtz_dataset(column_root_label="FOBS")
+      mtz_dataset.add_miller_array(
+        miller_array=self.free_array, column_root_label="R_FREE_FLAGS")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_model(), column_root_label="FMODEL")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_calc(), column_root_label="FCALC")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_mask(), column_root_label="FMASK")
+      mtz_dataset.add_miller_array(
+        miller_array=self.f_bulk(), column_root_label="FBULK")
+      mtz_dataset.add_miller_array(
+        miller_array= self.sigmaa_object().fom(),
+        column_root_label="FOM", column_types="W")
+      alpha, beta = self.alpha_beta()
+      mtz_dataset.add_miller_array(
+        miller_array=alpha, column_root_label="ALPHA", column_types="W")
+      mtz_dataset.add_miller_array(
+        miller_array=beta, column_root_label="BETA", column_types="W")
+      mtz_history_buffer = flex.std_string(warning)
+      ha = mtz_history_buffer.append
+      ha(date_and_time())
+      ha("file name: %s" % os.path.basename(file_name))
+      ha("directory: %s" % os.path.dirname(file_name))
+      s = StringIO()
+      self.explain_members(out=s)
+      for line in s.getvalue().splitlines():
+        ha(line)
+      mtz_object = mtz_dataset.mtz_object()
+      mtz_object.add_history(lines=mtz_history_buffer)
+      out.close()
+      mtz_object.write(file_name=file_name)
+
+
+
+  def explain_members(self, out=None, prefix="", suffix=""):
+    if (out is None): out = sys.stdout
+    def zero_if_almost_zero(v, eps=1.e-6):
+      if (abs(v) < eps): return 0
+      return v
+    for line in [
+          "Fmodel   = scale_k1 * fb_cart * (Fcalc + Fbulk)",
+          "Fcalc    = structure factors calculated from atomic model",
+          "Fbulk    = k_sol * exp(-b_sol*s**2/4) * Fmask",
+          "A        = orthogonalization matrix",
+          "k_sol    = %.6g" % self.k_sol(),
+          "b_sol    = %.6g" % zero_if_almost_zero(self.b_sol()),
+          "B_cart = (B11, B22, B33, B12, B13, B23)",
+          "       = (%s)" % ", ".join(
+            ["%.6g" % zero_if_almost_zero(v) for v in self.b_cart()])]:
+      print >> out, prefix + line + suffix
+
 
 
   def show_targets(self, out=None, text=""):
