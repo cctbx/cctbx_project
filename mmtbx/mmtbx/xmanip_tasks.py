@@ -257,7 +257,7 @@ def sfcalc(names, miller_arrays, xray_structure, parameters, out):
 
   if parameters.use_bulk_and_scale == "as_estimated":
     if parameters.fobs is not None:
-      fmodel.update_solvent_and_scale()
+      fmodel.update_solvent_and_scale(out=out)
 
   result = None
   if parameters.output in  ["complex_fcalc", "abs_fcalc", "intensities" ]:

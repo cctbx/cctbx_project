@@ -367,10 +367,7 @@ def xmanip(command_name, args):
 
     #multiple file names are allowed
     for xray_data in params.xmanip.input.xray_data:
-      print dir(xray_data)
-      print xray_data.file_name
       if xray_data.file_name is not None:
-        print xray_data.file_name
         hkl_xs.append( crystal_symmetry_from_any.extract_from(
            file_name=xray_data.file_name) )
 
@@ -463,7 +460,7 @@ def xmanip(command_name, args):
       model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
       print >> log, "Atomic model summary"
       print >> log, "===================="
-      model.show_summary()
+      model.show_summary(f=log)
       print >> log
 
 
@@ -479,7 +476,8 @@ def xmanip(command_name, args):
       new_miller = xmanip_tasks.manipulate_miller(names,
                                                   miller_arrays,
                                                   model,
-                                                  params.xmanip.parameters.manipulate_miller )
+                                                  params.xmanip.parameters.manipulate_miller,
+                                                  log )
       miller_arrays.append( new_miller )
       # not very smart to rely here on a phil defintion defined in another file
       tmp_root = params.xmanip.parameters.manipulate_miller.output_label_root
@@ -565,7 +563,7 @@ def xmanip(command_name, args):
             miller_array = miller_array,
             column_root_label = new_root)
 
-      print >> log, "writing mtz file with name %s"%(params.xmanip.output.hklout)
+      print >> log, "Writing mtz file with name %s"%(params.xmanip.output.hklout)
       mtz_dataset.mtz_object().write(
         file_name=params.xmanip.output.hklout)
 
@@ -646,9 +644,9 @@ def xmanip(command_name, args):
 
     #write the logfile
     logger = open( params.xmanip.output.logfile, 'w')
-    print >> log, "Writing log file with name %s"%(params.xmanip.output.logfile)
-    print >> log
-    print >> logger, string_buffer.getvalue()
+    print >> log, "Writing log file with name %s  "%(params.xmanip.output.logfile)
+    print >> logger, string_buffer.getvalue()[0:len(string_buffer.getvalue())-1] #avoid a newline at the end ...
+    logger.close()
 
 
 
