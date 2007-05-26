@@ -360,13 +360,17 @@ def xmanip(command_name, args):
 
     effective_params = master_params.fetch(sources=phil_objects)
     params = effective_params.extract()
+
     # now get the unit cell from the files
     hkl_xs = []
     pdb_xs = None
 
     #multiple file names are allowed
     for xray_data in params.xmanip.input.xray_data:
+      print dir(xray_data)
+      print xray_data.file_name
       if xray_data.file_name is not None:
+        print xray_data.file_name
         hkl_xs.append( crystal_symmetry_from_any.extract_from(
            file_name=xray_data.file_name) )
 
@@ -380,11 +384,11 @@ def xmanip(command_name, args):
 
     combined_xs = crystal.select_crystal_symmetry(
       None,phil_xs, [pdb_xs],hkl_xs)
-
-    # inject the unit cell and symmetry in the phil scope please
-    params.xmanip.input.unit_cell = combined_xs.unit_cell()
-    params.xmanip.input.space_group = \
-      sgtbx.space_group_info( group = combined_xs.space_group() )
+    if combined_xs is not None:
+      # inject the unit cell and symmetry in the phil scope please
+      params.xmanip.input.unit_cell = combined_xs.unit_cell()
+      params.xmanip.input.space_group = \
+        sgtbx.space_group_info( group = combined_xs.space_group() )
 
     print >> log, "#phil __ON__"
     new_params =  master_params.format(python_object=params)
@@ -428,6 +432,8 @@ def xmanip(command_name, args):
         print >> log
         print >> log, "Summary info of observed data"
         print >> log, "============================="
+        if miller_array is None:
+          raise Sorry("Failed to read data. see errors above" )
         miller_array.show_summary(f=log)
         print >> log
 
@@ -447,7 +453,6 @@ def xmanip(command_name, args):
         write_it.append( xray_data.write_out)
 
       output_label_root = construct_output_labels( labels, label_appendix )
-      print output_label_root
     #----------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
     #
@@ -477,8 +482,10 @@ def xmanip(command_name, args):
                                                   params.xmanip.parameters.manipulate_miller )
       miller_arrays.append( new_miller )
       # not very smart to rely here on a phil defintion defined in another file
-      output_label_root.append(
-        params.xmanip.parameters.manipulate_miller.output_label_root )
+      tmp_root = params.xmanip.parameters.manipulate_miller.output_label_root
+      if tmp_root is None:
+        tmp_root = "UNSPECIFIED"
+      output_label_root.append( tmp_root )
       write_it.append(True)
 
 
@@ -545,6 +552,7 @@ def xmanip(command_name, args):
         for item in range(len(write_it)):
           if write_it[item]:
             first=item
+            break
 
         mtz_dataset = new_miller_arrays[first].as_mtz_dataset(
           column_root_label=output_label_root[first])
