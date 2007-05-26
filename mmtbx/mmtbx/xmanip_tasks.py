@@ -21,7 +21,7 @@ from mmtbx.scaling import fa_estimation, pair_analyses, relative_scaling
 import sys, os
 
 master_params = iotbx.phil.parse("""
-      task = *get_dano get_diso lsq_scale None
+      task = *get_dano get_diso lsq_scale sfcalc None
       .type=choice
       .help="Possible tasks"
       output_label_root=None
@@ -72,9 +72,62 @@ master_params = iotbx.phil.parse("""
         .help="Whether or not to scale the sigmas during scaling"
       }
 
+      sfcalc{
+        fobs = None
+        .type=str
+        .help = "Data name of observed data"
+        output = 2mFo-DFc mFo-DFc *complex_fcalc abs_fcalc intensities
+        .type=choice
+        .help="Output coefficients"
+        use_bulk_and_scale = *as_estimated user_upplied
+        .type=choice
+        .help = "estimate or use parameters given by user"
+        bulk_and_scale_parameters
+        .help = "Parameters used in the structure factor calculation. Ignored if experimental data is given"
+        {
+          d_min = 2.0
+          .type=float
+          .help = "resolution of the data to be calculated."
+          overall
+          .help = "Bulk solvent and scaling parameters"
+          {
+            b_cart
+            .help = "Anisotropic B values"
+            {
+              b_11 = 0
+              .type=float
+              b_22 = 0
+              .type=float
+              b_33 = 0
+              .type=float
+              b_12 = 0
+              .type=float
+              b_13 = 0
+              .type=float
+              b_23 = 0
+              .type=float
+            }
+            k_overall = 0.1
+            .type=float
+            .help = "Overall scalar"
+          }
+          solvent
+          .help = "Solvent parameters"
+          {
+            k_sol = 0.3
+            .type=float
+            .help="Solvent scale"
+            b_sol = 56.0
+            .type=float
+            .help="Solvent B"
+          }
+        }
+      }
+
       """)
 
-def get_dano(names, miller_arrays, parameters, out ):
+
+def get_dano(names, miller_arrays, xray_structure, parameters, out ):
   miller_array = None
   if parameters.input_data is None:
     if len(miller_arrays)==1:
@@ -99,7 +152,7 @@ def get_dano(names, miller_arrays, parameters, out ):
   deltas = delta_gen.abs_delta_f.deep_copy()
   return deltas
 
-def get_diso(names, miller_arrays, parameters, out):
+def get_diso(names, miller_arrays, xray_structure, parameters, out):
   #first scale please
   if parameters.native is None:
     raise Sorry("Please define native data name")
@@ -138,7 +191,7 @@ def get_diso(names, miller_arrays, parameters, out):
   deltas = delta_gen.delta_f.deep_copy()
   return deltas
 
-def lsq_scale(names, miller_arrays, parameters, out):
+def lsq_scale(names, miller_arrays, xray_structure, parameters, out):
   if parameters.input_data_1 is None:
     raise Sorry("Please define input_data_1")
   if parameters.input_data_2 is None:
@@ -168,23 +221,82 @@ def lsq_scale(names, miller_arrays, parameters, out):
   return scaler.scaled_original_derivative.deep_copy()
 
 
+def sfcalc(names, miller_arrays, xray_structure, parameters, out):
+  from mmtbx import f_model
+  f_obs = None
+  if parameters.fobs is None:
+    if parameters.output not in ["complex_fcalc", "abs_fcalc", "intensities" ]:
+      raise Sorry("Experimental data is needed for %s coefficients.\n Please supply Fobs")
+    else:
+      f_obs = abs(xray_structure.structure_factors(
+        d_min          = parameters.bulk_and_scale_parameters.d_min,
+        anomalous_flag = False).f_calc())
+  else:
+    f_obs = miller_arrays[ names[parameters.fobs] ].deep_copy()
 
-def manipulate_miller(names, miller_arrays, params, out=None):
+  flags = f_obs.generate_r_free_flags(fraction = 0.1,
+                                      max_free = 99999999)
+  b_cart = [parameters.bulk_and_scale_parameters.overall.b_cart.b_11,
+            parameters.bulk_and_scale_parameters.overall.b_cart.b_22,
+            parameters.bulk_and_scale_parameters.overall.b_cart.b_33,
+            parameters.bulk_and_scale_parameters.overall.b_cart.b_12,
+            parameters.bulk_and_scale_parameters.overall.b_cart.b_13,
+            parameters.bulk_and_scale_parameters.overall.b_cart.b_23 ]
+
+  fmodel = f_model.manager( xray_structure   = xray_structure,
+                            r_free_flags     = flags,
+                            target_name      = "ls_wunit_k1",
+                            f_obs            = f_obs,
+                            b_cart           = b_cart,
+                            k_sol            = parameters.bulk_and_scale_parameters.solvent.k_sol,
+                            b_sol            = parameters.bulk_and_scale_parameters.solvent.b_sol,
+                            overall_scale    = parameters.bulk_and_scale_parameters.overall.k_overall)
+
+  if parameters.use_bulk_and_scale == "as_estimated":
+    if parameters.fobs is not None:
+      fmodel.update_solvent_and_scale()
+
+  result = None
+  if parameters.output in  ["complex_fcalc", "abs_fcalc", "intensities" ]:
+    result = fmodel.f_model()
+    if parameters.output == "complex_fcalc":
+      result = result
+    if parameters.output == "abs_fcalc":
+      result = abs( result )
+    if parameters.output == "intensities":
+      result = abs(result).f_as_f_sq()
+  else:
+    if parameters.output == "2mFo-DFc":
+      result = f_model.map_coefficients(map_type="2m*Fobs-D*Fmodel")
+    if parameters.output == "mFo-DFc":
+      result = f_model.map_coefficients(map_type="2m*Fobs-D*Fmodel")
+
+  return result
+
+
+
+
+def manipulate_miller(names, miller_arrays, xray_structure, params, out=None):
   if out is None:
     out = sys.stdout
   #define a number of function pointers
-  function_pointer = { "get_dano": get_dano,
-                       "get_diso": get_diso,
-                       "lsq_scale": lsq_scale }
+  function_pointer = {
+                       "get_dano" : get_dano,
+                       "get_diso" : get_diso,
+                       "lsq_scale": lsq_scale,
+                       "sfcalc"   : sfcalc
+                     }
+
   #Now pay attention please
   function_arguments = None
   #these two lines allow me quickly lift the appropriate set of
-  # parameters from the file scope without a length y set o f if statements
+  #parameters from the file scope without a lengthy set of if statements
   patch = compile("function_arguments = params.%s"%(params.task),'<string>','exec' )
   exec patch
 
   result = function_pointer[ params.task ]( names,
                                             miller_arrays,
+                                            xray_structure,
                                             function_arguments,
                                             out)
   return result

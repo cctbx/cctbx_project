@@ -299,7 +299,7 @@ xmanip{
   """%(name)
 
 
-def xmanip(args):
+def xmanip(command_name, args):
   if len(args)==0:
     print_help()
   elif ( "--help" in args ):
@@ -322,10 +322,10 @@ def xmanip(args):
       home_scope="map_coefs")
 
     print >> log, "#phil __OFF__"
-    print >> log, "================="
-    print >> log, "    REINDEX      "
-    print >> log, "A reindexing tool"
-    print >> log, "================="
+    print >> log, "=========================="
+    print >> log, "          XMANIP          "
+    print >> log, "reindexing and other tasks"
+    print >> log, "=========================="
     print >> log
 
 
@@ -366,7 +366,6 @@ def xmanip(args):
 
     #multiple file names are allowed
     for xray_data in params.xmanip.input.xray_data:
-      print dir(xray_data)
       if xray_data.file_name is not None:
         hkl_xs.append( crystal_symmetry_from_any.extract_from(
            file_name=xray_data.file_name) )
@@ -453,7 +452,7 @@ def xmanip(args):
     # Step 2: get an xray structure from the PDB file
     #
     pdb_model = None
-
+    model = None
     if params.xmanip.input.model.file_name is not None:
       pdb_model = pdb.input(file_name=params.xmanip.input.model.file_name)
       model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
@@ -472,7 +471,10 @@ def xmanip(args):
     #manipulate miller arrays
     if params.xmanip.parameters.action == "manipulate_miller":
       write_miller_array = True
-      new_miller = xmanip_tasks.manipulate_miller(names, miller_arrays, params.xmanip.parameters.manipulate_miller )
+      new_miller = xmanip_tasks.manipulate_miller(names,
+                                                  miller_arrays,
+                                                  model,
+                                                  params.xmanip.parameters.manipulate_miller )
       miller_arrays.append( new_miller )
       # not very smart to rely here on a phil defintion defined in another file
       output_label_root.append(
@@ -643,4 +645,4 @@ def xmanip(args):
 
 
 if (__name__ == "__main__" ):
-  xmanip(sys.argv[1:])
+  xmanip(command_name = sys.argv[0], args = sys.argv[1:])
