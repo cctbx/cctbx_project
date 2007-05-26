@@ -216,7 +216,7 @@ def tst_ls_on_f():
           checked+=1
           assert approx_equal( (fdif_imag-old_derivs[1][N_test])/fdif_imag,0, eps=1e-3)
       new_data[N_test] = ori
-     assert checked>0
+    assert checked>0
   #-------------------------------------
   # use fin diffs to test derivatives wrst alpha, the twin fraction
   h=0.00001
