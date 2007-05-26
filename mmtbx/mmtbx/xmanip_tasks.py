@@ -234,6 +234,9 @@ def sfcalc(names, miller_arrays, xray_structure, parameters, out):
   else:
     f_obs = miller_arrays[ names[parameters.fobs] ].deep_copy()
 
+  if f_obs.is_xray_intensity_array():
+    f_obs = f_obs.f_sq_as_f()
+
   flags = f_obs.generate_r_free_flags(fraction = 0.1,
                                       max_free = 99999999)
   b_cart = [parameters.bulk_and_scale_parameters.overall.b_cart.b_11,
@@ -267,10 +270,11 @@ def sfcalc(names, miller_arrays, xray_structure, parameters, out):
       result = abs(result).f_as_f_sq()
   else:
     if parameters.output == "2mFo-DFc":
-      result = f_model.map_coefficients(map_type="2m*Fobs-D*Fmodel")
+      result = fmodel.map_coefficients(map_type="2m*Fobs-D*Fmodel")
     if parameters.output == "mFo-DFc":
-      result = f_model.map_coefficients(map_type="2m*Fobs-D*Fmodel")
+      result = fmodel.map_coefficients(map_type="2m*Fobs-D*Fmodel")
 
+  assert result is not None
   return result
 
 
