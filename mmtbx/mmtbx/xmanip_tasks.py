@@ -21,7 +21,7 @@ from mmtbx.scaling import fa_estimation, pair_analyses, relative_scaling
 import sys, os
 
 master_params = iotbx.phil.parse("""
-      task = *get_dano get_diso lsq_scale sfcalc None
+      task = *get_dano get_diso lsq_scale sfcalc custom None
       .type=choice
       .help="Possible tasks"
       output_label_root=None
@@ -124,7 +124,29 @@ master_params = iotbx.phil.parse("""
         }
       }
 
+     custom
+     .help = "A custom script that uses miller_aray data names as variables."
+     {
+       code = None
+       .help = "A piece of python code"
+       .type=str
+       show_instructions = True
+       .help = "Some instructions"
+       .type = bool
+     }
+
+
       """)
+
+
+def patch_miller_arrays_as_names( names ):
+  result = []
+  for name, number in zip(names, range(len(names)) ):
+    tmp_result = "%s =  miller_arrays[ %i ].deep_copy()"%(name,number)
+    result.append( compile( tmp_result, '<string>', 'exec' )  )
+
+  return result
+
 
 
 def get_dano(names, miller_arrays, xray_structure, parameters, out ):
@@ -279,6 +301,58 @@ def sfcalc(names, miller_arrays, xray_structure, parameters, out):
 
 
 
+def show_restricted_custom_names(restricted_names, out):
+  print >> out, "Restricted data set names are:"
+  for rn in restricted_names:
+    print >> out, "    -   %s"%(rn)
+
+def print_custom_instructions(out):
+  print >> out, "The custom function in the manipulate miller task of xmanip allows one to submit a small (or large)"
+  print >> out, "snippet of python code, have it executed and have a single miller array returned and written to file."
+  print >> out, "If one is familiar with python and the cctbx in general, this function allows one to quickly perform"
+  print >> out, "complex tasks relating reflection files without having the overhead of writing a user interface."
+  print >> out, "Data set names given to the miller arrays in the main (user specified) input file, are actual variable names"
+  print >> out, "and are stored as a cctbx.miller.array object. A pdb file that was read in, is stored in the object named "
+  print >> out, "xray_structure. Note that not many safeguards are in place: make sure your code snippet is proper python!"
+  print >> out, "Please note that there are some restriction on variable names: the should not contains spaces or have the name"
+  print >> out, "of local variables or functions. By default, a variable named 'result' is returned"
+
+
+
+def custom(names, miller_arrays, xray_structure, params, out):
+
+  restricted_names = [ "restricted_names", "names", "miller_arrays", "params", "out",
+                       "get_dano", "get_diso", "custom", "sfalc", "patch_miller_arrays_as_names",
+                       "lsq_scale", "manipulate_miller", "show_restricted_custom_names", "print_custom_instructions" ]
+
+  if params.show_instructions:
+    print_custom_instructions(out)
+    show_restricted_custom_names(restricted_names, out)
+
+
+  #check if all variable names are legal
+  for name in names:
+    if " " in name:
+      raise Sorry("Sorry, no spaces allowed in data set name >%s< to avoid compilation problems."%(name) )
+    if name in restricted_names:
+      show_restricted_custom_names( restricted_names )
+      raise Sorry("The data set name >%s< is restricted to avoid compilation problems." %(name) )
+
+  #first make variables from the names please
+  tmp_names = patch_miller_arrays_as_names(names)
+  for instruction in tmp_names:
+    exec instruction
+  result = None
+  # now we have to evaulate the code
+  print >> out, "Trying to evaluate the code as shown below"
+  print >> out, "------------------------------------------"
+  print >> out, params.code
+  print >> out, "------------------------------------------"
+  user_code = compile( params.code, '<string>', 'exec' )
+  exec user_code
+
+  return result
+
 
 def manipulate_miller(names, miller_arrays, xray_structure, params, out=None):
   if out is None:
@@ -288,7 +362,8 @@ def manipulate_miller(names, miller_arrays, xray_structure, params, out=None):
                        "get_dano" : get_dano,
                        "get_diso" : get_diso,
                        "lsq_scale": lsq_scale,
-                       "sfcalc"   : sfcalc
+                       "sfcalc"   : sfcalc,
+                       "custom"   : custom,
                      }
 
   #Now pay attention please
@@ -297,7 +372,6 @@ def manipulate_miller(names, miller_arrays, xray_structure, params, out=None):
   #parameters from the file scope without a lengthy set of if statements
   patch = compile("function_arguments = params.%s"%(params.task),'<string>','exec' )
   exec patch
-
   result = function_pointer[ params.task ]( names,
                                             miller_arrays,
                                             xray_structure,
