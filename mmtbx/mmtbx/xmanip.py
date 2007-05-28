@@ -438,7 +438,7 @@ def xmanip(command_name, args):
         labels.append( miller_array.info().labels )
         label_appendix.append( xray_data.label_appendix )
 
-        this_name = "COL "+str(count)
+        this_name = "COL_"+str(count)
         if xray_data.name is not None:
           this_name = xray_data.name
         #check if this name is allready used
@@ -533,7 +533,6 @@ def xmanip(command_name, args):
         new_model = model.change_basis( cb_op )
 
 
-
     if write_miller_array:
       if len(new_miller_arrays)==0:
         new_miller_arrays = miller_arrays
@@ -550,22 +549,24 @@ def xmanip(command_name, args):
         for item in range(len(write_it)):
           if write_it[item]:
             first=item
-            break
+            if new_miller_arrays[ first ] is not None:
+              break
 
-        mtz_dataset = new_miller_arrays[first].as_mtz_dataset(
-          column_root_label=output_label_root[first])
+        if new_miller_arrays[first] is not None:
+          mtz_dataset = new_miller_arrays[first].as_mtz_dataset(
+            column_root_label=output_label_root[first])
 
+      if mtz_dataset is not None:
+        for miller_array, new_root in zip(new_miller_arrays[first+1:],
+                                          output_label_root[first+1:]):
+          if miller_array is not None:
+            mtz_dataset = mtz_dataset.add_miller_array(
+              miller_array = miller_array,
+              column_root_label = new_root)
 
-      for miller_array, new_root in zip(new_miller_arrays[first+1:],
-                                        output_label_root[first+1:]):
-        if miller_array is not None:
-          mtz_dataset = mtz_dataset.add_miller_array(
-            miller_array = miller_array,
-            column_root_label = new_root)
-
-      print >> log, "Writing mtz file with name %s"%(params.xmanip.output.hklout)
-      mtz_dataset.mtz_object().write(
-        file_name=params.xmanip.output.hklout)
+        print >> log, "Writing mtz file with name %s"%(params.xmanip.output.hklout)
+        mtz_dataset.mtz_object().write(
+          file_name=params.xmanip.output.hklout)
 
       #step 5b: write the new pdb file
       if new_model is not None:
