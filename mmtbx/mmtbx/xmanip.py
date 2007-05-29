@@ -118,7 +118,7 @@ def write_as_pdb_file( input_xray_structure = None,
     print >> out, pdb.format_scale_records(
       unit_cell = xs.unit_cell() )
 
-    u_iso_array = input_xray_structure.scatterers().extract_u_iso().as_double()
+  u_iso_array = input_xray_structure.scatterers().extract_u_iso().as_double()
 
   for serial, label, atom, xyz, adp in zip(input_pdb.atom_serial_number_strings(),
                                            input_pdb.input_atom_labels_list(),
@@ -184,15 +184,9 @@ xmanip{
     }
   }
   parameters{
-    action = *reindex operator manipulate_pdb manipulate_miller
+    action = *reindex manipulate_pdb manipulate_miller
     .type=choice
     .help="Defines which action will be carried out."
-    chain_id_increment = 0
-    .type=int
-    .help="Increment chain id by this offset"
-    inverse=False
-    .type=bool
-    .help="Invert coordinates"
     reindex
     .help="Reindexing parameters. Acts on coordinates and miller arrays."
     {
@@ -203,19 +197,6 @@ xmanip{
       .type=str
       .help="User supplied operator."
     }
-    apply_operator
-    .help="Applies an operator on the coordinates."
-    {
-      standard_operators = *user_supplied
-      .type=choice
-      .help="Choice of operators."
-      user_supplied_operator="x,y,z"
-      .type=str
-      .help="The symmetry operator."
-      concatenate_model=False
-      .type=bool
-      .help="Switch that determines whether or not to append the new model to the old model."
-    }
     manipulate_miller
     .help="Acts on a single miller array or a set of miller arrays."
     {
@@ -224,12 +205,31 @@ xmanip{
     manipulate_pdb
     .help="Manipulate elements of a pdb file"
     {
-      set_b = True
-      .type=bool
-      .help="Whether or not to set B values."
-      b_iso = 30
-      .type=float
-      .help="new B value"
+      task = set_b apply_operator *None
+      .type=choice
+      .help="How to manipulate a pdb file"
+      set_b{
+        b_iso = 30
+        .type=float
+        .help="new B value for all atoms"
+      }
+      apply_operator{
+        standard_operators = *user_supplied
+        .type=choice
+        .help="Possible operators"
+        user_supplied_operator = "x,y,z"
+        .type=str
+        .help="Actualy operator in x,y,z notation"
+        invert = False
+        .type = bool
+        .help = "Invert operator given above before applying on coordinates"
+        concatenate_model=False
+        .type=bool
+        .help="Determines if new chain is concatenated to old model"
+        chain_id_increment=1
+        .type=int
+        .help="Cain id increment"
+      }
     }
   }
   output
@@ -250,51 +250,110 @@ xmanip{
 
 def print_help(name="phenix.xmanip"):
   print """
+#phil __OFF__
 \t\t%s
 
-Allows one to quickly reindex a dataset and apply the effect on the atomic coordinates as well.
+A program for the manipulation of xray data objects (coordinates and reflection files).
 
 The keywords are sumarized below:
 
-xmanip{
-  input{
-    unit_cell=None
-    space_group=None
-    xray_data
-    {
-      file_name=None
-      labels=None
-      label_appendix=None
+#phil __ON__
+xmanip {
+  input {
+    unit_cell = None
+    space_group = None
+    xray_data {
+      file_name = None
+      labels = None
+      label_appendix = None
       name = None
+      write_out = None
     }
-    model{
-      file_name=None
+    model {
+      file_name = None
     }
   }
-  parameters{
-    action = *reindex operator manipulate_pdb xray_algebra
-    chain_id_increment = 0
-    inverse=False
-    reindex{
+  parameters {
+    action = reindex manipulate_pdb *manipulate_miller
+    reindex {
       standard_laws = niggli *reference_setting invert user_supplied
-      user_supplied_law='h,k,l'
+      user_supplied_law = "h,k,l"
     }
-    apply_operator{
+    apply_operator {
       standard_operators = *user_supplied
-      user_supplied_operator="x,y,z"
-      concatenate_model=False
+      user_supplied_operator = "x,y,z"
+      concatenate_model = False
+    }
+    manipulate_miller {
+      task = get_dano get_diso lsq_scale sfcalc *custom None
+      output_label_root = "FMODEL"
+      get_dano {
+        input_data = None
+      }
+      get_diso {
+        native = None
+        derivative = None
+        use_intensities = True
+        use_weights = True
+        scale_weight = True
+      }
+      lsq_scale {
+        input_data_1 = None
+        input_data_2 = None
+        use_intensities = True
+        use_weights = True
+        scale_weight = True
+      }
+      sfcalc {
+        fobs = None
+        output = *2mFo-DFc mFo-DFc complex_fcalc abs_fcalc intensities
+        use_bulk_and_scale = *as_estimated user_upplied
+        bulk_and_scale_parameters {
+          d_min = 2
+          overall {
+            b_cart {
+              b_11 = 0
+              b_22 = 0
+              b_33 = 0
+              b_12 = 0
+              b_13 = 0
+              b_23 = 0
+            }
+            k_overall = 0.1
+          }
+          solvent {
+            k_sol = 0.3
+            b_sol = 56
+          }
+        }
+      }
+      custom{
+        code = print >> out, "hello world"
+      }
     }
     manipulate_pdb{
-      set_b = True
-      b_iso = 30
+      task = apply_operator *set_b
+      apply_operator{
+        operator = "x,y,z"
+        invert=False
+        concatenate_model=False
+        chain_id_increment=1
+      }
+      set_b{
+        b_iso = 30
+      }
     }
   }
-  output{
-    logfile=xmanip.log
-    hklout=xmanip.mtz
-    xyzout=xmanip.pdb
+  output {
+    logfile = "xmanip.log"
+    hklout = "xmanip.mtz"
+    xyzout = "xmanip.pdb"
   }
 }
+#phil __END__
+
+
+Further details can be found in the documentation.
 
   """%(name)
 
@@ -421,33 +480,33 @@ def xmanip(command_name, args):
 
       count=0
       for xray_data in params.xmanip.input.xray_data:
+        if xray_data.file_name is not None:
+          miller_array = None
+          miller_array = read_data(xray_data.file_name,
+                                   xray_data.labels,
+                                   phil_xs)
+          print >> log
+          print >> log, "Summary info of observed data"
+          print >> log, "============================="
+          if miller_array is None:
+            raise Sorry("Failed to read data. see errors above" )
+          miller_array.show_summary(f=log)
+          print >> log
 
-        miller_array = None
-        miller_array = read_data(xray_data.file_name,
-                                 xray_data.labels,
-                                 phil_xs)
-        print >> log
-        print >> log, "Summary info of observed data"
-        print >> log, "============================="
-        if miller_array is None:
-          raise Sorry("Failed to read data. see errors above" )
-        miller_array.show_summary(f=log)
-        print >> log
+          miller_arrays.append( miller_array )
+          labels.append( miller_array.info().labels )
+          label_appendix.append( xray_data.label_appendix )
 
-        miller_arrays.append( miller_array )
-        labels.append( miller_array.info().labels )
-        label_appendix.append( xray_data.label_appendix )
+          this_name = "COL_"+str(count)
+          if xray_data.name is not None:
+            this_name = xray_data.name
+          #check if this name is allready used
+          if names.has_key( this_name ):
+            raise Sorry( "Non unique dataset name. Please change the input script" )
+          names.update( {this_name:count} )
+          count += 1
 
-        this_name = "COL_"+str(count)
-        if xray_data.name is not None:
-          this_name = xray_data.name
-        #check if this name is allready used
-        if names.has_key( this_name ):
-          raise Sorry( "Non unique dataset name. Please change the input script" )
-        names.update( {this_name:count} )
-        count += 1
-
-        write_it.append( xray_data.write_out)
+          write_it.append( xray_data.write_out)
 
       output_label_root = construct_output_labels( labels, label_appendix )
     #----------------------------------------------------------------
@@ -582,62 +641,63 @@ def xmanip(command_name, args):
       if ( [miller_array,new_model]).count(None)==2:
         print >>log, "No input reflection of coordinate files have been given"
 
-    if params.xmanip.parameters.action=="operator":
-      rt_mx = sgtbx.rt_mx(
-        params.xmanip.parameters.apply_operator.user_supplied_operator,t_den=12*8 )
-      if params.xmanip.parameters.inverse:
-        rt_mx = rt_mx.inverse()
-      print >> log
-      print >> log, "Applied operator : ", rt_mx.as_xyz()
-      print >> log
+    if params.xmanip.parameters.action=="manipulate_pdb":
+      if params.xmanip.parameters.manipulate_pdb.task == "apply_operator":
+        rt_mx = sgtbx.rt_mx(
+          params.xmanip.parameters.manipulate_pdb.apply_operator.user_supplied_operator,t_den=12*8 )
+        if params.xmanip.parameters.manipulate_pdb.apply_operator.invert:
+          rt_mx = rt_mx.inverse()
+        print >> log
+        print >> log, "Applied operator : ", rt_mx.as_xyz()
+        print >> log
 
-      sites = model.sites_frac()
-      new_sites = flex.vec3_double()
-      for site in sites:
-        new_site = rt_mx.r()*matrix.col(site)
-        new_site = flex.double(new_site)+flex.double( rt_mx.t().as_double() )
-        new_sites.push_back( tuple(new_site) )
-      new_model = model.deep_copy_scatterers()
+        sites = model.sites_frac()
+        new_sites = flex.vec3_double()
+        for site in sites:
+          new_site = rt_mx.r()*matrix.col(site)
+          new_site = flex.double(new_site)+flex.double( rt_mx.t().as_double() )
+          new_sites.push_back( tuple(new_site) )
+        new_model = model.deep_copy_scatterers()
 
-      new_model.set_sites_frac( new_sites )
-      # write the new [pdb file please
-      pdb_file = open( params.xmanip.output.xyzout, 'w')
-      print >> log, "Wring pdb file to: %s"%(params.xmanip.output.xyzout)
-      if params.xmanip.parameters.apply_operator.concatenate_model:
+        new_model.set_sites_frac( new_sites )
+        # write the new [pdb file please
+        pdb_file = open( params.xmanip.output.xyzout, 'w')
+        print >> log, "Wring pdb file to: %s"%(params.xmanip.output.xyzout)
+        if params.xmanip.parameters.manipulate_pdb.apply_operator.concatenate_model:
+          write_as_pdb_file( input_pdb = pdb_model,
+                             input_xray_structure = model,
+                             out = pdb_file,
+                             chain_id_increment = 0,
+                             additional_remark = None,
+                             print_cryst_and_scale=True )
+
         write_as_pdb_file( input_pdb = pdb_model,
-                           input_xray_structure = model,
+                           input_xray_structure = new_model,
+                           out = pdb_file,
+                           chain_id_increment = params.xmanip.parameters.manipulate_pdb.apply_operator.chain_id_increment,
+                           additional_remark = None,
+                           print_cryst_and_scale=False )
+
+        pdb_file.close()
+
+      if params.xmanip.parameters.manipulate_pdb.task =="set_b":
+        #rest all the b values
+        if params.xmanip.parameters.manipulate_pdb.set_b:
+          b_iso = params.xmanip.parameters.manipulate_pdb.b_iso
+          new_model = model.set_b_iso( value = b_iso )
+          print >> log
+          print >> log, "All B-values have been set to %5.3f"%(b_iso)
+          print >> log, "Writing PDB file %s"%(params.xmanip.output.xyzout)
+          print >> log
+
+        pdb_file = open( params.xmanip.output.xyzout, 'w')
+        write_as_pdb_file( input_pdb = pdb_model,
+                           input_xray_structure = new_model,
                            out = pdb_file,
                            chain_id_increment = 0,
                            additional_remark = None,
-                           print_cryst_and_scale=True )
-
-      write_as_pdb_file( input_pdb = pdb_model,
-                         input_xray_structure = new_model,
-                         out = pdb_file,
-                         chain_id_increment = params.xmanip.parameters.chain_id_increment,
-                         additional_remark = None,
-                         print_cryst_and_scale=False )
-
-      pdb_file.close()
-
-    if params.xmanip.parameters.action=="manipulate_pdb":
-      #rest all the b values
-      if params.xmanip.parameters.manipulate_pdb.set_b:
-        b_iso = params.xmanip.parameters.manipulate_pdb.b_iso
-        new_model = model.set_b_iso( value = b_iso )
-        print >> log
-        print >> log, "All B-values have been set to %5.3f"%(b_iso)
-        print >> log, "Writing PDB file %s"%(params.xmanip.output.xyzout)
-        print >> log
-
-      pdb_file = open( params.xmanip.output.xyzout, 'w')
-      write_as_pdb_file( input_pdb = pdb_model,
-                         input_xray_structure = new_model,
-                         out = pdb_file,
-                         chain_id_increment = 0,
-                         additional_remark = None,
-                         print_cryst_and_scale=True)
-      pdb_file.close()
+                           print_cryst_and_scale=True)
+        pdb_file.close()
 
 
 
