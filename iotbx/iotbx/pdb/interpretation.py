@@ -261,7 +261,8 @@ class stage_1(object):
         self.ter_indices.append(len(self.atom_attributes_list))
       elif (record_name.rstrip() == "END"):
         self.end_indices.append(len(self.atom_attributes_list))
-      elif (record_name in ("ATOM  ", "HETATM")):
+      elif (   record_name.startswith("ATOM")
+            or record_name == "HETATM"):
         atom_attributes = pdb.atom.attributes(line_number=state.line_number)
         atom_attributes.set_from_ATOM_record(self.parse_record())
         if (model_serial is None):
