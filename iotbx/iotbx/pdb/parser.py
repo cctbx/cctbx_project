@@ -43,20 +43,26 @@ class pdb_record(object):
     self.line_number = line_number
     self.strict = strict
     self.record_name = (self.raw)[:6].upper().strip()
-    if (self.record_name == "REMARK"):
-      try:
-        n = int(self.raw[7:10])
-      except:
-        self.record_name += "_UNKNOWN"
-      else:
-        self.record_name += "_%03d" % (n,)
-    function_name = "read_" + self.record_name
-    bound_function_object = getattr(self, function_name, None)
-    if (bound_function_object is None):
-      self.is_interpreted = False
-    else:
+    self.is_interpreted = False
+    if (self.record_name.startswith("ATOM")
+        and (not strict or len(self.record_name) == 4)):
+      self.record_name = "ATOM"
       self.is_interpreted = True
-      bound_function_object()
+      self.read_ATOM()
+    else:
+      if (self.record_name == "REMARK"):
+        try:
+          n = int(self.raw[7:10])
+        except KeyboardInterrupt: raise
+        except:
+          self.record_name += "_UNKNOWN"
+        else:
+          self.record_name += "_%03d" % (n,)
+      function_name = "read_" + self.record_name
+      bound_function_object = getattr(self, function_name, None)
+      if (bound_function_object is not None):
+        self.is_interpreted = True
+        bound_function_object()
 
   def show(self, f=None):
     if (f is None): f = sys.stdout

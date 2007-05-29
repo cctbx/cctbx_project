@@ -617,14 +617,19 @@ namespace iotbx { namespace pdb {
         }
         switch (line_data[0]) {
           case 'A':
-            if (is_name("ATOM  ", line_data, line_size)) {
-              set(coordinate, atom__); return;
-            }
-            if (is_name("ANISOU", line_data, line_size)) {
-              set(coordinate, anisou); return;
-            }
-            if (is_name("AUTHOR", line_data, line_size)) {
-              set(title, author); return;
+            if (line_size >= 4) {
+              // "ATOM  ": ignore columns 5 & 6 for compatibility with CNS 1.2
+              if (   line_data[1] == 'T'
+                  && line_data[2] == 'O'
+                  && line_data[3] == 'M') {
+                set(coordinate, atom__); return;
+              }
+              if (is_name("ANISOU", line_data, line_size)) {
+                set(coordinate, anisou); return;
+              }
+              if (is_name("AUTHOR", line_data, line_size)) {
+                set(title, author); return;
+              }
             }
             break;
           case 'H':

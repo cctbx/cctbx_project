@@ -798,8 +798,8 @@ model id=3 #chains=2
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
-ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
-ATOM      2  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
+ATOM1000001  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
+ATOM1000002  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 """))
   check_hierarchy(
     hierarchy=pdb_inp.construct_hierarchy(),
