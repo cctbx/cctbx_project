@@ -279,11 +279,6 @@ xmanip {
       standard_laws = niggli *reference_setting invert user_supplied
       user_supplied_law = "h,k,l"
     }
-    apply_operator {
-      standard_operators = *user_supplied
-      user_supplied_operator = "x,y,z"
-      concatenate_model = False
-    }
     manipulate_miller {
       task = get_dano get_diso lsq_scale sfcalc *custom None
       output_label_root = "FMODEL"
