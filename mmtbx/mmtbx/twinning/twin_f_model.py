@@ -1746,14 +1746,18 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
 
   def alpha_beta_w(self, only_if_required_by_target=False):
     a,b = self.alpha_beta()
-    a = a.select( self.free_array.data() )
-    b = b.select( self.free_array.data() )
+    tmp_sigmaa = self.sigmaa_object()
+    tmp_free = tmp_sigmaa.r_free_flags
+    a = a.select( tmp_free.data() )
+    b = b.select( tmp_free.data() )
     return a,b
 
   def alpha_beta_f(self,only_if_required_by_target=False):
     a,b = self.alpha_beta()
-    a = a.select( ~self.free_array.data() )
-    b = b.select( ~self.free_array.data() )
+    tmp_sigmaa = self.sigmaa_object()
+    tmp_free = tmp_sigmaa.r_free_flags
+    a = a.select( ~tmp_free.data() )
+    b = b.select( ~tmp_free.data() )
     return a,b
 
   def figures_of_merit(self):
@@ -1761,13 +1765,17 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     return sigmaa_object.fom().data()
 
   def figures_of_merit_w(self):
+    tmp_sigmaa = self.sigmaa_object()
+    tmp_free = tmp_sigmaa.r_free_flags
     fom = self.figures_of_merit().select(
-      self.free_array.data())
+      tmp_free.data())
     return fom
 
   def figures_of_merit_t(self):
+    tmp_sigmaa = self.sigmaa_object()
+    tmp_free = tmp_sigmaa.r_free_flags
     fom = self.figures_of_merit().select(
-      ~self.free_array.data())
+      ~tmp_free.data())
     return fom
 
   def phase_errors(self):
@@ -1775,10 +1783,15 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     return sigmaa_object.phase_errors().data()
 
   def phase_errors_work(self):
-    pher = self.phase_errors().select(self.free_array.data())
+    tmp_sigmaa = self.sigmaa_object()
+    tmp_free = tmp_sigmaa.r_free_flags
+    pher = self.phase_errors().select(tmp_free.data())
     return pher
+
   def phase_errors_test(self):
-    pher = self.phase_errors().select(~self.free_array.data())
+    tmp_sigmaa = self.sigmaa_object()
+    tmp_free = tmp_sigmaa.r_free_flags
+    pher = self.phase_errors().select(~tmp_free.data())
     return pher
 
 
