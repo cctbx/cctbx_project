@@ -1679,7 +1679,8 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         print >> self.out, "Automatic adjustment: detwinning mode set to proportional"
 
     assert mode in self.possible_detwin_modes
-    mode = "algebraic"
+    assert mode != "auto"
+
     #detwinning should be done against
     tmp_i_obs = self.f_obs.deep_copy().f_as_f_sq()
     untouched = self.f_obs.deep_copy().f_as_f_sq()
