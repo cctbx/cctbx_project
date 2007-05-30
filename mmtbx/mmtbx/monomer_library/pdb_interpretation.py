@@ -395,14 +395,25 @@ class monomer_mapping(object):
     self.unexpected_atom_i_seqs = {}
     self.ignored_atom_i_seqs = {}
     self.duplicate_atom_i_seqs = {}
-    is_rna_dna = (self.monomer.chem_comp.group == "rna_dna_placeholder"
-                  or self.monomer.is_rna_dna())
+    replace_primes = (self.monomer.chem_comp.group == "rna_dna_placeholder"
+                      or self.monomer.is_rna_dna())
     stage_1 = self.pdb_residue.chain.conformer.model.stage_1
+    n_primes = 0
+    n_stars = 0
+    active_i_seqs = []
     for i_seq in self.pdb_residue.iselection:
       atom = stage_1.atom_attributes_list[i_seq]
       if (atom.element.strip() == "Q"):
         self.ignored_atom_i_seqs.setdefault(atom.name, []).append(i_seq)
         continue
+      active_i_seqs.append(i_seq)
+      if (not replace_primes):
+        if (atom.name.find("'") >= 0): n_primes += 1
+        if (atom.name.find("*") >= 0): n_stars += 1
+    if (not replace_primes):
+      replace_primes = (n_primes != 0 and n_stars == 0)
+    for i_seq in active_i_seqs:
+      atom = stage_1.atom_attributes_list[i_seq]
       atom_name_given = atom.name.replace(" ","")
       atom_name = atom_name_given
       if (not atom_dict.has_key(atom_name)):
@@ -411,7 +422,7 @@ class monomer_mapping(object):
           auto_synomyms.append(atom_name[1:] + atom_name[0])
         elif (atom_name[-1] in string.digits):
           auto_synomyms.append(atom_name[-1] + atom_name[0:-1])
-        if (is_rna_dna):
+        if (replace_primes):
           atom_name = atom_name.replace("'", "*")
           if (atom_name != atom_name_given):
             auto_synomyms.append(atom_name)
