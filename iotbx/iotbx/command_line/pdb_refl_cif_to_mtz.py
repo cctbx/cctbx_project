@@ -45,11 +45,11 @@ keys_f_obs = ["F_meas_au",
               "F_meas",
               "F_meas_uncorrected"]
 keys_sf_obs = ["F_meas_sigma_au",
-              "F_meas_sigma",
-              "F_sigma",
-              "F_meas_siygma_au",
-              "F_meas_au_sigma",
-              "F_meas_sigma_uncorrected"]
+               "F_meas_sigma",
+               "F_sigma",
+               "F_meas_siygma_au",
+               "F_meas_au_sigma",
+               "F_meas_sigma_uncorrected"]
 
 keys_i_obs = ["intensity_meas",
               "F_squared_meas",
@@ -194,20 +194,20 @@ def get_xray_structure_from_pdb_file(pdb, out):
   except KeyboardInterrupt: raise
   except:
     xray_structure = None
-    print >> out, "ERROR_(cannot extract xray_structure): %s"%pdb[-11:]
+    print >> out, "Cannot_extract_xray_structure: %s"%pdb
   try:
     if(xray_structure is not None and xray_structure.scatterers().size()>0):
        occ = xray_structure.scatterers().extract_occupancies()
        beq = xray_structure.extract_u_iso_or_u_equiv()
-       sel = (occ > 0.0) | (occ < 5.0) | (beq > 0.0) | (beq < 500.0)
+       sel = (occ > 0.0) | (occ < 5.0) | (beq > 0.0) | (beq < 999.0)
        xray_structure = xray_structure.select(selection = sel)
   except KeyboardInterrupt: raise
   except:
     xray_structure = None
-    print >> out, "ERROR_(cannot extract xray_structure): %s"%pdb[-11:]
+    print >> out, "Cannot_extract_xray_structure: %s"%pdb
   if(xray_structure is not None and xray_structure.scatterers().size()==0):
     xray_structure = None
-    print >> out, "ERROR_(cannot extract xray_structure): %s"%pdb[-11:]
+    print >> out, "Cannot_extract_xray_structure: %s"%pdb
   return xray_structure
 
 def get_fobs_and_rfree_flags_from_mtz(hkl, pdb, out):
@@ -219,7 +219,7 @@ def get_fobs_and_rfree_flags_from_mtz(hkl, pdb, out):
         if(str(a.info()).count("FOBS")):
            f_obs = a
            assert str(f_obs.observation_type()) == "xray.amplitude"
-        if(str(a.info()).count("FLAGS")):
+        if(str(a.info()).count("R-free-flags")):
            r_free_flags = a
         if(str(a.info()).count("IOBS")):
            assert str(a.observation_type()) == "xray.intensity"
@@ -235,7 +235,8 @@ def get_fobs_and_rfree_flags_from_mtz(hkl, pdb, out):
   except KeyboardInterrupt: raise
   except:
     f_obs, r_free_flags = None, None
-    print >> out, "ERROR_(inconsistency in f_obs or/and r_free_flags): %s %s"%(hkl[:-4],pdb)
+    print >> out, "Inconsistency_in_f_obs_or/and_r_free_flags): %s %s"%(
+                                                                       hkl,pdb)
   return f_obs, r_free_flags
 
 def get_output_file_object():
@@ -247,8 +248,6 @@ def get_output_file_object():
 def get_fmodel_object(xray_structure, f_obs, r_free_flags, pdb, hkl, out):
   try:
     fmodel = mmtbx.f_model.manager(xray_structure   = xray_structure,
-                                   sf_algorithm     = "fft",
-                                   sf_cos_sin_table = True,
                                    r_free_flags     = r_free_flags,
                                    target_name      = "ls_wunit_k1",
                                    f_obs            = f_obs)
@@ -256,7 +255,7 @@ def get_fmodel_object(xray_structure, f_obs, r_free_flags, pdb, hkl, out):
                                  update_f_calc  = True,
                                  update_f_mask  = True)
   except Exception, e:
-    print >> out, "ERROR_(problem in setting up fmodel): %s"%pdb[-11:], hkl[:-4], str(e)
+    print >> out, "Error_while_setting_fmodel: %s"%pdb, hkl, str(e)
     fmodel = None
   return fmodel
 
@@ -272,7 +271,8 @@ def update_solvent_and_scale_helper(fmodel, params, low_res = 6.0,
   try:
     assert selection.count(True) > 0
   except Exception, e:
-    print >> out, "ERROR_(No_rflections_left after sigma and resolutions cutoff:", pdb[-11:], hkl[:-4]
+    print >> out, "No_reflections_left_after_sigma_and_resolutions_cutoff:", \
+                                                                       pdb, hkl
     proceed = False
   if(proceed):
      try:
@@ -282,7 +282,7 @@ def update_solvent_and_scale_helper(fmodel, params, low_res = 6.0,
        r_work = fmodel.r_work()*100
        r_free = fmodel.r_free()*100
      except Exception, e:
-       print >> out, "ERROR_(update_solvent_and_scale2):", pdb[-11:], hkl[:-4]
+       print >> out, "ERROR_update_solvent_and_scale2:", pdb, hkl
   return r_work, r_free
 
 def update_solvent_and_scale(fmodel, pdb, hkl, out):
@@ -290,9 +290,9 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
     status = None
     params = bss.solvent_and_scale_params()
     params.b_sol_min=0.0
-    params.b_sol_max=200.0
+    params.b_sol_max=300.0
     params.k_sol_min=0.0
-    params.k_sol_max=1.5
+    params.k_sol_max=2.5
     fmodel.update_solvent_and_scale(params = params, verbose = -1)
     r_work = fmodel.r_work()*100
     r_free = fmodel.r_free()*100
@@ -304,7 +304,7 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
        status = "good"
   except KeyboardInterrupt: raise
   except:
-    print >> out, "ERROR_(update_solvent_and_scale1): %s"%pdb[-11:], hkl[:-4]
+    print >> out, "ERROR_update_solvent_and_scale1: %s"%pdb, hkl
     status = None
     fmodel = None
   convert_to_intensities = False
@@ -357,7 +357,7 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
      fmodel.f_obs.set_observation_type_xray_amplitude()
      fmodel.update_solvent_and_scale(params = params, verbose = -1)
   if(status == "bad"):
-     print >> out, "ERROR_(status=bad): %s"%pdb[-11:], hkl[:-4]
+     print >> out, "Suspicious_Rfactors: %s"%pdb[-11:], hkl[:-4]
      status = None
      fmodel = None
   return status, fmodel
@@ -379,14 +379,15 @@ def one_run(pdb, hkl, error_out):
                                    out = error_out)
         if(fmodel is not None):
            status, fmodel = update_solvent_and_scale(
-                                 fmodel = fmodel, pdb = pdb, hkl = hkl, out = error_out)
+                        fmodel = fmodel, pdb = pdb, hkl = hkl, out = error_out)
            if([status, fmodel].count(None) == 0 and status == "good"):
               d_max, d_min = fmodel.f_obs.d_max_min()
               b0,b1,b2,b3,b4,b5 = fmodel.b_cart()
               sg = xray_structure.space_group().type().number()
               hkl_size = fmodel.f_obs.indices().size()
               pdb_size = fmodel.xray_structure.scatterers().size()
-              flags_pc = fmodel.r_free_flags.data().count(True)*100./fmodel.r_free_flags.data().size()
+              flags_pc = fmodel.r_free_flags.data().count(True)*100./ \
+                         fmodel.r_free_flags.data().size()
               result = format%(hkl[:-4],pdb[-8:-4],d_min,d_max,fmodel.k_sol(),
                 fmodel.b_sol(), fmodel.r_work()*100, fmodel.r_free()*100,b0,
                 b1,b2,b3,b4,b5,sg, pdb_size, hkl_size, flags_pc)
@@ -402,7 +403,8 @@ def get_array_of_r_free_flags(proceed, flags, cs, indices, pdb, err):
   result_flags = flex.int()
   for item in flags:
       if(item not in tw_flags_all):
-         print >> err, "Unknown r-free flag symbol: %s"%str(item), pdb, tw_flags_all
+         print >> err, "Unknown_rfree_flag_symbol: %s"%str(item), pdb,\
+                                                                   tw_flags_all
          proceed = False
          break
       if(item not in flag_values):
@@ -439,7 +441,8 @@ def get_array_of_r_free_flags(proceed, flags, cs, indices, pdb, err):
                    indices          = indices).array(data = result_flags)
      except Exception, e:
        proceed = False
-       print >> err, "Cannot_setup miller array with r-free flags: ",pdb,str(e)
+       print >> err, "Cannot_setup_miller_array_with_r-free_flags: ",\
+                                                                     pdb,str(e)
      if(proceed):
         try:
           test_flag_value = reflection_file_utils.get_r_free_flags_scores(
@@ -450,15 +453,14 @@ def get_array_of_r_free_flags(proceed, flags, cs, indices, pdb, err):
           else: proceed = False
         except Exception, e:
           proceed = False
-          print >> err, "Cannot_score r-free flags1: ", pdb,str(e)
+          print >> err, "Cannot_score_rfree_flags1: ", pdb,str(e)
         if(test_flag_value is None):
-           print >> err, "Cannot_score r-free flags2: ", pdb
+           print >> err, "Cannot_score_rfree_flags2: ", pdb
   return result_flags, cif_selection, proceed
 
 def compose_and_write_mtz(indices, data, sigmas, flags, cif_selection, pdb,
                                            err, proceed, cs, observation_type):
   file_name = None
-  pdb = pdb[-11:]
   try:
     assert indices.size() == flags.size()
     assert sigmas.size() == data.size()
@@ -490,27 +492,41 @@ def compose_and_write_mtz(indices, data, sigmas, flags, cif_selection, pdb,
           miller_array.set_observation_type_xray_intensity()
      except Exception, e:
        proceed = False
-       print >> err, "Cannot_setup miller array: ", pdb, str(e)
+       print >> err, "Cannot_setup_miller_array: ", pdb, str(e)
      if(proceed):
         try:
           mtz_dataset = miller_array.as_mtz_dataset(
                                           column_root_label = observation_type)
         except Exception, e:
           proceed = False
-          print >> err, "Cannot_write MTZ file= ", str(e), pdb
+          print >> err, "Cannot_write_MTZ_file: ", str(e), pdb
         if(proceed):
            mtz_dataset.add_miller_array(
                           miller_array      = miller_array.array(data = flags),
-                          column_root_label = "FLAGS")
+                          column_root_label = "R-free-flags")
            mtz_object = mtz_dataset.mtz_object()
            file_name = pdb[3:-4]+".mtz"
            mtz_object.write(file_name = file_name)
   return proceed, file_name
 
+def uncompress(file):
+  for cmd in ["gunzip %s ", "uncompress %s ", "$HOME/uncompress %s ",
+              "$HOME/gunzip %s "]:
+    x = os.system(cmd%file)
+    if x == 0: break
 
 def run(args):
   pdb = args[0]
   hkl = args[1]
+  os.system("cp "+ hkl + " .")
+  os.system("cp "+ pdb + " .")
+  pdb = os.path.basename(pdb)
+  hkl = os.path.basename(hkl)
+  uncompress(file = pdb)
+  uncompress(file = hkl)
+  pdb = pdb[:pdb.index('ent')+3]
+  hkl = hkl[:hkl.index('ent')+3]
+
   err = open("_error_"+pdb[-8:-4],"w")
   proceed = True
   data    = flex.double()
@@ -529,13 +545,8 @@ def run(args):
   #
   # getting keys
   #
-  if(hkl.count(".Z") == 1 and proceed):
-     os.system("cp "+ hkl + " .")
-     hkl = hkl[-13:]
-     #os.system("$HOME/uncompress " + hkl) # to work on BSGC-2
-     os.system("gunzip " + hkl)
-     print hkl
-     ifo = open(hkl[:-2], "r")
+  if(proceed):
+     ifo = open(hkl, "r")
      lines = ifo.readlines()
      ifo.close()
      # getting keys
@@ -557,12 +568,12 @@ def run(args):
         if(lock_0 and lock_1):
            keys.append(st)
         if(len(keys) > 0 and st.startswith("loop_")):
-           print >> err, "Multiple keys: ", hkl, keys
+           print >> err, "Multiple_keys: ", hkl, keys
            keys = []
            proceed = False
            break
      if(proceed and len(keys) <= 4):
-        print >> err, "No keys: ", keys, hkl
+        print >> err, "No_keys: ", keys, hkl
         proceed = False
      #
      # we have keys now
@@ -607,16 +618,16 @@ def run(args):
                print >> err, "Unknown_key= ", key,  keys_updated, hkl
                break
         if(n_t > 1 and proceed):
-           print >> err, "Multiple CV sets: ", keys_updated, hkl
+           print >> err, "Multiple_CV_sets: ", keys_updated, hkl
            proceed = False
         if(n_t == 0 and proceed):
            proceed = False
-           print >> err, "No CV sets: ", keys_updated, hkl, n_t
+           print >> err, "No_CV_sets: ", keys_updated, hkl, n_t
         if([f_i,i_i].count(None) == 2 or n_f > 1 or n_i > 1 and proceed):
-           print >> err, "Multiple/no data sets: ", keys_updated,hkl,n_f,n_i
+           print >> err, "Multiple/no_data_sets: ", keys_updated,hkl,n_f,n_i
            proceed = False
-        if([h_i,k_i,l_i].count(None) > 0 or n_h > 1 or n_k > 1 or n_l > 1 and proceed):
-           print >> err, "Multiple/no index sets: ",\
+        if([h_i,k_i,l_i].count(None)>0 or n_h>1 or n_k>1 or n_l>1 and proceed):
+           print >> err, "Multiple/no_index_sets: ",\
                   keys_updated,hkl,n_h,n_k,n_l,"=",h_i,k_i,l_i
            proceed = False
      #
@@ -661,7 +672,7 @@ def run(args):
                             proceed = False
                        flags_.append(st[t_i])
            if(not proceed):
-              print >> err, "Could not get column data (hkl,fo,flags,sigma): ", hkl
+              print >> err, "Can't_get_column_data_(hkl,fo,flags,sigma): ", hkl
            if(indices.size() == 0 or data.size() == 0 or len(flags_) == 0):
               proceed = False
            if(indices.size() > 0 and proceed):
@@ -703,23 +714,25 @@ def run(args):
            os.system("rm -rf %s"%file_name)
            if(result is not None):
               proceed, file_name = \
-                    compose_and_write_mtz(indices          = fmodel.f_obs.indices(),
-                                          data             = fmodel.f_obs.data(),
-                                          sigmas           = fmodel.f_obs.sigmas(),
-                                          flags            = fmodel.r_free_flags.data(),
-                                          cif_selection    = None,
-                                          pdb              = pdb,
-                                          err              = err,
-                                          proceed          = proceed,
-                                          cs               = cs,
-                                          observation_type = "FOBS")
+                    compose_and_write_mtz(
+                                 indices          = fmodel.f_obs.indices(),
+                                 data             = fmodel.f_obs.data(),
+                                 sigmas           = fmodel.f_obs.sigmas(),
+                                 flags            = fmodel.r_free_flags.data(),
+                                 cif_selection    = None,
+                                 pdb              = pdb,
+                                 err              = err,
+                                 proceed          = proceed,
+                                 cs               = cs,
+                                 observation_type = "FOBS")
               ofo = open("_result_"+pdb[-8:-4],"w")
               print >> ofo, result
               ofo.flush()
               ofo.close()
               err.flush()
   err.close()
-  os.system("rm -rf "+hkl[:-2])
+  os.system("rm -rf "+hkl)
+  os.system("rm -rf "+pdb)
 
 
 if(__name__ == "__main__"):
