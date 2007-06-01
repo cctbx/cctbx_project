@@ -347,7 +347,7 @@ def exercise_2():
       assert approx_equal(flex.sum(delta), 0.0)
 
 def run():
-  #exercise_1()
+  exercise_1()
   exercise_2()
 
 if (__name__ == "__main__"):
