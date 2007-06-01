@@ -310,6 +310,7 @@ class manager(object):
                      euler_angle_convention  = "xyz",
                      lbfgs_maxfev            = 10,
                      protocol                = None,
+                     use_only_low_resolution_zones = None,
                      log                     = None):
     global time_rigid_body_total
     global time_initialization
@@ -354,9 +355,19 @@ class manager(object):
                                low_high_res_limit     = low_high_res_limit,
                                max_low_high_res_limit = max_low_high_res_limit,
                                protocol               = protocol)
-    line = "".join(["High resolution cutoffs for mz-protocol:"]+
-                                              [str("%5.2f"%i) for i in d_mins])
-    print >> log, "\n",line,"\n"
+    if(use_only_low_resolution_zones):
+       if(len(d_mins) > 1 and min(d_mins) < low_high_res_limit):
+          d_mins = d_mins[:len(d_mins)-1]
+    print >> log, \
+     "The following resolution zone(s) are defined for rigid body MZ protocol:"
+    d_spacings = fmodel_copy.f_obs_w.d_spacings().data()
+    print "   zone#  resolution range  number of reflections"
+    for i_seq, d_min in enumerate(d_mins):
+      d_sp_sel = d_spacings.select(d_spacings > d_min)
+      print >> log, "%8d   %s - %s             %-10d"%(i_seq+1,
+        str("%6.3f"%flex.max(d_sp_sel)), str("%6.3f"%flex.min(d_sp_sel)),
+        d_sp_sel.size())
+    print >> log
     step_counter = 0
     time_initialization += timer_rigid_body_total.elapsed()
     fmodel.show_essential(header = "rigid body start", out = log)
