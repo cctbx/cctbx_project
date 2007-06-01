@@ -24,7 +24,7 @@ dbe_master_params = iotbx.phil.parse("""\
     .type = int
   use_map = True
     .type = bool
-  resolution_factor = 1/10.
+  resolution_factor = 1/5.
     .type = float
   restraints {
     selection = D1 D2 D3 D4 D5 D6 D7 D8 D9 D10
@@ -124,8 +124,8 @@ class manager(object):
                                       site_i = flex.double(atom_i.coordinates),
                                       site_j = flex.double(atom_j.coordinates))
                if([b_estimated, q_estimated].count(None) == 0):
-                  is_qb_ok = q_estimated < 1.2 and q_estimated > 0.0 and \
-                             b_estimated > 0.0 and b_estimated < 10.0
+                  is_qb_ok = q_estimated < 2.0 and q_estimated > 0.0 and \
+                             b_estimated > 0.0 and b_estimated < 30.0
                else:
                   is_qb_ok = True
                if(dbe_label is not None and is_qb_ok):
@@ -367,7 +367,7 @@ class manager(object):
                                                    site_o  = site_o,
                                                    site_ca = site_ca,
                                                    dist_co = dist)
-    if([dbe_sites, label].count(None) == 0):
+    if([dbe_sites, label].count(None) == 0 and [dbe_sites[0],dbe_sites[1]].count(None)==0):
        return (dbe_sites[0], label, i_seq_o), (dbe_sites[1], label, i_seq_o)
     else:
        return (None,None,None), (None,None,None)
@@ -488,7 +488,6 @@ class manager(object):
          ed = ed_
          result = self.xray_structure.unit_cell().orthogonalize(site_frac)
          i_max = i_seq
-      #print "%10.4f %10.4f" % (alp, ed_)
       alp += step
       i_seq += 1
     origin = dist[i_max]
@@ -497,7 +496,7 @@ class manager(object):
     data = data.select(sel)
     dist = dist.select(sel)
     b_estimated, q_estimated = None, None
-    if(data.size() > 20):
+    if(data.size() > 10):
        approx_obj = maptbx.one_gaussian_peak_approximation(
                                               data_at_grid_points    = data,
                                               distances              = dist,
@@ -506,15 +505,14 @@ class manager(object):
        a_real = approx_obj.a_real_space()
        b_real = approx_obj.b_real_space()
        gof = approx_obj.gof()
-
        a = dbe_scattering_dict[label].array_of_a()[0]
        b = dbe_scattering_dict[label].array_of_b()[0]
        b_estimated = approx_obj.b_reciprocal_space()-b
        q_estimated = approx_obj.a_reciprocal_space()/a
-
-       print "%8.3f %8.3f %6.2f %6.2f %6.2f %s %6.2f %6.2f %6.2f %6.2f" % (a_real, b_real, gof,
-               approx_obj.a_reciprocal_space(), approx_obj.b_reciprocal_space(),
-               label, a, b, b_estimated, q_estimated)
+       fmt="%8.3f %8.3f %6.2f %6.2f %6.2f %s %6.2f %6.2f %6.2f %6.2f"
+       print >> self.log, fmt % (a_real, b_real, gof,
+              approx_obj.a_reciprocal_space(), approx_obj.b_reciprocal_space(),
+              label, a, b, b_estimated, q_estimated)
     else:
        print "No peak"
     return result, gof, b_estimated, q_estimated
@@ -603,28 +601,31 @@ def add_lone_pairs_for_peptyde_o(site_c, site_o, site_ca, dist_co,
   F1 = -A1*X2-A3*Y2-A5*Z2
   F2 = F1-Q1*Q2*math.sqrt(R)
   F  = F2 # F1
-  assert A != 0.0 and A1 != 0.0
-  tmp = (A3/A1-B/A)
-  assert tmp != 0.0
-  B1=(C/A-A5/A1)/tmp
-  B2=(D/A-F/A1)/tmp
-  B3=(C+B*B1)/A
-  B4=(D+B*B2)/A
-  D1=1+B1**2+B3**2
-  D2=2.0*B3*(B4+X2)+2.0*B1*(B2-Y2)-2.0*Z2
-  D3=(B4+X2)**2+(B2-Y2)**2+Z2**2-R
-  P=D2**2-4.0*D1*D3
-  assert P >= 0.0
-  assert D1 != 0.0
-  ZI1=(-D2+math.sqrt(P))/(2.0*D1)
-  YI1=B2+B1*ZI1
-  XI1=-B4-B3*ZI1
-  ZI2=(-D2-math.sqrt(P))/(2.0*D1)
-  YI2=B2+B1*ZI2
-  XI2=-B4-B3*ZI2
-  assert abs(A*XI2+B*YI2+C*ZI2+D) < small
-  assert abs(A*XI1+B*YI1+C*ZI1+D) < small
-  assert abs(A*X1+B*Y1+C*Z1+D)    < small
-  assert abs(A*X2+B*Y2+C*Z2+D)    < small
-  assert abs(A*XC+B*YC+C*ZC+D)    < small
-  return (XI1,YI1,ZI1), (XI2,YI2,ZI2)
+  #assert A != 0.0 and A1 != 0.0
+  if(A != 0.0 and A1 != 0.0):
+    tmp = (A3/A1-B/A)
+    assert tmp != 0.0
+    B1=(C/A-A5/A1)/tmp
+    B2=(D/A-F/A1)/tmp
+    B3=(C+B*B1)/A
+    B4=(D+B*B2)/A
+    D1=1+B1**2+B3**2
+    D2=2.0*B3*(B4+X2)+2.0*B1*(B2-Y2)-2.0*Z2
+    D3=(B4+X2)**2+(B2-Y2)**2+Z2**2-R
+    P=D2**2-4.0*D1*D3
+    assert P >= 0.0
+    assert D1 != 0.0
+    ZI1=(-D2+math.sqrt(P))/(2.0*D1)
+    YI1=B2+B1*ZI1
+    XI1=-B4-B3*ZI1
+    ZI2=(-D2-math.sqrt(P))/(2.0*D1)
+    YI2=B2+B1*ZI2
+    XI2=-B4-B3*ZI2
+    assert abs(A*XI2+B*YI2+C*ZI2+D) < small
+    assert abs(A*XI1+B*YI1+C*ZI1+D) < small
+    assert abs(A*X1+B*Y1+C*Z1+D)    < small
+    assert abs(A*X2+B*Y2+C*Z2+D)    < small
+    assert abs(A*XC+B*YC+C*ZC+D)    < small
+    return (XI1,YI1,ZI1), (XI2,YI2,ZI2)
+  else:
+    return None, None
