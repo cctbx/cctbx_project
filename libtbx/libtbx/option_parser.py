@@ -1,3 +1,4 @@
+from libtbx.utils import Sorry
 import copy
 import sys, os
 
@@ -118,14 +119,21 @@ class show_defaults_callback(object):
     self.expert_level = None
 
   def __call__(self, option, opt, value, parser):
-    value = value.strip().lower()
-    if (value == "all"):
+    if (value.strip().lower() == "all"):
       self.expert_level = -1
     else:
       try: value = int(value)
       except ValueError:
-        raise OptionError('invalid value "%s"\n' % value
-          + '  Please specify an integer value or the word "all"', opt)
+        raise Sorry("""\
+Invalid option value: --show-defaults="%s"
+  Please specify an integer value or the word "all"
+  Examples:
+    --show_defaults=0   # novice
+    --show_defaults=1   # slightly advanced
+    --show_defaults=2   # more advanced
+    etc.
+    --show_defaults=all # everything""" % value)
+
       self.expert_level = value
 
 class chunk_callback(object):
