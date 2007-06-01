@@ -58,6 +58,20 @@ def run_test(space_group_info, n_elements=5, d_min=1.5,
   s2 = StringIO()
   l.statistics().show_summary(f=s2)
   assert not show_diff(s2.getvalue(), s1.getvalue())
+  #
+  if (not f_obs.anomalous_flag()):
+    maptbx_fft_map = maptbx.fft_to_real_map_unpadded(
+      space_group=fft_map.space_group(),
+      n_real=fft_map.n_real(),
+      miller_indices=f_obs.indices(),
+      data=f_obs.data())
+    fft_map_unpadded = fft_map.real_map_unpadded()
+    assert approx_equal(
+      flex.linear_correlation(
+        fft_map_unpadded.as_1d(), maptbx_fft_map.as_1d()).coefficient(), 1)
+    assert approx_equal(
+      flex.max(flex.abs(maptbx_fft_map - fft_map_unpadded)), 0)
+  #
   fft_map.apply_sigma_scaling()
   real_map = maptbx.copy(
     fft_map.real_map(),

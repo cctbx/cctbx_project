@@ -1,6 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
-#include <cctbx/maptbx/copy.h>
+#include <cctbx/maptbx/fft.h>
 #include <cctbx/maptbx/average_densities.h>
 #include <cctbx/maptbx/eight_point_interpolation.h>
 #include <scitbx/boost_python/utils.h>
@@ -119,6 +119,18 @@ namespace {
     def("unpad_in_place",
       (void(*)(af::versa<double, af::flex_grid<> >&))
         maptbx::unpad_in_place, (arg_("map")));
+
+    def("fft_to_real_map_unpadded",
+      (af::versa<double, af::c_grid<3> >(*)(
+        sgtbx::space_group const&,
+        af::tiny<int, 3> const&,
+        af::const_ref<miller::index<> > const&,
+        af::const_ref<std::complex<double> > const&))
+          maptbx::fft_to_real_map_unpadded, (
+            arg_("space_group"),
+            arg_("n_real"),
+            arg_("miller_indices"),
+            arg_("data")));
 
     def("box_map_averaging",box_map_averaging);
     def("average_densities",
