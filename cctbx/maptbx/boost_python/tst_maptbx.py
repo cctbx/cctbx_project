@@ -245,6 +245,25 @@ def exercise_structure_factors():
       assert f.n_indices_affected_by_aliasing() == 0
       assert f.outside_map().size() == 0
 
+def exercise_fft():
+  sg = sgtbx.space_group_info("P 31").group()
+  mi = flex.miller_index(((1,2,3),(2,3,4)))
+  d = flex.complex_double((1+2j, 2+3j))
+  map = maptbx.fft_to_real_map_unpadded(
+    space_group=sg,
+    n_real=(10,13,17),
+    miller_indices=mi,
+    data=d)
+  assert map.is_0_based()
+  assert not map.is_padded()
+  assert map.focus() == (10,13,17)
+  assert approx_equal(
+    map[:5], [6,13.4163896,5.9603989,-8.1028328,-13.1838857])
+  assert approx_equal(
+    map[1000:1005], [-17.5217557,-1.4971115,20.1455825,-4.0350021,-2.7312275])
+  assert approx_equal(
+    map[-5:], [8.7337234,-0.7930404,-6.6343761,-1.9521735,2.6725642])
+
 def exercise_gridding():
   u = uctbx.unit_cell((4,6,7))
   assert maptbx.ext.determine_gridding(u, 2, 1/3., (1,1,1), 5, True) \
@@ -662,6 +681,7 @@ def run():
   exercise_peak_search()
   exercise_pymol_interface()
   exercise_structure_factors()
+  exercise_fft()
   exercise_transformers()
   exercise_mappers()
   exercise_basic_map()

@@ -79,6 +79,32 @@ namespace cctbx { namespace maptbx {
     return result;
   }
 
+  template <
+    typename ElementType,
+    typename IndexType>
+  void
+  unpad_in_place(
+    ElementType* map_begin,
+    IndexType const& all,
+    IndexType const& focus)
+  {
+    CCTBX_ASSERT(focus[0] == all[0]);
+    CCTBX_ASSERT(focus[1] == all[1]);
+    CCTBX_ASSERT(focus[2] <= all[2]);
+    typedef typename IndexType::value_type i_v_t;
+    const i_v_t n0 = focus[0];
+    const i_v_t n1 = focus[1];
+    const i_v_t n2 = focus[2];
+    const i_v_t d2 = all[2] - n2;
+    if (d2 == 0) return;
+    ElementType* target = map_begin + n2;
+    const ElementType* source = target + d2;
+    for(i_v_t i01=1;i01<n0*n1;i01++) {
+      for(i_v_t i2=0;i2<n2;i2++) *target++ = *source++;
+      source += d2;
+    }
+  }
+
   template <typename ElementType>
   void
   unpad_in_place(
@@ -86,23 +112,9 @@ namespace cctbx { namespace maptbx {
   {
     CCTBX_ASSERT(map.accessor().nd() == 3);
     CCTBX_ASSERT(map.accessor().is_0_based());
-    CCTBX_ASSERT(map.accessor().focus()[0] == map.accessor().all()[0]);
-    CCTBX_ASSERT(map.accessor().focus()[1] == map.accessor().all()[1]);
-    CCTBX_ASSERT(map.accessor().focus()[2] <= map.accessor().all()[2]);
-    typedef typename af::flex_grid<>::index_value_type i_v_t;
-    const i_v_t n0 = map.accessor().focus()[0];
-    const i_v_t n1 = map.accessor().focus()[1];
-    const i_v_t n2 = map.accessor().focus()[2];
-    const i_v_t d2 = map.accessor().all()[2] - n2;
-    if (d2 == 0) return;
-    ElementType* target = map.begin() + n2;
-    const ElementType* source = target + d2;
-    for(i_v_t i01=1;i01<n0*n1;i01++) {
-      for(i_v_t i2=0;i2<n2;i2++) *target++ = *source++;
-      source += d2;
-    }
+    unpad_in_place(map.begin(), map.accessor().all(), map.accessor().focus());
     map = af::versa<ElementType, af::flex_grid<> >(
-      map, af::flex_grid<>(n0,n1,n2));
+      map, af::flex_grid<>(map.accessor().focus()));
   }
 
 }} // namespace cctbx::maptbx
