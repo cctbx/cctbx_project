@@ -59,7 +59,8 @@ class option_parser(OptionParser):
       type="string",
       callback=self.show_defaults_callback,
       help="Print parameters visible at the given expert level and exit",
-      metavar="EXPERT_LEVEL"))
+      metavar=\
+        "EXPERT_LEVEL, (EXPERT_LEVEL = integer number or all for everything)"))
     self.show_defaults_callback.is_enabled = True
     return self
 
