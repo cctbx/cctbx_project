@@ -23,6 +23,9 @@ mmtbx/mmtbx/command_line/xmanip.py -text
 mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/xmanip.py -text
 mmtbx/mmtbx/xmanip_tasks.py -text
+scitbx/scitbx/graph/__init__.py -text
+scitbx/scitbx/graph/rigidity.py -text
+scitbx/scitbx/graph/tst_rigidity.py -text
 smtbx/SConscript -text
 smtbx/__init__.py -text
 smtbx/import_cctbx.h -text
