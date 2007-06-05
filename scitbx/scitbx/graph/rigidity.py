@@ -57,11 +57,12 @@ def integer_row_echelon_form(m):
 def create_linearly_independent_integer_vertices(n_dim, n_vertices):
   # Idea due to Neil Sloane
   assert n_vertices != 0
-  result = [range(2,2+n_dim)]
+  v0 = range(2,2+n_dim)
+  result = [v0]
   while (len(result) != n_vertices):
     vertex = []
-    for i,v0 in enumerate(result[0]):
-      vertex.append(v0 * result[-1][i])
+    for i in xrange(n_dim):
+      vertex.append(v0[i] * result[-1][i])
     result.append(vertex)
   return result
 
