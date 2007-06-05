@@ -21,6 +21,7 @@ libtbx/windows_dispatcher.exe -text
 mmtbx/mmtbx/command_line/maps.py -text
 mmtbx/mmtbx/command_line/xmanip.py -text
 mmtbx/mmtbx/maps.py -text
+mmtbx/mmtbx/utils.py -text
 mmtbx/mmtbx/xmanip.py -text
 mmtbx/mmtbx/xmanip_tasks.py -text
 scitbx/scitbx/graph/__init__.py -text

@@ -23,47 +23,69 @@ master_params = iotbx.phil.parse("""\
     .type = bool
   statistical_solvent = False
     .type = bool
+    .expert_level=3
   k_sol_b_sol_grid_search = True
     .type = bool
+    .expert_level=2
   minimization_k_sol_b_sol = True
     .type = bool
+    .expert_level=2
   minimization_b_cart = True
     .type = bool
+    .expert_level=2
   target = ls_wunit_k1 *ml
     .type = choice
   symmetry_constraints_on_b_cart = True
     .type = bool
+    .expert_level=2
   k_sol_max = 0.6
     .type = float
+    .expert_level=2
   k_sol_min = 0.0
     .type = float
+    .expert_level=2
   b_sol_max = 150.0
     .type = float
+    .expert_level=2
   b_sol_min = 10.0
     .type = float
+    .expert_level=2
   k_sol_grid_search_max = 0.6
     .type = float
+    .expert_level=2
   k_sol_grid_search_min = 0.0
     .type = float
+    .expert_level=2
   b_sol_grid_search_max = 100.0
     .type = float
+    .expert_level=2
   b_sol_grid_search_min = 10.0
     .type = float
+    .expert_level=2
   k_sol_step = 0.05
     .type = float
+    .expert_level=2
   b_sol_step = 5.0
     .type = float
+    .expert_level=2
   number_of_macro_cycles = 3
     .type = int
+    .expert_level=2
   number_of_minimization_macro_cycles = 3
     .type = int
+    .expert_level=2
   number_of_cycles_for_anisotropic_scaling = 3
     .type = int
+    .expert_level=2
   fix_k_sol = None
     .type = float
+    .expert_level=2
   fix_b_sol = None
     .type = float
-  fix_b_cart {
+    .expert_level=2
+  fix_b_cart
+    .expert_level=2
+  {
     u11 = None
       .type = float
     u22 = None
@@ -79,11 +101,16 @@ master_params = iotbx.phil.parse("""\
   }
   apply_back_trace_of_b_cart = False
     .type = bool
+    .expert_level=2
   start_minimization_from_k_sol = 0.35
     .type = float
+    .expert_level=2
   start_minimization_from_b_sol = 46.0
     .type = float
-  start_minimization_from_b_cart {
+    .expert_level=2
+  start_minimization_from_b_cart
+    .expert_level=3
+  {
     u11 = 0.0
       .type = float
     u22 = 0.0
@@ -99,10 +126,13 @@ master_params = iotbx.phil.parse("""\
   }
   nu_fix_n_atoms = None
     .type = float
+    .expert_level=3
   nu_fix_b_atoms = None
     .type = float
+    .expert_level=3
   verbose = 1
     .type = int
+    .expert_level=3
 """)
 
 
