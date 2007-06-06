@@ -103,7 +103,9 @@ map_params = iotbx.phil.parse(map_params_str, process_includes=True)
 master_params = iotbx.phil.parse("""\
 maps {
   %s
-  crystal_symmetry {
+  crystal_symmetry
+    .help = Unit cell and space group parameters
+  {
     unit_cell=None
       .type=unit_cell
     space_group=None
@@ -145,33 +147,16 @@ maps {
         .multiple=True
     }
     data {
-      file_name=None
-        .type=path
-      labels=None
-        .type=strings
+      include scope mmtbx.utils.data_params
     }
     r_free_flags {
-      file_name=None
-        .type=path
-      label=None
-        .type=str
-      test_flag_value=None
-        .type=int
-      disable_suitability_test=False
-        .type=bool
-        .expert_level=2
+      include scope mmtbx.utils.r_free_flags_params
     }
     experimental_phases {
-      file_name=None
-        .type=path
-      labels=None
-        .type=strings
+      include scope mmtbx.utils.experimental_phases_params
     }
     monomers {
-      file_name=None
-        .optional=True
-        .type=path
-        .multiple=True
+      include scope mmtbx.utils.cif_params
     }
   }
 }

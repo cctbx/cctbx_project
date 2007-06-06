@@ -32,6 +32,7 @@ from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
 import libtbx.load_env
 
+
 def miller_array_symmetry_safety_check(miller_array,
                                        data_description,
                                        working_point_group,
@@ -81,6 +82,13 @@ refinement.
       print >> self.log, part1 + \
              """refinement.main.generate_neutron_r_free_flags=True""" + part3
 
+data_params = iotbx.phil.parse("""\
+  file_name=None
+    .type=path
+  labels=None
+    .type=strings
+""")
+
 def determine_data(reflection_file_server,
                    parameters,
                    parameter_scope,
@@ -124,6 +132,13 @@ def determine_data(reflection_file_server,
      info = info.customized_copy(merged=True)
   return processed.set_info(info)
 
+experimental_phases_params = iotbx.phil.parse("""\
+  file_name=None
+    .type=path
+  labels=None
+    .type=strings
+""")
+
 def determine_experimental_phases(reflection_file_server,
                                   parameters,
                                   log,
@@ -165,6 +180,21 @@ def determine_experimental_phases(reflection_file_server,
        processed = merged.array()
        info = info.customized_copy(merged = True)
     return processed.set_info(info)
+
+r_free_flags_params = iotbx.phil.parse("""\
+  file_name=None
+    .type=path
+    expert_level=0
+  label=None
+    .type=str
+    expert_level=0
+  test_flag_value=None
+    .type=int
+    expert_level=0
+  disable_suitability_test=False
+    .type=bool
+    .expert_level=2
+""")
 
 def determine_r_free_flags(reflection_file_server,
                            data,
@@ -251,6 +281,13 @@ def determine_r_free_flags(reflection_file_server,
      parameters.test_flag_value = True
   return r_free_flags
 
+pdb_params = iotbx.phil.parse("""\
+  file_name=None
+    .optional=True
+    .type=path
+    .multiple=True
+""")
+
 def process_pdb_file(pdb_file_names,
                      parameters,
                      pdb_interpretation_params,
@@ -297,6 +334,13 @@ def process_pdb_file(pdb_file_names,
      raise Sorry(msg)
   return processed_pdb_file, pdb_inp
 
+cif_params = iotbx.phil.parse("""\
+  file_name=None
+    .optional=True
+    .type=path
+    .multiple=True
+""")
+
 def process_monomer_cif_files(cif_objects, parameters, mon_lib_srv, ener_lib):
   all = []
   index_dict = {}
@@ -321,3 +365,98 @@ def process_monomer_cif_files(cif_objects, parameters, mon_lib_srv, ener_lib):
         cif_object=cif_object, file_name=file_name)
       ener_lib.process_cif_object(cif_object=cif_object, file_name=file_name)
     parameters.file_name.append(file_name)
+
+class extract_f_obs(object):
+  def __init__(self, f_obs, params, neutron_data, log):
+    if(params.main.scattering_table == "neutron" or neutron_data):
+       header = "Neutron data"
+    else:
+       header = "X-ray data"
+    mmtbx.refinement.print_statistics.make_header(header, out=log)
+    f_obs.show_comprehensive_summary(f = log)
+    print >> log
+    if(f_obs.is_complex_array()): f_obs = abs(f_obs)
+    if(f_obs.is_xray_intensity_array()):
+       selection_by_isigma = self._apply_sigma_cutoff(
+         f_obs   = f_obs,
+         n       = params.main.sigma_iobs_rejection_criterion,
+         message = "Number of reflections with |Iobs|/sigma(Iobs) < %5.2f: %d",
+         log     = log)
+       if(selection_by_isigma is not None):
+          f_obs = f_obs.select(selection_by_isigma)
+       print >> log, \
+                   "Intensities converted to amplitudes for use in refinement."
+       f_obs = f_obs.f_sq_as_f()
+       print >> log
+    f_obs.set_observation_type_xray_amplitude()
+    f_obs = f_obs.map_to_asu()
+    selection = f_obs.all_selection()
+    if(neutron_data):
+       d_max = params.neutron.low_resolution
+       d_min = params.neutron.high_resolution
+    else:
+       d_max = params.main.low_resolution
+       d_min = params.main.high_resolution
+    if(d_max is not None):
+       selection &= f_obs.d_spacings().data() <= d_max
+    if(d_min is not None):
+       selection &= f_obs.d_spacings().data() >= d_min
+    selection_strictly_positive = f_obs.data() > 0
+    print >> log, \
+      "Number of F-obs in resolution range:                  ", \
+      selection.count(True)
+    print >> log, \
+      "Number of F-obs <= 0:                                 ", \
+      selection_strictly_positive.count(False)
+    selection &= selection_strictly_positive
+    selection_by_fsigma = self._apply_sigma_cutoff(
+         f_obs   = f_obs,
+         n       = params.main.sigma_fobs_rejection_criterion,
+         message = "Number of reflections with |Fobs|/sigma(Fobs) < %5.2f: %d",
+         log     = log)
+    if(selection_by_fsigma is not None): selection &= selection_by_fsigma
+    if(f_obs.sigmas() is not None):
+       sigma_cutoff = params.main.sigma_fobs_rejection_criterion
+       if(sigma_cutoff is not None and sigma_cutoff > 0):
+          selection_by_sigma = f_obs.data() > f_obs.sigmas()*sigma_cutoff
+          print >> log, \
+            "Number of reflections with |Fobs|/sigma(Fobs) < %5.2f: %d" % (
+              sigma_cutoff, selection_by_sigma.count(False))
+          selection &= selection_by_sigma
+    selection &= f_obs.d_star_sq().data() > 0
+    f_obs = f_obs.select(selection)
+    rr = f_obs.resolution_range()
+    print >> log, "Refinement resolution range: d_max = %8.4f" % rr[0]
+    print >> log, "                             d_min = %8.4f" % rr[1]
+    print >> log
+    if(f_obs.indices().size() == 0):
+       raise Sorry(
+             "No data left after applying resolution limits and sigma cutoff.")
+    if(not neutron_data):
+       if(params.main.force_anomalous_flag_to_be_equal_to is not None):
+          if(not params.main.force_anomalous_flag_to_be_equal_to):
+             print >> log, \
+               "refinement.main.force_anomalous_flag_to_be_equal_to = False"
+             if(f_obs.anomalous_flag()):
+                print >> log, "Reducing X-ray data to non-anomalous array."
+                merged = f_obs.as_non_anomalous_array().merge_equivalents()
+                merged.show_summary(out=log, prefix="  ")
+                f_obs = merged.array().set_observation_type( f_obs )
+                del merged
+                print >> log
+          elif(not f_obs.anomalous_flag()):
+             print >> log, \
+               "refinement.main.force_anomalous_flag_to_be_equal_to = True"
+             print >> log, "Generating Bijvoet mates of X-ray data."
+             f_obs = f_obs.generate_bijvoet_mates()
+             print >> log
+       twin_analyses = mmtbx.scaling.twin_analyses.twin_analyses_brief(
+                               miller_array = f_obs, cut_off = 4.0, out = None)
+       if(twin_analyses   == True):  result = "twinned"
+       elif(twin_analyses == False): result = "not twinned"
+       elif(twin_analyses is None):  result = "unknown"
+       else: raise Sorry("Twin analysis failed.")
+       print >> log, "Twin analysis result: ", result
+       self.twin_analyses_ = twin_analyses
+    print >> log
+    self.f_obs_ = f_obs
