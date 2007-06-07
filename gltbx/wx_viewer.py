@@ -17,7 +17,6 @@ import wx
 import wx.glcanvas
 import math
 import time
-import sys, os
 
 def animation_stepper(time_move=1.0, move_factor=1, frames_per_second=100):
   time_move *= move_factor
@@ -576,170 +575,17 @@ class show_points_and_lines_mixin(wxGLWindow):
     if (closest_point is not None):
       self.rotation_center = closest_point
 
-def pdb_interpretation(file_name):
-  from mmtbx import monomer_library
-  import mmtbx.monomer_library.server
-  import mmtbx.monomer_library.pdb_interpretation
-  #
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  processed_pdb = monomer_library.pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    file_name=file_name,
-    strict_conflict_handling=False,
-    keep_monomer_mappings=False,
-    log=sys.stdout)
-  processed_pdb.geometry_restraints_manager()
-  return processed_pdb
-
-class show_pdb(show_points_and_lines_mixin):
-
-  def __init__(self, *args, **keyword_args):
-    show_points_and_lines_mixin.__init__(self, *args, **keyword_args)
-    self.flag_show_labels = False
-
-  def set_points(self, atom_attributes_list):
-    self.labels.extend([atom.pdb_format() for atom in atom_attributes_list])
-    self.points.extend(flex.vec3_double([atom.coordinates
-      for atom in atom_attributes_list]))
-    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
-    self.minimum_covering_sphere = s
-    self.labels_display_list = None
-    self.points_display_list = None
-
-  def set_lines(self, bond_proxies):
-    self.line_i_seqs = []
-    for proxy in bond_proxies.simple:
-      self.line_i_seqs.append(proxy.i_seqs)
-    self.lines_display_list = None
-
-class show_tripod(show_points_and_lines_mixin):
-
-  def __init__(self, *args, **keyword_args):
-    show_points_and_lines_mixin.__init__(self, *args, **keyword_args)
-    self.flag_show_minimum_covering_sphere = False
-    self.flag_show_rotation_center = False
-    p0 = matrix.col((1,1,0))
-    p1 = p0 + matrix.col((1,0,0))
-    p2 = p0 + matrix.col((0,2,0))
-    p3 = p0 + matrix.col((0,0,3))
-    self.points = flex.vec3_double([p0, p1, p2])
-    self.labels = ["p0", "p1", "p2"]
-    self.line_i_seqs = [(0,1),(1,2),(2,0)]
-    d0 = abs(p3-p0)
-    d1 = abs(p3-p1)
-    d2 = abs(p3-p2)
-    from tripod import tripod_node
-    tripod = tripod_node(
-      points=[p0, p1, p2],
-      distances=[d0, d1, d2],
-      p3_sign=1)
-    self.labels.append("p3+")
-    self.points.append(tripod.p3)
-    self.line_i_seqs.extend([(0,3),(1,3),(2,3)])
-    tripod = tripod_node(
-      points=[p0, p1, p2],
-      distances=[d0, d1, d2],
-      p3_sign=-1)
-    self.labels.append("p3-")
-    self.points.append(tripod.p3)
-    self.line_i_seqs.extend([(0,4),(1,4),(2,4)])
-    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
-    self.minimum_covering_sphere = s
-    self.labels_display_list = None
-    self.lines_display_list = None
-    self.points_display_list = None
-
-class show_tripod_refine(show_points_and_lines_mixin):
-
-  def __init__(self, *args, **keyword_args):
-    show_points_and_lines_mixin.__init__(self, *args, **keyword_args)
-    self.flag_show_minimum_covering_sphere = False
-    self.flag_show_rotation_center = False
-    self.points = flex.vec3_double()
-    self.labels = []
-    self.line_i_seqs = []
-    self.refinery_call_back_counter = 0
-    from sandbx.tripod import exercise_random
-    exercise_random(refinery_call_back=self.refinery_call_back)
-    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
-    self.minimum_covering_sphere = s
-    self.labels_display_list = None
-    self.lines_display_list = None
-    self.points_display_list = None
-
-  def refinery_call_back(self, tripod, homes):
-    self.refinery_call_back_counter += 1
-    rcc = self.refinery_call_back_counter
-    print "refinery_call_back", rcc
-    if (rcc >= 8):
-      nppts = self.points.size()
-      for p in tripod.points: self.points.append(p)
-      self.labels.extend(["p%d.%d" % (i, rcc) for i in xrange(3)])
-      self.line_i_seqs.extend(
-        [(nppts+i,nppts+j) for i,j in [(0,1),(1,2),(2,0)]])
-      if (tripod.p3 is not None):
-        self.points.append(tripod.p3)
-        self.labels.append("p3.%d" % rcc)
-        self.line_i_seqs.extend(
-          [(nppts+i,nppts+j) for i,j in [(0,3),(1,3),(2,3)]])
-      else:
-        for p,d in zip(tripod.points, tripod.distances):
-          self.spheres.append((p,d))
-
-class show_msd(show_points_and_lines_mixin):
-
-  def __init__(self, *args, **keyword_args):
-    show_points_and_lines_mixin.__init__(self, *args, **keyword_args)
-    self.flag_show_minimum_covering_sphere = False
-    self.flag_show_rotation_center = False
-    self.points = flex.vec3_double()
-    self.labels = []
-    self.line_i_seqs = []
-
-  def set_points_and_lines(self, processed_msd):
-    for atom in processed_msd.atom_list:
-      self.labels.append(atom.label)
-      self.points.append(atom.site)
-    if (len(self.labels) > 30):
-      self.flag_show_labels = False
-    if (processed_msd.bonds_forward is None):
-      for i_seq,bond_list in enumerate(processed_msd.bond_lists):
-        for bond in bond_list:
-          self.line_i_seqs.append((i_seq,bond.j_seq))
-    else:
-      self.line_i_seqs = processed_msd.bonds_forward + processed_msd.bonds_back
-      for i_seqs in processed_msd.bonds_forward:
-        self.line_colors[tuple(i_seqs)] = (0,1,0)
-      for i_seqs in processed_msd.bonds_back:
-        self.line_colors[tuple(i_seqs)] = (1,0,0)
-    s = scitbx.math.minimum_covering_sphere_3d(points=self.points)
-    self.minimum_covering_sphere = s
-    self.labels_display_list = None
-    self.lines_display_list = None
-    self.points_display_list = None
-
 class App(wx.App):
 
-  def __init__(self, args):
-    assert len(args) in [0, 1]
-    self.processed_pdb = None
-    self.processed_msd = None
-    self.default_size = wx.Size(600,600)
-    if (len(args) == 1):
-      if (os.path.isfile(args[0])):
-        self.processed_pdb = pdb_interpretation(file_name=args[0])
-      else:
-        from sandbx import msd_as_graphs
-        self.processed_msd = msd_as_graphs.process(code=args[0])
-        self.processed_msd.as_graph()
+  def __init__(self, title="gltbx.wx_viewer", default_size=(600,600)):
+    self.title = title
+    self.default_size = wx.Size(*default_size)
     wx.App.__init__(self, 0)
 
   def OnInit(self):
     self.frame = wx.Frame(
       None, -1,
-      "Wire World",
+      self.title,
       wx.DefaultPosition,
       self.default_size)
 
@@ -776,23 +622,6 @@ class App(wx.App):
       "Turns auto-spin on/off. Keyboard shortcut: s")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=50)
 
-    tb.AddSeparator()
-    tb.AddControl(wx.StaticText(tb, -1, "Pick:"))
-    pick_action_choices = [
-      "Center of Rotation",
-      "Atom",
-      "Residue",
-      "Chain",
-      "Conformer",
-      "Model"]
-    pick_action_combobox = wx.ComboBox(
-      tb, -1,
-      pick_action_choices[0],
-      choices=pick_action_choices,
-      size=(-1,-1), style=wx.CB_DROPDOWN | wx.CB_READONLY)
-    tb.AddControl(pick_action_combobox)
-    self.Bind(wx.EVT_COMBOBOX, self.OnPickActionSelect, pick_action_combobox)
-
     tb.Realize()
 
     menuBar = wx.MenuBar()
@@ -803,20 +632,8 @@ class App(wx.App):
 
     self.frame.SetMenuBar(menuBar)
     self.frame.Show(True)
-    if (self.processed_pdb is not None):
-      self.cube = show_pdb(self.frame, -1, wx.Point(0,0), self.default_size)
-      self.cube.set_points(
-        self.processed_pdb.all_chain_proxies.stage_1.atom_attributes_list)
-      self.cube.set_lines(
-        self.processed_pdb.geometry_restraints_manager()
-          .pair_proxies().bond_proxies)
-    elif (self.processed_msd is not None):
-      self.cube = show_msd(self.frame, -1, wx.Point(0,0), self.default_size)
-      self.cube.set_points_and_lines(processed_msd=self.processed_msd)
-    else:
-      self.cube = show_tripod_refine(
-        self.frame, -1, wx.Point(0,0), self.default_size)
-    self.cube.SetFocus()
+    self.init_view_objects()
+    self.view_objects.SetFocus()
     self.SetTopWindow(self.frame)
     return True
 
@@ -826,26 +643,19 @@ class App(wx.App):
   def OnToolClick(self, event):
     id = event.GetId()
     if (id == 10):
-      self.cube.move_rotation_center_to_mcs_center()
+      self.view_objects.move_rotation_center_to_mcs_center()
     elif (id == 20):
-      self.cube.move_to_center_of_viewport(self.cube.rotation_center)
+      self.view_objects.move_to_center_of_viewport(
+        self.view_objects.rotation_center)
     elif (id == 30):
-      self.cube.fit_into_viewport()
+      self.view_objects.fit_into_viewport()
     elif (id == 40):
-      self.cube.reset_rotation()
+      self.view_objects.reset_rotation()
     elif (id == 50):
-      self.cube.autospin_allowed = not self.cube.autospin_allowed
-      self.cube.autospin = False
-      self.frame.SetStatusText(
-        "Auto Spin %s" % ["Off", "On"][int(self.cube.autospin_allowed)])
+      self.view_objects.autospin_allowed \
+        = not self.view_objects.autospin_allowed
+      self.view_objects.autospin = False
+      self.frame.SetStatusText("Auto Spin %s"
+        % ["Off", "On"][int(self.view_objects.autospin_allowed)])
     else:
       raise RuntimeError("Unknown event Id: %d" % id)
-
-  def OnPickActionSelect(self, event):
-    self.frame.SetStatusText(event.GetString())
-
-def run(args):
-  App(args).MainLoop()
-
-if (__name__ == "__main__"):
-  run(sys.argv[1:])
