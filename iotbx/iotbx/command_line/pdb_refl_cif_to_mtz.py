@@ -288,6 +288,7 @@ def update_solvent_and_scale_helper(fmodel, params, low_res = 6.0,
 def update_solvent_and_scale(fmodel, pdb, hkl, out):
   try:
     status = None
+    try_more = True
     params = bss.solvent_and_scale_params()
     params.b_sol_min=0.0
     params.b_sol_max=300.0
@@ -296,12 +297,15 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
     fmodel.update_solvent_and_scale(params = params, verbose = -1)
     r_work = fmodel.r_work()*100
     r_free = fmodel.r_free()*100
+    print "1: ", r_work, r_free
     rwrf_delta = 1.5
     if(fmodel.f_obs.d_min() < 1.2): rwrf_delta = 0.5
     if(r_work > r_free or abs(r_work - r_free) <= rwrf_delta or r_work > 45.0):
        status = "bad"
     else:
        status = "good"
+    if(status == "bad" and r_work < 25.0):
+       try_more = False
   except KeyboardInterrupt: raise
   except:
     print >> out, "ERROR_update_solvent_and_scale1: %s"%pdb, hkl
@@ -309,7 +313,7 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
     fmodel = None
   convert_to_intensities = False
   convert_to_amplitudes  = False
-  if([status, fmodel].count(None) == 0 and status == "bad"):
+  if([status, fmodel].count(None) == 0 and status == "bad" and try_more):
      fmodel_dc = fmodel.deep_copy()
      rw, rf = update_solvent_and_scale_helper(fmodel = fmodel_dc,
                                       params = params, out=out,pdb=pdb,hkl=hkl)
@@ -317,7 +321,7 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
      check = (rw>rf or abs(rw-rf) <= rwrf_delta or rw > 45.)
      if(check): status = "bad"
      else:      status = "good"
-  if([status, fmodel].count(None) == 0 and status == "bad"):
+  if([status, fmodel].count(None) == 0 and status == "bad" and try_more):
      fmodel_dc = fmodel.deep_copy()
      f_obs = fmodel_dc.f_obs
      f_obs = f_obs.set_observation_type(observation_type = None)
@@ -331,7 +335,7 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
      else:
         status = "good"
         convert_to_amplitudes = True
-  if([status, fmodel].count(None) == 0 and status == "bad"):
+  if([status, fmodel].count(None) == 0 and status == "bad" and try_more):
      fmodel_dc = fmodel.deep_copy()
      f_obs = fmodel_dc.f_obs
      f_obs = f_obs.set_observation_type(observation_type = None)
@@ -357,7 +361,7 @@ def update_solvent_and_scale(fmodel, pdb, hkl, out):
      fmodel.f_obs.set_observation_type_xray_amplitude()
      fmodel.update_solvent_and_scale(params = params, verbose = -1)
   if(status == "bad"):
-     print >> out, "Suspicious_Rfactors: %s"%pdb[-11:], hkl[:-4]
+     print >> out, "Suspicious_Rfactors: %s"%pdb[-11:], hkl[:-4], r_work, r_free
      status = None
      fmodel = None
   return status, fmodel
@@ -391,6 +395,7 @@ def one_run(pdb, hkl, error_out):
               result = format%(hkl[:-4],pdb[-8:-4],d_min,d_max,fmodel.k_sol(),
                 fmodel.b_sol(), fmodel.r_work()*100, fmodel.r_free()*100,b0,
                 b1,b2,b3,b4,b5,sg, pdb_size, hkl_size, flags_pc)
+  print result
   return result, fmodel, format
 
 ###############################################################################
