@@ -25,88 +25,125 @@ import sys, os
 master_params = iotbx.phil.parse("""\
 scaling.input {
    parameters
+   .help = "Basic parameters"
    {
      asu_contents
+     .help = "Defines the ASU contents"
      {
        n_residues=None
        .type=float
+       .help="Number of residues in structural unit"
        n_bases=None
        .type=float
+       .help="Number of nucleotides in structural unit"
        n_copies_per_asu=None
        .type=float
+       .help="Number of copies per ASU. If not specified, Matthews analyses is performed"
      }
 
      misc_twin_parameters
+     .help="Various settings for twinning or symmetry tests"
      {
        missing_symmetry
+       .help = "Settings for missing symmetry tests"
        {
          tanh_location = 0.08
          .type=float
+         .help="R values associated with sym. ops. below this value are considered 'true' symmetry operators."
          tanh_slope = 50
          .type=float
+         .help="Affects the slope of the decision function. Better not touch it."
        }
 
        twinning_with_ncs
+       .help="Analysing the possibility of an NCS operator parallel to a twin law."
        {
          perform_analyses = False
          .type = bool
+         .help = "Determines whether or not this analyses is carried out."
          n_bins = 7
          .type = int
+         .help = "Number of bins used in NCS analyses."
        }
 
        twin_test_cuts
+       .help = "Various cuts used in determining resolution limit for data used in intensity statistics "
        {
          low_resolution=10.0
          .type=float
+         .help="Low resolution"
          high_resolution=None
          .type=float
+         .help = "High resolution"
          isigi_cut=3.0
          .type=float
+         .help="I/sigI ratio used in completeness cut "
          completeness_cut=0.85
          .type=float
+         .help="Data is cut at resolution where intensities with I/sigI>isigi_cut are more then completeness_cut complete"
        }
 
      }
 
      reporting
+     .help="Some output issues"
      {
        verbose=1
        .type=int
+       .help="Verbosity"
        log=logfile.log
        .type=str
+       .help="Logfile"
        ccp4_style_graphs=True
        .type=bool
+       .help="SHall we include ccp4 style graphs?"
      }
 
    }
 
    xray_data
+   .help="Defines xray data"
    {
      file_name=None
      .type=path
+     .help="File name with data"
      obs_labels=None
      .type=strings
+     .help="Labels for observed data"
      calc_labels=None
      .type=strings
+     .help="Lables for calculated data"
      unit_cell=None
      .type=unit_cell
+     .help="Unit cell parameters"
      space_group=None
      .type=space_group
+     .help="space group"
      high_resolution=None
      .type=float
+     .help="High resolution limit"
      low_resolution=None
      .type=float
+     .help="Low resolution limit"
 
-     reference{
-       data{
+     reference
+     .help = "A reference data set. For the investigation of possible reindexing options"
+     {
+       data
+       .help="Defines an x-ray dataset"
+       {
          file_name=None
          .type = path
+         .help = "File name"
          labels=None
          .type=strings
+         .help="Labels"
          unit_cell=None
          .type=unit_cell
+         .help=""UNit cell parameters"
          space_group=None
          .type=space_group
+         .help="Space group"
        }
 
      }
@@ -115,12 +152,14 @@ scaling.input {
 
    optional
    .expert_level=10
+   .help="Optional data massage possibilities"
    {
      include scope mmtbx.scaling.massage_twin_detwin_data.master_params
    }
    expert_level=1
    .type=int
    .expert_level=10
+   .help="Expert level"
 }
 """, process_includes=True)
 
