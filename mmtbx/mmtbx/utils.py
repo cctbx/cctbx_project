@@ -60,7 +60,7 @@ def miller_array_symmetry_safety_check(miller_array,
   to the command line arguments.
 """)
 
-def explain_how_to_generate_array_of_r_free_flags(neutron_flag):
+def explain_how_to_generate_array_of_r_free_flags(neutron_flag, log):
   part1 = """\
 If previously used R-free flags are available run this command again
 with the name of the file containing the original flags as an
@@ -76,10 +76,10 @@ the values for R-free will become meaningful only after many cycles of
 refinement.
 """
   if(not neutron_flag):
-     print >> self.log, part1 + \
+     print >> log, part1 + \
                      """refinement.main.generate_r_free_flags=True""" + part3
   else:
-      print >> self.log, part1 + \
+      print >> log, part1 + \
              """refinement.main.generate_neutron_r_free_flags=True""" + part3
 
 data_params = iotbx.phil.parse("""\
@@ -231,7 +231,7 @@ def determine_r_free_flags(reflection_file_server,
       e.reset_tracebacklimit()
       if(generate_r_free_flags is not None):
          explain_how_to_generate_array_of_r_free_flags(
-                                                   neutron_flag = neutron_flag)
+                                        neutron_flag = neutron_flag, log = log)
          raise Sorry("Please try again.")
       r_free_flags, test_flag_value = None, None
     else:
