@@ -414,6 +414,7 @@ class ml_iso_absolute_scaling(object):
             The keys prot_frac and nuc_frac will be
             will be used at a later stage.
      """
+    self.p_scale, self.b_wilson = None, None
     ## Checking input combinations
     if (n_residues is None):
       if (n_bases is None):
@@ -423,13 +424,11 @@ class ml_iso_absolute_scaling(object):
       assert ( (n_residues is not None) or (n_bases is not None) )
 
     assert (prot_frac+nuc_frac<=1.0)
-
     if ( miller_array.is_xray_intensity_array() ):
       miller_array = miller_array.f_sq_as_f()
     if ( miller_array.is_real_array() ):
       ## Save the information of the file name etc
       self.info = miller_array.info()
-
       work_array = miller_array.resolution_filter(
         1.0/math.sqrt(  scaling.get_d_star_sq_low_limit() ),
         1.0/math.sqrt( scaling.get_d_star_sq_high_limit() )
@@ -452,10 +451,9 @@ class ml_iso_absolute_scaling(object):
                                            asu_contents = asu_contents,
                                            fraction_protein = prot_frac,
                                            fraction_nucleic = nuc_frac)
-      ## Compute the terms
-      self.scat_info.scat_data(self.d_star_sq)
-
       if (work_array.size() > 0 ):
+        ## Compute the terms
+        self.scat_info.scat_data(self.d_star_sq)
         self.f_obs = work_array.data()
         ## Make sure sigma's are used when available
         if (work_array.sigmas() is not None):
