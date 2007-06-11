@@ -112,7 +112,7 @@ Legend: black <b>bold</b> - scope names
   print >> log, "<b>%s"%("-"*80),"</b>"
 
 def run(phil_object, log):
-  print  >> log, """<META http-equiv=Content-Type content="text/html; charset=utf-8">"""
+  print >> log, """<META http-equiv=Content-Type content="text/html; charset=utf-8">"""
   print >> log, """<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"""
 
   header(log)
