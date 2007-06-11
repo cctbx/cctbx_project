@@ -30,7 +30,7 @@ def format_string(object, ind, log, scope=False, allowed_line_lenght=80):
         raise Sorry(
           "Cannot create doc file: scope is too deep or its name is too long.")
      elements = (" "*ind, name, values, help)
-     fmt = "%s%s= <FONT color=#CC0000>%s</FONT> <FONT color=blue>%s</FONT>"
+     fmt = "%s%s= <FONT color=CC0000>%s</FONT> <FONT color=blue>%s</FONT>"
      line = fmt % elements
      line_length = len(" "*ind+str(object.name)+str(object.help)+values)
      line_to_appear = "%s%s %s %s"%elements
@@ -97,21 +97,24 @@ def header(log):
   legend = """\
 Legend: black <b>bold</b> - scope names
         black - parameter names
-        <FONT color=#CC0000>red</FONT> - parameres values
+        <FONT color=CC0000>red</FONT> - parameres values
         <FONT color=blue>blue</FONT> - parameter help
         <FONT color=blue><b>blue bold</b></FONT> - parameter help
         Parameter values:
-          <FONT color=#CC0000>*</FONT> means selected parameter (where multiple choices are available)
-          <FONT color=#CC0000>False</FONT> is No
-          <FONT color=#CC0000>True</FONT> is Yes
-          <FONT color=#CC0000>None</FONT> means not provided or not predefined or left up to program
-          <FONT color=#CC0000>"%3d"</FONT> is Python style formatting descriptor """
+          <FONT color=CC0000>*</FONT> means selected parameter (where multiple choices are available)
+          <FONT color=CC0000>False</FONT> is No
+          <FONT color=CC0000>True</FONT> is Yes
+          <FONT color=CC0000>None</FONT> means not provided or not predefined or left up to program
+          <FONT color=CC0000>"%3d"</FONT> is Python style formatting descriptor """
   print >> log, "<PRE><FONT face=courier>"
   print >> log, "<b>%s"%("-"*80),"</b>"
   print >> log, legend
   print >> log, "<b>%s"%("-"*80),"</b>"
 
 def run(phil_object, log):
-  print >> log, "</FONT></PRE>"
+  print  >> log, """<META http-equiv=Content-Type content="text/html; charset=utf-8">"""
+  print >> log, """<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"""
+
   header(log)
   scope_walk(p = phil_object, ind = 0, log = log)
+  print >> log, "</FONT></PRE>"
