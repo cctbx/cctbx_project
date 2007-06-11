@@ -65,6 +65,7 @@ def run(filename,
 
   outl = ""
   unk = ""
+  error_outl = ""
 
   for model in hierarchy.models():
     for chain in model.chains():
@@ -91,13 +92,15 @@ def run(filename,
           else:
             if not protein_only:
               if not residue.atoms()[0].hetero:
-                print "This residue is not converted to letter code %s" % (
+                error_outl += \
+                  "This residue is not converted to letter code : %s\n" % (
                   residue.name.strip(),
                   )
-                sys.exit()
       outl+="\n"
   if unk and print_unknown:
     print "Unconverted residues",unk
+  if error_outl:
+    print error_outl
   return outl
 
 def exercise():
