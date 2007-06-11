@@ -16,6 +16,7 @@ def exercise_double_banana():
     (5,6), (5,7), (6,7),
     (5,3), (6,3), (7,3),
     (5,4), (6,4), (7,4)]
+  assert len(edge_list) == 18
   assert determine_degrees_of_freedom(
     n_dim=2, n_vertices=n_vertices, edge_list=edge_list) == 3
   assert determine_degrees_of_freedom(
@@ -37,6 +38,26 @@ def exercise_double_banana():
   assert dofs == [
     7, 7, 7, 7, 6, 6, 6, 7, 7, 7, 6, 6, 6, 7,
     7, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7]
+
+def exercise_mt1996():
+  # H. Maehara and N. Tokushige
+  # A Spatial Unit-Bar-Framework Which Is Rigid and Triangle-Free
+  # Graphs and Combinatorics (1996) 12:341-344
+  n_vertices = 26
+  edge_list = [
+    (0,8), (0,9), (0,12), (0,13), (0,16), (0,17), (0,20), (0,21),
+    (0,22), (0,23), (1,8), (1,9), (1,12), (1,13), (1,18), (1,19),
+    (1,20), (1,21), (1,24), (1,25), (2,8 ), (2,9), (2,14), (2,15),
+    (2,18), (2,19), (2,22), (2,23), (2,24), (2,25), (3,8), (3,9),
+    (3,14), (3,15), (3,16), (3,17), (4,10), (4,11), (4,12), (4,13),
+    (4,16), (4,17), (4,22), (4,23), (4,24), (4,25), (5,10), (5,11),
+    (5,12), (5,13), (5,18), (5,19), (6,10), (6,11), (6,14), (6,15),
+    (6,18), (6,19), (6,20), (6,21), (6,22), (6,23), (7,10), (7,11),
+    (7,14), (7,15), (7,16), (7,17), (7,20), (7,21), (7,24), (7,25),
+    (8,11), (9,10), (12,15), (13,14), (16,19), (17,18)]
+  assert len(edge_list) == 78
+  assert determine_degrees_of_freedom(
+    n_dim=3, n_vertices=n_vertices, edge_list=edge_list) == 6
 
 def exercise_p120():
   # http://www.rwgrayprojects.com/Lynn/Coordinates/coord01.html
@@ -69,6 +90,7 @@ def exercise_p120():
     (51,53),(52,53),(53,54),(53,55),(53,59),(53,60),(53,61),
     (54,55),(55,56),(55,57),(55,61),(56,57),(57,58),
     (57,59),(57,61),(58,59),(59,60),(59,61)]
+  assert len(edge_list) == 179
   assert determine_degrees_of_freedom(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list) == 7
   assert determine_degrees_of_freedom(
@@ -77,6 +99,7 @@ def exercise_p120():
 def exercise():
   exercise_gcd()
   exercise_double_banana()
+  exercise_mt1996()
   exercise_p120()
   print "OK"
 
