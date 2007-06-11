@@ -91,10 +91,10 @@ def run(filename,
           else:
             if not protein_only:
               if not residue.atoms()[0].hetero:
-                print "This residue is not converted to letter code %s" (
+                print "This residue is not converted to letter code %s" % (
                   residue.name.strip(),
                   )
-                assert 0
+                sys.exit()
       outl+="\n"
   if unk and print_unknown:
     print "Unconverted residues",unk
