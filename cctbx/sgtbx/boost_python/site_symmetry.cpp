@@ -93,6 +93,8 @@ namespace {
         .def("change_basis", &w_t::change_basis, (arg_("cb_op")))
         .def("site_constraints", &w_t::site_constraints, rir())
         .def("adp_constraints", &w_t::adp_constraints, rir())
+        .def("cartesian_adp_constraints", &w_t::cartesian_adp_constraints, (
+          arg_("unit_cell"), arg_("unit_cell_has_changed")=false), rir())
       ;
     }
   };
