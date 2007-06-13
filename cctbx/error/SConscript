@@ -1,0 +1,10 @@
+Import("env_base", "env_etc")
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+)
+env_etc.include_registry.append(
+  env=env,
+  paths=["."] + env_etc.cctbx_common_includes)
+env.Append(LIBPATH=["#lib"])
+env.Prepend(LIBS=["cctbx"])
+env.Program(target="tst_error", source="tst_error.cpp")
