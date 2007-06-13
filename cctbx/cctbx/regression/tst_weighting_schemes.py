@@ -43,6 +43,9 @@ def exercise_shelx_weighting(f_calc, obs):
   assert approx_equal(weighting.derivatives_wrt_f_c,
                       weighting_ref.derivatives_wrt_f_c)
 
+  weighting.observed = weighting.observed.discard_sigmas()
+  weighting.compute()
+
 def exercise_quasi_unit_weighting(obs):
   w = xray.weighting_schemes.intensity_quasi_unit_weighting()
   w.observed = obs.discard_sigmas()
