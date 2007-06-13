@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/matrix/row_echelon.h>
+#include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 
 namespace scitbx { namespace matrix { namespace boost_python {
@@ -101,6 +102,34 @@ namespace {
       row_echelon_back_substitution_float);
   }
 
+  template <unsigned NCols>
+  struct full_pivoting_small_wrapper
+  {
+    typedef double NumType;
+    typedef row_echelon::full_pivoting_small<NumType, NCols, NCols> wt;
+
+    static void wrap(char *name)
+    {
+      using namespace boost::python;
+      class_<wt>(name, no_init)
+        .def(init<af::ref<NumType, af::c_grid<2> > const&,
+                  NumType const&,
+                  unsigned>((
+            arg_("matrix"),
+            arg_("min_abs_pivot")=0,
+            arg_("max_rank")=NCols
+        )))
+        .def("back_substitution", &wt::back_substitution,
+             arg_("free_values"))
+        .def("row_rank", &wt::row_rank)
+        .def("is_in_row_span", &wt::is_in_row_span, (
+             arg_("vector"),
+             arg_("epsilon")))
+      ;
+    }
+  };
+
+
 }}} // namespace matrix::boost_python::<anonymous>
 
 namespace math { namespace boost_python {
@@ -108,6 +137,10 @@ namespace math { namespace boost_python {
   void wrap_row_echelon()
   {
     matrix::boost_python::wrap_row_echelon();
+    matrix::boost_python::full_pivoting_small_wrapper<3>
+      ::wrap("full_pivoting_3_x_3");
+    matrix::boost_python::full_pivoting_small_wrapper<6>
+      ::wrap("full_pivoting_6_x_6");
   }
 
 }}} // namespace scitbx::math::boost_python

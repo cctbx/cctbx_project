@@ -1,6 +1,7 @@
 #ifndef SCITBX_SCITBX_MATRIX_ROW_ECHELON_H
 #define SCITBX_SCITBX_MATRIX_ROW_ECHELON_H
 
+#include <algorithm>
 #include <scitbx/mat_ref.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/tiny.h>
@@ -211,14 +212,15 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       NumType const& min_abs_pivot=0,
       unsigned max_rank=NCols)
     {
-      SCITBX_ASSERT(m_work.accessor()[0] <= MaxNRows);
-      SCITBX_ASSERT(m_work.accessor()[0] >= NCols);
+      SCITBX_ASSERT(m_work.accessor()[0] <= MaxNRows)(m_work.accessor()[0])
+                                                     (MaxNRows);
+      //SCITBX_ASSERT(m_work.accessor()[0] >= std::min(NCols, max_rank));
       SCITBX_ASSERT(m_work.accessor()[1] == NCols);
       unsigned n_rows = m_work.accessor()[0];
       for(unsigned i=0;i<n_rows;i++) row_perm.push_back(i);
       for(unsigned i=0;i<NCols;i++) col_perm[i] = i;
       unsigned pr = 0;
-      for(unsigned pc=0;pc<NCols;pc++) {
+      for(unsigned pc=0;pc<std::min(NCols,n_rows);pc++) {
         // search for the next pivot value; here "m" is for "max"
         unsigned mr = pr;
         unsigned mc = pc;
@@ -267,6 +269,27 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       }
     }
 
+    unsigned row_rank() {
+      return pivot_cols.size();
+    }
+
+    bool is_in_row_span(af::small<NumType, NCols> const& vector,
+                        NumType epsilon) const {
+      af::small<NumType, NCols> v = vector;
+      unsigned pr_pc = 0;
+      for (unsigned i=0; i < pivot_cols.size(); i++) {
+        NumType a = v[col_perm[i]]/echelon_form[pr_pc];
+        if (a != 0) {
+          for (int k=i; k < v.size(); k++) v[col_perm[k]] -= a*echelon_form[pr_pc++];
+        }
+        pr_pc += i+1;
+      }
+      for (unsigned i=0; i < v.size(); i++) {
+        if (scitbx::fn::absolute(v[i]) > epsilon) return false;
+      }
+      return true;
+    }
+
     af::tiny<NumType, NCols>
     back_substitution(af::small<NumType, NCols> const& free_values) const
     {
@@ -299,8 +322,8 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       void
       swap_rows(NumType* m_work, unsigned i, unsigned j)
       {
-        unsigned ic = i*row_perm.size();
-        unsigned jc = j*row_perm.size();
+        unsigned ic = i*NCols;
+        unsigned jc = j*NCols;
         for(unsigned c=0;c<NCols;c++) {
           std::swap(m_work[ic++], m_work[jc++]);
         }
