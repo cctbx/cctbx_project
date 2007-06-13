@@ -285,6 +285,33 @@ namespace cctbx {
           + frac_[8] * v[2]);
       }
 
+      // ! gradient wrt Cartesian coordinates from gradient wrt fractional ones
+      /*! The formula is \f$\nabla_{x_f} = F^T \nabla_{x_c}\f$ where \f$F\f$ is
+        the fractionalisation matrix
+        This is syntactic sugar for the long winded and cryptic
+          v_times_fractionalization_matrix_transpose.
+        */
+      template <class FloatType>
+      scitbx::vec3<FloatType>
+      orthogonalize_gradient (scitbx::vec3<FloatType> const& v) const
+      {
+        return v_times_fractionalization_matrix_transpose(v);
+      }
+
+      // ! gradient wrt fractional coordinates from gradient wrt Cartesian ones
+      /*! The formula is \f$\nabla_{x_f} = O^T \nabla_{x_c}\f$ where \f$O\f$ is
+          the orthogonalisation matrix
+      */
+      template <class FloatType>
+      scitbx::vec3<FloatType>
+      fractionalize_gradient (const scitbx::vec3<FloatType>& g) const
+      {
+        const uc_mat3& O = orth_;
+        return fractional<FloatType>(O[0]*g[0],
+                                     O[1]*g[0] + O[4]*g[1],
+                                     O[2]*g[0] + O[5]*g[1] + O[8]*g[2]);
+      }
+
       //! Length^2 of a vector of fractional coordinates.
       /*! Not available in Python.
        */
