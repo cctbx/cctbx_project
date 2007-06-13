@@ -834,6 +834,37 @@ def exercise_row_echelon():
         zeros = mm * matrix.col(sol)
         assert approx_equal(zeros, [0]*rank)
 
+def exercise_full_pivoting():
+  m = flex.double(( 1,  2,  3,  4,  5,  6,
+                   -1, -3,  1,  2, -1,  3,
+                    2,  1, -1,  3,  4,  2))
+  m.resize(flex.grid(3,6))
+  v = [0]*6
+  for j in xrange(6):
+    for i in xrange(3):
+      v[j] += m[i,j]
+  echelon = scitbx.math.full_pivoting_6_x_6(m)
+  assert echelon.row_rank() == 3
+  # Is v in the vector space spanned by the rows of m?
+  assert echelon.is_in_row_span(tuple(v), epsilon=1e-15)
+  # After that modification, v should not be in that span anymore
+  v[2] += 1e-8
+  assert not echelon.is_in_row_span(tuple(v), epsilon=1e-15)
+  # Let's test with a row rank deficient matrix m now
+  m = flex.double(( 1,  2,  3,  4,  5,  6,
+                   -1, -3,  1,  2, -1,  3,
+                    0,  0, 0,  0,  0,  0))
+  m.resize(flex.grid(3,6))
+  v = [0]*6
+  for j in xrange(6):
+    m[2,j] =   m[1,j] + 2*m[0,j]
+    v[j]   = 2*m[1,j] +   m[0,j]
+  echelon = scitbx.math.full_pivoting_6_x_6(m, 1e-15)
+  assert echelon.row_rank() == 2
+  assert echelon.is_in_row_span(tuple(v), epsilon=1e-15)
+  v[4] += 1e-9
+  assert not echelon.is_in_row_span(tuple(v), epsilon=1e-15)
+
 def exercise_tensor_rank_2():
   g = (2,3,5,0.2,0.3,0.5)
   assert approx_equal(scitbx.math.tensor_rank_2_gradient_transform(
@@ -1331,6 +1362,7 @@ def exercise_unimodular_generator(forever):
       break
 
 def run():
+  exercise_full_pivoting()
   exercise_eix()
   exercise_floating_point_epsilon()
   exercise_euler_angles()
