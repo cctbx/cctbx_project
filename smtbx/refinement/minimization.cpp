@@ -9,21 +9,27 @@
 
 namespace smtbx { namespace refinement { namespace boost_python {
 
-  struct apply_shifts_wrappers
+  struct apply_special_position_constrained_shifts_wrappers
   {
-    typedef minimization::apply_shifts<scatterer<>, double> w_t;
+    typedef minimization::apply_special_position_constrained_shifts<
+              scatterer<>, double> w_t;
 
     static void
     wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("minimization_apply_shifts", no_init)
+      class_<w_t>(
+        "apply_special_position_constrained_shifts",
+        no_init
+      )
         .def(init<
           uctbx::unit_cell const&,
+          const sgtbx::site_symmetry_table&,
           af::const_ref<scatterer<> > const&,
           af::const_ref<double> const& >((
             arg_("unit_cell"),
+            arg_("site_symmetry_table"),
             arg_("scatterers"),
             arg_("shifts"))))
         .add_property("shifted_scatterers",
@@ -33,26 +39,30 @@ namespace smtbx { namespace refinement { namespace boost_python {
       ;
     }
   };
-  
-  struct reduce_gradient_as_per_special_position_constraints_wrappers
+
+  struct special_position_constrained_gradients_wrappers
   {
-    typedef minimization::reduce_gradient_as_per_special_position_constraints<
+    typedef minimization::special_position_constrained_gradients<
               scatterer<>, double> w_t;
-    
+
     static void
     wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("reduce_gradient_as_per_special_position_constraints_wrappers",
-                  no_init)
+      class_<w_t>(
+        "special_position_constrained_gradients",
+        no_init
+      )
         .def(init<
           uctbx::unit_cell const&,
+          const sgtbx::site_symmetry_table&,
           af::const_ref<scatterer<> > const&,
           af::ref<double> const& >((
             arg_("unit_cell"),
+            arg_("site_symmetry_table"),
             arg_("scatterers"),
-            arg_("shifts"))))
+            arg_("xray_gradients"))))
         .add_property("reduced_gradients",
           make_getter(&w_t::reduced_gradients, rbv()))
       ;
@@ -63,8 +73,8 @@ namespace smtbx { namespace refinement { namespace boost_python {
   {
     using namespace boost::python;
 
-    apply_shifts_wrappers::wrap();
-    reduce_gradient_as_per_special_position_constraints_wrappers::wrap();
+    apply_special_position_constrained_shifts_wrappers::wrap();
+    special_position_constrained_gradients_wrappers::wrap();
   }
 
 }}} // namespace cctbx::xray::boost_python
