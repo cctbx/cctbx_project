@@ -92,7 +92,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("deep_copy", &w_t::deep_copy)
         .def("clear", &w_t::clear)
         .def("insert", insert)
-        .def("append", &w_t::append)
+        .def("append", (void(w_t::*)(ElementType const&))&w_t::append)
         .def("extend", extend)
       ;
 

@@ -53,6 +53,20 @@
       // non-std
       void append(ElementType const& x) { push_back(x); }
 
+      void append(const ElementType* first, const ElementType* last)
+      {
+        // pos == end();
+        size_type n = last - first;
+        if (n == 0) return;
+        if (size() + n > capacity()) {
+          m_insert_overflow(end(), first, last);
+        }
+        else {
+          std::uninitialized_copy(first, last, end());
+          m_incr_size(n);
+        }
+      }
+
       void pop_back() {
         m_decr_size(1);
         typedef typename has_trivial_destructor<ElementType>::value htd;
