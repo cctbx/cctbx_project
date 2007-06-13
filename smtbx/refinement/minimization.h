@@ -2,24 +2,41 @@
 #define SMTBX_XRAY_MINIMIZATION_H
 
 #include <scitbx/array_family/block_iterator.h>
+#include <scitbx/sym_mat3.h>
 #include <cctbx/xray/packing_order.h>
-#include <smtbx/import_scitbx_af.h>
-#include <smtbx/import_cctbx.h>
-#include <smtbx/refinement/import_cctbx_xray.h>
+#include <cctbx/sgtbx/site_symmetry_table.h>
+#include <cctbx/coordinates.h>
+#include <cctbx/adptbx.h>
 
-  
+#include <iostream>
 
-namespace smtbx { namespace refinement { namespace minimization {
+
+namespace smtbx {
+
+  namespace af = scitbx::af;
+  namespace sgtbx = cctbx::sgtbx;
+  namespace uctbx = cctbx::uctbx;
+  namespace adptbx = cctbx::adptbx;
+  using cctbx::fractional;
+  using cctbx::error;
+
+namespace refinement {
+
+  using cctbx::xray::scatterer;
+  using cctbx::xray::packing_order_convention;
+
+namespace minimization {
 
   template <typename XrayScattererType,
             typename FloatType>
-  struct apply_shifts
+  struct apply_special_position_constrained_shifts
   {
     af::shared<XrayScattererType> shifted_scatterers;
     af::shared<FloatType> u_iso_refinable_params;
 
-    apply_shifts(
+    apply_special_position_constrained_shifts(
       uctbx::unit_cell const& unit_cell,
+      const sgtbx::site_symmetry_table& site_symmetry_table,
       af::const_ref<XrayScattererType> const& scatterers,
       af::const_ref<FloatType> const& shifts)
     {
@@ -31,14 +48,23 @@ namespace smtbx { namespace refinement { namespace minimization {
         CCTBX_ASSERT(grad_flags_counts.u_iso != 0);
         u_iso_refinable_params.resize(scatterers.size(), 0);
       }
-
       FloatType* u_iso_refinable_params_ptr = u_iso_refinable_params.begin();
       scitbx::af::const_block_iterator<FloatType> next_shifts(
         shifts, "Array of shifts is too small.");
       for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
-         XrayScattererType sc = scatterers[i_sc];
-         if(sc.flags.grad_site()) {
-            sc.site += unit_cell.fractionalize(cartesian<sc_f_t>(next_shifts(3)));
+        XrayScattererType sc = scatterers[i_sc];
+        const sgtbx::site_symmetry_ops& op = site_symmetry_table.get(i_sc);
+        if(sc.flags.grad_site()) {
+          const sgtbx::site_constraints<FloatType>& site_c = op.site_constraints();
+          int n = site_c.n_independent_params();
+          const FloatType *xg = next_shifts(n);
+          if (n < 3) {
+            af::small<FloatType,3> shift(xg, xg+n);
+            sc.site += site_c.all_params(shift);
+          }
+          else {
+            sc.site += fractional<sc_f_t>(xg);
+          }
          }
          if(sc.flags.grad_u_iso() && sc.flags.use_u_iso()) {
            if(sc.flags.tan_u_iso() && sc.flags.param > 0) {
@@ -57,11 +83,23 @@ namespace smtbx { namespace refinement { namespace minimization {
            }
          }
          if(sc.flags.grad_u_aniso() && sc.flags.use_u_aniso()) {
-           scitbx::sym_mat3<sc_f_t> u_cart = adptbx::u_star_as_u_cart(
-             unit_cell, sc.u_star);
-           u_cart += scitbx::sym_mat3<sc_f_t>(next_shifts(6));
-           sc.u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart);
-         }
+           const sgtbx::tensor_rank_2::cartesian_constraints<FloatType>&
+           adp_c = op.cartesian_adp_constraints(unit_cell);
+           int n = adp_c.n_independent_parameters();
+           const FloatType *xg = next_shifts(n);
+           scitbx::sym_mat3<FloatType> shift(xg);
+           if (n < 6) {
+             af::small<FloatType,6> shift(xg, xg+n);
+             sc.u_star += adptbx::u_cart_as_u_star(
+                unit_cell,
+                adp_c.all_params(shift));
+           }
+           else {
+             sc.u_star += adptbx::u_cart_as_u_star(
+               unit_cell,
+               scitbx::sym_mat3<FloatType>(xg));
+           }
+        }
         if(sc.flags.grad_occupancy()) {
            sc.occupancy += next_shifts();
         }
@@ -78,16 +116,17 @@ namespace smtbx { namespace refinement { namespace minimization {
       }
     }
   };
-  
-  
+
+
   template <typename XrayScattererType,
             typename FloatType>
-  struct reduce_gradient_as_per_special_position_constraints {
-  
+  struct special_position_constrained_gradients {
+
     af::shared<FloatType> reduced_gradients;
 
-    reduce_gradient_as_per_special_position_constraints (
+    special_position_constrained_gradients (
       uctbx::unit_cell const& unit_cell,
+      const sgtbx::site_symmetry_table& site_symmetry_table,
       af::const_ref<XrayScattererType> const& scatterers,
       af::ref<FloatType> const& xray_gradients
       )
@@ -95,26 +134,56 @@ namespace smtbx { namespace refinement { namespace minimization {
       BOOST_STATIC_ASSERT(packing_order_convention == 2);
       scitbx::af::block_iterator<FloatType> next_xray_gradients(
         xray_gradients, "Array of xray gradients is too small.");
+      reduced_gradients.reserve(2*xray_gradients.size()/3);
       for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
-          XrayScattererType const& sc = scatterers[i_sc];
-          if(sc.flags.grad_site()) {
-            FloatType* xg = next_xray_gradients(3);
+        XrayScattererType const& sc = scatterers[i_sc];
+        const sgtbx::site_symmetry_ops& op = site_symmetry_table.get(i_sc);
+        if(sc.flags.grad_site()) {
+          FloatType *xg = next_xray_gradients(3);
+          scitbx::vec3<FloatType> cart_grad(xg);
+          scitbx::vec3<FloatType> frac_grad
+            = unit_cell.fractionalize_gradient(cart_grad);
+          if (op.is_point_group_1()) {
+            reduced_gradients.append(frac_grad.begin(), frac_grad.end());
           }
-          if(sc.flags.grad_u_iso() && sc.flags.use_u_iso()) {
-            FloatType& xg = next_xray_gradients();
+          else {
+            const sgtbx::site_constraints<FloatType>& site_c
+              = op.site_constraints();
+            af::small<FloatType,3> frac_grad1
+              = site_c.independent_gradients(frac_grad.const_ref());
+            reduced_gradients.append(frac_grad1.begin(), frac_grad1.end());
           }
-          if(sc.flags.grad_u_aniso() && sc.flags.use_u_aniso()) {
-            FloatType* xg = next_xray_gradients(6);
+        }
+        if(sc.flags.grad_u_iso() && sc.flags.use_u_iso()) {
+          FloatType& xg = next_xray_gradients();
+          reduced_gradients.push_back(xg);
+        }
+        if(sc.flags.grad_u_aniso() && sc.flags.use_u_aniso()) {
+          FloatType* xg = next_xray_gradients(6);
+          scitbx::sym_mat3<FloatType> cart_grad(xg);
+          if (!op.is_point_group_1()) {
+            const sgtbx::tensor_rank_2::cartesian_constraints<FloatType>&
+            adp_c = op.cartesian_adp_constraints(unit_cell);
+            af::small<FloatType,6> ind_cart_grad =
+              adp_c.independent_gradients(cart_grad);
+            reduced_gradients.append(ind_cart_grad.begin(), ind_cart_grad.end());
           }
-          if(sc.flags.grad_occupancy()) {
-            FloatType& xg = next_xray_gradients();
+          else {
+            reduced_gradients.append(cart_grad.begin(), cart_grad.end());
           }
-          if (sc.flags.grad_fp()) {
-            FloatType& xg = next_xray_gradients();
-          }
-          if (sc.flags.grad_fdp()) {
-            FloatType& xg = next_xray_gradients();
-          }
+        }
+        if(sc.flags.grad_occupancy()) {
+          FloatType& xg = next_xray_gradients();
+          reduced_gradients.push_back(xg);
+        }
+        if (sc.flags.grad_fp()) {
+          FloatType& xg = next_xray_gradients();
+          reduced_gradients.push_back(xg);
+        }
+        if (sc.flags.grad_fdp()) {
+          FloatType& xg = next_xray_gradients();
+          reduced_gradients.push_back(xg);
+        }
       }
       if (!next_xray_gradients.is_at_end()) {
         throw error("Array of xray gradients is too large.");
