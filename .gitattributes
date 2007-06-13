@@ -26,6 +26,7 @@ mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/utils.py -text
 mmtbx/mmtbx/xmanip.py -text
 mmtbx/mmtbx/xmanip_tasks.py -text
+scitbx/include/scitbx/matrix/delta_tensors.h -text
 scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
 scitbx/scitbx/graph/tst_rigidity.py -text
