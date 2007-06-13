@@ -50,5 +50,6 @@ smtbx/refinement/minimization.h -text
 smtbx/refinement/minimization.py -text
 smtbx/refinement/refinement_ext.cpp -text
 smtbx/refinement/tests/__init__.py -text
+smtbx/refinement/tests/all.py -text
 smtbx/refinement/tests/tst_minimization.py -text
 smtbx/refinement/tests/tst_minimization_at_random.py -text
