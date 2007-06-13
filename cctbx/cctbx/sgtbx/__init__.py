@@ -24,6 +24,10 @@ class _space_group(boost.python.injector, ext.space_group):
   def adp_constraints(self):
     return tensor_rank_2_constraints(space_group=self, reciprocal_space=True)
 
+  def cartesian_adp_constraints(self, unit_cell):
+    return tensor_rank_2_cartesian_constraints(unit_cell, self)
+
+
 class space_group_info(object):
 
   __safe_for_unpickling__ = True
