@@ -59,11 +59,31 @@ namespace {
     }
   };
 
+
+  struct tensor_rank_2_cartesian_constraints_wrapper
+  {
+    typedef tensor_rank_2::cartesian_constraints<> wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt>("tensor_rank_2_cartesian_constraints", no_init)
+        .def(init<uctbx::unit_cell const&, sgtbx::space_group const&>((
+          arg_("unit_cell"), arg_("space_group"))))
+        .def("n_independent_params", &wt::n_independent_parameters)
+        .def("all_params", &wt::all_params,
+          arg_("independent_params"))
+        .def("independent_gradients", &wt::independent_gradients,
+          arg_("all_gradients"))
+      ;
+    }
+  };
+
 } // namespace <anoymous>
 
   void wrap_tensor_rank_2()
   {
     tensor_rank_2_constraints_wrappers::wrap();
+    tensor_rank_2_cartesian_constraints_wrapper::wrap();
   }
 
 }}} // namespace cctbx::sgtbx::boost_python
