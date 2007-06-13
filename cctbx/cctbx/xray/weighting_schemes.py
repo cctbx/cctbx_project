@@ -122,13 +122,16 @@ class shelx_weighting(object):
         else:
           q = 1 - exp_vals
       self._q = q
-      self._den_obs = flex.pow2(self.observed.sigmas())
-      if d != 0:
-        self._den_obs += d
-      if e != 0:
-        e_times_sin_theta_sq = k_sqr
-        e_times_sin_theta_sq *= e * self._wavelength
-        self._den_obs += e_times_sin_theta_sq
+      if self.observed.sigmas() is not None:
+        self._den_obs = flex.pow2(self.observed.sigmas())
+        if d != 0:
+          self._den_obs += d
+        if e != 0:
+          e_times_sin_theta_sq = k_sqr
+          e_times_sin_theta_sq *= e * self._wavelength
+          self._den_obs += e_times_sin_theta_sq
+      else:
+        self._den_obs = None
       negatives = self.observed.data() < 0
       self._p_obs = self.observed.data().deep_copy()
       self._p_obs.set_selected(negatives, 0)
@@ -147,7 +150,7 @@ class shelx_weighting(object):
     den += b
     if self.computing_derivatives_wrt_f_c: der += b
     den *= p
-    den += self._den_obs
+    if self._den_obs is not None: den += self._den_obs
     if q is None:
       w = 1 / den
     else:
