@@ -46,6 +46,7 @@ namespace cctbx { namespace sgtbx {
       af::shared<rt_mx> matrices_;
   };
 
+
   //! Base class for site_symmetry, holding the essential results.
   class site_symmetry_ops
   {
@@ -54,7 +55,8 @@ namespace cctbx { namespace sgtbx {
       site_symmetry_ops()
       :
         have_site_constraints_(false),
-        have_adp_constraints_(false)
+        have_adp_constraints_(false),
+        have_cartesian_adp_constraints_(false)
       {}
 
       /*! \brief Number of distinct symmetrically equivalent positions
@@ -171,6 +173,25 @@ namespace cctbx { namespace sgtbx {
         return adp_constraints_;
       }
 
+      //! Return reference to cached constraints on u_cart
+      /*! The unit_cell is only used the first time this member function is
+          called. On subsequent calls, the cached value is used and unit_cell is
+          ignored unless recompute is true, in which case it runs like the first
+          time.
+      */
+      tensor_rank_2::cartesian_constraints<> const&
+      cartesian_adp_constraints(uctbx::unit_cell const& unit_cell,
+                                bool recompute=false) const
+      {
+        if (recompute || !have_cartesian_adp_constraints_) {
+          cartesian_adp_constraints_ = tensor_rank_2::cartesian_constraints<>(
+            unit_cell,
+            matrices_.const_ref());
+          have_cartesian_adp_constraints_ = true;
+        }
+        return cartesian_adp_constraints_;
+      }
+
       //! Support for Python's pickle facility. Do not use for other purposes.
       site_symmetry_ops(
         int multiplicity,
@@ -181,7 +202,8 @@ namespace cctbx { namespace sgtbx {
         special_op_(special_op),
         matrices_(matrices),
         have_site_constraints_(false),
-        have_adp_constraints_(false)
+        have_adp_constraints_(false),
+        have_cartesian_adp_constraints_(false)
       {}
 
     protected:
@@ -192,13 +214,16 @@ namespace cctbx { namespace sgtbx {
       mutable sgtbx::site_constraints<> site_constraints_;
       mutable bool have_adp_constraints_;
       mutable tensor_rank_2::constraints<> adp_constraints_;
+      mutable bool have_cartesian_adp_constraints_;
+      mutable tensor_rank_2::cartesian_constraints<> cartesian_adp_constraints_;
 
       site_symmetry_ops(int multiplicity, int r_den, int t_den)
       :
         multiplicity_(multiplicity),
         special_op_(r_den, t_den),
         have_site_constraints_(false),
-        have_adp_constraints_(false)
+        have_adp_constraints_(false),
+        have_cartesian_adp_constraints_(false)
       {}
   };
 
