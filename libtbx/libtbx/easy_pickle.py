@@ -1,7 +1,9 @@
 from libtbx.str_utils import show_string
 import cPickle
+import os.path
 
 def _open(file_name, mode):
+  file_name = os.path.expanduser(file_name)
   try: return open(file_name, mode)
   except IOError, e:
     raise IOError("Cannot open pickle file %s (%s)" % (
