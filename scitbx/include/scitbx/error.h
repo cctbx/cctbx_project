@@ -10,6 +10,10 @@
 #include <string>
 #include <sstream>
 
+#ifdef _MSC_VER
+# pragma warning(disable:4355)
+#endif
+
 #define SCITBX_CHECK_POINT std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
 #define SCITBX_EXAMINE(A) std::cout << "variable " <<#A<< ": " << A << " " << std::endl << std::flush
 
