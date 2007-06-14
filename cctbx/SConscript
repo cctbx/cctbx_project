@@ -24,8 +24,6 @@ envlm = env.Copy(
 )
 
 lib_cctbx_sources = [
-  "global/error.cpp",
-
   "eltbx/basic.cpp",
   "eltbx/xray_scattering/it1992.cpp",
   "eltbx/xray_scattering/wk1995.cpp",

@@ -32,6 +32,7 @@ mmtbx/mmtbx/xmanip_tasks.py -text
 scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
 scitbx/include/scitbx/matrix/delta_tensors.h -text
+scitbx/include/scitbx/smart_error.h -text
 scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
 scitbx/scitbx/graph/tst_rigidity.py -text
