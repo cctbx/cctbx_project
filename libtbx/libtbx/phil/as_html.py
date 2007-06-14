@@ -1,8 +1,15 @@
 from libtbx.utils import Sorry
 
-def format_string(object, ind, log, scope=False, allowed_line_lenght=80):
+def remove_redundant_spaces(s):
+  s = s.split()
+  s = " ".join([i for i in s])
+  return s
+
+def format_string(object, ind, log, scope=False, allowed_line_lenght=79):
   name = str(object.name).strip()
   help = str(object.help).strip()
+  help = remove_redundant_spaces(help)
+  if(help == "None"): help = ""
   if(scope):
      if(len(" "*ind+name) >= allowed_line_lenght):
         raise Sorry(
@@ -14,16 +21,20 @@ def format_string(object, ind, log, scope=False, allowed_line_lenght=80):
      if(len(line_to_appear) <= allowed_line_lenght):
         print >> log, line
      else:
-        help_start = len(" "*ind+name)+1
+        help_start = len(" "*ind+name)+0
         help_offset = " "*help_start
-        n_cut = partial_line(line, allowed_line_lenght)
+        n_cut = partial_line(line, allowed_line_lenght, line_to_appear)
         print >> log, line[:n_cut]
         line = help_offset+line[n_cut:]
         while True:
           if(n_cut is None): break
-          n_cut = partial_line(line, allowed_line_lenght)
-          print >> log, line[:n_cut]
-          line = help_offset+line[n_cut:]
+          n_cut = partial_line(line, allowed_line_lenght, line_to_appear)
+          if(len(line[:n_cut].strip())==0):
+             print >> log, line[:allowed_line_lenght]
+             line = help_offset+line[allowed_line_lenght:]
+          else:
+             print >> log, line[:n_cut]
+             line = help_offset+line[n_cut:]
   else:
      values = (" ".join([str(i) for i in object.words])).strip()
      if(len(" "*ind+name) >= allowed_line_lenght):
@@ -33,22 +44,26 @@ def format_string(object, ind, log, scope=False, allowed_line_lenght=80):
      fmt = "%s%s= <FONT color=CC0000>%s</FONT> <FONT color=blue>%s</FONT>"
      line = fmt % elements
      line_length = len(" "*ind+str(object.name)+str(object.help)+values)
-     line_to_appear = "%s%s %s %s"%elements
+     line_to_appear = "%s%s= %s %s"%elements
      if(len(line_to_appear) <= allowed_line_lenght):
         print >> log, line
      else:
-        help_start = len(" "*ind+name)+2
+        help_start = len(" "*ind+name)+1
         help_offset = " "*help_start
-        n_cut = partial_line(line, allowed_line_lenght)
+        n_cut = partial_line(line, allowed_line_lenght, line_to_appear)
         print >> log, line[:n_cut]
         line = help_offset+line[n_cut:]
         while True:
           if(n_cut is None): break
-          n_cut = partial_line(line, allowed_line_lenght)
-          print >> log, line[:n_cut]
-          line = help_offset+line[n_cut:]
+          n_cut = partial_line(line, allowed_line_lenght, line_to_appear)
+          if(len(line[:n_cut].strip())==0):
+             print >> log, line[:allowed_line_lenght]
+             line = help_offset+line[allowed_line_lenght:]
+          else:
+             print >> log, line[:n_cut]
+             line = help_offset+line[n_cut:]
 
-def partial_line(line, allowed_line_lenght):
+def partial_line(line, allowed_line_lenght, line_to_appear):
   assert len(line) > 0
   brakets = []
   found_l, found_r = False, False
@@ -73,9 +88,23 @@ def partial_line(line, allowed_line_lenght):
       if(n>=braket[0] and n<=braket[len(braket)-1]):
          in_braket = True
          break
-    if(not in_braket): counter += 1
+    if(not in_braket):
+       counter += 1
+       in_braket = False
     if(counter >= allowed_line_lenght):
-       return n
+       i = counter
+       j = n
+       while i > 0:
+         if(line[j] == " "):
+            return j
+         else:
+            in_braket = False
+            for braket in brakets:
+              if(j>=braket[0] and j<=braket[len(braket)-1]):
+                in_braket = True
+                return braket[0]
+            i -= 1
+            j -= 1
 
 def scope_walk(p, ind, log):
   values = []
@@ -107,9 +136,9 @@ Legend: black <b>bold</b> - scope names
           <FONT color=CC0000>None</FONT> means not provided or not predefined or left up to program
           <FONT color=CC0000>"%3d"</FONT> is Python style formatting descriptor """
   print >> log, "<PRE><FONT face=courier>"
-  print >> log, "<b>%s"%("-"*80),"</b>"
+  print >> log, "<b>%s"%("-"*79),"</b>"
   print >> log, legend
-  print >> log, "<b>%s"%("-"*80),"</b>"
+  print >> log, "<b>%s"%("-"*79),"</b>"
 
 def run(phil_object, log):
   print >> log, """<META http-equiv=Content-Type content="text/html; charset=utf-8">"""
