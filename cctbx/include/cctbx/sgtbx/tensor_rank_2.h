@@ -248,9 +248,13 @@ namespace tensor_rank_2 {
   }
 
   //! Outside template class to avoid complications.
-  static const unsigned cartesian_constraints_n_all_params = 6;
-  //! Outside template class to avoid complications.
-  static const unsigned cartesian_constraints_symmetries_max_nb = 24;
+  /*! Anyway, even the standard does not allow the declaration of anything
+      but an integral static member inside a class (sigh)
+  */
+  namespace cartesian_constraints_constants {
+    static const unsigned n_all_params = 6;
+    static const unsigned symmetries_max_nb = 24;
+  }
 
   template <typename T=double>
   class cartesian_constraints
@@ -267,15 +271,14 @@ namespace tensor_rank_2 {
       unsigned n_independent_params;
 
       // the min absolute value for a pivot value to be considered null
-      const double pivot_zero_attractor() {
-        return 1e-9;
-      }
+      double pivot_zero_attractor;
 
     protected:
       void
       initialise(uctbx::unit_cell const & unit_cell,
                  af::const_ref<sgtbx::rt_mx> const& symmetries)
      {
+        using namespace cartesian_constraints_constants;
         using scitbx::matrix::delta_x_delta;
         /* Construct the matrix A s.t. A u = 0
           where u is the vector of U_cart components built from
@@ -285,18 +288,17 @@ namespace tensor_rank_2 {
           + 2 sum_{k<l} (R_ki R_lj + R_kj R_li) U_kl
           where i,j,k,l are in {0,1,2} with i <= j
           */
-        const unsigned n_a_rows = symmetries.size()
-                                * cartesian_constraints_n_all_params;
-        const unsigned max_n_a_rows = cartesian_constraints_symmetries_max_nb
-                                    * cartesian_constraints_n_all_params;
-        boost::shared_array<T> a(
-          new T[n_a_rows*cartesian_constraints_n_all_params] );
+        const unsigned n_a_rows = symmetries.size() * n_all_params;
+        const unsigned max_n_a_rows = symmetries_max_nb * n_all_params;
+        boost::shared_array<T> a(new T[n_a_rows*n_all_params] );
         T* pa = a.get();
         for (int i_s=0; i_s < symmetries.size(); i_s++) {
-          scitbx::mat3<T> r_f = symmetries[i_s].r()
-          .as_floating_point(scitbx::type_holder<T>());
+          scitbx::mat3<T> r_f = symmetries[i_s]
+                                  .r()
+                                  .as_floating_point(scitbx::type_holder<T>());
           scitbx::mat3<T> r = unit_cell.orthogonalization_matrix()
-          * r_f * unit_cell.fractionalization_matrix();
+                              * r_f
+                              * unit_cell.fractionalization_matrix();
           for (int i=0; i < 3; i++) for (int j=i; j < 3; j++) {
             for (int k=0; k < 3; k++) {
               *pa++ = r(k,i)*r(k,j) - delta_x_delta<T>(k,i,k,j);
@@ -308,23 +310,19 @@ namespace tensor_rank_2 {
         }
 
         /* Compute the matrix Z */
-        af::ref<T, af::c_grid<2> > a_(
-          a.get(), n_a_rows, cartesian_constraints_n_all_params);
-        scitbx::matrix::row_echelon::full_pivoting_small<
-          T, max_n_a_rows, cartesian_constraints_n_all_params>
-            r_e(a_, pivot_zero_attractor());
+        af::ref<T, af::c_grid<2> > a_(a.get(), n_a_rows, n_all_params);
+        scitbx::matrix::row_echelon::
+          full_pivoting_small<T, max_n_a_rows, n_all_params>
+          r_e(a_, pivot_zero_attractor);
         n_independent_params = r_e.free_cols.size();
-        af::small<T, cartesian_constraints_n_all_params> x_N(
-          n_independent_params, 0);
-        z_ = boost::shared_array<T>(
-          new T[cartesian_constraints_n_all_params * n_independent_params] );
-        z = scitbx::mat_ref<T>(
-          z_.get(), cartesian_constraints_n_all_params, n_independent_params);
+        af::small<T, n_all_params> x_N(n_independent_params, 0);
+        z_ = boost::shared_array<T>(new T[n_all_params * n_independent_params]);
+        z = scitbx::mat_ref<T>(z_.get(), n_all_params, n_independent_params);
         for (int j=0; j< n_independent_params; j++) {
           x_N[j] = 1;
-          af::tiny<T, cartesian_constraints_n_all_params>
+          af::tiny<T, n_all_params>
             x_B = r_e.back_substitution(x_N);
-          for (int i=0; i < cartesian_constraints_n_all_params; i++) {
+          for (int i=0; i < n_all_params; i++) {
             z(i,j) = x_B[i];
           }
           x_N[j] = 0;
@@ -336,7 +334,9 @@ namespace tensor_rank_2 {
       {}
 
       cartesian_constraints(uctbx::unit_cell const & unit_cell,
-                            space_group const& space_group)
+                            space_group const& space_group,
+                            double pivot_zero_attractor_ = 1e-9)
+      : pivot_zero_attractor(pivot_zero_attractor_)
       {
         CCTBX_ASSERT(space_group.is_compatible_unit_cell(unit_cell));
         af::shared<sgtbx::rt_mx>
@@ -355,14 +355,16 @@ namespace tensor_rank_2 {
       }
 
       scitbx::sym_mat3<T>
-      all_params(af::small<T, cartesian_constraints_n_all_params> const&
-                   independent_params) const {
+      all_params(af::small<T, cartesian_constraints_constants::n_all_params>
+                 const& independent_params) const
+      {
+        using namespace cartesian_constraints_constants;
         scitbx::sym_mat3<T> result;
         /* matrix-vector product z * independent_params,
          specialised for the memory arrangement of a sym_mat3
          */
         T* p = result.begin();
-        for (unsigned i=0; i < cartesian_constraints_n_all_params; i++, p++) {
+        for (unsigned i=0; i < n_all_params; i++, p++) {
           *p = 0;
           for (unsigned j=0; j < n_independent_params; j++) {
             *p += z(i,j)*independent_params[j];
@@ -374,22 +376,24 @@ namespace tensor_rank_2 {
       void fill_with_independent_gradients(T* p,
                                            scitbx::sym_mat3<T> const& all_grads) const
       {
+        using namespace cartesian_constraints_constants;
         /* matrix-vector product z^T*  all_grads,
            specialised to store the result into the
            range [p, p+n_independent_params)
         */
         for (unsigned i=0; i < n_independent_params; i++, p++) {
           *p = 0;
-          for (unsigned j=0; j < cartesian_constraints_n_all_params; j++) {
+          for (unsigned j=0; j < n_all_params; j++) {
             *p += z(j,i)*all_grads[j];
           }
         }
       }
 
-      af::small<T, cartesian_constraints_n_all_params>
-      independent_gradients(scitbx::sym_mat3<T> const& all_grads) const {
-        af::small<T, cartesian_constraints_n_all_params>
-          result(n_independent_params);
+      af::small<T, cartesian_constraints_constants::n_all_params>
+      independent_gradients(scitbx::sym_mat3<T> const& all_grads) const
+      {
+        using namespace cartesian_constraints_constants;
+        af::small<T, n_all_params> result(n_independent_params);
         fill_with_independent_gradients(result.begin(), all_grads);
         return result;
       }
