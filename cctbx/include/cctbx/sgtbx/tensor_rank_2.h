@@ -254,6 +254,7 @@ namespace tensor_rank_2 {
   namespace cartesian_constraints_constants {
     static const unsigned n_all_params = 6;
     static const unsigned symmetries_max_nb = 24;
+    static const double pivot_zero_attractor = 1e-9;
   }
 
   template <typename T=double>
@@ -331,11 +332,13 @@ namespace tensor_rank_2 {
 
     public:
       cartesian_constraints()
+      : pivot_zero_attractor(cartesian_constraints_constants::pivot_zero_attractor)
       {}
 
       cartesian_constraints(uctbx::unit_cell const & unit_cell,
                             space_group const& space_group,
-                            double pivot_zero_attractor_ = 1e-9)
+                            double pivot_zero_attractor_ = 
+                             cartesian_constraints_constants::pivot_zero_attractor)
       : pivot_zero_attractor(pivot_zero_attractor_)
       {
         CCTBX_ASSERT(space_group.is_compatible_unit_cell(unit_cell));
@@ -349,7 +352,10 @@ namespace tensor_rank_2 {
        }
 
       cartesian_constraints(uctbx::unit_cell const& unit_cell,
-                            af::const_ref<rt_mx> const& matrices)
+                            af::const_ref<rt_mx> const& matrices,
+                            double pivot_zero_attractor_ =  
+                              cartesian_constraints_constants::pivot_zero_attractor)
+      : pivot_zero_attractor(pivot_zero_attractor_)
       {
         initialise(unit_cell, matrices);
       }

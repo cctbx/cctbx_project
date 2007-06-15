@@ -21,7 +21,7 @@ def f(u_cart):
   return result
 
 
-def exercise(space_group_info):
+def exercise_through_space_group(flags, space_group_info):
   """ Set-up crystal and constraints """
   crystal = space_group_info.any_compatible_crystal_symmetry(
     volume=1000)
@@ -76,12 +76,26 @@ def exercise(space_group_info):
   assert flex.max( flex.abs( flex.double(grad_f_wrt_independent_u_cart_1)
            - flex.double(grad_f_wrt_independent_u_cart) ) ) < 5*eps**2
 
+  
+def exercise_through_site_symmetry():
+  from cctbx import uctbx
+  uc = uctbx.unit_cell((12,12,15,90,90,120))
+  from cctbx import sgtbx
+  sg = sgtbx.space_group_info("P6").group()
+  site_symmetry = sgtbx.site_symmetry(uc, sg, (1/3., 2/3., 0.))
+  spc = site_symmetry.cartesian_adp_constraints(uc)
+  sps = site_symmetry.adp_constraints()
+  assert spc.n_independent_params() == sps.n_independent_params()
+  site_symmetry = sgtbx.site_symmetry(uc, sg, (0.1, 0.2, 0.3))
+  spc = site_symmetry.cartesian_adp_constraints(uc)
+  sps = site_symmetry.adp_constraints()
+  assert spc.n_independent_params() == sps.n_independent_params()
 
-def run_call_back(flags, space_group_info):
-  exercise(space_group_info)
 
 def run():
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  exercise_through_site_symmetry()
+  debug_utils.parse_options_loop_space_groups(sys.argv[1:],
+                                              exercise_through_space_group)
   print 'OK'
 
 if (__name__ == "__main__"):
