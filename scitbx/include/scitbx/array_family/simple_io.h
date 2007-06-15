@@ -2,7 +2,7 @@
 #define SCITBX_ARRAY_FAMILY_SIMPLE_IO_H
 
 #include <iostream>
-#include <scitbx/array_family/tiny.h>
+#include <scitbx/array_family/ref.h>
 
 namespace scitbx { namespace af {
 
