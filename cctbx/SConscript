@@ -126,4 +126,3 @@ if (not env_etc.no_boost_python):
   SConscript("include/cctbx/crystal/SConscript")
   SConscript("include/cctbx/geometry_restraints/SConscript")
   SConscript("include/cctbx/adp_restraints/SConscript")
-  SConscript("error/SConscript")

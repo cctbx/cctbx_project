@@ -14,6 +14,7 @@ def run():
   "$B/array_family/tst_mat_ref",
   "$B/array_family/tst_accessors",
   "$B/serialization/tst_base_256",
+  "$D/error/tst_error.py",
   "$D/include/scitbx/stl/tst_map.py",
   "$D/include/scitbx/stl/tst_set.py",
   "$D/include/scitbx/stl/tst_vector.py",
