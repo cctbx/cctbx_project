@@ -70,7 +70,7 @@ namespace scitbx { namespace af { namespace boost_python {
     static void
     extend(w_t& self, w_t const& other)
     {
-      self.insert(self.end(), other.begin(), other.end());
+      self.extend(other.begin(), other.end());
     }
 
     static
@@ -92,7 +92,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("deep_copy", &w_t::deep_copy)
         .def("clear", &w_t::clear)
         .def("insert", insert)
-        .def("append", (void(w_t::*)(ElementType const&))&w_t::append)
+        .def("append", &w_t::append)
         .def("extend", extend)
       ;
 

@@ -144,14 +144,14 @@ namespace minimization {
           scitbx::vec3<FloatType> frac_grad
             = unit_cell.fractionalize_gradient(cart_grad);
           if (op.is_point_group_1()) {
-            reduced_gradients.append(frac_grad.begin(), frac_grad.end());
+            reduced_gradients.extend(frac_grad.begin(), frac_grad.end());
           }
           else {
             const sgtbx::site_constraints<FloatType>& site_c
               = op.site_constraints();
             af::small<FloatType,3> frac_grad1
               = site_c.independent_gradients(frac_grad.const_ref());
-            reduced_gradients.append(frac_grad1.begin(), frac_grad1.end());
+            reduced_gradients.extend(frac_grad1.begin(), frac_grad1.end());
           }
         }
         if(sc.flags.grad_u_iso() && sc.flags.use_u_iso()) {
@@ -166,10 +166,10 @@ namespace minimization {
             adp_c = op.cartesian_adp_constraints(unit_cell);
             af::small<FloatType,6> ind_cart_grad =
               adp_c.independent_gradients(cart_grad);
-            reduced_gradients.append(ind_cart_grad.begin(), ind_cart_grad.end());
+            reduced_gradients.extend(ind_cart_grad.begin(), ind_cart_grad.end());
           }
           else {
-            reduced_gradients.append(cart_grad.begin(), cart_grad.end());
+            reduced_gradients.extend(cart_grad.begin(), cart_grad.end());
           }
         }
         if(sc.flags.grad_occupancy()) {
