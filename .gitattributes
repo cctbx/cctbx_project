@@ -7,6 +7,7 @@ cctbx/cctbx/regression/tst_weighting_schemes.py -text
 cctbx/cctbx/regression/tst_xray_minimization_failure.py -text
 cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
+cctbx/global/error.cpp -text
 cctbx/include/cctbx/maptbx/fft.h -text
 iotbx/iotbx/command_line/pdb.print_sequence.py -text
 libtbx/libtbx/command_line/bash.sh -text
