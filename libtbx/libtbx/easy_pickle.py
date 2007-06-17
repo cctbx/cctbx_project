@@ -1,6 +1,6 @@
 from libtbx.str_utils import show_string
 import cPickle
-import os.path
+import os
 
 def _open(file_name, mode):
   file_name = os.path.expanduser(file_name)
