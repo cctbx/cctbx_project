@@ -25,64 +25,104 @@ namespace scitbx {
     public:
       DerivedError &SCITBX_ERROR_UTILS_ASSERT_A, &SCITBX_ERROR_UTILS_ASSERT_B;
 
-      DerivedError& derived_this() throw() {
-        return static_cast<DerivedError&>(*this);
-      }
+      DerivedError& derived_this() throw();
 
-      error_base(std::string const& prefix, std::string const& msg) throw()
-      :
-        SCITBX_ERROR_UTILS_ASSERT_A(derived_this()),
-        SCITBX_ERROR_UTILS_ASSERT_B(derived_this())
-      {
-        std::ostringstream o;
-        o << prefix << " Error: " << msg;
-        msg_ = o.str();
-      }
+      error_base(std::string const& prefix, std::string const& msg) throw();
 
       error_base(
         std::string const& prefix,
         const char* file, long line,
         std::string const& msg = "",
-        bool internal = true) throw()
-      :
-        SCITBX_ERROR_UTILS_ASSERT_A(derived_this()),
-        SCITBX_ERROR_UTILS_ASSERT_B(derived_this())
-      {
-        std::ostringstream o;
-        o << prefix;
-        if (internal) o << " Internal";
-        o << "Error: " << file << "(" << line << ")";
-        if (msg.size()) o << ": " << msg;
-        msg_ = o.str();
-      }
+        bool internal = true) throw();
 
-      error_base(error_base const& e) throw()
-      :
-        SCITBX_ERROR_UTILS_ASSERT_A(derived_this()),
-        SCITBX_ERROR_UTILS_ASSERT_B(derived_this())
-      {
-        msg_ += e.msg_;
-      }
+      error_base(error_base const& e) throw();
 
-      virtual ~error_base() throw() {}
+      virtual ~error_base() throw();
 
       virtual const char*
-      what() const throw() { return msg_.c_str(); }
+      what() const throw();
 
       template<typename T>
-      DerivedError& with_current_value(const T& value, const char* label)
-      {
-        std::ostringstream o;
-        o << "\n" << "  " << label << " = " << value;
-        msg_ += o.str();
-        return derived_this();
-      }
+      DerivedError&
+      with_current_value(const T& value, const char* label);
 
     protected:
       std::string msg_;
   };
 
-}
+  template<class DerivedError>
+  DerivedError& error_base<DerivedError>
+  ::derived_this() throw()
+  {
+    return static_cast<DerivedError&>(*this);
+  }
+
+  template<class DerivedError>
+  error_base<DerivedError>
+  ::error_base(
+    std::string const& prefix,
+    std::string const& msg) throw()
+  :
+    SCITBX_ERROR_UTILS_ASSERT_A(derived_this()),
+    SCITBX_ERROR_UTILS_ASSERT_B(derived_this())
+  {
+    std::ostringstream o;
+    o << prefix << " Error: " << msg;
+    msg_ = o.str();
+  }
+
+  template<class DerivedError>
+  error_base<DerivedError>
+  ::error_base(
+    std::string const& prefix,
+    const char* file, long line,
+    std::string const& msg,
+    bool internal) throw()
+  :
+    SCITBX_ERROR_UTILS_ASSERT_A(derived_this()),
+    SCITBX_ERROR_UTILS_ASSERT_B(derived_this())
+  {
+    std::ostringstream o;
+    o << prefix;
+    if (internal) o << " Internal";
+    o << "Error: " << file << "(" << line << ")";
+    if (msg.size()) o << ": " << msg;
+    msg_ = o.str();
+  }
+
+  template<class DerivedError>
+  error_base<DerivedError>
+  ::error_base(error_base const& e) throw()
+  :
+    SCITBX_ERROR_UTILS_ASSERT_A(derived_this()),
+    SCITBX_ERROR_UTILS_ASSERT_B(derived_this())
+  {
+    msg_ += e.msg_;
+  }
+
+  template<class DerivedError>
+  error_base<DerivedError>
+  ::~error_base() throw() {}
+
+  template<class DerivedError>
+  const char*
+  error_base<DerivedError>
+  ::what() const throw() { return msg_.c_str(); }
+
+  template<class DerivedError>
+  template<typename T>
+  DerivedError& error_base<DerivedError>
+  ::with_current_value(
+    const T& value,
+    const char* label)
+  {
+    std::ostringstream o;
+    o << "\n" << "  " << label << " = " << value;
+    msg_ += o.str();
+    return derived_this();
+  }
+
+} // namespace scitbx
 
 //! For throwing an error exception with file name, line number, and message.
 #define SCITBX_ERROR_UTILS_REPORT(error_class, msg) \
