@@ -202,6 +202,11 @@ r_free_flags_params = iotbx.phil.parse("""\
     .type=bool
     .help=XXX
     .expert_level=2
+  ignore_pdb_hexdigest=False
+    .type=bool
+    .help="If True, disables safety check based on MD5 hexdigests stored in"
+          "PDB files produced by previous runs."
+    .expert_level=2
 """)
 
 def determine_r_free_flags(reflection_file_server,
