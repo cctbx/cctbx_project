@@ -85,10 +85,8 @@ refinement.
 data_params = iotbx.phil.parse("""\
   file_name=None
     .type=path
-    .help=Data file name
   labels=None
     .type=strings
-    .help=Data labels
 """)
 
 def determine_data(reflection_file_server,
@@ -137,10 +135,8 @@ def determine_data(reflection_file_server,
 experimental_phases_params = iotbx.phil.parse("""\
   file_name=None
     .type=path
-    .help=HL coeddicients file name
   labels=None
     .type=strings
-    .help=Labels for HL coefficients
 """)
 
 def determine_experimental_phases(reflection_file_server,
@@ -192,11 +188,9 @@ r_free_flags_params = iotbx.phil.parse("""\
     .expert_level=0
   label=None
     .type=str
-    .help=Free-R flags labels
     .expert_level=0
   test_flag_value=None
     .type=int
-    .help=Test flag value
     .expert_level=0
   disable_suitability_test=False
     .type=bool

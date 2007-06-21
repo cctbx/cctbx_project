@@ -23,8 +23,13 @@ import iotbx.phil
 master_params = iotbx.phil.parse("""\
   low_resolution = 2.8
     .type = float
+    .help = Low resolution limit for water picking (at lower resolution water \
+            will not be picked even if requessted)
   mode = *auto filter_only every_macro_cycle
     .type=choice
+    .help = Choices for water picking strategy: auto - start water picking \
+            after ferst few macro-cycles, filter_only - remove water only, \
+            every_macro_cycle - do water update every macro-cycle
   output_residue_name = HOH
     .type=str
   output_chain_id = S
@@ -33,22 +38,32 @@ master_params = iotbx.phil.parse("""\
     .type=str
   b_iso_min = 1.0
     .type=float
+    .help = Minimum B-factor value, waters with smaller value will be rejected
   b_iso_max = 50.0
     .type=float
+    .help = Maximum B-factor value, waters with bigger value will be rejected
   b_iso = None
     .type=float
+    .help = Initial B-factor value for newly added water
   scattering_type = O
     .type=str
+    .help = Defines scattering factors for newly added waters
+    .expert_level=2
   occupancy_min = 1.0
     .type=float
+    .help = Minimum occupancy value, waters with smaller value will be rejected
   occupancy_max = 1.0
     .type=float
+    .help = Maximum occupancy value, waters with bigger value will be rejected
   occupancy = 1.0
     .type=float
+    .help = Initial occupancy value for newly added water
   bulk_solvent_mask_exclusions = True
     .type = bool
+    .help = Do water selection based on bulk-solvent mask
   use_sigma_scaled_maps = True
     .type=bool
+    .help = Use sigma scales maps for water pick picking
   primary_map_type = m*Fobs-D*Fmodel
     .type=str
   primary_map_k = None

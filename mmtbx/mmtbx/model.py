@@ -25,7 +25,7 @@ class manager(object):
                      restraints_manager_ini,
                      xray_structure,
                      atom_attributes_list,
-                     dbe_xray_structure = None,
+                     ias_xray_structure = None,
                      refinement_flags = None,
                      dbe_manager = None,
                      wilson_b = None,
@@ -43,7 +43,7 @@ class manager(object):
     self.wilson_b = wilson_b
     # DBE related
     self.dbe_manager = dbe_manager
-    self.dbe_xray_structure = dbe_xray_structure
+    self.ias_xray_structure = ias_xray_structure
     self.use_dbe = False
     self.dbe_selection = None
     self.use_dbe_true_ = None
@@ -83,7 +83,7 @@ class manager(object):
        new.refinement_flags     = self.refinement_flags.select(selection)
     return new
 
-  def add_dbe(self, fmodel=None, dbe_params=None):
+  def add_dbe(self, fmodel=None, dbe_params=None, file_name=None):
     if(self.dbe_manager is not None):
        self.remove_dbe()
        fmodel.update_xray_structure(xray_structure = self.xray_structure,
@@ -95,24 +95,25 @@ class manager(object):
                     atom_attributes_list = self.atom_attributes_list,
                     xray_structure       = self.xray_structure,
                     fmodel               = fmodel,
-                    params               = dbe_params)
-    self.dbe_xray_structure = self.dbe_manager.dbe_xray_structure
-    dbe_size = self.dbe_xray_structure.scatterers().size()
+                    params               = dbe_params,
+                    file_name            = file_name)
+    self.ias_xray_structure = self.dbe_manager.ias_xray_structure
+    dbe_size = self.ias_xray_structure.scatterers().size()
     tail = flex.bool(dbe_size, True)
     tail_false = flex.bool(dbe_size, False)
     self.dbe_selection = flex.bool(
                     self.xray_structure.scatterers().size(),False)
     self.dbe_selection.extend(tail)
     self.solvent_selection.extend(tail_false)
-    self.xray_structure.concatenate_inplace(other = self.dbe_xray_structure)
+    self.xray_structure.concatenate_inplace(other = self.ias_xray_structure)
     print >> self.log, "Scattering dictionary for combined xray_structure:"
     self.xray_structure.scattering_type_registry().show()
     self.xray_structure_ini.concatenate_inplace(
-                                         other = self.dbe_xray_structure)
+                                         other = self.ias_xray_structure)
     if(self.refinement_flags is not None):
        self.old_refinement_flags = self.refinement_flags.deep_copy()
        self.refinement_flags.inflate(
-            size = self.dbe_xray_structure.scatterers().size(), flag = True)
+            size = self.ias_xray_structure.scatterers().size(), flag = True)
        # refining simultaneously make convergence slower
        #self.refinement_flags.sites_individual[0].set_selected(
        #                                               self.dbe_selection, True)
@@ -156,51 +157,6 @@ class manager(object):
        self.solvent_selection = self.solvent_selection[:n_non_ias]
        self.dbe_selection = None
        self.xray_structure.scattering_type_registry().show()
-
-
-
-  #def use_dbe_false(self):
-  #  self.use_dbe_true_ = False
-  #  self.use_dbe_false_ = True
-  #  self.refinement_flags = self.old_refinement_flags
-  #  if(not self.inflated):
-  #     self.refinement_flags.inflate(
-  #            size = self.dbe_xray_structure.scatterers().size(), flag = False)
-  #     self.inflated = True
-
-  #def use_dbe_true(self):
-  #  if(self.refinement_flags is not None):
-  #     self.old_refinement_flags = self.refinement_flags.deep_copy()
-  #  assert self.dbe_xray_structure is not None
-  #  if(self.use_dbe_false_ is None):
-  #     self.add_dbe()
-  #  self.use_dbe_true_ = True
-  #  self.use_dbe_false_ = False
-  #  #
-  #  if(not self.inflated and self.refinement_flags is not None):
-  #     self.refinement_flags.inflate(
-  #             size = self.dbe_xray_structure.scatterers().size(), flag = True)
-  #     self.inflated = True
-  #     # refining simultaneously make convergence slower
-  #     self.refinement_flags.sites_individual[0].set_selected(
-  #                                                    self.dbe_selection, True)
-  #     self.refinement_flags.sites_individual[0].set_selected(
-  #                                                  ~self.dbe_selection, False)
-  #     self.refinement_flags.individual_occupancies = True
-  #     self.refinement_flags.occupancies_individual = [flex.bool(
-  #                              self.xray_structure.scatterers().size(), True)]
-  #     #self.xray_structure.convert_to_anisotropic(selection = self.dbe_selection)
-  #     self.refinement_flags.adp_individual_aniso[0].set_selected(
-  #                                                    self.dbe_selection, False) # False
-  #     self.refinement_flags.adp_individual_iso[0].set_selected(
-  #                                                    self.dbe_selection, True) # True
-  #     occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
-  #     self.xray_structure.scatterers().set_occupancies(occs, ~self.dbe_selection)
-  #     # D9
-  #     sel = self.xray_structure.scatterers().extract_scattering_types() == "D9"
-  #     self.xray_structure.convert_to_anisotropic(selection = sel)
-  #     self.refinement_flags.adp_individual_aniso[0].set_selected(sel, True)
-  #     self.refinement_flags.adp_individual_iso[0].set_selected(sel, False)
 
   def write_dbe_pdb_file(self, out = None):
     if(out is None):
