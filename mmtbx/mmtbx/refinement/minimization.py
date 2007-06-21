@@ -60,7 +60,6 @@ class lbfgs(object):
                                     geometry       = restraints_manager,
                                     xray_structure = self.xray_structure).table
     self.xray_structure.scatterers().flags_set_grads(state=False)
-    #self.xray_structure.show_scatterer_flags_summary()
     if (refine_xyz):
       sel = flex.bool(self.model.refinement_flags.sites_individual[0].size(), False)
       for m in self.model.refinement_flags.sites_individual:
@@ -69,7 +68,6 @@ class lbfgs(object):
       #  sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_site(
         iselection=sel.iselection())
-      #self.xray_structure.show_scatterer_flags_summary()
       del sel
     if (refine_occ):
       sel = flex.bool(self.model.refinement_flags.occupancies_individual[0].size(), False)
@@ -226,19 +224,6 @@ class lbfgs(object):
           #if(self.refine_adp):
           #   sf = sf.set_selected(self.hd_selection, 0.0)
        self.g = sf * self.wx
-#######################
-    if(self.refine_xyz and self.model.use_dbe and
-                                       self.model.dbe_manager.need_restraints):
-       self.model.dbe_manager.target_and_gradients(
-                              sites_cart    = self.xray_structure.sites_cart(),
-                              dbe_selection = self.model.dbe_selection)
-       erdbe = self.model.dbe_manager
-       if(self.wxc_dbe is None and not (self.wxc_dbe > 0.0)):
-          self.wxc_dbe = erdbe.gradients.norm() / sf.norm()
-       #print self.wxc_dbe
-       self.f *= self.wxc_dbe
-       self.g *= self.wxc_dbe
-##########################
 
     if(self.neutron_refinement):
        self.xray_structure.scattering_type_registry(
@@ -303,16 +288,7 @@ class lbfgs(object):
                              scatterers     = self.xray_structure.scatterers(),
                              xray_gradients = self.g,
                              site_gradients = sgc*self.wr)
-#######################
-    if(self.refine_xyz and self.model.use_dbe and
-                                       self.model.dbe_manager.need_restraints):
-       self.f += erdbe.target * erdbe.params.restraints.weight_scale
-       if(compute_gradients):
-          xray.minimization.add_gradients(
-            scatterers     = self.xray_structure.scatterers(),
-            xray_gradients = self.g,
-            site_gradients = erdbe.gradients * erdbe.params.restraints.weight_scale)
-##########################
+
     if(self.refine_adp and self.restraints_manager.geometry is not None
                         and self.wr > 0.0 and self.iso_restraints is not None):
        if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):

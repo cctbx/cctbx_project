@@ -19,10 +19,15 @@ mask_master_params = iotbx.phil.parse("""\
     .type = float
   grid_step_factor = 4.0
     .type = float
+    .help = The grid step for the mask calculation is determined as \
+            highest_resolution devided by grid_step_factor
   verbose = 1
     .type = int
+    .expert_level=3
   mean_shift_for_mask_update = 0.1
     .type = float
+    .help = Values of model shift in refinement to updates the mask
+    .expert_level=2
 """)
 
 class bulk_solvent(around_atoms):

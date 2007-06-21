@@ -8,13 +8,22 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 import iotbx.phil
 from cctbx import maptbx
+from libtbx.test_utils import approx_equal
 
 dbe_master_params = iotbx.phil.parse("""\
-  b_iso_max = 10.0
+  b_iso_max = 15.0
     .type = float
-  occupancy_min = 0.7
+  occupancy_min = 0.1
     .type = float
   occupancy_max = 1.5
+    .type = float
+  ias_b_iso_max = 1000.0
+    .type = float
+  ias_b_iso_min = 0.0
+    .type = float
+  ias_occupancy_min = 0.01
+    .type = float
+  ias_occupancy_max = 3.0
     .type = float
   initial_dbe_occupancy = 1.0
     .type = float
@@ -24,8 +33,14 @@ dbe_master_params = iotbx.phil.parse("""\
     .type = int
   use_map = True
     .type = bool
-  resolution_factor = 1/5.
-    .type = float
+  peak_search_map {
+     map_type = *k*Fobs-n*Fmodel m*Fobs-D*Fmodel
+       .type=choice(multi=False)
+     grid_step = 0.1
+       .type = float
+     scaling = *volume sigma
+       .type=choice(multi=False)
+  }
   restraints {
     selection = D1 D2 D3 D4 D5 D6 D7 D8 D9 D10
       .type = strings
@@ -34,7 +49,7 @@ dbe_master_params = iotbx.phil.parse("""\
   }
 """)
 
-dbe_scattering_dict = {
+ias_scattering_dict = {
     "D6" : eltbx.xray_scattering.gaussian([0.078250],[1.018360],0),
     "D8" : eltbx.xray_scattering.gaussian([0.113700],[1.007725],0),
     "D7" : eltbx.xray_scattering.gaussian([0.066930],[0.927570],0),
@@ -52,337 +67,559 @@ B_type  = ["D4","D5","D6","D7","D8"]
 R_type  = ["D9"]
 L_type  = ["D10"]
 
-class dbe_counters(object):
-  def __init__(self,
-               n_dbe         = 0,
-               n_bonds       = 0,
-               n_dbe_b       = 0,
-               n_dbe_r       = 0,
-               n_dbe_l       = 0,
-               n_bonds_non_h = 0):
-     adopt_init_args(self, locals())
+class ias_counters(object):
+  def __init__(self, iass):
+    self.n_ias         = len(iass)
+    self.n_ias_b       = 0
+    self.n_ias_bh      = 0
+    self.n_ias_r       = 0
+    self.n_ias_l       = 0
+    self.n_bonds_non_h = 0
+    for ias in iass:
+      if(ias.type == "B"):  self.n_ias_b  += 1
+      if(ias.type == "BH"): self.n_ias_bh += 1
+      if(ias.type == "L"):  self.n_ias_l  += 1
+      if(ias.type == "R"):  self.n_ias_r  += 1
 
   def show(self, out = None):
     if(out is None): out = sys.stdout
-    print >> out, "Total number of"
-    print >> out, "   DBE built:            ", self.n_dbe
-    print >> out, "      bond:              ", self.n_dbe_b
-    print >> out, "      ring centers:      ", self.n_dbe_r
-    print >> out, "      lone pairs:        ", self.n_dbe_l
-    print >> out, "   covalent bonds:       ", self.n_bonds
-    print >> out, "   non-H covalent bonds: ", self.n_bonds_non_h
-    assert self.n_dbe == self.n_dbe_b + self.n_dbe_r + self.n_dbe_l
+    print >> out, "Number of IAS built:"
+    print >> out, "   total:             ", self.n_ias
+    print >> out, "   bond (X-X):        ", self.n_ias_b
+    print >> out, "   bond (X-H):        ", self.n_ias_bh
+    print >> out, "   ring centers:      ", self.n_ias_r
+    print >> out, "   lone pairs:        ", self.n_ias_l
+    assert self.n_ias == self.n_ias_b+self.n_ias_r+self.n_ias_l+self.n_ias_bh
 
-class ias_structure(object):
-  def __init__(self, bond_proxies_simple):
+class atom(object):
+  def __init__(self, site_cart = None,
+                     q         = None,
+                     b_iso     = None,
+                     name      = None,
+                     i_seq     = None,
+                     element   = None):
+    adopt_init_args(self, locals())
+
+class bond_density(object):
+  def __init__(self, data                    = None,
+                     dist                    = None,
+                     ideal_data              = None,
+                     one_dim_point           = None,
+                     one_dim_point_predicted = None,
+                     peak_data               = None,
+                     peak_dist               = None):
+    self.data = data
+    self.dist = dist
+    self.ideal_data = ideal_data
+    self.one_dim_point = one_dim_point
+    self.one_dim_point_predicted = one_dim_point_predicted
+    self.peak_data = peak_data
+    self.peak_dist = peak_dist
+
+class ias(object):
+  def __init__(self, atom_1              = None,
+                     atom_2              = None,
+                     atom_3              = None,
+                     site_cart_predicted = None,
+                     peak_value          = None,
+                     peak_position_cart  = None,
+                     q                   = None,
+                     b_iso               = None,
+                     name                = None,
+                     type                = None,
+                     bond_density        = None,
+                     status              = None):
+    adopt_init_args(self, locals())
+
+  def deep_copy(self):
+    if(self.bond_density is not None):
+       bond_density = bond_density(
+           data                    = self.bond_density.data,
+           dist                    = self.bond_density.dist,
+           ideal_data              = self.bond_density.ideal_data,
+           one_dim_point           = self.bond_density.one_dim_point,
+           one_dim_point_predicted = self.bond_density.one_dim_point_predicted,
+           peak_data               = self.bond_density.peak_data,
+           peak_dist               = self.bond_density.peak_dist)
+    else: bond_density = None
+    return ias(atom_1              = self.atom_1,
+               atom_2              = self.atom_2,
+               atom_3              = self.atom_3,
+               site_cart_predicted = self.site_cart_predicted,
+               peak_value          = self.peak_value,
+               peak_position_cart  = self.peak_position_cart,
+               q                   = self.q,
+               b_iso               = self.b_iso,
+               name                = self.name,
+               type                = self.type,
+               bond_density        = bond_density,
+               status              = self.status)
+
+class extract_ias(object):
+  def __init__(self,
+               xray_structure,
+               bond_proxies_simple,
+               atom_attributes_list,
+               planarity_proxies,
+               log = None):
+    if(log is None): self.log = sys.stdout
+    assert xray_structure.scatterers().size() == len(atom_attributes_list)
+    self.atom_attributes_list = atom_attributes_list
+    self.sites_cart = xray_structure.sites_cart()
+    self.u_iso = xray_structure.extract_u_iso_or_u_equiv()
+    self.b_iso = self.u_iso*math.pi**2*8.
+    self.occupancies = xray_structure.scatterers().extract_occupancies()
+    self.iass = []
     for proxy in bond_proxies_simple:
-      print proxy
-    assert 0
+      i, j = proxy.i_seqs
+      atom_i = self._get_atom(i)
+      atom_j = self._get_atom(j)
+      if(atom_i.element in ["H", "D"] or atom_j.element in ["H", "D"]):
+         type = "BH"
+      else: type = "B"
+      self.iass.append( ias(atom_1 = atom_i,
+                            atom_2 = atom_j,
+                            type   = type) )
+    for proxy in planarity_proxies:
+      if(len(proxy.i_seqs) >= 6):
+         i, j = self._is_phe_tyr_ring(i_seqs = proxy.i_seqs)
+         if([i,j].count(None)==0):
+            self.iass.append( ias(atom_1 = self._get_atom(i),
+                                  atom_2 = self._get_atom(j),
+                                  type   = "R") )
+      if(len(proxy.i_seqs) >= 4):
+         i, j, k = self._is_peptide_plane(i_seqs = proxy.i_seqs)
+         if([i,j,k].count(None)==0):
+            self.iass.append( ias(atom_1 = self._get_atom(i),
+                                  atom_2 = self._get_atom(j),
+                                  atom_3 = self._get_atom(k),
+                                  type   = "L") )
+
+  def _get_atom(self, i_seq):
+    return atom(site_cart = self.sites_cart[i_seq],
+                q         = self.occupancies[i_seq],
+                b_iso     = self.b_iso[i_seq],
+                name      = self.atom_attributes_list[i_seq].name.strip(),
+                i_seq     = i_seq,
+                element   = self.atom_attributes_list[i_seq].element.strip())
+
+  def _is_phe_tyr_ring(self, i_seqs):
+    ring_atoms = ["CZ","CE1","CE2","CD1","CD2","CG"]
+    counter = 0
+    cz_i_seq, cg_i_seq = None, None
+    for i_seq in i_seqs:
+        atom_i_name = self.atom_attributes_list[i_seq].name.strip()
+        if(atom_i_name in ring_atoms):
+           counter += 1
+        if(atom_i_name == "CZ"): cz_i_seq = i_seq
+        if(atom_i_name == "CG"): cg_i_seq = i_seq
+    if(counter == 6):
+       return cg_i_seq, cz_i_seq
+    else:
+       return None, None
+
+  def _is_peptide_plane(self, i_seqs):
+    peptide_atoms = ["O","C","CA","N"]
+    counter = 0
+    ca_i_seq, c_i_seq, o_i_seq = None, None, None
+    for i_seq in i_seqs:
+        atom_i_name = self.atom_attributes_list[i_seq].name.strip()
+        if(atom_i_name in peptide_atoms):
+           counter += 1
+        if(atom_i_name == "CA"): ca_i_seq = i_seq
+        if(atom_i_name == "C" ): c_i_seq  = i_seq
+        if(atom_i_name == "O" ): o_i_seq  = i_seq
+    if(counter == 4):
+       return ca_i_seq, c_i_seq, o_i_seq
+    else:
+       return None, None, None
+
+def dbe_site_position(site_i, site_j, alp):
+  alp1 = alp+1.0
+  return ((site_i[0] + site_j[0]*alp)/alp1,
+          (site_i[1] + site_j[1]*alp)/alp1,
+          (site_i[2] + site_j[2]*alp)/alp1)
+
+def dbe_position_at_lone_pairs(ias):
+  site_c, site_ca, site_o = None, None, None
+  dbe_sites, label = None, None
+  for a in [ias.atom_1, ias.atom_2, ias.atom_3]:
+    if(a.name == "CA"): site_ca = a.site_cart
+    if(a.name == "C"):  site_c  = a.site_cart
+    if(a.name == "O"):  site_o  = a.site_cart
+  assert [site_c,site_ca,site_o].count(None) == 0
+  dist_co = math.sqrt( (site_c[0]-site_o[0])**2 +
+                       (site_c[1]-site_o[1])**2 +
+                       (site_c[2]-site_o[2])**2 )
+  dbe_sites = add_lone_pairs_for_peptyde_o(site_c  = site_c,
+                                           site_o  = site_o,
+                                           site_ca = site_ca,
+                                           dist_co = dist_co)
+  return dbe_sites
+
+def set_ias_name_and_predicted_position(iass):
+  phe_ring = ["CZ","CE1","CE2","CD1","CD2","CG"]
+  elbow    = ["CA","CB","CG"]
+  main_cn  = ["C","N"]
+  main_can = ["CA","N","CD"]
+  main_cod = ["C","O","OXT"]
+  main_cos = ["CZ","OH", "CB","OG1"]
+  main_cac = ["CA","C"]
+  any_ch = ["H","C"]
+  any_nh = ["H","N"]
+  any_oh = ["H","O"]
+  new_iass = []
+  for ias_ in iass:
+    dbe_site, dbe_sites, label = None, None, None
+    name_i, name_j = ias_.atom_1.name, ias_.atom_2.name
+    site_i, site_j = ias_.atom_1.site_cart, ias_.atom_2.site_cart
+    if(ias_.type == "B" or ias_.type == "BH"):
+       if(name_i in phe_ring and name_j in phe_ring):
+          label = "D5"
+          dbe_site = dbe_site_position(site_i, site_j, 1.0)
+       elif(name_i in elbow and name_j in elbow):
+          label = "D4"
+          dbe_site = dbe_site_position(site_i, site_j, 1.0)
+       elif(name_i in main_cn and name_j in main_cn):
+          label = "D6"
+          dbe_site = dbe_site_position(site_i, site_j, 1.0)
+       elif(name_i in main_can and name_j in main_can):
+          label = "D6"
+          alp = 0.773960 / 0.660850
+          if(name_j[0] == "N"):
+             dbe_site = dbe_site_position(site_i, site_j, alp)
+          else:
+             assert name_j[0] == "C"
+             dbe_site = dbe_site_position(site_j, site_i, alp)
+       elif(name_i in main_cod and name_j in main_cod):
+          label = "D8"
+          alp = 0.703388 / 0.520963
+          if(name_j[0] == "O"):
+             dbe_site = dbe_site_position(site_j, site_i, alp)
+          else:
+             assert name_j[0] == "C"
+             dbe_site = dbe_site_position(site_i, site_j, alp)
+       elif(name_i in main_cos and name_j in main_cos):
+          label = "D7"
+          alp = 0.657100 / 0.681920
+          if(name_j[0] == "O"):
+             dbe_site = dbe_site_position(site_j, site_i, alp)
+          else:
+             assert name_j[0] == "C"
+             dbe_site = dbe_site_position(site_i, site_j, alp)
+       elif(name_i in main_cac and name_j in main_cac):
+          label = "D4"
+          dbe_site = dbe_site_position(site_i, site_j, 1.0)
+       elif(name_i[0] in any_ch and name_j[0] in any_ch):
+          label = "D1"
+          alp = 0.856968 / 0.244483
+          if(name_j[0] == "H"):
+             dbe_site = dbe_site_position(site_i, site_j, alp)
+          else:
+             dbe_site = dbe_site_position(site_j, site_i, alp)
+       elif(name_i[0] in any_nh and name_j[0] in any_nh):
+          label = "D2"
+          alp = 0.760400 / 0.267816
+          if(name_j[0] == "H"):
+             dbe_site = dbe_site_position(site_i, site_j, alp)
+          else:
+             dbe_site = dbe_site_position(site_j, site_i, alp)
+       elif(name_i[0] in any_oh and name_j[0] in any_oh):
+          label = "D3"
+          alp = 0.716517 / 0.288733
+          if(name_j[0] == "H"):
+             dbe_site = dbe_site_position(site_i, site_j, alp)
+          else:
+             dbe_site = dbe_site_position(site_j, site_i, alp)
+    if(ias_.type == "L"):
+       label = "D10"
+       dbe_sites = dbe_position_at_lone_pairs(ias_)
+    if(ias_.type == "R"):
+       label = "D9"
+       dbe_site = dbe_site_position(site_i, site_j, 1.0)
+    if([label, dbe_site].count(None)==0):
+      assert dbe_sites is None
+      ias_.site_cart_predicted = dbe_site
+      ias_.name = label
+      new_iass.append(ias_)
+    if([label, dbe_sites].count(None)==0):
+      assert dbe_site is None
+      ias_.site_cart_predicted = dbe_sites[0]
+      ias_.name = label
+      new_iass.append(ias_)
+      ias_dc = ias_.deep_copy()
+      ias_dc.site_cart_predicted = dbe_sites[1]
+      ias_dc.name = label
+      new_iass.append(ias_dc)
+  return new_iass
+
+def set_peaks(iass, fmodel, grid_step, map_type, scaling):
+  assert grid_step > 0
+  fft_map = fmodel.electron_density_map(
+                map_type          = map_type,
+                k                 = 1,
+                n                 = 1,
+                resolution_factor = 1./(int(fmodel.f_obs.d_min()/grid_step)+1))
+  if(scaling == "volume"):
+     fft_map.apply_volume_scaling()
+  if(scaling == "sigma"):
+     fft_map.apply_sigma_scaling()
+  fft_map_data = fft_map.real_map_unpadded()
+  unit_cell = fmodel.f_obs.unit_cell()
+  for ias in iass:
+    if(ias.type in ["B", "BH"] ):
+       bp = find_peak_at_bond(map_data    = fft_map_data,
+                              unit_cell   = unit_cell,
+                              label       = ias.name,
+                              site_cart_1 = ias.atom_1.site_cart,
+                              site_cart_2 = ias.atom_2.site_cart)
+       ias.peak_value         = bp.peak_value
+       ias.peak_position_cart = bp.peak_site_cart
+       ias.q                  = bp.q_estimated
+       ias.b_iso              = bp.b_estimated
+       site_frac_1 = unit_cell.fractionalize(ias.atom_1.site_cart)
+       site_frac_predicted = unit_cell.fractionalize(ias.site_cart_predicted)
+       one_dim_point_predicted = \
+                           unit_cell.distance(site_frac_1, site_frac_predicted)
+       ias.bond_density = bond_density(
+                             data                    = bp.data,
+                             dist                    = bp.dist,
+                             ideal_data              = None,
+                             one_dim_point           = bp.one_dim_point,
+                             one_dim_point_predicted = one_dim_point_predicted,
+                             peak_data               = bp.peak_data,
+                             peak_dist               = bp.peak_dist)
+
+       ias.status = bp.status
+
+class find_peak_at_bond(object):
+  def __init__(self,map_data,unit_cell,label,site_cart_1,site_cart_2,step=0.005):
+    x1,y1,z1 = site_cart_1
+    x2,y2,z2 = site_cart_2
+    self.status = None
+    self.peak_value = -1.e+6
+    self.one_dim_point = None
+    self.peak_site_cart = None
+    self.bond_length = math.sqrt((x1-x2)**2+(y1-y2)**2+(z1-z2)**2)
+    alp = 0
+    self.data = flex.double()
+    self.dist = flex.double()
+    i_seq = 0
+    i_max = 0
+    gof = 1.e+6
+    while alp <= 1.0+1.e-6:
+      xp = x1+alp*(x2-x1)
+      yp = y1+alp*(y2-y1)
+      zp = z1+alp*(z2-z1)
+      site_frac = unit_cell.fractionalize((xp,yp,zp))
+      ed_ = maptbx.eight_point_interpolation(map_data, site_frac)
+      self.dist.append( math.sqrt((x1-xp)**2+(y1-yp)**2+(z1-zp)**2) )
+      self.data.append(ed_)
+      if(ed_ > self.peak_value):
+         self.peak_value = ed_
+         self.peak_site_cart = unit_cell.orthogonalize(site_frac)
+         self.one_dim_point = math.sqrt((x1-xp)**2+(y1-yp)**2+(z1-zp)**2)
+         i_max = i_seq
+      alp += step
+      i_seq += 1
+    i_seq_left, i_seq_right, max_peak_i_seq = self.find_peak()
+    self.b_estimated, self.q_estimated = None, None
+    self.a, self.b = None, None
+    self.peak_data, self.peak_dist = None, None
+    if([i_seq_left, i_seq_right].count(None) == 0):
+      self.peak_data = self.data[i_seq_left:i_seq_right+1]
+      self.peak_dist = self.dist[i_seq_left:i_seq_right+1]
+      origin = self.dist[max_peak_i_seq]
+
+      dist = (self.peak_dist - origin).deep_copy()
+      sel = self.peak_data > 0.0
+      data = self.peak_data.select(sel)
+      dist = dist.select(sel)
+      if(data.size() > 0):
+         approx_obj = maptbx.one_gaussian_peak_approximation(
+                                                data_at_grid_points    = data,
+                                                distances              = dist,
+                                                use_weights            = False,
+                                                optimize_cutoff_radius = False)
+         a_real = approx_obj.a_real_space()
+         b_real = approx_obj.b_real_space()
+         gof = approx_obj.gof()
+         self.a = ias_scattering_dict[label].array_of_a()[0]
+         self.b = ias_scattering_dict[label].array_of_b()[0]
+         self.b_estimated = approx_obj.b_reciprocal_space()-self.b
+         self.q_estimated = approx_obj.a_reciprocal_space()/self.a
+         #print "%.2f %.2f"%(self.q_estimated, self.b_estimated)
+         if(self.b_estimated <= 0.0):
+            self.b_estimated = self.b
+         if(self.q_estimated <= 0.0):
+            self.q_estimated = self.a
+    self.set_status()
+
+  def find_peak(self, n_points = 3, offset = 0.1, tol = 15):
+    assert approx_equal(self.bond_length, self.dist[len(self.dist)-1])
+    i_seq_left, i_seq_right, max_peak_i_seq = None, None, None
+    peak_i_seqs = []
+    for i_seq, data in enumerate(self.data):
+      if(i_seq >= n_points and i_seq <= len(self.data)-n_points):
+        if(self.dist[i_seq] > offset and
+                                   self.bond_length-self.dist[i_seq] > offset):
+          data_at_i_seq = self.data[i_seq]
+          dist_at_i_seq = self.dist[i_seq]
+          max_at_i_seq = True
+          for i in range(-n_points, n_points+1):
+            if(i != 0):
+              if(self.data[i_seq+i] > data_at_i_seq):
+                max_at_i_seq = False
+                break
+          if(max_at_i_seq): peak_i_seqs.append(i_seq)
+    if(len(peak_i_seqs) > 0):
+      max_peak_i_seq = peak_i_seqs[0]
+      max_peak = self.data[max_peak_i_seq]
+      for i_seq in peak_i_seqs:
+        if(self.data[i_seq] > max_peak):
+          max_peak = self.data[i_seq]
+          max_peak_i_seq = i_seq
+      i_seq_left = max_peak_i_seq
+      max_peak_left = max_peak
+      counter = 0
+      while i_seq_left >= 0:
+        if(self.data[i_seq_left] <= max_peak_left):
+           max_peak_left = self.data[i_seq_left]
+        else: counter += 1
+        if(self.data[i_seq_left] <= 0.0 or counter == tol):
+          i_seq_left += 1
+          i_seq_left += counter
+          break
+        i_seq_left -= 1
+        if(counter == tol):
+           i_seq_left += counter
+           break
+      i_seq_right = max_peak_i_seq
+      max_peak_right = max_peak
+      counter = 0
+      while i_seq_right <= len(self.data)-1: #XXX may be remove -1
+        if(self.data[i_seq_right] <= max_peak_right):
+           max_peak_right = self.data[i_seq_right]
+        else: counter += 1
+        if(self.data[i_seq_right] <= 0.0 or counter == tol):
+          i_seq_right -= 1
+          i_seq_right -= counter
+          break
+        i_seq_right += 1
+        if(counter == tol):
+           i_seq_right -= counter
+           break
+      if(i_seq_left < 0): i_seq_left=0
+      if(i_seq_right > len(self.data)-1): i_seq_right=len(self.data)-1
+      if(i_seq_left >= i_seq_right):
+        i_seq_left, i_seq_right, max_peak_i_seq = None, None, None
+    return i_seq_left, i_seq_right, max_peak_i_seq
+
+  def set_status(self):
+    self.status = True
+    d_l = self.one_dim_point
+    d_r = self.bond_length - self.one_dim_point
+    if(d_l < 0.1 or d_r < 0.1):
+       self.status = False
+    if([self.a, self.b].count(None) == 0 and (self.a <= 0.0 or self.b <= 0.0)):
+       self.status = False
+    if([self.q_estimated, self.b_estimated].count(None) == 0 and
+       (self.q_estimated <= 0.0 or self.b_estimated <= 0.0)):
+       self.status = False
+    if((self.data > 0).count(True) == 0):
+       self.status = False
+
+def set_status(iass, params):
+  for ias in iass:
+    if(ias.status is not False):
+       is_ok = ias.atom_1.b_iso <= params.b_iso_max and \
+               ias.atom_2.b_iso <= params.b_iso_max and \
+               ias.atom_1.q <= params.occupancy_max and \
+               ias.atom_2.q >= params.occupancy_min
+       if(ias.b_iso is not None):
+          is_ok = is_ok and ias.b_iso <= params.ias_b_iso_max and \
+                            ias.b_iso >  params.ias_b_iso_min
+       if(ias.q is not None):
+          is_ok = is_ok and ias.q <= params.ias_occupancy_max and \
+                            ias.q >  params.ias_occupancy_min
+       if(not is_ok): ias.status = False
+       else: ias.status = True
+    assert ias.status is not None
 
 class manager(object):
   def __init__(self, geometry,
                      atom_attributes_list,
                      xray_structure,
-                     params = dbe_master_params.extract(),
-                     fmodel = None,
-                     log    = None):
+                     params    = None,
+                     fmodel    = None,
+                     file_name = None,
+                     log       = None):
      adopt_init_args(self, locals())
      if(log is None): self.log = sys.stdout
      if(self.params is None): self.params = dbe_master_params.extract()
-     self.dbe_counters = dbe_counters()
-     self.sites_cart = self.xray_structure.sites_cart()
-     self.u_iso = self.xray_structure.extract_u_iso_or_u_equiv()
-     self.b_iso = self.u_iso*math.pi**2*8.
-     self.q = self.xray_structure.scatterers().extract_occupancies()
-     self.dbe_xray_structure = xray.structure(
-                     crystal_symmetry = self.xray_structure.crystal_symmetry())
      bond_proxies_simple = self.geometry.pair_proxies().bond_proxies.simple
-     self.dbe_counters.n_bonds = len(bond_proxies_simple)
-     self.atom_indices = []
-     self.target = None
-     self.gradients = None
-     ###> Locate DBE type "B" => loop over bond proxies:
-     need_B = "B"  in self.params.build_dbe_types
-     need_BH= "BH" in self.params.build_dbe_types
-     # XXX
-     #print dir(xray_structure)
-     #ias = ias_structure(bond_proxies_simple = bond_proxies_simple)
-     # XXX
-     if(need_B or need_BH):
-        for proxy in bond_proxies_simple:
-            i_seqs = proxy.i_seqs
-            i,j = proxy.i_seqs
-            atom_i = self.atom_attributes_list[i]
-            atom_j = self.atom_attributes_list[j]
-            if(atom_i.element.strip() not in ["H","D"] and
-               atom_j.element.strip() not in ["H","D"]):
-               self.dbe_counters.n_bonds_non_h += 1
-            if(self._check_b_and_q(i) and self._check_b_and_q(j)):
-               dbe_site, dbe_label, b_estimated, q_estimated = self._dbe_position_B(
-                                      name_i = atom_i.name.strip(),
-                                      name_j = atom_j.name.strip(),
-                                      site_i = flex.double(atom_i.coordinates),
-                                      site_j = flex.double(atom_j.coordinates))
-               if([b_estimated, q_estimated].count(None) == 0):
-                  is_qb_ok = q_estimated < 2.0 and q_estimated > 0.0 and \
-                             b_estimated > 0.0 and b_estimated < 30.0
-               else:
-                  is_qb_ok = True
-               if(dbe_label is not None and is_qb_ok):
-                  self.dbe_counters.n_dbe_b += 1
-                  if(b_estimated is not None):
-                     u = adptbx.b_as_u(b_estimated)
-                  else: u=None
-                  self._add_dbe_scatterer(anchor_i  = i,
-                                          anchor_j  = j,
-                                          dbe_site  = dbe_site,
-                                          dbe_label = dbe_label,
-                                          u = u,
-                                          occupancy = q_estimated)
-     ###> Locate DBE type "R" and "L" => loop over planarity proxies:
-     need_L = "L" in self.params.build_dbe_types
-     need_R = "R" in self.params.build_dbe_types
-     if(need_L or need_R):
-        for proxy in self.geometry.planarity_proxies:
-            if(need_R and self._is_phe_tyr_ring(i_seqs = proxy.i_seqs)):
-               dbe_site, dbe_label, i, j = self._dbe_position_at_ring_center(
-                                                         i_seqs = proxy.i_seqs)
-               if(dbe_label is not None):
-                  self.dbe_counters.n_dbe_r += 1
-                  self._add_dbe_scatterer(anchor_i  = i,
-                                          anchor_j  = j,
-                                          dbe_site  = dbe_site,
-                                          dbe_label = dbe_label)
-            if(need_L and self._is_peptide_plane(i_seqs = proxy.i_seqs)):
-               results = self._dbe_position_at_lone_pairs(
-                                                         i_seqs = proxy.i_seqs)
-               for result in results:
-                   dbe_site, dbe_label, i = result
-                   if(dbe_label is not None):
-                      self.dbe_counters.n_dbe_l += 1
-                      self._add_dbe_scatterer(anchor_i  = i,
-                                              anchor_j  = i,
-                                              dbe_site  = dbe_site,
-                                              dbe_label = dbe_label)
-     self.restraints_selection = flex.std_string(
-                           self.dbe_xray_structure.scatterers().size(), "None")
-     if(self.params.restraints.selection is not None):
-        for i_seq, sc in enumerate(self.dbe_xray_structure.scatterers()):
-            if(sc.label in self.params.restraints.selection):
-               if(sc.label in B_type):  self.restraints_selection[i_seq] = "B"
-               if(sc.label in BH_type): self.restraints_selection[i_seq] = "BH"
-               if(sc.label in R_type):  self.restraints_selection[i_seq] = "R"
-               if(sc.label in L_type):  self.restraints_selection[i_seq] = "L"
-        self.need_restraints = self.restraints_selection.count("None") != \
-                               self.restraints_selection.size()
-     else: self.need_restraints = False
-     self.dbe_counters.show(out = log)
-     print >> log
-     print >> log, "DBE scattering dictionaries:"
-     self.dbe_xray_structure.scattering_type_registry(
-                                             custom_dict = dbe_scattering_dict)
-     self.dbe_xray_structure.scattering_type_registry().show()
+     print >> self.log, \
+                  "Total number of covalent bonds = ", len(bond_proxies_simple)
+     iass = extract_ias(xray_structure       = self.xray_structure,
+                        bond_proxies_simple  = bond_proxies_simple,
+                        atom_attributes_list = self.atom_attributes_list,
+                        planarity_proxies    = self.geometry.planarity_proxies,
+                        log                  = self.log).iass
+     iass = set_ias_name_and_predicted_position(iass)
+     set_peaks(iass      = iass,
+               fmodel    = fmodel,
+               grid_step = params.peak_search_map.grid_step,
+               map_type  = params.peak_search_map.map_type,
+               scaling   = params.peak_search_map.scaling)
+     self.all_bonds(iass = iass, file_name = file_name)
+     print >> self.log, "IAS considered: "
+     ias_counters(iass).show(out = self.log)
+     set_status(iass, self.params)
+     print >> self.log, "IAS selected: "
+     ias_counters(iass).show(out = self.log)
+     self.ias_xray_structure = self.iass_as_xray_structure(iass)
+     print >> log, "IAS scattering dictionary:"
+     self.ias_xray_structure.scattering_type_registry().show()
      if(1):
         self.write_pdb_file()
 
-  def _check_b_and_q(self, i_seq):
-    return self.b_iso[i_seq] <= self.params.b_iso_max and     \
-           self.q[i_seq]     <= self.params.occupancy_max and \
-           self.q[i_seq]     >= self.params.occupancy_min
-
-  def _add_dbe_scatterer(self, anchor_i, anchor_j, dbe_site, dbe_label,
-                                                    u = None,occupancy = None):
-    self.atom_indices.append([anchor_i, anchor_j, self.dbe_counters.n_dbe])
-    self.dbe_counters.n_dbe += 1
-    if(u is None):
-       u = (self.u_iso[anchor_i] + self.u_iso[anchor_j])*0.5
-    if(occupancy is None):
-       occupancy = self.params.initial_dbe_occupancy
-    dbe_scatterer = xray.scatterer(
-     label           = dbe_label,
-     scattering_type = dbe_label,
-     site            = self.xray_structure.unit_cell().fractionalize(dbe_site),
-     u               = u,
-     occupancy       = occupancy)
-    self.dbe_xray_structure.add_scatterer(dbe_scatterer)
-
-  def _is_phe_tyr_ring(self, i_seqs):
-    ring_atoms = ["CZ","CE1","CE2","CD1","CD2","CG"]
-    counter = 0
-    for i_seq in i_seqs:
-        atom_i = self.atom_attributes_list[i_seq]
-        if(atom_i.name.strip() in ring_atoms and self._check_b_and_q(i_seq)):
-           counter += 1
-    if(counter == 6): return True
-    else:             return False
-
-  def _is_peptide_plane(self, i_seqs):
-    peptide_atoms = ["O","C","CA","N"]
-    counter = 0
-    for i_seq in i_seqs:
-        atom_i = self.atom_attributes_list[i_seq]
-        if(atom_i.name.strip() in peptide_atoms and self._check_b_and_q(i_seq)):
-           counter += 1
-    if(counter == 4): return True
-    else:             return False
-
-  def _dbe_position_B(self, name_i, name_j, site_i, site_j):
-    #
-    if(self.fmodel is not None and self.params.use_map):
-       fmodel_ = self.fmodel.resolution_filter(d_min = 0.7)
-       fft_map = fmodel_.electron_density_map(
-                             map_type          = "k*Fobs-n*Fmodel",
-                             k                 = 1,
-                             n                 = 1,
-                             resolution_factor = self.params.resolution_factor)
-       fft_map.apply_volume_scaling()
-       fft_map_data = fft_map.real_map_unpadded()
-    #
-    phe_ring = ["CZ","CE1","CE2","CD1","CD2","CG"]
-    elbow    = ["CA","CB","CG"]
-    main_cn  = ["C","N"]
-    main_can = ["CA","N","CD"]
-    main_cod = ["C","O","OXT"]
-    main_cos = ["CZ","OH", "CB","OG1"]
-    main_cac = ["CA","C"]
-    any_ch = ["H","C"]
-    any_nh = ["H","N"]
-    any_oh = ["H","O"]
-    dbe_site, label = None, None
-    need_B = "B"  in self.params.build_dbe_types
-    need_BH= "BH" in self.params.build_dbe_types
-    if(name_i in phe_ring and name_j in phe_ring and need_B):
-       label = "D5"
-       dbe_site = self.dbe_site_position(site_i, site_j, 1.0)
-    elif(name_i in elbow and name_j in elbow and need_B):
-       label = "D4"
-       dbe_site = self.dbe_site_position(site_i, site_j, 1.0)
-    elif(name_i in main_cn and name_j in main_cn and need_B):
-       label = "D6"
-       dbe_site = self.dbe_site_position(site_i, site_j, 1.0)
-    elif(name_i in main_can and name_j in main_can and need_B):
-       label = "D6"
-       alp = 0.773960 / 0.660850
-       if(name_j[0] == "N"):
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-       else:
-          assert name_j[0] == "C"
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
-    elif(name_i in main_cod and name_j in main_cod and need_B):
-       label = "D8"
-       alp = 0.703388 / 0.520963
-       if(name_j[0] == "O"):
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
-       else:
-          assert name_j[0] == "C"
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-    elif(name_i in main_cos and name_j in main_cos and need_B):
-       label = "D7"
-       alp = 0.657100 / 0.681920
-       if(name_j[0] == "O"):
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
-       else:
-          assert name_j[0] == "C"
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-    elif(name_i in main_cac and name_j in main_cac and need_B):
-       label = "D4"
-       dbe_site = self.dbe_site_position(site_i, site_j, 1.0)
-    elif(name_i[0] in any_ch and name_j[0] in any_ch and need_BH):
-       label = "D1"
-       alp = 0.856968 / 0.244483
-       if(name_j[0] == "H"):
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-       else:
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
-    elif(name_i[0] in any_nh and name_j[0] in any_nh and need_BH):
-       label = "D2"
-       alp = 0.760400 / 0.267816
-       if(name_j[0] == "H"):
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-       else:
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
-    elif(name_i[0] in any_oh and name_j[0] in any_oh and need_BH):
-       label = "D3"
-       alp = 0.716517 / 0.288733
-       if(name_j[0] == "H"):
-          dbe_site = self.dbe_site_position(site_i, site_j, alp)
-       else:
-          dbe_site = self.dbe_site_position(site_j, site_i, alp)
-    b_estimated, q_estimated = None, None
-    if(label is not None and self.fmodel is not None and self.params.use_map):
-       site_cart, gof, b_estimated, q_estimated = \
-                        self.find_dbe(fft_map_data = fft_map_data,
-                                      site_cart_1  = site_i,
-                                      site_cart_2  = site_j,
-                                      step         = 0.01,
-                                      label        = label)
-       dbe_site = site_cart
-    return dbe_site, label, b_estimated, q_estimated
-
-  def _dbe_position_at_ring_center(self, i_seqs):
-    ring_atoms = ["CZ","CE1","CE2","CD1","CD2","CG"]
-    dbe_site, label, i, j = None,None,None,None
-    unit_cell = self.xray_structure.unit_cell()
-    dbe_site, label = None, None
-    for i_seq in i_seqs:
-      for j_seq in i_seqs:
-        if(i_seq != j_seq):
-           atom_i = self.atom_attributes_list[i_seq]
-           atom_j = self.atom_attributes_list[j_seq]
-           if(atom_i.name.strip() in ring_atoms and
-              atom_j.name.strip() in ring_atoms):
-              site_i = atom_i.coordinates
-              site_j = atom_j.coordinates
-              site_i_frac = unit_cell.fractionalize(atom_i.coordinates)
-              site_j_frac = unit_cell.fractionalize(atom_j.coordinates)
-              dist = unit_cell.distance(site_i_frac, site_j_frac)
-              if(abs(dist - 2.8) < 0.2):
-                 i, j = i_seq, j_seq
-                 label = "D9"
-                 dbe_site = self.dbe_site_position(site_i, site_j, 1.0)
-                 break
-    return dbe_site, label, i, j
-
-  def _dbe_position_at_lone_pairs(self, i_seqs):
-    peptide_plane_atoms = ["O","C","CA","N"]
-    unit_cell = self.xray_structure.unit_cell()
-    site_c,site_ca,site_o = None,None,None
-    dbe_sites, label = None, None
-    for i_seq in i_seqs:
-        atom_i = self.atom_attributes_list[i_seq]
-        if(atom_i.name.strip() == "CA" and site_ca is None):
-           site_ca = atom_i.coordinates
-        if(atom_i.name.strip() == "C" and site_c is None):
-           site_c = atom_i.coordinates
-        if(atom_i.name.strip() == "O" and site_o is None):
-           site_o = atom_i.coordinates
-           i_seq_o = i_seq
-    if([site_c,site_ca,site_o].count(None) == 0):
-       site_c_frac = unit_cell.fractionalize(site_c)
-       site_o_frac = unit_cell.fractionalize(site_o)
-       dist = unit_cell.distance(site_c_frac, site_o_frac)
-       if(dist < 1.3 and dist > 1.1):
-          label = "D10"
-          dbe_sites = add_lone_pairs_for_peptyde_o(site_c  = site_c,
-                                                   site_o  = site_o,
-                                                   site_ca = site_ca,
-                                                   dist_co = dist)
-    if([dbe_sites, label].count(None) == 0 and [dbe_sites[0],dbe_sites[1]].count(None)==0):
-       return (dbe_sites[0], label, i_seq_o), (dbe_sites[1], label, i_seq_o)
-    else:
-       return (None,None,None), (None,None,None)
-
-  def dbe_site_position(self, site_i, site_j, alp):
-    alp1 = alp+1.0
-    return ((site_i[0] + site_j[0]*alp)/alp1,
-            (site_i[1] + site_j[1]*alp)/alp1,
-            (site_i[2] + site_j[2]*alp)/alp1)
+  def iass_as_xray_structure(self, iass):
+     ias_xray_structure = xray.structure(
+                     crystal_symmetry = self.xray_structure.crystal_symmetry())
+     for ias in iass:
+       assert ias.status is not None
+       if(ias.status):
+          if(self.params.use_map):
+             site_cart = ias.peak_position_cart
+             b_iso     = ias.b_iso
+             q         = ias.q
+          else:
+             site_cart = ias.site_cart_predicted
+             b_iso     = (ias.atom_1.b_iso + ias.atom_2.b_iso)*0.5
+             q         = self.params.initial_dbe_occupancy
+          if(b_iso is None):
+             b_iso = (ias.atom_1.b_iso + ias.atom_2.b_iso)*0.5
+          if(q is None):
+             q = self.params.initial_dbe_occupancy
+          if(site_cart is None):
+             site_cart = ias.site_cart_predicted
+          assert [site_cart, b_iso, q].count(None) == 0
+          ias_scatterer = xray.scatterer(
+            label           = ias.name,
+            scattering_type = ias.name,
+            site       = self.xray_structure.unit_cell().fractionalize(site_cart),
+            u               = adptbx.b_as_u(b_iso),
+            occupancy       = q)
+          ias_xray_structure.add_scatterer(ias_scatterer)
+     ias_xray_structure.scattering_type_registry(
+                                             custom_dict = ias_scattering_dict)
+     return ias_xray_structure
 
   def write_pdb_file(self, out = None):
     if(out is None):
        out = sys.stdout
-    sites_cart = self.dbe_xray_structure.sites_cart()
-    for i_seq, sc in enumerate(self.dbe_xray_structure.scatterers()):
+    sites_cart = self.ias_xray_structure.sites_cart()
+    for i_seq, sc in enumerate(self.ias_xray_structure.scatterers()):
         print >> out, pdb.format_atom_record(
                                     record_name = "HETATM",
                                     serial      = i_seq+1,
@@ -394,188 +631,45 @@ class manager(object):
                                     tempFactor  = adptbx.u_as_b(sc.u_iso),
                                     element     = sc.label)
 
-  def target_and_gradients(self, sites_cart, dbe_selection):
-    dbe_scatterers = self.dbe_xray_structure.scatterers()
-    mac = sites_cart.select(~dbe_selection)
-    dbe = sites_cart.select(dbe_selection)
-    mac_offset = mac.size()
-    self.target = 0.0
-    self.gradients = flex.vec3_double(sites_cart.size())
-    self.number_of_restraints = 0
-    if(self.need_restraints):
-       for index in self.atom_indices:
-         if(self.restraints_selection[index[2]] == "B"):
-            sa = mac[index[0]]
-            sb = mac[index[1]]
-            sd = dbe[index[2]]
-            d0 = math.sqrt((sa[0]-sb[0])**2+(sa[1]-sb[1])**2+(sa[2]-sb[2])**2)
-            d1 = math.sqrt((sa[0]-sd[0])**2+(sa[1]-sd[1])**2+(sa[2]-sd[2])**2)
-            d2 = math.sqrt((sb[0]-sd[0])**2+(sb[1]-sd[1])**2+(sb[2]-sd[2])**2)
-            delta = d1 + d2 - d0
-            self.target += delta**2
-            g1 = -2.*delta*( (sa[0]-sd[0])/d1 + (sb[0]-sd[0])/d2 )
-            g2 = -2.*delta*( (sa[1]-sd[1])/d1 + (sb[1]-sd[1])/d2 )
-            g3 = -2.*delta*( (sa[2]-sd[2])/d1 + (sb[2]-sd[2])/d2 )
-            self.gradients[mac_offset+index[2]] = [g1,g2,g3]
-            self.number_of_restraints += 1
-         if(self.restraints_selection[index[2]] == "BH"):
-            sa = mac[index[0]]
-            sb = mac[index[1]]
-            sd = dbe[index[2]]
-            d0 = math.sqrt((sa[0]-sb[0])**2+(sa[1]-sb[1])**2+(sa[2]-sb[2])**2)
-            d1 = math.sqrt((sa[0]-sd[0])**2+(sa[1]-sd[1])**2+(sa[2]-sd[2])**2)
-            d2 = math.sqrt((sb[0]-sd[0])**2+(sb[1]-sd[1])**2+(sb[2]-sd[2])**2)
-            delta = d1 + d2 - d0
-            self.target += delta**2
-            g1 = -2.*delta*( (sa[0]-sd[0])/d1 + (sb[0]-sd[0])/d2 )
-            g2 = -2.*delta*( (sa[1]-sd[1])/d1 + (sb[1]-sd[1])/d2 )
-            g3 = -2.*delta*( (sa[2]-sd[2])/d1 + (sb[2]-sd[2])/d2 )
-            self.gradients[mac_offset+index[2]] = [g1,g2,g3]
-            self.number_of_restraints += 1
-         if(self.restraints_selection[index[2]] == "R"):
-            anchor_site = (flex.double(mac[index[0]]) + flex.double(mac[index[1]]))/2.
-            sd = dbe[index[2]]
-            delta1 = (anchor_site[0]-sd[0])
-            delta2 = (anchor_site[1]-sd[1])
-            delta3 = (anchor_site[2]-sd[2])
-            self.target += (delta1**2 + delta2**2 + delta3**2)
-            g1 = -2.*delta1
-            g2 = -2.*delta2
-            g3 = -2.*delta3
-            self.gradients[mac_offset+index[2]] = [g1,g2,g3]
-            self.number_of_restraints += 1
-         if(self.restraints_selection[index[2]] == "L"):
-            assert index[0] == index[1]
-            sa = mac[index[0]]
-            sd = dbe[index[2]]
-            d0 = math.sqrt((sa[0]-sd[0])**2+(sa[1]-sd[1])**2+(sa[2]-sd[2])**2)
-            delta = 0.35 - d0
-            self.target += delta**2
-            g1 =  2.*delta*(sa[0]-sd[0])/d0
-            g2 =  2.*delta*(sa[1]-sd[1])/d0
-            g3 =  2.*delta*(sa[2]-sd[2])/d0
-            self.gradients[mac_offset+index[2]] = [g1,g2,g3]
-            self.number_of_restraints += 1
-       self.target *= (1./self.number_of_restraints)
-       self.gradients *= (1./self.number_of_restraints)
-
-  def find_dbe(self, fft_map_data, site_cart_1, site_cart_2, label, step = 0.01):
-    x1,y1,z1 = site_cart_1
-    x2,y2,z2 = site_cart_2
-    ed = -1.e+6
-    result = None
-    d = math.sqrt((x1-x2)**2+(y1-y2)**2+(z1-z2)**2)
-    if(label in B_type):
-       d_lim = 0.4
-    if(label in BH_type):
-       d_lim = 0.2
-    alp = d_lim / d
-    alp_end = (d - d_lim) / d
-    data = flex.double()
-    dist = flex.double()
-    i_seq = 0
-    i_max = 0
-    gof = 1.e+6
-    while alp < alp_end:
-      xp = x1+alp*(x2-x1)
-      yp = y1+alp*(y2-y1)
-      zp = z1+alp*(z2-z1)
-      site_frac = self.xray_structure.unit_cell().fractionalize((xp,yp,zp))
-      ed_ = maptbx.eight_point_interpolation(fft_map_data, site_frac)
-      dist.append( math.sqrt((x1-xp)**2+(y1-yp)**2+(z1-zp)**2) )
-      data.append(ed_)
-      if(ed_ > ed):
-         ed = ed_
-         result = self.xray_structure.unit_cell().orthogonalize(site_frac)
-         i_max = i_seq
-      alp += step
-      i_seq += 1
-    origin = dist[i_max]
-    dist = dist - origin
-    sel = data > 0.0
-    data = data.select(sel)
-    dist = dist.select(sel)
-    b_estimated, q_estimated = None, None
-    if(data.size() > 10):
-       approx_obj = maptbx.one_gaussian_peak_approximation(
-                                              data_at_grid_points    = data,
-                                              distances              = dist,
-                                              use_weights            = False,
-                                              optimize_cutoff_radius = False)
-       a_real = approx_obj.a_real_space()
-       b_real = approx_obj.b_real_space()
-       gof = approx_obj.gof()
-       a = dbe_scattering_dict[label].array_of_a()[0]
-       b = dbe_scattering_dict[label].array_of_b()[0]
-       b_estimated = approx_obj.b_reciprocal_space()-b
-       q_estimated = approx_obj.a_reciprocal_space()/a
-       fmt="%8.3f %8.3f %6.2f %6.2f %6.2f %s %6.2f %6.2f %6.2f %6.2f"
-       print >> self.log, fmt % (a_real, b_real, gof,
-              approx_obj.a_reciprocal_space(), approx_obj.b_reciprocal_space(),
-              label, a, b, b_estimated, q_estimated)
-    else:
-       print "No peak"
-    return result, gof, b_estimated, q_estimated
-
-  def refresh_dbe_positions(self, fmodel, dbe_selection):
-    assert fmodel.xray_structure is self.xray_structure
-    fmodel_dc = fmodel.deep_copy()
-    sites_cart = fmodel_dc.xray_structure.sites_cart()
-    unit_cell = self.xray_structure.unit_cell()
-    mac_offset = sites_cart.select(~dbe_selection).size()
-    scat_types = self.xray_structure.scatterers().extract_scattering_types()
-    n_shifted = 0
-    fmodel_dc.update_xray_structure(
-              xray_structure = fmodel_dc.xray_structure.select(~dbe_selection),
-              update_f_calc  = True)
-    fft_map = fmodel_dc.electron_density_map(
-                                         map_type          = "k*Fobs-n*Fmodel",
-                                         k                 = 1,
-                                         n                 = 1,
-                                         resolution_factor = 1/5.)
-    fft_map.apply_volume_scaling()
-    fft_map_data = fft_map.real_map_unpadded()
-    for index in self.atom_indices:
-        dbe_scat_type = scat_types[mac_offset+index[2]]
-        if(dbe_scat_type in B_type):
-           d_lim = 0.4
-        if(dbe_scat_type in BH_type):
-           d_lim = 0.2
-        if(dbe_scat_type in B_type+BH_type):
-           i_atom_i, i_atom_j, i_dbe = index[0], index[1], index[2]
-           dbe_site = sites_cart[mac_offset+i_dbe]
-           dbe_site_frac = unit_cell.fractionalize(dbe_site)
-           site_i_frac = unit_cell.fractionalize(sites_cart[i_atom_i])
-           site_j_frac = unit_cell.fractionalize(sites_cart[i_atom_j])
-           d1s = unit_cell.distance(site_i_frac, dbe_site_frac)
-           d2s = unit_cell.distance(site_j_frac, dbe_site_frac)
-           d12 = unit_cell.distance(site_i_frac, site_j_frac)
-           new_dbe_site,gof, b_estimated, q_estimated = self.find_dbe(
-                                        fft_map_data = fft_map_data,
-                                        site_cart_1  = sites_cart[i_atom_i],
-                                        site_cart_2  = sites_cart[i_atom_j],
-                                        step         = 0.01,
-                                        label        = dbe_scat_type)
-           new_dbe_site_frac = unit_cell.fractionalize(new_dbe_site)
-           d1 = unit_cell.distance(site_i_frac, new_dbe_site_frac)
-           d2 = unit_cell.distance(site_j_frac, new_dbe_site_frac)
-           shift = unit_cell.distance(new_dbe_site_frac, dbe_site_frac)
-           if((d1 > d_lim and d2 > d_lim and gof < 25.0) and (d1s+d2s-d12 > 0.1 or d1s < 0.2 or d2s < 0.2)):
-              n_shifted += 1
-              fmodel.xray_structure.scatterers()[mac_offset+i_dbe].site = \
-                    self.xray_structure.unit_cell().fractionalize(new_dbe_site)
-              #fmodel.xray_structure.scatterers()[mac_offset+i_dbe].occupancy = q_estimated
-              #fmodel.xray_structure.scatterers()[mac_offset+i_dbe].u = adptbx.b_as_u(b_estimated)
-           else:
-              if(d1s+d2s-d12 > 0.2 or d1s < 0.15 or d2s < 0.15):
-                 n_shifted += 1
-                 new_dbe_site = self.dbe_site_position(sites_cart[i_atom_i],
-                                                       sites_cart[i_atom_j],1.)
-                 fmodel.xray_structure.scatterers()[mac_offset+i_dbe].site = \
-                                          unit_cell.fractionalize(new_dbe_site)
-    print >> self.log, "n_shifted = ", n_shifted
-    fmodel.update_xray_structure(update_f_calc = True)
-
+  def all_bonds(self, iass, file_name):
+    sorted = []
+    cc = []
+    co = []
+    cn = []
+    xh = []
+    other = []
+    for ias in iass:
+      e1 = ias.atom_1.element
+      e2 = ias.atom_2.element
+      if(e1 == "C" and e2 == "C"): cc.append(ias)
+      elif(e1 in ["C","N"] and e2 in ["C","N"]): cn.append(ias)
+      elif(e1 in ["C","O"] and e2 in ["C","O"]): co.append(ias)
+      elif(e1 in ["H"] or e2 in ["H"]): xh.append(ias)
+      else: other.append(ias)
+    sorted = cc+co+cn+xh
+    fout = open(file_name, "w")
+    fmt1 = "*** %s_%s(%s)-%s_%s(%s)=%s"
+    fmt2 = "%10.4f %10.4f"
+    for ias in sorted:
+      if(ias.bond_density is not None):
+         name1  = ias.atom_1.name.strip()
+         i_seq1 = str(ias.atom_1.i_seq).strip()
+         b_iso1 = str("%.1f"%ias.atom_1.b_iso).strip()
+         name2  = ias.atom_2.name.strip()
+         i_seq2 = str(ias.atom_2.i_seq).strip()
+         b_iso2 = str("%.1f"%ias.atom_2.b_iso).strip()
+         s1 = ias.atom_1.site_cart
+         s2 = ias.atom_2.site_cart
+         dist = str("%.2f"%math.sqrt(
+                   (s1[0]-s2[0])**2+(s1[1]-s2[1])**2+(s1[2]-s2[2])**2)).strip()
+         print >> fout, fmt1%(name1,i_seq1,b_iso1,name2,i_seq2,b_iso2, dist)
+         for d, e in zip(ias.bond_density.dist, ias.bond_density.data):
+           print >> fout, fmt2%(d, e)
+         if(ias.bond_density.peak_dist is not None):
+           for d, e in zip(ias.bond_density.peak_dist, ias.bond_density.peak_data):
+             print >> fout, "peak= %10.4f %10.4f"%(d, e)
+         print >> fout, "IAS: ", ias.bond_density.one_dim_point, ias.peak_value
+         print >> fout, "status= ", ias.status
 
 def add_lone_pairs_for_peptyde_o(site_c, site_o, site_ca, dist_co,
                                  R = 0.35,
