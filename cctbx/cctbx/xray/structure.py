@@ -183,6 +183,16 @@ class structure(crystal.special_position_settings):
   def min_distance(self, other):
     return flex.min( self.distances(other = other, selection = selection) )
 
+  def scale_adp(self, factor):
+    for sc in self._scatterers:
+      if(sc.flags.use()):
+        if(sc.flags.use_u_iso()):
+           sc.u_iso = sc.u_iso * factor
+        if(sc.flags.use_u_aniso()):
+          result = []
+          for i in xrange(6): result.append(sc.u_star[i] * factor)
+          sc.u_star = result
+
   def shake_adp(self, b_max=None, b_min=None, spread=10.0, aniso_spread=0.1,
              keep_anisotropic=False, random_u_cart_scale=1.0, selection=None):
     assert [b_max, b_min].count(None) in [0,2]
