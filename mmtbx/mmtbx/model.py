@@ -119,16 +119,27 @@ class manager(object):
        #                                               self.dbe_selection, True)
        #self.refinement_flags.sites_individual[0].set_selected(
        #                                             ~self.dbe_selection, False)
+       if 1:
+         self.refinement_flags.sites_individual[0].set_selected(
+                                                        self.dbe_selection, False)
+         self.refinement_flags.sites_individual[0].set_selected(
+                                                      ~self.dbe_selection, True)
 
-       self.refinement_flags.sites_individual[0].set_selected(
-                                                      self.dbe_selection, False)
-       self.refinement_flags.sites_individual[0].set_selected(
-                                                    ~self.dbe_selection, True)
-
-
-       self.refinement_flags.individual_occupancies = True
-       self.refinement_flags.occupancies_individual = [flex.bool(
+       if 1:
+         self.refinement_flags.individual_occupancies = True
+         self.refinement_flags.occupancies_individual = [flex.bool(
                                 self.xray_structure.scatterers().size(), True)]
+
+       if 0:
+         self.refinement_flags.individual_occupancies = True
+         self.refinement_flags.occupancies_individual = [flex.bool(
+                                  self.xray_structure.scatterers().size(), True)]
+         self.refinement_flags.occupancies_individual[0].set_selected(
+                                                        ~self.dbe_selection, False)
+         self.refinement_flags.occupancies_individual[0].set_selected(
+                                      self.xray_structure.hd_selection(), True)
+
+
        #self.xray_structure.convert_to_anisotropic(selection = self.dbe_selection)
        self.refinement_flags.adp_individual_aniso[0].set_selected(
                                                       self.dbe_selection, False) # False

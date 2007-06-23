@@ -525,7 +525,7 @@ class find_peak_at_bond(object):
 
 def set_status(iass, params):
   for ias in iass:
-    if(ias.status is not False):
+    if(ias.status is not False and ias.type in ["B", "BH"]):
        is_ok = ias.atom_1.b_iso <= params.b_iso_max and \
                ias.atom_2.b_iso <= params.b_iso_max and \
                ias.atom_1.q <= params.occupancy_max and \
@@ -536,6 +536,15 @@ def set_status(iass, params):
        if(ias.q is not None):
           is_ok = is_ok and ias.q <= params.ias_occupancy_max and \
                             ias.q >  params.ias_occupancy_min
+       if(not is_ok): ias.status = False
+       else: ias.status = True
+    if(ias.status is not False and ias.type not in ["B", "BH"]):
+       is_ok = ias.atom_1.b_iso <= params.b_iso_max and \
+               ias.atom_2.b_iso <= params.b_iso_max and \
+               ias.atom_1.q <= 1.1 and \
+               ias.atom_2.q >= 0.9
+       assert ias.b_iso is None
+       assert ias.q is None
        if(not is_ok): ias.status = False
        else: ias.status = True
     assert ias.status is not None
@@ -560,12 +569,14 @@ class manager(object):
                         planarity_proxies    = self.geometry.planarity_proxies,
                         log                  = self.log).iass
      iass = set_ias_name_and_predicted_position(iass)
-     set_peaks(iass      = iass,
-               fmodel    = fmodel,
-               grid_step = params.peak_search_map.grid_step,
-               map_type  = params.peak_search_map.map_type,
-               scaling   = params.peak_search_map.scaling)
-     self.all_bonds(iass = iass, file_name = file_name)
+     if(self.fmodel is not None):
+       set_peaks(iass      = iass,
+                 fmodel    = fmodel,
+                 grid_step = self.params.peak_search_map.grid_step,
+                 map_type  = self.params.peak_search_map.map_type,
+                 scaling   = self.params.peak_search_map.scaling)
+     if(file_name is not None):
+       self.all_bonds(iass = iass, file_name = file_name)
      print >> self.log, "IAS considered: "
      ias_counters(iass).show(out = self.log)
      set_status(iass, self.params)

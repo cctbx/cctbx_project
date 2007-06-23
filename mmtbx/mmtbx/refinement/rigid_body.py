@@ -10,47 +10,16 @@ from libtbx.utils import Sorry
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 
-time_initialization          = 0.0
-time_apply_transformation    = 0.0
-time_target_and_grads        = 0.0
-time_euler                   = 0.0
-time_rigid_body_total        = 0.0
-time_fmodel_update_xray_structure = 0.0
-time_rbbss                   = 0.0
-
-def show_times(out = None):
-  if(out is None): out = sys.stdout
-  total = time_initialization       +\
-          time_apply_transformation +\
-          time_target_and_grads     +\
-          time_euler                +\
-          time_fmodel_update_xray_structure +\
-          time_rbbss
-  if(total > 0.01):
-     print >> out, "Rigid body refinement:"
-     print >> out, "  initialization                         = %-7.2f" % time_initialization
-     print >> out, "  apply_transformation                   = %-7.2f" % time_apply_transformation
-     print >> out, "  target_and_grads                       = %-7.2f" % time_target_and_grads
-     print >> out, "  euler                                  = %-7.2f" % time_euler
-     print >> out, "  fmodel_update_xray_structure (f_calc)  = %-7.2f" % time_fmodel_update_xray_structure
-     print >> out, "  bulk solvent & scale (rigid body part) = %-7.2f" % time_rbbss
-     print >> out, "  sum of partial contributions           = %-7.2f" % total
-     print >> out, "  rigid_body_total                       = %-7.2f" % time_rigid_body_total
-  return total
-
+time_rigid_body_total = 0.0
 
 def euler(phi, psi, the, convention):
-  global time_euler
-  timer = user_plus_sys_time()
   if(convention == "zyz"):
      result = rb_mat_euler(the=the, psi=psi, phi=phi)
   elif(convention == "xyz"):
      result = rb_mat(the=the, psi=psi, phi=phi)
   else:
      raise Sorry("\nWrong rotation convention\n")
-  time_euler += timer.elapsed()
   return result
-
 
 class rb_mat_euler(object):
 
@@ -267,29 +236,49 @@ class rb_mat(object):
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-def setup_resolution_range(f, nref_min, high_resolution, low_high_res_limit,
-                           max_low_high_res_limit, protocol):
-  d_spacings = f.d_spacings().data()
+def split_resolution_range(miller_array,
+                           nref_first_low,
+                           d_low = 8.0,
+                           d_high = 2.0,
+                           number_of_zones = 0,
+                           log = None):
+  if(log is None): log = sys.stdout
+  assert number_of_zones > 0
+  assert d_low > d_high
+  assert nref_first_low > 0
+  d_spacings = miller_array.d_spacings().data()
   d_max, d_min = flex.max(d_spacings), flex.min(d_spacings)
-  if(f.data().size() > nref_min and protocol == "multiple_zones"):
-     d_min_end = max(high_resolution, d_min)
-     nref = 0
-     d_max_start = d_max
-     while nref <= nref_min:
-        nref =((d_spacings <= d_max) & (d_spacings >= d_max_start)).count(True)
-        d_max_start = d_max_start - 0.01
-     if(abs(d_max_start - d_min_end) < 1.0):
-        return [d_min_end,]
-     else:
-        if(d_max_start >= max_low_high_res_limit):
-           return [max_low_high_res_limit, low_high_res_limit, d_min_end]
-        else:
-          if(d_max_start > low_high_res_limit):
-             return [d_max_start, low_high_res_limit, d_min_end]
-          else:
-             return [d_max_start, d_min_end]
+  d_high = max(d_min, d_high)
+  sel = flex.sort_permutation(d_spacings, reverse = True)
+  d_spacings = d_spacings.select(sel)
+  d_nref_first_low = d_spacings[:nref_first_low]
+  d_low_first = d_nref_first_low[len(d_nref_first_low)-1]
+  if(d_low_first > d_low): d_low_first = d_low
+  d_mids = []
+  if(number_of_zones != 1):
+     d_step = (d_low_first - d_high)/(number_of_zones - 1)
+     for i_zone in range(0, number_of_zones):
+       d_mids.append(d_low_first - d_step*i_zone)
   else:
-     return [d_min,]
+     d_mids.append(d_high)
+  print >> log, \
+    "Information about resolution zones and data for rigid body refinement:"
+  print >> log, \
+    "  Data resolution: %.2f - %.2f"%(d_max,d_min)
+  print >> log, \
+    "  Resolution for rigid body refinement: %.2f - %.2f"%(d_max,d_high)
+  print >> log, \
+    "  Number of zones for Multi-Zone (MZ) protocol: %d"%(number_of_zones)
+  print >> log, \
+    "  Requested number of reflections for first low resolution zone: %d"%(
+                                                                nref_first_low)
+  print >> log, "  High resolution cutoffs for MZ protocol: "
+  print >> log, "    zone  resolution  number of reflections"
+  for i, d_i in enumerate(d_mids):
+    nref = (d_spacings >= d_i).count(True)
+    print >> log, \
+      "     %d:   %.2f-%.2f                  %d" % (i+1, d_max, d_i, nref)
+  return d_mids
 
 class manager(object):
   def __init__(self, fmodel,
@@ -300,26 +289,20 @@ class manager(object):
                      t_initial               = None,
                      nref_min                = 1000,
                      max_iterations          = 50,
-                     convergence_test        = True,
-                     convergence_delta       = 0.00001,
                      bulk_solvent_and_scale  = True,
                      high_resolution         = 2.0,
-                     low_high_res_limit      = 6.0,
                      max_low_high_res_limit  = 8.0,
                      bss                     = None,
                      euler_angle_convention  = "xyz",
                      lbfgs_maxfev            = 10,
+                     number_of_zones         = 5,
                      protocol                = None,
-                     use_only_low_resolution_zones = None,
                      log                     = None):
     global time_rigid_body_total
-    global time_initialization
-    global time_fmodel_update_xray_structure
-    global time_rbbss
+    timer_rigid_body_total = user_plus_sys_time()
     save_r_work = fmodel.r_work()
     save_r_free = fmodel.r_free()
     save_xray_structure = fmodel.xray_structure.deep_copy_scatterers()
-    timer_rigid_body_total = user_plus_sys_time()
     xray.set_scatterer_grad_flags(
                                scatterers = fmodel.xray_structure.scatterers(),
                                site       = True)
@@ -348,64 +331,40 @@ class manager(object):
     fmodel_copy = fmodel.deep_copy()
     if(fmodel_copy.mask_params is not None):
        fmodel_copy.mask_params.verbose = -1
-    d_mins = setup_resolution_range(
-                               f                      = fmodel_copy.f_obs_w,
-                               nref_min               = nref_min,
-                               high_resolution        = high_resolution,
-                               low_high_res_limit     = low_high_res_limit,
-                               max_low_high_res_limit = max_low_high_res_limit,
-                               protocol               = protocol)
-    if(use_only_low_resolution_zones):
-       if(len(d_mins) > 1 and min(d_mins) < low_high_res_limit):
-          d_mins = d_mins[:len(d_mins)-1]
-    print >> log, \
-     "The following resolution zone(s) are defined for rigid body MZ protocol:"
-    d_spacings = fmodel_copy.f_obs_w.d_spacings().data()
-    print "   zone#  resolution range  number of reflections"
-    for i_seq, d_min in enumerate(d_mins):
-      d_sp_sel = d_spacings.select(d_spacings > d_min)
-      print >> log, "%8d   %s - %s             %-10d"%(i_seq+1,
-        str("%6.3f"%flex.max(d_sp_sel)), str("%6.3f"%flex.min(d_sp_sel)),
-        d_sp_sel.size())
+    d_mins = split_resolution_range(miller_array    = fmodel_copy.f_obs_w,
+                                    nref_first_low  = nref_min,
+                                    d_low           = max_low_high_res_limit,
+                                    d_high          = high_resolution,
+                                    number_of_zones = number_of_zones,
+                                    log             = log)
     print >> log
-    step_counter = 0
-    time_initialization += timer_rigid_body_total.elapsed()
-    fmodel.show_essential(header = "rigid body start", out = log)
-    print >> log
-    self.show(f     = fmodel_copy.f_obs_w,
-              r_mat = self.total_rotation,
-              t_vec = self.total_translation,
-              mc    = 0,
-              it    = 0.0,
-              ct    = convergence_test,
-              out   = log)
+    self.show(fmodel = fmodel,
+              r_mat  = self.total_rotation,
+              t_vec  = self.total_translation,
+              header = "Start")
     for res in d_mins:
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
         d_max_min = fmodel_copy.f_obs_w.d_max_min()
         line = "Refinement at resolution: "+\
-                 str("%7.1f"%d_max_min[0]).strip()+" - "+\
-                 str("%6.1f"%d_max_min[1]).strip()
+                 str("%7.2f"%d_max_min[0]).strip()+" - "+\
+                 str("%6.2f"%d_max_min[1]).strip()
         print_statistics.make_sub_header(line, out = log)
-        timer_uxs = user_plus_sys_time()
         fmodel_copy.update_xray_structure(xray_structure = xrs,
                                           update_f_calc  = True)
-        time_fmodel_update_xray_structure += timer_uxs.elapsed()
         rworks = flex.double()
         if(len(d_mins) == 1):
-           n_rigid_body_macro_cycles = 1
+           n_rigid_body_minimizer_cycles = 1
         else:
-           n_rigid_body_macro_cycles = min(int(res),4)
-        for i_macro_cycle in xrange(n_rigid_body_macro_cycles):
+           n_rigid_body_minimizer_cycles = min(int(res),4)
+        for i_macro_cycle in xrange(n_rigid_body_minimizer_cycles):
             if(bss is not None and bulk_solvent_and_scale):
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   save_bss_anisotropic_scaling = bss.anisotropic_scaling
                   bss.anisotropic_scaling=False
-               timer_rbbss = user_plus_sys_time()
                fmodel_copy.update_solvent_and_scale(params  = bss,
                                                     out     = log,
                                                     verbose = -1)
-               time_rbbss += timer_rbbss.elapsed()
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
             minimized = rigid_body_minimizer(
@@ -434,41 +393,33 @@ class manager(object):
                          rotation_matrices   = rotation_matrices,
                          translation_vectors = translation_vectors,
                          selections          = selections)
-            timer_uxs = user_plus_sys_time()
             fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                               update_f_calc  = True,
                                               update_f_mask  = True,
                                               out            = log)
-            time_fmodel_update_xray_structure += timer_uxs.elapsed()
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
-            if(i_macro_cycle == n_rigid_body_macro_cycles-1):
-               self.show(f     = fmodel_copy.f_obs_w,
-                         r_mat = self.total_rotation,
-                         t_vec = self.total_translation,
-                         mc    = i_macro_cycle+1,
-                         it    = minimized.counter,
-                         ct    = convergence_test,
-                         out   = log)
-            if(convergence_test):
-               rworks.append(rwork)
-               if(rworks.size() > 1):
-                  size = rworks.size() - 1
-                  if(abs(rworks[size]-rworks[size-1])<convergence_delta):
-                     break
-        step_counter += 1
-    timer_uxs = user_plus_sys_time()
-    fmodel.update(xray_structure = fmodel_copy.xray_structure,
-                  k_sol          = fmodel_copy.k_sol(),
-                  b_sol          = fmodel_copy.b_sol(),
-                  b_cart         = fmodel_copy.b_cart())
+        fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
+                                     update_f_calc  = True,
+                                     update_f_mask  = True,
+                                     out            = log)
+        if(bss is not None and bulk_solvent_and_scale):
+          fmodel.update_solvent_and_scale(params = bss, out = log, verbose= -1)
+        self.show(fmodel = fmodel,
+              r_mat  = self.total_rotation,
+              t_vec  = self.total_translation,
+              header = "Rigid body refinement")
+    if(bss is not None and bulk_solvent_and_scale):
+      fmodel.update_solvent_and_scale(out = log, verbose = -1)
     print >> log
-    fmodel.show_essential(header = "rigid body end", out = log)
+    self.show(fmodel = fmodel,
+              r_mat  = self.total_rotation,
+              t_vec  = self.total_translation,
+              header = "Rigid body end")
     print >> log
     self.evaluate_after_end(fmodel, save_r_work, save_r_free,
                                                       save_xray_structure, log)
-    time_fmodel_update_xray_structure += timer_uxs.elapsed()
     self.fmodel = fmodel
     time_rigid_body_total += timer_rigid_body_total.elapsed()
 
@@ -483,7 +434,7 @@ class manager(object):
        print >> log, "Reason: increase in R-factors after refinement."
        print >> log, "Start/final R-work: %6.4f/%-6.4f"%(save_r_work, r_work)
        print >> log, "Start/final R-free: %6.4f/%-6.4f"%(save_r_free, r_free)
-       print >> log, "Return to the previous model."
+       print >> log, "Return back to the previous model."
        print >> log
        fmodel.update_xray_structure(xray_structure = save_xray_structure,
                                     update_f_calc  = True,
@@ -491,46 +442,20 @@ class manager(object):
        fmodel.show_essential(header = "rigid body after step back", out = log)
        print >> log
 
-
-
   def rotation(self):
     return self.total_rotation
 
   def translation(self):
     return self.total_translation
 
-  def show(self, f,
-                 r_mat,
-                 t_vec,
-                 mc,
-                 it,
-                 ct,
-                 out = None):
+  def show(self, fmodel, r_mat, t_vec, header = "", out=None):
     if(out is None): out = sys.stdout
-    d_max, d_min = f.d_max_min()
-    nref = f.data().size()
-    mc = str(mc)
-    it = str(it)
-    if(self.euler_angle_convention == "zyz"):
-       part1 = "|-Euler angles zyz (macro cycle = "
-    else:
-       part1 = "|-Euler angles xyz (macro cycle = "
-    part2 = "; iterations = "
-    n = 77 - len(part1 + part2 + mc + it)
-    part3 = ")"+"-"*n+"|"
-    print >> out, part1 + mc + part2 + it + part3
-    part1 = "| resolution range: "
-    d_max = str("%.3f"%d_max)
-    part2 = " - "
-    d_min = str("%.3f"%d_min)
-    part3 = " ("
-    nref = str("%d"%nref)
-    if(ct): ct = "on"
-    else:   ct = "off"
-    part4 = " reflections) convergence test = "+str("%s"%ct)
-    n = 78 - len(part1+d_max+part2+d_min+part3+nref+part4)
-    part5 = " "*n+"|"
-    print >> out, part1+d_max+part2+d_min+part3+nref+part4+part5
+    fmodel._header_resolutions_nreflections(header=header, out=out)
+    print >> out, "| "+"  "*38+"|"
+    fmodel._rfactors_and_bulk_solvent_and_scale_params(out=out)
+    print >> out, "| "+"  "*38+"|"
+    print >> out,"| Rigid body shift (Euler angles %s):"% \
+                                        self.euler_angle_convention+" "*40 +"|"
     print_statistics.show_rigid_body_rotations_and_translations(
       out=out,
       prefix="",
@@ -602,7 +527,6 @@ class rigid_body_minimizer(object):
            i += self.dim_t
 
   def compute_functional_and_gradients(self, suppress_gradients=False):
-    global time_fmodel_update_xray_structure
     self.unpack_x()
     self.counter += 1
     rotation_matrices   = []
@@ -626,10 +550,8 @@ class rigid_body_minimizer(object):
                               atomic_weights      = self.atomic_weights)
     self.fmodel_copy.xray_structure.set_sites_frac(new_sites_frac)
     new_xrs = self.fmodel_copy.xray_structure
-    timer_uxs = user_plus_sys_time()
     self.fmodel_copy.update_xray_structure(xray_structure = new_xrs,
                                            update_f_calc  = True)
-    time_fmodel_update_xray_structure += timer_uxs.elapsed()
     tg_obj = target_and_grads(
                    centers_of_mass = centers_of_mass,
                    sites_cart      = new_sites_cart,
@@ -651,8 +573,6 @@ def apply_transformation_(xray_structure,
                           translation_vectors,
                           selections,
                           atomic_weights):
-  global time_apply_transformation
-  timer = user_plus_sys_time()
   assert len(selections) == len(rotation_matrices)
   assert len(selections) == len(translation_vectors)
   centers_of_mass = []
@@ -670,7 +590,6 @@ def apply_transformation_(xray_structure,
       sites_cart = apply_rigid_body_shift_obj.sites_cart
       sites_frac = apply_rigid_body_shift_obj.sites_frac
       centers_of_mass.append(apply_rigid_body_shift_obj.center_of_mass)
-  time_apply_transformation += timer.elapsed()
   return sites_frac, sites_cart, centers_of_mass
 
 def apply_transformation(xray_structure,
@@ -697,8 +616,6 @@ class target_and_grads(object):
                      rot_objs,
                      selections,
                      suppress_gradients):
-    global time_target_and_grads
-    timer = user_plus_sys_time()
     t_r = target_functor(compute_gradients=not suppress_gradients)
     self.f = t_r.target_work()
     if (suppress_gradients):
@@ -719,7 +636,6 @@ class target_and_grads(object):
         g_psi = (rot_obj.r_psi() * target_grads_wrt_r).trace()
         g_the = (rot_obj.r_the() * target_grads_wrt_r).trace()
         self.grads_wrt_r.append(flex.double([g_phi, g_psi, g_the]))
-    time_target_and_grads += timer.elapsed()
 
   def target(self):
     return self.f
