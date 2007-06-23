@@ -41,45 +41,10 @@ def exercise():
                             xray_structure         = xray_structure,
                             atom_attributes_list   = aal)
   # get dbe manager
-  mol.add_dbe(fmodel = None, dbe_params = None)
-  assert mol.dbe_manager.need_restraints
+  mol.add_dbe(fmodel = None)
   assert mol.dbe_selection.size() == 86
   assert mol.dbe_selection.count(True) == 45
   assert mol.dbe_selection.count(False) == 41
-  mol.xray_structure.shake_sites_in_place(mean_distance = 0.5)
-  mol.dbe_manager.target_and_gradients(
-                                  sites_cart = mol.xray_structure.sites_cart(),
-                                  dbe_selection = mol.dbe_selection)
-  # do fd test
-  scat_types = mol.xray_structure.scatterers().extract_scattering_types()
-  restraints_selection = mol.dbe_manager.restraints_selection
-  delta=0.00001
-  unit_cell = mol.xray_structure.unit_cell()
-  derivatives = flex.vec3_double()
-  counter = 0
-  for i_seq, sel in enumerate(mol.dbe_selection):
-    if(sel):
-       d_target_d_site = [0,0,0]
-       for ix in xrange(3):
-         target_values = []
-         for d_sign in (-1, 1):
-           modified_structure = mol.xray_structure.deep_copy_scatterers()
-           ms = modified_structure.scatterers()[i_seq]
-           site = list(ms.site)
-           site_cart = list(unit_cell.orthogonalize(site))
-           site_cart[ix] += d_sign * delta
-           site = unit_cell.fractionalize(site_cart)
-           ms.site = site
-           mol.dbe_manager.target_and_gradients(
-                                  sites_cart = modified_structure.sites_cart(),
-                                  dbe_selection = mol.dbe_selection)
-           target_values.append(mol.dbe_manager.target)
-         derivative = (target_values[1] - target_values[0]) / (2 * delta)
-         d_target_d_site[ix] = derivative
-       g1 = ["%8.4f"%i for i in d_target_d_site]
-       g2 = ["%8.4f"%i for i in mol.dbe_manager.gradients[i_seq]]
-       assert approx_equal(d_target_d_site, mol.dbe_manager.gradients[i_seq], 1.e-5)
-       counter += 1
 
 def run():
   exercise()

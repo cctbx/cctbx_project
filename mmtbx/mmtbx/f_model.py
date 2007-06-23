@@ -1439,24 +1439,24 @@ class manager(manager_mixin):
     out.flush()
     time_show += timer.elapsed()
 
-  def show_essential(self, header = None, out=None):
-    global time_show
-    timer = user_plus_sys_time()
-    if(out is None): out = sys.stdout
+  def _header_resolutions_nreflections(self, header, out):
     out.flush()
-    p = " "
     if(header is None): header = ""
     d_max, d_min = self.f_obs.d_max_min()
-    line1 = "---(resolution: "
+    line1 = "(resolution: "
     line2 = n_as_s("%6.2f",d_min)
     line3 = n_as_s("%6.2f",d_max)
     line4 = " - "
-    line5 = " A)"
-    tl = header+line1+line2+line4+line3+line5
+    line5 = " A; n_refl. = "
+    line6 = n_as_s("%d",self.f_obs.data().size())
+    tl = header+"-"+line1+line2+line4+line3+line5+line6
     line_len = len("|-"+"|"+tl)
     fill_len = 80-line_len-1
     print >> out, "|-"+tl+"-"*(fill_len)+"|"
-    print >> out, "| "+"  "*38+"|"
+    out.flush()
+
+  def _rfactors_and_bulk_solvent_and_scale_params(self, out):
+    out.flush()
     r_work = n_as_s("%6.4f",self.r_work()    )
     r_free = n_as_s("%6.4f",self.r_free()    )
     scale  = n_as_s("%6.3f",self.scale_k1_w())
@@ -1464,24 +1464,32 @@ class manager(manager_mixin):
     b_sol  = n_as_s("%6.2f",self.b_sol())
     b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart())
     b_iso  = n_as_s("%7.2f",self.b_iso())
-    err    = n_as_s("%6.2f",self.model_error_ml())
     line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
            "   Bsol= "+b_sol+"   scale= "+scale
     np = 79 - (len(line) + 1)
     if(np < 0): np = 0
-    print >> out, line + p*np + "|"
+    print >> out, line + " "*np + "|"
     print >> out, "| "+"  "*38+"|"
     print >> out, "| overall anisotropic scale matrix (Cartesian basis):    "\
                   "                     |"
     c = ","
-    line4 = "| (B11,B22,B33,B12,B13,B23)= ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+")"
+    line4 = "| (B11,B22,B33,B12,B13,B23)= ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+\
+                                                             "); tr./3= "+b_iso
     np = 79 - (len(line4) + 1)
     line4 = line4 + " "*np + "|"
     print >> out, line4
-    line5 = "| (B11+B22+B33)/3 = "+b_iso
-    np = 79 - (len(line5) + 1)
-    line5 = line5 + " "*np + "|"
-    print >> out, line5
+    out.flush()
+
+  def show_essential(self, header = None, out=None):
+    global time_show
+    timer = user_plus_sys_time()
+    if(out is None): out = sys.stdout
+    out.flush()
+    p = " "
+    self._header_resolutions_nreflections(header=header, out=out)
+    print >> out, "| "+"  "*38+"|"
+    self._rfactors_and_bulk_solvent_and_scale_params(out=out)
+    err = n_as_s("%6.2f",self.model_error_ml())
     print >> out, "| "+"  "*38+"|"
     line6="| maximum likelihood estimate for coordinate error: "+err+" A"
     np = 79 - (len(line6) + 1)
