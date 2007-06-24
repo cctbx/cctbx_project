@@ -237,9 +237,10 @@ class ncs:
   def ncs_groups(self):
     return self._ncs_groups
 
-  def read_ncs(self,file_name,source_info="",log=None):
+  def read_ncs(self,file_name,source_info="",log=None,quiet=False):
     if not log: log=sys.stdout
-    print >>log,"Reading NCS information from: ",file_name
+    if not quiet:
+      print >>log,"Reading NCS information from: ",file_name
     if source_info:
        print >>log," based on ",source_info
        self.source_info=source_info
