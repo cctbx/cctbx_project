@@ -51,10 +51,13 @@ par03 = False
 def run():
   log = open("example.html", "w")
   try:
-    import phenix.refinement
+    #import phenix.command_line.lsq_superpose_pdbs
+    from  phenix.command_line import lsq_superpose_pdbs
+    master_params=lsq_superpose_pdbs.master_params
+
   except:
     raise RuntimeError("Cannot import phenix.refinement.")
-  as_html.run(phil_object = phenix.refinement.master_params,
+  as_html.run(phil_object = master_params,
               log         = log)
 
 if (__name__ == "__main__" ):

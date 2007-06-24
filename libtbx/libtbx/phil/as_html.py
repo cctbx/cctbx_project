@@ -41,7 +41,7 @@ def format_string(object, ind, log, scope=False, allowed_line_lenght=79):
         raise Sorry(
           "Cannot create doc file: scope is too deep or its name is too long.")
      elements = (" "*ind, name, values, help)
-     fmt = "%s%s= <FONT color=CC0000>%s</FONT> <FONT color=blue>%s</FONT>"
+     fmt = "<REMARK PLACE ANCH HERE> %s%s= <FONT color=CC0000>%s</FONT> <FONT color=blue>%s</FONT>"
      line = fmt % elements
      line_length = len(" "*ind+str(object.name)+str(object.help)+values)
      line_to_appear = "%s%s= %s %s"%elements
@@ -76,7 +76,10 @@ def partial_line(line, allowed_line_lenght, line_to_appear):
     if(item == ">"):
        found_r = True
        n_r = i_seq
-       assert found_l and n_l is not None
+       if not (found_l and n_l is not None):
+          bad_line= "Problem with the line: "+line
+          raise AssertionError,bad_line
+       #assert found_l and n_l is not None
     if(found_l and found_r):
        brakets.append([n_l, n_r])
        found_l, found_r = False, False
@@ -126,7 +129,7 @@ def header(log):
   legend = """\
 Legend: black <b>bold</b> - scope names
         black - parameter names
-        <FONT color=CC0000>red</FONT> - parameres values
+        <FONT color=CC0000>red</FONT> - parameter values
         <FONT color=blue>blue</FONT> - parameter help
         <FONT color=blue><b>blue bold</b></FONT> - parameter help
         Parameter values:
