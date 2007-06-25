@@ -501,7 +501,11 @@ class show_points_and_lines_mixin(wxGLWindow):
       self.lines_display_list = gltbx.gl_managed.display_list()
       self.lines_display_list.compile()
       for i_seqs in self.line_i_seqs:
-        color = self.line_colors.get(tuple(i_seqs), (1,0,1))
+        color = self.line_colors.get(tuple(i_seqs))
+        if (color is None):
+          color = self.line_colors.get(tuple(reversed(i_seqs)))
+          if (color is None):
+            color = (1,0,1)
         glColor3f(*color)
         glBegin(GL_LINES)
         glVertex3f(*self.points[i_seqs[0]])
