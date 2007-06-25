@@ -56,7 +56,7 @@ def run():
     master_params=lsq_superpose_pdbs.master_params
 
   except:
-    raise RuntimeError("Cannot import phenix.refinement.")
+    raise RuntimeError("Cannot import master_params.")
   as_html.run(phil_object = master_params,
               log         = log)
 
