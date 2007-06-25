@@ -183,8 +183,12 @@ class structure(crystal.special_position_settings):
   def min_distance(self, other):
     return flex.min( self.distances(other = other, selection = selection) )
 
-  def scale_adp(self, factor):
-    for sc in self._scatterers:
+  def scale_adp(self, factor, selection=None):
+    if(selection is not None):
+       assert selection.size() == self._scatterers.size()
+    else:
+       selection = flex.bool(self._scatterers.size(), True)
+    for sc,sel in zip(self._scatterers, selection):
       if(sc.flags.use()):
         if(sc.flags.use_u_iso()):
            sc.u_iso = sc.u_iso * factor

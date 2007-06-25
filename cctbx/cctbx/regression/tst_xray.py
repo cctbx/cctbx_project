@@ -12,6 +12,7 @@ import random
 import pickle
 from cStringIO import StringIO
 import sys, random, math
+from libtbx.itertbx import count
 
 if (1):
   random.seed(0)
@@ -480,6 +481,33 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   xs.convert_to_isotropic()
   assert xs.scatterers().count_anisotropic() == 0
   assert approx_equal(xs.scatterers().extract_u_iso(), [0.1,0.2])
+### scale_adp:
+  cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer([xray.scatterer("o")]*100)
+  selection = flex.bool()
+  rd = flex.mersenne_twister(seed=0).random_double
+  for sc in scatterers:
+    sc.u_iso = 1.0 * rd()
+    sc.u_star = (1.0 * rd(), 2.0 * rd(), 3.0 * rd(),
+                 4.0 * rd(), 5.0 * rd(), 6.0 * rd())
+    sc.flags.set_use_u_iso(rd() > 0.5)
+    sc.flags.set_use_u_aniso(rd() > 0.5)
+    selection.append(rd() > 0.5)
+  xs = xray.structure(sp, scatterers)
+  xs_dc = xs.deep_copy_scatterers()
+  xs_dc.scale_adp(factor=2, selection=selection)
+  for i_seq,sc,sc_dc,sel in zip(count(), xs.scatterers(), xs_dc.scatterers(),
+                                                                    selection):
+    if(sel and sc.flags.use()):
+      if(sc.flags.use_u_iso()):
+         if(sc.u_iso != 0.0):
+           assert approx_equal(sc_dc.u_iso / sc.u_iso, 2.0)
+      if(sc.flags.use_u_aniso()):
+         for i in xrange(6):
+           if(sc.u_star[i] != 0.0):
+             assert approx_equal(sc_dc.u_star[i] / sc.u_star[i], 2.0)
+
 ### shake_sites
   selection_ = flex.bool([random.choice((0,1)) for i in xrange(500)])
   xs = random_structure.xray_structure(
