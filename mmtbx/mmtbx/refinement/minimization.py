@@ -64,6 +64,7 @@ class lbfgs(object):
       sel = flex.bool(self.model.refinement_flags.sites_individual[0].size(), False)
       for m in self.model.refinement_flags.sites_individual:
          sel = sel | m
+      self.hd_selection = self.hd_selection.select(sel)
       #if (self.h_params.mode == "riding"):
       #  sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_site(

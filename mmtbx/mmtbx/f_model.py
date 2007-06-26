@@ -1470,11 +1470,9 @@ class manager(manager_mixin):
     if(np < 0): np = 0
     print >> out, line + " "*np + "|"
     print >> out, "| "+"  "*38+"|"
-    print >> out, "| overall anisotropic scale matrix (Cartesian basis):    "\
-                  "                     |"
+    print >> out, "| overall anisotropic scale matrix (Cartesian basis; B11,B22,B33,B12,B13,B23):|"
     c = ","
-    line4 = "| (B11,B22,B33,B12,B13,B23)= ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+\
-                                                             "); tr./3= "+b_iso
+    line4 = "| ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+"); trace/3= "+b_iso
     np = 79 - (len(line4) + 1)
     line4 = line4 + " "*np + "|"
     print >> out, line4

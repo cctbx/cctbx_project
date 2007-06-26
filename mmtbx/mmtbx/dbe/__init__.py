@@ -33,6 +33,10 @@ dbe_master_params = iotbx.phil.parse("""\
     .type = int
   use_map = True
     .type = bool
+  build_only = False
+    .type = bool
+  file_prefix = None
+    .type = str
   peak_search_map {
      map_type = *k*Fobs-n*Fmodel m*Fobs-D*Fmodel
        .type=choice(multi=False)
