@@ -5,17 +5,10 @@ def remove_redundant_spaces(s):
   s = " ".join([i for i in s])
   return s
 
-def check_for_inequalities(s, log):
-  for item in s:
-    if(item in ["<",">"]):
-       raise Sorry(
-           "Problem line: \n%s \nTo fix: avoid using < or >, spell instead."%s)
-
 def format_string(object, ind, log, scope=False, allowed_line_lenght=79):
   name = str(object.name).strip()
   help = str(object.help).strip()
   help = remove_redundant_spaces(help)
-  check_for_inequalities(help, log)
   if(help == "None"): help = ""
   if(scope):
      if(len(" "*ind+name) >= allowed_line_lenght):
@@ -79,11 +72,13 @@ def partial_line(line, allowed_line_lenght, line_to_appear):
     if(item == "<"):
        found_l = True
        n_l = i_seq
-       assert not found_r and n_r is None
+       if(not (not found_r and n_r is None)):
+          raise Sorry("Bad line: %s"%line)
     if(item == ">"):
        found_r = True
        n_r = i_seq
-       assert found_l and n_l is not None
+       if(not (found_l and n_l is not None)):
+          raise Sorry("Bad line: %s"%line)
     if(found_l and found_r):
        brakets.append([n_l, n_r])
        found_l, found_r = False, False
