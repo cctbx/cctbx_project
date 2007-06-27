@@ -41,7 +41,7 @@ def format_string(object, ind, log, scope=False, allowed_line_lenght=79):
         raise Sorry(
           "Cannot create doc file: scope is too deep or its name is too long.")
      elements = (" "*ind, name, values, help)
-     fmt = "<REMARK PLACE ANCH HERE> %s%s= <FONT color=CC0000>%s</FONT> <FONT color=blue>%s</FONT>"
+     fmt = "<!--ANCHOR--> %s%s= <FONT color=CC0000>%s</FONT> <FONT color=blue>%s</FONT>"
      line = fmt % elements
      line_length = len(" "*ind+str(object.name)+str(object.help)+values)
      line_to_appear = "%s%s= %s %s"%elements
