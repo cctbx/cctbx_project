@@ -394,17 +394,16 @@ class find_peak_at_bond(object):
   def __init__(self,map_data,unit_cell,label,site_cart_1,site_cart_2,step=0.005):
     x1,y1,z1 = site_cart_1
     x2,y2,z2 = site_cart_2
-    self.status = None
-    self.peak_value = -1.e+6
-    self.one_dim_point = None
+    self.one_dim_point  = None
+    self.peak_value     = None
     self.peak_site_cart = None
+    self.status = None
     self.bond_length = math.sqrt((x1-x2)**2+(y1-y2)**2+(z1-z2)**2)
     alp = 0
     self.data = flex.double()
     self.dist = flex.double()
+    self.peak_sites = flex.vec3_double()
     i_seq = 0
-    i_max = 0
-    gof = 1.e+6
     while alp <= 1.0+1.e-6:
       xp = x1+alp*(x2-x1)
       yp = y1+alp*(y2-y1)
@@ -413,11 +412,7 @@ class find_peak_at_bond(object):
       ed_ = maptbx.eight_point_interpolation(map_data, site_frac)
       self.dist.append( math.sqrt((x1-xp)**2+(y1-yp)**2+(z1-zp)**2) )
       self.data.append(ed_)
-      if(ed_ > self.peak_value):
-         self.peak_value = ed_
-         self.peak_site_cart = unit_cell.orthogonalize(site_frac)
-         self.one_dim_point = math.sqrt((x1-xp)**2+(y1-yp)**2+(z1-zp)**2)
-         i_max = i_seq
+      self.peak_sites.append(unit_cell.orthogonalize(site_frac))
       alp += step
       i_seq += 1
     i_seq_left, i_seq_right, max_peak_i_seq = self.find_peak()
@@ -425,8 +420,12 @@ class find_peak_at_bond(object):
     self.a, self.b = None, None
     self.peak_data, self.peak_dist = None, None
     if([i_seq_left, i_seq_right].count(None) == 0):
+      self.one_dim_point  = self.dist[max_peak_i_seq]
+      self.peak_value     = self.data[max_peak_i_seq]
+      self.peak_site_cart = self.peak_sites[max_peak_i_seq]
       self.peak_data = self.data[i_seq_left:i_seq_right+1]
       self.peak_dist = self.dist[i_seq_left:i_seq_right+1]
+      assert (self.peak_data < 0.0).count(True) == 0
       origin = self.dist[max_peak_i_seq]
 
       dist = (self.peak_dist - origin).deep_copy()
@@ -453,12 +452,19 @@ class find_peak_at_bond(object):
             self.q_estimated = self.a
     self.set_status()
 
-  def find_peak(self, n_points = 3, offset = 0.1, tol = 15):
-    assert approx_equal(self.bond_length, self.dist[len(self.dist)-1])
+  def find_peak(self, peak_width = 0.3, offset = 0.1):
+    last_index = len(self.dist)-1
+    assert approx_equal(self.bond_length, self.dist[last_index])
+    peak_width_ = 0.0
+    for i_seq, d in enumerate(self.dist):
+      peak_width_ += d
+      if(peak_width_ >= peak_width): break
+    n_points = max(0, i_seq-1)/2+1
+    tol = max(0, i_seq-1)
     i_seq_left, i_seq_right, max_peak_i_seq = None, None, None
     peak_i_seqs = []
     for i_seq, data in enumerate(self.data):
-      if(i_seq >= n_points and i_seq <= len(self.data)-n_points):
+      if(i_seq >= n_points and i_seq <= last_index-n_points):
         if(self.dist[i_seq] > offset and
                                    self.bond_length-self.dist[i_seq] > offset):
           data_at_i_seq = self.data[i_seq]
@@ -466,47 +472,60 @@ class find_peak_at_bond(object):
           max_at_i_seq = True
           for i in range(-n_points, n_points+1):
             if(i != 0):
-              if(self.data[i_seq+i] > data_at_i_seq):
+              j = i_seq+i
+              if(j < 0): j=0
+              if(j > last_index): j=last_index
+              if(self.data[j] > data_at_i_seq):
                 max_at_i_seq = False
                 break
           if(max_at_i_seq): peak_i_seqs.append(i_seq)
     if(len(peak_i_seqs) > 0):
       max_peak_i_seq = peak_i_seqs[0]
       max_peak = self.data[max_peak_i_seq]
+      peaks = []
       for i_seq in peak_i_seqs:
-        if(self.data[i_seq] > max_peak):
-          max_peak = self.data[i_seq]
-          max_peak_i_seq = i_seq
-      i_seq_left = max_peak_i_seq
-      max_peak_left = max_peak
-      counter = 0
-      while i_seq_left >= 0:
-        if(self.data[i_seq_left] <= max_peak_left):
-           max_peak_left = self.data[i_seq_left]
-        else: counter += 1
-        if(self.data[i_seq_left] <= 0.0 or counter == tol):
-          i_seq_left += 1
-          i_seq_left += counter
-          break
-        i_seq_left -= 1
-        if(counter == tol):
-           i_seq_left += counter
-           break
-      i_seq_right = max_peak_i_seq
-      max_peak_right = max_peak
-      counter = 0
-      while i_seq_right <= len(self.data)-1: #XXX may be remove -1
-        if(self.data[i_seq_right] <= max_peak_right):
-           max_peak_right = self.data[i_seq_right]
-        else: counter += 1
-        if(self.data[i_seq_right] <= 0.0 or counter == tol):
-          i_seq_right -= 1
-          i_seq_right -= counter
-          break
-        i_seq_right += 1
-        if(counter == tol):
-           i_seq_right -= counter
-           break
+        i_seq_left = i_seq
+        max_peak_left = self.data[i_seq]
+        counter = 0
+        while i_seq_left >= 0:
+          if(self.data[i_seq_left] <= max_peak_left):
+             max_peak_left = self.data[i_seq_left]
+          else: counter += 1
+          if(self.data[i_seq_left] <= 0.0 or counter == tol):
+            i_seq_left += 1
+            i_seq_left += counter
+            break
+          i_seq_left -= 1
+        #assert i_seq_left < i_seq
+        i_seq_right = i_seq
+        max_peak_right =  self.data[i_seq]
+        counter = 0
+        while i_seq_right <= len(self.data)-1:
+          if(self.data[i_seq_right] <= max_peak_right):
+             max_peak_right = self.data[i_seq_right]
+          else: counter += 1
+          if(self.data[i_seq_right] <= 0.0 or counter == tol):
+            i_seq_right -= 1
+            i_seq_right -= counter
+            break
+          i_seq_right += 1
+        #assert i_seq_right > i_seq
+        if(i_seq_left < i_seq and i_seq_right > i_seq):
+          peaks.append((i_seq, i_seq_left, i_seq_right))
+      d=-1.e+6
+      peak_sel = None
+      for peak in peaks:
+        d_ = abs(peak[0]-peak[1])+abs(peak[1]-peak[0])
+        if(d_ > d):
+          peak_sel = peak
+          d=d_
+      if(peak_sel is not None):
+        i_seq_left, i_seq_right, max_peak_i_seq = \
+                                          peak_sel[1], peak_sel[2], peak_sel[0]
+        assert i_seq_right > max_peak_i_seq
+        assert i_seq_left < max_peak_i_seq
+      else:
+        i_seq_left, i_seq_right, max_peak_i_seq = None, None, None
       if(i_seq_left < 0): i_seq_left=0
       if(i_seq_right > len(self.data)-1): i_seq_right=len(self.data)-1
       if(i_seq_left >= i_seq_right):
@@ -515,17 +534,20 @@ class find_peak_at_bond(object):
 
   def set_status(self):
     self.status = True
-    d_l = self.one_dim_point
-    d_r = self.bond_length - self.one_dim_point
-    if(d_l < 0.1 or d_r < 0.1):
-       self.status = False
-    if([self.a, self.b].count(None) == 0 and (self.a <= 0.0 or self.b <= 0.0)):
-       self.status = False
-    if([self.q_estimated, self.b_estimated].count(None) == 0 and
-       (self.q_estimated <= 0.0 or self.b_estimated <= 0.0)):
-       self.status = False
-    if((self.data > 0).count(True) == 0):
-       self.status = False
+    if(self.one_dim_point is not None):
+      d_l = self.one_dim_point
+      d_r = self.bond_length - self.one_dim_point
+      if(d_l < 0.1 or d_r < 0.1):
+         self.status = False
+      if([self.a, self.b].count(None) == 0 and (self.a <= 0.0 or self.b <= 0.0)):
+         self.status = False
+      if([self.q_estimated, self.b_estimated].count(None) == 0 and
+         (self.q_estimated <= 0.0 or self.b_estimated <= 0.0)):
+         self.status = False
+      if((self.data > 0).count(True) == 0):
+         self.status = False
+    else:
+      self.status = False
 
 def set_status(iass, params):
   for ias in iass:
