@@ -24,6 +24,8 @@ env_etc.include_registry.append(
 
 Export("mtz_env")
 
+SConscript("include/iotbx/mtz/SConscript")
+
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
   env_iotbx_boost_python_ext = env_no_includes_boost_python_ext.Copy()
@@ -36,5 +38,4 @@ if (not env_etc.no_boost_python):
   SConscript("detectors/SConscript")
   SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
-  SConscript("include/iotbx/mtz/SConscript")
   SConscript("include/iotbx/pdb/SConscript")
