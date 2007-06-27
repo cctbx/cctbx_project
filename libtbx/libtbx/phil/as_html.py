@@ -142,9 +142,10 @@ Legend: black <b>bold</b> - scope names
   print >> log, legend
   print >> log, "<b>%s"%("-"*79),"</b>"
 
-def run(phil_object, log):
-  print >> log, """<META http-equiv=Content-Type content="text/html; charset=utf-8">"""
-  print >> log, """<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"""
+def run(phil_object, log,skip_head=False):
+  if not skip_head:
+    print >> log, """<META http-equiv=Content-Type content="text/html; charset=utf-8">"""
+    print >> log, """<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"""
 
   header(log)
   scope_walk(p = phil_object, ind = 0, log = log)
