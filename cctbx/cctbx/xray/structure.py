@@ -720,14 +720,20 @@ class structure(crystal.special_position_settings):
       u_min=u_min,
       u_max=u_max)
 
-  def shift_us(self, u_shift=None, b_shift=None):
+  def shift_us(self, u_shift=None, b_shift=None, selection=None):
     assert [u_shift, b_shift].count(None) == 1
     if (u_shift is None):
       u_shift = adptbx.b_as_u(b_shift)
-    ext.shift_us(
-      scatterers=self._scatterers,
-      unit_cell=self.unit_cell(),
-      u_shift=u_shift)
+    if(selection is None):
+      ext.shift_us(
+        scatterers=self._scatterers,
+        unit_cell=self.unit_cell(),
+        u_shift=u_shift)
+    else:
+      ext.shift_us(scatterers = self._scatterers,
+                   unit_cell  = self.unit_cell(),
+                   u_shift    = u_shift,
+                   selection  = selection)
 
   def shift_occupancies(self, q_shift, selection=None):
     if(selection is not None):
