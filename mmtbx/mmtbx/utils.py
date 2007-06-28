@@ -375,97 +375,210 @@ def process_monomer_cif_files(cif_objects, parameters, mon_lib_srv, ener_lib):
       ener_lib.process_cif_object(cif_object=cif_object, file_name=file_name)
     parameters.file_name.append(file_name)
 
-class extract_f_obs(object):
-  def __init__(self, f_obs, params, neutron_data, log):
-    if(params.main.scattering_table == "neutron" or neutron_data):
-       header = "Neutron data"
-    else:
-       header = "X-ray data"
-    mmtbx.refinement.print_statistics.make_header(header, out=log)
-    f_obs.show_comprehensive_summary(f = log)
-    print >> log
-    if(f_obs.is_complex_array()): f_obs = abs(f_obs)
-    if(f_obs.is_xray_intensity_array()):
-       selection_by_isigma = self._apply_sigma_cutoff(
-         f_obs   = f_obs,
-         n       = params.main.sigma_iobs_rejection_criterion,
-         message = "Number of reflections with |Iobs|/sigma(Iobs) < %5.2f: %d",
-         log     = log)
-       if(selection_by_isigma is not None):
-          f_obs = f_obs.select(selection_by_isigma)
-       print >> log, \
-                   "Intensities converted to amplitudes for use in refinement."
-       f_obs = f_obs.f_sq_as_f()
-       print >> log
-    f_obs.set_observation_type_xray_amplitude()
-    f_obs = f_obs.map_to_asu()
-    selection = f_obs.all_selection()
-    if(neutron_data):
-       d_max = params.neutron.low_resolution
-       d_min = params.neutron.high_resolution
-    else:
-       d_max = params.main.low_resolution
-       d_min = params.main.high_resolution
-    if(d_max is not None):
-       selection &= f_obs.d_spacings().data() <= d_max
-    if(d_min is not None):
-       selection &= f_obs.d_spacings().data() >= d_min
-    selection_strictly_positive = f_obs.data() > 0
-    print >> log, \
-      "Number of F-obs in resolution range:                  ", \
-      selection.count(True)
-    print >> log, \
-      "Number of F-obs <= 0:                                 ", \
-      selection_strictly_positive.count(False)
-    selection &= selection_strictly_positive
-    selection_by_fsigma = self._apply_sigma_cutoff(
-         f_obs   = f_obs,
-         n       = params.main.sigma_fobs_rejection_criterion,
-         message = "Number of reflections with |Fobs|/sigma(Fobs) < %5.2f: %d",
-         log     = log)
-    if(selection_by_fsigma is not None): selection &= selection_by_fsigma
-    if(f_obs.sigmas() is not None):
-       sigma_cutoff = params.main.sigma_fobs_rejection_criterion
-       if(sigma_cutoff is not None and sigma_cutoff > 0):
-          selection_by_sigma = f_obs.data() > f_obs.sigmas()*sigma_cutoff
-          print >> log, \
-            "Number of reflections with |Fobs|/sigma(Fobs) < %5.2f: %d" % (
-              sigma_cutoff, selection_by_sigma.count(False))
-          selection &= selection_by_sigma
-    selection &= f_obs.d_star_sq().data() > 0
-    f_obs = f_obs.select(selection)
-    rr = f_obs.resolution_range()
-    print >> log, "Refinement resolution range: d_max = %8.4f" % rr[0]
-    print >> log, "                             d_min = %8.4f" % rr[1]
-    print >> log
-    if(f_obs.indices().size() == 0):
-       raise Sorry(
-             "No data left after applying resolution limits and sigma cutoff.")
-    if(not neutron_data):
-       if(params.main.force_anomalous_flag_to_be_equal_to is not None):
-          if(not params.main.force_anomalous_flag_to_be_equal_to):
-             print >> log, \
-               "refinement.main.force_anomalous_flag_to_be_equal_to = False"
-             if(f_obs.anomalous_flag()):
-                print >> log, "Reducing X-ray data to non-anomalous array."
-                merged = f_obs.as_non_anomalous_array().merge_equivalents()
-                merged.show_summary(out=log, prefix="  ")
-                f_obs = merged.array().set_observation_type( f_obs )
-                del merged
-                print >> log
-          elif(not f_obs.anomalous_flag()):
-             print >> log, \
-               "refinement.main.force_anomalous_flag_to_be_equal_to = True"
-             print >> log, "Generating Bijvoet mates of X-ray data."
-             f_obs = f_obs.generate_bijvoet_mates()
-             print >> log
-       twin_analyses = mmtbx.scaling.twin_analyses.twin_analyses_brief(
-                               miller_array = f_obs, cut_off = 4.0, out = None)
-       if(twin_analyses   == True):  result = "twinned"
-       elif(twin_analyses == False): result = "not twinned"
-       elif(twin_analyses is None):  result = "unknown"
-       else: raise Sorry("Twin analysis failed.")
-       print >> log, "Twin analysis result: ", result
-       self.twin_analyses_ = twin_analyses
-    print >> log
-    self.f_obs_ = f_obs
+def get_atom_selections(all_chain_proxies,
+                        selection_strings     = None,
+                        iselection            = True,
+                        one_group_per_residue = False,
+                        hydrogens_only        = False,
+                        xray_structure        = None):
+  if(hydrogens_only):
+     assert xray_structure is not None
+  if(selection_strings is None or isinstance(selection_strings, str)):
+     selection_strings = [selection_strings]
+  n_none = selection_strings.count(None)
+  ss_size = len(selection_strings)
+  if((one_group_per_residue and n_none==0) or (ss_size > 1 and n_none > 0)):
+     raise Sorry('Ambiguous selection.')
+  selections = []
+  if(ss_size == 1 and n_none == 1 and not one_group_per_residue):
+     selections.append(atom_selection(all_chain_proxies = all_chain_proxies,
+                                      string            = "all"))
+  elif(one_group_per_residue and ss_size == 1 and n_none == 1):
+     assert iselection
+     assert len(selections) == 0
+     residues = []
+     hd_selection = None
+     if(hydrogens_only):
+        scat_types = xray_structure.scatterers().extract_scattering_types()
+        d_selection = (scat_types == "D")
+        h_selection = (scat_types == "H")
+        hd_selection = d_selection | h_selection
+     if(hd_selection is not None and hd_selection.count(True) == 0 and hydrogens_only):
+        raise Sorry('No hydrogens to select.')
+     for model in all_chain_proxies.stage_1.get_models_and_conformers():
+         n_conformers = len(model.conformers)
+         for conformer in model.conformers:
+             residues_in_conformer = []
+             for chain in conformer.get_chains():
+                 for residue in chain.residues:
+                     if(n_conformers == 1):
+                        result = flex.size_t()
+                        if(hydrogens_only):
+                           for i_sel in residue.iselection:
+                               if(scat_types[i_sel] in ["H", "D"]):
+                                  result.append(i_sel)
+                        else:
+                           result = residue.iselection
+                        selections.append(result)
+                     else:
+                        residues_in_conformer.append(residue)
+             residues.append(residues_in_conformer)
+         if(n_conformers > 1):
+            assert len(selections) == 0
+            residues0 = residues[0]
+            for res in residues0:
+              selections.append(res.iselection)
+            for residuesi in residues[1:]:
+              i_seq = 0
+              for res1, res2 in zip(residues0, residuesi):
+                is1 = res1.iselection
+                is2 = res2.iselection
+                if (res1.id() == res2.id()):
+                   if(list(is1) != list(is2)):
+                      res_sel = []
+                      for item in list(is1)+list(is2)+list(selections[i_seq]):
+                        if(item not in res_sel):
+                           res_sel.append(item)
+                      selections[i_seq] = flex.size_t(res_sel)
+                else:
+                   pass
+                   #raise Sorry(
+                   #"Two conformers have different sequences: not implemented.")
+                i_seq += 1
+            # keep eye on this
+            if(hydrogens_only):
+               for i_seq, sel in enumerate(selections):
+                 result = flex.size_t()
+                 for si in sel:
+                   if(scat_types[si] in ["H", "D"]):
+                      result.append(si)
+                 selections[i_seq] = result
+  elif(ss_size != 1 or n_none == 0 and not one_group_per_residue):
+     for selection_string in selection_strings:
+        selections.append(atom_selection(all_chain_proxies = all_chain_proxies,
+                                         string            = selection_string))
+  else:
+     raise Sorry('Ambiguous selection.')
+  if(iselection):
+     for i_seq, selection in enumerate(selections):
+       if(hasattr(selection, "iselection")):
+          selections[i_seq] = selections[i_seq].iselection()
+  return selections
+
+def atom_selection(all_chain_proxies, string):
+  try: return all_chain_proxies.selection(string = string)
+  except KeyboardInterrupt: raise
+  except Exception: raise Sorry("Invalid atom selection: %s" % string)
+
+def write_pdb_file(xray_structure,
+                   atom_attributes_list,
+                   selection = None,
+                   out = None):
+  if(out is None): out = sys.stdout
+  crystal_symmetry = xray_structure.crystal_symmetry()
+  print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
+  print >> out, pdb.format_scale_records(
+                                      unit_cell = crystal_symmetry.unit_cell())
+  xrs = xray_structure
+  sites_cart  = xrs.sites_cart()
+  scatterers  = xrs.scatterers()
+  occupancies = scatterers.extract_occupancies()
+  u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(xrs.unit_cell())
+  u_isos      = xrs.extract_u_iso_or_u_equiv()
+  scat_types  = scatterers.extract_scattering_types()
+  #XXX high duplication
+  if(selection is None):
+     for i_seq,atom in enumerate(atom_attributes_list):
+         if(atom.name is None): name = "    "
+         else: name = atom.name
+         if(atom.altLoc is None): altLoc = " "
+         else: altLoc = atom.altLoc
+         if(atom.chainID is None): chainID = " "
+         else: chainID = atom.chainID
+         if(atom.resSeq is None): resSeq = 1
+         else: resSeq = atom.resSeq
+         if(atom.iCode is None): iCode = " "
+         else: iCode = atom.iCode
+         if(atom.segID is None): segID = "    "
+         else: segID = atom.segID
+         if(atom.element is None): element = "  "
+         else: element = atom.element
+         if(atom.charge is None): charge = "  "
+         else: charge = atom.charge
+         print >> out, pdb.format_atom_record(
+                                  record_name = atom.record_name(),
+                                  serial      = i_seq+1,
+                                  name        = name,
+                                  altLoc      = altLoc,
+                                  resName     = atom.resName,
+                                  chainID     = chainID,
+                                  resSeq      = resSeq,
+                                  iCode       = iCode,
+                                  site        = sites_cart[i_seq],
+                                  occupancy   = occupancies[i_seq],
+                                  tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
+                                  segID       = segID,
+                                  element     = scat_types[i_seq],#element,
+                                  charge      = charge)
+         if(scatterers[i_seq].flags.use_u_aniso()):
+            print >> out, pdb.format_anisou_record(
+                                  serial      = i_seq+1,
+                                  name        = name,
+                                  altLoc      = altLoc,
+                                  resName     = atom.resName,
+                                  chainID     = chainID,
+                                  resSeq      = resSeq,
+                                  iCode       = iCode,
+                                  u_cart      = u_carts[i_seq],
+                                  segID       = segID,
+                                  element     = scat_types[i_seq],#element,
+                                  charge      = charge)
+     print >> out, "END"
+  else:
+     for i_seq,atom in enumerate(atom_attributes_list):
+         if(selection[i_seq]):
+            if(atom.name is None): name = "    "
+            else: name = atom.name
+            if(atom.altLoc is None): altLoc = " "
+            else: altLoc = atom.altLoc
+            if(atom.chainID is None): chainID = " "
+            else: chainID = atom.chainID
+            if(atom.resSeq is None): resSeq = 1
+            else: resSeq = atom.resSeq
+            if(atom.iCode is None): iCode = " "
+            else: iCode = atom.iCode
+            if(atom.segID is None): segID = "    "
+            else: segID = atom.segID
+            if(atom.element is None): element = "  "
+            else: element = atom.element
+            if(atom.charge is None): charge = "  "
+            else: charge = atom.charge
+            print >> out, pdb.format_atom_record(
+                                  record_name = atom.record_name(),
+                                  serial      = i_seq+1,
+                                  name        = name,
+                                  altLoc      = altLoc,
+                                  resName     = atom.resName,
+                                  chainID     = chainID,
+                                  resSeq      = resSeq,
+                                  iCode       = iCode,
+                                  site        = sites_cart[i_seq],
+                                  occupancy   = occupancies[i_seq],
+                                  tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
+                                  segID       = segID,
+                                  element     = scat_types[i_seq],#element,
+                                  charge      = charge)
+            if(scatterers[i_seq].flags.use_u_aniso()):
+               print >> out, pdb.format_anisou_record(
+                                  serial      = i_seq+1,
+                                  name        = name,
+                                  altLoc      = altLoc,
+                                  resName     = atom.resName,
+                                  chainID     = chainID,
+                                  resSeq      = resSeq,
+                                  iCode       = iCode,
+                                  u_cart      = u_carts[i_seq],
+                                  segID       = segID,
+                                  element     = scat_types[i_seq],#element,
+                                  charge      = charge)
+     print >> out, "END"
