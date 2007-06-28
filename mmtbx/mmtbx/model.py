@@ -15,6 +15,7 @@ from libtbx.utils import Sorry, user_plus_sys_time
 from mmtbx.tls import tools
 from cctbx import adp_restraints
 from mmtbx import dbe
+from mmtbx import utils
 
 
 time_model_show = 0.0
@@ -373,122 +374,11 @@ class manager(object):
     out.flush()
     time_model_show += timer.elapsed()
 
-  def write_pdb_file(self, out, crystal_symmetry = None, selection=None,
-                     xray_structure = None):
-    if(crystal_symmetry is None):
-       crystal_symmetry = self.crystal_symmetry
-    if(crystal_symmetry is not None):
-       print >> out, pdb.format_cryst1_record(
-                                         crystal_symmetry = crystal_symmetry)
-       print >> out, pdb.format_scale_records(
-                                    unit_cell = crystal_symmetry.unit_cell())
-    if(xray_structure is None):
-       xrs = self.xray_structure
-    else:
-       xrs = xray_structure
-    sites_cart  = xrs.sites_cart()
-    scatterers  = xrs.scatterers()
-    occupancies = scatterers.extract_occupancies()
-    u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(xrs.unit_cell())
-    u_isos      = xrs.extract_u_iso_or_u_equiv()
-    scat_types  = scatterers.extract_scattering_types()
-    #XXX high duplication
-    if(selection is None):
-       for i_seq,atom in enumerate(self.atom_attributes_list):
-           if(atom.name is None): name = "    "
-           else: name = atom.name
-           if(atom.altLoc is None): altLoc = " "
-           else: altLoc = atom.altLoc
-           if(atom.chainID is None): chainID = " "
-           else: chainID = atom.chainID
-           if(atom.resSeq is None): resSeq = 1
-           else: resSeq = atom.resSeq
-           if(atom.iCode is None): iCode = " "
-           else: iCode = atom.iCode
-           if(atom.segID is None): segID = "    "
-           else: segID = atom.segID
-           if(atom.element is None): element = "  "
-           else: element = atom.element
-           if(atom.charge is None): charge = "  "
-           else: charge = atom.charge
-           print >> out, pdb.format_atom_record(
-                                    record_name = atom.record_name(),
-                                    serial      = i_seq+1,
-                                    name        = name,
-                                    altLoc      = altLoc,
-                                    resName     = atom.resName,
-                                    chainID     = chainID,
-                                    resSeq      = resSeq,
-                                    iCode       = iCode,
-                                    site        = sites_cart[i_seq],
-                                    occupancy   = occupancies[i_seq],
-                                    tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                    segID       = segID,
-                                    element     = scat_types[i_seq],#element,
-                                    charge      = charge)
-           if(scatterers[i_seq].flags.use_u_aniso()):
-              print >> out, pdb.format_anisou_record(
-                                    serial      = i_seq+1,
-                                    name        = name,
-                                    altLoc      = altLoc,
-                                    resName     = atom.resName,
-                                    chainID     = chainID,
-                                    resSeq      = resSeq,
-                                    iCode       = iCode,
-                                    u_cart      = u_carts[i_seq],
-                                    segID       = segID,
-                                    element     = scat_types[i_seq],#element,
-                                    charge      = charge)
-       print >> out, "END"
-    else:
-       for i_seq,atom in enumerate(self.atom_attributes_list):
-           if(selection[i_seq]):
-              if(atom.name is None): name = "    "
-              else: name = atom.name
-              if(atom.altLoc is None): altLoc = " "
-              else: altLoc = atom.altLoc
-              if(atom.chainID is None): chainID = " "
-              else: chainID = atom.chainID
-              if(atom.resSeq is None): resSeq = 1
-              else: resSeq = atom.resSeq
-              if(atom.iCode is None): iCode = " "
-              else: iCode = atom.iCode
-              if(atom.segID is None): segID = "    "
-              else: segID = atom.segID
-              if(atom.element is None): element = "  "
-              else: element = atom.element
-              if(atom.charge is None): charge = "  "
-              else: charge = atom.charge
-              print >> out, pdb.format_atom_record(
-                                    record_name = atom.record_name(),
-                                    serial      = i_seq+1,
-                                    name        = name,
-                                    altLoc      = altLoc,
-                                    resName     = atom.resName,
-                                    chainID     = chainID,
-                                    resSeq      = resSeq,
-                                    iCode       = iCode,
-                                    site        = sites_cart[i_seq],
-                                    occupancy   = occupancies[i_seq],
-                                    tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                    segID       = segID,
-                                    element     = scat_types[i_seq],#element,
-                                    charge      = charge)
-              if(scatterers[i_seq].flags.use_u_aniso()):
-                 print >> out, pdb.format_anisou_record(
-                                    serial      = i_seq+1,
-                                    name        = name,
-                                    altLoc      = altLoc,
-                                    resName     = atom.resName,
-                                    chainID     = chainID,
-                                    resSeq      = resSeq,
-                                    iCode       = iCode,
-                                    u_cart      = u_carts[i_seq],
-                                    segID       = segID,
-                                    element     = scat_types[i_seq],#element,
-                                    charge      = charge)
-       print >> out, "END"
-
+  def write_pdb_file(self, out, selection = None, xray_structure = None):
+    utils.write_pdb_file(xray_structure       = self.xray_structure,
+                         atom_attributes_list = self.atom_attributes_list,
+                         selection            = selection,
+                         out                  = out)
 
   def remove_atoms(self, atom_type         = None,
                          leave_only_labels = None):
