@@ -291,7 +291,7 @@ class de_bulk_solvent_scaler(object):
     self.x = flex.double([0]*self.n)
     self.de = differential_evolution.differential_evolution_optimizer(
      self,
-     population_size=10,
+     population_size=14,
      f=0.8,
      cr=0.7,
      n_cross=2,
@@ -1027,7 +1027,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     dc = self.deep_copy()
     new_object = twin_model_manager(
       f_obs        = dc.f_obs.resolution_filter(d_max,d_min) ,
-      f_mask             = dc.f_mask_array.resolution_filer(d_max,d_min),
+      f_mask             = dc.f_mask_array.resolution_filter(d_max,d_min),
       free_array         = dc.free_array.resolution_filter(d_max,d_min),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
@@ -1731,11 +1731,11 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     tmp_free = self.free_array
     if (detwinned_data is None) or forced_update:
       self.update_sigmaa_object = True
-      detwinned_data,f_model,tmp_free = self.detwin_data()
+      detwinned_data,f_model_data,tmp_free = self.detwin_data()
     if self.update_sigmaa_object:
       self.sigmaa_object_cache = sigmaa_estimation.sigmaa_estimator(
         miller_obs   = detwinned_data,
-        miller_calc  = f_model,
+        miller_calc  = f_model_data,
         r_free_flags = tmp_free,
         kernel_width_free_reflections=200,
         )
@@ -2314,8 +2314,44 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
     print >> out, "|" +"-"*77+"|"
     out.flush()
 
+  def _header_resolutions_nreflections(self, header, out):
+    out.flush()
+    if(header is None): header = ""
+    d_max, d_min = self.f_obs.d_max_min()
+    line1 = "(resolution: "
+    line2 = n_as_s("%6.2f",d_min)
+    line3 = n_as_s("%6.2f",d_max)
+    line4 = " - "
+    line5 = " A; n_refl. = "
+    line6 = n_as_s("%d",self.f_obs.data().size())
+    tl = header+"-"+line1+line2+line4+line3+line5+line6
+    line_len = len("|-"+"|"+tl)
+    fill_len = 80-line_len-1
+    print >> out, "|-"+tl+"-"*(fill_len)+"|"
+    out.flush()
 
-
+  def _rfactors_and_bulk_solvent_and_scale_params(self, out):
+    out.flush()
+    r_work = n_as_s("%6.4f",self.r_work()    )
+    r_free = n_as_s("%6.4f",self.r_free()    )
+    scale  = n_as_s("%6.3f",self.scale_k1_w())
+    k_sol  = n_as_s("%4.2f",self.k_sol())
+    b_sol  = n_as_s("%6.2f",self.b_sol())
+    b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart())
+    b_iso  = n_as_s("%7.2f",self.b_iso())
+    line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
+           "   Bsol= "+b_sol+"   scale= "+scale
+    np = 79 - (len(line) + 1)
+    if(np < 0): np = 0
+    print >> out, line + " "*np + "|"
+    print >> out, "| "+"  "*38+"|"
+    print >> out, "| overall anisotropic scale matrix (Cartesian basis; B11,B22,B33,B12,B13,B23):|"
+    c = ","
+    line4 = "| ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+"); trace/3= "+b_iso
+    np = 79 - (len(line4) + 1)
+    line4 = line4 + " "*np + "|"
+    print >> out, line4
+    out.flush()
 
 
 def ls_ff_weights(f_obs, atom, B):
