@@ -438,10 +438,10 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
               dqdbb = 0;
             }
             // place them in the correct positions please
-            dtda[ calc_index_a ] += dqdaa;
-            dtdb[ calc_index_a ] += dqdba;
-            dtda[ calc_index_b ] += dqdab;
-            dtdb[ calc_index_b ] += dqdbb;
+            dtda[ calc_index_a ] += dqdaa*w_obs_[ii];
+            dtdb[ calc_index_a ] += dqdba*w_obs_[ii];
+            dtda[ calc_index_b ] += dqdab*w_obs_[ii];
+            dtdb[ calc_index_b ] += dqdbb*w_obs_[ii];
           }
           scitbx::af::tiny<scitbx::af::shared<FloatType>,2> result(dtda,dtdb);
           return( result  );
@@ -831,7 +831,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
            i_b = i_obs[ tmp_loc ];
            s_a = 0.0;
            s_b = 0.0;
-           if (sig_obs.size()==0){
+           if (sig_obs.size()!=0){
              s_a = sig_obs[ ii ];
              s_b = sig_obs[ tmp_loc ];
            }
@@ -848,7 +848,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
 
       }
       CCTBX_ASSERT( i_detwin.size() == i_obs.size() );
-      CCTBX_ASSERT( s_detwin.size() == sig_obs.size() );
+      CCTBX_ASSERT( s_detwin.size() == i_obs.size() );
       scitbx::af::tiny< scitbx::af::shared<FloatType>, 2> result( i_detwin, s_detwin );
 
       return( result );
@@ -871,8 +871,8 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
       FloatType i_out, s_out, s_a, s_b;
       for (std::size_t ii=0; ii<obs_size_; ii++){
         tmp_loc = obs_to_twin_obs_[ii];
-        CCTBX_ASSERT(tmp_loc<obs_size_);
-        i_out = -10;
+        //CCTBX_ASSERT(tmp_loc<=obs_size_);
+        i_out = i_obs[ii];
         s_out = 100;
         if (tmp_loc>=0){
           s_a = 0.0;
