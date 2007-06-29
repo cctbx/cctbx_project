@@ -2373,8 +2373,38 @@ group {
     .type=words
   w=plain "% ^&*"
     .type=words
+  int_true = True
+    .type=int
+  int_false = False
+    .type=int
+  float_true = True
+    .type=float
+  float_false = False
+    .type=float
 }
 """)
+  try: parameters.get(path="group.int_true",
+    with_substitution=False).objects[0].extract()
+  except RuntimeError, e:
+    assert str(e)== 'Integer expression expected, "True" found (input line 50)'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get(path="group.int_false",
+    with_substitution=False).objects[0].extract()
+  except RuntimeError, e:
+    assert str(e)=='Integer expression expected, "False" found (input line 52)'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get(path="group.float_true",
+    with_substitution=False).objects[0].extract()
+  except RuntimeError, e:
+    assert str(e)== \
+             'Floating-point expression expected, "True" found (input line 54)'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get(path="group.float_false",
+    with_substitution=False).objects[0].extract()
+  except RuntimeError, e:
+    assert str(e)== \
+            'Floating-point expression expected, "False" found (input line 56)'
+  else: raise RuntimeError("Exception expected.")
   assert parameters.get(path="group.a",
     with_substitution=False).objects[0].extract() is True
   assert parameters.get(path="group.a",
