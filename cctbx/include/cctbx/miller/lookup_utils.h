@@ -40,8 +40,10 @@ namespace lookup_utils{
     asu_choice_(sgtype_),
     hkl_lookup_(),
     n_duplicates_( 0 ),
-    anomalous_flag_(anomalous_flag)
+    anomalous_flag_(anomalous_flag),
+    n_indices_( hkl.size() )
     {
+
       for (unsigned ii=0;ii<hkl.size();ii++){
         cctbx::miller::asym_index asumap(space_group_,
                                          asu_choice_,
@@ -85,6 +87,9 @@ namespace lookup_utils{
       else {
         hkl_location = l->second;
       }
+      if (hkl_location >= n_indices_){
+        hkl_location = -1;
+      }
       return (hkl_location);
     }
 
@@ -101,6 +106,7 @@ namespace lookup_utils{
 
     protected:
     int n_duplicates_;
+    int n_indices_;
     cctbx::sgtbx::space_group space_group_;
     cctbx::sgtbx::space_group_type sgtype_;
     cctbx::sgtbx::reciprocal_space::asu asu_choice_;
