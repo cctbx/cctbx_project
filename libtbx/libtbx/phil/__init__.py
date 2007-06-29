@@ -142,6 +142,11 @@ def number_from_words(words):
 
 def int_from_words(words):
   result = number_from_words(words)
+  if(str(result).lower() in ["true","false"]):
+    raise RuntimeError(
+        'Integer expression expected, "%s" found%s' % (
+          str_from_words(words),
+          words[0].where_str()))
   if (result is not None):
     if (isinstance(result, float)
         and round(result) == result):
@@ -167,6 +172,11 @@ class int_converters(object):
 
 def float_from_words(words):
   result = number_from_words(words)
+  if(str(result).lower() in ["true","false"]):
+    raise RuntimeError(
+        'Floating-point expression expected, "%s" found%s' % (
+          str_from_words(words),
+          words[0].where_str()))
   if (result is not None):
     if (isinstance(result, int)):
       result = float(result)
