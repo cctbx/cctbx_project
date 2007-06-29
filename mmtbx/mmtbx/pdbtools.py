@@ -2,6 +2,16 @@ import iotbx.phil
 from mmtbx.refinement import rigid_body
 from mmtbx import utils
 from cctbx.array_family import flex
+from iotbx.option_parser import iotbx_option_parser
+from libtbx.str_utils import show_string
+import libtbx.phil.command_line
+import os, sys
+from iotbx import pdb
+from cctbx import crystal
+from libtbx.utils import Sorry
+from iotbx.pdb import crystal_symmetry_from_pdb
+from iotbx import crystal_symmetry_from_any
+from mmtbx import monomer_library
 
 modify_params_str = """\
 selection = None
@@ -56,10 +66,15 @@ occupancies
     .type = bool
     .help = Randomize occupancies within a certain range
 }
-write_modified = None
-  .type = str
+output
   .help = Write out PDB file with modified model (file name is defined in \
           write_modified)
+{
+  pdb {
+      file_name=None
+        .type=str
+  }
+}
 """
 modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
@@ -69,6 +84,20 @@ remove {
   selection = None
     .type = str
     .help = Select atoms to be removed
+}
+input {
+  pdb
+  {
+    include scope mmtbx.utils.pdb_params
+  }
+  crystal_symmetry
+    .help = Unit cell and space group parameters
+  {
+    unit_cell=None
+      .type=unit_cell
+    space_group=None
+      .type=space_group
+  }
 }
 """%modify_params_str, process_includes=True)
 
@@ -84,7 +113,7 @@ class modify(object):
       params_remove_selection = self.params.remove.selection
     except: params_remove_selection = "None"
     if(params_remove_selection != "None"):
-      self.remove_selection = utils.get_atom_selections(
+      self.remove_selection = ~utils.get_atom_selections(
                          iselection        = False,
                          all_chain_proxies = all_chain_proxies,
                          selection_strings = [self.params.remove.selection])[0]
@@ -174,3 +203,195 @@ class modify(object):
     if(self.params.occupancies.randomize):
        self._print_action(text = "Randomizing all occupancies.")
        self.xray_structure.shake_occupancies(selection = self.selection)
+
+
+def pdbtools(command_name, args):
+  log = utils.set_log(args)
+  utils.print_programs_start_header(
+  log  = log,
+  text= \
+   "  phenix.pdbtools (or mmtbx.pdbtools): tools for PDB model manipulations.")
+  command_line_interpreter = interpreter(command_name  = "phenix.pdbtools",
+                                         args          = args,
+                                         log           = log)
+  utils.print_header("Complete set of parameters", out = log)
+  master_params.format(command_line_interpreter.params).show(out = log)
+  utils.print_header("xray structure summary", out = log)
+  xray_structure = command_line_interpreter.processed_pdb_file.xray_structure(
+                                    show_summary = True).deep_copy_scatterers()
+  if(xray_structure is None):
+    raise Sorry("Cannot extract xray_structure.")
+  all_chain_proxies = \
+                  command_line_interpreter.processed_pdb_file.all_chain_proxies
+  utils.print_header("Performing requested model manipulations", out = log)
+  result = modify(xray_structure    = xray_structure,
+                  params            = command_line_interpreter.params,
+                  all_chain_proxies = all_chain_proxies,
+                  log               = log)
+  utils.print_header("Writing output model", out = log)
+  atom_attributes_list = all_chain_proxies.stage_1.atom_attributes_list
+  ofn = command_line_interpreter.params.output.pdb.file_name
+  ifn = command_line_interpreter.params.input.pdb.file_name
+  if(ofn is None):
+    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
+    else: ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
+  print >> log, "Output file name: ", ofn
+  ofo = open(ofn, "w")
+  utils.write_pdb_file(xray_structure       = xray_structure,
+                       atom_attributes_list = atom_attributes_list,
+                       selection            = result.remove_selection,
+                       out                  = ofo)
+  utils.print_header("Done", out = log)
+
+class interpreter:
+  def __init__(self,
+        command_name,
+        args,
+        log,
+        flags=None):
+    self.command_name = command_name
+    self.args = args
+    self.log = log
+    self.mon_lib_srv = monomer_library.server.server()
+    self.ener_lib = monomer_library.server.ener_lib()
+    self.params = None
+    self.pdb_file_names = []
+    self.processed_pdb_file = None
+    self.processed_pdb_file_reference = None
+    self.process_args()
+    self.pdb_file_names.extend(self.params.input.pdb.file_name)
+    self.processed_pdb_file, self.pdb_inp = utils.process_pdb_file(
+               pdb_file_names            = self.pdb_file_names,
+               parameters                = self.params.input.pdb,
+               pdb_interpretation_params = None,
+               mon_lib_srv               = self.mon_lib_srv,
+               ener_lib                  = self.ener_lib,
+               crystal_symmetry          = self.crystal_symmetry,
+               stop_for_unknowns         = False,
+               log                       = self.log)
+
+  def process_args(self):
+    args = self.args
+    if (len(args) == 0): args = ["--help"]
+    description_see_also \
+        = 'See also: http://www.phenix-online.org/\n' +\
+          'Questions / problems: phenixbb@phenix-online.org'
+    self.command_line = (iotbx_option_parser(
+      usage="phenix.pdbtools [options] [pdb_file] [parameter_file]",
+      description='Example: phenix.pdbtools model.pdb parameters.txt\n\n'+\
+         description_see_also)
+      .enable_show_defaults()
+      .enable_symmetry_comprehensive()
+      .option(None, "--unused_ok",
+        action="store_true",
+        default=False,
+        help="Disables detection of unused parameter definitions")
+      .option(None, "--quiet",
+        action="store_true",
+        help="Suppress output to screen")
+    ).process(args=args)
+    if(self.command_line.expert_level is not None):
+      master_params.show(
+        out = self.log,
+        expert_level = self.command_line.expert_level)
+      sys.exit(0)
+    if (len(args) > 0):
+      utils.print_header("Getting inputs", out = self.log)
+      print >> self.log, "Command line arguments:", " ".join([show_string(arg)
+        for arg in args])
+    crystal_symmetries_from_coordinate_file = []
+    parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
+      master_params = master_params,
+      home_scope    = "pdbtools")
+    parsed_params = []
+    command_line_params = []
+    utils.print_header("Processing inputs", out = self.log)
+    for arg in self.command_line.args:
+      arg_is_processed = False
+      if (os.path.isfile(arg)):
+        params = None
+        try: params = iotbx.phil.parse(file_name=arg)
+        except KeyboardInterrupt: raise
+        except RuntimeError: pass
+        else:
+          if (len(params.objects) == 0):
+            params = None
+        if (params is not None):
+          parsed_params.append(params)
+          arg_is_processed = True
+        elif (pdb.interpretation.is_pdb_file(file_name=arg)):
+          self.pdb_file_names.append(arg)
+          arg_is_processed = True
+          try:
+            crystal_symmetry = crystal_symmetry_from_pdb.extract_from(
+              file_name=arg)
+          except KeyboardInterrupt: raise
+          except: pass
+          else:
+            if (crystal_symmetry is not None):
+              crystal_symmetries_from_coordinate_file.append(
+                crystal_symmetry)
+      if (not arg_is_processed):
+        try:
+          params = parameter_interpreter.process(arg=arg)
+        except Sorry, e:
+          if (not os.path.isfile(arg)):
+            if ("=" in arg): raise
+            e.reset_tracebacklimit()
+            raise Sorry("File not found: %s" % show_string(arg))
+          e.reset_tracebacklimit()
+          raise Sorry("Unknown file format: %s" % arg)
+        else:
+          command_line_params.append(params)
+    print >> self.log
+    if (len(command_line_params) > 0):
+      print >> self.log, "Command line parameter definitions:"
+      for params in command_line_params:
+        params.show(out=self.log, prefix="  ")
+        print >> self.log
+    self.params, unused_definitions = master_params.fetch(
+      sources = parsed_params+command_line_params,
+      track_unused_definitions = True)
+    if (len(unused_definitions)):
+      print >> self.log, "*"*79
+      if (self.command_line.options.unused_ok):
+        print >> self.log, "WARNING:",
+      else:
+        print >> self.log, "ERROR:",
+      print >> self.log, "Unused parameter definitions:"
+      for obj_loc in unused_definitions:
+        print >> self.log, " ", str(obj_loc)
+      print >> self.log, "*"*79
+      print >> self.log
+      if (not self.command_line.options.unused_ok):
+        raise Sorry("""Unused parameter definitions:
+  Please check the input file(s) for spelling errors and obsolete
+  parameter definitions.
+  To disable this error message, add
+    --unused_ok
+  to the command line arguments.""")
+    self.params = self.params.extract()
+    self.crystal_symmetry = crystal.select_crystal_symmetry(
+      from_command_line = self.command_line.symmetry,
+      from_parameter_file=crystal.symmetry(
+        unit_cell = self.params.input.crystal_symmetry.unit_cell,
+        space_group_info = self.params.input.crystal_symmetry.space_group),
+      from_coordinate_files=crystal_symmetries_from_coordinate_file)
+    if (   self.crystal_symmetry.unit_cell() is None
+        or self.crystal_symmetry.space_group_info() is None):
+      raise Sorry(
+        "Crystal symmetry is not defined. Please use the --symmetry option"
+        " or define the refinement.crystal_symmetry parameters.")
+    print >> self.log, "Working crystal symmetry after inspecting all inputs:"
+    self.crystal_symmetry.show_summary(f = self.log, prefix="  ")
+    self.params.input.crystal_symmetry.unit_cell = \
+      self.crystal_symmetry.unit_cell()
+    self.params.input.crystal_symmetry.space_group = \
+      self.crystal_symmetry.space_group_info()
+    self.point_group = self.crystal_symmetry.space_group() \
+      .build_derived_point_group()
+    print >> self.log
+
+
+if (__name__ == "__main__" ):
+  pdbtools(command_name = sys.argv[0], args = sys.argv[1:])
