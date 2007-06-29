@@ -23,6 +23,7 @@ libtbx/libtbx/subversion.py -text
 libtbx/libtbx_refresh.py -text
 libtbx/windows_dispatcher.exe -text
 mmtbx/mmtbx/command_line/maps.py -text
+mmtbx/mmtbx/command_line/pdbtools.py -text
 mmtbx/mmtbx/command_line/xmanip.py -text
 mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/pdbtools.py -text

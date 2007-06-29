@@ -285,7 +285,7 @@ def determine_r_free_flags(reflection_file_server,
           use_lattice_symmetry = r_free_flags_use_lattice_symmetry
         ).set_info(miller.array_info(labels=["R-free-flags"]))
      parameters.label = r_free_flags.info().label_string()
-     parameters.test_flag_value = True
+     parameters.test_flag_value = 1
   return r_free_flags
 
 pdb_params = iotbx.phil.parse("""\
@@ -302,7 +302,8 @@ def process_pdb_file(pdb_file_names,
                      mon_lib_srv,
                      ener_lib,
                      crystal_symmetry,
-                     log):
+                     log,
+                     stop_for_unknowns = True):
   if(len(pdb_file_names) == 0):
      raise Sorry("No coordinate file given.")
   parameters.file_name = [
@@ -320,7 +321,7 @@ def process_pdb_file(pdb_file_names,
       raw_records_flex.extend(flex.split_lines(open(file_name).read()))
     pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records_flex)
   processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv = mon_lib_srv,
+    mon_lib_srv              = mon_lib_srv,
     ener_lib                 = ener_lib,
     params                   = pdb_interpretation_params,
     file_name                = pdb_file_name,
@@ -331,7 +332,7 @@ def process_pdb_file(pdb_file_names,
     log                      = log)
   print >> log
   msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
-  if(msg is not None):
+  if(msg is not None and stop_for_unknowns):
      msg = "\n  ".join([msg,
        "Please edit the PDB file to resolve the problems and/or supply a",
        "CIF file with matching restraint definitions, along with",
@@ -582,3 +583,40 @@ def write_pdb_file(xray_structure,
                                   element     = scat_types[i_seq],#element,
                                   charge      = charge)
      print >> out, "END"
+
+def print_programs_start_header(log, text):
+  print >> log
+  host_and_user().show(out= log)
+  print >> log, date_and_time()
+  print >> log
+  print >> log, "-"*79
+  print >> log, text
+  print >> log, "-"*79
+  print >> log
+
+def set_log(args):
+  log = multi_out()
+  if(not "--quiet" in args):
+     log.register(label="stdout", file_object=sys.stdout)
+  string_buffer = StringIO()
+  string_buffer_plots = StringIO()
+  log.register(label="log_buffer", file_object=string_buffer)
+  sys.stderr = log
+  return log
+
+def print_header(line, out=None):
+  if (out is None): out = sys.stdout
+  header_len = 80
+  line_len = len(line)
+  assert line_len <= header_len
+  fill_len = header_len - line_len
+  fill_rl = fill_len/2
+  fill_r = fill_rl
+  fill_l = fill_rl
+  if (fill_rl*2 != fill_len):
+    fill_r +=1
+  out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-1)+"\n"
+  if(len(out_string) > 80):
+    out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)+"\n"
+  print >> out, out_string
+  out.flush()

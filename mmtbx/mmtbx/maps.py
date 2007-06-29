@@ -140,11 +140,9 @@ maps {
    include scope mmtbx.bulk_solvent.bulk_solvent_and_scaling.master_params
   }
   input {
-    pdb {
-      file_name=None
-        .optional=True
-        .type=path
-        .multiple=True
+    pdb
+    {
+      include scope mmtbx.utils.pdb_params
     }
     data {
       include scope mmtbx.utils.data_params
@@ -162,27 +160,6 @@ maps {
 }
 """%map_params_str, process_includes=True)
 
-def print_header(log):
-  print >> log
-  host_and_user().show(out= log)
-  print >> log, date_and_time()
-  print >> log
-  print >> log, "-"*79
-  print >> log, \
-   "  phenix.maps (or mmtbx.maps): tools for electron density maps calculation"
-  print >> log, "-"*79
-  print >> log
-
-def set_log(args):
-  log = multi_out()
-  if(not "--quiet" in args):
-     log.register(label="stdout", file_object=sys.stdout)
-  string_buffer = StringIO()
-  string_buffer_plots = StringIO()
-  log.register(label="log_buffer", file_object=string_buffer)
-  sys.stderr = log
-  return log
-
 def set_f_model(command_line_interpreter):
   f_obs = r_free_flags = command_line_interpreter.data()
   r_free_flags = command_line_interpreter.r_free_flags
@@ -192,8 +169,11 @@ def set_f_model(command_line_interpreter):
      r_free_flags = f_obs.array(data = flags)
 
 def maps(command_name, args):
-  log = set_log(args)
-  print_header(log = log)
+  log = utils.set_log(args)
+  utils.print_programs_start_header(
+  log  = log,
+  text =
+  "  phenix.maps (or mmtbx.maps): tools for electron density maps calculation")
   command_line_interpreter = interpreter(command_name  = "phenix.maps",
                                          args          = args,
                                          log           = log)
