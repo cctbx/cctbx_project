@@ -1,4 +1,5 @@
 from scitbx.graph.rigidity import gcd, determine_degrees_of_freedom
+import sys
 
 def exercise_gcd():
   assert gcd(8,0) == 8
@@ -59,6 +60,19 @@ def exercise_mt1996():
   assert determine_degrees_of_freedom(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list) == 6
 
+def exercise_k6_6_minus_six_parallel_edges():
+  # "K6,6 minus six parallel edges" (Figure 3.23 of J.E. Graver,
+  # Counting on Frameworks, 2001).
+  n_vertices = 12
+  edge_list = [
+    (0,7), (0,8), (0,9), (0,10), (0,11), (1,6), (1,8), (1,9), (1,10),
+    (1,11), (2,6), (2,7), (2,9), (2,10), (2,11), (3,6), (3,7), (3,8),
+    (3,10), (3,11), (4,6), (4,7), (4,8), (4,9), (4,11), (5,6), (5,7),
+    (5,8), (5,9), (5,10)]
+  assert len(edge_list) == 30
+  assert determine_degrees_of_freedom(
+    n_dim=3, n_vertices=n_vertices, edge_list=edge_list) == 6
+
 def exercise_p120():
   # http://www.rwgrayprojects.com/Lynn/Coordinates/coord01.html
   n_vertices = 62
@@ -100,7 +114,9 @@ def exercise():
   exercise_gcd()
   exercise_double_banana()
   exercise_mt1996()
-  exercise_p120()
+  exercise_k6_6_minus_six_parallel_edges()
+  if ("--all" in sys.argv[1:]):
+    exercise_p120()
   print "OK"
 
 if (__name__ == "__main__"):

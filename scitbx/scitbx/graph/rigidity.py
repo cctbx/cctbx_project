@@ -54,7 +54,7 @@ def integer_row_echelon_form(m):
     piv_c += 1
   return free_vars
 
-def create_linearly_independent_integer_vertices(n_dim, n_vertices):
+def create_fake_integer_vertices(n_dim, n_vertices):
   # Idea due to Neil Sloane
   assert n_vertices != 0
   v0 = range(2,2+n_dim)
@@ -64,12 +64,18 @@ def create_linearly_independent_integer_vertices(n_dim, n_vertices):
     for i in xrange(n_dim):
       vertex.append(v0[i] * result[-1][i])
     result.append(vertex)
+  # Shuffle coordinates. Required to obtain correct result for
+  # "K6,6 minus six parallel edges" (Figure 3.23 of J.E. Graver,
+  # Counting on Frameworks, 2001).
+  for i,vertex in enumerate(result):
+    j = i % n_dim
+    result[i] = vertex[j:] + vertex[:j]
   return result
 
 def construct_integer_rigidity_matrix(n_dim, n_vertices, edge_list):
   n_edges = len(edge_list)
   if (n_edges == 0): return None
-  vertices = create_linearly_independent_integer_vertices(
+  vertices = create_fake_integer_vertices(
     n_vertices=n_vertices, n_dim=n_dim)
   n_columns = n_vertices * n_dim
   result = []
