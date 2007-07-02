@@ -118,10 +118,10 @@ class energies(scitbx.restraints.energies):
        bond_deltas = geometry_restraints.bond_deltas(
                                         sites_cart         = self.sites_cart,
                                         sorted_asu_proxies = self.bond_proxies)
-       b_abs = flex.abs(bond_deltas)
-       b_ave = flex.mean_default(b_abs, 0)
-       b_max = flex.max_default(b_abs, 0)
-       b_min = flex.min_default(b_abs, 0)
+       b_sq  = bond_deltas * bond_deltas
+       b_ave = math.sqrt(flex.mean_default(b_sq, 0))
+       b_max = math.sqrt(flex.max_default(b_sq, 0))
+       b_min = math.sqrt(flex.min_default(b_sq, 0))
        return b_min, b_max, b_ave
 
   def angle_deviations(self):
@@ -129,10 +129,10 @@ class energies(scitbx.restraints.energies):
        angle_deltas = geometry_restraints.angle_deltas(
                                                sites_cart = self.sites_cart,
                                                proxies    = self.angle_proxies)
-       a_abs = flex.abs(angle_deltas)
-       a_ave = flex.mean_default(a_abs, 0)
-       a_max = flex.max_default(a_abs, 0)
-       a_min = flex.min_default(a_abs, 0)
+       a_sq  = angle_deltas * angle_deltas
+       a_ave = math.sqrt(flex.mean_default(a_sq, 0))
+       a_max = math.sqrt(flex.max_default(a_sq, 0))
+       a_min = math.sqrt(flex.min_default(a_sq, 0))
        return a_min, a_max, a_ave
 
   def nonbonded_distances(self):
@@ -144,10 +144,10 @@ class energies(scitbx.restraints.energies):
   def nonbonded_deviations(self):
     if(self.n_nonbonded_proxies is not None):
        nonbonded_deltas = self.nonbonded_distances()
-       r_abs = flex.abs(nonbonded_deltas)
-       r_ave = flex.mean_default(r_abs, 0)
-       r_max = flex.max_default(r_abs, 0)
-       r_min = flex.min_default(r_abs, 0)
+       r_sq  = nonbonded_deltas * nonbonded_deltas
+       r_ave = math.sqrt(flex.mean_default(r_sq, 0))
+       r_max = math.sqrt(flex.max_default(r_sq, 0))
+       r_min = math.sqrt(flex.min_default(r_sq, 0))
        return r_min, r_max, r_ave
 
   def dihedral_deviations(self):
@@ -155,10 +155,10 @@ class energies(scitbx.restraints.energies):
        dihedral_deltas = geometry_restraints.dihedral_deltas(
                                             sites_cart = self.sites_cart,
                                             proxies    = self.dihedral_proxies)
-       d_abs = flex.abs(dihedral_deltas)
-       d_ave = flex.mean_default(d_abs, 0)
-       d_max = flex.max_default(d_abs, 0)
-       d_min = flex.min_default(d_abs, 0)
+       d_sq  = dihedral_deltas * dihedral_deltas
+       d_ave = math.sqrt(flex.mean_default(d_sq, 0))
+       d_max = math.sqrt(flex.max_default(d_sq, 0))
+       d_min = math.sqrt(flex.min_default(d_sq, 0))
        return d_min, d_max, d_ave
 
   def chirality_deviations(self):
@@ -166,10 +166,10 @@ class energies(scitbx.restraints.energies):
        chirality_deltas = geometry_restraints.chirality_deltas(
                                            sites_cart = self.sites_cart,
                                            proxies    = self.chirality_proxies)
-       c_abs = flex.abs(chirality_deltas)
-       c_ave = flex.mean_default(c_abs, 0)
-       c_max = flex.max_default(c_abs, 0)
-       c_min = flex.min_default(c_abs, 0)
+       c_sq  = chirality_deltas * chirality_deltas
+       c_ave = math.sqrt(flex.mean_default(c_sq, 0))
+       c_max = math.sqrt(flex.max_default(c_sq, 0))
+       c_min = math.sqrt(flex.min_default(c_sq, 0))
        return c_min, c_max, c_ave
 
   def planarity_deviations(self):
@@ -177,10 +177,10 @@ class energies(scitbx.restraints.energies):
        planarity_deltas = geometry_restraints.planarity_deltas_rms(
                                            sites_cart = self.sites_cart,
                                            proxies    = self.planarity_proxies)
-       p_abs = flex.abs(planarity_deltas)
-       p_ave = flex.mean_default(p_abs, 0)
-       p_max = flex.max_default(p_abs, 0)
-       p_min = flex.min_default(p_abs, 0)
+       p_sq  = planarity_deltas * planarity_deltas
+       p_ave = math.sqrt(flex.mean_default(p_sq, 0))
+       p_max = math.sqrt(flex.max_default(p_sq, 0))
+       p_min = math.sqrt(flex.min_default(p_sq, 0))
        return p_min, p_max, p_ave
 
   def show(self, f=None, prefix=""):
