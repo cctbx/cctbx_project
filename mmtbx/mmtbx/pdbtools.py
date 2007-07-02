@@ -27,10 +27,10 @@ adp
   set_b_iso = None
     .type = float
     .help = Set ADP of atoms to set_b_iso
-  convert_to_isotropic = False
+  convert_to_isotropic = None
     .type = bool
     .help = Convert atoms to isotropic
-  convert_to_anisotropic = False
+  convert_to_anisotropic = None
     .type = bool
     .help = Convert atoms to anisotropic
   shift_b_iso = None
@@ -108,6 +108,9 @@ class modify(object):
     self.xray_structure = xray_structure
     self.all_chain_proxies = all_chain_proxies
     self.params = params
+    self._adp_modified = False
+    self._sites_modified = False
+    self._occupancies_modified = False
     self.remove_selection = None
     try:
       params_remove_selection = self.params.remove.selection
@@ -134,15 +137,32 @@ class modify(object):
   def _print_action(self, text):
     print >> self.log, text
 
+  def _assert_not_modified(self, sites=False, adp=False, occupancies=False):
+    assert [sites, adp, occupancies].count(True) in [0,1]
+    if(sites):
+      if(self._sites_modified):
+        raise Sorry("Can't modify cooridinates (already modified).")
+      else: self._sites_modified = True
+    if(adp):
+      if(self._adp_modified):
+        raise Sorry("Can't modify ADP (already modified).")
+      else: self._adp_modified = True
+    if(occupancies):
+      if(self._occupancies_modified):
+        raise Sorry("Can't modify occupancies (already modified).")
+      else: self._occupancies_modified = True
+
   def _convert_to_isotropic(self):
     if(self.params.adp.convert_to_isotropic):
        self._print_action(text = "Converting to isotropic ADP.")
+       self._assert_not_modified(adp = True)
        self.xray_structure.convert_to_isotropic(
                                        selection = self.selection.iselection())
 
   def _convert_to_anisotropic(self):
     if(self.params.adp.convert_to_anisotropic):
        self._print_action(text = "Converting to anisotropic ADP.")
+       self._assert_not_modified(adp = True)
        self.xray_structure.convert_to_anisotropic(
                                        selection = self.selection.iselection())
 
@@ -150,24 +170,28 @@ class modify(object):
     b_iso = self.params.adp.set_b_iso
     if(b_iso is not None):
        self._print_action(text = "Setting all isotropic ADP to: %8.3f"%b_iso)
+       self._assert_not_modified(adp = True)
        self.xray_structure.set_b_iso(value = b_iso, selection = self.selection)
 
   def _scale_adp(self):
     scale = self.params.adp.scale_adp
     if(scale is not None):
        self._print_action(text = "Scaling all ADP with: %.3f"%scale)
+       self._assert_not_modified(adp = True)
        self.xray_structure.scale_adp(factor = scale, selection= self.selection)
 
   def _shift_b_iso(self):
     shift = self.params.adp.shift_b_iso
     if(shift is not None):
        self._print_action(text = "Shift all ADP by: %8.3f"%shift)
+       self._assert_not_modified(adp = True)
        self.xray_structure.shift_us(b_shift   = shift,
                                     selection = self.selection.iselection())
 
   def _randomize_adp(self):
     if(self.params.adp.randomize):
        self._print_action(text = "Randomizing ADP.")
+       self._assert_not_modified(adp = True)
        self.xray_structure.shake_adp(selection = self.selection)
 
   def _shake_sites(self):
@@ -175,6 +199,7 @@ class modify(object):
     if(shake_value is not None):
        self._print_action(
                   text = "Shaking sites (RMS difference = %8.3f)."%shake_value)
+       self._assert_not_modified(sites = True)
        self.xray_structure.shake_sites_in_place(rms_difference= shake_value,
                                                 selection     = self.selection)
 
@@ -185,6 +210,7 @@ class modify(object):
     rb_shift = (abs(trans[0]+trans[1]+trans[2]+rot[0]+rot[1]+rot[2]) > 1.e-6)
     if(rb_shift):
        self._print_action(text = "Rigid body shift.")
+       self._assert_not_modified(sites = True)
        if(self.params.sites.euler_angle_convention == "zyz"):
           rot_obj = rigid_body.rb_mat_euler(phi = rot[0],
                                             psi = rot[1],
@@ -202,8 +228,8 @@ class modify(object):
   def _randomize_occupancies(self):
     if(self.params.occupancies.randomize):
        self._print_action(text = "Randomizing all occupancies.")
+       self._assert_not_modified(occupancies = True)
        self.xray_structure.shake_occupancies(selection = self.selection)
-
 
 def pdbtools(command_name, args):
   log = utils.set_log(args)
