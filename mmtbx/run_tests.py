@@ -4,6 +4,7 @@ import libtbx.load_env
 def run():
   tst_list = (
   "$D/mmtbx/rotamer/rotamer_eval.py",
+  "$D/mmtbx/tst_pdbtools.py",
   "$D/mmtbx/real_space/tst.py",
   "$D/mmtbx/dbe/tst_dbe.py",
   ["$D/mmtbx/refinement/tst_anomalous_scatterer_groups.py", "P3"],

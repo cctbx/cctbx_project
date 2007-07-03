@@ -377,11 +377,24 @@ def process_monomer_cif_files(cif_objects, parameters, mon_lib_srv, ener_lib):
     parameters.file_name.append(file_name)
 
 def get_atom_selections(all_chain_proxies,
+                        xray_structure,
                         selection_strings     = None,
                         iselection            = True,
                         one_group_per_residue = False,
-                        hydrogens_only        = False,
-                        xray_structure        = None):
+                        hydrogens_only        = False):
+  ###> Fix aal: need for proper selection
+  need_to_fix_aal = False
+  aal = all_chain_proxies.stage_1.atom_attributes_list
+  for aal_i in aal:
+    if(aal_i.element.strip() == ''):
+      need_to_fix_aal = True
+      break
+  if(need_to_fix_aal):
+    scatterers = xray_structure.scatterers()
+    for aal_i, sc in zip(aal,scatterers):
+      aal_i.element = sc.element_symbol()
+    all_chain_proxies.stage_1.selection_cache(force = True)
+  #
   if(hydrogens_only):
      assert xray_structure is not None
   if(selection_strings is None or isinstance(selection_strings, str)):

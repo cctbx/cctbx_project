@@ -114,16 +114,18 @@ class modify(object):
     self.remove_selection = None
     try:
       params_remove_selection = self.params.remove.selection
-    except: params_remove_selection = "None"
-    if(params_remove_selection != "None"):
+    except: params_remove_selection = None
+    if(params_remove_selection is not None):
       self.remove_selection = ~utils.get_atom_selections(
                          iselection        = False,
                          all_chain_proxies = all_chain_proxies,
-                         selection_strings = [self.params.remove.selection])[0]
+                         selection_strings = [params_remove_selection],
+                         xray_structure    = xray_structure)[0]
     self.selection = utils.get_atom_selections(
                                        iselection        = False,
                                        all_chain_proxies = all_chain_proxies,
-                                       selection_strings = params.selection)[0]
+                                       selection_strings = params.selection,
+                                       xray_structure    = xray_structure)[0]
     self._convert_to_isotropic()
     self._convert_to_anisotropic()
     self._set_b_iso()
@@ -139,10 +141,10 @@ class modify(object):
 
   def _assert_not_modified(self, sites=False, adp=False, occupancies=False):
     assert [sites, adp, occupancies].count(True) in [0,1]
-    if(sites):
-      if(self._sites_modified):
-        raise Sorry("Can't modify cooridinates (already modified).")
-      else: self._sites_modified = True
+    #if(sites):
+    #  if(self._sites_modified):
+    #    raise Sorry("Can't modify cooridinates (already modified).")
+    #  else: self._sites_modified = True
     if(adp):
       if(self._adp_modified):
         raise Sorry("Can't modify ADP (already modified).")
@@ -219,7 +221,6 @@ class modify(object):
           rot_obj = rigid_body.rb_mat(phi = rot[0],
                                       psi = rot[1],
                                       the = rot[2])
-       print self.selection
        self.xray_structure.apply_rigid_body_shift(
                                     rot       = rot_obj.rot_mat().as_mat3(),
                                     trans     = trans,
