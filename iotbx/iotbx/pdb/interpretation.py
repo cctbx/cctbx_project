@@ -472,7 +472,7 @@ class stage_1(object):
     return self._ter_and_end_block_identifiers
 
   def selection_cache(self, force_selection_cache_update=False):
-    if (self._selection_cache is None or force):
+    if (self._selection_cache is None or force_selection_cache_update):
       self._selection_cache = pdb.atom.selection_cache(
         atom_attributes_list=self.atom_attributes_list)
     return self._selection_cache
