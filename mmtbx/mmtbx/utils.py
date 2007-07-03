@@ -393,7 +393,8 @@ def get_atom_selections(all_chain_proxies,
     scatterers = xray_structure.scatterers()
     for aal_i, sc in zip(aal,scatterers):
       aal_i.element = sc.element_symbol()
-    all_chain_proxies.stage_1.selection_cache(force = True)
+    all_chain_proxies.stage_1.selection_cache(
+                                           force_selection_cache_update = True)
   #
   if(hydrogens_only):
      assert xray_structure is not None
