@@ -67,7 +67,8 @@ def create_fake_integer_vertices(n_dim, n_vertices):
   # Shuffle coordinates. Required to obtain correct result for
   # "K6,6 minus six parallel edges" (Figure 3.23 of J.E. Graver,
   # Counting on Frameworks, 2001).
-  for i,vertex in enumerate(result):
+  for i in xrange(len(result)):
+    vertex = result[i]
     j = i % n_dim
     result[i] = vertex[j:] + vertex[:j]
   return result
