@@ -105,15 +105,14 @@ namespace {
   template <unsigned NCols>
   struct full_pivoting_small_wrapper
   {
-    typedef double NumType;
-    typedef row_echelon::full_pivoting_small<NumType, NCols, NCols> wt;
+    typedef row_echelon::full_pivoting_small<double, NCols, NCols> wt;
 
     static void wrap(char *name)
     {
       using namespace boost::python;
       class_<wt>(name, no_init)
-        .def(init<af::ref<NumType, af::c_grid<2> > const&,
-                  NumType const&,
+        .def(init<af::ref<double, af::c_grid<2> > const&,
+                  double const&,
                   unsigned>((
             arg_("matrix"),
             arg_("min_abs_pivot")=0,
