@@ -297,17 +297,19 @@ pdb_params = iotbx.phil.parse("""\
 """)
 
 def process_pdb_file(pdb_file_names,
-                     parameters,
-                     pdb_interpretation_params,
                      mon_lib_srv,
                      ener_lib,
                      crystal_symmetry,
-                     log,
-                     stop_for_unknowns = True):
+                     parameters = None,
+                     pdb_interpretation_params = None,
+                     stop_for_unknowns = True,
+                     log = None):
+  if(log is None): log = sys.stdout
   if(len(pdb_file_names) == 0):
      raise Sorry("No coordinate file given.")
-  parameters.file_name = [
-    os.path.abspath(file_name) for file_name in pdb_file_names]
+  if(parameters is not None):
+    parameters.file_name = [
+                    os.path.abspath(file_name) for file_name in pdb_file_names]
   if(len(pdb_file_names) == 1):
      pdb_file_name = pdb_file_names[0]
      raw_records = None
