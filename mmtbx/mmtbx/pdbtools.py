@@ -122,10 +122,11 @@ class modify(object):
                          selection_strings = [params_remove_selection],
                          xray_structure    = xray_structure)[0]
     self.selection = utils.get_atom_selections(
-                                       iselection        = False,
-                                       all_chain_proxies = all_chain_proxies,
-                                       selection_strings = params.selection,
-                                       xray_structure    = xray_structure)[0]
+                                     iselection        = False,
+                                     all_chain_proxies = all_chain_proxies,
+                                     selection_strings = self.params.selection,
+                                     xray_structure    = xray_structure)[0]
+    self._show_selected()
     self._convert_to_isotropic()
     self._convert_to_anisotropic()
     self._set_b_iso()
@@ -135,6 +136,18 @@ class modify(object):
     self._shake_sites()
     self._rb_shift()
     self._randomize_occupancies()
+
+  def _show_selected(self):
+    assert self.xray_structure.scatterers().size() == self.selection.size()
+    if(self.selection.size() == self.selection.count(True)):
+      print >> self.log, \
+                     "All input atoms are selected for requested manipulation."
+    elif(self.selection.count(True) == 0):
+      raise Sorry("No atoms selected for requested manipulation. \n"\
+                  "       Selection string provided: %s"%self.params.selection)
+    else:
+      fmt = "Number of atoms selected for requested manipulation: %d out of total: %d"
+      print >> self.log, fmt%(self.selection.count(True),self.selection.size())
 
   def _print_action(self, text):
     print >> self.log, text
@@ -245,7 +258,7 @@ def pdbtools(command_name, args):
   master_params.format(command_line_interpreter.params).show(out = log)
   utils.print_header("xray structure summary", out = log)
   xray_structure = command_line_interpreter.processed_pdb_file.xray_structure(
-                                    show_summary = True).deep_copy_scatterers()
+                                    show_summary = True)
   if(xray_structure is None):
     raise Sorry("Cannot extract xray_structure.")
   all_chain_proxies = \
@@ -274,8 +287,7 @@ class interpreter:
   def __init__(self,
         command_name,
         args,
-        log,
-        flags=None):
+        log):
     self.command_name = command_name
     self.args = args
     self.log = log
