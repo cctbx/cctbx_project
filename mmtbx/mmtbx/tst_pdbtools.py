@@ -84,9 +84,20 @@ def run(file_name = "phe_e.pdb"):
                                   str(remove_selection_str),str(selection_str))
     check_remove_selection(cmd, xrsp_init, output, selection, selection_str,
                                                           remove_selection_str)
+    #
+    test_quiet(file_name)
   #
   cmd = base
   check_all_none(cmd, xrsp_init, output)
+
+def test_quiet(file_name):
+  output_file_name = "shifted.pdb"
+  cmd= "mmtbx.pdbtools %s output.pdb.file_name=%s shake=0.1 --quiet > log"%(
+                                        file_name, output_file_name)
+  easy_run.call(cmd)
+  lines = open("log","r").readlines()
+  assert len(lines) == 0
+  easy_run.call("rm -rf log %s"%output_file_name)
 
 def check_adp_rand(cmd, xrsp_init, output, selection, selection_str,
                                                               tolerance=1.e-3):
@@ -207,10 +218,12 @@ def check_occ_randomize(cmd, xrsp_init, output, selection,selection_str,
   assert approx_equal(xrsp.u_cart,    xrsp_init.u_cart,tolerance)
   if(selection_str is None):
     diff = flex.abs(xrsp.occ - xrsp_init.occ)
-    assert flex.mean(diff) > 0.3
+    assert flex.mean(diff) > 0.0
+    assert flex.max(diff) > 0.0
   else:
     diff = flex.abs(xrsp.occ - xrsp_init.occ)
-    assert flex.mean(diff) > 0.3
+    assert flex.mean(diff) > 0.0
+    assert flex.max(diff) > 0.0
     assert approx_equal(flex.mean(diff.select(~selection)),0.,tolerance)
   easy_run.call("rm -rf %s "%output)
 

@@ -442,27 +442,22 @@ def get_atom_selections(all_chain_proxies,
              residues.append(residues_in_conformer)
          if(n_conformers > 1):
             assert len(selections) == 0
-            residues0 = residues[0]
-            for res in residues0:
-              selections.append(res.iselection)
-            for residuesi in residues[1:]:
-              i_seq = 0
-              for res1, res2 in zip(residues0, residuesi):
-                is1 = res1.iselection
-                is2 = res2.iselection
-                if (res1.id() == res2.id()):
-                   if(list(is1) != list(is2)):
-                      res_sel = []
-                      for item in list(is1)+list(is2)+list(selections[i_seq]):
-                        if(item not in res_sel):
-                           res_sel.append(item)
-                      selections[i_seq] = flex.size_t(res_sel)
-                else:
-                   pass
-                   #raise Sorry(
-                   #"Two conformers have different sequences: not implemented.")
-                i_seq += 1
-            # keep eye on this
+            res = []
+            unique_res_ids = []
+            for residuesi in residues:
+              for residue in residuesi:
+                res.append(residue)
+                if(residue.id() not in unique_res_ids):
+                  unique_res_ids.append(residue.id())
+            for uri in unique_res_ids:
+              s_uri = flex.size_t()
+              for r in res:
+                if(r.id() == uri):
+                  for s in r.iselection:
+                    if(s not in s_uri):
+                      s_uri.append(s)
+              selections.append(s_uri)
+            # XXX what is this ?
             if(hydrogens_only):
                for i_seq, sel in enumerate(selections):
                  result = flex.size_t()
