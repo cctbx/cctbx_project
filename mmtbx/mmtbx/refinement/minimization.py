@@ -55,6 +55,7 @@ class lbfgs(object):
     self.wxc_dbe = None
     del self.wc, self.wu
     self.hd_selection = self.xray_structure.hd_selection()
+    self.hd_flag = self.hd_selection.count(True) > 0
     if(self.hd_selection.count(True) > 0):
        self.xh_connectivity_table = xh_connectivity_table(
                                     geometry       = restraints_manager,
