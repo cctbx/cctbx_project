@@ -64,6 +64,7 @@ def exercise(axis_range=2, angle_max_division=12, angle_min_power=-30):
     from_matrix = scitbx.math.r3_rotation_axis_and_angle_from_matrix(r=r)
     rr = from_matrix.as_matrix()
     assert approx_equal(rr, r)
+    assert approx_equal(math.cos(from_matrix.angle()), (r[0]+r[4]+r[8]-1)/2)
   #
   print format_cpu_times()
 
