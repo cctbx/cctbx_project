@@ -1,64 +1,65 @@
-import iotbx.phil
-from libtbx.phil import as_html
+from libtbx import phil
+import libtbx.phil.as_html
 
-test_params = iotbx.phil.parse("""\
+test_params = phil.parse(
+  input_string="""\
 par00 = 0
-  .type=float
   .help = abc00
+  .type = float
 par01 = False
-  .type=bool
   .help = abc01
-scope1 {
+  .type = bool
+scope1
+  .help = "scope1 help"
+{
   par10 = 1
-    .type=float
     .help = abc11
+    .type = float
   par11 = True
-    .type=bool
-  scope20 {
+    .type = bool
+  scope20
+    .help = "very long scope20 help very long scope20 help very long scope20"
+            "help very long scope20 help very long scope20 help very long"
+            "scope20 help"
+  {
     par20 = 2
-      .type=float
+      .type = float
     par21 = False
-      .type=bool
+      .type = bool
     scope3 {
       par30 = 3
-        .type=float
+        .type = float
       par31 = True
-        .type=bool
+        .type = bool
     }
   }
   scope21 {
     par21 = 2
-      .type=float
+      .help = "very long par21 help very long par21 help very long par21 help"
+              "very long par21 help very long par21 help very long par21 help"
+              "very long par21 help very long par21 help very long par21 help"
+      .type = float
     par21 = False
-      .type=bool
+      .type = bool
     scope3 {
       par30 = 3
-        .type=float
+        .type = float
       par31 = True
-        .type=bool
+        .type = bool
     }
   }
-par12=10
-  .type=float
+  par12 = 10
+    .type = float
 }
 par02 = 0
-  .type=float
+  .type = float
 par03 = False
-  .type=bool
-""", process_includes=True)
-
+  .type = bool
+""",
+  process_includes=True)
 
 def run():
-  log = open("example.html", "w")
-  try:
-    #import phenix.command_line.lsq_superpose_pdbs
-    from  phenix.command_line import lsq_superpose_pdbs
-    master_params=lsq_superpose_pdbs.master_params
-
-  except:
-    raise RuntimeError("Cannot import master_params.")
-  as_html.run(phil_object = master_params,
-              log         = log)
+  phil.as_html.run(phil_object=test_params, log=open("tst_as_html.html", "w"))
 
 if (__name__ == "__main__" ):
   run()

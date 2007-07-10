@@ -5,65 +5,69 @@ def remove_redundant_spaces(s):
   s = " ".join([i for i in s])
   return s
 
-def format_string(object, ind, log, scope=False, allowed_line_lenght=79):
+def format_string(object, ind, log, scope=False, allowed_line_length=79):
   name = str(object.name).strip()
   help = str(object.help).strip()
   help = remove_redundant_spaces(help)
   if(help == "None"): help = ""
   if(scope):
-     if(len(" "*ind+name) >= allowed_line_lenght):
+     if (ind + len(name) >= allowed_line_length):
         raise Sorry(
           "Cannot create doc file: scope is too deep or its name is too long.")
-     fmt = "%s<b>%s</b> <b><FONT color=blue>%s</FONT></b>"
-     elements = (" "*ind, name, help)
-     line = fmt % elements
-     line_to_appear = "%s%s %s"%elements
-     if(len(line_to_appear) <= allowed_line_lenght):
+     line = '%s<b>%s</b>' % (" "*ind, name)
+     line_to_appear = " "*ind + name
+     if (len(help) != 0):
+        line += ' <b><SPAN STYLE="color: blue">%s</SPAN></b>' % help
+        line_to_appear += " " + help
+     if (len(line_to_appear) <= allowed_line_length):
         print >> log, line
      else:
-        help_start = len(" "*ind+name)+0
-        help_offset = " "*help_start
-        n_cut = partial_line(line, allowed_line_lenght, line_to_appear)
+        help_offset = " "*(ind+len(name))
+        n_cut = partial_line(line, allowed_line_length, line_to_appear)
         print >> log, line[:n_cut]
         line = help_offset+line[n_cut:]
         while True:
           if(n_cut is None): break
-          n_cut = partial_line(line, allowed_line_lenght, line_to_appear)
+          n_cut = partial_line(line, allowed_line_length, line_to_appear)
           if(len(line[:n_cut].strip())==0):
-             print >> log, line[:allowed_line_lenght]
-             line = help_offset+line[allowed_line_lenght:]
+             print >> log, line[:allowed_line_length]
+             line = help_offset+line[allowed_line_length:]
           else:
              print >> log, line[:n_cut]
              line = help_offset+line[n_cut:]
   else:
      values = (" ".join([str(i) for i in object.words])).strip()
-     if(len(" "*ind+name) >= allowed_line_lenght):
+     if (ind + len(name) >= allowed_line_length):
         raise Sorry(
           "Cannot create doc file: scope is too deep or its name is too long.")
-     elements = (" "*ind, name, values, help)
-     fmt = "<!--ANCHOR--> %s%s= <FONT color=CC0000>%s</FONT> <FONT color=blue>%s</FONT>"
+     elements = [" "*ind, name, values]
+     fmt = '<!--ANCHOR-->%s%s= <SPAN STYLE="color: #CC0000">%s</SPAN>'
+     fmt_plain = '%s%s= %s'
+     if (len(help) != 0):
+        fmt += ' <SPAN STYLE="color: blue">%s</SPAN>'
+        fmt_plain += ' %s'
+        elements.append(help)
+     elements = tuple(elements)
      line = fmt % elements
-     line_length = len(" "*ind+str(object.name)+str(object.help)+values)
-     line_to_appear = "%s%s= %s %s"%elements
-     if(len(line_to_appear) <= allowed_line_lenght):
+     line_to_appear = fmt_plain % elements
+     if(len(line_to_appear) <= allowed_line_length):
         print >> log, line
      else:
-        help_start = len(" "*ind+name)+1
-        help_offset = " "*help_start
-        n_cut = partial_line(line, allowed_line_lenght, line_to_appear)
+        help_offset = " "*(ind+len(name)+1)
+        n_cut = partial_line(line, allowed_line_length, line_to_appear)
         print >> log, line[:n_cut]
         line = help_offset+line[n_cut:]
         while True:
           if(n_cut is None): break
-          n_cut = partial_line(line, allowed_line_lenght, line_to_appear)
+          n_cut = partial_line(line, allowed_line_length, line_to_appear)
           if(len(line[:n_cut].strip())==0):
-             print >> log, line[:allowed_line_lenght]
-             line = help_offset+line[allowed_line_lenght:]
+             print >> log, line[:allowed_line_length]
+             line = help_offset+line[allowed_line_length:]
           else:
              print >> log, line[:n_cut]
              line = help_offset+line[n_cut:]
 
-def partial_line(line, allowed_line_lenght, line_to_appear):
+def partial_line(line, allowed_line_length, line_to_appear):
   assert len(line) > 0
   brakets = []
   found_l, found_r = False, False
@@ -93,7 +97,7 @@ def partial_line(line, allowed_line_lenght, line_to_appear):
     if(not in_braket):
        counter += 1
        in_braket = False
-    if(counter >= allowed_line_lenght):
+    if(counter >= allowed_line_length):
        i = counter
        j = n
        while i > 0:
@@ -124,29 +128,38 @@ def scope_walk(p, ind, log):
     format_string(object, ind, log, scope = True)
     scope_walk(object, ind+3, log)
 
-def header(log):
-  legend = """\
-Legend: black <b>bold</b> - scope names
+def write_legend(log):
+  text = """\
+Legend: black <B>bold</B> - scope names
         black - parameter names
-        <FONT color=CC0000>red</FONT> - parameter values
-        <FONT color=blue>blue</FONT> - parameter help
-        <FONT color=blue><b>blue bold</b></FONT> - parameter help
+        <SPAN STYLE="color: #CC0000">red</SPAN> - parameter values
+        <SPAN STYLE="color: blue">blue</SPAN> - parameter help
+        <SPAN STYLE="color: blue"><B>blue bold</B></SPAN> - scope help
         Parameter values:
-          <FONT color=CC0000>*</FONT> means selected parameter (where multiple choices are available)
-          <FONT color=CC0000>False</FONT> is No
-          <FONT color=CC0000>True</FONT> is Yes
-          <FONT color=CC0000>None</FONT> means not provided or not predefined or left up to program
-          <FONT color=CC0000>"%3d"</FONT> is Python style formatting descriptor """
-  print >> log, "<PRE><FONT face=courier>"
-  print >> log, "<b>%s"%("-"*79),"</b>"
-  print >> log, legend
-  print >> log, "<b>%s"%("-"*79),"</b>"
+          <SPAN STYLE="color: #CC0000">*</SPAN> means selected parameter (where multiple choices are available)
+          <SPAN STYLE="color: #CC0000">False</SPAN> is No
+          <SPAN STYLE="color: #CC0000">True</SPAN> is Yes
+          <SPAN STYLE="color: #CC0000">None</SPAN> means not provided, not predefined, or left up to the program
+          <SPAN STYLE="color: #CC0000">"%3d"</SPAN> is a Python style formatting descriptor"""
+  print >> log, '<PRE style="face=courier">'
+  print >> log, "<B>%s"%("-"*79),"</B>"
+  print >> log, text
+  print >> log, "<B>%s"%("-"*79),"</B>"
 
-def run(phil_object, log,skip_head=False):
-  if not skip_head:
-    print >> log, """<META http-equiv=Content-Type content="text/html; charset=utf-8">"""
-    print >> log, """<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">"""
-
-  header(log)
-  scope_walk(p = phil_object, ind = 0, log = log)
-  print >> log, "</FONT></PRE>"
+def run(phil_object, log, skip_head=False, head_title="libtbx.phil.as_html"):
+  if (not skip_head):
+    print >> log, """\
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+   "http://www.w3.org/TR/html4/loose.dtd">
+<HEAD>
+<META http-equiv=Content-Type content="text/html; charset=utf-8">
+<TITLE>%s</TITLE>
+</HEAD>
+<BODY>
+""" % head_title
+  write_legend(log=log)
+  scope_walk(p=phil_object, ind=0, log=log)
+  print >> log, "</PRE>"
+  if (not skip_head):
+    print >> log
+    print >> log, "</BODY>"
