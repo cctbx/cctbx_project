@@ -80,9 +80,9 @@ scaling.input {
          .help="I/sigI ratio used in completeness cut "
          completeness_cut=0.85
          .type=float
-         .help='''Data is cut at resolution where intensities with 
-            I/sigI greater than isigi_cut are more then 
-              completeness_cut complete'''
+         .help='''Data is cut at resolution where intensities with
+            I/sigI greater than isigi_cut are more than
+            completeness_cut complete'''
        }
 
      }
