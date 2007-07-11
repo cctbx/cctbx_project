@@ -337,7 +337,7 @@ namespace tensor_rank_2 {
 
       cartesian_constraints(uctbx::unit_cell const & unit_cell,
                             space_group const& space_group,
-                            double pivot_zero_attractor_ = 
+                            double pivot_zero_attractor_ =
                              cartesian_constraints_constants::pivot_zero_attractor)
       : pivot_zero_attractor(pivot_zero_attractor_)
       {
@@ -353,7 +353,7 @@ namespace tensor_rank_2 {
 
       cartesian_constraints(uctbx::unit_cell const& unit_cell,
                             af::const_ref<rt_mx> const& matrices,
-                            double pivot_zero_attractor_ =  
+                            double pivot_zero_attractor_ =
                               cartesian_constraints_constants::pivot_zero_attractor)
       : pivot_zero_attractor(pivot_zero_attractor_)
       {
