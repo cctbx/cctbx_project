@@ -60,6 +60,7 @@ par03 = False
 
 def run():
   phil.as_html.run(phil_object=test_params, log=open("tst_as_html.html", "w"))
+  print "OK"
 
 if (__name__ == "__main__" ):
   run()
