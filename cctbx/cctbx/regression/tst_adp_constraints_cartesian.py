@@ -76,7 +76,7 @@ def exercise_through_space_group(flags, space_group_info):
   assert flex.max( flex.abs( flex.double(grad_f_wrt_independent_u_cart_1)
            - flex.double(grad_f_wrt_independent_u_cart) ) ) < 5*eps**2
 
-  
+
 def exercise_through_site_symmetry():
   from cctbx import uctbx
   uc = uctbx.unit_cell((12,12,15,90,90,120))
