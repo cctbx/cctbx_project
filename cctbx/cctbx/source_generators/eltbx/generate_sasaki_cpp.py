@@ -192,10 +192,14 @@ def print_sasaki_cpp(f, tables_combined):
   print >> f, """
   } // namespace table_data
 
-  table::table(std::string const& label, bool exact)
+  table::table(
+    std::string const& label,
+    bool exact,
+    bool exception_if_no_match)
   {
     std::string work_label = basic::strip_label(label, exact);
-    info_ = anomalous::find_entry(table_data::all, work_label, exact);
+    info_ = anomalous::find_entry(
+      table_data::all, work_label, exact, exception_if_no_match);
   }
 
   namespace detail {

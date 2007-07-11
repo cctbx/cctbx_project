@@ -112,11 +112,14 @@ def print_henke_cpp(f, tables):
   print >> f, """
   } // namespace table_data
 
-  table::table(std::string const& label, bool exact)
+  table::table(
+    std::string const& label,
+    bool exact,
+    bool exception_if_no_match)
   {
     std::string work_label = basic::strip_label(label, exact);
     label_z_e_fp_fdp_ = anomalous::find_entry(
-      table_data::all, work_label, exact);
+      table_data::all, work_label, exact, exception_if_no_match);
   }
 
   fp_fdp

@@ -62,10 +62,20 @@ namespace cctbx { namespace eltbx { namespace sasaki {
           match the tabulated label. However, the lookup is not
           case-sensitive.
           <p>
+          If exception_if_no_match == true, an exception is thrown
+          if the label cannot be found.<br>
+          If exception_if_no_match == false, use is_valid() to test
+          if the label was found.<br>
+          exception_if_no_match is not available in Python. Use
+          try-except instead.
+          <p>
           See also: eltbx::basic::strip_label()
        */
       explicit
-      table(std::string const& label, bool exact=false);
+      table(
+        std::string const& label,
+        bool exact=false,
+        bool exception_if_no_match=true);
 
       //! Tests if the instance is constructed properly.
       /*! Shorthand for: label() != 0

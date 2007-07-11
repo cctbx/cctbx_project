@@ -83,7 +83,8 @@ namespace cctbx { namespace eltbx {
     const TableType*
     find_entry(const TableType* tables,
                std::string const& work_label,
-               bool exact)
+               bool exact,
+               bool exception_if_no_match)
     {
       // map D to H
       std::string wl = work_label;
@@ -99,7 +100,7 @@ namespace cctbx { namespace eltbx {
           m_entry = entry;
         }
       }
-      if (exact || !m_entry) {
+      if (exception_if_no_match && (exact || !m_entry)) {
         throw error(
           "Unknown scattering type label: " + std::string(work_label));
       }
