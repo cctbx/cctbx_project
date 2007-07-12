@@ -148,6 +148,11 @@ class modify(object):
     else:
       fmt = "Number of atoms selected for requested manipulation: %d out of total: %d"
       print >> self.log, fmt%(self.selection.count(True),self.selection.size())
+    if(self.remove_selection is not None and
+       self.remove_selection.count(False) > 0):
+      fmt = "Number of atoms to be removed: %d out of total: %d"
+      print >> self.log, fmt%(
+                       self.remove_selection.count(False),self.selection.size())
 
   def _print_action(self, text):
     print >> self.log, text

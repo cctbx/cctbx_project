@@ -234,7 +234,12 @@ class tls_from_uaniso_minimizer(object):
                              target_evaluator = self,
                              termination_params = lbfgs.termination_parameters(
                                   max_iterations = max_iterations,
-                                  max_calls      = int(max_iterations*1.5))
+                                  max_calls      = int(max_iterations*1.5)),
+                             exception_handling_params =
+                               lbfgs.exception_handling_parameters(
+                         ignore_line_search_failed_step_at_lower_bound = True,
+                         ignore_line_search_failed_step_at_upper_bound = True,
+                         ignore_line_search_failed_maxfev              = True)
                               )
     self.compute_functional_and_gradients()
     del self.x
@@ -311,7 +316,11 @@ class tls_xray_target_minimizer(object):
          core_params = lbfgs.core_parameters(maxfev = 10),
          termination_params = lbfgs.termination_parameters(
               min_iterations = max_iterations,
-              max_calls = int(max_iterations*1.5)))
+              max_calls = int(max_iterations*1.5)),
+         exception_handling_params = lbfgs.exception_handling_parameters(
+                         ignore_line_search_failed_step_at_lower_bound = True,
+                         ignore_line_search_failed_step_at_upper_bound = True,
+                         ignore_line_search_failed_maxfev              = True))
     self.compute_functional_and_gradients()
     del self.x
     self.tlsos_result = generate_tlsos(
