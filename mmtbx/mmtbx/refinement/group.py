@@ -61,8 +61,14 @@ class manager(object):
     selections = selections_
     scatterers = fmodel.xray_structure.scatterers()
     scatterers.flags_set_grads(state=False)
+    # XXX very inefficient: same code is in driver.py file. fix asap. Pavel.
     for sel in selections:
       if(refine_adp):
+         for s in sel:
+           sc = scatterers[s]
+           if(not sc.flags.use_u_iso()):
+             sc.flags.set_use_u_iso(True)
+             if(sc.u_iso == -1): sc.u_iso = 0
          scatterers.flags_set_grad_u_iso(iselection = sel)
       if(refine_occ):
          scatterers.flags_set_grad_occupancy(iselection = sel)
@@ -174,7 +180,8 @@ class group_minimizer(object):
                termination_params = lbfgs.termination_parameters(
                     max_iterations = max_number_of_iterations),
                exception_handling_params = lbfgs.exception_handling_parameters(
-                    ignore_line_search_failed_step_at_lower_bound = True)
+                    ignore_line_search_failed_step_at_lower_bound = True,
+                    ignore_line_search_failed_step_at_upper_bound = True,)
                               )
     self.compute_functional_and_gradients()
     del self.x

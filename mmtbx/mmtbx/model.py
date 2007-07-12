@@ -212,6 +212,7 @@ class manager(object):
             self.restraints_manager.geometry.pair_proxies().bond_proxies.simple
     scatterers = self.xray_structure.scatterers()
     unit_cell = self.xray_structure.unit_cell()
+    rbt_array = flex.double()
     for proxy in bond_proxies_simple:
         i_seqs = proxy.i_seqs
         i,j = proxy.i_seqs
@@ -227,8 +228,13 @@ class manager(object):
                                                  sc_i.u_star,
                                                  sc_j.u_star,
                                                  unit_cell)
-              print >> out, "%s %s %10.3f" % (atom_i.name, atom_j.name,
-                                                            p.delta_z()*10000.)
+              rbt_value = p.delta_z()*10000.
+              rbt_array.append(rbt_value)
+              print >> out, "%s %s %10.3f"%(atom_i.name, atom_j.name, rbt_value)
+    print >> out, "RBT values (*10000):"
+    print >> out, "  mean = %.3f"%flex.mean(rbt_array)
+    print >> out, "  max  = %.3f"%flex.max(rbt_array)
+    print >> out, "  min  = %.3f"%flex.min(rbt_array)
 
 
   def restraints_manager_energies_sites(self,

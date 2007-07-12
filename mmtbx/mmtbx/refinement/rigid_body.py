@@ -341,7 +341,8 @@ class manager(object):
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
               t_vec  = self.total_translation,
-              header = "Start")
+              header = "Start",
+              out    = log)
     for res in d_mins:
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
@@ -409,14 +410,16 @@ class manager(object):
         self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
               t_vec  = self.total_translation,
-              header = "Rigid body refinement")
+              header = "Rigid body refinement",
+              out    = log)
     if(bss is not None and bulk_solvent_and_scale):
       fmodel.update_solvent_and_scale(out = log, verbose = -1)
     print >> log
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
               t_vec  = self.total_translation,
-              header = "Rigid body end")
+              header = "Rigid body end",
+              out    = log)
     print >> log
     self.evaluate_after_end(fmodel, save_r_work, save_r_free,
                                                       save_xray_structure, log)

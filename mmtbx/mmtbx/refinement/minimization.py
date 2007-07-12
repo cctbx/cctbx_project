@@ -75,8 +75,6 @@ class lbfgs(object):
       sel = flex.bool(self.model.refinement_flags.occupancies_individual[0].size(), False)
       for m in self.model.refinement_flags.occupancies_individual:
          sel = sel | m
-      if (self.h_params.mode == "riding"):
-        sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_occupancy(
         iselection=sel.iselection())
       del sel
@@ -179,6 +177,8 @@ class lbfgs(object):
     # XXX inefficient ?
     # XXX Fix for normal cases at normal resolutions
     if(self.refine_xyz and not self.model.use_dbe and self.refine_dbe):
+    # THIS LOOKS AS desired to be but does not work!
+    #if(self.refine_xyz and self.hd_flag and self.neutron_scattering_dict is None):
        v3d_x = flex.vec3_double(self.x)
        for bond in self.xh_connectivity_table:
            xsh = v3d_x[bond[0]]
@@ -218,7 +218,8 @@ class lbfgs(object):
        sf = t_r.gradients_wrt_atomic_parameters(
          u_iso_refinable_params=u_iso_refinable_params).packed()
        #XXX do not count grads for H or D:
-       if(self.hd_selection.count(True) > 0 and not self.model.use_dbe):
+       #if(self.hd_selection.count(True) > 0 and not self.model.use_dbe):
+       if(self.hd_flag and self.h_params.mode != "full"):
           if(self.refine_xyz):
              sf_v3d = flex.vec3_double(sf)
              sf_v3d_sel = sf_v3d.set_selected(self.hd_selection, [0,0,0])
