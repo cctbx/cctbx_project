@@ -37,9 +37,12 @@ class xray_structure_plus(object):
                                      selection_strings= selection_strings,
                                      xray_structure   = self.xray_structure)[0]
 
-def run(file_name = "phe_e.pdb"):
+def exercise(file_name = "phe_e.pdb"):
   file_name = libtbx.env.find_in_repositories(
        relative_path="phenix_regression/pdb/%s"%file_name, test=os.path.isfile)
+  if (file_name is None):
+    print "Skipping exercise(): input file not available"
+    return
   output = "modified.pdb"
   xrsp_init = xray_structure_plus(file_name = file_name)
   base = \
@@ -265,4 +268,4 @@ def check_all_none(cmd, xrsp_init, output, tolerance=1.e-3):
   assert approx_equal(xrsp.u_cart,      xrsp_init.u_cart,tolerance)
 
 if (__name__ == "__main__"):
-  run()
+  exercise()
