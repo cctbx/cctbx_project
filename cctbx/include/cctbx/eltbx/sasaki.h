@@ -83,7 +83,7 @@ namespace cctbx { namespace eltbx { namespace sasaki {
           Not available in Python.
        */
       bool
-      is_valid() const { return info_->label != 0; }
+      is_valid() const { return info_ != 0 && info_->label != 0; }
 
       //! Returns the scattering factor label.
       const char*

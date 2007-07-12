@@ -57,7 +57,10 @@ namespace cctbx { namespace eltbx { namespace henke {
           Not available in Python.
        */
       bool
-      is_valid() const { return label_z_e_fp_fdp_->label != 0; }
+      is_valid() const
+      {
+        return label_z_e_fp_fdp_ != 0 && label_z_e_fp_fdp_->label != 0;
+      }
 
       //! Returns the scattering factor label.
       const char*
