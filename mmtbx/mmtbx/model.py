@@ -680,7 +680,7 @@ class geometry_statistics(object):
     fmt2 = "|%7.3f%8.3f%7.3f|%12.3f|%12.3f  |"
     print >> out, prefix+"|-Geometry statistics----------------------------------------|"
     print >> out, prefix+"|Type     | Deviation from ideal |   Targets  |Target (sum)  |"
-    print >> out, prefix+"|         |  mean     max    min |            |              |"
+    print >> out, prefix+"|         |  rmsd     max    min |            |              |"
     print >> out, prefix+"|bond     "+fmt1%(self.b_mean,self.b_max,self.b_min,self.b_target)
     print >> out, prefix+"|angle    "+fmt1%(self.a_mean,self.a_max,self.a_min,self.a_target)
     print >> out, prefix+"|chirality"+fmt2%(self.c_mean,self.c_max,self.c_min,self.c_target,self.target)
@@ -958,7 +958,7 @@ class stereochemistry_statistics(object):
     print >> out
     print >> out, "|"+self.text+"-"*(fill_len)+"|"
     print >> out, "|Type| Deviation from ideal |   Targets  ||Target (sum)|| Deviation of start  |"
-    print >> out, "|    |  mean     max    min |            ||            || model from current  |"
+    print >> out, "|    |  rmsd     max    min |            ||            || model from current  |"
     print >> out, "|bond|%7.3f%8.3f%7.3f|%12.3f||            ||  mean   max    min  |"%\
         (self.b_mean,self.b_max,self.b_min,self.b_target)
     print >> out, "|angl|%7.3f%8.3f%7.3f|%12.3f||            ||                     |"%\
