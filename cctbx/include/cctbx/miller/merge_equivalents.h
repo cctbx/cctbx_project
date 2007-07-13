@@ -72,6 +72,10 @@ namespace cctbx { namespace miller {
       }
       if (sum_den == 0) self.r_linear.push_back(0);
       else self.r_linear.push_back(sum_num / sum_den);
+      if (n != 1) {
+        self.r_int_num += sum_num;
+        self.r_int_den += sum_den;
+      }
       //
       sum_num = scitbx::fn::pow2(data_group[0] - result);
       sum_den = scitbx::fn::pow2(data_group[0]);
@@ -152,11 +156,12 @@ namespace cctbx { namespace miller {
   template <typename FloatType=double>
   struct merge_equivalents_real : merge_equivalents_impl<FloatType>
   {
-    merge_equivalents_real() {}
+    merge_equivalents_real() : r_int_num(0), r_int_den(0) {}
 
     merge_equivalents_real(
       af::const_ref<index<> > const& unmerged_indices,
       af::const_ref<FloatType> const& unmerged_data)
+    : r_int_num(0), r_int_den(0)
     {
       merge_equivalents_impl<FloatType>
         ::loop_over_groups(*this, unmerged_indices, unmerged_data);
@@ -169,6 +174,12 @@ namespace cctbx { namespace miller {
     af::shared<FloatType> r_linear;
     //! r_square = sum((data - mean(data))**2) / sum(data**2)
     af::shared<FloatType> r_square;
+    /** r_int = sum(abs(data - mean(data))) / sum(abs(data))
+    where the sums run over all unique reflections but mean(data) is the
+    same as for r_linear, i.e. the mean for the group of symmetry
+    equivalent reflections.
+    */
+    FloatType r_int_num, r_int_den;
 
     FloatType
     merge(
@@ -181,18 +192,21 @@ namespace cctbx { namespace miller {
       merge_equivalents::compute_r_fractors(*this, data_group, n, result);
       return result;
     }
+
+    FloatType r_int() { return r_int_num / r_int_den; }
   };
 
   template <typename FloatType=double>
   class merge_equivalents_obs
   {
     public:
-      merge_equivalents_obs() {}
+      merge_equivalents_obs() : r_int_num(0), r_int_den(0)  {}
 
       merge_equivalents_obs(
         af::const_ref<index<> > const& unmerged_indices,
         af::const_ref<FloatType> const& unmerged_data,
         af::const_ref<FloatType> const& unmerged_sigmas)
+      : r_int_num(0), r_int_den(0)
       {
         CCTBX_ASSERT(unmerged_data.size() == unmerged_indices.size());
         CCTBX_ASSERT(unmerged_sigmas.size() == unmerged_indices.size());
@@ -207,6 +221,14 @@ namespace cctbx { namespace miller {
       af::shared<FloatType> r_linear;
       //! r_square = sum((data - mean(data))**2) / sum(data**2)
       af::shared<FloatType> r_square;
+      /** r_int = sum(abs(data - mean(data))) / sum(abs(data))
+        where the sums run over all unique reflections but mean(data) is the
+        same as for r_linear, i.e. the mean for the group of symmetry
+        equivalent reflections.
+      */
+      FloatType r_int_num, r_int_den;
+
+      FloatType r_int() { return r_int_num / r_int_den; }
 
     protected:
       void

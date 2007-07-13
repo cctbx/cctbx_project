@@ -1393,25 +1393,25 @@ class array(set):
     return result
 
   def f_sq_as_f(self, algorithm="xtal_3_7", tolerance=1.e-6):
-     from cctbx import xray
-     assert self.observation_type() is None or  self.is_xray_intensity_array()
-     converters = {
-       "xtal_3_7": xray.array_f_sq_as_f_xtal_3_7,
-       "crystals": xray.array_f_sq_as_f_crystals}
-     converter = converters.get(algorithm)
-     if (converter is None):
-       raise RuntimeError(
-         "Unknown f_sq_as_f algorithm=%s\n" % show_string(algorithm)
-         + "  Possible choices are: "
-         + ", ".join([show_string(s) for s in converters.keys()]))
-     if (self.sigmas() is None):
-       result = array(self, converter(self.data()).f)
-     else:
-       r = converter(self.data(), self.sigmas(), tolerance)
-       result = array(self, r.f, r.sigma_f)
-     if (self.is_xray_intensity_array()):
-       result.set_observation_type_xray_amplitude()
-     return result
+    from cctbx import xray
+    assert self.observation_type() is None or  self.is_xray_intensity_array()
+    converters = {
+      "xtal_3_7": xray.array_f_sq_as_f_xtal_3_7,
+      "crystals": xray.array_f_sq_as_f_crystals}
+    converter = converters.get(algorithm)
+    if (converter is None):
+      raise RuntimeError(
+        "Unknown f_sq_as_f algorithm=%s\n" % show_string(algorithm)
+        + "  Possible choices are: "
+        + ", ".join([show_string(s) for s in converters.keys()]))
+    if (self.sigmas() is None):
+      result = array(self, converter(self.data()).f)
+    else:
+      r = converter(self.data(), self.sigmas(), tolerance)
+      result = array(self, r.f, r.sigma_f)
+    if (self.is_xray_intensity_array()):
+      result.set_observation_type_xray_amplitude()
+    return result
 
   def f_as_f_sq(self):
     from cctbx import xray
@@ -2431,6 +2431,7 @@ class merge_equivalents(object):
       del asu_set
       self._r_linear = merge_ext.r_linear
       self._r_square = merge_ext.r_square
+      self._r_int = merge_ext.r_int
     else:
       raise RuntimeError(
         "cctbx.miller.merge_equivalents: unsupported array type:\n"
@@ -2461,6 +2462,12 @@ class merge_equivalents(object):
     "R-square = sum((data - mean(data))**2) / sum(data**2)"
     if (self._r_square is None): return None
     return self._array.array(data=self._r_square)
+
+  def r_int(self):
+    return self._r_int
+
+  def r_sigma(self):
+    return flex.sum(self.array().sigmas()) / flex.sum(self.array().data())
 
   def show_summary(self, n_bins=10, out=None, prefix=""):
     if (out is None): out = sys.stdout
