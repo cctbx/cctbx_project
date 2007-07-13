@@ -28,6 +28,15 @@ def run():
 
 
 def exercise_shelx_weighting(f_calc, obs):
+  a,b = 0, 0
+  weighting = xray.weighting_schemes.simple_shelx_weighting(a,b)
+  weighting_ref = xray.weighting_schemes.pure_statistical_weighting()
+  for w in (weighting, weighting_ref):
+    w.calculated = f_calc
+    w.observed = obs
+    w.compute()
+  assert approx_equal(weighting.weights, weighting_ref.weights)
+
   a,b = 10, 100
   weighting = xray.weighting_schemes.shelx_weighting(a,b)
   weighting_ref = xray.weighting_schemes.simple_shelx_weighting(a,b)
