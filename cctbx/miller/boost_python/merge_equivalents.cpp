@@ -26,6 +26,7 @@ namespace {
         .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
         .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
         .add_property("r_square", make_getter(&w_t::r_square, rbv()))
+        .add_property("r_int", &w_t::r_int)
       ;
     }
   };
@@ -107,6 +108,7 @@ namespace {
         .add_property("redundancies", make_getter(&w_t::redundancies, rbv()))
         .add_property("r_linear", make_getter(&w_t::r_linear, rbv()))
         .add_property("r_square", make_getter(&w_t::r_square, rbv()))
+        .add_property("r_int", &w_t::r_int)
       ;
     }
   };
