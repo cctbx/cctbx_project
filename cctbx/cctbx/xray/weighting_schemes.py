@@ -13,7 +13,7 @@ class amplitude_unit_weighting(object):
 class intensity_quasi_unit_weighting(object):
   """ Quasi-unit  weights 1/(4 Fo^2) for F^2.
 
-      For the last case, the weights is replaced by 1/(4 sigma(Fo^2)^2)
+      The weights are replaced by 1/(4 sigma(Fo^2)^2)
       for weak Fo^2, which are defined as Fo^2 < n_sigma * sigma(Fo^2)
   """
 
