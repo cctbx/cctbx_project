@@ -24,12 +24,11 @@ def format_string(object, ind, log, scope=False, allowed_line_length=79):
      else:
         help_offset = " "*(ind+len(name))
         n_cut = partial_line(line, allowed_line_length, line_to_appear)
-        assert n_cut is not None
         print >> log, line[:n_cut]
         line = help_offset+line[n_cut:]
         while True:
-          n_cut = partial_line(line, allowed_line_length, line_to_appear)
           if(n_cut is None): break
+          n_cut = partial_line(line, allowed_line_length, line_to_appear)
           if(len(line[:n_cut].strip())==0):
              print >> log, line[:allowed_line_length]
              line = help_offset+line[allowed_line_length:]
@@ -56,12 +55,11 @@ def format_string(object, ind, log, scope=False, allowed_line_length=79):
      else:
         help_offset = " "*(ind+len(name)+1)
         n_cut = partial_line(line, allowed_line_length, line_to_appear)
-        assert n_cut is not None
         print >> log, line[:n_cut]
         line = help_offset+line[n_cut:]
         while True:
-          n_cut = partial_line(line, allowed_line_length, line_to_appear)
           if(n_cut is None): break
+          n_cut = partial_line(line, allowed_line_length, line_to_appear)
           if(len(line[:n_cut].strip())==0):
              print >> log, line[:allowed_line_length]
              line = help_offset+line[allowed_line_length:]
