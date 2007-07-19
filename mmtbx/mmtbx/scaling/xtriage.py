@@ -228,9 +228,9 @@ The program options are summarized below
    keys: * high_resolution : high resolution for twin tests
          * low_resolution: low resolution for twin tests
          * isigi_cut: I/sig(I) threshold in automatic determination
-                      of high resolutiuon limit
+                      of high resolution limit
          * completeness_cut: completeness threshold in automatic
-                             determination of high resolutiuon limit
+                             determination of high resolution limit
 
    The automatic determination of the resolution limit for the twinning test
    is determined on the basis of the completeness after removing intensities for
