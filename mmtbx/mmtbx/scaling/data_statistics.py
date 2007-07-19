@@ -469,7 +469,7 @@ class ice_ring_checker(object):
             print >> out
           if (abs(self.abnormality_intensity[ii])<level):
             print >> out, "  Even though the completeness is lower as expected,"
-            print >> out, "  the mean instensity is still reasonable at this\
+            print >> out, "  the mean intensity is still reasonable at this\
  resolution"
             print >> out
         if (abs(self.abnormality_intensity[ii])>=level):
@@ -569,7 +569,7 @@ class analyze_measurability(object):
         print >> out, " the search."
       if self.high_d_cut > 4.5:
         print >> out, " As the anomalous signal is not very strong in this dataset"
-        print >> out, " substructire solution via SAD might prove to be a challenge."
+        print >> out, " substructure solution via SAD might prove to be a challenge."
         print >> out, " Especially if only low resolution reflections are used,"
         print >> out, " the resulting substructures could contain a significant amount of"
         print >> out, " of false positives."
@@ -868,7 +868,7 @@ class basic_intensity_statistics:
       print >> out, " a given resolution bin are : "
       print >> out, " - missing overloaded or weak reflections"
       print >> out, " - suboptimal data processing"
-      print >> out, " - satelite (ice) crystals"
+      print >> out, " - satellite (ice) crystals"
       print >> out, " - NCS"
       print >> out, " - translational pseudo symmetry (detected elsewhere)"
       print >> out, " - outliers (detected elsewhere)"
