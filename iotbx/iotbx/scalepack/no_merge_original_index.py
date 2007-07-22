@@ -30,14 +30,17 @@ class reader(object):
     self.file_name = os.path.normpath(file_name)
     f = open(file_name)
     line = f.readline()
-    n_sym_ops_from_file = int(line[:5].strip())
     assert line[5] == " "
+    n_sym_ops_from_file = int(line[:5].strip())
+    assert n_sym_ops_from_file > 0
     self.space_group_symbol = line[6:].strip()
     self.space_group_from_ops = sgtbx.space_group()
     for i in xrange(n_sym_ops_from_file):
-      line = f.readline()
+      line = f.readline().rstrip()
+      assert len(line) == 27
       r = sgtbx.rot_mx([int(line[j*3:(j+1)*3]) for j in xrange(9)], 1)
-      line = f.readline()
+      line = f.readline().rstrip()
+      assert len(line) == 9
       t = sgtbx.tr_vec([int(line[j*3:(j+1)*3]) for j in xrange(3)], 12)
       self.space_group_from_ops.expand_smx(sgtbx.rt_mx(r, t))
     f.close()
