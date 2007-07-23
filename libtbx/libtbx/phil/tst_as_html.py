@@ -55,6 +55,11 @@ par02 = 0
   .type = float
 par03 = False
   .type = bool
+s {
+  a = 0
+    .help = "012345678901234567890123456789012345678901234567890123456789"
+            "012345678<p>"
+}
 """,
   process_includes=True)
 
