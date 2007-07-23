@@ -24,17 +24,23 @@ def format_string(object, ind, log, scope=False, allowed_line_length=79):
      else:
         help_offset = " "*(ind+len(name))
         n_cut = partial_line(line, allowed_line_length, line_to_appear)
-        print >> log, line[:n_cut]
-        line = help_offset+line[n_cut:]
-        while True:
-          if(n_cut is None): break
-          n_cut = partial_line(line, allowed_line_length, line_to_appear)
-          if(len(line[:n_cut].strip())==0):
-             print >> log, line[:allowed_line_length]
-             line = help_offset+line[allowed_line_length:]
-          else:
-             print >> log, line[:n_cut]
-             line = help_offset+line[n_cut:]
+        if (n_cut is None):
+          print >> log, line
+        else:
+          print >> log, line[:n_cut]
+          line = help_offset+line[n_cut:]
+          while True:
+            n_cut = partial_line(line, allowed_line_length, line_to_appear)
+            if (n_cut is None):
+              print >> log, line
+              break
+            else:
+              if(len(line[:n_cut].strip())==0):
+                 print >> log, line[:allowed_line_length]
+                 line = help_offset+line[allowed_line_length:]
+              else:
+                 print >> log, line[:n_cut]
+                 line = help_offset+line[n_cut:]
   else:
      values = (" ".join([str(i) for i in object.words])).strip()
      if (ind + len(name) >= allowed_line_length):
@@ -55,17 +61,22 @@ def format_string(object, ind, log, scope=False, allowed_line_length=79):
      else:
         help_offset = " "*(ind+len(name)+1)
         n_cut = partial_line(line, allowed_line_length, line_to_appear)
-        print >> log, line[:n_cut]
-        line = help_offset+line[n_cut:]
-        while True:
-          if(n_cut is None): break
-          n_cut = partial_line(line, allowed_line_length, line_to_appear)
-          if(len(line[:n_cut].strip())==0):
-             print >> log, line[:allowed_line_length]
-             line = help_offset+line[allowed_line_length:]
-          else:
-             print >> log, line[:n_cut]
-             line = help_offset+line[n_cut:]
+        if (n_cut is None):
+          print >> log, line
+        else:
+          print >> log, line[:n_cut]
+          line = help_offset+line[n_cut:]
+          while True:
+            n_cut = partial_line(line, allowed_line_length, line_to_appear)
+            if (n_cut is None):
+              print >> log, line
+              break
+            if(len(line[:n_cut].strip())==0):
+               print >> log, line[:allowed_line_length]
+               line = help_offset+line[allowed_line_length:]
+            else:
+               print >> log, line[:n_cut]
+               line = help_offset+line[n_cut:]
 
 def partial_line(line, allowed_line_length, line_to_appear):
   assert len(line) > 0
