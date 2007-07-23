@@ -16,8 +16,6 @@ libtbx/libtbx/command_line/find_files.py -text
 libtbx/libtbx/command_line/list_files.py -text
 libtbx/libtbx/command_line/sh.sh -text
 libtbx/libtbx/command_line/tcsh.sh -text
-libtbx/libtbx/phil/as_html.py -text
-libtbx/libtbx/phil/tst_as_html.py -text
 libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx/subversion.py -text
 libtbx/libtbx_refresh.py -text
