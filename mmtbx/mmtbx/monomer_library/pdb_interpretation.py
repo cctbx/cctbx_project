@@ -157,6 +157,15 @@ def involves_special_positions(special_position_indices, i_seqs):
       return True
   return False
 
+def involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs):
+  if (broken_bond_i_seq_pairs is None): return False
+  i_seqs = sorted(i_seqs)
+  for i in xrange(len(i_seqs)-1):
+    for j in xrange(i+1,len(i_seqs)):
+      if ((i_seqs[i],i_seqs[j]) in broken_bond_i_seq_pairs):
+        return True
+  return False
+
 class source_info_server(object):
 
   def __init__(self, m_i, m_j):
@@ -785,7 +794,7 @@ class add_bond_proxies(object):
         distance_cutoff=None):
     assert m_i.i_conformer == m_j.i_conformer
     self.counters = counters
-    self.n_breaks = 0
+    self.broken_bond_i_seq_pairs = {} # XXX future: set
     stage_1 = m_i.pdb_residue.chain.conformer.model.stage_1
     for bond in bond_list:
       if (   not m_i.monomer_atom_dict.has_key(bond.atom_id_1)
@@ -814,7 +823,7 @@ class add_bond_proxies(object):
           r = geometry_restraints.bond(sites_cart=sites_cart, proxy=proxy)
           if (r.distance_model > distance_cutoff):
             is_large_distance = True
-            self.n_breaks += 1
+            self.broken_bond_i_seq_pairs[tuple(sorted(i_seqs))] = None
         if (not is_large_distance):
           if (    m_i.i_conformer > 0
               and stage_1.are_all_blank_altLocs(i_seqs)):
@@ -835,7 +844,8 @@ class add_angle_proxies(object):
         m_j,
         angle_list,
         angle_proxy_registry,
-        special_position_indices):
+        special_position_indices,
+        broken_bond_i_seq_pairs=None):
     self.counters = counters
     if (m_j is None):
       m_1,m_2,m_3 = m_i,m_i,m_i
@@ -868,6 +878,8 @@ class add_angle_proxies(object):
         counters.resolved += 1
         if (involves_special_positions(special_position_indices, i_seqs)):
           counters.discarded_because_of_special_positions += 1
+        elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
+          pass
         else:
           registry_process_result = angle_proxy_registry.process(
             source_info=source_info_server(m_i=m_i, m_j=m_j),
@@ -890,7 +902,8 @@ class add_dihedral_proxies(object):
         dihedral_proxy_registry,
         special_position_indices,
         sites_cart=None,
-        chem_link_id=None):
+        chem_link_id=None,
+        broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.chem_link_id = chem_link_id
     if (chem_link_id not in ["TRANS", "PTRANS", "NMTRANS"]):
@@ -932,6 +945,8 @@ class add_dihedral_proxies(object):
         counters.resolved += 1
         if (involves_special_positions(special_position_indices, i_seqs)):
           counters.discarded_because_of_special_positions += 1
+        elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
+          pass
         elif (    tor.id in ["psi", "phi"]
               and self.chem_link_id in ["TRANS", "PTRANS", "NMTRANS",
                                         "CIS",   "PCIS",   "NMCIS"]
@@ -972,7 +987,8 @@ class add_chirality_proxies(object):
         chirality_proxy_registry,
         special_position_indices,
         chir_volume_esd,
-        lib_link=None):
+        lib_link=None,
+        broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.counters.unsupported_volume_sign = dicts.with_default_value(0)
     if (m_j is None):
@@ -1026,6 +1042,8 @@ class add_chirality_proxies(object):
           counters.resolved += 1
           if (involves_special_positions(special_position_indices, i_seqs)):
             counters.discarded_because_of_special_positions += 1
+          elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
+            pass
           else:
             registry_process_result = chirality_proxy_registry.process(
               source_info=source_info_server(m_i=m_i, m_j=m_j),
@@ -1046,7 +1064,8 @@ class add_planarity_proxies(object):
         m_j,
         plane_list,
         planarity_proxy_registry,
-        special_position_indices):
+        special_position_indices,
+        broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.counters.less_than_four_sites = dicts.with_default_value(0)
     if (m_j is not None):
@@ -1085,6 +1104,8 @@ class add_planarity_proxies(object):
       if (len(i_seqs) < 4):
         if (this_plane_has_unresolved_non_hydrogen):
           counters.less_than_four_sites[plane.plane_id] += 1
+      elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
+        pass
       else:
         registry_process_result = planarity_proxy_registry.process(
           source_info=source_info_server(m_i=m_i, m_j=m_j),
@@ -1366,14 +1387,16 @@ class build_chain_proxies(object):
               link_resolution.counters.already_assigned_to_first_conformer
             n_unresolved_chain_links \
               += link_resolution.counters.unresolved_non_hydrogen
-            n_chain_breaks += link_resolution.n_breaks
+            broken_bond_i_seq_pairs = link_resolution.broken_bond_i_seq_pairs
+            n_chain_breaks += len(broken_bond_i_seq_pairs)
             link_resolution = add_angle_proxies(
               counters=counters(label="link_angle"),
               m_i=prev_mm,
               m_j=mm,
               angle_list=prev_mm.lib_link.angle_list,
               angle_proxy_registry=geometry_proxy_registries.angle,
-              special_position_indices=special_position_indices)
+              special_position_indices=special_position_indices,
+              broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_angles \
               += link_resolution.counters.unresolved_non_hydrogen
             link_resolution = add_dihedral_proxies(
@@ -1385,7 +1408,8 @@ class build_chain_proxies(object):
               dihedral_proxy_registry=geometry_proxy_registries.dihedral,
               special_position_indices=special_position_indices,
               sites_cart=sites_cart,
-              chem_link_id=prev_mm.lib_link.chem_link.id)
+              chem_link_id=prev_mm.lib_link.chem_link.id,
+              broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_dihedrals \
               += link_resolution.counters.unresolved_non_hydrogen
             link_ids[link_resolution.chem_link_id] += 1
@@ -1397,7 +1421,8 @@ class build_chain_proxies(object):
               chirality_proxy_registry=geometry_proxy_registries.chirality,
               special_position_indices=special_position_indices,
               chir_volume_esd=chir_volume_esd,
-              lib_link=prev_mm.lib_link)
+              lib_link=prev_mm.lib_link,
+              broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_chiralities \
               += link_resolution.counters.unresolved_non_hydrogen
             link_resolution = add_planarity_proxies(
@@ -1406,7 +1431,8 @@ class build_chain_proxies(object):
               m_j=mm,
               plane_list=prev_mm.lib_link.get_planes(),
               planarity_proxy_registry=geometry_proxy_registries.planarity,
-              special_position_indices=special_position_indices)
+              special_position_indices=special_position_indices,
+              broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_planarities \
               += link_resolution.counters.unresolved_non_hydrogen
         if (mm.is_unusual()):
