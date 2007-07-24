@@ -35,6 +35,7 @@ scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text
 scitbx/include/scitbx/error_utils.h -text
 scitbx/include/scitbx/matrix/delta_tensors.h -text
+scitbx/include/scitbx/stl/vector_io.h -text
 scitbx/scitbx/command_line/generate_error_h.py -text
 scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
