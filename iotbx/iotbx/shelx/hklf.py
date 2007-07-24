@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 import sys
 
 def miller_export_as_shelx_hklf(self, file_object=None):
+  assert self.is_real_array()
   if (file_object is None): file_object = sys.stdout
   data = self.data()
   sigmas = self.sigmas()
