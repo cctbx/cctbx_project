@@ -35,11 +35,17 @@ scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text
 scitbx/include/scitbx/error_utils.h -text
 scitbx/include/scitbx/matrix/delta_tensors.h -text
+scitbx/include/scitbx/sparse/dfs.h -text
+scitbx/include/scitbx/sparse/io.h -text
+scitbx/include/scitbx/sparse/lu_factorization.h -text
+scitbx/include/scitbx/sparse/matrix.h -text
+scitbx/include/scitbx/sparse/vector.h -text
 scitbx/include/scitbx/stl/vector_io.h -text
 scitbx/scitbx/command_line/generate_error_h.py -text
 scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
 scitbx/scitbx/graph/tst_rigidity.py -text
+scitbx/sparse/examples/tst_sparse.h -text
 smtbx/SConscript -text
 smtbx/__init__.py -text
 smtbx/import_cctbx.h -text
