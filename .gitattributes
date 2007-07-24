@@ -10,6 +10,7 @@ cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
 cctbx/include/cctbx/maptbx/fft.h -text
 iotbx/iotbx/command_line/pdb.print_sequence.py -text
+iotbx/iotbx/shelx/fcf.py -text
 libtbx/libtbx/command_line/bash.sh -text
 libtbx/libtbx/command_line/csh.sh -text
 libtbx/libtbx/command_line/find_files.py -text
