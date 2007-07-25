@@ -193,7 +193,9 @@ namespace cctbx { namespace miller {
       return result;
     }
 
-    FloatType r_int() { return r_int_num / r_int_den; }
+    FloatType r_int() {
+      return r_int_den == 0 ? 0 : r_int_num / r_int_den;
+    }
   };
 
   template <typename FloatType=double>
@@ -228,7 +230,9 @@ namespace cctbx { namespace miller {
       */
       FloatType r_int_num, r_int_den;
 
-      FloatType r_int() { return r_int_num / r_int_den; }
+      FloatType r_int() {
+        return r_int_den == 0 ? 0 : r_int_num / r_int_den;
+      }
 
     protected:
       void
