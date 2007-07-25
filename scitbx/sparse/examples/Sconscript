@@ -10,4 +10,4 @@ envlm = env.Copy(
   LIBS=env_etc.libm
 )
 
-env.Program(target="tst_sparse", source="tst_sparse.cpp")
+# env.Program(target="tst_sparse", source="tst_sparse.cpp")
