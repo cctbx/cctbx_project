@@ -17,6 +17,7 @@ SConscript("serialization/SConscript")
 SConscript("fftpack/timing/SConscript")
 SConscript("lbfgs/SConscript")
 SConscript("lbfgsb/dev/SConscript")
+SConscript("sparse/examples/Sconscript")
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
