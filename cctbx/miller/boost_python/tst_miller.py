@@ -486,7 +486,6 @@ def exercise_merge_equivalents():
   assert approx_equal(m.r_int, (abs(1-17/13.)+abs(2-17/13.)
                               + abs(3-237/61.)+abs(4-237/61.)+abs(5-237/61.)
                               ) / (1 + 2 + 3 + 4 + 5) )
-
   #
   d = flex.complex_double(
     [complex(-1.706478,  0.248638),
@@ -532,6 +531,11 @@ def exercise_merge_equivalents():
   d = flex.int((3,3,5,5,5,7))
   m = miller.ext.merge_equivalents_exact_int(i, d)
   assert list(m.data) == [3, 5, 7]
+  #
+  i = flex.miller_index(((1,2,3), (3,0,3), (1,1,2)))
+  d = flex.double((1,2,3))
+  m = miller.ext.merge_equivalents_real(i,d)
+  assert m.r_int == 0
 
 def exercise_phase_integral():
   sg = sgtbx.space_group_info("P 21 21 21").group()
