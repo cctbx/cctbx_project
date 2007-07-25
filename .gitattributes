@@ -26,6 +26,7 @@ mmtbx/mmtbx/command_line/pdbtools.py -text
 mmtbx/mmtbx/command_line/xmanip.py -text
 mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/pdbtools.py -text
+mmtbx/mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/mmtbx/tst_pdbtools.py -text
 mmtbx/mmtbx/utils.py -text
 mmtbx/mmtbx/xmanip.py -text
