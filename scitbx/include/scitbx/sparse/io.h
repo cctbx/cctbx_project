@@ -48,8 +48,9 @@ std::ostream& operator<<(std::ostream& o,
     last_non_zero = p.index();
     o << std::setw(width) << *p;
   }
-  index_difference_type trailing_zeroes = v.size() - (last_non_zero+1);
-  if (trailing_zeroes > 0) {
+  index_difference_type trailing_zeroes_ = v.size() - (last_non_zero+1);
+  if (trailing_zeroes_ > 0) {
+    index_type trailing_zeroes = trailing_zeroes_;
     if (trailing_zeroes < v.size()) o << ", ";
     for (index_type i=1; i < trailing_zeroes; i++) {
       o << std::setw(width) << "0" << ", ";
@@ -122,6 +123,7 @@ std::ostream& operator<<(std::ostream& o,
     o << "\n";
   }
   o << "}\n";
+  return o;
 }
 
 template<class M>
@@ -133,6 +135,7 @@ std::ostream& operator << (std::ostream& o,
   o << "\nL = \n" << std::setw(width) << dense_display(lu.l());
   o << "\nU = \n" << std::setw(width) << dense_display(lu.u());
   o << "\nrows permutation = " << lu.rows_permutation();
+  return o;
 }
 
 
