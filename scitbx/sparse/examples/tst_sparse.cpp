@@ -4,7 +4,6 @@
 #include <scitbx/sparse/lu_factorization.h>
 #include <iostream>
 
-namespace scitbx { namespace sparse {
 
 void exercise_vector() {
   using namespace scitbx;
@@ -61,9 +60,9 @@ void exercise_lu() {
   using namespace scitbx;
   std::cout << std::endl << std::endl;
   sparse::matrix<double> a(8,8);
-  for (int j=1; j <= a.n_cols(); j++) {
+  for (unsigned j=1; j <= a.n_cols(); j++) {
     sparse::vector<double> &c = a.col(j-1);
-    for(int i=1; i <= a.n_rows(); i++) {
+    for(unsigned i=1; i <= a.n_rows(); i++) {
       switch(i) {
         case 3:
           c[i-1] = 1.5 - j/5.;
@@ -85,10 +84,8 @@ void exercise_lu() {
                 1e-6));
 }
 
-void exercise() {
+int main() {
   exercise_vector();
   exercise_matrix();
   exercise_lu();
 }
-
-}} // namespace scitbx::sparse

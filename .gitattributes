@@ -46,7 +46,8 @@ scitbx/scitbx/command_line/generate_error_h.py -text
 scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
 scitbx/scitbx/graph/tst_rigidity.py -text
-scitbx/sparse/examples/tst_sparse.h -text
+scitbx/sparse/examples/Sconscript -text
+scitbx/sparse/examples/tst_sparse.cpp -text
 smtbx/SConscript -text
 smtbx/__init__.py -text
 smtbx/import_cctbx.h -text
