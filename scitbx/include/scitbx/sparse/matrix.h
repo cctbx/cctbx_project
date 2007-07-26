@@ -148,25 +148,24 @@ class matrix
       return result;
     }
 
-    /// Element-wise comparison, with the absolute tolerance tol
-    friend
-    bool approx_equal(matrix const& a,
-                      matrix const& b,
-                      value_type tol=std::numeric_limits<value_type>::epsilon()
-                      )
-    {
-      SCITBX_ASSERT(a.n_cols() == b.n_cols())
-                   ( a.n_cols() )( b.n_cols() );
-      for (column_index j=0; j < a.n_cols(); j++) {
-        if (!approx_equal(a.col(j), b.col(j), tol)) return false;
-      }
-      return true;
-    }
 
   private:
     typedef typename std::vector<row_index>::const_iterator const_row_idx_iter;
     container_type column;
 };
+
+/// Element-wise comparison, with the absolute tolerance tol
+template<class T>
+bool approx_equal(matrix<T> const& a, matrix<T> const& b, T tol=std::numeric_limits<T>::epsilon())
+{
+    SCITBX_ASSERT(a.n_cols() == b.n_cols())
+                ( a.n_cols() )( b.n_cols() );
+	for (typename matrix<T>::column_index j=0; j < a.n_cols(); j++) {
+    if (!approx_equal(a.col(j), b.col(j), tol)) return false;
+    }
+    return true;
+}
+
 
 }} // namespace scitbx::sparse
 

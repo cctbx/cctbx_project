@@ -207,23 +207,6 @@ class vector
       }
     }
 
-    /// Element-wise comparison of a and b with the given absolute tolerance
-    friend
-    bool approx_equal(vector const& a,
-                      vector const& b,
-                      value_type tol=std::numeric_limits<value_type>::epsilon()
-                      )
-    {
-      SCITBX_ASSERT(a.size() == b.size())
-                   ( a.size() )( b.size() );
-      a.sort_indices(); b.sort_indices();
-      const_iterator p,q;
-      for (p=a.begin(), q=b.begin(); p != a.end() && q != b.end(); p++, q++) {
-        if (std::abs(*p - *q) > tol) return false;
-      }
-      return p == a.end() && q == b.end();
-    }
-
     /// The dense vector corresponding to this
     /** precondition: no duplicate */
     af::shared<T> as_dense_vector() const {
@@ -283,10 +266,21 @@ class vector
     }
 };
 
+/// Element-wise comparison of a and b with the given absolute tolerance
+template<class T>
+bool approx_equal(vector<T> const& a, vector<T> const& b, T tol=std::numeric_limits<T>::epsilon())
+{
+    SCITBX_ASSERT(a.size() == b.size())
+                ( a.size() )( b.size() );
+    a.sort_indices(); b.sort_indices();
+	typename vector<T>::const_iterator p,q;
+    for (p=a.begin(), q=b.begin(); p != a.end() && q != b.end(); p++, q++) {
+    if (std::abs(*p - *q) > tol) return false;
+    }
+    return p == a.end() && q == b.end();
+}
 
 
 }}
-
-
 
 #endif
