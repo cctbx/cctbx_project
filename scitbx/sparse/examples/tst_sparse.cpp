@@ -80,8 +80,8 @@ void exercise_lu() {
   std::cout << std::setw(6) << lu;
   SCITBX_ASSERT(sparse::approx_equal(
                 lu.l() * lu.u(),
-                lu.factored().deep_copy().permute_rows(lu.rows_permutation()),
-                1e-6));
+                lu.factored().deep_copy().permute_rows(lu.rows_permutation())
+                ));
 }
 
 int main() {
