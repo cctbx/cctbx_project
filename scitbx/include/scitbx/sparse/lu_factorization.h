@@ -127,11 +127,12 @@ class gilbert_peierls_lu_factorization
 template<class Matrix>
 gilbert_peierls_lu_factorization<Matrix>::
 gilbert_peierls_lu_factorization(Matrix& m)
-  : a(m), p(m.n_rows()), p_inv(m.n_rows()),
+  : a(m),
     L(a.n_rows(), std::min(a.n_rows(), a.n_cols())),
     U(std::min(a.n_rows(), a.n_cols()), a.n_cols()),
-    w(m.n_rows(), 0),
-    dfs(m.n_rows(), m.n_cols())
+    p(m.n_rows()), p_inv(m.n_rows()),
+    dfs(m.n_rows(), m.n_cols()),
+    w(m.n_rows(), 0)
 {
   // Initialise P to the identical permuntation
   for (row_index i=0; i < a.n_rows(); i++) p_inv[i] = p[i] = i;
@@ -151,7 +152,7 @@ gilbert_peierls_lu_factorization(Matrix& m)
   L.permute_rows(p);
   /* To make testing easier since this is not quite necessary for
   the typical uses of LU as a system solver */
-  for (int j=0; j < L.n_cols(); j++) L(j,j) = 1;
+  for (unsigned j=0; j < L.n_cols(); j++) L(j,j) = 1;
 }
 
 

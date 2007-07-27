@@ -35,16 +35,21 @@ class vector
       element(index_type i, value_type x) : index(i), value(x) {}
 
     };
+
     struct indexes_less_than {
       bool operator()(const element& e, const element& f) {
         return e.index < f.index;
       }
     };
+    friend struct indexes_less_than;
+
     struct indexes_equal {
       bool operator()(const element& e, const element& f) {
         return e.index == f.index;
       }
     };
+    friend struct indexes_equal;
+
     struct index_equal {
       index_type i;
       index_equal(index_type j) : i(j)
@@ -53,6 +58,7 @@ class vector
         return e.index == i;
       }
     };
+    friend struct index_equal;
 
     typedef af::shared<element> container_type;
 
@@ -91,6 +97,7 @@ class vector
           return p->index;
         }
     };
+    friend class const_iterator;
 
     /// Iterator over the records
     class iterator
@@ -123,6 +130,7 @@ class vector
           return p->index;
         }
     };
+    friend class iterator;
 
     /// A reference to an element of given index
     /** This the type of object returned by v[i] for a vector v and an index i
@@ -156,6 +164,7 @@ class vector
           return x;
         }
     };
+    friend class element_reference;
 
     /// Construct a vector of size 0
     vector() {}
@@ -273,7 +282,7 @@ bool approx_equal(vector<T> const& a, vector<T> const& b, T tol=std::numeric_lim
     SCITBX_ASSERT(a.size() == b.size())
                 ( a.size() )( b.size() );
     a.sort_indices(); b.sort_indices();
-	typename vector<T>::const_iterator p,q;
+        typename vector<T>::const_iterator p,q;
     for (p=a.begin(), q=b.begin(); p != a.end() && q != b.end(); p++, q++) {
     if (std::abs(*p - *q) > tol) return false;
     }
