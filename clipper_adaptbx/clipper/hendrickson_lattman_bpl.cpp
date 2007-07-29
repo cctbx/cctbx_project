@@ -11,7 +11,7 @@
 #include <clipper/clipper-contrib.h>
 #include <clipper/cctbx/clipper_cctbx.h>
 
-namespace clipper { namespace {
+namespace clipper { namespace boost_python {
 
   class Compute_phifom_from_abcd_interface
   {
@@ -76,10 +76,6 @@ namespace clipper { namespace {
       ;
     }
   };
-
-} // namespace <anonymous>
-
-namespace boost_python {
 
   void wrap_hendrickson_lattman()
   {
