@@ -19,6 +19,13 @@ namespace scitbx { namespace af { namespace boost_python {
       versa<value_type, flex_grid<> > result(a, flex_grid<>(a.size()));
       return boost::python::incref(boost::python::object(result).ptr());
     }
+
+    static const PyTypeObject* get_pytype()
+    {
+      typedef typename SharedType::value_type value_type;
+      return boost::python::converter::registered<
+        versa<value_type, flex_grid<> > >::converters.to_python_target_type();
+    }
   };
 
   template <typename SharedType>
@@ -32,7 +39,12 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::converter::registry::push_back(
         &convertible,
         &construct,
-        boost::python::type_id<SharedType>());
+        boost::python::type_id<SharedType>()
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+      , &boost::python::converter::expected_pytype_for_arg<
+          flex_type>::get_pytype
+#endif
+        );
     }
 
     static void* convertible(PyObject* obj_ptr)
@@ -68,10 +80,18 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       boost::python::to_python_converter<
         shared_plain<ElementType>,
-        shared_to_flex<shared_plain<ElementType> > >();
+        shared_to_flex<shared_plain<ElementType> >
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+        , true
+#endif
+        >();
       boost::python::to_python_converter<
         shared<ElementType>,
-        shared_to_flex<shared<ElementType> > >();
+        shared_to_flex<shared<ElementType> >
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+        , true
+#endif
+        >();
       shared_from_flex<shared_plain<ElementType> >();
       shared_from_flex<shared<ElementType> >();
     }

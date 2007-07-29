@@ -22,6 +22,12 @@ namespace scitbx { namespace af { namespace boost_python {
         a.accessor().as_flex_grid());
       return boost::python::incref(boost::python::object(result).ptr());
     }
+
+    static const PyTypeObject* get_pytype()
+    {
+      return boost::python::converter::registered<
+        versa<ElementType, flex_grid<> > >::converters.to_python_target_type();
+    }
   };
 
   template <typename RefCGridType>
@@ -36,7 +42,12 @@ namespace scitbx { namespace af { namespace boost_python {
       boost::python::converter::registry::push_back(
         &convertible,
         &construct,
-        boost::python::type_id<RefCGridType>());
+        boost::python::type_id<RefCGridType>()
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+      , &boost::python::converter::expected_pytype_for_arg<
+          flex_type>::get_pytype
+#endif
+        );
     }
 
     static void* convertible(PyObject* obj_ptr)
@@ -74,7 +85,11 @@ namespace scitbx { namespace af { namespace boost_python {
     {
       boost::python::to_python_converter<
         versa<ElementType, CGridType>,
-        versa_c_grid_to_flex<ElementType, CGridType> >();
+        versa_c_grid_to_flex<ElementType, CGridType>
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+        , true
+#endif
+        >();
       ref_c_grid_from_flex<const_ref<ElementType, CGridType> >();
       ref_c_grid_from_flex<ref<ElementType, CGridType> >();
     }

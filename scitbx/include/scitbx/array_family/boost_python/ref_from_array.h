@@ -16,7 +16,12 @@ namespace scitbx { namespace array_family { namespace boost_python {
       boost::python::converter::registry::push_back(
         &convertible,
         &construct,
-        boost::python::type_id<RefType>());
+        boost::python::type_id<RefType>()
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+      , &boost::python::converter::expected_pytype_for_arg<
+          ArrayType>::get_pytype
+#endif
+        );
     }
 
     static void* convertible(PyObject* obj_ptr)
