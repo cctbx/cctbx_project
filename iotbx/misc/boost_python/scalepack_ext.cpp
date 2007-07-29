@@ -6,7 +6,7 @@
 #include <fstream>
 #include <vector>
 
-namespace {
+namespace iotbx { namespace boost_python { namespace scalepack_ext {
 
   namespace miller = cctbx::miller;
   namespace af = scitbx::af;
@@ -161,9 +161,9 @@ namespace {
     no_merge_original_index_arrays_wrappers::wrap();
   }
 
-} // namespace <anonymous>
+}}} // namespace iotbx::boost_python::scalepack_ext
 
 BOOST_PYTHON_MODULE(iotbx_scalepack_ext)
 {
-  init_module();
+  iotbx::boost_python::scalepack_ext::init_module();
 }
