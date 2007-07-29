@@ -2,7 +2,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 
-namespace {
+namespace boost_adaptbx { namespace boost_python { namespace char_array_ext {
 
   template <std::size_t N>
   struct char_n_holder
@@ -116,9 +116,9 @@ namespace {
     def("use_char_n", (std::string(*)(char_5 const&)) use_char_n);
   }
 
-} // namespace <anonymous>
+}}} // namespace boost_adaptbx::boost_python::char_array_ext
 
 BOOST_PYTHON_MODULE(boost_adaptbx_char_array_ext)
 {
-  init_module();
+  boost_adaptbx::boost_python::char_array_ext::init_module();
 }

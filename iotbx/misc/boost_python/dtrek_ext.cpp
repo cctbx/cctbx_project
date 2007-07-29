@@ -4,7 +4,7 @@
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 
-namespace {
+namespace iotbx { namespace boost_python { namespace dtrek_ext {
 
   namespace af = scitbx::af;
 
@@ -99,9 +99,9 @@ namespace {
     anomalous_combined_wrappers::wrap();
   }
 
-} // namespace <anonymous>
+}}} // namespace iotbx::boost_python::dtrek_ext
 
 BOOST_PYTHON_MODULE(iotbx_dtrek_ext)
 {
-  init_module();
+  iotbx::boost_python::dtrek_ext::init_module();
 }

@@ -12,7 +12,7 @@
 
 namespace af = scitbx::af;
 
-namespace {
+namespace iotbx { namespace boost_python { namespace xplor_ext {
 
   template <unsigned Width>
   struct format_e
@@ -204,26 +204,31 @@ namespace {
     write_tail(fh, average, standard_deviation);
   }
 
-} // namespace <anonymous>
+  void init_module()
+  {
+    using namespace boost::python;
+
+    class_<map_reader>("map_reader", no_init)
+      .def(init<std::string const&, std::size_t, af::flex_grid<> const&>(
+        (arg_("file_name"), arg_("n_header_lines"), arg_("grid"))))
+      .def_readonly("data", &map_reader::data)
+      .def_readonly("average", &map_reader::average)
+      .def_readonly("standard_deviation", &map_reader::standard_deviation)
+    ;
+
+    def("map_writer", map_writer_box,
+      (arg_("file_name"), arg_("unit_cell"),
+       arg_("data"),
+       arg_("average"), arg_("standard_deviation")));
+    def("map_writer", map_writer_p1_cell,
+      (arg_("file_name"), arg_("unit_cell"),
+       arg_("gridding_first"), arg_("gridding_last"), arg_("data"),
+       arg_("average"), arg_("standard_deviation")));
+  }
+
+}}} // namespace iotbx::boost_python::xplor_ext
 
 BOOST_PYTHON_MODULE(iotbx_xplor_ext)
 {
-  using namespace boost::python;
-
-  class_<map_reader>("map_reader", no_init)
-    .def(init<std::string const&, std::size_t, af::flex_grid<> const&>(
-      (arg_("file_name"), arg_("n_header_lines"), arg_("grid"))))
-    .def_readonly("data", &map_reader::data)
-    .def_readonly("average", &map_reader::average)
-    .def_readonly("standard_deviation", &map_reader::standard_deviation)
-  ;
-
-  def("map_writer", map_writer_box,
-    (arg_("file_name"), arg_("unit_cell"),
-     arg_("data"),
-     arg_("average"), arg_("standard_deviation")));
-  def("map_writer", map_writer_p1_cell,
-    (arg_("file_name"), arg_("unit_cell"),
-     arg_("gridding_first"), arg_("gridding_last"), arg_("data"),
-     arg_("average"), arg_("standard_deviation")));
+  iotbx::boost_python::xplor_ext::init_module();
 }

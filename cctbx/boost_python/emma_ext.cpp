@@ -9,8 +9,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_internal_reference.hpp>
 
-namespace cctbx { namespace boost_python {
-namespace {
+namespace cctbx { namespace boost_python { namespace emma_ext {
 
   struct add_pair
   {
@@ -125,12 +124,11 @@ namespace {
     new_pair_2() const { return new_pair_2_; }
   };
 
-}}} // namespace cctbx::boost_python::<anonymous>
+}}} // namespace cctbx::boost_python::emma_ext
 
 SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::boost_python::add_pair)
 
-namespace cctbx { namespace boost_python {
-namespace {
+namespace cctbx { namespace boost_python { namespace emma_ext {
 
   void init_module()
   {
@@ -153,10 +151,9 @@ namespace {
     ;
   }
 
-} // namespace <anonymous>
-}} // namespace cctbx::boost_python
+}}} // namespace cctbx::boost_python::emma_ext
 
 BOOST_PYTHON_MODULE(cctbx_emma_ext)
 {
-  cctbx::boost_python::init_module();
+  cctbx::boost_python::emma_ext::init_module();
 }
