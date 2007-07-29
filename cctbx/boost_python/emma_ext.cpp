@@ -126,7 +126,7 @@ namespace cctbx { namespace boost_python { namespace emma_ext {
 
 }}} // namespace cctbx::boost_python::emma_ext
 
-SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::boost_python::add_pair)
+SCITBX_BOOST_IS_POLYMORPHIC_WORKAROUND(cctbx::boost_python::emma_ext::add_pair)
 
 namespace cctbx { namespace boost_python { namespace emma_ext {
 
