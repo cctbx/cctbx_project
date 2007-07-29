@@ -14,7 +14,7 @@
 #include <clipper/clipper-contrib.h>
 #include <clipper/cctbx/clipper_cctbx.h>
 
-namespace clipper { namespace {
+namespace clipper { namespace boost_python {
 
   class SFweight_spline_interface
   {
@@ -143,10 +143,6 @@ namespace clipper { namespace {
       ;
     }
   };
-
-} // namespace <anonymous>
-
-namespace boost_python {
 
   void wrap_sigmaa()
   {
