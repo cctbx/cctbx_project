@@ -41,6 +41,8 @@ namespace {
         boost::python::object(
           std::string(s, N)).ptr());
     }
+
+    static const PyTypeObject* get_pytype() { return &PyString_Type; }
   };
 
   template <std::size_t N>
@@ -53,7 +55,11 @@ namespace {
       boost::python::converter::registry::push_back(
         &convertible,
         &construct,
-        boost::python::type_id<char_n>());
+        boost::python::type_id<char_n>()
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+      , &boost::python::converter::wrap_pytype<PyString_Type>::get_pytype
+#endif
+        );
     }
 
     static void* convertible(PyObject* obj_ptr)
@@ -86,7 +92,11 @@ namespace {
     using namespace boost::python;
 
     typedef char char_3[3];
-    to_python_converter<char_3, char_n_to_python_str<3> >();
+    to_python_converter<char_3, char_n_to_python_str<3>
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+      , true
+#endif
+      >();
     char_n_from_python_str<3>();
     class_<char_n_holder<3> >("char_3_holder")
       .def_readonly("value", &char_n_holder<3>::value)
@@ -94,7 +104,11 @@ namespace {
     def("use_char_n", (std::string(*)(char_3 const&)) use_char_n);
 
     typedef char char_5[5];
-    to_python_converter<char_5, char_n_to_python_str<5> >();
+    to_python_converter<char_5, char_n_to_python_str<5>
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+      , true
+#endif
+      >();
     char_n_from_python_str<5>();
     class_<char_n_holder<5> >("char_5_holder")
       .def_readonly("value", &char_n_holder<5>::value)

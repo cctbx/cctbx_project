@@ -21,6 +21,12 @@ namespace boost_adaptbx { namespace optional_conversions {
         }
         return boost::python::incref(Py_None);
       }
+
+      static const PyTypeObject* get_pytype()
+      {
+        return boost::python::converter::registered<T>::converters
+          .to_python_target_type();
+      }
     };
 
   } // namespace detail
@@ -32,7 +38,11 @@ namespace boost_adaptbx { namespace optional_conversions {
     {
       boost::python::to_python_converter<
         boost::optional<T>,
-        detail::to_python<T> >();
+        detail::to_python<T>
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+        , true
+#endif
+        >();
     }
   };
 
@@ -44,7 +54,11 @@ namespace boost_adaptbx { namespace optional_conversions {
       boost::python::converter::registry::push_back(
         &convertible,
         &construct,
-        boost::python::type_id<boost::optional<T> >());
+        boost::python::type_id<boost::optional<T> >()
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+      , &boost::python::converter::expected_pytype_for_arg<T>::get_pytype
+#endif
+        );
     }
 
     static void* convertible(PyObject* obj_ptr)

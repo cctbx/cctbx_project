@@ -24,7 +24,11 @@ namespace scitbx { namespace stl { namespace boost_python {
       boost::python::converter::registry::push_back(
         &convertible,
         &construct,
-        boost::python::type_id<MapType>());
+        boost::python::type_id<MapType>()
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+      , &boost::python::converter::wrap_pytype<PyDict_Type>::get_pytype
+#endif
+        );
     }
 
     static void* convertible(PyObject* obj_ptr)

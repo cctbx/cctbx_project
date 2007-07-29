@@ -20,6 +20,8 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
       }
       return boost::python::incref(boost::python::tuple(result).ptr());
     }
+
+    static const PyTypeObject* get_pytype() { return &PyTuple_Type; }
   };
 
   struct default_policy
@@ -236,7 +238,11 @@ namespace scitbx { namespace boost_python { namespace container_conversions {
     to_tuple_mapping() {
       boost::python::to_python_converter<
         ContainerType,
-        to_tuple<ContainerType> >();
+        to_tuple<ContainerType>
+#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
+        , true
+#endif
+        >();
     }
   };
 
