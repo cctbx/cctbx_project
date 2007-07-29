@@ -522,7 +522,9 @@ class environment:
         warning_level=command_line.options.warning_level,
         static_libraries=command_line.options.static_libraries,
         static_exe=command_line.options.static_exe,
-        scan_boost=command_line.options.scan_boost)
+        scan_boost=command_line.options.scan_boost,
+        boost_python_no_py_signatures\
+          =command_line.options.boost_python_no_py_signatures)
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
           command_line.options.command_version_suffix
@@ -1299,7 +1301,8 @@ class build_options:
         static_libraries,
         static_exe,
         scan_boost,
-        build_boost_python_extensions=True):
+        build_boost_python_extensions=True,
+        boost_python_no_py_signatures=False):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1320,6 +1323,8 @@ class build_options:
     print >> f, "Scan Boost headers:", self.scan_boost
     print >> f, "Build Boost.Python extensions:", \
       self.build_boost_python_extensions
+    print >> f, "Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
+      self.boost_python_no_py_signatures
 
 class include_registry:
 
@@ -1442,6 +1447,11 @@ class pre_process_args:
       default=None,
       help="build Boost.Python extension modules",
       metavar="True|False")
+    if (not self.warm_start):
+      parser.option(None, "--boost_python_no_py_signatures",
+        action="store_true",
+        default=False,
+        help="disable Boost.Python docstring Python signatures")
     self.command_line = parser.process(args=args)
     if (not hasattr(os.path, "samefile")):
       self.command_line.options.current_working_directory = None
@@ -1504,6 +1514,9 @@ def unpickle():
   # XXX backward compatibility 2007-02-06
   if (not hasattr(env.build_options, "build_boost_python_extensions")):
     env.build_options.build_boost_python_extensions = True
+  # XXX backward compatibility 2007-07-28
+  if (not hasattr(env.build_options, "boost_python_no_py_signatures")):
+    env.build_options.boost_python_no_py_signatures = False
   return env
 
 def warm_start(args):
