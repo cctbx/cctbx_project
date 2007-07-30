@@ -1,7 +1,6 @@
 #ifndef SCITBX_SPARSE_DFS_H
 #define SCITBX_SPARSE_DFS_H
 
-#include <vector>
 #include <boost/tuple/tuple.hpp>
 #include <stack>
 
@@ -18,14 +17,13 @@ public:
   typedef typename Matrix::column_type column_type;
   typedef typename Matrix::row_index row_index;
   typedef typename Matrix::column_index column_index;
-  typedef typename Matrix::row_iterator row_iterator;
+  typedef typename Matrix::const_row_iterator const_row_iterator;
 
 private:
-    enum colour_type {white, gray, black};
+  enum colour_type {white, gray, black};
   std::vector<colour_type> colour;
 
-  typedef typename std::vector<row_index>::iterator
-    row_idx_iter;
+  typedef typename std::vector<row_index>::iterator row_idx_iter;
 
 public:
     // Construct a DFS for a matrix of at most m rows and n columns
@@ -35,28 +33,33 @@ public:
 
   // Perform the DFS through the graph of M, starting from the nonzeros of d
   template<class Visitor>
-    void operator()(Matrix& M, column_type &d, Visitor& vis);
+  void operator()(const Matrix& M, const column_type &d, Visitor& vis);
 };
 
 template<class Matrix>
 template<class Visitor>
-void depth_first_search<Matrix>::operator()(Matrix& M, column_type &d,
+void depth_first_search<Matrix>::operator()(const Matrix& M,
+                                            const column_type &d,
                                             Visitor& vis)
 {
   std::vector<row_index> marked; // grayed and blackened vertices
 
   vis.dfs_started();
 
-  for (row_iterator i_d=d.begin(); i_d != d.end(); i_d++) {
+  for (const_row_iterator i_d=d.begin(); i_d != d.end(); i_d++) {
     /* DFS from nonzero of d */
-    std::stack<boost::tuple<row_index, row_iterator, row_iterator> > stack;
-    column_index l = vis.permute_rhs( i_d.index() );
-    if (colour[l] != white) continue;
-    vis.dfs_started_from_vertex(l);
-    row_iterator col_iter = M.col(l).begin(),
-                 col_end  = M.col(l).end();
-    stack.push(boost::make_tuple(l, col_iter, col_end));
+    std::stack<boost::tuple<row_index,
+                            const_row_iterator,
+                            const_row_iterator> > stack;
+    row_index k = vis.permute_rhs( i_d.index() );
+    if (colour[k] != white) continue;
+    vis.dfs_started_from_vertex(k);
+    if (vis.dfs_shall_cut_tree_rooted_at(k)) continue;
+    const_row_iterator col_iter = M.col(k).begin(),
+                       col_end  = M.col(k).end();
+    stack.push(boost::make_tuple(k, col_iter, col_end));
     while (!stack.empty()) {
+      column_index l;
       tie(l, col_iter, col_end) = stack.top();
       stack.pop();
       while (col_iter != col_end) {
