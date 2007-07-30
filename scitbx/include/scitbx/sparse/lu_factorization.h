@@ -39,8 +39,9 @@ class gilbert_peierls_lu_factorization
     typedef typename Matrix::row_iterator row_iterator;
 
     /// Construct the LU factorisation of m, which is not modified
-    gilbert_peierls_lu_factorization(Matrix& m);
+    gilbert_peierls_lu_factorization(const Matrix& m);
 
+    /// The matrix this has been constructed with
     Matrix const& factored() {
       return a;
     }
@@ -69,7 +70,7 @@ class gilbert_peierls_lu_factorization
     */
 
     /* We seek PA = LU */
-    Matrix& a;
+    const Matrix& a;
     Matrix L, U;
     af::shared<row_index> p; /* Record of P:
                                     P(r) = s means that row r of A is
@@ -120,13 +121,14 @@ class gilbert_peierls_lu_factorization
     void pivot(column_index j);
 
     // Write w into U(:,j) and L(:,j)
-    void write_column_of_U_and_L(column_index j);
+    void copy_z_into_U(column_index j);
+    void copy_v_into_L(column_index j);
 };
 
 
 template<class Matrix>
 gilbert_peierls_lu_factorization<Matrix>::
-gilbert_peierls_lu_factorization(Matrix& m)
+gilbert_peierls_lu_factorization(const Matrix& m)
   : a(m),
     L(a.n_rows(), std::min(a.n_rows(), a.n_cols())),
     U(std::min(a.n_rows(), a.n_cols()), a.n_cols()),
@@ -137,22 +139,19 @@ gilbert_peierls_lu_factorization(Matrix& m)
   // Initialise P to the identical permuntation
   for (row_index i=0; i < a.n_rows(); i++) p_inv[i] = p[i] = i;
 
-  for (column_index j=0; j < std::min(a.n_cols(), a.n_rows()); j++) {
+  for (column_index j=0; j < U.n_cols(); j++) {
     // Computing column j of L and U
     a.col(j).fill_dense_vector_with_permutation(w, p);
     compute_z_and_v_sparsity(j);
     compute_z_and_v(j);
-    if (j < a.n_cols() - 1) {
-      pivot(j);
-    }
-    write_column_of_U_and_L(j);
+    if (j < L.n_rows() - 1) pivot(j);
+    copy_z_into_U(j);
+    if (j < U.n_rows()) U(j,j) = w[j];
+    if (j < L.n_rows()) copy_v_into_L(j);
   }
 
   // The rows of L have been kept unpermuted. Time to address that.
   L.permute_rows(p);
-  /* To make testing easier since this is not quite necessary for
-  the typical uses of LU as a system solver */
-  for (unsigned j=0; j < L.n_cols(); j++) L(j,j) = 1;
 }
 
 
@@ -182,8 +181,13 @@ struct gilbert_peierls_lu_factorization<Matrix>::w_sparsity
   }
 
   /* A nonzero v(k) results from a nonzero A(k,j) */
-  void dfs_started_from_vertex(column_index l) {
-    if (l >= j) v_nz.push_back(l);
+  void dfs_started_from_vertex(row_index k) {
+    if (k >= j) v_nz.push_back(k);
+  }
+
+  // Only L(0:j, 0:j), so don't start a DFS from a z(k) with k >= j
+  bool dfs_shall_cut_tree_rooted_at(row_index k) {
+    return k >= j;
   }
 
   /* A nonzero v(k) results from a nonzero z(l) through a nonzero L(k,l)
@@ -194,19 +198,20 @@ struct gilbert_peierls_lu_factorization<Matrix>::w_sparsity
   }
 
   /* A nonzero z(k) results from a nonzero z(l) through a nonzero L(k,l)
-  for k < j. Hence don't continue the DFS further is k >= j
+  for k < j and k != j.
+  Hence don't continue the DFS further is k >= j or k == l.
   */
   bool dfs_shall_cut_tree_edge(column_index l, row_index k) {
-    return k >= j;
+    return k >= j || k == l;
   }
 
-  /* All descendant of l have been found: thus z(l) does not depend on
-  the z(p) for the indices p already in z_nz (but those z(p) depends on z(l))
+  /* All descendant of l have been found: thus z(k) does not depend on
+  the z(p) for the indices p already in z_nz (but those z(p) depends on z(k))
   Hence a reverse iteration will give the indices in a topological order
   which makes the forward substitution work.
   */
-  void dfs_finished_vertex(column_index l) {
-    if (l < j) z_nz.push_back(l);
+  void dfs_finished_vertex(row_index k) {
+    z_nz.push_back(k);
   }
 };
 
@@ -273,8 +278,7 @@ pivot(column_index j)
   p[ p_inv[j]  ] = mu;
 
   // p^-1 := p^-1 o (j,mu)
-  p_inv[mu] = p_inv[j];
-  p_inv[j]  = p_inv[mu];
+  std::swap(p_inv[mu], p_inv[j]);
 
   std::swap(w[j], w[mu]);
 }
@@ -282,22 +286,33 @@ pivot(column_index j)
 template<class Matrix>
 inline
 void gilbert_peierls_lu_factorization<Matrix>::
-write_column_of_U_and_L(column_index j)
+copy_z_into_U(column_index j)
 {
-  // construct the sparse U(:,j) and L(:,j) from w and reset w to 0
-  /* We need to store L unpermutated since we permute rows at each step.
-  Moreover, same trick as for colour: only reset to 0 those elements which
-  may be non-zero */
+  // construct the sparse U(0:j,j) from w and reset w to 0
+  /* Only reset to 0 those elements which may be non-zero
+  (same trick as for colour in the DFS) */
   for(row_idx_iter i_ = z_nz.begin(); i_ != z_nz.end(); i_++) {
     row_index i = *i_;
     U(i,j) = w[i];
     w[i] = 0;
   }
+}
+
+template<class Matrix>
+inline
+void gilbert_peierls_lu_factorization<Matrix>::
+copy_v_into_L(column_index j)
+{
+  // construct the sparse L(:,j) from w and reset w to 0
+  /* We need to store L unpermutated since we permute rows at each step.
+  Same trick as copy_z_into_U to reset w. */
   double pivot = w[j];
+  w[j] = 0;
+  L(p_inv[j], j) = 1.;
   for(row_idx_reverse_iter i_ = v_nz.rbegin(); i_ != v_nz.rend(); i_++) {
     row_index i = *i_;
-    if (i == j) U(j,j) = pivot;
-    else        L(p_inv[i], j) = w[i]/pivot;
+    if (i == j) continue;
+    L(p_inv[i], j) = w[i]/pivot;
     w[i] = 0;
   }
 }
