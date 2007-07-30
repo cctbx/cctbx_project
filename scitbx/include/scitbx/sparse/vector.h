@@ -19,6 +19,18 @@ general, we leave it to user code either to  enforce it by construction, or
 to call the member function "sort_indices" when appropriate. Any method
 requiring the abscence of duplicate will be annotated with:
 precondition: no duplicate.
+
+Implementation note:
+The C++ standard rules that the private types and members of a class are not
+accessible to its nested classes. A defect report (issue 45, [1]) has however
+overturned that decision. It does not have the status "TC1" and is therefore not
+part of the C++ standard yet. However, among the compilers supported by the cctbx,
+VS 7.1 and 8.1, as well as all the GNU's have implemented the recommendation of
+issue 45, i.e. that nested classes have access to all members of the outer
+class. However cxx on Tru64 is true to the standard and does not implement it.
+Therefore all inner classes have been made friends of the outer class vector.
+
+[1] http://www.open-std.org/jtc1/sc22/wg21/docs/cwg_defects.html
 */
 template<typename T>
 class vector
