@@ -33,7 +33,7 @@ class matrix
     /// Construct a matrix with the given number of rows and columns
     matrix(row_index rows, column_index cols) : column(cols)
     {
-      for (column_index j=0; j < cols; j++) column[j] = column_type(cols);
+      for (column_index j=0; j < cols; j++) column[j] = column_type(rows);
     }
 
     /// The i-th column
@@ -74,6 +74,27 @@ class matrix
       return column[0].size();
     }
 
+    /// Whether all elements below the diagonal are zero
+    bool is_upper_triangular() const {
+      for (column_index j=0; j < n_cols(); j++) {
+        for (const_row_iterator p = col(j).begin(); p != col(j).end(); p++) {
+          if (p.index() > j && *p != 0) return false;
+        }
+      }
+      return true;
+    }
+
+    /// Whether all elements above the diagonal are zero and the diagonal is 1
+    bool is_unit_lower_triangular() const {
+      for (column_index j=0; j < n_cols(); j++) {
+        for (const_row_iterator p = col(j).begin(); p != col(j).end(); p++) {
+          if (p.index() < j && *p != 0) return false;
+          else if (p.index() == j && *p != 1) return false;
+        }
+      }
+      return true;
+    }
+
     /// A copy of this matrix, copying elements
     matrix deep_copy() const {
       matrix result(n_rows(), n_cols());
@@ -99,8 +120,7 @@ class matrix
     /// Sort and remove duplicate indices in all column
     /** C.f. the member function of same name in class vector */
     void sort_indices() {
-      for (typename container_type::iterator p = column.begin();
-           p != column.end(); p++) p->sort_indices();
+      for (column_index j=0; j < n_cols(); j++) col(j).sort_indices();
     }
 
     /// Permute the rows, in place
@@ -108,8 +128,7 @@ class matrix
     matrix& permute_rows(PermutationType const& permutation) {
       SCITBX_ASSERT(n_rows() == permutation.size())
                    ( n_rows() )( permutation.size() );
-      for (typename container_type::iterator p = column.begin();
-           p != column.end(); p++) p->permute(permutation);
+      for (column_index j=0; j < n_cols(); j++) col(j).permute(permutation);
       return *this;
     }
 
@@ -117,7 +136,7 @@ class matrix
     vector<T> operator*(vector<T> const& v) const {
       SCITBX_ASSERT(n_cols() == v.size())
                    ( n_cols() )( v.size() );
-      std::vector<value_type> w(v.size(), 0);
+      std::vector<value_type> w(n_rows(), 0);
       std::vector<row_index> nz;
       for (const_row_iterator pv=v.begin(); pv != v.end(); pv++) {
         column_index j = pv.index();
@@ -129,7 +148,7 @@ class matrix
           w[i] += m_ij * v_j;
         }
       }
-      vector<T> result(v.size());
+      vector<T> result(w.size());
       for (const_row_idx_iter p = nz.begin(); p != nz.end(); p++) {
         if(w[*p] != 0) result[*p] = w[*p];
       }
@@ -142,7 +161,7 @@ class matrix
       SCITBX_ASSERT(a.n_cols() == b.n_rows())
                    ( a.n_cols() )( b.n_rows() );
       matrix result(a.n_rows(), b.n_cols());
-      for (column_index j=0; j < a.n_cols(); j++) {
+      for (column_index j=0; j < b.n_cols(); j++) {
         result.col(j) = a*b.col(j);
       }
       return result;
