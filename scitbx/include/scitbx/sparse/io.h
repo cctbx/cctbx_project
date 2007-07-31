@@ -9,21 +9,18 @@
 #include <scitbx/sparse/lu_factorization.h>
 #include <scitbx/array_family/simple_io.h>
 
-namespace scitbx {
+namespace scitbx { namespace sparse {
 
-namespace sparse {
+template<class T>
+struct vector_dense_display_t
+{
+  vector_dense_display_t(const sparse::vector<T>& v) : content(v) {}
+  const sparse::vector<T>& content;
+};
 
-  template<class T>
-  struct vector_dense_display_t
-  {
-    vector_dense_display_t(const sparse::vector<T>& v) : content(v) {}
-    const sparse::vector<T>& content;
-  };
-
-  template<class T>
-  vector_dense_display_t<T> dense_display(const sparse::vector<T>& v) {
-    return vector_dense_display_t<T>(v);
-  }
+template<class T>
+vector_dense_display_t<T> dense_display(const sparse::vector<T>& v) {
+  return vector_dense_display_t<T>(v);
 }
 
 template<class T>
@@ -61,18 +58,15 @@ std::ostream& operator<<(std::ostream& o,
   return o;
 }
 
-namespace sparse {
+template<class T>
+struct vector_compressed_display_t {
+  vector_compressed_display_t(const sparse::vector<T>& v) : content(v) {}
+  const sparse::vector<T>& content;
+};
 
-  template<class T>
-  struct vector_compressed_display_t {
-    vector_compressed_display_t(const sparse::vector<T>& v) : content(v) {}
-    const sparse::vector<T>& content;
-  };
-
-  template<class T>
-  vector_compressed_display_t<T> compressed_display(const sparse::vector<T>& v) {
-    return vector_compressed_display_t<T>(v);
-  }
+template<class T>
+vector_compressed_display_t<T> compressed_display(const sparse::vector<T>& v) {
+  return vector_compressed_display_t<T>(v);
 }
 
 template<class T>
@@ -93,18 +87,15 @@ std::ostream& operator<<(std::ostream& o,
   return o;
 }
 
-namespace sparse {
+template<class T>
+struct matrix_dense_display_t {
+  matrix_dense_display_t(const sparse::matrix<T>& m) : content(m) {}
+  const sparse::matrix<T>& content;
+};
 
-  template<class T>
-  struct matrix_dense_display_t {
-    matrix_dense_display_t(const sparse::matrix<T>& m) : content(m) {}
-    const sparse::matrix<T>& content;
-  };
-
-  template<class T>
-  matrix_dense_display_t<T> dense_display(const sparse::matrix<T>& m) {
-    return matrix_dense_display_t<T>(m);
-  }
+template<class T>
+matrix_dense_display_t<T> dense_display(const sparse::matrix<T>& m) {
+  return matrix_dense_display_t<T>(m);
 }
 
 template<class T>
@@ -139,7 +130,7 @@ std::ostream& operator << (std::ostream& o,
 }
 
 
-}
+}}
 
 
 
