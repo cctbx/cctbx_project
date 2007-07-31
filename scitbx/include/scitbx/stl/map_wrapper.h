@@ -26,7 +26,7 @@ namespace scitbx { namespace stl { namespace boost_python {
         &construct,
         boost::python::type_id<MapType>()
 #ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
-      , &boost::python::converter::wrap_pytype<PyDict_Type>::get_pytype
+      , &boost::python::converter::wrap_pytype<&PyDict_Type>::get_pytype
 #endif
         );
     }

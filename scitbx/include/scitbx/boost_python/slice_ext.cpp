@@ -32,7 +32,7 @@ namespace {
         &construct,
         boost::python::type_id<slice>()
 #ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
-      , &boost::python::converter::wrap_pytype<PySlice_Type>::get_pytype
+      , &boost::python::converter::wrap_pytype<&PySlice_Type>::get_pytype
 #endif
         );
     }
