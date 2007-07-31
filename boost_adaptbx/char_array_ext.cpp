@@ -57,7 +57,7 @@ namespace boost_adaptbx { namespace boost_python { namespace char_array_ext {
         &construct,
         boost::python::type_id<char_n>()
 #ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
-      , &boost::python::converter::wrap_pytype<PyString_Type>::get_pytype
+      , &boost::python::converter::wrap_pytype<&PyString_Type>::get_pytype
 #endif
         );
     }
