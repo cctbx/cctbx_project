@@ -7,47 +7,43 @@ namespace scitbx { namespace af { namespace detail {
 
   template<class T>
   class ref_reverse_iterator
-    : public boost::forward_iterator_helper<ref_reverse_iterator<T>, T>
+    : public boost::random_access_iterator_helper<ref_reverse_iterator<T>, T>
   {
-    T *p;
+      T *p;
+      typedef ref_reverse_iterator self;
+      typedef std::ptrdiff_t Distance;
     public:
-      ref_reverse_iterator(T* beg) : p(beg-1)
-      {}
-
-      T& operator*() {
-        return *p;
-      }
-
-      bool operator==(ref_reverse_iterator const& i) const {
-        return p == i.p;
-      }
-
-      ref_reverse_iterator& operator++() {
-        p--;
-        return *this;
+      ref_reverse_iterator(T* beg) : p(beg-1) {}
+      T& operator*() { return *p; }
+      bool operator==(self const& i) const { return p == i.p; }
+      bool operator<(self const& i) const { return p > i.p; }
+      self& operator++() { p--; return *this; }
+      self& operator--() { p++; return *this; }
+      self& operator+=(Distance n) { p -= n; return *this; }
+      self& operator-=(Distance n) { p += n; return *this; }
+      friend Distance operator-(self const& i, self const& j) {
+        return j.p - i.p;
       }
   };
 
   template<class T>
   class ref_const_reverse_iterator
-    : public boost::forward_iterator_helper<ref_const_reverse_iterator<T>, T>
+    : public boost::random_access_iterator_helper<ref_const_reverse_iterator<T>, T>
   {
-    T const *p;
+      T *p;
+      typedef ref_const_reverse_iterator self;
+      typedef std::ptrdiff_t Distance;
     public:
-      ref_const_reverse_iterator(T const* beg) : p(beg-1)
-      {}
-
-      T operator*() {
-        return *p;
-      }
-
-      bool operator==(ref_const_reverse_iterator const& i) const {
-        return p == i.p;
-      }
-
-      ref_const_reverse_iterator& operator++() {
-        p--;
-        return *this;
+      ref_const_reverse_iterator(T* beg) : p(beg-1) {}
+      T operator*() const { return *p; }
+      bool operator==(self const& i) const { return p == i.p; }
+      bool operator<(self const& i) const { return p > i.p; }
+      self& operator++() { p--; return *this; }
+      self& operator--() { p++; return *this; }
+      self& operator+=(Distance n) { p -= n; return *this; }
+      self& operator-=(Distance n) { p += n; return *this; }
+      friend Distance operator-(self const& i, self const& j) {
+        return j.p - i.p;
       }
   };
 
