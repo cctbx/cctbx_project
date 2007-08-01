@@ -2,6 +2,7 @@
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
+#include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
@@ -87,6 +88,9 @@ namespace {
       return scitbx::boost_python::stl_map_as_dict(self.atom_element_counts());
     }
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      reset_atom_tmp_overloads, reset_atom_tmp, 0, 2)
+
     static void
     wrap()
     {
@@ -158,6 +162,8 @@ namespace {
         .def("extract_atom_uij", &w_t::extract_atom_uij)
         .def("extract_atom_siguij", &w_t::extract_atom_siguij)
         .def("extract_atom_hetero", &w_t::extract_atom_hetero)
+        .def("reset_atom_tmp", &w_t::reset_atom_tmp, reset_atom_tmp_overloads((
+          arg_("first_value")=0, arg_("increment")=1)))
       ;
     }
   };
