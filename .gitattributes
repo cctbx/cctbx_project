@@ -15,6 +15,7 @@ libtbx/libtbx/command_line/bash.sh -text
 libtbx/libtbx/command_line/csh.sh -text
 libtbx/libtbx/command_line/find_files.py -text
 libtbx/libtbx/command_line/list_files.py -text
+libtbx/libtbx/command_line/nequal.py -text
 libtbx/libtbx/command_line/sh.sh -text
 libtbx/libtbx/command_line/tcsh.sh -text
 libtbx/libtbx/sourceforge_checkout.py -text
