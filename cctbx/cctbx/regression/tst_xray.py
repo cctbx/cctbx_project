@@ -8,6 +8,7 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal, is_above_limit, show_diff
+from libtbx.test_utils import not_approx_equal
 import random
 import pickle
 from cStringIO import StringIO
@@ -592,6 +593,25 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   bs = xs.cubic_unit_cell_around_centered_scatterers(buffer_size=3.5)
   assert str(bs.unit_cell()) == "(31, 31, 31, 90, 90, 90)"
 
+def exercise_closest_distances():
+  xs = random_structure.xray_structure(
+                               space_group_info = sgtbx.space_group_info("P1"),
+                               elements         = ["N"]*3,
+                               unit_cell        = (10, 20, 30, 70, 80, 120))
+  xs_other = xs.deep_copy_scatterers()
+  result = xs.closest_distances(other = xs_other, max_distance_cutoff = 100)
+  assert approx_equal(result, [0.0, 0.0, 0.0])
+  result = xs.closest_distances(other = xs_other, max_distance_cutoff = 0)
+  assert approx_equal(result, [0.0, 0.0, 0.0])
+  result = xs.closest_distances(other = xs_other)
+  assert approx_equal(result, [0.0, 0.0, 0.0])
+  xs_other = xs_other.translate(x=1,y=2,z=3)
+  result = xs.closest_distances(other = xs_other, max_distance_cutoff = 100)
+  assert not_approx_equal(result, [-1.0, -1.0, -1.0])
+  assert not_approx_equal(result, [0.0, 0.0, 0.0])
+  result = xs.closest_distances(other = xs_other, max_distance_cutoff = 0)
+  assert approx_equal(result, [-1.0, -1.0, -1.0])
+
 def exercise_u_base():
   d_min = 9
   grid_resolution_factor = 1/3.
@@ -906,6 +926,7 @@ def exercise_concatenate_inplace():
   print "concatenate inplace: OK"
 
 def run():
+  exercise_closest_distances()
   exercise_concatenate_inplace()
   exercise_scatterer()
   exercise_anomalous_scatterer_group()

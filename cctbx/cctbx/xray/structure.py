@@ -991,6 +991,24 @@ class structure(crystal.special_position_settings):
   def rms_difference(self, other):
     return self.sites_cart().rms_difference(other.sites_cart())
 
+  def closest_distances(self, other, max_distance_cutoff = 6.0):
+    # XXX n*n inefficient algorithm. Can be done faster.
+    assert self.unit_cell() == other.unit_cell()
+    assert self.space_group().type().number() == \
+      other.space_group().type().number()
+    result = flex.double(self.scatterers().size(), -1)
+    sites_frac = self.sites_frac()
+    sites_frac_other = other.sites_frac()
+    for i_seq, site_frac in enumerate(sites_frac):
+      d = 1.e+9
+      for site_frac_other in sites_frac_other:
+        d_ = self.unit_cell().distance(site_frac, site_frac_other)
+        if(d_ < d):
+           d = d_
+      if(d <= max_distance_cutoff):
+        result[i_seq] = d
+    return result
+
   def orthorhombic_unit_cell_around_centered_scatterers(self, buffer_size):
     sites_cart = self.sites_cart()
     sites_cart_min = sites_cart.min()
