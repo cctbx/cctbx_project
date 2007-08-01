@@ -794,6 +794,13 @@ model id=3 #chains=2
         conformer_ids={" ": 3},
         residue_names={"MPR ": 1, "MET ": 2, "CYS ": 1},
         residue_name_classes={"other": 1, "common_amino_acid": 3}))
+    assert [atom.tmp for atom in pdb_inp.atoms()] == [1] * 6
+    pdb_inp.reset_atom_tmp(first_value=0, increment=0)
+    assert [atom.tmp for atom in pdb_inp.atoms()] == [0] * 6
+    pdb_inp.reset_atom_tmp()
+    assert [atom.tmp for atom in pdb_inp.atoms()] == range(6)
+    pdb_inp.reset_atom_tmp(first_value=3, increment=4)
+    assert [atom.tmp for atom in pdb_inp.atoms()] == range(3,3+4*6,4)
   #
   pdb_inp = pdb.input(
     source_info=None,

@@ -2128,6 +2128,17 @@ namespace iotbx { namespace pdb {
         return result;
       }
 
+      void
+      reset_atom_tmp(int first_value=0, int increment=1) const
+      {
+        const atom* atoms_end = atoms_.end();
+        int value = first_value;
+        for(const atom* a=atoms_.begin();a!=atoms_end;a++) {
+          a->data->tmp = value;
+          value += increment;
+        }
+      }
+
     protected:
       std::string source_info_;
       record_type_counts_t record_type_counts_;
