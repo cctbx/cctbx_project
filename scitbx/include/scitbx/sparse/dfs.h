@@ -26,7 +26,7 @@ private:
   typedef typename std::vector<row_index>::iterator row_idx_iter;
 
 public:
-    // Construct a DFS for a matrix of at most m rows and n columns
+    // Construct a DFS to visit the elements of a m x n matrix
     depth_first_search(row_index m, column_index n)
     : colour(std::max(m,n), white)
   {}
