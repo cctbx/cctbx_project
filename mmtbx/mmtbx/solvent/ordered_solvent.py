@@ -112,6 +112,26 @@ master_params = iotbx.phil.parse("""\
   }
 """)
 
+def show_histogram_(data,
+                   n_slots,
+                   out=None,
+                   prefix=""):
+    if (out is None): out = sys.stdout
+    print >> out, prefix
+    histogram = flex.histogram(data    = data,
+                               n_slots = n_slots)
+    low_cutoff = histogram.data_min()
+    for i,n in enumerate(histogram.slots()):
+      high_cutoff = histogram.data_min() + histogram.slot_width() * (i+1)
+      print >> out, "%7.3f - %7.3f: %d" % (low_cutoff, high_cutoff, n)
+      low_cutoff = high_cutoff
+    out.flush()
+    print
+    print >> out, flex.max(data)
+    print >> out, flex.min(data)
+    print >> out, flex.mean(data)
+    return histogram
+
 class manager(object):
   def __init__(self, fmodel,
                      model,
@@ -176,7 +196,46 @@ class manager(object):
        self.update_xray_structure()
     if(self.filter_only == False):
        self.solvent_selection.extend(flex.bool(self.sites.size(), True))
+    self.final_distance_check()
     if(self.verbose > 0): self.show_current_state(header = "Final model:")
+
+  def final_distance_check(self):
+    # Introduced as a quick fix for emerged problem.
+    # Please carefull in making changes here: the effect of using of this
+    # function is proven to be essential for selected cases but NOT exercised
+    # in routine regression tests. This will be done (along with some code
+    # cleaning) in the next revision of ordered_solvent.py code.
+    print >> self.log, "*** WARNING from ordered solvent picking ***" # XXX
+    print >> self.log, "*** WARNING Entering into suboptimal calculation..." # XXX
+    print >> self.log, "*** WARNING Calculations may take some time..." # XXX
+    print >> self.log
+    sol_sel = self.solvent_selection
+    mac_sel = ~self.solvent_selection
+    xrs_sol = self.xray_structure.select(sol_sel)
+    xrs_mac = self.xray_structure.select(mac_sel)
+    sol_mac_distances = xrs_sol.closest_distances(other = xrs_mac,
+      max_distance_cutoff = self.max_solv_macromol_dist)
+    not_too_far = sol_mac_distances != -1
+    not_too_close = sol_mac_distances >= self.min_solv_macromol_dist
+    selection_good = (not_too_far & not_too_close)
+    print >> self.log, \
+      "Additional number of solvent removed by distance cutoffs = ", \
+      selection_good.count(False)
+    #
+    xrs_sol = self.xray_structure.select(self.solvent_selection)
+    xrs_mac = self.xray_structure.select(~self.solvent_selection)
+    xrs_sol = xrs_sol.select(selection_good)
+    sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
+    sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
+    self.model.remove_solvent()
+    self.model.add_solvent(
+                      solvent_selection      = sol_sel,
+                      solvent_xray_structure = xrs_sol,
+                      residue_name           = self.params.output_residue_name,
+                      atom_name              = self.params.output_atom_name,
+                      chain_id               = self.params.output_chain_id)
+    self.xray_structure = self.model.xray_structure
+    self.solvent_selection = self.model.solvent_selection
 
   def check_existing_solvent(self):
     scatterers      = self.xray_structure.scatterers()
