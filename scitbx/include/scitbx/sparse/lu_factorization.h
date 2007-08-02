@@ -111,6 +111,7 @@ class gilbert_peierls_lu_factorization
     and finally
       w = [ U(0:j+1, j) ]
           [ L(j+1:m, j) ]
+      (with the obvious clipping if j > m)
     */
     af::shared<value_type> w;
 
