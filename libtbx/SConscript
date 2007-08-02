@@ -492,7 +492,13 @@ else:
       SHLINK=cxx,
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
-    env_etc.ccflags_base = ["-fPIC", "-w"]
+    if (libtbx.env.build_options.warning_level == 0):
+      warn_options = "-w"
+    elif (libtbx.env.build_options.warning_level == 1):
+      warn_options = "-Wall -Wno-sign-compare"
+    else:
+      warn_options = "-Wall -Wno-sign-compare -Werror"
+    env_etc.ccflags_base = ["-fPIC",] + warn_options.split()
     if (cxx == "c++"):
       env_etc.ccflags_base.extend(["-no-cpp-precomp", "-Wno-long-double"])
     env_etc.cxxflags_base = list(env_etc.ccflags_base)
