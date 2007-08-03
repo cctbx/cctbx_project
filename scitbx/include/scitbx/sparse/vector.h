@@ -13,11 +13,25 @@ namespace scitbx { namespace sparse {
 
 /** A sparse vector represented as a sequence of records,
 each containing the value and the index of a non-zero element.
-This sequence is not kept sorted. Most operation do however require that
-there are no duplicate index but since this is too expensive to enforce in
-general, we leave it to user code either to  enforce it by construction, or
-to call the member function "sort_indices" when appropriate. Any method
-requiring the abscence of duplicate will be annotated with:
+
+The semantic is as follow for a vector v.
+
+(1) If no value has been assigned to v[i], then v[i] == 0 and no data is stored
+corresponding to that index i.
+
+(2) After an assignment v[i] = x, even if x is zero, a pair (i,x) is stored and
+v[i] == x
+In sparse algorithm, v[i] == 0 in case (1) corresponds to structural zeroes:
+those elements are never touched by the algorithm; whereas v[i] == 0 in case (2)
+results from the assignement to v[i] of an expression which happens to be zero:
+that's a coincidential cancellation.
+
+(3) This sequence of index-value pairs is not kept sorted.
+Most operation do however require that there is no duplicate index but since
+this is too expensive to enforce in general, we leave it to user code
+- either to  enforce it by construction,
+- or to call the member function "sort_indices" when appropriate.
+Any method requiring the abscence of duplicate will be annotated with:
 precondition: no duplicate.
 
 Implementation note:
@@ -48,12 +62,12 @@ class vector
 
     };
 
-    struct indexes_less_than {
+    struct indexes_greater_than {
       bool operator()(const element& e, const element& f) {
-        return e.index < f.index;
+        return e.index > f.index;
       }
     };
-    friend struct indexes_less_than;
+    friend struct indexes_greater_than;
 
     struct indexes_equal {
       bool operator()(const element& e, const element& f) {
@@ -165,14 +179,15 @@ class vector
 
         /// Triggered by using the value of v[i]
         operator value_type() {
-          typename container_type::iterator p = std::find_if(
-            v.elements.rbegin(), v.elements.rend(), index_equal(i));
-          return *p;
+          vector const &cv = v;
+          typename container_type::const_reverse_iterator p = std::find_if(
+            cv.elements.rbegin(), cv.elements.rend(), index_equal(i));
+          return p != cv.elements.rend() ? p->value : 0;
         }
 
         /// Triggered by an assignment v[i] = ...
         value_type operator=(value_type x) {
-          if (x != 0) v.elements.push_back(element(i,x));
+          v.elements.push_back(element(i,x));
           return x;
         }
     };
@@ -209,6 +224,11 @@ class vector
       return _size;
     }
 
+    /// Whether there is no potential non-zero elements
+    bool is_structurally_zero() const {
+      return elements.size() == 0;
+    }
+
     /// Subscripting
     /** Assignment v[i] = ... may introduce a duplicate index, a problem
     solved for the getter v[i] by returning the last record with the
@@ -231,7 +251,7 @@ class vector
     /// The dense vector corresponding to this
     /** precondition: no duplicate */
     af::shared<T> as_dense_vector() const {
-      af::shared<T> result;
+      af::shared<T> result(size(), 0.);
       fill_dense_vector(result);
       return result;
     }
@@ -262,12 +282,11 @@ class vector
     /// Remove duplicate indices and sort records by increasing indices.
     /** The last record is kept in case of duplicates. */
     vector const& sort_indices() const {
-      container_type new_elements;
-      std::back_insert_iterator<container_type> inserter(new_elements);
-      std::unique_copy(elements.rbegin(), elements.rend(),
-                       inserter, indexes_equal());
-      std::sort(new_elements.begin(), new_elements.end(), indexes_less_than());
-      // so as to honour the const qualifier...
+      container_type &elts = const_cast<container_type&>(elements);
+      std::stable_sort(elts.begin(), elts.end(), indexes_greater_than());
+      container_type new_elements(af::reserve(elts.size()));
+      std::unique_copy(elts.rbegin(), elts.rend(),
+                       std::back_inserter(new_elements), indexes_equal());
       const_cast<vector*>(this)->elements = new_elements;
       return *this;
     }
@@ -289,14 +308,26 @@ class vector
 
 /// Element-wise comparison of a and b with the given absolute tolerance
 template<class T>
-bool approx_equal(vector<T> const& a, vector<T> const& b, T tol=std::numeric_limits<T>::epsilon())
+bool approx_equal(vector<T> const& a, vector<T> const& b,
+                  T tol=std::numeric_limits<T>::epsilon())
 {
     SCITBX_ASSERT(a.size() == b.size())
                 ( a.size() )( b.size() );
-    a.sort_indices(); b.sort_indices();
-        typename vector<T>::const_iterator p,q;
-    for (p=a.begin(), q=b.begin(); p != a.end() && q != b.end(); p++, q++) {
-    if (std::abs(*p - *q) > tol) return false;
+    a.sort_indices();
+    b.sort_indices();
+    typename vector<T>::const_iterator p = a.begin(),
+                                       q = b.begin();
+    for(;;) {
+      if (p == a.end() && q == b.end()) break;
+      if (*p != 0 && *q != 0) {
+        if (std::abs(*p - *q) > tol) return false;
+        if (p != a.end()) p++;
+        if (q != b.end()) q++;
+      }
+      else {
+        if (*p == 0) p++;
+        if (*q == 0) q++;
+      }
     }
     return p == a.end() && q == b.end();
 }
