@@ -1,11 +1,12 @@
 import sys
+import os.path
 from fileinput import input, isfirstline, filename, isstdin
 from libtbx import subversion
 from libtbx.option_parser import option_parser
 
 def clean_clutter_in(files, tabsize=8):
   n_empty = 0
-  for line in input(files, inplace=1):
+  for line in input([ f for f in files if not os.path.isdir(f) ], inplace=1):
     if (isfirstline()):
       if (not isstdin()):
         print >> sys.__stdout__, filename() + ':'
