@@ -125,7 +125,7 @@ master_params = iotbx.phil.parse("""
       }
 
      custom
-     .help = "A custom script that uses miller_aray data names as variables."
+     .help = "A custom script that uses miller_array data names as variables."
      {
        code = None
        .help = "A piece of python code"
