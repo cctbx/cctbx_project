@@ -45,7 +45,8 @@ def run():
   "$D/scitbx/examples/chebyshev_lsq_example.py",
   "$D/scitbx/examples/immoptibox_ports.py",
   "$D/scitbx/graph/rigidity.py",
-  "$D/scitbx/graph/tst_rigidity.py"
+  "$D/scitbx/graph/tst_rigidity.py",
+  "$D/scitbx/sparse/tests/tst_sparse.py",
   )
 
   build_dir = libtbx.env.under_build("scitbx")
