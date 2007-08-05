@@ -5,10 +5,10 @@
 
 #include <scitbx/sparse/vector.h>
 
-namespace scitbx { namespace sparse { namespace boost_python { namespace {
+namespace scitbx { namespace sparse { namespace boost_python {
 
 template<typename T>
-struct vector_wrapper : vector<T>
+struct vector_wrapper
 {
   typedef vector<T> wt;
   typedef typename wt::index_type index_type;
@@ -30,15 +30,13 @@ struct vector_wrapper : vector<T>
     {}
 
     boost::python::tuple next() {
-      if (cur != end) {
-        index_type i = cur.index();
-        value_type x = *cur++;
-        return boost::python::make_tuple(i,x);
-      }
-      else {
+      if (cur == end) {
         PyErr_SetNone(PyExc_StopIteration);
         boost::python::throw_error_already_set();
       }
+      index_type i = cur.index();
+      value_type x = *cur++;
+      return boost::python::make_tuple(i,x);
     }
 
     element_iterator iter() {
@@ -82,8 +80,6 @@ struct vector_wrapper : vector<T>
     ;
   }
 };
-
-} // end anonymous namespace
 
 void wrap_vector() {
   vector_wrapper<double>::element_iterator_wrapper::wrap();
