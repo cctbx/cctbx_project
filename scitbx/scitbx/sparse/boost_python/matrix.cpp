@@ -8,10 +8,10 @@
 
 #include <scitbx/sparse/matrix.h>
 
-namespace scitbx { namespace sparse { namespace boost_python { namespace {
+namespace scitbx { namespace sparse { namespace boost_python {
 
 template<typename T>
-struct matrix_wrapper : matrix<T>
+struct matrix_wrapper
 {
   typedef matrix<T> wt;
   typedef typename wt::row_index row_index;
@@ -50,9 +50,6 @@ struct matrix_wrapper : matrix<T>
   }
 
 };
-
-
-} // end anonymous namespace
 
 void wrap_matrix() {
   matrix_wrapper<double>::wrap();
