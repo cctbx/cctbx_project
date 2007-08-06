@@ -9,12 +9,15 @@ namespace scitbx { namespace af { namespace detail {
   class ref_reverse_iterator
     : public boost::random_access_iterator_helper<ref_reverse_iterator<T>, T>
   {
-      T *p;
+      T* p;
       typedef ref_reverse_iterator self;
       typedef std::ptrdiff_t Distance;
     public:
-      ref_reverse_iterator(T* beg) : p(beg-1) {}
-      T& operator*() { return *p; }
+      ref_reverse_iterator() : p(0) {}
+      explicit ref_reverse_iterator(T* beg) : p(beg-1) {}
+      ref_reverse_iterator(self const& i) : p(i.p) {}
+      self& operator=(self const& x) { p = x.p; return *this; }
+      T& operator*() const { return *p; }
       bool operator==(self const& i) const { return p == i.p; }
       bool operator<(self const& i) const { return p > i.p; }
       self& operator++() { p--; return *this; }
@@ -25,28 +28,6 @@ namespace scitbx { namespace af { namespace detail {
         return j.p - i.p;
       }
   };
-
-  template<class T>
-  class ref_const_reverse_iterator
-    : public boost::random_access_iterator_helper<ref_const_reverse_iterator<T>, T>
-  {
-      T *p;
-      typedef ref_const_reverse_iterator self;
-      typedef std::ptrdiff_t Distance;
-    public:
-      ref_const_reverse_iterator(T* beg) : p(beg-1) {}
-      T operator*() const { return *p; }
-      bool operator==(self const& i) const { return p == i.p; }
-      bool operator<(self const& i) const { return p > i.p; }
-      self& operator++() { p--; return *this; }
-      self& operator--() { p++; return *this; }
-      self& operator+=(Distance n) { p -= n; return *this; }
-      self& operator-=(Distance n) { p += n; return *this; }
-      friend Distance operator-(self const& i, self const& j) {
-        return j.p - i.p;
-      }
-  };
-
 }}}
 
 #define SCITBX_ARRAY_FAMILY_TYPEDEFS \
@@ -54,7 +35,7 @@ typedef ElementType                                     value_type; \
 typedef ElementType*                                    iterator; \
 typedef const ElementType*                              const_iterator; \
 typedef detail::ref_reverse_iterator<ElementType>       reverse_iterator; \
-typedef detail::ref_const_reverse_iterator<ElementType> const_reverse_iterator; \
+typedef detail::ref_reverse_iterator<const ElementType> const_reverse_iterator; \
 typedef ElementType&                                    reference; \
 typedef ElementType const&                              const_reference; \
 typedef std::size_t                                     size_type; \

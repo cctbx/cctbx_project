@@ -27,6 +27,9 @@ namespace {
     static void run() {
       run_1();
       run_2();
+      run_reverse_iterators_get();
+      run_reverse_iterators_set();
+      run_reverse_iterators_const();
     }
     static void run_1() {
       ArrayType a1;
@@ -185,6 +188,60 @@ namespace {
       std::vector<int> vi(20);
       a.assign(vi);
       verify(__LINE__, vi, a);
+    }
+    static void run_reverse_iterators_get() {
+      ArrayType a;
+      a.insert(a.begin(), 0);
+      a.insert(a.begin(), 1);
+      a.insert(a.begin(), 2);
+      a.insert(a.begin(), 3);
+
+      typename ArrayType::reverse_iterator i = a.rbegin();
+      check_true(__LINE__, *i++ == 0);
+      check_true(__LINE__, *i++ == 1);
+      check_true(__LINE__, *i++ == 2);
+      check_true(__LINE__, *i++ == 3);
+      check_true(__LINE__, i == a.rend());
+
+      typename ArrayType::reverse_iterator j = i;
+      check_true(__LINE__, *--j == 3);
+      check_true(__LINE__, *--j == 2);
+      check_true(__LINE__, *--j == 1);
+      check_true(__LINE__, *--j == 0);
+      check_true(__LINE__, j == a.rbegin());
+    }
+    static void run_reverse_iterators_set() {
+      ArrayType a;
+      a.insert(a.begin(), 0);
+      a.insert(a.begin(), 0);
+      a.insert(a.begin(), 0);
+      a.insert(a.begin(), 0);
+      typename ArrayType::reverse_iterator j = a.rbegin();
+      *j++ = 1;
+      *j++ = 2;
+      *j++ = 3;
+      *j++ = 4;
+
+      typename ArrayType::iterator i = a.begin();
+      check_true(__LINE__, *i++ == 4);
+      check_true(__LINE__, *i++ == 3);
+      check_true(__LINE__, *i++ == 2);
+      check_true(__LINE__, *i++ == 1);
+    }
+    static void run_reverse_iterators_const() {
+      ArrayType a;
+      a.insert(a.begin(), 0);
+      a.insert(a.begin(), 1);
+      a.insert(a.begin(), 2);
+      a.insert(a.begin(), 3);
+
+      ArrayType const &b = a;
+      typename ArrayType::const_reverse_iterator i = b.rbegin();
+      check_true(__LINE__, *i++ == 0);
+      check_true(__LINE__, *i++ == 1);
+      check_true(__LINE__, *i++ == 2);
+      check_true(__LINE__, *i++ == 3);
+      check_true(__LINE__, i++ == b.rend());
     }
   };
 
