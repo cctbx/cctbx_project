@@ -138,7 +138,13 @@ class i_sigi_completeness_stats(object):
       print >> out, "  for resolution ranges lower than %3.2fA."%(self.resolution_cut)
       print >> out, "  The data is cut at this resolution for the potential twin tests "
       print >> out, "  and intensity statistics."
-
+    else:
+      print >> out, "  The completeness of data for which I/sig(I)>%3.2f, exceeds %3.0f%s for"%(
+        self.isigi_cut, self.completeness_cut*100,"%")
+      print >> out, "  for resolution ranges lower than %3.2fA."%(self.resolution_cut)
+      print >> out, "  As we do not want to throw away too much data, the resolution for analyzing "
+      print >> out, "  the intensity statistics will be limited to %3.2fA"%(self.resolution_at_least)
+      print >> out
 
 class completeness_enforcement(object):
   def __init__(self,

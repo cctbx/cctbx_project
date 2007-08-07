@@ -64,8 +64,10 @@ class basic_analyses(object):
         completeness_cut = phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.completeness_cut)
       data_strength.show(out)
       if phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution is None:
-        phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution = data_strength.resolution_cut
-
+        if data_strength.resolution_cut > data_strength.resolution_at_least:
+          phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution = data_strength.resolution_at_least
+        else:
+           phil_object.scaling.input.parameters.misc_twin_parameters.twin_test_cuts.high_resolution = data_strength.resolution_cut
 
     ## Isotropic wilson scaling
     if verbose>0:
