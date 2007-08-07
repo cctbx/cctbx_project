@@ -4,11 +4,13 @@
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/matrix/lu_decomposition.h>
 #include <scitbx/matrix/inversion.h>
 #include <scitbx/matrix/diagonal.h>
 #include <scitbx/matrix/packed.h>
 #include <scitbx/mat_ref.h>
+#include <scitbx/constants.h>
 #include <boost/optional.hpp>
 #include <boost/scoped_array.hpp>
 
