@@ -1,4 +1,14 @@
 * text=auto !eol
+cbflib_adaptbx/SConscript -text
+cbflib_adaptbx/detectors/boost_python/SConscript -text
+cbflib_adaptbx/detectors/boost_python/cbflib_ext.cpp -text
+cbflib_adaptbx/detectors/cbf_adaptor.cpp -text
+cbflib_adaptbx/detectors/mar_adaptor.cpp -text
+cbflib_adaptbx/detectors/tst_memory.cpp -text
+cbflib_adaptbx/include/cbflib_adaptbx/basic.h -text
+cbflib_adaptbx/include/cbflib_adaptbx/cbf_adaptor.h -text
+cbflib_adaptbx/include/cbflib_adaptbx/mar_adaptor.h -text
+cbflib_adaptbx/libtbx_config -text
 cctbx/cctbx/regression/random_generator_state.pickle -text
 cctbx/cctbx/regression/structure_ideal.pickle -text
 cctbx/cctbx/regression/structure_start.pickle -text
