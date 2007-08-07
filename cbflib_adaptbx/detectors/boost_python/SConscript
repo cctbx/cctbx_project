@@ -1,0 +1,6 @@
+Import("env_cbflib_boost_python_ext")
+env = env_cbflib_boost_python_ext.Copy()
+env.Prepend(LIBS=["cbf",])
+env.SharedLibrary(
+  target="#lib/cbflib_ext",
+  source=["cbflib_ext.cpp",])
