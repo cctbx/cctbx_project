@@ -43,6 +43,9 @@ dna_rna_sequence_to_three = {
 ps_lookup = {}
 for key in protein_sequence_to_three:
   ps_lookup[protein_sequence_to_three[key]] = key
+# special lookups
+ps_lookup["MSE"] = "M"
+#
 ds_lookup = {}
 for key in dna_rna_sequence_to_three:
   if dna_rna_sequence_to_three[key]:
