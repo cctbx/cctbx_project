@@ -453,6 +453,10 @@ class read_scale_record:
       values.append(value)
     self.sn1, self.sn2, self.sn3, self.un = values
 
+def serial_number_mod(n, limit):
+  if (n >= 0): return n % limit
+  return -((-n) % (limit//10))
+
 def format_atom_record(record_name="ATOM",
                        serial=0,
                        name=" C  ",
@@ -491,7 +495,8 @@ def format_atom_record(record_name="ATOM",
     "   %8.3f%8.3f%8.3f%6.2f%6.2f    "
     "  %-4.4s%2.2s%2.2s") % (
       record_name,
-      serial%100000, name, altLoc, resName, chainID, resSeq%10000, iCode,
+      serial_number_mod(serial, 100000),
+      name, altLoc, resName, chainID, serial_number_mod(resSeq, 10000), iCode,
       site[0], site[1], site[2], occupancy, tempFactor,
       segID, element, charge)).rstrip()
 
@@ -529,7 +534,8 @@ def format_anisou_record(
     " %7d%7d%7d%7d%7d%7d"
     "  %-4.4s%2.2s%2.2s") % ((
       "ANISOU",
-      serial%100000, name, altLoc, resName, chainID, resSeq%10000, iCode)
+      serial_number_mod(serial, 100000),
+      name, altLoc, resName, chainID, serial_number_mod(resSeq, 10000), iCode)
     + tuple([iround(u*10000) for u in u_cart])
     + (segID, element, charge))).rstrip()
 
@@ -544,4 +550,6 @@ def format_ter_record(serial=0,
   # 23 - 26  Integer         resSeq     Residue sequence number.
   # 27       AChar           iCode      Insertion code.
   return ("%-6.6s%5d      %-3.3s %1.1s%4d%1.1s" % (
-    "TER", serial, resName, chainID, resSeq, iCode)).rstrip()
+    "TER",
+    serial_number_mod(serial, 100000),
+    resName, chainID, serial_number_mod(resSeq, 10000), iCode)).rstrip()
