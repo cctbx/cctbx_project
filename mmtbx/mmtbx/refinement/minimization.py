@@ -176,7 +176,8 @@ class lbfgs(object):
        if(sel.count(True) > 0): self.x.set_selected(sel, self.u_max)
     # XXX inefficient ?
     # XXX Fix for normal cases at normal resolutions
-    if(self.refine_xyz and not self.model.use_dbe and self.refine_dbe):
+    if(self.refine_xyz and self.h_params.fix_xh_distances and self.hd_flag and
+       self.neutron_scattering_dict is None):
     # THIS LOOKS AS desired to be but does not work!
     #if(self.refine_xyz and self.hd_flag and self.neutron_scattering_dict is None):
        v3d_x = flex.vec3_double(self.x)
