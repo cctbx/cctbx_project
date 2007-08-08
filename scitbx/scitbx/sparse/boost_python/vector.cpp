@@ -1,4 +1,4 @@
-#include <cctbx/boost_python/flex_fwd.h>
+#include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
