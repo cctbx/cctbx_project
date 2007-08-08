@@ -99,7 +99,8 @@ class manager(object):
                     xray_structure       = self.xray_structure,
                     fmodel               = fmodel,
                     params               = dbe_params,
-                    file_name            = file_name)
+                    file_name            = file_name,
+                    log                  = self.log)
     if(not build_only):
       self.ias_xray_structure = self.dbe_manager.ias_xray_structure
       dbe_size = self.ias_xray_structure.scatterers().size()
@@ -125,7 +126,7 @@ class manager(object):
          #self.refinement_flags.sites_individual[0].set_selected(
          #                                             ~self.dbe_selection, False)
 
-         if 0:
+         if 1: # XXX turned on
            self.refinement_flags.sites_individual[0].set_selected(
                                                           self.dbe_selection, False)
            self.refinement_flags.sites_individual[0].set_selected(
@@ -134,7 +135,7 @@ class manager(object):
          if 1:
            self.refinement_flags.individual_occupancies = True
            self.refinement_flags.occupancies_individual = [flex.bool(
-                                  self.xray_structure.scatterers().size(), True)]
+                                self.xray_structure.scatterers().size(), True)]
 
          if 0:
            self.refinement_flags.individual_occupancies = True
@@ -148,9 +149,9 @@ class manager(object):
 
          #self.xray_structure.convert_to_anisotropic(selection = self.dbe_selection)
          self.refinement_flags.adp_individual_aniso[0].set_selected(
-                                                        self.dbe_selection, False) # False
+                                                     self.dbe_selection, False) # False
          self.refinement_flags.adp_individual_iso[0].set_selected(
-                                                        self.dbe_selection, True) # True
+                                                      self.dbe_selection, True) # True
          #occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
          #self.xray_structure.scatterers().set_occupancies(occs, ~self.dbe_selection)
          # D9
