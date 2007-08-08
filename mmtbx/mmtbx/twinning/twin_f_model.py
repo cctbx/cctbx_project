@@ -868,7 +868,10 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     #-------------------
     self.f_mask_array = None
     if f_mask is not None:
-      self.f_mask_array = f_mask
+      if  f_mask.data().size() == self.f_atoms.data().size():
+        self.f_mask_array = f_mask
+      else:
+        self.update_f_mask()
     else:
       self.update_f_mask()
 
@@ -1025,9 +1028,16 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
   def resolution_filter(self,d_max=None,d_min=None):
     dc = self.deep_copy()
+    # make a dummy copy of the observed data please
+    dummy_obs  = dc.f_obs.resolution_filter(d_max,d_min)
+    twin_complete = dc.construct_miller_set(external_miller_array = dummy_obs )
+    appropriate_f_mask_array = dc.f_mask_array.common_set( twin_complete )
+
+    print twin_complete.indices().size(),  dummy_obs.data().size(), appropriate_f_mask_array.data().size()
+
     new_object = twin_model_manager(
-      f_obs        = dc.f_obs.resolution_filter(d_max,d_min) ,
-      f_mask             = dc.f_mask_array.resolution_filter(d_max,d_min),
+      f_obs        = dummy_obs,
+      f_mask             = appropriate_f_mask_array, #dc.f_mask_array.resolution_filter(d_max,d_min),
       free_array         = dc.free_array.resolution_filter(d_max,d_min),
       xray_structure     = dc.xray_structure,
       scaling_parameters = dc.scaling_parameters.deep_copy(),
@@ -1286,16 +1296,22 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
 
 
-  def construct_miller_set(self, return_free_f_atoms_array=False):
-    completion = xray.twin_completion( self.f_obs.indices(),
+  def construct_miller_set(self, return_free_f_atoms_array=False, external_miller_array=None):
+    completion = None
+    tmp_miller = external_miller_array
+    if tmp_miller is None:
+      tmp_miller = self.f_obs
+
+    completion = xray.twin_completion( tmp_miller.indices(),
                                        self.xs.space_group(),
-                                       self.f_obs.anomalous_flag(),
+                                       tmp_miller.anomalous_flag(),
                                        self.twin_law.as_double_array()[0:9] )
+
     indices = completion.twin_complete()
     miller_set = miller.set(
       crystal_symmetry = self.xs,
       indices =indices,
-      anomalous_flag = self.f_obs.anomalous_flag() ).map_to_asu()
+      anomalous_flag = tmp_miller.anomalous_flag() ).map_to_asu()
 
     assert miller_set.is_unique_set_under_symmetry()
     if not return_free_f_atoms_array:
@@ -1703,7 +1719,6 @@ tf is the twin fractrion and Fo is an observed amplitude."""%(r_abs_work_f_overa
         tmp_i_obs.data(),
         tmp_i_obs.sigmas(),
         self.twin_fraction_object.twin_fraction )
-
       # find out which intensities are zero or negative, they will be eliminated later on
       zeros = flex.bool( dt_iobs < 0 )
       x = dt_iobs.select( ~zeros )
