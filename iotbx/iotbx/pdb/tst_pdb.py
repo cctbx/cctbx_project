@@ -38,6 +38,12 @@ def exercise_format_records():
     == "ANISOU    0  C   DUM     1        0      0      0      0      0      0"
   assert iotbx.pdb.format_ter_record() \
     == "TER       0      DUM     1"
+  assert iotbx.pdb.format_atom_record(serial=-1, resSeq=-999) \
+    == "ATOM     -1  C   DUM  -999       0.000   0.000   0.000  1.00  0.00"
+  assert iotbx.pdb.format_anisou_record(serial=100000, resSeq=-10000) \
+    == "ANISOU    0  C   DUM     0        0      0      0      0      0      0"
+  assert iotbx.pdb.format_ter_record(serial=100001, resSeq=-10001) \
+    == "TER       1      DUM    -1"
 
 def exercise_parser():
   for i,raw_record in enumerate("""\
