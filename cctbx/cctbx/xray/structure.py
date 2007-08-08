@@ -249,6 +249,15 @@ class structure(crystal.special_position_settings):
        assert selection.size() == s.size()
        s.set_occupancies(q_new, selection)
 
+  def set_occupancies(self, value, selection = None):
+    s = self._scatterers
+    values = flex.double(s.size(), value)
+    if(selection is None):
+      s.set_occupancies(values)
+    else:
+      assert selection.size() == s.size()
+      s.set_occupancies(values, selection)
+
   def coordinate_degrees_of_freedom_counts(self, selection=None):
     assert selection is None or selection.size() == self._scatterers.size()
     site_symmetry_table = self._site_symmetry_table
