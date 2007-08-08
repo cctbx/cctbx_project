@@ -612,6 +612,20 @@ def exercise_closest_distances():
   result = xs.closest_distances(other = xs_other, max_distance_cutoff = 0)
   assert approx_equal(result, [-1.0, -1.0, -1.0])
 
+def exercise_set_occupancies():
+  xs = random_structure.xray_structure(
+                               space_group_info = sgtbx.space_group_info("P1"),
+                               elements         = ["N"]*5,
+                               unit_cell        = (10, 20, 30, 70, 80, 120))
+  occ = xs.scatterers().extract_occupancies()
+  assert occ.all_eq(1.0)
+  xs.set_occupancies(value = 2)
+  occ = xs.scatterers().extract_occupancies()
+  assert occ.all_eq(2.0)
+  xs.set_occupancies(value = -1, selection = flex.bool([1,1,0,1,0]))
+  occ = xs.scatterers().extract_occupancies()
+  assert approx_equal(occ, [-1.0, -1.0, 2.0, -1.0, 2.0])
+
 def exercise_u_base():
   d_min = 9
   grid_resolution_factor = 1/3.
@@ -926,6 +940,7 @@ def exercise_concatenate_inplace():
   print "concatenate inplace: OK"
 
 def run():
+  exercise_set_occupancies()
   exercise_closest_distances()
   exercise_concatenate_inplace()
   exercise_scatterer()
