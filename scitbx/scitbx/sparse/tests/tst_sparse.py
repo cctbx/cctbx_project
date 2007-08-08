@@ -44,21 +44,21 @@ def exercise_matrix_x_vector():
     for n_test in xrange(50):
       a = matrix(m,n)
       x = vector(n)
-      seen = set()
+      seen = {}
       for k in xrange(randint(3,2*m*n//3)):
         while True:
           i = randint(0,m-1)
           j = randint(0,n-1)
           if (i,j) not in seen: break
-        seen.add((i,j))
+        seen[(i,j)] = True
         val = uniform(-3., 3.)
         a[i,j] = val
-      seen = set()
+      seen = {}
       for k in xrange(randint(1,2*n//3)):
         while True:
           i = randint(0,n-1)
           if i not in seen: break
-        seen.add(i)
+        seen[i] = True
         val = uniform(-2., 2.)
         x[i] = val
       y = a*x
