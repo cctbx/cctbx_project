@@ -11,18 +11,23 @@ namespace rna_dna_atom_names {
   //! Constants.
   namespace info_flags {
 
-    static const unsigned none =      0x00000000U;
-    static const unsigned a =         0x00000001U;
-    static const unsigned c =         0x00000002U;
-    static const unsigned g =         0x00000004U;
-    static const unsigned u =         0x00000008U;
-    static const unsigned da =        0x00000010U;
-    static const unsigned dc =        0x00000020U;
-    static const unsigned dg =        0x00000040U;
-    static const unsigned dt =        0x00000080U;
-    static const unsigned any_bit =   0x00000100U;
-    static const unsigned any =       0x000001ffU;
-    static const unsigned deuterium = 0x00000200U;
+    static const unsigned none            = 0x00000000U;
+    static const unsigned a               = 0x00000001U;
+    static const unsigned c               = 0x00000002U;
+    static const unsigned g               = 0x00000004U;
+    static const unsigned u               = 0x00000008U;
+    static const unsigned da              = 0x00000010U;
+    static const unsigned dc              = 0x00000020U;
+    static const unsigned dg              = 0x00000040U;
+    static const unsigned dt              = 0x00000080U;
+    static const unsigned any_bit         = 0x00000100U;
+    static const unsigned any             = 0x000001ffU;
+    static const unsigned deuterium       = 0x00000200U;
+    static const unsigned o2prime         = 0x00000400U;
+    static const unsigned ho2prime        = 0x00000800U;
+    static const unsigned h2primeprime    = 0x00001000U;
+    static const unsigned phosphate_group = 0x00002000U;
+    static const unsigned ho5prime        = 0x00004000U;
 
   } // namespace info_flags
 
@@ -120,7 +125,7 @@ namespace rna_dna_atom_names {
               if (work_name[3] == '\'') {
                 if (work_name[4] == '\0') {
                   reference_name = "H2''";
-                  flags |= da | dc | dg | dt;
+                  flags |= da | dc | dg | dt | h2primeprime;
                   return;
                 }
               }
@@ -160,7 +165,7 @@ namespace rna_dna_atom_names {
               if (work_name[3] == '\'') {
                 if (work_name[4] == '\0') {
                   reference_name = "HO2'";
-                  flags |= a | c | g | u;
+                  flags |= a | c | g | u | ho2prime;
                   return;
                 }
                 break;
@@ -168,7 +173,7 @@ namespace rna_dna_atom_names {
               if (work_name[3] == 'P') {
                 if (work_name[4] == '\0') {
                   reference_name = "HOP2";
-                  flags |= any;
+                  flags |= any | phosphate_group;
                   return;
                 }
               }
@@ -203,7 +208,7 @@ namespace rna_dna_atom_names {
               if (work_name[3] == 'P') {
                 if (work_name[4] == '\0') {
                   reference_name = "HOP3";
-                  flags |= any;
+                  flags |= any | phosphate_group;
                   return;
                 }
               }
@@ -357,7 +362,7 @@ namespace rna_dna_atom_names {
                 if (work_name[3] == '\'' || work_name[3] == '2') {
                   if (work_name[4] == '\0') {
                     reference_name = "H2''";
-                    flags |= da | dc | dg | dt;
+                    flags |= da | dc | dg | dt | h2primeprime;
                     return;
                   }
                 }
@@ -487,7 +492,7 @@ namespace rna_dna_atom_names {
               if (work_name[2] == 'T') {
                 if (work_name[3] == '\0') {
                   reference_name = "HO5'";
-                  flags |= any;
+                  flags |= any | ho5prime;
                   return;
                 }
               }
@@ -553,7 +558,7 @@ namespace rna_dna_atom_names {
                 if (work_name[3] == '\'') {
                   if (work_name[4] == '\0') {
                     reference_name = "HO2'";
-                    flags |= a | c | g | u;
+                    flags |= a | c | g | u | ho2prime;
                     return;
                   }
                 }
@@ -573,7 +578,7 @@ namespace rna_dna_atom_names {
                 if (work_name[3] == '\'') {
                   if (work_name[4] == '\0') {
                     reference_name = "HO5'";
-                    flags |= any;
+                    flags |= any | ho5prime;
                     return;
                   }
                 }
@@ -583,7 +588,7 @@ namespace rna_dna_atom_names {
                 if (work_name[3] == '2') {
                   if (work_name[4] == '\0') {
                     reference_name = "HOP2";
-                    flags |= any;
+                    flags |= any | phosphate_group;
                     return;
                   }
                   break;
@@ -591,7 +596,7 @@ namespace rna_dna_atom_names {
                 if (work_name[3] == '3') {
                   if (work_name[4] == '\0') {
                     reference_name = "HOP3";
-                    flags |= any;
+                    flags |= any | phosphate_group;
                     return;
                   }
                 }
@@ -661,7 +666,7 @@ namespace rna_dna_atom_names {
               if (work_name[2] == 'P') {
                 if (work_name[3] == '\0') {
                   reference_name = " OP1";
-                  flags |= any;
+                  flags |= any | phosphate_group;
                   return;
                 }
               }
@@ -676,7 +681,7 @@ namespace rna_dna_atom_names {
               if (work_name[2] == '\'') {
                 if (work_name[3] == '\0') {
                   reference_name = " O2'";
-                  flags |= a | c | g | u;
+                  flags |= a | c | g | u | o2prime;
                   return;
                 }
                 break;
@@ -684,7 +689,7 @@ namespace rna_dna_atom_names {
               if (work_name[2] == 'P') {
                 if (work_name[3] == '\0') {
                   reference_name = " OP2";
-                  flags |= any;
+                  flags |= any | phosphate_group;
                   return;
                 }
               }
@@ -702,7 +707,7 @@ namespace rna_dna_atom_names {
               if (work_name[2] == 'P' || work_name[2] == 'T') {
                 if (work_name[3] == '\0') {
                   reference_name = " OP3";
-                  flags |= any;
+                  flags |= any | phosphate_group;
                   return;
                 }
               }
@@ -734,8 +739,8 @@ namespace rna_dna_atom_names {
               }
               if (work_name[2] == 'T') {
                 if (work_name[3] == '\0') {
-                  reference_name = " O5T";
-                  flags |= any;
+                  reference_name = " OP3";
+                  flags |= any | phosphate_group;
                   return;
                 }
               }
@@ -751,7 +756,7 @@ namespace rna_dna_atom_names {
               if (work_name[2] == '1') {
                 if (work_name[3] == '\0') {
                   reference_name = " OP1";
-                  flags |= any;
+                  flags |= any | phosphate_group;
                   return;
                 }
                 break;
@@ -759,7 +764,7 @@ namespace rna_dna_atom_names {
               if (work_name[2] == '2') {
                 if (work_name[3] == '\0') {
                   reference_name = " OP2";
-                  flags |= any;
+                  flags |= any | phosphate_group;
                   return;
                 }
                 break;
@@ -767,7 +772,7 @@ namespace rna_dna_atom_names {
               if (work_name[2] == '3') {
                 if (work_name[3] == '\0') {
                   reference_name = " OP3";
-                  flags |= any;
+                  flags |= any | phosphate_group;
                   return;
                 }
               }
@@ -781,7 +786,7 @@ namespace rna_dna_atom_names {
         case 'P':
           if (work_name[1] == '\0') {
             reference_name = " P  ";
-            flags |= any;
+            flags |= any | phosphate_group;
             return;
           }
           break;
@@ -792,7 +797,7 @@ namespace rna_dna_atom_names {
     }
 
     std::string
-    flags_as_string() const
+    compatible_residue_names() const
     {
       using namespace info_flags;
       std::string result;
@@ -809,11 +814,87 @@ namespace rna_dna_atom_names {
         if (flags & dg) result += " DG";
         if (flags & dt) result += " DT";
       }
-      if (flags & deuterium) {
-        result += " Deuterium";
-      }
       if (result.size() == 0) return "None";
       return result.substr(1);
+    }
+
+    bool
+    is_compatible_with(const char* residue_name) const
+    {
+      using namespace info_flags;
+      char letter = residue_name[0];
+      bool rna = true;
+      if (letter == 'D') {
+        rna = false;
+        letter = residue_name[1];
+      }
+      switch (letter)
+      {
+        case 'A':
+          if (rna) return (flags & a) && residue_name[1] == '\0';
+          return flags & da           && residue_name[2] == '\0';
+        case 'C':
+          if (rna) return (flags & c) && residue_name[1] == '\0';
+          return flags & dc           && residue_name[2] == '\0';
+        case 'G':
+          if (rna) return (flags & g) && residue_name[1] == '\0';
+          return flags & dg           && residue_name[2] == '\0';
+        case 'U':
+          if (rna) return (flags & u) && residue_name[1] == '\0';
+          break;
+        case 'T':
+          if (rna) break;
+          return flags & dt           && residue_name[2] == '\0';
+        default:
+          break;
+      }
+      return false;
+    }
+
+    bool
+    is_deuterium() const
+    {
+      return flags & info_flags::deuterium;
+    }
+
+    bool
+    is_o2prime() const
+    {
+      return flags & info_flags::o2prime;
+    }
+
+    bool
+    is_ho2prime() const
+    {
+      return flags & info_flags::ho2prime;
+    }
+
+    bool
+    is_h2primeprime() const
+    {
+      return flags & info_flags::h2primeprime;
+    }
+
+    bool
+    is_in_phosphate_group() const
+    {
+      return flags & info_flags::phosphate_group;
+    }
+
+    bool
+    is_ho5prime() const
+    {
+      return flags & info_flags::ho5prime;
+    }
+
+    bool
+    change_ho5prime_to_hop3()
+    {
+      if (!is_ho5prime()) return false;
+      reference_name = "HOP3";
+      using namespace info_flags;
+      flags = (is_deuterium() ? deuterium : none) | any | phosphate_group;
+      return true;
     }
   };
 

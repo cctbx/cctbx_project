@@ -15,6 +15,53 @@ try: import gzip
 except ImportError: gzip = None
 import sys
 
+class rna_dna_atom_names_interpretation(object):
+
+  def __init__(self, residue_name, atom_names):
+    assert residue_name in ["?A", "?C", "?G",
+                            "A", "C", "G", "U",
+                            "DA", "DC", "DG", "DT", "T"]
+    if (residue_name == "T"): residue_name = "DT"
+    infos = []
+    have_o2prime = False
+    have_ho2prime = False
+    have_h2primeprime = False
+    have_phosphate = False
+    i_atom_ho5prime = []
+    for i_atom,atom_name in enumerate(atom_names):
+      info = rna_dna_atom_names_info(
+        work_name=atom_name.strip().replace("*","'").upper())
+      infos.append(info)
+      if (info.is_o2prime()):
+        have_o2prime = True
+      elif (info.is_ho2prime()):
+        have_ho2prime = True
+      elif (info.is_h2primeprime()):
+        have_h2primeprime = True
+      if (info.is_in_phosphate_group()):
+        have_phosphate = True
+      if (info.is_ho5prime()):
+        i_atom_ho5prime.append(i_atom)
+    if (have_phosphate):
+      for i_atom in i_atom_ho5prime:
+        assert infos[i_atom].change_ho5prime_to_hop3()
+    if (residue_name[0] == "?"):
+      if (have_o2prime):
+        residue_name = residue_name[1]
+      elif (have_h2primeprime):
+        residue_name = "D" + residue_name[1]
+      elif (have_ho2prime):
+        residue_name = residue_name[1]
+      else:
+        residue_name = "D" + residue_name[1]
+    unexpected = []
+    for i_atom,info in enumerate(infos):
+      if (   info.reference_name is None
+          or not info.is_compatible_with(residue_name=residue_name)):
+        unexpected.append(i_atom)
+    self.residue_name = residue_name
+    self.unexpected = unexpected
+
 class Please_pass_string_or_None(object): pass
 
 def input(
