@@ -1989,12 +1989,14 @@ class build_all_chain_proxies(object):
     for summary in self.monomer_mapping_summaries():
       if (summary.classification == "peptide"):
         for i_seq in summary.expected_atom_i_seqs:
+          # XXX hydrogens not included
           if (atoms[i_seq].name.strip() in ["N", "CA", "C", "O"]):
             result[i_seq] = backbone_flag
           else:
             result[i_seq] = sidechain_flag
       elif (summary.classification in ["RNA", "DNA"]):
         for i_seq in summary.expected_atom_i_seqs:
+          # XXX hydrogens not included
           if (atoms[i_seq].name.strip()
                 in ["P", "O1P", "O2P", "O3'", "O5'",
                                        "O3*", "O5*",
