@@ -19,6 +19,7 @@ namespace iotbx { namespace pdb { namespace boost_python {
         .def("compatible_residue_names", &w_t::compatible_residue_names)
         .def("is_compatible_with", &w_t::is_compatible_with, (
           arg_("residue_name")))
+        .def("is_hydrogen", &w_t::is_hydrogen)
         .def("is_deuterium", &w_t::is_deuterium)
         .def("is_o2prime", &w_t::is_o2prime)
         .def("is_ho2prime", &w_t::is_ho2prime)
@@ -26,6 +27,7 @@ namespace iotbx { namespace pdb { namespace boost_python {
         .def("is_in_phosphate_group", &w_t::is_in_phosphate_group)
         .def("is_ho5prime", &w_t::is_ho5prime)
         .def("change_ho5prime_to_hop3", &w_t::change_ho5prime_to_hop3)
+        .def("change_to_unknown", &w_t::change_to_unknown)
       ;
     }
   };
