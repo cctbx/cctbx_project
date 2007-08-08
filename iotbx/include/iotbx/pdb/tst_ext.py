@@ -168,6 +168,7 @@ def exercise_rna_dna_atom_names():
   assert info.reference_name is None
   assert info.compatible_residue_names() == "None"
   assert not info.is_compatible_with(residue_name="")
+  assert not info.is_hydrogen()
   assert not info.is_deuterium()
   assert not info.is_o2prime()
   assert not info.is_ho2prime()
@@ -175,6 +176,7 @@ def exercise_rna_dna_atom_names():
   assert not info.is_in_phosphate_group()
   assert not info.is_ho5prime()
   assert not info.change_ho5prime_to_hop3()
+  info.change_to_unknown()
   for a,r,f in aliases:
     info = pdb.rna_dna_atom_names_info(work_name=a)
     assert info.reference_name == r
@@ -184,6 +186,7 @@ def exercise_rna_dna_atom_names():
     for n in f.replace("ANY", "A C G U DA DC DG DT").split():
       assert info.is_compatible_with(residue_name=n)
       assert not info.is_compatible_with(residue_name=n+"X")
+    assert info.is_hydrogen() == (a.find("H") >= 0 or a.find("D") >= 0)
     assert info.is_deuterium() == (a.find("D") >= 0)
     assert info.is_o2prime() == (info.reference_name == " O2'")
     assert info.is_ho2prime() == (info.reference_name == "HO2'")
@@ -196,6 +199,7 @@ def exercise_rna_dna_atom_names():
     else:
       assert info.change_ho5prime_to_hop3()
       assert info.reference_name == "HOP3"
+      assert info.is_hydrogen()
       assert info.is_deuterium() == (a.find("D") >= 0)
       assert info.compatible_residue_names() == "ANY"
       assert not info.is_o2prime()
@@ -203,6 +207,9 @@ def exercise_rna_dna_atom_names():
       assert not info.is_h2primeprime()
       assert info.is_in_phosphate_group()
       assert not info.is_ho5prime()
+    info.change_to_unknown()
+    assert info.reference_name is None
+    assert info.compatible_residue_names() == "None"
   for a,r,f in aliases:
     info = pdb.rna_dna_atom_names_info(work_name=a+"X")
     assert info.reference_name is None

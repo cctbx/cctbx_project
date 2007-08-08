@@ -22,12 +22,13 @@ namespace rna_dna_atom_names {
     static const unsigned dt              = 0x00000080U;
     static const unsigned any_bit         = 0x00000100U;
     static const unsigned any             = 0x000001ffU;
-    static const unsigned deuterium       = 0x00000200U;
-    static const unsigned o2prime         = 0x00000400U;
-    static const unsigned ho2prime        = 0x00000800U;
-    static const unsigned h2primeprime    = 0x00001000U;
-    static const unsigned phosphate_group = 0x00002000U;
-    static const unsigned ho5prime        = 0x00004000U;
+    static const unsigned hydrogen        = 0x00000200U;
+    static const unsigned deuterium       = 0x00000400U;
+    static const unsigned o2prime         = 0x00000800U;
+    static const unsigned ho2prime        = 0x00001000U;
+    static const unsigned h2primeprime    = 0x00002000U;
+    static const unsigned phosphate_group = 0x00004000U;
+    static const unsigned ho5prime        = 0x00008000U;
 
   } // namespace info_flags
 
@@ -54,6 +55,7 @@ namespace rna_dna_atom_names {
           else if (work_name[1] != 'H') {
             break;
           }
+          flags |= hydrogen;
           switch (work_name[2])
           {
             case '2':
@@ -114,6 +116,7 @@ namespace rna_dna_atom_names {
           else if (work_name[1] != 'H') {
             break;
           }
+          flags |= hydrogen;
           switch (work_name[2])
           {
             case '2':
@@ -192,6 +195,7 @@ namespace rna_dna_atom_names {
           else if (work_name[1] != 'H') {
             break;
           }
+          flags |= hydrogen;
           switch (work_name[2])
           {
             case '5':
@@ -322,6 +326,7 @@ namespace rna_dna_atom_names {
         case 'D':
           flags |= deuterium;
         case 'H':
+          flags |= hydrogen;
           switch (work_name[1])
           {
             case '1':
@@ -852,6 +857,12 @@ namespace rna_dna_atom_names {
     }
 
     bool
+    is_hydrogen() const
+    {
+      return flags & info_flags::hydrogen;
+    }
+
+    bool
     is_deuterium() const
     {
       return flags & info_flags::deuterium;
@@ -893,8 +904,16 @@ namespace rna_dna_atom_names {
       if (!is_ho5prime()) return false;
       reference_name = "HOP3";
       using namespace info_flags;
-      flags = (is_deuterium() ? deuterium : none) | any | phosphate_group;
+      flags = (is_deuterium() ? deuterium : none)
+            | any | hydrogen | phosphate_group;
       return true;
+    }
+
+    void
+    change_to_unknown()
+    {
+      reference_name = 0;
+      flags = info_flags::none;
     }
   };
 

@@ -54,13 +54,20 @@ class rna_dna_atom_names_interpretation(object):
         residue_name = residue_name[1]
       else:
         residue_name = "D" + residue_name[1]
-    unexpected = []
-    for i_atom,info in enumerate(infos):
+    for info in infos:
       if (   info.reference_name is None
           or not info.is_compatible_with(residue_name=residue_name)):
-        unexpected.append(i_atom)
+        info.change_to_unknown()
     self.residue_name = residue_name
-    self.unexpected = unexpected
+    self.atom_names = atom_names
+    self.infos = infos
+
+  def unexpected_atom_names(self):
+    result = []
+    for atom_name,info in zip(self.atom_names, self.infos):
+      if (info.reference_name is None):
+        result.append(atom_name)
+    return result
 
 class Please_pass_string_or_None(object): pass
 
