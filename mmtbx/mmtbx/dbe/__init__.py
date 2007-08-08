@@ -11,13 +11,13 @@ from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 
 dbe_master_params = iotbx.phil.parse("""\
-  b_iso_max = 15.0
+  b_iso_max = 100.0
     .type = float
-  occupancy_min = 0.1
+  occupancy_min = -1.0
     .type = float
   occupancy_max = 1.5
     .type = float
-  ias_b_iso_max = 1000.0
+  ias_b_iso_max = 100.0
     .type = float
   ias_b_iso_min = 0.0
     .type = float
@@ -29,8 +29,6 @@ dbe_master_params = iotbx.phil.parse("""\
     .type = float
   build_dbe_types = L R B BH
     .type = strings
-  number_of_macro_cycles = 10
-    .type = int
   use_map = True
     .type = bool
   build_only = False
@@ -308,7 +306,8 @@ def set_ias_name_and_predicted_position(iass):
        elif(name_i in main_cac and name_j in main_cac):
           label = "D4"
           dbe_site = dbe_site_position(site_i, site_j, 1.0)
-       elif(name_i[0] in any_ch and name_j[0] in any_ch):
+       elif(name_i[0] in any_ch and name_j[0] in any_ch and
+          [name_i[0],name_j[0]].count("H")==1 ):
           label = "D1"
           alp = 0.856968 / 0.244483
           if(name_j[0] == "H"):
@@ -551,7 +550,8 @@ class find_peak_at_bond(object):
 
 def set_status(iass, params):
   for ias in iass:
-    if(ias.status is not False and ias.type in ["B", "BH"]):
+    if(ias.status is not False and ias.type in ["B", "BH"] and
+       ias.type in params.build_dbe_types):
        is_ok = ias.atom_1.b_iso <= params.b_iso_max and \
                ias.atom_2.b_iso <= params.b_iso_max and \
                ias.atom_1.q <= params.occupancy_max and \
@@ -564,16 +564,31 @@ def set_status(iass, params):
                             ias.q >  params.ias_occupancy_min
        if(not is_ok): ias.status = False
        else: ias.status = True
-    if(ias.status is not False and ias.type not in ["B", "BH"]):
+       if(ias.status and ias.peak_position_cart is not None):
+         check_at_bond_vector(ias)
+    elif(ias.status is not False and ias.type not in ["B", "BH"] and
+       ias.type in params.build_dbe_types):
        is_ok = ias.atom_1.b_iso <= params.b_iso_max and \
                ias.atom_2.b_iso <= params.b_iso_max and \
-               ias.atom_1.q <= 1.1 and \
-               ias.atom_2.q >= 0.9
+               ias.atom_1.q <= params.occupancy_max and \
+               ias.atom_2.q >= params.occupancy_min
        assert ias.b_iso is None
        assert ias.q is None
        if(not is_ok): ias.status = False
        else: ias.status = True
+    else:
+       ias.status = False
     assert ias.status is not None
+
+
+def check_at_bond_vector(ias):
+  a1 = ias.atom_1.site_cart
+  a2 = ias.atom_2.site_cart
+  e  = ias.peak_position_cart
+  d = math.sqrt((a1[0]-a2[0])**2 + (a1[1]-a2[1])**2 + (a1[2]-a2[2])**2)
+  d1 = math.sqrt((e[0]-a2[0])**2 + (e[1]-a2[1])**2 + (e[2]-a2[2])**2)
+  d2 = math.sqrt((a1[0]-e[0])**2 + (a1[1]-e[1])**2 + (a1[2]-e[2])**2)
+  assert approx_equal(d, d1+d2, 1.e-4)
 
 class manager(object):
   def __init__(self, geometry,
@@ -610,7 +625,7 @@ class manager(object):
      ias_counters(iass).show(out = self.log)
      self.ias_xray_structure = self.iass_as_xray_structure(iass)
      print >> log, "IAS scattering dictionary:"
-     self.ias_xray_structure.scattering_type_registry().show()
+     self.ias_xray_structure.scattering_type_registry().show(out = self.log)
      if(1):
         self.write_pdb_file()
 
