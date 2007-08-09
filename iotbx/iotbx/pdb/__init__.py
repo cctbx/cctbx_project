@@ -15,6 +15,64 @@ try: import gzip
 except ImportError: gzip = None
 import sys
 
+rna_dna_atom_names_reference_to_mon_lib_translation_dict = {
+  " C1'": "C1*",
+  " C2 ": "C2",
+  " C2'": "C2*",
+  " C3'": "C3*",
+  " C4 ": "C4",
+  " C4'": "C4*",
+  " C5 ": "C5",
+  " C5'": "C5*",
+  " C6 ": "C6",
+  " C7 ": "C5M",
+  " C8 ": "C8",
+  " H1 ": "H1",
+  " H1'": "H1*",
+  " H2 ": "H2",
+# " H2'": special case: rna: "H2*", dna: "H2*1"
+  " H21": "H21",
+  " H22": "H22",
+  " H3 ": "H3",
+  " H3'": "H3*",
+  " H4'": "H4*",
+  " H41": "H41",
+  " H42": "H42",
+  " H5 ": "H5",
+  " H5'": "H5*1",
+  " H6 ": "H6",
+  " H61": "H61",
+  " H62": "H62",
+  " H71": "H5M1",
+  " H72": "H5M2",
+  " H73": "H5M3",
+  " H8 ": "H8",
+  " N1 ": "N1",
+  " N2 ": "N2",
+  " N3 ": "N3",
+  " N4 ": "N4",
+  " N6 ": "N6",
+  " N7 ": "N7",
+  " N9 ": "N9",
+  " O2 ": "O2",
+  " O2'": "O2*",
+  " O3'": "O3*",
+  " O4 ": "O4",
+  " O4'": "O4*",
+  " O5'": "O5*",
+  " O6 ": "O6",
+  " OP1": "O1P",
+  " OP2": "O2P",
+  " OP3": "O3T",
+  " P  ": "P",
+  "H2''": "H2*2",
+  "H5''": "H5*2",
+  "HO2'": "HO2*",
+  "HO3'": "HO3*",
+  "HO5'": "HO5*"
+# "HOP3": not covered by monomer library
+}
+
 class rna_dna_atom_names_interpretation(object):
 
   def __init__(self, residue_name, atom_names):
@@ -54,19 +112,46 @@ class rna_dna_atom_names_interpretation(object):
         residue_name = residue_name[1]
       else:
         residue_name = "D" + residue_name[1]
+    n_expected = 0
+    n_unexpected = 0
     for info in infos:
       if (   info.reference_name is None
           or not info.is_compatible_with(residue_name=residue_name)):
         info.change_to_unknown()
+        n_unexpected += 1
+      else:
+        n_expected += 1
     self.residue_name = residue_name
     self.atom_names = atom_names
     self.infos = infos
+    self.n_expected = n_expected
+    self.n_unexpected = n_unexpected
 
   def unexpected_atom_names(self):
     result = []
     for atom_name,info in zip(self.atom_names, self.infos):
       if (info.reference_name is None):
         result.append(atom_name)
+    return result
+
+  def mon_lib_names(self):
+    result = []
+    for info in self.infos:
+      rn = info.reference_name
+      if (rn is None):
+        result.append(None)
+      else:
+        mn = rna_dna_atom_names_reference_to_mon_lib_translation_dict.get(rn)
+        if (mn is not None):
+          result.append(mn)
+        elif (rn == " H2'"):
+          if (self.residue_name.startswith("D")):
+            result.append("H2*1")
+          else:
+            result.append("H2*")
+        else:
+          assert rn == "HOP3" # only atom not covered by monomer library
+          result.append(None)
     return result
 
 class Please_pass_string_or_None(object): pass

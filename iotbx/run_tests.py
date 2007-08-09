@@ -10,6 +10,7 @@ def run():
   "$D/iotbx/kriber/tst_strudat.py",
   ["$D/iotbx/pdb/hybrid_36.py", "exercise"],
   "$D/include/iotbx/pdb/tst_ext.py",
+  "$D/include/iotbx/pdb/tst_rna_dna_atom_names.py",
   "$D/iotbx/pdb/tst_atom_name_interpretation.py",
   "$D/iotbx/pdb/tst_pdb.py",
   "$D/iotbx/cns/space_group_symbols.py",
