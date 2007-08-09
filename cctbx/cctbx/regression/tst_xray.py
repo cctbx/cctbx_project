@@ -389,10 +389,11 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   scatterers = flex.xray_scatterer([xray.scatterer("o")]*100)
   selection = flex.bool()
   rd = flex.mersenne_twister(seed=0).random_double
-  for sc in scatterers:
-    sc.u_iso = 1.0 * rd()
-    sc.u_star = (1.0 * rd(), 2.0 * rd(), 3.0 * rd(),
-                 4.0 * rd(), 5.0 * rd(), 6.0 * rd())
+  for i_sc, sc in enumerate(scatterers):
+    scale = scatterers.size()/(1.+i_sc)
+    sc.u_iso = 1.0 * scale
+    sc.u_star = (1.0 * scale, 2.0 * scale, 3.0 * scale,
+                 4.0 * scale, 5.0 * scale, 6.0 * scale)
     sc.flags.set_use_u_iso(rd() > 0.5)
     sc.flags.set_use_u_aniso(rd() > 0.5)
     selection.append(rd() > 0.5)
@@ -408,7 +409,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
                 assert sc.flags.use_u_iso()   == sc_mod.flags.use_u_iso()
                 assert sc.flags.use_u_aniso() == sc_mod.flags.use_u_aniso()
                 if(sc.flags.use_u_iso() and s):
-                   assert abs(sc.u_iso - sc_mod.u_iso) > 1.e-4
+                   assert not_approx_equal(abs(sc.u_iso - sc_mod.u_iso), 0)
                 else:
                    assert approx_equal(sc.u_iso, sc_mod.u_iso)
                 if(keep_anisotropic):
@@ -937,7 +938,6 @@ def exercise_concatenate_inplace():
   except Exception, e: pass
   assert str(e) == "Cannot concatenate: conflicting scatterers"
   sys.stdout = out
-  print "concatenate inplace: OK"
 
 def run():
   exercise_set_occupancies()
