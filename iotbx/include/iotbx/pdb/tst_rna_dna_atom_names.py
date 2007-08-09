@@ -307,7 +307,6 @@ def exercise_cns_names():
         if (not deox): continue
       else:
         q = "?"
-      atom_names = set(atom_names)
       if (deox):
         atom_names = apply_cns_deox(atom_names=atom_names)
       atom_names = apply_cns_3ter(atom_names=atom_names)
@@ -315,7 +314,7 @@ def exercise_cns_names():
       for apply_func in [do_nothing, apply_cns_5pho, apply_cns_5ter]:
         interpreted = iotbx.pdb.rna_dna_atom_names_interpretation(
           residue_name=q+residue_name[0],
-          atom_names=list(apply_func(atom_names)))
+          atom_names=apply_func(atom_names))
         if (not deox):
           assert interpreted.residue_name == residue_name[0]
         else:
