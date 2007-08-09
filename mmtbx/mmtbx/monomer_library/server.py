@@ -329,7 +329,8 @@ class server(process_cif_mixin):
       result = self.comp_comp_id_dict.get(comp_id)
       if (result is not None):
         result.file_name = file_name
-        self.comp_comp_id_dict[std_comp_id] = result
+        if (len(std_comp_id) != 0):
+          self.comp_comp_id_dict[std_comp_id] = result
       else:
         or_std_comp_id = ""
         if (len(std_comp_id) > 0):
