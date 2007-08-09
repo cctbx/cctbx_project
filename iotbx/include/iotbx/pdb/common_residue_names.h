@@ -54,6 +54,14 @@ namespace iotbx { namespace pdb { namespace common_residue_names {
     " +G ",
     " +T ",
     " +U ",
+    "DA  ", // PDB-V3
+    "DC  ", // PDB-V3
+    "DG  ", // PDB-V3
+    "DT  ", // PDB-V3
+    " DA ", // PDB-V3
+    " DC ", // PDB-V3
+    " DG ", // PDB-V3
+    " DT ", // PDB-V3
     "ADE ", // CNS dna-rna.top
     "CYT ", // CNS dna-rna.top
     "GUA ", // CNS dna-rna.top
