@@ -15,6 +15,39 @@ try: import gzip
 except ImportError: gzip = None
 import sys
 
+rna_dna_reference_residue_names = {
+  "A": "?A",
+  "C": "?C",
+  "G": "?G",
+  "U": "U",
+  "T": "DT",
+  "+A": "?A",
+  "+C": "?C",
+  "+G": "?G",
+  "+U": "U",
+  "+T": "DT",
+  "DA": "DA",
+  "DC": "DC",
+  "DG": "DG",
+  "DT": "DT",
+  "ADE": "?A",
+  "CYT": "?C",
+  "GUA": "?G",
+  "URI": "U",
+  "THY": "DT",
+  "AR": "A",
+  "CR": "C",
+  "GR": "G",
+  "UR": "U",
+  "AD": "DA",
+  "CD": "DC",
+  "GD": "DG",
+  "TD": "DT"
+}
+
+def rna_dna_reference_residue_name(common_name):
+  return rna_dna_reference_residue_names.get(common_name.strip().upper())
+
 rna_dna_atom_names_reference_to_mon_lib_translation_dict = {
   " C1'": "C1*",
   " C2 ": "C2",
