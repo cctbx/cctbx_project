@@ -2065,6 +2065,15 @@ model id=0 #chains=1
   assert get_class(name="CD ") == "common_element"
   assert get_class(name="CD ", consider_ccp4_mon_lib_rna_dna=True) \
     == "ccp4_mon_lib_rna_dna"
+  #
+  assert pdb.rna_dna_reference_residue_name(common_name="ALA") is None
+  for common_names in [pdb.common_residue_names_rna_dna,
+                       pdb.common_residue_names_ccp4_mon_lib_rna_dna]:
+    for n in common_names:
+      r = pdb.rna_dna_reference_residue_name(common_name=n)
+      assert r is not None
+      assert pdb.rna_dna_reference_residue_name(
+        common_name=" "+n.lower()+" ") == r
 
 def exercise_xray_structure_simple():
   pdb_inp = pdb.input(
