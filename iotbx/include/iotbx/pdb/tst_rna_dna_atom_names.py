@@ -147,7 +147,9 @@ def exercise_rna_dna_atom_names():
   assert not info.is_ho2prime()
   assert not info.is_h2primeprime()
   assert not info.is_in_phosphate_group()
+  assert not info.is_op3_or_hop3()
   assert not info.is_ho5prime()
+  assert not info.is_ho3prime()
   assert not info.change_ho5prime_to_hop3()
   info.change_to_unknown()
   for a,r,f in aliases:
@@ -166,7 +168,14 @@ def exercise_rna_dna_atom_names():
     assert info.is_h2primeprime() == (info.reference_name == "H2''")
     assert info.is_in_phosphate_group() == (info.reference_name in [
       " P  ", " OP1", " OP2", "HOP2", " OP3", "HOP3"])
+    assert info.is_op3_or_hop3() == (info.reference_name in [
+      " OP3", "HOP3"])
+    if (not info.is_in_phosphate_group()):
+      assert not info.is_op3_or_hop3()
+    elif (info.is_op3_or_hop3()):
+      assert info.is_in_phosphate_group()
     assert info.is_ho5prime() == (info.reference_name == "HO5'")
+    assert info.is_ho3prime() == (info.reference_name == "HO3'")
     if (not info.is_ho5prime()):
       assert not info.change_ho5prime_to_hop3()
     else:
@@ -179,7 +188,9 @@ def exercise_rna_dna_atom_names():
       assert not info.is_ho2prime()
       assert not info.is_h2primeprime()
       assert info.is_in_phosphate_group()
+      assert info.is_op3_or_hop3()
       assert not info.is_ho5prime()
+      assert not info.is_ho3prime()
     info.change_to_unknown()
     assert info.reference_name is None
     assert info.compatible_residue_names() == "None"
@@ -298,7 +309,7 @@ def apply_cns_3ter(atom_names): # 3-terminus (without phosphate)
   return result
 
 def exercise_cns_names():
-  for residue_name,atom_names in cns_rna_dna_names.items():
+  for residue_name,atom_names_base in cns_rna_dna_names.items():
     for deox in [False, True]:
       q = ""
       if (residue_name == "URI"):
@@ -308,33 +319,37 @@ def exercise_cns_names():
       else:
         q = "?"
       if (deox):
-        atom_names = apply_cns_deox(atom_names=atom_names)
-      atom_names = apply_cns_3ter(atom_names=atom_names)
+        atom_names_base = apply_cns_deox(atom_names=atom_names_base)
       def do_nothing(atom_names): return atom_names
-      for apply_func in [do_nothing, apply_cns_5pho, apply_cns_5ter]:
-        interpreted = iotbx.pdb.rna_dna_atom_names_interpretation(
-          residue_name=q+residue_name[0],
-          atom_names=apply_func(atom_names))
-        if (not deox):
-          assert interpreted.residue_name == residue_name[0]
-        else:
-          assert interpreted.residue_name == "D"+residue_name[0]
-        assert interpreted.n_unexpected == 0
-        assert interpreted.n_expected == len(interpreted.atom_names)
-        for atom_name,info in zip(interpreted.atom_names, interpreted.infos):
-          if (atom_name == "O1P"):
-            assert info.reference_name == " OP1"
-          elif (atom_name == "O2P"):
-            assert info.reference_name == " OP2"
-          elif (atom_name == "O5T"):
-            assert info.reference_name == " OP3"
-          elif (atom_name == "H5T"):
-            if (apply_func == apply_cns_5ter):
-              assert info.reference_name == "HO5'"
-            else:
-              assert info.reference_name == "HOP3"
+      for apply3 in [do_nothing, apply_cns_3ter]:
+        atom_names = apply3(atom_names=atom_names_base)
+        for apply5 in [do_nothing, apply_cns_5pho, apply_cns_5ter]:
+          interpreted = iotbx.pdb.rna_dna_atom_names_interpretation(
+            residue_name=q+residue_name[0],
+            atom_names=apply5(atom_names=atom_names))
+          if (not deox):
+            assert interpreted.residue_name == residue_name[0]
           else:
-            info.reference_name.strip() == atom_name
+            assert interpreted.residue_name == "D"+residue_name[0]
+          assert interpreted.have_phosphate == (apply5 != apply_cns_5ter)
+          assert interpreted.have_op3_or_hop3 == (apply5 == apply_cns_5pho)
+          assert interpreted.have_ho3prime == (apply3 == apply_cns_3ter)
+          assert interpreted.n_unexpected == 0
+          assert interpreted.n_expected == len(interpreted.atom_names)
+          for atom_name,info in zip(interpreted.atom_names, interpreted.infos):
+            if (atom_name == "O1P"):
+              assert info.reference_name == " OP1"
+            elif (atom_name == "O2P"):
+              assert info.reference_name == " OP2"
+            elif (atom_name == "O5T"):
+              assert info.reference_name == " OP3"
+            elif (atom_name == "H5T"):
+              if (apply5 == apply_cns_5ter):
+                assert info.reference_name == "HO5'"
+              else:
+                assert info.reference_name == "HOP3"
+            else:
+              info.reference_name.strip() == atom_name
 
 def exercise():
   exercise_rna_dna_atom_names()

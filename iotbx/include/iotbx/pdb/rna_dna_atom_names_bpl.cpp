@@ -25,7 +25,9 @@ namespace iotbx { namespace pdb { namespace boost_python {
         .def("is_ho2prime", &w_t::is_ho2prime)
         .def("is_h2primeprime", &w_t::is_h2primeprime)
         .def("is_in_phosphate_group", &w_t::is_in_phosphate_group)
+        .def("is_op3_or_hop3", &w_t::is_op3_or_hop3)
         .def("is_ho5prime", &w_t::is_ho5prime)
+        .def("is_ho3prime", &w_t::is_ho3prime)
         .def("change_ho5prime_to_hop3", &w_t::change_ho5prime_to_hop3)
         .def("change_to_unknown", &w_t::change_to_unknown)
       ;
