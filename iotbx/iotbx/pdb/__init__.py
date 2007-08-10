@@ -118,6 +118,8 @@ class rna_dna_atom_names_interpretation(object):
     have_ho2prime = False
     have_h2primeprime = False
     have_phosphate = False
+    have_op3_or_hop3 = False
+    have_ho3prime = False
     i_atom_ho5prime = []
     for i_atom,atom_name in enumerate(atom_names):
       info = rna_dna_atom_names_info(
@@ -131,11 +133,16 @@ class rna_dna_atom_names_interpretation(object):
         have_h2primeprime = True
       if (info.is_in_phosphate_group()):
         have_phosphate = True
+        if (info.is_op3_or_hop3()):
+          have_op3_or_hop3 = True
       if (info.is_ho5prime()):
         i_atom_ho5prime.append(i_atom)
+      if (info.is_ho3prime()):
+        have_ho3prime = True
     if (have_phosphate):
       for i_atom in i_atom_ho5prime:
         assert infos[i_atom].change_ho5prime_to_hop3()
+        have_op3_or_hop3 = True
     if (residue_name[0] == "?"):
       if (have_o2prime):
         residue_name = residue_name[1]
@@ -157,6 +164,9 @@ class rna_dna_atom_names_interpretation(object):
     self.residue_name = residue_name
     self.atom_names = atom_names
     self.infos = infos
+    self.have_phosphate = have_phosphate
+    self.have_op3_or_hop3 = have_op3_or_hop3
+    self.have_ho3prime = have_ho3prime
     self.n_expected = n_expected
     self.n_unexpected = n_unexpected
 
