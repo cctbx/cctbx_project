@@ -5,8 +5,7 @@ def run(args):
   list_cif = server.mon_lib_list_cif()
   srv = server.server(list_cif=list_cif)
   for comp_id in args:
-    comp_comp_id = srv.get_comp_comp_id(
-      comp_id=comp_id, hide_mon_lib_dna_rna_cif=False)
+    comp_comp_id = srv.get_comp_comp_id_direct(comp_id=comp_id)
     motif = comp_comp_id.as_geometry_restraints_motif()
     motif.show()
 

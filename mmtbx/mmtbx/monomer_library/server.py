@@ -1,6 +1,7 @@
 from __future__ import generators
 from mmtbx.monomer_library import cif_types
 from mmtbx.monomer_library import mmCIF
+import iotbx.pdb
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, format_exception, windows_device_names
@@ -170,11 +171,9 @@ class process_cif_mixin(object):
 
 class server(process_cif_mixin):
 
-  def __init__(self, list_cif=None, translate_cns_dna_rna_residue_names=True):
+  def __init__(self, list_cif=None):
     if (list_cif is None):
       list_cif = mon_lib_list_cif()
-    self.translate_cns_dna_rna_residue_names \
-       = translate_cns_dna_rna_residue_names
     self.root_path = os.path.dirname(os.path.dirname(list_cif.path))
     self.deriv_list_dict = {}
     self.comp_synonym_list_dict = {}
@@ -187,7 +186,6 @@ class server(process_cif_mixin):
     self.convert_all(
       source_info="file: "+list_cif.path,
       cif_object=list_cif.cif, skip_comp_list=True)
-    self._create_rna_dna_placeholders()
 
   def convert_all(self, source_info, cif_object, skip_comp_list=False):
     self.convert_deriv_list_dict(cif_object=cif_object)
@@ -285,13 +283,9 @@ class server(process_cif_mixin):
       self.mod_mod_id_list.append(mod_mod_id)
       self.mod_mod_id_dict[mod_mod_id.chem_mod.id] = mod_mod_id
 
-  def get_comp_comp_id(self, comp_id, hide_mon_lib_dna_rna_cif=True):
+  def get_comp_comp_id_direct(self, comp_id):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
-    if (hide_mon_lib_dna_rna_cif and comp_id in mon_lib_dna_rna_cif):
-      return None
-    if (self.translate_cns_dna_rna_residue_names):
-      comp_id = cns_dna_rna_residue_names.get(comp_id, comp_id)
     try: return self.comp_comp_id_dict[comp_id]
     except KeyError: pass
     std_comp_id = self.comp_synonym_list_dict.get(comp_id, "").strip().upper()
@@ -340,28 +334,43 @@ class server(process_cif_mixin):
             show_string(file_name), show_string(comp_id), or_std_comp_id))
     return result
 
-  def _create_rna_dna_placeholders(self):
-    for base_code in ["A", "C", "G"]:
-      rna = self.get_comp_comp_id(base_code+"r",hide_mon_lib_dna_rna_cif=False)
-      dna = self.get_comp_comp_id(base_code+"d",hide_mon_lib_dna_rna_cif=False)
-      chem_comp = cif_types.chem_comp(
-        id=base_code+"?",
-        three_letter_code=None,
-        name=None,
-        group="rna_dna_placeholder",
-        number_atoms_all=None,
-        number_atoms_nh=None,
-        desc_level=None)
-      comp_comp_id = cif_types.comp_comp_id(
-        source_info=None, chem_comp=chem_comp)
-      for atom in rna.atom_list:
-        comp_comp_id.atom_list.append(copy.copy(atom))
-      rna_atom_dict = rna.atom_dict()
-      for atom in dna.atom_list:
-        if (not rna.atom_dict().has_key(atom.atom_id)):
-          comp_comp_id.atom_list.append(copy.copy(atom))
-      self.comp_comp_id_dict[base_code] = comp_comp_id
-      self.comp_comp_id_dict["+"+base_code] = comp_comp_id
+  def get_comp_comp_id_and_atom_name_interpretation(self,
+        residue_name,
+        atom_names,
+        translate_cns_dna_rna_residue_names=None):
+    comp_id = residue_name.strip().upper()
+    if (len(comp_id) == 0): return (None, None)
+    if (    translate_cns_dna_rna_residue_names is not None
+        and not translate_cns_dna_rna_residue_names
+        and comp_id in cns_dna_rna_residue_names):
+      rna_dna_ref_residue_name = None
+    else:
+      rna_dna_ref_residue_name = iotbx.pdb.rna_dna_reference_residue_name(
+        common_name=comp_id)
+    atom_name_interpretation = None
+    if (rna_dna_ref_residue_name is not None):
+      atom_name_interpretation = iotbx.pdb.rna_dna_atom_names_interpretation(
+        residue_name=rna_dna_ref_residue_name,
+        atom_names=atom_names)
+      if (atom_name_interpretation.n_unexpected != 0):
+        if (len(atom_names) == 1 and comp_id in mon_lib_dna_rna_cif):
+          return (None, None)
+        if (    translate_cns_dna_rna_residue_names is None
+            and comp_id in cns_dna_rna_residue_names):
+          atom_name_interpretation = None
+      if (atom_name_interpretation is not None):
+        comp_id = {
+          "A": "AR",
+          "C": "CR",
+          "G": "GR",
+          "U": "UR",
+          "DA": "AD",
+          "DC": "CD",
+          "DG": "GD",
+          "DT": "TD"}[atom_name_interpretation.residue_name]
+    return (
+      self.get_comp_comp_id_direct(comp_id=comp_id),
+      atom_name_interpretation)
 
 class ener_lib(process_cif_mixin):
 

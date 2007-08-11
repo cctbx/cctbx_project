@@ -633,15 +633,18 @@ def exercise(args):
   assert len(chains) == 1
   residues = chains[0].residues
   assert len(residues) == 2
-  monomer_definitions = [
-    mon_lib_srv.get_comp_comp_id(residue.name())
-      for residue in residues]
+  monomer_definitions = []
+  for residue in residues:
+    md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+      residue_name=residue.name(), atom_names=residue.atom_names())
+    assert ani is None
+    monomer_definitions.append(md)
   gly_plus_c_beta = monomer_definitions[0].apply_mod(mod=mod_gly_plus_c_beta)
   gly_plus_c_beta.show(f=out)
   sidechain = monomer_definitions[1].apply_mod(mod=mod_bnz_to_tyr_sidechain)
   sidechain.show(f=out)
   #
-  tyr_definition = mon_lib_srv.get_comp_comp_id("TYR")
+  tyr_definition = mon_lib_srv.get_comp_comp_id_direct("TYR")
   tyr_atoms = []
   for atom in tyr_definition.atom_list:
     s = StringIO()
