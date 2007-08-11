@@ -14,7 +14,7 @@ namespace iotbx { namespace pdb { namespace boost_python {
     {
       using namespace boost::python;
       class_<w_t>("rna_dna_atom_names_info", no_init)
-        .def(init<const char*>((arg_("work_name"))))
+        .def(init<const char*>((arg_("atom_name"))))
         .def_readonly("reference_name", &w_t::reference_name)
         .def("compatible_residue_names", &w_t::compatible_residue_names)
         .def("is_compatible_with", &w_t::is_compatible_with, (
@@ -28,6 +28,8 @@ namespace iotbx { namespace pdb { namespace boost_python {
         .def("is_op3_or_hop3", &w_t::is_op3_or_hop3)
         .def("is_ho5prime", &w_t::is_ho5prime)
         .def("is_ho3prime", &w_t::is_ho3prime)
+        .def("change_h2primeprime_to_ho2prime",
+          &w_t::change_h2primeprime_to_ho2prime)
         .def("change_ho5prime_to_hop3", &w_t::change_ho5prime_to_hop3)
         .def("change_to_unknown", &w_t::change_to_unknown)
       ;
