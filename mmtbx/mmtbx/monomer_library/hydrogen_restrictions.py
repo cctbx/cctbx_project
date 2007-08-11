@@ -1,12 +1,14 @@
 from mmtbx.monomer_library import server
+import sys
 
-def run():
+def run(args):
+  assert len(args) == 0
   srv = server.server()
   standard_amino_acids = [
     "GLY", "VAL", "ALA", "LEU", "ILE", "PRO", "MET", "PHE", "TRP", "SER",
     "THR", "TYR", "CYS", "ASN", "GLN", "ASP", "GLU", "LYS", "ARG", "HIS"]
   for comp_id in standard_amino_acids:
-    comp_comp_id = srv.get_comp_comp_id(comp_id)
+    comp_comp_id = srv.get_comp_comp_id_direct(comp_id)
     print comp_comp_id.chem_comp.id.strip(),
     print comp_comp_id.chem_comp.name.strip(),
     print comp_comp_id.chem_comp.group.strip()
@@ -74,4 +76,4 @@ def run():
       assert angle_counts[atom_id] == 2
 
 if (__name__ == "__main__"):
-  run()
+  run(sys.argv[1:])

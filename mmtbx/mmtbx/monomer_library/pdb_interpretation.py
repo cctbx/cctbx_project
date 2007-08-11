@@ -79,7 +79,7 @@ master_params = iotbx.phil.parse("""\
   vdw_1_4_factor = 0.8
     .type=float
     .optional=False
-  translate_cns_dna_rna_residue_names = True
+  translate_cns_dna_rna_residue_names = None
     .type=bool
     .optional=False
   clash_guard
@@ -357,6 +357,7 @@ class monomer_mapping(object):
 
   def __init__(self,
         mon_lib_srv,
+        translate_cns_dna_rna_residue_names,
         apply_cif_modifications,
         apply_cif_links_labels_mm_dict,
         i_conformer,
@@ -369,21 +370,19 @@ class monomer_mapping(object):
     atom = stage_1.atom_attributes_list[self.pdb_residue.iselection[0]]
     labels = atom.residue_and_model_labels()
     self.residue_name = atom.resName
-    self.monomer = mon_lib_srv.get_comp_comp_id(
-      self.residue_name,
-      hide_mon_lib_dna_rna_cif
-        =not self.pdb_residue.names_suggest_nucleic_acid())
+    self._collect_atom_names()
+    self.monomer, self.atom_name_interpretation \
+      = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+          residue_name=self.residue_name,
+          atom_names=self.atom_names_given,
+          translate_cns_dna_rna_residue_names
+            =translate_cns_dna_rna_residue_names)
+    if (self.atom_name_interpretation is None):
+      self.mon_lib_names = None
+    else:
+      self.mon_lib_names = self.atom_name_interpretation.mon_lib_names()
     if (self.monomer is not None):
       self._get_mappings(mon_lib_srv=mon_lib_srv)
-      if (self.monomer.chem_comp.group == "rna_dna_placeholder"):
-        if (self.missing_non_hydrogen_atoms.has_key("O2*")):
-          second_character = "d"
-        else:
-          second_character = "r"
-        self.monomer = mon_lib_srv.get_comp_comp_id(
-          self.monomer.chem_comp.id[0]+second_character,
-          hide_mon_lib_dna_rna_cif=False)
-        self._get_mappings(mon_lib_srv=mon_lib_srv)
       self.chem_mod_ids = []
       for apply_data_mod in apply_cif_modifications.get(labels, []):
         self.apply_mod(
@@ -397,6 +396,18 @@ class monomer_mapping(object):
     if (labels in apply_cif_links_labels_mm_dict):
       apply_cif_links_labels_mm_dict[labels] = self
 
+  def _collect_atom_names(self):
+    aal = self.pdb_residue.chain.conformer.model.stage_1.atom_attributes_list
+    self.active_i_seqs = []
+    self.atom_names_given = []
+    for i_seq in self.pdb_residue.iselection:
+      atom = aal[i_seq]
+      if (atom.element.strip() == "Q"):
+        self.ignored_atom_i_seqs.setdefault(atom.name, []).append(i_seq)
+        continue
+      self.active_i_seqs.append(i_seq)
+      self.atom_names_given.append(atom.name.replace(" ",""))
+
   def _get_mappings(self, mon_lib_srv):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
     processed_atom_names = {}
@@ -404,27 +415,26 @@ class monomer_mapping(object):
     self.unexpected_atom_i_seqs = {}
     self.ignored_atom_i_seqs = {}
     self.duplicate_atom_i_seqs = {}
-    replace_primes = (self.monomer.chem_comp.group == "rna_dna_placeholder"
-                      or self.monomer.is_rna_dna())
-    stage_1 = self.pdb_residue.chain.conformer.model.stage_1
-    n_primes = 0
-    n_stars = 0
-    active_i_seqs = []
-    for i_seq in self.pdb_residue.iselection:
-      atom = stage_1.atom_attributes_list[i_seq]
-      if (atom.element.strip() == "Q"):
-        self.ignored_atom_i_seqs.setdefault(atom.name, []).append(i_seq)
-        continue
-      active_i_seqs.append(i_seq)
-      if (not replace_primes):
-        if (atom.name.find("'") >= 0): n_primes += 1
-        if (atom.name.find("*") >= 0): n_stars += 1
-    if (not replace_primes):
+    if (self.atom_name_interpretation is not None):
+      replace_primes = False
+    elif (self.monomer.is_rna_dna()):
+      replace_primes = True
+    else:
+      n_primes = 0
+      n_stars = 0
+      for atom_name in self.atom_names_given:
+        if (atom_name.find("'") >= 0): n_primes += 1
+        if (atom_name.find("*") >= 0): n_stars += 1
       replace_primes = (n_primes != 0 and n_stars == 0)
-    for i_seq in active_i_seqs:
-      atom = stage_1.atom_attributes_list[i_seq]
-      atom_name_given = atom.name.replace(" ","")
-      atom_name = atom_name_given
+    stage_1 = self.pdb_residue.chain.conformer.model.stage_1
+    for i_i_seq,i_seq in enumerate(self.active_i_seqs):
+      atom_name_given = self.atom_names_given[i_i_seq]
+      if (self.mon_lib_names is None):
+        atom_name = atom_name_given
+      else:
+        atom_name = self.mon_lib_names[i_i_seq]
+        if (atom_name is None):
+          atom_name = atom_name_given
       if (not atom_dict.has_key(atom_name)):
         auto_synomyms = []
         if (atom_name[0] in string.digits):
@@ -530,13 +540,25 @@ class monomer_mapping(object):
             or  ("HN2" in u or "2HN" in u)):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
     elif (self.monomer.classification in ["RNA", "DNA"]):
-      e = self.expected_atom_i_seqs
-      if (    not "P"   in e
-          and not "OP1" in e
-          and not "OP2" in e):
-        mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["5*END"])
-      if ("HO3*" in u):
-        mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["3*END"])
+      ani = self.atom_name_interpretation
+      if (ani is not None):
+        if (ani.have_op3_or_hop3):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["p5*END"])
+        elif (not ani.have_phosphate):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["5*END"])
+        if (ani.have_ho3prime):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["3*END"])
+      else:
+        if ("O3T" in u):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["p5*END"])
+        else:
+          e = self.expected_atom_i_seqs
+          if (    not "P"   in e
+              and not "OP1" in e
+              and not "OP2" in e):
+            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["5*END"])
+        if ("HO3*" in u):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["3*END"])
     for mod_mod_id in mod_mod_ids:
       self.apply_mod(mon_lib_srv=mon_lib_srv, mod_mod_id=mod_mod_id)
 
@@ -714,10 +736,8 @@ def get_lib_link(mon_lib_srv, m_i, m_j):
   if (m_i.monomer.is_water() or m_j.monomer.is_water()): return None
   comp_id_1 = m_i.monomer.chem_comp.id
   comp_id_2 = m_j.monomer.chem_comp.id
-  comp_1 = mon_lib_srv.get_comp_comp_id(
-    comp_id_1, hide_mon_lib_dna_rna_cif=False)
-  comp_2 = mon_lib_srv.get_comp_comp_id(
-    comp_id_2, hide_mon_lib_dna_rna_cif=False)
+  comp_1 = mon_lib_srv.get_comp_comp_id_direct(comp_id_1)
+  comp_2 = mon_lib_srv.get_comp_comp_id_direct(comp_id_2)
   group_1 = comp_1.chem_comp.group
   group_2 = comp_2.chem_comp.group
   atom_dicts = [None, m_i.monomer_atom_dict, m_j.monomer_atom_dict]
@@ -1256,6 +1276,7 @@ class build_chain_proxies(object):
   def __init__(self,
         mon_lib_srv,
         ener_lib,
+        translate_cns_dna_rna_residue_names,
         apply_cif_modifications,
         apply_cif_links,
         apply_cif_links_labels_mm_dict,
@@ -1329,6 +1350,8 @@ class build_chain_proxies(object):
       break_block_identifier = break_block_identifiers[residue.iselection[0]]
       mm = monomer_mapping(
         mon_lib_srv=mon_lib_srv,
+        translate_cns_dna_rna_residue_names
+          =translate_cns_dna_rna_residue_names,
         apply_cif_modifications=apply_cif_modifications,
         apply_cif_links_labels_mm_dict=apply_cif_links_labels_mm_dict,
         i_conformer=i_conformer,
@@ -1894,6 +1917,8 @@ class build_all_chain_proxies(object):
           chain_proxies = build_chain_proxies(
             mon_lib_srv=mon_lib_srv,
             ener_lib=ener_lib,
+            translate_cns_dna_rna_residue_names
+              =self.params.translate_cns_dna_rna_residue_names,
             apply_cif_modifications=self.apply_cif_modifications,
             apply_cif_links=self.apply_cif_links,
             apply_cif_links_labels_mm_dict=self.apply_cif_links_labels_mm_dict,
@@ -2813,13 +2838,7 @@ def run(
       max_atoms=None,
       log=None):
   if (log is None): log = sys.stdout
-  if (params is None):
-    translate_cns_dna_rna_residue_names = True
-  else:
-    translate_cns_dna_rna_residue_names \
-      = params.translate_cns_dna_rna_residue_names
-  mon_lib_srv = server.server(
-    translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names)
+  mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
   for file_name in args:
     processed_pdb_file = process(

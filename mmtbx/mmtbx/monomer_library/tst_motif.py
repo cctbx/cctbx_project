@@ -454,7 +454,7 @@ def exercise():
   srv = server.server(list_cif=list_cif)
   open("tmp.cif", "w").write(tmp_cif)
   srv.process_cif(file_name="tmp.cif")
-  comp_comp_id = srv.get_comp_comp_id(comp_id="tst")
+  comp_comp_id = srv.get_comp_comp_id_direct(comp_id="tst")
   motif = comp_comp_id.as_geometry_restraints_motif()
   out = StringIO()
   motif.show(out=out)
