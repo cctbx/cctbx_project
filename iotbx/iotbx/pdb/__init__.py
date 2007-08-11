@@ -116,21 +116,20 @@ class rna_dna_atom_names_interpretation(object):
     infos = []
     have_o2prime = False
     have_ho2prime = False
-    have_h2primeprime = False
+    i_atom_h2primeprime = []
     have_phosphate = False
     have_op3_or_hop3 = False
     have_ho3prime = False
     i_atom_ho5prime = []
     for i_atom,atom_name in enumerate(atom_names):
-      info = rna_dna_atom_names_info(
-        work_name=atom_name.strip().replace("*","'").upper())
+      info = rna_dna_atom_names_info(atom_name=atom_name)
       infos.append(info)
       if (info.is_o2prime()):
         have_o2prime = True
       elif (info.is_ho2prime()):
         have_ho2prime = True
       elif (info.is_h2primeprime()):
-        have_h2primeprime = True
+        i_atom_h2primeprime.append(i_atom)
       if (info.is_in_phosphate_group()):
         have_phosphate = True
         if (info.is_op3_or_hop3()):
@@ -146,7 +145,11 @@ class rna_dna_atom_names_interpretation(object):
     if (residue_name[0] == "?"):
       if (have_o2prime):
         residue_name = residue_name[1]
-      elif (have_h2primeprime):
+        if (not have_ho2prime):
+          for i_atom in i_atom_h2primeprime:
+            assert infos[i_atom].change_h2primeprime_to_ho2prime()
+          have_ho2prime = True
+      elif (len(i_atom_h2primeprime) != 0):
         residue_name = "D" + residue_name[1]
       elif (have_ho2prime):
         residue_name = residue_name[1]
