@@ -178,22 +178,23 @@ def exercise_rna_dna_atom_names():
     ("OP2", " OP2", "ANY"),
     ("OP3", " OP3", "ANY"),
     ("P", " P  ", "ANY")]
-  info = iotbx.pdb.rna_dna_atom_names_info(atom_name="")
-  assert info.reference_name is None
-  assert info.compatible_residue_names() == "None"
-  assert not info.is_compatible_with(residue_name="")
-  assert not info.is_hydrogen()
-  assert not info.is_deuterium()
-  assert not info.is_o2prime()
-  assert not info.is_ho2prime()
-  assert not info.is_h2primeprime()
-  assert not info.is_in_phosphate_group()
-  assert not info.is_op3_or_hop3()
-  assert not info.is_ho5prime()
-  assert not info.is_ho3prime()
-  assert not info.change_h2primeprime_to_ho2prime()
-  assert not info.change_ho5prime_to_hop3()
-  info.change_to_unknown()
+  for atom_name in [None, ""]:
+    info = iotbx.pdb.rna_dna_atom_names_info(atom_name=atom_name)
+    assert info.reference_name is None
+    assert info.compatible_residue_names() == "None"
+    assert not info.is_compatible_with(residue_name="")
+    assert not info.is_hydrogen()
+    assert not info.is_deuterium()
+    assert not info.is_o2prime()
+    assert not info.is_ho2prime()
+    assert not info.is_h2primeprime()
+    assert not info.is_in_phosphate_group()
+    assert not info.is_op3_or_hop3()
+    assert not info.is_ho5prime()
+    assert not info.is_ho3prime()
+    assert not info.change_h2primeprime_to_ho2prime()
+    assert not info.change_ho5prime_to_hop3()
+    info.change_to_unknown()
   for a,r,f in aliases:
     for lower in [False, True]:
       if (lower): work_name = "  " + a.lower() + " "
