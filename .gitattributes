@@ -39,6 +39,7 @@ mmtbx/mmtbx/command_line/maps.py -text
 mmtbx/mmtbx/command_line/pdbtools.py -text
 mmtbx/mmtbx/command_line/xmanip.py -text
 mmtbx/mmtbx/maps.py -text
+mmtbx/mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/mmtbx/pdbtools.py -text
 mmtbx/mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/mmtbx/tst_pdbtools.py -text
