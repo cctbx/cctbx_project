@@ -49,6 +49,7 @@ namespace rna_dna_atom_names {
       flags(info_flags::none)
     {
       using namespace info_flags;
+      if (atom_name == 0) return;
       while (*atom_name && std::isspace(*atom_name)) atom_name++;
       switch (atom_name[0])
       {
