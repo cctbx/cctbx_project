@@ -44,6 +44,9 @@ mmtbx/mmtbx/pdbtools.py -text
 mmtbx/mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/mmtbx/tst_pdbtools.py -text
 mmtbx/mmtbx/utils.py -text
+mmtbx/mmtbx/wwpdb/__init__.py -text
+mmtbx/mmtbx/wwpdb/standard_geometry_cif.py -text
+mmtbx/mmtbx/wwpdb/tst_standard_geometry_cif.py -text
 mmtbx/mmtbx/xmanip.py -text
 mmtbx/mmtbx/xmanip_tasks.py -text
 scitbx/error/SConscript -text
