@@ -32,6 +32,11 @@ class chem_comp_atom(object):
     "ref_radii_asa_probe",
     "descriptor"]
 
+  def site_ideal(self):
+    return (self.pdbx_model_cartn_x_ideal,
+            self.pdbx_model_cartn_y_ideal,
+            self.pdbx_model_cartn_z_ideal)
+
 class process_chem_comp_atom_buffer(object):
 
   __slots__ = ["comp_id", "atoms"]
