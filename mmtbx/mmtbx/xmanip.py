@@ -562,8 +562,6 @@ def xmanip(command_name, args):
 
       if cb_op is None:
         raise Sorry("No change of basis operation is supplied.")
-      if params.xmanip.parameters.inverse:
-        cb_op = cb_op.inverse()
 
       print >> log, "Supplied reindexing law:"
       print >> log, "========================"
