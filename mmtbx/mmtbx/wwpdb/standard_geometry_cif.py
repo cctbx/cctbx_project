@@ -88,6 +88,13 @@ class process_chem_comp_atom_buffer(object):
         a.descriptor = line[85:].strip()
       self.atoms.append(a)
 
+  def count_non_hydrogen_atoms(self):
+    result = 0
+    for atom in self.atoms:
+      if (atom.type_symbol not in [" H", "H "]):
+        result += 1
+    return result
+
 def process_chem_comps(file_name):
   lines = open(file_name).read().splitlines()
   line_iter = iter(lines)
