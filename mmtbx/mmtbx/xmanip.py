@@ -504,6 +504,23 @@ def xmanip(command_name, args):
           write_it.append( xray_data.write_out)
 
       output_label_root = construct_output_labels( labels, label_appendix )
+      for ii in range(len(labels)):
+        test=0
+        for jj in range( ii+1,len(labels) ):
+          for lab_name1, lab_name2 in zip(labels[ii],labels[jj]):
+            if lab_name1==lab_name2:
+              test+=1
+          if test == 2:
+            print >> log, "\n***** You are trying to import the data with label(s) %s more then one time. ***** \n"%(str(labels[ii]))
+      for ii in range(len(output_label_root)):
+        for jj in range(ii+1,len(output_label_root)):
+          if output_label_root[ii]==output_label_root[jj]:
+            print >> log, "Output label roots:"
+            print >> log, output_label_root
+            raise Sorry( "Output labels are not unique" )
+
+
+
     #----------------------------------------------------------------
     # Step 2: get an xray structure from the PDB file
     #
