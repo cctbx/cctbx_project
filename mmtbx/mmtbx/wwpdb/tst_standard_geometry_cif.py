@@ -11,7 +11,7 @@ def exercise(args):
   std_comps = standard_geometry_cif.process_chem_comps(file_name=std_geo_cif)
   chem_comp = std_comps["LEU"]
   assert chem_comp.comp_id == "LEU"
-  assert len(chem_comp.atoms) == 22
+  assert len(chem_comp.atoms) == 24
   print "OK"
 
 if (__name__ == "__main__"):
