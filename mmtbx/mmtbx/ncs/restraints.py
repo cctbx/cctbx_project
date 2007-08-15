@@ -402,11 +402,17 @@ class _operators(object):
   def __init__(self, group, sites_cart):
     self.group = group
     self.matrices = []
+    self.rms = []
     for pair in self.group.selection_pairs:
       superposition = superpose.least_squares_fit(
         reference_sites=sites_cart.select(pair[0]),
         other_sites=sites_cart.select(pair[1]))
-      self.matrices.append(matrix.rt((superposition.r, superposition.t)))
+      rtmx = matrix.rt((superposition.r, superposition.t))
+      self.matrices.append(rtmx)
+      x = sites_cart.select(pair[0])
+      y = rtmx * sites_cart.select(pair[1])
+      d_sq = (x-y).dot()
+      self.rms.append(flex.mean(d_sq)**0.5)
 
   def show(self,
         sites_cart,
@@ -415,10 +421,11 @@ class _operators(object):
         prefix=""):
     if (out is None): out = sys.stdout
     selection_strings = self.group.selection_strings
-    for i_op,pair,mx in zip(
+    for i_op,pair,mx,rms in zip(
           count(1),
           self.group.selection_pairs,
-          self.matrices):
+          self.matrices,
+          self.rms):
       print >> out, prefix + "NCS operator %d:" % i_op
       print >> out, prefix + "  Reference selection:", \
         show_string(selection_strings[0])
@@ -440,8 +447,7 @@ class _operators(object):
         diff_histogram.show(
           f=out, prefix=prefix+"    ", format_cutoffs="%8.6f")
       print >> out, \
-        prefix + "  RMS difference with respect to the reference: %8.6f" % (
-          flex.mean(d_sq)**0.5)
+        prefix + "  RMS difference with respect to the reference: %8.6f" %(rms)
 
   def energies_sites(self,
         sites_cart,
@@ -676,6 +682,13 @@ class groups(object):
       print >> out, prefix + "NCS restraint group %d:" % (i_group+1)
       ncs_operators = group.operators(sites_cart=sites_cart)
       ncs_operators.show(sites_cart=sites_cart, out=out, prefix=prefix+"  ")
+
+  def extract_ncs_groups(self, sites_cart):
+    result = []
+    for group in self.members:
+      ncs_operators = group.operators(sites_cart=sites_cart)
+      result.append(ncs_operators)
+    return result
 
   def show_sites_distances_to_average(self,
          sites_cart,

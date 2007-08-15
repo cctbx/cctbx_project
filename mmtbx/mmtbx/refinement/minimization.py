@@ -248,33 +248,33 @@ class lbfgs(object):
           if(self.refine_xyz):
              tt = flex.vec3_double(self.g)
              rr = flex.vec3_double(sf)
-             for i, j, fd in zip(tt, rr, self.hd_selection):
-               angle = flex.double(i).angle(flex.double(j), deg = True)
-               if(angle >= 90.0):
-                  if(fd): tt[ii] = [0,0,0]
-                  else:   rr[ii] = [0,0,0]
-                  #tt[ii] = [0,0,0]
-                  #rr[ii] = [0,0,0]
-                  #if(fd): tt[ii] = [tt[ii][0]/angle,tt[ii][1]/angle,tt[ii][2]/angle]
-                  #else:   rr[ii] = [rr[ii][0]/angle,rr[ii][1]/angle,rr[ii][2]/angle]
-                  #tt[ii] = [tt[ii][0]/angle,tt[ii][1]/angle,tt[ii][2]/angle]
-                  #rr[ii] = [rr[ii][0]/angle,rr[ii][1]/angle,rr[ii][2]/angle]
-               ii += 1
+             #for i, j, fd in zip(tt, rr, self.hd_selection):
+             #  angle = flex.double(i).angle(flex.double(j), deg = True)
+             #  if(angle >= 90.0):
+             #     if(fd): tt[ii] = [0,0,0]
+             #     else:   rr[ii] = [0,0,0]
+             #     #tt[ii] = [0,0,0]
+             #     #rr[ii] = [0,0,0]
+             #     #if(fd): tt[ii] = [tt[ii][0]/angle,tt[ii][1]/angle,tt[ii][2]/angle]
+             #     #else:   rr[ii] = [rr[ii][0]/angle,rr[ii][1]/angle,rr[ii][2]/angle]
+             #     #tt[ii] = [tt[ii][0]/angle,tt[ii][1]/angle,tt[ii][2]/angle]
+             #     #rr[ii] = [rr[ii][0]/angle,rr[ii][1]/angle,rr[ii][2]/angle]
+             #  ii += 1
              self.g = tt.as_double() + rr.as_double() * self.wn
           if(self.refine_adp):
              tt = self.g
              rr = sf
-             for i, j, fd in zip(tt, rr, self.hd_selection):
-               if(i*j < 0):
-                  if(fd): tt[ii] = 0.
-                  else:   rr[ii] = 0.
-                  #tt[ii] = 0.0
-                  #rr[ii] = 0.0
-                  #if(fd): tt[ii] = tt[ii]/3.
-                  #else:   rr[ii] = rr[ii]/3.
-                  #tt[ii] = tt[ii]/3.
-                  #rr[ii] = rr[ii]/3.
-               ii += 1
+             #for i, j, fd in zip(tt, rr, self.hd_selection):
+             #  if(i*j < 0):
+             #     if(fd): tt[ii] = 0.
+             #     else:   rr[ii] = 0.
+             #     #tt[ii] = 0.0
+             #     #rr[ii] = 0.0
+             #     #if(fd): tt[ii] = tt[ii]/3.
+             #     #else:   rr[ii] = rr[ii]/3.
+             #     #tt[ii] = tt[ii]/3.
+             #     #rr[ii] = rr[ii]/3.
+             #  ii += 1
              self.g = tt + rr * self.wn
 
     if(self.refine_xyz and self.restraints_manager is not None and self.wr > 0.0):
