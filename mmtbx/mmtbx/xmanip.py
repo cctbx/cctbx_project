@@ -119,6 +119,8 @@ def write_as_pdb_file( input_xray_structure = None,
       unit_cell = xs.unit_cell() )
 
   u_iso_array = input_xray_structure.scatterers().extract_u_iso().as_double()
+  u_aniso_array = input_xray_structure.scatterers().extract_u_cart_or_u_cart_plus_u_iso(  input_xray_structure.unit_cell() )
+  #print list(u_aniso_array)
 
   for serial, label, atom, xyz, adp in zip(input_pdb.atom_serial_number_strings(),
                                            input_pdb.input_atom_labels_list(),
@@ -515,9 +517,11 @@ def xmanip(command_name, args):
       for ii in range(len(output_label_root)):
         for jj in range(ii+1,len(output_label_root)):
           if output_label_root[ii]==output_label_root[jj]:
-            print >> log, "Output label roots:"
-            print >> log, output_label_root
-            raise Sorry( "Output labels are not unique" )
+            if write_it[ii]:
+              if write_it[jj]:
+                print >> log, "Output label roots:"
+                print >> log, output_label_root
+                raise Sorry( "Output labels are not unique. Modify input." )
 
 
 
