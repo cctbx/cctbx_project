@@ -8,13 +8,13 @@ def run(command_name=os.environ.get(
     raise Usage("%s [file ...]" % command_name + """
   Similar to the Unix uniq command, but each output line is
   prefixed with the number of identical consecutive lines.
-  The last line shows the sum of the counts.
   Example command:
     grep Warning log_file | sort | %s
   Example output:
     12: Warning: missing file'
      9: Warning: missing directory'
      1: Warning: unknown file
+    Number of lines shown: 3
     Sum of counts: 22""" % command_name)
   buffer = []
   prev = None
@@ -43,6 +43,7 @@ def run(command_name=os.environ.get(
     for n,line in buffer:
       sys.stdout.write(n_fmt % n + line)
       sum_n += n
+    print "Number of lines shown:", len(buffer)
     print "Sum of counts:", sum_n
 
 if (__name__ == "__main__"):
