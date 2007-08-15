@@ -656,7 +656,7 @@ class bulk_solvent_scaling_manager(object):
             last_score = self.best_score_until_now
         else:
           last_score = self.best_score_until_now
-      print cycle_count, converged, self.best_score_until_now , last_score,
+      #print cycle_count, converged, self.best_score_until_now , last_score,
       if  last_score is not None:
         print self.best_score_until_now - last_score
       else:
@@ -1032,9 +1032,6 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     dummy_obs  = dc.f_obs.resolution_filter(d_max,d_min)
     twin_complete = dc.construct_miller_set(external_miller_array = dummy_obs )
     appropriate_f_mask_array = dc.f_mask_array.common_set( twin_complete )
-
-    print twin_complete.indices().size(),  dummy_obs.data().size(), appropriate_f_mask_array.data().size()
-
     new_object = twin_model_manager(
       f_obs        = dummy_obs,
       f_mask             = appropriate_f_mask_array, #dc.f_mask_array.resolution_filter(d_max,d_min),
