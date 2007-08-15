@@ -1135,6 +1135,10 @@ class manager(manager_mixin):
                           d_spacings = self.d_spacings_t,
                           selection  = selection)
 
+  def r_all(self):
+    return self._r_factor(f_obs = self.f_obs.data(),
+                          f_model = self.core.f_model.data())
+
   def scale_k1(self, selection = None):
     fo = self.f_obs.data()
     fc = flex.abs(self.core.f_model.data())

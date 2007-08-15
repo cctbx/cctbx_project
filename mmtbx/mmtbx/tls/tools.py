@@ -10,6 +10,7 @@ import copy
 from cctbx import adptbx
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
+from libtbx.str_utils import line_breaker
 
 time_uanisos_from_tls                              = 0.0
 time_tls_from_uanisos                              = 0.0
@@ -42,31 +43,47 @@ def show_times(out = None):
      print >> out, "  time_tls_total                                     = %-7.2f" % time_tls_total
   return total
 
-def tlso_as_pdb_header(tlsos, selection_strings, out = None):
+class tls_groups(object):
+  def __init__(self, tlsos = None, selection_strings = None):
+    self.tlsos, self.selection_strings = tlsos, selection_strings
+
+def remark_3_tls(tlsos, selection_strings, out = None):
   if(out is None): out = sys.stdout
+  assert len(tlsos) == len(selection_strings)
+  print >> out, "REMARK   3  TLS DETAILS."
+  print >> out, "REMARK   3   NUMBER OF TLS GROUPS: %-6d"%len(tlsos)
+  print >> out, "REMARK   3   ORIGIN: CENTER OF MASS"
   r3 = "REMARK   3   "
   counter = 0
   for tlso, selection_string in zip(tlsos, selection_strings):
+    if(selection_string is None):
+      selection_string = "all"
     counter += 1
     t = tlso.t
     l = tlso.l
     s = tlso.s
     o = tlso.origin
-    print >> out, r3+"TLS GROUP :%6d                                    "%(counter)
-    print >> out, r3+" SELECTION: %s"%(selection_string)
-    print >> out, r3+" ORIGIN FOR THE GROUP (A):%9.4f%9.4f%9.4f"%(o[0],o[1],o[2])
-    print >> out, r3+" T TENSOR                                            "
-    print >> out, r3+"   T11:%9.4f T22:%9.4f                       "%(t[0], t[1])
-    print >> out, r3+"   T33:%9.4f T12:%9.4f                       "%(t[2], t[3])
-    print >> out, r3+"   T13:%9.4f T23:%9.4f                       "%(t[4], t[5])
-    print >> out, r3+" L TENSOR                                            "
-    print >> out, r3+"   L11:%9.4f L22:%9.4f                       "%(l[0], l[1])
-    print >> out, r3+"   L33:%9.4f L12:%9.4f                       "%(l[2], l[3])
-    print >> out, r3+"   L13:%9.4f L23:%9.4f                       "%(l[4], l[5])
-    print >> out, r3+" S TENSOR                                            "
-    print >> out, r3+"   S11:%9.4f S12:%9.4f S13:%9.4f         "%(s[0], s[1], s[2])
-    print >> out, r3+"   S21:%9.4f S22:%9.4f S23:%9.4f         "%(s[3], s[4], s[5])
-    print >> out, r3+"   S31:%9.4f S32:%9.4f S33:%9.4f         "%(s[6], s[7], s[8])
+    #print >>out,r3
+    print >>out,r3+"TLS GROUP : %-6d"%(counter)
+    lines = line_breaker(selection_string, width=45)
+    for i_line, line in enumerate(lines):
+      if(i_line == 0):
+        print >> out, r3+" SELECTION: %s"%line
+      else:
+        print >> out, r3+"          : %s"%line
+    print >>out,r3+" ORIGIN FOR THE GROUP (A):%9.4f%9.4f%9.4f"%(o[0],o[1],o[2])
+    print >>out,r3+" T TENSOR                                            "
+    print >>out,r3+"   T11:%9.4f T22:%9.4f                       "%(t[0], t[1])
+    print >>out,r3+"   T33:%9.4f T12:%9.4f                       "%(t[2], t[3])
+    print >>out,r3+"   T13:%9.4f T23:%9.4f                       "%(t[4], t[5])
+    print >>out,r3+" L TENSOR                                            "
+    print >>out,r3+"   L11:%9.4f L22:%9.4f                       "%(l[0], l[1])
+    print >>out,r3+"   L33:%9.4f L12:%9.4f                       "%(l[2], l[3])
+    print >>out,r3+"   L13:%9.4f L23:%9.4f                       "%(l[4], l[5])
+    print >>out,r3+" S TENSOR                                            "
+    print >>out,r3+"   S11:%9.4f S12:%9.4f S13:%9.4f         "%(s[0],s[1],s[2])
+    print >>out,r3+"   S21:%9.4f S22:%9.4f S23:%9.4f         "%(s[3],s[4],s[5])
+    print >>out,r3+"   S31:%9.4f S32:%9.4f S33:%9.4f         "%(s[6],s[7],s[8])
 
 class show_tls(object):
    def __init__(self, tlsos, text="", out=None):
@@ -595,7 +612,7 @@ class tls_refinement(object):
           tlsos = start_tls_value
      else:
         tlsos = tls_from_u_cart(xray_structure = xrs,
-                                tlsos_initial  = model.tlsos,
+                                tlsos_initial  = model.tls_groups.tlsos,
                                 tls_selections = selections,
                                 number_of_macro_cycles = 100,
                                 max_iterations         = 100)
@@ -644,7 +661,7 @@ class tls_refinement(object):
      show_tls(tlsos = tlsos,
               text = "TLS refinement: final values", out = out)
      self.tlsos = tlsos
-     model.tlsos = tlsos
+     model.tls_groups.tlsos = tlsos
      self.fmodel = fmodel
      time_tls_total += timer.elapsed()
 

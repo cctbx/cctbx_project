@@ -30,6 +30,8 @@ class manager(object):
                      refinement_flags = None,
                      dbe_manager = None,
                      wilson_b = None,
+                     tls_groups = None,
+                     anomalous_scatterer_groups = None,
                      log = None):
     self.log = log
     self.restraints_manager = restraints_manager
@@ -42,6 +44,11 @@ class manager(object):
     self.solvent_selection = self._solvent_selection()
     self.solvent_selection_ini = self._solvent_selection()
     self.wilson_b = wilson_b
+    self.tls_groups = tls_groups
+    if(anomalous_scatterer_groups is not None and
+      len(anomalous_scatterer_groups) == 0):
+      anomalous_scatterer_groups = None
+    self.anomalous_scatterer_groups = anomalous_scatterer_groups
     # DBE related
     self.dbe_manager = dbe_manager
     self.ias_xray_structure = ias_xray_structure
@@ -54,10 +61,18 @@ class manager(object):
 
     if(self.refinement_flags is not None and [self.refinement_flags,
                                 self.refinement_flags.adp_tls].count(None)==0):
-       self.tlsos = tools.generate_tlsos(
+       tlsos = tools.generate_tlsos(
                                 selections     = self.refinement_flags.adp_tls,
                                 xray_structure = self.xray_structure,
                                 value          = 0.0)
+       self.tls_groups.tlsos = tlsos
+
+  def extract_ncs_groups(self):
+    result = None
+    if(self.restraints_manager.ncs_groups is not None):
+      result = self.restraints_manager.ncs_groups.extract_ncs_groups(
+        sites_cart = self.xray_structure.sites_cart())
+    return result
 
   def deep_copy(self):
     new = manager(restraints_manager    = self.restraints_manager,
@@ -65,6 +80,8 @@ class manager(object):
                   xray_structure        = self.xray_structure,
                   atom_attributes_list  = self.atom_attributes_list,
                   refinement_flags      = self.refinement_flags,
+                  tls_groups            = self.tls_groups,
+                  anomalous_scatterer_groups = self.anomalous_scatterer_groups,
                   log                   = self.log)
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
     # XXX not a deep copy
@@ -81,7 +98,7 @@ class manager(object):
     new.atom_attributes_list = self.atom_attributes_list[:]
     new.solvent_selection    = self.solvent_selection.deep_copy()
     if(self.refinement_flags is not None):
-       new.refinement_flags     = self.refinement_flags.select(selection)
+       new.refinement_flags = self.refinement_flags.select(selection)
     return new
 
   def add_dbe(self, fmodel=None, dbe_params=None, file_name=None,
