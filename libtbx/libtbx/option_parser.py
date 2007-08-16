@@ -60,7 +60,7 @@ class option_parser(OptionParser):
       callback=self.show_defaults_callback,
       help='Print parameters visible at the given expert level'
            ' (integer value or "all") and exit. Optionally,'
-           ' append .help or .attr to the expert level, for example:\n'
+           ' append .help, .more, or .all to the expert level, for example:\n'
            ' --show-defaults=all.help',
       metavar="EXPERT_LEVEL"))
     self.show_defaults_callback.is_enabled = True
