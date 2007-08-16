@@ -49,7 +49,9 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
     .enable_symmetry_comprehensive()
   ).process(args=args)
   if (command_line.expert_level is not None):
-    master_params.show(expert_level=command_line.expert_level)
+    master_params.show(
+      expert_level=command_line.expert_level,
+      attributes_level=command_line.attributes_level)
     sys.exit(0)
   #
   # Loop over command-line arguments.

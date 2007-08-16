@@ -58,9 +58,11 @@ class option_parser(OptionParser):
       action="callback",
       type="string",
       callback=self.show_defaults_callback,
-      help="Print parameters visible at the given expert level and exit",
-      metavar=\
-        "EXPERT_LEVEL, (EXPERT_LEVEL = integer number or all for everything)"))
+      help='Print parameters visible at the given expert level'
+           ' (integer value or "all") and exit. Optionally,'
+           ' append .help or .attr to the expert level, for example:\n'
+           ' --show-defaults=all.help',
+      metavar="EXPERT_LEVEL"))
     self.show_defaults_callback.is_enabled = True
     return self
 
@@ -110,6 +112,7 @@ class processed_options(object):
     self.options = options
     self.args = args
     self.expert_level = show_defaults_callback.expert_level
+    self.attributes_level = show_defaults_callback.attributes_level
     self.chunk_n = chunk_callback.n
     self.chunk_i = chunk_callback.i
 
@@ -118,13 +121,9 @@ class show_defaults_callback(object):
   def __init__(self):
     self.is_enabled = False
     self.expert_level = None
+    self.attributes_level = 0
 
-  def __call__(self, option, opt, value, parser):
-    if (value.strip().lower() == "all"):
-      self.expert_level = -1
-    else:
-      try: value = int(value)
-      except ValueError:
+  def raise_sorry(self, value):
         raise Sorry("""\
 Invalid option value: --show-defaults="%s"
   Please specify an integer value or the word "all"
@@ -133,9 +132,33 @@ Invalid option value: --show-defaults="%s"
     --show_defaults=1   # slightly advanced
     --show_defaults=2   # more advanced
     etc.
-    --show_defaults=all # everything""" % value)
+    --show_defaults=all # everything
+  Optionally, append
+    .help   to display the parameter help, or
+    .more   to display all parameter attributes which are not None
+    .all    to display all parameter attributes
+  Examples:
+    --show_defaults=all.help
+    --show_defaults=all.all""" % value)
 
-      self.expert_level = value
+  def __call__(self, option, opt, value, parser):
+    flds = value.strip().lower().split(".")
+    if (1 > len(flds) > 2): self.raise_sorry(value=value)
+    if (flds[0] == "all"):
+      self.expert_level = -1
+    else:
+      try: expert_level = int(flds[0])
+      except ValueError: self.raise_sorry(value=value)
+      self.expert_level = expert_level
+    if (len(flds) > 1):
+      if (flds[1] == "help"):
+        self.attributes_level = 1
+      elif (flds[1] == "more"):
+        self.attributes_level = 2
+      elif (flds[1] == "all"):
+        self.attributes_level = 3
+      else:
+        self.raise_sorry(value=value)
 
 class chunk_callback(object):
 
