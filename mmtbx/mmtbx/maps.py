@@ -268,7 +268,8 @@ class interpreter:
     if(self.command_line.expert_level is not None):
       master_params.show(
         out = self.log,
-        expert_level = self.command_line.expert_level)
+        expert_level = self.command_line.expert_level,
+        attributes_level = self.command_line.attributes_level)
       sys.exit(0)
     print >> self.log
     if (len(args) > 0):
