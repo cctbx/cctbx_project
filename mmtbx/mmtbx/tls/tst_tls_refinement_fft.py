@@ -128,14 +128,12 @@ def exercise_2(eps = 1.e-6):
                                  r_free_flags      = flags,
                                  target_name       = "ls_wunit_k1",
                                  sf_and_grads_accuracy_params = sfg_params)
-  fmodel.show_comprehensive(free_reflections_per_bin = 250,
-                            max_number_of_bins  = 30)
+  fmodel.info(free_reflections_per_bin=250, max_number_of_bins=30).show_all()
   xray_structure.convert_to_isotropic()
   xray_structure.set_b_iso(value = 25.0)
   fmodel.update_xray_structure(xray_structure = xray_structure,
                                update_f_calc  = True)
-  fmodel.show_comprehensive(free_reflections_per_bin = 250,
-                            max_number_of_bins  = 30)
+  fmodel.info(free_reflections_per_bin=250, max_number_of_bins=30).show_all()
   print "*"*80
 ###> TLS refinement against xray data
   if (not "--comprehensive" in sys.argv[1:]):

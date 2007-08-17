@@ -135,8 +135,8 @@ def run_simulated_annealing(simulated_annealing_params,
                                         update_f_ordered_solvent = False,
                                         out                      = out)
 
-    fmodel_copy_1.show_essential(header = "2:SA temperatrure = "+str(sa_temp),
-                                 out    = out)
+    fmodel_copy_1.info().show_rfactors_targets_scales_overall(
+      header = "2:SA temperatrure = "+str(sa_temp), out = out)
 
     geom_stat = model.geometry_statistics(
                                       show = True,

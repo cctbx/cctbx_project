@@ -215,8 +215,7 @@ def test_5(fmodel, model):
                                update_f_calc  = True)
   assert approx_equal(fmodel.r_work(), 0.51, 1.e-2)
   assert approx_equal(fmodel.r_free(), 0.52, 1.e-2)
-  fmodel.show_comprehensive(free_reflections_per_bin = 250,
-                            max_number_of_bins  = 30)
+  fmodel.info(free_reflections_per_bin=250, max_number_of_bins=30).show_all()
 
   rb = mmtbx.refinement.rigid_body.manager(fmodel           = fmodel,
                                            selections       = selections,
@@ -224,8 +223,7 @@ def test_5(fmodel, model):
                                            refine_t         = True,
                                            bulk_solvent_and_scale=False,
                                            protocol         = "multiple_zones")
-  fmodel.show_comprehensive(free_reflections_per_bin = 250,
-                            max_number_of_bins  = 30)
+  fmodel.info(free_reflections_per_bin=250, max_number_of_bins=30).show_all()
   assert approx_equal(rb.translation()[0], [-1.0,-1.0,-1.0], 1.e-4)
   assert approx_equal(rb.rotation()[0], [-0.5,-0.5,-0.5], 1.e-1)
   assert approx_equal(fmodel.r_work(), 0.0, 1.e-3)
@@ -326,8 +324,7 @@ def run_tests():
                                  r_free_flags      = flags,
                                  target_name       = "ls_wunit_k1",
                                  sf_and_grads_accuracy_params = sfg_params)
-  fmodel.show_comprehensive(free_reflections_per_bin = 250,
-                            max_number_of_bins  = 30)
+  fmodel.info(free_reflections_per_bin=250, max_number_of_bins=30).show_all()
 
   print "test 1: "
   test_1(fmodel = fmodel.deep_copy(), model  = model.deep_copy())
@@ -389,7 +386,7 @@ def finite_differences_test():
                                  r_free_flags      = flags,
                                  target_name       = "ls_wunit_k1",
                                  sf_and_grads_accuracy_params = sfg_params)
-  fmodel.show_essential()
+  fmodel.info().show_rfactors_targets_scales_overall()
   xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
                                 site       = True)
   for convention in ["zyz","xyz"]:

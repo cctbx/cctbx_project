@@ -117,7 +117,7 @@ def exercise(space_group_info,
             update_f_calc=True,
             update_f_mask=True)
           if ((0 or verbose) and fmodel.target_name != "ml_sad"):
-            fmodel.show_essential()
+            fmodel.info().show_rfactors_targets_scales_overall()
             print  f_obs.data().size()
           if ((0 or verbose) and fmodel.target_name != "ml_sad"):
             fmodel.show_comprehensive()

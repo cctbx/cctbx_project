@@ -15,6 +15,34 @@ from cctbx import miller
 from cctbx import sgtbx
 from scitbx import matrix
 from libtbx import adopt_init_args
+import iotbx.phil
+
+alpha_beta_params = iotbx.phil.parse("""\
+  free_reflections_per_bin = 140
+    .type = int
+  number_of_macromolecule_atoms_absent = 225
+    .type = int
+  n_atoms_included = 0
+    .type = int
+  bf_atoms_absent = 15.0
+    .type = float
+  final_error = 0.0
+    .type = float
+  absent_atom_type = "O"
+    .type = str
+  method = *est calc
+    .type = choice
+  estimation_algorithm = *analytical iterative
+    .type = choice
+  verbose = -1
+    .type = int
+  interpolation = True
+    .type = bool
+  fix_scale_for_calc_option = None
+    .type = float
+  number_of_waters_absent = 613
+    .type = float
+""")
 
 def figures_of_merit_(f_obs,
                       f_calc,
