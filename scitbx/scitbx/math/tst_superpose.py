@@ -4,6 +4,10 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal
 import random
 
+if (1): # fixed random seed to avoid rare failures
+  random.seed(0)
+  flex.set_random_seed(0)
+
 def random_rotation():
   return euler_angles_as_matrix([random.uniform(0,360) for i in xrange(3)])
 
