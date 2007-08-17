@@ -580,7 +580,8 @@ class environment:
     print >> f, "#"
     f.close()
 
-  def reset_dispatcher_include_cache(self):
+  def reset_dispatcher_bookkeeping(self):
+    self._dispatcher_registry = {}
     self._dispatcher_include_at_start = []
     self._dispatcher_include_before_command = []
     include_files = []
@@ -658,7 +659,11 @@ class environment:
     source_is_py = False
     if (source_file is not None):
       dispatcher_name = os.path.basename(target_file)
-      assert dispatcher_name.find('"') < 0
+      if (dispatcher_name.find('"') >= 0):
+        raise RuntimeError(
+          "Dispatcher target file name contains double-quote: %s\n"
+            % dispatcher_name
+          + "  source file: %s" % source_file)
       print >> f, 'LIBTBX_DISPATCHER_NAME="%s"' % os.path.basename(target_file)
       print >> f, 'export LIBTBX_DISPATCHER_NAME'
       if (source_file.lower().endswith(".py")):
@@ -779,6 +784,14 @@ class environment:
         dispatcher_name=os.path.splitext(os.path.basename(target_file))[0]))
 
   def write_dispatcher(self, source_file, target_file):
+    reg = self._dispatcher_registry.setdefault(target_file, source_file)
+    if (reg != source_file):
+      raise Sorry("Multiple sources for dispatcher:\n"
+        + "  target file:\n"
+        + "    %s\n" % show_string(target_file)
+        + "  source files:\n"
+        + "    %s\n" % show_string(reg)
+        + "    %s" % show_string(source_file))
     if (os.name == "nt"):
       action = self.write_win32_dispatcher
       ext = ".exe"
@@ -1042,7 +1055,7 @@ class environment:
   def refresh(self):
     self.assemble_pythonpath()
     self.show_build_options_and_module_listing()
-    self.reset_dispatcher_include_cache()
+    self.reset_dispatcher_bookkeeping()
     print 'Creating files in build directory:\n  "%s"' % self.build_path
     self.write_dispatcher_include_template()
     self.write_lib_dispatcher_head()
@@ -1072,6 +1085,7 @@ class environment:
     self.write_python_and_show_path_duplicates()
     self.process_exe()
     self.write_command_version_duplicates()
+    self.pickle()
 
   def get_module(self, name, must_exist=True):
     result = self.module_dict.get(name, None)
@@ -1212,7 +1226,9 @@ class module:
         source_dir,
         file_name,
         suppress_warning,
-        target_file_name_infix=""):
+        target_file_name_infix="",
+        scan_for_libtbx_set_dispatcher_name=False):
+    assert target_file_name_infix == "" or not scan_for_libtbx_set_dispatcher_name
     source_file = libtbx.path.norm_join(source_dir, file_name)
     if (not os.path.isfile(source_file)): return
     file_name_lower = file_name.lower()
@@ -1220,14 +1236,24 @@ class module:
     if (file_name_lower.endswith(".pyc")): return
     if (file_name_lower.endswith(".pyo")): return
     if (file_name[0] == "."): return
+    if (file_name == "ipython.py" and self.name == "libtbx"):
+      try: import IPython
+      except ImportError: return
     ext = os.path.splitext(file_name_lower)[1]
+    if (scan_for_libtbx_set_dispatcher_name):
+      read_size = 1000
+    else:
+      read_size = 0
     if (os.name == "nt"):
       if (ext not in windows_pathext): return
-    elif (ext != ".sh" and ext != ".py"):
-      try: hash_bang = open(source_file).read(2)
+    elif (ext != ".sh" and ext != ".py" and read_size == 0):
+      read_size = 2
+    if (read_size != 0):
+      try: source_text = open(source_file).read(read_size)
       except IOError:
         raise Sorry('Cannot read file: "%s"' % source_file)
-      if (hash_bang != "#!"):
+    if (read_size == 2):
+      if (not source_text.startswith("#!")):
         if (ext != ".bat" and not suppress_warning):
           msg = 'WARNING: Ignoring file "%s" due to missing "#!"' % (
             source_file)
@@ -1235,13 +1261,20 @@ class module:
           print msg
           print "*"*len(msg)
         return
-    if (file_name == "ipython.py" and self.name == "libtbx"):
-      try: import IPython
-      except ImportError: return
-    target_file = self.name + target_file_name_infix
-    if (not file_name_lower.startswith("main.")
-         or file_name_lower.count(".") != 1):
-      target_file += "." + os.path.splitext(file_name)[0]
+    target_file = None
+    if (read_size != 0):
+      pattern = "LIBTBX_SET_DISPATCHER_NAME"
+      i = source_text.find(pattern)
+      if (i >= 0):
+        i += len(pattern)
+        flds = source_text[i:].split(None, 1)
+        if (len(flds) != 0 and len(flds[0]) != 0):
+          target_file = flds[0]
+    if (target_file is None):
+      target_file = self.name + target_file_name_infix
+      if (not file_name_lower.startswith("main.")
+           or file_name_lower.count(".") != 1):
+        target_file += "." + os.path.splitext(file_name)[0]
     self.env.write_dispatcher_in_bin(
       source_file=source_file,
       target_file=target_file)
@@ -1258,12 +1291,14 @@ class module:
           self.write_dispatcher(
             source_dir=source_dir,
             file_name=file_name,
-            suppress_warning=suppress_warning)
+            suppress_warning=suppress_warning,
+            scan_for_libtbx_set_dispatcher_name=True)
 
   def process_python_command_line_scripts(self,
         source_dir,
         print_prefix="  ",
-        target_file_name_infix=""):
+        target_file_name_infix="",
+        scan_for_libtbx_set_dispatcher_name=False):
     print print_prefix+'Processing: %s' % show_string(source_dir)
     for file_name in os.listdir(source_dir):
       if (not file_name.endswith(".py")): continue
@@ -1271,7 +1306,9 @@ class module:
         source_dir=source_dir,
         file_name=file_name,
         suppress_warning=False,
-        target_file_name_infix=target_file_name_infix)
+        target_file_name_infix=target_file_name_infix,
+        scan_for_libtbx_set_dispatcher_name
+          =scan_for_libtbx_set_dispatcher_name)
 
   def process_libtbx_refresh_py(self):
     for dist_path in self.dist_paths_active():
