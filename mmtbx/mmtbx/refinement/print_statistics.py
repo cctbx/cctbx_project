@@ -401,7 +401,7 @@ class refinement_monitor(object):
             translations=self.rigid_body_shift_accumulator.translations)
     #
     if(self.short):
-       print >> out
+       print >> out, remark
        print >> out, remark + "*********** REFINEMENT STATISTICS STEP BY STEP: NEUTRON DATA ***********"
     else:
        print >> out, remark + "****************** REFINEMENT STATISTICS STEP BY STEP ******************"
