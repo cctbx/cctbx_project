@@ -10,6 +10,20 @@ from libtbx.math_utils import iround
 from libtbx.utils import Sorry
 import math
 import sys, os
+import iotbx.phil
+
+sigmaa_estimator_params = iotbx.phil.parse("""\
+  kernel_width_free_reflections = 100
+    .type = int
+  kernel_on_chebyshev_nodes = True
+    .type = bool
+  number_of_sampling_points = 20
+    .type = int
+  number_of_chebyshev_terms = 10
+    .type = int
+  use_sampling_sum_weights = True
+    .type = bool
+""")
 
 class sigmaa_point_estimator(object):
   def __init__(self,

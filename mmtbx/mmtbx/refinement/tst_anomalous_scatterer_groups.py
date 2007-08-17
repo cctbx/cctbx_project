@@ -54,8 +54,6 @@ def run_call_back(flags, space_group_info):
     r_free_flags=f_obs.generate_r_free_flags(),
     sf_and_grads_accuracy_params = sfg_params,
     target_name="ls")
-  if (flags.Verbose):
-    fmodel.show()
   #
   n_cycles = [0]
   def call_back(minimizer):

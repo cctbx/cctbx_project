@@ -48,15 +48,14 @@ def run():
   f_model_manager = mmtbx.f_model.manager(
     xray_structure = partial_structure,
     f_obs = f_obs,
-    r_free_flags = r_free_flags)
-  f_model_manager.show()
+    r_free_flags = r_free_flags,
+    target_name = "ml")
+  f_model_manager.info().show_all()
 
   print f_model_manager.r_work()
   print f_model_manager.r_free()
 
-  f_model_manager.r_factors_in_resolution_bins(
-    free_reflections_per_bin = 100,
-    max_number_of_bins = 10)
+  f_model_manager.info().show_all()
 
   f_model_manager.update(
     k_sol = 1.2,
@@ -65,9 +64,7 @@ def run():
   f_model = f_model_manager.f_model()
   f_bulk = f_model_manager.f_bulk()
 
-  f_model_manager.show_fom_phase_error_alpha_beta_in_bins(
-    free_reflections_per_bin = 100,
-    max_number_of_bins = 10)
+  f_model_manager.info().show_all()
 
   fft_map = f_model_manager.electron_density_map(
     map_type = "2m*Fobs-D*Fmodel")

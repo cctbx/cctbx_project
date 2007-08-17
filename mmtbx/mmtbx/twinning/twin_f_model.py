@@ -37,6 +37,28 @@ from scitbx import differential_evolution
 import sys, os, math, time
 import mmtbx.f_model
 
+# XXX Pavel: Below is a dummy class (does nothing but redirect or emulate calls)
+# XXX fix to adapt new features of non-twin fmodel.
+# XXX This may severely change expected behaviour.
+class info(object):
+  def __init__(self,
+               fmodel,
+               free_reflections_per_bin = None,
+               max_number_of_bins = None):
+    self.fmodel = fmodel
+
+  def show_rfactors_targets_scales_overall(self, header=None, out=None):
+    self.fmodel.show_essential(header = header, out=out)
+
+  def show_all(self, header = "", out = None):
+    if(out is None): out = sys.stdout
+    self.show_rfactors_targets_scales_overall(header = header, out = out)
+
+  def _header_resolutions_nreflections(self, header, out):
+    self.fmodel._header_resolutions_nreflections(header=header, out=out)
+
+  def _rfactors_and_bulk_solvent_and_scale_params(self, out):
+    self.fmodel._rfactors_and_bulk_solvent_and_scale_params(out = out)
 
 master_params =  iotbx.phil.parse("""
   twin_law = None
@@ -976,6 +998,12 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
     self.epsilons_w = self.f_obs_w.epsilons().data().as_double()
     self.epsilons_f = self.f_obs_f.epsilons().data().as_double()
+
+  def info(self, free_reflections_per_bin = 140, max_number_of_bins = 30):
+    return mmtbx.twinning.twin_f_model.info(
+      fmodel                   = self,
+      free_reflections_per_bin = free_reflections_per_bin,
+      max_number_of_bins       = max_number_of_bins)
 
   def show_parameter_summary(self, manager=None):
     # print bulk solvent parameters

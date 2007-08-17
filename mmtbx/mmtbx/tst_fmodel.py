@@ -51,6 +51,7 @@ def test_1(xray_structure):
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
                                               sf_and_grads_accuracy_params = sfg_params)
+                      fmodel_info = fmodel.info()
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
@@ -120,6 +121,7 @@ def test_1(xray_structure):
                                               r_free_flags      = flags,
                                               target_name       = "ls_wunit_k1",
                                               sf_and_grads_accuracy_params = sfg_params)
+                      fmodel_info = fmodel.info()
                       fmodel.update(k_sol = 0.5, b_sol = 35.0)
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
@@ -146,8 +148,8 @@ def test_1(xray_structure):
                       l = pickle.loads(p)
                       s = StringIO()
                       sl = StringIO()
-                      fmodel.show_fom_phase_error_alpha_beta_in_bins(out=s)
-                      l.show_fom_phase_error_alpha_beta_in_bins(out=sl)
+                      fmodel.info().show_all(out=s)
+                      l.info().show_all(out=sl)
                       assert not show_diff(sl.getvalue(), s.getvalue())
                       ###
                       ### instantiate fmodel only, then use deep_copy
@@ -162,6 +164,7 @@ def test_1(xray_structure):
                                               target_name       = "ls_wunit_k1",
                                               sf_and_grads_accuracy_params = sfg_params)
                       fmodel = fmodel_.deep_copy()
+                      fmodel_info = fmodel.info()
                       assert fmodel.f_obs.data().all_eq(f_obs.data())
                       assert abs(fmodel.f_calc()).data().all_eq(f_obs.data())
                       assert abs(fmodel.f_model()).data().all_eq(f_obs.data())
@@ -235,6 +238,8 @@ def test_1(xray_structure):
                                               target_name       = "ls_wunit_k1",
                                               sf_and_grads_accuracy_params = sfg_params)
                       fmodel_1 = fmodel_.resolution_filter(d_max = d_max_, d_min = d_min_, update_xray_structure=True)
+                      fmodel_info = fmodel_1.info()
+                      fmodel_info = fmodel_.info()
                       if(fc is not None):
                          fc_ = fc.resolution_filter(d_max = d_max_, d_min = d_min_)
                          fm_ = f_mask.resolution_filter(d_max = d_max_, d_min = d_min_)
@@ -355,26 +360,3 @@ def run():
 if (__name__ == "__main__"):
   run()
   print format_cpu_times()
-
-#def run_one(space_group_info):
-#  n_elements = 70
-#  xray_structure = random_structure.xray_structure(
-#         space_group_info       = space_group_info,
-#         elements               =(("O","N","C")*(n_elements/3+1))[:n_elements],
-#         volume_per_atom        = 100,
-#         min_distance           = 1.5,
-#         general_positions_only = True,
-#         random_u_iso           = False,
-#         random_occupancy       = False)
-#  xray_structure.scattering_type_registry(table="wk1995")
-#  test_1(xray_structure)
-#
-#def run_call_back(flags, space_group_info):
-#  run_one(space_group_info=space_group_info)
-#
-#def run():
-#  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
-#  print "OK"
-#
-#if (__name__ == "__main__"):
-#  run()

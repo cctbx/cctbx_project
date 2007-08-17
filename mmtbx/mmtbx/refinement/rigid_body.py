@@ -252,13 +252,21 @@ def split_resolution_range(miller_array,
   sel = flex.sort_permutation(d_spacings, reverse = True)
   d_spacings = d_spacings.select(sel)
   d_nref_first_low = d_spacings[:nref_first_low]
+  if((d_nref_first_low < d_high).count(True) > 0):
+    sel_d_high = d_spacings >= d_high
+    d_nref_first_low = d_spacings.select(sel_d_high)
+    try: d_nref_first_low = d_nref_first_low[:nref_first_low]
+    except: pass
   d_low_first = d_nref_first_low[len(d_nref_first_low)-1]
   if(d_low_first > d_low): d_low_first = d_low
   d_mids = []
   if(number_of_zones != 1):
      d_step = (d_low_first - d_high)/(number_of_zones - 1)
-     for i_zone in range(0, number_of_zones):
-       d_mids.append(d_low_first - d_step*i_zone)
+     if(d_step > 0.1):
+       for i_zone in range(0, number_of_zones):
+         d_mids.append(d_low_first - d_step*i_zone)
+     else:
+       d_mids.append(d_high)
   else:
      d_mids.append(d_high)
   print >> log, \
@@ -442,7 +450,8 @@ class manager(object):
        fmodel.update_xray_structure(xray_structure = save_xray_structure,
                                     update_f_calc  = True,
                                     update_f_mask  = True)
-       fmodel.show_essential(header = "rigid body after step back", out = log)
+       fmodel.info().show_rfactors_targets_scales_overall(
+         header = "rigid body after step back", out = log)
        print >> log
 
   def rotation(self):
@@ -453,9 +462,10 @@ class manager(object):
 
   def show(self, fmodel, r_mat, t_vec, header = "", out=None):
     if(out is None): out = sys.stdout
-    fmodel._header_resolutions_nreflections(header=header, out=out)
+    fmodel_info = fmodel.info()
+    fmodel_info._header_resolutions_nreflections(header=header, out=out)
     print >> out, "| "+"  "*38+"|"
-    fmodel._rfactors_and_bulk_solvent_and_scale_params(out=out)
+    fmodel_info._rfactors_and_bulk_solvent_and_scale_params(out=out)
     print >> out, "| "+"  "*38+"|"
     print >> out,"| Rigid body shift (Euler angles %s):"% \
                                         self.euler_angle_convention+" "*40 +"|"

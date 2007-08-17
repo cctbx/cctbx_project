@@ -7,6 +7,7 @@ from libtbx import adopt_init_args
 from mmtbx.tls import tools
 from libtbx.itertbx import count
 from libtbx.str_utils import line_breaker
+import mmtbx.f_model
 
 
 class geometry(object):
@@ -374,7 +375,10 @@ class adp(object):
 
 class model(object):
   def __init__(self, model):
-    self.geometry = geometry(sites_cart = model.xray_structure.sites_cart(),
+    sites_cart = model.xray_structure.sites_cart()
+    if(model.use_dbe):
+      sites_cart = sites_cart.select(~model.dbe_selection)
+    self.geometry = geometry(sites_cart         = sites_cart,
                              restraints_manager = model.restraints_manager)
     self.content = model_content(model)
     self.adp = adp(model)
@@ -429,8 +433,6 @@ class model(object):
             print >> out, pr+"   SELECTION          : %s"%line
           else:
             print >> out, pr+"                      : %s"%line
-        #print >> out,pr+"   REFERENCE SELECTION: %-s" % selection_strings[0]
-        #print >> out,pr+"   SELECTION          : %-s" % selection_strings[i_op]
         print >> out,pr+"   ATOM PAIRS NUMBER  : %-d" % len(pair[0])
         print >> out,pr+"   RMSD               : %-10.3f" % rms
 
@@ -456,213 +458,6 @@ class model(object):
       print >>out,pr+"  fdp : %-15.4f"%group.f_double_prime
       out.flush()
 
-class resolution_bin(object):
-  def __init__(self,
-               i_bin        = None,
-               d_range      = None,
-               completeness = None,
-               alpha_work   = None,
-               beta_work    = None,
-               r_work       = None,
-               r_free       = None,
-               target_work  = None,
-               target_free  = None,
-               n_work       = None,
-               n_free       = None,
-               mean_f_obs   = None,
-               fom          = None,
-               pher_work    = None,
-               pher_free    = None):
-    adopt_init_args(self, locals())
-
-class data(object):
-  def __init__(self, fmodel, free_reflections_per_bin, max_number_of_bins,
-               sigma_fobs_rejection_criterion, sigma_iobs_rejection_criterion):
-    mp = fmodel.mask_params
-    self.twin_fraction = None # XXX
-    self.twin_law = None # XXX
-    self.r_work = fmodel.r_work()
-    self.r_free = fmodel.r_free()
-    self.r_all = fmodel.r_all()
-    self.overall_scale_k1 = fmodel.scale_k1()
-    self.number_of_test_reflections = fmodel.f_obs_t.data().size()
-    self.number_of_work_reflections = fmodel.f_obs_w.data().size()
-    self.number_of_reflections = fmodel.f_obs.data().size()
-    self.k_sol = fmodel.k_sol()
-    self.b_sol = fmodel.b_sol()
-    self.b_cart = fmodel.b_cart()
-    self.mask_solvent_radius = mp.solvent_radius
-    self.mask_shrink_radius = mp.shrink_truncation_radius
-    self.mask_grid_step_factor = mp.grid_step_factor
-    self.ml_phase_error = flex.mean(fmodel.phase_errors())
-    self.ml_coordinate_error = fmodel.model_error_ml()
-    self.d_max, self.d_min = fmodel.f_obs.resolution_range()
-    self.completeness_in_range = fmodel.f_obs.completeness(d_max = self.d_max)
-    self.sigma_fobs_rejection_criterion = sigma_fobs_rejection_criterion
-    self.sigma_iobs_rejection_criterion = sigma_iobs_rejection_criterion
-    self.target_name = fmodel.target_name
-    self.sf_algorithm = fmodel.sfg_params.algorithm
-    self.bins = self.statistics_in_resolution_bins(
-      fmodel = fmodel,
-      free_reflections_per_bin = free_reflections_per_bin,
-      max_number_of_bins = max_number_of_bins)
-
-  def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
-                                    max_number_of_bins):
-    result = []
-    fo_t = fmodel.f_obs_t
-    fc_t = fmodel.f_model_t()
-    fo_w = fmodel.f_obs_w
-    fc_w = fmodel.f_model_w()
-    alpha_w, beta_w = fmodel.alpha_beta_w()
-    alpha_t, beta_t = fmodel.alpha_beta_t()
-    pher_w = fmodel.phase_errors_work()
-    pher_t = fmodel.phase_errors_test()
-    fom = fmodel.figures_of_merit()
-    fmodel.f_obs.setup_binner(n_bins=fmodel.determine_n_bins(
-      free_reflections_per_bin=free_reflections_per_bin,
-      max_n_bins=max_number_of_bins))
-    fo_t.use_binning_of(fmodel.f_obs)
-    fc_t.use_binning_of(fo_t)
-    fo_w.use_binning_of(fo_t)
-    fc_w.use_binning_of(fo_t)
-    alpha_w.use_binning_of(fo_t)
-    alpha_t.use_binning_of(fo_t)
-    beta_w.use_binning_of(fo_t)
-    beta_t.use_binning_of(fo_t)
-    target_functor = fmodel.target_functor()
-    target_result = target_functor(compute_gradients=False)
-    tpr = target_result.target_per_reflection()
-    if(tpr.size() != 0):
-      tpr_w = tpr.select(fmodel.work)
-      tpr_t = tpr.select(fmodel.test)
-    for i_bin in fo_t.binner().range_used():
-      sel_t = fo_t.binner().selection(i_bin)
-      sel_w = fo_w.binner().selection(i_bin)
-      sel_all = fmodel.f_obs.binner().selection(i_bin)
-      sel_fo_all = fmodel.f_obs.select(sel_all)
-      sel_fo_t = fo_t.select(sel_t)
-      sel_fc_t = fc_t.select(sel_t)
-      sel_fo_w = fo_w.select(sel_w)
-      sel_fc_w = fc_w.select(sel_w)
-      if (tpr.size() == 0):
-        sel_tpr_w = None
-        sel_tpr_t = None
-      else:
-        denom_w = flex.sum(sel_fo_w.data()*sel_fo_w.data())
-        denom_t = flex.sum(sel_fo_t.data()*sel_fo_t.data())
-        if(denom_w != 0):
-           sel_tpr_w = flex.sum(tpr_w.select(sel_w))/denom_w
-        else:
-           sel_tpr_w = flex.sum(tpr_w.select(sel_w))
-        if(denom_t != 0):
-           sel_tpr_t = flex.sum(tpr_t.select(sel_t))/denom_t
-        else:
-           sel_tpr_t = flex.sum(tpr_t.select(sel_t))
-      d_max_,d_min_ = sel_fo_all.d_max_min()
-      completeness = fmodel.f_obs.resolution_filter(
-        d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
-      d_range = fo_t.binner().bin_legend(
-        i_bin=i_bin, show_bin_number=False, show_counts=False)
-      bin = resolution_bin(
-        i_bin        = i_bin,
-        d_range      = d_range,
-        completeness = completeness,
-        alpha_work   = flex.mean(alpha_w.select(sel_w).data()),
-        beta_work    = flex.mean(beta_w.select(sel_w).data()),
-        r_work       = bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data()),
-        r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data()),
-        target_work  = sel_tpr_w,
-        target_free  = sel_tpr_t,
-        n_work       = sel_fo_w.data().size(),
-        n_free       = sel_fo_t.data().size(),
-        mean_f_obs   = flex.mean(sel_fo_all.data()),
-        fom          = flex.mean(fom.select(sel_all)),
-        pher_work    = flex.mean(pher_w.select(sel_w)),
-        pher_free    = flex.mean(pher_t.select(sel_t)))
-      result.append(bin)
-    return result
-
-  def show_remark_3(self, out = None):
-    if(out is None): out = sys.stdout
-    pr = "REMARK   3  "
-    print >> out,pr+"REFINEMENT TARGET : %-s"%self.target_name.upper()
-    print >> out,pr
-    print >> out,pr+"DATA USED IN REFINEMENT."
-    print >> out,pr+" RESOLUTION RANGE HIGH (ANGSTROMS) : %-8.3f"%self.d_min
-    print >> out,pr+" RESOLUTION RANGE LOW  (ANGSTROMS) : %-8.3f"%self.d_max
-    if(self.sigma_fobs_rejection_criterion is None and
-       self.sigma_iobs_rejection_criterion is None):
-      print >> out,pr+" DATA CUTOFF            (SIGMA(F)) : None"
-    elif(self.sigma_fobs_rejection_criterion is not None):
-      print >> out,pr+" DATA CUTOFF            (SIGMA(F)) : %-6.2f"%\
-        self.sigma_fobs_rejection_criterion
-    elif(self.sigma_iobs_rejection_criterion is not None):
-      print >> out,pr+" DATA CUTOFF            (SIGMA(I)) : %-6.2f"%\
-        self.sigma_iobs_rejection_criterion
-    print >> out,pr+" COMPLETENESS FOR RANGE        (%s) : %-6.2f"%\
-      ("%", self.completeness_in_range*100.0)
-    print >> out,pr+" NUMBER OF REFLECTIONS             : %-10d"%\
-      self.number_of_reflections
-    print >> out,pr
-    print >> out,pr+"FIT TO DATA USED IN REFINEMENT."
-    print >> out,pr+" R VALUE     (WORKING + TEST SET) : %-6.4f"%self.r_all
-    print >> out,pr+" R VALUE            (WORKING SET) : %-6.4f"%self.r_work
-    print >> out,pr+" FREE R VALUE                     : %-6.4f"%self.r_free
-    print >> out,pr+" FREE R VALUE TEST SET SIZE   (%s) : %-6.2f"%("%",
-      float(self.number_of_test_reflections)/self.number_of_reflections*100.)
-    print >> out,pr+" FREE R VALUE TEST SET COUNT      : %-10d"%\
-      self.number_of_test_reflections
-    print >> out,pr
-    print >> out,pr+"FIT TO DATA USED IN REFINEMENT (IN BINS)."
-    print >> out,pr+" BIN  RESOLUTION RANGE  COMPL.   NWORK NFREE  RWORK RFREE"
-    fmt = " %3d %-17s %6.2f %8d %5d  %5.2f %5.2f"
-    for bin in self.bins:
-      print >> out,pr+fmt%(bin.i_bin, bin.d_range, bin.completeness*100.,
-        bin.n_work, bin.n_free, bin.r_work*100., bin.r_free*100.)
-    print >> out,pr
-    print >> out,pr+"BULK SOLVENT MODELLING."
-    print >> out,pr+" METHOD USED        : FLAT BULK SOLVENT MODEL"
-    print >> out,pr+" SOLVENT RADIUS     : %-8.2f"%self.mask_solvent_radius
-    print >> out,pr+" SHRINKAGE RADIUS   : %-8.2f"%self.mask_shrink_radius
-    print >> out,pr+" GRID STEP FACTOR   : %-8.2f"%self.mask_grid_step_factor
-    print >> out,pr+" K_SOL              : %-8.3f"%self.k_sol
-    print >> out,pr+" B_SOL              : %-8.3f"%self.b_sol
-    print >> out,pr
-    print >> out,pr+"ERROR ESTIMATES."
-    print >> out,pr+\
-      " COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %-8.2f"%\
-      self.ml_coordinate_error
-    print >> out,pr+\
-      " PHASE ERROR (DEGREES, MAXIMUM-LIKELIHOOD BASED) : %-8.2f"%\
-      self.ml_phase_error
-    print >> out,pr
-    print >> out,pr+"OVERALL SCALE FACTORS."
-    print >> out,pr+\
-      " SCALE = SUM(|F_OBS|*|F_MODEL|)/SUM(|F_MODEL|**2) : %-12.4f"%\
-      self.overall_scale_k1
-    print >> out,pr+" ANISOTROPIC SCALE MATRIX ELEMENTS (IN CARTESIAN BASIS)."
-    print >> out,pr+"  B11 : %-15.4f"%self.b_cart[0]
-    print >> out,pr+"  B22 : %-15.4f"%self.b_cart[1]
-    print >> out,pr+"  B33 : %-15.4f"%self.b_cart[2]
-    print >> out,pr+"  B12 : %-15.4f"%self.b_cart[3]
-    print >> out,pr+"  B13 : %-15.4f"%self.b_cart[4]
-    print >> out,pr+"  B23 : %-15.4f"%self.b_cart[5]
-    print >> out,pr
-    print >> out,pr+"R FACTOR FORMULA."
-    print >> out,pr+" R = SUM(||F_OBS|-SCALE*|F_MODEL||)/SUM(|F_OBS|)"
-    print >> out,pr
-    print >> out,pr+"TOTAL MODEL STRUCTURE FACTOR (F_MODEL)."
-    print >> out,pr+" F_MODEL = FB_CART * (F_CALC_ATOMS + F_BULK)"
-    print >> out,pr+"  F_BULK = K_SOL * EXP(-B_SOL * S**2 / 4) * F_MASK"
-    print >> out,pr+"  F_CALC_ATOMS = ATOMIC MODEL STRUCTURE FACTORS"
-    print >> out,pr+"  FB_CART = EXP(-H(t) * A(-1) * B * A(-1t) * H)"
-    print >> out,pr+"   A = orthogonalization matrix, H = MILLER INDEX"
-    print >> out,pr+"   (t) = TRANSPOSE, (-1) = INVERSE"
-    print >> out,pr
-    print >> out,pr+"STRUCTURE FACTORS CALCULATION ALGORITHM : %-s"%\
-      self.sf_algorithm.upper()
-
 class info(object):
   def __init__(self, model,
                      fmodel_x          = None,
@@ -671,22 +466,18 @@ class info(object):
     ref_par = refinement_params
     self.model = mmtbx.model_statistics.model(model = model)
     self.data_x, self.data_n = None, None
+    self.sigma_fobs_rejection_criterion = \
+      ref_par.main.sigma_fobs_rejection_criterion,
+    self.sigma_iobs_rejection_criterion = \
+      ref_par.main.sigma_iobs_rejection_criterion
     if(fmodel_x is not None):
-      self.data_x = data(fmodel = fmodel_x,
+      self.data_x = fmodel_x.info(
         free_reflections_per_bin = ref_par.alpha_beta.free_reflections_per_bin,
-        max_number_of_bins = ref_par.main.max_number_of_resolution_bins,
-        sigma_fobs_rejection_criterion =
-          ref_par.main.sigma_fobs_rejection_criterion,
-        sigma_iobs_rejection_criterion =
-          ref_par.main.sigma_iobs_rejection_criterion)
+        max_number_of_bins       = ref_par.main.max_number_of_resolution_bins)
     if(fmodel_n is not None):
-      self.data_n = data(fmodel = fmodel_n,
+      self.data_n = fmodel_n.info(
         free_reflections_per_bin = ref_par.alpha_beta.free_reflections_per_bin,
-        max_number_of_bins = ref_par.main.max_number_of_resolution_bins,
-        sigma_fobs_rejection_criterion =
-          ref_par.main.sigma_fobs_rejection_criterion,
-        sigma_iobs_rejection_criterion =
-          ref_par.main.sigma_iobs_rejection_criterion)
+        max_number_of_bins       = ref_par.main.max_number_of_resolution_bins)
 
   def show_remark_3(self, out = None):
     prefix = "REMARK   3  "

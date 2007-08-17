@@ -597,7 +597,7 @@ class tls_refinement(object):
      timer = user_plus_sys_time()
      if(out is None): out = sys.stdout
      prefix = "TLS refinement:"
-     fmodel.show_targets(text = prefix+" start model", out = out)
+     fmodel.info().show_targets(text = prefix+" start model", out = out)
      fmodel.xray_structure.show_u_statistics(text = prefix+" start model",
                                              out  = out)
      xrs = fmodel.xray_structure
@@ -635,7 +635,7 @@ class tls_refinement(object):
             show_tls(tlsos = minimized.tlsos_result, text = prefix, out = out)
          fmodel.update_xray_structure(xray_structure = xrs,
                                       update_f_calc  = True)
-         fmodel.show_targets(text = prefix, out = out)
+         fmodel.info().show_targets(text = prefix, out = out)
          if(xrs.is_positive_definite_u().count(False) > 0):
             xrs.tidy_us(u_min = 1.e-6)
             xrs.show_u_statistics(
@@ -643,7 +643,7 @@ class tls_refinement(object):
                               out  = out)
             fmodel.update_xray_structure(xray_structure = xrs,
                                          update_f_calc  = True)
-            fmodel.show_targets(text=prefix+": after making positive definite",
+            fmodel.info().show_targets(text=prefix+": after making positive definite",
                                 out = out)
             tlsos = make_tlso_compatible_with_u_positive_definite(
                  tlsos                            = minimized.tlsos_result,

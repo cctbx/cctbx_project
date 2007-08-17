@@ -130,7 +130,7 @@ master_params = iotbx.phil.parse("""\
   nu_fix_b_atoms = None
     .type = float
     .expert_level=3
-  verbose = 1
+  verbose = -1
     .type = int
     .expert_level=3
 """)
@@ -562,7 +562,7 @@ class bulk_solvent_and_scales(object):
                             params.b_sol_grid_search_min,
                             params.b_sol_step)
        if(params.verbose > 0):
-          fmodel.show_k_sol_b_sol_b_cart_target(header = m + str(0)+\
+          fmodel.info().show_rfactors_targets_scales_overall(header = m + str(0)+\
                              " (start) target= "+fmodel.target_name, out = log)
        if(params.fix_k_sol is not None):
           fmodel.update(k_sol = params.fix_k_sol, b_sol = params.fix_b_sol)
@@ -589,18 +589,18 @@ class bulk_solvent_and_scales(object):
               fmodel.update(k_sol = ksol, b_sol = bsol)
               if(params.verbose > 0):
                  h=m+str(mc)+": k & b: grid search; T= "+fmodel.target_name
-                 fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
+                 fmodel.info().show_rfactors_targets_scales_overall(header = h, out = log)
            if(params.minimization_k_sol_b_sol):
               self._k_sol_b_sol_minimization_helper(params, fmodel)
               if(params.verbose > 0):
                  h=m+str(mc)+": k & b: minimization; T= "+fmodel.target_name
-                 fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
+                 fmodel.info().show_rfactors_targets_scales_overall(header = h, out = log)
            if(params.minimization_b_cart):
               self._b_cart_minimizer_helper(params = params, fmodel = fmodel,
                                                                      out = log)
               if(params.verbose > 0):
                  h=m+str(mc)+": anisotropic scale; T= "+fmodel.target_name
-                 fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
+                 fmodel.info().show_rfactors_targets_scales_overall(header = h, out = log)
            if(params.statistical_solvent):
               pass
               #self._set_f_ordered_solvent(params = params)
@@ -615,7 +615,7 @@ class bulk_solvent_and_scales(object):
               fmodel.apply_back_b_iso()
               if(params.verbose > 0):
                  h=m+str(mc)+": apply back trace(b_cart): T= "+fmodel.target_name
-                 fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
+                 fmodel.info().show_rfactors_targets_scales_overall(header = h, out = log)
        ### start ml optimization
        ksol = fmodel.k_sol()
        bsol = fmodel.b_sol()
@@ -629,7 +629,7 @@ class bulk_solvent_and_scales(object):
                  self._k_sol_b_sol_minimization_helper(params, fmodel)
                  if(params.verbose > 0):
                     h=m+str(mc)+": k_sol & b_sol min.; T= "+fmodel.target_name
-                    fmodel.show_k_sol_b_sol_b_cart_target(header=h, out = log)
+                    fmodel.info().show_rfactors_targets_scales_overall(header=h, out = log)
           if(fmodel.alpha_beta_params is not None):
              fmodel.alpha_beta_params.interpolation = save_interpolation_flag
           r_work_final = fmodel.r_work()
@@ -648,7 +648,7 @@ class bulk_solvent_and_scales(object):
           fmodel.apply_back_b_iso()
           if(params.verbose > 0):
              h=m+str(mc)+": apply back trace(b_cart): T= "+fmodel.target_name
-             fmodel.show_k_sol_b_sol_b_cart_target(header = h, out = log)
+             fmodel.info().show_rfactors_targets_scales_overall(header = h, out = log)
        fmodel.update(target_name = fmodel_target)
     if(abs(fmodel.k_sol()) < 0.01):
        fmodel.update(k_sol = 0.0, b_sol = 0.0)
