@@ -889,6 +889,16 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
     Working unit cell: (11, 11, 13, 90, 90, 120)
   Space group from file: P 6
     Working space group: P 3 1 m""")
+  #
+  xs = crystal.symmetry((3,4,5), "P 2 2 2")
+  mi = flex.miller_index(((1,-2,3), (0,0,-4)))
+  data = flex.double((1,2,3,4))
+  sigmas = flex.double((0.1,0.2,0.3,0.4)).reversed()
+  ms = miller.set(xs, mi)
+  ma = miller.array(ms, data)
+  assert ma.min_f_over_sigma() is None
+  ma = miller.array(ms, data, sigmas)
+  assert approx_equal(ma.min_f_over_sigma(), 2.5)
 
 def exercise_array_2(space_group_info):
   xs = crystal.symmetry(

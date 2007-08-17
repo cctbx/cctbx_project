@@ -547,6 +547,16 @@ class set(crystal.symmetry):
       selection=self.resolution_filter_selection(d_max=d_max, d_min=d_min),
       negate=negate)
 
+  def min_f_over_sigma(self):
+    result = None
+    sigmas = self.sigmas()
+    if(sigmas is not None):
+      if(flex.min(sigmas) == 0.0):
+        result = 0.0
+      else:
+        result = flex.min(self.data() / sigmas)
+    return result
+
   def apply_scaling(self, target_max=None, factor=None):
     assert [target_max, factor].count(None) == 1
     assert self.data() is not None
