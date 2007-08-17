@@ -40,6 +40,7 @@ mmtbx/mmtbx/command_line/pdbtools.py -text
 mmtbx/mmtbx/command_line/xmanip.py -text
 mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/model_statistics.py -text
+mmtbx/mmtbx/monomer_library/tst_protein_interpretation.py -text
 mmtbx/mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/mmtbx/pdb_header.py -text
 mmtbx/mmtbx/pdbtools.py -text
