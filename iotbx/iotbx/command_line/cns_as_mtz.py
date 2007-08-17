@@ -1,13 +1,15 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.cns_as_mtz
+
 import iotbx.cns.reflection_reader
 from iotbx.option_parser import option_parser
 import sys, os
 from iotbx import mtz
 
-def run(args):
+def run(args, command_name="phenix.cns_as_mtz"):
   if (len(args) == 0): args = ["--help"]
   command_line = (option_parser(
-    usage="iotbx.cns_as_mtz [options] cns_file",
-    description="Example: iotbx.cns_as_mtz scale.hkl")
+    usage="%s [options] cns_file" % command_name,
+    description="Example: %s scale.hkl" % command_name)
     .enable_symmetry_comprehensive()
     .option("-q", "--quiet",
       action="store_true",
@@ -58,11 +60,12 @@ def run(args):
         column_root_label=miller_array.info().labels[0])
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.show_summary()
-  if(cns_file_name.count(".") == 1):
-     mtz_file_name = cns_file_name[:cns_file_name.index(".")]
+  mtz_file_name = os.path.basename(cns_file_name)
+  if (mtz_file_name.count(".") == 1):
+     mtz_file_name = mtz_file_name[:mtz_file_name.index(".")]
   mtz_file_name += ".mtz"
-  print "Writing MTZ file: ",mtz_file_name
+  print "Writing MTZ file:", mtz_file_name
   mtz_object.write(mtz_file_name)
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  run(args=sys.argv[1:])

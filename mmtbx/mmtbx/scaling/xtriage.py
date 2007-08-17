@@ -390,7 +390,7 @@ class xtriage_analyses(object):
       )
 
 
-def run(command_name, args):
+def run(args, command_name="phenix.xtriage"):
 
   if (len(args)==0 or "--help" in args or "--h" in args or "-h" in args):
     print_help(appl=command_name)

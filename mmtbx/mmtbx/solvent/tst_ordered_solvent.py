@@ -1,4 +1,5 @@
 from libtbx.test_utils import approx_equal
+from libtbx import easy_run
 import libtbx.load_env
 import libtbx.path
 import time
@@ -10,7 +11,8 @@ from cctbx.array_family import flex
 
 def remove_refinement_files():
   sys.stdout.flush()
-  os.system("rm -rf *_refine_data.mtz *.map  *.eff *.def *.geo *_coeffs.mtz")
+  easy_run.call(
+    "rm -rf *_refine_data.mtz *.map  *.eff *.def *.geo *_coeffs.mtz")
 
 def evaluate(pdb_file,
              cycle,
@@ -63,7 +65,7 @@ def exercise_1(pdb_file):
         test=os.path.isfile)
   print pdb,hkl
   new_pdb = "wat_pik_no_h.pdb"
-  os.system("mmtbx.pdbtools %s remove.selection='element H' output.pdb.file_name=%s"%(
+  easy_run.call("phenix.pdbtools %s remove.selection='element H' output.pdb.file_name=%s"%(
     pdb, new_pdb))
   output_file_prefix = pdb_file[:-4]
   opt1= "output.prefix="+output_file_prefix+" main.max_number_of_iterations=25 scattering_table=wk1995"
@@ -74,7 +76,7 @@ def exercise_1(pdb_file):
   print cmd
   print
   sys.stdout.flush()
-  os.system(cmd)
+  easy_run.call(cmd)
   evaluate(pdb_file = output_file_prefix+"_001.pdb",
            cycle    = 3,
            rw_tol   = 0.007,
@@ -92,7 +94,7 @@ def exercise_1(pdb_file):
            n_water  = 186,
            n_water_tol = 0)
   remove_refinement_files()
-  os.system("rm -rf %s"%new_pdb)
+  easy_run.call("rm -rf %s"%new_pdb)
 
 def run():
   t1 = time.time()

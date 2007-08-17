@@ -1,13 +1,15 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.pdb.hierarchy
+
 from iotbx import pdb
 from iotbx.option_parser import option_parser
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 import sys, os
 
-def run(args):
+def run(args, command_name="phenix.pdb.hierarchy"):
   if (len(args) == 0): args = ["--help"]
   command_line = (option_parser(
-    usage="iotbx.pdb.hierarchy file...")
+    usage="%s file..." % command_name)
     .option(None, "--details",
       action="store",
       type="string",

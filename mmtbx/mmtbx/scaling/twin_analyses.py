@@ -118,7 +118,7 @@ class twin_law_quality(object):
     return result
 
 
-## python routines copied from iotbx.iotbx.reflection_statistics.
+## python routines copied from iotbx.reflection_statistics.
 ## Should be moved but are (for now) in a conveniant place.
 class twin_law(object):
   def __init__(self,

@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.mtz.dump
+
 from iotbx import mtz
 from iotbx.option_parser import option_parser
 import sys, os
@@ -34,7 +36,7 @@ def walk_callback(arg, top, names):
       show_column_data=arg.show_column_data,
       show_batches=arg.show_batches)
 
-def run(args, command_name="iotbx.mtz.dump"):
+def run(args, command_name="phenix.mtz.dump"):
   if (len(args) == 0): args = ["--help"]
   command_line = (option_parser(
     usage=command_name+" [options] file_name [...]")

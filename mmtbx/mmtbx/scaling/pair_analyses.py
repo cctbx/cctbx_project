@@ -133,7 +133,7 @@ class reindexing(object):
     print >> self.out, "the intensities to the reference data is maximized. "
     if self.file_name is not None:
       print >> self.out, "This can be done for instance with:"
-      print >> self.out, "  iotbx.reflection_file_converter %s --change_of_basis=\"%s\" <output_options> "%(self.file_name, self.nice_cb_ops[location].as_hkl() )
+      print >> self.out, "  phenix.reflection_file_converter %s --change_of_basis=\"%s\" <output_options> "%(self.file_name, self.nice_cb_ops[location].as_hkl() )
     print >> self.out, "-------------------------------------------------------------------------------"
     ##  change things in primitive setting
 

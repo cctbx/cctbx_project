@@ -46,7 +46,7 @@ def exercise(file_name = "phe_e.pdb"):
   output = "modified.pdb"
   xrsp_init = xray_structure_plus(file_name = file_name)
   base = \
-      "mmtbx.pdbtools %s output.pdb.file_name=%s --quiet "%(file_name, output)
+      "phenix.pdbtools %s output.pdb.file_name=%s --quiet "%(file_name, output)
   for selection_str in [None, "chain A or chain C"]:
     selection = xrsp_init.selection(selection_strings = selection_str)
     if(selection_str is None):
@@ -99,7 +99,7 @@ def test_quiet(file_name):
   output_file_name = "shifted.pdb"
   remove_files("log")
   remove_files(output_file_name)
-  cmd= "mmtbx.pdbtools %s output.pdb.file_name=%s shake=0.1 --quiet > log"%(
+  cmd= "phenix.pdbtools %s output.pdb.file_name=%s shake=0.1 --quiet > log"%(
                                         file_name, output_file_name)
   easy_run.call(cmd)
   lines = open("log","r").readlines()

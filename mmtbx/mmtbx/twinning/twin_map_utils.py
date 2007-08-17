@@ -69,11 +69,11 @@ twin_utils{
 }
 """)
 
-def print_help():
+def print_help(command_name):
+  command_under = "-" * len(command_name)
   print """
-
-mmtbx.twin_map_utils
---------------------
+%(command_name)s
+%(command_under)s
 
 A command line utility to compute map coefficients for twinned data.
 Bulk solvent parameters and twin fractions are determined automatically.
@@ -109,28 +109,19 @@ twin_utils{
 
 A typical run looks like this:
 
-mmtbx.twin_map_utils data.file=mydata.mtz model.file=mymodel.pdb \\
+%(command_name)s data.file=mydata.mtz model.file=mymodel.pdb \\
   obs_labels=FP,SIGFP free_flag=TEST
 
 If no unit cell is specified, the unit cell of the reflection
 file or the model will be used.
+""" % vars()
 
-
-"""
-
-
-def run(command_name,args):
+def run(args, command_name="phenix.twin_map_utils"):
   print
   log=sys.stdout
   params=None
-  if len(args)==0:
-    print_help()
-  elif ( "--help" in args ):
-    print_help()
-  elif ( "--h" in args ):
-    print_help()
-  elif ("-h" in args ):
-    print_help()
+  if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
+    print_help(command_name=command_name)
   else:
     log = multi_out()
     if (not "--quiet" in args):
@@ -416,9 +407,3 @@ def run(command_name,args):
     print >> log
     logfile = open(params.twin_utils.output.logfile,'w')
     print >> logfile,  string_buffer.getvalue()
-
-
-
-
-if (__name__ == "__main__" ):
-  run(sys.argv[0],sys.argv[1:])
