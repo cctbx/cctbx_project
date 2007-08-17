@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.fest
+
 from mmtbx.scaling import fest
 import sys
 

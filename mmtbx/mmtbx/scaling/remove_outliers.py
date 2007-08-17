@@ -99,9 +99,9 @@ outlier_utils{
 }
 """)
 
-def print_help():
+def print_help(command_name):
   print """
-usage: mmtbx.remove_outliers <options>
+usage: %(command_name)s <options>
 
 Options are defined by the following phil scope:
 
@@ -150,8 +150,9 @@ outlier_utils{
 
 A basic run looks like:
 
-mmtbx.remove_outliers data.file=my_precious_data.mtz data.obs=FOBS data.free=TEST \
-                      model.file=my_baby.pdb proto=model hklout=new.mtz
+%(command_name)s data.file=my_precious_data.mtz \\
+  data.obs=FOBS data.free=TEST \\
+  model.file=my_baby.pdb proto=model hklout=new.mtz
 
 A short description of the 3 outlier protocols are described below
 
@@ -178,22 +179,11 @@ A short description of the 3 outlier protocols are described below
    The outlier threshold of relates to the p-value of the
    extreme value distribution of the chi-square distribution.
 
-  """
+""" % vars()
 
-
-
-
-
-
-def run(command_name, args):
-  if len(args)==0:
-    print_help()
-  elif ( "--help" in args ):
-    print_help()
-  elif ( "--h" in args ):
-    print_help()
-  elif ("-h" in args ):
-    print_help()
+def run(args, command_name="phenix.remove_outliers"):
+  if (len(args)==0 or "--help" in args or "--h" in args or "-h" in args):
+    print_help(command_name=command_name)
   else:
     log = multi_out()
     plot_out = None
@@ -503,7 +493,3 @@ def run(command_name, args):
         params.outlier_utils.output.logfile)
       print >> log, "This logfile contains the screen output and"
       print >> log, "(possibly) some ccp4 style loggraph plots"
-
-
-if (__name__ == "__main__" ):
-  outlier_utils(sys.argv[1:])

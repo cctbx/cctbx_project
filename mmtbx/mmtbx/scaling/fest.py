@@ -25,15 +25,19 @@ import sys, os
 
 from mmtbx.scaling import fa_estimation
 
-def print_banner():
-  print "#########################################"
-  print "####              Fest               ####"
-  print "####    Delta F and FA estimation    ####"
-  print "#########################################"
+def print_banner(command_name):
+  hashes   = "#########################################"
+  subtitle = "####    Delta F and FA estimation    ####"
+  n = len(hashes) - 10 - len(command_name)
+  left = " " * (n//2)
+  right = left + " " * (n%2)
+  print hashes
+  print "#### %s%s%s ####" % (left, command_name, right)
+  print subtitle
+  print hashes
 
-
-def run(args):
-  print_banner()
+def run(args, command_name="phenix.fest"):
+  print_banner(command_name=command_name)
 
   scenarios = [ "SAD",#0
 
@@ -59,7 +63,8 @@ def run(args):
                 "4WSAD" ]#15
   if len(args)==0:
     print
-    print "usage: mmtbx.fest <EXPERIMENT TYPE> <FLAGS and/or PARAMETER FILE>"
+    print "usage: %s <EXPERIMENT TYPE> <FLAGS and/or PARAMETER FILE>" \
+      % command_name
     print
     raise Sorry("No instructions received")
 

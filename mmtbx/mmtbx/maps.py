@@ -168,13 +168,12 @@ def set_f_model(command_line_interpreter):
   else:
      r_free_flags = f_obs.array(data = flags)
 
-def maps(command_name, args):
+def run(args, command_name="phenix.maps"):
   log = utils.set_log(args)
   utils.print_programs_start_header(
-  log  = log,
-  text =
-  "  phenix.maps (or mmtbx.maps): tools for electron density maps calculation")
-  command_line_interpreter = interpreter(command_name  = "phenix.maps",
+    log  = log,
+    text = "  %s: tools for electron density maps calculation" % command_name)
+  command_line_interpreter = interpreter(command_name  = command_name,
                                          args          = args,
                                          log           = log)
   raise Sorry("Not implemented yet.")
@@ -252,9 +251,10 @@ class interpreter:
         = 'See also: http://www.phenix-online.org/\n' +\
           'Questions / problems: phenixbb@phenix-online.org'
     self.command_line = (iotbx_option_parser(
-      usage="phenix.maps [options] [reflection_file] [pdb_file] [parameter_file]",
-      description='Example: phenix.maps data.mtz model.pdb refine.params\n\n'+\
-         description_see_also)
+      usage="%s [options] [reflection_file] [pdb_file] [parameter_file]"
+        % self.command_name,
+      description='Example: %s data.mtz model.pdb refine.params\n\n'
+        % self.command_name + description_see_also)
       .enable_show_defaults()
       .enable_symmetry_comprehensive()
       .option(None, "--unused_ok",
@@ -408,6 +408,3 @@ class interpreter:
       force_symmetry=True,
       reflection_files=self.reflection_files,
       err=self.log)
-
-if (__name__ == "__main__" ):
-  maps(command_name = sys.argv[0], args = sys.argv[1:])

@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.emma
+
 from iotbx import crystal_symmetry_from_any
 import iotbx.pdb
 import iotbx.pdb.interpretation
@@ -143,7 +145,7 @@ def get_emma_model(file_name, crystal_symmetry):
     pass
   raise RuntimeError("Coordinate file %s: unknown format." % file_name)
 
-def run(args, command_name="iotbx.emma"):
+def run(args, command_name="phenix.emma"):
   command_line = (option_parser(
     usage=command_name + " [options]"
          +" reference_coordinates other_coordinates",
@@ -208,4 +210,4 @@ def run(args, command_name="iotbx.emma"):
         max_n_pairs = len(match.pairs)
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  run(args=sys.argv[1:])

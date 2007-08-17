@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.reflection_statistics
+
 from iotbx import reflection_file_reader
 from iotbx.option_parser import option_parser
 from cctbx import maptbx
@@ -148,9 +150,9 @@ class array_cache(object):
             info = " # Info: new setting: %s" % str(cb_sg)
         print " ", hkl_str + info
       print "  Note:"
-      print "    mmtbx.xtriage provides comprehensive twinning analysis"
+      print "    phenix.xtriage provides comprehensive twinning analysis"
       print "    facilities for macromolecular structures."
-      print "    For more information enter: mmtbx.xtriage --help"
+      print "    For more information enter: phenix.xtriage --help"
     print
 
   def show_patterson_peaks(self,
@@ -313,7 +315,7 @@ class array_cache(object):
         reflections_per_bin=reflections_per_bin,
         n_bins=n_bins)
 
-def run(args, command_name="iotbx.reflection_statistics"):
+def run(args, command_name="phenix.reflection_statistics"):
   print "Command line arguments:",
   for arg in args: print arg,
   print
@@ -539,4 +541,4 @@ def run(args, command_name="iotbx.reflection_statistics"):
     print
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  run(args=sys.argv[1:])

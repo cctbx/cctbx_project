@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.explore_metric_symmetry
+
 from cctbx import sgtbx
 from cctbx.sgtbx import pointgroup_tools as pgt
 from cctbx.sgtbx import sub_lattice_tools as slt
@@ -86,7 +88,7 @@ EOF
   print >> out, "of the point group relations."
 
 
-def run(args, command_name="iotbx.explore_metric_symmetry"):
+def run(args, command_name="phenix.explore_metric_symmetry"):
   command_line = (
     option_parser(
     usage=command_name+" [options]",
@@ -346,4 +348,4 @@ unit cell are sought that match the other.""")
 
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  run(args=sys.argv[1:])

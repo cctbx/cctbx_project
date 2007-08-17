@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.geometry_minimization
+
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
@@ -87,9 +89,9 @@ def write_pymol_commands(file_name, commands):
   f.close()
   print
 
-def run(args, this_command="mmtbx.geometry_minimization"):
+def run(args, command_name="phenix.geometry_minimization"):
   command_line = (option_parser(
-    usage=this_command+" [options] pdb_file [output_pdb_file]")
+    usage=command_name+" [options] pdb_file [output_pdb_file]")
     .enable_symmetry_comprehensive()
     .option(None, "--max_iterations",
       action="store",
@@ -247,7 +249,7 @@ def run(args, this_command="mmtbx.geometry_minimization"):
           max_lines=10)
     print
   print "Writing:", output_pdb_file_name
-  print >> output_pdb_file_object, "REMARK", this_command, " ".join(args)
+  print >> output_pdb_file_object, "REMARK", command_name, " ".join(args)
   all_chain_proxies.stage_1.write_modified(
     out=output_pdb_file_object,
     new_sites_cart=sites_cart,
@@ -261,4 +263,4 @@ def run(args, this_command="mmtbx.geometry_minimization"):
       pymol_commands)
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  run(args=sys.argv[1:])

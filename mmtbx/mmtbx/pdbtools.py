@@ -250,13 +250,12 @@ class modify(object):
        self._assert_not_modified(occupancies = True)
        self.xray_structure.shake_occupancies(selection = self.selection)
 
-def pdbtools(command_name, args):
+def run(args, command_name="phenix.pdbtools"):
   log = utils.set_log(args)
   utils.print_programs_start_header(
-  log  = log,
-  text= \
-   "  phenix.pdbtools (or mmtbx.pdbtools): tools for PDB model manipulations.")
-  command_line_interpreter = interpreter(command_name  = "phenix.pdbtools",
+    log  = log,
+    text = "  %s tools for PDB model manipulations." % command_name)
+  command_line_interpreter = interpreter(command_name  = command_name,
                                          args          = args,
                                          log           = log)
   utils.print_header("Complete set of parameters", out = log)
@@ -321,9 +320,9 @@ class interpreter:
         = 'See also: http://www.phenix-online.org/\n' +\
           'Questions / problems: phenixbb@phenix-online.org'
     self.command_line = (iotbx_option_parser(
-      usage="phenix.pdbtools [options] [pdb_file] [parameter_file]",
-      description='Example: phenix.pdbtools model.pdb parameters.txt\n\n'+\
-         description_see_also)
+      usage="%s [options] [pdb_file] [parameter_file]" % self.command_name,
+      description='Example: %s model.pdb parameters.txt\n\n'
+        % self.command_name + description_see_also)
       .enable_show_defaults()
       .enable_symmetry_comprehensive()
       .option(None, "--unused_ok",
@@ -436,7 +435,3 @@ class interpreter:
     self.point_group = self.crystal_symmetry.space_group() \
       .build_derived_point_group()
     print >> self.log
-
-
-if (__name__ == "__main__" ):
-  pdbtools(command_name = sys.argv[0], args = sys.argv[1:])

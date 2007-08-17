@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.form_factor_query
+
 from cctbx.eltbx import sasaki, henke
 import libtbx.phil
 import libtbx.phil.command_line
@@ -17,7 +19,7 @@ form_factor_query {
 }
 """)
 
-def run(args, command_name="cctbx.form_factor_query"):
+def run(args, command_name="phenix.form_factor_query"):
   phil_objects=[]
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
     master_params=master_params, home_scope="form_factor_query")
@@ -78,4 +80,4 @@ def run(args, command_name="cctbx.form_factor_query"):
       print "fdp: unknown"
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  run(args=sys.argv[1:])

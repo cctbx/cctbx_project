@@ -1,5 +1,7 @@
+# LIBTBX_SET_DISPATCHER_NAME phenix.pdbtools
+
 from mmtbx import pdbtools
 import sys
 
 if (__name__ == "__main__"):
-  pdbtools.pdbtools(command_name="mmtbx.pdbtools", args=sys.argv[1:])
+  pdbtools.run(args=sys.argv[1:])

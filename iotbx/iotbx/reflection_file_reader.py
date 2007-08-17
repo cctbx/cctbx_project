@@ -190,7 +190,7 @@ class any_reflection_file(object):
           " ambiguity.\n"
           "  If a corresponding .ins file is available, look for the"
           " HKLF codeword.\n"
-          "  Alternatively, run the iotbx.reflection_statistics"
+          "  Alternatively, run the phenix.reflection_statistics"
           " command twice,\n"
           "  once with =amplitudes and once with =intensities. Inspect"
           " the <I^2>/(<I>)^2\n"
