@@ -116,6 +116,7 @@ class manager(object):
             neutron_scattering_dict   = None,
             xray_scattering_dict      = None,
             wxnu_scale                = None,
+            use_xn_grads_filtering    = None,
             h_params                  = None):
     global time_adp_refinement_py
     timer = user_plus_sys_time()
@@ -202,6 +203,7 @@ class manager(object):
                           neutron_scattering_dict  = neutron_scattering_dict,
                           xray_scattering_dict     = xray_scattering_dict,
                           wxnu_scale               = wxnu_scale,
+                          use_xn_grads_filtering   = use_xn_grads_filtering,
                           h_params                 = h_params)
        self.minimized.collector.show(text = "LBFGS minimization", out  = log)
        assert fmodel.xray_structure is model.xray_structure
