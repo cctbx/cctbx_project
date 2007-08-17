@@ -26,12 +26,13 @@ class interpreter(object):
     assert len(expected_patterns_dict) == len(expected_patterns)
     for synonym_pattern,expected_pattern in synonym_patterns.items():
       assert expected_pattern in expected_patterns_dict
-    for pair in mutually_exclusive_pairs:
-      for expected_pattern in pair:
+    for mep in mutually_exclusive_pairs:
+      assert len(mep) == 3
+      for expected_pattern in mep:
         if (expected_pattern not in expected_patterns_dict):
           raise RuntimeError(
             "Inconsistent mutually_exclusive_pairs:\n"
-            + "  pair: %s\n" % str(pair)
+            + "  given: %s\n" % str(mep)
             + "  pattern %s not in expected_patterns" % expected_pattern)
     expected = {}
     for expected_pattern in expected_patterns:
@@ -82,13 +83,15 @@ class interpreter(object):
         expected.setdefault(expected_pattern, []).append(atom_name)
     return matched_atom_names(
       interpreter=self,
+      atom_names=atom_names,
       expected=expected,
       unexpected=unexpected)
 
 class matched_atom_names(object):
 
-  def __init__(self, interpreter, expected, unexpected):
+  def __init__(self, interpreter, atom_names, expected, unexpected):
     self.interpreter = interpreter
+    self.atom_names = atom_names
     self.expected = expected
     self.unexpected = unexpected
 
@@ -101,10 +104,10 @@ class matched_atom_names(object):
 
   def mutually_exclusive_pairs(self):
     result = []
-    for pair in self.interpreter.mutually_exclusive_pairs:
-      if (    pair[0] in self.expected
-          and pair[1] in self.expected):
-        result.append(pair)
+    for mep in self.interpreter.mutually_exclusive_pairs:
+      if (    mep[0] in self.expected
+          and mep[2] in self.expected):
+        result.append((mep[0], mep[2]))
     return result
 
   def show_problems(self, out=None, prefix=""):
@@ -124,6 +127,29 @@ class matched_atom_names(object):
       result += 1
     return result
 
+  def mon_lib_names(self):
+    result = [None] * len(self.atom_names)
+    name_indices = {}
+    for i,name in enumerate(self.atom_names):
+      name_indices.setdefault(name, []).append(i)
+    mep_transl = {}
+    for mep in self.interpreter.mutually_exclusive_pairs:
+      if (mep[2] in self.expected):
+        mep_transl[mep[1]] = mep[0]
+        mep_transl[mep[2]] = mep[1]
+      else:
+        mep_transl[mep[0]] = mep[0]
+        mep_transl[mep[1]] = mep[1]
+    for expected_pattern,names in self.expected.items():
+      expected_pattern = mep_transl.get(expected_pattern, expected_pattern)
+      mon_lib_name = expected_pattern.upper()
+      if (mon_lib_name[0] in "123456789"):
+        mon_lib_name = mon_lib_name[1:] + mon_lib_name[0]
+      for name in names:
+        for i in name_indices[name]:
+          result[i] = mon_lib_name
+    return result
+
 peptide_expected_patterns = [
   "N", "h", "1h", "2h", "3h",
   "CA",
@@ -133,16 +159,25 @@ peptide_expected_patterns = [
 peptide_synonym_patterns = dict_with_add({
   "OT1": "O",
   "OT2": "OXT",
+  "OC":  "OXT",
+  "hC":  "hXT",
+  "hN": "h",
   "1hN": "1h",
   "2hN": "2h",
-  "3hN": "3h"})
+  "3hN": "3h",
+  "1hT": "1h",
+  "2hT": "2h",
+  "3hT": "3h",
+  "h0A": "1h",
+  "h0B": "2h",
+  "h0C": "3h"})
 
 gly_interpreter = interpreter(
   peptide_expected_patterns + [
     "1hA", "2hA", "3hA"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hA", "3hA")])
+    ("1hA", "2hA", "3hA")])
 
 ala_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -165,9 +200,9 @@ leu_interpreter = interpreter(
     "CG", "hG",
     "CD1", "1hD1", "2hD1", "3hD1",
     "CD2", "1hD2", "2hD2", "3hD2"],
-  peptide_synonym_patterns,
+  peptide_synonym_patterns + {"1hG": "hG"},
   mutually_exclusive_pairs=[
-    ("1hB", "3hB")])
+    ("1hB", "2hB", "3hB")])
 
 ile_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -176,9 +211,13 @@ ile_interpreter = interpreter(
     "CG1", "1hG1", "2hG1", "3hG1",
     "CG2", "1hG2", "2hG2", "3hG2",
     "CD1", "1hD1", "2hD1", "3hD1"],
-  peptide_synonym_patterns + {"CD": "CD1"},
+  peptide_synonym_patterns + {
+    "CD": "CD1",
+    "1hD": "1hD1",
+    "2hD": "2hD1",
+    "3hD": "3hD1"},
   mutually_exclusive_pairs=[
-    ("1hG1", "3hG1")])
+    ("1hG1", "2hG1", "3hG1")])
 
 met_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -189,8 +228,8 @@ met_interpreter = interpreter(
     "CE", "1hE", "2hE", "3hE"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB"),
-    ("1hG", "3hG")])
+    ("1hB", "2hB", "3hB"),
+    ("1hG", "2hG", "3hG")])
 
 mse_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -209,9 +248,9 @@ pro_interpreter = interpreter(
     "CD", "1hD", "2hD", "3hD"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB"),
-    ("1hG", "3hG"),
-    ("1hD", "3hD")])
+    ("1hB", "2hB", "3hB"),
+    ("1hG", "2hG", "3hG"),
+    ("1hD", "2hD", "3hD")])
 
 phe_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -223,9 +262,9 @@ phe_interpreter = interpreter(
     "CE1", "hE1",
     "CE2", "hE2",
     "CZ", "hZ"],
-  peptide_synonym_patterns,
+  peptide_synonym_patterns + {"1hZ": "hZ"},
   mutually_exclusive_pairs=[
-    ("1hB", "3hB")])
+    ("1hB", "2hB", "3hB")])
 
 trp_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -242,7 +281,7 @@ trp_interpreter = interpreter(
     "CH2", "hH2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB")])
+    ("1hB", "2hB", "3hB")])
 
 ser_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -251,7 +290,7 @@ ser_interpreter = interpreter(
     "OG", "hG"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB")])
+    ("1hB", "2hB", "3hB")])
 
 thr_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -270,7 +309,7 @@ asn_interpreter = interpreter(
     "ND2", "1hD2", "2hD2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB")])
+    ("1hB", "2hB", "3hB")])
 
 gln_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -282,8 +321,8 @@ gln_interpreter = interpreter(
     "NE2", "1hE2", "2hE2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB"),
-    ("1hG", "3hG")])
+    ("1hB", "2hB", "3hB"),
+    ("1hG", "2hG", "3hG")])
 
 tyr_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -298,16 +337,16 @@ tyr_interpreter = interpreter(
     "OH", "hH"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB")])
+    ("1hB", "2hB", "3hB")])
 
 cys_interpreter = interpreter(
   peptide_expected_patterns + [
     "hA",
     "CB", "1hB", "2hB", "3hB",
     "SG", "hG"],
-  peptide_synonym_patterns,
+  peptide_synonym_patterns + {"1hG": "hG"},
   mutually_exclusive_pairs=[
-    ("1hB", "3hB")])
+    ("1hB", "2hB", "3hB")])
 
 lys_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -319,10 +358,10 @@ lys_interpreter = interpreter(
     "NZ", "1hZ", "2hZ", "3hZ"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB"),
-    ("1hG", "3hG"),
-    ("1hD", "3hD"),
-    ("1hE", "3hE")])
+    ("1hB", "2hB", "3hB"),
+    ("1hG", "2hG", "3hG"),
+    ("1hD", "2hD", "3hD"),
+    ("1hE", "2hE", "3hE")])
 
 arg_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -337,9 +376,9 @@ arg_interpreter = interpreter(
     ],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB"),
-    ("1hG", "3hG"),
-    ("1hD", "3hD")])
+    ("1hB", "2hB", "3hB"),
+    ("1hG", "2hG", "3hG"),
+    ("1hD", "2hD", "3hD")])
 
 his_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -352,7 +391,7 @@ his_interpreter = interpreter(
     "NE2", "hE2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB")])
+    ("1hB", "2hB", "3hB")])
 
 asp_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -363,8 +402,8 @@ asp_interpreter = interpreter(
     "OD2", "hD2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB"),
-    ("hD1", "hD2")])
+    ("1hB", "2hB", "3hB"),
+    ("hD1", "hD2", "hD2")])
 
 glu_interpreter = interpreter(
   peptide_expected_patterns + [
@@ -376,8 +415,8 @@ glu_interpreter = interpreter(
     "OE2", "hE2"],
   peptide_synonym_patterns,
   mutually_exclusive_pairs=[
-    ("1hB", "3hB"),
-    ("1hG", "3hG")])
+    ("1hB", "2hB", "3hB"),
+    ("1hG", "2hG", "3hG")])
 
 interpreters = {
   "GLY": gly_interpreter,

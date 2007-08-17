@@ -637,7 +637,9 @@ def exercise(args):
   for residue in residues:
     md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
       residue_name=residue.name(), atom_names=residue.atom_names())
-    assert ani is None
+    if (ani is not None):
+      assert residue.name() == "GLY"
+      assert ani.mon_lib_names() == ["N", "CA", "C", "O", None]
     monomer_definitions.append(md)
   gly_plus_c_beta = monomer_definitions[0].apply_mod(mod=mod_gly_plus_c_beta)
   gly_plus_c_beta.show(f=out)
