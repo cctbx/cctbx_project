@@ -17,15 +17,14 @@ if possible. Installation is very simple and fast. The minimal
 instructions are shown at the download page.
 
 Source code bundles are available if a binary distribution cannot be
-used. The Unix bundles include a file ``cctbx_install_script.csh``. If
-Python 2.2.1 or higher is pre-installed on the target platform
-the ``cctbx_bundle.selfx`` file is most useful. Otherwise it
-is best to download the ``cctbx_python_*_bundle.selfx`` file because
-the installation script will automatically install Python before
-proceeding with the installation of the cctbx modules (but see the
-`Mac OS X notes <http://cci.lbl.gov/cctbx_build/mac_os_x_notes.html>`_).
-The Unix installation script is known to work with the following
-compilers:
+used. Under Unix, if Python 2.2.1 or higher is pre-installed on the
+target platform, the smaller ``cctbx_bundle.selfx`` can be. However, in
+general it will be best to download the ``cctbx_python_*_bundle.selfx``
+file because the installation script will automatically install Python
+before proceeding with the installation of the cctbx modules.
+
+The Unix bundles include a file ``cctbx_install_script.csh``.
+This script is known to work with the following compilers:
 
   - Linux: any gcc >= 3.0
   - Tru64 Unix: cxx 6.5 or cxx 7.1
@@ -50,8 +49,8 @@ Building from sources requires Python 2.2.1 or higher and a suitable C++
 compiler (see above). If Python is not available already it can be
 installed in the following way::
 
-  gunzip -c Python-2.5.tar.gz | tar xf -
-  cd Python-2.5
+  gunzip -c Python-2.5.1.tar.gz | tar xf -
+  cd Python-2.5.1
   ./configure --prefix=/your/choice
   make
   make install
@@ -164,6 +163,39 @@ To run some regression tests after the compilation is finished enter::
 The output should show many OK. A Python Traceback is an indicator
 for problems.
 
+---------------------------------------------------
+Optional support for Crystallographic Binary Format
+---------------------------------------------------
+
+Optionally, the iotbx module can be linked against the CBF library
+(P. Ellis & H.  Bernstein) to support detector images written in CBF
+format. Download the CBF library, version 0.7.8.1 or above,
+`from this Web page <http://www.bernstein-plus-sons.com/software/CBF/>`_ .
+
+When compiling from sources, CBF support is contingent on the correct
+placement of the CBFlib source tree. Under Unix, run this command to
+unpack the CBFlib sources in ``cctbx_sources``::
+
+  libtbx.unpack_in_sources CBFlib_0.7.8.tar.gz
+
+Within the ``cctbx_sources`` directory, link the new source package
+as follows::
+
+  ln -s CBFlib_0.7.8 cbflib
+
+Under Windows, unpack the CBFlib source distribution manually
+followed by::
+
+  rename CBFlib_0.7.8 cbflib
+
+Now switch to the build directory, then reconfigure and recompile::
+
+  libtbx.configure mmtbx
+  libtbx.scons
+
+Objects for reading CBF-formatted files are defined in the
+iotbx.detectors package.
+
 ----------------
 Migrating to SVN
 ----------------
@@ -175,7 +207,7 @@ modules directly from the SVN databases maintained at Sourceforge_.
 To replace the modules extracted from a source code bundle::
 
   cd cctbx_sources
-  set modules=(libtbx boost_adaptbx scitbx chiltbx cctbx iotbx mmtbx clipper_adaptbx)
+  set modules=(libtbx boost_adaptbx scitbx chiltbx cctbx cbflib_adaptbx iotbx mmtbx clipper_adaptbx)
   rm -rf $modules
   libtbx.sourceforge_checkout cctbx $modules
 
@@ -183,10 +215,10 @@ To recompile run the ``libtbx.scons`` command again (``source setpaths.csh``
 or run ``setpaths.bat`` first if necessary).
 
 It is also possible to replace the boost directory from a cctbx source
-code bundle with a working copy of the `boost CVS tree`_ at
-Sourceforge. However, many Boost_ developers do not have access to all
+code bundle with a working copy of the `boost SVN tree`_ .
+However, many Boost_ developers do not have access to all
 platforms for testing. In practice it sometimes happens that a
-``cvs update`` of the boost tree leads to compilation errors on one
+``svn update`` of the boost tree leads to compilation errors on one
 platform or another. Therefore we believe that most users are best
 served by the tested boost libraries included in the cctbx source code
 bundles.
@@ -202,6 +234,6 @@ Back_
 .. _SCons: http://www.scons.org/
 .. _`SCons documentation`: http://www.scons.org/doc/HTML/scons-man.html
 .. _Boost: http://www.boost.org/
-.. _`boost CVS tree`: http://boost.cvs.sourceforge.net/boost/
+.. _`boost SVN tree`: http://svn.boost.org/trac/boost/wiki/BoostSubversion
 .. _CCP4: http://www.ccp4.ac.uk/
 .. _SourceForge: http://sourceforge.net/
