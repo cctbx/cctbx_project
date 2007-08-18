@@ -328,6 +328,9 @@ class host_and_user:
     self.computername = os.environ.get("COMPUTERNAME")
     self.hosttype = os.environ.get("HOSTTYPE")
     self.processor_architecture = os.environ.get("PROCESSOR_ARCHITECTURE")
+    self.machtype = os.environ.get("MACHTYPE")
+    self.ostype = os.environ.get("OSTYPE")
+    self.vendor = os.environ.get("VENDOR")
     self.user = os.environ.get("USER")
     self.username = os.environ.get("USERNAME")
     getpid = getattr(os, "getpid", None)
@@ -352,6 +355,19 @@ class host_and_user:
     if (self.processor_architecture is not None):
       print >> out, prefix + "PROCESSOR_ARCHITECTURE =", \
         self.processor_architecture
+    if (   self.hosttype is None
+        or self.machtype is None
+        or self.ostype is None
+        or "-".join([self.machtype, self.ostype]) != self.hosttype):
+      if (self.machtype is not None):
+        print >> out, prefix + "MACHTYPE =", \
+          self.machtype
+      if (self.ostype is not None):
+        print >> out, prefix + "OSTYPE =", \
+          self.ostype
+    if (self.vendor is not None and self.vendor != "unknown"):
+      print >> out, prefix + "VENDOR =", \
+        self.vendor
     if (self.user is not None):
       print >> out, prefix + "USER =", self.user
     if (    self.username is not None
