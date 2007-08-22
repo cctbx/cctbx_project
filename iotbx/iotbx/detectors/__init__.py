@@ -9,6 +9,7 @@ import exceptions
 from iotbx.detectors.adsc import ADSCImage
 from iotbx.detectors.mar import MARImage
 from iotbx.detectors.marIP import MARIPImage
+from iotbx.detectors.cbf import CBFImage
 from iotbx.detectors.raxis import RAXISImage
 from iotbx.detectors.raxis_nonsquare import NonSquareRAXISImage
 from iotbx.detectors.macscience import DIPImage
@@ -22,7 +23,7 @@ class ImageException(exceptions.Exception):
 
 all_image_types = [SaturnImage,DIPImage,ADSCImage,
                   MARImage,MARIPImage,RAXISImage,
-                  NonSquareRAXISImage,BrukerImage]
+                  NonSquareRAXISImage,CBFImage,BrukerImage]
 
 def ImageFactory(filename):
   for itype in all_image_types:
