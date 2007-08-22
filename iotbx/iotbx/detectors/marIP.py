@@ -31,12 +31,18 @@ class MARIPImage(DetectorImageBase):
                        'OSC_START':self.adaptor.osc_start(),
                        'DISTANCE':self.adaptor.distance(),
                        'WAVELENGTH':self.adaptor.wavelength(),
-        'BEAM_CENTER_X':self.adaptor.size1()*self.adaptor.pixel_size()/2.0,
-        'BEAM_CENTER_Y':self.adaptor.size2()*self.adaptor.pixel_size()/2.0,
+                       'BEAM_CENTER_X':self.beam_center_slow(),
+                       'BEAM_CENTER_Y':self.beam_center_fast(),
                        'OSC_RANGE':self.adaptor.osc_range(),
                        'TWOTHETA':self.adaptor.twotheta(),
                        'DETECTOR_SN':0
                        }
+
+  def beam_center_slow(self):
+    return self.adaptor.size1()*self.adaptor.pixel_size()/2.0
+
+  def beam_center_fast(self):
+    return self.adaptor.size2()*self.adaptor.pixel_size()/2.0
 
   def fileLength(self):
     return 0
