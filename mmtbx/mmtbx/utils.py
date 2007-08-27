@@ -340,7 +340,7 @@ def process_pdb_file(pdb_file_names,
        "CIF file with matching restraint definitions, along with",
        "apply_cif_modification and apply_cif_link parameter definitions",
        "if necessary (see phenix.refine documentation).",
-       "Also note that elbow.builder is available to create restraint",
+       "Also note that phenix.elbow is available to create restraint",
        "definitions for unknown ligands."])
      raise Sorry(msg)
   return processed_pdb_file, pdb_inp
