@@ -507,6 +507,7 @@ class show_points_and_lines_mixin(wxGLWindow):
           if (color is None):
             color = (1,0,1)
         glColor3f(*color)
+        glLineWidth(1)
         glBegin(GL_LINES)
         glVertex3f(*self.points[i_seqs[0]])
         glVertex3f(*self.points[i_seqs[1]])
@@ -514,12 +515,13 @@ class show_points_and_lines_mixin(wxGLWindow):
       self.lines_display_list.end()
     self.lines_display_list.call()
 
-  def draw_labels(self):
+  def draw_labels(self, color=(1,1,1)):
     if (self.labels_display_list is None):
       font = gltbx.fonts.ucs_bitmap_8x13
       font.setup_call_lists()
       self.labels_display_list = gltbx.gl_managed.display_list()
       self.labels_display_list.compile()
+      glColor3f(*color)
       for label,point in zip(self.labels, self.points):
         glRasterPos3f(*point)
         font.render_string(label)
