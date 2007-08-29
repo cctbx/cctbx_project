@@ -19,6 +19,7 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
         stage_1,
         sites_cart,
         geometry_restraints_manager,
+        geometry_restraints_flags,
         lbfgs_termination_params,
         intermediate_pdb_file_name_format,
         i_macro_cycle,
@@ -33,6 +34,7 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
     geometry_restraints.lbfgs.lbfgs.__init__(self,
       sites_cart=sites_cart,
       geometry_restraints_manager=geometry_restraints_manager,
+      geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=lbfgs_termination_params)
 
   def callback_after_step(self, minimizer):
@@ -93,6 +95,8 @@ def run(args, command_name="phenix.geometry_minimization"):
   command_line = (option_parser(
     usage=command_name+" [options] pdb_file [output_pdb_file]")
     .enable_symmetry_comprehensive()
+    .option(None, "--alternate_nonbonded_off_on",
+      action="store_true")
     .option(None, "--max_iterations",
       action="store",
       type="int",
@@ -111,6 +115,7 @@ def run(args, command_name="phenix.geometry_minimization"):
     .option(None, "--show_geometry_restraints",
       action="store_true")
   ).process(args=args, min_nargs=1, max_nargs=2)
+  co = command_line.options
   input_pdb_file_name = None
   output_pdb_file_name = None
   cif_objects = []
@@ -149,6 +154,7 @@ def run(args, command_name="phenix.geometry_minimization"):
       raise Sorry(
         "Command line argument not recognized: %s" %
           show_string(arg))
+  geometry_restraints_flags = geometry_restraints.flags.flags(default=True)
   log = sys.stdout
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
@@ -191,27 +197,30 @@ def run(args, command_name="phenix.geometry_minimization"):
       sites_cart_exact=sites_cart,
       out=log,
       prefix="  ")
-  if (command_line.options.show_geometry_restraints):
+  if (co.show_geometry_restraints):
     geometry_restraints_manager.show_interactions(
+      flags=geometry_restraints_flags,
       sites_cart=sites_cart,
       site_labels=atom_labels)
   pair_proxies =  geometry_restraints_manager.pair_proxies(
-    sites_cart=all_chain_proxies.sites_cart)
+    sites_cart=all_chain_proxies.sites_cart,
+    flags=geometry_restraints_flags)
   pair_proxies.bond_proxies.show_sorted_by_residual(
     sites_cart=sites_cart,
     labels=atom_labels,
     f=log,
     max_lines=10)
-  pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
-    sites_cart=sites_cart,
-    labels=atom_labels,
-    f=log,
-    max_lines=10)
+  if (pair_proxies.nonbonded_proxies is not None):
+    pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
+      sites_cart=sites_cart,
+      labels=atom_labels,
+      f=log,
+      max_lines=10)
   del pair_proxies
   print
   log.flush()
   pymol_commands = []
-  if (command_line.options.write_pdb_rms_threshold is not None):
+  if (co.write_pdb_rms_threshold is not None):
     write_pdb_file(
       output_pdb_file_name=output_file_name_prefix+"_initial.pdb",
       remark="initial coordinates",
@@ -219,16 +228,26 @@ def run(args, command_name="phenix.geometry_minimization"):
       crystal_symmetry=geometry_restraints_manager.crystal_symmetry,
       sites_cart=sites_cart,
       pymol_commands=pymol_commands)
-  for i_macro_cycle in xrange(command_line.options.macro_cycles):
+  if (co.alternate_nonbonded_off_on and co.macro_cycles % 2 != 0):
+    co.macro_cycles += 1
+    print "INFO: Number of macro cycles increased by one to ensure use of"
+    print "      nonbonded interactions in last macro cycle."
+    print
+  for i_macro_cycle in xrange(co.macro_cycles):
+    if (co.alternate_nonbonded_off_on):
+      geometry_restraints_flags.nonbonded = bool(i_macro_cycle % 2)
+      print "Use nonbonded interactions this macro cycle:", \
+        geometry_restraints_flags.nonbonded
     minimized = lbfgs(
       stage_1=all_chain_proxies.stage_1,
       sites_cart=sites_cart,
       geometry_restraints_manager=geometry_restraints_manager,
+      geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=command_line.options.max_iterations),
+        max_iterations=co.max_iterations),
       intermediate_pdb_file_name_format=intermediate_pdb_file_name_format,
       i_macro_cycle=i_macro_cycle,
-      write_pdb_rms_threshold=command_line.options.write_pdb_rms_threshold,
+      write_pdb_rms_threshold=co.write_pdb_rms_threshold,
       pymol_commands=pymol_commands)
     print "Energies at start of minimization:"
     minimized.first_target_result.show()
@@ -241,13 +260,15 @@ def run(args, command_name="phenix.geometry_minimization"):
     minimized.final_target_result.show()
     print
     geometry_restraints_manager.pair_proxies(
-      sites_cart=all_chain_proxies.sites_cart)\
+      sites_cart=sites_cart,
+      flags=geometry_restraints_flags) \
         .bond_proxies.show_sorted_by_residual(
           sites_cart=sites_cart,
           labels=atom_labels,
           f=log,
           max_lines=10)
     print
+  assert geometry_restraints_flags.nonbonded
   print "Writing:", output_pdb_file_name
   print >> output_pdb_file_object, "REMARK", command_name, " ".join(args)
   all_chain_proxies.stage_1.write_modified(
