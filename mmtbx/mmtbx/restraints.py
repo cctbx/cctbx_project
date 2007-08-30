@@ -33,8 +33,7 @@ class manager(object):
         geometry_flags=None,
         compute_gradients=False,
         gradients=None,
-        disable_asu_cache=False,
-        lock_for_line_search=False):
+        disable_asu_cache=False):
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
       gradients=gradients,
@@ -50,7 +49,6 @@ class manager(object):
         compute_gradients=compute_gradients,
         gradients=result.gradients,
         disable_asu_cache=disable_asu_cache,
-        lock_pair_proxies=lock_for_line_search,
         normalization=False)
       result += result.geometry
     if (self.ncs_groups is None):
@@ -60,7 +58,6 @@ class manager(object):
         sites_cart=sites_cart,
         compute_gradients=compute_gradients,
         gradients=result.gradients,
-        lock_operators=lock_for_line_search,
         normalization=False)
       result += result.ncs_groups
     result.finalize_target_and_gradients()

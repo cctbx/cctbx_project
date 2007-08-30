@@ -649,12 +649,8 @@ class groups(object):
         sites_cart,
         compute_gradients=True,
         gradients=None,
-        lock_operators=False,
         normalization=False):
-    if (not lock_operators):
-      self.compute_operators(sites_cart=sites_cart)
-    else:
-      assert self.operators is not None
+    self.compute_operators(sites_cart=sites_cart)
     result = scitbx.restraints.energies(
       compute_gradients=compute_gradients,
       gradients=gradients,
