@@ -126,7 +126,6 @@ class lbfgs(object):
       self.target_functor_neutron = self.fmodel_neutron.target_functor()
     self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
-    self._lock_for_line_search = False
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator          = self,
       termination_params        = lbfgs_termination_params,
@@ -135,9 +134,7 @@ class lbfgs(object):
                          ignore_line_search_failed_step_at_lower_bound = True))
     self.apply_shifts()
     del self._scatterers_start
-    self._lock_for_line_search = False
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
-    del self._lock_for_line_search
     self.xray_structure.tidy_us()
     if(refine_occ):
        self.xray_structure.adjust_occupancy(occ_max = occupancy_max,
@@ -283,9 +280,7 @@ class lbfgs(object):
     if(self.refine_xyz and self.restraints_manager is not None and self.wr > 0.0):
        self.stereochemistry_residuals = self.model.restraints_manager_energies_sites(
                        sites_cart           = self.xray_structure.sites_cart(),
-                       compute_gradients    = compute_gradients,
-                       lock_for_line_search = self._lock_for_line_search)
-       self._lock_for_line_search = True
+                       compute_gradients    = compute_gradients)
        er = self.stereochemistry_residuals.target
        self.collector.collect(er = er)
        self.f += er * self.wr
@@ -341,7 +336,6 @@ class lbfgs(object):
              ####################################################################
 
   def callback_after_step(self, minimizer):
-    self._lock_for_line_search = False
     if (self.verbose > 0):
       print "refinement.minimization step: f,iter,nfun:",
       print self.f,minimizer.iter(),minimizer.nfun()

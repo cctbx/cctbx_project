@@ -260,8 +260,7 @@ class manager(object):
                                         geometry_flags       = None,
                                         compute_gradients    = False,
                                         gradients            = None,
-                                        disable_asu_cache    = False,
-                                        lock_for_line_search = False):
+                                        disable_asu_cache    = False):
     if(sites_cart is None): sites_cart = self.xray_structure.sites_cart()
     if(self.use_dbe and self.dbe_selection is not None and
                                            self.dbe_selection.count(True) > 0):
@@ -271,8 +270,7 @@ class manager(object):
                                    geometry_flags       = geometry_flags,
                                    compute_gradients    = compute_gradients,
                                    gradients            = gradients,
-                                   disable_asu_cache    = disable_asu_cache,
-                                   lock_for_line_search = lock_for_line_search)
+                                   disable_asu_cache    = disable_asu_cache)
 
   def _solvent_selection(self):
     labels = self.xray_structure.scatterers().extract_labels()

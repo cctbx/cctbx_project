@@ -38,7 +38,6 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
       lbfgs_termination_params=lbfgs_termination_params)
 
   def callback_after_step(self, minimizer):
-    geometry_restraints.lbfgs.lbfgs.callback_after_step(self, minimizer)
     self.apply_shifts()
     incremental_rms_difference = self.tmp.sites_shifted.rms_difference(
       self.sites_cart_written)

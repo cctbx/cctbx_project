@@ -32,7 +32,6 @@ class lbfgs(object):
     self.tmp.disable_asu_cache = disable_asu_cache
     self.tmp.sites_cart = sites_cart
     self.tmp.sites_shifted = sites_cart
-    self.tmp.lock_pair_proxies = False
     self.first_target_result = None
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator=self,
@@ -73,12 +72,7 @@ class lbfgs(object):
         sites_cart=self.tmp.sites_shifted,
         flags=self.tmp.geometry_restraints_flags,
         compute_gradients=compute_gradients,
-        disable_asu_cache=self.tmp.disable_asu_cache,
-        lock_pair_proxies=self.tmp.lock_pair_proxies)
-    self.tmp.lock_pair_proxies = True
-
-  def callback_after_step(self, minimizer):
-    self.tmp.lock_pair_proxies = False
+        disable_asu_cache=self.tmp.disable_asu_cache)
 
   def compute_functional_and_gradients(self):
     if (self.first_target_result is None):

@@ -191,7 +191,6 @@ class manager(object):
   def pair_proxies(self,
         sites_cart=None,
         flags=None,
-        lock=False,
         asu_is_inside_epsilon=None,
         bonded_distance_cutoff_epsilon=None):
     if (bonded_distance_cutoff_epsilon is None):
@@ -209,9 +208,8 @@ class manager(object):
                           != flags.bond
                        or self._flags_nonbonded_used_for_pair_proxies
                              != flags.nonbonded)
-          or (not lock
-          and self._sites_cart_used_for_pair_proxies.max_distance(sites_cart)
-              > self.effective_nonbonded_buffer))):
+          or self._sites_cart_used_for_pair_proxies.max_distance(sites_cart)
+             > self.effective_nonbonded_buffer)):
       self.n_updates_pair_proxies += 1
       self._sites_cart_used_for_pair_proxies = sites_cart.deep_copy()
       if (flags is None):
@@ -348,14 +346,10 @@ class manager(object):
         compute_gradients=False,
         gradients=None,
         disable_asu_cache=False,
-        lock_pair_proxies=False,
         normalization=False):
     if (flags is None):
       flags = geometry_restraints.flags.flags(default=True)
-    pair_proxies = self.pair_proxies(
-      flags=flags,
-      sites_cart=sites_cart,
-      lock=lock_pair_proxies)
+    pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
     (bond_proxies,
      nonbonded_proxies,
      nonbonded_function,
