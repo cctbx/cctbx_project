@@ -140,7 +140,7 @@ if (not env_etc.no_boost_python):
     warn_if_unexpected_md5_hexdigest(
       path=libtbx.env.under_dist("boost", "libs/python/test/Jamfile.v2"),
       expected_md5_hexdigests=[
-        "392272a7eb1eefa2a7b39760328d9eea", # revision 1.24
+        "c7a3dd81bf730635146f5c908ac982eb", # svn revision 39065M
       ])
     if (env_etc.compiler in ["irix_CC", "tru64_cxx"]):
       disabled = "#"
@@ -199,7 +199,7 @@ vector_indexing_suite
 return_arg
 keywords,keywords,keywords_test
 %sproperties
-map_indexing_suite;int_map_indexing_suite,map_indexing_suite_ext,map_indexing_suite
+map_indexing_suite;int_map_indexing_suite;a_map_indexing_suite,map_indexing_suite_ext,map_indexing_suite
 injected
 slice
 const_argument
