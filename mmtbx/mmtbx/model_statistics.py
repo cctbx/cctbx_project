@@ -195,11 +195,11 @@ class adp(object):
     xs_m_noH = model.xray_structure.select(m_noH_sel)
     xs_h     = model.xray_structure.select(hd_selection)
     #
-    u_a     = xs_a    .extract_u_iso_or_u_equiv().select(xs_a    .use_u_iso())
-    u_a_noH = xs_a_noH.extract_u_iso_or_u_equiv().select(xs_a_noH.use_u_iso())
-    u_s_noH = xs_s_noH.extract_u_iso_or_u_equiv().select(xs_s_noH.use_u_iso())
-    u_m_noH = xs_m_noH.extract_u_iso_or_u_equiv().select(xs_m_noH.use_u_iso())
-    u_h     = xs_h    .extract_u_iso_or_u_equiv().select(xs_h    .use_u_iso())
+    u_a     = xs_a    .extract_u_iso_or_u_equiv()
+    u_a_noH = xs_a_noH.extract_u_iso_or_u_equiv()
+    u_s_noH = xs_s_noH.extract_u_iso_or_u_equiv()
+    u_m_noH = xs_m_noH.extract_u_iso_or_u_equiv()
+    u_h     = xs_h    .extract_u_iso_or_u_equiv()
     self.b_min_a,    self.b_max_a,    self.b_mean_a    = self.mmmd(u_a,    eps)
     self.b_min_a_noH,self.b_max_a_noH,self.b_mean_a_noH= self.mmmd(u_a_noH,eps)
     self.b_min_s_noH,self.b_max_s_noH,self.b_mean_s_noH= self.mmmd(u_s_noH,eps)
@@ -207,16 +207,11 @@ class adp(object):
     self.b_min_h,    self.b_max_h,    self.b_mean_h    = self.mmmd(u_h,    eps)
     #
     uc = model.xray_structure.unit_cell()
-    a_a     = xs_a    .scatterers().anisotropy(
-                                  unit_cell =uc).select(xs_a    .use_u_aniso())
-    a_a_noH = xs_a_noH.scatterers().anisotropy(
-                                  unit_cell =uc).select(xs_a_noH.use_u_aniso())
-    a_s_noH = xs_s_noH.scatterers().anisotropy(
-                                  unit_cell =uc).select(xs_s_noH.use_u_aniso())
-    a_m_noH = xs_m_noH.scatterers().anisotropy(
-                                  unit_cell =uc).select(xs_m_noH.use_u_aniso())
-    a_h     = xs_h    .scatterers().anisotropy(
-                                  unit_cell =uc).select(xs_h    .use_u_aniso())
+    a_a     = xs_a    .scatterers().anisotropy(unit_cell =uc).select(xs_a    .use_u_aniso())
+    a_a_noH = xs_a_noH.scatterers().anisotropy(unit_cell =uc).select(xs_a_noH.use_u_aniso())
+    a_s_noH = xs_s_noH.scatterers().anisotropy(unit_cell =uc).select(xs_s_noH.use_u_aniso())
+    a_m_noH = xs_m_noH.scatterers().anisotropy(unit_cell =uc).select(xs_m_noH.use_u_aniso())
+    a_h     = xs_h    .scatterers().anisotropy(unit_cell =uc).select(xs_h    .use_u_aniso())
     #
     self.n_aniso_a     = xs_a    .use_u_aniso().count(True)
     self.n_aniso_a_noH = xs_a_noH.use_u_aniso().count(True)

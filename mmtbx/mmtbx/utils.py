@@ -387,11 +387,15 @@ def get_atom_selections(all_chain_proxies,
   ###> Fix aal: need for proper selection
   need_to_fix_aal = False
   aal = all_chain_proxies.stage_1.atom_attributes_list
+  do_not_continue = False
   for aal_i in aal:
+    if(aal_i.element is None):
+      do_not_continue = True
+      break
     if(aal_i.element.strip() == ''):
       need_to_fix_aal = True
       break
-  if(need_to_fix_aal):
+  if(need_to_fix_aal and not do_not_continue):
     scatterers = xray_structure.scatterers()
     for aal_i, sc in zip(aal,scatterers):
       aal_i.element = sc.element_symbol()
