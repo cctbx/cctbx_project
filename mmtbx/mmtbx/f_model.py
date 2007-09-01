@@ -1898,6 +1898,12 @@ class info(object):
   def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
                                     max_number_of_bins):
     result = []
+    target_functor = fmodel.target_functor()
+    target_result = target_functor(compute_gradients=False)
+    tpr = target_result.target_per_reflection()
+    if(tpr.size() != 0):
+      tpr_w = tpr.select(fmodel.work)
+      tpr_t = tpr.select(fmodel.test)
     fo_t = fmodel.f_obs_t
     fc_t = fmodel.f_model_t()
     fo_w = fmodel.f_obs_w
@@ -1918,12 +1924,6 @@ class info(object):
     alpha_t.use_binning_of(fo_t)
     beta_w.use_binning_of(fo_t)
     beta_t.use_binning_of(fo_t)
-    target_functor = fmodel.target_functor()
-    target_result = target_functor(compute_gradients=False)
-    tpr = target_result.target_per_reflection()
-    if(tpr.size() != 0):
-      tpr_w = tpr.select(fmodel.work)
-      tpr_t = tpr.select(fmodel.test)
     for i_bin in fo_t.binner().range_used():
       sel_t = fo_t.binner().selection(i_bin)
       sel_w = fo_w.binner().selection(i_bin)
