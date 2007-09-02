@@ -20,6 +20,7 @@ cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
 cctbx/include/cctbx/maptbx/fft.h -text
+gltbx/command_line/pythonw.sh -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names.h -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names_bpl.cpp -text
 iotbx/include/iotbx/pdb/tst_rna_dna_atom_names.py -text
