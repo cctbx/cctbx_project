@@ -493,18 +493,23 @@ if __name__ == '__main__':
 
   class MyApp(wxApp):
     def OnInit(self):
-      frame = wxFrame(NULL, -1, "wxPython OpenGL example", wxDefaultPosition, wxSize(400,400))
-
-      win1 = wxGLWindow(frame, -1, wxPoint(5,5), wxSize(190,190))
-      win2 = wxAdvancedGLWindow(frame, -1, wxPoint(205,5),
+      # Using sizer is preferable (no need to specify the size of "frame")
+      # Especially nicer on MacOS X for it correctly triggers the
+      # drawing of the contained OpenGL canvases first time they are
+      # displayed
+      frame = wxFrame(NULL, -1, "wxPython OpenGL example")
+      box = wxFlexGridSizer(2, 2, 10, 10)
+      box.Add( wxGLWindow(frame, -1, wxPoint(5,5), wxSize(190,190)) )
+      box.Add( wxAdvancedGLWindow(frame, -1, wxPoint(205,5),
                                 wxSize(190,190),
-                                autospin_allowed=1)
-      win3 = MyWin1(frame, -1, wxPoint(5,205),
-                    wxSize(190,190), autospin_allowed=1)
-      win4 = MyWin2(frame, -1, wxPoint(205,205),
-                    wxSize(190,190))
-      #win1.SetScrollbars(0,0,0,0)
-      #win4.SetScrollbars(0,0,0,0)
+                                autospin_allowed=1) )
+      box.Add( MyWin1(frame, -1, wxPoint(5,205),
+                    wxSize(190,190), autospin_allowed=1) )
+      box.Add( MyWin2(frame, -1, wxPoint(205,205),
+                    wxSize(190,190)) )
+      frame.SetAutoLayout(True)
+      frame.SetSizer(box)
+      box.SetSizeHints(frame)
       frame.Show(TRUE)
       self.SetTopWindow(frame)
       return TRUE
