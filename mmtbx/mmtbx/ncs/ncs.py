@@ -201,6 +201,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def rota_matrices(self):
     return self._rota_matrices
 
+  def source_of_ncs_info(self):
+    return self._source_of_ncs_info
+
   def print_list(self,list_of_real):
     text=""
     for number in list_of_real:
