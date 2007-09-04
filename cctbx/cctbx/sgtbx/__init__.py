@@ -193,7 +193,10 @@ class space_group_info(object):
       .subtract_principal_continuous_shifts(
         translation=cb_op.c() * translation_frac)
 
-  def any_compatible_unit_cell(self, volume):
+  def any_compatible_unit_cell(self, volume=None, asu_volume=None):
+    assert [volume, asu_volume].count(None) == 1
+    if (volume is None):
+      volume = asu_volume * self.group().order_z()
     sg_number = self.type().number()
     if   (sg_number <   3):
       params = (1., 1.3, 1.7, 83, 109, 129)
@@ -214,10 +217,11 @@ class space_group_info(object):
     for i in xrange(3): params[i] *= f
     return uctbx.unit_cell(params)
 
-  def any_compatible_crystal_symmetry(self, volume):
+  def any_compatible_crystal_symmetry(self, volume=None, asu_volume=None):
     from cctbx import crystal
     return crystal.symmetry(
-      unit_cell=self.any_compatible_unit_cell(volume=volume),
+      unit_cell=self.any_compatible_unit_cell(
+        volume=volume, asu_volume=asu_volume),
       space_group_info=self)
 
 def reference_space_group_infos():
