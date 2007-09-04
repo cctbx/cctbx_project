@@ -63,6 +63,7 @@ def run():
   ["$D/cctbx/regression/tst_xray_fast_gradients.py", "P31"],
   ["$D/cctbx/regression/tst_xray_minimization.py", "P31"],
   "$D/cctbx/maptbx/tst_real_space_refinement.py",
+  "$D/cctbx/maptbx/tst_iso_surface.py",
   ["$D/cctbx/regression/tst_maptbx_structure_factors.py", "P31"],
   ["$D/cctbx/regression/tst_miller_merge_equivalents.py", "P31"],
   ["$D/cctbx/regression/tst_miller_fft_map.py", "P31"],
