@@ -39,6 +39,8 @@ namespace {
           arg_("arrays"), arg_("selection")))
     ;
     shared_wrapper<mat3<int> >::wrap("mat3_int");
+    shared_wrapper<tiny<int,3> >::wrap("int_triplet_array");
+      // used by cctbx.maptbx.iso_surface
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
