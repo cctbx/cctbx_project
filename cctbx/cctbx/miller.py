@@ -1445,7 +1445,7 @@ class array(set):
       return self.f_as_f_sq()
     return self
 
-  def map_to_asu(self):
+  def map_to_asu(self, deg=None):
     i = self.indices().deep_copy()
     d = self.data().deep_copy()
     if (self.is_complex_array() or self.is_hendrickson_lattman_array()):
@@ -1453,11 +1453,16 @@ class array(set):
         self.space_group_info().type(),
         self.anomalous_flag(),
         i, d)
-    else:
+    elif (deg is None):
       map_to_asu(
         self.space_group_info().type(),
         self.anomalous_flag(),
         i)
+    else:
+      map_to_asu(
+        self.space_group_info().type(),
+        self.anomalous_flag(),
+        i, d, deg)
     return (array(set(self, i, self.anomalous_flag()), d, self.sigmas())
       .set_observation_type(self))
 

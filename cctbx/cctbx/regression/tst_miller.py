@@ -486,8 +486,14 @@ def exercise_array():
 
 """)
   #
-  asu = ma.map_to_asu()
-  assert tuple(asu.indices()) == ((1,2,3), (0,0,4))
+  for deg in [None, False, True]:
+    asu = ma.map_to_asu(deg=deg)
+    assert tuple(asu.indices()) == ((1,2,3), (0,0,4))
+    if (deg is None):
+      assert asu.data().all_eq(ma.data())
+    else:
+      assert approx_equal(asu.data(), [-1, 2])
+  #
   mi = flex.miller_index(((1,2,3), (-1,-2,-3), (2,3,4), (-2,-3,-4), (3,4,5)))
   data = flex.double((1,2,5,3,6))
   sigmas = flex.double((0.1,0.2,0.3,0.4,0.5))
