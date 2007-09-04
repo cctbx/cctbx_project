@@ -1,5 +1,5 @@
-#ifndef GLTBX_ISO_SURFACE_H
-#define GLTBX_ISO_SURFACE_H
+#ifndef CCTBX_MAPTBX_ISO_SURFACE_H
+#define CCTBX_MAPTBX_ISO_SURFACE_H
 
 // Modified by Luc J. Bourhis
 //
@@ -43,15 +43,15 @@ public:
   */
         iso_surface(map_const_ref_type map,
               value_type iso_level,
-              coordinates_type dx, coordinates_type dy, coordinates_type dz)
+              scitbx::vec3<coordinates_type> grid_size)
   : _map(map),
     _iso_level(iso_level),
     n_cells_x(map.accessor().all()[0]-1),
     n_cells_y(map.accessor().all()[1]-1),
     n_cells_z(map.accessor().all()[2]-1),
-    cell_length_x(dx),
-    cell_length_y(dy),
-    cell_length_z(dz)
+    cell_length_x(grid_size[0]),
+    cell_length_y(grid_size[1]),
+    cell_length_z(grid_size[2])
   {
     init();
   }
@@ -765,4 +765,4 @@ iso_surface<CoordinatesType, ValueType>::tri_table[256][16] = {
 
 }} // end namespace cctbx::maptbx
 
-#endif // GLTBX_ISO_SURFACE_H
+#endif // CCTBX_MAPTBX_ISO_SURFACE_H

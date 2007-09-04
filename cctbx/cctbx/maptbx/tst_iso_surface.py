@@ -16,7 +16,7 @@ def exercise(f, err, nx, ny, nz, iso_level):
     loop.incr()
 
   # iso-surface of the map
-  s = iso_surface(map, iso_level, dx, dy, dz)
+  s = iso_surface(map, iso_level, (dx, dy, dz))
 
   # the value of f on the vertices v shall not differ from iso_level by more
   # than ||1/2 f''(v).h|| where h=(dx,dy,dz)
