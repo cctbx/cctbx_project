@@ -21,11 +21,8 @@ namespace cctbx { namespace maptbx { namespace boost_python {
 
       class_<wt>(name, no_init)
         .def(init<typename wt::map_const_ref_type,
-                  ValueType, ValueType, ValueType, ValueType>
-                  ((
-                    arg("map"), arg("iso_level"),
-                    arg("grid_x"), arg("grid_y"), arg("grid_z")
-                  )))
+                  ValueType, scitbx::vec3<CoordinatesType> >
+                  ((arg("map"), arg("iso_level"), arg("grid_size"))))
         .add_property("vertices", &wt::vertices)
         .add_property("triangles", &wt::triangles)
         .add_property("normals", &wt::normals)
