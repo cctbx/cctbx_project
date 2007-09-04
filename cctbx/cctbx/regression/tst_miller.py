@@ -907,9 +907,7 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   assert approx_equal(ma.min_f_over_sigma(), 2.5)
 
 def exercise_array_2(space_group_info):
-  xs = crystal.symmetry(
-    unit_cell=space_group_info.any_compatible_unit_cell(60),
-    space_group_info=space_group_info)
+  xs = space_group_info.any_compatible_crystal_symmetry(volume=60)
   for anomalous_flag in (False, True):
     st = miller.build_set(xs, anomalous_flag, d_min=1)
     for sigmas in (None, flex.double(xrange(1,st.indices().size()+1))):
@@ -966,6 +964,35 @@ def exercise_array_2(space_group_info):
             anomalous_flag=False),
           data=vfy_data).adopt_set(ave)
         assert vfy.correlation(ave).coefficient() > 1-1.e-6
+
+def exercise_map_to_asu(space_group_info):
+  crystal_symmetry = space_group_info.any_compatible_crystal_symmetry(
+    asu_volume=200)
+  for anomalous_flag in [False, True]:
+    miller_set = miller.build_set(
+      crystal_symmetry=crystal_symmetry,
+      anomalous_flag=anomalous_flag,
+      d_min=2)
+    assert miller_set.indices().size() > 30
+    ampl = miller_set.array(
+      data=flex.random_double(size=miller_set.indices().size()))
+    phases_rad = flex.random_double(
+      size=miller_set.indices().size(), factor=2*math.pi)
+    cmplx = ampl.phase_transfer(phase_source=phases_rad, deg=False)
+    acentric = ~cmplx.centric_flags().data()
+    for trig in [flex.cos, flex.sin]:
+      assert approx_equal(
+        trig(cmplx.phases(deg=False).data().select(acentric)),
+        trig(phases_rad.select(acentric)))
+    cmplx_exp = cmplx.expand_to_p1().customized_copy(
+      crystal_symmetry=cmplx)
+    for deg,f in [(False,1), (True,math.pi/180)]:
+      cmplx_exp_asu = cmplx_exp.map_to_asu()
+      phases_exp = cmplx_exp.phases(deg=deg)
+      for trig in [flex.cos, flex.sin]:
+        assert approx_equal(
+          trig(cmplx_exp_asu.phases(deg=deg).data()*f),
+          trig(phases_exp.map_to_asu(deg=deg).data()*f))
 
 def exercise_complete_array():
   crystal_symmetry = crystal.symmetry((2.1,3,4), "P 2 2 2")
@@ -1176,16 +1203,15 @@ def exercise_average_and_generate_bijvoet_mates_hl(hl):
   assert approx_equal(hl_gen2.data(), hl_gen1.data())
 
 def exercise_phase_integrals(space_group_info):
-  crystal_symmetry = crystal.symmetry(
-    unit_cell=space_group_info.any_compatible_unit_cell(
-      volume=250*space_group_info.group().n_ltr()),
-    space_group_info=space_group_info)
+  crystal_symmetry = space_group_info.any_compatible_crystal_symmetry(
+    asu_volume=200)
   is_centric = space_group_info.group().is_centric
   for anomalous_flag in [False, True]:
     miller_set = miller.build_set(
       crystal_symmetry=crystal_symmetry,
       anomalous_flag=anomalous_flag,
-      d_min=1)
+      d_min=2)
+    assert miller_set.indices().size() > 30
     sg_hl = generate_random_hl(miller_set=miller_set)
     if (anomalous_flag):
       exercise_average_and_generate_bijvoet_mates_hl(sg_hl)
@@ -1266,6 +1292,7 @@ def exercise_map_correlation():
 
 def run_call_back(flags, space_group_info):
   exercise_array_2(space_group_info)
+  exercise_map_to_asu(space_group_info)
   exercise_squaring_and_patterson_map(space_group_info, verbose=flags.Verbose)
   exercise_array_correlation(space_group_info)
   exercise_as_hendrickson_lattman(space_group_info)
