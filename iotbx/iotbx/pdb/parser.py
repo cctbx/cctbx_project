@@ -30,6 +30,10 @@ connectivity_section = (
 class FormatError(RuntimeError): pass
 class UnknownRecordName(FormatError): pass
 
+def chainid_strip(id):
+  if (id[0] == " "): return id[1]
+  return id
+
 class pdb_record(object):
 
   def __init__(self, raw_record,
@@ -221,7 +225,7 @@ class pdb_record(object):
     # 13 - 16  Atom          name          Atom name.
     # 17       Character     altLoc        Alternate location indicator.
     # 18 - 20  Residue name  resName       Residue name.
-    # 22       Character     chainID       Chain identifier.
+    # 21 - 22                chainID       Chain identifier.
     # 23 - 26  Integer       resSeq        Residue sequence number.
     # 27       AChar         iCode         Code for insertion of residues.
     try: self.serial = int(self.raw[6:11])
@@ -233,8 +237,7 @@ class pdb_record(object):
     self.name = self.raw[12:16]
     self.altLoc = self.raw[16]
     self.resName = self.raw[17:20]
-    self.column_21 = self.raw[20]
-    self.chainID = self.raw[21]
+    self.chainID = chainid_strip(self.raw[20:22])
     try: self.resSeq = int(self.raw[22:26])
     except ValueError:
       if (self.strict):
@@ -319,13 +322,13 @@ class pdb_record(object):
   def read_TER(self):
     #  7 - 11  Integer         serial     Serial number.
     # 18 - 20  Residue name    resName    Residue name.
-    # 22       Character       chainID    Chain identifier.
+    # 21 - 22                  chainID    Chain identifier.
     # 23 - 26  Integer         resSeq     Residue sequence number.
     # 27       AChar           iCode      Insertion code.
     self.serial = self.convert_number(self.raw[6:11], int,
       error_message="Serial number must be an integer.")
     self.resName = self.raw[17:20]
-    self.chainID = self.raw[21]
+    self.chainID = chainid_strip(self.raw[20:22])
     self.resSeq = self.convert_number(self.raw[22:26], int,
       error_message="Residue sequence number must be an integer.")
     self.iCode = self.raw[26]
@@ -377,14 +380,14 @@ class pdb_record(object):
     # 13 - 16      Atom            name1       Atom name.
     # 17           Character       altLoc1     Alternate location indicator.
     # 18 - 20      Residue name    resName1    Residue name.
-    # 22           Character       chainID1    Chain identifier.
+    # 21 - 22                      chainID1    Chain identifier.
     # 23 - 26      Integer         resSeq1     Residue sequence number.
     # 27           AChar           iCode1      Insertion code.
     # 31 - 40      distance (REFMAC extension: F10.5)
     # 43 - 46      Atom            name2       Atom name.
     # 47           Character       altLoc2     Alternate location indicator.
     # 48 - 50      Residue name    resName2    Residue name.
-    # 52           Character       chainID2    Chain identifier.
+    # 51 - 52                      chainID2    Chain identifier.
     # 53 - 56      Integer         resSeq2     Residue sequence number.
     # 57           AChar           iCode2      Insertion code.
     # 60 - 65      SymOP           sym1        Symmetry operator for 1st atom.
@@ -393,7 +396,7 @@ class pdb_record(object):
     self.name1 = self.raw[12:16]
     self.altLoc1 = self.raw[16]
     self.resName1 = self.raw[17:20]
-    self.chainID1 = self.raw[21]
+    self.chainID1 = chainid_strip(self.raw[20:22])
     self.resSeq1 = self.convert_number(self.raw[22:26], int,
       "Serial number be an integer.")
     self.iCode1 = self.raw[26]
@@ -402,7 +405,7 @@ class pdb_record(object):
     self.name2 = self.raw[42:46]
     self.altLoc2 = self.raw[46]
     self.resName2 = self.raw[47:50]
-    self.chainID2 = self.raw[51]
+    self.chainID2 = chainid_strip(self.raw[50:52])
     self.resSeq2 = self.convert_number(self.raw[52:56], int,
       "Serial number be an integer.")
     self.iCode2 = self.raw[56]
@@ -416,11 +419,11 @@ class pdb_record(object):
   def read_SSBOND(self):
     #  8 - 10    Integer         serNum      Serial number.
     # 12 - 14    LString(3)      "CYS"       Residue name.
-    # 16         Character       chainID1    Chain identifier.
+    # 15 - 16                    chainID1    Chain identifier.
     # 18 - 21    Integer         seqNum1     Residue sequence number.
     # 22         AChar           icode1      Insertion code.
     # 26 - 28    LString(3)      "CYS"       Residue name.
-    # 30         Character       chainID2    Chain identifier.
+    # 29 - 30                    chainID2    Chain identifier.
     # 32 - 35    Integer         seqNum2     Residue sequence number.
     # 36         AChar           icode2      Insertion code.
     # 60 - 65    SymOP           sym1        Symmetry operator for 1st residue.
@@ -429,12 +432,12 @@ class pdb_record(object):
     self.serNum = self.convert_number(self.raw[7:10], int,
       "Serial number be an integer.")
     self.resName1 = self.raw[11:14]
-    self.chainID1 = self.raw[15]
+    self.chainID1 = chainid_strip(self.raw[14:16])
     self.resSeq1 = self.convert_number(self.raw[17:21], int,
       "Serial number be an integer.")
     self.iCode1 = self.raw[21]
     self.resName2 = self.raw[25:28]
-    self.chainID2 = self.raw[29]
+    self.chainID2 = chainid_strip(self.raw[28:30])
     self.resSeq2 = self.convert_number(self.raw[31:35], int,
       "Serial number be an integer.")
     self.iCode2 = self.raw[35]
