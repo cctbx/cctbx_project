@@ -642,10 +642,10 @@ SIGATM    9 2H3  MPR B   5       0.155   0.175   0.155  0.00  0.05
 ANISOU    9 2H3  MPR B   5      848    848    848      0      0      0
 SIGUIJ    9 2H3  MPR B   5      510    510    510      0      0      0
 TER
-ATOM     10  N   CYS C   6      14.270   2.464   3.364  1.00  0.07
-SIGATM   10  N   CYS C   6       0.012   0.012   0.011  0.00  0.00
-ANISOU   10  N   CYS C   6      788    626    677   -344    621   -232
-SIGUIJ   10  N   CYS C   6        3     13      4     11      6     13
+ATOM     10  N   CYSCH   6      14.270   2.464   3.364  1.00  0.07
+SIGATM   10  N   CYSCH   6       0.012   0.012   0.011  0.00  0.00
+ANISOU   10  N   CYSCH   6      788    626    677   -344    621   -232
+SIGUIJ   10  N   CYSCH   6        3     13      4     11      6     13
 TER
 ENDMDL
 
@@ -749,7 +749,7 @@ END""")
     assert pdb_inp.resname_selection_cache().keys() == ["CYS", "MET", "MPR"]
     assert [list(v) for v in pdb_inp.resname_selection_cache().values()] \
         == [[5], [0,1,2,3], [4]]
-    assert pdb_inp.chain_selection_cache().keys() == ["A", "B", "C"]
+    assert pdb_inp.chain_selection_cache().keys() == [" A", " B", "CH"]
     assert [list(v) for v in pdb_inp.chain_selection_cache().values()] \
         == [[0,1,2,3], [4], [5]]
     for resseq,i_seqs in [(1,[0,1]),(2,[2,3]),(5,[4]),(6,[5])]:
@@ -784,13 +784,13 @@ model id=3 #chains=2
     conformer id=" " #residues=1 #atoms=1
       residue name="MPR" seq=   5 icode=" " #atoms=1
          "2H3 "
-  chain id="C" #conformers=1
+  chain id="CH" #conformers=1
     conformer id=" " #residues=1 #atoms=1
       residue name="CYS" seq=   6 icode=" " #atoms=1
          " N  "
 """,
       expected_overall_counts=dicts.easy(
-        chain_ids={"A": 1, "B": 1, "C": 1},
+        chain_ids={"A": 1, "B": 1, "CH": 1},
         conformer_ids={" ": 3},
         residue_names={"MPR": 1, "MET": 2, "CYS": 1},
         residue_name_classes={"other": 1, "common_amino_acid": 3}))
