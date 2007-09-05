@@ -44,8 +44,8 @@ public:
         iso_surface(map_const_ref_type map,
               value_type iso_level,
               scitbx::vec3<coordinates_type> const& grid_size)
-  : _map(map),
-    _iso_level(iso_level),
+  : map_(map),
+    iso_level_(iso_level),
     n_cells_x(map.accessor().all()[0]-1),
     n_cells_y(map.accessor().all()[1]-1),
     n_cells_z(map.accessor().all()[2]-1),
@@ -56,11 +56,11 @@ public:
     init();
   }
 
-  af::shared<point_3d> vertices() { return _vertices; }
+  af::shared<point_3d> vertices() { return vertices_; }
 
-  af::shared<triangle> triangles() { return _triangles; }
+  af::shared<triangle> triangles() { return triangles_; }
 
-  af::shared<vector_3d> normals() { return _normals; }
+  af::shared<vector_3d> normals() { return normals_; }
 
 protected:
 
@@ -72,10 +72,10 @@ protected:
   typedef std::map<index_value_type, point_3d_id> id_to_point_3d_id;
 
   // The map of the scalar field
-  map_const_ref_type _map;
+  map_const_ref_type map_;
 
   // The iso level
-  value_type _iso_level;
+  value_type iso_level_;
 
   // No. of cells in x, y, and z directions
   index_value_type n_cells_x, n_cells_y, n_cells_z;
@@ -83,17 +83,17 @@ protected:
   // Cell length in x, y, and z directions.
   CoordinatesType cell_length_x, cell_length_y, cell_length_z;
 
-  // The _vertices which make up the isosurface.
-  af::shared<point_3d> _vertices;
+  // The vertices_ which make up the isosurface.
+  af::shared<point_3d> vertices_;
 
-  // The _normals.
-  af::shared<vector_3d> _normals;
+  // The normals_.
+  af::shared<vector_3d> normals_;
 
   // List of point_3ds which form the isosurface.
   id_to_point_3d_id id_to_vertex;
 
   // List of triangles which form the triangulation of the isosurface.
-  af::shared<triangle> _triangles;
+  af::shared<triangle> triangles_;
 
   // Initialisation
   void init();
@@ -130,11 +130,11 @@ protected:
                           value_type val1,
                           value_type val2);
 
-  // Renames _vertices and triangles so that they can be accessed more
+  // Renames vertices_ and triangles so that they can be accessed more
   // efficiently.
   void rename_vertices_and_triangles();
 
-  // Calculates the _normals.
+  // Calculates the normals_.
   void calculate__normals();
 
   // Lookup tables used in the construction of the isosurface.
@@ -151,17 +151,17 @@ init()
   for (index_value_type z = 0; z < n_cells_z; z++)
     for (index_value_type y = 0; y < n_cells_y; y++)
       for (index_value_type x = 0; x < n_cells_x; x++) {
-        // Calculate table lookup index from those _vertices
+        // Calculate table lookup index from those vertices_
         // which are below the isolevel.
         index_value_type table_index = 0;
-        if (_map(x, y, z)       < _iso_level) table_index |=   1;
-        if (_map(x, y+1, z)     < _iso_level) table_index |=   2;
-        if (_map(x+1, y+1, z)   < _iso_level) table_index |=   4;
-        if (_map(x+1, y, z)     < _iso_level) table_index |=   8;
-        if (_map(x, y, z+1)     < _iso_level) table_index |=  16;
-        if (_map(x, y+1, z+1)   < _iso_level) table_index |=  32;
-        if (_map(x+1, y+1, z+1) < _iso_level) table_index |=  64;
-        if (_map(x+1, y, z+1)   < _iso_level) table_index |= 128;
+        if (map_(x, y, z)       < iso_level_) table_index |=   1;
+        if (map_(x, y+1, z)     < iso_level_) table_index |=   2;
+        if (map_(x+1, y+1, z)   < iso_level_) table_index |=   4;
+        if (map_(x+1, y, z)     < iso_level_) table_index |=   8;
+        if (map_(x, y, z+1)     < iso_level_) table_index |=  16;
+        if (map_(x, y+1, z+1)   < iso_level_) table_index |=  32;
+        if (map_(x+1, y+1, z+1) < iso_level_) table_index |=  64;
+        if (map_(x+1, y, z+1)   < iso_level_) table_index |= 128;
 
         // Now create a triangulation of the isosurface in this cell.
         if (edge_table[table_index] != 0) {
@@ -241,7 +241,7 @@ init()
             point_id0 = get_edge_id(x, y, z, tri_table[table_index][i]);
             point_id1 = get_edge_id(x, y, z, tri_table[table_index][i+1]);
             point_id2 = get_edge_id(x, y, z, tri_table[table_index][i+2]);
-            _triangles.push_back(triangle(point_id0, point_id1, point_id2));
+            triangles_.push_back(triangle(point_id0, point_id1, point_id2));
           }
         }
   }
@@ -370,8 +370,8 @@ calculate_intersection(index_value_type n_x,
   y2 = v2y*cell_length_y;
   z2 = v2z*cell_length_z;
 
-  value_type val1 = _map(v1x, v1y, v1z);
-  value_type val2 = _map(v2x, v2y, v2z);
+  value_type val1 = map_(v1x, v1y, v1z);
+  value_type val2 = map_(v2x, v2y, v2z);
   point_3d_id intersection = interpolate(x1, y1, z1, x2, y2, z2, val1, val2);
 
   return intersection;
@@ -387,7 +387,7 @@ interpolate(CoordinatesType x1, CoordinatesType y1, CoordinatesType z1,
   point_3d_id interpolation;
   CoordinatesType mu;
 
-  mu = CoordinatesType((_iso_level - val1))/(val2 - val1);
+  mu = CoordinatesType((iso_level_ - val1))/(val2 - val1);
   interpolation.x = x1 + mu*(x2 - x1);
   interpolation.y = y1 + mu*(y2 - y1);
   interpolation.z = z1 + mu*(z2 - z1);
@@ -410,8 +410,8 @@ rename_vertices_and_triangles()
   }
 
   // Now rename triangles
-  for (typename af::shared<triangle>::iterator iter = _triangles.begin();
-       iter != _triangles.end(); iter++)
+  for (typename af::shared<triangle>::iterator iter = triangles_.begin();
+       iter != triangles_.end(); iter++)
   {
     for (index_value_type i = 0; i < 3; i++) {
       (*iter)[i] = id_to_vertex[ (*iter)[i] ].new_id;
@@ -420,12 +420,12 @@ rename_vertices_and_triangles()
 
   // Copy all the vertices into an array so that they
   // can be efficiently accessed.
-  _vertices = af::shared<point_3d>(id_to_vertex.size());
+  vertices_ = af::shared<point_3d>(id_to_vertex.size());
   next_id = 0;
   for (typename id_to_point_3d_id::iterator iter = id_to_vertex.begin();
        iter != id_to_vertex.end(); iter++)
   {
-    _vertices[next_id++]
+    vertices_[next_id++]
       = point_3d((*iter).second.x, (*iter).second.y, (*iter).second.z);
   }
 
@@ -438,29 +438,29 @@ void
 iso_surface<CoordinatesType, ValueType>::
 calculate__normals()
 {
-  _normals = af::shared<vector_3d>(_vertices.size());
+  normals_ = af::shared<vector_3d>(vertices_.size());
 
   // Set all normals to 0.
-  for (index_value_type i = 0; i < _normals.size(); i++) _normals[i] = 0;
+  for (index_value_type i = 0; i < normals_.size(); i++) normals_[i] = 0;
 
-  // Calculate _normals.
-  for (index_value_type i = 0; i < _triangles.size(); i++) {
+  // Calculate normals_.
+  for (index_value_type i = 0; i < triangles_.size(); i++) {
     vector_3d vec1, vec2, triangle_area_vec;
     index_value_type id0, id1, id2;
-    id0 = _triangles[i][0];
-    id1 = _triangles[i][1];
-    id2 = _triangles[i][2];
-    vec1 = _vertices[id1] - _vertices[id0];
-    vec2 = _vertices[id2] - _vertices[id0];
+    id0 = triangles_[i][0];
+    id1 = triangles_[i][1];
+    id2 = triangles_[i][2];
+    vec1 = vertices_[id1] - vertices_[id0];
+    vec2 = vertices_[id2] - vertices_[id0];
     triangle_area_vec = vec1.cross(vec2);
-    _normals[id0] += triangle_area_vec;
-    _normals[id1] += triangle_area_vec;
-    _normals[id2] += triangle_area_vec;
+    normals_[id0] += triangle_area_vec;
+    normals_[id1] += triangle_area_vec;
+    normals_[id2] += triangle_area_vec;
   }
 
   // Normalize normals
-  for (index_value_type i=0; i < _normals.size(); i++) {
-    _normals[i] /= abs(_normals[i]);
+  for (index_value_type i=0; i < normals_.size(); i++) {
+    normals_[i] /= abs(normals_[i]);
   }
 }
 
