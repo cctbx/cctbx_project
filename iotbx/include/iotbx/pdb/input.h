@@ -851,8 +851,8 @@ namespace iotbx { namespace pdb {
 
     char*       resname_begin()       { return compacted+4; }
     const char* resname_begin() const { return compacted+4; }
-    str4        resname_small() const { return str4(resname_begin()); }
-    std::string resname()       const { return std::string(resname_begin(),4);}
+    str3        resname_small() const { return str3(resname_begin()); }
+    std::string resname()       const { return std::string(resname_begin(),3);}
 
     char*       chain_begin()       { return compacted+8; }
     const char* chain_begin() const { return compacted+8; }
@@ -882,7 +882,7 @@ namespace iotbx { namespace pdb {
       // 13 - 16  Atom          name     Atom name.
       // 17       Character     altLoc   Alternate location indicator.
       // 18 - 20  Residue name  resName  Residue name.
-      // 21       *** non-standard: appended to resName
+      // 21       Blank
       // 22       Character     chainID  Chain identifier.
       // 23 - 26  Integer       resSeq   Residue sequence number.
       // 27       AChar         iCode    Code for insertion of residues.
@@ -891,7 +891,8 @@ namespace iotbx { namespace pdb {
     {
       extract(line_info,12,4,name_begin());
       extract(line_info,16,1,altloc_begin());
-      extract(line_info,17,4,resname_begin());
+      extract(line_info,17,3,resname_begin());
+      compacted[7] = ' '; // column 21
       extract(line_info,21,1,chain_begin());
       extract(line_info,26,1,icode_begin());
       extract(line_info,72,4,segid_begin());
@@ -946,7 +947,7 @@ namespace iotbx { namespace pdb {
       SCITBX_ASSERT(resseq >= min_resseq);
       SCITBX_ASSERT(resseq <= max_resseq);
       char buf[128];
-      std::sprintf(buf, "\"%4.4s%1.1s%4.4s%1.1s%4d%1.1s\"",
+      std::sprintf(buf, "\"%4.4s%1.1s%3.3s %1.1s%4d%1.1s\"",
         name_begin(), altloc_begin(), resname_begin(), chain_begin(),
         resseq, icode_begin());
       std::string result;
@@ -966,7 +967,7 @@ namespace iotbx { namespace pdb {
       else if (!are_equal(line_info,16,1,altloc_begin())) {
         line_info.set_error(17, "altloc mismatch.");
       }
-      else if (!are_equal(line_info,17,4,resname_begin())) {
+      else if (!are_equal(line_info,17,3,resname_begin())) {
         line_info.set_error(18, "resname mismatch.");
       }
       else if (!are_equal(line_info,21,1,chain_begin())) {
@@ -1063,7 +1064,6 @@ namespace iotbx { namespace pdb {
       const char* s = resname_begin();
       const char* o = other.resname_begin();
       if (*  s != *  o) return false;
-      if (*++s != *++o) return false;
       if (*++s != *++o) return false;
       if (*++s != *++o) return false;
       return (*icode_begin() == *other.icode_begin());
@@ -1746,7 +1746,7 @@ namespace iotbx { namespace pdb {
 
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(name, str4)
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(altloc, str1)
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(resname, str4)
+      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(resname, str3)
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(chain, str1)
 
       int_sel_cache_t const&

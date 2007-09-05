@@ -135,9 +135,9 @@ namespace pdb {
       friend class residue;
       weak_ptr<conformer_data> parent;
     public:
-      str4 name;
+      str3 name;
       int32_t seq;
-      str4 icode;
+      str4 icode; // XXX why not 1?
       bool link_to_previous;
     protected:
       std::vector<atom> atoms;
@@ -167,7 +167,7 @@ namespace pdb {
       id() const
       {
         char buf[32];
-        std::sprintf(buf, "%-4s%4d%s", name.elems, seq, icode.elems);
+        std::sprintf(buf, "%-3s%4d%s", name.elems, seq, icode.elems);
         return std::string(buf);
       }
 
@@ -753,12 +753,12 @@ namespace pdb {
       //! Not available in Python.
       af::shared<std::size_t>
       residue_class_selection(
-        std::set<str4> const& class_set,
+        std::set<str3> const& class_set,
         bool negate) const
       {
         unsigned n = residues_size();
         af::shared<std::size_t> result((af::reserve(n)));
-        std::set<str4>::const_iterator class_set_end = class_set.end();
+        std::set<str3>::const_iterator class_set_end = class_set.end();
         const residue* r = (n == 0 ? 0 : &*data->residues.begin());
         if (!negate) {
           for(unsigned i=0;i<n;i++) {
@@ -808,7 +808,7 @@ namespace pdb {
         af::const_ref<std::string> const& residue_names,
         bool negate=false) const
       {
-        std::set<str4> class_set;
+        std::set<str3> class_set;
         common_residue_names::initialize_set(class_set, residue_names);
         return residue_class_selection(class_set, negate);
       }
@@ -1155,7 +1155,7 @@ namespace pdb {
         reset_atom_tmp(0);
         boost::shared_ptr<overall_counts_holder>
           result(new overall_counts_holder);
-        std::map<str4, unsigned> residue_name_counts_str4;
+        std::map<str3, unsigned> residue_name_counts_str3;
         unsigned ms_sz = models_size();
         result->n_models = ms_sz;
         for(unsigned jm=0;jm<ms_sz;jm++) {
@@ -1183,15 +1183,15 @@ namespace pdb {
                 }
                 if (n_atoms != 0) {
                   result->n_atoms += n_atoms;
-                  residue_name_counts_str4[r.data->name]++;
+                  residue_name_counts_str3[r.data->name]++;
                 }
               }
             }
           }
         }
-        for(std::map<str4, unsigned>::const_iterator
-              i=residue_name_counts_str4.begin();
-              i!=residue_name_counts_str4.end();i++) {
+        for(std::map<str3, unsigned>::const_iterator
+              i=residue_name_counts_str3.begin();
+              i!=residue_name_counts_str3.end();i++) {
           result->n_residues += i->second;
           result->residue_names[i->first.elems] = i->second;
           result->residue_name_classes[
