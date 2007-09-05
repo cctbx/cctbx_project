@@ -137,7 +137,7 @@ namespace pdb {
     public:
       str3 name;
       int32_t seq;
-      str4 icode; // XXX why not 1?
+      str1 icode;
       bool link_to_previous;
     protected:
       std::vector<atom> atoms;
