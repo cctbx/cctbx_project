@@ -749,7 +749,7 @@ END""")
     assert pdb_inp.resname_selection_cache().keys() == ["CYS", "MET", "MPR"]
     assert [list(v) for v in pdb_inp.resname_selection_cache().values()] \
         == [[5], [0,1,2,3], [4]]
-    assert pdb_inp.chain_selection_cache().keys() == [" A", " B", "CH"]
+    assert pdb_inp.chain_selection_cache().keys() == ["A", "B", "CH"]
     assert [list(v) for v in pdb_inp.chain_selection_cache().values()] \
         == [[0,1,2,3], [4], [5]]
     for resseq,i_seqs in [(1,[0,1]),(2,[2,3]),(5,[4]),(6,[5])]:
