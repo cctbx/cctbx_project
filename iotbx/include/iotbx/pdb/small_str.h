@@ -119,6 +119,7 @@ namespace iotbx { namespace pdb {
 
   typedef small_str<1> str1;
   typedef small_str<2> str2;
+  typedef small_str<3> str3;
   typedef small_str<4> str4;
   typedef small_str<6> str6;
 

@@ -141,8 +141,8 @@ def exercise_atom():
   assert ac.is_alternative() == a.is_alternative()
   assert a.tmp == 0
   #
-  r1 = pdb.residue(name="abcd", seq=123, icode="mark")
-  r2 = pdb.residue(name="efgh", seq=234, icode="bare")
+  r1 = pdb.residue(name="abc", seq=123, icode="mark")
+  r2 = pdb.residue(name="efg", seq=234, icode="bare")
   assert r1.memory_id() != r2.memory_id()
   a = pdb.atom()
   a.pre_allocate_parents(number_of_additional_parents=2)
@@ -174,20 +174,20 @@ def exercise_residue():
   assert r.name == ""
   assert r.seq == 0
   assert r.icode == ""
-  assert r.id() == "       0"
+  assert r.id() == "      0"
   assert r.link_to_previous
-  r = pdb.residue(name="xyzw", seq=123, icode="ijkl", link_to_previous=False)
-  assert r.name == "xyzw"
+  r = pdb.residue(name="xyz", seq=123, icode="ijkl", link_to_previous=False)
+  assert r.name == "xyz"
   assert r.seq == 123
   assert r.icode == "ijkl"
-  assert r.id() == "xyzw 123ijkl"
+  assert r.id() == "xyz 123ijkl"
   assert not r.link_to_previous
   r.link_to_previous = True
   assert r.link_to_previous
   r.name = "foo"
   r.seq = -3
   r.icode = "bar"
-  assert r.id() == "foo   -3bar"
+  assert r.id() == "foo  -3bar"
   #
   f = pdb.conformer(id="a")
   r.add_atom(new_atom=pdb.atom().set_name(new_name="n"))
@@ -746,7 +746,7 @@ END""")
     assert pdb_inp.altloc_selection_cache().keys() == [" "]
     assert [list(v) for v in pdb_inp.altloc_selection_cache().values()] \
         == [[0,1,2,3,4,5]]
-    assert pdb_inp.resname_selection_cache().keys() == ["CYS ", "MET ", "MPR "]
+    assert pdb_inp.resname_selection_cache().keys() == ["CYS", "MET", "MPR"]
     assert [list(v) for v in pdb_inp.resname_selection_cache().values()] \
         == [[5], [0,1,2,3], [4]]
     assert pdb_inp.chain_selection_cache().keys() == ["A", "B", "C"]
@@ -772,27 +772,27 @@ END""")
 model id=1 #chains=1
   chain id="A" #conformers=1
     conformer id=" " #residues=2 #atoms=4
-      residue name="MET " seq=   1 icode=" " #atoms=2
+      residue name="MET" seq=   1 icode=" " #atoms=2
          " N  "
          " CA "
       ### chain break ###
-      residue name="MET " seq=   2 icode=" " #atoms=2
+      residue name="MET" seq=   2 icode=" " #atoms=2
          " C  "
          " O  "
 model id=3 #chains=2
   chain id="B" #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="MPR " seq=   5 icode=" " #atoms=1
+      residue name="MPR" seq=   5 icode=" " #atoms=1
          "2H3 "
   chain id="C" #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="CYS " seq=   6 icode=" " #atoms=1
+      residue name="CYS" seq=   6 icode=" " #atoms=1
          " N  "
 """,
       expected_overall_counts=dicts.easy(
         chain_ids={"A": 1, "B": 1, "C": 1},
         conformer_ids={" ": 3},
-        residue_names={"MPR ": 1, "MET ": 2, "CYS ": 1},
+        residue_names={"MPR": 1, "MET": 2, "CYS": 1},
         residue_name_classes={"other": 1, "common_amino_acid": 3}))
     assert [atom.tmp for atom in pdb_inp.atoms()] == [1] * 6
     pdb_inp.reset_atom_tmp(first_value=0, increment=0)
@@ -814,7 +814,7 @@ ATOM1000002  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 model id=0 #chains=1
   chain id="A" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="MET " seq=   1 icode=" " #atoms=2
+      residue name="MET" seq=   1 icode=" " #atoms=2
          " N  "
          " N  "
 """)
@@ -839,13 +839,13 @@ ENDMDL
 model id=1 #chains=1
   chain id="A" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="MET " seq=   1 icode=" " #atoms=2
+      residue name="MET" seq=   1 icode=" " #atoms=2
          " N  "
          " N  "
 model id=2 #chains=1
   chain id="A" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="MET " seq=   1 icode=" " #atoms=2
+      residue name="MET" seq=   1 icode=" " #atoms=2
          " N  "
          " N  "
 """)
@@ -873,18 +873,18 @@ ATOM      8  C   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 model id=0 #chains=1
   chain id="A" #conformers=1
     conformer id=" " #residues=5 #atoms=8
-      residue name="MET " seq=   1 icode=" " #atoms=1
+      residue name="MET" seq=   1 icode=" " #atoms=1
          " N  "
-      residue name="MET " seq=   2 icode=" " #atoms=1
+      residue name="MET" seq=   2 icode=" " #atoms=1
          " N  "
-      residue name="MET " seq=   1 icode=" " #atoms=3
+      residue name="MET" seq=   1 icode=" " #atoms=3
          " N  "
          " N  "
          " C  "
       ### chain break ###
-      residue name="MET " seq=   2 icode=" " #atoms=1
+      residue name="MET" seq=   2 icode=" " #atoms=1
          " C  "
-      residue name="MET " seq=   1 icode=" " #atoms=2
+      residue name="MET" seq=   1 icode=" " #atoms=2
          " C  "
          " C  "
 """)
@@ -919,12 +919,12 @@ ATOM      4  CG  LYS   109      27.664   2.793  16.091  1.00 20.00      B
 model id=0 #chains=2
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="LYS " seq= 109 icode=" " #atoms=2
+      residue name="LYS" seq= 109 icode=" " #atoms=2
          " CB "
          " CG "
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="LYS " seq= 109 icode=" " #atoms=2
+      residue name="LYS" seq= 109 icode=" " #atoms=2
          " CB "
          " CG "
 """)
@@ -940,50 +940,50 @@ model id=0 #chains=2
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
-ATOM  12345qN123AR123C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
-HETATM12345qN123AR123C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
+ATOM  12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
+HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
 """))
   for ial in pdb_inp.input_atom_labels_list():
     assert ial.name() == "N123"
     assert ial.altloc() == "A"
-    assert ial.resname() == "R123"
+    assert ial.resname() == "R12"
     assert ial.chain() == "C"
     assert ial.resseq == 1234
     assert ial.icode() == "I"
     assert ial.segid() == "S123"
-    assert ial.pdb_format() == '"N123AR123C1234I" segid="S123"'
+    assert ial.pdb_format() == '"N123AR12 C1234I" segid="S123"'
   check_hierarchy(
     hierarchy=pdb_inp.construct_hierarchy(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="C" #conformers=1
     conformer id="A" #residues=1 #atoms=2
-      residue name="R123" seq=1234 icode="I" #atoms=2
+      residue name="R12" seq=1234 icode="I" #atoms=2
          "N123"
          "N123"
 """)
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
-ATOM  12345qN123AR123C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
-HETATM12345qN123AR123C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
+ATOM  12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
+HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
 """))
   for ial in pdb_inp.input_atom_labels_list():
     assert ial.name() == "N123"
     assert ial.altloc() == "A"
-    assert ial.resname() == "R123"
+    assert ial.resname() == "R12"
     assert ial.chain() == "C"
     assert ial.resseq == 1234
     assert ial.icode() == "I"
     assert ial.segid() == "    "
-    assert ial.pdb_format() == '"N123AR123C1234I"'
+    assert ial.pdb_format() == '"N123AR12 C1234I"'
   check_hierarchy(
     hierarchy=pdb_inp.construct_hierarchy(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="C" #conformers=1
     conformer id="A" #residues=1 #atoms=2
-      residue name="R123" seq=1234 icode="I" #atoms=2
+      residue name="R12" seq=1234 icode="I" #atoms=2
          "N123"
          "N123"
 """)
@@ -996,7 +996,7 @@ HETATM
   for ial in pdb_inp.input_atom_labels_list():
     assert ial.name() == "    "
     assert ial.altloc() == " "
-    assert ial.resname() == "    "
+    assert ial.resname() == "   "
     assert ial.chain() == " "
     assert ial.resseq == 0
     assert ial.icode() == " "
@@ -1008,7 +1008,7 @@ HETATM
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="    " seq=   0 icode=" " #atoms=2
+      residue name="   " seq=   0 icode=" " #atoms=2
          "    "
          "    "
 """)
@@ -1041,7 +1041,7 @@ ATOM
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="    " seq=   0 icode=" " #atoms=1
+      residue name="   " seq=   0 icode=" " #atoms=1
          "    "
 """)
   pdb_inp = pdb.input(
@@ -1072,7 +1072,7 @@ ENDMDL
 model id=1 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="    " seq=   0 icode=" " #atoms=1
+      residue name="   " seq=   0 icode=" " #atoms=1
          "    "
 """)
   pdb_inp = pdb.input(
@@ -1109,7 +1109,7 @@ model id=1 #chains=0
 model id=2 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="    " seq=   0 icode=" " #atoms=1
+      residue name="   " seq=   0 icode=" " #atoms=1
          "    "
 """)
   try:
@@ -1211,65 +1211,65 @@ ENDMDL
 model id=1 #chains=3
   chain id="C" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="    " seq=   0 icode=" " #atoms=2
+      residue name="   " seq=   0 icode=" " #atoms=2
          "    "
          "    "
   chain id="D" #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="    " seq=   0 icode=" " #atoms=1
+      residue name="   " seq=   0 icode=" " #atoms=1
          "    "
   chain id="E" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="    " seq=   0 icode=" " #atoms=2
+      residue name="   " seq=   0 icode=" " #atoms=2
          "    "
          "    "
 model id=2 #chains=3
   chain id="C" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="    " seq=   0 icode=" " #atoms=2
+      residue name="   " seq=   0 icode=" " #atoms=2
          "    "
          "    "
   chain id="D" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="    " seq=   0 icode=" " #atoms=2
+      residue name="   " seq=   0 icode=" " #atoms=2
          "    "
          "    "
   chain id="E" #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="    " seq=   0 icode=" " #atoms=1
+      residue name="   " seq=   0 icode=" " #atoms=1
          "    "
 model id=3 #chains=3
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="    " seq=   0 icode=" " #atoms=1
+      residue name="   " seq=   0 icode=" " #atoms=1
          "    "
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="    " seq=   0 icode=" " #atoms=2
+      residue name="   " seq=   0 icode=" " #atoms=2
          "    "
          "    "
   chain id="E" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="    " seq=   0 icode=" " #atoms=2
+      residue name="   " seq=   0 icode=" " #atoms=2
          "    "
          "    "
 model id=4 #chains=2
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=3
-      residue name="    " seq=   0 icode=" " #atoms=3
+      residue name="   " seq=   0 icode=" " #atoms=3
          "    "
          "    "
          "    "
   chain id="E" #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="    " seq=   0 icode=" " #atoms=2
+      residue name="   " seq=   0 icode=" " #atoms=2
          "    "
          "    "
 """,
     expected_overall_counts=dicts.easy(
       chain_ids={"C": 2, "D": 2, "E": 4, " ": 3},
       conformer_ids={" ": 11},
-      residue_names={"    ": 11},
+      residue_names={"   ": 11},
       residue_name_classes={"other": 11}))
   #
   pdb_inp = pdb.input(
@@ -1283,7 +1283,7 @@ ATOM     54  CA  GLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=1
     conformer id=" " #residues=1 #atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
          " CA "
 """)
   pdb_inp = pdb.input(
@@ -1297,7 +1297,7 @@ ATOM     54  CA BGLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=1
     conformer id="B" #residues=1 #atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
          " CA "
 """)
   pdb_inp = pdb.input(
@@ -1312,10 +1312,10 @@ ATOM     55  CA CGLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=2
     conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
     conformer id="C" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
 """)
   pdb_inp = pdb.input(
@@ -1330,10 +1330,10 @@ ATOM     55  CA CGLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=2
     conformer id=" " #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
     conformer id="C" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
 """)
   pdb_inp = pdb.input(
@@ -1348,10 +1348,10 @@ ATOM     55  CA  GLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=2
     conformer id=" " #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
     conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
 """)
   perm = flex.size_t((0,1,2))
@@ -1369,13 +1369,13 @@ ATOM     56  CA AGLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=3
     conformer id=" " #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
     conformer id="A" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
     conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
 """)
     perm.next_permutation()
@@ -1395,15 +1395,15 @@ ATOM     57  O   GLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=3
     conformer id=" " #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
        & " CA "
          " O  "
     conformer id="A" #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
        & " CA "
          " O  "
     conformer id="B" #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
        & " CA "
          " O  "
 """)
@@ -1423,15 +1423,15 @@ ATOM     56  CA AGLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=3
     conformer id=" " #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
          " O  "
        & " CA "
     conformer id="A" #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
          " O  "
        & " CA "
     conformer id="B" #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
          " O  "
        & " CA "
 """)
@@ -1450,15 +1450,15 @@ ATOM     56  CA AGLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=3
     conformer id=" " #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
          " O  "
        & " CA "
     conformer id="A" #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
          " O  "
        & " CA "
     conformer id="B" #residues=1 #atoms=2 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
        & " CA "
          " O  "
 """)
@@ -1476,11 +1476,11 @@ ATOM     56  CA BGLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=2
     conformer id=" " #residues=1 #atoms=2 #alt. atoms=2
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
        & " CA "
        & " CA "
     conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
 """)
   assert pdb_inp.number_of_chains_with_altloc_mix() == 0
@@ -1498,11 +1498,11 @@ ATOM     56  CA  GLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=2
     conformer id=" " #residues=1 #atoms=2 #alt. atoms=2
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
        & " CA "
        & " CA "
     conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
 """)
   pdb_inp = pdb.input(
@@ -1519,11 +1519,11 @@ ATOM     56  CA  GLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=2
     conformer id=" " #residues=1 #atoms=2 #alt. atoms=2
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
        & " CA "
        & " CA "
     conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
 """)
   perm = flex.size_t((0,1,2))
@@ -1544,10 +1544,10 @@ ATOM     56  CA BGLY A   9
 model id=0 #chains=1
   chain id="A" #conformers=2
     conformer id=" " #residues=1 #atoms=1 #alt. atoms=1
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
        & " CA "
     conformer id="B" #residues=1 #atoms=2 #alt. atoms=2
-      residue name="GLY " seq=   9 icode=" " #atoms=2
+      residue name="GLY" seq=   9 icode=" " #atoms=2
        & " CA "
        & " CA "
 """)
@@ -1575,50 +1575,50 @@ ATOM    140  CA  CYS A  17
 model id=0 #chains=1
   chain id="A" #conformers=2
     conformer id="A" #residues=9 #atoms=9 #alt. atoms=3
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
          " CA "
-      residue name="GLY " seq=  10 icode=" " #atoms=1
+      residue name="GLY" seq=  10 icode=" " #atoms=1
        & " CA "
-      residue name="THR " seq=  11 icode=" " #atoms=1
+      residue name="THR" seq=  11 icode=" " #atoms=1
          " CA "
-      residue name="CYS " seq=  12 icode=" " #atoms=1
+      residue name="CYS" seq=  12 icode=" " #atoms=1
          " CA "
-      residue name="PRO " seq=  13 icode=" " #atoms=1
+      residue name="PRO" seq=  13 icode=" " #atoms=1
          " CA "
-      residue name="ALA " seq=  14 icode=" " #atoms=1
+      residue name="ALA" seq=  14 icode=" " #atoms=1
        & " CA "
-      residue name="LEU " seq=  15 icode=" " #atoms=1
+      residue name="LEU" seq=  15 icode=" " #atoms=1
          " CA "
-      residue name="TRP " seq=  16 icode=" " #atoms=1
+      residue name="TRP" seq=  16 icode=" " #atoms=1
        & " CA "
-      residue name="CYS " seq=  17 icode=" " #atoms=1
+      residue name="CYS" seq=  17 icode=" " #atoms=1
          " CA "
     conformer id="B" #residues=9 #atoms=9 #alt. atoms=3
-      residue name="GLY " seq=   9 icode=" " #atoms=1
+      residue name="GLY" seq=   9 icode=" " #atoms=1
          " CA "
-      residue name="SER " seq=  10 icode=" " #atoms=1
+      residue name="SER" seq=  10 icode=" " #atoms=1
        & " CA "
-      residue name="THR " seq=  11 icode=" " #atoms=1
+      residue name="THR" seq=  11 icode=" " #atoms=1
          " CA "
-      residue name="CYS " seq=  12 icode=" " #atoms=1
+      residue name="CYS" seq=  12 icode=" " #atoms=1
          " CA "
-      residue name="PRO " seq=  13 icode=" " #atoms=1
+      residue name="PRO" seq=  13 icode=" " #atoms=1
          " CA "
-      residue name="GLY " seq=  14 icode=" " #atoms=1
+      residue name="GLY" seq=  14 icode=" " #atoms=1
        & " CA "
-      residue name="LEU " seq=  15 icode=" " #atoms=1
+      residue name="LEU" seq=  15 icode=" " #atoms=1
          " CA "
-      residue name="ARG " seq=  16 icode=" " #atoms=1
+      residue name="ARG" seq=  16 icode=" " #atoms=1
        & " CA "
-      residue name="CYS " seq=  17 icode=" " #atoms=1
+      residue name="CYS" seq=  17 icode=" " #atoms=1
          " CA "
 """,
     expected_overall_counts=dicts.easy(
       chain_ids={"A": 1},
       conformer_ids={"A": 1, "B": 1},
       residue_names={
-        "ALA ": 1, "LEU ": 1, "TRP ": 1, "CYS ": 2, "THR ": 1, "GLY ": 3,
-        "SER ": 1, "ARG ": 1, "PRO ": 1},
+        "ALA": 1, "LEU": 1, "TRP": 1, "CYS": 2, "THR": 1, "GLY": 3,
+        "SER": 1, "ARG": 1, "PRO": 1},
       residue_name_classes={"common_amino_acid": 12}))
   assert pdb_inp.number_of_chains_with_altloc_mix() == 0
   pdb_inp = pdb.input(
@@ -1651,7 +1651,7 @@ ATOM    258  CB BASN    36
 model id=0 #chains=1
   chain id=" " #conformers=2
     conformer id=" " #residues=2 #atoms=11 #alt. atoms=6
-      residue name="SER " seq=  35 icode=" " #atoms=6
+      residue name="SER" seq=  35 icode=" " #atoms=6
        & " OG "
          " N  "
          " C  "
@@ -1659,14 +1659,14 @@ model id=0 #chains=1
          " O  "
        & " CB "
       ### chain break ###
-      residue name="ASN " seq=  36 icode=" " #atoms=5
+      residue name="ASN" seq=  36 icode=" " #atoms=5
          " C  "
        & " CA "
        & " N  "
        & " CB "
        & " O  "
     conformer id="B" #residues=2 #atoms=11 #alt. atoms=6
-      residue name="SER " seq=  35 icode=" " #atoms=6
+      residue name="SER" seq=  35 icode=" " #atoms=6
          " N  "
          " C  "
          " CA "
@@ -1674,7 +1674,7 @@ model id=0 #chains=1
        & " CB "
          " O  "
       ### chain break ###
-      residue name="ASN " seq=  36 icode=" " #atoms=5
+      residue name="ASN" seq=  36 icode=" " #atoms=5
        & " N  "
        & " CA "
          " C  "
@@ -1776,9 +1776,9 @@ ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=2 #atoms=2
-      residue name="SER " seq=   1 icode=" " #atoms=1
+      residue name="SER" seq=   1 icode=" " #atoms=1
          " CA "
-      residue name="LEU " seq=   2 icode=" " #atoms=1
+      residue name="LEU" seq=   2 icode=" " #atoms=1
          " CA "
 """)
   try: pdb.input(file_name="")
@@ -1825,7 +1825,7 @@ ENDMDL
 %#    "B" 1
 %#  number of residue names: 1
 %#  histogram of residue name frequency:
-%#    "MET " 3
+%#    "MET" 3
 %#  number of groups of duplicate atom labels:    1
 %#    total number of affected atoms:             2
 %#    group " N   MET A   1 "
@@ -1834,16 +1834,16 @@ ENDMDL
 %#    model id=1 #chains=1
 %#      chain id="A" #conformers=1
 %#        conformer id=" " #residues=1 #atoms=2
-%#          residue name="MET " seq=   1 icode=" " #atoms=2
+%#          residue name="MET" seq=   1 icode=" " #atoms=2
 %#             " N  "
 %#             " N  "
 %#    model id=2 #chains=1
 %#      chain id="A" #conformers=2
 %#        conformer id="A" #residues=1 #atoms=1 #alt. atoms=1
-%#          residue name="MET " seq=   1 icode=" " #atoms=1
+%#          residue name="MET" seq=   1 icode=" " #atoms=1
 %#           & " N  "
 %#        conformer id="B" #residues=1 #atoms=1 #alt. atoms=1
-%#          residue name="MET " seq=   1 icode=" " #atoms=1
+%#          residue name="MET" seq=   1 icode=" " #atoms=1
 %#           & " N  "
 """)
   #
@@ -1864,7 +1864,7 @@ ATOM         O   OD2     9
 ATOM         CA  ALA    10
 ATOM         C   ALA    10
 ATOM         O   TIP    11
-ATOM         O   TIP3   12
+ATOM         O   TIP    12
 """)
   hierarchy = pdb.input(source_info=None, lines=lines).construct_hierarchy()
   f = hierarchy.models()[0].chains()[0].conformers()[0]
@@ -1912,23 +1912,23 @@ ATOM         O   TIP3   12
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=8 #atoms=10
-      residue name="HOH " seq=   2 icode=" " #atoms=3
+      residue name="HOH" seq=   2 icode=" " #atoms=3
          " O  "
          " H1 "
          " H2 "
-      residue name="H2O " seq=   4 icode=" " #atoms=1
+      residue name="H2O" seq=   4 icode=" " #atoms=1
          " O  "
-      residue name="OH2 " seq=   5 icode=" " #atoms=1
+      residue name="OH2" seq=   5 icode=" " #atoms=1
          " O  "
-      residue name="DOD " seq=   6 icode=" " #atoms=1
+      residue name="DOD" seq=   6 icode=" " #atoms=1
          " O  "
-      residue name="D2O " seq=   8 icode=" " #atoms=1
+      residue name="D2O" seq=   8 icode=" " #atoms=1
          " O  "
-      residue name="OD2 " seq=   9 icode=" " #atoms=1
+      residue name="OD2" seq=   9 icode=" " #atoms=1
          " O  "
-      residue name="TIP " seq=  11 icode=" " #atoms=1
+      residue name="TIP" seq=  11 icode=" " #atoms=1
          " O  "
-      residue name="TIP3" seq=  12 icode=" " #atoms=1
+      residue name="TIP" seq=  12 icode=" " #atoms=1
          " O  "
 """)
   f.select_residues_in_place(selection=f.residue_class_selection(
@@ -1950,15 +1950,15 @@ model id=0 #chains=1
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=4 #atoms=7
-      residue name="ASN " seq=   1 icode=" " #atoms=2
+      residue name="ASN" seq=   1 icode=" " #atoms=2
          " CA "
          " C  "
-      residue name="GLU " seq=   3 icode=" " #atoms=2
+      residue name="GLU" seq=   3 icode=" " #atoms=2
          " CA "
          " C  "
-      residue name="U   " seq=   7 icode=" " #atoms=1
+      residue name="U  " seq=   7 icode=" " #atoms=1
          " P  "
-      residue name="ALA " seq=  10 icode=" " #atoms=2
+      residue name="ALA" seq=  10 icode=" " #atoms=2
          " CA "
          " C  "
 """)
@@ -1971,10 +1971,10 @@ model id=0 #chains=1
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=2 #atoms=4
-      residue name="GLU " seq=   3 icode=" " #atoms=2
+      residue name="GLU" seq=   3 icode=" " #atoms=2
          " CA "
          " C  "
-      residue name="ALA " seq=  10 icode=" " #atoms=2
+      residue name="ALA" seq=  10 icode=" " #atoms=2
          " CA "
          " C  "
 """)
@@ -1987,7 +1987,7 @@ model id=0 #chains=1
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=1 #atoms=2
-      residue name="GLU " seq=   3 icode=" " #atoms=2
+      residue name="GLU" seq=   3 icode=" " #atoms=2
          " CA "
          " C  "
 """)
@@ -1996,10 +1996,10 @@ model id=0 #chains=1
     assert not show_diff(str(e), 'unknown class_name="xyz"')
   else: raise RuntimeError("Exception expected.")
   try:
-    f.select_residue_class_in_place(residue_names=flex.std_string(["vwxyz"]))
+    f.select_residue_class_in_place(residue_names=flex.std_string(["wxyz"]))
   except RuntimeError, e:
     assert not show_diff(str(e),
-      'residue name with more than 4 characters: "vwxyz"')
+      'residue name with more than 3 characters: "wxyz"')
   else: raise RuntimeError("Exception expected.")
   for s in [f.select_residues_in_place, f.select_residues]:
     try: s(flex.size_t([100]))
@@ -2023,24 +2023,24 @@ ATOM         N   ABC     6
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=6 #atoms=6
-      residue name="ASN " seq=   1 icode=" " #atoms=1
+      residue name="ASN" seq=   1 icode=" " #atoms=1
          " CA "
-      residue name="+U  " seq=   2 icode=" " #atoms=1
+      residue name="+U " seq=   2 icode=" " #atoms=1
          " P  "
-      residue name="HOH " seq=   3 icode=" " #atoms=1
+      residue name="HOH" seq=   3 icode=" " #atoms=1
          " O  "
-      residue name="CD  " seq=   4 icode=" " #atoms=1
+      residue name="CD " seq=   4 icode=" " #atoms=1
          "CD  "
-      residue name="SO4 " seq=   5 icode=" " #atoms=1
+      residue name="SO4" seq=   5 icode=" " #atoms=1
          " S  "
-      residue name="ABC " seq=   6 icode=" " #atoms=1
+      residue name="ABC" seq=   6 icode=" " #atoms=1
          " N  "
 """,
     expected_overall_counts=dicts.easy(
       chain_ids={" ": 1},
       conformer_ids={" ": 1},
-      residue_names={"ASN ": 1, "+U  ": 1, "HOH ": 1, "CD  ": 1,
-                     "SO4 ": 1, "ABC ": 1},
+      residue_names={"ASN": 1, "+U ": 1, "HOH": 1, "CD ": 1,
+                     "SO4": 1, "ABC": 1},
       residue_name_classes={
         "common_water": 1,
         "common_element": 1,
@@ -2049,12 +2049,12 @@ model id=0 #chains=1
         "common_small_molecule": 1,
         "other": 1}))
   #
-  assert "HIS " in pdb.common_residue_names_amino_acid
-  assert "GUA " in pdb.common_residue_names_rna_dna
-  assert "CD  " in pdb.common_residue_names_ccp4_mon_lib_rna_dna
-  assert "HOH " in pdb.common_residue_names_water
-  assert "SO4 " in pdb.common_residue_names_small_molecule
-  assert " FE " in pdb.common_residue_names_element
+  assert "HIS" in pdb.common_residue_names_amino_acid
+  assert "GUA" in pdb.common_residue_names_rna_dna
+  assert "CD " in pdb.common_residue_names_ccp4_mon_lib_rna_dna
+  assert "HOH" in pdb.common_residue_names_water
+  assert "SO4" in pdb.common_residue_names_small_molecule
+  assert " FE" in pdb.common_residue_names_element
   get_class = pdb.common_residue_names_get_class
   assert get_class(name="ALA") == "common_amino_acid"
   assert get_class(name="  U") == "common_rna_dna"
