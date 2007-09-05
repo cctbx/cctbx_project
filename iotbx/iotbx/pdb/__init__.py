@@ -553,7 +553,7 @@ def format_atom_record(record_name="ATOM",
   # 13 - 16  Atom          name          Atom name.
   # 17       Character     altLoc        Alternate location indicator.
   # 18 - 20  Residue name  resName       Residue name.
-  # 22       Character     chainID       Chain identifier.
+  # 21 - 22                chainID       Chain identifier.
   # 23 - 26  Integer       resSeq        Residue sequence number.
   # 27       AChar         iCode         Code for insertion of residues.
   # 31 - 38  Real(8.3)     x             Orthogonal coordinates for X in
@@ -568,7 +568,7 @@ def format_atom_record(record_name="ATOM",
   # 77 - 78  LString(2)    element       Element symbol, right-justified.
   # 79 - 80  LString(2)    charge        Charge on the atom.
   return ((
-    "%-6.6s%5d %-4.4s%1.1s%-4.4s%1.1s%4d%1.1s"
+    "%-6.6s%5d %-4.4s%1.1s%-3.3s%2.2s%4d%1.1s"
     "   %8.3f%8.3f%8.3f%6.2f%6.2f    "
     "  %-4.4s%2.2s%2.2s") % (
       record_name,
@@ -594,7 +594,7 @@ def format_anisou_record(
   # 13 - 16  Atom          name          Atom name.
   # 17       Character     altLoc        Alternate location indicator.
   # 18 - 20  Residue name  resName       Residue name.
-  # 22       Character     chainID       Chain identifier.
+  # 21 - 22                chainID       Chain identifier.
   # 23 - 26  Integer       resSeq        Residue sequence number.
   # 27       AChar         iCode         Code for insertion of residues.
   # 29 - 35  Integer       u[0][0]       U(1,1)
@@ -607,7 +607,7 @@ def format_anisou_record(
   # 77 - 78  LString(2)    element       Element symbol, right-justified.
   # 79 - 80  LString(2)    charge        Charge on the atom.
   return ((
-    "%-6.6s%5d %-4.4s%1.1s%-3.3s %1.1s%4d%1.1s"
+    "%-6.6s%5d %-4.4s%1.1s%-3.3s%2.2s%4d%1.1s"
     " %7d%7d%7d%7d%7d%7d"
     "  %-4.4s%2.2s%2.2s") % ((
       "ANISOU",
@@ -623,10 +623,10 @@ def format_ter_record(serial=0,
                       iCode=" "):
   #  7 - 11  Integer         serial     Serial number.
   # 18 - 20  Residue name    resName    Residue name.
-  # 22       Character       chainID    Chain identifier.
+  # 21 - 22  Character       chainID    Chain identifier.
   # 23 - 26  Integer         resSeq     Residue sequence number.
   # 27       AChar           iCode      Insertion code.
-  return ("%-6.6s%5d      %-3.3s %1.1s%4d%1.1s" % (
+  return ("%-6.6s%5d      %-3.3s%2.2s%4d%1.1s" % (
     "TER",
     serial_number_mod(serial, 100000),
     resName, chainID, serial_number_mod(resSeq, 10000), iCode)).rstrip()

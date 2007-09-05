@@ -133,6 +133,16 @@ SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
   Ucart:       (0.0441, 0.058, 0.0402, 0.0048, -0.0072, -0.0088)
   sigUcart:    (0.0003, 0.0002, 0.0008, 0.0003, 0.0008, 0.0006)
 """)
+  #
+  atom_records = """\
+ATOM      1  CA  CYS A   6       0.000   0.000   0.000  1.00  0.00
+ATOM      2  CA  CYSB    6       0.000   0.000   0.000  1.00  0.00
+ATOM      3  CA  CYSAB   7       0.000   0.000   0.000  1.00  0.00
+""".splitlines()
+  for record,chainID in zip(atom_records, ["A", "B ", "AB"]):
+    attr = pdb.atom.attributes()
+    attr.set_from_ATOM_record(pdb.parser.pdb_record(raw_record=record))
+    assert attr.chainID == chainID
 
 def exercise_altLoc_grouping():
   altLoc_groups = pdb.interpretation.altLoc_grouping()
