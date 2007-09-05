@@ -46,7 +46,6 @@ def exercise(f, err, nx, ny, nz, iso_level, verbose):
   vertices = {}
   edges = {}
   for v1,v2,v3 in s.triangles:
-    print v1,v2,v3
     vertices[v1] = vertices[v2] = vertices[v3] = 1
     for a,b in ((v1,v2), (v2,v3), (v3,v1)):
       if a < b: e = (a,b)
@@ -68,10 +67,11 @@ def exercise(f, err, nx, ny, nz, iso_level, verbose):
     assert f(*outward) > iso_level > f(*inward)
 
 def is_near_boundary(v1,v2,n):
+  eps = 1e-15
   for c1, c2, m in zip(v1, v2, n):
     if c1 != c2: continue
-    if (   approx_equal(c1, 0)   or approx_equal(c1, 1)
-        or approx_equal(c1, 1/m) or approx_equal(c1, 1 - 1/m) ): return True
+    if (   abs(c1) < eps       or abs(c1 - 1) < eps
+        or abs(c1 - 1/m) < eps or abs(c1 - (1 - 1/m)) < eps ): return True
   return False
 
 def bad_vertices_err(seq):
