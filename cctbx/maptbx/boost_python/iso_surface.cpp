@@ -1,13 +1,8 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
-#include <boost/python/data_members.hpp>
-
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <scitbx/boost_python/container_conversions.h>
 
 #include <cctbx/maptbx/iso_surface.h>
-#include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -21,7 +16,7 @@ namespace cctbx { namespace maptbx { namespace boost_python {
 
       class_<wt>(name, no_init)
         .def(init<typename wt::map_const_ref_type,
-                  ValueType, scitbx::vec3<CoordinatesType> >
+                  ValueType, scitbx::vec3<CoordinatesType> const&>
                   ((arg("map"), arg("iso_level"), arg("grid_size"))))
         .add_property("vertices", &wt::vertices)
         .add_property("triangles", &wt::triangles)
