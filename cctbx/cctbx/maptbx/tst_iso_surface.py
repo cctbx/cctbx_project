@@ -2,10 +2,12 @@ from __future__ import division
 from scitbx.array_family import flex
 from cctbx.maptbx import iso_surface
 from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
 from math import sin, cos
 from scitbx import matrix
+import sys
 
-def exercise(f, err, nx, ny, nz, iso_level):
+def exercise(f, err, nx, ny, nz, iso_level, verbose):
   # construct a map of f
   dx, dy, dz = 1/nx, 1/ny, 1/nz
   map = flex.double(flex.grid((nx, ny, nz)))
@@ -35,8 +37,18 @@ def exercise(f, err, nx, ny, nz, iso_level):
     for a,b in ((v1,v2), (v2,v3), (v3,v1)):
       if s.vertices[a] == s.vertices[b]: degenerates.append((a,b))
   if degenerates:
-    print "Degenerate edges for the isosurface of %s:" % f
-    print degenerates
+    if (verbose):
+      print "Degenerate edges for the isosurface of %s:" % f
+      print degenerates
+    assert f is elliptic
+    assert degenerates == [(303, 418), (418, 407), (407, 303), (303, 407),
+      (418, 303), (407, 418), (654, 830), (830, 822), (822, 654), (654, 822),
+      (830, 654), (715, 909), (909, 890), (890, 715), (715, 890), (909, 715),
+      (822, 830), (890, 909), (1898, 2185), (2185, 2177), (2177, 1898),
+      (1898, 2177), (2185, 1898), (1966, 2278), (2278, 2261), (2261, 1966),
+      (1966, 2261), (2278, 1966), (2177, 2185), (2261, 2278)]
+  else:
+    assert f is not elliptic
 
   vertices = {}
   edges = {}
@@ -87,10 +99,15 @@ def sinusoidal_error(x,y,z, hx,hy,hz):
                   + 2*(c - (x+y)*(y+z)*s) * hz*hx
                 )
 
-def run():
-  exercise(elliptic, elliptic_error, nx=50, ny=40, nz=30, iso_level=3)
-  exercise(hyperbolic, hyperbolic_error, nx=50, ny=40, nz=30, iso_level=3)
-  exercise(sinusoidal, sinusoidal_error, nx=50, ny=40, nz=30, iso_level=3)
+def run(args):
+  verbose = "--verbose" in args
+  exercise(elliptic, elliptic_error, nx=50, ny=40, nz=30, iso_level=3,
+    verbose=verbose)
+  exercise(hyperbolic, hyperbolic_error, nx=50, ny=40, nz=30, iso_level=3,
+    verbose=verbose)
+  exercise(sinusoidal, sinusoidal_error, nx=50, ny=40, nz=30, iso_level=3,
+    verbose=verbose)
+  print format_cpu_times()
 
 if __name__ == '__main__':
-  run()
+  run(sys.argv[1:])

@@ -43,7 +43,7 @@ public:
   */
         iso_surface(map_const_ref_type map,
               value_type iso_level,
-              scitbx::vec3<coordinates_type> grid_size)
+              scitbx::vec3<coordinates_type> const& grid_size)
   : _map(map),
     _iso_level(iso_level),
     n_cells_x(map.accessor().all()[0]-1),
