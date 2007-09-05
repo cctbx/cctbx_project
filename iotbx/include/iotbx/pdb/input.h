@@ -841,7 +841,7 @@ namespace iotbx { namespace pdb {
   struct input_atom_labels
   {
     int32_t resseq;
-    static const unsigned compacted_size = 4+4+1+1+4+1;
+    static const unsigned compacted_size = 4+3+2+1+4+1;
     char compacted[compacted_size];
 
     char*       name_begin()       { return compacted; }
@@ -854,10 +854,14 @@ namespace iotbx { namespace pdb {
     str3        resname_small() const { return str3(resname_begin()); }
     std::string resname()       const { return std::string(resname_begin(),3);}
 
-    char*       chain_begin()       { return compacted+8; }
-    const char* chain_begin() const { return compacted+8; }
-    str1        chain_small() const { return str1(chain_begin()); }
-    std::string chain()       const { return std::string(chain_begin(),1); }
+    char*       chain_begin()       { return compacted+7; }
+    const char* chain_begin() const { return compacted+7; }
+    str2        chain_small() const { return str2(chain_begin()); }
+    std::string chain()       const
+    {
+      if (chain_begin()[0] == ' ') return std::string(chain_begin()+1,1);
+      return std::string(chain_begin(),2);
+    }
 
     char*       icode_begin()       { return compacted+9; }
     const char* icode_begin() const { return compacted+9; }
@@ -882,8 +886,7 @@ namespace iotbx { namespace pdb {
       // 13 - 16  Atom          name     Atom name.
       // 17       Character     altLoc   Alternate location indicator.
       // 18 - 20  Residue name  resName  Residue name.
-      // 21       Blank
-      // 22       Character     chainID  Chain identifier.
+      // 21 - 22                chainID  Chain identifier.
       // 23 - 26  Integer       resSeq   Residue sequence number.
       // 27       AChar         iCode    Code for insertion of residues.
       // 73 - 76  LString(4)    segID    Segment identifier, left-justified.
@@ -892,8 +895,7 @@ namespace iotbx { namespace pdb {
       extract(line_info,12,4,name_begin());
       extract(line_info,16,1,altloc_begin());
       extract(line_info,17,3,resname_begin());
-      compacted[7] = ' '; // column 21
-      extract(line_info,21,1,chain_begin());
+      extract(line_info,20,2,chain_begin());
       extract(line_info,26,1,icode_begin());
       extract(line_info,72,4,segid_begin());
     }
@@ -947,7 +949,7 @@ namespace iotbx { namespace pdb {
       SCITBX_ASSERT(resseq >= min_resseq);
       SCITBX_ASSERT(resseq <= max_resseq);
       char buf[128];
-      std::sprintf(buf, "\"%4.4s%1.1s%3.3s %1.1s%4d%1.1s\"",
+      std::sprintf(buf, "\"%4.4s%1.1s%3.3s%2.2s%4d%1.1s\"",
         name_begin(), altloc_begin(), resname_begin(), chain_begin(),
         resseq, icode_begin());
       std::string result;
@@ -970,8 +972,8 @@ namespace iotbx { namespace pdb {
       else if (!are_equal(line_info,17,3,resname_begin())) {
         line_info.set_error(18, "resname mismatch.");
       }
-      else if (!are_equal(line_info,21,1,chain_begin())) {
-        line_info.set_error(22, "chain mismatch.");
+      else if (!are_equal(line_info,20,2,chain_begin())) {
+        line_info.set_error(21, "chain mismatch.");
       }
       else if (resseq != field_as_int(line_info,22,26)) {
         line_info.set_error(23, "resseq mismatch.");
@@ -979,8 +981,9 @@ namespace iotbx { namespace pdb {
       else if (!are_equal(line_info,26,1,icode_begin())) {
         line_info.set_error(27, "icode mismatch.");
       }
-      else if (*chain_begin() == ' '
-            && !are_equal(line_info,72,4,segid_begin())) {
+      else if (   chain_begin()[0] == ' '
+               && chain_begin()[1] == ' '
+               && !are_equal(line_info,72,4,segid_begin())) {
         line_info.set_error(74, "segid mismatch.");
       }
     }
@@ -1280,7 +1283,7 @@ namespace iotbx { namespace pdb {
       std::vector<unsigned>* current_chain_indices;
       std::vector<unsigned> current_chain_indices_ignoring_segid;
       unsigned n_atoms;
-      char previous_chain_and_segid[1+4];
+      char previous_chain_and_segid[2+4];
       std::vector<str4> unique_segids;
 
       void
@@ -1319,17 +1322,20 @@ namespace iotbx { namespace pdb {
           current_chain_indices = &chain_indices.back();
         }
         char* p = previous_chain_and_segid;
-        bool same_chain = (*p == *current_labels.chain_begin());
+        bool same_chain = (   p[0] == current_labels.chain_begin()[0]
+                           && p[1] == current_labels.chain_begin()[1]);
         if (*p != '\n') {
           // test if previous labels and current labels belong to
           // different chains:
           //   - change in chainid
           //   - if common chainid is blank: change in segid
-          if (*p != *current_labels.chain_begin()) {
+          if (   p[0] != current_labels.chain_begin()[0]
+              || p[1] != current_labels.chain_begin()[1]) {
             current_chain_indices->push_back(n_atoms);
             current_chain_indices_ignoring_segid.push_back(n_atoms);
           }
-          else if (*p == ' ') {
+          else if (p[0] == ' ' && p[1] == ' ') {
+            ++p;
             const char* c = current_labels.segid_begin();
             if (   (*++p != *  c)
                 || (*++p != *++c)
@@ -1341,7 +1347,8 @@ namespace iotbx { namespace pdb {
           }
         }
         // copy chain and segid
-        *p++ = *current_labels.chain_begin();
+        *p++ = current_labels.chain_begin()[0];
+        *p++ = current_labels.chain_begin()[1];
         const char* c = current_labels.segid_begin();
         *p++ = *c++;
         *p++ = *c++;
@@ -1747,7 +1754,7 @@ namespace iotbx { namespace pdb {
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(name, str4)
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(altloc, str1)
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(resname, str3)
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(chain, str1)
+      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(chain, str2)
 
       int_sel_cache_t const&
       resseq_selection_cache() const
