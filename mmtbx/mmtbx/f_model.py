@@ -1956,18 +1956,18 @@ class info(object):
         i_bin        = i_bin,
         d_range      = d_range,
         completeness = completeness,
-        alpha_work   = flex.mean(alpha_w.select(sel_w).data()),
-        beta_work    = flex.mean(beta_w.select(sel_w).data()),
+        alpha_work   = flex.mean_default(alpha_w.select(sel_w).data(),None),
+        beta_work    = flex.mean_default(beta_w.select(sel_w).data(),None),
         r_work       = bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data()),
         r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data()),
         target_work  = sel_tpr_w,
         target_free  = sel_tpr_t,
         n_work       = sel_fo_w.data().size(),
         n_free       = sel_fo_t.data().size(),
-        mean_f_obs   = flex.mean(sel_fo_all.data()),
-        fom_work     = flex.mean(fom.select(sel_w)),
-        pher_work    = flex.mean(pher_w.select(sel_w)),
-        pher_free    = flex.mean(pher_t.select(sel_t)))
+        mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
+        fom_work     = flex.mean_default(fom.select(sel_w),None),
+        pher_work    = flex.mean_default(pher_w.select(sel_w),None),
+        pher_free    = flex.mean_default(pher_t.select(sel_t),None))
       result.append(bin)
     return result
 
