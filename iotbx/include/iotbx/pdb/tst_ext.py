@@ -141,8 +141,8 @@ def exercise_atom():
   assert ac.is_alternative() == a.is_alternative()
   assert a.tmp == 0
   #
-  r1 = pdb.residue(name="abc", seq=123, icode="mark")
-  r2 = pdb.residue(name="efg", seq=234, icode="bare")
+  r1 = pdb.residue(name="abc", seq=123, icode="m")
+  r2 = pdb.residue(name="efg", seq=234, icode="b")
   assert r1.memory_id() != r2.memory_id()
   a = pdb.atom()
   a.pre_allocate_parents(number_of_additional_parents=2)
@@ -176,18 +176,18 @@ def exercise_residue():
   assert r.icode == ""
   assert r.id() == "      0"
   assert r.link_to_previous
-  r = pdb.residue(name="xyz", seq=123, icode="ijkl", link_to_previous=False)
+  r = pdb.residue(name="xyz", seq=123, icode="i", link_to_previous=False)
   assert r.name == "xyz"
   assert r.seq == 123
-  assert r.icode == "ijkl"
-  assert r.id() == "xyz 123ijkl"
+  assert r.icode == "i"
+  assert r.id() == "xyz 123i"
   assert not r.link_to_previous
   r.link_to_previous = True
   assert r.link_to_previous
   r.name = "foo"
   r.seq = -3
-  r.icode = "bar"
-  assert r.id() == "foo  -3bar"
+  r.icode = "b"
+  assert r.id() == "foo  -3b"
   #
   f = pdb.conformer(id="a")
   r.add_atom(new_atom=pdb.atom().set_name(new_name="n"))
