@@ -856,7 +856,11 @@ namespace iotbx { namespace pdb {
 
     char*       chain_begin()       { return compacted+7; }
     const char* chain_begin() const { return compacted+7; }
-    str2        chain_small() const { return str2(chain_begin()); }
+    str2        chain_small() const
+    {
+      if (chain_begin()[0] == ' ') return str2(chain_begin()[1]);
+      return str2(chain_begin());
+    }
     std::string chain()       const
     {
       if (chain_begin()[0] == ' ') return std::string(chain_begin()+1,1);
@@ -981,8 +985,7 @@ namespace iotbx { namespace pdb {
       else if (!are_equal(line_info,26,1,icode_begin())) {
         line_info.set_error(27, "icode mismatch.");
       }
-      else if (   chain_begin()[0] == ' '
-               && chain_begin()[1] == ' '
+      else if (   chain_begin()[1] == ' '
                && !are_equal(line_info,72,4,segid_begin())) {
         line_info.set_error(74, "segid mismatch.");
       }
@@ -1334,7 +1337,7 @@ namespace iotbx { namespace pdb {
             current_chain_indices->push_back(n_atoms);
             current_chain_indices_ignoring_segid.push_back(n_atoms);
           }
-          else if (p[0] == ' ' && p[1] == ' ') {
+          else if (p[1] == ' ') {
             ++p;
             const char* c = current_labels.segid_begin();
             if (   (*++p != *  c)

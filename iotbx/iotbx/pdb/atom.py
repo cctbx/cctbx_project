@@ -61,7 +61,7 @@ class labels(object):
 
   def is_in_same_chain(self, other):
     if (self.chainID != other.chainID): return False
-    if (self.chainID == " " and self.segID != other.segID): return False
+    if (self.chainID.endswith(" ") and self.segID != other.segID): return False
     return True
 
   def is_label_equivalent(self, other):
