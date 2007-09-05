@@ -31,34 +31,32 @@ def exercise(f, err, nx, ny, nz, iso_level, verbose):
   assert not bad_vertices, bad_vertices_err(bad_vertices)
 
   # consistency check on the triangulation
+  # Note: a comprehensive check of the graph being triangulated is
+  # not attempted
   degenerates = []
   for v1, v2, v3 in s.triangles:
     assert v1 != v2 and v2 != v3 and v3 != v1
     for a,b in ((v1,v2), (v2,v3), (v3,v1)):
       if s.vertices[a] == s.vertices[b]: degenerates.append((a,b))
-  if degenerates:
-    if (verbose):
+  if verbose:
+    if degenerates:
       print "Degenerate edges for the isosurface of %s:" % f
       print degenerates
-    assert f is elliptic
-    assert degenerates == [(303, 418), (418, 407), (407, 303), (303, 407),
-      (418, 303), (407, 418), (654, 830), (830, 822), (822, 654), (654, 822),
-      (830, 654), (715, 909), (909, 890), (890, 715), (715, 890), (909, 715),
-      (822, 830), (890, 909), (1898, 2185), (2185, 2177), (2177, 1898),
-      (1898, 2177), (2185, 1898), (1966, 2278), (2278, 2261), (2261, 1966),
-      (1966, 2261), (2278, 1966), (2177, 2185), (2261, 2278)]
-  else:
-    assert f is not elliptic
 
   vertices = {}
   edges = {}
   for v1,v2,v3 in s.triangles:
+    print v1,v2,v3
     vertices[v1] = vertices[v2] = vertices[v3] = 1
-    for e in ((v1,v2), (v2,v3), (v3,v1)):
+    for a,b in ((v1,v2), (v2,v3), (v3,v1)):
+      if a < b: e = (a,b)
+      else: e = (b,a)
       edges[e] = edges.setdefault(e,0) + 1
   assert len(vertices) == len(s.vertices)
   for e,p in edges.iteritems():
-    assert p == 1
+    assert p in (1,2)
+    if not is_near_boundary(s.vertices[e[0]], s.vertices[e[1]], (nx,ny,nz)):
+      assert p == 2
 
   # consistency check on the normals
   assert len(s.normals) == len(s.vertices)
@@ -68,6 +66,13 @@ def exercise(f, err, nx, ny, nz, iso_level, verbose):
     outward = v + 0.01*n
     inward  = v - 0.01*n
     assert f(*outward) > iso_level > f(*inward)
+
+def is_near_boundary(v1,v2,n):
+  for c1, c2, m in zip(v1, v2, n):
+    if c1 != c2: continue
+    if (   approx_equal(c1, 0)   or approx_equal(c1, 1)
+        or approx_equal(c1, 1/m) or approx_equal(c1, 1 - 1/m) ): return True
+  return False
 
 def bad_vertices_err(seq):
   msg = ["Vertices with value not close enough to threshold %f:" % iso_level]
