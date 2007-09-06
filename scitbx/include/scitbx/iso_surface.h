@@ -1,5 +1,5 @@
-#ifndef CCTBX_MAPTBX_ISO_SURFACE_H
-#define CCTBX_MAPTBX_ISO_SURFACE_H
+#ifndef SCITBX_ISO_SURFACE_H
+#define SCITBX_ISO_SURFACE_H
 
 // Modified by Luc J. Bourhis
 //
@@ -21,7 +21,7 @@
 
 namespace scitbx { namespace iso_surface {
 
-/// The iso surface of a scalar field
+/// Triangulation of an isosurface of a scalar field
 template <class CoordinatesType, class ValueType>
 class triangulation
 {
@@ -36,8 +36,8 @@ public:
   typedef scitbx::vec3<CoordinatesType> vector_3d;
   typedef af::tiny<index_value_type,3> triangle;
 
-  /** Construct the isosurface from a map of the scalar field, the iso level
-  and the map cell size.
+  /** Construct the triangulation from a map of the scalar field, the iso level
+  and the map grid size.
   */
   triangulation(map_const_ref_type map,
               value_type iso_level,
@@ -54,10 +54,16 @@ public:
     init();
   }
 
+  /// The vertices of the triangulation
   af::shared<point_3d> vertices() { return vertices_; }
 
+  /// The triangles
+  /** Each triangle is a triplet of indices into vertices() */
   af::shared<triangle> triangles() { return triangles_; }
 
+  /// The normals to the isosurface at each vertex
+  /** Each normal is the mean of the area vectors of those triangles which
+  share the vertex that normal emanates from. */
   af::shared<vector_3d> normals() { return normals_; }
 
 protected:
@@ -763,4 +769,4 @@ triangulation<CoordinatesType, ValueType>::tri_table[256][16] = {
 
 }} // end namespace cctbx::maptbx
 
-#endif // CCTBX_MAPTBX_ISO_SURFACE_H
+#endif // SCITBX_ISO_SURFACE_H
