@@ -12,6 +12,13 @@
 namespace scitbx { namespace sparse {
 
 /// A sparse matrix, represented by a sequence of sparse columns
+/** All linear operations are therefore performed using column version of the
+relevant algorithms, taking great care of never touching structurally zero
+elements.
+
+Also, those columns are kept unsorted (c.f. class sparse::vector) and the
+precondition about duplicate applies here too.
+*/
 template<class T>
 class matrix
 {
@@ -105,8 +112,6 @@ class matrix
     }
 
     /// Transpose of this
-    /** duplicates behaviour?
-    */
     matrix transpose() const {
       matrix result(n_cols(), n_rows());
       for (column_index j=0; j < n_cols(); j++) {
@@ -118,7 +123,7 @@ class matrix
     }
 
     /// Sort and remove duplicate indices in all column
-    /** C.f. the member function of same name in class vector */
+    /** C.f. the member function of same name in class scitbx::sparse::vector */
     void sort_indices() {
       for (column_index j=0; j < n_cols(); j++) col(j).sort_indices();
     }
@@ -136,7 +141,9 @@ class matrix
     vector<T> operator*(vector<T> const& v) const {
       SCITBX_ASSERT(n_cols() == v.size())
                    ( n_cols() )( v.size() );
+      // a dense vector to hold the result: structural zeroes won't be touched
       std::vector<value_type> w(n_rows(), 0);
+      // figure out sparsity of the result
       std::vector<row_index> nz;
       for (const_row_iterator pv=v.begin(); pv != v.end(); pv++) {
         column_index j = pv.index();
@@ -148,9 +155,10 @@ class matrix
           w[i] += m_ij * v_j;
         }
       }
+      // actual product
       vector<T> result(w.size());
       for (const_row_idx_iter p = nz.begin(); p != nz.end(); p++) {
-        if(w[*p] != 0) result[*p] = w[*p];
+        result[*p] = w[*p];
       }
       return result;
     }
