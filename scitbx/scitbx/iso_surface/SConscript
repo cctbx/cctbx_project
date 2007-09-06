@@ -1,0 +1,6 @@
+Import("env_scitbx_boost_python_ext")
+env_scitbx_boost_python_ext.SharedLibrary(
+  target="#lib/scitbx_iso_surface_ext",
+  source=[
+    "iso_surface_ext.cpp",
+])

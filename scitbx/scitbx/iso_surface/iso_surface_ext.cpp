@@ -1,15 +1,16 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
+#include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 
-#include <cctbx/maptbx/iso_surface.h>
+#include <scitbx/iso_surface.h>
 
-namespace cctbx { namespace maptbx { namespace boost_python {
+namespace scitbx { namespace iso_surface { namespace boost_python {
 
   template <class CoordinatesType, class ValueType>
-  struct iso_surface_wrapper
+  struct triangulation_wrapper
   {
-    typedef iso_surface<CoordinatesType, ValueType> wt;
+    typedef triangulation<CoordinatesType, ValueType> wt;
 
     static void wrap(const char *name) {
       using namespace boost::python;
@@ -26,9 +27,14 @@ namespace cctbx { namespace maptbx { namespace boost_python {
 
   };
 
-  void wrap_iso_surface() {
-    iso_surface_wrapper<double, double>::wrap("iso_surface");
-
+  void init_module() {
+    triangulation_wrapper<double, double>::wrap("triangulation");
   }
 
 }}}
+
+BOOST_PYTHON_MODULE(scitbx_iso_surface_ext)
+{
+  scitbx::iso_surface::boost_python::init_module();
+}
+

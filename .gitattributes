@@ -10,7 +10,6 @@ cbflib_adaptbx/include/cbflib_adaptbx/cbf_adaptor.h -text
 cbflib_adaptbx/include/cbflib_adaptbx/mar_adaptor.h -text
 cbflib_adaptbx/libtbx_config -text
 cctbx/cctbx/command_line/version.py -text
-cctbx/cctbx/maptbx/tst_iso_surface.py -text
 cctbx/cctbx/regression/random_generator_state.pickle -text
 cctbx/cctbx/regression/structure_ideal.pickle -text
 cctbx/cctbx/regression/structure_start.pickle -text
@@ -21,8 +20,6 @@ cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
 cctbx/include/cctbx/maptbx/fft.h -text
-cctbx/include/cctbx/maptbx/iso_surface.h -text
-cctbx/maptbx/boost_python/iso_surface.cpp -text
 gltbx/command_line/pythonw.sh -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names.h -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names_bpl.cpp -text
@@ -62,6 +59,7 @@ scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text
 scitbx/include/scitbx/error_utils.h -text
+scitbx/include/scitbx/iso_surface.h -text
 scitbx/include/scitbx/matrix/delta_tensors.h -text
 scitbx/include/scitbx/sparse/dfs.h -text
 scitbx/include/scitbx/sparse/io.h -text
@@ -73,6 +71,10 @@ scitbx/scitbx/command_line/generate_error_h.py -text
 scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
 scitbx/scitbx/graph/tst_rigidity.py -text
+scitbx/scitbx/iso_surface/SConscript -text
+scitbx/scitbx/iso_surface/__init__.py -text
+scitbx/scitbx/iso_surface/iso_surface_ext.cpp -text
+scitbx/scitbx/iso_surface/tst_iso_surface.py -text
 scitbx/scitbx/sparse/__init__.py -text
 scitbx/scitbx/sparse/boost_python/SConscript -text
 scitbx/scitbx/sparse/boost_python/matrix.cpp -text
