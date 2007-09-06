@@ -74,7 +74,7 @@ scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
 scitbx/scitbx/graph/tst_rigidity.py -text
 scitbx/scitbx/sparse/__init__.py -text
-scitbx/scitbx/sparse/boost_python/Sconscript -text
+scitbx/scitbx/sparse/boost_python/SConscript -text
 scitbx/scitbx/sparse/boost_python/matrix.cpp -text
 scitbx/scitbx/sparse/boost_python/sparse_ext.cpp -text
 scitbx/scitbx/sparse/boost_python/vector.cpp -text
