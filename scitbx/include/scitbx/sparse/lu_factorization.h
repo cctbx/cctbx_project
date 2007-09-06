@@ -38,7 +38,8 @@ class gilbert_peierls_lu_factorization
     typedef typename Matrix::column_index column_index;
     typedef typename Matrix::row_iterator row_iterator;
 
-    /// Construct the LU factorisation of m, which is not modified
+    /// Construct the LU factorisation of m
+    /** The columns of m may end up being permuted */
     gilbert_peierls_lu_factorization(const Matrix& m);
 
     /// The matrix this has been constructed with
@@ -102,7 +103,7 @@ class gilbert_peierls_lu_factorization
     // The visitor for the computation of the sparsity of w
     struct w_sparsity;
 
-    /* This starts as  w = 0
+    /* This starts as  w = 0 at each iteration over the columns
     (this is a dense vector but we will never touch those elements we can
     predict to be zero)
     then w contains the nonzero of A(:,j)
@@ -118,8 +119,9 @@ class gilbert_peierls_lu_factorization
     // Copy the non-zero elements of A(:,j) into w = 0
     void initialize_w(column_index j);
 
-    // Find the pivot
-    void pivot(column_index j);
+    // Pivoting
+    row_index find_pivot(column_index j);
+    void swap_rows(row_index i, row_index j);
 
     // Write w into U(:,j) and L(:,j)
     void copy_z_into_U(column_index j);
@@ -145,7 +147,10 @@ gilbert_peierls_lu_factorization(const Matrix& m)
     a.col(j).fill_dense_vector_with_permutation(w, p);
     compute_z_and_v_sparsity(j);
     compute_z_and_v(j);
-    if (j < L.n_rows() - 1) pivot(j);
+    if (j < L.n_rows() - 1) {
+      row_index mu = find_pivot(j);
+      swap_rows(mu, j);
+    }
     copy_z_into_U(j);
     if (j < U.n_rows()) U(j,j) = w[j];
     if (j < L.n_rows()) copy_v_into_L(j);
@@ -186,7 +191,7 @@ struct gilbert_peierls_lu_factorization<Matrix>::w_sparsity
     if (k >= j) v_nz.push_back(k);
   }
 
-  // Only L(0:j, 0:j), so don't start a DFS from a z(k) with k >= j
+  /* Only L(0:j, 0:j), so don't start a DFS from a z(k) with k >= j */
   bool dfs_shall_cut_tree_rooted_at(row_index k) {
     return k >= j;
   }
@@ -199,7 +204,7 @@ struct gilbert_peierls_lu_factorization<Matrix>::w_sparsity
   }
 
   /* A nonzero z(k) results from a nonzero z(l) through a nonzero L(k,l)
-  for k < j and k != j.
+  for k < j and k != l.
   Hence don't continue the DFS further is k >= j or k == l.
   */
   bool dfs_shall_cut_tree_edge(column_index l, row_index k) {
@@ -209,7 +214,7 @@ struct gilbert_peierls_lu_factorization<Matrix>::w_sparsity
   /* All descendant of l have been found: thus z(k) does not depend on
   the z(p) for the indices p already in z_nz (but those z(p) depends on z(k))
   Hence a reverse iteration will give the indices in a topological order
-  which makes the forward substitution work.
+  which makes the forward substitution to work.
   */
   void dfs_finished_vertex(row_index k) {
     z_nz.push_back(k);
@@ -260,8 +265,9 @@ compute_z_and_v(column_index j)
 
 template<class Matrix>
 inline
-void gilbert_peierls_lu_factorization<Matrix>::
-pivot(column_index j)
+typename gilbert_peierls_lu_factorization<Matrix>::row_index
+gilbert_peierls_lu_factorization<Matrix>::
+find_pivot(column_index j)
 {
   // Find the largest-magnitude element v(mu) of v(j:n)
   row_index mu = j;
@@ -274,14 +280,21 @@ pivot(column_index j)
       largest = magnitude;
     }
   }
-  // p := (j,mu) o p
-  p[ p_inv[mu] ] = j;
-  p[ p_inv[j]  ] = mu;
+  return mu;
+}
 
-  // p^-1 := p^-1 o (j,mu)
-  std::swap(p_inv[mu], p_inv[j]);
+template<class Matrix>
+inline
+void gilbert_peierls_lu_factorization<Matrix>::
+swap_rows(row_index i1, row_index i2) {
+  // p := (i1,i2) o p
+  p[ p_inv[i1] ]  = i2;
+  p[ p_inv[i2]  ] = i1;
 
-  std::swap(w[j], w[mu]);
+  // p^-1 := p^-1 o (i1,i2)
+  std::swap(p_inv[i1], p_inv[i2]);
+
+  std::swap(w[i1], w[i2]);
 }
 
 template<class Matrix>

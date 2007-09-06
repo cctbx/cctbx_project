@@ -21,13 +21,14 @@ corresponding to that index i.
 
 (2) After an assignment v[i] = x, even if x is zero, a pair (i,x) is stored and
 v[i] == x
+
 In sparse algorithm, v[i] == 0 in case (1) corresponds to structural zeroes:
 those elements are never touched by the algorithm; whereas v[i] == 0 in case (2)
 results from the assignement to v[i] of an expression which happens to be zero:
 that's a coincidential cancellation.
 
 (3) This sequence of index-value pairs is not kept sorted.
-Most operation do however require that there is no duplicate index but since
+Most operations do however require that there is no duplicate index but since
 this is too expensive to enforce in general, we leave it to user code
 - either to  enforce it by construction,
 - or to call the member function "sort_indices" when appropriate.
@@ -258,7 +259,7 @@ class vector
 
     /// A copy of this, copying the elements.
     /** Since the copy constructor makes a shallow copy, thanks to
-    the shallow copy semantic of af::shared, this is ver necessary a
+    the shallow copy semantic of af::shared, this is very necessary a
     member function. */
     vector deep_copy() const {
       vector result(size());
@@ -280,7 +281,8 @@ class vector
     }
 
     /// Remove duplicate indices and sort records by increasing indices.
-    /** The last record is kept in case of duplicates. */
+    /** The record which was input last is kept in case of duplicates.
+    Return this object, for convenient chaining of operations. */
     vector const& sort_indices() const {
       container_type &elts = const_cast<container_type&>(elements);
       std::stable_sort(elts.begin(), elts.end(), indexes_greater_than());
