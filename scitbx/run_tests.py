@@ -47,6 +47,7 @@ def run():
   "$D/scitbx/graph/rigidity.py",
   "$D/scitbx/graph/tst_rigidity.py",
   "$D/scitbx/sparse/tests/tst_sparse.py",
+  "$D/scitbx/iso_surface/tst_iso_surface.py",
   )
 
   build_dir = libtbx.env.under_build("scitbx")

@@ -13,24 +13,22 @@
 
 #include <cmath>
 #include <map>
-#include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
+#include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/shared.h>
 
-namespace cctbx { namespace maptbx {
-
-namespace af = scitbx::af;
+namespace scitbx { namespace iso_surface {
 
 /// The iso surface of a scalar field
 template <class CoordinatesType, class ValueType>
-class iso_surface
+class triangulation
 {
 public:
   typedef CoordinatesType coordinates_type;
   typedef ValueType value_type;
-  typedef c_grid_padded_p1<3> grid_type;
+  typedef af::c_grid_padded<3> grid_type;
   typedef typename grid_type::index_value_type index_value_type;
   typedef af::const_ref<value_type, grid_type> map_const_ref_type;
 
@@ -41,7 +39,7 @@ public:
   /** Construct the isosurface from a map of the scalar field, the iso level
   and the map cell size.
   */
-        iso_surface(map_const_ref_type map,
+  triangulation(map_const_ref_type map,
               value_type iso_level,
               scitbx::vec3<coordinates_type> const& grid_size)
   : map_(map),
@@ -144,7 +142,7 @@ protected:
 
 template <class CoordinatesType, class ValueType>
 void
-iso_surface<CoordinatesType, ValueType>::
+triangulation<CoordinatesType, ValueType>::
 init()
 {
   // Generate isosurface.
@@ -251,8 +249,8 @@ init()
 }
 
 template <class CoordinatesType, class ValueType>
-typename iso_surface<CoordinatesType, ValueType>::index_value_type
-iso_surface<CoordinatesType, ValueType>::
+typename triangulation<CoordinatesType, ValueType>::index_value_type
+triangulation<CoordinatesType, ValueType>::
 get_edge_id(index_value_type n_x, index_value_type n_y, index_value_type n_z,
             index_value_type n_edge_no)
 {
@@ -288,8 +286,8 @@ get_edge_id(index_value_type n_x, index_value_type n_y, index_value_type n_z,
 }
 
 template <class CoordinatesType, class ValueType>
-typename iso_surface<CoordinatesType, ValueType>::point_3d_id
-iso_surface<CoordinatesType, ValueType>::
+typename triangulation<CoordinatesType, ValueType>::point_3d_id
+triangulation<CoordinatesType, ValueType>::
 calculate_intersection(index_value_type n_x,
                        index_value_type n_y,
                        index_value_type n_z,
@@ -378,8 +376,8 @@ calculate_intersection(index_value_type n_x,
 }
 
 template <class CoordinatesType, class ValueType>
-typename iso_surface<CoordinatesType, ValueType>::point_3d_id
-iso_surface<CoordinatesType, ValueType>::
+typename triangulation<CoordinatesType, ValueType>::point_3d_id
+triangulation<CoordinatesType, ValueType>::
 interpolate(CoordinatesType x1, CoordinatesType y1, CoordinatesType z1,
             CoordinatesType x2, CoordinatesType y2, CoordinatesType z2,
             value_type val1, value_type val2)
@@ -397,7 +395,7 @@ interpolate(CoordinatesType x1, CoordinatesType y1, CoordinatesType z1,
 
 template <class CoordinatesType, class ValueType>
 void
-iso_surface<CoordinatesType, ValueType>::
+triangulation<CoordinatesType, ValueType>::
 rename_vertices_and_triangles()
 {
 
@@ -435,7 +433,7 @@ rename_vertices_and_triangles()
 
 template <class CoordinatesType, class ValueType>
 void
-iso_surface<CoordinatesType, ValueType>::
+triangulation<CoordinatesType, ValueType>::
 calculate__normals()
 {
   normals_ = af::shared<vector_3d>(vertices_.size());
@@ -465,8 +463,8 @@ calculate__normals()
 }
 
 template <class CoordinatesType, class ValueType>
-const typename iso_surface<CoordinatesType, ValueType>::index_value_type
-iso_surface<CoordinatesType, ValueType>::edge_table[256] = {
+const typename triangulation<CoordinatesType, ValueType>::index_value_type
+triangulation<CoordinatesType, ValueType>::edge_table[256] = {
         0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
         0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
         0x190, 0x99 , 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -502,8 +500,8 @@ iso_surface<CoordinatesType, ValueType>::edge_table[256] = {
 };
 
 template <class CoordinatesType, class ValueType>
-const typename iso_surface<CoordinatesType, ValueType>::index_value_type
-iso_surface<CoordinatesType, ValueType>::tri_table[256][16] = {
+const typename triangulation<CoordinatesType, ValueType>::index_value_type
+triangulation<CoordinatesType, ValueType>::tri_table[256][16] = {
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},

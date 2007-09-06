@@ -7,6 +7,7 @@
 #include <vector>
 #include <set>
 #include <scitbx/mat3.h>
+#include <scitbx/array_family/accessors/c_grid_padded.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 namespace {
@@ -39,8 +40,9 @@ namespace {
           arg_("arrays"), arg_("selection")))
     ;
     shared_wrapper<mat3<int> >::wrap("mat3_int");
-    shared_wrapper<tiny<int,3> >::wrap("int_triplet_array");
-      // used by cctbx.maptbx.iso_surface
+    shared_wrapper<tiny<c_grid_padded<3>::index_value_type, 3> >
+      ::wrap("array_of_triplets_of_c_grid_padded_indices");
+      // used by scitbx.iso_surface
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>

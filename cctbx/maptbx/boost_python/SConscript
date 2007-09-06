@@ -14,5 +14,4 @@ env.SharedLibrary(target="#lib/cctbx_maptbx_ext", source=[
   "mapper.cpp",
   "basic_map.cpp",
   "real_space_refinement.cpp",
-  "iso_surface.cpp",
 ])

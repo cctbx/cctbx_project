@@ -1,6 +1,6 @@
 from __future__ import division
 from scitbx.array_family import flex
-from cctbx.maptbx import iso_surface
+from scitbx import iso_surface
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 from math import sin, cos
@@ -17,8 +17,8 @@ def exercise(f, err, nx, ny, nz, iso_level, verbose):
     map[p] = f(p[0]/nx, p[1]/ny, p[2]/nz)
     loop.incr()
 
-  # iso-surface of the map
-  s = iso_surface(map, iso_level, (dx, dy, dz))
+  # triangulation of the iso-surface of the map
+  s = iso_surface.triangulation(map, iso_level, (dx, dy, dz))
 
   # the value of f on the vertices v shall not differ from iso_level by more
   # than ||1/2 f''(v).h|| where h=(dx,dy,dz)
