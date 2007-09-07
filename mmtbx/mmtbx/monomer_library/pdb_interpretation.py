@@ -252,7 +252,8 @@ class type_symbol_registry_base(object):
       prev_source_n_expected_atoms = self.source_n_expected_atoms[i_seq]
       assign = False
       raise_conflict = False
-      if (prev_symbol == ""):
+      if (prev_symbol == ""
+          or (self.type_label == "scattering") and prev_symbol in ["Q","X"]):
         assign = True
       elif (prev_symbol.upper() != symbol.upper()):
         if (self.strict_conflict_handling):
