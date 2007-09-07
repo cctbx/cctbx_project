@@ -7,7 +7,7 @@
 //
 // Original files: CIsoSurface.h and CIsoSurface.cpp
 // Last modified: 5/8/2000
-// Author: Raghavendra Chandrashekara (basesd on source code
+// Author: Raghavendra Chandrashekara (based on source code
 // provided by Paul Bourke and Cory Gene Bloyd)
 // Email: rc99@doc.ic.ac.uk, rchandrashekara@hotmail.com
 
