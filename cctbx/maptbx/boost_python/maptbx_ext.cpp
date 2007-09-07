@@ -23,7 +23,6 @@ namespace cctbx { namespace maptbx { namespace boost_python {
   void wrap_mappers();
   void wrap_basic_map();
   void wrap_real_space_refinement();
-  void wrap_iso_surface();
 
 namespace {
 
@@ -46,8 +45,6 @@ namespace {
     wrap_mappers();
     wrap_basic_map();
     wrap_real_space_refinement();
-    wrap_iso_surface();
-
 
     using namespace boost::python;
     typedef boost::python::arg arg_;
