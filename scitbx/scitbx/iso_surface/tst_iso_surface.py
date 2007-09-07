@@ -6,6 +6,7 @@ from libtbx.utils import format_cpu_times
 from math import sin, cos
 from scitbx import matrix
 import sys
+import time
 
 
 class triangulation_test_case(object):
@@ -31,7 +32,11 @@ class triangulation_test_case(object):
     f = self.func
 
     # triangulation of the iso-surface of the map
+    t0 = time.time()
     s = iso_surface.triangulation(self.map, iso_level, self.grid_cell)
+    t1 = time.time()
+    if verbose:
+      print "iso-surface triangulation per se: %f s" % (t1-t0)
 
     # the value of f on the vertices v shall not differ from iso_level by more
     # than ||1/2 f''(v).h|| where h=(dx,dy,dz)
