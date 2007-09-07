@@ -16,7 +16,7 @@ if (__builtins__.get("bool", None) is None):
     return False
   __builtins__["bool"] = bool
 
-if (__builtins__.get("enumerate", None) is None):
+if ("enumerate" not in __builtins__):
   def enumerate(iterable):
     """enumerate(iterable) -> iterator for index, value of iterable
 
@@ -31,7 +31,7 @@ if (__builtins__.get("enumerate", None) is None):
       i += 1
   __builtins__["enumerate"] = enumerate
 
-if (__builtins__.get("sum", None) is None):
+if ("sum" not in __builtins__):
   def sum(sequence, start=0):
     """sum(sequence, start=0) -> value
 
@@ -48,7 +48,7 @@ of parameter 'start'.  When the sequence is empty, returns start."""
     return result
   __builtins__["sum"] = sum
 
-if (__builtins__.get("sorted", None) is None):
+if ("sorted" not in __builtins__):
   def sorted(iterable, cmp=None, key=None, reverse=False):
     """\
 sorted(iterable, cmp=None, key=None, reverse=False) --> new sorted list"""
@@ -60,7 +60,7 @@ sorted(iterable, cmp=None, key=None, reverse=False) --> new sorted list"""
     return result
   __builtins__["sorted"] = sorted
 
-if "reversed" not in __builtins__:
+if ("reversed" not in __builtins__):
   def reversed(seq):
     """ Return a reverse iterator. seq must be an object which supports
     the sequence protocol (the __len__() method and the __getitem__() method
