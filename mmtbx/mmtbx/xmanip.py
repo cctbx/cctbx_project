@@ -619,7 +619,8 @@ def run(args, command_name="phenix.xmanip"):
               break
 
         if new_miller_arrays[first] is not None:
-          mtz_dataset = new_miller_arrays[first].as_mtz_dataset(
+          tmp = new_miller_arrays[first].map_to_asu()
+          mtz_dataset = tmp.as_mtz_dataset(
             column_root_label=output_label_root[first])
 
       if mtz_dataset is not None:
