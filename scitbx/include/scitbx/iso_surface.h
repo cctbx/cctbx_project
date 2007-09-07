@@ -702,7 +702,6 @@ void
 triangulation<CoordinatesType, ValueType>::
 rename_vertices_and_triangles()
 {
-
   // Rename vertices.
   index_value_type next_id = 0;
   for (typename id_to_point_3d_id::iterator iter = id_to_vertex.begin();
