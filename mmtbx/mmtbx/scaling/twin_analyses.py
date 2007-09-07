@@ -322,7 +322,7 @@ class detect_pseudo_translations(object):
       print >> out,"  The completeness is only %3.2f between %3.1f and %3.1f A."%(
         work_array.completeness(), low_limit, high_limit)
       print >> out,"  This might not be enough to obtain a good estimate"
-      print >> out,"  of the presence or absense of pseudo translational"
+      print >> out,"  of the presence or absence of pseudo translational"
       print >> out,"  symmetry."
     if work_array.indices().size()==0:
       raise Sorry("No low resolution reflections")
@@ -393,7 +393,7 @@ class detect_pseudo_translations(object):
       if len(self.suspected_peaks)==0:
 
         print >> out
-        print >> out, "No patterson vectors with a length larger then"
+        print >> out, "No Patterson vectors with a length larger than"
         print >> out, "%5.2f found. removing distance constraint"%(distance_cut)
         print >> out
         distance_cut = 1e-3
@@ -557,7 +557,7 @@ class detect_pseudo_translations(object):
     if out is None:
       out = sys.stdout
     print >> out
-    print >> out," Largest patterson peak with length larger then 15 Angstrom "
+    print >> out," Largest Patterson peak with length larger than 15 Angstrom "
     print >> out
     print >> out," Frac. coord.        :%8.3f %8.3f %8.3f" %(self.high_peak_xyz)
     print >> out," Distance to origin  :%8.3f" %(self.high_peak_distance)
@@ -569,10 +569,10 @@ class detect_pseudo_translations(object):
     print >> out,"     or larger is found in a Patterson function of a "
     print >> out,"     macro molecule that does not have any translational"
     print >> out,"     pseudo symmetry is equal to %10.3e "%(self.high_p_value)
-    print >> out,"     p_values smaller then 0.05 might indicate "
-    print >> out,"     weak translation pseudo symmetry, or the self vector of "
+    print >> out,"     p_values smaller than 0.05 might indicate "
+    print >> out,"     weak translational pseudo symmetry, or the self vector of "
     print >> out,"     a large anomalous scatterer such as Hg, whereas values "
-    print >> out,"     smaller then 1e-3 are a very strong indication for "
+    print >> out,"     smaller than 1e-3 are a very strong indication for "
     print >> out,"     the presence of translational pseudo symmetry."
     print >> out
 
@@ -580,7 +580,7 @@ class detect_pseudo_translations(object):
     if self.high_p_value <= self.p_value_cut:
 
       print >> out
-      print >> out, "The full list of patterson peaks is: "
+      print >> out, "The full list of Patterson peaks is: "
       print >> out
       print >> out, "  x      y      z            height   p-value(height)"
       for ii in range(len(self.suspected_peaks)):
@@ -966,7 +966,7 @@ class h_test(object):
 
     print >> out
     print >> out
-    print >> out,"Results of the H-test on a-centric data: "
+    print >> out,"Results of the H-test on acentric data: "
     print >> out
     print >> out," (Only %3.1f%% of the strongest twin pairs were used)"\
           %(self.fraction*100.0)
@@ -1305,7 +1305,7 @@ class correlation_analyses(object):
     self.cc = []
 
     print >> out, "Perfoming correlation analyses"
-    print >> out, "  The supplied calculated data is normalized and artificially twinned"
+    print >> out, "  The supplied calculated data are normalized and artificially twinned"
     print >> out, "  Subsequently a correlation with the observed data is computed."
     print >> out
 
@@ -1609,7 +1609,7 @@ class twin_results_interpretation(object):
         print >> self.twinning_verdict, \
           "The results of the L-test indicate that the intensity statistics"
         print >> self.twinning_verdict, \
-          "are significantly different then is expected from good to reasonable,"
+          "are significantly different than is expected from good to reasonable,"
         print >> self.twinning_verdict, \
           "untwinned data."
         if self.twin_results.n_twin_laws > 0:
@@ -1649,7 +1649,7 @@ class twin_results_interpretation(object):
         print >> self.twinning_verdict, \
            "The results of the L-test indicate that the intensity statistics"
         print >> self.twinning_verdict, \
-           "Show more centric character then is expected for acentric data."
+           "Show more centric character than is expected for acentric data."
         if self.twin_results.patterson_p_value <= self.patterson_p_cut:
           print >> self.twinning_verdict, \
             "This behavoir might be explained by the presence of the detected pseudo translation."
@@ -1813,10 +1813,10 @@ class twin_results_summary(object):
     print >> out, "  - <|L|>, <L^2>: %5.3f, %4.3f"%(self.l_mean,self.l_sq_mean)
     print >> out, "       Multivariate Z score L-test: %5.3f "%( self.maha_l )
     print >> out, "       The multivariate Z score is a quality measure of the given"
-    print >> out, "       spread in intensities. Good to reasonable data is expected"
+    print >> out, "       spread in intensities. Good to reasonable data are expected"
     print >> out, "       to have a Z score lower than 3.5. "
     print >> out, "       Large values can indicate twinning, but small values do not"
-    print >> out, "       neccesarily exclude it. "
+    print >> out, "       necessarily exclude it. "
     print >> out
     print >> out
     if len(self.twin_laws)>0:
@@ -1832,7 +1832,10 @@ class twin_results_summary(object):
       print >> out
       print >> out, "Patterson analyses"
       print >> out, "  - Largest peak height   : %5.3f"%(self.patterson_height)
-      print >> out, "   (correpsonding p value : %8.3e)"%(self.patterson_p_value)
+      if self.patterson_p_value <  0.001:
+        print >> out, "   (corresponding p value : %8.3e)"%(self.patterson_p_value)
+      else:
+        print >> out, "   (corresponding p value : %6.5f)"%(self.patterson_p_value)
       print >> out
     print >> out
     print >> out, self.verdict
@@ -2104,8 +2107,8 @@ class symmetry_issues(object):
     for sg in self.sg_possibilities:
       sg[0].show_summary(f=out, prefix= "   ")
       print >> out
-    print >> out, "Note that this analyses does not take into account the effects of twinning."
-    print >> out, "If the data is (allmost) perfectly twinned, the symmetry will appear to be"
+    print >> out, "Note that this analysis does not take into account the effects of twinning."
+    print >> out, "If the data are (almost) perfectly twinned, the symmetry will appear to be"
     print >> out, "higher than it actually is."
     print >> out
 
@@ -2543,12 +2546,12 @@ def twin_analyses_brief(miller_array,
                         verbose=0):
   """
   A very brief twin analyses and tries to answer the question whether or
-  not the data is twinned.
+  not the data are twinned.
   possible outputs and the meaning:
-  - False: data is not twinned
-  - True : data does not behave as expected. One possible explanantion
+  - False: data are not twinned
+  - True : data do not behave as expected. One possible explanantion
            is twinning
-  - None : data does not behave as expected, and might or might not be
+  - None : data do not behave as expected, and might or might not be
            due to twinning.
            Also gives none when something messes up.
   """
