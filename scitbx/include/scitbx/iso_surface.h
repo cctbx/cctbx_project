@@ -18,6 +18,7 @@
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/error.h>
 
 namespace scitbx { namespace iso_surface {
 
@@ -106,7 +107,7 @@ protected:
   index_value_type get_edge_id(index_value_type n_x,
                                index_value_type n_y,
                                index_value_type n_z,
-                               index_value_type n_edge_no);
+                               int n_edge_no);
 
   // Returns the vertex id.
   index_value_type get_vertex_id(index_value_type n_x,
@@ -142,8 +143,8 @@ protected:
   void calculate__normals();
 
   // Lookup tables used in the construction of the isosurface.
-  static const index_value_type edge_table[256];
-  static const index_value_type tri_table[256][16];
+  static const int edge_table[256];
+  static const int tri_table[256][16];
 };
 
 template <class CoordinatesType, class ValueType>
@@ -258,7 +259,7 @@ template <class CoordinatesType, class ValueType>
 typename triangulation<CoordinatesType, ValueType>::index_value_type
 triangulation<CoordinatesType, ValueType>::
 get_edge_id(index_value_type n_x, index_value_type n_y, index_value_type n_z,
-            index_value_type n_edge_no)
+            int n_edge_no)
 {
   switch (n_edge_no) {
   case 0:
@@ -286,8 +287,7 @@ get_edge_id(index_value_type n_x, index_value_type n_y, index_value_type n_z,
   case 11:
     return get_vertex_id(n_x + 1, n_y, n_z) + 2;
   default:
-    // Invalid edge no.
-    return -1;
+    throw SCITBX_ERROR("Internal Error: Invalid edge no.");
   }
 }
 
@@ -469,7 +469,7 @@ calculate__normals()
 }
 
 template <class CoordinatesType, class ValueType>
-const typename triangulation<CoordinatesType, ValueType>::index_value_type
+const int
 triangulation<CoordinatesType, ValueType>::edge_table[256] = {
         0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
         0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
@@ -506,7 +506,7 @@ triangulation<CoordinatesType, ValueType>::edge_table[256] = {
 };
 
 template <class CoordinatesType, class ValueType>
-const typename triangulation<CoordinatesType, ValueType>::index_value_type
+const int
 triangulation<CoordinatesType, ValueType>::tri_table[256][16] = {
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
