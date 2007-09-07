@@ -108,6 +108,7 @@ bond
   symmetry_operation = None
     .help = "The bond is between atom_1 and symmetry_operation * atom_2,"
             " with atom_1 and atom_2 given in fractional coordinates."
+            " Example: symmetry_operation = -x-1,-y,z"
     .type = str
   distance_ideal = None
     .type = float
