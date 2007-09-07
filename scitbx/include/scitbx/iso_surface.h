@@ -688,6 +688,7 @@ interpolate(CoordinatesType x1, CoordinatesType y1, CoordinatesType z1,
   point_3d_id interpolation;
   CoordinatesType mu;
 
+  interpolation.new_id = static_cast<index_value_type>(-1); // undefined
   mu = CoordinatesType((iso_level_ - val1))/(val2 - val1);
   interpolation.x = x1 + mu*(x2 - x1);
   interpolation.y = y1 + mu*(y2 - y1);
