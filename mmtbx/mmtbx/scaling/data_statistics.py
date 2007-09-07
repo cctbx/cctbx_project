@@ -136,7 +136,7 @@ class i_sigi_completeness_stats(object):
       print >> out, "  The completeness of data for which I/sig(I)>%3.2f, exceeds %3.0f%s for"%(
         self.isigi_cut, self.completeness_cut*100,"%")
       print >> out, "  for resolution ranges lower than %3.2fA."%(self.resolution_cut)
-      print >> out, "  The data is cut at this resolution for the potential twin tests "
+      print >> out, "  The data are cut at this resolution for the potential twin tests "
       print >> out, "  and intensity statistics."
     else:
       print >> out, "  The completeness of data for which I/sig(I)>%3.2f, exceeds %3.0f%s for"%(
@@ -288,10 +288,10 @@ class possible_outliers(object):
       print >> out, " p(wilson)  : 1-(1-exp[-|E|^2]) "
       print >> out, " p(extreme) : 1-(1-exp[-|E|^2])^(n_acentrics)"
       print >> out, " p(wilson) is the probability that an E-value of the specified"
-      print >> out, " value would be observed when it would selected at random from"
+      print >> out, " value would be observed if it were selected at random"
       print >> out, " the given data set."
       print >> out, " p(extreme) is the probability that the largest |E| value is "
-      print >> out, " larger or equal then the observed largest |E| value."
+      print >> out, " larger or equal than the observed largest |E| value."
       print >> out
       print >> out, " Both measures can be used for outlier detection. p(extreme)"
       print >> out, " takes into account the size of the dataset."
@@ -325,7 +325,7 @@ class possible_outliers(object):
       print >> out, " value would be observed when it would selected at random from"
       print >> out, " the given data set."
       print >> out, " p(extreme) is the probability that the largest |E| value is "
-      print >> out, " larger or equal then the observed largest |E| value."
+      print >> out, " larger or equal than the observed largest |E| value."
       print >> out
       print >> out, " Both measures can be used for outlier detection. p(extreme)"
       print >> out, " takes into account the size of the dataset."
@@ -457,7 +457,7 @@ class ice_ring_checker(object):
     print >> out
     print >> out, " Abnormalities in mean intensity or completeness at"
     print >> out, " resolution ranges with a relative ice ring intensity"
-    print >> out, " lower then %3.2f will be ignored."%(intensity_level)
+    print >> out, " lower than %3.2f will be ignored."%(intensity_level)
     print >> out
     comments = False
     for ii in range(10):
@@ -468,7 +468,7 @@ class ice_ring_checker(object):
           self.warnings+=1
           print >> out, " At %3.2f A there is an lower occupancy"%(
           self.ice_d_spacings[ii])
-          print >> out, "  then expected from the rest of the data set."
+          print >> out, "  than expected from the rest of the data set."
           if (abs(self.abnormality_intensity[ii])>=level):
             print >> out, "  At the same resolution range, the expected "
             print >> out, "  mean intensity does not behave as it should. "
@@ -482,7 +482,7 @@ class ice_ring_checker(object):
           comments=True
           self.warnings+=1
           if (abs(self.abnormality_completeness[ii])<=level):
-            print >> out, " At %3.2f A the z-score is more then %3.2f times the standard" \
+            print >> out, " At %3.2f A the z-score is more than %3.2f times the standard" \
                %(self.ice_d_spacings[ii],level)
             print >> out, " deviation of all z-scores, while at the same time, "
             print >> out, " the occupancy does not go down."
@@ -550,7 +550,7 @@ class analyze_measurability(object):
       print >> out, "  The measurability provides an intuitive feeling"
       print >> out, "  of the quality of the data, as it is related to the "
       print >> out, "  number of reliable Bijvoet differences."
-      print >> out, "  When the data is processed properly and the standard "
+      print >> out, "  When the data are processed properly and the standard "
       print >> out, "  deviations have been estimated accurately, values larger"
       print >> out, "  than 0.05 are encouraging. "
       print >> out
@@ -884,7 +884,7 @@ class basic_intensity_statistics:
       print >> out, " in a certain region of reciprocal space might"
       print >> out, " confuse the data validation algorithm throughout"
       print >> out, " a large region of reciprocal space, even though"
-      print >> out, " the data is acceptable in those areas. "
+      print >> out, " the data are acceptable in those areas. "
       print >> out
       print >> out
 
