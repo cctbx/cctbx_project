@@ -59,3 +59,14 @@ sorted(iterable, cmp=None, key=None, reverse=False) --> new sorted list"""
     if (reverse): result.reverse()
     return result
   __builtins__["sorted"] = sorted
+
+if "reversed" not in __builtins__:
+  def reversed(seq):
+    """ Return a reverse iterator. seq must be an object which supports
+    the sequence protocol (the __len__() method and the __getitem__() method
+    with integer arguments starting at 0). New in version 2.4. """
+    i = len(seq)
+    while i > 0:
+      i -= 1
+      yield seq[i]
+  __builtins__["reversed"] = reversed
