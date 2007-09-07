@@ -1,6 +1,5 @@
 from __future__ import division
 from __future__ import generators
-from libtbx import forward_compatibility
 
 # This code is based on:
 #   http://lists.wxwidgets.org/archive/wxPython-users/msg11078.html
