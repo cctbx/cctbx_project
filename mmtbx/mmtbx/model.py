@@ -341,7 +341,7 @@ class manager(object):
     print >> out, next % (natoms_total, len(selections))
     print >> out, "| group: start point:                        end point:                       |"
     print >> out, "|               x      B  atom   residue <>        x      B  atom   residue   |"
-    next = "| %5d: %8.3f %6.2f %5s %4s %4d <> %8.3f %6.2f %5s %4s %4d   |"
+    next = "| %5d: %8.3f %6.2f %5s %4s %4s <> %8.3f %6.2f %5s %4s %4s   |"
     sites = self.xray_structure.sites_cart()
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
     n_atoms = 0

@@ -2,8 +2,9 @@ from iotbx import simple_parser
 from iotbx import wildcard
 from scitbx.array_family import flex
 from scitbx import stl
-from libtbx.phil import tokenizer
 import scitbx.stl.map
+from libtbx.phil import tokenizer
+from libtbx.str_utils import show_string
 import sys
 
 class labels(object):
@@ -46,13 +47,13 @@ class labels(object):
       self.resSeq, self.iCode, self.segID]])
 
   def residue_id(self):
-    return "%-3s%4d%1s" % (self.resName, self.resSeq, self.iCode)
+    return "%-3s%4.4s%1s" % (self.resName, self.resSeq, self.iCode)
 
   def pdb_format(self):
     result = ""
     if (self.MODELserial is not None and self.MODELserial != 0):
       result += "MODEL     %4d: " % self.MODELserial
-    result = '"%-4.4s%1.1s%-3.3s%2.2s%4d%1.1s"' % (
+    result = '"%-4.4s%1.1s%-3.3s%2.2s%4.4s%1.1s"' % (
       self.name, self.altLoc, self.resName,
       self.chainID, self.resSeq, self.iCode)
     if (self.segID is not None and len(self.segID.strip()) != 0):
@@ -237,7 +238,7 @@ class selection_cache(object):
     self.altLoc = stl.map.stl_string_stl_vector_unsigned()
     self.resName = stl.map.stl_string_stl_vector_unsigned()
     self.chainID = stl.map.stl_string_stl_vector_unsigned()
-    self.resSeq = stl.map.int_stl_vector_unsigned()
+    self.resSeq = stl.map.stl_string_stl_vector_unsigned()
     self.iCode = stl.map.stl_string_stl_vector_unsigned()
     self.segID = stl.map.stl_string_stl_vector_unsigned()
     self.MODELserial = stl.map.int_stl_vector_unsigned()
@@ -249,7 +250,7 @@ class selection_cache(object):
       self.altLoc.setdefault(atom_attributes.altLoc).append(i_seq)
       self.resName.setdefault(atom_attributes.resName).append(i_seq)
       self.chainID.setdefault(atom_attributes.chainID).append(i_seq)
-      self.resSeq.setdefault(atom_attributes.resSeq).append(i_seq)
+      self.resSeq.setdefault(atom_attributes.resSeq.strip()).append(i_seq)
       self.iCode.setdefault(atom_attributes.iCode).append(i_seq)
       self.segID.setdefault(atom_attributes.segID).append(i_seq)
       self.MODELserial.setdefault(atom_attributes.MODELserial).append(i_seq)
@@ -311,20 +312,51 @@ class selection_cache(object):
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_resSeq(self, i):
-    result = self.resSeq.get(i, None)
-    if (result is None): return []
-    return [result]
+  def get_resSeq(self, pattern):
+    return _get_map_string(
+      map=self.resSeq,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_resSeq_range(self, i, j):
-    if (i is None): i = min(self.resSeq.keys())
-    if (j is None): j = max(self.resSeq.keys())
-    if (i > j):
-      raise RuntimeError("resSeq range with first index > last index.")
-    result = []
-    for i in xrange(i,j+1):
-      iselection = self.resSeq.get(i, None)
-      if (iselection is not None): result.append(iselection)
+  def get_resSeq_range(self, start_pattern, stop_pattern):
+    def get_isel(pattern):
+      result = self.resSeq.get(pattern, None)
+      if (result is not None): return result
+      result = self.resSeq.get(pattern.strip(), None)
+      if (result is not None): return result
+      raise RuntimeError(
+        'Invalid residue range selection: %s does not select any residues.'
+          % show_string(pattern))
+    start_isel = get_isel(pattern=start_pattern)
+    stop_isel = get_isel(pattern=stop_pattern)
+    result = flex.bool(self.n_seq, False)
+    i_start = 0
+    i_stop = 0
+    e_seq = self.n_seq - 1
+    stop_i_seq = e_seq
+    while (i_start < start_isel.size()):
+      prev_stop_i_seq = stop_i_seq
+      while (i_stop != len(stop_isel)):
+        stop_i_seq = stop_isel[i_stop]
+        i_stop += 1
+        if (    prev_stop_i_seq != e_seq
+            and stop_i_seq != prev_stop_i_seq + 1):
+          break
+        prev_stop_i_seq = stop_i_seq
+      i_seq = start_isel[i_start]
+      if (i_seq > prev_stop_i_seq):
+        if (i_stop == len(stop_isel)):
+          break
+      else:
+        i_start += 1
+        while True:
+          result[i_seq] = True
+          i_seq += 1
+          if (i_seq > prev_stop_i_seq):
+            break
+        while (    i_start < start_isel.size()
+               and start_isel[i_start] <= prev_stop_i_seq):
+          i_start += 1
     return result
 
   def get_iCode(self, pattern):
@@ -392,11 +424,12 @@ class selection_cache(object):
   def sel_chainID(self, pattern):
     return self.union(iselections=self.get_chainID(pattern=pattern))
 
-  def sel_resSeq(self, i):
-    return self.union(iselections=self.get_resSeq(i=i))
+  def sel_resSeq(self, pattern):
+    return self.union(iselections=self.get_resSeq(pattern=pattern))
 
-  def sel_resSeq_range(self, i, j):
-    return self.union(iselections=self.get_resSeq_range(i=i, j=j))
+  def sel_resSeq_range(self, start_pattern, stop_pattern):
+    return self.get_resSeq_range(
+      start_pattern=start_pattern, stop_pattern=stop_pattern)
 
   def sel_iCode(self, pattern):
     return self.union(iselections=self.get_iCode(pattern=pattern))
@@ -468,27 +501,29 @@ class selection_cache(object):
           i_colon_or_dash = arg.value.find(":")
           if (i_colon_or_dash < 0): i_colon_or_dash = arg.value.find("-")
           if (i_colon_or_dash < 0):
-            try: i = int(arg.value)
-            except ValueError: raise RuntimeError("Value error.")
             if (lword != "model"):
-              result_stack.append(self.sel_resSeq(i=i))
+              result_stack.append(self.sel_resSeq(pattern=arg))
             else:
+              try: i = int(arg.value)
+              except ValueError: raise RuntimeError("Value error.")
               result_stack.append(self.sel_MODELserial(i=i))
           else:
-            i,j = arg.value[:i_colon_or_dash], arg.value[i_colon_or_dash+1:]
-            if (len(i) == 0):
-              i = None
-            else:
-              try: i = int(i)
-              except ValueError: raise RuntimeError("Value error.")
-            if (len(j) == 0):
-              j = None
-            else:
-              try: j = int(j)
-              except ValueError: raise RuntimeError("Value error.")
+            start_pattern = arg.value[:i_colon_or_dash]
+            stop_pattern = arg.value[i_colon_or_dash+1:]
             if (lword != "model"):
-              result_stack.append(self.sel_resSeq_range(i=i, j=j))
+              result_stack.append(self.sel_resSeq_range(
+                start_pattern=start_pattern, stop_pattern=stop_pattern))
             else:
+              if (len(start_pattern) == 0):
+                i = None
+              else:
+                try: i = int(start_pattern)
+                except ValueError: raise RuntimeError("Value error.")
+              if (len(stop_pattern) == 0):
+                j = None
+              else:
+                try: j = int(stop_pattern)
+                except ValueError: raise RuntimeError("Value error.")
               result_stack.append(self.sel_MODELserial_range(i=i, j=j))
         elif (lword == "icode"):
           result_stack.append(
@@ -550,6 +585,7 @@ class selection_cache(object):
                      (segID, self.segID),
                      (MODELserial, self.MODELserial)]:
       if (arg is not None):
+        if (attr is self.resSeq): arg = arg.strip()
         isel = attr.get(arg, None)
         if (isel is not None): result.append(isel)
     return result
@@ -562,11 +598,11 @@ class selection_cache(object):
       .intersection(fs(self.altLoc.get(link_record.altLoc1, sel_null)))
       .intersection(fs(self.resName.get(link_record.resName1, sel_null)))
       .intersection(fs(self.chainID.get(link_record.chainID1, sel_null)))
-      .intersection(fs(self.resSeq.get(link_record.resSeq1, sel_null)))
+      .intersection(fs(self.resSeq.get(link_record.resSeq1.strip(), sel_null)))
       .intersection(fs(self.iCode.get(link_record.iCode1, sel_null))),
                     fs(self.name.get(link_record.name2, sel_null))
       .intersection(fs(self.altLoc.get(link_record.altLoc2, sel_null)))
       .intersection(fs(self.resName.get(link_record.resName2, sel_null)))
       .intersection(fs(self.chainID.get(link_record.chainID2, sel_null)))
-      .intersection(fs(self.resSeq.get(link_record.resSeq2, sel_null)))
+      .intersection(fs(self.resSeq.get(link_record.resSeq2.strip(), sel_null)))
       .intersection(fs(self.iCode.get(link_record.iCode2, sel_null)))]

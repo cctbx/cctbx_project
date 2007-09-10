@@ -530,9 +530,13 @@ class read_scale_record:
       values.append(value)
     self.sn1, self.sn2, self.sn3, self.un = values
 
-def serial_number_mod(n, limit):
-  if (n >= 0): return n % limit
-  return -((-n) % (limit//10))
+def encode_serial_number(width, value):
+  if (isinstance(value, str)):
+    assert len(value) <= width
+    return value
+  if (isinstance(value, int)):
+    return hy36encode(width=width, value=value)
+  raise RuntimeError("serial number value must be str or int.")
 
 def format_atom_record(record_name="ATOM",
                        serial=0,
@@ -568,12 +572,13 @@ def format_atom_record(record_name="ATOM",
   # 77 - 78  LString(2)    element       Element symbol, right-justified.
   # 79 - 80  LString(2)    charge        Charge on the atom.
   return ((
-    "%-6.6s%5d %-4.4s%1.1s%-3.3s%2.2s%4d%1.1s"
+    "%-6.6s%5.5s %-4.4s%1.1s%-3.3s%2.2s%4.4s%1.1s"
     "   %8.3f%8.3f%8.3f%6.2f%6.2f    "
     "  %-4.4s%2.2s%2.2s") % (
       record_name,
-      serial_number_mod(serial, 100000),
-      name, altLoc, resName, chainID, serial_number_mod(resSeq, 10000), iCode,
+      encode_serial_number(width=5, value=serial),
+      name, altLoc, resName, chainID,
+      encode_serial_number(width=4, value=resSeq), iCode,
       site[0], site[1], site[2], occupancy, tempFactor,
       segID, element, charge)).rstrip()
 
@@ -607,12 +612,13 @@ def format_anisou_record(
   # 77 - 78  LString(2)    element       Element symbol, right-justified.
   # 79 - 80  LString(2)    charge        Charge on the atom.
   return ((
-    "%-6.6s%5d %-4.4s%1.1s%-3.3s%2.2s%4d%1.1s"
+    "%-6.6s%5.5s %-4.4s%1.1s%-3.3s%2.2s%4.4s%1.1s"
     " %7d%7d%7d%7d%7d%7d"
     "  %-4.4s%2.2s%2.2s") % ((
       "ANISOU",
-      serial_number_mod(serial, 100000),
-      name, altLoc, resName, chainID, serial_number_mod(resSeq, 10000), iCode)
+      encode_serial_number(width=5, value=serial),
+      name, altLoc, resName, chainID,
+      encode_serial_number(width=4, value=resSeq), iCode)
     + tuple([iround(u*10000) for u in u_cart])
     + (segID, element, charge))).rstrip()
 
@@ -626,7 +632,7 @@ def format_ter_record(serial=0,
   # 21 - 22  Character       chainID    Chain identifier.
   # 23 - 26  Integer         resSeq     Residue sequence number.
   # 27       AChar           iCode      Insertion code.
-  return ("%-6.6s%5d      %-3.3s%2.2s%4d%1.1s" % (
+  return ("%-6.6s%5.5s      %-3.3s%2.2s%4.4s%1.1s" % (
     "TER",
-    serial_number_mod(serial, 100000),
-    resName, chainID, serial_number_mod(resSeq, 10000), iCode)).rstrip()
+    encode_serial_number(width=5, value=serial), resName, chainID,
+    encode_serial_number(width=4, value=resSeq), iCode)).rstrip()
