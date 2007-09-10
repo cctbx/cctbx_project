@@ -86,16 +86,6 @@ class pdb_record(object):
       message = "Corrupt " + self.record_name + " record."
     raise FormatError("%s%s" % (self.error_prefix(), message))
 
-  def convert_number(self,
-        str,
-        target_type,
-        error_message=None,
-        substitute_value=0):
-    try: return target_type(str)
-    except ValueError:
-      if (self.strict): self.raise_FormatError(message=error_message)
-    return substitute_value
-
   def assert_is_interpreted(self):
     if (not (self.record_name.startswith("REMARK") or self.is_interpreted)):
       raise UnknownRecordName("%sRecord name %s not recognized." % (
@@ -125,17 +115,17 @@ class pdb_record(object):
     # 56 - 60  Integer        numTer        Number of TER records
     # 61 - 65  Integer        numConect     Number of CONECT records
     # 66 - 70  Integer        numSeq        Number of SEQRES records
-    self.numRemark = self.convert_number(self.raw[10:15], int)
-    self.numHet = self.convert_number(self.raw[20:25], int)
-    self.numHelix = self.convert_number(self.raw[25:30], int)
-    self.numSheet = self.convert_number(self.raw[30:35], int)
-    self.numTurn = self.convert_number(self.raw[35:40], int)
-    self.numSite = self.convert_number(self.raw[40:45], int)
-    self.numXform = self.convert_number(self.raw[45:50], int)
-    self.numCoord = self.convert_number(self.raw[50:55], int)
-    self.numTer = self.convert_number(self.raw[55:60], int)
-    self.numConect = self.convert_number(self.raw[60:65], int)
-    self.numSeq = self.convert_number(self.raw[65:70], int)
+    self.numRemark = self.raw[10:15]
+    self.numHet = self.raw[20:25]
+    self.numHelix = self.raw[25:30]
+    self.numSheet = self.raw[30:35]
+    self.numTurn = self.raw[35:40]
+    self.numSite = self.raw[40:45]
+    self.numXform = self.raw[45:50]
+    self.numCoord = self.raw[50:55]
+    self.numTer = self.raw[55:60]
+    self.numConect = self.raw[60:65]
+    self.numSeq = self.raw[65:70]
 
   def read_EXPDTA(self):
     #  9 - 10  Continuation   continuation  Allows concatenation of
@@ -226,24 +216,14 @@ class pdb_record(object):
     # 17       Character     altLoc        Alternate location indicator.
     # 18 - 20  Residue name  resName       Residue name.
     # 21 - 22                chainID       Chain identifier.
-    # 23 - 26  Integer       resSeq        Residue sequence number.
+    # 23 - 26                resSeq        Residue sequence number.
     # 27       AChar         iCode         Code for insertion of residues.
-    try: self.serial = int(self.raw[6:11])
-    except ValueError:
-      if (self.strict):
-        self.raise_FormatError("Atom serial number must be an integer.")
-      else:
-        self.serial = 0
+    self.serial = self.raw[6:11]
     self.name = self.raw[12:16]
     self.altLoc = self.raw[16]
     self.resName = self.raw[17:20]
     self.chainID = chainid_strip(self.raw[20:22])
-    try: self.resSeq = int(self.raw[22:26])
-    except ValueError:
-      if (self.strict):
-        self.raise_FormatError("Residue sequence number must be an integer.")
-      else:
-        self.resSeq = 0
+    self.resSeq = self.raw[22:26]
     self.iCode = self.raw[26]
 
   def read_ATOM(self):
@@ -323,14 +303,12 @@ class pdb_record(object):
     #  7 - 11  Integer         serial     Serial number.
     # 18 - 20  Residue name    resName    Residue name.
     # 21 - 22                  chainID    Chain identifier.
-    # 23 - 26  Integer         resSeq     Residue sequence number.
+    # 23 - 26                  resSeq     Residue sequence number.
     # 27       AChar           iCode      Insertion code.
-    self.serial = self.convert_number(self.raw[6:11], int,
-      error_message="Serial number must be an integer.")
+    self.serial = self.raw[6:11]
     self.resName = self.raw[17:20]
     self.chainID = chainid_strip(self.raw[20:22])
-    self.resSeq = self.convert_number(self.raw[22:26], int,
-      error_message="Residue sequence number must be an integer.")
+    self.resSeq = self.raw[22:26]
     self.iCode = self.raw[26]
 
   def read_MODEL(self):
@@ -339,8 +317,11 @@ class pdb_record(object):
       fld = self.raw[10:14]
     else:
       fld = self.raw[6:]
-    self.serial = self.convert_number(fld, int,
-      error_message="Model serial number must be an integer.")
+    try: self.serial = int(fld)
+    except ValueError:
+      if (self.strict): self.raise_FormatError(
+        message="Model serial number must be an integer.")
+    else: self.serial = 1
 
   def read_ENDMDL(self):
     pass
@@ -357,38 +338,32 @@ class pdb_record(object):
     # 47 - 51  Integer   serial          Serial number of hydrogen bonded atom
     # 52 - 56  Integer   serial          Serial number of hydrogen bonded atom
     # 57 - 61  Integer   serial          Serial number of salt bridged atom
-    self.serial = self.convert_number(self.raw[6:11], int,
-      "Serial number must be an integer.")
-    sn = []
-    for i in xrange(11,61,5):
+    self.serial = self.raw[6:11]
+    ba = []
+    hba = []
+    sba = []
+    for i,l in [(11, ba), (16, ba), (21, ba), (26, ba),
+                (31, hba), (36, hba), (41, sba),
+                (46, hba), (51, hba), (56, sba)]:
       fld = self.raw[i:i+5]
-      if (len(fld.strip()) == 0):
-        sn.append(None)
-      else:
-        try: sn.append(int(fld))
-        except ValueError:
-          if (self.strict):
-            self.raise_FormatError(
-              "Serial number of bonded atom must be an integer.")
-          sn.append(None)
-    assert len(sn) == 10
-    self.serial_numbers_bonded_atoms = sn[:4]
-    self.serial_numbers_hydrogen_bonded_atoms = sn[4:6] + sn[7:9]
-    self.serial_numbers_salt_bridged_atoms = [sn[6], sn[9]]
+      if (fld != "     "): l.append(fld)
+    self.serial_numbers_bonded_atoms = ba
+    self.serial_numbers_hydrogen_bonded_atoms = hba
+    self.serial_numbers_salt_bridged_atoms = sba
 
   def read_LINK(self):
     # 13 - 16      Atom            name1       Atom name.
     # 17           Character       altLoc1     Alternate location indicator.
     # 18 - 20      Residue name    resName1    Residue name.
     # 21 - 22                      chainID1    Chain identifier.
-    # 23 - 26      Integer         resSeq1     Residue sequence number.
+    # 23 - 26                      resSeq1     Residue sequence number.
     # 27           AChar           iCode1      Insertion code.
     # 31 - 40      distance (REFMAC extension: F10.5)
     # 43 - 46      Atom            name2       Atom name.
     # 47           Character       altLoc2     Alternate location indicator.
     # 48 - 50      Residue name    resName2    Residue name.
     # 51 - 52                      chainID2    Chain identifier.
-    # 53 - 56      Integer         resSeq2     Residue sequence number.
+    # 53 - 56                      resSeq2     Residue sequence number.
     # 57           AChar           iCode2      Insertion code.
     # 60 - 65      SymOP           sym1        Symmetry operator for 1st atom.
     # 67 - 72      SymOP           sym2        Symmetry operator for 2nd atom.
@@ -397,8 +372,7 @@ class pdb_record(object):
     self.altLoc1 = self.raw[16]
     self.resName1 = self.raw[17:20]
     self.chainID1 = chainid_strip(self.raw[20:22])
-    self.resSeq1 = self.convert_number(self.raw[22:26], int,
-      "Serial number be an integer.")
+    self.resSeq1 = self.raw[22:26]
     self.iCode1 = self.raw[26]
     try: self.distance = float(self.raw[30:40])
     except ValueError: self.distance = None
@@ -406,8 +380,7 @@ class pdb_record(object):
     self.altLoc2 = self.raw[46]
     self.resName2 = self.raw[47:50]
     self.chainID2 = chainid_strip(self.raw[50:52])
-    self.resSeq2 = self.convert_number(self.raw[52:56], int,
-      "Serial number be an integer.")
+    self.resSeq2 = self.raw[52:56]
     self.iCode2 = self.raw[56]
     self.sym1 = self.raw[59:65]
     self.sym2 = self.raw[66:72]
@@ -420,26 +393,23 @@ class pdb_record(object):
     #  8 - 10    Integer         serNum      Serial number.
     # 12 - 14    LString(3)      "CYS"       Residue name.
     # 15 - 16                    chainID1    Chain identifier.
-    # 18 - 21    Integer         seqNum1     Residue sequence number.
+    # 18 - 21                    seqNum1     Residue sequence number.
     # 22         AChar           icode1      Insertion code.
     # 26 - 28    LString(3)      "CYS"       Residue name.
     # 29 - 30                    chainID2    Chain identifier.
-    # 32 - 35    Integer         seqNum2     Residue sequence number.
+    # 32 - 35                    seqNum2     Residue sequence number.
     # 36         AChar           icode2      Insertion code.
     # 60 - 65    SymOP           sym1        Symmetry operator for 1st residue.
     # 67 - 72    SymOP           sym2        Symmetry operator for 2nd residue.
     # 73 - 80    margin (REFMAC extension: _chem_link.id)
-    self.serNum = self.convert_number(self.raw[7:10], int,
-      "Serial number be an integer.")
+    self.serNum = self.raw[7:10]
     self.resName1 = self.raw[11:14]
     self.chainID1 = chainid_strip(self.raw[14:16])
-    self.resSeq1 = self.convert_number(self.raw[17:21], int,
-      "Serial number be an integer.")
+    self.resSeq1 = self.raw[17:21]
     self.iCode1 = self.raw[21]
     self.resName2 = self.raw[25:28]
     self.chainID2 = chainid_strip(self.raw[28:30])
-    self.resSeq2 = self.convert_number(self.raw[31:35], int,
-      "Serial number be an integer.")
+    self.resSeq2 = self.raw[31:35]
     self.iCode2 = self.raw[35]
     self.sym1 = self.raw[59:65]
     self.sym2 = self.raw[66:72]

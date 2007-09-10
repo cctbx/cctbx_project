@@ -40,10 +40,12 @@ def exercise_format_records():
     == "TER       0      DUM     1"
   assert iotbx.pdb.format_atom_record(serial=-1, resSeq=-999) \
     == "ATOM     -1  C   DUM  -999       0.000   0.000   0.000  1.00  0.00"
-  assert iotbx.pdb.format_anisou_record(serial=100000, resSeq=-10000) \
-    == "ANISOU    0  C   DUM     0        0      0      0      0      0      0"
-  assert iotbx.pdb.format_ter_record(serial=100001, resSeq=-10001) \
-    == "TER       1      DUM    -1"
+  assert iotbx.pdb.format_anisou_record(serial=100000, resSeq=10000) \
+    == "ANISOUA0000  C   DUM  A000        0      0      0      0      0      0"
+  assert iotbx.pdb.format_ter_record(serial=100001, resSeq=10001) \
+    == "TER   A0001      DUM  A001"
+  assert iotbx.pdb.format_atom_record(serial="xyzab", resSeq="TUVW") \
+    == "ATOM  xyzab  C   DUM  TUVW       0.000   0.000   0.000  1.00  0.00"
 
 def exercise_parser():
   for i,raw_record in enumerate("""\
@@ -55,18 +57,18 @@ LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
     _1 = [r.name1,r.altLoc1,r.resName1,r.chainID1,r.resSeq1,r.iCode1,r.sym1]
     _2 = [r.name2,r.altLoc2,r.resName2,r.chainID2,r.resSeq2,r.iCode2,r.sym2]
     if (i == 0):
-      assert _1 == [' O1 ', ' ', 'DDA', ' ', 1, ' ', '      ']
-      assert _2 == [' C3 ', ' ', 'DDL', ' ', 2, ' ', '      ']
+      assert _1 == [' O1 ', ' ', 'DDA', ' ', '   1', ' ', '      ']
+      assert _2 == [' C3 ', ' ', 'DDL', ' ', '   2', ' ', '      ']
       assert r.distance is None
       assert r.margin == '        '
     elif (i == 1):
-      assert _1 == ['MN  ', ' ', ' MN', ' ', 391, ' ', '      ']
-      assert _2 == [' OE2', ' ', 'GLU', ' ', 217, ' ', '  2565']
+      assert _1 == ['MN  ', ' ', ' MN', ' ', ' 391', ' ', '      ']
+      assert _2 == [' OE2', ' ', 'GLU', ' ', ' 217', ' ', '  2565']
       assert r.distance is None
       assert r.margin == '        '
     else:
-      assert _1 == [' NZ ', ' ', 'LYS', 'A', 680, ' ', '      ']
-      assert _2 == [' C4A', ' ', 'PLP', 'D', 1, ' ', '      ']
+      assert _1 == [' NZ ', ' ', 'LYS', 'A', ' 680', ' ', '      ']
+      assert _2 == [' C4A', ' ', 'PLP', 'D', '   1', ' ', '      ']
       assert r.distance == float(1.260)
       assert r.margin == 'LYS-PLP '
 
@@ -110,7 +112,7 @@ SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
   attr.set_from_SIGATM_record(pdb.parser.pdb_record(atom_etc_records[1]))
   attr.set_from_ANISOU_record(pdb.parser.pdb_record(atom_etc_records[2]))
   attr.set_from_SIGUIJ_record(pdb.parser.pdb_record(atom_etc_records[3]))
-  assert str(attr) == " N  ,A,CYS,\",6, ,1ETN,None"
+  assert str(attr) == " N  ,A,CYS,\",   6, ,1ETN,None"
   s = StringIO()
   attr.show(f=s, prefix="  ")
   assert not show_diff(s.getvalue(), """\
@@ -119,7 +121,7 @@ SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
   altLoc:      "A"
   resName:     "CYS"
   chainID:     "\\""
-  resSeq:      6
+  resSeq:      "   6"
   iCode:       " "
   segID:       "1ETN"
   element:     " N"
@@ -216,7 +218,7 @@ def exercise_interpretation(verbose=0, quick=True):
     isel_altLoc = sel_cache.get_altLoc("A")
     isel_resName = sel_cache.get_resName("?L?")
     isel_chainID = sel_cache.get_chainID("A")
-    isel_resSeq = sel_cache.get_resSeq(1)
+    isel_resSeq = sel_cache.get_resSeq("1")
     isel_iCode = sel_cache.get_iCode("A")
     isel_segID = sel_cache.get_segID("    ")
     isel_MODELserial = sel_cache.get_MODELserial(1)
@@ -240,7 +242,7 @@ def exercise_interpretation(verbose=0, quick=True):
     sel_altLoc = sel_cache.sel_altLoc("A")
     sel_resName = sel_cache.sel_resName("?L?")
     sel_chainID = sel_cache.sel_chainID("A")
-    sel_resSeq = sel_cache.sel_resSeq(1)
+    sel_resSeq = sel_cache.sel_resSeq("1")
     sel_iCode = sel_cache.sel_iCode("A")
     sel_segID = sel_cache.sel_segID("    ")
     sel_MODELserial = sel_cache.sel_MODELserial(1)
@@ -430,6 +432,20 @@ HETATM 1477  O2  SO4 S 188      32.533  43.699  59.932  1.00 49.98           O1-
 HETATM 1478  O3  SO4 S 188      31.128  43.217  61.738  1.00 59.44           O1-
 HETATM 1479  O4  SO4 S 188      30.353  43.201  59.539  1.00 60.54           O1-
 HETATM 1480  O   HOH W 200      29.478  23.354  61.364  1.00  8.67      WATE
+ATOM   2000  A1  AAA X   1       8.753  29.755  61.685  1.00 49.13
+ATOM   2001  A2  AAA X   1       9.242  30.200  62.974  1.00 46.62
+ATOM   2002  A1  BBB X   2      11.360  28.819  62.827  1.00 36.48
+ATOM   2003  A2  BBB X   2      12.548  28.316  63.532  1.00 30.20
+ATOM   2004  A1  AAA Y   1       8.753  29.755  61.685  1.00 49.13
+ATOM   2005  A2  AAA Y   1       9.242  30.200  62.974  1.00 46.62
+ATOM   2006  A1  CCC Y   5       9.242  30.200  62.974  1.00 46.62
+ATOM   2007  A2  BBB Y   2      12.548  28.316  63.532  1.00 30.20
+ATOM   2008  A1  AAA Z   1       8.753  29.755  61.685  1.00 49.13
+ATOM   2009  A1  BBB Z   2      11.360  28.819  62.827  1.00 36.48
+ATOM   2010  A2  BBB Z   2      12.548  28.316  63.532  1.00 30.20
+ATOM   2011  A1  AAAZZ   1       8.753  29.755  61.685  1.00 49.13
+ATOM   2012  A1  BBBZZ   2      11.360  28.819  62.827  1.00 36.48
+ATOM   2013  A1  CCCZZ   5       9.242  30.200  62.974  1.00 46.62
 ENDMDL
 END
 """.splitlines()
@@ -463,13 +479,19 @@ END
   assert list(isel(r"(chain h or chain s) and name o[2-46]")) == [58,66,67,68]
   assert list(isel(r"resseq 188")) == [64,65,66,67,68]
   assert list(isel(r"resid 188")) == [64,65,66,67,68]
-  assert list(isel(r"resseq 188:")) == [64,65,66,67,68,69]
-  assert list(isel(r"resseq 188-")) == [64,65,66,67,68,69]
-  assert list(isel(r"resseq :2 and name n*")) == [0,6,13,15,16]
-  assert list(isel(r"resseq -2 and name n*")) == [0,6,13,15,16]
+  assert list(isel(r"resid 1:1")) == [0,1,2,3,4,5,70,71,74,75,78,81]
+  assert list(isel(r"resid 2:2")) == range(6,17) + [72,73,77,79,80,82]
+  assert list(isel(r"resid 5:5")) == [76,83]
+  assert list(isel(r"resid 1:5")) == range(77)+range(78,84)
+  assert list(isel(r"resid 3:2")) == range(17,74)
+  assert list(isel(r"resid 188:188")) == [64,65,66,67,68]
+  assert list(isel(r"resid 200:200")) == [69]
+  assert list(isel(r"resseq 188:200")) == [64,65,66,67,68,69]
+  assert list(isel(r"resid 200:188")) == []
+  assert list(isel(r"resseq 1:2 and name n*")) == [0,6,13,15,16]
   assert list(isel(r"resseq 2:4 and name cb")) == [10,21,28,36]
   assert list(isel(r"resseq 2-4 and name cb")) == [10,21,28,36]
-  assert list(isel(r"resid 2-4 and name cb")) == [10,21,28,36]
+  assert list(isel(r"resid 2:4 and name cb")) == [10,21,28,36]
   assert list(isel(r"model 1 and name cb")) == [4,10,21,28,36]
   assert list(isel(r"model 2-3 and name o1*")) == [41,65]
   assert list(isel(r"icode j and name c?")) == [18,21,22,23]
@@ -481,6 +503,15 @@ END
   except RuntimeError, e:
     assert str(e) == "Missing argument for resSeq."
   else: raise RuntimeError("Exception expected.")
+  #
+  sel = sel_cache.get_labels(name=" CA ")
+  assert len(sel) == 1
+  assert list(sel[0]) == [1,7,18,25,33]
+  for i_seq in list(sel[0]):
+    assert stage_1.atom_attributes_list[i_seq].name == " CA "
+  sel = sel_cache.get_labels(resSeq="   5")
+  assert len(sel) == 1
+  assert list(sel[0]) == [76, 83]
   #
   link_records = [
     iotbx.pdb.parser.pdb_record(raw_record=raw_record)
