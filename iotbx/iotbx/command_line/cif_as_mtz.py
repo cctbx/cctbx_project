@@ -508,7 +508,7 @@ def run(args, command_name = "phenix.cif_as_mtz"):
         help="Output mtz file name.")
     ).process(args=args)
   except Exception, e:
-    print str(e)
+    if(str(e) != "0"): print str(e)
     sys.exit(0)
   crystal_symmetry = command_line.symmetry
   if(command_line.symmetry.unit_cell() is None or
