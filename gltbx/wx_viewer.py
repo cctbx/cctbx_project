@@ -81,6 +81,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.Bind(wx.EVT_RIGHT_DOWN, self.OnRightClick)
     self.Bind(wx.EVT_MOTION, self.OnMouseMotion)
     self.Bind(wx.EVT_IDLE, self.OnIdle)
+    self.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel)
 
     self.w, self.h = self.GetClientSizeTuple()
 
@@ -141,6 +142,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       gltbx.util.show_versions()
     self.autospin = False
 
+  def OnMouseWheel(self, event):
+    scale = 0.02*event.GetWheelRotation()
+    self.OnScale(scale)
+
   def OnLeftClick(self,event):
     self.OnRecordMouse(event)
     self.initLeft = event.GetX(),event.GetY()
@@ -165,13 +170,18 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def OnLeftDrag(self,event):
     self.was_dragged = True
-    self.OnRotate(event)
+    if event.AltDown():
+      self.OnTranslate(event)
+    else:
+      self.OnRotate(event)
 
   def OnMiddleDrag(self,event):
     self.OnTranslate(event)
 
   def OnRightDrag(self,event):
-    self.OnScale(event)
+    scale = 0.02 * (event.GetY() - self.ymouse)
+    self.OnScale(scale)
+    self.OnRecordMouse(event)
 
   def OnMouseMotion(self,event):
     if (not event.Dragging()):
@@ -292,12 +302,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.autospin = False
     self.OnRecordMouse(event)
 
-  def OnScale(self, event):
+  def OnScale(self, scale):
     s = self.minimum_covering_sphere
     r = (1+1.e-6)*s.radius()
     d = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
     dr = d + r
-    scale = 0.02 * (event.GetY() - self.ymouse)
     if (scale > 0 and dr <= self.min_near):
       pass # near limit
     elif (scale < 0 and r < d * math.sin(self.field_of_view_y*math.pi/180/2)
@@ -306,7 +315,6 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     else:
       gltbx.util.translate_object(0,0,dr*scale)
       self.OnRedraw()
-    self.OnRecordMouse(event)
 
   def OnAutoSpin(self, event):
     if (self.autospin_allowed):
