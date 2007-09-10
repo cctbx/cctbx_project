@@ -53,7 +53,7 @@ class tls(object):
      self.origin = origin
      self.selection_string = selection_string #XXX do this smarter
 
-def extract_tls_parameters(remark_3_records):
+def extract_tls_parameters(remark_3_records, file_name = ""):
 # T = (T11, T22, T33, T12, T13, T23)
 # L = (L11, L22, L33, L12, L13, L23)
 # S = (S11, S12, S13, S21, S22, S23, S31, S32, S33)
@@ -72,8 +72,11 @@ def extract_tls_parameters(remark_3_records):
   for record in remark_3_records:
     assert record[0:10] == "REMARK   3"
     if(record.startswith("REMARK   3   TLS GROUP :")):
+       group_number = None
        try: group_number = int(record.split()[5])
-       except ValueError: print "Cannot extract TLS group number."
+       except ValueError:
+         print "Cannot extract TLS group number:\n  ", record, file_name
+         return []
        record_start = True
     if(record.startswith("REMARK   3      S31:")):
        record_end = True
@@ -96,117 +99,199 @@ def extract_tls_parameters(remark_3_records):
     sel_string = None
     for rec in one:
       if(rec.startswith("REMARK   3    NUMBER OF COMPONENTS GROUP :")):
+         n_components = None
          try: n_components = int(rec.split()[7])
-         except ValueError: print "Cannot extract number of TLS components."
+         except ValueError:
+           print "Cannot extract number of TLS components:\n  ",n_components,\
+             file_name
+           return []
       if(rec.startswith("REMARK   3    RESIDUE RANGE :")):
          if(len(rec.split()) == 9):
             rr = rec.split()
             chain_first = rr[5]
+            residue_number_first = None
             try: residue_number_first = int(rr[6])
-            except ValueError: print "Cannot extract first residue number in residue range."
+            except:
+              raise ValueError, "Cannot extract first residue number in residue range: %s\n  %s"%(
+                file_name, rec)
+              return []
             chain_second = rr[7]
             #if(chain_first != chain_second):
             #   raise RuntimeError("chain_first != chain_second: %s %s" % (chain_first,chain_second))
+            residue_number_second = None
             try: residue_number_second = int(rr[8])
-            except ValueError: print "Cannot extract second residue number in residue range."
-            r_range.append([chain_first,residue_number_first,
-                            chain_second,residue_number_second])
+            except:
+              raise ValueError, "Cannot extract second residue number in residue range: %s\n  %s"%(
+                file_name, rec)
+              return []
+            if(chain_first.strip() == chain_second.strip() and
+               residue_number_first > residue_number_second):
+              raise ValueError, \
+                "residue_number_first > residue_number_second, %s\n%s"%(
+                file_name,rec)
+              return []
+            if([residue_number_first,residue_number_second].count(None) == 0):
+              r_range.append([chain_first,residue_number_first,
+                              chain_second,residue_number_second])
          elif(len(rec.split()) == 7):
             rr = rec.split()
             chain_first = " "
+            residue_number_first = None
             try: residue_number_first = int(rr[5])
-            except ValueError: print "Cannot extract first residue number in residue range."
+            except:
+              raise ValueError, "Cannot extract first residue number in residue range: %s\n  %s"%(
+                file_name, rec)
+              return []
             chain_second = " "
+            residue_number_second = None
             try: residue_number_second = int(rr[6])
-            except ValueError: print "Cannot extract second residue number in residue range."
-            r_range.append([chain_first,residue_number_first,
-                            chain_second,residue_number_second])
+            except:
+              raise ValueError, "Cannot extract second residue number in residue range: %s\n  %s"%(
+                file_name, rec)
+              return []
+            if(chain_first.strip() == chain_second.strip() and
+               residue_number_first > residue_number_second):
+              raise ValueError, \
+                "residue_number_first > residue_number_second, %s\n%s"%(
+                file_name,rec)
+              return []
+            if([residue_number_first,residue_number_second].count(None) == 0):
+              r_range.append([chain_first,residue_number_first,
+                              chain_second,residue_number_second])
       if(rec.startswith("REMARK   3    ORIGIN FOR THE GROUP (A):")):
          try: x = float(rec.split()[7])
-         except ValueError: print "Cannot extract x of origin."
+         except ValueError:
+           print "Cannot extract x of origin:\n  ", rec, file_name
+           return []
          try: y = float(rec.split()[8])
-         except ValueError: print "Cannot extract y of origin."
+         except ValueError:
+           print "Cannot extract y of origin:\n  ", rec, file_name
+           return []
          try: z = float(rec.split()[9])
-         except ValueError: print "Cannot extract z of origin."
+         except ValueError:
+           print "Cannot extract z of origin:\n  ", rec, file_name
+           return []
          origin = [x,y,z]
       if(rec.startswith("REMARK   3      T11:")):
          assert [T11, T22, T33, T12, T13, T23].count(None) == 6
          try: T11 = float(rec.split()[3])
-         except ValueError: print "Cannot extract T11."
+         except ValueError:
+           print "Cannot extract T11:\n  ", rec, file_name
+           return []
          try: T22 = float(rec.split()[5])
-         except ValueError: print "Cannot extract T22."
+         except ValueError:
+           print "Cannot extract T22:\n  ", rec, file_name
+           return []
       if(rec.startswith("REMARK   3      T33:")):
          assert [T11, T22, T33, T12, T13, T23].count(None) == 4
          try: T33 = float(rec.split()[3])
-         except ValueError: print "Cannot extract T33."
+         except ValueError:
+           print "Cannot extract T33:\n  ", rec, file_name
+           return []
          try: T12 = float(rec.split()[5])
-         except ValueError: print "Cannot extract T12."
+         except ValueError:
+           print "Cannot extract T12:\n  ", rec, file_name
+           return []
       if(rec.startswith("REMARK   3      T13:")):
          assert [T11, T22, T33, T12, T13, T23].count(None) == 2
          try: T13 = float(rec.split()[3])
-         except ValueError: print "Cannot extract T13."
+         except ValueError:
+           print "Cannot extract T13:\n  ", rec, file_name
+           return []
          try: T23 = float(rec.split()[5])
-         except ValueError: print "Cannot extract T23."
+         except ValueError:
+           print "Cannot extract T23:\n  ", rec, file_name
+           return []
          T=[T11, T22, T33, T12, T13, T23]
       if(rec.startswith("REMARK   3      L11:")):
          assert [L11, L22, L33, L12, L13, L23].count(None) == 6
          try: L11 = float(rec.split()[3])
          except:
            try: L11 = float(rec[20:30])
-           except ValueError: print "Cannot extract L11."
+           except ValueError:
+             print "Cannot extract L11:\n  ", rec, file_name
+             return []
          try: L22 = float(rec.split()[5])
          except:
            try: L22 = float(rec[34:44])
-           except ValueError: print "Cannot extract L22."
+           except ValueError:
+             print "Cannot extract L22:\n  ", rec, file_name
+             return []
       if(rec.startswith("REMARK   3      L33:")):
          assert [L11, L22, L33, L12, L13, L23].count(None) == 4
          try: L33 = float(rec.split()[3])
          except:
            try: L33 = float(rec[20:30])
-           except ValueError: print "Cannot extract L33."
+           except ValueError:
+             print "Cannot extract L33:\n  ", rec, file_name
+             return []
          try: L12 = float(rec.split()[5])
          except:
            try: L12 = float(rec[34:44])
-           except ValueError: print "Cannot extract L12."
+           except ValueError:
+             print "Cannot extract L12:\n  ", rec, file_name
+             return []
       if(rec.startswith("REMARK   3      L13:")):
          assert [L11, L22, L33, L12, L13, L23].count(None) == 2
          try: L13 = float(rec.split()[3])
          except:
            try: L13 = float(rec[20:30])
-           except ValueError: print "Cannot extract L13."
+           except ValueError:
+             print "Cannot extract L13:\n  ", rec, file_name
+             return []
          try: L23 = float(rec.split()[5])
          except:
            try: L23 = float(rec[34:44])
-           except ValueError: print "Cannot extract L23."
+           except ValueError:
+             print "Cannot extract L23:\n  ", rec, file_name
+             return []
          L=[L11, L22, L33, L12, L13, L23]
       if(rec.startswith("REMARK   3      S11:")):
          assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 9
          try: S11 = float(rec.split()[3])
-         except ValueError: print "Cannot extract S11."
+         except ValueError:
+           print "Cannot extract S11:\n  ", rec, file_name
+           return []
          try: S12 = float(rec.split()[5])
-         except ValueError: print "Cannot extract S12."
+         except ValueError:
+           print "Cannot extract S12:\n  ", rec, file_name
+           return []
          try: S13 = float(rec.split()[7])
-         except ValueError: print "Cannot extract S13."
+         except ValueError:
+           print "Cannot extract S13:\n  ", rec, file_name
+           return []
       if(rec.startswith("REMARK   3      S21:")):
          assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 6
          try: S21 = float(rec.split()[3])
-         except ValueError: print "Cannot extract S21."
+         except ValueError:
+           print "Cannot extract S21:\n  ", rec, file_name
+           return []
          try: S22 = float(rec.split()[5])
-         except ValueError: print "Cannot extract S22."
+         except ValueError:
+           print "Cannot extract S22:\n  ", rec, file_name
+           return []
          try: S23 = float(rec.split()[7])
-         except ValueError: print "Cannot extract S23."
+         except ValueError:
+           print "Cannot extract S23:\n  ", rec, file_name
+           return []
       if(rec.startswith("REMARK   3      S31:")):
          assert [S11, S12, S13, S21, S22, S23, S31, S32, S33].count(None) == 3
          try: S31 = float(rec.split()[3])
-         except ValueError: print "Cannot extract S31."
+         except ValueError:
+           print "Cannot extract S31:\n  ", rec, file_name
+           return []
          try: S32 = float(rec.split()[5])
-         except ValueError: print "Cannot extract S32."
+         except ValueError:
+           print "Cannot extract S32:\n  ", rec, file_name
+           return []
          try: S33 = float(rec.split()[7])
          except:
            try:
              if(rec.split()[7].count("NULL")):
                 S33 = - (S11 + S22)
-           except ValueError: print "Cannot extract S33."
+           except ValueError:
+             print "Cannot extract S33:\n  ", rec, file_name
+             return []
          S=[S11, S12, S13, S21, S22, S23, S31, S32, S33]
     for rr in r_range:
       if(rr[0] != " " and rr[0]==rr[2]):
@@ -226,8 +311,11 @@ def extract_tls_parameters(remark_3_records):
            sel_string = "(resid "+str(rr[1]) + ":"+str(rr[3])+")"
          else:
            sel_string += " or (resid "+str(rr[1]) + ":"+str(rr[3])+")"
-
-    tls_params.append(tls(T=T,L=L,S=S,origin=origin,selection_string=sel_string))
+    if(sel_string is not None or
+       T.count(None) > 0 or
+       L.count(None) > 0 or
+       S.count(None) > 0):
+      tls_params.append(tls(T=T,L=L,S=S,origin=origin,selection_string=sel_string))
   return tls_params
 
 
