@@ -458,7 +458,8 @@ class extract_data(object):
 def create_mtz_object(pre_miller_arrays,
                       key_counter,
                       crystal_symmetry,
-                      file_name):
+                      file_name,
+                      show_details_if_error):
   try:
     miller_set = miller.set(
       crystal_symmetry = crystal_symmetry,
@@ -476,12 +477,17 @@ def create_mtz_object(pre_miller_arrays,
   except Exception, e:
     print "Cannot setup final miller array:", file_name, str(e)
     return None
-  try:
-    mtz_dataset = miller_array.as_mtz_dataset(
-      column_root_label = observation_type)
-  except Exception, e:
-    print "Cannot do miller_array.as_mtz_dataset():", str(e), file_name
+  n_all = miller_array.indices().size()
+  n_uus = miller_array.unique_under_symmetry_selection().size()
+  if (n_uus != n_all):
+    print "Miller indices not unique under symmetry:", file_name, \
+      "(%d redundant indices out of %d)" % (n_all-n_uus, n_all)
+    if (show_details_if_error):
+      miller_array.show_comprehensive_summary(prefix="  ")
+      miller_array.map_to_asu().sort().show_array(prefix="  ")
     return None
+  mtz_dataset = miller_array.as_mtz_dataset(
+    column_root_label = observation_type)
   if(pre_miller_arrays.flags is not None):
     if(pre_miller_arrays.flags.size() > 0):
       mtz_dataset.add_miller_array(
@@ -506,6 +512,9 @@ def run(args, command_name = "phenix.cif_as_mtz"):
         default=False,
         type="string",
         help="Output mtz file name.")
+      .option("--show_details_if_error",
+          action="store_true",
+          help="Show data details for some errors.")
     ).process(args=args)
   except Exception, e:
     if(str(e) != "0"): print str(e)
@@ -529,7 +538,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
   mtz_object = extract(
     file_name        = file_name,
     file_lines       = file_lines,
-    crystal_symmetry = crystal_symmetry)
+    crystal_symmetry = crystal_symmetry,
+    show_details_if_error = command_line.options.show_details_if_error)
   if(mtz_object is not None):
     if(command_line.options.output_file_name):
       output_file_name = command_line.options.output_file_name
@@ -541,7 +551,7 @@ def run(args, command_name = "phenix.cif_as_mtz"):
   if(command_line.options.remove_input_file):
     os.remove(file_name)
 
-def extract(file_name, file_lines, crystal_symmetry):
+def extract(file_name, file_lines, crystal_symmetry, show_details_if_error):
   keys = extract_keys(file_name = file_name, file_lines = file_lines)
   if(len(keys) == 0): return None
   key_counter = count_keys(keys = keys, file_name = file_name)
@@ -556,7 +566,8 @@ def extract(file_name, file_lines, crystal_symmetry):
     pre_miller_arrays = pre_miller_arrays,
     key_counter       = key_counter,
     crystal_symmetry  = crystal_symmetry,
-    file_name         = file_name)
+    file_name         = file_name,
+    show_details_if_error = show_details_if_error)
   return mtz_object
 
 if(__name__ == "__main__"):
