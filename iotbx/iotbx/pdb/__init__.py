@@ -530,6 +530,12 @@ class read_scale_record:
       values.append(value)
     self.sn1, self.sn2, self.sn3, self.un = values
 
+def resseq_decode(s):
+  return hy36decode(width=4, s="%4s" % s)
+
+def resseq_encode(value):
+  return hy36encode(width=4, value=value)
+
 def encode_serial_number(width, value):
   if (isinstance(value, str)):
     assert len(value) <= width
