@@ -1,15 +1,36 @@
 #include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/list.hpp>
 
 #include <scitbx/mat3.h>
 #include <scitbx/constants.h>
+#include <scitbx/array_family/ref.h>
 #include <boost/shared_array.hpp>
 
 #include <gltbx/error.h>
 
 namespace gltbx { namespace util {
+
+  namespace af = scitbx::af;
+
+  template<typename T>
+  struct gl_enum_type_of
+  {};
+
+  template<>
+  struct gl_enum_type_of<GLfloat>
+  {
+    static const GLenum type = GL_FLOAT;
+  };
+
+  template<>
+  struct gl_enum_type_of<GLdouble>
+  {
+    static const GLenum type = GL_DOUBLE;
+  };
+
 
   inline
   void
@@ -260,6 +281,44 @@ namespace gltbx { namespace util {
     glMultMatrixd(mat);
   }
 
+  /// Array of vertices with the associated normals
+  /** Implementated with OpenGL vertex arrays. Since OpenGL is a state machine,
+  it means it is foolish to construct two such objects and interwin calls to
+  draw_xxx
+  */
+  template<typename T>
+  class vertex_array
+  {
+    public:
+      typedef af::const_ref< scitbx::vec3<T> > input_type;
+      typedef typename input_type::size_type input_type_size;
+      typedef af::tiny<input_type_size,3> triangle;
+
+      /// Construct an array from the given vertices and normals
+      vertex_array(input_type const& vertices,
+                   input_type const& normals)
+        : vertices_(vertices), normals_(normals)
+      {
+        SCITBX_ASSERT(vertices.size() == normals.size())
+                     (vertices.size())(normals.size());
+        glVertexPointer(3, gl_enum_type_of<T>::type, 0, vertices.begin());
+        glNormalPointer(gl_enum_type_of<T>::type, 0, normals.begin());
+      }
+
+      /** Draw the triangles: triangles[i] is a triplet of indices to look
+      into the array vertices passed to the constructor */
+      void draw_triangles(af::const_ref<triangle> const& triangles) {
+        for(std::size_t i=0; i < triangles.size(); i++) {
+          glBegin(GL_TRIANGLES);
+          for(int j=0; j<3; j++) glArrayElement(triangles[i][j]);
+          glEnd();
+        }
+      }
+    private:
+      input_type vertices_;
+      input_type normals_;
+  };
+
   //! Based on freeglut-2.4.0/src/freeglut_geometry.c
   /* Compute lookup table of cos and sin values forming a cirle
    *
@@ -385,6 +444,23 @@ namespace gltbx { namespace util {
     }
   }
 
+  template<typename T>
+  struct vertex_array_wrapper
+  {
+    typedef vertex_array<T> wt;
+    typedef typename wt::input_type const& inp_t;
+
+    static void wrap(char* name) {
+      using namespace boost::python;
+      class_<wt>(name, no_init)
+        .def(init<inp_t, inp_t>((
+             arg_("vertices"),
+             arg_("normals"))))
+        .def("draw_triangles", &wt::draw_triangles)
+      ;
+    }
+  };
+
   void
   init_module()
   {
@@ -460,6 +536,7 @@ namespace gltbx { namespace util {
       arg_("radius"),
       arg_("slices"),
       arg_("stacks")));
+    vertex_array_wrapper<GLdouble>::wrap("vertex_array");
   }
 
 }} // namespace gltbx::util
