@@ -26,6 +26,13 @@ def exercise_hybrid_36():
   print "time hy36recode_width_4_all: %.2f s" \
     " (%.3f micro s per encode-decode cycle)" % (ups, 1.e6*ups/max(1,n_ok))
   assert n_ok == 999+10000+2*26*36**3
+  #
+  assert pdb.resseq_decode(s=1234) == 1234
+  assert pdb.resseq_decode(s="A123") == 11371
+  assert pdb.resseq_decode(s="1") == 1
+  pdb.resseq_encode(value=1) == "   1"
+  pdb.resseq_encode(value=11371) == "A123"
+  pdb.resseq_encode(value=1234) == "1234"
 
 def exercise_atom():
   a = pdb.atom()
