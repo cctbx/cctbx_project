@@ -160,6 +160,8 @@ class map_viewer(wx_viewer.App):
     self.view_objects.iso_level = self.iso_level
 
 if __name__ == '__main__':
+  """ Loads the file map_coeff.pickle (see random_f_calc.py) and displays
+  the FFT map based on these coefficients """
   import sys
   if sys.argv[1] == "--debug":
     iso_level = None
