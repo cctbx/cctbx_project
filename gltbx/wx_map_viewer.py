@@ -63,7 +63,7 @@ class map_view(wx_viewer.wxGLWindow):
 
     glClearColor(*self.back_colour)
     self.initialize_modelview()
-    glEnable(GL_RESCALE_NORMAL)
+    gltbx.util.normalizing_normals().enable_rescale(True)
     glEnable(GL_CULL_FACE)
     glCullFace(GL_BACK)
 
@@ -80,8 +80,8 @@ class map_view(wx_viewer.wxGLWindow):
     glShadeModel(GL_SMOOTH)
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE,
                  [0.1, 0.5, 0.8, 1.])
-    glMaterialfv(GL_FRONT, GL_SPECULAR, [1., 1., 1., 1.])
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.)
+    #glMaterialfv(GL_FRONT, GL_SPECULAR, [1., 1., 1., 1.])
+    #glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.)
 
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
@@ -124,6 +124,7 @@ class map_view(wx_viewer.wxGLWindow):
     glLineWidth(lw[0])
 
   def draw_triangulation(self):
+    #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
     va = gltbx.util.vertex_array(self.triangulation.vertices,
                                  self.triangulation.normals)
     va.draw_triangles(self.triangulation.triangles)
@@ -160,8 +161,8 @@ class map_viewer(wx_viewer.App):
     self.view_objects.iso_level = self.iso_level
 
 if __name__ == '__main__':
-  """ Loads the file map_coeff.pickle (see random_f_calc.py) and displays
-  the FFT map based on these coefficients """
+  """ Loads the file map_coeff.pickle (see cctbx/examples/random_f_calc.py)
+  and displays the FFT map based on these coefficients """
   import sys
   if sys.argv[1] == "--debug":
     iso_level = None
