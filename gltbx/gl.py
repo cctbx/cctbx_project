@@ -13,7 +13,7 @@ glLoadTransposeMatrixd = __function_taking_transposed_matrix(glLoadMatrixd)
 glMultTransposeMatrixf = __function_taking_transposed_matrix(glMultMatrixf)
 glMultTransposeMatrixd = __function_taking_transposed_matrix(glMultMatrixd)
 
-if GL_VERSION >= GL_VERSION_1_2:
+if hasattr(ext, "GL_VERSION_1_2") and GL_VERSION >= GL_VERSION_1_2:
   GL_RESCALE_NORMAL = 0x803A
 else:
   GL_RESCALE_NORMAL = GL_NORMALIZE
