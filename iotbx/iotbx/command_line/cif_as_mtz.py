@@ -544,9 +544,10 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     if(command_line.options.output_file_name):
       output_file_name = command_line.options.output_file_name
     else:
-      if(file_name[-4:-3] == "."): output_file_name = file_name[:-4]+".mtz"
-      elif(file_name[-5:-4] == "."): output_file_name = file_name[:-5]+".mtz"
-      else: output_file_name = file_name+".mtz"
+      basename = os.path.basename(file_name)
+      if(basename[-4:-3] == "."): output_file_name = basename[:-4]+".mtz"
+      elif(basename[-5:-4] == "."): output_file_name = basename[:-5]+".mtz"
+      else: output_file_name = basename+".mtz"
     mtz_object.write(file_name = output_file_name)
   if(command_line.options.remove_input_file):
     os.remove(file_name)
