@@ -446,6 +446,9 @@ ATOM   2010  A2  BBB Z   2      12.548  28.316  63.532  1.00 30.20
 ATOM   2011  A1  AAAZZ   1       8.753  29.755  61.685  1.00 49.13
 ATOM   2012  A1  BBBZZ   2      11.360  28.819  62.827  1.00 36.48
 ATOM   2013  A1  CCCZZ   5       9.242  30.200  62.974  1.00 46.62
+ATOM   2014  A1  CCCZZA001       9.242  30.200  62.974  1.00 46.62
+ATOM   2015  A1  CCCZZA002       9.242  30.200  62.974  1.00 46.62
+ATOM   2016  A1  CCCZZA003       9.242  30.200  62.974  1.00 46.62
 ENDMDL
 END
 """.splitlines()
@@ -482,14 +485,18 @@ END
   assert list(isel(r"resid 1:1")) == [0,1,2,3,4,5,70,71,74,75,78,81]
   assert list(isel(r"resid 2:2")) == range(6,17) + [72,73,77,79,80,82]
   assert list(isel(r"resid 5:5")) == [76,83]
-  assert list(isel(r"resid 1:5")) == range(77)+range(78,84)
-  assert list(isel(r"resid 3:2")) == range(17,74)
+  assert list(isel(r"resid 1:5")) == range(40)+range(70,84)
+  assert list(isel(r"resid 2:3")) == range(6,24)+[72,73,77,79,80,82]
   assert list(isel(r"resid 188:188")) == [64,65,66,67,68]
   assert list(isel(r"resid 200:200")) == [69]
   assert list(isel(r"resseq 188:200")) == [64,65,66,67,68,69]
-  assert list(isel(r"resid 200:188")) == []
+  assert list(isel(r"resseq 9999:A002")) == [84,85]
+  assert list(isel(r"resseq A002:A003")) == [85,86]
+  assert list(isel(r"resseq :")) == range(87)
+  assert list(isel(r"resseq :2 and name n*")) == [0,6,13,15,16]
   assert list(isel(r"resseq 1:2 and name n*")) == [0,6,13,15,16]
   assert list(isel(r"resseq 2:4 and name cb")) == [10,21,28,36]
+  assert list(isel(r"resseq 2: and name cb")) == [10,21,28,36]
   assert list(isel(r"resseq 2-4 and name cb")) == [10,21,28,36]
   assert list(isel(r"resid 2:4 and name cb")) == [10,21,28,36]
   assert list(isel(r"model 1 and name cb")) == [4,10,21,28,36]
@@ -502,6 +509,10 @@ END
   try: isel(r"resSeq")
   except RuntimeError, e:
     assert str(e) == "Missing argument for resSeq."
+  else: raise RuntimeError("Exception expected.")
+  try: isel(r"resSeq 3:2")
+  except RuntimeError, e:
+    assert str(e) == "range with first index > last index: resseq 3:2"
   else: raise RuntimeError("Exception expected.")
   #
   sel = sel_cache.get_labels(name=" CA ")
