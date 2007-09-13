@@ -23,53 +23,46 @@ def show_versions():
 
 class version(object):
 
-  _shared_state = None
+  _shared_state = {}
 
   def __init__(self):
     from gltbx import gl
     import re
-    if self.__class__._shared_state is None:
+    self.__dict__ = self._shared_state
+    if not self._shared_state:
       vers_pat = re.compile("^((\d+)\.(\d+))(?:\.(\d+))? (.*)$")
       m = vers_pat.search(gl.glGetString(gl.GL_VERSION))
-      state = dict(zip(
+      self.__dict__.update(dict(zip(
         ["principal", "major_number", "minor_number", "release_number",
-         "vendor_info"], m.groups()))
-      state['principal'] = float(state['principal'])
-      self.__class__._shared_state = state
-    self.__dict__ = self.__class__._shared_state
+         "vendor_info"], m.groups())))
+      self.principal = float(self.principal)
 
 
-class normalizing_normals(object):
+class rescale_normals(object):
 
   _shared_state = {}
 
   GL_RESCALE_NORMAL = 0x803A
 
-  def __init__(self):
+  def __init__(self, fallback_to_normalize=False):
     self.__dict__ = self._shared_state
+    if not self._shared_state:
+      self.has_rescale_normal = version().principal >= 1.2
+    self.fallback_to_normalize = fallback_to_normalize
 
-  def enable_rescale(self, shall_rescale):
-    from gltbx.gl import *
-    if shall_rescale:
-      func = glEnable
+  def enable(self, flag=True):
+    from gltbx import gl
+    if self.has_rescale_normal:
+      mode = self.GL_RESCALE_NORMAL
     else:
-      func = glDisable
-    if version().principal >= 1.2:
-      func(self.GL_RESCALE_NORMAL)
+      assert self.fallback_to_normalize,\
+             "Rescale normals only available from OpenGL 1.2 onward"
+      mode = gl.GL_NORMALIZE
+    if flag:
+      gl.glEnable(mode)
     else:
-      func(GL_NORMALIZE)
+      gl.glDisable(mode)
 
-  def enable_normalize(self, shall_normalize):
-    from gltbx.gl import *
-    if shall_normalize:
-      glEnable(GL_NORMALIZE)
-    else:
-      glDisable(GL_NORMALIZE)
-
-  def is_rescale_enabled(self):
-    from gltbx.gl import *
-    return glIsEnabled(self.GL_RESCALE_NORMAL)
-
-  def is_normalize_enabled(self):
-    from gltbx.gl import *
-    return glIsEnabled(GL_NORMALIZE)
+  def is_enabled(self):
+    from gltbx import gl
+    return self.has_rescale_normal and gl.glIsEnabled(self.GL_RESCALE_NORMAL)
