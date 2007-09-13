@@ -63,7 +63,7 @@ class map_view(wx_viewer.wxGLWindow):
 
     glClearColor(*self.back_colour)
     self.initialize_modelview()
-    gltbx.util.normalizing_normals().enable_rescale(True)
+    gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
     glEnable(GL_CULL_FACE)
     glCullFace(GL_BACK)
 
