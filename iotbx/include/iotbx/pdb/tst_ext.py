@@ -34,6 +34,26 @@ def exercise_hybrid_36():
   pdb.resseq_encode(value=11371) == "A123"
   pdb.resseq_encode(value=1234) == "1234"
 
+def exercise_base_256_ordinal():
+  o = pdb.utils_base_256_ordinal
+  assert o(None) == 48
+  assert o("") == 48
+  assert o("0") == 48
+  assert o(" 0") == 48
+  assert o("  0") == 48
+  assert o("1") == 49
+  assert o("-1") == -49
+  assert o("123") == (49*256+50)*256+51
+  assert o("-123") == -o("123")
+  #
+  def o_cmp(a, b): return cmp(o(a), o(b))
+  char4s = ["%4s" % i for i in xrange(-999,9999+1)]
+  assert sorted(char4s, o_cmp) == char4s
+  m = iotbx.pdb.hy36decode(width=4, s="zzzz")
+  e = iotbx.pdb.hy36encode
+  char4s = [e(width=4, value=i) for i in xrange(-999,m+1,51)]
+  assert sorted(char4s, o_cmp) == char4s
+
 def exercise_atom():
   a = pdb.atom()
   assert a.name == ""
@@ -2395,6 +2415,7 @@ def exercise(args):
   forever = "--forever" in args
   while True:
     exercise_hybrid_36()
+    exercise_base_256_ordinal()
     exercise_atom()
     exercise_residue()
     exercise_chain()
