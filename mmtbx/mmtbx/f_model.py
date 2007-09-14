@@ -35,6 +35,10 @@ from libtbx.str_utils import format_value, show_string
 import libtbx.path
 from cStringIO import StringIO
 import iotbx.phil
+from mmtbx.scaling import outlier_rejection
+from mmtbx.scaling import absolute_scaling
+import mmtbx.scaling.twin_analyses
+
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -382,6 +386,30 @@ class manager(manager_mixin):
                          ss            = self.ss,
                          work          = work,
                          test          = test)
+
+  def outlier_selection(self):
+    result = outlier_rejection.outlier_manager(
+      miller_obs   = self.f_obs,
+      r_free_flags = self.r_free_flags,
+      out          = "silent")
+    s1 = result.basic_wilson_outliers().data()
+    s2 = result.extreme_wilson_outliers().data()
+    s3 = result.beamstop_shadow_outliers().data()
+    result = s1 & s2 & s3
+    return result
+
+  def remove_outliers(self):
+    return self.select(selection = self.outlier_selection())
+
+  def wilson_b(self):
+    result = absolute_scaling.ml_iso_absolute_scaling(
+      miller_array = self.f_obs,
+      n_residues   = self.xray_structure.scatterers().size()/8).b_wilson
+    return result
+
+  def twin_test(self, cut_off = 3.5):
+    return mmtbx.scaling.twin_analyses.twin_analyses_brief(
+      miller_array = self.f_obs, cut_off = cut_off)
 
   def deep_copy(self):
     if(self.abcd is not None):

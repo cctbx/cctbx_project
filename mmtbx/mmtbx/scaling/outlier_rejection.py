@@ -28,7 +28,6 @@ import sys, os
 import math
 import string
 from cStringIO import StringIO
-import mmtbx.f_model
 
 class outlier_manager(object):
   def __init__(self,

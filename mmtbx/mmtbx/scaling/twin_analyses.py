@@ -2555,6 +2555,8 @@ def twin_analyses_brief(miller_array,
            due to twinning.
            Also gives none when something messes up.
   """
+  if(out is None):
+    out = sys.stdout
   # first we need to know wheter or not that sigmas make any sense at all
   if (not miller_array.sigmas_are_sensible()):
     #clearly there is something wrong with the sigmas
@@ -2576,10 +2578,10 @@ def twin_analyses_brief(miller_array,
                                    out = out_tmp,
                                    out_plots = out_tmp_plot,
                                    verbose=verbose)
-    except Sorry, RuntimeError: pass
+    except Exception, e:
+      print >> out, "Twin analysis failed:", str(e)
+      return None
 
-  if out is None:
-    out = sys.stdout
   if twin_results is not None:
     if verbose>0:
       twin_results.twin_summary.twin_results.show(out=out)
@@ -2588,4 +2590,4 @@ def twin_analyses_brief(miller_array,
         twinned = True
     if (twin_results.twin_summary.twin_results.maha_l<=cut_off):
         twinned = False
-  return(twinned)
+  return twinned
