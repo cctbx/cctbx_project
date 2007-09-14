@@ -785,7 +785,8 @@ class environment:
 
   def write_dispatcher(self, source_file, target_file):
     reg = self._dispatcher_registry.setdefault(target_file, source_file)
-    if (reg != source_file):
+    if (    reg != source_file
+        and not os.path.samefile(reg, source_file)):
       raise Sorry("Multiple sources for dispatcher:\n"
         + "  target file:\n"
         + "    %s\n" % show_string(target_file)
