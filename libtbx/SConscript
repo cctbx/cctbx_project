@@ -123,13 +123,23 @@ static_exe = libtbx.env.build_options.static_exe
 if (sys.platform == "win32"):
   env_etc.static_libraries = 1
   env_etc.static_bpl = 0
-  env_base = Environment(ENV=os.environ)
   set_python_include_and_libs(env_etc)
   env_etc.extension_module_suffix = ".pyd"
   if (env_etc.compiler == "win32_cl"):
     cl_exe = full_command_path("cl.exe")
     if (cl_exe is None):
       raise RuntimeError("cl.exe not on PATH")
+    cl_info = easy_run.fully_buffered(
+      command='"%s"' % cl_exe,
+      join_stdout_stderr=True,
+      stdout_splitlines=False).stdout_buffer
+    if (cl_info.find("Version 13.10") >= 0):
+      env_base = Environment(ENV=os.environ, MSVS_VERSION="7.1")
+    elif (cl_info.find("Version 14.00") >= 0):
+      env_base = Environment(ENV=os.environ, MSVS_VERSION="8.0")
+    else:
+      env_base = Environment(ENV=os.environ)
+    print "MSVS_VERSION:", env_base["MSVS_VERSION"]
     env_etc.have_manifest_tool = os.path.isfile(
       os.path.join(os.path.dirname(cl_exe), "mt.exe"))
     env_base.Replace(
