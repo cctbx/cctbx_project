@@ -27,7 +27,6 @@ iotbx/include/iotbx/pdb/rna_dna_atom_names.h -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names_bpl.cpp -text
 iotbx/include/iotbx/pdb/tst_rna_dna_atom_names.py -text
 iotbx/include/iotbx/pdb/utils.h svneol=native#text/plain
-iotbx/iotbx/command_line/cif_as_mtz.py -text
 iotbx/iotbx/command_line/pdb.print_sequence.py -text
 iotbx/iotbx/detectors/cbf.py -text
 iotbx/iotbx/shelx/fcf.py -text
