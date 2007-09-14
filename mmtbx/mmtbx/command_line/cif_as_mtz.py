@@ -539,7 +539,7 @@ class guess_observation_type(object):
         f_obs          = f_obs,
         r_free_flags   = r_free_flags)
       if(fmodel is not None):
-        result = self.get_observation_type(fmodel = fmodel)
+        result, r_free_is_ok = self.get_observation_type(fmodel = fmodel)
         observation_type = result
         # XXX do it optimally
         if(observation_type.startswith("F")):
@@ -549,7 +549,7 @@ class guess_observation_type(object):
         else:
           f_obs = f_obs.set_observation_type(observation_type = None)
         mtz_dataset = f_obs.as_mtz_dataset(column_root_label= observation_type)
-        if(r_free_flags_orig is not None):
+        if(r_free_flags_orig is not None and r_free_is_ok):
           mtz_dataset.add_miller_array(
             miller_array      = r_free_flags_orig,
             column_root_label = "R-free-flags")
@@ -606,11 +606,12 @@ class guess_observation_type(object):
     try:
       fmodel.update_solvent_and_scale(params = params, verbose = -1)
       r_work = fmodel.r_work()*100
+      r_free = fmodel.r_free()*100
     except Exception, e:
       print "INFO: fmodel.update_solvent_and_scale() failed:",\
         self.file_name,str(e)
-      return None, None
-    return fmodel, r_work
+      return None, None, None
+    return fmodel, r_work, r_free
 
   def f_or_i_or_n(self,
                   fmodel,
@@ -623,11 +624,11 @@ class guess_observation_type(object):
     f_obs = f_obs.set_observation_type(observation_type = None)
     f_obs = f_obs.f_sq_as_f()
     fmodel_dc.update(f_obs = f_obs)
-    fmodel_, r_work_ = self.update_solvent_and_scale_helper(fmodel = fmodel_dc,
-      params = params)
+    fmodel_, r_work_, r_free_ = self.update_solvent_and_scale_helper(
+      fmodel = fmodel_dc, params = params)
     if(fmodel_ is not None):
       observation_type_dc = "I"+observation_type_dc[1:]
-      results.append([r_work_, observation_type_dc])
+      results.append([r_work_, observation_type_dc, r_free_])
     #
     fmodel_dc = fmodel.deep_copy()
     observation_type_dc = observation_type
@@ -635,11 +636,11 @@ class guess_observation_type(object):
     f_obs = f_obs.set_observation_type(observation_type = None)
     f_obs = f_obs.f_as_f_sq()
     fmodel_dc.update(f_obs = f_obs)
-    fmodel_, r_work_ = self.update_solvent_and_scale_helper(fmodel = fmodel_dc,
-      params = params)
+    fmodel_, r_work_, r_free_ = self.update_solvent_and_scale_helper(
+      fmodel = fmodel_dc, params = params)
     if(fmodel_ is not None):
       observation_type_dc = "F"+observation_type_dc[1:]
-      results.append([r_work_, observation_type_dc])
+      results.append([r_work_, observation_type_dc, r_free_])
     return results
 
   def get_observation_type(self, fmodel):
@@ -677,10 +678,10 @@ class guess_observation_type(object):
     results = []
     #
     fmodel_dc = fmodel.deep_copy()
-    fmodel_dc, r_work = self.update_solvent_and_scale_helper(
+    fmodel_dc, r_work, r_free = self.update_solvent_and_scale_helper(
       fmodel = fmodel_dc, params = params)
     if(fmodel_dc is not None):
-      results.append([r_work, observation_type])
+      results.append([r_work, observation_type, r_free])
     if(r_work > 30.0):
       results = self.f_or_i_or_n(fmodel = fmodel_dc, params = params,
         observation_type = observation_type, results = results)
@@ -702,18 +703,21 @@ class guess_observation_type(object):
         fmodel_dc.xray_structure.scattering_type_registry(
           custom_dict = neutron_scattering_dict)
         fmodel_dc.update_xray_structure(update_f_calc=True, update_f_mask=True)
-        fmodel_dc, r_work = self.update_solvent_and_scale_helper(
+        fmodel_dc, r_work, r_free = self.update_solvent_and_scale_helper(
           fmodel = fmodel_dc, params = params)
         observation_type = observation_type[:-2] + "_N"
-        results.append([r_work, observation_type])
+        results.append([r_work, observation_type, r_free])
         results = self.f_or_i_or_n(fmodel = fmodel_dc, params = params,
           observation_type = observation_type, results = results)
     result_best = observation_type
+    r_free_is_ok = False
     print "Scores:"
     print "  observation type from input file:", observation_type_from_file
     if(len(results) == 1):
       if(results[0][0] < 30.):
         observation_type = "F"+observation_type[1:]
+        r_free_is_ok = (results[0][0] < results[0][2]) and \
+          (abs(results[0][0] - results[0][2]) > 1.0)
     elif(len(results) > 1):
       r = results[0][0]
       for res in results:
@@ -726,6 +730,8 @@ class guess_observation_type(object):
         if(res[0] > result_best[0] and abs(res[0]-result_best[0]) < delta):
           delta = abs(res[0]-result_best[0])
       print "  selected %s with r_work %6.2f"%(result_best[1], result_best[0])
+      r_free_is_ok = (result_best[0] < result_best[2]) and \
+        (abs(result_best[0] - result_best[2]) > 1.0)
       if((delta < 3. and result_best[0] > 30.) or result_best[0] > 40.):
         observation_type = "OBS"
       else: observation_type = result_best[1]
@@ -737,7 +743,7 @@ class guess_observation_type(object):
     print "  final observation type:", observation_type
     if(len(results) == 1):
       print "  final r_work= %6.2f"%results[0][0]
-    return observation_type
+    return observation_type, r_free_is_ok
 
 def run(args, command_name = "phenix.cif_as_mtz"):
   if (len(args) == 0): args = ["--help"]
