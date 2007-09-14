@@ -401,8 +401,8 @@ class extract_data(object):
               data_ = line[key_counter.i_iobs]
             if(key_counter.i_flag is not None):
               flag_ = line[key_counter.i_flag]
-            if(data_.strip() in ["?","*","."]): continue
-            if(sigma_.strip() in ["?","*","."]): sigma_ = 1.0
+            if(data_ in ["?","*","."]): continue
+            if(sigma_ in ["?","*","."]): sigma_ = 1.0
           except:
             self.reset(message = "Cannot extract column data,#1.",line=line)
             break
@@ -423,8 +423,9 @@ class extract_data(object):
             l_ = int(l_)
             data_ = float(data_)
             if(data_ == 0.0): continue
-            if(sigma_ is not None): sigma_ = float(sigma_)
-            if(sigma_ < 0.0): continue
+            if(sigma_ is not None):
+              sigma_ = float(sigma_)
+              if(sigma_ < 0.0): continue
           except:
             self.reset(message = "Cannot extract column data,#2.",line=line)
             break
@@ -508,7 +509,7 @@ def create_mtz_object(pre_miller_arrays,
   return mtz_object
 
 class guess_observation_type(object):
-  def __init__(self, file_name, mtz_object):
+  def __init__(self, file_name, mtz_object, show_log):
     self.file_name = file_name
     self.mtz_object = mtz_object
     xray_structure = self.get_xray_structure_from_pdb_file()
@@ -539,7 +540,8 @@ class guess_observation_type(object):
         f_obs          = f_obs,
         r_free_flags   = r_free_flags)
       if(fmodel is not None):
-        result, r_free_is_ok = self.get_observation_type(fmodel = fmodel)
+        result, r_free_is_ok = self.get_observation_type(fmodel = fmodel,
+          show_log = show_log)
         observation_type = result
         # XXX do it optimally
         if(observation_type.startswith("F")):
@@ -643,7 +645,7 @@ class guess_observation_type(object):
       results.append([r_work_, observation_type_dc, r_free_])
     return results
 
-  def get_observation_type(self, fmodel):
+  def get_observation_type(self, fmodel, show_log):
     params = bss.solvent_and_scale_params()
     params.k_sol_grid_search_max = 0.6
     params.k_sol_grid_search_min = 0.0
@@ -711,8 +713,9 @@ class guess_observation_type(object):
           observation_type = observation_type, results = results)
     result_best = observation_type
     r_free_is_ok = False
-    print "Scores:"
-    print "  observation type from input file:", observation_type_from_file
+    if show_log: print "Scores:"
+    if show_log:
+      print "  observation type from input file:", observation_type_from_file
     if(len(results) == 1):
       if(results[0][0] < 30.):
         observation_type = "F"+observation_type[1:]
@@ -721,7 +724,7 @@ class guess_observation_type(object):
     elif(len(results) > 1):
       r = results[0][0]
       for res in results:
-        print "    if it is %s: r_work= %6.2f"%(res[1], res[0])
+        if show_log: print "    if it is %s: r_work= %6.2f"%(res[1], res[0])
         if(res[0] <= r):
           result_best = res
           r = res[0]
@@ -729,7 +732,8 @@ class guess_observation_type(object):
       for res in results:
         if(res[0] > result_best[0] and abs(res[0]-result_best[0]) < delta):
           delta = abs(res[0]-result_best[0])
-      print "  selected %s with r_work %6.2f"%(result_best[1], result_best[0])
+      if show_log:
+        print "  selected %s with r_work %6.2f"%(result_best[1],result_best[0])
       r_free_is_ok = (result_best[0] < result_best[2]) and \
         (abs(result_best[0] - result_best[2]) > 1.0)
       if((delta < 3. and result_best[0] > 30.) or result_best[0] > 40.):
@@ -740,9 +744,9 @@ class guess_observation_type(object):
           observation_type = "F"+observation_type[1:]
         if(results[0][0] == result_best[0]):
           observation_type = "F"+observation_type[1:]
-    print "  final observation type:", observation_type
+    if show_log: print "  final observation type:", observation_type
     if(len(results) == 1):
-      print "  final r_work= %6.2f"%results[0][0]
+      if show_log: print "  final r_work= %6.2f"%results[0][0]
     return observation_type, r_free_is_ok
 
 def run(args, command_name = "phenix.cif_as_mtz"):
@@ -768,6 +772,9 @@ def run(args, command_name = "phenix.cif_as_mtz"):
       .option("--show_details_if_error",
           action="store_true",
           help="Show data details for some errors.")
+      .option("--show_log",
+          action="store_true",
+          help="Show some output.")
     ).process(args=args)
   except Exception, e:
     if(str(e) != "0"): print str(e)
@@ -802,7 +809,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     if(command_line.options.use_model):
       mtz_object = guess_observation_type(
         file_name  = command_line.options.use_model,
-        mtz_object = mtz_object).mtz_object
+        mtz_object = mtz_object,
+        show_log = command_line.options.show_log).mtz_object
     if(command_line.options.output_file_name):
       output_file_name = command_line.options.output_file_name
     else:
