@@ -9,7 +9,6 @@
 #include <boost/weak_ptr.hpp>
 #include <boost/optional.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/cstdint.hpp>
 #include <vector>
 #include <string>
 #include <ctype.h>
@@ -23,7 +22,6 @@ namespace pdb {
 
   typedef scitbx::vec3<double> vec3;
   typedef scitbx::sym_mat3<double> sym_mat3;
-  typedef boost::int32_t int32_t;
 
   using boost::shared_ptr;
   using boost::weak_ptr;
@@ -136,7 +134,7 @@ namespace pdb {
       weak_ptr<conformer_data> parent;
     public:
       str3 name;
-      int32_t seq;
+      str4 seq;
       str1 icode;
       bool link_to_previous;
     protected:
@@ -146,14 +144,14 @@ namespace pdb {
       residue_data(
         weak_ptr<conformer_data> const& parent_,
         const char* name_,
-        int32_t seq_,
+        const char* seq_,
         const char* const& icode_,
         bool link_to_previous_);
 
       inline
       residue_data(
         const char* name_,
-        int32_t seq_,
+        const char* seq_,
         const char* icode_,
         bool link_to_previous_);
 
@@ -167,7 +165,7 @@ namespace pdb {
       id() const
       {
         char buf[32];
-        std::sprintf(buf, "%-3s%4d%s", name.elems, seq, icode.elems);
+        std::sprintf(buf, "%-3s%4s%s", name.elems, seq.elems, icode.elems);
         return std::string(buf);
       }
 
@@ -466,13 +464,13 @@ namespace pdb {
       residue(
         conformer const& parent,
         const char* name="",
-        int32_t seq=0,
+        const char* seq="",
         const char* icode="",
         bool link_to_previous=true);
 
       residue(
         const char* name="",
-        int32_t seq=0,
+        const char* seq="",
         const char* icode="",
         bool link_to_previous=true)
       :
@@ -645,7 +643,7 @@ namespace pdb {
       residue
       new_residue(
         const char* name="",
-        int32_t seq=0,
+        const char* seq="",
         const char* icode="",
         bool link_to_previous=true)
       {
@@ -1330,7 +1328,7 @@ namespace pdb {
   residue_data::residue_data(
     weak_ptr<conformer_data> const& parent_,
     const char* name_,
-    int32_t seq_,
+    const char* seq_,
     const char* const& icode_,
     bool link_to_previous_)
   :
@@ -1344,7 +1342,7 @@ namespace pdb {
   inline
   residue_data::residue_data(
     const char* name_,
-    int32_t seq_,
+    const char* seq_,
     const char* icode_,
     bool link_to_previous_)
   :
@@ -1370,7 +1368,7 @@ namespace pdb {
   residue::residue(
     conformer const& parent,
     const char* name,
-    int32_t seq,
+    const char* seq,
     const char* icode,
     bool link_to_previous)
   :

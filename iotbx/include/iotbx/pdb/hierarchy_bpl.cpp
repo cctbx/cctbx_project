@@ -245,16 +245,7 @@ namespace {
     typedef residue w_t;
 
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
-
-    static int
-    get_seq(w_t const& self) { return self.data->seq; }
-
-    static void
-    set_seq(w_t const& self, int new_seq)
-    {
-      self.data->seq = new_seq;
-    }
-
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(seq)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
 
     static bool
@@ -281,13 +272,13 @@ namespace {
       class_<w_t>("residue", no_init)
         .def(init<
           conformer const&,
-            optional<const char*, int32_t, const char*, bool> >((
+            optional<const char*, const char*, const char*, bool> >((
               arg_("parent"),
-              arg_("name")="", arg_("seq")=0, arg_("icode")="",
+              arg_("name")="", arg_("seq")="", arg_("icode")="",
               arg_("link_to_previous")=true)))
         .def(init<
-          optional<const char*, int32_t, const char*, bool> >((
-            arg_("name")="", arg_("seq")=0, arg_("icode")="",
+          optional<const char*, const char*, const char*, bool> >((
+            arg_("name")="", arg_("seq")="", arg_("icode")="",
             arg_("link_to_previous")=true)))
         .def(init<conformer const&, residue const&>((
           arg_("parent"), arg_("other"))))
@@ -366,7 +357,7 @@ namespace {
         .def("new_residues", &w_t::new_residues, (
           arg_("number_of_additional_residues")))
         .def("new_residue", &w_t::new_residue, new_residue_overloads((
-          arg_("name")="", arg_("seq")=0, arg_("icode")="",
+          arg_("name")="", arg_("seq")="", arg_("icode")="",
           arg_("link_to_previous")=true)))
         .def("residues_size", &w_t::residues_size)
         .def("residues", get_residues)

@@ -50,7 +50,7 @@ namespace {
         .def("name", &w_t::name)
         .def("resname", &w_t::resname)
         .def("chain", &w_t::chain)
-        .def_readonly("resseq", &w_t::resseq)
+        .def("resseq", &w_t::resseq)
         .def("icode", &w_t::icode)
         .def("segid", &w_t::segid)
         .def("altloc", &w_t::altloc)

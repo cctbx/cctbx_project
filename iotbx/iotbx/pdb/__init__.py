@@ -302,7 +302,7 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
             suppress_chain_break = False
             atoms = residue.atoms()
             print >> out, prefix+'      residue name="%s"' % residue.name, \
-              "seq=%4d" % residue.seq, 'icode="%s"' % residue.icode, \
+              'seq="%s"' % residue.seq, 'icode="%s"' % residue.icode, \
               "#atoms=%d" % len(atoms)
             if (level_no == 3): continue
             assert residue.parent().memory_id() == conformer.memory_id()

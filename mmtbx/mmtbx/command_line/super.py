@@ -184,7 +184,7 @@ of the aligned length of the fixed molecule sequence.
       name=label.name(),
       altLoc=label.altloc(),
       resName=label.resname(),
-      resSeq=label.resseq,
+      resSeq=label.resseq(),
       chainID=label.chain(),
       iCode=label.icode(),
       site=lsq_fit.r * matrix.col(atom.xyz) + lsq_fit.t,

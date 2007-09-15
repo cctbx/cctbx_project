@@ -13,8 +13,6 @@
 
 namespace iotbx { namespace pdb {
 
-  static const int min_resseq = -999;
-  static const int max_resseq = 9999;
   static const double anisou_factor = 1.e-4;
 
   static const char blank_altloc_char = ' ';
@@ -840,8 +838,7 @@ namespace iotbx { namespace pdb {
   //! Efficient processing of input atom labels.
   struct input_atom_labels
   {
-    int32_t resseq;
-    static const unsigned compacted_size = 4+3+2+1+4+1;
+    static const unsigned compacted_size = 4+3+2+4+1+4+1;
     char compacted[compacted_size];
 
     char*       name_begin()       { return compacted; }
@@ -867,25 +864,30 @@ namespace iotbx { namespace pdb {
       return std::string(chain_begin(),2);
     }
 
-    char*       icode_begin()       { return compacted+9; }
-    const char* icode_begin() const { return compacted+9; }
+    char*       resseq_begin()       { return compacted+9; }
+    const char* resseq_begin() const { return compacted+9; }
+    str4        resseq_small() const { return str4(resseq_begin()); }
+    std::string resseq()       const { return std::string(resseq_begin(),4); }
+
+    char*       icode_begin()       { return compacted+13; }
+    const char* icode_begin() const { return compacted+13; }
     str1        icode_small() const { return str1(icode_begin()); }
     std::string icode()       const { return std::string(icode_begin(),1); }
 
-    char*       segid_begin()       { return compacted+10; }
-    const char* segid_begin() const { return compacted+10; }
+    char*       segid_begin()       { return compacted+14; }
+    const char* segid_begin() const { return compacted+14; }
     str4        segid_small() const { return str4(segid_begin()); }
     std::string segid()       const { return std::string(segid_begin(),4); }
 
-    char*       altloc_begin()       { return compacted+14; }
-    const char* altloc_begin() const { return compacted+14; }
+    char*       altloc_begin()       { return compacted+18; }
+    const char* altloc_begin() const { return compacted+18; }
     str1        altloc_small() const { return str1(altloc_begin()); }
     std::string altloc()       const { return std::string(altloc_begin(),1); }
 
     input_atom_labels() {}
 
     input_atom_labels(pdb::line_info& line_info)
-    :
+    {
       //  7 - 11  Integer       serial   Atom serial number.
       // 13 - 16  Atom          name     Atom name.
       // 17       Character     altLoc   Alternate location indicator.
@@ -894,12 +896,11 @@ namespace iotbx { namespace pdb {
       // 23 - 26  Integer       resSeq   Residue sequence number.
       // 27       AChar         iCode    Code for insertion of residues.
       // 73 - 76  LString(4)    segID    Segment identifier, left-justified.
-      resseq(field_as_int(line_info,22,26))
-    {
       extract(line_info,12,4,name_begin());
       extract(line_info,16,1,altloc_begin());
       extract(line_info,17,3,resname_begin());
       extract(line_info,20,2,chain_begin());
+      extract(line_info,22,4,resseq_begin());
       extract(line_info,26,1,icode_begin());
       extract(line_info,72,4,segid_begin());
     }
@@ -950,12 +951,10 @@ namespace iotbx { namespace pdb {
     std::string
     pdb_format() const
     {
-      SCITBX_ASSERT(resseq >= min_resseq);
-      SCITBX_ASSERT(resseq <= max_resseq);
       char buf[128];
-      std::sprintf(buf, "\"%4.4s%1.1s%3.3s%2.2s%4d%1.1s\"",
+      std::sprintf(buf, "\"%4.4s%1.1s%3.3s%2.2s%4.4s%1.1s\"",
         name_begin(), altloc_begin(), resname_begin(), chain_begin(),
-        resseq, icode_begin());
+        resseq_begin(), icode_begin());
       std::string result;
       result += buf;
       if (str4(segid_begin()).stripped_size() != 0) {
@@ -979,7 +978,7 @@ namespace iotbx { namespace pdb {
       else if (!are_equal(line_info,20,2,chain_begin())) {
         line_info.set_error(21, "chain mismatch.");
       }
-      else if (resseq != field_as_int(line_info,22,26)) {
+      else if (!are_equal(line_info,22,4,resseq_begin())) {
         line_info.set_error(23, "resseq mismatch.");
       }
       else if (!are_equal(line_info,26,1,icode_begin())) {
@@ -994,11 +993,13 @@ namespace iotbx { namespace pdb {
     int
     compare(input_atom_labels const& other) const
     {
-      if (resseq < other.resseq) return -1;
-      if (resseq > other.resseq) return  1;
       const char* s = compacted;
       const char* o = other.compacted;
       if (*  s < *  o) return -1; if (*s > *o) return 1;
+      if (*++s < *++o) return -1; if (*s > *o) return 1;
+      if (*++s < *++o) return -1; if (*s > *o) return 1;
+      if (*++s < *++o) return -1; if (*s > *o) return 1;
+      if (*++s < *++o) return -1; if (*s > *o) return 1;
       if (*++s < *++o) return -1; if (*s > *o) return 1;
       if (*++s < *++o) return -1; if (*s > *o) return 1;
       if (*++s < *++o) return -1; if (*s > *o) return 1;
@@ -1019,10 +1020,13 @@ namespace iotbx { namespace pdb {
     bool
     operator!=(input_atom_labels const& other) const
     {
-      if (resseq != other.resseq) return true;
       const char* s = compacted;
       const char* o = other.compacted;
       if (*  s != *  o) return true;
+      if (*++s != *++o) return true;
+      if (*++s != *++o) return true;
+      if (*++s != *++o) return true;
+      if (*++s != *++o) return true;
       if (*++s != *++o) return true;
       if (*++s != *++o) return true;
       if (*++s != *++o) return true;
@@ -1043,10 +1047,13 @@ namespace iotbx { namespace pdb {
     bool
     equal_ignoring_altloc(input_atom_labels const& other) const
     {
-      if (resseq != other.resseq) return false;
       const char* s = compacted;
       const char* o = other.compacted;
       if (*  s != *  o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
       if (*++s != *++o) return false;
       if (*++s != *++o) return false;
       if (*++s != *++o) return false;
@@ -1066,10 +1073,15 @@ namespace iotbx { namespace pdb {
     bool
     is_in_same_residue(input_atom_labels const& other) const
     {
-      if (resseq != other.resseq) return false;
       const char* s = resname_begin();
       const char* o = other.resname_begin();
       if (*  s != *  o) return false;
+      if (*++s != *++o) return false;
+      if (*++s != *++o) return false;
+      s = resseq_begin();
+      o = other.resseq_begin();
+      if (*  s != *  o) return false;
+      if (*++s != *++o) return false;
       if (*++s != *++o) return false;
       if (*++s != *++o) return false;
       return (*icode_begin() == *other.icode_begin());
@@ -1415,7 +1427,6 @@ namespace iotbx { namespace pdb {
     public:
       typedef std::map<str6, unsigned> record_type_counts_t;
       typedef std::map<std::string, std::vector<unsigned> > str_sel_cache_t;
-      typedef af::shared<std::vector<unsigned> > int_sel_cache_t;
 
       input() {}
 
@@ -1758,26 +1769,7 @@ namespace iotbx { namespace pdb {
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(altloc, str1)
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(resname, str3)
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(chain, str2)
-
-      int_sel_cache_t const&
-      resseq_selection_cache() const
-      {
-        if (!resseq_selection_cache_is_up_to_date_) {
-          resseq_selection_cache_.resize(max_resseq-min_resseq+1);
-          unsigned i_seq = 0;
-          const input_atom_labels* iall_end = input_atom_labels_list_.end();
-          for(const input_atom_labels* ial=input_atom_labels_list_.begin();
-                                       ial!=iall_end;ial++) {
-            int resseq = ial->resseq;
-            SCITBX_ASSERT(resseq >= min_resseq);
-            SCITBX_ASSERT(resseq <= max_resseq);
-            resseq_selection_cache_[resseq-min_resseq].push_back(i_seq++);
-          }
-          resseq_selection_cache_is_up_to_date_ = true;
-        }
-        return resseq_selection_cache_;
-      }
-
+      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(resseq, str4)
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(icode, str1)
       IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(segid, str4)
 
@@ -1843,8 +1835,9 @@ namespace iotbx { namespace pdb {
         SCITBX_ASSERT(chain_indices.size() == model_numbers.size());
         hierarchy result;
         result.new_models(model_numbers.size());
-        std::vector<unsigned> residue_indices;            // outside loop to
-        residue_indices.reserve(max_resseq-min_resseq+1); // allocate only once
+        static const std::size_t large_residue_size = 100; // not critical
+        std::vector<unsigned> residue_indices;       // outside loop to
+        residue_indices.reserve(large_residue_size); // allocate only once
         const input_atom_labels* iall = input_atom_labels_list_.begin();
         atom* atoms = atoms_.begin();
         unsigned next_chain_range_begin = 0;
@@ -2023,7 +2016,7 @@ namespace iotbx { namespace pdb {
                     = break_range_ids[(*cfs_i)-ch_r.begin];
                   pdb::residue residue = conformer.new_residue(
                     ial->resname_small().elems,
-                    ial->resseq,
+                    ial->resseq_small().elems,
                     ial->icode_small().elems,
                     prev_break_range_id==curr_break_range_id);
                   prev_break_range_id = curr_break_range_id;
@@ -2186,7 +2179,7 @@ namespace iotbx { namespace pdb {
       mutable bool            chain_selection_cache_is_up_to_date_;
       mutable str_sel_cache_t chain_selection_cache_;
       mutable bool            resseq_selection_cache_is_up_to_date_;
-      mutable int_sel_cache_t resseq_selection_cache_;
+      mutable str_sel_cache_t resseq_selection_cache_;
       mutable bool            icode_selection_cache_is_up_to_date_;
       mutable str_sel_cache_t icode_selection_cache_;
       mutable bool            segid_selection_cache_is_up_to_date_;
