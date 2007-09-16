@@ -240,6 +240,7 @@ class selection_cache(object):
     self.chainID = stl.map.stl_string_stl_vector_unsigned()
     self.resSeq = stl.map.stl_string_stl_vector_unsigned()
     self.iCode = stl.map.stl_string_stl_vector_unsigned()
+    self.resid = stl.map.stl_string_stl_vector_unsigned()
     self.segID = stl.map.stl_string_stl_vector_unsigned()
     self.MODELserial = stl.map.int_stl_vector_unsigned()
     self.element = stl.map.stl_string_stl_vector_unsigned()
@@ -252,6 +253,8 @@ class selection_cache(object):
       self.chainID.setdefault(atom_attributes.chainID).append(i_seq)
       self.resSeq.setdefault(atom_attributes.resSeq).append(i_seq)
       self.iCode.setdefault(atom_attributes.iCode).append(i_seq)
+      self.resid.setdefault(
+        atom_attributes.resSeq+atom_attributes.iCode).append(i_seq)
       self.segID.setdefault(atom_attributes.segID).append(i_seq)
       self.MODELserial.setdefault(atom_attributes.MODELserial).append(i_seq)
       self.element.setdefault(atom_attributes.element).append(i_seq)
@@ -345,6 +348,36 @@ class selection_cache(object):
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
+  def get_resid(self, pattern):
+    return _get_map_string(
+      map=self.resid,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
+
+  def get_resid_range(self, start, stop):
+    from iotbx.pdb import utils_base_256_ordinal as o
+    def shift(s):
+      if (len(s) < 5 and s[-1] in "0123456789"): return s + " "
+      return s
+    o_start = None
+    o_stop = None
+    if (start is not None and start.count(" ") != len(start)):
+      o_start = o(shift(start))
+    if (stop is not None and stop.count(" ") != len(stop)):
+      o_stop = o(shift(stop))
+    if (    o_start is not None
+        and o_stop is not None
+        and o_start > o_stop):
+      raise RuntimeError(
+        "range with first index > last index: resid %s:%s" % (start, stop))
+    result = []
+    for s,iselection in self.resid.items():
+      os = o(s)
+      if (o_start is not None and os < o_start): continue
+      if (o_stop  is not None and os > o_stop): continue
+      result.append(iselection)
+    return result
+
   def get_segID(self, pattern):
     return _get_map_string(
       map=self.segID,
@@ -413,6 +446,12 @@ class selection_cache(object):
   def sel_iCode(self, pattern):
     return self.union(iselections=self.get_iCode(pattern=pattern))
 
+  def sel_resid(self, pattern):
+    return self.union(iselections=self.get_resid(pattern=pattern))
+
+  def sel_resid_range(self, start, stop):
+    return self.union(iselections=self.get_resid_range(start=start,stop=stop))
+
   def sel_segID(self, pattern):
     return self.union(iselections=self.get_segID(pattern=pattern))
 
@@ -480,8 +519,10 @@ class selection_cache(object):
           i_colon_or_dash = arg.value.find(":")
           if (i_colon_or_dash < 0): i_colon_or_dash = arg.value.find("-")
           if (i_colon_or_dash < 0):
-            if (lword != "model"):
+            if (lword == "resseq"):
               result_stack.append(self.sel_resSeq(pattern=arg))
+            elif (lword == "resid"):
+              result_stack.append(self.sel_resid(pattern=arg))
             else:
               try: i = int(arg.value)
               except ValueError: raise RuntimeError("Value error.")
@@ -489,9 +530,12 @@ class selection_cache(object):
           else:
             start = arg.value[:i_colon_or_dash]
             stop = arg.value[i_colon_or_dash+1:]
-            if (lword != "model"):
+            if (lword == "resseq"):
               result_stack.append(
                 self.sel_resSeq_range(start=start, stop=stop))
+            elif (lword == "resid"):
+              result_stack.append(
+                self.sel_resid_range(start=start, stop=stop))
             else:
               if (len(start) == 0):
                 i = None
