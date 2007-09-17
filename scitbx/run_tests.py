@@ -9,6 +9,7 @@ def run():
   "$B/array_family/tst_af_4",
   "$B/array_family/tst_af_5",
   "$B/array_family/tst_vec3",
+  "$B/array_family/tst_unsigned_float_arithmetic",
   "$B/array_family/tst_mat3",
   "$B/array_family/tst_sym_mat3",
   "$B/array_family/tst_mat_ref",

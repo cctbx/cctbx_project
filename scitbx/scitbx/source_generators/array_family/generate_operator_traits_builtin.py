@@ -15,6 +15,12 @@ types_ordered = (
   "std::complex<double>",
 )
 
+unsigned = (
+  "unsigned char", "unsigned short", "unsigned int", "unsigned long"
+)
+
+floating = ("float", "double")
+
 class pair(object):
 
   def __init__(self, lhs, rhs):
@@ -39,6 +45,12 @@ def build_pairs():
         result_type.append(0)
       else:
         result_type.append(types_ordered[j])
+  for unsigned_t in unsigned:
+    for floating_t in floating:
+      op_types.append(pair(unsigned_t, floating_t))
+      result_type.append(floating_t)
+      op_types.append(pair(floating_t, unsigned_t))
+      result_type.append(floating_t)
   for op_t, result_t in special_pairs:
     result_type[op_types.index(op_t)] = result_t
   return op_types, result_type
