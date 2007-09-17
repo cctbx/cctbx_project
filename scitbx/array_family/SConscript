@@ -28,3 +28,5 @@ envlm.Program(target="tst_mat3", source="tst_mat3.cpp")
 envlm.Program(target="tst_sym_mat3", source="tst_sym_mat3.cpp")
 env.Program(target="tst_mat_ref", source="tst_mat_ref.cpp")
 env.Program(target="tst_accessors", source="tst_accessors.cpp")
+env.Program(target="tst_unsigned_float_arithmetic",
+            source="tst_unsigned_float_arithmetic.cpp")
