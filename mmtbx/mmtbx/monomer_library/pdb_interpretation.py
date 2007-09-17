@@ -1507,6 +1507,7 @@ class build_chain_proxies(object):
               broken_bond_i_seq_pairs=broken_bond_i_seq_pairs)
             n_unresolved_chain_link_planarities \
               += link_resolution.counters.unresolved_non_hydrogen
+      if (mm.monomer is not None):
         if (mm.is_unusual()):
           unusual_residues[mm.residue_name] += 1
         if (    mm.is_terminus == True
