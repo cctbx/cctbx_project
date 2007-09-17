@@ -386,7 +386,10 @@ extreme value distribution of the chi-square distribution.
                          rogues.data(),
                          rogues.centric_flags().data(),
                          p_vals.data() ):
-      this_row = [str(hkl), "%5.3f"%(math.sqrt(e)), str(c), "%5.3e"%(p) ]
+      if e > 0:
+        this_row = [str(hkl), "%5.3f"%(math.sqrt(e)), str(c), "%5.3e"%(p) ]
+      else:
+        this_row = [str(hkl), "%5.3f"%(0), str(c), " inf" ]
       rows.append( this_row)
     if len(rows)>0:
       table = table_utils.format( [header]+rows,
