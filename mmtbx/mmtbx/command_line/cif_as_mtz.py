@@ -61,6 +61,7 @@ keys_i_obs = ["intensity_meas",
               "I_meas_au",
               "intensity_meas_au"]
 keys_si_obs = ["intensity_sigma",
+               "intensity_meas_sigma",
               "intensity__sigma",
               "I_meas_sigma_au",
               "F_squared_sigma",
@@ -87,6 +88,10 @@ keys_other = ["phase_meas",
               "pdbx_HL_B_iso",
               "pdbx_HL_C_iso",
               "pdbx_HL_D_iso",
+              "pdbx_SAD_HL_A_iso",
+              "pdbx_SAD_HL_B_iso",
+              "pdbx_SAD_HL_C_iso",
+              "pdbx_SAD_HL_D_iso",
               "pdbx_F_meas_plus_au",
               "pdbx_F_meas_plus_sigma_au",
               "pdbx_F_meas_minus_au",
@@ -193,7 +198,7 @@ keys_other = ["phase_meas",
 possible_keys = keys_indices + keys_f_obs + keys_sf_obs + keys_i_obs + \
                 keys_si_obs + keys_status + keys_other
 
-ccp4_range = range(-99,-1)+ range(2,150)
+ccp4_range = range(-99,-1)+ range(2,250)
 tw_flags_num = ["1","1.","1.0","1.00","1.000","1.0000","-1","-1.","-1.0","-1.00",
             "-1.000","0","0.0","0.","0.00","0.000","0.0000"]+ \
     [str(i) for i in ccp4_range] + ccp4_range + \
@@ -375,11 +380,12 @@ class extract_data(object):
     self.file_name = file_name
     start_counter = 0
     start_flag = False
-    for line in file_lines:
+    for i_line, line in enumerate(file_lines):
       line_orig = line
       h_,k_,l_,data_,sigma_,flag_ = [None]*6
       line = line.strip()
       line = line.split()
+      if len(line) == 0: continue
       if(len(key_counter.keys) != start_counter or not start_flag):
         if(len(line) == 1):
           if(line[0] == "loop_"): start_flag = True
@@ -387,55 +393,52 @@ class extract_data(object):
              and line[0] != "loop_"):
             start_counter += 1
       if(len(key_counter.keys) == start_counter and start_flag):
-        if(self.indices.size() > 0 and len(line) != len(key_counter.keys)):
-          break
-        if(len(line) == len(key_counter.keys)):
-          try:
-            if(key_counter.i_fobs is not None):
-              data_ = line[key_counter.i_fobs]
-              if(key_counter.i_sfobs is not None):
-                sigma_ = line[key_counter.i_sfobs]
-            else:
-              if(key_counter.i_siobs is not None):
-                sigma_ = line[key_counter.i_siobs]
-              data_ = line[key_counter.i_iobs]
-            if(key_counter.i_flag is not None):
-              flag_ = line[key_counter.i_flag]
-            if(data_ in ["?","*","."]): continue
-            if(sigma_ in ["?","*","."]): sigma_ = 1.0
-          except:
-            self.reset(message = "Cannot extract column data,#1.",line=line)
-            break
-          try:
-            h_ = line[key_counter.i_h]
-            k_ = line[key_counter.i_k]
-            l_ = line[key_counter.i_l]
-            try_h = h_.replace("-","").strip().isdigit()
-            try_k = k_.replace("-","").strip().isdigit()
-            try_l = l_.replace("-","").strip().isdigit()
-            if(not (try_h and try_k and try_l)):
-              if(line[0] not in ["#END","#","#;"] and
-                 line_orig.count("This file should contain")==0):
-                self.reset(message="h or k or k or all: NOT digit(s).",line=line)
+        result_hkl = list(self.access_hkl(line=line, key_counter=key_counter))
+        if(result_hkl.count(None) == 0):
+          if(len(line) != len(key_counter.keys)):
+            if(self.is_break(file_lines=file_lines, i_line=i_line,
+               key_counter=key_counter, line=line)): break
+          if(len(line) == len(key_counter.keys)):
+            try:
+              if(key_counter.i_fobs is not None):
+                data_ = line[key_counter.i_fobs]
+                if(key_counter.i_sfobs is not None):
+                  sigma_ = line[key_counter.i_sfobs]
+              else:
+                if(key_counter.i_siobs is not None):
+                  sigma_ = line[key_counter.i_siobs]
+                data_ = line[key_counter.i_iobs]
+              if(key_counter.i_flag is not None):
+                flag_ = line[key_counter.i_flag]
+              if(data_.count("*")>0 or data_.count("?")>0 or data_=="."):
+                continue
+              if(sigma_ is not None):
+                if(sigma_.count("*")>0 or sigma_.count("?")>0 or sigma_=="."):
+                  sigma_ = 1.0
+            except:
+              self.reset(message = "Cannot extract column data,#1.",line=line)
               break
-            h_ = int(h_)
-            k_ = int(k_)
-            l_ = int(l_)
-            data_ = float(data_)
-            if(data_ == 0.0): continue
-            if(sigma_ is not None):
-              sigma_ = float(sigma_)
-              if(sigma_ < 0.0): continue
-          except:
-            self.reset(message = "Cannot extract column data,#2.",line=line)
-            break
-          assert [h_, k_, l_].count(None) == 0
-          assert data_ is not None
-          if([h_,k_,l_].count(0) != 3 and data_ != 0):
-            self.indices.append([h_, k_, l_])
-            self.data.append(data_)
-            if(flag_ is not None): self.flags.append(flag_)
-            if(sigma_ is not None): self.sigmas.append(sigma_)
+            try:
+              data_ = float(data_)
+              if(data_ == 0.0): continue
+              if(sigma_ is not None):
+                sigma_ = float(sigma_)
+                if(sigma_ < 0.0):
+                  if(data_ == sigma_): continue
+            except:
+              if(self.is_break(file_lines=file_lines, i_line=i_line,
+                 key_counter=key_counter, line=line)): break
+            assert result_hkl.count(None) == 0
+            assert data_ is not None
+            if(result_hkl.count(0) != 3 and data_ != 0):
+              self.indices.append(result_hkl)
+              self.data.append(data_)
+              if(flag_ is not None): self.flags.append(flag_)
+              if(sigma_ is not None): self.sigmas.append(sigma_)
+        else:
+          if(self.data.size() > 0 and len(line) != len(key_counter.keys)):
+            if(self.is_break(file_lines=file_lines, i_line=i_line,
+               key_counter=key_counter, line=line)): break
     if(self.indices.size() != self.data.size()):
       self.reset(message = "self.indices.size() != self.data.size()")
     if(len(self.sigmas) > 0):
@@ -458,6 +461,50 @@ class extract_data(object):
           self.sigmas = self.sigmas.select(cif_selection)
           self.flags = self.flags.select(cif_selection)
 
+  def access_hkl(self, line, key_counter):
+    h, k, l = [None]*3
+    try:
+      h_ = line[key_counter.i_h]
+      k_ = line[key_counter.i_k]
+      l_ = line[key_counter.i_l]
+      try_h = h_.replace("-","").strip().isdigit()
+      try_k = k_.replace("-","").strip().isdigit()
+      try_l = l_.replace("-","").strip().isdigit()
+      if(not (try_h and try_k and try_l)): return h, k, l
+      h = int(h_)
+      k = int(k_)
+      l = int(l_)
+    except:
+      return h, k, l
+    return h, k, l
+
+  def get_next_line(self, file_lines, i_line):
+    next_line = None
+    try:
+      next_line = file_lines[i_line+1]
+      if(len(next_line) == 0):
+        try:
+          next_line = file_lines[i_line+2]
+        except: pass
+    except: pass
+    if(next_line is not None):
+      next_line = next_line.strip()
+      next_line = next_line.split()
+    return next_line
+
+  def is_break(self, file_lines, i_line, key_counter, line):
+    next_line = self.get_next_line(file_lines=file_lines,i_line=i_line)
+    if(next_line is not None):
+      next_line_hkl = list(self.access_hkl(line=next_line,
+        key_counter=key_counter))
+      if(next_line_hkl.count(None) == 0):
+        self.reset(message="Cannot extract column data,#2.",line=line)
+        return True
+      else:
+        return True
+    else: return True
+    return False
+
   def reset(self, message, line=None):
     self.indices = flex.miller_index()
     self.data = flex.double()
@@ -472,6 +519,10 @@ def create_mtz_object(pre_miller_arrays,
                       crystal_symmetry,
                       file_name,
                       show_details_if_error):
+  r_free_flags = None
+  if(pre_miller_arrays.flags is not None):
+    if(pre_miller_arrays.flags.size() > 0):
+      r_free_flags = pre_miller_arrays.flags
   try:
     miller_set = miller.set(
       crystal_symmetry = crystal_symmetry,
@@ -489,22 +540,30 @@ def create_mtz_object(pre_miller_arrays,
   except Exception, e:
     print "Cannot setup final miller array:", file_name, str(e)
     return None
+  if(r_free_flags is not None):
+    r_free_flags = miller_array.array(data = r_free_flags)
   n_all = miller_array.indices().size()
-  n_uus = miller_array.unique_under_symmetry_selection().size()
-  if (n_uus != n_all):
+  sel_unique = miller_array.unique_under_symmetry_selection()
+  sel_dup = ~flex.bool(n_all, sel_unique)
+  n_duplicate = sel_dup.count(True)
+  n_uus = sel_unique.size()
+  if(n_uus != n_all and n_duplicate > 1):
     print "Miller indices not unique under symmetry:", file_name, \
       "(%d redundant indices out of %d)" % (n_all-n_uus, n_all)
     if (show_details_if_error):
       miller_array.show_comprehensive_summary(prefix="  ")
       miller_array.map_to_asu().sort().show_array(prefix="  ")
     return None
+  elif(n_duplicate == 1):
+    miller_array = miller_array.select(sel_unique)
+    if(r_free_flags is not None):
+      r_free_flags = r_free_flags.select(sel_unique)
   mtz_dataset = miller_array.as_mtz_dataset(
     column_root_label = observation_type)
-  if(pre_miller_arrays.flags is not None):
-    if(pre_miller_arrays.flags.size() > 0):
-      mtz_dataset.add_miller_array(
-        miller_array      = miller_array.array(data = pre_miller_arrays.flags),
-        column_root_label = "R-free-flags")
+  if(r_free_flags is not None):
+    mtz_dataset.add_miller_array(
+      miller_array      = r_free_flags,
+      column_root_label = "R-free-flags")
   mtz_object = mtz_dataset.mtz_object()
   return mtz_object
 
@@ -528,6 +587,8 @@ class guess_observation_type(object):
             r_free_flags = miller_array
             r_free_flags_orig = r_free_flags.deep_copy()
             r_free_flags = r_free_flags.array(data = r_free_flags.data()==1)
+      f_obs = f_obs.common_set(r_free_flags)
+      r_free_flags = r_free_flags.common_set(f_obs)
       observation_type = f_obs.observation_type()
       if(str(observation_type) == "xray.amplitude"):
         observation_type = "F"
@@ -542,20 +603,21 @@ class guess_observation_type(object):
       if(fmodel is not None):
         result, r_free_is_ok = self.get_observation_type(fmodel = fmodel,
           show_log = show_log)
-        observation_type = result
-        # XXX do it optimally
-        if(observation_type.startswith("F")):
-          f_obs.set_observation_type_xray_amplitude()
-        elif(observation_type.startswith("I")):
-          f_obs.set_observation_type_xray_intensity()
-        else:
-          f_obs = f_obs.set_observation_type(observation_type = None)
-        mtz_dataset = f_obs.as_mtz_dataset(column_root_label= observation_type)
-        if(r_free_flags_orig is not None and r_free_is_ok):
-          mtz_dataset.add_miller_array(
-            miller_array      = r_free_flags_orig,
-            column_root_label = "R-free-flags")
-        self.mtz_object = mtz_dataset.mtz_object()
+        if([result, r_free_is_ok].count(None) == 0):
+          observation_type = result
+          # XXX do it optimally
+          if(observation_type.startswith("F")):
+            f_obs.set_observation_type_xray_amplitude()
+          elif(observation_type.startswith("I")):
+            f_obs.set_observation_type_xray_intensity()
+          else:
+            f_obs = f_obs.set_observation_type(observation_type = None)
+          mtz_dataset = f_obs.as_mtz_dataset(column_root_label= observation_type)
+          if(r_free_flags_orig is not None and r_free_is_ok):
+            mtz_dataset.add_miller_array(
+              miller_array      = r_free_flags_orig,
+              column_root_label = "R-free-flags")
+          self.mtz_object = mtz_dataset.mtz_object()
 
   def get_xray_structure_from_pdb_file(self):
     mon_lib_srv = monomer_library.server.server()
@@ -579,11 +641,15 @@ class guess_observation_type(object):
     sel = (occ > 0.) & (occ < 50.) & (beq > 0.) & (beq < 999.) & (sca != "?")
     if(sel.size() > 0 and sel.count(True) > 0):
       xray_structure = xray_structure.select(selection = sel)
+      xray_structure.tidy_us()
     else: return None
     return xray_structure
 
   def get_fmodel_object(self, xray_structure, f_obs, r_free_flags):
     fmodel = None
+    selection = f_obs.d_spacings().data() > 0.25
+    f_obs = f_obs.select(selection)
+    r_free_flags = r_free_flags.select(selection)
     try:
       fmodel = mmtbx.f_model.manager(
         xray_structure   = xray_structure,
@@ -657,6 +723,7 @@ class guess_observation_type(object):
     params.k_sol_min = 0.0
     params.b_sol_max = 500.0
     params.b_sol_min = 0.0
+    neutron_flag = True
     observation_type = str(fmodel.f_obs.observation_type())
     assert observation_type in ["xray.amplitude","xray.intensity"]
     if(observation_type == "xray.amplitude"): observation_type = "FOBS_X"
@@ -671,7 +738,8 @@ class guess_observation_type(object):
     if(abs(flex.mean(sigmas) - 1.0) > 0.001):
       selection &= (fmodel.f_obs.data() > fmodel.f_obs.sigmas()*2.0)
     selection &= (fmodel.f_obs.d_star_sq().data() > 0)
-    if(selection.size() > 0):
+    ssize = selection.size()
+    if(ssize > 0 and selection.count(True) > 100):
       fmodel = fmodel.select(selection = selection)
     try:
       fmodel = fmodel.remove_outliers()
@@ -692,16 +760,15 @@ class guess_observation_type(object):
       # XXX push to xray_structure ?
       neutron_scattering_dict = {}
       reg = fmodel_dc.xray_structure.scattering_type_registry()
-      flag = True
       for scattering_type in reg.type_index_pairs_as_dict().keys():
         scattering_info = neutron_news_1992_table(scattering_type, 1)
         b = scattering_info.bound_coh_scatt_length()
         if(b.imag != 0.0):
-          flag = False
+          neutron_flag = False
           break
         neutron_scattering_dict[scattering_type] = \
           eltbx.xray_scattering.gaussian(b.real)
-      if(flag):
+      if(neutron_flag):
         fmodel_dc.xray_structure.scattering_type_registry(
           custom_dict = neutron_scattering_dict)
         fmodel_dc.update_xray_structure(update_f_calc=True, update_f_mask=True)
@@ -711,42 +778,47 @@ class guess_observation_type(object):
         results.append([r_work, observation_type, r_free])
         results = self.f_or_i_or_n(fmodel = fmodel_dc, params = params,
           observation_type = observation_type, results = results)
-    result_best = observation_type
-    r_free_is_ok = False
-    if show_log: print "Scores:"
-    if show_log:
-      print "  observation type from input file:", observation_type_from_file
-    if(len(results) == 1):
-      if(results[0][0] < 30.):
-        observation_type = "F"+observation_type[1:]
-        r_free_is_ok = (results[0][0] < results[0][2]) and \
-          (abs(results[0][0] - results[0][2]) > 1.0)
-    elif(len(results) > 1):
-      r = results[0][0]
-      for res in results:
-        if show_log: print "    if it is %s: r_work= %6.2f"%(res[1], res[0])
-        if(res[0] <= r):
-          result_best = res
-          r = res[0]
-      delta = 100.
-      for res in results:
-        if(res[0] > result_best[0] and abs(res[0]-result_best[0]) < delta):
-          delta = abs(res[0]-result_best[0])
+    try:
+      result_best = observation_type
+      r_free_is_ok = False
+      if show_log: print "Scores:"
       if show_log:
-        print "  selected %s with r_work %6.2f"%(result_best[1],result_best[0])
-      r_free_is_ok = (result_best[0] < result_best[2]) and \
-        (abs(result_best[0] - result_best[2]) > 1.0)
-      if((delta < 3. and result_best[0] > 30.) or result_best[0] > 40.):
-        observation_type = "OBS"
-      else: observation_type = result_best[1]
-      if(observation_type != "OBS"):
-        if(results[3][0] == result_best[0]):
+        print "  observation type from input file:", observation_type_from_file
+      if(len(results) == 1):
+        if(results[0][0] < 30.):
           observation_type = "F"+observation_type[1:]
-        if(results[0][0] == result_best[0]):
-          observation_type = "F"+observation_type[1:]
-    if show_log: print "  final observation type:", observation_type
-    if(len(results) == 1):
-      if show_log: print "  final r_work= %6.2f"%results[0][0]
+          r_free_is_ok = (results[0][0] < results[0][2]) and \
+            (abs(results[0][0] - results[0][2]) > 1.0)
+      elif(len(results) > 1):
+        r = results[0][0]
+        for res in results:
+          if show_log: print "    if it is %s: r_work= %6.2f"%(res[1], res[0])
+          if(res[0] <= r):
+            result_best = res
+            r = res[0]
+        delta = 100.
+        for res in results:
+          if(res[0] > result_best[0] and abs(res[0]-result_best[0]) < delta):
+            delta = abs(res[0]-result_best[0])
+        if show_log:
+          print "  selected %s with r_work %6.2f"%(result_best[1],result_best[0])
+        r_free_is_ok = (result_best[0] < result_best[2]) and \
+          (abs(result_best[0] - result_best[2]) > 1.0)
+        if((delta < 3. and result_best[0] > 30.) or result_best[0] > 40.):
+          observation_type = "OBS"
+        else: observation_type = result_best[1]
+        if(observation_type != "OBS"):
+          if(neutron_flag and results[3][0] == result_best[0]):
+            observation_type = "F"+observation_type[1:]
+          if(results[0][0] == result_best[0]):
+            observation_type = "F"+observation_type[1:]
+      if show_log: print "  final observation type:", observation_type
+      if(len(results) == 1):
+        if show_log: print "  final r_work= %6.2f"%results[0][0]
+    except Exception, e:
+      print "INFO: Cannot score results to select observation type:", \
+        self.file_name,str(e)
+      return None, None
     return observation_type, r_free_is_ok
 
 def run(args, command_name = "phenix.cif_as_mtz"):
