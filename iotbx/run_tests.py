@@ -12,6 +12,7 @@ def run():
   "$D/include/iotbx/pdb/tst_ext.py",
   "$D/include/iotbx/pdb/tst_rna_dna_atom_names.py",
   "$D/iotbx/pdb/tst_atom_name_interpretation.py",
+  "$D/iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py",
   "$D/iotbx/pdb/tst_pdb.py",
   "$D/iotbx/cns/space_group_symbols.py",
   "$D/iotbx/cns/tst_cns.py",
