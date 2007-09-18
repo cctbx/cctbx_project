@@ -21,6 +21,17 @@ class rec(object):
   def n_columns(self):
     return self.n[1]
 
+  def __repr__(self):
+    if self.n[0] == 1:
+      return "matrix.row(%s)" % (self.elems,)
+    elif self.n[1] == 1:
+      return "matrix.col(%s)" % (self.elems,)
+    else:
+      return "matrix.rec(%s)" % (
+        tuple([ self.elems[i:i+self.n[1]]
+                for i in xrange(0, len(self.elems), self.n[1]) ]),
+      )
+
   def __neg__(self):
     return rec([-e for e in self.elems], self.n)
 
@@ -623,5 +634,15 @@ if (__name__ == "__main__"):
   a = sym(sym_mat3=range(6))
   assert a.as_list_of_lists() == [[0, 3, 4], [3, 1, 5], [4, 5, 2]]
   assert approx_equal(a.as_sym_mat3(), range(6))
+  #
+  x = col((1,2,3))
+  assert repr(x) == "matrix.col((1, 2, 3))"
+  y = row((3,2,1))
+  assert repr(y) =="matrix.row((3, 2, 1))"
+  m = rec((1,2,3,
+           4,5,6,
+           7,8,9,
+           4,2,9), (4,3))
+  assert repr(m) == "matrix.rec(((1, 2, 3), (4, 5, 6), (7, 8, 9), (4, 2, 9)))"
   #
   print "OK"
