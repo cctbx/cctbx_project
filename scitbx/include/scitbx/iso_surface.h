@@ -14,9 +14,11 @@
 #include <cmath>
 #include <map>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
+#include <scitbx/array_family/loops.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/tiny.h>
+#include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/error.h>
 
@@ -330,6 +332,7 @@ public:
   typedef CoordinatesType coordinates_type;
   typedef ValueType value_type;
   typedef af::c_grid_padded<3> grid_type;
+  typedef typename grid_type::index_type index_type;
   typedef typename grid_type::index_value_type index_value_type;
   typedef af::const_ref<value_type, grid_type> map_const_ref_type;
 
@@ -338,19 +341,19 @@ public:
   typedef af::tiny<index_value_type,3> triangle;
 
   /** Construct the triangulation from a map of the scalar field, the iso level
-  and the map grid size.
+  and the map grid size. The flag lazzy_normals specify whether the normals
+  shall be computed when the member function normals() is called for the first
+  time or whether to compute them upfront.
   */
   triangulation(map_const_ref_type map,
               value_type iso_level,
-              scitbx::vec3<coordinates_type> const& grid_size)
+              af::tiny<coordinates_type, 3> const& map_extent,
+              bool lazzy_normals=true)
   : map_(map),
     iso_level_(iso_level),
-    n_cells_x(map.accessor().all()[0]-1),
-    n_cells_y(map.accessor().all()[1]-1),
-    n_cells_z(map.accessor().all()[2]-1),
-    cell_length_x(grid_size[0]),
-    cell_length_y(grid_size[1]),
-    cell_length_z(grid_size[2])
+    n_cells(map.accessor().all() - index_value_type(1)),
+    cell_lengths(map_extent/n_cells),
+    lazzy_normals_(lazzy_normals)
   {
     init();
   }
@@ -364,17 +367,32 @@ public:
 
   /// The normals to the isosurface at each vertex
   /** Each normal is the mean of the area vectors of those triangles which
-  share the vertex that normal emanates from. */
-  af::shared<vector_3d> normals() { return normals_; }
+  share the vertex that normal emanates from. Each normal is either of norm 1
+  or zero. The latter means that all those aformentioned triangles are 
+  degenerate and that they would not need to be drawn. */
+  af::shared<vector_3d> normals() {
+    if (lazzy_normals_) {
+      calculate_normals();
+      lazzy_normals_ = false;
+    }
+    return normals_;
+  }
 
 protected:
 
+  enum { X=0, Y=1, Z=2 };
+
   struct point_3d_id {
+    point_3d_id(index_value_type idx, point_3d q) : new_id(idx), p(q) {}
+    point_3d_id(point_3d q) : p(q) {}
+    point_3d_id() {}
     index_value_type new_id;
-    CoordinatesType x, y, z;
+    point_3d p;
   };
 
   typedef std::map<index_value_type, point_3d_id> id_to_point_3d_id;
+
+  bool lazzy_normals_;
 
   // The map of the scalar field
   map_const_ref_type map_;
@@ -383,10 +401,10 @@ protected:
   value_type iso_level_;
 
   // No. of cells in x, y, and z directions
-  index_value_type n_cells_x, n_cells_y, n_cells_z;
+  index_type n_cells;
 
   // Cell length in x, y, and z directions.
-  CoordinatesType cell_length_x, cell_length_y, cell_length_z;
+  af::tiny<coordinates_type, 3> cell_lengths;
 
   // The vertices_ which make up the isosurface.
   af::shared<point_3d> vertices_;
@@ -403,44 +421,25 @@ protected:
   // Initialisation
   void init();
 
+  // Process one edge from the given point
+  void process_edge(index_type grid_point_idx, int edge_no);
+
   // Returns the edge id.
-  index_value_type get_edge_id(index_value_type n_x,
-                               index_value_type n_y,
-                               index_value_type n_z,
-                               int n_edge_no);
+  index_value_type get_edge_id(index_type n, int edge_no);
 
-  // Returns the vertex id.
-  index_value_type get_vertex_id(index_value_type n_x,
-                                 index_value_type n_y,
-                                 index_value_type n_z)
-  {
-    return 3*(n_z*(n_cells_y + 1)*(n_cells_x + 1) + n_y*(n_cells_x + 1) + n_x);
-  }
-
-  // Calculates the intersection point of the isosurface with an
-  // edge.
-  point_3d_id calculate_intersection(index_value_type n_x,
-                                     index_value_type n_y,
-                                     index_value_type n_z,
-                                     index_value_type n_edge_no);
+  // Calculates the intersection point of the isosurface with an edge.
+  point_3d calculate_intersection(index_type n, int edge_no);
 
   // Interpolates between two grid points to produce the point at which
   // the isosurface intersects an edge.
-  point_3d_id interpolate(CoordinatesType x1,
-                          CoordinatesType y1,
-                          CoordinatesType z1,
-                          CoordinatesType x2,
-                          CoordinatesType y2,
-                          CoordinatesType z2,
-                          value_type val1,
-                          value_type val2);
+  point_3d_id interpolate(point_3d p1, point_3d p2,
+                          value_type val1, value_type val2);
 
-  // Renames vertices_ and triangles so that they can be accessed more
-  // efficiently.
+  // Renames vertices and triangles so that they can be efficiently accessed.
   void rename_vertices_and_triangles();
 
-  // Calculates the normals_.
-  void calculate__normals();
+  // Calculates the normals.
+  void calculate_normals();
 };
 
 template <class CoordinatesType, class ValueType>
@@ -450,251 +449,157 @@ init()
 {
   using namespace triangulation_detail;
   // Generate isosurface.
-  for (index_value_type z = 0; z < n_cells_z; z++)
-    for (index_value_type y = 0; y < n_cells_y; y++)
-      for (index_value_type x = 0; x < n_cells_x; x++) {
-        // Calculate table lookup index from those vertices_
-        // which are below the isolevel.
-        index_value_type table_index = 0;
-        if (map_(x, y, z)       < iso_level_) table_index |=   1;
-        if (map_(x, y+1, z)     < iso_level_) table_index |=   2;
-        if (map_(x+1, y+1, z)   < iso_level_) table_index |=   4;
-        if (map_(x+1, y, z)     < iso_level_) table_index |=   8;
-        if (map_(x, y, z+1)     < iso_level_) table_index |=  16;
-        if (map_(x, y+1, z+1)   < iso_level_) table_index |=  32;
-        if (map_(x+1, y+1, z+1) < iso_level_) table_index |=  64;
-        if (map_(x+1, y, z+1)   < iso_level_) table_index |= 128;
+  for (af::nested_loop<index_type> index(n_cells); !index.over(); index.incr())
+  {
+    // Calculate table lookup index from those vertices below the isolevel.
+    index_value_type x = index()[0], y = index()[1], z = index()[2];
+    index_value_type table_index = 0;
+    if (map_(x, y, z)       < iso_level_) table_index |=   1;
+    if (map_(x, y+1, z)     < iso_level_) table_index |=   2;
+    if (map_(x+1, y+1, z)   < iso_level_) table_index |=   4;
+    if (map_(x+1, y, z)     < iso_level_) table_index |=   8;
+    if (map_(x, y, z+1)     < iso_level_) table_index |=  16;
+    if (map_(x, y+1, z+1)   < iso_level_) table_index |=  32;
+    if (map_(x+1, y+1, z+1) < iso_level_) table_index |=  64;
+    if (map_(x+1, y, z+1)   < iso_level_) table_index |= 128;
 
-        // Now create a triangulation of the isosurface in this cell.
-        if (edge_table[table_index] != 0) {
-          if (edge_table[table_index] & 8) {
-            point_3d_id pt = calculate_intersection(x, y, z, 3);
-            index_value_type id = get_edge_id(x, y, z, 3);
-            id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-          }
-          if (edge_table[table_index] & 1) {
-            point_3d_id pt = calculate_intersection(x, y, z, 0);
-            index_value_type id = get_edge_id(x, y, z, 0);
-            id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-          }
-          if (edge_table[table_index] & 256) {
-            point_3d_id pt = calculate_intersection(x, y, z, 8);
-            index_value_type id = get_edge_id(x, y, z, 8);
-            id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-          }
+    // Now create a triangulation of the isosurface in this cell.
+    int edge_flag = edge_table[table_index];
 
-          if (x == n_cells_x - 1) {
-            if (edge_table[table_index] & 4) {
-              point_3d_id pt = calculate_intersection(x, y, z, 2);
-              index_value_type id = get_edge_id(x, y, z, 2);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
-            if (edge_table[table_index] & 2048) {
-              point_3d_id pt = calculate_intersection(x, y, z, 11);
-              index_value_type id = get_edge_id(x, y, z, 11);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
-          }
-          if (y == n_cells_y - 1) {
-            if (edge_table[table_index] & 2) {
-              point_3d_id pt = calculate_intersection(x, y, z, 1);
-              index_value_type id = get_edge_id(x, y, z, 1);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
-            if (edge_table[table_index] & 512) {
-              point_3d_id pt = calculate_intersection(x, y, z, 9);
-              index_value_type id = get_edge_id(x, y, z, 9);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
-          }
-          if (z == n_cells_z - 1) {
-            if (edge_table[table_index] & 16) {
-              point_3d_id pt = calculate_intersection(x, y, z, 4);
-              index_value_type id = get_edge_id(x, y, z, 4);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
-            if (edge_table[table_index] & 128) {
-              point_3d_id pt = calculate_intersection(x, y, z, 7);
-              index_value_type id = get_edge_id(x, y, z, 7);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
-          }
-          if ((x==n_cells_x - 1) && (y==n_cells_y - 1))
-            if (edge_table[table_index] & 1024) {
-              point_3d_id pt = calculate_intersection(x, y, z, 10);
-              index_value_type id = get_edge_id(x, y, z, 10);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
-          if ((x==n_cells_x - 1) && (z==n_cells_z - 1))
-            if (edge_table[table_index] & 64) {
-              point_3d_id pt = calculate_intersection(x, y, z, 6);
-              index_value_type id = get_edge_id(x, y, z, 6);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
-          if ((y==n_cells_y - 1) && (z==n_cells_z - 1))
-            if (edge_table[table_index] & 32) {
-              point_3d_id pt = calculate_intersection(x, y, z, 5);
-              index_value_type id = get_edge_id(x, y, z, 5);
-              id_to_vertex.insert(typename id_to_point_3d_id::value_type(id, pt));
-            }
+    if ( edge_flag == 0) continue;
 
-          for (index_value_type i = 0; tri_table[table_index][i] != -1; i += 3) {
-            index_value_type point_id0, point_id1, point_id2;
-            point_id0 = get_edge_id(x, y, z, tri_table[table_index][i]);
-            point_id1 = get_edge_id(x, y, z, tri_table[table_index][i+1]);
-            point_id2 = get_edge_id(x, y, z, tri_table[table_index][i+2]);
-            triangles_.push_back(triangle(point_id0, point_id1, point_id2));
-          }
-        }
+    if (edge_flag &   8) process_edge(index(), 3);
+    if (edge_flag &   1) process_edge(index(), 0);
+    if (edge_flag & 256) process_edge(index(), 8);
+    if (x == n_cells[X] - 1) {
+      if (edge_flag &    4) process_edge(index(), 2);
+      if (edge_flag & 2048) process_edge(index(), 11);
+    }
+    if (y == n_cells[Y] - 1) {
+      if (edge_flag &   2) process_edge(index(), 1);
+      if (edge_flag & 512) process_edge(index(), 9);
+    }
+    if (z == n_cells[Z] - 1) {
+      if (edge_flag &  16) process_edge(index(), 4);
+      if (edge_flag & 128) process_edge(index(), 7);
+    }
+    if (x == n_cells[X] - 1 && y == n_cells[Y] - 1) {
+      if (edge_flag & 1024) process_edge(index(), 10);
+    }
+    if (x == n_cells[X] - 1 && z == n_cells[Z] - 1) {
+      if (edge_flag & 64) process_edge(index(), 6);
+    }
+    if (y == n_cells[Y] - 1 && z == n_cells[Z] - 1) {
+      if (edge_flag & 32) process_edge(index(), 5);
+    }
+
+    for (index_value_type i = 0; tri_table[table_index][i] != -1; i += 3) {
+      index_value_type point_id0, point_id1, point_id2;
+      point_id0 = get_edge_id(index(), tri_table[table_index][i]);
+      point_id1 = get_edge_id(index(), tri_table[table_index][i+1]);
+      point_id2 = get_edge_id(index(), tri_table[table_index][i+2]);
+      triangles_.push_back(triangle(point_id0, point_id1, point_id2));
+    }
   }
 
   rename_vertices_and_triangles();
-  calculate__normals();
+  if (!lazzy_normals_) calculate_normals();
 }
 
 template <class CoordinatesType, class ValueType>
+inline
+void
+triangulation<CoordinatesType, ValueType>::
+process_edge(index_type n, int edge_no)
+{
+  index_value_type idx = get_edge_id(n, edge_no);
+  point_3d p = calculate_intersection(n, edge_no);
+  id_to_vertex.insert(typename id_to_point_3d_id::value_type(idx, point_3d_id(p)));
+}
+
+
+template <class CoordinatesType, class ValueType>
+inline
 typename triangulation<CoordinatesType, ValueType>::index_value_type
 triangulation<CoordinatesType, ValueType>::
-get_edge_id(index_value_type n_x, index_value_type n_y, index_value_type n_z,
-            int n_edge_no)
+get_edge_id(index_type n, int edge_no)
 {
-  switch (n_edge_no) {
-  case 0:
-    return get_vertex_id(n_x, n_y, n_z) + 1;
-  case 1:
-    return get_vertex_id(n_x, n_y + 1, n_z);
-  case 2:
-    return get_vertex_id(n_x + 1, n_y, n_z) + 1;
-  case 3:
-    return get_vertex_id(n_x, n_y, n_z);
-  case 4:
-    return get_vertex_id(n_x, n_y, n_z + 1) + 1;
-  case 5:
-    return get_vertex_id(n_x, n_y + 1, n_z + 1);
-  case 6:
-    return get_vertex_id(n_x + 1, n_y, n_z + 1) + 1;
-  case 7:
-    return get_vertex_id(n_x, n_y, n_z + 1);
-  case 8:
-    return get_vertex_id(n_x, n_y, n_z) + 2;
-  case 9:
-    return get_vertex_id(n_x, n_y + 1, n_z) + 2;
-  case 10:
-    return get_vertex_id(n_x + 1, n_y + 1, n_z) + 2;
-  case 11:
-    return get_vertex_id(n_x + 1, n_y, n_z) + 2;
+  int c = 0;
+  switch (edge_no) {
+  case 0:  c = 1;          ;          ;          ; break;
+  case 1:       ;          ; n[Y] += 1;          ; break;
+  case 2:  c = 1; n[X] += 1;          ;          ; break;
+  case 3:       ;          ;          ;          ; break;
+  case 4:  c = 1;          ;          ; n[Z] += 1; break;
+  case 5:       ;          ; n[Y] += 1; n[Z] += 1; break;
+  case 6:  c = 1; n[X] += 1;          ; n[Z] += 1; break;
+  case 7:       ;          ;          ; n[Z] += 1; break;
+  case 8:  c = 2;          ;          ;          ; break;
+  case 9:  c = 2;          ; n[Y] += 1;          ; break;
+  case 10: c = 2; n[X] += 1; n[Y] += 1;          ; break;
+  case 11: c = 2; n[X] += 1;          ;          ; break;
   default:
     throw SCITBX_ERROR("Internal Error: Invalid edge no.");
   }
+  index_value_type vertex_id = 3*map_.accessor()(n);
+  return vertex_id + c;
 }
 
 template <class CoordinatesType, class ValueType>
-typename triangulation<CoordinatesType, ValueType>::point_3d_id
+inline
+typename triangulation<CoordinatesType, ValueType>::point_3d
 triangulation<CoordinatesType, ValueType>::
-calculate_intersection(index_value_type n_x,
-                       index_value_type n_y,
-                       index_value_type n_z,
-                       index_value_type n_edge_no)
+calculate_intersection(index_type n, int edge_no)
 {
-  CoordinatesType x1, y1, z1, x2, y2, z2;
-  index_value_type v1x = n_x, v1y = n_y, v1z = n_z;
-  index_value_type v2x = n_x, v2y = n_y, v2z = n_z;
-
-  switch (n_edge_no)
+  // Find one point below and one point above the iso-surface
+  index_type v1 = n, v2 = n;
+  switch (edge_no)
   {
-  case 0:
-    v2y += 1;
-    break;
-  case 1:
-    v1y += 1;
-    v2x += 1;
-    v2y += 1;
-    break;
-  case 2:
-    v1x += 1;
-    v1y += 1;
-    v2x += 1;
-    break;
-  case 3:
-    v1x += 1;
-    break;
-  case 4:
-    v1z += 1;
-    v2y += 1;
-    v2z += 1;
-    break;
-  case 5:
-    v1y += 1;
-    v1z += 1;
-    v2x += 1;
-    v2y += 1;
-    v2z += 1;
-    break;
-  case 6:
-    v1x += 1;
-    v1y += 1;
-    v1z += 1;
-    v2x += 1;
-    v2z += 1;
-    break;
-  case 7:
-    v1x += 1;
-    v1z += 1;
-    v2z += 1;
-    break;
-  case 8:
-    v2z += 1;
-    break;
-  case 9:
-    v1y += 1;
-    v2y += 1;
-    v2z += 1;
-    break;
-  case 10:
-    v1x += 1;
-    v1y += 1;
-    v2x += 1;
-    v2y += 1;
-    v2z += 1;
-    break;
-  case 11:
-    v1x += 1;
-    v2x += 1;
-    v2z += 1;
-    break;
+  case 0:            ;           ;           ;
+           v2[Y] += 1;           ;           ; break;
+
+  case 1:  v1[Y] += 1;           ;           ;
+           v2[X] += 1; v2[Y] += 1;           ; break;
+
+  case 2:  v1[X] += 1; v1[Y] += 1;           ;
+           v2[X] += 1;           ;           ; break;
+
+  case 3:  v1[X] += 1;           ;           ;
+                     ;           ;           ; break;
+
+  case 4:            ;           ; v1[Z] += 1;
+                     ; v2[Y] += 1; v2[Z] += 1; break;
+
+  case 5:            ; v1[Y] += 1; v1[Z] += 1;
+           v2[X] += 1; v2[Y] += 1; v2[Z] += 1; break;
+
+  case 6:  v1[X] += 1; v1[Y] += 1; v1[Z] += 1;
+           v2[X] += 1;           ; v2[Z] += 1; break;
+
+  case 7:  v1[X] += 1;           ; v1[Z] += 1;
+                     ;           ; v2[Z] += 1; break;
+
+  case 8:            ;           ;           ;
+                     ;           ; v2[Z] += 1; break;
+
+  case 9:            ; v1[Y] += 1;           ;
+                     ; v2[Y] += 1; v2[Z] += 1; break;
+
+  case 10: v1[X] += 1; v1[Y] += 1;           ;
+           v2[X] += 1; v2[Y] += 1; v2[Z] += 1; break;
+  case 11: v1[X] += 1;           ;           ;
+           v2[X] += 1;           ; v2[Z] += 1; break;
   }
 
-  x1 = v1x*cell_length_x;
-  y1 = v1y*cell_length_y;
-  z1 = v1z*cell_length_z;
-  x2 = v2x*cell_length_x;
-  y2 = v2y*cell_length_y;
-  z2 = v2z*cell_length_z;
+  // Interpolate between v1 and v2 to find an approximation of the intersection
+  // with the iso-surface
+  point_3d p1 = v1 * cell_lengths;
+  point_3d p2 = v2 * cell_lengths;
+  value_type val1 = map_(v1);
+  value_type val2 = map_(v2);
 
-  value_type val1 = map_(v1x, v1y, v1z);
-  value_type val2 = map_(v2x, v2y, v2z);
-  point_3d_id intersection = interpolate(x1, y1, z1, x2, y2, z2, val1, val2);
-
-  return intersection;
-}
-
-template <class CoordinatesType, class ValueType>
-typename triangulation<CoordinatesType, ValueType>::point_3d_id
-triangulation<CoordinatesType, ValueType>::
-interpolate(CoordinatesType x1, CoordinatesType y1, CoordinatesType z1,
-            CoordinatesType x2, CoordinatesType y2, CoordinatesType z2,
-            value_type val1, value_type val2)
-{
-  point_3d_id interpolation;
-  CoordinatesType mu;
-
-  interpolation.new_id = static_cast<index_value_type>(-1); // undefined
-  mu = CoordinatesType((iso_level_ - val1))/(val2 - val1);
-  interpolation.x = x1 + mu*(x2 - x1);
-  interpolation.y = y1 + mu*(y2 - y1);
-  interpolation.z = z1 + mu*(z2 - z1);
-
-  return interpolation;
+  CoordinatesType mu = (iso_level_ - val1)/(val2 - val1);
+  return p1 + mu*(p2 - p1);
 }
 
 template <class CoordinatesType, class ValueType>
@@ -726,8 +631,7 @@ rename_vertices_and_triangles()
   for (typename id_to_point_3d_id::iterator iter = id_to_vertex.begin();
        iter != id_to_vertex.end(); iter++)
   {
-    vertices_[next_id++]
-      = point_3d((*iter).second.x, (*iter).second.y, (*iter).second.z);
+    vertices_[next_id++] = (*iter).second.p;
   }
 
   // Release the std::map we don't need anymore
@@ -737,7 +641,7 @@ rename_vertices_and_triangles()
 template <class CoordinatesType, class ValueType>
 void
 triangulation<CoordinatesType, ValueType>::
-calculate__normals()
+calculate_normals()
 {
   normals_ = af::shared<vector_3d>(vertices_.size());
 
@@ -761,7 +665,8 @@ calculate__normals()
 
   // Normalize normals
   for (index_value_type i=0; i < normals_.size(); i++) {
-    normals_[i] /= abs(normals_[i]);
+    value_type norm = abs(normals_[i]);
+    if (norm != 0) normals_[i] /= norm;
   }
 }
 

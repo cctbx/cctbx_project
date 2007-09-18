@@ -17,8 +17,15 @@ namespace scitbx { namespace iso_surface { namespace boost_python {
 
       class_<wt>(name, no_init)
         .def(init<typename wt::map_const_ref_type,
-                  ValueType, scitbx::vec3<CoordinatesType> const&>
-                  ((arg("map"), arg("iso_level"), arg("grid_size"))))
+                  ValueType,
+                  af::tiny<typename wt::coordinates_type, 3> const&,
+                  bool
+                  > ((
+                  arg("map"),
+                  arg("iso_level"),
+                  arg("map_extent"),
+                  arg("lazzy_normals")=true
+        )))
         .add_property("vertices", &wt::vertices)
         .add_property("triangles", &wt::triangles)
         .add_property("normals", &wt::normals)
@@ -37,4 +44,3 @@ BOOST_PYTHON_MODULE(scitbx_iso_surface_ext)
 {
   scitbx::iso_surface::boost_python::init_module();
 }
-

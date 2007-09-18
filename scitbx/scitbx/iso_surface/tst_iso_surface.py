@@ -11,21 +11,22 @@ import time
 
 class triangulation_test_case(object):
 
-  def __init__(self, func, grid_size):
+  def __init__(self, func, grid_size, lazzy_normals):
     """ Construct a map of func with the given grid_size """
     self.func = func
-    self.grid_size = grid_size
+    nx, ny, nz = self.grid_size = grid_size
 
-    nx, ny, nz = grid_size
-    self.grid_cell = 1/nx, 1/ny, 1/nz
+
+    hx, hy, hz = self.grid_cell = 1/(nx-1), 1/(ny-1), 1/(nz-1)
 
     map = flex.double(flex.grid(grid_size))
     loop = flex.nested_loop(end=grid_size)
     while not loop.over():
       p = loop()
-      map[p] = func((p[0]/nx, p[1]/ny, p[2]/nz))
+      map[p] = func((p[0]*hx, p[1]*hy, p[2]*hz))
       loop.incr()
     self.map = map
+    self.lazzy_normals = lazzy_normals
 
   def run(self, iso_level, verbose):
     """ Test triangulation of the iso-surface at the given iso-level """
@@ -33,7 +34,8 @@ class triangulation_test_case(object):
 
     # triangulation of the iso-surface of the map
     t0 = time.time()
-    s = iso_surface.triangulation(self.map, iso_level, self.grid_cell)
+    s = iso_surface.triangulation(self.map, iso_level, map_extent=(1,1,1),
+                                  lazzy_normals=self.lazzy_normals)
     t1 = time.time()
     if verbose:
       print "iso-surface triangulation per se: %f s" % (t1-t0)
@@ -44,7 +46,7 @@ class triangulation_test_case(object):
     for i,v in enumerate(s.vertices):
       val = f(v)
       tol = f.second_order_error(v, self.grid_cell)
-      if not approx_equal(val, iso_level, tol):
+      if not abs(val - iso_level) < tol:
         bad_vertices.append((v,val))
     assert not bad_vertices, self.bad_vertices_err(bad_vertices, iso_level)
 
@@ -62,15 +64,19 @@ class triangulation_test_case(object):
         print degenerates
     self.degenerate_edges = degenerates
 
-    vertices = {}
+    # this maps each vertex to the set of its neighbours
+    adjacencies = {}
+    # triangle edges
     edges = {}
     for v1,v2,v3 in s.triangles:
-      vertices[v1] = vertices[v2] = vertices[v3] = 1
+      adjacencies.setdefault(v1,{}).update({v2:1, v3:1})
+      adjacencies.setdefault(v2,{}).update({v1:1, v3:1})
+      adjacencies.setdefault(v3,{}).update({v1:1, v2:1})
       for a,b in ((v1,v2), (v2,v3), (v3,v1)):
         if a < b: e = (a,b)
         else: e = (b,a)
         edges[e] = edges.setdefault(e,0) + 1
-    assert len(vertices) == len(s.vertices)
+    assert len(adjacencies) == len(s.vertices)
     for e,p in edges.iteritems():
       assert p in (1,2)
       if not self.is_near_boundary(s.vertices[e[0]], s.vertices[e[1]]):
@@ -78,25 +84,31 @@ class triangulation_test_case(object):
 
     # consistency check on the normals
     assert len(s.normals) == len(s.vertices)
-    for v,n in zip(s.vertices, s.normals):
+    for i,v,n in zip(xrange(len(s.vertices)), s.vertices, s.normals):
       v, n = matrix.col(v), matrix.col(n)
-      assert approx_equal(abs(n), 1, 1e-12)
-      outward = v + 0.01*n
-      inward  = v - 0.01*n
-      assert f(outward) > iso_level > f(inward)
+      abs_n = abs(n)
+      if abs_n == 0:
+        for edge in degenerates:
+          if i in edge: break
+        else:
+          raise "zero normal not on a vertex at the end of a degenerate edge"
+      else:
+        assert abs(abs(n) - 1) < 1e-12
+        outward = v + 0.01*n
+        inward  = v - 0.01*n
+        assert f(outward) > iso_level > f(inward), i
 
   def is_near_boundary(self, v1, v2):
     delta = matrix.col(self.grid_cell)/2
     for c1, c2, m, eps in zip(v1, v2, self.grid_size, delta):
       if c1 != c2: continue
-      if (   abs(c1) < eps       or abs(c1 - 1) < eps
-          or abs(c1 - 1/m) < eps or abs(c1 - (1 - 1/m)) < eps ): return True
+      if abs(c1) < eps or abs(c1 - 1) < eps: return True
     return False
 
   def bad_vertices_err(self, bad_vertices, iso_level):
     msg = ["Vertices with value not close enough to threshold %f:" % iso_level]
     for vertex, val in bad_vertices:
-      msg.append( "\t(%f, %f, %f) -> %f" % (v+(val,)) )
+      msg.append( "\t(%f, %f, %f) -> %f" % (vertex+(val,)) )
     return "\n".join(msg)
 
 
@@ -139,24 +151,23 @@ def run(args):
   verbose = "--verbose" in args
   grid_size = (50, 40, 30)
 
-  test = triangulation_test_case(elliptic(), grid_size)
+  """ For this one, the iso-surface passes through points at corners of the
+  map, e.g. (1, 1, 0). That makes it interesting for that corner vertex ends
+  up being part of only one triangle which is degenerate and the normal
+  associated to that vertex is therefore undefined """
+  test = triangulation_test_case(elliptic(), grid_size, lazzy_normals=False)
   test.run(iso_level=3, verbose=verbose)
-  assert test.degenerate_edges == [(303, 418), (418, 407), (407, 303),
-                                   (303, 407), (418, 303), (407, 418),
-                                   (654, 830), (830, 822), (822, 654),
-                                   (654, 822), (830, 654), (715, 909),
-                                   (909, 890), (890, 715), (715, 890),
-                                   (909, 715), (822, 830), (890, 909),
-                                   (1898, 2185), (2185, 2177), (2177, 1898),
-                                   (1898, 2177), (2185, 1898), (1966, 2278),
-                                   (2278, 2261), (2261, 1966), (1966, 2261),
-                                   (2278, 1966), (2177, 2185), (2261, 2278)]
+  assert test.degenerate_edges == [(2973, 2912)]
 
-  test = triangulation_test_case(hyperbolic(), grid_size)
+  test = triangulation_test_case(elliptic(), grid_size, lazzy_normals=True)
+  test.run(iso_level=2.9, verbose=verbose)
+  assert test.degenerate_edges == []
+
+  test = triangulation_test_case(hyperbolic(), grid_size, lazzy_normals=True)
   test.run(iso_level=3, verbose=verbose)
   assert test.degenerate_edges == []
 
-  test = triangulation_test_case(sinusoidal(), grid_size)
+  test = triangulation_test_case(sinusoidal(), grid_size, lazzy_normals=False)
   test.run(iso_level=3, verbose=verbose)
   assert test.degenerate_edges == []
 
