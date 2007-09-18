@@ -81,6 +81,7 @@ scitbx/scitbx/graph/tst_rigidity.py -text
 scitbx/scitbx/iso_surface/SConscript -text
 scitbx/scitbx/iso_surface/__init__.py -text
 scitbx/scitbx/iso_surface/iso_surface_ext.cpp -text
+scitbx/scitbx/iso_surface/tst_iso_surface.m -text
 scitbx/scitbx/iso_surface/tst_iso_surface.py -text
 scitbx/scitbx/sparse/__init__.py -text
 scitbx/scitbx/sparse/boost_python/SConscript -text
