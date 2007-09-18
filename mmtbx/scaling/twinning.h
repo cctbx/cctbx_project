@@ -994,6 +994,7 @@ namespace twinning {
         mean_h_+= std::abs(p-q) / (p+q);
         mean_h2_+= (std::abs(p-q) / (p+q))*(std::abs(p-q) / (p+q));
       }
+      SCITBX_ASSERT(limit_slot != 0);
       mean_h_/=static_cast<FloatType>(limit_slot);
       mean_h2_/=static_cast<FloatType>(limit_slot);
       for (unsigned ii=0;ii<50;ii++){
