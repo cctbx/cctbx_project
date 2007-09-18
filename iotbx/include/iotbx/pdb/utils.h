@@ -1,6 +1,8 @@
 #ifndef IOTBX_PDB_UTILS_H
 #define IOTBX_PDB_UTILS_H
 
+#include <boost/cstdint.hpp>
+
 namespace iotbx { namespace pdb {
 
 //! Miscellaneous algorithms.
@@ -14,10 +16,10 @@ namespace utils {
       spaces and minus signs included.
       NOTE: trailing spaces are significant!
    */
-  int
+  boost::int64_t
   base_256_ordinal(const char* s)
   {
-    static const int zero = static_cast<int>(
+    static const boost::int64_t zero = static_cast<boost::int64_t>(
       *reinterpret_cast<const unsigned char*>("0"));
 
     if (s == 0) return zero;
@@ -31,11 +33,11 @@ namespace utils {
     else {
       negative = false;
     }
-    int result = static_cast<int>(
+    boost::int64_t result = static_cast<boost::int64_t>(
       *reinterpret_cast<const unsigned char*>(s++));
     while (*s) {
       result *= 256;
-      result += static_cast<int>(
+      result += static_cast<boost::int64_t>(
         *reinterpret_cast<const unsigned char*>(s++));
     }
     if (negative) return -result;
