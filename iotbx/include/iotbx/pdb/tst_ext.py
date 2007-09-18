@@ -46,6 +46,25 @@ def exercise_base_256_ordinal():
   assert o("123") == (49*256+50)*256+51
   assert o("-123") == -o("123")
   #
+  def po(s):
+    result = 0
+    s = s.lstrip()
+    neg = False
+    if (len(s) == 0):
+      s = "0"
+    elif (s[0] == "-"):
+      neg = True
+      s = s[1:]
+    for c in s:
+      result *= 256
+      result += ord(c)
+    if (neg):
+      result *= -1
+    return result
+  for s in ["780 ", "999 ", "1223 ", "zzzzz"]:
+    assert o(s) == po(s)
+    assert o("-"+s) == -o(s)
+  #
   def o_cmp(a, b): return cmp(o(a), o(b))
   char4s = ["%4s" % i for i in xrange(-999,9999+1)]
   assert sorted(char4s, o_cmp) == char4s
