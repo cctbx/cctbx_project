@@ -129,6 +129,7 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
     assert c_coefficient > 0.9
 
 def run_call_back(flags, space_group_info):
+  data_type = ('F', 'F^2')[hasattr(flags, 'F_sq')]
   options = ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1),(0,1,1,1))
   for target_functor in xray.target_functors.registry().values():
     for (fsite, fu_iso, foccupancy, fu_aniso) in options:
@@ -154,20 +155,45 @@ def run_call_back(flags, space_group_info):
           for occupancy_penalty in occupancy_penalty_types:
             if(0):
                print fsite,fu_iso,foccupancy,fu_aniso,anomalous_flag,tan_u_iso
-            for data_type in ('F', 'F^2'):
-               exercise(target_functor,
-                        data_type,
-                        space_group_info,
-                        anomalous_flag,
-                        gradient_flags,
-                        occupancy_penalty=occupancy_penalty,
-                        verbose=flags.Verbose,
-                        tan_u_iso=tan_u_iso,
-                        param = param,
-                        d_min = 2.5)
+            do_exercise = lambda: exercise(
+                     target_functor,
+                     data_type,
+                     space_group_info,
+                     anomalous_flag,
+                     gradient_flags,
+                     occupancy_penalty=occupancy_penalty,
+                     verbose=flags.Verbose,
+                     tan_u_iso=tan_u_iso,
+                     param = param,
+                     d_min = 2.5)
+            try:
+               do_exercise()
+            except AssertionError:
+               print "Test did not pass: ruling out a random fluke..."
+               do_exercise()
+               do_exercise()
+               print "Ruled out!"
 
 def run():
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  cmd_args = ['--F', '--F_sq', '--debugging']
+  extra = []
+  args = []
+  for arg in sys.argv[1:]:
+    if arg in cmd_args:
+      extra.append(arg[2:])
+    else:
+      args.append(arg)
+  extra = tuple(extra)
+  debug = ()
+  if 'debugging' in extra:
+    extra = ()
+    if 0:
+      extra += ('F_sq',)
+  assert not('F' in extra and 'F_sq' in extra)
+  if 'F' in extra: print 'Refinement against F'
+  if 'F_sq' in extra: print 'Refinement against F^2'
+  debug_utils.parse_options_loop_space_groups(
+    args, run_call_back, keywords=extra+debug)
 
 if (__name__ == "__main__"):
   run()
