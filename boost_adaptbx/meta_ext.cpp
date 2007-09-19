@@ -19,6 +19,7 @@
 #endif
 #endif
 
+#if defined (__linux)
 extern "C" {
   void
   boost_adaptbx_throw_fpe(int)
@@ -26,6 +27,7 @@ extern "C" {
     throw std::runtime_error("C/C++ floating-point exception.");
   }
 }
+#endif
 
 namespace {
 
