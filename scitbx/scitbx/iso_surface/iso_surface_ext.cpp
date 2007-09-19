@@ -18,7 +18,7 @@ namespace scitbx { namespace iso_surface { namespace boost_python {
       class_<wt>(name, no_init)
         .def(init<typename wt::map_const_ref_type,
                   ValueType,
-                  af::tiny<typename wt::coordinates_type, 3> const&,
+                  af::tiny<CoordinatesType, 3> const&,
                   bool
                   > ((
                   arg("map"),
