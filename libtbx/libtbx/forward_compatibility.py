@@ -10,7 +10,7 @@ if not hasattr(os.path, "devnull"):
 __builtins__.setdefault("False", 0)
 __builtins__.setdefault("True", 1)
 
-if (__builtins__.get("bool", None) is None):
+if ("bool" not in __builtins__):
   def bool(value):
     if (value): return True
     return False
