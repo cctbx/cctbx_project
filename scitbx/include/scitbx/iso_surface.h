@@ -341,19 +341,19 @@ public:
   typedef af::tiny<index_value_type,3> triangle;
 
   /** Construct the triangulation from a map of the scalar field, the iso level
-  and the map grid size. The flag lazzy_normals specify whether the normals
+  and the map grid size. The flag lazy_normals specify whether the normals
   shall be computed when the member function normals() is called for the first
   time or whether to compute them upfront.
   */
   triangulation(map_const_ref_type map,
               value_type iso_level,
               af::tiny<coordinates_type, 3> const& map_extent,
-              bool lazzy_normals=true)
+              bool lazy_normals=true)
   : map_(map),
     iso_level_(iso_level),
     n_cells(map.accessor().all() - index_value_type(1)),
     cell_lengths(map_extent/n_cells),
-    lazzy_normals_(lazzy_normals)
+    lazy_normals_(lazy_normals)
   {
     init();
   }
@@ -371,9 +371,9 @@ public:
   or zero. The latter means that all those aformentioned triangles are
   degenerate and that they would not need to be drawn. */
   af::shared<vector_3d> normals() {
-    if (lazzy_normals_) {
+    if (lazy_normals_) {
       calculate_normals();
-      lazzy_normals_ = false;
+      lazy_normals_ = false;
     }
     return normals_;
   }
@@ -392,7 +392,7 @@ protected:
 
   typedef std::map<index_value_type, point_3d_id> id_to_point_3d_id;
 
-  bool lazzy_normals_;
+  bool lazy_normals_;
 
   // The map of the scalar field
   map_const_ref_type map_;
@@ -503,7 +503,7 @@ init()
   }
 
   rename_vertices_and_triangles();
-  if (!lazzy_normals_) calculate_normals();
+  if (!lazy_normals_) calculate_normals();
 }
 
 template <class CoordinatesType, class ValueType>
