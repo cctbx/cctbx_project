@@ -164,6 +164,14 @@ def exercise_atom():
   for d in "0123456789":
     a.name = d+"H"
     assert a.determine_chemical_element_simple() == " H"
+  a.set_name(new_name=None)
+  a.set_segid(new_segid=None)
+  a.set_element(new_element=None)
+  a.set_charge(new_charge=None)
+  assert a.name == ""
+  assert a.segid == ""
+  assert a.element == ""
+  assert a.charge == ""
   #
   r = pdb.residue()
   ac = pdb.atom(parent=r, other=a)
@@ -222,6 +230,12 @@ def exercise_residue():
   assert r.icode == ""
   assert r.id() == "       "
   assert r.link_to_previous
+  r = pdb.residue(name=None, seq=None, icode=None)
+  assert r.name == ""
+  assert r.seq == ""
+  assert r.icode == ""
+  assert r.id() == "       "
+  assert r.link_to_previous
   r = pdb.residue(name="xyz", seq=" 123", icode="i", link_to_previous=False)
   assert r.name == "xyz"
   assert r.seq == " 123"
@@ -230,6 +244,10 @@ def exercise_residue():
   assert not r.link_to_previous
   r.link_to_previous = True
   assert r.link_to_previous
+  r.name = None
+  r.seq = None
+  r.icode = None
+  assert r.id() == "       "
   r.name = "foo"
   r.seq = "  -3"
   r.icode = "b"
