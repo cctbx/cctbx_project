@@ -55,7 +55,9 @@ namespace cctbx {
   inline double d_star_sq_as_two_theta(double d_star_sq, double wavelength,
                                        bool deg=false)
   {
-    double result = 2. * std::asin(d_star_sq_as_stol(d_star_sq) * wavelength);
+    double sin_theta = d_star_sq_as_stol(d_star_sq) * wavelength;
+    CCTBX_ASSERT(sin_theta <= 1.0);
+    double result = 2. * std::asin(sin_theta);
     if (deg) return scitbx::rad_as_deg(result);
     return result;
   }
