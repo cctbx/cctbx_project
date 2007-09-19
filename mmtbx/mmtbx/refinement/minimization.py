@@ -249,7 +249,7 @@ class lbfgs(object):
              if(self.use_xn_grads_filtering):
                for i, j, fd in zip(tt, rr, self.hd_selection):
                  angle = flex.double(i).angle(flex.double(j), deg = True)
-                 if(angle >= 90.0):
+                 if(angle is not None and angle >= 90.0):
                     if(fd): tt[ii] = [0,0,0]
                     else:   rr[ii] = [0,0,0]
                     #tt[ii] = [0,0,0]
