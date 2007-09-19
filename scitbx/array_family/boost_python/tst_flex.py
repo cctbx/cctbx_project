@@ -1779,6 +1779,10 @@ def exercise_matrix():
       a.cos_angle(b=b), matrix.col(a).cos_angle(matrix.col(b)))
     assert approx_equal(a.angle(b=b, deg=False), a.angle(b))
     assert approx_equal(a.angle(b=b, deg=True), a.angle(b)*180/math.pi)
+  # these values lead to a floating-point exception (cos(angle) > 1)
+  i=[-0.0002974948153438084, 0.00032319472094305282, -0.00039358675259127106]
+  j=[-0.00036378012360459966, 0.00039520626736685348, -0.00048128246316264911]
+  assert abs(flex.double(i).angle(flex.double(j), deg=True)) < 1.e-10
   #
   assert approx_equal(
     flex.double([[1,2,3],[4,5,6],[7,8,9]]).matrix_upper_triangle_as_packed_u(),
