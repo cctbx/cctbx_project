@@ -368,7 +368,7 @@ public:
   /// The normals to the isosurface at each vertex
   /** Each normal is the mean of the area vectors of those triangles which
   share the vertex that normal emanates from. Each normal is either of norm 1
-  or zero. The latter means that all those aformentioned triangles are 
+  or zero. The latter means that all those aformentioned triangles are
   degenerate and that they would not need to be drawn. */
   af::shared<vector_3d> normals() {
     if (lazzy_normals_) {
