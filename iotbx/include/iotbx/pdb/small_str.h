@@ -49,6 +49,7 @@ namespace iotbx { namespace pdb {
     bool
     replace_with(const char* s)
     {
+      if (s == 0) s = "";
       unsigned i = 0;
       while(i<N) {
         elems[i++] = *s;
