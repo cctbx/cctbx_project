@@ -24,7 +24,7 @@ namespace scitbx { namespace iso_surface { namespace boost_python {
                   arg("map"),
                   arg("iso_level"),
                   arg("map_extent"),
-                  arg("lazzy_normals")=true
+                  arg("lazy_normals")=true
         )))
         .add_property("vertices", &wt::vertices)
         .add_property("triangles", &wt::triangles)

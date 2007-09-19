@@ -11,7 +11,7 @@ import time
 
 class triangulation_test_case(object):
 
-  def __init__(self, func, grid_size, lazzy_normals):
+  def __init__(self, func, grid_size, lazy_normals):
     """ Construct a map of func with the given grid_size """
     self.func = func
     nx, ny, nz = self.grid_size = grid_size
@@ -26,7 +26,7 @@ class triangulation_test_case(object):
       map[p] = func((p[0]*hx, p[1]*hy, p[2]*hz))
       loop.incr()
     self.map = map
-    self.lazzy_normals = lazzy_normals
+    self.lazy_normals = lazy_normals
 
   def run(self, iso_level, verbose):
     """ Test triangulation of the iso-surface at the given iso-level """
@@ -35,7 +35,7 @@ class triangulation_test_case(object):
     # triangulation of the iso-surface of the map
     t0 = time.time()
     s = iso_surface.triangulation(self.map, iso_level, map_extent=(1,1,1),
-                                  lazzy_normals=self.lazzy_normals)
+                                  lazy_normals=self.lazy_normals)
     t1 = time.time()
     if verbose:
       print "iso-surface triangulation per se: %f s" % (t1-t0)
@@ -155,19 +155,19 @@ def run(args):
   map, e.g. (1, 1, 0). That makes it interesting for that corner vertex ends
   up being part of only one triangle which is degenerate and the normal
   associated to that vertex is therefore undefined """
-  test = triangulation_test_case(elliptic(), grid_size, lazzy_normals=False)
+  test = triangulation_test_case(elliptic(), grid_size, lazy_normals=False)
   test.run(iso_level=3, verbose=verbose)
   assert test.degenerate_edges == [(2973, 2912)]
 
-  test = triangulation_test_case(elliptic(), grid_size, lazzy_normals=True)
+  test = triangulation_test_case(elliptic(), grid_size, lazy_normals=True)
   test.run(iso_level=2.9, verbose=verbose)
   assert test.degenerate_edges == []
 
-  test = triangulation_test_case(hyperbolic(), grid_size, lazzy_normals=True)
+  test = triangulation_test_case(hyperbolic(), grid_size, lazy_normals=True)
   test.run(iso_level=3, verbose=verbose)
   assert test.degenerate_edges == []
 
-  test = triangulation_test_case(sinusoidal(), grid_size, lazzy_normals=False)
+  test = triangulation_test_case(sinusoidal(), grid_size, lazy_normals=False)
   test.run(iso_level=3, verbose=verbose)
   assert test.degenerate_edges == []
 
