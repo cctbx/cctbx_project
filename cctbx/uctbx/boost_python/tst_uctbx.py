@@ -195,15 +195,16 @@ def exercise_miller_index_methods():
     for i,v in enumerate(values):
       assert approx_equal(
         v, d_spacing_measure(miller_indices[i]))
-  values = u.two_theta(miller_indices, 1.5)
+  wavelength = 0.8
+  values = u.two_theta(miller_indices, wavelength)
   for i,v in enumerate(values):
     assert approx_equal(
-      v, u.two_theta(miller_indices[i], 1.5))
+      v, u.two_theta(miller_indices[i], wavelength))
   for deg in (0,1):
-    values = u.two_theta(miller_indices, 1.5, deg)
+    values = u.two_theta(miller_indices, wavelength, deg)
     for i,v in enumerate(values):
       assert approx_equal(
-        v, u.two_theta(miller_indices[i], 1.5, deg))
+        v, u.two_theta(miller_indices[i], wavelength, deg))
   assert u.max_d_star_sq(miller_indices) == u.d_star_sq((-3,4,-5))
   assert u.min_max_d_star_sq(miller_indices) == (
     u.d_star_sq((1,2,3)), u.d_star_sq((-3,4,-5)))
@@ -244,6 +245,13 @@ def exercise_exceptions():
     u = uctbx.unit_cell(metrical_matrix=(0,0,0,0,0,0))
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Corrupt metrical matrix."
+  else:
+    raise AssertionError, 'exception expected'
+  u = uctbx.unit_cell((2,3,5,80,100,110))
+  try:
+    u.two_theta((-3,4,-5), 1.5)
+  except RuntimeError, e:
+    assert str(e).endswith("CCTBX_ASSERT(sin_theta <= 1.0) failure.")
   else:
     raise AssertionError, 'exception expected'
 
