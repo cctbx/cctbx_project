@@ -376,7 +376,10 @@ namespace scitbx { namespace af {
   {
     boost::optional<FloatType> c = cos_angle(a, b);
     if (!c) return c;
-    FloatType result = std::acos(*c);
+    FloatType cv = *c;
+    if      (cv >  1) cv = static_cast<FloatType>(1);
+    else if (cv < -1) cv = static_cast<FloatType>(-1);
+    FloatType result = std::acos(cv);
     return boost::optional<FloatType>(result);
   }
 
