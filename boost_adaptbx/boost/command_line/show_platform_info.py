@@ -1,3 +1,5 @@
+# LIBTBX_SET_DISPATCHER_NAME boost_adaptbx.show_platform_info
+
 import boost.python
 import sys
 
