@@ -43,6 +43,14 @@ FATAL: libstdc++.so mismatch:
   return mod
 
 ext = import_ext("boost_python_meta_ext")
+
+if ("BOOST_ADAPTBX_FPE_ACTIVE" in os.environ):
+  ext.enable_floating_point_exceptions_if_possible(
+    divbyzero="BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT" not in os.environ,
+    invalid="BOOST_ADAPTBX_FE_INVALID_DEFAULT" not in os.environ,
+    overflow="BOOST_ADAPTBX_FE_OVERFLOW_DEFAULT" not in os.environ,
+    translate_sigfpe="BOOST_ADAPTBX_SIGFPE_DEFAULT" not in os.environ)
+
 meta_class = ext.holder.__class__
 platform_info = ext.platform_info()
 assert len(platform_info) > 0 # please disable this assertion and send email to cctbx@cci.lbl.gov
