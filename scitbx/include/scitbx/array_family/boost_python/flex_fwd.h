@@ -46,6 +46,7 @@ namespace scitbx { namespace af { namespace boost_python {
     friend void f(af::tiny<unsigned, 2> const&);
     friend void f(af::tiny<unsigned, 3> const&);
     friend void f(af::tiny<unsigned, 4> const&);
+    friend void f(af::tiny<double, 3> const&);
   };
 
   template <typename T>
