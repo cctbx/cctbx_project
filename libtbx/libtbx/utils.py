@@ -142,7 +142,7 @@ class Sorry(Exception):
       else:
         sys.tracebacklimit = self.previous_tracebacklimit
 
-disable_tracebacklimit = getenv_bool("LIBTBX_DISABLE_TRACEBACKLIMIT")
+disable_tracebacklimit = "LIBTBX_DISABLE_TRACEBACKLIMIT" in os.environ
 
 class Usage(Sorry):
   # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
