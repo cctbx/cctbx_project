@@ -906,6 +906,28 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   ma = miller.array(ms, data, sigmas)
   assert approx_equal(ma.min_f_over_sigma(), 2.5)
 
+def exercise_r1_factor():
+  cs = crystal.symmetry((1,2,3), "P21/a")
+  mi = flex.miller_index([(1,-1,1), (2,0,-3), (4,1,-2)])
+  f_o = miller.array(miller.set(cs, mi),
+                     data=flex.double([10, 3, -1]))
+  f_c = miller.array(miller.set(cs, mi),
+                     data=flex.complex_double([5+3j, 2-1j, 1+2j]))
+  assert approx_equal(f_o.r1_factor(f_c, assume_index_matching=True),
+                      0.440646)
+  f1_o = f_o.select(flex.random_permutation(f_o.size()))
+  f1_c = f_c.select(flex.random_permutation(f_c.size()))
+  assert approx_equal(f1_o.r1_factor(f1_c), 0.440646)
+  f1_c.indices().append((4,5,6))
+  f1_c.data().append(0.5)
+  try:
+    f1_o.r1_factor(f1_c)
+    raised = False
+  except AssertionError:
+    raised = True
+  assert raised
+  pass
+
 def exercise_array_2(space_group_info):
   xs = space_group_info.any_compatible_crystal_symmetry(volume=60)
   for anomalous_flag in (False, True):
@@ -1306,6 +1328,7 @@ def run(args):
   exercise_enforce_positive_amplitudes()
   exercise_binner()
   exercise_array()
+  exercise_r1_factor()
   exercise_complete_array()
   exercise_crystal_gridding()
   exercise_fft_map()
