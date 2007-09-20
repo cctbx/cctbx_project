@@ -1977,6 +1977,22 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       else: result.append(1/sm)
     return binned_data(binner=a.binner(), data=result, data_fmt="%7.4f")
 
+  def r1_factor(self, other, assume_index_matching=False):
+    assert (self.observation_type() is None
+            or self.is_complex_array() or self.is_xray_amplitude_array())
+    assert (self.observation_type() is None
+            or other.is_complex_array() or other.is_xray_amplitude_array())
+    if assume_index_matching:
+      data0, data = self.data(), other.data()
+    else:
+      matching = match_indices(self.indices(), other.indices())
+      assert not matching.have_singles()
+      data0 = self.select(matching.pairs().column(0)).data()
+      data = other.select(matching.pairs().column(1)).data()
+    data  = flex.abs(data)
+    data0 = flex.abs(data0)
+    return flex.sum(flex.abs(data - data0)) / flex.sum(data0)
+
   def select(self, selection, negate=False, anomalous_flag=None):
     assert self.indices() is not None
     if (anomalous_flag is None):
