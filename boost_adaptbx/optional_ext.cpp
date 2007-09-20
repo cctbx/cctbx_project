@@ -29,8 +29,11 @@ BOOST_PYTHON_MODULE(boost_optional_ext)
 {
   using boost_adaptbx::optional_conversions::to_and_from_python;
   to_and_from_python<int>();
-  to_and_from_python<unsigned>();
   to_and_from_python<std::size_t>();
+  if (boost::python::converter::registry::query(
+        boost::python::type_id<boost::optional<unsigned> >()) == 0) {
+    to_and_from_python<unsigned>();
+  }
   to_and_from_python<float>();
   to_and_from_python<double>();
   to_and_from_python<std::string>();
