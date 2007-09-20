@@ -25,6 +25,7 @@ sigmaa_estimator_params = iotbx.phil.parse("""\
     .type = bool
 """)
 
+
 class sigmaa_point_estimator(object):
   def __init__(self,
                target_functor,
@@ -196,13 +197,24 @@ class sigmaa_estimator(object):
     assert flex.max(self.sigmaa_miller_array) <= 1
     self.sigmaa_miller_array = self.miller_obs.array(data=self.sigmaa_miller_array)
 
-
     self.alpha = None
     self.beta = None
     self.fom_array = None
 
   def sigmaa(self):
     return self.sigmaa_miller_array
+
+  def sigmaa_model_error(self):
+    x = 0.25*flex.pow( self.h_array, 2.0/3.0 )  # h was in d*^-3 !!!
+    y = flex.log( self.sigmaa_fitted )
+    #compute the slope please
+    result = flex.linear_regression( x, y )
+    result = -(result.slope()/math.pi*3)
+    if result < 0:
+      result = "None"
+    else:
+      result = math.sqrt( result )
+    return result
 
   def fom(self):
     if self.fom_array is None:
