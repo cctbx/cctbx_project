@@ -64,22 +64,35 @@ import sys, os
 master_params = iotbx.phil.parse("""
      hklout = None
      .type=path
+     .help="HKL out"
      hklout_type=mtz sca *mtz_or_sca
      .type=choice
+     .help="Output format"
      label_extension="massaged"
      .type=str
-     aniso{
+     .help="Label extension"
+     aniso
+     .help="Parameters dealing with anisotropy correction"
+     {
        action=*remove_aniso None
        .type=choice
+       .help="Remove anisotropy?"
        final_b=*eigen_min eigen_mean user_b_iso
+       .help="Final b value"
        .type=choice
        b_iso=None
        .type=float
+       .help="User specified B value"
      }
-     outlier{
+     outlier
+     .help="Outlier analyses"
+     {
        action=*extreme basic beamstop None
+       .help="Outlier protocol"
        .type=choice
-       parameters{
+       parameters
+       .help="Parameters for outlier detection"
+       {
          basic_wilson{
           level=1E-6
           .type=float
