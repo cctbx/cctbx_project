@@ -669,6 +669,11 @@ namespace scitbx { namespace af { namespace boost_python {
     static e_t mean_a(f_t const& a) { return mean(a); }
     static e_t mean_sq_a(f_t const& a) { return mean_sq(a); }
 
+    static boost::optional<std::size_t>
+    find_partial_sum_greater_than_a_s(f_t const& a, e_t t) {
+      return find_partial_sum(a, std::bind2nd(std::greater<e_t>(), t));
+    }
+
     static e_t
     mean_weighted_a_a(f_t const& a1, f_t const& a2)
     {
@@ -877,6 +882,8 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::def("max", max_a);
         boost::python::def("pow2", pow2_a);
         boost::python::def("order", order_a_a);
+        boost::python::def("find_partial_sum_greater_than",
+                           find_partial_sum_greater_than_a_s);
       }
       return numeric_common(python_name, flex_root_scope)
         .def("as_double", as_double)
