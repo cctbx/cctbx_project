@@ -211,7 +211,7 @@ class sigmaa_estimator(object):
     result = flex.linear_regression( x, y )
     result = -(result.slope()/math.pi*3)
     if result < 0:
-      result = "None"
+      result = None
     else:
       result = math.sqrt( result )
     return result
