@@ -7,7 +7,7 @@ from cctbx import xray
 from cctbx import eltbx
 from cctbx import adptbx
 from scitbx import lbfgs
-from mmtbx import masks
+from mmtbx import masks, utils
 import cctbx.xray.structure_factors
 from cctbx.eltbx.xray_scattering import wk1995
 from libtbx import adopt_init_args
@@ -252,23 +252,33 @@ def run(args, command_name="phenix.twin_map_utils"):
       miller_array = miller_array.average_bijvoet_mates()
 
     free_flags = None
-    if params.twin_utils.input.xray_data.free_flag is not None:
-      free_flags = xray_data_server.get_xray_data(
-        file_name = params.twin_utils.input.xray_data.file_name,
-        labels = params.twin_utils.input.xray_data.free_flag,
-        ignore_all_zeros = False,
-        parameter_scope = 'twin_utils.input.xray_data',
-        parameter_name = 'free_r_flags'
-        )
-      if free_flags.anomalous_flag():
-        free_flags = free_flags.average_bijvoet_mates()
-        merged_anomalous=True
-      free_flags = free_flags.customized_copy(
-        data = flex.bool( free_flags.data() == 1 ))
-      free_flags = free_flags.map_to_asu()
-      free_flags = free_flags.common_set( miller_array )
-    else:
+
+    tmp_params = utils.r_free_flags_params.extract()
+    tmp_params.label = params.twin_utils.input.xray_data.free_flag
+    tmp_params.file_name = params.twin_utils.input.xray_data.file_name
+    print >> log
+    print >> log, "Attempting to extract Free R flags"
+
+    free_flags = utils.determine_r_free_flags(reflection_file_server = xray_data_server,
+                                              data = miller_array,
+                                              generate_r_free_flags = False,
+                                              parameters = tmp_params,
+                                              parameter_scope = 'twin_utils.input.xray_data',
+                                              working_point_group = None,
+                                              symmetry_safety_check = False,
+                                              log = log,
+                                              neutron_flag = None )
+
+    if free_flags is None:
       free_flags = miller_array.generate_r_free_flags(use_lattice_symmetry=True)
+    if free_flags.anomalous_flag():
+      free_flags = free_flags.average_bijvoet_mates()
+      merged_anomalous=True
+    free_flags = free_flags.map_to_asu()
+    free_flags = free_flags.common_set( miller_array )
+    free_flags = free_flags.customized_copy(
+      data = flex.bool( free_flags.data() == 1 ))
+
 
 
     print >> log
