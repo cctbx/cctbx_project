@@ -2482,9 +2482,16 @@ def exercise_condense_as_ranges():
   a = flex.int([3,4,5,7,8,9,10])
   assert flex.condense_as_ranges(integer_array=a) == [(3,5),(7,10)]
 
+def exercise_partial_sums():
+  a = flex.double([1, 2, -4, 0, 1, 4, -2])
+  assert flex.find_partial_sum_greater_than(a, 2.9) == 1
+  assert flex.find_partial_sum_greater_than(a, 3.9) == 5
+  assert flex.find_partial_sum_greater_than(a, 4) is None
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_partial_sums()
     exercise_flex_grid()
     exercise_flex_constructors()
     exercise_misc()

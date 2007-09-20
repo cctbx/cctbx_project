@@ -52,6 +52,29 @@ namespace scitbx { namespace af {
     return result;
   }
 
+  template <typename ElementType, typename AccessorType, typename PredicateType>
+  boost::optional<std::size_t>
+  find_partial_sum(
+    const_ref<ElementType, AccessorType> const& a,
+    PredicateType pred
+    )
+  {
+    if (a.size() == 0) {
+      throw std::runtime_error(
+        "find_partial_sum() was passed an empty array");
+    }
+    boost::optional<std::size_t> result;
+    ElementType partial_sum = 0;
+    for(std::size_t i=0; i < a.size(); i++) {
+      partial_sum += a[i];
+      if ( pred(partial_sum) ) {
+        result = i;
+        break;
+      }
+    }
+    return result;
+  }
+
   template <typename ElementType, typename AccessorType>
   ElementType
   max(const_ref<ElementType, AccessorType> const& a)
