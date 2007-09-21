@@ -29,9 +29,9 @@ struct transform_coordinate_wrappers {
 
   typedef scitbx::mat3<double>              matrix3;
 
-  typedef fractional<double>                fractional;
-  typedef grid_point<signed long>              grid_point;
-  typedef cartesian<double>                cartesian;
+  typedef cctbx::fractional<double>                fractional;
+  typedef cctbx::grid_point<signed long>           grid_point;
+  typedef cctbx::cartesian<double>                 cartesian;
   typedef af::tiny<signed long,dimension_3>        extents;
 
   typedef transform<fractional,fractional>        frac2frac;

@@ -17,7 +17,7 @@ struct mapper_wrappers {
   typedef double                                           FloatType;
   typedef signed long                                      IntType;
 
-  typedef fractional<FloatType>                            fractional;
+  typedef cctbx::fractional<FloatType>                     fractional;
   typedef grid_point<IntType>                              unit_shift;
   typedef IntType                                          symmetry_operation;
   typedef scitbx::mat3<FloatType>                          matrix3;

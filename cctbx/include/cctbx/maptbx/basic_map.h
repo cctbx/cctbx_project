@@ -41,7 +41,7 @@ public:
   typedef std::vector<frac_type>                        frac_list_type;
   typedef af::tiny<FloatType,2>                         weight_pair_type;
   typedef af::tiny<weight_pair_type,3>                  weight_pairs_type;
-  typedef basic_mapper<void,FloatType,IntType>          basic_mapper;
+  typedef maptbx::basic_mapper<void,FloatType,IntType>  basic_mapper;
   typedef af::tiny<grid_type,2>                         grid_pair_type;
 
   typedef af::ref<FloatType, af::flex_grid<> >          flex_grid_ref;
