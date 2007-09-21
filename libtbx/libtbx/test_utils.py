@@ -53,45 +53,56 @@ def run_tests(build_dir, dist_dir, tst_list):
     for cmd in iter_tests_cmd(co, build_dir, dist_dir, tst_list):
       cmd_queue.put(cmd)
     threads_pool = []
-    logs_pool = []
+    log_queue = Queue.Queue()
+    interrupted = threading.Event()
     for i in xrange(co.threads):
-      log_name = os.tempnam('.', 'log-')
       working_dir = os.tempnam()
       os.mkdir(working_dir)
-      logs_pool.append(log_name)
       t = threading.Thread(
-        target=make_pick_and_run_tests(log_name, working_dir, cmd_queue))
+        target=make_pick_and_run_tests(working_dir, interrupted,
+                                       cmd_queue, log_queue))
       threads_pool.append(t)
     for t in threads_pool:
       t.start()
-    for t in threads_pool:
-      t.join()
-    final_log = ""
-    for name in logs_pool:
-      log = open(name)
-      final_log += log.read()
-      log.close()
-      os.remove(name)
-    print final_log
-
-def make_pick_and_run_tests(log_name, working_dir, cmd_queue):
-  def func():
-    log = open(log_name, 'w')
+    finished_threads = 0
     while(1):
       try:
+        log = log_queue.get()
+        if isinstance(log, tuple):
+          msg = log[0]
+          print >> sys.stderr, "\n +++ thread %s +++\n" % msg
+          finished_threads += 1
+          if finished_threads == co.threads: break
+        else:
+          print log
+      except KeyboardInterrupt:
+        print
+        print "********************************************"
+        print "** Received Keyboard Interrupt            **"
+        print "** Waiting for running tests to terminate **"
+        print "********************************************"
+        interrupted.set()
+        break
+
+def make_pick_and_run_tests(working_dir, interrupted,
+                            cmd_queue, log_queue):
+  def func():
+    while(not interrupted.isSet()):
+      try:
         cmd = cmd_queue.get(block=True, timeout=0.2)
-        log.write(cmd)
-        log.write("\n")
-        log.flush()
-        easy_run.subprocess.Popen(cmd,
+        log = "\n%s\n" % cmd
+        proc = easy_run.subprocess.Popen(cmd,
                                   shell=True,
-                                  stdout=log,
+                                  stdout=easy_run.subprocess.PIPE,
                                   stderr=easy_run.subprocess.STDOUT,
-                                  cwd=working_dir).wait()
-        log.flush()
-        log.write("\n")
+                                  cwd=working_dir)
+        proc.wait()
+        log += "\n%s" % proc.stdout.read()
+        log_queue.put(log)
       except Queue.Empty:
-        log.close()
+        log_queue.put( ("done",) )
+        break
+      except KeyboardInterrupt:
         break
   return func
 
