@@ -1,6 +1,10 @@
 * text=auto !eol
 boost_adaptbx/boost/command_line/divide_by_zero.py svneol=native#text/x-python
 boost_adaptbx/boost/command_line/show_environ_usage.py svneol=native#text/x-python
+boost_adaptbx/boost/std_pair.py -text
+boost_adaptbx/std_pair_conversion.h -text
+boost_adaptbx/std_pair_ext.cpp -text
+boost_adaptbx/tst_std_pair.py -text
 cbflib_adaptbx/SConscript -text
 cbflib_adaptbx/detectors/boost_python/SConscript -text
 cbflib_adaptbx/detectors/boost_python/cbflib_ext.cpp -text

@@ -64,6 +64,9 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/boost_optional_ext",
     source="optional_ext.cpp")
+  env.SharedLibrary(
+    target="#lib/std_pair_ext",
+    source="std_pair_ext.cpp")
 
   import os, os.path
   env = env_base.Copy(
