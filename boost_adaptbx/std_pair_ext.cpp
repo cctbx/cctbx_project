@@ -1,7 +1,7 @@
-#include <boost/optional.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost_adaptbx/std_pair_conversion.h>
+#include <boost/optional.hpp>
 
 namespace {
   std::pair<int, double> exercise(int i) {
