@@ -1,5 +1,6 @@
 from __future__ import generators
 import boost.optional
+import boost.std_pair
 import scitbx.boost_python.slice
 
 import boost.python
