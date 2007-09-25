@@ -1,6 +1,7 @@
 #ifndef SCITBX_ARRAY_FAMILY_REDUCTIONS_H
 #define SCITBX_ARRAY_FAMILY_REDUCTIONS_H
 
+#include <scitbx/error.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <boost/optional.hpp>
@@ -53,22 +54,24 @@ namespace scitbx { namespace af {
   }
 
   template <typename ElementType, typename AccessorType, typename PredicateType>
-  boost::optional<std::size_t>
+  std::pair< boost::optional<std::size_t>, boost::optional<ElementType> >
   find_partial_sum(
     const_ref<ElementType, AccessorType> const& a,
-    PredicateType pred
-    )
+    PredicateType pred,
+    std::size_t first_index=0)
   {
     if (a.size() == 0) {
       throw std::runtime_error(
         "find_partial_sum() was passed an empty array");
     }
-    boost::optional<std::size_t> result;
+    SCITBX_ASSERT(first_index >= 0)(first_index);
+    std::pair< boost::optional<std::size_t>,
+               boost::optional<ElementType> > result;
     ElementType partial_sum = 0;
-    for(std::size_t i=0; i < a.size(); i++) {
+    for(std::size_t i=first_index; i < a.size(); i++) {
       partial_sum += a[i];
       if ( pred(partial_sum) ) {
-        result = i;
+        result = std::make_pair(i, partial_sum);
         break;
       }
     }

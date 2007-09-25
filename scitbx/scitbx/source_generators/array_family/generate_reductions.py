@@ -76,12 +76,13 @@ def generate_find_partial_sum(f, subs):
     print >> f, substitute(subs, """
   template <typename ElementType${templ_decl_2}, class PredicateType>
   inline
-  boost::optional<std::size_t>
+  std::pair< boost::optional<std::size_t>, boost::optional<ElementType> >
   ${func_name}(
     ${array_type_plain}<ElementType${templ_inst_2}> const& a,
-    PredicateType pred)
+    PredicateType pred,
+    std::size_t first_index=0)
   {
-    return ${func_name}(a.const_ref(), pred);
+    return ${func_name}(a.const_ref(), pred, first_index);
   }
 """)
 

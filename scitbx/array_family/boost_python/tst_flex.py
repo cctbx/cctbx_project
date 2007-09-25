@@ -2484,9 +2484,12 @@ def exercise_condense_as_ranges():
 
 def exercise_partial_sums():
   a = flex.double([1, 2, -4, 0, 1, 4, -2])
-  assert flex.find_partial_sum_greater_than(a, 2.9) == 1
-  assert flex.find_partial_sum_greater_than(a, 3.9) == 5
-  assert flex.find_partial_sum_greater_than(a, 4) is None
+  assert flex.find_partial_sum_greater_than(a, 2.9) == (1, 3.)
+  assert flex.find_partial_sum_greater_than(a, 3.9) == (5, 4.)
+  assert flex.find_partial_sum_greater_than(a, 4) == (None, None)
+  assert flex.find_partial_sum_greater_than(a, 0.8, first_index=2) == (5, 1.)
+  assert flex.find_partial_sum_greater_than(a, 1.1,
+                                            first_index=2) == (None,None)
 
 def run(iterations):
   i = 0

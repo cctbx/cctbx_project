@@ -669,9 +669,11 @@ namespace scitbx { namespace af { namespace boost_python {
     static e_t mean_a(f_t const& a) { return mean(a); }
     static e_t mean_sq_a(f_t const& a) { return mean_sq(a); }
 
-    static boost::optional<std::size_t>
-    find_partial_sum_greater_than_a_s(f_t const& a, e_t t) {
-      return find_partial_sum(a, std::bind2nd(std::greater<e_t>(), t));
+    static
+    std::pair< boost::optional<std::size_t>, boost::optional<e_t> >
+    find_partial_sum_greater_than_a_s(f_t const& a, e_t t, std::size_t i)
+    {
+      return find_partial_sum(a, std::bind2nd(std::greater<e_t>(), t), i);
     }
 
     static e_t
@@ -875,15 +877,17 @@ namespace scitbx { namespace af { namespace boost_python {
                    boost::python::object const& flex_root_scope)
     {
       {
-        boost::python::scope local_scope(flex_root_scope);
-        boost::python::def("min_index", min_index_a);
-        boost::python::def("max_index", max_index_a);
-        boost::python::def("min", min_a);
-        boost::python::def("max", max_a);
-        boost::python::def("pow2", pow2_a);
-        boost::python::def("order", order_a_a);
-        boost::python::def("find_partial_sum_greater_than",
-                           find_partial_sum_greater_than_a_s);
+        using namespace boost::python;
+        scope local_scope(flex_root_scope);
+        def("min_index", min_index_a);
+        def("max_index", max_index_a);
+        def("min", min_a);
+        def("max", max_a);
+        def("pow2", pow2_a);
+        def("order", order_a_a);
+        def("find_partial_sum_greater_than",
+            find_partial_sum_greater_than_a_s,
+            (arg_("array"), arg_("threshold"), arg_("first_index")=0));
       }
       return numeric_common(python_name, flex_root_scope)
         .def("as_double", as_double)
