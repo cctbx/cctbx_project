@@ -28,29 +28,35 @@ def exercise_randomly(space_group_info, elements,
     xray_structure=structure,
     algorithm="direct").f_calc()
   f_obs = abs(f_correct)
-  if special_handling_of_weak_reflections:
-    flipped = cflip.charge_flipping_iterator_tweaked_for_weak_reflections(f_obs)
-  else:
-    flipped = cflip.charge_flipping_iterator(f_obs)
-  print "start:"
-  print "fraction of positive pixels=%.3f" % (
-    (flipped.rho > 0).count(True)/flipped.rho.size())
-  for i, state in enumerate(flipped):
-    if i == 10: state.adjust_delta()
-    r1 = state.f_obs.r1_factor(state.g, assume_index_matching=True)
-    pos = (state.rho > 0).count(True) / state.rho.size()
-    print "%i: delta=%.5f" % (i,state.delta)
-    indent = " "*(len("%i" % i) + 1)
-    print indent, "R1=%.5f" % r1
-    print indent, "fraction of positive pixels=%.3f" % pos
-    print indent, "total charge=%.3f" % state.g_000
+  while True:
+    if special_handling_of_weak_reflections:
+      flipped = cflip.charge_flipping_iterator_tweaked_for_weak_reflections(f_obs)
+    else:
+      flipped = cflip.charge_flipping_iterator(f_obs)
+    print "start:"
+    print "fraction of positive pixels=%.3f" % (
+      (flipped.rho > 0).count(True)/flipped.rho.size())
+    next_delta_check = 10
+    for i,state in enumerate(flipped):
+      isinstance(state, cflip.charge_flipping_iterator)
+      if i == next_delta_check:
+        state.set_delta_based_on_c_tot_over_c_flip()
+        state.set_rho_to_randomized_f_obs()
+        next_delta_check += 10
+      r1 = state.f_obs.r1_factor(state.g, assume_index_matching=True)
+      pos = (state.rho > 0).count(True) / state.rho.size()
+      print "%i: delta=%.5f" % (i,state.delta)
+      indent = " "*(len("%i" % i) + 1)
+      print indent, "R1=%.5f" % r1
+      print indent, "fraction of positive pixels=%.3f" % pos
+      print indent, "total charge=%.3f" % state.g_000
 
 
 def run():
   exercise_randomly(space_group_info=sgtbx.space_group_info("P31"),
                     elements=["C"]*5 + ["O"]*2 + ["N"],
                     anomalous_flag=False,
-                    special_handling_of_weak_reflections=True
+                    special_handling_of_weak_reflections=False
                   )
 
 if __name__ == '__main__':

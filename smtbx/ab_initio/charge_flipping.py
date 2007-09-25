@@ -12,7 +12,7 @@ class charge_flipping_iterator(object):
 
   [1] G. Oszl{\'a}nyi and A. S{\"u}t{\H o}.
   Ab initio structure solution by charge flipping.
-  Acta Cryst. A, 60:134Ð141, 2003.
+  Acta Cryst. A, 60:134--141, 2003.
 
   [2] G. Oszl{\'a}nyi and A. S{\"u}t{\H o}.
   Ab initio structure solution by charge flipping.
@@ -21,7 +21,7 @@ class charge_flipping_iterator(object):
   [3] L. Palatinus and G. Chapuis
   SUPERFLIP -- a computer program for the solution of crystal structures
   by charge flipping in arbitry dimensions
-  J. Appl. Cryst., 40:786-790, 2007
+  J. Appl. Cryst., 40:786--790, 2007
 
   Notes.
 
@@ -37,13 +37,19 @@ class charge_flipping_iterator(object):
                       .merge_equivalents().array()\
                       .discard_sigmas()
 
+    self.set_rho_to_randomized_f_obs()
+
+    # delta being None means we need to find a starting value
+    if self.delta is None: self.initialise_delta()
+
+  def initialise_delta(self):
+    self.set_delta_based_on_flipped_fraction()
+
+  def set_rho_to_randomized_f_obs(self):
     # Initial rho is the alter ego of f_obs with f_000 = 0 and random phases
     random_phases = (2*math.pi)*flex.random_double(self.f_obs.size())
     f = self.f_obs.phase_transfer(random_phases)
     self.rho = f.fft_map().real_map_unpadded()
-
-    # delta being None means we need to find a starting value
-    if self.delta is None: self.initialize_delta()
 
   def __iter__(self):
     return self
@@ -56,7 +62,7 @@ class charge_flipping_iterator(object):
     flipped *= -1
     rho_1d_view.set_selected(flipped_selection, flipped)
 
-    #FFT (it seems most natural to scale by the number of grid points here)
+    #FFT (it seems the natural place to scale by the number of grid points)
     scale = 1/self.rho.size()
     self.g = self.f_obs.structure_factors_from_map(self.rho)
     self.g *= scale
@@ -73,37 +79,20 @@ class charge_flipping_iterator(object):
   def transfer_phases_from_g_to_f_obs(self):
     return self.f_obs.phase_transfer(self.g)
 
-  def initialize_delta(self):
+  def set_delta_based_on_flipped_fraction(self):
     ## possible optimisation here: partial_sort
     rho = self.rho.as_1d()
-    perm = flex.sort_permutation(rho)
-    sorted_rho = rho.select(perm)
+    p = flex.sort_permutation(rho)
+    sorted_rho = rho.select(p)
     self.delta = sorted_rho[int(sorted_rho.size()*0.8)]
 
-  def adjust_delta(self):
+  def set_delta_based_on_c_tot_over_c_flip(self):
     rho = self.rho.as_1d()
     c_tot = flex.sum(rho)
-    abs_rho = flex.abs(rho)
-    perm = flex.sort_permutation(abs_rho)
-    increasing_abs_rho = abs_rho.select(perm)
-    i,s = flex.find_partial_sum_greater_than(increasing_abs_rho, c_tot)
-    j,t = flex.find_partial_sum_greater_than(increasing_abs_rho,
-                                             c_tot/0.8 - s,
-                                             first_index=i)
-    if j is not None:
-      k = (i+j)//2
-    else:
-      k = -1
-    self.delta = rho[perm[k]]
-    assert 0.8 < self.c_tot_over_c_flip() < 1
-    assert self.delta > 0
-
-  def c_tot_over_c_flip(self):
-    rho = self.rho.as_1d()
-    c_tot = flex.sum(rho)
-    flipped = rho < self.delta
-    c_flip = flex.sum(flex.abs(rho.select(flipped)))
-    return c_tot / c_flip
+    c_flip = flex.sum(flex.abs(rho).select(rho < self.delta))
+    r = c_tot/c_flip
+    if r < 0.8: self.delta *= 0.9  # magic numbers from SUPERFLIP
+    elif r > 1: self.delta *= 1.07
 
 
 class charge_flipping_iterator_tweaked_for_weak_reflections(
