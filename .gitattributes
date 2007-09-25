@@ -99,6 +99,9 @@ scitbx/scitbx/sparse/boost_python/vector.cpp -text
 scitbx/scitbx/sparse/tests/tst_sparse.py -text
 smtbx/SConscript -text
 smtbx/__init__.py -text
+smtbx/ab_initio/__init__.py -text
+smtbx/ab_initio/charge_flipping.py -text
+smtbx/ab_initio/tests/tst_charge_flipping.py -text
 smtbx/import_cctbx.h -text
 smtbx/import_scitbx_af.h -text
 smtbx/libtbx_config -text
