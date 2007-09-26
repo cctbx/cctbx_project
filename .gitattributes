@@ -51,6 +51,8 @@ libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx/subversion.py -text
 libtbx/libtbx_refresh.py -text
 libtbx/windows_dispatcher.exe -text
+mmtbx/alignment.h svneol=native#text/plain
+mmtbx/alignment_ext.cpp svneol=native#text/plain
 mmtbx/mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/mmtbx/command_line/maps.py -text
 mmtbx/mmtbx/command_line/pdbtools.py -text

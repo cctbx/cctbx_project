@@ -1,3 +1,9 @@
+import scitbx.array_family.flex
+
+import boost.python
+ext = boost.python.import_ext("mmtbx_alignment_ext")
+from mmtbx_alignment_ext import *
+
 """
 Written by Tom Ioerger (http://faculty.cs.tamu.edu/ioerger).
 Send comments or suggestions to: ioerger@cs.tamu.edu
@@ -497,6 +503,14 @@ def exercise():
 
   print "OK" # necessary for auto_build checking
 
+def exercise_ext():
+  pg = pairwise_global(
+    seq1="THEQUICKBOWNFOXJUMPSOVETHELAZY",
+    seq2="QUICKBRWNFXJUMPSVERTH3LAZYDOG")
+  assert pg.result1 == "THEQUICKBOWNFOXJUMPSOVE-THELAZY---"
+  assert pg.result2 == "---QUICKBRWNF-XJUMPS-VERTH3LAZYDOG"
+
 if __name__=="__main__":
   exercise_similarity_scores()
   exercise()
+  exercise_ext()
