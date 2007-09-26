@@ -352,38 +352,6 @@ class set(crystal.symmetry):
           anomalous_flag=self.anomalous_flag())
     return self.array(data=effective_group.is_sys_absent(self.indices()))
 
-  def eliminate_sys_absent(self, integral_only=False, log=None, prefix=""):
-    sys_absent_flags = self.sys_absent_flags(
-      integral_only=integral_only).data()
-    n = sys_absent_flags.count(True)
-    if (n == 0): return self
-    if (log is not None):
-      if (integral_only): q = "integral "
-      else: q = ""
-      if (   isinstance(self.data(), flex.double)
-          or isinstance(self.data(), flex.complex_double)):
-        data_abs = flex.abs(self.data())
-        c = ":"
-      else:
-        data_abs = None
-        c = "."
-      print >> log, prefix + "Removing %d %ssystematic absence%s%s" % (
-        n, q, plural_s(n)[1], c)
-    result = self.select(selection=~sys_absent_flags)
-    if (log is not None):
-      if (data_abs is not None):
-        print >> log, prefix + "  Average absolute value of:"
-        mean_absences = flex.mean(data_abs.select(sys_absent_flags))
-        print >> log, prefix + "    Absences: %.6g" % mean_absences
-        if (n != data_abs.size()):
-          mean_others = flex.mean(data_abs.select(~sys_absent_flags))
-          print >> log, prefix + "      Others: %.6g" % mean_others
-          if (mean_others != 0 and mean_others > mean_absences * 1.e-20):
-            print >> log, prefix + "       Ratio: %.6g" % (
-              mean_absences / mean_others)
-      print >> log
-    return result
-
   def centric_flags(self):
     return array(
       self,
@@ -546,33 +514,6 @@ class set(crystal.symmetry):
     return self.select(
       selection=self.resolution_filter_selection(d_max=d_max, d_min=d_min),
       negate=negate)
-
-  def min_f_over_sigma(self):
-    result = None
-    sigmas = self.sigmas()
-    if(sigmas is not None):
-      if(flex.min(sigmas) == 0.0):
-        result = 0.0
-      else:
-        result = flex.min(self.data() / sigmas)
-    return result
-
-  def apply_scaling(self, target_max=None, factor=None):
-    assert [target_max, factor].count(None) == 1
-    assert self.data() is not None
-    s = None
-    if (target_max is not None):
-      current_max = flex.max(flex.abs(self.data()))
-      if (current_max == 0): return self.deep_copy()
-      factor = target_max / current_max
-    d = self.data() * factor
-    if (self.sigmas() is not None): s = self.sigmas() * factor
-    return (array(
-      miller_set = set.deep_copy(self),
-      data=d,
-      sigmas=s)
-      .set_info(self.info())
-      .set_observation_type(self))
 
   def match_indices(self, other, assert_is_similar_symmetry=True):
     if (assert_is_similar_symmetry):
@@ -811,58 +752,6 @@ class set(crystal.symmetry):
     del sel_sm
     return self.array(data=result_full)
 
-  def show_r_free_flags_info(self,
-        n_bins=10,
-        binner_range="used",
-        out=None,
-        prefix=""):
-    assert self.is_bool_array()
-    assert binner_range in ["used", "all"]
-    print >> out, prefix + "Number of work/free reflections by resolution:"
-    if (n_bins is not None):
-      self.setup_binner(n_bins=n_bins)
-    else:
-      assert self.binner() is not None
-    n_works = []
-    n_frees = []
-    fmt = None
-    for i_bin in getattr(self.binner(), "range_"+binner_range)():
-      sel = self.binner().selection(i_bin)
-      flags = self.data().select(sel)
-      n_free = flags.count(True)
-      n_work = flags.size() - n_free
-      n_works.append(n_work)
-      n_frees.append(n_free)
-      legend = self.binner().bin_legend(i_bin)
-      if (fmt is None):
-        width = max(4, len(str(self.indices().size())))
-        fmt = "%%%ds" % width
-        print >> out, prefix + " ", " "*len(legend), \
-          fmt%"work", fmt%"free", " %free"
-        fmt = "%%%dd" % width
-      print >> out, prefix + " ", legend, fmt%n_work, fmt%n_free, \
-        "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
-    n_free = self.data().count(True)
-    n_work = self.data().size() - n_free
-    print >> out, prefix + " ", (
-      "%%%ds"%len(legend))%"overall", fmt%n_work, fmt%n_free, \
-      "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
-    return n_works, n_frees
-
-  def r_free_flags_accumulation(self):
-    assert self.is_bool_array()
-    rc = flex.size_t(1, 0)
-    ff = flex.double(1, 0)
-    d = self.data()
-    n = d.size()
-    c = 0
-    for i,f in enumerate(d):
-      if (f):
-        c += 1
-        rc.append(i+1)
-        ff.append(c/n)
-    return group_args(reflection_counts=rc, free_fractions=ff)
-
   def random_phases_compatible_with_phase_restrictions(self, deg=False):
     random_phases = flex.random_double(size=self.size())-0.5
     if (deg): random_phases *= 360
@@ -1086,16 +975,6 @@ class set(crystal.symmetry):
 
   def clear_binner(self):
     self._binner = None
-
-  def map_correlation(self, other):
-    d1 = flex.abs(self.data())
-    d2 = flex.abs(other.data())
-    p1 = self.phases().data()
-    p2 = other.phases().data()
-    factor = math.sqrt( flex.sum_sq(d1) * flex.sum_sq(d2) )
-    if (factor > 0):
-      return flex.sum( d1 * d2 * flex.cos(p2 - p1) ) / factor
-    return None
 
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
   result = set(
@@ -1977,6 +1856,58 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       else: result.append(1/sm)
     return binned_data(binner=a.binner(), data=result, data_fmt="%7.4f")
 
+  def show_r_free_flags_info(self,
+        n_bins=10,
+        binner_range="used",
+        out=None,
+        prefix=""):
+    assert self.is_bool_array()
+    assert binner_range in ["used", "all"]
+    print >> out, prefix + "Number of work/free reflections by resolution:"
+    if (n_bins is not None):
+      self.setup_binner(n_bins=n_bins)
+    else:
+      assert self.binner() is not None
+    n_works = []
+    n_frees = []
+    fmt = None
+    for i_bin in getattr(self.binner(), "range_"+binner_range)():
+      sel = self.binner().selection(i_bin)
+      flags = self.data().select(sel)
+      n_free = flags.count(True)
+      n_work = flags.size() - n_free
+      n_works.append(n_work)
+      n_frees.append(n_free)
+      legend = self.binner().bin_legend(i_bin)
+      if (fmt is None):
+        width = max(4, len(str(self.indices().size())))
+        fmt = "%%%ds" % width
+        print >> out, prefix + " ", " "*len(legend), \
+          fmt%"work", fmt%"free", " %free"
+        fmt = "%%%dd" % width
+      print >> out, prefix + " ", legend, fmt%n_work, fmt%n_free, \
+        "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
+    n_free = self.data().count(True)
+    n_work = self.data().size() - n_free
+    print >> out, prefix + " ", (
+      "%%%ds"%len(legend))%"overall", fmt%n_work, fmt%n_free, \
+      "%5.1f%%" % (100.*n_free/max(1,n_work+n_free))
+    return n_works, n_frees
+
+  def r_free_flags_accumulation(self):
+    assert self.is_bool_array()
+    rc = flex.size_t(1, 0)
+    ff = flex.double(1, 0)
+    d = self.data()
+    n = d.size()
+    c = 0
+    for i,f in enumerate(d):
+      if (f):
+        c += 1
+        rc.append(i+1)
+        ff.append(c/n)
+    return group_args(reflection_counts=rc, free_fractions=ff)
+
   def r1_factor(self, other, assume_index_matching=False):
     assert (self.observation_type() is None
             or self.is_complex_array() or self.is_xray_amplitude_array())
@@ -2010,6 +1941,33 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert self.sigmas() is not None
     flags = flex.abs(self.data()) >= self.sigmas() * cutoff_factor
     return self.select(flags, negate)
+
+  def min_f_over_sigma(self):
+    result = None
+    sigmas = self.sigmas()
+    if(sigmas is not None):
+      if(flex.min(sigmas) == 0.0):
+        result = 0.0
+      else:
+        result = flex.min(self.data() / sigmas)
+    return result
+
+  def apply_scaling(self, target_max=None, factor=None):
+    assert [target_max, factor].count(None) == 1
+    assert self.data() is not None
+    s = None
+    if (target_max is not None):
+      current_max = flex.max(flex.abs(self.data()))
+      if (current_max == 0): return self.deep_copy()
+      factor = target_max / current_max
+    d = self.data() * factor
+    if (self.sigmas() is not None): s = self.sigmas() * factor
+    return (array(
+      miller_set = set.deep_copy(self),
+      data=d,
+      sigmas=s)
+      .set_info(self.info())
+      .set_observation_type(self))
 
   def mean(self,
         use_binning=False,
@@ -2192,6 +2150,38 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     else:
       return self.as_non_anomalous_array().merge_equivalents().array()
 
+  def eliminate_sys_absent(self, integral_only=False, log=None, prefix=""):
+    sys_absent_flags = self.sys_absent_flags(
+      integral_only=integral_only).data()
+    n = sys_absent_flags.count(True)
+    if (n == 0): return self
+    if (log is not None):
+      if (integral_only): q = "integral "
+      else: q = ""
+      if (   isinstance(self.data(), flex.double)
+          or isinstance(self.data(), flex.complex_double)):
+        data_abs = flex.abs(self.data())
+        c = ":"
+      else:
+        data_abs = None
+        c = "."
+      print >> log, prefix + "Removing %d %ssystematic absence%s%s" % (
+        n, q, plural_s(n)[1], c)
+    result = self.select(selection=~sys_absent_flags)
+    if (log is not None):
+      if (data_abs is not None):
+        print >> log, prefix + "  Average absolute value of:"
+        mean_absences = flex.mean(data_abs.select(sys_absent_flags))
+        print >> log, prefix + "    Absences: %.6g" % mean_absences
+        if (n != data_abs.size()):
+          mean_others = flex.mean(data_abs.select(~sys_absent_flags))
+          print >> log, prefix + "      Others: %.6g" % mean_others
+          if (mean_others != 0 and mean_others > mean_absences * 1.e-20):
+            print >> log, prefix + "       Ratio: %.6g" % (
+              mean_absences / mean_others)
+      print >> log
+    return result
+
   def __add__(self, other):
     assert self.indices() is not None
     assert self.data() is not None
@@ -2208,6 +2198,20 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     if (self.sigmas() is not None and other.sigmas() is not None):
       s = match.additive_sigmas(self.sigmas(), other.sigmas())
     return array(set(self, i), d, s)
+
+  def __imul__(self, other):
+    assert self.indices() is not None
+    assert self.data() is not None
+    data = self.data()
+    data *= other
+    sigmas = self.sigmas()
+    if sigmas is not None: sigmas *= other
+    return self
+
+  def __mul__(self, other):
+    result = self.copy()
+    result *= other
+    return result
 
   def generate_bijvoet_mates(self):
     if (self.anomalous_flag()): return self
@@ -2279,6 +2283,16 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       for h,d,s in zip(self.indices(), self.data(), self.sigmas()):
         print >> f, prefix + str(h), d, s
     return self
+
+  def map_correlation(self, other):
+    d1 = flex.abs(self.data())
+    d2 = flex.abs(other.data())
+    p1 = self.phases().data()
+    p2 = other.phases().data()
+    factor = math.sqrt( flex.sum_sq(d1) * flex.sum_sq(d2) )
+    if (factor > 0):
+      return flex.sum( d1 * d2 * flex.cos(p2 - p1) ) / factor
+    return None
 
   def fft_map(self, resolution_factor=1/3,
                     d_min=None,
