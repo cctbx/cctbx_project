@@ -106,6 +106,7 @@ def parse_options_loop_space_groups(
     argv=argv,
     keywords=(
       "Verbose",
+      "Debug",
       "Threads",
       "ChunkSize",
       "ChunkMember",
