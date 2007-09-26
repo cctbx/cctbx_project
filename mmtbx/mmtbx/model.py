@@ -20,7 +20,6 @@ from mmtbx import utils
 
 time_model_show = 0.0
 
-
 class manager(object):
   def __init__(self, restraints_manager,
                      restraints_manager_ini,

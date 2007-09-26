@@ -542,6 +542,7 @@ def create_mtz_object(pre_miller_arrays,
     return None
   if(r_free_flags is not None):
     r_free_flags = miller_array.array(data = r_free_flags)
+    assert r_free_flags.indices().all_eq(miller_array.indices())
   n_all = miller_array.indices().size()
   sel_unique = miller_array.unique_under_symmetry_selection()
   sel_dup = ~flex.bool(n_all, sel_unique)
@@ -564,6 +565,7 @@ def create_mtz_object(pre_miller_arrays,
     mtz_dataset.add_miller_array(
       miller_array      = r_free_flags,
       column_root_label = "R-free-flags")
+    assert r_free_flags.indices().all_eq(miller_array.indices())
   mtz_object = mtz_dataset.mtz_object()
   return mtz_object
 
@@ -589,6 +591,9 @@ class guess_observation_type(object):
             r_free_flags = r_free_flags.array(data = r_free_flags.data()==1)
       f_obs = f_obs.common_set(r_free_flags)
       r_free_flags = r_free_flags.common_set(f_obs)
+      if(r_free_flags_orig is not None):
+        f_obs = f_obs.common_set(r_free_flags_orig)
+        r_free_flags_orig = r_free_flags_orig.common_set(f_obs)
       observation_type = f_obs.observation_type()
       if(str(observation_type) == "xray.amplitude"):
         observation_type = "F"
@@ -612,7 +617,10 @@ class guess_observation_type(object):
             f_obs.set_observation_type_xray_intensity()
           else:
             f_obs = f_obs.set_observation_type(observation_type = None)
-          mtz_dataset = f_obs.as_mtz_dataset(column_root_label= observation_type)
+          assert r_free_flags.indices().all_eq(f_obs.indices())
+          if(r_free_flags_orig is not None):
+            assert r_free_flags_orig.indices().all_eq(f_obs.indices())
+          mtz_dataset=f_obs.as_mtz_dataset(column_root_label=observation_type)
           if(r_free_flags_orig is not None and r_free_is_ok):
             mtz_dataset.add_miller_array(
               miller_array      = r_free_flags_orig,
