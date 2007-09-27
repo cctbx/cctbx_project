@@ -119,7 +119,7 @@ decode_pure(
     else {
       have_non_blank = 1;
       dv = digits_values[si];
-      if (dv < 0) {
+      if (dv < 0 || dv >= digits_size) {
         *result = 0;
         return invalid_number_literal();
       }

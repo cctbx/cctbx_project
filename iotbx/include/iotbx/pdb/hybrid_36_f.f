@@ -120,7 +120,7 @@ C
         else
           have_non_blank = .true.
           dv = digits_values(si)
-          if (dv .lt. 0) goto 2
+          if (dv .lt. 0 .or. dv .ge. digits_size) goto 2
           value = value * digits_size
           value = value + dv
         endif
@@ -482,6 +482,18 @@ C
       if (errmsg .ne. 'invalid number literal.')
      &  stop 'error errmsg invalid'
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
+      call hy36decode(4, '40a0', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
+      call hy36decode(4, '40A0', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
 C
       s5 = ' '
       call hy36encode(5, -10000, s5, errmsg, errmsg_len)
@@ -509,6 +521,18 @@ C
       if (decoded .ne. 0) stop 'decoded != 0 invalid'
       decoded = -1
       call hy36decode(5, 'a=bcd', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
+      call hy36decode(5, '410b0', decoded, errmsg, errmsg_len)
+      if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
+      if (errmsg .ne. 'invalid number literal.')
+     &  stop 'error errmsg invalid'
+      if (decoded .ne. 0) stop 'decoded != 0 invalid'
+      decoded = -1
+      call hy36decode(5, '410B0', decoded, errmsg, errmsg_len)
       if (errmsg_len .eq. 0) stop 'error hy36decode invalid'
       if (errmsg .ne. 'invalid number literal.')
      &  stop 'error errmsg invalid'

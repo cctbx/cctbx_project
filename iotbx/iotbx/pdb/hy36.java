@@ -7,7 +7,7 @@
 
     See also: http://cci.lbl.gov/hybrid_36/
 
-    Ralf W. Grosse-Kunstleve, Vincent Chen, Jeff Headd, Sep 2007.
+    Ralf W. Grosse-Kunstleve, Vincent B. Chen, Jeff J. Headd, Sep 2007.
  */
 public
 class hy36 {
@@ -80,7 +80,7 @@ class hy36 {
       else {
         have_non_blank = true;
         int dv = digits_values[si];
-        if (dv < 0) {
+        if (dv < 0 || dv >= digits_size) {
           throw new Error(invalid_number_literal);
         }
         value *= digits_size;
@@ -394,11 +394,15 @@ class hy36 {
     check_decode_exception(4, " abc", "invalid number literal.");
     check_decode_exception(4, "abc-", "invalid number literal.");
     check_decode_exception(4, "A=BC", "invalid number literal.");
+    check_decode_exception(4, "40a0", "invalid number literal.");
+    check_decode_exception(4, "40A0", "invalid number literal.");
     check_decode_exception(5, "", "invalid number literal.");
     check_decode_exception(5, "     0", "invalid number literal.");
     check_decode_exception(5, " abcd", "invalid number literal.");
     check_decode_exception(5, "ABCD-", "invalid number literal.");
     check_decode_exception(5, "a=bcd", "invalid number literal.");
+    check_decode_exception(5, "410b0", "invalid number literal.");
+    check_decode_exception(5, "410B0", "invalid number literal.");
     //
     check_encode_exception(3, 0, "unsupported width.");
     check_encode_exception(6, 0, "unsupported width.");
