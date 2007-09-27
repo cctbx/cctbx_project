@@ -144,6 +144,11 @@ decode_pure(
 
       return value: pointer to error message, if any,
                     or 0 on success
+
+    Example usage (from C++):
+      char result[4+1];
+      const char* errmsg = hy36encode(4, 12345, result);
+      if (errmsg) throw std::runtime_error(errmsg);
  */
 const char*
 hy36encode(unsigned width, int value, char* result)
@@ -213,6 +218,11 @@ hy36encode(unsigned width, int value, char* result)
 
       return value: pointer to error message, if any,
                     or 0 on success
+
+    Example usage (from C++):
+      int result;
+      const char* errmsg = hy36decode(width, "A1T5", 4, &result);
+      if (errmsg) throw std::runtime_error(errmsg);
  */
 const char*
 hy36decode(unsigned width, const char* s, unsigned s_size, int* result)
