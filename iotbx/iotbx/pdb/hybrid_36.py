@@ -269,8 +269,9 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
         assert str(e) == "value out of range."
       else: raise RuntimeError("Exception expected.")
   #
-  for width,ss in [(4, ["", "    0", " abc", "abc-", "A=BC"]),
-                   (5, ["", "     0", " abcd", "ABCD-", "a=bcd"])]:
+  for width,ss in [
+      (4, ["", "    0", " abc", "abc-", "A=BC", "40a0", "40A0"]),
+      (5, ["", "     0", " abcd", "ABCD-", "a=bcd", "410b0", "410B0"])]:
     for s in ss:
       try: hy36dec(width, s=s)
       except RuntimeError, e:
