@@ -41,7 +41,7 @@ def show_status(path, flag_x):
 
 def is_text_file(file_name):
   name = file_name.lower()
-  for extension in (".c", ".cpp", ".h", ".hpp", ".py", ".params",
+  for extension in (".c", ".cpp", ".h", ".hpp", ".py", ".java", ".params",
                     ".dox", ".txt", ".html", ".csh", ".sh", ".cif"):
     if (name.endswith(extension)): return True
   return False
