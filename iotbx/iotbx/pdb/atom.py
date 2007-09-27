@@ -514,14 +514,14 @@ class selection_cache(object):
         elif (lword == "chain"):
           result_stack.append(
             self.sel_chainID(pattern=word_iterator.pop_argument(word.value)))
-        elif (lword in ["resseq", "resid", "model"]):
+        elif (lword in ["resseq", "resid", "resi", "model"]):
           arg = word_iterator.pop_argument(word.value)
           i_colon_or_dash = arg.value.find(":")
           if (i_colon_or_dash < 0): i_colon_or_dash = arg.value.find("-")
           if (i_colon_or_dash < 0):
             if (lword == "resseq"):
               result_stack.append(self.sel_resSeq(pattern=arg))
-            elif (lword == "resid"):
+            elif (lword in ["resid", "resi"]):
               result_stack.append(self.sel_resid(pattern=arg))
             else:
               try: i = int(arg.value)
@@ -533,7 +533,7 @@ class selection_cache(object):
             if (lword == "resseq"):
               result_stack.append(
                 self.sel_resSeq_range(start=start, stop=stop))
-            elif (lword == "resid"):
+            elif (lword in ["resid", "resi"]):
               result_stack.append(
                 self.sel_resid_range(start=start, stop=stop))
             else:
