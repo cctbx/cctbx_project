@@ -64,7 +64,6 @@ namespace scitbx { namespace af {
       throw std::runtime_error(
         "find_partial_sum() was passed an empty array");
     }
-    SCITBX_ASSERT(first_index >= 0)(first_index);
     std::pair< boost::optional<std::size_t>,
                boost::optional<ElementType> > result;
     ElementType partial_sum = 0;
