@@ -507,7 +507,7 @@ END
   assert list(isel(r"resid 1K")) == [78,81,87]
   assert list(isel(r"resid '   1K'")) == [78,81]
   assert list(isel(r"resid '  1K '")) == [87]
-  assert list(isel(r"resid '  1K'")) == []
+  assert list(isel(r"resi '  1K'")) == []
   assert list(isel(r"resid 1:2")) \
       == range(17) + [70,71,72,73,74,75,77,78,79,80,81,82]
   expected = range(6,17) + [72,73,77,78,79,80,81,82]
@@ -515,7 +515,7 @@ END
   assert list(isel(r"resid '   1K:2'")) == expected
   assert list(isel(r"resid '  1K:2'")) == expected
   expected = range(6,40) + [72,73,76,77,78,79,80,81,82,83,87]
-  assert list(isel(r"resid '  1K:  1K '")) == expected
+  assert list(isel(r"resi '  1K:  1K '")) == expected
   assert list(isel(r"segid wate")) == [69]
   assert list(isel(r"element o")) == [65,66,67,68]
   assert list(isel(r"charge 4+")) == [64]
