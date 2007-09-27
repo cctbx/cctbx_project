@@ -1,3 +1,7 @@
+// (jEdit options) :folding=explicit:
+//{{{ Package, imports
+//package ....;
+//}}}
 /** Java port of the hy36encode() and hy36decode() functions in the
     hybrid_36.py Python prototype/reference implementation.
     See the Python script for more information.
@@ -6,12 +10,15 @@
     Please send corrections and enhancements to cctbx@cci.lbl.gov .
 
     See also: http://cci.lbl.gov/hybrid_36/
+    svn master at:
+    https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk/iotbx/iotbx/pdb/Hy36.java
 
     Ralf W. Grosse-Kunstleve, Vincent B. Chen, Jeff J. Headd, Sep 2007.
  */
 public
-class hy36 {
+class Hy36 {
 
+  //{{{ Constants
   private static String digits_base10 = "0123456789";
   private static String digits_upper  = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   private static String digits_lower  = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -23,7 +30,9 @@ class hy36 {
   private static String value_out_of_range = "value out of range.";
   private static String invalid_number_literal = "invalid number literal.";
   private static String unsupported_width = "unsupported width.";
+  //}}}
 
+  //{{{ private encode/decode_pure functions
   private static
   String
   encode_pure(
@@ -90,7 +99,9 @@ class hy36 {
     if (have_minus) value = -value;
     return value;
   }
+  //}}}
 
+  //{{{ encode
   /** hybrid-36 encoder: converts integer value to string result
 
         width: must be 4 (e.g. for residue sequence numbers)
@@ -144,7 +155,9 @@ class hy36 {
     }
     throw new Error(value_out_of_range);
   }
+  //}}}
 
+  //{{{ decode
   /** hybrid-36 decoder: converts string s to integer result
 
         width: must be 4 (e.g. for residue sequence numbers)
@@ -212,7 +225,9 @@ class hy36 {
     }
     throw new Error(invalid_number_literal);
   }
+  //}}}
 
+  //{{{ check functions
   private static
   void
   check_str(String result, String expected)
@@ -230,7 +245,9 @@ class hy36 {
       System.out.println("ERROR: " + result + " != " + expected);
     }
   }
+  //}}}
 
+  //{{{ recycle functions
   private static
   void
   recycle4(int value, String encoded)
@@ -250,7 +267,9 @@ class hy36 {
     int d = decode(5, s);
     check_int(d, value);
   }
+  //}}}
 
+  //{{{ check exception functions
   private static
   void
   check_encode_exception(int width, int value, String expected_msg)
@@ -270,7 +289,9 @@ class hy36 {
     catch(Error e) { msg = e.toString(); }
     check_str(msg, "java.lang.Error: " + expected_msg);
   }
+  //}}}
 
+  //{{{ kernighan_and_ritchie_rand
   private static int random_seed = 13;
   private static
   int
@@ -281,7 +302,10 @@ class hy36 {
     if (result < 0) result += 32768;
     return result;
   }
+  //}}}
 
+  //{{{ main
+  /** for running test cases **/
   public static
   void
   main(String[] args)
@@ -417,4 +441,5 @@ class hy36 {
     //
     System.out.println("OK");
   }
+  //}}}
 }
