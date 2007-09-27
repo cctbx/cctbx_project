@@ -94,6 +94,7 @@ namespace alignment {
 
       // now trace backwards to build up the best sequence alignment
       std::string r1, r2;
+      { // scope to avoid Visual C++ 7.1 warnings
       int i1, i2;
       i1 = n1 - 1;
       i2 = n2 - 1;
@@ -112,6 +113,7 @@ namespace alignment {
           r2 = s2[i2] + r2;
           i2 = i2 - 1;
         }
+      }
       }
 
       result1 = r1;
