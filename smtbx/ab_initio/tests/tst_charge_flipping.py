@@ -44,6 +44,7 @@ def random_structure_factors(space_group_info, elements,
   return f_target, f_000
 
 
+
 def exercise_fixed_delta(space_group_info, elements,
                          anomalous_flag,
                          d_min=0.8, grid_resolution_factor=1./2,
@@ -57,7 +58,8 @@ def exercise_fixed_delta(space_group_info, elements,
   f_target_in_p1 = f_target.expand_to_p1()\
                            .as_non_anomalous_array()\
                            .merge_equivalents().array()
-  rho_target = f_target_in_p1.fft_map(f_000=f_000).real_map_unpadded()
+  rho_target_map = f_target_in_p1.fft_map(f_000=f_000)
+  rho_target = rho_target_map.real_map_unpadded()
   max_rho_target = flex.max(rho_target)
   delta = 0.01 * max_rho_target # got that by running the debug branch just
                                 # below
@@ -79,31 +81,39 @@ def exercise_fixed_delta(space_group_info, elements,
     print "Enter delta:",
     delta = float(sys.stdin.readline().strip()) * max_rho_target
 
+  if verbose:
+    print "c_tot / c_flip of target = %.3f" % (
+      rho_target_map.c_tot() / rho_target_map.c_flip(delta) )
+
   f_obs = abs(f_target)
-  flipped = cflip.charge_flipping_iterator(f_obs, delta=delta)
-  r1s = flex.double()
-  total_charges = flex.double()
-  for i,state in enumerate(flipped):
-    if i == 10: break
-    isinstance(state, cflip.charge_flipping_iterator)
-    r1 = f_target_in_p1.r1_factor(state.g, assume_index_matching=True)
-    r1s.append(r1)
-    total_charges.append(state.g_000)
-    pos = (state.rho > 0).count(True) / state.rho.size()
-    if debug:
-      print "%i: delta=%.5f" % (i,state.delta)
-      indent = " "*(len("%i" % i) + 1)
-      print indent, "R1=%.5f" % r1
-      print indent, "fraction of positive pixels=%.3f" % pos
-      print indent, "total charge=%.3f" % state.g_000
-  # r1 decreasing convex function of the iteration number
-  assert list(flex.sort_permutation(r1s, reverse=True))\
-         == list(xrange(r1s.size()))
-  diffs = r1s[:-1] - r1s[1:]
-  assert list(flex.sort_permutation(diffs, reverse=True))\
-         == list(xrange(diffs.size()))
-  assert r1s[-1] < 0.1
-  assert diffs[-3:].all_lt(0.01)
+
+  basic_iter = cflip.basic_charge_flipping_iterator
+  advanced_iter = cflip.weak_reflection_improved_charge_flipping_iterator
+  final_r1 = {}
+  for flipped in (basic_iter(f_obs, delta),
+                  advanced_iter(f_obs, delta),
+                  ):
+    r1s = flex.double()
+    for i,state in enumerate(flipped):
+      if i == 10: break
+      r1 = f_target_in_p1.r1_factor(state.g)
+      r1s.append(r1)
+      if debug:
+        rho = state.rho_map.real_map()
+        pos = (rho > 0).count(True) / rho.size()
+        print "%i: delta=%.5f" % (i,state.delta)
+        indent = " "*(len("%i" % i) + 1)
+        print indent, "R1=%.5f" % r1
+        print indent, "fraction of positive pixels=%.3f" % pos
+        print indent, "total charge=%.3f" % state.g_000
+    # r1 decreasing function of the iteration number
+    assert list(flex.sort_permutation(r1s, reverse=True))\
+           == list(xrange(r1s.size()))
+    diffs = r1s[:-1] - r1s[1:]
+    assert r1s[-1] < 0.1
+    assert diffs[-3:].all_lt(0.01)
+    final_r1[type(flipped)] = r1s[-1]
+  assert approx_equal(final_r1[basic_iter], final_r1[advanced_iter], 0.01)
 
 
 def exercise(flags, space_group_info):
@@ -113,13 +123,14 @@ def exercise(flags, space_group_info):
     n_N = random.randint(1,5)
     if flags.Verbose:
       print "C%i O%i N%i" % (n_C, n_O, n_N)
-    exercise_fixed_delta(space_group_info=space_group_info,
-                         elements=["C"]*n_C + ["O"]*n_O + ["N"]*n_N,
-                         anomalous_flag=False,
-                         debug=flags.Debug,
-                         verbose=flags.Verbose
-                       )
 
+    exercise_fixed_delta(
+      space_group_info=space_group_info,
+      elements=["C"]*n_C + ["O"]*n_O + ["N"]*n_N,
+      anomalous_flag=False,
+      debug=flags.Debug,
+      verbose=flags.Verbose
+    )
 
 def run():
   import sys
