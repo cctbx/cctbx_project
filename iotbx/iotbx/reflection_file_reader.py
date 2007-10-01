@@ -5,6 +5,7 @@ from iotbx.cns import reflection_reader as cns_reflection_reader
 from iotbx.cns import index_fobs_sigma_reader as cns_index_fobs_sigma_reader
 from iotbx.dtrek import reflnlist_reader as dtrek_reflnlist_reader
 from iotbx.shelx import hklf as shelx_hklf
+from iotbx.shelx import crystal_symmetry_from_ins
 from iotbx.xds.read_ascii import reader as xds_ascii_reader
 from iotbx.solve.fpfm_reader import reader as solve_fpfm_reader
 from iotbx import crystal_symmetry_from_any
@@ -15,7 +16,8 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from libtbx import easy_pickle
 from libtbx.utils import Sorry
-import sys, os
+import sys, os, os.path
+import re
 
 class any_reflection_file(object):
 
@@ -23,12 +25,14 @@ class any_reflection_file(object):
     if (   file_name.startswith("amplitudes=")
         or file_name.startswith("hklf3=")
         or file_name.startswith("intensities=")
-        or file_name.startswith("hklf4=")):
+        or file_name.startswith("hklf4=")
+        or file_name.startswith("hklf+ins/res=") ):
       self._observation_type, self._file_name = file_name.split("=", 1)
     elif (   file_name.endswith("=amplitudes")
           or file_name.endswith("=hklf3")
           or file_name.endswith("=intensities")
-          or file_name.endswith("=hklf4")):
+          or file_name.endswith("=hklf4")
+          or file_name.endswith("=hklf+ins/res")):
       self._file_name, self._observation_type = file_name.split("=", 1)
     else:
       self._file_name = file_name
@@ -165,6 +169,34 @@ class any_reflection_file(object):
               .set_info(info)
               .set_observation_type(miller_array.observation_type()))
       return result
+    if (crystal_symmetry.unit_cell() is None
+        and self._observation_type == 'hklf+ins/res'
+        ):
+        name, ext = os.path.splitext(self._file_name)
+        for shelx_file_name in ('%s.ins' % name, '%s.res' % name):
+          try:
+            shelx_file = open(shelx_file_name)
+            break
+          except IOError:
+            continue
+        else:
+          raise Sorry("Can't open files %s.ins or %s.res"
+                      "required by the option hklf+ins/res" % name)
+        crystal_symmetry = crystal_symmetry_from_ins.extract_from(
+          file=shelx_file)
+        shelx_file.seek(0)
+        remaining = shelx_file.read()
+        shelx_file.close()
+        m = re.search("^HKLF\s*(\d)", remaining, re.X|re.M|re.S)
+        if m is None:
+          raise Sorry("%s does not contain the mandatory HKLF instruction"
+                      % shelx_file.name)
+        if m.group(1) == "4":
+          self._observation_type = "intensities"
+        elif m.group(1) == "3":
+          self._observation_type = "amplitudes"
+        else:
+          raise Sorry("HKLF %s not supported" % m.group(1))
     result = self._file_content.as_miller_arrays(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
