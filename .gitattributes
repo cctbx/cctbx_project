@@ -49,8 +49,10 @@ libtbx/libtbx/command_line/nequal.py -text
 libtbx/libtbx/command_line/sh.sh -text
 libtbx/libtbx/command_line/show_environ_usage.py svneol=native#text/x-python
 libtbx/libtbx/command_line/tcsh.sh -text
+libtbx/libtbx/object_oriented_patterns.py -text
 libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx/subversion.py -text
+libtbx/libtbx/tst_object_oriented_patterns.py -text
 libtbx/libtbx_refresh.py -text
 libtbx/windows_dispatcher.exe -text
 mmtbx/alignment.h svneol=native#text/plain
