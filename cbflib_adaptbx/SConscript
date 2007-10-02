@@ -12,6 +12,7 @@ env_etc.cbflib_adaptbx_include = env_etc.norm_join(
 env_etc.cbflib_common_includes = [
   env_etc.libtbx_include,
   env_etc.scitbx_include,
+  env_etc.boost_adaptbx_include,
   env_etc.boost_include,
   env_etc.cbflib_dist,    # for the adaptor cpp files
   env_etc.cbflib_include[0], # for the cbflib c-files
