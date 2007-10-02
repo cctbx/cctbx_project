@@ -169,7 +169,8 @@ class any_reflection_file(object):
               .set_info(info)
               .set_observation_type(miller_array.observation_type()))
       return result
-    if (crystal_symmetry.unit_cell() is None
+    if ((   crystal_symmetry is None
+         or crystal_symmetry.unit_cell() is None)
         and self._observation_type == 'hklf+ins/res'
         ):
         name, ext = os.path.splitext(self._file_name)
