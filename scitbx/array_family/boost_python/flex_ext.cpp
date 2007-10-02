@@ -2,7 +2,6 @@
 
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/math/linear_correlation.h>
-#include <scitbx/math/gaussian/sum.h>
 #include <scitbx/misc/fill_ranges.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/sym_mat2.h>
@@ -64,6 +63,8 @@ namespace {
     tuple_mapping_fixed_capacity<small<unsigned, 6> >();
     tuple_mapping_fixed_capacity<small<double, 3> >();
     tuple_mapping_fixed_capacity<small<double, 6> >();
+    // scitbx/math/gaussian/sum.h SCITBX_MATH_GAUSSIAN_SUM_MAX_N_TERMS
+    tuple_mapping_fixed_capacity<small<double, 10> >();
 
     tuple_mapping_fixed_size<tiny<int, 12> >();
     tuple_mapping_fixed_size<tiny<int, 24> >(); // scitbx/math/golay.h
@@ -99,14 +100,10 @@ namespace {
     tuple_mapping_fixed_size<tiny<vec3<double>, 3> >();
     tuple_mapping_fixed_size<tiny<vec3<double>, 4> >();
     tuple_mapping_fixed_size<tiny<vec2<double>, 2> >();
-    //tuple_mapping_fixed_size<tiny<vec3<double>, 3> >();
-    //tuple_mapping_fixed_size<tiny<vec3<double>, 4> >();
 
     tuple_mapping_fixed_capacity<flex_grid_default_index_type>();
     tuple_mapping_fixed_capacity<small<vec3<int>, 3> >();
     tuple_mapping_fixed_capacity<small<vec2<int>, 2> >();
-    tuple_mapping_fixed_capacity<
-      small<double, math::gaussian::sum<double>::max_n_terms> >();
   }
 
   af::shared<std::size_t>
