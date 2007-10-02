@@ -20,9 +20,9 @@ namespace boost_adaptbx { namespace std_pair_conversions {
   }
 
   template <typename T, typename U>
-  struct to_python
+  struct to_tuple
   {
-    to_python() {
+    to_tuple() {
       using namespace boost::python;
       to_python_converter<std::pair<T,U>, detail::to_tuple<T,U>
 #ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES

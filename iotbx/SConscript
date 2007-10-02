@@ -10,6 +10,7 @@ env_etc.iotbx_common_includes = [
   env_etc.cctbx_include,
   env_etc.scitbx_include,
   env_etc.boost_include,
+  env_etc.boost_adaptbx_include,
   env_etc.ccp4io_include,
 ]
 
