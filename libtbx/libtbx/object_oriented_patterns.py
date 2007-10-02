@@ -1,17 +1,7 @@
 """ A library of object-oriented patterns """
 
-class _meta_class_extension(type):
-  def __init__(cls, classname, bases, classdict):
-    for target_class in bases[1:]:
-      for name, attribute in classdict.items():
-        if not callable(attribute): continue
-        assert not hasattr(target_class, name), (
-          "class %s has already a method %s"
-          % (target_class.__name__, name))
-        setattr(target_class, name, attribute)
-
-class extends:
-  """ Extends existing classes with new methods
+class injector:
+  """ Injection of new methods into an existing class
 
   * synopsis *
 
@@ -43,4 +33,13 @@ class extends:
 
   A bit of metaclass trickery results in a cleaner syntax.
   """
-  __metaclass__ = _meta_class_extension
+  class __metaclass__(type):
+    def __init__(cls, classname, bases, classdict):
+      for target_class in bases[1:]:
+        for name, attribute in classdict.items():
+          if not callable(attribute): continue
+          assert not hasattr(target_class, name), (
+            "class %s has already a method %s"
+            % (target_class.__name__, name))
+          setattr(target_class, name, attribute)
+

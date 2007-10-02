@@ -25,7 +25,7 @@ from cctbx import miller
 from cctbx import maptbx
 import math
 
-class _array_extension(oop.extends, miller.array):
+class _array_extension(oop.injector, miller.array):
 
   def oszlanyi_suto_phase_transfer(self,
                                    source,
@@ -50,7 +50,7 @@ class _array_extension(oop.extends, miller.array):
     return miller.array(self, moduli).phase_transfer(phases)
 
 
-class _fft_extension(oop.extends, miller.fft_map):
+class _fft_extension(oop.injector, miller.fft_map):
   """ We add those methods to fft_map so that they can be easily reused and
   tested independently of the class charge_flipping_iterator and co. """
 
