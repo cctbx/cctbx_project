@@ -2,7 +2,6 @@
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_WRAPPER_H
 
 #include <scitbx/array_family/boost_python/flex_fwd.h>
-#include <boost_adaptbx/std_pair_instantiation.h>
 
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>

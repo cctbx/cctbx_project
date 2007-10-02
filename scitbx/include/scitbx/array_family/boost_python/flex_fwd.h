@@ -1,6 +1,9 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 
+#include <boost_adaptbx/std_pair_fwd.h>
+#include <boost_adaptbx/optional_fwd.h>
+
 #include <boost/python/detail/prefix.hpp>
 #include <complex>
 #include <vector>
