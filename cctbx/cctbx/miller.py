@@ -1592,6 +1592,10 @@ phases are determined on the fly using the given step size.
         phase_source,
         deg))
 
+  def randomize_phases(self):
+    random_phases = (2*math.pi)*flex.random_double(self.data().size())
+    return self.phase_transfer(random_phases)
+
   def phase_integrals(self, n_steps=None, integrator=None):
     assert self.is_hendrickson_lattman_array()
     assert n_steps is None or integrator is None
