@@ -89,6 +89,7 @@ if (hasattr(env_etc, "cctbx_include")):
         env_etc.libtbx_include,
         env_etc.cctbx_include,
         env_etc.scitbx_include,
+        env_etc.boost_adaptbx_include,
         env_etc.boost_include,
         env_etc.python_include])
     Export("env_clipper_boost_python_ext")
