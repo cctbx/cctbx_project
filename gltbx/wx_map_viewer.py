@@ -10,34 +10,49 @@ from scitbx import iso_surface
 from cctbx import maptbx
 from libtbx import easy_pickle
 import itertools
+import math
 
 class map_view(wx_viewer.wxGLWindow):
 
-  def __init__(self, map, iso_level, *args, **kwds):
-    super(map_view, self).__init__(*args, **kwds)
+  def __init__(self,
+               fft_map=None,
+               unit_cell=None, raw_map=None,
+               frame=None, **kwds):
+    assert fft_map is None or (unit_cell is None and raw_map is None)
+    import time
+    super(map_view, self).__init__(frame, **kwds)
     self.buffer_factor = 2.0
     self.back_colour = (0,)*4
     self._gl_has_been_initialised = False
 
-    rho = map.real_map()
-    self.density_stats = maptbx.statistics(rho)
-    if iso_level is None: iso_level = self.density_stats.mean()
-
-    unit_cell = map.unit_cell()
+    if fft_map is not None:
+      unit_cell = fft_map.unit_cell()
     o = unit_cell.orthogonalization_matrix()
     self.orthogonaliser = (  o[0:3] + (0,)
                            + o[3:6] + (0,)
                            + o[6:9] + (0,)
                            + (0,0,0,1) )
     a,b,c = unit_cell.parameters()[0:3]
-    na, nb, nc = map.n_real()
-    grid_size = (1/na, 1/nb, 1/nc)
+    if fft_map is not None:
+      na, nb, nc = fft_map.n_real()
+      rho = fft_map.real_map()
+    else:
+      na, nb, nc = raw_map.accessor().all()
+      rho = raw_map
+    print "Gridding: %i x %i x %i" % (na,nb,nc)
     def f(iso_level):
-      return iso_surface.triangulation(map.real_map(), iso_level, grid_size)
+      return iso_surface.triangulation(rho, iso_level,
+                                       map_extent=(1,1,1))
     self._compute_triangulation = f
 
-    self._iso_level = None
-    self.iso_level = iso_level
+    density_stats = maptbx.statistics(rho)
+    self.min_density = density_stats.min()
+    self.max_density = density_stats.max()
+    self.iso_level = density_stats.sigma()
+    print "Statistics:"
+    print "min: %.3g" % self.min_density
+    print "max: %.3g" % self.max_density
+    print "sigma: %.3g" % self.iso_level
 
     p = (0,0,0)
     q = unit_cell.orthogonalize((1,1,1))
@@ -50,7 +65,10 @@ class map_view(wx_viewer.wxGLWindow):
     return self._iso_level
 
   def set_iso_level(self, x):
-    if self._iso_level == x: return
+    try:
+      if self._iso_level == x: return
+    except AttributeError:
+      pass
     self._iso_level = x
     self.triangulation = self._compute_triangulation(x)
     if self._gl_has_been_initialised:
@@ -64,8 +82,6 @@ class map_view(wx_viewer.wxGLWindow):
     glClearColor(*self.back_colour)
     self.initialize_modelview()
     gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
-    glEnable(GL_CULL_FACE)
-    glCullFace(GL_BACK)
 
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
@@ -135,43 +151,114 @@ class map_viewer(wx_viewer.App):
   the value of the iso-level.
   """
 
-  def __init__(self, map, iso_level, *args, **kwds):
-    self.map = map
-    self.iso_level = iso_level
-    super(map_viewer, self).__init__(*args, **kwds)
+  def __init__(self, fft_map=None, unit_cell=None, raw_map=None,
+               **kwds):
+    self.map = fft_map
+    self.unit_cell = unit_cell
+    self.raw_map = raw_map
+    super(map_viewer, self).__init__(**kwds)
 
   def init_view_objects(self):
     box = wx.BoxSizer(wx.VERTICAL)
-    self.view_objects = map_view(self.map, self.iso_level,
-                                 self.frame, size=(600,600))
-    self.iso_level = self.view_objects.iso_level
+    self.view_objects = map_view(fft_map=self.map,
+                                 unit_cell=self.unit_cell,
+                                 raw_map=self.raw_map,
+                                 frame=self.frame, size=(1200,800))
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
+
+    range = self.view_objects.max_density - self.view_objects.min_density
+    n = int(math.log10(range))-2
+    p = 5
+    self.amplitude = p*10**n
     self.slider = wx.Slider(self.frame,
-                            minValue=self.view_objects.density_stats.min(),
-                            maxValue=self.view_objects.density_stats.max(),
-                            value=self.iso_level,
+                            minValue=self.view_objects.min_density
+                                       /self.amplitude,
+                            maxValue=self.view_objects.max_density
+                                       /self.amplitude,
+                            value=self.view_objects.iso_level
+                                       /self.amplitude,
                             style=wx.SL_AUTOTICKS|wx.SL_LABELS)
     box.Add(self.slider, 0, wx.EXPAND)
+    self.multiplier = wx.StaticText(self.frame,
+                                   style=wx.ALIGN_CENTER_HORIZONTAL,
+                                   label="%i x 10^%i" % (p,n))
+    box.Add(self.multiplier, 0, wx.EXPAND|wx.TOP, 10)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
     self.slider.Bind(wx.EVT_SCROLL, self.OnSliderMoved)
 
   def OnSliderMoved(self, event):
-    self.iso_level = self.slider.Value
+    self.iso_level = self.slider.Value * self.amplitude
     self.view_objects.iso_level = self.iso_level
 
-if __name__ == '__main__':
-  """ Loads the file map_coeff.pickle (see cctbx/examples/random_f_calc.py)
-  and displays the FFT map based on these coefficients """
+
+
+def show_help(): print """\
+1. wx_map_viewer name.pickle
+  1.a. That file contains an instance of miller.array
+  1.b. That file contains a tuple (unit_cell, raw_map)
+       where unit_cell is an instance of uctbx.unit_cell and
+       raw_map is a 3D flex.double
+2. wx_map_viewer name.mtz label
+
+For 1.a and 2, the fft map of the structure factors is iso-surfaced.
+For 1.b, the raw_map is displayed
+In both cases, within the given unit cell
+"""
+
+def run():
+  from iotbx import reflection_file_utils
+  from iotbx import mtz
+  from libtbx.utils import Sorry
+  from cctbx import miller
+  from cctbx import uctbx
+  from scitbx.array_family import flex
   import sys
-  if sys.argv[1] == "--debug":
-    iso_level = None
+  import os.path
+
+  file_name = os.path.expanduser(sys.argv[1])
+  map_coeffs = None
+  if file_name.endswith('.pickle'):
+    something = easy_pickle.load(file_name)
+    if type(something) is miller.array:
+      map_coeffs = something
+    else:
+      if type(something) is not tuple:
+        show_help()
+        sys.exit(1)
+      unit_cell, raw_map = something
+      if (type(unit_cell) is not uctbx.unit_cell
+          and raw_map.accessor().nd() != 3):
+        show_help()
+        sys.exit(1)
+  elif file_name.endswith('.mtz'):
+    if len(sys.argv[1:]) != 2:
+      show_help()
+      sys.exit(1)
+    label = sys.argv[2]
+    all_miller_arrays = mtz.object(file_name).as_miller_arrays()
+    labels = reflection_file_utils.label_table(all_miller_arrays)
+    map_coeffs = labels.match_data_label(label=label,
+                                         command_line_switch="label")
+  title = "Electron Density Viewer"
+  if map_coeffs is not None:
+    map_coeffs.show_summary()
+    fft_map = map_coeffs.fft_map(
+      resolution_factor=1/2,
+      symmetry_flags=maptbx.use_space_group_symmetry)
+    a = map_viewer(fft_map=fft_map, title=title)
   else:
-    iso_level = float(sys.argv[1])
-  map_coeff = easy_pickle.load("map_coeff.pickle")
-  map_coeff.show_summary()
-  fft_map = map_coeff.fft_map(
-    symmetry_flags=maptbx.use_space_group_symmetry)
-  a = map_viewer(fft_map, iso_level,
-                 title="Electron Density Viewer")
+    a = map_viewer(unit_cell=unit_cell, raw_map=raw_map, title=title)
   a.MainLoop()
+
+if __name__ == '__main__':
+  import sys
+  if '--profile' in sys.argv:
+    import profile
+    import pstats
+    sys.argv.remove('--profile')
+    profile.run('run()', 'wx_map_viewer.prof')
+    p = pstats.Stats('wx_map_viewer.prof')
+    p.strip_dirs().sort_stats('time').print_stats(10)
+  else:
+    run()
