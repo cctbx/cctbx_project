@@ -1,8 +1,7 @@
-#include <boost_adaptbx/optional_fwd.h>
-
-#include <boost_adaptbx/optional_conversions.h>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
+#include <boost_adaptbx/optional_conversions.h>
+#include <boost_adaptbx/optional_fwd.h>
 
 namespace {
 

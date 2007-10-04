@@ -1,9 +1,8 @@
-#include <boost_adaptbx/std_pair_fwd.h>
-#include <boost_adaptbx/optional_fwd.h>
-
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost_adaptbx/std_pair_conversion.h>
+#include <boost_adaptbx/std_pair_fwd.h>
+#include <boost_adaptbx/optional_fwd.h>
 
 namespace {
   std::pair<int, double> exercise(int i) {
