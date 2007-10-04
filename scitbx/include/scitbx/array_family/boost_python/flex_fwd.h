@@ -1,10 +1,8 @@
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 
-#include <boost_adaptbx/std_pair_fwd.h>
-#include <boost_adaptbx/optional_fwd.h>
-
 #include <boost/python/detail/prefix.hpp>
+
 #include <complex>
 #include <vector>
 #include <set>
@@ -26,6 +24,9 @@ namespace scitbx { namespace boost_python {
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/vec3.h>
+
+#include <boost_adaptbx/std_pair_fwd.h>
+#include <boost_adaptbx/optional_fwd.h>
 
 #if defined(__sgi) && !defined(__GNUC__)
 
