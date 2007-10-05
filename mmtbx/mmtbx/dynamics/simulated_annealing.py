@@ -54,7 +54,7 @@ def manager(simulated_annealing_params,
   minimized.collector.show(text = "lbfgs minimization", out = out)
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
                                update_f_calc            = True,
-                               update_f_mask            = False,
+                               update_f_mask            = True,
                                update_f_ordered_solvent = False,
                                out                      = out)
 
@@ -79,7 +79,7 @@ def manager(simulated_annealing_params,
 
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
                                update_f_calc            = True,
-                               update_f_mask            = False,
+                               update_f_mask            = True,
                                update_f_ordered_solvent = False,
                                out                      = out)
 
@@ -131,7 +131,7 @@ def run_simulated_annealing(simulated_annealing_params,
 
     fmodel_copy_1.update_xray_structure(xray_structure  = model.xray_structure,
                                         update_f_calc            = True,
-                                        update_f_mask            = False,
+                                        update_f_mask            = True,
                                         update_f_ordered_solvent = False,
                                         out                      = out)
 

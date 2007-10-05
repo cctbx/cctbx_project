@@ -720,7 +720,7 @@ class guess_observation_type(object):
     return results
 
   def get_observation_type(self, fmodel, show_log):
-    params = bss.solvent_and_scale_params()
+    params = bss.master_params.extract()
     params.k_sol_grid_search_max = 0.6
     params.k_sol_grid_search_min = 0.0
     params.b_sol_grid_search_max = 80.0
