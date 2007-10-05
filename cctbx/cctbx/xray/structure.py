@@ -17,6 +17,8 @@ import random
 from libtbx.utils import count_max
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
+from cctbx.eltbx.neutron import neutron_news_1992_table
+from cctbx import eltbx
 
 class scattering_type_registry_params(object):
   def __init__(self,
@@ -374,6 +376,21 @@ class structure(crystal.special_position_settings):
   def extract_u_iso_or_u_equiv(self):
     return self._scatterers.extract_u_iso_or_u_equiv(
       unit_cell=self.unit_cell())
+
+  def switch_to_neutron_scattering_dictionary(self):
+    # XXX First step. In future: better to do bookkeeping and be able to swith
+    # XXX back and forth between original scat_dict and neutron.
+    # XXX Add regression test.
+    neutron_scattering_dict = {}
+    reg = self.scattering_type_registry()
+    for scattering_type in reg.type_index_pairs_as_dict().keys():
+      scattering_info = neutron_news_1992_table(scattering_type, 1)
+      b = scattering_info.bound_coh_scatt_length()
+      if(b.imag != 0.0): return None
+      neutron_scattering_dict[scattering_type] = \
+        eltbx.xray_scattering.gaussian(b.real)
+    self.scattering_type_registry(custom_dict = neutron_scattering_dict)
+    return self
 
   def hd_selection(self):
     scattering_types = self._scatterers.extract_scattering_types()
