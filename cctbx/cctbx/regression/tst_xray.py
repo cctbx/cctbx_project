@@ -27,7 +27,7 @@ def exercise_scatterer():
 def exercise_anomalous_scatterer_group():
   scatterers = flex.xray_scatterer(
     [xray.scatterer(scattering_type=scattering_type)
-      for scattering_type in ["S", "AU", "C", "S"]])
+     for scattering_type in ["S", "AU", "C", "S"]])
   groups = [
     xray.anomalous_scatterer_group(
       iselection=flex.size_t([1]),
@@ -180,8 +180,8 @@ def exercise_structure():
   assert approx_equal(pa1.inertia_tensor(), pa2.inertia_tensor())
   assert approx_equal(pa1.center_of_mass(), (1.335228, 1.071897, 2.815899))
   assert approx_equal(pa1.inertia_tensor(),
-    (169.46094427548525, 76.773803949363497, 93.746443127965918,
-     7.0265499590972862, -6.3547480051846588, 84.304420337921911))
+                      (169.46094427548525, 76.773803949363497, 93.746443127965918,
+                       7.0265499590972862, -6.3547480051846588, 84.304420337921911))
   ys = xray.structure(sp, scatterers)
   ys.scatterers()[1].occupancy = 0.5
   assert approx_equal(ys.scatterers()[1].weight(),0.25)
@@ -399,33 +399,33 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
     selection.append(rd() > 0.5)
   xs = xray.structure(sp, scatterers)
   for sel in [None, selection]:
-      for b_min, b_max, spread in zip([None,10.0], [None,20.0], [10.0,0.0]):
-          for keep_anisotropic in [True, False]:
-            xs_mod = xs.deep_copy_scatterers()
-            xs_mod.shake_adp(keep_anisotropic = keep_anisotropic,
-                b_max = b_max, b_min = b_min, selection=sel, spread = spread)
-            if(sel is None): sel = flex.bool(xs.scatterers().size(), True)
-            for sc,sc_mod,s in zip(xs.scatterers(),xs_mod.scatterers(),sel):
-                assert sc.flags.use_u_iso()   == sc_mod.flags.use_u_iso()
-                assert sc.flags.use_u_aniso() == sc_mod.flags.use_u_aniso()
-                if(sc.flags.use_u_iso() and s):
-                   assert not_approx_equal(abs(sc.u_iso - sc_mod.u_iso), 0)
-                else:
-                   assert approx_equal(sc.u_iso, sc_mod.u_iso)
-                if(keep_anisotropic):
-                   assert approx_equal(sc.u_star, sc_mod.u_star)
-                else:
-                   if(sc.flags.use_u_aniso() and s):
-                      a = flex.double(sc.u_star)
-                      b = flex.double(sc_mod.u_star)
-                      # quick-and-dirty test, likely to fail if random seed
-                      # is changed
-                      assert is_above_limit(
-                        value=flex.max(flex.abs((a-b))), limit=0.1)
-                      assert is_above_limit(
-                        value=flex.min(flex.abs((a-b))), limit=0.001)
-                   else:
-                      assert approx_equal(sc.u_star, sc_mod.u_star)
+    for b_min, b_max, spread in zip([None,10.0], [None,20.0], [10.0,0.0]):
+      for keep_anisotropic in [True, False]:
+        xs_mod = xs.deep_copy_scatterers()
+        xs_mod.shake_adp(keep_anisotropic = keep_anisotropic,
+                         b_max = b_max, b_min = b_min, selection=sel, spread = spread)
+        if(sel is None): sel = flex.bool(xs.scatterers().size(), True)
+        for sc,sc_mod,s in zip(xs.scatterers(),xs_mod.scatterers(),sel):
+          assert sc.flags.use_u_iso()   == sc_mod.flags.use_u_iso()
+          assert sc.flags.use_u_aniso() == sc_mod.flags.use_u_aniso()
+          if(sc.flags.use_u_iso() and s):
+            assert not_approx_equal(abs(sc.u_iso - sc_mod.u_iso), 0)
+          else:
+            assert approx_equal(sc.u_iso, sc_mod.u_iso)
+          if(keep_anisotropic):
+            assert approx_equal(sc.u_star, sc_mod.u_star)
+          else:
+            if(sc.flags.use_u_aniso() and s):
+              a = flex.double(sc.u_star)
+              b = flex.double(sc_mod.u_star)
+              # quick-and-dirty test, likely to fail if random seed
+              # is changed
+              assert is_above_limit(
+                value=flex.max(flex.abs((a-b))), limit=0.1)
+              assert is_above_limit(
+                value=flex.min(flex.abs((a-b))), limit=0.001)
+            else:
+              assert approx_equal(sc.u_star, sc_mod.u_star)
 ### shake_occupancies()
   cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
   sp = crystal.special_position_settings(cs)
@@ -436,14 +436,14 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
     selection.append(random.choice((0,1)))
   xs = xray.structure(sp, scatterers)
   for sel in [None, selection]:
-      xs_mod = xs.deep_copy_scatterers()
-      xs_mod.shake_occupancies(selection = sel)
-      if(sel is None): sel = flex.bool(xs.scatterers().size(), True)
-      for sc, sc_mod, s in zip(xs.scatterers(),xs_mod.scatterers(), sel):
-          if(s):
-             assert abs(sc.occupancy - sc_mod.occupancy) > 1.e-4
-          else:
-             assert approx_equal(sc.occupancy, sc_mod.occupancy)
+    xs_mod = xs.deep_copy_scatterers()
+    xs_mod.shake_occupancies(selection = sel)
+    if(sel is None): sel = flex.bool(xs.scatterers().size(), True)
+    for sc, sc_mod, s in zip(xs.scatterers(),xs_mod.scatterers(), sel):
+      if(s):
+        assert abs(sc.occupancy - sc_mod.occupancy) > 1.e-4
+      else:
+        assert approx_equal(sc.occupancy, sc_mod.occupancy)
 ### shake_adp_if_all_equal()
   cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
   sp = crystal.special_position_settings(cs)
@@ -474,12 +474,12 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   assert approx_equal(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1), b_iso_values)
   #
   xs.scatterers().set_u_iso(flex.double([0.1,0.2]),
-                                       flex.bool(xs.scatterers().size(), True))
+                            flex.bool(xs.scatterers().size(), True))
   assert xs.scatterers().count_anisotropic() == 0
   xs.convert_to_anisotropic()
   assert xs.scatterers().count_anisotropic() == 2
   assert approx_equal(xs.scatterers().extract_u_cart(unit_cell=xs.unit_cell()),
-    [[0.1]*3+[0]*3, [0.2]*3+[0]*3])
+                      [[0.1]*3+[0]*3, [0.2]*3+[0]*3])
   xs.convert_to_isotropic()
   assert xs.scatterers().count_anisotropic() == 0
   assert approx_equal(xs.scatterers().extract_u_iso(), [0.1,0.2])
@@ -500,42 +500,42 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   xs_dc = xs.deep_copy_scatterers()
   xs_dc.scale_adp(factor=2, selection=selection)
   for i_seq,sc,sc_dc,sel in zip(count(), xs.scatterers(), xs_dc.scatterers(),
-                                                                    selection):
+                                selection):
     if(sel and sc.flags.use()):
       if(sc.flags.use_u_iso()):
-         if(sc.u_iso != 0.0):
-           assert approx_equal(sc_dc.u_iso / sc.u_iso, 2.0)
+        if(sc.u_iso != 0.0):
+          assert approx_equal(sc_dc.u_iso / sc.u_iso, 2.0)
       if(sc.flags.use_u_aniso()):
-         for i in xrange(6):
-           if(sc.u_star[i] != 0.0):
-             assert approx_equal(sc_dc.u_star[i] / sc.u_star[i], 2.0)
+        for i in xrange(6):
+          if(sc.u_star[i] != 0.0):
+            assert approx_equal(sc_dc.u_star[i] / sc.u_star[i], 2.0)
 
 ### shake_sites
   selection_ = flex.bool([random.choice((0,1)) for i in xrange(500)])
   xs = random_structure.xray_structure(
-                               space_group_info = sgtbx.space_group_info("P1"),
-                               elements         = ["N"]*500,
-                               unit_cell        = (10, 20, 30, 70, 80, 120))
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["N"]*500,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
   errors = [0.0, 0.01, 0.1, 0.5, 1.5, 3.0, 10.0]
   for selection in [None, selection_]:
-      for error in errors:
-        xs_shaked = xs.deep_copy_scatterers()
-        xs_shaked.shake_sites_in_place(
-          mean_distance=error,
-          selection=selection)
-        sites_cart_xs        = xs.sites_cart()
-        sites_cart_xs_shaked = xs_shaked.sites_cart()
-        if(selection is None): selection=flex.bool(xs.scatterers().size(),True)
-        mean_err = flex.mean(
-          flex.sqrt((sites_cart_xs.select(selection) -
-                     sites_cart_xs_shaked.select(selection)).dot()))
-        assert approx_equal(error, mean_err, 0.001)
-        dummy = ~selection
-        if(dummy.count(True) > 0):
-           mean_err_fixed = flex.mean(
-             flex.sqrt((sites_cart_xs.select(~selection) -
-                        sites_cart_xs_shaked.select(~selection)).dot()))
-           assert approx_equal(mean_err_fixed, 0.0)
+    for error in errors:
+      xs_shaked = xs.deep_copy_scatterers()
+      xs_shaked.shake_sites_in_place(
+        mean_distance=error,
+        selection=selection)
+      sites_cart_xs        = xs.sites_cart()
+      sites_cart_xs_shaked = xs_shaked.sites_cart()
+      if(selection is None): selection=flex.bool(xs.scatterers().size(),True)
+      mean_err = flex.mean(
+        flex.sqrt((sites_cart_xs.select(selection) -
+                   sites_cart_xs_shaked.select(selection)).dot()))
+      assert approx_equal(error, mean_err, 0.001)
+      dummy = ~selection
+      if(dummy.count(True) > 0):
+        mean_err_fixed = flex.mean(
+          flex.sqrt((sites_cart_xs.select(~selection) -
+                     sites_cart_xs_shaked.select(~selection)).dot()))
+        assert approx_equal(mean_err_fixed, 0.0)
   ### random remove sites
   for fraction in xrange(1, 99+1, 10):
     fraction /= 100.
@@ -552,19 +552,19 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
 # apply_rigid_body_shift
   selection_=flex.bool([random.choice((0,1)) for i in xrange(100)]).iselection()
   xs = random_structure.xray_structure(
-                               space_group_info = sgtbx.space_group_info("P1"),
-                               elements         = ["N"]*100,
-                               unit_cell        = (10, 20, 30, 70, 80, 120))
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["N"]*100,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
   for selection in [None, selection_]:
-      for r in [[1.,2.,3.], [0.,0.,0.]]:
-          xs_mod = xs.deep_copy_scatterers()
-          xs_mod.apply_rigid_body_shift(
-                              rot       = (1,0,0,0,1,0,0,0,1),
-                              trans     = [r[0],r[1],r[2]],
-                              selection = selection)
-          d = math.sqrt(r[0]**2+r[1]**2+r[2]**2)
-          assert approx_equal(
-                    d, xs.mean_distance(other = xs_mod, selection = selection))
+    for r in [[1.,2.,3.], [0.,0.,0.]]:
+      xs_mod = xs.deep_copy_scatterers()
+      xs_mod.apply_rigid_body_shift(
+        rot       = (1,0,0,0,1,0,0,0,1),
+        trans     = [r[0],r[1],r[2]],
+        selection = selection)
+      d = math.sqrt(r[0]**2+r[1]**2+r[2]**2)
+      assert approx_equal(
+        d, xs.mean_distance(other = xs_mod, selection = selection))
   selection_=flex.bool([random.choice((0,1)) for i in xrange(100)])
   xs_mod = xs.deep_copy_scatterers()
   xs_mod.apply_rigid_body_shift(
@@ -573,7 +573,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
     selection=selection_.iselection())
   assert xs.mean_distance(other = xs_mod, selection = selection_) > 1.0
   assert approx_equal(
-                xs.mean_distance(other = xs_mod, selection = ~selection_), 0.0)
+    xs.mean_distance(other = xs_mod, selection = ~selection_), 0.0)
   #
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
@@ -596,9 +596,9 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
 
 def exercise_closest_distances():
   xs = random_structure.xray_structure(
-                               space_group_info = sgtbx.space_group_info("P1"),
-                               elements         = ["N"]*3,
-                               unit_cell        = (10, 20, 30, 70, 80, 120))
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["N"]*3,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
   xs_other = xs.deep_copy_scatterers()
   result = xs.closest_distances(other = xs_other, max_distance_cutoff = 100)
   assert approx_equal(result, [0.0, 0.0, 0.0])
@@ -615,9 +615,9 @@ def exercise_closest_distances():
 
 def exercise_set_occupancies():
   xs = random_structure.xray_structure(
-                               space_group_info = sgtbx.space_group_info("P1"),
-                               elements         = ["N"]*5,
-                               unit_cell        = (10, 20, 30, 70, 80, 120))
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["N"]*5,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
   occ = xs.scatterers().extract_occupancies()
   assert occ.all_eq(1.0)
   xs.set_occupancies(value = 2)
@@ -669,7 +669,7 @@ def exercise_u_base():
   assert xs.use_u_iso().count(True) == 3
   assert xs.use_u_aniso().count(True) == 2
   answer = [(1.0, 1.0, 1.0), (0.1, 0.1, 0.1), (0.7, 0.7, 0.7), (3., 2., 1.),
-                                                               (9., 7., 6.)]
+            (9., 7., 6.)]
   assert approx_equal(answer, list(xs.scatterers().u_cart_eigenvalues(uc)))
   assert approx_equal(list(xs.scatterers().anisotropy(uc)),
                       [1.0, 1.0, 1.0, 1./3, 6./9])
@@ -701,10 +701,10 @@ def exercise_from_scatterers_direct(space_group_info,
     random_u_iso_min = 0.0,
     random_occupancy=True)
   random_structure.random_modify_adp_and_adp_flags_2(
-                                 scatterers         = structure.scatterers(),
-                                 use_u_iso          = use_u_iso,
-                                 use_u_aniso        = use_u_aniso,
-                                 allow_mix          = allow_mix)
+    scatterers         = structure.scatterers(),
+    use_u_iso          = use_u_iso,
+    use_u_aniso        = use_u_aniso,
+    allow_mix          = allow_mix)
   if (0 or verbose):
     structure.show_summary().show_scatterers()
   f_obs_exact = structure.structure_factors(
@@ -738,9 +738,9 @@ def exercise_from_scatterers_direct(space_group_info,
   assert ls.target() < 1.e-4
 
 def exercise_f_obs_minus_xray_structure_f_calc(
-      space_group_info,
-      d_min=3,
-      verbose=0):
+  space_group_info,
+  d_min=3,
+  verbose=0):
   structure = random_structure.xray_structure(
     space_group_info,
     elements=["C"]*3,
@@ -772,7 +772,7 @@ def exercise_f_obs_minus_xray_structure_f_calc(
   fft_map.apply_sigma_scaling()
   real_map = fft_map.real_map_unpadded()
   density_at_sites = [real_map.eight_point_interpolation(scatterer.site)
-    for scatterer in structure.scatterers()]
+                      for scatterer in structure.scatterers()]
   try:
     assert min(density_at_sites[:-1]) > 7
     assert density_at_sites[-1] > 2.5
@@ -793,13 +793,13 @@ def exercise_n_gaussian(space_group_info, verbose=0):
   structure_2g.scattering_type_registry(
     custom_dict=eltbx.xray_scattering.two_gaussian_agarwal_isaacs.table)
   for gaussian in \
-        structure_5g.scattering_type_registry().unique_gaussians_as_list():
+      structure_5g.scattering_type_registry().unique_gaussians_as_list():
     assert gaussian.n_terms() == 5
   for gaussian in \
-        structure_4g.scattering_type_registry().unique_gaussians_as_list():
+      structure_4g.scattering_type_registry().unique_gaussians_as_list():
     assert gaussian.n_terms() == 4
   for gaussian in \
-        structure_2g.scattering_type_registry().unique_gaussians_as_list():
+      structure_2g.scattering_type_registry().unique_gaussians_as_list():
     assert gaussian.n_terms() == 2
   d_min = 1
   f_calc_5g = structure_5g.structure_factors(
@@ -828,7 +828,7 @@ def exercise_n_gaussian(space_group_info, verbose=0):
     structure = random_structure.xray_structure(
       space_group_info, elements=["D"])
     ugs = structure.scattering_type_registry(table="n_gaussian") \
-      .unique_gaussians_as_list()
+        .unique_gaussians_as_list()
     assert len(ugs) == 1
     assert ugs[0].n_terms() == 6
     s = StringIO()
@@ -839,7 +839,7 @@ b: 19.557704 7.1039496 21.423627 51.052183 1.8864593 0.31198465
 c: 0
 """)
     ugs = structure.scattering_type_registry(table="it1992") \
-      .unique_gaussians_as_list()
+        .unique_gaussians_as_list()
     assert len(ugs) == 1
     assert ugs[0].n_terms() == 4
     s = StringIO()
@@ -850,7 +850,7 @@ b: 20.6593 7.7403898 49.551899 2.2015901
 c: 0.001305
 """)
     ugs = structure.scattering_type_registry(table="wk1995") \
-      .unique_gaussians_as_list()
+        .unique_gaussians_as_list()
     assert len(ugs) == 1
     assert ugs[0].n_terms() == 5
     s = StringIO()
@@ -913,8 +913,8 @@ def exercise_concatenate_inplace():
   out = StringIO()
   xs.concatenate_inplace(other = xs1)
   xs.scattering_type_registry().show(out=out)
-  expected_result = \
-  """Number of scattering types: 4
+  expected_result = """\
+Number of scattering types: 4
   Type Number    sf(0)   Gaussians
    O       1      8.00       6
    C       1      6.00       6
@@ -930,7 +930,7 @@ def exercise_concatenate_inplace():
     custom_gaussians = {"C": eltbx.xray_scattering.gaussian([1],[2], 0)}
     new_scatterers = flex.xray_scatterer()
     new_scatterers.append(xray.scatterer(
-       label = "C", scattering_type = "C", site=(7,8,9), u=0.1, occupancy=1.1))
+      label = "C", scattering_type = "C", site=(7,8,9), u=0.1, occupancy=1.1))
     xs1 = xray.structure(sp, new_scatterers)
     xs1.scattering_type_registry(custom_dict = custom_gaussians)
     xs.concatenate_inplace(other = xs1)
