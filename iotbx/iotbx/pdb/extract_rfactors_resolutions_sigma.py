@@ -14,13 +14,13 @@ class get_r_rfree_sigma(object):
         start_DataUsedInRefinement = self.is_DataUsedInRefinement(line)
       if(start_DataUsedInRefinement and self.is_ResolutionRangeHigh(line)):
         try: self.high = float(line.split()[7])
-        except: self.high = line.split()[7]
+        except ValueError: pass
       if(start_DataUsedInRefinement and self.is_ResolutionRangeLow(line)):
          try: self.low = float(line.split()[7])
-         except: self.low = line.split()[7]
+         except ValueError: pass
       if(start_DataUsedInRefinement and self.is_DataCutoffSigma(line)):
          try: self.sigma = float(line.split()[6])
-         except: self.sigma = line.split()[6]
+         except ValueError: pass
       if(not start_FitToDataUsedInRefinement):
         start_FitToDataUsedInRefinement = \
           self.is_FitToDataUsedInRefinement(line)
@@ -30,20 +30,18 @@ class get_r_rfree_sigma(object):
         self.r_free = self.get_value(line)
       if(self.is_Resolution(line)):
         try: self.resolution = float(line.split()[3])
-        except:
+        except ValueError:
           try: self.resolution = float(line[22:28])
-          except: self.resolution = line[22:28]
+          except ValueError: pass
 
   def get_value(self, line):
     line = line.split()
     last = line[len(line)-1]
     value = None
     try: value = float(last)
-    except:
-      try: value = last
-      except:
-        try: value = float(last[1:])
-        except: value = last[1:]
+    except ValueError:
+      try: value = float(last[1:])
+      except ValueError: pass
     return value
 
   def is_Resolution(self, line):
