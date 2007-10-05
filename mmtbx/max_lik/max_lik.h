@@ -100,22 +100,36 @@ public:
          boost::python::extract<af::shared<cctbx::miller::index<> > >
                                                 elem_proxy_3(hkl_sets_list[i]);
          hkl = elem_proxy_3();
+         A_B_topt_est(fo,fm,hkl,sg,A_in_zones[i],B_in_zones[i],topt[i]); //going around in a circle for external access
+       }
+       topt = smooth(topt);
+       alpha_beta_in_zones(A_in_zones, B_in_zones, topt);
+     }
+
+    void  A_B_topt_est(af::shared<double> const& fo,
+                 af::shared<double> const& fm,
+                 af::shared<cctbx::miller::index<> > const& hkl,
+                 cctbx::sgtbx::space_group const& sg,
+                 double& ext_A,
+                 double& ext_B,
+                 double& ext_topt
+                 )
+     {
          MMTBX_ASSERT(fo.size() > 0 && fm.size() > 0);
          MMTBX_ASSERT(fo.size() == fm.size());
          MMTBX_ASSERT(fo.size() == hkl.size());
          eps = sg.epsilon(hkl.const_ref());
          cf = sg.is_centric(hkl.const_ref());
          A_B_C_D_omega();
-         A_in_zones[i] = A;
-         B_in_zones[i] = B;
-         if      (OMEGAi <= 0.0)       topt[i] = 0.0;
-         else if (wi/(A*B) <= 3.0E-07) topt[i] = 1.0e+10;
+         double topt;
+         if      (OMEGAi <= 0.0)       topt = 0.0;
+         else if (wi/(A*B) <= 3.0E-07) topt = 1.0e+10;
          else {
-                                       topt[i] = solvm();
+                                       topt = solvm();
          }
-       }
-       topt = smooth(topt);
-       alpha_beta_in_zones(A_in_zones, B_in_zones, topt);
+         ext_A = A;
+         ext_B = B;
+         ext_topt = topt;
      }
 
   void A_B_C_D_omega()
