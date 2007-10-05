@@ -1,29 +1,25 @@
+from __future__ import generators
+
 try:
-  from itertools import count
+  if 0: raise
+  from itertools import count, islice
 except:
-  class count(object):
+  def count(n=0):
+    while True:
+      yield n
+      n += 1
 
-    def __init__(self, firstval=0):
-      self.val = firstval
+  def islice(iterable, *args):
+    s = slice(*args)
+    it = iter(xrange(s.start or 0, s.stop or sys.maxint, s.step or 1))
+    nexti = it.next()
+    for i, element in enumerate(iterable):
+      if i == nexti:
+        yield element
+        nexti = it.next()
 
-    def next(self):
-      result = self.val
-      self.val += 1
-      return result
-
-    def __iter__(self):
-      return self
-
-class step(object):
-
-  def __init__(self, firstval=0, increment=1):
-    self.val = firstval
-    self.increment = increment
-
-  def next(self):
-    result = self.val
-    self.val += self.increment
-    return result
-
-  def __iter__(self):
-    return self
+def step(firstval=0, increment=1):
+  val = firstval
+  while True:
+    yield val
+    val += increment

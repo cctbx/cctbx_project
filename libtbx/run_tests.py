@@ -16,6 +16,7 @@ def run():
   "$D/libtbx/phil/tst_tokenizer.py",
   "$D/libtbx/phil/tst.py",
   "$D/libtbx/tst_object_oriented_patterns.py",
+  "$D/libtbx/tst_itertbx.py",
   )
 
   build_dir = None
