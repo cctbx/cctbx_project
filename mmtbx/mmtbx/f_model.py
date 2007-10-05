@@ -44,7 +44,6 @@ ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0
 time_mask                           = 0.0
-number_mask                         = 0
 time_f_calc                         = 0.0
 time_alpha_beta                     = 0.0
 time_target                         = 0.0
@@ -67,8 +66,7 @@ def show_times(out = None):
           time_phase_errors                   +\
           time_foms
   print >> out, "  Micro-tasks:"
-  print >> out, "    mask                            = %-7.2f" \
-    " number of calls = %3d " % (time_mask, number_mask)
+  print >> out, "    mask                            = %-7.2f" % (time_mask)
   print >> out, "    f_calc                          = %-7.2f" % time_f_calc
   print >> out, "    alpha_beta                      = %-7.2f" % time_alpha_beta
   print >> out, "    target                          = %-7.2f" % time_target
@@ -252,6 +250,7 @@ class manager(manager_mixin):
          overall_scale                = 1.0,
          f_ordered_solvent            = None,
          f_ordered_solvent_dist       = None,
+         mask_manager                 = None,
          n_ordered_water              = 0,
          b_ordered_water              = 0.0,
          max_number_of_bins           = 30):
@@ -266,6 +265,7 @@ class manager(manager_mixin):
     self.use_f_model_scaled= use_f_model_scaled
     self.overall_scale     = overall_scale
     self.max_number_of_bins = max_number_of_bins
+    self.mask_manager = mask_manager
     if (f_ordered_solvent is None):
       self.f_ordered_solvent = self.f_obs.array(
         data=flex.complex_double(self.f_obs.data().size(), 0.0))
@@ -293,7 +293,6 @@ class manager(manager_mixin):
     self.d_spacings_t = self.d_spacings.select(self.test)
     self.ss = 1./flex.pow2(self.d_spacings) / 4.
     if(self.xray_structure is None):
-       self.xray_structure_mask_cache = None
        assert [f_calc, f_mask].count(None) == 0
        assert f_mask.is_complex_array()
        assert f_calc.is_complex_array()
@@ -305,15 +304,17 @@ class manager(manager_mixin):
                         k_sol        = k_sol,
                         b_sol        = b_sol)
     else:
-       self.xray_structure_mask_cache = \
-                                     self.xray_structure.deep_copy_scatterers()
+       if(self.mask_manager is None):
+         self.mask_manager = masks.manager(
+           miller_array   = self.f_obs,
+           xray_structure = self.xray_structure,
+           mask_params    = self.mask_params)
        if(not trust_xray_structure):
           assert [f_calc, f_mask].count(None) == 2
        if(update_xray_structure):
           self.update_xray_structure(xray_structure       = self.xray_structure,
                                      update_f_calc        = True,
                                      update_f_mask        = True,
-                                     force_update_f_mask  = True,
                                      k_sol                = k_sol,
                                      b_sol                = b_sol,
                                      b_cart               = b_cart)
@@ -420,6 +421,9 @@ class manager(manager_mixin):
        xrs = None
     else:
        xrs = self.xray_structure.deep_copy_scatterers()
+    if(self.mask_manager is not None):
+      new_mask_manager = self.mask_manager.deep_copy()
+    else: new_mask_manager = None
     return manager(
               f_obs                        = self.f_obs.deep_copy(),
               r_free_flags                 = self.r_free_flags.deep_copy(),
@@ -432,6 +436,7 @@ class manager(manager_mixin):
               abcd                         = abcd,
               alpha_beta_params            = self.alpha_beta_params,
               xray_structure               = xrs,
+              mask_manager                 = new_mask_manager,
               f_calc                       = self.f_calc().deep_copy(),
               mask_params                  = self.mask_params,  # XXX deep_copy ?
               trust_xray_structure         = True,
@@ -444,11 +449,15 @@ class manager(manager_mixin):
       max_number_of_bins = self.max_number_of_bins)
 
   def select(self, selection, update_xray_structure=False):
-    if (self.abcd  is not None):
+    if (self.abcd is not None):
       abcd = self.abcd.select(selection=selection)
     else:
       abcd = None
-    return manager(
+    if(self.mask_manager is not None):
+      new_mask_manager = self.mask_manager.select(selection = selection)
+    else:
+      new_mask_manager = None
+    result = manager(
       f_obs=self.f_obs.select(selection=selection),
       r_free_flags=self.r_free_flags.select(selection=selection),
       b_cart=tuple(self.b_cart()),
@@ -462,6 +471,7 @@ class manager(manager_mixin):
       f_calc=self.f_calc().select(selection=selection),
       f_mask=self.f_mask().select(selection=selection),
       mask_params=self.mask_params,
+      mask_manager = new_mask_manager,
       trust_xray_structure=True,
       update_xray_structure=update_xray_structure,
       overall_scale=self.overall_scale,
@@ -472,6 +482,7 @@ class manager(manager_mixin):
       n_ordered_water=self.n_ordered_water,
       b_ordered_water=self.b_ordered_water,
       max_number_of_bins=self.max_number_of_bins)
+    return result
 
   def resolution_filter(self,
         d_max=0,
@@ -552,29 +563,6 @@ class manager(manager_mixin):
        self.alpha_beta_params.n_water_atoms_absent = self.n_ordered_water
        self.alpha_beta_params.bf_atoms_absent = self.b_ordered_water
 
-  def _get_step(self, update_f_ordered_solvent = False):
-    step = self.f_obs.d_min()/self.mask_params.grid_step_factor
-    if(step < 0.19): step = 0.19
-    step = min(0.8, step)
-    if(update_f_ordered_solvent): step = 0.3
-    return step
-
-  def _update_f_mask_flag(self, xray_structure, mean_shift):
-    if(self.xray_structure_mask_cache is None):
-       self.xray_structure_mask_cache = xray_structure.deep_copy_scatterers()
-       return True
-    else:
-       sites_cart_1 = self.xray_structure_mask_cache.sites_cart()
-       sites_cart_2 = xray_structure.sites_cart()
-       self.xray_structure_mask_cache = xray_structure.deep_copy_scatterers()
-       if(sites_cart_1.size() != sites_cart_2.size()): return True
-       atom_atom_distances = flex.sqrt((sites_cart_1 - sites_cart_2).dot())
-       mean_shift_ = flex.mean(atom_atom_distances)
-       update_f_mask = False
-       if(mean_shift_ >= mean_shift):
-          update_f_mask = True
-       return update_f_mask
-
   def update_xray_structure(self,
                             xray_structure           = None,
                             update_f_calc            = False,
@@ -587,14 +575,6 @@ class manager(manager_mixin):
                             b_cart                   = None):
     if (xray_structure is not None):
       self.xray_structure = xray_structure
-    if(update_f_mask):
-       if(force_update_f_mask):
-          consider_mask_update = True
-       else:
-          consider_mask_update = self._update_f_mask_flag(
-                  xray_structure = self.xray_structure,
-                  mean_shift     = self.mask_params.mean_shift_for_mask_update)
-    step = self._get_step(update_f_ordered_solvent = update_f_ordered_solvent)
     f_calc = None
     if(update_f_calc):
        global time_f_calc
@@ -621,18 +601,12 @@ class manager(manager_mixin):
        nu_map = nu_manager.distribution_as_array()
        self.f_ordered_solvent_dist = nu_manager.fcalc_from_distribution()
     f_mask = None
-    if(update_f_mask and consider_mask_update):
-       global time_mask, number_mask
-       number_mask += 1
+    if(update_f_mask):
+       global time_mask
        timer = user_plus_sys_time()
-       if(update_f_ordered_solvent == False): nu_map = None
-       bulk_solvent_mask_obj = self.bulk_solvent_mask()
-       if (nu_map is not None):
-         bulk_solvent_mask_obj.subtract_non_uniform_solvent_region_in_place(
-                                                     non_uniform_mask = nu_map)
-       if(out is not None and self.mask_params.verbose > 0):
-          bulk_solvent_mask_obj.show_summary(out = out)
-       f_mask = bulk_solvent_mask_obj.structure_factors(miller_set= self.f_obs)
+       f_mask = self.mask_manager.f_mask(
+         xray_structure_new = self.xray_structure,
+         force_update       = force_update_f_mask)
        time_mask += timer.elapsed()
     if([f_calc, f_mask].count(None) == 2): set_core_flag = False
     else: set_core_flag = True
@@ -644,15 +618,6 @@ class manager(manager_mixin):
                         b_cart = b_cart,
                         k_sol  = k_sol,
                         b_sol  = b_sol)
-
-  def bulk_solvent_mask(self):
-    step = self._get_step()
-    result = masks.bulk_solvent(
-          xray_structure           = self.xray_structure,
-          grid_step                = step,
-          solvent_radius           = self.mask_params.solvent_radius,
-          shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
-    return result
 
   def optimize_mask_and_update_solvent_and_scale(
                                 self, params = None, out = None, verbose=-1):
@@ -710,9 +675,7 @@ class manager(manager_mixin):
     timer = user_plus_sys_time()
     if(out is None): out = sys.stdout
     if(params is None):
-       params = bss.solvent_and_scale_params()
-    else:
-       params = bss.solvent_and_scale_params(params = params)
+       params = bss.master_params.extract()
     if(verbose is not None): params.verbose=verbose
     bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
     overall_scale = self.scale_k1_w()
@@ -1083,8 +1046,9 @@ class manager(manager_mixin):
       estimation_algorithm = self.alpha_beta_params.estimation_algorithm
     assert estimation_algorithm in ["analytical", "iterative"]
     est_exceptions = []
+    fmat6 = self.resolution_filter(d_max=6.0)
     for fmodel in [
-          self.resolution_filter(d_max=6.0),
+          fmat6,
           self]:
       ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())
       if (estimation_algorithm == "analytical"):

@@ -11,6 +11,10 @@ import sys
 import iotbx.xplor.map
 import iotbx.phil
 from libtbx import introspection
+from libtbx import adopt_init_args
+from copy import deepcopy
+
+number_of_mask_calculations = 0
 
 mask_master_params = iotbx.phil.parse("""\
   solvent_radius = 1.11
@@ -38,6 +42,8 @@ class bulk_solvent(around_atoms):
         grid_step=None,
         solvent_radius=1.0, # XXX consolidate with params above
         shrink_truncation_radius=1.0): # XXX consolidate with params above
+     global number_of_mask_calculations
+     number_of_mask_calculations += 1
      assert [gridding_n_real, grid_step].count(None) == 1
      self.xray_structure = xray_structure
      if (gridding_n_real is None):
@@ -126,3 +132,80 @@ class bulk_solvent(around_atoms):
   def subtract_non_uniform_solvent_region_in_place(self, non_uniform_mask):
     assert non_uniform_mask.accessor() == self.data.accessor()
     self.data.set_selected(non_uniform_mask > 0, 0)
+
+class manager(object):
+  def __init__(self, miller_array,
+                     xray_structure,
+                     mask_params = None):
+    adopt_init_args(self, locals())
+    if(self.mask_params is not None): self.mask_params = mask_params
+    else: self.mask_params = mask_master_params.extract()
+    self.grid_step = self._get_grid_step()
+    if(xray_structure is not None):
+      self.xray_structure = self.xray_structure.deep_copy_scatterers()
+      self.sites_cart = self.xray_structure.sites_cart()
+      self._f_mask = self.compute_f_mask()
+    else: self._f_mask = None
+
+  def deep_copy(self):
+    new_manager = manager(miller_array   = self.miller_array.deep_copy(),
+                          xray_structure = None,
+                          mask_params    = deepcopy(self.mask_params))
+    if(self.xray_structure is not None):
+      new_manager.xray_structure = self.xray_structure.deep_copy_scatterers()
+      new_manager.sites_cart     = new_manager.xray_structure.sites_cart()
+    if(self._f_mask is not None):
+      new_manager._f_mask = self._f_mask.deep_copy()
+    return new_manager
+
+  def select(self, selection):
+    new_manager = self.deep_copy()
+    new_manager.miller_array = self.miller_array.select(selection = selection)
+    if(self._f_mask is not None):
+      new_manager._f_mask = self._f_mask.select(selection = selection)
+    return new_manager
+
+  def _get_grid_step(self):
+    assert self.mask_params.grid_step_factor > 0
+    step = self.miller_array.d_min()/self.mask_params.grid_step_factor
+    if(step < 0.15): step = 0.15
+    step = min(0.8, step)
+    return step
+
+  def f_mask(self, xray_structure_new = None, force_update = False):
+    if(xray_structure_new is None): return self._f_mask
+    else:
+      if(force_update or self._f_mask is None):
+        self.xray_structure = xray_structure_new.deep_copy_scatterers()
+        self.sites_cart = xray_structure_new.sites_cart()
+        return self.compute_f_mask()
+      else:
+        flag = self._need_update_mask(sites_cart_new =
+          xray_structure_new.sites_cart())
+        if(flag):
+          self.xray_structure = xray_structure_new.deep_copy_scatterers()
+          self.sites_cart = xray_structure_new.sites_cart()
+          return self.compute_f_mask()
+        else:
+          return self._f_mask
+
+  def _need_update_mask(self, sites_cart_new):
+    if(self.sites_cart.size() != sites_cart_new.size()): return True
+    atom_atom_distances = flex.sqrt((sites_cart_new - self.sites_cart).dot())
+    mean_shift = flex.mean(atom_atom_distances)
+    if(mean_shift > self.mask_params.mean_shift_for_mask_update):
+      return True
+    else: return False
+
+  def compute_f_mask(self):
+    bulk_solvent_mask_obj = self.bulk_solvent_mask()
+    self._f_mask = bulk_solvent_mask_obj.structure_factors(
+      miller_set = self.miller_array)
+    return self._f_mask
+
+  def bulk_solvent_mask(self):
+    return bulk_solvent(
+      xray_structure           = self.xray_structure,
+      grid_step                = self.grid_step,
+      solvent_radius           = self.mask_params.solvent_radius,
+      shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
