@@ -18,7 +18,7 @@ def exercise_islice():
   it = itertbx.islice(l, 2, 5)
   assert list(it) == l[2:5]
   it = itertbx.islice(l, 1, 7, 2)
-  assert list(it) == l[1:7:2]
+  assert list(it) == [ l[1], l[3], l[5] ]
 
 def exercise_step():
   it = itertbx.step(increment=2)
