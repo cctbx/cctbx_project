@@ -63,7 +63,7 @@ double fu_star_(sym_mat3<double> const& b,
 2*a[1]*h*(a[2]*b[5]*h + a[4]*b[1]*k + a[3]*b[3]*k + a[5]*b[5]*k + a[7]*b[1]*l +
         a[6]*b[3]*l + a[8]*b[5]*l);
     double arg = -0.25 * (qq);
-    if(arg > std::log(5.0)) return 1.0;
+    if(arg > 706.0) arg=706.0; // to avoid overflow problem
     return std::exp(arg);
 }
 

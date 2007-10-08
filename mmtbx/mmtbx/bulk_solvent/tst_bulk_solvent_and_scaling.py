@@ -50,7 +50,7 @@ def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure):
   f_obs = abs(fmodel.f_model())
   return f_obs, r_free_flags
 
-def exercise_01_general(d_mins = [2.0, 6.0],
+def exercise_01_general(d_mins = [2.0,],
              solvkb = [(0,0),(0.1,80.0),(0.6,10.0),(0.1,10.0),(0.6,80.0),
                        (0.1,6.),(0.12,89.),(0.57,17.),(0.14,14.),(0.54,87.)],
              target_names = ["ml","ls_wunit_k1"],
@@ -79,11 +79,6 @@ def exercise_01_general(d_mins = [2.0, 6.0],
             assert approx_equal(fmodel.k_sol(),   kb[0], eps = 0.001)
             assert approx_equal(fmodel.b_sol(),   kb[1], eps = 0.1)
             assert approx_equal(fmodel.b_cart(), b_cart, eps = 0.001)
-          elif(abs(d_min-6.) < 0.001):
-            assert approx_equal(r_work,             0.0, eps = 0.08)
-            assert approx_equal(fmodel.k_sol(),   kb[0], eps = 0.1)
-            assert approx_equal(fmodel.b_sol(),   kb[1], eps = 6.0)
-            assert approx_equal(fmodel.b_cart(), b_cart, eps = 1.0)
           else:
             raise RuntimeError("No such d_min value.")
           if(abs(kb[0])<0.0001 and abs(kb[1])<0.0001 and
