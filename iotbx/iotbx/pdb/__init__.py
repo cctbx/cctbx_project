@@ -468,6 +468,21 @@ class _input(boost.python.injector, ext.input):
         scatterers=loop.scatterers))
     return result
 
+def atom_labels_pdb_format(model, chain, conformer, residue, atom):
+  result = []
+  if (model.id != 0):
+    result.append('model="%4d"' % model.id)
+  result.append('"%4s%1s%3s%2s%4s%1s"' % (
+    atom.name,
+    conformer.id,
+    residue.name,
+    chain.id,
+    residue.seq,
+    residue.icode))
+  if (atom.segid != "    "):
+    result.append('segid="%s"' % atom.segid)
+  return " ".join(result)
+
 def format_cryst1_record(crystal_symmetry, z=None):
   # CRYST1
   #  7 - 15       Real(9.3)      a             a (Angstroms).
