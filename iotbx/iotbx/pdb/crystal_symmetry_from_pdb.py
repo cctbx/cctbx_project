@@ -1,11 +1,21 @@
 from iotbx.pdb import cryst1_interpretation
 from iotbx.cns import pdb_remarks as cns_pdb_remarks
 from libtbx.utils import detect_binary_file
+try: import gzip
+except ImportError: gzip = None
+from libtbx.str_utils import show_string
 
 def extract_from(file_name=None, file=None, monitor_initial=None):
   assert [file_name, file].count(None) == 1
   if (file is None):
-    file = open(file_name)
+    if(file_name.endswith(".gz")):
+      if(gzip is None):
+        raise RuntimeError(
+          "gzip module not available: cannot uncompress file %s"%
+          show_string(pdb_file_name))
+      file = gzip.open(file_name)
+    else:
+      file = open(file_name)
   detect_binary = detect_binary_file(monitor_initial=monitor_initial)
   line_number = 0
   for line in file:
