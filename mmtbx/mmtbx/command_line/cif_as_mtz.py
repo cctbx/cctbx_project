@@ -16,6 +16,9 @@ from cctbx import eltbx
 import mmtbx.f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import crystal_symmetry_from_pdb
+from libtbx.str_utils import show_string
+try: import gzip
+except ImportError: gzip = None
 
 
 """
@@ -570,9 +573,10 @@ def create_mtz_object(pre_miller_arrays,
   return mtz_object
 
 class guess_observation_type(object):
-  def __init__(self, file_name, mtz_object, show_log):
+  def __init__(self, file_name, pdb_raw_records, mtz_object, show_log):
     self.file_name = file_name
     self.mtz_object = mtz_object
+    self.pdb_raw_records = pdb_raw_records
     xray_structure = self.get_xray_structure_from_pdb_file()
     if(xray_structure is not None):
       miller_arrays = self.mtz_object.as_miller_arrays()
@@ -635,7 +639,7 @@ class guess_observation_type(object):
       processed_pdb_file = monomer_library.pdb_interpretation.process(
         mon_lib_srv = mon_lib_srv,
         ener_lib    = ener_lib,
-        file_name   = self.file_name)
+        raw_records = self.pdb_raw_records)
       xray_structure = processed_pdb_file.xray_structure()
     except Exception, e:
       print "INFO: Cannot extract xray structure:",self.file_name,str(e)
@@ -721,12 +725,6 @@ class guess_observation_type(object):
 
   def get_observation_type(self, fmodel, show_log):
     params = bss.master_params.extract()
-    params.k_sol_grid_search_max = 0.6
-    params.k_sol_grid_search_min = 0.0
-    params.b_sol_grid_search_max = 80.0
-    params.b_sol_grid_search_min = 0.0
-    params.k_sol_step = 0.2
-    params.b_sol_step = 20.0
     params.k_sol_max = 0.6
     params.k_sol_min = 0.0
     params.b_sol_max = 500.0
@@ -877,26 +875,46 @@ def run(args, command_name = "phenix.cif_as_mtz"):
   file_name = command_line.args[0]
   if(not os.path.isfile(file_name)):
     raise Sorry("File is not found: %s"%file_name)
-  ifo = open(file_name, "r")
-  file_lines = ifo.readlines()
-  ifo.close()
+  if(file_name.endswith(".gz")):
+    if(gzip is None):
+      raise RuntimeError(
+        "gzip module not available: cannot uncompress file %s"%
+        show_string(file_name))
+    file_lines = flex.split_lines(gzip.open(file_name).read())
+  else:
+    ifo = open(file_name, "r")
+    file_lines = ifo.readlines()
+    ifo.close()
   mtz_object = extract(
     file_name        = file_name,
     file_lines       = file_lines,
     crystal_symmetry = crystal_symmetry,
     show_details_if_error = command_line.options.show_details_if_error)
   if(mtz_object is not None):
-    if(command_line.options.use_model):
+    pdb_file_name = command_line.options.use_model
+    if(pdb_file_name):
+      if(pdb_file_name.endswith(".gz")):
+        if(gzip is None):
+          raise RuntimeError(
+            "gzip module not available: cannot uncompress file %s"%
+            show_string(pdb_file_name))
+        pdb_raw_records = flex.split_lines(gzip.open(pdb_file_name).read())
+      else:
+        ifo = open(pdb_file_name, "r")
+        pdb_raw_records = ifo.readlines()
+        ifo.close()
       mtz_object = guess_observation_type(
-        file_name  = command_line.options.use_model,
-        mtz_object = mtz_object,
-        show_log = command_line.options.show_log).mtz_object
+        file_name       = pdb_file_name,
+        pdb_raw_records = pdb_raw_records,
+        mtz_object      = mtz_object,
+        show_log        = command_line.options.show_log).mtz_object
     if(command_line.options.output_file_name):
       output_file_name = command_line.options.output_file_name
     else:
       basename = os.path.basename(file_name)
       if(basename[-4:-3] == "."): output_file_name = basename[:-4]+".mtz"
       elif(basename[-5:-4] == "."): output_file_name = basename[:-5]+".mtz"
+      elif(basename.endswith(".ent.gz")): output_file_name=basename[:-7]+".mtz"
       else: output_file_name = basename+".mtz"
     mtz_object.write(file_name = output_file_name)
   if(command_line.options.remove_input_file):
