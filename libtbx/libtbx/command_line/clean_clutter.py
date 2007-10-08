@@ -52,7 +52,7 @@ form cleans those files which would be committed by running svn commit.""")
       exit(1)
   elif not files:
     opt_parser.show_help()
-    exit(1)
+    sys.exit(1)
   clean_clutter_in(files, tabsize=co.tabsize)
 
 if (__name__ == "__main__"):
