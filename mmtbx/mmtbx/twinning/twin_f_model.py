@@ -39,48 +39,6 @@ import sys, os, math, time
 import mmtbx.f_model
 from libtbx.str_utils import format_value, show_string
 
-
-# XXX Pavel: Below is a dummy class (does nothing but redirect or emulate calls)
-# XXX fix to adapt new features of non-twin fmodel.
-# XXX This may severely change expected behaviour.
-"""
-class info(object):
-  def __init__(self,
-               fmodel,
-               free_reflections_per_bin = None,
-               max_number_of_bins = None):
-    self.fmodel = fmodel
-
-  def show_rfactors_targets_scales_overall(self, header=None, out=None):
-    self.fmodel.show_essential(header = header, out=out)
-
-  def show_all(self, header = "", out = None):
-    if(out is None): out = sys.stdout
-    self.show_rfactors_targets_scales_overall(header = header, out = out)
-
-  def _header_resolutions_nreflections(self, header, out):
-    self.fmodel._header_resolutions_nreflections(header=header, out=out)
-
-  def _rfactors_and_bulk_solvent_and_scale_params(self, out):
-    self.fmodel._rfactors_and_bulk_solvent_and_scale_params(out = out)
-
-  def show_targets(self, out = None, text = ""):
-    if(out is None): out = sys.stdout
-    part1 = "|-"+text
-    part2 = "-|"
-    n = 79 - len(part1+part2)
-    print >> out, part1 + "-"*n + part2
-    part3 = "| target_work(%s) = %s  r_work = %s  r_free = %s" % (
-      self.target_name,
-      format_value(format="%.6g",  value = self.f_model.target_w() ),
-      format_value(format="%6.4f", value = self.f_model.r_work() ),
-      format_value(format="%6.4f", value = self.f_model.r_free() ))
-    n = 78 - len(str(part3)+"|")
-    print >> out, part3, " "*n +"|"
-    print >> out, "|" +"-"*77+"|"
-    out.flush()
-"""
-
 master_params =  iotbx.phil.parse("""
   twin_law = None
   .type=str
@@ -1012,10 +970,15 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.epsilons_f = self.f_obs_f.epsilons().data().as_double()
 
   def info(self, free_reflections_per_bin = 140, max_number_of_bins = 30):
-    return mmtbx.twinning.twin_f_model.info(
+    return mmtbx.f_model.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins       = max_number_of_bins)
+
+  def scale_k1(self):
+    # XXX is it true scale_k1 ?
+    # XXX name k_overall is ambigous.
+    return self.scaling_parameters.k_overall
 
   def show_parameter_summary(self, manager=None):
     # print bulk solvent parameters
@@ -1578,7 +1541,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
         phase_error_w = flex.mean_default( self.phase_errors_work().select( n_additional_selection_w), None )
         phase_error_f = flex.mean_default( self.phase_errors_test().select( n_additional_selection_f), None )
 
-        fom_w = flex.mean_default( self.figures_of_merit_w().select( n_additional_selection_w ), None )
+        fom_w = flex.mean_default( self.figures_of_merit_work().select( n_additional_selection_w ), None )
 
         tmp = [ str( "%3i"%(i_bin)    ),
                 str( "%5.2f"%(d_max)  ),
@@ -1873,7 +1836,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     return self.sigmaa_object_cache
 
   def model_error_ml(self):
-    return "None"
+    return None
 
   def alpha_beta(self):
     sigmaa_object = self.sigmaa_object()
@@ -1899,7 +1862,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     sigmaa_object = self.sigmaa_object()
     return sigmaa_object.fom().data()
 
-  def figures_of_merit_w(self):
+  def figures_of_merit_work(self):
     tmp_sigmaa = self.sigmaa_object()
     tmp_free = tmp_sigmaa.r_free_flags
     fom = self.figures_of_merit().select(
@@ -2575,7 +2538,6 @@ def n_as_s(format, value):
        new.append( str(format%item).strip() )
   return new
 
-
 class resolution_bin(object):
   def __init__(self,
                i_bin        = None,
@@ -2594,325 +2556,6 @@ class resolution_bin(object):
                pher_work    = None,
                pher_free    = None):
     adopt_init_args(self, locals())
-
-
-class info(object):
-  def __init__(self,
-               fmodel,
-               free_reflections_per_bin = 140,
-               max_number_of_bins = 30):
-    mp = fmodel.mask_params
-    self.twin_fraction = fmodel.twin_fraction_object.twin_fraction
-    self.twin_law = fmodel.twin_law
-    self.r_work = fmodel.r_work()
-    self.r_free = fmodel.r_free()
-    self.r_all = fmodel.r_all()
-    self.target_work = fmodel.target_w()
-    self.target_free = fmodel.target_t()
-    self.overall_scale_k1 = fmodel.scaling_parameters.k_overall
-    self.number_of_test_reflections = fmodel.f_obs_f.data().size()
-    self.number_of_work_reflections = fmodel.f_obs_w.data().size()
-    self.number_of_reflections = fmodel.f_obs.data().size()
-    self.k_sol = fmodel.k_sol()
-    self.b_sol = fmodel.b_sol()
-    self.b_cart = fmodel.b_cart()
-    self.b_iso = fmodel.b_iso()
-    self.mask_solvent_radius = mp.solvent_radius
-    self.mask_shrink_radius = mp.shrink_truncation_radius
-    self.mask_grid_step_factor = mp.grid_step_factor
-    self.ml_phase_error = flex.mean(fmodel.phase_errors())
-    self.ml_coordinate_error = fmodel.model_error_ml()
-    self.d_max, self.d_min = fmodel.f_obs.resolution_range()
-    self.completeness_in_range = fmodel.f_obs.completeness(d_max = self.d_max)
-    self.min_f_obs_over_sigma = fmodel.f_obs.min_f_over_sigma()
-    self.target_name = fmodel.target_name
-    self.sf_algorithm = fmodel.sfg_params.algorithm
-    alpha_w, beta_w = fmodel.alpha_beta_w()
-    self.alpha_work_min, self.alpha_work_max, self.alpha_work_mean = \
-      alpha_w.data().min_max_mean().as_tuple()
-    self.beta_work_min, self.beta_work_max, self.beta_work_mean = \
-      beta_w.data().min_max_mean().as_tuple()
-    self.fom_work_min, self.fom_work_max, self.fom_work_mean = \
-      fmodel.figures_of_merit_w().min_max_mean().as_tuple()
-    self.pher_work_min, self.pher_work_max, self.pher_work_mean = \
-      fmodel.phase_errors_work().min_max_mean().as_tuple()
-    self.pher_free_min, self.pher_free_max, self.pher_free_mean = \
-      fmodel.phase_errors_test().min_max_mean().as_tuple()
-    self.bins = self.statistics_in_resolution_bins(
-      fmodel = fmodel,
-      free_reflections_per_bin = free_reflections_per_bin,
-      max_number_of_bins = max_number_of_bins)
-
-  def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
-                                    max_number_of_bins):
-    result = fmodel.statistics_in_resolution_bins()
-    return result
-
-  def show_remark_3(self, out = None):
-    if(out is None): out = sys.stdout
-    pr = "REMARK   3  "
-    print >> out,pr+"REFINEMENT TARGET : %-s"%self.target_name.upper()
-    print >> out,pr
-    print >> out,pr+"DATA USED IN REFINEMENT."
-    print >> out,pr+" RESOLUTION RANGE HIGH (ANGSTROMS) : %-8.3f"%self.d_min
-    print >> out,pr+" RESOLUTION RANGE LOW  (ANGSTROMS) : %-8.3f"%self.d_max
-    if(self.min_f_obs_over_sigma is None):
-      mfos = str(self.min_f_obs_over_sigma)
-    else:
-      mfos = str("%-6.2f"%self.min_f_obs_over_sigma)
-    print >> out,pr+" MIN(FOBS/SIGMA_FOBS)              : %-s"%mfos
-    print >> out,pr+" COMPLETENESS FOR RANGE        (%s) : %-6.2f"%\
-      ("%", self.completeness_in_range*100.0)
-    print >> out,pr+" NUMBER OF REFLECTIONS             : %-10d"%\
-      self.number_of_reflections
-    print >> out,pr
-    print >> out,pr+"FIT TO DATA USED IN REFINEMENT."
-    print >> out,pr+" R VALUE     (WORKING + TEST SET) : %-6.4f"%self.r_all
-    print >> out,pr+" R VALUE            (WORKING SET) : %-6.4f"%self.r_work
-    print >> out,pr+" FREE R VALUE                     : %-6.4f"%self.r_free
-    print >> out,pr+" FREE R VALUE TEST SET SIZE   (%s) : %-6.2f"%("%",
-      float(self.number_of_test_reflections)/self.number_of_reflections*100.)
-    print >> out,pr+" FREE R VALUE TEST SET COUNT      : %-10d"%\
-      self.number_of_test_reflections
-    print >> out,pr
-    print >> out,pr+"FIT TO DATA USED IN REFINEMENT (IN BINS)."
-    print >> out,pr+" BIN  RESOLUTION RANGE  COMPL.   NWORK NFREE  RWORK RFREE"
-    fmt = " %3d %-17s %6.2f %8d %5d  %5.2f %5.2f"
-    for bin in self.bins:
-      print >> out,pr+fmt%(bin.i_bin, bin.d_range, bin.completeness*100.,
-        bin.n_work, bin.n_free, bin.r_work*100., bin.r_free*100.)
-    print >> out,pr
-    print >> out,pr+"BULK SOLVENT MODELLING."
-    print >> out,pr+" METHOD USED        : FLAT BULK SOLVENT MODEL"
-    print >> out,pr+" SOLVENT RADIUS     : %-8.2f"%self.mask_solvent_radius
-    print >> out,pr+" SHRINKAGE RADIUS   : %-8.2f"%self.mask_shrink_radius
-    print >> out,pr+" GRID STEP FACTOR   : %-8.2f"%self.mask_grid_step_factor
-    print >> out,pr+" K_SOL              : %-8.3f"%self.k_sol
-    print >> out,pr+" B_SOL              : %-8.3f"%self.b_sol
-    print >> out,pr
-    print >> out,pr+"ERROR ESTIMATES."
-    print >> out,pr+\
-      " COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %-8.2f"%\
-      self.ml_coordinate_error
-    print >> out,pr+\
-      " PHASE ERROR (DEGREES, MAXIMUM-LIKELIHOOD BASED) : %-8.2f"%\
-      self.ml_phase_error
-    print >> out,pr
-    print >> out,pr+"OVERALL SCALE FACTORS."
-    print >> out,pr+\
-      " SCALE = SUM(|F_OBS|*|F_MODEL|)/SUM(|F_MODEL|**2) : %-12.4f"%\
-      self.overall_scale_k1
-    print >> out,pr+" ANISOTROPIC SCALE MATRIX ELEMENTS (IN CARTESIAN BASIS)."
-    print >> out,pr+"  B11 : %-15.4f"%self.b_cart[0]
-    print >> out,pr+"  B22 : %-15.4f"%self.b_cart[1]
-    print >> out,pr+"  B33 : %-15.4f"%self.b_cart[2]
-    print >> out,pr+"  B12 : %-15.4f"%self.b_cart[3]
-    print >> out,pr+"  B13 : %-15.4f"%self.b_cart[4]
-    print >> out,pr+"  B23 : %-15.4f"%self.b_cart[5]
-    print >> out,pr
-    print >> out,pr+"R FACTOR FORMULA."
-    print >> out,pr+" R = SUM(||F_OBS|-SCALE*|F_MODEL||)/SUM(|F_OBS|)"
-    print >> out,pr
-    print >> out,pr+"TOTAL MODEL STRUCTURE FACTOR (F_MODEL)."
-    print >> out,pr+" F_MODEL = FB_CART * (F_CALC_ATOMS + F_BULK)"
-    print >> out,pr+"  F_BULK = K_SOL * EXP(-B_SOL * S**2 / 4) * F_MASK"
-    print >> out,pr+"  F_CALC_ATOMS = ATOMIC MODEL STRUCTURE FACTORS"
-    print >> out,pr+"  FB_CART = EXP(-H(t) * A(-1) * B * A(-1t) * H)"
-    print >> out,pr+"   A = orthogonalization matrix, H = MILLER INDEX"
-    print >> out,pr+"   (t) = TRANSPOSE, (-1) = INVERSE"
-    print >> out,pr
-    print >> out,pr+"STRUCTURE FACTORS CALCULATION ALGORITHM : %-s"%\
-      self.sf_algorithm.upper()
-    out.flush()
-
-  def show_targets(self, out = None, text = ""):
-    if(out is None): out = sys.stdout
-    part1 = "|-"+text
-    part2 = "-|"
-    n = 79 - len(part1+part2)
-    print >> out, part1 + "-"*n + part2
-    part3 = "| target_work(%s) = %s  r_work = %s  r_free = %s" % (
-      self.target_name,
-      format_value(format="%.6g",  value = self.target_work),
-      format_value(format="%6.4f", value = self.r_work),
-      format_value(format="%6.4f", value = self.r_free))
-    n = 78 - len(str(part3)+"|")
-    print >> out, part3, " "*n +"|"
-    print >> out, "|" +"-"*77+"|"
-    out.flush()
-
-  def _header_resolutions_nreflections(self, header, out):
-    if(header is None): header = ""
-    line1 = "(resolution: "
-    line2 = format_value("%6.2f",self.d_min).strip()
-    line3 = format_value("%6.2f",self.d_max).strip()
-    line4 = " - "
-    line5 = " A; n_refl. = "
-    line6 = format_value("%d",self.number_of_reflections).strip()
-    tl = header+"-"+line1+line2+line4+line3+line5+line6+")"
-    line_len = len("|-"+"|"+tl)
-    fill_len = 80-line_len-1
-    print >> out, "|-"+tl+"-"*(fill_len)+"|"
-    out.flush()
-
-  def _rfactors_and_bulk_solvent_and_scale_params(self, out):
-    out.flush()
-    r_work = format_value("%6.4f",self.r_work).strip()
-    r_free = format_value("%6.4f",self.r_free).strip()
-    scale  = format_value("%6.3f",self.overall_scale_k1).strip()
-    k_sol  = format_value("%4.2f",self.k_sol).strip()
-    b_sol  = format_value("%6.2f",self.b_sol).strip()
-    b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
-    b_iso  = format_value("%7.2f",self.b_iso).strip()
-    line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
-           "   Bsol= "+b_sol+"   scale= "+scale
-    np = 79 - (len(line) + 1)
-    if(np < 0): np = 0
-    print >> out, line + " "*np + "|"
-    print >> out, "| "+"  "*38+"|"
-    print >> out, "| overall anisotropic scale matrix (Cartesian basis; B11,B22,B33,B12,B13,B23):|"
-    c = ","
-    line4 = "| ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+"); trace/3= "+b_iso
-    np = 79 - (len(line4) + 1)
-    line4 = line4 + " "*np + "|"
-    print >> out, line4
-    out.flush()
-
-  def show_rfactors_targets_scales_overall(self, header = None, out=None):
-    if(out is None): out = sys.stdout
-    out.flush()
-    p = " "
-    self._header_resolutions_nreflections(header=header, out=out)
-    print >> out, "| "+"  "*38+"|"
-    self._rfactors_and_bulk_solvent_and_scale_params(out=out)
-    err = format_value("%6.2f",self.ml_coordinate_error)
-    print >> out, "| "+"  "*38+"|"
-    line6="| maximum likelihood estimate for coordinate error: "+err+" A"
-    np = 79 - (len(line6) + 1)
-    line6 = line6 + " "*np + "|"
-    print >> out, line6
-    line7="| x-ray target function (%s) for work reflections: %s"% (
-      self.target_name, n_as_s("%15.6f",self.target_work))
-    np = 79 - (len(line7) + 1)
-    line7 = line7 + " "*np + "|"
-    print >> out, line7
-    print >> out, "|"+"-"*77+"|"
-    out.flush()
-
-  def show_rfactors_targets_scales_overall(self, header="", out=None):
-    if(out is None): out = sys.stdout
-    out.flush()
-    p = " "
-    line = "(resolution: "+\
-           format_value("%6.2f",self.d_min).strip()+\
-           " - "+\
-           format_value("%6.2f",self.d_max).strip()+\
-           " A; n_refl. = "+\
-           format_value("%d",self.number_of_reflections).strip()+\
-           ")"
-    line = header+"-"+line
-    fill_len = 80-len("|-"+"|"+line)-1
-    print >> out, "|-"+line+"-"*(fill_len)+"|"
-    print >> out, "| "+"  "*38+"|"
-    r_work = format_value("%6.4f",self.r_work).strip()
-    r_free = format_value("%6.4f",self.r_free).strip()
-    scale  = format_value("%6.3f",self.overall_scale_k1).strip()
-    k_sol  = format_value("%4.2f",self.k_sol).strip()
-    b_sol  = format_value("%6.2f",self.b_sol).strip()
-    b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
-    b_iso  = format_value("%7.2f",self.b_iso).strip()
-    line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
-           "   Bsol= "+b_sol+"   scale= "+scale
-    np = 79 - (len(line) + 1)
-    if(np < 0): np = 0
-    print >> out, line + " "*np + "|"
-    print >> out, "| "+"  "*38+"|"
-    print >> out, "| overall anisotropic scale matrix (Cartesian basis; B11,B22,B33,B12,B13,B23):|"
-    c = ","
-    line = "| ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+"); trace/3= "+b_iso
-    line = line + " "*(79 - (len(line) + 1)) + "|"
-    print >> out, line
-    err = n_as_s("%6.2f",self.ml_coordinate_error)
-    print >> out, "| "+"  "*38+"|"
-    line="| maximum likelihood estimate for coordinate error: "+err+" A"
-    line = line + " "*(79 - (len(line) + 1)) + "|"
-    print >> out, line
-    line="| x-ray target function (%s) for work reflections: %s"% (
-      self.target_name, n_as_s("%15.6f",self.target_work))
-    line = line + " "*(79 - (len(line) + 1)) + "|"
-    print >> out, line
-    print >> out, "|"+"-"*77+"|"
-    out.flush()
-
-  def show_rfactors_targets_in_bins(self, out = None):
-    if(out is None): out = sys.stdout
-    print >> out, "|"+"-"*77+"|"
-    print >> out, "| Bin     Resolution   Compl.  No. Refl.    R-factors          Targets        |"
-    print >> out, "|number     range              work test   work   test        work        test|"
-    for bin in self.bins:
-      print >> out, "|%3d: %-17s %4.2f %6d %4d %s %s %s %s|" % (
-        bin.i_bin,
-        bin.d_range,
-        bin.completeness,
-        bin.n_work,
-        bin.n_free,
-        format_value("%6.4f",  bin.r_work),
-        format_value("%6.4f",  bin.r_free),
-        format_value("%11.5g", bin.target_work),
-        format_value("%11.5g", bin.target_free))
-    print >> out, "|"+"-"*77+"|"
-    out.flush()
-
-  def show_fom_pher_alpha_beta_in_bins(self, out = None):
-    if(out is None): out = sys.stdout
-    print >> out, "|"+"-"*77+"|"
-    print >> out, "|R-free likelihood based estimates for figures of merit, absolute phase error,|"
-    print >> out, "|and distribution parameters alpha and beta (Acta Cryst. (1995). A51, 880-887)|"
-    print >> out, "|The values were determined from detwinned data.                              |"
-    print >> out, "|"+" "*77+"|"
-    print >> out, "| Bin     Resolution      No. Refl.   FOM   Phase error    Alpha        Beta  |"
-    print >> out, "|  #        range        work  test        work    test                       |"
-    for bin in self.bins:
-      print >> out, "|%3d: %-17s%6d%6d%s%s%s%s%s|" % (
-        bin.i_bin,
-        bin.d_range,
-        bin.n_work,
-        bin.n_free,
-        format_value("%6.2f",  bin.fom_work),
-        format_value("%7.2f",  bin.pher_work),
-        format_value("%7.2f",  bin.pher_free),
-        format_value("%9.2f",  bin.alpha_work),
-        format_value("%14.2f", bin.beta_work))
-    print >>out, "|alpha:            min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.alpha_work_min),
-      format_value("%16.2f", self.alpha_work_max),
-      format_value("%13.2f", self.alpha_work_mean))
-    print >>out, "|beta:             min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.beta_work_min),
-      format_value("%16.2f", self.beta_work_max),
-      format_value("%13.2f", self.beta_work_mean))
-    print >>out, "|figures of merit: min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.fom_work_min),
-      format_value("%16.2f", self.fom_work_max),
-      format_value("%13.2f", self.fom_work_mean))
-    print >>out, "|phase err.(work): min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.pher_work_min),
-      format_value("%16.2f", self.pher_work_max),
-      format_value("%13.2f", self.pher_work_mean))
-    print >>out, "|phase err.(test): min =%s max =%s mean =%s|"%(
-      format_value("%12.2f", self.pher_free_min),
-      format_value("%16.2f", self.pher_free_max),
-      format_value("%13.2f", self.pher_free_mean))
-    print >> out, "|"+"-"*77+"|"
-    out.flush()
-
-  def show_all(self, header = "", out = None):
-    if(out is None): out = sys.stdout
-    self.show_rfactors_targets_scales_overall(header = header, out = out)
-    print >> out
-    self.show_rfactors_targets_in_bins(out = out)
-    print >> out
-    self.show_fom_pher_alpha_beta_in_bins(out = out)
 
 
 def n_as_s(format, value):

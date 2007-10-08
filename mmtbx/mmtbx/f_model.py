@@ -38,6 +38,7 @@ import iotbx.phil
 from mmtbx.scaling import outlier_rejection
 from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling.twin_analyses
+from cctbx import sgtbx
 
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
@@ -1846,11 +1847,18 @@ class info(object):
                free_reflections_per_bin = 140,
                max_number_of_bins = 30):
     mp = fmodel.mask_params
-    self.twin_fraction = None # XXX
-    self.twin_law = None # XXX
+    self.target_name = fmodel.target_name
+    if(self.target_name == "twin_lsq_f"):
+      self.twin_fraction = fmodel.twin_fraction_object.twin_fraction
+      self.twin_law = fmodel.twin_law
+    else:
+      self.twin_fraction = None
+      self.twin_law = None
     self.r_work = fmodel.r_work()
     self.r_free = fmodel.r_free()
-    self.r_all = fmodel.r_all()
+    if(not self.target_name == "twin_lsq_f"):
+      self.r_all = fmodel.r_all()
+    else: self.r_all = None
     self.target_work = fmodel.target_w()
     self.target_free = fmodel.target_t()
     self.overall_scale_k1 = fmodel.scale_k1()
@@ -1869,7 +1877,6 @@ class info(object):
     self.d_max, self.d_min = fmodel.f_obs.resolution_range()
     self.completeness_in_range = fmodel.f_obs.completeness(d_max = self.d_max)
     self.min_f_obs_over_sigma = fmodel.f_obs.min_f_over_sigma()
-    self.target_name = fmodel.target_name
     self.sf_algorithm = fmodel.sfg_params.algorithm
     alpha_w, beta_w = fmodel.alpha_beta_w()
     self.alpha_work_min, self.alpha_work_max, self.alpha_work_mean = \
@@ -1889,6 +1896,8 @@ class info(object):
 
   def statistics_in_resolution_bins(self, fmodel, free_reflections_per_bin,
                                     max_number_of_bins):
+    if(self.target_name == "twin_lsq_f"):
+      return fmodel.statistics_in_resolution_bins()
     result = []
     target_functor = fmodel.target_functor()
     target_result = target_functor(compute_gradients=False)
@@ -1982,7 +1991,8 @@ class info(object):
       self.number_of_reflections
     print >> out,pr
     print >> out,pr+"FIT TO DATA USED IN REFINEMENT."
-    print >> out,pr+" R VALUE     (WORKING + TEST SET) : %-6.4f"%self.r_all
+    print >> out,pr+" R VALUE     (WORKING + TEST SET) : %-s"%\
+      format_value("%-6.4f",self.r_all)
     print >> out,pr+" R VALUE            (WORKING SET) : %-6.4f"%self.r_work
     print >> out,pr+" FREE R VALUE                     : %-6.4f"%self.r_free
     print >> out,pr+" FREE R VALUE TEST SET SIZE   (%s) : %-6.2f"%("%",
@@ -2007,8 +2017,8 @@ class info(object):
     print >> out,pr
     print >> out,pr+"ERROR ESTIMATES."
     print >> out,pr+\
-      " COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %-8.2f"%\
-      self.ml_coordinate_error
+      " COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %-s"%\
+      format_value("%-8.2f", self.ml_coordinate_error)
     print >> out,pr+\
       " PHASE ERROR (DEGREES, MAXIMUM-LIKELIHOOD BASED) : %-8.2f"%\
       self.ml_phase_error
@@ -2111,51 +2121,13 @@ class info(object):
     np = 79 - (len(line7) + 1)
     line7 = line7 + " "*np + "|"
     print >> out, line7
-    print >> out, "|"+"-"*77+"|"
-    out.flush()
-
-  def show_rfactors_targets_scales_overall(self, header="", out=None):
-    if(out is None): out = sys.stdout
-    out.flush()
-    p = " "
-    line = "(resolution: "+\
-           format_value("%6.2f",self.d_min).strip()+\
-           " - "+\
-           format_value("%6.2f",self.d_max).strip()+\
-           " A; n_refl. = "+\
-           format_value("%d",self.number_of_reflections).strip()+\
-           ")"
-    line = header+"-"+line
-    fill_len = 80-len("|-"+"|"+line)-1
-    print >> out, "|-"+line+"-"*(fill_len)+"|"
-    print >> out, "| "+"  "*38+"|"
-    r_work = format_value("%6.4f",self.r_work).strip()
-    r_free = format_value("%6.4f",self.r_free).strip()
-    scale  = format_value("%6.3f",self.overall_scale_k1).strip()
-    k_sol  = format_value("%4.2f",self.k_sol).strip()
-    b_sol  = format_value("%6.2f",self.b_sol).strip()
-    b0,b1,b2,b3,b4,b5 = n_as_s("%7.2f",self.b_cart)
-    b_iso  = format_value("%7.2f",self.b_iso).strip()
-    line = "| r_work= "+r_work+"   r_free= "+r_free+"   ksol= "+k_sol+\
-           "   Bsol= "+b_sol+"   scale= "+scale
-    np = 79 - (len(line) + 1)
-    if(np < 0): np = 0
-    print >> out, line + " "*np + "|"
-    print >> out, "| "+"  "*38+"|"
-    print >> out, "| overall anisotropic scale matrix (Cartesian basis; B11,B22,B33,B12,B13,B23):|"
-    c = ","
-    line = "| ("+b0+c+b1+c+b2+c+b3+c+b4+c+b5+"); trace/3= "+b_iso
-    line = line + " "*(79 - (len(line) + 1)) + "|"
-    print >> out, line
-    err = n_as_s("%6.2f",self.ml_coordinate_error)
-    print >> out, "| "+"  "*38+"|"
-    line="| maximum likelihood estimate for coordinate error: "+err+" A"
-    line = line + " "*(79 - (len(line) + 1)) + "|"
-    print >> out, line
-    line="| x-ray target function (%s) for work reflections: %s"% (
-      self.target_name, n_as_s("%15.6f",self.target_work))
-    line = line + " "*(79 - (len(line) + 1)) + "|"
-    print >> out, line
+    if(self.twin_fraction is not None):
+      line8="| twin fraction: "+format_value("%-4.2f",self.twin_fraction)+\
+        "  twin operator: "+\
+        format_value("%-s",sgtbx.change_of_basis_op(self.twin_law).as_hkl())
+      np = 79 - (len(line8) + 1)
+      line6 = line6 + " "*np + "|"
+      print >> out, line8
     print >> out, "|"+"-"*77+"|"
     out.flush()
 
