@@ -2142,6 +2142,36 @@ model id=0 #chains=1
       assert r is not None
       assert pdb.rna_dna_reference_residue_name(
         common_name=" "+n.lower()+" ") == r
+  #
+  hierarchy = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+MODEL        0
+ATOM      1  CA  LYSAB1234A
+ATOM      2 HD21 LYSAB1234A                                             SEGM
+ENDMDL
+MODEL        1
+ATOM      1  CA XLYSAB1234A
+ENDMDL
+MODEL        2
+ATOM      1  CA  LYSAB1234A                                             SEGM
+ENDMDL
+""")).construct_hierarchy()
+  out = StringIO()
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for conformer in chain.conformers():
+        for residue in conformer.residues():
+          for atom in residue.atoms():
+            print >> out, pdb.atom_labels_pdb_format(
+              model=model, chain=chain, conformer=conformer, residue=residue,
+              atom=atom)
+  assert not show_diff(out.getvalue(), """\
+" CA  LYSAB1234A"
+"HD21 LYSAB1234A" segid="SEGM"
+model="   1" " CA XLYSAB1234A"
+model="   2" " CA  LYSAB1234A" segid="SEGM"
+""")
 
 def exercise_xray_structure_simple():
   pdb_inp = pdb.input(
