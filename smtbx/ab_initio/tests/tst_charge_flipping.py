@@ -11,8 +11,9 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from libtbx import itertbx
 
-import smtbx.ab_initio.charge_flipping as cflip
+from smtbx.ab_initio import charge_flipping
 
 def random_structure_factors(space_group_info, elements,
                              anomalous_flag,
@@ -87,15 +88,20 @@ def exercise_fixed_delta(space_group_info, elements,
 
   f_obs = abs(f_target)
 
-  basic_iter = cflip.basic_charge_flipping_iterator
-  advanced_iter = cflip.weak_reflection_improved_charge_flipping_iterator
-  final_r1 = {}
+  basic_iter = charge_flipping.basic_iterator
+  advanced_iter = charge_flipping.weak_reflection_improved_iterator
+  final_r1 = []
   for flipped in (basic_iter(f_obs, delta),
                   advanced_iter(f_obs, delta),
                   ):
+    if verbose:
+      print "%s" % type(flipped).__name__
+      print "delta starting at %.3f * max_rho_target" % (flipped.delta
+                                                         /max_rho_target)
+      print
     r1s = flex.double()
-    for i,state in enumerate(flipped):
-      if i == 10: break
+    for i,state in enumerate(itertbx.islice(flipped, 10)):
+      isinstance(state, charge_flipping.density_modification_iterator)
       r1 = f_target_in_p1.r1_factor(state.g)
       r1s.append(r1)
       if debug:
@@ -106,18 +112,32 @@ def exercise_fixed_delta(space_group_info, elements,
         print indent, "R1=%.5f" % r1
         print indent, "fraction of positive pixels=%.3f" % pos
         print indent, "total charge=%.3f" % state.g_000
+
     # r1 decreasing function of the iteration number
     assert list(flex.sort_permutation(r1s, reverse=True))\
            == list(xrange(r1s.size()))
     diffs = r1s[:-1] - r1s[1:]
-    assert r1s[-1] < 0.1
+    assert r1s[-1] < 0.12
     assert diffs[-3:].all_lt(0.01)
-    final_r1[type(flipped)] = r1s[-1]
-  assert approx_equal(final_r1[basic_iter], final_r1[advanced_iter], 0.01)
+    final_r1.append(r1s[-1])
+
+    # clean the map
+    cleaned = charge_flipping.low_density_elimination_iterator(flipped.f_obs)
+    for state in itertbx.islice(cleaned, 10): pass
+    assert f_target_in_p1.r1_factor(state.g) < 1.5*r1s[-1]
+
+    # analyse the correlation map in search for the translation
+    # bringing the structure back to the setting of f_obs space group
+    cc_peaks = state.correlation_map_peak_cluster_analysis().all()
+    assert cc_peaks.sites().size() == 1
+    assert cc_peaks.heights()[0] > 0.9
+
+
+  assert (approx_equal(final_r1[0], final_r1[1], 0.01, out=None))
 
 
 def exercise(flags, space_group_info):
-  for i in xrange(10):
+  for i in xrange(2):
     n_C = random.randint(10,20)
     n_O = random.randint(1,5)
     n_N = random.randint(1,5)
