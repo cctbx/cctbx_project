@@ -602,7 +602,7 @@ class space_group_graph_from_cell_and_sg(object):
     for pg in self.pg_graph.graph.node_objects:
       print >> out, "Point group  ", pg, "  is a maximal subgroup of :"
       if (len( self.pg_graph.graph.o[ str( pg ) ] )==0):
-         print >> out, "  * None"
+        print >> out, "  * None"
       else:
         for edge in self.pg_graph.graph.o[ str( pg ) ]:
           print >> out, "  *", edge
