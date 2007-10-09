@@ -40,7 +40,7 @@ namespace scitbx { namespace matrix {
               R_frac *= -1;
             }
             if (R_frac != 1) {
-              R_term += format(R_frac, decimal) + "*";
+              R_term += scitbx::format(R_frac, decimal) + "*";
             }
             R_term += letters_xyz[j];
           }
@@ -58,17 +58,17 @@ namespace scitbx { namespace matrix {
           else                result += R_term;
         }
         else if (R_term.empty()) {
-          result += format(T_frac, decimal);
+          result += scitbx::format(T_frac, decimal);
         }
         else if (t_first) {
-          result += format(T_frac, decimal);
+          result += scitbx::format(T_frac, decimal);
           if (R_term[0] != '-') result += "+";
           result += R_term;
         }
         else {
           result += R_term;
           if (T_frac > 0) result += "+";
-          result += format(T_frac, decimal);
+          result += scitbx::format(T_frac, decimal);
         }
       }
     }
