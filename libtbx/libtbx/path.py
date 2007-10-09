@@ -66,7 +66,9 @@ def walk_source_tree(top, arg=None):
       def is_file_in_subdir(name):
         return os.path.isfile(os.path.join(path, name))
       if (   (name == "CVS" and is_file_in_subdir("Entries"))
-          or (name == ".svn" and is_file_in_subdir("README.txt"))):
+          or (name == ".svn"
+                and (   is_file_in_subdir("README.txt")
+                     or is_file_in_subdir("entries")))):
         continue
       names_keep.append(name)
     if (len(names_keep) != len(names)):
