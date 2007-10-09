@@ -180,7 +180,7 @@ class density_modification_iterator(object):
     if return_correlation_map_too:
       result = (result, correlation_map)
     return result
-  
+
   def apply_shift(self, t):
     phase_shifts = -2*math.pi*self.g.indices().as_vec3_double().dot(t)
     phase_shifts *= flex.arg(self.g.data())
@@ -258,4 +258,3 @@ class low_density_elimination_iterator(density_modification_iterator):
 
     def compute_fft_map(self, f):
       return f.fft_map(symmetry_flags=maptbx.use_space_group_symmetry)
-      

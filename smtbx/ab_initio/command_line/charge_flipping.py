@@ -79,7 +79,7 @@ def solve(f_obs, command_line, i=0):
   if i == co.max_iterations - 1:
     print >> sys.stderr, "Maximum number of iterations reached: terminating"
   print "Converged! R_1 = %.4f" % state.r1_factor()
-  
+
   cleaned = charge_flipping.low_density_elimination_iterator(
     f_obs,
     rho_map=flipped.rho_map)
@@ -99,11 +99,11 @@ def solve(f_obs, command_line, i=0):
                         .merge_equivalents().array()
   symmetric_map = symmetric_sf.fft_map(
     symmetry_flags=maptbx.use_space_group_symmetry)
-  
+
   easy_pickle.dump(os.path.expanduser("~/Desktop/charge_flipping.pickle"),
                  (f_obs.crystal_symmetry().unit_cell(),
                   symmetric_map.real_map()))
-  
+
   peaks = symmetric_sf.fft_map(
     symmetry_flags=sgtbx.search_symmetry_flags(
       use_space_group_symmetry=True)
@@ -113,7 +113,7 @@ def solve(f_obs, command_line, i=0):
         min_distance_sym_equiv=1.5,
         max_clusters=15),
       verify_symmetry=False)
-  
+
   xs = xray.structure(crystal_symmetry=f_obs.crystal_symmetry())
   for i,s in enumerate(peaks.sites()):
     xs.add_scatterer(xray.scatterer(site=s, label='Q%i' % i,

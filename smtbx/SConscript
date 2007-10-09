@@ -34,4 +34,3 @@ if (not env_etc.no_boost_python):
 
   SConscript("refinement/SConscript")
   SConscript("ab_initio/SConscript")
-

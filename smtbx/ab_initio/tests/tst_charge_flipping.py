@@ -116,17 +116,17 @@ def exercise_fixed_delta(space_group_info, elements,
     # r1 decreasing function of the iteration number
     assert list(flex.sort_permutation(r1s, reverse=True))\
            == list(xrange(r1s.size()))
-    
+
     assert r1s[-1] < 0.12
     diffs = r1s[:-1] - r1s[1:]
     assert diffs[-3:].all_lt(0.01)
-    
+
     final_r1.append(r1s[-1])
     if verbose:
       print "Finished"
       print "\tR_1=%.3f" % r1s[-1]
       print
-  
+
   # The both of the basic and advanced charge flipping are compatible
   assert (approx_equal(final_r1[0], final_r1[1], 0.01, out=None))
 
@@ -146,7 +146,7 @@ def exercise(flags, space_group_info):
       debug=flags.Debug,
       verbose=flags.Verbose
     )
-    
+
     if flags.Verbose: print
 
 def run():
