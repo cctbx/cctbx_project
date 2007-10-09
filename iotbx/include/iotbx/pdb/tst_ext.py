@@ -1850,8 +1850,8 @@ model id=0 #chains=1
          " CA "
 """)
   try: pdb.input(file_name="")
-  except RuntimeError, e:
-    assert not show_diff(str(e), 'Cannot open file for reading: ""')
+  except IOError, e:
+    assert str(e).startswith('Cannot open file for reading: ""')
   else: raise RuntimeError("Exception expected.")
   #
   out = StringIO()
