@@ -1913,6 +1913,8 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return group_args(reflection_counts=rc, free_fractions=ff)
 
   def r1_factor(self, other, assume_index_matching=False):
+    """ sum ||F| - |F'|| / sum |F|
+    where F is self.data() and F' is other.data() """
     assert (self.observation_type() is None
             or self.is_complex_array() or self.is_xray_amplitude_array())
     assert (self.observation_type() is None
@@ -2449,6 +2451,7 @@ class merge_equivalents(object):
   def __init__(self, miller_array):
     self._r_linear = None
     self._r_square = None
+    self._r_int = None
     merge_type = {
       "bool": ext.merge_equivalents_exact_bool,
       "int": ext.merge_equivalents_exact_int,
