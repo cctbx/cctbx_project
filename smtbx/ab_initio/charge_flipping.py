@@ -34,10 +34,14 @@ from __future__ import division
 
 from libtbx import forward_compatibility
 from libtbx import object_oriented_patterns as oop
+
 from cctbx.array_family import flex
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import translation_search
+
+import ab_initio
+
 import math
 
 
@@ -97,7 +101,7 @@ class _fft_extension(oop.injector, miller.fft_map):
 
 class density_modification_iterator(object):
 
-  def __init__(self, f_obs):
+  def __init__(self, f_obs, rho_map=None):
     assert f_obs.data() is not None
     self.original_f_obs = f_obs
     self.f_obs = f_obs.expand_to_p1()\
@@ -105,21 +109,23 @@ class density_modification_iterator(object):
         .merge_equivalents().array()\
         .discard_sigmas()
 
-    # Initial rho is the alter ego of f_obs with f_000 = 0 and random phases
-    f = self.f_obs.randomize_phases()
     self.symmetry_flags = maptbx.use_space_group_symmetry
-    self.rho_map = f.fft_map(symmetry_flags=self.symmetry_flags)
+    if rho_map is None:
+      # Initial rho is the alter ego of f_obs with f_000 = 0 and random phases
+      f = self.f_obs.randomize_phases()
+      rho_map = f.fft_map(symmetry_flags=self.symmetry_flags)
+    self.rho_map = rho_map
 
   def __iter__(self):
     return self
 
   def next(self):
-    rho = self.rho_map.real_map_unpadded()
+    rho = self.rho_map.real_map()
     self.modify_electron_density(rho)
-    self.compute_structure_factors(rho)
+    self.g, self.g_000 = self.compute_structure_factors(rho)
     f = self.transfer_phase_from_g_to_f_obs()
-    self.rho_map = f.fft_map(f_000=self.g_000,
-                             symmetry_flags=maptbx.use_space_group_symmetry)
+    self.rho_map = self.compute_fft_map(f)
+
     return self # iterator-is-its-own-state trick
 
   def compute_structure_factors(self, rho):
@@ -127,17 +133,23 @@ class density_modification_iterator(object):
     as well as the 000 component self.g_000, scaling them by the number of
     grid points """
     scale = 1/rho.size()
-    self.g = self.f_obs.structure_factors_from_map(rho)
-    self.g *= scale
-    self.g_000 = flex.sum(rho) * scale
+    g_000 = flex.sum(rho) * scale
+    g = self.f_obs.structure_factors_from_map(rho, in_place_fft=True)
+    g *= scale
+    return g, g_000
 
   def transfer_phase_from_g_to_f_obs(self):
     return self.f_obs.phase_transfer(self.g)
 
+  def compute_fft_map(self, f):
+    return f.fft_map(f_000=self.g_000,
+                     symmetry_flags=maptbx.use_space_group_symmetry)
+
   def r1_factor(self):
     return self.f_obs.r1_factor(self.g, assume_index_matching=True)
 
-  def correlation_map_peak_cluster_analysis(self):
+  def correlation_map_peak_cluster_analysis(self,
+                                            return_correlation_map_too=False):
     """ The fast correlation map as per cctbx.translation_search.fast_nv1995
     is computed and its peaks studied """
     f_obs = self.original_f_obs
@@ -160,12 +172,19 @@ class density_modification_iterator(object):
       peak_search_level=1,
       peak_cutoff=0.1,
       interpolate=True,
-      min_distance_sym_equiv=1.5,
+      min_distance_sym_equiv=1.,
       max_clusters=24)
     result = crystal_gridding.tags().peak_search(
       map=correlation_map,
       parameters=search_parameters)
+    if return_correlation_map_too:
+      result = (result, correlation_map)
     return result
+  
+  def apply_shift(self, t):
+    phase_shifts = -2*math.pi*self.g.indices().as_vec3_double().dot(t)
+    phase_shifts *= flex.arg(self.g.data())
+    self.g.phase_transfer(phase_shifts)
 
 
 class basic_iterator(density_modification_iterator):
@@ -178,8 +197,8 @@ class basic_iterator(density_modification_iterator):
     self.rho is actually V*rho where V is the unit cell volume
   """
 
-  def __init__(self, f_obs, delta):
-    super(basic_iterator, self).__init__(f_obs)
+  def __init__(self, f_obs, delta, **kwds):
+    super(basic_iterator, self).__init__(f_obs, **kwds)
     self.delta = delta
     if delta is None: self.initialise_delta()
 
@@ -188,11 +207,7 @@ class basic_iterator(density_modification_iterator):
 
   def modify_electron_density(self, rho):
     """ This shall modify rho in place """
-    rho_1d_view = rho.as_1d()
-    flipped_selection = rho_1d_view < self.delta
-    flipped = rho_1d_view.select(flipped_selection)
-    flipped *= -1
-    rho_1d_view.set_selected(flipped_selection, flipped)
+    ab_initio.ext.flip_charges_in_place(rho, self.delta)
 
 
 class weak_reflection_improved_iterator(basic_iterator):
@@ -200,8 +215,10 @@ class weak_reflection_improved_iterator(basic_iterator):
 
   def __init__(self, f_obs, delta=None,
                delta_varphi=math.pi/2,
-               weak_reflection_fraction=0.2):
-    super(weak_reflection_improved_iterator, self).__init__(f_obs, delta)
+               weak_reflection_fraction=0.2,
+               **kwds):
+    super(weak_reflection_improved_iterator,
+          self).__init__(f_obs, delta, **kwds)
     self.delta_varphi = delta_varphi
     self.weak_reflection_fraction = weak_reflection_fraction
 
@@ -223,9 +240,11 @@ class low_density_elimination_iterator(density_modification_iterator):
   C.f. Ref [4].
   """
 
-  def __init__(self, f_obs, average_fraction=0.2):
-    super(low_density_elimination_iterator, self).__init__(f_obs)
-    self.average_fraction = average_fraction
+  def __init__(self, f_obs,
+               rho_c=lambda positives: 0.2*flex.mean(positives),
+               **kwds):
+    super(low_density_elimination_iterator, self).__init__(f_obs, **kwds)
+    self.rho_c = rho_c
 
   def modify_electron_density(self, rho):
     rho_1d_view = rho.as_1d()
@@ -233,7 +252,10 @@ class low_density_elimination_iterator(density_modification_iterator):
     rho_1d_view.set_selected(negative_selection, 0)
     positive_selection = ~negative_selection
     positives = rho_1d_view.select(positive_selection)
-    rho_c = flex.mean(positives)
-    a = -1/(2*(self.average_fraction*rho_c)**2)
+    a = -1/(2*self.rho_c(positives)**2)
     positives *= 1 - flex.exp(a*positives*positives)
     rho_1d_view.set_selected(positive_selection, positives)
+
+    def compute_fft_map(self, f):
+      return f.fft_map(symmetry_flags=maptbx.use_space_group_symmetry)
+      
