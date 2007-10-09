@@ -95,10 +95,10 @@ def exercise_fixed_delta(space_group_info, elements,
                   advanced_iter(f_obs, delta),
                   ):
     if verbose:
-      print "%s" % type(flipped).__name__
-      print "delta starting at %.3f * max_rho_target" % (flipped.delta
-                                                         /max_rho_target)
-      print
+      print "Starting %s" % type(flipped).__name__
+      print "\tdelta/max(rho_target) = %.4f" % (flipped.delta/max_rho_target)
+      print "\tR_1 = %.3f" % f_target_in_p1.r1_factor(
+        f_target_in_p1.structure_factors_from_map(flipped.rho_map.real_map()))
     r1s = flex.double()
     for i,state in enumerate(itertbx.islice(flipped, 10)):
       isinstance(state, charge_flipping.density_modification_iterator)
@@ -107,32 +107,27 @@ def exercise_fixed_delta(space_group_info, elements,
       if debug:
         rho = state.rho_map.real_map()
         pos = (rho > 0).count(True) / rho.size()
-        print "%i: delta=%.5f" % (i,state.delta)
+        print "\t%i: delta=%.5f" % (i,state.delta)
         indent = " "*(len("%i" % i) + 1)
-        print indent, "R1=%.5f" % r1
-        print indent, "fraction of positive pixels=%.3f" % pos
-        print indent, "total charge=%.3f" % state.g_000
+        print indent, "\tR1=%.5f" % r1
+        print indent, "\tfraction of positive pixels=%.3f" % pos
+        print indent, "\ttotal charge=%.3f" % state.g_000
 
     # r1 decreasing function of the iteration number
     assert list(flex.sort_permutation(r1s, reverse=True))\
            == list(xrange(r1s.size()))
-    diffs = r1s[:-1] - r1s[1:]
+    
     assert r1s[-1] < 0.12
+    diffs = r1s[:-1] - r1s[1:]
     assert diffs[-3:].all_lt(0.01)
+    
     final_r1.append(r1s[-1])
-
-    # clean the map
-    cleaned = charge_flipping.low_density_elimination_iterator(flipped.f_obs)
-    for state in itertbx.islice(cleaned, 10): pass
-    assert f_target_in_p1.r1_factor(state.g) < 1.5*r1s[-1]
-
-    # analyse the correlation map in search for the translation
-    # bringing the structure back to the setting of f_obs space group
-    cc_peaks = state.correlation_map_peak_cluster_analysis().all()
-    assert cc_peaks.sites().size() == 1
-    assert cc_peaks.heights()[0] > 0.9
-
-
+    if verbose:
+      print "Finished"
+      print "\tR_1=%.3f" % r1s[-1]
+      print
+  
+  # The both of the basic and advanced charge flipping are compatible
   assert (approx_equal(final_r1[0], final_r1[1], 0.01, out=None))
 
 
@@ -151,6 +146,8 @@ def exercise(flags, space_group_info):
       debug=flags.Debug,
       verbose=flags.Verbose
     )
+    
+    if flags.Verbose: print
 
 def run():
   import sys
@@ -158,4 +155,13 @@ def run():
   print 'OK'
 
 if __name__ == '__main__':
-  run()
+  import sys
+  if '--profile' in sys.argv:
+    import profile
+    import pstats
+    sys.argv.remove('--profile')
+    profile.run('run()', 'charge_flipping.prof')
+    p = pstats.Stats('charge_flipping.prof')
+    p.strip_dirs().sort_stats('time').print_stats(10)
+  else:
+    run()
