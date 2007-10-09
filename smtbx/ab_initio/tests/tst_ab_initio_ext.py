@@ -25,24 +25,24 @@ def run():
     xray_structure=structure,
     algorithm="direct").f_calc()
   fft_map = f_obs.fft_map(symmetry_flags=maptbx.use_space_group_symmetry)
-  
+
   padded = fft_map.real_map()
   unpadded = fft_map.real_map_unpadded() # copy
   unpadded_1d = unpadded.as_1d() # 1D view => in-place
   mmm = flex.min_max_mean_double(unpadded_1d)
-  
+
   for delta in ((mmm.min + mmm.mean)/2, mmm.mean, (mmm.mean + mmm.max)/2):
     # in-place charge flipping
     ab_initio.ext.flip_charges_in_place(padded, delta)
-    
+
     # same but on an unpadded copy using the flex tools
     flipped_selection = unpadded_1d < delta
     flipped = unpadded_1d.select(flipped_selection)
     flipped *= -1
     unpadded_1d.set_selected(flipped_selection, flipped)
-  
+
     assert approx_equal(padded, unpadded, 1e-15)
-  
+
   print format_cpu_times()
 
 
