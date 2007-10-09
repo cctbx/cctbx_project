@@ -16,10 +16,8 @@ from cctbx import eltbx
 import mmtbx.f_model
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 from iotbx.pdb import crystal_symmetry_from_pdb
+from libtbx import smart_open
 from libtbx.str_utils import show_string
-try: import gzip
-except ImportError: gzip = None
-
 
 """
 Notes on CIF (source: http://www.ccp4.ac.uk/html/mtz2various.html)
@@ -875,16 +873,7 @@ def run(args, command_name = "phenix.cif_as_mtz"):
   file_name = command_line.args[0]
   if(not os.path.isfile(file_name)):
     raise Sorry("File is not found: %s"%file_name)
-  if(file_name.endswith(".gz")):
-    if(gzip is None):
-      raise RuntimeError(
-        "gzip module not available: cannot uncompress file %s"%
-        show_string(file_name))
-    file_lines = flex.split_lines(gzip.open(file_name).read())
-  else:
-    ifo = open(file_name, "r")
-    file_lines = ifo.readlines()
-    ifo.close()
+  file_lines = smart_open.for_reading(file_name=file_name).read().splitlines()
   mtz_object = extract(
     file_name        = file_name,
     file_lines       = file_lines,
@@ -893,16 +882,8 @@ def run(args, command_name = "phenix.cif_as_mtz"):
   if(mtz_object is not None):
     pdb_file_name = command_line.options.use_model
     if(pdb_file_name):
-      if(pdb_file_name.endswith(".gz")):
-        if(gzip is None):
-          raise RuntimeError(
-            "gzip module not available: cannot uncompress file %s"%
-            show_string(pdb_file_name))
-        pdb_raw_records = flex.split_lines(gzip.open(pdb_file_name).read())
-      else:
-        ifo = open(pdb_file_name, "r")
-        pdb_raw_records = ifo.readlines()
-        ifo.close()
+      pdb_raw_records = smart_open.for_reading(
+        file_name=pdb_file_name).read().splitlines()
       mtz_object = guess_observation_type(
         file_name       = pdb_file_name,
         pdb_raw_records = pdb_raw_records,

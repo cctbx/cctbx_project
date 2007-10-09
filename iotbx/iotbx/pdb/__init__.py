@@ -6,13 +6,10 @@ from iotbx_pdb_ext import *
 
 import scitbx.array_family.shared
 import scitbx.stl.set
-from libtbx import easy_run
+from libtbx import smart_open
 from libtbx.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
-from libtbx.utils import escape_sh_double_quoted
 from libtbx.itertbx import count
-try: import gzip
-except ImportError: gzip = None
 import sys
 
 rna_dna_reference_residue_names = {
@@ -153,22 +150,9 @@ def input(
     source_info=Please_pass_string_or_None,
     lines=None):
   if (file_name is not None):
-    assert source_info is Please_pass_string_or_None and lines is None
-    if (file_name.endswith(".gz")):
-      if (gzip is None):
-        raise RuntimeError(
-          "gzip module not available: cannot uncompress file %s"
-            % show_string(file_name))
-      return ext.input(
-        source_info=file_name,
-        lines=flex.split_lines(gzip.open(file_name).read()))
-    if (file_name.endswith(".Z")):
-      return ext.input(
-        source_info=file_name,
-        lines=flex.split_lines(easy_run.fully_buffered(
-          command='gunzip -c "%s"' % escape_sh_double_quoted(file_name),
-          stdout_splitlines=False).raise_if_errors().stdout_buffer))
-    return ext.input(file_name=file_name)
+    return ext.input(
+      source_info="file " + file_name,
+      lines=flex.split_lines(smart_open.for_reading(file_name).read()))
   assert source_info is not Please_pass_string_or_None
   return ext.input(source_info=source_info, lines=lines)
 

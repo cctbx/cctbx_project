@@ -52,6 +52,7 @@ libtbx/libtbx/command_line/sh.sh -text
 libtbx/libtbx/command_line/show_environ_usage.py svneol=native#text/x-python
 libtbx/libtbx/command_line/tcsh.sh -text
 libtbx/libtbx/object_oriented_patterns.py -text
+libtbx/libtbx/smart_open.py svneol=native#text/x-python
 libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx/subversion.py -text
 libtbx/libtbx/tst_itertbx.py -text
