@@ -2490,6 +2490,8 @@ def exercise_first_index_etc():
   assert flex.first_index(a, -1) == 1
   assert flex.last_index(a, 0) == 8
   assert flex.last_index(a, -1) == 4
+  assert flex.first_index(a, 10) is None
+  assert flex.last_index(a, 66) is None
 
 def run(iterations):
   i = 0
