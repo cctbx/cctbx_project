@@ -54,6 +54,12 @@ namespace scitbx { namespace af {
 
       const ElementType* begin() const { return begin_; }
       const ElementType* end() const { return end_; }
+      const_reverse_iterator rbegin() const {
+        return const_reverse_iterator(end_);
+      }
+      const_reverse_iterator rend() const {
+        return const_reverse_iterator(begin_);
+      }
       ElementType const& front() const { return begin_[0]; }
       ElementType const& back() const { return end_[-1]; }
 
@@ -185,6 +191,14 @@ namespace scitbx { namespace af {
 
       ElementType*
       end() const { return const_cast<ElementType*>(this->end_); }
+
+      reverse_iterator rbegin() const {
+        return reverse_iterator(this->end_);
+      }
+
+      reverse_iterator rend() const {
+        return reverse_iterator(this->begin_);
+      }
 
       ElementType&
       front() const { return begin()[0]; }

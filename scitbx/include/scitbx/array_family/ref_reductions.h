@@ -53,27 +53,31 @@ namespace scitbx { namespace af {
     return result;
   }
 
-  template <typename ElementType, typename AccessorType, typename PredicateType>
-  std::pair< boost::optional<std::size_t>, boost::optional<ElementType> >
-  find_partial_sum(
-    const_ref<ElementType, AccessorType> const& a,
-    PredicateType pred,
-    std::size_t first_index=0)
+  template<typename ElementType, typename AccessorType, class PredicateType>
+  boost::optional<std::size_t>
+  first_index(const_ref<ElementType, AccessorType> const& a,
+              PredicateType p)
   {
-    if (a.size() == 0) {
-      throw std::runtime_error(
-        "find_partial_sum() was passed an empty array");
-    }
-    std::pair< boost::optional<std::size_t>,
-               boost::optional<ElementType> > result;
-    ElementType partial_sum = 0;
-    for(std::size_t i=first_index; i < a.size(); i++) {
-      partial_sum += a[i];
-      if ( pred(partial_sum) ) {
-        result = std::make_pair(i, partial_sum);
-        break;
-      }
-    }
+    typedef
+      typename const_ref<ElementType, AccessorType>::const_iterator
+      iter;
+    boost::optional<std::size_t> result;
+    iter i = std::find_if(a.begin(), a.end(), p);
+    if (i != a.end()) result = i - a.begin();
+    return result;
+  }
+
+  template<typename ElementType, typename AccessorType, class PredicateType>
+  boost::optional<std::size_t>
+  last_index(const_ref<ElementType, AccessorType> const& a,
+             PredicateType p)
+  {
+    typedef
+      typename const_ref<ElementType, AccessorType>::const_reverse_iterator
+               iter;
+    boost::optional<std::size_t> result;
+    iter i = std::find_if(a.rbegin(), a.rend(), p);
+    if (i != a.rend()) result = a.rend() - i - 1;
     return result;
   }
 

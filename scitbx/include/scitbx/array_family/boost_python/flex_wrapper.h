@@ -544,6 +544,16 @@ namespace scitbx { namespace af { namespace boost_python {
       return flex_double(result, a.accessor());
     }
 
+    static boost::optional<std::size_t>
+    first_index_a_s(f_t const& a, e_t x) {
+      return first_index(a, std::bind2nd(std::equal_to<e_t>(), x));
+    }
+
+    static boost::optional<std::size_t>
+    last_index_a_s(f_t const& a, e_t x) {
+      return last_index(a, std::bind2nd(std::equal_to<e_t>(), x));
+    }
+
     static f_t neg_a(f_t const& a) { return -a; }
     static f_t add_a_a(f_t const& a1, f_t const& a2) { return a1 + a2; }
     static f_t sub_a_a(f_t const& a1, f_t const& a2) { return a1 - a2; }
@@ -668,13 +678,6 @@ namespace scitbx { namespace af { namespace boost_python {
     static e_t norm_a(f_t const& a) { return norm(a.const_ref()); }
     static e_t mean_a(f_t const& a) { return mean(a); }
     static e_t mean_sq_a(f_t const& a) { return mean_sq(a); }
-
-    static
-    std::pair< boost::optional<std::size_t>, boost::optional<e_t> >
-    find_partial_sum_greater_than_a_s(f_t const& a, e_t t, std::size_t i)
-    {
-      return find_partial_sum(a, std::bind2nd(std::greater<e_t>(), t), i);
-    }
 
     static e_t
     mean_weighted_a_a(f_t const& a1, f_t const& a2)
@@ -885,9 +888,8 @@ namespace scitbx { namespace af { namespace boost_python {
         def("max", max_a);
         def("pow2", pow2_a);
         def("order", order_a_a);
-        def("find_partial_sum_greater_than",
-            find_partial_sum_greater_than_a_s,
-            (arg_("array"), arg_("threshold"), arg_("first_index")=0));
+        def("first_index", first_index_a_s);
+        def("last_index", last_index_a_s);
       }
       return numeric_common(python_name, flex_root_scope)
         .def("as_double", as_double)

@@ -1132,6 +1132,7 @@ def exercise_flex_vec3_double():
   a = flex.vec3_double(x,y,z)
   assert approx_equal(tuple(a), ((1,4,7), (2,5,8), (3,6,9)))
   assert approx_equal(tuple(a.dot(a)), (66,93,126))
+  assert approx_equal(tuple(a.dot((1,1,1))), (12, 15, 18))
   assert approx_equal(tuple(a.dot()), (66,93,126))
   b = flex.vec3_double(z,x,y)
   assert approx_equal(
@@ -2482,19 +2483,18 @@ def exercise_condense_as_ranges():
   a = flex.int([3,4,5,7,8,9,10])
   assert flex.condense_as_ranges(integer_array=a) == [(3,5),(7,10)]
 
-def exercise_partial_sums():
-  a = flex.double([1, 2, -4, 0, 1, 4, -2])
-  assert flex.find_partial_sum_greater_than(a, 2.9) == (1, 3.)
-  assert flex.find_partial_sum_greater_than(a, 3.9) == (5, 4.)
-  assert flex.find_partial_sum_greater_than(a, 4) == (None, None)
-  assert flex.find_partial_sum_greater_than(a, 0.8, first_index=2) == (5, 1.)
-  assert flex.find_partial_sum_greater_than(a, 1.1,
-                                            first_index=2) == (None,None)
+def exercise_first_index_etc():
+  """ first_index, last_index, method index """
+  a = flex.int([4, -1, 3, 2, -1, 0, -3, 5, 0, 6, 8, 5])
+  assert flex.first_index(a, 4) == 0
+  assert flex.first_index(a, -1) == 1
+  assert flex.last_index(a, 0) == 8
+  assert flex.last_index(a, -1) == 4
 
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
-    exercise_partial_sums()
+    exercise_first_index_etc()
     exercise_flex_grid()
     exercise_flex_constructors()
     exercise_misc()
