@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_single_buffered.h>
 #include <boost/python/args.hpp>
+#include <boost/python/scope.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
 
@@ -338,6 +339,13 @@ namespace {
     using namespace boost::python;
 
     typedef flex_wrapper<bool> f_w;
+
+    {
+      scope local_scope(scope());
+      def("first_index", f_w::first_index_a_s);
+      def("last_index", f_w::last_index_a_s);
+    }
+
     f_w::plain("bool")
       .def_pickle(flex_pickle_single_buffered<bool>())
       .def("__init__", make_constructor(

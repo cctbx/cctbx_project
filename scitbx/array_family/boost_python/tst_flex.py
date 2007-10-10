@@ -2493,6 +2493,17 @@ def exercise_first_index_etc():
   assert flex.first_index(a, 10) is None
   assert flex.last_index(a, 66) is None
 
+  a = flex.bool((True, True, False, True, False, False, True, False))
+  assert flex.first_index(a, False) == 2
+  assert flex.last_index(a, True) == 6
+  assert flex.first_index(a, True) == 0
+  assert flex.last_index(a, False) == len(a)-1
+
+  a = flex.std_string(("a", "b", "c", "b", "d", "e", "f"))
+  assert flex.first_index(a, "b") == 1
+  assert flex.last_index(a, "b") == 3
+  assert flex.first_index(a, "z") is None
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
