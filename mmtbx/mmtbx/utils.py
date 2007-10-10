@@ -493,13 +493,15 @@ def atom_selection(all_chain_proxies, string):
 
 def write_pdb_file(xray_structure,
                    atom_attributes_list,
+                   write_cryst1_record = True,
                    selection = None,
                    out = None):
   if(out is None): out = sys.stdout
   crystal_symmetry = xray_structure.crystal_symmetry()
-  print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
-  print >> out, pdb.format_scale_records(
-                                      unit_cell = crystal_symmetry.unit_cell())
+  if(write_cryst1_record):
+    print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
+    print >> out, pdb.format_scale_records(
+      unit_cell = crystal_symmetry.unit_cell())
   xrs = xray_structure
   sites_cart  = xrs.sites_cart()
   scatterers  = xrs.scatterers()
