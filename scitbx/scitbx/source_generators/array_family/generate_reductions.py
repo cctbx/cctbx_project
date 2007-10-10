@@ -39,6 +39,20 @@ def generate_max_index_etc(f, subs):
   }
 """)
 
+def generate_first_index_etc(f, subs):
+  for func_name in ("first_index", "last_index"):
+    subs["func_name"] = func_name
+    print >> f, substitute(subs, """
+  template <typename ElementType${templ_decl_2}, class PredicateType>
+  inline
+  boost::optional<std::size_t>
+  ${func_name}(${array_type_plain}<ElementType${templ_inst_2}> const& a,
+               PredicateType p)
+  {
+    return ${func_name}(a.const_ref(), p);
+  }
+""")
+
 def generate_max_etc(f, subs):
   for func_name in ("max", "min", "max_absolute",
                     "sum", "sum_sq",
@@ -70,22 +84,6 @@ def generate_mean_weighted_etc(f, subs):
   }
 """)
 
-def generate_find_partial_sum(f, subs):
-  for func_name in ("find_partial_sum",):
-    subs["func_name"] = func_name
-    print >> f, substitute(subs, """
-  template <typename ElementType${templ_decl_2}, class PredicateType>
-  inline
-  std::pair< boost::optional<std::size_t>, boost::optional<ElementType> >
-  ${func_name}(
-    ${array_type_plain}<ElementType${templ_inst_2}> const& a,
-    PredicateType pred,
-    std::size_t first_index=0)
-  {
-    return ${func_name}(a.const_ref(), pred, first_index);
-  }
-""")
-
 def one_type(target_dir, subs):
   array_type = subs["array_type"]
   subs["array_type_plain"] = array_type + "_plain"
@@ -108,7 +106,7 @@ namespace scitbx { namespace af {
   generate_max_index_etc(f, subs)
   generate_max_etc(f, subs)
   generate_mean_weighted_etc(f, subs)
-  generate_find_partial_sum(f, subs)
+  generate_first_index_etc(f, subs)
 
   print >> f, substitute(subs, """
 }} // namespace scitbx::af

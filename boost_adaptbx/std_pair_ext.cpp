@@ -17,11 +17,5 @@ BOOST_PYTHON_MODULE(std_pair_ext)
 
   to_tuple<int, double>();
 
-  // next 4 needed for flex.find_partial_sum_xxx
-  to_tuple< optional<std::size_t>, optional<int>      >();
-  to_tuple< optional<std::size_t>, optional<unsigned> >();
-  to_tuple< optional<std::size_t>, optional<float>    >();
-  to_tuple< optional<std::size_t>, optional<double>   >();
-
   boost::python::def("exercise", exercise);
 }
