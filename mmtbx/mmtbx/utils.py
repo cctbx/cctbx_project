@@ -322,6 +322,11 @@ def process_pdb_file(pdb_file_names,
       raw_records.extend(open(file_name).readlines())
       raw_records_flex.extend(flex.split_lines(open(file_name).read()))
     pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records_flex)
+  if (pdb_inp.atoms().size() == 0):
+    msg = ["No atomic coordinates found in PDB files:"]
+    for file_name in pdb_file_names:
+      msg.append("  %s" % show_string(file_name))
+    raise Sorry("\n".join(msg))
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv              = mon_lib_srv,
     ener_lib                 = ener_lib,
