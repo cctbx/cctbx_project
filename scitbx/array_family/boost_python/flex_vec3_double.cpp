@@ -198,6 +198,18 @@ namespace {
   }
 
   af::shared<double>
+  dot_a_s(
+    af::const_ref<vec3<double> > const& lhs,
+    vec3<double> rhs)
+  {
+    af::shared<double> result((af::reserve(lhs.size())));
+    for(std::size_t i=0;i<lhs.size();i++) {
+      result.push_back(lhs[i] * rhs);
+    }
+    return result;
+  }
+
+  af::shared<double>
   dot_a(
     af::const_ref<vec3<double> > const& lhs)
   {
@@ -312,6 +324,7 @@ namespace boost_python {
       .def("__truediv__", div_a_as)
       .def("__mul__", mul_a_mat3)
       .def("__rmul__", rmul_a_mat3)
+      .def("dot", dot_a_s)
       .def("dot", dot_a_a)
       .def("dot", dot_a)
       .def("transpose_multiply",
