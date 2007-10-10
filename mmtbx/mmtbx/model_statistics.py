@@ -8,7 +8,7 @@ from mmtbx.tls import tools
 from libtbx.itertbx import count
 from libtbx.str_utils import line_breaker
 import mmtbx.f_model
-
+from libtbx.str_utils import format_value
 
 class geometry(object):
   def __init__(self,
@@ -26,7 +26,7 @@ class geometry(object):
     self.number_of_restraints = 0.0
     energies_sites = \
       restraints_manager.energies_sites(sites_cart        = sites_cart,
-                                        compute_gradients = False)
+                                        compute_gradients = True)
     esg = energies_sites.geometry
     b_deviations = esg.bond_deviations()
     n_deviations = esg.nonbonded_deviations()
@@ -49,7 +49,18 @@ class geometry(object):
     self.target = esg.target # XXX normalization ?
     assert approx_equal(self.target, self.a_target+self.b_target+self.c_target+
       self.d_target+self.p_target+self.n_target)
+    self.norm_of_gradients = esg.gradients.norm()
     self.number_of_restraints = esg.number_of_restraints # XXX normalization ?
+    #
+    if(self.number_of_restraints > 0):
+      self.target = self.target / self.number_of_restraints
+    if(self.a_number > 0): self.a_target = self.a_target/self.a_number
+    if(self.b_number > 0): self.b_target = self.b_target/self.b_number
+    if(self.c_number > 0): self.c_target = self.c_target/self.c_number
+    if(self.d_number > 0): self.d_target = self.d_target/self.d_number
+    if(self.p_number > 0): self.p_target = self.p_target/self.p_number
+    if(self.n_number > 0): self.n_target = self.n_target/self.n_number
+    #
     rmg = restraints_manager.geometry
     bond_deltas = geometry_restraints.bond_deltas(
                           sites_cart         = sites_cart,
@@ -65,7 +76,7 @@ class geometry(object):
     self.nonbonded_distances_histogram = flex.histogram(
       data = flex.abs(nonbonded_distances), n_slots = n_histogram_slots)
 
-  def show(self, out=None, prefix="", pdb_deposition=False):
+  def show(self, out=None, prefix="", pdb_deposition=False, message = ""):
     if(out is None): out = sys.stdout
     if(pdb_deposition):
       prefix = "REMARK   3  "
@@ -73,37 +84,78 @@ class geometry(object):
       print >> out, prefix
       self.show_bond_angle_nonbonded_histogram_2(out = out, prefix = prefix)
     else:
-      self.show_bond_angle_nonbonded_histogram_1(out = out, prefix = prefix)
-      self.show_overall_1(out = out, prefix = prefix)
+      self.show_bond_angle_nonbonded_histogram_1(out = out, message = message)
+      self.show_overall_1(out = out, message = message)
 
-  def show_bond_angle_nonbonded_histogram_1(self, out = None, prefix = ""):
+  def show_bond_angle_nonbonded_histogram_1(self, out = None, message = ""):
     if(out is None): out = sys.stdout
-    print >> out, \
-        prefix+"|------------------------------------------------------------|"
-    print >> out, \
-        prefix+"|        Histogram of deviations from ideal values for       |"
-    print >> out, \
-        prefix+"|Bonds             |Angles                |Nonbonded contacts|"
-    fmt = "|%5.3f-%5.3f:%6d|%7.3f-%7.3f:%6d|%5.3f-%5.3f:%6d|"
-    self._bond_angle_nonbonded_histogram(out=out, prefix=prefix, format=fmt)
-    print >> out, \
-        prefix+"|------------------------------------------------------------|"
+    if(len(message) > 0): message_ = "|-Geometry statistics: "+message
+    else: message_ = "|-Geometry statistics"
+    line_len = len(message_+"|")
+    fill_len = 80-line_len-1
+    print >> out, message_+"-"*(fill_len)+"|"
+    print >> out, "|            Histogram of deviations from ideal values for                    |"
+    print >> out, "| Bonds                | Angles                   |  Nonbonded contacts       |"
+    fmt = "| %5.3f - %5.3f: %5d | %7.3f - %7.3f: %5d | %6.3f - %6.3f: %8d |"
+    self._bond_angle_nonbonded_histogram(out=out, prefix="", format=fmt)
+    print >> out, "|"+"-"*77+"|"
     out.flush()
 
-  def show_overall_1(self, out = None, prefix = ""):
+  def show_overall_1(self, out = None, message = ""):
     if(out is None): out = sys.stdout
-    fmt1 = "|%7.3f%8.3f%7.3f|%12.3f|              |"
-    fmt2 = "|%7.3f%8.3f%7.3f|%12.3f|%12.3f  |"
-    print >> out, prefix+"|-Geometry statistics----------------------------------------|"
-    print >> out, prefix+"|Type     | Deviation from ideal |   Targets  |Target (sum)  |"
-    print >> out, prefix+"|         |  rmsd     max    min |            |              |"
-    print >> out, prefix+"|bond     "+fmt1%(self.b_mean,self.b_max,self.b_min,self.b_target)
-    print >> out, prefix+"|angle    "+fmt1%(self.a_mean,self.a_max,self.a_min,self.a_target)
-    print >> out, prefix+"|chirality"+fmt2%(self.c_mean,self.c_max,self.c_min,self.c_target,self.target)
-    print >> out, prefix+"|planarity"+fmt1%(self.p_mean,self.p_max,self.p_min,self.p_target)
-    print >> out, prefix+"|dihedral "+fmt1%(self.d_mean,self.d_max,self.d_min,self.d_target)
-    print >> out, prefix+"|nonbonded"+fmt1%(self.n_mean,self.n_max,self.n_min,self.n_target)
-    print >> out, prefix+"|------------------------------------------------------------|"
+    fmt = "| %s | %s | %s %s %s | %s | %s |"
+    if(len(message) > 0): message_ = "|-Geometry statistics: "+message
+    else: message_ = "|-Geometry statistics"
+    line_len = len(message_+"|")
+    fill_len = 80-line_len-1
+    s0 = message_+"-"*(fill_len)+"|"
+    s1 = "|      Type |    Count |    Deviation from ideal |     Targets | Target (sum) |"
+    s2 = "|           |          |    rmsd      max    min |             |              |"
+    s3 = fmt%(format_value("%9s","bond"),
+              format_value("%8d",self.b_number),
+              format_value("%7.3f",self.b_mean),
+              format_value("%8.3f",self.b_max),
+              format_value("%6.3f",self.b_min),
+              format_value("%11.3f",self.b_target),
+              format_value("%12s"," "))
+    s4 = fmt%(format_value("%9s","angle"),
+              format_value("%8d",self.a_number),
+              format_value("%7.3f",self.a_mean),
+              format_value("%8.3f",self.a_max),
+              format_value("%6.3f",self.a_min),
+              format_value("%11.3f",self.a_target),
+              format_value("%12s"," "))
+    s5 = fmt%(format_value("%9s","chirality"),
+              format_value("%8d",self.c_number),
+              format_value("%7.3f",self.c_mean),
+              format_value("%8.3f",self.c_max),
+              format_value("%6.3f",self.c_min),
+              format_value("%11.3f",self.c_target),
+              format_value("%12.3f",self.target))
+    s6 = fmt%(format_value("%9s","planarity"),
+              format_value("%8d",self.p_number),
+              format_value("%7.3f",self.p_mean),
+              format_value("%8.3f",self.p_max),
+              format_value("%6.3f",self.p_min),
+              format_value("%11.3f",self.p_target),
+              format_value("%12s"," "))
+    s7 = fmt%(format_value("%9s","dihedral"),
+              format_value("%8d",self.d_number),
+              format_value("%7.3f",self.d_mean),
+              format_value("%8.3f",self.d_max),
+              format_value("%6.3f",self.d_min),
+              format_value("%11.3f",self.d_target),
+              format_value("%12s"," "))
+    s8 = fmt%(format_value("%9s","nonbonded"),
+              format_value("%8d",self.n_number),
+              format_value("%7.3f",self.n_mean),
+              format_value("%8.3f",self.n_max),
+              format_value("%6.3f",self.n_min),
+              format_value("%11.3f",self.n_target),
+              format_value("%12s"," "))
+    s9 = "|"+"-"*77+"|"
+    for line in [s0,s1,s2,s3,s4,s5,s6,s7,s8,s9]:
+      print >> out, line
     out.flush()
 
   def show_bond_angle_nonbonded_histogram_2(self, out = None, prefix = ""):
@@ -264,8 +316,8 @@ class adp(object):
     result1, result2 = result[:len(result)/2], result[len(result)/2:]
     fmt = "|"+pad_l+"   %d:%10.3f -%8.3f:%5d   |   %d:%10.3f -%8.3f:%5d    "+pad_r+"|"
     for r1, r2 in zip(result1, result2):
-      print >> out, self.prefix+fmt%(r1[0],r1[1],r1[2],r1[3], r2[0],r2[1],r2[2],r2[3])
-    print >> out, self.prefix+"|"+pad_l+\
+      print >> out, fmt%(r1[0],r1[1],r1[2],r1[3], r2[0],r2[1],r2[2],r2[3])
+    print >> out, "|"+pad_l+\
      "                            =>continue=>                              "+\
      pad_r+"|"
 
@@ -306,14 +358,14 @@ class adp(object):
     name = "|"+pad_l+"    Distribution of isotropic (or equivalent) ADP for non-H atoms:    "+pad_r+"|"
     print >> out, prefix+name
     print >> out, prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|"
-    self._histogram(values = self.b_a_noH_histogram, out = out, pad_l=pad_l,pad_r=pad_r)
+    self._histogram(histogram = self.b_a_noH_histogram, out = out, pad_l=pad_l,pad_r=pad_r)
     #
     if(self._show_anisotropy):
        print >> out, prefix+"|"+pad_l+" "+"- "*34+pad_r+" |"
        name = "|"+pad_l+"                     Distribution of anisotropy:                      "+pad_r+"|"
-       print >> out, self.prefix+name
-       print >> out, self.prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|"
-       self._histogram(values = self.a_a_noH_histogram, out = out, pad_l=pad_l,pad_r=pad_r)
+       print >> out, prefix+name
+       print >> out, prefix+"|"+pad_l+" Bin#      value range     #atoms | Bin#      value range     #atoms  "+pad_r+"|"
+       self._histogram(histogram = self.a_a_noH_histogram, out = out, pad_l=pad_l,pad_r=pad_r)
     #
     if(padded): print >> out, prefix+"|"+"-"*77+"|"
     else: print >> out, prefix+"|"+"-"*70+"|"

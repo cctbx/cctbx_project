@@ -12,6 +12,9 @@ from libtbx.utils import Sorry
 from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx import crystal_symmetry_from_any
 from mmtbx import monomer_library
+import mmtbx.restraints
+import mmtbx.model
+from mmtbx import model_statistics
 
 modify_params_str = """\
 selection = None
@@ -227,6 +230,8 @@ class modify(object):
     rb = self.params.sites
     trans = [float(i) for i in rb.translate]
     rot   = [float(i) for i in rb.rotate]
+    if(len(trans) != 3): raise Sorry("Wrong value: translate= ", rb.translate)
+    if(len(rot) != 3): raise Sorry("Wrong value: translate= ", rb.rotate)
     rb_shift = (abs(trans[0]+trans[1]+trans[2]+rot[0]+rot[1]+rot[2]) > 1.e-6)
     if(rb_shift):
        self._print_action(text = "Rigid body shift.")
@@ -258,15 +263,35 @@ def run(args, command_name="phenix.pdbtools"):
   command_line_interpreter = interpreter(command_name  = command_name,
                                          args          = args,
                                          log           = log)
-  utils.print_header("Complete set of parameters", out = log)
-  master_params.format(command_line_interpreter.params).show(out = log)
-  utils.print_header("xray structure summary", out = log)
+  all_chain_proxies = \
+    command_line_interpreter.processed_pdb_file.all_chain_proxies
+  #utils.print_header("xray structure summary", out = log)
   xray_structure = command_line_interpreter.processed_pdb_file.xray_structure(
-                                    show_summary = True)
+    show_summary = False)
   if(xray_structure is None):
     raise Sorry("Cannot extract xray_structure.")
-  all_chain_proxies = \
-                  command_line_interpreter.processed_pdb_file.all_chain_proxies
+  if(command_line_interpreter.command_line.options.show_geometry_statistics):
+    utils.print_header("Geometry statistics", out = log)
+    command_line_interpreter.processed_pdb_file.log = None # to disable output
+    geometry = command_line_interpreter.processed_pdb_file.\
+      geometry_restraints_manager(show_energies = True)
+    restraints_manager = mmtbx.restraints.manager(
+      geometry = geometry,
+      normalization = True)
+    model_statistics.geometry(
+      sites_cart         = xray_structure.sites_cart(),
+      restraints_manager = restraints_manager).show(out = log)
+    return
+  if(command_line_interpreter.command_line.options.show_adp_statistics):
+    utils.print_header("ADP statistics", out = log)
+    model = mmtbx.model.manager(
+      xray_structure       = xray_structure,
+      atom_attributes_list = all_chain_proxies.stage_1.atom_attributes_list,
+      log                  = log)
+    model.show_adp_statistics(out = log, padded = True)
+    return
+  utils.print_header("Complete set of parameters", out = log)
+  master_params.format(command_line_interpreter.params).show(out = log)
   utils.print_header("Performing requested model manipulations", out = log)
   result = modify(xray_structure    = xray_structure,
                   params            = command_line_interpreter.params,
@@ -281,10 +306,12 @@ def run(args, command_name="phenix.pdbtools"):
     else: ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
   print >> log, "Output file name: ", ofn
   ofo = open(ofn, "w")
-  utils.write_pdb_file(xray_structure       = xray_structure,
-                       atom_attributes_list = atom_attributes_list,
-                       selection            = result.remove_selection,
-                       out                  = ofo)
+  utils.write_pdb_file(
+    xray_structure       = xray_structure,
+    atom_attributes_list = atom_attributes_list,
+    selection            = result.remove_selection,
+    write_cryst1_record  = not command_line_interpreter.fake_crystal_symmetry,
+    out                  = ofo)
   utils.print_header("Done", out = log)
 
 class interpreter:
@@ -295,6 +322,7 @@ class interpreter:
     self.command_name = command_name
     self.args = args
     self.log = log
+    self.fake_crystal_symmetry = False
     self.mon_lib_srv = monomer_library.server.server()
     self.ener_lib = monomer_library.server.ener_lib()
     self.params = None
@@ -332,6 +360,12 @@ class interpreter:
       .option(None, "--quiet",
         action="store_true",
         help="Suppress output to screen")
+      .option("--show_adp_statistics",
+          action="store_true",
+          help="Show complete ADP (B-factors) statistics.")
+      .option("--show_geometry_statistics",
+          action="store_true",
+          help="Show complete ADP (B-factors) statistics.")
     ).process(args=args)
     if(self.command_line.expert_level is not None):
       master_params.show(
@@ -423,9 +457,11 @@ class interpreter:
       from_coordinate_files=crystal_symmetries_from_coordinate_file)
     if (   self.crystal_symmetry.unit_cell() is None
         or self.crystal_symmetry.space_group_info() is None):
-      raise Sorry(
-        "Crystal symmetry is not defined. Please use the --symmetry option"
-        " or define the refinement.crystal_symmetry parameters.")
+      self.fake_crystal_symmetry = True
+      print >> self.log, "*** No input crystal symmetry found. ***"
+      print >> self.log,"Functionality requiring crystal symmetry unavailable."
+      print >> self.log
+      self.crystal_symmetry = crystal.symmetry((1, 1, 1, 90, 90, 90), "P 1")
     print >> self.log, "Working crystal symmetry after inspecting all inputs:"
     self.crystal_symmetry.show_summary(f = self.log, prefix="  ")
     self.params.input.crystal_symmetry.unit_cell = \

@@ -9,6 +9,7 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
+from mmtbx import model_statistics
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
@@ -53,8 +54,8 @@ def exercise():
   mol.write_pdb_file(out = open("test_model_out_nosolvent.pdb","w"))
   mol.remove_atoms(atom_type = "O")
   mol.write_pdb_file(out = open("test_model_out_noO.pdb","w"))
-  mol.geometry_statistics(show = True)
-  mol.geometry_statistics(other = mol, show = True)
+  mol.show_geometry_statistics()
+  mol.show_geometry_statistics()
 
 ################
   geometry = processed_pdb_file.geometry_restraints_manager(
@@ -76,9 +77,9 @@ def exercise():
   mol_other.xray_structure.scattering_type_registry(table = "wk1995")
 ################
 
-  mol_other.geometry_statistics(show = True)
+  mol_other.show_geometry_statistics()
   print
-  mol.geometry_statistics(other = mol_other, show = True)
+  mol.show_geometry_statistics()
 
 #####
   class iso: pass
@@ -92,9 +93,9 @@ def exercise():
   iso.use_u_local_only = False
 #####
 
-  mol.adp_statistics(show = True)
+  mol.show_adp_statistics()
   print
-  mol.adp_statistics(show = True)
+  mol.show_adp_statistics()
 
   rm = mol.restraints_manager
 
@@ -133,14 +134,14 @@ def exercise_2():
   mol.xray_structure.scattering_type_registry(table = "wk1995")
 
   out = StringIO()
-  adp_stat = mol.adp_statistics(show = False, out = out)
-  adp_stat.show()
+  adp_stat = mol.show_adp_statistics(out = out)
   expected_result = \
   """|-ADP statistics-------------------------------------------------------|
 | Atom    | Number of   | Isotropic or equivalent| Anisotropy lmin/max |
 | type    |iso    aniso | min     max     mean   | min   max    mean   |
 | - - - - |- - - - - - -| - - - - - - - - - - - -| - - - - - - - - - - |
-| Solv+Mac: 9      5      1.45    18.27   15.14    0.03  0.73   0.18   |
+| all     : 14     7      1.31    18.27   13.11    0.02  0.73   0.20   |
+| all(noH): 9      5      1.45    18.27   15.14    0.03  0.73   0.18   |
 | Sol.    : 1      1      1.45    2.00    1.73     0.73  0.73   0.73   |
 | Mac.    : 8      4      15.00   18.27   17.38    0.03  0.05   0.04   |
 | Hyd.    : 5      2      1.31    17.15   9.04     0.02  0.50   0.26   |

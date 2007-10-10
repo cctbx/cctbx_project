@@ -295,13 +295,10 @@ class refinement_monitor(object):
     self.ds_max          .append(geom.d_max                       )
     self.ps_ave          .append(geom.p_mean                      )
     self.ps_max          .append(geom.p_max                       )
-    self.rs_ave          .append(geom.r_mean                      )
-    self.rs_min          .append(geom.r_min                       )
+    self.rs_ave          .append(geom.n_mean                      )
+    self.rs_min          .append(geom.n_min                       )
     self.targets_c       .append(geom.target                      )
-    grads = geom.gradients
-    if(grads is not None): norm = grads.norm()
-    else:                  norm = 0.0
-    self.gs_c_norm       .append(norm                             )
+    self.gs_c_norm       .append(geom.norm_of_gradients           )
     if(target_weights is not None):
        self.wcs             .append(target_weights.wc()              )
     b_isos = model.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8

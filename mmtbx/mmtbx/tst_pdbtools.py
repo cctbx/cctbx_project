@@ -1,6 +1,6 @@
 from libtbx import easy_run
 import libtbx.load_env
-import sys, os, math
+import sys, os, math, time
 from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
@@ -93,7 +93,51 @@ def exercise(file_name = "phe_e.pdb"):
   #
   cmd = base
   check_all_none(cmd, xrsp_init, output)
-  print "OK"
+
+def exercise_no_cryst1(file_name = "t.pdb"):
+  file_name = libtbx.env.find_in_repositories(
+       relative_path="phenix_regression/pdb/%s"%file_name, test=os.path.isfile)
+  if (file_name is None):
+    print "Skipping exercise(): input file not available"
+    return
+  output = "modified.pdb"
+  base = \
+      "phenix.pdbtools %s output.pdb.file_name=%s --quiet "%(file_name, output)
+  cmd = base+'sites.rotate="0 0 0" sites.translate="0 0 0"'
+  easy_run.call(cmd)
+  lines1 = []
+  for line in open(file_name,"r").readlines():
+    line = line.strip()
+    assert line.count("CRYST1") == 0
+    if(line.startswith("ATOM") or line.startswith("HETATM")):
+      lines1.append(line)
+  lines2 = []
+  for line in open(output,"r").readlines():
+    line = line.strip()
+    assert line.count("CRYST1") == 0
+    if(line.startswith("ATOM") or line.startswith("HETATM")):
+      lines2.append(line)
+  assert len(lines1) == len(lines2)
+  for l1,l2 in zip(lines1, lines2):
+    assert l1[11:70].strip() == l2[11:70].strip()
+
+def exercise_show_adp_statistics(file_name = "t.pdb"):
+  file_name = libtbx.env.find_in_repositories(
+       relative_path="phenix_regression/pdb/%s"%file_name, test=os.path.isfile)
+  if (file_name is None):
+    print "Skipping exercise(): input file not available"
+    return
+  cmd = "phenix.pdbtools %s --show-adp-statistics"%file_name
+  easy_run.call(cmd)
+
+def exercise_show_geometry_statistics(file_name = "phe_e.pdb"):
+  file_name = libtbx.env.find_in_repositories(
+       relative_path="phenix_regression/pdb/%s"%file_name, test=os.path.isfile)
+  if (file_name is None):
+    print "Skipping exercise(): input file not available"
+    return
+  cmd = "phenix.pdbtools %s --show-geometry-statistics"%file_name
+  easy_run.call(cmd)
 
 def test_quiet(file_name):
   output_file_name = "shifted.pdb"
@@ -268,4 +312,9 @@ def check_all_none(cmd, xrsp_init, output, tolerance=1.e-3):
   assert approx_equal(xrsp.u_cart,      xrsp_init.u_cart,tolerance)
 
 if (__name__ == "__main__"):
+  t1 = time.time()
   exercise()
+  exercise_no_cryst1()
+  exercise_show_adp_statistics()
+  exercise_show_geometry_statistics()
+  print "OK: time= %-8.3f"%(time.time()-t1)

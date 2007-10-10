@@ -832,9 +832,6 @@ def run(args, command_name = "phenix.cif_as_mtz"):
       usage="%s [reflection_cif_file] [options]" % command_name,
       description='Example: %s r1o9ksf.ent --symmetry=pdb1o9k.ent'%command_name)
       .enable_symmetry_comprehensive()
-      .option("--remove_input_file",
-          action="store_true",
-          help="Remove input CIF file (very dangerous option).")
       .option(None, "--output_file_name",
         action="store",
         default=False,
@@ -898,8 +895,6 @@ def run(args, command_name = "phenix.cif_as_mtz"):
       elif(basename.endswith(".ent.gz")): output_file_name=basename[:-7]+".mtz"
       else: output_file_name = basename+".mtz"
     mtz_object.write(file_name = output_file_name)
-  if(command_line.options.remove_input_file):
-    os.remove(file_name)
 
 def extract(file_name, file_lines, crystal_symmetry, show_details_if_error):
   keys = extract_keys(file_name = file_name, file_lines = file_lines)
