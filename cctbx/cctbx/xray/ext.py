@@ -57,11 +57,13 @@ class _scattering_type_registry(
     tips = self.sorted_type_index_pairs()
     if (header is not None):
       print >> out, prefix + header, len(tips)
-    nt = max(3,max([len(t) for t,i in tips]))
-    nt_fmt = "%%-%ds " % nt
-    nc = max(5,len(str(max(unique_counts))))
-    nc_fmt = "%%%dd" % nc
-    if (len(tips) > 0):
+    if (len(tips) == 0):
+      print >> out, prefix + "  Empty scattering-type registry."
+    else:
+      nt = max(3,max([len(t) for t,i in tips]))
+      nt_fmt = "%%-%ds " % nt
+      nc = max(5,len(str(max(unique_counts))))
+      nc_fmt = "%%%dd" % nc
       line = prefix + "  Type%s %sNumber" % (" "*(nt-3), " "*(nc-5))
       if (show_sf0): line += "    sf(0)"
       if (show_gaussians): line += "   Gaussians"
