@@ -3,6 +3,7 @@ from __future__ import division
 import os.path
 import sys
 import random
+import math
 
 from cctbx import sgtbx
 from cctbx import miller
@@ -10,6 +11,7 @@ from cctbx import maptbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
+
 from libtbx.test_utils import approx_equal
 from libtbx import itertbx
 
@@ -97,12 +99,10 @@ def exercise_fixed_delta(space_group_info, elements,
     if verbose:
       print "Starting %s" % type(flipped).__name__
       print "\tdelta/max(rho_target) = %.4f" % (flipped.delta/max_rho_target)
-      print "\tR_1 = %.3f" % f_target_in_p1.r1_factor(
-        f_target_in_p1.structure_factors_from_map(flipped.rho_map.real_map()))
     r1s = flex.double()
-    for i,state in enumerate(itertbx.islice(flipped, 10)):
+    for i,state in enumerate(itertbx.islice(flipped, 15)):
       isinstance(state, charge_flipping.density_modification_iterator)
-      r1 = f_target_in_p1.r1_factor(state.g)
+      r1 = state.r1_factor()
       r1s.append(r1)
       if debug:
         rho = state.rho_map.real_map()
@@ -112,14 +112,14 @@ def exercise_fixed_delta(space_group_info, elements,
         print indent, "\tR1=%.5f" % r1
         print indent, "\tfraction of positive pixels=%.3f" % pos
         print indent, "\ttotal charge=%.3f" % state.g_000
+    f_result_in_p1 = state.f_calc
 
-    # r1 decreasing function of the iteration number
+    # r1 decreases as iterations go, eventually stabilising to a small value
     assert list(flex.sort_permutation(r1s, reverse=True))\
            == list(xrange(r1s.size()))
-
-    assert r1s[-1] < 0.12
     diffs = r1s[:-1] - r1s[1:]
     assert diffs[-3:].all_lt(0.01)
+    assert r1s[-1] < 0.2
 
     final_r1.append(r1s[-1])
     if verbose:
@@ -128,7 +128,7 @@ def exercise_fixed_delta(space_group_info, elements,
       print
 
   # The both of the basic and advanced charge flipping are compatible
-  assert (approx_equal(final_r1[0], final_r1[1], 0.01, out=None))
+  assert (approx_equal(final_r1[0], final_r1[1], 0.1, out=None))
 
 
 def exercise(flags, space_group_info):
@@ -152,7 +152,6 @@ def exercise(flags, space_group_info):
 def run():
   import sys
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], exercise)
-  print 'OK'
 
 if __name__ == '__main__':
   import sys

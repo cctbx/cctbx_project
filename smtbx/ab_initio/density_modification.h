@@ -38,7 +38,7 @@ namespace smtbx { namespace ab_initio { namespace density_modification {
         }
       }
   }
-  
+
 }}} // namespace smtbx::ab_initio:: density_modification
 
 #endif
