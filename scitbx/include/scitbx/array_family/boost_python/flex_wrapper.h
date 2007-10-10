@@ -811,8 +811,11 @@ namespace scitbx { namespace af { namespace boost_python {
             boost::python::object const& flex_root_scope)
     {
       {
-        boost::python::scope local_scope(flex_root_scope);
-        boost::python::def("order", order_a_a);
+        using namespace boost::python;
+        scope local_scope(flex_root_scope);
+        def("order", order_a_a);
+        def("first_index", first_index_a_s);
+        def("last_index", last_index_a_s);
       }
       return plain(python_name)
         .def("__eq__", eq_a_a)
