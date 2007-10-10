@@ -9,6 +9,8 @@ from iotbx.pdb import crystal_symmetry_from_pdb as from_pdb
 from iotbx.solve import crystal_symmetry_from_inp as from_solve_inp
 from iotbx.xplor import crystal_symmetry_from_map as from_xplor_map
 from cctbx import crystal
+from libtbx.path import canonical_path
+import os
 
 def from_string(string):
   '''
@@ -66,3 +68,19 @@ def extract_from(file_name):
     except KeyboardInterrupt: raise
     except: pass
   return from_string(file_name)
+
+def extract_and_append(file_names, target_list, extract_function=extract_from):
+  file_names_done = {}
+  for file_name in file_names:
+    if (file_name is None): continue
+    if (not os.path.isfile(file_name)): continue
+    file_name = canonical_path(file_name)
+    if (file_name in file_names_done): continue
+    file_names_done[file_name] = None
+    try:
+      crystal_symmetry = extract_function(file_name=file_name)
+    except KeyboardInterrupt: raise
+    except: pass
+    else:
+      if (crystal_symmetry is not None):
+        target_list.append(crystal_symmetry)
