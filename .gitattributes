@@ -43,6 +43,7 @@ iotbx/iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/iotbx/pdb/extract_rfactors_resolutions_sigma.py -text
 iotbx/iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/iotbx/shelx/fcf.py -text
+libtbx/libtbx/assert_utils.py -text
 libtbx/libtbx/command_line/bash.sh -text
 libtbx/libtbx/command_line/csh.sh -text
 libtbx/libtbx/command_line/find_files.py -text
