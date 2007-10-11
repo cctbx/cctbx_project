@@ -1230,6 +1230,7 @@ class module:
         target_file_name_infix="",
         scan_for_libtbx_set_dispatcher_name=False):
     assert target_file_name_infix == "" or not scan_for_libtbx_set_dispatcher_name
+    if (len(file_name) == 0): return
     source_file = libtbx.path.norm_join(source_dir, file_name)
     if (not os.path.isfile(source_file)): return
     file_name_lower = file_name.lower()
@@ -1237,6 +1238,7 @@ class module:
     if (file_name_lower.endswith(".pyc")): return
     if (file_name_lower.endswith(".pyo")): return
     if (file_name[0] == "."): return
+    if (file_name[-1] == "~"): return # ignore emacs backup files
     if (file_name == "ipython.py" and self.name == "libtbx"):
       try: import IPython
       except ImportError: return
