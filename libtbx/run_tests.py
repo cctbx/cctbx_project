@@ -10,6 +10,7 @@ def run():
   "$D/libtbx/easy_run.py",
   "$D/libtbx/tst_utils.py",
   "$D/libtbx/math_utils.py",
+  "$D/libtbx/assert_utils.py",
   "$D/libtbx/str_utils.py",
   "$D/libtbx/table_utils.py",
   "$D/libtbx/tst_dlite.py",
