@@ -1,5 +1,6 @@
 from __future__ import generators
 from libtbx.option_parser import option_parser
+from libtbx.utils import Sorry
 from libtbx import easy_run
 from libtbx import introspection
 import difflib
@@ -317,6 +318,29 @@ def show_diff(a, b, selections=None, expected_number_of_lines=None):
         % (expected_number_of_lines, len(a_lines))
     return True
   return False
+
+class RunCommandError(Sorry): pass
+
+def run_command(command, verbose=False):
+  if (verbose):
+    print command
+    print
+  result = easy_run.fully_buffered(command=command)
+  if (len(result.stderr_lines) != 0):
+    if (not verbose):
+      print command
+      print
+    print "\n".join(result.stdout_lines)
+    result.raise_if_errors()
+  else:
+    for line in result.stdout_lines:
+      if (line == "Traceback (most recent call last):"):
+        if (not verbose):
+          print command
+          print
+        print "\n".join(result.stdout_lines)
+        print
+        raise RunCommandError("Traceback detected in output.")
 
 def exercise():
   from cStringIO import StringIO
