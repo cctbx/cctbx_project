@@ -50,7 +50,12 @@ adp
 }
 sites
   .help = Scope of options to modify coordinates of selected atoms
+  .multiple = True
 {
+  selection = None
+    .type = str
+    .help = Selection for atoms to be modified. \\
+            Overrides parent-level selection.
   shake = None
     .type = float
     .help = Randomize coordinates with mean error value equal to shake
@@ -134,8 +139,7 @@ class modify(object):
       xray_structure    = xray_structure)[0]
     self._show_selected()
     self._process_adp()
-    self._shake_sites()
-    self._rb_shift()
+    self._process_sites()
     self._randomize_occupancies()
 
   def _show_selected(self):
@@ -202,35 +206,48 @@ class modify(object):
     self._print_action(text = "Randomizing ADP.")
     self.xray_structure.shake_adp(selection=selection)
 
-  def _shake_sites(self):
-    shake_value = self.params.sites.shake
-    if(shake_value is not None):
-       self._print_action(
-                  text = "Shaking sites (RMS difference = %8.3f)."%shake_value)
-       self.xray_structure.shake_sites_in_place(rms_difference= shake_value,
-                                                selection     = self.selection)
+  def _process_sites(self):
+    for sites in self.params.sites:
+      if (sites.selection is None):
+        selection = self.selection
+      else:
+        assert 0 # XXX NOT IMPLEMENTED
+      iselection = selection.iselection()
+      self._shake_sites(selection=selection, rms_difference=sites.shake)
+      self._rb_shift(
+        iselection=iselection,
+        translate=sites.translate,
+        rotate=sites.rotate,
+        euler_angle_convention=sites.euler_angle_convention)
 
-  def _rb_shift(self):
-    rb = self.params.sites
-    trans = [float(i) for i in rb.translate]
-    rot   = [float(i) for i in rb.rotate]
-    if(len(trans) != 3): raise Sorry("Wrong value: translate= ", rb.translate)
-    if(len(rot) != 3): raise Sorry("Wrong value: translate= ", rb.rotate)
-    rb_shift = (abs(trans[0]+trans[1]+trans[2]+rot[0]+rot[1]+rot[2]) > 1.e-6)
-    if(rb_shift):
-       self._print_action(text = "Rigid body shift.")
-       if(self.params.sites.euler_angle_convention == "zyz"):
-          rot_obj = rigid_body.rb_mat_euler(phi = rot[0],
-                                            psi = rot[1],
-                                            the = rot[2])
-       else:
-          rot_obj = rigid_body.rb_mat(phi = rot[0],
-                                      psi = rot[1],
-                                      the = rot[2])
-       self.xray_structure.apply_rigid_body_shift(
-                                    rot       = rot_obj.rot_mat().as_mat3(),
-                                    trans     = trans,
-                                    selection = self.selection.iselection())
+  def _shake_sites(self, selection, rms_difference):
+    if (rms_difference is not None):
+      self._print_action(
+        text = "Shaking sites (RMS difference = %8.3f)." % rms_difference)
+      self.xray_structure.shake_sites_in_place(
+        rms_difference=rms_difference,
+        selection=selection)
+
+  def _rb_shift(self, iselection, translate, rotate, euler_angle_convention):
+    trans = [float(i) for i in translate]
+    rot   = [float(i) for i in rotate]
+    if(len(trans) != 3): raise Sorry("Wrong value: translate= " + translate)
+    if(len(rot) != 3): raise Sorry("Wrong value: translate= " + rotate)
+    if (   trans[0] != 0 or trans[1] != 0 or trans[2] != 0
+        or rot[0] != 0 or rot[1] != 0 or rot[2] != 0):
+      self._print_action(text = "Rigid body shift.")
+      if (euler_angle_convention == "zyz"):
+        rot_obj = rigid_body.rb_mat_euler(phi = rot[0],
+                                          psi = rot[1],
+                                          the = rot[2])
+      else:
+        rot_obj = rigid_body.rb_mat(phi = rot[0],
+                                    psi = rot[1],
+                                    the = rot[2])
+      self.xray_structure.apply_rigid_body_shift(
+        rot       = rot_obj.rot_mat().as_mat3(),
+        trans     = trans,
+        selection = iselection)
 
   def _randomize_occupancies(self):
     if(self.params.occupancies.randomize):
