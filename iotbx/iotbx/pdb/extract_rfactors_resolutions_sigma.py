@@ -1,5 +1,6 @@
 import sys, os
 from libtbx.str_utils import format_value
+from libtbx import smart_open
 
 class get_r_rfree_sigma(object):
   def __init__(self, remark_2_and_3_records, file_name):
@@ -102,15 +103,14 @@ class get_r_rfree_sigma(object):
 
 def extract_remark_2_and_3_records(file_name):
   result = []
-  inf = open(file_name,"r")
-  for rec in inf.read().splitlines():
+  file_lines = smart_open.for_reading(file_name = file_name).read().splitlines()
+  for rec in file_lines:
     if(rec.startswith("REMARK   3 ") or rec.startswith("REMARK   2 ")):
       start = True
       result.append(rec)
     else:
       if(rec.startswith("ATOM ") or rec.startswith("HETATM ")):
         break
-  inf.close()
   return result
 
 def extract(file_name):
