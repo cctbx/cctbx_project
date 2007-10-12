@@ -7,8 +7,7 @@ import mmtbx.monomer_library.pdb_interpretation
 from libtbx.utils import remove_files
 from mmtbx import utils
 from libtbx.test_utils import approx_equal, not_approx_equal, run_command
-
-run_command_verbose = "--verbose" in sys.argv[1:]
+from libtbx.utils import show_times_at_exit
 
 class xray_structure_plus(object):
   def __init__(self, file_name):
@@ -38,12 +37,8 @@ class xray_structure_plus(object):
                                      selection_strings= selection_strings,
                                      xray_structure   = self.xray_structure)[0]
 
-def exercise(file_name = "phe_e.pdb"):
-  file_name = libtbx.env.find_in_repositories(
-       relative_path="phenix_regression/pdb/%s"%file_name, test=os.path.isfile)
-  if (file_name is None):
-    print "Skipping exercise(): input file not available"
-    return
+def exercise_basic(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "phe_e.pdb")
   output = "modified.pdb"
   xrsp_init = xray_structure_plus(file_name = file_name)
   base = \
@@ -56,104 +51,70 @@ def exercise(file_name = "phe_e.pdb"):
       assert selection.size() == 36 and selection.count(True) == 24
     #
     cmd = base + 'adp.randomize=true selection="%s"'%str(selection_str)
-    check_adp_rand(cmd, xrsp_init, output, selection, selection_str)
+    check_adp_rand(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.set_b_iso=10.0 selection="%s"'%str(selection_str)
-    check_adp_set_b_iso(cmd, xrsp_init, output, selection, selection_str)
+    check_adp_set_b_iso(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.shift_b_iso=20.0 selection="%s"'%str(selection_str)
-    check_adp_rand(cmd, xrsp_init, output, selection, selection_str)
+    check_adp_rand(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.scale_adp=2.0 selection="%s"'%str(selection_str)
-    check_adp_rand(cmd, xrsp_init, output, selection, selection_str)
+    check_adp_rand(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.convert_to_iso=true selection="%s"'%str(selection_str)
-    check_adp_to_iso(cmd, xrsp_init, output, selection, selection_str)
+    check_adp_to_iso(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base + 'adp.convert_to_aniso=true selection="%s"'%str(selection_str)
-    check_adp_to_aniso(cmd, xrsp_init, output, selection, selection_str)
+    check_adp_to_aniso(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     shake = 1.5
     cmd = base+'sites.shake=%s selection="%s"'%(str(shake), str(selection_str))
-    check_sites_shake(cmd, xrsp_init, output, selection, selection_str, shake)
+    check_sites_shake(
+      cmd, xrsp_init, output, selection, selection_str, shake, verbose)
     #
     cmd = base+'sites.rotate="1 2 3" sites.translate="4 5 6" selection="%s"'%(
                                                             str(selection_str))
-    check_sites_rt(cmd, xrsp_init, output, selection, selection_str)
+    check_sites_rt(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     cmd = base+'occupancies.randomize=true selection="%s"'%(str(selection_str))
-    check_occ_randomize(cmd, xrsp_init, output, selection, selection_str)
+    check_occ_randomize(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     remove_selection_str = "element C"
     cmd = base+'remove.selection="%s" selection="%s"'%(
-                                  str(remove_selection_str),str(selection_str))
-    check_remove_selection(cmd, xrsp_init, output, selection, selection_str,
-                                                          remove_selection_str)
+      str(remove_selection_str), str(selection_str))
+    check_remove_selection(
+      cmd, xrsp_init, output, selection, selection_str,
+      remove_selection_str, verbose)
     #
-    test_quiet(file_name)
+    test_quiet(file_name, verbose)
   #
   cmd = base
-  check_all_none(cmd, xrsp_init, output)
+  check_all_none(cmd, xrsp_init, output, verbose)
 
-def exercise_no_cryst1(file_name = "t.pdb"):
-  file_name = libtbx.env.find_in_repositories(
-       relative_path="phenix_regression/pdb/%s"%file_name, test=os.path.isfile)
-  if (file_name is None):
-    print "Skipping exercise(): input file not available"
-    return
-  output = "modified.pdb"
-  base = \
-      "phenix.pdbtools %s output.pdb.file_name=%s "%(file_name, output)
-  cmd = base+'sites.rotate="0 0 0" sites.translate="0 0 0"'
-  run_command(command=cmd, verbose=run_command_verbose)
-  lines1 = []
-  for line in open(file_name,"r").readlines():
-    line = line.strip()
-    assert line.count("CRYST1") == 0
-    if(line.startswith("ATOM") or line.startswith("HETATM")):
-      lines1.append(line)
-  lines2 = []
-  for line in open(output,"r").readlines():
-    line = line.strip()
-    assert line.count("CRYST1") == 0
-    if(line.startswith("ATOM") or line.startswith("HETATM")):
-      lines2.append(line)
-  assert len(lines1) == len(lines2)
-  for l1,l2 in zip(lines1, lines2):
-    assert l1[11:70].strip() == l2[11:70].strip()
-
-def exercise_show_adp_statistics(file_name = "t.pdb"):
-  file_name = libtbx.env.find_in_repositories(
-       relative_path="phenix_regression/pdb/%s"%file_name, test=os.path.isfile)
-  if (file_name is None):
-    print "Skipping exercise(): input file not available"
-    return
-  cmd = "phenix.pdbtools %s --show-adp-statistics"%file_name
-  run_command(command=cmd, verbose=run_command_verbose)
-
-def exercise_show_geometry_statistics(file_name = "phe_e.pdb"):
-  file_name = libtbx.env.find_in_repositories(
-       relative_path="phenix_regression/pdb/%s"%file_name, test=os.path.isfile)
-  if (file_name is None):
-    print "Skipping exercise(): input file not available"
-    return
-  cmd = "phenix.pdbtools %s --show-geometry-statistics"%file_name
-  run_command(command=cmd, verbose=run_command_verbose)
-
-def test_quiet(file_name):
+def test_quiet(file_name, verbose):
   output_file_name = "shifted.pdb"
   remove_files("log")
   remove_files(output_file_name)
   cmd= "phenix.pdbtools %s output.pdb.file_name=%s shake=0.1 --quiet > log"%(
                                         file_name, output_file_name)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   lines = open("log","r").readlines()
   assert len(lines) == 0
 
-def check_adp_rand(cmd, xrsp_init, output, selection, selection_str,
-                                                              tolerance=1.e-3):
+def check_adp_rand(
+      cmd, xrsp_init, output, selection, selection_str, verbose,
+      tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,        xrsp_init.occ,tolerance)
   assert approx_equal(xrsp.sites_cart, xrsp_init.sites_cart,tolerance)
@@ -172,10 +133,11 @@ def check_adp_rand(cmd, xrsp_init, output, selection, selection_str,
     arg2 =xrsp_init.u_cart_used.select(selection.select(xrsp_init.use_u_aniso))
     if(arg1.size() > 0): assert not_approx_equal(arg1, arg2,tolerance)
 
-def check_adp_set_b_iso(cmd, xrsp_init, output, selection, selection_str,
-                                                              tolerance=1.e-3):
+def check_adp_set_b_iso(
+      cmd, xrsp_init, output, selection, selection_str, verbose,
+      tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,        xrsp_init.occ,tolerance)
   assert approx_equal(xrsp.sites_cart, xrsp_init.sites_cart,tolerance)
@@ -192,10 +154,11 @@ def check_adp_set_b_iso(cmd, xrsp_init, output, selection, selection_str,
     if(arg1.size() > 0): assert not_approx_equal(arg1, arg2,tolerance)
     assert approx_equal(xrsp.u_cart, xrsp_init.u_cart,tolerance)
 
-def check_adp_to_iso(cmd, xrsp_init, output, selection, selection_str,
-                                                              tolerance=1.e-3):
+def check_adp_to_iso(
+      cmd, xrsp_init, output, selection, selection_str, verbose,
+      tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,        xrsp_init.occ,tolerance)
   assert approx_equal(xrsp.sites_cart, xrsp_init.sites_cart,tolerance)
@@ -206,10 +169,11 @@ def check_adp_to_iso(cmd, xrsp_init, output, selection, selection_str,
   assert xrsp.u_cart_used.size() == 0
   assert xrsp_init.u_cart_used.size() > 0
 
-def check_adp_to_aniso(cmd, xrsp_init, output, selection, selection_str,
-                                                              tolerance=1.e-3):
+def check_adp_to_aniso(
+      cmd, xrsp_init, output, selection, selection_str, verbose,
+      tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,        xrsp_init.occ,tolerance)
   assert approx_equal(xrsp.sites_cart, xrsp_init.sites_cart,tolerance)
@@ -224,10 +188,11 @@ def check_adp_to_aniso(cmd, xrsp_init, output, selection, selection_str,
     assert approx_equal(xrsp.use_u_iso,  xrsp_init.use_u_iso,tolerance)
     assert approx_equal(xrsp.use_u_aniso,xrsp_init.use_u_aniso,tolerance)
 
-def check_sites_shake(cmd, xrsp_init, output, selection, selection_str, shake,
-                                                              tolerance=1.e-3):
+def check_sites_shake(
+      cmd, xrsp_init, output, selection, selection_str, shake, verbose,
+      tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,    xrsp_init.occ,tolerance)
   assert approx_equal(xrsp.u_iso,  xrsp_init.u_iso,tolerance)
@@ -243,10 +208,11 @@ def check_sites_shake(cmd, xrsp_init, output, selection, selection_str, shake,
     assert approx_equal(
               math.sqrt(flex.mean(diff.select(~selection).dot())),0.,tolerance)
 
-def check_sites_rt(cmd, xrsp_init, output, selection, selection_str,
-                                                              tolerance=1.e-3):
+def check_sites_rt(
+      cmd, xrsp_init, output, selection, selection_str, verbose,
+      tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,    xrsp_init.occ,tolerance)
   assert approx_equal(xrsp.u_iso,  xrsp_init.u_iso,tolerance)
@@ -260,10 +226,11 @@ def check_sites_rt(cmd, xrsp_init, output, selection, selection_str,
     assert approx_equal(
               math.sqrt(flex.mean(diff.select(~selection).dot())),0.,tolerance)
 
-def check_occ_randomize(cmd, xrsp_init, output, selection,selection_str,
-                                                              tolerance=1.e-3):
+def check_occ_randomize(
+      cmd, xrsp_init, output, selection,selection_str, verbose,
+      tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.sites_cart,xrsp_init.sites_cart,tolerance)
   assert approx_equal(xrsp.u_iso,     xrsp_init.u_iso,tolerance)
@@ -278,10 +245,11 @@ def check_occ_randomize(cmd, xrsp_init, output, selection,selection_str,
     assert flex.max(diff) > 0.0
     assert approx_equal(flex.mean(diff.select(~selection)),0.,tolerance)
 
-def check_remove_selection(cmd, xrsp_init, output, selection, selection_str,
-                                         remove_selection_str,tolerance=1.e-3):
+def check_remove_selection(
+      cmd, xrsp_init, output, selection, selection_str,
+      remove_selection_str, verbose, tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   remove_selection = ~xrsp_init.selection(
                                       selection_strings = remove_selection_str)
@@ -301,9 +269,9 @@ def check_remove_selection(cmd, xrsp_init, output, selection, selection_str,
   assert sct2.size() == remove_selection.count(True)
   assert sct1.size() > sct2.size()
 
-def check_all_none(cmd, xrsp_init, output, tolerance=1.e-3):
+def check_all_none(cmd, xrsp_init, output, verbose, tolerance=1.e-3):
   remove_files(output)
-  run_command(command=cmd, verbose=run_command_verbose)
+  run_command(command=cmd, verbose=verbose)
   xrsp = xray_structure_plus(file_name = output)
   assert approx_equal(xrsp.occ,         xrsp_init.occ,tolerance)
   assert approx_equal(xrsp.sites_cart,  xrsp_init.sites_cart,tolerance)
@@ -312,10 +280,80 @@ def check_all_none(cmd, xrsp_init, output, tolerance=1.e-3):
   assert approx_equal(xrsp.u_iso,       xrsp_init.u_iso,tolerance)
   assert approx_equal(xrsp.u_cart,      xrsp_init.u_cart,tolerance)
 
+def exercise_multiple(pdb_dir, verbose):
+  params = """\
+adp {
+  selection = chain A
+  randomize = True
+}
+adp {
+  selection = chain B
+  shift_b_iso = 10
+}
+sites {
+  selection = chain B
+  shake = 1.5
+}
+sites {
+  selection = chain A or chain C
+  translate = 1 2 3
+  rotate = 4 5 6
+}
+"""
+  open("params", "w").write(params)
+  file_name = os.path.join(pdb_dir, "phe_e.pdb")
+  cmd = "phenix.pdbtools %s output.pdb.file_name=modified.pdb params" % (
+    file_name)
+  result = run_command(command=cmd, verbose=verbose)
+  # XXX inspect results
+
+def exercise_no_cryst1(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "t.pdb")
+  output = "modified.pdb"
+  base = "phenix.pdbtools %s output.pdb.file_name=%s "%(file_name, output)
+  cmd = base+'sites.rotate="0 0 0" sites.translate="0 0 0"'
+  run_command(command=cmd, verbose=verbose)
+  lines1 = []
+  for line in open(file_name,"r").readlines():
+    line = line.strip()
+    assert line.count("CRYST1") == 0
+    if(line.startswith("ATOM") or line.startswith("HETATM")):
+      lines1.append(line)
+  lines2 = []
+  for line in open(output,"r").readlines():
+    line = line.strip()
+    assert line.count("CRYST1") == 0
+    if(line.startswith("ATOM") or line.startswith("HETATM")):
+      lines2.append(line)
+  assert len(lines1) == len(lines2)
+  for l1,l2 in zip(lines1, lines2):
+    assert l1[11:70].strip() == l2[11:70].strip()
+
+def exercise_show_adp_statistics(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "t.pdb")
+  cmd = "phenix.pdbtools %s --show-adp-statistics"%file_name
+  run_command(command=cmd, verbose=verbose)
+
+def exercise_show_geometry_statistics(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "phe_e.pdb")
+  cmd = "phenix.pdbtools %s --show-geometry-statistics"%file_name
+  run_command(command=cmd, verbose=verbose)
+
+def exercise(args):
+  verbose = "--verbose" in args
+  pdb_dir = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb", test=os.path.isdir)
+  if (pdb_dir is None):
+    print "Skipping exercise(): input files not available"
+    return
+  eargs = {"pdb_dir": pdb_dir, "verbose": verbose}
+  exercise_basic(**eargs)
+  exercise_multiple(**eargs)
+  exercise_no_cryst1(**eargs)
+  exercise_show_adp_statistics(**eargs)
+  exercise_show_geometry_statistics(**eargs)
+  print "OK"
+
 if (__name__ == "__main__"):
-  t1 = time.time()
-  exercise()
-  exercise_no_cryst1()
-  exercise_show_adp_statistics()
-  exercise_show_geometry_statistics()
-  print "OK: time= %-8.3f"%(time.time()-t1)
+  show_times_at_exit()
+  exercise(sys.argv[1:])

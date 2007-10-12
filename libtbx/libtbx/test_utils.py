@@ -341,6 +341,7 @@ def run_command(command, verbose=False):
         print "\n".join(result.stdout_lines)
         print
         raise RunCommandError("Traceback detected in output.")
+  return result
 
 def exercise():
   from cStringIO import StringIO
