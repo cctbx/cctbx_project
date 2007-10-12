@@ -14,6 +14,7 @@ from mmtbx.refinement import print_statistics
 from scitbx import matrix
 from mmtbx.max_lik import max_like_non_uniform
 import iotbx.phil
+from libtbx.utils import Sorry
 
 
 master_params = iotbx.phil.parse("""\
@@ -102,6 +103,9 @@ master_params = iotbx.phil.parse("""\
   verbose = -1
     .type = int
     .expert_level=3
+  ignore_bulk_solvent_and_scale_failure = False
+    .type = bool
+    .expert_level = 3
 """)
 
 def k_sol_b_sol_b_cart_minimizer(fmodel,
@@ -159,8 +163,8 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
                beta = None,
                lbfgs_exception_handling_params = None,
                symmetry_constraints_on_b_cart = False,
-               u_min_max = 1000.,
-               u_min_min =-1000.,
+               u_min_max = 500.,
+               u_min_min =-500.,
                k_sol_max = 10.,
                k_sol_min =-10.,
                b_sol_max = 500.,
@@ -309,17 +313,13 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
 ################################################################################
 
 def _approx_le(x,y):
-  x = float("%.6f"%x)
-  y = float("%.6f"%y)
-  if(not x <= y):
-    print x, y
+  x = float("%.4f"%x)
+  y = float("%.4f"%y)
   return x <= y
 
 def _approx_lt(x,y):
-  x = float("%.6f"%x)
-  y = float("%.6f"%y)
-  if(not x < y):
-    print x, y
+  x = float("%.4f"%x)
+  y = float("%.4f"%y)
   return x < y
 
 def _extract_fix_b_cart(fix_b_cart_scope):
@@ -328,16 +328,13 @@ def _extract_fix_b_cart(fix_b_cart_scope):
   if(b_cart.count(None) > 0): return None
   else: return b_cart
 
-def ERROR_MESSAGE(status, log):
-  if(not status):
-    print >> log,"*********************************************************"
-    print >> log,"* WARNING - internal error in bulk solvent and scaling. *"
-    print >> log,"*********************************************************"
 
 class bulk_solvent_and_scales(object):
 
   def __init__(self, fmodel, params = None, log = None):
     start_target = fmodel.r_work()
+    self.params = params
+    self.log = log
     if(params is None): params = master_params.extract()
     if([params.bulk_solvent, params.anisotropic_scaling].count(True) > 0):
        if(not params.bulk_solvent):
@@ -354,8 +351,7 @@ class bulk_solvent_and_scales(object):
        if(params.bulk_solvent):
          assert abs(flex.max(flex.abs(fmodel.f_mask().data()))) > 1.e-3
        macro_cycles = range(1, params.number_of_macro_cycles+1)
-       self.show(params = params, fmodel = fmodel, log = log,
-         message = m + str(0)+" (start)")
+       self.show(fmodel = fmodel, message = m+str(0)+" (start)")
        if(params.fix_k_sol is not None):
          assert params.bulk_solvent
          assert not params.k_sol_b_sol_grid_search
@@ -373,51 +369,44 @@ class bulk_solvent_and_scales(object):
          fmodel.update(b_cart = fix_b_cart)
        target = fmodel.r_work()
        for mc in macro_cycles:
-         if(params.k_sol_b_sol_grid_search and
-            mc == macro_cycles[0] and
-            not self._is_within_grid_search(params = params, fmodel = fmodel)):
-           ksol, bsol, b_cart, target = self._ksol_bsol_grid_search(
-             params = params, fmodel = fmodel, log = log)
+         if(params.k_sol_b_sol_grid_search and mc == macro_cycles[0] and
+            not self._is_within_grid_search(fmodel = fmodel)):
+           ksol,bsol,b_cart,target = self._ksol_bsol_grid_search(fmodel=fmodel)
            fmodel.update(k_sol = ksol, b_sol = bsol, b_cart = b_cart)
-           ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()),log= log)
-           ERROR_MESSAGE(status=_approx_le(target, start_target),log= log)
-           self.show(params = params, fmodel = fmodel, log = log,
-             message = m+str(mc)+": k & b: grid search")
+           self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
+           self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+           self.show(fmodel = fmodel, message=m+str(mc)+": k & b: grid search")
          if(params.minimization_k_sol_b_sol):
-           ksol, bsol, target = self._ksol_bsol_cart_minimizer(params = params,
-             fmodel = fmodel, log = log)
+           ksol, bsol, target = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
            fmodel.update(k_sol = ksol, b_sol = bsol)
-           ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()),log= log)
-           ERROR_MESSAGE(status=_approx_le(target, start_target),log= log)
-           self.show(params = params, fmodel = fmodel, log = log,
-             message = m+str(mc)+": k & b: minimization")
+           self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
+           self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+           self.show(fmodel = fmodel,message=m+str(mc)+": k & b: minimization")
          if(params.minimization_b_cart):
-           b_cart,target = self._b_cart_minimizer(params = params,
-             fmodel = fmodel, log = log)
+           b_cart,target = self._b_cart_minimizer(fmodel = fmodel)
            fmodel.update(b_cart = b_cart)
-           ERROR_MESSAGE(status=_approx_le(target, start_target),log= log)
-           ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()),log= log)
-           self.show(params = params, fmodel = fmodel, log = log,
-             message = m+str(mc)+": anisotropic scale")
+           self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+           self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
+           self.show(fmodel = fmodel, message =m+str(mc)+": anisotropic scale")
          if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
             fmodel.apply_back_b_iso()
-            self.show(params = params, fmodel = fmodel, log = log,
+            self.show(fmodel = fmodel,
               message = m+str(mc)+": apply back trace(b_cart)")
        if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
          fmodel.apply_back_b_iso()
-         self.show(params = params, fmodel = fmodel, log = log,
+         self.show(fmodel = fmodel,
            message = m+str(mc)+": apply back trace(b_cart)")
        fmodel.update(target_name = fmodel_target)
-       ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_target),log= log)
+       self.ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_target))
        if(abs(fmodel.k_sol()) < 0.01):
          fmodel.update(k_sol = 0.0, b_sol = 0.0)
 
-  def show(self, params, fmodel, message, log):
-    if(params.verbose > 0):
+  def show(self, fmodel, message):
+    if(self.params.verbose > 0):
       fmodel.info().show_rfactors_targets_scales_overall(
-        header = message, out = log)
+        header = message, out = self.log)
 
-  def _ksol_bsol_grid_search(self, params, fmodel, log):
+  def _ksol_bsol_grid_search(self, fmodel):
     save_target = None
     if(fmodel.target_name != "ls_wunit_k1"):
       save_target = fmodel.target_name
@@ -427,12 +416,12 @@ class bulk_solvent_and_scales(object):
     final_bsol = fmodel.b_sol()
     final_b_cart = fmodel.b_cart()
     final_r_work = start_r_work
-    k_sols = kb_range(params.k_sol_grid_search_max,
-                      params.k_sol_grid_search_min,
-                      params.k_sol_step)
-    b_sols = kb_range(params.b_sol_grid_search_max,
-                      params.b_sol_grid_search_min,
-                      params.b_sol_step)
+    k_sols = kb_range(self.params.k_sol_grid_search_max,
+                      self.params.k_sol_grid_search_min,
+                      self.params.k_sol_step)
+    b_sols = kb_range(self.params.b_sol_grid_search_max,
+                      self.params.b_sol_grid_search_min,
+                      self.params.b_sol_step)
     for ksol in k_sols:
       for bsol in b_sols:
         for bc in fmodel.b_cart():
@@ -441,13 +430,11 @@ class bulk_solvent_and_scales(object):
             break
         #fmodel.update(b_cart = [0,0,0,0,0,0])
         fmodel.update(k_sol = ksol, b_sol = bsol)
-        if(params.minimization_k_sol_b_sol):
-          ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(
-            params = params, fmodel = fmodel, log = log)
+        if(self.params.minimization_k_sol_b_sol):
+          ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
           fmodel.update(k_sol = ksol_, b_sol = bsol_)
-        if(params.minimization_b_cart):
-          b_cart, dummy = self._b_cart_minimizer(params = params,
-            fmodel = fmodel, log = log)
+        if(self.params.minimization_b_cart):
+          b_cart, dummy = self._b_cart_minimizer(fmodel = fmodel)
           fmodel.update(b_cart = b_cart)
         r_work = fmodel.r_work()
         if(r_work < final_r_work):
@@ -459,12 +446,12 @@ class bulk_solvent_and_scales(object):
     fmodel.update(k_sol  = final_ksol,
                   b_sol  = final_bsol,
                   b_cart = final_b_cart)
-    ERROR_MESSAGE(status=approx_equal(fmodel.r_work(), final_r_work),log= log)
-    ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_r_work),log= log)
+    self.ERROR_MESSAGE(status=approx_equal(fmodel.r_work(), final_r_work))
+    self.ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_r_work))
     if(save_target is not None): fmodel.update(target_name = save_target)
     return final_ksol, final_bsol, final_b_cart, final_r_work
 
-  def _ksol_bsol_cart_minimizer(self, params, fmodel, log):
+  def _ksol_bsol_cart_minimizer(self, fmodel):
     original_target = fmodel.target_name
     start_r_work = fmodel.r_work()
     save_target = None
@@ -474,8 +461,7 @@ class bulk_solvent_and_scales(object):
     if(fmodel.target_name != "ls_wunit_k1"):
       save_target = "ml"
       fmodel.update(target_name = "ls_wunit_k1")
-    ksol, bsol = self._k_sol_b_sol_minimization_helper(
-      params = params, fmodel = fmodel)
+    ksol, bsol = self._k_sol_b_sol_minimization_helper(fmodel = fmodel)
     fmodel.update(k_sol = ksol, b_sol = bsol)
     r_work = fmodel.r_work()
     if(r_work < final_r_work):
@@ -484,19 +470,18 @@ class bulk_solvent_and_scales(object):
       final_r_work = r_work
     if(save_target is not None):
       fmodel.update(target_name = save_target)
-      ksol, bsol = self._k_sol_b_sol_minimization_helper(
-        params = params, fmodel = fmodel)
+      ksol, bsol = self._k_sol_b_sol_minimization_helper(fmodel = fmodel)
       fmodel.update(k_sol = ksol, b_sol = bsol)
       r_work = fmodel.r_work()
       if(r_work < final_r_work):
         final_ksol = ksol
         final_bsol = bsol
         final_r_work = r_work
-    ERROR_MESSAGE(status=_approx_le(final_r_work, start_r_work),log= log)
+    self.ERROR_MESSAGE(status=_approx_le(final_r_work, start_r_work))
     fmodel.update(target_name = original_target)
     return final_ksol, final_bsol, final_r_work
 
-  def _b_cart_minimizer(self, params, fmodel, log):
+  def _b_cart_minimizer(self, fmodel):
     original_target = fmodel.target_name
     start_r_work = fmodel.r_work()
     save_target = None
@@ -505,7 +490,7 @@ class bulk_solvent_and_scales(object):
     if(fmodel.target_name != "ls_wunit_k1"):
       save_target = "ml"
       fmodel.update(target_name = "ls_wunit_k1")
-    b_cart = self._b_cart_minimizer_helper(params = params, fmodel = fmodel)
+    b_cart = self._b_cart_minimizer_helper(fmodel = fmodel)
     fmodel.update(b_cart = b_cart)
     r_work = fmodel.r_work()
     if(r_work < final_r_work):
@@ -513,22 +498,22 @@ class bulk_solvent_and_scales(object):
       final_r_work = r_work
     if(save_target is not None):
       fmodel.update(target_name = save_target)
-      b_cart = self._b_cart_minimizer_helper(params = params, fmodel = fmodel)
+      b_cart = self._b_cart_minimizer_helper(fmodel = fmodel)
       fmodel.update(b_cart = b_cart)
       r_work = fmodel.r_work()
       if(r_work < final_r_work):
         final_b_cart = b_cart
         final_r_work = r_work
-    ERROR_MESSAGE(status=_approx_le(final_r_work, start_r_work),log= log)
+    self.ERROR_MESSAGE(status=_approx_le(final_r_work, start_r_work))
     fmodel.update(target_name = original_target)
     return final_b_cart, final_r_work
 
-  def _b_cart_minimizer_helper(self, params, fmodel, n_macro_cycles = 2):
+  def _b_cart_minimizer_helper(self, fmodel, n_macro_cycles = 2):
     r_start = fmodel.r_work()
     b_start = fmodel.b_cart()
     for u_cycle in xrange(n_macro_cycles):
-      b_cart = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,  params = params,
-        refine_b_cart = True).u_min
+      b_cart = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,
+        params = self.params, refine_b_cart = True).u_min
       fmodel.update(b_cart = b_cart)
     r_final = fmodel.r_work()
     if(r_final >= r_start):
@@ -536,16 +521,16 @@ class bulk_solvent_and_scales(object):
        return b_start
     else: return b_cart
 
-  def _k_sol_b_sol_minimization_helper(self, params, fmodel):
+  def _k_sol_b_sol_minimization_helper(self, fmodel):
     ksol_orig, bsol_orig = fmodel.k_sol_b_sol()
     r_start = fmodel.r_work()
     minimizer_obj = k_sol_b_sol_b_cart_minimizer(fmodel = fmodel,
-      params = params, refine_k_sol = True, refine_b_sol = True)
+      params = self.params, refine_k_sol = True, refine_b_sol = True)
     ksol, bsol = minimizer_obj.k_min, minimizer_obj.b_min
-    if(ksol < params.k_sol_min): ksol = params.k_sol_min
-    if(ksol > params.k_sol_max): ksol = params.k_sol_max
-    if(bsol < params.b_sol_min): bsol = params.b_sol_min
-    if(bsol > params.b_sol_max): bsol = params.b_sol_max
+    if(ksol < self.params.k_sol_min): ksol = self.params.k_sol_min
+    if(ksol > self.params.k_sol_max): ksol = self.params.k_sol_max
+    if(bsol < self.params.b_sol_min): bsol = self.params.b_sol_min
+    if(bsol > self.params.b_sol_max): bsol = self.params.b_sol_max
     fmodel.update(k_sol = ksol, b_sol = bsol)
     r_end = fmodel.r_work()
     if(r_end >= r_start):
@@ -553,16 +538,32 @@ class bulk_solvent_and_scales(object):
        return ksol_orig, bsol_orig
     else: return ksol, bsol
 
-  def _is_within_grid_search(self, params, fmodel):
+  def _is_within_grid_search(self, fmodel):
     result = False
     ksol, bsol = fmodel.k_sol_b_sol()
     keps = 0.05
     beps = 5.0
-    if(ksol >= params.k_sol_grid_search_min+keps and
-       ksol <= params.k_sol_grid_search_max-keps and
-       bsol >= params.b_sol_grid_search_min+beps and
-       bsol <= params.b_sol_grid_search_max-beps): result = True
+    if(ksol >= self.params.k_sol_grid_search_min+keps and
+       ksol <= self.params.k_sol_grid_search_max-keps and
+       bsol >= self.params.b_sol_grid_search_min+beps and
+       bsol <= self.params.b_sol_grid_search_max-beps): result = True
     return result
+
+  def ERROR_MESSAGE(self, status):
+    if(not status):
+      if(not self.params.ignore_bulk_solvent_and_scale_failure):
+        raise Sorry("""
+
+   Internal error in bulk solvent and scaling. To ignore this problem please
+   run again with the following keyword:
+
+      ignore_bulk_solvent_and_scale_failure=True
+
+   Please report this to PAfonine@lbl.gov
+""")
+      else:
+        print >> self.log, \
+          "WARNING -- Internal error in bulk solvent and scaling."
 
 def kb_range(x_max, x_min, step):
   sc = 1000.
