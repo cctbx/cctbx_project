@@ -205,10 +205,7 @@ class manager(object):
     # function is proven to be essential for selected cases but NOT exercised
     # in routine regression tests. This will be done (along with some code
     # cleaning) in the next revision of ordered_solvent.py code.
-    print >> self.log, "*** WARNING from ordered solvent picking ***" # XXX
-    print >> self.log, "*** WARNING Entering into suboptimal calculation..." # XXX
-    print >> self.log, "*** WARNING Calculations may take some time..." # XXX
-    print >> self.log
+    # XXX slow calculations
     sol_sel = self.solvent_selection
     mac_sel = ~self.solvent_selection
     xrs_sol = self.xray_structure.select(sol_sel)

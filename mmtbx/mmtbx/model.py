@@ -25,7 +25,6 @@ class manager(object):
   def __init__(self, xray_structure,
                      atom_attributes_list,
                      restraints_manager = None,
-                     restraints_manager_ini = None,
                      ias_xray_structure = None,
                      refinement_flags = None,
                      dbe_manager = None,
@@ -35,9 +34,8 @@ class manager(object):
                      log = None):
     self.log = log
     self.restraints_manager = restraints_manager
-    self.restraints_manager_ini = restraints_manager_ini
     self.xray_structure = xray_structure.deep_copy_scatterers()
-    self.xray_structure_ini = self.xray_structure.deep_copy_scatterers()
+    self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.atom_attributes_list = atom_attributes_list[:]
     self.refinement_flags = refinement_flags
@@ -76,7 +74,6 @@ class manager(object):
 
   def deep_copy(self):
     new = manager(restraints_manager    = self.restraints_manager,
-                  restraints_manager_ini= self.restraints_manager_ini,
                   xray_structure        = self.xray_structure,
                   atom_attributes_list  = self.atom_attributes_list,
                   refinement_flags      = self.refinement_flags,
@@ -86,7 +83,6 @@ class manager(object):
     selection = flex.bool(self.xray_structure.scatterers().size(), True)
     # XXX not a deep copy
     if(self.restraints_manager is not None):
-       new.restraints_manager_ini = self.restraints_manager_ini
        new.restraints_manager = mmtbx.restraints.manager(
             geometry      = self.restraints_manager.geometry.select(selection),
             ncs_groups    = self.restraints_manager.ncs_groups,
@@ -94,7 +90,7 @@ class manager(object):
        new.restraints_manager.geometry.pair_proxies(sites_cart =
                                               self.xray_structure.sites_cart())
     new.xray_structure       = self.xray_structure.deep_copy_scatterers()
-    new.xray_structure_ini   = self.xray_structure_ini.deep_copy_scatterers()
+    new.xray_structure_initial   = self.xray_structure_initial.deep_copy_scatterers()
     new.atom_attributes_list = self.atom_attributes_list[:]
     new.solvent_selection    = self.solvent_selection.deep_copy()
     if(self.refinement_flags is not None):
@@ -130,7 +126,7 @@ class manager(object):
       self.xray_structure.concatenate_inplace(other = self.ias_xray_structure)
       print >> self.log, "Scattering dictionary for combined xray_structure:"
       self.xray_structure.scattering_type_registry().show()
-      self.xray_structure_ini.concatenate_inplace(
+      self.xray_structure_initial.concatenate_inplace(
                                            other = self.ias_xray_structure)
       if(self.refinement_flags is not None):
          self.old_refinement_flags = self.refinement_flags.deep_copy()
@@ -187,7 +183,6 @@ class manager(object):
        self.old_refinement_flags = None
     if(self.dbe_selection is not None):
        self.xray_structure.select_inplace(selection = ~self.dbe_selection)
-       self.xray_structure_ini.select_inplace(selection = ~self.dbe_selection)
        n_non_ias = self.dbe_selection.count(False)
        self.solvent_selection = self.solvent_selection[:n_non_ias]
        self.dbe_selection = None
@@ -510,12 +505,11 @@ class manager(object):
   def geometry_minimization(self,
                             max_number_of_iterations = 100,
                             number_of_macro_cycles   = 100):
+    raise RuntimeError("Not implemented.")
     if(max_number_of_iterations == 0 or number_of_macro_cycles == 0): return
     sso_start = stereochemistry_statistics(
                           xray_structure         = self.xray_structure,
-                          xray_structure_ref     = self.xray_structure_ini,
                           restraints_manager     = self.restraints_manager,
-                          restraints_manager_ref = self.restraints_manager_ini,
                           use_dbe                = self.use_dbe,
                           dbe_selection          = self.dbe_selection,
                           text                   = "start")
@@ -533,9 +527,7 @@ class manager(object):
                  self.xray_structure.replace_sites_cart(new_sites = sites_cart)
     sso_end = stereochemistry_statistics(
                           xray_structure         = self.xray_structure,
-                          xray_structure_ref     = self.xray_structure_ini,
                           restraints_manager     = self.restraints_manager,
-                          restraints_manager_ref = self.restraints_manager_ini,
                           use_dbe                = self.use_dbe,
                           dbe_selection          = self.dbe_selection,
                           text                   = "final")
