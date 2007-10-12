@@ -301,13 +301,9 @@ def run_tests():
                                                 normalization = False)
   xray_structure = processed_pdb_file.xray_structure()
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  restraints_manager_ini = mmtbx.restraints.manager(
-                                  geometry      = geometry.select(selection),
-                                  normalization = False)
   aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   model = mmtbx.model.manager(
              restraints_manager     = restraints_manager,
-             restraints_manager_ini = restraints_manager_ini,
              xray_structure         = xray_structure,
              atom_attributes_list   = aal)
   model.xray_structure.scattering_type_registry(table = "wk1995")
@@ -362,13 +358,9 @@ def finite_differences_test():
                                                 normalization = False)
   xray_structure = processed_pdb_file.xray_structure()
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  restraints_manager_ini = mmtbx.restraints.manager(
-                                  geometry      = geometry.select(selection),
-                                  normalization = False)
   aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   model = mmtbx.model.manager(
              restraints_manager     = restraints_manager,
-             restraints_manager_ini = restraints_manager_ini,
              xray_structure         = xray_structure,
              atom_attributes_list   = aal)
   model.xray_structure.scattering_type_registry(table = "wk1995")

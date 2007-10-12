@@ -435,6 +435,7 @@ class bulk_solvent_and_scales(object):
           if(abs(bc) > 300.):
             fmodel.update(b_cart = [0,0,0,0,0,0])
             break
+        #fmodel.update(b_cart = [0,0,0,0,0,0])
         fmodel.update(k_sol = ksol, b_sol = bsol)
         if(params.minimization_k_sol_b_sol):
           ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(

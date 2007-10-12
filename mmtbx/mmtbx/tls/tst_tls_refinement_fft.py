@@ -48,9 +48,6 @@ def exercise_2(eps = 1.e-6):
   restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
                                                 normalization = False)
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  restraints_manager_ini = mmtbx.restraints.manager(
-                                  geometry      = geometry.select(selection),
-                                  normalization = False)
   aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   class refinement_flags: pass
   refinement_flags.adp_tls = selections
@@ -58,7 +55,6 @@ def exercise_2(eps = 1.e-6):
   model = mmtbx.model.manager(
              refinement_flags       = refinement_flags,
              restraints_manager     = restraints_manager,
-             restraints_manager_ini = restraints_manager_ini,
              xray_structure         = xray_structure,
              tls_groups             = tls_groups,
              atom_attributes_list   = aal)

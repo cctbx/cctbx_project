@@ -38,6 +38,9 @@ from scitbx import differential_evolution
 import sys, os, math, time
 import mmtbx.f_model
 from libtbx.str_utils import format_value, show_string
+from mmtbx.scaling import outlier_rejection
+from mmtbx.scaling import absolute_scaling
+import mmtbx.scaling.twin_analyses
 
 master_params =  iotbx.phil.parse("""
   twin_law = None
@@ -974,6 +977,18 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
       max_number_of_bins       = max_number_of_bins)
+
+  def outlier_selection(self, show = False, log = None):
+    # XXX
+    return None
+
+  def remove_outliers(self, show = False, log = None):
+    # XXX
+    return None
+
+  def wilson_b(self, force_update = False):
+    # XXX
+    return None
 
   def scale_k1(self):
     # XXX is it true scale_k1 ?

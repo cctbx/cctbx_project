@@ -509,7 +509,6 @@ def write_pdb_file(xray_structure,
   u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(xrs.unit_cell())
   u_isos      = xrs.extract_u_iso_or_u_equiv()
   scat_types  = scatterers.extract_scattering_types()
-  #XXX high duplication
   if(selection is None):
      for i_seq,atom in enumerate(atom_attributes_list):
          if(atom.name is None): name = "    "

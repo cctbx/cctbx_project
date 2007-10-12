@@ -330,6 +330,7 @@ class manager(manager_mixin):
        assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
     self.set_target_name(target_name=target_name)
     self._structure_factor_gradients_w = None
+    self._wilson_b = None
 
   def __getstate__(self):
     self._structure_factor_gradients_w = None
@@ -389,7 +390,8 @@ class manager(manager_mixin):
                          work          = work,
                          test          = test)
 
-  def outlier_selection(self):
+  def outlier_selection(self, show = False, log = None):
+    if(log is None): log = sys.stdout
     result = outlier_rejection.outlier_manager(
       miller_obs   = self.f_obs,
       r_free_flags = self.r_free_flags,
@@ -398,15 +400,23 @@ class manager(manager_mixin):
     s2 = result.extreme_wilson_outliers().data()
     s3 = result.beamstop_shadow_outliers().data()
     result = s1 & s2 & s3
+    if(show):
+      print >> log, "basic_wilson_outliers    =", s1.count(False)
+      print >> log, "extreme_wilson_outliers  =", s2.count(False)
+      print >> log, "beamstop_shadow_outliers =", s3.count(False)
+      print >> log, "total                    =", result.count(False)
     return result
 
-  def remove_outliers(self):
-    return self.select(selection = self.outlier_selection())
+  def remove_outliers(self, show = False, log = None):
+    return self.select(selection = self.outlier_selection(show=show,log = log))
 
-  def wilson_b(self):
-    result = absolute_scaling.ml_iso_absolute_scaling(
-      miller_array = self.f_obs,
-      n_residues   = self.xray_structure.scatterers().size()/8).b_wilson
+  def wilson_b(self, force_update = False):
+    if(self._wilson_b is None or force_update):
+      result = absolute_scaling.ml_iso_absolute_scaling(
+        miller_array = self.f_obs,
+        n_residues   = self.xray_structure.scatterers().size()/8).b_wilson
+      self._wilson_b = result
+    else: result = self._wilson_b
     return result
 
   def twin_test(self, cut_off = 3.5):

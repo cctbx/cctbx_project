@@ -43,7 +43,6 @@ def exercise():
   all = dbe.dbe_master_params.extract().build_dbe_types
   for opt in [["L"], ["R"], ["B"], ["BH"], all]:
     mol = mmtbx.model.manager(restraints_manager     = restraints_manager,
-                            restraints_manager_ini = restraints_manager,
                             xray_structure         = xray_structure,
                             atom_attributes_list   = aal)
     if(opt == ["L"]):
