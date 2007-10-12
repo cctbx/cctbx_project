@@ -1,3 +1,4 @@
+from __future__ import generators
 import iotbx.phil
 from mmtbx.refinement import rigid_body
 from mmtbx import utils
@@ -22,7 +23,12 @@ selection = None
   .help = Selection for atoms to be modified
 adp
   .help = Scope of options to modify ADP of selected atoms
+  .multiple = True
 {
+  selection = None
+    .type = str
+    .help = Selection for atoms to be modified. \\
+            Overrides parent-level selection.
   randomize = None
     .type = bool
     .help = Randomize ADP within a certain range
@@ -110,8 +116,6 @@ class modify(object):
     self.xray_structure = xray_structure
     self.all_chain_proxies = all_chain_proxies
     self.params = params
-    self._adp_modified = False
-    self._sites_modified = False
     self._occupancies_modified = False
     self.remove_selection = None
     try:
@@ -129,12 +133,7 @@ class modify(object):
       selection_strings = [self.params.selection],
       xray_structure    = xray_structure)[0]
     self._show_selected()
-    self._convert_to_isotropic()
-    self._convert_to_anisotropic()
-    self._set_b_iso()
-    self._scale_adp()
-    self._shift_b_iso()
-    self._randomize_adp()
+    self._process_adp()
     self._shake_sites()
     self._rb_shift()
     self._randomize_occupancies()
@@ -159,69 +158,55 @@ class modify(object):
   def _print_action(self, text):
     print >> self.log, text
 
-  def _assert_not_modified(self, sites=False, adp=False, occupancies=False):
-    assert [sites, adp, occupancies].count(True) in [0,1]
-    #if(sites):
-    #  if(self._sites_modified):
-    #    raise Sorry("Can't modify cooridinates (already modified).")
-    #  else: self._sites_modified = True
-    if(adp):
-      if(self._adp_modified):
-        raise Sorry("Can't modify ADP (already modified).")
-      else: self._adp_modified = True
-    if(occupancies):
-      if(self._occupancies_modified):
-        raise Sorry("Can't modify occupancies (already modified).")
-      else: self._occupancies_modified = True
+  def _process_adp(self):
+    for adp in self.params.adp:
+      if (adp.selection is None):
+        selection = self.selection
+      else:
+        assert 0 # XXX NOT IMPLEMENTED
+      iselection = selection.iselection()
+      if (adp.convert_to_isotropic):
+        self._convert_to_isotropic(iselection=iselection)
+      if (adp.convert_to_anisotropic):
+        self._convert_to_anisotropic(iselection=iselection)
+      self._set_b_iso(selection=selection, b_iso=adp.set_b_iso)
+      self._scale_adp(selection=selection, factor=adp.scale_adp)
+      self._shift_b_iso(iselection=iselection, shift=adp.shift_b_iso)
+      if (adp.randomize):
+        self._randomize_adp(selection=selection)
 
-  def _convert_to_isotropic(self):
-    if(self.params.adp.convert_to_isotropic):
-       self._print_action(text = "Converting to isotropic ADP.")
-       self._assert_not_modified(adp = True)
-       self.xray_structure.convert_to_isotropic(
-                                       selection = self.selection.iselection())
+  def _convert_to_isotropic(self, iselection):
+    self._print_action(text = "Converting to isotropic ADP.")
+    self.xray_structure.convert_to_isotropic(selection=iselection)
 
-  def _convert_to_anisotropic(self):
-    if(self.params.adp.convert_to_anisotropic):
-       self._print_action(text = "Converting to anisotropic ADP.")
-       self._assert_not_modified(adp = True)
-       self.xray_structure.convert_to_anisotropic(
-                                       selection = self.selection.iselection())
+  def _convert_to_anisotropic(self, iselection):
+    self._print_action(text = "Converting to anisotropic ADP.")
+    self.xray_structure.convert_to_anisotropic(selection=iselection)
 
-  def _set_b_iso(self):
-    b_iso = self.params.adp.set_b_iso
-    if(b_iso is not None):
-       self._print_action(text = "Setting all isotropic ADP to: %8.3f"%b_iso)
-       self._assert_not_modified(adp = True)
-       self.xray_structure.set_b_iso(value = b_iso, selection = self.selection)
+  def _set_b_iso(self, selection, b_iso):
+    if (b_iso is not None):
+      self._print_action(text = "Setting all isotropic ADP to: %8.3f"%b_iso)
+      self.xray_structure.set_b_iso(value=b_iso, selection=selection)
 
-  def _scale_adp(self):
-    scale = self.params.adp.scale_adp
-    if(scale is not None):
-       self._print_action(text = "Scaling all ADP with: %.3f"%scale)
-       self._assert_not_modified(adp = True)
-       self.xray_structure.scale_adp(factor = scale, selection= self.selection)
+  def _scale_adp(self, selection, factor):
+    if (factor is not None):
+      self._print_action(text = "Scaling all ADP with: %.6g" % factor)
+      self.xray_structure.scale_adp(factor=factor, selection=selection)
 
-  def _shift_b_iso(self):
-    shift = self.params.adp.shift_b_iso
-    if(shift is not None):
-       self._print_action(text = "Shift all ADP by: %8.3f"%shift)
-       self._assert_not_modified(adp = True)
-       self.xray_structure.shift_us(b_shift   = shift,
-                                    selection = self.selection.iselection())
+  def _shift_b_iso(self, iselection, shift):
+    if (shift is not None):
+      self._print_action(text = "Shift all ADP by: %8.3f"%shift)
+      self.xray_structure.shift_us(b_shift=shift, selection=iselection)
 
-  def _randomize_adp(self):
-    if(self.params.adp.randomize):
-       self._print_action(text = "Randomizing ADP.")
-       self._assert_not_modified(adp = True)
-       self.xray_structure.shake_adp(selection = self.selection)
+  def _randomize_adp(self, selection):
+    self._print_action(text = "Randomizing ADP.")
+    self.xray_structure.shake_adp(selection=selection)
 
   def _shake_sites(self):
     shake_value = self.params.sites.shake
     if(shake_value is not None):
        self._print_action(
                   text = "Shaking sites (RMS difference = %8.3f)."%shake_value)
-       self._assert_not_modified(sites = True)
        self.xray_structure.shake_sites_in_place(rms_difference= shake_value,
                                                 selection     = self.selection)
 
@@ -234,7 +219,6 @@ class modify(object):
     rb_shift = (abs(trans[0]+trans[1]+trans[2]+rot[0]+rot[1]+rot[2]) > 1.e-6)
     if(rb_shift):
        self._print_action(text = "Rigid body shift.")
-       self._assert_not_modified(sites = True)
        if(self.params.sites.euler_angle_convention == "zyz"):
           rot_obj = rigid_body.rb_mat_euler(phi = rot[0],
                                             psi = rot[1],
@@ -250,9 +234,12 @@ class modify(object):
 
   def _randomize_occupancies(self):
     if(self.params.occupancies.randomize):
-       self._print_action(text = "Randomizing all occupancies.")
-       self._assert_not_modified(occupancies = True)
-       self.xray_structure.shake_occupancies(selection = self.selection)
+      self._print_action(text = "Randomizing all occupancies.")
+      if (self._occupancies_modified):
+        raise Sorry("Can't modify occupancies (already modified).")
+      else:
+        self._occupancies_modified = True
+      self.xray_structure.shake_occupancies(selection = self.selection)
 
 def run(args, command_name="phenix.pdbtools"):
   log = utils.set_log(args)
