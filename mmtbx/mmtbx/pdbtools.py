@@ -19,7 +19,6 @@ from mmtbx import model_statistics
 modify_params_str = """\
 selection = None
   .type = str
-  .multiple = True
   .help = Selection for atoms to be modified
 adp
   .help = Scope of options to modify ADP of selected atoms
@@ -125,10 +124,10 @@ class modify(object):
                          selection_strings = [params_remove_selection],
                          xray_structure    = xray_structure)[0]
     self.selection = utils.get_atom_selections(
-                                     iselection        = False,
-                                     all_chain_proxies = all_chain_proxies,
-                                     selection_strings = self.params.selection,
-                                     xray_structure    = xray_structure)[0]
+      iselection        = False,
+      all_chain_proxies = all_chain_proxies,
+      selection_strings = [self.params.selection],
+      xray_structure    = xray_structure)[0]
     self._show_selected()
     self._convert_to_isotropic()
     self._convert_to_anisotropic()
