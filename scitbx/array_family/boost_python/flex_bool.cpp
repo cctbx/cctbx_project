@@ -340,12 +340,6 @@ namespace {
 
     typedef flex_wrapper<bool> f_w;
 
-    {
-      scope local_scope(scope());
-      def("first_index", f_w::first_index_a_s);
-      def("last_index", f_w::last_index_a_s);
-    }
-
     f_w::plain("bool")
       .def_pickle(flex_pickle_single_buffered<bool>())
       .def("__init__", make_constructor(
@@ -386,6 +380,8 @@ namespace {
     def("order", f_w::order_a_a);
     def("union", union_, (arg_("size"), arg_("iselections")));
     def("intersection", intersection, (arg_("size"), arg_("iselections")));
+    def("first_index", f_w::first_index_a_s);
+    def("last_index", f_w::last_index_a_s);
   }
 
 }}} // namespace scitbx::af::boost_python
