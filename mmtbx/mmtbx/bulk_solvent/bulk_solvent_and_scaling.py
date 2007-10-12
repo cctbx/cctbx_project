@@ -328,6 +328,12 @@ def _extract_fix_b_cart(fix_b_cart_scope):
   if(b_cart.count(None) > 0): return None
   else: return b_cart
 
+def ERROR_MESSAGE(status, log):
+  if(not status):
+    print >> log,"*********************************************************"
+    print >> log,"* WARNING - internal error in bulk solvent and scaling. *"
+    print >> log,"*********************************************************"
+
 class bulk_solvent_and_scales(object):
 
   def __init__(self, fmodel, params = None, log = None):
@@ -371,25 +377,26 @@ class bulk_solvent_and_scales(object):
             mc == macro_cycles[0] and
             not self._is_within_grid_search(params = params, fmodel = fmodel)):
            ksol, bsol, b_cart, target = self._ksol_bsol_grid_search(
-             params = params, fmodel = fmodel)
+             params = params, fmodel = fmodel, log = log)
            fmodel.update(k_sol = ksol, b_sol = bsol, b_cart = b_cart)
-           assert approx_equal(target, fmodel.r_work())
-           assert _approx_le(target, start_target)
+           ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()),log= log)
+           ERROR_MESSAGE(status=_approx_le(target, start_target),log= log)
            self.show(params = params, fmodel = fmodel, log = log,
              message = m+str(mc)+": k & b: grid search")
          if(params.minimization_k_sol_b_sol):
            ksol, bsol, target = self._ksol_bsol_cart_minimizer(params = params,
-             fmodel = fmodel)
+             fmodel = fmodel, log = log)
            fmodel.update(k_sol = ksol, b_sol = bsol)
-           assert approx_equal(target, fmodel.r_work())
-           assert _approx_le(target, start_target)
+           ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()),log= log)
+           ERROR_MESSAGE(status=_approx_le(target, start_target),log= log)
            self.show(params = params, fmodel = fmodel, log = log,
              message = m+str(mc)+": k & b: minimization")
          if(params.minimization_b_cart):
-           b_cart,target = self._b_cart_minimizer(params=params,fmodel=fmodel)
+           b_cart,target = self._b_cart_minimizer(params = params,
+             fmodel = fmodel, log = log)
            fmodel.update(b_cart = b_cart)
-           assert _approx_le(target, start_target)
-           assert approx_equal(target, fmodel.r_work())
+           ERROR_MESSAGE(status=_approx_le(target, start_target),log= log)
+           ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()),log= log)
            self.show(params = params, fmodel = fmodel, log = log,
              message = m+str(mc)+": anisotropic scale")
          if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
@@ -401,10 +408,7 @@ class bulk_solvent_and_scales(object):
          self.show(params = params, fmodel = fmodel, log = log,
            message = m+str(mc)+": apply back trace(b_cart)")
        fmodel.update(target_name = fmodel_target)
-       if(not _approx_le(fmodel.r_work(), start_target)):
-         raise RuntimeError(
-          "Fatal programming error: bulk solvent and scaling increased r-work.",
-          start_target, fmodel.r_work())
+       ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_target),log= log)
        if(abs(fmodel.k_sol()) < 0.01):
          fmodel.update(k_sol = 0.0, b_sol = 0.0)
 
@@ -413,7 +417,7 @@ class bulk_solvent_and_scales(object):
       fmodel.info().show_rfactors_targets_scales_overall(
         header = message, out = log)
 
-  def _ksol_bsol_grid_search(self, params, fmodel):
+  def _ksol_bsol_grid_search(self, params, fmodel, log):
     save_target = None
     if(fmodel.target_name != "ls_wunit_k1"):
       save_target = fmodel.target_name
@@ -439,10 +443,11 @@ class bulk_solvent_and_scales(object):
         fmodel.update(k_sol = ksol, b_sol = bsol)
         if(params.minimization_k_sol_b_sol):
           ksol_, bsol_, dummy = self._ksol_bsol_cart_minimizer(
-            params = params, fmodel = fmodel)
+            params = params, fmodel = fmodel, log = log)
           fmodel.update(k_sol = ksol_, b_sol = bsol_)
         if(params.minimization_b_cart):
-          b_cart, dummy = self._b_cart_minimizer(params=params,fmodel=fmodel)
+          b_cart, dummy = self._b_cart_minimizer(params = params,
+            fmodel = fmodel, log = log)
           fmodel.update(b_cart = b_cart)
         r_work = fmodel.r_work()
         if(r_work < final_r_work):
@@ -454,12 +459,12 @@ class bulk_solvent_and_scales(object):
     fmodel.update(k_sol  = final_ksol,
                   b_sol  = final_bsol,
                   b_cart = final_b_cart)
-    assert approx_equal(fmodel.r_work(), final_r_work)
-    assert _approx_le(fmodel.r_work(), start_r_work)
+    ERROR_MESSAGE(status=approx_equal(fmodel.r_work(), final_r_work),log= log)
+    ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_r_work),log= log)
     if(save_target is not None): fmodel.update(target_name = save_target)
     return final_ksol, final_bsol, final_b_cart, final_r_work
 
-  def _ksol_bsol_cart_minimizer(self, params, fmodel):
+  def _ksol_bsol_cart_minimizer(self, params, fmodel, log):
     original_target = fmodel.target_name
     start_r_work = fmodel.r_work()
     save_target = None
@@ -487,11 +492,11 @@ class bulk_solvent_and_scales(object):
         final_ksol = ksol
         final_bsol = bsol
         final_r_work = r_work
-    assert _approx_le(final_r_work, start_r_work)
+    ERROR_MESSAGE(status=_approx_le(final_r_work, start_r_work),log= log)
     fmodel.update(target_name = original_target)
     return final_ksol, final_bsol, final_r_work
 
-  def _b_cart_minimizer(self, params, fmodel):
+  def _b_cart_minimizer(self, params, fmodel, log):
     original_target = fmodel.target_name
     start_r_work = fmodel.r_work()
     save_target = None
@@ -514,7 +519,7 @@ class bulk_solvent_and_scales(object):
       if(r_work < final_r_work):
         final_b_cart = b_cart
         final_r_work = r_work
-    assert _approx_le(final_r_work, start_r_work)
+    ERROR_MESSAGE(status=_approx_le(final_r_work, start_r_work),log= log)
     fmodel.update(target_name = original_target)
     return final_b_cart, final_r_work
 
