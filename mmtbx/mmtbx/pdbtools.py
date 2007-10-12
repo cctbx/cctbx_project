@@ -132,32 +132,27 @@ class modify(object):
                          all_chain_proxies = all_chain_proxies,
                          selection_strings = [params_remove_selection],
                          xray_structure    = xray_structure)[0]
-    self.selection = utils.get_atom_selections(
+    self.top_selection = utils.get_atom_selections(
       iselection        = False,
       all_chain_proxies = all_chain_proxies,
       selection_strings = [self.params.selection],
       xray_structure    = xray_structure)[0]
-    self._show_selected()
     self._process_adp()
     self._process_sites()
     self._randomize_occupancies()
 
-  def _show_selected(self):
-    assert self.xray_structure.scatterers().size() == self.selection.size()
-    if(self.selection.size() == self.selection.count(True)):
+  def _show_selected(self, selection):
+    assert self.xray_structure.scatterers().size() == selection.size()
+    if (selection.all_eq(True)):
       print >> self.log, \
                      "All input atoms are selected for requested manipulation."
-    elif(self.selection.count(True) == 0):
+    elif(selection.count(True) == 0):
       raise Sorry("No atoms selected for requested manipulation. \n"\
                   "       Selection string provided: %s"%self.params.selection)
     else:
-      fmt = "Number of atoms selected for requested manipulation: %d out of total: %d"
-      print >> self.log, fmt%(self.selection.count(True),self.selection.size())
-    if(self.remove_selection is not None and
-       self.remove_selection.count(False) > 0):
-      fmt = "Number of atoms to be removed: %d out of total: %d"
-      print >> self.log, fmt%(
-                       self.remove_selection.count(False),self.selection.size())
+      fmt = "Number of atoms selected for requested manipulation:" \
+            " %d out of total: %d"
+      print >> self.log, fmt%(selection.count(True),selection.size())
 
   def _print_action(self, text):
     print >> self.log, text
@@ -165,9 +160,14 @@ class modify(object):
   def _process_adp(self):
     for adp in self.params.adp:
       if (adp.selection is None):
-        selection = self.selection
+        selection = self.top_selection
       else:
-        assert 0 # XXX NOT IMPLEMENTED
+        selection = utils.get_atom_selections(
+          iselection=False,
+          all_chain_proxies=self.all_chain_proxies,
+          selection_strings=[adp.selection],
+          xray_structure=self.xray_structure)[0]
+      self._show_selected(selection=selection)
       iselection = selection.iselection()
       if (adp.convert_to_isotropic):
         self._convert_to_isotropic(iselection=iselection)
@@ -209,9 +209,14 @@ class modify(object):
   def _process_sites(self):
     for sites in self.params.sites:
       if (sites.selection is None):
-        selection = self.selection
+        selection = self.top_selection
       else:
-        assert 0 # XXX NOT IMPLEMENTED
+        selection = utils.get_atom_selections(
+          iselection=False,
+          all_chain_proxies=self.all_chain_proxies,
+          selection_strings=[sites.selection],
+          xray_structure=self.xray_structure)[0]
+      self._show_selected(selection=selection)
       iselection = selection.iselection()
       self._shake_sites(selection=selection, rms_difference=sites.shake)
       self._rb_shift(
@@ -252,11 +257,19 @@ class modify(object):
   def _randomize_occupancies(self):
     if(self.params.occupancies.randomize):
       self._print_action(text = "Randomizing all occupancies.")
+      self._show_selected(selection=self.top_selection)
       if (self._occupancies_modified):
         raise Sorry("Can't modify occupancies (already modified).")
       else:
         self._occupancies_modified = True
-      self.xray_structure.shake_occupancies(selection = self.selection)
+      self.xray_structure.shake_occupancies(selection = self.top_selection)
+
+  def report_number_of_atoms_to_be_removed(self):
+    if (    self.remove_selection is not None
+        and not self.remove_selection.all_eq(False)):
+      fmt = "Number of atoms to be removed: %d out of total: %d"
+      print >> self.log, fmt % (
+        self.remove_selection.count(False), self.remove_selection.size())
 
 def run(args, command_name="phenix.pdbtools"):
   log = utils.set_log(args)
@@ -300,6 +313,7 @@ def run(args, command_name="phenix.pdbtools"):
                   params            = command_line_interpreter.params,
                   all_chain_proxies = all_chain_proxies,
                   log               = log)
+  result.report_number_of_atoms_to_be_removed()
   utils.print_header("Writing output model", out = log)
   atom_attributes_list = all_chain_proxies.stage_1.atom_attributes_list
   ofn = command_line_interpreter.params.output.pdb.file_name
