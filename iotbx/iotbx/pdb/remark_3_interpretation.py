@@ -307,16 +307,16 @@ def get_program(st):
                                 st.count("PROGRAM")>=1 or \
                                 st.count("PROCEDURE")>=1
         j_and_l = st.count("JACK")==1 or st.count("LEVITT")
-        if(refinement_or_program and j_and_l): program = "JACK AND LEVITT"
+        if(refinement_or_program and j_and_l): program = "JACK_AND_LEVITT"
         if((ch_2 or ch_3) and st.count(diamond) != 0): program = diamond
         k_and_h = st.count("KONNERT")==1 or st.count("HENDRICKSON")==1
         k_and_h_1 = st.count("KONNERT AND HENDRICKSON")==1
         if((refinement_or_program and k_and_h) or k_and_h_1):
-           program = "KONNERT AND HENDRICKSON"
+           program = "KONNERT_AND_HENDRICKSON"
         sa = st.count("SIMULATED")==1 and st.count("ANNEALING")
         if(refinement_or_program and sa): program = "X-PLOR"
         if(refinement_or_program and st.count("CORELS")==1): program = "CORELS"
-        jones_and_liljas = "JONES AND A. LILJAS"
+        jones_and_liljas = "JONES_AND_A.LILJAS"
         if(st.count(jones_and_liljas) or st.count("T.A.JONES, L.LILJAS")):
            program = jones_and_liljas
   if(program == "XPLOR"): program = "X-PLOR"
