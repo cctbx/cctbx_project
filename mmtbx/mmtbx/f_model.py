@@ -1985,65 +1985,61 @@ class info(object):
   def show_remark_3(self, out = None):
     if(out is None): out = sys.stdout
     pr = "REMARK   3  "
-    print >> out,pr+"REFINEMENT TARGET : %-s"%self.target_name.upper()
+    print >> out,pr+"REFINEMENT TARGET : %s"%self.target_name.upper()
     print >> out,pr
     print >> out,pr+"DATA USED IN REFINEMENT."
-    print >> out,pr+" RESOLUTION RANGE HIGH (ANGSTROMS) : %-8.3f"%self.d_min
-    print >> out,pr+" RESOLUTION RANGE LOW  (ANGSTROMS) : %-8.3f"%self.d_max
-    if(self.min_f_obs_over_sigma is None):
-      mfos = str(self.min_f_obs_over_sigma)
-    else:
-      mfos = str("%-6.2f"%self.min_f_obs_over_sigma)
-    print >> out,pr+" MIN(FOBS/SIGMA_FOBS)              : %-s"%mfos
+    print >> out,pr+" RESOLUTION RANGE HIGH (ANGSTROMS) : %s"%format_value("%-8.3f", self.d_min)
+    print >> out,pr+" RESOLUTION RANGE LOW  (ANGSTROMS) : %s"%format_value("%-8.3f", self.d_max)
+    print >> out,pr+" MIN(FOBS/SIGMA_FOBS)              : %s"%format_value("%-6.2f", self.min_f_obs_over_sigma)
     print >> out,pr+" COMPLETENESS FOR RANGE        (%s) : %-6.2f"%\
       ("%", self.completeness_in_range*100.0)
-    print >> out,pr+" NUMBER OF REFLECTIONS             : %-10d"%\
-      self.number_of_reflections
+    print >> out,pr+" NUMBER OF REFLECTIONS             : %-10d"%self.number_of_reflections
     print >> out,pr
     print >> out,pr+"FIT TO DATA USED IN REFINEMENT."
-    print >> out,pr+" R VALUE     (WORKING + TEST SET) : %-s"%\
-      format_value("%-6.4f",self.r_all)
-    print >> out,pr+" R VALUE            (WORKING SET) : %-6.4f"%self.r_work
-    print >> out,pr+" FREE R VALUE                     : %-6.4f"%self.r_free
+    print >> out,pr+" R VALUE     (WORKING + TEST SET) : %s"%format_value("%-6.4f",self.r_all)
+    print >> out,pr+" R VALUE            (WORKING SET) : %s"%format_value("%-6.4f", self.r_work)
+    print >> out,pr+" FREE R VALUE                     : %s"%format_value("%-6.4f", self.r_free)
     print >> out,pr+" FREE R VALUE TEST SET SIZE   (%s) : %-6.2f"%("%",
       float(self.number_of_test_reflections)/self.number_of_reflections*100.)
-    print >> out,pr+" FREE R VALUE TEST SET COUNT      : %-10d"%\
-      self.number_of_test_reflections
+    print >> out,pr+" FREE R VALUE TEST SET COUNT      : %-10d"%self.number_of_test_reflections
     print >> out,pr
     print >> out,pr+"FIT TO DATA USED IN REFINEMENT (IN BINS)."
-    print >> out,pr+" BIN  RESOLUTION RANGE  COMPL.   NWORK NFREE  RWORK RFREE"
-    fmt = " %3d %-17s %6.2f %8d %5d  %5.2f %5.2f"
+    print >> out,pr+" BIN  RESOLUTION RANGE  COMPL.    NWORK NFREE   RWORK  RFREE"
+    fmt = " %s %s    %s %s %s  %s %s"
     for bin in self.bins:
-      print >> out,pr+fmt%(bin.i_bin, bin.d_range, bin.completeness*100.,
-        bin.n_work, bin.n_free, bin.r_work*100., bin.r_free*100.)
+      print >> out,pr+fmt%(
+        format_value("%3d", bin.i_bin),
+        format_value("%-17s", bin.d_range),
+        format_value("%4.2f", bin.completeness),
+        format_value("%8d", bin.n_work),
+        format_value("%5d", bin.n_free),
+        format_value("%6.4f", bin.r_work),
+        format_value("%6.4f", bin.r_free))
     print >> out,pr
     print >> out,pr+"BULK SOLVENT MODELLING."
     print >> out,pr+" METHOD USED        : FLAT BULK SOLVENT MODEL"
-    print >> out,pr+" SOLVENT RADIUS     : %-8.2f"%self.mask_solvent_radius
-    print >> out,pr+" SHRINKAGE RADIUS   : %-8.2f"%self.mask_shrink_radius
-    print >> out,pr+" GRID STEP FACTOR   : %-8.2f"%self.mask_grid_step_factor
-    print >> out,pr+" K_SOL              : %-8.3f"%self.k_sol
-    print >> out,pr+" B_SOL              : %-8.3f"%self.b_sol
+    print >> out,pr+" SOLVENT RADIUS     : %s"%format_value("%-8.2f", self.mask_solvent_radius)
+    print >> out,pr+" SHRINKAGE RADIUS   : %s"%format_value("%-8.2f", self.mask_shrink_radius)
+    print >> out,pr+" GRID STEP FACTOR   : %s"%format_value("%-8.2f", self.mask_grid_step_factor)
+    print >> out,pr+" K_SOL              : %s"%format_value("%-8.3f", self.k_sol)
+    print >> out,pr+" B_SOL              : %s"%format_value("%-8.3f", self.b_sol)
     print >> out,pr
     print >> out,pr+"ERROR ESTIMATES."
-    print >> out,pr+\
-      " COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %-s"%\
+    print >> out,pr+" COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %s"%\
       format_value("%-8.2f", self.ml_coordinate_error)
-    print >> out,pr+\
-      " PHASE ERROR (DEGREES, MAXIMUM-LIKELIHOOD BASED) : %-8.2f"%\
-      self.ml_phase_error
+    print >> out,pr+" PHASE ERROR (DEGREES, MAXIMUM-LIKELIHOOD BASED) : %s"%\
+      format_value("%-8.2f", self.ml_phase_error)
     print >> out,pr
     print >> out,pr+"OVERALL SCALE FACTORS."
-    print >> out,pr+\
-      " SCALE = SUM(|F_OBS|*|F_MODEL|)/SUM(|F_MODEL|**2) : %-12.4f"%\
-      self.overall_scale_k1
+    print >> out,pr+" SCALE = SUM(|F_OBS|*|F_MODEL|)/SUM(|F_MODEL|**2) : %s"%\
+      format_value("%-12.4f", self.overall_scale_k1)
     print >> out,pr+" ANISOTROPIC SCALE MATRIX ELEMENTS (IN CARTESIAN BASIS)."
-    print >> out,pr+"  B11 : %-15.4f"%self.b_cart[0]
-    print >> out,pr+"  B22 : %-15.4f"%self.b_cart[1]
-    print >> out,pr+"  B33 : %-15.4f"%self.b_cart[2]
-    print >> out,pr+"  B12 : %-15.4f"%self.b_cart[3]
-    print >> out,pr+"  B13 : %-15.4f"%self.b_cart[4]
-    print >> out,pr+"  B23 : %-15.4f"%self.b_cart[5]
+    print >> out,pr+"  B11 : %s"%format_value("%-15.4f", self.b_cart[0])
+    print >> out,pr+"  B22 : %s"%format_value("%-15.4f", self.b_cart[1])
+    print >> out,pr+"  B33 : %s"%format_value("%-15.4f", self.b_cart[2])
+    print >> out,pr+"  B12 : %s"%format_value("%-15.4f", self.b_cart[3])
+    print >> out,pr+"  B13 : %s"%format_value("%-15.4f", self.b_cart[4])
+    print >> out,pr+"  B23 : %s"%format_value("%-15.4f", self.b_cart[5])
     print >> out,pr
     print >> out,pr+"R FACTOR FORMULA."
     print >> out,pr+" R = SUM(||F_OBS|-SCALE*|F_MODEL||)/SUM(|F_OBS|)"
