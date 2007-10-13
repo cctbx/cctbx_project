@@ -262,7 +262,9 @@ def exercise_flex_constructors():
   else: raise RuntimeError("Exception expected.")
 
 def exercise_misc():
+  assert flex.double.element_size() != 0
   f = flex.double((1,2,3))
+  assert f.element_size() == flex.double.element_size()
   assert f[0] == 1
   assert f[2] == 3
   assert f[-1] == 3

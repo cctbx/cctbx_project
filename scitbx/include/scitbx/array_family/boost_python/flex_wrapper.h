@@ -71,6 +71,9 @@ namespace scitbx { namespace af { namespace boost_python {
       : f_t(a, flex_grid<>(a.size()))
     {}
 
+    static std::size_t
+    element_size() { return sizeof(ElementType); }
+
     static flex_grid<>
     accessor(f_t const& a) { return a.accessor(); }
 
@@ -714,6 +717,8 @@ namespace scitbx { namespace af { namespace boost_python {
         .def(init<flex_grid<> const&, optional<ElementType const&> >())
         .def(init<std::size_t, optional<ElementType const&> >())
         .def(init<shared_plain<ElementType> const&>())
+        .def("element_size", element_size)
+        .staticmethod("element_size")
         .def("accessor", accessor)
         .def("nd", nd)
         .def("is_0_based", is_0_based)
