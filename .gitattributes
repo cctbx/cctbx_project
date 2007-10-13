@@ -81,6 +81,7 @@ mmtbx/mmtbx/wwpdb/standard_geometry_cif.py -text
 mmtbx/mmtbx/wwpdb/tst_standard_geometry_cif.py -text
 mmtbx/mmtbx/xmanip.py -text
 mmtbx/mmtbx/xmanip_tasks.py -text
+scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-python
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text

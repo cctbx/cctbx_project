@@ -55,7 +55,8 @@ def export_to(target_module_name):
     "linear_regression",
     "linear_correlation",
     "histogram",
-    "permutation_generator"]
+    "permutation_generator",
+    "smart_selection"]
   target_module = sys.modules[target_module_name]
   g = globals()
   for attr in export_list:
@@ -148,8 +149,6 @@ def condense_as_ranges(integer_array):
   store_range()
   return result
 
-if (__name__ == "__main__"):
-  run(sys.argv[1:])
 def get_random_seed():
   try:
     result = builtin_long(os.getpid() * (2**16)) \
@@ -241,6 +240,88 @@ def permutation_generator(size):
   result = size_t(xrange(size))
   yield result
   while (result.next_permutation()): yield result
+
+class smart_selection(object):
+
+  bool_element_size = bool.element_size()
+  size_t_element_size = size_t.element_size()
+
+  def __init__(self, flags=None, indices=None, all_size=None):
+    "Self-consistency of flags, indices, all_size is not checked!"
+    self._flags = flags
+    self._indices = indices
+    self._all_size = all_size
+    self._selected_size = None
+
+  def _get_all_size(self):
+    if (    self._all_size is None
+        and self._flags is not None):
+      self._all_size = self._flags.size()
+    return self._all_size
+  all_size = property(_get_all_size)
+
+  def _get_selected_size(self):
+    if (self._selected_size is None):
+      if (self._indices is not None):
+        self._selected_size = self._indices.size()
+      elif (self._flags is not None):
+        self._selected_size = self._flags.count(True)
+    return self._selected_size
+  selected_size = property(_get_selected_size)
+
+  def _get_flags(self):
+    if (    self._flags is None
+        and self._all_size is not None
+        and self._indices is not None):
+      self._flags = bool(self._all_size, self._indices)
+    return self._flags
+  flags = property(_get_flags)
+
+  def _get_indices(self):
+    if (    self._indices is None
+        and self._flags is not None):
+      self._indices = self._flags.iselection()
+    return self._indices
+  indices = property(_get_indices)
+
+  def __eq__(self, other):
+    if (self.all_size != other.all_size): return False
+    if (self._flags is not None):
+      return self._flags.all_eq(other.flags)
+    if (self._indices is not None):
+      return self._indices.all_eq(other.indices)
+    return True
+
+  def __getstate__(self):
+    asz = self.all_size
+    if (asz is None):
+      return (None, None, None, self._selected_size)
+    if (asz == 0):
+      return (None, self.indices, 0, self._selected_size)
+    ssz = self.selected_size
+    if (  asz * self.bool_element_size
+        < ssz * self.size_t_element_size):
+      return (self.flags, None, asz, self._selected_size)
+    return (None, self.indices, asz, self._selected_size)
+
+  def __setstate__(self, state):
+    self._flags, self._indices, self._all_size, self._selected_size = state
+
+  def format_summary(self):
+    asz = self.all_size
+    if (asz is None):
+      idc = self.indices
+      if (idc is None): return "None"
+      return "%d" % idc.size()
+    ssz = self.selected_size
+    if (ssz == asz):
+      if (ssz == 0): return "None (empty array)"
+      return "all (%d)" % ssz
+    return "%d of %d" % (ssz, asz)
+
+  def show_summary(self, out=None, prefix="", label="selected elements: "):
+    if (out is None): out = sys.stdout
+    print >> out, prefix + label + self.format_summary()
 
 def exercise_triple(flex_triple, flex_order=None, as_double=False):
   from libtbx.test_utils import approx_equal
