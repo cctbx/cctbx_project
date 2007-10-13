@@ -123,104 +123,104 @@ class modify(object):
     self.params = params
     self._occupancies_modified = False
     self.remove_selection = None
-    try:
-      params_remove_selection = self.params.remove.selection
+    try: params_remove_selection = self.params.remove.selection
+    except KeyboardInterrupt: raise
     except: params_remove_selection = None
-    if(params_remove_selection is not None):
-      self.remove_selection = ~utils.get_atom_selections(
-                         iselection        = False,
-                         all_chain_proxies = all_chain_proxies,
-                         selection_strings = [params_remove_selection],
-                         xray_structure    = xray_structure)[0]
-    self.top_selection = utils.get_atom_selections(
-      iselection        = False,
-      all_chain_proxies = all_chain_proxies,
-      selection_strings = [self.params.selection],
-      xray_structure    = xray_structure)[0]
+    if (params_remove_selection is not None):
+      self.remove_selection = flex.smart_selection(
+        flags=~utils.get_atom_selections(
+          iselection        = False,
+          all_chain_proxies = all_chain_proxies,
+          selection_strings = [params_remove_selection],
+          xray_structure    = xray_structure)[0])
+    self.top_selection = flex.smart_selection(
+      flags=utils.get_atom_selections(
+        iselection        = False,
+        all_chain_proxies = all_chain_proxies,
+        selection_strings = [self.params.selection],
+        xray_structure    = xray_structure)[0])
     self._process_adp()
     self._process_sites()
-    self._randomize_occupancies()
+    self._randomize_occupancies(selection=self.top_selection)
 
-  def _show_selected(self, selection):
-    assert self.xray_structure.scatterers().size() == selection.size()
-    if (selection.all_eq(True)):
-      print >> self.log, \
-                     "All input atoms are selected for requested manipulation."
-    elif(selection.count(True) == 0):
-      raise Sorry("No atoms selected for requested manipulation. \n"\
-                  "       Selection string provided: %s"%self.params.selection)
-    else:
-      fmt = "Number of atoms selected for requested manipulation:" \
-            " %d out of total: %d"
-      print >> self.log, fmt%(selection.count(True),selection.size())
-
-  def _print_action(self, text):
-    print >> self.log, text
+  def _print_action(self, text, selection):
+    print >> self.log, "%s: selected atoms: %s" % (
+      text, selection.format_summary())
 
   def _process_adp(self):
     for adp in self.params.adp:
       if (adp.selection is None):
         selection = self.top_selection
       else:
-        selection = utils.get_atom_selections(
-          iselection=False,
-          all_chain_proxies=self.all_chain_proxies,
-          selection_strings=[adp.selection],
-          xray_structure=self.xray_structure)[0]
-      self._show_selected(selection=selection)
-      iselection = selection.iselection()
+        selection = flex.smart_selection(
+          flags=utils.get_atom_selections(
+            iselection=False,
+            all_chain_proxies=self.all_chain_proxies,
+            selection_strings=[adp.selection],
+            xray_structure=self.xray_structure)[0])
       if (adp.convert_to_isotropic):
-        self._convert_to_isotropic(iselection=iselection)
+        self._convert_to_isotropic(selection=selection)
       if (adp.convert_to_anisotropic):
-        self._convert_to_anisotropic(iselection=iselection)
+        self._convert_to_anisotropic(selection=selection)
       self._set_b_iso(selection=selection, b_iso=adp.set_b_iso)
       self._scale_adp(selection=selection, factor=adp.scale_adp)
-      self._shift_b_iso(iselection=iselection, shift=adp.shift_b_iso)
+      self._shift_b_iso(selection=selection, shift=adp.shift_b_iso)
       if (adp.randomize):
         self._randomize_adp(selection=selection)
 
-  def _convert_to_isotropic(self, iselection):
-    self._print_action(text = "Converting to isotropic ADP.")
-    self.xray_structure.convert_to_isotropic(selection=iselection)
+  def _convert_to_isotropic(self, selection):
+    self._print_action(
+      text = "Converting to isotropic ADP",
+      selection = selection)
+    self.xray_structure.convert_to_isotropic(selection=selection.indices)
 
-  def _convert_to_anisotropic(self, iselection):
-    self._print_action(text = "Converting to anisotropic ADP.")
-    self.xray_structure.convert_to_anisotropic(selection=iselection)
+  def _convert_to_anisotropic(self, selection):
+    self._print_action(
+      text = "Converting to anisotropic ADP",
+      selection = selection)
+    self.xray_structure.convert_to_anisotropic(selection=selection.flags)
 
   def _set_b_iso(self, selection, b_iso):
     if (b_iso is not None):
-      self._print_action(text = "Setting all isotropic ADP to: %8.3f"%b_iso)
-      self.xray_structure.set_b_iso(value=b_iso, selection=selection)
+      self._print_action(
+        text = "Setting all isotropic ADP = %.3f" % b_iso,
+        selection = selection)
+      self.xray_structure.set_b_iso(value=b_iso, selection=selection.flags)
 
   def _scale_adp(self, selection, factor):
     if (factor is not None):
-      self._print_action(text = "Scaling all ADP with: %.6g" % factor)
-      self.xray_structure.scale_adp(factor=factor, selection=selection)
+      self._print_action(
+        text = "Multiplying all ADP with factor = %.6g" % factor,
+        selection = selection)
+      self.xray_structure.scale_adp(factor=factor, selection=selection.flags)
 
-  def _shift_b_iso(self, iselection, shift):
+  def _shift_b_iso(self, selection, shift):
     if (shift is not None):
-      self._print_action(text = "Shift all ADP by: %8.3f"%shift)
-      self.xray_structure.shift_us(b_shift=shift, selection=iselection)
+      self._print_action(
+        text = "Adding shift = %.2f to all ADP" % shift,
+        selection = selection)
+      self.xray_structure.shift_us(b_shift=shift, selection=selection.indices)
 
   def _randomize_adp(self, selection):
-    self._print_action(text = "Randomizing ADP.")
-    self.xray_structure.shake_adp(selection=selection)
+    self._print_action(
+      text = "Randomizing ADP",
+      selection = selection)
+    self.xray_structure.shake_adp(selection=selection.flags)
 
   def _process_sites(self):
     for sites in self.params.sites:
       if (sites.selection is None):
         selection = self.top_selection
       else:
-        selection = utils.get_atom_selections(
-          iselection=False,
-          all_chain_proxies=self.all_chain_proxies,
-          selection_strings=[sites.selection],
-          xray_structure=self.xray_structure)[0]
-      self._show_selected(selection=selection)
-      iselection = selection.iselection()
+        selection = flex.smart_selection(
+          flags=utils.get_atom_selections(
+            iselection=False,
+            all_chain_proxies=self.all_chain_proxies,
+            selection_strings=[sites.selection],
+            xray_structure=self.xray_structure)[0])
       self._shake_sites(selection=selection, rms_difference=sites.shake)
       self._rb_shift(
-        iselection=iselection,
+        selection=selection,
         translate=sites.translate,
         rotate=sites.rotate,
         euler_angle_convention=sites.euler_angle_convention)
@@ -228,19 +228,22 @@ class modify(object):
   def _shake_sites(self, selection, rms_difference):
     if (rms_difference is not None):
       self._print_action(
-        text = "Shaking sites (RMS difference = %8.3f)." % rms_difference)
+        text = "Shaking sites (RMS = %.3f)" % rms_difference,
+        selection = selection)
       self.xray_structure.shake_sites_in_place(
         rms_difference=rms_difference,
-        selection=selection)
+        selection=selection.flags)
 
-  def _rb_shift(self, iselection, translate, rotate, euler_angle_convention):
+  def _rb_shift(self, selection, translate, rotate, euler_angle_convention):
     trans = [float(i) for i in translate]
     rot   = [float(i) for i in rotate]
     if(len(trans) != 3): raise Sorry("Wrong value: translate= " + translate)
     if(len(rot) != 3): raise Sorry("Wrong value: translate= " + rotate)
     if (   trans[0] != 0 or trans[1] != 0 or trans[2] != 0
         or rot[0] != 0 or rot[1] != 0 or rot[2] != 0):
-      self._print_action(text = "Rigid body shift.")
+      self._print_action(
+        text = "Rigid body shift",
+        selection = selection)
       if (euler_angle_convention == "zyz"):
         rot_obj = rigid_body.rb_mat_euler(phi = rot[0],
                                           psi = rot[1],
@@ -252,24 +255,25 @@ class modify(object):
       self.xray_structure.apply_rigid_body_shift(
         rot       = rot_obj.rot_mat().as_mat3(),
         trans     = trans,
-        selection = iselection)
+        selection = selection.indices)
 
-  def _randomize_occupancies(self):
-    if(self.params.occupancies.randomize):
-      self._print_action(text = "Randomizing all occupancies.")
-      self._show_selected(selection=self.top_selection)
+  def _randomize_occupancies(self, selection):
+    if (self.params.occupancies.randomize):
+      self._print_action(
+        text = "Randomizing all occupancies",
+        selection = selection)
       if (self._occupancies_modified):
         raise Sorry("Can't modify occupancies (already modified).")
       else:
         self._occupancies_modified = True
-      self.xray_structure.shake_occupancies(selection = self.top_selection)
+      self.xray_structure.shake_occupancies(selection=selection.flags)
 
   def report_number_of_atoms_to_be_removed(self):
     if (    self.remove_selection is not None
-        and not self.remove_selection.all_eq(False)):
-      fmt = "Number of atoms to be removed: %d out of total: %d"
-      print >> self.log, fmt % (
-        self.remove_selection.count(False), self.remove_selection.size())
+        and self.remove_selection.selected_size > 0):
+      self.remove_selection.show_summary(
+        out = self.log,
+        label = "Atoms to be removed: ")
 
 def run(args, command_name="phenix.pdbtools"):
   log = utils.set_log(args)
@@ -326,7 +330,7 @@ def run(args, command_name="phenix.pdbtools"):
   utils.write_pdb_file(
     xray_structure       = xray_structure,
     atom_attributes_list = atom_attributes_list,
-    selection            = result.remove_selection,
+    selection            = getattr(result.remove_selection, "flags", None),
     write_cryst1_record  = not command_line_interpreter.fake_crystal_symmetry,
     out                  = ofo)
   utils.print_header("Done", out = log)
@@ -466,6 +470,7 @@ class interpreter:
     --unused_ok
   to the command line arguments.""")
     self.params = self.params.extract()
+    # XXX also need to inspect input files defined via parameters
     self.crystal_symmetry = crystal.select_crystal_symmetry(
       from_command_line = self.command_line.symmetry,
       from_parameter_file=crystal.symmetry(

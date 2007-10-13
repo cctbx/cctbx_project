@@ -6,7 +6,8 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.utils import remove_files
 from mmtbx import utils
-from libtbx.test_utils import approx_equal, not_approx_equal, run_command
+from libtbx.test_utils import approx_equal, not_approx_equal, run_command, \
+  show_diff
 from libtbx.utils import show_times_at_exit
 
 class xray_structure_plus(object):
@@ -305,7 +306,19 @@ sites {
   cmd = "phenix.pdbtools %s output.pdb.file_name=modified.pdb params" % (
     file_name)
   result = run_command(command=cmd, verbose=verbose)
-  # XXX inspect results
+  lines = result.stdout_lines
+  for i,line in enumerate(lines):
+    if (line.find("Performing requested model manipulations") >= 0):
+      break
+  else:
+    raise RuntimeError("Expected output not found.")
+  assert lines[i+1] == ""
+  assert lines[i+6] == ""
+  assert not show_diff("\n".join(lines[i+2:i+6]), """\
+Randomizing ADP: selected atoms: 12 of 36
+Adding shift = 10.00 to all ADP: selected atoms: 12 of 36
+Shaking sites (RMS = 1.500): selected atoms: 12 of 36
+Rigid body shift: selected atoms: 24 of 36""")
 
 def exercise_no_cryst1(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "t.pdb")
@@ -340,7 +353,12 @@ def exercise_show_geometry_statistics(pdb_dir, verbose):
   run_command(command=cmd, verbose=verbose)
 
 def exercise(args):
-  verbose = "--verbose" in args
+  if ("--show-everything" in args):
+    verbose = 2
+  elif ("--verbose" in args):
+    verbose = 1
+  else:
+    verbose = 0
   pdb_dir = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb", test=os.path.isdir)
   if (pdb_dir is None):
