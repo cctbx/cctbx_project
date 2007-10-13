@@ -321,13 +321,14 @@ def show_diff(a, b, selections=None, expected_number_of_lines=None):
 
 class RunCommandError(Sorry): pass
 
-def run_command(command, verbose=False):
-  if (verbose):
+def run_command(command, verbose=0):
+  assert verbose >= 0
+  if (verbose > 0):
     print command
     print
   result = easy_run.fully_buffered(command=command)
   if (len(result.stderr_lines) != 0):
-    if (not verbose):
+    if (verbose == 0):
       print command
       print
     print "\n".join(result.stdout_lines)
@@ -335,12 +336,15 @@ def run_command(command, verbose=False):
   else:
     for line in result.stdout_lines:
       if (line == "Traceback (most recent call last):"):
-        if (not verbose):
+        if (verbose == 0):
           print command
           print
         print "\n".join(result.stdout_lines)
         print
         raise RunCommandError("Traceback detected in output.")
+  if (verbose > 1):
+    print "\n".join(result.stdout_lines)
+    print
   return result
 
 def exercise():
