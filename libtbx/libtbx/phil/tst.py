@@ -203,13 +203,13 @@ u
   a=z
 }
 """)
-  assert params.as_str(expert_level=0) == """\
+  assert not show_diff(params.as_str(expert_level=0), """\
 x = 1
 s {
   a = x
 }
-"""
-  assert params.as_str(expert_level=1) == """\
+""")
+  assert not show_diff(params.as_str(expert_level=1), """\
 x = 1
 y = 2
 s {
@@ -218,9 +218,9 @@ s {
 t {
   a = y
 }
-"""
+""")
   for expert_level in [-1,2,3,None]:
-    assert params.as_str(expert_level=expert_level) == """\
+    assert not show_diff(params.as_str(expert_level=expert_level), """\
 x = 1
 y = 2
 z = 3
@@ -233,7 +233,7 @@ t {
 u {
   a = z
 }
-"""
+""")
   #
   recycle(
     input_string="s{a=1}t{b=2}", expected_out="""\
@@ -611,7 +611,7 @@ t.a.c.d=1
 """)
   out = StringIO()
   parameters.show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a {
     b = 0
@@ -620,7 +620,7 @@ s {
 }
 t.a.b = 0
 t.a.c.d = 1
-"""
+""")
   check_get(parameters, path="s", expected_out="""\
 s {
   a {
@@ -999,7 +999,7 @@ s=1
     process_includes=True)
   out = StringIO()
   parameters.show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 tmp2 = tmp2.params
 !include none
 a = x
@@ -1009,10 +1009,10 @@ c = z
 b = y
 d = $z
 s = 1
-"""
+""")
   out = StringIO()
   parameters.unique().show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 tmp2 = tmp2.params
 a = x
 r = 0
@@ -1020,7 +1020,7 @@ c = z
 b = y
 d = $z
 s = 1
-"""
+""")
   try: parameters.get(path="d")
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $z (file "tmp3.params", line 3)'
@@ -1064,14 +1064,14 @@ z=3
     process_includes=True)
   out = StringIO()
   parameters.show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 0
 b = 1
 c = 2
 z = 3
 y = 2
 x = 1
-"""
+""")
   print >> open("tmp4.params", "w"), """\
 a=1
 include file tmp1.params
@@ -1092,7 +1092,7 @@ z=1
     process_includes=True)
   out = StringIO()
   parameters.show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 1
 a = 0
 b = 1
@@ -1121,10 +1121,10 @@ s {
   z = 3
 }
 z = 1
-"""
+""")
   out = StringIO()
   parameters.unique().show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 0
 b = 1
 c = 2
@@ -1139,7 +1139,7 @@ s {
   z = 3
 }
 z = 1
-"""
+""")
   #
   try: phil.parse(input_string="""\
 include foo
@@ -1335,20 +1335,20 @@ a=2
 """)
   out = StringIO()
   master.fetch(source).show(out=out, attributes_level=2)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 2
   .expert_level = 1
-"""
+""")
   source = phil.parse(input_string="""\
 a=1
 !a=2
 """)
   out = StringIO()
   master.fetch(source).show(out=out, attributes_level=2)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 1
   .expert_level = 1
-"""
+""")
   #
   master = phil.parse(input_string="""\
 s {
@@ -1435,14 +1435,14 @@ s {
 """)
   out = StringIO()
   master_plain.fetch(source).show(out=out, attributes_level=2)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s
   .expert_level = 1
 {
   a = 2
     .expert_level = 2
 }
-"""
+""")
   source = phil.parse(input_string="""\
 s {
   a=1
@@ -1451,14 +1451,14 @@ s {
 """)
   out = StringIO()
   master_plain.fetch(source).show(out=out, attributes_level=2)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s
   .expert_level = 1
 {
   a = 1
     .expert_level = 2
 }
-"""
+""")
   source = phil.parse(input_string="""\
 s {
   a=1
@@ -1469,24 +1469,24 @@ s {
 """)
   out = StringIO()
   master_plain.fetch(source).show(out=out, attributes_level=2)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s
   .expert_level = 1
 {
   a = 2
     .expert_level = 2
 }
-"""
+""")
   out = StringIO()
   master_multiple.fetch(source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = 1
 }
 s {
   a = 2
 }
-"""
+""")
   source = phil.parse(input_string="""\
 s {
   a=1
@@ -1498,19 +1498,19 @@ s {
   for master in [master_plain, master_optional]:
     out = StringIO()
     master.fetch(source).show(out=out)
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 s {
   a = 1
 }
-"""
+""")
   for master in [master_multiple, master_optional_multiple]:
     out = StringIO()
     master.fetch(source).show(out=out)
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 s {
   a = 1
 }
-"""
+""")
   source = phil.parse(input_string="""\
 !s {
   a=1
@@ -1522,26 +1522,26 @@ s {
   for master in [master_plain, master_optional, master_multiple]:
     out = StringIO()
     master.fetch(source).show(out=out)
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 s {
   a = None
 }
-"""
+""")
   out = StringIO()
   master_optional_multiple.fetch(source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 !s {
   a = None
 }
-"""
+""")
   source = phil.parse(input_string="")
   out = StringIO()
   master_optional_multiple.fetch(source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 !s {
   a = None
 }
-"""
+""")
   #
   master = phil.parse(input_string="""\
 a=None
@@ -1651,7 +1651,7 @@ u=e b f *c a g
   fetched = master.fetch(source=source)
   out = StringIO()
   fetched.show(out=out, attributes_level=2)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 9
   .expert_level = 1
 b = None
@@ -1687,7 +1687,7 @@ t
 }
 u = a b *c
   .type = choice
-"""
+""")
   master = phil.parse(input_string="""\
 c=a *b c
   .type=choice
@@ -1744,7 +1744,7 @@ c {
 """)
   out = StringIO()
   master.fetch(source=source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 v {
   x = y
 }
@@ -1757,7 +1757,7 @@ c {
 c {
   a = z
 }
-"""
+""")
   parameters = phil.parse(input_string="""\
 c {
   a=$(v.x)
@@ -1779,11 +1779,11 @@ s {
   source = phil.parse(input_string="s.a=x")
   out = StringIO()
   master.fetch(source=source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = x
 }
-"""
+""")
   master = phil.parse(input_string="""\
 s {
   t {
@@ -1794,13 +1794,13 @@ s {
   source = phil.parse(input_string="s.t.a=x")
   out = StringIO()
   master.fetch(source=source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   t {
     a = x
   }
 }
-"""
+""")
   master = phil.parse(input_string="""\
 s.t {
   a=None
@@ -1809,11 +1809,11 @@ s.t {
   source = phil.parse(input_string="s.t.a=x")
   out = StringIO()
   master.fetch(source=source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s.t {
   a = x
 }
-"""
+""")
   master = phil.parse(input_string="""\
 s.t {
   a.b=None
@@ -1822,11 +1822,11 @@ s.t {
   source = phil.parse(input_string="s.t.a.b=x")
   out = StringIO()
   master.fetch(source=source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s.t {
   a.b = x
 }
-"""
+""")
   master = phil.parse(input_string="""\
 s.t.u {
   a.b.c=None
@@ -1840,11 +1840,11 @@ s.t.u.a.b.c=$(v.w.p.q)
 """)
   out = StringIO()
   master.fetch(source=source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s.t.u {
   a.b.c = z
 }
-"""
+""")
   for input_string in ["s{t.u.a.b.c=x\n}",
                        "s.t{u.a.b.c=x\n}",
                        "s.t.u{a.b.c=x\n}",
@@ -1856,11 +1856,11 @@ s.t.u {
     source = phil.parse(input_string=input_string)
     out = StringIO()
     master.fetch(source=source).show(out=out)
-    assert out.getvalue() == """\
+    assert not show_diff(out.getvalue(), """\
 s.t.u {
   a.b.c = x
 }
-"""
+""")
   #
   master = phil.parse(input_string="""\
 s.t
@@ -1887,7 +1887,7 @@ s.t.a{b=e
 """)
   out = StringIO()
   master.fetch(source=source).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s.t {
   a.b = x
 }
@@ -1909,7 +1909,7 @@ s.t {
 s.t {
   a.b = e
 }
-"""
+""")
   master = phil.parse(input_string="""\
 s {
   a {
@@ -1924,7 +1924,8 @@ s {
   source_af = phil.parse(input_string="s.a.f=1")
   source_bf = phil.parse(input_string="s.b.f=2")
   source_bg = phil.parse(input_string="s.b.g=3")
-  assert master.fetch(sources=[source_af, source_bf]).as_str() == """\
+  assert not show_diff(master.fetch(sources=[source_af, source_bf]).as_str(),
+    """\
 s {
   a {
     f = 1
@@ -1934,8 +1935,9 @@ s {
     g = None
   }
 }
-"""
-  assert master.fetch(sources=[source_bg, source_af]).as_str() == """\
+""")
+  assert not show_diff(master.fetch(sources=[source_bg, source_af]).as_str(),
+    """\
 s {
   a {
     f = 1
@@ -1945,7 +1947,7 @@ s {
     g = 3
   }
 }
-"""
+""")
   assert master.fetch(sources=[source_bg, source_af, source_bf]).as_str()=="""\
 s {
   a {
@@ -2612,15 +2614,15 @@ t {
   #
   try: extracted.z = 12
   except AttributeError, e:
-    assert str(e) == """Assignment to non-existing attribute "z"
+    assert not show_diff(str(e), """Assignment to non-existing attribute "z"
   Please correct the attribute name, or to create
-  a new attribute use: obj.__inject__(name, value)"""
+  a new attribute use: obj.__inject__(name, value)""")
   else: raise RuntimeError("Exception expected.")
   try: extracted.t.c.z = 13
   except AttributeError, e:
-    assert str(e) == """Assignment to non-existing attribute "t.c.z"
+    assert not show_diff(str(e),"""Assignment to non-existing attribute "t.c.z"
   Please correct the attribute name, or to create
-  a new attribute use: obj.__inject__(name, value)"""
+  a new attribute use: obj.__inject__(name, value)""")
   else: raise RuntimeError("Exception expected.")
   extracted.__inject__("z", 14)
   assert extracted.z == 14
@@ -2745,7 +2747,7 @@ group {
   out = StringIO()
   extracted = parameters.fetch(source=parameters).extract()
   parameters.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 group {
   n = ab "c d" "ef "
   a = True
@@ -2761,7 +2763,7 @@ group {
   s1 = " a " b
   w = plain "% ^&*"
 }
-"""
+""")
   #
   master = phil.parse(input_string="""\
 a=None
@@ -2807,10 +2809,10 @@ a=2
   assert extracted.a == [1,2]
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 1
 a = 2
-"""
+""")
   custom = phil.parse(input_string="""\
 a=1
 !a=2
@@ -2819,18 +2821,18 @@ a=1
   assert extracted.a == [1]
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 1
-"""
+""")
   custom = phil.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == [None]
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = None
-"""
+""")
   #
   master = phil.parse(input_string="""\
 a=None
@@ -2846,10 +2848,10 @@ a=2
   assert extracted.a == [1,2]
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 1
 a = 2
-"""
+""")
   custom = phil.parse(input_string="""\
 a=1
 !a=2
@@ -2858,18 +2860,18 @@ a=1
   assert extracted.a == [1]
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = 1
-"""
+""")
   custom = phil.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
   assert extracted.a == []
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = None
-"""
+""")
   custom = phil.parse(input_string="""\
 a=None
 """)
@@ -2877,9 +2879,9 @@ a=None
   assert extracted.a == []
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 a = None
-"""
+""")
   #
   master = phil.parse(input_string="""\
 s
@@ -2896,11 +2898,11 @@ s
   assert extracted.s.a is None
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = None
 }
-"""
+""")
   custom = phil.parse(input_string="""\
 s {
   a=1
@@ -2913,11 +2915,11 @@ s {
   assert extracted.s.a == 2
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = 2
 }
-"""
+""")
   custom = phil.parse(input_string="""\
 s {
   a=1
@@ -2931,11 +2933,11 @@ s {
   assert extracted.s.a == 3
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = 3
 }
-"""
+""")
   #
   master = phil.parse(input_string="""\
 s
@@ -2952,11 +2954,11 @@ s
   assert extracted.s[0].a == None
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = None
 }
-"""
+""")
   custom = phil.parse(input_string="""\
 s {
   a=None
@@ -2966,11 +2968,11 @@ s {
   assert extracted.s[0].a == None
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = None
 }
-"""
+""")
   custom = phil.parse(input_string="""\
 s {
   a=1
@@ -2984,14 +2986,14 @@ s {
   assert extracted.s[1].a == 2
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = 1
 }
 s {
   a = 2
 }
-"""
+""")
   custom = phil.parse(input_string="""\
 s {
   a=1
@@ -3006,14 +3008,14 @@ s {
   assert extracted.s[1].a == 3
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = 1
 }
 s {
   a = 3
 }
-"""
+""")
   master = phil.parse(input_string="""\
 s
   .multiple=True
@@ -3062,14 +3064,14 @@ s {
   assert extracted.s[1].a == 2
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = 1
 }
 s {
   a = 2
 }
-"""
+""")
   custom = phil.parse(input_string="""\
 s {
   a=1
@@ -3084,14 +3086,14 @@ s {
   assert extracted.s[1].a == 3
   out = StringIO()
   master.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(out.getvalue(), """\
 s {
   a = 1
 }
 s {
   a = 3
 }
-"""
+""")
   #
   master = phil.parse(input_string="""\
 a=None
@@ -3455,11 +3457,11 @@ bar.max = 2
   assert itpr_bar.process(arg="ax=5").as_str() == "bar.max = 5\n"
   try: assert itpr_neutral.process(arg="max=5")
   except Sorry, e:
-    assert str(e) == """\
+    assert not show_diff(str(e), """\
 Ambiguous parameter definition: max = 5
 Best matches:
   foo.max
-  bar.max"""
+  bar.max""")
   else: raise RuntimeError("Exception expected.")
   assert itpr_bar.process(arg="limit=0").as_str() == "bar.sub.limit = 0\n"
   assert itpr_bar.process(arg="imit=0").as_str() == "bar.sub.limit = 0\n"
@@ -3468,10 +3470,10 @@ Best matches:
     assert itpr.process(arg="ndex=0").as_str() == "foo.index = 0\n"
   try: itpr_bar.process(arg="xyz=")
   except Sorry, e:
-    assert str(e) == """\
+    assert not show_diff(str(e), """\
 Error interpreting command line argument as parameter definition:
   "xyz="
-  RuntimeError: Missing value for xyz (command line argument, line 1)"""
+  RuntimeError: Missing value for xyz (command line argument, line 1)""")
   else: raise RuntimeError("Exception expected.")
   try: itpr_bar.process(arg="xyz=8")
   except Sorry, e:
