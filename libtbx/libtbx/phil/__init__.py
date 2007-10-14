@@ -1236,6 +1236,7 @@ class scope: # FUTURE scope(object)
             (self.name, self.where_str, source.name, source.where_str))
       combined_objects.extend(source.objects)
     source = self.customized_copy(objects=combined_objects)
+    del sources
     if (track_unused_definitions):
       source.assign_tmp(value=False, active_only=True)
     result_objects = []
@@ -1244,6 +1245,17 @@ class scope: # FUTURE scope(object)
         path = master_object.name
       else:
         path = self.name + "." + master_object.name
+      merged_outer_objects = []
+      while (    isinstance(master_object, scope)
+             and len(master_object.objects) == 1
+             and master_object.objects[0].merge_names):
+        merged_outer_objects.append(master_object)
+        master_object = master_object.objects[0]
+        path += "." + master_object.name
+      def merge_outer(object):
+        for eobj in reversed(merged_outer_objects):
+          object = eobj.customized_copy(objects=[object])
+        return object
       matching_sources = source.get(path=path, with_substitution=False)
       if (master_object.multiple):
         all_master_definitions_are_none = \
@@ -1270,15 +1282,16 @@ class scope: # FUTURE scope(object)
           processed_as_str[candidate_as_str] = len(result_objs)
           result_objs.append(candidate)
         if (len(processed_as_str) == 0):
-          result_objects.append(master_object.copy())
+          obj = master_object.copy()
           if (master_object.optional
               and all_master_definitions_are_none):
-            result_objects[-1].is_disabled = disable_empty
+            obj.is_disabled = disable_empty
+          result_objects.append(merge_outer(obj))
         else:
           del processed_as_str
           for candidate in result_objs:
             if (candidate is not None):
-              result_objects.append(candidate)
+              result_objects.append(merge_outer(candidate))
           del result_objs
       else:
         fetch_count = 0
@@ -1288,11 +1301,10 @@ class scope: # FUTURE scope(object)
           result_object = result_object.fetch(
             source=matching_source, disable_empty=False)
         if (fetch_count == 0):
-          result_objects.append(master_object.copy())
+          result_objects.append(merge_outer(master_object.copy()))
         else:
-          result_objects.append(result_object)
-    result = self.customized_copy(
-      objects=clean_fetched_scope(fetched_objects=result_objects))
+          result_objects.append(merge_outer(result_object))
+    result = self.customized_copy(objects=result_objects)
     if (track_unused_definitions):
       return result, source.all_definitions(select_tmp=False)
     return result
@@ -1404,25 +1416,6 @@ def process_include_scope(
           phil_path, imported.path_elements[-1], imported.module_path,
           object.where_str))
   return result.change_primary_parent_scope(object.primary_parent_scope)
-
-def clean_fetched_scope(fetched_objects):
-  result = []
-  for object in fetched_objects:
-    if (not isinstance(object, scope) or len(object.objects) < 2):
-      result.append(object)
-    else:
-      child_group = []
-      for child in object.objects:
-        if (not child.merge_names):
-          child_group.append(child)
-        else:
-          if (len(child_group) > 0):
-            result.append(object.customized_copy(objects=child_group))
-            child_groups = []
-          result.append(object.customized_copy(objects=[child]))
-      if (len(child_group) > 0):
-        result.append(object.customized_copy(objects=child_group))
-  return result
 
 class variable_substitution_fragment(object):
 
