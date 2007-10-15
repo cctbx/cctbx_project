@@ -548,8 +548,9 @@ class definition: # FUTURE definition(object)
 
   def fetch(self, source, disable_empty=True):
     if (not isinstance(source, definition)):
-      raise RuntimeError('Incompatible parameter objects "%s"%s and "%s"%s' %
-        (self.name, self.where_str, source.name, source.where_str))
+      raise RuntimeError(
+        'Incompatible parameter objects: definition "%s"%s vs. scope "%s"%s' %
+          (self.name, self.where_str, source.name, source.where_str))
     source.tmp = True
     source = source.resolve_variables()
     type_fetch = getattr(self.type, "fetch", None)
@@ -1232,7 +1233,7 @@ class scope: # FUTURE scope(object)
       assert source.name == self.name
       if (not isinstance(source, scope)):
         raise RuntimeError(
-          'Incompatible parameter objects "%s"%s and "%s"%s' %
+          'Incompatible parameter objects: scope "%s"%s vs. definition "%s"%s'%
             (self.name, self.where_str, source.name, source.where_str))
       combined_objects.extend(source.objects)
     source = self.customized_copy(objects=combined_objects)

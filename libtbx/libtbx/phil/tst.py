@@ -1553,26 +1553,26 @@ d { a {} }
   source = phil.parse(input_string="a { }", source_info="source")
   try: master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == 'Incompatible parameter objects "a" ' \
-      '(master, line 1) and "a" (source, line 1)'
+    assert str(e) == 'Incompatible parameter objects: definition "a" ' \
+      '(master, line 1) vs. scope "a" (source, line 1)'
   else: raise RuntimeError("Exception expected.")
   source = phil.parse(input_string="b=None")
   try: master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == 'Incompatible parameter objects "b" ' \
-      '(master, line 2) and "b" (input line 1)'
+    assert str(e) == 'Incompatible parameter objects: scope "b" ' \
+      '(master, line 2) vs. definition "b" (input line 1)'
   else: raise RuntimeError("Exception expected.")
   source = phil.parse(input_string="c { a { } }")
   try: master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == 'Incompatible parameter objects "a" ' \
-      '(master, line 3) and "a" (input line 1)'
+    assert str(e) == 'Incompatible parameter objects: definition "a" ' \
+      '(master, line 3) vs. scope "a" (input line 1)'
   else: raise RuntimeError("Exception expected.")
   source = phil.parse(input_string="d { a=None\n}")
   try: master.fetch(source=source)
   except RuntimeError, e:
-    assert str(e) == 'Incompatible parameter objects "a" ' \
-      '(master, line 5) and "a" (input line 1)'
+    assert str(e) == 'Incompatible parameter objects: scope "a" ' \
+      '(master, line 5) vs. definition "a" (input line 1)'
   else: raise RuntimeError("Exception expected.")
   #
   master = phil.parse(input_string="""\
