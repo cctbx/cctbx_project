@@ -1258,7 +1258,21 @@ class scope: # FUTURE scope(object)
           object = eobj.customized_copy(objects=[object])
         return object
       matching_sources = source.get(path=path, with_substitution=False)
-      if (master_object.multiple):
+      if (not master_object.multiple):
+        if (isinstance(master_object, definition)):
+          # loop over all matching_sources to support track_unused_definitions
+          result_object = None
+          for matching_source in matching_sources.active_objects():
+            result_object = master_object.fetch(source=matching_source)
+          if (result_object is None):
+            result_object = master_object.copy()
+        else:
+          result_object = master_object.fetch(
+            sources=matching_sources.active_objects(), disable_empty=False)
+          if (len(result_object.objects) == 0):
+            result_object = master_object.copy()
+        result_objects.append(merge_outer(result_object))
+      else:
         all_master_definitions_are_none = \
           master_object.all_definitions_are_none()
         matching_sources.objects \
@@ -1294,17 +1308,6 @@ class scope: # FUTURE scope(object)
             if (candidate is not None):
               result_objects.append(merge_outer(candidate))
           del result_objs
-      else:
-        fetch_count = 0
-        result_object = master_object
-        for matching_source in matching_sources.active_objects():
-          fetch_count += 1
-          result_object = result_object.fetch(
-            source=matching_source, disable_empty=False)
-        if (fetch_count == 0):
-          result_objects.append(merge_outer(master_object.copy()))
-        else:
-          result_objects.append(merge_outer(result_object))
     result = self.customized_copy(objects=result_objects)
     if (track_unused_definitions):
       return result, source.all_definitions(select_tmp=False)
