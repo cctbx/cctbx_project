@@ -2220,6 +2220,55 @@ a {
 }
 """)
   #
+  master = phil.parse(input_string="""\
+s {
+  t
+    .multiple=true
+  {
+    a=None
+    b=None
+  }
+}
+""")
+  source = phil.parse(input_string="""\
+s.t.a=x
+s.t.b=y
+""")
+  assert not show_diff(master.fetch(source=source).as_str(), """\
+s {
+  t {
+    a = x
+    b = None
+  }
+  t {
+    a = None
+    b = y
+  }
+}
+""")
+  master = phil.parse(input_string="""\
+s.t
+  .multiple=true
+{
+  a=None
+  b=None
+}
+""")
+  source = phil.parse(input_string="""\
+s.t.a=x
+s.t.b=y
+""")
+  assert not show_diff(master.fetch(source=source).as_str(), """\
+s.t {
+  a = x
+  b = None
+}
+s.t {
+  a = None
+  b = y
+}
+""")
+  #
   master = phil.parse("""\
 s
 {
@@ -2257,6 +2306,18 @@ s {
 """)
   #
   master = phil.parse(input_string="""\
+a = None
+""")
+  source = phil.parse(input_string="""\
+a = 1
+a = 2
+""")
+  working, unused = master.fetch(source=source, track_unused_definitions=True)
+  assert not show_diff(working.as_str(), """\
+a = 2
+""")
+  assert len(unused) == 0
+  master = phil.parse(input_string="""\
 a = 1
 s {
   b = 2
@@ -2291,12 +2352,12 @@ s {
   b = 2
   b = 20
   t {
-    c = 30
-    x = None
-  }
-  t {
     c = 300
     x = 0
+  }
+  t {
+    c = 30
+    x = None
   }
 }
 """)
