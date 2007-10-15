@@ -62,12 +62,18 @@ map_params_str ="""\
     .multiple=True
     .expert_level=1
   {
+    map_type = None
+      .type=str
+    amplitudes = None
+      .type=str
+    phases = None
+      .type=str
+  }
+  mtz_labels
+  {
     map_type = 2m*Fobs-D*Fmodel
-      .type=str
     amplitudes = 2FOFCWT
-      .type=str
     phases = PH2FOFCWT
-      .type=str
   }
   mtz_labels {
     map_type = m*Fobs-D*Fmodel
