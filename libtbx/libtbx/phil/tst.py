@@ -2268,6 +2268,131 @@ s.t {
   b = y
 }
 """)
+  master = phil.parse(input_string="""\
+s {
+  p = None
+  q = None
+  t
+    .multiple=True
+  {
+    a = None
+    b = None
+    c.x
+      .multiple=True
+    {
+      f = None
+    }
+  }
+}
+q
+  .multiple=True
+{
+  r
+    .multiple=True
+  {
+    s = None
+      .multiple=True
+    p = None
+  }
+}
+""")
+  source = phil.parse(input_string="""\
+s.q = 1
+s.p = 2
+s.t.c { x { f = 3 } }
+q.r.s = 4
+s.t.a = 5
+q.r.s = 6
+s.t.b = 7
+s.p = 8
+s.t {
+  a = 9
+  b = 10
+  c.x.f = 11
+  c.x.f = 12
+}
+q { r { s=13; s=14; p=15; s=16; p=17 } r.s = 18; r.s = 19 }
+s.t.a = 20
+q.r.s = 21
+""")
+  assert not show_diff(master.fetch(source=source).as_str(), """\
+s {
+  p = 8
+  q = 1
+  t {
+    a = None
+    b = None
+    c.x {
+      f = 3
+    }
+  }
+  t {
+    a = 5
+    b = None
+    c.x {
+      f = None
+    }
+  }
+  t {
+    a = None
+    b = 7
+    c.x {
+      f = None
+    }
+  }
+  t {
+    a = 9
+    b = 10
+    c.x {
+      f = 11
+    }
+    c.x {
+      f = 12
+    }
+  }
+  t {
+    a = 20
+    b = None
+    c.x {
+      f = None
+    }
+  }
+}
+q {
+  r {
+    s = 4
+    p = None
+  }
+}
+q {
+  r {
+    s = 6
+    p = None
+  }
+}
+q {
+  r {
+    s = 13
+    s = 14
+    s = 16
+    p = 17
+  }
+  r {
+    s = 18
+    p = None
+  }
+  r {
+    s = 19
+    p = None
+  }
+}
+q {
+  r {
+    s = 21
+    p = None
+  }
+}
+""")
   #
   master = phil.parse("""\
 s
