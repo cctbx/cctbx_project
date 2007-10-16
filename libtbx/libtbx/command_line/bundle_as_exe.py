@@ -23,7 +23,7 @@ def run(args):
   addl_files = args[2:]
   zip_file_name = "%(bundle_prefix)s_%(platform_string)s.zip" % vars()
   open("autorun", "w").write(create_autorun(bundle_prefix))
-  cmd = ("%(path_zip)s -q -r -z %(zip_file_name)s"
+  cmd = ("\"%(path_zip)s\" -q -r -z %(zip_file_name)s"
       + " %(bundle_prefix)s_sources"
       + " %(bundle_prefix)s_build"
       + " %(bundle_prefix)s_install_script.bat") % vars()
