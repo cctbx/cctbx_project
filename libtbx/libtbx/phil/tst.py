@@ -3537,6 +3537,70 @@ s {
 """)
   #
   master = phil.parse(input_string="""\
+s
+  .multiple = True
+{
+  a = x
+    .type = str
+  b = 2
+    .type = int
+  c = x *y
+    .optional = True
+    .type = choice(multi=True)
+  d = None
+    .type = float
+}
+s {
+}
+""")
+  source = phil.parse(input_string="""\
+""")
+  w = master.fetch(source=source)
+  e = w.extract()
+  assert len(e.s) == 1
+  assert e.s[0].a == "x"
+  assert e.s[0].b == 2
+  assert e.s[0].c == ["y"]
+  assert e.s[0].d == None
+  f = master.format(python_object=e)
+  assert not show_diff(f.as_str(), """\
+s {
+  a = "x"
+  b = 2
+  c = x *y
+  d = None
+}
+""")
+  assert not show_diff(f.as_str(attributes_level=2), """\
+s
+  .multiple = True
+{
+  a = x
+    .type = str
+  b = 2
+    .type = int
+  c = x *y
+    .optional = True
+    .type = choice(multi=True)
+  d = None
+    .type = float
+}
+s
+  .multiple = True
+{
+  a = "x"
+    .type = str
+  b = 2
+    .type = int
+  c = x *y
+    .optional = True
+    .type = choice(multi=True)
+  d = None
+    .type = float
+}
+""")
+  #
+  master = phil.parse(input_string="""\
 a = None
   .optional = True
   .multiple = True
