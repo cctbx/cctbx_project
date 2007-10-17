@@ -420,8 +420,15 @@ class manager(manager_mixin):
     return result
 
   def twin_test(self, cut_off = 3.5):
-    return mmtbx.scaling.twin_analyses.twin_analyses_brief(
-      miller_array = self.f_obs, cut_off = cut_off)
+    result = None
+    if(self.f_obs.d_min() < 9.0):
+      result = mmtbx.scaling.twin_analyses.twin_analyses_brief(
+        miller_array = self.f_obs, cut_off = cut_off)
+      if(result): result = "twinned"
+      elif(result is None): result = "unknown"
+      elif(not result): result = "not twinned"
+      else: raise Sorry("Twin analysis failed.")
+    return result
 
   def deep_copy(self):
     if(self.abcd is not None):

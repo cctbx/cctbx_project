@@ -150,12 +150,6 @@ maps {
     {
       include scope mmtbx.utils.pdb_params
     }
-    data {
-      include scope mmtbx.utils.data_params
-    }
-    r_free_flags {
-      include scope mmtbx.utils.r_free_flags_params
-    }
     experimental_phases {
       include scope mmtbx.utils.experimental_phases_params
     }

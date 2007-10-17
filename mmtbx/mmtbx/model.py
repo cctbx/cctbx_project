@@ -36,7 +36,6 @@ class manager(object):
     self.restraints_manager = restraints_manager
     self.xray_structure = xray_structure.deep_copy_scatterers()
     self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
-    self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.atom_attributes_list = atom_attributes_list[:]
     self.refinement_flags = refinement_flags
     self.solvent_selection = self._solvent_selection()
@@ -47,7 +46,7 @@ class manager(object):
       len(anomalous_scatterer_groups) == 0):
       anomalous_scatterer_groups = None
     self.anomalous_scatterer_groups = anomalous_scatterer_groups
-    # DBE related
+    # DBE related, need a real cleaning!
     self.dbe_manager = dbe_manager
     self.ias_xray_structure = ias_xray_structure
     self.use_dbe = False
@@ -74,7 +73,7 @@ class manager(object):
 
   def deep_copy(self):
     new = manager(restraints_manager    = self.restraints_manager,
-                  xray_structure        = self.xray_structure,
+                  xray_structure        = self.xray_structure, # XXX not a deep copy
                   atom_attributes_list  = self.atom_attributes_list,
                   refinement_flags      = self.refinement_flags,
                   tls_groups            = self.tls_groups,
@@ -192,9 +191,9 @@ class manager(object):
     if(out is None):
        out = sys.stdout
     print >> out, pdb.format_cryst1_record(
-                                      crystal_symmetry = self.crystal_symmetry)
+      crystal_symmetry = self.xray_structure.crystal_symmetry())
     print >> out, pdb.format_scale_records(
-                                 unit_cell = self.crystal_symmetry.unit_cell())
+      unit_cell = self.xray_structure.crystal_symmetry().unit_cell())
     sites_cart = self.xray_structure.select(self.dbe_selection).sites_cart()
     scatterers = self.xray_structure.select(self.dbe_selection).scatterers()
     u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(self.xray_structure.unit_cell())
@@ -251,21 +250,20 @@ class manager(object):
 
 
   def restraints_manager_energies_sites(self,
-                                        sites_cart           = None,
-                                        geometry_flags       = None,
-                                        compute_gradients    = False,
-                                        gradients            = None,
-                                        disable_asu_cache    = False):
-    if(sites_cart is None): sites_cart = self.xray_structure.sites_cart()
+                                        geometry_flags    = None,
+                                        compute_gradients = False,
+                                        gradients         = None,
+                                        disable_asu_cache = False):
+    sites_cart = self.xray_structure.sites_cart()
     if(self.use_dbe and self.dbe_selection is not None and
-                                           self.dbe_selection.count(True) > 0):
-       sites_cart = sites_cart.select(~self.dbe_selection)
+       self.dbe_selection.count(True) > 0):
+      sites_cart = sites_cart.select(~self.dbe_selection)
     return self.restraints_manager.energies_sites(
-                                   sites_cart           = sites_cart,
-                                   geometry_flags       = geometry_flags,
-                                   compute_gradients    = compute_gradients,
-                                   gradients            = gradients,
-                                   disable_asu_cache    = disable_asu_cache)
+      sites_cart        = sites_cart,
+      geometry_flags    = geometry_flags,
+      compute_gradients = compute_gradients,
+      gradients         = gradients,
+      disable_asu_cache = disable_asu_cache)
 
   def _solvent_selection(self):
     labels = self.xray_structure.scatterers().extract_labels()

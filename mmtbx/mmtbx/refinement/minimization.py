@@ -279,7 +279,6 @@ class lbfgs(object):
 
     if(self.refine_xyz and self.restraints_manager is not None and self.wr > 0.0):
        self.stereochemistry_residuals = self.model.restraints_manager_energies_sites(
-                       sites_cart           = self.xray_structure.sites_cart(),
                        compute_gradients    = compute_gradients)
        er = self.stereochemistry_residuals.target
        self.collector.collect(er = er)
