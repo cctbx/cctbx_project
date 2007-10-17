@@ -873,9 +873,8 @@ namespace iotbx { namespace mtz {
         }
         else {
           double ddh = pair_evaluation_d.datum * .5;
-          double dsh = pair_evaluation_d.sigma * .5;
-          double s = std::sqrt(
-            pair_evaluation_f.sigma*pair_evaluation_f.sigma + dsh*dsh);
+          // double dsh = pair_evaluation_d.sigma * .5; // this constant is not needed
+          double s =  2.0*pair_evaluation_f.sigma*pair_evaluation_f.sigma;
           result.mtz_reflection_indices.push_back(i_refl);
           result.indices.push_back(-hkl.get_miller_index(i_refl));
           result.data.push_back(pair_evaluation_f.datum + ddh);
