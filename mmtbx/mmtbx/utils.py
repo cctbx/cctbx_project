@@ -60,7 +60,7 @@ def miller_array_symmetry_safety_check(miller_array,
   to the command line arguments.
 """)
 
-def explain_how_to_generate_array_of_r_free_flags(neutron_flag, log):
+def explain_how_to_generate_array_of_r_free_flags(log):
   part1 = """\
 If previously used R-free flags are available run this command again
 with the name of the file containing the original flags as an
@@ -75,62 +75,392 @@ If the structure was refined previously using different R-free flags,
 the values for R-free will become meaningful only after many cycles of
 refinement.
 """
-  if(not neutron_flag):
-     print >> log, part1 + \
-                     """refinement.main.generate_r_free_flags=True""" + part3
-  else:
-      print >> log, part1 + \
-             """refinement.main.generate_neutron_r_free_flags=True""" + part3
+  print >> log, part1 + """r_free_flags.generate=True""" + part3
 
-data_params = iotbx.phil.parse("""\
-  file_name=None
+data_and_flags = iotbx.phil.parse("""\
+  file_name = None
     .type=path
-  labels=None
+  labels = None
     .type=strings
+  high_resolution = None
+    .type=float
+  low_resolution = None
+    .type=float
+  outliers_rejection = True
+    .type=bool
+  observation_type = intensity *amplitude
+    .type=choice
+    .optional=True
+  sigma_fobs_rejection_criterion = 0.0
+    .type=float
+  sigma_iobs_rejection_criterion = 0.0
+    .type=float
+  ignore_all_zeros = True
+    .type=bool
+  force_anomalous_flag_to_be_equal_to = None
+    .type=bool
+  r_free_flags {
+    file_name = None
+      .type=path
+    label = None
+      .type=str
+    test_flag_value = None
+      .type=int
+    disable_suitability_test = False
+      .type=bool
+    ignore_pdb_hexdigest = False
+      .type=bool
+      .help=If True, disables safety check based on MD5 hexdigests stored in \
+            PDB files produced by previous runs.
+      .expert_level=2
+    ignore_r_free_flags = False
+      .type=bool
+    generate = False
+      .type=bool
+      .help = Generate R-free flags (if not available in input files)
+    fraction = 0.1
+      .type=float
+    max_free = 2000
+      .type=int
+    lattice_symmetry_max_delta = 5
+      .type=float
+    use_lattice_symmetry = True
+      .type=bool
+  }
 """)
 
-def determine_data(reflection_file_server,
-                   parameters,
-                   parameter_scope,
-                   log,
-                   data_description,
-                   working_point_group,
-                   symmetry_safety_check,
-                   ignore_all_zeros = True):
-  data = reflection_file_server.get_xray_data(
-    file_name        = parameters.file_name,
-    labels           = parameters.labels,
-    ignore_all_zeros = ignore_all_zeros,
-    parameter_scope  = parameter_scope)
-  parameters.file_name = data.info().source
-  parameters.labels = [data.info().label_string()]
-  if(data.is_xray_intensity_array()):
-     print >> log, "I-obs:"
-  else:
-     print >> log, "F-obs:"
-  print >> log, " ", data.info()
-  miller_array_symmetry_safety_check(
-    miller_array          = data,
-    data_description      = data_description,
-    working_point_group   = working_point_group,
-    symmetry_safety_check = symmetry_safety_check,
-    log                   = log)
-  print >> log
-  info = data.info()
-  processed = data.eliminate_sys_absent(log = log)
-  if(processed is not data):
-     info = info.customized_copy(systematic_absences_eliminated = True)
-  if(not processed.is_unique_set_under_symmetry()):
-     if(data.is_xray_intensity_array()):
-        print >> log, "Merging symmetry-equivalent intensities:"
-     else:
-        print >> log, "Merging symmetry-equivalent amplitudes:"
-     merged = processed.merge_equivalents()
-     merged.show_summary(out = log, prefix="  ")
-     print >> log
-     processed = merged.array()
-     info = info.customized_copy(merged=True)
-  return processed.set_info(info)
+class determine_data_and_flags(object):
+  def __init__(self, reflection_file_server,
+                     parameters,
+                     data_parameter_scope = "",
+                     flags_parameter_scope = "",
+                     data_description = None,
+                     working_point_group = None,
+                     symmetry_safety_check = None,
+                     remark_r_free_flags_md5_hexdigest = None,
+                     log = None):
+    adopt_init_args(self, locals())
+    self.f_obs = None
+    self.r_free_flags = None
+    self.test_flag_value = None
+    self.r_free_flags_md5_hexdigest = None
+    if(data_description is not None):
+      print_statistics.make_header(data_description, out = log)
+    self.raw_data = self.extract_data()
+    data_info = self.raw_data.info()
+    if(not parameters.r_free_flags.ignore_r_free_flags):
+      self.raw_flags = self.extract_flags(data = self.raw_data)
+      flags_info = self.raw_flags.info()
+    self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
+    if(not parameters.r_free_flags.ignore_r_free_flags):
+      self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
+        self.flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags = self.raw_flags)
+      self.r_free_flags.set_info(flags_info)
+    else:
+      self.r_free_flags = self.raw_data.array(
+        data = flex.bool(self.raw_data.data().size(),False))
+      self.test_flag_value = 1
+      self.r_free_flags_md5_hexdigest = (self.r_free_flags.map_to_asu().sort(
+        by_value="packed_indices").data() == self.test_flag_value
+        ).md5().hexdigest()
+      self.r_free_flags.set_info(miller.array_info(source_type="generated"))
+    self.f_obs.set_info(data_info)
+
+  def extract_data(self):
+    data = self.reflection_file_server.get_xray_data(
+      file_name        = self.parameters.file_name,
+      labels           = self.parameters.labels,
+      ignore_all_zeros = self.parameters.ignore_all_zeros,
+      parameter_scope  = self.data_parameter_scope)
+    self.parameters.file_name = data.info().source
+    self.parameters.labels = [data.info().label_string()]
+    if(data.is_xray_intensity_array()):
+      print >> self.log, "I-obs:"
+    else:
+      print >> self.log, "F-obs:"
+    print >> self.log, " ", data.info()
+    if([self.data_description, self.working_point_group,
+       self.symmetry_safety_check].count(None) == 0):
+      miller_array_symmetry_safety_check(
+        miller_array          = data,
+        data_description      = self.data_description,
+        working_point_group   = self.working_point_group,
+        symmetry_safety_check = self.symmetry_safety_check,
+        log                   = self.log)
+      print >> self.log
+    info = data.info()
+    processed = data.eliminate_sys_absent(log = self.log)
+    if(processed is not data):
+      info = info.customized_copy(systematic_absences_eliminated = True)
+    if(not processed.is_unique_set_under_symmetry()):
+      if(data.is_xray_intensity_array()):
+        print >> self.log, "Merging symmetry-equivalent intensities:"
+      else:
+        print >> self.log, "Merging symmetry-equivalent amplitudes:"
+      merged = processed.merge_equivalents()
+      merged.show_summary(out = self.log, prefix="  ")
+      print >> self.log
+      processed = merged.array()
+      info = info.customized_copy(merged=True)
+    return processed.set_info(info)
+
+  def extract_flags(self, data, data_description = "R-free flags"):
+    r_free_flags, test_flag_value = None, None
+    params = self.parameters.r_free_flags
+    if(not self.parameters.r_free_flags.generate):
+      try:
+        r_free_flags, test_flag_value = \
+          self.reflection_file_server.get_r_free_flags(
+            file_name                = params.file_name,
+            label                    = params.label,
+            test_flag_value          = params.test_flag_value,
+            disable_suitability_test = params.disable_suitability_test,
+            parameter_scope          = self.flags_parameter_scope)
+      except reflection_file_utils.Sorry_No_array_of_the_required_type, e:
+        e.reset_tracebacklimit()
+        if(self.parameters.r_free_flags.generate is not None):
+          explain_how_to_generate_array_of_r_free_flags(log = self.log)
+          raise Sorry("Please try again.")
+        r_free_flags, test_flag_value = None, None
+      else:
+        params.file_name = r_free_flags.info().source
+        params.label = r_free_flags.info().label_string()
+        params.test_flag_value = test_flag_value
+        print >> self.log, data_description+":"
+        print >> self.log, " ", r_free_flags.info()
+        if([self.working_point_group,
+           self.symmetry_safety_check].count(None) == 0):
+          miller_array_symmetry_safety_check(
+            miller_array          = r_free_flags,
+            data_description      = data_description,
+            working_point_group   = self.working_point_group,
+            symmetry_safety_check = self.symmetry_safety_check,
+            log                   = self.log)
+          print >> self.log
+        info = r_free_flags.info()
+        processed = r_free_flags.eliminate_sys_absent(log = self.log)
+        if(processed is not r_free_flags):
+          info = info.customized_copy(systematic_absences_eliminated = True)
+        if(not processed.is_unique_set_under_symmetry()):
+           print >> self.log, \
+             "Checking symmetry-equivalent R-free flags for consistency:",
+           try:
+             merged = processed.merge_equivalents()
+           except RuntimeError, e:
+             print >> self.log
+             error_message = str(e)
+             expected_error_message = "cctbx Error: merge_equivalents_exact: "
+             assert error_message.startswith(expected_error_message)
+             raise Sorry("Incompatible symmetry-equivalent R-free flags: %s" %
+               error_message[len(expected_error_message):])
+           else:
+             print >> self.log, "OK"
+             print >> self.log
+           processed = merged.array()
+           info = info.customized_copy(merged=True)
+           del merged
+        r_free_flags = processed.set_info(info)
+    if(r_free_flags is None):
+      assert [params.fraction,
+              params.max_free,
+              params.lattice_symmetry_max_delta,
+              params.use_lattice_symmetry].count(None) == 0
+      print >> self.log, "Generating a new array of R-free flags."
+      print >> self.log
+      r_free_flags = data.generate_r_free_flags(
+        fraction                   = params.fraction,
+        max_free                   = params.max_free,
+        lattice_symmetry_max_delta = params.lattice_symmetry_max_delta,
+        use_lattice_symmetry       = params.use_lattice_symmetry
+        ).set_info(miller.array_info(labels = ["R-free-flags"]))
+      params.label = r_free_flags.info().label_string()
+      params.test_flag_value = 1
+    return r_free_flags
+
+  def data_as_f_obs(self, f_obs):
+    f_obs.show_comprehensive_summary(f = self.log)
+    f_obs_data_size = f_obs.data().size()
+    print >> self.log
+    d_min = f_obs.d_min()
+    if(d_min < 0.25): # XXX what is the equivalent for neutrons ???
+      raise Sorry("Resolution of data is too high: %-6.4f A"%d_min)
+    if(f_obs.is_complex_array()): f_obs = abs(f_obs)
+    if(f_obs.is_xray_intensity_array()):
+      selection_by_isigma = self._apply_sigma_cutoff(
+        f_obs   = f_obs,
+        n       = self.parameters.sigma_iobs_rejection_criterion,
+        message = "Number of reflections with |Iobs|/sigma(Iobs) < %5.2f: %d")
+      if(selection_by_isigma is not None):
+        f_obs = f_obs.select(selection_by_isigma)
+      print >> self.log, \
+        "Intensities converted to amplitudes for use in refinement."
+      f_obs = f_obs.f_sq_as_f()
+      print >> self.log
+    f_obs.set_observation_type_xray_amplitude()
+    f_obs = f_obs.map_to_asu()
+    selection = f_obs.all_selection()
+    if(self.parameters.low_resolution is not None):
+      selection &= f_obs.d_spacings().data() <= self.parameters.low_resolution
+    if(self.parameters.high_resolution is not None):
+      selection &= f_obs.d_spacings().data() >= self.parameters.high_resolution
+    selection_strictly_positive = f_obs.data() > 0
+    print >> self.log, \
+      "Number of F-obs in resolution range:                  ", \
+      selection.count(True)
+    print >> self.log, \
+      "Number of F-obs <= 0:                                 ", \
+      selection_strictly_positive.count(False)
+    selection &= selection_strictly_positive
+    selection_by_fsigma = self._apply_sigma_cutoff(
+      f_obs   = f_obs,
+      n       = self.parameters.sigma_fobs_rejection_criterion,
+      message = "Number of reflections with |Fobs|/sigma(Fobs) < %5.2f: %d")
+    if(selection_by_fsigma is not None): selection &= selection_by_fsigma
+    selection &= f_obs.d_star_sq().data() > 0
+    f_obs = f_obs.select(selection)
+    rr = f_obs.resolution_range()
+    print >> self.log, "Refinement resolution range: d_max = %8.4f" % rr[0]
+    print >> self.log, "                             d_min = %8.4f" % rr[1]
+    print >> self.log
+    if(f_obs.indices().size() == 0):
+      raise Sorry(
+        "No data left after applying resolution limits and sigma cutoff.")
+    if(self.parameters.force_anomalous_flag_to_be_equal_to is not None):
+      if(not self.parameters.force_anomalous_flag_to_be_equal_to):
+        print >> self.log, "force_anomalous_flag_to_be_equal_to=False"
+        if(f_obs.anomalous_flag()):
+          print >> self.log, "Reducing data to non-anomalous array."
+          merged = f_obs.as_non_anomalous_array().merge_equivalents()
+          merged.show_summary(out=log, prefix="  ")
+          f_obs = merged.array().set_observation_type( f_obs )
+          del merged
+          print >> self.log
+      elif(not f_obs.anomalous_flag()):
+        print >> self.log, "force_anomalous_flag_to_be_equal_to=True"
+        print >> self.log, "Generating Bijvoet mates of X-ray data."
+        observation_type = f_obs.observation_type()
+        f_obs = f_obs.generate_bijvoet_mates()
+        f_obs.set_observation_type(observation_type)
+        print >> self.log
+    if(f_obs_data_size != f_obs.data().size()):
+      print >> self.log, "\nFobs statistics after all cutoffs applied:\n"
+      f_obs.show_comprehensive_summary(f = self.log)
+    return f_obs
+
+  def _apply_sigma_cutoff(self, f_obs, n, message):
+    selection = None
+    if(f_obs.sigmas() is not None):
+      sigma_cutoff = n
+      if(sigma_cutoff is not None and sigma_cutoff > 0):
+        selection_by_sigma = f_obs.data() > f_obs.sigmas()*sigma_cutoff
+        print >> self.log, message % (sigma_cutoff,
+          selection_by_sigma.count(False))
+        selection = selection_by_sigma
+    return selection
+
+  def flags_as_r_free_flags(self, f_obs, r_free_flags):
+    test_flag_value = self.parameters.r_free_flags.test_flag_value
+    r_free_flags.show_comprehensive_summary(f = self.log)
+    print >> self.log
+    print >> self.log, "Test (R-free flags) flag value:", test_flag_value
+    print >> self.log
+    r_free_flags_md5_hexdigest = None
+    if(self.remark_r_free_flags_md5_hexdigest is not None):
+      r_free_flags_md5_hexdigest = \
+        (r_free_flags.map_to_asu().sort(by_value="packed_indices").data() \
+        == test_flag_value).md5().hexdigest()
+      self.verify_r_free_flags_md5_hexdigest(
+        ignore_pdb_hexdigest = self.parameters.r_free_flags.ignore_pdb_hexdigest,
+        current              = r_free_flags_md5_hexdigest,
+        records              = self.remark_r_free_flags_md5_hexdigest)
+    r_free_flags = r_free_flags.array(
+      data = r_free_flags.data() == test_flag_value)
+    if(not f_obs.anomalous_flag()):
+      if(r_free_flags.anomalous_flag()):
+        print >> self.log, "Reducing R-free flags to non-anomalous array."
+        r_free_flags = r_free_flags.average_bijvoet_mates()
+        print >> self.log
+    elif(not r_free_flags.anomalous_flag()):
+       print >> self.log, "Generating Bijvoet mates of R-free flags."
+       r_free_flags = r_free_flags.generate_bijvoet_mates()
+       print >> self.log
+    r_free_flags = r_free_flags.map_to_asu().common_set(f_obs)
+    n_missing_r_free_flags = f_obs.indices().size() \
+      - r_free_flags.indices().size()
+    if(n_missing_r_free_flags != 0):
+      raise Sorry("R-free flags not compatible with F-obs array:"
+        " missing flag for %d F-obs selected for refinement." %
+        n_missing_r_free_flags)
+    r_free_flags.show_r_free_flags_info(out = self.log, prefix="")
+    return r_free_flags, test_flag_value, r_free_flags_md5_hexdigest
+
+  def verify_r_free_flags_md5_hexdigest(self,
+        ignore_pdb_hexdigest,
+        current,
+        records):
+    from_file = {}
+    for record in records:
+      flds = record.split()
+      if (len(flds) == 3):
+        from_file[flds[2]] = None
+    if (len(from_file) > 1):
+      raise Sorry(
+        "Multiple conflicting REMARK r_free_flags.md5.hexdigest records"
+        " found in the input PDB file.")
+    if (len(from_file) == 1 and current not in from_file):
+      log = self.log
+      for i in xrange(2): print >> log, "*"*79
+      if (ignore_pdb_hexdigest):
+        print >> log
+        print >> log, " ".join(["WARNING"]*9)
+      print >> log, """
+The MD5 checksum for the R-free flags array summarized above is:
+  %s
+
+The corresponding MD5 checksum in the PDB file summarized above is:
+  %s
+
+These checksums should be identical but are in fact different. This is
+because the R-free flags used at previous stages of refinement are
+different from the R-free flags summarized above. As a consequence,
+the values for R-free could be biased and misleading.
+
+However, there is no problem if the R-free flags were just extended to
+a higher resolution, or if some reflections with no data or that are
+not part of the R-free set have been added or removed.""" % (
+  current, from_file.keys()[0]),
+      if (not ignore_pdb_hexdigest):
+        print >> log, """\
+In this case,
+simply remove the
+
+  REMARK r_free_flags.md5.hexdigest %s
+
+record from the input PDB file to proceed with the refinement.""" % (
+  from_file.keys()[0]),
+      print >> log, """
+
+Otherwise it is best to recover the previously used R-free flags
+and use them consistently throughout the refinement of the model.
+Run this command again with the name of the file containing the
+original flags as an additional input.
+"""
+      if (not ignore_pdb_hexdigest):
+        print >> log, """\
+If the original R-free flags are unrecoverable, remove the REMARK
+record as indicated above. In this case the values for R-free will
+become meaningful only after many cycles of refinement.
+"""
+      else:
+        print >> log, """\
+If the original R-free flags are unrecoverable, the values for R-free
+will become meaningful only after many cycles of refinement.
+"""
+      for i in xrange(2): print >> log, "*"*79
+      print >> log
+      if (not ignore_pdb_hexdigest):
+        raise Sorry("Please resolve the R-free flags mismatch.")
+
 
 experimental_phases_params = iotbx.phil.parse("""\
   file_name=None
@@ -180,113 +510,6 @@ def determine_experimental_phases(reflection_file_server,
        processed = merged.array()
        info = info.customized_copy(merged = True)
     return processed.set_info(info)
-
-r_free_flags_params = iotbx.phil.parse("""\
-  file_name=None
-    .type=path
-    .help=Name of file containing free-R flags
-    .expert_level=0
-  label=None
-    .type=str
-    .expert_level=0
-  test_flag_value=None
-    .type=int
-    .expert_level=0
-  disable_suitability_test=False
-    .type=bool
-    .help=XXX
-    .expert_level=2
-  ignore_pdb_hexdigest=False
-    .type=bool
-    .help="If True, disables safety check based on MD5 hexdigests stored in"
-          "PDB files produced by previous runs."
-    .expert_level=2
-""")
-
-def determine_r_free_flags(reflection_file_server,
-                           data,
-                           generate_r_free_flags,
-                           parameters,
-                           parameter_scope,
-                           working_point_group,
-                           symmetry_safety_check,
-                           log,
-                           neutron_flag,
-                           r_free_flags_fraction=None,
-                           r_free_flags_max_free=None,
-                           r_free_flags_lattice_symmetry_max_delta=None,
-                           r_free_flags_use_lattice_symmetry=None):
-  r_free_flags = None
-  if(generate_r_free_flags is None or not generate_r_free_flags):
-    try:
-      r_free_flags, test_flag_value = \
-        reflection_file_server.get_r_free_flags(
-          file_name                = parameters.file_name,
-          label                    = parameters.label,
-          test_flag_value          = parameters.test_flag_value,
-          disable_suitability_test = parameters.disable_suitability_test,
-          parameter_scope          = parameter_scope)
-    except reflection_file_utils.Sorry_No_array_of_the_required_type, e:
-      e.reset_tracebacklimit()
-      if(generate_r_free_flags is not None):
-         explain_how_to_generate_array_of_r_free_flags(
-                                        neutron_flag = neutron_flag, log = log)
-         raise Sorry("Please try again.")
-      r_free_flags, test_flag_value = None, None
-    else:
-      parameters.file_name = r_free_flags.info().source
-      parameters.label = r_free_flags.info().label_string()
-      parameters.test_flag_value = test_flag_value
-      print >> log, "R-free flags:"
-      print >> log, " ", r_free_flags.info()
-      miller_array_symmetry_safety_check(
-        miller_array          = r_free_flags,
-        data_description      = "R-free flags",
-        working_point_group   = working_point_group,
-        symmetry_safety_check = symmetry_safety_check,
-        log                   = log)
-      print >> log
-      info = r_free_flags.info()
-      processed = r_free_flags.eliminate_sys_absent(log = log)
-      if(processed is not r_free_flags):
-         info = info.customized_copy(systematic_absences_eliminated = True)
-      if(not processed.is_unique_set_under_symmetry()):
-         print >> log, \
-           "Checking symmetry-equivalent R-free flags for consistency:",
-         try:
-           merged = processed.merge_equivalents()
-         except RuntimeError, e:
-           print >> log
-           error_message = str(e)
-           expected_error_message = "cctbx Error: merge_equivalents_exact: "
-           assert error_message.startswith(expected_error_message)
-           raise Sorry("Incompatible symmetry-equivalent R-free flags: %s" %
-             error_message[len(expected_error_message):])
-         else:
-           print >> log, "OK"
-           print >> log
-         processed = merged.array()
-         info = info.customized_copy(merged=True)
-         del merged
-      r_free_flags = processed.set_info(info)
-  if(r_free_flags is None):
-     assert [r_free_flags_fraction,
-             r_free_flags_max_free,
-             r_free_flags_lattice_symmetry_max_delta,
-             r_free_flags_use_lattice_symmetry].count(None) == 0
-     print >> log, "*"*79
-     print >> log, "Generating a new array of R-free flags."
-     print >> log, "*"*79
-     print >> log
-     r_free_flags = data.generate_r_free_flags(
-          fraction= r_free_flags_fraction,
-          max_free= r_free_flags_max_free,
-          lattice_symmetry_max_delta = r_free_flags_lattice_symmetry_max_delta,
-          use_lattice_symmetry = r_free_flags_use_lattice_symmetry
-        ).set_info(miller.array_info(labels=["R-free-flags"]))
-     parameters.label = r_free_flags.info().label_string()
-     parameters.test_flag_value = 1
-  return r_free_flags
 
 pdb_params = iotbx.phil.parse("""\
   file_name=None
