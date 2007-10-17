@@ -2357,18 +2357,7 @@ class build_all_chain_proxies(object):
 
   def process_geometry_restraints_edits_bond(self, sel_cache, edits, log):
     result = []
-    bonds = []
-    for bond in edits.bond:
-      if (   bond.action != "add"
-          or bond.atom_selection_1 is not None
-          or bond.atom_selection_2 is not None
-          or bond.symmetry_operation is not None
-          or bond.distance_ideal is not None
-          or bond.sigma is not None):
-        bonds.append(bond)
-    if (len(bonds) == 0): return result
-    del edits.bond[:]
-    edits.bond.extend(bonds)
+    if (len(edits.bond) == 0): return result
     print >> log, "  Custom bonds:"
     aal = self.stage_1.atom_attributes_list
     unit_cell = self.special_position_settings.unit_cell()
@@ -2376,7 +2365,7 @@ class build_all_chain_proxies(object):
     max_bond_length = unit_cell.shortest_vector_sq()**0.5
     n_excessive = 0
     sel_attrs = ["atom_selection_"+n for n in ["1", "2"]]
-    for bond in bonds:
+    for bond in edits.bond:
       def show_atom_selections():
         for attr in sel_attrs:
           print >> log, "      %s = %s" % (
@@ -2446,18 +2435,7 @@ class build_all_chain_proxies(object):
 
   def process_geometry_restraints_edits_angle(self, sel_cache, edits, log):
     result = []
-    angles = []
-    for angle in edits.angle:
-      if (   angle.action != "add"
-          or angle.atom_selection_1 is not None
-          or angle.atom_selection_2 is not None
-          or angle.atom_selection_3 is not None
-          or angle.angle_ideal is not None
-          or angle.sigma is not None):
-        angles.append(angle)
-    if (len(angles) == 0): return result
-    del edits.angle[:]
-    edits.angle.extend(angles)
+    if (len(edits.angle) == 0): return result
     if (self.special_position_indices is None):
       special_position_indices = []
     else:
@@ -2465,7 +2443,7 @@ class build_all_chain_proxies(object):
     print >> log, "  Custom angles:"
     aal = self.stage_1.atom_attributes_list
     sel_attrs = ["atom_selection_"+n for n in ["1", "2", "3"]]
-    for angle in angles:
+    for angle in edits.angle:
       def show_atom_selections():
         for attr in sel_attrs:
           print >> log, "      %s = %s" % (
