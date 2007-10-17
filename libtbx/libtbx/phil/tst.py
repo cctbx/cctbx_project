@@ -1329,6 +1329,11 @@ def exercise_fetch():
 a=None
   .expert_level=1
 """)
+  source = phil.parse(input_string="")
+  for f in [master.fetch(source), master.fetch(sources=[])]:
+    assert not show_diff(f.as_str(), """\
+a = None
+""")
   source = phil.parse(input_string="""\
 a=1
 a=2
