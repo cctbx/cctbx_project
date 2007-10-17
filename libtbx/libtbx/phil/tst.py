@@ -3443,6 +3443,7 @@ s
 """)
   w = master.fetch(source=source)
   e = w.extract()
+  assert len(e.s) == 0
   f = master.format(python_object=e)
   assert f.objects[0].is_template == 1
   assert not show_diff(f.as_str(), """\
@@ -3471,6 +3472,8 @@ s.b=1
 """)
   w = master.fetch(source=source)
   e = w.extract()
+  assert len(e.s) == 1
+  assert e.s[0].b == 1
   f = master.format(python_object=e)
   assert f.objects[0].is_template == -1
   assert f.objects[1].is_template == 0
@@ -3513,6 +3516,9 @@ s.c=*y
 """)
   w = master.fetch(source=source)
   e = w.extract()
+  assert len(e.s) == 2
+  assert e.s[0].c == ["x"]
+  assert e.s[1].c == ["y"]
   f = master.format(python_object=e)
   assert f.objects[0].is_template == -1
   assert f.objects[1].is_template == 0
@@ -3539,6 +3545,7 @@ a = None
 """)
   w = master.fetch(source=source)
   e = w.extract()
+  assert len(e.a) == 0
   f = master.format(python_object=e)
   assert not show_diff(f.as_str(), """\
 a = None
@@ -3553,6 +3560,7 @@ a=x
 """)
   w = master.fetch(source=source)
   e = w.extract()
+  assert e.a == [["x"]]
   f = master.format(python_object=e)
   assert not show_diff(f.as_str(), """\
 a = x
@@ -3568,6 +3576,8 @@ a=y
 """)
   w = master.fetch(source=source)
   e = w.extract()
+  assert len(e.a) == 2
+  assert e.a == [["x"], ["y"]]
   f = master.format(python_object=e)
   assert not show_diff(f.as_str(), """\
 a = x
