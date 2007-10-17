@@ -1259,16 +1259,19 @@ class scope(object):
         source=None,
         sources=None,
         track_unused_definitions=False):
-    assert [source, sources].count(None) == 1
     combined_objects = []
-    if (sources is None): sources = [source]
-    for source in sources:
-      assert source.name == self.name
-      if (not isinstance(source, scope)):
-        raise RuntimeError(
-          'Incompatible parameter objects: scope "%s"%s vs. definition "%s"%s'%
-            (self.name, self.where_str, source.name, source.where_str))
-      combined_objects.extend(source.objects)
+    if (source is not None or sources is not None):
+      assert source is None or sources is None
+      combined_objects = []
+      if (sources is None): sources = [source]
+      for source in sources:
+        assert source.name == self.name
+        if (not isinstance(source, scope)):
+          raise RuntimeError(
+            'Incompatible parameter objects:'
+            ' scope "%s"%s vs. definition "%s"%s' %
+              (self.name, self.where_str, source.name, source.where_str))
+        combined_objects.extend(source.objects)
     source = self.customized_copy(objects=combined_objects)
     del sources
     if (track_unused_definitions):

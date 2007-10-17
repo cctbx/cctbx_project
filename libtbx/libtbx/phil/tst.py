@@ -1330,7 +1330,7 @@ a=None
   .expert_level=1
 """)
   source = phil.parse(input_string="")
-  for f in [master.fetch(source), master.fetch(sources=[])]:
+  for f in [master.fetch(source), master.fetch(sources=[]), master.fetch()]:
     assert not show_diff(f.as_str(), """\
 a = None
 """)
