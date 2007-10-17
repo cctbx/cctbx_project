@@ -479,6 +479,11 @@ class object_locator(object):
   def __str__(self):
     return "%s%s" % (self.path, self.object.where_str)
 
+# is_template (set by .fetch() and .format() methods of definition or scope):
+#   0: not a template
+#  -1: template but there are other copies
+#   1: template and there are no copies
+
 class definition: # FUTURE definition(object)
 
   attribute_names = [
@@ -486,8 +491,8 @@ class definition: # FUTURE definition(object)
     "type", "multiple", "input_size", "expert_level"]
 
   __slots__ = ["name", "words", "primary_id", "primary_parent_scope",
-               "is_disabled", "where_str", "merge_names", "tmp"] \
-              + attribute_names
+               "is_disabled", "is_template", "where_str", "merge_names",
+               "tmp"] + attribute_names
 
   def __init__(self,
         name,
@@ -495,6 +500,7 @@ class definition: # FUTURE definition(object)
         primary_id=None,
         primary_parent_scope=None,
         is_disabled=False,
+        is_template=0,
         where_str="",
         merge_names=False,
         tmp=None,
@@ -515,6 +521,7 @@ class definition: # FUTURE definition(object)
     self.primary_id = primary_id
     self.primary_parent_scope = primary_parent_scope
     self.is_disabled = is_disabled
+    self.is_template = is_template
     self.where_str = where_str
     self.merge_names = merge_names
     self.tmp = tmp
@@ -537,6 +544,7 @@ class definition: # FUTURE definition(object)
     result = self.copy()
     if (name is not None): result.name = name
     if (words is not None): result.words = words
+    result.is_template = 0
     return result
 
   def full_path(self):
@@ -546,7 +554,7 @@ class definition: # FUTURE definition(object)
     if (not active_only or not self.is_disabled):
       self.tmp = value
 
-  def fetch(self, source, disable_empty=True):
+  def fetch(self, source):
     if (not isinstance(source, definition)):
       raise RuntimeError(
         'Incompatible parameter objects: definition "%s"%s vs. scope "%s"%s' %
@@ -583,6 +591,7 @@ class definition: # FUTURE definition(object)
         expert_level=None,
         attributes_level=0,
         print_width=None):
+    if (self.is_template < 0 and attributes_level < 2): return
     if (self.expert_level is not None
         and expert_level is not None
         and expert_level >= 0
@@ -622,10 +631,6 @@ class definition: # FUTURE definition(object)
       attributes_level=attributes_level,
       print_width=print_width)
     return out.getvalue()
-
-  def all_definitions_are_none(self):
-    if (self.name == "include"): return False
-    return self.extract() is None
 
   def _all_definitions(self,
         suppress_multiple,
@@ -896,6 +901,7 @@ class scope: # FUTURE scope(object)
     "primary_id",
     "primary_parent_scope",
     "is_disabled",
+    "is_template",
     "where_str",
     "merge_names"] + attribute_names
 
@@ -905,6 +911,7 @@ class scope: # FUTURE scope(object)
         primary_id=None,
         primary_parent_scope=None,
         is_disabled=False,
+        is_template=0,
         where_str="",
         merge_names=False,
         style=None,
@@ -923,6 +930,7 @@ class scope: # FUTURE scope(object)
     self.primary_id = primary_id
     self.primary_parent_scope = primary_parent_scope
     self.is_disabled = is_disabled
+    self.is_template = is_template
     self.where_str = where_str
     self.merge_names = merge_names
     self.style = style
@@ -956,6 +964,7 @@ class scope: # FUTURE scope(object)
     result = self.copy()
     if (name is not None): result.name = name
     if (objects is not None): result.objects = objects
+    result.is_template = 0
     return result
 
   def full_path(self):
@@ -1040,6 +1049,7 @@ class scope: # FUTURE scope(object)
         expert_level=None,
         attributes_level=0,
         print_width=None):
+    if (self.is_template < 0 and attributes_level < 2): return
     if (self.expert_level is not None
         and expert_level is not None
         and expert_level >= 0
@@ -1096,12 +1106,6 @@ class scope: # FUTURE scope(object)
       attributes_level=attributes_level,
       print_width=print_width)
     return out.getvalue()
-
-  def all_definitions_are_none(self):
-    for obj_loc in self.all_definitions():
-      if (obj_loc.object.extract() is not None):
-        return False
-    return True
 
   def _all_definitions(self,
         suppress_multiple,
@@ -1184,7 +1188,9 @@ class scope: # FUTURE scope(object)
   def extract(self, parent=None):
     result = scope_extract(name=self.name, parent=parent, call=self.call)
     for object in self.objects:
-      if (object.is_disabled):
+      if (object.is_template < 0): continue
+      if (   (object.is_template > 0 and object.optional)
+          or object.is_disabled):
         value = scope_extract_is_disabled
       else:
         value = object.extract(parent=result)
@@ -1196,8 +1202,12 @@ class scope: # FUTURE scope(object)
     return result
 
   def format(self, python_object):
+    multiple_scopes_done = {}
     result = []
     for object in self.master_active_objects():
+      if (object.multiple and isinstance(object, scope)):
+        if (object.name in multiple_scopes_done): continue
+        multiple_scopes_done[object.name] = False
       if (python_object is None):
         result.append(object.format(None))
       else:
@@ -1210,9 +1220,17 @@ class scope: # FUTURE scope(object)
               result.append(object.format(sub_python_object))
             else:
               if (len(sub_python_object) == 0):
-                sub_python_object.append(None)
-              for sub_python_object_i in sub_python_object:
-                result.append(object.format(sub_python_object_i))
+                obj = object.copy()
+                obj.is_template = 1
+                result.append(obj)
+              else:
+                if (not multiple_scopes_done.get(object.name, True)):
+                  multiple_scopes_done[object.name] = True
+                  obj = object.copy()
+                  obj.is_template = -1
+                  result.append(obj)
+                for sub_python_object_i in sub_python_object:
+                  result.append(object.format(sub_python_object_i))
     return self.customized_copy(objects=result)
 
   def clone(self, python_object, converter_registry=None):
@@ -1224,7 +1242,6 @@ class scope: # FUTURE scope(object)
   def fetch(self,
         source=None,
         sources=None,
-        disable_empty=True,
         track_unused_definitions=False):
     assert [source, sources].count(None) == 1
     combined_objects = []
@@ -1268,24 +1285,20 @@ class scope: # FUTURE scope(object)
             result_object = master_object.copy()
         else:
           result_object = master_object.fetch(
-            sources=matching_sources.active_objects(), disable_empty=False)
+            sources=matching_sources.active_objects())
           if (len(result_object.objects) == 0):
             result_object = master_object.copy()
         result_objects.append(merge_outer(result_object))
       else:
-        all_master_definitions_are_none = \
-          master_object.all_definitions_are_none()
         matching_sources.objects \
           = self.get(path=path, with_substitution=False).objects \
           + matching_sources.objects
         processed_as_str = {}
         result_objs = []
         for matching_source in matching_sources.active_objects():
-          if (matching_source is master_object
-              and all_master_definitions_are_none):
-            continue
-          candidate = master_object.fetch(
-            source=matching_source, disable_empty=disable_empty)
+          if (matching_source is master_object): continue
+          if (matching_source.is_template != 0): continue
+          candidate = master_object.fetch(source=matching_source)
           candidate_extract = candidate.extract()
           if (isinstance(candidate, scope)):
             if (candidate_extract.__phil_is_empty__()): continue
@@ -1296,25 +1309,21 @@ class scope: # FUTURE scope(object)
             result_objs[prev_index] = None
           processed_as_str[candidate_as_str] = len(result_objs)
           result_objs.append(candidate)
+        obj = master_object.copy()
         if (len(processed_as_str) == 0):
-          obj = master_object.copy()
-          if (master_object.optional
-              and all_master_definitions_are_none):
-            obj.is_disabled = disable_empty
-          result_objects.append(merge_outer(obj))
+          obj.is_template = 1
         else:
-          del processed_as_str
-          for candidate in result_objs:
-            if (candidate is not None):
-              result_objects.append(merge_outer(candidate))
-          del result_objs
+          obj.is_template = -1
+        result_objects.append(merge_outer(obj))
+        del processed_as_str
+        for obj in result_objs:
+          if (obj is not None):
+            result_objects.append(merge_outer(obj))
+        del result_objs
     result = self.customized_copy(objects=result_objects)
     if (track_unused_definitions):
       return result, source.all_definitions(select_tmp=False)
     return result
-
-  def tidy_master(self):
-    return self.fetch(self, disable_empty=False)
 
   def process_includes(self,
         converter_registry,
@@ -1566,4 +1575,4 @@ def read_default(
   return parse(
     file_name=params_file_name,
     converter_registry=converter_registry,
-    process_includes=process_includes).tidy_master()
+    process_includes=process_includes)

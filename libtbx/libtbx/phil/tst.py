@@ -1524,7 +1524,8 @@ s {
   !a=2
 }
 """)
-  for master in [master_plain, master_optional, master_multiple]:
+  for master in [master_plain, master_optional,
+                 master_multiple, master_optional_multiple]:
     out = StringIO()
     master.fetch(source).show(out=out)
     assert not show_diff(out.getvalue(), """\
@@ -1532,18 +1533,11 @@ s {
   a = None
 }
 """)
-  out = StringIO()
-  master_optional_multiple.fetch(source).show(out=out)
-  assert not show_diff(out.getvalue(), """\
-!s {
-  a = None
-}
-""")
   source = phil.parse(input_string="")
   out = StringIO()
   master_optional_multiple.fetch(source).show(out=out)
   assert not show_diff(out.getvalue(), """\
-!s {
+s {
   a = None
 }
 """)
@@ -2114,9 +2108,10 @@ a = z
 a = x
 """)
   master = phil.parse("""\
-a=d
+a=None
   .type=str
   .multiple=True
+a=d
 a=x
 a=y
 """)
@@ -2406,7 +2401,7 @@ s
     .multiple=True
     .optional=True
 }
-""").tidy_master()
+""")
   prev = phil.parse(master.as_str())
   custom = phil.parse("""\
 s {
@@ -2450,8 +2445,9 @@ a = 2
   master = phil.parse(input_string="""\
 a = 1
 s {
-  b = 2
+  b = None
     .multiple = True
+  b = 2
   t
     .multiple = True
   {
@@ -3428,51 +3424,162 @@ d = g h
 e = *j *k
 f = l m
 """)
-
-def exercise_tidy_master():
-  master = phil.parse("""\
+  #
+  master = phil.parse(input_string="""\
 s
-  .multiple=True
-{
-  a=x
-}
-s {
-  a=y
-}
-""").tidy_master()
-  assert not show_diff(master.as_str(attributes_level=2), """\
-s
+  .optional = True
   .multiple = True
 {
-  a = x
-}
-s
-  .multiple = True
-{
-  a = y
-}
-""")
-  assert not show_diff(master.format(master.extract()).as_str(), """\
-s {
-  a = x
-}
-s {
-  a = y
-}
-""")
-  master_as_str = """\
-s {
   a = None
+    .type = str
+  b = 0
+    .type = float
+  c = *x *y
     .optional = True
-    .multiple = True
+    .type = choice(multi=True)
 }
-"""
-  master = phil.parse(master_as_str).tidy_master()
-  assert not show_diff(master.as_str(attributes_level=2), master_as_str)
-  assert not show_diff(master.format(master.extract()).as_str(), """\
+""")
+  source = phil.parse(input_string="""\
+""")
+  w = master.fetch(source=source)
+  e = w.extract()
+  f = master.format(python_object=e)
+  assert f.objects[0].is_template == 1
+  assert not show_diff(f.as_str(), """\
 s {
   a = None
+  b = 0
+  c = *x *y
 }
+""")
+  assert not show_diff(f.as_str(attributes_level=2), """\
+s
+  .optional = True
+  .multiple = True
+{
+  a = None
+    .type = str
+  b = 0
+    .type = float
+  c = *x *y
+    .optional = True
+    .type = choice(multi=True)
+}
+""")
+  source = phil.parse(input_string="""\
+s.b=1
+""")
+  w = master.fetch(source=source)
+  e = w.extract()
+  f = master.format(python_object=e)
+  assert f.objects[0].is_template == -1
+  assert f.objects[1].is_template == 0
+  assert not show_diff(f.as_str(), """\
+s {
+  a = None
+  b = 1
+  c = *x *y
+}
+""")
+  assert not show_diff(f.as_str(attributes_level=2), """\
+s
+  .optional = True
+  .multiple = True
+{
+  a = None
+    .type = str
+  b = 0
+    .type = float
+  c = *x *y
+    .optional = True
+    .type = choice(multi=True)
+}
+s
+  .optional = True
+  .multiple = True
+{
+  a = None
+    .type = str
+  b = 1
+    .type = float
+  c = *x *y
+    .optional = True
+    .type = choice(multi=True)
+}
+""")
+  source = phil.parse(input_string="""\
+s.c=*x
+s.c=*y
+""")
+  w = master.fetch(source=source)
+  e = w.extract()
+  f = master.format(python_object=e)
+  assert f.objects[0].is_template == -1
+  assert f.objects[1].is_template == 0
+  assert f.objects[2].is_template == 0
+  assert not show_diff(f.as_str(), """\
+s {
+  a = None
+  b = 0
+  c = *x y
+}
+s {
+  a = None
+  b = 0
+  c = x *y
+}
+""")
+  #
+  master = phil.parse(input_string="""\
+a = None
+  .optional = True
+  .multiple = True
+""")
+  source = phil.parse(input_string="""\
+""")
+  w = master.fetch(source=source)
+  e = w.extract()
+  f = master.format(python_object=e)
+  assert not show_diff(f.as_str(), """\
+a = None
+""")
+  assert not show_diff(f.as_str(attributes_level=2), """\
+a = None
+  .optional = True
+  .multiple = True
+""")
+  source = phil.parse(input_string="""\
+a=x
+""")
+  w = master.fetch(source=source)
+  e = w.extract()
+  f = master.format(python_object=e)
+  assert not show_diff(f.as_str(), """\
+a = x
+""")
+  assert not show_diff(f.as_str(attributes_level=2), """\
+a = x
+  .optional = True
+  .multiple = True
+""")
+  source = phil.parse(input_string="""\
+a=x
+a=y
+""")
+  w = master.fetch(source=source)
+  e = w.extract()
+  f = master.format(python_object=e)
+  assert not show_diff(f.as_str(), """\
+a = x
+a = y
+""")
+  assert not show_diff(f.as_str(attributes_level=2), """\
+a = x
+  .optional = True
+  .multiple = True
+a = y
+  .optional = True
+  .multiple = True
 """)
 
 class foo1_converters(object):
@@ -3927,7 +4034,6 @@ def exercise():
   exercise_fetch()
   exercise_extract()
   exercise_format()
-  exercise_tidy_master()
   exercise_type_constructors()
   exercise_choice_exceptions()
   exercise_scope_call()
