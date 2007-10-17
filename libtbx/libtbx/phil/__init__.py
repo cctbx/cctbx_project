@@ -484,7 +484,9 @@ class object_locator(object):
 #  -1: template but there are other copies
 #   1: template and there are no copies
 
-class definition: # FUTURE definition(object)
+_need_getstate = (getattr(sys, "hexversion", 0) < 33751280) # i.e. < Python 2.3
+
+class definition(object):
 
   attribute_names = [
     "help", "caption", "short_caption", "optional",
@@ -533,6 +535,13 @@ class definition: # FUTURE definition(object)
     self.multiple = multiple
     self.input_size = input_size
     self.expert_level = expert_level
+
+  if (_need_getstate):
+    def __getstate__(self):
+      return dict([(name, getattr(self, name)) for name in self.__slots__])
+
+    def __setstate__(self, state):
+      for name,value in state.items(): setattr(self, name, value)
 
   def copy(self):
     keyword_args = {}
@@ -712,7 +721,7 @@ class definition: # FUTURE definition(object)
       new_words.extend(substitution_proxy.get_new_words())
     return self.customized_copy(words=new_words)
 
-class scope_extract_call_proxy_object:
+class scope_extract_call_proxy_object(object):
 
   def __init__(self, where_str, expression, callable, keyword_args):
     self.where_str = where_str
@@ -880,7 +889,7 @@ class scope_extract(object):
         self.__phil_path__(), call_proxy.expression, format_exception(),
         call_proxy.where_str))
 
-class scope: # FUTURE scope(object)
+class scope(object):
 
   attribute_names = [
     "style",
@@ -953,6 +962,13 @@ class scope: # FUTURE scope(object)
       raise RuntimeError('Reserved identifier: "include"%s' % where_str)
     if (sequential_format is not None):
       assert isinstance(sequential_format % 0, str)
+
+  if (_need_getstate):
+    def __getstate__(self):
+      return dict([(name, getattr(self, name)) for name in self.__slots__])
+
+    def __setstate__(self, state):
+      for name,value in state.items(): setattr(self, name, value)
 
   def copy(self):
     keyword_args = {}
