@@ -60,7 +60,7 @@ def miller_array_symmetry_safety_check(miller_array,
   to the command line arguments.
 """)
 
-def explain_how_to_generate_array_of_r_free_flags(log):
+def explain_how_to_generate_array_of_r_free_flags(log, flags_parameter_scope):
   part1 = """\
 If previously used R-free flags are available run this command again
 with the name of the file containing the original flags as an
@@ -75,7 +75,7 @@ If the structure was refined previously using different R-free flags,
 the values for R-free will become meaningful only after many cycles of
 refinement.
 """
-  print >> log, part1 + """r_free_flags.generate=True""" + part3
+  print >> log, part1 + flags_parameter_scope+""".generate=True""" + part3
 
 data_and_flags = iotbx.phil.parse("""\
   file_name = None
@@ -219,7 +219,8 @@ class determine_data_and_flags(object):
       except reflection_file_utils.Sorry_No_array_of_the_required_type, e:
         e.reset_tracebacklimit()
         if(self.parameters.r_free_flags.generate is not None):
-          explain_how_to_generate_array_of_r_free_flags(log = self.log)
+          explain_how_to_generate_array_of_r_free_flags(log = self.log,
+            flags_parameter_scope = self.flags_parameter_scope)
           raise Sorry("Please try again.")
         r_free_flags, test_flag_value = None, None
       else:
