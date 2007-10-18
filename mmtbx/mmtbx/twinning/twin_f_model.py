@@ -920,6 +920,14 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.scaling_parameters = self.bss.best_scaling_parameters
     self.twin_fraction_object = self.bss.best_twin_fraction
     ###
+
+    self.r_all_object = xray.hemihedral_r_values(
+      hkl_obs        = self.f_obs.indices(),
+      hkl_calc       = self.f_atoms.indices(),
+      space_group    = self.f_obs.space_group(),
+      anomalous_flag = self.f_obs.anomalous_flag(),
+      twin_law       = self.twin_law.as_double_array()[0:9] )
+
     self.r_work_object = xray.hemihedral_r_values(
       hkl_obs        = self.f_obs_w.indices(),
       hkl_calc       = self.f_atoms.indices(),
@@ -1648,7 +1656,14 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     return f
 
   def r_all(self):
-   return self.r_values(False)
+    selection = flex.bool( self.f_obs.data().size(), True )
+    overall_r = self.r_all_object.r_amplitude_abs(
+          f_obs         = self.f_obs.data(),
+          f_model       = self.data_core.f_model(),
+          selection     = selection,
+          twin_fraction = self.twin_fraction_object.twin_fraction)
+    return overall_r
+
 
   def r_work_in_lowest_resolution_bin(self, reflections_per_bin=200, show=False):
     d_star_sq = self.f_obs_w.d_star_sq().data()
