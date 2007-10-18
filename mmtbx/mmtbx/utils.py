@@ -115,6 +115,7 @@ data_and_flags = iotbx.phil.parse("""\
       .expert_level=2
     ignore_r_free_flags = False
       .type=bool
+      .help = Use all reflections in refinement (work and test)
     generate = False
       .type=bool
       .help = Generate R-free flags (if not available in input files)
@@ -148,22 +149,12 @@ class determine_data_and_flags(object):
       print_statistics.make_header(data_description, out = log)
     self.raw_data = self.extract_data()
     data_info = self.raw_data.info()
-    if(not parameters.r_free_flags.ignore_r_free_flags):
-      self.raw_flags = self.extract_flags(data = self.raw_data)
-      flags_info = self.raw_flags.info()
+    self.raw_flags = self.extract_flags(data = self.raw_data)
+    flags_info = self.raw_flags.info()
     self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
-    if(not parameters.r_free_flags.ignore_r_free_flags):
-      self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
-        self.flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags = self.raw_flags)
-      self.r_free_flags.set_info(flags_info)
-    else:
-      self.r_free_flags = self.raw_data.array(
-        data = flex.bool(self.raw_data.data().size(),False))
-      self.test_flag_value = 1
-      self.r_free_flags_md5_hexdigest = (self.r_free_flags.map_to_asu().sort(
-        by_value="packed_indices").data() == self.test_flag_value
-        ).md5().hexdigest()
-      self.r_free_flags.set_info(miller.array_info(source_type="generated"))
+    self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
+      self.flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags = self.raw_flags)
+    self.r_free_flags.set_info(flags_info)
     self.f_obs.set_info(data_info)
 
   def extract_data(self):
