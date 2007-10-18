@@ -488,6 +488,9 @@ _need_getstate = (getattr(sys, "hexversion", 0) < 33751280) # i.e. < Python 2.3
 
 class definition(object):
 
+  is_definition = True
+  is_scope = False
+
   attribute_names = [
     "help", "caption", "short_caption", "optional",
     "type", "multiple", "input_size", "expert_level"]
@@ -564,7 +567,7 @@ class definition(object):
       self.tmp = value
 
   def fetch(self, source):
-    if (not isinstance(source, definition)):
+    if (source.is_scope):
       raise RuntimeError(
         'Incompatible parameter objects: definition "%s"%s vs. scope "%s"%s' %
           (self.name, self.where_str, source.name, source.where_str))
@@ -697,7 +700,7 @@ class definition(object):
           substitution_source = self.primary_parent_scope.lexical_get(
             path=fragment.value, stop_id=self.primary_id)
           if (substitution_source is not None):
-            if (not isinstance(substitution_source, definition)):
+            if (not substitution_source.is_definition):
               raise RuntimeError("Not a definition: $%s%s" % (
                 fragment.value, word.where_str()))
             substitution_source.tmp = True
@@ -891,6 +894,9 @@ class scope_extract(object):
 
 class scope(object):
 
+  is_definition = False
+  is_scope = True
+
   attribute_names = [
     "style",
     "help",
@@ -1057,7 +1063,7 @@ class scope(object):
       master = names_object.setdefault(object.name, object)
       if (master is not object):
         if (master.multiple): continue
-        if (isinstance(object, definition)):
+        if (object.is_definition):
           raise RuntimeError(
             "Duplicate definitions in master"
             " (first not marked with .multiple=True):\n"
@@ -1194,7 +1200,7 @@ class scope(object):
     candidates = []
     for object in self.objects:
       if (object.primary_id >= stop_id): break
-      if (isinstance(object, definition)):
+      if (object.is_definition):
         if (object.name == path):
           candidates.append(object)
       elif (object.name == path
@@ -1230,7 +1236,7 @@ class scope(object):
     multiple_scopes_done = {}
     result = []
     for object in self.master_active_objects():
-      if (object.multiple and isinstance(object, scope)):
+      if (object.multiple and object.is_scope):
         if (object.name in multiple_scopes_done): continue
         multiple_scopes_done[object.name] = False
       if (python_object is None):
@@ -1275,7 +1281,7 @@ class scope(object):
       if (sources is None): sources = [source]
       for source in sources:
         assert source.name == self.name
-        if (not isinstance(source, scope)):
+        if (source.is_definition):
           raise RuntimeError(
             'Incompatible parameter objects:'
             ' scope "%s"%s vs. definition "%s"%s' %
@@ -1292,7 +1298,7 @@ class scope(object):
       else:
         path = self.name + "." + master_object.name
       merged_outer_objects = []
-      while (    isinstance(master_object, scope)
+      while (    master_object.is_scope
              and len(master_object.objects) == 1
              and master_object.objects[0].merge_names):
         merged_outer_objects.append(master_object)
@@ -1304,7 +1310,7 @@ class scope(object):
         return object
       matching_sources = source.get(path=path, with_substitution=False)
       if (not master_object.multiple):
-        if (isinstance(master_object, definition)):
+        if (master_object.is_definition):
           # loop over all matching_sources to support track_unused_definitions
           result_object = None
           for matching_source in matching_sources.active_objects():
@@ -1327,7 +1333,7 @@ class scope(object):
           if (matching_source.is_template != 0): continue
           candidate = master_object.fetch(source=matching_source)
           candidate_extract = candidate.extract()
-          if (isinstance(candidate, scope)):
+          if (candidate.is_scope):
             if (candidate_extract.__phil_is_empty__()): continue
           elif (candidate_extract is None): continue
           candidate_as_str = master_object.format(candidate_extract).as_str()
@@ -1363,7 +1369,7 @@ class scope(object):
     for object in self.objects:
       if (object.is_disabled):
         result.append(object)
-      elif (isinstance(object, definition)):
+      elif (object.is_definition):
         if (object.name != "include"):
           result.append(object)
         else:
@@ -1436,7 +1442,7 @@ def process_include_scope(
     target_must_be="; target must be a phil scope",
     where_str=object.where_str)
   source_scope = imported.object
-  if (not isinstance(source_scope, scope)):
+  if (source_scope is None or not source_scope.is_scope):
     raise RuntimeError(
       'include scope: python object "%s" in module "%s" is not a'
       ' libtbx.phil.scope instance%s' % (
