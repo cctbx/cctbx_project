@@ -2510,6 +2510,18 @@ b = NoNe
 a = x y
 b = p q
 """)
+  #
+  master = phil.parse(input_string="""\
+a = None
+a = None
+""")
+  try: master.fetch()
+  except RuntimeError, e:
+    assert not show_diff(str(e), """\
+Duplicate definitions in master (first not marked with .multiple=True):
+  a (input line 1)
+  a (input line 2)""")
+  else: raise RuntimeError("Exception expected.")
 
 def exercise_extract():
   parameters = phil.parse(input_string="""\
