@@ -521,21 +521,22 @@ class manager(manager_mixin):
     b_test = b_min+b_iso
     if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
     else: b_adj = b_iso
-    b_cart = self.b_cart()
-    b_cart_new = [b_cart[0]-b_adj,b_cart[1]-b_adj,b_cart[2]-b_adj,
-                  b_cart[3],      b_cart[4],      b_cart[5]]
-    self.update(b_cart = b_cart_new)
-    self.update(b_sol = self.k_sol_b_sol()[1] + b_adj)
-    self.xray_structure.shift_us(b_shift = b_adj)
-    b_min = adptbx.u_as_b(flex.min(
-          self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double()))
-    assert b_min >= 0.0
-    self.xray_structure.tidy_us(u_min = 1.e-6)
-    self.update_xray_structure(xray_structure           = self.xray_structure,
-                               update_f_calc            = True,
-                               update_f_mask            = False,
-                               update_f_ordered_solvent = False,
-                               out                      = None)
+    if(abs(b_adj) <= 100.0):
+      b_cart = self.b_cart()
+      b_cart_new = [b_cart[0]-b_adj,b_cart[1]-b_adj,b_cart[2]-b_adj,
+                    b_cart[3],      b_cart[4],      b_cart[5]]
+      self.update(b_cart = b_cart_new)
+      self.update(b_sol = self.k_sol_b_sol()[1] + b_adj)
+      self.xray_structure.shift_us(b_shift = b_adj)
+      b_min = adptbx.u_as_b(flex.min(
+            self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double()))
+      assert b_min >= 0.0
+      self.xray_structure.tidy_us(u_min = 1.e-6)
+      self.update_xray_structure(xray_structure           = self.xray_structure,
+                                 update_f_calc            = True,
+                                 update_f_mask            = False,
+                                 update_f_ordered_solvent = False,
+                                 out                      = None)
 
   def set_f_ordered_solvent(self, params):
     raise RuntimeError("Not implemented.")

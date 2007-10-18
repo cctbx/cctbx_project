@@ -793,6 +793,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.target_name="twin_lsq_f"
     self._target_attributes = target_attributes()
     self.out = out
+    self.did_search = 0
 
     if self.out is None:
       self.out = sys.stdout
@@ -1042,6 +1043,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     new_object.twin_fraction_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
     new_object.twin_fraction = float(self.twin_fraction_object.twin_fraction)
     new_object.update()
+    new_object.did_search = self.did_search
     return new_object
 
   def resolution_filter(self,d_max=None,d_min=None):
@@ -1068,6 +1070,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       )
 
     new_object.update()
+    new_object.did_search = self.did_search
     return new_object
 
   def select(self, selection):
@@ -1088,6 +1091,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       map_types          = dc.map_types,
       sf_and_grads_accuracy_params = dc.sfg_params
       )
+    new_object.did_search = self.did_search
     return new_object
 
 
@@ -1142,7 +1146,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if twin_fraction_parameters is not None:
       self.bss.best_twin_fraction = self.twin_fraction_object
       self.twin_fraction_object = twin_fraction_parameters
-    if de_search:
+    #if de_search: # XXX
+    if self.did_search < 3: # XXX Pavel: ad hoc to reduce runtime.
+      self.did_search += 1
       self.bss.de_search()
       self.twin_fraction_object = self.bss.best_twin_fraction
       self.scaling_parameters = self.bss.best_scaling_parameters
