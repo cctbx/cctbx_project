@@ -1051,11 +1051,20 @@ class scope(object):
       yield object
 
   def master_active_objects(self):
-    flags = {}
+    names_object = {}
     for object in self.objects:
       if (object.is_disabled): continue
-      if (flags.get(object.name, False)): continue
-      flags[object.name] = object.multiple
+      master = names_object.setdefault(object.name, object)
+      if (master is not object):
+        if (master.multiple): continue
+        if (isinstance(object, definition)):
+          raise RuntimeError(
+            "Duplicate definitions in master"
+            " (first not marked with .multiple=True):\n"
+            "  %s%s\n"
+            "  %s%s" % (
+              master.full_path(), master.where_str,
+              object.full_path(), object.where_str))
       yield object
 
   def show(self,
@@ -1310,12 +1319,11 @@ class scope(object):
         result_objects.append(merge_outer(result_object))
       else:
         matching_sources.objects \
-          = self.get(path=path, with_substitution=False).objects \
+          = self.get(path=path, with_substitution=False).objects[1:] \
           + matching_sources.objects
         processed_as_str = {}
         result_objs = []
         for matching_source in matching_sources.active_objects():
-          if (matching_source is master_object): continue
           if (matching_source.is_template != 0): continue
           candidate = master_object.fetch(source=matching_source)
           candidate_extract = candidate.extract()
