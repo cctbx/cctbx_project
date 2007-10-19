@@ -566,7 +566,7 @@ class definition(object):
     if (not active_only or not self.is_disabled):
       self.tmp = value
 
-  def fetch(self, source):
+  def fetch_value(self, source):
     if (source.is_scope):
       raise RuntimeError(
         'Incompatible parameter objects: definition "%s"%s vs. scope "%s"%s' %
@@ -577,6 +577,17 @@ class definition(object):
     if (type_fetch is None):
       return self.customized_copy(words=source.words)
     return type_fetch(source_words=source.words, master=self)
+
+  def fetch_diff(self, source):
+    result = self.fetch_value(source=source)
+    result_as_str = self.extract_format(source=result).as_str()
+    self_as_str = self.extract_format().as_str()
+    if (result_as_str == self_as_str): result = None
+    return result
+
+  def fetch(self, source, diff=False):
+    if (diff): return self.fetch_diff(source=source)
+    return self.fetch_value(source=source)
 
   def has_attribute_with_name(self, name):
     return name in self.attribute_names
@@ -983,6 +994,9 @@ class scope(object):
     result.is_template = 0
     return result
 
+  def is_empty(self):
+    return len(self.objects) == 0
+
   def full_path(self):
     return full_path(self)
 
@@ -1270,7 +1284,8 @@ class scope(object):
   def fetch(self,
         source=None,
         sources=None,
-        track_unused_definitions=False):
+        track_unused_definitions=False,
+        diff=False):
     combined_objects = []
     if (source is not None or sources is not None):
       assert source is None or sources is None
@@ -1300,15 +1315,17 @@ class scope(object):
           # loop over all matching_sources to support track_unused_definitions
           result_object = None
           for matching_source in matching_sources.active_objects():
-            result_object = master_object.fetch(source=matching_source)
-          if (result_object is None):
-            result_object = master_object.copy()
+            result_object = master_object.fetch(
+              source=matching_source, diff=diff)
         else:
           result_object = master_object.fetch(
-            sources=matching_sources.active_objects())
-          if (len(result_object.objects) == 0):
-            result_object = master_object.copy()
-        result_objects.append(result_object)
+            sources=matching_sources.active_objects(), diff=diff)
+          if (diff and len(result_object.objects) == 0):
+            result_object = None
+        if (result_object is not None):
+          result_objects.append(result_object)
+        elif (not diff):
+          result_objects.append(master_object.copy())
       else:
         matching_sources.objects \
           = self.get(path=path, with_substitution=False).objects[1:] \
@@ -1318,7 +1335,12 @@ class scope(object):
         master_as_str = master_object.extract_format().as_str()
         for matching_source in matching_sources.active_objects():
           if (matching_source.is_template != 0): continue
-          candidate = master_object.fetch(source=matching_source)
+          candidate = master_object.fetch(source=matching_source, diff=diff)
+          if (diff):
+            if (master_object.is_scope):
+              if (len(candidate.objects) == 0): continue
+            elif (candidate is None):
+              continue
           candidate_as_str = master_object.extract_format(
             source=candidate).as_str()
           if (candidate_as_str == master_as_str): continue
@@ -1327,15 +1349,16 @@ class scope(object):
             result_objs[prev_index] = None
           processed_as_str[candidate_as_str] = len(result_objs)
           result_objs.append(candidate)
-        obj = master_object.copy()
-        if (    not master_object.optional is None
-            and not master_object.optional):
-          obj.is_template = 0
-        elif (len(processed_as_str) == 0):
-          obj.is_template = 1
-        else:
-          obj.is_template = -1
-        result_objects.append(obj)
+        if (not diff):
+          obj = master_object.copy()
+          if (    not master_object.optional is None
+              and not master_object.optional):
+            obj.is_template = 0
+          elif (len(processed_as_str) == 0):
+            obj.is_template = 1
+          else:
+            obj.is_template = -1
+          result_objects.append(obj)
         del processed_as_str
         for obj in result_objs:
           if (obj is not None):
@@ -1345,6 +1368,16 @@ class scope(object):
     if (track_unused_definitions):
       return result, source.all_definitions(select_tmp=False)
     return result
+
+  def fetch_diff(self,
+        source=None,
+        sources=None,
+        track_unused_definitions=False):
+    return self.fetch(
+      source=source,
+      sources=sources,
+      track_unused_definitions=track_unused_definitions,
+      diff=True)
 
   def process_includes(self,
         converter_registry,
