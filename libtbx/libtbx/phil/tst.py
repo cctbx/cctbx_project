@@ -2561,6 +2561,443 @@ Duplicate definitions in master (first not marked with .multiple=True):
   a (input line 2)""")
   else: raise RuntimeError("Exception expected.")
 
+def exercise_fetch_diff():
+  source = phil.parse(input_string="""\
+a = "a" "b"
+""")
+  master = phil.parse(input_string="""\
+a = "a b"
+  .type = str
+""")
+  assert master.objects[0].fetch_diff(source=source.objects[0]) is None
+  master = phil.parse(input_string="""\
+a = None
+  .type = str
+""")
+  assert not show_diff(
+    master.objects[0].fetch(source=source.objects[0], diff=True).as_str(),
+    """\
+a = "a" "b"
+""")
+  #
+  master = phil.parse(input_string="""\
+v = 33/111
+  .type = float
+""")
+  f = master.fetch()
+  assert not show_diff(f.objects[0].as_str(), """\
+v = 33/111
+""")
+  assert master.objects[0].fetch_diff(source=f.objects[0]) is None
+  f = master.format(master.extract(master.fetch()))
+  assert not show_diff(f.objects[0].as_str(), """\
+v = 0.2972972973
+""")
+  assert master.objects[0].fetch_diff(source=f.objects[0]) is None
+  source = phil.parse(input_string="""\
+v = 0.2972972972
+""")
+  assert not show_diff(
+    master.objects[0].fetch_diff(source=source.objects[0]).as_str(),
+    """\
+v = 0.2972972972
+""")
+  #
+  master = phil.parse(input_string="""\
+s {
+  a = None
+}
+""")
+  source = phil.parse(input_string="s.a = x")
+  d = master.fetch(source=source, diff=True)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+""")
+  for input_string in ["", "s.a = None"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+s {
+  a = None
+  b = y
+}
+""")
+  source = phil.parse(input_string="s.a = x")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+""")
+  source = phil.parse(input_string="s.b = z")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  b = z
+}
+""")
+  source = phil.parse(input_string="s.a = x; s.b = z")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+  b = z
+}
+""")
+  for input_string in ["", "s.a = None", "s.b = y"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+s {
+  a = None
+  t {
+    b = y
+  }
+}
+""")
+  source = phil.parse(input_string="s.a = x")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+""")
+  source = phil.parse(input_string="s.t.b = z")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  t {
+    b = z
+  }
+}
+""")
+  source = phil.parse(input_string="s.a = x; s.t.b = z")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+  t {
+    b = z
+  }
+}
+""")
+  for input_string in ["", "s.a = None", "s.t.b = y"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+s {
+  a = None
+  t.u {
+    b = y
+  }
+}
+""")
+  source = phil.parse(input_string="s.a = x")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+""")
+  source = phil.parse(input_string="s.t.u.b = z")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  t.u {
+    b = z
+  }
+}
+""")
+  source = phil.parse(input_string="s.a = x; s.t.u.b = z")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+  t.u {
+    b = z
+  }
+}
+""")
+  for input_string in ["", "s.a = None", "s.t.u.b = y"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+a = None
+  .type = str
+  .multiple = True
+""")
+  source = phil.parse(input_string="a = x")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+a = x
+""")
+  source = phil.parse(input_string="a = x; a = None; a = y")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+a = x
+a = y
+""")
+  for input_string in ["", "a = None"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+s
+  .multiple = True
+{
+  a = None
+}
+""")
+  source = phil.parse(input_string="s.a = x")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+""")
+  for input_string in ["", "s.a = None"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+s
+  .multiple = True
+{
+  a = None
+  b = y
+}
+""")
+  source = phil.parse(input_string="s.a = x")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+""")
+  source = phil.parse(input_string="s.b = z")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  b = z
+}
+""")
+  source = phil.parse(input_string="s.a = x; s.b = z")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+s {
+  b = z
+}
+""")
+  for input_string in ["", "s.a = None", "s.b = y"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+s
+  .multiple = True
+{
+  a = None
+    .type = str
+    .multiple = True
+  b = y
+}
+""")
+  source = phil.parse(input_string="s.a = x")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+""")
+  source = phil.parse(input_string="s.a = x; s { a = None; b = z } s.a = p")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  a = x
+}
+s {
+  b = z
+}
+s {
+  a = p
+}
+""")
+  for input_string in ["", "s.a = None", "s.b = y", "s { a = None; b = y }"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+s
+  .multiple = True
+{
+  t
+    .multiple = True
+  {
+    a = x
+  }
+  b = None
+}
+""")
+  source = phil.parse(input_string="s.t.a = None")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  t {
+    a = None
+  }
+}
+""")
+  source = phil.parse(input_string="""\
+s.t.a = y
+s { t.a = x; b = z }
+s.t.a = p
+s { t.a = None; b = None }
+s { t.a = r; b = q }
+""")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  t {
+    a = y
+  }
+}
+s {
+  b = z
+}
+s {
+  t {
+    a = p
+  }
+}
+s {
+  t {
+    a = None
+  }
+}
+s {
+  t {
+    a = r
+  }
+  b = q
+}
+""")
+  for input_string in [
+        "", "s.t.a = x", "s.b = None", "s { t.a = x; b = None }"]:
+    source = phil.parse(input_string=input_string)
+    d = master.fetch_diff(source=source)
+    assert d.is_empty()
+  #
+  master = phil.parse(input_string="""\
+s
+  .multiple = True
+{
+  d = None
+  t.u
+    .multiple = True
+  {
+    a = x
+      .multiple = True
+    b = None
+    c = v *w
+      .type=choice
+  }
+  e = None
+    .multiple = True
+  r {
+    i = 0
+      .multiple = True
+    j = 1
+  }
+}
+""")
+  source = phil.parse(input_string="")
+  d = master.fetch_diff(source=source)
+  assert d.is_empty()
+  source = phil.parse(input_string="""\
+s.t.u.c=v
+s {
+  t.u {
+    a = z
+    b = y
+    a = x
+    c = w
+    a = p
+  }
+  r.i = 0
+  t.u {
+    a = x
+    b = None
+    c = w
+  }
+  r {
+    i = 1
+    j = 1
+  }
+}
+s {
+  d = 2
+  e = 1
+  t.u {
+    c = v
+  }
+  d = 3
+  e = None
+  r {
+    i = 1
+    j = 2
+  }
+  d = 4
+  e = 5
+}
+""")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  t.u {
+    c = *v w
+  }
+}
+s {
+  t.u {
+    a = z
+    a = p
+    b = y
+  }
+  r {
+    i = 1
+  }
+}
+s {
+  d = 4
+  t.u {
+    c = *v w
+  }
+  e = 1
+  e = 5
+  r {
+    i = 1
+    j = 2
+  }
+}
+""")
+
 def exercise_extract():
   parameters = phil.parse(input_string="""\
 group {
@@ -4235,6 +4672,7 @@ def exercise():
   exercise_include()
   exercise_full_path()
   exercise_fetch()
+  exercise_fetch_diff()
   exercise_extract()
   exercise_format()
   exercise_type_constructors()
