@@ -30,7 +30,6 @@ def manager(simulated_annealing_params,
             wxnc_scale,
             tan_b_iso_max,
             h_params,
-            monitor,
             fmodel,
             model,
             out = None):
@@ -58,12 +57,6 @@ def manager(simulated_annealing_params,
                                update_f_ordered_solvent = False,
                                out                      = out)
 
-  monitor.collect(step           = str(macro_cycle) + "_xyz:",
-                  model          = model,
-                  fmodel         = fmodel,
-                  tan_b_iso_max  = tan_b_iso_max,
-                  target_weights = target_weights,
-                  wilson_b       = None)
 
   print_statistics.make_header("simulated annealing", out = out)
   run_simulated_annealing(
@@ -77,19 +70,6 @@ def manager(simulated_annealing_params,
                        wc                         = target_weights.wc(),
                        out                        = out)
 
-  fmodel.update_xray_structure(xray_structure           = model.xray_structure,
-                               update_f_calc            = True,
-                               update_f_mask            = True,
-                               update_f_ordered_solvent = False,
-                               out                      = out)
-
-  monitor.collect(step           = str(macro_cycle) + "_sar:",
-                  model          = model,
-                  fmodel         = fmodel,
-                  tan_b_iso_max  = tan_b_iso_max,
-                  target_weights = target_weights,
-                  wilson_b       = None)
-
 def run_simulated_annealing(simulated_annealing_params,
                             model,
                             fmodel,
@@ -99,8 +79,6 @@ def run_simulated_annealing(simulated_annealing_params,
                             alpha_beta_parameters,
                             mask_parameters,
                             out):
-  fmodel_copy = fmodel#.deep_copy()
-  fmodel_copy_1 = fmodel.deep_copy()
   xray_structure_start        = model.xray_structure.deep_copy_scatterers()
   xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()
   sa_temp = simulated_annealing_params.start_temperature
@@ -116,7 +94,7 @@ def run_simulated_annealing(simulated_annealing_params,
       time_step                   = simulated_annealing_params.time_step,
       n_print                     = simulated_annealing_params.n_print,
       verbose                     = simulated_annealing_params.verbose,
-      fmodel                      = fmodel_copy,
+      fmodel                      = fmodel,
       xray_target_weight          = wx,
       chem_target_weight          = wc,
       xray_structure_last_updated = xray_structure_last_updated,
@@ -128,14 +106,12 @@ def run_simulated_annealing(simulated_annealing_params,
     xray_structure_last_updated = \
                   cd_manager.xray_structure_last_updated.deep_copy_scatterers()
     xray_gradient = cd_manager.xray_gradient
-
-    fmodel_copy_1.update_xray_structure(xray_structure  = model.xray_structure,
+    fmodel.update_xray_structure(xray_structure  = model.xray_structure,
                                         update_f_calc            = True,
                                         update_f_mask            = True,
                                         update_f_ordered_solvent = False,
                                         out                      = out)
-
-    fmodel_copy_1.info().show_rfactors_targets_scales_overall(
+    fmodel.info().show_rfactors_targets_scales_overall(
       header = "2:SA temperatrure = "+str(sa_temp), out = out)
 
     geom_stat = model.show_geometry_statistics(

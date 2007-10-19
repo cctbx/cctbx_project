@@ -521,7 +521,7 @@ class manager(manager_mixin):
     b_test = b_min+b_iso
     if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
     else: b_adj = b_iso
-    if(abs(b_adj) <= 100.0):
+    if(abs(b_adj) <= 300.0):
       b_cart = self.b_cart()
       b_cart_new = [b_cart[0]-b_adj,b_cart[1]-b_adj,b_cart[2]-b_adj,
                     b_cart[3],      b_cart[4],      b_cart[5]]
