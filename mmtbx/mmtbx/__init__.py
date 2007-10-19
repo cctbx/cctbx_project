@@ -20,8 +20,9 @@ class fmodels(object):
 
   def fmodel_xray(self):
     if(self.fmodel_x is not None):
-      self.fmodel_x.xray_structure.scattering_type_registry(custom_dict =
-        self.xray_scattering_dict)
+      if(self.fmodel_n is not None):
+        self.fmodel_x.xray_structure.scattering_type_registry(custom_dict =
+          self.xray_scattering_dict)
       assert self.fmodel_x.xray_structure is self.model.xray_structure
     return self.fmodel_x
 
@@ -34,18 +35,21 @@ class fmodels(object):
 
   def update_xray_structure(self, xray_structure = None,
                                   update_f_calc  = None,
-                                  update_f_mask  = None):
+                                  update_f_mask  = None,
+                                  force_update_f_mask = False):
     if(self.fmodel_x is not None):
       self.fmodel_xray().update_xray_structure(
         xray_structure = xray_structure,
         update_f_calc  = update_f_calc,
-        update_f_mask  = update_f_mask)
+        update_f_mask  = update_f_mask,
+        force_update_f_mask = force_update_f_mask)
       assert self.fmodel_x.xray_structure is self.model.xray_structure
     if(self.fmodel_n is not None):
       self.fmodel_neutron().update_xray_structure(
         xray_structure = xray_structure,
         update_f_calc  = update_f_calc,
-        update_f_mask  = update_f_mask)
+        update_f_mask  = update_f_mask,
+        force_update_f_mask = force_update_f_mask)
       assert self.fmodel_n.xray_structure is self.model.xray_structure
 
   def show_short(self):
@@ -67,10 +71,12 @@ class fmodels(object):
       print_statistics.make_sub_header("Neutron data", out = self.log)
       self.fmodel_neutron().info().show_all(header = message, out = self.log)
 
-  def update_bulk_solvent_and_scale(self, params = None, optimize_mask= False):
+  def update_bulk_solvent_and_scale(self, params = None, optimize_mask= False,
+                                    force_update_f_mask = False):
     print_statistics.make_header("bulk solvent modeling and scaling",
       out = self.log)
-    self.update_xray_structure(update_f_calc = True, update_f_mask = True)
+    self.update_xray_structure(update_f_calc = True, update_f_mask = True,
+      force_update_f_mask = force_update_f_mask)
     if(self.fmodel_x is not None):
       if(optimize_mask):
         self.fmodel_xray().optimize_mask_and_update_solvent_and_scale(

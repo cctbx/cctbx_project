@@ -30,7 +30,9 @@ class manager(object):
                      run_finite_differences_test = False,
                      refine_adp                  = False,
                      refine_occ                  = False,
-                     log                         = None):
+                     log                         = None,
+                     occupancy_max               = None,
+                     occupancy_min               = None):
     global time_group_py
     timer = user_plus_sys_time()
     self.show(rw         = fmodel.r_work(),
@@ -122,6 +124,9 @@ class manager(object):
     #fmodel_copy.xray_structure.tidy_us()
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
+    if(refine_occ):
+      fmodel.xray_structure.adjust_occupancy(occ_max = occupancy_max,
+                                             occ_min = occupancy_min)
     self.fmodel = fmodel
     time_group_py += timer.elapsed()
 
