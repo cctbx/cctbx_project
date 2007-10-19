@@ -4,6 +4,8 @@ import sys
 class left_decomposition(object):
 
   def __init__(self, g, h):
+    self.h_name = str( sgtbx.space_group_info( group = h ) )
+    self.g_name = str( sgtbx.space_group_info( group = g ) )
     g = [s for s in g] # for speed, convert to plain Python list
     h = [s for s in h]
     assert len(g) % len(h) == 0
@@ -30,6 +32,29 @@ class left_decomposition(object):
       self.partitions.append(partition)
     if (len(self.partitions) * len(h) != len(g)):
       raise RuntimeError("h is not a subgroup of g")
+
+  def show(self,out=None):
+    if out is None:
+      out = sys.stdout
+    count=0
+    print >> out, "Left cosets of :"
+    print >> out, "  subgroup  H: %s "%( self.h_name )
+    print >> out, "  and group G: %s "%( self.g_name )
+    for part in self.partitions:
+      extra_txt=" (all operators from H)"
+      if count>0:
+        extra_txt = ""
+      print >> out
+      print >> out, "  Coset number : %5s  %s"%(count, extra_txt)
+      print >> out
+      count += 1
+      for item in part:
+        print "%20s     Rotation: %4s ; direction: %10s ; screw/glide: %10s "%(
+          item,
+          item.r().info().type() ,
+          item.r().info().ev(),
+          "("+item.t().as_string()+")" )
+
 
 def double_unique(g, h1, h2):
   """g is the supergroup
