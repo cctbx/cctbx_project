@@ -2269,6 +2269,44 @@ s.t {
 }
 """)
   master = phil.parse(input_string="""\
+s
+  .multiple=True
+{
+  t.u
+    .multiple=True
+  {
+    a = None
+  }
+}
+""")
+  for input_string in ["", "s {}", "s { t { } }", "s.t { u { a = None } }"]:
+    source = phil.parse(input_string=input_string)
+    assert not show_diff(master.fetch(source=source).as_str(), """\
+s {
+  t.u {
+    a = None
+  }
+}
+""")
+  for input_string in ["""\
+s.t { u { a = 3 } }
+""", """\
+s.t { u { a = 3 } }
+s.t { u { a = None } }
+""", """\
+s.t { u { a = None } }
+s.t { u { a = 3 } }
+s.t { u { a = None } }
+"""]:
+    source = phil.parse(input_string=input_string)
+    assert not show_diff(master.fetch(source=source).as_str(), """\
+s {
+  t.u {
+    a = 3
+  }
+}
+""")
+  master = phil.parse(input_string="""\
 s {
   p = None
   q = None
@@ -3026,7 +3064,7 @@ a = 1
   custom = phil.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
-  assert extracted.a == [None]
+  assert extracted.a == []
   out = StringIO()
   master.format(extracted).show(out=out)
   assert not show_diff(out.getvalue(), """\
@@ -3150,7 +3188,7 @@ s
   custom = phil.parse(input_string="""\
 """)
   extracted = master.fetch(custom).extract()
-  assert extracted.s[0].a == None
+  assert len(extracted.s) == 0
   out = StringIO()
   master.format(extracted).show(out=out)
   assert not show_diff(out.getvalue(), """\
@@ -3164,7 +3202,7 @@ s {
 }
 """)
   extracted = master.fetch(custom).extract()
-  assert extracted.s[0].a == None
+  assert len(extracted.s) == 0
   out = StringIO()
   master.format(extracted).show(out=out)
   assert not show_diff(out.getvalue(), """\
@@ -3348,7 +3386,7 @@ c {
   assert extracted.b[0].a == [3,4]
   assert extracted.b[0].b == []
   assert extracted.b[0].c == 20
-  assert extracted.b[1].a == [None]
+  assert extracted.b[1].a == []
   assert extracted.b[1].b == [5,6]
   assert extracted.b[1].c is None
   assert extracted.c == []
@@ -3437,6 +3475,102 @@ e = *j *k
 f = l m
 """)
   #
+  for input_string in ["""
+a = None
+  .type = str
+  .multiple = True
+""", """\
+a = None
+  .optional = True
+  .type = str
+  .multiple = True
+""", """\
+a = None
+  .optional = False
+  .type = str
+  .multiple = True
+"""]:
+    master = phil.parse(input_string=input_string)
+    source = phil.parse(input_string="")
+    w = master.fetch(source=source)
+    e = w.extract()
+    opt = master.objects[0].optional
+    if (opt is None or opt):
+      assert len(e.a) == 0
+    else:
+      assert len(e.a) == 1
+      e.a[0] is None
+    source = phil.parse(input_string="a=None")
+    w = master.fetch(source=source)
+    e = w.extract()
+    if (opt is None or opt):
+      assert len(e.a) == 0
+    else:
+      assert len(e.a) == 1
+      e.a[0] is None
+    source = phil.parse(input_string="a=x")
+    w = master.fetch(source=source)
+    e = w.extract()
+    if (opt is None or opt):
+      assert e.a == ["x"]
+    else:
+      assert len(e.a) == 2
+      e.a[0] is None
+      e.a[1] == "x"
+  #
+  for input_string in ["""\
+s
+  .multiple = True
+{
+  a = None
+    .type = str
+}
+""", """
+s
+  .optional = True
+  .multiple = True
+{
+  a = None
+    .type = str
+}
+""", """
+s
+  .optional = False
+  .multiple = True
+{
+  a = None
+    .type = str
+}
+"""]:
+    master = phil.parse(input_string=input_string)
+    source = phil.parse(input_string="")
+    w = master.fetch(source=source)
+    e = w.extract()
+    opt = master.objects[0].optional
+    if (opt is None or opt):
+      assert len(e.s) == 0
+    else:
+      assert len(e.s) == 1
+      assert e.s[0].a is None
+    source = phil.parse(input_string="s {}")
+    w = master.fetch(source=source)
+    e = w.extract()
+    if (opt is None or opt):
+      assert len(e.s) == 0
+    else:
+      assert len(e.s) == 1
+      assert e.s[0].a is None
+    source = phil.parse(input_string="s { a=x }")
+    w = master.fetch(source=source)
+    e = w.extract()
+    if (opt is None or opt):
+      assert len(e.s) == 1
+      assert e.s[0].a == "x"
+    else:
+      assert len(e.s) == 2
+      assert e.s[0].a is None
+      assert e.s[1].a == "x"
+  #
   master = phil.parse(input_string="""\
 s
   .optional = True
@@ -3451,21 +3585,21 @@ s
     .type = choice(multi=True)
 }
 """)
-  source = phil.parse(input_string="""\
-""")
-  w = master.fetch(source=source)
-  e = w.extract()
-  assert len(e.s) == 0
-  f = master.format(python_object=e)
-  assert f.objects[0].is_template == 1
-  assert not show_diff(f.as_str(), """\
+  for input_string in ["", "s {}"]:
+    source = phil.parse(input_string=input_string)
+    w = master.fetch(source=source)
+    e = w.extract()
+    assert len(e.s) == 0
+    f = master.format(python_object=e)
+    assert f.objects[0].is_template == 1
+    assert not show_diff(f.as_str(), """\
 s {
   a = None
   b = 0
   c = *x *y
 }
 """)
-  assert not show_diff(f.as_str(attributes_level=2), """\
+    assert not show_diff(f.as_str(attributes_level=2), """\
 s
   .optional = True
   .multiple = True
@@ -3569,15 +3703,11 @@ s {
 """)
   w = master.fetch(source=source)
   e = w.extract()
-  assert len(e.s) == 1
-  assert e.s[0].a == "x"
-  assert e.s[0].b == 2
-  assert e.s[0].c == ["y"]
-  assert e.s[0].d == None
+  assert len(e.s) == 0
   f = master.format(python_object=e)
   assert not show_diff(f.as_str(), """\
 s {
-  a = "x"
+  a = x
   b = 2
   c = x *y
   d = None
@@ -3588,19 +3718,6 @@ s
   .multiple = True
 {
   a = x
-    .type = str
-  b = 2
-    .type = int
-  c = x *y
-    .optional = True
-    .type = choice(multi=True)
-  d = None
-    .type = float
-}
-s
-  .multiple = True
-{
-  a = "x"
     .type = str
   b = 2
     .type = int
