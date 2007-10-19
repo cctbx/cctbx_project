@@ -1,0 +1,70 @@
+Rules for .multiple=True phil objects
+-------------------------------------
+
+definition with .multiple=True
+  .extract() returns a list of definition values.
+
+scope with .multiple=True
+  .extract() returns a list of definition values or scope_extract
+  objects (which inherit from Python's built-in list).
+
+With .optional=True (default if not specified explicitly):
+  The master definition is NEVER included in the extract result list.
+  It does not matter how often it is repeated in the user file.
+
+With .optional=False:
+  The master definition is ALWAYS included in the extract result list.
+  It is always the first entry in the list, no matter how often
+  it is repeated in the user file.
+
+This set of rules is designed to produce easily predictable results
+in situations where multiple parameter files are merged (with
+master.fetch()), including complete copies of the master file.
+
+.multiple=True examples
+-----------------------
+
+In a master file, the first occurrence of a multiple scope is a
+"template", all following occurrences are defaults, e.g.::
+
+      group
+        .multiple = True
+      {
+        selection = None
+          .type = str
+        f_prime = 0
+          .type = float
+        f_double_prime = 0
+          .type = float
+        refine = *f_prime *f_double_prime
+          .optional = True
+          .type = choice(multi=True)
+      }
+
+This template will not get extracted, even though it contains defines
+that are not None.
+
+The following example shows how to define defaults for multiple scopes::
+
+  mtz_labels
+    .multiple=True
+  {
+    map_type = None
+      .type=str
+    amplitudes = None
+      .type=str
+    phases = None
+      .type=str
+  }
+  mtz_labels {
+    map_type = 2m*Fobs-D*Fmodel
+    amplitudes = 2FOFCWT
+    phases = PH2FOFCWT
+  }
+  mtz_labels {
+    map_type = m*Fobs-D*Fmodel
+    amplitudes = FOFCWT
+    phases = PHFOFCWT
+  }
+
+.extract() will return a list with two elements.
