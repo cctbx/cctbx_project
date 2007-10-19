@@ -680,6 +680,10 @@ class definition(object):
       words = type_as_words(python_object=python_object, master=self)
     return self.customized_copy(words=words)
 
+  def extract_format(self, source=None):
+    if (source is None): source = self
+    return self.format(source.extract())
+
   def unique(self):
     return self
 
@@ -865,16 +869,6 @@ class scope_extract(object):
   def __phil_get__(self, name):
     assert not "." in name
     return getattr(self, name, scope_extract_attribute_error)
-
-  def __phil_is_empty__(self):
-    for name,value in self.__dict__.items():
-      if (value is None): continue
-      if (name.startswith("__") and name.endswith("__")): continue
-      if (isinstance(value, scope_extract)):
-        if (not value.__phil_is_empty__()): return False
-      if (isinstance(value, list) and len(value) == 0): continue
-      return False
-    return True
 
   def __call__(self, **keyword_args):
     call_proxy = self.__phil_call__
@@ -1090,7 +1084,7 @@ class scope(object):
     is_proper_scope = False
     if (len(self.name) == 0):
       assert len(merged_names) == 0
-    elif (len(self.objects) == 1 and self.objects[0].merge_names):
+    elif (len(self.objects) > 0 and self.objects[0].merge_names):
       merged_names = merged_names + [self.name]
     else:
       is_proper_scope = True
@@ -1220,8 +1214,7 @@ class scope(object):
     result = scope_extract(name=self.name, parent=parent, call=self.call)
     for object in self.objects:
       if (object.is_template < 0): continue
-      if (   (object.is_template > 0 and object.optional)
-          or object.is_disabled):
+      if (object.is_disabled or object.is_template > 0):
         value = scope_extract_is_disabled
       else:
         value = object.extract(parent=result)
@@ -1264,6 +1257,10 @@ class scope(object):
                   result.append(object.format(sub_python_object_i))
     return self.customized_copy(objects=result)
 
+  def extract_format(self, source=None):
+    if (source is None): source = self
+    return self.format(source.extract())
+
   def clone(self, python_object, converter_registry=None):
     return parse(
       input_string=self.format(python_object=python_object)
@@ -1297,17 +1294,6 @@ class scope(object):
         path = master_object.name
       else:
         path = self.name + "." + master_object.name
-      merged_outer_objects = []
-      while (    master_object.is_scope
-             and len(master_object.objects) == 1
-             and master_object.objects[0].merge_names):
-        merged_outer_objects.append(master_object)
-        master_object = master_object.objects[0]
-        path += "." + master_object.name
-      def merge_outer(object):
-        for eobj in reversed(merged_outer_objects):
-          object = eobj.customized_copy(objects=[object])
-        return object
       matching_sources = source.get(path=path, with_substitution=False)
       if (not master_object.multiple):
         if (master_object.is_definition):
@@ -1322,36 +1308,38 @@ class scope(object):
             sources=matching_sources.active_objects())
           if (len(result_object.objects) == 0):
             result_object = master_object.copy()
-        result_objects.append(merge_outer(result_object))
+        result_objects.append(result_object)
       else:
         matching_sources.objects \
           = self.get(path=path, with_substitution=False).objects[1:] \
           + matching_sources.objects
         processed_as_str = {}
         result_objs = []
+        master_as_str = master_object.extract_format().as_str()
         for matching_source in matching_sources.active_objects():
           if (matching_source.is_template != 0): continue
           candidate = master_object.fetch(source=matching_source)
-          candidate_extract = candidate.extract()
-          if (candidate.is_scope):
-            if (candidate_extract.__phil_is_empty__()): continue
-          elif (candidate_extract is None): continue
-          candidate_as_str = master_object.format(candidate_extract).as_str()
+          candidate_as_str = master_object.extract_format(
+            source=candidate).as_str()
+          if (candidate_as_str == master_as_str): continue
           prev_index = processed_as_str.get(candidate_as_str, None)
           if (prev_index is not None):
             result_objs[prev_index] = None
           processed_as_str[candidate_as_str] = len(result_objs)
           result_objs.append(candidate)
         obj = master_object.copy()
-        if (len(processed_as_str) == 0):
+        if (    not master_object.optional is None
+            and not master_object.optional):
+          obj.is_template = 0
+        elif (len(processed_as_str) == 0):
           obj.is_template = 1
         else:
           obj.is_template = -1
-        result_objects.append(merge_outer(obj))
+        result_objects.append(obj)
         del processed_as_str
         for obj in result_objs:
           if (obj is not None):
-            result_objects.append(merge_outer(obj))
+            result_objects.append(obj)
         del result_objs
     result = self.customized_copy(objects=result_objects)
     if (track_unused_definitions):
