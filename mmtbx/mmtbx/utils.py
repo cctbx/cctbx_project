@@ -323,7 +323,7 @@ class determine_data_and_flags(object):
         if(f_obs.anomalous_flag()):
           print >> self.log, "Reducing data to non-anomalous array."
           merged = f_obs.as_non_anomalous_array().merge_equivalents()
-          merged.show_summary(out=log, prefix="  ")
+          merged.show_summary(out = self.log, prefix="  ")
           f_obs = merged.array().set_observation_type( f_obs )
           del merged
           print >> self.log

@@ -315,11 +315,13 @@ class uaniso_ksol_bsol_scaling_minimizer(object):
 def _approx_le(x,y):
   x = float("%.4f"%x)
   y = float("%.4f"%y)
+  assert x <= y
   return x <= y
 
 def _approx_lt(x,y):
   x = float("%.4f"%x)
   y = float("%.4f"%y)
+  assert x < y
   return x < y
 
 def _extract_fix_b_cart(fix_b_cart_scope):
@@ -374,18 +376,21 @@ class bulk_solvent_and_scales(object):
            ksol,bsol,b_cart,target = self._ksol_bsol_grid_search(fmodel=fmodel)
            fmodel.update(k_sol = ksol, b_sol = bsol, b_cart = b_cart)
            self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
-           self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+           if(not params.apply_back_trace_of_b_cart):
+             self.ERROR_MESSAGE(status=_approx_le(target, start_target))
            self.show(fmodel = fmodel, message=m+str(mc)+": k & b: grid search")
          if(params.minimization_k_sol_b_sol):
            ksol, bsol, target = self._ksol_bsol_cart_minimizer(fmodel = fmodel)
            fmodel.update(k_sol = ksol, b_sol = bsol)
            self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
-           self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+           if(not params.apply_back_trace_of_b_cart):
+             self.ERROR_MESSAGE(status=_approx_le(target, start_target))
            self.show(fmodel = fmodel,message=m+str(mc)+": k & b: minimization")
          if(params.minimization_b_cart):
            b_cart,target = self._b_cart_minimizer(fmodel = fmodel)
            fmodel.update(b_cart = b_cart)
-           self.ERROR_MESSAGE(status=_approx_le(target, start_target))
+           if(not params.apply_back_trace_of_b_cart):
+             self.ERROR_MESSAGE(status=_approx_le(target, start_target))
            self.ERROR_MESSAGE(status=approx_equal(target, fmodel.r_work()))
            self.show(fmodel = fmodel, message =m+str(mc)+": anisotropic scale")
          if(params.apply_back_trace_of_b_cart and abs(fmodel.b_iso()) > 0.0):
@@ -397,7 +402,8 @@ class bulk_solvent_and_scales(object):
          self.show(fmodel = fmodel,
            message = m+str(mc)+": apply back trace(b_cart)")
        fmodel.update(target_name = fmodel_target)
-       self.ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_target))
+       if(not params.apply_back_trace_of_b_cart):
+         self.ERROR_MESSAGE(status=_approx_le(fmodel.r_work(), start_target))
        if(abs(fmodel.k_sol()) < 0.01):
          fmodel.update(k_sol = 0.0, b_sol = 0.0)
 
