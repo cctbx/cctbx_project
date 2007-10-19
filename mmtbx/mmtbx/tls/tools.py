@@ -49,7 +49,11 @@ class tls_groups(object):
 
 def remark_3_tls(tlsos, selection_strings, out = None):
   if(out is None): out = sys.stdout
-  assert len(tlsos) == len(selection_strings)
+  if (len(selection_strings) == 0):
+    assert len(tlsos) == 1
+    selection_strings = [None]
+  else:
+    assert len(tlsos) == len(selection_strings)
   print >> out, "REMARK   3  TLS DETAILS."
   print >> out, "REMARK   3   NUMBER OF TLS GROUPS: %-6d"%len(tlsos)
   print >> out, "REMARK   3   ORIGIN: CENTER OF MASS"

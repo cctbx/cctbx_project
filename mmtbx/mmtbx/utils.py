@@ -626,6 +626,8 @@ def get_atom_selections(all_chain_proxies,
      assert xray_structure is not None
   if(selection_strings is None or isinstance(selection_strings, str)):
      selection_strings = [selection_strings]
+  elif (len(selection_strings) == 0):
+     selection_strings = [None]
   n_none = selection_strings.count(None)
   ss_size = len(selection_strings)
   if((one_group_per_residue and n_none==0) or (ss_size > 1 and n_none > 0)):
