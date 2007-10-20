@@ -1036,7 +1036,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       f_obs              = self.f_obs.deep_copy(),
       f_mask             = self.f_mask_array.deep_copy(),
       free_array         = self.free_array.deep_copy(),
-      xray_structure     = self.xray_structure,
+      xray_structure     = self.xray_structure.deep_copy_scatterers(),
       scaling_parameters = self.scaling_parameters.deep_copy(),
       mask_params        = self.mask_params,
       out                = self.out,
