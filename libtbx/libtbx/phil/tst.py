@@ -3003,7 +3003,7 @@ a = None
   .type = str
 """)
   os.environ["_X_Y_Z_"] = "xyz"
-  source = phil.parse(input_string='a = $_X_Y_Z_')
+  source = phil.parse(input_string="a = $_X_Y_Z_")
   f = master.fetch(source=source)
   assert not show_diff(f.as_str(), """\
 a = "xyz"
@@ -3011,6 +3011,51 @@ a = "xyz"
   d = master.fetch_diff(source=source)
   assert not show_diff(d.as_str(), """\
 a = "$_X_Y_Z_"
+""")
+  #
+  master = phil.parse(input_string="""\
+s {
+  p = None
+    .multiple = True
+  p = q1
+  p = q2
+  t {
+    u
+      .multiple = True
+    {
+      a = None
+      b = None
+        .multiple = True
+      b = c1
+      b = c2
+    }
+    u {
+      a = x1
+      b = y1
+    }
+    u {
+      a = x2
+      b = y2
+    }
+  }
+}
+""")
+  d = master.fetch_diff()
+  assert d.is_empty()
+  source = phil.parse(input_string="s.t.u.b=c2")
+  d = master.fetch_diff(source=source)
+  assert d.is_empty()
+  source = phil.parse(input_string="s.t.u { b=c3; b=c4; b=c3 }")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+s {
+  t {
+    u {
+      b = c4
+      b = c3
+    }
+  }
+}
 """)
 
 def exercise_extract():

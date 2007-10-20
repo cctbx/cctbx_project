@@ -1330,28 +1330,32 @@ class scope(object):
         elif (not diff):
           result_objects.append(master_object.copy())
       else:
-        matching_sources.objects \
-          = self.get(path=path, with_substitution=False).objects[1:] \
-          + matching_sources.objects
         processed_as_str = {}
         result_objs = []
         master_as_str = master_object.extract_format().as_str()
-        for matching_source in matching_sources.active_objects():
-          if (matching_source.is_template != 0): continue
-          candidate = master_object.fetch(source=matching_source, diff=diff)
-          if (diff):
-            if (master_object.is_scope):
-              if (len(candidate.objects) == 0): continue
-            elif (candidate is None):
-              continue
-          candidate_as_str = master_object.extract_format(
-            source=candidate).as_str()
-          if (candidate_as_str == master_as_str): continue
-          prev_index = processed_as_str.get(candidate_as_str, None)
-          if (prev_index is not None):
-            result_objs[prev_index] = None
-          processed_as_str[candidate_as_str] = len(result_objs)
-          result_objs.append(candidate)
+        for from_master,matching in [
+              (True, self.get(path=path, with_substitution=False)),
+              (False, matching_sources)]:
+          for matching_source in matching.active_objects():
+            if (matching_source is master_object): continue
+            candidate = master_object.fetch(source=matching_source, diff=diff)
+            if (diff):
+              if (master_object.is_scope):
+                if (len(candidate.objects) == 0): continue
+              elif (candidate is None):
+                continue
+            candidate_as_str = master_object.extract_format(
+              source=candidate).as_str()
+            if (candidate_as_str == master_as_str): continue
+            prev_index = processed_as_str.get(candidate_as_str, None)
+            if (prev_index is not None):
+              if (prev_index == -1): continue
+              result_objs[prev_index] = None
+            if (diff and from_master):
+              processed_as_str[candidate_as_str] = -1
+            else:
+              processed_as_str[candidate_as_str] = len(result_objs)
+              result_objs.append(candidate)
         if (not diff):
           obj = master_object.copy()
           if (    not master_object.optional is None
