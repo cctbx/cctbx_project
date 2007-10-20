@@ -566,20 +566,20 @@ class definition(object):
     if (not active_only or not self.is_disabled):
       self.tmp = value
 
-  def fetch_value(self, source):
+  def fetch_value(self, source, diff_mode=False):
     if (source.is_scope):
       raise RuntimeError(
         'Incompatible parameter objects: definition "%s"%s vs. scope "%s"%s' %
           (self.name, self.where_str, source.name, source.where_str))
     source.tmp = True
-    source = source.resolve_variables()
+    source = source.resolve_variables(diff_mode=diff_mode)
     type_fetch = getattr(self.type, "fetch", None)
     if (type_fetch is None):
       return self.customized_copy(words=source.words)
     return type_fetch(source_words=source.words, master=self)
 
   def fetch_diff(self, source):
-    result = self.fetch_value(source=source)
+    result = self.fetch_value(source=source, diff_mode=True)
     result_as_str = self.extract_format(source=result).as_str()
     self_as_str = self.extract_format().as_str()
     if (result_as_str == self_as_str): result = None
@@ -698,7 +698,7 @@ class definition(object):
   def unique(self):
     return self
 
-  def resolve_variables(self):
+  def resolve_variables(self, diff_mode=False):
     new_words = []
     for word in self.words:
       if (word.quote_token == "'"):
@@ -721,7 +721,10 @@ class definition(object):
             substitution_source.tmp = True
             variable_words = substitution_source.resolve_variables().words
         if (variable_words is None):
-          env_var = os.environ.get(fragment.value, None)
+          if (diff_mode):
+            env_var = "$"+fragment.value
+          else:
+            env_var = os.environ.get(fragment.value, None)
           if (env_var is not None):
             variable_words = [tokenizer.word(
               value=env_var,
