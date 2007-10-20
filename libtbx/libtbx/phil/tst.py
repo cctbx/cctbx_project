@@ -2997,6 +2997,21 @@ s {
   }
 }
 """)
+  #
+  master = phil.parse(input_string="""\
+a = None
+  .type = str
+""")
+  os.environ["_X_Y_Z_"] = "xyz"
+  source = phil.parse(input_string='a = $_X_Y_Z_')
+  f = master.fetch(source=source)
+  assert not show_diff(f.as_str(), """\
+a = "xyz"
+""")
+  d = master.fetch_diff(source=source)
+  assert not show_diff(d.as_str(), """\
+a = "$_X_Y_Z_"
+""")
 
 def exercise_extract():
   parameters = phil.parse(input_string="""\
