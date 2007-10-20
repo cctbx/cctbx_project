@@ -1,0 +1,22 @@
+minimization.input {
+  file_name = experiment.dat
+    .type = str
+  labels = x2 y2
+    .type = strings
+}
+minimization.output {
+  model_file = final.mdl
+    .type = str
+  plot_file = None
+    .type = str
+}
+minimization.parameters
+  .help = Selection and tuning of minimization algorithm.
+  .expert_level = 1
+{
+  method = *bfgs conjugate_gradient
+    .type = choice
+  max_iterations = 10
+    .type = int
+    .input_size = 8
+}
