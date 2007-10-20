@@ -154,6 +154,9 @@ class structure(crystal.special_position_settings):
     occ = occ.set_selected(sel, occ_min)
     self._scatterers.set_occupancies(occ)
 
+  def select_all(self):
+    return flex.bool(self._scatterers.size(), True)
+
   def translate(self, x=0, y=0, z=0):
     sites_cart = self.sites_cart()
     cp = structure(self,
