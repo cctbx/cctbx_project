@@ -91,7 +91,7 @@ syntax. Major Phil features are:
 Master files
 ------------
 
-The master files are written by the software developer and include
+Master files are written by the software developer and include
 "attributes" for each parameter, such as the type (integer,
 floating-point, string, etc.) and support information for graphical
 interfaces. For example::
@@ -134,103 +134,108 @@ Command-line arguments + Phil
 -----------------------------
 
 In theory the user could save and edit the generated parameter files.
-However, in most practical situations this is not necessary because of
-two reasons.
+However, in many practical situations this manual step can be
+avoided. Phil is designed with the idea that the application inspects
+all input files and uses the information found to fill in the blanks
+automatically. This is not only convenient, but also eliminates
+the possiblity of typing errors. In addition, the user can specify
+parameters directly on the command line, and this information is also
+use to fill in the blanks.
 
-Firstly, ``phenix.refine`` (and in the future other cctbx and Phenix
-applications) inspects all input files and uses the information found
-to fill in the blanks automatically. For example the unit cell is
-copied from the input PDB file or, if this information is missing in
-the PDB file, from a reflection file. This is not only convenient, but
-also eliminates the possiblity of typing errors.
+Command-line arguments that are not file names or options prefixed
+with ``--`` (like ``--show_defaults`` above) should be given to Phil
+for examination. E.g., this is a possible command::
 
-Secondly, command-line arguments that are not file names or options
-prefixed with ``--`` (like ``--show_defaults`` above) are given to
-Phil for examination. E.g., this is a possible command::
+  minimization.quick experiment.dat output.plot_file=plot.pdf
 
-  phenix.refine peak.mtz model.pdb number_of_macro_cycles=10
-
-Assume the first two arguments can be opened as files (the file names
-may be specified in any order; ``phenix.refine`` detects the file types
-automatically). Also assume that a file with the name
-``number_of_macro_cycles=10`` does not exist. This argument will
-therefore be interpreted with Phil.
+First the application should check if an argument is the name of a
+file that can be opened. Assume this succeeds for the first argument,
+so the processing of this argument is finished. Assume further that a
+file with the name ``output.plot_file=plot.pdf`` does not exist. This
+argument will therefore be interpreted with Phil. The next section
+presents an example.
 
 Merging of Phil objects ("fetch")
 ---------------------------------
 
 The Phil parser converts master files, user files and command line
 arguments to uniform Phil objects which can be merged to generate a
-combined set of "effective" parameters used in running the application.
+combined set of "working" parameters used in running the application.
 We demonstrate this by way of a simple, self-contained Python script
 with embedded Phil syntax::
 
-  import iotbx.phil
+  ## extract code begin: doc_code.py
 
-  master_params = iotbx.phil.parse("""
-    refinement.crystal_symmetry {
-      unit_cell = None
-        .type=unit_cell
-      space_group = None
-        .type=space_group
+  import libtbx.phil
+
+  master_phil = libtbx.phil.parse("""
+    minimization.input {
+      file_name = None
+        .type=str
+      labels = None
+        .type=strings
     }
     """)
 
-  user_params = iotbx.phil.parse("""
-    refinement.crystal_symmetry {
-      unit_cell = 10 12 12 90 90 120
-      space_group = None
+  user_phil = libtbx.phil.parse("""
+    minimization.input {
+      file_name = experiment.dat
     }
     """)
 
-  command_line_params = iotbx.phil.parse(
-    "refinement.crystal_symmetry.space_group=19")
+  command_line_phil = libtbx.phil.parse(
+    "minimization.input.labels=x1 x2")
 
-  effective_params = master_params.fetch(
-    sources=[user_params, command_line_params])
-  effective_params.show()
+  working_phil = master_phil.fetch(
+    sources=[user_phil, command_line_phil])
+  working_phil.show()
 
-The ``master_params`` define all available parameters including the
-type information. The ``user_params`` override the default
-``unit_cell`` assignment but leave the space group undefined. The
-space group symbol is defined by the command line argument.
-``effective_params.show()`` produces::
+  ## extract code end
 
-  refinement.crystal_symmetry {
-    unit_cell = 10 12 12 90 90 120
-    space_group = 19
+``master_phil`` defines all available parameters including the
+type information. ``user_phil`` overrides the default ``file_name``
+assignment but leaves the ``labels`` undefined. These are defined
+by a (fake) command-line argument. All inputs are merged via
+``master_phil.fetch()``. ``working_phil.show()`` produces::
+
+  minimization.input {
+    file_name = experiment.dat
+    labels = x1 x2
   }
 
 Having to type in fully qualified parameter names (e.g.
-``refinement.crystal_symmetry.space_group``) can be very
-inconvenient. Therefore Phil includes support for matching parameter
-names of command-line arguments as substrings to the parameter names in
-the master files::
+``minimization.input.labels``) can be very inconvenient. Therefore
+Phil includes support for matching parameter names of command-line
+arguments as substrings to the parameter names in the master files::
+
+  ## extract code begin: doc_code.py
 
   import libtbx.phil.command_line
 
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_params=master_params,
-    home_scope="refinement")
+    master_phil=master_phil,
+    home_scope="minimization")
 
-  command_line_params = argument_interpreter.process(
-    arg="space_group=19")
+  command_line_phil = argument_interpreter.process(
+    arg="minimization.input.labels=x1 x2")
 
-This works even if the user writes just ``group=19`` or even
-``e_gr=19``. The only requirement is that the substring leads to a
-unique match in the master file. Otherwise Phil produces a helpful
+  ## extract code end
+
+This works even if the user writes just ``labels=x1 x2`` or even
+``put.lab=x1 x2``. The only requirement is that the substring leads
+to a unique match in the master file. Otherwise Phil produces a helpful
 error message. For example::
 
-  argument_interpreter.process("u=19")
+  argument_interpreter.process("a=x1 x2")
 
 leads to::
 
-  UserError: Ambiguous parameter definition: u = 19
+  Sorry: Ambiguous parameter definition: a = x1 x2
   Best matches:
-    refinement.crystal_symmetry.unit_cell
-    refinement.crystal_symmetry.space_group
+    minimization.input.file_name
+    minimization.input.labels
 
-The user can cut-and-paste the desired parameter to edit the command
+The user can cut-and-paste the desired parameter into the command
 line for another trial to run the application.
 
 Conversion of Phil objects to pure Python objects ("extract")
@@ -239,124 +244,150 @@ Conversion of Phil objects to pure Python objects ("extract")
 The Phil parser produces objects that preserve most information
 generated in the parsing process, such as line numbers and parameter
 attributes. While this information is very useful for pretty printing
-(e.g. to archive effective parameters) and the automatic generation of
-graphical user interfaces, it is only a burden in the context of core
-numerical algorithms. Therefore Phil supports "extraction" of
-light-weight pure Python objects from the Phil objects. Based on the
-example above, this can be achieved with just one line::
+(e.g. to archive the working parameters) and the automatic generation
+of graphical user interfaces, it is only a burden in the context of
+core algorithms. Therefore Phil supports "extraction" of light-weight
+pure Python objects from the Phil objects. Based on the example above,
+this can be achieved with just one line::
 
-  params = effective_params.extract()
+  ## extract code begin: doc_code.py
+
+  working_params = working_phil.extract()
+
+  ## extract code end
 
 We can now use the extracted objects in the context of Python::
 
-  print params.refinement.crystal_symmetry.unit_cell
-  print params.refinement.crystal_symmetry.space_group
+  ## extract code begin: doc_code.py
+
+  print working_params.minimization.input.file_name
+  print working_params.minimization.input.labels
+
+  ## extract code end
 
 Output::
 
-  (10, 12, 12, 90, 90, 120)
-  P 21 21 21
+  experiment.dat
+  ['x1', 'x2']
 
-At first glance one may almost miss that something significant has
-happend. However, we started out with "space_group=19" and now we see
-``P 21 21 21`` in the output. This is because the ``space_group``
-parameter was defined to be of ``.type=space_group`` in the master
-file. Associated with each type are converters to and from corresponding
-Python objects. In this case, the ``space_group`` converter produces
-a Python object of type::
-
-  print repr(params.refinement.crystal_symmetry.space_group)
-
-Output::
-
-  <cctbx.sgtbx.space_group_info instance at 0xb64edf6c>
-
-This object cannot only show the space group symbol, but has
-many other "methods". E.g. to print the list of symmetry operations
-in "xyz" notation::
-
-  for s in params.refinement.crystal_symmetry.space_group.group():
-    print s
-
-Output::
-
-  x,y,z
-  x+1/2,-y+1/2,-z
-  -x,y+1/2,-z+1/2
-  -x+1/2,-y,z+1/2
+``file_name`` is now a simple Python string, and ``labels`` a Python
+list of strings.
 
 Conversion of Python objects to Phil objects ("format")
 -------------------------------------------------------
 
 Phil also supports the reverse conversion compared to the
 previous section, from Python objects to Phil objects. For
-example, to change the unit cell parameters::
+example, to change the labels::
 
-  from cctbx import uctbx
+  ## extract code begin: doc_code.py
 
-  params.refinement.crystal_symmetry.unit_cell = uctbx.unit_cell(
-    (10,12,15,90,90,90))
-  modified_params = master_params.format(python_object=params)
-  modified_params.show()
+  working_params.minimization.input.labels = ["x3", "y3"]
+  modified_phil = master_phil.format(python_object=working_params)
+  modified_phil.show()
+
+  ## extract code end
 
 Output::
 
-  refinement.crystal_symmetry {
-    unit_cell = 10 12 15 90 90 90
-    space_group = "P 21 21 21"
+  minimization.input {
+    file_name = "experiment.dat"
+    labels = x3 y3
   }
 
-We need to bring in the ``master_params`` again because all the meta
-information was lost in the ``extract()`` step that produced
-``params``. Again, a type-specific converter is used to produce
-a string for each Python object. We started out with ``space_group=19``
-but get back ``space_group = "P 21 21 21"`` because we chose to
-make the converter work that way.
+We need to bring in ``master_phil`` again because all the meta
+information was lost in the ``working_phil.extract()`` step that
+produced ``working_params``. A type-specific converter is used to
+produce a string for each Python object.
 
 Extending Phil
 --------------
 
-The astude reader may have noticed that we used both ``libtbx.phil``
-and ``iotbx.phil``. Why does Phil appear to have two homes?
+Phil comes with a number of predefined converters used by ``extract()``
+and ``format()`` to convert to and from pure Python objects. These
+are::
 
-The best way to think about Phil is to say "Phil is libtbx.phil." The
-basic Phil objects storing the parsing results (``phil.definition`` and
-``phil.scope``), the tokenizer, parser and the command line support are
-implemented in the ``libtbx.phil`` module. ``iotbx.phil`` extends Phil
-by adding two new types, ``unit_cell`` and ``space_group``. The
-converters for these types can be found in ``$IOTBX_DIST/iotbx/phil.py``.
-For example, this is the code for the unit cell converters::
+  .type =
+    words     retains the "words" produced by the parser
+    strings   list of Python strings (also used for .type = None)
+    str       combines all words into one string
+    path      path name (same as str_converters)
+    key       database key (same as str_converters)
+    bool      Python bool
+    int       Python int
+    float     Python float
+    choice    string selected from a pre-defined list
 
-  class unit_cell_converters:
+It is possible to extend Phil with user-defined converters.
+For example::
 
-    def __str__(self): return "unit_cell"
+  ## extract code begin: doc_code.py
+
+  from libtbx.phil import tokenizer
+
+  class upper_converters:
+
+    phil_type = "upper"
+
+    def __str__(self): return self.phil_type
 
     def from_words(self, words, master):
       s = libtbx.phil.str_from_words(words=words)
       if (s is None): return None
-      return uctbx.unit_cell(s)
+      return s.upper()
 
     def as_words(self, python_object, master):
       if (python_object is None):
         return [tokenizer.word(value="None")]
-      return [tokenizer.word(value="%.10g" % v)
-        for v in python_object.parameters()]
+      return [tokenizer.word(value=python_object.upper())]
+
+  converter_registry = libtbx.phil.extended_converter_registry(
+    additional_converters=[upper_converters])
+
+  ## extract code end
+
+The extended ``converter_registry`` is passed as an additional
+argument to Phil's ``parse`` function::
+
+  ## extract code begin: doc_code.py
+
+  master_phil = libtbx.phil.parse(
+    input_string="""\
+  value = None
+    .type = upper
+  """,
+      converter_registry=converter_registry)
+  user_phil = libtbx.phil.parse("value = extracted")
+  working_params = master_phil.fetch(source=user_phil).extract()
+  print working_params.value
+
+  ## extract code end
+
+The ``print`` statement at the end writes "EXTRACTED". It also goes
+the other way, starting with a lower-case Python value::
+
+  ## extract code begin: doc_code.py
+
+  working_params.value = "formatted"
+  working_phil = master_phil.format(python_object=working_params)
+  working_phil.show()
+
+  ## extract code end
+
+The output of the ``.show()`` call is "value = FORMATTED".
 
 Arbitrary new types can be added to Phil by defining similar
-converters.  If desired, the built-in converters for the basic types
-(``int``, ``float``, ``str``, etc.) defined in ``libtbx.phil`` can even
-be replaced. All converters have to have ``__str__()``,
+converters. If desired, the pre-defined converters for the basic
+types can even be replaced. All converters have to have ``__str__()``,
 ``from_words()`` and ``as_words()`` methods. More complex converters
-may optionally have a non-trivial ``__init__()`` method (an example is
-the ``choice_converters`` class in
-``$LIBTBX_DIST/libtbx/phil/__init__.py``).
+may optionally have a non-trivial ``__init__()`` method (an example
+is the ``choice_converters`` class in ``libtbx/phil/__init__.py``).
 
-The ``iotbx.phil.parse()`` function used in the examples above is a
-very small function which adds the ``unit_cell`` and ``space_group``
-converters to Phil's default converter registry and then calls the main
-``libtbx.phil.parse()`` function to do the actual work.
-Following the example of ``iotbx.phil`` it should be straightforward
-to add other domain-specific types to the Phil system.
+Additional domain-specific converters are best defined in a separate
+module, along with a corresponding parse() function using the
+extended converter registry as the default. See, for example,
+``iotbx/iotbx/phil.py`` in the same ``cctbx`` project that also hosts
+``libtbx``.
 
 Variable substitution
 ---------------------
@@ -364,17 +395,19 @@ Variable substitution
 Phil supports shell-like variable substitution using $var and ${var}
 syntax. A few examples say more than many words::
 
-  import libtbx.phil
+  ## extract code begin: doc_code.py
 
-  params = libtbx.phil.parse("""
+  var_phil = libtbx.phil.parse("""
     root_name = peak
     file_name = $root_name.mtz
     full_path = $HOME/$file_name
-    related_file_name = ${root_name}_data.mtz
+    related_file_name = $(root_name)_data.mtz
     message = "Reading $file_name"
     as_is = ' $file_name '
     """)
-  params.fetch(source=params).show()
+  var_phil.fetch(source=var_phil).show()
+
+  ## extract code end
 
 Output::
 
@@ -408,12 +441,10 @@ programming. However, there is a line that Phil is never meant to
 cross: flow control is not a part of the syntax. It is hard to imagine
 that a fully featured programming language could be syntactically
 simpler than Python. For example, there are good reasons why Python
-string literals have to be quoted. Otherwise Python scripts would be
-full of ``$`` signs because some method is needed to distinguish
-strings from variable names. On the other hand, having to quote space
-group symbols in parameter files is a nusiance. In the future we may
-extend Phil as an interchange format for data other than parameters
-but for our programming needs we feel extremely well served by Python.
+string literals have to be quoted. Otherwise Python scripts would
+be full of ``$`` signs because some method is needed to distinguish
+strings from variable names. On the other hand, having to quote all
+strings in parameter files is a nusiance for users.
 
 Rules for .multiple=True phil objects
 -------------------------------------

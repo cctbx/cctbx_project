@@ -47,6 +47,7 @@ libtbx/libtbx/assert_utils.py -text
 libtbx/libtbx/command_line/assert_line_count.py svneol=native#text/x-python
 libtbx/libtbx/command_line/bash.sh -text
 libtbx/libtbx/command_line/csh.sh -text
+libtbx/libtbx/command_line/extract_code_from_txt.py svneol=native#text/x-python
 libtbx/libtbx/command_line/find_files.py -text
 libtbx/libtbx/command_line/list_files.py -text
 libtbx/libtbx/command_line/nequal.py -text
