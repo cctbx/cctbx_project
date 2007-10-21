@@ -57,7 +57,7 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   # Loop over command-line arguments.
   #
   parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_params=master_params)
+    master_phil=master_params)
   parsed_params = []
   pdb_file_names = []
   command_line_params = []

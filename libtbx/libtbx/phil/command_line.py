@@ -4,10 +4,20 @@ from libtbx.utils import Sorry, format_exception
 class argument_interpreter(object):
 
   def __init__(self,
-        master_params,
+        master_phil=None,
         home_scope=None,
-        argument_description="command line "):
-    self.master_params = master_params
+        argument_description="command line ",
+        master_params=None):
+    assert [master_params, master_phil].count(None) == 1
+    if (master_phil is None):
+      import warnings
+      warnings.warn(
+        message='The "master_params" keyword argument name is deprecated.'
+                ' Please use "master_phil" instead.',
+        category=DeprecationWarning,
+        stacklevel=2)
+      master_phil = master_params
+    self.master_phil = master_phil
     self.home_scope = home_scope
     self.argument_description = argument_description
     self.target_paths = None
@@ -39,7 +49,7 @@ class argument_interpreter(object):
         '  "%s"\n  %s') % (self.argument_description, arg, format_exception()))
     if (self.target_paths is None):
       self.target_paths = [object_locator.path
-        for object_locator in self.master_params.all_definitions()]
+        for object_locator in self.master_phil.all_definitions()]
     source_definitions = params.all_definitions()
     complete_definitions = ""
     for object_locator in source_definitions:

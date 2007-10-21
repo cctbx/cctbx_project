@@ -22,7 +22,7 @@ form_factor_query {
 def run(args, command_name="phenix.form_factor_query"):
   phil_objects=[]
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_params=master_params, home_scope="form_factor_query")
+    master_phil=master_params, home_scope="form_factor_query")
   plain_element = None
   plain_wavelength = None
   for arg in args:

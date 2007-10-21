@@ -4430,7 +4430,7 @@ a=None
   else: raise RuntimeError("Exception expected.")
 
 def exercise_command_line():
-  master_params = phil.parse(input_string="""\
+  master_phil = phil.parse(input_string="""\
 foo {
   min=0
   max=10
@@ -4445,10 +4445,10 @@ bar {
 }
 """)
   itpr_bar = phil.command_line.argument_interpreter(
-    master_params=master_params,
+    master_phil=master_phil,
     home_scope="bar")
   itpr_neutral = phil.command_line.argument_interpreter(
-    master_params=master_params)
+    master_phil=master_phil)
   for itpr in [itpr_bar, itpr_neutral]:
     itpr.process(arg="foo.limit=4\nbar.max=2").as_str() == """\
 foo.limit = 4
@@ -4485,7 +4485,7 @@ Error interpreting command line argument as parameter definition:
     assert str(e) == 'Command line parameter definition has no effect: "  "'
   else: raise RuntimeError("Exception expected.")
   itpr = phil.command_line.argument_interpreter(
-    master_params=master_params,
+    master_phil=master_phil,
     argument_description="")
   try: itpr.process(arg="bar {}")
   except Sorry, e:
@@ -4493,7 +4493,7 @@ Error interpreting command line argument as parameter definition:
   else: raise RuntimeError("Exception expected.")
 
 def exercise_choice_multi_plus_support():
-  master_params = libtbx.phil.parse("""\
+  master_phil = libtbx.phil.parse("""\
   u = a b c
     .type = choice(multi=True)
     .optional = False
@@ -4501,7 +4501,7 @@ def exercise_choice_multi_plus_support():
   # argument_interpreter used only for convenience
   # (i.e. it is not exercised here)
   cai = libtbx.phil.command_line.argument_interpreter(
-    master_params=master_params)
+    master_phil=master_phil)
   for arg,expected_result in [
         ("u=a", "u = *a b c"),
         ("u=b", "u = a *b c"),
@@ -4514,10 +4514,10 @@ def exercise_choice_multi_plus_support():
         ("u=+a ++ b +c", "u = a b c"),
         ("u=a + b + *c", "u = a b *c"),
         ("u=a + b + 'c'", "u = a b c")]:
-    work_params = master_params.fetch(source=cai.process(arg=arg))
+    work_params = master_phil.fetch(source=cai.process(arg=arg))
     assert not show_diff(work_params.as_str(), expected_result+"\n")
   for arg,err in [("u=a+d", "d"), ("u=e + b", "e")]:
-    try: master_params.fetch(source=cai.process(arg=arg))
+    try: master_phil.fetch(source=cai.process(arg=arg))
     except Sorry, e:
       assert not show_diff(str(e), """\
 Not a possible choice for u: %s (command line argument, line 1)
@@ -4527,7 +4527,7 @@ Not a possible choice for u: %s (command line argument, line 1)
     c""" % err)
     else: raise RuntimeError("Exception expected.")
   for val in ["++a", "a++", "a++b", "a+b+"]:
-    try: master_params.fetch(source=cai.process(arg="u="+val))
+    try: master_phil.fetch(source=cai.process(arg="u="+val))
     except Sorry, e:
       assert not show_diff(str(e), """\
 Not a possible choice for u: %s (command line argument, line 1)
