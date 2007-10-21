@@ -4284,6 +4284,10 @@ a = y
 
 class foo1_converters(object):
 
+  phil_type = "foo1"
+
+  def __str__(self): return "foo1"
+
   def __init__(self, bar=None):
     if (bar is None):
       raise RuntimeError("foo1 problem")
@@ -4296,9 +4300,8 @@ class foo2_converters(object):
     if (bar is not None):
       raise RuntimeError("foo2 problem")
 
-foo_converter_registry = dict(phil.default_converter_registry)
-foo_converter_registry["foo1"] = foo1_converters
-foo_converter_registry["foo2"] = foo2_converters
+foo_converter_registry = phil.extended_converter_registry(
+  additional_converters=[foo1_converters, foo2_converters])
 
 def exercise_choice_exceptions():
   master = phil.parse(input_string="""\

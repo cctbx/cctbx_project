@@ -42,7 +42,9 @@ def is_plain_none(words):
 
 class words_converters(object):
 
-  def __str__(self): return "words"
+  phil_type = "words"
+
+  def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
     if (is_plain_none(words=words)): return None
@@ -72,7 +74,9 @@ def strings_as_words(python_object):
 
 class strings_converters(object):
 
-  def __str__(self): return "strings"
+  phil_type = "strings"
+
+  def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
     return strings_from_words(words)
@@ -86,7 +90,9 @@ def str_from_words(words):
 
 class str_converters(object):
 
-  def __str__(self): return "str"
+  phil_type = "str"
+
+  def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
     return str_from_words(words=words)
@@ -98,11 +104,15 @@ class str_converters(object):
 
 class path_converters(str_converters):
 
-  def __str__(self): return "path"
+  phil_type = "path"
+
+  def __str__(self): return self.phil_type
 
 class key_converters(str_converters):
 
-  def __str__(self): return "key"
+  phil_type = "key"
+
+  def __str__(self): return self.phil_type
 
 def bool_from_words(words):
   value_string = str_from_words(words)
@@ -117,7 +127,9 @@ def bool_from_words(words):
 
 class bool_converters(object):
 
-  def __str__(self): return "bool"
+  phil_type = "bool"
+
+  def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
     return bool_from_words(words)
@@ -159,7 +171,9 @@ def int_from_words(words):
 
 class int_converters(object):
 
-  def __str__(self): return "int"
+  phil_type = "int"
+
+  def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
     return int_from_words(words)
@@ -183,7 +197,9 @@ def float_from_words(words):
 
 class float_converters(object):
 
-  def __str__(self): return "float"
+  phil_type = "float"
+
+  def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
     return float_from_words(words)
@@ -195,12 +211,14 @@ class float_converters(object):
 
 class choice_converters(object):
 
+  phil_type = "choice"
+
   def __init__(self, multi=False):
     self.multi = multi
 
   def __str__(self):
-    if (self.multi): return "choice(multi=True)"
-    return "choice"
+    if (self.multi): return self.phil_type+"(multi=True)"
+    return self.phil_type
 
   def from_words(self, words, master):
     if (self.multi):
@@ -328,17 +346,31 @@ class choice_converters(object):
         source_info=word.source_info))
     return master.customized_copy(words=words)
 
-default_converter_registry = dict([(str(converters()), converters)
-  for converters in [
-     words_converters,
-     strings_converters,
-     str_converters,
-     path_converters,
-     key_converters,
-     bool_converters,
-     int_converters,
-     float_converters,
-     choice_converters]])
+def get_converters_phil_type(converters):
+  result = getattr(converters, "phil_type", None)
+  if (result is None):
+    result = str(converters()) # backward compatibility
+  return result
+
+def extended_converter_registry(additional_converters, base_registry=None):
+  if (base_registry is None): base_registry = default_converter_registry
+  result = dict(base_registry)
+  for converters in additional_converters:
+    result[get_converters_phil_type(converters)] = converters
+  return result
+
+default_converter_registry = extended_converter_registry(
+  additional_converters = [
+    words_converters,
+    strings_converters,
+    str_converters,
+    path_converters,
+    key_converters,
+    bool_converters,
+    int_converters,
+    float_converters,
+    choice_converters],
+  base_registry={})
 
 def extract_args(*args, **keyword_args):
   return args, keyword_args
