@@ -5,7 +5,9 @@ from libtbx.phil import tokenizer
 
 class unit_cell_converters(object):
 
-  def __str__(self): return "unit_cell"
+  phil_type = "unit_cell"
+
+  def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
     s = libtbx.phil.str_from_words(words=words)
@@ -20,7 +22,9 @@ class unit_cell_converters(object):
 
 class space_group_converters(object):
 
-  def __str__(self): return "space_group"
+  phil_type = "space_group"
+
+  def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
     symbol = libtbx.phil.str_from_words(words)
@@ -32,9 +36,8 @@ class space_group_converters(object):
       return [tokenizer.word(value="None")]
     return [tokenizer.word(value=str(python_object), quote_token='"')]
 
-default_converter_registry = dict(libtbx.phil.default_converter_registry)
-for converters in [unit_cell_converters, space_group_converters]:
-  default_converter_registry[str(converters())] = converters
+default_converter_registry = libtbx.phil.extended_converter_registry(
+  additional_converters=[unit_cell_converters, space_group_converters])
 
 def parse(
       input_string=None,
