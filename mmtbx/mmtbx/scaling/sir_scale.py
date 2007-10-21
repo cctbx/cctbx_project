@@ -60,7 +60,7 @@ def run(args):
 
     phil_objects = []
     argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_params=master_params,
+      master_phil=master_params,
       home_scope="scaling")
 
     reflection_file = None

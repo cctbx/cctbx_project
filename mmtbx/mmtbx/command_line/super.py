@@ -67,7 +67,7 @@ def run(args, command_name="mmtbx.super"):
 
   phil_objects = []
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_params=master_params, home_scope="super")
+    master_phil=master_params, home_scope="super")
   fixed_pdb_file_name = None
   moving_pdb_file_name = None
   for arg in args:

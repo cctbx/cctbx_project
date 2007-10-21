@@ -281,8 +281,8 @@ class interpreter:
     crystal_symmetries_from_reflection_file = []
     cif_objects = []
     parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_params = master_params,
-      home_scope    = "maps")
+      master_phil = master_params,
+      home_scope  = "maps")
     parsed_params = []
     command_line_params = []
     print >> self.log, "Processing inputs. This may take a minute or two."

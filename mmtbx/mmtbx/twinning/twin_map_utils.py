@@ -132,7 +132,7 @@ def run(args, command_name="phenix.twin_map_utils"):
 
     phil_objects = []
     argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_params=master_params,
+      master_phil=master_params,
       home_scope="map_coefs")
 
     for arg in args:

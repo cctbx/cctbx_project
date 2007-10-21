@@ -400,8 +400,8 @@ class interpreter:
         for arg in args])
     crystal_symmetries_from_coordinate_file = []
     parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_params = master_params,
-      home_scope    = "pdbtools")
+      master_phil = master_params,
+      home_scope  = "pdbtools")
     parsed_params = []
     command_line_params = []
     utils.print_header("Processing inputs", out = self.log)

@@ -36,7 +36,7 @@ def run(args, command_name="iotbx.r_free_flags_counts"):
     raise_usage()
   phil_objects = []
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_params=master_params, home_scope="r_free_flags_counts")
+    master_phil=master_params, home_scope="r_free_flags_counts")
   reflection_files = []
   for arg in args:
     if (os.path.isfile(arg)):
