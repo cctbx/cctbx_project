@@ -1,9 +1,0 @@
-++++++++++
-cctbx news
-++++++++++
-
-.. section-numbering::
-
-============================
-Special position constraints
-============================
