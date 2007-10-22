@@ -256,6 +256,30 @@ t {
   y = 5
 }
 """)
+  recycle(
+    input_string=
+      "a=None;.type=int;s .multiple=True;.optional=False{c=None}"
+      "t .style=column;{d=None;.type=float;.optional=True;e=x;.type=str;}",
+    attributes_level=2,
+    expected_out="""\
+a = None
+  .type = int
+s
+  .optional = False
+  .multiple = True
+{
+  c = None
+}
+t
+  .style = column
+{
+  d = None
+    .optional = True
+    .type = float
+  e = x
+    .type = str
+}
+""")
 
 improper_phil_converters = None
 
@@ -430,6 +454,9 @@ def exercise_syntax_errors():
     'Reserved identifier: "__foo__" (input line 1)')
   test_exception('a=None\n.type=foo',
     'Unexpected definition type: "foo" (input line 2)')
+  test_exception('s .multiple=True .optional=False {}',
+    'One True or False value expected, "True .optional=False" found'
+    ' (input line 1)')
 
 def exercise_phil_on_off_end():
   assert phil.parse(input_string="#phil __ON__\na=1").as_str() == "a = 1\n"
