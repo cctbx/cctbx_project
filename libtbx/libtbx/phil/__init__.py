@@ -117,9 +117,9 @@ class key_converters(str_converters):
 def bool_from_words(words):
   value_string = str_from_words(words)
   if (value_string is None): return None
-  word_lower = words[0].value.lower()
-  if (word_lower in ["false", "no", "off", "0"]): return False
-  if (word_lower in ["true", "yes", "on", "1"]): return True
+  value_lower = value_string.lower()
+  if (value_lower in ["false", "no", "off", "0"]): return False
+  if (value_lower in ["true", "yes", "on", "1"]): return True
   assert len(words) > 0
   raise RuntimeError(
     'One True or False value expected, "%s" found%s' % (

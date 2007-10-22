@@ -73,9 +73,9 @@ def collect_objects(
     prev_line_number = lead_word.line_number
     word = word_iterator.pop()
     if (word.quote_token is None
-        and (word.value == "{"
-          or (word.line_number != lead_word.line_number
-              and (word.value[:1] == "." or word.value[:2] == "!.")))):
+        and (   word.value == "{"
+             or word.value[:1] == "."
+             or word.value[:2] == "!.")):
       if (not libtbx.phil.is_standard_identifier(lead_word.value)):
         if (lead_word.value == ";"):
           lead_word.raise_syntax_error("unexpected ")
