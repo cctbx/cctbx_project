@@ -46,3 +46,16 @@ print "Initial L.S. residual:%.3f" % optimiser.first_target_value
 structure.show_scatterers()
 print "Final L.S. residual:%.3f" % optimiser.final_target_value
 refining_structure.show_scatterers()
+
+weighting = xray.weighting_schemes.shelx_weighting()
+shelx_weighted_ls_against_f_square = xray.unified_least_squares_residual(
+  f_obs_square, weighting=weighting)
+refining_structure = perturbed_structure.deep_copy_scatterers()
+optimiser = xray.lbfgs(
+    target_functor=ls_against_f_square,
+    xray_structure=refining_structure,
+    structure_factor_algorithm="direct")
+print "Initial L.S. residual:%.3f" % optimiser.first_target_value
+structure.show_scatterers()
+print "Final L.S. residual:%.3f" % optimiser.final_target_value
+refining_structure.show_scatterers()
