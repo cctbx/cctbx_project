@@ -28,7 +28,6 @@ cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
 cctbx/include/cctbx/maptbx/fft.h -text
-/default.css -text
 gltbx/command_line/pythonw.sh -text
 gltbx/wx_map_viewer.py -text
 gltbx/wx_viewer_example.py -text
@@ -86,8 +85,6 @@ mmtbx/mmtbx/wwpdb/standard_geometry_cif.py -text
 mmtbx/mmtbx/wwpdb/tst_standard_geometry_cif.py -text
 mmtbx/mmtbx/xmanip.py -text
 mmtbx/mmtbx/xmanip_tasks.py -text
-/news.html -text
-/news.txt -text
 scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-python
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/error/SConscript -text
