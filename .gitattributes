@@ -29,6 +29,7 @@ cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
 cctbx/include/cctbx/maptbx/fft.h -text
 compcomm/compcomm8/default.css -text
+compcomm/compcomm8/f_square_refinement.py -text
 compcomm/compcomm8/news.txt -text
 gltbx/command_line/pythonw.sh -text
 gltbx/wx_map_viewer.py -text

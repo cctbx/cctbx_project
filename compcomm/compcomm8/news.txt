@@ -2,8 +2,91 @@
 cctbx news
 ++++++++++
 
+.. include:: ../../docutils/docutils/parsers/rst/include/isogrk3.txt
+.. contents:: Table of Contents
 .. section-numbering::
+
+==============================
+Refinement against F\ :sup:`2`
+==============================
+
+Small-molecule crystallographers almost exclusively rely on the minimisation of a least-square target to refine a structure. This is at odd with protein crystallography where intensity correlation is the target function of choice. The cctbx has provided a least-square target for a long time but only for F. Since F\ :sup:`2` refinement is very popular among small-molecule crystallographers, a new target has been recently added to the cctbx. The class ``cctbx.xray.unified_least_squares_residual`` provides a single entry point to the both of F and F\ :sup:`2` refinement.
+
+So as to keep the example self-contained and also to demonstrate some tools useful to develop and debug crystallographic algorithms, instead of starting from real data, we will use randomly generated crystal structures. Atoms are randomly in the unit cell and the structure factors are then computed::
+
+	from cctbx.array_family import flex
+	from cctbx import xray
+	from cctbx import crystal
+	from cctbx import miller
+	from cctbx.development import random_structure
+	import random
+	
+	indices = miller.build_set(
+		crystal_symmetry=crystal.symmetry(unit_cell=(10,11,12, 90,105,90),
+																			space_group_symbol="P21/c"),
+		anomalous_flag=False,
+		d_min=0.8)
+	structure = random_structure.xray_structure(indices.space_group_info(),
+																							elements=['C']*6 + ['O']*2 + ['N'],
+																							volume_per_atom=18.6,
+																							random_u_iso=True)
+	f_ideal = structure.structure_factors(d_min=indices.d_min()).f_calc()
+  
+Then we extract the amplitudes or intensities and we put them on a different scale to make the example a bit more realistic::
+
+  f_obs = f_ideal.amplitudes()
+  f_obs.set_observation_type_xray_amplitude()
+  f_obs *= 2
+  f_obs_square = f_ideal.norm()
+  f_obs_square.set_observation_type_xray_intensity()
+  f_obs_square *= 3
+
+In practice we would get f_obs or f_obs_square from a data file using the ``iotbx`` and the observation type would have been automatically set up for us.
+
+Then we can construct the least-square targets and examine them::
+
+  ls_against_f = xray.unified_least_squares_residual(f_obs)
+  ls_against_f_square = xray.unified_least_squares_residual(f_obs_square)
+  
+  residuals = ls_against_f(f_ideal, compute_derivatives=True)
+  print "against F: value=%.3f, scale=%.3f" % (residuals.target(),
+                                               residuals.scale_factor())
+  residuals = ls_against_f_square(f_ideal, compute_derivatives=True)
+  print "against F^2: value=%.3f, scale=%.3f" % (residuals.target(),
+                                                 residuals.scale_factor())
+
+The constructor of the class automatically recognise whether the data passed to it are amplitudes and intensities and it adapts the computations accordingly, correctly getting a target value of 0 and a scale factor of resp. 2 and 3 as expected in this trivial example.
+
+So as to demonstrate refinement, we will first add a perturbation to the crystal structure as well as allowing the refinement of atom sites::
+
+	perturbed_structure = structure.random_shift_sites(max_shift_cart=0.2)
+	for s in perturbed_structure.scatterers():
+		s.flags.set_grad_site(True)
+
+The simplest refinement engine in the cctbx is ``cctbx.xray.minimization.lbfgs`` which we demonstrate for a refinement against F\ :sup:`2`::
+
+	refining_structure = perturbed_structure.deep_copy_scatterers()
+	optimiser = xray.lbfgs(
+			target_functor=ls_against_f_square,
+			xray_structure=refining_structure,
+			structure_factor_algorithm="direct")
+	print "Initial L.S. residual: %.3f" % optimi
+	structure.show_scatterers()
+	refining_structure.show_scatterers()
+
+It updates the atomic sites of ``refining_structure`` in-place.
+
+=====================
+Least-squares weights
+=====================
+
+By default, ``xray.unified_least_squares_residual`` tries to make sensible choices for the least-squares weights, i.e. unit weights for refinement against F and the so-called quasi-unit weights for refinement against F\ :sup:`2`, which are 1/(4 F\ :sup:`2`\ :sub:`obs`). The latter choice is known to result in more stable a refinement. However most of the time experimental error are available, as ``f_obs.sigmas()`` and the least-square weights should take advantage of them. The pure statistical weights 1/|sigma|\ :sup:`2` are rarely used in small molecule crystallography. The most popular choice is that of the ShelXL program,  
+1/(|sigma|\ (F\ :sup:`2`\ :sub:`obs`)\ :sup:`2` + (a P)\ :sup:`2` + b P) where P = 1/3 max(0, F\ :sup:`2`\ :sub:`obs`) + 2/3 F\ :sup:`2`\ :sub:`calc`, which down-weights the stronger reflection while reducing statistical bias by the use of P [1]_
+
 
 ============================
 Special position constraints
 ============================
+
+
+.. [1] Wilson, Acta Cryst A32 (1976) 994-996
