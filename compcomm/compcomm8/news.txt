@@ -2,7 +2,7 @@
 cctbx news
 ++++++++++
 
-.. include:: ../../docutils/docutils/parsers/rst/include/isogrk3.txt
+.. |sigma|  unicode:: U+003C3 .. GREEK SMALL LETTER SIGMA
 .. contents:: Table of Contents
 .. section-numbering::
 
