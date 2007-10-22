@@ -2,9 +2,62 @@
 cctbx news
 ++++++++++
 
+:Authors: Luc J. Bourhis, Ralf W. Grosse-Kunstleve, Paul D. Adams
+:Contact: RWGrosse-Kunstleve@lbl.gov
+
+:abstract:
+
+  We describe recent developments of the
+  Computational Crystallography Toolbox.
+
+.. section-numbering::
 .. |sigma|  unicode:: U+003C3 .. GREEK SMALL LETTER SIGMA
 .. contents:: Table of Contents
-.. section-numbering::
+
+Preamble
+
+In order to interactively run the examples scripts shown below, the
+reader is highly encouraged to visit http://cci.lbl.gov/cctbx_build/
+and to download one of the completely self-contained, self-extracting
+binary cctbx distributions (supported platforms include Linux, Mac OS
+X, Windows, IRIX, and Tru64 Unix). All example scripts shown below
+were tested with cctbx build 2007_10_XX_XXXX.
+
+In the following we refer to our articles in the previous editions of
+this newsletter as "Newsletter No. 1", "Newsletter No. 2", etc. to
+improve readability. The full citations are included in the reference
+section.
+
+==============
+ Introduction
+==============
+
+The `Computational Crystallography Toolbox` (cctbx,
+http://cctbx.sourceforge.net/) is the open-source component of a
+structure determination suite for macro-molecular crystallography
+(Phenix, http://www.phenix-online.org/). However, the cctbx was
+started with a code base developed in the context of small-molecule
+crystallography, most notably SgInfo_. Although in recent years most
+new developments were targeted towards macro-molecular work, the
+small-molecule heritage has been carefully maintained in the core
+modules of the cctbx project.  For example, all algorithms in the
+``cctbx`` module (for the distinction between the *cctbx module*
+and the *cctbx project* see Newsletter No. 1) work for all 230
+crystallographic space groups and are routinely tested with symmetries
+not found in macro-molecular crystals.
+
+Recently, we have started a new ``smtbx`` module with algorithms
+specifically for small-molecule work. This is very much work in
+progress, but below we present some related developments. We give an
+example of least-squares minimization with a target function and a
+weighting scheme commonly used in the refinement of small molecules.
+Another development that grew out of small-molecule context is the
+handling of special position constraints. We also highlight important
+new developments of the `Phil` system introduced in Newsletters No. 5
+and No. 7. Finally, we give a brief summary of the transition of the
+cctbx source code repository from CVS to Subversion (SVN).
+
+.. _SgInfo: http://cci.lbl.gov/sginfo/
 
 =====================================================
 Refinement tools for small-molecule crystallographers
@@ -101,5 +154,42 @@ That least-square target can then be used with ``lbfgs``. The default is that of
 Special position constraints
 ----------------------------
 
+XXX
+
+==================
+Phil developements
+==================
+
+XXX
+
+==========
+Subversion
+==========
+
+XXX
+
+=================
+ Acknowledgments
+=================
+
+We gratefully acknowledge the financial support of NIH/NIGMS under
+grant number P01GM063210. Our work was supported in part by the US
+Department of Energy under Contract No. DE-AC02-05CH11231.
+
+============
+ References
+============
+
+Grosse-Kunstleve, R.W., Adams, P.D. (2003).
+Newsletter of the IUCr Commission on Crystallographic Computing, 1, 28-38.
+
+Grosse-Kunstleve, R.W., Afonine, P.V., Sauter, N.K., Adams, P.D. (2005).
+Newsletter of the IUCr Commission on Crystallographic Computing, 5, 69-91.
+
+Grosse-Kunstleve, R.W., Zwart P.H., Afonine, P.V., Ioerger, T.R.,
+Adams, P.D. (2006).
+Newsletter of the IUCr Commission on Crystallographic Computing, 7, 92-105.
+
+Wilson, A.J.C. (1976). Acta Cryst. A32, 994-996.
 
 .. [1] Wilson, Acta Cryst A32 (1976) 994-996
