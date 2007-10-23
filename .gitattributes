@@ -28,9 +28,9 @@ cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
 cctbx/include/cctbx/maptbx/fft.h -text
-compcomm/compcomm8/default.css -text
-compcomm/compcomm8/f_square_refinement.py -text
-compcomm/compcomm8/news.txt -text
+compcomm/newsletter08/default.css -text
+compcomm/newsletter08/f_square_refinement.py -text
+compcomm/newsletter08/news.txt -text
 gltbx/command_line/pythonw.sh -text
 gltbx/wx_map_viewer.py -text
 gltbx/wx_viewer_example.py -text
