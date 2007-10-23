@@ -68,7 +68,7 @@ Refinement against F\ :sup:`2`
 
 Small-molecule crystallographers almost exclusively rely on the
 minimization of a least-square target to refine a structure. The
-cctbx has provided a least-square target for a long time but only for
+cctbx has provided one for a long time but only for
 F. Since F\ :sup:`2` refinement is very popular among small-molecule
 crystallographers, a new target has recently been added to the
 cctbx. The class ``cctbx.xray.unified_least_squares_residual`` provides
@@ -126,7 +126,7 @@ Then we can construct the least-square targets and examine them::
                                                  residuals.scale_factor())
 
 The constructor of the class automatically recognizes whether the
-data passed to it are amplitudes and intensities and it adapts the
+data passed to it are amplitudes or intensities and it adapts the
 computations accordingly, correctly getting a target value of 0 and
 a scale factor of resp. 2 and 3 as expected in this trivial example.
 
@@ -172,8 +172,8 @@ sensible choices for the least-squares weights, i.e. unit weights
 for refinement against F and the so-called quasi-unit weights
 for refinement against F\ :sup:`2`, which are 1/(4 F\ :sup:`2`\
 :sub:`obs`). The latter choice is known to result in a more stable
-refinement. However, almost universally experimental error estimates
-are available, as ``f_obs_square.sigmas()`` and the least-square
+refinement. However, almost universally, experimental error estimates
+are available, as ``f_obs_square.sigmas()``, and the least-square
 weights should take advantage of them. The pure statistical
 weights 1/|sigma|\ :sup:`2` are rarely used in small molecule
 crystallography. The most popular choice is that of the ShelXL_ program,
@@ -205,8 +205,8 @@ Special position constraints
 The traditional way to deal with the refinement of crystal structures
 with atoms on special position is to constrain the latter never to
 move away from the special position, in effect minimizing the target
-function under those constraints. However, the minimizer introduced
-above does not implement these constraints, mainly because this is
+function under a set of constraints. However, the minimizer introduced
+above does not work in such a manner and neither does the more sophisticated ``mmtbx.refinement.minimization.lbfgs``, mainly because this is
 less important for macro-molecular models, which usually have very
 few atoms on special positions. One can safely, at each refinement
 cycle, let those atoms move away from the special positions and move
@@ -257,7 +257,8 @@ the independent ones::
 
 The most interesting facility for refinement is the handling of
 gradients. To illustrate it, let us introduce a simple function f of
-the site coordinates x,y,z::
+the site coordinates x,y,z (during a refinement,
+f would instead be the L.S. target for example, considering its dependence on the coordinates of one atom only)::
 
   def f(x,y,z): return -x + 2*y + 3*z
 
@@ -268,15 +269,27 @@ which we then restrict onto the special position locus::
     return f(x,y,z)
 
 We wish to compute the derivatives of g with respect to u and v knowing
-the derivatives of f with respect to x,y,z. During a refinement,
-f would be the L.S. target for example. Those derivatives of g are
-easily obtained with::
+the derivatives of f with respect to x,y,z which are easily read directly from its definition: (df/dx, df/dy, df/dz) = (-1, 2, 3). Those derivatives of g are
+then easily obtained with::
 
   >>> independent_gradients = site_constraints.independent_gradients(
         all_gradients=flex.double([-1,2,3]))
   (1.0, 3.0)
 
-where ``[-1,2,3]`` are the derivatives of f w.r.t. x,y,z.
+We have so far demonstrated only site constraints and only in fractional coordinates but the cctbx provides more facilities::
+
+  frac_adp_constraints = site_symmetry.adp_constraints()
+  
+gives access to the constraints on ADP's in fractional coordinates whereas
+
+  cart_adp_constraints = site_symmetry.cartesian_adp_constraints(
+    crystal_symmetry.unit_cell())
+    
+deal with the same constraints on ADP's in Cartesian coordinates. 
+
+It should be noted that the ``site_symmetry`` object caches all the constraints it gives access to: the necessary symmetry computations are performed only once when ``site_constraints``, ``adp_constraints`` or ``cartesian_adp_constraints`` are called for the first time and the results are reused later on.
+
+The cctbx special position constraints we have just expounded are the basis of the refinement engine ``lbfgs`` in module ``smtbx.refinement.minimization``. It is to be used exactly as ``cctbx.xray.minimization.lbfgs``, the only difference being that atoms on special position have their site coordinates and ADP's constrained through each refinement cycle. Our plan is to develop over time that ``smtbx.refinement.minimization.lbfgs`` into the equivalent of the more sophisticated and versatile ``mmtbx.refinement.minimization.lbfgs``.
 
 
 =================
