@@ -287,7 +287,60 @@ For more details see the `updated documentation
 Subversion
 ==========
 
-XXX
+For six years, from April 2001, when the SourceForge cctbx project
+was started, to March 2007, cctbx development was based on the
+`Concurrent Versions System`_ (CVS). This era came to an end with
+the transition to the more modern Subversion_ system (SVN). In the
+last two years, the vast majority of the open source community has
+gone through this transition. SVN introduces many new features, most
+importantly "atomic commits" which handle a set of changes as one
+entity, no matter how many files and directories are involved. This
+makes it much easier to keep track of large-scale changes, and to
+backtrack if necessary.  Almost as important is the option to rename
+files and directories without introducing breaks in the development
+history. The need to reorganize arises frequently in the early stages
+of a (sub-)project. Often it is initially not very clear how all the
+pieces fit together. The best ideas for organizing the whole tend to
+crystallize only after a critical subset of the project is already
+implemented. SVN provides a clear path for reorganizing the sources.
+
+The cctbx sources were converted using the ``cvs2svn`` script
+(http://cvs2svn.tigris.org/, it is a Python script!) which preserves
+the complete CVS development history, including all original time
+stamps, user names, and log messages. The last state of the cctbx CVS
+repository before the conversion is still available for viewing at
+SourceForge, but for all practical purposes it is completely obsolete.
+
+The `main cctbx page at Sourceforge`_ includes a link to the web
+view of the cctbx SVN repository. Instructions for checking out the
+sources using the svn command are posted under the `cctbx installation
+instructions`_. These instructions show how to get a selection of
+individual cctbx modules. Note that it is also possible to get the
+entire cctbx project with a single command (this wasn't possible
+with CVS), for example::
+
+  svn co https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk svnroot_cctbx
+
+The name of the target directory (``svnroot_cctbx``) is arbitrary.
+The advantage of checking out everything under one tree is that a
+single svn update or svn commit command works on the entire repository.
+The disadvantage compared to the more granular approach is that the
+working copy includes modules that may not be needed and therefore
+consumes more disk space (currently about 62 MB).
+
+With the move to SVN, the old distinction between `anonymous` and
+`developer` checkouts disappeared. This is a great advantage.
+Everybody can checkout working copies using the exact same
+commands. Credentials, i.e. a user name and password, are required
+only for write access (e.g. svn commit). It is possible to checkout
+a working copy before having a SourceForge user name, make local
+modifications, get a user name and request cctbx svn write access,
+and then to commit the changes from the initial working copy.
+
+.. _`Concurrent Versions System`: http://www.cvshome.org/
+.. _Subversion: http://subversion.tigris.org/
+.. _`main cctbx page at Sourceforge`: http://cctbx.sourceforge.net/
+.. _`cctbx installation instructions`: http://cctbx.sourceforge.net/current_cvs/installation.html
 
 =================
  Acknowledgments
