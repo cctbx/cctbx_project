@@ -35,10 +35,11 @@ Introduction
 The `Computational Crystallography Toolbox` (cctbx,
 http://cctbx.sourceforge.net/) is the open-source component of a
 structure determination suite for macro-molecular crystallography
-(Phenix, http://www.phenix-online.org/). However, the cctbx was
-started with a code base developed in the context of small-molecule
-crystallography, most notably SgInfo_. Although in recent years most
-new developments were targeted towards macro-molecular work, the
+(Phenix, http://www.phenix-online.org/). However, the cctbx
+was started with a code base developed in the context
+of small-molecule crystallography, most notably SgInfo
+(http://cci.lbl.gov/sginfo/). Although in recent years most new
+developments were targeted towards macro-molecular work, the
 small-molecule heritage has been carefully maintained in the core
 modules of the cctbx project.  For example, all algorithms in the
 ``cctbx`` module (for the distinction between the *cctbx module*
@@ -56,8 +57,6 @@ handling of special position constraints. We also highlight important
 new developments of the `Phil` system introduced in Newsletters No. 5
 and No. 7. Finally, we give a brief summary of the transition of the
 cctbx source code repository from CVS to Subversion (SVN).
-
-.. _SgInfo: http://cci.lbl.gov/sginfo/
 
 =====================================================
 Refinement tools for small-molecule crystallographers
@@ -157,30 +156,32 @@ The simplest refinement engine in the cctbx is
   print "Final L.S. residual:%.3f" % optimiser.final_target_value
   refining_structure.show_scatterers()
 
-The LBFGS algorithm used to minimize the target function needs to
-compute its partial derivatives with respect to the refined parameters
-(atomic position here). This is where the derivatives which we showed
-to be obtainable by ``residuals.derivatives()`` above come into play:
-they are combined, by using the chain rule, with the derivatives of F\
-:sub:`calc` (h) with respect to the refined parameters.
+The LBFGS algorithm (Liu & Nocedal, 1989) used to minimize the
+target function needs to compute its partial derivatives with
+respect to the refined parameters (atomic position here). This
+is where the derivatives which we showed to be obtainable by
+``residuals.derivatives()`` above come into play: they are combined,
+by using the chain rule, with the derivatives of F\ :sub:`calc`
+(h) with respect to the refined parameters.
 
 Least-squares weights
 ---------------------
 
-By default, ``xray.unified_least_squares_residual`` tries to make
-sensible choices for the least-squares weights, i.e. unit weights
-for refinement against F and the so-called quasi-unit weights
-for refinement against F\ :sup:`2`, which are 1/(4 F\ :sup:`2`\
-:sub:`obs`). The latter choice is known to result in a more stable
-refinement. However, almost universally, experimental error estimates
-are available, as ``f_obs_square.sigmas()``, and the least-square
-weights should take advantage of them. The pure statistical
-weights 1/|sigma|\ :sup:`2` are rarely used in small molecule
-crystallography. The most popular choice is that of the ShelXL_ program,
-1/(|sigma|\ (F\ :sup:`2`\ :sub:`obs`)\ :sup:`2` + (a P)\ :sup:`2` +
-b P) where P = 1/3 max(0, F\ :sup:`2`\ :sub:`obs`) + 2/3 F\ :sup:`2`\
-:sub:`calc`, which down-weights the stronger reflection while reducing
-statistical bias by the use of P (Wilson 1976).
+By default, ``xray.unified_least_squares_residual`` tries to
+make sensible choices for the least-squares weights, i.e. unit
+weights for refinement against F and the so-called quasi-unit
+weights for refinement against F\ :sup:`2`, which are 1/(4 F\
+:sup:`2`\ :sub:`obs`). The latter choice is known to result in a
+more stable refinement. However, almost universally, experimental
+error estimates are available, as ``f_obs_square.sigmas()``, and
+the least-square weights should take advantage of them. The pure
+statistical weights 1/|sigma|\ :sup:`2` are rarely used in small
+molecule crystallography. The most popular choice is that of the
+ShelXL program (http://shelx.uni-ac.gwdg.de/), 1/(|sigma|\ (F\
+:sup:`2`\ :sub:`obs`)\ :sup:`2` + (a P)\ :sup:`2` + b P) where P =
+1/3 max(0, F\ :sup:`2`\ :sub:`obs`) + 2/3 F\ :sup:`2`\ :sub:`calc`,
+which down-weights the stronger reflection while reducing statistical
+bias by the use of P (Wilson 1976).
 
 This weighting scheme is available in the module
 ``cctbx.xray.weighting_schemes``::
@@ -190,13 +191,11 @@ This weighting scheme is available in the module
           f_obs_square, weighting=weighting)
 
 This least-square target can then be used with the ``lbfgs``
-minimizer. The default is that of ShelXL_, i.e. a=0.1 and b=0, which
+minimizer. The default is that of ShelXL, i.e. a=0.1 and b=0, which
 is best suited for early refinements when the structure is still
 incomplete. All the other weighting schemes we mentioned are also
 provided by that module (the reader is invited to read the comments
 for each Python class).
-
-.. _ShelXL: http://shelx.uni-ac.gwdg.de/
 
 
 Special position constraints
@@ -325,10 +324,9 @@ that arose as part of the development of other applications, and a
 few bugs were fixed. These changes are very conservative. However,
 recently there has also been an important semantic change
 affecting "multiple definitions" and "multiple scopes". The new
-features and changes are reflected in the `updated documentation
-<http://cctbx.sourceforge.net/libtbx_phil.html>`_ which is based on
-parts of our original article in Newsletter No. 5. Important
-new features and changes include:
+features and changes are reflected in the updated documentation (URL
+at end of this section) which is based on parts of our original article
+in Newsletter No. 5. Important new features and changes include:
 
   - The handling of multiple scopes went through a few iterations
     eliminating bugs, inconsistencies and inefficiencies. The latest
@@ -380,24 +378,25 @@ new features and changes include:
     ``${varname}`` variable substitution syntax was changed to
     ``$(varname)``.
 
-For more details see the `updated documentation
-<http://cctbx.sourceforge.net/libtbx_phil.html>`_.
+For more details see the updated documentation:
+http://cctbx.sourceforge.net/libtbx_phil.html
 
 ==========
 Subversion
 ==========
 
-For six years, from April 2001, when the SourceForge cctbx project
-was started, to March 2007, cctbx development was based on the
-`Concurrent Versions System`_ (CVS). This era came to an end with
-the transition to the more modern Subversion_ system (SVN). In the
-last two years, the vast majority of the open source community has
-gone through this transition. SVN introduces many new features, most
-importantly "atomic commits" which handle a set of changes as one
-entity, no matter how many files and directories are involved. This
-makes it much easier to keep track of large-scale changes, and to
-backtrack if necessary.  Almost as important is the option to rename
-files and directories without introducing breaks in the development
+For six years, from April 2001, when the SourceForge cctbx project was
+started, to March 2007, cctbx development was based on the Concurrent
+Versions System (CVS, http://www.cvshome.org/). This era came to
+an end with the transition to the more modern Subversion system
+(SVN, http://subversion.tigris.org/). In the last two years, the
+vast majority of the open source community has gone through this
+transition. SVN introduces many new features, most importantly
+"atomic commits" which handle a set of changes as one entity, no
+matter how many files and directories are involved. This makes it
+much easier to keep track of large-scale changes, and to backtrack
+if necessary.  Almost as important is the option to rename files
+and directories without introducing breaks in the development
 history. The need to reorganize arises frequently in the early stages
 of a (sub-)project. Often it is initially not very clear how all the
 pieces fit together. The best ideas for organizing the whole tend to
@@ -411,13 +410,14 @@ stamps, user names, and log messages. The last state of the cctbx CVS
 repository before the conversion is still available for viewing at
 SourceForge, but for all practical purposes it is completely obsolete.
 
-The `main cctbx page at Sourceforge`_ includes a link to the web
-view of the cctbx SVN repository. Instructions for checking out the
-sources using the svn command are posted under the `cctbx installation
-instructions`_. These instructions show how to get a selection of
-individual cctbx modules. Note that it is also possible to get the
-entire cctbx project with a single command (this wasn't possible
-with CVS), for example::
+The main cctbx page at Sourceforge (http://cctbx.sourceforge.net/)
+includes a link to the web view of the cctbx SVN
+repository. Instructions for checking out the sources using the
+svn command are posted under the cctbx installation instructions
+(http://cctbx.sourceforge.net/current/installation.html). These
+instructions show how to get a selection of individual cctbx
+modules. Note that it is also possible to get the entire cctbx project
+with a single command (this wasn't possible with CVS), for example::
 
   svn co https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk svnroot_cctbx
 
@@ -436,11 +436,6 @@ only for write access (e.g. svn commit). It is possible to checkout
 a working copy before having a SourceForge user name, make local
 modifications, get a user name and request cctbx svn write access,
 and then to commit the changes from the initial working copy.
-
-.. _`Concurrent Versions System`: http://www.cvshome.org/
-.. _Subversion: http://subversion.tigris.org/
-.. _`main cctbx page at Sourceforge`: http://cctbx.sourceforge.net/
-.. _`cctbx installation instructions`: http://cctbx.sourceforge.net/current_cvs/installation.html
 
 =================
  Acknowledgments
@@ -467,5 +462,7 @@ Newsletter of the IUCr Commission on Crystallographic Computing, 5, 69-91.
 Grosse-Kunstleve, R.W., Zwart P.H., Afonine, P.V., Ioerger, T.R.,
 Adams, P.D. (2006).
 Newsletter of the IUCr Commission on Crystallographic Computing, 7, 92-105.
+
+Liu C., Nocedal J. (1989). Mathematical Programming 45, 503-528.
 
 Wilson, A.J.C. (1976). Acta Cryst. A32, 994-996.
