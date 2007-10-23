@@ -43,7 +43,7 @@ df_du = (f(u+h,v) - f(u-h,v))/(2*h)
 df_dv = (f(u,v+h) - f(u,v-h))/(2*h)
 print df_du, df_dv
 independent_gradients = site_constraints.independent_gradients(
-  all_gradients=flex.double([-1,2,3]))
+  all_gradients=flex.double((-1,2,3)))
 print "independent_gradients:", independent_gradients
 
 frac_adp_constraints = site_symmetry.adp_constraints()
