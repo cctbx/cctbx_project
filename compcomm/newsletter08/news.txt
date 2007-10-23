@@ -10,7 +10,6 @@ cctbx news
   We describe recent developments of the
   Computational Crystallography Toolbox.
 
-.. section-numbering::
 .. |sigma|  unicode:: U+003C3 .. GREEK SMALL LETTER SIGMA
 .. contents:: Table of Contents
 
@@ -127,7 +126,8 @@ Then we can construct the least-square targets and examine them::
 The constructor of the class automatically recognizes whether the
 data passed to it are amplitudes or intensities and it adapts the
 computations accordingly, correctly getting a target value of 0 and
-a scale factor of resp. 2 and 3 as expected in this trivial example.
+a scale factor of 2 and 3, respectively, as expected in this trivial
+example.
 
 By passing ``compute_derivatives=True``, we require the computation
 of the derivatives of the L.S. target function with respect to F\
@@ -441,11 +441,11 @@ and then to commit the changes from the initial working copy.
  Acknowledgments
 =================
 
-R.W. Grosse-Kunstleve and P.D. Adams gratefully acknowledge the financial support of NIH/NIGMS under
+L.J. Bourhis gratefully acknowledge the financial support of EPSRC
+under grant number EP/C536274/1. R.W. Grosse-Kunstleve and P.D. Adams
+gratefully acknowledge the financial support of NIH/NIGMS under
 grant number P01GM063210. Their work was supported in part by the US
 Department of Energy under Contract No. DE-AC02-05CH11231.
-
-L.J. Bourhis gratefully acknowledge the financial support of EPSRC under grant number EP/C536274/1.
 
 ============
  References
