@@ -67,27 +67,28 @@ Refinement tools for small-molecule crystallographers
 Refinement against F\ :sup:`2`
 ------------------------------
 
-Small-molecule crystallographers almost exclusively rely on the minimisation of a least-square target to refine a structure. This is at odd with protein crystallography where intensity correlation is the target function of choice. The cctbx has provided a least-square target for a long time but only for F. Since F\ :sup:`2` refinement is very popular among small-molecule crystallographers, a new target has been recently added to the cctbx. The class ``cctbx.xray.unified_least_squares_residual`` provides a single entry point to the both of F and F\ :sup:`2` refinement.
+Small-molecule crystallographers almost exclusively rely on the minimisation of a least-square target to refine a structure. The cctbx has provided a least-square target for a long time but only for F. Since F\ :sup:`2` refinement is very popular among small-molecule crystallographers, a new target has been recently added to the cctbx. The class ``cctbx.xray.unified_least_squares_residual`` provides a single entry point to the both of F and F\ :sup:`2` refinement.
 
 So as to keep the example self-contained and also to demonstrate some tools useful to develop and debug crystallographic algorithms, instead of starting from real data, we will use randomly generated crystal structures. Atoms are randomly spread in the unit cell and the structure factors are then computed::
 
-        from cctbx.array_family import flex
-        from cctbx import xray
-        from cctbx import crystal
-        from cctbx import miller
-        from cctbx.development import random_structure
-        import random
-
-        indices = miller.build_set(
-                crystal_symmetry=crystal.symmetry(unit_cell=(10,11,12, 90,105,90),
-                                                                                                                                                        space_group_symbol="P21/c"),
-                anomalous_flag=False,
-                d_min=0.8)
-        structure = random_structure.xray_structure(indices.space_group_info(),
-                                                                                                                                                                                        elements=['C']*6 + ['O']*2 + ['N'],
-                                                                                                                                                                                        volume_per_atom=18.6,
-                                                                                                                                                                                        random_u_iso=True)
-        f_ideal = structure.structure_factors(d_min=indices.d_min()).f_calc()
+  from cctbx.array_family import flex
+  from cctbx import xray
+  from cctbx import crystal
+  from cctbx import miller
+  from cctbx.development import random_structure
+  import random
+  
+  indices = miller.build_set(
+          crystal_symmetry=crystal.symmetry(unit_cell=(10,11,12, 90,105,90),
+                                            space_group_symbol="P21/c"),
+          anomalous_flag=False,
+          d_min=0.8)
+  structure = random_structure.xray_structure(
+    indices.space_group_info(),
+    elements=['C']*6 + ['O']*2 + ['N'],
+    volume_per_atom=18.6,
+    random_u_iso=True)
+  f_ideal = structure.structure_factors(d_min=indices.d_min()).f_calc()
 
 Then we extract the amplitudes or intensities and we put them on a different scale to make the example a bit more realistic::
 
@@ -118,21 +119,21 @@ By passing ``compute_derivatives=True``, we require the computation of the deriv
 
 So as to demonstrate refinement, we will first add a perturbation to the crystal structure as well as allowing the refinement of atom sites::
 
-        perturbed_structure = structure.random_shift_sites(max_shift_cart=0.2)
-        for s in perturbed_structure.scatterers():
-                s.flags.set_grad_site(True)
+  perturbed_structure = structure.random_shift_sites(max_shift_cart=0.2)
+  for s in perturbed_structure.scatterers():
+          s.flags.set_grad_site(True)
 
 The simplest refinement engine in the cctbx is ``cctbx.xray.minimization.lbfgs``. For a refinement against F\ :sup:`2`::
 
-        refining_structure = perturbed_structure.deep_copy_scatterers()
-        optimiser = xray.lbfgs(
-                        target_functor=ls_against_f_square,
-                        xray_structure=refining_structure,
-                        structure_factor_algorithm="direct")
-        print "Initial L.S. residual:%.3f" % optimiser.first_target_value
-        structure.show_scatterers()
-        print "Final L.S. residual:%.3f" % optimiser.final_target_value
-        refining_structure.show_scatterers()
+  refining_structure = perturbed_structure.deep_copy_scatterers()
+  optimiser = xray.lbfgs(
+                  target_functor=ls_against_f_square,
+                  xray_structure=refining_structure,
+                  structure_factor_algorithm="direct")
+  print "Initial L.S. residual:%.3f" % optimiser.first_target_value
+  structure.show_scatterers()
+  print "Final L.S. residual:%.3f" % optimiser.final_target_value
+  refining_structure.show_scatterers()
 
 The LBFGS algorithm used to minimise the target function needs to compute its partial derivatives with respect to the refined parameters (atomic position here). This is where the derivatives which we showed to be obtainable by ``residuals.derivatives()`` above come into play: they are combined, by using the chain rule, with the derivatives of F\ :sub:`calc` (h) with respect to the refined parameters.
 
@@ -140,21 +141,73 @@ Least-squares weights
 ---------------------
 
 By default, ``xray.unified_least_squares_residual`` tries to make sensible choices for the least-squares weights, i.e. unit weights for refinement against F and the so-called quasi-unit weights for refinement against F\ :sup:`2`, which are 1/(4 F\ :sup:`2`\ :sub:`obs`). The latter choice is known to result in more stable a refinement. However most of the time experimental error are available, as ``f_obs_square.sigmas()`` and the least-square weights should take advantage of them. The pure statistical weights 1/|sigma|\ :sup:`2` are rarely used in small molecule crystallography. The most popular choice is that of the ShelXL program,
-1/(|sigma|\ (F\ :sup:`2`\ :sub:`obs`)\ :sup:`2` + (a P)\ :sup:`2` + b P) where P = 1/3 max(0, F\ :sup:`2`\ :sub:`obs`) + 2/3 F\ :sup:`2`\ :sub:`calc`, which down-weights the stronger reflection while reducing statistical bias by the use of P [1]_.
+1/(|sigma|\ (F\ :sup:`2`\ :sub:`obs`)\ :sup:`2` + (a P)\ :sup:`2` + b P) where P = 1/3 max(0, F\ :sup:`2`\ :sub:`obs`) + 2/3 F\ :sup:`2`\ :sub:`calc`, which down-weights the stronger reflection while reducing statistical bias by the use of P (Wilson 1976).
 
 This weighting scheme is available in module ``cctbx.xray.weighting_schemes``::
 
-        weighting = xray.weighting_schemes.shelx_weighting()
-        shelx_weighted_ls_against_f_square = xray.unified_least_squares_residual(
-                f_obs_square, weighting=weighting)
+  weighting = xray.weighting_schemes.shelx_weighting()
+  shelx_weighted_ls_against_f_square = xray.unified_least_squares_residual(
+          f_obs_square, weighting=weighting)
 
-That least-square target can then be used with ``lbfgs``. The default is that of ShelXL, i.e. a=0.1 and b=0, which is best suited for early refinements when the structure is still incomplete. All the other weighting schemes we mentioned are also provided by that module (each class features a short comment describing the corresponding weighting scheme).
+That least-square target can then be used with ``lbfgs``. The default is that of ShelXL, i.e. a=0.1 and b=0, which is best suited for early refinements when the structure is still incomplete. All the other weighting schemes we mentioned are also provided by that module (the reader is invited to read the comments for each Python class).
 
 
 Special position constraints
 ----------------------------
 
-XXX
+The traditional way to deal with the refinement of crystal structures with atoms on special position is to constraint the latter never to move away from the special position, in effect minimising the target function under those constraints. This not what the LBFGS minimisers implemented in the cctbx and the mmtbx do however. Since very few atoms if any at all are on special positions, one can safely, at each cycle, let those atoms drift away from their special position and snap them back onto it before the next cycle. In the small molecule world, on the contrary, it is not uncommon that all atoms are on special positions.
+
+The cctbx does actually provide all the tools to find, store and apply special position constraints and we will therefore start by describing those fundamental tools.::
+
+  crystal_symmetry = crystal.symmetry(
+      unit_cell=(10,10,10,90,90,90),
+      space_group_symbol="Pm3m")
+  crystal_symmetry.show_summary()
+  
+  special_position_settings = crystal_symmetry.special_position_settings(
+    min_distance_sym_equiv=0.5)
+
+The site symmetry of a position of given fractional coordinates is then obtained by::
+
+  site_symmetry = special_position_settings.site_symmetry(
+     site=(0.3, 0.31, 0.111))
+  
+Since that position is at a Cartesian distance smaller than 0.5 from a special position x=y, the former is snapped onto the latter and the resulting ``site_symmetry`` object refer to the special position (0.305, 0.305, 0.111).
+
+Then::
+
+  site_constraints = site_symmetry.site_constraints()
+  
+gives access to the constraints on site position::
+
+  >>> site_constraints.n_independent_params()
+  2
+  >>> site_constraints.independent_params(all_params=site_symmetry.exact_site())
+  (0.305, 0.111)
+
+The other way around, one can determine all the site coordinates from the independent ones::
+  
+  >>> site_constraints.all_params(independent_params=(0.2, 0.1))
+  (0.2, 0.2, 0.1)
+
+The most interesting facility for refinement is the handling of gradients. To illustrate it, let us introduce a simple function f of the site coordinates x,y,z::
+
+  def f(x,y,z): return -x + 2*y + 3*z
+  
+which we then restrict onto the special position locus::
+
+  def g(u,v):
+    x, y, z = site_constraints.all_params((u,v))
+    return f(x,y,z)
+    
+We wish to compute the derivatives of g with respect to u and v knowing the derivatives of f with respect to x,y,z. During a refinement, f would be the L.S. target for example. Those derivatives of g are easily obtained with::
+
+  >>> independent_gradients = site_constraints.independent_gradients(
+        all_gradients=flex.double([-1,2,3]))
+  (1.0, 3.0)
+  
+where (-1,2,3) are the derivatives of f.
+
 
 ==================
 Phil developements
@@ -172,9 +225,11 @@ XXX
  Acknowledgments
 =================
 
-We gratefully acknowledge the financial support of NIH/NIGMS under
-grant number P01GM063210. Our work was supported in part by the US
+R.W. Grosse-Kunstleve and P.D. Adams gratefully acknowledge the financial support of NIH/NIGMS under
+grant number P01GM063210. Their work was supported in part by the US
 Department of Energy under Contract No. DE-AC02-05CH11231.
+
+L.J. Bourhis gratefully acknowledge the financial support of EPSRC under grant number EP/C536274/1.
 
 ============
  References
@@ -191,5 +246,3 @@ Adams, P.D. (2006).
 Newsletter of the IUCr Commission on Crystallographic Computing, 7, 92-105.
 
 Wilson, A.J.C. (1976). Acta Cryst. A32, 994-996.
-
-.. [1] Wilson, Acta Cryst A32 (1976) 994-996
