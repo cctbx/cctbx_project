@@ -31,6 +31,7 @@ cctbx/include/cctbx/maptbx/fft.h -text
 compcomm/newsletter08/default.css -text
 compcomm/newsletter08/f_square_refinement.py -text
 compcomm/newsletter08/news.txt -text
+compcomm/newsletter08/notes -text
 compcomm/newsletter08/special_positions.py -text
 gltbx/command_line/pythonw.sh -text
 gltbx/wx_map_viewer.py -text
