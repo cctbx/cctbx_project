@@ -56,6 +56,38 @@ def tst_graph():
   kk.remove_node( 'b' )
   kk.assert_is_clean()
 
+  kk.insert_node( name = 'a',
+                  node_object = 'ploep_a',
+                  edge_object = { 'b': 'a_to_b', 'c': 'a_to_c' } )
+
+  kk.insert_node( name = 'b',
+                  node_object = 'ploep_b',
+                  edge_object = { 'c': 'b_to_c' } )
+
+  kk.insert_node( name = 'd',
+                  node_object = 'ploep_a',
+                  edge_object = { 'b': 'd_to_b', 'c': 'd_to_c' } )
+
+  kk.insert_node( name = 'e',
+                  node_object = 'ploep_b',
+                  edge_object = { 'd': 'e_to_d' } )
+
+  kk.insert_node( name = 'c',
+                  node_object = 'ploep_b',
+                  edge_object = { 'd': 'c_to_d' } )
+
+  a_paths = [['a', 'c', 'd'], ['a', 'b', 'c']]
+  c_paths = [['c', 'd', 'b']]
+  b_paths = [['b', 'c', 'd']]
+  e_paths = [['e', 'd', 'c'], ['e', 'd', 'b']]
+  d_paths = [['d', 'b', 'c']]
+  assert kk.find_paths_of_length( 'a' , 3 ) ==  a_paths
+  assert kk.find_paths_of_length( 'b' , 3 ) ==  b_paths
+  assert kk.find_paths_of_length( 'c' , 3 ) ==  c_paths
+  assert kk.find_paths_of_length( 'd' , 3 ) ==  d_paths
+  assert kk.find_paths_of_length( 'e' , 3 ) ==  e_paths
+
+
 
 def run():
   tst_graph()
