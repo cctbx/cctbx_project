@@ -329,7 +329,7 @@ is a multiple definition in a master file::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""\
+  master_phil = libtbx.phil.parse("""
     minimization.input {
       file_name = None
         .type = path
@@ -343,7 +343,7 @@ And these are multiple values for this definition in a user file::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse("""\
+  user_phil = libtbx.phil.parse("""
     minimization.input {
       file_name = experiment1.dat
       file_name = experiment2.dat
@@ -376,7 +376,7 @@ Multiple scopes work similarly, for example::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""\
+  master_phil = libtbx.phil.parse("""
     minimization {
       input
         .multiple = True
@@ -395,7 +395,7 @@ A corresponding user file may look this this::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse("""\
+  user_phil = libtbx.phil.parse("""
     minimization {
       input {
         file_name = experiment1.dat
@@ -434,7 +434,7 @@ would be a plausible master file::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""\
+  master_phil = libtbx.phil.parse("""
     minimization {
       input
         .multiple = True
@@ -454,7 +454,7 @@ This is a possible corresponding user file::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse("""\
+  user_phil = libtbx.phil.parse("""
     minimization {
       input {
         file_name = experiment1.dat
@@ -491,6 +491,8 @@ one Python string::
   experiment2.dat
   ['set2', 'set3']
 
+XXX exact duplicates are removed
+
 ===========================================================
 fetch_diff: difference between master_phil and working_phil
 ===========================================================
@@ -505,7 +507,7 @@ Phil objects, the ``.fetch_diff()`` method is available. For example::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""\
+  master_phil = libtbx.phil.parse("""
     minimization.parameters {
       method = *bfgs conjugate_gradient
         .type = choice
@@ -514,7 +516,7 @@ Phil objects, the ``.fetch_diff()`` method is available. For example::
     }
     """)
 
-  user_phil = libtbx.phil.parse("""\
+  user_phil = libtbx.phil.parse("""
     minimization.parameters {
       method = bfgs *conjugate_gradient
     }
@@ -661,7 +663,7 @@ argument to Phil's ``parse`` function::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""\
+  master_phil = libtbx.phil.parse("""
     value = None
       .type = upper
     """,
@@ -702,20 +704,23 @@ extended converter registry as the default. See, for example,
 Details
 =======
 
+.type = choice
+--------------
+
 The built-in ``choice`` converters support single and multi choices.
 Here are two examples, a single choice ``gender`` and a multi choice
 ``favorite_sweets``::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""\
+  master_phil = libtbx.phil.parse("""
     gender = male female
       .type = choice
     favorite_sweets = ice_cream chocolate candy_cane cookies
       .type = choice(multi=True)
     """)
 
-  jims_choices = libtbx.phil.parse("""\
+  jims_choices = libtbx.phil.parse("""
     gender = *male female
     favorite_sweets = *ice_cream chocolate candy_cane *cookies
     """)
@@ -741,7 +746,7 @@ and this is possible::
 
   ## extract code begin: doc_code.py
 
-  ignorant_choices = libtbx.phil.parse("""\
+  ignorant_choices = libtbx.phil.parse("""
     gender = male female
     favorite_sweets = ice_cream chocolate candy_cane cookies
     """)
@@ -776,7 +781,7 @@ further supported by this syntax::
 
   ## extract code begin: doc_code.py
 
-  greedy_choices = libtbx.phil.parse("""\
+  greedy_choices = libtbx.phil.parse("""
     favorite_sweets=ice_cream+chocolate+cookies
     """)
 
@@ -794,7 +799,7 @@ Finally, if the ``.optional`` attribute is not specified or ``True``,
 
   ## extract code begin: doc_code.py
 
-  no_thanks_choices = libtbx.phil.parse("""\
+  no_thanks_choices = libtbx.phil.parse("""
     favorite_sweets=None
     """)
 
@@ -810,7 +815,87 @@ Output::
 scope_extract
 -------------
 
-XXX
+The result of ``scope.extract()`` is a ``scope_extract`` instance
+with attributes corresponding to the embedded definitions and
+sub-scopes. For example::
+
+  ## extract code begin: doc_code.py
+
+  master_phil = libtbx.phil.parse("""
+    minimization.input {
+      file_name = None
+        .type = path
+    }
+    minimization.parameters {
+      max_iterations = 10
+        .type = int
+    }
+    """)
+
+  user_phil = libtbx.phil.parse("""
+    minimization.input.file_name = experiment.dat
+    minimization.parameters.max_iterations = 5
+    """)
+
+  working_params = master_phil.fetch(source=user_phil).extract()
+  print working_params
+  print working_params.minimization.input.file_name
+  print working_params.minimization.parameters.max_iterations
+
+  ## extract code end
+
+Output::
+
+  <libtbx.phil.scope_extract object at 0x2ad50bae7550>
+  experiment.dat
+  5
+
+This just repeats what was shown several times before, but
+``scope_extract`` includes a few additional, special features that are
+worth knowing. The first special feature is the ``.__phil_path__()``
+method::
+
+  ## extract code begin: doc_code.py
+
+  print working_params.minimization.input.__phil_path__()
+  print working_params.minimization.parameters.__phil_path__()
+
+  ## extract code end
+
+Output::
+
+  minimization.input
+  minimization.parameters
+
+This feature is most useful for formatting informative error messages
+without having to hard-wire the fully-qualified parameter names. Use
+``.__phil_path__()`` to ensure that the names are automatically correct
+even if the master file is changed in major ways. -- Note that the
+``.__phil_path__()`` method is available only for extracted scopes, not
+for extracted definitions (this would be very cumbersome to implement).
+
+The next important feature is a safety guard: assignment to a
+non-existing attribute leads to an exception. For example,
+if the attribute is mis-spelled::
+
+  working_params.minimization.input.filename = "other.dat"
+
+Result::
+
+  AttributeError: Assignment to non-existing attribute "minimization.input.filename"
+    Please correct the attribute name, or to create
+    a new attribute use: obj.__inject__(name, value)
+
+In addition to trivial spelling errors, the safety guard traps
+overlooked dependencies related to changes in the master file.
+
+In some (unusual) situations it may be useful to attach attributes to
+an extracted scope that have no correspondence in the master file.
+Use the ``.__inject__(name, value)`` method for this purpose to
+by-pass the safety-guard. As a side-effect of this design, injected
+attributes are easily pin-pointed in the source code (simply search
+for ``__inject__``), which can be a big help in maintaining a large
+code base.
 
 Multiple scopes with a list of defaults in the Phil master
 ----------------------------------------------------------
