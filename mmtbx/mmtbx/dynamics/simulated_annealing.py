@@ -27,10 +27,9 @@ def manager(simulated_annealing_params,
             mask_parameters,
             target_weights,
             macro_cycle,
-            wxnc_scale,
             tan_b_iso_max,
             h_params,
-            fmodel,
+            fmodels,
             model,
             out = None):
   if(out is None): out = sys.stdout
@@ -40,16 +39,14 @@ def manager(simulated_annealing_params,
   minimized = mmtbx.refinement.minimization.lbfgs(
     restraints_manager       = model.restraints_manager,
     refine_xyz               = True,
-    fmodel                   = fmodel,
+    fmodels                  = fmodels,
     model                    = model,
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
               max_iterations = refinement_parameters.max_number_of_iterations),
-    wx                          = target_weights.wx_xyz(),
-    wc                          = target_weights.wc(),
-    wxnc_scale                  = wxnc_scale,
-    h_params                    = h_params,
-    verbose                     = 0)
-
+    target_weights           = target_weights,
+    h_params                 = h_params,
+    verbose                  = 0)
+  fmodel = fmodels.fmodel_xray() # XXX use only xray data
   minimized.collector.show(text = "lbfgs minimization", out = out)
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
                                update_f_calc            = True,

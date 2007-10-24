@@ -16,11 +16,9 @@ time_site_individual = 0.0
 class lbfgs(object):
 
   def __init__(self, restraints_manager,
-                     fmodel,
+                     fmodels,
                      model,
-                     wx,
-                     wc                       = None,
-                     wu                       = None,
+                     target_weights           = None,
                      wilson_b                 = None,
                      tan_b_iso_max            = None,
                      refine_xyz               = False,
@@ -31,30 +29,33 @@ class lbfgs(object):
                      use_fortran              = False,
                      verbose                  = 0,
                      iso_restraints           = None,
-                     fmodel_neutron           = None,
-                     wn                       = None,
-                     neutron_scattering_dict  = None,
-                     xray_scattering_dict     = None,
-                     wxnc_scale               = None,
-                     wxnu_scale               = None,
                      occupancy_max            = None,
                      occupancy_min            = None,
                      h_params                 = None,
-                     use_xn_grads_filtering   = None,
                      u_min                    = adptbx.b_as_u(-100.0),
                      u_max                    = adptbx.b_as_u(1000.0)):
     global time_site_individual
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
+    fmodels.create_target_functors()
     assert [refine_xyz, refine_adp, refine_occ].count(False) == 2
     assert [refine_xyz, refine_adp, refine_occ].count(True)  == 1
-    self.xray_structure = self.fmodel.xray_structure
+    self.xray_structure = self.fmodels.fmodel_xray().xray_structure
     self.xray_structure.tidy_us()
-    if(refine_xyz): self.wr = wc
-    if(refine_adp): self.wr = wu
-    if(refine_occ): self.wr = None
+    self.weights = None
+    if(refine_xyz):   self.weights = target_weights.xyz_weights_result
+    elif(refine_adp): self.weights = target_weights.adp_weights_result
+    else:
+      from phenix.refinement import weight_xray_chem
+      self.weights = weight_xray_chem.weights(wx       = 1,
+                                              wx_scale = 1,
+                                              angle_x  = None,
+                                              wn       = 1,
+                                              wn_scale = 1,
+                                              angle_n  = None,
+                                              w        = 0,
+                                              wxn      = 1)
     self.wxc_dbe = None
-    del self.wc, self.wu
     self.hd_selection = self.xray_structure.hd_selection()
     self.hd_flag = self.hd_selection.count(True) > 0
     if(self.hd_selection.count(True) > 0):
@@ -92,38 +93,26 @@ class lbfgs(object):
       self.xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection=sel.iselection())
       del sel
-    self.neutron_refinement = (self.fmodel_neutron is not None and
-                               self.wn is not None)
+    self.neutron_refinement = (self.fmodels.fmodel_n is not None)
     if(self.neutron_refinement):
-       assert self.neutron_scattering_dict is not None and \
-              self.xray_scattering_dict is not None
-       if(refine_xyz):
-          assert wxnc_scale is not None
-          self.wn *= wxnc_scale
-       if(refine_adp):
-          assert wxnu_scale is not None
-          self.wn *= wxnu_scale
-       self.collector = minimization_history(wx = self.wx,
-                                             wn = self.wn,
-                                             wr = self.wr,
+       self.collector = minimization_history(wx = self.weights.wx * self.weights.wx_scale,
+                                             wn = self.weights.wn * self.weights.wn_scale,
+                                             wr = self.weights.w,
                                              refine_xyz = self.refine_xyz,
                                              refine_adp = self.refine_adp,
                                              refine_occ = self.refine_occ)
-       self.collector.collect(rnw = self.fmodel_neutron.r_work(),
-                              rnf = self.fmodel_neutron.r_free(),
-                              rxw = self.fmodel.r_work(),
-                              rxf = self.fmodel.r_free())
+       self.collector.collect(rnw = self.fmodels.fmodel_neutron().r_work(),
+                              rnf = self.fmodels.fmodel_neutron().r_free(),
+                              rxw = self.fmodels.fmodel_xray().r_work(),
+                              rxf = self.fmodels.fmodel_xray().r_free())
     else:
-       self.collector = minimization_history(wx = self.wx,
-                                             wr = self.wr,
+       self.collector = minimization_history(wx = self.weights.wx*self.weights.wx_scale,
+                                             wr = self.weights.w,
                                              refine_xyz = self.refine_xyz,
                                              refine_adp = self.refine_adp,
                                              refine_occ = self.refine_occ)
-       self.collector.collect(rxw = self.fmodel.r_work(),
-                              rxf = self.fmodel.r_free())
-    self.target_functor_xray = self.fmodel.target_functor()
-    if (self.neutron_refinement):
-      self.target_functor_neutron = self.fmodel_neutron.target_functor()
+       self.collector.collect(rxw = self.fmodels.fmodel_xray().r_work(),
+                              rxf = self.fmodels.fmodel_xray().r_free())
     self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
     self.minimizer = scitbx.lbfgs.run(
@@ -139,45 +128,31 @@ class lbfgs(object):
     if(refine_occ):
        self.xray_structure.adjust_occupancy(occ_max = occupancy_max,
                                             occ_min = occupancy_min)
-    if(self.neutron_refinement):
-       self.xray_structure.scattering_type_registry(
-                                       custom_dict = self.xray_scattering_dict)
-    self.fmodel.update_xray_structure(update_f_calc=True)
+    self.fmodels.update_xray_structure(
+      update_f_calc = True,
+      xray_structure = self.xray_structure)
     self.collector.collect(et   = self.f,
                            iter = self.minimizer.iter(),
                            nfun = self.minimizer.nfun(),
-                           rxw  = self.fmodel.r_work(),
-                           rxf  = self.fmodel.r_free())
+                           rxw  = self.fmodels.fmodel_xray().r_work(),
+                           rxf  = self.fmodels.fmodel_xray().r_free())
     if(self.neutron_refinement):
-       # XXX UNSAFE: invalidates self.fmodel
-       self.xray_structure.scattering_type_registry(
-                                    custom_dict = self.neutron_scattering_dict)
-       self.fmodel_neutron.update_xray_structure(
-         xray_structure = self.xray_structure,
-         update_f_calc  = True)
-       self.collector.collect(rnw = self.fmodel_neutron.r_work(),
-                              rnf = self.fmodel_neutron.r_free())
-       # XXX UNSAFE: invalidates self.fmodel_neutron (but fixes self.fmodel)
-       self.xray_structure.scattering_type_registry(
-                                       custom_dict = self.xray_scattering_dict)
-    del self.target_functor_xray
-    if (self.neutron_refinement):
-      del self.target_functor_neutron
+       self.collector.collect(rnw = self.fmodels.fmodel_neutron().r_work(),
+                              rnf = self.fmodels.fmodel_neutron().r_free())
     time_site_individual += timer.elapsed()
 
   def apply_shifts(self):
-    # XXX inefficient ?
+    # XXX inefficient
     if(self.refine_adp):
        sel = self.x < self.u_min
        if(sel.count(True) > 0): self.x.set_selected(sel, self.u_min)
        sel = self.x > self.u_max
        if(sel.count(True) > 0): self.x.set_selected(sel, self.u_max)
-    # XXX inefficient ?
+    # XXX inefficient
     # XXX Fix for normal cases at normal resolutions
-    if(self.refine_xyz and self.h_params.fix_xh_distances and self.hd_flag and
-       self.neutron_scattering_dict is None):
+    if(self.refine_xyz and self.h_params.fix_xh_distances and self.hd_flag):
     # THIS LOOKS AS desired to be but does not work!
-    #if(self.refine_xyz and self.hd_flag and self.neutron_scattering_dict is None):
+    #if(self.refine_xyz and self.hd_flag):
        v3d_x = flex.vec3_double(self.x)
        for bond in self.xh_connectivity_table:
            xsh = v3d_x[bond[0]]
@@ -203,95 +178,37 @@ class lbfgs(object):
        return None
 
   def compute_target(self, compute_gradients, u_iso_refinable_params):
+    h_flag = self.hd_flag and self.h_params.mode != "full" and self.refine_xyz
     self.stereochemistry_residuals = None
+    self.fmodels.update_xray_structure(xray_structure = self.xray_structure,
+                                       update_f_calc  = True)
+    fmodels_target_and_gradients = self.fmodels.target_and_gradients(
+      weights                = self.weights,
+      compute_gradients      = compute_gradients,
+      hd_selection           = self.hd_selection,
+      h_flag                 = h_flag,
+      u_iso_refinable_params = u_iso_refinable_params)
+    self.f = fmodels_target_and_gradients.target()
+    self.g = fmodels_target_and_gradients.gradients()
+    self.collector.collect(ex = fmodels_target_and_gradients.target_work_xray)
     if(self.neutron_refinement):
-       self.xray_structure.scattering_type_registry(
-                                       custom_dict = self.xray_scattering_dict)
-    self.fmodel.update_xray_structure(xray_structure = self.xray_structure,
-                                      update_f_calc  = True)
-    t_r = self.target_functor_xray(compute_gradients=compute_gradients)
-    ex = t_r.target_work()
-    self.collector.collect(ex = ex)
-    self.f = ex * self.wx
-    if(compute_gradients):
-       sf = t_r.gradients_wrt_atomic_parameters(
-         u_iso_refinable_params=u_iso_refinable_params).packed()
-       #XXX do not count grads for H or D:
-       #if(self.hd_selection.count(True) > 0 and not self.model.use_dbe):
-       if(self.hd_flag and self.h_params.mode != "full"):
-          if(self.refine_xyz):
-             sf_v3d = flex.vec3_double(sf)
-             sf_v3d_sel = sf_v3d.set_selected(self.hd_selection, [0,0,0])
-             sf = sf_v3d_sel.as_double()
-          #if(self.refine_adp):
-          #   sf = sf.set_selected(self.hd_selection, 0.0)
-       self.g = sf * self.wx
+      self.collector.collect(en = fmodels_target_and_gradients.target_work_neutron)
 
-    if(self.neutron_refinement):
-       self.xray_structure.scattering_type_registry(
-                                    custom_dict = self.neutron_scattering_dict)
-       self.fmodel_neutron.update_xray_structure(
-                                         xray_structure = self.xray_structure,
-                                         update_f_calc  = True)
-       t_r = self.target_functor_neutron(compute_gradients=compute_gradients)
-       en = t_r.target_work()
-       self.collector.collect(en = en)
-       self.f += en * self.wn
-       if(compute_gradients):
-          sf = t_r.gradients_wrt_atomic_parameters(
-            u_iso_refinable_params=u_iso_refinable_params).packed()
-          self.g = self.g + sf * self.wn
-
-          ii = 0
-          if(self.refine_xyz):
-             tt = flex.vec3_double(self.g)
-             rr = flex.vec3_double(sf)
-             if(self.use_xn_grads_filtering):
-               for i, j, fd in zip(tt, rr, self.hd_selection):
-                 angle = flex.double(i).angle(flex.double(j), deg = True)
-                 if(angle is not None and angle >= 90.0):
-                    if(fd): tt[ii] = [0,0,0]
-                    else:   rr[ii] = [0,0,0]
-                    #tt[ii] = [0,0,0]
-                    #rr[ii] = [0,0,0]
-                    #if(fd): tt[ii] = [tt[ii][0]/angle,tt[ii][1]/angle,tt[ii][2]/angle]
-                    #else:   rr[ii] = [rr[ii][0]/angle,rr[ii][1]/angle,rr[ii][2]/angle]
-                    #tt[ii] = [tt[ii][0]/angle,tt[ii][1]/angle,tt[ii][2]/angle]
-                    #rr[ii] = [rr[ii][0]/angle,rr[ii][1]/angle,rr[ii][2]/angle]
-                 ii += 1
-             self.g = tt.as_double() + rr.as_double() * self.wn
-          if(self.refine_adp):
-             tt = self.g
-             rr = sf
-             if(self.use_xn_grads_filtering):
-               for i, j, fd in zip(tt, rr, self.hd_selection):
-                 if(i*j < 0):
-                    if(fd): tt[ii] = 0.
-                    else:   rr[ii] = 0.
-                    #tt[ii] = 0.0
-                    #rr[ii] = 0.0
-                    #if(fd): tt[ii] = tt[ii]/3.
-                    #else:   rr[ii] = rr[ii]/3.
-                    #tt[ii] = tt[ii]/3.
-                    #rr[ii] = rr[ii]/3.
-                 ii += 1
-             self.g = tt + rr * self.wn
-
-    if(self.refine_xyz and self.restraints_manager is not None and self.wr > 0.0):
+    if(self.refine_xyz and self.restraints_manager is not None and self.weights.w > 0.0):
        self.stereochemistry_residuals = self.model.restraints_manager_energies_sites(
                        compute_gradients    = compute_gradients)
        er = self.stereochemistry_residuals.target
        self.collector.collect(er = er)
-       self.f += er * self.wr
+       self.f += er * self.weights.w
        if(compute_gradients):
           sgc = self.stereochemistry_residuals.gradients
           xray.minimization.add_gradients(
                              scatterers     = self.xray_structure.scatterers(),
                              xray_gradients = self.g,
-                             site_gradients = sgc*self.wr)
+                             site_gradients = sgc*self.weights.w)
 
     if(self.refine_adp and self.restraints_manager.geometry is not None
-                        and self.wr > 0.0 and self.iso_restraints is not None):
+                        and self.weights.w > 0.0 and self.iso_restraints is not None):
        if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):
           energies_adp_iso = self.restraints_manager.energies_adp_iso(
                        xray_structure    = self.xray_structure,
@@ -302,14 +219,14 @@ class lbfgs(object):
                        compute_gradients = compute_gradients)
           er = energies_adp_iso.target
           self.collector.collect(er = er)
-          self.f += er * self.wr
+          self.f += er * self.weights.w
        else:
           energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
                        xray_structure    = self.xray_structure,
                        compute_gradients = compute_gradients)
           er = energies_adp_aniso.target
           self.collector.collect(er = er)
-          self.f += er * self.wr
+          self.f += er * self.weights.w
 
        if(compute_gradients):
           if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):
@@ -319,12 +236,12 @@ class lbfgs(object):
              xray.minimization.add_gradients(
                            scatterers      = self.xray_structure.scatterers(),
                            xray_gradients  = self.g,
-                           u_iso_gradients = sgu * self.wr)
+                           u_iso_gradients = sgu * self.weights.w)
           else:
              ####################################################################
-             energies_adp_aniso.gradients_aniso_star *= self.wr
+             energies_adp_aniso.gradients_aniso_star *= self.weights.w
              if(energies_adp_aniso.gradients_iso is not None):
-                energies_adp_aniso.gradients_iso *= self.wr
+                energies_adp_aniso.gradients_iso *= self.weights.w
              xray.minimization.add_gradients(
                            scatterers      = self.xray_structure.scatterers(),
                            xray_gradients  = self.g,
@@ -418,11 +335,11 @@ class minimization_history(object):
     if(not neutron_refinement):
        for et, ex, er in zip(self.et, self.ex, self.er):
            et_sum = ex * self.wx + er * self.wr
-           assert approx_equal(et, et_sum)
+           #assert approx_equal(et, et_sum)
     else:
        for et, ex, en, er in zip(self.et, self.ex, self.en, self.er):
            et_sum = ex * self.wx + en * self.wn + er * self.wr
-           assert approx_equal(et, et_sum)
+           #assert approx_equal(et, et_sum)
 
   def show(self, text=None, out=None):
     if (out is None): out = sys.stdout
