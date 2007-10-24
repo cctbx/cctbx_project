@@ -92,31 +92,24 @@ adp_restraints_master_params = iotbx.phil.parse("""\
 class manager(object):
   def __init__(
             self,
-            fmodel,
+            fmodels,
             model,
-            group_adp_selections      = None,
-            group_adp_selections_h    = None,
-            group_adp_params          = group_adp_master_params.extract(),
-            tls_selections            = None,
-            tls_params                = tls_master_params.extract(),
-            individual_adp_params     = individual_adp_master_params.extract(),
-            adp_restraints_params     = adp_restraints_master_params.extract(),
-            refine_adp_individual     = None,
-            refine_adp_group          = None,
-            refine_tls                = None,
-            tan_b_iso_max             = None,
-            restraints_manager        = None,
-            wu_individual             = None,
-            wx                        = None,
-            macro_cycle               = None,
-            log                       = None,
-            fmodel_neutron            = None,
-            wn                        = None,
-            neutron_scattering_dict   = None,
-            xray_scattering_dict      = None,
-            wxnu_scale                = None,
-            use_xn_grads_filtering    = None,
-            h_params                  = None):
+            group_adp_selections   = None,
+            group_adp_selections_h = None,
+            group_adp_params       = group_adp_master_params.extract(),
+            tls_selections         = None,
+            tls_params             = tls_master_params.extract(),
+            individual_adp_params  = individual_adp_master_params.extract(),
+            adp_restraints_params  = adp_restraints_master_params.extract(),
+            refine_adp_individual  = None,
+            refine_adp_group       = None,
+            refine_tls             = None,
+            tan_b_iso_max          = None,
+            restraints_manager     = None,
+            target_weights         = None,
+            macro_cycle            = None,
+            log                    = None,
+            h_params               = None):
     global time_adp_refinement_py
     timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
@@ -140,10 +133,10 @@ class manager(object):
        else:
           gbr_selections = group_adp_selections
        xray.set_scatterer_grad_flags(
-                            scatterers = fmodel.xray_structure.scatterers(),
+                            scatterers = fmodels.fmodel_xray().xray_structure.scatterers(),
                             u_iso      = True)
        group_b_manager = mmtbx.refinement.group.manager(
-          fmodel                   = fmodel,
+          fmodel                   = fmodels.fmodel_xray(),
           selections               = gbr_selections,
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = 50,
@@ -152,14 +145,14 @@ class manager(object):
           log                      = log)
        # XXX u_aniso = True ONLY for TLS groups, and not all
        xray.set_scatterer_grad_flags(
-                               scatterers = fmodel.xray_structure.scatterers(),
+                               scatterers = fmodels.fmodel_xray().xray_structure.scatterers(),
                                u_aniso    = True)
        model.show_groups(tls = True, out = log)
-       current_target_name = fmodel.target_name
-       fmodel.update(target_name = "ls_wunit_k1")
-       tools.split_u(fmodel.xray_structure, tls_selections, offset)
+       current_target_name = fmodels.fmodel_xray().target_name
+       fmodels.fmodel_xray().update(target_name = "ls_wunit_k1")
+       tools.split_u(fmodels.fmodel_xray().xray_structure, tls_selections, offset)
        self.tls_refinement_manager = tools.tls_refinement(
-          fmodel                      = fmodel,
+          fmodel                      = fmodels.fmodel_xray(),
           model                       = model,
           selections                  = tls_selections,
           refine_T                    = tls_params.refine_T,
@@ -172,45 +165,37 @@ class manager(object):
           eps                         = tls_params.eps,
           out                         = log,
           macro_cycle = macro_cycle)
-       fmodel.update(target_name = current_target_name)
-       fmodel.update_xray_structure(
+       fmodels.fmodel_xray().update(target_name = current_target_name)
+       fmodels.update_xray_structure(
             xray_structure = self.tls_refinement_manager.fmodel.xray_structure,
-            update_f_calc  = True,
-            out            = log)
-       model.xray_structure = fmodel.xray_structure
+            update_f_calc  = True)
+       model.xray_structure = fmodels.fmodel_xray().xray_structure
 
     if(refine_adp_individual):
        print_statistics.make_sub_header(text= "Individual ADP refinement",
                                         out = log)
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
            max_iterations = individual_adp_params.iso.max_number_of_iterations)
-       assert fmodel.xray_structure is model.xray_structure
+       assert fmodels.fmodel_xray().xray_structure is model.xray_structure
        self.minimized = minimization.lbfgs(
                           restraints_manager       = restraints_manager,
-                          fmodel                   = fmodel,
+                          fmodels                  = fmodels,
                           model                    = model,
                           refine_adp               = True,
                           lbfgs_termination_params = lbfgs_termination_params,
-                          wx                       = wx,
-                          wu                       = wu_individual,
                           wilson_b                 = model.wilson_b,
                           tan_b_iso_max            = tan_b_iso_max,
                           iso_restraints           = adp_restraints_params.iso,
                           verbose                  = 0,
-                          fmodel_neutron           = fmodel_neutron,
-                          wn                       = wn,
-                          neutron_scattering_dict  = neutron_scattering_dict,
-                          xray_scattering_dict     = xray_scattering_dict,
-                          wxnu_scale               = wxnu_scale,
-                          use_xn_grads_filtering   = use_xn_grads_filtering,
+                          target_weights = target_weights,
                           h_params                 = h_params)
        self.minimized.collector.show(text = "LBFGS minimization", out  = log)
-       assert fmodel.xray_structure is model.xray_structure
+       assert fmodels.fmodel_xray().xray_structure is model.xray_structure
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
                                         out = log)
        group_b_manager = mmtbx.refinement.group.manager(
-          fmodel                   = fmodel,
+          fmodel                   = fmodels.fmodel_xray(),
           selections               = group_adp_selections,
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = group_adp_params.max_number_of_iterations,
@@ -218,20 +203,20 @@ class manager(object):
           run_finite_differences_test = group_adp_params.run_finite_differences_test,
           refine_adp               = True,
           log                      = log)
-    if(fmodel.xray_structure.hd_selection().count(True) > 0 and
+    if(fmodels.fmodel_xray().xray_structure.hd_selection().count(True) > 0 and
        not model.use_dbe and h_params.mode == "riding" and
-       neutron_scattering_dict is None):
+       fmodels.fmodel_neutron() is None):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement for H atoms",
                                         out = log)
        # XXX FUTURE: smart decision about which selection to use and at which resolution.
        if(h_params.refine == "one_b_per_residue"):
           sel_mode = group_adp_selections_h
        elif(h_params.refine == "one_b_per_molecule"):
-          sel_mode = [fmodel.xray_structure.hd_selection().iselection()]
+          sel_mode = [fmodels.fmodel_xray().xray_structure.hd_selection().iselection()]
        else:
           raise RuntimeError("No refinement mode.")
        group_b_manager = mmtbx.refinement.group.manager(
-          fmodel                   = fmodel,
+          fmodel                   = fmodels.fmodel_xray(),
           selections               = sel_mode,
           convergence_test         = group_adp_params.convergence_test,
           max_number_of_iterations = 30,
