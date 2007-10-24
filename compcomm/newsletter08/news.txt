@@ -340,7 +340,7 @@ in Newsletter No. 5. Important new features and changes include:
     the (few) changes.
 
   - The previous plain ``include`` syntax was changed to ``include file``;
-    the new ``include scope`` was syntax added. The ``include scope``
+    the new ``include scope`` syntax was added. The ``include scope``
     feature builds on Python's standard import mechanism. In practice
     it is found to be much more useful than the ``include file``
     feature.
