@@ -153,6 +153,25 @@ class graph(object):
     return paths
 
 
+  def find_paths_of_length(self, start, length, path=[]):
+    ## please check
+    ## http://www.python.org/doc/essays/graphs.html
+    path = path + [start]
+    if len(path)==length:
+      return [path]
+    if not self.o.has_key(start):
+      return []
+    paths = []
+    for node in self.o[start]:
+      if node not in path:
+        newpaths = self.find_paths_of_length(node, length, path)
+        for newpath in newpaths:
+          paths.append(newpath)
+    return paths
+
+
+
+
   def find_shortest_path(self, start, end, path=[]):
     ## please check
     ## http://www.python.org/doc/essays/graphs.html
