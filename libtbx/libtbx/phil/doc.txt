@@ -180,9 +180,9 @@ with embedded Phil syntax::
 
   ## extract code begin: doc_code.py
 
-  import libtbx.phil
+  from libtbx.phil import parse
 
-  master_phil = libtbx.phil.parse("""
+  master_phil = parse("""
     minimization.input {
       file_name = None
         .type = path
@@ -191,13 +191,13 @@ with embedded Phil syntax::
     }
     """)
 
-  user_phil = libtbx.phil.parse("""
+  user_phil = parse("""
     minimization.input {
       file_name = experiment.dat
     }
     """)
 
-  command_line_phil = libtbx.phil.parse(
+  command_line_phil = parse(
     "minimization.input.label=set2")
 
   working_phil = master_phil.fetch(
@@ -329,7 +329,7 @@ is a multiple definition in a master file::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""
+  master_phil = parse("""
     minimization.input {
       file_name = None
         .type = path
@@ -343,7 +343,7 @@ And these are multiple values for this definition in a user file::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse("""
+  user_phil = parse("""
     minimization.input {
       file_name = experiment1.dat
       file_name = experiment2.dat
@@ -376,7 +376,7 @@ Multiple scopes work similarly, for example::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""
+  master_phil = parse("""
     minimization {
       input
         .multiple = True
@@ -395,7 +395,7 @@ A corresponding user file may look this this::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse("""
+  user_phil = parse("""
     minimization {
       input {
         file_name = experiment1.dat
@@ -434,7 +434,7 @@ would be a plausible master file::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""
+  master_phil = parse("""
     minimization {
       input
         .multiple = True
@@ -454,7 +454,7 @@ This is a possible corresponding user file::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse("""
+  user_phil = parse("""
     minimization {
       input {
         file_name = experiment1.dat
@@ -491,8 +491,6 @@ one Python string::
   experiment2.dat
   ['set2', 'set3']
 
-XXX exact duplicates are removed
-
 ===========================================================
 fetch_diff: difference between master_phil and working_phil
 ===========================================================
@@ -507,7 +505,7 @@ Phil objects, the ``.fetch_diff()`` method is available. For example::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""
+  master_phil = parse("""
     minimization.parameters {
       method = *bfgs conjugate_gradient
         .type = choice
@@ -516,7 +514,7 @@ Phil objects, the ``.fetch_diff()`` method is available. For example::
     }
     """)
 
-  user_phil = libtbx.phil.parse("""
+  user_phil = parse("""
     minimization.parameters {
       method = bfgs *conjugate_gradient
     }
@@ -585,7 +583,7 @@ syntax. A few examples say more than many words::
 
   ## extract code begin: doc_code.py
 
-  var_phil = libtbx.phil.parse("""
+  var_phil = parse("""
     root_name = peak
     file_name = $root_name.mtz
     full_path = $HOME/$file_name
@@ -635,6 +633,7 @@ For example::
 
   ## extract code begin: doc_code.py
 
+  import libtbx.phil
   from libtbx.phil import tokenizer
 
   class upper_converters:
@@ -663,12 +662,12 @@ argument to Phil's ``parse`` function::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""
+  master_phil = parse("""
     value = None
       .type = upper
     """,
       converter_registry=converter_registry)
-  user_phil = libtbx.phil.parse("value = extracted")
+  user_phil = parse("value = extracted")
   working_params = master_phil.fetch(source=user_phil).extract()
   print working_params.value
 
@@ -713,14 +712,14 @@ Here are two examples, a single choice ``gender`` and a multi choice
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""
+  master_phil = parse("""
     gender = male female
       .type = choice
     favorite_sweets = ice_cream chocolate candy_cane cookies
       .type = choice(multi=True)
     """)
 
-  jims_choices = libtbx.phil.parse("""
+  jims_choices = parse("""
     gender = *male female
     favorite_sweets = *ice_cream chocolate candy_cane *cookies
     """)
@@ -741,12 +740,14 @@ output of the example is::
   favorite_sweets = *ice_cream chocolate candy_cane *cookies
   male ['ice_cream', 'cookies']
 
+XXX gender = male
+
 If the ``.optional`` attribute is not defined, it defaults to ``True``
 and this is possible::
 
   ## extract code begin: doc_code.py
 
-  ignorant_choices = libtbx.phil.parse("""
+  ignorant_choices = parse("""
     gender = male female
     favorite_sweets = ice_cream chocolate candy_cane cookies
     """)
@@ -781,7 +782,7 @@ further supported by this syntax::
 
   ## extract code begin: doc_code.py
 
-  greedy_choices = libtbx.phil.parse("""
+  greedy_choices = parse("""
     favorite_sweets=ice_cream+chocolate+cookies
     """)
 
@@ -799,7 +800,7 @@ Finally, if the ``.optional`` attribute is not specified or ``True``,
 
   ## extract code begin: doc_code.py
 
-  no_thanks_choices = libtbx.phil.parse("""
+  no_thanks_choices = parse("""
     favorite_sweets=None
     """)
 
@@ -821,7 +822,7 @@ sub-scopes. For example::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse("""
+  master_phil = parse("""
     minimization.input {
       file_name = None
         .type = path
@@ -832,7 +833,7 @@ sub-scopes. For example::
     }
     """)
 
-  user_phil = libtbx.phil.parse("""
+  user_phil = parse("""
     minimization.input.file_name = experiment.dat
     minimization.parameters.max_iterations = 5
     """)
@@ -897,38 +898,136 @@ attributes are easily pin-pointed in the source code (simply search
 for ``__inject__``), which can be a big help in maintaining a large
 code base.
 
-Multiple scopes with a list of defaults in the Phil master
-----------------------------------------------------------
+Multiple definitions and scopes
+-------------------------------
 
-XXX
+All Phil attributes of multiple definitions or scopes are determined
+by the first occurrence in the master file. All following instances in
+the master file are defaults. Any instances in user files (merged via
+``.fetch()``) are added to the default instances in the master file.
+For example::
 
-Multiple scopes with .optional = False
---------------------------------------
+  ## extract code begin: doc_code.py
 
-In a master file, the first occurrence of a multiple scope is a
-"template", all following occurrences are defaults. By default, the
-template will not get extracted, even if it contains defines that
-are not None.
+  master_phil = parse("""
+    plot
+      .multiple = True
+    {
+      style = line bar pie_chart
+        .type=choice
+      title = None
+        .type = str
+    }
+    plot {
+      style = line
+      title = Line plot (default in master)
+    }
+    """)
 
-definition with .multiple = True
-  .extract() returns a list of definition values.
+  user_phil = parse("""
+    plot {
+      style = bar
+      title = Bar plot (provided by user)
+    }
+    """)
 
-scope with .multiple = True
-  .extract() returns a list of definition values or scope_extract
-  objects (which inherit from Python's built-in list).
+  working_phil = master_phil.fetch(source=user_phil)
+  working_phil.show()
 
-With .optional=True (default if not specified explicitly):
-  The master definition is NEVER included in the extract result list.
-  It does not matter how often it is repeated in the user file.
+  ## extract code end
 
-With .optional=False:
-  The master definition is ALWAYS included in the extract result list.
-  It is always the first entry in the list, no matter how often
-  it is repeated in the user file.
+Output::
 
-This set of rules is designed to produce easily predictable results
-in situations where multiple parameter files are merged (with
-master.fetch()), including complete copies of the master file.
+  plot {
+    style = *line bar pie_chart
+    title = Line plot (default in master)
+  }
+  plot {
+    style = line *bar pie_chart
+    title = Bar plot (provided by user)
+  }
+
+``.extract()`` will produce a list with two elements::
+
+  ## extract code begin: doc_code.py
+
+  working_params = working_phil.extract()
+  print working_params.plot
+
+  ## extract code end
+
+Output::
+
+  [<libtbx.phil.scope_extract object at 0x2b1ccb5b1910>,
+   <libtbx.phil.scope_extract object at 0x2b1ccb5b1c10>]
+
+Note that the first (i.e. master) occurrence of the scope is not
+extracted. In practice this is usually the desired behavior, but it
+can be changed by setting the ``plot`` scope attribute ``.optional
+= False``. For example::
+
+  ## extract code begin: doc_code.py
+
+  master_phil = parse("""
+    plot
+      .multiple = True
+      .optional = False
+    {
+      style = line bar pie_chart
+        .type=choice
+      title = None
+        .type = str
+    }
+    plot {
+      style = line
+      title = Line plot (default in master)
+    }
+    """)
+
+  ## extract code end
+
+With the ``user_phil`` as before, ``.show()`` and ``.extract()`` now
+produce three entries each::
+
+  ## extract code begin: doc_code.py
+
+  working_phil = master_phil.fetch(source=user_phil)
+  working_phil.show()
+  print working_phil.extract().plot
+
+  ## extract code end
+
+Output::
+
+  plot {
+    style = line bar pie_chart
+    title = None
+  }
+  plot {
+    style = *line bar pie_chart
+    title = Line plot (default in master)
+  }
+  plot {
+    style = line *bar pie_chart
+    title = Bar plot (provided by user)
+  }
+  [<libtbx.phil.scope_extract object at 0x2af4c307bcd0>,
+   <libtbx.phil.scope_extract object at 0x2af4c307bd50>,
+   <libtbx.phil.scope_extract object at 0x2af4c307be10>]
+
+With ``.optional = True``, the master of a multiple definition or
+scope is *never* extracted. With ``.optional = False``, it is *always*
+extracted, and always first in the list.
+
+The "always first in the list" rule for multiple master objects is
+special. Other instances of multiple scopes are shown and extracted
+in the order in which they appear in the master file and the merged
+user file(s), with all *exact* duplicates removed. If duplicates are
+detected, the earlier copy is removed, unless it is the master.
+
+These rules are designed to produce easily predictable results in
+situations where multiple Phil files are merged (via ``.fetch()``),
+including complete copies of the master file.
 
 Semicolon
 ---------
@@ -937,6 +1036,11 @@ XXX
 
 Syntax-aware comments
 ---------------------
+
+XXX
+
+Quoting
+-------
 
 XXX
 
