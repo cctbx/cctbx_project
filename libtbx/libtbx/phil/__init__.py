@@ -226,18 +226,28 @@ class choice_converters(object):
       for word in words:
         if (word.value.startswith("*")):
           result.append(word.value[1:])
+      if (len(result) == 0
+          and master.optional is not None and not master.optional):
+        raise RuntimeError(
+          "Unspecified choice for %s:"
+          " at least one choice must be selected%s" % (
+            master.full_path(), words[0].where_str()))
     else:
       result = None
       for word in words:
         if (word.value.startswith("*")):
           if (result is not None):
             raise RuntimeError(
-              "Multiple choices for %s; only one is possible%s" % (
+              "Multiple choices for %s;"
+              " only one choice can be selected%s" % (
                 master.full_path(), words[0].where_str()))
           result = word.value[1:]
-      if (result is None and not master.optional):
-        raise RuntimeError("Unspecified choice for %s%s" % (
-          master.full_path(), words[0].where_str()))
+      if (result is None
+          and (master.optional is not None and not master.optional)):
+        raise RuntimeError(
+          "Unspecified choice for %s:"
+          " exactly one choice must be selected%s" % (
+            master.full_path(), words[0].where_str()))
     return result
 
   def as_words(self, python_object, master):
@@ -268,7 +278,8 @@ class choice_converters(object):
         value=value, quote_token=word.quote_token))
     if (not self.multi):
       if (n_choices == 0
-          and (not master.optional or python_object is not None)):
+          and ((master.optional is not None and not master.optional)
+               or python_object is not None)):
         raise RuntimeError("Invalid choice: %s=%s" % (
           master.full_path(), str(python_object)))
     else:
@@ -279,7 +290,8 @@ class choice_converters(object):
       if (n != 0):
         raise RuntimeError("Invalid %s: %s=%s" % (
           str(self), master.full_path(), str(unused)))
-      if (n_choices == 0 and not master.optional):
+      if (n_choices == 0
+          and (master.optional is not None and not master.optional)):
         raise RuntimeError(
           "Empty list for mandatory %s: %s" % (
             str(self), master.full_path()))
@@ -291,7 +303,8 @@ class choice_converters(object):
       if (word.value.startswith("*")): value = word.value[1:]
       else: value = word.value
       flags[value] = False
-    if (not master.optional or not is_plain_none(words=source_words)):
+    if (   (master.optional is not None and not master.optional)
+        or not is_plain_none(words=source_words)):
       have_quote_or_star = False
       have_plus = False
       for word in source_words:

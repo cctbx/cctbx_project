@@ -329,7 +329,7 @@ is a multiple definition in a master file::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse(input_string="""\
+  master_phil = libtbx.phil.parse("""\
     minimization.input {
       file_name = None
         .type = path
@@ -343,7 +343,7 @@ And these are multiple values for this definition in a user file::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse(input_string="""\
+  user_phil = libtbx.phil.parse("""\
     minimization.input {
       file_name = experiment1.dat
       file_name = experiment2.dat
@@ -376,7 +376,7 @@ Multiple scopes work similarly, for example::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse(input_string="""\
+  master_phil = libtbx.phil.parse("""\
     minimization {
       input
         .multiple = True
@@ -395,7 +395,7 @@ A corresponding user file may look this this::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse(input_string="""\
+  user_phil = libtbx.phil.parse("""\
     minimization {
       input {
         file_name = experiment1.dat
@@ -434,7 +434,7 @@ would be a plausible master file::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse(input_string="""\
+  master_phil = libtbx.phil.parse("""\
     minimization {
       input
         .multiple = True
@@ -454,7 +454,7 @@ This is a possible corresponding user file::
 
   ## extract code begin: doc_code.py
 
-  user_phil = libtbx.phil.parse(input_string="""\
+  user_phil = libtbx.phil.parse("""\
     minimization {
       input {
         file_name = experiment1.dat
@@ -505,7 +505,7 @@ Phil objects, the ``.fetch_diff()`` method is available. For example::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse(input_string="""\
+  master_phil = libtbx.phil.parse("""\
     minimization.parameters {
       method = *bfgs conjugate_gradient
         .type = choice
@@ -514,7 +514,7 @@ Phil objects, the ``.fetch_diff()`` method is available. For example::
     }
     """)
 
-  user_phil = libtbx.phil.parse(input_string="""\
+  user_phil = libtbx.phil.parse("""\
     minimization.parameters {
       method = bfgs *conjugate_gradient
     }
@@ -661,11 +661,10 @@ argument to Phil's ``parse`` function::
 
   ## extract code begin: doc_code.py
 
-  master_phil = libtbx.phil.parse(
-    input_string="""\
-  value = None
-    .type = upper
-  """,
+  master_phil = libtbx.phil.parse("""\
+    value = None
+      .type = upper
+    """,
       converter_registry=converter_registry)
   user_phil = libtbx.phil.parse("value = extracted")
   working_params = master_phil.fetch(source=user_phil).extract()
@@ -703,10 +702,110 @@ extended converter registry as the default. See, for example,
 Details
 =======
 
-.type = choice
---------------
+The built-in ``choice`` converters support single and multi choices.
+Here are two examples, a single choice ``gender`` and a multi choice
+``favorite_sweets``::
 
-XXX
+  ## extract code begin: doc_code.py
+
+  master_phil = libtbx.phil.parse("""\
+    gender = male female
+      .type = choice
+    favorite_sweets = ice_cream chocolate candy_cane cookies
+      .type = choice(multi=True)
+    """)
+
+  jims_choices = libtbx.phil.parse("""\
+    gender = *male female
+    favorite_sweets = *ice_cream chocolate candy_cane *cookies
+    """)
+
+  jims_phil = master_phil.fetch(source=jims_choices)
+  jims_phil.show()
+  jims_params = jims_phil.extract()
+  print jims_params.gender, jims_params.favorite_sweets
+
+  ## extract code end
+
+Selected items are marked with a star ``*``. The ``.extract()``
+method returns either a string with the selected value (single choice)
+or a list of strings with all selected values (multi choice). The
+output of the example is::
+
+  gender = *male female
+  favorite_sweets = *ice_cream chocolate candy_cane *cookies
+  male ['ice_cream', 'cookies']
+
+If the ``.optional`` attribute is not defined, it defaults to ``True``
+and this is possible::
+
+  ## extract code begin: doc_code.py
+
+  ignorant_choices = libtbx.phil.parse("""\
+    gender = male female
+    favorite_sweets = ice_cream chocolate candy_cane cookies
+    """)
+
+  ignorant_params = master_phil.fetch(source=ignorant_choices).extract()
+  print ignorant_params.gender, ignorant_params.favorite_sweets
+
+  ## extract code end
+
+Output::
+
+  None []
+
+In this case the application has to deal with the ``None`` and
+the empty list. If ``.optional = False``, ``.extract()`` will lead
+to informative error messages. The application will never receive
+``None`` or an empty list.
+
+If a value in the user file is not a possible choice, ``.extract()``
+leads to an error message listing all possible choices, for example::
+
+  Sorry: Not a possible choice for favorite_sweets: icecream
+    Possible choices are:
+      ice_cream
+      chocolate
+      candy_cane
+      cookies
+
+This message is designed to aid users in recovering from mis-spelled
+choices typed in at the command-line. Command-line choices are
+further supported by this syntax::
+
+  ## extract code begin: doc_code.py
+
+  greedy_choices = libtbx.phil.parse("""\
+    favorite_sweets=ice_cream+chocolate+cookies
+    """)
+
+  greedy_params = master_phil.fetch(source=greedy_choices).extract()
+  print greedy_params.favorite_sweets
+
+  ## extract code end
+
+Ouput::
+
+  ['ice_cream', 'chocolate', 'cookies']
+
+Finally, if the ``.optional`` attribute is not specified or ``True``,
+``None`` can be assigned::
+
+  ## extract code begin: doc_code.py
+
+  no_thanks_choices = libtbx.phil.parse("""\
+    favorite_sweets=None
+    """)
+
+  no_thanks_params = master_phil.fetch(source=no_thanks_choices).extract()
+  print no_thanks_params.favorite_sweets
+
+  ## extract code end
+
+Output::
+
+  []
 
 scope_extract
 -------------
@@ -718,8 +817,8 @@ Multiple scopes with a list of defaults in the Phil master
 
 XXX
 
-.multiple = True; .optional = False
------------------------------------
+Multiple scopes with .optional = False
+--------------------------------------
 
 In a master file, the first occurrence of a multiple scope is a
 "template", all following occurrences are defaults. By default, the
@@ -748,5 +847,15 @@ master.fetch()), including complete copies of the master file.
 
 Semicolon
 ---------
+
+XXX
+
+Syntax-aware comments
+---------------------
+
+XXX
+
+fetch option: track_unused_definitions
+--------------------------------------
 
 XXX

@@ -3110,6 +3110,9 @@ group {
     .type=choice(multi = True)
   f=a b c
     .type=choice(multi =True)
+  f=a b c
+    .type=choice(multi =True)
+    .optional=0
   g="/var/tmp/foo"
     .type=path
   h="var.tmp.foo"
@@ -3161,13 +3164,20 @@ group {
   try: parameters.get(path="group.e",
     with_substitution=False).objects[1].extract()
   except RuntimeError, e:
-    assert str(e) \
-      == 'Multiple choices for group.e; only one is possible (input line 13)'
+    assert str(e) == 'Multiple choices for group.e;' \
+      ' only one choice can be selected (input line 13)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="group.e",
     with_substitution=False).objects[2].extract()
   except RuntimeError, e:
-    assert str(e) == 'Unspecified choice for group.e (input line 15)'
+    assert str(e) == 'Unspecified choice for group.e:' \
+      ' exactly one choice must be selected (input line 15)'
+  else: raise RuntimeError("Exception expected.")
+  try: parameters.get(path="group.f",
+    with_substitution=False).objects[3].extract()
+  except RuntimeError, e:
+    assert str(e) == 'Unspecified choice for group.f:' \
+      ' at least one choice must be selected (input line 24)'
   else: raise RuntimeError("Exception expected.")
   assert parameters.get(path="group.e").objects[0].type \
       is parameters.get(path="group.e").objects[1].type
@@ -3192,7 +3202,7 @@ group {
   try: parameters.get(path="group.i",
     with_substitution=False).objects[1].extract()
   except RuntimeError, e:
-    assert str(e) == 'Integer expression expected, "1/2" found (input line 30)'
+    assert str(e) == 'Integer expression expected, "1/2" found (input line 33)'
   else: raise RuntimeError("Exception expected.")
   assert parameters.get(path="group.j",
     with_substitution=False).objects[0].extract() == 0.5
@@ -3200,13 +3210,13 @@ group {
     with_substitution=False).objects[1].extract()
   except RuntimeError, e:
     assert str(e) == \
-      """Floating-point expression expected, "'a'" found (input line 34)"""
+      """Floating-point expression expected, "'a'" found (input line 37)"""
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="group.j",
     with_substitution=False).objects[2].extract()
   except RuntimeError, e:
     assert str(e) == 'Error interpreting "a" as a numeric expression:' \
-                   + " NameError: name 'a' is not defined (input line 36)"
+                   + " NameError: name 'a' is not defined (input line 39)"
   else: raise RuntimeError("Exception expected.")
   assert parameters.get(path="group.n",
     with_substitution=False).objects[0].extract() is None
@@ -3226,25 +3236,25 @@ group {
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
     assert str(e) \
-        == 'Error interpreting "True" as a numeric expression (input line 50)'
+        == 'Error interpreting "True" as a numeric expression (input line 53)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="group.int_false",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
     assert str(e) \
-        == 'Error interpreting "False" as a numeric expression (input line 52)'
+        == 'Error interpreting "False" as a numeric expression (input line 55)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="group.float_true",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
     assert str(e) \
-        == 'Error interpreting "True" as a numeric expression (input line 54)'
+        == 'Error interpreting "True" as a numeric expression (input line 57)'
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="group.float_false",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
     assert str(e) \
-        == 'Error interpreting "False" as a numeric expression (input line 56)'
+        == 'Error interpreting "False" as a numeric expression (input line 59)'
   else: raise RuntimeError("Exception expected.")
   parameters = phil.parse(input_string="""\
 group {
@@ -4330,7 +4340,7 @@ class foo2_converters(object):
 foo_converter_registry = phil.extended_converter_registry(
   additional_converters=[foo1_converters, foo2_converters])
 
-def exercise_choice_exceptions():
+def exercise_choice():
   master = phil.parse(input_string="""\
 x=*a b
   .type=choice
@@ -4364,6 +4374,7 @@ x=*a a
   master = phil.parse(input_string="""\
 x=*a b
   .type=choice(multi=True)
+  .optional=False
 y=a b
   .type=choice(multi=True)
   .optional=True
@@ -4378,6 +4389,36 @@ y=a b
   try: master.format(py_params)
   except RuntimeError, e:
     assert str(e) == "Empty list for mandatory choice(multi=True): x"
+  else: raise RuntimeError("Exception expected.")
+  master = phil.parse(input_string="""\
+x=*a b
+  .type=choice(multi=True)
+""")
+  py_params = master.extract()
+  py_params.x = []
+  assert not show_diff(master.format(py_params).as_str(), """\
+x = a b
+""")
+  #
+  master = phil.parse(input_string="""\
+x=*a b
+  .type=choice
+""")
+  py_params = master.extract()
+  py_params.x = None
+  assert not show_diff(master.format(py_params).as_str(), """\
+x = a b
+""")
+  master = phil.parse(input_string="""\
+x=*a b
+  .type=choice
+  .optional=False
+""")
+  py_params = master.extract()
+  py_params.x = None
+  try: master.format(py_params)
+  except RuntimeError, e:
+    assert str(e) == "Invalid choice: x=None"
   else: raise RuntimeError("Exception expected.")
 
 def exercise_type_constructors():
@@ -4766,7 +4807,7 @@ def exercise():
   exercise_extract()
   exercise_format()
   exercise_type_constructors()
-  exercise_choice_exceptions()
+  exercise_choice()
   exercise_scope_call()
   exercise_command_line()
   exercise_choice_multi_plus_support()
