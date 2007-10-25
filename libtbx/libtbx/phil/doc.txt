@@ -520,7 +520,8 @@ Phil objects, the ``.fetch_diff()`` method is available. For example::
     }
     """)
 
-  diff_phil = master_phil.fetch_diff(source=user_phil)
+  working_phil = master_phil.fetch(source=user_phil)
+  diff_phil = master_phil.fetch_diff(source=working_phil)
   diff_phil.show()
 
   ## extract code end
@@ -1034,20 +1035,119 @@ These rules are designed to produce easily predictable results in
 situations where multiple Phil files are merged (via ``.fetch()``),
 including complete copies of the master file.
 
-Semicolon
----------
+Semicolon syntax
+----------------
 
-XXX
+In all the examples above, line breaks act as syntactical elements
+delineating the end of definitions. This is most obvious, but for
+convenience, Phil also supports using the semicolon ``;`` instead.
+For example::
 
-Syntax-aware comments
+  ## extract code begin: doc_code.py
+
+  phil_scope = parse("""
+     quick .multiple=true;.optional=false{and=very;.type=str;dirty=use only on command-lines, please!;.type=str}
+     """)
+
+  phil_scope.show(attributes_level=2)
+
+  ## extract code end
+
+Clearly, the output looks much nicer::
+
+  quick
+    .optional = False
+    .multiple = True
+  {
+    and = very
+      .type = str
+    dirty = use only on command-lines, please!
+      .type = str
+  }
+
+Master files generally shouldn't make use of the semicolon syntax, even
+though it is possible. In user files it is more acceptable, but the main
+purpose is to support passing parameters from the command line.
+
+Note that the Phil output methods (``.show()``, ``.as_str()``) never
+make use of the semicolon syntax.
+
+Phil comments
+-------------
+
+Phil supports two types of comments:
+
+  - Simple one-line comments starting with a hash ``#``.
+    All following characters through the end of the line are ignored.
+
+  - Syntax-aware comments starting with an exclamation mark ``!``.
+
+The exclamation mark can be used to easily comment out entire
+syntactical constructs, for example a complete scope including all
+attributes::
+
+  ## extract code begin: doc_code.py
+
+  master_phil = parse("""
+    !input {
+      file_name = None
+        .type = path
+        .multiple = True
+    }
+    """)
+  master_phil.show()
+
+  ## extract code end
+
+Output::
+
+  !input {
+    file_name = None
+  }
+
+As is evident from the output, Phil keeps the content "in mind",
+but the scope is not actually used by ``.fetch()``::
+
+  ## extract code begin: doc_code.py
+
+  user_phil = parse("""
+    input.file_name = experiment.dat
+    """)
+  print len(master_phil.fetch(source=user_phil).as_str())
+
+  ## extract code end
+
+Output::
+
+  0
+
+I.e. the ``.fetch()`` method ignored the user definition because the
+corresponding master is commented out.
+
+Quoting and backslash
 ---------------------
 
-XXX
+Similar to Python, Phil supports single quotes, double quotes,
+and triple quotes (three single or three double quotes). Unlike
+Python, quotes can often be omitted, and single quotes and double
+quotes have different semantics, similar to that of Unix shells:
+``$`` variables are expanded if embedded in double quotes, but not
+if embedded in single quotes. See the variable substitution section
+above for examples.
 
-Quoting
--------
+The backslash can be used in the usual way (Python, Unix shells) to
+"escape" line breaks, quotes, and a second backslash.
 
-XXX
+For convenience, a line starting with quotes is automatically treated
+as a continuation of a definition on the previous line(s). The trailing
+backslash on the previous line may be omitted.
+
+The exact rules for quoting and backslash escapes are intricate.
+A significant effort was made to mimic the familiar behavior of Python
+and Unix shells where possible, but nested constructs of quotes and
+backslashes are still prone to cause surprises. In unusual situations,
+probably the fastest method to obtain the desired result is trial
+and error (as opposed to studying the intricate rules).
 
 fetch option: track_unused_definitions
 --------------------------------------
