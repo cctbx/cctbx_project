@@ -746,7 +746,7 @@ the Emma reference model multiple times.
 
 .. _`iotbx.acta_c`: http://phenix-online.org/cctbx_sources/iotbx/iotbx/acta_c.py
 
-.. _`cctbx::dmtbx::triplet_generator`: http://cctbx.sourceforge.net/current_cvs/c_plus_plus/classcctbx_1_1dmtbx_1_1triplet__generator.html
+.. _`cctbx::dmtbx::triplet_generator`: http://cctbx.sourceforge.net/current/c_plus_plus/classcctbx_1_1dmtbx_1_1triplet__generator.html
 
 .. _`triplet_generator.h`: http://phenix-online.org/cctbx_sources/cctbx/include/cctbx/dmtbx/triplet_generator.h
 

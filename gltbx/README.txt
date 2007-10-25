@@ -183,7 +183,7 @@ To use the gltbx installation in a new shell, source the appropriate
 The Windows build procedure is very similar. Simply replace slashes by
 backslashes and enter ``setpaths`` instead of ``source setpaths.csh``.
 
-See also: http://cctbx.sourceforge.net/current_cvs/installation.html
+See also: http://cctbx.sourceforge.net/current/installation.html
 
 Pick and choose
 ---------------

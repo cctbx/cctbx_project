@@ -526,13 +526,13 @@ to reduce the number of unit cell parameters to be refined.
 
 .. _`cctbx front page`: http://cctbx.sourceforge.net/
 
-.. _`LBFGS`: http://cctbx.sourceforge.net/current_cvs/c_plus_plus/namespacescitbx_1_1lbfgs.html#_details
+.. _`LBFGS`: http://cctbx.sourceforge.net/current/c_plus_plus/namespacescitbx_1_1lbfgs.html#_details
 
 .. _`Python tutorial`: http://docs.python.org/tut/
 
 .. _`Python`: http://www.python.org/
 
-.. _`scitbx::lbfgs::minimizer`: http://cctbx.sourceforge.net/current_cvs/c_plus_plus/classscitbx_1_1lbfgs_1_1minimizer.html
+.. _`scitbx::lbfgs::minimizer`: http://cctbx.sourceforge.net/current/c_plus_plus/classscitbx_1_1lbfgs_1_1minimizer.html
 
 .. _`List Comprehension`: http://docs.python.org/tut/node7.html#SECTION007140000000000000000
 
