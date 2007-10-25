@@ -129,7 +129,7 @@ class lbfgs(object):
        self.xray_structure.adjust_occupancy(occ_max = occupancy_max,
                                             occ_min = occupancy_min)
     self.fmodels.update_xray_structure(
-      update_f_calc = True,
+      update_f_calc  = True,
       xray_structure = self.xray_structure)
     self.collector.collect(et   = self.f,
                            iter = self.minimizer.iter(),
@@ -193,63 +193,43 @@ class lbfgs(object):
     self.collector.collect(ex = fmodels_target_and_gradients.target_work_xray)
     if(self.neutron_refinement):
       self.collector.collect(en = fmodels_target_and_gradients.target_work_neutron)
-
-    if(self.refine_xyz and self.restraints_manager is not None and self.weights.w > 0.0):
-       self.stereochemistry_residuals = self.model.restraints_manager_energies_sites(
-                       compute_gradients    = compute_gradients)
-       er = self.stereochemistry_residuals.target
-       self.collector.collect(er = er)
-       self.f += er * self.weights.w
-       if(compute_gradients):
-          sgc = self.stereochemistry_residuals.gradients
-          xray.minimization.add_gradients(
-                             scatterers     = self.xray_structure.scatterers(),
-                             xray_gradients = self.g,
-                             site_gradients = sgc*self.weights.w)
-
+    if(self.refine_xyz and self.restraints_manager is not None and
+       self.weights.w > 0.0):
+      self.stereochemistry_residuals = \
+        self.model.restraints_manager_energies_sites(
+          compute_gradients = compute_gradients)
+      er = self.stereochemistry_residuals.target
+      self.collector.collect(er = er)
+      self.f += er * self.weights.w
+      if(compute_gradients):
+        sgc = self.stereochemistry_residuals.gradients
+        xray.minimization.add_gradients(
+          scatterers     = self.xray_structure.scatterers(),
+          xray_gradients = self.g,
+          site_gradients = sgc*self.weights.w)
     if(self.refine_adp and self.restraints_manager.geometry is not None
-                        and self.weights.w > 0.0 and self.iso_restraints is not None):
-       if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):
-          energies_adp_iso = self.restraints_manager.energies_adp_iso(
-                       xray_structure    = self.xray_structure,
-                       parameters        = self.iso_restraints,
-                       wilson_b          = self.wilson_b,
-                       tan_b_iso_max     = self.tan_b_iso_max,
-                       use_u_local_only  = self.iso_restraints.use_u_local_only,
-                       compute_gradients = compute_gradients)
-          er = energies_adp_iso.target
-          self.collector.collect(er = er)
-          self.f += er * self.weights.w
-       else:
-          energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
-                       xray_structure    = self.xray_structure,
-                       compute_gradients = compute_gradients)
-          er = energies_adp_aniso.target
-          self.collector.collect(er = er)
-          self.f += er * self.weights.w
-
-       if(compute_gradients):
-          if(self.model.refinement_flags.adp_individual_aniso[0].count(True) == 0):
-             sgu = energies_adp_iso.gradients
-             #if(self.hd_selection.count(True) > 0):
-             #   sgu = sgu.set_selected(self.hd_selection, 0.0)
-             xray.minimization.add_gradients(
-                           scatterers      = self.xray_structure.scatterers(),
-                           xray_gradients  = self.g,
-                           u_iso_gradients = sgu * self.weights.w)
-          else:
-             ####################################################################
-             energies_adp_aniso.gradients_aniso_star *= self.weights.w
-             if(energies_adp_aniso.gradients_iso is not None):
-                energies_adp_aniso.gradients_iso *= self.weights.w
-             xray.minimization.add_gradients(
-                           scatterers      = self.xray_structure.scatterers(),
-                           xray_gradients  = self.g,
-                           u_aniso_gradients = energies_adp_aniso.gradients_aniso_star,
-                           u_iso_gradients   = energies_adp_aniso.gradients_iso)
-             energies_adp_aniso.gradients_aniso_star = None # just for safety
-             energies_adp_aniso.gradients_iso = None
-             ####################################################################
+       and self.weights.w > 0.0 and self.iso_restraints is not None):
+      energies_adp = self.model.energies_adp(
+        iso_restraints    = self.iso_restraints,
+        compute_gradients = compute_gradients)
+      self.f += energies_adp.target * self.weights.w
+      if(compute_gradients):
+        if(energies_adp.u_aniso_gradients is None):
+          xray.minimization.add_gradients(
+            scatterers      = self.xray_structure.scatterers(),
+            xray_gradients  = self.g,
+            u_iso_gradients = energies_adp.u_iso_gradients * self.weights.w)
+        else:
+          energies_adp.u_aniso_gradients *= self.weights.w
+          if(energies_adp.u_iso_gradients is not None):
+            energies_adp.u_iso_gradients *= self.weights.w
+          xray.minimization.add_gradients(
+            scatterers        = self.xray_structure.scatterers(),
+            xray_gradients    = self.g,
+            u_aniso_gradients = energies_adp.u_aniso_gradients,
+            u_iso_gradients   = energies_adp.u_iso_gradients)
+          energies_adp.u_aniso_gradients = None # just for safety
+          energies_adp.u_iso_gradients = None
 
   def callback_after_step(self, minimizer):
     if (self.verbose > 0):
@@ -265,6 +245,13 @@ class lbfgs(object):
       print "xray.minimization line search: f,rms(g):",
       print self.f, math.sqrt(flex.mean_sq(self.g))
     return self.f, self.g
+
+
+#class monitor(object):
+#  def __init__(self, weights,
+#                     refine_xyz = False,
+#                     refine_adp = False,
+#                     refine_occ = False):
 
 class minimization_history(object):
   def __init__(self, wx        = None,
