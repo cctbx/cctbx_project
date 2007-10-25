@@ -1035,6 +1035,51 @@ These rules are designed to produce easily predictable results in
 situations where multiple Phil files are merged (via ``.fetch()``),
 including complete copies of the master file.
 
+fetch option: track_unused_definitions
+--------------------------------------
+
+The default behavior of ``.fetch()`` is to simply ignore user
+definitions that don't match anything in the master file. It it is
+possible to request a complete list of all user definitions ignored by
+``.fetch()``. For example::
+
+  ## extract code begin: doc_code.py
+
+  master_phil = parse("""
+    input {
+      file_name = None
+        .type = path
+    }
+    """)
+
+  user_phil = parse("""
+    input {
+      file_name = experiment.dat
+      label = set1
+      lable = set2
+    }
+    """)
+
+  working_phil, unused = master_phil.fetch(
+    source=user_phil, track_unused_definitions=True)
+  working_phil.show()
+  for object_locator in unused:
+    print "unused:", object_locator
+
+  ## extract code end
+
+Output::
+
+  input {
+    file_name = experiment.dat
+  }
+  unused: input.label (input line 4)
+  unused: input.lable (input line 5)
+
+To catch spelling errors, or to alert users to changes in the master
+file, it is good practice to set ``track_unused_definitions=True``
+and to show warnings or errors.
+
 Semicolon syntax
 ----------------
 
@@ -1124,8 +1169,8 @@ Output::
 I.e. the ``.fetch()`` method ignored the user definition because the
 corresponding master is commented out.
 
-Quoting and backslash
----------------------
+Quotes and backslash
+--------------------
 
 Similar to Python, Phil supports single quotes, double quotes,
 and triple quotes (three single or three double quotes). Unlike
@@ -1148,8 +1193,3 @@ and Unix shells where possible, but nested constructs of quotes and
 backslashes are still prone to cause surprises. In unusual situations,
 probably the fastest method to obtain the desired result is trial
 and error (as opposed to studying the intricate rules).
-
-fetch option: track_unused_definitions
---------------------------------------
-
-XXX
