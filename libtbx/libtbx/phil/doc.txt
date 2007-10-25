@@ -740,7 +740,12 @@ output of the example is::
   favorite_sweets = *ice_cream chocolate candy_cane *cookies
   male ['ice_cream', 'cookies']
 
-XXX gender = male
+To maximize convenience, especially for choices specified via the
+command-line, the ``*`` is optional if only one value is given.
+For example, the following two definitions are equivalent::
+
+  gender = female
+  gender = male *female
 
 If the ``.optional`` attribute is not defined, it defaults to ``True``
 and this is possible::
