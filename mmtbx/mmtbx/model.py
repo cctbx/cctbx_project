@@ -566,3 +566,35 @@ class manager(object):
       pdb_deposition = pdb_deposition)
     time_model_show += timer.elapsed()
     return result
+
+  def energies_adp(self, iso_restraints, compute_gradients):
+    assert self.refinement_flags is not None
+    n_aniso = 0
+    for sel in self.refinement_flags.adp_individual_aniso:
+      n_aniso += sel.count(True)
+    if(n_aniso == 0):
+      energies_adp_iso = self.restraints_manager.energies_adp_iso(
+        xray_structure    = self.xray_structure,
+        parameters        = iso_restraints,
+        use_u_local_only  = iso_restraints.use_u_local_only,
+        compute_gradients = compute_gradients)
+      target = energies_adp_iso.target
+    else:
+      energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
+        xray_structure    = self.xray_structure,
+        compute_gradients = compute_gradients)
+      target = energies_adp_aniso.target
+    u_iso_gradients = None
+    u_aniso_gradients = None
+    if(compute_gradients):
+      if(n_aniso == 0):
+        u_iso_gradients = energies_adp_iso.gradients
+      else:
+        u_aniso_gradients = energies_adp_aniso.gradients_aniso_star
+        u_iso_gradients = energies_adp_aniso.gradients_iso
+    class result(object):
+      def __init__(self):
+        self.target = target
+        self.u_iso_gradients = u_iso_gradients
+        self.u_aniso_gradients = u_aniso_gradients
+    return result()
