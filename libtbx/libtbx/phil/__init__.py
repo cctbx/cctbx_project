@@ -1,3 +1,5 @@
+"Documentation: http://cctbx.sourceforge.net/libtbx_phil.html"
+
 from __future__ import division
 from __future__ import generators
 from libtbx.phil import tokenizer

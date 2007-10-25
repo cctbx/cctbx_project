@@ -5,7 +5,7 @@ Computational Crystallography Toolbox
 cctbx links
 -----------
 
-- `Introduction </current_cvs/>`_
+- `Introduction </current/>`_
 
 - `Web services <http://cci.lbl.gov/cctbx/>`_
 
@@ -50,21 +50,21 @@ cctbx links
 
   - `array family tour <http://cci.lbl.gov/~hohn/array-family-tour.html>`_
 
-- `C++ interfaces <current_cvs/c_plus_plus/namespaces.html>`_
+- `C++ interfaces <current/c_plus_plus/namespaces.html>`_
 
 - Python interfaces:
 
-  - `libtbx <current_cvs/python/libtbx.html>`_
+  - `libtbx <current/python/libtbx.html>`_
 
-  - `boost_adaptbx <current_cvs/python/boost.html>`_
+  - `boost_adaptbx <current/python/boost.html>`_
 
-  - `scitbx <current_cvs/python/scitbx.html>`_
+  - `scitbx <current/python/scitbx.html>`_
 
-  - `cctbx <current_cvs/python/cctbx.html>`_
+  - `cctbx <current/python/cctbx.html>`_
 
-  - `iotbx <current_cvs/python/iotbx.html>`_
+  - `iotbx <current/python/iotbx.html>`_
 
-  - `mmtbx <current_cvs/python/mmtbx.html>`_
+  - `mmtbx <current/python/mmtbx.html>`_
 
 - `SVN repository <http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/>`_
 

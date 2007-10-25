@@ -43,7 +43,7 @@
 def examples():
   # Generate space groups (in matrix/vector form) based on spacegroup number
   # (names are *not* a pain)
-  # See also: http://cctbx.sourceforge.net/current_cvs/c_plus_plus/classcctbx_1_1sgtbx_1_1space__group__symbols.html#_details
+  # See also: http://cctbx.sourceforge.net/current/c_plus_plus/classcctbx_1_1sgtbx_1_1space__group__symbols.html#_details
   from cctbx import sgtbx
   for s in sgtbx.space_group_info(symbol="I41/amd").group():
     print s # in "xyz" notation
