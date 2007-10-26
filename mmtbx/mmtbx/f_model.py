@@ -1874,9 +1874,7 @@ class info(object):
       self.twin_law = None
     self.r_work = fmodel.r_work()
     self.r_free = fmodel.r_free()
-    if(not self.target_name == "twin_lsq_f"):
-      self.r_all = fmodel.r_all()
-    else: self.r_all = None
+    self.r_all = fmodel.r_all()
     self.target_work = fmodel.target_w()
     self.target_free = fmodel.target_t()
     self.overall_scale_k1 = fmodel.scale_k1()
@@ -2032,6 +2030,12 @@ class info(object):
     print >> out,pr+" K_SOL              : %s"%format_value("%-8.3f", self.k_sol)
     print >> out,pr+" B_SOL              : %s"%format_value("%-8.3f", self.b_sol)
     print >> out,pr
+    if(self.twin_fraction is not None):
+      print >> out,pr+"TWINNING INFORMATION."
+      print >> out,pr+" FRACTION: %s"%format_value("%-8.3f", self.twin_fraction)
+      print >> out,pr+" OPERATOR: %s"%\
+        format_value("%-s", sgtbx.change_of_basis_op(self.twin_law).as_hkl())
+    print >> out,pr
     print >> out,pr+"ERROR ESTIMATES."
     print >> out,pr+" COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %s"%\
       format_value("%-8.2f", self.ml_coordinate_error)
@@ -2140,7 +2144,7 @@ class info(object):
         "  twin operator: "+\
         format_value("%-s",sgtbx.change_of_basis_op(self.twin_law).as_hkl())
       np = 79 - (len(line8) + 1)
-      line6 = line6 + " "*np + "|"
+      line8 = line8 + " "*np + "|"
       print >> out, line8
     print >> out, "|"+"-"*77+"|"
     out.flush()

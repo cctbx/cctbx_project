@@ -189,7 +189,7 @@ class manager(object):
                           verbose                  = 0,
                           target_weights = target_weights,
                           h_params                 = h_params)
-       self.minimized.collector.show(text = "LBFGS minimization", out  = log)
+       self.minimized.monitor.show(message = "LBFGS minimization", log  = log)
        assert fmodels.fmodel_xray().xray_structure is model.xray_structure
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",

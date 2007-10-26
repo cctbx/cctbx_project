@@ -633,18 +633,19 @@ class refinement_monitor(object):
          print >> out, format % (a, b ,c)
     #
     #
-    a,b,c,d,e,f,g,h,i,j = [None,]*10
-    print >> out, remark + \
-                      " stage         k1_w     k1_t     k3_w     k3_t scale_ml"
-    format = remark + "%9s  %8.4f %8.4f %8.4f %8.4f %8.4f"
-    for a,b,c,d,e,f in zip(self.steps,
-                           self.k1s_w,
-                           self.k1s_t,
-                           self.k3s_w,
-                           self.k3s_t,
-                           self.scale_ml):
-        print >> out, format % (a,b,c,d,e,f)
-    print >> out, remark + separator
+    if 0:
+      a,b,c,d,e,f,g,h,i,j = [None,]*10
+      print >> out, remark + \
+                        " stage         k1_w     k1_t     k3_w     k3_t scale_ml"
+      format = remark + "%9s  %8.4f %8.4f %8.4f %8.4f %8.4f"
+      for a,b,c,d,e,f in zip(self.steps,
+                             self.k1s_w,
+                             self.k1s_t,
+                             self.k3s_w,
+                             self.k3s_t,
+                             self.scale_ml):
+          print >> out, format % (a,b,c,d,e,f)
+      print >> out, remark + separator
     #
     #
     if(not self.short):

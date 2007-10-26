@@ -9,53 +9,27 @@ from iotbx import pdb
 import iotbx.pdb.interpretation
 from cctbx.array_family import flex
 
-def remove_refinement_files():
-  sys.stdout.flush()
-  easy_run.call(
-    "rm -rf *_refine_data.mtz *.map  *.eff *.def *.geo *_coeffs.mtz")
-
 def evaluate(pdb_file,
-             cycle,
              rw_tol,
              rf_tol,
-             ksol,
-             ksol_tol,
-             bsol,
-             bsol_tol,
-             u,
-             u_tol,
-             pher_tol,
-             fom_tol,
-             alpha_tol,
-             beta_tol,
              n_water,
              n_water_tol):
-  to_evaluate = str(cycle)+"_adp"
-  st = []
+  evaluated = 0
+  start_looking = False
   for line in open(pdb_file).read().splitlines():
-    if(line.count(to_evaluate)):
-      st.append(line.split())
-
-  # R-factors
-  print "R-factors= ", float(st[0][2]), float(st[0][3])
-  assert approx_equal(float(st[0][2]), 0.0, rw_tol)
-  assert approx_equal(float(st[0][3]), 0.0, rf_tol)
-  # ksol, bsol, uaniso
-  print "ksol, bsol, uaniso= ", float(st[2][2]),float(st[2][3])
-  assert approx_equal(float(st[2][2]),ksol,ksol_tol)
-  assert approx_equal(float(st[2][3]),bsol,bsol_tol)
-  assert approx_equal((float(st[2][4]),float(st[2][5]),float(st[2][6]),\
-                float(st[2][7]),float(st[2][8]),float(st[2][9])), u,u_tol)
-  # phase error, fom, alpha, beta
-  print "phase error, fom, alpha, beta= ", float(st[3][2]),float(st[3][3]),float(st[3][4]),float(st[3][5])
-  assert approx_equal(float(st[3][2]),0.1,pher_tol)
-  assert approx_equal(float(st[3][3]),1.0,fom_tol)
-  assert approx_equal(float(st[3][4]),1.0,alpha_tol)
-  assert approx_equal(float(st[3][5]),0.0,beta_tol)
-  # Number_of_waters =
-  print "Number_of_waters= ", int(st[9][2])
-  assert approx_equal(int(st[9][2]),n_water,n_water_tol)
-
+    if(line.startswith("REMARK Final: r_work =")):
+      rwork = float(line.split()[4])
+      rfree = float(line.split()[7])
+      assert approx_equal(rwork, 0.0, rw_tol)
+      assert approx_equal(rfree, 0.0, rf_tol)
+      evaluated += 1
+    if(line.startswith("REMARK  stage  number of ordered solvent")):
+      start_looking = True
+    if(start_looking and line.startswith("REMARK      3_bss:")):
+      n_waters_located = int(line.split()[2])
+      assert approx_equal(n_waters_located, n_water, n_water_tol)
+      evaluated += 1
+  assert evaluated >= 2
 
 def exercise_1(pdb_file):
   pdb = libtbx.env.find_in_repositories(
@@ -78,22 +52,10 @@ def exercise_1(pdb_file):
   sys.stdout.flush()
   easy_run.call(cmd)
   evaluate(pdb_file = output_file_prefix+"_001.pdb",
-           cycle    = 3,
            rw_tol   = 0.007,
            rf_tol   = 0.0095,
-           ksol     = 0.0,
-           ksol_tol = 0.000,
-           bsol     = 0.0,
-           bsol_tol = 0.000,
-           u        = [0.0,0.0,0.0,0.0,0.0,0.0],
-           u_tol    = 0.01,
-           pher_tol = 1.3,
-           fom_tol  = 0.05,
-           alpha_tol= 0.05,
-           beta_tol = 120.0,
            n_water  = 186,
            n_water_tol = 0)
-  remove_refinement_files()
   easy_run.call("rm -rf %s"%new_pdb)
 
 def run():
@@ -116,4 +78,3 @@ def run():
 
 if (__name__ == "__main__"):
   run()
-  remove_refinement_files()

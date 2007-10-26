@@ -513,10 +513,6 @@ class info(object):
     ref_par = refinement_params
     self.model = mmtbx.model_statistics.model(model = model)
     self.data_x, self.data_n = None, None
-    self.sigma_fobs_rejection_criterion = \
-      ref_par.main.sigma_fobs_rejection_criterion,
-    self.sigma_iobs_rejection_criterion = \
-      ref_par.main.sigma_iobs_rejection_criterion
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(
         free_reflections_per_bin = ref_par.alpha_beta.free_reflections_per_bin,
