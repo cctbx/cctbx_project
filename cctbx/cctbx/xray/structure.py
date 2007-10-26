@@ -154,7 +154,7 @@ class structure(crystal.special_position_settings):
     occ = occ.set_selected(sel, occ_min)
     self._scatterers.set_occupancies(occ)
 
-  def select_all(self):
+  def all_selection(self):
     return flex.bool(self._scatterers.size(), True)
 
   def translate(self, x=0, y=0, z=0):
