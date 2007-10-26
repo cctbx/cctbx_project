@@ -516,7 +516,8 @@ class manager(manager_mixin):
     uc = self.xray_structure.unit_cell()
     b_min = min(self.b_sol(), adptbx.u_as_b(flex.min(
          self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double())))
-    assert b_min >= 0.0
+    if(b_min < 0):
+      self.xray_structure.tidy_us(u_min = 1.e-6)
     b_iso = self.b_iso()
     b_test = b_min+b_iso
     if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
