@@ -339,6 +339,8 @@ class manager(object):
     fmodel_copy = fmodel.deep_copy()
     if(fmodel_copy.mask_params is not None):
        fmodel_copy.mask_params.verbose = -1
+    if(protocol == "one_zone"):
+      number_of_zones = 1
     d_mins = split_resolution_range(miller_array    = fmodel_copy.f_obs_w,
                                     nref_first_low  = nref_min,
                                     d_low           = max_low_high_res_limit,
