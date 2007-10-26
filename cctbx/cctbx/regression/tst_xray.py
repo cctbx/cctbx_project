@@ -575,8 +575,8 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   assert approx_equal(
     xs.mean_distance(other = xs_mod, selection = ~selection_), 0.0)
   #
-  assert xs.scatterers().size() == xs.select_all().size() == \
-    xs.select_all().count(True)
+  assert xs.scatterers().size() == xs.all_selection().size() == \
+    xs.all_selection().count(True)
   #
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
