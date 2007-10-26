@@ -19,18 +19,20 @@ class monitors(object):
         params    = params,
         model_ref = model_ref,
         out       = log)
+    self.target_weights = None
 
   def collect(self, step,
-                    target_weights_xray,
-                    target_weights_neutron,
+                    target_weights = None,
                     rigid_body_shift_accumulator = None):
+    if(target_weights is not None):
+      self.target_weights = target_weights
     self.monitor_xray.collect(
       model                        = self.model,
       fmodel                       = self.fmodels.fmodel_xray(),
       step                         = step,
       tan_b_iso_max                = 0, # XXX clean later
       wilson_b                     = self.model.wilson_b,
-      target_weights               = target_weights_xray,
+      target_weights               = self.target_weights,
       rigid_body_shift_accumulator = rigid_body_shift_accumulator)
     if(self.monitor_neutron is not None):
       self.monitor_neutron.collect(
@@ -39,5 +41,5 @@ class monitors(object):
         step                         = step,
         tan_b_iso_max                = 0, # XXX clean later
         wilson_b                     = self.model.wilson_b,
-        target_weights               = target_weights_neutron,
+        target_weights               = self.target_weights,
         rigid_body_shift_accumulator = rigid_body_shift_accumulator)
