@@ -177,7 +177,7 @@ class adp_aniso_restraints(object):
        assert not fl.grad_u_iso()
        assert fl.use_u_aniso()
        assert fl.use()
-    if(fl.use_u_iso()):
-       assert not fl.use_u_aniso()
-    if(fl.use_u_aniso()):
-       assert not fl.use_u_iso()
+    #if(fl.use_u_iso()):
+    #   assert not fl.use_u_aniso()
+    #if(fl.use_u_aniso()):
+    #   assert not fl.use_u_iso()
