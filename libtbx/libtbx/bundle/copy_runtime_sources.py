@@ -16,7 +16,7 @@ def copy_dist_files(dist_copy, dirname, names):
       path = os.path.join(path, file_in_subdir)
       return os.path.isfile(path)
     if (   name_is_sub_dir_with_file("cvs", "Entries")
-        or name_is_sub_dir_with_file(".svn", "README.txt")):
+        or name_is_sub_dir_with_file(".svn", "entries")):
       continue
     names_keep.append(file_name)
     if (   name == "libtbx_config"
