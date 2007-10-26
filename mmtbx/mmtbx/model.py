@@ -443,7 +443,9 @@ class manager(object):
     self.xray_structure = \
                         self.xray_structure.concatenate(solvent_xray_structure)
     self.refinement_flags.inflate(
-                             size = solvent_xray_structure.scatterers().size())
+      size        = solvent_xray_structure.scatterers().size(),
+      use_u_iso   = solvent_xray_structure.use_u_iso(),
+      use_u_aniso = solvent_xray_structure.use_u_aniso())
     new_atom_name = atom_name.strip()
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "

@@ -64,6 +64,8 @@ class manager(object):
     scatterers = fmodel.xray_structure.scatterers()
     scatterers.flags_set_grads(state=False)
     # XXX very inefficient: same code is in driver.py file. fix asap. Pavel.
+    save_use_u_iso = fmodel.xray_structure.use_u_iso()
+    save_use_u_aniso = fmodel.xray_structure.use_u_aniso()
     for sel in selections:
       if(refine_adp):
          for s in sel:
