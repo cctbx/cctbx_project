@@ -839,7 +839,10 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
            n_s =  tmp_mult*std::sqrt((s_a*s_a*(1.0-twin_fraction) + s_b*s_b*twin_fraction));
         } else { // twin related reflection is not there. set things to a negative value
            i_a = i_obs[ii];
-           s_a = sig_obs[ii];
+           s_a = 0;
+           if ( sig_obs.size() > 0 ){
+             s_a = sig_obs[ii];
+           }
            n_i = -100000.0; // i_a*(1.0-twin_fraction)/(1-2.0*twin_fraction);
            n_s = s_a*10;
         }
@@ -898,7 +901,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
                             scitbx::af::const_ref<FloatType> const& f_model,
                             FloatType const& twin_fraction) const
      {
-        CCTBX_ASSERT( i_obs.size() == sig_obs.size() );
+        CCTBX_ASSERT( ( i_obs.size() == sig_obs.size() ) || ( sig_obs.size()==0  ) );
         CCTBX_ASSERT( f_model.size() == calc_size_ );
         CCTBX_ASSERT( i_obs.size() == obs_size_ );
 
@@ -913,9 +916,12 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           loc_twin_calc = obs_to_twin_calc_[ ii ];
           o_a = i_obs[ii];
           o_b = i_obs[ loc_twin_obs ];
-          s_a = sig_obs[ii];
-          s_b = sig_obs[ loc_twin_obs ];
-
+          s_a = 0;
+          s_b = 0;
+          if (sig_obs.size()>0){
+            s_a = sig_obs[ii];
+            s_b = sig_obs[ loc_twin_obs ];
+          }
           c_a = f_model[ loc_calc ];
           c_a = c_a*c_a;
 
@@ -942,7 +948,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
                            scitbx::af::const_ref< std::complex<FloatType> > const& f_model,
                            FloatType const& twin_fraction) const
     {
-       CCTBX_ASSERT( i_obs.size() == sig_obs.size() );
+       CCTBX_ASSERT( ( i_obs.size() == sig_obs.size() ) || ( sig_obs.size() )  );
        CCTBX_ASSERT( f_model.size() == calc_size_ );
        CCTBX_ASSERT( i_obs.size() == obs_size_ );
 
@@ -960,9 +966,13 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
          loc_twin_calc = obs_to_twin_calc_[ ii ];
          o_a = i_obs[ii];
          o_b = i_obs[ loc_twin_obs ];
-         s_a = sig_obs[ii];
-         s_b = sig_obs[ loc_twin_obs ];
 
+         s_a = 0;
+         s_b = 0;
+         if ( sig_obs.size() > 0 ){
+           s_a = sig_obs[ii];
+           s_b = sig_obs[ loc_twin_obs ];
+         }
          a = f_model[ loc_calc ].real();
          b = f_model[ loc_calc ].imag();
          c_a = (a*a+b*b);
