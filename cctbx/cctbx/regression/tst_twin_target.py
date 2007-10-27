@@ -505,6 +505,11 @@ def tst_detwin():
     diff = sfs.data() - i
     diff = flex.sum( flex.abs(diff) )
     assert diff>1e-3
+    #check what happen when no sigmas ae passed in
+    dti,dts = tmp_detwin.detwin_with_twin_fraction( i_obs = i,
+                                                    sigma_obs = None,
+                                                    twin_fraction= t )
+
 
     dti,dts = tmp_detwin.detwin_with_twin_fraction( i_obs = i,
                                                     sigma_obs = s,
