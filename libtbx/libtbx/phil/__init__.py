@@ -116,7 +116,7 @@ class key_converters(str_converters):
 
   def __str__(self): return self.phil_type
 
-def bool_from_words(words):
+def bool_from_words(words, path):
   value_string = str_from_words(words)
   if (value_string is None): return None
   value_lower = value_string.lower()
@@ -124,8 +124,8 @@ def bool_from_words(words):
   if (value_lower in ["true", "yes", "on", "1"]): return True
   assert len(words) > 0
   raise RuntimeError(
-    'One True or False value expected, "%s" found%s' % (
-      value_string, words[0].where_str()))
+    'One True or False value expected, %s="%s" found%s' % (
+      path, value_string, words[0].where_str()))
 
 class bool_converters(object):
 
@@ -134,7 +134,7 @@ class bool_converters(object):
   def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
-    return bool_from_words(words)
+    return bool_from_words(words=words, path=master.full_path())
 
   def as_words(self, python_object, master):
     if (python_object is None):
@@ -144,7 +144,7 @@ class bool_converters(object):
     else:
       return [tokenizer.word(value="False")]
 
-def number_from_words(words):
+def number_from_words(words, path):
   value_string = str_from_words(words)
   if (value_string is None): return None
   if (value_string.lower() in ["true", "false"]):
@@ -155,11 +155,11 @@ def number_from_words(words):
   except KeyboardInterrupt: raise
   except:
     raise RuntimeError(
-      'Error interpreting "%s" as a numeric expression: %s%s' % (
-        value_string, format_exception(), words[0].where_str()))
+      'Error interpreting %s="%s" as a numeric expression: %s%s' % (
+        path, value_string, format_exception(), words[0].where_str()))
 
-def int_from_words(words):
-  result = number_from_words(words)
+def int_from_words(words, path):
+  result = number_from_words(words=words, path=path)
   if (result is not None):
     if (isinstance(result, float)
         and round(result) == result):
@@ -178,15 +178,15 @@ class int_converters(object):
   def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
-    return int_from_words(words)
+    return int_from_words(words=words, path=master.full_path())
 
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
     return [tokenizer.word(value=str(python_object))]
 
-def float_from_words(words):
-  result = number_from_words(words)
+def float_from_words(words, path):
+  result = number_from_words(words=words, path=path)
   if (result is not None):
     if (isinstance(result, int)):
       result = float(result)
@@ -204,7 +204,7 @@ class float_converters(object):
   def __str__(self): return self.phil_type
 
   def from_words(self, words, master):
-    return float_from_words(words)
+    return float_from_words(words=words, path=master.full_path())
 
   def as_words(self, python_object, master):
     if (python_object is None):
@@ -642,14 +642,14 @@ class definition(object):
   def assign_attribute(self, name, words, converter_registry, converter_cache):
     assert self.has_attribute_with_name(name)
     if (name in ["optional", "multiple"]):
-      value = bool_from_words(words)
+      value = bool_from_words(words=words, path="."+name)
     elif (name == "type"):
       value = definition_converters_from_words(
         words=words,
         converter_registry=converter_registry,
         converter_cache=converter_cache)
     elif (name in ["input_size", "expert_level"]):
-      value = int_from_words(words)
+      value = int_from_words(words=words, path="."+name)
     else:
       value = str_from_words(words)
     setattr(self, name, value)
@@ -1090,9 +1090,9 @@ class scope(object):
   def assign_attribute(self, name, words, scope_extract_call_proxy_cache):
     assert self.has_attribute_with_name(name)
     if (name in ["optional", "multiple", "disable_add", "disable_delete"]):
-      value = bool_from_words(words)
+      value = bool_from_words(words, path="."+name)
     elif (name == "expert_level"):
-      value = int_from_words(words)
+      value = int_from_words(words=words, path="."+name)
     elif (name == "call"):
       value = scope_extract_call_proxy(
         full_path=self.full_path(),
