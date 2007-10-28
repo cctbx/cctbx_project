@@ -294,7 +294,7 @@ class int_phil_converters(object):
     return "libtbx.phil.tst.int(factor=%d)" % self.factor
 
   def from_words(self, words, master):
-    value = phil.int_from_words(words)
+    value = phil.int_from_words(words=words, path=master.full_path())
     if (value is None): return value
     return value * self.factor
 
@@ -455,7 +455,7 @@ def exercise_syntax_errors():
   test_exception('a=None\n.type=foo',
     'Unexpected definition type: "foo" (input line 2)')
   test_exception('s .multiple=True .optional=False {}',
-    'One True or False value expected, "True .optional=False" found'
+    'One True or False value expected, .multiple="True .optional=False" found'
     ' (input line 1)')
 
 def exercise_phil_on_off_end():
@@ -3215,7 +3215,7 @@ group {
   try: parameters.get(path="group.j",
     with_substitution=False).objects[2].extract()
   except RuntimeError, e:
-    assert str(e) == 'Error interpreting "a" as a numeric expression:' \
+    assert str(e) == 'Error interpreting group.j="a" as a numeric expression:'\
                    + " NameError: name 'a' is not defined (input line 39)"
   else: raise RuntimeError("Exception expected.")
   assert parameters.get(path="group.n",
