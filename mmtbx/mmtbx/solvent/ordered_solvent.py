@@ -186,9 +186,9 @@ class manager(object):
     self.check_existing_solvent()
     if(self.filter_only == False):
        self.find_peaks()
-       if(solvent_selection.count(False) > 0):
-          if(self.bulk_solvent_mask_exclusions):
-             self.filter_peaks_with_bulk_solvent_mask()
+       #if(solvent_selection.count(False) > 0):
+          #if(self.bulk_solvent_mask_exclusions):
+          #   self.filter_peaks_with_bulk_solvent_mask()
        self.sites, self.heights, dummy = self.filter_by_distance(
                                  self.xray_structure, self.sites, self.heights)
        self.filter_close_peak_peak_contacts()
