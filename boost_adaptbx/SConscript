@@ -144,6 +144,7 @@ if (not env_etc.no_boost_python):
       path=libtbx.env.under_dist("boost", "libs/python/test/Jamfile.v2"),
       expected_md5_hexdigests=[
         "c7a3dd81bf730635146f5c908ac982eb", # svn revision 39065M
+        "d40aac0029bcd28f6e205ae3b30a1284", # svn revision 40216
       ])
     if (env_etc.compiler in ["irix_CC", "tru64_cxx"]):
       disabled = "#"
@@ -188,6 +189,7 @@ pickle3
 pickle4
 nested
 docstring
+pytype_function
 bienstman4
 bienstman5
 test_builtin_converters,builtin_converters,test_builtin_converters
