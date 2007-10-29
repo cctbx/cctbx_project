@@ -7,18 +7,21 @@ class monitors(object):
                      model,
                      fmodels,
                      model_ref = None,
-                     log       = None):
+                     log       = None,
+                     call_back_after_collect = None):
     adopt_init_args(self, locals())
     self.monitor_xray = print_statistics.refinement_monitor(
       params    = params,
       model_ref = model_ref,
-      out       = log)
+      out       = log,
+      call_back_after_collect = call_back_after_collect)
     self.monitor_neutron = None
     if(fmodels.fmodel_n is not None):
       self.monitor_neutron = print_statistics.refinement_monitor(
         params    = params,
         model_ref = model_ref,
-        out       = log)
+        out       = log,
+        call_back_after_collect = call_back_after_collect)
     self.target_weights = None
 
   def collect(self, step,
