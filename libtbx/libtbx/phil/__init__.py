@@ -166,9 +166,8 @@ def int_from_words(words, path):
       result = int(result)
     elif (not isinstance(result, int)):
       raise RuntimeError(
-        'Integer expression expected, "%s" found%s' % (
-          str_from_words(words),
-          words[0].where_str()))
+        'Error interpreting %s="%s" as an integer expression%s' % (
+          path, str_from_words(words), words[0].where_str()))
   return result
 
 class int_converters(object):
@@ -192,9 +191,8 @@ def float_from_words(words, path):
       result = float(result)
     elif (not isinstance(result, float)):
       raise RuntimeError(
-        'Floating-point expression expected, "%s" found%s' % (
-          str_from_words(words),
-          words[0].where_str()))
+        'Error interpreting %s="%s" as a floating-point expression%s' % (
+          path, str_from_words(words), words[0].where_str()))
   return result
 
 class float_converters(object):

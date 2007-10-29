@@ -3202,15 +3202,16 @@ group {
   try: parameters.get(path="group.i",
     with_substitution=False).objects[1].extract()
   except RuntimeError, e:
-    assert str(e) == 'Integer expression expected, "1/2" found (input line 33)'
+    assert str(e) == 'Error interpreting group.i="1/2" as' \
+      ' an integer expression (input line 33)'
   else: raise RuntimeError("Exception expected.")
   assert parameters.get(path="group.j",
     with_substitution=False).objects[0].extract() == 0.5
   try: parameters.get(path="group.j",
     with_substitution=False).objects[1].extract()
   except RuntimeError, e:
-    assert str(e) == \
-      """Floating-point expression expected, "'a'" found (input line 37)"""
+    assert str(e) == """Error interpreting group.j="'a'" as""" \
+      " a floating-point expression (input line 37)"
   else: raise RuntimeError("Exception expected.")
   try: parameters.get(path="group.j",
     with_substitution=False).objects[2].extract()
