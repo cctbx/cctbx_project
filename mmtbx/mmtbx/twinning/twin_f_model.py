@@ -1181,7 +1181,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                u_cart[5] )
 
     # Now please add trace to the u's in the structure
-    self.xray_structure.shift_us(b_shift=adptbx.u_as_b(trace) )
+    self.apply_back_b_iso()
     # convert u_cart back to u_star
     self.scaling_parameters.u_star= adptbx.u_cart_as_u_star(self.xs.unit_cell(), u_cart)
 
@@ -1372,6 +1372,35 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     )
     f_atoms = tmp.f_calc()
     return f_atoms
+
+
+  def apply_back_b_iso(self):
+    eps = math.pi**2*8
+    uc = self.xray_structure.unit_cell()
+    b_min = min(self.b_sol(), adptbx.u_as_b(flex.min(
+         self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double())))
+    assert b_min >= 0.0
+    b_iso = self.b_iso()
+    b_test = b_min + b_iso
+    if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
+    else: b_adj = b_iso
+    if(abs(b_adj) <= 300.0):
+      b_cart = self.b_cart()
+      b_cart_new = [b_cart[0]-b_adj,b_cart[1]-b_adj,b_cart[2]-b_adj,
+                    b_cart[3],      b_cart[4],      b_cart[5]]
+      self.update(b_cart = b_cart_new)
+      self.update(b_sol = self.k_sol_b_sol()[1] + b_adj)
+      self.xray_structure.shift_us(b_shift = b_adj)
+      b_min = adptbx.u_as_b(flex.min(
+            self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double()))
+      assert b_min >= 0.0
+      self.xray_structure.tidy_us(u_min = 1.e-6)
+      self.update_xray_structure(xray_structure           = self.xray_structure,
+                                 update_f_calc            = True,
+                                 update_f_mask            = False,
+                                 update_f_ordered_solvent = False,
+                                 out                      = None)
+
 
 
 
