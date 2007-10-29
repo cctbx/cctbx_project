@@ -785,14 +785,17 @@ class environment:
 
   def write_dispatcher(self, source_file, target_file):
     reg = self._dispatcher_registry.setdefault(target_file, source_file)
-    if (    reg != source_file
-        and not os.path.samefile(reg, source_file)):
-      raise Sorry("Multiple sources for dispatcher:\n"
-        + "  target file:\n"
-        + "    %s\n" % show_string(target_file)
-        + "  source files:\n"
-        + "    %s\n" % show_string(reg)
-        + "    %s" % show_string(source_file))
+    if (reg != source_file):
+      if (not os.path.isfile(reg)):
+        self._dispatcher_registry[target_file] = source_file
+      elif (    os.path.isfile(source_file)
+            and not os.path.samefile(reg, source_file)):
+        raise Sorry("Multiple sources for dispatcher:\n"
+          + "  target file:\n"
+          + "    %s\n" % show_string(target_file)
+          + "  source files:\n"
+          + "    %s\n" % show_string(reg)
+          + "    %s" % show_string(source_file))
     if (os.name == "nt"):
       action = self.write_win32_dispatcher
       ext = ".exe"
