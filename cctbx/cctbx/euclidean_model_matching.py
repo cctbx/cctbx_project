@@ -147,10 +147,9 @@ class euclidean_match_symmetry(object):
 
   def show(self, title="", f=None):
     if (f is None): f = sys.stdout
-    print >> f, "euclidean_match_symmetry:", title
-    print >> f, self.rt_mx.info().lookup_symbol()
+    print >> f, ("euclidean_match_symmetry: " + title).rstrip()
+    print >> f, self.rt_mx.type().lookup_symbol()
     print >> f, self.continuous_shifts
-    print >> f
 
 def generate_singles(n, i):
   singles = range(n)
