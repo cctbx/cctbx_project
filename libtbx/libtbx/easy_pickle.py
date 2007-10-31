@@ -1,10 +1,11 @@
+from libtbx import smart_open
 from libtbx.str_utils import show_string
 import cPickle
 import os
 
 def _open(file_name, mode):
   file_name = os.path.expanduser(file_name)
-  try: return open(file_name, mode)
+  try: return smart_open.file(file_name=file_name, mode=mode)
   except IOError, e:
     raise IOError("Cannot open pickle file %s (%s)" % (
       show_string(file_name), str(e)))
