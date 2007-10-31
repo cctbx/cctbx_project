@@ -57,7 +57,8 @@ def run(target_root):
   for module in libtbx.env.module_list:
     for name,dist_path in module.name_and_dist_path_pairs():
       if (name == "boost"): continue
-      dist_copy = libtbx.path.norm_join(abs_target_root, name)
+      dist_copy = libtbx.path.norm_join(
+        abs_target_root, os.path.basename(dist_path))
       os.chdir(dist_path)
       os.path.walk(".", copy_dist_files, dist_copy)
   libtbx.bundle.utils.write_bundle_info(abs_target_root)
