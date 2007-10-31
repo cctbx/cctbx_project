@@ -151,8 +151,6 @@ class modify(object):
         params_remove_selection))
     if(self.keep_selection is not None):
       assert self.remove_selection is None
-      print self.keep_selection
-      print dir(self.keep_selection)
       self.remove_selection = flex.smart_selection(flags = self.keep_selection.flags)
     self.top_selection = flex.smart_selection(
       flags=utils.get_atom_selections(
