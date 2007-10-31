@@ -39,7 +39,7 @@ def exercise_1(pdb_file):
         test=os.path.isfile)
   print pdb,hkl
   new_pdb = "wat_pik_no_h.pdb"
-  easy_run.call("phenix.pdbtools %s remove.selection='element H' output.pdb.file_name=%s"%(
+  easy_run.call("phenix.pdbtools %s remove='element H' output.pdb.file_name=%s"%(
     pdb, new_pdb))
   output_file_prefix = pdb_file[:-4]
   opt1= "output.prefix="+output_file_prefix+" main.max_number_of_iterations=25 scattering_table=wk1995"

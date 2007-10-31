@@ -93,11 +93,12 @@ modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
 master_params = iotbx.phil.parse("""\
 %s
-remove {
-  selection = None
-    .type = str
-    .help = Select atoms to be removed
-}
+remove = None
+  .type = str
+  .help = Selection for the atoms to be removed
+keep = None
+  .type = str
+  .help = Select atoms to keep
 input {
   pdb
   {
@@ -123,16 +124,36 @@ class modify(object):
     self.params = params
     self._occupancies_modified = False
     self.remove_selection = None
-    try: params_remove_selection = self.params.remove.selection
+    self.keep_selection = None
+    try: params_remove_selection = self.params.remove
     except KeyboardInterrupt: raise
     except: params_remove_selection = None
-    if (params_remove_selection is not None):
+    try: params_keep_selection = self.params.keep
+    except KeyboardInterrupt: raise
+    except: params_keep_selection = None
+    if(params_remove_selection is not None):
       self.remove_selection = flex.smart_selection(
         flags=~utils.get_atom_selections(
           iselection        = False,
           all_chain_proxies = all_chain_proxies,
           selection_strings = [params_remove_selection],
           xray_structure    = xray_structure)[0])
+    if(params_keep_selection is not None):
+      self.keep_selection = flex.smart_selection(
+        flags=utils.get_atom_selections(
+          iselection        = False,
+          all_chain_proxies = all_chain_proxies,
+          selection_strings = [params_keep_selection],
+          xray_structure    = xray_structure)[0])
+    if(self.remove_selection is not None and self.keep_selection is not None):
+      raise Sorry("Ambiguous selection: 'keep' and 'remove' keywords cannot"\
+        " be used simultaneously. \nkeep=%s\nremove=%s"%(params_keep_selection,
+        params_remove_selection))
+    if(self.keep_selection is not None):
+      assert self.remove_selection is None
+      print self.keep_selection
+      print dir(self.keep_selection)
+      self.remove_selection = flex.smart_selection(flags = self.keep_selection.flags)
     self.top_selection = flex.smart_selection(
       flags=utils.get_atom_selections(
         iselection        = False,

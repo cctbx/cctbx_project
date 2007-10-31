@@ -90,16 +90,26 @@ def exercise_basic(pdb_dir, verbose):
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
     remove_selection_str = "element C"
-    cmd = base+'remove.selection="%s" selection="%s"'%(
+    cmd = base+'remove="%s" selection="%s"'%(
       str(remove_selection_str), str(selection_str))
     check_remove_selection(
       cmd, xrsp_init, output, selection, selection_str,
       remove_selection_str, verbose)
     #
+    keep_selection_str = "element C"
+    cmd = base+'keep="%s" selection="%s"'%(
+      str(keep_selection_str), str(selection_str))
+    check_keep_selection(
+      cmd, xrsp_init, output, selection, selection_str,
+      keep_selection_str, verbose)
+    #
     test_quiet(file_name, verbose)
   #
   cmd = base
   check_all_none(cmd, xrsp_init, output, verbose)
+  #
+  cmd = base
+  check_keep_remove_conflict(cmd, output, verbose)
 
 def test_quiet(file_name, verbose):
   output_file_name = "shifted.pdb"
@@ -270,6 +280,27 @@ def check_remove_selection(
   assert sct2.size() == remove_selection.count(True)
   assert sct1.size() > sct2.size()
 
+def check_keep_selection(
+      cmd, xrsp_init, output, selection, selection_str,
+      keep_selection_str, verbose, tolerance=1.e-3):
+  remove_files(output)
+  run_command(command=cmd, verbose=verbose)
+  xrsp = xray_structure_plus(file_name = output)
+  keep_selection = xrsp_init.selection(selection_strings = keep_selection_str)
+  assert approx_equal(xrsp.sites_cart,
+                      xrsp_init.sites_cart.select(keep_selection),tolerance)
+  assert approx_equal(xrsp.occ, xrsp_init.occ.select(keep_selection),tolerance)
+  assert approx_equal(
+    xrsp.u_iso, xrsp_init.u_iso.select(keep_selection),tolerance)
+  assert approx_equal(
+    xrsp.u_cart, xrsp_init.u_cart.select(keep_selection),tolerance)
+  sct1 = xrsp_init.xray_structure.scatterers().extract_scattering_types()
+  assert sct1.count("C") > 0 and sct1.size() > sct1.count("C")
+  sct2 = xrsp.xray_structure.scatterers().extract_scattering_types()
+  assert sct2.count("C") == sct2.size()
+  assert sct1.size() > keep_selection.count(True)
+  assert sct1.size() > sct2.size()
+
 def check_all_none(cmd, xrsp_init, output, verbose, tolerance=1.e-3):
   remove_files(output)
   run_command(command=cmd, verbose=verbose)
@@ -280,6 +311,18 @@ def check_all_none(cmd, xrsp_init, output, verbose, tolerance=1.e-3):
   assert approx_equal(xrsp.use_u_aniso, xrsp_init.use_u_aniso,tolerance)
   assert approx_equal(xrsp.u_iso,       xrsp_init.u_iso,tolerance)
   assert approx_equal(xrsp.u_cart,      xrsp_init.u_cart,tolerance)
+
+def check_keep_remove_conflict(cmd, output, verbose):
+  cmd += " keep=all remove=all "
+  result = run_command(command=cmd, verbose=verbose)
+  target_line = \
+    "Sorry: Ambiguous selection: 'keep' and 'remove' keywords cannot be used simultaneously."
+  target_line_detected = False
+  for line in result.stdout_lines:
+    if(line.count(target_line)):
+      target_line_detected = True
+      break
+  assert target_line_detected
 
 def exercise_multiple(pdb_dir, verbose):
   params = """\
