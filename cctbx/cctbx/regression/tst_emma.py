@@ -4,7 +4,8 @@ from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from scitbx.python_utils import list_algebra
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
+from cStringIO import StringIO
 import random
 import sys
 
@@ -221,6 +222,18 @@ def run_call_back(flags, space_group_info):
           assert ok
 
 def run():
+  match_symmetry = emma.euclidean_match_symmetry(
+    space_group_info=sgtbx.space_group_info(symbol="P1"),
+    use_k2l=True,
+    use_l2n=False)
+  out = StringIO()
+  match_symmetry.show(title="test", f=out)
+  assert not show_diff(out.getvalue(), """\
+euclidean_match_symmetry: test
+P -1
+((1, 0, 0), (0, 1, 0), (0, 0, 1))
+""")
+  #
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
     "StaticModels",))
 
