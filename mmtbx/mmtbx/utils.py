@@ -603,24 +603,27 @@ def get_atom_selections(all_chain_proxies,
                         selection_strings     = None,
                         iselection            = True,
                         one_group_per_residue = False,
-                        hydrogens_only        = False):
-  ###> Fix aal: need for proper selection
-  need_to_fix_aal = False
+                        hydrogens_only        = False,
+                        log                   = None):
+  if(log is None): log = sys.stdout
+  # XXX Fix atom_attributes_list in-place to be able to select by element type
+  # XXX in cases when it's not available.
+  aal_modified_counter = 0
   aal = all_chain_proxies.stage_1.atom_attributes_list
-  do_not_continue = False
-  for aal_i in aal:
-    if(aal_i.element is None):
-      do_not_continue = True
-      break
-    if(aal_i.element.strip() == ''):
-      need_to_fix_aal = True
-      break
-  if(need_to_fix_aal and not do_not_continue):
-    scatterers = xray_structure.scatterers()
-    for aal_i, sc in zip(aal,scatterers):
+  scatterers = xray_structure.scatterers()
+  for aal_i, sc in zip(aal,scatterers):
+    aal_element = aal_i.element
+    if(len(aal_element.strip())==0):
       aal_i.element = sc.element_symbol()
-    all_chain_proxies.stage_1.selection_cache(
-                                           force_selection_cache_update = True)
+      aal_modified_counter += 1
+    if(aal_i.element is None):
+      aal_i.element = "  "
+  all_chain_proxies.stage_1.selection_cache(force_selection_cache_update=True)
+  if(aal_modified_counter > 0):
+    print >> log
+    print >> log, "atom_attributes_list is modified in-place to define",\
+       "missing element types when possible."
+    print >> log
   #
   if(hydrogens_only):
      assert xray_structure is not None
