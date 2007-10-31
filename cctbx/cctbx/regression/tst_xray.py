@@ -942,7 +942,36 @@ Number of scattering types: 4
   assert str(e) == "Cannot concatenate: conflicting scatterers"
   sys.stdout = out
 
+def exercise_min_u_cart_eigenvalue():
+  cs = crystal.symmetry((1, 1, 1, 90, 90, 90), "P 1")
+  sp = crystal.special_position_settings(cs)
+  a = flex.xray_scatterer()
+  assert a.size() == 0
+  s1 = xray.scatterer(label = "C", u = -0.0278)
+  s2 = xray.scatterer(label = "C", u = -10.0)
+  s2.flags.set_use_u_iso(False)
+  s3 = xray.scatterer(label = "C", u = (1,1,1,1,1,1))
+  s4 = xray.scatterer(label = "C", u = (-91,1,1,1,1,1))
+  s4.flags.set_use_u_aniso(False)
+  s5 = xray.scatterer(label = "C", u = 0.1)
+  s5.u_star=(1,1,1,1,1,1)
+  s5.flags.set_use_u_aniso(True)
+  s6 = xray.scatterer(label = "C", u = 0.1)
+  s6.u_star=(1,1,1,1,1,1)
+  s7 = xray.scatterer(label = "C", u = (1,1,1,1,1,1))
+  s7.u_iso=0.1
+  s8 = xray.scatterer(label = "C", u = (1,1,1,1,1,1))
+  s8.u_iso=0.1
+  s8.flags.set_use_u_iso(True)
+  s9 = xray.scatterer(label = "C")
+  s10 = xray.scatterer(label = "C")
+  s10.flags.set_use_u_iso(False)
+  scatterers = flex.xray_scatterer((s1,s2,s3,s4,s5,s6,s7,s8,s9,s10))
+  xs = xray.structure(sp, scatterers)
+  assert approx_equal(xs.min_u_cart_eigenvalue(), -0.0278)
+
 def run():
+  exercise_min_u_cart_eigenvalue()
   exercise_set_occupancies()
   exercise_closest_distances()
   exercise_concatenate_inplace()

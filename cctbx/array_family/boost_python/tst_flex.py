@@ -209,7 +209,48 @@ def exercise_flex_xray_scatterer():
   a[1].flags.set_grad_u_iso(state=True)
   assert list(a.extract_grad_u_iso()) == [False, True, False]
 
+def exercise_extract_u_total_as_u_cart():
+  from cctbx import uctbx, sgtbx, xray
+  uc = uctbx.unit_cell((1,1,1))
+  sg = sgtbx.space_group_info("P 1")
+  a = flex.xray_scatterer()
+  assert a.size() == 0
+  s1 = xray.scatterer(label = "C", u = 0.1)
+  s2 = xray.scatterer(label = "C", u = 0.1)
+  s2.flags.set_use_u_iso(False)
+  s3 = xray.scatterer(label = "C", u = (1,1,1,1,1,1))
+  s4 = xray.scatterer(label = "C", u = (1,1,1,1,1,1))
+  s4.flags.set_use_u_aniso(False)
+  s5 = xray.scatterer(label = "C", u = 0.1)
+  s5.u_star=(1,1,1,1,1,1)
+  s5.flags.set_use_u_aniso(True)
+  s6 = xray.scatterer(label = "C", u = 0.1)
+  s6.u_star=(1,1,1,1,1,1)
+  s7 = xray.scatterer(label = "C", u = (1,1,1,1,1,1))
+  s7.u_iso=0.1
+  s8 = xray.scatterer(label = "C", u = (1,1,1,1,1,1))
+  s8.u_iso=0.1
+  s8.flags.set_use_u_iso(True)
+  s9 = xray.scatterer(label = "C")
+  s10 = xray.scatterer(label = "C")
+  s10.flags.set_use_u_iso(False)
+  a = flex.xray_scatterer((s1,s2,s3,s4,s5,s6,s7,s8,s9,s10))
+  u_cart_total = a.extract_u_total_as_u_cart(uc)
+  assert approx_equal(u_cart_total,
+    [(0.1,0.1,0.1,0,0,0),
+    (-1,-1,-1,-1,-1,-1),
+    (1,1,1,1,1,1),
+    (-1,-1,-1,-1,-1,-1),
+    (1.1,1.1,1.1,1,1,1),
+    (0.1,0.1,0.1,0,0,0),
+    (1,1,1,1,1,1),
+    (1.1,1.1,1.1,1,1,1),
+    (0,0,0,0,0,0),
+    (-1,-1,-1,-1,-1,-1)])
+
+
 def run():
+  exercise_extract_u_total_as_u_cart()
   exercise_flex_miller_index()
   exercise_flex_sym_mat3_double()
   exercise_flex_hendrickson_lattman()
