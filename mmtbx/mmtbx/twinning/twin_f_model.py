@@ -1173,18 +1173,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     # Now we have to ensure that the trace of U_star is equal to zero
     u_cart = adptbx.u_star_as_u_cart(self.xs.unit_cell(), self.scaling_parameters.u_star)
     trace = float(u_cart[0]+u_cart[1]+u_cart[2])/3.0
-    u_cart = ( u_cart[0]-trace,
-               u_cart[1]-trace,
-               u_cart[2]-trace,
-               u_cart[3],
-               u_cart[4],
-               u_cart[5] )
-
-    # Now please add trace to the u's in the structure
-    self.apply_back_b_iso()
     # convert u_cart back to u_star
-    self.scaling_parameters.u_star= adptbx.u_cart_as_u_star(self.xs.unit_cell(), u_cart)
-
+    # self.scaling_parameters.u_star= adptbx.u_cart_as_u_star(self.xs.unit_cell(), u_cart)
     self.twin_fraction = self.twin_fraction_object.twin_fraction
     self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
     self.free_target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
@@ -1192,6 +1182,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.data_core.ustar( self.scaling_parameters.u_star )
     self.data_core.ksol( self.scaling_parameters.k_sol )
     self.data_core.usol( self.scaling_parameters.u_sol )
+    # Now please add trace to the u's in the structure
+    self.apply_back_b_iso()
 
     self.update_xray_structure(update_f_calc=True)
 
@@ -1376,12 +1368,12 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
   def apply_back_b_iso(self):
     eps = math.pi**2*8
-    uc = self.xray_structure.unit_cell()
-    b_min = min(self.b_sol(), adptbx.u_as_b(flex.min(
-         self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double())))
-    assert b_min >= 0.0
+    unit_cell = self.xray_structure.unit_cell()
+    b_min = min(self.b_sol(), self.xray_structure.min_u_cart_eigenvalue())
+    if(b_min < 0):
+      self.xray_structure.tidy_us(u_min = 1.e-6)
     b_iso = self.b_iso()
-    b_test = b_min + b_iso
+    b_test = b_min+b_iso
     if(b_test < 0.0): b_adj = b_iso + abs(b_test) + 0.001
     else: b_adj = b_iso
     if(abs(b_adj) <= 300.0):
@@ -1391,15 +1383,15 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.update(b_cart = b_cart_new)
       self.update(b_sol = self.k_sol_b_sol()[1] + b_adj)
       self.xray_structure.shift_us(b_shift = b_adj)
-      b_min = adptbx.u_as_b(flex.min(
-            self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double()))
+      b_min = min(self.b_sol(), self.xray_structure.min_u_cart_eigenvalue())
       assert b_min >= 0.0
       self.xray_structure.tidy_us(u_min = 1.e-6)
-      self.update_xray_structure(xray_structure           = self.xray_structure,
-                                 update_f_calc            = True,
-                                 update_f_mask            = False,
-                                 update_f_ordered_solvent = False,
-                                 out                      = None)
+      self.update_xray_structure(
+        xray_structure           = self.xray_structure,
+        update_f_calc            = True,
+        update_f_mask            = False,
+        update_f_ordered_solvent = False,
+        out                      = None)
 
 
 
