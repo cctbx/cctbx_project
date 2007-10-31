@@ -305,7 +305,8 @@ class manager(object):
                      lbfgs_maxfev            = 10,
                      number_of_zones         = 5,
                      protocol                = None,
-                     log                     = None):
+                     log                     = None,
+                     monitors = None):
     global time_rigid_body_total
     timer_rigid_body_total = user_plus_sys_time()
     save_r_work = fmodel.r_work()
@@ -353,6 +354,13 @@ class manager(object):
               t_vec  = self.total_translation,
               header = "Start",
               out    = log)
+    if (protocol == "one_zone" or monitors is None):
+      monitors_call_back_after_collect = None
+    else:
+      monitors_call_back_after_collect = monitors.call_back_after_collect
+      if (monitors_call_back_after_collect is not None):
+        monitors_call_back_after_collect(
+          monitor=None, model=None, fmodel=fmodel)
     for res in d_mins:
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
@@ -422,6 +430,9 @@ class manager(object):
               t_vec  = self.total_translation,
               header = "Rigid body refinement",
               out    = log)
+        if (monitors_call_back_after_collect is not None):
+          monitors_call_back_after_collect(
+            monitor=None, model=None, fmodel=fmodel)
     if(bss is not None and bulk_solvent_and_scale):
       fmodel.update_solvent_and_scale(out = log, verbose = -1)
     print >> log
