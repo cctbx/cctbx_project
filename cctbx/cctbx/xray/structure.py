@@ -245,6 +245,15 @@ class structure(crystal.special_position_settings):
           performed = True
     return performed
 
+  def min_u_cart_eigenvalue(self):
+    u_carts = self._scatterers.extract_u_total_as_u_cart(self.unit_cell())
+    result = flex.double()
+    for i_seq, sc in enumerate(self._scatterers):
+      if(sc.flags.use_u_iso() or sc.flags.use_u_aniso()):
+        assert u_carts[i_seq] != (-1,-1,-1,-1,-1,-1)
+        result.append(min(adptbx.eigenvalues(u_carts[i_seq])))
+    return flex.min(result)
+
   def shake_occupancies(self, selection = None):
     s = self._scatterers
     q_new = flex.random_double(s.size())*2.
