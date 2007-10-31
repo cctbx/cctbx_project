@@ -513,9 +513,8 @@ class manager(manager_mixin):
 
   def apply_back_b_iso(self):
     eps = math.pi**2*8
-    uc = self.xray_structure.unit_cell()
-    b_min = min(self.b_sol(), adptbx.u_as_b(flex.min(
-      self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double())))
+    unit_cell = self.xray_structure.unit_cell()
+    b_min = min(self.b_sol(), self.xray_structure.min_u_cart_eigenvalue())
     if(b_min < 0):
       self.xray_structure.tidy_us(u_min = 1.e-6)
     b_iso = self.b_iso()
@@ -529,8 +528,7 @@ class manager(manager_mixin):
       self.update(b_cart = b_cart_new)
       self.update(b_sol = self.k_sol_b_sol()[1] + b_adj)
       self.xray_structure.shift_us(b_shift = b_adj)
-      b_min = adptbx.u_as_b(flex.min(
-        self.xray_structure.scatterers().u_cart_eigenvalues(uc).as_double()))
+      b_min = min(self.b_sol(), self.xray_structure.min_u_cart_eigenvalue())
       assert b_min >= 0.0
       self.xray_structure.tidy_us(u_min = 1.e-6)
       self.update_xray_structure(
