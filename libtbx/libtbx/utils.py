@@ -2,6 +2,8 @@ from __future__ import division
 from __future__ import generators
 from libtbx import sge_utils
 from libtbx.str_utils import show_string
+try: import gzip
+except ImportError: gzip = None
 import md5
 import glob
 import time
@@ -17,6 +19,16 @@ def escape_sh_double_quoted(s):
   "the result is supposed to be double-quoted when passed to sh"
   if (s is None): return None
   return s.replace('\\','\\\\').replace('"','\\"')
+
+def gzip_open(file_name, mode):
+  assert mode in ["r", "rb", "w", "wb", "a", "ab"]
+  if (gzip is None):
+    un = ""
+    if (mode[0] == "r"): un = "un"
+    raise RuntimeError(
+      "gzip module not available: cannot %scompress file %s"
+        % (un, show_string(file_name)))
+  return gzip.open(file_name, mode)
 
 def warn_if_unexpected_md5_hexdigest(
       path,
@@ -85,11 +97,17 @@ def getenv_bool(variable_name, default=False):
 def file_size(file_name):
   return os.stat(file_name).st_size
 
-def copy_file(source, target):
+def copy_file(source, target, compress=None):
   assert os.path.isfile(source)
   if (os.path.isdir(target)):
     target = os.path.join(target, os.path.basename(source))
-  open(target, "wb").write(open(source, "rb").read())
+  if (compress is None):
+    t = open(target, "wb")
+  else:
+    assert compress == ".gz"
+    t = gzip_open(file_name=target+compress, mode="wb")
+  t.write(open(source, "rb").read())
+  del t
 
 def remove_files(pattern):
   for path in glob.glob(pattern):
