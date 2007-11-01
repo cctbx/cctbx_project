@@ -185,7 +185,8 @@ def format_exception():
   return ("%s: %s" % (type_, value)).rstrip()
 
 def date_and_time():
-  localtime = time.localtime()
+  seconds_since_epoch = time.time()
+  localtime = time.localtime(seconds_since_epoch)
   if (time.daylight and localtime[8] != 0):
     tzname = time.tzname[1]
     offs = -time.altzone
@@ -193,7 +194,8 @@ def date_and_time():
     tzname = time.tzname[0]
     offs = -time.timezone
   return time.strftime("Date %Y-%m-%d Time %H:%M:%S", localtime) \
-       + " %s %+03d%02d" % (tzname, offs//3600, offs//60%60)
+       + " %s %+03d%02d (%.2f s)" % (
+           tzname, offs//3600, offs//60%60, seconds_since_epoch)
 
 class user_plus_sys_time(object):
 
