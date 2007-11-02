@@ -9,6 +9,7 @@ import copy, time
 from libtbx.utils import Sorry
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
+from libtbx.math_utils import iround
 
 time_rigid_body_total = 0.0
 
@@ -237,7 +238,9 @@ class rb_mat(object):
      return rm
 
 def split_resolution_range(miller_array,
+                           n_bodies,
                            nref_first_low,
+                           multi_body_factor_nref_first_low=1,
                            d_low = 8.0,
                            d_high = 2.0,
                            number_of_zones = 0,
@@ -245,18 +248,23 @@ def split_resolution_range(miller_array,
   if(log is None): log = sys.stdout
   assert number_of_zones > 0
   assert d_low > d_high
+  assert n_bodies > 0
   assert nref_first_low > 0
+  assert multi_body_factor_nref_first_low is None or multi_body_factor_nref_first_low > 0
   d_spacings = miller_array.d_spacings().data()
   d_max, d_min = flex.max(d_spacings), flex.min(d_spacings)
   d_high = max(d_min, d_high)
   sel = flex.sort_permutation(d_spacings, reverse = True)
   d_spacings = d_spacings.select(sel)
-  d_nref_first_low = d_spacings[:nref_first_low]
+  mref_first_low = nref_first_low
+  if (multi_body_factor_nref_first_low is not None):
+    mref_first_low += iround(
+      mref_first_low * (n_bodies-1) * multi_body_factor_nref_first_low)
+  d_nref_first_low = d_spacings[:mref_first_low]
   if((d_nref_first_low < d_high).count(True) > 0):
     sel_d_high = d_spacings >= d_high
     d_nref_first_low = d_spacings.select(sel_d_high)
-    try: d_nref_first_low = d_nref_first_low[:nref_first_low]
-    except: pass
+    d_nref_first_low = d_nref_first_low[:mref_first_low]
   d_low_first = d_nref_first_low[len(d_nref_first_low)-1]
   if(d_low_first > d_low): d_low_first = d_low
   d_mids = []
@@ -278,8 +286,8 @@ def split_resolution_range(miller_array,
   print >> log, \
     "  Number of zones for Multi-Zone (MZ) protocol: %d"%(number_of_zones)
   print >> log, \
-    "  Requested number of reflections for first low resolution zone: %d"%(
-                                                                nref_first_low)
+    "  Target number of reflections in first low resolution zone: %d"%(
+                                                                mref_first_low)
   print >> log, "  High resolution cutoffs for MZ protocol: "
   print >> log, "    zone  resolution  number of reflections"
   for i, d_i in enumerate(d_mids):
@@ -296,6 +304,7 @@ class manager(object):
                      r_initial               = None,
                      t_initial               = None,
                      nref_min                = 1000,
+                     multi_body_factor_nref_min = 1,
                      max_iterations          = 50,
                      bulk_solvent_and_scale  = True,
                      high_resolution         = 2.0,
@@ -342,12 +351,15 @@ class manager(object):
        fmodel_copy.mask_params.verbose = -1
     if(protocol == "one_zone"):
       number_of_zones = 1
-    d_mins = split_resolution_range(miller_array    = fmodel_copy.f_obs_w,
-                                    nref_first_low  = nref_min,
-                                    d_low           = max_low_high_res_limit,
-                                    d_high          = high_resolution,
-                                    number_of_zones = number_of_zones,
-                                    log             = log)
+    d_mins = split_resolution_range(
+      miller_array    = fmodel_copy.f_obs_w,
+      n_bodies        = len(selections),
+      nref_first_low  = nref_min,
+      multi_body_factor_nref_first_low = multi_body_factor_nref_min,
+      d_low           = max_low_high_res_limit,
+      d_high          = high_resolution,
+      number_of_zones = number_of_zones,
+      log             = log)
     print >> log
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
