@@ -1842,21 +1842,22 @@ def n_as_s(format, value):
 
 class resolution_bin(object):
   def __init__(self,
-               i_bin        = None,
-               d_range      = None,
-               completeness = None,
-               alpha_work   = None,
-               beta_work    = None,
-               r_work       = None,
-               r_free       = None,
-               target_work  = None,
-               target_free  = None,
-               n_work       = None,
-               n_free       = None,
-               mean_f_obs   = None,
-               fom_work     = None,
-               pher_work    = None,
-               pher_free    = None):
+               i_bin         = None,
+               d_range       = None,
+               completeness  = None,
+               alpha_work    = None,
+               beta_work     = None,
+               r_work        = None,
+               r_free        = None,
+               target_work   = None,
+               target_free   = None,
+               n_work        = None,
+               n_free        = None,
+               mean_f_obs    = None,
+               fom_work      = None,
+               scale_k1_work = None,
+               pher_work     = None,
+               pher_free     = None):
     adopt_init_args(self, locals())
 
 class info(object):
@@ -1969,18 +1970,22 @@ class info(object):
         d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
       d_range = fo_t.binner().bin_legend(
         i_bin=i_bin, show_bin_number=False, show_counts=False)
+      s_fo_w_d = sel_fo_w.data()
+      s_fc_w_d = sel_fc_w.data()
+      s_fc_w_d_a = flex.abs(s_fc_w_d)
       bin = resolution_bin(
         i_bin        = i_bin,
         d_range      = d_range,
         completeness = completeness,
         alpha_work   = flex.mean_default(alpha_w.select(sel_w).data(),None),
         beta_work    = flex.mean_default(beta_w.select(sel_w).data(),None),
-        r_work       = bulk_solvent.r_factor(sel_fo_w.data(), sel_fc_w.data()),
+        r_work       = bulk_solvent.r_factor(s_fo_w_d, s_fc_w_d),
         r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data()),
         target_work  = sel_tpr_w,
         target_free  = sel_tpr_t,
         n_work       = sel_fo_w.data().size(),
         n_free       = sel_fo_t.data().size(),
+        scale_k1_work= flex.sum(s_fo_w_d*s_fc_w_d_a)/flex.sum(s_fc_w_d_a*s_fc_w_d_a),
         mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
         fom_work     = flex.mean_default(fom.select(sel_w),None),
         pher_work    = flex.mean_default(pher_w.select(sel_w),None),
@@ -2174,8 +2179,8 @@ class info(object):
     print >> out, "|R-free likelihood based estimates for figures of merit, absolute phase error,|"
     print >> out, "|and distribution parameters alpha and beta (Acta Cryst. (1995). A51, 880-887)|"
     print >> out, "|"+" "*77+"|"
-    print >> out, "| Bin     Resolution      No. Refl.   FOM   Phase error    Alpha        Beta  |"
-    print >> out, "|  #        range        work  test        work    test                       |"
+    print >> out, "| Bin     Resolution      No. Refl.   FOM  Phase Scale    Alpha        Beta   |"
+    print >> out, "|  #        range        work  test        error factor                       |"
     for bin in self.bins:
       print >> out, "|%3d: %-17s%6d%6d%s%s%s%s%s|" % (
         bin.i_bin,
@@ -2184,7 +2189,7 @@ class info(object):
         bin.n_free,
         format_value("%6.2f",  bin.fom_work),
         format_value("%7.2f",  bin.pher_work),
-        format_value("%7.2f",  bin.pher_free),
+        format_value("%7.2f",  bin.scale_k1_work),
         format_value("%9.2f",  bin.alpha_work),
         format_value("%14.2f", bin.beta_work))
     print >>out, "|alpha:            min =%s max =%s mean =%s|"%(
