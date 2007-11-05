@@ -25,6 +25,36 @@ ZN CA MG CL NA MN K FE CU CD HG NI CO BR XE SR CS PT BA TL PB SM AU RB YB LI
 KR MO LU CR OS GD TB LA F AR AG HO GA CE W SE RU RE PR IR EU AL V TE SB PD
 """.split()
 
+class ad_hoc_single_atom_residue(object):
+
+  def __init__(self, residue_name, atom_name, atom_element):
+    atom_element = atom_element.strip().upper()
+    if (atom_element in ad_hoc_single_atom_residue_element_types):
+      self.scattering_type = atom_element
+      self.energy_type = atom_element
+      return
+    atom_name = atom_name.strip().upper()
+    if (    len(atom_element) == 0
+        and atom_name == residue_name
+        and atom_name in ad_hoc_single_atom_residue_element_types):
+      self.scattering_type = atom_name
+      self.energy_type = atom_name
+      return
+    if (    residue_name == "NH3"
+        and atom_element == "N"
+        or (len(atom_element) == 0 and atom_name.startswith("N"))):
+      self.scattering_type = "N"
+      self.energy_type = "N"
+      return
+    if (    residue_name == "CH4"
+        and atom_element == "C"
+        or (len(atom_element) == 0 and atom_name.startswith("C"))):
+      self.scattering_type = "C"
+      self.energy_type = "C"
+      return
+    self.scattering_type = None
+    self.energy_type = None
+
 master_params = iotbx.phil.parse("""\
   apply_cif_modification
     .optional = True
@@ -1411,15 +1441,17 @@ class build_chain_proxies(object):
           if (residue.iselection.size() != 1): return False
           i_seq = residue.iselection[0]
           atom = stage_1.atom_attributes_list[i_seq]
-          key = atom.element.strip().upper()
-          if (key not in ad_hoc_single_atom_residue_element_types):
-            return False
-          entry = ener_lib.lib_atom.get(key, None)
+          ad_hoc = ad_hoc_single_atom_residue(
+            residue_name=residue.name(),
+            atom_name=atom.name,
+            atom_element=atom.element)
+          if (ad_hoc.scattering_type is None): return False
+          entry = ener_lib.lib_atom.get(ad_hoc.energy_type, None)
           if (entry is None): return False
           scattering_type_registry.assign_directly(
-            i_seq=i_seq, symbol=key)
+            i_seq=i_seq, symbol=ad_hoc.scattering_type)
           nonbonded_energy_type_registry.assign_directly(
-            i_seq=i_seq, symbol=key)
+            i_seq=i_seq, symbol=ad_hoc.energy_type)
           ad_hoc_single_atom_residues[mm.residue_name] += 1
           return True
         if (not use_scattering_type_if_available_to_define_nonbonded_type()):

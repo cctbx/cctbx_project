@@ -1,6 +1,7 @@
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
+from cStringIO import StringIO
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
@@ -47,6 +48,33 @@ END
   xray_structure = processed_pdb_file.xray_structure()
   assert xray_structure.scattering_type_registry().type_count_dict() \
       == {"S": 1, "N": 1, "C": 5, "O": 1, "H": 11}
+  #
+  raw_records = """\
+HETATM    1  N   NH3     1       0.000   0.000   0.000  1.00  0.00           N
+HETATM    2  N   NH3     2       0.000   0.000   0.000  1.00  0.00
+HETATM    3 NH3  NH3     3       0.000   0.000   0.000  1.00  0.00
+HETATM    4  X   CH4     4       0.000   0.000   0.000  1.00  0.00           C
+HETATM    5  C   CH4     5       0.000   0.000   0.000  1.00  0.00
+HETATM    6  CH4 CH4     6       0.000   0.000   0.000  1.00  0.00
+END
+""".splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    log=log)
+  looking_for = "Ad-hoc single atom residues: "
+  for line in log.getvalue().splitlines():
+    line = line.strip()
+    if (not line.startswith(looking_for)): continue
+    counts = eval(line[len(looking_for):])
+    assert counts == {"CH4": 3, "NH3": 3}
+    break
+  else:
+    raise RuntimeError('Expected string not found in output: "%s"'
+      % looking_for)
   print "OK"
 
 if (__name__ == "__main__"):
