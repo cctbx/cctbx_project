@@ -127,7 +127,9 @@ class conformer_selection_properties(object):
         atom_attributes_list,
         special_position_indices,
         registry,
-        selection_strings):
+        selection_strings,
+        special_position_warnings_only,
+        log):
     for mma_i,mma_j,pairs in zip(
           self.mma_with_selected_atoms_by_chain,
           other.mma_with_selected_atoms_by_chain,
@@ -143,12 +145,18 @@ class conformer_selection_properties(object):
           i_seq_j = other_map.get(key, None)
           if (i_seq_j is not None):
             assert i_seq_j >= 0
+            msg = None
             for which,i_seq in [(self, i_seq_i), (other, i_seq_j)]:
               if (i_seq in special_position_indices):
-                raise Sorry(
-                  "NCS selection includes an atom in a special position:\n"
-                + "  Selection: %s\n" % show_string(which.string)
-                + "    Atom: %s" % atom_attributes_list[i_seq].pdb_format())
+                msg = (
+                    "NCS selection includes an atom on a special position:\n"
+                  + "  Selection: %s\n" % show_string(which.string)
+                  + "    Atom: %s" % atom_attributes_list[i_seq].pdb_format())
+                if (not special_position_warnings_only):
+                  raise Sorry(msg)
+                elif (log is not None):
+                  print >> log, "WARNING:", msg
+            if (msg is not None): continue
             if (i_seq_i == i_seq_j):
               raise Sorry("NCS selections restrain atom to itself:\n"
                 + "  Reference selection: %s\n" % show_string(self.string)
@@ -176,7 +184,9 @@ class pair_lists_generator(object):
   def __init__(self,
         processed_pdb,
         reference_selection_string,
-        selection_strings):
+        selection_strings,
+        special_position_warnings_only,
+        log):
     self.processed_pdb = processed_pdb
     del processed_pdb
     self.reference_selection_string = reference_selection_string
@@ -225,7 +235,9 @@ class pair_lists_generator(object):
             atom_attributes_list=atom_attributes_list,
             special_position_indices=special_position_indices,
             registry=self.registry,
-            selection_strings=self.selection_strings)
+            selection_strings=self.selection_strings,
+            special_position_warnings_only=special_position_warnings_only,
+            log=log)
     #
     for i_pair,pair in enumerate(self.registry.selection_pairs()):
       if (pair[0].size() < 2):
@@ -266,11 +278,15 @@ class group(object):
         selection_strings,
         coordinate_sigma,
         b_factor_weight,
-        u_average_min=1.e-6):
+        special_position_warnings_only,
+        u_average_min=1.e-6,
+        log=None):
     g = pair_lists_generator(
       processed_pdb=processed_pdb,
       reference_selection_string=reference_selection_string,
-      selection_strings=selection_strings)
+      selection_strings=selection_strings,
+      special_position_warnings_only=special_position_warnings_only,
+      log=log)
     return group(
       selection_strings=g.selection_strings,
       registry=g.registry,

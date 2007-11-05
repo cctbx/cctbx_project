@@ -44,7 +44,8 @@ def exercise_two_models_with_holes(processed_pdb):
     reference_selection_string=None,
     selection_strings=selection_strings,
     coordinate_sigma=0.05,
-    b_factor_weight=0.4321)
+    b_factor_weight=0.4321,
+    special_position_warnings_only=False)
   sites_cart = processed_pdb.all_chain_proxies.stage_1.get_sites_cart()
   ncs_operators = group.operators(sites_cart=sites_cart)
   out = StringIO()
@@ -220,7 +221,8 @@ Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
         reference_selection_string=None,
         selection_strings=selection_strings,
         coordinate_sigma=coordinate_sigma,
-        b_factor_weight=b_factor_weight))
+        b_factor_weight=b_factor_weight,
+        special_position_warnings_only=False))
   energies_adp_iso = groups.energies_adp_iso(u_isos=u_isos, average_power=1)
   assert energies_adp_iso.number_of_restraints == 228
   assert eps_eq(energies_adp_iso.residual_sum, 4.39521386804)
@@ -395,7 +397,8 @@ def exercise(args):
         reference_selection_string=None,
         selection_strings=["chain A", "chain B"],
         coordinate_sigma=None,
-        b_factor_weight=None)
+        b_factor_weight=None,
+        special_position_warnings_only=False)
       assert len(group.selection_pairs) == 1
       assert list(group.selection_pairs[0][0]) == [0,1,2,3]
       if (file_name == "simple.pdb"):
@@ -414,7 +417,8 @@ def exercise(args):
         reference_selection_string=None,
         selection_strings=["chain A", "chain B"],
         coordinate_sigma=None,
-        b_factor_weight=None)
+        b_factor_weight=None,
+        special_position_warnings_only=False)
     except Sorry, e:
       assert not show_diff(str(e), '''\
 NCS restraints selections do not produce any pairs of matching atoms:
@@ -427,13 +431,50 @@ NCS restraints selections do not produce any pairs of matching atoms:
         reference_selection_string=None,
         selection_strings=["chain A", "chain C"],
         coordinate_sigma=None,
-        b_factor_weight=None)
+        b_factor_weight=None,
+        special_position_warnings_only=False)
     except Sorry, e:
       assert not show_diff(str(e), '''\
 NCS restraints selections produce only one pair of matching atoms:
   Reference selection: "chain A"
       Other selection: "chain C"''')
     else: raise RuntimeError("Exception expected.")
+    processed_pdb = monomer_library.pdb_interpretation.process(
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=os.path.join(ncs_dir, "special_position.pdb"),
+      log=log)
+    try:
+      ncs.restraints.group.from_atom_selections(
+        processed_pdb=processed_pdb,
+        reference_selection_string=None,
+        selection_strings=["chain A", "chain D"],
+        coordinate_sigma=None,
+        b_factor_weight=None,
+        special_position_warnings_only=False)
+    except Sorry, e:
+      assert not show_diff(str(e), '''\
+NCS selection includes an atom on a special position:
+  Selection: "chain A"
+    Atom: " NE  ARG A  60 "''')
+    else: raise RuntimeError("Exception expected.")
+    log = StringIO()
+    group = ncs.restraints.group.from_atom_selections(
+      processed_pdb=processed_pdb,
+      reference_selection_string=None,
+      selection_strings=["chain A", "chain D"],
+      coordinate_sigma=None,
+      b_factor_weight=None,
+      special_position_warnings_only=True,
+      log=log)
+    assert not show_diff(log.getvalue(), '''\
+WARNING: NCS selection includes an atom on a special position:
+  Selection: "chain A"
+    Atom: " NE  ARG A  60 "
+''')
+    assert len(group.selection_pairs) == 1
+    assert list(group.selection_pairs[0][0]) == [0,1,2,3,4,5,6,8,9,10]
+    assert list(group.selection_pairs[0][1]) == [11,12,13,14,15,16,17,19,20,21]
     #
     processed_pdb = monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
