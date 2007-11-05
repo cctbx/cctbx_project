@@ -858,11 +858,11 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     if(command_line.options.use_model):
       crystal_symmetry = crystal_symmetry_from_pdb.extract_from(
          file_name=command_line.options.use_model)
-      if(crystal_symmetry.unit_cell() is None or
-         crystal_symmetry.space_group_info() is None):
-        raise Sorry(
-          "Crystal symmetry is not defined. Please use the --symmetry option.\n"
-          "Type %s without arguments to see more options."%command_name)
+  if(crystal_symmetry.unit_cell() is None or
+     crystal_symmetry.space_group_info() is None):
+    raise Sorry(
+      "Crystal symmetry is not defined. Please use the --symmetry option.\n"
+      "Type %s without arguments to see more options."%command_name)
   if(len(command_line.args) > 1):
     print "%d arguments are given from the command line:"% \
       len(command_line.args), command_line.args
