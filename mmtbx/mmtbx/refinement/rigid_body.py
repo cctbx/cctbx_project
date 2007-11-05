@@ -1,3 +1,4 @@
+from __future__ import division
 from cctbx.array_family import flex
 from libtbx import adopt_init_args
 import math, sys
@@ -237,64 +238,91 @@ class rb_mat(object):
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-def split_resolution_range(miller_array,
-                           n_bodies,
-                           nref_first_low,
-                           multi_body_factor_nref_first_low=1,
-                           d_low = 8.0,
-                           d_high = 2.0,
-                           number_of_zones = 0,
-                           log = None):
-  if(log is None): log = sys.stdout
-  assert number_of_zones > 0
-  assert d_low > d_high
+def split_resolution_range(
+      d_spacings,
+      n_bodies,
+      n_ref_first,
+      multi_body_factor_n_ref_first,
+      d_low,
+      d_high,
+      number_of_zones,
+      zone_exp_factor,
+      log = None):
   assert n_bodies > 0
-  assert nref_first_low > 0
-  assert multi_body_factor_nref_first_low is None or multi_body_factor_nref_first_low > 0
-  d_spacings = miller_array.d_spacings().data()
-  d_max, d_min = flex.max(d_spacings), flex.min(d_spacings)
-  d_high = max(d_min, d_high)
-  sel = flex.sort_permutation(d_spacings, reverse = True)
-  d_spacings = d_spacings.select(sel)
-  mref_first_low = nref_first_low
-  if (multi_body_factor_nref_first_low is not None):
-    mref_first_low += iround(
-      mref_first_low * (n_bodies-1) * multi_body_factor_nref_first_low)
-  d_nref_first_low = d_spacings[:mref_first_low]
-  if((d_nref_first_low < d_high).count(True) > 0):
-    sel_d_high = d_spacings >= d_high
-    d_nref_first_low = d_spacings.select(sel_d_high)
-    d_nref_first_low = d_nref_first_low[:mref_first_low]
-  d_low_first = d_nref_first_low[len(d_nref_first_low)-1]
-  if(d_low_first > d_low): d_low_first = d_low
-  d_mids = []
-  if(number_of_zones != 1):
-     d_step = (d_low_first - d_high)/(number_of_zones - 1)
-     if(d_step > 0.1):
-       for i_zone in range(0, number_of_zones):
-         d_mids.append(d_low_first - d_step*i_zone)
-     else:
-       d_mids.append(d_high)
+  assert multi_body_factor_n_ref_first is None or multi_body_factor_n_ref_first > 0
+  assert n_ref_first is None or n_ref_first > 0
+  assert d_low is None or d_low > 0
+  assert d_high is None or d_high > 0
+  assert n_ref_first is not None or d_low is not None
+  if (d_low is not None and d_high is not None): assert d_low > d_high
+  assert number_of_zones is None or number_of_zones > 0
+  assert zone_exp_factor > 0
+  if (log is None): log = sys.stdout
+  n_refl_data = d_spacings.size()
+  d_spacings = d_spacings.select(
+    flex.sort_permutation(d_spacings, reverse = True))
+  d_max, d_min = d_spacings[0], d_spacings[-1]
+  if (d_high is not None and d_min < d_high):
+    d_spacings = d_spacings.select(d_spacings >= d_high)
+  d_high = d_spacings[-1]
+  m_ref_first = n_ref_first
+  if (n_ref_first is None):
+    final_n_ref_first = (d_spacings >= d_low).count(True)
   else:
-     d_mids.append(d_high)
-  print >> log, \
-    "Information about resolution zones and data for rigid body refinement:"
-  print >> log, \
-    "  Data resolution: %.2f - %.2f"%(d_max,d_min)
-  print >> log, \
-    "  Resolution for rigid body refinement: %.2f - %.2f"%(d_max,d_high)
-  print >> log, \
-    "  Number of zones for Multi-Zone (MZ) protocol: %d"%(number_of_zones)
-  print >> log, \
-    "  Target number of reflections in first low resolution zone: %d"%(
-                                                                mref_first_low)
-  print >> log, "  High resolution cutoffs for MZ protocol: "
-  print >> log, "    zone  resolution  number of reflections"
-  for i, d_i in enumerate(d_mids):
-    nref = (d_spacings >= d_i).count(True)
-    print >> log, \
-      "     %d:   %.2f-%.2f                  %d" % (i+1, d_max, d_i, nref)
-  return d_mids
+    if (multi_body_factor_n_ref_first is not None):
+      m_ref_first += iround(
+        m_ref_first * (n_bodies-1) * multi_body_factor_n_ref_first)
+    assert m_ref_first > 0
+    if (    d_low is not None
+        and m_ref_first <= d_spacings.size()
+        and d_spacings[m_ref_first-1] > d_low):
+      final_n_ref_first = (d_spacings >= d_low).count(True)
+    else:
+      final_n_ref_first = m_ref_first
+  d_mins = []
+  if (number_of_zones is not None and number_of_zones > 1):
+    degenerate = final_n_ref_first > d_spacings.size()
+    if (not degenerate):
+      f = math.pow(
+        d_spacings.size()/final_n_ref_first,
+        1/((number_of_zones-1)*zone_exp_factor))
+      d_mins.append(d_spacings[final_n_ref_first-1])
+      for i_zone in range(1, number_of_zones-1):
+        n = iround(final_n_ref_first * f**i_zone)
+        d_mins.append(d_spacings[n-1])
+  else:
+    final_n_ref_first = min(final_n_ref_first, d_spacings.size())
+    degenerate = False
+  d_mins.append(d_high)
+  print >> log, "Rigid body refinement:"
+  if (len(d_mins) > 1 or degenerate):
+    print >> log, "  Calculation for first resolution zone:"
+    print >> log, "    Requested number of reflections per body:", n_ref_first
+    print >> log, "    Requested factor per body:", \
+      multi_body_factor_n_ref_first
+    print >> log, "    Number of bodies:", n_bodies
+    print >> log, "    Resulting number of reflections:", m_ref_first
+    print >> log, "    Requested low-resolution limit:", d_low,
+    if (final_n_ref_first != m_ref_first):
+      print >> log, "(determines final number)",
+    print >> log
+    print >> log, "    Final number of reflections:", final_n_ref_first
+  print >> log, "  Data resolution:                      %6.2f - %6.2f" \
+    " (%d reflections)" % (d_max, d_min, n_refl_data)
+  print >> log, "  Resolution for rigid body refinement: %6.2f - %6.2f" \
+    " (%d reflections)" % (d_max, d_high, d_spacings.size())
+  if (degenerate):
+    raise Sorry("Final number of reflections > number of reflections: %d > %d" % (final_n_ref_first, d_spacings.size()))
+  print >> log, "  Number of resolution zones: %d" % number_of_zones
+  if (len(d_mins) > 1):
+    print >> log, "  Resolution cutoffs for multiple zones: "
+    print >> log, "                          number of"
+    print >> log, "    zone     resolution  reflections"
+    for i, d_i in enumerate(d_mins):
+      n_ref = (d_spacings >= d_i).count(True)
+      print >> log, "    %3d  %6.2f -%6.2f %11d" % (
+        i+1, d_max, d_i, n_ref)
+  return d_mins
 
 class manager(object):
   def __init__(self, fmodel,
@@ -352,14 +380,15 @@ class manager(object):
     if(protocol == "one_zone"):
       number_of_zones = 1
     d_mins = split_resolution_range(
-      miller_array    = fmodel_copy.f_obs_w,
-      n_bodies        = len(selections),
-      nref_first_low  = nref_min,
-      multi_body_factor_nref_first_low = multi_body_factor_nref_min,
-      d_low           = max_low_high_res_limit,
-      d_high          = high_resolution,
+      d_spacings = fmodel_copy.f_obs_w.d_spacings().data(),
+      n_bodies = len(selections),
+      n_ref_first = nref_min,
+      multi_body_factor_n_ref_first = multi_body_factor_nref_min,
+      d_low = max_low_high_res_limit,
+      d_high = high_resolution,
       number_of_zones = number_of_zones,
-      log             = log)
+      zone_exp_factor = 1.0,
+      log = log)
     print >> log
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
