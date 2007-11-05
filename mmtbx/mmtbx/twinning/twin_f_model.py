@@ -1629,6 +1629,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                              target_free=None,
                              n_work=n_work,
                              n_free=n_free,
+                             scale_k1_work= None, # XXX for Peter to fix.
                              mean_f_obs = mean_f_obs_w,
                              fom_work = fom_w,
                              pher_work = phase_error_w,
@@ -2610,6 +2611,7 @@ class resolution_bin(object):
                n_free       = None,
                mean_f_obs   = None,
                fom_work     = None,
+               scale_k1_work= None,
                pher_work    = None,
                pher_free    = None):
     adopt_init_args(self, locals())
