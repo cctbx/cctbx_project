@@ -333,6 +333,7 @@ class manager(object):
                      t_initial               = None,
                      nref_min                = 1000,
                      multi_body_factor_nref_min = 1,
+                     zone_exp_factor         = 1.0,
                      max_iterations          = 50,
                      bulk_solvent_and_scale  = True,
                      high_resolution         = 2.0,
@@ -387,7 +388,7 @@ class manager(object):
       d_low = max_low_high_res_limit,
       d_high = high_resolution,
       number_of_zones = number_of_zones,
-      zone_exp_factor = 1.0,
+      zone_exp_factor = zone_exp_factor,
       log = log)
     print >> log
     self.show(fmodel = fmodel,
