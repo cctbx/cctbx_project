@@ -194,7 +194,7 @@ class scaling_parameters_object(object):
     if self.k_sol>0:
       return math.log( self.k_sol )
     else:
-      return None
+      return 0
   def k_part_to_ref(self):
     if self.k_part > 0:
       return math.log( self.k_part )
@@ -295,12 +295,13 @@ class de_bulk_solvent_scaler(object):
     self.x = flex.double([0]*self.n)
     self.de = differential_evolution.differential_evolution_optimizer(
      self,
-     population_size=14,
+     population_size=max(self.n+1,8),
      f=0.8,
      cr=0.7,
      n_cross=2,
      eps=1e-12,
-     show_progress=False#True
+     show_progress=False, #True,
+     max_iter = 5000
     )
 
   def update_parameters(self, vector):
@@ -650,7 +651,7 @@ class bulk_solvent_scaling_manager(object):
       cycle_count += 1
 
       if n_cycle is not "Auto":
-        if cycle_count == n_cylce:
+        if cycle_count == n_cycle:
           converged=True
       else:
         if last_score is not None:
@@ -660,9 +661,6 @@ class bulk_solvent_scaling_manager(object):
             last_score = self.best_score_until_now
         else:
           last_score = self.best_score_until_now
-      self.print_it(score,
-                    self.scaling_parameters,
-                    self.twin_fraction)
 
 
 
@@ -1140,7 +1138,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                                refine=False,
                                grid_search=False,
                                initialise=False,
-                               de_search=False,
+                               de_search=True,
                                out=None,
                                verbose=None
                                ):
@@ -1154,14 +1152,15 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if twin_fraction_parameters is not None:
       self.bss.best_twin_fraction = self.twin_fraction_object
       self.twin_fraction_object = twin_fraction_parameters
-    #if de_search: # XXX
-    if self.did_search < 3: # XXX Pavel: ad hoc to reduce runtime.
+    if de_search:
       self.did_search += 1
       self.bss.de_search()
       self.twin_fraction_object = self.bss.best_twin_fraction
       self.scaling_parameters = self.bss.best_scaling_parameters
+      refine = True
+
     if grid_search:
-      self.bss.grid_search()
+      self.bss.grid_search(n_cycle=40)
       self.twin_fraction_object = self.bss.best_twin_fraction
       self.scaling_parameters = self.bss.best_scaling_parameters
     if refine:
@@ -1169,12 +1168,6 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.twin_fraction_object = self.bss.best_twin_fraction
       self.scaling_parameters = self.bss.best_scaling_parameters
 
-
-    # Now we have to ensure that the trace of U_star is equal to zero
-    u_cart = adptbx.u_star_as_u_cart(self.xs.unit_cell(), self.scaling_parameters.u_star)
-    trace = float(u_cart[0]+u_cart[1]+u_cart[2])/3.0
-    # convert u_cart back to u_star
-    # self.scaling_parameters.u_star= adptbx.u_cart_as_u_star(self.xs.unit_cell(), u_cart)
     self.twin_fraction = self.twin_fraction_object.twin_fraction
     self.target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
     self.free_target_evaluator.alpha( self.twin_fraction_object.twin_fraction )
@@ -1182,9 +1175,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.data_core.ustar( self.scaling_parameters.u_star )
     self.data_core.ksol( self.scaling_parameters.k_sol )
     self.data_core.usol( self.scaling_parameters.u_sol )
-    # Now please add trace to the u's in the structure
     self.apply_back_b_iso()
-
     self.update_xray_structure(update_f_calc=True)
 
 
@@ -1244,6 +1235,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if b_cart is not None:
       u_star = adptbx.u_cart_as_u_star( self.xs.unit_cell(), adptbx.b_as_u( list(b_cart) ) )
       self.data_core.ustar(u_star)
+      self.scaling_parameters.u_star = u_star
 
     if twin_fraction is None:
       self.twin_fraction = self.twin_fraction_object.twin_fraction
