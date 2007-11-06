@@ -282,7 +282,9 @@ def split_resolution_range(
   d_mins = []
   if (number_of_zones is not None and number_of_zones > 1):
     degenerate = final_n_ref_first > d_spacings.size()
-    if (not degenerate):
+    if (degenerate):
+      d_mins.append(d_high)
+    else:
       f = math.pow(
         d_spacings.size()/final_n_ref_first,
         1/((number_of_zones-1)*zone_exp_factor))
@@ -297,7 +299,8 @@ def split_resolution_range(
     degenerate = False
     d_mins.append(d_high)
   print >> log, "Rigid body refinement:"
-  if (len(d_mins) > 1 or degenerate):
+  print >> log, "  Requested number of resolution zones: %d" % number_of_zones
+  if (len(d_mins) != 1 or degenerate):
     print >> log, "  Calculation for first resolution zone:"
     print >> log, "    Requested number of reflections per body:", n_ref_first
     print >> log, "    Requested factor per body:", \
@@ -314,8 +317,11 @@ def split_resolution_range(
   print >> log, "  Resolution for rigid body refinement: %6.2f - %6.2f" \
     " (%d reflections)" % (d_max, d_high, d_spacings.size())
   if (degenerate):
-    raise Sorry("Final number of reflections > number of reflections: %d > %d" % (final_n_ref_first, d_spacings.size()))
-  print >> log, "  Number of resolution zones: %d" % number_of_zones
+    print >> log, """\
+  WARNING: Final number of reflections for first resolution zone is greater
+           than the number of available reflections (%d > %d).
+  INFO: Number of resolution zones reset to 1.""" % (
+    final_n_ref_first, d_spacings.size())
   if (len(d_mins) > 1):
     print >> log, "  Resolution cutoffs for multiple zones: "
     print >> log, "                          number of"
