@@ -287,13 +287,15 @@ def split_resolution_range(
         d_spacings.size()/final_n_ref_first,
         1/((number_of_zones-1)*zone_exp_factor))
       d_mins.append(d_spacings[final_n_ref_first-1])
-      for i_zone in range(1, number_of_zones-1):
-        n = iround(final_n_ref_first * f**i_zone)
+      for i_zone in range(1, number_of_zones):
+        n = iround(final_n_ref_first * f**(i_zone*zone_exp_factor))
+        if (i_zone == number_of_zones - 1):
+          assert n == d_spacings.size() # sanity check
         d_mins.append(d_spacings[n-1])
   else:
     final_n_ref_first = min(final_n_ref_first, d_spacings.size())
     degenerate = False
-  d_mins.append(d_high)
+    d_mins.append(d_high)
   print >> log, "Rigid body refinement:"
   if (len(d_mins) > 1 or degenerate):
     print >> log, "  Calculation for first resolution zone:"
