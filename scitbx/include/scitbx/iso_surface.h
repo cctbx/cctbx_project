@@ -670,6 +670,6 @@ calculate_normals()
   }
 }
 
-}} // end namespace cctbx::maptbx
+}} // end namespace scitbx::iso_surface
 
 #endif // SCITBX_ISO_SURFACE_H
