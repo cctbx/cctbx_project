@@ -119,6 +119,12 @@ class group_args(object):
   def __init__(self, **keyword_arguments):
     self.__dict__.update(keyword_arguments)
 
+def tupleize(x):
+  try:
+    return tuple(x)
+  except:
+    return (x,)
+
 def plural_s(n):
   if (n == 1): return n, ""
   return n, "s"
@@ -665,6 +671,10 @@ def exercise():
               #"ralf" : 0,
               }.items():
     assert get_memory_from_string(s) == i
+  #
+  assert tupleize(1) == (1,)
+  assert tupleize("abcde") == ('a', 'b', 'c', 'd', 'e')
+  assert tupleize([1,2,3]) == (1,2,3)
   #
   print "OK"
 
