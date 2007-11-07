@@ -82,6 +82,7 @@ class parallelized_function(object):
         f = os.fdopen(w, 'w')
         print >> f, sys.stdout.getvalue()
         try:sys.stdout.close()
+        except KeyboardInterrupt: raise
         except:pass
         os._exit(0)
     while self.child_out_fd: self.poll(block=False)
