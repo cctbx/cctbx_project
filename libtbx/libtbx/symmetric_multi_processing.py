@@ -18,14 +18,14 @@ import cStringIO
 
 class parallelized_function(object):
 
-  def __init__(self, func, max_children, timeout=0.001, output=sys.stdout):
+  def __init__(self, func, max_children, timeout=0.001, printout=sys.stdout):
     if 'fork' not in os.__dict__:
       raise NotImplementedError("Only works on platforms featuring 'fork',"
                                 "i.e. UNIX")
     self.func = func
     self.max_children = max_children
     self.timeout = timeout
-    self.output = output
+    self.printout = printout
     self.child_pid_for_out_fd = {}
     self.debug = False
 
@@ -50,18 +50,11 @@ class parallelized_function(object):
     for fd in outputs:
       f = os.fdopen(fd)
       msg = f.read() # block only shortly because of the child buffering
-      print >> self.output, msg
+      print >> self.printout, msg,
       pid = self.child_pid_for_out_fd.pop(fd)
       os.waitpid(pid, 0) # to make sure the child is fully cleaned up
 
-  def run_on_one_processor(self, iterable):
-    stdout, sys.stdout = sys.stdout, self.output
-    for x in iterable:
-      args = tupleize(x)
-      yield self.func(*args)
-    sys.stdout = stdout
-
-  def run_on_multiple_processors(self, iterable):
+  def __call__(self, iterable):
     for x in iterable:
       args = tupleize(x)
       r,w = os.pipe()
@@ -80,8 +73,8 @@ class parallelized_function(object):
         self.func(*args)
         if self.debug: print "\tchild writing to %i" % w
         f = os.fdopen(w, 'w')
-        print >> f, sys.stdout.getvalue()
-        try:sys.stdout.close()
+        print >> f, sys.stdout.getvalue(),
+        try:f.close()
         except KeyboardInterrupt: raise
         except:pass
         os._exit(0)
@@ -102,21 +95,17 @@ def exercise():
     print "\tS=%.2f" % s
     return s
 
-  ref_results = [ abs(math.sin(i*math.pi/2)/i) for i in xrange(1,11) ]
-  ref_printout = '\n'.join([ "iteration #%i:\n\tS=%.2f" % (i,s)
-                             for i,s in zip(xrange(1,11), ref_results) ])
-  output = cStringIO.StringIO()
   try:
-    f = parallelized_function(func, max_children=2, output=output)
+    ref_results = [ abs(math.sin(i*math.pi/2)/i) for i in xrange(1,11) ]
+    ref_printout = '\n'.join([ "iteration #%i:\n\tS=%.2f" % (i,s)
+                               for i,s in zip(xrange(1,11), ref_results) ])
+    f = parallelized_function(func, max_children=2,
+                              printout=cStringIO.StringIO())
+    f(xrange(1,11))
+    assert f.printout.getvalue().strip() == ref_printout
   except NotImplementedError:
     print "Skipped!"
     return
-  results = list(f.run_on_one_processor(xrange(1,11)))
-  assert approx_equal(results, ref_results, eps=0.001)
-  assert output.getvalue().strip() == ref_printout
-  f.output = cStringIO.StringIO()
-  f.run_on_multiple_processors(xrange(1,11))
-  assert output.getvalue().strip() == ref_printout
 
   print format_cpu_times()
 
