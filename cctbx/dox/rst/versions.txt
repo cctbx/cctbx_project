@@ -36,6 +36,8 @@ cctbx links
 
   - `IUCr Computing Commission No. 7, 2006/11 <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2006.pdf>`_
 
+  - `IUCr Computing Commission No. 8, 2007/11 <http://cci.lbl.gov/publications/download/iucrcompcomm_nov2007.pdf>`_
+
   - `CCP4 newsletter No. 42, Summer 2005: The Phenix refinement framework <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/Afonine_GrosseKunstleve_Adams_18JUL2005.doc>`_
 
   - `CCP4 newsletter No. 42, Summer 2005: Characterization of X-ray data sets <http://www.ccp4.ac.uk/newsletters/newsletter42/articles/CCP4_2005_PHZ_RWGK_PDA.doc>`_
