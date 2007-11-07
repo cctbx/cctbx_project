@@ -122,6 +122,7 @@ class group_args(object):
 def tupleize(x):
   try:
     return tuple(x)
+  except KeyboardInterrupt: raise
   except:
     return (x,)
 
