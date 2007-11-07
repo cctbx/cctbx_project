@@ -246,7 +246,7 @@ def split_resolution_range(
       d_low,
       d_high,
       number_of_zones,
-      zone_exp_factor,
+      zone_exponent,
       log = None):
   assert n_bodies > 0
   assert multi_body_factor_n_ref_first is None or multi_body_factor_n_ref_first > 0
@@ -256,7 +256,7 @@ def split_resolution_range(
   assert n_ref_first is not None or d_low is not None
   if (d_low is not None and d_high is not None): assert d_low > d_high
   assert number_of_zones is None or number_of_zones > 0
-  assert zone_exp_factor > 0
+  assert zone_exponent > 0
   if (log is None): log = sys.stdout
   n_refl_data = d_spacings.size()
   d_spacings = d_spacings.select(
@@ -285,12 +285,11 @@ def split_resolution_range(
     if (degenerate):
       d_mins.append(d_high)
     else:
-      f = math.pow(
-        d_spacings.size()/final_n_ref_first,
-        1/((number_of_zones-1)*zone_exp_factor))
+      zone_factor = (d_spacings.size() - final_n_ref_first) \
+                  / ((number_of_zones-1)**zone_exponent)
       d_mins.append(d_spacings[final_n_ref_first-1])
       for i_zone in range(1, number_of_zones):
-        n = iround(final_n_ref_first * f**(i_zone*zone_exp_factor))
+        n = iround(final_n_ref_first + zone_factor * i_zone**zone_exponent)
         if (i_zone == number_of_zones - 1):
           assert n == d_spacings.size() # sanity check
         d_mins.append(d_spacings[n-1])
@@ -330,6 +329,9 @@ def split_resolution_range(
       n_ref = (d_spacings >= d_i).count(True)
       print >> log, "    %3d  %6.2f -%6.2f %11d" % (
         i+1, d_max, d_i, n_ref)
+    print >> log, "    zone number of reflections =" \
+      " %d + %.6g * (zone-1)**%.6g" % (
+        final_n_ref_first, zone_factor, zone_exponent)
   return d_mins
 
 class manager(object):
@@ -341,7 +343,7 @@ class manager(object):
                      t_initial               = None,
                      nref_min                = 1000,
                      multi_body_factor_nref_min = 1,
-                     zone_exp_factor         = 1.0,
+                     zone_exponent           = 3.0,
                      max_iterations          = 50,
                      bulk_solvent_and_scale  = True,
                      high_resolution         = 2.0,
@@ -396,7 +398,7 @@ class manager(object):
       d_low = max_low_high_res_limit,
       d_high = high_resolution,
       number_of_zones = number_of_zones,
-      zone_exp_factor = zone_exp_factor,
+      zone_exponent = zone_exponent,
       log = log)
     print >> log
     self.show(fmodel = fmodel,
