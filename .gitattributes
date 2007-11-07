@@ -65,6 +65,7 @@ libtbx/libtbx/phil/example.params -text
 libtbx/libtbx/smart_open.py svneol=native#text/x-python
 libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx/subversion.py -text
+libtbx/libtbx/symmetric_multi_processing.py -text
 libtbx/libtbx/tst_itertbx.py -text
 libtbx/libtbx/tst_object_oriented_patterns.py -text
 libtbx/libtbx_refresh.py -text
