@@ -34,24 +34,14 @@ class parallelized_function(object):
     self.result_buffer = {}
     self.debug = False
 
-  def child_out_fd(self):
-    return self.child_pid_for_out_fd.keys()
-  child_out_fd = property(child_out_fd)
-
   def poll(self):
-    if len(self.child_out_fd) == self.max_children:
+    child_out_fd = self.child_pid_for_out_fd.keys()
+    if len(child_out_fd) == self.max_children:
       if self.debug: print "** waiting for a child to finish **"
-      inputs, outputs, errors = select.select(self.child_out_fd, [], [])
+      inputs, outputs, errors = select.select(child_out_fd, [], [])
     else:
-      inputs, outputs, errors = select.select(self.child_out_fd, [], [],
+      inputs, outputs, errors = select.select(child_out_fd, [], [],
                                               self.timeout)
-    if not inputs:
-      if self.debug: print "\tno file descriptor is ready"
-    else:
-      if self.debug: print "\tfile descriptor%s %s %s ready" % (
-        ('','s')[len(inputs)>1],
-        ', '.join(["%i" % pid for pid in inputs]),
-        ('is', 'are')[len(inputs)>1])
     for fd in inputs:
       f = os.fdopen(fd)
       msg = f.read() # block only shortly because of the child buffering
@@ -78,7 +68,7 @@ class parallelized_function(object):
       pid = os.fork()
       if pid > 0:
         # parent
-        if self.debug: print "parent: from %i, child %i: to %i" % (r, pid, w)
+        if self.debug: print "spawn child %i" % pid
         os.close(w)
         self.child_pid_for_out_fd[r] = pid
         self.index_of_pid[pid] = i
@@ -92,7 +82,6 @@ class parallelized_function(object):
         sys.stdout, stdout = output, sys.stdout
         result = self.func(*args)
         sys.stdout = stdout
-        if self.debug: print "\tchild writing to %i" % w
         f = os.fdopen(w, 'w')
         pickled_result = easy_pickle.dumps(result)
         msg = ''.join((
@@ -104,33 +93,31 @@ class parallelized_function(object):
         except KeyboardInterrupt: raise
         except:pass
         os._exit(0)
-    while self.child_out_fd:
+    while self.child_pid_for_out_fd:
       for result in self.poll():
         yield result
 
 
-def exercise():
-  import math, time, re
+def exercise(max_children):
+  import math, random, time, re
   from libtbx.test_utils import approx_equal
   from libtbx.utils import show_times_at_exit
   show_times_at_exit()
   def func(i):
     s = 0
-    n = 8e5
+    n = 5e6/(i*i % 5 + 1)
     h = math.pi/2/n
     for j in xrange(int(n)):
       s += math.cos(i*j*h)
     s = abs(s*h)
-    print "%i:" % i,
-    time.sleep(0.05)
-    print "S=%.2f" % s
+    print "%i: S=%.2f" % (i,s)
     return s
 
   try:
     result_pat = re.compile("(\d+): S=(\d\.\d\d)")
     ref_results = [ abs(math.sin(i*math.pi/2)/i) for i in xrange(1,11) ]
     ref_printout = zip(xrange(1,11), [ "%.2f" % s for s in ref_results ])
-    f = parallelized_function(func, max_children=2,
+    f = parallelized_function(func, max_children=max_children,
                               printout=cStringIO.StringIO())
     if 0:
       f.debug = True
@@ -151,5 +138,10 @@ def exercise():
 
   print "OK"
 
+def run():
+  if len(sys.argv[1:]): max_children = int(sys.argv[1])
+  else: max_children = 2
+  exercise(max_children)
+
 if __name__ == '__main__':
-  exercise()
+  run()
