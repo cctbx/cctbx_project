@@ -2,7 +2,6 @@ from libtbx import smart_open
 from libtbx.str_utils import show_string
 import cPickle
 import os
-import cStringIO
 
 def _open(file_name, mode):
   file_name = os.path.expanduser(file_name)
@@ -14,13 +13,11 @@ def _open(file_name, mode):
 def dump(file_name, obj):
   return cPickle.dump(obj, _open(file_name, "wb"), 1)
 
+def dumps(obj):
+  return cPickle.dumps(obj, 1)
+
 def load(file_name):
   return cPickle.load(_open(file_name, "rb"))
 
 def dump_args(*args, **keyword_args):
   dump("args.pickle", (args, keyword_args))
-
-def pickled(obj):
-  f = cStringIO.StringIO()
-  cPickle.dump(obj, f)
-  return f.getvalue()
