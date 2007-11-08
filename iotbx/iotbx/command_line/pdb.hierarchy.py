@@ -16,6 +16,12 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       default=None,
       help="level of detail",
       metavar="|".join(pdb.hierarchy_level_ids))
+    .option(None, "--duplicate_max_show",
+      action="store",
+      type="int",
+      default=10,
+      help="maximum number of groups of duplicate atom labels to be listed",
+      metavar="INT")
     .option(None, "--prefix",
       action="store",
       type="string",
@@ -23,20 +29,23 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       help="prefix for all output lines",
       metavar="STRING")
   ).process(args=args)
-  level_id = command_line.options.details
-  prefix = command_line.options.prefix
-  file_names = command_line.args
-  for file_name in file_names:
+  co = command_line.options
+  for file_name in command_line.args:
     if (not os.path.isfile(file_name)): continue
-    execute(file_name=file_name, level_id=level_id, prefix=prefix)
-    print prefix
+    execute(
+      file_name=file_name,
+      level_id=co.details,
+      duplicate_max_show=co.duplicate_max_show,
+      prefix=co.prefix)
+    print co.prefix.rstrip()
 
-def execute(file_name, level_id=None, prefix=""):
+def execute(file_name, level_id=None, duplicate_max_show=10, prefix=""):
   try:
     pdb.show_summary(
       file_name=file_name,
       level_id=level_id,
       level_id_exception=Sorry,
+      duplicate_max_show=duplicate_max_show,
       prefix=prefix)
   except KeyboardInterrupt: raise
   except Exception, e:
