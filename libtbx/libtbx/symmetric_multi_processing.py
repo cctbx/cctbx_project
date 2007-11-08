@@ -94,7 +94,7 @@ class parallelized_function(object):
         sys.stdout = stdout
         if self.debug: print "\tchild writing to %i" % w
         f = os.fdopen(w, 'w')
-        pickled_result = easy_pickle.pickled(result)
+        pickled_result = easy_pickle.dumps(result)
         msg = ''.join((
           "%128x" % len(pickled_result),
           pickled_result,
