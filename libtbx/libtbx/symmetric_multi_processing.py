@@ -10,7 +10,6 @@ time being, only UNIX systems are supported, through the use of 'fork'.
 """
 
 from __future__ import generators, division
-from libtbx.utils import format_cpu_times
 from libtbx.utils import tupleize
 import sys, os, select
 import cStringIO
@@ -18,7 +17,8 @@ import cStringIO
 
 class parallelized_function(object):
 
-  def __init__(self, func, max_children, timeout=0.001, printout=sys.stdout):
+  def __init__(self, func, max_children, timeout=0.001, printout=None):
+    if (printout is None): printout = sys.stdout
     if 'fork' not in os.__dict__:
       raise NotImplementedError("Only works on platforms featuring 'fork',"
                                 "i.e. UNIX")
@@ -83,6 +83,8 @@ class parallelized_function(object):
 def exercise():
   import math, time, re
   from libtbx.test_utils import approx_equal
+  from libtbx.utils import show_times_at_exit
+  show_times_at_exit()
   def func(i):
     s = 0
     n = 8e5
@@ -109,9 +111,8 @@ def exercise():
     assert printout == ref_printout
   except NotImplementedError:
     print "Skipped!"
-    return
 
-  print format_cpu_times()
+  print "OK"
 
 if __name__ == '__main__':
   exercise()
