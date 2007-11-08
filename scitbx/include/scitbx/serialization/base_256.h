@@ -9,6 +9,9 @@
 # define SCITBX_SERIALIZATION_BASE_256_USE_BIT_SHIFTS
 #endif
 
+//#define SCITBX_SERIALIZATION_BASE_256_USE_LDEXP_POSITIVE
+//#define SCITBX_SERIALIZATION_BASE_256_USE_LDEXP_NEGATIVE
+
 namespace scitbx { namespace serialization { namespace base_256 {
 
   namespace integer {
@@ -276,7 +279,11 @@ namespace scitbx { namespace serialization { namespace base_256 {
       }
       decomposition v(value);
       for(unsigned i=0;i<sizeof(double);i++) {
-        v.f = std::ldexp(v.f, 8); // v.f *= 256;
+#ifndef SCITBX_SERIALIZATION_BASE_256_USE_LDEXP_POSITIVE
+        v.f *= 256;
+#else
+        v.f = std::ldexp(v.f, 8);
+#endif
         int d = static_cast<int>(v.f);
         SCITBX_ASSERT(d < 256);
         *u_buf++ = static_cast<unsigned char>(d);
@@ -312,7 +319,11 @@ namespace scitbx { namespace serialization { namespace base_256 {
         double vd = 0;
         for(;;) {
           vd += static_cast<double>(*u_end--);
-          vd = std::ldexp(vd, -8); // vd /= 256;
+#ifndef SCITBX_SERIALIZATION_BASE_256_USE_LDEXP_NEGATIVE
+          vd /= 256;
+#else
+          vd = std::ldexp(vd, -8);
+#endif
           if (u_end == u_buf) break;
         }
         base_256::from_string<int> e_proxy(buf + len);
