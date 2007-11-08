@@ -9,6 +9,7 @@ import scitbx.stl.set
 from libtbx import smart_open
 from libtbx.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
+from libtbx.utils import plural_s
 from libtbx.itertbx import count
 import sys
 
@@ -162,6 +163,7 @@ def show_summary(
       lines=None,
       level_id=None,
       level_id_exception=ValueError,
+      duplicate_max_show=10,
       out=None,
       prefix=""):
   pdb_inp = input(file_name=file_name, source_info=source_info, lines=lines)
@@ -219,15 +221,16 @@ def show_summary(
       % dup.size()
     print >> out, prefix+"    total number of affected atoms:           %3d" \
       % sum([i_seqs.size() for i_seqs in dup])
-    iall = pdb_inp.input_atom_labels_list()
-    for i_seqs in dup[:10]:
-      prfx = "    group"
-      for i_seq in i_seqs:
-        print >> out, prefix+prfx, iall[i_seq].pdb_format()
-        prfx = "         "
-    if (dup.size() > 10):
-      print >> out, prefix+"    ... remaining %d groups not shown" % (
-        dup.size()-10)
+    if (duplicate_max_show > 0):
+      iall = pdb_inp.input_atom_labels_list()
+      for i_seqs in dup[:duplicate_max_show]:
+        prfx = "    group"
+        for i_seq in i_seqs:
+          print >> out, prefix+prfx, iall[i_seq].pdb_format()
+          prfx = "         "
+      if (dup.size() > duplicate_max_show):
+        print >> out, prefix+"    ... %d remaining group%s not shown" % \
+          plural_s(dup.size()-duplicate_max_show)
   #
   msg = pdb_inp.have_altloc_mix_message(prefix=prefix+"  ")
   if (msg is not None): print >> out, msg
