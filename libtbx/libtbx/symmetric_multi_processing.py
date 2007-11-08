@@ -36,18 +36,18 @@ class parallelized_function(object):
   def poll(self, block):
     if block and self.debug: print "** waiting for a child to finish **"
     if block:
-      inputs, outputs, errors = select.select([], self.child_out_fd, [])
+      inputs, outputs, errors = select.select(self.child_out_fd, [], [])
     else:
-      inputs, outputs, errors = select.select([], self.child_out_fd, [],
+      inputs, outputs, errors = select.select(self.child_out_fd, [], [],
                                               self.timeout)
-    if not outputs:
+    if not inputs:
       if self.debug: print "\tno file descriptor is ready"
     else:
       if self.debug: print "\tfile descriptor%s %s %s ready" % (
-        ('','s')[len(outputs)>1],
-        ', '.join(["%i" % pid for pid in outputs]),
-        ('is', 'are')[len(outputs)>1])
-    for fd in outputs:
+        ('','s')[len(inputs)>1],
+        ', '.join(["%i" % pid for pid in inputs]),
+        ('is', 'are')[len(inputs)>1])
+    for fd in inputs:
       f = os.fdopen(fd)
       msg = f.read() # block only shortly because of the child buffering
       print >> self.printout, msg,
@@ -81,7 +81,7 @@ class parallelized_function(object):
     while self.child_out_fd: self.poll(block=False)
 
 def exercise():
-  import math, time
+  import math, time, re
   from libtbx.test_utils import approx_equal
   def func(i):
     s = 0
@@ -90,19 +90,23 @@ def exercise():
     for j in xrange(int(n)):
       s += math.cos(i*j*h)
     s = abs(s*h)
-    print "iteration #%i:" % i
+    print "%i:" % i,
     time.sleep(0.05)
-    print "\tS=%.2f" % s
+    print "S=%.2f" % s
     return s
 
   try:
+    result_pat = re.compile("(\d+): S=(\d\.\d\d)")
     ref_results = [ abs(math.sin(i*math.pi/2)/i) for i in xrange(1,11) ]
-    ref_printout = '\n'.join([ "iteration #%i:\n\tS=%.2f" % (i,s)
-                               for i,s in zip(xrange(1,11), ref_results) ])
+    ref_printout = zip(xrange(1,11), [ "%.2f" % s for s in ref_results ])
     f = parallelized_function(func, max_children=2,
                               printout=cStringIO.StringIO())
     f(xrange(1,11))
-    assert f.printout.getvalue().strip() == ref_printout
+    matches = [ result_pat.search(li)
+                for li in f.printout.getvalue().strip().split('\n') ]
+    printout = [ (int(m.group(1)), m.group(2)) for m in matches ]
+    printout.sort()
+    assert printout == ref_printout
   except NotImplementedError:
     print "Skipped!"
     return
