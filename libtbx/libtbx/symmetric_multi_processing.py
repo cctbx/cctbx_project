@@ -31,7 +31,7 @@ class parallelized_function(object):
     self.child_pid_for_out_fd = {}
     self.index_of_pid = {}
     self.next_i = 0
-    self.result_queue = []
+    self.result_buffer = {}
     self.debug = False
 
   def child_out_fd(self):
@@ -62,11 +62,11 @@ class parallelized_function(object):
       j = self.index_of_pid.pop(pid)
       os.waitpid(pid, 0) # to make sure the child is fully cleaned up
       if self.debug: print "#%i -> %s" % (j, result)
-      self.result_queue.append((j, result))
-    for i, (j,x) in enumerate(sorted(self.result_queue)):
-      if j == self.next_i:
+      self.result_buffer[j] = result
+    for i in sorted(self.result_buffer.keys()):
+      if i == self.next_i:
         self.next_i += 1
-        del self.result_queue[i]
+        x = self.result_buffer.pop(i)
         yield x
       else:
         break
