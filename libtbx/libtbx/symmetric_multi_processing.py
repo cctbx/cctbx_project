@@ -99,13 +99,13 @@ class parallelized_function(object):
 
 
 def exercise(max_children):
-  import math, random, time, re
+  import math, re
   from libtbx.test_utils import approx_equal
-  from libtbx.utils import show_times_at_exit
+  from libtbx.utils import show_times_at_exit, show_times
   show_times_at_exit()
   def func(i):
     s = 0
-    n = 5e6/(i*i % 5 + 1)
+    n = 1e6/(i*i % 5 + 1)
     h = math.pi/2/n
     for j in xrange(int(n)):
       s += math.cos(i*j*h)
@@ -114,15 +114,16 @@ def exercise(max_children):
     return s
 
   try:
+    low, high = 1, 35
     result_pat = re.compile("(\d+): S=(\d\.\d\d)")
-    ref_results = [ abs(math.sin(i*math.pi/2)/i) for i in xrange(1,11) ]
-    ref_printout = zip(xrange(1,11), [ "%.2f" % s for s in ref_results ])
+    ref_results = [ abs(math.sin(i*math.pi/2)/i) for i in xrange(low,high) ]
+    ref_printout = zip(xrange(low,high), [ "%.2f" % s for s in ref_results ])
     f = parallelized_function(func, max_children=max_children,
                               printout=cStringIO.StringIO())
     if 0:
       f.debug = True
       f.timeout = 0.1
-    results = list(f(xrange(1,11)))
+    results = list(f(xrange(low,high)))
     if 0:
       print results
       print f.printout.getvalue()
