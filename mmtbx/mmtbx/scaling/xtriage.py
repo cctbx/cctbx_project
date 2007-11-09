@@ -10,6 +10,7 @@ import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
+from iotbx.option_parser import option_parser
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
@@ -392,11 +393,34 @@ class xtriage_analyses(object):
 
 def run(args, command_name="phenix.xtriage"):
 
-  if (len(args)==0 or "--help" in args or "--h" in args or "-h" in args):
+  command_line = (option_parser(
+    usage=command_name+" [options] reflection_file parameters [...]",
+    description="Example: %s data1.mtz" % command_name)
+    .option(None, "--long_help",
+      action="store_true",
+      help="show more help and exit")
+    .enable_show_defaults()
+    .enable_symmetry_comprehensive()
+    .option(None, "--weak_symmetry",
+      action="store_true",
+      default=False,
+      help="symmetry on command line is weaker than symmetry found in files")
+    .option(None, "--quiet",
+      action="store_true",
+      help="suppress output")
+  ).process(args=args)
+  co = command_line.options
+  if (len(command_line.args) == 0):
+    command_line.parser.show_help()
+  elif (co.long_help):
     print_help(appl=command_name)
+  elif (command_line.expert_level is not None):
+    master_params.show(
+      expert_level=command_line.expert_level,
+      attributes_level=command_line.attributes_level)
   else:
     log = multi_out()
-    if (not "--quiet" in args):
+    if (not co.quiet):
       log.register(label="stdout", file_object=sys.stdout)
     string_buffer = StringIO()
     string_buffer_plots = StringIO()
@@ -414,17 +438,13 @@ def run(args, command_name="phenix.xtriage"):
 
     phil_objects = []
     argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-      master_phil=master_params,
-      home_scope="xtriage")
+      master_phil=master_params)
 
     reflection_file = None
 
-    for arg in args:
+    for arg in command_line.args:
       command_line_params = None
       arg_is_processed = False
-      if arg == '--quiet':
-        arg_is_processed = True
-        ## The associated action with this keyword is implemented above
       if (os.path.isfile(arg)): ## is this a file name?
         ## Check if this is a phil file
         try:
@@ -434,33 +454,21 @@ def run(args, command_name="phenix.xtriage"):
         if command_line_params is not None:
             phil_objects.append(command_line_params)
             arg_is_processed = True
-        ## Check if this file is a reflection file
-        if command_line_params is None:
-          reflection_file = reflection_file_reader.any_reflection_file(
-            file_name=arg, ensure_read_access=False)
-        if (reflection_file is not None):
-          reflection_file = arg
-          arg_is_processed = True
 
-        ## Try and see if it is a phil file
-        try:
-          command_line_params = iotbx.phil.parse(file_name=arg)
-          if command_line_params is not None:
-            phil_objects.append(command_line_params)
+        if (not arg_is_processed):
+          ## Check if this file is a reflection file
+          if command_line_params is None:
+            reflection_file = reflection_file_reader.any_reflection_file(
+              file_name=arg, ensure_read_access=False)
+          if (reflection_file is not None):
+            reflection_file = arg
             arg_is_processed = True
-        except KeyboardInterrupt: raise
-        except : pass
+
       ## If it is not a file, it must be a phil command
       else:
-        try:
-          command_line_params = argument_interpreter.process(arg=arg)
-          if command_line_params is not None:
-            phil_objects.append(command_line_params)
-            arg_is_processed = True
-        except KeyboardInterrupt: raise
-        except : pass
-
-
+        command_line_params = argument_interpreter.process(arg=arg)
+        phil_objects.append(command_line_params)
+        arg_is_processed = True
 
       if not arg_is_processed:
         print >> log, "##--------------------------------------------------------------------##"
@@ -475,8 +483,11 @@ def run(args, command_name="phenix.xtriage"):
       params.scaling.input.xray_data.file_name=reflection_file
     verbose = params.scaling.input.parameters.reporting.verbose
 
-
-
+    scope =  params.scaling.input.xray_data
+    if (scope.unit_cell is None or not co.weak_symmetry):
+      scope.unit_cell = command_line.symmetry.unit_cell()
+    if (scope.space_group is None or not co.weak_symmetry):
+      scope.space_group = command_line.symmetry.space_group_info()
 
     ## Check for number of residues
     reset_space_group = False
@@ -495,29 +506,30 @@ def run(args, command_name="phenix.xtriage"):
       raise Sorry("No reflection file defined")
 
 
-    crystal_symmetry = None
     crystal_symmetry = crystal_symmetry_from_any.extract_from(
         file_name=params.scaling.input.xray_data.file_name)
     if crystal_symmetry is None:
       print >> log, "Cell and symmetry not specified in reflection file"
       if params.scaling.input.xray_data.space_group is None:
-        raise Sorry("""
-No space group info available.
-Use keyword 'xray_data.space_group' to specify space group
-                    """ )
+        raise Sorry("""No space group info available.
+  Use keyword 'xray_data.space_group' to specify space group""" )
 
       if params.scaling.input.xray_data.unit_cell is None:
-        raise Sorry("""
-No unit cell info available.
-Use keyword 'xray_data.unit_cell' to specify unit_cell
-                    """ )
+        raise Sorry("""No unit cell info available.
+  Use keyword 'xray_data.unit_cell' to specify unit_cell""" )
 
 
+    if params.scaling.input.xray_data.space_group is None:
+      params.scaling.input.xray_data.space_group \
+        = command_line.symmetry.space_group_info()
     if params.scaling.input.xray_data.space_group is None:
       params.scaling.input.xray_data.space_group \
         = crystal_symmetry.space_group_info()
       reset_space_group = True
 
+    if params.scaling.input.xray_data.unit_cell is None:
+      params.scaling.input.xray_data.unit_cell \
+        = command_line.symmetry.unit_cell()
     if params.scaling.input.xray_data.unit_cell is None:
       params.scaling.input.xray_data.unit_cell \
         = crystal_symmetry.unit_cell()
