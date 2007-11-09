@@ -16,6 +16,12 @@ from libtbx import easy_pickle
 import sys, os, select
 import cStringIO, cPickle
 
+dict_pop = getattr(dict, "pop", None)
+if (dict_pop is None):
+  def dict_pop(d, key): # Python 2.2 compatibility
+    result = d[key]
+    del d[key]
+    return result
 
 class parallelized_function(object):
 
@@ -48,15 +54,15 @@ class parallelized_function(object):
       l = int(msg[:128], 16)
       result = cPickle.loads(msg[128:128+l])
       print >> self.printout, msg[128+l:],
-      pid = self.child_pid_for_out_fd.pop(fd)
-      j = self.index_of_pid.pop(pid)
+      pid = dict_pop(self.child_pid_for_out_fd, fd)
+      j = dict_pop(self.index_of_pid, pid)
       os.waitpid(pid, 0) # to make sure the child is fully cleaned up
       if self.debug: print "#%i -> %s" % (j, result)
       self.result_buffer[j] = result
     for i in sorted(self.result_buffer.keys()):
       if i == self.next_i:
         self.next_i += 1
-        x = self.result_buffer.pop(i)
+        x = dict_pop(self.result_buffer, i)
         yield x
       else:
         break
