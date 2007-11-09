@@ -1029,22 +1029,49 @@ class structure(crystal.special_position_settings):
   def rms_difference(self, other):
     return self.sites_cart().rms_difference(other.sites_cart())
 
-  def closest_distances(self, other, max_distance_cutoff = 6.0):
-    # XXX n*n inefficient algorithm. Can be done faster.
-    assert self.unit_cell() == other.unit_cell()
-    assert self.space_group().type().number() == \
-      other.space_group().type().number()
-    result = flex.double(self.scatterers().size(), -1)
-    sites_frac = self.sites_frac()
-    sites_frac_other = other.sites_frac()
-    for i_seq, site_frac in enumerate(sites_frac):
-      d = 1.e+9
-      for site_frac_other in sites_frac_other:
-        d_ = self.unit_cell().distance(site_frac, site_frac_other)
-        if(d_ < d):
-           d = d_
-      if(d <= max_distance_cutoff):
-        result[i_seq] = d
+  def closest_distances(self, sites_frac, distance_cutoff):
+    class map_next_to_model_and_find_closest_distances(object):
+      def __init__(self, xray_structure, sites_frac):
+        asu_mappings = xray_structure.asu_mappings(buffer_thickness =
+          distance_cutoff)
+        asu_mappings.process_sites_frac(sites_frac, min_distance_sym_equiv =
+          xray_structure.min_distance_sym_equiv())
+        pair_generator = crystal.neighbors_fast_pair_generator(asu_mappings =
+          asu_mappings, distance_cutoff = distance_cutoff)
+        n_xray = xray_structure.scatterers().size()
+        new_sites_frac = sites_frac.deep_copy()
+        smallest_distances_sq = flex.double(sites_frac.size(),
+          distance_cutoff**2+1)
+        for pair in pair_generator:
+          if(pair.i_seq < n_xray):
+            if (pair.j_seq < n_xray): continue
+            # i_seq = molecule
+            # j_seq = site
+            rt_mx_i = asu_mappings.get_rt_mx_i(pair)
+            rt_mx_j = asu_mappings.get_rt_mx_j(pair)
+            rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+            i_seq_new_site_frac = pair.j_seq - n_xray
+            new_site_frac = rt_mx_ji * sites_frac[i_seq_new_site_frac]
+          else:
+            if(pair.j_seq >= n_xray): continue
+            # i_seq = site
+            # j_seq = molecule
+            rt_mx_i = asu_mappings.get_rt_mx_i(pair)
+            rt_mx_j = asu_mappings.get_rt_mx_j(pair)
+            rt_mx_ij = rt_mx_j.inverse().multiply(rt_mx_i)
+            i_seq_new_site_frac = pair.i_seq - n_xray
+            new_site_frac = rt_mx_ij * sites_frac[i_seq_new_site_frac]
+          if(smallest_distances_sq[i_seq_new_site_frac] >= pair.dist_sq):
+            smallest_distances_sq[i_seq_new_site_frac] = pair.dist_sq
+            new_sites_frac[i_seq_new_site_frac] = new_site_frac
+        sel_out = smallest_distances_sq > distance_cutoff**2
+        self.sites_frac = new_sites_frac
+        self.smallest_distances = flex.sqrt(
+          smallest_distances_sq).set_selected(sel_out, -1)
+        self.smallest_distances_sq = smallest_distances_sq.set_selected(
+          sel_out, -1)
+    result = map_next_to_model_and_find_closest_distances(
+      xray_structure = self, sites_frac = sites_frac)
     return result
 
   def orthorhombic_unit_cell_around_centered_scatterers(self, buffer_size):
