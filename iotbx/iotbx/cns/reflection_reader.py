@@ -102,12 +102,16 @@ class cns_reciprocal_space_object(object):
     self.indices.append(h)
     self.data.append(value)
 
-  def is_real(self):
-    return self.type == "real" \
-        or (self.type == "complex" and not self.has_non_zero_phases)
+  def is_real(self, use_name_as_hint=True):
+    if (self.type == "real"): return True
+    if (self.type != "complex"): return False
+    if (not self.has_non_zero_phases): return True
+    if (self.name.lower() in [
+      "fobs", "f_obs", "iobs", "i_obs", "obs"]): return True
+    return False
 
-  def real_data(self):
-    assert self.is_real()
+  def real_data(self, use_name_as_hint=True):
+    assert self.is_real(use_name_as_hint=use_name_as_hint)
     if (self.type == "real"): return self.data
     return flex.real(self.data)
 
