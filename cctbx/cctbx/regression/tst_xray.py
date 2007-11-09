@@ -603,18 +603,13 @@ def exercise_closest_distances():
     elements         = ["N"]*3,
     unit_cell        = (10, 20, 30, 70, 80, 120))
   xs_other = xs.deep_copy_scatterers()
-  result = xs.closest_distances(other = xs_other, max_distance_cutoff = 100)
-  assert approx_equal(result, [0.0, 0.0, 0.0])
-  result = xs.closest_distances(other = xs_other, max_distance_cutoff = 0)
-  assert approx_equal(result, [0.0, 0.0, 0.0])
-  result = xs.closest_distances(other = xs_other)
-  assert approx_equal(result, [0.0, 0.0, 0.0])
+  result = xs.closest_distances(sites_frac = xs_other.sites_frac(),
+    distance_cutoff = 6)
+  assert approx_equal(result.smallest_distances, [0.0, 0.0, 0.0])
   xs_other = xs_other.translate(x=1,y=2,z=3)
-  result = xs.closest_distances(other = xs_other, max_distance_cutoff = 100)
-  assert not_approx_equal(result, [-1.0, -1.0, -1.0])
-  assert not_approx_equal(result, [0.0, 0.0, 0.0])
-  result = xs.closest_distances(other = xs_other, max_distance_cutoff = 0)
-  assert approx_equal(result, [-1.0, -1.0, -1.0])
+  result = xs.closest_distances(sites_frac = xs_other.sites_frac(),
+    distance_cutoff = 6)
+  assert not_approx_equal(result.smallest_distances, [0.0, 0.0, 0.0])
 
 def exercise_set_occupancies():
   xs = random_structure.xray_structure(
