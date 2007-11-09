@@ -5,7 +5,8 @@ from cctbx import crystal
 from cctbx.array_family import flex
 from cctbx.regression.tst_miller import generate_random_hl
 from iotbx.regression.utils import random_f_calc
-from libtbx.test_utils import eps_eq
+from libtbx.test_utils import approx_equal, eps_eq
+import math
 import sys
 
 def to_mtz(miller_array, column_root_label, column_types=None):
@@ -228,7 +229,59 @@ def run_call_back(flags, space_group_info):
       anomalous_flag=anomalous_flag,
       verbose=flags.Verbose)
 
+def exercise_extract_delta_anomalous():
+  miller_array_start = miller.set(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(10,10,10,90,90,90),
+      space_group_symbol="P1"),
+    indices=flex.miller_index([(1,2,3),(-1,-2,-3)]),
+    anomalous_flag=True).array(
+      data=flex.double([3,5]),
+      sigmas=flex.double([0.3,0.5]))
+  mtz_dataset = miller_array_start.as_mtz_dataset(column_root_label="F")
+  mtz_object = mtz_dataset.mtz_object()
+  fp = mtz_object.get_column(label="F(+)").extract_values()[0]
+  fm = mtz_object.get_column(label="F(-)").extract_values()[0]
+  sp = mtz_object.get_column(label="SIGF(+)").extract_values()[0]
+  sm = mtz_object.get_column(label="SIGF(-)").extract_values()[0]
+  # http://www.ccp4.ac.uk/dist/html/mtzMADmod.html
+  # F = 0.5*( F(+) + F(-) )
+  # D = F(+) - F(-)
+  # SIGD = sqrt( SIGF(+)**2 + SIGF(-)**2 )
+  # SIGF = 0.5*SIGD
+  f = 0.5 * (fp + fm)
+  d = fp - fm
+  sigd = math.sqrt(sp**2 + sm**2)
+  sigf = 0.5 * sigd
+  mtz_dataset.add_column(label="F", type="F").set_reals(
+    mtz_reflection_indices=flex.int([0]), data=flex.double([f]))
+  mtz_dataset.add_column(label="SIGF", type="Q").set_reals(
+    mtz_reflection_indices=flex.int([0]), data=flex.double([sigf]))
+  mtz_dataset.add_column(label="D", type="D").set_reals(
+    mtz_reflection_indices=flex.int([0]), data=flex.double([d]))
+  mtz_dataset.add_column(label="SIGD", type="Q").set_reals(
+    mtz_reflection_indices=flex.int([0]), data=flex.double([sigd]))
+  miller_arrays = mtz_object.as_miller_arrays()
+  assert len(miller_arrays) == 2
+  miller_array = miller_arrays[0]
+  assert list(miller_array.indices()) == [(1,2,3),(-1,-2,-3)]
+  assert approx_equal(miller_array.data(), [3,5])
+  assert approx_equal(miller_array.sigmas(), [0.3,0.5])
+  miller_array = miller_arrays[1]
+  assert list(miller_array.indices()) == [(1,2,3),(-1,-2,-3)]
+  # F(+) = F + 0.5*D
+  # F(-) = F - 0.5*D
+  # SIGF(+) = sqrt( SIGF**2 + 0.25*SIGD**2 )
+  # SIGF(-) = SIGF(+)
+  fp = f + 0.5 * d
+  fm = f - 0.5 * d
+  assert approx_equal([fp,fm], miller_array.data())
+  sp = math.sqrt(sigf**2 + 0.25 * sigd**2)
+  sm = sp
+  assert approx_equal([sp,sm], miller_array.sigmas())
+
 def run():
+  exercise_extract_delta_anomalous()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):

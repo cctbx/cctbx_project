@@ -880,8 +880,8 @@ namespace iotbx { namespace mtz {
           result.indices.push_back(-hkl.get_miller_index(i_refl));
           result.data.push_back(pair_evaluation_f.datum + ddh);
           result.data.push_back(pair_evaluation_f.datum - ddh);
-          result.sigmas.push_back(std::sqrt(s));
-          result.sigmas.push_back(std::sqrt(s));
+          result.sigmas.push_back(s);
+          result.sigmas.push_back(s);
         }
       }
     }
