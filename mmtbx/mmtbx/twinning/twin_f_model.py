@@ -1834,6 +1834,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
     # now please detwin the data
     if mode == "proportional":
+      if (tmp_i_obs.sigmas() is None):
+        raise Sorry("Detwinning requires experimental sigmas.")
       dt_iobs, dt_isigma = self.full_detwinner.detwin_with_model_data(
         tmp_i_obs.data(),
         tmp_i_obs.sigmas(),
