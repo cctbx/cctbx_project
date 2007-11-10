@@ -141,6 +141,7 @@ class determine_data_and_flags(object):
                      remark_r_free_flags_md5_hexdigest = None,
                      log = None):
     adopt_init_args(self, locals())
+    self.intensity_flag = False
     self.f_obs = None
     self.r_free_flags = None
     self.test_flag_value = None
@@ -167,6 +168,7 @@ class determine_data_and_flags(object):
     self.parameters.labels = [data.info().label_string()]
     if(data.is_xray_intensity_array()):
       print >> self.log, "I-obs:"
+      self.intensity_flag = True
     else:
       print >> self.log, "F-obs:"
     print >> self.log, " ", data.info()
