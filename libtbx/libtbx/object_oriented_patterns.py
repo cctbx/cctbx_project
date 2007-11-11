@@ -5,8 +5,8 @@ class injector:
 
   * synopsis *
 
-  class some_descriptive_text(extends, some_existing_class,
-                                       another_existing_class, ...):
+  class some_descriptive_text(injector, some_existing_class,
+                                        another_existing_class, ...):
 
     def new_method(self, ...): ...
 
@@ -26,7 +26,7 @@ class injector:
   def new_method(self, ...): ...
   existing_class.new_method = new_method
 
-  or to defer the nameing to after the definition:
+  or to defer the naming to after the definition:
 
   def foo(self, ...): ...
   existing_class.new_method = foo
@@ -42,4 +42,3 @@ class injector:
             "class %s has already a method %s"
             % (target_class.__name__, name))
           setattr(target_class, name, attribute)
-
