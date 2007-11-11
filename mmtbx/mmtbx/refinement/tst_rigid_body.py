@@ -74,8 +74,7 @@ def test_1(fmodel, model):
                                            selections       = selections,
                                            refine_r         = False,
                                            refine_t         = True,
-                                           bulk_solvent_and_scale=False,
-                                           protocol         = "multiple_zones")
+                                           bulk_solvent_and_scale=False)
   assert approx_equal(rb.translation()[0], [-2.5,-2.5,-2.5], 1.e-4)
   assert approx_equal(rb.rotation()[0], [0.0,0.0,0.0])
   assert approx_equal(fmodel.r_work(), 0.0, 1.e-3)
@@ -111,8 +110,7 @@ def test_2(fmodel, model):
                                            selections       = selections,
                                            refine_r         = True,
                                            refine_t         = True,
-                                           bulk_solvent_and_scale=False,
-                                           protocol         = "multiple_zones")
+                                           bulk_solvent_and_scale=False)
   assert approx_equal(rb.translation()[0], [-1.5,-1.5,-1.5], 1.e-4)
   assert approx_equal(rb.rotation()[0], [0.0,0.0,0.0], 1.e-2)
   assert approx_equal(fmodel.r_work(), 0.0, 1.e-3)
@@ -147,8 +145,7 @@ def test_3(fmodel, model):
                                            selections       = selections,
                                            refine_r         = True,
                                            refine_t         = True,
-                                           bulk_solvent_and_scale=False,
-                                           protocol         = "multiple_zones")
+                                           bulk_solvent_and_scale=False)
   assert approx_equal(rb.translation()[0], [0.0,0.0,0.0], 1.e-4)
   assert approx_equal(rb.rotation()[0], [0.0,0.0,0.0], 1.e-3)
   assert approx_equal(fmodel.r_work(), 0.0, 1.e-3)
@@ -183,8 +180,7 @@ def test_4(fmodel, model):
                                            selections       = selections,
                                            refine_r         = True,
                                            refine_t         = False,
-                                           bulk_solvent_and_scale=False,
-                                           protocol         = "multiple_zones")
+                                           bulk_solvent_and_scale=False)
   assert approx_equal(rb.translation()[0], [0.0,0.0,0.0], 1.e-4)
   assert approx_equal(rb.rotation()[0], [-0.5,-0.5,-0.5], 1.e-1)
   assert approx_equal(fmodel.r_work(), 0.0, 1.e-3)
@@ -221,8 +217,7 @@ def test_5(fmodel, model):
                                            selections       = selections,
                                            refine_r         = True,
                                            refine_t         = True,
-                                           bulk_solvent_and_scale=False,
-                                           protocol         = "multiple_zones")
+                                           bulk_solvent_and_scale=False)
   fmodel.info(free_reflections_per_bin=250, max_number_of_bins=30).show_all()
   assert approx_equal(rb.translation()[0], [-1.0,-1.0,-1.0], 1.e-4)
   assert approx_equal(rb.rotation()[0], [-0.5,-0.5,-0.5], 1.e-1)
@@ -272,8 +267,7 @@ def test_6(fmodel, model):
                                            selections       = selections,
                                            refine_r         = True,
                                            refine_t         = True,
-                                           bulk_solvent_and_scale=False,
-                                           protocol         = "multiple_zones")
+                                           bulk_solvent_and_scale=False)
   assert approx_equal(rb.translation()[0], [-1.0,-1.0,-1.0], 1.e-4)
   assert approx_equal(rb.translation()[1], [-1.2,-1.2,-1.2], 1.e-4)
   assert approx_equal(rb.rotation()[0], [-0.5,-0.5,-0.5], 1.e-1)
