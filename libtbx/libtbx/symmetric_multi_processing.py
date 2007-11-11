@@ -13,7 +13,7 @@ from __future__ import generators, division
 from libtbx import forward_compatibility
 from libtbx.utils import tupleize
 from libtbx import easy_pickle
-import sys, os, select
+import sys, os, select, signal
 import cStringIO, cPickle
 
 dict_pop = getattr(dict, "pop", None)
@@ -23,132 +23,174 @@ if (dict_pop is None):
     del d[key]
     return result
 
-class parallelized_function(object):
+class logging(object):
 
-  def __init__(self, func, max_children, timeout=0.001, printout=None):
-    if (printout is None): printout = sys.stdout
-    if 'fork' not in os.__dict__:
-      raise NotImplementedError("Only works on platforms featuring 'fork',"
-                                "i.e. UNIX")
-    self.func = func
-    self.max_children = max_children
-    self.timeout = timeout
-    self.printout = printout
-    self.child_pid_for_out_fd = {}
-    self.index_of_pid = {}
-    self.next_i = 0
+  def log(self, msg, newline=True):
+    if not self.debug: return
+    if newline: print msg
+    else: print msg,
+    sys.stdout.flush()
+
+
+class parent(logging):
+
+  def __init__(self, polling_timeout, stdout=None, debug=False):
+    self.polling_timeout = polling_timeout
+    if stdout is None: stdout = sys.stdout
+    self.stdout = stdout
+    self.children = []
+    self.debug = debug
+
+  def spawn(self, func):
+    parent_read, child_write = os.pipe()
+    child_read, parent_write = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+      os.close(parent_read)
+      os.close(parent_write)
+      c = child(func, child_read, child_write, self.debug)
+      c.loop()
+    os.close(child_read)
+    os.close(child_write)
+    self.children.append(child_proxy(pid, parent_read, parent_write,
+                                     debug=self.debug))
+    self.log("spawned %i" % pid)
+
+  def each(self, iterable):
+    self.idle_children = list(self.children)
+    self.iterable_index_handled_by_pid = {}
     self.result_buffer = {}
-    self.debug = False
+    self.next_i = 0
+    for i,x in enumerate(iterable):
+      block = len(self.idle_children) == 1
+      proxy = self.idle_children.pop()
+      proxy.send(x)
+      self.iterable_index_handled_by_pid[proxy] = i
+      for result in self.poll(block):
+        yield result
+    while len(self.idle_children) != len(self.children):
+      for result in self.poll(block=True):
+        yield result
+    del self.idle_children
+    del self.iterable_index_handled_by_pid
+    del self.result_buffer
+    del self.next_i
 
-  def poll(self):
-    child_out_fd = self.child_pid_for_out_fd.keys()
-    if len(child_out_fd) == self.max_children:
-      if self.debug: print "** waiting for a child to finish **"
-      inputs, outputs, errors = select.select(child_out_fd, [], [])
+  def poll(self, block):
+    potential_reads = [ proxy.fin for proxy in self.children ]
+    if block:
+      self.log("parent waiting for result from a child")
+      reads, writes, errors = select.select(potential_reads, [], [])
     else:
-      inputs, outputs, errors = select.select(child_out_fd, [], [],
-                                              self.timeout)
-    for fd in inputs:
-      f = os.fdopen(fd)
-      msg = f.read() # block only shortly because of the child buffering
-      l = int(msg[:128], 16)
-      result = cPickle.loads(msg[128:128+l])
-      print >> self.printout, msg[128+l:],
-      pid = dict_pop(self.child_pid_for_out_fd, fd)
-      j = dict_pop(self.index_of_pid, pid)
-      os.waitpid(pid, 0) # to make sure the child is fully cleaned up
-      if self.debug: print "#%i -> %s" % (j, result)
-      self.result_buffer[j] = result
+      reads, writes, errors = select.select(potential_reads, [], [],
+                                            self.polling_timeout)
+    for fin in reads:
+      proxy = self.children[potential_reads.index(fin)]
+      proxy.receive()
+      self.idle_children.append(proxy)
+      iterable_idx = self.iterable_index_handled_by_pid[proxy]
+      self.result_buffer[iterable_idx] = proxy.result
+      self.stdout.write(proxy.printout)
+      self.log("result #%i: %s from child %i"
+               % (iterable_idx, proxy.result, proxy.pid))
     for i in sorted(self.result_buffer.keys()):
       if i == self.next_i:
         self.next_i += 1
-        x = dict_pop(self.result_buffer, i)
+        x = self.result_buffer[i]; del self.result_buffer[i]
         yield x
       else:
         break
 
-  def __call__(self, iterable):
-    for i,x in enumerate(iterable):
-      args = tupleize(x)
-      r,w = os.pipe()
-      pid = os.fork()
-      if pid > 0:
-        # parent
-        if self.debug: print "spawn child %i" % pid
-        os.close(w)
-        self.child_pid_for_out_fd[r] = pid
-        self.index_of_pid[pid] = i
-        for result in self.poll():
-          yield result
-      else:
-        # child
-        os.close(r)
-        # fully buffer the print-out of the wrapped function
+
+class child(logging):
+
+  class input_closed: pass
+
+  def __init__(self, func, read_fd, write_fd, debug):
+    self.func = func
+    self.fin = os.fdopen(read_fd)
+    self.fout = os.fdopen(write_fd, 'w')
+    self.debug = debug
+    signal.signal(signal.SIGPIPE, self.handle_pipe_other_end_closing)
+
+  def handle_pipe_other_end_closing(self, signum, frame):
+    self.log("Broken pipe!!")
+    code = frame.f_code
+    self.log("file %s at line %i in %s"
+             % (code.co_filename, frame.f_lineno, code.co_name))
+    self.exit()
+
+  def log(self, msg, newline=True):
+    super(child, self).log(("child > %i: " % self.fout.fileno())
+                           + msg, newline)
+
+  def read(self, length):
+    msg = self.fin.read(length)
+    if not msg: raise child.input_closed
+    assert len(msg) == length
+    return msg
+
+  def loop(self):
+    while 1:
+      try:
+        l = int(self.read(128), 16)
+        args = tupleize(cPickle.loads(self.read(l)))
         output = cStringIO.StringIO()
         sys.stdout, stdout = output, sys.stdout
         result = self.func(*args)
         sys.stdout = stdout
-        f = os.fdopen(w, 'w')
         pickled_result = easy_pickle.dumps(result)
-        msg = ''.join((
-          "%128x" % len(pickled_result),
-          pickled_result,
-          output.getvalue()))
-        print >> f, msg,
-        try:f.close()
-        except KeyboardInterrupt: raise
-        except:pass
-        os._exit(0)
-    while self.child_pid_for_out_fd:
-      for result in self.poll():
-        yield result
+        printout = output.getvalue()
+        msg = ("%128x%s"*2) % (len(pickled_result), pickled_result,
+                               len(printout), printout)
+        self.fout.write(msg),
+        self.fout.flush()
+      except child.input_closed:
+        self.log("Input closed!!")
+        self.exit()
+
+  def exit(self):
+    self.fin.close()
+    self.fout.close()
+    os._exit(0)
 
 
-def exercise(max_children):
-  import math, re
-  from libtbx.test_utils import approx_equal
-  from libtbx.utils import show_times_at_exit, show_times
-  show_times_at_exit()
-  def func(i):
-    s = 0
-    n = 1e6/(i*i % 5 + 1)
-    h = math.pi/2/n
-    for j in xrange(int(n)):
-      s += math.cos(i*j*h)
-    s = abs(s*h)
-    print "%i: S=%.2f" % (i,s)
-    return s
+class child_proxy(logging):
 
-  try:
-    low, high = 1, 35
-    result_pat = re.compile("(\d+): S=(\d\.\d\d)")
-    ref_results = [ abs(math.sin(i*math.pi/2)/i) for i in xrange(low,high) ]
-    ref_printout = zip(xrange(low,high), [ "%.2f" % s for s in ref_results ])
-    f = parallelized_function(func, max_children=max_children,
-                              printout=cStringIO.StringIO())
-    if 0:
-      f.debug = True
-      f.timeout = 0.1
-    results = list(f(xrange(low,high)))
-    if 0:
-      print results
-      print f.printout.getvalue()
-    assert approx_equal(results, ref_results, eps=1e-3)
-    matches = [ result_pat.search(li)
-                for li in f.printout.getvalue().strip().split('\n') ]
-    printout = [ (int(m.group(1)), m.group(2)) for m in matches ]
-    printout.sort()
-    assert printout == ref_printout
-    sys.stdout.flush()
-  except NotImplementedError:
-    print "Skipped!"
+  def __init__(self, pid, read_fd, write_fd, debug):
+    self.pid = pid
+    self.fin = os.fdopen(read_fd)
+    self.fout = os.fdopen(write_fd, 'w')
+    self.debug = debug
 
-  print "OK"
+  def __hash__(self):
+    return hash(self.pid)
 
-def run():
-  if len(sys.argv[1:]): max_children = int(sys.argv[1])
-  else: max_children = 2
-  exercise(max_children)
+  def __eq__(self, other):
+    return self.pid == other.pid
 
-if __name__ == '__main__':
-  run()
+  def send(self, x):
+    self.log("feeding %s to child %i" % (x, self.pid))
+    args = easy_pickle.dumps(x)
+    self.fout.write("%128x%s" % (len(args), args))
+    self.fout.flush()
+
+  def receive(self):
+    l = int(self.fin.read(128), 16)
+    self.result = cPickle.loads(self.fin.read(l))
+    l = int(self.fin.read(128), 16)
+    self.printout = self.fin.read(l)
+
+
+
+class parallelized_function(parent):
+
+  def __init__(self, func, n_workers, timeout=0.001, stdout=None,
+               debug = False):
+    super(parallelized_function, self).__init__(timeout, stdout, debug)
+    for i in xrange(n_workers):
+      self.spawn(func)
+
+  def __call__(self, iterable):
+    for result in super(parallelized_function, self).each(iterable):
+      yield result
