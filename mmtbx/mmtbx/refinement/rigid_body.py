@@ -375,7 +375,6 @@ class manager(object):
                      euler_angle_convention  = "xyz",
                      lbfgs_maxfev            = 10,
                      number_of_zones         = 5,
-                     protocol                = None,
                      log                     = None,
                      monitors = None):
     global time_rigid_body_total
@@ -387,8 +386,6 @@ class manager(object):
                                scatterers = fmodel.xray_structure.scatterers(),
                                site       = True)
     self.euler_angle_convention = euler_angle_convention
-    if(protocol not in ["one_zone","multiple_zones"]):
-       raise Sorry("Wrong rigid body refinement protocol: %s"%str(protocol))
     if(log is None): log = sys.stdout
     if(selections is None):
        selections = []
@@ -411,8 +408,6 @@ class manager(object):
     fmodel_copy = fmodel.deep_copy()
     if(fmodel_copy.mask_params is not None):
        fmodel_copy.mask_params.verbose = -1
-    if(protocol == "one_zone"):
-      number_of_zones = 1
     d_mins = split_resolution_range(
       d_spacings = fmodel_copy.f_obs_w.d_spacings().data(),
       n_bodies = len(selections),
@@ -429,7 +424,7 @@ class manager(object):
               t_vec  = self.total_translation,
               header = "Start",
               out    = log)
-    if (protocol == "one_zone" or monitors is None):
+    if (number_of_zones == 1 or monitors is None):
       monitors_call_back_after_collect = None
     else:
       monitors_call_back_after_collect = monitors.call_back_after_collect
