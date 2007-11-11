@@ -240,21 +240,21 @@ class rb_mat(object):
      return rm
 
 multiple_zones_params = iotbx.phil.parse(input_string="""\
-  min_number_of_reflections = 250
+  min_number_of_reflections = 100
     .type = int
     .help = Number of reflections that defines the first lowest resolution \
             zone for multiple_zones protocol
   multi_body_factor_min_number_of_reflections = 1
     .type = float
-  zone_exponent = 3.0
+  zone_exponent = 4.0
     .type = float
-  high_resolution = 2.0
+  high_resolution = 3.0
     .type = float
     .help = High resolution cutoff (used for rigid body refinement only)
-  max_low_high_res_limit = 8.0
+  max_low_high_res_limit = None
     .type = float
     .expert_level=2
-    .help = Maxumum value for high resolution cutoff for the first lowest \
+    .help = Maximum value for high resolution cutoff for the first lowest \
             resolution zone
   number_of_zones = 5
     .type = int
