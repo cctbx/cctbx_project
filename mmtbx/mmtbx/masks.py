@@ -64,14 +64,15 @@ class bulk_solvent(around_atoms):
      sites_frac = xray_structure.sites_frac()
      if(len(unknown) > 0):
         raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
+     selection = xray_structure.scatterers().extract_occupancies() > 0
      around_atoms.__init__(self,
-       unit_cell=xray_structure.unit_cell(),
-       space_group_order_z=xray_structure.space_group().order_z(),
-       sites_frac=sites_frac,
-       atom_radii=atom_radii,
-       gridding_n_real=gridding_n_real,
-       solvent_radius=solvent_radius,
-       shrink_truncation_radius=shrink_truncation_radius)
+       unit_cell           = xray_structure.unit_cell(),
+       space_group_order_z = xray_structure.space_group().order_z(),
+       sites_frac          = sites_frac.select(selection),
+       atom_radii          = atom_radii.select(selection),
+       gridding_n_real     = gridding_n_real,
+       solvent_radius      = solvent_radius,
+       shrink_truncation_radius = shrink_truncation_radius)
      introspection.virtual_memory_info().update_max()
 
   def show_summary(self, out=None):
