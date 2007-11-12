@@ -117,6 +117,11 @@ class crystal_gridding(object):
   def space_group_info(self):
     return self._space_group_info
 
+  def change_space_group(self, space_group_info):
+    assert (space_group_info.group().refine_gridding(self.n_real())
+            == self.n_real())
+    self._space_group_info = space_group_info
+
   def mandatory_factors(self):
     return self._mandatory_factors
 
