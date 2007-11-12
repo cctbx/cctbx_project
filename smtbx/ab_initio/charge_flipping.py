@@ -38,11 +38,12 @@ from libtbx.math_utils import are_equivalent
 from libtbx.assert_utils import is_numeric
 
 from cctbx.array_family import flex
+from cctbx import sgtbx
 from cctbx import miller
 from cctbx import maptbx
 from cctbx import translation_search
 
-import ab_initio
+from smtbx import ab_initio
 
 import math
 
@@ -74,7 +75,7 @@ class _array_extension(oop.injector, miller.array):
 
 class _fft_extension(oop.injector, miller.fft_map):
   """ We add those methods to fft_map so that they can be easily reused and
-  tested independently of the class charge_flipping_iterator and co. """
+  tested independently of the charge flipping iterators. """
 
   def flipped_fraction_as_delta(self, fraction):
     rho = self.real_map_unpadded().as_1d()
@@ -84,76 +85,79 @@ class _fft_extension(oop.injector, miller.fft_map):
 
   def c_flip(self, delta):
     rho = self.real_map_unpadded().as_1d()
-    flipped = rho < delta
-    return flex.sum(flex.abs(rho.select(flipped)))
+    return flex.sum(flex.abs(rho.select(rho < delta)))
 
   def c_tot(self):
     return flex.sum(self.real_map())
 
-  def c_tot_over_c_flip_as_delta(self, low, mid, high):
-    pass
-
-  def adjusted_delta_based_on_c_tot_over_c_flip(delta):
-    r = self.c_tot() / r.c_flip(delta)
-    if r < 0.8: return delta * 0.9  # magic numbers from SUPERFLIP
-    elif r > 1: return delta * 1.07
-    else: return delta
-
-
 
 class density_modification_iterator(object):
 
-  def __init__(self, f_obs, f_calc=None, f_000=None):
+  def __init__(self, f_obs, f_calc=None, f_000=None,
+               starter=miller.array.randomize_phases):
     assert f_obs.data() is not None
     assert are_equivalent(f_calc is None, f_000 is None)
     assert f_calc is None or (is_numeric(f_calc) and is_numeric(f_000))
 
     self.original_f_obs = f_obs
-    self.f_obs = f_obs.expand_to_p1()\
-        .as_non_anomalous_array()\
-        .merge_equivalents().array()\
-        .discard_sigmas()
+    self.crystal_gridding = f_obs.crystal_gridding(
+      resolution_factor=1/2,
+      symmetry_flags=maptbx.use_space_group_symmetry)
+    self.crystal_gridding.change_space_group(sgtbx.space_group_info("P1"))
+    self.f_obs = f_obs.eliminate_sys_absent() \
+                      .expand_to_p1() \
+                      .as_non_anomalous_array() \
+                      .merge_equivalents().array() \
+                      .discard_sigmas()
+    self.fft_scale = (self.f_obs.crystal_symmetry().unit_cell().volume()
+                      / self.crystal_gridding.n_grid_points())
+    self.starter = starter
+    self.restart(f_calc, f_000)
 
-    self.symmetry_flags = maptbx.use_space_group_symmetry
+  def restart(self, f_calc=None, f_000=None):
+    assert are_equivalent(f_calc is None, f_000 is None)
+    assert f_calc is None or (is_numeric(f_calc) and is_numeric(f_000))
     if f_calc is None:
-      # Initial f_calc is f_obs with f_000 = 0 and random phases
-      f_calc = self.f_obs.randomize_phases()
+      f_calc = self.starter(self.f_obs)
       f_000 = 0
     self.f_calc = f_calc
     self.f_000 = f_000
+    self.compute_electron_density_map()
 
   def __iter__(self):
     return self
 
   def next(self):
-    self.compute_electron_density_map()
     self.modify_electron_density()
     self.compute_structure_factors()
     self.transfer_phase_to_f_obs()
     self.f_000 = self._g_000
-
+    self.compute_electron_density_map()
     return self # iterator-is-its-own-state trick
 
   def compute_electron_density_map(self):
-    self.rho_map = self.f_calc.fft_map(
-      f_000=self.f_000,
-      symmetry_flags=maptbx.use_space_group_symmetry)
+    self.rho_map = miller.fft_map(self.crystal_gridding,
+                                  self.f_calc,
+                                  self.f_000)
+    self.rho_map.apply_volume_scaling()
 
   def compute_structure_factors(self):
     """ This shall compute the structure factors self._g of self.rho_map,
     as well as the 000 component self._g_000, scaling them by the number of
     grid points """
     rho = self.rho_map.real_map()
-    scale = 1/self.rho_map.n_grid_points()
-    self._g_000 = flex.sum(rho) * scale
+    self._g_000 = flex.sum(rho) * self.fft_scale
     self._g = self.f_obs.structure_factors_from_map(rho, in_place_fft=True)
-    self._g *= scale
+    self._g *= self.fft_scale
 
   def transfer_phase_to_f_obs(self):
-    self.f = self.f_obs.phase_transfer(self._g)
+    self.f_calc = self.f_obs.phase_transfer(self._g)
 
   def r1_factor(self):
     return self.f_obs.r1_factor(self._g, assume_index_matching=True)
+
+  def c_tot_over_c_flip(self):
+    return self.rho_map.c_tot()/self.rho_map.c_flip(self.delta)
 
   def correlation_map_peak_cluster_analysis(self,
                                             return_correlation_map_too=False):
@@ -188,26 +192,20 @@ class density_modification_iterator(object):
       result = (result, correlation_map)
     return result
 
-  def apply_shift(self, t):
-    phase_shifts = -2*math.pi*self.f_calc.indices().as_vec3_double().dot(t)
-    phase_shifts *= flex.arg(self.f_calc.data())
-    self.f_calc.phase_transfer(phase_shifts)
-
 
 class basic_iterator(density_modification_iterator):
   """ An iterator over the sequence of electron densities and structure
   factors obtained by repeateadly applying the basic charge flipping
   described in ref. [1].
-
-  Notes.
-
-    self.rho is actually V*rho where V is the unit cell volume
   """
 
   def __init__(self, f_obs, delta, **kwds):
     super(basic_iterator, self).__init__(f_obs, **kwds)
-    self.delta = delta
-    if delta is None: self.initialise_delta()
+    self.old_delta = None
+    if delta is None:
+      self.initialise_delta()
+    else:
+      self.delta = delta
 
   def initialise_delta(self):
     self.delta = self.rho_map.flipped_fraction_as_delta(0.8)
@@ -215,6 +213,18 @@ class basic_iterator(density_modification_iterator):
   def modify_electron_density(self):
     """ This shall modify rho in place """
     ab_initio.ext.flip_charges_in_place(self.rho_map.real_map(), self.delta)
+
+  def rho_c(self):
+    return self.delta
+
+  def adjust_delta(self):
+    self.c_tot = self.rho_map.c_tot()
+    self.c_flip = self.rho_map.c_flip(self.delta)
+    r = self.c_tot / self.c_flip
+    # magic numbers from SUPERFLIP
+    self.old_delta = self.delta
+    if r < 0.8: self.delta *= 0.9
+    elif r > 1: self.delta *= 1.07
 
 
 class weak_reflection_improved_iterator(basic_iterator):
@@ -234,7 +244,7 @@ class weak_reflection_improved_iterator(basic_iterator):
     self.f_obs = self.f_obs.select(p)
 
   def transfer_phase_from_g_tof_obs(self):
-    self.f = self.f_obs.oszlanyi_suto_phase_transfer(
+    self.f_calc = self.f_obs.oszlanyi_suto_phase_transfer(
       self._g,
       self.delta_varphi,
       self.weak_reflection_fraction,
@@ -242,21 +252,19 @@ class weak_reflection_improved_iterator(basic_iterator):
 
 
 class low_density_elimination_iterator(density_modification_iterator):
-  """ A method related to charge flipping, especially useful to sharpen
-  the map after the convergence.
+  """ A method related to charge flipping.
   C.f. Ref [4].
   """
 
-  def __init__(self, f_obs,
-               rho_c=lambda positives: 0.2*flex.mean(positives),
-               **kwds):
+  def __init__(self, f_obs, rho_c=None, **kwds):
     super(low_density_elimination_iterator, self).__init__(f_obs, **kwds)
-    self.rho_c = rho_c
+    if rho_c is not None: self.rho_c = rho_c
 
   def modify_electron_density(self):
     ab_initio.ext.low_density_elimination_in_place_tanaka_et_al_2001(
       self.rho_map.real_map(), self.rho_c())
 
-  def compute_electron_density_map(self):
-    self.rho_map = self.f_calc.fft_map(
-      symmetry_flags=maptbx.use_space_group_symmetry)
+  def rho_c(self):
+    """ The rho_c suggested in Ref [4] """
+    rho = self.rho_map.real_map_unpadded()
+    return 0.2*flex.mean(rho.select(rho >0))
