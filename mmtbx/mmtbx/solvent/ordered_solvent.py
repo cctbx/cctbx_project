@@ -168,8 +168,9 @@ class manager(object):
     self.filter_solvent()
     if(self.filter_only == False):
        self.find_peaks()
+       hd_sel = self.xray_structure.hd_selection()
        result_filter = filter_sites_and_map_next_to_model(
-         xray_structure = self.xray_structure,
+         xray_structure = self.xray_structure.select(~hd_sel),
          sites          = self.sites,
          max_dist       = self.max_solv_macromol_dist,
          min_dist       = self.min_solv_macromol_dist,
@@ -183,8 +184,11 @@ class manager(object):
     if(self.verbose > 0): self.show(message = "Final model:")
 
   def filter_solvent(self):
+    hd_sel = self.xray_structure.hd_selection()
+    hd_sel = hd_sel.select(~self.solvent_selection)
     xrs_sol = self.xray_structure.select(self.solvent_selection)
-    xrs_mac = self.xray_structure.select(~self.solvent_selection)
+    xrs_mac_h = self.xray_structure.select(~self.solvent_selection)
+    xrs_mac = xrs_mac_h.select(~hd_sel)
     selection = xrs_sol.all_selection()
     scat_sol = xrs_sol.scatterers()
     occ_sol = scat_sol.extract_occupancies()
@@ -199,7 +203,7 @@ class manager(object):
     selection &= result.smallest_distances <= self.max_solv_macromol_dist
     selection &= result.smallest_distances >= self.min_solv_macromol_dist
     xrs_sol = xrs_sol.select(selection)
-    sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
+    sol_sel = flex.bool(xrs_mac_h.scatterers().size(), False)
     sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
     self.model.remove_solvent()
     self.model.add_solvent(
