@@ -43,7 +43,9 @@ def loop_space_groups(
       flags,
       call_back,
       symbols_to_stdout=False,
-      show_cpu_times=True):
+      show_cpu_times=True,
+      **kwds):
+  call_back_results = []
   chunk_size = 1
   chunk_member = 0
   if (flags.ChunkSize != False):
@@ -52,10 +54,8 @@ def loop_space_groups(
     chunk_member = int(flags.ChunkMember)
   assert chunk_size > 0 and chunk_member < chunk_size
   n_threads = int(flags.Threads)
-  threading = None
-  if (n_threads > 1):
-    import threading
-    print "Number of threads:", n_threads
+  if n_threads > 1:
+    print "** Warning: multi-threaded space-group looping disabled **"
   if (not flags.RandomSeed): random.seed(0)
   if (len(argv) > 0 + flags.n):
     symbols = argv
@@ -77,31 +77,26 @@ def loop_space_groups(
     if (symbols_to_stdout):
       print space_group_info
       sys.stdout.flush()
-    if (threading is None):
-      continue_flag = call_back(flags, space_group_info)
-      sys.stdout.flush()
-      if (continue_flag == False): break
-    else:
-      while 1:
-        if (threading.activeCount() < n_threads): break
-        time.sleep(1)
-      t = threading.Thread(target=call_back, args=(flags, space_group_info))
-      t.setDaemon(True)
-      t.start()
-  if (threading is not None):
-    while 1:
-      if (threading.activeCount() == 1): break
-      time.sleep(1)
+    call_back_result = call_back(flags, space_group_info, **kwds)
+    sys.stdout.flush()
+    try:
+      continue_flag, call_back_result = call_back_result
+    except TypeError:
+      continue_flag, call_back_result = call_back_result, None
+    call_back_results.append(call_back_result)
+    if (continue_flag == False): break
   if (show_cpu_times):
     print format_cpu_times()
   sys.stdout.flush()
+  return call_back_results
 
 def parse_options_loop_space_groups(
       argv,
       call_back,
       keywords=(),
       symbols_to_stdout=False,
-      show_cpu_times=True):
+      show_cpu_times=True,
+      **kwds):
   flags = parse_options(
     argv=argv,
     keywords=(
@@ -116,5 +111,5 @@ def parse_options_loop_space_groups(
       "AllSettings",
       "UnusualSettings") + keywords,
     case_sensitive=False)
-  loop_space_groups(
-    argv, flags, call_back, symbols_to_stdout, show_cpu_times)
+  return loop_space_groups(
+    argv, flags, call_back, symbols_to_stdout, show_cpu_times, **kwds)
