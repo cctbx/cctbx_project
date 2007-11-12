@@ -130,6 +130,7 @@ smtbx/ab_initio/charge_flipping.py -text
 smtbx/ab_initio/command_line/__init__.py -text
 smtbx/ab_initio/command_line/charge_flipping.py -text
 smtbx/ab_initio/density_modification.h -text
+smtbx/ab_initio/tests/__init__.py -text
 smtbx/ab_initio/tests/tst_ab_initio_ext.py -text
 smtbx/ab_initio/tests/tst_charge_flipping.py -text
 smtbx/import_cctbx.h -text
