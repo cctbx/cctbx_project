@@ -165,12 +165,14 @@ def exercise_2():
   m2 = masks.bulk_solvent(
     xray_structure=structure,
     gridding_n_real=nxyz,
+    ignore_zero_occupancy_atoms = False,
     solvent_radius=solvent_radius,
     shrink_truncation_radius=shrink_truncation_radius)
   assert m2.data.all_eq(m1.data)
   m3 = masks.bulk_solvent(
     xray_structure=structure,
     grid_step=step,
+    ignore_zero_occupancy_atoms = False,
     solvent_radius=solvent_radius,
     shrink_truncation_radius=shrink_truncation_radius)
   assert m3.data.all_eq(m1.data)
@@ -178,6 +180,35 @@ def exercise_2():
   f_mask3 = m3.structure_factors(miller_set=miller_set)
   assert approx_equal(f_mask2.data(), f_mask3.data())
   assert approx_equal(flex.sum(flex.abs(f_mask3.data())), 1095.17999134)
+
+def exercise_3():
+  from mmtbx import masks
+  from cctbx import sgtbx
+  xs = random_structure.xray_structure(
+    space_group_info = sgtbx.space_group_info("P1"),
+    elements         = ["C"]*2,
+    unit_cell        = (10, 20, 30, 70, 80, 120))
+  f_calc = xs.structure_factors(d_min = 2.0).f_calc()
+  mp = masks.mask_master_params.extract()
+  mm1 = masks.manager(miller_array   = f_calc,
+                      xray_structure = xs)
+  assert list(xs.scatterers().extract_occupancies()) == [1.0, 1.0]
+  assert flex.mean( flex.abs(mm1.compute_f_mask().data()) ) > 4.0
+  #
+  xs.set_occupancies(value = 0)
+  mp.ignore_zero_occupancy_atoms = False
+  mm2 = masks.manager(miller_array   = f_calc,
+                      xray_structure = xs,
+                      mask_params    = mp)
+  assert list(xs.scatterers().extract_occupancies()) == [0.0, 0.0]
+  assert flex.mean( flex.abs(mm1.compute_f_mask().data()) ) == \
+         flex.mean( flex.abs(mm2.compute_f_mask().data()) )
+  #
+  mm3 = masks.manager(miller_array   = f_calc,
+                      xray_structure = xs)
+  assert list(xs.scatterers().extract_occupancies()) == [0.0, 0.0]
+  assert flex.abs(mm3.compute_f_mask().data()).min_max_mean().as_tuple() == \
+    (0.0, 0.0, 0.0)
 
 def exercise_centrics(space_group_info, n_sites=10):
   structure = random_structure.xray_structure(
@@ -195,6 +226,7 @@ def exercise_centrics(space_group_info, n_sites=10):
         bulk_solvent_mask = masks.bulk_solvent(
           xray_structure=structure,
           grid_step=0.5,
+          ignore_zero_occupancy_atoms = False,
           solvent_radius=solvent_radius,
           shrink_truncation_radius=shrink_truncation_radius)
         f_mask = bulk_solvent_mask.structure_factors(miller_set=miller_set)
@@ -209,6 +241,7 @@ def run_call_back(flags, space_group_info):
 def run():
   exercise_1()
   exercise_2()
+  exercise_3()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):

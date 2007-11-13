@@ -1473,10 +1473,11 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def bulk_solvent_mask(self):
     step = self._get_step()
     result = masks.bulk_solvent(
-          xray_structure           = self.xray_structure,
-          grid_step                = step,
-          solvent_radius           = self.mask_params.solvent_radius,
-          shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
+      xray_structure           = self.xray_structure,
+      grid_step                = step,
+      ignore_zero_occupancy_atoms=self.mask_params.ignore_zero_occupancy_atoms,
+      solvent_radius           = self.mask_params.solvent_radius,
+      shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
     return result
 
   def update_f_mask(self):
