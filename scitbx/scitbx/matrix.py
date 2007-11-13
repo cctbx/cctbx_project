@@ -370,6 +370,15 @@ class rec(object):
         result.append(self(ir,ic))
     return rec(result, (len(i_rows),len(i_colums)))
 
+  def __eq__(self, other):
+    if self is other: return True
+    if issubclass(type(other), rec):
+      return self.elems == other.elems
+    for ir in xrange(self.n_rows()):
+      for ic in xrange(self.n_columns()):
+        if self(ir,ic) != other[ir,ic]: return False
+    return True
+
 class row(rec):
 
   def __init__(self, elems):
@@ -396,6 +405,16 @@ class diag(rec):
     for i in xrange(n):
       elems[i*(n+1)] = diag_elems[i]
     rec.__init__(self, elems, (n,n))
+
+class identity(diag):
+
+  def __init__(self, n):
+    super(identity, self).__init__((1.,)*n)
+
+class inversion(diag):
+
+  def __init__(self, n):
+    super(inversion, self).__init__((-1.,)*n)
 
 class sym(rec):
 
@@ -644,5 +663,24 @@ if (__name__ == "__main__"):
            7,8,9,
            4,2,9), (4,3))
   assert repr(m) == "matrix.rec(((1, 2, 3), (4, 5, 6), (7, 8, 9), (4, 2, 9)))"
+  #
+  t = (1,2,3,4,5,6)
+  g = (3,2)
+  a = rec(t, g)
+  b = rec(t, g)
+  assert a == b
+  from scitbx.array_family import flex
+  c = flex.double(t)
+  c.reshape(flex.grid(g))
+  assert a == c
+  #
+  a = identity(4)
+  for ir in xrange(4):
+    for ic in xrange(4):
+      assert (ir == ic and a(ir,ic) == 1) or (ir != ic and a(ir,ic) == 0)
+  a = inversion(4)
+  for ir in xrange(4):
+    for ic in xrange(4):
+      assert (ir == ic and a(ir,ic) == -1) or (ir != ic and a(ir,ic) == 0)
   #
   print "OK"
