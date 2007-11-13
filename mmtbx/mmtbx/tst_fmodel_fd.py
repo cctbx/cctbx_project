@@ -10,17 +10,10 @@ from libtbx.utils import format_cpu_times
 import random
 import sys, math
 from cctbx import xray
+from mmtbx import masks
 
 random.seed(0)
 flex.set_random_seed(0)
-
-class mask_params:
-  def __init__(self):
-    self.solvent_radius = 1
-    self.shrink_truncation_radius = 1
-    self.grid_step_factor = 4
-    self.verbose = 1
-    self.mean_shift_for_mask_update = 0.1
 
 def finite_differences_site(target_functor, eps=1.e-5):
   fmodel = target_functor.manager
@@ -102,16 +95,16 @@ def exercise(space_group_info,
                                    scatterers = xrs.scatterers(),
                                    site       = True)
           fmodel = mmtbx.f_model.manager(
-                            xray_structure               = xrs,
-                            f_obs                        = f_obs,
-                            r_free_flags                 = flags,
-                            target_name                  = target,
-                            abcd                         = experimental_phases,
-                            sf_and_grads_accuracy_params = sfg_params,
-                            k_sol                        = k_sol,
-                            b_sol                        = b_sol,
-                            b_cart                       = b_cart,
-                            mask_params                  = mask_params())
+            xray_structure               = xrs,
+            f_obs                        = f_obs,
+            r_free_flags                 = flags,
+            target_name                  = target,
+            abcd                         = experimental_phases,
+            sf_and_grads_accuracy_params = sfg_params,
+            k_sol                        = k_sol,
+            b_sol                        = b_sol,
+            b_cart                       = b_cart,
+            mask_params                  = masks.mask_master_params.extract())
           fmodel.update_xray_structure(
             xray_structure=xrs,
             update_f_calc=True,

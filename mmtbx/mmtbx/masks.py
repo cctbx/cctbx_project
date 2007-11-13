@@ -34,16 +34,20 @@ mask_master_params = iotbx.phil.parse("""\
     .type = float
     .help = Value of overall model shift in refinement to updates the mask.
     .expert_level=2
+  ignore_zero_occupancy_atoms = True
+    .type = bool
+    .help = Include atoms with zero occupancy into mask calculation
 """)
 
 class bulk_solvent(around_atoms):
 
   def __init__(self,
         xray_structure,
+        ignore_zero_occupancy_atoms,
+        solvent_radius,
+        shrink_truncation_radius,
         gridding_n_real=None,
-        grid_step=None,
-        solvent_radius=1.0, # XXX consolidate with params above
-        shrink_truncation_radius=1.0): # XXX consolidate with params above
+        grid_step=None):
      global number_of_mask_calculations
      number_of_mask_calculations += 1
      assert [gridding_n_real, grid_step].count(None) == 1
@@ -54,6 +58,7 @@ class bulk_solvent(around_atoms):
          step=grid_step).n_real()
      atom_radii = flex.double()
      # XXX use scattering dictionary and set_selected
+     # XXX use monomer library definitions for radii
      unknown = []
      for i_seq, scatterer in enumerate(xray_structure.scatterers()):
        try:
@@ -64,12 +69,15 @@ class bulk_solvent(around_atoms):
      sites_frac = xray_structure.sites_frac()
      if(len(unknown) > 0):
         raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
-     selection = xray_structure.scatterers().extract_occupancies() > 0
+     if(ignore_zero_occupancy_atoms):
+       selection = xray_structure.scatterers().extract_occupancies() > 0
+       sites_frac = sites_frac.select(selection)
+       atom_radii = atom_radii.select(selection)
      around_atoms.__init__(self,
        unit_cell           = xray_structure.unit_cell(),
        space_group_order_z = xray_structure.space_group().order_z(),
-       sites_frac          = sites_frac.select(selection),
-       atom_radii          = atom_radii.select(selection),
+       sites_frac          = sites_frac,
+       atom_radii          = atom_radii,
        gridding_n_real     = gridding_n_real,
        solvent_radius      = solvent_radius,
        shrink_truncation_radius = shrink_truncation_radius)
@@ -207,8 +215,10 @@ class manager(object):
     return self._f_mask
 
   def bulk_solvent_mask(self):
+    mp = self.mask_params
     return bulk_solvent(
-      xray_structure           = self.xray_structure,
-      grid_step                = self.grid_step,
-      solvent_radius           = self.mask_params.solvent_radius,
-      shrink_truncation_radius = self.mask_params.shrink_truncation_radius)
+      xray_structure              = self.xray_structure,
+      grid_step                   = self.grid_step,
+      ignore_zero_occupancy_atoms = mp.ignore_zero_occupancy_atoms,
+      solvent_radius              = mp.solvent_radius,
+      shrink_truncation_radius    = mp.shrink_truncation_radius)
