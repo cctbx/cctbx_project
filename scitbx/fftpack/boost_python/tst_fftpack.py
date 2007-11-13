@@ -1,6 +1,7 @@
-import sys, os, random
+import sys, os, random, math
 from scitbx.array_family import flex
 from scitbx import fftpack
+from libtbx.test_utils import approx_equal
 
 def fmtfloat(f):
   s = "%.1f" % (f,)
@@ -104,6 +105,35 @@ def test_real_to_complex(verbose):
     assert t.focus()[0] == fft.n_real()
   if (verbose): show_rseq(vd, fft.n_real())
   assert_complex_eq_real(vc, vd)
+
+  """ The backward fft computes
+  y_k = sum_{n=0}^15 x_n e^{i 2pi n/16 k}
+      = sum_{n=0}^7 2 Re( x_n e^{i 2pi n/16 k} ) + x_8 cos{i k pi}
+  because of the assumed Hermitian condition x_{16-i} = x_i^* (=> x_8 real).
+  Only x_0, ..., x_8 need to be stored.
+  """
+  fft = fftpack.real_to_complex(16)
+  assert fft.n_complex() == 9
+  x = flex.complex_double(fft.n_complex(), 0)
+  x[4] = 1 + 1.j
+  y = fft.backward(x)
+  for i in xrange(0, fft.n_real(), 4):
+    assert tuple(y[i:i+4]) == (2, -2, -2, 2)
+
+  x = flex.complex_double(fft.n_complex(), 0)
+  x[2] = 1 + 1.j
+  y = fft.backward(x)
+  for i in xrange(0, fft.n_real(), 8):
+    assert tuple(y[i:i+3]) == (2, 0, -2)
+    assert approx_equal(y[i+3], -2*math.sqrt(2))
+    assert tuple(y[i+4:i+7]) == (-2, 0, 2)
+    assert approx_equal(y[i+7], 2*math.sqrt(2))
+
+  x = flex.complex_double(fft.n_complex(), 0)
+  x[8] = 1.
+  y = fft.backward(x)
+  for i in xrange(0, fft.n_real(), 2):
+    assert tuple(y[i:i+2]) == (1, -1)
 
 def test_real_to_complex_3d(verbose):
   fft = fftpack.real_to_complex_3d((3,4,5))
