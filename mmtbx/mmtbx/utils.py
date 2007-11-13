@@ -358,17 +358,16 @@ class determine_data_and_flags(object):
     print >> self.log
     print >> self.log, "Test (R-free flags) flag value:", test_flag_value
     print >> self.log
-    r_free_flags_md5_hexdigest = None
+    r_free_flags = r_free_flags.array(
+      data = r_free_flags.data() == test_flag_value)
+    r_free_flags_md5_hexdigest = \
+      r_free_flags.map_to_asu().sort(by_value="packed_indices").data() \
+        .md5().hexdigest()
     if(self.remark_r_free_flags_md5_hexdigest is not None):
-      r_free_flags_md5_hexdigest = \
-        (r_free_flags.map_to_asu().sort(by_value="packed_indices").data() \
-        == test_flag_value).md5().hexdigest()
       self.verify_r_free_flags_md5_hexdigest(
         ignore_pdb_hexdigest = self.parameters.r_free_flags.ignore_pdb_hexdigest,
         current              = r_free_flags_md5_hexdigest,
         records              = self.remark_r_free_flags_md5_hexdigest)
-    r_free_flags = r_free_flags.array(
-      data = r_free_flags.data() == test_flag_value)
     if(not f_obs.anomalous_flag()):
       if(r_free_flags.anomalous_flag()):
         print >> self.log, "Reducing R-free flags to non-anomalous array."
