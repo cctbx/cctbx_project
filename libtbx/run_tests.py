@@ -18,7 +18,7 @@ def run():
   "$D/libtbx/phil/tst.py",
   "$D/libtbx/tst_object_oriented_patterns.py",
   "$D/libtbx/tst_itertbx.py",
-  "$D/libtbx/symmetric_multi_processing.py",
+  "$D/libtbx/tst_symmetric_multi_processing.py",
   )
 
   build_dir = None
