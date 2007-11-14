@@ -20,6 +20,8 @@ from libtbx import itertbx
 from libtbx import easy_pickle
 from libtbx.utils import group_args, flat_list
 
+import scitbx.matrix as mat
+
 from smtbx.ab_initio import charge_flipping
 
 
@@ -108,6 +110,7 @@ def randomly_exercise(flipping_type,
                            .merge_equivalents().array()
   f_obs = abs(f_target)
 
+  # Guessing a value of delta leading to subsequent good convergence
   if verbose:
     print "Guessing delta..."
     print "%10s | %10s | %10s | %10s | %10s" % ('delta', 'R', 'c_tot', 'c_flip',
@@ -132,6 +135,7 @@ def randomly_exercise(flipping_type,
     else:
       break
 
+  # main charge flipping loop to solve the structure
   if verbose:
     print
     print "Solving..."
@@ -150,6 +154,7 @@ def randomly_exercise(flipping_type,
       print "%5i | %10.3f | %10.3f" % (i, r1, r)
   f_result_in_p1 = state.f_calc
 
+  # check whether a phase transition has occured
   diff_ctot_over_cflip = c_tot_over_c_flip_s[1:] - c_tot_over_c_flip_s[:-1]
   diff_r1 = r1_s[1:] - r1_s[:-1]
   i,j = flex.min_index(diff_ctot_over_cflip), flex.min_index(diff_r1)
@@ -166,32 +171,55 @@ def randomly_exercise(flipping_type,
     if verbose: print "** no phase transition **"
     return result
 
+  # sharpen the map
   polishing = charge_flipping.low_density_elimination_iterator(
     f_obs, f_calc=flipping.f_calc, f_000=0, rho_c=flipping.rho_c)
   for i,state in enumerate(itertbx.islice(polishing, 5)): pass
 
+  # Euclidean matching of the peaks from the obtained map
+  # against those of the correct structure
   target_structure_in_p1 = target_structure.expand_to_p1()
   search_parameters = maptbx.peak_search_parameters(
     interpolate=True,
     min_distance_sym_equiv=1.,
     max_clusters=int(target_structure_in_p1.scatterers().size()*1.05))
   peak_search_outcome = polishing.rho_map.peak_search(search_parameters)
-  peaks = [ emma.position('Q%i' % i, x)
-            for i,x in enumerate(peak_search_outcome.all().sites()) ]
+  peak_structure = emma.model(
+    target_structure_in_p1.crystal_symmetry().special_position_settings(),
+    positions=[ emma.position('Q%i' % i, x)
+                for i,x in enumerate(peak_search_outcome.all().sites()) ])
   refined_matches = emma.model_matches(
     target_structure_in_p1.as_emma_model(),
-    emma.model(
-      target_structure_in_p1.crystal_symmetry().special_position_settings(),
-      positions=peaks),
+    peak_structure,
     break_if_match_with_no_singles=True
     ).refined_matches
   result.emma_match = (
         not refined_matches[0].singles1 # all sites match a peak
     and refined_matches[0].rms < 0.1 # no farther than that
+    and refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
   )
   if not result.emma_match and verbose:
     print "** no Euclidean matching **"
+  reference_shift = refined_matches[0].rt.t
+  inverted_solution = refined_matches[0].rt.r == mat.identity(3)
 
+  # Find the translation to bring back the structure to the same space-group
+  # setting as the starting f_obs from correlation map analysis
+  if inverted_solution:
+    reference_shift = -reference_shift
+  correlation_map_peak_search = polishing.search_origin()
+  highest_peak = correlation_map_peak_search.next()
+  assert highest_peak.height >= 0.99
+  shift = -mat.col(highest_peak.site)
+  delta = shift - reference_shift
+  assert f_target.space_group_info().is_allowed_origin_shift(
+    delta.elems, tolerance=0.04)
+
+  # Shift the structure back accordingly
+
+
+  # return a bunch of Boolean flags telling where it failed
+  # or whether it succeeded
   return result
 
 def exercise(flags, space_group_info, flipping_type):
