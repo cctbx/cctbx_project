@@ -965,7 +965,29 @@ def exercise_min_u_cart_eigenvalue():
   xs = xray.structure(sp, scatterers)
   assert approx_equal(xs.min_u_cart_eigenvalue(), -0.0278)
 
+def exercise_replace_sites():
+  cs = crystal.symmetry((10, 10, 10, 90, 90, 90), "P 1")
+  sp = crystal.special_position_settings(cs)
+  scatterers = flex.xray_scatterer(
+    [xray.scatterer("c", (-1, -1, -1))])
+  xrs = xray.structure(sp, scatterers)
+  #
+  sites_cart = flex.vec3_double([(1,2,3)])
+  xrs_ = xrs.replace_sites_cart(sites_cart)
+  assert approx_equal(flex.mean(
+    xrs_.sites_cart().as_double()-sites_cart.as_double()), 0)
+  assert approx_equal(flex.mean(
+    xrs_.sites_frac().as_double()-flex.double([0.1,0.2,0.3])), 0)
+  #
+  sites_frac = flex.vec3_double([(0.1,0.2,0.3)])
+  xrs_ = xrs.replace_sites_frac(sites_frac)
+  assert approx_equal(flex.mean(
+    xrs_.sites_frac().as_double()-sites_frac.as_double()), 0)
+  assert approx_equal(flex.mean(
+    xrs_.sites_cart().as_double()-flex.double([1,2,3])), 0)
+
 def run():
+  exercise_replace_sites()
   exercise_min_u_cart_eigenvalue()
   exercise_set_occupancies()
   exercise_closest_distances()

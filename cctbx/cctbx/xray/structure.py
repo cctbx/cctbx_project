@@ -143,6 +143,17 @@ class structure(crystal.special_position_settings):
       cp.scatterer_pdb_records = self.scatterer_pdb_records
     return cp
 
+  def replace_sites_frac(self, new_sites):
+    cp = structure(self,
+      scattering_type_registry=self._scattering_type_registry)
+    new_scatterers = self._scatterers.deep_copy()
+    new_scatterers.set_sites(new_sites)
+    cp._scatterers = new_scatterers
+    cp._site_symmetry_table = self._site_symmetry_table.deep_copy()
+    if(getattr(self, "scatterer_pdb_records", None) is not None):
+      cp.scatterer_pdb_records = self.scatterer_pdb_records
+    return cp
+
   def adjust_u_iso(self):
     self._scatterers.adjust_u_iso()
 
