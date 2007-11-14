@@ -204,14 +204,14 @@ class manager(object):
           refine_adp               = True,
           log                      = log)
     if(fmodels.fmodel_xray().xray_structure.hd_selection().count(True) > 0 and
-       not model.use_dbe and h_params.mode == "riding" and
+       not model.use_dbe and h_params.refine_adp != "individual" and
        fmodels.fmodel_neutron() is None and h_params.contribute_to_f_calc):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement for H atoms",
                                         out = log)
        # XXX FUTURE: smart decision about which selection to use and at which resolution.
-       if(h_params.refine == "one_b_per_residue"):
+       if(h_params.refine_adp == "one_b_per_residue"):
           sel_mode = group_adp_selections_h
-       elif(h_params.refine == "one_b_per_molecule"):
+       elif(h_params.refine_adp == "one_b_per_molecule"):
           sel_mode = [fmodels.fmodel_xray().xray_structure.hd_selection().iselection()]
        else:
           raise RuntimeError("No refinement mode.")

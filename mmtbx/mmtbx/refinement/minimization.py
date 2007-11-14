@@ -91,13 +91,13 @@ class lbfgs(object):
       del sel
     if (refine_adp):
       sel = self.model.refinement_flags.adp_individual_iso[0]
-      if (self.h_params.mode == "riding"):
+      if (self.h_params.refine_adp != "individual"):
         sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_u_iso(
         iselection=sel.iselection())
       #
       sel = self.model.refinement_flags.adp_individual_aniso[0]
-      if (self.h_params.mode == "riding"):
+      if (self.h_params.refine_adp != "individual"):
         sel.set_selected(self.hd_selection, False)
       self.xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection=sel.iselection())
@@ -162,7 +162,7 @@ class lbfgs(object):
        return None
 
   def compute_target(self, compute_gradients, u_iso_refinable_params):
-    h_flag = self.hd_flag and self.h_params.mode != "full" and self.refine_xyz
+    h_flag = self.hd_flag and self.h_params.refine_sites != "full" and self.refine_xyz
     self.stereochemistry_residuals = None
     self.fmodels.update_xray_structure(xray_structure = self.xray_structure,
                                        update_f_calc  = True)

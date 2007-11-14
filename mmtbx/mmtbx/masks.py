@@ -69,10 +69,12 @@ class bulk_solvent(around_atoms):
      sites_frac = xray_structure.sites_frac()
      if(len(unknown) > 0):
         raise RuntimeError("Atoms with unknown van der Waals radius: ",unknown)
+     self.n_atoms_excluded = 0
      if(ignore_zero_occupancy_atoms):
        selection = xray_structure.scatterers().extract_occupancies() > 0
        sites_frac = sites_frac.select(selection)
        atom_radii = atom_radii.select(selection)
+       self.n_atoms_excluded = selection.count(False)
      around_atoms.__init__(self,
        unit_cell           = xray_structure.unit_cell(),
        space_group_order_z = xray_structure.space_group().order_z(),

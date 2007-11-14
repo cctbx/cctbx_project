@@ -33,7 +33,7 @@ master_params = iotbx.phil.parse("""\
             every_macro_cycle - do water update every macro-cycle
   output_residue_name = HOH
     .type=str
-  output_chain_id = S
+  output_chain_id = None
     .type=str
   output_atom_name = O
     .type=str
@@ -203,6 +203,7 @@ class manager(object):
     selection &= result.smallest_distances <= self.max_solv_macromol_dist
     selection &= result.smallest_distances >= self.min_solv_macromol_dist
     xrs_sol = xrs_sol.select(selection)
+    xrs_sol = xrs_sol.replace_sites_frac(result.sites_frac.select(selection))
     sol_sel = flex.bool(xrs_mac_h.scatterers().size(), False)
     sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
     self.model.remove_solvent()
