@@ -159,16 +159,21 @@ class density_modification_iterator(object):
   def c_tot_over_c_flip(self):
     return self.rho_map.c_tot()/self.rho_map.c_flip(self.delta)
 
-  def correlation_map_peak_cluster_analysis(self,
-                                            return_correlation_map_too=False):
+  def search_origin(self,
+                    grid_resolution_factor=1/3,
+                    return_correlation_map_too=False):
     """ The fast correlation map as per cctbx.translation_search.fast_nv1995
-    is computed and its peaks studied """
+    is computed and its peaks studied.
+    Inspiration from phenix.substructure.hyss for the parameters tuning.
+    """
     f_obs = self.original_f_obs
     f_calc = self.f_calc
     crystal_gridding = f_obs.crystal_gridding(
       symmetry_flags=translation_search.symmetry_flags(
         is_isotropic_search_model=False,
-        have_f_part=False))
+        have_f_part=False),
+      resolution_factor=grid_resolution_factor
+    )
     correlation_map = translation_search.fast_nv1995(
       gridding=crystal_gridding.n_real(),
       space_group=f_obs.space_group(),
@@ -178,13 +183,14 @@ class density_modification_iterator(object):
       f_part=flex.complex_double(), ## no sub-structure is already fixed
       miller_indices_p1_f_calc=f_calc.indices(),
       p1_f_calc=f_calc.data()).target_map()
-    ## The correlation map is not a miller.fft_map, just a 3D flex.double
     search_parameters = maptbx.peak_search_parameters(
       peak_search_level=1,
-      peak_cutoff=0.1,
+      peak_cutoff=0.5,
       interpolate=True,
-      min_distance_sym_equiv=1.,
-      max_clusters=24)
+      min_distance_sym_equiv=1e-6,
+      general_positions_only=False,
+      min_cross_distance=f_obs.d_min()/2)
+    ## The correlation map is not a miller.fft_map, just a 3D flex.double
     result = crystal_gridding.tags().peak_search(
       map=correlation_map,
       parameters=search_parameters)
