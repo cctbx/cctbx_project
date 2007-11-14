@@ -431,15 +431,7 @@ class manager(object):
                         solvent_selection,
                         atom_name    = "O",
                         residue_name = "HOH",
-                        chain_id     = "S"):
-    resSeqs = flex.int()
-    for aa in self.atom_attributes_list:
-        if(aa.chainID.strip() == chain_id.strip()):
-           resSeqs.append(int(aa.resSeq))
-    if(resSeqs.size() > 0):
-       i_seq = flex.max(resSeqs)
-    else:
-       i_seq = 0
+                        chain_id     = None):
     self.xray_structure = \
                         self.xray_structure.concatenate(solvent_xray_structure)
     self.refinement_flags.inflate(
@@ -449,7 +441,7 @@ class manager(object):
     new_atom_name = atom_name.strip()
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
-    #i_seq = solvent_xray_structure.scatterers().size()
+    i_seq = 0
     for sc in solvent_xray_structure.scatterers():
         i_seq += 1
         new_attr = pdb.atom.attributes(name        = new_atom_name,
