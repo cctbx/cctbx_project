@@ -21,11 +21,28 @@ class _space_group(boost.python.injector, ext.space_group):
     for i_smx in xrange(self.n_smx()):
       yield self(i_smx)
 
+  def ltr(self):
+    for i in xrange(self.n_ltr()):
+      yield self(i,0,0).t()
+
   def adp_constraints(self):
     return tensor_rank_2_constraints(space_group=self, reciprocal_space=True)
 
   def cartesian_adp_constraints(self, unit_cell):
     return tensor_rank_2_cartesian_constraints(unit_cell, self)
+
+
+class any_generator_set(object):
+
+  def __init__(self, space_group,
+               z2c_r_den=cb_r_den, z2c_t_den=cb_t_den):
+    self.space_group = space_group
+    gen_set = ext.any_generator_set(space_group=space_group,
+                                    z2p_r_den=cb_r_den,
+                                    z2p_t_den=cb_t_den)
+    gen_set.set_primitive()
+    self.non_primitive_generators = gen_set.z_gen()
+    self.primitive_generators = gen_set.p_gen()
 
 
 class space_group_info(object):
@@ -93,6 +110,14 @@ class space_group_info(object):
       cache._type_params = type_params
       cache._type = cache_type = space_group_type(*(self._group,)+type_params)
     return cache_type
+
+  def any_generator_set(self):
+    cache = self._space_group_info_cache
+    try:
+      return cache._generators
+    except AttributeError:
+      cache._generators = any_generator_set(self.group())
+      return cache._generators
 
   def reciprocal_space_asu(self):
     cache = self._space_group_info_cache
@@ -192,6 +217,22 @@ class space_group_info(object):
     return cb_op.c_inv() * self.reference_setting().structure_seminvariants() \
       .subtract_principal_continuous_shifts(
         translation=cb_op.c() * translation_frac)
+
+  def is_allowed_origin_shift(self, shift, tolerance):
+    from libtbx.math_utils import iround
+    sg = self.group()
+    for s in self.any_generator_set().primitive_generators:
+      w_m_i = s.r().minus_unit_mx()
+      zero_mod_centring_n_latt = w_m_i*shift
+      for t in sg.ltr():
+        zero_mod_latt = [ x + y for x,y in zip(zero_mod_centring_n_latt,
+                                               t.as_double()) ]
+        zero = [ abs(x - iround(x)) for x in zero_mod_latt ]
+        if max(zero) < tolerance: break
+      else:
+        return False
+    else:
+      return True
 
   def any_compatible_unit_cell(self, volume=None, asu_volume=None):
     assert [volume, asu_volume].count(None) == 1

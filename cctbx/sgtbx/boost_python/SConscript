@@ -21,4 +21,5 @@ env.SharedLibrary(target="#lib/cctbx_sgtbx_ext", source=[
   "tensor_rank_2.cpp",
   "tr_vec.cpp",
   "wyckoff.cpp",
+  "select_generators.cpp"
 ])

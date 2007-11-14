@@ -32,6 +32,7 @@ namespace cctbx { namespace sgtbx { namespace boost_python {
   void wrap_tensor_rank_2();
   void wrap_tr_vec();
   void wrap_wyckoff();
+  void wrap_select_generators();
 
 namespace {
 
@@ -119,6 +120,7 @@ namespace {
     wrap_tensor_rank_2();
     wrap_tr_vec();
     wrap_wyckoff();
+    wrap_select_generators();
 
     def("n_fold_operator_from_axis_direction",
       n_fold_operator_from_axis_direction,

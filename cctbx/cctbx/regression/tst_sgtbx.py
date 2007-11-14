@@ -167,6 +167,64 @@ def exercise_ss_continuous_shifts_are_principal():
         "R 3 m :R",
         "R 3 c :R"]
 
+def exercise_generator_set():
+  sgi = sgtbx.space_group_info('P1')
+  sg_generator_set = sgtbx.any_generator_set(sgi.group())
+  assert sg_generator_set.non_primitive_generators == ()
+
+  sgi = sgtbx.space_group_info('P21')
+  sg_generator_set = sgtbx.any_generator_set(sgi.group())
+  assert (map(str, sg_generator_set.non_primitive_generators)
+          == ['-x,y+1/2,-z'])
+
+  sgi = sgtbx.space_group_info('Pmmm')
+  sg_generator_set = sgtbx.any_generator_set(sgi.group())
+  assert (map(str, sg_generator_set.non_primitive_generators)
+          == ['-x,-y,-z', 'x,-y,-z', '-x,y,-z'])
+
+  for i in xrange(1, 231):
+    sgi = sgtbx.space_group_info(number=i)
+    sg = sgi.group()
+    sg_gen = sgtbx.any_generator_set(sg)
+    if sg.z2p_op().is_identity_op():
+      assert sg_gen.non_primitive_generators == sg_gen.primitive_generators
+
+  for i in xrange(1, 231):
+    sgi = sgtbx.space_group_info(number=i)
+    sg = sgi.group()
+    sg_gen = sgtbx.any_generator_set(sg)
+    sg1 = sgtbx.space_group("P1")
+    for op in sg_gen.non_primitive_generators:
+      sg1.expand_smx(op)
+    for t in sg.ltr():
+        sg1.expand_ltr(t)
+    assert sg1.type().number() == sg.type().number()
+
+def exercise_allowed_origin_shift():
+  sgi = sgtbx.space_group_info("P2")
+  assert sgi.is_allowed_origin_shift((0, 1, 0), tolerance=1e-15)
+  assert sgi.is_allowed_origin_shift((0.5, 0, 0), tolerance=1e-15)
+  assert sgi.is_allowed_origin_shift((0, 0, 0.5), tolerance=1e-15)
+  assert sgi.is_allowed_origin_shift((0.001, -0.0008, 0.499),
+                                     tolerance=0.005)
+  assert not sgi.is_allowed_origin_shift((0.001, -0.0008, 0.45),
+                                         tolerance=0.005)
+  assert sgi.is_allowed_origin_shift((0.5, 0.12345, 0.5), tolerance=1e-15)
+
+  sgi = sgtbx.space_group_info("Cmmm")
+  assert sgi.is_allowed_origin_shift((0.5, 0, 0), tolerance=1e-15)
+  assert sgi.is_allowed_origin_shift((0, 0, 0.5), tolerance=1e-15)
+  assert sgi.is_allowed_origin_shift((0.5, 0, 0.5), tolerance=1e-15)
+  assert not sgi.is_allowed_origin_shift((0.5, 0.1, 0.5), tolerance=1e-15)
+  assert sgi.is_allowed_origin_shift((0.49, 0, 0.51), tolerance=0.05)
+
+  sgi = sgtbx.space_group_info("R 3 :R")
+  assert sgi.is_allowed_origin_shift((1.222, 1.221, 1.223),
+                                     tolerance=0.005)
+  assert not sgi.is_allowed_origin_shift((1.222, 1.221, 1.),
+                                         tolerance=0.005)
+
+
 def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
   # transformation matrices for cell choices
   # columns are basis vectors "new in terms of old"
@@ -398,6 +456,8 @@ def exercise_inversion_centring():
       assert str(icb) == "a,b,c"
 
 def run(args):
+  exercise_allowed_origin_shift()
+  exercise_generator_set()
   exercise_space_group_info()
   test_enantiomorphic_pairs()
   exercise_ss_continuous_shifts_are_principal()
