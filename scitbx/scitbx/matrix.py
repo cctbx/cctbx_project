@@ -372,6 +372,7 @@ class rec(object):
 
   def __eq__(self, other):
     if self is other: return True
+    if other is None: return False
     if issubclass(type(other), rec):
       return self.elems == other.elems
     for ir in xrange(self.n_rows()):
