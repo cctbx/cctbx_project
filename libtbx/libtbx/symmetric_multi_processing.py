@@ -16,6 +16,9 @@ from libtbx import easy_pickle
 import sys, os, select, signal
 import cStringIO, cPickle
 
+os_fork = getattr(os, "fork", None)
+is_available = os_fork is not None
+
 dict_pop = getattr(dict, "pop", None)
 if (dict_pop is None):
   def dict_pop(d, key): # Python 2.2 compatibility
@@ -44,7 +47,9 @@ class parent(logging):
   def spawn(self, func):
     parent_read, child_write = os.pipe()
     child_read, parent_write = os.pipe()
-    pid = os.fork()
+    if (os_fork is None):
+      raise NotImplementedError("os.fork not available.")
+    pid = os_fork()
     if pid == 0:
       os.close(parent_read)
       os.close(parent_write)
