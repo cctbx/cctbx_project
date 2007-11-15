@@ -9,6 +9,7 @@
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
+#include <boost/rational.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -95,6 +96,8 @@ namespace {
     tuple_mapping_fixed_size<vec2<double> >();
     tuple_mapping_fixed_size<mat2<double> >();
     tuple_mapping_fixed_size<sym_mat2<double> >();
+
+    tuple_mapping_fixed_size<mat3<boost::rational<int> > >();
 
     tuple_mapping_fixed_size<tiny<vec3<double>, 2> >();
     tuple_mapping_fixed_size<tiny<vec3<double>, 3> >();
