@@ -106,7 +106,7 @@ data members:
         else:
          monitor_score = flex.min(self.scores)
       rd = (flex.mean(self.scores) - flex.min(self.scores) )
-      rd = rd*rd/(flex.min(self.scores)*flex.min(self.scores))
+      rd = rd*rd/(flex.min(self.scores)*flex.min(self.scores) + self.eps*self.eps )
       if ( rd < self.eps ):
         converged = True
 
