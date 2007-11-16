@@ -485,9 +485,12 @@ def run(args, command_name="phenix.xtriage"):
 
     scope =  params.scaling.input.xray_data
     if (scope.unit_cell is None or not co.weak_symmetry):
-      scope.unit_cell = command_line.symmetry.unit_cell()
+        if command_line.symmetry.unit_cell() is not None:
+          scope.unit_cell = command_line.symmetry.unit_cell()
+
     if (scope.space_group is None or not co.weak_symmetry):
-      scope.space_group = command_line.symmetry.space_group_info()
+      if command_line.symmetry.space_group_info() is not None:
+        scope.space_group = command_line.symmetry.space_group_info()
 
     ## Check for number of residues
     reset_space_group = False
@@ -524,7 +527,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
       if params.scaling.input.xray_data.unit_cell is None:
         raise Sorry("""No unit cell info available.
   Use keyword 'xray_data.unit_cell' to specify unit_cell""" )
-      
+      else:
+        reset_unit_cell=False
 
 
     if params.scaling.input.xray_data.space_group is None:
