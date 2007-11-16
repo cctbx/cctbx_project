@@ -249,20 +249,17 @@ class set(crystal.symmetry):
       anomalous_flag=self._anomalous_flag)
 
   def deep_copy(self):
-    uc_params = self.unit_cell()
-    if uc_params is None:
-      uc_params = None
+    unit_cell = self.unit_cell()
+    if (unit_cell is not None):
+      unit_cell = uctbx.unit_cell(parameters=unit_cell.parameters())
+    if (self.space_group_info() is None):
+      space_group_symbol = None
     else:
-      uc_params = uc_params.parameters()
-
-    sg = None
-    if self.space_group_info() is not None:
-      sg = str( self.space_group_info() )
-
+      space_group_symbol = str(self.space_group_info())
     return set(
       crystal_symmetry=crystal.symmetry(
-        unit_cell=uctbx.unit_cell( parameters = uc_params ),
-        space_group_symbol=sg ),
+        unit_cell=unit_cell,
+        space_group_symbol=space_group_symbol),
       indices=self.indices().deep_copy(),
       anomalous_flag=self.anomalous_flag())
 
