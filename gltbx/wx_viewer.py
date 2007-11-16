@@ -566,8 +566,10 @@ class show_points_and_lines_mixin(wxGLWindow):
       grid = 50
     else:
       sphere = gltbx.util.WireSphere
-      grid = 20
-    for x,r in self.spheres:
+      grid = 10
+    for i, (x,r) in enumerate(self.spheres):
+      if hasattr(self, "colours"):
+        glColor3f(*self.colours[i])
       glPushMatrix()
       glTranslated(*(x))
       sphere(radius=r, slices=grid, stacks=grid)
