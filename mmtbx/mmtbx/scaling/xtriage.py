@@ -523,7 +523,7 @@ No unit cell info available.
 Use keyword 'xray_data.unit_cell' to specify unit_cell
                     """ )
     #provisions for nomerge original index
-    if crystal_symmetry.unit_cell() is None:
+    if crystal_symmetry is None or crystal_symmetry.unit_cell() is None:
       if params.scaling.input.xray_data.unit_cell is None:
         raise Sorry("""No unit cell info available.
   Use keyword 'xray_data.unit_cell' to specify unit_cell""" )
