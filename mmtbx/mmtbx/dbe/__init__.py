@@ -36,7 +36,7 @@ dbe_master_params = iotbx.phil.parse("""\
   file_prefix = None
     .type = str
   peak_search_map {
-     map_type = *k*Fobs-n*Fmodel m*Fobs-D*Fmodel
+     map_type = *Fobs-Fmodel mFobs-DFmodel
        .type=choice(multi=False)
      grid_step = 0.1
        .type = float
@@ -354,8 +354,6 @@ def set_peaks(iass, fmodel, grid_step, map_type, scaling):
   assert grid_step > 0
   fft_map = fmodel.electron_density_map(
                 map_type          = map_type,
-                k                 = 1,
-                n                 = 1,
                 resolution_factor = 1./(int(fmodel.f_obs.d_min()/grid_step)+1))
   if(scaling == "volume"):
      fft_map.apply_volume_scaling()

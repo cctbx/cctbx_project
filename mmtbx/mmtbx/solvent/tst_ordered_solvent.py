@@ -42,7 +42,7 @@ def exercise_1(pdb_file):
   easy_run.call("phenix.pdbtools %s remove='element H' output.pdb.file_name=%s"%(
     pdb, new_pdb))
   output_file_prefix = pdb_file[:-4]
-  opt1= "output.prefix="+output_file_prefix+" main.max_number_of_iterations=25 scattering_table=wk1995"
+  opt1= "output.prefix="+output_file_prefix+" main.max_number_of_iterations=25 main.scattering_table=wk1995"
   opt2= "main.number_of_macro_cycles=3 main.ordered_solvent=True apply_back_trace_of_b_cart=True "
   opt3 = "--overwrite target_weights.wxc_scale=3.0 target_weights.wxu_scale=3.0 target_weights.shake_sites=false "
   opt4 = " ordered_solvent.mode=every_macro_cycle "

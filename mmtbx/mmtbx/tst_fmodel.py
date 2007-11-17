@@ -9,6 +9,7 @@ import pickle
 from cStringIO import StringIO
 import random
 import sys, math
+import mmtbx
 
 random.seed(0)
 flex.set_random_seed(0)
@@ -350,9 +351,112 @@ def exercise_2():
       delta = flex.abs(f_calc_1-f_calc_2)
       assert approx_equal(flex.sum(delta), 0.0)
 
+def exercise_3():
+  r = mmtbx.map_names(map_name_string = "-2m Fo  D   Fc ")
+  assert r.format() == "-2.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = "-2m Fo  D 1.2  Fc ")
+  assert r.format() == "-2.0mFobs-1.2DFmodel"
+  r = mmtbx.map_names(map_name_string = "m Fo  D  Fc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = "mFoDFc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = "mFo-DFc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = "mFo-1.DFc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = "mFo1.0DFc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = "1mFoDFc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = "1mFo1DFc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = " m Fo D1Fc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = " m1. Fo D1Fc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = " m1. Fo -D1Fc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = "0mFo --1DFc ")
+  assert r.format() == "0.0mFobs-(-1.0)DFmodel"
+  r = mmtbx.map_names(map_name_string = "-1mFo - - 1.23 DFc ")
+  assert r.format() == "-1.0mFobs-(-1.23)DFmodel"
+  r = mmtbx.map_names(map_name_string = "-mFo - - 1.23 DFc ")
+  assert r.format() == "-1.0mFobs-(-1.23)DFmodel"
+  r = mmtbx.map_names(map_name_string = "- m Fo - -1.23 D Fc ")
+  assert r.format() == "-1.0mFobs-(-1.23)DFmodel"
+  r = mmtbx.map_names(map_name_string = "- M FoB - -1.23 d FcAl ")
+  assert r.format() == "-1.0mFobs-(-1.23)DFmodel"
+  r = mmtbx.map_names(map_name_string = "- M FoBs - -1.23 d FcAlc ")
+  assert r.format() == "-1.0mFobs-(-1.23)DFmodel"
+  r = mmtbx.map_names(map_name_string = "- M FOBs - -1.23 d FM ")
+  assert r.format() == "-1.0mFobs-(-1.23)DFmodel"
+  r = mmtbx.map_names(map_name_string = "- M FOBs - -1.23 d FMod ")
+  assert r.format() == "-1.0mFobs-(-1.23)DFmodel"
+  r = mmtbx.map_names(map_name_string = " - 2.45 M FOBs -- 1.23 DFModel")
+  assert r.format() == "-2.45mFobs-(-1.23)DFmodel"
+  r = mmtbx.map_names(map_name_string = " m1.- Fo D1.Fc ")
+  assert r.format() == "1.0mFobs-1.0DFmodel"
+  r = mmtbx.map_names(map_name_string = " m-1. Fo D-1.Fc ")
+  assert r.format() == "-1.0mFobs-(-1.0)DFmodel"
+  r = mmtbx.map_names(map_name_string = " m-1. Fo -D-1.Fc ")
+  assert r.format() == "-1.0mFobs-(-1.0)DFmodel"
+  #
+  r = mmtbx.map_names(map_name_string = "-2 Fo     Fc ")
+  assert r.format() == "-2.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "-2 Fo   1.2  Fc ")
+  assert r.format() == "-2.0Fobs-1.2Fmodel"
+  r = mmtbx.map_names(map_name_string = " Fo    Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "FoFc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "Fo-Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "Fo-1.Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "Fo1.0Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "1FoFc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "1Fo1Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "  Fo 1Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = " 1. Fo 1Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = " 1. Fo -1Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = "-1Fo - - 1.23 Fc ")
+  assert r.format() == "-1.0Fobs-(-1.23)Fmodel"
+  r = mmtbx.map_names(map_name_string = "-Fo - - 1.23 Fc ")
+  assert r.format() == "-1.0Fobs-(-1.23)Fmodel"
+  r = mmtbx.map_names(map_name_string = "-  Fo - -1.23  Fc ")
+  assert r.format() == "-1.0Fobs-(-1.23)Fmodel"
+  r = mmtbx.map_names(map_name_string = "-  FoB - -1.23  FcAl ")
+  assert r.format() == "-1.0Fobs-(-1.23)Fmodel"
+  r = mmtbx.map_names(map_name_string = "-  FoBs - -1.23  FcAlc ")
+  assert r.format() == "-1.0Fobs-(-1.23)Fmodel"
+  r = mmtbx.map_names(map_name_string = "-  FOBs - -1.23  FM ")
+  assert r.format() == "-1.0Fobs-(-1.23)Fmodel"
+  r = mmtbx.map_names(map_name_string = "-  FOBs - -1.23  FMod ")
+  assert r.format() == "-1.0Fobs-(-1.23)Fmodel"
+  r = mmtbx.map_names(map_name_string = " - 2.45  FOBs -- 1.23 FModel")
+  assert r.format() == "-2.45Fobs-(-1.23)Fmodel"
+  r = mmtbx.map_names(map_name_string = " 1.- Fo 1.Fc ")
+  assert r.format() == "1.0Fobs-1.0Fmodel"
+  r = mmtbx.map_names(map_name_string = " -1. Fo -1.Fc ")
+  assert r.format() == "-1.0Fobs-(-1.0)Fmodel"
+  r = mmtbx.map_names(map_name_string = " -1. Fo --1.Fc ")
+  assert r.format() == "-1.0Fobs-(-1.0)Fmodel"
+  r = mmtbx.map_names(map_name_string = "0Fo --1Fc ")
+  assert r.format() == "0.0Fobs-(-1.0)Fmodel"
+  #
+  r = mmtbx.map_names(map_name_string = "*-2m* Fo * D  * Fc ")
+  assert r.format() == "-2.0mFobs-1.0DFmodel"
+
 def run():
   exercise_1()
   exercise_2()
+  exercise_3()
 
 if (__name__ == "__main__"):
   run()

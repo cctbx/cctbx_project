@@ -38,13 +38,13 @@ def calculate_fobs(resolution   = 1.0,
 def exercise_1(hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="phenix_regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 strategy=group_adp cos_sin_table=false"
+  opt0= "main.number_of_macro_cycles=3 strategy=group_adp fake_f_obs.structure_factors_accuracy.cos_sin_table=false "
   opt1= "main.target=ls group_b_iso.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false"
-  opt3= "output.write_eff_file=false "
-  opt4= "one_adp_group_per_residue=true"
-  opt5= "structure_factors_and_gradients_accuracy.algorithm=direct scattering_table=wk1995 --overwrite"
+  opt3= "output.write_eff_file=false structure_factors_and_gradients_accuracy.cos_sin_table=false "
+  opt4= "one_adp_group_per_residue=true fake_f_obs.structure_factors_accuracy.algorithm=direct "
+  opt5= "structure_factors_and_gradients_accuracy.algorithm=direct  main.scattering_table=wk1995 fake_f_obs.scattering_table=wk1995  --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false  output.prefix=ref1"
   cmd = " ".join(["phenix.refine", pdb, hkl, opt0, opt1, opt2, opt3, opt4, opt5, opt6])
   os.system(cmd)
@@ -52,12 +52,12 @@ def exercise_1(hkl = "enk_gbr.mtz"):
 def exercise_2(pdb = "enk_gbr_e.pdb", hkl = "enk_gbr.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="phenix_regression/pdb/enk_gbr_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 strategy=group_adp cos_sin_table=false"
+  opt0= "main.number_of_macro_cycles=3 strategy=group_adp fake_f_obs.structure_factors_accuracy.cos_sin_table=false"
   opt1= "main.target=ls group_b_iso.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false one_adp_group_per_residue=false "
-  opt3= "output.write_eff_file=false "
-  opt5= "structure_factors_and_gradients_accuracy.algorithm=direct scattering_table=wk1995 --overwrite"
+  opt3= "output.write_eff_file=false structure_factors_and_gradients_accuracy.cos_sin_table=false "
+  opt5= "structure_factors_and_gradients_accuracy.algorithm=direct fake_f_obs.structure_factors_accuracy.algorithm=direct  main.scattering_table=wk1995 fake_f_obs.scattering_table=wk1995  --overwrite"
   opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false"
   opt7= "adp.group="+""""chain A" """+" adp.group="+""""chain B" """
   opt8= "adp.group="+""""chain C" """+" adp.group="+""""chain D" """+" output.prefix=ref2"

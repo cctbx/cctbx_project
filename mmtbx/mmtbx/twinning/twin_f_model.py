@@ -1982,14 +1982,14 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        w1       = None,
                        w2       = None
                        ):
-    assert map_type in ("k*Fobs-n*Fmodel",
-                        "2m*Fobs-D*Fmodel",
-                        "m*Fobs-D*Fmodel",
+    assert map_type in ("Fobs-Fmodel",
+                        "2mFobs-DFmodel",
+                        "mFobs-DFmodel",
                         "gradient",
                         "m_gradient"
                         )
     # this is to modify default behavoir of phenix.refine
-    if map_type == "m*Fobs-D*Fmodel":
+    if map_type == "mFobs-DFmodel":
       if self.map_types.fofc == "gradient":
         map_type = "gradient"
       if self.map_types.fofc == "m_gradient":
@@ -1997,7 +1997,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       if self.map_types.fofc == "m_dtfo_d_fc":
         map_type = "m_dtfo_d_fc"
 
-    if map_type == "2m*Fobs-D*Fmodel":
+    if map_type == "2mFobs-DFmodel":
       if self.map_types.twofofc == "two_m_dtfo_d_fc":
         map_type = "two_m_dtfo_d_fc"
       if  self.map_types.twofofc == "two_dtfo_fc":
@@ -2013,7 +2013,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
     if map_type not in ["gradient","m_gradient"]:
       result = None
-      if map_type == "k*Fobs-n*Fmodel":
+      if map_type == "Fobs-Fmodel":
         if ([k,n]).count(None) > 0:
           raise Sorry("Map coefficient multipliers (k and n) must be provided to generate detwinned maps")
         result = self._map_coeff( f_obs         = dt_f_obs,
@@ -2074,7 +2074,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
 
   def electron_density_map(self,
-                           map_type          = "k*Fobs-n*Fmodel",
+                           map_type          = "Fobs-Fmodel",
                            k                 = 1,
                            n                 = 1,
                            w1                = None,
@@ -2082,9 +2082,9 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            resolution_factor = 1/3.,
                            symmetry_flags = None):
 
-    assert map_type in ("k*Fobs-n*Fmodel",
-                        "2m*Fobs-D*Fmodel",
-                        "m*Fobs-D*Fmodel",
+    assert map_type in ("Fobs-Fmodel",
+                        "2mFobs-DFmodel",
+                        "mFobs-DFmodel",
                         "gradient",
                         "m_gradient")
 

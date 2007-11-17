@@ -45,12 +45,8 @@ import libtbx.load_env
 from mmtbx import utils
 
 map_params_str ="""\
-  map_types= k*Fobs-n*Fmodel *2m*Fobs-D*Fmodel  *m*Fobs-D*Fmodel
+  map_types= Fobs-Fmodel *2mFobs-DFmodel  *mFobs-DFmodel
     .type=choice(multi=True)
-  k = 2.0
-    .type=float
-  n = 1.0
-    .type=float
   map_format = *xplor
     .optional = True
     .type=choice(multi=True)
@@ -69,19 +65,18 @@ map_params_str ="""\
     phases = None
       .type=str
   }
-  mtz_labels
-  {
-    map_type = 2m*Fobs-D*Fmodel
+  mtz_labels {
+    map_type = 2mFobs-DFmodel
     amplitudes = 2FOFCWT
     phases = PH2FOFCWT
   }
   mtz_labels {
-    map_type = m*Fobs-D*Fmodel
+    map_type = mFobs-DFmodel
     amplitudes = FOFCWT
     phases = PHFOFCWT
   }
   mtz_labels {
-    map_type = k*Fobs-n*Fmodel
+    map_type = Fobs-Fmodel
     amplitudes = oFOoFCWT
     phases = oPHFOoFCWT
   }
