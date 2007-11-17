@@ -1329,45 +1329,27 @@ class manager(manager_mixin):
     return miller.array(miller_set = f_model,
                         data       = d_obs.data()-f_model.data()*f_model_scale)
 
-  def map_coefficients(self,
-                       map_type          = None,
-                       k                 = None,
-                       n                 = None,
-                       w1                = None,
-                       w2                = None):
-    assert map_type in ("k*Fobs-n*Fmodel",
-                        "2m*Fobs-D*Fmodel",
-                        "m*Fobs-D*Fmodel")
-    if(map_type == "k*Fobs-n*Fmodel"):
-       if([k,n].count(None) != 0):
-          raise Sorry("Map coefficients (k and n) must be provided.")
+  def map_coefficients(self, map_type):
+    map_name_manager = mmtbx.map_names(map_name_string = map_type)
     fb_cart  = self.fb_cart()
     scale_k2 = self.scale_k2()
     f_obs_scale   = 1.0 / fb_cart * scale_k2
     f_model_scale = 1.0 / fb_cart
-    if(map_type == "k*Fobs-n*Fmodel"):
-       return self._map_coeff(f_obs         = self.f_obs,
-                              f_model       = self.f_model(),
-                              f_obs_scale   = k * f_obs_scale,
-                              f_model_scale = n * f_model_scale)
-    if(map_type == "2m*Fobs-D*Fmodel"):
+    if(not map_name_manager.ml_map):
+       return self._map_coeff(
+         f_obs         = self.f_obs,
+         f_model       = self.f_model(),
+         f_obs_scale   = map_name_manager.k * f_obs_scale,
+         f_model_scale = map_name_manager.n * f_model_scale)
+    if(map_name_manager.ml_map):
       alpha, beta = self.alpha_beta(
         f_obs   = self.f_obs.array(data = self.f_obs.data() * f_obs_scale),
         f_model = self.f_model().array(data = self.f_model().data()*f_model_scale))
       return self._map_coeff(
-                        f_obs         = self.f_obs,
-                        f_model       = self.f_model(),
-                        f_obs_scale   = 2.*self.figures_of_merit()*f_obs_scale,
-                        f_model_scale = alpha.data() * f_model_scale)
-    if(map_type == "m*Fobs-D*Fmodel"):
-      alpha, beta = self.alpha_beta(
-        f_obs   = self.f_obs.array(data = self.f_obs.data() * f_obs_scale),
-        f_model = self.f_model().array(data = self.f_model().data()*f_model_scale))
-      return self._map_coeff(
-                        f_obs         = self.f_obs,
-                        f_model       = self.f_model(),
-                        f_obs_scale   = self.figures_of_merit() * f_obs_scale,
-                        f_model_scale = alpha.data() * f_model_scale)
+        f_obs         = self.f_obs,
+        f_model       = self.f_model(),
+        f_obs_scale   = map_name_manager.k*self.figures_of_merit()*f_obs_scale,
+        f_model_scale = map_name_manager.n*alpha.data() * f_model_scale)
       ####
       #result = miller.array(miller_set = self.f_calc,
       #                      data       = d_obs.data() - d_model)
@@ -1382,25 +1364,12 @@ class manager(manager_mixin):
       #return new
 
   def electron_density_map(self,
-                           map_type          = "k*Fobs-n*Fmodel",
-                           k                 = 1,
-                           n                 = 1,
-                           w1                = None,
-                           w2                = None,
+                           map_type,
                            resolution_factor = 1/3.,
                            symmetry_flags = None):
-    assert map_type in ("k*Fobs-n*Fmodel",
-                        "2m*Fobs-D*Fmodel",
-                        "m*Fobs-D*Fmodel",
-                        "m*w1*Fobs-n*w2*Fmodel")
-    return self.map_coefficients(
-                       map_type          = map_type,
-                       k                 = k,
-                       n                 = n,
-                       w1                = w1,
-                       w2                = w2).fft_map(
-                                         resolution_factor = resolution_factor,
-                                         symmetry_flags    = symmetry_flags)
+    return self.map_coefficients(map_type = map_type).fft_map(
+      resolution_factor = resolution_factor,
+      symmetry_flags    = symmetry_flags)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):

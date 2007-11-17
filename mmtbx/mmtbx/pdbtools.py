@@ -17,6 +17,54 @@ import mmtbx.restraints
 import mmtbx.model
 from mmtbx import model_statistics
 
+fmodel_from_xray_structure_params_str = """\
+k_sol = 0.0
+  .type = float
+  .help = Bulk solvent k_sol values
+b_sol = 0.0
+  .type = float
+  .help = Bulk solvent b_sol values
+b_cart = 0 0 0 0 0 0
+  .type = strings
+  # XXX FUTURE float(6)
+  .help = Anisotropic scale matrix
+scale = 1.0
+  .type = float
+  .help = Overall scale factor
+structure_factors_accuracy {
+  include scope mmtbx.f_model.sf_and_grads_accuracy_params
+}
+mask {
+  include scope mmtbx.masks.mask_master_params
+}
+scattering_table = wk1995  it1992  *n_gaussian  neutron
+  .type = choice
+  .help = Choices of scattering table for structure factors calculations
+"""
+fmodel_from_xray_structure_params = iotbx.phil.parse(
+  fmodel_from_xray_structure_params_str, process_includes=True)
+
+fmodel_from_xray_structure_master_params_str = """\
+high_resolution = None
+  .type = float
+low_resolution = None
+  .type = float
+%s
+output {
+  format = *mtz cns
+    .type = choice
+  label = FMODEL
+    .type = str
+  type = real *complex
+    .type = choice
+  file_name = None
+    .type = str
+}
+"""%fmodel_from_xray_structure_params_str
+
+fmodel_from_xray_structure_master_params = iotbx.phil.parse(
+  fmodel_from_xray_structure_master_params_str, process_includes=True)
+
 modify_params_str = """\
 selection = None
   .type = str
@@ -113,7 +161,11 @@ input {
       .type=space_group
   }
 }
-"""%modify_params_str, process_includes=True)
+f_model {
+%s
+}
+"""%(modify_params_str, fmodel_from_xray_structure_master_params_str),
+     process_includes=True)
 
 class modify(object):
   def __init__(self, xray_structure, params, all_chain_proxies, log = None):
@@ -153,7 +205,8 @@ class modify(object):
         params_remove_selection))
     if(self.keep_selection is not None):
       assert self.remove_selection is None
-      self.remove_selection = flex.smart_selection(flags = self.keep_selection.flags)
+      self.remove_selection = flex.smart_selection(flags =
+        self.keep_selection.flags)
     self.top_selection = flex.smart_selection(
       flags=utils.get_atom_selections(
         iselection        = False,
@@ -299,6 +352,92 @@ class modify(object):
         out = self.log,
         label = "Atoms to be removed: ")
 
+class fmodel_from_xray_structure(object):
+  def __init__(self, xray_structure, f_obs = None, params = None):
+    if(params is None):
+      params = fmodel_from_xray_structure_master_params.extract()
+    if(f_obs is None):
+      hr = None
+      try: hr = params.high_resolution
+      except: self.Sorry_high_resolution_is_not_defined()
+      if(hr is None): self.Sorry_high_resolution_is_not_defined()
+      f_obs = xray_structure.structure_factors(d_min = hr).f_calc()
+      lr = None
+      try: lr = params.low_resolution
+      except: RuntimeError("Parameter scope does not have 'low_resolution'.")
+      if(params.low_resolution is not None):
+        f_obs = f_obs.resolution_filter(d_max = lr)
+    else:
+      hr = None
+      try: hr = params.high_resolution
+      except AttributeError: pass
+      except: raise RuntimeError
+      lr = None
+      try: lr = params.low_resolution
+      except AttributeError: pass
+      except: raise RuntimeError
+      f_obs = f_obs.resolution_filter(d_max = lr, d_min = hr)
+    if(params.scattering_table == "neutron"):
+      xray_structure.switch_to_neutron_scattering_dictionary()
+    else:
+      xray_structure.scattering_type_registry(
+        table = params.scattering_table,
+        d_min = f_obs.d_min())
+    r_free_flags = f_obs.generate_r_free_flags(fraction = 0.1)
+    fmodel = mmtbx.f_model.manager(
+      xray_structure               = xray_structure,
+      sf_and_grads_accuracy_params = params.structure_factors_accuracy,
+      r_free_flags                 = r_free_flags,
+      mask_params                  = params.mask,
+      target_name                  = "ml",
+      f_obs                        = abs(f_obs),
+      k_sol                        = params.k_sol,
+      b_sol                        = params.b_sol,
+      b_cart                       = [float(i) for i in params.b_cart])
+    f_model = fmodel.f_model()
+    f_model = f_model.array(data = f_model.data()*params.scale)
+    try:
+      if(params.output.type == "real"):
+        f_model = abs(f_model)
+        f_model.set_observation_type_xray_amplitude()
+    except AttributeError: pass
+    except: raise RuntimeError
+    self.f_model = f_model
+    self.params = params
+
+  def Sorry_high_resolution_is_not_defined(self):
+    raise Sorry("High resolution limit is not defined. "\
+      "Use 'high_resolution' keyword to define it.")
+
+  def write_to_file(self, file_name):
+    assert self.params.output.format in ["mtz", "cns"]
+    assert file_name is not None
+    op = self.params.output
+    if(self.params.output.format == "cns"):
+      ofo = open(file_name, "w")
+      print >> ofo, "NREFlection=%d" % self.f_model.indices().size()
+      print >> ofo, "ANOMalous=%s" % {0: "FALSE"}.get(
+        int(self.f_model.anomalous_flag()), "TRUE")
+      for n_t in [("%s"%op.label, "%s"%op.type.upper())]:
+        print >> ofo, "DECLare NAME=%s DOMAin=RECIprocal TYPE=%s END"%n_t
+      if(op.type == "complex"):
+        arrays = [
+          self.f_model.indices(), flex.abs(self.f_model.data()),
+          self.f_model.phases(deg=True).data()]
+        for values in zip(*arrays):
+          print >> ofo, "INDE %d %d %d" % values[0],
+          print >> ofo, " %s= %.6g %.6g" % (op.label, values[1],values[2])
+      else:
+        arrays = [
+          self.f_model.indices(), self.f_model.data()]
+        for values in zip(*arrays):
+          print >> ofo, "INDE %d %d %d" % values[0],
+          print >> ofo, " %s= %.6g" % (op.label, values[1])
+    else:
+      mtz_dataset= self.f_model.as_mtz_dataset(column_root_label="%s"%op.label)
+      mtz_object = mtz_dataset.mtz_object()
+      mtz_object.write(file_name = file_name)
+
 def run(args, command_name="phenix.pdbtools"):
   log = utils.set_log(args)
   utils.print_programs_start_header(
@@ -349,7 +488,7 @@ def run(args, command_name="phenix.pdbtools"):
   if(ofn is None):
     if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
     else: ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
-  print >> log, "Output file name: ", ofn
+  print >> log, "Output model file name: ", ofn
   ofo = open(ofn, "w")
   utils.write_pdb_file(
     xray_structure       = xray_structure,
@@ -357,6 +496,22 @@ def run(args, command_name="phenix.pdbtools"):
     selection            = getattr(result.remove_selection, "flags", None),
     write_cryst1_record  = not command_line_interpreter.fake_crystal_symmetry,
     out                  = ofo)
+  ofo.close()
+  if(command_line_interpreter.command_line.options.f_model):
+    par = command_line_interpreter.params.f_model
+    if(par.output.format == "cns"): extension = ".hkl"
+    elif(par.output.format == "mtz"): extension = ".mtz"
+    else: extension = ".reflections"
+    ofn = par.output.file_name
+    if(ofn is None):
+      if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + extension
+      else: ofn = os.path.basename(ifn[0]) + "_et_al" + extension
+    utils.print_header("Compute model structure factors", out = log)
+    print >> log, "Output reflections file name: ", ofn
+    fmodel_from_xray_structure(
+      xray_structure = xray_structure,
+      params         = command_line_interpreter.params.f_model).write_to_file(
+        file_name = ofn)
   utils.print_header("Done", out = log)
 
 class interpreter:
@@ -411,6 +566,9 @@ class interpreter:
       .option("--show_geometry_statistics",
           action="store_true",
           help="Show complete ADP (B-factors) statistics.")
+      .option("--f_model",
+          action="store_true",
+          help="Compute total model structure factors (F_model) and output into a file.")
     ).process(args=args)
     if(self.command_line.expert_level is not None):
       master_params.show(

@@ -67,17 +67,15 @@ def run():
   f_model_manager.info().show_all()
 
   fft_map = f_model_manager.electron_density_map(
-    map_type = "2m*Fobs-D*Fmodel")
+    map_type = "mFobs - DFmodel")
 
   import iotbx.xplor.map
 
   fft_map = f_model_manager.electron_density_map(
-    map_type = "k*Fobs-n*Fmodel",
-    k        = 2,
-    n        = 1)
+    map_type = "mFobs - DFmodel")
   fft_map.as_xplor_map(
-    file_name="2fo-fm.xplor",
-    title_lines=["2*Fobs - Fmodel"],
+    file_name="mfo-dfm.xplor",
+    title_lines=["mFobs - DFmodel"],
     gridding_first=(0,0,0),
     gridding_last=fft_map.n_real())
 

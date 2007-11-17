@@ -65,20 +65,12 @@ master_params = iotbx.phil.parse("""\
   use_sigma_scaled_maps = True
     .type=bool
     .help = Use sigma scales maps for water pick picking
-  primary_map_type = m*Fobs-D*Fmodel
+  primary_map_type = mFobs-DFmodel
     .type=str
-  primary_map_k = None
-    .type=float
-  primary_map_n = None
-    .type=float
   primary_map_cutoff = 3.0
     .type=float
-  secondary_map_type = 2m*Fobs-D*Fmodel
+  secondary_map_type = 2mFobs-DFmodel
     .type=str
-  secondary_map_k = None
-    .type=float
-  secondary_map_n = None
-    .type=float
   secondary_map_cutoff = 1.0
     .type=float
   peak_map_matching_tolerance = 2.0
@@ -132,12 +124,8 @@ class manager(object):
     self.use_sigma_scaled_maps       = self.params.use_sigma_scaled_maps
     self.bulk_solvent_mask_exclusions= self.params.bulk_solvent_mask_exclusions
     self.primary_map_type            = self.params.primary_map_type
-    self.primary_map_k               = self.params.primary_map_k
-    self.primary_map_n               = self.params.primary_map_n
     self.primary_map_cutoff          = self.params.primary_map_cutoff
     self.secondary_map_type          = self.params.secondary_map_type
-    self.secondary_map_k             = self.params.secondary_map_k
-    self.secondary_map_n             = self.params.secondary_map_n
     self.secondary_map_cutoff        = self.params.secondary_map_cutoff
     self.peak_map_matching_tolerance = self.params.peak_map_matching_tolerance
     self.resolution_factor           = self.params.resolution_factor
@@ -254,8 +242,6 @@ class manager(object):
     out = self.log
     self.sites, self.heights = self.find_peaks_helper(
       map_type = self.primary_map_type,
-      k        = self.primary_map_k,
-      n        = self.primary_map_n,
       peak_search_parameters = maptbx.peak_search_parameters(
         peak_search_level      = self.peak_search_level,
         max_peaks              = self.max_peaks,
@@ -273,8 +259,6 @@ class manager(object):
     if(self.secondary_map_type is not None):
        sites_2nd, heights_2nd = self.find_peaks_helper(
          map_type = self.secondary_map_type,
-         k        = self.secondary_map_k,
-         n        = self.secondary_map_n,
          peak_search_parameters = maptbx.peak_search_parameters(
            peak_search_level      = self.peak_search_level,
            max_peaks              = self.max_peaks,
@@ -299,11 +283,9 @@ class manager(object):
           print >> out, "   number of peaks after clustering:         ", \
                                                               self.sites.size()
 
-  def find_peaks_helper(self, map_type, k, n, peak_search_parameters):
+  def find_peaks_helper(self, map_type, peak_search_parameters):
     fft_map = self.fmodel.electron_density_map(
                            map_type          = map_type,
-                           k                 = k,
-                           n                 = n,
                            resolution_factor = self.resolution_factor,
                            symmetry_flags    = maptbx.use_space_group_symmetry)
     self.gridding_n_real = fft_map.n_real()
