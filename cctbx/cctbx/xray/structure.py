@@ -413,7 +413,7 @@ class structure(crystal.special_position_settings):
       neutron_scattering_dict[scattering_type] = \
         eltbx.xray_scattering.gaussian(b.real)
     self.scattering_type_registry(custom_dict = neutron_scattering_dict)
-    return self
+    return neutron_scattering_dict
 
   def hd_selection(self):
     scattering_types = self._scatterers.extract_scattering_types()
