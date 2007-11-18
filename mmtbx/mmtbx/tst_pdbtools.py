@@ -443,7 +443,7 @@ def exercise_f_model_option_custom(pdb_dir, verbose):
   low_resolution = 6.0
   algorithm = "direct"
   par = (0.35,60,3,[1,2,-3,0,0,0])
-  par_str = "k_sol=%s b_sol=%s scale=%s b_cart='%s'"%(par[0],
+  par_str = 'k_sol=%s b_sol=%s scale=%s b_cart="%s"'%(par[0],
     par[1], par[2], " ".join([str(i) for i in par[3]]).strip())
   for type in ["real", "complex"]:
     for table in ["wk1995", "neutron"]:
