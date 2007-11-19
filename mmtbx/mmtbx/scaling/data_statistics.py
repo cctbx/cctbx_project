@@ -577,7 +577,7 @@ class analyze_measurability(object):
         print >> out, " As the anomalous signal is not very strong in this dataset"
         print >> out, " substructure solution via SAD might prove to be a challenge."
         print >> out, " Especially if only low resolution reflections are used,"
-        print >> out, " the resulting substructures could contain a significant amount of"
+        print >> out, " the resulting substructures could contain a significant amount"
         print >> out, " of false positives."
       if self.high_d_cut is None:
         print >> out, " There seems to be no real significant anomalous differences"
