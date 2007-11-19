@@ -12,7 +12,6 @@ env = env_base.Copy(
   SHLINKFLAGS=env_etc.shlinkflags,
   LIBS=env_etc.libm,
 )
-env_etc.disable_strict_aliasing(env=env)
 env.Prepend(CPPPATH=[env_etc.clipper_include])
 
 if (env_etc.static_libraries): builder = env.StaticLibrary
@@ -81,7 +80,6 @@ if (hasattr(env_etc, "cctbx_include")):
   if (not env_etc.no_boost_python):
     Import("env_no_includes_boost_python_ext")
     env_clipper_boost_python_ext = env_no_includes_boost_python_ext.Copy()
-    env_etc.disable_strict_aliasing(env=env_clipper_boost_python_ext)
     env_etc.include_registry.append(
       env=env_clipper_boost_python_ext,
       paths=[
