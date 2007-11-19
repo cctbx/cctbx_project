@@ -523,12 +523,13 @@ No unit cell info available.
 Use keyword 'xray_data.unit_cell' to specify unit_cell
                     """ )
     #provisions for nomerge original index
-    if crystal_symmetry is None or crystal_symmetry.unit_cell() is None:
-      if params.scaling.input.xray_data.unit_cell is None:
-        raise Sorry("""No unit cell info available.
-  Use keyword 'xray_data.unit_cell' to specify unit_cell""" )
-      else:
-        reset_unit_cell=False
+    else:
+      if crystal_symmetry.unit_cell() is None:
+        if params.scaling.input.xray_data.unit_cell is None:
+          raise Sorry("""No unit cell info available.
+    Use keyword 'xray_data.unit_cell' to specify unit_cell""" )
+        else:
+          reset_unit_cell=False
 
 
     if params.scaling.input.xray_data.space_group is None:
@@ -615,6 +616,9 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
 
     miller_array = miller_array.map_to_asu()
+
+    if miller_array.observation_type() is None:
+      raise Sorry("Observation type of data unkown. Please check input reflection file")
 
     miller_array = miller_array.select(
       miller_array.indices() != (0,0,0))
