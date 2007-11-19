@@ -44,17 +44,6 @@ env_etc.norm_join = norm_join
 env_etc.include_registry = libtbx.config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
 
-def disable_strict_aliasing(env):
-  if (env_etc.compiler in ["unix_gcc", "darwin_c++", "darwin_gcc"]):
-    opt = ["-fno-strict-aliasing"]
-    env.Append(
-      CXXFLAGS=opt,
-      SHCXXFLAGS=opt,
-      CCFLAGS=opt,
-      SHCCFLAGS=opt)
-
-env_etc.disable_strict_aliasing = disable_strict_aliasing
-
 compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   env_etc.compiler = "win32_cl"
@@ -352,12 +341,14 @@ else:
     else:
       warn_options = "-Wall -Wno-sign-compare -Werror"
     env_etc.cxxflags_base = Split("""
+      -fno-strict-aliasing
       -fPIC
       -ftemplate-depth-120
       %s
       -DBOOST_DISABLE_THREADS
     """ % warn_options)
     env_etc.ccflags_base = Split("""
+      -fno-strict-aliasing
       -fPIC
       %s
     """ % warn_options)
@@ -508,7 +499,9 @@ else:
       warn_options = "-Wall -Wno-sign-compare"
     else:
       warn_options = "-Wall -Wno-sign-compare -Werror"
-    env_etc.ccflags_base = ["-fPIC",] + warn_options.split()
+    env_etc.ccflags_base = [
+      "-fno-strict-aliasing",
+      "-fPIC"] + warn_options.split()
     if (cxx == "c++"):
       env_etc.ccflags_base.extend(["-no-cpp-precomp", "-Wno-long-double"])
     env_etc.cxxflags_base = list(env_etc.ccflags_base)

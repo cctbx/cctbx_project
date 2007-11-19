@@ -26,7 +26,6 @@ env = env_base.Copy(
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
 )
-env_etc.disable_strict_aliasing(env=env)
 
 prefix = "#"+os.path.basename(env_etc.cbflib_dist)
 env.StaticLibrary(target='#lib/cbf',
@@ -65,7 +64,6 @@ if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
 
   env_cbflib_boost_python_ext = env_no_includes_boost_python_ext.Copy()
-  env_etc.disable_strict_aliasing(env=env_cbflib_boost_python_ext)
 
   env_etc.include_registry.append(
     env=env_cbflib_boost_python_ext,
