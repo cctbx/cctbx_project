@@ -44,6 +44,10 @@ env_etc.norm_join = norm_join
 env_etc.include_registry = libtbx.config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
 
+# XXX backward compatibility 2007-11-18
+def disable_strict_aliasing(env): pass
+env_etc.disable_strict_aliasing = disable_strict_aliasing
+
 compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   env_etc.compiler = "win32_cl"
