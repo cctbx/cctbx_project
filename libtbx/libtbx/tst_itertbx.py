@@ -26,10 +26,20 @@ def exercise_step():
   it = itertbx.step(2,3)
   assert list(itertbx.islice(it,4)) == [2,5,8,11]
 
+def exercise_izip():
+  l1, l2, l3 = [1,2], [3,4,5], [6,7,8,9]
+  i = itertbx.izip(l1,l2,l3)
+  assert i.next() == (1,3,6)
+  assert i.next() == (2,4,7)
+  try: i.next()
+  except StopIteration: pass
+  else: raise AssertionError
+
 def run():
   exercise_count()
   exercise_islice()
   exercise_step()
+  exercise_izip()
   print 'OK'
 
 if __name__ == '__main__':
