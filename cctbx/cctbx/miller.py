@@ -16,7 +16,7 @@ import scitbx.math
 from libtbx.math_utils import iround
 from libtbx import complex_math
 from scitbx.python_utils.misc import store
-from libtbx.itertbx import count
+from libtbx.itertbx import count, izip
 from libtbx.utils import Keep, plural_s, group_args
 from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
@@ -1109,6 +1109,14 @@ class array(set):
 
   def sigmas(self):
     return self._sigmas
+
+  def __iter__(self):
+    if self.sigmas() is not None:
+      for item in izip(self.indices(), self.data(), self.sigmas()):
+        yield item
+    else:
+      for item in izip(self.indices(), self.data()):
+        yield item
 
   def info(self):
     return self._info
