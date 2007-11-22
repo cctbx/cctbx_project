@@ -127,6 +127,12 @@ class rec(object):
   def as_float(self):
     return rec([float(e) for e in self.elems], self.n)
 
+  def as_int(self, rounding=True):
+    if rounding:
+      return rec([int(round(e)) for e in self.elems], self.n)
+    else:
+      return rec([int(e) for e in self.elems], self.n)
+
   def each_abs(self):
     return rec([abs(e) for e in self.elems], self.n)
 
@@ -683,5 +689,8 @@ if (__name__ == "__main__"):
   for ir in xrange(4):
     for ic in xrange(4):
       assert (ir == ic and a(ir,ic) == -1) or (ir != ic and a(ir,ic) == 0)
+  #
+  x = col((3/2+0.01, 5/4-0.02, 11/8+0.001))
+  assert (x*8).as_int()/8 == col((3/2, 5/4, 11/8))
   #
   print "OK"
