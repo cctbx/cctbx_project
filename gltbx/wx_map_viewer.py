@@ -17,12 +17,15 @@ class map_view(wx_viewer.wxGLWindow):
   def __init__(self,
                fft_map=None,
                unit_cell=None, raw_map=None,
-               frame=None, **kwds):
+               frame=None,
+               wires=True,
+               **kwds):
     assert fft_map is None or (unit_cell is None and raw_map is None)
     import time
     super(map_view, self).__init__(frame, **kwds)
     self.buffer_factor = 2.0
     self.back_colour = (0,)*4
+    self.wires = wires
     self._gl_has_been_initialised = False
 
     if fft_map is not None:
@@ -140,7 +143,10 @@ class map_view(wx_viewer.wxGLWindow):
     glLineWidth(lw[0])
 
   def draw_triangulation(self):
-    #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+    if self.wires:
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+    else:
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
     va = gltbx.util.vertex_array(self.triangulation.vertices,
                                  self.triangulation.normals)
     va.draw_triangles(self.triangulation.triangles)
@@ -152,10 +158,12 @@ class map_viewer(wx_viewer.App):
   """
 
   def __init__(self, fft_map=None, unit_cell=None, raw_map=None,
+               wires=True,
                **kwds):
     self.map = fft_map
     self.unit_cell = unit_cell
     self.raw_map = raw_map
+    self.wires = wires
     super(map_viewer, self).__init__(**kwds)
 
   def init_view_objects(self):
@@ -163,13 +171,19 @@ class map_viewer(wx_viewer.App):
     self.view_objects = map_view(fft_map=self.map,
                                  unit_cell=self.unit_cell,
                                  raw_map=self.raw_map,
-                                 frame=self.frame, size=(1200,800))
+                                 frame=self.frame,
+                                 wires=self.wires,
+                                 size=(700,800))
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
 
     range = self.view_objects.max_density - self.view_objects.min_density
-    n = int(math.log10(range))-2
-    p = 5
-    self.amplitude = p*10**n
+    if range != 0:
+      n = int(math.log10(range))-2
+      p = 5
+      self.amplitude = p*10**n
+    else:
+      p,n = 1,0
+      self.amplitude = 1
     self.slider = wx.Slider(self.frame,
                             minValue=self.view_objects.min_density
                                        /self.amplitude,
@@ -224,13 +238,17 @@ def run():
       map_coeffs = something
     else:
       if type(something) is not tuple:
-        show_help()
-        sys.exit(1)
-      unit_cell, raw_map = something
-      if (type(unit_cell) is not uctbx.unit_cell
-          and raw_map.accessor().nd() != 3):
-        show_help()
-        sys.exit(1)
+        if type(something) is miller.fft_map:
+          unit_cell, raw_map = something.unit_cell(), something.real_map()
+        else:
+          show_help()
+          sys.exit(1)
+      else:
+        unit_cell, raw_map = something
+        if (type(unit_cell) is not uctbx.unit_cell
+            and raw_map.accessor().nd() != 3):
+          show_help()
+          sys.exit(1)
   elif file_name.endswith('.mtz'):
     if len(sys.argv[1:]) != 2:
       show_help()
