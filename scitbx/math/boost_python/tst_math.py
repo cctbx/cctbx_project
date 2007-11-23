@@ -1259,6 +1259,8 @@ def exercise_slatec_dlngam():
       if (i <= 0 and i % 10 == 0): continue
       x = i/10.
       assert approx_equal(slatec_dlngam(x), cmath_lgamma(x), eps=1.e-10)
+    cmath_lgamma_max_x = 5.e15 # larger values lead to floating-point
+                               # exceptions on some platforms
     v = 2**(1/3.)
     x = v
     while True:
@@ -1267,20 +1269,22 @@ def exercise_slatec_dlngam():
         assert str(e) == \
           "slatec: dlngam: abs(x) so big dlngam overflows (nerr=2, level=2)"
         break
-      m = cmath_lgamma(x)
-      cmp(s, m)
+      if (x < cmath_lgamma_max_x):
+        m = cmath_lgamma(x)
+        cmp(s, m)
       try: s = slatec_dlngam(-x)
       except RuntimeError, e:
         assert str(e) in [
           "slatec: dlngam: x is a negative integer (nerr=3, level=2)",
           "slatec: dgamma: x is a negative integer (nerr=4, level=2)"]
       else:
-        try: m = cmath_lgamma(-x)
-        except RuntimeError, e:
-          assert str(e) == "C/C++ floating-point exception."
-        else:
-          if (str(m) != "inf"):
-            cmp(s, m)
+        if (x < cmath_lgamma_max_x):
+          try: m = cmath_lgamma(-x)
+          except RuntimeError, e:
+            assert str(e) == "C/C++ floating-point exception."
+          else:
+            if (str(m) != "inf"):
+              cmp(s, m)
       x *= v
     print "OK"
 
