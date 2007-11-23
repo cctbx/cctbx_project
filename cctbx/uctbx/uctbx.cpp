@@ -72,15 +72,23 @@ namespace cctbx { namespace uctbx {
   {
     // Transformation Lattice Constants -> Reciprocal Lattice Constants
     // after Kleber, W., 17. Aufl., Verlag Technik GmbH Berlin 1990, P.352
+    static const char*
+      error_msg = "Error computing reciprocal unit cell angles.";
     for(std::size_t i=0;i<3;i++) r_params_[i] = params_[(i + 1) % 3]
                                               * params_[(i + 2) % 3]
                                               * sin_ang_[i] / volume_;
-    for(std::size_t i=0;i<3;i++) r_cos_ang_[i] = (  cos_ang_[(i + 1) % 3]
-                                                  * cos_ang_[(i + 2) % 3]
-                                                  - cos_ang_[i])
-                                               / (  sin_ang_[(i + 1) % 3]
-                                                  * sin_ang_[(i + 2) % 3]);
     for(std::size_t i=0;i<3;i++) {
+      double denom = sin_ang_[(i + 1) % 3] * sin_ang_[(i + 2) % 3];
+      if (denom == 0) throw error (error_msg);
+      r_cos_ang_[i] = (  cos_ang_[(i + 1) % 3]
+                       * cos_ang_[(i + 2) % 3]
+                       - cos_ang_[i])
+                    / denom;
+    }
+    for(std::size_t i=0;i<3;i++) {
+      if (r_cos_ang_[i] < -1 || r_cos_ang_[i] > 1) {
+        throw error(error_msg);
+      }
       double a_rad = std::acos(r_cos_ang_[i]);
       r_params_[i+3] = scitbx::rad_as_deg(a_rad);
       r_sin_ang_[i] = std::sin(a_rad);
