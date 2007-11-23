@@ -44,7 +44,7 @@ FATAL: libstdc++.so mismatch:
 
 ext = import_ext("boost_python_meta_ext")
 
-if ("BOOST_ADAPTBX_FPE_ACTIVE" in os.environ):
+if ("BOOST_ADAPTBX_FPE_DEFAULT" not in os.environ):
   ext.enable_floating_point_exceptions_if_possible(
     divbyzero="BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT" not in os.environ,
     invalid="BOOST_ADAPTBX_FE_INVALID_DEFAULT" not in os.environ,

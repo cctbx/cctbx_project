@@ -5,8 +5,8 @@ import sys
 def run(args):
   assert len(args) == 0
   print """
-BOOST_ADAPTBX_FPE_ACTIVE
-  If set, trap floating-point exceptions if possible.
+BOOST_ADAPTBX_FPE_DEFAULT
+  If NOT set, trap floating-point exceptions if possible.
 BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT
 BOOST_ADAPTBX_FE_INVALID_DEFAULT
 BOOST_ADAPTBX_FE_OVERFLOW_DEFAULT
