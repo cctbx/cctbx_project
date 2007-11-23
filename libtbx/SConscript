@@ -357,7 +357,7 @@ else:
       %s
     """ % warn_options)
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      opts = ["-DNDEBUG", "-O3", "-ffast-math", "-ftrapping-math"]
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
@@ -515,7 +515,7 @@ else:
       "-ftemplate-depth-130",
       "-DBOOST_DISABLE_THREADS"])
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      opts = ["-DNDEBUG", "-O3", "-ffast-math", "-ftrapping-math"]
       if (cxx == "c++" and cxx_version == "4.0.0"):
         opts[1] = "-O2" # Apple's optimizer is broken
       elif (libtbx.env.build_options.max_optimized):
