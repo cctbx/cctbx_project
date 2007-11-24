@@ -15,7 +15,8 @@
 #if defined(__linux) \
  || defined(__alpha__) \
  || defined(__host_mips) \
- || defined(__APPLE_CC__)
+ || defined(__APPLE_CC__) \
+ || defined(_MSC_VER)
 #include <signal.h>
 #define BOOST_ADAPTBX_META_EXT_HAVE_SIGNAL_H
 #endif
@@ -67,7 +68,7 @@ namespace {
   boost_adptbx_libc_backtrace(int n_frames_skip=0)
   {
     bool result = false;
-#if defined (BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
+#if defined(BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
     static const int max_frames = 1024;
     void *array[max_frames];
     int size = backtrace(array, max_frames);
@@ -113,7 +114,7 @@ namespace {
       result = true;
     }
     free(strings);
-#endif // defined (BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
+#endif // defined(BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
     return result;
   }
 
@@ -379,10 +380,16 @@ namespace {
   void
   enable_signals_backtrace_if_possible()
   {
-#if defined (BOOST_ADAPTBX_META_EXT_HAVE_SIGNAL_H)
+#if defined(BOOST_ADAPTBX_META_EXT_HAVE_SIGNAL_H)
+#if defined(SIGSEGV)
     signal(SIGSEGV, boost_adaptbx_segmentation_fault_backtrace);
+#endif
+#if defined(SIGBUS)
     signal(SIGBUS, boost_adaptbx_bus_error_backtrace);
+#endif
+#if defined(SIGFPE)
     signal(SIGFPE, boost_adaptbx_floating_point_error_backtrace);
+#endif
 #endif
   }
 
@@ -415,7 +422,7 @@ namespace {
     if (overflow) flags |= FE_OVERFLOW;
 #endif
     if (flags != 0) {
-#if defined (__linux)
+#if defined(__linux)
       feenableexcept(flags);
 #endif
     }
