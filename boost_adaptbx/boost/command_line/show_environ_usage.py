@@ -5,6 +5,8 @@ import sys
 def run(args):
   assert len(args) == 0
   print """
+BOOST_ADAPTBX_SIGSEGV_DEFAULT
+  If NOT set, enable libc backtrace if possible.
 BOOST_ADAPTBX_FPE_DEFAULT
   If NOT set, trap floating-point exceptions if possible.
 BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT

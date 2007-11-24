@@ -1,5 +1,6 @@
 * text=auto !eol
 boost_adaptbx/boost/command_line/divide_by_zero.py svneol=native#text/x-python
+boost_adaptbx/boost/command_line/segmentation_fault.py svneol=native#text/x-python
 boost_adaptbx/boost/command_line/show_environ_usage.py svneol=native#text/x-python
 boost_adaptbx/boost/std_pair.py -text
 boost_adaptbx/optional_fwd.h -text
