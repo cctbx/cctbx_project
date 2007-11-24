@@ -97,6 +97,15 @@ extern "C" {
   }
 
   void
+  boost_adaptbx_bus_error_backtrace(int)
+  {
+    boost_adptbx_libc_backtrace();
+    fprintf(stderr, "Bus error (backtrace above)\n");
+    fflush(stderr);
+    exit(1);
+  }
+
+  void
   boost_adaptbx_throw_fpe(int)
   {
     boost_adptbx_libc_backtrace();
@@ -326,6 +335,7 @@ namespace {
   {
 #if defined (__linux)
     signal(SIGSEGV, boost_adaptbx_segmentation_fault_backtrace);
+    signal(SIGBUS, boost_adaptbx_bus_error_backtrace);
 #endif
   }
 
