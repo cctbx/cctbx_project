@@ -14,19 +14,27 @@
 
 #if defined(__GNUC__)
 #include <fenv.h>
-#if defined (__linux)
+#if defined(__linux)
 #include <execinfo.h>
+#if defined(__GNUC__) \
+ && ((__GNUC__ > 3) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1))) \
+ && !defined(__EDG_VERSION__)
+#include <cxxabi.h>
+#define BOOST_ADAPTBX_META_EXT_HAVE_CXXABI_H
+#endif
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #endif
 #endif
 
-#if defined (__linux)
+namespace {
 
   void
   boost_adptbx_libc_backtrace(int n_frames_skip=1)
   {
+#if defined (__linux)
     static const int max_frames = 1024;
     void *array[max_frames];
     int size = backtrace(array, max_frames);
@@ -35,11 +43,48 @@
     fflush(stderr);
     char **strings = backtrace_symbols(array, size);
     for(int i=size-1;i>=n_frames_skip;i--) {
-      fprintf(stderr, "  %s\n", strings[i]);
+      char* s = strings[i];
+#if defined(BOOST_ADAPTBX_META_EXT_HAVE_CXXABI_H)
+      const char* op = strchr(s, '(');
+      if (op != 0) {
+        op++;
+        const char* pl = strchr(op, '+');
+        long n = pl - op;
+        if (n > 0) {
+          char* mangled = strndup(op, n);
+          if (mangled != 0) {
+            char* demangled = abi::__cxa_demangle(mangled, 0, 0, 0);
+            free(mangled);
+            if (demangled != 0) {
+              long n1 = op - s;
+              long n2 = strlen(demangled);
+              long n3 = strlen(pl);
+              char* b = static_cast<char*>(
+                malloc(static_cast<size_t>(n1+n2+n3+1)));
+              if (b != 0) {
+                strncpy(b, s, n1);
+                strncpy(b+n1, demangled, n2);
+                strncpy(b+n1+n2, pl, n3);
+                b[n1+n2+n3] = '\0';
+                s = b;
+                free(demangled);
+              }
+            }
+          }
+        }
+      }
+#endif // BOOST_ADAPTBX_META_EXT_HAVE_CXXABI_H
+      fprintf(stderr, "  %s\n", s);
       fflush(stderr);
+      if (s != strings[i]) free(s);
     }
     free(strings);
+#endif // defined (__linux)
   }
+
+} // namespace anonymous
+
+#if defined (__linux)
 
 extern "C" {
   void
@@ -340,6 +385,7 @@ namespace boost_python_meta_ext { struct holder {}; }
 BOOST_PYTHON_MODULE(boost_python_meta_ext)
 {
   using namespace boost::python;
+  def("boost_adptbx_libc_backtrace", boost_adptbx_libc_backtrace);
   def("platform_info", platform_info);
   def("sizeof_void_ptr", sizeof_void_ptr);
   def("enable_segmentation_fault_backtrace_if_possible",
