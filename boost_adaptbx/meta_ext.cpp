@@ -15,19 +15,51 @@
 #if defined(__GNUC__)
 #include <fenv.h>
 #if defined (__linux)
+#include <execinfo.h>
 #include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
 #endif
 #endif
 
 #if defined (__linux)
+
+  void
+  boost_adptbx_libc_backtrace(int n_frames_skip=1)
+  {
+    static const int max_frames = 1024;
+    void *array[max_frames];
+    int size = backtrace(array, max_frames);
+    fprintf(stderr, "libc backtrace (%d frames, most recent call last):\n",
+      size - n_frames_skip);
+    fflush(stderr);
+    char **strings = backtrace_symbols(array, size);
+    for(int i=size-1;i>=n_frames_skip;i--) {
+      fprintf(stderr, "  %s\n", strings[i]);
+      fflush(stderr);
+    }
+    free(strings);
+  }
+
 extern "C" {
+  void
+  boost_adaptbx_segmentation_fault_backtrace(int)
+  {
+    boost_adptbx_libc_backtrace();
+    fprintf(stderr, "Segmentation fault (backtrace above)\n");
+    fflush(stderr);
+    exit(1);
+  }
+
   void
   boost_adaptbx_throw_fpe(int)
   {
+    boost_adptbx_libc_backtrace();
     throw std::runtime_error("C/C++ floating-point exception.");
   }
 }
-#endif
+
+#endif // defined (__linux)
 
 namespace {
 
@@ -245,6 +277,14 @@ namespace {
   sizeof_void_ptr() { return sizeof(void*); }
 
   void
+  enable_segmentation_fault_backtrace_if_possible()
+  {
+#if defined (__linux)
+    signal(SIGSEGV, boost_adaptbx_segmentation_fault_backtrace);
+#endif
+  }
+
+  void
   enable_floating_point_exceptions_if_possible(
     bool
 #if defined(FE_DIVBYZERO)
@@ -287,6 +327,9 @@ namespace {
     }
   }
 
+  char
+  dereference_char_pointer(const char* pointer) { return *pointer; }
+
   double
   divide_doubles(double const& x, double const& y) { return x / y; }
 
@@ -299,12 +342,15 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   using namespace boost::python;
   def("platform_info", platform_info);
   def("sizeof_void_ptr", sizeof_void_ptr);
+  def("enable_segmentation_fault_backtrace_if_possible",
+       enable_segmentation_fault_backtrace_if_possible);
   def("enable_floating_point_exceptions_if_possible",
        enable_floating_point_exceptions_if_possible, (
     arg_("divbyzero"),
     arg_("invalid"),
     arg_("overflow"),
     arg_("translate_sigfpe")));
+  def("dereference_char_pointer", dereference_char_pointer);
   def("divide_doubles", divide_doubles);
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
   class_<docstring_options, boost::noncopyable>("docstring_options", no_init)
