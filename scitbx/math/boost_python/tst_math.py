@@ -1279,12 +1279,8 @@ def exercise_slatec_dlngam():
           "slatec: dgamma: x is a negative integer (nerr=4, level=2)"]
       else:
         if (x < cmath_lgamma_max_x):
-          try: m = cmath_lgamma(-x)
-          except RuntimeError, e:
-            assert str(e) == "C/C++ floating-point exception."
-          else:
-            if (str(m) != "inf"):
-              cmp(s, m)
+          m = cmath_lgamma(-x)
+          cmp(s, m)
       x *= v
     print "OK"
 
