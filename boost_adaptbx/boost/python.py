@@ -44,15 +44,14 @@ FATAL: libstdc++.so mismatch:
 
 ext = import_ext("boost_python_meta_ext")
 
-if ("BOOST_ADAPTBX_SIGSEGV_DEFAULT" not in os.environ):
-  ext.enable_segmentation_fault_backtrace_if_possible()
+if ("BOOST_ADAPTBX_SIGNALS_DEFAULT" not in os.environ):
+  ext.enable_signals_backtrace_if_possible()
 
 if ("BOOST_ADAPTBX_FPE_DEFAULT" not in os.environ):
   ext.enable_floating_point_exceptions_if_possible(
     divbyzero="BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT" not in os.environ,
     invalid="BOOST_ADAPTBX_FE_INVALID_DEFAULT" not in os.environ,
-    overflow="BOOST_ADAPTBX_FE_OVERFLOW_DEFAULT" not in os.environ,
-    translate_sigfpe="BOOST_ADAPTBX_SIGFPE_DEFAULT" not in os.environ)
+    overflow="BOOST_ADAPTBX_FE_OVERFLOW_DEFAULT" not in os.environ)
 
 meta_class = ext.holder.__class__
 platform_info = ext.platform_info()

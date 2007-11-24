@@ -5,8 +5,8 @@ import sys
 def run(args):
   assert len(args) == 0
   print """
-BOOST_ADAPTBX_SIGSEGV_DEFAULT
-  If NOT set, enable libc backtrace if possible.
+BOOST_ADAPTBX_SIGNALS_DEFAULT
+  If NOT set, enable Python and libc call stack traces if possible.
 BOOST_ADAPTBX_FPE_DEFAULT
   If NOT set, trap floating-point exceptions if possible.
 BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT
@@ -14,8 +14,6 @@ BOOST_ADAPTBX_FE_INVALID_DEFAULT
 BOOST_ADAPTBX_FE_OVERFLOW_DEFAULT
   If NOT set, trap FE_DIVBYZERO|FE_INVALID|FE_OVERFLOW if possible.
   See also: man fenv
-BOOST_ADAPTBX_SIGFPE_DEFAULT
-  If NOT set, translate SIGFPE to C++ std::runtime_error / Python RuntimeError.
 
 BOOST_ADAPTBX_DOCSTRING_OPTIONS
   Example:
