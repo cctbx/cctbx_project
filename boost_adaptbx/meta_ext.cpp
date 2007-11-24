@@ -12,29 +12,62 @@
 #include <boost/python/args.hpp>
 #include <boost/cstdint.hpp>
 
+#if defined(__linux) \
+ || defined(__alpha__) \
+ || defined(__host_mips) \
+ || defined(__APPLE_CC__)
+#include <signal.h>
+#define BOOST_ADAPTBX_META_EXT_HAVE_SIGNAL_H
+#endif
+
 #if defined(__GNUC__)
 #include <fenv.h>
 #if defined(__linux)
 #include <execinfo.h>
+#define BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H
 #if defined(__GNUC__) \
  && ((__GNUC__ > 3) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 1))) \
  && !defined(__EDG_VERSION__)
 #include <cxxabi.h>
 #define BOOST_ADAPTBX_META_EXT_HAVE_CXXABI_H
 #endif
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #endif
 #endif
 
 namespace {
 
-  void
-  boost_adptbx_libc_backtrace(int n_frames_skip=1)
+  bool
+  libtbx_introspection_show_stack()
   {
-#if defined (__linux)
+    using namespace boost::python;
+    handle<> hdl(allow_null(PyImport_ImportModule("libtbx.introspection")));
+    if (!hdl.get()) {
+      PyErr_Clear();
+      return false;
+    }
+    const char* attr_name = "show_stack_true_stderr";
+    // test first, just to be maximally fault tolerant
+    if (!PyObject_HasAttrString(hdl.get(), attr_name)) {
+      return false;
+    }
+    hdl = handle<>(allow_null(PyObject_GetAttrString(hdl.get(), attr_name)));
+    if (!hdl.get()) { // should never be true
+      PyErr_Clear();
+      return false;
+    }
+    hdl = handle<>(allow_null(PyObject_CallFunction(hdl.get(), 0)));
+    if (!hdl.get()) {
+      PyErr_Clear();
+      return false;
+    }
+    return true;
+  }
+
+  bool
+  boost_adptbx_libc_backtrace(int n_frames_skip=0)
+  {
+    bool result = false;
+#if defined (BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
     static const int max_frames = 1024;
     void *array[max_frames];
     int size = backtrace(array, max_frames);
@@ -77,43 +110,56 @@ namespace {
       fprintf(stderr, "  %s\n", s);
       fflush(stderr);
       if (s != strings[i]) free(s);
+      result = true;
     }
     free(strings);
-#endif // defined (__linux)
+#endif // defined (BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
+    return result;
+  }
+
+  void
+  show_call_stacks_and_exit(const char* what)
+  {
+    bool have_py_trace = libtbx_introspection_show_stack();
+    bool have_libc_trace = boost_adptbx_libc_backtrace(2);
+    const char* hint = "sorry, call stacks not available";
+    if (have_py_trace && have_libc_trace) {
+      hint = "Python and libc call stacks above";
+    }
+    else if (have_py_trace) {
+      hint = "Python call stack above";
+    }
+    else if (have_libc_trace) {
+      hint = "libc call stack above";
+    }
+    fprintf(stderr, "%s (%s)\n", what, hint);
+    fflush(stderr);
+    exit(1);
   }
 
 } // namespace anonymous
 
-#if defined (__linux)
-
 extern "C" {
+
   void
   boost_adaptbx_segmentation_fault_backtrace(int)
   {
-    boost_adptbx_libc_backtrace();
-    fprintf(stderr, "Segmentation fault (backtrace above)\n");
-    fflush(stderr);
-    exit(1);
+    show_call_stacks_and_exit("Segmentation fault");
   }
 
   void
   boost_adaptbx_bus_error_backtrace(int)
   {
-    boost_adptbx_libc_backtrace();
-    fprintf(stderr, "Bus error (backtrace above)\n");
-    fflush(stderr);
-    exit(1);
+    show_call_stacks_and_exit("Bus error");
   }
 
   void
-  boost_adaptbx_throw_fpe(int)
+  boost_adaptbx_floating_point_error_backtrace(int)
   {
-    boost_adptbx_libc_backtrace();
-    throw std::runtime_error("C/C++ floating-point exception.");
+    show_call_stacks_and_exit("Floating-point error");
   }
-}
 
-#endif // defined (__linux)
+} // extern "C"
 
 namespace {
 
@@ -331,11 +377,12 @@ namespace {
   sizeof_void_ptr() { return sizeof(void*); }
 
   void
-  enable_segmentation_fault_backtrace_if_possible()
+  enable_signals_backtrace_if_possible()
   {
-#if defined (__linux)
+#if defined (BOOST_ADAPTBX_META_EXT_HAVE_SIGNAL_H)
     signal(SIGSEGV, boost_adaptbx_segmentation_fault_backtrace);
     signal(SIGBUS, boost_adaptbx_bus_error_backtrace);
+    signal(SIGFPE, boost_adaptbx_floating_point_error_backtrace);
 #endif
   }
 
@@ -355,11 +402,6 @@ namespace {
 #if defined(FE_OVERFLOW)
     overflow
 #endif
-    ,
-    bool
-#if defined (__linux)
-    translate_sigfpe
-#endif
     )
   {
     int flags = 0;
@@ -375,9 +417,6 @@ namespace {
     if (flags != 0) {
 #if defined (__linux)
       feenableexcept(flags);
-      if (translate_sigfpe) {
-        signal(SIGFPE, boost_adaptbx_throw_fpe);
-      }
 #endif
     }
   }
@@ -396,16 +435,16 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
 {
   using namespace boost::python;
   def("boost_adptbx_libc_backtrace", boost_adptbx_libc_backtrace);
+  def("libtbx_introspection_show_stack", libtbx_introspection_show_stack);
   def("platform_info", platform_info);
   def("sizeof_void_ptr", sizeof_void_ptr);
-  def("enable_segmentation_fault_backtrace_if_possible",
-       enable_segmentation_fault_backtrace_if_possible);
+  def("enable_signals_backtrace_if_possible",
+       enable_signals_backtrace_if_possible);
   def("enable_floating_point_exceptions_if_possible",
        enable_floating_point_exceptions_if_possible, (
     arg_("divbyzero"),
     arg_("invalid"),
-    arg_("overflow"),
-    arg_("translate_sigfpe")));
+    arg_("overflow")));
   def("dereference_char_pointer", dereference_char_pointer);
   def("divide_doubles", divide_doubles);
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();

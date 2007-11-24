@@ -42,6 +42,11 @@ def show_stack(
   for line in lines:
     print >> out, line
 
+def show_stack_true_stderr():
+  sys.__stdout__.flush()
+  show_stack(out=sys.__stderr__, frames_back=1)
+  sys.__stderr__.flush()
+
 def print_trace(frame, event, arg):
   if (event == "line"):
     sys.stderr.flush()
