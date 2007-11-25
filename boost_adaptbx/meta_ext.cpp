@@ -47,7 +47,10 @@ namespace {
       PyErr_Clear();
       return false;
     }
-    const char* attr_name = "show_stack_true_stderr";
+#if PY_MAJOR_VERSION > 2 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION > 2)
+    const
+#endif
+    char* attr_name = "show_stack_true_stderr";
     // test first, just to be maximally fault tolerant
     if (!PyObject_HasAttrString(hdl.get(), attr_name)) {
       return false;
