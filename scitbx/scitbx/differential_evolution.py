@@ -50,7 +50,8 @@ data members:
                monitor_cycle=200,
                out=None,
                show_progress=False,
-               show_progress_nth_cycle=25):
+               show_progress_nth_cycle=1,
+               insert_solution_vector=None):
     self.show_progress=show_progress
     self.show_progress_nth_cycle=show_progress_nth_cycle
     self.evaluator = evaluator
@@ -63,8 +64,14 @@ data members:
     self.vector_length = evaluator.n
     self.eps = eps
     self.population = []
+    self.seeded = False
+    if insert_solution_vector is not None:
+      assert len( insert_solution_vector )==self.vector_length
+      self.seeded = insert_solution_vector
     for ii in xrange(self.population_size):
       self.population.append( flex.double(self.vector_length,0) )
+
+
     self.scores = flex.double(self.population_size,1000)
     self.optimize()
     self.best_score = flex.min( self.scores )
@@ -124,6 +131,8 @@ data members:
       # vectors of the population we generated
       for vector, item in zip(self.population,random_values):
         vector[ii] = item
+    if self.seeded is not False:
+      self.population[0] = self.seeded
 
   def score_population(self):
     for vector,ii in zip(self.population,xrange(self.population_size)):
@@ -166,6 +175,13 @@ data members:
       if test_score < self.scores[ii] :
         self.scores[ii] = test_score
         self.population[ii] = test_vector
+
+
+  def show_population(self):
+    print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+    for vec in self.population:
+      print list(vec)
+    print "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 
 
 class test_function(object):
