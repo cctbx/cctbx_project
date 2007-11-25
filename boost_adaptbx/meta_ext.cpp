@@ -23,7 +23,8 @@
 
 #if defined(__GNUC__)
 #include <fenv.h>
-#if defined(__linux)
+#if defined(__linux) \
+ || (defined(__APPLE_CC__) && __APPLE_CC__ >= 5465)
 #include <execinfo.h>
 #define BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H
 #if defined(__GNUC__) \
@@ -79,30 +80,45 @@ namespace {
     for(int i=size-1;i>=n_frames_skip;i--) {
       char* s = strings[i];
 #if defined(BOOST_ADAPTBX_META_EXT_HAVE_CXXABI_H)
-      const char* op = strchr(s, '(');
-      if (op != 0) {
-        op++;
-        const char* pl = strchr(op, '+');
-        long n = pl - op;
+      const char* m_bgn = 0;
+#if defined(__APPLE_CC__)
+      if (strlen(s) >= 52 && strncmp(s+40, "0x", 2) == 0) {
+        m_bgn = strchr(s+40, ' ');
+      }
+#else // __linux
+      m_bgn = strchr(s, '(');
+#endif
+      if (m_bgn != 0) {
+        m_bgn++;
+        const char* m_end = strchr(m_bgn,
+#if defined(__APPLE_CC__)
+        ' '
+#else // __linux
+        '+'
+#endif
+        );
+        long n = m_end - m_bgn;
         if (n > 0) {
-          char* mangled = strndup(op, n);
+          char* mangled = static_cast<char*>(malloc(n+1));
           if (mangled != 0) {
+            strncpy(mangled, m_bgn, n);
+            mangled[n] = '\0';
             char* demangled = abi::__cxa_demangle(mangled, 0, 0, 0);
             free(mangled);
             if (demangled != 0) {
-              long n1 = op - s;
+              long n1 = m_bgn - s;
               long n2 = strlen(demangled);
-              long n3 = strlen(pl);
+              long n3 = strlen(m_end);
               char* b = static_cast<char*>(
                 malloc(static_cast<size_t>(n1+n2+n3+1)));
               if (b != 0) {
                 strncpy(b, s, n1);
                 strncpy(b+n1, demangled, n2);
-                strncpy(b+n1+n2, pl, n3);
+                strncpy(b+n1+n2, m_end, n3);
                 b[n1+n2+n3] = '\0';
                 s = b;
-                free(demangled);
               }
+              free(demangled);
             }
           }
         }
