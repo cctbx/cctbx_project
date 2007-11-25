@@ -114,7 +114,9 @@ class scaling_parameters_object(object):
                u_sol=0,
                k_part=0,
                u_part=0,
-               object=None):
+               object=None,
+               max_u_sol  = 5.0,
+               max_u_part = 5.0 ):
 
     if object is not None:
       k_overall = object.k_overall
@@ -137,6 +139,8 @@ class scaling_parameters_object(object):
                     float(u_star[4]),
                     float(u_star[5])
                   )
+    self.max_u_sol = float(max_u_sol)
+    self.max_u_part= float(max_u_part)
     if xs is None:
       self.xs=object.xs
     else:
@@ -166,6 +170,8 @@ class scaling_parameters_object(object):
       self.u_sol = math.exp(10.0)
     else:
       self.u_sol = math.exp( x )
+    if self.u_sol > self.max_u_sol:
+      self.u_sol = self.max_u_sol
 
   def ref_to_k_part(self, x):
     if x > 10:
@@ -175,6 +181,8 @@ class scaling_parameters_object(object):
 
   def ref_to_u_part(self, x):
     self.u_part = math.exp( x )
+    if self.u_part > self.max_u_part:
+      self.u_part = self.max_u_part
 
   def ref_to_u_star(self, x ):
     # first we need to expand the bugger to the full size
@@ -279,10 +287,26 @@ class de_bulk_solvent_scaler(object):
                twin_fraction_obj,
                target_evaluator,
                f_model_core_data,
-               out=None):
+               fix_sol      = False,
+               fix_aniso    = False,
+               fix_twin     = False,
+               fix_scale    = False,
+               best_sol     = None,
+               best_aniso   = None,
+               best_twin    = None,
+               best_scale   = None,
+               twin_domain  = (-1,1),
+               scale_domain = (-4,4),
+               sol_domain   = [(-2,0),(-2,0)],
+               aniso_domain = (-1,1) ,
+               out          = None):
     self.out = out
     if self.out is None:
       self.out = sys.stdout
+
+    self.fix_sol = fix_sol
+    self.fix_aniso = fix_aniso
+    self.fix_twin = fix_twin
 
     self.scaling_parameters=scaling_parameters
     self.target_evaluator=target_evaluator
@@ -291,25 +315,107 @@ class de_bulk_solvent_scaler(object):
     self.best_score = None
     #first determin the number of parameters please
     self.n = 1+2+1+self.scaling_parameters.n_u_indep
-    self.domain = [ (-1,1), (-4,0), (-2,0), (-2,0) ] + [ (-1,1) ]*self.scaling_parameters.n_u_indep
+    # parameter map
+    # 0  : twin fraction
+    # 1  : scale factor
+    # 2  : ksol
+    # 3  : usol
+    # 4-N: ustar
+
+    if fix_sol:
+      assert len(best_sol)==2
+      # this should be a list [ksol,usol]
+    if fix_scale:
+      best_scale >= 0
+
+    if self.fix_aniso:
+      assert len(self.best_aniso) == self.scaling_parameters.n_u_indep
+      # these should be independent parameters for aniso u star!
+
+    if self.fix_twin:
+      assert self.best_twin >= 0.0
+      assert self.best_twin <= 1.0
+
+    if best_scale is not None:
+      scale_domain = (math.log(best_scale)+scale_domain[0], math.log(best_scale)+scale_domain[1])
+    x = 0
+    if best_twin is not None:
+      x = self.twin_fraction_to_ref( best_twin )
+      twin_domain = ( x+twin_domain[0] , x+twin_domain[1] )
+
+    if best_aniso is not None:
+      tmp_aniso_domain = []
+      for ii in xrange( self.scaling_parameters.n_u_indep ):
+        tmp_aniso_domain.append( (best_aniso[ii]+aniso_domain[0], best_aniso[ii]+aniso_domain[1]) )
+      aniso_domain = tmp_aniso_domain
+    else:
+      tmp_aniso_domain = []
+      for ii in xrange( self.scaling_parameters.n_u_indep ):
+        tmp_aniso_domain.append( (aniso_domain[0],aniso_domain[1]) )
+      aniso_domain = tmp_aniso_domain
+
+    if best_sol is not None:
+      sol_domain = [ (math.log(best_sol[0]+1e-12)+sol_domain[0][0], math.log(best_sol[0]+1e-12)+sol_domain[0][1] ),
+                     (math.log(best_sol[1]+1e-12)+sol_domain[1][0], math.log(best_sol[1]+1e-12)+sol_domain[1][1]) ]
+
+    self.domain = [twin_domain]  + [scale_domain] + sol_domain + aniso_domain
     self.x = flex.double([0]*self.n)
+
+    # amke a default solution vector
+    solution_vector = [ 0, 0, math.log( 0.30), math.log(46.0/80.0) ]
+    for ii in xrange(self.scaling_parameters.n_u_indep):
+      solution_vector.append( 0 )
+    if best_twin is not None:
+      solution_vector[0]=x
+    if best_scale is not None:
+      solution_vector[1]=math.log(best_scale+1e-12)
+    if best_sol is not None:
+      solution_vector[2]=math.log(best_sol[0]+1e-12)
+      solution_vector[3]=math.log(best_sol[1]+1e-12)
+    if best_aniso is not None:
+      for ii in xrange(self.scaling_parameters.n_u_indep):
+        solution_vector[ii+4]=best_aniso[ii]
+
     self.de = differential_evolution.differential_evolution_optimizer(
      self,
-     population_size=max(self.n+1,8),
+     population_size=min(self.n+2,8),
      f=0.8,
      cr=0.7,
      n_cross=2,
-     eps=1e-12,
+     eps=1e-8,
      show_progress=False, #True,
-     max_iter = 5000
+     max_iter = 500,
+     insert_solution_vector = flex.double(solution_vector )
     )
+
+  def twin_fraction_to_ref( self, tf ):
+    tmp = tf - 0.001
+    tmp = (0.999-0.001)/tmp -1.0
+    if tmp < 1e-70:
+      tmp = 1e-70
+    tmp = -math.log( tmp )
+    return tmp
+
+
 
   def update_parameters(self, vector):
     self.scaling_parameters.ref_to_k_overall( vector[1] )
-    self.scaling_parameters.ref_to_k_sol( vector[2] )
-    self.scaling_parameters.ref_to_u_sol( vector[3] )
-    self.scaling_parameters.ref_to_u_star(   list(vector[4:])   )
-    self.twin_fraction_object.ref_to_twin_fraction( vector[0] )
+    if self.fix_sol is not False:
+      self.scaling_parameters.k_sol = self.fix_sol[0]
+      self.scaling_parameters.u_sol = self.fix_sol[1]
+    else:
+      self.scaling_parameters.ref_to_k_sol( vector[2] )
+      self.scaling_parameters.ref_to_u_sol( vector[3] )
+
+    if self.fix_aniso is not False:
+      self.scaling_parameters.u_star = list( self.fix_aniso)
+    else:
+      self.scaling_parameters.ref_to_u_star(   list(vector[4:])   )
+
+    if self.fix_twin is not False:
+      self.twin_fraction_object.twin_fraction = self.fix_twin
+    else:
+      self.twin_fraction_object.ref_to_twin_fraction( vector[0] )
 
   def target(self, vector):
     #first make sure our place holder for scaling parameters is up to date!
@@ -677,12 +783,27 @@ class bulk_solvent_scaling_manager(object):
 
 
   def de_search(self):
+    best_sol = None
+    if min(self.scaling_parameters.k_sol, self.scaling_parameters.u_sol)<=1E-5:
+      best_sol = None
+    else:
+      best_sol = (self.scaling_parameters.k_sol, self.scaling_parameters.u_sol)
     de = de_bulk_solvent_scaler(
                self.scaling_parameters,
                self.twin_fraction,
                self.target_evaluator,
                self.f_model_core_data,
-               out = self.out)
+               out = self.out,
+               best_twin = self.twin_fraction.twin_fraction,
+               best_scale = self.scaling_parameters.k_overall,
+               best_aniso = self.scaling_parameters.u_star_to_ref(),
+               best_sol   = best_sol,
+               scale_domain=(-0.1, 0.1 ),
+               sol_domain = [ (-0.2, 0.2), (-0.1,0.1) ],
+               aniso_domain = (-0.01, 0.01 ),
+               #fix_twin=0.05,
+               #fix_sol=[0.2,50/80.0]
+               )
     self.scaling_parameters = de.scaling_parameters
     self.twin_fraction = de.twin_fraction_object
     if (de.best_score < self.best_score_until_now) or (self.best_score_until_now is None):
@@ -1485,7 +1606,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.f_mask_array = mask.structure_factors( self.miller_set )
 
 
-  def r_values(self, table=True, rows=False, d_min=None, d_max=None):
+  def r_values(self, table=True, rows=False, d_min=None, d_max=None, again=False):
     if rows:
       table=True
 
@@ -1518,6 +1639,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       self.data_core.f_model(),
       additional_selection_f,
       self.twin_fraction_object.twin_fraction)
+
+    #make a sigmaa object
+    tmp_sigmaa_object = self.sigmaa_object()
 
     if table:
       r_abs_work_f_bin = []
@@ -1852,7 +1976,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         tmp_i_obs.sigmas(),
         self.twin_fraction_object.twin_fraction )
       # find out which intensities are zero or negative, they will be eliminated later on
-      zeros = flex.bool( dt_iobs < 0 )
+      zeros = flex.bool( dt_iobs <= 0 )
       x = dt_iobs.select( ~zeros )
       y = tmp_i_obs.data().select( ~zeros )
 
@@ -1874,12 +1998,19 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     return dt_f_obs, tmp_f_model, tmp_free
 
   def sigmaa_object(self, detwinned_data=None, f_model_data=None, forced_update=False):
+    if self.sigmaa_object_cache is None:
+      forced_update = True
     assert ( [detwinned_data,f_model_data] ).count(None) != 1
     tmp_free = self.free_array
-    if (detwinned_data is None) or forced_update:
+    if (detwinned_data is None):
+      if forced_update or self.update_sigmaa_object is True:
+        self.update_sigmaa_object = True
+        detwinned_data,f_model_data,tmp_free = self.detwin_data()
+    if forced_update:
       self.update_sigmaa_object = True
       detwinned_data,f_model_data,tmp_free = self.detwin_data()
     if self.update_sigmaa_object:
+      self.update_sigmaa_object = False
       self.sigmaa_object_cache = sigmaa_estimation.sigmaa_estimator(
         miller_obs   = detwinned_data,
         miller_calc  = f_model_data,
@@ -1891,7 +2022,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
   def model_error_ml(self):
     return None
 
-  def alpha_beta(self):
+  def alpha_beta(self, external_sigmaa_object=None):
     sigmaa_object = self.sigmaa_object()
     return sigmaa_object.alpha_beta()
 
@@ -2024,8 +2155,13 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         assert result is not None
       else:
         sigmaa_object = self.sigmaa_object()
-        m = sigmaa_object.fom().data()
-        d = sigmaa_object.alpha_beta()[0].data()
+        dt_f_obs, tmp_f_model = dt_f_obs.common_sets( tmp_f_model )
+        m, dt_f_obs = sigmaa_object.fom().common_sets( dt_f_obs)
+        d, dt_f_obs = sigmaa_object.alpha_beta()[0].common_sets( dt_f_obs )
+        m = m.data()
+        d = d.data()
+        dt_f_obs, tmp_f_model = dt_f_obs.common_sets( tmp_f_model )
+
         if map_type == "m_dtfo_d_fc":
           result = self._map_coeff( f_obs   = dt_f_obs,
                                     f_model = tmp_f_model,
