@@ -7,6 +7,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
+from scitbx import matrix
 import random
 import sys
 
@@ -260,11 +261,57 @@ def test_molecule(space_group_info, use_primitive_setting, flag_f_part,
     symmetry_flags, gridding, grid_tags, verbose)
   assert peak_list.heights()[0] > 0.99
 
+def test_shift(space_group_info,
+               d_min=0.8, grid_resolution_factor=0.48, max_prime=5,
+               verbose=0):
+  n = 12 // len(space_group_info.group()) or 1
+  target_structure = random_structure.xray_structure(
+    space_group_info=space_group_info,
+    elements=['C']*n,
+    use_u_iso=False,
+    use_u_aniso=False,
+  )
+  f_target = miller.build_set(
+    crystal_symmetry=target_structure,
+    anomalous_flag=False,
+    d_min=d_min
+  ).structure_factors_from_scatterers(
+    xray_structure=target_structure,
+    algorithm="direct").f_calc()
+  f_obs = abs(f_target)
+
+  indices_in_p1 = miller.set.expand_to_p1(f_target)
+  target_structure_in_p1 = target_structure.expand_to_p1()
+
+  reference_translation = matrix.col((0.1, 0.2, 0.7))
+  structure_in_p1 = target_structure_in_p1.apply_shift(reference_translation)
+  f_structure_in_p1 = indices_in_p1.structure_factors_from_scatterers(
+    xray_structure=structure_in_p1,
+    algorithm="direct").f_calc()
+
+  symmetry_flags = translation_search.symmetry_flags(
+    is_isotropic_search_model=False,
+    have_f_part=False)
+  gridding = f_target.crystal_gridding(
+    symmetry_flags=symmetry_flags,
+    resolution_factor=grid_resolution_factor,
+    max_prime=max_prime).n_real()
+  grid_tags = maptbx.grid_tags(gridding)
+  for f_calc_in_p1 in (f_structure_in_p1,):
+    peak_list = run_fast_nv1995(
+      f_obs=f_obs, f_calc_fixed=None, f_calc_p1=f_calc_in_p1,
+      symmetry_flags=symmetry_flags, gridding=gridding,
+      grid_tags=grid_tags, verbose=verbose)
+    assert peak_list.heights()[0] > 0.9
+    shift = matrix.col(peak_list.sites()[0])
+    assert f_target.space_group_info().is_allowed_origin_shift(
+      shift + reference_translation, tolerance=0.04)
+
 def run_call_back(flags, space_group_info):
   if (space_group_info.group().order_p() > 24 and not flags.HighSymmetry):
     print "High symmetry space group skipped."
     return
-  if (not (flags.Atom or flags.Molecule)):
+  if (not (flags.Atom or flags.Molecule or flags.Shift)):
     flags.Atom = True
     flags.Molecule = True
   use_primitive_setting_flags = [False]
@@ -272,18 +319,23 @@ def run_call_back(flags, space_group_info):
     use_primitive_setting_flags.append(True)
   if (flags.Atom):
     for use_primitive_setting in use_primitive_setting_flags:
-      test_atom(space_group_info, use_primitive_setting, verbose=flags.Verbose)
+      test_atom(space_group_info, use_primitive_setting,
+                verbose=flags.Verbose)
   if (flags.Molecule):
     for flag_f_part in (False, True)[:]: #SWITCH
       for use_primitive_setting in use_primitive_setting_flags:
         test_molecule(space_group_info, use_primitive_setting, flag_f_part,
                       verbose=flags.Verbose)
+  if flags.Shift:
+    for i in xrange(1):
+      test_shift(space_group_info, verbose=flags.Verbose)
 
 def run():
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back, (
     "HighSymmetry",
     "Atom",
-    "Molecule"))
+    "Molecule",
+    "Shift"))
 
 if (__name__ == "__main__"):
   run()
