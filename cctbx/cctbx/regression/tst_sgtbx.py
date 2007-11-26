@@ -1,3 +1,5 @@
+from __future__ import division
+
 from cctbx import sgtbx
 import cctbx.sgtbx.bravais_types
 from cctbx.array_family import flex
@@ -201,8 +203,17 @@ def exercise_generator_set():
     assert sg1.type().number() == sg.type().number()
 
 def exercise_allowed_origin_shift():
+  sgi = sgtbx.space_group_info("F222")
+  assert sgi.group().has_translation(
+    (-1, 3/2, 1/2), tolerance=1e-15)
+  assert not sgi.group().has_translation(
+    (0, 0.1, 0.1), tolerance=1e-15)
+
+  assert sgi.is_allowed_origin_shift((1/2, 1/2, 1/2), tolerance=1e-15)
+  assert not sgi.is_allowed_origin_shift((0.1, 0.1, 0.1), tolerance=1e-15)
+
   sgi = sgtbx.space_group_info("P2")
-  assert sgi.is_allowed_origin_shift((0, 1, 0), tolerance=1e-15)
+  assert sgi.is_allowed_origin_shift((0, 1.23407, 0), tolerance=1e-15)
   assert sgi.is_allowed_origin_shift((0.5, 0, 0), tolerance=1e-15)
   assert sgi.is_allowed_origin_shift((0, 0, 0.5), tolerance=1e-15)
   assert sgi.is_allowed_origin_shift((0.001, -0.0008, 0.499),
@@ -224,8 +235,10 @@ def exercise_allowed_origin_shift():
   assert not sgi.is_allowed_origin_shift((1.222, 1.221, 1.),
                                          tolerance=0.005)
 
-  sgi = sgtbx.space_group_info("Imma")
-  assert not sgi.is_allowed_origin_shift((0.5, 0, 0), tolerance=1e-15)
+  for i in xrange(1,231):
+    sgi = sgtbx.space_group_info(number=i)
+    for t in sgi.group().ltr():
+      assert sgi.is_allowed_origin_shift(t.as_double(), tolerance=1e-15)
 
 def exercise_monoclinic_cell_choices_core(space_group_number, verbose):
   # transformation matrices for cell choices
