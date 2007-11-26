@@ -117,50 +117,40 @@ class manager(object):
                      params = master_params.extract(),
                      log    = None):
     adopt_init_args(self, locals())
-    #
-    self.b_iso_min                   = self.params.b_iso_min
-    self.b_iso_max                   = self.params.b_iso_max
-    self.b_iso                       = self.params.b_iso
-    self.scattering_type             = self.params.scattering_type
-    self.occupancy_min               = self.params.occupancy_min
-    self.occupancy_max               = self.params.occupancy_max
-    self.occupancy                   = self.params.occupancy
-    self.use_sigma_scaled_maps       = self.params.use_sigma_scaled_maps
-    self.primary_map_type            = self.params.primary_map_type
-    self.primary_map_cutoff          = self.params.primary_map_cutoff
-    self.secondary_map_type          = self.params.secondary_map_type
-    self.secondary_map_cutoff        = self.params.secondary_map_cutoff
-    self.peak_map_matching_tolerance = self.params.peak_map_matching_tolerance
-    self.resolution_factor           = self.params.resolution_factor
-    self.min_solv_macromol_dist      = self.params.min_solv_macromol_dist
-    self.max_solv_macromol_dist      = self.params.max_solv_macromol_dist
-    self.min_solv_solv_dist          = self.params.min_solv_solv_dist
-    self.max_number_of_peaks         = self.params.max_number_of_peaks
     if(self.params.mode == "filter_only"): self.filter_only = True
     else: self.filter_only = False
-    self.verbose                     = self.params.verbose
-    self.peak_search_level     = self.params.peak_search.peak_search_level
-    self.max_peaks             = self.params.peak_search.max_peaks
-    self.interpolate           = self.params.peak_search.interpolate
-    self.min_distance_sym_equiv= self.params.peak_search.min_distance_sym_equiv
-    self.general_positions_only= self.params.peak_search.general_positions_only
-    self.min_cross_distance    = self.params.peak_search.min_cross_distance
-    #
-    if (self.log is None): self.log = sys.stdout
+    self.peak_search_parameters_primary_map = maptbx.peak_search_parameters(
+      peak_search_level      = self.params.peak_search.peak_search_level,
+      max_peaks              = self.params.peak_search.max_peaks,
+      peak_cutoff            = self.params.primary_map_cutoff,
+      interpolate            = self.params.peak_search.interpolate,
+      min_distance_sym_equiv = self.params.peak_search.min_distance_sym_equiv,
+      general_positions_only = self.params.peak_search.general_positions_only,
+      min_cross_distance     = self.params.peak_search.min_cross_distance)
+    self.peak_search_parameters_secondary_map = maptbx.peak_search_parameters(
+      peak_search_level      = self.params.peak_search.peak_search_level,
+      max_peaks              = self.params.peak_search.max_peaks,
+      peak_cutoff            = self.params.secondary_map_cutoff,
+      interpolate            = self.params.peak_search.interpolate,
+      min_distance_sym_equiv = self.params.peak_search.min_distance_sym_equiv,
+      general_positions_only = self.params.peak_search.general_positions_only,
+      min_cross_distance     = self.params.peak_search.min_cross_distance)
+    if(self.log is None): self.log = sys.stdout
     self.xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
     self.sites = None
     self.heights = None
-    if(self.max_number_of_peaks is None and
-                                      self.solvent_selection.count(False) > 0):
-       self.max_number_of_peaks= int(self.solvent_selection.count(False)/10*10)
-    else:
-       self.max_number_of_peaks=1000
+    self.max_number_of_peaks = self.params.max_number_of_peaks
+    if(self.max_number_of_peaks is None):
+      if(self.solvent_selection.count(False) > 0):
+        self.max_number_of_peaks = self.solvent_selection.count(False)
+      else:
+        self.max_number_of_peaks = self.xray_structure.scatterers().size()
     solsel = flex.bool(self.solvent_selection.count(False), False)
     solsel.extend(flex.bool(self.solvent_selection.count(True), True))
     self.reset_solvent(
       solvent_selection      = solsel,
       solvent_xray_structure = self.xray_structure.select(self.solvent_selection))
-    if(self.verbose > 0): self.show(message = "Start model:")
+    if(self.params.verbose > 0): self.show(message = "Start model:")
     self.filter_solvent()
     if(self.filter_only == False):
        self.find_peaks()
@@ -168,18 +158,16 @@ class manager(object):
        result_filter = filter_sites_and_map_next_to_model(
          xray_structure = self.xray_structure.select(~hd_sel),
          sites          = self.sites,
-         max_dist       = self.max_solv_macromol_dist,
-         min_dist       = self.min_solv_macromol_dist,
+         max_dist       = self.params.max_solv_macromol_dist,
+         min_dist       = self.params.min_solv_macromol_dist,
          log            = self.log)
        self.sites = result_filter.sites
        self.heights = self.heights.select(result_filter.selection)
        self.filter_close_peak_peak_contacts()
-       self.create_solvent_xray_structure()
-       self.update_xray_structure()
+       self.add_new_solvent()
        self.filter_solvent()
-    #if(self.verbose > 0): self.show(message = "Final model:")
-    self.find_peaks_2fofc() # XXX
-    if(self.verbose > 0): self.show(message = "2Fo-Fc map selection:") # XXX
+    self.find_peaks_2fofc()
+    if(self.params.verbose > 0): self.show(message = "2Fo-Fc map selection:")
 
   def filter_solvent(self):
     hd_sel = self.xray_structure.hd_selection()
@@ -193,13 +181,13 @@ class manager(object):
     b_isos_sol = scat_sol.extract_u_iso_or_u_equiv(
       self.xray_structure.unit_cell()) * math.pi**2*8
     result = xrs_mac.closest_distances(sites_frac = xrs_sol.sites_frac(),
-      distance_cutoff = self.max_solv_macromol_dist)
-    selection &= b_isos_sol >= self.b_iso_min
-    selection &= b_isos_sol <= self.b_iso_max
-    selection &= occ_sol >= self.occupancy_min
-    selection &= occ_sol <= self.occupancy_max
-    selection &= result.smallest_distances <= self.max_solv_macromol_dist
-    selection &= result.smallest_distances >= self.min_solv_macromol_dist
+      distance_cutoff = self.params.max_solv_macromol_dist)
+    selection &= b_isos_sol >= self.params.b_iso_min
+    selection &= b_isos_sol <= self.params.b_iso_max
+    selection &= occ_sol >= self.params.occupancy_min
+    selection &= occ_sol <= self.params.occupancy_max
+    selection &= result.smallest_distances<= self.params.max_solv_macromol_dist
+    selection &= result.smallest_distances>= self.params.min_solv_macromol_dist
     if(self.params.use_h_bond_rejection_criteria):
       aal = self.model.atom_attributes_list
       sfs = xrs_sol.sites_frac()
@@ -249,21 +237,21 @@ class manager(object):
       self.xray_structure.unit_cell()) * math.pi**2*8
     smallest_distances = xrs_mac.closest_distances(
       sites_frac      = xrs_sol.sites_frac(),
-      distance_cutoff = self.max_solv_macromol_dist).smallest_distances
+      distance_cutoff = self.params.max_solv_macromol_dist).smallest_distances
     number = format_value("%-7d",scat.size())
     b_min  = format_value("%-7.2f", flex.min_default( b_isos, None))
     b_max  = format_value("%-7.2f", flex.max_default( b_isos, None))
     b_ave  = format_value("%-7.2f", flex.mean_default(b_isos, None))
-    bl_min = format_value("%-7.2f", self.b_iso_min).strip()
-    bl_max = format_value("%-7.2f", self.b_iso_max).strip()
+    bl_min = format_value("%-7.2f", self.params.b_iso_min).strip()
+    bl_max = format_value("%-7.2f", self.params.b_iso_max).strip()
     o_min  = format_value("%-7.2f", flex.min_default(occ, None))
     o_max  = format_value("%-7.2f", flex.max_default(occ, None))
-    ol_min = format_value("%-7.2f", self.occupancy_min).strip()
-    ol_max = format_value("%-7.2f", self.occupancy_max).strip()
+    ol_min = format_value("%-7.2f", self.params.occupancy_min).strip()
+    ol_max = format_value("%-7.2f", self.params.occupancy_max).strip()
     d_min  = format_value("%-7.2f", flex.min_default(smallest_distances, None))
     d_max  = format_value("%-7.2f", flex.max_default(smallest_distances, None))
-    dl_min = format_value("%-7.2f", self.min_solv_macromol_dist).strip()
-    dl_max = format_value("%-7.2f", self.max_solv_macromol_dist).strip()
+    dl_min = format_value("%-7.2f", self.params.min_solv_macromol_dist).strip()
+    dl_max = format_value("%-7.2f", self.params.max_solv_macromol_dist).strip()
     print >> self.log,"  number           = %s"%number
     print >> self.log,"  b_iso_min        = %s (limit = %s)"%(b_min, bl_min)
     print >> self.log,"  b_iso_max        = %s (limit = %s)"%(b_max, bl_max)
@@ -276,63 +264,39 @@ class manager(object):
   def find_peaks(self):
     out = self.log
     self.sites, self.heights = self.find_peaks_helper(
-      map_type = self.primary_map_type,
-      peak_search_parameters = maptbx.peak_search_parameters(
-        peak_search_level      = self.peak_search_level,
-        max_peaks              = self.max_peaks,
-        peak_cutoff            = self.primary_map_cutoff,
-        interpolate            = self.interpolate,
-        min_distance_sym_equiv = self.min_distance_sym_equiv,
-        general_positions_only = self.general_positions_only,
-        min_cross_distance     = self.min_cross_distance))
-    if(self.verbose > 0):
-       print >> out, "Peak search:"
-       print >> out, "   maximum allowed number of peaks:          ", \
-                                                       self.max_number_of_peaks
-       print >> out, "   number of peaks from "+self.primary_map_type+\
-                                                     " map: ",self.sites.size()
+      map_type               = self.params.primary_map_type,
+      peak_search_parameters = self.peak_search_parameters_primary_map)
+    if(self.params.verbose > 0):
+      print >> out, "Peak search:"
+      print >> out, "   maximum allowed number of peaks:          ", \
+        self.max_number_of_peaks
+      print >> out, "   number of peaks from "+self.params.primary_map_type+\
+        " map: ", self.sites.size()
+
   def find_peaks_2fofc(self):
     self.fmodel.update_xray_structure(
       xray_structure = self.xray_structure,
       update_f_calc = True)
-    if(self.secondary_map_type is not None):
+    if(self.params.secondary_map_type is not None):
        sites_2nd, heights_2nd = self.find_peaks_helper(
-         map_type = self.secondary_map_type,
-         peak_search_parameters = maptbx.peak_search_parameters(
-           peak_search_level      = self.peak_search_level,
-           max_peaks              = self.max_peaks,
-           peak_cutoff            = self.secondary_map_cutoff,
-           interpolate            = self.interpolate,
-           min_distance_sym_equiv = self.min_distance_sym_equiv,
-           general_positions_only = self.general_positions_only,
-           min_cross_distance     = self.min_cross_distance),
-         average = False)
-       step = self.fmodel.f_obs.d_min() * self.resolution_factor
+         map_type               = self.params.secondary_map_type,
+         peak_search_parameters = self.peak_search_parameters_secondary_map)
+       step = self.fmodel.f_obs.d_min() * self.params.resolution_factor
        zz = self.xray_structure.select(self.solvent_selection)
-       #print "1:", self.xray_structure.scatterers().size(), zz.scatterers().size()
-
        result = zz.closest_distances(sites_frac = sites_2nd,
          distance_cutoff = 6.0)
        smallest_distances = result.smallest_distances
        selection = (smallest_distances <= step) & (smallest_distances >= 0)
-       #print "2:", selection.count(True), smallest_distances.size()
-       #show_histogram(data = smallest_distances, n_slots = 10)
-       #
        cs = self.xray_structure.crystal_symmetry()
        sp = crystal.special_position_settings(cs)
        scatterers = flex.xray_scatterer()
        for site in result.sites_frac:
          scatterers.append(xray.scatterer("o", site))
        xrs_2nd = xray.structure(sp, scatterers)
-
-       smallest_distances = xrs_2nd.closest_distances(sites_frac = zz.sites_frac(),
-         distance_cutoff = 6.0).smallest_distances
+       smallest_distances = xrs_2nd.closest_distances(sites_frac =
+         zz.sites_frac(), distance_cutoff = 6.0).smallest_distances
        selection = (smallest_distances <= step) & (smallest_distances >= 0)
-       #print "3:", selection.count(True), smallest_distances.size()
-       #
-       #print self.solvent_selection.size(), selection.size()
        xrs_sol = self.xray_structure.select(self.solvent_selection)
-       #print xrs_sol.scatterers().size(), selection.size()
        xrs_sol = xrs_sol.select(selection)
        xrs_mac = self.xray_structure.select(~self.solvent_selection)
        sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
@@ -340,26 +304,18 @@ class manager(object):
        self.reset_solvent(solvent_selection      = sol_sel,
                           solvent_xray_structure = xrs_sol)
 
-  def find_peaks_helper(self, map_type, peak_search_parameters, average=True):
-    fmodel = self.fmodel.deep_copy()
-    n_cycles = 1
-    #if(average): n_cycles = 10
-    fft_map_data = 0
-    for i in xrange(n_cycles):
-      #fmodel.xray_structure.shake_sites_in_place(mean_distance = 0.1)
-      #fmodel.update_xray_structure(update_f_calc = True)
-      fft_map = fmodel.electron_density_map(
-                             map_type          = map_type,
-                             resolution_factor = self.resolution_factor,
-                             symmetry_flags    = maptbx.use_space_group_symmetry)
-      self.gridding_n_real = fft_map.n_real()
-      if(self.use_sigma_scaled_maps): fft_map.apply_sigma_scaling()
-      fft_map_data = fft_map_data + fft_map.real_map_unpadded()
-    fft_map_data = fft_map_data / n_cycles
+  def find_peaks_helper(self, map_type, peak_search_parameters):
+    fft_map = self.fmodel.electron_density_map(
+      map_type          = map_type,
+      resolution_factor = self.params.resolution_factor,
+      symmetry_flags    = maptbx.use_space_group_symmetry)
+    self.gridding_n_real = fft_map.n_real()
+    if(self.params.use_sigma_scaled_maps): fft_map.apply_sigma_scaling()
+    fft_map_data = fft_map.real_map_unpadded()
     crystal_gridding_tags = fft_map.tags()
     cluster_analysis = crystal_gridding_tags.peak_search(
-        parameters = peak_search_parameters,
-        map        = fft_map_data).all(max_clusters = self.max_number_of_peaks)
+      parameters = peak_search_parameters,
+      map = fft_map_data).all(max_clusters = self.max_number_of_peaks)
     sites = cluster_analysis.sites()
     heights = cluster_analysis.heights()
     return sites, heights
@@ -374,7 +330,7 @@ class manager(object):
         for j,hj in zip(self.sites,self.heights):
             if(abs(hi-hj) > 1.e-3):
                d = self.xray_structure.unit_cell().distance(i,j)
-               if(d < self.min_solv_solv_dist and d > 1.e-3):
+               if(d < self.params.min_solv_solv_dist and d > 1.e-3):
                   k = k + 1
                   if(hi > hj):
                      sel = heights == hj
@@ -386,34 +342,33 @@ class manager(object):
                      sites = sites.select(~sel)
     self.sites = sites
     self.heights = heights
-    if(self.verbose > 0):
+    if(self.params.verbose > 0):
        n_peaks_new = n_peaks_old - self.sites.size()
        print >> out, "Peak filtering (peak - peak close contact elimination):"
        print >> out, "   peaks rejected:                 ", n_peaks_new
        print >> out, "   total number of peaks selected: ", self.sites.size()
 
-  def create_solvent_xray_structure(self):
-    if(self.b_iso is None):
-       b = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
-       b_solv = flex.mean_default(b, None)
-       if(b_solv is not None and b_solv < self.b_iso_min or b_solv > self.b_iso_max):
-          b_solv = (self.b_iso_min + self.b_iso_max) / 2.
+  def add_new_solvent(self):
+    if(self.params.b_iso is None):
+      b = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+      b_solv = flex.mean_default(b, None)
+      if(b_solv is not None and b_solv < self.params.b_iso_min or
+         b_solv > self.params.b_iso_max):
+        b_solv = (self.params.b_iso_min + self.params.b_iso_max) / 2.
     else:
-       b_solv = self.b_iso
-    new_scatterers = flex.xray_scatterer(self.sites.size(),
-                                     xray.scatterer(
-                                       occupancy = self.occupancy,
-                                       b               = b_solv,
-                                       scattering_type = self.scattering_type))
+      b_solv = self.params.b_iso
+    new_scatterers = flex.xray_scatterer(
+      self.sites.size(),
+      xray.scatterer(occupancy       = self.params.occupancy,
+                     b               = b_solv,
+                     scattering_type = self.params.scattering_type))
     new_scatterers.set_sites(self.sites)
-    self.solvent_xray_structure = xray.structure(
-                               special_position_settings = self.xray_structure,
-                               scatterers                = new_scatterers)
-
-  def update_xray_structure(self):
+    solvent_xray_structure = xray.structure(
+      special_position_settings = self.xray_structure,
+      scatterers                = new_scatterers)
     xrs_sol = self.xray_structure.select(self.solvent_selection)
     xrs_mac = self.xray_structure.select(~self.solvent_selection)
-    xrs_sol = xrs_sol.concatenate(other = self.solvent_xray_structure)
+    xrs_sol = xrs_sol.concatenate(other = solvent_xray_structure)
     sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
     sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
     self.reset_solvent(solvent_selection      = sol_sel,
@@ -444,7 +399,6 @@ class filter_sites_and_map_next_to_model(object):
     d_min = flex.min_default(smallest_distances, 0)
     d_max = flex.max_default(smallest_distances, 0)
     print >> log, "   mapped sites are within: %5.3f - %5.3f " % (d_min, d_max)
-
 
 def show_histogram(data,
                    n_slots,
