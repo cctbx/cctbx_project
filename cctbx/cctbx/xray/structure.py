@@ -1053,6 +1053,7 @@ class structure(crystal.special_position_settings):
         new_sites_frac = sites_frac.deep_copy()
         smallest_distances_sq = flex.double(sites_frac.size(),
           distance_cutoff**2+1)
+        i_seqs = flex.size_t(sites_frac.size(), -1)
         for pair in pair_generator:
           if(pair.i_seq < n_xray):
             if (pair.j_seq < n_xray): continue
@@ -1063,6 +1064,7 @@ class structure(crystal.special_position_settings):
             rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
             i_seq_new_site_frac = pair.j_seq - n_xray
             new_site_frac = rt_mx_ji * sites_frac[i_seq_new_site_frac]
+            jn = pair.i_seq
           else:
             if(pair.j_seq >= n_xray): continue
             # i_seq = site
@@ -1072,15 +1074,18 @@ class structure(crystal.special_position_settings):
             rt_mx_ij = rt_mx_j.inverse().multiply(rt_mx_i)
             i_seq_new_site_frac = pair.i_seq - n_xray
             new_site_frac = rt_mx_ij * sites_frac[i_seq_new_site_frac]
+            jn = pair.j_seq
           if(smallest_distances_sq[i_seq_new_site_frac] >= pair.dist_sq):
             smallest_distances_sq[i_seq_new_site_frac] = pair.dist_sq
             new_sites_frac[i_seq_new_site_frac] = new_site_frac
+            i_seqs[i_seq_new_site_frac] = jn
         sel_out = smallest_distances_sq > distance_cutoff**2
         self.sites_frac = new_sites_frac
         self.smallest_distances = flex.sqrt(
           smallest_distances_sq).set_selected(sel_out, -1)
         self.smallest_distances_sq = smallest_distances_sq.set_selected(
           sel_out, -1)
+        self.i_seqs = i_seqs
     result = map_next_to_model_and_find_closest_distances(
       xray_structure = self, sites_frac = sites_frac)
     return result
