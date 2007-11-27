@@ -67,18 +67,17 @@ class lbfgs(object):
     self.wxc_dbe = None
     self.hd_selection = self.xray_structure.hd_selection()
     self.hd_flag = self.hd_selection.count(True) > 0
-    if(self.hd_selection.count(True) > 0):
-       self.xh_connectivity_table = xh_connectivity_table(
-                                    geometry       = restraints_manager,
-                                    xray_structure = self.xray_structure).table
     self.xray_structure.scatterers().flags_set_grads(state=False)
     if (refine_xyz):
       sel = flex.bool(self.model.refinement_flags.sites_individual[0].size(), False)
       for m in self.model.refinement_flags.sites_individual:
          sel = sel | m
-      self.hd_selection = self.hd_selection.select(sel)
-      #if (self.h_params.mode == "riding"):
-      #  sel.set_selected(self.hd_selection, False)
+      #self.hd_selection = self.hd_selection.select(sel)
+      if(self.h_params.refine_sites == "riding"):
+        occupancies_cache = self.xray_structure.scatterers().extract_occupancies()
+        if(self.hd_flag):
+          self.xray_structure.set_occupancies(value = 0, selection =
+            self.hd_selection)
       self.xray_structure.scatterers().flags_set_grad_site(
         iselection=sel.iselection())
       del sel
@@ -118,6 +117,10 @@ class lbfgs(object):
     if(refine_occ):
       self.xray_structure.adjust_occupancy(occ_max = occupancy_max,
                                            occ_min = occupancy_min)
+    if(refine_xyz and self.h_params.refine_sites == "riding" and self.hd_flag):
+      self.xray_structure.set_occupancies(occupancies_cache)
+    if(self.h_params.idealize_xh_bonds and refine_xyz and self.hd_flag):
+      self.model.idealize_h()
     self.fmodels.update_xray_structure(
       update_f_calc  = True,
       xray_structure = self.xray_structure)
@@ -133,16 +136,6 @@ class lbfgs(object):
        sel = self.x > self.u_max
        if(sel.count(True) > 0): self.x.set_selected(sel, self.u_max)
     # XXX inefficient
-    # XXX Fix for normal cases at normal resolutions
-    if(self.refine_xyz and self.h_params.fix_xh_distances and self.hd_flag):
-    # THIS LOOKS AS desired to be but does not work!
-    #if(self.refine_xyz and self.hd_flag):
-       v3d_x = flex.vec3_double(self.x)
-       for bond in self.xh_connectivity_table:
-           xsh = v3d_x[bond[0]]
-           v3d_x[bond[1]] = xsh
-       sel = flex.bool(self.x.size(), True)
-       self.x.set_selected(sel, v3d_x.as_double())
     apply_shifts_result = xray.ext.minimization_apply_shifts(
                               unit_cell      = self.xray_structure.unit_cell(),
                               scatterers     = self._scatterers_start,
@@ -162,15 +155,12 @@ class lbfgs(object):
        return None
 
   def compute_target(self, compute_gradients, u_iso_refinable_params):
-    h_flag = self.hd_flag and self.h_params.refine_sites != "full" and self.refine_xyz
     self.stereochemistry_residuals = None
     self.fmodels.update_xray_structure(xray_structure = self.xray_structure,
                                        update_f_calc  = True)
     fmodels_target_and_gradients = self.fmodels.target_and_gradients(
       weights                = self.weights,
       compute_gradients      = compute_gradients,
-      hd_selection           = self.hd_selection,
-      h_flag                 = h_flag,
       u_iso_refinable_params = u_iso_refinable_params)
     self.f = fmodels_target_and_gradients.target()
     self.g = fmodels_target_and_gradients.gradients()
@@ -344,21 +334,3 @@ class monitor(object):
       self.er[i_seq].strip())
     line = line + " "*(78 - len(line))+"|"
     return line
-
-
-class xh_connectivity_table(object):
-  def __init__(self, geometry, xray_structure):
-    bond_proxies_simple = geometry.geometry.pair_proxies().bond_proxies.simple
-    self.table = []
-    scatterers = xray_structure.scatterers()
-    for proxy in bond_proxies_simple:
-        i_seq, j_seq = proxy.i_seqs
-        i_x, i_h = None, None
-        if(scatterers[i_seq].element_symbol() == "H"):
-           i_h = i_seq
-           i_x = j_seq
-           self.table.append([i_x, i_h])
-        if(scatterers[j_seq].element_symbol() == "H"):
-           i_h = j_seq
-           i_x = i_seq
-           self.table.append([i_x, i_h])

@@ -133,8 +133,8 @@ class fmodels(object):
       result = self.target_functor_neutron(compute_gradients=compute_gradients)
     return result
 
-  def target_and_gradients(self, weights, compute_gradients, hd_selection=None,
-        h_flag = None, u_iso_refinable_params = None):
+  def target_and_gradients(self, weights, compute_gradients,
+        u_iso_refinable_params = None):
     tfx = self.target_functor_result_xray
     tfn = self.target_functor_result_neutron
     class tg(object):
@@ -148,11 +148,6 @@ class fmodels(object):
         if(compute_gradients):
            sf = tfx_r.gradients_wrt_atomic_parameters(
              u_iso_refinable_params = u_iso_refinable_params).packed()
-           # do not count grads for H or D:
-           if(h_flag):
-             sf_v3d = flex.vec3_double(sf)
-             sf_v3d_sel = sf_v3d.set_selected(hd_selection, [0,0,0])
-             sf = sf_v3d_sel.as_double()
            self.gradient_xray = sf
            self.gradient_xray_weighted = sf * wx
         if(fmodels.fmodel_neutron() is not None):

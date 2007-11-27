@@ -71,8 +71,6 @@ master_params = iotbx.phil.parse("""\
     .type=str
   secondary_map_cutoff = 1.5
     .type=float
-  peak_map_matching_tolerance = 3.0
-    .type=float
   resolution_factor = 1./4.
     .type=float
   min_solv_macromol_dist = 1.8
@@ -180,7 +178,7 @@ class manager(object):
     occ_sol = scat_sol.extract_occupancies()
     b_isos_sol = scat_sol.extract_u_iso_or_u_equiv(
       self.xray_structure.unit_cell()) * math.pi**2*8
-    result = xrs_mac.closest_distances(sites_frac = xrs_sol.sites_frac(),
+    result = xrs_mac_h.closest_distances(sites_frac = xrs_sol.sites_frac(),
       distance_cutoff = self.params.max_solv_macromol_dist)
     selection &= b_isos_sol >= self.params.b_iso_min
     selection &= b_isos_sol <= self.params.b_iso_max
@@ -195,7 +193,7 @@ class manager(object):
         if(selection[i]):
           if(result.smallest_distances[i] <= self.params.h_bond_max and
              result.smallest_distances[i] >= self.params.h_bond_min):
-            assert aal[xrs_mac.scatterers().size()+i].element.strip() == 'O'
+            assert aal[xrs_mac_h.scatterers().size()+i].element.strip() == 'O'
             if(aal[i_seq].element.strip() not in ['O','N']):
               selection[i] = False
           else:
@@ -282,9 +280,10 @@ class manager(object):
          map_type               = self.params.secondary_map_type,
          peak_search_parameters = self.peak_search_parameters_secondary_map)
        step = self.fmodel.f_obs.d_min() * self.params.resolution_factor
+       if(step < 0.3): step = 0.3 # XXX
        zz = self.xray_structure.select(self.solvent_selection)
        result = zz.closest_distances(sites_frac = sites_2nd,
-         distance_cutoff = 6.0)
+         distance_cutoff = 6.0) # XXX
        smallest_distances = result.smallest_distances
        selection = (smallest_distances <= step) & (smallest_distances >= 0)
        cs = self.xray_structure.crystal_symmetry()
@@ -294,7 +293,7 @@ class manager(object):
          scatterers.append(xray.scatterer("o", site))
        xrs_2nd = xray.structure(sp, scatterers)
        smallest_distances = xrs_2nd.closest_distances(sites_frac =
-         zz.sites_frac(), distance_cutoff = 6.0).smallest_distances
+         zz.sites_frac(), distance_cutoff = 6.0).smallest_distances # XXX
        selection = (smallest_distances <= step) & (smallest_distances >= 0)
        xrs_sol = self.xray_structure.select(self.solvent_selection)
        xrs_sol = xrs_sol.select(selection)

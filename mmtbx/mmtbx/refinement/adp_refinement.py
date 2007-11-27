@@ -215,6 +215,17 @@ class manager(object):
           sel_mode = [fmodels.fmodel_xray().xray_structure.hd_selection().iselection()]
        else:
           raise RuntimeError("No refinement mode.")
+       group_occ_manager = mmtbx.refinement.group.manager(
+          fmodel                   = fmodels.fmodel_xray(),
+          selections               = sel_mode,
+          convergence_test         = group_adp_params.convergence_test,
+          max_number_of_iterations = 30,
+          number_of_macro_cycles   = 1,
+          run_finite_differences_test = group_adp_params.run_finite_differences_test,
+          refine_occ               = True,
+          occupancy_max            = 1,
+          occupancy_min            = 0,
+          log                      = log)
        group_b_manager = mmtbx.refinement.group.manager(
           fmodel                   = fmodels.fmodel_xray(),
           selections               = sel_mode,

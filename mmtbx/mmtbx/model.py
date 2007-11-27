@@ -21,6 +21,41 @@ from mmtbx import model_statistics
 
 time_model_show = 0.0
 
+class xh_connectivity_table(object):
+  def __init__(self, geometry, xray_structure):
+    bond_proxies_simple = geometry.geometry.pair_proxies(sites_cart =
+      xray_structure.sites_cart()).bond_proxies.simple
+    self.table = []
+    scatterers = xray_structure.scatterers()
+    for proxy in bond_proxies_simple:
+        i_seq, j_seq = proxy.i_seqs
+        i_x, i_h = None, None
+        if(scatterers[i_seq].element_symbol() == "H"):
+           i_h = i_seq
+           i_x = j_seq
+           const_vect = flex.double(scatterers[i_h].site)- \
+             flex.double(scatterers[i_x].site)
+           self.table.append([i_x, i_h, const_vect])
+        if(scatterers[j_seq].element_symbol() == "H"):
+           i_h = j_seq
+           i_x = i_seq
+           const_vect = flex.double(scatterers[i_h].site)- \
+             flex.double(scatterers[i_x].site)
+           self.table.append([i_x, i_h, const_vect])
+    #hd_sel = xray_structure.hd_selection()
+    #self.index_table = []
+    #cntr = 0
+    #for i_seq, sel in enumerate(hd_sel):
+    #  if(sel):
+    #    pass#self.index_table.append([i_seq, cntr])
+    #  else:
+    #    self.index_table.append([i_seq, cntr])
+    #    cntr += 1
+    ##for i in self.index_table:
+    ##  print i
+    ##print
+    #self.index_dict = dict([(x[0], x[1]) for x in self.index_table])
+
 class manager(object):
   def __init__(self, xray_structure,
                      atom_attributes_list,
@@ -55,7 +90,14 @@ class manager(object):
     self.use_dbe_false_ = None
     self.inflated = False
     self.dbe_added = False
-
+    ###
+    self.xh_connectivity = None
+    if(restraints_manager is not None):
+      if(xray_structure.hd_selection().count(True) > 0):
+        self.xh_connectivity = xh_connectivity_table(
+          geometry       = restraints_manager,
+          xray_structure = xray_structure)
+    ###
     if(self.refinement_flags is not None and [self.refinement_flags,
                                 self.refinement_flags.adp_tls].count(None)==0):
        tlsos = tools.generate_tlsos(
@@ -63,6 +105,16 @@ class manager(object):
                                 xray_structure = self.xray_structure,
                                 value          = 0.0)
        self.tls_groups.tlsos = tlsos
+
+  def idealize_h(self):
+    assert self.xh_connectivity is not None
+    scatterers = self.xray_structure.scatterers()
+    for bond in self.xh_connectivity.table:
+       i_x = bond[0]
+       i_h = bond[1]
+       const_vect = bond[2]
+       scatterers[i_h].site = list(flex.double(scatterers[i_x].site) +
+         flex.double(const_vect))
 
   def extract_ncs_groups(self):
     result = None
