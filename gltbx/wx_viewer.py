@@ -140,7 +140,16 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.autospin_allowed = not self.autospin_allowed
     elif (key == ord('V')):
       gltbx.util.show_versions()
+    elif (key == ord('\t')):
+      self.call_tab_callback()
     self.autospin = False
+
+  def call_tab_callback(self):
+    callback = getattr(self, "tab_callback", None)
+    if (callback is None):
+      print "Tab callback not available."
+    else:
+      self.tab_callback()
 
   def OnMouseWheel(self, event):
     scale = 0.02*event.GetWheelRotation()
