@@ -72,7 +72,6 @@ class lbfgs(object):
       sel = flex.bool(self.model.refinement_flags.sites_individual[0].size(), False)
       for m in self.model.refinement_flags.sites_individual:
          sel = sel | m
-      #self.hd_selection = self.hd_selection.select(sel)
       if(self.h_params.refine_sites == "riding"):
         occupancies_cache = self.xray_structure.scatterers().extract_occupancies()
         if(self.hd_flag):
