@@ -161,7 +161,6 @@ class manager(object):
          log            = self.log)
        self.sites = result_filter.sites
        self.heights = self.heights.select(result_filter.selection)
-       self.filter_close_peak_peak_contacts()
        self.add_new_solvent()
        self.filter_solvent()
     self.find_peaks_2fofc()
@@ -178,7 +177,7 @@ class manager(object):
     occ_sol = scat_sol.extract_occupancies()
     b_isos_sol = scat_sol.extract_u_iso_or_u_equiv(
       self.xray_structure.unit_cell()) * math.pi**2*8
-    result = xrs_mac_h.closest_distances(sites_frac = xrs_sol.sites_frac(),
+    result = xrs_mac.closest_distances(sites_frac = xrs_sol.sites_frac(),
       distance_cutoff = self.params.max_solv_macromol_dist)
     selection &= b_isos_sol >= self.params.b_iso_min
     selection &= b_isos_sol <= self.params.b_iso_max
@@ -187,13 +186,16 @@ class manager(object):
     selection &= result.smallest_distances<= self.params.max_solv_macromol_dist
     selection &= result.smallest_distances>= self.params.min_solv_macromol_dist
     if(self.params.use_h_bond_rejection_criteria):
-      aal = self.model.atom_attributes_list
+      aal = []
+      for i_seq, sel in enumerate(self.xray_structure.hd_selection()):
+        if(not sel):
+          aal.append(self.model.atom_attributes_list[i_seq])
       sfs = xrs_sol.sites_frac()
       for i, i_seq in enumerate(result.i_seqs):
         if(selection[i]):
           if(result.smallest_distances[i] <= self.params.h_bond_max and
              result.smallest_distances[i] >= self.params.h_bond_min):
-            assert aal[xrs_mac_h.scatterers().size()+i].element.strip() == 'O'
+            assert aal[xrs_mac.scatterers().size()+i].element.strip() == 'O'
             if(aal[i_seq].element.strip() not in ['O','N']):
               selection[i] = False
           else:
@@ -318,34 +320,6 @@ class manager(object):
     sites = cluster_analysis.sites()
     heights = cluster_analysis.heights()
     return sites, heights
-
-  def filter_close_peak_peak_contacts(self):
-    out = self.log
-    n_peaks_old = self.sites.size()
-    sites = self.sites.deep_copy()
-    heights = self.heights.deep_copy()
-    k = 1
-    for i,hi in zip(self.sites,self.heights):
-        for j,hj in zip(self.sites,self.heights):
-            if(abs(hi-hj) > 1.e-3):
-               d = self.xray_structure.unit_cell().distance(i,j)
-               if(d < self.params.min_solv_solv_dist and d > 1.e-3):
-                  k = k + 1
-                  if(hi > hj):
-                     sel = heights == hj
-                     heights = heights.select(~sel)
-                     sites = sites.select(~sel)
-                  else:
-                     sel = heights == hi
-                     heights = heights.select(~sel)
-                     sites = sites.select(~sel)
-    self.sites = sites
-    self.heights = heights
-    if(self.params.verbose > 0):
-       n_peaks_new = n_peaks_old - self.sites.size()
-       print >> out, "Peak filtering (peak - peak close contact elimination):"
-       print >> out, "   peaks rejected:                 ", n_peaks_new
-       print >> out, "   total number of peaks selected: ", self.sites.size()
 
   def add_new_solvent(self):
     if(self.params.b_iso is None):
