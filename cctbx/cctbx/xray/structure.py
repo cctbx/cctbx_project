@@ -276,7 +276,12 @@ class structure(crystal.special_position_settings):
 
   def set_occupancies(self, value, selection = None):
     s = self._scatterers
-    values = flex.double(s.size(), value)
+    if(hasattr(value, 'size')):
+      values = value
+      if(selection is not None):
+        assert values.size() == selection.size()
+    else:
+      values = flex.double(s.size(), value)
     if(selection is None):
       s.set_occupancies(values)
     else:
