@@ -520,27 +520,12 @@ class show_points_and_lines_mixin(wxGLWindow):
           color = self.line_colors.get(tuple(reversed(i_seqs)))
           if (color is None):
             color = (1,0,1)
-        if hasattr(self, "colours"):
-          glLineWidth(5)
-          average = [0,0,0]
-          for i in range(3):
-            average[i]=(self.points[i_seqs[0]][i]+self.points[i_seqs[1]][i])/2
-          glBegin(GL_LINES)
-          glColor3f(*self.colours[i_seqs[0]])
-          glVertex3f(*self.points[i_seqs[0]])
-          glVertex3f(*average)
-          glColor3f(*self.colours[i_seqs[1]])
-          glVertex3f(*average)
-          glVertex3f(*self.points[i_seqs[1]])
-          glEnd()
-          glLineWidth(1)
-        else:
-          glColor3f(*color)
-          glLineWidth(1)
-          glBegin(GL_LINES)
-          glVertex3f(*self.points[i_seqs[0]])
-          glVertex3f(*self.points[i_seqs[1]])
-          glEnd()
+        glColor3f(*color)
+        glLineWidth(1)
+        glBegin(GL_LINES)
+        glVertex3f(*self.points[i_seqs[0]])
+        glVertex3f(*self.points[i_seqs[1]])
+        glEnd()
       self.lines_display_list.end()
     self.lines_display_list.call()
 
@@ -587,10 +572,8 @@ class show_points_and_lines_mixin(wxGLWindow):
       grid = 50
     else:
       sphere = gltbx.util.WireSphere
-      grid = 10
+      grid = 20
     for i, (x,r) in enumerate(self.spheres):
-      if hasattr(self, "colours"):
-        glColor3f(*self.colours[i])
       glPushMatrix()
       glTranslated(*(x))
       sphere(radius=r, slices=grid, stacks=grid)
