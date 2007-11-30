@@ -45,13 +45,25 @@ class erf_verification(object):
 
 class minimum_covering_sphere_nd(object):
 
-  def __init__(self, points, epsilon):
+  def __init__(self,
+        points,
+        epsilon=None,
+        radius_if_one_or_no_points=1,
+        center_if_no_points=(0,0,0)):
+    assert len(points) > 0 or radius_if_one_or_no_points >= 0
     if (epsilon is None): epsilon = 1.e-6
-    assert len(points) > 0
+    self._n_iterations = 0
+    if (len(points) == 0):
+      self._center = center_if_no_points
+      self._radius = radius_if_one_or_no_points
+      return
+    if (len(points) == 1):
+      self._center = tuple(points[0])
+      self._radius = radius_if_one_or_no_points
+      return
     n_dim = len(points[0].elems)
     w = 1./len(points)
     weights = matrix.row([w for i in xrange(len(points))])
-    self._n_iterations = 0
     while 1:
       x = matrix.col([0]*n_dim)
       for w,t in zip(weights.elems,points):
@@ -84,12 +96,21 @@ class minimum_covering_sphere_nd(object):
   def radius(self):
     return self._radius
 
-def minimum_covering_sphere(points, epsilon=None):
+def minimum_covering_sphere(
+      points,
+      epsilon=None,
+      radius_if_one_or_no_points=1,
+      center_if_no_points=(0,0,0)):
   if (epsilon is None): epsilon = 1.e-6
   if (isinstance(points, flex.vec3_double)):
-    return minimum_covering_sphere_3d(points=points, epsilon=epsilon)
+    impl = minimum_covering_sphere_3d
   else:
-    return minimum_covering_sphere_nd(points=points, epsilon=epsilon)
+    impl = minimum_covering_sphere_nd
+  return impl(
+    points=points,
+    epsilon=epsilon,
+    radius_if_one_or_no_points=radius_if_one_or_no_points,
+    center_if_no_points=center_if_no_points)
 
 def row_echelon_back_substitution_int(
       row_echelon_form,

@@ -895,12 +895,40 @@ def exercise_minimum_covering_sphere(epsilon=1.e-3):
   assert not s3.is_inside([1,2,3+6+1.e-6])
   assert approx_equal(s3.box_min(), [1-6,2-6,3-6])
   assert approx_equal(s3.box_max(), [1+6,2+6,3+6])
-  points = flex.vec3_double([(0,0,0),(1,0,0),(0,1,0),(1,1,1)])
-  mcs = scitbx.math.minimum_covering_sphere_3d(points=points)
-  assert mcs.n_iterations() > 0
-  assert approx_equal(mcs.center(), (0.5,0.5,0.5), eps=1.e-3)
-  assert approx_equal(mcs.radius(), math.sqrt(3)/2, eps=1.e-5)
-  assert mcs.is_inside(mcs.center()) # base class method
+  for i_impl,mcs_impl in enumerate([scitbx.math.minimum_covering_sphere_3d,
+                                    scitbx.math.minimum_covering_sphere_nd]):
+    def wrap_points(points):
+      if (i_impl == 0): return flex.vec3_double(points)
+      return [matrix.col(point) for point in points]
+    points = wrap_points([])
+    mcs = mcs_impl(points=points)
+    assert mcs.n_iterations() == 0
+    assert approx_equal(mcs.center(), (0,0,0))
+    assert approx_equal(mcs.radius(), 1)
+    if (i_impl == 0):
+      assert mcs.is_inside(mcs.center()) # base class method
+    mcs = mcs_impl(
+      points=points,
+      epsilon=1.e-6,
+      radius_if_one_or_no_points=3,
+      center_if_no_points=(2,3,5))
+    assert mcs.n_iterations() == 0
+    assert approx_equal(mcs.center(), (2,3,5))
+    assert approx_equal(mcs.radius(), 3)
+    points = wrap_points([(3,4,5)])
+    mcs = mcs_impl(
+      points=points,
+      epsilon=1.e-6,
+      radius_if_one_or_no_points=5,
+      center_if_no_points=(2,3,5))
+    assert mcs.n_iterations() == 0
+    assert approx_equal(mcs.center(), (3,4,5))
+    assert approx_equal(mcs.radius(), 5)
+    points = wrap_points([(0,0,0),(1,0,0),(0,1,0),(1,1,1)])
+    mcs = mcs_impl(points=points)
+    assert mcs.n_iterations() > 0
+    assert approx_equal(mcs.center(), (0.5,0.5,0.5), eps=1.e-3)
+    assert approx_equal(mcs.radius(), math.sqrt(3)/2, eps=1.e-5)
   eps = epsilon*10
   eps_loose = eps*10
   for i,j,k in flex.nested_loop((1,1,1),(2,3,2),False):
