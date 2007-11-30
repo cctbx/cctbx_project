@@ -47,7 +47,7 @@ namespace {
       PyErr_Clear();
       return false;
     }
-#if PY_MAJOR_VERSION > 2 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION > 2)
+#if PY_MAJOR_VERSION > 2 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION > 4)
     const
 #endif
     char* attr_name = "show_stack_true_stderr";
