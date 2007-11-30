@@ -92,6 +92,8 @@ namespace scitbx { namespace math {
   class minimum_covering_sphere_3d : public sphere_3d<FloatType>
   {
     public:
+      static const vec3<FloatType> default_center_if_no_points;
+
       //! Default constructor. Some data members are not initialized!
       minimum_covering_sphere_3d() {}
 
@@ -101,15 +103,30 @@ namespace scitbx { namespace math {
           tau - sigma < tau * epsilon,
 
           using Lawson's notation.
+
+          if radius_if_one_or_no_points is less than 0 an exception
+          is thrown if points.size() == 0.
        */
       minimum_covering_sphere_3d(
         af::const_ref<vec3<FloatType> > const& points,
-        FloatType const& epsilon=1.e-6)
+        FloatType const& epsilon=1.e-6,
+        FloatType const& radius_if_one_or_no_points=1,
+        vec3<FloatType> const& center_if_no_points=default_center_if_no_points)
       :
         n_iterations_(0)
       {
-        SCITBX_ASSERT(points.size() > 0);
+        SCITBX_ASSERT(points.size() > 0 || radius_if_one_or_no_points >= 0);
         SCITBX_ASSERT(epsilon > 0);
+        if (points.size() == 0) {
+          this->center_ = center_if_no_points;
+          this->radius_ = radius_if_one_or_no_points;
+          return;
+        }
+        if (points.size() == 1) {
+          this->center_ = points[0];
+          this->radius_ = radius_if_one_or_no_points;
+          return;
+        }
         typedef FloatType f_t;
         std::vector<f_t> weights(points.size(), 1./points.size());
         while (true) {
@@ -146,6 +163,11 @@ namespace scitbx { namespace math {
     protected:
       std::size_t n_iterations_;
   };
+
+  template <typename FloatType>
+  const
+  vec3<FloatType>
+  minimum_covering_sphere_3d<FloatType>::default_center_if_no_points(0,0,0);
 
 }} // namespace scitbx::math
 

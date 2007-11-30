@@ -45,8 +45,16 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t, bases<sphere_3d<> > >("minimum_covering_sphere_3d", no_init)
-        .def(init<af::const_ref<vec3<double> > const&,
-                  optional<double> >((arg_("points"), arg_("epsilon"))))
+        .def(init<
+          af::const_ref<vec3<double> > const&,
+          optional<
+            double const&,
+            double const&,
+            vec3<double> const&> >((
+              arg_("points"),
+              arg_("epsilon")=1.e-6,
+              arg_("radius_if_one_or_no_points")=1,
+              arg_("center_if_no_points")=w_t::default_center_if_no_points)))
         .def("n_iterations", &w_t::n_iterations)
       ;
     }
