@@ -1,4 +1,5 @@
 from __future__ import division
+import random
 
 def gcd(a, b):
   ri = a
@@ -54,6 +55,41 @@ def integer_row_echelon_form(m):
     piv_c += 1
   return free_vars
 
+def float_row_echelon_form(
+      m,
+      zero_pivot_tolerance=1.e-6,
+      min_non_zero_pivot=1.e-3):
+  free_vars = []
+  n_rows = len(m)
+  n_cols = len(m[0])
+  piv_r = 0
+  piv_c = 0
+  while (piv_c < n_cols):
+    # search for best pivot
+    best_r = None
+    max_v = zero_pivot_tolerance
+    for i_row in xrange(piv_r, n_rows):
+      v = abs(m[i_row][piv_c])
+      if (v > max_v):
+        max_v = v
+        best_r = i_row
+    if (best_r is not None):
+      if (max_v < min_non_zero_pivot):
+        return None
+      if (best_r != piv_r):
+        m[piv_r], m[best_r] = m[best_r], m[piv_r]
+      fp = m[piv_r][piv_c]
+      for r in xrange(piv_r+1, n_rows):
+        fr = m[r][piv_c]
+        if (fr == 0): continue
+        for c in xrange(piv_c, n_cols):
+          m[r][c] = m[r][c] - m[piv_r][c] * fr / fp
+      piv_r += 1
+    else:
+      free_vars.append(piv_c)
+    piv_c += 1
+  return free_vars
+
 def create_fake_integer_vertices(n_dim, n_vertices):
   # Idea due to Neil Sloane
   assert n_vertices != 0
@@ -73,12 +109,19 @@ def create_fake_integer_vertices(n_dim, n_vertices):
     result[i] = vertex[j:] + vertex[:j]
   return result
 
-def construct_integer_rigidity_matrix(n_dim, n_vertices, edge_list):
-  n_edges = len(edge_list)
-  if (n_edges == 0): return None
-  vertices = create_fake_integer_vertices(
-    n_vertices=n_vertices, n_dim=n_dim)
-  n_columns = n_vertices * n_dim
+def create_fake_float_vertices(n_dim, n_vertices, max_coordinate=1.e4):
+  assert n_vertices != 0
+  result = []
+  while (len(result) != n_vertices):
+    vertex = []
+    for i in xrange(n_dim):
+      vertex.append(random.random()*max_coordinate)
+    result.append(vertex)
+  return result
+
+def construct_numeric_rigidity_matrix(n_dim, vertices, edge_list):
+  if (len(edge_list) == 0): return None
+  n_columns = len(vertices) * n_dim
   result = []
   for i,j in edge_list:
     assert i != j
@@ -93,13 +136,63 @@ def construct_integer_rigidity_matrix(n_dim, n_vertices, edge_list):
     result.append(row)
   return result
 
-def determine_degrees_of_freedom(n_dim, n_vertices, edge_list):
+def construct_integer_rigidity_matrix(n_dim, n_vertices, edge_list):
+  vertices = create_fake_integer_vertices(
+    n_vertices=n_vertices, n_dim=n_dim)
+  return construct_numeric_rigidity_matrix(
+    n_dim=n_dim, vertices=vertices, edge_list=edge_list)
+
+def construct_float_rigidity_matrix(n_dim, n_vertices, edge_list):
+  vertices = create_fake_float_vertices(
+    n_vertices=n_vertices, n_dim=n_dim)
+  return construct_numeric_rigidity_matrix(
+    n_dim=n_dim, vertices=vertices, edge_list=edge_list)
+
+def determine_degrees_of_freedom_integer(
+      n_dim,
+      n_vertices,
+      edge_list,
+      also_return_repeats=False):
   if (n_vertices == 0): return None
   m = construct_integer_rigidity_matrix(
     n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list)
   if (m is None): return None
   free_vars = integer_row_echelon_form(m=m)
+  if (also_return_repeats): return len(free_vars), 0
   return len(free_vars)
+
+def determine_degrees_of_freedom_float(
+      n_dim,
+      n_vertices,
+      edge_list,
+      also_return_repeats=False):
+  if (n_vertices == 0): return None
+  repeats = 0
+  while True:
+    m = construct_float_rigidity_matrix(
+      n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list)
+    if (m is None): return None
+    free_vars = float_row_echelon_form(m=m)
+    if (free_vars is not None):
+      break
+    repeats = repeats + 1
+  if (also_return_repeats): return len(free_vars), repeats
+  return len(free_vars)
+
+def determine_degrees_of_freedom(
+      n_dim,
+      n_vertices,
+      edge_list,
+      method="integer",
+      also_return_repeats=False):
+  assert method in ["integer", "float"]
+  if (method == "integer"):
+    return determine_degrees_of_freedom_integer(
+      n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list,
+      also_return_repeats=also_return_repeats)
+  return determine_degrees_of_freedom_float(
+    n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list,
+    also_return_repeats=also_return_repeats)
 
 def example():
   # Donald Jacobs
@@ -114,8 +207,10 @@ def example():
     (5,6), (5,7), (6,7),
     (5,3), (6,3), (7,3),
     (5,4), (6,4), (7,4)]
-  print "double banana 3D dof:", determine_degrees_of_freedom(
-    n_dim=3, n_vertices=n_vertices, edge_list=edge_list)
+  for method in ["integer", "float"]:
+    print "double banana 3D dof (method=%s):" % method, \
+      determine_degrees_of_freedom(
+        n_dim=3, n_vertices=n_vertices, edge_list=edge_list, method=method)
 
 if (__name__ == "__main__"):
   example()

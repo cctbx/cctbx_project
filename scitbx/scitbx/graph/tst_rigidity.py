@@ -1,5 +1,21 @@
-from scitbx.graph.rigidity import gcd, determine_degrees_of_freedom
-import sys
+from rigidity import gcd, determine_degrees_of_freedom, random
+import sys, os
+
+option_float_only = "--float-only" in sys.argv[1:]
+if ("--repeats" in sys.argv[1:]):
+  option_repeats = int(sys.argv[-1])
+else:
+  option_repeats = 1
+option_all = "--all" in sys.argv[1:]
+
+def int_or_none(v):
+  if (v is None or v == "undefined"): return None
+  return int(v)
+
+sge_task_id = int_or_none(os.environ.get("SGE_TASK_ID"))
+if (sge_task_id is not None):
+  print "sge_task_id:", sge_task_id
+  random.seed(sge_task_id)
 
 def exercise_gcd():
   assert gcd(8,0) == 8
@@ -7,6 +23,23 @@ def exercise_gcd():
   assert gcd(1,1) == 1
   assert gcd(10,15) == 5
   assert gcd(-18,42) == 6
+
+repeat_log = {}
+
+def ddof(n_dim, n_vertices, edge_list):
+  n = 2 - int(option_float_only)
+  results = [determine_degrees_of_freedom(
+    n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list, method=method,
+    also_return_repeats=True)
+      for method in ["float", "integer"][:n]]
+  nr = results[0][1]
+  if (results[0][1] != 0):
+    print "INFO: float repeats:", results[0][1]
+  try: repeat_log[nr] += 1
+  except KeyError: repeat_log[nr] = 1
+  if (len(results) > 1):
+    assert results[0][0] == results[1][0]
+  return results[0][0]
 
 def exercise_double_banana():
   n_vertices = 8
@@ -18,15 +51,15 @@ def exercise_double_banana():
     (5,3), (6,3), (7,3),
     (5,4), (6,4), (7,4)]
   assert len(edge_list) == 18
-  assert determine_degrees_of_freedom(
+  assert ddof(
     n_dim=2, n_vertices=n_vertices, edge_list=edge_list) == 3
-  assert determine_degrees_of_freedom(
+  assert ddof(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list) == 7
-  assert determine_degrees_of_freedom(
+  assert ddof(
     n_dim=4, n_vertices=n_vertices, edge_list=edge_list) == 14
   # remove each edge in turn
   for remove in xrange(len(edge_list)):
-    assert determine_degrees_of_freedom(
+    assert ddof(
       n_dim=3,
       n_vertices=n_vertices,
       edge_list=edge_list[:remove]+edge_list[remove+1:]) == 7
@@ -34,7 +67,7 @@ def exercise_double_banana():
   dofs = []
   for i in xrange(n_vertices-1):
     for j in xrange(i+1,n_vertices):
-      dofs.append(determine_degrees_of_freedom(
+      dofs.append(ddof(
         n_dim=3, n_vertices=n_vertices, edge_list=edge_list+[(i,j)]))
   assert dofs == [
     7, 7, 7, 7, 6, 6, 6, 7, 7, 7, 6, 6, 6, 7,
@@ -57,7 +90,7 @@ def exercise_mt1996():
     (7,14), (7,15), (7,16), (7,17), (7,20), (7,21), (7,24), (7,25),
     (8,11), (9,10), (12,15), (13,14), (16,19), (17,18)]
   assert len(edge_list) == 78
-  assert determine_degrees_of_freedom(
+  assert ddof(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list) == 6
 
 def exercise_k6_6_minus_six_parallel_edges():
@@ -70,7 +103,7 @@ def exercise_k6_6_minus_six_parallel_edges():
     (3,10), (3,11), (4,6), (4,7), (4,8), (4,9), (4,11), (5,6), (5,7),
     (5,8), (5,9), (5,10)]
   assert len(edge_list) == 30
-  assert determine_degrees_of_freedom(
+  assert ddof(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list) == 6
 
 def exercise_p120():
@@ -105,19 +138,23 @@ def exercise_p120():
     (54,55),(55,56),(55,57),(55,61),(56,57),(57,58),
     (57,59),(57,61),(58,59),(59,60),(59,61)]
   assert len(edge_list) == 179
-  assert determine_degrees_of_freedom(
+  assert ddof(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list) == 7
-  assert determine_degrees_of_freedom(
+  assert ddof(
     n_dim=3, n_vertices=n_vertices, edge_list=edge_list+[(28,24)]) == 6
 
 def exercise():
   exercise_gcd()
-  exercise_double_banana()
-  exercise_mt1996()
-  exercise_k6_6_minus_six_parallel_edges()
-  if ("--all" in sys.argv[1:]):
-    exercise_p120()
-  print "OK"
+  for i_repeat in xrange(option_repeats):
+    exercise_double_banana()
+    exercise_mt1996()
+    exercise_k6_6_minus_six_parallel_edges()
+    if (option_all):
+      exercise_p120()
+  print "repeat_log =", repeat_log
+  # inline format_cpu_times (to minimize dependencies)
+  t = os.times()
+  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
 
 if (__name__ == "__main__"):
   exercise()
