@@ -15,6 +15,7 @@ def int_or_none(v):
 sge_task_id = int_or_none(os.environ.get("SGE_TASK_ID"))
 if (sge_task_id is not None):
   print "sge_task_id:", sge_task_id
+  sys.stdout.flush()
   random.seed(sge_task_id)
 
 def exercise_gcd():
@@ -35,6 +36,7 @@ def ddof(n_dim, n_vertices, edge_list):
   nr = results[0][1]
   if (results[0][1] != 0):
     print "INFO: float repeats:", results[0][1]
+    sys.stdout.flush()
   try: repeat_log[nr] += 1
   except KeyError: repeat_log[nr] = 1
   if (len(results) > 1):
@@ -155,6 +157,7 @@ def exercise():
   # inline format_cpu_times (to minimize dependencies)
   t = os.times()
   print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])
+  sys.stdout.flush()
 
 if (__name__ == "__main__"):
   exercise()
