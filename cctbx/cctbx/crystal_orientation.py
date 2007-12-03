@@ -10,9 +10,6 @@ class basis_type:
 
 class _crystal_orientation(boost.python.injector,ext.crystal_orientation):
 
-  def __init__(self,matrix,basis_type_flag):
-    ext.crystal_orientation.__init__(self,matrix,basis_type_flag)
-
   def __getattr__(self,tag):
     mm = self.unit_cell().metrical_matrix()
     if tag=='A':
