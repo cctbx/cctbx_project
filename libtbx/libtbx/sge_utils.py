@@ -94,8 +94,9 @@ def qstat_parse():
   from libtbx import easy_run
   qstat_out = easy_run.fully_buffered(
     command="qstat").raise_if_errors().stdout_lines
+  result = []
   if (len(qstat_out) == 0):
-    return
+    return result
   qstat = iter(qstat_out)
   try: header = qstat.next()
   except StopIteration: header = ""
@@ -115,7 +116,6 @@ def qstat_parse():
   i_queue = header.index(" queue ") + 1
   i_slots = header.index(" slots ") + 1
   i_ja_task_id = header.index(" ja-task-ID") + 1
-  result = []
   for line in qstat:
     result.append(qstat_items(
       job_id=line[i_job_id:i_prior].strip(),
