@@ -161,23 +161,38 @@ def determine_degrees_of_freedom_integer(
   if (also_return_repeats): return len(free_vars), 0
   return len(free_vars)
 
+class row_reduced_float_rigidity_matrix(object):
+
+  def __init__(self, n_dim, n_vertices, edge_list):
+    self.m, self.free_vars, self.repeats = None, None, None
+    if (n_vertices == 0): return
+    repeats = 0
+    while True:
+      m = construct_float_rigidity_matrix(
+        n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list)
+      if (m is None): return
+      free_vars = float_row_echelon_form(m=m)
+      if (free_vars is not None):
+        break
+      repeats = repeats + 1
+    self.m, self.free_vars, self.repeats = m, free_vars, repeats
+
+  def dof(self):
+    if (self.free_vars is None): return None
+    return len(self.free_vars)
+
 def determine_degrees_of_freedom_float(
       n_dim,
       n_vertices,
       edge_list,
       also_return_repeats=False):
-  if (n_vertices == 0): return None
-  repeats = 0
-  while True:
-    m = construct_float_rigidity_matrix(
-      n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list)
-    if (m is None): return None
-    free_vars = float_row_echelon_form(m=m)
-    if (free_vars is not None):
-      break
-    repeats = repeats + 1
-  if (also_return_repeats): return len(free_vars), repeats
-  return len(free_vars)
+  if (also_return_repeats): return_none = None, None
+  else:                     return_none = None
+  if (n_vertices == 0): return return_none
+  r = row_reduced_float_rigidity_matrix(
+    n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list)
+  if (also_return_repeats): return len(r.free_vars), r.repeats
+  return len(r.free_vars)
 
 def determine_degrees_of_freedom(
       n_dim,
