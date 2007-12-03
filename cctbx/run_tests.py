@@ -9,6 +9,7 @@ def run():
   "$D/xray/boost_python/tst_f_model.py",
   "$D/array_family/boost_python/tst_flex.py",
   "$D/uctbx/boost_python/tst_uctbx.py",
+  "$D/uctbx/boost_python/tst_crystal_orientation.py",
   "$D/sgtbx/boost_python/tst_sgtbx.py",
   "$D/sgtbx/boost_python/tst_N_fold_rot.py",
   "$D/include/cctbx/crystal/tst_ext.py",

@@ -4,3 +4,6 @@ env.Prepend(LIBS=["cctbx"])
 env.SharedLibrary(target="#lib/cctbx_emma_ext", source=[
   "emma_ext.cpp",
 ])
+env.SharedLibrary(target="#lib/cctbx_orientation_ext", source=[
+  "orientation_ext.cpp",
+])
