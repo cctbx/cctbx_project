@@ -60,6 +60,75 @@ class info(task_info):
       print >> out, prefix+"SGE_ARCH =", self.arch
     task_info.show(self, out=out, prefix=prefix, even_if_none=even_if_none)
 
+class qstat_items(object):
+
+  def __init__(self, job_id, prior, name, user, state,
+                     submit, queue, slots, ja_task_id):
+    self.job_id = job_id
+    self.prior = prior
+    self.name = name
+    self.user = user
+    self.state = state
+    self.submit = submit
+    self.queue = queue
+    self.slots = slots
+    self.ja_task_id = ja_task_id
+
+  def counts(self):
+    ja_task_id = self.ja_task_id
+    if (len(ja_task_id) == 0): return 1
+    m = ja_task_id.find("-")
+    c = ja_task_id.find(":")
+    if (m < 0):
+      assert c < 0
+      assert str(int(ja_task_id)) == ja_task_id
+      return 1
+    assert c > 0
+    assert c > m
+    f = int(ja_task_id[:m])
+    l = int(ja_task_id[m+1:c])
+    s = int(ja_task_id[c+1:])
+    return len(xrange(f,l+1,s))
+
+def qstat_parse():
+  from libtbx import easy_run
+  qstat_out = easy_run.fully_buffered(
+    command="qstat").raise_if_errors().stdout_lines
+  if (len(qstat_out) == 0):
+    return
+  qstat = iter(qstat_out)
+  try: header = qstat.next()
+  except StopIteration: header = ""
+  expected_header = \
+    "job-ID prior name user state submit/start at queue slots ja-task-ID"
+  if (" ".join(header.split()) != expected_header):
+    raise RuntimeError("Unexpected qstat header: %s" % header)
+  line = qstat.next()
+  if (len(line.strip().replace("-","")) != 0):
+    raise RuntimeError("Unexpected qstat header seperator line: %s" % line)
+  i_job_id = 0
+  i_prior = header.index(" prior ") + 1
+  i_name = header.index(" name ") + 1
+  i_user = header.index(" user ") + 1
+  i_state = header.index(" state ") + 1
+  i_submit = header.index(" submit/start at ") + 1
+  i_queue = header.index(" queue ") + 1
+  i_slots = header.index(" slots ") + 1
+  i_ja_task_id = header.index(" ja-task-ID") + 1
+  result = []
+  for line in qstat:
+    result.append(qstat_items(
+      job_id=line[i_job_id:i_prior].strip(),
+      prior=line[i_prior:i_name].strip(),
+      name=line[i_name:i_user].strip(),
+      user=line[i_user:i_state].strip(),
+      state=line[i_state:i_submit].strip(),
+      submit=line[i_submit:i_queue].strip(),
+      queue=line[i_queue:i_slots].strip(),
+      slots=line[i_slots:i_ja_task_id].strip(),
+      ja_task_id=line[i_ja_task_id:].strip()))
+  return result
+
 if (__name__ == "__main__"):
   info().show(prefix="*** ", even_if_none=True)
   print "OK"
