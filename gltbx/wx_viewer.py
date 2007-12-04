@@ -222,6 +222,20 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     else:
       gluPerspective(self.field_of_view_y, aspect, self.near, self.far)
 
+  def set_minimum_covering_sphere(self, atoms=[]):
+    points = flex.vec3_double()
+    for atom in atoms:
+      points.append(atom)
+    if (len(points) > 1):
+      s = scitbx.math.minimum_covering_sphere_3d(points=points)
+    else:
+      if (len(points) == 0):
+        center = (0,0,0)
+      else:
+        center = points[0]
+      s = scitbx.math.sphere_3d(center=center, radius=1)
+    self.minimum_covering_sphere = s
+
   def compute_home_translation(self):
     s = self.minimum_covering_sphere
     x,y,z = [-v for v in gltbx.util.object_as_eye_coordinates(s.center())]
