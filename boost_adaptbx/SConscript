@@ -145,6 +145,7 @@ if (not env_etc.no_boost_python):
         "c7a3dd81bf730635146f5c908ac982eb", # svn revision 39065M
         "d40aac0029bcd28f6e205ae3b30a1284", # svn revision 40216
         "b79f016d3ec10cf1625a9e006e605428", # svn revision 40714
+        "f948983d970fd47e83a3a785bb54520a", # svn revision 41550
       ])
     if (env_etc.compiler in ["irix_CC", "tru64_cxx"]):
       disabled = "#"
