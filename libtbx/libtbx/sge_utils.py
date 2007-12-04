@@ -90,6 +90,20 @@ class qstat_items(object):
     s = int(ja_task_id[c+1:])
     return len(xrange(f,l+1,s))
 
+  def oe_name(self, oe):
+    ja_task_id = self.ja_task_id
+    if (len(ja_task_id) == 0):
+      return "%s.%s%s" % (self.name, oe, self.job_id)
+    if (ja_task_id.find("-") >= 0): return None
+    if (ja_task_id.find(":") >= 0): return None
+    return "%s.%s%s.%s" % (self.name, oe, self.job_id, ja_task_id)
+
+  def o_name(self):
+    return self.oe_name(oe="o")
+
+  def e_name(self):
+    return self.oe_name(oe="e")
+
 def qstat_parse():
   from libtbx import easy_run
   qstat_out = easy_run.fully_buffered(
