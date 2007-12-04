@@ -119,7 +119,8 @@ class lbfgs(object):
     if(refine_xyz and self.h_params.refine_sites == "riding" and self.hd_flag):
       self.xray_structure.set_occupancies(occupancies_cache)
     if(self.h_params.idealize_xh_bonds and refine_xyz and self.hd_flag):
-      self.model.idealize_h()
+      self.model.idealize_h(xh_bond_distance_deviation_limit =
+        self.h_params.xh_bond_distance_deviation_limit)
     self.fmodels.update_xray_structure(
       update_f_calc  = True,
       xray_structure = self.xray_structure)

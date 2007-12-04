@@ -28,20 +28,20 @@ class xh_connectivity_table(object):
     self.table = []
     scatterers = xray_structure.scatterers()
     for proxy in bond_proxies_simple:
-        i_seq, j_seq = proxy.i_seqs
-        i_x, i_h = None, None
-        if(scatterers[i_seq].element_symbol() == "H"):
-           i_h = i_seq
-           i_x = j_seq
-           const_vect = flex.double(scatterers[i_h].site)- \
-             flex.double(scatterers[i_x].site)
-           self.table.append([i_x, i_h, const_vect])
-        if(scatterers[j_seq].element_symbol() == "H"):
-           i_h = j_seq
-           i_x = i_seq
-           const_vect = flex.double(scatterers[i_h].site)- \
-             flex.double(scatterers[i_x].site)
-           self.table.append([i_x, i_h, const_vect])
+      i_seq, j_seq = proxy.i_seqs
+      i_x, i_h = None, None
+      if(scatterers[i_seq].element_symbol() == "H"):
+        i_h = i_seq
+        i_x = j_seq
+        const_vect = flex.double(scatterers[i_h].site)- \
+          flex.double(scatterers[i_x].site)
+        self.table.append([i_x, i_h, const_vect, proxy.distance_ideal])
+      if(scatterers[j_seq].element_symbol() == "H"):
+        i_h = j_seq
+        i_x = i_seq
+        const_vect = flex.double(scatterers[i_h].site)- \
+          flex.double(scatterers[i_x].site)
+        self.table.append([i_x, i_h, const_vect, proxy.distance_ideal])
     #hd_sel = xray_structure.hd_selection()
     #self.index_table = []
     #cntr = 0
@@ -106,15 +106,18 @@ class manager(object):
                                 value          = 0.0)
        self.tls_groups.tlsos = tlsos
 
-  def idealize_h(self):
+  def idealize_h(self, xh_bond_distance_deviation_limit):
     assert self.xh_connectivity is not None
     scatterers = self.xray_structure.scatterers()
+    unit_cell = self.xray_structure.unit_cell()
     for bond in self.xh_connectivity.table:
-       i_x = bond[0]
-       i_h = bond[1]
-       const_vect = bond[2]
-       scatterers[i_h].site = list(flex.double(scatterers[i_x].site) +
-         flex.double(const_vect))
+      i_x = bond[0]
+      i_h = bond[1]
+      dist = unit_cell.distance(scatterers[i_x].site, scatterers[i_h].site)
+      const_vect = bond[2]
+      if(abs(bond[3] - dist) > xh_bond_distance_deviation_limit):
+        scatterers[i_h].site = list(flex.double(scatterers[i_x].site) +
+          flex.double(const_vect))
 
   def extract_ncs_groups(self):
     result = None
