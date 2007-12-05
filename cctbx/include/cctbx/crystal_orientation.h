@@ -130,6 +130,18 @@ namespace cctbx {
 
         return crystal_orientation(new_recip_matrix, cctbx::reciprocal);
       }
+
+      //! Simple measure for the similarity of two orientatons.
+      /*! The result is the mean of the squared differences between
+          basis vectors. The basis vectors are taken in direct space.
+       */
+      inline double
+      direct_mean_square_difference(crystal_orientation const& other) const
+      {
+        return cctbx::uctbx::mean_square_difference(
+                 direct_matrix(),other.direct_matrix())/3;
+      }
+
     protected:
       //! Internal representation of the reciprocal matrix
       oc_mat3 Astar_;

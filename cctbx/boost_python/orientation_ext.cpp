@@ -39,6 +39,9 @@ namespace cctbx { namespace boost_python { namespace {
           (cctbx::crystal_orientation::*)(cctbx::oc_vec3 const&,double const&) const) 0,
           rotate_thru_overloads((
             arg_("unit_axis"), arg_("angle"))))
+        .def("direct_mean_square_difference",
+          &crystal_orientation::direct_mean_square_difference,
+            (arg_("other")))
       ;
     }
   };
