@@ -2,6 +2,7 @@ from scitbx.array_family import flex
 from scitbx.python_utils import command_line
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
+import libtbx.math_utils
 from cStringIO import StringIO
 import pickle
 import cPickle
@@ -544,6 +545,15 @@ def exercise_select():
                      [3, 2, 1]):
       assert list(a) == expected
       assert a.next_permutation() == (expected != [3, 2, 1])
+  s = [1,2,3]
+  a = flex.size_t(s)
+  for i in xrange(3):
+    while True:
+      assert list(a) == s
+      if (not a.next_permutation()):
+        assert not libtbx.math_utils.next_permutation(s)
+        break
+      assert libtbx.math_utils.next_permutation(s)
   assert [list(a) for a in flex.permutation_generator(size=0)] == [[]]
   assert [list(a) for a in flex.permutation_generator(size=1)] == [[0]]
   assert [list(a) for a in flex.permutation_generator(size=2)] == [[0,1],[1,0]]
