@@ -83,12 +83,48 @@ def float_row_echelon_form(
         fr = m[r][piv_c]
         if (fr == 0): continue
         for c in xrange(piv_c, n_cols):
-          m[r][c] = m[r][c] - m[piv_r][c] * fr / fp
+          m[r][c] -= m[piv_r][c] * fr / fp
       piv_r += 1
     else:
       free_vars.append(piv_c)
     piv_c += 1
   return free_vars
+
+def float_row_echelon_form_is_redundant(
+      m,
+      free_vars,
+      addl_row,
+      zero_pivot_tolerance=1.e-6,
+      min_non_zero_pivot=1.e-3):
+  n_rows = len(m)
+  n_cols = len(m[0])
+  assert len(addl_row) == n_cols
+  free_flags = [False] * n_cols
+  for c in free_vars:
+    free_flags[c] = True
+  def approx_zero(c):
+    v = abs(addl_row[c])
+    if (v < zero_pivot_tolerance):
+      return True
+    if (v < min_non_zero_pivot):
+      return None
+    return False
+  piv_c = 0
+  for piv_r in xrange(n_cols-len(free_vars)):
+    while (free_flags[piv_c]):
+      az = approx_zero(c=piv_c)
+      if (not az): return az
+      piv_c += 1
+    fp = m[piv_r][piv_c]
+    fr = addl_row[piv_c]
+    if (fr != 0):
+      for c in xrange(piv_c, n_cols):
+        addl_row[c] -= m[piv_r][c] * fr / fp
+    piv_c += 1
+  for c in xrange(piv_c, n_cols):
+    az = approx_zero(c=c)
+    if (not az): return az
+  return True
 
 def create_fake_integer_vertices(n_dim, n_vertices):
   # Idea due to Neil Sloane
@@ -164,22 +200,43 @@ def determine_degrees_of_freedom_integer(
 class row_reduced_float_rigidity_matrix(object):
 
   def __init__(self, n_dim, n_vertices, edge_list):
-    self.m, self.free_vars, self.repeats = None, None, None
+    self.n_dim = n_dim
+    self.n_vertices = n_vertices
+    self.edge_list = edge_list
+    self.m = None
+    self.vertices = None
+    self.free_vars = None
+    self.repeats = -1
     if (n_vertices == 0): return
-    repeats = 0
+    self.construct_m()
+
+  def construct_m(self):
     while True:
-      m = construct_float_rigidity_matrix(
-        n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list)
-      if (m is None): return
-      free_vars = float_row_echelon_form(m=m)
-      if (free_vars is not None):
+      self.repeats += 1
+      self.vertices = create_fake_float_vertices(
+        n_vertices=self.n_vertices, n_dim=self.n_dim)
+      self.m = construct_numeric_rigidity_matrix(
+        n_dim=self.n_dim, vertices=self.vertices, edge_list=self.edge_list)
+      if (self.m is None): return
+      self.free_vars = float_row_echelon_form(m=self.m)
+      if (self.free_vars is not None):
         break
-      repeats = repeats + 1
-    self.m, self.free_vars, self.repeats = m, free_vars, repeats
 
   def dof(self):
     if (self.free_vars is None): return None
     return len(self.free_vars)
+
+  def is_redundant(self, edge):
+    assert self.m is not None
+    while True:
+      addl_row = construct_numeric_rigidity_matrix(
+        n_dim=self.n_dim, vertices=self.vertices, edge_list=[edge])[0]
+      result = float_row_echelon_form_is_redundant(
+        m=self.m, free_vars=self.free_vars, addl_row=addl_row)
+      if (result is not None):
+        break
+      self.construct_m()
+    return result
 
 def determine_degrees_of_freedom_float(
       n_dim,
@@ -209,19 +266,21 @@ def determine_degrees_of_freedom(
     n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list,
     also_return_repeats=also_return_repeats)
 
+# Donald Jacobs
+# Generic rigidity in three-dimensional bond-bending networks
+# Math. Gen. 31 (1998) 6653-6668)
+# Figure 1(d)
+double_banana_edge_list = [
+  (0,1), (0,2), (1,2),
+  (0,3), (1,3), (2,3),
+  (0,4), (1,4), (2,4),
+  (5,6), (5,7), (6,7),
+  (5,3), (6,3), (7,3),
+  (5,4), (6,4), (7,4)]
+
 def example():
-  # Donald Jacobs
-  # Generic rigidity in three-dimensional bond-bending networks
-  # Math. Gen. 31 (1998) 6653-6668)
-  # Figure 1(d)
   n_vertices = 8
-  edge_list = [
-    (0,1), (0,2), (1,2),
-    (0,3), (1,3), (2,3),
-    (0,4), (1,4), (2,4),
-    (5,6), (5,7), (6,7),
-    (5,3), (6,3), (7,3),
-    (5,4), (6,4), (7,4)]
+  edge_list = double_banana_edge_list
   for method in ["integer", "float"]:
     print "double banana 3D dof (method=%s):" % method, \
       determine_degrees_of_freedom(
