@@ -189,10 +189,14 @@ def determine_degrees_of_freedom_integer(
       n_vertices,
       edge_list,
       also_return_repeats=False):
-  if (n_vertices == 0): return None
+  if (n_vertices == 0):
+    if (also_return_repeats): return 0, 0
+    return 0
   m = construct_integer_rigidity_matrix(
     n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list)
-  if (m is None): return None
+  if (m is None):
+    if (also_return_repeats): return n_dim * n_vertices, 0
+    return n_dim * n_vertices
   free_vars = integer_row_echelon_form(m=m)
   if (also_return_repeats): return len(free_vars), 0
   return len(free_vars)
@@ -223,7 +227,8 @@ class row_reduced_float_rigidity_matrix(object):
         break
 
   def dof(self):
-    if (self.free_vars is None): return None
+    if (self.free_vars is None):
+      return self.n_dim * self.n_vertices
     return len(self.free_vars)
 
   def is_redundant(self, edge):
@@ -243,13 +248,13 @@ def determine_degrees_of_freedom_float(
       n_vertices,
       edge_list,
       also_return_repeats=False):
-  if (also_return_repeats): return_none = None, None
-  else:                     return_none = None
-  if (n_vertices == 0): return return_none
+  if (also_return_repeats): return_zero = 0, 0
+  else:                     return_zero = 0
+  if (n_vertices == 0): return return_zero
   r = row_reduced_float_rigidity_matrix(
     n_dim=n_dim, n_vertices=n_vertices, edge_list=edge_list)
-  if (also_return_repeats): return len(r.free_vars), r.repeats
-  return len(r.free_vars)
+  if (also_return_repeats): return r.dof(), r.repeats
+  return r.dof()
 
 def determine_degrees_of_freedom(
       n_dim,
