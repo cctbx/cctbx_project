@@ -1,5 +1,11 @@
-from rigidity import gcd, determine_degrees_of_freedom, random
+from rigidity import gcd, row_reduced_float_rigidity_matrix, \
+  determine_degrees_of_freedom, random, double_banana_edge_list
 import sys, os
+
+try:
+  from libtbx.math_utils import next_permutation
+except ImportError:
+  def next_permutation(seq): return False
 
 option_float_only = "--float-only" in sys.argv[1:]
 if ("--repeats" in sys.argv[1:]):
@@ -27,6 +33,69 @@ def exercise_gcd():
 
 repeat_log = {}
 
+def update_repeate_log(nr):
+  try: repeat_log[nr] += 1
+  except KeyError: repeat_log[nr] = 1
+
+def exercise_is_redundant():
+  edge_list = double_banana_edge_list
+  for n in [2,3]:
+    perm = [0,1,2]
+    while True:
+      el = [edge_list[i] for i in perm]
+      rrfrm = row_reduced_float_rigidity_matrix(
+        n_dim=3, n_vertices=3, edge_list=el[:n])
+      if (n == 2):
+        assert rrfrm.dof() == 7
+      else:
+        assert rrfrm.dof() == 6
+      for edge in el[:n]:
+        assert rrfrm.is_redundant(edge=edge)
+      if (n == 2):
+        assert not rrfrm.is_redundant(el[2])
+      update_repeate_log(nr=rrfrm.repeats)
+      if (not next_permutation(perm)):
+        break
+  #
+  rrfrm = row_reduced_float_rigidity_matrix(
+    n_dim=3, n_vertices=5, edge_list=edge_list[:9])
+  assert rrfrm.dof() == 6
+  for edge in edge_list[:9]:
+    assert rrfrm.is_redundant(edge=edge)
+  update_repeate_log(nr=rrfrm.repeats)
+  #
+  rrfrm = row_reduced_float_rigidity_matrix(
+    n_dim=3, n_vertices=8, edge_list=edge_list)
+  assert rrfrm.dof() == 7
+  for edge in edge_list:
+    assert rrfrm.is_redundant(edge=edge)
+  assert rrfrm.is_redundant(edge=(3,4))
+  for i in [0,1,2]:
+    for j in [5,6,7]:
+      assert not rrfrm.is_redundant(edge=(i,j))
+  update_repeate_log(nr=rrfrm.repeats)
+  #
+  edge_list = [ # octahedron
+    (0,1),(0,2),(0,3),(0,4),
+    (1,2),(2,3),(3,4),(4,1),
+    (5,1),(5,2),(5,3),(5,4)]
+  rrfrm = row_reduced_float_rigidity_matrix(
+    n_dim=3, n_vertices=6, edge_list=edge_list)
+  assert rrfrm.dof() == 6
+  assert rrfrm.is_redundant(edge=(0,5))
+  assert rrfrm.is_redundant(edge=(1,3))
+  assert rrfrm.is_redundant(edge=(1,3))
+  update_repeate_log(nr=rrfrm.repeats)
+  #
+  del edge_list[3]
+  rrfrm = row_reduced_float_rigidity_matrix(
+    n_dim=3, n_vertices=6, edge_list=edge_list)
+  assert rrfrm.dof() == 7
+  assert not rrfrm.is_redundant(edge=(0,5))
+  assert not rrfrm.is_redundant(edge=(1,3))
+  assert not rrfrm.is_redundant(edge=(1,3))
+  update_repeate_log(nr=rrfrm.repeats)
+
 def ddof(n_dim, n_vertices, edge_list):
   n = 2 - int(option_float_only)
   results = [determine_degrees_of_freedom(
@@ -37,21 +106,14 @@ def ddof(n_dim, n_vertices, edge_list):
   if (results[0][1] != 0):
     print "INFO: float repeats:", results[0][1]
     sys.stdout.flush()
-  try: repeat_log[nr] += 1
-  except KeyError: repeat_log[nr] = 1
+  update_repeate_log(nr=nr)
   if (len(results) > 1):
     assert results[0][0] == results[1][0]
   return results[0][0]
 
 def exercise_double_banana():
   n_vertices = 8
-  edge_list = [
-    (0,1), (0,2), (1,2),
-    (0,3), (1,3), (2,3),
-    (0,4), (1,4), (2,4),
-    (5,6), (5,7), (6,7),
-    (5,3), (6,3), (7,3),
-    (5,4), (6,4), (7,4)]
+  edge_list = double_banana_edge_list
   assert len(edge_list) == 18
   assert ddof(
     n_dim=2, n_vertices=n_vertices, edge_list=edge_list) == 3
@@ -148,6 +210,7 @@ def exercise_p120():
 def exercise():
   exercise_gcd()
   for i_repeat in xrange(option_repeats):
+    exercise_is_redundant()
     exercise_double_banana()
     exercise_mt1996()
     exercise_k6_6_minus_six_parallel_edges()
