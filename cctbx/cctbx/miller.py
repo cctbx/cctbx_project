@@ -1725,11 +1725,15 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       if (obs.data().size() == 0): return return_fail
       i_plus, i_minus = obs.hemispheres_acentrics()
       assert i_plus.data().size() == i_minus.data().size()
-      ratio = flex.fabs(i_plus.data()-i_minus.data()) / flex.sqrt(
-                             (i_plus.sigmas()*i_plus.sigmas())
-                           + (i_minus.sigmas()*i_minus.sigmas()) )
-      i_plus_sigma = i_plus.data()/i_plus.sigmas()
-      i_minus_sigma = i_minus.data()/i_minus.sigmas()
+      top = flex.fabs(i_plus.data()-i_minus.data())
+      bottom = flex.sqrt( (i_plus.sigmas()*i_plus.sigmas()) + (i_minus.sigmas()*i_minus.sigmas()) )
+      zeros = flex.bool( bottom <= 0 ).iselection()
+      bottom = bottom.set_selected( zeros, 1 )
+      ratio = top/bottom
+      bottom = i_plus.sigmas().set_selected( flex.bool(i_plus.sigmas()<=0).iselection(), 1 )
+      i_plus_sigma = i_plus.data()/bottom
+      bottom = i_minus.sigmas().set_selected( flex.bool(i_minus.sigmas()<=0).iselection(), 1 )
+      i_minus_sigma = i_minus.data()/bottom
       meas = (  (ratio > cutoff)
               & (i_plus_sigma > cutoff)
               & (i_minus_sigma > cutoff) ).count(True)
