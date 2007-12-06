@@ -512,6 +512,7 @@ namespace targets {
     }
     if (!weights.size()) sum_weights = fobs.size();
     FobsValueType sum_w(sum_weights);
+    CCTBX_ASSERT(sum_w != 0);
     FobsValueType x2xx = sum_x2 - sum_x * sum_x / sum_w;
     FobsValueType y2yy = sum_y2 - sum_y * sum_y / sum_w;
     FobsValueType xyxy = sum_xy - sum_x * sum_y / sum_w;
