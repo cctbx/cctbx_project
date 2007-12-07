@@ -90,11 +90,20 @@ def exercise(target_functor, data_type, space_group_info, anomalous_flag,
     print "structure_shake:"
     structure_shake.show_summary().show_scatterers()
     print
-  minimizer = xray.minimization.lbfgs(
-    target_functor=target_functor(y_obs),
-    xray_structure=structure_shake,
-    occupancy_penalty=occupancy_penalty,
-    structure_factor_algorithm="direct")
+  for i_trial in xrange(10):
+    try:
+      minimizer = xray.minimization.lbfgs(
+        target_functor=target_functor(y_obs),
+        xray_structure=structure_shake,
+        occupancy_penalty=occupancy_penalty,
+        structure_factor_algorithm="direct")
+    except RuntimeError, e:
+      if (str(e).find("debye_waller_factor_exp: max_arg exceeded") < 0):
+        raise
+    else:
+      break
+  else:
+    raise RuntimeError("Too many xray.minimization.lbfgs failures.")
   if (0 or verbose):
     print "first:", minimizer.first_target_value
     print "final:", minimizer.final_target_value
