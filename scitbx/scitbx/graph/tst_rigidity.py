@@ -1,4 +1,7 @@
-from rigidity import gcd, row_reduced_float_rigidity_matrix, \
+from rigidity import \
+  gcd, \
+  float_row_echelon_form_back_substitution, \
+  row_reduced_float_rigidity_matrix, \
   determine_degrees_of_freedom, random, double_banana_edge_list
 import sys, os
 
@@ -30,6 +33,18 @@ def exercise_gcd():
   assert gcd(1,1) == 1
   assert gcd(10,15) == 5
   assert gcd(-18,42) == 6
+
+def exercise_float_row_echelon_form_back_substitution():
+  m = [[1,2,3,4],
+       [0,0,1,4],
+       [0,0,0,0]]
+  free_vars = [1,3]
+  sol = [3,4,5,6]
+  float_row_echelon_form_back_substitution(m=m, free_vars=free_vars, sol=sol)
+  assert abs(sol[0]-40) < 1.e-8
+  assert sol[1] == 4
+  assert abs(sol[2]+24) < 1.e-8
+  assert sol[3] == 6
 
 repeat_log = {}
 
@@ -230,6 +245,7 @@ def exercise_p120():
 
 def exercise():
   exercise_gcd()
+  exercise_float_row_echelon_form_back_substitution()
   exercise_minimal()
   for i_repeat in xrange(option_repeats):
     exercise_is_redundant()
