@@ -414,13 +414,30 @@ namespace cctbx {
     sym_mat3<FloatType> beta_minus_u_iso;
   };
 
+  //! std::exp with upper limit for argument value.
+  inline double
+  debye_waller_factor_exp(const char* u_type, double arg, double max_arg=30)
+  {
+    if (arg > max_arg) {
+      char buf[256];
+      std::sprintf(buf,
+        "cctbx::adptbx::debye_waller_factor_exp:"
+        " max_arg exceeded (%s):"
+        " arg = %.6g"
+        " max_arg = %.6g",
+        u_type, arg, max_arg);
+      throw std::runtime_error(buf);
+    }
+    return std::exp(arg);
+  }
+
   //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and b_iso.
   inline double
   debye_waller_factor_b_iso(
     double stol_sq,
     double b_iso)
   {
-    return std::exp(-b_iso * stol_sq);
+    return debye_waller_factor_exp("isotropic", -b_iso * stol_sq);
   }
 
   //! Isotropic Debye-Waller factor given (sin(theta)/lambda)^2 and u_iso.
@@ -459,13 +476,15 @@ namespace cctbx {
     miller::index<> const& h,
     sym_mat3<FloatType> const& u_star)
   {
-    return std::exp(-scitbx::constants::two_pi_sq * (
-        (h[0] * h[0]) * u_star[0]
-      + (h[1] * h[1]) * u_star[1]
-      + (h[2] * h[2]) * u_star[2]
-      + (2 * h[0] * h[1]) * u_star[3]
-      + (2 * h[0] * h[2]) * u_star[4]
-      + (2 * h[1] * h[2]) * u_star[5]));
+    return debye_waller_factor_exp(
+      "anisotropic",
+      -scitbx::constants::two_pi_sq * (
+          (h[0] * h[0]) * u_star[0]
+        + (h[1] * h[1]) * u_star[1]
+        + (h[2] * h[2]) * u_star[2]
+        + (2 * h[0] * h[1]) * u_star[3]
+        + (2 * h[0] * h[2]) * u_star[4]
+        + (2 * h[1] * h[2]) * u_star[5]));
   }
 
   //! Coefficients for gradients of Debye-Waller factor w.r.t. u_star.
