@@ -97,6 +97,15 @@ def exercise_symmetry():
   assert approx_equal(
     s.subtract_continuous_allowed_origin_shifts(translation_cart=[1,2,3]),
     [1,2,0])
+  #
+  for anomalous_flag in [False, True]:
+    m = s.build_miller_set(
+      anomalous_flag=anomalous_flag, d_min=8.1, d_max=8.5)
+    assert m.anomalous_flag() == anomalous_flag
+    if (not anomalous_flag):
+      assert list(m.indices()) == [(1,0,2), (0,2,2)]
+    else:
+      assert list(m.indices()) == [(1,0,2), (-1,0,-2), (0,2,2), (0,-2,-2)]
 
 def exercise_select_crystal_symmetry():
   xs1 = crystal.symmetry(unit_cell   = "23,30,40,90,90,90",
