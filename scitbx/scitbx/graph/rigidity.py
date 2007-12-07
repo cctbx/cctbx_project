@@ -126,6 +126,23 @@ def float_row_echelon_form_is_redundant(
     if (not az): return az
   return True
 
+def float_row_echelon_form_back_substitution(m, free_vars, sol):
+  n_rows = len(m)
+  n_cols = len(m[0])
+  assert len(sol) == n_cols
+  free_flags = [False] * n_cols
+  for c in free_vars:
+    free_flags[c] = True
+  piv_cols = []
+  for c,f in enumerate(free_flags):
+    if (not f): piv_cols.append(c)
+  for r in xrange(len(piv_cols)-1,-1,-1):
+    piv_c = piv_cols[r]
+    s = 0
+    for c in xrange(piv_c+1, n_cols):
+      s += m[r][c] * sol[c]
+    sol[piv_c] = -s / m[r][piv_c]
+
 def create_fake_integer_vertices(n_dim, n_vertices):
   # Idea due to Neil Sloane
   assert n_vertices != 0
