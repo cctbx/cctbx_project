@@ -1,5 +1,6 @@
 # Comments by Phil Evans, MRC-LMB, Cambridge, U.K.
 
+from libtbx import adopt_init_args
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.sgtbx import subgroups
@@ -57,22 +58,26 @@ class metric_subgroups:
         max_delta,
         enforce_max_delta_for_generated_two_folds=True,
         bravais_types_only=True):
-    self.input_symmetry = input_symmetry
-    self.max_delta = max_delta
+    adopt_init_args(self,locals())
     self.result_groups = []
 
+    self.change_input_to_minimum_cell()
+    self.derive_result_group_list()
+
+  def change_input_to_minimum_cell(self):
     # Get cell reduction operator
-    cb_op_inp_minimum = self.input_symmetry.change_of_basis_op_to_minimum_cell()
+    self.cb_op_inp_minimum = self.input_symmetry.change_of_basis_op_to_minimum_cell()
 
     # New symmetry object with changed basis
-    self.minimum_symmetry = self.input_symmetry.change_basis(cb_op_inp_minimum)
+    self.minimum_symmetry = self.input_symmetry.change_basis(self.cb_op_inp_minimum)
 
+  def derive_result_group_list(self):
     # Get highest symmetry compatible with lattice
     lattice_group = lattice_symmetry.group(
       self.minimum_symmetry.unit_cell(),
       max_delta=self.max_delta,
       enforce_max_delta_for_generated_two_folds
-        =enforce_max_delta_for_generated_two_folds)
+        =self.enforce_max_delta_for_generated_two_folds)
     lattice_group_info = sgtbx.space_group_info(group=lattice_group)
 
     # Get list of sub-spacegroups
@@ -108,16 +113,16 @@ class metric_subgroups:
       cb_op_minimum_ref = subsym.space_group_info().type().cb_op()
       ref_subsym = subsym.change_basis(cb_op_minimum_ref)
       # Ignore unwanted groups
-      if (bravais_types_only and
+      if (self.bravais_types_only and
           not str(ref_subsym.space_group_info()) in bravais_types.centric):
         continue
       # Choose best setting for monoclinic and orthorhombic systems
       cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell()
       best_subsym = ref_subsym.change_basis(cb_op_best_cell)
       # Total basis transformation
-      cb_op_inp_best = cb_op_best_cell * cb_op_minimum_ref * cb_op_inp_minimum
+      cb_op_inp_best = cb_op_best_cell * cb_op_minimum_ref * self.cb_op_inp_minimum
       # Use identity change-of-basis operator if possible
-      if (best_subsym.unit_cell().is_similar_to(input_symmetry.unit_cell())):
+      if (best_subsym.unit_cell().is_similar_to(self.input_symmetry.unit_cell())):
         cb_op_corr = cb_op_inp_best.inverse()
         try:
           best_subsym_corr = best_subsym.change_basis(cb_op_corr)
