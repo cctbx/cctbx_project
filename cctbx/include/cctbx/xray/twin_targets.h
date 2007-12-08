@@ -914,32 +914,40 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           loc_twin_obs = obs_to_twin_obs_[ ii ];
           loc_calc = obs_to_calc_[ ii ];
           loc_twin_calc = obs_to_twin_calc_[ ii ];
-CCTBX_ASSERT(loc_twin_obs >=0 && loc_calc >=0 && loc_twin_calc >= 0); // XXX trap for long standing seg. fault bug
-          o_a = i_obs[ii];
-CCTBX_ASSERT(i_obs.size() > loc_twin_obs); // XXX trap for long standing seg. fault bug
-          o_b = i_obs[ loc_twin_obs ];
-          s_a = 0;
-          s_b = 0;
-          if (sig_obs.size()>0){
-            s_a = sig_obs[ii];
-CCTBX_ASSERT(sig_obs.size() > loc_twin_obs); // XXX trap for long standing seg. fault bug
-            s_b = sig_obs[ loc_twin_obs ];
+          n_i = -100000;
+          n_s = 1000000.0;
+          if (loc_twin_obs >=0){
+            if (loc_calc>=0){
+              if (loc_twin_calc>=0){
+                CCTBX_ASSERT(loc_twin_obs >=0 && loc_calc >=0 && loc_twin_calc >= 0); // XXX trap for long standing seg. fault bug
+                o_a = i_obs[ii];
+                CCTBX_ASSERT(i_obs.size() > loc_twin_obs); // XXX trap for long standing seg. fault bug
+                o_b = i_obs[ loc_twin_obs ];
+                s_a = 0;
+                s_b = 0;
+                if (sig_obs.size()>0){
+                  s_a = sig_obs[ii];
+                  CCTBX_ASSERT(sig_obs.size() > loc_twin_obs); // XXX trap for long standing seg. fault bug
+                  s_b = sig_obs[ loc_twin_obs ];
+                }
+                CCTBX_ASSERT(f_model.size() > loc_calc); // XXX trap for long standing seg. fault bug
+                c_a = f_model[ loc_calc ];
+                c_a = c_a*c_a;
+                CCTBX_ASSERT(f_model.size() > loc_twin_calc); // XXX trap for long standing seg. fault bug
+                c_b = f_model[ loc_twin_calc ];
+                c_b = c_b*c_b;
+
+                frac1 = c_a * (1-twin_fraction) / ( c_a*(1.0-twin_fraction) + c_b*twin_fraction );
+                frac2 = c_a * twin_fraction / ( c_b*(1.0-twin_fraction) + c_a*twin_fraction );
+
+                n_i = o_a*frac1 + o_b*frac2;
+                n_s = std::sqrt( s_a*s_a*frac1*frac1 + s_b*s_b*frac2*frac2 );
+              }
+            }
           }
-CCTBX_ASSERT(f_model.size() > loc_calc); // XXX trap for long standing seg. fault bug
-          c_a = f_model[ loc_calc ];
-          c_a = c_a*c_a;
-CCTBX_ASSERT(f_model.size() > loc_twin_calc); // XXX trap for long standing seg. fault bug
-          c_b = f_model[ loc_twin_calc ];
-          c_b = c_b*c_b;
-
-          frac1 = c_a * (1-twin_fraction) / ( c_a*(1.0-twin_fraction) + c_b*twin_fraction );
-          frac2 = c_a * twin_fraction / ( c_b*(1.0-twin_fraction) + c_a*twin_fraction );
-
-          n_i = o_a*frac1 + o_b*frac2;
-          n_s = std::sqrt( s_a*s_a*frac1*frac1 + s_b*s_b*frac2*frac2 );
-
           detwinned_i.push_back( n_i );
           detwinned_s.push_back( n_s );
+
         }
         scitbx::af::tiny< scitbx::af::shared<FloatType>, 2 > result( detwinned_i, detwinned_s );
         return( result );
@@ -968,31 +976,38 @@ CCTBX_ASSERT(f_model.size() > loc_twin_calc); // XXX trap for long standing seg.
          loc_twin_obs = obs_to_twin_obs_[ ii ];
          loc_calc = obs_to_calc_[ ii ];
          loc_twin_calc = obs_to_twin_calc_[ ii ];
-CCTBX_ASSERT(loc_twin_obs >=0 && loc_calc >=0 && loc_twin_calc >= 0); // XXX trap for long standing seg. fault bug
-         o_a = i_obs[ii];
-CCTBX_ASSERT(i_obs.size() > loc_twin_obs); // XXX trap for long standing seg. fault bug
-         o_b = i_obs[ loc_twin_obs ];
-         s_a = 0;
-         s_b = 0;
-         if ( sig_obs.size() > 0 ){
-           s_a = sig_obs[ii];
-CCTBX_ASSERT(sig_obs.size() > loc_twin_obs); // XXX trap for long standing seg. fault bug
-           s_b = sig_obs[ loc_twin_obs ];
+         n_i = -10000.0;
+         n_s = 10000.0;
+         if (loc_twin_obs >=0){
+           if (loc_calc >=0){
+             if (loc_twin_calc >= 0){
+                CCTBX_ASSERT(loc_twin_obs >=0 && loc_calc >=0 && loc_twin_calc >= 0); // XXX trap for long standing seg. fault bug
+               o_a = i_obs[ii];
+                  CCTBX_ASSERT(i_obs.size() > loc_twin_obs); // XXX trap for long standing seg. fault bug
+               o_b = i_obs[ loc_twin_obs ];
+               s_a = 0;
+               s_b = 0;
+               if ( sig_obs.size() > 0 ){
+                 s_a = sig_obs[ii];
+                  CCTBX_ASSERT(sig_obs.size() > loc_twin_obs); // XXX trap for long standing seg. fault bug
+                 s_b = sig_obs[ loc_twin_obs ];
+               }
+            CCTBX_ASSERT(f_model.size() > loc_calc); // XXX trap for long standing seg. fault bug
+               a = f_model[ loc_calc ].real();
+               b = f_model[ loc_calc ].imag();
+               c_a = (a*a+b*b);
+                  CCTBX_ASSERT(f_model.size() > loc_twin_calc); // XXX trap for long standing seg. fault bug
+               a = f_model[ loc_twin_calc ].real();
+               b = f_model[ loc_twin_calc ].imag();
+               c_b = (a*a+b*b);
+
+               frac1 = c_a * (1-twin_fraction) / ( c_a*(1.0-twin_fraction) + c_b*twin_fraction );
+               frac2 = c_a * twin_fraction / ( c_b*(1.0-twin_fraction) + c_a*twin_fraction );
+               n_i = o_a*frac1 + o_b*frac2;
+               n_s = std::sqrt( s_a*s_a*frac1*frac1 + s_b*s_b*frac2*frac2 );
+             }
+           }
          }
-CCTBX_ASSERT(f_model.size() > loc_calc); // XXX trap for long standing seg. fault bug
-         a = f_model[ loc_calc ].real();
-         b = f_model[ loc_calc ].imag();
-         c_a = (a*a+b*b);
-CCTBX_ASSERT(f_model.size() > loc_twin_calc); // XXX trap for long standing seg. fault bug
-         a = f_model[ loc_twin_calc ].real();
-         b = f_model[ loc_twin_calc ].imag();
-         c_b = (a*a+b*b);
-
-         frac1 = c_a * (1-twin_fraction) / ( c_a*(1.0-twin_fraction) + c_b*twin_fraction );
-         frac2 = c_a * twin_fraction / ( c_b*(1.0-twin_fraction) + c_a*twin_fraction );
-         n_i = o_a*frac1 + o_b*frac2;
-         n_s = std::sqrt( s_a*s_a*frac1*frac1 + s_b*s_b*frac2*frac2 );
-
          detwinned_i.push_back( n_i );
          detwinned_s.push_back( n_s );
        }
