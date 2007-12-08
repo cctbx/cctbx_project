@@ -318,7 +318,8 @@ class ls_rel_scale_driver(object):
     tmp_nat, tmp_der = self.native.common_sets(self.derivative)
 
     self.r_val_before = flex.sum( flex.abs(tmp_nat.data()-tmp_der.data()) )
-    self.r_val_before /=flex.sum( flex.abs(tmp_nat.data()+tmp_der.data()) )/2.0
+    if flex.sum( flex.abs(tmp_nat.data()+tmp_der.data()) ) > 0:
+      self.r_val_before /=flex.sum( flex.abs(tmp_nat.data()+tmp_der.data()) )/2.0
 
     self.derivative = scaling.absolute_scaling.anisotropic_correction(
       self.derivative,self.p_scale,self.u_star )
@@ -333,8 +334,10 @@ class ls_rel_scale_driver(object):
     self.r_val_after = flex.sum( flex.abs( tmp_nat.data()-
                                            tmp_der.data()   )
                                )
-    self.r_val_after /=(flex.sum( flex.abs(tmp_nat.data()) ) +
-                        flex.sum( flex.abs(tmp_der.data()) ))/2.0
+    if (flex.sum( flex.abs(tmp_nat.data()) ) +
+                        flex.sum( flex.abs(tmp_der.data()) )) > 0:
+      self.r_val_after /=(flex.sum( flex.abs(tmp_nat.data()) ) +
+                          flex.sum( flex.abs(tmp_der.data()) ))/2.0
 
     self.native=tmp_nat
     self.derivative=tmp_der
