@@ -125,6 +125,7 @@ scitbx/scitbx/iso_surface/__init__.py -text
 scitbx/scitbx/iso_surface/iso_surface_ext.cpp -text
 scitbx/scitbx/iso_surface/tst_iso_surface.m -text
 scitbx/scitbx/iso_surface/tst_iso_surface.py -text
+scitbx/scitbx/math/sphere_sphere_intersection.py svneol=native#text/x-python
 scitbx/scitbx/sparse/__init__.py -text
 scitbx/scitbx/sparse/boost_python/SConscript -text
 scitbx/scitbx/sparse/boost_python/matrix.cpp -text
