@@ -1145,13 +1145,21 @@ namespace relative_scaling{
     FloatType
     function( unsigned index )
     {
-      FloatType result=0, k, weight;
+      FloatType result=0, k, weight, denom, nom;
       k=get_k( index );
-      weight = f_nat_[index]*sig_der_[index]/f_der_[index];
+      denom = f_der_[index];
+      nom = f_nat_[index]*sig_der_[index];
+      if (denom <= 0 ){
+        denom = 1.0;
+        nom = sig_der_[index];
+      }
+      weight = nom/denom;
       weight = weight*weight + sig_nat_[index]*sig_nat_[index];
       result = f_nat_[index] - f_der_[index]*k;
       result = result*result;
-      result = result/weight;
+      if (weight > 0 ){
+        result = result/weight;
+      }
       return(result);
     }
 
@@ -1169,11 +1177,21 @@ namespace relative_scaling{
     gradient( unsigned index )
     {
       scitbx::af::shared<FloatType> single_grad(7,0);
-      FloatType result=0, k, weight;
+      FloatType result=0, k, weight, denom, nom;
       k=get_k( index );
-      weight = f_nat_[index]*sig_der_[index]/f_der_[index];
+      nom = f_nat_[index]*sig_der_[index];
+      denom = f_der_[index];
+      if ( denom <= 0){
+        denom = 1.0;
+        nom = sig_der_[index];
+      }
+      weight = nom/denom;
       weight = weight*weight + sig_nat_[index]*sig_nat_[index];
+      if (weight >=0){
       weight = 1.0/weight;
+      } else {
+        weight = 0.0;
+      }
       result = f_nat_[index] - f_der_[index]*k;
 
 
@@ -1219,13 +1237,22 @@ namespace relative_scaling{
     hessian(unsigned index)
     {
       // first we need to know the pre-multipliers
-      FloatType tmp1,tmp2,k;
+      FloatType tmp1,tmp2,k, nom, denom;
       FloatType sndder,frstder;
       k = get_k( index );
       tmp1=f_nat_[index]-k*f_der_[index];
 
-      tmp2 = f_nat_[index]*sig_der_[index]/f_der_[index];
+      nom = f_nat_[index]*sig_der_[index];
+      denom = f_der_[index];
+      if (denom <=0){
+        nom = sig_der_[index];
+        denom = 1.0;
+      }
+      tmp2 = nom/denom;
       tmp2 = tmp2*tmp2 + sig_nat_[index]*sig_nat_[index];
+      if (tmp2 <=0){
+        tmp2 = 1.0;
+      }
 
       //------sndder-------------------------------------
       sndder=2*f_der_[index]*f_der_[index]/tmp2;
