@@ -12,6 +12,7 @@
 #include <scitbx/math/bessel.h>
 #include <scitbx/line_search/more_thuente_1994.h>
 
+
 namespace mmtbx { namespace scaling { namespace outlier{
 
   // Some model based outlier criteria are computed here
@@ -478,6 +479,7 @@ namespace mmtbx { namespace scaling { namespace outlier{
       log_two_minus_log_pi_( std::log(2.0)-std::log(scitbx::constants::pi) )
 
       {
+        FloatType tmp_obs, tmp_calc;
         SCITBX_ASSERT(width > 0);
         SCITBX_ASSERT( e_obs.size() == e_calc.size() );
         SCITBX_ASSERT( e_obs.size() == centric.size() );
@@ -485,8 +487,12 @@ namespace mmtbx { namespace scaling { namespace outlier{
         for (int ii=0;ii<e_obs.size();ii++){
           SCITBX_ASSERT( e_obs[ii]>= 0);
           SCITBX_ASSERT( e_calc[ii]>= 0);
-          shrd_e_obs_.push_back( e_obs[ii] );
-          shrd_e_calc_.push_back( e_calc[ii] );
+          tmp_obs  = e_obs[ii];
+          tmp_calc = e_calc[ii];
+          if (tmp_obs  < 1e-3){ tmp_obs  = 1e-3; }
+          if (tmp_calc < 1e-3){ tmp_calc = 1e-3; }
+          shrd_e_obs_.push_back( tmp_obs );
+          shrd_e_calc_.push_back( tmp_calc );
           shrd_centric_.push_back( centric[ii] ) ;
           shrd_d_star_cubed_.push_back( d_star_cubed[ii] );
           shrd_distance_.push_back(0.0);
@@ -585,6 +591,9 @@ namespace mmtbx { namespace scaling { namespace outlier{
           ecs=e_calc_[ii]*e_calc_[ii];
           eoc=e_obs_[ii]*e_calc_[ii];
           tmp0=sigmaa*sigmaa;
+          if (tmp0>=1-1e-8){
+            tmp0 = 1.0-1e-8;
+          }
           tmp1=1.0/(1.0-tmp0);
           tmp2=tmp1*tmp1;
           x = sigmaa*2.0*eoc*tmp1;
@@ -612,6 +621,9 @@ namespace mmtbx { namespace scaling { namespace outlier{
           ecs=e_calc_[ii]*e_calc_[ii];
           eoc=e_obs_[ii]*e_calc_[ii];
           tmp0=sigmaa*sigmaa;
+          if (tmp0>=1){
+            tmp0 = 0.99999;
+          }
           tmp1=1.0/(1.0-tmp0);
           tmp2=tmp1*tmp1;
           x = sigmaa*eoc*tmp1;
@@ -653,11 +665,14 @@ namespace mmtbx { namespace scaling { namespace outlier{
                                               FloatType const& sigmaa
                                              )
       {
-        FloatType result,x;
+        FloatType result,x, tmp;
+        tmp = 1.0-sigmaa*sigmaa;
+        if (tmp<=0){
+          tmp = 1e-8;
+        }
         x = sigmaa*2.0*e_obs_[ii]*e_calc_[ii]/(1.0-sigmaa*sigmaa);
         result  = std::log(2.0)+std::log(e_obs_[ii])-std::log( 1.0-sigmaa*sigmaa );
-        result += -(e_obs_[ii]*e_obs_[ii] + sigmaa*sigmaa*e_calc_[ii]*e_calc_[ii])/
-          (1.0-sigmaa*sigmaa);
+        result += -(e_obs_[ii]*e_obs_[ii] + sigmaa*sigmaa*e_calc_[ii]*e_calc_[ii])/tmp;
         result += scitbx::math::bessel::ln_of_i0(x);
         return(result);
       }
@@ -665,11 +680,15 @@ namespace mmtbx { namespace scaling { namespace outlier{
       inline FloatType target_single_centric(int const& ii,
                                              FloatType const& sigmaa)
       {
-        FloatType result,x,a1,a2,a3;
-        x = sigmaa*e_obs_[ii]*e_calc_[ii]/(1.0-sigmaa*sigmaa);
+        FloatType result,x,a1,a2,a3,tmp;
+        tmp = 1.0-sigmaa*sigmaa;
+        if (tmp<=0){
+          tmp = 1e-8;
+        }
+        x = sigmaa*e_obs_[ii]*e_calc_[ii]/tmp;
         a1= (std::log(2.0) - std::log(scitbx::constants::pi) - std::log(1.0-sigmaa*sigmaa) )/2.0;
         a2=-(e_obs_[ii]*e_obs_[ii] +
-             sigmaa*sigmaa*e_calc_[ii]*e_calc_[ii])/(2.0*(1.0-sigmaa*sigmaa));
+             sigmaa*sigmaa*e_calc_[ii]*e_calc_[ii])/(2.0*tmp);
         if (x>40){
           // a simple approximation to avoid problems
           a3 = x*0.999921 - 0.65543;
@@ -695,13 +714,17 @@ namespace mmtbx { namespace scaling { namespace outlier{
       FloatType dtarget_single_acentric( int const& ii,
                                          FloatType const& sigmaa)
       {
-        FloatType result=0, x,a1,a2,a3;
-        x=2.0*sigmaa*e_obs_[ii]*e_calc_[ii]/(sigmaa*sigmaa-1.0);
-        a1  = 2.0*sigmaa/(1-sigmaa*sigmaa);
+        FloatType result=0, x,a1,a2,a3,tmp;
+        tmp = 1.0-sigmaa*sigmaa;
+        if (tmp<=0){
+          tmp = 1e-8;
+        }
+        x=2.0*sigmaa*e_obs_[ii]*e_calc_[ii]/(-tmp);
+        a1  = 2.0*sigmaa/tmp;
         a2 = -2.0*sigmaa*(e_obs_[ii]*e_obs_[ii] +
-                          e_calc_[ii]*e_calc_[ii])/((1.0-sigmaa*sigmaa )*(1.0-sigmaa*sigmaa ));
+                          e_calc_[ii]*e_calc_[ii])/(tmp*tmp);
         a3 = -2.0*e_obs_[ii]*e_calc_[ii]*(1+sigmaa*sigmaa)*
-          scitbx::math::bessel::i1_over_i0(x)/((1.0-sigmaa*sigmaa)*(1.0-sigmaa*sigmaa));
+          scitbx::math::bessel::i1_over_i0(x)/(tmp*tmp);
         result = a1+a2+a3;
         return(result);
       }
@@ -710,12 +733,16 @@ namespace mmtbx { namespace scaling { namespace outlier{
       FloatType dtarget_single_centric( int const& ii,
                                         FloatType const& sigmaa)
       {
-        FloatType result, x,a1,a2,a3;
-        x = e_obs_[ii]*e_calc_[ii]*sigmaa/(1.0-sigmaa*sigmaa);
+        FloatType result, x,a1,a2,a3,tmp;
+        tmp = 1.0-sigmaa*sigmaa;
+        if (tmp<=0){
+          tmp = 1e-8;
+        }
+        x = e_obs_[ii]*e_calc_[ii]*sigmaa/tmp;
         a1=sigmaa/(1-sigmaa*sigmaa);;
         a2=-sigmaa*(e_obs_[ii]*e_obs_[ii] +
-                    e_calc_[ii]*e_calc_[ii])/((1.0-sigmaa*sigmaa )*(1.0-sigmaa*sigmaa ));
-        a3= e_obs_[ii]*e_calc_[ii]*(1+sigmaa*sigmaa)*std::tanh(x)/((1.0-sigmaa*sigmaa)*(1.0-sigmaa*sigmaa));
+                    e_calc_[ii]*e_calc_[ii])/(tmp*tmp);
+        a3= e_obs_[ii]*e_calc_[ii]*(1+sigmaa*sigmaa)*std::tanh(x)/(tmp*tmp);
         result =  a1+a2+a3;
         return(result);
       }
