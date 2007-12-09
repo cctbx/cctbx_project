@@ -316,6 +316,13 @@ class xtriage_analyses(object):
     self.miller_obs  = miller_obs   # array of observed data, should be intensity or amplitude
     self.miller_calc = miller_calc  # array if calculated data, need to be given
     self.miller_ref  = miller_ref   # array with 'reference' data, need not be given.
+
+    if self.miller_obs is not None:
+      self.miller_obs  = self.miller_obs.merge_equivalents().array().remove_systematic_absences()   # array of observed data, should be intensity or amplitude
+    if self.miller_calc is not None:
+      self.miller_calc = self.miller_calc.merge_equivalents().array().remove_systematic_absences()  # array if calculated data, need to be given
+    if self.miller_ref is not None:
+      self.miller_ref  = self.miller_ref.merge_equivalents().array().remove_systematic_absences()   # array with 'reference' data, need not be given.
                                     # A reference set is for instance a data set with an alternative indexing scheme
     self.text_out    = text_out     # An object with a write method, such as a multi out or StringIO.
                                     # If None, sys.stdout will be used
