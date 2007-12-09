@@ -67,6 +67,7 @@ class outlier_manager(object):
     self.norma_work = self.work_obs.customized_copy(
       data=normalizer.normalised_miller.data()/
            normalizer.normalised_miller.epsilons().data().as_double() )
+    assert ( flex.min(self.norma_work.data()) >= 0 )
     # split things into centric and acentric sets please
     self.centric_work = self.norma_work.select_centric().set_observation_type(
       self.norma_work)
