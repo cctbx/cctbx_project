@@ -240,7 +240,7 @@ class massage_data(object):
                n_bases=0):
 
     self.params=parameters
-    self.miller_array=miller_array.deep_copy().set_observation_type(miller_array)
+    self.miller_array=miller_array.deep_copy().set_observation_type(miller_array).merge_equivalents().array()
     self.out = out
     if self.out is None:
       self.out = sys.stdout
@@ -347,6 +347,7 @@ class massage_data(object):
                             twin_law = self.params.symmetry.twinning_parameters.twin_law,
                             out = self.out)
       self.final_array = detwinner.detwin_it(alpha=self.params.symmetry.twinning_parameters.fraction)
+
 
     assert self.final_array is not None
 
