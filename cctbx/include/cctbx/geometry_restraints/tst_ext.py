@@ -7,6 +7,9 @@ from cctbx.crystal import direct_space_asu
 from scitbx import matrix
 from scitbx import stl
 from libtbx.test_utils import approx_equal, not_approx_equal, eps_eq
+from libtbx.utils import null_out
+import math
+import sys
 
 def exercise_bond():
   p = geometry_restraints.bond_params(
@@ -284,6 +287,113 @@ def exercise_bond():
     bond_simple_proxies=proxies)
   assert pair_asu_table.table()[0].keys() == [1]
 
+class py_nonbonded_cos(object): # prototype
+
+  def __init__(self, max_residual, exponent=1):
+    self.max_residual = max_residual
+    self.exponent = exponent
+
+  def residual_and_gradients(self, proxy, sites_cart, gradient_array=None):
+    vdw_distance = proxy.vdw_distance
+    i, j = proxy.i_seqs
+    diff_vec = matrix.col(sites_cart[i]) - matrix.col(sites_cart[j])
+    d = abs(diff_vec)
+    if (d >= vdw_distance): return 0
+    x = d / vdw_distance
+    m = self.max_residual
+    e = self.exponent
+    pi = math.pi
+    pix = pi * x
+    cpixpo = math.cos(pix) + 1
+    result = m * (cpixpo/2)**e
+    if (gradient_array is not None and d != 0):
+      """
+      r=m ((Cos[Pi x]+1)/2)^e
+      g=D[r,x]
+      """
+      drdx = -(e*m*pi*cpixpo**(e-1)*math.sin(pix)) / 2**e
+      drdd = drdx / vdw_distance
+      gradient_0 = diff_vec * drdd / d
+      gradient_array[i] = matrix.col(gradient_array[i]) + gradient_0
+      gradient_array[j] = matrix.col(gradient_array[j]) - gradient_0
+    return result
+
+def nb_cos_finite_difference_gradients(nbf, proxy, sites_cart, eps=1.e-6):
+  result = []
+  for i in proxy.i_seqs:
+    sc = list(sites_cart[i])
+    for c in xrange(3):
+      scc0 = sc[c]
+      rs = []
+      for signed_eps in [eps, -eps]:
+        sc[c] = scc0 + signed_eps
+        sites_cart[i] = sc
+        rs.append(nbf.residual_and_gradients(
+          proxy=proxy,
+          sites_cart=sites_cart))
+      sc[c] = scc0
+      result.append((rs[0]-rs[1])/(2*eps))
+    sites_cart[i] = sc
+  return flex.vec3_double(flex.double(result))
+
+def exercise_nonbonded_cos(verbose=0):
+  if (verbose): log = sys.stdout
+  else: log = null_out()
+  for exponent in [1, 2, 1.5]:
+    nbf = py_nonbonded_cos(max_residual=13, exponent=exponent)
+    sites_cart = flex.vec3_double([(1,2,3), (0.3,2.4,3.5)])
+    proxy = geometry_restraints.nonbonded_simple_proxy(
+      i_seqs=(0,1), vdw_distance=2)
+    gradient_array = flex.vec3_double(2, (0,0,0))
+    r = nbf.residual_and_gradients(
+      proxy=proxy,
+      sites_cart=sites_cart,
+      gradient_array=gradient_array)
+    fd_grads = nb_cos_finite_difference_gradients(
+      nbf=nbf, proxy=proxy, sites_cart=sites_cart)
+    print >> log, list(gradient_array)
+    print >> log, list(fd_grads)
+    assert approx_equal(gradient_array, fd_grads)
+    nc = geometry_restraints.nonbonded_cos(
+      sites=list(sites_cart),
+      vdw_distance=proxy.vdw_distance,
+      function=geometry_restraints.cos_repulsion_function(
+        max_residual=nbf.max_residual, exponent=nbf.exponent))
+    assert approx_equal(nc.residual(), r)
+    print >> log, nc.gradients()
+    assert approx_equal(nc.gradients(), gradient_array)
+    print >> log
+    sc0 = matrix.col(sites_cart[0])
+    v01 = matrix.col(sites_cart[1]) - sc0
+    v01 *= 1/abs(v01)
+    for i in xrange(21,-1,-1):
+      for eps in [0, 1.e-3, -1.e-3]:
+        d = i/10 + eps
+        sites_cart[1] = sc0 + d * v01
+        gradient_array = flex.vec3_double(2, (0,0,0))
+        r = nbf.residual_and_gradients(
+          proxy=proxy,
+          sites_cart=sites_cart,
+          gradient_array=gradient_array)
+        print >> log, "d, r:", d, r
+        if (d == 2):
+          assert abs(r) <= 1.e-8
+        else:
+          fd_grads = nb_cos_finite_difference_gradients(
+            nbf=nbf, proxy=proxy, sites_cart=sites_cart)
+          print >> log, list(gradient_array)
+          print >> log, list(fd_grads)
+          assert approx_equal(gradient_array, fd_grads)
+          nc = geometry_restraints.nonbonded_cos(
+            sites=list(sites_cart),
+            vdw_distance=proxy.vdw_distance,
+            function=geometry_restraints.cos_repulsion_function(
+              max_residual=nbf.max_residual, exponent=nbf.exponent))
+          assert approx_equal(nc.residual(), r)
+          print >> log, nc.gradients()
+          assert approx_equal(nc.gradients(), gradient_array)
+          print >> log
+
 def exercise_nonbonded():
   params = geometry_restraints.nonbonded_params()
   assert params.distance_table.size() == 0
@@ -349,6 +459,11 @@ def exercise_nonbonded():
       proxies=proxies,
       function=geometry_restraints.inverse_power_repulsion_function(10)),
     [3.74165738677]*2)
+  assert approx_equal(geometry_restraints.nonbonded_deltas(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      function=geometry_restraints.cos_repulsion_function(max_residual=13)),
+    [3.74165738677]*2)
   assert approx_equal(geometry_restraints.nonbonded_residuals(
       sites_cart=sites_cart,
       proxies=proxies,
@@ -359,6 +474,11 @@ def exercise_nonbonded():
       proxies=proxies,
       function=geometry_restraints.inverse_power_repulsion_function(10)),
     [1.3363062095621219]*2)
+  assert approx_equal(geometry_restraints.nonbonded_residuals(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      function=geometry_restraints.cos_repulsion_function(max_residual=13)),
+    [1.9279613709216095]*2)
   residual_sum = geometry_restraints.nonbonded_residual_sum(
     sites_cart=sites_cart,
     proxies=proxies,
@@ -371,6 +491,12 @@ def exercise_nonbonded():
     gradient_array=None,
     function=geometry_restraints.inverse_power_repulsion_function(10))
   assert approx_equal(residual_sum, 2*1.3363062095621219)
+  residual_sum = geometry_restraints.nonbonded_residual_sum(
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None,
+    function=geometry_restraints.cos_repulsion_function(max_residual=13))
+  assert approx_equal(residual_sum, 2*1.9279613709216095)
   #
   sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
   asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
@@ -412,6 +538,21 @@ def exercise_nonbonded():
   assert approx_equal(r.residual(), 226981)
   assert approx_equal(r.gradients(),
     [(22326.0, 22326.0, 22326.0), (-22326.0, -22326.0, -22326.0)])
+  r = geometry_restraints.nonbonded_prolsq(
+    sites=list(sites_cart),
+    vdw_distance=p.vdw_distance,
+    function=geometry_restraints.prolsq_repulsion_function())
+  assert approx_equal(r.function.c_rep, 16)
+  assert approx_equal(r.function.k_rep, 1)
+  assert approx_equal(r.function.irexp, 1)
+  assert approx_equal(r.function.rexp, 4)
+  assert approx_equal(r.diff_vec, [-1,-1,-1])
+  assert approx_equal(r.delta**2, 3)
+  assert approx_equal(r.residual(), 0.0824764182859)
+  assert approx_equal(r.gradients(),
+    [(0.71084793153727288, 0.71084793153727288, 0.71084793153727288),
+     (-0.71084793153727288, -0.71084793153727288, -0.71084793153727288)])
+  #
   for irexp in [1,2,3,4,5]:
     f = geometry_restraints.inverse_power_repulsion_function(
       nonbonded_distance_cutoff=100,
@@ -443,20 +584,29 @@ def exercise_nonbonded():
     else:
       assert not_approx_equal(r.residual(), 0)
       assert not_approx_equal(r.gradients(), [(0,0,0),(0,0,0)])
-  r = geometry_restraints.nonbonded_prolsq(
-    sites=list(sites_cart),
-    vdw_distance=p.vdw_distance,
-    function=geometry_restraints.prolsq_repulsion_function())
-  assert approx_equal(r.function.c_rep, 16)
-  assert approx_equal(r.function.k_rep, 1)
-  assert approx_equal(r.function.irexp, 1)
-  assert approx_equal(r.function.rexp, 4)
-  assert approx_equal(r.diff_vec, [-1,-1,-1])
-  assert approx_equal(r.delta**2, 3)
-  assert approx_equal(r.residual(), 0.0824764182859)
-  assert approx_equal(r.gradients(),
-    [(0.71084793153727288, 0.71084793153727288, 0.71084793153727288),
-     (-0.71084793153727288, -0.71084793153727288, -0.71084793153727288)])
+  #
+  for exponent in [1,2,3]:
+    f = geometry_restraints.cos_repulsion_function(
+      max_residual=13,
+      exponent=exponent)
+    assert approx_equal(f.max_residual, 13)
+    assert approx_equal(f.exponent, exponent)
+    r = geometry_restraints.nonbonded_cos(
+      sites=list(sites_cart),
+      vdw_distance=p.vdw_distance,
+      function=f)
+    assert approx_equal(r.diff_vec, [-1,-1,-1])
+    assert approx_equal(r.delta**2, 3)
+    pynbc = py_nonbonded_cos(max_residual=f.max_residual, exponent=f.exponent)
+    gradient_array = flex.vec3_double(sites_cart.size(), (0,0,0))
+    pr = pynbc.residual_and_gradients(
+      proxy=geometry_restraints.nonbonded_simple_proxy(
+        i_seqs=(0,1), vdw_distance=r.vdw_distance),
+      sites_cart=sites_cart,
+      gradient_array=gradient_array)
+    assert approx_equal(r.residual(), pr)
+    assert approx_equal(r.gradients(), gradient_array)
+  #
   sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
     asu_mappings=asu_mappings)
   sorted_asu_proxies.process(proxies=sym_proxies)
@@ -954,6 +1104,7 @@ def exercise_planarity():
 def exercise():
   exercise_bond()
   exercise_nonbonded()
+  exercise_nonbonded_cos()
   exercise_angle()
   exercise_dihedral()
   exercise_chirality()

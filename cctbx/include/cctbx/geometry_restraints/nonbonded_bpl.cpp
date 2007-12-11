@@ -130,6 +130,24 @@ namespace {
     }
   };
 
+  struct cos_repulsion_function_wrappers
+  {
+    typedef cos_repulsion_function w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("cos_repulsion_function", no_init)
+        .def(init<double, optional<double> >(
+          (arg_("max_residual"),
+           arg_("exponent")=1)))
+        .def_readonly("max_residual", &w_t::max_residual)
+        .def_readonly("exponent", &w_t::exponent)
+      ;
+    }
+  };
+
   template <typename NonbondedFunction>
   struct nonbonded_wrappers
   {
@@ -228,12 +246,16 @@ namespace {
     nonbonded_asu_proxy_wrappers::wrap();
     prolsq_repulsion_function_wrappers::wrap();
     inverse_power_repulsion_function_wrappers::wrap();
+    cos_repulsion_function_wrappers::wrap();
     nonbonded_wrappers<prolsq_repulsion_function>::wrap(
       "nonbonded_prolsq");
     nonbonded_wrappers<inverse_power_repulsion_function>::wrap(
       "nonbonded_inverse_power");
+    nonbonded_wrappers<cos_repulsion_function>::wrap(
+      "nonbonded_cos");
     wrap_functions(scitbx::type_holder<prolsq_repulsion_function>());
     wrap_functions(scitbx::type_holder<inverse_power_repulsion_function>());
+    wrap_functions(scitbx::type_holder<cos_repulsion_function>());
   }
 
 } // namespace <anonymous>
