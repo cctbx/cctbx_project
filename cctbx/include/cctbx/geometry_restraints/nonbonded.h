@@ -232,7 +232,7 @@ namespace cctbx { namespace geometry_restraints {
     /*! Not available in Python.
      */
     double
-    gradient_factor(double delta, double term) const
+    gradient_factor(double delta, double /* vdw_distance */, double term) const
     {
       if (term <= 0 || delta == 0) return 0;
       double d_term_d_r;
@@ -287,7 +287,7 @@ namespace cctbx { namespace geometry_restraints {
     /*! Not available in Python.
      */
     double
-    gradient_factor(double delta, double term) const
+    gradient_factor(double delta, double /* vdw_distance */, double term) const
     {
       if (term == 0) return 0;
       return -irexp * term / delta / delta;
@@ -296,6 +296,64 @@ namespace cctbx { namespace geometry_restraints {
     double nonbonded_distance_cutoff;
     double k_rep;
     double irexp;
+  };
+
+  //! energy(delta) = max_residual*((cos(pi*delta)+1)/2)**exponent
+  struct cos_repulsion_function
+  {
+    //! Definition of coefficients.
+    cos_repulsion_function(
+      double max_residual_,
+      double exponent_=1)
+    :
+      max_residual(max_residual_),
+      exponent(exponent_)
+    {}
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    term(double vdw_distance, double delta) const
+    {
+      if (delta >= vdw_distance) return 0;
+      using scitbx::constants::pi;
+      double w2 = (std::cos(pi * delta / vdw_distance) + 1) / 2;
+      if (exponent == 1) return max_residual * w2;
+      if (exponent == 2) return max_residual * w2 * w2;
+      return max_residual * std::pow(w2, exponent);
+    }
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    residual(double term) const { return term; }
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    gradient_factor(double delta, double vdw_distance, double /* term */) const
+    {
+      if (delta == 0 || delta >= vdw_distance) return 0;
+      using scitbx::constants::pi;
+      double a = pi * delta / vdw_distance;
+      double w = std::cos(a) + 1;
+      if (exponent == 1) {
+        return -(exponent*max_residual*pi*std::sin(a))
+             / (2 * vdw_distance * delta);
+      }
+      if (exponent == 2) {
+        return -(exponent*max_residual*pi*w*std::sin(a))
+             / (4 * vdw_distance * delta);
+      }
+      return -(exponent*max_residual*pi*std::pow(w,exponent-1)*std::sin(a))
+           / (std::pow(2,exponent) * vdw_distance * delta);
+    }
+
+    double max_residual;
+    double exponent;
   };
 
   //! Residual and gradient calculations for nonbonded restraints.
@@ -374,7 +432,7 @@ namespace cctbx { namespace geometry_restraints {
         init_term();
       }
 
-      //! Uses function.residual(function.ter(...)).
+      //! Uses function.residual(function.term(...)).
       double
       residual() const { return function.residual(term_); }
 
@@ -384,7 +442,8 @@ namespace cctbx { namespace geometry_restraints {
       scitbx::vec3<double>
       gradient_0() const
       {
-        return diff_vec * function.gradient_factor(delta, term_);
+        return diff_vec
+             * function.gradient_factor(delta, vdw_distance, term_);
       }
 
       //! Gradients with respect to both sites.

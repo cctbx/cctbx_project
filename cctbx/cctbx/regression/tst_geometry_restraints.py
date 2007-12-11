@@ -93,7 +93,9 @@ def exercise_nonbonded(nonbonded_type, repulsion_function):
         sites=sites_mod,
         vdw_distance=vdw_distance,
         function=repulsion_function)
-      if (repulsion_function.irexp <= 2 or not_approx_equal(r.residual(), 0)):
+      if (   not hasattr(repulsion_function, "irexp")
+          or repulsion_function.irexp <= 2
+          or not_approx_equal(r.residual(), 0)):
         fg = flex.vec3_double(finite_differences(sites_mod, residual_obj)) \
           .as_double()
         ag = flex.vec3_double(r.gradients()).as_double()
@@ -384,6 +386,12 @@ def exercise():
       repulsion_function=geometry_restraints.inverse_power_repulsion_function(
         nonbonded_distance_cutoff=1.e20,
         irexp=irexp))
+  for exponent in [1,2,3]:
+    exercise_nonbonded(
+      nonbonded_type=geometry_restraints.nonbonded_cos,
+      repulsion_function=geometry_restraints.cos_repulsion_function(
+        max_residual=13,
+        exponent=exponent))
   exercise_angle()
   exercise_dihedral()
   exercise_chirality(verbose="--verbose" in sys.argv[1:])
