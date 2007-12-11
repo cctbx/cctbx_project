@@ -349,7 +349,7 @@ namespace cctbx { namespace geometry_restraints {
              / (4 * vdw_distance * delta);
       }
       return -(exponent*max_residual*pi*std::pow(w,exponent-1)*std::sin(a))
-           / (std::pow(2,exponent) * vdw_distance * delta);
+           / (std::pow(2.0,exponent) * vdw_distance * delta);
     }
 
     double max_residual;
