@@ -528,6 +528,8 @@ def exercise_nonbonded():
   assert approx_equal(f.k_rep, 4)
   assert approx_equal(f.irexp, 2)
   assert approx_equal(f.rexp, 3)
+  assert approx_equal(f.residual(vdw_distance=3, delta=2.9), 2492774.43588)
+  assert approx_equal(f.residual(vdw_distance=3, delta=3), 2460375.0)
   r = geometry_restraints.nonbonded_prolsq(
     sites=list(sites_cart),
     vdw_distance=p.vdw_distance,
@@ -538,10 +540,13 @@ def exercise_nonbonded():
   assert approx_equal(r.residual(), 226981)
   assert approx_equal(r.gradients(),
     [(22326.0, 22326.0, 22326.0), (-22326.0, -22326.0, -22326.0)])
+  f = geometry_restraints.prolsq_repulsion_function()
+  assert approx_equal(f.residual(vdw_distance=3, delta=2.9), 0.0016)
+  assert approx_equal(f.residual(vdw_distance=3, delta=3), 0)
   r = geometry_restraints.nonbonded_prolsq(
     sites=list(sites_cart),
     vdw_distance=p.vdw_distance,
-    function=geometry_restraints.prolsq_repulsion_function())
+    function=f)
   assert approx_equal(r.function.c_rep, 16)
   assert approx_equal(r.function.k_rep, 1)
   assert approx_equal(r.function.irexp, 1)
@@ -553,6 +558,8 @@ def exercise_nonbonded():
     [(0.71084793153727288, 0.71084793153727288, 0.71084793153727288),
      (-0.71084793153727288, -0.71084793153727288, -0.71084793153727288)])
   #
+  assert approx_equal(f.residual(vdw_distance=3, delta=2.9), 0.0016)
+  assert approx_equal(f.residual(vdw_distance=3, delta=3), 0)
   for irexp in [1,2,3,4,5]:
     f = geometry_restraints.inverse_power_repulsion_function(
       nonbonded_distance_cutoff=100,
@@ -560,6 +567,9 @@ def exercise_nonbonded():
       irexp=irexp)
     assert approx_equal(f.k_rep, 4)
     assert approx_equal(f.irexp, irexp)
+    if (irexp == 1):
+      assert approx_equal(f.residual(vdw_distance=3, delta=2.9), 4.13793103448)
+      assert approx_equal(f.residual(vdw_distance=3, delta=3), 4)
     r = geometry_restraints.nonbonded_inverse_power(
       sites=list(sites_cart),
       vdw_distance=p.vdw_distance,
@@ -591,6 +601,10 @@ def exercise_nonbonded():
       exponent=exponent)
     assert approx_equal(f.max_residual, 13)
     assert approx_equal(f.exponent, exponent)
+    if (exponent == 1):
+      assert approx_equal(
+        f.residual(vdw_distance=3, delta=2.9), 0.0356076801062)
+      assert approx_equal(f.residual(vdw_distance=3, delta=3), 0)
     r = geometry_restraints.nonbonded_cos(
       sites=list(sites_cart),
       vdw_distance=p.vdw_distance,

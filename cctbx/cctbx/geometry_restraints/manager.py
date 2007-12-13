@@ -220,12 +220,19 @@ class manager(object):
         self._flags_nonbonded_used_for_pair_proxies = flags.nonbonded
       bonded_distance_cutoff = -1
       if (self.nonbonded_distance_cutoff is None):
-        self.nonbonded_distance_cutoff \
-          = self.nonbonded_params.find_max_vdw_distance(
-              nonbonded_types=self.nonbonded_types)
+        max_vdw_dist = self.nonbonded_params.find_max_vdw_distance(
+          nonbonded_types=self.nonbonded_types)
+        assert max_vdw_dist > 0
+        r = self.nonbonded_function.residual(
+          vdw_distance=max_vdw_dist, delta=max_vdw_dist*(1+1.e-6))
+        if (r != 0):
+          raise RuntimeError(
+            "Cannot automatically determine nonbonded_distance_cutoff:"
+            " nonbonded_function.residual() not zero beyond maximum VDW"
+            " distance.")
         self.nonbonded_distance_cutoff_was_determined_automatically = True
-        self.adjusted_nonbonded_distance_cutoff \
-          = self.nonbonded_distance_cutoff
+        self.nonbonded_distance_cutoff = max_vdw_dist
+        self.adjusted_nonbonded_distance_cutoff = max_vdw_dist
       asu_mappings = None
       shell_asu_tables = None
       while True:
@@ -301,17 +308,22 @@ class manager(object):
         introspection.virtual_memory_info().update_max()
         if (self._pair_proxies.nonbonded_proxies is None):
           break
-        self.adjusted_nonbonded_distance_cutoff = \
-          max(0, self._pair_proxies.nonbonded_proxies.max_vdw_distance)
-        if (self.nonbonded_distance_cutoff
-            < self._pair_proxies.nonbonded_proxies.max_vdw_distance):
+        max_vdw_dist = self._pair_proxies.nonbonded_proxies.max_vdw_distance
+        if (max_vdw_dist <= 0):
+          break
+        r = self.nonbonded_function.residual(
+          vdw_distance=max_vdw_dist, delta=max_vdw_dist*(1+1.e-6))
+        if (r != 0):
+          break
+        if (self.nonbonded_distance_cutoff < max_vdw_dist):
           if (self.nonbonded_distance_cutoff_was_determined_automatically):
             raise AssertionError("Internal error.")
           raise AssertionError(
             "nonbonded_distance_cutoff=%.6g is too small:"
             " max_vdw_distance=%.6g" % (
               self.nonbonded_distance_cutoff,
-              self._pair_proxies.nonbonded_proxies.max_vdw_distance))
+              max_vdw))
+        self.adjusted_nonbonded_distance_cutoff = max_vdw_dist
         self.effective_nonbonded_buffer \
           = current_nonbonded_distance_cutoff_plus_buffer \
           - self.adjusted_nonbonded_distance_cutoff

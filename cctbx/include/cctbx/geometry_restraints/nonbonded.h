@@ -228,6 +228,13 @@ namespace cctbx { namespace geometry_restraints {
       return c_rep * std::pow(term, rexp);
     }
 
+    //! Residual.
+    double
+    residual(double vdw_distance, double delta) const
+    {
+      return residual(term(vdw_distance, delta));
+    }
+
     //! Support for nonbonded class.
     /*! Not available in Python.
      */
@@ -283,6 +290,13 @@ namespace cctbx { namespace geometry_restraints {
     double
     residual(double term) const { return term; }
 
+    //! Residual.
+    double
+    residual(double vdw_distance, double delta) const
+    {
+      return residual(term(vdw_distance, delta));
+    }
+
     //! Support for nonbonded class.
     /*! Not available in Python.
      */
@@ -329,6 +343,13 @@ namespace cctbx { namespace geometry_restraints {
      */
     double
     residual(double term) const { return term; }
+
+    //! Residual.
+    double
+    residual(double vdw_distance, double delta) const
+    {
+      return residual(term(vdw_distance, delta));
+    }
 
     //! Support for nonbonded class.
     /*! Not available in Python.
