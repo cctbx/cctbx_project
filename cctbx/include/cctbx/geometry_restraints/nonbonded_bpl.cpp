@@ -105,6 +105,9 @@ namespace {
         .def_readonly("k_rep", &w_t::k_rep)
         .def_readonly("irexp", &w_t::irexp)
         .def_readonly("rexp", &w_t::rexp)
+        .def("residual",
+          (double (w_t::*)(double, double) const) &w_t::residual,
+            (arg_("vdw_distance"), arg_("delta")))
       ;
     }
   };
@@ -126,6 +129,9 @@ namespace {
                  &w_t::nonbonded_distance_cutoff)
         .def_readonly("k_rep", &w_t::k_rep)
         .def_readonly("irexp", &w_t::irexp)
+        .def("residual",
+          (double (w_t::*)(double, double) const) &w_t::residual,
+            (arg_("vdw_distance"), arg_("delta")))
       ;
     }
   };
@@ -144,6 +150,9 @@ namespace {
            arg_("exponent")=1)))
         .def_readonly("max_residual", &w_t::max_residual)
         .def_readonly("exponent", &w_t::exponent)
+        .def("residual",
+          (double (w_t::*)(double, double) const) &w_t::residual,
+            (arg_("vdw_distance"), arg_("delta")))
       ;
     }
   };
