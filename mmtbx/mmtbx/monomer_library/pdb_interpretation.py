@@ -568,57 +568,56 @@ class monomer_mapping(object):
         u = u_mon_lib
       if ("OXT" in u):
         mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["COO"])
-      else:
-        if (ani is not None):
-          nitrogen_hydrogens = []
-          for name in u.keys():
-            # name is a mon_lib_name
-            if (name in ["H1", "H2", "H3"]):
-              nitrogen_hydrogens.append(name)
-          nitrogen_hydrogen_translation = None
-          if (len(nitrogen_hydrogens) == 3):
-            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
-          elif (len(nitrogen_hydrogens) == 2):
-            if (self.monomer.chem_comp.id == "PRO"):
-              mod_mod_id = mon_lib_srv.mod_mod_id_dict["NH2"]
-            else:
-              mod_mod_id = mon_lib_srv.mod_mod_id_dict.get("NH2NOTPRO")
-              if (mod_mod_id is None):
-                raise RuntimeError("""\
+      if (ani is not None):
+        nitrogen_hydrogens = []
+        for name in u.keys():
+          # name is a mon_lib_name
+          if (name in ["H1", "H2", "H3"]):
+            nitrogen_hydrogens.append(name)
+        nitrogen_hydrogen_translation = None
+        if (len(nitrogen_hydrogens) == 3):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
+        elif (len(nitrogen_hydrogens) == 2):
+          if (self.monomer.chem_comp.id == "PRO"):
+            mod_mod_id = mon_lib_srv.mod_mod_id_dict["NH2"]
+          else:
+            mod_mod_id = mon_lib_srv.mod_mod_id_dict.get("NH2NOTPRO")
+            if (mod_mod_id is None):
+              raise RuntimeError("""\
 A modified version of the monomer library is required to correctly
 handle N-terminal hydrogens. The mod_NH2NOTPRO modification is missing.
 This is a copy of mod_NH2, but without the HN2-N-CD angle.
 Please contact cctbx@cci.lbl.gov for more information.""")
-            mod_mod_ids.append(mod_mod_id)
-            nitrogen_hydrogen_translation = ["HN1", "HN2"]
-          elif (len(nitrogen_hydrogens) == 1):
-            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH1"])
-            nitrogen_hydrogen_translation = ["HN"]
-          if (nitrogen_hydrogen_translation is not None):
-            j = 0
-            for i,mon_lib_name in enumerate(self.mon_lib_names):
-              if (not mon_lib_name in u): continue
-              if (mon_lib_name in ["H1", "H2", "H3"]):
-                self.mon_lib_names[i] = nitrogen_hydrogen_translation[j]
-                j += 1
-            assert j == len(nitrogen_hydrogen_translation)
-        else:
-          if (      ("H1" in u or "1H" in u)
-                and ("H2" in u or "2H" in u)
-                and ("H3" in u or "3H" in u)):
-            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
-          elif (    ("HN1" in u or "1HN" in u)
-                and ("HN2" in u or "2HN" in u)):
-            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
-          elif (    "HN" in u):
-            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH1"])
-          elif (    ("H1" in u or "1H" in u)
-                or  ("H2" in u or "2H" in u)
-                or  ("H3" in u or "3H" in u)):
-            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
-          elif (    ("HN1" in u or "1HN" in u)
-                or  ("HN2" in u or "2HN" in u)):
-            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
+          mod_mod_ids.append(mod_mod_id)
+          nitrogen_hydrogen_translation = ["HN1", "HN2"]
+        elif (len(nitrogen_hydrogens) == 1):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH1"])
+          nitrogen_hydrogen_translation = ["HN"]
+        if (nitrogen_hydrogen_translation is not None):
+          j = 0
+          for i,mon_lib_name in enumerate(self.mon_lib_names):
+            if (not mon_lib_name in u): continue
+            if (mon_lib_name in ["H1", "H2", "H3"]):
+              self.mon_lib_names[i] = nitrogen_hydrogen_translation[j]
+              j += 1
+          assert j == len(nitrogen_hydrogen_translation)
+      else:
+        if (      ("H1" in u or "1H" in u)
+              and ("H2" in u or "2H" in u)
+              and ("H3" in u or "3H" in u)):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
+        elif (    ("HN1" in u or "1HN" in u)
+              and ("HN2" in u or "2HN" in u)):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
+        elif (    "HN" in u):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH1"])
+        elif (    ("H1" in u or "1H" in u)
+              or  ("H2" in u or "2H" in u)
+              or  ("H3" in u or "3H" in u)):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
+        elif (    ("HN1" in u or "1HN" in u)
+              or  ("HN2" in u or "2HN" in u)):
+          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
     elif (self.monomer.classification in ["RNA", "DNA"]):
       if (ani is not None):
         if (ani.have_op3_or_hop3):
