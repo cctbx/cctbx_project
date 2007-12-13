@@ -406,6 +406,8 @@ expected_results = {
   ['ILE%NH3', 21, [], 'peptide', True, None],
 "val_nterm_all_h_1qn1_v2":
   ['VAL%NH3', 18, [], 'peptide', True, None],
+"phe_n_ter_c_ter_with_hydrogens":
+  ['PHE%COO%NH3', 23, [], 'peptide', True, None],
 }
 
 if (__name__ == "__main__"):
