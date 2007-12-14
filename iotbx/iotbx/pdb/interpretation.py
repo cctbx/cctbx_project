@@ -198,6 +198,7 @@ class stage_1(object):
     self.sltbrg_records = []
     self.model_serial_list = []
     self.year = None
+    self.atom_i_seqs_altconf_grouped = None
     model_serial = None
     altLoc_dict = {}
     state = empty()
@@ -645,6 +646,25 @@ class stage_1(object):
       print >> out, "ENDMDL"
     if(write_end_record):
       print >> out, "END"
+
+  def _atom_i_seqs_altconf_grouped(self):
+    self.atom_i_seqs_altconf_grouped is None
+    top = {}
+    for i_seq, aal in enumerate(self.atom_attributes_list):
+      top.setdefault(aal.chainID, {}).\
+          setdefault(aal.resSeq,  {}).\
+          setdefault(aal.resName, {}).\
+          setdefault(aal.iCode,   {}). \
+          setdefault(aal.name,    []).append(i_seq)
+    result = []
+    for v0 in top.values():
+      for v1 in v0.values():
+        for v2 in v1.values():
+          for v3 in v2.values():
+            for v4 in v3.values():
+              result.append(v4)
+    self.atom_i_seqs_altconf_grouped = result
+    return self.atom_i_seqs_altconf_grouped
 
 class altLoc_grouping(object):
 
