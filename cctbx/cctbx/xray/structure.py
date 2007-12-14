@@ -157,13 +157,16 @@ class structure(crystal.special_position_settings):
   def adjust_u_iso(self):
     self._scatterers.adjust_u_iso()
 
-  def adjust_occupancy(self, occ_max, occ_min):
+  def adjust_occupancy(self, occ_max, occ_min, selection=None):
     occ = self._scatterers.extract_occupancies()
     sel = (occ >= occ_max)
     occ = occ.set_selected(sel, occ_max)
     sel = (occ <= occ_min)
     occ = occ.set_selected(sel, occ_min)
-    self._scatterers.set_occupancies(occ)
+    if(selection is None):
+      self._scatterers.set_occupancies(occ)
+    else:
+      self._scatterers.set_occupancies(occ, selection)
 
   def all_selection(self):
     return flex.bool(self._scatterers.size(), True)
