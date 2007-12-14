@@ -73,7 +73,7 @@ def exercise_nonbonded(nonbonded_type, repulsion_function):
     sites = random_sites(n_sites=2)
     r = nonbonded_type(
       sites=sites,
-      vdw_distance=0,
+      vdw_distance=1,
       function=repulsion_function)
     vdw_distance = r.delta
     residual_obj = residual_functor(
@@ -392,6 +392,12 @@ def exercise():
       repulsion_function=geometry_restraints.cos_repulsion_function(
         max_residual=13,
         exponent=exponent))
+  for norm_height_at_vdw_distance in [0.1,0.2,0.3]:
+    exercise_nonbonded(
+      nonbonded_type=geometry_restraints.nonbonded_gaussian,
+      repulsion_function=geometry_restraints.gaussian_repulsion_function(
+        max_residual=12,
+        norm_height_at_vdw_distance=norm_height_at_vdw_distance))
   exercise_angle()
   exercise_dihedral()
   exercise_chirality(verbose="--verbose" in sys.argv[1:])

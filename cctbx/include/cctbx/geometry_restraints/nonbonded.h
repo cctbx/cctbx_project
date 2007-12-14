@@ -239,7 +239,8 @@ namespace cctbx { namespace geometry_restraints {
     /*! Not available in Python.
      */
     double
-    gradient_factor(double delta, double /* vdw_distance */, double term) const
+    d_residual_d_delta_over_delta(
+      double delta, double /* vdw_distance */, double term) const
     {
       if (term <= 0 || delta == 0) return 0;
       double d_term_d_r;
@@ -301,7 +302,8 @@ namespace cctbx { namespace geometry_restraints {
     /*! Not available in Python.
      */
     double
-    gradient_factor(double delta, double /* vdw_distance */, double term) const
+    d_residual_d_delta_over_delta(
+      double delta, double /* vdw_distance */, double term) const
     {
       if (term == 0) return 0;
       return -irexp * term / delta / delta;
@@ -355,7 +357,8 @@ namespace cctbx { namespace geometry_restraints {
     /*! Not available in Python.
      */
     double
-    gradient_factor(double delta, double vdw_distance, double /* term */) const
+    d_residual_d_delta_over_delta(
+      double delta, double vdw_distance, double /* term */) const
     {
       if (delta == 0 || delta >= vdw_distance) return 0;
       using scitbx::constants::pi;
@@ -375,6 +378,72 @@ namespace cctbx { namespace geometry_restraints {
 
     double max_residual;
     double exponent;
+  };
+
+  //! energy(delta) = max_residual*exp(-delta**2/f_sq)
+  /*! f_sq = -vdw_distance**2 / log(norm_height_at_vdw_distance)
+   */
+  struct gaussian_repulsion_function
+  {
+    //! Definition of coefficients.
+    gaussian_repulsion_function(
+      double max_residual_,
+      double norm_height_at_vdw_distance=0.1)
+    :
+      max_residual(max_residual_)
+    {
+      CCTBX_ASSERT(norm_height_at_vdw_distance < 1);
+      CCTBX_ASSERT(norm_height_at_vdw_distance > 0);
+      log_norm_height_at_vdw_distance = std::log(norm_height_at_vdw_distance);
+      CCTBX_ASSERT(log_norm_height_at_vdw_distance < 0);
+    }
+
+    double
+    norm_height_at_vdw_distance() const
+    {
+      return std::exp(log_norm_height_at_vdw_distance);
+    }
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    term(double vdw_distance, double delta) const
+    {
+      double minus_f_sq = (vdw_distance * vdw_distance)
+                        / log_norm_height_at_vdw_distance;
+      CCTBX_ASSERT(minus_f_sq != 0);
+      return max_residual * std::exp(delta*delta / minus_f_sq);
+    }
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    residual(double term) const { return term; }
+
+    //! Residual.
+    double
+    residual(double vdw_distance, double delta) const
+    {
+      return residual(term(vdw_distance, delta));
+    }
+
+    //! Support for nonbonded class.
+    /*! Not available in Python.
+     */
+    double
+    d_residual_d_delta_over_delta(
+      double /* delta */, double vdw_distance, double term) const
+    {
+      double minus_f_sq = (vdw_distance * vdw_distance)
+                        / log_norm_height_at_vdw_distance;
+      CCTBX_ASSERT(minus_f_sq != 0);
+      return 2 * term / minus_f_sq;
+    }
+
+    double max_residual;
+    double log_norm_height_at_vdw_distance;
   };
 
   //! Residual and gradient calculations for nonbonded restraints.
@@ -464,7 +533,8 @@ namespace cctbx { namespace geometry_restraints {
       gradient_0() const
       {
         return diff_vec
-             * function.gradient_factor(delta, vdw_distance, term_);
+             * function.d_residual_d_delta_over_delta(
+                 delta, vdw_distance, term_);
       }
 
       //! Gradients with respect to both sites.

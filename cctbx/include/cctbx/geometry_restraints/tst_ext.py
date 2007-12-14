@@ -464,6 +464,12 @@ def exercise_nonbonded():
       proxies=proxies,
       function=geometry_restraints.cos_repulsion_function(max_residual=13)),
     [3.74165738677]*2)
+  assert approx_equal(geometry_restraints.nonbonded_deltas(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      function=geometry_restraints.gaussian_repulsion_function(
+        max_residual=12)),
+    [3.74165738677]*2)
   assert approx_equal(geometry_restraints.nonbonded_residuals(
       sites_cart=sites_cart,
       proxies=proxies,
@@ -479,6 +485,12 @@ def exercise_nonbonded():
       proxies=proxies,
       function=geometry_restraints.cos_repulsion_function(max_residual=13)),
     [1.9279613709216095]*2)
+  assert approx_equal(geometry_restraints.nonbonded_residuals(
+      sites_cart=sites_cart,
+      proxies=proxies,
+      function=geometry_restraints.gaussian_repulsion_function(
+        max_residual=12, norm_height_at_vdw_distance=0.2)),
+    [4.8725695136639997]*2)
   residual_sum = geometry_restraints.nonbonded_residual_sum(
     sites_cart=sites_cart,
     proxies=proxies,
@@ -497,6 +509,13 @@ def exercise_nonbonded():
     gradient_array=None,
     function=geometry_restraints.cos_repulsion_function(max_residual=13))
   assert approx_equal(residual_sum, 2*1.9279613709216095)
+  residual_sum = geometry_restraints.nonbonded_residual_sum(
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None,
+    function=geometry_restraints.gaussian_repulsion_function(
+      max_residual=12, norm_height_at_vdw_distance=0.2))
+  assert approx_equal(residual_sum, 2*4.8725695136639997)
   #
   sites_cart = flex.vec3_double([[1,2,3],[2,3,4]])
   asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
@@ -620,6 +639,34 @@ def exercise_nonbonded():
       gradient_array=gradient_array)
     assert approx_equal(r.residual(), pr)
     assert approx_equal(r.gradients(), gradient_array)
+  #
+  expected_residuals = iter([
+    1.39552236695,
+    2.66705891104,
+    3.89565157972])
+  expected_gradients = iter([
+    2.45678379644,
+    2.88800522497,
+    2.92825483126])
+  for norm_height_at_vdw_distance in [0.1, 0.2, 0.3]:
+    f = geometry_restraints.gaussian_repulsion_function(
+      max_residual=12,
+      norm_height_at_vdw_distance=norm_height_at_vdw_distance)
+    assert approx_equal(f.max_residual, 12)
+    assert approx_equal(
+      f.norm_height_at_vdw_distance(), norm_height_at_vdw_distance)
+    assert approx_equal(
+      f.residual(vdw_distance=3, delta=3), 12*norm_height_at_vdw_distance)
+    assert approx_equal(
+      f.residual(vdw_distance=3, delta=2.9), expected_residuals.next())
+    r = geometry_restraints.nonbonded_gaussian(
+      sites=list(sites_cart),
+      vdw_distance=p.vdw_distance,
+      function=f)
+    assert approx_equal(r.diff_vec, [-1,-1,-1])
+    assert approx_equal(r.delta**2, 3)
+    e = expected_gradients.next()
+    assert approx_equal(r.gradients(), [[e]*3,[-e]*3])
   #
   sorted_asu_proxies = geometry_restraints.nonbonded_sorted_asu_proxies(
     asu_mappings=asu_mappings)

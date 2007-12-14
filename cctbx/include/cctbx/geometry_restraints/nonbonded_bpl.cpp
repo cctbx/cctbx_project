@@ -157,6 +157,27 @@ namespace {
     }
   };
 
+  struct gaussian_repulsion_function_wrappers
+  {
+    typedef gaussian_repulsion_function w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("gaussian_repulsion_function", no_init)
+        .def(init<double, optional<double> >(
+          (arg_("max_residual"),
+           arg_("norm_height_at_vdw_distance")=0.1)))
+        .def_readonly("max_residual", &w_t::max_residual)
+        .def("norm_height_at_vdw_distance", &w_t::norm_height_at_vdw_distance)
+        .def("residual",
+          (double (w_t::*)(double, double) const) &w_t::residual,
+            (arg_("vdw_distance"), arg_("delta")))
+      ;
+    }
+  };
+
   template <typename NonbondedFunction>
   struct nonbonded_wrappers
   {
@@ -256,15 +277,19 @@ namespace {
     prolsq_repulsion_function_wrappers::wrap();
     inverse_power_repulsion_function_wrappers::wrap();
     cos_repulsion_function_wrappers::wrap();
+    gaussian_repulsion_function_wrappers::wrap();
     nonbonded_wrappers<prolsq_repulsion_function>::wrap(
       "nonbonded_prolsq");
     nonbonded_wrappers<inverse_power_repulsion_function>::wrap(
       "nonbonded_inverse_power");
     nonbonded_wrappers<cos_repulsion_function>::wrap(
       "nonbonded_cos");
+    nonbonded_wrappers<gaussian_repulsion_function>::wrap(
+      "nonbonded_gaussian");
     wrap_functions(scitbx::type_holder<prolsq_repulsion_function>());
     wrap_functions(scitbx::type_holder<inverse_power_repulsion_function>());
     wrap_functions(scitbx::type_holder<cos_repulsion_function>());
+    wrap_functions(scitbx::type_holder<gaussian_repulsion_function>());
   }
 
 } // namespace <anonymous>
