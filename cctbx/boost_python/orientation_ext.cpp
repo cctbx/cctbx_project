@@ -42,6 +42,9 @@ namespace cctbx { namespace boost_python { namespace {
         .def("direct_mean_square_difference",
           &crystal_orientation::direct_mean_square_difference,
             (arg_("other")))
+        .def("best_similarity_transformation",
+          &crystal_orientation::best_similarity_transformation,
+            (arg_("other"), arg_("unimodular_generator_range")))
       ;
     }
   };
