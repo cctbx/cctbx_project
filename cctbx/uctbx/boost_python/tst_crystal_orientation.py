@@ -1,8 +1,8 @@
 from math import pi, cos, asin, sqrt
 import pickle, StringIO
 from cctbx.array_family import flex
-from cctbx import uctbx
-from cctbx.crystal_orientation import crystal_orientation
+from cctbx import uctbx, sgtbx
+from cctbx.crystal_orientation import crystal_orientation, basis_type
 from scitbx import matrix
 from libtbx.test_utils import approx_equal, not_approx_equal
 import random
@@ -43,6 +43,24 @@ def exercise_change_basis():
   O1.change_basis(reindex)
   assert approx_equal(O1.unit_cell().parameters(),
                       (47.6861, 47.659, 49.6444, 73.8222, 62.9615, 73.5269),1E-3)
+
+  rhombohedral_test = crystal_orientation((
+    0.002737747939994224, -0.0049133768326561278, 0.0023634556852316566,
+    0.0062204242383498082, 0.006107332242442573, 0.0047036576949967112,
+    -0.0057640198753891566, -0.0025891042237382953, 0.0023674924674260264),basis_type.reciprocal)
+  rhombohedral_reference = crystal_orientation((
+    -0.0076361080646872997, 0.0049061665572297979, 0.0023688116121433865,
+    -0.00011109895272056645, -0.0061110173438898583, 0.0047062769738302939,
+     0.0031790372319626674, 0.0025876279220667518, 0.0023669727051432361),basis_type.reciprocal)
+  # Find a similarity transform that maps the two cells onto each other
+  c_inv_r_best = rhombohedral_test.best_similarity_transformation(
+      other = rhombohedral_reference, unimodular_generator_range=1)
+  c_inv_r_int = tuple([int(round(ij,0)) for ij in c_inv_r_best])
+  assert c_inv_r_int == (-1, 0, 0, 1, -1, 0, 0, 0, 1)
+  c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r_int))
+  cb_op = sgtbx.change_of_basis_op(c_inv)
+  rhombohedral_test.change_basis(cb_op)
+  assert rhombohedral_test.direct_mean_square_difference(rhombohedral_reference) < 0.1
 
 def exercise_compare():
   pass
