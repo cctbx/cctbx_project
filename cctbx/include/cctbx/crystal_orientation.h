@@ -142,6 +142,14 @@ namespace cctbx {
                  direct_matrix(),other.direct_matrix())/3;
       }
 
+      //! Best change of basis for superimposing onto another orientation.
+      /*! Used for aligning two orientations determined independently from the same
+          crystal sample. The rotation part of an inverse cb_op is returned.
+       */
+      oc_mat3
+      best_similarity_transformation(crystal_orientation const& other,
+       int unimodular_generator_range=1) const;
+
     protected:
       //! Internal representation of the reciprocal matrix
       oc_mat3 Astar_;
