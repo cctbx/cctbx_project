@@ -862,3 +862,18 @@ def print_header(line, out=None):
     out_string = "\n"+"="*(fill_l-1)+" "+line+" "+"="*(fill_r-2)+"\n"
   print >> out, out_string
   out.flush()
+
+def get_atom_selection(pdb_file_name, selection_string, iselection = False):
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv = monomer_library.server.server(),
+    ener_lib    = monomer_library.server.ener_lib(),
+    file_name   = pdb_file_name,
+    log         = None)
+  xray_structure = processed_pdb_file.xray_structure(show_summary = False)
+  result = get_atom_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    selection_strings = [selection_string],
+    iselection        = iselection)
+  assert len(result) == 1
+  return result[0]
