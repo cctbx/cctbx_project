@@ -117,7 +117,7 @@ class metric_subgroups:
           not str(ref_subsym.space_group_info()) in bravais_types.centric):
         continue
       # Choose best setting for monoclinic and orthorhombic systems
-      cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell()
+      cb_op_best_cell = self.change_of_basis_op_to_best_cell(ref_subsym)
       best_subsym = ref_subsym.change_basis(cb_op_best_cell)
       # Total basis transformation
       cb_op_inp_best = cb_op_best_cell * cb_op_minimum_ref * self.cb_op_inp_minimum
@@ -142,6 +142,9 @@ class metric_subgroups:
                                   reduced_cell=self.minimum_symmetry.unit_cell(),
                                   space_group=acentric_supergroup)
                                })
+  def change_of_basis_op_to_best_cell(self,ref_subsym):
+    return ref_subsym.change_of_basis_op_to_best_cell()
+
   def show_input(self):
     print
     print "Input"
