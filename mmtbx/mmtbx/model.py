@@ -42,19 +42,6 @@ class xh_connectivity_table(object):
         const_vect = flex.double(scatterers[i_h].site)- \
           flex.double(scatterers[i_x].site)
         self.table.append([i_x, i_h, const_vect, proxy.distance_ideal])
-    #hd_sel = xray_structure.hd_selection()
-    #self.index_table = []
-    #cntr = 0
-    #for i_seq, sel in enumerate(hd_sel):
-    #  if(sel):
-    #    pass#self.index_table.append([i_seq, cntr])
-    #  else:
-    #    self.index_table.append([i_seq, cntr])
-    #    cntr += 1
-    ##for i in self.index_table:
-    ##  print i
-    ##print
-    #self.index_dict = dict([(x[0], x[1]) for x in self.index_table])
 
 class manager(object):
   def __init__(self, xray_structure,
@@ -200,9 +187,12 @@ class manager(object):
                                                         ~self.dbe_selection, True)
 
          if 1:
+           # XXX 1) DO THIS WHEN INFLATING. THIS WILL NOT PROPERLY INFLATE IF THERE ARE ALT.CONF.
+           # XXX 2) set to refine q fro only participating in IAS atoms, and not all
            self.refinement_flags.individual_occupancies = True
-           self.refinement_flags.occupancies_individual = [flex.bool(
-                                self.xray_structure.scatterers().size(), True)]
+           self.refinement_flags.occupancies_individual = \
+             [[i] for i in flex.bool(
+               self.xray_structure.scatterers().size(), True).iselection()]
 
          if 0:
            self.refinement_flags.individual_occupancies = True
@@ -241,6 +231,7 @@ class manager(object):
        self.solvent_selection = self.solvent_selection[:n_non_ias]
        self.dbe_selection = None
        self.xray_structure.scattering_type_registry().show()
+
 
   def write_dbe_pdb_file(self, out = None):
     if(out is None):
