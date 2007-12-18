@@ -308,6 +308,7 @@ class tls_xray_target_minimizer(object):
                run_finite_differences_test = False,
                correct_adp = True):
     adopt_init_args(self, locals())
+    fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     xray.set_scatterer_grad_flags(scatterers = fmodel.xray_structure.scatterers(),
                                   u_aniso     = True)
     if(self.run_finite_differences_test): self.correct_adp = False
