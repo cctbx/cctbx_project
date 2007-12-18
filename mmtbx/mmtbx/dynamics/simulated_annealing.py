@@ -111,8 +111,8 @@ def run_simulated_annealing(simulated_annealing_params,
                                         update_f_ordered_solvent = False,
                                         out                      = out)
     fmodel.info().show_rfactors_targets_scales_overall(
-      header = "2:SA temperatrure = "+str(sa_temp), out = out)
+      header = "2:SA temperature = "+str(sa_temp), out = out)
 
     geom_stat = model.show_geometry_statistics(
-      message = "SA temperatrure = "+str(sa_temp))
+      message = "SA temperature = "+str(sa_temp))
     sa_temp -= simulated_annealing_params.cool_rate
