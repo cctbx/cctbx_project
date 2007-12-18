@@ -609,7 +609,8 @@ class manager(manager_mixin):
          b_base                       = self.sfg_params.b_base,
          wing_cutoff                  = self.sfg_params.wing_cutoff,
          exp_table_one_over_step_size =
-                         self.sfg_params.exp_table_one_over_step_size).f_calc()
+                         self.sfg_params.exp_table_one_over_step_size
+                         ).f_calc()
        time_f_calc += timer.elapsed()
     if(update_f_ordered_solvent):
        nu_manager = max_like_non_uniform.ordered_solvent_distribution(

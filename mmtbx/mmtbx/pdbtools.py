@@ -322,11 +322,11 @@ class modify(object):
         text = "Rigid body shift",
         selection = selection)
       if (euler_angle_convention == "zyz"):
-        rot_obj = rigid_body.rb_mat_euler(phi = rot[0],
+        rot_obj = rigid_body.rb_mat_zyz(phi = rot[0],
                                           psi = rot[1],
                                           the = rot[2])
       else:
-        rot_obj = rigid_body.rb_mat(phi = rot[0],
+        rot_obj = rigid_body.rb_mat_xyz(phi = rot[0],
                                     psi = rot[1],
                                     the = rot[2])
       self.xray_structure.apply_rigid_body_shift(
@@ -353,15 +353,33 @@ class modify(object):
         label = "Atoms to be removed: ")
 
 class fmodel_from_xray_structure(object):
-  def __init__(self, xray_structure, f_obs = None, params = None):
+  def __init__(self, xray_structure, f_obs = None, params = None,
+                     target_name = "ml", r_free_flags_fraction = 0.1):
     if(params is None):
       params = fmodel_from_xray_structure_master_params.extract()
     if(f_obs is None):
       hr = None
       try: hr = params.high_resolution
       except: self.Sorry_high_resolution_is_not_defined()
+      if(params.scattering_table == "neutron"):
+        xray_structure.switch_to_neutron_scattering_dictionary()
+      else:
+        xray_structure.scattering_type_registry(
+          table = params.scattering_table, d_min = hr)
       if(hr is None): self.Sorry_high_resolution_is_not_defined()
       f_obs = xray_structure.structure_factors(d_min = hr).f_calc()
+      sfga = params.structure_factors_accuracy
+      f_obs = f_obs.structure_factors_from_scatterers(
+         xray_structure = xray_structure,
+         algorithm                    = sfga.algorithm,
+         cos_sin_table                = sfga.cos_sin_table,
+         grid_resolution_factor       = sfga.grid_resolution_factor,
+         quality_factor               = sfga.quality_factor,
+         u_base                       = sfga.u_base,
+         b_base                       = sfga.b_base,
+         wing_cutoff                  = sfga.wing_cutoff,
+         exp_table_one_over_step_size = sfga.exp_table_one_over_step_size
+         ).f_calc()
       lr = None
       try: lr = params.low_resolution
       except: RuntimeError("Parameter scope does not have 'low_resolution'.")
@@ -377,19 +395,18 @@ class fmodel_from_xray_structure(object):
       except AttributeError: pass
       except: raise RuntimeError
       f_obs = f_obs.resolution_filter(d_max = lr, d_min = hr)
-    if(params.scattering_table == "neutron"):
-      xray_structure.switch_to_neutron_scattering_dictionary()
-    else:
-      xray_structure.scattering_type_registry(
-        table = params.scattering_table,
-        d_min = f_obs.d_min())
-    r_free_flags = f_obs.generate_r_free_flags(fraction = 0.1)
+      if(params.scattering_table == "neutron"):
+        xray_structure.switch_to_neutron_scattering_dictionary()
+      else:
+        xray_structure.scattering_type_registry(
+          table = params.scattering_table, d_min = hr)
+    r_free_flags = f_obs.generate_r_free_flags(fraction = r_free_flags_fraction)
     fmodel = mmtbx.f_model.manager(
       xray_structure               = xray_structure,
       sf_and_grads_accuracy_params = params.structure_factors_accuracy,
       r_free_flags                 = r_free_flags,
       mask_params                  = params.mask,
-      target_name                  = "ml",
+      target_name                  = target_name,
       f_obs                        = abs(f_obs),
       k_sol                        = params.k_sol,
       b_sol                        = params.b_sol,
@@ -404,6 +421,7 @@ class fmodel_from_xray_structure(object):
     except: raise RuntimeError
     self.f_model = f_model
     self.params = params
+    self.fmodel = fmodel
 
   def Sorry_high_resolution_is_not_defined(self):
     raise Sorry("High resolution limit is not defined. "\

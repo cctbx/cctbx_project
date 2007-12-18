@@ -17,14 +17,14 @@ time_rigid_body_total = 0.0
 
 def euler(phi, psi, the, convention):
   if(convention == "zyz"):
-     result = rb_mat_euler(the=the, psi=psi, phi=phi)
+     result = rb_mat_zyz(the=the, psi=psi, phi=phi)
   elif(convention == "xyz"):
-     result = rb_mat(the=the, psi=psi, phi=phi)
+     result = rb_mat_xyz(the=the, psi=psi, phi=phi)
   else:
      raise Sorry("\nWrong rotation convention\n")
   return result
 
-class rb_mat_euler(object):
+class rb_mat_zyz(object):
 
    def __init__(self, the, psi, phi):
      the = the * math.pi/180
@@ -150,7 +150,7 @@ class rigid_body_shift_accumulator(object):
      print >> out, "|"+"-"*77+"|"
      print >> out
 
-class rb_mat(object):
+class rb_mat_xyz(object):
 
    def __init__(self, phi, psi, the):
      phi = phi * math.pi/180
@@ -239,12 +239,12 @@ class rb_mat(object):
      rm = matrix.sqr((r11,r12,r13, r21,r22,r23, r31,r32,r33))
      return rm
 
-multiple_zones_params = iotbx.phil.parse(input_string="""\
+multiple_zones_params_str = """\
   min_number_of_reflections = 100
     .type = int
     .help = Number of reflections that defines the first lowest resolution \
             zone for multiple_zones protocol
-  multi_body_factor_min_number_of_reflections = 1
+  multi_body_factor = 1
     .type = float
   zone_exponent = 4.0
     .type = float
@@ -259,7 +259,41 @@ multiple_zones_params = iotbx.phil.parse(input_string="""\
   number_of_zones = 5
     .type = int
     .help = Number of resolution zones for MZ protocol
-""")
+"""
+
+master_params = iotbx.phil.parse("""\
+    mode = *first_macro_cycle_only every_macro_cycle
+      .type = choice
+      .help = Defines how many times the rigid body refinement is performed \
+              during refinement run. first_macro_cycle_only to run only once \
+              at first macrocycle, every_macro_cycle to do rigid body \
+              refinement main.number_of_macro_cycles times
+    target = ls_wunit_k1 *ml
+      .type = choice
+      .help = Rigid body refinement target function: least-squares or \
+              maximum-likelihood
+    refine_rotation = True
+      .type = bool
+      .help = Only rotation is refined (translation is fixed).
+    refine_translation = True
+      .type = bool
+      .help = Only translation is refined (rotation is fixed).
+    max_iterations = 25
+      .type = int
+      .help = Number of LBFGS minimization iterations
+    bulk_solvent_and_scale = True
+      .type = bool
+      .help = Bulk-solvent and scaling within rigid body refinement (needed \
+              since large rigid body shifts invalidate the mask).
+    euler_angle_convention = *xyz zyz
+      .type = choice
+      .expert_level=2
+      .help = Euler angles convention
+    lbfgs_line_search_max_function_evaluations = 10
+      .type = int
+      .expert_level=2
+    %s
+""" % multiple_zones_params_str)
 
 def split_resolution_range(
       d_spacings,
@@ -359,39 +393,31 @@ def split_resolution_range(
 
 class manager(object):
   def __init__(self, fmodel,
-                     selections              = None,
-                     refine_r                = True,
-                     refine_t                = True,
-                     r_initial               = None,
-                     t_initial               = None,
-                     nref_min                = 1000,
-                     multi_body_factor_nref_min = 1,
-                     zone_exponent           = 3.0,
-                     max_iterations          = 50,
-                     bulk_solvent_and_scale  = True,
-                     high_resolution         = 2.0,
-                     max_low_high_res_limit  = 8.0,
-                     bss                     = None,
-                     euler_angle_convention  = "xyz",
-                     lbfgs_maxfev            = 10,
-                     number_of_zones         = 5,
-                     log                     = None,
-                     monitors = None):
+                     selections = None,
+                     params     = None,
+                     r_initial  = None,
+                     t_initial  = None,
+                     bss        = None,
+                     log        = None,
+                     monitors   = None):
     global time_rigid_body_total
+    self.params = params
+    if(params is None):
+      self.params = fmodel_from_xray_structure_master_params.extract()
     timer_rigid_body_total = user_plus_sys_time()
     save_r_work = fmodel.r_work()
     save_r_free = fmodel.r_free()
     save_xray_structure = fmodel.xray_structure.deep_copy_scatterers()
-    xray.set_scatterer_grad_flags(
-                               scatterers = fmodel.xray_structure.scatterers(),
-                               site       = True)
-    self.euler_angle_convention = euler_angle_convention
     if(log is None): log = sys.stdout
     if(selections is None):
-       selections = []
-       selections.append(flex.bool(fmodel.xray_structure.scatterers().size(),
-                                                                         True))
+      selections = []
+      selections.append(flex.bool(
+        fmodel.xray_structure.scatterers().size(), True).iselection())
     else: assert len(selections) > 0
+    fmodel.xray_structure.scatterers().flags_set_grads(state=False)
+    fmodel.xray_structure.scatterers().flags_set_grad_site(
+      iselection = flex.bool(fmodel.xray_structure.scatterers().size(), True
+      ).iselection())
     self.total_rotation = []
     self.total_translation = []
     for item in selections:
@@ -409,22 +435,22 @@ class manager(object):
     if(fmodel_copy.mask_params is not None):
        fmodel_copy.mask_params.verbose = -1
     d_mins = split_resolution_range(
-      d_spacings = fmodel_copy.f_obs_w.d_spacings().data(),
-      n_bodies = len(selections),
-      n_ref_first = nref_min,
-      multi_body_factor_n_ref_first = multi_body_factor_nref_min,
-      d_low = max_low_high_res_limit,
-      d_high = high_resolution,
-      number_of_zones = number_of_zones,
-      zone_exponent = zone_exponent,
-      log = log)
+      d_spacings                    = fmodel_copy.f_obs_w.d_spacings().data(),
+      n_bodies                      = len(selections),
+      n_ref_first                   = params.min_number_of_reflections,
+      multi_body_factor_n_ref_first = params.multi_body_factor,
+      d_low                         = params.max_low_high_res_limit,
+      d_high                        = params.high_resolution,
+      number_of_zones               = params.number_of_zones,
+      zone_exponent                 = params.zone_exponent,
+      log                           = log)
     print >> log
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
               t_vec  = self.total_translation,
               header = "Start",
               out    = log)
-    if (number_of_zones == 1 or monitors is None):
+    if (params.number_of_zones == 1 or monitors is None):
       monitors_call_back_after_collect = None
     else:
       monitors_call_back_after_collect = monitors.call_back_after_collect
@@ -447,7 +473,7 @@ class manager(object):
         else:
            n_rigid_body_minimizer_cycles = min(int(res),4)
         for i_macro_cycle in xrange(n_rigid_body_minimizer_cycles):
-            if(bss is not None and bulk_solvent_and_scale):
+            if(bss is not None and params.bulk_solvent_and_scale):
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   save_bss_anisotropic_scaling = bss.anisotropic_scaling
                   bss.anisotropic_scaling=False
@@ -457,15 +483,15 @@ class manager(object):
                if(fmodel_copy.f_obs.d_min() > 3.0):
                   bss.anisotropic_scaling=save_bss_anisotropic_scaling
             minimized = rigid_body_minimizer(
-                          fmodel                 = fmodel_copy,
-                          selections             = selections,
-                          r_initial              = r_initial,
-                          t_initial              = t_initial,
-                          refine_r               = refine_r,
-                          refine_t               = refine_t,
-                          max_iterations         = max_iterations,
-                          euler_angle_convention = self.euler_angle_convention,
-                          lbfgs_maxfev           = lbfgs_maxfev)
+              fmodel                 = fmodel_copy,
+              selections             = selections,
+              r_initial              = r_initial,
+              t_initial              = t_initial,
+              refine_r               = params.refine_rotation,
+              refine_t               = params.refine_translation,
+              max_iterations         = params.max_iterations,
+              euler_angle_convention = params.euler_angle_convention,
+              lbfgs_maxfev = params.lbfgs_line_search_max_function_evaluations)
             rotation_matrices = []
             translation_vectors = []
             for i in xrange(len(selections)):
@@ -474,7 +500,7 @@ class manager(object):
                 rot_obj = euler(phi        = minimized.r_min[i][0],
                                 psi        = minimized.r_min[i][1],
                                 the        = minimized.r_min[i][2],
-                                convention = self.euler_angle_convention)
+                                convention = params.euler_angle_convention)
                 rotation_matrices.append(rot_obj.rot_mat())
                 translation_vectors.append(minimized.t_min[i])
             new_xrs = apply_transformation(
@@ -489,21 +515,22 @@ class manager(object):
             rwork = minimized.fmodel.r_work()
             rfree = minimized.fmodel.r_free()
             assert approx_equal(rwork, fmodel_copy.r_work())
-        fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
-                                     update_f_calc  = True,
-                                     update_f_mask  = True,
-                                     out            = log)
-        if(bss is not None and bulk_solvent_and_scale):
+        fmodel.update_xray_structure(
+          xray_structure = fmodel_copy.xray_structure,
+          update_f_calc  = True,
+          update_f_mask  = True,
+          out            = log)
+        if(bss is not None and params.bulk_solvent_and_scale):
           fmodel.update_solvent_and_scale(params = bss, out = log, verbose= -1)
         self.show(fmodel = fmodel,
-              r_mat  = self.total_rotation,
-              t_vec  = self.total_translation,
-              header = "Rigid body refinement",
-              out    = log)
+                  r_mat  = self.total_rotation,
+                  t_vec  = self.total_translation,
+                  header = "Rigid body refinement",
+                  out    = log)
         if (monitors_call_back_after_collect is not None):
           monitors_call_back_after_collect(
             monitor=None, model=None, fmodel=fmodel)
-    if(bss is not None and bulk_solvent_and_scale):
+    if(bss is not None and params.bulk_solvent_and_scale):
       fmodel.update_solvent_and_scale(out = log, verbose = -1)
     print >> log
     self.show(fmodel = fmodel,
@@ -513,12 +540,12 @@ class manager(object):
               out    = log)
     print >> log
     self.evaluate_after_end(fmodel, save_r_work, save_r_free,
-                                                      save_xray_structure, log)
+      save_xray_structure, log)
     self.fmodel = fmodel
     time_rigid_body_total += timer_rigid_body_total.elapsed()
 
   def evaluate_after_end(self, fmodel, save_r_work, save_r_free,
-                                                     save_xray_structure, log):
+                         save_xray_structure, log):
     r_work = fmodel.r_work()
     r_free = fmodel.r_free()
     if((r_work > save_r_work and abs(r_work-save_r_work) > 0.005) or
@@ -551,12 +578,12 @@ class manager(object):
     fmodel_info._rfactors_and_bulk_solvent_and_scale_params(out=out)
     print >> out, "| "+"  "*38+"|"
     print >> out,"| Rigid body shift (Euler angles %s):"% \
-                                        self.euler_angle_convention+" "*40 +"|"
+      self.params.euler_angle_convention+" "*40 +"|"
     print_statistics.show_rigid_body_rotations_and_translations(
       out=out,
       prefix="",
       frame="|",
-      euler_angle_convention=self.euler_angle_convention,
+      euler_angle_convention= self.params.euler_angle_convention,
       rotations=r_mat,
       translations=t_vec)
     print >> out, "|" +"-"*77+"|"
@@ -570,8 +597,8 @@ class rigid_body_minimizer(object):
                refine_r,
                refine_t,
                max_iterations,
-               euler_angle_convention = "xyz",
-               lbfgs_maxfev = 10):
+               euler_angle_convention,
+               lbfgs_maxfev):
     adopt_init_args(self, locals())
     self.fmodel_copy = self.fmodel.deep_copy()
     self.target_functor = self.fmodel_copy.target_functor()
@@ -593,15 +620,15 @@ class rigid_body_minimizer(object):
     self.x = self.pack(self.r_min, self.t_min)
     self.n = self.x.size()
     self.minimizer = lbfgs.run(
-               target_evaluator = self,
-               core_params = lbfgs.core_parameters(
-                    maxfev = lbfgs_maxfev),
-               termination_params = lbfgs.termination_parameters(
-                    max_iterations = max_iterations),
-               exception_handling_params = lbfgs.exception_handling_parameters(
-                    ignore_line_search_failed_step_at_lower_bound = True,
-                    ignore_line_search_failed_step_at_upper_bound = True)
-                              )
+      target_evaluator = self,
+      core_params = lbfgs.core_parameters(
+           maxfev = lbfgs_maxfev),
+      termination_params = lbfgs.termination_parameters(
+           max_iterations = max_iterations),
+      exception_handling_params = lbfgs.exception_handling_parameters(
+           ignore_line_search_failed_step_at_lower_bound = True,
+           ignore_line_search_failed_step_at_upper_bound = True)
+                     )
     self.compute_functional_and_gradients(suppress_gradients=True)
     del self.x
 
