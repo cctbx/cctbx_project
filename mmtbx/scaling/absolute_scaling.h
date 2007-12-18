@@ -162,40 +162,46 @@ namespace absolute_scaling{
 
     typedef FloatType f_t;
 
-    f_t kp=std::exp(-p_scale);
+    f_t arg = -p_scale;
+    if(arg > 706.0) arg=706.0; // avoid overflow problem
+    f_t kp=std::exp(arg);
     f_t Bp = p_B_wilson;
-
     f_t sigp = epsilon*sig_sq*(1.0+gamma);
     f_t sigd = sigma_f_obs*sigma_f_obs;
     f_t i_obs = f_obs*f_obs;
-    f_t C = kp*kp*sigd*std::exp(Bp*d_star_sq/2.0)+sigp;
-
+    arg = Bp*d_star_sq;
+    if(arg > 706.0) arg=706.0; // avoid overflow problem
+    f_t exp_bp_ds_over_2 = std::exp(arg/2.0);
+    f_t exp_bp_ds = std::exp(arg);
+    f_t C = kp*kp*sigd*exp_bp_ds_over_2+sigp;
+    CCTBX_ASSERT(C != 0.0); // avoid numerical issues
+    f_t c_scale = 1./C;
+    f_t c_scale_sq = c_scale * c_scale;
+    if(C > 1.e+30) {
+      f_t c_scale = 0.0;
+      f_t c_scale_sq = 0.0;
+    }
     f_t grad_scale = 0.0;
     f_t grad_B = 0.0;
-
     scitbx::af::tiny<double,2> gradients(0.0);
-
     if (centric){
-      grad_scale = -std::exp(Bp*d_star_sq)*kp*kp*kp*i_obs*sigd/(C*C)
-                 + std::exp(Bp*d_star_sq/2.0)*kp*i_obs/(C)
-                 + std::exp(Bp*d_star_sq/2.0)*kp*sigd/C;
-
-      grad_B =   - std::exp(Bp*d_star_sq)*i_obs*d_star_sq*kp*kp*kp*kp*sigd/
-                                                                    (4.0*C*C)
-                 + std::exp(Bp*d_star_sq/2.0)*i_obs*d_star_sq*kp*kp/(4.0*C)
-                 + std::exp(Bp*d_star_sq/2.0)*d_star_sq*kp*kp*sigd/(4.0*C);
+      grad_scale = -exp_bp_ds*kp*kp*kp*i_obs*sigd*c_scale_sq
+                 + exp_bp_ds_over_2*kp*i_obs*c_scale
+                 + exp_bp_ds_over_2*kp*sigd*c_scale;
+      grad_B = - exp_bp_ds*i_obs*d_star_sq*kp*kp*kp*kp*sigd/4.*c_scale_sq
+               + exp_bp_ds_over_2*i_obs*d_star_sq*kp*kp/4.*c_scale
+               + exp_bp_ds_over_2*d_star_sq*kp*kp*sigd/4.0*c_scale;
     } else {
       grad_scale = -1.0/kp
-        - 2.0*std::exp(Bp*d_star_sq)*i_obs*kp*kp*kp*sigd/(C*C)
-        + 2.0*std::exp(Bp*d_star_sq/2.0)*i_obs*kp/C
-        + 2.0*std::exp(Bp*d_star_sq/2.0)*kp*sigd/C;
-
+        - 2.0*exp_bp_ds*i_obs*kp*kp*kp*sigd*c_scale_sq
+        + 2.0*exp_bp_ds_over_2*i_obs*kp*c_scale
+        + 2.0*exp_bp_ds_over_2*kp*sigd*c_scale;
       grad_B = -d_star_sq/4.0
-        - std::exp(Bp*d_star_sq)*i_obs*d_star_sq*kp*kp*kp*kp*sigd/(2.0*C*C)
-        + std::exp(Bp*d_star_sq/2.0)*i_obs*d_star_sq*kp*kp/(2.0*C)
-        + std::exp(Bp*d_star_sq/2.0)*d_star_sq*kp*kp*sigd/(2.0*C);
+        - exp_bp_ds*i_obs*d_star_sq*kp*kp*kp*kp*sigd/2.0*c_scale_sq
+        + exp_bp_ds_over_2*i_obs*d_star_sq*kp*kp/2.0*c_scale
+        + exp_bp_ds_over_2*d_star_sq*kp*kp*sigd/2.0*c_scale;
     }
-    grad_scale = -grad_scale*std::exp(-p_scale);
+    grad_scale = -grad_scale*kp;
     gradients[0] = grad_scale;
     gradients[1] = grad_B;
     return(gradients);
