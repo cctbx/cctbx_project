@@ -24,6 +24,7 @@ class manager(object):
         i_selection.append(ss)
     b_selection = flex.bool(fmodel.xray_structure.scatterers().size(),
       i_selection)
+    fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
       iselection = i_selection)
     has_alt_conf = False
