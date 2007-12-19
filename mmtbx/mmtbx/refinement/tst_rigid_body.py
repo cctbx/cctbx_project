@@ -23,6 +23,31 @@ from scitbx import matrix
 random.seed(0)
 flex.set_random_seed(0)
 
+def test_matrices_zyz():
+  for i in xrange(10000):
+    aa,bb,cc = random.randrange(-361,361),\
+               random.randrange(-361,361),\
+               random.randrange(-361,361)
+    a,b,c = aa * math.pi/180, bb * math.pi/180, cc * math.pi/180
+    r1 = matrix.sqr((math.cos(a), -math.sin(a), 0,
+                     math.sin(a),  math.cos(a), 0,
+                               0,            0, 1))
+    r2 = matrix.sqr((math.cos(b), 0, math.sin(b),
+                               0, 1,           0,
+                    -math.sin(b), 0, math.cos(b)))
+    r3 = matrix.sqr((math.cos(c), -math.sin(c), 0,
+                     math.sin(c),  math.cos(c), 0,
+                               0,            0, 1))
+    r_zyz_1 = (r1*r2*r3)
+    r_zyz_2 = mmtbx.refinement.rigid_body.euler(phi = cc, psi = bb, the = aa,
+      convention = "zyz").rot_mat()
+    r_zyz_3 = matrix.sqr((
+      math.cos(a)*math.cos(b)*math.cos(c)-math.sin(a)*math.sin(c),-math.cos(a)*math.cos(b)*math.sin(c)-math.sin(a)*math.cos(c), math.cos(a)*math.sin(b),
+      math.sin(a)*math.cos(b)*math.cos(c)+math.cos(a)*math.sin(c),-math.sin(a)*math.cos(b)*math.sin(c)+math.cos(a)*math.cos(c), math.sin(a)*math.sin(b),
+     -math.sin(b)*math.cos(c)                                    , math.sin(b)*math.sin(c)                                    , math.cos(b)))
+    assert approx_equal(r_zyz_1, r_zyz_2)
+    assert approx_equal(r_zyz_1, r_zyz_3)
+
 def test_1(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
            trans = [0.5,0.7,0.9]):
   rot_obj = mmtbx.refinement.rigid_body.euler(
@@ -284,6 +309,7 @@ def fd_rotation(fmodel, e, convention):
 
 
 def exercise():
+  test_matrices_zyz()
   run_tests()
   finite_differences_test()
   print format_cpu_times()
