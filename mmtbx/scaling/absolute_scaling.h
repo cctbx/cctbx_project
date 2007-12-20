@@ -161,16 +161,16 @@ namespace absolute_scaling{
   {
 
     typedef FloatType f_t;
-
+    f_t EXP_ARG_MAX = 100.; // max value for exp argument to prevent from numerical issues
     f_t arg = -p_scale;
-    if(arg > 706.0) arg=706.0; // avoid overflow problem
+    if(arg > EXP_ARG_MAX) arg=EXP_ARG_MAX; // avoid overflow problem
     f_t kp=std::exp(arg);
     f_t Bp = p_B_wilson;
     f_t sigp = epsilon*sig_sq*(1.0+gamma);
     f_t sigd = sigma_f_obs*sigma_f_obs;
     f_t i_obs = f_obs*f_obs;
     arg = Bp*d_star_sq;
-    if(arg > 706.0) arg=706.0; // avoid overflow problem
+    if(arg > EXP_ARG_MAX) arg=EXP_ARG_MAX; // avoid overflow problem
     f_t exp_bp_ds_over_2 = std::exp(arg/2.0);
     f_t exp_bp_ds = std::exp(arg);
     f_t C = kp*kp*sigd*exp_bp_ds_over_2+sigp;
