@@ -187,29 +187,48 @@ class attributes(labels):
         value = '"' + value.replace('"','\\"') + '"'
       print >> f, "%s%-12s" % (prefix, attr_name+":"), value
 
+def _character_case_id(strings):
+  have_upper = False
+  have_lower = False
+  for s in strings:
+    for c in s:
+      if   (c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
+        if (have_lower): return 0
+        have_upper = True
+      elif (c in "abcdefghijklmnopqrstuvwxyz"):
+        if (have_upper): return 0
+        have_lower = True
+  if (have_upper): return 1
+  if (have_lower): return -1
+  return 0
+
 def _get_map_string(map, pattern, wildcard_escape_char='\\'):
-  do_strip = False
-  do_upper = False
+  pattern_was_quoted = True
   if (not isinstance(pattern, str)):
     if (pattern.quote_token is None):
-      do_strip = True
-      do_upper = True
-      for c in pattern.value:
-        if (c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"):
-          do_upper = False
-          break
+      pattern_was_quoted = False
     pattern = pattern.value
-    if (do_strip): pattern = pattern.strip()
-    if (do_upper): pattern = pattern.upper()
+    if (not pattern_was_quoted): pattern = pattern.strip()
   result = []
-  for key,value in map.items():
-    if (do_strip): key = key.strip()
-    if (do_upper): key = key.upper()
-    if (wildcard.is_match(
-          string=key,
-          pattern=pattern,
-          escape_char=wildcard_escape_char)):
-      result.append(value)
+  def match():
+    for key,value in map.items():
+      if (not pattern_was_quoted): key = key.strip()
+      if (wildcard.is_match(
+            string=key,
+            pattern=pattern,
+            escape_char=wildcard_escape_char)):
+        result.append(value)
+  match()
+  if (    len(result) == 0
+      and not pattern_was_quoted
+      and _character_case_id(strings=[pattern]) != 0):
+    keys_case_id = _character_case_id(strings=map.keys())
+    if (keys_case_id != 0):
+      if (keys_case_id > 0):
+        pattern = pattern.upper()
+      else:
+        pattern = pattern.lower()
+      match()
   return result
 
 class selection_tokenizer(tokenizer.word_iterator):

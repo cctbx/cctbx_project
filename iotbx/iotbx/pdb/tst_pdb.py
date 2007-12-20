@@ -556,6 +556,42 @@ LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
   for link_record,expected in zip(link_records, expected_results):
     assert [list(sel) for sel in sel_cache.link_iselections(link_record)] \
         == expected
+  #
+  pdb_file = """\
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  Asn A   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN a   4       0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN a   5       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN a   6       6.831   2.310   4.318  1.00 12.30           C
+END
+""".splitlines()
+  stage_1 = pdb.interpretation.stage_1(raw_records=pdb_file)
+  sel_cache = stage_1.selection_cache()
+  isel = sel_cache.iselection
+  assert list(isel("chain A")) == [0,1,2]
+  assert list(isel("chain a")) == [3,4,5]
+  assert list(isel("name ca")) == range(6)
+  assert list(isel("resname asn")) == []
+  assert list(isel("resname ASN")) == [1,5]
+  assert list(isel("resname Asn")) == [2]
+  pdb_file = """\
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
+ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
+ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
+ATOM     14  CA  ASN A   3      -3.193   1.904   4.589  1.00 11.74           C
+ATOM     22  CA  GLN a   4       0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN a   5       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN a   6       6.831   2.310   4.318  1.00 12.30           C
+END
+""".splitlines()
+  stage_1 = pdb.interpretation.stage_1(raw_records=pdb_file)
+  sel_cache = stage_1.selection_cache()
+  isel = sel_cache.iselection
+  assert list(isel("resname asn")) == [1,2,5]
+  assert list(isel("resname ASN")) == [1,2,5]
+  assert list(isel("resname Asn")) == []
 
 def exercise_xray_structure(use_u_aniso, verbose=0):
   structure = random_structure.xray_structure(
