@@ -176,8 +176,8 @@ def test_5(fmodel, convention):
     assert approx_equal(rb.translation()[1], [-1.5,-0.5,-1.0], 1.e-4)
     assert approx_equal(rb.rotation()[0], [-1,-2,-3], 0.2)
     assert approx_equal(rb.rotation()[1], [-3,-2,-1], 0.2)
-  assert approx_equal(fmodel.r_work(), 0.0, 0.0003)
-  assert approx_equal(fmodel.r_free(), 0.0, 0.0003)
+  assert approx_equal(fmodel.r_work(), 0.0, 0.0005)
+  assert approx_equal(fmodel.r_free(), 0.0, 0.0005)
 
 def get_fmodel_from_pdb(pdb_file_name,
                         algorithm = "direct",
