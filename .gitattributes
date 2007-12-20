@@ -87,6 +87,7 @@ mmtbx/mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/mmtbx/command_line/maps.py -text
 mmtbx/mmtbx/command_line/pdbtools.py -text
 mmtbx/mmtbx/command_line/xmanip.py -text
+mmtbx/mmtbx/find_peaks.py -text
 mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/model_statistics.py -text
 mmtbx/mmtbx/monomer_library/tst_protein_interpretation.py -text
