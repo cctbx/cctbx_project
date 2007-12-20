@@ -65,10 +65,9 @@ def test_1(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
     fmodel     = fmodel,
     selections = [flex.bool(size,True).iselection()],
     params     = params)
-  if(convention == "xyz"):
-    assert approx_equal(rb.translation()[0], [-0.5,-0.7,-0.9])
-    assert approx_equal(rb.rotation()[0], [0.0,0.0,0.0])
-  assert approx_equal(fmodel.r_work(), 0.0)
+  assert approx_equal(rb.translation()[0], [-0.5,-0.7,-0.9], eps=1.e-5)
+  assert approx_equal(rb.rotation()[0], [0.0,0.0,0.0])
+  assert approx_equal(fmodel.r_work(), 0.0, eps=1.e-5)
 
 def test_2(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
            trans = [0.0,0.0,0.0]):
