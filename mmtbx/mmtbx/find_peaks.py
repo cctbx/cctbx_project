@@ -25,11 +25,8 @@ from libtbx.str_utils import format_value
 master_params = iotbx.phil.parse("""\
   use_sigma_scaled_maps = True
     .type=bool
-    .help = Use sigma scales maps for water pick picking
-  map_type = mFobs-DFmodel
-    .type=str
-  map_cutoff = 3.0
-    .type=float
+    .help = Default is sigma scaled map, map in absolute scale is used \
+            otherwise.
   resolution_factor = 1./4.
     .type=float
   map_next_to_model
@@ -58,7 +55,7 @@ master_params = iotbx.phil.parse("""\
       .type=float
     general_positions_only = False
       .type=bool
-    min_cross_distance = 2.0
+    min_cross_distance = 1.8
       .type=float
   }
 """)
@@ -69,20 +66,20 @@ class peaks_holder(object):
     self.sites = sites
 
 class manager(object):
-  def __init__(self, fmodel, params = None, log = None):
+  def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
     peak_search_parameters = maptbx.peak_search_parameters(
       peak_search_level      = self.params.peak_search.peak_search_level,
       max_peaks              = self.params.peak_search.max_peaks,
-      peak_cutoff            = self.params.map_cutoff,
+      peak_cutoff            = self.map_cutoff,
       interpolate            = self.params.peak_search.interpolate,
       min_distance_sym_equiv = self.params.peak_search.min_distance_sym_equiv,
       general_positions_only = self.params.peak_search.general_positions_only,
       min_cross_distance     = self.params.peak_search.min_cross_distance)
     fft_map = self.fmodel.electron_density_map(
-      map_type          = self.params.map_type,
+      map_type          = self.map_type,
       resolution_factor = self.params.resolution_factor,
       symmetry_flags    = maptbx.use_space_group_symmetry)
     gridding_n_real = fft_map.n_real()
@@ -98,7 +95,7 @@ class manager(object):
     self.peaks_ = peaks_holder(heights = cluster_analysis.heights(),
                                sites   = cluster_analysis.sites())
     print >>self.log,"Number of peaks found at %s map (map cutoff=%s %s)= %s"%(
-      self.params.map_type, format_value("%-5.2f", self.params.map_cutoff),
+      self.map_type, format_value("%-5.2f", self.map_cutoff),
       map_units, format_value("%-12d", self.peaks_.sites.size()))
 
   def peaks(self):
@@ -117,14 +114,12 @@ class manager(object):
      distance_cutoff = max_dist)
    smallest_distances_sq = result.smallest_distances_sq
    smallest_distances = result.smallest_distances
-   new_sites = result.sites_frac
-   new_heights = self.peaks_.heights.select(~result.remove_selection)
    in_box = smallest_distances_sq > 0
    not_too_far = smallest_distances_sq <= max_dist**2
    not_too_close = smallest_distances_sq >= min_dist**2
    selection = (not_too_far & not_too_close & in_box)
-   peaks = peaks_holder(heights = new_heights.select(selection),
-                        sites   = new_sites.select(selection))
+   peaks = peaks_holder(heights = self.peaks_.heights.select(selection),
+                        sites   = result.sites_frac.select(selection))
    sd = flex.sqrt(smallest_distances_sq.select(in_box))
    d_min = flex.min_default(sd, 0)
    d_max = flex.max_default(sd, 0)
