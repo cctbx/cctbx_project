@@ -1087,12 +1087,12 @@ class structure(crystal.special_position_settings):
             smallest_distances_sq[i_seq_new_site_frac] = pair.dist_sq
             new_sites_frac[i_seq_new_site_frac] = new_site_frac
             i_seqs[i_seq_new_site_frac] = jn
-        sel_out = smallest_distances_sq > distance_cutoff**2
+        self.remove_selection = smallest_distances_sq > distance_cutoff**2
         self.sites_frac = new_sites_frac
         self.smallest_distances = flex.sqrt(
-          smallest_distances_sq).set_selected(sel_out, -1)
+          smallest_distances_sq).set_selected(self.remove_selection, -1)
         self.smallest_distances_sq = smallest_distances_sq.set_selected(
-          sel_out, -1)
+          self.remove_selection, -1)
         self.i_seqs = i_seqs
     result = map_next_to_model_and_find_closest_distances(
       xray_structure = self, sites_frac = sites_frac)
