@@ -45,6 +45,9 @@ master_params = iotbx.phil.parse("""\
   b_iso_max = 50.0
     .type=float
     .help = Maximum B-factor value, waters with bigger value will be rejected
+  anisotropy_min = 0.1
+    .type = float
+    .help = For solvent refined as anisotropic: remove is less than this value
   b_iso = None
     .type=float
     .help = Initial B-factor value for newly added water
@@ -79,11 +82,15 @@ master_params = iotbx.phil.parse("""\
     .type = choice
     .help = Based on the choice, added solvent will have isotropic or \
             anisotropic b-factors
+  refine_adp = True
+    .type = bool
+    .help = Refine ADP for newly placed solvent.
 """)
 
 
 class manager(object):
   def __init__(self, fmodel,
+                     fmodels,
                      model,
                      solvent_selection,
                      params = master_params.extract(),
@@ -122,6 +129,37 @@ class manager(object):
        self.filter_solvent()
     self.find_peaks_2fofc()
     self.show(message = "2Fo-Fc map selection:")
+    #
+    if(not self.filter_only and self.params.refine_adp and
+       self.model.refinement_flags.individual_adp):
+      self.fmodels.update_xray_structure(
+         xray_structure = self.xray_structure,
+         update_f_calc  = True,
+         update_f_mask  = True)
+      from mmtbx.refinement import minimization
+      import scitbx.lbfgs
+      if(self.params.new_solvent == "anisotropic"):
+        selection_aniso = flex.bool(
+          self.model.refinement_flags.adp_individual_aniso[0].size(), False)
+        for sel in self.model.refinement_flags.adp_individual_aniso:
+          selection_aniso = selection_aniso | sel
+        selection_aniso.set_selected(~self.solvent_selection, False)
+        self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
+      else:
+        selection_iso = flex.bool(
+          self.model.refinement_flags.adp_individual_iso[0].size(), False)
+        for sel in self.model.refinement_flags.adp_individual_iso:
+          selection_iso = selection_iso | sel
+        selection_iso.set_selected(~self.solvent_selection, False)
+        self.model.set_refine_individual_adp(selection_iso = selection_iso)
+      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+          max_iterations = 25)
+      minimized = minimization.lbfgs(
+        restraints_manager       = None,
+        fmodels                  = fmodels,
+        model                    = model,
+        refine_adp               = True,
+        lbfgs_termination_params = lbfgs_termination_params)
 
   def filter_solvent(self):
     hd_sel = self.xray_structure.hd_selection()
@@ -134,6 +172,8 @@ class manager(object):
     occ_sol = scat_sol.extract_occupancies()
     b_isos_sol = scat_sol.extract_u_iso_or_u_equiv(
       self.xray_structure.unit_cell()) * math.pi**2*8
+    anisotropy_sol = scat_sol.anisotropy(unit_cell =
+      self.xray_structure.unit_cell())
     result = xrs_mac.closest_distances(sites_frac = xrs_sol.sites_frac(),
       distance_cutoff =
         self.find_peaks_params.map_next_to_model.max_model_peak_dist)
@@ -141,6 +181,7 @@ class manager(object):
     selection &= b_isos_sol <= self.params.b_iso_max
     selection &= occ_sol >= self.params.occupancy_min
     selection &= occ_sol <= self.params.occupancy_max
+    selection &= anisotropy_sol > 0.1
     selection &= result.smallest_distances<= \
       self.find_peaks_params.map_next_to_model.max_model_peak_dist
     selection &= result.smallest_distances>= \

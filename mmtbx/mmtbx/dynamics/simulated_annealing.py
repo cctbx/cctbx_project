@@ -36,6 +36,7 @@ def manager(simulated_annealing_params,
   print_statistics.make_header("simulated annealing refinement", out = out)
   print_statistics.make_sub_header(
                    "lbfgs minimization: before simulated annealing", out = out)
+  model.set_refine_individual_sites()
   minimized = mmtbx.refinement.minimization.lbfgs(
     restraints_manager       = model.restraints_manager,
     refine_xyz               = True,

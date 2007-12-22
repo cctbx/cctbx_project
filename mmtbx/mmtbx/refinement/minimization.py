@@ -20,11 +20,9 @@ class lbfgs(object):
                      fmodels,
                      model,
                      target_weights           = None,
-                     wilson_b                 = None,
                      tan_b_iso_max            = None,
                      refine_xyz               = False,
                      refine_adp               = False,
-                     refine_occ               = False,
                      refine_dbe               = False,
                      lbfgs_termination_params = None,
                      use_fortran              = False,
@@ -39,8 +37,10 @@ class lbfgs(object):
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     self.weights = None
-    if(refine_xyz):   self.weights = target_weights.xyz_weights_result
-    elif(refine_adp): self.weights = target_weights.adp_weights_result
+    if(refine_xyz and target_weights is not None):
+      self.weights = target_weights.xyz_weights_result
+    elif(refine_adp and target_weights is not None):
+      self.weights = target_weights.adp_weights_result
     else:
       from phenix.refinement import weight_xray_chem
       self.weights = weight_xray_chem.weights(wx       = 1,
@@ -57,49 +57,18 @@ class lbfgs(object):
                            iso_restraints = iso_restraints,
                            refine_xyz     = refine_xyz,
                            refine_adp     = refine_adp,
-                           refine_occ     = refine_occ)
+                           refine_occ     = False)
     self.monitor.collect()
     fmodels.create_target_functors()
-    assert [refine_xyz, refine_adp, refine_occ].count(False) == 2
-    assert [refine_xyz, refine_adp, refine_occ].count(True)  == 1
+    assert [refine_xyz, refine_adp].count(False) == 1
     self.xray_structure = self.fmodels.fmodel_xray().xray_structure
     self.xray_structure.tidy_us()
     self.wxc_dbe = None
     self.hd_selection = self.xray_structure.hd_selection()
     self.hd_flag = self.hd_selection.count(True) > 0
-    self.xray_structure.scatterers().flags_set_grads(state=False)
-    if (refine_xyz):
-      sel = flex.bool(self.model.refinement_flags.sites_individual[0].size(), False)
-      for m in self.model.refinement_flags.sites_individual:
-         sel = sel | m
+    if(refine_xyz):
       if(self.h_params.refine_sites == "riding"):
         occupancies_cache = self.xray_structure.scatterers().extract_occupancies()
-        if(self.hd_flag):
-          self.xray_structure.set_occupancies(value = 0, selection =
-            self.hd_selection)
-      self.xray_structure.scatterers().flags_set_grad_site(
-        iselection=sel.iselection())
-      del sel
-    if (refine_occ):
-      sel = flex.bool(self.model.refinement_flags.occupancies_individual[0].size(), False)
-      for m in self.model.refinement_flags.occupancies_individual:
-         sel = sel | m
-      self.xray_structure.scatterers().flags_set_grad_occupancy(
-        iselection=sel.iselection())
-      del sel
-    if (refine_adp):
-      sel = self.model.refinement_flags.adp_individual_iso[0]
-      if (self.h_params.refine_adp != "individual"):
-        sel.set_selected(self.hd_selection, False)
-      self.xray_structure.scatterers().flags_set_grad_u_iso(
-        iselection=sel.iselection())
-      #
-      sel = self.model.refinement_flags.adp_individual_aniso[0]
-      if (self.h_params.refine_adp != "individual"):
-        sel.set_selected(self.hd_selection, False)
-      self.xray_structure.scatterers().flags_set_grad_u_aniso(
-        iselection=sel.iselection())
-      del sel
     self.neutron_refinement = (self.fmodels.fmodel_n is not None)
     self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
@@ -113,12 +82,10 @@ class lbfgs(object):
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
     self.xray_structure.tidy_us()
-    if(refine_occ):
-      self.xray_structure.adjust_occupancy(occ_max = occupancy_max,
-                                           occ_min = occupancy_min)
     if(refine_xyz and self.h_params.refine_sites == "riding" and self.hd_flag):
       self.xray_structure.set_occupancies(occupancies_cache)
-    if(self.h_params.idealize_xh_bonds and refine_xyz and self.hd_flag):
+    if(self.h_params is not None and self.h_params.idealize_xh_bonds and
+      refine_xyz and self.hd_flag):
       self.model.idealize_h(xh_bond_distance_deviation_limit =
         self.h_params.xh_bond_distance_deviation_limit)
     self.fmodels.update_xray_structure(
@@ -177,7 +144,8 @@ class lbfgs(object):
           scatterers     = self.xray_structure.scatterers(),
           xray_gradients = self.g,
           site_gradients = sgc*self.weights.w)
-    if(self.refine_adp and self.restraints_manager.geometry is not None
+    if(self.refine_adp and self.restraints_manager is not None and
+       self.restraints_manager.geometry is not None
        and self.weights.w > 0.0 and self.iso_restraints is not None):
       energies_adp = self.model.energies_adp(
         iso_restraints    = self.iso_restraints,
@@ -250,14 +218,15 @@ class monitor(object):
       self.rnw.append(format_value("%6.4f", self.fmodels.fmodel_neutron().r_work()))
       self.rnf.append(format_value("%6.4f", self.fmodels.fmodel_neutron().r_free()))
       self.en.append(format_value("%10.4f", fmodels_tg.target_work_neutron))
-    if(self.refine_xyz):
+    if(self.refine_xyz and self.weights.w > 0):
       er = self.model.restraints_manager_energies_sites(
         compute_gradients = False).target
-    elif(self.refine_adp):
+    elif(self.refine_adp and self.weights.w > 0):
       er = self.model.energies_adp(iso_restraints = self.iso_restraints,
         compute_gradients = False).target
     elif(self.refine_occ):
       er = 0
+    else: er = 0
     self.er.append(format_value("%10.4f", er))
     self.et.append(format_value(
       "%10.4f", fmodels_tg.target()+er*self.weights.w))
