@@ -638,3 +638,37 @@ class manager(object):
         self.u_iso_gradients = u_iso_gradients
         self.u_aniso_gradients = u_aniso_gradients
     return result()
+
+  def set_refine_individual_sites(self, selection = None):
+    self.xray_structure.scatterers().flags_set_grads(state=False)
+    if(selection is None):
+      selection = flex.bool(self.refinement_flags.sites_individual[0].size(),
+        False)
+      for sel in self.refinement_flags.sites_individual:
+        selection = selection | sel
+    self.xray_structure.scatterers().flags_set_grad_site(
+      iselection = sel.iselection())
+
+  def set_refine_individual_adp(self, selection_iso = None,
+                                      selection_aniso = None,
+                                      h_mode = None):
+    self.xray_structure.scatterers().flags_set_grads(state=False)
+    if(selection_iso is None):
+      selection_iso = flex.bool(
+        self.refinement_flags.adp_individual_iso[0].size(), False)
+      for sel in self.refinement_flags.adp_individual_iso:
+        selection_iso = selection_iso | sel
+      if(h_mode is not None and h_mode != "individual"):
+        selection_iso.set_selected(self.xray_structure.hd_selection(), False)
+    self.xray_structure.scatterers().flags_set_grad_u_iso(
+      iselection = selection_iso.iselection())
+    if(selection_aniso is None):
+      selection_aniso = flex.bool(
+        self.refinement_flags.adp_individual_aniso[0].size(), False)
+      for sel in self.refinement_flags.adp_individual_aniso:
+        selection_aniso = selection_aniso | sel
+      if(h_mode is not None and h_mode != "individual"):
+        selection_aniso.set_selected(self.xray_structure.hd_selection(), False)
+    self.xray_structure.scatterers().flags_set_grad_u_aniso(
+      iselection = selection_aniso.iselection())
+

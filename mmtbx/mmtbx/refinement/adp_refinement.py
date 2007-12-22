@@ -172,6 +172,7 @@ class manager(object):
        model.xray_structure = fmodels.fmodel_xray().xray_structure
 
     if(refine_adp_individual):
+       model.set_refine_individual_adp(h_mode = h_params.refine_adp)
        print_statistics.make_sub_header(text= "Individual ADP refinement",
                                         out = log)
        lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
@@ -183,11 +184,10 @@ class manager(object):
                           model                    = model,
                           refine_adp               = True,
                           lbfgs_termination_params = lbfgs_termination_params,
-                          wilson_b                 = model.wilson_b,
                           tan_b_iso_max            = tan_b_iso_max,
                           iso_restraints           = adp_restraints_params.iso,
                           verbose                  = 0,
-                          target_weights = target_weights,
+                          target_weights           = target_weights,
                           h_params                 = h_params)
        self.minimized.monitor.show(message = "LBFGS minimization", log  = log)
        assert fmodels.fmodel_xray().xray_structure is model.xray_structure
