@@ -86,9 +86,8 @@ def test_2(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
     fmodel     = fmodel,
     selections = [flex.bool(size,True).iselection()],
     params     = params)
-  if(convention == "xyz"):
-    assert approx_equal(rb.translation()[0], [0.0,0.0,0.0])
-    assert approx_equal(rb.rotation()[0], [0.0,0.0,0.0])
+  assert approx_equal(rb.translation()[0], [0.0,0.0,0.0])
+  assert approx_equal(rb.rotation()[0], [0.0,0.0,0.0])
   assert approx_equal(fmodel.r_work(), 0.0)
 
 def test_3(fmodel, convention, phi = 1, psi = 2, the = 3, trans = [0,0,0]):
@@ -111,8 +110,8 @@ def test_3(fmodel, convention, phi = 1, psi = 2, the = 3, trans = [0,0,0]):
     selections = [flex.bool(size,True).iselection()],
     params     = params)
   if(convention == "xyz"):
-    assert approx_equal(rb.translation()[0], [0.0,0.0,0.0])
     assert approx_equal(rb.rotation()[0], [-1.0,-2.0,-3.0], 0.2) # XXX
+  assert approx_equal(rb.translation()[0], [0.0,0.0,0.0])
   assert approx_equal(fmodel.r_work(), 0.0)
 
 def test_4(fmodel, convention, phi =1, psi =2, the =3, trans =[0.5,1.0,1.5]):
@@ -133,8 +132,8 @@ def test_4(fmodel, convention, phi =1, psi =2, the =3, trans =[0.5,1.0,1.5]):
     selections = [flex.bool(size,True).iselection()],
     params     = params)
   if(convention == "xyz"):
-    assert approx_equal(rb.translation()[0], [-0.5,-1.0,-1.5], 1.e-3)
     assert approx_equal(rb.rotation()[0], [-1.0,-2.0,-3.0], 0.2) # XXX
+  assert approx_equal(rb.translation()[0], [-0.5,-1.0,-1.5], 1.e-3)
   assert approx_equal(fmodel.r_work(), 0.0, 1.e-3)
 
 def test_5(fmodel, convention):
@@ -171,10 +170,10 @@ def test_5(fmodel, convention):
                                            selections = selections,
                                            params     = params)
   if(convention == "xyz"):
-    assert approx_equal(rb.translation()[0], [-0.5,-1.0,-1.5], 1.e-4)
-    assert approx_equal(rb.translation()[1], [-1.5,-0.5,-1.0], 1.e-4)
     assert approx_equal(rb.rotation()[0], [-1,-2,-3], 0.2)
     assert approx_equal(rb.rotation()[1], [-3,-2,-1], 0.2)
+  assert approx_equal(rb.translation()[0], [-0.5,-1.0,-1.5], 1.e-4)
+  assert approx_equal(rb.translation()[1], [-1.5,-0.5,-1.0], 1.e-4)
   assert approx_equal(fmodel.r_work(), 0.0, 0.0005)
   assert approx_equal(fmodel.r_free(), 0.0, 0.0005)
 
