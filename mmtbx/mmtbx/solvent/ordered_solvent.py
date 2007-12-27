@@ -131,7 +131,7 @@ class manager(object):
     self.show(message = "2Fo-Fc map selection:")
     #
     if(not self.filter_only and self.params.refine_adp and
-       self.model.refinement_flags.individual_adp and 
+       self.model.refinement_flags.individual_adp and
        self.solvent_selection.count(True) > 0):
       self.fmodels.update_xray_structure(
          xray_structure = self.xray_structure,
