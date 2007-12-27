@@ -47,6 +47,28 @@ namespace {
       else                self[j_seq][i_seq] = params;
     }
 
+    static double
+    mean_residual(
+      af::const_ref<bond_params_dict> const& self,
+      double bond_stretch_factor)
+    {
+      double sum = 0;
+      unsigned n = 0;
+      for(unsigned i_seq=0;i_seq<self.size();i_seq++) {
+        for(bond_params_dict::const_iterator
+              dict_i=self[i_seq].begin();
+              dict_i!=self[i_seq].end();
+              dict_i++) {
+          bond_params const& params = dict_i->second;
+          double delta = params.distance_ideal * bond_stretch_factor;
+          sum += params.weight * delta * delta;
+        }
+        n += self[i_seq].size();
+      }
+      if (n == 0) return 0;
+      return sum / static_cast<double>(n);
+    }
+
     static void
     wrap()
     {
@@ -61,6 +83,9 @@ namespace {
           arg_("i_seq"),
           arg_("j_seq"),
           arg_("params")))
+        .def("mean_residual", mean_residual, (
+          arg_("self"),
+          arg_("bond_stretch_factor")))
         .def("proxy_select",
           (bond_params_table(*)(
             af::const_ref<bond_params_dict> const&,

@@ -75,6 +75,12 @@ def exercise_bond():
   assert t[3].size() == 2
   assert approx_equal(t[3][4].distance_ideal, 1.8)
   #
+  assert geometry_restraints.bond_params_table().mean_residual(1) == 0
+  assert t.mean_residual(bond_stretch_factor=0) == 0
+  assert approx_equal(t.mean_residual(0.5), 9.26166666667)
+  assert approx_equal(t.mean_residual(1.0), 37.0466666667)
+  assert approx_equal(t.mean_residual(2.0), 148.186666667)
+  #
   p = geometry_restraints.bond_simple_proxy(
     i_seqs=[1,0],
     distance_ideal=3.5,
