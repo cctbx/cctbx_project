@@ -138,8 +138,7 @@ class energies(scitbx.restraints.energies):
   def nonbonded_distances(self):
     return geometry_restraints.nonbonded_deltas(
                                   sites_cart         = self.sites_cart,
-                                  sorted_asu_proxies = self.nonbonded_proxies,
-                                  function           = self.nonbonded_function)
+                                  sorted_asu_proxies = self.nonbonded_proxies)
 
   def nonbonded_deviations(self):
     if(self.n_nonbonded_proxies is not None):

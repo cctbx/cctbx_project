@@ -517,8 +517,7 @@ class manager(object):
       if (sites_cart is not None):
         deltas = geometry_restraints.nonbonded_deltas(
           sites_cart=sites_cart,
-          sorted_asu_proxies=pair_proxies.nonbonded_proxies,
-          function=self.nonbonded_function)
+          sorted_asu_proxies=pair_proxies.nonbonded_proxies)
         permutation = flex.sort_permutation(data=deltas)
       else:
         deltas = None

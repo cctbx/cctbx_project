@@ -614,16 +614,17 @@ namespace cctbx { namespace geometry_restraints {
   };
 
   //! Fast computation of nonbonded::delta given an array of nonbonded proxies.
-  template <typename NonbondedFunction>
+  inline
   af::shared<double>
   nonbonded_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    af::const_ref<nonbonded_simple_proxy> const& proxies,
-    NonbondedFunction const& function)
+    af::const_ref<nonbonded_simple_proxy> const& proxies)
   {
     af::shared<double> result((af::reserve(proxies.size())));
+    prolsq_repulsion_function function; // not actually used
     for(std::size_t i=0;i<proxies.size();i++) {
-      nonbonded<NonbondedFunction> restraint(sites_cart, proxies[i], function);
+      nonbonded<prolsq_repulsion_function> restraint(
+        sites_cart, proxies[i], function);
       result.push_back(restraint.delta);
     }
     return result;
@@ -680,23 +681,23 @@ namespace cctbx { namespace geometry_restraints {
     nonbonded_sorted_asu_proxies_base;
 
   //! Fast computation of nonbonded::delta given managed proxies.
-  template <typename NonbondedFunction>
+  inline
   af::shared<double>
   nonbonded_deltas(
     af::const_ref<scitbx::vec3<double> > const& sites_cart,
-    nonbonded_sorted_asu_proxies_base const& sorted_asu_proxies,
-    NonbondedFunction const& function)
+    nonbonded_sorted_asu_proxies_base const& sorted_asu_proxies)
   {
     af::shared<double> result = nonbonded_deltas(
-      sites_cart, sorted_asu_proxies.simple.const_ref(), function);
+      sites_cart, sorted_asu_proxies.simple.const_ref());
     af::const_ref<nonbonded_asu_proxy>
       sym = sorted_asu_proxies.asu.const_ref();
     if (sym.size() > 0) {
       result.reserve(sorted_asu_proxies.simple.size() + sym.size());
       direct_space_asu::asu_mappings<> const&
         asu_mappings = *sorted_asu_proxies.asu_mappings();
+      prolsq_repulsion_function function; // not actually used
       for(std::size_t i=0;i<sym.size();i++) {
-        nonbonded<NonbondedFunction> restraint(
+        nonbonded<prolsq_repulsion_function> restraint(
           sites_cart, asu_mappings, sym[i], function);
         result.push_back(restraint.delta);
       }

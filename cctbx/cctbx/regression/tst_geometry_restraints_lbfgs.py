@@ -177,8 +177,7 @@ def exercise(verbose=0):
     print "min_distance_nonbonded: %.2f" % flex.min(
       geometry_restraints.nonbonded_deltas(
         sites_cart=sites_cart,
-        sorted_asu_proxies=pair_proxies.nonbonded_proxies,
-        function=geometry_restraints.prolsq_repulsion_function()))
+        sorted_asu_proxies=pair_proxies.nonbonded_proxies))
   s = StringIO()
   pair_proxies.bond_proxies.show_histogram_of_model_distances(
     sites_cart=sites_cart,
