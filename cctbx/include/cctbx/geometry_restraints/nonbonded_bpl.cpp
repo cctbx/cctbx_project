@@ -226,9 +226,8 @@ namespace {
     def("nonbonded_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        af::const_ref<nonbonded_simple_proxy> const&,
-        NonbondedFunction const& function)) nonbonded_deltas,
-      (arg_("sites_cart"), arg_("proxies"), arg_("function")));
+        af::const_ref<nonbonded_simple_proxy> const&)) nonbonded_deltas,
+      (arg_("sites_cart"), arg_("proxies")));
     def("nonbonded_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
@@ -246,9 +245,8 @@ namespace {
     def("nonbonded_deltas",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,
-        nonbonded_sorted_asu_proxies_base const&,
-        NonbondedFunction const& function)) nonbonded_deltas,
-      (arg_("sites_cart"), arg_("sorted_asu_proxies"), arg_("function")));
+        nonbonded_sorted_asu_proxies_base const&)) nonbonded_deltas,
+      (arg_("sites_cart"), arg_("sorted_asu_proxies")));
     def("nonbonded_residuals",
       (af::shared<double>(*)(
         af::const_ref<scitbx::vec3<double> > const&,

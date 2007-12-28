@@ -432,10 +432,7 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
         nonbonded_sorted_asu_proxies):
 
   def deltas(self, sites_cart):
-    return nonbonded_deltas(
-      sites_cart=sites_cart,
-      sorted_asu_proxies=self,
-      function=prolsq_repulsion_function())
+    return nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
 
   def show_histogram_of_model_distances(self,
         sites_cart,
@@ -468,10 +465,7 @@ class _nonbonded_sorted_asu_proxies(boost.python.injector,
         prefix="",
         max_lines=None):
     if (f is None): f = sys.stdout
-    deltas = nonbonded_deltas(
-      sites_cart=sites_cart,
-      sorted_asu_proxies=self,
-      function=prolsq_repulsion_function())
+    deltas = nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
     i_proxies_sorted = flex.sort_permutation(data=deltas)
     if (max_lines is not None and i_proxies_sorted.size() > max_lines+1):
       i_proxies_sorted = i_proxies_sorted[:max_lines]
