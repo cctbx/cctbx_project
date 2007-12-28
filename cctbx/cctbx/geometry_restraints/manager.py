@@ -233,6 +233,12 @@ class manager(object):
         self.nonbonded_distance_cutoff_was_determined_automatically = True
         self.nonbonded_distance_cutoff = max_vdw_dist
         self.adjusted_nonbonded_distance_cutoff = max_vdw_dist
+      def check_bonded_distance_cutoff():
+        if (    self.max_reasonable_bond_distance is not None
+            and bonded_distance_cutoff > self.max_reasonable_bond_distance):
+          raise RuntimeError(
+            "Bond distance > max_reasonable_bond_distance: %.6g > %.6g" % (
+              bonded_distance_cutoff, self.max_reasonable_bond_distance))
       asu_mappings = None
       shell_asu_tables = None
       while True:
@@ -248,12 +254,7 @@ class manager(object):
                     pair_sym_table=shell_sym_table,
                     sites_cart=sites_cart),
                   default=0))
-            if (self.max_reasonable_bond_distance is not None
-                and   bonded_distance_cutoff
-                    > self.max_reasonable_bond_distance):
-              raise RuntimeError(
-                "Bond distance > max_reasonable_bond_distance: %.6g > %.6g" % (
-                  bonded_distance_cutoff, self.max_reasonable_bond_distance))
+            check_bonded_distance_cutoff()
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
             asu_mappings = \
               crystal.direct_space_asu.non_crystallographic_asu_mappings(
@@ -277,6 +278,7 @@ class manager(object):
                       unit_cell.orthogonalization_matrix(),
                     sites_frac=sites_frac),
                   default=0))
+            check_bonded_distance_cutoff()
             bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
           if (asu_mappings is None
               or asu_mappings.buffer_thickness()
