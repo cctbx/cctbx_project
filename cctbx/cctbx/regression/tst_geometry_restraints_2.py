@@ -25,6 +25,8 @@ def exercise_with_zeolite(verbose):
   drls = distance_and_repulsion_least_squares(
     si_structure=si_structure,
     distance_cutoff=3.5,
+    nonbonded_repulsion_function_type="prolsq",
+    n_macro_cycles=2,
     out=out)
   #
   out = StringIO()
