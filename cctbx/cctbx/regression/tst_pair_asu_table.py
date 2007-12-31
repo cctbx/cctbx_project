@@ -307,6 +307,26 @@ def exercise_bond_sorted_asu_proxies(
     ctrl[key] += 1
   assert ctrl.values() == [1]*len(ctrl)
 
+def py_pair_asu_table_angle_pair_asu_table(self):
+  asu_mappings = self.asu_mappings()
+  result = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  for i_seq,asu_dict in enumerate(self.table()):
+    pair_list = []
+    for j_seq,j_sym_groups in asu_dict.items():
+      for i_group,j_sym_group in enumerate(j_sym_groups):
+        for j_sym in j_sym_group:
+          pair_list.append((j_seq,j_sym))
+    for i_jj1 in xrange(0,len(pair_list)-1):
+      jj1 = pair_list[i_jj1]
+      rt_mx_jj1_inv = asu_mappings.get_rt_mx(*jj1).inverse()
+      for i_jj2 in xrange(i_jj1+1,len(pair_list)):
+        jj2 = pair_list[i_jj2]
+        result.add_pair(
+          i_seq=jj1[0],
+          j_seq=jj2[0],
+          rt_mx_ji=rt_mx_jj1_inv.multiply(asu_mappings.get_rt_mx(*jj2)))
+  return result
+
 def exercise_angle_pair_asu_table(
       structure,
       distance_cutoff,
@@ -331,7 +351,9 @@ def exercise_angle_pair_asu_table(
     # compare connectivities in original space group and in P1
     assert label_connect[l] == c
   #
+  sg_apat_py = py_pair_asu_table_angle_pair_asu_table(self=sg_pat)
   sg_apat = sg_pat.angle_pair_asu_table()
+  assert sg_apat.as_nested_lists() == sg_apat_py.as_nested_lists()
   sg_counts = {}
   for i_seq,pair_asu_dict in enumerate(sg_apat.table()):
     lbl_i = sg_labels[i_seq]

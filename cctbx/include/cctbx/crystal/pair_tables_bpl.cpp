@@ -109,6 +109,7 @@ namespace {
         .def("extract_pair_sym_table", &w_t::extract_pair_sym_table,
           extract_pair_sym_table_overloads((
             arg_("skip_j_seq_less_than_i_seq")=true)))
+        .def("angle_pair_asu_table", &w_t::angle_pair_asu_table)
       ;
     }
   };
