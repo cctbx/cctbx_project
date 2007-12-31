@@ -364,7 +364,7 @@ def check_pair_asu_table(asu_table, expected_asu_pairs):
     for j_seq,j_sym_groups in asu_dict.items():
       for j_sym_group in j_sym_groups:
         for j_sym in j_sym_group:
-          if (0 or "--Verbose" in sys.argv[1:] or expected_asu_pairs is None):
+          if (0 or "--verbose" in sys.argv[1:] or expected_asu_pairs is None):
             print str([i_seq, j_seq, j_sym]) + ","
           if (expected_asu_pairs is not None):
             assert [i_seq, j_seq, j_sym] == expected_asu_pairs[ip.next()]
@@ -529,7 +529,7 @@ Si(2)
             expected = expected_sym_pairs[ip.next()]
             if (not (skip_j_seq_less_than_i_seq and expected[1]<expected[0])):
               break
-          if (0 or "--Verbose" in sys.argv[1:]):
+          if (0 or "--verbose" in sys.argv[1:]):
             print str([i_seq, j_seq, str(rt_mx)]) + ","
           assert [i_seq, j_seq, str(rt_mx)] == expected
     asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
@@ -816,6 +816,15 @@ i_seq: 2
   sym_table[3].setdefault(3)
   assert [sym_table.is_paired(i_seq=i_seq) for i_seq in xrange(5)] \
       == [True, False, True, True, False]
+  #
+  asu_mappings = structure.asu_mappings(buffer_thickness=2*3.5)
+  asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  asu_table.add_all_pairs(distance_cutoff=3.5)
+  apat = asu_table.angle_pair_asu_table()
+  assert apat.as_nested_lists() == [[0, [0, [20, 23]], [1, [5, 21],
+    [3, 23], [2, 38]], [2, [0, 3]]], [1, [0, [7], [1], [10]], [1, [13],
+    [32, 36], [20]], [2, [7], [10], [1]]], [2, [0, [0, 3]], [1, [5, 9],
+    [2, 12], [3, 7]], [2, [14, 21]]]]
 
 class adp_iso_local_sphere_restraints_energies_functor(object):
 

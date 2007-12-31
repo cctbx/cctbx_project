@@ -562,7 +562,54 @@ namespace cctbx { namespace crystal {
           }
         }
         return true;
-      };
+      }
+
+      //! Constructs new pair_asu_table with interactions for all bond angles.
+      pair_asu_table
+      angle_pair_asu_table() const
+      {
+        pair_asu_table result(asu_mappings_owner_);
+        af::const_ref<pair_asu_dict> table_ref = table_.const_ref();
+        typedef af::tiny<unsigned, 2> tu2;
+        std::vector<tu2> pair_list;
+        pair_list.reserve(16); // very generous estimate
+        for(unsigned i_seq=0;i_seq<table_.size();i_seq++) {
+          pair_list.clear();
+          pair_asu_dict const& asu_dict = table_ref[i_seq];
+          for(pair_asu_dict::const_iterator
+                asu_dict_i = asu_dict.begin();
+                asu_dict_i != asu_dict.end();
+                asu_dict_i++) {
+            unsigned j_seq = asu_dict_i->first;
+            for(pair_asu_j_sym_groups::const_iterator
+                  j_sym_groups_i = asu_dict_i->second.begin();
+                  j_sym_groups_i != asu_dict_i->second.end();
+                  j_sym_groups_i++) {
+              for(pair_asu_j_sym_group::const_iterator
+                    j_sym_i = j_sym_groups_i->begin();
+                    j_sym_i != j_sym_groups_i->end();
+                    j_sym_i++) {
+                pair_list.push_back(tu2(j_seq, *j_sym_i));
+              }
+            }
+          }
+          unsigned pair_list_size = static_cast<unsigned>(pair_list.size());
+          for(unsigned i_jj1=0;i_jj1<pair_list_size-1;i_jj1++) {
+            tu2 const& jj1 = pair_list[i_jj1];
+            sgtbx::rt_mx rt_mx_jj1_inv = asu_mappings_->get_rt_mx(
+              jj1[0], jj1[1]).inverse();
+            for(unsigned i_jj2=i_jj1+1;i_jj2<pair_list_size;i_jj2++) {
+              tu2 const& jj2 = pair_list[i_jj2];
+              result.add_pair(
+                jj1[0],
+                jj2[0],
+                rt_mx_jj1_inv.multiply(asu_mappings_->get_rt_mx(
+                  jj2[0], jj2[1])));
+            }
+          }
+        }
+        return result;
+      }
 
     protected:
       boost::shared_ptr<
