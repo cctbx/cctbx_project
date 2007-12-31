@@ -512,6 +512,18 @@ def correct_special_position(
 
 class _pair_asu_table(boost.python.injector, pair_asu_table):
 
+  def as_nested_lists(self):
+    result = []
+    for i_seq, j_seq_dict in enumerate(self.table()):
+      i_seq_list = [i_seq]
+      for j_seq,j_sym_group in j_seq_dict.items():
+        j_seq_list = [j_seq]
+        for j_syms in j_sym_group:
+          j_seq_list.append(list(j_syms))
+        i_seq_list.append(j_seq_list)
+      result.append(i_seq_list)
+    return result
+
   def show(self, f=None, site_labels=None):
     if (f is None): f = sys.stdout
     if (site_labels is None):
@@ -545,6 +557,26 @@ class _pair_asu_table(boost.python.injector, pair_asu_table):
       show_cartesian=show_cartesian,
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
+
+  def angle_pair_asu_table(self):
+    asu_mappings = self.asu_mappings()
+    result = pair_asu_table(asu_mappings=asu_mappings)
+    for i_seq,asu_dict in enumerate(self.table()):
+      pair_list = []
+      for j_seq,j_sym_groups in asu_dict.items():
+        for i_group,j_sym_group in enumerate(j_sym_groups):
+          for j_sym in j_sym_group:
+            pair_list.append((j_seq,j_sym))
+      for i_jj1 in xrange(0,len(pair_list)-1):
+        jj1 = pair_list[i_jj1]
+        rt_mx_jj1_inv = asu_mappings.get_rt_mx(*jj1).inverse()
+        for i_jj2 in xrange(i_jj1+1,len(pair_list)):
+          jj2 = pair_list[i_jj2]
+          result.add_pair(
+            i_seq=jj1[0],
+            j_seq=jj2[0],
+            rt_mx_ji=rt_mx_jj1_inv.multiply(asu_mappings.get_rt_mx(*jj2)))
+    return result
 
 class show_distances(object):
 

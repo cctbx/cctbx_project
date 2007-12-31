@@ -6,6 +6,7 @@ import scitbx.math
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
+from libtbx import dict_with_default_0
 from cStringIO import StringIO
 import math
 import sys, os
@@ -306,14 +307,82 @@ def exercise_bond_sorted_asu_proxies(
     ctrl[key] += 1
   assert ctrl.values() == [1]*len(ctrl)
 
+def exercise_angle_pair_asu_table(
+      structure,
+      distance_cutoff,
+      connectivities,
+      reference_apatanl):
+  sg_asu_mappings = structure.asu_mappings(
+    buffer_thickness=2*distance_cutoff)
+  sg_pat = crystal.pair_asu_table(asu_mappings=sg_asu_mappings)
+  sg_pat.add_all_pairs(distance_cutoff=distance_cutoff)
+  # compare connectivities with reference
+  assert list(sg_pat.pair_counts()) == connectivities
+  #
+  p1_structure = structure.expand_to_p1()
+  p1_asu_mappings = p1_structure.asu_mappings(
+    buffer_thickness=2*distance_cutoff)
+  p1_pat = crystal.pair_asu_table(asu_mappings=p1_asu_mappings)
+  p1_pat.add_all_pairs(distance_cutoff=distance_cutoff)
+  sg_labels = structure.scatterers().extract_labels()
+  p1_labels = p1_structure.scatterers().extract_labels()
+  label_connect = dict(zip(sg_labels, sg_pat.pair_counts()))
+  for l,c in zip(p1_labels, p1_pat.pair_counts()):
+    # compare connectivities in original space group and in P1
+    assert label_connect[l] == c
+  #
+  sg_apat = sg_pat.angle_pair_asu_table()
+  sg_counts = {}
+  for i_seq,pair_asu_dict in enumerate(sg_apat.table()):
+    lbl_i = sg_labels[i_seq]
+    for j_seq,pair_asu_j_sym_groups in pair_asu_dict.items():
+      lbl_j = sg_labels[j_seq]
+      for j_sym_group in pair_asu_j_sym_groups:
+        sg_counts.setdefault(lbl_i, dict_with_default_0())[
+                             lbl_j] += len(j_sym_group)
+  p1_apat = p1_pat.angle_pair_asu_table()
+  p1_counts = {}
+  for i_seq,pair_asu_dict in enumerate(p1_apat.table()):
+    lbl_i = p1_labels[i_seq]
+    for j_seq,pair_asu_j_sym_groups in pair_asu_dict.items():
+      lbl_j = p1_labels[j_seq]
+      for j_sym_group in pair_asu_j_sym_groups:
+        p1_counts.setdefault(lbl_i, dict_with_default_0())[
+                             lbl_j] += len(j_sym_group)
+  # self-consistency check
+  multiplicities = {}
+  for sc in structure.scatterers():
+    multiplicities[sc.label] = sc.multiplicity()
+  assert sorted(p1_counts.keys()) == sorted(sg_counts.keys())
+  for lbl_i,sg_lc in sg_counts.items():
+    p1_lc = p1_counts[lbl_i]
+    assert sorted(p1_lc.keys()) == sorted(sg_lc.keys())
+    for lbl_j,sg_c in sg_lc.items():
+      p1_c = p1_lc[lbl_j]
+      assert p1_c == sg_c * multiplicities[lbl_i]
+  # compare with reference
+  apatanl = str(sg_apat.as_nested_lists()).replace(" ","")
+  if (reference_apatanl is not None):
+    assert apatanl == reference_apatanl
+
 def exercise_all():
   verbose = "--verbose" in sys.argv[1:]
   exercise_icosahedron(verbose=verbose)
-  default_distance_cutoff=3.5
+  default_distance_cutoff = 3.5
   regression_misc = libtbx.env.find_in_repositories("phenix_regression/misc")
   if (regression_misc is None):
     print "Skipping exercise_all(): phenix_regression/misc not available"
     return
+  path = os.path.join(regression_misc, "angle_pair_asu_tables_as_nested_lists")
+  if (not os.path.isfile(path)):
+    print "Skipping some tests: reference file not available:", path
+    reference_apatanl_dict = None
+  else:
+    reference_apatanl_dict = {}
+    for line in open(path).read().splitlines():
+      tag, apatanl = line.split()
+      assert not tag in reference_apatanl_dict
+      reference_apatanl_dict[tag] = apatanl
   file_names = []
   for file_name in ["strudat_zeolite_atlas", "strudat_special_bonds"]:
     path = os.path.join(regression_misc, file_name)
@@ -323,7 +392,10 @@ def exercise_all():
       file_names.append(path)
   for file_name in file_names:
     strudat_entries = strudat.read_all_entries(open(file_name))
-    for entry in strudat_entries.entries:
+    for i_entry,entry in enumerate(strudat_entries.entries):
+      if (    file_name.endswith("strudat_zeolite_atlas")
+          and not ("--full" in sys.argv[1:] or i_entry % 20 == 0)):
+        continue
       if (0 or verbose):
         print "strudat tag:", entry.tag
       structure = entry.as_xray_structure()
@@ -349,6 +421,16 @@ def exercise_all():
         exercise_bond_sorted_asu_proxies(
           structure=structure,
           distance_cutoff=distance_cutoff)
+      if (reference_apatanl_dict is None):
+        reference_apatanl = None
+      else:
+        assert entry.tag in reference_apatanl_dict
+        reference_apatanl = reference_apatanl_dict[entry.tag]
+      exercise_angle_pair_asu_table(
+        structure=structure,
+        distance_cutoff=distance_cutoff,
+        connectivities=connectivities,
+        reference_apatanl=reference_apatanl)
 
 def run():
   exercise_all()
