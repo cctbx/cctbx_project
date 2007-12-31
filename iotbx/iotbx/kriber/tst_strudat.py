@@ -3,6 +3,7 @@ from cctbx.regression import tst_direct_space_asu
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx.array_family import flex
+from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -139,7 +140,7 @@ def exercise_zeolite_atlas(distance_cutoff=3.5):
   all_entries = strudat.read_all_entries(open(atlas_file))
   for i,entry in enumerate(all_entries.entries):
     structure = entry.as_xray_structure()
-    if ("--Full" in sys.argv[1:] or i % 20 == 0):
+    if ("--full" in sys.argv[1:] or i % 20 == 0):
       tst_direct_space_asu.exercise_neighbors_pair_generators(
         structure=structure,
         verbose="--Verbose" in sys.argv[1:])
@@ -159,7 +160,7 @@ def exercise_zeolite_atlas(distance_cutoff=3.5):
 def run():
   exercise_basic()
   exercise_zeolite_atlas()
-  print "OK"
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()
