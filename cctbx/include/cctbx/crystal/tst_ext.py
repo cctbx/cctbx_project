@@ -825,6 +825,11 @@ i_seq: 2
     [3, 23], [2, 38]], [2, [0, 3]]], [1, [0, [7], [1], [10]], [1, [13],
     [32, 36], [20]], [2, [7], [10], [1]]], [2, [0, [0, 3]], [1, [5, 9],
     [2, 12], [3, 7]], [2, [14, 21]]]]
+  asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  asu_table.add_all_pairs(distance_cutoff=3.1)
+  assert asu_table.table()[2].size() == 0
+  apat = asu_table.angle_pair_asu_table()
+  assert apat.as_nested_lists() == [[0], [1], [2]]
 
 class adp_iso_local_sphere_restraints_energies_functor(object):
 
