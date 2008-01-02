@@ -594,7 +594,7 @@ namespace cctbx { namespace crystal {
             }
           }
           unsigned pair_list_size = static_cast<unsigned>(pair_list.size());
-          for(unsigned i_jj1=0;i_jj1<pair_list_size-1;i_jj1++) {
+          for(unsigned i_jj1=0;i_jj1+1<pair_list_size;i_jj1++) {
             tu2 const& jj1 = pair_list[i_jj1];
             sgtbx::rt_mx rt_mx_jj1_inv = asu_mappings_->get_rt_mx(
               jj1[0], jj1[1]).inverse();
