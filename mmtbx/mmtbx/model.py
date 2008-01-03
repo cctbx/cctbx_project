@@ -216,6 +216,20 @@ class manager(object):
          self.xray_structure.convert_to_anisotropic(selection = sel)
          self.refinement_flags.adp_individual_aniso[0].set_selected(sel, True)
          self.refinement_flags.adp_individual_iso[0].set_selected(sel, False)
+    # add to aal:
+    i_seq = 0
+    for sc in self.ias_xray_structure.scatterers():
+      i_seq += 1
+      new_atom_name = sc.label.strip()
+      if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
+      while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
+      new_attr = pdb.atom.attributes(name        = new_atom_name,
+                                     resName     = "IAS",
+                                     element     = sc.element_symbol(),
+                                     is_hetatm   = True,
+                                     resSeq      = i_seq)
+      self.atom_attributes_list.append(new_attr)
+
 
   def remove_dbe(self):
     print >> self.log, ">>> Removing IAS..............."
@@ -231,38 +245,7 @@ class manager(object):
        self.solvent_selection = self.solvent_selection[:n_non_ias]
        self.dbe_selection = None
        self.xray_structure.scattering_type_registry().show()
-
-
-  def write_dbe_pdb_file(self, out = None):
-    if(out is None):
-       out = sys.stdout
-    print >> out, pdb.format_cryst1_record(
-      crystal_symmetry = self.xray_structure.crystal_symmetry())
-    print >> out, pdb.format_scale_records(
-      unit_cell = self.xray_structure.crystal_symmetry().unit_cell())
-    sites_cart = self.xray_structure.select(self.dbe_selection).sites_cart()
-    scatterers = self.xray_structure.select(self.dbe_selection).scatterers()
-    u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(self.xray_structure.unit_cell())
-    u_isos      = self.xray_structure.extract_u_iso_or_u_equiv()
-    for i_seq, sc in enumerate(self.xray_structure.select(self.dbe_selection).scatterers()):
-        print >> out, pdb.format_atom_record(
-                                    record_name = "HETATM",
-                                    serial      = i_seq+1,
-                                    name        = sc.label,
-                                    resName     = "DBE",
-                                    resSeq      = i_seq+1,
-                                    site        = sites_cart[i_seq],
-                                    occupancy   = sc.occupancy,
-                                    tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                    element     = sc.label)
-        if(scatterers[i_seq].flags.use_u_aniso()):
-           print >> out, pdb.format_anisou_record(
-                                    serial      = i_seq+1,
-                                    name        = sc.label,
-                                    resName     = "DBE",
-                                    resSeq      = i_seq+1,
-                                    u_cart      = u_carts[i_seq],
-                                    element     = sc.label)
+       self.atom_attributes_list = self.atom_attributes_list[:n_non_ias]
 
   def show_rigid_bond_test(self, out=None):
     if(out is None): out = sys.stdout
