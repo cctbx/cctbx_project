@@ -1061,7 +1061,7 @@ class structure(crystal.special_position_settings):
         new_sites_frac = sites_frac.deep_copy()
         smallest_distances_sq = flex.double(sites_frac.size(),
           distance_cutoff**2+1)
-        i_seqs = flex.size_t(sites_frac.size(), -1)
+        i_seqs = flex.int(sites_frac.size(), -1)
         for pair in pair_generator:
           if(pair.i_seq < n_xray):
             if (pair.j_seq < n_xray): continue
