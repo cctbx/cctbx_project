@@ -292,6 +292,17 @@ def exercise_bond():
     pair_asu_table=pair_asu_table,
     bond_simple_proxies=proxies)
   assert pair_asu_table.table()[0].keys() == [1]
+  #
+  pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+  sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
+    pair_asu_table=pair_asu_table)
+  assert sorted_asu_proxies.simple.size() == 0
+  assert sorted_asu_proxies.asu.size() == 0
+  pair_asu_table.add_all_pairs(distance_cutoff=2)
+  sorted_asu_proxies = geometry_restraints.bond_sorted_asu_proxies(
+    pair_asu_table=pair_asu_table)
+  assert sorted_asu_proxies.simple.size() == 1
+  assert sorted_asu_proxies.asu.size() == 0
 
 class py_nonbonded_cos(object): # prototype
 

@@ -72,6 +72,9 @@ namespace {
             af::const_ref<bond_params_dict> const&,
             crystal::pair_asu_table<> const&>(
               (arg_("bond_params_table"), arg_("bond_asu_table"))))
+          .def(init<
+            crystal::pair_asu_table<> const&>(
+              (arg_("pair_asu_table"))))
       ;
     }
   };

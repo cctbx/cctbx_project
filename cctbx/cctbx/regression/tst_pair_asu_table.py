@@ -3,6 +3,7 @@ from cctbx import geometry_restraints
 from cctbx import crystal
 from cctbx.array_family import flex
 import scitbx.math
+from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
@@ -275,6 +276,8 @@ def exercise_bond_sorted_asu_proxies(
   proxies_fast = geometry_restraints.bond_sorted_asu_proxies(
     bond_params_table=bond_params_table,
     bond_asu_table=bond_asu_table)
+  proxies_conservative = geometry_restraints.bond_sorted_asu_proxies(
+    pair_asu_table=bond_asu_table)
   pair_generator = crystal.neighbors_simple_pair_generator(
     asu_mappings=asu_mappings,
     distance_cutoff=distance_cutoff,
@@ -286,26 +289,46 @@ def exercise_bond_sorted_asu_proxies(
       pair=pair,
       distance_ideal=3.1,
       weight=1))
-  assert proxies_slow.simple.size() == proxies_fast.simple.size()
-  assert proxies_slow.asu.size() == proxies_fast.asu.size()
-  ctrl = {}
-  for proxy in proxies_slow.simple:
-    assert not ctrl.has_key(proxy.i_seqs)
-    ctrl[proxy.i_seqs] = 0
-  for proxy in proxies_fast.simple:
-    assert ctrl.has_key(proxy.i_seqs)
-    ctrl[proxy.i_seqs] += 1
-  assert ctrl.values() == [1]*len(ctrl)
-  ctrl = {}
-  for proxy in proxies_slow.asu:
-    key = proxy.i_seq,proxy.j_seq,proxy.j_sym
-    assert not ctrl.has_key(key)
-    ctrl[key] = 0
-  for proxy in proxies_fast.asu:
-    key = proxy.i_seq,proxy.j_seq,proxy.j_sym
-    assert ctrl.has_key(key)
-    ctrl[key] += 1
-  assert ctrl.values() == [1]*len(ctrl)
+  def compare_proxies(proxies_1, proxies_2):
+    assert proxies_1.simple.size() == proxies_2.simple.size()
+    assert proxies_1.asu.size() == proxies_2.asu.size()
+    ctrl = {}
+    for proxy in proxies_1.simple:
+      assert not ctrl.has_key(proxy.i_seqs)
+      ctrl[proxy.i_seqs] = 0
+    for proxy in proxies_2.simple:
+      assert ctrl.has_key(proxy.i_seqs)
+      ctrl[proxy.i_seqs] += 1
+    assert ctrl.values() == [1]*len(ctrl)
+    ctrl = {}
+    for proxy in proxies_1.asu:
+      key = proxy.i_seq,proxy.j_seq,proxy.j_sym
+      assert not ctrl.has_key(key)
+      ctrl[key] = 0
+    for proxy in proxies_2.asu:
+      key = proxy.i_seq,proxy.j_seq,proxy.j_sym
+      assert ctrl.has_key(key)
+      ctrl[key] += 1
+    assert ctrl.values() == [1]*len(ctrl)
+  compare_proxies(proxies_1=proxies_fast, proxies_2=proxies_conservative)
+  compare_proxies(proxies_1=proxies_fast, proxies_2=proxies_slow)
+  sites_cart = structure.sites_cart()
+  for proxy in proxies_conservative.simple:
+    i,j = proxy.i_seqs
+    assert approx_equal(
+      abs(matrix.col(sites_cart[i]) - matrix.col(sites_cart[j])),
+      proxy.distance_ideal)
+    assert proxy.weight == 1
+  distance = proxies_conservative.asu_mappings().unit_cell().distance
+  get_rt_mx_ji = proxies_conservative.asu_mappings().get_rt_mx_ji
+  sites_frac = structure.sites_frac()
+  for proxy in proxies_conservative.asu:
+    assert approx_equal(
+      distance(
+        sites_frac[proxy.i_seq],
+        get_rt_mx_ji(pair=proxy) * sites_frac[proxy.j_seq]),
+      proxy.distance_ideal)
+    assert proxy.weight == 1
 
 def py_pair_asu_table_angle_pair_asu_table(self):
   asu_mappings = self.asu_mappings()
