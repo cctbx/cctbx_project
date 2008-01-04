@@ -92,6 +92,8 @@ def run_simulated_annealing(simulated_annealing_params,
       temperature                 = sa_temp,
       n_steps                     = simulated_annealing_params.number_of_steps,
       time_step                   = simulated_annealing_params.time_step,
+      interleaved_minimization_params \
+        = simulated_annealing_params.interleaved_minimization,
       n_print                     = simulated_annealing_params.n_print,
       verbose                     = simulated_annealing_params.verbose,
       fmodel                      = fmodel,

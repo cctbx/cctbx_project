@@ -1,21 +1,48 @@
-from cctbx.array_family import flex
-import random
-import time, math
-from iotbx import pdb
-from libtbx import adopt_init_args
-from libtbx.test_utils import approx_equal
-from scitbx import matrix
-import scitbx.math
-from cctbx import crystal
-import iotbx.pdb
-from cctbx import xray
 from mmtbx import dynamics
 from mmtbx.refinement import print_statistics
-from cctbx import miller
-import cctbx.xray.structure_factors
-from mmtbx import bulk_solvent
-import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+from cctbx import geometry_restraints
+from cctbx import xray
+from cctbx import crystal
+from cctbx.array_family import flex
+import scitbx.lbfgs
+from libtbx.utils import Sorry
+from libtbx import adopt_init_args
+import random
+import time
+import math
 import sys
+
+class interleaved_lbfgs_minimization(object):
+
+  def __init__(self,
+        conservative_pair_proxies,
+        sites_cart,
+        max_iterations):
+    self.conservative_pair_proxies = conservative_pair_proxies
+    self.x = sites_cart.as_double()
+    self.minimizer = scitbx.lbfgs.run(
+      target_evaluator=self,
+      termination_params=scitbx.lbfgs.termination_parameters(
+        max_iterations=max_iterations),
+      exception_handling_params=scitbx.lbfgs.exception_handling_parameters(
+        ignore_line_search_failed_rounding_errors=True,
+        ignore_line_search_failed_step_at_lower_bound=True,
+        ignore_line_search_failed_maxfev=True))
+    sites_cart.clear()
+    sites_cart.extend(flex.vec3_double(self.x))
+
+  def compute_functional_and_gradients(self):
+    sites_cart = flex.vec3_double(self.x)
+    f = 0
+    g = flex.vec3_double(sites_cart.size(), (0,0,0))
+    for sorted_asu_proxies in [self.conservative_pair_proxies.bond,
+                               self.conservative_pair_proxies.angle]:
+      if (sorted_asu_proxies is None): continue
+      f += geometry_restraints.bond_residual_sum(
+        sites_cart=sites_cart,
+        sorted_asu_proxies=sorted_asu_proxies,
+        gradient_array=g)
+    return f, g.as_double()
 
 class cartesian_dynamics(object):
   def __init__(self,
@@ -24,6 +51,7 @@ class cartesian_dynamics(object):
                temperature                 = 300,
                n_steps                     = 200,
                time_step                   = 0.0005,
+               interleaved_minimization_params = None,
                n_print                     = 20,
                verbose                     = -1,
                fmodel                      = None,
@@ -56,6 +84,21 @@ class cartesian_dynamics(object):
       assert self.xray_target_weight is not None
       if(self.xray_gradient is None):
         self.xray_gradient = self.xray_grads()
+    #
+    imp = self.interleaved_minimization_params
+    self.interleaved_minimization_flag = (
+      imp is not None and imp.number_of_iterations > 0)
+    if (self.interleaved_minimization_flag):
+      assert imp.time_step_factor > 0
+      self.time_step *= imp.time_step_factor
+      if ("bonds" not in imp.restraints):
+        raise Sorry(
+          'Invalid choice: %s.restraints: "bonds" must always be included.'
+            % imp.__phil_path__())
+      self.interleaved_minimization_angles = "angles" in imp.restraints
+    else:
+      self.interleaved_minimization_angles = False
+    #
     self()
 
   def __call__(self):
@@ -243,6 +286,21 @@ class cartesian_dynamics(object):
       factor = math.sqrt(self.temperature/self.current_temperature)
     self.vxyz = self.vxyz * factor
 
+  def interleaved_minimization(self):
+    geo_manager = self.restraints_manager.geometry
+    assert geo_manager.shell_sym_tables is not None
+    assert len(geo_manager.shell_sym_tables) > 0
+    conservative_pair_proxies = self.structure.conservative_pair_proxies(
+      bond_sym_table=geo_manager.shell_sym_tables[0],
+      conserve_angles=self.interleaved_minimization_angles)
+    sites_cart = self.structure.sites_cart()
+    interleaved_lbfgs_minimization(
+      sites_cart=sites_cart,
+      conservative_pair_proxies=conservative_pair_proxies,
+      max_iterations=self.interleaved_minimization_params.number_of_iterations)
+    self.structure.set_sites_cart(sites_cart=sites_cart)
+    self.structure.apply_symmetry_sites()
+
   def verlet_leapfrog_integration(self, verbose = -1):
     # start verlet_leapfrog_integration loop
     for cycle in range(1,self.n_steps+1,1):
@@ -288,6 +346,8 @@ class cartesian_dynamics(object):
       self.structure.set_sites_cart(
         sites_cart=self.structure.sites_cart() + self.vxyz * self.tstep)
       self.structure.apply_symmetry_sites()
+      if (self.interleaved_minimization_flag):
+        self.interleaved_minimization()
       kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
       self.current_temperature = kt.temperature()
       self.ekin = kt.kinetic_energy()
