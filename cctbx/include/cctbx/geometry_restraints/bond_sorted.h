@@ -111,6 +111,50 @@ namespace cctbx { namespace geometry_restraints {
           }
         }
       }
+
+      /*! \brief Initialization with pair_asu_table,
+          distance_ideal=distance_model and weight=1.
+       */
+      bond_sorted_asu_proxies(
+        crystal::pair_asu_table<> const& pair_asu_table)
+      :
+        bond_sorted_asu_proxies_base(pair_asu_table.asu_mappings())
+      {
+        af::const_ref<crystal::pair_asu_dict>
+          asu_tab = pair_asu_table.table().const_ref();
+        direct_space_asu::asu_mapping_index_pair pair;
+        for(pair.i_seq=0;pair.i_seq<asu_tab.size();pair.i_seq++) {
+          crystal::pair_asu_dict const& asu_dict = asu_tab[pair.i_seq];
+          for(crystal::pair_asu_dict::const_iterator
+                asu_dict_i=asu_dict.begin();
+                asu_dict_i!=asu_dict.end();
+                asu_dict_i++) {
+            pair.j_seq = asu_dict_i->first;
+            crystal::pair_asu_j_sym_groups const& jgs = asu_dict_i->second;
+            for(unsigned ig=0;ig<jgs.size();ig++) {
+              crystal::pair_asu_j_sym_group const& jg = jgs[ig];
+              double distance_ideal = 0;
+              for(crystal::pair_asu_j_sym_group::const_iterator
+                    jg_i=jg.begin();
+                    jg_i!=jg.end();
+                    jg_i++) {
+                pair.j_sym = *jg_i;
+                distance_ideal += this->asu_mappings_->diff_vec(pair).length();
+              }
+              if (jg.size() != 0) distance_ideal /= jg.size();
+              for(crystal::pair_asu_j_sym_group::const_iterator
+                    jg_i=jg.begin();
+                    jg_i!=jg.end();
+                    jg_i++) {
+                pair.j_sym = *jg_i;
+                if (!pair.is_active()) continue;
+                process(
+                  bond_asu_proxy(pair, distance_ideal, /* weight */ 1.0));
+              }
+            }
+          }
+        }
+      }
   };
 
 }} // namespace cctbx::geometry_restraints
