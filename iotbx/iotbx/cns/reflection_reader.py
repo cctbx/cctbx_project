@@ -113,7 +113,7 @@ class cns_reciprocal_space_object(object):
   def real_data(self, use_name_as_hint=True):
     assert self.is_real(use_name_as_hint=use_name_as_hint)
     if (self.type == "real"): return self.data
-    return flex.real(self.data)
+    return flex.abs(self.data)
 
 class CNS_xray_reflection_Reader(CNS_input):
 
