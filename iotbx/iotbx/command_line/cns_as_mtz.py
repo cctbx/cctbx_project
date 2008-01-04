@@ -59,6 +59,12 @@ def run(args, command_name="phenix.cns_as_mtz"):
         miller_array=miller_array,
         column_root_label=miller_array.info().labels[0])
   mtz_object = mtz_dataset.mtz_object()
+  for column in mtz_object.columns():
+    column_type = {
+      "FOM": "W",
+      "PHASE": "P"}.get(column.label())
+    if (column_type is not None):
+      column.set_type(new_type=column_type)
   mtz_object.show_summary()
   mtz_file_name = os.path.basename(cns_file_name)
   if (mtz_file_name.count(".") == 1):
