@@ -354,7 +354,8 @@ def exercise_angle_pair_asu_table(
       structure,
       distance_cutoff,
       connectivities,
-      reference_apatanl):
+      reference_apatanl,
+      reference_cppc):
   sg_asu_mappings = structure.asu_mappings(
     buffer_thickness=2*distance_cutoff)
   sg_pat = crystal.pair_asu_table(asu_mappings=sg_asu_mappings)
@@ -409,6 +410,20 @@ def exercise_angle_pair_asu_table(
   apatanl = str(sg_apat.as_nested_lists()).replace(" ","")
   if (reference_apatanl is not None):
     assert apatanl == reference_apatanl
+  #
+  counts = []
+  for conserve_angles in [False, True]:
+    proxies = structure.conservative_pair_proxies(
+      bond_sym_table=sg_pat.extract_pair_sym_table(),
+      conserve_angles=conserve_angles)
+    counts.extend([proxies.bond.simple.size(), proxies.bond.asu.size()])
+    if (not conserve_angles):
+      assert proxies.angle is None
+    else:
+      counts.extend([proxies.angle.simple.size(), proxies.angle.asu.size()])
+  cppc = ",".join([str(c) for c in counts])
+  if (reference_cppc is not None):
+    assert cppc == reference_cppc
 
 def exercise_all():
   verbose = "--verbose" in sys.argv[1:]
@@ -418,16 +433,21 @@ def exercise_all():
   if (regression_misc is None):
     print "Skipping exercise_all(): phenix_regression/misc not available"
     return
-  path = os.path.join(regression_misc, "angle_pair_asu_tables_as_nested_lists")
-  if (not os.path.isfile(path)):
-    print "Skipping some tests: reference file not available:", path
-    reference_apatanl_dict = None
-  else:
-    reference_apatanl_dict = {}
+  def get_reference_dict(file_name):
+    path = os.path.join(regression_misc, file_name)
+    if (not os.path.isfile(path)):
+      print "Skipping some tests: reference file not available:", path
+      return None
+    result = {}
     for line in open(path).read().splitlines():
-      tag, apatanl = line.split()
-      assert not tag in reference_apatanl_dict
-      reference_apatanl_dict[tag] = apatanl
+      tag, data = line.split()
+      assert not tag in result
+      result[tag] = data
+    return result
+  reference_apatanl_dict = get_reference_dict(
+    "angle_pair_asu_tables_as_nested_lists")
+  reference_cppc_dict = get_reference_dict(
+    "conservative_pair_proxies_counts")
   file_names = []
   for file_name in ["strudat_zeolite_atlas", "strudat_special_bonds"]:
     path = os.path.join(regression_misc, file_name)
@@ -471,11 +491,17 @@ def exercise_all():
       else:
         assert entry.tag in reference_apatanl_dict
         reference_apatanl = reference_apatanl_dict[entry.tag]
+      if (reference_cppc_dict is None):
+        reference_cppc = None
+      else:
+        assert entry.tag in reference_cppc_dict
+        reference_cppc = reference_cppc_dict[entry.tag]
       exercise_angle_pair_asu_table(
         structure=structure,
         distance_cutoff=distance_cutoff,
         connectivities=connectivities,
-        reference_apatanl=reference_apatanl)
+        reference_apatanl=reference_apatanl,
+        reference_cppc=reference_cppc)
 
 def run():
   exercise_all()

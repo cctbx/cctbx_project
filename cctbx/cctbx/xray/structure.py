@@ -1042,6 +1042,12 @@ class structure(crystal.special_position_settings):
       keep_pair_asu_table=keep_pair_asu_table,
       out=out)
 
+  def conservative_pair_proxies(self, bond_sym_table, conserve_angles):
+    return conservative_pair_proxies(
+      structure=self,
+      bond_sym_table=bond_sym_table,
+      conserve_angles=conserve_angles)
+
   def difference_vectors_cart(self, other):
     return other.sites_cart() - self.sites_cart()
 
@@ -1138,3 +1144,27 @@ class structure(crystal.special_position_settings):
       remarks=remarks,
       fractional_coordinates=fractional_coordinates,
       res_name=res_name, connect=connect)
+
+class conservative_pair_proxies(object):
+
+  def __init__(self, structure, bond_sym_table, conserve_angles):
+    from cctbx import geometry_restraints
+    buffer_thickness = flex.max_default(
+      values=crystal.get_distances(
+        pair_sym_table=bond_sym_table,
+        orthogonalization_matrix
+          =structure.unit_cell().orthogonalization_matrix(),
+        sites_frac=structure.sites_frac()),
+      default=1)
+    if (conserve_angles): buffer_thickness *= 2
+    asu_mappings = structure.asu_mappings(buffer_thickness=buffer_thickness)
+    bond_pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    bond_pair_asu_table.add_pair_sym_table(sym_table=bond_sym_table)
+    self.bond = geometry_restraints.bond_sorted_asu_proxies(
+      pair_asu_table=bond_pair_asu_table)
+    if (not conserve_angles):
+      self.angle = None
+    else:
+      angle_pair_asu_table = bond_pair_asu_table.angle_pair_asu_table()
+      self.angle = geometry_restraints.bond_sorted_asu_proxies(
+        pair_asu_table=angle_pair_asu_table)
