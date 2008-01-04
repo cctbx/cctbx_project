@@ -23,7 +23,6 @@ class lbfgs(object):
                      tan_b_iso_max            = None,
                      refine_xyz               = False,
                      refine_adp               = False,
-                     refine_dbe               = False,
                      lbfgs_termination_params = None,
                      use_fortran              = False,
                      verbose                  = 0,

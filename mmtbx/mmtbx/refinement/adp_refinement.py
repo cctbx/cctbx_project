@@ -172,25 +172,8 @@ class manager(object):
        model.xray_structure = fmodels.fmodel_xray().xray_structure
 
     if(refine_adp_individual):
-       model.set_refine_individual_adp(h_mode = h_params.refine_adp)
-       print_statistics.make_sub_header(text= "Individual ADP refinement",
-                                        out = log)
-       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-           max_iterations = individual_adp_params.iso.max_number_of_iterations)
-       assert fmodels.fmodel_xray().xray_structure is model.xray_structure
-       self.minimized = minimization.lbfgs(
-                          restraints_manager       = restraints_manager,
-                          fmodels                  = fmodels,
-                          model                    = model,
-                          refine_adp               = True,
-                          lbfgs_termination_params = lbfgs_termination_params,
-                          tan_b_iso_max            = tan_b_iso_max,
-                          iso_restraints           = adp_restraints_params.iso,
-                          verbose                  = 0,
-                          target_weights           = target_weights,
-                          h_params                 = h_params)
-       self.minimized.monitor.show(message = "LBFGS minimization", log  = log)
-       assert fmodels.fmodel_xray().xray_structure is model.xray_structure
+       refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log)
+
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
                                         out = log)
@@ -236,3 +219,55 @@ class manager(object):
           refine_adp               = True,
           log                      = log)
     time_adp_refinement_py += timer.elapsed()
+
+def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log):
+  model.set_refine_individual_adp(h_mode = h_params.refine_adp)
+  print_statistics.make_sub_header(text="Individual ADP refinement", out = log)
+  lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+    max_iterations = individual_adp_params.iso.max_number_of_iterations)
+  assert fmodels.fmodel_xray().xray_structure is model.xray_structure
+  if(target_weights.twp.optimize_wxu):
+    save_scatterers = fmodels.fmodel_xray().xray_structure.\
+      deep_copy_scatterers().scatterers()
+    print >> log, "Start r_free = %6.4f"%fmodels.fmodel_xray().r_free()
+    new_scatterers = None
+    scaler_values = [0.,1.,1.5,2.,2.5,3.,3.5,4.,4.5,5.,6.,7.,8.,9.,10.,
+      1./1.5,1./2.,1./2.5,1./3.,1./3.5,1./4.,1./4.5,1./5.]
+  else: scaler_values = [1.,]
+  r_free = 1.e+9
+  wx = target_weights.adp_weights_result.wx
+  for scaler in scaler_values:
+    if(target_weights.twp.optimize_wxu):
+      fmodels.fmodel_xray().xray_structure.replace_scatterers(
+        save_scatterers.deep_copy())
+      fmodels.update_xray_structure(update_f_calc = True)
+      target_weights.adp_weights_result.wx = wx * scaler
+    minimized = minimization.lbfgs(
+      restraints_manager       = model.restraints_manager,
+      fmodels                  = fmodels,
+      model                    = model,
+      refine_adp               = True,
+      lbfgs_termination_params = lbfgs_termination_params,
+      iso_restraints           = adp_restraints_params.iso,
+      verbose                  = 0,
+      target_weights           = target_weights,
+      h_params                 = h_params)
+    r_free_ = fmodels.fmodel_xray().r_free()
+    if(target_weights.twp.optimize_wxu):
+      print >> log, "scale= %8.4f total_weight= %8.4f r_free= %6.4f"%(scaler,
+        target_weights.xyz_weights_result.wx, r_free_)
+    if(r_free_ < r_free):
+      r_free = r_free_
+      new_scatterers = fmodels.fmodel_xray().xray_structure.scatterers(
+        ).deep_copy()
+    assert fmodels.fmodel_xray().xray_structure is model.xray_structure
+    assert minimized.xray_structure is model.xray_structure
+  if(target_weights.twp.optimize_wxu):
+    print >> log, "Best r_free =  %6.4f"%r_free
+    fmodels.fmodel_xray().xray_structure.replace_scatterers(new_scatterers)
+    fmodels.update_xray_structure(update_f_calc = True)
+    assert approx_equal(fmodels.fmodel_xray().r_free(), r_free)
+  else: fmodels.update_xray_structure(update_f_calc = True)
+  if(not target_weights.twp.optimize_wxu):
+    minimized.monitor.show(message = "LBFGS minimization", log  = log)
+    #monitors.collect(step = str(macro_cycle)+"_adp:") XXX
