@@ -1,26 +1,13 @@
-from iotbx import pdb
 from cctbx.array_family import flex
-from cctbx import xray
-import math,sys
-from mmtbx import max_lik
-from mmtbx.max_lik import maxlik
-from mmtbx import masks
-from mmtbx import bulk_solvent
-import mmtbx.restraints
-from cctbx import crystal
-from mmtbx.max_lik import max_like_non_uniform
+import math, sys
 from libtbx import adopt_init_args
-import mmtbx.f_model
-from libtbx import introspection
 from cctbx import maptbx
-from cctbx import adptbx
 from cctbx import crystal
 import libtbx.load_env
-import iotbx.xplor.map
-from scitbx import matrix
 from libtbx.test_utils import approx_equal
 import iotbx.phil
 from libtbx.str_utils import format_value
+from mmtbx.refinement import print_statistics
 
 master_params = iotbx.phil.parse("""\
   use_sigma_scaled_maps = True
@@ -165,3 +152,26 @@ class manager(object):
         h, atom_attributes_list[i_seq].pdb_format(), d)
       assert d <= self.params.map_next_to_model.max_model_peak_dist
       assert d >= self.params.map_next_to_model.min_model_peak_dist
+
+def show_highest_peaks_and_deepest_holes(fmodel,
+                                         atom_attributes_list,
+                                         map_type,
+                                         map_cutoff_plus,
+                                         map_cutoff_minus,
+                                         log = None):
+  if(log is None): log = sys.stdout
+  print_statistics.make_header(
+    "residual map %s: highest peaks and deepst holes"%map_type, out = log)
+  fp_params = master_params.extract()
+  fp_params.map_next_to_model.min_model_peak_dist = 0.7
+  fp_params.map_next_to_model.min_peak_peak_dist = 0.7
+  fp_params.peak_search.min_cross_distance = 0.7
+  fp_params.map_next_to_model.use_hydrogens = True
+  for par in [(map_cutoff_plus,"peaks"), (map_cutoff_minus,"holes")]:
+    print_statistics.make_sub_header(par[1], out = log)
+    result = manager(fmodel     = fmodel,
+                     map_type   = "mFobs-DFmodel",
+                     map_cutoff = par[0],
+                     params     = fp_params,
+                     log        = log)
+    result.show_mapped(atom_attributes_list = atom_attributes_list)

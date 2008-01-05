@@ -42,7 +42,7 @@ master_params = iotbx.phil.parse("""\
   b_iso_min = 1.0
     .type=float
     .help = Minimum B-factor value, waters with smaller value will be rejected
-  b_iso_max = 50.0
+  b_iso_max = 60.0
     .type=float
     .help = Maximum B-factor value, waters with bigger value will be rejected
   anisotropy_min = 0.1
@@ -121,14 +121,16 @@ class manager(object):
     self.show(message = "Start model:")
     self.filter_solvent()
     if(self.filter_only == False):
+       assert self.params.primary_map_type is not None
        peaks = self.find_peaks(
          map_type   = self.params.primary_map_type,
          map_cutoff = self.params.primary_map_cutoff).peaks_mapped()
        self.sites, self.heights = peaks.sites, peaks.heights
        self.add_new_solvent()
        self.filter_solvent()
-    self.find_peaks_2fofc()
-    self.show(message = "2Fo-Fc map selection:")
+    if(self.params.secondary_map_type is not None):
+      self.find_peaks_2fofc()
+      self.show(message = "2Fo-Fc map selection:")
     #
     if(not self.filter_only and self.params.refine_adp and
        self.model.refinement_flags.individual_adp and
@@ -201,7 +203,7 @@ class manager(object):
             if(aal[i_seq].element.strip() not in ['O','N']):
               selection[i] = False
           else:
-            dist = 1.e6
+            dist = 9999.
             for j, j_seq in enumerate(result.i_seqs):
               if(i != j):
                 d = xrs_sol.unit_cell().distance(sfs[i], sfs[j])
@@ -277,34 +279,33 @@ class manager(object):
                               log        = self.log)
 
   def find_peaks_2fofc(self):
-    if(self.params.secondary_map_type is not None):
-       peaks = self.find_peaks(
-         map_type   = self.params.secondary_map_type,
-         map_cutoff = self.params.secondary_map_cutoff).peaks()
-       sites_2nd, heights_2nd = peaks.sites, peaks.heights
-       step= self.fmodel.f_obs.d_min()*self.find_peaks_params.resolution_factor
-       if(step < 0.3): step = 0.3 # XXX
-       zz = self.xray_structure.select(self.solvent_selection)
-       result = zz.closest_distances(sites_frac = sites_2nd,
-         distance_cutoff = 6.0) # XXX
-       smallest_distances = result.smallest_distances
-       selection = (smallest_distances <= step) & (smallest_distances >= 0)
-       cs = self.xray_structure.crystal_symmetry()
-       sp = crystal.special_position_settings(cs)
-       scatterers = flex.xray_scatterer()
-       for site in result.sites_frac:
-         scatterers.append(xray.scatterer("o", site))
-       xrs_2nd = xray.structure(sp, scatterers)
-       smallest_distances = xrs_2nd.closest_distances(sites_frac =
-         zz.sites_frac(), distance_cutoff = 6.0).smallest_distances # XXX
-       selection = (smallest_distances <= step) & (smallest_distances >= 0)
-       xrs_sol = self.xray_structure.select(self.solvent_selection)
-       xrs_sol = xrs_sol.select(selection)
-       xrs_mac = self.xray_structure.select(~self.solvent_selection)
-       sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
-       sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
-       self.reset_solvent(solvent_selection      = sol_sel,
-                          solvent_xray_structure = xrs_sol)
+    peaks = self.find_peaks(
+      map_type   = self.params.secondary_map_type,
+      map_cutoff = self.params.secondary_map_cutoff).peaks()
+    sites_2nd, heights_2nd = peaks.sites, peaks.heights
+    step= self.fmodel.f_obs.d_min()*self.find_peaks_params.resolution_factor
+    if(step < 0.3): step = 0.3 # XXX
+    zz = self.xray_structure.select(self.solvent_selection)
+    result = zz.closest_distances(sites_frac = sites_2nd,
+      distance_cutoff = 6.0) # XXX
+    smallest_distances = result.smallest_distances
+    selection = (smallest_distances <= step) & (smallest_distances >= 0)
+    cs = self.xray_structure.crystal_symmetry()
+    sp = crystal.special_position_settings(cs)
+    scatterers = flex.xray_scatterer()
+    for site in result.sites_frac:
+      scatterers.append(xray.scatterer("o", site))
+    xrs_2nd = xray.structure(sp, scatterers)
+    smallest_distances = xrs_2nd.closest_distances(sites_frac =
+      zz.sites_frac(), distance_cutoff = 6.0).smallest_distances # XXX
+    selection = (smallest_distances <= step) & (smallest_distances >= 0)
+    xrs_sol = self.xray_structure.select(self.solvent_selection)
+    xrs_sol = xrs_sol.select(selection)
+    xrs_mac = self.xray_structure.select(~self.solvent_selection)
+    sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
+    sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
+    self.reset_solvent(solvent_selection      = sol_sel,
+                       solvent_xray_structure = xrs_sol)
 
   def add_new_solvent(self):
     if(self.params.b_iso is None):
