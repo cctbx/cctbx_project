@@ -53,6 +53,9 @@ class labels(object):
     result = ""
     if (self.MODELserial is not None and self.MODELserial != 0):
       result += "MODEL     %4d: " % self.MODELserial
+    if(self.altLoc is None): self.altLoc = ""
+    if(self.chainID is None): self.chainID = ""
+    if(self.iCode is None): self.iCode = ""
     result = '"%-4.4s%1.1s%-3.3s%2.2s%4.4s%1.1s"' % (
       self.name, self.altLoc, self.resName,
       self.chainID, self.resSeq, self.iCode)
