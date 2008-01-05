@@ -439,7 +439,7 @@ namespace twinning {
           }
         }
       }
-
+      CCTBX_ASSERT(n != 0);
       mean1/=n;
       mean2/=n;
       sig1/=n;
@@ -454,6 +454,7 @@ namespace twinning {
         cc_=1.0;
       } else{
         cc_=cov/sig1;
+        CCTBX_ASSERT(sig1 != 0);
       }
     }
 
