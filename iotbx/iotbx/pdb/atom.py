@@ -53,12 +53,13 @@ class labels(object):
     result = ""
     if (self.MODELserial is not None and self.MODELserial != 0):
       result += "MODEL     %4d: " % self.MODELserial
-    if(self.altLoc is None): self.altLoc = ""
-    if(self.chainID is None): self.chainID = ""
-    if(self.iCode is None): self.iCode = ""
-    result = '"%-4.4s%1.1s%-3.3s%2.2s%4.4s%1.1s"' % (
-      self.name, self.altLoc, self.resName,
-      self.chainID, self.resSeq, self.iCode)
+    def hide_none(s):
+      if (s is None): return ""
+      return s
+    result = '"%-4.4s%1.1s%-3.3s%2.2s%4.4s%1.1s"' % tuple(
+      [hide_none(s) for s in [
+        self.name, self.altLoc, self.resName,
+        self.chainID, self.resSeq, self.iCode]])
     if (self.segID is not None and len(self.segID.strip()) != 0):
       result += ' segID="%s"' % self.segID
     return result

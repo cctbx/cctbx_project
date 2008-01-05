@@ -141,10 +141,17 @@ ATOM      1  CA  CYS A   6       0.000   0.000   0.000  1.00  0.00
 ATOM      2  CA  CYSB    6       0.000   0.000   0.000  1.00  0.00
 ATOM      3  CA  CYSAB   7       0.000   0.000   0.000  1.00  0.00
 """.splitlines()
+  expected_pdb_format = iter("""\
+" CA  CYS A   6 "
+" CA  CYSB    6 "
+" CA  CYSAB   7 "
+""".splitlines())
   for record,chainID in zip(atom_records, ["A", "B ", "AB"]):
     attr = pdb.atom.attributes()
+    assert attr.pdb_format() == '"               "'
     attr.set_from_ATOM_record(pdb.parser.pdb_record(raw_record=record))
     assert attr.chainID == chainID
+    assert attr.pdb_format() == expected_pdb_format.next()
 
 def exercise_altLoc_grouping():
   altLoc_groups = pdb.interpretation.altLoc_grouping()
