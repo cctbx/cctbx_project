@@ -1995,6 +1995,12 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       use_intensities = False,
       scale_weight = False,
       use_weights = False )
+
+    if dt_f_obs.data().size()==0:
+      if mode == "algebraic":
+        raise Sorry("Algebraic detwinning of data resulted in a dataset without data! \n Please try to use detwinning using proportionality rules (detwin.mode=proportional) ")
+      else:
+        raise Sorry("This should never have happend. Please contact authors")
     return dt_f_obs, tmp_f_model, tmp_free
 
   def sigmaa_object(self, detwinned_data=None, f_model_data=None, forced_update=False):
@@ -2005,10 +2011,10 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     if (detwinned_data is None):
       if forced_update or self.update_sigmaa_object is True:
         self.update_sigmaa_object = True
-        detwinned_data,f_model_data,tmp_free = self.detwin_data()
+        detwinned_data,f_model_data,tmp_free = self.detwin_data(mode=self.detwin_mode)
     if forced_update:
       self.update_sigmaa_object = True
-      detwinned_data,f_model_data,tmp_free = self.detwin_data()
+      detwinned_data,f_model_data,tmp_free = self.detwin_data(mode=self.detwin_mode)
     if self.update_sigmaa_object:
       self.update_sigmaa_object = False
       self.sigmaa_object_cache = sigmaa_estimation.sigmaa_estimator(
@@ -2135,7 +2141,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         map_type = "two_dtfo_fc"
 
     #detwin
-    dt_f_obs, tmp_f_model, tmp_free = self.detwin_data()
+    dt_f_obs, tmp_f_model, tmp_free = self.detwin_data(mode=self.detwin_mode)
     #for aniso correction
     aniso_scale = 1.0/self.data_core.overall_scale() # anisotropy correction
     aniso_scale = self.f_atoms.customized_copy(
