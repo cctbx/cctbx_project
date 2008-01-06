@@ -914,7 +914,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           loc_twin_obs = obs_to_twin_obs_[ ii ];
           loc_calc = obs_to_calc_[ ii ];
           loc_twin_calc = obs_to_twin_calc_[ ii ];
-          n_i = -100000;
+          n_i =  i_obs[ii]; //-100000;
           n_s = 1000000.0;
           if (loc_twin_obs >=0){
             if (loc_calc>=0){
@@ -976,7 +976,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
          loc_twin_obs = obs_to_twin_obs_[ ii ];
          loc_calc = obs_to_calc_[ ii ];
          loc_twin_calc = obs_to_twin_calc_[ ii ];
-         n_i = -10000.0;
+         n_i = i_obs[ii];
          n_s = 10000.0;
          if (loc_twin_obs >=0){
            if (loc_calc >=0){
