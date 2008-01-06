@@ -439,23 +439,29 @@ namespace twinning {
           }
         }
       }
-      CCTBX_ASSERT(n != 0);
-      mean1/=n;
-      mean2/=n;
-      sig1/=n;
-      sig2/=n;
-      sig1=sig1-mean1*mean1;
-      sig2=sig2-mean2*mean2;
-      cov/=n;
-      cov=cov-mean1*mean2;
-      sig1=std::sqrt(sig1*sig2);
+      if (n>0){
+        CCTBX_ASSERT(n != 0);
+        mean1/=n;
+        mean2/=n;
+        sig1/=n;
+        sig2/=n;
+        sig1=sig1-mean1*mean1;
+        sig2=sig2-mean2*mean2;
+        cov/=n;
+        cov=cov-mean1*mean2;
+        sig1=std::sqrt(sig1*sig2);
 
-      if (sig1<=0){
-        cc_=1.0;
-      } else{
-        cc_=cov/sig1;
-        CCTBX_ASSERT(sig1 != 0);
+        if (sig1<=0){
+          cc_=1.0;
+        } else{
+          cc_=cov/sig1;
+          CCTBX_ASSERT(sig1 != 0);
+        }
       }
+      else{
+        cc_ = 0.0;
+      }
+
     }
 
 
