@@ -423,8 +423,8 @@ class adp(object):
 class model(object):
   def __init__(self, model):
     sites_cart = model.xray_structure.sites_cart()
-    if(model.use_dbe):
-      sites_cart = sites_cart.select(~model.dbe_selection)
+    if(model.use_ias):
+      sites_cart = sites_cart.select(~model.ias_selection)
     self.geometry = geometry(sites_cart         = sites_cart,
                              restraints_manager = model.restraints_manager)
     self.content = model_content(model)

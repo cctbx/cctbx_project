@@ -14,7 +14,7 @@ import scitbx.lbfgs
 from libtbx.utils import Sorry, user_plus_sys_time
 from mmtbx.tls import tools
 from cctbx import adp_restraints
-from mmtbx import dbe
+from mmtbx import ias
 from mmtbx import utils
 from mmtbx import model_statistics
 
@@ -49,7 +49,7 @@ class manager(object):
                      restraints_manager = None,
                      ias_xray_structure = None,
                      refinement_flags = None,
-                     dbe_manager = None,
+                     ias_manager = None,
                      wilson_b = None,
                      tls_groups = None,
                      anomalous_scatterer_groups = None,
@@ -68,15 +68,15 @@ class manager(object):
       len(anomalous_scatterer_groups) == 0):
       anomalous_scatterer_groups = None
     self.anomalous_scatterer_groups = anomalous_scatterer_groups
-    # DBE related, need a real cleaning!
-    self.dbe_manager = dbe_manager
+    # IAS related, need a real cleaning!
+    self.ias_manager = ias_manager
     self.ias_xray_structure = ias_xray_structure
-    self.use_dbe = False
-    self.dbe_selection = None
-    self.use_dbe_true_ = None
-    self.use_dbe_false_ = None
+    self.use_ias = False
+    self.ias_selection = None
+    self.use_ias_true_ = None
+    self.use_ias_false_ = None
     self.inflated = False
-    self.dbe_added = False
+    self.ias_added = False
     ###
     self.xh_connectivity = None
     if(restraints_manager is not None):
@@ -138,31 +138,31 @@ class manager(object):
        new.refinement_flags = self.refinement_flags.select(selection)
     return new
 
-  def add_dbe(self, fmodel=None, dbe_params=None, file_name=None,
+  def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
-    if(self.dbe_manager is not None):
-       self.remove_dbe()
+    if(self.ias_manager is not None):
+       self.remove_ias()
        fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                     update_f_calc = True)
     print >> self.log, ">>> Adding BDE.........."
     self.old_refinement_flags = None
-    if not build_only: self.use_dbe = True
-    self.dbe_manager = dbe.manager(
+    if not build_only: self.use_ias = True
+    self.ias_manager = ias.manager(
                     geometry             = self.restraints_manager.geometry,
                     atom_attributes_list = self.atom_attributes_list,
                     xray_structure       = self.xray_structure,
                     fmodel               = fmodel,
-                    params               = dbe_params,
+                    params               = ias_params,
                     file_name            = file_name,
                     log                  = self.log)
     if(not build_only):
-      self.ias_xray_structure = self.dbe_manager.ias_xray_structure
-      dbe_size = self.ias_xray_structure.scatterers().size()
-      tail = flex.bool(dbe_size, True)
-      tail_false = flex.bool(dbe_size, False)
-      self.dbe_selection = flex.bool(
+      self.ias_xray_structure = self.ias_manager.ias_xray_structure
+      ias_size = self.ias_xray_structure.scatterers().size()
+      tail = flex.bool(ias_size, True)
+      tail_false = flex.bool(ias_size, False)
+      self.ias_selection = flex.bool(
                       self.xray_structure.scatterers().size(),False)
-      self.dbe_selection.extend(tail)
+      self.ias_selection.extend(tail)
       self.solvent_selection.extend(tail_false)
       self.xray_structure.concatenate_inplace(other = self.ias_xray_structure)
       print >> self.log, "Scattering dictionary for combined xray_structure:"
@@ -176,15 +176,15 @@ class manager(object):
 
          # refining simultaneously make convergence slower
          #self.refinement_flags.sites_individual[0].set_selected(
-         #                                               self.dbe_selection, True)
+         #                                               self.ias_selection, True)
          #self.refinement_flags.sites_individual[0].set_selected(
-         #                                             ~self.dbe_selection, False)
+         #                                             ~self.ias_selection, False)
 
          if 1: # XXX turned on
            self.refinement_flags.sites_individual[0].set_selected(
-                                                          self.dbe_selection, False)
+                                                          self.ias_selection, False)
            self.refinement_flags.sites_individual[0].set_selected(
-                                                        ~self.dbe_selection, True)
+                                                        ~self.ias_selection, True)
 
          if 1:
            # XXX 1) DO THIS WHEN INFLATING. THIS WILL NOT PROPERLY INFLATE IF THERE ARE ALT.CONF.
@@ -199,18 +199,18 @@ class manager(object):
            self.refinement_flags.occupancies_individual = [flex.bool(
                                     self.xray_structure.scatterers().size(), True)]
            self.refinement_flags.occupancies_individual[0].set_selected(
-                                                          ~self.dbe_selection, False)
+                                                          ~self.ias_selection, False)
            self.refinement_flags.occupancies_individual[0].set_selected(
                                         self.xray_structure.hd_selection(), True)
 
 
-         #self.xray_structure.convert_to_anisotropic(selection = self.dbe_selection)
+         #self.xray_structure.convert_to_anisotropic(selection = self.ias_selection)
          self.refinement_flags.adp_individual_aniso[0].set_selected(
-                                                     self.dbe_selection, False) # False
+                                                     self.ias_selection, False) # False
          self.refinement_flags.adp_individual_iso[0].set_selected(
-                                                      self.dbe_selection, True) # True
+                                                      self.ias_selection, True) # True
          #occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
-         #self.xray_structure.scatterers().set_occupancies(occs, ~self.dbe_selection)
+         #self.xray_structure.scatterers().set_occupancies(occs, ~self.ias_selection)
          # D9
          sel = self.xray_structure.scatterers().extract_scattering_types() == "D9"
          self.xray_structure.convert_to_anisotropic(selection = sel)
@@ -231,19 +231,19 @@ class manager(object):
       self.atom_attributes_list.append(new_attr)
 
 
-  def remove_dbe(self):
+  def remove_ias(self):
     print >> self.log, ">>> Removing IAS..............."
-    self.use_dbe = False
-    if(self.dbe_manager is not None):
-       self.dbe_manager = None
+    self.use_ias = False
+    if(self.ias_manager is not None):
+       self.ias_manager = None
     if(self.old_refinement_flags is not None):
        self.refinement_flags = self.old_refinement_flags.deep_copy()
        self.old_refinement_flags = None
-    if(self.dbe_selection is not None):
-       self.xray_structure.select_inplace(selection = ~self.dbe_selection)
-       n_non_ias = self.dbe_selection.count(False)
+    if(self.ias_selection is not None):
+       self.xray_structure.select_inplace(selection = ~self.ias_selection)
+       n_non_ias = self.ias_selection.count(False)
        self.solvent_selection = self.solvent_selection[:n_non_ias]
-       self.dbe_selection = None
+       self.ias_selection = None
        self.xray_structure.scattering_type_registry().show()
        self.atom_attributes_list = self.atom_attributes_list[:n_non_ias]
 
@@ -284,9 +284,9 @@ class manager(object):
                                         gradients         = None,
                                         disable_asu_cache = False):
     sites_cart = self.xray_structure.sites_cart()
-    if(self.use_dbe and self.dbe_selection is not None and
-       self.dbe_selection.count(True) > 0):
-      sites_cart = sites_cart.select(~self.dbe_selection)
+    if(self.use_ias and self.ias_selection is not None and
+       self.ias_selection.count(True) > 0):
+      sites_cart = sites_cart.select(~self.ias_selection)
     return self.restraints_manager.energies_sites(
       sites_cart        = sites_cart,
       geometry_flags    = geometry_flags,
@@ -313,7 +313,7 @@ class manager(object):
 
   def xray_structure_macromolecule(self):
     sel = self.solvent_selection
-    if(self.use_dbe): sel = sel | self.dbe_selection
+    if(self.use_ias): sel = sel | self.ias_selection
     result = self.xray_structure.select(~sel)
     return result
 
@@ -541,8 +541,8 @@ class manager(object):
     sso_start = stereochemistry_statistics(
                           xray_structure         = self.xray_structure,
                           restraints_manager     = self.restraints_manager,
-                          use_dbe                = self.use_dbe,
-                          dbe_selection          = self.dbe_selection,
+                          use_ias                = self.use_ias,
+                          ias_selection          = self.ias_selection,
                           text                   = "start")
     sites_cart = self.xray_structure.sites_cart()
     first_target_value = None
@@ -559,8 +559,8 @@ class manager(object):
     sso_end = stereochemistry_statistics(
                           xray_structure         = self.xray_structure,
                           restraints_manager     = self.restraints_manager,
-                          use_dbe                = self.use_dbe,
-                          dbe_selection          = self.dbe_selection,
+                          use_ias                = self.use_ias,
+                          ias_selection          = self.ias_selection,
                           text                   = "final")
     assert approx_equal(first_target_value, sso_start.target)
     assert approx_equal(minimized.final_target_value, sso_end.target)
@@ -569,7 +569,7 @@ class manager(object):
 
   def geometry_statistics(self):
     sites_cart = self.xray_structure.sites_cart()
-    if(self.use_dbe): sites_cart = sites_cart.select(~self.dbe_selection)
+    if(self.use_ias): sites_cart = sites_cart.select(~self.ias_selection)
     return model_statistics.geometry(
       sites_cart         = sites_cart,
       restraints_manager = self.restraints_manager)
