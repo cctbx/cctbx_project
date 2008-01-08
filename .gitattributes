@@ -97,6 +97,7 @@ mmtbx/mmtbx/pdb_header.py -text
 mmtbx/mmtbx/pdbtools.py -text
 mmtbx/mmtbx/refinement/occupancies.py -text
 mmtbx/mmtbx/regression/tst_altloc_chain_break.py -text
+mmtbx/mmtbx/tst_alignment.py -text
 mmtbx/mmtbx/tst_pdbtools.py -text
 mmtbx/mmtbx/utils.py -text
 mmtbx/mmtbx/wwpdb/__init__.py -text
