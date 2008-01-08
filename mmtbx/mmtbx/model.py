@@ -144,7 +144,7 @@ class manager(object):
        self.remove_ias()
        fmodel.update_xray_structure(xray_structure = self.xray_structure,
                                     update_f_calc = True)
-    print >> self.log, ">>> Adding BDE.........."
+    print >> self.log, ">>> Adding IAS.........."
     self.old_refinement_flags = None
     if not build_only: self.use_ias = True
     self.ias_manager = ias.manager(
@@ -173,36 +173,18 @@ class manager(object):
          self.old_refinement_flags = self.refinement_flags.deep_copy()
          self.refinement_flags.inflate(
               size = self.ias_xray_structure.scatterers().size(), flag = True)
-
-         # refining simultaneously make convergence slower
-         #self.refinement_flags.sites_individual[0].set_selected(
-         #                                               self.ias_selection, True)
-         #self.refinement_flags.sites_individual[0].set_selected(
-         #                                             ~self.ias_selection, False)
-
-         if 1: # XXX turned on
-           self.refinement_flags.sites_individual[0].set_selected(
-                                                          self.ias_selection, False)
-           self.refinement_flags.sites_individual[0].set_selected(
-                                                        ~self.ias_selection, True)
-
-         if 1:
-           # XXX 1) DO THIS WHEN INFLATING. THIS WILL NOT PROPERLY INFLATE IF THERE ARE ALT.CONF.
-           # XXX 2) set to refine q fro only participating in IAS atoms, and not all
-           self.refinement_flags.individual_occupancies = True
-           self.refinement_flags.occupancies_individual = \
-             [[i] for i in flex.bool(
-               self.xray_structure.scatterers().size(), True).iselection()]
-
-         if 0:
-           self.refinement_flags.individual_occupancies = True
-           self.refinement_flags.occupancies_individual = [flex.bool(
-                                    self.xray_structure.scatterers().size(), True)]
-           self.refinement_flags.occupancies_individual[0].set_selected(
-                                                          ~self.ias_selection, False)
-           self.refinement_flags.occupancies_individual[0].set_selected(
-                                        self.xray_structure.hd_selection(), True)
-
+         if 1: # refine sites in presence of IAS
+           for ss in self.refinement_flags.sites_individual:
+             ss.set_selected(self.ias_selection, False)
+             ss.set_selected(~self.ias_selection, True)
+         if 1: # refine occupancies in presence of IAS
+           occupancy_flags = []
+           ms = self.ias_selection.count(False)
+           for i in range(1, self.ias_selection.count(True)+1):
+             occupancy_flags.append([ms+i-1])
+           self.refinement_flags.inflate(
+             size        = None,
+             occupancies = occupancy_flags)
 
          #self.xray_structure.convert_to_anisotropic(selection = self.ias_selection)
          self.refinement_flags.adp_individual_aniso[0].set_selected(
