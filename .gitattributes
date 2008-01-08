@@ -89,6 +89,8 @@ mmtbx/mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/mmtbx/command_line/pdbtools.py -text
 mmtbx/mmtbx/command_line/xmanip.py -text
 mmtbx/mmtbx/find_peaks.py -text
+mmtbx/mmtbx/ias/__init__.py -text
+mmtbx/mmtbx/ias/tst_ias.py -text
 mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/model_statistics.py -text
 mmtbx/mmtbx/monomer_library/tst_protein_interpretation.py -text

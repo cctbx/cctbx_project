@@ -7,7 +7,7 @@ def run():
   "$D/mmtbx/wwpdb/tst_standard_geometry_cif.py",
   "$D/mmtbx/tst_pdbtools.py",
   "$D/mmtbx/real_space/tst.py",
-  "$D/mmtbx/dbe/tst_dbe.py",
+  "$D/mmtbx/ias/tst_ias.py",
   ["$D/mmtbx/refinement/tst_anomalous_scatterer_groups.py", "P3"],
   "$D/mmtbx/refinement/tst_rigid_body.py",
   "$D/mmtbx/tst_model.py",

@@ -62,7 +62,6 @@ class lbfgs(object):
     assert [refine_xyz, refine_adp].count(False) == 1
     self.xray_structure = self.fmodels.fmodel_xray().xray_structure
     self.xray_structure.tidy_us()
-    self.wxc_dbe = None
     self.hd_selection = self.xray_structure.hd_selection()
     self.hd_flag = self.hd_selection.count(True) > 0
     if(refine_xyz):
