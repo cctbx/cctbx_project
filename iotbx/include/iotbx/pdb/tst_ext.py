@@ -292,6 +292,7 @@ def exercise_residue():
   r.pre_allocate_atoms(number_of_additional_atoms=2)
   assert r.atoms_size() == 0
   assert len(r.atoms()) == 0
+  assert r.atom_names().size() == 0
   r.add_atom(new_atom=pdb.atom().set_name(new_name="ca"))
   assert r.atoms_size() == 1
   assert len(r.atoms()) == 1
@@ -304,6 +305,7 @@ def exercise_residue():
   assert len(r.atoms()) == 5
   for atom in r.atoms():
     assert atom.parents()[0].memory_id() == r.memory_id()
+  assert list(r.atom_names()) == ["ca", "n", "", "", ""]
   assert r.number_of_alternative_atoms() == 0
   for atom in r.atoms():
     assert atom.tmp == 0

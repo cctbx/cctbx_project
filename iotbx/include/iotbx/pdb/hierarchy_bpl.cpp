@@ -304,6 +304,7 @@ namespace {
         .def("add_atom", &w_t::add_atom, (arg_("new_atom")))
         .def("atoms", get_atoms)
         .def("atoms_size", &w_t::atoms_size)
+        .def("atom_names", &w_t::atom_names)
         .def("number_of_alternative_atoms", &w_t::number_of_alternative_atoms)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
         .def("center_of_geometry", &w_t::center_of_geometry)

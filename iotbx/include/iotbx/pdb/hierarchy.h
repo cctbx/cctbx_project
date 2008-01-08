@@ -534,6 +534,19 @@ namespace pdb {
       std::vector<atom> const&
       atoms() const { return data->atoms; }
 
+      af::shared<std::string>
+      atom_names() const
+      {
+        af::shared<std::string> result;
+        unsigned n = atoms_size();
+        if (n == 0) return result;
+        const atom* a = &*data->atoms.begin();
+        for(unsigned i=0;i<n;i++) {
+          result.push_back(std::string((a++)->data->name.elems));
+        }
+        return result;
+      }
+
       unsigned
       number_of_alternative_atoms() const
       {
