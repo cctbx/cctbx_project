@@ -1,4 +1,5 @@
 import scitbx.array_family.flex
+from scitbx.array_family import flex
 
 import boost.python
 ext = boost.python.import_ext("mmtbx_alignment_ext")
@@ -350,6 +351,16 @@ class alignment(object):
         done=True
 
     return out
+
+  def exact_match_selections(self):
+    i_seqs = flex.size_t()
+    j_seqs = flex.size_t()
+    for a, b, i, j in zip(self.a, self.b, self.i_seqs_a, self.i_seqs_b):
+      if(a == b and a not in ["-", None]):
+        if(i is not None and j is not None):
+          i_seqs.append(i)
+          j_seqs.append(j)
+    return i_seqs, j_seqs
 
 # amino acid similarity scores from Dayhoff's 1978 paper; like PAM250?
 dayhoff_mdm78_similarity_scores = [
