@@ -85,6 +85,9 @@ master_params = iotbx.phil.parse("""\
   refine_adp = True
     .type = bool
     .help = Refine ADP for newly placed solvent.
+  refine_occupancies = False
+    .type = bool
+    .help = Refine solvent occupancies.
 """)
 
 
@@ -227,7 +230,8 @@ class manager(object):
       solvent_xray_structure = solvent_xray_structure,
       residue_name           = self.params.output_residue_name,
       atom_name              = self.params.output_atom_name,
-      chain_id               = self.params.output_chain_id)
+      chain_id               = self.params.output_chain_id,
+      refine_occupancies     = self.params.refine_occupancies)
     self.xray_structure = self.model.xray_structure
     self.solvent_selection = self.model.solvent_selection
 

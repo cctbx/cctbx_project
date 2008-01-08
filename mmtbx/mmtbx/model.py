@@ -460,13 +460,23 @@ class manager(object):
                         solvent_selection,
                         atom_name    = "O",
                         residue_name = "HOH",
-                        chain_id     = None):
+                        chain_id     = None,
+                        refine_occupancies = False):
+    ms = self.xray_structure.scatterers().size() #
     self.xray_structure = \
                         self.xray_structure.concatenate(solvent_xray_structure)
+    #####
+    occupancy_flags = None
+    if(refine_occupancies):
+      occupancy_flags = []
+      for i in range(1, solvent_xray_structure.scatterers().size()+1):
+        occupancy_flags.append([ms+i-1])
+    ####
     self.refinement_flags.inflate(
       size        = solvent_xray_structure.scatterers().size(),
       use_u_iso   = solvent_xray_structure.use_u_iso(),
-      use_u_aniso = solvent_xray_structure.use_u_aniso())
+      use_u_aniso = solvent_xray_structure.use_u_aniso(),
+      occupancies = occupancy_flags)
     new_atom_name = atom_name.strip()
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
