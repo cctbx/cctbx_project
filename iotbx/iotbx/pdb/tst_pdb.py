@@ -600,6 +600,32 @@ END
   assert list(isel("resname ASN")) == [1,2,5]
   assert list(isel("resname Asn")) == []
 
+def exercise_residue_name_plus_atom_names_interpreter():
+  rnpani = iotbx.pdb.residue_name_plus_atom_names_interpreter
+  i = rnpani(residue_name="", atom_names=[])
+  assert i.work_residue_name is None
+  assert i.atom_name_interpretation is None
+  i = rnpani(residue_name="TD", atom_names=["X"])
+  assert i.work_residue_name is None
+  assert i.atom_name_interpretation is None
+  i = rnpani(
+    residue_name="thr",
+    atom_names=[
+      "N", "CA", "C", "O", "CB", "OG1", "CG2",
+      "H", "HA", "HB", "HE", "HG1", "1HG2", "2HG2", "3HG2"])
+  assert i.work_residue_name == "THR"
+  assert i.atom_name_interpretation.unexpected == ["HE"]
+  for residue_name in ["c", "dc", "cd", "cyt"]:
+    i = rnpani(
+      residue_name=residue_name,
+      atom_names=[
+        "P", "OP1", "OP2", "O5'", "C5'", "C4'", "O4'", "C3'", "O3'",
+        "C2'", "C1'", "N1", "C2", "O2", "N3", "C4", "N4", "C5", "C6",
+        "H5'", "H5''", "H4'", "H3'", "H2'", "H2''", "H1'", "H41", "H42",
+        "H5", "H6"])
+    assert i.work_residue_name == "DC"
+    assert i.atom_name_interpretation.unexpected_atom_names() == []
+
 def exercise_xray_structure(use_u_aniso, verbose=0):
   structure = random_structure.xray_structure(
     space_group_info=sgtbx.space_group_info("P 31"),
@@ -654,6 +680,7 @@ def run():
   exercise_interpretation(verbose=verbose)
   exercise_scalen()
   exercise_selection()
+  exercise_residue_name_plus_atom_names_interpreter()
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()
