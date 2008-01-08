@@ -1,11 +1,7 @@
 from __future__ import generators
 from mmtbx.monomer_library import cif_types
 from mmtbx.monomer_library import mmCIF
-from iotbx.pdb.atom_name_interpretation import \
-  interpreters as protein_atom_name_interpreters
-from iotbx.pdb import \
-  rna_dna_reference_residue_name, \
-  rna_dna_atom_names_interpretation
+from iotbx.pdb import residue_name_plus_atom_names_interpreter
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry, format_exception, windows_device_names
@@ -13,22 +9,6 @@ import libtbx.load_env
 import libtbx.path
 import copy
 import os
-
-try: import sets
-except ImportError: sets = None # XXX Python 2.2 compatibility
-else: windows_device_names = sets.Set(windows_device_names)
-
-cns_dna_rna_residue_names = {
-  "ADE": "A",
-  "CYT": "C",
-  "GUA": "G",
-  "THY": "T",
-  "URI": "U"
-}
-
-mon_lib_dna_rna_cif = ["AD", "AR", "CD", "CR", "GD", "GR", "TD", "UR"]
-if (sets is not None):
-  mon_lib_dna_rna_cif = sets.Set(mon_lib_dna_rna_cif)
 
 class MonomerLibraryServerError(RuntimeError): pass
 
@@ -342,44 +322,15 @@ class server(process_cif_mixin):
         residue_name,
         atom_names,
         translate_cns_dna_rna_residue_names=None):
-    comp_id = residue_name.strip().upper()
-    if (len(comp_id) == 0): return (None, None)
-    protein_interpreter = protein_atom_name_interpreters.get(comp_id)
-    atom_name_interpretation = None
-    if (protein_interpreter is not None):
-      atom_name_interpretation = protein_interpreter.match_atom_names(
-        atom_names=atom_names)
-    else:
-      if (    translate_cns_dna_rna_residue_names is not None
-          and not translate_cns_dna_rna_residue_names
-          and comp_id in cns_dna_rna_residue_names):
-        rna_dna_ref_residue_name = None
-      else:
-        rna_dna_ref_residue_name = rna_dna_reference_residue_name(
-          common_name=comp_id)
-      if (rna_dna_ref_residue_name is not None):
-        atom_name_interpretation = rna_dna_atom_names_interpretation(
-          residue_name=rna_dna_ref_residue_name,
-          atom_names=atom_names)
-        if (atom_name_interpretation.n_unexpected != 0):
-          if (len(atom_names) == 1 and comp_id in mon_lib_dna_rna_cif):
-            return (None, None)
-          if (    translate_cns_dna_rna_residue_names is None
-              and comp_id in cns_dna_rna_residue_names):
-            atom_name_interpretation = None
-        if (atom_name_interpretation is not None):
-          comp_id = {
-            "A": "AR",
-            "C": "CR",
-            "G": "GR",
-            "U": "UR",
-            "DA": "AD",
-            "DC": "CD",
-            "DG": "GD",
-            "DT": "TD"}[atom_name_interpretation.residue_name]
+    rnpani = residue_name_plus_atom_names_interpreter(
+      residue_name=residue_name,
+      atom_names=atom_names,
+      translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
+      return_mon_lib_dna_name=True)
+    if (rnpani.work_residue_name is None): return (None, None)
     return (
-      self.get_comp_comp_id_direct(comp_id=comp_id),
-      atom_name_interpretation)
+      self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name),
+      rnpani.atom_name_interpretation)
 
 class ener_lib(process_cif_mixin):
 

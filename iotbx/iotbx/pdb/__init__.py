@@ -4,6 +4,8 @@ import boost.python
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
+from iotbx.pdb.atom_name_interpretation import \
+  interpreters as protein_atom_name_interpreters
 import scitbx.array_family.shared
 import scitbx.stl.set
 from libtbx import smart_open
@@ -12,6 +14,18 @@ from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx.utils import plural_s
 from libtbx.itertbx import count
 import sys
+
+cns_dna_rna_residue_names = {
+  "ADE": "A",
+  "CYT": "C",
+  "GUA": "G",
+  "THY": "T",
+  "URI": "U"
+}
+
+mon_lib_dna_rna_cif = ["AD", "AR", "CD", "CR", "GD", "GR", "TD", "UR"]
+if ("set" not in __builtins__):
+  mon_lib_dna_rna_cif = set(mon_lib_dna_rna_cif)
 
 rna_dna_reference_residue_names = {
   "A": "?A",
@@ -143,6 +157,59 @@ class rna_dna_atom_names_interpretation(object):
           assert rn == "HOP3" # only atom not covered by monomer library
           result.append(None)
     return result
+
+class residue_name_plus_atom_names_interpreter(object):
+
+  def __init__(self,
+        residue_name,
+        atom_names,
+        translate_cns_dna_rna_residue_names=None,
+        return_mon_lib_dna_name=False):
+    work_residue_name = residue_name.strip().upper()
+    if (len(work_residue_name) == 0):
+      self.work_residue_name = None
+      self.atom_name_interpretation = None
+      return
+    protein_interpreter = protein_atom_name_interpreters.get(work_residue_name)
+    atom_name_interpretation = None
+    if (protein_interpreter is not None):
+      atom_name_interpretation = protein_interpreter.match_atom_names(
+        atom_names=atom_names)
+    else:
+      if (    translate_cns_dna_rna_residue_names is not None
+          and not translate_cns_dna_rna_residue_names
+          and work_residue_name in cns_dna_rna_residue_names):
+        rna_dna_ref_residue_name = None
+      else:
+        rna_dna_ref_residue_name = rna_dna_reference_residue_name(
+          common_name=work_residue_name)
+      if (rna_dna_ref_residue_name is not None):
+        atom_name_interpretation = rna_dna_atom_names_interpretation(
+          residue_name=rna_dna_ref_residue_name,
+          atom_names=atom_names)
+        if (atom_name_interpretation.n_unexpected != 0):
+          if (    len(atom_names) == 1
+              and work_residue_name in mon_lib_dna_rna_cif):
+            self.work_residue_name = None
+            self.atom_name_interpretation = None
+            return
+          if (    translate_cns_dna_rna_residue_names is None
+              and work_residue_name in cns_dna_rna_residue_names):
+            atom_name_interpretation = None
+        if (atom_name_interpretation is not None):
+          work_residue_name = atom_name_interpretation.residue_name
+          if (return_mon_lib_dna_name):
+            work_residue_name = {
+              "A": "AR",
+              "C": "CR",
+              "G": "GR",
+              "U": "UR",
+              "DA": "AD",
+              "DC": "CD",
+              "DG": "GD",
+              "DT": "TD"}[work_residue_name]
+    self.work_residue_name = work_residue_name
+    self.atom_name_interpretation = atom_name_interpretation
 
 class Please_pass_string_or_None(object): pass
 
