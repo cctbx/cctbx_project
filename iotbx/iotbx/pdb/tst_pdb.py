@@ -626,6 +626,64 @@ def exercise_residue_name_plus_atom_names_interpreter():
     assert i.work_residue_name == "DC"
     assert i.atom_name_interpretation.unexpected_atom_names() == []
 
+def exercise_format_fasta():
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb",
+    test=os.path.isdir)
+  if (regression_pdb is None):
+    print "Skipping exercise_format_fasta(): input files not available"
+    return
+  looking_for = ["1ee3_stripped.pdb", "jcm.pdb", "pdb1zff.ent"]
+  for node in os.listdir(regression_pdb):
+    if (not (node.endswith(".pdb") or node.endswith(".ent"))): continue
+    pdb_inp = pdb.input(file_name=os.path.join(regression_pdb, node))
+    hierarchy = pdb_inp.construct_hierarchy()
+    fasta = []
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for conformer in chain.conformers():
+          fasta.append(conformer.format_fasta())
+    if (node == "pdb1zff.ent"):
+      assert fasta == [
+        ['> chain " A" conformer " "', "CCGAATTCGG"]]
+      looking_for.remove(node)
+    elif (node == "1ee3_stripped.pdb"):
+      assert fasta == [
+        ['> chain " P" conformer "A"', 'IMEHTV'],
+        ['> chain " P" conformer "B"', 'IMEHTV'],
+        None,
+        None]
+      looking_for.remove(node)
+    elif (node == "jcm.pdb"):
+      assert fasta == [
+        ['> chain " A" conformer " "',
+         'MSSIFINREYLLPDYIPDELPHREDQIRKIASILAPLYREEKPNNIFIY'
+         'GLTGTGKTAVVKFVLSKLHKKFLGKFKHVY',
+         'INTRQIDTPYRVLADLLESLDVKVPFTGLSIAELYRRLVKAVRDYGSQV'
+         'VIVLDEIDAFVKKYNDDILYKLSRINSISF',
+         'IGITNDVKFVDLLDPRVKSSLSEEEIIFPPYNAEELEDILTKRAQMAFK'
+         'PGVLPDNVIKLCAALAAREHGDARRALDLL',
+         'RVSGEIAERMKDTKVKEEYVYMAKEEIERDRVRDIILTLPFHSKLVLMA'
+         'VVSISSEENVVSTTGAVYETYLNICKKLGV',
+         'EAVTQRRVSDIINELDMVGILTVVNRGRYGKTKEIGLAVDKNIIVRSLIESDS'],
+        ['> chain " B" conformer " "',
+         'KNPKVFIDPLSVFKEIPFREDILRDAAIAIRYFVKNEVKFSNLFLGLTG'
+         'TGKTFVSKYIFNEIEEVKKEDEEYKDVKQA',
+         'YVNCREVGGTPQAVLSSLAGKLAGFSVPKHGINLGEYIDKIKNGTRNIR'
+         'AIIYLDEVDTLVKRRGGDIVLYQLLRSDAN',
+         'ISVIMISNDINVRDYMEPRVLSSLGPSVIFKPYDAEQLKFILSKYAEYG'
+         'LIKGTYDDEILSYIAAISAKEHGDARKAVN',
+         'LLFRAAQLASGGGIIRKEHVDKAIVDYEQERLIEAVKALPFHYKLALRS'
+         'LIESEDVMSAHKMYTDLCNKFKQKPLSYRR',
+         'FSDIISELDMFGIVKIRIINRGRAGGVKKYALVEDKEKVLRALNET'],
+        ['> chain " C" conformer " "',
+         'TGTAAATTTCCTACGTTTCATCTGAAAATCTAGAGATTTTCAGATGAAACGTAGGAAATTTACATC'],
+         None]
+      looking_for.remove(node)
+  if (len(looking_for) != 0):
+    print "WARNING: exercise_format_fasta(): some input files missing:", \
+      looking_for
+
 def exercise_xray_structure(use_u_aniso, verbose=0):
   structure = random_structure.xray_structure(
     space_group_info=sgtbx.space_group_info("P 31"),
@@ -681,6 +739,7 @@ def run():
   exercise_scalen()
   exercise_selection()
   exercise_residue_name_plus_atom_names_interpreter()
+  exercise_format_fasta()
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()
