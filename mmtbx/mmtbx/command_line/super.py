@@ -1,6 +1,6 @@
 import mmtbx.alignment
-import mmtbx.amino_acid_codes
 import iotbx.pdb
+from iotbx.pdb import amino_acid_codes
 from cctbx.array_family import flex
 from scitbx.math import superpose
 from scitbx.math import matrix
@@ -40,7 +40,7 @@ def extract_sequence_and_sites(pdb_input):
     for ires in selected_residues:
       resi = residues[ires]
       resn = resi.name[0:3]
-      single = mmtbx.amino_acid_codes.one_letter_given_three_letter[resn]
+      single = amino_acid_codes.one_letter_given_three_letter[resn]
       seq.append(single)
       use = False
       xyz = (0,0,0)

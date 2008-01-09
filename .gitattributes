@@ -51,6 +51,7 @@ iotbx/include/iotbx/pdb/utils.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/utils.h svneol=native#text/plain
 iotbx/iotbx/command_line/pdb.b_factor_stats.py svneol=native#text/x-python
 iotbx/iotbx/command_line/pdb.print_sequence.py -text
+iotbx/iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/iotbx/detectors/cbf.py -text
 iotbx/iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/iotbx/pdb/extract_rfactors_resolutions_sigma.py -text
