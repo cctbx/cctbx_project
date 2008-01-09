@@ -25,7 +25,7 @@ cns_dna_rna_residue_names = {
 }
 
 mon_lib_dna_rna_cif = ["AD", "AR", "CD", "CR", "GD", "GR", "TD", "UR"]
-if ("set" not in __builtins__):
+if ("set" in __builtins__):
   mon_lib_dna_rna_cif = set(mon_lib_dna_rna_cif)
 
 rna_dna_reference_residue_names = {
