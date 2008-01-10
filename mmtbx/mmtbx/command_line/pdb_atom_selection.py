@@ -9,7 +9,7 @@ import sys, os
 def run(args, command_name=libtbx.env.dispatcher_name):
   if (len(args) < 2 or not os.path.isfile(args[0])):
     raise Usage(
-      '%s pdb_file "atom_selection" [...]' % libtbx.env.dispatcher_name)
+      '%s pdb_file "atom_selection" [...]' % command_name)
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
   processed_pdb_file = pdb_interpretation.process(
