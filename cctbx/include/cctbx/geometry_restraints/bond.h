@@ -248,8 +248,9 @@ namespace cctbx { namespace geometry_restraints {
       /*! Not available in Python.
        */
       scitbx::vec3<double>
-      gradient_0() const
+      gradient_0(double epsilon=1.e-100) const
       {
+        if (distance_model < epsilon) return scitbx::vec3<double>(0,0,0);
         return -weight * 2 * delta / distance_model * (sites[0] - sites[1]);
       }
 
