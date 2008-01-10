@@ -315,7 +315,54 @@ class array_cache(object):
         reflections_per_bin=reflections_per_bin,
         n_bins=n_bins)
 
-def run(args, command_name="phenix.reflection_statistics"):
+def _process_miller_arrays(
+      command_line,
+      input_miller_arrays,
+      active_miller_arrays):
+  n_f_sq_as_f = 0
+  for miller_array in input_miller_arrays:
+    info = miller_array.info()
+    miller_array = miller_array.select(
+      miller_array.indices() != (0,0,0))
+    if (miller_array.indices().size() == 0): continue
+    if (miller_array.is_xray_intensity_array()):
+      miller_array = miller_array.f_sq_as_f()
+      n_f_sq_as_f += 1
+    elif (miller_array.is_complex_array()):
+      miller_array = abs(miller_array)
+    if (miller_array.is_real_array()):
+      if (miller_array.unit_cell() is None):
+        print
+        print "*" * 79
+        print "Unknown unit cell parameters:", miller_array.info()
+        print "Use --symmetry or --unit_cell to define unit cell:"
+        print "*" * 79
+        print
+        command_line.parser.show_help()
+        return -1
+      if (miller_array.space_group_info() is None):
+        print
+        print "*" * 79
+        print "Unknown space group:", miller_array.info()
+        print "Use --symmetry or --space_group to define space group:"
+        print "*" * 79
+        print
+        command_line.parser.show_help()
+        return -1
+      if (   command_line.options.resolution is not None
+          or command_line.options.low_resolution is not None):
+        miller_array = miller_array.resolution_filter(
+          d_max=command_line.options.low_resolution,
+          d_min=command_line.options.resolution)
+      miller_array = miller_array.map_to_asu()
+      miller_array.set_info(info=info)
+      active_miller_arrays.append(miller_array)
+  return n_f_sq_as_f
+
+def run(
+      args,
+      command_name="phenix.reflection_statistics",
+      additional_miller_arrays=[]):
   print "Command line arguments:",
   for arg in args: print arg,
   print
@@ -360,7 +407,7 @@ def run(args, command_name="phenix.reflection_statistics"):
       help="angular tolerance in degrees used in the determination"
            " of the lattice symmetry")
   ).process(args=args)
-  if (len(command_line.args) == 0):
+  if (len(command_line.args) == 0 and len(additional_miller_arrays) == 0):
     command_line.parser.show_help()
     return
   active_miller_arrays = []
@@ -382,43 +429,19 @@ def run(args, command_name="phenix.reflection_statistics"):
       print >> sys.stderr
       sys.stderr.flush()
     else:
-      for miller_array in miller_arrays:
-        info = miller_array.info()
-        miller_array = miller_array.select(
-          miller_array.indices() != (0,0,0))
-        if (miller_array.indices().size() == 0): continue
-        if (miller_array.is_xray_intensity_array()):
-          miller_array = miller_array.f_sq_as_f()
-          n_f_sq_as_f += 1
-        elif (miller_array.is_complex_array()):
-          miller_array = abs(miller_array)
-        if (miller_array.is_real_array()):
-          if (miller_array.unit_cell() is None):
-            print
-            print "*" * 79
-            print "Unknown unit cell parameters:", miller_array.info()
-            print "Use --symmetry or --unit_cell to define unit cell:"
-            print "*" * 79
-            print
-            command_line.parser.show_help()
-            return
-          if (miller_array.space_group_info() is None):
-            print
-            print "*" * 79
-            print "Unknown space group:", miller_array.info()
-            print "Use --symmetry or --space_group to define space group:"
-            print "*" * 79
-            print
-            command_line.parser.show_help()
-            return
-          if (   command_line.options.resolution is not None
-              or command_line.options.low_resolution is not None):
-            miller_array = miller_array.resolution_filter(
-              d_max=command_line.options.low_resolution,
-              d_min=command_line.options.resolution)
-          miller_array = miller_array.map_to_asu()
-          miller_array.set_info(info=info)
-          active_miller_arrays.append(miller_array)
+      n = _process_miller_arrays(
+        command_line=command_line,
+        input_miller_arrays=miller_arrays,
+        active_miller_arrays=active_miller_arrays)
+      if (n < 0): return
+      n_f_sq_as_f += n
+  if (additional_miller_arrays is not None):
+    n = _process_miller_arrays(
+      command_line=command_line,
+      input_miller_arrays=additional_miller_arrays,
+      active_miller_arrays=active_miller_arrays)
+    if (n < 0): return
+    n_f_sq_as_f += n
   if (n_f_sq_as_f > 0):
     if (n_f_sq_as_f == 1):
       print "Note: Intensity array has been converted to an amplitude array."
