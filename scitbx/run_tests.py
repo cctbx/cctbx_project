@@ -42,6 +42,7 @@ def run():
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
   "$D/scitbx/examples/flex_array_loops.py",
+  "$D/scitbx/examples/principal_axes_of_inertia.py",
   "$D/scitbx/examples/lbfgs_recipe.py",
   "$D/scitbx/examples/lbfgs_linear_least_squares_fit.py",
   "$D/scitbx/examples/chebyshev_lsq_example.py",

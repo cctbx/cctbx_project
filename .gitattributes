@@ -123,6 +123,7 @@ scitbx/include/scitbx/sparse/matrix.h -text
 scitbx/include/scitbx/sparse/vector.h -text
 scitbx/include/scitbx/stl/vector_io.h -text
 scitbx/scitbx/command_line/generate_error_h.py -text
+scitbx/scitbx/examples/principal_axes_of_inertia.py svneol=native#text/x-python
 scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
 scitbx/scitbx/graph/tst_rigidity.py -text
