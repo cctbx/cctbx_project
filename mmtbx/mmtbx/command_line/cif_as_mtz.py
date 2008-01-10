@@ -255,12 +255,16 @@ class count_keys(object):
     self.i_sfobs = None
     self.i_siobs = None
     self.i_flag = None
+    self.i_wavelength_id = None
+    self.i_crystal_id = None
     n_h = 0
     n_k = 0
     n_l = 0
     n_fobs = 0
     n_iobs = 0
     n_flags = 0
+    n_wavelength_id = 0
+    n_crystal_id = 0
     for i_seq, key in enumerate(keys):
       if(key == "index_h"):
         self.i_h = i_seq
@@ -282,8 +286,14 @@ class count_keys(object):
       elif(key in keys_si_obs):
         self.i_siobs = i_seq
       elif(key in keys_status):
-         self.i_flag = i_seq
-         n_flags += 1
+        self.i_flag = i_seq
+        n_flags += 1
+      elif(key in "wavelength_id"):
+        self.i_wavelength_id = i_seq
+        n_wavelength_id += 1
+      elif(key in "crystal_id"):
+        self.i_crystal_id = i_seq
+        n_crystal_id += 1
       else:
         if(key not in possible_keys):
           proceed = False
@@ -373,6 +383,8 @@ class extract_data(object):
   def __init__(self, key_counter,
                      file_name,
                      file_lines,
+                     wavelength_id,
+                     crystal_id,
                      crystal_symmetry):
     self.indices = flex.miller_index()
     self.data = flex.double()
@@ -396,46 +408,54 @@ class extract_data(object):
       if(len(key_counter.keys) == start_counter and start_flag):
         result_hkl = list(self.access_hkl(line=line, key_counter=key_counter))
         if(result_hkl.count(None) == 0):
-          if(len(line) != len(key_counter.keys)):
-            if(self.is_break(file_lines=file_lines, i_line=i_line,
-               key_counter=key_counter, line=line)): break
-          if(len(line) == len(key_counter.keys)):
-            try:
-              if(key_counter.i_fobs is not None):
-                data_ = line[key_counter.i_fobs]
-                if(key_counter.i_sfobs is not None):
-                  sigma_ = line[key_counter.i_sfobs]
-              else:
-                if(key_counter.i_siobs is not None):
-                  sigma_ = line[key_counter.i_siobs]
-                data_ = line[key_counter.i_iobs]
-              if(key_counter.i_flag is not None):
-                flag_ = line[key_counter.i_flag]
-              if(data_.count("*")>0 or data_.count("?")>0 or data_=="."):
-                continue
-              if(sigma_ is not None):
-                if(sigma_.count("*")>0 or sigma_.count("?")>0 or sigma_=="."):
-                  sigma_ = 1.0
-            except:
-              self.reset(message = "Cannot extract column data,#1.",line=line)
-              break
-            try:
-              data_ = float(data_)
-              if(data_ == 0.0): continue
-              if(sigma_ is not None):
-                sigma_ = float(sigma_)
-                if(sigma_ < 0.0):
-                  if(data_ == sigma_): continue
-            except:
+          wavelength_id_and_crystal_id_ok = True
+          if(wavelength_id is not None):
+            if(int(line[key_counter.i_wavelength_id]) != wavelength_id):
+              wavelength_id_and_crystal_id_ok = False
+          if(crystal_id is not None):
+            if(int(line[key_counter.i_crystal_id]) != crystal_id):
+              wavelength_id_and_crystal_id_ok = False
+          if(wavelength_id_and_crystal_id_ok):
+            if(len(line) != len(key_counter.keys)):
               if(self.is_break(file_lines=file_lines, i_line=i_line,
                  key_counter=key_counter, line=line)): break
-            assert result_hkl.count(None) == 0
-            assert data_ is not None
-            if(result_hkl.count(0) != 3 and data_ != 0):
-              self.indices.append(result_hkl)
-              self.data.append(data_)
-              if(flag_ is not None): self.flags.append(flag_)
-              if(sigma_ is not None): self.sigmas.append(sigma_)
+            if(len(line) == len(key_counter.keys)):
+              try:
+                if(key_counter.i_fobs is not None):
+                  data_ = line[key_counter.i_fobs]
+                  if(key_counter.i_sfobs is not None):
+                    sigma_ = line[key_counter.i_sfobs]
+                else:
+                  if(key_counter.i_siobs is not None):
+                    sigma_ = line[key_counter.i_siobs]
+                  data_ = line[key_counter.i_iobs]
+                if(key_counter.i_flag is not None):
+                  flag_ = line[key_counter.i_flag]
+                if(data_.count("*")>0 or data_.count("?")>0 or data_=="."):
+                  continue
+                if(sigma_ is not None):
+                  if(sigma_.count("*")>0 or sigma_.count("?")>0 or sigma_=="."):
+                    sigma_ = 1.0
+              except:
+                self.reset(message ="Cannot extract column data,#1.",line=line)
+                break
+              try:
+                data_ = float(data_)
+                if(data_ == 0.0): continue
+                if(sigma_ is not None):
+                  sigma_ = float(sigma_)
+                  if(sigma_ < 0.0):
+                    if(data_ == sigma_): continue
+              except:
+                if(self.is_break(file_lines=file_lines, i_line=i_line,
+                   key_counter=key_counter, line=line)): break
+              assert result_hkl.count(None) == 0
+              assert data_ is not None
+              if(result_hkl.count(0) != 3 and data_ != 0):
+                self.indices.append(result_hkl)
+                self.data.append(data_)
+                if(flag_ is not None): self.flags.append(flag_)
+                if(sigma_ is not None): self.sigmas.append(sigma_)
         else:
           if(self.data.size() > 0 and len(line) != len(key_counter.keys)):
             if(self.is_break(file_lines=file_lines, i_line=i_line,
@@ -842,6 +862,16 @@ def run(args, command_name = "phenix.cif_as_mtz"):
         default=False,
         type="string",
         help="Use PDB model to make better guess about reflection data type.")
+      .option(None, "--wavelength_id",
+        action="store",
+        default=None,
+        type="int",
+        help="Extract data set with given wavelength_id.")
+      .option(None, "--crystal_id",
+        action="store",
+        default=None,
+        type="int",
+        help="Extract data set with given crystal_id.")
       .option("--show_details_if_error",
           action="store_true",
           help="Show data details for some errors.")
@@ -872,9 +902,11 @@ def run(args, command_name = "phenix.cif_as_mtz"):
     raise Sorry("File is not found: %s"%file_name)
   file_lines = smart_open.for_reading(file_name=file_name).read().splitlines()
   mtz_object = extract(
-    file_name        = file_name,
-    file_lines       = file_lines,
-    crystal_symmetry = crystal_symmetry,
+    file_name             = file_name,
+    file_lines            = file_lines,
+    crystal_symmetry      = crystal_symmetry,
+    wavelength_id         = command_line.options.wavelength_id,
+    crystal_id            = command_line.options.crystal_id,
     show_details_if_error = command_line.options.show_details_if_error)
   if(mtz_object is not None):
     pdb_file_name = command_line.options.use_model
@@ -896,15 +928,24 @@ def run(args, command_name = "phenix.cif_as_mtz"):
       else: output_file_name = basename+".mtz"
     mtz_object.write(file_name = output_file_name)
 
-def extract(file_name, file_lines, crystal_symmetry, show_details_if_error):
+def extract(file_name, file_lines, crystal_symmetry, wavelength_id, crystal_id,
+            show_details_if_error):
   keys = extract_keys(file_name = file_name, file_lines = file_lines)
   if(len(keys) == 0): return None
   key_counter = count_keys(keys = keys, file_name = file_name)
+  if(wavelength_id is not None):
+    if("wavelength_id" not in keys or key_counter.i_wavelength_id is None):
+      raise Sorry("Input cif file does not contain wavelength_id key.")
+  if(crystal_id is not None):
+    if("crystal_id" not in keys or key_counter.i_crystal_id is None):
+      raise Sorry("Input cif file does not contain crystal_id key.")
   if(key_counter.i_h is None): return None
   pre_miller_arrays = extract_data(
     key_counter       = key_counter,
     file_name         = file_name,
     file_lines        = file_lines,
+    wavelength_id     = wavelength_id,
+    crystal_id        = crystal_id,
     crystal_symmetry  = crystal_symmetry)
   if(pre_miller_arrays.indices.size() == 0): return None
   mtz_object = create_mtz_object(
