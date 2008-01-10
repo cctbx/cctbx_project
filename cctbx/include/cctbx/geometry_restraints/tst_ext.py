@@ -113,6 +113,12 @@ def exercise_bond():
   assert approx_equal(b.gradients(),
     ((-0.12917130661302928, -0.25834261322605856, -0.38751391983908784),
      ( 0.12917130661302928,  0.25834261322605856,  0.38751391983908784)))
+  b = geometry_restraints.bond(
+    sites=[(1,2,3),(1,2,3)],
+    distance_ideal=3.5,
+    weight=1)
+  assert approx_equal(b.distance_model, 0)
+  assert approx_equal(b.gradients(), [(0,0,0), (0,0,0)])
   sites_cart = flex.vec3_double([(1,2,3),(2,4,6)])
   b = geometry_restraints.bond(
     sites_cart=sites_cart,
