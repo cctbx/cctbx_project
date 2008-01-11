@@ -481,6 +481,9 @@ class extract_data(object):
           self.data = self.data.select(cif_selection)
           self.sigmas = self.sigmas.select(cif_selection)
           self.flags = self.flags.select(cif_selection)
+    if(self.indices.size() == 0):
+      print "No data extracted from input cif file."
+
 
   def access_hkl(self, line, key_counter):
     h, k, l = [None]*3
