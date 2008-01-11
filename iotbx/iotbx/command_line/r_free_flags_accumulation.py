@@ -78,8 +78,8 @@ def run(args, command_name="iotbx.r_free_flags_counts"):
     .sort(by_value="resolution") \
     .r_free_flags_accumulation()
   print "Writing file: %s" % show_string(params.output)
-  print "  1. column: reflection counts"
-  print "  2. column: fraction of free reflections"
+  print "  1. column: reflection counts, sorted by resolution"
+  print "  2. column: number of free reflections / total number of reflections"
   sys.stdout.flush()
   out = open(params.output, "w")
   for c,f in zip(accu.reflection_counts, accu.free_fractions):
