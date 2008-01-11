@@ -123,17 +123,17 @@ class manager(object):
       solvent_xray_structure = self.xray_structure.select(self.solvent_selection))
     self.show(message = "Start model:")
     self.filter_solvent()
-    if(self.filter_only == False):
-       assert self.params.primary_map_type is not None
-       peaks = self.find_peaks(
-         map_type   = self.params.primary_map_type,
-         map_cutoff = self.params.primary_map_cutoff).peaks_mapped()
-       self.sites, self.heights = peaks.sites, peaks.heights
-       self.add_new_solvent()
-       self.filter_solvent()
-    if(self.params.secondary_map_type is not None):
-      self.find_peaks_2fofc()
-      self.show(message = "2Fo-Fc map selection:")
+    if(not self.filter_only):
+      assert self.params.primary_map_type is not None
+      peaks = self.find_peaks(
+        map_type   = self.params.primary_map_type,
+        map_cutoff = self.params.primary_map_cutoff).peaks_mapped()
+      self.sites, self.heights = peaks.sites, peaks.heights
+      self.add_new_solvent()
+      self.filter_solvent()
+      if(self.params.secondary_map_type is not None):
+        self.find_peaks_2fofc()
+        self.show(message = "2Fo-Fc map selection:")
     #
     if(not self.filter_only and self.params.refine_adp and
        self.model.refinement_flags.individual_adp and
