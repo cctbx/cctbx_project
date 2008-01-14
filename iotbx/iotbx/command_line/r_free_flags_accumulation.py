@@ -9,11 +9,11 @@ from iotbx import reflection_file_reader
 import libtbx.phil
 import libtbx.phil.command_line
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Usage
 import sys, os
 
 master_params = libtbx.phil.parse("""\
-r_free_flags_counts {
+r_free_flags_accumulation {
   file_name=None
     .type=path
   label=None
@@ -23,20 +23,23 @@ r_free_flags_counts {
   disable_suitability_test=False
     .type=bool
 }
-r_free_flags_counts {
+r_free_flags_accumulation {
   output=None
     .type=path
+  plot_header=None
+    .type=str
+    .multiple=True
 }
 """)
 
-def run(args, command_name="iotbx.r_free_flags_counts"):
+def run(args, command_name="iotbx.r_free_flags_accumulation"):
   def raise_usage():
     raise Usage("%s reflection_file [label=value]" % command_name)
   if (len(args) == 0 or "--help" in args or "-h" in args):
     raise_usage()
   phil_objects = []
   argument_interpreter = libtbx.phil.command_line.argument_interpreter(
-    master_phil=master_params, home_scope="r_free_flags_counts")
+    master_phil=master_params, home_scope="r_free_flags_accumulation")
   reflection_files = []
   for arg in args:
     if (os.path.isfile(arg)):
@@ -51,7 +54,7 @@ def run(args, command_name="iotbx.r_free_flags_counts"):
       except: raise Sorry("Unknown file or keyword: %s" % arg)
       else: phil_objects.append(command_line_params)
   params_scope = master_params.fetch(sources=phil_objects).extract()
-  params = params_scope.r_free_flags_counts
+  params = params_scope.r_free_flags_accumulation
   srv = reflection_file_utils.reflection_file_server(
     reflection_files=reflection_files)
   r_free_flags, test_flag_value = srv.get_r_free_flags(
@@ -59,7 +62,7 @@ def run(args, command_name="iotbx.r_free_flags_counts"):
     label=params.label,
     test_flag_value=params.test_flag_value,
     disable_suitability_test=params.disable_suitability_test,
-    parameter_scope="r_free_flags_counts")
+    parameter_scope="r_free_flags_accumulation")
   params.file_name = r_free_flags.info().source
   params.label = r_free_flags.info().label_string()
   params.test_flag_value = test_flag_value
@@ -82,6 +85,8 @@ def run(args, command_name="iotbx.r_free_flags_counts"):
   print "  2. column: number of free reflections / total number of reflections"
   sys.stdout.flush()
   out = open(params.output, "w")
+  for line in params.plot_header:
+    print >> out, line
   for c,f in zip(accu.reflection_counts, accu.free_fractions):
     print >> out, c, f
   out.close()
