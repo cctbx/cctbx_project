@@ -61,6 +61,7 @@ def test_1(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
   params = mmtbx.refinement.rigid_body.master_params.extract()
   params.refine_rotation = False
   params.refine_translation = True
+  params.target="ls_wunit_k1"
   rb = mmtbx.refinement.rigid_body.manager(
     fmodel     = fmodel,
     selections = [flex.bool(size,True).iselection()],
@@ -82,6 +83,7 @@ def test_2(fmodel, convention, phi = 0.0, psi = 0.0, the = 0.0,
   params = mmtbx.refinement.rigid_body.master_params.extract()
   params.refine_rotation = True
   params.refine_translation = True
+  params.target="ls_wunit_k1"
   rb = mmtbx.refinement.rigid_body.manager(
     fmodel     = fmodel,
     selections = [flex.bool(size,True).iselection()],
@@ -105,6 +107,7 @@ def test_3(fmodel, convention, phi = 1, psi = 2, the = 3, trans = [0,0,0]):
   params.high_resolution = 1.0
   params.max_iterations = 50
   params.lbfgs_line_search_max_function_evaluations = 50
+  params.target="ls_wunit_k1"
   rb = mmtbx.refinement.rigid_body.manager(
     fmodel     = fmodel,
     selections = [flex.bool(size,True).iselection()],
@@ -127,6 +130,7 @@ def test_4(fmodel, convention, phi =1, psi =2, the =3, trans =[0.5,1.0,1.5]):
   params.refine_rotation = True
   params.refine_translation = True
   params.high_resolution = 1.0
+  params.target="ls_wunit_k1"
   rb = mmtbx.refinement.rigid_body.manager(
     fmodel     = fmodel,
     selections = [flex.bool(size,True).iselection()],
@@ -166,6 +170,7 @@ def test_5(fmodel, convention):
   params.refine_rotation = True
   params.refine_translation = True
   params.high_resolution = 1.0
+  params.target="ls_wunit_k1"
   rb = mmtbx.refinement.rigid_body.manager(fmodel     = fmodel,
                                            selections = selections,
                                            params     = params)
