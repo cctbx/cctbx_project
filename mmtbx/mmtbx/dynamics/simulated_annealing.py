@@ -95,14 +95,15 @@ def run_simulated_annealing(simulated_annealing_params,
       interleaved_minimization_params \
         = simulated_annealing_params.interleaved_minimization,
       n_print                     = simulated_annealing_params.n_print,
-      verbose                     = simulated_annealing_params.verbose,
       fmodel                      = fmodel,
       xray_target_weight          = wx,
       chem_target_weight          = wc,
       xray_structure_last_updated = xray_structure_last_updated,
       shift_update                = simulated_annealing_params.update_grads_shift,
       xray_gradient               = xray_gradient,
-      reset_velocities            = reset_velocities)
+      reset_velocities            = reset_velocities,
+      log=out,
+      verbose=simulated_annealing_params.verbose)
     reset_velocities = False
 
     xray_structure_last_updated = \
