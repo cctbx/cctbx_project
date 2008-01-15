@@ -179,7 +179,7 @@ class manager(object):
          occupancy_flags = []
          ms = self.ias_selection.count(False)
          for i in range(1, self.ias_selection.count(True)+1):
-           occupancy_flags.append([ms+i-1])
+           occupancy_flags.append(flex.size_t([ms+i-1]))
          # set flags
          self.refinement_flags.inflate(
            sites_individual       = ssites,
@@ -453,7 +453,7 @@ class manager(object):
     if(refine_occupancies):
       occupancy_flags = []
       for i in range(1, solvent_xray_structure.scatterers().size()+1):
-        occupancy_flags.append([ms+i-1])
+        occupancy_flags.append(flex.size_t([ms+i-1]))
     ####
     if(self.refinement_flags.individual_sites):
       ssites = flex.bool(solvent_xray_structure.scatterers().size(), True)
