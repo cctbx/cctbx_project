@@ -268,10 +268,14 @@ master_params = iotbx.phil.parse("""\
               during refinement run. first_macro_cycle_only to run only once \
               at first macrocycle, every_macro_cycle to do rigid body \
               refinement main.number_of_macro_cycles times
-    target = ls_wunit_k1 *ml
+    target = ls_wunit_k1 ml *auto
       .type = choice
       .help = Rigid body refinement target function: least-squares or \
               maximum-likelihood
+    target_auto_switch_resolution = 5.0
+      .type = float
+      .help = Used if target=auto, use optimal target for given working \
+              resolution.
     refine_rotation = True
       .type = bool
       .help = Only rotation is refined (translation is fixed).
@@ -404,6 +408,9 @@ class manager(object):
     self.params = params
     if(params is None):
       self.params = fmodel_from_xray_structure_master_params.extract()
+    save_original_target_name = fmodel.target_name
+    if(self.params.target == "auto"): fmodel.update(target_name = "ml")
+    else: fmodel.update(target_name = self.params.target)
     timer_rigid_body_total = user_plus_sys_time()
     save_r_work = fmodel.r_work()
     save_r_free = fmodel.r_free()
@@ -460,6 +467,13 @@ class manager(object):
     for res in d_mins:
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
+        if(self.params.target == "auto"):
+          if(res > self.params.target_auto_switch_resolution):
+            if(fmodel_copy.target_name != "ls_wunit_k1"):
+              fmodel_copy.update(target_name = "ls_wunit_k1")
+          else:
+            if(fmodel_copy.target_name != "ml"):
+              fmodel_copy.update(target_name = "ml")
         d_max_min = fmodel_copy.f_obs_w.d_max_min()
         line = "Refinement at resolution: "+\
                  str("%7.2f"%d_max_min[0]).strip()+" - "+\
@@ -542,6 +556,7 @@ class manager(object):
     self.evaluate_after_end(fmodel, save_r_work, save_r_free,
       save_xray_structure, log)
     self.fmodel = fmodel
+    self.fmodel.update(target_name = save_original_target_name)
     time_rigid_body_total += timer_rigid_body_total.elapsed()
 
   def evaluate_after_end(self, fmodel, save_r_work, save_r_free,
