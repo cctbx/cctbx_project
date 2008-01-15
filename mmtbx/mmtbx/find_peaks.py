@@ -38,7 +38,7 @@ master_params = iotbx.phil.parse("""\
       .type=int
     interpolate = True
       .type=bool
-    min_distance_sym_equiv = 1.e-6
+    min_distance_sym_equiv = None
       .type=float
     general_positions_only = False
       .type=bool
@@ -80,12 +80,16 @@ class manager(object):
       self.map_cutoff *= -1
       negative = True
       fft_map_data = fft_map_data * (-1.)
+    min_distance_sym_equiv = self.params.peak_search.min_distance_sym_equiv
+    if(min_distance_sym_equiv is None):
+      min_distance_sym_equiv = \
+        self.fmodel.xray_structure.min_distance_sym_equiv()
     peak_search_parameters = maptbx.peak_search_parameters(
       peak_search_level      = self.params.peak_search.peak_search_level,
       max_peaks              = self.params.peak_search.max_peaks,
       peak_cutoff            = self.map_cutoff,
       interpolate            = self.params.peak_search.interpolate,
-      min_distance_sym_equiv = self.params.peak_search.min_distance_sym_equiv,
+      min_distance_sym_equiv = min_distance_sym_equiv,
       general_positions_only = self.params.peak_search.general_positions_only,
       min_cross_distance     = self.params.peak_search.min_cross_distance)
     cluster_analysis = crystal_gridding_tags.peak_search(

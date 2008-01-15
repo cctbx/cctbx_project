@@ -605,6 +605,7 @@ def get_atom_selections(all_chain_proxies,
                         iselection            = True,
                         one_group_per_residue = False,
                         hydrogens_only        = False,
+                        one_selection_array   = False,
                         log                   = None):
   if(log is None): log = sys.stdout
   # XXX Fix atom_attributes_list in-place to be able to select by element type
@@ -705,6 +706,11 @@ def get_atom_selections(all_chain_proxies,
      for i_seq, selection in enumerate(selections):
        if(hasattr(selection, "iselection")):
           selections[i_seq] = selections[i_seq].iselection()
+  if(one_selection_array):
+    s0 = selections[0]
+    for s in selections:
+      s0 = s0 | s
+    selections = s0
   return selections
 
 def atom_selection(all_chain_proxies, string):
