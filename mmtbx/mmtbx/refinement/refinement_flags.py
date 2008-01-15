@@ -99,7 +99,9 @@ class manager(object):
         if(not sel0.all_eq(False)):
           result = False
       else:
+        if(not self.is_size_t(sel0)): sel0 = flex.size_t(sel0)
         for sel in selections[1:]:
+          if(not self.is_size_t(sel)): sel = flex.size_t(sel)
           sel0.extend(sel)
         perm = flex.sort_permutation(sel0)
         sel0_ = sel0.select(perm)
