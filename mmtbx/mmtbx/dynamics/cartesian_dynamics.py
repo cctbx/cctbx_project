@@ -53,19 +53,21 @@ class cartesian_dynamics(object):
                time_step                   = 0.0005,
                interleaved_minimization_params = None,
                n_print                     = 20,
-               verbose                     = -1,
                fmodel                      = None,
                xray_target_weight          = None,
                chem_target_weight          = None,
                shift_update                = None,
                xray_structure_last_updated = None,
                xray_gradient               = None,
-               reset_velocities            = True):
+               reset_velocities            = True,
+               log=None,
+               verbose=-1):
     adopt_init_args(self, locals())
     assert self.n_print > 0
     assert self.temperature >= 0.0
     assert self.n_steps >= 0
     assert self.time_step >= 0.0
+    assert self.log is not None or self.verbose < 1
     xray.set_scatterer_grad_flags(scatterers = self.structure.scatterers(),
                                   site       = True)
     self.structure_start = self.structure.deep_copy_scatterers()
@@ -74,7 +76,6 @@ class cartesian_dynamics(object):
     self.ekin = 0.0
     self.ekcm = 0.0
     self.timfac = 0.04888821
-    self.tstep = self.time_step / self.timfac
     self.weights = self.structure.atomic_weights()
     self.vxyz = flex.vec3_double(self.weights.size(),(0,0,0))
     if(self.fmodel is not None):
@@ -99,60 +100,62 @@ class cartesian_dynamics(object):
     else:
       self.interleaved_minimization_angles = False
     #
+    self.tstep = self.time_step / self.timfac
+    #
     self()
 
   def __call__(self):
-    self.center_mass_info(verbose = self.verbose)
+    self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
     self.current_temperature = kt.temperature()
     self.ekin = kt.kinetic_energy()
     if(self.verbose >= 1):
-      print_dynamics_stat(self.temperature,self.current_temperature,
+      print_dynamics_stat(self.log,self.temperature,self.current_temperature,
                           self.time_step,self.n_steps,self.rcm,self.vcm,
                           self.ekcm,self.acm,self.ekin,
                           "restrained dynamics start")
     if(self.reset_velocities):
        self.set_velocities()
-       self.center_mass_info(verbose = self.verbose)
+       self.center_of_mass_info()
        kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
        self.current_temperature = kt.temperature()
        self.ekin = kt.kinetic_energy()
        if(self.verbose >= 1):
-         print_dynamics_stat(self.temperature,self.current_temperature,
+         print_dynamics_stat(self.log,self.temperature,self.current_temperature,
                              self.time_step,self.n_steps,self.rcm,self.vcm,
                              self.ekcm,self.acm,self.ekin,
                              "set velocities")
-    self.stop_center_mass_motion()
-    self.center_mass_info(verbose = self.verbose)
+    self.stop_global_motion()
+    self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
     self.current_temperature = kt.temperature()
     self.ekin = kt.kinetic_energy()
     if(self.verbose >= 1):
-      print_dynamics_stat(self.temperature,self.current_temperature,
+      print_dynamics_stat(self.log,self.temperature,self.current_temperature,
                           self.time_step,self.n_steps,self.rcm,self.vcm,
                           self.ekcm,self.acm,self.ekin,
-                          "center mass motion removed")
+                          "center of mass motion removed")
 
     self.velocity_rescaling()
-    self.center_mass_info(verbose = self.verbose)
+    self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
     self.current_temperature = kt.temperature()
     self.ekin = kt.kinetic_energy()
     if(self.verbose >= 1):
-      print_dynamics_stat(self.temperature,self.current_temperature,
+      print_dynamics_stat(self.log,self.temperature,self.current_temperature,
                           self.time_step,self.n_steps,self.rcm,self.vcm,
                           self.ekcm,self.acm,self.ekin,
                           "velocities rescaled")
     if(self.verbose >= 1):
-      print "integration starts"
-    self.verlet_leapfrog_integration(verbose = self.verbose)
+      print >> self.log, "integration starts"
+    self.verlet_leapfrog_integration()
 
-    self.center_mass_info(verbose = self.verbose)
+    self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
     self.current_temperature = kt.temperature()
     self.ekin = kt.kinetic_energy()
     if(self.verbose >= 1):
-      print_dynamics_stat(self.temperature,self.current_temperature,
+      print_dynamics_stat(self.log,self.temperature,self.current_temperature,
                           self.time_step,self.n_steps,self.rcm,self.vcm,
                           self.ekcm,self.acm,self.ekin,
                           "after final integration step")
@@ -193,7 +196,7 @@ class cartesian_dynamics(object):
       compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
     return flex.vec3_double(sf.packed())
 
-  def center_mass_info(self, verbose = -1):
+  def center_of_mass_info(self):
     self.rcm = self.structure.center_of_mass()
     timfac = 0.04888821
     vxcm = 0.0
@@ -229,17 +232,8 @@ class cartesian_dynamics(object):
     self.vcm.append((vxcm,vycm,vzcm))
     self.acm.append((axcm,aycm,azcm))
     self.ekcm = (vxcm**2 + vycm**2 + vzcm**2) * tmass * 0.5
-    #ft = "%15.5f%15.5f%15.5f "
-    #if(verbose >= 1):
-    #  print "information about center of free masses"
-    #  print "  position: x,y,z [A] = %8.3f%8.3f%8.3f"%(self.rcm)
-    #  print "  velocity: vx,vy,vz  [A/ps] = %8.4f%8.4f%8.4f"% \
-    #         (vxcm/timfac,vycm/timfac,vzcm/timfac)
-    #  print "  angular momentum [amu A/ps] = %15.3f%15.3f%15.3f"% \
-    #        (axcm/timfac,aycm/timfac,azcm/timfac)
-    #  print "  kinetic energy [Kcal/mol] = %8.3f"% self.ekcm
 
-  def stop_center_mass_motion(self):
+  def stop_global_motion(self):
     self.rcm = self.structure.center_of_mass()
     xx = 0.0
     xy = 0.0
@@ -301,7 +295,7 @@ class cartesian_dynamics(object):
     self.structure.set_sites_cart(sites_cart=sites_cart)
     self.structure.apply_symmetry_sites()
 
-  def verlet_leapfrog_integration(self, verbose = -1):
+  def verlet_leapfrog_integration(self):
     # start verlet_leapfrog_integration loop
     for cycle in range(1,self.n_steps+1,1):
       residuals = self.residuals()
@@ -311,23 +305,17 @@ class cartesian_dynamics(object):
         print_flag = 1
       if(print_flag == 1):
         text = "integration step number = %5d"%cycle
-        stereochem = print_statistics.stereochem_stat(
-          xray_structure = self.structure,
-          xray_structure_ref = self.structure_start,
-          restraints_manager = self.restraints_manager,
-          text = text)
-        stereochem.show()
-        self.center_mass_info()
+        self.center_of_mass_info()
         kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
         self.current_temperature = kt.temperature()
         self.ekin = kt.kinetic_energy()
-        print_dynamics_stat(self.temperature,self.current_temperature,
+        print_dynamics_stat(self.log,self.temperature,self.current_temperature,
                             self.time_step,self.n_steps,self.rcm,self.vcm,
                             self.ekcm,self.acm,self.ekin,
                             text)
       if(0):
-        self.center_mass_info()
-        self.stop_center_mass_motion()
+        self.center_of_mass_info()
+        self.stop_global_motion()
       # calculate velocities at t+dt/2
       grad = residuals#.gradients
       dynamics.vxyz_at_t_plus_dt_over_2(self.vxyz, self.weights, grad, self.tstep)
@@ -337,8 +325,8 @@ class cartesian_dynamics(object):
       self.ekin = kt.kinetic_energy()
       self.velocity_rescaling()
       if(print_flag == 1 and 0):
-        self.center_mass_info()
-        print_dynamics_stat(self.temperature,self.current_temperature,
+        self.center_of_mass_info()
+        print_dynamics_stat(self.log,self.temperature,self.current_temperature,
                             self.time_step,self.n_steps,self.rcm,self.vcm,
                             self.ekcm,self.acm,self.ekin,
                             text)
@@ -352,21 +340,27 @@ class cartesian_dynamics(object):
       self.current_temperature = kt.temperature()
       self.ekin = kt.kinetic_energy()
       if(print_flag == 1 and 0):
-        self.center_mass_info()
-        print_dynamics_stat(self.temperature,self.current_temperature,
+        self.center_of_mass_info()
+        print_dynamics_stat(self.log,self.temperature,self.current_temperature,
                             self.time_step,self.n_steps,self.rcm,self.vcm,
                             self.ekcm,self.acm,self.ekin,
                             text)
     self.residuals()
 
-def print_dynamics_stat(temp,ctemp,time_step,nsteps,r,v,ekcm,am,ek,text):
+def print_dynamics_stat(log,temp,ctemp,time_step,nsteps,r,v,ekcm,am,ek,text):
   timfac = 0.04888821
   line_len = len("| "+text+"|")
   fill_len = 80 - line_len-1
-  print "| "+text+"-"*(fill_len)+"|"
-  print "| kin.energy = %10.3f            | information about center of free masses|"%(ek)
-  print "| start temperature = %7.3f        | position=%8.3f%8.3f%8.3f      |"% (temp,r[0],r[1],r[2])
-  print "| curr. temperature = %7.3f        | velocity=%8.4f%8.4f%8.4f      |"% (ctemp,v[0][0]/timfac,v[0][1]/timfac,v[0][2]/timfac)
-  print "| number of integration steps = %4d | ang.mom.=%10.2f%10.2f%10.2f|"% (nsteps,am[0][0]/timfac,am[0][1]/timfac,am[0][2]/timfac)
-  print "| time step = %6.4f                 | kin.ener.=%8.3f                     |"% (time_step,ekcm)
-  print "|"+"-"*77+"|"
+  print >> log, "| "+text+"-"*(fill_len)+"|"
+  print >> log, "| kin.energy = %10.3f            " \
+                "| information about center of free masses|"%(ek)
+  print >> log, "| start temperature = %7.3f        " \
+                "| position=%8.3f%8.3f%8.3f      |"% (temp,r[0],r[1],r[2])
+  print >> log, "| curr. temperature = %7.3f        " \
+                "| velocity=%8.4f%8.4f%8.4f      |"% (
+    ctemp,v[0][0]/timfac,v[0][1]/timfac,v[0][2]/timfac)
+  print >> log, "| number of integration steps = %4d " \
+                "| ang.mom.=%10.2f%10.2f%10.2f|"% (
+      nsteps,am[0][0]/timfac,am[0][1]/timfac,am[0][2]/timfac)
+  print >> log, "| time step = %6.4f                 | kin.ener.=%8.3f                     |"% (time_step,ekcm)
+  print >> log, "|"+"-"*77+"|"
