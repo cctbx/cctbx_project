@@ -302,6 +302,8 @@ master_params = iotbx.phil.parse("""\
 def split_resolution_range(
       d_spacings,
       n_bodies,
+      target,
+      target_auto_switch_resolution,
       n_ref_first,
       multi_body_factor_n_ref_first,
       d_low,
@@ -310,6 +312,7 @@ def split_resolution_range(
       zone_exponent,
       log = None):
   assert n_bodies > 0
+  assert target_auto_switch_resolution > 0
   assert multi_body_factor_n_ref_first is None or multi_body_factor_n_ref_first > 0
   assert n_ref_first is None or n_ref_first > 0
   assert d_low is None or d_low > 0
@@ -382,18 +385,27 @@ def split_resolution_range(
            than the number of available reflections (%d > %d).
   INFO: Number of resolution zones reset to 1.""" % (
     final_n_ref_first, d_spacings.size())
+  target_names = []
+  for d_min in d_mins:
+    if (target == "auto"):
+      if (d_min > target_auto_switch_resolution):
+        target_names.append("ls_wunit_k1")
+      else:
+        target_names.append("ml")
+    else:
+      target_names.append(target)
   if (len(d_mins) > 1):
     print >> log, "  Resolution cutoffs for multiple zones: "
     print >> log, "                          number of"
-    print >> log, "    zone     resolution  reflections"
+    print >> log, "    zone     resolution  reflections  target"
     for i, d_i in enumerate(d_mins):
       n_ref = (d_spacings >= d_i).count(True)
-      print >> log, "    %3d  %6.2f -%6.2f %11d" % (
-        i+1, d_max, d_i, n_ref)
+      print >> log, "    %3d  %6.2f -%6.2f %11d    %s" % (
+        i+1, d_max, d_i, n_ref, target_names[i])
     print >> log, "    zone number of reflections =" \
       " %d + %.6g * (zone-1)**%.6g" % (
         final_n_ref_first, zone_factor, zone_exponent)
-  return d_mins
+  return d_mins, target_names
 
 class manager(object):
   def __init__(self, fmodel,
@@ -409,8 +421,6 @@ class manager(object):
     if(params is None):
       self.params = fmodel_from_xray_structure_master_params.extract()
     save_original_target_name = fmodel.target_name
-    if(self.params.target == "auto"): fmodel.update(target_name = "ml")
-    else: fmodel.update(target_name = self.params.target)
     timer_rigid_body_total = user_plus_sys_time()
     save_r_work = fmodel.r_work()
     save_r_free = fmodel.r_free()
@@ -441,9 +451,11 @@ class manager(object):
     fmodel_copy = fmodel.deep_copy()
     if(fmodel_copy.mask_params is not None):
        fmodel_copy.mask_params.verbose = -1
-    d_mins = split_resolution_range(
+    d_mins, target_names = split_resolution_range(
       d_spacings                    = fmodel_copy.f_obs_w.d_spacings().data(),
       n_bodies                      = len(selections),
+      target                        = params.target,
+      target_auto_switch_resolution = params.target_auto_switch_resolution,
       n_ref_first                   = params.min_number_of_reflections,
       multi_body_factor_n_ref_first = params.multi_body_factor,
       d_low                         = params.max_low_high_res_limit,
@@ -452,6 +464,8 @@ class manager(object):
       zone_exponent                 = params.zone_exponent,
       log                           = log)
     print >> log
+    if (fmodel.target_name != target_names[0]):
+      fmodel.update(target_name=target_names[0])
     self.show(fmodel = fmodel,
               r_mat  = self.total_rotation,
               t_vec  = self.total_translation,
@@ -464,20 +478,16 @@ class manager(object):
       if (monitors_call_back_after_collect is not None):
         monitors_call_back_after_collect(
           monitor=None, model=None, fmodel=fmodel)
-    for res in d_mins:
+    for res,target_name in zip(d_mins, target_names):
         xrs = fmodel_copy.xray_structure.deep_copy_scatterers()
         fmodel_copy = fmodel.resolution_filter(d_min = res)
-        if(self.params.target == "auto"):
-          if(res > self.params.target_auto_switch_resolution):
-            if(fmodel_copy.target_name != "ls_wunit_k1"):
-              fmodel_copy.update(target_name = "ls_wunit_k1")
-          else:
-            if(fmodel_copy.target_name != "ml"):
-              fmodel_copy.update(target_name = "ml")
+        if (fmodel_copy.target_name != target_name):
+          fmodel_copy.update(target_name=target_name)
         d_max_min = fmodel_copy.f_obs_w.d_max_min()
         line = "Refinement at resolution: "+\
-                 str("%7.2f"%d_max_min[0]).strip()+" - "+\
-                 str("%6.2f"%d_max_min[1]).strip()
+                 str("%7.2f"%d_max_min[0]).strip() + " - " \
+               + str("%6.2f"%d_max_min[1]).strip() \
+               + " target=" + fmodel_copy.target_name
         print_statistics.make_sub_header(line, out = log)
         fmodel_copy.update_xray_structure(xray_structure = xrs,
                                           update_f_calc  = True)
