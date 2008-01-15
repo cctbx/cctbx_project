@@ -36,7 +36,7 @@ class manager(object):
       for item in x:
         if(self.is_bool(item) or self.is_size_t(item)):
           result.append(item.deep_copy())
-        else: result.append(item[:])
+        else: raise RuntimeError("Bad selection array type.")
     return result
 
   def deep_copy(self):
@@ -99,9 +99,9 @@ class manager(object):
         if(not sel0.all_eq(False)):
           result = False
       else:
-        if(not self.is_size_t(sel0)): sel0 = flex.size_t(sel0)
+        if(not self.is_size_t(sel0)): result = False
         for sel in selections[1:]:
-          if(not self.is_size_t(sel)): sel = flex.size_t(sel)
+          if(not self.is_size_t(sel)): result = False
           sel0.extend(sel)
         perm = flex.sort_permutation(sel0)
         sel0_ = sel0.select(perm)
@@ -162,12 +162,7 @@ class manager(object):
       return str(flex.sum(flex.size_t([i.count(True) for i in x])))
     elif(self.is_size_t(x[0])):
       return str(flex.sum(flex.size_t([i.size() for i in x])))
-    else:
-      cntr = 0
-      for i in x:
-        for ii in i:
-          cntr += 1
-      return str(cntr)
+    else: raise RuntimeError("Bad selection array type.")
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
@@ -209,16 +204,7 @@ class manager(object):
         val = flex.bool(selection.size(), item).select(selection).iselection()
         if(val.size() > 0): x_new.append(val)
       x = x_new
-    else:
-      assert ("%s"%x.__class__).count("list") or \
-             ("%s"%x.__class__).count("tuple")
-      result = []
-      for x_ in x:
-        result_ = list(flex.bool(selection.size(),
-          flex.size_t(x_)).select(selection).iselection())
-        if(len(result_)>0):
-          result.append(result_)
-      x = result
+    else: raise RuntimeError("Bad selection array type.")
     return x
 
   def select(self, selection):
