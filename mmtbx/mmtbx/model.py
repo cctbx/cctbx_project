@@ -171,33 +171,34 @@ class manager(object):
                                            other = self.ias_xray_structure)
       if(self.refinement_flags is not None):
          self.old_refinement_flags = self.refinement_flags.deep_copy()
+         # define flags
+         ssites = flex.bool(self.ias_xray_structure.scatterers().size(), False)
+         sadp = flex.bool(self.ias_xray_structure.scatterers().size(), False)
+         # XXX set occ refinement ONLY for involved atoms
+         # XXX now it refines only occupancies of IAS !!!
+         occupancy_flags = []
+         ms = self.ias_selection.count(False)
+         for i in range(1, self.ias_selection.count(True)+1):
+           occupancy_flags.append([ms+i-1])
+         # set flags
          self.refinement_flags.inflate(
-              size = self.ias_xray_structure.scatterers().size(), flag = True)
-         if 1: # refine sites in presence of IAS
-           for ss in self.refinement_flags.sites_individual:
-             ss.set_selected(self.ias_selection, False)
-             ss.set_selected(~self.ias_selection, True)
-         if 1: # refine occupancies in presence of IAS
-           occupancy_flags = []
-           ms = self.ias_selection.count(False)
-           for i in range(1, self.ias_selection.count(True)+1):
-             occupancy_flags.append([ms+i-1])
-           self.refinement_flags.inflate(
-             size        = None,
-             occupancies = occupancy_flags)
+           sites_individual       = ssites,
+           occupancies_individual = occupancy_flags,
+           adp_individual_iso     = sadp,
+           adp_individual_aniso   = sadp)
+         # adjust flags
+         self.refinement_flags.sites_individual.set_selected(self.ias_selection, False)
+         self.refinement_flags.sites_individual.set_selected(~self.ias_selection, True)
+         self.refinement_flags.adp_individual_aniso.set_selected(self.ias_selection, False)
+         self.refinement_flags.adp_individual_iso.set_selected(self.ias_selection, True)
 
-         #self.xray_structure.convert_to_anisotropic(selection = self.ias_selection)
-         self.refinement_flags.adp_individual_aniso[0].set_selected(
-                                                     self.ias_selection, False) # False
-         self.refinement_flags.adp_individual_iso[0].set_selected(
-                                                      self.ias_selection, True) # True
          #occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
          #self.xray_structure.scatterers().set_occupancies(occs, ~self.ias_selection)
          # D9
          sel = self.xray_structure.scatterers().extract_scattering_types() == "D9"
          self.xray_structure.convert_to_anisotropic(selection = sel)
-         self.refinement_flags.adp_individual_aniso[0].set_selected(sel, True)
-         self.refinement_flags.adp_individual_iso[0].set_selected(sel, False)
+         self.refinement_flags.adp_individual_aniso.set_selected(sel, True)
+         self.refinement_flags.adp_individual_iso.set_selected(sel, False)
     # add to aal:
     i_seq = 0
     for sc in self.ias_xray_structure.scatterers():
@@ -454,11 +455,20 @@ class manager(object):
       for i in range(1, solvent_xray_structure.scatterers().size()+1):
         occupancy_flags.append([ms+i-1])
     ####
+    if(self.refinement_flags.individual_sites):
+      ssites = flex.bool(solvent_xray_structure.scatterers().size(), True)
+    else: ssites = None
+    if(self.refinement_flags.adp_individual_iso):
+      sadp_iso = solvent_xray_structure.use_u_iso()
+    else: sadp_iso = None
+    if(self.refinement_flags.adp_individual_aniso):
+      sadp_aniso = solvent_xray_structure.use_u_aniso()
+    else: sadp_aniso = None
     self.refinement_flags.inflate(
-      size        = solvent_xray_structure.scatterers().size(),
-      use_u_iso   = solvent_xray_structure.use_u_iso(),
-      use_u_aniso = solvent_xray_structure.use_u_aniso(),
-      occupancies = occupancy_flags)
+      sites_individual       = ssites,
+      adp_individual_iso     = sadp_iso,
+      adp_individual_aniso   = sadp_aniso,
+      occupancies_individual = occupancy_flags)
     new_atom_name = atom_name.strip()
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
@@ -585,8 +595,8 @@ class manager(object):
   def energies_adp(self, iso_restraints, compute_gradients):
     assert self.refinement_flags is not None
     n_aniso = 0
-    for sel in self.refinement_flags.adp_individual_aniso:
-      n_aniso += sel.count(True)
+    if(self.refinement_flags.adp_individual_aniso is not None):
+      n_aniso = self.refinement_flags.adp_individual_aniso.count(True)
     if(n_aniso == 0):
       energies_adp_iso = self.restraints_manager.energies_adp_iso(
         xray_structure    = self.xray_structure,
@@ -617,33 +627,28 @@ class manager(object):
   def set_refine_individual_sites(self, selection = None):
     self.xray_structure.scatterers().flags_set_grads(state=False)
     if(selection is None):
-      selection = flex.bool(self.refinement_flags.sites_individual[0].size(),
-        False)
-      for sel in self.refinement_flags.sites_individual:
-        selection = selection | sel
+      selection = self.refinement_flags.sites_individual
     self.xray_structure.scatterers().flags_set_grad_site(
-      iselection = sel.iselection())
+      iselection = selection.iselection())
 
   def set_refine_individual_adp(self, selection_iso = None,
                                       selection_aniso = None,
                                       h_mode = None):
     self.xray_structure.scatterers().flags_set_grads(state=False)
     if(selection_iso is None):
-      selection_iso = flex.bool(
-        self.refinement_flags.adp_individual_iso[0].size(), False)
-      for sel in self.refinement_flags.adp_individual_iso:
-        selection_iso = selection_iso | sel
-      if(h_mode is not None and h_mode != "individual"):
-        selection_iso.set_selected(self.xray_structure.hd_selection(), False)
-    self.xray_structure.scatterers().flags_set_grad_u_iso(
-      iselection = selection_iso.iselection())
+      selection_iso = self.refinement_flags.adp_individual_iso
+      if(selection_iso is not None):
+        if(h_mode is not None and h_mode != "individual"):
+          selection_iso.set_selected(self.xray_structure.hd_selection(), False)
+    if(selection_iso is not None):
+      self.xray_structure.scatterers().flags_set_grad_u_iso(
+        iselection = selection_iso.iselection())
     if(selection_aniso is None):
-      selection_aniso = flex.bool(
-        self.refinement_flags.adp_individual_aniso[0].size(), False)
-      for sel in self.refinement_flags.adp_individual_aniso:
-        selection_aniso = selection_aniso | sel
-      if(h_mode is not None and h_mode != "individual"):
-        selection_aniso.set_selected(self.xray_structure.hd_selection(), False)
-    self.xray_structure.scatterers().flags_set_grad_u_aniso(
-      iselection = selection_aniso.iselection())
+      selection_aniso = self.refinement_flags.adp_individual_aniso
+      if(selection_aniso is not None):
+        if(h_mode is not None and h_mode != "individual"):
+          selection_aniso.set_selected(self.xray_structure.hd_selection(),False)
+    if(selection_aniso is not None):
+      self.xray_structure.scatterers().flags_set_grad_u_aniso(
+        iselection = selection_aniso.iselection())
 

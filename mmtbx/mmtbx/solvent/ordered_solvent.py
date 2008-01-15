@@ -146,17 +146,15 @@ class manager(object):
       import scitbx.lbfgs
       if(self.params.new_solvent == "anisotropic"):
         selection_aniso = flex.bool(
-          self.model.refinement_flags.adp_individual_aniso[0].size(), False)
+          self.model.refinement_flags.adp_individual_aniso.size(), False)
         for sel in self.model.refinement_flags.adp_individual_aniso:
           selection_aniso = selection_aniso | sel
         selection_aniso.set_selected(~self.solvent_selection, False)
         self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
       else:
-        selection_iso = flex.bool(
-          self.model.refinement_flags.adp_individual_iso[0].size(), False)
-        for sel in self.model.refinement_flags.adp_individual_iso:
-          selection_iso = selection_iso | sel
+        selection_iso = self.model.refinement_flags.adp_individual_iso.deep_copy()
         selection_iso.set_selected(~self.solvent_selection, False)
+        assert selection_iso.count(True) == self.solvent_selection.count(True)
         self.model.set_refine_individual_adp(selection_iso = selection_iso)
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
           max_iterations = 25)
