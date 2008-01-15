@@ -655,7 +655,7 @@ class stage_1(object):
           setdefault(aal.resSeq,  {}).\
           setdefault(aal.resName, {}).\
           setdefault(aal.iCode,   {}). \
-          setdefault(aal.name,    []).append(i_seq)
+          setdefault(aal.name,    flex.size_t()).append(i_seq)
     result = []
     for v0 in top.values():
       for v1 in v0.values():
