@@ -28,6 +28,21 @@ import math
 import time
 import sys
 
+def exercise_div_mod():
+  from scitbx.math import divmod
+  q,r = divmod(4.34, 2)
+  assert q == 2
+  assert approx_equal(r, 0.34)
+  q,r = divmod(-3.23, 2)
+  assert q == -2
+  assert approx_equal(r, 0.77)
+  for y,q,r in [(5.23, 2, 1.3), (-5.23, 2, 1.3),
+                (5.23, -2, 1.3), (-5.23, -2, 1.3)]:
+    x = q*y + r
+    q1,r1 = divmod(x,y)
+    assert q1 == q
+    assert approx_equal(r1,r)
+
 def exercise_floating_point_epsilon():
   float_eps = scitbx.math.floating_point_epsilon_float_get()
   double_eps = scitbx.math.floating_point_epsilon_double_get()
@@ -1393,6 +1408,7 @@ def exercise_unimodular_generator(forever):
       break
 
 def run():
+  exercise_div_mod()
   exercise_full_pivoting()
   exercise_eix()
   exercise_floating_point_epsilon()

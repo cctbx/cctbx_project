@@ -75,6 +75,15 @@ namespace {
     return result / static_cast<double>(n_repetitions);
   }
 
+  template<typename SignedIntType, typename FloatType>
+  inline
+  std::pair<SignedIntType, FloatType>
+  remquo_wrapper(FloatType x, FloatType y) {
+    SignedIntType quo;
+    FloatType rem = remquo(x, y, &quo);
+    return std::make_pair(quo, rem);
+  }
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     gamma_complete_overloads,
     gamma::complete, 1, 2)
@@ -210,6 +219,8 @@ namespace {
           math::nearest_phase,
       nearest_phase_overloads(
         (arg_("reference"), arg_("other"), arg_("deg")=false)));
+    def("divmod",
+        static_cast<std::pair<int, double>(*)(double, double)>(remquo_wrapper));
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
