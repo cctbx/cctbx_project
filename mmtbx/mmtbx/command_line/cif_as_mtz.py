@@ -452,6 +452,9 @@ class extract_data(object):
               assert result_hkl.count(None) == 0
               assert data_ is not None
               if(result_hkl.count(0) != 3 and data_ != 0):
+                if(max(max(result_hkl), abs(min(result_hkl))) > 10000):
+                  self.reset(message ="Too big Miller index (> 10000).",line=line)
+                  break
                 self.indices.append(result_hkl)
                 self.data.append(data_)
                 if(flag_ is not None): self.flags.append(flag_)
