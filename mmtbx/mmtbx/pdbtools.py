@@ -139,7 +139,7 @@ output
 }
 random_seed = None
   .type = int
-  .help = Ransom seed
+  .help = Random seed
 """
 modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
