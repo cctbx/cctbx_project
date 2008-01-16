@@ -11,7 +11,7 @@ import time
 
 class triangulation_test_case(object):
 
-  def __init__(self, func, grid_size, lazy_normals):
+  def __init__(self, func, grid_size, lazy_normals, descending_normals):
     """ Construct a map of func with the given grid_size """
     self.func = func
     nx, ny, nz = self.grid_size = grid_size
@@ -27,6 +27,7 @@ class triangulation_test_case(object):
       loop.incr()
     self.map = map
     self.lazy_normals = lazy_normals
+    self.descending_normals = descending_normals
 
   def run(self, iso_level, verbose):
     """ Test triangulation of the iso-surface at the given iso-level """
@@ -34,11 +35,17 @@ class triangulation_test_case(object):
 
     # triangulation of the iso-surface of the map
     t0 = time.time()
-    s = iso_surface.triangulation(self.map, iso_level, map_extent=(1,1,1),
-                                  lazy_normals=self.lazy_normals)
+    s = iso_surface.triangulation(
+      self.map, iso_level,
+      map_extent=(1,1,1),
+      lazy_normals=self.lazy_normals,
+      ascending_normal_direction = not self.descending_normals)
     t1 = time.time()
     if verbose:
       print "iso-surface triangulation per se: %f s" % (t1-t0)
+
+    # make sure there is something to test!!
+    assert s.vertices.size() > 0
 
     # the value of f on the vertices v shall not differ from iso_level by more
     # than ||1/2 f''(v).h|| where h=(dx,dy,dz)
@@ -96,7 +103,10 @@ class triangulation_test_case(object):
         assert abs(abs(n) - 1) < 1e-12
         outward = v + 0.01*n
         inward  = v - 0.01*n
-        assert f(outward) > iso_level > f(inward), i
+        if s.ascending_normal_direction:
+          assert f(outward) > iso_level > f(inward), i
+        else:
+          assert f(outward) < iso_level < f(inward), i
 
   def is_near_boundary(self, v1, v2):
     delta = matrix.col(self.grid_cell)/2
@@ -155,20 +165,28 @@ def run(args):
   map, e.g. (1, 1, 0). That makes it interesting for that corner vertex ends
   up being part of only one triangle which is degenerate and the normal
   associated to that vertex is therefore undefined """
-  test = triangulation_test_case(elliptic(), grid_size, lazy_normals=False)
+  test = triangulation_test_case(elliptic(), grid_size,
+                                 lazy_normals=False,
+                                 descending_normals=False)
   test.run(iso_level=3, verbose=verbose)
   assert test.degenerate_edges == [(2973, 2912)]
 
-  test = triangulation_test_case(elliptic(), grid_size, lazy_normals=True)
+  test = triangulation_test_case(elliptic(), grid_size,
+                                 lazy_normals=True,
+                                 descending_normals=False)
   test.run(iso_level=2.9, verbose=verbose)
   assert test.degenerate_edges == []
 
-  test = triangulation_test_case(hyperbolic(), grid_size, lazy_normals=True)
-  test.run(iso_level=3, verbose=verbose)
+  test = triangulation_test_case(hyperbolic(), grid_size,
+                                 lazy_normals=True,
+                                 descending_normals=False)
+  test.run(iso_level=0.2, verbose=verbose)
   assert test.degenerate_edges == []
 
-  test = triangulation_test_case(sinusoidal(), grid_size, lazy_normals=False)
-  test.run(iso_level=3, verbose=verbose)
+  test = triangulation_test_case(sinusoidal(), grid_size,
+                                 lazy_normals=False,
+                                 descending_normals=True)
+  test.run(iso_level=0.8, verbose=verbose)
   assert test.degenerate_edges == []
 
   print format_cpu_times()
