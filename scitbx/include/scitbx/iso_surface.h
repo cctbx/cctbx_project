@@ -341,19 +341,28 @@ public:
   typedef af::tiny<index_value_type,3> triangle;
 
   /** Construct the triangulation from a map of the scalar field, the iso level
-  and the map grid size. The flag lazy_normals specify whether the normals
+  and the map grid size.
+
+  - The flag lazy_normals specifies whether the normals
   shall be computed when the member function normals() is called for the first
   time or whether to compute them upfront.
+
+  - The flag ascending_normal_direction specifies whether the normals
+  orientation shall be from lower to higher values of the field
+  (note that the normal direction induces the order of the associated
+  triangle vertices)
   */
   triangulation(map_const_ref_type map,
               value_type iso_level,
               af::tiny<coordinates_type, 3> const& map_extent,
-              bool lazy_normals=true)
+              bool lazy_normals=true,
+              bool ascending_normal_direction=true)
   : map_(map),
     iso_level_(iso_level),
     n_cells(map.accessor().all() - index_value_type(1)),
     cell_lengths(map_extent/n_cells),
-    lazy_normals_(lazy_normals)
+    lazy_normals_(lazy_normals),
+    ascending_normal_direction_(ascending_normal_direction)
   {
     init();
   }
@@ -378,6 +387,9 @@ public:
     return normals_;
   }
 
+  /// The flag of same name passed to the constructor
+  bool ascending_normal_direction() { return ascending_normal_direction_; }
+
 protected:
 
   enum { X=0, Y=1, Z=2 };
@@ -393,6 +405,7 @@ protected:
   typedef std::map<index_value_type, point_3d_id> id_to_point_3d_id;
 
   bool lazy_normals_;
+  bool ascending_normal_direction_;
 
   // The map of the scalar field
   map_const_ref_type map_;
@@ -622,6 +635,7 @@ rename_vertices_and_triangles()
     for (index_value_type i = 0; i < 3; i++) {
       (*iter)[i] = id_to_vertex[ (*iter)[i] ].new_id;
     }
+    if(!ascending_normal_direction_) std::swap((*iter)[0], (*iter)[2]);
   }
 
   // Copy all the vertices into an array so that they

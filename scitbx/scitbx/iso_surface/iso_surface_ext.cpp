@@ -19,16 +19,20 @@ namespace scitbx { namespace iso_surface { namespace boost_python {
         .def(init<typename wt::map_const_ref_type,
                   ValueType,
                   af::tiny<CoordinatesType, 3> const&,
+                  bool,
                   bool
                   > ((
                   arg("map"),
                   arg("iso_level"),
                   arg("map_extent"),
-                  arg("lazy_normals")=true
+                  arg("lazy_normals")=true,
+                  arg("ascending_normal_direction")=true
         )))
         .add_property("vertices", &wt::vertices)
         .add_property("triangles", &wt::triangles)
         .add_property("normals", &wt::normals)
+        .add_property("ascending_normal_direction",
+                      &wt::ascending_normal_direction)
       ;
     }
 
