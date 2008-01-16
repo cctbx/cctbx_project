@@ -241,6 +241,7 @@ class manager(object):
                     adp_tls                = None,
                     occupancies_individual = None,
                     occupancies_group      = None):
+                    # XXX group_anomalous selection should be added
     if(sites_individual is not None):
       assert self.is_bool(sites_individual)
       self.sites_individual.extend(sites_individual)
@@ -270,3 +271,90 @@ class manager(object):
       self.occupancies_group.append(occupancies_group)
     self.check_all()
     return self
+
+  def _add_to_single_size_t(self, x, next_to_i_seq, squeeze_in):
+    tmp_x = []
+    for sel in x:
+      if(sel < next_to_i_seq):
+        tmp_x.append(sel)
+      elif(sel == next_to_i_seq):
+        tmp_x.append(sel)
+        if(squeeze_in): tmp_x.append(next_to_i_seq+1)
+      else:
+        tmp_x.append(sel+1)
+    return flex.size_t(tmp_x)
+
+  def _add(self, x, next_to_i_seq, squeeze_in):
+    if(x is None): return x
+    elif(self.is_bool(x)):
+      tmp_x = \
+        self._add_to_single_size_t(x.iselection(), next_to_i_seq, squeeze_in)
+      return flex.bool(x.size()+1, tmp_x)
+    elif(self.is_size_t(x)):
+      return self._add_to_single_size_t(x, next_to_i_seq, squeeze_in)
+    elif(len(x)==0): raise RuntimeError
+    elif(self.is_bool(x[0])):
+      x_new = []
+      for x_ in x:
+        tmp_x = \
+         self._add_to_single_size_t(x_.iselection(), next_to_i_seq, squeeze_in)
+        x_new.append( flex.bool(x_.size()+1, tmp_x) )
+      return x_new
+    elif(self.is_size_t(x[0])):
+      x_new = []
+      for x_ in x:
+        x_new.append(self._add_to_single_size_t(x_, next_to_i_seq, squeeze_in))
+      return x_new
+    else: raise RuntimeError("Bad selection array type.")
+
+  def add(self, next_to_i_seqs,
+                sites_individual       = False,
+                sites_rigid_body       = False,
+                adp_individual_iso     = False,
+                adp_individual_aniso   = False,
+                adp_group              = False,
+                group_h                = False,
+                adp_tls                = False,
+                occupancies_individual = False,
+                occupancies_group      = False):
+                # XXX group_anomalous selection should be added
+    perm = flex.sort_permutation(next_to_i_seqs, reverse = True)
+    next_to_i_seqs = next_to_i_seqs.select(perm)
+    for next_to_i_seq in next_to_i_seqs:
+      if(self.sites_individual is not None):
+        self._add(x             = self.sites_individual,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = sites_individual)
+      if(self.sites_rigid_body is not None):
+        self._add(x             = self.sites_rigid_body,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = sites_rigid_body)
+      if(self.adp_individual_iso is not None):
+        self._add(x             = self.adp_individual_iso,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = adp_individual_iso)
+      if(self.adp_individual_aniso is not None):
+        self._add(x             = self.adp_individual_aniso,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = adp_individual_aniso)
+      if(self.adp_group is not None):
+        self._add(x             = self.adp_group,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = adp_group)
+      if(self.group_h is not None):
+        self._add(x             = self.group_h,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = group_h)
+      if(self.adp_tls is not None):
+        self._add(x             = self.adp_tls,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = adp_tls)
+      if(self.occupancies_individual is not None):
+        self._add(x             = self.occupancies_individual,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = occupancies_individual)
+      if(self.occupancies_group is not None):
+        self._add(x             = self.occupancies_group,
+                  next_to_i_seq = next_to_i_seq,
+                  squeeze_in    = occupancies_group)
+
