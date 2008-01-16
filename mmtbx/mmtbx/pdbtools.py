@@ -16,6 +16,7 @@ from mmtbx import monomer_library
 import mmtbx.restraints
 import mmtbx.model
 from mmtbx import model_statistics
+import random
 
 fmodel_from_xray_structure_params_str = """\
 k_sol = 0.0
@@ -136,6 +137,9 @@ output
         .type=str
   }
 }
+random_seed = None
+  .type = int
+  .help = Ransom seed
 """
 modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
@@ -177,6 +181,9 @@ class modify(object):
     self._occupancies_modified = False
     self.remove_selection = None
     self.keep_selection = None
+    if(self.params.random_seed is not None):
+      random.seed(self.params.random_seed)
+      flex.set_random_seed(self.params.random_seed)
     try: params_remove_selection = self.params.remove
     except KeyboardInterrupt: raise
     except: params_remove_selection = None
