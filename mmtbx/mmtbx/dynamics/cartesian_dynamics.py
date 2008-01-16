@@ -52,7 +52,6 @@ class cartesian_dynamics(object):
                n_steps                     = 200,
                time_step                   = 0.0005,
                interleaved_minimization_params = None,
-               initial_velocities_zero_fraction = 5/6.,
                n_print                     = 20,
                fmodel                      = None,
                xray_target_weight          = None,
@@ -162,16 +161,14 @@ class cartesian_dynamics(object):
                           "after final integration step")
 
   def set_velocities(self):
-    ivzf = self.initial_velocities_zero_fraction
-    g = random.gauss
     mean = 0.0
-    for j,atom_weight in enumerate(self.weights):
-      if (ivzf == 0 or random.random() >= ivzf):
-        factor = math.sqrt(self.k_boltz / atom_weight)
-        sigma = factor * math.sqrt(self.temperature)
-        self.vxyz[j] = [g(mean,sigma) for i in (1,2,3)]
-      else:
-        self.vxyz[j] = [0, 0, 0]
+    j=0
+    for atom_weight in self.weights:
+      g = random.gauss
+      factor = math.sqrt(self.k_boltz / atom_weight)
+      sigma = factor * math.sqrt(self.temperature)
+      self.vxyz[j] = [g(mean,sigma) for i in (1,2,3)]
+      j+=1
 
   def residuals(self):
     obj = self.restraints_manager.energies_sites(
