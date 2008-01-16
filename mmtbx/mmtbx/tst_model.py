@@ -43,12 +43,10 @@ def exercise():
   mol_copy = mol.deep_copy()
   assert mol.number_of_ordered_solvent_molecules() == 9
   mol.write_pdb_file(out = open("test_model_out.pdb","w"))
-  mol.remove_atoms(atom_type = "H")
   mol.write_pdb_file(out = open("test_model_out_nohydrogens.pdb","w"))
   mol.remove_solvent()
   assert mol.number_of_ordered_solvent_molecules() == 0
   mol.write_pdb_file(out = open("test_model_out_nosolvent.pdb","w"))
-  mol.remove_atoms(atom_type = "O")
   mol.write_pdb_file(out = open("test_model_out_noO.pdb","w"))
   mol.show_geometry_statistics()
   mol.show_geometry_statistics()
@@ -92,7 +90,6 @@ def exercise():
   rm = mol.restraints_manager
 
   mol_copy.write_pdb_file(out = open("XXX.pdb","w"))
-  mol_copy.remove_atoms(leave_only_labels = ["CA", "N", "O"])
   mol_copy.write_pdb_file(out = open("XXXr.pdb","w"))
 
 

@@ -407,38 +407,6 @@ class manager(object):
                          selection            = selection,
                          out                  = out)
 
-  def remove_atoms(self, atom_type         = None,
-                         leave_only_labels = None):
-    assert [atom_type, leave_only_labels].count(None) == 1
-    if(atom_type is not None):
-       remove_atoms_selection = (
-         self.xray_structure.scatterers().extract_scattering_types()
-           != atom_type)
-       if (remove_atoms_selection.all_eq(True)): return
-    if(leave_only_labels is not None):
-       remove_atoms_selection = flex.bool(len(self.atom_attributes_list), False)
-       for i_seq, atom in enumerate(self.atom_attributes_list):
-           for item in leave_only_labels:
-               if(item == atom.name.strip()):
-                  remove_atoms_selection[i_seq] = True
-    self.update(selection = remove_atoms_selection)
-
-  def atoms_selection(self, scattering_type = None):
-    scattering_types = \
-                   self.xray_structure.scatterers().extract_scattering_types()
-    return (scattering_type == scattering_types)
-
-
-  def remove_atom_with_i_seqs(self, i_seq = None, i_seqs = None):
-    assert [i_seq, i_seqs].count(None) == 1
-    remove_atom_selection = flex.bool(len(self.atom_attributes_list), True)
-    if(i_seq is not None):
-       remove_atom_selection[i_seq] = False
-    if(i_seqs is not None):
-       for i_seq_i in i_seqs:
-           remove_atom_selection[i_seq_i] = False
-    self.update(selection = remove_atom_selection)
-
   def add_solvent(self, solvent_xray_structure,
                         solvent_selection,
                         atom_name    = "O",
