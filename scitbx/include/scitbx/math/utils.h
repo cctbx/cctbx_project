@@ -119,6 +119,28 @@ namespace scitbx { namespace math {
     return false;
   }
 
+  /// Quotient and remainder of x/y for floating point x and y
+  /** The static function divmod returns n,r such that:
+        - n is the nearest integer to x/y
+        - r = x - n*y
+  */
+  template<typename FloatType, typename SignedIntType>
+  struct remainder_and_modulo {
+    static inline
+    std::pair<SignedIntType, FloatType>
+    divmod(FloatType x, FloatType y) {
+      SignedIntType quo
+        = float_int_conversions<FloatType, SignedIntType>::nearest_integer(x/y);
+      FloatType rem = x - quo*y;
+      return std::make_pair(quo, rem);
+    }
+  };
+
+  inline std::pair<int, double> divmod(double x, double y) {
+    return remainder_and_modulo<double, int>::divmod(x,y);
+  }
+
+
 }} // namespace scitbx::math
 
 #endif // SCITBX_MATH_UTILS_H
