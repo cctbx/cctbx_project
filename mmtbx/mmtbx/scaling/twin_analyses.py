@@ -318,7 +318,7 @@ class detect_pseudo_translations(object):
 
     if work_array.completeness()<completeness_cut:
       print >> out
-      print >> out," WARNING: "
+      print >> out," WARNING (twin_analysis):"
       print >> out,"  The completeness is only %3.2f between %3.1f and %3.1f A."%(
         work_array.completeness(), low_limit, high_limit)
       print >> out,"  This might not be enough to obtain a good estimate"
