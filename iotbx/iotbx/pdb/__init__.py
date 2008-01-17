@@ -313,6 +313,75 @@ def show_summary(
   #
   return pdb_inp, hierarchy
 
+class _atom(boost.python.injector, ext.atom):
+
+  def format_atom_record(self,
+        serial,
+        input_atom_labels=None,
+        record_name=None,
+        name=None,
+        altloc=None,
+        resname=None,
+        chain=None,
+        resseq=None,
+        icode=None,
+        xyz=None,
+        occ=None,
+        b=None,
+        segid=None,
+        element=None,
+        charge=None):
+    if (altloc is None):
+      if (input_atom_labels is None):
+        altloc = " "
+      else:
+        altloc = input_atom_labels.altloc()
+    if (resname is None):
+      if (input_atom_labels is None):
+        resname = "DUM"
+      else:
+        resname = input_atom_labels.resname()
+    if (chain is None):
+      if (input_atom_labels is None):
+        chain = " "
+      else:
+        chain = input_atom_labels.chain()
+    if (resseq is None):
+      if (input_atom_labels is None):
+        resseq = 1
+      else:
+        resseq = input_atom_labels.resseq()
+    if (icode is None):
+      if (input_atom_labels is None):
+        icode = " "
+      else:
+        icode = input_atom_labels.resseq()
+    if (record_name is None):
+      if (self.hetero): record_name = "HETATM"
+      else:             record_name = "ATOM"
+    if (name is None): name = self.name
+    if (xyz is None): xyz = self.xyz
+    if (occ is None): occ = self.occ
+    if (b is None): b = self.b
+    if (segid is None): segid = self.segid
+    if (element is None): element = self.element
+    if (charge is None): charge = self.charge
+    return format_atom_record(
+      record_name=record_name,
+      serial=serial,
+      name=name,
+      altLoc=altloc,
+      resName=resname,
+      chainID=chain,
+      resSeq=resseq,
+      iCode=icode,
+      site=xyz,
+      occupancy=occ,
+      tempFactor=b,
+      segID=segid,
+      element=element,
+      charge=charge)
+
 class _residue(boost.python.injector, ext.residue):
 
   def residue_name_plus_atom_names_interpreter(self,
