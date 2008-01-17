@@ -234,11 +234,14 @@ met_interpreter = interpreter(
 mse_interpreter = interpreter(
   peptide_expected_patterns + [
     "hA",
-    "CB", "1hB", "2hB",
-    "CG", "1hG", "2hG",
+    "CB", "1hB", "2hB", "3hB",
+    "CG", "1hG", "2hG", "3hG",
     "SE",
     "CE", "1hE", "2hE", "3hE"],
-  peptide_synonym_patterns + {"SED": "SE"})
+  peptide_synonym_patterns + {"SED": "SE"},
+  mutually_exclusive_pairs=[
+    ("1hB", "2hB", "3hB"),
+    ("1hG", "2hG", "3hG")])
 
 pro_interpreter = interpreter(
   peptide_expected_patterns + [
