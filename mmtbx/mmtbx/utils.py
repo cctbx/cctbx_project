@@ -512,93 +512,6 @@ pdb_params = iotbx.phil.parse("""\
     .multiple=True
 """)
 
-def process_pdb_file(pdb_file_names,
-                     mon_lib_srv,
-                     ener_lib,
-                     crystal_symmetry,
-                     parameters = None,
-                     pdb_interpretation_params = None,
-                     stop_for_unknowns = True,
-                     log = None):
-  if(log is None): log = sys.stdout
-  if(len(pdb_file_names) == 0):
-     raise Sorry("No coordinate file given.")
-  if(parameters is not None):
-    parameters.file_name = [
-                    os.path.abspath(file_name) for file_name in pdb_file_names]
-  if(len(pdb_file_names) == 1):
-     pdb_file_name = pdb_file_names[0]
-     raw_records = None
-     pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
-  else:
-    pdb_file_name = None
-    raw_records = []
-    raw_records_flex = flex.std_string()
-    for file_name in pdb_file_names:
-      raw_records.extend(open(file_name).readlines())
-      raw_records_flex.extend(flex.split_lines(open(file_name).read()))
-    pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records_flex)
-  if (pdb_inp.atoms().size() == 0):
-    msg = ["No atomic coordinates found in PDB files:"]
-    for file_name in pdb_file_names:
-      msg.append("  %s" % show_string(file_name))
-    raise Sorry("\n".join(msg))
-  processed_pdb_file = monomer_library.pdb_interpretation.process(
-    mon_lib_srv              = mon_lib_srv,
-    ener_lib                 = ener_lib,
-    params                   = pdb_interpretation_params,
-    file_name                = pdb_file_name,
-    raw_records              = raw_records,
-    strict_conflict_handling = False,
-    crystal_symmetry         = crystal_symmetry,
-    force_symmetry           = True,
-    log                      = log)
-  print >> log
-  msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
-  if(msg is not None and stop_for_unknowns):
-     msg = "\n  ".join([msg,
-       "Please edit the PDB file to resolve the problems and/or supply a",
-       "CIF file with matching restraint definitions, along with",
-       "apply_cif_modification and apply_cif_link parameter definitions",
-       "if necessary (see phenix.refine documentation).",
-       "Also note that phenix.elbow is available to create restraint",
-       "definitions for unknown ligands."])
-     raise Sorry(msg)
-  return processed_pdb_file, pdb_inp
-
-cif_params = iotbx.phil.parse("""\
-  file_name=None
-    .optional=True
-    .type=path
-    .help=Monomer file(s) name (CIF)
-    .multiple=True
-""")
-
-def process_monomer_cif_files(cif_objects, parameters, mon_lib_srv, ener_lib):
-  all = []
-  index_dict = {}
-  for file_name in parameters.file_name:
-    file_name = libtbx.path.canonical_path(file_name=file_name)
-    index_dict[file_name] = len(all)
-    all.append((file_name,None))
-  for file_name,cif_object in cif_objects:
-    file_name = libtbx.path.canonical_path(file_name=file_name)
-    index_dict[file_name] = len(all)
-    all.append((file_name,cif_object))
-  unique_indices = index_dict.values()
-  unique_indices.sort()
-  unique = flex.select(sequence=all, permutation=unique_indices)
-  del parameters.file_name[:]
-  for file_name,cif_object in unique:
-    if (cif_object is None):
-      mon_lib_srv.process_cif(file_name=file_name)
-      ener_lib.process_cif(file_name=file_name)
-    else:
-      mon_lib_srv.process_cif_object(
-        cif_object=cif_object, file_name=file_name)
-      ener_lib.process_cif_object(cif_object=cif_object, file_name=file_name)
-    parameters.file_name.append(file_name)
-
 def get_atom_selections(all_chain_proxies,
                         xray_structure,
                         selection_strings     = None,
@@ -883,3 +796,110 @@ def get_atom_selection(pdb_file_name, selection_string, iselection = False):
     iselection        = iselection)
   assert len(result) == 1
   return result[0]
+
+cif_params = iotbx.phil.parse("""\
+  file_name=None
+    .optional=True
+    .type=path
+    .help=Monomer file(s) name (CIF)
+    .multiple=True
+""")
+
+class process_pdb_file_srv(object):
+  def __init__(self, crystal_symmetry          = None,
+                     pdb_parameters            = None,
+                     pdb_interpretation_params = None,
+                     stop_for_unknowns         = None,
+                     log                       = None,
+                     cif_objects               = None,
+                     cif_parameters            = None,
+                     mon_lib_srv               = None,
+                     ener_lib                  = None):
+    self.crystal_symmetry          = crystal_symmetry
+    self.pdb_parameters            = pdb_parameters
+    self.pdb_interpretation_params = pdb_interpretation_params
+    self.stop_for_unknowns         = stop_for_unknowns
+    self.cif_objects               = cif_objects
+    self.cif_parameters            = cif_parameters
+    self.log                       = log
+    if(mon_lib_srv is None): self.mon_lib_srv = monomer_library.server.server()
+    else: self.mon_lib_srv = mon_lib_srv
+    if(ener_lib is None): self.ener_lib = monomer_library.server.ener_lib()
+    else: self.ener_lib = ener_lib
+    if(self.log is None): self.log = sys.stdout
+
+  def process_pdb_files(self, pdb_file_names):
+    if([self.cif_objects, self.cif_parameters].count(None) == 0):
+      self._process_monomer_cif_files()
+    return self._process_pdb_file(pdb_file_names = pdb_file_names)
+
+  def _process_pdb_file(self, pdb_file_names):
+    if(len(pdb_file_names) == 0): raise Sorry("No coordinate file given.")
+    if(self.pdb_parameters is not None):
+      self.pdb_parameters.file_name = [
+        os.path.abspath(file_name) for file_name in pdb_file_names]
+    if(len(pdb_file_names) == 1):
+       pdb_file_name = pdb_file_names[0]
+       raw_records = None
+       pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
+    else:
+      pdb_file_name = None
+      raw_records = []
+      raw_records_flex = flex.std_string()
+      for file_name in pdb_file_names:
+        raw_records.extend(open(file_name).readlines())
+        raw_records_flex.extend(flex.split_lines(open(file_name).read()))
+      pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records_flex)
+    if(pdb_inp.atoms().size() == 0):
+      msg = ["No atomic coordinates found in PDB files:"]
+      for file_name in pdb_file_names:
+        msg.append("  %s" % show_string(file_name))
+      raise Sorry("\n".join(msg))
+    processed_pdb_file = monomer_library.pdb_interpretation.process(
+      mon_lib_srv              = self.mon_lib_srv,
+      ener_lib                 = self.ener_lib,
+      params                   = self.pdb_interpretation_params,
+      file_name                = pdb_file_name,
+      raw_records              = raw_records,
+      strict_conflict_handling = False,
+      crystal_symmetry         = self.crystal_symmetry,
+      force_symmetry           = True,
+      log                      = self.log)
+    print >> self.log
+    msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
+    if(msg is not None and self.stop_for_unknowns):
+       msg = "\n  ".join([msg,
+         "Please edit the PDB file to resolve the problems and/or supply a",
+         "CIF file with matching restraint definitions, along with",
+         "apply_cif_modification and apply_cif_link parameter definitions",
+         "if necessary (see phenix.refine documentation).",
+         "Also note that phenix.elbow is available to create restraint",
+         "definitions for unknown ligands."])
+       raise Sorry(msg)
+    return processed_pdb_file, pdb_inp
+
+  def _process_monomer_cif_files(self):
+    all = []
+    index_dict = {}
+    for file_name in self.cif_parameters.file_name:
+      file_name = libtbx.path.canonical_path(file_name=file_name)
+      index_dict[file_name] = len(all)
+      all.append((file_name,None))
+    for file_name,cif_object in self.cif_objects:
+      file_name = libtbx.path.canonical_path(file_name=file_name)
+      index_dict[file_name] = len(all)
+      all.append((file_name,cif_object))
+    unique_indices = index_dict.values()
+    unique_indices.sort()
+    unique = flex.select(sequence=all, permutation=unique_indices)
+    del self.cif_parameters.file_name[:]
+    for file_name,cif_object in unique:
+      if(cif_object is None):
+        self.mon_lib_srv.process_cif(file_name=file_name)
+        self.ener_lib.process_cif(file_name=file_name)
+      else:
+        self.mon_lib_srv.process_cif_object(
+          cif_object=cif_object, file_name=file_name)
+        self.ener_lib.process_cif_object(cif_object=cif_object,
+                                         file_name=file_name)
+      self.cif_parameters.file_name.append(file_name)

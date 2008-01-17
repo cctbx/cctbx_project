@@ -188,7 +188,8 @@ class manager(object):
           log                      = log)
     if(fmodels.fmodel_xray().xray_structure.hd_selection().count(True) > 0 and
        not model.use_ias and h_params.refine_adp != "individual" and
-       fmodels.fmodel_neutron() is None and h_params.contribute_to_f_calc):
+       fmodels.fmodel_neutron() is None and h_params.contribute_to_f_calc
+       and h_params.refine_adp is not None):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement for H atoms",
                                         out = log)
        # XXX FUTURE: smart decision about which selection to use and at which resolution.
