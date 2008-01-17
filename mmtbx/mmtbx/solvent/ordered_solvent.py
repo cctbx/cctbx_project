@@ -95,7 +95,6 @@ class manager(object):
   def __init__(self, fmodel,
                      fmodels,
                      model,
-                     solvent_selection,
                      params = master_params.extract(),
                      find_peaks_params = None,
                      log    = None):
@@ -110,17 +109,17 @@ class manager(object):
     self.sites = None
     self.heights = None
     if(self.find_peaks_params.max_number_of_peaks is None):
-      if(self.solvent_selection.count(False) > 0):
+      if(self.model.solvent_selection().count(False) > 0):
         self.find_peaks_params.max_number_of_peaks = \
-          self.solvent_selection.count(False)
+          self.model.solvent_selection().count(False)
       else:
         self.find_peaks_params.max_number_of_peaks = \
           self.xray_structure.scatterers().size()
-    solsel = flex.bool(self.solvent_selection.count(False), False)
-    solsel.extend(flex.bool(self.solvent_selection.count(True), True))
+    solsel = flex.bool(self.model.solvent_selection().count(False), False)
+    solsel.extend(flex.bool(self.model.solvent_selection().count(True), True))
     self.reset_solvent(
       solvent_selection      = solsel,
-      solvent_xray_structure = self.xray_structure.select(self.solvent_selection))
+      solvent_xray_structure = self.xray_structure.select(self.model.solvent_selection()))
     self.show(message = "Start model:")
     self.filter_solvent()
     if(not self.filter_only):
@@ -137,7 +136,7 @@ class manager(object):
     #
     if(not self.filter_only and self.params.refine_adp and
        self.model.refinement_flags.individual_adp and
-       self.solvent_selection.count(True) > 0):
+       self.model.solvent_selection().count(True) > 0):
       self.fmodels.update_xray_structure(
          xray_structure = self.xray_structure,
          update_f_calc  = True,
@@ -149,12 +148,12 @@ class manager(object):
           self.model.refinement_flags.adp_individual_aniso.size(), False)
         for sel in self.model.refinement_flags.adp_individual_aniso:
           selection_aniso = selection_aniso | sel
-        selection_aniso.set_selected(~self.solvent_selection, False)
+        selection_aniso.set_selected(~self.model.solvent_selection(), False)
         self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
       else:
         selection_iso = self.model.refinement_flags.adp_individual_iso.deep_copy()
-        selection_iso.set_selected(~self.solvent_selection, False)
-        assert selection_iso.count(True) == self.solvent_selection.count(True)
+        selection_iso.set_selected(~self.model.solvent_selection(), False)
+        assert selection_iso.count(True) == self.model.solvent_selection().count(True)
         self.model.set_refine_individual_adp(selection_iso = selection_iso)
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
           max_iterations = 25)
@@ -167,9 +166,9 @@ class manager(object):
 
   def filter_solvent(self):
     hd_sel = self.xray_structure.hd_selection()
-    hd_sel = hd_sel.select(~self.solvent_selection)
-    xrs_sol = self.xray_structure.select(self.solvent_selection)
-    xrs_mac_h = self.xray_structure.select(~self.solvent_selection)
+    hd_sel = hd_sel.select(~self.model.solvent_selection())
+    xrs_sol = self.xray_structure.select(self.model.solvent_selection())
+    xrs_mac_h = self.xray_structure.select(~self.model.solvent_selection())
     xrs_mac = xrs_mac_h.select(~hd_sel)
     selection = xrs_sol.all_selection()
     scat_sol = xrs_sol.scatterers()
@@ -190,6 +189,7 @@ class manager(object):
       self.find_peaks_params.map_next_to_model.max_model_peak_dist
     selection &= result.smallest_distances>= \
       self.find_peaks_params.map_next_to_model.min_model_peak_dist
+    ########
     if(self.params.use_h_bond_rejection_criteria):
       aal = []
       for i_seq, sel in enumerate(self.xray_structure.hd_selection()):
@@ -212,6 +212,7 @@ class manager(object):
                   dist = d
             if(dist>= self.params.h_bond_max or dist<= self.params.h_bond_min):
               selection[i] = False
+    ######
     xrs_sol = xrs_sol.select(selection)
     xrs_sol = xrs_sol.replace_sites_frac(result.sites_frac.select(selection))
     sol_sel = flex.bool(xrs_mac_h.scatterers().size(), False)
@@ -231,12 +232,11 @@ class manager(object):
       chain_id               = self.params.output_chain_id,
       refine_occupancies     = self.params.refine_occupancies)
     self.xray_structure = self.model.xray_structure
-    self.solvent_selection = self.model.solvent_selection
 
   def show(self, message):
     print >> self.log, message
-    xrs_mac = self.xray_structure.select(~self.solvent_selection)
-    xrs_sol = self.xray_structure.select(self.solvent_selection)
+    xrs_mac = self.xray_structure.select(~self.model.solvent_selection())
+    xrs_sol = self.xray_structure.select(self.model.solvent_selection())
     scat = xrs_sol.scatterers()
     occ = scat.extract_occupancies()
     b_isos = scat.extract_u_iso_or_u_equiv(
@@ -287,7 +287,7 @@ class manager(object):
     sites_2nd, heights_2nd = peaks.sites, peaks.heights
     step= self.fmodel.f_obs.d_min()*self.find_peaks_params.resolution_factor
     if(step < 0.3): step = 0.3 # XXX
-    zz = self.xray_structure.select(self.solvent_selection)
+    zz = self.xray_structure.select(self.model.solvent_selection())
     result = zz.closest_distances(sites_frac = sites_2nd,
       distance_cutoff = 6.0) # XXX
     smallest_distances = result.smallest_distances
@@ -301,9 +301,9 @@ class manager(object):
     smallest_distances = xrs_2nd.closest_distances(sites_frac =
       zz.sites_frac(), distance_cutoff = 6.0).smallest_distances # XXX
     selection = (smallest_distances <= step) & (smallest_distances >= 0)
-    xrs_sol = self.xray_structure.select(self.solvent_selection)
+    xrs_sol = self.xray_structure.select(self.model.solvent_selection())
     xrs_sol = xrs_sol.select(selection)
-    xrs_mac = self.xray_structure.select(~self.solvent_selection)
+    xrs_mac = self.xray_structure.select(~self.model.solvent_selection())
     sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
     sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
     self.reset_solvent(solvent_selection      = sol_sel,
@@ -338,8 +338,8 @@ class manager(object):
     solvent_xray_structure = xray.structure(
       special_position_settings = self.xray_structure,
       scatterers                = new_scatterers)
-    xrs_sol = self.xray_structure.select(self.solvent_selection)
-    xrs_mac = self.xray_structure.select(~self.solvent_selection)
+    xrs_sol = self.xray_structure.select(self.model.solvent_selection())
+    xrs_mac = self.xray_structure.select(~self.model.solvent_selection())
     xrs_sol = xrs_sol.concatenate(other = solvent_xray_structure)
     sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
     sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )

@@ -305,7 +305,7 @@ class refinement_monitor(object):
     self.bs_iso_max_a    .append(flex.max_default( b_isos, 0)     )
     self.bs_iso_min_a    .append(flex.min_default( b_isos, 0)     )
     self.bs_iso_ave_a    .append(flex.mean_default(b_isos, 0)     )
-    s_sel = model.solvent_selection
+    s_sel = model.solvent_selection()
     if(s_sel.count(True) > 0):
        b_isos_s = b_isos.select(s_sel)
        b_isos_p = b_isos.select(~s_sel)
