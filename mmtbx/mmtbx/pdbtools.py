@@ -151,6 +151,9 @@ remove = None
 keep = None
   .type = str
   .help = Select atoms to keep
+put_into_box_with_buffer = None
+  .type = float
+  .help = Move molecule into center of box.
 input {
   pdb
   {
@@ -224,6 +227,16 @@ class modify(object):
     self._process_adp()
     self._process_sites()
     self._randomize_occupancies(selection=self.top_selection)
+    try: self._put_in_box()
+    except KeyboardInterrupt: raise
+    except: pass
+
+  def _put_in_box(self):
+    if(self.params.put_into_box_with_buffer is not None):
+      result = \
+        self.xray_structure.orthorhombic_unit_cell_around_centered_scatterers(
+          buffer_size = self.params.put_into_box_with_buffer)
+      self.xray_structure.replace_scatterers(result.scatterers())
 
   def _print_action(self, text, selection):
     print >> self.log, "%s: selected atoms: %s" % (
@@ -556,15 +569,17 @@ class interpreter:
     self.processed_pdb_file_reference = None
     self.process_args()
     self.pdb_file_names.extend(self.params.input.pdb.file_name)
-    self.processed_pdb_file, self.pdb_inp = utils.process_pdb_file(
-               pdb_file_names            = self.pdb_file_names,
-               parameters                = self.params.input.pdb,
-               pdb_interpretation_params = None,
-               mon_lib_srv               = self.mon_lib_srv,
-               ener_lib                  = self.ener_lib,
-               crystal_symmetry          = self.crystal_symmetry,
-               stop_for_unknowns         = False,
-               log                       = self.log)
+    processed_pdb_files_srv = utils.process_pdb_file_srv(
+        crystal_symmetry          = self.crystal_symmetry,
+        pdb_parameters            = self.params.input.pdb,
+        pdb_interpretation_params = None,
+        stop_for_unknowns         = True,
+        log                       = self.log,
+        mon_lib_srv               = self.mon_lib_srv,
+        ener_lib                  = self.ener_lib)
+    self.processed_pdb_file, self.pdb_inp = \
+        processed_pdb_files_srv.process_pdb_files(pdb_file_names =
+          self.pdb_file_names)
 
   def process_args(self):
     args = self.args
