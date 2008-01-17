@@ -236,7 +236,7 @@ class adp(object):
   def __init__(self, model,  n_histogram_slots = 10):
     self.wilson_b = model.wilson_b
     eps = math.pi**2*8
-    solvent_selection = model.solvent_selection
+    solvent_selection = model.solvent_selection()
     hd_selection = model.xray_structure.hd_selection()
     m_noH_sel = ((~solvent_selection) & (~hd_selection))
     s_noH_sel = ((solvent_selection) & (~hd_selection))

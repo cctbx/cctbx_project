@@ -60,8 +60,6 @@ class manager(object):
     self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
     self.atom_attributes_list = atom_attributes_list[:]
     self.refinement_flags = refinement_flags
-    self.solvent_selection = self._solvent_selection()
-    self.solvent_selection_ini = self._solvent_selection()
     self.wilson_b = wilson_b
     self.tls_groups = tls_groups
     if(anomalous_scatterer_groups is not None and
@@ -133,7 +131,6 @@ class manager(object):
     new.xray_structure       = self.xray_structure.deep_copy_scatterers()
     new.xray_structure_initial   = self.xray_structure_initial.deep_copy_scatterers()
     new.atom_attributes_list = self.atom_attributes_list[:]
-    new.solvent_selection    = self.solvent_selection.deep_copy()
     if(self.refinement_flags is not None):
        new.refinement_flags = self.refinement_flags.select(selection)
     return new
@@ -163,7 +160,6 @@ class manager(object):
       self.ias_selection = flex.bool(
                       self.xray_structure.scatterers().size(),False)
       self.ias_selection.extend(tail)
-      self.solvent_selection.extend(tail_false)
       self.xray_structure.concatenate_inplace(other = self.ias_xray_structure)
       print >> self.log, "Scattering dictionary for combined xray_structure:"
       self.xray_structure.scattering_type_registry().show()
@@ -225,7 +221,6 @@ class manager(object):
     if(self.ias_selection is not None):
        self.xray_structure.select_inplace(selection = ~self.ias_selection)
        n_non_ias = self.ias_selection.count(False)
-       self.solvent_selection = self.solvent_selection[:n_non_ias]
        self.ias_selection = None
        self.xray_structure.scattering_type_registry().show()
        self.atom_attributes_list = self.atom_attributes_list[:n_non_ias]
@@ -277,25 +272,24 @@ class manager(object):
       gradients         = gradients,
       disable_asu_cache = disable_asu_cache)
 
-  def _solvent_selection(self):
+  def solvent_selection(self):
     labels = self.xray_structure.scatterers().extract_labels()
     res_name_tags = ["HOH","SOL","SOLV","WAT","DOD","TIP3"]
     atom_name_tags = ["O","OH2","H","H1","H2","D"]
     element_tags = ["O","H","D",""]
     result = flex.bool()
     for a in self.atom_attributes_list:
-        element = (a.element).strip()
-        resName = (a.resName).strip()
-        name    = (a.name).strip()
-        if((element in element_tags) and (name in atom_name_tags) and \
-           (resName in res_name_tags)):
-           result.append(True)
-        else:
-           result.append(False)
+      element = (a.element).strip()
+      resName = (a.resName).strip()
+      name    = (a.name).strip()
+      if((element in element_tags) and (name in atom_name_tags) and \
+         (resName in res_name_tags)):
+        result.append(True)
+      else: result.append(False)
     return result
 
   def xray_structure_macromolecule(self):
-    sel = self.solvent_selection
+    sel = self.solvent_selection()
     if(self.use_ias): sel = sel | self.ias_selection
     result = self.xray_structure.select(~sel)
     return result
@@ -303,17 +297,14 @@ class manager(object):
   def update(self, selection):
     self.xray_structure.select_inplace(selection)
     new_atom_attributes_list = []
-    new_solvent_selection = flex.bool()
     for attr, solsel, sel in zip(self.atom_attributes_list,
-                                 self.solvent_selection,
+                                 self.solvent_selection(),
                                  selection):
         if(sel):
            new_atom_attributes_list.append(attr)
-           new_solvent_selection.append(solsel)
     assert len(new_atom_attributes_list) == \
                                         self.xray_structure.scatterers().size()
     self.atom_attributes_list = new_atom_attributes_list
-    self.solvent_selection = new_solvent_selection
     self.xray_structure.scattering_type_registry()
     if(self.restraints_manager is not None):
       self.restraints_manager = self.restraints_manager.select(
@@ -322,7 +313,7 @@ class manager(object):
        self.refinement_flags = self.refinement_flags.select(selection)
 
   def number_of_ordered_solvent_molecules(self):
-    return self.solvent_selection.count(True)
+    return self.solvent_selection().count(True)
 
   def show_groups(self, rigid_body = None, tls = None,
                         out = None, text="Information about rigid groups"):
@@ -370,7 +361,7 @@ class manager(object):
     time_model_show += timer.elapsed()
 
   def remove_solvent(self):
-    self.update(selection = ~self.solvent_selection)
+    self.update(selection = ~self.solvent_selection())
 
   def show_occupancy_statistics(self, out=None, text=""):
     global time_model_show
@@ -473,9 +464,6 @@ class manager(object):
     if (self.restraints_manager.ncs_groups is not None):
       self.restraints_manager.ncs_groups.register_additional_isolated_sites(
         number=number_of_new_solvent)
-    self.solvent_selection = solvent_selection
-
-
     self.restraints_manager.geometry.update_plain_pair_sym_table(
                                  sites_frac = self.xray_structure.sites_frac())
     assert len(self.atom_attributes_list) == \
