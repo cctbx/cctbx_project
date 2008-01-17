@@ -36,12 +36,41 @@ def exercise_div_mod():
   q,r = divmod(-3.23, 2)
   assert q == -2
   assert approx_equal(r, 0.77)
+
   for y,q,r in [(5.23, 2, 1.3), (-5.23, 2, 1.3),
                 (5.23, -2, 1.3), (-5.23, -2, 1.3)]:
     x = q*y + r
     q1,r1 = divmod(x,y)
     assert q1 == q
     assert approx_equal(r1,r)
+
+  assert divmod(0, 1) == (0,0)
+  assert divmod(1, 1) == (1,0)
+  assert divmod(2, 1) == (2,0)
+  assert divmod(-0, 1) == (0,-0)
+  assert divmod(-1, 1) == (-1,-0)
+  assert divmod(-2, 1) == (-2,-0)
+
+  assert divmod(0, -1) == (0,0)
+  assert divmod(1, -1) == (-1,0)
+  assert divmod(2, -1) == (-2,0)
+  assert divmod(-0, -1) == (0,-0)
+  assert divmod(-1, -1) == (1,-0)
+  assert divmod(-2, -1) == (2,-0)
+
+  assert divmod(1, 2) == (0,1)
+  assert divmod(3, 2) == (2,-1)
+  assert divmod(5, 2) == (2,1)
+  assert divmod(-1, 2) == (0,-1)
+  assert divmod(-3, 2) == (-2,1)
+  assert divmod(-5, 2) == (-2,-1)
+
+  assert divmod(1, -2) == (0,1)
+  assert divmod(3, -2) == (-2,-1)
+  assert divmod(5, -2) == (-2,1)
+  assert divmod(-1, -2) == (0,-1)
+  assert divmod(-3, -2) == (2,1)
+  assert divmod(-5, -2) == (2,-1)
 
 def exercise_floating_point_epsilon():
   float_eps = scitbx.math.floating_point_epsilon_float_get()

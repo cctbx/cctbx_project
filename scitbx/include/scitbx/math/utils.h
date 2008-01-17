@@ -70,11 +70,14 @@ namespace scitbx { namespace math {
     nearest_integer(FloatType const& x)
     {
       SignedIntType i = static_cast<SignedIntType>(x);
+      FloatType dxi = x - static_cast<FloatType>(i);
       if (x >= 0) {
-        if (x - static_cast<FloatType>(i) >= .5) i++;
+        if (dxi > 0.5) i++;
+        else if (dxi == 0.5 && (i & 1)) i++;
       }
       else {
-        if (x - static_cast<FloatType>(i) <= -.5) i--;
+        if (x - static_cast<FloatType>(i) < -0.5) i--;
+        else if (dxi == -0.5 && (i & 1)) i--;
       }
       return i;
     }
@@ -125,7 +128,7 @@ namespace scitbx { namespace math {
         - r = x - n*y
   */
   template<typename FloatType, typename SignedIntType>
-  struct remainder_and_modulo {
+  struct remainder_and_quotient {
     static inline
     std::pair<SignedIntType, FloatType>
     divmod(FloatType x, FloatType y) {
@@ -137,7 +140,7 @@ namespace scitbx { namespace math {
   };
 
   inline std::pair<int, double> divmod(double x, double y) {
-    return remainder_and_modulo<double, int>::divmod(x,y);
+    return remainder_and_quotient<double, int>::divmod(x,y);
   }
 
 
