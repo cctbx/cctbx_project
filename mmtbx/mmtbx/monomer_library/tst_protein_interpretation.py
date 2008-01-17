@@ -408,6 +408,34 @@ expected_results = {
   ['VAL%NH3', 18, [], 'peptide', True, None],
 "phe_n_ter_c_ter_with_hydrogens":
   ['PHE%COO%NH3', 23, [], 'peptide', True, None],
+"mse_cterm_all_h_1hz3_v2":
+  ['MSE%COO', 18, [' HXT'], 'peptide', True, None],
+"mse_nterm_all_h_1qqi_v2":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
+"mse_chain_all_h_1ozo_v3":
+  ['MSE', 17, [], 'peptide', None, None],
+"mse_nterm_all_h_2j46_v3":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
+"mse_nterm_all_h_1d7q_v3":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
+"mse_nterm_all_h_1qqi_v3":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
+"mse_cterm_all_h_1hz3_v3":
+  ['MSE%COO', 18, [' HXT'], 'peptide', True, None],
+"mse_nterm_all_h_1euw_v2":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
+"mse_chain_all_h_1ozo_v2":
+  ['MSE', 17, [], 'peptide', None, None],
+"mse_nterm_all_h_1c15_v3":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
+"mse_nterm_all_h_2j46_v2":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
+"mse_nterm_all_h_1c15_v2":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
+"mse_nterm_all_h_1d7q_v2":
+  ['MSE%NH2NOTPRO', 19, [], 'peptide', None, None],
+"mse_nterm_all_h_1euw_v3":
+  ['MSE%NH3', 19, [], 'peptide', True, None],
 }
 
 if (__name__ == "__main__"):
