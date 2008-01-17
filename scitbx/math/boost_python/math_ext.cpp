@@ -10,6 +10,8 @@
 #include <scitbx/math/phase_error.h>
 #include <scitbx/math/resample.h>
 #include <scitbx/math/halton.h>
+#include <scitbx/math/utils.h>
+
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
@@ -73,15 +75,6 @@ namespace {
         eigensystem::real_symmetric<>(m).values().begin());
     }
     return result / static_cast<double>(n_repetitions);
-  }
-
-  template<typename SignedIntType, typename FloatType>
-  inline
-  std::pair<SignedIntType, FloatType>
-  remquo_wrapper(FloatType x, FloatType y) {
-    SignedIntType quo;
-    FloatType rem = remquo(x, y, &quo);
-    return std::make_pair(quo, rem);
   }
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -219,8 +212,7 @@ namespace {
           math::nearest_phase,
       nearest_phase_overloads(
         (arg_("reference"), arg_("other"), arg_("deg")=false)));
-    def("divmod",
-        static_cast<std::pair<int, double>(*)(double, double)>(remquo_wrapper));
+    def("divmod", math::divmod);
   }
 
 }}}} // namespace scitbx::math::boost_python::<anonymous>
