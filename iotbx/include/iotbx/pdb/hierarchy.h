@@ -270,8 +270,8 @@ namespace pdb {
         vec3 const& xyz=vec3(0,0,0), vec3 const& sigxyz=vec3(0,0,0),
         double occ=0, double sigocc=0,
         double b=0, double sigb=0,
-        sym_mat3 const& uij=sym_mat3(0,0,0,0,0,0),
-        sym_mat3 const& siguij=sym_mat3(0,0,0,0,0,0),
+        sym_mat3 const& uij=sym_mat3(-1,-1,-1,-1,-1,-1),
+        sym_mat3 const& siguij=sym_mat3(-1,-1,-1,-1,-1,-1),
         bool hetero=false)
       :
         data(new atom_data(
