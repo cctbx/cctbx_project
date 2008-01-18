@@ -22,6 +22,7 @@ from mmtbx import model_statistics
 time_model_show = 0.0
 
 class xh_connectivity_table(object):
+  # XXX need angle information as well
   def __init__(self, geometry, xray_structure):
     bond_proxies_simple = geometry.geometry.pair_proxies(sites_cart =
       xray_structure.sites_cart()).bond_proxies.simple
@@ -56,9 +57,9 @@ class manager(object):
                      log = None):
     self.log = log
     self.restraints_manager = restraints_manager
-    self.xray_structure = xray_structure.deep_copy_scatterers()
+    self.xray_structure = xray_structure
     self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
-    self.atom_attributes_list = atom_attributes_list[:]
+    self.atom_attributes_list = atom_attributes_list
     self.refinement_flags = refinement_flags
     self.wilson_b = wilson_b
     self.tls_groups = tls_groups
@@ -71,18 +72,6 @@ class manager(object):
     self.ias_xray_structure = ias_xray_structure
     self.use_ias = False
     self.ias_selection = None
-    self.use_ias_true_ = None
-    self.use_ias_false_ = None
-    self.inflated = False
-    self.ias_added = False
-    ###
-    self.xh_connectivity = None
-    if(restraints_manager is not None):
-      if(xray_structure.hd_selection().count(True) > 0):
-        self.xh_connectivity = xh_connectivity_table(
-          geometry       = restraints_manager,
-          xray_structure = xray_structure)
-    ###
     if(self.refinement_flags is not None and [self.refinement_flags,
                                 self.refinement_flags.adp_tls].count(None)==0):
        tlsos = tools.generate_tlsos(
@@ -91,11 +80,22 @@ class manager(object):
                                 value          = 0.0)
        self.tls_groups.tlsos = tlsos
 
+  def xh_connectivity_table(self):
+    result = None
+    if(self.restraints_manager is not None):
+      if(self.xray_structure.hd_selection().count(True) > 0):
+        result = xh_connectivity_table(
+          geometry       = self.restraints_manager,
+          xray_structure = self.xray_structure).table
+    return result
+
   def idealize_h(self, xh_bond_distance_deviation_limit):
-    assert self.xh_connectivity is not None
+    # does not idealize angles !
+    xh_ct = self.xh_connectivity_table()
+    assert xh_ct is not None
     scatterers = self.xray_structure.scatterers()
     unit_cell = self.xray_structure.unit_cell()
-    for bond in self.xh_connectivity.table:
+    for bond in xh_ct:
       i_x = bond[0]
       i_h = bond[1]
       dist = unit_cell.distance(scatterers[i_x].site, scatterers[i_h].site)
@@ -112,28 +112,8 @@ class manager(object):
     return result
 
   def deep_copy(self):
-    new = manager(restraints_manager    = self.restraints_manager,
-                  xray_structure        = self.xray_structure, # XXX not a deep copy
-                  atom_attributes_list  = self.atom_attributes_list,
-                  refinement_flags      = self.refinement_flags,
-                  tls_groups            = self.tls_groups,
-                  anomalous_scatterer_groups = self.anomalous_scatterer_groups,
-                  log                   = self.log)
-    selection = flex.bool(self.xray_structure.scatterers().size(), True)
-    # XXX not a deep copy
-    if(self.restraints_manager is not None):
-       new.restraints_manager = mmtbx.restraints.manager(
-            geometry      = self.restraints_manager.geometry.select(selection),
-            ncs_groups    = self.restraints_manager.ncs_groups,
-            normalization = self.restraints_manager.normalization)
-       new.restraints_manager.geometry.pair_proxies(sites_cart =
-                                              self.xray_structure.sites_cart())
-    new.xray_structure       = self.xray_structure.deep_copy_scatterers()
-    new.xray_structure_initial   = self.xray_structure_initial.deep_copy_scatterers()
-    new.atom_attributes_list = self.atom_attributes_list[:]
-    if(self.refinement_flags is not None):
-       new.refinement_flags = self.refinement_flags.select(selection)
-    return new
+    return self.select(selection = flex.bool(
+      self.xray_structure.scatterers().size(), True))
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
@@ -294,23 +274,31 @@ class manager(object):
     result = self.xray_structure.select(~sel)
     return result
 
-  def update(self, selection):
-    self.xray_structure.select_inplace(selection)
+  def select(self, selection):
     new_atom_attributes_list = []
-    for attr, solsel, sel in zip(self.atom_attributes_list,
-                                 self.solvent_selection(),
-                                 selection):
-        if(sel):
-           new_atom_attributes_list.append(attr)
-    assert len(new_atom_attributes_list) == \
-                                        self.xray_structure.scatterers().size()
-    self.atom_attributes_list = new_atom_attributes_list
-    self.xray_structure.scattering_type_registry()
-    if(self.restraints_manager is not None):
-      self.restraints_manager = self.restraints_manager.select(
-        selection=selection)
+    for attr, sel in zip(self.atom_attributes_list, selection):
+      if(sel): new_atom_attributes_list.append(attr)
+    new_refinement_flags = None
     if(self.refinement_flags is not None):
-       self.refinement_flags = self.refinement_flags.select(selection)
+      new_refinement_flags = self.refinement_flags.select(selection)
+    new_restraints_manager = None
+    if(self.restraints_manager is not None):
+      new_restraints_manager = self.restraints_manager.select(
+        selection = selection)
+      new_restraints_manager.geometry.pair_proxies(sites_cart =
+        self.xray_structure.sites_cart().select(selection)) # XXX is it necessary ?
+    new = manager(
+      restraints_manager         = new_restraints_manager,
+      xray_structure             = self.xray_structure.select(selection),
+      atom_attributes_list       = new_atom_attributes_list,
+      refinement_flags           = new_refinement_flags,
+      tls_groups                 = self.tls_groups, # XXX not selected, potential bug
+      anomalous_scatterer_groups = self.anomalous_scatterer_groups,
+      log                        = self.log)
+    new.xray_structure_initial = \
+      self.xray_structure_initial.deep_copy_scatterers()
+    new.xray_structure.scattering_type_registry()
+    return new
 
   def number_of_ordered_solvent_molecules(self):
     return self.solvent_selection().count(True)
@@ -361,7 +349,7 @@ class manager(object):
     time_model_show += timer.elapsed()
 
   def remove_solvent(self):
-    self.update(selection = ~self.solvent_selection())
+    return self.select(selection = ~self.solvent_selection())
 
   def show_occupancy_statistics(self, out=None, text=""):
     global time_model_show
@@ -403,10 +391,17 @@ class manager(object):
                         atom_name    = "O",
                         residue_name = "HOH",
                         chain_id     = None,
-                        refine_occupancies = False):
+                        refine_occupancies = False,
+                        refine_adp = None):
+    assert refine_adp is not None
+    if(refine_adp == "isotropic"):
+      solvent_xray_structure.convert_to_isotropic()
+    elif(refine_adp == "anisotropic"):
+      solvent_xray_structure.convert_to_anisotropic()
+    else: raise RuntimeError
     ms = self.xray_structure.scatterers().size() #
     self.xray_structure = \
-                        self.xray_structure.concatenate(solvent_xray_structure)
+      self.xray_structure.concatenate(solvent_xray_structure)
     #####
     occupancy_flags = None
     if(refine_occupancies):

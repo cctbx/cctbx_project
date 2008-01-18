@@ -43,8 +43,8 @@ def exercise():
   all = ias.ias_master_params.extract().build_ias_types
   for opt in [["L"], ["R"], ["B"], ["BH"], all]:
     mol = mmtbx.model.manager(restraints_manager     = restraints_manager,
-                            xray_structure         = xray_structure,
-                            atom_attributes_list   = aal)
+                              xray_structure         = xray_structure,
+                              atom_attributes_list   = aal).deep_copy()
     if(opt == ["L"]):
       params.build_ias_types = opt
       mol.add_ias(fmodel = None, ias_params = params)

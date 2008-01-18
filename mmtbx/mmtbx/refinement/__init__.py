@@ -25,10 +25,14 @@ class monitors(object):
     self.target_weights = None
 
   def collect(self, step,
+                    fmodels = None,
+                    model = None,
                     target_weights = None,
                     rigid_body_shift_accumulator = None):
     if(target_weights is not None):
       self.target_weights = target_weights
+    if(model is not None): self.model = model
+    if(fmodels is not None): self.fmodels = fmodels
     self.monitor_xray.collect(
       model                        = self.model,
       fmodel                       = self.fmodels.fmodel_xray(),
