@@ -44,7 +44,7 @@ def exercise():
   assert mol.number_of_ordered_solvent_molecules() == 9
   mol.write_pdb_file(out = open("test_model_out.pdb","w"))
   mol.write_pdb_file(out = open("test_model_out_nohydrogens.pdb","w"))
-  mol.remove_solvent()
+  mol = mol.remove_solvent()
   assert mol.number_of_ordered_solvent_molecules() == 0
   mol.write_pdb_file(out = open("test_model_out_nosolvent.pdb","w"))
   mol.write_pdb_file(out = open("test_model_out_noO.pdb","w"))

@@ -120,6 +120,7 @@ class manager(object):
     self.reset_solvent(
       solvent_selection      = solsel,
       solvent_xray_structure = self.xray_structure.select(self.model.solvent_selection()))
+    #for aa in self.model.atom_attributes_list: print "2: ",aa.pdb_format() # XXX
     self.show(message = "Start model:")
     self.filter_solvent()
     if(not self.filter_only):
@@ -165,11 +166,13 @@ class manager(object):
         lbfgs_termination_params = lbfgs_termination_params)
 
   def filter_solvent(self):
-    hd_sel = self.xray_structure.hd_selection()
-    hd_sel = hd_sel.select(~self.model.solvent_selection())
-    xrs_sol = self.xray_structure.select(self.model.solvent_selection())
-    xrs_mac_h = self.xray_structure.select(~self.model.solvent_selection())
-    xrs_mac = xrs_mac_h.select(~hd_sel)
+    sol_sel = self.model.solvent_selection()
+    xrs_mac_h = self.xray_structure.select(~sol_sel)
+    xrs_sol_h = self.xray_structure.select(sol_sel)
+    hd_sol = self.xray_structure.hd_selection().select(sol_sel)
+    hd_mac = self.xray_structure.hd_selection().select(~sol_sel)
+    xrs_sol = xrs_sol_h.select(~hd_sol)
+    xrs_mac = xrs_mac_h.select(~hd_mac)
     selection = xrs_sol.all_selection()
     scat_sol = xrs_sol.scatterers()
     occ_sol = scat_sol.extract_occupancies()
@@ -223,14 +226,15 @@ class manager(object):
   def reset_solvent(self, solvent_selection, solvent_xray_structure):
     assert solvent_selection.count(True) == \
       solvent_xray_structure.scatterers().size()
-    self.model.remove_solvent()
+    self.model = self.model.remove_solvent()
     self.model.add_solvent(
       solvent_selection      = solvent_selection,
       solvent_xray_structure = solvent_xray_structure,
       residue_name           = self.params.output_residue_name,
       atom_name              = self.params.output_atom_name,
       chain_id               = self.params.output_chain_id,
-      refine_occupancies     = self.params.refine_occupancies)
+      refine_occupancies     = self.params.refine_occupancies,
+      refine_adp             = self.params.new_solvent)
     self.xray_structure = self.model.xray_structure
 
   def show(self, message):
