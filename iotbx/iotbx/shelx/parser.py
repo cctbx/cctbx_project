@@ -1,5 +1,6 @@
 """ Parsing of ins/res files """
 
+from __future__ import generators
 from libtbx import forward_compatibility
 import re
 

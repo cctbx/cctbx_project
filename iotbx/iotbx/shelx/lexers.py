@@ -1,5 +1,6 @@
 """ Lexing of ins/res files """
 
+from __future__ import generators
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
