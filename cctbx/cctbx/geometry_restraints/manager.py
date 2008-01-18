@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from scitbx.python_utils.misc import store
 from libtbx import introspection
 from libtbx import adopt_init_args
+from libtbx import dict_with_default_0
 import sys
 
 class manager(object):
@@ -112,48 +113,70 @@ class manager(object):
       planarity_proxies=self.planarity_proxies,
       plain_pairs_radius=self.plain_pairs_radius)
 
-  def select(self, selection):
-    iselection = selection.iselection()
+  def select(self, selection=None, iselection=None):
+    assert [selection, iselection].count(None) == 1
+    n_seqs = dict_with_default_0()
+    if (iselection is None):
+      iselection = selection.iselection()
+      n_seqs[selection.size()] += 1
     selected_model_indices = None
     if (self.model_indices is not None):
       selected_model_indices = self.model_indices.select(
         iselection)
+      n_seqs[self.model_indices.size()] += 1
     selected_conformer_indices = None
     if (self.conformer_indices is not None):
       selected_conformer_indices = self.conformer_indices.select(
         iselection)
+      n_seqs[self.conformer_indices.size()] += 1
     selected_site_symmetry_table = None
     if (self.site_symmetry_table is not None):
       selected_site_symmetry_table = self.site_symmetry_table.select(
         iselection)
+      n_seqs[self.site_symmetry_table.indices().size()] += 1
     selected_bond_params_table = None
     if (self.bond_params_table is not None):
       selected_bond_params_table = self.bond_params_table.proxy_select(
         iselection)
+      n_seqs[self.bond_params_table.size()] += 1
     selected_shell_sym_tables = None
     if (self.shell_sym_tables is not None):
       selected_shell_sym_tables = [shell_sym_table.proxy_select(iselection)
         for shell_sym_table in self.shell_sym_tables]
+      if (len(self.shell_sym_tables) > 0):
+        n_seqs[self.shell_sym_tables[0].size()] += 1
     selected_nonbonded_types = None
     if (self.nonbonded_types is not None):
       selected_nonbonded_types = self.nonbonded_types.select(
         iselection)
+      n_seqs[self.nonbonded_types.size()] += 1
+    n_seq = None
+    def get_n_seq():
+      if (len(n_seqs) == 0):
+        raise RuntimeError("Cannot determine n_seq.")
+      if (len(n_seqs) != 1):
+        raise RuntimeError("Selection size mismatches: %s." % str(n_seqs))
+      return n_seqs.keys()[0]
     selected_angle_proxies = None
     if (self.angle_proxies is not None):
+      if (n_seq is None): n_seq = get_n_seq()
       selected_angle_proxies = self.angle_proxies.proxy_select(
-        selection.size(), iselection)
+        n_seq, iselection)
     selected_dihedral_proxies = None
     if (self.dihedral_proxies is not None):
+      if (n_seq is None): n_seq = get_n_seq()
       selected_dihedral_proxies = self.dihedral_proxies.proxy_select(
-        selection.size(), iselection)
+        n_seq, iselection)
     selected_chirality_proxies = None
     if (self.chirality_proxies is not None):
+      if (n_seq is None): n_seq = get_n_seq()
       selected_chirality_proxies = self.chirality_proxies.proxy_select(
-        selection.size(), iselection)
+        n_seq, iselection)
     selected_planarity_proxies = None
     if (self.planarity_proxies is not None):
+      if (n_seq is None): n_seq = get_n_seq()
       selected_planarity_proxies = self.planarity_proxies.proxy_select(
-        selection.size(), iselection)
+        n_seq, iselection)
     return manager(
       crystal_symmetry=self.crystal_symmetry,
       model_indices=selected_model_indices,

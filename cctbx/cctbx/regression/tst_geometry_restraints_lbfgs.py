@@ -279,6 +279,8 @@ def exercise(verbose=0):
         angle_proxies=angle_proxies,
         plain_pairs_radius=5)
       manager = manager.select(selection=flex.bool(sites_cart.size(), True))
+      manager = manager.select(
+        iselection=flex.size_t_range(stop=sites_cart.size()))
       pair_proxies = manager.pair_proxies(sites_cart=sites_cart)
       if (0 or verbose):
         print "len(vdw_1):", pair_proxies.nonbonded_proxies.n_nonbonded
