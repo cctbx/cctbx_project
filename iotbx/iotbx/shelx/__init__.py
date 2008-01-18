@@ -1,2 +1,3 @@
-from iotbx.shelx.parser import parser
-from iotbx.shelx.lexers import crystal_symmetry_lexer, atom_lexer
+from iotbx.shelx.errors import *
+from iotbx.shelx.parsers import *
+from iotbx.shelx.lexer import *
