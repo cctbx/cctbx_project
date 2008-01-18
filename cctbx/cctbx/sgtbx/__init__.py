@@ -25,16 +25,6 @@ class _space_group(boost.python.injector, ext.space_group):
     for i in xrange(self.n_ltr()):
       yield self(i,0,0).t()
 
-  def has_translation(self, t, tolerance):
-    from libtbx.math_utils import iround
-    t = [ x - iround(x) for x in t ]
-    for ct in self.ltr():
-      u = [ x + y for x,y in zip(t, ct.as_double()) ]
-      if max([ abs(x - iround(x)) for x in u ]) < tolerance:
-        return True
-    else:
-      return False
-
   def adp_constraints(self):
     return tensor_rank_2_constraints(space_group=self, reciprocal_space=True)
 
@@ -230,12 +220,16 @@ class space_group_info(object):
 
   def is_allowed_origin_shift(self, shift, tolerance):
     from libtbx.math_utils import iround
-    if self.group().has_translation(shift, tolerance):
+    is_ltr = lambda v: max([ abs(x-iround(x)) for x in v ]) < tolerance
+    z2p_op = self.group().z2p_op()
+    primitive_self = self.change_basis(z2p_op)
+    primitive_shift = z2p_op.c() * shift
+    if is_ltr(primitive_shift):
       return True
-    for s in self.any_generator_set().primitive_generators:
+    for s in primitive_self.any_generator_set().primitive_generators:
       w_m_i = s.r().minus_unit_mx()
-      t = w_m_i*shift
-      if not self.group().has_translation(t, tolerance):
+      t = w_m_i * primitive_shift
+      if not is_ltr(t):
         return False
     else:
       return True
