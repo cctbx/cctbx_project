@@ -207,6 +207,8 @@ namespace {
         .def("is_alternative", &w_t::is_alternative)
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)
+        .def("uij_is_defined", &w_t::uij_is_defined)
+        .def("siguij_is_defined", &w_t::siguij_is_defined)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<
