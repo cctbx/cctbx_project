@@ -110,10 +110,10 @@ def exercise_atom():
   assert a.sigb == 0
   a.sigb = 7
   assert a.sigb == 7
-  assert a.uij == (0,0,0,0,0,0)
+  assert a.uij == (-1,-1,-1,-1,-1,-1)
   a.uij = (1,-2,3,4,-5,6)
   assert a.uij == (1,-2,3,4,-5,6)
-  assert a.siguij == (0,0,0,0,0,0)
+  assert a.siguij == (-1,-1,-1,-1,-1,-1)
   a.siguij = (-2,3,4,-5,6,1)
   assert a.siguij == (-2,3,4,-5,6,1)
   assert not a.hetero
