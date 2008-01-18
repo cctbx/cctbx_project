@@ -8,7 +8,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.math_utils import are_equivalent
 import cStringIO
 
-def exercise_parsing():
+def exercise_lexing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
   i = iter(stream)
   try:
@@ -78,7 +78,7 @@ def exercise_parsing():
   except StopIteration:
     raise AssertionError
 
-def exercise_lexing():
+def exercise_parsing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
   l = shelx.crystal_symmetry_parser(stream)
   l.lex()
@@ -103,8 +103,8 @@ def exercise_lexing():
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
     l_cs = shelx.crystal_symmetry_parser(stream)
     l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                         get_crystal_symmetry=l_cs.get_crystal_symmetry,
-                         set_grad_flags=set_grad_flags)
+                          get_crystal_symmetry=l_cs.get_crystal_symmetry,
+                          set_grad_flags=set_grad_flags)
     l.lex()
     assert l.crystal_symmetry.is_similar_symmetry(
       crystal.symmetry(
@@ -156,8 +156,8 @@ def exercise_lexing():
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_disordered))
     l_cs = shelx.crystal_symmetry_parser(stream)
     l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                         get_crystal_symmetry=l_cs.get_crystal_symmetry,
-                         set_grad_flags=set_grad_flags)
+                          get_crystal_symmetry=l_cs.get_crystal_symmetry,
+                          set_grad_flags=set_grad_flags)
     l.lex()
     assert l.crystal_symmetry.is_similar_symmetry(
       crystal.symmetry(
@@ -187,7 +187,7 @@ def exercise_lexing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt))
   l_cs = shelx.crystal_symmetry_parser(stream)
   l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                       get_crystal_symmetry=l_cs.get_crystal_symmetry)
+                        get_crystal_symmetry=l_cs.get_crystal_symmetry)
   try:
     l.lex()
     raise AssertionError
@@ -197,7 +197,7 @@ def exercise_lexing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt_1))
   l_cs = shelx.crystal_symmetry_parser(stream)
   l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                       get_crystal_symmetry=l_cs.get_crystal_symmetry)
+                        get_crystal_symmetry=l_cs.get_crystal_symmetry)
   try:
     l.lex()
     raise AssertionError
@@ -207,7 +207,7 @@ def exercise_lexing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_missing_sfac))
   l_cs = shelx.crystal_symmetry_parser(stream)
   l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                       get_crystal_symmetry=l_cs.get_crystal_symmetry)
+                        get_crystal_symmetry=l_cs.get_crystal_symmetry)
   try:
     l.lex()
     raise AssertionError
@@ -220,8 +220,8 @@ def shelx_u_cif(unit_cell, u_star):
   return (" "*3).join([ "%.5f" % x for x in  u_cif ])
 
 def run():
-  exercise_parsing()
   exercise_lexing()
+  exercise_parsing()
   print 'OK'
 
 ins_mundane_tiny = (
