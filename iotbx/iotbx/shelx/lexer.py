@@ -1,27 +1,15 @@
 """ Parsing of ins/res files """
 
 from __future__ import generators
+
+from iotbx.shelx import errors
+
 from libtbx import forward_compatibility
 import re
 
 
-class error(RuntimeError):
-  """ Base class of all errors
-      self.args is a tuple starting with the line number and the line
-  """
-
-class illegal_command_or_atom_name(error):
-  """ """
-
-class illegal_continuation_line(error):
-  """ """
-
-class illegal_argument(error):
-  """ self.args has an extra trailing item: the illegal argument """
-
-
-class parser(object):
-  """ A parser transforming an ins/res file into a stream of tokens """
+class command_stream(object):
+  """ An ins/res file parsed as a stream of commands """
 
   def __init__(self, file=None, filename=None):
     assert [file, filename].count(None) == 1
@@ -79,9 +67,9 @@ class parser(object):
    forward_range_tok, backward_range_tok,
    residue_class_tok, residue_number_tok, all_residues_tok) = xrange(7)
 
-  def commands(self):
+  def __iter__(self):
     """
-    A generator yielding the commands in self.file as tuples:
+    Yields the commands in self.file as tuples:
       - either (cmd, args) where args is a tuple,
         e.g. ('CELL', (0.71073, 1, 2, 3, 90, 90, 90))
       - or (cmd, (residue_class, residue_number), args) for those commands
@@ -103,14 +91,14 @@ class parser(object):
       if not li: continue
       if continued:
         m = self._continuation_pat.search(li)
-        if m is None: raise illegal_continuation_line((i,li))
+        if m is None: raise errors.illegal_continuation_line_error(i,li)
         cont_args, continued = m.groups()
         arguments.extend(cont_args.split())
       else:
         m = self._cmd_pat.search(li)
         if m is None:
           if li[0].isspace(): continue
-          raise illegal_command_or_atom_name((i,li))
+          raise errors.illegal_command_or_atom_name_error(i,li)
         cmd = m.group(4)
         if cmd:
           cmd = cmd.upper()
@@ -138,16 +126,16 @@ class parser(object):
       return (cmd.ljust(4), (args.strip(),))
     if cmd == 'SYMM':
       if args is None:
-        raise illegal_argument((i,li,args))
+        raise errors.illegal_argument_error(i,li,args)
       return (cmd, (self.symm_space.sub('', args).upper(),))
     if cmd == 'EQIV':
       m = self._eqiv_pat.search(args)
       if m is None:
-        raise illegal_argument((i,li,args))
+        raise errors.illegal_argument_error(i,li,args)
       try:
         idx = int(m.group(1))
       except ValueError:
-        raise illegal_argument((i,li,m.group(1)))
+        raise errors.illegal_argument_error(i,li,m.group(1))
       return (cmd, (idx, self.symm_space.sub('', m.group(2)).upper()))
     if cmd == 'SFAC':
       return (cmd, tuple([ e.upper() for e in args.split() ]))
@@ -164,7 +152,7 @@ class parser(object):
         else:
           m = self._atom_name_pat.match(arg)
           if m is None:
-            raise illegal_argument((i,li,arg))
+            raise errors.illegal_argument_error(i,li,arg)
           name, symmetry = m.group(1,2)
           if name is not None:
             if symmetry is not None: symmetry = int(symmetry)

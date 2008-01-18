@@ -56,9 +56,10 @@ iotbx/iotbx/detectors/cbf.py -text
 iotbx/iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/iotbx/pdb/extract_rfactors_resolutions_sigma.py -text
 iotbx/iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
+iotbx/iotbx/shelx/errors.py -text
 iotbx/iotbx/shelx/fcf.py -text
-iotbx/iotbx/shelx/lexers.py -text
-iotbx/iotbx/shelx/parser.py -text
+iotbx/iotbx/shelx/lexer.py -text
+iotbx/iotbx/shelx/parsers.py -text
 iotbx/iotbx/shelx/tst_read_ins.py -text
 libtbx/libtbx/assert_utils.py -text
 libtbx/libtbx/command_line/assert_line_count.py svneol=native#text/x-python

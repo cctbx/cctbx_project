@@ -8,9 +8,9 @@ from libtbx.test_utils import approx_equal
 from libtbx.math_utils import are_equivalent
 import cStringIO
 
-def exercise_parser():
-  p = shelx.parser(file=cStringIO.StringIO(ins_mundane_tiny))
-  i = p.commands()
+def exercise_parsing():
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
+  i = iter(stream)
   try:
     cmd = i.next()
     assert cmd == ('TITL', ('in Pbca',))
@@ -33,7 +33,7 @@ def exercise_parser():
     cmd = i.next()
     assert cmd == ('L.S.', (4,))
     cmd = i.next()
-    assert cmd == ('BOND', ((p.element_tok, 'H'),))
+    assert cmd == ('BOND', ((stream.element_tok, 'H'),))
     cmd = i.next() # FMAP
     cmd = i.next() # PLAN
     cmd = i.next() # WGHT
@@ -42,16 +42,16 @@ def exercise_parser():
     cmd = i.next()
     assert cmd == ('REM ', ('Protracted example of residues on command',))
     cmd = i.next()
-    assert cmd == ('HFIX', (p.residue_number_tok, 1), (23,))
+    assert cmd == ('HFIX', (stream.residue_number_tok, 1), (23,))
     cmd =  i.next()
-    assert cmd == ('HFIX', (p.residue_class_tok, 'N'), (43,))
+    assert cmd == ('HFIX', (stream.residue_class_tok, 'N'), (43,))
     cmd = i.next()
     assert cmd == ('EQIV', (1, '1-X, -Y, -Z'))
     cmd = i.next()
-    assert cmd == ('CONF', ( (p.atom_tok, 'C4', None),
-                             (p.atom_tok, 'N', None),
-                             (p.atom_tok, 'H', None),
-                             (p.atom_tok, 'O2', 1) ) )
+    assert cmd == ('CONF', ( (stream.atom_tok, 'C4', None),
+                             (stream.atom_tok, 'N', None),
+                             (stream.atom_tok, 'H', None),
+                             (stream.atom_tok, 'O2', 1) ) )
     cmd = i.next()
     assert cmd == ('O2', (3, 0.362893, 0.160589, -0.035913, 11,
                           0.03926, 0.02517, 0.02140,
@@ -78,9 +78,9 @@ def exercise_parser():
   except StopIteration:
     raise AssertionError
 
-def exercise_lexer():
-  p = shelx.parser(file=cStringIO.StringIO(ins_mundane_tiny))
-  l = shelx.crystal_symmetry_lexer(p)
+def exercise_lexing():
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
+  l = shelx.crystal_symmetry_parser(stream)
   l.lex()
   assert l.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
@@ -89,8 +89,8 @@ def exercise_lexer():
     relative_length_tolerance=1e-15,
     absolute_angle_tolerance=1e-15)
 
-  p = shelx.parser(file=cStringIO.StringIO(ins_P1))
-  l = shelx.crystal_symmetry_lexer(p)
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_P1))
+  l = shelx.crystal_symmetry_parser(stream)
   l.lex()
   assert l.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
@@ -100,8 +100,11 @@ def exercise_lexer():
     absolute_angle_tolerance=1e-15)
 
   for set_grad_flags in (False, True):
-    p = shelx.parser(file=cStringIO.StringIO(ins_aspirin))
-    l = shelx.atom_lexer(parser=p, set_grad_flags=set_grad_flags)
+    stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
+    l_cs = shelx.crystal_symmetry_parser(stream)
+    l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
+                         get_crystal_symmetry=l_cs.get_crystal_symmetry,
+                         set_grad_flags=set_grad_flags)
     l.lex()
     assert l.crystal_symmetry.is_similar_symmetry(
       crystal.symmetry(
@@ -140,7 +143,7 @@ def exercise_lexer():
     else:
       for scatt in scatterers:
         f = scatt.flags
-        assert f.grad_site()
+        assert f.grad_site() or scatt.label == 'C7'
         assert not f.grad_occupancy()
         assert are_equivalent(f.use_u_iso(),
                               f.grad_u_iso() and not f.grad_u_aniso())
@@ -150,8 +153,11 @@ def exercise_lexer():
         assert not f.grad_fdp()
 
   for set_grad_flags in (False, True):
-    p = shelx.parser(file=cStringIO.StringIO(ins_disordered))
-    l = shelx.atom_lexer(parser=p, set_grad_flags=set_grad_flags)
+    stream = shelx.command_stream(file=cStringIO.StringIO(ins_disordered))
+    l_cs = shelx.crystal_symmetry_parser(stream)
+    l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
+                         get_crystal_symmetry=l_cs.get_crystal_symmetry,
+                         set_grad_flags=set_grad_flags)
     l.lex()
     assert l.crystal_symmetry.is_similar_symmetry(
       crystal.symmetry(
@@ -178,14 +184,44 @@ def exercise_lexer():
       for a in (c12, h121, h122, h123):
         assert a.flags.grad_occupancy()
 
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt))
+  l_cs = shelx.crystal_symmetry_parser(stream)
+  l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
+                       get_crystal_symmetry=l_cs.get_crystal_symmetry)
+  try:
+    l.lex()
+    raise AssertionError
+  except shelx.illegal_argument_error, e:
+    assert e.args[0] == 3 and e.args[-1] == '0.3.'
+
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt_1))
+  l_cs = shelx.crystal_symmetry_parser(stream)
+  l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
+                       get_crystal_symmetry=l_cs.get_crystal_symmetry)
+  try:
+    l.lex()
+    raise AssertionError
+  except shelx.illegal_scatterer_error, e:
+    assert e.args[0] == 'O'
+
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_missing_sfac))
+  l_cs = shelx.crystal_symmetry_parser(stream)
+  l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
+                       get_crystal_symmetry=l_cs.get_crystal_symmetry)
+  try:
+    l.lex()
+    raise AssertionError
+  except shelx.missing_sfac_error, e:
+    pass
+
 def shelx_u_cif(unit_cell, u_star):
   u_cif = adptbx.u_star_as_u_cif(unit_cell, u_star)
   u_cif = u_cif[0:3] + (u_cif[-1], u_cif[-2], u_cif[-3])
   return (" "*3).join([ "%.5f" % x for x in  u_cif ])
 
 def run():
-  exercise_parser()
-  exercise_lexer()
+  exercise_parsing()
+  exercise_lexing()
   print 'OK'
 
 ins_mundane_tiny = (
@@ -274,7 +310,7 @@ C3    1    0.883500    0.550173   -0.159841    11.00000    0.04635
 AFIX  43
 H3    2    0.945193    0.503717   -0.199359    11.00000   -1.50000
 AFIX   0
-C7    1    0.910013    0.242812   -0.037585    11.00000    0.04340    0.04037 =
+C7    1    10.910013    0.242812   -0.037585    11.00000    0.04340    0.04037 =
          0.03632   -0.00344    0.00282   -0.00157
 C1    1    0.754688    0.511841   -0.009478    11.00000    0.04076
 C6    1    0.701446    0.694836   -0.041608    11.00000    0.05003    0.04601 =
@@ -361,6 +397,23 @@ AFIX   7
 H131  2    0.336393    0.828845    0.303383   -21.00000   -1.50000
 H132  2    0.194195    0.626606    0.130621   -21.00000   -1.50000
 H133  2    0.407982    0.771230    0.112116   -21.00000   -1.50000
+"""
+
+ins_missing_sfac = """
+CELL 0 1 2 3 90 90 90
+O 4 0.1 0.2 0.3 11 0.04
+"""
+
+ins_invalid_scatt = """
+CELL 0 1 2 3 90 90 90
+SFAC C O
+O 4 0.1 0.2 0.3. 11 0.04
+"""
+
+ins_invalid_scatt_1 = """
+CELL 0 1 2 3 90 90 90
+SFAC C O
+O 4 0.1 0.2 0.3 11
 """
 
 
