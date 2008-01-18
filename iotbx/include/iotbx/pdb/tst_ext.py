@@ -111,11 +111,15 @@ def exercise_atom():
   a.sigb = 7
   assert a.sigb == 7
   assert a.uij == (-1,-1,-1,-1,-1,-1)
+  assert not a.uij_is_defined()
   a.uij = (1,-2,3,4,-5,6)
   assert a.uij == (1,-2,3,4,-5,6)
+  assert a.uij_is_defined()
   assert a.siguij == (-1,-1,-1,-1,-1,-1)
+  assert not a.siguij_is_defined()
   a.siguij = (-2,3,4,-5,6,1)
   assert a.siguij == (-2,3,4,-5,6,1)
+  assert a.siguij_is_defined()
   assert not a.hetero
   a.hetero = True
   assert a.hetero
@@ -2240,6 +2244,76 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1)])
   assert list(pdb_inp.extract_atom_hetero()) == [5,6]
+  #
+  assert not show_diff(pdb_inp.atoms()[1].format_anisou_record(
+    serial=10,
+    input_atom_labels=pdb_inp.input_atom_labels_list()[1]),
+      "ANISOU   10  CA  GLN A   3    "
+      " 7794   3221   3376  -1227   1064   2601       C")
+  assert not show_diff(pdb_inp.atoms()[1].format_anisou_record(
+    serial=11),
+      "ANISOU   11  CA  DUM     1    "
+      " 7794   3221   3376  -1227   1064   2601       C")
+  assert not show_diff(pdb_inp.atoms()[1].format_anisou_record(
+    serial=12,
+    name="A",
+    altloc="B",
+    resname="C",
+    chain="D",
+    resseq="E",
+    icode="F",
+    uij=(3,4,5,6,7,8),
+    segid="G",
+    element="H",
+    charge="I"),
+      "ANISOU   12 A   BC   D   EF   "
+      "30000  40000  50000  60000  70000  80000  G    H I")
+  #
+  rs = pdb_inp.atoms()[0].format_record_group(
+    serial=13,
+    input_atom_labels=pdb_inp.input_atom_labels_list()[1])
+  assert rs == ["ATOM     13  N   GLN A   3   "
+                "   35.299  11.075  19.070  1.00 36.89           N"]
+  rs = pdb_inp.atoms()[1].format_record_group(
+    serial=14,
+    input_atom_labels=pdb_inp.input_atom_labels_list()[1])
+  assert rs == ["ATOM     14  CA  GLN A   3   "
+                "   34.482   9.927  18.794  0.63 37.88           C",
+                "ANISOU   14  CA  GLN A   3   "
+                "  7794   3221   3376  -1227   1064   2601       C"]
+  rs = pdb_inp.atoms()[0].format_record_group(
+    serial=15)
+  assert rs == ["ATOM     15  N   DUM     1   "
+                "   35.299  11.075  19.070  1.00 36.89           N"]
+  rs = pdb_inp.atoms()[1].format_record_group(
+    serial=16)
+  assert rs == ["ATOM     16  CA  DUM     1   "
+                "   34.482   9.927  18.794  0.63 37.88           C",
+                "ANISOU   16  CA  DUM     1   "
+                "  7794   3221   3376  -1227   1064   2601       C"]
+  for uij in [(2,7,8,9,5,4), (-1,-1,-1,-1,-1,-1)]:
+    rs = pdb_inp.atoms()[0].format_record_group(
+      serial=17,
+      name="A",
+      altloc="B",
+      resname="C",
+      chain="D",
+      resseq="E",
+      icode="F",
+      xyz=(1,2,3),
+      occ=4,
+      b=5,
+      uij=uij,
+      segid="G",
+      element="H",
+      charge="I")
+    assert len(rs) == abs(uij[0])
+    assert rs[0] == "ATOM     17 A   BC   D   EF   " \
+                    "   1.000   2.000   3.000  4.00  5.00      G    H I"
+    if (len(rs) == 2):
+      rs[1] == "ANISOU   17 A   BC   D   EF   " \
+               "20000  70000  80000  90000  50000  40000  G    H I"
+  #
   for use_scale_matrix_if_available in [False, True]:
     xray_structure = pdb_inp.xray_structure_simple(
       use_scale_matrix_if_available=use_scale_matrix_if_available)

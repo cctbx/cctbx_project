@@ -440,6 +440,18 @@ namespace pdb {
         }
         return boost::optional<std::string>();
       }
+
+      bool
+      uij_is_defined() const
+      {
+        return !data->uij.const_ref().all_eq(-1);
+      }
+
+      bool
+      siguij_is_defined() const
+      {
+        return !data->siguij.const_ref().all_eq(-1);
+      }
   };
 
   //! Residue attributes.

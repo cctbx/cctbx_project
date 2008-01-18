@@ -382,6 +382,110 @@ class _atom(boost.python.injector, ext.atom):
       element=element,
       charge=charge)
 
+  def format_anisou_record(self,
+        serial,
+        input_atom_labels=None,
+        name=None,
+        altloc=None,
+        resname=None,
+        chain=None,
+        resseq=None,
+        icode=None,
+        uij=None,
+        segid=None,
+        element=None,
+        charge=None):
+    if (altloc is None):
+      if (input_atom_labels is None):
+        altloc = " "
+      else:
+        altloc = input_atom_labels.altloc()
+    if (resname is None):
+      if (input_atom_labels is None):
+        resname = "DUM"
+      else:
+        resname = input_atom_labels.resname()
+    if (chain is None):
+      if (input_atom_labels is None):
+        chain = " "
+      else:
+        chain = input_atom_labels.chain()
+    if (resseq is None):
+      if (input_atom_labels is None):
+        resseq = 1
+      else:
+        resseq = input_atom_labels.resseq()
+    if (icode is None):
+      if (input_atom_labels is None):
+        icode = " "
+      else:
+        icode = input_atom_labels.resseq()
+    if (name is None): name = self.name
+    if (uij is None): uij = self.uij
+    if (segid is None): segid = self.segid
+    if (element is None): element = self.element
+    if (charge is None): charge = self.charge
+    return format_anisou_record(
+      serial=serial,
+      name=name,
+      altLoc=altloc,
+      resName=resname,
+      chainID=chain,
+      resSeq=resseq,
+      iCode=icode,
+      u_cart=uij,
+      segID=segid,
+      element=element,
+      charge=charge)
+
+  def format_record_group(self,
+        serial,
+        input_atom_labels=None,
+        name=None,
+        altloc=None,
+        resname=None,
+        chain=None,
+        resseq=None,
+        icode=None,
+        xyz=None,
+        occ=None,
+        b=None,
+        uij=None,
+        segid=None,
+        element=None,
+        charge=None):
+     result = [self.format_atom_record(
+       serial=serial,
+       input_atom_labels=input_atom_labels,
+       name=name,
+       altloc=altloc,
+       resname=resname,
+       chain=chain,
+       resseq=resseq,
+       icode=icode,
+       xyz=xyz,
+       occ=occ,
+       b=b,
+       segid=segid,
+       element=element,
+       charge=charge)]
+     if (uij is None): uij = self.uij
+     if (uij != (-1,-1,-1,-1,-1,-1)):
+       result.append(self.format_anisou_record(
+         serial=serial,
+         input_atom_labels=input_atom_labels,
+         name=name,
+         altloc=altloc,
+         resname=resname,
+         chain=chain,
+         resseq=resseq,
+         icode=icode,
+         uij=uij,
+         segid=segid,
+         element=element,
+         charge=charge))
+     return result
+
 class _residue(boost.python.injector, ext.residue):
 
   def residue_name_plus_atom_names_interpreter(self,
