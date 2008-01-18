@@ -244,6 +244,20 @@ namespace xray {
         return true;
       }
 
+      FloatType u_eq(uctbx::unit_cell const& unit_cell) const {
+        using adptbx::u_star_as_u_iso;
+        FloatType result = 0;
+        if (flags.use_u_aniso()) {
+          result = u_star_as_u_iso(unit_cell, u_star);
+          if (flags.use_u_iso()) result += u_iso;
+        }
+        else if (flags.use_u_iso()) {
+          result = u_iso;
+          if (flags.use_u_aniso()) result += u_star_as_u_iso(unit_cell, u_star);
+        }
+        return result;
+      }
+
       //! Changes u_iso or u_star in place such that u_iso >= u_min.
       /*! In the anisotropic case the eigenvalues of u_cart are
           changed using adptbx::eigenvalue_filtering().

@@ -98,6 +98,7 @@ namespace {
             &w_t::is_positive_definite_u, (
           arg_("unit_cell"),
           arg_("u_cart_tolerance")))
+        .def("u_eq", &w_t::u_eq)
         .def("tidy_u",
           (void(w_t::*)(
             uctbx::unit_cell const&,
