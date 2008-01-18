@@ -204,11 +204,6 @@ def exercise_generator_set():
 
 def exercise_allowed_origin_shift():
   sgi = sgtbx.space_group_info("F222")
-  assert sgi.group().has_translation(
-    (-1, 3/2, 1/2), tolerance=1e-15)
-  assert not sgi.group().has_translation(
-    (0, 0.1, 0.1), tolerance=1e-15)
-
   assert sgi.is_allowed_origin_shift((1/2, 1/2, 1/2), tolerance=1e-15)
   assert not sgi.is_allowed_origin_shift((0.1, 0.1, 0.1), tolerance=1e-15)
 
@@ -234,6 +229,9 @@ def exercise_allowed_origin_shift():
                                      tolerance=0.005)
   assert not sgi.is_allowed_origin_shift((1.222, 1.221, 1.),
                                          tolerance=0.005)
+
+  sgi = sgtbx.space_group_info("R -3 c :H")
+  assert sgi.is_allowed_origin_shift((1/3, 2/3, 1+1/6), tolerance=1e-15)
 
   for i in xrange(1,231):
     sgi = sgtbx.space_group_info(number=i)
