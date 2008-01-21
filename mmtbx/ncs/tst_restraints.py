@@ -1,7 +1,7 @@
 from mmtbx import ncs
 import mmtbx.ncs.restraints
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx.utils import format_cpu_times
 
 def exercise_pair_registry_basic():
@@ -22,26 +22,26 @@ def exercise_pair_registry_basic():
   assert zip(*selection_pairs[0]) == [(0, 20), (1, 21)]
   assert zip(*selection_pairs[1]) == [(0, 10)]
   selection = flex.bool(30, False)
-  sel_registry = registry.proxy_select(selection=selection)
+  sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == []
   assert zip(*selection_pairs[1]) == []
   selection = flex.bool(30, True)
-  sel_registry = registry.proxy_select(selection=selection)
+  sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == [(0, 20), (1, 21)]
   assert zip(*selection_pairs[1]) == [(0, 10)]
   selection[0] = False
-  sel_registry = registry.proxy_select(selection=selection)
+  sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == [(0, 20)]
   assert zip(*selection_pairs[1]) == []
   selection[0] = True
   selection[1] = False
-  sel_registry = registry.proxy_select(selection=selection)
+  sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == [(0, 19)]
@@ -49,7 +49,7 @@ def exercise_pair_registry_basic():
   selection[1] = True
   selection[2] = False
   selection[4] = False
-  sel_registry = registry.proxy_select(selection=selection)
+  sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == [(0, 18),(1,19)]
@@ -59,19 +59,45 @@ def exercise_pair_registry_basic():
   registry.register_additional_isolated_sites(number=3)
   assert registry.number_of_additional_isolated_sites == 13
   selection.resize(43, False)
-  sel_registry = registry.proxy_select(selection=selection)
+  sel_registry = registry.proxy_select(iselection=selection.iselection())
   assert sel_registry.number_of_additional_isolated_sites == 0
   selection[35] = True
-  sel_registry = registry.proxy_select(selection=selection)
+  sel_registry = registry.proxy_select(iselection=selection.iselection())
   assert sel_registry.number_of_additional_isolated_sites == 1
   selection[38] = True
   selection[42] = True
-  sel_registry = registry.proxy_select(selection=selection)
+  sel_registry = registry.proxy_select(iselection=selection.iselection())
   assert sel_registry.number_of_additional_isolated_sites == 3
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
   assert zip(*selection_pairs[0]) == [(0, 18),(1,19)]
   assert zip(*selection_pairs[1]) == [(0, 8)]
+  #
+  iselection = flex.size_t([
+    # random permutation with omissions first 30
+    8, 10, 6, 12, 20, 15, 16, 22, 11, 23, 14, 27,
+    3, 13, 5, 28, 17, 0, 19, 26, 9, 4, 1, 29, 18,
+    # random permutation with omissions other 13
+    32, 37, 34, 41, 38, 42, 33, 35, 30])
+  sel_registry = registry.proxy_select(iselection=iselection)
+  assert sel_registry.number_of_additional_isolated_sites == 9
+  selection_pairs = sel_registry.selection_pairs()
+  assert len(selection_pairs) == 2
+  assert zip(*selection_pairs[0]) == [(17, 4)]
+  assert zip(*selection_pairs[1]) == [(17, 1)]
+  #
+  iselection = flex.size_t([0,1,30])
+  sel_registry = registry.proxy_select(iselection=iselection)
+  assert sel_registry.number_of_additional_isolated_sites == 1
+  iselection = flex.size_t([0,30,1])
+  try: registry.proxy_select(iselection=iselection)
+  except RuntimeError, e:
+    assert str(e).endswith(
+      "): MMTBX_ASSERT("
+      "result_i_seq < result_n_seq || iselection[result_i_seq] >= n_seq)"
+      " failure.")
+  else:
+    raise Exception_expected
 
 def adp_iso_residual_sum(weight, average_power, u_isos):
   n = u_isos.size()

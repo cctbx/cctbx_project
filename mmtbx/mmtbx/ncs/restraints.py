@@ -307,10 +307,10 @@ class group(object):
   def register_additional_isolated_sites(self, number):
     self.registry.register_additional_isolated_sites(number=number)
 
-  def select(self, selection):
+  def select(self, iselection):
     return group(
       selection_strings=self.selection_strings,
-      registry=self.registry.proxy_select(selection),
+      registry=self.registry.proxy_select(iselection=iselection),
       coordinate_sigma=self.coordinate_sigma,
       b_factor_weight=self.b_factor_weight,
       u_average_min=self.u_average_min)
@@ -600,10 +600,10 @@ class groups(object):
     for group in self.members:
       group.register_additional_isolated_sites(number=number)
 
-  def select(self, selection):
+  def select(self, iselection):
     members = []
     for group in self.members:
-      members.append(group.select(selection=selection))
+      members.append(group.select(iselection=iselection))
     return groups(members=members)
 
   def energies_adp_iso(self,

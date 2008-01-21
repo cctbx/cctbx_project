@@ -36,7 +36,7 @@ namespace {
         .def("enter", &w_t::enter, (
           arg_("i_seq"), arg_("j_seq"), arg_("j_ncs")))
         .def("proxy_select", &w_t::proxy_select, (
-          arg_("selection")))
+          arg_("iselection")))
         .def("selection_pairs", &w_t::selection_pairs)
         .def("adp_iso_residual_sum", &w_t::adp_iso_residual_sum, (
           arg_("weight"),
