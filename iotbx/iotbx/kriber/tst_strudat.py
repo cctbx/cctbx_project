@@ -3,6 +3,7 @@ from cctbx.regression import tst_direct_space_asu
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx.array_family import flex
+from libtbx.test_utils import Exception_expected
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
@@ -121,13 +122,13 @@ O  0.0 0.0 0.0
   except AssertionError, e:
     assert str(e) == "Tag mixcon1: 1 atom is missing the bond count."
   else:
-    raise AssertionError("Exception expected.")
+    raise Exception_expected
   try:
     all_entries.get("mixcon2").connectivities(all_or_nothing=True)
   except AssertionError, e:
     assert str(e) == "Tag mixcon2: 2 atoms are missing the bond count."
   else:
-    raise AssertionError("Exception expected.")
+    raise Exception_expected
   assert all_entries.get("cubi").as_xray_structure().scatterers().size() == 2
 
 def exercise_zeolite_atlas(distance_cutoff=3.5):

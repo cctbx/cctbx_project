@@ -1,7 +1,7 @@
 from libtbx import phil
 import libtbx.phil.command_line
 from libtbx.utils import Sorry
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import Exception_expected, show_diff
 from cStringIO import StringIO
 import copy
 import sys, os
@@ -351,7 +351,7 @@ x=None
 """)
   except RuntimeError, e:
     assert str(e) == 'Unexpected definition type: "foo.int" (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try: phil.parse("""\
 x=None
@@ -361,7 +361,7 @@ x=None
     assert str(e) == '.type=libtbx.phil.tst.none: object' \
       ' "none_phil_converters" not found in module "libtbx.phil.tst"' \
       ' (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try: phil.parse("""\
 x=None
@@ -370,7 +370,7 @@ x=None
   except TypeError, e:
     assert str(e) == '"libtbx.phil.tst.improper_phil_converters" is not' \
       ' a callable Python object (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try: phil.parse("""\
 x=None
@@ -382,7 +382,7 @@ x=None
       'Error constructing definition type "libtbx.phil.tst.int(factor=1.5)":'
       ' AssertionError: ')
     assert e.endswith(' (input line 2)')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try: phil.parse("""\
 x=None
@@ -391,7 +391,7 @@ x=None
   except RuntimeError, e:
     assert str(e) == 'Error evaluating definition type "libtbx.phil.tst.int' \
       '(a=1=2)": SyntaxError: invalid syntax (line 1) (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def test_exception(input_string, exception_string=None):
   try: phil.parse(input_string=input_string)
@@ -403,7 +403,7 @@ def test_exception(input_string, exception_string=None):
         print exception_string
     if (exception_string is not None):
       assert str(e) == exception_string
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_syntax_errors():
   test_exception("'a'",
@@ -497,7 +497,7 @@ d = 4
   try: phil.parse(input_string="#phil __Off__\n")
   except RuntimeError, e:
     assert str(e) == "Unknown: #phil __Off__ (input line 1)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_deepcopy():
   parameters = phil.parse(input_string="""\
@@ -828,7 +828,7 @@ l=$s
   try: check_resolve_variables(parameters, "g")
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $s.a (input line 26)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   check_resolve_variables(parameters, "h", "h = 30\n")
   check_resolve_variables(parameters, "i", "i = 40\n")
   check_resolve_variables(parameters, "j", "j = 1 10 10\n")
@@ -839,7 +839,7 @@ l=$s
   try: check_resolve_variables(parameters, "l")
   except RuntimeError, e:
     assert str(e) == 'Not a definition: $s (input line 37)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   check_resolve_variables(parameters, "h", "h = 30\n")
   #
   parameters = phil.parse(input_string="""\
@@ -878,11 +878,11 @@ m=$k
     except RuntimeError, e:
       if (str(e) != diags[path]):
         raise AssertionError("%s != %s" % (repr(str(e)), repr(diags[path])))
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   try: parameters.get(path="h")
   except RuntimeError, e:
     assert str(e) == "Undefined variable: $_X_Y_Z_ (input line 8)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   os.environ["_X_Y_Z_"] = "xyz"
   check_get_sub(parameters, path="h", expected_out='h = "xyz"\n')
   assert parameters.get(path="h").objects[0].words[0].where_str() \
@@ -927,24 +927,24 @@ n='$a'
   except RuntimeError, e:
     assert str(e) == 'Syntax error: $ must be followed by an identifier:' \
                    + ' "$" (input line 10)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="j")
   except RuntimeError, e:
     assert str(e) == 'Syntax error: missing ")": "$(abc" (input line 11)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="k")
   except RuntimeError, e:
     assert str(e) == 'Syntax error: improper variable name "$(1bc)"' \
                    + ' (input line 12)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="l")
   except RuntimeError, e:
     assert str(e)=='Syntax error: improper variable name "$()" (input line 13)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="m")
   except RuntimeError, e:
     assert str(e)=='Syntax error: improper variable name "$@" (input line 14)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   check_get_sub(parameters, path="n", expected_out="n = '$a'\n")
   #
   parameters = phil.parse(input_string="""\
@@ -979,7 +979,7 @@ a=$b
   try: parameters.get(path="a")
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $b (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_full_path():
   params = phil.parse(input_string="""\
@@ -1051,7 +1051,7 @@ s = 1
   try: parameters.get(path="d")
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $z (file "tmp3.params", line 3)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: os.makedirs("tmp")
   except OSError: pass
   #
@@ -1070,7 +1070,7 @@ include file tmp2.params
   except RuntimeError, e:
     assert str(e).startswith("Include dependency cycle: ")
     assert len(str(e).split(",")) == 4
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   print >> open("tmp1.params", "w"), """\
 a=0
@@ -1174,20 +1174,20 @@ include foo
   except RuntimeError, e:
     assert str(e) \
       == '"include" must be followed by at least two arguments (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(input_string="""\
 include foo bar
 """, process_includes=True)
   except RuntimeError, e:
     assert str(e) == "Unknown include type: foo (input line 1)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(input_string="""\
 include file foo foo
 """, process_includes=True)
   except RuntimeError, e:
     assert str(e) \
       == '"include file" must be followed exactly one argument (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   params = phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_1
@@ -1289,21 +1289,21 @@ include scope foo foo foo
     assert str(e) \
       == '"include scope" must be followed one or two arguments,' \
          ' i.e. an import path and optionally a phil path (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(input_string="""\
 include scope libtbx
 """, process_includes=True)
   except ValueError, e:
     assert str(e) == 'include scope: import path "libtbx" is too short;' \
       ' target must be a phil scope (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(input_string="""\
 include scope libtbx.phil.t_s_t.include_scope_target_1
 """, process_includes=True)
   except ImportError, e:
     assert str(e) \
       == "include scope: no module libtbx.phil.t_s_t (input line 1)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_none
 """, process_includes=True)
@@ -1311,7 +1311,7 @@ include scope libtbx.phil.tst.include_scope_target_none
     assert str(e) == 'include scope: object' \
       ' "include_scope_target_none" not found in module "libtbx.phil.tst"' \
       ' (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_0
 """, process_includes=True)
@@ -1319,14 +1319,14 @@ include scope libtbx.phil.tst.include_scope_target_0
     assert str(e) == 'include scope: python object' \
       ' "include_scope_target_0" in module "libtbx.phil.tst"' \
       ' is not a libtbx.phil.scope instance (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_1 t
 """, process_includes=True)
   except RuntimeError, e:
     assert str(e) == 'include scope: path "t" not found in phil scope object' \
       ' "include_scope_target_1" in module "libtbx.phil.tst" (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 include_scope_target_0 = None
 
@@ -1581,25 +1581,25 @@ d { a {} }
   except RuntimeError, e:
     assert str(e) == 'Incompatible parameter objects: definition "a" ' \
       '(master, line 1) vs. scope "a" (source, line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   source = phil.parse(input_string="b=None")
   try: master.fetch(source=source)
   except RuntimeError, e:
     assert str(e) == 'Incompatible parameter objects: scope "b" ' \
       '(master, line 2) vs. definition "b" (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   source = phil.parse(input_string="c { a { } }")
   try: master.fetch(source=source)
   except RuntimeError, e:
     assert str(e) == 'Incompatible parameter objects: definition "a" ' \
       '(master, line 3) vs. scope "a" (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   source = phil.parse(input_string="d { a=None\n}")
   try: master.fetch(source=source)
   except RuntimeError, e:
     assert str(e) == 'Incompatible parameter objects: scope "a" ' \
       '(master, line 5) vs. definition "a" (input line 1)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   master = phil.parse(input_string="""\
 a=None
@@ -1740,7 +1740,7 @@ Not a possible choice for c: d (input line 1)
     a
     *b
     c""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   master = phil.parse(input_string="""\
 v
@@ -1795,7 +1795,7 @@ v {
   try: parameters.fetch(source=parameters)
   except RuntimeError, e:
     assert str(e) == 'Undefined variable: $v.x (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   master = phil.parse(input_string="""\
 s {
@@ -2586,7 +2586,7 @@ a = None
 Duplicate definitions in master (first not marked with .multiple=True):
   a (input line 1)
   a (input line 2)""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_fetch_diff():
   source = phil.parse(input_string="""\
@@ -3166,19 +3166,19 @@ group {
   except RuntimeError, e:
     assert str(e) == 'Multiple choices for group.e;' \
       ' only one choice can be selected (input line 13)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="group.e",
     with_substitution=False).objects[2].extract()
   except RuntimeError, e:
     assert str(e) == 'Unspecified choice for group.e:' \
       ' exactly one choice must be selected (input line 15)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="group.f",
     with_substitution=False).objects[3].extract()
   except RuntimeError, e:
     assert str(e) == 'Unspecified choice for group.f:' \
       ' at least one choice must be selected (input line 24)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert parameters.get(path="group.e").objects[0].type \
       is parameters.get(path="group.e").objects[1].type
   assert parameters.get(path="group.e").objects[0].type \
@@ -3204,7 +3204,7 @@ group {
   except RuntimeError, e:
     assert str(e) == 'Error interpreting group.i="1/2" as' \
       ' an integer expression (input line 33)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert parameters.get(path="group.j",
     with_substitution=False).objects[0].extract() == 0.5
   try: parameters.get(path="group.j",
@@ -3212,13 +3212,13 @@ group {
   except RuntimeError, e:
     assert str(e) == """Error interpreting group.j="'a'" as""" \
       " a floating-point expression (input line 37)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="group.j",
     with_substitution=False).objects[2].extract()
   except RuntimeError, e:
     assert str(e) == 'Error interpreting group.j="a" as a numeric expression:'\
                    + " NameError: name 'a' is not defined (input line 39)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert parameters.get(path="group.n",
     with_substitution=False).objects[0].extract() is None
   assert parameters.get(path="group.m",
@@ -3238,25 +3238,25 @@ group {
   except RuntimeError, e:
     assert str(e) \
         == 'Error interpreting "True" as a numeric expression (input line 53)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="group.int_false",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
     assert str(e) \
         == 'Error interpreting "False" as a numeric expression (input line 55)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="group.float_true",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
     assert str(e) \
         == 'Error interpreting "True" as a numeric expression (input line 57)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: parameters.get(path="group.float_false",
     with_substitution=False).objects[0].extract()
   except RuntimeError, e:
     assert str(e) \
         == 'Error interpreting "False" as a numeric expression (input line 59)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   parameters = phil.parse(input_string="""\
 group {
   a=yes
@@ -3389,13 +3389,13 @@ t {
     assert not show_diff(str(e), """Assignment to non-existing attribute "z"
   Please correct the attribute name, or to create
   a new attribute use: obj.__inject__(name, value)""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: extracted.t.c.z = 13
   except AttributeError, e:
     assert not show_diff(str(e),"""Assignment to non-existing attribute "t.c.z"
   Please correct the attribute name, or to create
   a new attribute use: obj.__inject__(name, value)""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   extracted.__inject__("z", 14)
   assert extracted.z == 14
   del extracted.z
@@ -3404,7 +3404,7 @@ t {
   try: extracted.__inject__("z", 16)
   except AttributeError, e:
     assert str(e) == 'Attribute "z" exists already.'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   extracted.t.c.__inject__("z", 17)
   assert extracted.t.c.z == 17
   del extracted.t.c.z
@@ -3413,7 +3413,7 @@ t {
   try: extracted.t.c.__inject__("z", 19)
   except AttributeError, e:
     assert str(e) == 'Attribute "t.c.z" exists already.'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   parameters = phil.parse(input_string="""\
 s.t.x {
@@ -4354,13 +4354,13 @@ y=*a b
   try: master.format(py_params)
   except RuntimeError, e:
     assert str(e) == "Invalid choice: x=c"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   py_params.x = "b"
   py_params.y = "c"
   try: master.format(py_params)
   except RuntimeError, e:
     assert str(e) == "Invalid choice: y=c"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   master = phil.parse(input_string="""\
 x=*a a
   .type=choice
@@ -4370,7 +4370,7 @@ x=*a a
   except RuntimeError, e:
     assert str(e) \
         == "Improper master choice definition: x = *a a (input line 1)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   master = phil.parse(input_string="""\
 x=*a b
@@ -4385,12 +4385,12 @@ y=a b
   try: master.format(py_params)
   except RuntimeError, e:
     assert str(e) == "Invalid choice(multi=True): x=['c', 'd']"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   py_params.x = []
   try: master.format(py_params)
   except RuntimeError, e:
     assert str(e) == "Empty list for mandatory choice(multi=True): x"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   master = phil.parse(input_string="""\
 x=*a b
   .type=choice(multi=True)
@@ -4420,7 +4420,7 @@ x=*a b
   try: master.format(py_params)
   except RuntimeError, e:
     assert str(e) == "Invalid choice: x=None"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_type_constructors():
   params = phil.parse(
@@ -4438,13 +4438,13 @@ c=None
     assert str(e) == \
       '.type=foo2 does not have a from_words method (input line 1):' \
       " AttributeError: 'foo2_converters' object has no attribute 'from_words'"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: params.get(path="a").objects[0].format(python_object=0)
   except RuntimeError, e:
     assert str(e) == \
       '.type=foo2 does not have an as_words method (input line 1):' \
       " AttributeError: 'foo2_converters' object has no attribute 'as_words'"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(
     input_string="""\
 a=None
@@ -4455,7 +4455,7 @@ a=None
     assert str(e) == \
       'Error constructing definition type "foo1": RuntimeError:' \
       ' foo1 problem (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(
     input_string="""\
 a=None
@@ -4467,7 +4467,7 @@ a=None
     assert e.startswith(
       'Error constructing definition type "foo2(bar=1)": RuntimeError: ')
     assert e.endswith(' foo2 problem (input line 2)')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse(
     input_string="""\
 a=None
@@ -4478,7 +4478,7 @@ a=None
     assert str(e) == \
       'Error constructing definition type "foo2(foo=1)": TypeError:' \
       " __init__() got an unexpected keyword argument 'foo' (input line 2)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse("""\
 a=None
   .type=foo2(foo=1
@@ -4487,7 +4487,7 @@ a=None
   except RuntimeError, e:
     assert str(e).startswith('Error evaluating definition type "foo2(foo=1": ')
     assert str(e).endswith(' (input line 2)')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: phil.parse("""\
 a=None
   .type=foo2(foo=1=2)
@@ -4496,7 +4496,7 @@ a=None
   except RuntimeError, e:
     assert str(e) == 'Error constructing definition type "foo2(foo=1=2)":' \
       ' SyntaxError: invalid syntax (line 1) (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_command_line():
   master_phil = phil.parse(input_string="""\
@@ -4532,7 +4532,7 @@ Ambiguous parameter definition: max = 5
 Best matches:
   foo.max
   bar.max""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert itpr_bar.process(arg="limit=0").as_str() == "bar.sub.limit = 0\n"
   assert itpr_bar.process(arg="imit=0").as_str() == "bar.sub.limit = 0\n"
   for itpr in [itpr_bar, itpr_neutral]:
@@ -4544,22 +4544,22 @@ Best matches:
 Error interpreting command line argument as parameter definition:
   "xyz="
   RuntimeError: Missing value for xyz (command line argument, line 1)""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: itpr_bar.process(arg="xyz=8")
   except Sorry, e:
     assert str(e) == "Unknown command line parameter definition: xyz = 8"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: itpr_bar.process(arg="  ")
   except Sorry, e:
     assert str(e) == 'Command line parameter definition has no effect: "  "'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   itpr = phil.command_line.argument_interpreter(
     master_phil=master_phil,
     argument_description="")
   try: itpr.process(arg="bar {}")
   except Sorry, e:
     assert str(e) == 'Parameter definition has no effect: "bar {}"'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_choice_multi_plus_support():
   master_phil = libtbx.phil.parse("""\
@@ -4594,7 +4594,7 @@ Not a possible choice for u: %s (command line argument, line 1)
     a
     b
     c""" % err)
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   for val in ["++a", "a++", "a++b", "a+b+"]:
     try: master_phil.fetch(source=cai.process(arg="u="+val))
     except Sorry, e:
@@ -4604,7 +4604,7 @@ Not a possible choice for u: %s (command line argument, line 1)
     a
     b
     c""" % val)
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
 
 def exercise_scope_call():
   try: phil.parse("""\
@@ -4616,7 +4616,7 @@ s
   except AttributeError, e:
     assert str(e) == 'scope "s" .call: object "scope_call_none" not found in' \
       ' module "libtbx.phil.tst" (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try: phil.parse("""\
 s
@@ -4628,7 +4628,7 @@ s
     assert str(e) \
       == 'scope "s" .call: "libtbx.phil.tst.scope_call_not_callable"' \
         ' is not a callable Python object (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try: phil.parse("""\
 s
@@ -4640,7 +4640,7 @@ s
     assert str(e).startswith(
       'scope "s" .call=libtbx.phil.tst.scope_call_func(: ')
     assert str(e).endswith(' (input line 2)')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try: phil.parse("""\
 s
@@ -4651,7 +4651,7 @@ s
   except RuntimeError, e:
     assert str(e) == 'scope "s" .call=libtbx.phil.tst.scope_call_func(a=b=c):'\
       ' SyntaxError: invalid syntax (line 1) (input line 2)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   master = phil.parse("""\
 s
@@ -4713,11 +4713,11 @@ v {
     assert str(e) \
       == 'scope "u" .call=libtbx.phil.tst.scope_call_func(a=1, b=2)' \
         ' execution: ValueError: action==raise (input line 10)'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: params.v()
   except RuntimeError, e:
     assert str(e) == 'scope "v" is not callable.'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   master = phil.parse("""\
 s

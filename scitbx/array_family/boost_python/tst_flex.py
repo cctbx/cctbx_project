@@ -1,7 +1,8 @@
 from scitbx.array_family import flex
 from scitbx.python_utils import command_line
 from scitbx import matrix
-from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, \
+  not_approx_equal, show_diff
 import libtbx.math_utils
 from cStringIO import StringIO
 import pickle
@@ -221,19 +222,19 @@ def exercise_flex_constructors():
           try: flex.double(row_type([column_type([]),column_type([1])]))
           except RuntimeError, e:
             assert str(e) == "matrix columns must have identical sizes."
-          else: raise RuntimeError("Exception expected.")
+          else: raise Exception_expected
           try: flex.double(row_type([column_type([0]),column_type(["x"])]))
           except TypeError, e:
             assert str(e) in [
               "bad argument type for built-in operation",
               "a float is required"]
-          else: raise RuntimeError("Exception expected.")
+          else: raise Exception_expected
   for arg in [[[0],""], ([0],"",)]:
     try: flex.double(arg)
     except RuntimeError, e:
       assert str(e) == \
         "argument must be a Python list or tuple of lists or tuples."
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   #
   assert list(flex.int_range(stop=3)) == range(3)
   assert list(flex.int_range(start=1, stop=3)) == range(1, 3)
@@ -252,15 +253,15 @@ def exercise_flex_constructors():
   try: flex.int_range(0, 0, 0)
   except RuntimeError, e:
     assert str(e) == "range step argument must not be zero."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: flex.size_t_range(-1, 0, 1)
   except RuntimeError, e:
     assert str(e) == "range start argument must not be negative."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: flex.size_t_range(0, -1, 1)
   except RuntimeError, e:
     assert str(e) == "range stop argument must not be negative."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_misc():
   assert flex.double.element_size() != 0
@@ -332,7 +333,7 @@ def exercise_misc():
     try: flex.double(s)
     except Exception, e:
       assert str(e).startswith("Python argument types in")
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   #
   a = flex.double(12)
   assert a.focus() == (12,)
@@ -343,7 +344,7 @@ def exercise_misc():
   try: a.reshape(flex.grid(5,6))
   except RuntimeError, e:
     assert str(e).find("SCITBX_ASSERT(grid.size_1d() == a.size())") > 0
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_1d_slicing_core(a):
   if (tuple(a[:]) != ()):
@@ -690,7 +691,7 @@ def exercise_bool():
   except TypeError, e:
     assert str(e) \
         == "Type of argument must be a Python bool, flex.bool, or None."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert tuple(a != True) == (True, False, True, False)
   assert tuple(a != False) == (False, True, False, True)
   assert a != None
@@ -699,7 +700,7 @@ def exercise_bool():
   except TypeError, e:
     assert str(e) \
         == "Type of argument must be a Python bool, flex.bool, or None."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert [a, a].count(None) == 0
   assert [a, None].count(None) == 1
   assert a.all_eq(a)
@@ -720,7 +721,7 @@ def exercise_bool():
     try: mf(None)
     except TypeError, e:
       assert str(e) == "Type of argument must be a Python bool or flex.bool."
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   assert tuple(~a) == (True, False, True, False)
   assert tuple(a & b) == (False, True, False, False)
   assert tuple(a | b) == (False, True, True, True)
@@ -870,7 +871,7 @@ def exercise_functions():
   try: a.counts(max_keys=2)
   except RuntimeError, e:
     assert str(e) == "scitbx::af::counts::limited: max_keys exceeded."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   x = flex.double([-6.3,7.2])
   assert approx_equal(flex.fmod(x, 5), [-1.3, 2.2])
@@ -1464,7 +1465,7 @@ def exercise_linear_interpolation():
       try: flex.linear_interpolation(tab_x, tab_y, 0)
       except KeyboardInterrupt: raise
       except: pass
-      else: raise RuntimeError("Exception expected.")
+      else: raise Exception_expected
     x = flex_type([1.3,2.4,3.6])
     assert approx_equal(flex.linear_interpolation(tab_x, tab_y, x, 1.e-6),
       [13,24,36])
@@ -1746,7 +1747,7 @@ def exercise_matrix():
   try: lu.matrix_lu_decomposition_in_place()
   except RuntimeError, e:
     assert str(e) == "lu_decomposition_in_place: singular matrix"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   lu = flex.double([1,0,0,0,1,0,0,0,1])
   lu.resize(flex.grid(3,3))
   b = flex.double([1,2,3])
@@ -1754,7 +1755,7 @@ def exercise_matrix():
   try: lu.matrix_lu_back_substitution(pivot_indices, b)
   except RuntimeError, e:
     assert str(e) == "lu_back_substitution: pivot_indices[i] out of range"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   lu = flex.double([1,6,4,32,6,2,-1,63,-4,1,4,6,1,0,-13,5])
   lu.resize(flex.grid(4,4))
   pivot_indices = lu.matrix_lu_decomposition_in_place()
@@ -1888,13 +1889,13 @@ def exercise_matrix():
   try: e.matrix_symmetric_as_packed_u()
   except RuntimeError, err:
     assert str(err) == "symmetric_as_packed_u(): matrix is not symmetric."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   p = e.matrix_symmetric_as_packed_u(relative_epsilon=1)
   assert approx_equal(p, [1,2,3,4,7,6])
   try: e.matrix_symmetric_as_packed_l()
   except RuntimeError, err:
     assert str(err) == "symmetric_as_packed_l(): matrix is not symmetric."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   p = e.matrix_symmetric_as_packed_l(relative_epsilon=1)
   assert approx_equal(p, [1,2,4,3,7,6])
   p = flex.double(4)
@@ -1904,7 +1905,7 @@ def exercise_matrix():
     except RuntimeError, e:
       assert str(e).endswith(
         "SCITBX_ASSERT(n*(n+1)/2 == packed_size) failure.")
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   #
   from scitbx.examples import immoptibox_ports
   immoptibox_ports.py_cholesky_decomposition \

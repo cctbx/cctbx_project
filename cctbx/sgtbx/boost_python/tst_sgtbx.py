@@ -5,7 +5,8 @@ import cctbx.sgtbx.direct_space_asu
 from cctbx import uctbx
 from libtbx import complex_math
 from libtbx.utils import format_cpu_times
-from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, \
+  not_approx_equal, show_diff
 import libtbx.load_env
 import random
 import math
@@ -126,28 +127,28 @@ def exercise_symbols():
   try: s("(x,y,z)")
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: (x,y,z)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: s("P3:2")
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: P3:2"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: s(300)
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Space group number out of range: 300"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: s(space_group_number=1, table_id="x")
   except RuntimeError, e:
     assert str(e) == "cctbx Error: table_id not recognized: x"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   for extension in ["1", ":1"]:
     try: s(space_group_number=75, extension=extension)
     except RuntimeError, e:
       assert str(e) == "cctbx Error: Space group symbol not recognized: 75:1"
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   try: s(space_group_number=75, extension="x")
   except RuntimeError, e:
     assert str(e) == "cctbx Error: Space group symbol not recognized: 75:x"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   for cabc,cxyz in [("2/3a+1/3b+1/3c, -1/3a+1/3b+1/3c, -1/3a-2/3b+1/3c",
                      "x+z,-x+y+z,-y+z"),
@@ -549,28 +550,28 @@ def exercise_rt_mx():
 cctbx Error: Parse error: mix of x,y,z and h,k,l notation:
   h,x,z
   __^""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: rt_mx("")
   except RuntimeError, e:
     assert not show_diff(str(e), """\
 cctbx Error: Parse error: unexpected end of input:
   \n\
   ^""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: rt_mx("x, ")
   except RuntimeError, e:
     assert not show_diff(str(e), """\
 cctbx Error: Parse error: unexpected end of input:
   x, \n\
   ___^""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: rt_mx("x")
   except RuntimeError, e:
     assert not show_diff(str(e), """\
 cctbx Error: Parse error: not enough row expressions:
   x
   _^""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: rt_mx("x,y,x,z")
   except RuntimeError, e:
     assert not show_diff(str(e), """\
@@ -589,7 +590,7 @@ cctbx Error: Parse error: unexpected character:
 cctbx Error: Parse error: a,b,c notation not supported in this context:
   a, b, c
   ^""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   s = rt_mx("y-13/2,y-x+8/3,z+1/4")
   site_frac_1 = (4.2, -5.2, 8.9)
@@ -952,12 +953,12 @@ def exercise_space_group():
 cctbx Error: Parse error: unexpected character:
   -P 4 2 (p)
   ________^""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: space_group("-P 4 2 (x,x,x)")
   except RuntimeError, e:
     assert not show_diff(str(e), """\
 cctbx Error: Rotation matrix is not invertible.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   sg = space_group("-P 2ac 2ab")
   cb = sgtbx.change_of_basis_op("x+1/12,y+1/12,z-1/12")
   sg1 = sg.change_basis(cb)

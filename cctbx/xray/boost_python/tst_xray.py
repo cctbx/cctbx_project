@@ -8,7 +8,8 @@ import cctbx.crystal.direct_space_asu
 from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal, not_approx_equal, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, \
+  not_approx_equal, show_diff
 from cStringIO import StringIO
 import pickle
 
@@ -427,7 +428,7 @@ def exercise_xray_scatterer():
   except RuntimeError, e:
     assert str(e).find("is_compatible_u_star") > 0
   else:
-    raise AssertionError("Exception expected.")
+    raise Exception_expected
   x.apply_symmetry(site_symmetry_ops=ss)
   x.apply_symmetry(site_symmetry_ops=ss, u_star_tolerance=0.5)
   ss = x.apply_symmetry(uc, sg.group(), 0.5, 0)
@@ -740,15 +741,15 @@ def exercise_scattering_type_registry():
   try: reg.unique_index("foo")
   except RuntimeError, e:
     assert str(e) == 'scattering_type "foo" not in scattering_type_registry.'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: reg.gaussian_not_optional(scattering_type="custom")
   except RuntimeError, e:
     assert str(e) == 'gaussian not defined for scattering_type "custom".'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: reg.unique_form_factors_at_d_star_sq(d_star_sq=0)
   except RuntimeError, e:
     assert str(e) == 'gaussian not defined for scattering_type "custom".'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_structure_factors():
   uc = uctbx.unit_cell((10, 10, 13))
@@ -1188,14 +1189,14 @@ def exercise_minimization_apply_shifts():
   except Exception, e:
     assert str(e) == "scitbx Error: Array of shifts is too small."
   else:
-    raise RuntimeError("Exception expected.")
+    raise Exception_expected
   shifts = flex.double(3)
   try:
     xray.ext.minimization_apply_shifts(uc, scatterers, shifts)
   except Exception, e:
     assert str(e) == "cctbx Error: Array of shifts is too large."
   else:
-    raise RuntimeError("Exception expected.")
+    raise Exception_expected
 
 def exercise_minimization_add_gradients():
   uc = uctbx.unit_cell((20, 20, 23))

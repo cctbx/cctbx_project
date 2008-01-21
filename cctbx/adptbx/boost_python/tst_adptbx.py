@@ -3,7 +3,7 @@ from cctbx import adptbx
 from cctbx.array_family import flex
 import scitbx.math.eigensystem
 from scitbx import matrix
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal
 import math
 import random
 
@@ -100,7 +100,7 @@ def exercise_interface():
   s = adptbx.eigensystem(up)
   try: s.vectors(4)
   except RuntimeError, e: assert str(e).endswith("Index out of range.")
-  else: raise AssertionError, "Exception expected."
+  else: raise Exception_expected
   uf = adptbx.eigenvalue_filtering(u_cart=u, u_min=0)
   assert approx_equal(uf, (3.0810418, 4.7950710, 9.3400030,
                            1.7461615, 1.1659954, 6.4800706))

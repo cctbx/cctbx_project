@@ -1,4 +1,5 @@
-import subprocess_with_fixes as subprocess
+try: import subprocess_with_fixes as subprocess
+except ImportError: import subprocess
 import sys, os
 
 def _show_lines(lines, out, prefix):
@@ -361,7 +362,7 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
   except RuntimeError, e:
     if (verbose): print e
     assert str(e).startswith("child process stderr output:\n")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   for stdout_splitlines in [True, False]:
     for n,b in [(10,20),(11,23),(12,26),(13,29)]:
@@ -380,7 +381,7 @@ sys.stderr.flush()"''' % (n_lines_e, ord("\n"))).splitlines())
             assert str(e).endswith("  remaining 3 lines omitted.")
         else:
           assert str(e).endswith("  length of output: %d bytes" % b)
-      else: raise RuntimeError("Exception expected.")
+      else: raise Exception_expected
   #
   fb(command=cat_command).raise_if_errors_or_output()
   #

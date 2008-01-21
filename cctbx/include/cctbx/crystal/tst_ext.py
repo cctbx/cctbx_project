@@ -5,7 +5,7 @@ import cctbx.crystal.direct_space_asu
 from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import matrix
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.itertbx import count
 from libtbx import adopt_init_args
 from cStringIO import StringIO
@@ -1040,7 +1040,7 @@ site_cluster_analysis::discard_last() failure. Potential problems are:
   - discard_last() called twice
   - insert_fixed_site_frac() called previously
   - the previous process_*() call returned false"""
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   site_cluster_analysis.insert_fixed_site_frac(original_site=site)
   assert not site_cluster_analysis.process_site_frac(original_site=site)
   site = (0.3,0.1,0.3)
@@ -1119,7 +1119,7 @@ def exercise_neighbors_max_memory():
     try: fast_pair_generator_init()
     except RuntimeError, e:
       assert str(e).startswith("Excessive number of cubicles:")
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     sites_cart.pop_back()
   if (1):
     crystal.neighbors_max_memory_allocation_set(number_of_bytes=3*6*9)
@@ -1133,7 +1133,7 @@ Estimated memory allocation for cubicles exceeds max_number_of_bytes:
     space_span=(9,18,27)
     n_cubicles=(3,6,9)
     max_number_of_bytes=162""")
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     crystal.neighbors_max_memory_allocation_set(number_of_bytes=mm)
     fast_pair_generator_init()
     sites_cart.pop_back()

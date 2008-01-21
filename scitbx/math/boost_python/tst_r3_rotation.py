@@ -2,7 +2,7 @@ import scitbx.math
 from scitbx import matrix
 from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal
 from stdlib import math
 
 def exercise(axis_range=2, angle_max_division=12, angle_min_power=-30):
@@ -57,7 +57,7 @@ def exercise(axis_range=2, angle_max_division=12, angle_min_power=-30):
                     deg=deg,
                     min_axis_length=1+1.e-5)
                 except RuntimeError: pass
-                else: raise RuntimeError("Exception expected.")
+                else: raise Exception_expected
   #
   for i_trial in xrange(100):
     r = flex.random_double_r3_rotation_matrix()

@@ -4,7 +4,7 @@ import iotbx.pdb.parser
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from libtbx.utils import user_plus_sys_time, format_cpu_times
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -15,11 +15,11 @@ def exercise_hybrid_36():
     try: pdb.hy36encode(width=width, value=0)
     except RuntimeError, e:
       assert str(e) == "unsupported width."
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     try: pdb.hy36decode(width=width, s=s)
     except RuntimeError, e:
       assert str(e) == "unsupported width."
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   ups = user_plus_sys_time()
   n_ok = pdb.hy36recode_width_4_all()
   ups = ups.elapsed()
@@ -82,7 +82,7 @@ def exercise_atom():
   except ValueError, e:
     assert str(e) == "string is too long for name attribute " \
       "(maximum length is 4 characters, 6 given)."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert a.segid == ""
   a.segid = "stuv"
   assert a.segid == "stuv"
@@ -534,7 +534,7 @@ some.pdb, line 2:
   ANISOU    9 2H3  MPR B   5      8+8    848    848      0      0      0
   ---------------------------------^
   unexpected plus sign.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     pdb.input(
       source_info=None,
@@ -549,7 +549,7 @@ input line 3:
   ANISOU    9 2H3  MPR B   5      84-    848    848      0      0      0
   ----------------------------------^
   unexpected minus sign.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     pdb.input(
       source_info=None,
@@ -563,7 +563,7 @@ input line 2:
   ANISOU    9 2H3  MPR B   5    c        848    848      0      0      0
   ------------------------------^
   unexpected character.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try:
     pdb.input(
@@ -576,7 +576,7 @@ some.pdb, line 1:
   ATOM   1045  O   HOH    30    x  0.530  42.610  45.267  1.00 33.84
   ------------------------------^
   not a floating-point number.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     pdb.input(
       source_info="some.pdb",
@@ -588,7 +588,7 @@ some.pdb, line 1:
   ATOM   1045  O   HOH    30     x 0.530  42.610  45.267  1.00 33.84
   -------------------------------^
   not a floating-point number.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     pdb.input(
       source_info="some.pdb",
@@ -600,7 +600,7 @@ some.pdb, line 1:
   ATOM   1045  O   HOH    30       0x530  42.610  45.267  1.00 33.84
   ----------------------------------^
   unexpected character.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_pdb_input():
   for i_trial in xrange(3):
@@ -1200,7 +1200,7 @@ input line 3:
   ATOM
   ^
   ATOM or HETATM record is outside MODEL/ENDMDL block.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     pdb.input(
       source_info=None,
@@ -1214,7 +1214,7 @@ input line 2:
   MODEL        2
   ^
   Missing ENDMDL for previous MODEL record.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     pdb.input(
       source_info=None,
@@ -1228,7 +1228,7 @@ input line 2:
   MODEL        1
   ^
   MODEL record must appear before any ATOM or HETATM records.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     pdb.input(
       source_info=None,
@@ -1242,7 +1242,7 @@ input line 2:
   ENDMDL
   ^
   No matching MODEL record.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -1767,7 +1767,7 @@ model id=0 #chains=1
   except RuntimeError, e:
     assert str(e).endswith(
       "): SCITBX_ASSERT(!construct_hierarchy_was_called_before) failure.")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -1808,7 +1808,7 @@ mix of alternative groups with and without blank altlocs:
   alternative group without blank altloc:
     " CA ASER A   1 "
     " CA BSER A   1 "''')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   try: pdb.input(
     source_info=None,
@@ -1820,7 +1820,7 @@ ATOM      2  CG  LYS   109
 """)).construct_hierarchy()
   except RuntimeError, e:
     assert not show_diff(str(e), "Misplaced BREAK record (input line 3).")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: pdb.input(
     source_info="file abc",
     lines=flex.split_lines("""\
@@ -1834,7 +1834,7 @@ ATOM      4  CB  LYS   110
 """)).construct_hierarchy()
   except RuntimeError, e:
     assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   open("tmp.pdb", "w")
   pdb_inp = pdb.input(file_name="tmp.pdb")
@@ -1858,7 +1858,7 @@ model id=0 #chains=1
   try: pdb.input(file_name="")
   except IOError, e:
     assert str(e).startswith('Cannot open file for reading: ""')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   out = StringIO()
   pdb_inp, hierarchy = pdb.show_summary(
@@ -2068,18 +2068,18 @@ model id=0 #chains=1
   try: f.select_residue_class_in_place(class_name="xyz")
   except RuntimeError, e:
     assert not show_diff(str(e), 'unknown class_name="xyz"')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     f.select_residue_class_in_place(residue_names=flex.std_string(["wxyz"]))
   except RuntimeError, e:
     assert not show_diff(str(e),
       'residue name with more than 3 characters: "wxyz"')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   for s in [f.select_residues_in_place, f.select_residues]:
     try: s(flex.size_t([100]))
     except RuntimeError, e:
       assert not show_diff(str(e), "selection index out of range.")
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -2379,7 +2379,7 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89      STUV A
 Unknown chemical element type: PDB ATOM " N   GLN A   3 " segid="STUV" element=" A"
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -2395,7 +2395,7 @@ ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
 Unknown chemical element type: PDB ATOM "1A   GLN A   3 " element="  "
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -2409,7 +2409,7 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           B 5
   except RuntimeError, e:
     assert not show_diff(str(e), '''\
 Unknown charge: PDB ATOM " N   GLN A   3 " element=" B" charge=" 5"''')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -2434,7 +2434,7 @@ Number of scattering types: 1
   except RuntimeError, e:
     assert not show_diff(str(e), '''\
 Unknown scattering type: PDB ATOM " N   GLN A   3 " element="Cs" charge="3-"''')
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   pdb_inp = pdb.input(
     source_info=None,

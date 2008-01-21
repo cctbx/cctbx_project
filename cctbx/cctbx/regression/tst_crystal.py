@@ -5,7 +5,7 @@ from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import matrix
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal
 import sys
 
 def exercise_symmetry():
@@ -23,7 +23,7 @@ def exercise_symmetry():
   assert xs.is_compatible_unit_cell()
   try: xs = crystal.symmetry((3,4,5), "P 4 2 2")
   except: pass
-  else: raise AssertionError, "Exception expected."
+  else: raise Exception_expected
   xs = crystal.symmetry(
     (3,4,5), "P 4 2 2", assert_is_compatible_unit_cell=False,
     force_compatible_unit_cell=False)
@@ -131,7 +131,7 @@ def exercise_select_crystal_symmetry():
                                                           from_reflection_files = [None] )
   except AssertionError ,e :
     assert str(e)=="No unit cell and symmetry information supplied"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def verify_definitions_in_paper_zwart_2007():
   # Verification of definitions in Peter Zwart's paper for the

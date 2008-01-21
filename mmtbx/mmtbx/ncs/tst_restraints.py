@@ -7,7 +7,7 @@ from cctbx import adptbx
 from cctbx.array_family import flex
 from libtbx.itertbx import count
 from libtbx.utils import Sorry, format_cpu_times
-from libtbx.test_utils import eps_eq, show_diff
+from libtbx.test_utils import Exception_expected, eps_eq, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -424,7 +424,7 @@ def exercise(args):
 NCS restraints selections do not produce any pairs of matching atoms:
   Reference selection: "chain A"
       Other selection: "chain B"''')
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     try:
       ncs.restraints.group.from_atom_selections(
         processed_pdb=processed_pdb,
@@ -438,7 +438,7 @@ NCS restraints selections do not produce any pairs of matching atoms:
 NCS restraints selections produce only one pair of matching atoms:
   Reference selection: "chain A"
       Other selection: "chain C"''')
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     processed_pdb = monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
@@ -457,7 +457,7 @@ NCS restraints selections produce only one pair of matching atoms:
 NCS selection includes an atom on a special position:
   Selection: "chain A"
     Atom: " NE  ARG A  60 "''')
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     log = StringIO()
     group = ncs.restraints.group.from_atom_selections(
       processed_pdb=processed_pdb,

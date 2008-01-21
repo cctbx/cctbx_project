@@ -9,7 +9,7 @@ from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
 import scitbx.math
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -530,15 +530,15 @@ END
   try: isel(r"resSeq")
   except RuntimeError, e:
     assert str(e) == "Missing argument for resSeq."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: isel(r"resSeq 3:2")
   except RuntimeError, e:
     assert str(e) == "range with first index > last index: resseq 3:2"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try: isel(r"resid ' 1K :2'")
   except RuntimeError, e:
     assert str(e) == "range with first index > last index: resid  1K :2"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   #
   sel = sel_cache.get_labels(name=" CA ")
   assert len(sel) == 1
