@@ -17,9 +17,23 @@ from cctbx import adp_restraints
 from mmtbx import ias
 from mmtbx import utils
 from mmtbx import model_statistics
+from mmtbx.solvent import ordered_solvent
 
 
 time_model_show = 0.0
+
+class pdb_structure(object):
+  def __init__(self, xray_structure, atom_attributes_list):
+    self.xray_structure = xray_structure
+    self.atom_attributes_list = atom_attributes_list
+
+  def select(selection):
+    self.xray_structure = self.xray_structure.select(selection)
+    new_atom_attributes_list = []
+    for attr, sel in zip(self.atom_attributes_list, selection):
+      if(sel): new_atom_attributes_list.append(attr)
+    self.atom_attributes_list = new_atom_attributes_list
+
 
 class xh_connectivity_table(object):
   # XXX need angle information as well
@@ -254,16 +268,15 @@ class manager(object):
 
   def solvent_selection(self):
     labels = self.xray_structure.scatterers().extract_labels()
-    res_name_tags = ["HOH","SOL","SOLV","WAT","DOD","TIP3"]
-    atom_name_tags = ["O","OH2","H","H1","H2","D"]
-    element_tags = ["O","H","D",""]
+    water = ordered_solvent.water_ids()
     result = flex.bool()
     for a in self.atom_attributes_list:
       element = (a.element).strip()
       resName = (a.resName).strip()
       name    = (a.name).strip()
-      if((element in element_tags) and (name in atom_name_tags) and \
-         (resName in res_name_tags)):
+      if((element in water.element_types) and
+         (name in water.atom_names) and \
+         (resName in water.residue_names)):
         result.append(True)
       else: result.append(False)
     return result
@@ -349,7 +362,8 @@ class manager(object):
     time_model_show += timer.elapsed()
 
   def remove_solvent(self):
-    return self.select(selection = ~self.solvent_selection())
+    result = self.select(selection = ~self.solvent_selection())
+    return result
 
   def show_occupancy_statistics(self, out=None, text=""):
     global time_model_show
@@ -394,6 +408,7 @@ class manager(object):
                         refine_occupancies = False,
                         refine_adp = None):
     assert refine_adp is not None
+    # XXX print list(solvent_xray_structure.scatterers().extract_scattering_types())
     if(refine_adp == "isotropic"):
       solvent_xray_structure.convert_to_isotropic()
     elif(refine_adp == "anisotropic"):
@@ -402,13 +417,11 @@ class manager(object):
     ms = self.xray_structure.scatterers().size() #
     self.xray_structure = \
       self.xray_structure.concatenate(solvent_xray_structure)
-    #####
     occupancy_flags = None
     if(refine_occupancies):
       occupancy_flags = []
       for i in range(1, solvent_xray_structure.scatterers().size()+1):
         occupancy_flags.append(flex.size_t([ms+i-1]))
-    ####
     if(self.refinement_flags.individual_sites):
       ssites = flex.bool(solvent_xray_structure.scatterers().size(), True)
     else: ssites = None
@@ -602,4 +615,3 @@ class manager(object):
     if(selection_aniso is not None):
       self.xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
-
