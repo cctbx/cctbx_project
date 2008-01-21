@@ -3,7 +3,8 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from cctbx import crystal
-from libtbx.test_utils import approx_equal, not_approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal, \
+  not_approx_equal
 import sys
 import random
 from cPickle import dumps
@@ -538,7 +539,7 @@ def exercise_basic_map():
   except RuntimeError, e:
     assert str(e) == \
       "cctbx Error: basic_map<T>: the coordinate is out of bounds."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   basic_map.set_out_of_bounds_handle(out_of_bounds_clamp.as_handle())
   assert approx_equal(basic_map.get_cart_value((5,5,5)),-123)
   #### unit_cell test ####
@@ -642,7 +643,7 @@ def exercise_non_crystallographic_eight_point_interpolation():
     assert str(e) == \
       "cctbx Error: non_crystallographic_eight_point_interpolation:" \
       " point required for interpolation is out of bounds."
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert approx_equal(maptbx.non_crystallographic_eight_point_interpolation(
     map, grid_mat, (5,5,5), True, -123), -123)
 

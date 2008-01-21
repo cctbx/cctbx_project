@@ -1,5 +1,5 @@
 from boost import rational
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal
 import pickle
 
 def exercise_int():
@@ -84,7 +84,7 @@ def exercise_int():
   except RuntimeError, e:
     assert str(e) == "boost.rational: as_int() conversion error:" \
       " denominator is different from one."
-  else: raise RuntimeError("Exception expected")
+  else: raise Exception_expected
   for n in xrange(-5,6):
     for d in xrange(1,10):
       r = rational.int(n, d)

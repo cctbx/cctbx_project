@@ -2,7 +2,7 @@ from cctbx import geometry_restraints
 from cctbx.array_family import flex
 from libtbx import phil
 from libtbx.utils import format_cpu_times
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import Exception_expected, show_diff
 from cStringIO import StringIO
 
 def exercise_atom():
@@ -292,7 +292,7 @@ def exercise_alteration():
     assert str(e) == 'Unknown cctbx::geometry_restraints::motif::alteration' \
       '::action_type: "chnage"\n' \
       '  Possible action types are: "", "add", "delete", "change"'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   for operand in ["", "atom", "bond", "angle", "dihedral",
                   "chirality", "planarity"]:
     a.operand = operand
@@ -303,7 +303,7 @@ def exercise_alteration():
       '::operand_type: "diehdral"\n' \
       '  Possible operand types are: "", "atom", "bond", "angle",' \
       ' "dihedral", "chirality", "planarity"'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   a.motif_ids = flex.std_string(["-", "+"])
   assert list(a.motif_ids) == ["-", "+"]
   a.atom = geometry_restraints.motif_atom(name="a")
@@ -331,7 +331,7 @@ def exercise_alteration():
     assert str(e) == 'Unknown cctbx::geometry_restraints::motif::alteration' \
       '::action_type: "chnage"\n' \
       '  Possible action types are: "", "add", "delete", "change"'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert a.planarity_atom_actions_as_list() == []
   assert list(a.planarity.atom_names) == ["p", "q"]
   assert a.set_change_partial_charge(state=True) is a

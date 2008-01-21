@@ -1,6 +1,6 @@
 from cctbx.eltbx import xray_scattering
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal
 import pickle
 import math
 import string
@@ -25,7 +25,7 @@ def exercise_basic():
       exact=True, optional=False)
   except RuntimeError, e:
     assert str(e) == 'Unknown scattering type label: "SI1+"'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_gaussian():
   g = xray_scattering.gaussian(0)

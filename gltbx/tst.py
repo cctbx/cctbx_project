@@ -1,6 +1,6 @@
 from gltbx import gl
 from gltbx import glu
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import Exception_expected, show_diff
 import sys
 
 def exercise_converter():
@@ -23,14 +23,14 @@ def exercise_converter():
 Argument "textures" has the wrong number of elements:
   expected size: 4
      given size: 3""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     textures = [9,"foo",5]
     gl.glGenTextures(3, textures)
   except RuntimeError, e:
     assert not show_diff(str(e), """\
 Argument "textures" has one or more elements of the wrong type.""")
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_all():
   print "trying glGetError()...",

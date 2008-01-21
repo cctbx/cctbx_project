@@ -7,7 +7,7 @@ from cctbx import sgtbx
 from scitbx import matrix
 from scitbx.python_utils.misc import get_caller_name
 from libtbx.utils import time_log
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal
 import math
 import random
 import sys
@@ -223,7 +223,7 @@ def exercise_gruber_1973_example():
   except krivy_gruber_1976.iteration_limit_exceeded:
     pass
   else:
-    raise RuntimeError, "Exception expected."
+    raise Exception_expected
   assert not start.is_buerger_cell()
   assert not start.is_niggli_cell()
   assert buerger.is_buerger_cell()

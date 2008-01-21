@@ -4,7 +4,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.itertbx import count
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -18,7 +18,7 @@ def exercise_read_corrupt():
     try: mtz.object(file_name="tmp.mtz")
     except RuntimeError, e:
       assert str(e) == "cctbx Error: MTZ file read error: tmp.mtz"
-    else: raise AssertionError("Exception expected.")
+    else: raise Exception_expected
 
 def exercise_basic():
   assert mtz.ccp4_liberr_verbosity(-1) == 0
@@ -81,7 +81,7 @@ def exercise_basic():
     except RuntimeError, e:
       assert str(e) == 'mtz::crystal::set_name(new_name="unknown3"):' \
         ' new_name is used already for another crystal.'
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     assert crystal.name() == "abc"
     assert crystal.set_name("unknown") is crystal
     assert crystal.name() == "unknown"
@@ -124,7 +124,7 @@ def exercise_basic():
     except RuntimeError, e:
       assert str(e) == 'mtz::column::set_label(new_label="a,b,c"):' \
         ' new_label must not include commas.'
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     assert column.label() == "New"
     assert column.set_label(new_label="New") is column
     assert column.label() == "New"
@@ -132,7 +132,7 @@ def exercise_basic():
     except RuntimeError, e:
       assert str(e) == 'mtz::column::set_label(new_label="K"):' \
         ' new_label is used already for another column.'
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
     assert column.set_label("H") is column
     assert column.label() == "H"
     assert column.type() == "H"
@@ -686,7 +686,7 @@ Crystal 3:
   except RuntimeError, e:
     assert str(e) == 'mtz::dataset::set_name(new_name="dataset_1"):' \
       ' new_name is used already for another dataset.'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   assert dataset_0_0.name() == "dataset_0"
   #
   for stage in [0,1]:
@@ -862,7 +862,7 @@ Crystal 3:
   except RuntimeError, e:
     assert str(e) == 'mtz::dataset::add_column(label="a,b,c", ...):' \
       ' label must not include commas.'
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   for label in "HKL":
     dataset.add_column(label=label, type="H")
   column = dataset.add_column(label="F", type="F")

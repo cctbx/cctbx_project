@@ -4,6 +4,7 @@ from iotbx import mtz
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
+from libtbx.test_utils import Exception_expected
 from libtbx.utils import Sorry
 from cStringIO import StringIO
 import os
@@ -287,7 +288,7 @@ to specify an unambiguous substring of the target label.
       assert str(e) == "r_free_flags.disable_suitability_test=True:" \
         " Suitability test for R-free flags can only be disabled if both" \
         " r_free_flags.label and r_free_flags.test_flag_value are defined."
-    else: raise RuntimeError("Exception expected.")
+    else: raise Exception_expected
 
 def exercise_get_experimental_phases():
   crystal_symmetry = crystal.symmetry(
@@ -328,7 +329,7 @@ def exercise_get_experimental_phases():
 No array of experimental phases found.
 
 """
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise():
   exercise_get_xtal_data()

@@ -1,5 +1,5 @@
 from libtbx import utils
-from libtbx.test_utils import show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
 
 def exercise_indented_display():
@@ -47,7 +47,6 @@ level0
 """)
 
 def exercise_approx_equal():
-  from libtbx.test_utils import approx_equal
   assert approx_equal(1., 1. + 1e-11)
   assert approx_equal(1+1j, 0.997+1.004j, eps=1e-2)
   assert approx_equal(1, 0.997+0.004j, eps=1e-2)
@@ -65,7 +64,7 @@ def exercise():
   except KeyboardInterrupt: raise
   except:
     assert utils.format_exception() == "RuntimeError: Trial"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   try:
     assert 1 == 2
   except KeyboardInterrupt: raise
@@ -73,7 +72,7 @@ def exercise():
     s = utils.format_exception()
     assert s.startswith("AssertionError: ")
     assert s.find("tst_utils.py line ") >= 0
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   exercise_indented_display()
   exercise_approx_equal()
   print "OK"

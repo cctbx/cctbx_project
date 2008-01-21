@@ -7,7 +7,8 @@ from cctbx import adptbx
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal, is_above_limit, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, \
+  is_above_limit, show_diff
 from libtbx.test_utils import not_approx_equal
 import random
 import pickle
@@ -80,7 +81,7 @@ Anomalous scatterer group with significantly different f_double_prime:
   f_double_prime max:  3
   f_double_prime mean: 2.5
   tolerance: 0.0001"""
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
 
 def exercise_structure():
   cs1 = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")

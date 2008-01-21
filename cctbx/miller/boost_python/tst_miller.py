@@ -4,7 +4,7 @@ from cctbx import miller
 from cctbx.array_family import flex
 import scitbx.math
 from libtbx.complex_math import polar
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal
 import pickle
 import random
 import math
@@ -527,7 +527,7 @@ def exercise_merge_equivalents():
   except RuntimeError, e:
     assert str(e) == "cctbx Error: merge_equivalents_exact:"\
       " incompatible flags for hkl = (3, 0, 3)"
-  else: raise RuntimeError("Exception expected.")
+  else: raise Exception_expected
   d = flex.int((3,3,5,5,5,7))
   m = miller.ext.merge_equivalents_exact_int(i, d)
   assert list(m.data) == [3, 5, 7]

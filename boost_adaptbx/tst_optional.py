@@ -1,3 +1,4 @@
+from libtbx.test_utils import Exception_expected
 import boost.optional
 import sys
 
@@ -14,7 +15,7 @@ def exercise(args):
     except Exception, e:
       assert str(e).splitlines()[2] == "did not match C++ signature:"
     else:
-      raise RuntimeError("Exception expected.")
+      raise Exception_expected
     exercise_wstring = getattr(boost.optional, "exercise_wstring", None)
     if (not forever): print "exercise_wstring:", exercise_wstring
     if (exercise_wstring is not None):
