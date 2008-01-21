@@ -2,9 +2,10 @@ from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
+from cctbx import xray
 from iotbx import shelx
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.math_utils import are_equivalent
 import cStringIO
 
@@ -81,8 +82,8 @@ def exercise_lexing():
 def exercise_parsing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
   l = shelx.crystal_symmetry_parser(stream)
-  l.lex()
-  assert l.crystal_symmetry.is_similar_symmetry(
+  l.parse()
+  assert l.builder.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
       unit_cell=uctbx.unit_cell((7.350, 9.541, 12.842, 90, 90, 90)),
       space_group_symbol='Pbca'),
@@ -91,8 +92,8 @@ def exercise_parsing():
 
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_P1))
   l = shelx.crystal_symmetry_parser(stream)
-  l.lex()
-  assert l.crystal_symmetry.is_similar_symmetry(
+  l.parse()
+  assert l.builder.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
       unit_cell=uctbx.unit_cell((1,2,3,99,100,101)),
       space_group_symbol='P1'),
@@ -100,20 +101,21 @@ def exercise_parsing():
     absolute_angle_tolerance=1e-15)
 
   for set_grad_flags in (False, True):
+    builder=shelx.crystal_structure_builder(set_grad_flags=set_grad_flags)
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
-    l_cs = shelx.crystal_symmetry_parser(stream)
-    l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                          get_crystal_symmetry=l_cs.get_crystal_symmetry,
-                          set_grad_flags=set_grad_flags)
-    l.lex()
-    assert l.crystal_symmetry.is_similar_symmetry(
+    l_cs = shelx.crystal_symmetry_parser(stream, builder)
+    l = shelx.atom_parser(l_cs.filtered_commands(), builder)
+    l.parse()
+    structure = l.builder.structure
+    isinstance(structure, xray.structure)
+    assert structure.crystal_symmetry().is_similar_symmetry(
       crystal.symmetry(
         unit_cell=uctbx.unit_cell((11.492, 6.621, 11.453, 90, 95.615, 90)),
         space_group_symbol='P2(1)/c'),
       relative_length_tolerance=1e-15,
       absolute_angle_tolerance=1e-15)
-    scatterers = l.structure.scatterers()
-    unit_cell = l.structure.unit_cell()
+    scatterers = structure.scatterers()
+    unit_cell = structure.unit_cell()
     assert len(scatterers) == 21
     scatterer_labelled = dict([ (s.label, s) for s in scatterers ])
     o2 = scatterer_labelled['O2']
@@ -153,21 +155,21 @@ def exercise_parsing():
         assert not f.grad_fdp()
 
   for set_grad_flags in (False, True):
+    builder=shelx.crystal_structure_builder(set_grad_flags=set_grad_flags)
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_disordered))
-    l_cs = shelx.crystal_symmetry_parser(stream)
-    l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                          get_crystal_symmetry=l_cs.get_crystal_symmetry,
-                          set_grad_flags=set_grad_flags)
-    l.lex()
-    assert l.crystal_symmetry.is_similar_symmetry(
+    l_cs = shelx.crystal_symmetry_parser(stream, builder)
+    l = shelx.atom_parser(l_cs.filtered_commands(), builder)
+    l.parse()
+    structure = l.builder.structure
+    assert structure.crystal_symmetry().is_similar_symmetry(
       crystal.symmetry(
         unit_cell=uctbx.unit_cell((6.033, 6.830, 7.862,
                                    107.70, 103.17, 95.81)),
         space_group_symbol='P-1'),
       relative_length_tolerance=1e-15,
       absolute_angle_tolerance=1e-15)
-    scatterers = l.structure.scatterers()
-    unit_cell = l.structure.unit_cell()
+    scatterers = structure.scatterers()
+    unit_cell = structure.unit_cell()
     assert len(scatterers) == 15
     scatterer_labelled = dict([ (s.label, s) for s in scatterers ])
     br2, br3 = [ scatterer_labelled[x] for x in ('BR2', 'BR3') ]
@@ -184,33 +186,33 @@ def exercise_parsing():
       for a in (c12, h121, h122, h123):
         assert a.flags.grad_occupancy()
 
+  builder=shelx.crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt))
-  l_cs = shelx.crystal_symmetry_parser(stream)
-  l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                        get_crystal_symmetry=l_cs.get_crystal_symmetry)
+  l_cs = shelx.crystal_symmetry_parser(stream, builder)
+  l = shelx.atom_parser(l_cs.filtered_commands(), builder)
   try:
-    l.lex()
-    raise AssertionError
+    l.parse()
+    raise Exception_expected
   except shelx.illegal_argument_error, e:
     assert e.args[0] == 3 and e.args[-1] == '0.3.'
 
+  builder=shelx.crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt_1))
-  l_cs = shelx.crystal_symmetry_parser(stream)
-  l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                        get_crystal_symmetry=l_cs.get_crystal_symmetry)
+  l_cs = shelx.crystal_symmetry_parser(stream, builder)
+  l = shelx.atom_parser(l_cs.filtered_commands(), builder)
   try:
-    l.lex()
-    raise AssertionError
+    l.parse()
+    raise Exception_expected
   except shelx.illegal_scatterer_error, e:
     assert e.args[0] == 'O'
 
+  builder=shelx.crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_missing_sfac))
-  l_cs = shelx.crystal_symmetry_parser(stream)
-  l = shelx.atom_parser(command_stream=l_cs.filtered_commands(),
-                        get_crystal_symmetry=l_cs.get_crystal_symmetry)
+  l_cs = shelx.crystal_symmetry_parser(stream, builder)
+  l = shelx.atom_parser(l_cs.filtered_commands(), builder)
   try:
-    l.lex()
-    raise AssertionError
+    l.parse()
+    raise Exception_expected
   except shelx.missing_sfac_error, e:
     pass
 
