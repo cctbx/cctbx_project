@@ -16,6 +16,8 @@ else:
 
 diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
+Exception_expected = RuntimeError("Exception expected.")
+
 class Default: pass
 
 def run_tests(build_dir, dist_dir, tst_list):

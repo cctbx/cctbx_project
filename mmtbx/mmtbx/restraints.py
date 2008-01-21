@@ -22,7 +22,7 @@ class manager(object):
     if (self.ncs_groups is None):
       ncs_groups = None
     else:
-      ncs_groups = self.ncs_groups.select(selection=selection)
+      ncs_groups = self.ncs_groups.select(iselection=selection.iselection())
     return manager(
       geometry=geometry,
       ncs_groups=ncs_groups,
