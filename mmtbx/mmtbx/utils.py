@@ -31,6 +31,7 @@ import random, sys, os
 from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
 import libtbx.load_env
+from mmtbx.solvent import ordered_solvent
 
 
 def miller_array_symmetry_safety_check(miller_array,
@@ -838,18 +839,12 @@ class process_pdb_file_srv(object):
     if(self.pdb_parameters is not None):
       self.pdb_parameters.file_name = [
         os.path.abspath(file_name) for file_name in pdb_file_names]
-    if(len(pdb_file_names) == 1):
-       pdb_file_name = pdb_file_names[0]
-       raw_records = None
-       pdb_inp = iotbx.pdb.input(file_name = pdb_file_name)
-    else:
-      pdb_file_name = None
-      raw_records = []
-      raw_records_flex = flex.std_string()
-      for file_name in pdb_file_names:
-        raw_records.extend(open(file_name).readlines())
-        raw_records_flex.extend(flex.split_lines(open(file_name).read()))
-      pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records_flex)
+    raw_records_flex = flex.std_string()
+    raw_records = []
+    for file_name in pdb_file_names:
+      raw_records.extend(open(file_name).readlines())
+      raw_records_flex.extend(flex.split_lines(open(file_name).read()))
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records_flex)
     if(pdb_inp.atoms().size() == 0):
       msg = ["No atomic coordinates found in PDB files:"]
       for file_name in pdb_file_names:
@@ -859,7 +854,6 @@ class process_pdb_file_srv(object):
       mon_lib_srv              = self.mon_lib_srv,
       ener_lib                 = self.ener_lib,
       params                   = self.pdb_interpretation_params,
-      file_name                = pdb_file_name,
       raw_records              = raw_records,
       strict_conflict_handling = False,
       crystal_symmetry         = self.crystal_symmetry,
