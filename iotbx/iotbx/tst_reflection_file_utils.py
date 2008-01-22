@@ -306,6 +306,8 @@ to specify an unambiguous substring of the target label.
 
 """
     err = reflection_file_srv.err = StringIO()
+  else:
+    raise Exception_expected
   f_obs = reflection_file_srv.get_xray_data(
     file_name=None,
     labels=["F1", "SIGF1"],
@@ -332,6 +334,8 @@ to specify an unambiguous substring of the target label.
 
 """
     err = reflection_file_srv.err = StringIO()
+  else:
+    raise Exception_expected
   assert len(reflection_file_srv.file_name_miller_arrays) == 1
   f_obs = reflection_file_srv.get_xray_data(
     file_name="tmp1.mtz",
@@ -367,6 +371,8 @@ to specify an unambiguous substring of the target label.
 
 """
     err = reflection_file_srv.err = StringIO()
+  else:
+    raise Exception_expected
 
 def exercise_get_r_free_flags():
   crystal_symmetry = crystal.symmetry(
