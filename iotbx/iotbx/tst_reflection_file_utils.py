@@ -9,7 +9,7 @@ from libtbx.utils import Sorry
 from cStringIO import StringIO
 import os
 
-def exercise_get_amplitudes():
+def exercise_get_amplitudes_and_get_phases_deg():
   crystal_symmetry = crystal.symmetry(
     unit_cell=(10,11,12,85,95,100),
     space_group_symbol="P 1")
@@ -152,6 +152,10 @@ Please specify an unambiguous substring of the target label.
       sigmas=flex.random_double(size=miller_set.indices().size())/10)
         .set_observation_type_xray_intensity(),
     column_root_label="F3")
+  mtz_dataset.add_miller_array(
+    miller_array=miller_set.array(
+      data=flex.hendrickson_lattman(miller_set.indices().size(), (0,0,0,0))),
+    column_root_label="P")
   mtz_dataset.mtz_object().write("tmp3.mtz")
   reflection_files = [reflection_file_reader.any_reflection_file(
     file_name="tmp3.mtz")]
@@ -193,6 +197,56 @@ Please specify an unambiguous substring of the target label.
     parameter_name="labels")
   assert str(ampl.info()) == "tmp3.mtz:F3,as_amplitude_array"
   assert ampl.is_real_array()
+  #
+  phases = reflection_file_srv.get_phases_deg(
+    file_name=None,
+    labels=["f2"],
+    convert_to_phases_if_necessary=False,
+    original_phase_units=None,
+    parameter_scope="phases",
+    parameter_name="labels")
+  assert str(phases.info()) == "tmp3.mtz:F2,PHIF2"
+  assert phases.is_complex_array()
+  phases = reflection_file_srv.get_phases_deg(
+    file_name=None,
+    labels="f2",
+    convert_to_phases_if_necessary=True,
+    original_phase_units=None,
+    parameter_scope=None,
+    parameter_name="labels")
+  assert str(phases.info()) == "tmp3.mtz:PHIF2"
+  assert phases.is_real_array()
+  assert flex.mean(phases.data()) > 5
+  phases = reflection_file_srv.get_phases_deg(
+    file_name=None,
+    labels=["PA"],
+    convert_to_phases_if_necessary=False,
+    original_phase_units=None,
+    parameter_scope="phases",
+    parameter_name="labels")
+  assert str(phases.info()) == "tmp3.mtz:PA,PB,PC,PD"
+  phases = reflection_file_srv.get_phases_deg(
+    file_name=None,
+    labels=["PA"],
+    convert_to_phases_if_necessary=True,
+    original_phase_units=None,
+    parameter_scope="phases",
+    parameter_name="labels")
+  assert str(phases.info()) \
+      == "tmp3.mtz:PA,PB,PC,PD,converted_to_centroid_phases"
+  assert phases.is_real_array()
+  for original_phase_units in [None, "deg", "rad"]:
+    phases = reflection_file_srv.get_phases_deg(
+      file_name=None,
+      labels="F0",
+      convert_to_phases_if_necessary=False,
+      original_phase_units=original_phase_units,
+      parameter_scope=None,
+      parameter_name="labels")
+    if (original_phase_units != "rad"):
+      assert str(phases.info()) == "tmp3.mtz:F0"
+    else:
+      assert str(phases.info()) == "tmp3.mtz:F0,converted_to_deg"
 
 def exercise_get_xtal_data():
   crystal_symmetry = crystal.symmetry(
@@ -517,7 +571,7 @@ No array of experimental phases found.
   else: raise Exception_expected
 
 def exercise():
-  exercise_get_amplitudes()
+  exercise_get_amplitudes_and_get_phases_deg()
   exercise_get_xtal_data()
   exercise_get_r_free_flags()
   exercise_get_experimental_phases()
