@@ -2,13 +2,16 @@ from __future__ import division
 from gltbx import wx_viewer
 import wx
 import gltbx.util
+from gltbx import gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
+from gltbx import wx_controllers
 from scitbx.math import minimum_covering_sphere
 from scitbx.array_family import flex
 from scitbx import iso_surface
 from cctbx import maptbx
 from libtbx import easy_pickle
+from libtbx import object_oriented_patterns as oop
 import itertools
 import math
 
@@ -23,10 +26,11 @@ class map_view(wx_viewer.wxGLWindow):
     assert fft_map is None or (unit_cell is None and raw_map is None)
     import time
     super(map_view, self).__init__(frame, **kwds)
-    self.buffer_factor = 2.0
-    self.back_colour = (0,)*4
-    self.wires = wires
     self._gl_has_been_initialised = False
+    self.buffer_factor = 2.0
+    self.background_colour = (0,)*4
+    self.wires = wires
+    self.material = gl_managed.material_model()
 
     if fft_map is not None:
       unit_cell = fft_map.unit_cell()
@@ -45,7 +49,9 @@ class map_view(wx_viewer.wxGLWindow):
     print "Gridding: %i x %i x %i" % (na,nb,nc)
     def f(iso_level):
       return iso_surface.triangulation(rho, iso_level,
-                                       map_extent=(1,1,1))
+                                       map_extent=(1,1,1),
+                                       ascending_normal_direction=False
+                                     )
     self._compute_triangulation = f
 
     density_stats = maptbx.statistics(rho)
@@ -66,7 +72,6 @@ class map_view(wx_viewer.wxGLWindow):
 
   def iso_level(self):
     return self._iso_level
-
   def set_iso_level(self, x):
     try:
       if self._iso_level == x: return
@@ -76,39 +81,47 @@ class map_view(wx_viewer.wxGLWindow):
     self.triangulation = self._compute_triangulation(x)
     if self._gl_has_been_initialised:
       self.OnRedraw()
-
   iso_level = property(iso_level, set_iso_level)
+
+  def wires(self):
+    return self._wires
+  def set_wires(self, x):
+    try:
+      if self._wires == x: return
+    except AttributeError:
+      pass
+    self._wires = x
+    if self._gl_has_been_initialised:
+      self.OnRedraw()
+  wires = property(wires, set_wires)
+
+  def on_lighting_or_material_change(self):
+    if self._gl_has_been_initialised:
+      self.OnRedraw()
 
   def InitGL(self):
     gltbx.util.handle_error()
 
-    glClearColor(*self.back_colour)
+    glClearColor(*self.background_colour)
     self.initialize_modelview()
     gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
 
+    glEnable(GL_DEPTH_TEST)
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
-    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+    glShadeModel(GL_SMOOTH)
     glLightfv(GL_LIGHT0, GL_POSITION, [1, 1, 1, 0])
+
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glEnableClientState(GL_NORMAL_ARRAY)
 
     gltbx.util.handle_error()
     self._gl_has_been_initialised = True
 
   def DrawGL(self):
-
-    glShadeModel(GL_SMOOTH)
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE,
-                 [0.1, 0.5, 0.8, 1.])
-    #glMaterialfv(GL_FRONT, GL_SPECULAR, [1., 1., 1., 1.])
-    #glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 100.)
-
-    glEnableClientState(GL_VERTEX_ARRAY)
-    glEnableClientState(GL_NORMAL_ARRAY)
-
     glMatrixMode(GL_MODELVIEW)
     glPushMatrix()
     glMultTransposeMatrixd(self.orthogonaliser)
-
     self.draw_unit_cell()
     self.draw_triangulation()
     glPopMatrix()
@@ -117,6 +130,11 @@ class map_view(wx_viewer.wxGLWindow):
     lw = [0.]
     glGetFloatv(GL_LINE_WIDTH, lw)
     glLineWidth(2)
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE,
+                 (0.7, 0.7, 0.7, 1.))
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0, 0, 0, 1))
+    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0)
 
     glBegin(GL_LINE_LOOP)
     glVertex3f(0,0,0)
@@ -143,40 +161,40 @@ class map_view(wx_viewer.wxGLWindow):
     glLineWidth(lw[0])
 
   def draw_triangulation(self):
+    self.material.execute(specular=not self.wires)
     if self.wires:
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
     else:
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
     va = gltbx.util.vertex_array(self.triangulation.vertices,
                                  self.triangulation.normals)
     va.draw_triangles(self.triangulation.triangles)
 
+  def process_pick_points(self):
+    pass
 
-class map_viewer(wx_viewer.App):
-  """ Proof of concept for an electron density viewer with a slider to change
-  the value of the iso-level.
-  """
 
-  def __init__(self, fft_map=None, unit_cell=None, raw_map=None,
+class App(wx_viewer.App):
+
+  def __init__(self,
+               fft_map=None,
+               unit_cell=None, raw_map=None,
                wires=True,
                **kwds):
-    self.map = fft_map
-    self.unit_cell = unit_cell
-    self.raw_map = raw_map
-    self.wires = wires
-    super(map_viewer, self).__init__(**kwds)
+    self._make_view_objects = lambda: map_view(
+      fft_map=fft_map,
+      unit_cell=unit_cell, raw_map=raw_map,
+      wires=wires,
+      frame=self.frame,
+      size=self.default_size)
+    super(App, self).__init__(**kwds)
 
   def init_view_objects(self):
-    box = wx.BoxSizer(wx.VERTICAL)
-    self.view_objects = map_view(fft_map=self.map,
-                                 unit_cell=self.unit_cell,
-                                 raw_map=self.raw_map,
-                                 frame=self.frame,
-                                 wires=self.wires,
-                                 size=(700,800))
-    box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
-
-    range = self.view_objects.max_density - self.view_objects.min_density
+    # create widgets
+    view = self.view_objects = self._make_view_objects()
+    range = view.max_density - view.min_density
     if range != 0:
       n = int(math.log10(range))-2
       p = 5
@@ -184,28 +202,143 @@ class map_viewer(wx_viewer.App):
     else:
       p,n = 1,0
       self.amplitude = 1
-    self.slider = wx.Slider(self.frame,
-                            minValue=self.view_objects.min_density
-                                       /self.amplitude,
-                            maxValue=self.view_objects.max_density
-                                       /self.amplitude,
-                            value=self.view_objects.iso_level
-                                       /self.amplitude,
+    self.iso_level_slider = wx.Slider(
+                            self.frame,
+                            minValue=view.min_density / self.amplitude,
+                            maxValue=view.max_density / self.amplitude,
+                            value=view.iso_level / self.amplitude,
                             style=wx.SL_AUTOTICKS|wx.SL_LABELS)
-    box.Add(self.slider, 0, wx.EXPAND)
+    if n == 1:
+      lbl = "x %i" % p
+    else:
+      lbl = "x %ie%i" % (p,n)
     self.multiplier = wx.StaticText(self.frame,
-                                   style=wx.ALIGN_CENTER_HORIZONTAL,
-                                   label="%i x 10^%i" % (p,n))
-    box.Add(self.multiplier, 0, wx.EXPAND|wx.TOP, 10)
+                                    style=wx.ALIGN_CENTER_HORIZONTAL,
+                                    label=lbl)
+    self.iso_level_slider.Bind(wx.EVT_SCROLL, self.on_iso_level_changed)
+
+    self.tools = wx.MiniFrame(self.frame,
+                              style=wx.CAPTION|wx.CLOSE_BOX)
+    tools_nb = wx.Notebook(self.tools)
+    opengl_page = wx.NotebookPage(tools_nb)
+    tools_nb.AddPage(opengl_page, "Lighting and Materials")
+
+    self.front_colour_picker = wx.lib.colourselect.ColourSelect(self.frame)
+    self.back_colour_picker = wx.lib.colourselect.ColourSelect(self.frame)
+    self.swap_colour_btn = wx.Button(self.frame, label="< swap >")
+    self.wires_btn = wx.CheckBox(self.frame)
+    self.wires_btn.Bind(wx.EVT_CHECKBOX,
+                        self.on_wires_changed)
+
+    self.ambient_slider = wx.Slider(opengl_page,
+                                    style=wx.SL_AUTOTICKS|wx.SL_LABELS)
+    self.diffuse_slider = wx.Slider(opengl_page,
+                                    style=wx.SL_AUTOTICKS|wx.SL_LABELS)
+    self.specular_slider = wx.Slider(opengl_page,
+                                     style=wx.SL_AUTOTICKS|wx.SL_LABELS)
+    self.specular_focus_slider = wx.Slider(opengl_page,
+                                           style=wx.SL_AUTOTICKS)
+
+    self.material_ctrl = wx_controllers.material(view.material,
+                                                 self.front_colour_picker,
+                                                 self.back_colour_picker,
+                                                 self.swap_colour_btn,
+                                                 self.wires_btn,
+                                                 self.ambient_slider,
+                                                 self.diffuse_slider,
+                                                 self.specular_slider,
+                                                 self.specular_focus_slider,
+                                                 on_change=view.OnRedrawGL)
+
+    # lay out main window
+    box = wx.BoxSizer(wx.VERTICAL)
+
+    box.Add(view, 1, wx.EXPAND|wx.ALL, 5)
+
+    iso_level_slider_box = wx.BoxSizer(wx.VERTICAL)
+    iso_level_slider_box.Add(self.iso_level_slider, 0, wx.ALL, 5)
+    iso_level_slider_box.Add(self.multiplier, 0, wx.CENTER|wx.ALL, 5)
+
+    iso_level_box = wx.BoxSizer(wx.HORIZONTAL)
+    iso_level_box.Add(wx.StaticText(self.frame, label="Iso-level"), 0,
+                      wx.ALL, 5)
+    iso_level_box.Add(iso_level_slider_box)
+
+    box.Add(iso_level_box)
+    box.AddSpacer(10)
+
+    colour_box = wx.BoxSizer(wx.HORIZONTAL)
+    colour_box.Add(wx.StaticText(self.frame, label="Front"), 0, wx.ALL, 5)
+    colour_box.Add(self.front_colour_picker, 0, wx.ALL, 5)
+
+    colour_box.Add(self.swap_colour_btn, 0, wx.ALL, 5)
+
+    colour_box.Add(wx.StaticText(self.frame, label="Back"), 0, wx.ALL, 5)
+    colour_box.Add(self.back_colour_picker, 0, wx.ALL, 5)
+
+    colour_box.Add(wx.StaticText(self.frame, label="Wires"),
+                   0, wx.ALL, 5)
+    colour_box.Add(self.wires_btn, 0, wx.ALL, 5)
+
+    box.Add(colour_box)
+
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
-    self.slider.Bind(wx.EVT_SCROLL, self.OnSliderMoved)
 
-  def OnSliderMoved(self, event):
-    self.iso_level = self.slider.Value * self.amplitude
-    self.view_objects.iso_level = self.iso_level
+    # lay out toolbox palette
+
+    # Lighting and materials tabs
+    top_box = wx.BoxSizer(wx.VERTICAL)
+    top_box.Add(tools_nb, 0, wx.EXPAND|wx.ALL, 5)
+
+    box = wx.FlexGridSizer(rows=0, cols=4, vgap=10, hgap=10)
+
+    box.Add(wx.StaticText(opengl_page, label='Ambient (%)'), 0, 0)
+    box.Add(self.ambient_slider, 0, wx.EXPAND)
+
+    box.Add(wx.StaticText(opengl_page, label='Diffuse (%)'), 0, 0)
+    box.Add(self.diffuse_slider, 0, wx.EXPAND)
+
+    box.Add(wx.StaticText(opengl_page, label='Specular (%)'), 0, 0)
+    box.Add(self.specular_slider, 0, wx.EXPAND)
+
+    box.Add(wx.StaticText(opengl_page, label='Specular focus'), 0, 0)
+    box_sf = wx.BoxSizer(wx.VERTICAL)
+    box_sf.Add(self.specular_focus_slider, 0, wx.EXPAND)
+    box_sf_1 = wx.BoxSizer(wx.HORIZONTAL)
+    box_sf_1.Add(wx.StaticText(opengl_page, label="sharp"), 0, 0)
+    box_sf_1.AddStretchSpacer(10)
+    box_sf_1.Add(wx.StaticText(opengl_page, label="diffuse"), 0, 0)
+    box_sf.Add(box_sf_1, 0, wx.EXPAND)
+    box.Add(box_sf)
+
+    opengl_page.SetSizer(box)
+    box.SetSizeHints(opengl_page)
+
+    self.tools.SetSizer(top_box)
+    top_box.SetSizeHints(self.tools)
+
+    # create toolbar button to show/hide the toolbox palette
+    self.tools.Show()
 
 
+  def on_iso_level_changed(self, event):
+    self.view_objects.iso_level = self.iso_level_slider.Value * self.amplitude
+
+  def on_wires_changed(self, e):
+    self.view_objects.wires = self.wires_btn.IsChecked()
+
+def display(fft_map=None,
+            unit_cell=None, raw_map=None,
+            wires=True,
+            size=(600,600),
+            title="Electron density iso-contour"):
+  a = App(fft_map=fft_map,
+          unit_cell=unit_cell, raw_map=raw_map,
+          wires=wires,
+          title=title,
+          default_size=size)
+  a.MainLoop()
 
 def show_help(): print """\
 1. wx_map_viewer name.pickle
@@ -232,6 +365,9 @@ def run():
 
   file_name = os.path.expanduser(sys.argv[1])
   map_coeffs = None
+  fft_map = None
+  unit_cell = None
+  raw_map = None
   if file_name.endswith('.pickle'):
     something = easy_pickle.load(file_name)
     if type(something) is miller.array:
@@ -258,16 +394,17 @@ def run():
     labels = reflection_file_utils.label_table(all_miller_arrays)
     map_coeffs = labels.match_data_label(label=label,
                                          command_line_switch="label")
-  title = "Electron Density Viewer"
+  options = {}
+  if 1:
+    options['wires'] = False
   if map_coeffs is not None:
     map_coeffs.show_summary()
     fft_map = map_coeffs.fft_map(
       resolution_factor=1/2,
       symmetry_flags=maptbx.use_space_group_symmetry)
-    a = map_viewer(fft_map=fft_map, title=title)
-  else:
-    a = map_viewer(unit_cell=unit_cell, raw_map=raw_map, title=title)
-  a.MainLoop()
+  display(fft_map=fft_map,
+          unit_cell=unit_cell, raw_map=raw_map,
+          **options)
 
 if __name__ == '__main__':
   import sys
