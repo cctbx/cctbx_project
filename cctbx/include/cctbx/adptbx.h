@@ -731,11 +731,18 @@ namespace cctbx {
   struct sphere_to_ellipsoid_transform
   {
     sphere_to_ellipsoid_transform(eigensystem<FloatType> const& es) {
-      ill_defined = !compute_sphere_to_ellipsoid_transform(es, matrix.begin());
+      ill_defined_ = !compute_sphere_to_ellipsoid_transform(es, matrix_.begin());
+    }
+    
+    mat3<FloatType> const& matrix() {
+      SCITBX_ASSERT(!ill_defined());
+      return matrix_; 
     }
 
-    mat3<FloatType> matrix;
-    bool ill_defined;
+    bool ill_defined() { return ill_defined_; }
+
+    mat3<FloatType> matrix_;
+    bool ill_defined_;
   };
 
   //! Determines the eigenvalues of the anisotropic displacement tensor.
