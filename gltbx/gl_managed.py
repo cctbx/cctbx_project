@@ -1,3 +1,5 @@
+from __future__ import division
+
 from gltbx import gl
 
 class display_lists_owner:
@@ -44,3 +46,49 @@ class display_lists:
 
   def __getitem__(self, index):
     return display_list(index=index, owner=self.owner)
+
+
+class material_model(object):
+
+  def __init__(self,
+               front_colour=(1, 204/255, 102/255),
+               back_colour=(102/255, 204/255, 1),
+               ambient=0.2,
+               diffuse=1.,
+               specular=0.5,
+               specular_focus=10):
+    self.front_colour = front_colour
+    self.back_colour = back_colour
+    self.ambient = ambient
+    self.diffuse = diffuse
+    self.specular = specular
+    self.specular_focus = specular_focus
+
+  def ambient_colours(self):
+    x = self.ambient
+    return ([ c*x for c in self.front_colour ]+[1],
+            [ c*x for c in self.back_colour ]+[1])
+  ambient_colours = property(ambient_colours)
+
+  def diffuse_colours(self):
+    x = self.diffuse
+    return ([ c*x for c in self.front_colour ]+[1],
+            [ c*x for c in self.back_colour ]+[1])
+  diffuse_colours = property(diffuse_colours)
+
+  def specular_colour(self):
+    x = self.specular
+    return [x]*3 + [1]
+  specular_colour = property(specular_colour)
+
+  def execute(self, specular=True):
+    from gl import glMaterialfv, glMaterialf
+    fc, bc = self.ambient_colours
+    glMaterialfv(gl.GL_BACK, gl.GL_AMBIENT, bc)
+    glMaterialfv(gl.GL_FRONT, gl.GL_AMBIENT, fc)
+    fc, bc = self.diffuse_colours
+    glMaterialfv(gl.GL_BACK, gl.GL_DIFFUSE, bc)
+    glMaterialfv(gl.GL_FRONT, gl.GL_DIFFUSE, fc)
+    if specular:
+      glMaterialfv(gl.GL_FRONT_AND_BACK, gl.GL_SPECULAR, self.specular_colour)
+      glMaterialf(gl.GL_FRONT_AND_BACK, gl.GL_SHININESS, self.specular_focus)
