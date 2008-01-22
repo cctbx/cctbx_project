@@ -4,6 +4,7 @@ from cctbx.array_family import flex
 import libtbx.path
 from libtbx.itertbx import count
 from libtbx.utils import Sorry
+import math
 import sys, os
 
 class Sorry_No_array_of_the_required_type(Sorry): pass
@@ -111,6 +112,33 @@ def get_amplitude_scores(miller_arrays):
         score = 3
       elif (miller_array.is_xray_reconstructed_amplitude_array()):
         score = 2
+    result.append(score)
+  return result
+
+def get_phase_scores(miller_arrays):
+  result = []
+  for miller_array in miller_arrays:
+    score = 0
+    if (   miller_array.is_complex_array()
+        or miller_array.is_hendrickson_lattman_array()):
+      score = 4
+    elif (miller_array.is_real_array()):
+      if (miller_array.is_xray_amplitude_array()):
+        pass
+      elif (miller_array.is_xray_intensity_array()):
+        pass
+      elif (miller_array.is_xray_reconstructed_amplitude_array()):
+        pass
+      elif (miller_array.data().size() == 0):
+        pass
+      else:
+        m = flex.mean(flex.abs(miller_array.data()))
+        if (m < 5):
+          score = 2
+        elif (m < 500):
+          score = 3
+        else:
+          score = 1
     result.append(score)
   return result
 
@@ -387,13 +415,70 @@ class reflection_file_server(object):
       if (result.is_complex_array()):
         result = result.amplitudes()
         if (info_labels is not None):
-          info_labels = info_labels[:1]
+          result.set_info(info.customized_copy(labels=info_labels[:1]))
+        else:
+          result.set_info(info=info)
       elif (result.is_xray_intensity_array()):
         result = result.as_amplitude_array()
         if (info_labels is not None):
-          info_labels = info_labels[:1] + ["as_amplitude_array"]
+          result.set_info(info.customized_copy(
+            labels=info_labels[:1]+["as_amplitude_array"]))
+        else:
+          result.set_info(info=info)
+    return result
+
+  def get_phases_deg(self,
+        file_name,
+        labels,
+        convert_to_phases_if_necessary,
+        original_phase_units,
+        parameter_scope,
+        parameter_name):
+    assert original_phase_units in [None, "deg", "rad"]
+    miller_arrays = self.get_miller_arrays(file_name=file_name)
+    data_scores = get_phase_scores(miller_arrays=miller_arrays)
+    if (parameter_scope is not None):
+      parameter_name = parameter_scope + "." + parameter_name
+    i = select_array(
+      parameter_name=parameter_name,
+      labels=labels,
+      miller_arrays=miller_arrays,
+      data_scores=data_scores,
+      err=self.err,
+      error_message_no_array
+        ="No array of phases found.",
+      error_message_not_a_suitable_array
+        ="Not a suitable array of phases: ",
+      error_message_multiple_equally_suitable
+        ="Multiple equally suitable arrays of phases found.")
+    result = miller_arrays[i]
+    info = result.info()
+    if (info is None):
+      info_labels = None
+    else:
+      info_labels = info.labels
+    if (convert_to_phases_if_necessary):
+      if (result.is_complex_array()):
+        result = result.phases(deg=True)
+        if (info_labels is not None and len(info_labels) == 2):
+          result.set_info(info.customized_copy(labels=[info_labels[1]]))
+        else:
+          result.set_info(info=info)
+      elif (result.is_hendrickson_lattman_array()):
+        result = result.phase_integrals().phases(deg=True)
+        if (info_labels is not None):
+          result.set_info(info.customized_copy(
+            labels=info_labels+["converted_to_centroid_phases"]))
+        else:
+          result.set_info(info=info)
+    elif (    not result.is_complex_array()
+          and original_phase_units == "rad"):
+      result = result.customized_copy(data=result.data()*(180/math.pi))
       if (info_labels is not None):
-        result.set_info(info.customized_copy(labels=info_labels))
+        result.set_info(info.customized_copy(
+          labels=info_labels+["converted_to_deg"]))
+      else:
+        result.set_info(info=info)
     return result
 
   def get_xray_data(self,
