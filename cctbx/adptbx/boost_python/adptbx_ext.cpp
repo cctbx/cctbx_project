@@ -52,11 +52,11 @@ namespace {
 
     static void wrap() {
       using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
+      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("sphere_to_ellipsoid_transform", no_init)
         .def(init<eigensystem<double> const&>())
-        .add_property("matrix", make_getter(&w_t::matrix, rbv()))
-        .add_property("ill_defined", make_getter(&w_t::ill_defined, rbv()))
+        .def("matrix", &w_t::matrix, ccr())
+        .def("ill_defined", &w_t::ill_defined)
       ;
     }
   };
