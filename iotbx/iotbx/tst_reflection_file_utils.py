@@ -139,6 +139,60 @@ Please specify an unambiguous substring of the target label.
     err = reflection_file_srv.err = StringIO()
   else:
     raise Exception_expected
+  #
+  mtz_dataset.add_miller_array(
+    miller_array=miller_set.array(
+      data=flex.polar(
+        flex.random_double(size=miller_set.indices().size()),
+        flex.random_double(size=miller_set.indices().size()))),
+    column_root_label="F2")
+  mtz_dataset.add_miller_array(
+    miller_array=miller_set.array(
+      data=flex.random_double(size=miller_set.indices().size()),
+      sigmas=flex.random_double(size=miller_set.indices().size())/10)
+        .set_observation_type_xray_intensity(),
+    column_root_label="F3")
+  mtz_dataset.mtz_object().write("tmp3.mtz")
+  reflection_files = [reflection_file_reader.any_reflection_file(
+    file_name="tmp3.mtz")]
+  err = StringIO()
+  reflection_file_srv = reflection_file_server(
+    crystal_symmetry=crystal_symmetry,
+    force_symmetry=True,
+    reflection_files=reflection_files,
+    err=err)
+  ampl = reflection_file_srv.get_amplitudes(
+    file_name=None,
+    labels=["f2"],
+    convert_to_amplitudes_if_necessary=False,
+    parameter_scope="amplitudes",
+    parameter_name="labels")
+  assert str(ampl.info()) == "tmp3.mtz:F2,PHIF2"
+  assert ampl.is_complex_array()
+  ampl = reflection_file_srv.get_amplitudes(
+    file_name=None,
+    labels=["f2"],
+    convert_to_amplitudes_if_necessary=True,
+    parameter_scope="amplitudes",
+    parameter_name="labels")
+  assert str(ampl.info()) == "tmp3.mtz:F2"
+  assert ampl.is_real_array()
+  ampl = reflection_file_srv.get_amplitudes(
+    file_name=None,
+    labels=["f3"],
+    convert_to_amplitudes_if_necessary=False,
+    parameter_scope="amplitudes",
+    parameter_name="labels")
+  assert str(ampl.info()) == "tmp3.mtz:F3,SIGF3"
+  assert ampl.is_xray_intensity_array()
+  ampl = reflection_file_srv.get_amplitudes(
+    file_name=None,
+    labels=["f3"],
+    convert_to_amplitudes_if_necessary=True,
+    parameter_scope="amplitudes",
+    parameter_name="labels")
+  assert str(ampl.info()) == "tmp3.mtz:F3,as_amplitude_array"
+  assert ampl.is_real_array()
 
 def exercise_get_xtal_data():
   crystal_symmetry = crystal.symmetry(

@@ -391,7 +391,7 @@ class reflection_file_server(object):
       elif (result.is_xray_intensity_array()):
         result = result.as_amplitude_array()
         if (info_labels is not None):
-          info_labels += ["as_amplitude_array"]
+          info_labels = info_labels[:1] + ["as_amplitude_array"]
       if (info_labels is not None):
         result.set_info(info.customized_copy(labels=info_labels))
     return result
