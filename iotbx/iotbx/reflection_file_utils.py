@@ -98,6 +98,22 @@ class label_table(object):
     self.show_possible_choices(f=f)
     return None
 
+def get_amplitude_scores(miller_arrays):
+  result = []
+  for miller_array in miller_arrays:
+    score = 0
+    if (miller_array.is_complex_array()):
+      score = 1
+    elif (miller_array.is_real_array()):
+      if (miller_array.is_xray_amplitude_array()):
+        score = 4
+      elif (miller_array.is_xray_intensity_array()):
+        score = 3
+      elif (miller_array.is_xray_reconstructed_amplitude_array()):
+        score = 2
+    result.append(score)
+  return result
+
 def get_xray_data_scores(miller_arrays, ignore_all_zeros):
   result = []
   for miller_array in miller_arrays:
@@ -337,6 +353,47 @@ class reflection_file_server(object):
                    force_symmetry=self.force_symmetry)
     if (result is None):
       raise Sorry("No reflection data in file: %s" % file_name)
+    return result
+
+  def get_amplitudes(self,
+        file_name,
+        labels,
+        convert_to_amplitudes_if_necessary,
+        parameter_scope,
+        parameter_name):
+    miller_arrays = self.get_miller_arrays(file_name=file_name)
+    data_scores = get_amplitude_scores(miller_arrays=miller_arrays)
+    if (parameter_scope is not None):
+      parameter_name = parameter_scope + "." + parameter_name
+    i = select_array(
+      parameter_name=parameter_name,
+      labels=labels,
+      miller_arrays=miller_arrays,
+      data_scores=data_scores,
+      err=self.err,
+      error_message_no_array
+        ="No array of amplitudes found.",
+      error_message_not_a_suitable_array
+        ="Not a suitable array of amplitudes: ",
+      error_message_multiple_equally_suitable
+        ="Multiple equally suitable arrays of amplitudes found.")
+    result = miller_arrays[i]
+    if (convert_to_amplitudes_if_necessary):
+      info = result.info()
+      if (info is None):
+        info_labels = None
+      else:
+        info_labels = info.labels
+      if (result.is_complex_array()):
+        result = result.amplitudes()
+        if (info_labels is not None):
+          info_labels = info_labels[:1]
+      elif (result.is_xray_intensity_array()):
+        result = result.as_amplitude_array()
+        if (info_labels is not None):
+          info_labels += ["as_amplitude_array"]
+      if (info_labels is not None):
+        result.set_info(info.customized_copy(labels=info_labels))
     return result
 
   def get_xray_data(self,
