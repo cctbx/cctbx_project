@@ -42,6 +42,7 @@ compcomm/newsletter08/news.txt -text
 compcomm/newsletter08/notes -text
 compcomm/newsletter08/special_positions.py -text
 gltbx/command_line/pythonw.sh -text
+gltbx/wx_controllers.py -text
 gltbx/wx_map_viewer.py -text
 gltbx/wx_viewer_example.py -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names.h -text
