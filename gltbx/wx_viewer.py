@@ -62,12 +62,16 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def DrawGL(self):
     raise NotImplemented
 
+  def process_keyword_arguments(self,
+                                auto_spin_allowed=False,
+                                orthographic=False,
+                                **kw):
+    self.autospin_allowed = auto_spin_allowed
+    self.orthographic = orthographic
+    return kw
+
   def __init__(self, parent, *args, **kw):
-    if (kw.has_key("autospin_allowed")):
-      self.autospin_allowed = kw["autospin_allowed"]
-      del kw["autospin_allowed"]
-    else:
-      self.autospin_allowed = 0
+    kw = self.process_keyword_arguments(**kw)
     self.GL_uninitialised = 1
     wx.glcanvas.GLCanvas.__init__(*((self, parent)+args), **kw)
 
@@ -199,11 +203,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     elif (event.RightIsDown()):
       self.OnRightDrag(event)
 
-  def setup_viewing_volume(self, orthographic=False):
+  def setup_viewing_volume(self):
     aspect = self.w / max(1,self.h)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    if (orthographic):
+    if self.orthographic:
       s = self.minimum_covering_sphere
       c = s.center()
       r = s.radius()
