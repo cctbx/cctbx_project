@@ -10,6 +10,7 @@
 #include <scitbx/matrix/tensor_rank_2.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/type_holder.h>
+#include <scitbx/mat_ref.h>
 #include <cctbx/error.h>
 
 namespace cctbx {
@@ -695,6 +696,46 @@ namespace cctbx {
     private:
       af::tiny<vec3<FloatType>, 3> vectors_;
       vec3<FloatType> values_;
+  };
+
+  /// Compute the matrix transforming an unit sphere into the electron density
+  /// iso-surface
+  /** The electron density associated to the ADP at the point x is:
+   \f$ p(x) \prop e^{x_c^T U_c^{-1} x_c / 2} \f$. Thus the iso-surface
+   is the ellipsoid \f$x_c^T U_c^{-1} x_c = cst \f$. Since
+   \f$ U_c = R \Delta_c R^{-1} \f$ where R is the rotation matrix whose
+   columns are the eigenvectors {vectors(i), i=0,1,2}, the desired transform
+   is \f$ M = R \Delta_c^{1/2} \f$ where \f$ \Delta_c \f$ is the diagonal
+   matrix {values(i), i=0,1,2}
+
+   \return false if the ADP is not positive definite,
+   i.e. the operation failed and what has been filled
+   into the memory range [p, p+9) cannot be relied upon.
+   Otherwise, it has been properly filled.
+  */
+  template<typename FloatType>
+  inline
+  bool compute_sphere_to_ellipsoid_transform(eigensystem<FloatType> const& es,
+                                             FloatType* first)
+  {
+    scitbx::mat_ref<FloatType> m(first, 3, 3);
+    for(int i=0; i<3; i++)
+      for(int j=0; j<3; j++) {
+        if (es.values()[i] < 0) return false;
+        m(i,j) = es.vectors(j)[i]*std::sqrt(es.values()[j]);
+    }
+    return true;
+  }
+
+  template<typename FloatType>
+  struct sphere_to_ellipsoid_transform
+  {
+    sphere_to_ellipsoid_transform(eigensystem<FloatType> const& es) {
+      ill_defined = !compute_sphere_to_ellipsoid_transform(es, matrix.begin());
+    }
+
+    mat3<FloatType> matrix;
+    bool ill_defined;
   };
 
   //! Determines the eigenvalues of the anisotropic displacement tensor.
