@@ -721,7 +721,7 @@ namespace cctbx {
     scitbx::mat_ref<FloatType> m(first, 3, 3);
     for(int i=0; i<3; i++)
       for(int j=0; j<3; j++) {
-        if (es.values()[i] < 0) return false;
+        if (es.values()[j] < 0) return false;
         m(i,j) = es.vectors(j)[i]*std::sqrt(es.values()[j]);
     }
     return true;
@@ -733,10 +733,10 @@ namespace cctbx {
     sphere_to_ellipsoid_transform(eigensystem<FloatType> const& es) {
       ill_defined_ = !compute_sphere_to_ellipsoid_transform(es, matrix_.begin());
     }
-    
+
     mat3<FloatType> const& matrix() {
       SCITBX_ASSERT(!ill_defined());
-      return matrix_; 
+      return matrix_;
     }
 
     bool ill_defined() { return ill_defined_; }
