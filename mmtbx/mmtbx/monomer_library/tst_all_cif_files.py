@@ -20,6 +20,34 @@ def detect_unknown_type_energy(comp_id, comp_comp_id):
     print
   return status
 
+def detect_missing_angle_definitions(comp_id, comp_comp_id):
+  if (len(comp_comp_id.atom_list) <= 2): return "ok"
+  if (len(comp_comp_id.angle_list) > 0): return "ok"
+  print "missing bond angle definitions:", comp_id
+  return "all"
+
+def detect_missing_bond_values(comp_id, comp_comp_id):
+  n_missing_ideal = 0
+  n_missing_esd = 0
+  for bond in comp_comp_id.bond_list:
+    if (bond.value_dist is None): n_missing_ideal += 1
+    if (bond.value_dist_esd is None): n_missing_esd += 1
+  if (n_missing_ideal != 0 or n_missing_esd != 0):
+    print "missing bond values:", n_missing_ideal, n_missing_esd
+    return "bad"
+  return "ok"
+
+def detect_missing_angle_values(comp_id, comp_comp_id):
+  n_missing_ideal = 0
+  n_missing_esd = 0
+  for bond in comp_comp_id.angle_list:
+    if (bond.value_angle is None): n_missing_ideal += 1
+    if (bond.value_angle_esd is None): n_missing_esd += 1
+  if (n_missing_ideal != 0 or n_missing_esd != 0):
+    print "missing angle values:", n_missing_ideal, n_missing_esd
+    return "bad"
+  return "ok"
+
 def exercise():
   list_cif = server.mon_lib_list_cif()
   srv = server.server(list_cif=list_cif)
@@ -27,6 +55,9 @@ def exercise():
   table_of_contents = []
   n_get_comp_comp_id_successes = 0
   unknown_type_energy_counts = dict_with_default_0()
+  missing_angle_definitions_counts = dict_with_default_0()
+  missing_bond_values_counts = dict_with_default_0()
+  missing_angle_values_counts = dict_with_default_0()
   for first_char in string.lowercase+string.digits:
     sub_dir = os.path.join(srv.root_path, first_char)
     if (not os.path.isdir(sub_dir)): continue
@@ -49,10 +80,23 @@ def exercise():
         status = detect_unknown_type_energy(
           comp_id=comp_id, comp_comp_id=comp_comp_id)
         unknown_type_energy_counts[status] += 1
-        if (0 and status != "ok"):
+        status = detect_missing_angle_definitions(
+          comp_id=comp_id, comp_comp_id=comp_comp_id)
+        missing_angle_definitions_counts[status] += 1
+        status = detect_missing_bond_values(
+          comp_id=comp_id, comp_comp_id=comp_comp_id)
+        missing_bond_values_counts[status] += 1
+        status = detect_missing_angle_values(
+          comp_id=comp_id, comp_comp_id=comp_comp_id)
+        missing_angle_values_counts[status] += 1
+        if (1 and status != "ok"):
           print 'svn rm "%s"' % os.path.join(first_char, node)
   print "number of cif files read successfully:", n_get_comp_comp_id_successes
   print "unknown type_energy counts:", unknown_type_energy_counts
+  print "missing bond angle definitions counts:", \
+    missing_angle_definitions_counts
+  print "missing bond values counts:", missing_bond_values_counts
+  print "missing angle values counts:", missing_angle_values_counts
   print "writing file table_of_contents"
   open("table_of_contents", "w").write("\n".join(table_of_contents)+"\n")
 
