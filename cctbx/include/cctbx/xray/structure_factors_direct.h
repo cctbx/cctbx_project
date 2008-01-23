@@ -87,6 +87,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         else sf.f_calc *= f0p_w;
         f_calc += sf.f_calc;
       }
+      f_calc *= static_cast<f_t>(space_group.n_ltr());
     }
 
     std::complex<float_type> f_calc;
@@ -143,7 +144,6 @@ namespace cctbx { namespace xray { namespace structure_factors {
       {
         typedef float_type f_t;
         typedef std::complex<float_type> c_t;
-        f_t n_ltr = static_cast<f_t>(space_group.n_ltr());
         f_calc_.reserve(miller_indices.size());
         af::shared<std::size_t>
           scattering_type_indices_memory
@@ -162,7 +162,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             direct_one_h<CosSinType, ScattererType>(
               cos_sin, space_group, scatterers, scattering_type_indices,
               h, d_star_sq, form_factors).f_calc
-            * n_ltr);
+          );
         }
       }
   };
