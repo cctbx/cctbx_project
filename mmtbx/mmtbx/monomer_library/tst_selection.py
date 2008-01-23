@@ -121,17 +121,14 @@ ATOM   4847  C4    C C   3      59.212  21.513  -6.810  1.00 69.96           C
 ATOM   4848  N4    C C   3      59.793  20.365  -6.470  1.00 71.43           N
 ATOM   4849  C5    C C   3      57.800  21.629  -6.772  1.00 69.13           C
 ATOM   4850  C6    C C   3      57.272  22.810  -7.109  1.00 72.22           C
-HETATM 6432  N   FME C  77      77.891  21.215  17.307  1.00 55.16           N
-HETATM 6433  CN  FME C  77      76.589  20.751  17.647  1.00 56.44           C
-HETATM 6434  O1  FME C  77      76.427  20.042  18.532  1.00 58.01           O
-HETATM 6435  CA  FME C  77      78.090  22.121  16.187  1.00 49.82           C
-HETATM 6436  CB  FME C  77      78.920  21.374  15.136  1.00 46.63           C
-HETATM 6437  CG  FME C  77      78.980  19.865  15.339  1.00 51.02           C
-HETATM 6438  SD  FME C  77      80.467  19.084  14.648  1.00 48.47           S
-HETATM 6439  CE  FME C  77      79.741  17.911  13.560  1.00 40.82           C
-HETATM 6440  C   FME C  77      76.792  22.689  15.601  1.00 48.63           C
-HETATM 6441  O   FME C  77      76.237  23.659  16.214  1.00 45.60           O
-TER    6442      FME C  77
+HETATM    1  N   PCA C   1      61.815  -9.826  47.209  1.00 22.41           N
+HETATM    2  CA  PCA C   1      63.251  -9.543  47.447  1.00 21.95           C
+HETATM    3  CB  PCA C   1      64.110 -10.479  46.604  1.00 22.40           C
+HETATM    4  CG  PCA C   1      63.238 -10.886  45.438  1.00 22.83           C
+HETATM    5  CD  PCA C   1      61.855 -10.549  45.934  1.00 22.46           C
+HETATM    6  OE  PCA C   1      60.846 -10.859  45.286  1.00 24.62           O
+HETATM    7  C   PCA C   1      63.573  -8.105  47.060  1.00 21.16           C
+HETATM    8  O   PCA C   1      62.762  -7.428  46.430  1.00 21.46           O
 HETATM 8099 MG    MG   584      69.634   3.963 -22.036  1.00 45.86          MG
 HETATM 8100 MG    MG   585      72.985 -30.470 -21.424  1.00 39.36          MG
 HETATM 8101  O   HOH   501      50.104 -12.783 -34.164  1.00 76.32           O
@@ -157,11 +154,11 @@ def exercise_atom_selections():
     file_name="tmp.pdb",
     log=log)
   isel = processed_pdb.all_chain_proxies.iselection
-  assert list(isel("peptide")) == range(52) + range(114,124)
+  assert list(isel("peptide")) == range(52) + range(114,122)
   assert list(isel("rna")) == range(52,95)
   assert list(isel("dna")) == range(95,114)
   assert list(isel("nucleotide")) == range(52,114)
-  assert list(isel("water")) == [126,127]
+  assert list(isel("water")) == [124,125]
   assert list(isel("peptide backbone")) \
       == list(isel("peptide and (name ca or name c or name o or name n)"))
   assert list(isel("nucleotide backbone")) \
