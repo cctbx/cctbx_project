@@ -48,7 +48,7 @@ def exercise_basic(pdb_dir, verbose):
   output = "modified.pdb"
   xrsp_init = xray_structure_plus(file_name = file_name)
   base = \
-      "phenix.pdbtools %s output.pdb.file_name=%s "%(file_name, output)
+      "phenix.pdbtools %s output.file_name=%s "%(file_name, output)
   for selection_str in [None, "chain A or chain C"]:
     selection = xrsp_init.selection(selection_strings = selection_str)
     if(selection_str is None):
@@ -120,7 +120,7 @@ def test_quiet(file_name, verbose):
   output_file_name = "shifted.pdb"
   remove_files("log")
   remove_files(output_file_name)
-  cmd= "phenix.pdbtools %s output.pdb.file_name=%s shake=0.1 --quiet > log"%(
+  cmd= "phenix.pdbtools %s output.file_name=%s shake=0.1 --quiet > log"%(
                                         file_name, output_file_name)
   run_command(command=cmd, verbose=verbose)
   lines = open("log","r").readlines()
@@ -351,7 +351,7 @@ sites {
 """
   open("params", "w").write(params)
   file_name = os.path.join(pdb_dir, "phe_e.pdb")
-  cmd = "phenix.pdbtools %s output.pdb.file_name=modified.pdb params" % (
+  cmd = "phenix.pdbtools %s output.file_name=modified.pdb params" % (
     file_name)
   result = run_command(command=cmd, verbose=verbose)
   lines = result.stdout_lines
@@ -371,7 +371,7 @@ Rigid body shift: selected atoms: 24 of 36""")
 def exercise_no_cryst1(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "t.pdb")
   output = "modified.pdb"
-  base = "phenix.pdbtools %s output.pdb.file_name=%s "%(file_name, output)
+  base = "phenix.pdbtools %s output.file_name=%s "%(file_name, output)
   cmd = base+'sites.rotate="0 0 0" sites.translate="0 0 0"'
   run_command(command=cmd, verbose=verbose)
   lines1 = []

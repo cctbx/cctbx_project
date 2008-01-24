@@ -52,7 +52,7 @@ def exercise(args):
   assert len(args) == 0
   open("tmp.pdb", "w").write(pdb1exr_fragment)
   gm_out = easy_run.fully_buffered(
-    command="phenix.geometry_minimization tmp.pdb") \
+    command="phenix.pdbtools tmp.pdb --geometry_regularization") \
       .raise_if_errors() \
       .stdout_lines
   target_values = []

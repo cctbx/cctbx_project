@@ -830,7 +830,7 @@ class process_pdb_file_srv(object):
     if(self.log is None): self.log = sys.stdout
 
   def process_pdb_files(self, pdb_file_names):
-    if([self.cif_objects, self.cif_parameters].count(None) == 0):
+    if(self.cif_objects is not None):
       self._process_monomer_cif_files()
     return self._process_pdb_file(pdb_file_names = pdb_file_names)
 
@@ -875,10 +875,11 @@ class process_pdb_file_srv(object):
   def _process_monomer_cif_files(self):
     all = []
     index_dict = {}
-    for file_name in self.cif_parameters.file_name:
-      file_name = libtbx.path.canonical_path(file_name=file_name)
-      index_dict[file_name] = len(all)
-      all.append((file_name,None))
+    if(self.cif_parameters is not None):
+      for file_name in self.cif_parameters.file_name:
+        file_name = libtbx.path.canonical_path(file_name=file_name)
+        index_dict[file_name] = len(all)
+        all.append((file_name,None))
     for file_name,cif_object in self.cif_objects:
       file_name = libtbx.path.canonical_path(file_name=file_name)
       index_dict[file_name] = len(all)
@@ -886,7 +887,7 @@ class process_pdb_file_srv(object):
     unique_indices = index_dict.values()
     unique_indices.sort()
     unique = flex.select(sequence=all, permutation=unique_indices)
-    del self.cif_parameters.file_name[:]
+    if(self.cif_parameters is not None): del self.cif_parameters.file_name[:]
     for file_name,cif_object in unique:
       if(cif_object is None):
         self.mon_lib_srv.process_cif(file_name=file_name)
@@ -896,4 +897,5 @@ class process_pdb_file_srv(object):
           cif_object=cif_object, file_name=file_name)
         self.ener_lib.process_cif_object(cif_object=cif_object,
                                          file_name=file_name)
-      self.cif_parameters.file_name.append(file_name)
+      if(self.cif_parameters is not None):
+        self.cif_parameters.file_name.append(file_name)
