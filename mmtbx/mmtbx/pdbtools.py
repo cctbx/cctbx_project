@@ -17,6 +17,8 @@ import mmtbx.restraints
 import mmtbx.model
 from mmtbx import model_statistics
 import random
+from libtbx import easy_run
+
 
 fmodel_from_xray_structure_params_str = """\
 k_sol = 0.0
@@ -132,10 +134,8 @@ output
   .help = Write out PDB file with modified model (file name is defined in \
           write_modified)
 {
-  pdb {
-      file_name=None
-        .type=str
-  }
+  file_name=None
+    .type=str
 }
 random_seed = None
   .type = int
@@ -170,6 +170,9 @@ input {
 }
 f_model {
 %s
+}
+geometry_minimization {
+  include scope mmtbx.command_line.geometry_minimization.master_params
 }
 """%(modify_params_str, fmodel_from_xray_structure_master_params_str),
      process_includes=True)
@@ -486,11 +489,17 @@ def run(args, command_name="phenix.pdbtools"):
                                          log           = log)
   all_chain_proxies = \
     command_line_interpreter.processed_pdb_file.all_chain_proxies
-  #utils.print_header("xray structure summary", out = log)
   xray_structure = command_line_interpreter.processed_pdb_file.xray_structure(
     show_summary = False)
   if(xray_structure is None):
     raise Sorry("Cannot extract xray_structure.")
+### get i/o file names
+  ofn = command_line_interpreter.params.output.file_name
+  ifn = command_line_interpreter.params.input.pdb.file_name
+  if(ofn is None):
+    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
+    else: ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
+### show_geometry_statistics and exit
   if(command_line_interpreter.command_line.options.show_geometry_statistics):
     utils.print_header("Geometry statistics", out = log)
     command_line_interpreter.processed_pdb_file.log = None # to disable output
@@ -503,6 +512,7 @@ def run(args, command_name="phenix.pdbtools"):
       sites_cart         = xray_structure.sites_cart(),
       restraints_manager = restraints_manager).show(out = log)
     return
+### show_adp_statistics and exit
   if(command_line_interpreter.command_line.options.show_adp_statistics):
     utils.print_header("ADP statistics", out = log)
     model = mmtbx.model.manager(
@@ -511,8 +521,27 @@ def run(args, command_name="phenix.pdbtools"):
       log                  = log)
     model.show_adp_statistics(out = log, padded = True)
     return
+### add hydrogens and exit
+  if(command_line_interpreter.command_line.options.add_h):
+    utils.print_header("Adding hydrogen atoms", out = log)
+    if(len(ifn) > 1): raise Sorry("Multiple input PDB files found.")
+    ifn = ifn[0]
+    if(not os.path.isfile(ifn)): raise Sorry("File %s does not exist."%ifn)
+    easy_run.go("phenix.reduce %s > %s"% (ifn, ofn))
+    print >> log, "Output model file name (with H added): %s\n"%ofn
+    return
+### show parameters
   utils.print_header("Complete set of parameters", out = log)
   master_params.format(command_line_interpreter.params).show(out = log)
+### run geometry regularization
+  if(command_line_interpreter.command_line.options.geometry_regularization):
+    utils.print_header("Geometry regularization", out = log)
+    from mmtbx.command_line import geometry_minimization
+    sites_cart = geometry_minimization.run(
+      params = command_line_interpreter.params.geometry_minimization,
+      processed_pdb_file = command_line_interpreter.processed_pdb_file,
+      log = log)
+    xray_structure = xray_structure.replace_sites_cart(new_sites = sites_cart)
   utils.print_header("Performing requested model manipulations", out = log)
   result = modify(xray_structure    = xray_structure,
                   params            = command_line_interpreter.params,
@@ -521,11 +550,7 @@ def run(args, command_name="phenix.pdbtools"):
   result.report_number_of_atoms_to_be_removed()
   utils.print_header("Writing output model", out = log)
   atom_attributes_list = all_chain_proxies.stage_1.atom_attributes_list
-  ofn = command_line_interpreter.params.output.pdb.file_name
-  ifn = command_line_interpreter.params.input.pdb.file_name
-  if(ofn is None):
-    if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
-    else: ofn = os.path.basename(ifn[0]) + "_et_al_modified.pdb"
+### write output file (if got to this point)
   print >> log, "Output model file name: ", ofn
   ofo = open(ofn, "w")
   utils.write_pdb_file(
@@ -565,18 +590,20 @@ class interpreter:
     self.ener_lib = monomer_library.server.ener_lib()
     self.params = None
     self.pdb_file_names = []
+    self.cif_objects = []
     self.processed_pdb_file = None
     self.processed_pdb_file_reference = None
     self.process_args()
     self.pdb_file_names.extend(self.params.input.pdb.file_name)
     processed_pdb_files_srv = utils.process_pdb_file_srv(
-        crystal_symmetry          = self.crystal_symmetry,
-        pdb_parameters            = self.params.input.pdb,
-        pdb_interpretation_params = None,
-        stop_for_unknowns         = True,
-        log                       = self.log,
-        mon_lib_srv               = self.mon_lib_srv,
-        ener_lib                  = self.ener_lib)
+      crystal_symmetry          = self.crystal_symmetry,
+      pdb_parameters            = self.params.input.pdb,
+      pdb_interpretation_params = None,
+      stop_for_unknowns         = True,
+      log                       = self.log,
+      mon_lib_srv               = self.mon_lib_srv,
+      ener_lib                  = self.ener_lib,
+      cif_objects               = self.cif_objects)
     self.processed_pdb_file, self.pdb_inp = \
         processed_pdb_files_srv.process_pdb_files(pdb_file_names =
           self.pdb_file_names)
@@ -606,6 +633,12 @@ class interpreter:
       .option("--show_geometry_statistics",
           action="store_true",
           help="Show complete ADP (B-factors) statistics.")
+      .option("--add_h",
+          action="store_true",
+          help="Add H atoms to a model using Reduce program.")
+      .option("--geometry_regularization",
+          action="store_true",
+          help="Perform geometry regularization.")
       .option("--f_model",
           action="store_true",
           help="Compute total model structure factors (F_model) and output into a file.")
@@ -652,6 +685,14 @@ class interpreter:
             if (crystal_symmetry is not None):
               crystal_symmetries_from_coordinate_file.append(
                 crystal_symmetry)
+        else:
+          try: cif_object = mmtbx.monomer_library.server.read_cif(file_name=arg)
+          except KeyboardInterrupt: raise
+          except: pass
+          else:
+            if(len(cif_object) > 0):
+              self.cif_objects.append((arg,cif_object))
+              arg_is_processed = True
       if (not arg_is_processed):
         try:
           params = parameter_interpreter.process(arg=arg)

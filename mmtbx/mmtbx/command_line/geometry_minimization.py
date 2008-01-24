@@ -13,6 +13,17 @@ from libtbx.utils import Sorry
 from iotbx.option_parser import option_parser
 import sys, os
 
+master_params = iotbx.phil.parse("""\
+  alternate_nonbonded_off_on=False
+    .type = bool
+  max_iterations=500
+    .type = int
+  macro_cycles=1
+    .type = int
+  show_geometry_restraints=False
+    .type = bool
+""")
+
 class lbfgs(geometry_restraints.lbfgs.lbfgs):
 
   def __init__(self,
@@ -21,15 +32,9 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
         geometry_restraints_manager,
         geometry_restraints_flags,
         lbfgs_termination_params,
-        intermediate_pdb_file_name_format,
-        i_macro_cycle,
-        write_pdb_rms_threshold,
-        pymol_commands):
+        i_macro_cycle):
     self.stage_1 = stage_1
-    self.intermediate_pdb_file_name_format = intermediate_pdb_file_name_format
     self.i_macro_cycle = i_macro_cycle
-    self.write_pdb_rms_threshold = write_pdb_rms_threshold
-    self.pymol_commands = pymol_commands
     self.sites_cart_written = sites_cart.deep_copy()
     geometry_restraints.lbfgs.lbfgs.__init__(self,
       sites_cart=sites_cart,
@@ -39,151 +44,13 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
 
   def callback_after_step(self, minimizer):
     self.apply_shifts()
-    incremental_rms_difference = self.tmp.sites_shifted.rms_difference(
-      self.sites_cart_written)
-    if (self.write_pdb_rms_threshold is not None
-        and incremental_rms_difference >= self.write_pdb_rms_threshold):
-      self.sites_cart_written = self.tmp.sites_shifted.deep_copy()
-      total_rms_difference = self.tmp.sites_shifted.rms_difference(
-        self.tmp.sites_cart)
-      output_pdb_file_name = self.intermediate_pdb_file_name_format % (
-        self.i_macro_cycle, minimizer.iter())
-      output_pdb_file_object = open(output_pdb_file_name, "w")
-      print "Writing:", output_pdb_file_name, "rms difference: %.6g" % (
-        total_rms_difference)
-      print >> output_pdb_file_object, "REMARK geometry minimization" \
-        " macro cycle %d, step %d, rms difference: %.6g" % (
-          self.i_macro_cycle, minimizer.iter(), total_rms_difference)
-      self.stage_1.write_modified(
-        out=output_pdb_file_object,
-        new_sites_cart=self.tmp.sites_shifted,
-        crystal_symmetry=self.tmp.geometry_restraints_manager.crystal_symmetry)
-      output_pdb_file_object.close()
-      self.pymol_commands.append("load %s, mov" % output_pdb_file_name)
 
-def write_pdb_file(
-      output_pdb_file_name,
-      remark,
-      stage_1,
-      crystal_symmetry,
-      sites_cart,
-      pymol_commands):
-  output_pdb_file_object = open(output_pdb_file_name, "w")
-  print "Writing:", output_pdb_file_name
-  print >> output_pdb_file_object, "REMARK geometry minimization:", remark
-  stage_1.write_modified(
-    out=output_pdb_file_object,
-    new_sites_cart=sites_cart,
-    crystal_symmetry=crystal_symmetry)
-  output_pdb_file_object.close()
-  pymol_commands.append("load %s, mov" % output_pdb_file_name)
-  print
-
-def write_pymol_commands(file_name, commands):
-  print "Writing:", file_name
-  f = open(file_name, "w")
-  print >> f, commands[-1]
-  print >> f, commands[0]+", 1"
-  for cmd in commands[1:]:
-    print >> f, cmd
-  print >> f, "mplay"
-  f.close()
-  print
-
-def run(args, command_name="phenix.geometry_minimization"):
-  command_line = (option_parser(
-    usage=command_name+" [options] pdb_file [output_pdb_file]")
-    .enable_symmetry_comprehensive()
-    .option(None, "--alternate_nonbonded_off_on",
-      action="store_true")
-    .option(None, "--max_iterations",
-      action="store",
-      type="int",
-      default=500,
-      metavar="INT")
-    .option(None, "--macro_cycles",
-      action="store",
-      type="int",
-      default=1,
-      metavar="INT")
-    .option(None, "--write_pdb_rms_threshold",
-      action="store",
-      type="float",
-      default=None,
-      metavar="FLOAT")
-    .option(None, "--show_geometry_restraints",
-      action="store_true")
-  ).process(args=args, min_nargs=1, max_nargs=2)
-  co = command_line.options
-  input_pdb_file_name = None
-  output_pdb_file_name = None
-  cif_objects = []
-  arg_is_processed = False
-  for arg in command_line.args:
-    if (not os.path.isfile(arg)):
-      if (output_pdb_file_name is not None):
-        raise Sorry(
-          "More than one output PDB file name:\n"
-          "  %s\n"
-          "  %s\n" % (
-            show_string(output_pdb_file_name),
-            show_string(arg)))
-      output_pdb_file_name = arg
-      arg_is_processed = True
-    else:
-      if (pdb.interpretation.is_pdb_file(file_name=arg)):
-        if (input_pdb_file_name is not None):
-          raise Sorry(
-            "More than one input PDB file name:\n"
-            "  %s\n"
-            "  %s\n" % (
-              show_string(input_pdb_file_name),
-              show_string(arg)))
-        input_pdb_file_name = arg
-        arg_is_processed = True
-      else:
-        try: cif_object = mmtbx.monomer_library.server.read_cif(file_name=arg)
-        except KeyboardInterrupt: raise
-        except: pass
-        else:
-          if (len(cif_object) > 0):
-            cif_objects.append((arg,cif_object))
-            arg_is_processed = True
-    if (not arg_is_processed):
-      raise Sorry(
-        "Command line argument not recognized: %s" %
-          show_string(arg))
+def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
+  co = params
   geometry_restraints_flags = geometry_restraints.flags.flags(default=True)
-  log = sys.stdout
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
-  for file_name,cif_object in cif_objects:
-    mon_lib_srv.process_cif_object(cif_object=cif_object, file_name=file_name)
-    ener_lib.process_cif_object(cif_object=cif_object, file_name=file_name)
-  del cif_objects
-  if (output_pdb_file_name is None):
-    output_pdb_file_name = list(os.path.splitext(os.path.basename(
-      input_pdb_file_name)))
-    output_file_name_prefix = output_pdb_file_name[0]
-    intermediate_pdb_file_name_format = "".join([
-      output_pdb_file_name[0] + "_macro_%03d_step_%05d",
-      output_pdb_file_name[1]])
-    output_pdb_file_name[0] += "_geometry_minimized"
-    output_pdb_file_name = "".join(output_pdb_file_name)
-  output_pdb_file_object = open(output_pdb_file_name, "w")
-  all_chain_proxies=monomer_library.pdb_interpretation.build_all_chain_proxies(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    file_name=input_pdb_file_name,
-    crystal_symmetry=command_line.symmetry,
-    force_symmetry=True,
-    substitute_non_crystallographic_unit_cell_if_necessary=True,
-    log=log)
-  geometry_restraints_manager = \
-    all_chain_proxies.construct_geometry_restraints_manager(
-      ener_lib=ener_lib,
-      disulfide_link=mon_lib_srv.link_link_id_dict["SS"],
-      log=log)
+  all_chain_proxies = processed_pdb_file.all_chain_proxies
+  geometry_restraints_manager = processed_pdb_file.\
+    geometry_restraints_manager(show_energies = False)
   special_position_settings = all_chain_proxies.special_position_settings
   sites_cart = all_chain_proxies.sites_cart_exact().deep_copy()
   atom_labels = [atom.pdb_format()
@@ -218,15 +85,6 @@ def run(args, command_name="phenix.geometry_minimization"):
   del pair_proxies
   print
   log.flush()
-  pymol_commands = []
-  if (co.write_pdb_rms_threshold is not None):
-    write_pdb_file(
-      output_pdb_file_name=output_file_name_prefix+"_initial.pdb",
-      remark="initial coordinates",
-      stage_1=all_chain_proxies.stage_1,
-      crystal_symmetry=geometry_restraints_manager.crystal_symmetry,
-      sites_cart=sites_cart,
-      pymol_commands=pymol_commands)
   if (co.alternate_nonbonded_off_on and co.macro_cycles % 2 != 0):
     co.macro_cycles += 1
     print "INFO: Number of macro cycles increased by one to ensure use of"
@@ -244,10 +102,7 @@ def run(args, command_name="phenix.geometry_minimization"):
       geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
         max_iterations=co.max_iterations),
-      intermediate_pdb_file_name_format=intermediate_pdb_file_name_format,
-      i_macro_cycle=i_macro_cycle,
-      write_pdb_rms_threshold=co.write_pdb_rms_threshold,
-      pymol_commands=pymol_commands)
+      i_macro_cycle=i_macro_cycle)
     print "Energies at start of minimization:"
     minimized.first_target_result.show()
     print
@@ -268,19 +123,8 @@ def run(args, command_name="phenix.geometry_minimization"):
           max_lines=10)
     print
   assert geometry_restraints_flags.nonbonded
-  print "Writing:", output_pdb_file_name
-  print >> output_pdb_file_object, "REMARK", command_name, " ".join(args)
-  all_chain_proxies.stage_1.write_modified(
-    out=output_pdb_file_object,
-    new_sites_cart=sites_cart,
-    crystal_symmetry=special_position_settings)
-  output_pdb_file_object.close()
-  print
-  if (len(pymol_commands) > 0):
-    pymol_commands.append("load %s, mov" % output_pdb_file_name)
-    write_pymol_commands(
-      os.path.splitext(output_pdb_file_name)[0]+".pml",
-      pymol_commands)
+  return sites_cart
 
 if (__name__ == "__main__"):
-  run(args=sys.argv[1:])
+  # XXX temporary message
+  print "\n***Command chage: use phenix.pdbtools for geometry_minimization.***\n"
