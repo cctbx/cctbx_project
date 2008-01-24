@@ -3,7 +3,7 @@ from iotbx.pdb import hybrid_36
 import iotbx.pdb.parser
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
-from libtbx.utils import user_plus_sys_time, format_cpu_times
+from libtbx.utils import Sorry, user_plus_sys_time, format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
@@ -1798,7 +1798,7 @@ END
 =    " CA ASER A   1 "
 =    " CA BSER A   1 "''')
   try: pdb_inp.raise_altloc_mix_if_necessary()
-  except RuntimeError, e:
+  except Sorry, e:
     assert not show_diff(str(e), '''\
 mix of alternative groups with and without blank altlocs:
   alternative group with blank altloc:
@@ -1808,6 +1808,27 @@ mix of alternative groups with and without blank altlocs:
   alternative group without blank altloc:
     " CA ASER A   1 "
     " CA BSER A   1 "''')
+  else: raise Exception_expected
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM     68  HD1 LEU B 441
+ATOM     69  HD1 LEU B 441
+ATOM     70  HD1 LEU B 441
+ATOM     71  HD2 LEU B 441
+ATOM     72  HD2 LEU B 441
+ATOM     73  HD2 LEU B 441
+"""))
+  try: pdb_inp.raise_duplicate_atom_labels_if_necessary(max_show=1)
+  except Sorry, e:
+    assert not show_diff(str(e), '''\
+number of groups of duplicate atom labels:    2
+  total number of affected atoms:             6
+  group " HD1 LEU B 441 "
+        " HD1 LEU B 441 "
+        " HD1 LEU B 441 "
+  ... 1 remaining group not shown''')
   else: raise Exception_expected
   #
   try: pdb.input(
