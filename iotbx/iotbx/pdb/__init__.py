@@ -11,7 +11,7 @@ import scitbx.stl.set
 from libtbx import smart_open
 from libtbx.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
-from libtbx.utils import plural_s
+from libtbx.utils import plural_s, Sorry
 from libtbx.itertbx import count
 from libtbx import dict_with_default_0
 import sys
@@ -283,22 +283,10 @@ def show_summary(
       annotation_appearance[common_residue_names_get_class(name=name)]
         for name in c.keys()])
   #
-  dup = pdb_inp.find_duplicate_atom_labels()
-  if (dup.size() > 0):
-    print >> out, prefix+"  number of groups of duplicate atom labels:  %3d" \
-      % dup.size()
-    print >> out, prefix+"    total number of affected atoms:           %3d" \
-      % sum([i_seqs.size() for i_seqs in dup])
-    if (duplicate_max_show > 0):
-      iall = pdb_inp.input_atom_labels_list()
-      for i_seqs in dup[:duplicate_max_show]:
-        prfx = "    group"
-        for i_seq in i_seqs:
-          print >> out, prefix+prfx, iall[i_seq].pdb_format()
-          prfx = "         "
-      if (dup.size() > duplicate_max_show):
-        print >> out, prefix+"    ... %d remaining group%s not shown" % \
-          plural_s(dup.size()-duplicate_max_show)
+  msg = pdb_inp.have_duplicate_atom_labels_message(
+    max_show=duplicate_max_show,
+    prefix=prefix+"  ")
+  if (msg is not None): print >> out, msg
   #
   msg = pdb_inp.have_altloc_mix_message(prefix=prefix+"  ")
   if (msg is not None): print >> out, msg
@@ -627,7 +615,31 @@ class _input(boost.python.injector, ext.input):
 
   def raise_altloc_mix_if_necessary(self):
     msg = self.have_altloc_mix_message()
-    if (msg is not None): raise RuntimeError(msg)
+    if (msg is not None): raise Sorry(msg)
+
+  def have_duplicate_atom_labels_message(self, max_show=10, prefix=""):
+    dup = self.find_duplicate_atom_labels()
+    if (dup.size() == 0):
+      return None
+    result = [
+      prefix + "number of groups of duplicate atom labels:  %3d" % dup.size(),
+      prefix + "  total number of affected atoms:           %3d" %
+        sum([i_seqs.size() for i_seqs in dup])]
+    if (max_show > 0):
+      iall = self.input_atom_labels_list()
+      for i_seqs in dup[:max_show]:
+        prfx = "  group "
+        for i_seq in i_seqs:
+          result.append(prefix + prfx + iall[i_seq].pdb_format())
+          prfx = "        "
+      if (dup.size() > max_show):
+        result.append(prefix + "  ... %d remaining group%s not shown" %
+          plural_s(dup.size()-max_show))
+    return "\n".join(result)
+
+  def raise_duplicate_atom_labels_if_necessary(self, max_show=10):
+    msg = self.have_duplicate_atom_labels_message(max_show=max_show)
+    if (msg is not None): raise Sorry(msg)
 
   def crystal_symmetry_from_cryst1(self):
     from iotbx.pdb import cryst1_interpretation
