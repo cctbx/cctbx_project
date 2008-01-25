@@ -14,6 +14,7 @@ from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx.utils import plural_s, Sorry
 from libtbx.itertbx import count
 from libtbx import dict_with_default_0
+import md5
 import sys
 
 cns_dna_rna_residue_names = {
@@ -211,6 +212,57 @@ class residue_name_plus_atom_names_interpreter(object):
               "DT": "TD"}[work_residue_name]
     self.work_residue_name = work_residue_name
     self.atom_name_interpretation = atom_name_interpretation
+
+class combine_unique_pdb_files(object):
+
+  def __init__(self, file_names):
+    self.file_name_registry = {}
+    self.md5_registry = {}
+    self.unique_file_names = []
+    self.raw_records = []
+    for file_name in file_names:
+      if (file_name in self.file_name_registry):
+        self.file_name_registry[file_name] += 1
+      else:
+        self.file_name_registry[file_name] = 1
+        r = [s.expandtabs().rstrip()
+          for s in smart_open.for_reading(
+            file_name=file_name).read().splitlines()]
+        m = md5.new()
+        m.update("\n".join(r))
+        m = m.hexdigest()
+        l = self.md5_registry.get(m)
+        if (l is not None):
+          l.append(file_name)
+        else:
+          self.md5_registry[m] = [file_name]
+          self.unique_file_names.append(file_name)
+          self.raw_records.extend(r)
+
+  def report_non_unique(self, out=None, prefix=""):
+    if (out is None): out = sys.stdout
+    n_ignored = 0
+    for file_name in sorted(self.file_name_registry.keys()):
+      n = self.file_name_registry[file_name]
+      if (n != 1):
+        print >> out, prefix+"INFO: PDB file name appears %d times: %s" % (
+          n, show_string(file_name))
+        n_ignored += (n-1)
+    if (n_ignored != 0):
+      print >> out, prefix+"  %d repeated file name%s ignored." % \
+        plural_s(n=n_ignored)
+    n_identical = 0
+    for file_names in self.md5_registry.values():
+      if (len(file_names) != 1):
+        print >> out, prefix+"INFO: PDB files with identical content:"
+        for file_name in file_names:
+          print >> out, prefix+"  %s" % show_string(file_name)
+        n_identical += len(file_names)-1
+    if (n_identical != 0):
+      print >> out, prefix+"%d file%s with repeated content ignored." % \
+        plural_s(n=n_identical)
+    if (n_ignored != 0 or n_identical != 0):
+      print >> out, prefix.rstrip()
 
 class Please_pass_string_or_None(object): pass
 

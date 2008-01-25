@@ -14,6 +14,98 @@ import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
 
+def exercise_combine_unique_pdb_files():
+  for file_name,s in [("tmp1", "1"),
+                      ("tmp2", "        2"),
+                      ("tmp3", "1\t"),
+                      ("tmp4", " \t2"),
+                      ("tmp5", "1  ")]:
+    open(file_name, "w").write(s)
+  for file_names in [[], ["tmp1"], ["tmp1", "tmp2"]]:
+    c = pdb.combine_unique_pdb_files(file_names=file_names)
+    assert len(c.file_name_registry) == len(file_names)
+    assert len(c.md5_registry) == len(file_names)
+    assert len(c.unique_file_names) == len(file_names)
+    assert len(c.raw_records) == len(file_names)
+    s = StringIO()
+    c.report_non_unique(out=s)
+    assert len(s.getvalue()) == 0
+  c = pdb.combine_unique_pdb_files(file_names=["tmp1", "tmp1"])
+  assert len(c.file_name_registry) == 1
+  assert len(c.md5_registry) == 1
+  assert len(c.unique_file_names) == 1
+  assert len(c.raw_records) == 1
+  s = StringIO()
+  c.report_non_unique(out=s)
+  assert not show_diff(s.getvalue(), """\
+INFO: PDB file name appears 2 times: "tmp1"
+  1 repeated file name ignored.
+
+""")
+  c = pdb.combine_unique_pdb_files(file_names=["tmp1", "tmp1", "tmp2", "tmp1"])
+  assert len(c.file_name_registry) == 2
+  assert len(c.md5_registry) == 2
+  assert len(c.unique_file_names) == 2
+  assert len(c.raw_records) == 2
+  s = StringIO()
+  c.report_non_unique(out=s, prefix="^")
+  assert not show_diff(s.getvalue(), """\
+^INFO: PDB file name appears 3 times: "tmp1"
+^  2 repeated file names ignored.
+^
+""")
+  c = pdb.combine_unique_pdb_files(file_names=["tmp1", "tmp2", "tmp3"])
+  assert len(c.file_name_registry) == 3
+  assert len(c.md5_registry) == 2
+  assert len(c.unique_file_names) == 2
+  assert len(c.raw_records) == 2
+  s = StringIO()
+  c.report_non_unique(out=s)
+  assert not show_diff(s.getvalue(), """\
+INFO: PDB files with identical content:
+  "tmp1"
+  "tmp3"
+1 file with repeated content ignored.
+
+""")
+  c = pdb.combine_unique_pdb_files(file_names=["tmp1", "tmp2", "tmp3", "tmp5"])
+  assert len(c.file_name_registry) == 4
+  assert len(c.md5_registry) == 2
+  assert len(c.unique_file_names) == 2
+  assert len(c.raw_records) == 2
+  s = StringIO()
+  c.report_non_unique(out=s, prefix=": ")
+  assert not show_diff(s.getvalue(), """\
+: INFO: PDB files with identical content:
+:   "tmp1"
+:   "tmp3"
+:   "tmp5"
+: 2 files with repeated content ignored.
+:
+""")
+  c = pdb.combine_unique_pdb_files(file_names=[
+    "tmp1", "tmp2", "tmp3", "tmp4", "tmp5", "tmp4", "tmp5"])
+  assert len(c.file_name_registry) == 5
+  assert len(c.md5_registry) == 2
+  assert len(c.unique_file_names) == 2
+  assert len(c.raw_records) == 2
+  s = StringIO()
+  c.report_non_unique(out=s)
+  assert not show_diff(s.getvalue(), """\
+INFO: PDB file name appears 2 times: "tmp4"
+INFO: PDB file name appears 2 times: "tmp5"
+  2 repeated file names ignored.
+INFO: PDB files with identical content:
+  "tmp2"
+  "tmp4"
+INFO: PDB files with identical content:
+  "tmp1"
+  "tmp3"
+  "tmp5"
+3 files with repeated content ignored.
+
+""")
+
 def exercise_format_records():
   crystal_symmetry = crystal.symmetry(
     unit_cell=(10,10,13,90,90,120),
@@ -730,6 +822,7 @@ def write_icosahedron():
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_combine_unique_pdb_files()
   exercise_format_records()
   exercise_remark_290_interpretation()
   exercise_parser()
