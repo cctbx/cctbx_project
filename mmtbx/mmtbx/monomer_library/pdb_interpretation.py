@@ -2801,12 +2801,8 @@ class process(object):
       phil_path = params.__phil_path__()
       raise Sorry("""%s failure:
   Number of nonbonded interaction distances < %.6g: %d
-  - Please inspect the histogram of nonbonded interaction distances above.
-  - This error may be the result of specifying the same PDB file
-    multiple times, e.g. once via a parameter file and a second time
-    via the command line. If this is the case, omit the file name from
-    the command line, or edit the parameter file.
-  - To disable this error, run the same command again with the following
+    Please inspect the histogram of nonbonded interaction distances above.
+    To disable this error, run the same command again with the following
     additional argument:
       %s.nonbonded_distance_threshold=None""" %
         (phil_path, params.nonbonded_distance_threshold,
