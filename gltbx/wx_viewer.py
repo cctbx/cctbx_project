@@ -65,9 +65,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def process_keyword_arguments(self,
                                 auto_spin_allowed=False,
                                 orthographic=False,
+                                animation_time=1, #seconds
                                 **kw):
     self.autospin_allowed = auto_spin_allowed
     self.orthographic = orthographic
+    self.animation_time = animation_time
     return kw
 
   def __init__(self, parent, *args, **kw):
@@ -99,6 +101,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.min_viewport_use_fraction = 0.01
 
     self.rotation_center = (0,0,0)
+    self.marked_rotation = None
 
     self.parent = parent
     # Current coordinates of the mouse.
@@ -138,8 +141,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.move_to_center_of_viewport(self.rotation_center)
     elif (key == ord('f')):
       self.fit_into_viewport()
+    elif key == ord('k'):
+      self.mark_rotation()
     elif (key == ord('a')):
-      self.reset_rotation()
+      self.snap_back_rotation()
     elif (key == ord('s')):
       self.autospin_allowed = not self.autospin_allowed
     elif (key == ord('V')):
@@ -266,25 +271,33 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def fit_into_viewport(self):
     dx,dy,dz = self.compute_home_translation()
+    move_factor=self.translation_move_factor((dx,dy,dz))
     mvm = gltbx.util.get_gl_modelview_matrix()
-    for f in animation_stepper(move_factor=self.translation_move_factor(
-                                translation_vector=(dx,dy,dz))):
+    for f in animation_stepper(time_move=self.animation_time,
+                               move_factor=move_factor):
       glMatrixMode(GL_MODELVIEW)
       glLoadIdentity()
       glTranslated(f*dx, f*dy, f*dz)
       glMultMatrixd(mvm)
       self.OnRedraw()
 
-  def reset_rotation(self):
-    co = gltbx.util.object_as_eye_coordinates(self.rotation_center)
+  def mark_rotation(self):
+    self.marked_rotation = matrix.sqr(
+      gltbx.util.extract_rotation_from_gl_modelview_matrix())
+
+  def snap_back_rotation(self):
     rc = self.rotation_center
+    rotation_to_undo = matrix.sqr(
+      gltbx.util.extract_rotation_from_gl_modelview_matrix())
+    if self.marked_rotation is not None:
+      rotation_to_undo *= self.marked_rotation.inverse()
     aa = scitbx.math.r3_rotation_axis_and_angle_from_matrix(
-      r=gltbx.util.extract_rotation_from_gl_modelview_matrix())
+      r=rotation_to_undo.as_mat3())
     u,v,w = aa.axis
     angle = -aa.angle(deg=True)
     mvm = gltbx.util.get_gl_modelview_matrix()
-    for f in animation_stepper(move_factor=self.rotation_move_factor(
-                                 rotation_angle=angle)):
+    for f in animation_stepper(time_move=self.animation_time,
+                               move_factor=self.rotation_move_factor(angle)):
       glMatrixMode(GL_MODELVIEW)
       glLoadMatrixd(mvm)
       gltbx.util.rotate_object_about_eye_vector(
@@ -292,26 +305,16 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         xvector=u, yvector=v, zvector=w,
         angle=f*angle)
       self.OnRedraw()
-    # just to eliminate round-off errors
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    cn = gltbx.util.object_as_eye_coordinates(self.rotation_center)
-    mvm = gltbx.util.get_gl_modelview_matrix()
-    glLoadIdentity()
-    glTranslated(*[o-n for o,n in zip(co,cn)])
-    glMultMatrixd(mvm)
-    self.OnRedraw()
 
   def move_rotation_center_to_mcs_center(self):
     self.rotation_center = self.minimum_covering_sphere.center()
 
   def move_to_center_of_viewport(self, obj_coor):
     dx,dy = [-x for x in gltbx.util.object_as_eye_coordinates(obj_coor)[:2]]
-    move_factor = min(1,  abs(matrix.col((dx,dy,0)))
-                        / max(1,self.minimum_covering_sphere.radius()))
+    move_factor = self.translation_move_factor((dx,dy,0))
     mvm = gltbx.util.get_gl_modelview_matrix()
-    for f in animation_stepper(move_factor=self.translation_move_factor(
-                                translation_vector=(dx,dy,0))):
+    for f in animation_stepper(time_move=self.animation_time,
+                               move_factor=move_factor):
       glMatrixMode(GL_MODELVIEW)
       glLoadIdentity()
       glTranslated(f*dx, f*dy, 0)
@@ -631,32 +634,42 @@ class App(wx.App):
 
     tb = self.frame.CreateToolBar(
       style = wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
-    tb.SetToolBitmapSize(wx.Size(20,20))
 
-    sphere_blue_bmp = gltbx.images.sphere_blue_img.as_wx_Bitmap()
-    center_bmp = gltbx.images.center_img.as_wx_Bitmap()
-    fit_bmp = gltbx.images.fit_img.as_wx_Bitmap()
-    align_bmp = gltbx.images.align_img.as_wx_Bitmap()
-    spiral_bmp = gltbx.images.spiral_img.as_wx_Bitmap()
+    import gltbx.wx_viewers_images as images
 
-    tb.AddSimpleTool(10, sphere_blue_bmp, "MCS center",
-      "Moves center of rotation to center of minimum covering sphere (MCS)."
+    tb.AddSimpleTool(10, images.mcs_img.as_wx_Bitmap(),
+      "Rotate around MCS center",
+      "Object are to be rotated around the Minimum Covering Sphere (MCS)"
+      "centre."
       " Keyboard shortcut: m")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=10)
 
-    tb.AddSimpleTool(20, center_bmp, "Center",
-      "Moves center of rotation to center of window. Keyboard shortcut: c")
+    tb.AddSimpleTool(20, images.centre_img.as_wx_Bitmap(),
+      "Center in window",
+      "Shifts object so that centre of rotation is centered in window."
+      " Keyboard shortcut: c")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=20)
 
-    tb.AddSimpleTool(30, fit_bmp, "Fit size",
-      "Resize object to fit into window. Keyboard shortcut: f")
+    tb.AddSimpleTool(30, images.fit_img.as_wx_Bitmap(),
+      "Fit in window",
+      "Resizes and shifts object to fit into window."
+      " Keyboard shortcut: f")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=30)
 
-    tb.AddSimpleTool(40, align_bmp, "Align",
-      "Aligns object and eye coordinate systems. Keyboard shortcut: a")
+    tb.AddSimpleTool(40, images.mark_snap_back_img.as_wx_Bitmap(),
+      "Mark orientation for snap-back",
+      "Marks object orientation as the target of a subsequent snap-back."
+      " Keyboard shortcut: k")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=40)
 
-    tb.AddSimpleTool(50, spiral_bmp, "Spin on/off",
+    tb.AddSimpleTool(41, images.snap_back_img.as_wx_Bitmap(),
+      "Snap back orientation",
+      "Rotates object back to the last marked orientation."
+      " Keyboard shortcut: a")
+    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=41)
+
+    tb.AddSimpleTool(50, images.spin_img.as_wx_Bitmap(),
+      "Spin on/off",
       "Turns auto-spin on/off. Keyboard shortcut: s")
     self.Bind(wx.EVT_TOOL, self.OnToolClick, id=50)
 
@@ -687,8 +700,10 @@ class App(wx.App):
         self.view_objects.rotation_center)
     elif (id == 30):
       self.view_objects.fit_into_viewport()
-    elif (id == 40):
-      self.view_objects.reset_rotation()
+    elif id == 40:
+      self.view_objects.mark_rotation()
+    elif (id == 41):
+      self.view_objects.snap_back_rotation()
     elif (id == 50):
       self.view_objects.autospin_allowed \
         = not self.view_objects.autospin_allowed
