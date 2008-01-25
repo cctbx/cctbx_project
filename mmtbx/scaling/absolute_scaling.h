@@ -726,7 +726,6 @@ namespace absolute_scaling{
                                  V_star,
                                  U);
 
-
       normalised[ii] = f_obs[ii]*k;
     }
 
@@ -747,7 +746,8 @@ namespace absolute_scaling{
 
     scitbx::af::shared<FloatType> norma_I_array(d_star_sq_array.size(),0);
     scitbx::af::shared<FloatType> weights_array(d_star_sq_array.size(),0);
-    FloatType x,dx,result;
+    FloatType x,dx,tmp_norm,result;
+    FloatType eps=1E-8;
 
     // Use a simple kernel for binning purposes
     for (unsigned jj=0;jj<d_star_sq_hkl.size();jj++){
@@ -761,8 +761,13 @@ namespace absolute_scaling{
       }
     }
     // Now we just have to 'normalise' via the weights we have obtained
+
     for (unsigned ii=0 ;ii<d_star_sq_array.size();ii++){
-      norma_I_array[ii]/=weights_array[ii];
+      tmp_norm = weights_array[ii];
+      if (tmp_norm <= eps){
+        tmp_norm=eps;
+      }
+      norma_I_array[ii]/=tmp_norm;
     }
 
     return(norma_I_array);
