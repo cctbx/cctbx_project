@@ -634,6 +634,7 @@ class App(wx.App):
 
     tb = self.frame.CreateToolBar(
       style = wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
+    tb.SetToolBitmapSize((32,32))
 
     import gltbx.wx_viewers_images as images
 
