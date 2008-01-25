@@ -45,6 +45,7 @@ gltbx/command_line/pythonw.sh -text
 gltbx/wx_controllers.py -text
 gltbx/wx_map_viewer.py -text
 gltbx/wx_viewer_example.py -text
+gltbx/wx_viewers_images.py -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names.h -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names_bpl.cpp -text
 iotbx/include/iotbx/pdb/tst_rna_dna_atom_names.py -text
