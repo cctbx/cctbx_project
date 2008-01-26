@@ -18,6 +18,7 @@ from mmtbx import ias
 from mmtbx import utils
 from mmtbx import model_statistics
 from mmtbx.solvent import ordered_solvent
+import iotbx.pdb
 
 
 time_model_show = 0.0
@@ -270,13 +271,14 @@ class manager(object):
     labels = self.xray_structure.scatterers().extract_labels()
     water = ordered_solvent.water_ids()
     result = flex.bool()
+    get_class = iotbx.pdb.common_residue_names_get_class
     for a in self.atom_attributes_list:
       element = (a.element).strip()
       resName = (a.resName).strip()
       name    = (a.name).strip()
       if((element in water.element_types) and
          (name in water.atom_names) and \
-         (resName in water.residue_names)):
+         (get_class(name = resName) == "common_water")):
         result.append(True)
       else: result.append(False)
     return result

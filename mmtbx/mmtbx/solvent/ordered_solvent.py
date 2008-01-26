@@ -120,8 +120,10 @@ class manager(object):
       else:
         self.find_peaks_params.max_number_of_peaks = \
           self.model.xray_structure.scatterers().size()
-    self.move_solvent_to_the_end_of_atom_list()
-    self.assert_water_is_last()
+    if(not self.is_water_last()):
+      self.move_solvent_to_the_end_of_atom_list()
+    if(not self.is_water_last()):
+      raise RuntimeError("Water picking failed: solvent must be last.")
     self.show(message = "Start model:")
     self.filter_solvent()
     if(not self.filter_only):
@@ -177,13 +179,15 @@ class manager(object):
         solvent_xray_structure = xrs_sol)
     else: raise RuntimeError("Water contains H: not implemented.")
 
-  def assert_water_is_last(self):
+  def is_water_last(self):
+    result = True
     sol_sel = self.model.solvent_selection()
     i_sol_sel = sol_sel.iselection()
     i_mac_sel = (~sol_sel).iselection()
     if(i_sol_sel.size() > 0 and i_mac_sel.size() > 0):
-      if(not flex.max_default(i_sol_sel,0)-flex.min_default(i_mac_sel,0) != 1):
-        raise RuntimeError("Water picking failed: solvent must be last.")
+      if(flex.min_default(i_sol_sel,0)-flex.max_default(i_mac_sel,0) != 1):
+        result = False
+    return result
 
   def filter_solvent(self):
     sol_sel = self.model.solvent_selection()
@@ -191,7 +195,7 @@ class manager(object):
     xrs_sol_h = self.model.xray_structure.select(sol_sel)
     hd_sol = self.model.xray_structure.hd_selection().select(sol_sel)
     hd_mac = self.model.xray_structure.hd_selection().select(~sol_sel)
-    xrs_sol = xrs_sol_h.select(~hd_sol)
+    xrs_sol = xrs_sol_h#.select(~hd_sol) # XXX
     xrs_mac = xrs_mac_h.select(~hd_mac)
     selection = xrs_sol.all_selection()
     scat_sol = xrs_sol.scatterers()
@@ -216,14 +220,17 @@ class manager(object):
     if(self.params.use_h_bond_rejection_criteria):
       aal = []
       for i_seq, sel in enumerate(self.model.xray_structure.hd_selection()):
-        if(not sel):
-          aal.append(self.model.atom_attributes_list[i_seq])
+        if(not sol_sel[i_seq]):
+          if(not sel):
+            aal.append(self.model.atom_attributes_list[i_seq])
+        else: aal.append(self.model.atom_attributes_list[i_seq])
       sfs = xrs_sol.sites_frac()
       for i, i_seq in enumerate(result.i_seqs):
         if(selection[i]):
           if(result.smallest_distances[i] <= self.params.h_bond_max and
              result.smallest_distances[i] >= self.params.h_bond_min):
-            assert aal[xrs_mac.scatterers().size()+i].element.strip() == 'O'
+            assert aal[xrs_mac.scatterers().size()+i].element.strip() in \
+              water_ids().element_types
             if(aal[i_seq].element.strip() not in ['O','N']):
               selection[i] = False
           else:
@@ -237,6 +244,12 @@ class manager(object):
               selection[i] = False
     new_ss = flex.bool(self.model.solvent_selection().count(False), True)
     new_ss.extend(selection)
+    # correct for H
+    xht = self.model.xh_connectivity_table()
+    if(xht is not None):
+      for ti in xht:
+        if(not new_ss[ti[0]]): new_ss[ti[1]]=False
+        if(new_ss[ti[0]]): new_ss[ti[1]]=True
     self.model = self.model.select(new_ss)
 
   def reset_solvent(self, solvent_selection, solvent_xray_structure):
@@ -322,6 +335,12 @@ class manager(object):
     selection = (smallest_distances <= step) & (smallest_distances >= 0)
     new_ss = flex.bool(self.model.solvent_selection().count(False), True)
     new_ss.extend(selection)
+    # correct for H
+    xht = self.model.xh_connectivity_table()
+    if(xht is not None):
+      for ti in xht:
+        if(not new_ss[ti[0]]): new_ss[ti[1]]=False
+        if(new_ss[ti[0]]): new_ss[ti[1]]=True
     self.model = self.model.select(new_ss)
 
   def add_new_solvent(self):

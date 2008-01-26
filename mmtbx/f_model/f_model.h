@@ -76,7 +76,7 @@ class core
                                  2.*u_star[3]*h[0]*h[1] +
                                  2.*u_star[4]*h[0]*h[2] +
                                  2.*u_star[5]*h[1]*h[2]);
-           if(arg > 706.0) arg=706.0; // to avoid overflow problem
+           if(arg > 40.0) arg=40.0; // to avoid overflow problem
            return std::exp(arg);
        }
        ComplexType f_bulk_one_h(ComplexType const& f_mask_h,
