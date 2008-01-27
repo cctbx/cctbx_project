@@ -209,7 +209,7 @@ Please specify an unambiguous substring of the target label.
   assert phases.is_complex_array()
   phases = reflection_file_srv.get_phases_deg(
     file_name=None,
-    labels="f2",
+    labels=["f2"],
     convert_to_phases_if_necessary=True,
     original_phase_units=None,
     parameter_scope=None,
@@ -238,7 +238,7 @@ Please specify an unambiguous substring of the target label.
   for original_phase_units in [None, "deg", "rad"]:
     phases = reflection_file_srv.get_phases_deg(
       file_name=None,
-      labels="F0",
+      labels=["F0"],
       convert_to_phases_if_necessary=False,
       original_phase_units=original_phase_units,
       parameter_scope=None,
