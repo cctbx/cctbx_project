@@ -272,7 +272,7 @@ master_params = iotbx.phil.parse("""\
       .type = choice
       .help = Rigid body refinement target function: least-squares or \
               maximum-likelihood
-    target_auto_switch_resolution = 5.0
+    target_auto_switch_resolution = 6.0
       .type = float
       .help = Used if target=auto, use optimal target for given working \
               resolution.
