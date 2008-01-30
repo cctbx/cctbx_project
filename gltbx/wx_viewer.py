@@ -634,45 +634,54 @@ class App(wx.App):
 
     tb = self.frame.CreateToolBar(
       style = wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT | wx.TB_TEXT)
+    isinstance(tb, wx.ToolBar)
     tb.SetToolBitmapSize((32,32))
 
     import gltbx.wx_viewers_images as images
 
-    tb.AddSimpleTool(10, images.mcs_img.as_wx_Bitmap(),
+    tb.Bind(wx.EVT_TOOL, self.OnToolClick)
+
+    self.mcs_center_id = wx.NewId()
+    tb.AddSimpleTool(self.mcs_center_id,
+      images.mcs_img.as_wx_Bitmap(),
       "Rotate around MCS center",
       "Object are to be rotated around the Minimum Covering Sphere (MCS)"
       "centre."
       " Keyboard shortcut: m")
-    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=10)
 
-    tb.AddSimpleTool(20, images.centre_img.as_wx_Bitmap(),
+    self.center_on_screen_id = wx.NewId()
+    tb.AddSimpleTool(self.center_on_screen_id,
+      images.centre_img.as_wx_Bitmap(),
       "Center in window",
       "Shifts object so that centre of rotation is centered in window."
       " Keyboard shortcut: c")
-    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=20)
 
-    tb.AddSimpleTool(30, images.fit_img.as_wx_Bitmap(),
+    self.fit_on_screen_id = wx.NewId()
+    tb.AddSimpleTool(self.fit_on_screen_id,
+      images.fit_img.as_wx_Bitmap(),
       "Fit in window",
       "Resizes and shifts object to fit into window."
       " Keyboard shortcut: f")
-    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=30)
 
-    tb.AddSimpleTool(40, images.mark_snap_back_img.as_wx_Bitmap(),
+    self.mark_snap_back_id = wx.NewId()
+    tb.AddSimpleTool(self.mark_snap_back_id,
+      images.mark_snap_back_img.as_wx_Bitmap(),
       "Mark orientation for snap-back",
       "Marks object orientation as the target of a subsequent snap-back."
       " Keyboard shortcut: k")
-    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=40)
 
-    tb.AddSimpleTool(41, images.snap_back_img.as_wx_Bitmap(),
+    self.snap_back_id = wx.NewId()
+    tb.AddSimpleTool(self.snap_back_id,
+      images.snap_back_img.as_wx_Bitmap(),
       "Snap back orientation",
       "Rotates object back to the last marked orientation."
       " Keyboard shortcut: a")
-    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=41)
 
-    tb.AddSimpleTool(50, images.spin_img.as_wx_Bitmap(),
-      "Spin on/off",
-      "Turns auto-spin on/off. Keyboard shortcut: s")
-    self.Bind(wx.EVT_TOOL, self.OnToolClick, id=50)
+    self.toggle_spin_id = wx.NewId()
+    tb.AddCheckTool(self.toggle_spin_id,
+      images.spin_img.as_wx_Bitmap(),
+      shortHelp="Spin on/off",
+      longHelp="Turns auto-spin on/off. Keyboard shortcut: s")
 
     tb.Realize()
 
@@ -685,6 +694,7 @@ class App(wx.App):
     self.frame.SetMenuBar(menuBar)
     self.frame.Show(True)
     self.init_view_objects()
+    self.update_status_bar()
     self.view_objects.SetFocus()
     self.SetTopWindow(self.frame)
     return True
@@ -694,22 +704,25 @@ class App(wx.App):
 
   def OnToolClick(self, event):
     id = event.GetId()
-    if (id == 10):
+    if (id == self.mcs_center_id):
       self.view_objects.move_rotation_center_to_mcs_center()
-    elif (id == 20):
+    elif (id == self.center_on_screen_id):
       self.view_objects.move_to_center_of_viewport(
         self.view_objects.rotation_center)
-    elif (id == 30):
+    elif (id == self.fit_on_screen_id):
       self.view_objects.fit_into_viewport()
-    elif id == 40:
+    elif id == self.mark_snap_back_id:
       self.view_objects.mark_rotation()
-    elif (id == 41):
+    elif (id == self.snap_back_id):
       self.view_objects.snap_back_rotation()
-    elif (id == 50):
+    elif (id == self.toggle_spin_id):
       self.view_objects.autospin_allowed \
         = not self.view_objects.autospin_allowed
       self.view_objects.autospin = False
-      self.frame.SetStatusText("Auto Spin %s"
-        % ["Off", "On"][int(self.view_objects.autospin_allowed)])
+      self.update_status_bar()
     else:
       raise RuntimeError("Unknown event Id: %d" % id)
+
+  def update_status_bar(self):
+    self.frame.SetStatusText("Auto Spin %s"
+      % ["Off", "On"][int(self.view_objects.autospin_allowed)])
