@@ -105,19 +105,26 @@ class manager(object):
     return result
 
   def idealize_h(self, xh_bond_distance_deviation_limit):
-    # does not idealize angles !
-    xh_ct = self.xh_connectivity_table()
-    assert xh_ct is not None
-    scatterers = self.xray_structure.scatterers()
-    unit_cell = self.xray_structure.unit_cell()
-    for bond in xh_ct:
-      i_x = bond[0]
-      i_h = bond[1]
-      dist = unit_cell.distance(scatterers[i_x].site, scatterers[i_h].site)
-      const_vect = bond[2]
-      if(abs(bond[3] - dist) > xh_bond_distance_deviation_limit):
-        scatterers[i_h].site = list(flex.double(scatterers[i_x].site) +
-          flex.double(const_vect))
+    from mmtbx.command_line import geometry_minimization
+    import scitbx.lbfgs
+    lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+      max_iterations = 500)
+    geometry_restraints_flags = geometry_restraints.flags.flags(
+      bond      = True,
+      nonbonded = False,
+      angle     = True,
+      dihedral  = True,
+      chirality = True,
+      planarity = True)
+    for i in xrange(3):
+      sites_cart = self.xray_structure.sites_cart()
+      minimized = geometry_minimization.lbfgs(
+        sites_cart                  = sites_cart,
+        geometry_restraints_manager = self.restraints_manager.geometry,
+        geometry_restraints_flags   = geometry_restraints_flags,
+        lbfgs_termination_params    = lbfgs_termination_params,
+        sites_cart_selection        = self.xray_structure.hd_selection())
+      self.xray_structure.set_sites_cart(sites_cart = sites_cart)
 
   def extract_ncs_groups(self):
     result = None
