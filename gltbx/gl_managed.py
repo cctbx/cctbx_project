@@ -51,11 +51,11 @@ class display_lists:
 class material_model(object):
 
   def __init__(self,
-               front_colour=(1, 204/255, 102/255),
-               back_colour=(102/255, 204/255, 1),
-               ambient=0.2,
+               front_colour=(102/255, 204/255, 1),
+               back_colour=(1, 204/255, 102/255),
+               ambient=0.5,
                diffuse=1.,
-               specular=0.5,
+               specular=0.25,
                specular_focus=10):
     self.front_colour = front_colour
     self.back_colour = back_colour
