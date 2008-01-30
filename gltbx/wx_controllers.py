@@ -11,7 +11,6 @@ class material(object):
                front_colour_picker,
                back_colour_picker,
                swap_colour_btn,
-               wires_btn,
                ambient_slider,
                diffuse_slider,
                specular_slider,
