@@ -152,11 +152,12 @@ class manager(object):
           self.model.refinement_flags.adp_individual_aniso.size(), False)
         selection_aniso = self.model.refinement_flags.adp_individual_aniso
         selection_aniso.set_selected(~self.model.solvent_selection(), False)
+        selection_aniso.set_selected(self.model.xray_structure.hd_selection(), False)
         self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
       else:
         selection_iso = self.model.refinement_flags.adp_individual_iso.deep_copy()
         selection_iso.set_selected(~self.model.solvent_selection(), False)
-        assert selection_iso.count(True) == self.model.solvent_selection().count(True)
+        selection_iso.set_selected(self.model.xray_structure.hd_selection(), False)
         self.model.set_refine_individual_adp(selection_iso = selection_iso)
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
           max_iterations = 25)
@@ -292,8 +293,8 @@ class manager(object):
       self.find_peaks_params.map_next_to_model.min_model_peak_dist).strip()
     dl_max = format_value("%-7.2f",
       self.find_peaks_params.map_next_to_model.max_model_peak_dist).strip()
-    ani_min = format_value("%-7.2f", scat.anisotropy(unit_cell =
-      xrs_sol.unit_cell())).strip()
+    ani_min = format_value("%-7.2f", flex.min_default(scat.anisotropy(
+      unit_cell = xrs_sol.unit_cell()), None))
     ani_min_l = format_value("%-7.2f",self.params.anisotropy_min).strip()
     print >>self.log,"  number           = %s"%number
     print >>self.log,"  b_iso_min        = %s (limit = %s)"%(b_min, bl_min)
