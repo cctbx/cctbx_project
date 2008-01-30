@@ -27,20 +27,17 @@ master_params = iotbx.phil.parse("""\
 class lbfgs(geometry_restraints.lbfgs.lbfgs):
 
   def __init__(self,
-        stage_1,
         sites_cart,
         geometry_restraints_manager,
         geometry_restraints_flags,
         lbfgs_termination_params,
-        i_macro_cycle):
-    self.stage_1 = stage_1
-    self.i_macro_cycle = i_macro_cycle
-    self.sites_cart_written = sites_cart.deep_copy()
+        sites_cart_selection=None):
     geometry_restraints.lbfgs.lbfgs.__init__(self,
       sites_cart=sites_cart,
       geometry_restraints_manager=geometry_restraints_manager,
       geometry_restraints_flags=geometry_restraints_flags,
-      lbfgs_termination_params=lbfgs_termination_params)
+      lbfgs_termination_params=lbfgs_termination_params,
+      sites_cart_selection=sites_cart_selection)
 
   def callback_after_step(self, minimizer):
     self.apply_shifts()
@@ -96,13 +93,11 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
       print "Use nonbonded interactions this macro cycle:", \
         geometry_restraints_flags.nonbonded
     minimized = lbfgs(
-      stage_1=all_chain_proxies.stage_1,
       sites_cart=sites_cart,
       geometry_restraints_manager=geometry_restraints_manager,
       geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=co.max_iterations),
-      i_macro_cycle=i_macro_cycle)
+        max_iterations=co.max_iterations))
     print "Energies at start of minimization:"
     minimized.first_target_result.show()
     print

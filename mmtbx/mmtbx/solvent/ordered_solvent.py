@@ -150,8 +150,7 @@ class manager(object):
       if(self.params.new_solvent == "anisotropic"):
         selection_aniso = flex.bool(
           self.model.refinement_flags.adp_individual_aniso.size(), False)
-        for sel in self.model.refinement_flags.adp_individual_aniso:
-          selection_aniso = selection_aniso | sel
+        selection_aniso = self.model.refinement_flags.adp_individual_aniso
         selection_aniso.set_selected(~self.model.solvent_selection(), False)
         self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
       else:
@@ -293,14 +292,18 @@ class manager(object):
       self.find_peaks_params.map_next_to_model.min_model_peak_dist).strip()
     dl_max = format_value("%-7.2f",
       self.find_peaks_params.map_next_to_model.max_model_peak_dist).strip()
-    print >> self.log,"  number           = %s"%number
-    print >> self.log,"  b_iso_min        = %s (limit = %s)"%(b_min, bl_min)
-    print >> self.log,"  b_iso_max        = %s (limit = %s)"%(b_max, bl_max)
-    print >> self.log,"  b_iso_mean       = %s             "%(b_ave)
-    print >> self.log,"  occupancy_min    = %s (limit = %s)"%(o_min, ol_min)
-    print >> self.log,"  occupancy_max    = %s (limit = %s)"%(o_max, ol_max)
-    print >> self.log,"  dist_sol_mol_min = %s (limit = %s)"%(d_min, dl_min)
-    print >> self.log,"  dist_sol_mol_max = %s (limit = %s)"%(d_max, dl_max)
+    ani_min = format_value("%-7.2f", scat.anisotropy(unit_cell =
+      xrs_sol.unit_cell())).strip()
+    ani_min_l = format_value("%-7.2f",self.params.anisotropy_min).strip()
+    print >>self.log,"  number           = %s"%number
+    print >>self.log,"  b_iso_min        = %s (limit = %s)"%(b_min, bl_min)
+    print >>self.log,"  b_iso_max        = %s (limit = %s)"%(b_max, bl_max)
+    print >>self.log,"  b_iso_mean       = %s             "%(b_ave)
+    print >>self.log,"  anisotropy_min   = %s (limit = %s)"%(ani_min,ani_min_l)
+    print >>self.log,"  occupancy_min    = %s (limit = %s)"%(o_min, ol_min)
+    print >>self.log,"  occupancy_max    = %s (limit = %s)"%(o_max, ol_max)
+    print >>self.log,"  dist_sol_mol_min = %s (limit = %s)"%(d_min, dl_min)
+    print >>self.log,"  dist_sol_mol_max = %s (limit = %s)"%(d_max, dl_max)
 
   def find_peaks(self, map_type, map_cutoff):
     self.fmodel.update_xray_structure(
