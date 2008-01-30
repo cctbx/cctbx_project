@@ -42,6 +42,8 @@ compcomm/newsletter08/news.txt -text
 compcomm/newsletter08/notes -text
 compcomm/newsletter08/special_positions.py -text
 crys3d/__init__.py -text
+crys3d/images.py -text
+crys3d/wx_extra.py -text
 crys3d/wx_map_viewer.py -text
 gltbx/command_line/pythonw.sh -text
 gltbx/wx_controllers.py -text

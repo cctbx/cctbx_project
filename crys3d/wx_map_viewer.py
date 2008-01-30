@@ -1,17 +1,24 @@
 from __future__ import division
-from gltbx import wx_viewer
+
 import wx
+
+from gltbx import wx_viewer
 import gltbx.util
 from gltbx import gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
 from gltbx import wx_controllers
+
+from crys3d import wx_extra
+import crys3d.images
+
 from scitbx.math import minimum_covering_sphere
 from scitbx.array_family import flex
 from scitbx import iso_surface
 from cctbx import maptbx
 from libtbx import easy_pickle
 from libtbx import object_oriented_patterns as oop
+
 import itertools
 import math
 
@@ -25,7 +32,9 @@ class map_view(wx_viewer.wxGLWindow):
                **kwds):
     assert fft_map is None or (unit_cell is None and raw_map is None)
     import time
-    super(map_view, self).__init__(frame, **kwds)
+    super(map_view, self).__init__(frame,
+                                   animation_time=0.3,#second
+                                   **kwds)
     self._gl_has_been_initialised = False
     self.buffer_factor = 2.0
     self.background_colour = (0,)*4
@@ -202,48 +211,53 @@ class App(wx_viewer.App):
     else:
       p,n = 1,0
       self.amplitude = 1
+
+    self.tools = wx_extra.InspectorToolFrame(self.frame)
+
+    iso_level_inspector = wx_extra.Inspector(
+      self.tools, label="Electron density Iso-levels")
+    iso_level_pane = iso_level_inspector.GetPane()
     self.iso_level_slider = wx.Slider(
-                            self.frame,
+                            iso_level_pane,
                             minValue=view.min_density / self.amplitude,
                             maxValue=view.max_density / self.amplitude,
                             value=view.iso_level / self.amplitude,
                             style=wx.SL_AUTOTICKS|wx.SL_LABELS)
+    self.front_colour_picker = wx.lib.colourselect.ColourSelect(
+      iso_level_pane)
+    self.back_colour_picker = wx.lib.colourselect.ColourSelect(
+      iso_level_pane)
+    self.swap_colour_btn = wx.Button(iso_level_pane, label="< swap >")
+    self.wires_btn = wx.CheckBox(iso_level_pane, label="Wires")
+    self.wires_btn.Bind(wx.EVT_CHECKBOX,
+                        self.on_wires_changed)
     if n == 1:
       lbl = "x %i" % p
     else:
       lbl = "x %ie%i" % (p,n)
-    self.multiplier = wx.StaticText(self.frame,
+    self.multiplier = wx.StaticText(iso_level_pane,
                                     style=wx.ALIGN_CENTER_HORIZONTAL,
                                     label=lbl)
     self.iso_level_slider.Bind(wx.EVT_SCROLL, self.on_iso_level_changed)
 
-    self.tools = wx.MiniFrame(self.frame,
-                              style=wx.CAPTION|wx.CLOSE_BOX)
-    tools_nb = wx.Notebook(self.tools)
-    opengl_page = wx.NotebookPage(tools_nb)
-    tools_nb.AddPage(opengl_page, "Lighting and Materials")
+    opengl_inspector = wx_extra.Inspector(self.tools,
+                                          label="Lighting and Materials")
+    opengl_pane = opengl_inspector.GetPane()
 
-    self.front_colour_picker = wx.lib.colourselect.ColourSelect(self.frame)
-    self.back_colour_picker = wx.lib.colourselect.ColourSelect(self.frame)
-    self.swap_colour_btn = wx.Button(self.frame, label="< swap >")
-    self.wires_btn = wx.CheckBox(self.frame)
-    self.wires_btn.Bind(wx.EVT_CHECKBOX,
-                        self.on_wires_changed)
 
-    self.ambient_slider = wx.Slider(opengl_page,
+    self.ambient_slider = wx.Slider(opengl_pane,
                                     style=wx.SL_AUTOTICKS|wx.SL_LABELS)
-    self.diffuse_slider = wx.Slider(opengl_page,
+    self.diffuse_slider = wx.Slider(opengl_pane,
                                     style=wx.SL_AUTOTICKS|wx.SL_LABELS)
-    self.specular_slider = wx.Slider(opengl_page,
+    self.specular_slider = wx.Slider(opengl_pane,
                                      style=wx.SL_AUTOTICKS|wx.SL_LABELS)
-    self.specular_focus_slider = wx.Slider(opengl_page,
+    self.specular_focus_slider = wx.Slider(opengl_pane,
                                            style=wx.SL_AUTOTICKS)
 
     self.material_ctrl = wx_controllers.material(view.material,
                                                  self.front_colour_picker,
                                                  self.back_colour_picker,
                                                  self.swap_colour_btn,
-                                                 self.wires_btn,
                                                  self.ambient_slider,
                                                  self.diffuse_slider,
                                                  self.specular_slider,
@@ -252,81 +266,100 @@ class App(wx_viewer.App):
 
     # lay out main window
     box = wx.BoxSizer(wx.VERTICAL)
-
     box.Add(view, 1, wx.EXPAND|wx.ALL, 5)
+    self.frame.SetSizer(box)
+    box.SetSizeHints(self.frame)
+
+    # lay out toolbox palette
+
+    # Iso-levels
+    box = wx.BoxSizer(wx.VERTICAL)
+
+    box.Add(self.wires_btn, 0, wx.ALL, 5)
+    box.AddSpacer(10)
+
+    surface_box = wx.BoxSizer(wx.HORIZONTAL)
 
     iso_level_slider_box = wx.BoxSizer(wx.VERTICAL)
     iso_level_slider_box.Add(self.iso_level_slider, 0, wx.ALL, 5)
     iso_level_slider_box.Add(self.multiplier, 0, wx.CENTER|wx.ALL, 5)
 
     iso_level_box = wx.BoxSizer(wx.HORIZONTAL)
-    iso_level_box.Add(wx.StaticText(self.frame, label="Iso-level"), 0,
-                      wx.ALL, 5)
-    iso_level_box.Add(iso_level_slider_box)
+    iso_level_box.Add(wx.StaticText(iso_level_pane, label="Iso-level"), 0,
+                      wx.ALL, 2)
+    iso_level_box.Add(iso_level_slider_box, flag = wx.ALL, border=2)
+    surface_box.Add(iso_level_box, flag=wx.ALL, border=5)
 
-    box.Add(iso_level_box)
-    box.AddSpacer(10)
+    surface_box.AddSpacer(10)
 
     colour_box = wx.BoxSizer(wx.HORIZONTAL)
-    colour_box.Add(wx.StaticText(self.frame, label="Front"), 0, wx.ALL, 5)
-    colour_box.Add(self.front_colour_picker, 0, wx.ALL, 5)
+    colour_box.Add(wx.StaticText(iso_level_pane, label="Front"), 0,
+                   wx.ALL|wx.CENTER, 2)
+    colour_box.Add(self.front_colour_picker, 0, wx.ALL|wx.CENTER, 2)
 
     colour_box.Add(self.swap_colour_btn, 0, wx.ALL, 5)
 
-    colour_box.Add(wx.StaticText(self.frame, label="Back"), 0, wx.ALL, 5)
-    colour_box.Add(self.back_colour_picker, 0, wx.ALL, 5)
+    colour_box.Add(self.back_colour_picker, 0, wx.ALL|wx.CENTER, 2)
+    colour_box.Add(wx.StaticText(iso_level_pane, label="Back"), 0,
+                   wx.ALL|wx.CENTER, 2)
+    surface_box.Add(colour_box, flag=wx.ALL, border=5)
 
-    colour_box.Add(wx.StaticText(self.frame, label="Wires"),
-                   0, wx.ALL, 5)
-    colour_box.Add(self.wires_btn, 0, wx.ALL, 5)
+    box.Add(surface_box)
 
-    box.Add(colour_box)
+    iso_level_pane.SetSizer(box)
 
-    self.frame.SetSizer(box)
-    box.SetSizeHints(self.frame)
-
-    # lay out toolbox palette
-
-    # Lighting and materials tabs
-    top_box = wx.BoxSizer(wx.VERTICAL)
-    top_box.Add(tools_nb, 0, wx.EXPAND|wx.ALL, 5)
-
+    # Lighting and materials pane
     box = wx.FlexGridSizer(rows=0, cols=4, vgap=10, hgap=10)
 
-    box.Add(wx.StaticText(opengl_page, label='Ambient (%)'), 0, 0)
+    box.Add(wx.StaticText(opengl_pane, label='Ambient (%)'), 0, 0)
     box.Add(self.ambient_slider, 0, wx.EXPAND)
 
-    box.Add(wx.StaticText(opengl_page, label='Diffuse (%)'), 0, 0)
+    box.Add(wx.StaticText(opengl_pane, label='Diffuse (%)'), 0, 0)
     box.Add(self.diffuse_slider, 0, wx.EXPAND)
 
-    box.Add(wx.StaticText(opengl_page, label='Specular (%)'), 0, 0)
+    box.Add(wx.StaticText(opengl_pane, label='Specular (%)'), 0, 0)
     box.Add(self.specular_slider, 0, wx.EXPAND)
 
-    box.Add(wx.StaticText(opengl_page, label='Specular focus'), 0, 0)
+    box.Add(wx.StaticText(opengl_pane, label='Specular focus'), 0, 0)
     box_sf = wx.BoxSizer(wx.VERTICAL)
     box_sf.Add(self.specular_focus_slider, 0, wx.EXPAND)
     box_sf_1 = wx.BoxSizer(wx.HORIZONTAL)
-    box_sf_1.Add(wx.StaticText(opengl_page, label="sharp"), 0, 0)
+    box_sf_1.Add(wx.StaticText(opengl_pane, label="sharp"), 0, 0)
     box_sf_1.AddStretchSpacer(10)
-    box_sf_1.Add(wx.StaticText(opengl_page, label="diffuse"), 0, 0)
+    box_sf_1.Add(wx.StaticText(opengl_pane, label="diffuse"), 0, 0)
     box_sf.Add(box_sf_1, 0, wx.EXPAND)
     box.Add(box_sf)
 
-    opengl_page.SetSizer(box)
-    box.SetSizeHints(opengl_page)
+    opengl_pane.SetSizer(box)
 
-    self.tools.SetSizer(top_box)
-    top_box.SetSizeHints(self.tools)
+    # Layout tool window
+    self.tools.Layout()
 
     # create toolbar button to show/hide the toolbox palette
+    tb = self.frame.GetToolBar()
+    self.toogle_tools_id = wx.NewId()
+    tb.AddSimpleTool(
+      id=self.toogle_tools_id,
+      bitmap=crys3d.images.inspector_img.as_wx_Bitmap(),
+      shortHelpString="Show/Hide inspectors",)
+    tb.Realize()
+    self.tools.place()
     self.tools.Show()
 
+  def OnToolClick(self, event):
+    id = event.GetId()
+    if id == self.toogle_tools_id:
+      if self.tools.Shown: self.tools.Hide()
+      else: self.tools.Show()
+    else:
+      super(App, self).OnToolClick(event)
 
   def on_iso_level_changed(self, event):
     self.view_objects.iso_level = self.iso_level_slider.Value * self.amplitude
 
   def on_wires_changed(self, e):
     self.view_objects.wires = self.wires_btn.IsChecked()
+
 
 def display(fft_map=None,
             unit_cell=None, raw_map=None,
