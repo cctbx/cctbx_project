@@ -170,7 +170,6 @@ class Sorry(Exception):
 disable_tracebacklimit = "LIBTBX_DISABLE_TRACEBACKLIMIT" in os.environ
 
 class Usage(Sorry):
-  # trick to get just "Sorry" instead of "libtbx.utils.Sorry"
   __module__ = "exceptions"
 
 def if_none(value, default):
