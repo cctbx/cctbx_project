@@ -5,6 +5,8 @@ from scitbx import stl
 import scitbx.stl.map
 from libtbx.phil import tokenizer
 from libtbx.str_utils import show_string
+from libtbx.utils import Sorry
+import traceback
 import sys
 
 class labels(object):
@@ -251,6 +253,9 @@ class selection_tokenizer(tokenizer.word_iterator):
     word = self.try_pop()
     if (word is None): raise RuntimeError("Missing argument for %s." % keyword)
     return word
+
+class AtomSelectionError(Sorry):
+  __module__ = "exceptions"
 
 class selection_cache(object):
 
@@ -601,11 +606,19 @@ class selection_cache(object):
     return selection
 
   def selection(self, string, contiguous_word_characters=None, callback=None):
-    return self.selection_parser(
-      word_iterator=self.selection_tokenizer(
-        string=string,
-        contiguous_word_characters=contiguous_word_characters),
-      callback=callback)
+    try:
+      return self.selection_parser(
+        word_iterator=self.selection_tokenizer(
+          string=string,
+          contiguous_word_characters=contiguous_word_characters),
+        callback=callback)
+    except (AtomSelectionError, KeyboardInterrupt): raise
+    except:
+      msg = traceback.format_exc().splitlines()
+      msg.extend([
+        "Atom selection string leading to error:",
+        "  " + string])
+      raise AtomSelectionError("\n".join(msg))
 
   def iselection(self, string, contiguous_word_characters=None):
     return self.selection(

@@ -620,17 +620,34 @@ END
   assert list(isel(r"charge 4+")) == [64]
   assert list(isel(r"anisou")) == [1, 3]
   try: isel(r"resSeq")
-  except RuntimeError, e:
-    assert str(e) == "Missing argument for resSeq."
+  except pdb.atom.AtomSelectionError, e:
+    assert str(e).find(
+      "Missing argument for resSeq.") >= 0
   else: raise Exception_expected
   try: isel(r"resSeq 3:2")
-  except RuntimeError, e:
-    assert str(e) == "range with first index > last index: resseq 3:2"
+  except pdb.atom.AtomSelectionError, e:
+    assert str(e).find(
+      "range with first index > last index: resseq 3:2") >= 0
   else: raise Exception_expected
   try: isel(r"resid ' 1K :2'")
-  except RuntimeError, e:
-    assert str(e) == "range with first index > last index: resid  1K :2"
+  except pdb.atom.AtomSelectionError, e:
+    assert str(e).find(
+      "range with first index > last index: resid  1K :2") >= 0
   else: raise Exception_expected
+  for s in ["altloc a and and name n",
+            "altloc a and or name n",
+            "altloc a or and name n",
+            "altloc a or or name n",
+            "and name n",
+            "or name n",
+            "not",
+            "not not"]:
+    try: isel(string=s)
+    except pdb.atom.AtomSelectionError, e:
+      assert str(e).endswith("""\
+Atom selection string leading to error:
+  %s""" % s)
+    else: raise Exception_expected
   #
   sel = sel_cache.get_labels(name=" CA ")
   assert len(sel) == 1
