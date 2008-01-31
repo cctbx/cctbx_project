@@ -1,5 +1,5 @@
 import wx
-import wx.lib.buttons
+import wx.lib.stattext
 import unicodedata
 
 class Inspector(wx.Panel):
@@ -10,7 +10,8 @@ class Inspector(wx.Panel):
     super(Inspector, self).__init__(parent, id)
     self._normal_colour, self._pressed_colour = [
       wx.Colour(*c) for c in [(208,)*3, (180,)*3] ]
-    self._header = wx.StaticText(self, style=wx.BORDER_NONE)
+    self._header = wx.lib.stattext.GenStaticText(
+      self, -1, "", style=wx.BORDER_NONE)
     self._header.SetBackgroundColour(self._normal_colour)
     self._header.Bind(wx.EVT_LEFT_DOWN, self._on_left_down)
     self._header.Bind(wx.EVT_LEFT_UP, self._on_left_up)
@@ -107,18 +108,28 @@ class InspectorToolFrame(wx.MiniFrame):
 
   def __init__(self, parent, id=wx.ID_ANY,
                pos=wx.DefaultPosition, size=wx.DefaultSize):
-    super(InspectorToolFrame, self).__init__(parent, id, pos=pos, size=size,
-                                             style=wx.CAPTION|wx.CLOSE_BOX)
+    super(InspectorToolFrame,
+          self).__init__(parent, id, title=" ", pos=pos, size=size,
+                         style=wx.CLOSE_BOX)
     s = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(s)
+    font = self.GetFont()
+    font.SetPointSize(8)
+    self.SetFont(font)
     if parent is not None:
       self.Bind(wx.EVT_CLOSE, lambda event: self.Hide())
       self.Bind(wx.EVT_MOVE, self._on_move)
       parent.Bind(wx.EVT_MOVE, self._on_move_or_resize_parent)
       parent.Bind(wx.EVT_SIZE, self._on_move_or_resize_parent)
+      self.Bind(wx.EVT_PAINT, self._on_paint)
+      self._initial_placement_done = False
       self._position_relative_to_parent = None
       self._parent_moved = False
+
+  def _on_paint(self, event):
+    if not self._initial_placement_done:
       self.place()
+      self._initial_placement_done = True
 
   def _on_move(self, event):
     if self._parent_moved:
