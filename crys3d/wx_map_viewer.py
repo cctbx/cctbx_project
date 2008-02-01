@@ -21,6 +21,7 @@ from libtbx import object_oriented_patterns as oop
 
 import itertools
 import math
+import unicodedata
 
 class map_view(wx_viewer.wxGLWindow):
 
@@ -236,10 +237,12 @@ class App(wx_viewer.App):
     self.wires_btn = wx.CheckBox(iso_level_pane, label="Wires")
     self.wires_btn.Bind(wx.EVT_CHECKBOX,
                         self.on_wires_changed)
+    lbl_fmt = "Iso-level %s %%s" % unicodedata.lookup('MULTIPLICATION SIGN')
     if n == 1:
-      lbl = "x %i" % p
+      multiplier = "%i" % p
     else:
-      lbl = "x %ie%i" % (p,n)
+      multiplier = "%ie%i" % (p,n)
+    lbl = lbl_fmt % multiplier
     self.multiplier = wx.StaticText(iso_level_pane,
                                     style=wx.ALIGN_CENTER_HORIZONTAL,
                                     label=lbl)
@@ -285,14 +288,9 @@ class App(wx_viewer.App):
 
     surface_box = wx.BoxSizer(wx.HORIZONTAL)
 
-    iso_level_slider_box = wx.BoxSizer(wx.VERTICAL)
-    iso_level_slider_box.Add(self.iso_level_slider, 0, wx.ALL, 5)
-    iso_level_slider_box.Add(self.multiplier, 0, wx.CENTER|wx.ALL, 5)
-
-    iso_level_box = wx.BoxSizer(wx.HORIZONTAL)
-    iso_level_box.Add(wx.StaticText(iso_level_pane, label="Iso-level"), 0,
-                      wx.ALL, 2)
-    iso_level_box.Add(iso_level_slider_box, flag=wx.ALL, border=2)
+    iso_level_box = wx.BoxSizer(wx.VERTICAL)
+    iso_level_box.Add(self.iso_level_slider, 0, wx.BOTTOM, 5)
+    iso_level_box.Add(self.multiplier, 0, wx.CENTER)
     surface_box.Add(iso_level_box, flag=wx.ALL, border=5)
 
     surface_box.AddSpacer(10)
@@ -314,26 +312,38 @@ class App(wx_viewer.App):
     iso_level_pane.SetSizer(box)
 
     # Lighting and materials pane
-    box = wx.FlexGridSizer(rows=0, cols=4, vgap=10, hgap=10)
+    box = wx.FlexGridSizer(rows=0, cols=2, vgap=10, hgap=10)
 
-    box.Add(wx.StaticText(opengl_pane, label='Ambient (%)'), 0, 0)
-    box.Add(self.ambient_slider, 0, wx.EXPAND)
+    cell_box = wx.BoxSizer(wx.VERTICAL)
+    cell_box.Add(self.ambient_slider, 0, wx.EXPAND|wx.BOTTOM, border=5)
+    cell_box.Add(wx.StaticText(opengl_pane, label='Ambient (%)'),
+                 flag=wx.CENTER)
+    box.Add(cell_box)
 
-    box.Add(wx.StaticText(opengl_pane, label='Diffuse (%)'), 0, 0)
-    box.Add(self.diffuse_slider, 0, wx.EXPAND)
+    cell_box = wx.BoxSizer(wx.VERTICAL)
+    cell_box.Add(self.diffuse_slider, 0, wx.EXPAND|wx.BOTTOM, border=5)
+    cell_box.Add(wx.StaticText(opengl_pane, label='Diffuse (%)'),
+                 flag=wx.CENTER)
+    box.Add(cell_box)
 
-    box.Add(wx.StaticText(opengl_pane, label='Specular (%)'), 0, 0)
-    box.Add(self.specular_slider, 0, wx.EXPAND)
+    cell_box = wx.BoxSizer(wx.VERTICAL)
+    cell_box.Add(self.specular_slider, 0, wx.EXPAND|wx.BOTTOM, border=5)
+    cell_box.Add(wx.StaticText(opengl_pane, label='Specular (%)'),
+                 flag=wx.CENTER)
+    box.Add(cell_box)
 
-    box.Add(wx.StaticText(opengl_pane, label='Specular focus'), 0, 0)
+    cell_box = wx.BoxSizer(wx.VERTICAL)
     box_sf = wx.BoxSizer(wx.VERTICAL)
-    box_sf.Add(self.specular_focus_slider, 0, wx.EXPAND)
+    box_sf.Add(self.specular_focus_slider, 0, wx.EXPAND|wx.BOTTOM, border=5)
     box_sf_1 = wx.BoxSizer(wx.HORIZONTAL)
     box_sf_1.Add(wx.StaticText(opengl_pane, label="sharp"), 0, 0)
     box_sf_1.AddStretchSpacer(10)
     box_sf_1.Add(wx.StaticText(opengl_pane, label="diffuse"), 0, 0)
     box_sf.Add(box_sf_1, 0, wx.EXPAND)
-    box.Add(box_sf)
+    cell_box.Add(box_sf, flag=wx.BOTTOM, border=5)
+    cell_box.Add(wx.StaticText(opengl_pane, label='Specular focus'),
+                 flag=wx.CENTER)
+    box.Add(cell_box)
 
     opengl_pane.SetSizer(box)
 
