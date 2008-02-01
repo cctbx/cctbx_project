@@ -274,7 +274,7 @@ class App(wx_viewer.App):
 
     # lay out main window
     box = wx.BoxSizer(wx.VERTICAL)
-    box.Add(view, 1, wx.EXPAND|wx.ALL, 5)
+    box.Add(view, 1, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
 
