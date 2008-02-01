@@ -6,6 +6,7 @@ import scitbx.stl.map
 from libtbx.phil import tokenizer
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
+from cStringIO import StringIO
 import traceback
 import sys
 
@@ -614,7 +615,9 @@ class selection_cache(object):
         callback=callback)
     except (AtomSelectionError, KeyboardInterrupt): raise
     except:
-      msg = traceback.format_exc().splitlines()
+      s = StringIO()
+      traceback.print_exc(file=s)
+      msg = s.getvalue().splitlines()
       msg.extend([
         "Atom selection string leading to error:",
         "  " + string])
