@@ -25,6 +25,15 @@ class manager(object):
                      occupancies_group      = None):
                      # XXX group_anomalous should be here
     adopt_init_args(self, locals())
+    self.sites_individual       = self._deep_copy(self.sites_individual)
+    self.sites_rigid_body       = self._deep_copy(self.sites_rigid_body)
+    self.adp_individual_iso     = self._deep_copy(self.adp_individual_iso)
+    self.adp_individual_aniso   = self._deep_copy(self.adp_individual_aniso)
+    self.adp_group              = self._deep_copy(self.adp_group)
+    self.group_h                = self._deep_copy(self.group_h)
+    self.adp_tls                = self._deep_copy(self.adp_tls)
+    self.occupancies_individual = self._deep_copy(self.occupancies_individual)
+    self.occupancies_group      = self._deep_copy(self.occupancies_group)
     self.check_all()
 
   def _deep_copy(self, x):
@@ -34,7 +43,7 @@ class manager(object):
       result = x.deep_copy()
     else:
       for item in x:
-        if(self.is_bool(item) or self.is_size_t(item)):
+        if(self.is_size_t(item)):
           result.append(item.deep_copy())
         else: raise RuntimeError("Bad selection array type.")
     return result
@@ -83,34 +92,22 @@ class manager(object):
           if(sel.size() == 0):
             result = False
             break
-        elif(self.is_bool(sel)):
-          if(sel.count(True) == 0):
-            result = False
-            break
         elif(len(sel) == 0):
           result = False
           break
       sel0 = selections[0]
-      if(self.is_bool(sel0)):
-        for sel in selections[1:]:
-          if(not self.is_bool(sel)):
+      if(not self.is_size_t(sel0)): result = False
+      for sel in selections[1:]:
+        if(not self.is_size_t(sel)): result = False
+        sel0.extend(sel)
+      perm = flex.sort_permutation(sel0)
+      sel0_ = sel0.select(perm)
+      sz = sel0_.size()
+      for i,e in enumerate(sel0_):
+        if(i+1 < sz):
+          if(sel0_[i]-sel0_[i+1]==0):
             result = False
-          sel0 &= sel
-        if(not sel0.all_eq(False)):
-          result = False
-      else:
-        if(not self.is_size_t(sel0)): result = False
-        for sel in selections[1:]:
-          if(not self.is_size_t(sel)): result = False
-          sel0.extend(sel)
-        perm = flex.sort_permutation(sel0)
-        sel0_ = sel0.select(perm)
-        sz = sel0_.size()
-        for i,e in enumerate(sel0_):
-          if(i+1 < sz):
-            if(sel0_[i]-sel0_[i+1]==0):
-              result = False
-              break
+            break
     return result
 
   def check_all(self):
@@ -158,8 +155,6 @@ class manager(object):
     elif(self.is_bool(x)):   return str(x.count(True))
     elif(self.is_size_t(x)): return str(x.size())
     elif(len(x)==0):         return str(0)
-    elif(self.is_bool(x[0])):
-      return str(flex.sum(flex.size_t([i.count(True) for i in x])))
     elif(self.is_size_t(x[0])):
       return str(flex.sum(flex.size_t([i.size() for i in x])))
     else: raise RuntimeError("Bad selection array type.")
@@ -192,12 +187,6 @@ class manager(object):
     if(lx == 0): return x
     if(self.is_bool(x)):
       x = x.select(selection)
-    elif(self.is_bool(x[0])):
-      x_new = []
-      for i_seq, item in enumerate(x):
-        val = item.select(selection)
-        if(val.count(True) > 0): x_new.append(val)
-      x = x_new
     elif(self.is_size_t(x[0])):
       x_new = []
       for i_seq, item in enumerate(x):
@@ -253,57 +242,74 @@ class manager(object):
       self.adp_individual_aniso.extend(adp_individual_aniso)
     if(sites_rigid_body is not None):
       assert hasattr(sites_rigid_body, 'count')
-      self.sites_rigid_body.append(sites_rigid_body)
+      self.sites_rigid_body.extend(sites_rigid_body)
     if(adp_group is not None):
       assert hasattr(adp_group, 'count')
-      self.adp_group.append(adp_group)
+      self.adp_group.extend(adp_group)
     if(group_h is not None):
       assert hasattr(group_h, 'count')
-      self.group_h.append(group_h)
+      self.group_h.extend(group_h)
     if(adp_tls is not None):
       assert hasattr(adp_tls, 'count')
-      self.adp_tls.append(adp_tls)
+      self.adp_tls.extend(adp_tls)
     if(occupancies_individual is not None):
       assert hasattr(occupancies_individual, 'count')
       self.occupancies_individual.extend(occupancies_individual)
     if(occupancies_group is not None):
       assert hasattr(occupancies_group, 'count')
-      self.occupancies_group.append(occupancies_group)
+      self.occupancies_group.extend(occupancies_group)
     self.check_all()
     return self
 
   def _add_to_single_size_t(self, x, next_to_i_seq, squeeze_in):
     tmp_x = []
+    new_independent_element = None
+    added = 0
     for sel in x:
       if(sel < next_to_i_seq):
         tmp_x.append(sel)
       elif(sel == next_to_i_seq):
         tmp_x.append(sel)
-        if(squeeze_in): tmp_x.append(next_to_i_seq+1)
+        if(squeeze_in):
+          if(x.size() > 1):
+            tmp_x.append(next_to_i_seq+1)
+            added = 1
+          elif(x.size() == 1):
+            new_independent_element = [next_to_i_seq+1]
+            added = 1
+          else: raise RuntimeError
       else:
         tmp_x.append(sel+1)
-    return flex.size_t(tmp_x)
+    if(new_independent_element is not None):
+      new_independent_element = flex.size_t(new_independent_element)
+    return flex.size_t(tmp_x), new_independent_element, added
 
   def _add(self, x, next_to_i_seq, squeeze_in):
     if(x is None): return x
     elif(self.is_bool(x)):
-      tmp_x = \
-        self._add_to_single_size_t(x.iselection(), next_to_i_seq, squeeze_in)
-      return flex.bool(x.size()+1, tmp_x)
-    elif(self.is_size_t(x)):
-      return self._add_to_single_size_t(x, next_to_i_seq, squeeze_in)
-    elif(len(x)==0): raise RuntimeError
-    elif(self.is_bool(x[0])):
       x_new = []
-      for x_ in x:
-        tmp_x = \
-         self._add_to_single_size_t(x_.iselection(), next_to_i_seq, squeeze_in)
-        x_new.append( flex.bool(x_.size()+1, tmp_x) )
-      return x_new
+      result = self._add_to_single_size_t(x.iselection(),
+        next_to_i_seq, squeeze_in)
+      if(result[1] is None): x_new.extend([result[0]])
+      else: x_new.extend([result[0], result[1]])
+      if(result[2] == 0 and squeeze_in):
+        x_new.extend([flex.size_t([next_to_i_seq+1])])
+      x_new_new = flex.size_t()
+      for i_x_new in x_new: x_new_new.extend(i_x_new)
+      return flex.bool(x.size()+1, x_new_new)
+    #elif(self.is_size_t(x)): # XXX not testes so disabled
+    #  return self._add_to_single_size_t(x, next_to_i_seq, squeeze_in)
+    elif(len(x)==0): raise RuntimeError
     elif(self.is_size_t(x[0])):
       x_new = []
+      added = 0
       for x_ in x:
-        x_new.append(self._add_to_single_size_t(x_, next_to_i_seq, squeeze_in))
+        result = self._add_to_single_size_t(x_, next_to_i_seq, squeeze_in)
+        added += result[2]
+        if(result[1] is None): x_new.extend([result[0]])
+        else: x_new.extend([result[0], result[1]])
+      if(added == 0 and squeeze_in):
+        x_new.extend([flex.size_t([next_to_i_seq+1])])
       return x_new
     else: raise RuntimeError("Bad selection array type.")
 
@@ -322,39 +328,48 @@ class manager(object):
     next_to_i_seqs = next_to_i_seqs.select(perm)
     for next_to_i_seq in next_to_i_seqs:
       if(self.sites_individual is not None):
-        self._add(x             = self.sites_individual,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = sites_individual)
+        self.sites_individual = self._add(
+          x             = self.sites_individual,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = sites_individual)
       if(self.sites_rigid_body is not None):
-        self._add(x             = self.sites_rigid_body,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = sites_rigid_body)
+        self.sites_rigid_body = self._add(
+          x             = self.sites_rigid_body,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = sites_rigid_body)
       if(self.adp_individual_iso is not None):
-        self._add(x             = self.adp_individual_iso,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = adp_individual_iso)
+        self.adp_individual_iso = self._add(
+          x             = self.adp_individual_iso,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = adp_individual_iso)
       if(self.adp_individual_aniso is not None):
-        self._add(x             = self.adp_individual_aniso,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = adp_individual_aniso)
+        self.adp_individual_aniso = self._add(
+          x             = self.adp_individual_aniso,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = adp_individual_aniso)
       if(self.adp_group is not None):
-        self._add(x             = self.adp_group,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = adp_group)
+        self.adp_group = self._add(
+          x             = self.adp_group,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = adp_group)
       if(self.group_h is not None):
-        self._add(x             = self.group_h,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = group_h)
+        self.group_h = self._add(
+          x             = self.group_h,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = group_h)
       if(self.adp_tls is not None):
-        self._add(x             = self.adp_tls,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = adp_tls)
+        self.adp_tls = self._add(
+          x             = self.adp_tls,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = adp_tls)
       if(self.occupancies_individual is not None):
-        self._add(x             = self.occupancies_individual,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = occupancies_individual)
+        self.occupancies_individual = self._add(
+          x             = self.occupancies_individual,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = occupancies_individual)
       if(self.occupancies_group is not None):
-        self._add(x             = self.occupancies_group,
-                  next_to_i_seq = next_to_i_seq,
-                  squeeze_in    = occupancies_group)
-
+        self.occupancies_group = self._add(
+          x             = self.occupancies_group,
+          next_to_i_seq = next_to_i_seq,
+          squeeze_in    = occupancies_group)
+    return self

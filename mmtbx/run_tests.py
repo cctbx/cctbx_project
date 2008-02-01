@@ -10,6 +10,7 @@ def run():
   "$D/mmtbx/ias/tst_ias.py",
   ["$D/mmtbx/refinement/tst_anomalous_scatterer_groups.py", "P3"],
   "$D/mmtbx/refinement/tst_rigid_body.py",
+  "$D/mmtbx/refinement/tst_refinement_flags.py",
   "$D/mmtbx/tst_model.py",
   "$D/mmtbx/tst_fmodel.py",
   "$D/mmtbx/tst_alignment.py",
