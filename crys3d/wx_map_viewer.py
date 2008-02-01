@@ -200,6 +200,7 @@ class App(wx_viewer.App):
       size=self.default_size)
     super(App, self).__init__(**kwds)
 
+
   def init_view_objects(self):
     # create widgets
     view = self.view_objects = self._make_view_objects()
@@ -212,6 +213,9 @@ class App(wx_viewer.App):
       p,n = 1,0
       self.amplitude = 1
 
+    if wx.Platform == '__WXGTK__': slider_size=(120,-1)
+    else: slider_size=(-1,-1)
+
     self.tools = wx_extra.InspectorToolFrame(self.frame)
 
     iso_level_inspector = wx_extra.Inspector(
@@ -219,6 +223,7 @@ class App(wx_viewer.App):
     iso_level_pane = iso_level_inspector.GetPane()
     self.iso_level_slider = wx.Slider(
                             iso_level_pane,
+                            size=slider_size,
                             minValue=view.min_density / self.amplitude,
                             maxValue=view.max_density / self.amplitude,
                             value=view.iso_level / self.amplitude,
@@ -245,13 +250,13 @@ class App(wx_viewer.App):
     opengl_pane = opengl_inspector.GetPane()
 
 
-    self.ambient_slider = wx.Slider(opengl_pane,
+    self.ambient_slider = wx.Slider(opengl_pane, size=slider_size,
                                     style=wx.SL_AUTOTICKS|wx.SL_LABELS)
-    self.diffuse_slider = wx.Slider(opengl_pane,
+    self.diffuse_slider = wx.Slider(opengl_pane, size=slider_size,
                                     style=wx.SL_AUTOTICKS|wx.SL_LABELS)
-    self.specular_slider = wx.Slider(opengl_pane,
+    self.specular_slider = wx.Slider(opengl_pane, size=slider_size,
                                      style=wx.SL_AUTOTICKS|wx.SL_LABELS)
-    self.specular_focus_slider = wx.Slider(opengl_pane,
+    self.specular_focus_slider = wx.Slider(opengl_pane, size=slider_size,
                                            style=wx.SL_AUTOTICKS)
 
     self.material_ctrl = wx_controllers.material(view.material,
@@ -287,7 +292,7 @@ class App(wx_viewer.App):
     iso_level_box = wx.BoxSizer(wx.HORIZONTAL)
     iso_level_box.Add(wx.StaticText(iso_level_pane, label="Iso-level"), 0,
                       wx.ALL, 2)
-    iso_level_box.Add(iso_level_slider_box, flag = wx.ALL, border=2)
+    iso_level_box.Add(iso_level_slider_box, flag=wx.ALL, border=2)
     surface_box.Add(iso_level_box, flag=wx.ALL, border=5)
 
     surface_box.AddSpacer(10)
