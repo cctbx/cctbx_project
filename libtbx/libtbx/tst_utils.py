@@ -59,20 +59,12 @@ def exercise_group_args():
   assert g.a == 1 and g.b == 2 and g.c == 3
   def f1(a,b,c):
     assert a == 1 and b == 2 and c == 3
-  f1(**g)
+  f1(**g.__dict__)
   g = utils.group_args(self="foo", a=1, b=2)
   assert not hasattr(g, 'self') and g.a == 1 and g.b == 2
   def f2(a,b):
     assert a == 1 and b == 2
-  f2(**g)
-  try:
-    g.c = 3
-  except AssertionError:
-    pass
-  else:
-    raise Exception_expected
-  g.a = 111
-  assert g.a == 111 and g['a'] == 111
+  f2(**g.__dict__)
 
 def exercise():
   assert utils.flat_list(0) == [0]
