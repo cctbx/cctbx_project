@@ -496,6 +496,14 @@ def exercise_f_model_option_custom(pdb_dir, verbose):
       assert approx_equal(fmodel.scale_k1(), par[2], 1.e-4)
       assert approx_equal(fmodel.b_cart(),   par[3], 1.e-3)
 
+def exercise_show_number_of_removed(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "phe_h.pdb")
+  cmd = 'phenix.pdbtools %s remove="element H" > exercise_show_number_of_removed.log'%file_name
+  run_command(command=cmd, verbose=verbose)
+  result = easy_run.go(
+    command="grep 'Atoms to be kept: 13 of 24' exercise_show_number_of_removed.log"
+  ).stdout_lines
+  assert len(result) == 1
 
 def exercise(args):
   if ("--show-everything" in args):
@@ -517,6 +525,7 @@ def exercise(args):
   exercise_show_geometry_statistics(**eargs)
   exercise_f_model_option_default(**eargs)
   exercise_f_model_option_custom(**eargs)
+  exercise_show_number_of_removed(**eargs)
   print "OK"
 
 if (__name__ == "__main__"):

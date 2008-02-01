@@ -373,7 +373,7 @@ class modify(object):
         and self.remove_selection.selected_size > 0):
       self.remove_selection.show_summary(
         out = self.log,
-        label = "Atoms to be removed: ")
+        label = "Atoms to be kept: ")
 
 class fmodel_from_xray_structure(object):
   def __init__(self, xray_structure, f_obs = None, params = None,
