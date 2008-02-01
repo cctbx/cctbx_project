@@ -152,7 +152,7 @@ class Slider(wx.Slider):
     w,h = kwds.size
     if w == -1: w = 150
     kwds.size = (w,h)
-    wx.Slider.__init__(self, **kwds)
+    wx.Slider.__init__(self, **kwds.__dict__)
 
 
 if __name__ == '__main__':
