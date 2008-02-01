@@ -2321,9 +2321,9 @@ class build_all_chain_proxies(object):
       print >> log, "  Number of disulfides: simple=%d, symmetry=%d" % (
         n_simple, n_symmetry)
       if (n_symmetry == 0):
-         blanks = ""
+        blanks = ""
       else:
-         blanks = "  "
+        blanks = "  "
     max_distance_model = 0
     frac = asu_mappings.unit_cell().fractionalize
     orth = asu_mappings.unit_cell().orthogonalize
