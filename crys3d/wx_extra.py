@@ -1,5 +1,8 @@
 import wx
 import wx.lib.stattext
+
+from libtbx.utils import group_args
+
 import unicodedata
 
 
@@ -112,45 +115,21 @@ class InspectorToolFrame(wx.MiniFrame):
 
   def __init__(self, parent, id=wx.ID_ANY,
                pos=wx.DefaultPosition, size=wx.DefaultSize):
+    if pos is wx.DefaultPosition and wx.Platform == '__WXMAC__':
+      pos = (0, 26)
     super(InspectorToolFrame, self).__init__(parent, id, title=" ",
                                              pos=pos, size=size,
                                              style=wx.CAPTION|wx.CLOSE_BOX)
     s = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(s)
-    if parent is not None:
-      self.Bind(wx.EVT_CLOSE, lambda event: self.Hide())
-      self.Bind(wx.EVT_MOVE, self._on_move)
-      parent.Bind(wx.EVT_MOVE, self._on_move_or_resize_parent)
-      parent.Bind(wx.EVT_SIZE, self._on_move_or_resize_parent)
-      self._position_relative_to_parent = None
-      self._parent_moved = False
 
-  def _on_move(self, event):
-    if self._parent_moved:
-      self._parent_moved = False
-      return
-    x, y = event.GetPosition()
-    x_p, y_p = self.Parent.GetPosition()
-    self._position_relative_to_parent = (x - x_p, y - y_p)
-
-  def _on_move_or_resize_parent(self, event):
-    self.place()
-    event.Skip()
-
-  def place(self):
-    gap = 5
-    x, y, w, h = self.Parent.Rect
-    w_t, h_t = self.Size
-    w_s, h_s = wx.GetDisplaySize()
-    w_s -= 50
-    if self._position_relative_to_parent is None:
-      x_t_rel, y_t_rel = w + gap, 0
-    else:
-      x_t_rel, y_t_rel = self._position_relative_to_parent
-    y_t = y + y_t_rel
-    x_t = min(x + x_t_rel, w_s - w_t)
-    self._parent_moved = True
-    self.MoveXY(x_t, y_t)
+  def move_parent_out_of_the_way(self):
+    x,y,w,h = self.GetRect()
+    xp,yp = self.Parent.GetPosition()
+    if wx.Platform == '__WXGTK__': gap = 10
+    else: gap = 5
+    xp = max(xp, x + w + gap)
+    self.Parent.Move((xp,yp))
 
   def Layout(self):
     s = self.Sizer
@@ -160,9 +139,37 @@ class InspectorToolFrame(wx.MiniFrame):
     s.SetMinSize((w,-1))
     s.SetSizeHints(self)
 
+
+class Slider(wx.Slider):
+
+  def __init__(self, parent, id=wx.ID_ANY,
+               value=0, minValue=0, maxValue=100,
+               pos=wx.DefaultPosition, size=wx.DefaultSize,
+               style=wx.SL_HORIZONTAL,
+               validator=wx.DefaultValidator,
+               name=wx.SliderNameStr):
+    kwds = group_args(**locals())
+    w,h = kwds.size
+    if w == -1: w = 150
+    kwds.size = (w,h)
+    wx.Slider.__init__(self, **kwds)
+
+
 if __name__ == '__main__':
-  a = wx.App()
-  w = InspectorToolFrame(None, pos=(500, 30))
+  a = wx.App(redirect=False)
+
+  w1 = wx.Frame(None, pos=(0, 0))
+  s = wx.BoxSizer(wx.VERTICAL)
+  w1.SetSizer(s)
+  s.Add(Slider(w1, -1, 5, 0, 10, wx.DefaultPosition, (100,-1)))
+  s.Add(Slider(w1, -1, 5, 0, 10, wx.DefaultPosition, (-1,-1)))
+  s.Add(Slider(w1, size=(150,-1)))
+  s.Add(Slider(w1, size=(-1,-1)))
+  s.Add(Slider(w1))
+  w1.Fit()
+  a.SetTopWindow(w1)
+
+  w = InspectorToolFrame(w1)
 
   i1 = Inspector(w, label="Header")
   def f():
@@ -186,6 +193,8 @@ if __name__ == '__main__':
 
   w.Layout()
 
-  a.SetTopWindow(w)
+  w.move_parent_out_of_the_way()
   w.Show()
+  w1.Show()
+
   a.MainLoop()
