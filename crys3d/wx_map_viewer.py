@@ -358,7 +358,9 @@ class App(wx_viewer.App):
       bitmap=crys3d.images.inspector_img.as_wx_Bitmap(),
       shortHelpString="Show/Hide inspectors",)
     tb.Realize()
-    self.tools.place()
+
+    # final touch
+    self.tools.move_parent_out_of_the_way()
     self.tools.Show()
 
   def OnToolClick(self, event):
