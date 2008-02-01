@@ -498,12 +498,16 @@ def exercise_f_model_option_custom(pdb_dir, verbose):
 
 def exercise_show_number_of_removed(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "phe_h.pdb")
-  cmd = 'phenix.pdbtools %s remove="element H" > exercise_show_number_of_removed.log'%file_name
+  log = "exercise_show_number_of_removed.log"
+  cmd = 'phenix.pdbtools %s remove="element H" > %s' % (file_name, log)
+  remove_files(log)
   run_command(command=cmd, verbose=verbose)
-  result = easy_run.go(
-    command="grep 'Atoms to be kept: 13 of 24' exercise_show_number_of_removed.log"
-  ).stdout_lines
-  assert len(result) == 1
+  assert os.path.isfile(log)
+  n_found = 0
+  for line in open(log).read().splitlines():
+    if (line == "Atoms to be kept: 13 of 24"):
+      n_found += 1
+  assert n_found == 1
 
 def exercise(args):
   if ("--show-everything" in args):
