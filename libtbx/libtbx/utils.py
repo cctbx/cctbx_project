@@ -114,10 +114,24 @@ def remove_files(pattern):
     if (os.path.isfile(path)):
       os.remove(path)
 
-class group_args(object):
+class group_args(dict):
 
-  def __init__(self, **keyword_arguments):
-    self.__dict__.update(keyword_arguments)
+  def __new__(cls, **kwds):
+    try: del kwds['self']
+    except KeyError: pass
+    obj = dict.__new__(cls)
+    obj.__dict__.update(kwds)
+    return obj
+
+  def __init__(self_group_args, **kwds):
+    try: del kwds['self']
+    except KeyError: pass
+    dict.__init__(self_group_args, kwds)
+
+  def __setattr__(self, name, value):
+    assert name in self.__dict__
+    self.__dict__[name] = value
+    self[name] = value
 
 def tupleize(x):
   try:
