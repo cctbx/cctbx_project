@@ -13,7 +13,7 @@ class Inspector(wx.Panel):
     assert parent.GetSizer() is not None
     super(Inspector, self).__init__(parent, id)
     self._normal_colour, self._pressed_colour = [
-      wx.Colour(*c) for c in [(208,)*3, (180,)*3] ]
+      wx.Colour(*c) for c in [(200,200,210), (180,180,190)] ]
     if wx.Platform == "__WXGTK__":
       self._header = wx.lib.stattext.GenStaticText(self, -1, "",
                                                    style=wx.BORDER_NONE)
@@ -158,7 +158,7 @@ class Slider(wx.Slider):
 if __name__ == '__main__':
   a = wx.App(redirect=False)
 
-  w1 = wx.Frame(None, pos=(0, 0))
+  w1 = wx.Frame(None, pos=(0, -1))
   s = wx.BoxSizer(wx.VERTICAL)
   w1.SetSizer(s)
   s.Add(Slider(w1, -1, 5, 0, 10, wx.DefaultPosition, (100,-1)))
