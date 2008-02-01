@@ -48,15 +48,15 @@ master_params = iotbx.phil.parse("""\
 """)
 
 class peaks_holder(object):
-  def __init__(self, heights, sites, iseqs_of_closest_atoms = None, zz = None):
+  def __init__(self, heights, sites, iseqs_of_closest_atoms = None):
     self.heights = heights
     self.sites = sites
     self.iseqs_of_closest_atoms = iseqs_of_closest_atoms
-    self.zz = zz
 
 class manager(object):
   def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None):
     adopt_init_args(self, locals())
+    self.mapped = False
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
     fft_map = self.fmodel.electron_density_map(
@@ -108,6 +108,7 @@ class manager(object):
     return self.peaks_
 
   def peaks_mapped(self):
+    assert self.mapped == False
     max_dist = self.params.map_next_to_model.max_model_peak_dist
     min_dist = self.params.map_next_to_model.min_model_peak_dist
     xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
@@ -127,8 +128,7 @@ class manager(object):
     peaks = peaks_holder(
       heights                = self.peaks_.heights.select(selection),
       sites                  = result.sites_frac.select(selection),
-      iseqs_of_closest_atoms = result.i_seqs.select(selection),
-      zz = result)
+      iseqs_of_closest_atoms = result.i_seqs.select(selection))
     sd = flex.sqrt(smallest_distances_sq.select(in_box))
     d_min = flex.min_default(sd, 0)
     d_max = flex.max_default(sd, 0)
@@ -140,10 +140,12 @@ class manager(object):
     d_min = flex.min_default(smallest_distances, 0)
     d_max = flex.max_default(smallest_distances, 0)
     print >> self.log,"   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max)
+    self.mapped = True
+    self.peaks_ = peaks
     return peaks
 
   def show_mapped(self, atom_attributes_list):
-    peaks = self.peaks_mapped()
+    peaks = self.peaks()
     scatterers = self.fmodel.xray_structure.scatterers()
     assert scatterers.size() == len(atom_attributes_list)
     assert peaks.sites.size() == peaks.heights.size()
@@ -178,4 +180,5 @@ def show_highest_peaks_and_deepest_holes(fmodel,
                      map_cutoff = par[0],
                      params     = fp_params,
                      log        = log)
+    result.peaks_mapped()
     result.show_mapped(atom_attributes_list = atom_attributes_list)
