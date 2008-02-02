@@ -19,7 +19,7 @@ def exercise_pair_registry_basic():
   assert registry.enter(i_seq=0, j_seq=20, j_ncs=1) == 1
   selection_pairs = registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 20), (1, 21)]
+  assert zip(*selection_pairs[0]) == [(0, 20), (21, 1)]
   assert zip(*selection_pairs[1]) == [(0, 10)]
   selection = flex.bool(30, False)
   sel_registry = registry.proxy_select(iselection=selection.iselection())
@@ -31,13 +31,13 @@ def exercise_pair_registry_basic():
   sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 20), (1, 21)]
+  assert zip(*selection_pairs[0]) == [(0, 20), (21, 1)]
   assert zip(*selection_pairs[1]) == [(0, 10)]
   selection[0] = False
   sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 20)]
+  assert zip(*selection_pairs[0]) == [(20, 0)]
   assert zip(*selection_pairs[1]) == []
   selection[0] = True
   selection[1] = False
@@ -52,7 +52,7 @@ def exercise_pair_registry_basic():
   sel_registry = registry.proxy_select(iselection=selection.iselection())
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 18),(1,19)]
+  assert zip(*selection_pairs[0]) == [(0, 18),(19,1)]
   assert zip(*selection_pairs[1]) == [(0, 8)]
   registry.register_additional_isolated_sites(number=10)
   assert registry.number_of_additional_isolated_sites == 10
@@ -70,7 +70,7 @@ def exercise_pair_registry_basic():
   assert sel_registry.number_of_additional_isolated_sites == 3
   selection_pairs = sel_registry.selection_pairs()
   assert len(selection_pairs) == 2
-  assert zip(*selection_pairs[0]) == [(0, 18),(1,19)]
+  assert zip(*selection_pairs[0]) == [(0, 18),(19,1)]
   assert zip(*selection_pairs[1]) == [(0, 8)]
   #
   iselection = flex.size_t([

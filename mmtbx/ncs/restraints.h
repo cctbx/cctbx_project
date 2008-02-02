@@ -41,13 +41,18 @@ namespace mmtbx { namespace ncs { namespace restraints {
       MMTBX_ASSERT(j_seq < n_seq);
       MMTBX_ASSERT(j_ncs > 0);
       MMTBX_ASSERT(j_ncs < counts_.size());
-      if (i_seq > j_seq) std::swap(i_seq, j_seq);
       table_t::iterator tab_i = table_.begin() + i_seq;
       table_entry_t::const_iterator tab_ij = tab_i->find(j_seq);
       if (tab_ij == tab_i->end()) {
-        (*tab_i)[j_seq] = j_ncs;
-        counts_[j_ncs]++;
-        return 1;
+        table_t::iterator tab_j = table_.begin() + j_seq;
+        table_entry_t::const_iterator tab_ji = tab_j->find(i_seq);
+        if (tab_ji == tab_j->end()) {
+          (*tab_i)[j_seq] = j_ncs;
+          counts_[j_ncs]++;
+          return 1;
+        }
+        if (tab_ji->second != j_ncs) return -tab_ji->second;
+        return 0;
       }
       if (tab_ij->second != j_ncs) return -tab_ij->second;
       return 0;
