@@ -54,19 +54,19 @@ def exercise_two_models_with_holes(processed_pdb):
 {*NCS operator 1:
 {*  Reference selection: "chain A"
 {*      Other selection: "chain B"
-{*  Number of atom pairs: 26
-{*  Rotation={{-0.928964, 0.31534, -0.193873},
-{*            {0.322256, 0.43122, -0.842734},
-{*            {-0.182146, -0.845346, -0.502208}}
-{*  Translation={{164.149}, {-12.231}, {44.3922}}
+{*  Number of atom pairs: 22
+{*  Rotation={{-0.925533, 0.322815, -0.197938},
+{*            {0.329616, 0.429511, -0.840758},
+{*            {-0.186393, -0.843393, -0.503931}}
+{*  Translation={{163.62}, {-13.0292}, {44.8533}}
 {*  Histogram of differences:
-{*    0.120681 - 0.267436: 1
-{*    0.267436 - 0.414191: 4
-{*    0.414191 - 0.560947: 8
-{*    0.560947 - 0.707702: 3
-{*    0.707702 - 0.854458: 6
-{*    0.854458 - 1.001213: 4
-{*  RMS difference with respect to the reference: 0.641057
+{*    0.092573 - 0.238983: 1
+{*    0.238983 - 0.385393: 2
+{*    0.385393 - 0.531803: 7
+{*    0.531803 - 0.678214: 3
+{*    0.678214 - 0.824624: 4
+{*    0.824624 - 0.971034: 5
+{*  RMS difference with respect to the reference: 0.653687
 {*NCS operator 2:
 {*  Reference selection: "chain A"
 {*      Other selection: "chain C"
@@ -102,13 +102,13 @@ def exercise_two_models_with_holes(processed_pdb):
 """)
   energies_sites_no_gradients = ncs_operators.energies_sites(
     sites_cart=sites_cart, compute_gradients=False)
-  assert energies_sites_no_gradients.number_of_restraints == 114
-  assert eps_eq(energies_sites_no_gradients.residual_sum, 7173.85077391)
-  assert eps_eq(energies_sites_no_gradients.target, 7173.85077391)
+  assert energies_sites_no_gradients.number_of_restraints == 110
+  assert eps_eq(energies_sites_no_gradients.residual_sum, 7014.03969257)
+  assert eps_eq(energies_sites_no_gradients.target, 7014.03969257)
   assert energies_sites_no_gradients.gradients is None
   assert eps_eq(energies_sites_no_gradients.rms_with_respect_to_average,
-    [0.41634839722020417, 0.36587351734294055,
-     0.40045430793729697, 0.39662478265194723])
+    [0.41226641576521778, 0.38139080907663186,
+     0.39748408968570492, 0.40001937328488651])
   energies_sites = ncs_operators.energies_sites(sites_cart=sites_cart)
   assert energies_sites_no_gradients.number_of_restraints \
       == energies_sites.number_of_restraints
@@ -116,7 +116,7 @@ def exercise_two_models_with_holes(processed_pdb):
       == energies_sites.residual_sum
   assert energies_sites_no_gradients.target \
       == energies_sites.target
-  assert eps_eq(energies_sites.gradients.norm(), 3397.62130783)
+  assert eps_eq(energies_sites.gradients.norm(), 3349.99455344)
   assert eps_eq(energies_sites.rms_with_respect_to_average,
    energies_sites_no_gradients.rms_with_respect_to_average)
   site_labels = [
@@ -132,19 +132,19 @@ def exercise_two_models_with_holes(processed_pdb):
 #^  " CA  GLN A   1 ":   0.2141
 #^  " C   GLN A   1 ":   0.4052
 ...
-#^  " CA  THR B   6 ":   0.4231
-#^  " C   THR B   6 ":   0.6203
+#^  " CA  THR B   6 ":   0.4001
+#^  " C   THR B   6 ":   0.6281
 #^NCS selection: "chain C"
 #^                     Distance to NCS average
 #^  " N   GLN C   1 ":   0.4135
 #^  " CA  GLN C   1 ":   0.5070
 ...
-#^  " CA BSER D   4 ":   0.4004
-#^  " C   SER D   4 ":   0.6999
-#^  " N   THR D   6 ":   0.3685
-#^  " CA  THR D   6 ":   0.4179
-#^  " C   THR D   6 ":   0.4045
-""", selections=[range(5),range(60,66),range(-5,0)])
+#^  " CA BSER D   4 ":   0.4444
+#^  " C   SER D   4 ":   0.6943
+#^  " N   THR D   6 ":   0.3724
+#^  " CA  THR D   6 ":   0.4129
+#^  " C   THR D   6 ":   0.4017
+""", selections=[range(5),range(56,62),range(-5,0)])
   for ag,fg in zip(energies_sites.gradients,
                    finite_difference_site_gradients(
                      ncs_operators=ncs_operators,
@@ -156,18 +156,18 @@ def exercise_two_models_with_holes(processed_pdb):
   eng = group.energies_adp_iso(
     u_isos=u_isos, average_power=1, compute_gradients=False)
   energies_adp_iso_no_gradients = eng
-  assert eng.number_of_restraints == 114
-  assert eps_eq(eng.residual_sum, 1.13989071027)
+  assert eng.number_of_restraints == 110
+  assert eps_eq(eng.residual_sum, 1.11021057745)
   assert eps_eq(eng.target, eng.residual_sum)
   assert eng.gradients is None
   assert eps_eq(eng.rms_with_respect_to_average,
-    [3.8343001243481694, 4.3047451177562364,
-     3.7243446215734459, 4.1272033923027323])
+    [3.8233537528289001, 4.4894247897900934,
+     3.71150443476373, 4.0839849076232442])
   energies_adp_iso = group.energies_adp_iso(u_isos=u_isos, average_power=1)
   assert energies_adp_iso.number_of_restraints == eng.number_of_restraints
   assert eps_eq(energies_adp_iso.residual_sum, eng.residual_sum)
   assert eps_eq(energies_adp_iso.target, eng.target)
-  assert eps_eq(energies_adp_iso.gradients.norm(), 4.56964511297)
+  assert eps_eq(energies_adp_iso.gradients.norm(), 4.50764745473)
   assert eps_eq(energies_adp_iso.rms_with_respect_to_average,
                 eng.rms_with_respect_to_average)
   out = StringIO()
@@ -186,7 +186,7 @@ Y$NCS selection: "chain B"
 Y$                       B-iso   NCS ave  Difference
 Y$  " N   GLU B   2 ":   12.87 -   10.35 =   2.5225
 ...
-Y$  " CA BSER D   4 ":    5.23 -    8.71 =  -3.4750
+Y$  " CA BSER D   4 ":    5.23 -    7.00 =  -1.7667
 Y$  " C   SER D   4 ":    7.29 -   10.45 =  -3.1575
 Y$  " N   THR D   6 ":    4.55 -    8.69 =  -4.1425
 Y$  " CA  THR D   6 ":    8.78 -    7.65 =   1.1250
@@ -224,32 +224,32 @@ Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
         b_factor_weight=b_factor_weight,
         special_position_warnings_only=False))
   energies_adp_iso = groups.energies_adp_iso(u_isos=u_isos, average_power=1)
-  assert energies_adp_iso.number_of_restraints == 228
-  assert eps_eq(energies_adp_iso.residual_sum, 4.39521386804)
+  assert energies_adp_iso.number_of_restraints == 220
+  assert eps_eq(energies_adp_iso.residual_sum, 4.2807726061)
   assert eps_eq(energies_adp_iso.target, energies_adp_iso.residual_sum)
-  assert eps_eq(energies_adp_iso.gradients.norm(), 17.6197309019)
+  assert eps_eq(energies_adp_iso.gradients.norm(), 17.3806790658)
   energies_adp_iso = groups.energies_adp_iso(
     u_isos=u_isos, average_power=1, normalization=True)
-  assert energies_adp_iso.number_of_restraints == 228
-  assert eps_eq(energies_adp_iso.residual_sum, 4.39521386804)
-  assert eps_eq(energies_adp_iso.target, energies_adp_iso.residual_sum/228)
-  assert eps_eq(energies_adp_iso.gradients.norm(), 17.6197309019/228)
+  assert energies_adp_iso.number_of_restraints == 220
+  assert eps_eq(energies_adp_iso.residual_sum, 4.2807726061)
+  assert eps_eq(energies_adp_iso.target, energies_adp_iso.residual_sum/220)
+  assert eps_eq(energies_adp_iso.gradients.norm(), 17.3806790658/220)
   for rms in energies_adp_iso.rms_with_respect_to_averages:
     if (rms is not None):
       assert eps_eq(
         rms, energies_adp_iso_no_gradients.rms_with_respect_to_average)
   assert energies_adp_iso.rms_with_respect_to_averages[2] is None
   energies_sites = groups.energies_sites(sites_cart=sites_cart)
-  assert energies_sites.number_of_restraints == 228
-  assert eps_eq(energies_sites.residual_sum, 8967.31346739)
+  assert energies_sites.number_of_restraints == 220
+  assert eps_eq(energies_sites.residual_sum, 8767.54961571)
   assert eps_eq(energies_sites.target, energies_sites.residual_sum)
-  assert eps_eq(energies_sites.gradients.norm(), 4247.02663479)
+  assert eps_eq(energies_sites.gradients.norm(), 4187.49319181)
   energies_sites = groups.energies_sites(
     sites_cart=sites_cart, normalization=True)
-  assert energies_sites.number_of_restraints == 228
-  assert eps_eq(energies_sites.residual_sum, 8967.31346739)
-  assert eps_eq(energies_sites.target, energies_sites.residual_sum/228)
-  assert eps_eq(energies_sites.gradients.norm(), 4247.02663479/228)
+  assert energies_sites.number_of_restraints == 220
+  assert eps_eq(energies_sites.residual_sum, 8767.54961571)
+  assert eps_eq(energies_sites.target, energies_sites.residual_sum/220)
+  assert eps_eq(energies_sites.gradients.norm(), 4187.49319181/220)
   for rms in energies_sites.rms_with_respect_to_averages:
     if (rms is not None):
       assert eps_eq(
@@ -276,8 +276,8 @@ K&NCS restraint group 1:
 K&  NCS operator 1:
 K&    Reference selection: "chain A"
 ...
-K&      0.854458 - 1.001213: 4
-K&    RMS difference with respect to the reference: 0.641057
+K&      0.824624 - 0.971034: 5
+K&    RMS difference with respect to the reference: 0.653687
 K&  NCS operator 2:
 K&    Reference selection: "chain A"
 K&        Other selection: "chain C"
@@ -298,7 +298,7 @@ K&    RMS difference with respect to the reference: 0.724248
 [                       Distance to NCS average
 [    " N   GLN A   1 ":   0.4263
 ...
-[    " C   THR D   6 ":   0.4045
+[    " C   THR D   6 ":   0.4017
 [NCS restraint group 2:
 [  coordinate_sigma: None  =>  restraints disabled
 [NCS restraint group 3:
@@ -308,12 +308,12 @@ K&    RMS difference with respect to the reference: 0.724248
 [                       Distance to NCS average
 [    " N   GLN A   1 ":   0.4263
 ...
-[    " C   THR D   6 ":   0.4045
-""", selections=[range(6),range(124,133),range(-1,0)])
+[    " C   THR D   6 ":   0.4017
+""", selections=[range(6),range(120,129),range(-1,0)])
   #
   selection = groups.selection_restrained()
   assert selection.size() == 132
-  assert selection.count(True) == 112
+  assert selection.count(True) == 110
   out = StringIO()
   processed_pdb.show_atoms_without_ncs_restraints(
     ncs_restraints_groups=groups, out=out, prefix="%&")
@@ -326,6 +326,8 @@ K&    RMS difference with respect to the reference: 0.724248
 %&          " CA  "
 %&          " C   "
 %&          " N   "
+%&        "SER B   4 "
+%&          " CA  "
 %&      Chain 3, PDB chainID: "C", segID: "    "
 %&        "ALA C   3 "
 %&          " CA  "
@@ -347,6 +349,8 @@ K&    RMS difference with respect to the reference: 0.724248
 %&          " CA  "
 %&          " C   "
 %&          " N   "
+%&        "SER B   4 "
+%&          " CA  "
 %&      Chain 3, PDB chainID: "C", segID: "    "
 %&        "ALA C   3 "
 %&          " CA  "
@@ -481,6 +485,22 @@ WARNING: NCS selection includes an atom on a special position:
       ener_lib=ener_lib,
       file_name=os.path.join(ncs_dir, "two_models_with_holes.pdb"),
       log=log)
+    try:
+      ncs.restraints.group.from_atom_selections(
+        processed_pdb=processed_pdb,
+        reference_selection_string=None,
+        selection_strings=["chain A", "chain B", "chain B and resname SER"],
+        coordinate_sigma=None,
+        b_factor_weight=None,
+        special_position_warnings_only=False)
+    except Sorry, e:
+      assert not show_diff(str(e), '''\
+Two different NCS operators applied to same pair of atoms:
+       Reference selection: "chain A"
+  Previous other selection: "chain B"
+   Current other selection: "chain B and resname SER"
+    Atom 1: " C   SER A   4 "
+    Atom 2: " C   SER B   4 "''')
     exercise_two_models_with_holes(processed_pdb=processed_pdb)
   print format_cpu_times()
 
