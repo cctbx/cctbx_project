@@ -137,11 +137,13 @@ class conformer_selection_properties(object):
       for i_mm_i,i_mm_j in pairs:
         other_map = {}
         for i_seq_j in mma_j[i_mm_j].active_i_seqs:
-          key = atom_attributes_list[i_seq_j].name
+          aa = atom_attributes_list[i_seq_j]
+          key = aa.name + aa.altLoc
           assert not other_map.has_key(key)
           other_map[key] = i_seq_j
         for i_seq_i in mma_i[i_mm_i].active_i_seqs:
-          key = atom_attributes_list[i_seq_i].name
+          aa = atom_attributes_list[i_seq_i]
+          key = aa.name + aa.altLoc
           i_seq_j = other_map.get(key, None)
           if (i_seq_j is not None):
             assert i_seq_j >= 0
@@ -162,21 +164,45 @@ class conformer_selection_properties(object):
                 + "  Reference selection: %s\n" % show_string(self.string)
                 + "      Other selection: %s\n" % show_string(other.string)
                 + "    Atom: %s" % atom_attributes_list[i_seq_i].pdb_format())
-            registry_enter = registry.enter(
+            stat, i_diag = registry.enter(
               i_seq=i_seq_i, j_seq=i_seq_j, j_ncs=j_ncs)
-            if (registry_enter < 0):
+            if (stat == 1):
+              assert i_diag != j_ncs
               raise Sorry(
                 "Two different NCS operators applied to same pair of atoms:\n"
                 + "       Reference selection: %s\n" % show_string(
                     self.string)
                 + "  Previous other selection: %s\n" % show_string(
-                    selection_strings[-registry_enter])
+                    selection_strings[i_diag])
                 + "   Current other selection: %s\n" % show_string(
                     other.string)
                 + "    Atom 1: %s\n" %
                     atom_attributes_list[i_seq_i].pdb_format()
                 + "    Atom 2: %s" %
                     atom_attributes_list[i_seq_j].pdb_format())
+            if (stat == 2):
+              raise Sorry(
+                "Current reference atom previously other atom:\n"
+                + "  Current reference selection: %s\n" % show_string(
+                    self.string)
+                + "     Previous other selection: %s\n" % show_string(
+                    selection_strings[i_diag])
+                + "    Atom: %s" %
+                    atom_attributes_list[i_seq_i].pdb_format())
+            if (stat == 3):
+              raise Sorry(
+                "Two other atoms mapped to same reference atom:\n"
+                + "  Reference selection: %s\n" % show_string(
+                    self.string)
+                + "      Other selection: %s\n" % show_string(
+                    other.string)
+                + "    Reference atom: %s\n" %
+                    atom_attributes_list[i_seq_i].pdb_format()
+                + "    Other atom 1: %s\n" %
+                    atom_attributes_list[i_diag].pdb_format()
+                + "    Other atom 2: %s" %
+                    atom_attributes_list[i_seq_j].pdb_format())
+            assert stat == 0
             other_map[key] = -1
 
 class pair_lists_generator(object):
