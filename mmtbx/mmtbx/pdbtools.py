@@ -129,6 +129,9 @@ occupancies
   randomize = None
     .type = bool
     .help = Randomize occupancies within a certain range
+  set = None
+    .type = float
+    .help = Set all or selected occupancies to given value
 }
 output
   .help = Write out PDB file with modified model (file name is defined in \
@@ -229,7 +232,7 @@ class modify(object):
         log               = self.log)[0])
     self._process_adp()
     self._process_sites()
-    self._randomize_occupancies(selection=self.top_selection)
+    self._process_occupancies(selection = self.top_selection)
     try: self._put_in_box()
     except KeyboardInterrupt: raise
     except: pass
@@ -357,16 +360,26 @@ class modify(object):
         trans     = trans,
         selection = selection.indices)
 
-  def _randomize_occupancies(self, selection):
-    if (self.params.occupancies.randomize):
+  def _process_occupancies(self, selection):
+    if(self.params.occupancies.randomize):
       self._print_action(
-        text = "Randomizing all occupancies",
+        text = "Randomizing occupancies",
         selection = selection)
       if (self._occupancies_modified):
         raise Sorry("Can't modify occupancies (already modified).")
       else:
         self._occupancies_modified = True
       self.xray_structure.shake_occupancies(selection=selection.flags)
+    if(self.params.occupancies.set is not None):
+      self._print_action(
+        text = "Setting occupancies to: %8.3f"%self.params.occupancies.set,
+        selection = selection)
+      if (self._occupancies_modified):
+        raise Sorry("Can't modify occupancies (already modified).")
+      else:
+        self._occupancies_modified = True
+      self.xray_structure.set_occupancies(value = self.params.occupancies.set,
+                                          selection = selection.flags)
 
   def report_number_of_atoms_to_be_removed(self):
     if (    self.remove_selection is not None

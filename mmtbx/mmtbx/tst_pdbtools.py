@@ -94,6 +94,10 @@ def exercise_basic(pdb_dir, verbose):
     check_occ_randomize(
       cmd, xrsp_init, output, selection, selection_str, verbose)
     #
+    cmd = base+'occupancies.set=0.75 selection="%s"'%(str(selection_str))
+    check_occ_set(
+      cmd, xrsp_init, output, selection, selection_str, verbose)
+    #
     remove_selection_str = "element C"
     cmd = base+'remove="%s" selection="%s"'%(
       str(remove_selection_str), str(selection_str))
@@ -261,6 +265,26 @@ def check_occ_randomize(
     assert flex.max(diff) > 0.0
     assert approx_equal(flex.mean(diff.select(~selection)),0.,tolerance)
 
+def check_occ_set(
+      cmd, xrsp_init, output, selection,selection_str, verbose,
+      tolerance=1.e-3):
+  remove_files(output)
+  run_command(command=cmd, verbose=verbose)
+  xrsp = xray_structure_plus(file_name = output)
+  assert approx_equal(xrsp.sites_cart,xrsp_init.sites_cart,tolerance)
+  assert approx_equal(xrsp.u_iso,     xrsp_init.u_iso,tolerance)
+  assert approx_equal(xrsp.u_cart,    xrsp_init.u_cart,tolerance)
+  if(selection_str is None):
+    diff = flex.abs(xrsp.occ - xrsp_init.occ)
+    assert flex.mean(diff) > 0.0
+    assert flex.max(diff) > 0.0
+  else:
+    occ_init = xrsp_init.occ
+    occ_mod  = xrsp.occ
+    assert occ_init.all_eq(1.0)
+    assert occ_mod.select(~selection).all_eq(1.0)
+    assert occ_mod.select(selection).all_eq(0.75)
+
 def check_remove_selection(
       cmd, xrsp_init, output, selection, selection_str,
       remove_selection_str, verbose, tolerance=1.e-3):
@@ -407,7 +431,6 @@ def exercise_f_model_option_default(pdb_dir, verbose):
                   '%s'%file_name,
                   'high_resolution=%s'%str(high_resolution),
                   '--f_model'])
-  #print cmd
   run_command(command=cmd, verbose=verbose)
   reflection_file = reflection_file_reader.any_reflection_file(
     file_name          = os.path.basename(file_name)+".mtz",
@@ -459,7 +482,6 @@ def exercise_f_model_option_custom(pdb_dir, verbose):
          'scattering_table=%s'%table,
          '%s'%par_str,
          '--f_model'])
-      #print cmd
       run_command(command=cmd, verbose=verbose)
       xray_structure=iotbx.pdb.input(file_name=file_name).xray_structure_simple()
       reflection_file = reflection_file_reader.any_reflection_file(
