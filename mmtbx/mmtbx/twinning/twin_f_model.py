@@ -2119,14 +2119,14 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        w1       = None,
                        w2       = None
                        ):
-    assert map_type in ("Fobs-Fmodel",
-                        "2mFobs-DFmodel",
-                        "mFobs-DFmodel",
+    assert map_type in ("Fo-Fc",
+                        "2mFo-DFc",
+                        "mFo-DFc",
                         "gradient",
                         "m_gradient"
                         )
     # this is to modify default behavoir of phenix.refine
-    if map_type == "mFobs-DFmodel":
+    if map_type == "mFo-DFc":
       if self.map_types.fofc == "gradient":
         map_type = "gradient"
       if self.map_types.fofc == "m_gradient":
@@ -2134,7 +2134,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       if self.map_types.fofc == "m_dtfo_d_fc":
         map_type = "m_dtfo_d_fc"
 
-    if map_type == "2mFobs-DFmodel":
+    if map_type == "2mFo-DFc":
       if self.map_types.twofofc == "two_m_dtfo_d_fc":
         map_type = "two_m_dtfo_d_fc"
       if  self.map_types.twofofc == "two_dtfo_fc":
