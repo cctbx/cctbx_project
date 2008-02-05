@@ -125,10 +125,13 @@ class manager(object):
     not_too_far = smallest_distances_sq <= max_dist**2
     not_too_close = smallest_distances_sq >= min_dist**2
     selection = (not_too_far & not_too_close & in_box)
+    if(self.params.map_next_to_model.use_hydrogens):
+      iseqs_of_closest_atoms = result.i_seqs.select(selection)
+    else: iseqs_of_closest_atoms = None
     peaks = peaks_holder(
       heights                = self.peaks_.heights.select(selection),
       sites                  = result.sites_frac.select(selection),
-      iseqs_of_closest_atoms = result.i_seqs.select(selection))
+      iseqs_of_closest_atoms = iseqs_of_closest_atoms)
     sd = flex.sqrt(smallest_distances_sq.select(in_box))
     d_min = flex.min_default(sd, 0)
     d_max = flex.max_default(sd, 0)
@@ -146,6 +149,8 @@ class manager(object):
 
   def show_mapped(self, atom_attributes_list):
     peaks = self.peaks()
+    if(peaks.iseqs_of_closest_atoms is None):
+      raise RuntimeError("iseqs_of_closest_atoms is None")
     scatterers = self.fmodel.xray_structure.scatterers()
     assert scatterers.size() == len(atom_attributes_list)
     assert peaks.sites.size() == peaks.heights.size()
