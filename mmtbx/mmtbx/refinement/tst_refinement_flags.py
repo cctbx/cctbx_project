@@ -1,56 +1,56 @@
 from copy import deepcopy
 from cctbx.array_family import flex
 import sys, os, math, string
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
 from libtbx import adopt_init_args
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, format_cpu_times
 from mmtbx.refinement import refinement_flags
 from cStringIO import StringIO
 
 expected_result_all = \
   """Refinement flags and selection counts:
-  individual_sites       =  True (6 atoms)
-  rigid_body             =  True (6 atoms in 3 groups)
-  individual_adp         =  True (iso = 6 aniso = 6)
-  group_adp              =  True (6 atoms in 3 groups)
-  tls                    =  True (6 atoms in 3 groups)
-  individual_occupancies =  True (6 atoms)
-  group_occupancies      =  True (6 atoms in 3 groups)
-  group_anomalous        =  True
-"""
+  individual_sites       = %s (6 atoms)
+  rigid_body             = %s (6 atoms in 3 groups)
+  individual_adp         = %s (iso = 6 aniso = 6)
+  group_adp              = %s (6 atoms in 3 groups)
+  tls                    = %s (6 atoms in 3 groups)
+  individual_occupancies = %s (6 atoms)
+  group_occupancies      = %s (6 atoms in 3 groups)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(True)]*8)
 expected_result_none_false = \
   """Refinement flags and selection counts:
-  individual_sites       = False (0 atoms)
-  rigid_body             = False (0 atoms in 0 groups)
-  individual_adp         = False (iso = 0 aniso = 0)
-  group_adp              = False (0 atoms in 0 groups)
-  tls                    = False (0 atoms in 0 groups)
-  individual_occupancies = False (0 atoms)
-  group_occupancies      = False (0 atoms in 0 groups)
-  group_anomalous        = False
-"""
+  individual_sites       = %s (0 atoms)
+  rigid_body             = %s (0 atoms in 0 groups)
+  individual_adp         = %s (iso = 0 aniso = 0)
+  group_adp              = %s (0 atoms in 0 groups)
+  tls                    = %s (0 atoms in 0 groups)
+  individual_occupancies = %s (0 atoms)
+  group_occupancies      = %s (0 atoms in 0 groups)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(False)]*8)
 expected_result_none_true = \
   """Refinement flags and selection counts:
-  individual_sites       =  True (0 atoms)
-  rigid_body             =  True (0 atoms in 0 groups)
-  individual_adp         =  True (iso = 0 aniso = 0)
-  group_adp              =  True (0 atoms in 0 groups)
-  tls                    =  True (0 atoms in 0 groups)
-  individual_occupancies =  True (0 atoms)
-  group_occupancies      =  True (0 atoms in 0 groups)
-  group_anomalous        =  True
-"""
+  individual_sites       = %s (0 atoms)
+  rigid_body             = %s (0 atoms in 0 groups)
+  individual_adp         = %s (iso = 0 aniso = 0)
+  group_adp              = %s (0 atoms in 0 groups)
+  tls                    = %s (0 atoms in 0 groups)
+  individual_occupancies = %s (0 atoms)
+  group_occupancies      = %s (0 atoms in 0 groups)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(True)]*8)
 expected_result_mix = \
   """Refinement flags and selection counts:
-  individual_sites       =  True (4 atoms)
-  rigid_body             =  True (4 atoms in 2 groups)
-  individual_adp         =  True (iso = 4 aniso = 4)
-  group_adp              =  True (4 atoms in 2 groups)
-  tls                    =  True (4 atoms in 2 groups)
-  individual_occupancies =  True (4 atoms)
-  group_occupancies      =  True (4 atoms in 2 groups)
-  group_anomalous        =  True
-"""
+  individual_sites       = %s (4 atoms)
+  rigid_body             = %s (4 atoms in 2 groups)
+  individual_adp         = %s (iso = 4 aniso = 4)
+  group_adp              = %s (4 atoms in 2 groups)
+  tls                    = %s (4 atoms in 2 groups)
+  individual_occupancies = %s (4 atoms)
+  group_occupancies      = %s (4 atoms in 2 groups)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(True)]*8)
 
 def all_defined():
   #                 0 1 2 3 4 5 6 7 8 9
@@ -111,7 +111,7 @@ def compare(rm, expected_result, deep_copy=False, selection=None, show=False):
     print "-"*80
     print out.getvalue()
     print expected_result
-  assert out.getvalue() == expected_result
+  assert not show_diff(out.getvalue(), expected_result)
 
 def exercise_deepcopy_show_select():
   sel_all       = flex.bool([1,1,1,1,1,1,1,1,1,1])
@@ -202,17 +202,17 @@ def exercise_inflate():
     occupancies_group      = iarr)
   out = StringIO()
   rm.show(log = out)
-  assert out.getvalue() == \
-  """Refinement flags and selection counts:
-  individual_sites       =  True (10 atoms)
-  rigid_body             =  True (10 atoms in 6 groups)
-  individual_adp         =  True (iso = 10 aniso = 10)
-  group_adp              =  True (10 atoms in 6 groups)
-  tls                    =  True (10 atoms in 6 groups)
-  individual_occupancies =  True (10 atoms)
-  group_occupancies      =  True (10 atoms in 6 groups)
-  group_anomalous        =  True
-"""
+  assert not show_diff(out.getvalue(), """\
+Refinement flags and selection counts:
+  individual_sites       = %s (10 atoms)
+  rigid_body             = %s (10 atoms in 6 groups)
+  individual_adp         = %s (iso = 10 aniso = 10)
+  group_adp              = %s (10 atoms in 6 groups)
+  tls                    = %s (10 atoms in 6 groups)
+  individual_occupancies = %s (10 atoms)
+  group_occupancies      = %s (10 atoms in 6 groups)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(True)]*8))
   barr_result  = flex.bool([0,1,1,0,1,0,1,1,1,0,1,0,1,1,0,1])
   iarr_result  = [flex.size_t([1,2]), flex.size_t([4]), flex.size_t([6,7,8]),
                   flex.size_t([10]), flex.size_t([12,13]), flex.size_t([15])]
@@ -302,17 +302,17 @@ def exercise_add_1c():
     occupancies_group      = True)
   out = StringIO()
   rm.show(log = out)
-  assert out.getvalue() == \
-  """Refinement flags and selection counts:
-  individual_sites       =  True (9 atoms)
-  rigid_body             =  True (9 atoms in 5 groups)
-  individual_adp         =  True (iso = 9 aniso = 9)
-  group_adp              =  True (9 atoms in 5 groups)
-  tls                    =  True (9 atoms in 5 groups)
-  individual_occupancies =  True (9 atoms)
-  group_occupancies      =  True (9 atoms in 5 groups)
-  group_anomalous        =  True
-"""
+  assert not show_diff(out.getvalue(), """\
+Refinement flags and selection counts:
+  individual_sites       = %s (9 atoms)
+  rigid_body             = %s (9 atoms in 5 groups)
+  individual_adp         = %s (iso = 9 aniso = 9)
+  group_adp              = %s (9 atoms in 5 groups)
+  tls                    = %s (9 atoms in 5 groups)
+  individual_occupancies = %s (9 atoms)
+  group_occupancies      = %s (9 atoms in 5 groups)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(True)]*8))
   barr_result = flex.bool([0,1,1,0,1,1,1,0,1,1,1,1,0])
   iarr_result = [flex.size_t([1,2]), flex.size_t([5]), flex.size_t([6]),
                  flex.size_t([8, 9, 10, 11]), flex.size_t([4])]
@@ -346,17 +346,17 @@ def exercise_add_2b():
     occupancies_group      = False)
   out = StringIO()
   rm.show(log = out)
-  assert out.getvalue() == \
-  """Refinement flags and selection counts:
-  individual_sites       =  True (5 atoms)
-  rigid_body             =  True (5 atoms in 4 groups)
-  individual_adp         =  True (iso = 5 aniso = 5)
-  group_adp              =  True (5 atoms in 4 groups)
-  tls                    =  True (5 atoms in 4 groups)
-  individual_occupancies =  True (5 atoms)
-  group_occupancies      =  True (5 atoms in 4 groups)
-  group_anomalous        =  True
-"""
+  assert not show_diff(out.getvalue(), """\
+Refinement flags and selection counts:
+  individual_sites       = %s (5 atoms)
+  rigid_body             = %s (5 atoms in 4 groups)
+  individual_adp         = %s (iso = 5 aniso = 5)
+  group_adp              = %s (5 atoms in 4 groups)
+  tls                    = %s (5 atoms in 4 groups)
+  individual_occupancies = %s (5 atoms)
+  group_occupancies      = %s (5 atoms in 4 groups)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(True)]*8))
   barr_result = flex.bool([1,0,0,1,0,0,0,0,1,0,1,0,1,0])
   iarr_result = [flex.size_t([0]), flex.size_t([3]), flex.size_t([8,10]),
                  flex.size_t([12])]
@@ -390,17 +390,17 @@ def exercise_add_2c():
     occupancies_group      = True)
   out = StringIO()
   rm.show(log = out)
-  assert out.getvalue() == \
-  """Refinement flags and selection counts:
-  individual_sites       =  True (9 atoms)
-  rigid_body             =  True (9 atoms in 7 groups)
-  individual_adp         =  True (iso = 9 aniso = 9)
-  group_adp              =  True (9 atoms in 7 groups)
-  tls                    =  True (9 atoms in 7 groups)
-  individual_occupancies =  True (9 atoms)
-  group_occupancies      =  True (9 atoms in 7 groups)
-  group_anomalous        =  True
-"""
+  assert not show_diff(out.getvalue(), """\
+Refinement flags and selection counts:
+  individual_sites       = %s (9 atoms)
+  rigid_body             = %s (9 atoms in 7 groups)
+  individual_adp         = %s (iso = 9 aniso = 9)
+  group_adp              = %s (9 atoms in 7 groups)
+  tls                    = %s (9 atoms in 7 groups)
+  individual_occupancies = %s (9 atoms)
+  group_occupancies      = %s (9 atoms in 7 groups)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(True)]*8))
   barr_result = flex.bool([1,1,0,1,0,0,1,0,1,1,1,0,1,1])
   iarr_result = [flex.size_t([0]), flex.size_t([1]), flex.size_t([3]),
                  flex.size_t([8, 9, 10]), flex.size_t([12]), flex.size_t([13]),
@@ -415,7 +415,7 @@ def exercise_add_2c():
   assert approx_equal(rm.occupancies_individual, iarr_result)
   assert approx_equal(rm.occupancies_group     , iarr_result)
 
-if(__name__ == "__main__"):
+def exercise():
   exercise_deepcopy_show_select()
   exercise_deepcopy_show_select_compare_arrays()
   exercise_inflate()
@@ -424,3 +424,7 @@ if(__name__ == "__main__"):
   exercise_add_1c()
   exercise_add_2b()
   exercise_add_2c()
+  print format_cpu_times()
+
+if(__name__ == "__main__"):
+  exercise()
