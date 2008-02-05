@@ -45,58 +45,54 @@ import libtbx.load_env
 from mmtbx import utils
 
 map_params_str ="""\
-  map_types= Fobs-Fmodel *2mFobs-DFmodel  *mFobs-DFmodel
-    .type=choice(multi=True)
   map_format = *xplor
     .optional = True
-    .type=choice(multi=True)
-    .expert_level=2
+    .type = choice(multi=True)
   map_coefficients_format = *mtz phs
-    .type=choice(multi=True)
-    .expert_level=2
-  mtz_labels
-    .multiple=True
-    .expert_level=1
+    .optional = True
+    .type = choice(multi=True)
+  map
+    .multiple = True
   {
-    map_type = None
-      .type=str
-    amplitudes = None
-      .type=str
-    phases = None
-      .type=str
+    mtz_label_amplitudes = None
+      .type = str
+    mtz_label_phases = None
+      .type = str
+    likelihood_weighted = None
+      .type = bool
+    obs_factor = None
+      .type = float
+    calc_factor = None
+      .type = float
   }
-  mtz_labels {
-    map_type = 2mFobs-DFmodel
-    amplitudes = 2FOFCWT
-    phases = PH2FOFCWT
+  map {
+    mtz_label_amplitudes = 2FOFCWT
+    mtz_label_phases = PH2FOFCWT
+    likelihood_weighted = True
+    obs_factor = 2
+    calc_factor = 1
   }
-  mtz_labels {
-    map_type = mFobs-DFmodel
-    amplitudes = FOFCWT
-    phases = PHFOFCWT
+  map {
+    mtz_label_amplitudes = FOFCWT
+    mtz_label_phases = PHFOFCWT
+    likelihood_weighted = True
+    obs_factor = 1
+    calc_factor = 1
   }
-  mtz_labels {
-    map_type = Fobs-Fmodel
-    amplitudes = oFOoFCWT
-    phases = oPHFOoFCWT
-  }
-  grid_resolution_factor=1/3
-    .type=float
-    .expert_level=0
-  region= *selection cell
-    .type=choice
-  atom_selection=None
-    .type=str
-    .expert_level=0
-  atom_selection_buffer=3
-    .type=float
-    .expert_level=0
+  grid_resolution_factor = 1/3
+    .type = float
+  region = *selection cell
+    .type = choice
+  atom_selection = None
+    .type = str
+  atom_selection_buffer = 3
+    .type = float
   apply_sigma_scaling = True
     .type = bool
-    .expert_level=2
+    .expert_level = 1
   apply_volume_scaling = False
     .type = bool
-    .expert_level=2
+    .expert_level = 1
 """
 
 map_params = iotbx.phil.parse(map_params_str, process_includes=True)
