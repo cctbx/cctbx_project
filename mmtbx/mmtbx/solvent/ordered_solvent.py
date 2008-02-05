@@ -120,8 +120,7 @@ class manager(object):
       else:
         self.find_peaks_params.max_number_of_peaks = \
           self.model.xray_structure.scatterers().size()
-    if(not self.is_water_last()):
-      self.move_solvent_to_the_end_of_atom_list()
+    self.move_solvent_to_the_end_of_atom_list()
     if(not self.is_water_last()):
       raise RuntimeError("Water picking failed: solvent must be last.")
     self.show(message = "Start model:")
@@ -167,6 +166,9 @@ class manager(object):
         model                    = model,
         refine_adp               = True,
         lbfgs_termination_params = lbfgs_termination_params)
+    self.filter_solvent()
+    self.show(message = "Final:")
+    self.move_solvent_to_the_end_of_atom_list()
 
   def move_solvent_to_the_end_of_atom_list(self):
     solsel = flex.bool(self.model.solvent_selection().count(False), False)
@@ -177,7 +179,7 @@ class manager(object):
       self.reset_solvent(
         solvent_selection      = solsel,
         solvent_xray_structure = xrs_sol)
-    else: raise RuntimeError("Water contains H: not implemented.")
+    #else: XXX
 
   def is_water_last(self):
     result = True
@@ -195,7 +197,7 @@ class manager(object):
     xrs_sol_h = self.model.xray_structure.select(sol_sel)
     hd_sol = self.model.xray_structure.hd_selection().select(sol_sel)
     hd_mac = self.model.xray_structure.hd_selection().select(~sol_sel)
-    xrs_sol = xrs_sol_h#.select(~hd_sol) # XXX
+    xrs_sol = xrs_sol_h
     xrs_mac = xrs_mac_h.select(~hd_mac)
     selection = xrs_sol.all_selection()
     scat_sol = xrs_sol.scatterers()
@@ -267,8 +269,13 @@ class manager(object):
 
   def show(self, message):
     print >> self.log, message
-    xrs_mac = self.model.xray_structure.select(~self.model.solvent_selection())
-    xrs_sol = self.model.xray_structure.select(self.model.solvent_selection())
+    sol_sel = self.model.solvent_selection()
+    xrs_mac_h = self.model.xray_structure.select(~sol_sel)
+    xrs_sol_h = self.model.xray_structure.select(sol_sel)
+    hd_sol = self.model.xray_structure.hd_selection().select(sol_sel)
+    hd_mac = self.model.xray_structure.hd_selection().select(~sol_sel)
+    xrs_sol = xrs_sol_h.select(~hd_sol)
+    xrs_mac = xrs_mac_h.select(~hd_mac)
     scat = xrs_sol.scatterers()
     occ = scat.extract_occupancies()
     b_isos = scat.extract_u_iso_or_u_equiv(
@@ -349,7 +356,11 @@ class manager(object):
 
   def add_new_solvent(self):
     if(self.params.b_iso is None):
-      b = self.model.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
+      sol_sel = self.model.solvent_selection()
+      xrs_mac_h = self.model.xray_structure.select(~sol_sel)
+      hd_mac = self.model.xray_structure.hd_selection().select(~sol_sel)
+      xrs_mac = xrs_mac_h.select(~hd_mac)
+      b = xrs_mac.extract_u_iso_or_u_equiv() * math.pi**2*8
       b_solv = flex.mean_default(b, None)
       if(b_solv is not None and b_solv < self.params.b_iso_min or
          b_solv > self.params.b_iso_max):
