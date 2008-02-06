@@ -46,69 +46,9 @@ def next_permutation(seq):
       seq.reverse()
       return False
 
-def exercise_next_permutation():
-  seq = []
-  assert next_permutation(seq) is False
-  seq = [0]
-  assert next_permutation(seq) is False
-  seq = [0,1]
-  assert next_permutation(seq)
-  assert seq == [1, 0]
-  assert not next_permutation(seq)
-  assert seq == [0, 1]
-  seq = [0,1,2]
-  result = []
-  while True:
-    result.append(tuple(seq))
-    if (not next_permutation(seq)):
-      break
-  assert result == [
-    (0, 1, 2),
-    (0, 2, 1),
-    (1, 0, 2),
-    (1, 2, 0),
-    (2, 0, 1),
-    (2, 1, 0)]
-  assert seq == [0,1,2]
-  expected_n = 1
-  for m in xrange(1,7):
-    expected_n *= m
-    seq = range(m)
-    n = 0
-    while True:
-      n += 1
-      if (not next_permutation(seq)):
-        break
-    assert seq == range(m)
-    assert n == expected_n
-
-if (__name__ == "__main__"):
-  assert iround(0) == 0
-  assert iround(1.4) == 1
-  assert iround(-1.4) == -1
-  assert iround(1.6) == 2
-  assert iround(-1.6) == -2
-  assert iceil(0) == 0
-  assert iceil(1.1) == 2
-  assert iceil(-1.1) == -1
-  assert iceil(1.9) == 2
-  assert iceil(-1.9) == -1
-  assert ifloor(0) == 0
-  assert ifloor(1.1) == 1
-  assert ifloor(-1.1) == -2
-  assert ifloor(1.9) == 1
-  assert ifloor(-1.9) == -2
-
-  assert does_imply(True, True)
-  assert not does_imply(True, False)
-  assert does_imply(False, True)
-  assert does_imply(False, False)
-
-  assert are_equivalent(True, True)
-  assert not are_equivalent(True, False)
-  assert not are_equivalent(False, True)
-  assert are_equivalent(False, False)
-
-  exercise_next_permutation()
-
-  print "OK"
+def normalize_angle(phi, deg=False):
+  if (deg): period = 360
+  else:     period = 2 * math.pi
+  phi = math.fmod(phi, period)
+  if (phi < 0.): phi += period
+  return phi
