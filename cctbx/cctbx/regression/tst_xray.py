@@ -987,7 +987,25 @@ def exercise_replace_sites():
   assert approx_equal(flex.mean(
     xrs_.sites_cart().as_double()-flex.double([1,2,3])), 0)
 
+def exercise_add_scatterer_next_to_i_seq():
+  cs = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
+  sp = crystal.special_position_settings(cs)
+  uc = cs.unit_cell()
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("c", site=(0.5,0,0.1),u=0.1),
+    xray.scatterer("o", site=(0.5,0,0.2),u=0.1),
+    xray.scatterer("o", site=(0.5,0,0.3),u=0.1),
+    xray.scatterer("n", site=(0.5,0,0.4),u=0.1),
+    xray.scatterer("c", site=(0.5,0,0.5),u=0.1)))
+  xs = xray.structure(sp, scatterers)
+  scatterer = xray.scatterer("zn", site=(0.0,0,0.0),u=0.0)
+  for i_seq in [-1, 0, 2, 4]:
+    xs_ = xs.deep_copy_scatterers()
+    xs_.add_scatterer(scatterer = scatterer, next_to_i_seq = i_seq)
+    assert xs_.scatterers()[i_seq+1].label == "zn"
+
 def run():
+  exercise_add_scatterer_next_to_i_seq()
   exercise_replace_sites()
   exercise_min_u_cart_eigenvalue()
   exercise_set_occupancies()
