@@ -86,6 +86,7 @@ libtbx/libtbx/sourceforge_checkout.py -text
 libtbx/libtbx/subversion.py -text
 libtbx/libtbx/symmetric_multi_processing.py -text
 libtbx/libtbx/tst_itertbx.py -text
+libtbx/libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/libtbx/tst_object_oriented_patterns.py -text
 libtbx/libtbx/tst_symmetric_multi_processing.py -text
 libtbx/libtbx_refresh.py -text
