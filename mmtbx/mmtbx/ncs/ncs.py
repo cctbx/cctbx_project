@@ -14,7 +14,7 @@ from libtbx.utils import Sorry
 class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
       chain_residue_id=None,source_of_ncs_info=None,rmsd_list=None,
-      residues_in_common_list=None,cc=None):
+      residues_in_common_list=None,cc=None,exclude_h=None,exclude_d=None):
     self._chain_residue_id=chain_residue_id  # just one of these
     self._rmsd_list=rmsd_list
     self._residues_in_common_list=residues_in_common_list
@@ -29,6 +29,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       self._n_ncs_oper=0
     self._source_of_ncs_info=source_of_ncs_info
     self._cc=cc
+
+    self._exclude_h=exclude_h
+    self._exclude_d=exclude_d
 
 
   def display_summary(self):
@@ -129,6 +132,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
   def format_for_phenix_refine(self):
     if not self._chain_residue_id or len(self._chain_residue_id)<2:
       return ""
+    exclude=""
+    if self._exclude_h: exclude+=" and (not element H) "
+    if self._exclude_d: exclude+=" and (not element D) "
     [group,residue_range_list] = self._chain_residue_id
     count=0
     for id,residue_ranges in zip (group,residue_range_list):
@@ -147,7 +153,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
          else:
            text+=" or resseq  "
          text+=str(residue_range[0])+":"+str(residue_range[1])
-       text+=" ) \n"
+       text+=" ) "+exclude+"\n"
     text+= "} \n"
     return text
 
@@ -229,10 +235,12 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return rounded
 
 class ncs:
-  def __init__(self):
+  def __init__(self,exclude_h=None,exclude_d=None):
     self._ncs_groups=[]  # each group is an ncs_group object
     self.source_info=None
     self._ncs_read=False
+    self._exclude_h=exclude_h
+    self._exclude_d=exclude_d
 
   def ncs_read(self):
     return self._ncs_read
@@ -427,7 +435,8 @@ class ncs:
        chain_residue_id=chain_residue_id,
        residues_in_common_list=residues_in_common_list,
        rmsd_list=rmsd_list,
-       source_of_ncs_info=source_of_ncs_info)
+       source_of_ncs_info=source_of_ncs_info,
+       exclude_h=self._exclude_h,exclude_d=self._exclude_d)
      self._ncs_groups.append(ncs_group_object)
 
   def save_ncs_group(self):
