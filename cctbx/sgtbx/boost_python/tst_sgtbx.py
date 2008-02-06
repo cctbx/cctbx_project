@@ -1379,6 +1379,44 @@ def exercise_site_symmetry():
   ic = sc.independent_curvatures(
     all_curvatures=flex.double([0.1,0.2,0.5,0.3,0.2,-0.1]))
   assert approx_equal(ic, [-0.1])
+  #
+  u = uctbx.unit_cell((3,4,5,80,100,110))
+  g = sgtbx.space_group("P 2")
+  s1 = site_symmetry(u, g, (0.1,0.2,0.3))
+  s2 = site_symmetry(u, g, (0,0,0))
+  s3 = site_symmetry(u, g, (0.5,0.5,0))
+  assert str(s1.special_op()) == "x,y,z"
+  assert str(s2.special_op()) == "0,0,z"
+  assert str(s3.special_op()) == "1/2,1/2,z"
+  t = sgtbx.site_symmetry_table()
+  t.process(insert_at_index=0, site_symmetry_ops=s1)
+  assert list(t.indices()) == [0]
+  assert list(t.special_position_indices()) == []
+  t.process(insert_at_index=0, site_symmetry_ops=s2)
+  assert list(t.indices()) == [1,0]
+  assert list(t.special_position_indices()) == [0]
+  t = sgtbx.site_symmetry_table()
+  t.process(insert_at_index=0, site_symmetry_ops=s2)
+  assert list(t.indices()) == [1]
+  assert list(t.special_position_indices()) == [0]
+  t.process(insert_at_index=0, site_symmetry_ops=s1)
+  assert list(t.indices()) == [0,1]
+  assert list(t.special_position_indices()) == [1]
+  t.process(insert_at_index=1, site_symmetry_ops=s3)
+  assert list(t.indices()) == [0,2,1]
+  assert list(t.special_position_indices()) == [1,2]
+  t.process(insert_at_index=0, site_symmetry_ops=s2)
+  assert list(t.indices()) == [1,0,2,1]
+  assert list(t.special_position_indices()) == [0,2,3]
+  t.process(insert_at_index=4, site_symmetry_ops=s3)
+  assert list(t.indices()) == [1,0,2,1,2]
+  assert list(t.special_position_indices()) == [0,2,3,4]
+  t.process(insert_at_index=0, site_symmetry_ops=s1)
+  assert list(t.indices()) == [0,1,0,2,1,2]
+  assert list(t.special_position_indices()) == [1,3,4,5]
+  t.process(insert_at_index=6, site_symmetry_ops=s1)
+  assert list(t.indices()) == [0,1,0,2,1,2,0]
+  assert list(t.special_position_indices()) == [1,3,4,5]
 
 def exercise_wyckoff():
   space_group_type = sgtbx.space_group_type
