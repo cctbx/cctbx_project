@@ -55,9 +55,12 @@ class xh_connectivity_table(object):
       if(scatterers[j_seq].element_symbol() == "H"):
         i_h = j_seq
         i_x = i_seq
-        const_vect = flex.double(scatterers[i_h].site)- \
-          flex.double(scatterers[i_x].site)
-        self.table.append([i_x, i_h, const_vect, proxy.distance_ideal])
+        site_x = scatterers[i_x].site
+        site_h = scatterers[i_h].site
+        const_vect = flex.double(site_h)-flex.double(site_x)
+        distance_model = xray_structure.unit_cell().distance(site_x, site_h)
+        self.table.append([i_x, i_h, const_vect, proxy.distance_ideal,
+                           distance_model])
 
 class manager(object):
   def __init__(self, xray_structure,
@@ -97,61 +100,76 @@ class manager(object):
           xray_structure = self.xray_structure).table
     return result
 
-  def idealize_h(self, xh_bond_distance_deviation_limit):
+  def idealize_h(self, xh_bond_distance_deviation_limit=0, show=True): # XXX _limit is not used
+    if(self.xray_structure.hd_selection().count(True) > 0):
+      sol_hd = self.solvent_selection().set_selected(
+        ~self.xray_structure.hd_selection(), False)
+      mac_hd = self.xray_structure.hd_selection().set_selected(
+        self.solvent_selection(), False)
+      sites_cart_mac_before = self.xray_structure.sites_cart().select(
+        ~self.xray_structure.hd_selection())
+      xhd = flex.double()
+      for t in self.xh_connectivity_table():
+        xhd.append(abs(t[-1]-t[-2]))
+      if(show):
+        print >> self.log, \
+        "X-H deviation from ideal before regularization (bond): mean=%6.3f max=%6.3f"%\
+        (flex.mean(xhd), flex.max(xhd))
+      for sel_pair in [(mac_hd, False), (sol_hd, True)]*2:
+        if(sel_pair[0].count(True) > 0):
+          self.geometry_minimization(
+            selection = sel_pair[0],
+            bond      = True,
+            nonbonded = sel_pair[1],
+            angle     = True,
+            dihedral  = True,
+            chirality = True,
+            planarity = True)
+      sites_cart_mac_after = self.xray_structure.sites_cart().select(
+        ~self.xray_structure.hd_selection())
+      assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
+        sites_cart_mac_after.as_double()), 0)
+      if(xh_bond_distance_deviation_limit == 0):
+        xhd = flex.double()
+        for t in self.xh_connectivity_table():
+          xhd.append(abs(t[-1]-t[-2]))
+        if(show):
+          print >> self.log,\
+          "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
+          (flex.mean(xhd), flex.max(xhd))
+
+  def geometry_minimization(self,
+                            max_number_of_iterations = 500,
+                            number_of_macro_cycles   = 3,
+                            selection                = None,
+                            bond                     = False,
+                            nonbonded                = False,
+                            angle                    = False,
+                            dihedral                 = False,
+                            chirality                = False,
+                            planarity                = False):
+    assert max_number_of_iterations+number_of_macro_cycles > 0
+    assert [bond,nonbonded,angle,dihedral,chirality,planarity].count(False) < 6
     from mmtbx.command_line import geometry_minimization
     import scitbx.lbfgs
     lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-      max_iterations = 500)
+      max_iterations = max_number_of_iterations)
     geometry_restraints_flags = geometry_restraints.flags.flags(
-      bond      = True,
-      nonbonded = False,
-      angle     = True,
-      dihedral  = True,
-      chirality = True,
-      planarity = True)
-    for i in xrange(3):
+      bond      = bond,
+      nonbonded = nonbonded,
+      angle     = angle,
+      dihedral  = dihedral,
+      chirality = chirality,
+      planarity = planarity)
+    for i in xrange(number_of_macro_cycles):
       sites_cart = self.xray_structure.sites_cart()
       minimized = geometry_minimization.lbfgs(
         sites_cart                  = sites_cart,
         geometry_restraints_manager = self.restraints_manager.geometry,
         geometry_restraints_flags   = geometry_restraints_flags,
         lbfgs_termination_params    = lbfgs_termination_params,
-        sites_cart_selection        = self.xray_structure.hd_selection())
+        sites_cart_selection        = selection)
       self.xray_structure.set_sites_cart(sites_cart = sites_cart)
-
-  def geometry_minimization(self,
-                            max_number_of_iterations = 100,
-                            number_of_macro_cycles   = 100):
-    raise RuntimeError("Not implemented.")
-    if(max_number_of_iterations == 0 or number_of_macro_cycles == 0): return
-    sso_start = stereochemistry_statistics(
-                          xray_structure         = self.xray_structure,
-                          restraints_manager     = self.restraints_manager,
-                          use_ias                = self.use_ias,
-                          ias_selection          = self.ias_selection,
-                          text                   = "start")
-    sites_cart = self.xray_structure.sites_cart()
-    first_target_value = None
-    for macro_cycles in xrange(1,number_of_macro_cycles+1):
-        minimized = cctbx_geometry_restraints_lbfgs(
-          sites_cart                  = sites_cart,
-          geometry_restraints_manager = self.restraints_manager.geometry,
-          lbfgs_termination_params    = scitbx.lbfgs.termination_parameters(
-                                    max_iterations = max_number_of_iterations))
-        if(first_target_value is None):
-           first_target_value = minimized.first_target_value
-    self.xray_structure = \
-                 self.xray_structure.replace_sites_cart(new_sites = sites_cart)
-    sso_end = stereochemistry_statistics(
-                          xray_structure         = self.xray_structure,
-                          restraints_manager     = self.restraints_manager,
-                          use_ias                = self.use_ias,
-                          ias_selection          = self.ias_selection,
-                          text                   = "final")
-    assert approx_equal(first_target_value, sso_start.target)
-    assert approx_equal(minimized.final_target_value, sso_end.target)
-    sso_start.show(out = self.log)
-    sso_end.show(out = self.log)
 
   def extract_ncs_groups(self):
     result = None
