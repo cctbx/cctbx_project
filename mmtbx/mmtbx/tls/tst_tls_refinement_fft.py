@@ -52,6 +52,11 @@ def exercise_2(eps = 1.e-6):
   class refinement_flags: pass
   refinement_flags.adp_tls = selections
   tls_groups = tools.tls_groups(selection_strings = selection_strings)
+  tlsos = tools.generate_tlsos(
+          selections     = refinement_flags.adp_tls,
+          xray_structure = xray_structure,
+          value          = 0.0)
+  tls_groups.tlsos = tlsos
   model = mmtbx.model.manager(
              refinement_flags       = refinement_flags,
              restraints_manager     = restraints_manager,
