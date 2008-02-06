@@ -5,6 +5,20 @@ from scitbx import matrix
 from scitbx.array_family import flex
 from stdlib import math
 
+class line_given_points(object):
+
+  def __init__(self, points):
+    self.points = [matrix.col(point) for point in points]
+    self.delta = self.points[1] - self.points[0]
+    self.delta_norm_sq = self.delta.norm_sq()
+
+  def distance_sq(self, point):
+    "http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html"
+    if (self.delta_norm_sq == 0):
+      return (point - self.points[0]).norm_sq()
+    return self.delta.cross(point - self.points[0]).norm_sq() \
+         / self.delta_norm_sq
+
 def euler_angles_as_matrix(angles, deg=False):
   if (deg):
     angles = [a*math.pi/180 for a in angles]

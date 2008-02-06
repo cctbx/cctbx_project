@@ -41,19 +41,6 @@ def v3distsq(a, b):
   for x,y in zip(a,b): result += (x-y)**2
   return result
 
-class line_given_points:
-
-  def __init__(self, points):
-    self.points = [matrix.col(point) for point in points]
-    self.delta = self.points[1] - self.points[0]
-    self.delta_norm_sq = self.delta.norm_sq()
-    assert self.delta_norm_sq != 0
-
-  def distance_sq(self, point):
-    "http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html"
-    return self.delta.cross(point - self.points[0]).norm_sq() \
-         / self.delta_norm_sq
-
 class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def InitGL(self):
@@ -605,7 +592,7 @@ class show_points_and_lines_mixin(wxGLWindow):
       glDisable(GL_BLEND)
 
   def process_pick_points(self):
-    line = line_given_points(self.pick_points)
+    line = scitbx.math.line_given_points(self.pick_points)
     min_dist_sq = 1**2
     closest_point = None
     for point in self.points:
