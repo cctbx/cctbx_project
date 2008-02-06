@@ -1,4 +1,5 @@
 import scitbx.math
+from scitbx.math import line_given_points
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
 from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0, ei1, ei0
@@ -79,6 +80,17 @@ def exercise_floating_point_epsilon():
   assert 1.+double_eps != 1.
   assert float_eps >= double_eps
   assert 1.+double_eps/2. == 1.
+
+def exercise_line_given_points():
+  lgp = line_given_points(points=[(0,0,0), (0,0,0)])
+  assert lgp.distance_sq(point=matrix.col((0,0,0))) == 0
+  assert lgp.distance_sq(point=matrix.col((0,0,1))) == 1
+  lgp = line_given_points(points=[(0,0,1), (0,0,0)])
+  assert lgp.distance_sq(point=matrix.col((0,0,1))) == 0
+  assert lgp.distance_sq(point=matrix.col((0,1,0))) == 1
+  lgp = line_given_points(points=[(1,2,3), (3,1,4)])
+  assert lgp.distance_sq(point=matrix.col((0,0,0))) == 12
+  assert lgp.distance_sq(point=matrix.col((0,0,1))) == 8
 
 def exercise_euler_angles():
   assert approx_equal(euler_angles_as_matrix([0,0,0]).elems,
@@ -1441,6 +1453,7 @@ def run():
   exercise_full_pivoting()
   exercise_eix()
   exercise_floating_point_epsilon()
+  exercise_line_given_points()
   exercise_euler_angles()
   exercise_erf()
   exercise_gamma_incomplete()
