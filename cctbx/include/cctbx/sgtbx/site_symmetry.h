@@ -89,6 +89,14 @@ namespace cctbx { namespace sgtbx {
       bool
       is_point_group_1() const { return n_matrices() == 1; }
 
+      //! True if special_op() and all matrices() are identical.
+      bool
+      operator==(site_symmetry_ops const& other) const
+      {
+        if (other.special_op_ != special_op_) return false;
+        return other.matrices_.const_ref().all_eq(matrices_.const_ref());
+      }
+
       /*! \brief Tests if the given anisotropic displacement parameters
           u_star are compatible with the site symmetry.
        */
@@ -121,7 +129,8 @@ namespace cctbx { namespace sgtbx {
       /*! \brief Construct a new site_symmetry_ops instance with the
           denominators (special_op().den(), matrices()[0].den()) of this.
        */
-      //! Not available in Python.
+      /*! Not available in Python.
+       */
       site_symmetry_ops
       make_point_group_1() const
       {
