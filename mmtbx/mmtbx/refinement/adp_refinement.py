@@ -261,7 +261,7 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
     r_free_ = fmodels.fmodel_xray().r_free()
     if(target_weights.twp.optimize_wxu):
       print >> log, "scale= %8.4f total_weight= %8.4f r_free= %6.4f"%(scaler,
-        target_weights.xyz_weights_result.wx, r_free_), cntr
+        target_weights.adp_weights_result.wx, r_free_), cntr
     if(r_free_ < r_free):
       r_free = r_free_
       new_scatterers = fmodels.fmodel_xray().xray_structure.scatterers(
@@ -276,7 +276,6 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
   if(target_weights.twp.optimize_wxu):
     scaler_values = [1./1.5,1./2.,1./2.5,1./3.,1./3.5,1./4.,1./4.5,1./5.]
     cntr = 0
-    wx = target_weights.adp_weights_result.wx
     for scaler in scaler_values:
       if(target_weights.twp.optimize_wxu):
         fmodels.fmodel_xray().xray_structure.replace_scatterers(
@@ -296,7 +295,7 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
       r_free_ = fmodels.fmodel_xray().r_free()
       if(target_weights.twp.optimize_wxu):
         print >> log, "scale= %8.4f total_weight= %8.4f r_free= %6.4f"%(scaler,
-          target_weights.xyz_weights_result.wx, r_free_), cntr
+          target_weights.adp_weights_result.wx, r_free_), cntr
       if(r_free_ < r_free):
         r_free = r_free_
         new_scatterers = fmodels.fmodel_xray().xray_structure.scatterers(

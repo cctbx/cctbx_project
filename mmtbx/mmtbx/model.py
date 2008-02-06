@@ -87,13 +87,6 @@ class manager(object):
     self.ias_xray_structure = ias_xray_structure
     self.use_ias = False
     self.ias_selection = None
-    if(self.refinement_flags is not None and [self.refinement_flags,
-                                self.refinement_flags.adp_tls].count(None)==0):
-       tlsos = tools.generate_tlsos(
-                                selections     = self.refinement_flags.adp_tls,
-                                xray_structure = self.xray_structure,
-                                value          = 0.0)
-       self.tls_groups.tlsos = tlsos
 
   def xh_connectivity_table(self):
     result = None
@@ -125,6 +118,40 @@ class manager(object):
         lbfgs_termination_params    = lbfgs_termination_params,
         sites_cart_selection        = self.xray_structure.hd_selection())
       self.xray_structure.set_sites_cart(sites_cart = sites_cart)
+
+  def geometry_minimization(self,
+                            max_number_of_iterations = 100,
+                            number_of_macro_cycles   = 100):
+    raise RuntimeError("Not implemented.")
+    if(max_number_of_iterations == 0 or number_of_macro_cycles == 0): return
+    sso_start = stereochemistry_statistics(
+                          xray_structure         = self.xray_structure,
+                          restraints_manager     = self.restraints_manager,
+                          use_ias                = self.use_ias,
+                          ias_selection          = self.ias_selection,
+                          text                   = "start")
+    sites_cart = self.xray_structure.sites_cart()
+    first_target_value = None
+    for macro_cycles in xrange(1,number_of_macro_cycles+1):
+        minimized = cctbx_geometry_restraints_lbfgs(
+          sites_cart                  = sites_cart,
+          geometry_restraints_manager = self.restraints_manager.geometry,
+          lbfgs_termination_params    = scitbx.lbfgs.termination_parameters(
+                                    max_iterations = max_number_of_iterations))
+        if(first_target_value is None):
+           first_target_value = minimized.first_target_value
+    self.xray_structure = \
+                 self.xray_structure.replace_sites_cart(new_sites = sites_cart)
+    sso_end = stereochemistry_statistics(
+                          xray_structure         = self.xray_structure,
+                          restraints_manager     = self.restraints_manager,
+                          use_ias                = self.use_ias,
+                          ias_selection          = self.ias_selection,
+                          text                   = "final")
+    assert approx_equal(first_target_value, sso_start.target)
+    assert approx_equal(minimized.final_target_value, sso_end.target)
+    sso_start.show(out = self.log)
+    sso_end.show(out = self.log)
 
   def extract_ncs_groups(self):
     result = None
@@ -497,40 +524,6 @@ class manager(object):
     b_isos.set_selected(sel_outliers_max, max_b_iso)
     b_isos.set_selected(sel_outliers_min, min_b_iso)
     self.xray_structure.set_b_iso(values = b_isos)
-
-  def geometry_minimization(self,
-                            max_number_of_iterations = 100,
-                            number_of_macro_cycles   = 100):
-    raise RuntimeError("Not implemented.")
-    if(max_number_of_iterations == 0 or number_of_macro_cycles == 0): return
-    sso_start = stereochemistry_statistics(
-                          xray_structure         = self.xray_structure,
-                          restraints_manager     = self.restraints_manager,
-                          use_ias                = self.use_ias,
-                          ias_selection          = self.ias_selection,
-                          text                   = "start")
-    sites_cart = self.xray_structure.sites_cart()
-    first_target_value = None
-    for macro_cycles in xrange(1,number_of_macro_cycles+1):
-        minimized = cctbx_geometry_restraints_lbfgs(
-          sites_cart                  = sites_cart,
-          geometry_restraints_manager = self.restraints_manager.geometry,
-          lbfgs_termination_params    = scitbx.lbfgs.termination_parameters(
-                                    max_iterations = max_number_of_iterations))
-        if(first_target_value is None):
-           first_target_value = minimized.first_target_value
-    self.xray_structure = \
-                 self.xray_structure.replace_sites_cart(new_sites = sites_cart)
-    sso_end = stereochemistry_statistics(
-                          xray_structure         = self.xray_structure,
-                          restraints_manager     = self.restraints_manager,
-                          use_ias                = self.use_ias,
-                          ias_selection          = self.ias_selection,
-                          text                   = "final")
-    assert approx_equal(first_target_value, sso_start.target)
-    assert approx_equal(minimized.final_target_value, sso_end.target)
-    sso_start.show(out = self.log)
-    sso_end.show(out = self.log)
 
   def geometry_statistics(self):
     sites_cart = self.xray_structure.sites_cart()
