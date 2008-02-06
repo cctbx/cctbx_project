@@ -10,6 +10,7 @@ import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
 from mmtbx import model_statistics
+from mmtbx import utils
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
@@ -152,9 +153,38 @@ def exercise_2():
 """
   assert out.getvalue() == expected_result
 
+def exercise_3():
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/arg_h_hohh1_sh.pdb",
+    test=os.path.isfile)
+  processed_pdb_files_srv = utils.process_pdb_file_srv()
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  xray_structure = processed_pdb_file.xray_structure()
+  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  out = StringIO()
+  mol = mmtbx.model.manager(
+    restraints_manager     = restraints_manager,
+    xray_structure         = xray_structure,
+    atom_attributes_list   = aal,
+    log                    = out)
+  #
+  mol.idealize_h()
+  assert out.getvalue().splitlines()[0] == \
+  "X-H deviation from ideal before regularization (bond): mean= 0.151 max= 0.496"
+  assert out.getvalue().splitlines()[1] == \
+  "X-H deviation from ideal after  regularization (bond): mean= 0.000 max= 0.002"
+
 def run():
   exercise()
   exercise_2()
+  exercise_3()
 
 if (__name__ == "__main__"):
   run()
