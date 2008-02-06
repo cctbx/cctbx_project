@@ -15,38 +15,23 @@ namespace cctbx { namespace sgtbx {
         table_const_ref_(table_.const_ref())
       {}
 
-      //! Add new site_symmetry_ops to internal table.
+      //! Insert new site_symmetry_ops into internal table.
       /*! The internal table is searched for identical site_symmetry_ops.
           The indices() for duplicate site_symmetry_ops will point to the
           same table() entry.
        */
       void
+      process(
+        std::size_t insert_at_index,
+        site_symmetry_ops const& site_symmetry_ops_);
+
+      //! Add new site_symmetry_ops to internal table.
+      /*! See also: other overload.
+       */
+      void
       process(site_symmetry_ops const& site_symmetry_ops_)
       {
-        CCTBX_ASSERT(indices_const_ref_.end() == indices_.end());
-        CCTBX_ASSERT(table_const_ref_.end() == table_.end());
-        if (table_const_ref_.size() == 0) {
-          table_.push_back(site_symmetry_ops_.make_point_group_1());
-          table_const_ref_ = table_.const_ref();
-        }
-        if (site_symmetry_ops_.is_point_group_1()) {
-          indices_.push_back(0);
-        }
-        else {
-          std::size_t i;
-          for(i=0;i<table_const_ref_.size();i++) {
-            if (table_const_ref_[i] == site_symmetry_ops_) {
-              break;
-            }
-          }
-          if (i == table_const_ref_.size()) {
-            table_.push_back(site_symmetry_ops_);
-            table_const_ref_ = table_.const_ref();
-          }
-          special_position_indices_.push_back(indices_.size());
-          indices_.push_back(i);
-        }
-        indices_const_ref_ = indices_.const_ref();
+        process(indices_const_ref_.size(), site_symmetry_ops_);
       }
 
       /*! \brief Compute and process site symmetries for an array

@@ -1,4 +1,4 @@
-#include <cctbx/sgtbx/site_symmetry.h>
+#include <cctbx/sgtbx/site_symmetry_table.h>
 
 namespace cctbx { namespace sgtbx {
 
@@ -200,6 +200,53 @@ namespace cctbx { namespace sgtbx {
     af::shared<rt_mx> result = space_group_.unique(special_op_);
     CCTBX_ASSERT(result.size() == multiplicity_);
     return result;
+  }
+
+  void
+  site_symmetry_table::
+  process(
+    std::size_t insert_at_index,
+    site_symmetry_ops const& site_symmetry_ops_)
+  {
+    CCTBX_ASSERT(indices_const_ref_.end() == indices_.end());
+    CCTBX_ASSERT(table_const_ref_.end() == table_.end());
+    CCTBX_ASSERT(insert_at_index <= indices_const_ref_.size());
+    if (table_const_ref_.size() == 0) {
+      table_.push_back(site_symmetry_ops_.make_point_group_1());
+      table_const_ref_ = table_.const_ref();
+    }
+    std::size_t i_tab = 0;
+    bool is_pg_1 = site_symmetry_ops_.is_point_group_1();
+    if (!is_pg_1) {
+      for(i_tab=1;i_tab<table_const_ref_.size();i_tab++) {
+        if (table_const_ref_[i_tab] == site_symmetry_ops_) {
+          break;
+        }
+      }
+      if (i_tab == table_const_ref_.size()) {
+        table_.push_back(site_symmetry_ops_);
+        table_const_ref_ = table_.const_ref();
+      }
+    }
+    if (insert_at_index == indices_const_ref_.size()) {
+      indices_.push_back(i_tab);
+      if (!is_pg_1) special_position_indices_.push_back(insert_at_index);
+    }
+    else {
+      indices_.insert(indices_.begin()+insert_at_index, i_tab);
+      std::size_t n = special_position_indices_.size();
+      if (!is_pg_1) special_position_indices_.resize(n+1);
+      std::size_t* si = special_position_indices_.begin();
+      std::size_t i = n;
+      while (i != 0) {
+        i--;
+        if (si[i] < insert_at_index) break;
+        if (is_pg_1) si[i]++;
+        else         si[i+1] = si[i] + 1;
+      }
+      if (!is_pg_1) si[i] = insert_at_index;
+    }
+    indices_const_ref_ = indices_.const_ref();
   }
 
 }} // namespace cctbx::sgtbx

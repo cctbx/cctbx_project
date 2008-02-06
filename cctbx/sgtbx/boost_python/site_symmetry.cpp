@@ -158,6 +158,11 @@ namespace {
             arg_("table"),
             arg_("special_position_indices"))))
         .def("process",
+          (void(w_t::*)(std::size_t, site_symmetry_ops const&))
+            &w_t::process, (
+              arg_("insert_at_index"),
+              arg_("site_symmetry_ops")))
+        .def("process",
           (void(w_t::*)(site_symmetry_ops const&))
             &w_t::process,
           (arg_("site_symmetry_ops")))
