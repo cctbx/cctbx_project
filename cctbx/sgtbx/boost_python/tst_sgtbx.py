@@ -1239,6 +1239,10 @@ def exercise_site_symmetry():
   s3 = site_symmetry(unit_cell=u, space_group=g, original_site=(0.25,0.66,0.0))
   assert s3.multiplicity() == 12
   assert s3.is_point_group_1()
+  assert s3 == s3
+  assert not (s3 != s3)
+  assert not (s3 == s2)
+  assert s3 != s2
   t.process(site_symmetry_ops=s3)
   assert t.indices().size() == 5
   assert t.n_unique() == 3

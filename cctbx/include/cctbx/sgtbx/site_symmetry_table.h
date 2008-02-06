@@ -35,18 +35,9 @@ namespace cctbx { namespace sgtbx {
         else {
           std::size_t i;
           for(i=0;i<table_const_ref_.size();i++) {
-            if (   table_const_ref_[i].special_op()
-                != site_symmetry_ops_.special_op()) {
-              continue;
+            if (table_const_ref_[i] == site_symmetry_ops_) {
+              break;
             }
-            af::const_ref<rt_mx> tm=table_const_ref_[i].matrices().const_ref();
-            af::const_ref<rt_mx> nm=site_symmetry_ops_.matrices().const_ref();
-            if (tm.size() != nm.size()) continue;
-            std::size_t j;
-            for(j=0;j<tm.size();j++) {
-              if (tm[j] != nm[j]) break;
-            }
-            if (j == tm.size()) break;
           }
           if (i == table_const_ref_.size()) {
             table_.push_back(site_symmetry_ops_);
