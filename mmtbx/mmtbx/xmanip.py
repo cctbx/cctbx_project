@@ -665,7 +665,7 @@ def run(args, command_name="phenix.xmanip"):
         for site in sites:
           new_site = rt_mx.r()*matrix.col(site)
           new_site = flex.double(new_site)+flex.double( rt_mx.t().as_double() )
-          new_sites.push_back( tuple(new_site) )
+          new_sites.append( tuple(new_site) )
         new_model = model.deep_copy_scatterers()
 
         new_model.set_sites_frac( new_sites )

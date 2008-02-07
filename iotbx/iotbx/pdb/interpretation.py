@@ -350,11 +350,11 @@ class stage_1(object):
     result = flex.std_string()
     for atom in self.atom_attributes_list:
       if (atom.element is None):
-        result.push_back("")
+        result.append("")
       elif (strip_symbols):
-        result.push_back(atom.element.strip())
+        result.append(atom.element.strip())
       else:
-        result.push_back(atom.element)
+        result.append(atom.element)
     return result
 
   def extract_xray_structure(self,
