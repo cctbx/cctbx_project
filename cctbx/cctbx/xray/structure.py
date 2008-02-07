@@ -614,30 +614,26 @@ class structure(crystal.special_position_settings):
     self._site_symmetry_table = self._site_symmetry_table.select(selection)
     self._scattering_type_registry_is_out_of_date = True
 
-  def add_scatterer(self, scatterer, site_symmetry_ops=None,
-                          next_to_i_seq=None):
-    if(next_to_i_seq is None):
-      self._scatterers.append(scatterer)
-      new_i = -1
-    else:
-      part1 = self._scatterers[:next_to_i_seq+1]
-      part2 = self._scatterers[next_to_i_seq+1:]
-      part1.append(scatterer)
-      part1.extend(part2)
-      self._scatterers = part1
-      new_i = next_to_i_seq+1
+  def add_scatterer(self,
+        scatterer,
+        site_symmetry_ops=None,
+        insert_at_index=None):
+    if (insert_at_index is None):
+      insert_at_index = self._scatterers.size()
+    self._scatterers.insert(insert_at_index, scatterer)
     if (site_symmetry_ops is None):
-      site_symmetry_ops = self._scatterers[new_i].apply_symmetry(
+      site_symmetry_ops = self._scatterers[insert_at_index].apply_symmetry(
         unit_cell=self.unit_cell(),
         space_group=self.space_group(),
         min_distance_sym_equiv=self.min_distance_sym_equiv(),
         u_star_tolerance=self.u_star_tolerance(),
         assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
     else:
-      self._scatterers[new_i].apply_symmetry(
+      self._scatterers[insert_at_index].apply_symmetry(
         site_symmetry_ops=site_symmetry_ops,
         u_star_tolerance=self.u_star_tolerance())
-    self._site_symmetry_table.process(site_symmetry_ops)
+    self._site_symmetry_table.process(
+      insert_at_index=insert_at_index, site_symmetry_ops=site_symmetry_ops)
     self._scattering_type_registry_is_out_of_date = True
 
   def add_scatterers(self, scatterers, site_symmetry_table=None):
