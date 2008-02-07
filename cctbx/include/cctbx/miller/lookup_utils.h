@@ -196,7 +196,7 @@ namespace lookup_utils{
     {
       scitbx::af::shared< std::vector< unsigned > > result;
       for(unsigned ii=0;ii<hkl.size();ii++){
-        result.append( construct_neighbourhood( hkl[ii] ) );
+        result.push_back( construct_neighbourhood( hkl[ii] ) );
       }
       return(result);
     }
