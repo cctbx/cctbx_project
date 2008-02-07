@@ -264,7 +264,7 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static void
-    push_back(f_t& a, e_t const& x)
+    append(f_t& a, e_t const& x)
     {
       base_array_type b = flex_as_base_array(a);
       b.push_back(x);
@@ -752,9 +752,8 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("shallow_copy", shallow_copy)
         .def("as_1d", as_1d)
         .def("assign", assign)
-        .def("push_back", push_back)
         .def("pop_back", pop_back)
-        .def("append", push_back)
+        .def("append", append)
         .def("insert", insert_i_x)
         .def("insert", insert_i_n_x)
         .def("resize", resize_1d_1)
