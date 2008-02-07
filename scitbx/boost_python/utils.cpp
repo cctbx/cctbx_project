@@ -3,14 +3,6 @@
 
 namespace scitbx { namespace boost_python {
 
-  boost::python::object
-  cvs_revision(const std::string& revision)
-  {
-    using namespace boost::python;
-    return object(borrowed(object(
-      revision.substr(11, revision.size()-11-2)).ptr()));
-  }
-
   boost::python::handle<>
   import_module(const char* module_name)
   {
@@ -18,10 +10,24 @@ namespace scitbx { namespace boost_python {
     return handle<>(PyImport_ImportModule(const_cast<char*>(module_name)));
   }
 
-  void raise_index_error()
+  void
+  raise_index_error()
   {
     PyErr_SetString(PyExc_IndexError, "Index out of range.");
     boost::python::throw_error_already_set();
+  }
+
+  std::size_t
+  positive_getitem_index(long i, std::size_t size, bool allow_i_eq_size)
+  {
+    if (i >= 0) {
+      std::size_t result = static_cast<std::size_t>(i);
+      if (   result > size
+          || result == size && !allow_i_eq_size) raise_index_error();
+      return result;
+    }
+    if (static_cast<std::size_t>(-i) > size) raise_index_error();
+    return size + i;
   }
 
   boost::python::object

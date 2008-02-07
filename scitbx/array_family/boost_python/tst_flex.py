@@ -459,6 +459,30 @@ def exercise_push_back_etc():
   assert list(a.reversed().reversed()) == range(7)
   assert list(a.concatenate(b)) == [0,1,2,3,4,5,6,10,13,17]
   assert list(b.concatenate(a)) == [10,13,17,0,1,2,3,4,5,6]
+  #
+  a = flex.size_t()
+  a.insert(0, 1)
+  assert list(a) == [1]
+  a.insert(1, 2)
+  assert list(a) == [1,2]
+  a.insert(-1, 3)
+  assert list(a) == [1,3,2]
+  for i in xrange(-3,4):
+    c = a.deep_copy()
+    l = list(a)
+    c.insert(i, 5)
+    l.insert(i, 5)
+    assert list(c) == l
+  for i in [-5, -4, 4, 5]:
+    try: a.insert(i, 5)
+    except IndexError: pass
+    else: raise Exception_expected
+  a.insert(1, 3, 5)
+  assert list(a) == [1,5,5,5,3,2]
+  a.insert(-1, 2, 6)
+  assert list(a) == [1,5,5,5,3,6,6,2]
+  a.insert(-5, 1, 7)
+  assert list(a) == [1,5,5,7,5,3,6,6,2]
 
 def exercise_setitem():
   a = flex.double(2)

@@ -261,21 +261,21 @@ namespace scitbx { namespace af { namespace boost_python {
     }
 
     static void
-    insert_i_x(f_t& a, std::size_t i, e_t const& x)
+    insert_i_x(f_t& a, long i, e_t const& x)
     {
       base_array_type b = flex_as_base_array(a);
-      if (i >= b.size()) scitbx::boost_python::raise_index_error();
-      b.insert(&b[i], x);
+      std::size_t j = positive_getitem_index(i, b.size(), true);
+      b.insert(b.begin()+j, x);
       a.resize(
         flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
 
     static void
-    insert_i_n_x(f_t& a, std::size_t i, std::size_t n, e_t const& x)
+    insert_i_n_x(f_t& a, long i, std::size_t n, e_t const& x)
     {
       base_array_type b = flex_as_base_array(a);
-      if (i >= b.size()) scitbx::boost_python::raise_index_error();
-      b.insert(&b[i], n, x);
+      std::size_t j = positive_getitem_index(i, b.size(), true);
+      b.insert(b.begin()+j, n, x);
       a.resize(
         flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
