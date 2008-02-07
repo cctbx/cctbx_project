@@ -50,9 +50,6 @@
         }
       }
 
-      // non-std
-      void append(ElementType const& x) { push_back(x); }
-
       void pop_back() {
         m_decr_size(1);
         typedef typename has_trivial_destructor<ElementType>::value htd;
