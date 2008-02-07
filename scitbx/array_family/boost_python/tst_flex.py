@@ -421,7 +421,7 @@ def exercise_push_back_etc():
   assert a.size() == 0
   a.assign(3, 1)
   assert tuple(a) == (1, 1, 1)
-  a.push_back(2)
+  a.append(2)
   assert tuple(a) == (1, 1, 1, 2)
   a.insert(0, 3)
   assert tuple(a) == (3, 1, 1, 1, 2)
@@ -1624,7 +1624,7 @@ def exercise_exceptions():
     assert str(e) == "Array must be 0-based 1-dimensional."
   else:
     raise AssertionError, "No exception or wrong exception."
-  try: f.push_back(0)
+  try: f.append(0)
   except RuntimeError, e:
     assert str(e) == "Array must be 0-based 1-dimensional."
   else:

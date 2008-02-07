@@ -29,13 +29,13 @@ def exercise_debug_write():
   D.getEndian = getEndian
   sindata = flex.int()
   for x in xrange(filesize):
-    sindata.push_back(min(255,abs(int(256*sinfunc(x)))))
+    sindata.append(min(255,abs(int(256*sinfunc(x)))))
   moddata = flex.int()
   accum = 0
   for x in xrange(filesize):
     for y in xrange(filesize):
       value = sindata[x]*sindata[y]
-      moddata.push_back(value)
+      moddata.append(value)
       accum+=value
   D.debug_write(filename,mod_data=moddata)
 
