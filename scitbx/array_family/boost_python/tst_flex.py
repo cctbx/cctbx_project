@@ -429,9 +429,13 @@ def exercise_push_back_etc():
   assert tuple(a) == (3, 1, 4, 4, 4, 1, 1, 2)
   a.pop_back()
   assert tuple(a) == (3, 1, 4, 4, 4, 1, 1)
-  a.erase(2)
+  del a[2]
   assert tuple(a) == (3, 1, 4, 4, 1, 1)
-  a.erase(3, 5)
+  a.insert(-2, 8)
+  assert tuple(a) == (3, 1, 4, 4, 8, 1, 1)
+  del a[-3]
+  assert tuple(a) == (3, 1, 4, 4, 1, 1)
+  del a[3:5]
   assert tuple(a) == (3, 1, 4, 1)
   a.resize(6)
   assert tuple(a) == (3, 1, 4, 1, 0, 0)
