@@ -997,7 +997,7 @@ namespace twinning {
       for (unsigned ii=0;ii<limit_slot;ii++){
         p = temp_p_values[ sort_permutation[ii] ];
         q = temp_q_values[ sort_permutation[ii] ];
-        h_values_.append( std::abs(p-q) / (p+q) );
+        h_values_.push_back( std::abs(p-q) / (p+q) );
         mean_h_+= std::abs(p-q) / (p+q);
         mean_h2_+= (std::abs(p-q) / (p+q))*(std::abs(p-q) / (p+q));
       }

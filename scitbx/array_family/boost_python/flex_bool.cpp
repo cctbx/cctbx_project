@@ -326,7 +326,7 @@ namespace {
     for(std::size_t i=0;i<indices.size();i++) {
       SCITBX_ASSERT(indices[i] < self.size());
       if (self[indices[i]]) {
-        result.append(indices[i]);
+        result.push_back(indices[i]);
       }
     }
     return result;
