@@ -6,25 +6,13 @@
 
 namespace scitbx { namespace boost_python {
 
-  boost::python::object
-  cvs_revision(const std::string& revision);
-
   boost::python::handle<>
   import_module(const char* module_name);
 
   void raise_index_error();
 
-  inline
   std::size_t
-  positive_getitem_index(long i, std::size_t size)
-  {
-    if (i >= 0) {
-      if (i >= size) raise_index_error();
-      return i;
-    }
-    if (-i > size) raise_index_error();
-    return size + i;
-  }
+  positive_getitem_index(long i, std::size_t size, bool allow_i_eq_size=false);
 
   boost::python::object
   range(long start, long len, long step=1);
