@@ -180,6 +180,28 @@ namespace scitbx { namespace af { namespace boost_python {
       a(i) = x;
     }
 
+    static void
+    delitem_1d(f_t& a, long i)
+    {
+      base_array_type b = flex_as_base_array(a);
+      std::size_t j = positive_getitem_index(i, b.size());
+      b.erase(b.begin()+j);
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
+    }
+
+    static void
+    delitem_1d_slice(f_t& a, scitbx::boost_python::slice const& slice)
+    {
+      base_array_type b = flex_as_base_array(a);
+      scitbx::boost_python::adapted_slice a_sl(slice, b.size());
+      SCITBX_ASSERT(a_sl.step == 1); // not implemented
+      e_t* bb = b.begin();
+      b.erase(bb+a_sl.start, bb+a_sl.stop);
+      a.resize(
+        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
+    }
+
     static e_t&
     front(f_t& a)
     {
@@ -276,27 +298,6 @@ namespace scitbx { namespace af { namespace boost_python {
       base_array_type b = flex_as_base_array(a);
       std::size_t j = positive_getitem_index(i, b.size(), true);
       b.insert(b.begin()+j, n, x);
-      a.resize(
-        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
-    }
-
-    static void
-    erase_i(f_t& a, std::size_t i)
-    {
-      base_array_type b = flex_as_base_array(a);
-      if (i >= b.size()) scitbx::boost_python::raise_index_error();
-      b.erase(&b[i]);
-      a.resize(
-        flex_grid<>(b.size()), flex_default_element<ElementType>::get());
-    }
-
-    static void
-    erase_i_j(f_t& a, std::size_t i, std::size_t j)
-    {
-      base_array_type b = flex_as_base_array(a);
-      if (i >= b.size()) scitbx::boost_python::raise_index_error();
-      if (j >= b.size()) scitbx::boost_python::raise_index_error();
-      b.erase(&b[i], &b[j]);
       a.resize(
         flex_grid<>(b.size()), flex_default_element<ElementType>::get());
     }
@@ -741,6 +742,8 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("__getitem__", getitem_flex_grid, GetitemReturnValuePolicy())
         .def("__setitem__", setitem_1d)
         .def("__setitem__", setitem_flex_grid)
+        .def("__delitem__", delitem_1d)
+        .def("__delitem__", delitem_1d_slice)
         .def("front", front, GetitemReturnValuePolicy())
         .def("back", back, GetitemReturnValuePolicy())
         .def("fill", fill)
@@ -754,8 +757,6 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("append", push_back)
         .def("insert", insert_i_x)
         .def("insert", insert_i_n_x)
-        .def("erase", erase_i)
-        .def("erase", erase_i_j)
         .def("resize", resize_1d_1)
         .def("resize", resize_1d_2)
         .def("resize", resize_flex_grid_1)
