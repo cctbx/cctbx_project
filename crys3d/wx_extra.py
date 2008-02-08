@@ -1,7 +1,7 @@
 import wx
 import wx.lib.stattext
 
-from libtbx.utils import group_args
+from libtbx import copy_init_args
 
 import unicodedata
 
@@ -148,7 +148,7 @@ class Slider(wx.Slider):
                style=wx.SL_HORIZONTAL,
                validator=wx.DefaultValidator,
                name=wx.SliderNameStr):
-    kwds = group_args(**locals())
+    kwds = copy_init_args(locals())
     w,h = kwds.size
     if w == -1: w = 150
     kwds.size = (w,h)

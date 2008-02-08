@@ -18,7 +18,8 @@ from iotbx import mtz
 from libtbx.test_utils import approx_equal
 from libtbx import itertbx
 from libtbx import easy_pickle
-from libtbx.utils import group_args, flat_list
+from libtbx.utils import flat_list
+from libtbx import group_args
 
 import scitbx.matrix as mat
 

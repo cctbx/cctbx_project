@@ -33,6 +33,19 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
       assert not hasattr(obj.__dict__, _key)
       obj.__dict__[_key] = args[key]
 
+class copy_init_args(object):
+
+  def __init__(self, args, exclude=()):
+    del args["self"]
+    for param in exclude:
+      del args[param]
+    self.__dict__.update(args)
+
+class group_args(object):
+
+  def __init__(self, **keyword_arguments):
+    self.__dict__.update(keyword_arguments)
+
 if (os.environ.has_key("LIBTBX_PRINT_TRACE")):
   import libtbx.start_print_trace
 

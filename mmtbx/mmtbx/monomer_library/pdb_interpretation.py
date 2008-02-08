@@ -14,7 +14,8 @@ from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
-from libtbx.utils import format_exception, group_args, buffered_indentor
+from libtbx.utils import format_exception, buffered_indentor
+from libtbx import group_args
 from cStringIO import StringIO
 import string
 import sys
