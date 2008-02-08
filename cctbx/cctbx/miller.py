@@ -18,10 +18,10 @@ from libtbx.math_utils import iround
 from libtbx import complex_math
 from scitbx.python_utils.misc import store
 from libtbx.itertbx import count, izip
-from libtbx.utils import Keep, plural_s, group_args
 from libtbx import adopt_init_args
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Keep, plural_s
+from libtbx import group_args
 import random
 import math
 import types

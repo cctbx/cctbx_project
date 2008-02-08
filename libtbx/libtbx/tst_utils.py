@@ -54,18 +54,6 @@ def exercise_approx_equal():
   assert approx_equal([ 2.5, 3.4+5.8j, 7.89],
                       [ 2.4+0.1j, 3.5+5.9j, 7.90], eps=0.2)
 
-def exercise_group_args():
-  g = utils.group_args(a=1, b=2, c=3)
-  assert g.a == 1 and g.b == 2 and g.c == 3
-  def f1(a,b,c):
-    assert a == 1 and b == 2 and c == 3
-  f1(**g.__dict__)
-  g = utils.group_args(self="foo", a=1, b=2)
-  assert not hasattr(g, 'self') and g.a == 1 and g.b == 2
-  def f2(a,b):
-    assert a == 1 and b == 2
-  f2(**g.__dict__)
-
 def exercise():
   assert utils.flat_list(0) == [0]
   assert utils.flat_list([1,2,3]) == [1,2,3]
@@ -87,7 +75,6 @@ def exercise():
   else: raise Exception_expected
   exercise_indented_display()
   exercise_approx_equal()
-  exercise_group_args()
   print "OK"
 
 if (__name__ == "__main__"):
