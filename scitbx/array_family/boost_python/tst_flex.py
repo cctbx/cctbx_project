@@ -471,12 +471,14 @@ def exercise_push_back_etc():
   assert list(a) == [1,2]
   a.insert(-1, 3)
   assert list(a) == [1,3,2]
-  for i in xrange(-3,4):
-    c = a.deep_copy()
-    l = list(a)
-    c.insert(i, 5)
-    l.insert(i, 5)
-    assert list(c) == l
+  vi = sys.version_info
+  if (not (vi[0] == 2 and vi[1] < 3)): # skipping test under Python 2.2 since
+    for i in xrange(-3,4):             # l.insert(-2, 5) doesn't work right
+      c = a.deep_copy()
+      l = list(a)
+      c.insert(i, 5)
+      l.insert(i, 5)
+      assert list(c) == l
   for i in [-5, -4, 4, 5]:
     try: a.insert(i, 5)
     except IndexError: pass
