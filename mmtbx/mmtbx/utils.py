@@ -897,3 +897,80 @@ class process_pdb_file_srv(object):
                                          file_name=file_name)
       if(self.cif_parameters is not None):
         self.cif_parameters.file_name.append(file_name)
+
+def get_constrained_group_occupancy_selections(all_chain_proxies, occupancies):
+  # Returns something like this:
+  #
+  # x = constrained group; for example, all atoms within g3 have equal
+  # occupancies, sum of any atoms from g3 and any atom from g4 is equal to 1.
+  #
+  # One constrained group can conatain from 1 to 4 groups of atoms, and one
+  # group of atoms can conatin from 1 to N atoms, where N - arbitrary.
+  #
+  # ----------------selections for occupancy refinement-----------------
+  #   xxxxxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  xxxxxxxxxx   xxxxxx
+  #    g1  g2           g3               g4         g5    g6     g7
+  # [ [[3],[2]], [[11,12,13,14,15], [8,9,10,6,7]], [[17],[16]], [[19]] ]
+  residues = []
+  selections = []
+  for model in all_chain_proxies.stage_1.get_models_and_conformers():
+    n_conformers = len(model.conformers)
+    for conformer in model.conformers:
+      residues_in_conformer = []
+      for chain in conformer.get_chains():
+        for residue in chain.residues:
+          if(n_conformers == 1):
+            result = flex.size_t()
+            result = residue.iselection
+            selections.append(result)
+          else:
+            residues_in_conformer.append(residue)
+      residues.append(residues_in_conformer)
+    if(n_conformers > 1):
+      assert len(selections) == 0
+      res = []
+      unique_res_ids = []
+      for residuesi in residues:
+        for residue in residuesi:
+          res.append(residue)
+          if(residue.id() not in unique_res_ids):
+            unique_res_ids.append(residue.id())
+      for uri in unique_res_ids:
+        s_uri = flex.size_t()
+        for r in res:
+          if(r.id() == uri):
+            for s in r.iselection:
+              if(s not in s_uri):
+                s_uri.append(s)
+        selections.append(s_uri)
+  result = []
+  for s in selections:
+    s = list(s)
+    group = []
+    for i in residues:
+      for j in i:
+        j = list(j.iselection)
+        js = set(j)
+        ss = set(s)
+        if(js.issubset(ss)):
+          res = list(ss-js)
+          if(len(res) > 0):
+            group.append(list(ss-js))
+    if(len(group) > 0):
+      result.append(group)
+    else:
+      for si in s:
+        occ = occupancies[si]
+        if(abs(occ-1.) > 1.e-3 and abs(occ) > 1.e-3):
+          result.append([[si]])
+  result_as_1d_array = []
+  for i in result:
+    for j in i:
+      for k in j:
+        result_as_1d_array.append(k)
+  for i_seq, occ in enumerate(occupancies):
+    if(abs(occ-1.) > 1.e-3 and abs(occ) > 1.e-3):
+      if(i_seq not in result_as_1d_array):
+        result.append([[i_seq]])
+  #print result
+  return selections

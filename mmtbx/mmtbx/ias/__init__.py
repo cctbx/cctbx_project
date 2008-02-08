@@ -38,7 +38,7 @@ ias_master_params = iotbx.phil.parse("""\
   peak_search_map {
      map_type = *Fobs-Fmodel mFobs-DFmodel
        .type=choice(multi=False)
-     grid_step = 0.1
+     grid_step = 0.25
        .type = float
      scaling = *volume sigma
        .type=choice(multi=False)
