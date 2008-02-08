@@ -697,9 +697,9 @@ CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
 ATOM     14  CA  ASN A   3      -3.193   1.904   4.589  1.00 11.74           C
-ATOM     22  CA  GLN a   4       0.384   1.888   3.199  1.00 10.53           C
-ATOM     31  CA  GLN a   5       3.270   2.361   5.640  1.00 11.39           C
-ATOM     40  CA  ASN a   6       6.831   2.310   4.318  1.00 12.30           C
+ATOM     22  CA  GLN b   4       0.384   1.888   3.199  1.00 10.53           C
+ATOM     31  CA  GLN b   5       3.270   2.361   5.640  1.00 11.39           C
+ATOM     40  CA  ASN b   6       6.831   2.310   4.318  1.00 12.30           C
 END
 """.splitlines()
   stage_1 = pdb.interpretation.stage_1(raw_records=pdb_file)
@@ -708,6 +708,10 @@ END
   assert list(isel("resname asn")) == [1,2,5]
   assert list(isel("resname ASN")) == [1,2,5]
   assert list(isel("resname Asn")) == []
+  assert list(isel("chain A")) == [0,1,2]
+  assert list(isel("chain a")) == []
+  assert list(isel("chain B")) == []
+  assert list(isel("chain b")) == [3,4,5]
 
 def exercise_residue_name_plus_atom_names_interpreter():
   rnpani = iotbx.pdb.residue_name_plus_atom_names_interpreter
