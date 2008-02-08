@@ -95,9 +95,12 @@ class manager(object):
     result = None
     if(self.restraints_manager is not None):
       if(self.xray_structure.hd_selection().count(True) > 0):
+        xray_structure = self.xray_structure
+        if(self.ias_selection and self.ias_selection.count(True) > 0):
+          xray_structure = self.xray_structure.select(~self.ias_selection)
         result = xh_connectivity_table(
           geometry       = self.restraints_manager,
-          xray_structure = self.xray_structure).table
+          xray_structure = xray_structure).table
     return result
 
   def idealize_h(self, xh_bond_distance_deviation_limit=0, show=True): # XXX _limit is not used
@@ -106,8 +109,10 @@ class manager(object):
         ~self.xray_structure.hd_selection(), False)
       mac_hd = self.xray_structure.hd_selection().set_selected(
         self.solvent_selection(), False)
-      sites_cart_mac_before = self.xray_structure.sites_cart().select(
-        ~self.xray_structure.hd_selection())
+      selx = ~self.xray_structure.hd_selection()
+      if(self.ias_selection is not None):
+        selx.set_selected(self.ias_selection, False)
+      sites_cart_mac_before = self.xray_structure.sites_cart().select(selx)
       xhd = flex.double()
       for t in self.xh_connectivity_table():
         xhd.append(abs(t[-1]-t[-2]))
@@ -117,16 +122,18 @@ class manager(object):
         (flex.mean(xhd), flex.max(xhd))
       for sel_pair in [(mac_hd, False), (sol_hd, True)]*2:
         if(sel_pair[0].count(True) > 0):
+          sel = sel_pair[0]
+          if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
+            sel = sel.select(~self.ias_selection)
           self.geometry_minimization(
-            selection = sel_pair[0],
+            selection = sel,
             bond      = True,
             nonbonded = sel_pair[1],
             angle     = True,
             dihedral  = True,
             chirality = True,
             planarity = True)
-      sites_cart_mac_after = self.xray_structure.sites_cart().select(
-        ~self.xray_structure.hd_selection())
+      sites_cart_mac_after = self.xray_structure.sites_cart().select(selx)
       assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
         sites_cart_mac_after.as_double()), 0)
       if(xh_bond_distance_deviation_limit == 0):
@@ -163,13 +170,22 @@ class manager(object):
       planarity = planarity)
     for i in xrange(number_of_macro_cycles):
       sites_cart = self.xray_structure.sites_cart()
+      sites_cart_orig = sites_cart.deep_copy()
+      if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
+        sites_cart = sites_cart.select(~self.ias_selection)
       minimized = geometry_minimization.lbfgs(
         sites_cart                  = sites_cart,
         geometry_restraints_manager = self.restraints_manager.geometry,
         geometry_restraints_flags   = geometry_restraints_flags,
         lbfgs_termination_params    = lbfgs_termination_params,
         sites_cart_selection        = selection)
-      self.xray_structure.set_sites_cart(sites_cart = sites_cart)
+      if(self.ias_selection is not None):
+        for i_seq, ias_s in enumerate(self.ias_selection): # assumes that IAS appended to the back
+          if(not ias_s):
+            sites_cart_orig[i_seq] = sites_cart[i_seq]
+      else:
+        sites_cart_orig = sites_cart
+      self.xray_structure.set_sites_cart(sites_cart = sites_cart_orig)
 
   def extract_ncs_groups(self):
     result = None
@@ -342,6 +358,7 @@ class manager(object):
     return result
 
   def select(self, selection):
+    # XXX ignores IAS
     new_atom_attributes_list = []
     for attr, sel in zip(self.atom_attributes_list, selection):
       if(sel): new_atom_attributes_list.append(attr)

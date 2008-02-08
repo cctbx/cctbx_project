@@ -82,8 +82,8 @@ class lbfgs(object):
     self.xray_structure.tidy_us()
     if(refine_xyz and self.h_params.refine_sites == "riding" and self.hd_flag):
       self.xray_structure.set_occupancies(occupancies_cache)
-    if(self.h_params is not None and self.h_params.idealize_xh_bonds and
-      refine_xyz and self.hd_flag and self.h_params.refine_sites != "individual"):
+    if(self.h_params is not None and refine_xyz and self.hd_flag and
+       self.h_params.refine_sites != "individual"):
       self.model.idealize_h(xh_bond_distance_deviation_limit =
         self.h_params.xh_bond_distance_deviation_limit)
     self.fmodels.update_xray_structure(
@@ -138,6 +138,11 @@ class lbfgs(object):
       self.f += er * self.weights.w
       if(compute_gradients):
         sgc = self.stereochemistry_residuals.gradients
+        # ias do not participate in geometry restraints
+        if(self.model.ias_selection is not None and
+           self.model.ias_selection.count(True) > 0):
+          sgc.extend(flex.vec3_double(
+            self.model.ias_selection.count(True),[0,0,0]))
         xray.minimization.add_gradients(
           scatterers     = self.xray_structure.scatterers(),
           xray_gradients = self.g,
