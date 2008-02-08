@@ -51,6 +51,12 @@ map_params_str ="""\
   map_coefficients_format = *mtz phs
     .optional = True
     .type = choice(multi=True)
+  suppress = None
+    .type = strings
+    .help = List of mtz_label_amplitudes of maps to be suppressed. \
+            Intended to selectively suppress computation and \
+            writing of the standard maps.
+    .expert_level = 1
   map
     .multiple = True
   {
