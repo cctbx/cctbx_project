@@ -63,7 +63,7 @@ double fu_star_(sym_mat3<double> const& b,
 2*a[1]*h*(a[2]*b[5]*h + a[4]*b[1]*k + a[3]*b[3]*k + a[5]*b[5]*k + a[7]*b[1]*l +
         a[6]*b[3]*l + a[8]*b[5]*l);
     double arg = -0.25 * (qq);
-    if(arg > 706.0) arg=706.0; // to avoid overflow problem
+    if(arg > 40.0) arg=40.0; // to avoid overflow problem
     return std::exp(arg);
 }
 
@@ -77,7 +77,7 @@ double fu_star(sym_mat3<double> const& u_star,
                        2.*u_star[3]*mi[0]*mi[1] +
                        2.*u_star[4]*mi[0]*mi[2] +
                        2.*u_star[5]*mi[1]*mi[2]);
-    if(arg > std::log(5.0)) return 1.0;
+    if(arg > 40.0) arg=40.0; // to avoid overflow problem
     return std::exp(arg);
 }
 
@@ -124,7 +124,9 @@ target_gradients_aniso::target_gradients_aniso(
     double denum=0.0;
     for(std::size_t i=0; i < fo.size(); i++) {
       double fu = fu_star(u_star, hkl[i]);
-      f_b[i]=std::exp(-bsol * s[i]);
+      double arg = -bsol * s[i];
+      if(arg > 40.0) arg=40.0;
+      f_b[i]=std::exp(arg);
       double fmodel_abs = std::abs((fc[i] + f_b[i]*ksol * fm[i]) * fu);
       fmodel_complex_abs[i]=fmodel_abs;
       fmodel_complex[i]=(fc[i] + f_b[i]*ksol * fm[i]) * fu;
