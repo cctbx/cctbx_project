@@ -105,8 +105,10 @@ mmtbx/mmtbx/ias/__init__.py -text
 mmtbx/mmtbx/ias/tst_ias.py -text
 mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/model_statistics.py -text
+mmtbx/mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/mmtbx/monomer_library/tst_protein_interpretation.py -text
 mmtbx/mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
+mmtbx/mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/mmtbx/pdb_header.py -text
 mmtbx/mmtbx/pdbtools.py -text
 mmtbx/mmtbx/refinement/occupancies.py -text
