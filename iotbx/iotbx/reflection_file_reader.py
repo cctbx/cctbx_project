@@ -15,9 +15,66 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
 from libtbx import easy_pickle
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, detect_binary_file
 import sys, os, os.path
 import re
+
+def unpickle_miller_arrays(file_name):
+  result = easy_pickle.load(file_name)
+  if (isinstance(result, miller.array)):
+    return [result]
+  result = list(result)
+  for miller_array in result:
+    if (not isinstance(miller_array, miller.array)):
+      return None
+  return result
+
+def try_all_readers(file_name):
+  try: content = mtz.object(file_name=file_name)
+  except RuntimeError: pass
+  else: return ("ccp4_mtz", content)
+  if (detect_binary_file.from_initial_block(file_name=file_name)):
+    try: content = unpickle_miller_arrays(file_name=file_name)
+    except KeyboardInterrupt: raise
+    except: pass
+    else: return ("cctbx.miller.array", content)
+    return (None, None)
+  try: content = cns_reflection_reader.cns_reflection_file(
+    open(file_name))
+  except cns_reflection_reader.CNS_input_Error: pass
+  else: return ("cns_reflection_file", content)
+  try: content = cns_index_fobs_sigma_reader.reader(
+    file_name=file_name)
+  except RuntimeError: pass
+  else: return ("cns_index_fobs_sigma", content)
+  try: content = scalepack_merge.reader(
+    open(file_name))
+  except scalepack_merge.FormatError: pass
+  else: return ("scalepack_merge", content)
+  try: content = scalepack_no_merge.reader(file_name)
+  except KeyboardInterrupt: raise
+  except: pass
+  else: return ("scalepack_no_merge_original_index", content)
+  try: content = dtrek_reflnlist_reader.reflnlist(
+    open(file_name))
+  except KeyboardInterrupt: raise
+  except: pass
+  else: return ("dtrek_reflnlist", content)
+  try: content = shelx_hklf.reader(
+    open(file_name))
+  except KeyboardInterrupt: raise
+  except: pass
+  else: return ("shelx_hklf", content)
+  try: content = xds_ascii_reader(
+    open(file_name))
+  except KeyboardInterrupt: raise
+  except: pass
+  else: return ("xds_ascii", content)
+  try: content = solve_fpfm_reader(file_name=file_name)
+  except KeyboardInterrupt: raise
+  except: pass
+  else: return ("solve_fpfm", content)
+  return (None, None)
 
 class any_reflection_file(object):
 
@@ -59,75 +116,8 @@ class any_reflection_file(object):
           % (file_name, self._observation_type))
       else: self._file_type = "shelx_hklf"
     else:
-      if (self._file_type is None):
-        try: self._file_content = mtz.object(file_name=file_name)
-        except RuntimeError: pass
-        else: self._file_type = "ccp4_mtz"
-      if (self._file_type is None):
-        try: self._file_content = cns_reflection_reader.cns_reflection_file(
-          open(file_name))
-        except cns_reflection_reader.CNS_input_Error: pass
-        else: self._file_type = "cns_reflection_file"
-      if (self._file_type is None):
-        try: self._file_content = cns_index_fobs_sigma_reader.reader(
-          file_name=file_name)
-        except RuntimeError: pass
-        else: self._file_type = "cns_index_fobs_sigma"
-      if (self._file_type is None):
-        try: self._file_content = scalepack_merge.reader(
-          open(file_name))
-        except scalepack_merge.FormatError: pass
-        else: self._file_type = "scalepack_merge"
-      if (self._file_type is None):
-        try: self._file_content = scalepack_no_merge.reader(file_name)
-        except KeyboardInterrupt: raise
-        except: pass
-        else: self._file_type = "scalepack_no_merge_original_index"
-      if (self._file_type is None):
-        try: self._file_content = dtrek_reflnlist_reader.reflnlist(
-          open(file_name))
-        except KeyboardInterrupt: raise
-        except: pass
-        else: self._file_type = "dtrek_reflnlist"
-      if (self._file_type is None):
-        try: self._file_content = shelx_hklf.reader(
-          open(file_name))
-        except KeyboardInterrupt: raise
-        except: pass
-        else: self._file_type = "shelx_hklf"
-      if (self._file_type is None):
-        try: self._file_content = xds_ascii_reader(
-          open(file_name))
-        except KeyboardInterrupt: raise
-        except: pass
-        else: self._file_type = "xds_ascii"
-      if (self._file_type is None):
-        try: self._file_content = solve_fpfm_reader(file_name=file_name)
-        except KeyboardInterrupt: raise
-        except: pass
-        else: self._file_type = "solve_fpfm"
-      if (self._file_type is None):
-        try: self._file_content = easy_pickle.load(file_name)
-        except KeyboardInterrupt: raise
-        except: pass
-        else:
-          if (isinstance(self._file_content, miller.array)):
-            self._file_content = [self._file_content]
-            self._file_type = "cctbx.miller.array"
-          else:
-            try: miller_arrays = list(self._file_content)
-            except KeyboardInterrupt: raise
-            except: pass
-            else:
-              self._file_content = miller_arrays
-              for miller_array in miller_arrays:
-                if (not isinstance(miller_array, miller.array)):
-                  self._file_content = None
-                  break
-              else:
-                self._file_type = "cctbx.miller.array"
-      if (self._file_type is None):
-        self._file_content = None
+      self._file_type, self._file_content = try_all_readers(
+        file_name=file_name)
 
   def file_name(self):
     return self._file_name
