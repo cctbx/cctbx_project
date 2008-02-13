@@ -50,7 +50,7 @@ class CNS_input(object):
         if (i < 0): break
         self.level = self.level + 1
         while 1:
-          j = line.find("}")
+          j = line.find("}", i+1)
           if (j >= 0):
             line = line[:i] + line[j + 1:]
             break

@@ -7,7 +7,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
 from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
 import sys
 
@@ -42,6 +42,15 @@ def exercise_sdb(verbose=0):
     regression.show_summary()
   assert abs(regression.slope()-1) < 1.e-4
   assert abs(regression.y_intercept()) < 1.e-3
+
+def exercise_reflection_reader():
+  try:
+    # just to make sure a bug in handling {} doesn't get reintroduced
+    iotbx.cns.reflection_reader.cns_reflection_file(file_handle=StringIO("}{"))
+  except iotbx.cns.reflection_reader.CNS_input_Error, e:
+    assert str(e) == "premature end-of-file"
+  else:
+    raise Exception_expected
 
 def exercise_miller_array_as_cns_hkl():
   s = StringIO()
@@ -200,6 +209,7 @@ def exercise_reflection_file_as_miller_array():
 def run():
   verbose = "--Verbose" in sys.argv[1:]
   exercise_sdb(verbose)
+  exercise_reflection_reader()
   exercise_reflection_file_as_miller_array()
   exercise_miller_array_as_cns_hkl()
   print "OK"
