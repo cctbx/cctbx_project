@@ -1,9 +1,143 @@
+from __future__ import division
 import wx
-import wx.lib.stattext
 
 from libtbx import copy_init_args
+import libtbx.object_oriented_patterns as oop
 
 import unicodedata
+
+class _extended_wxDC(oop.injector, wx.DC):
+
+  def FillWith3DGradient(self, rect, colour, direction, step=1):
+    """ Based on Horst Puschmann's ImageTools.gradient_bgr in Olex """
+    x,y,w,h = rect
+    if direction in (wx.NORTH, wx.SOUTH):
+      d = h
+      draw_line = lambda i: self.DrawLine(x, y+i, x+w, y+i)
+    else:
+      d = w
+      draw_line = lambda i: self.DrawLine(x+i, y, x+i, y+h)
+    slope_breaks       = (0,     d//10+1,     d//5+1,       d)
+    step_adjustements  = (  0.6,          1.2,        1.4)
+    slopes = [ x*step/d for x in step_adjustements ]
+    red_green_slopes = [ x*58 for x in slopes ]
+    blue_slopes      = [ x*44 for x in slopes ]
+    ranges = [ xrange(slope_breaks[i], slope_breaks[i+1])
+               for i in xrange(len(slope_breaks)-1) ]
+    for range, red_green_slope, blue_slope in zip(ranges, red_green_slopes, blue_slopes):
+      for i in range:
+        r = int(colour.Red()   - i*red_green_slope)
+        g = int(colour.Green() - i*red_green_slope)
+        b = int(colour.Blue()  - i*blue_slope)
+        self.SetPen(wx.Pen(wx.Colour(r,g,b)))
+        draw_line(i)
+
+
+class MouseClickButtonMixin(object):
+
+  def __init__(self):
+    self._pressing = False
+    self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
+    self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
+    self.colour = self.normal_colour
+    self.Bind(wx.EVT_LEAVE_WINDOW, self.OnLeaveWindow)
+    self.Bind(wx.EVT_ENTER_WINDOW, self.OnEnterWindow)
+
+  def OnLeftDown(self, event):
+    if not self.IsEnabled(): return
+    self._pressing = True
+    self.CaptureMouse()
+    self.colour = self.pressed_colour
+    self.Refresh()
+
+  def OnLeftUp(self, event):
+    if not self.IsEnabled(): return
+    if self.HasCapture():
+      self.ReleaseMouse()
+      if self._pressing and self.Rect.Contains(event.Position):
+        self.OnClick(event)
+      self._pressing = False
+      self.colour = self.normal_colour
+      self.Refresh()
+
+  def OnLeaveWindow(self, event):
+    if not self.IsEnabled(): return
+    if self.HasCapture() and self._pressing:
+      self.colour = self.normal_colour
+      self.Refresh()
+
+  def OnEnterWindow(self, event):
+    if not self.IsEnabled(): return
+    if self.HasCapture() and self._pressing:
+      self.colour = self.pressed_colour
+      self.Refresh()
+
+
+class InspectorHeader(wx.PyControl, MouseClickButtonMixin):
+
+  normal_colour = wx.Colour(237, 237, 235)
+  pressed_colour = wx.Colour(200, 200, 198)
+  horizontal_margin = 2
+  vertical_margin = 2
+
+  def __init__(self, parent, label=""):
+    wx.PyControl.__init__(self, parent, style=wx.BORDER_NONE)
+    MouseClickButtonMixin.__init__(self)
+
+    self.Label = label
+    self.SetFont(wx.NORMAL_FONT)
+
+    self.Bind(wx.EVT_SIZING, self.OnResize)
+    self.Bind(wx.EVT_SIZE, self.OnResize)
+
+    # to reduce flicker: use BufferedPaintDC in handling EVT_PAINT
+    # and ignore EVT_ERASE_BACKGROUND
+    self.Bind(wx.EVT_PAINT, self.OnPaint)
+    self.Bind(wx.EVT_ERASE_BACKGROUND, lambda event: None)
+
+    self._opened = True
+
+  def DoGetBestSize(self):
+    try:
+      return self._best_size
+    except AttributeError:
+      dc = wx.ClientDC(self)
+      dc.SetFont(self.Font)
+      w_txt, h_txt = dc.GetTextExtent(self.Label)
+      self.triangle_base_length = 2*(h_txt//2) - 2
+      h_txt += 2*self.vertical_margin
+      w_txt += 4*self.vertical_margin + self.triangle_base_length
+      self._best_size = (w_txt, h_txt)
+      return self._best_size
+
+  def OnPaint(self, event):
+    dc = wx.BufferedPaintDC(self)
+    dc.SetFont(self.Font)
+    dc.FillWith3DGradient(self.Rect, self.colour, direction=wx.SOUTH)
+    w_t = self.triangle_base_length
+    h_t = w_t//2
+    h = self.GetSize()[1]
+    dc.SetBrush(wx.BLACK_BRUSH)
+    dc.SetPen(wx.BLACK_PEN)
+    if self._opened:
+      dc.DrawPolygon((wx.Point(0, -h_t), wx.Point(w_t, -h_t),
+                              wx.Point(h_t, 0) ),
+                     xoffset=self.horizontal_margin,
+                     yoffset=(h-h_t)//2 + h_t)
+    else:
+      dc.DrawPolygon((wx.Point(0, -w_t), wx.Point(0, 0),
+                              wx.Point(h_t, -h_t) ),
+                     xoffset=self.horizontal_margin + h_t,
+                     yoffset=(h-w_t)//2 + w_t)
+    dc.DrawText(self.Label, w_t + 3*self.horizontal_margin, self.vertical_margin)
+
+  def OnResize(self, event):
+    event.Skip()
+    self.Refresh()
+
+  def OnClick(self, event):
+    self._opened = not self._opened
+    self.on_click()
 
 
 class Inspector(wx.Panel):
@@ -12,61 +146,14 @@ class Inspector(wx.Panel):
                pos=wx.DefaultPosition, size=wx.DefaultSize, style=0):
     assert parent.GetSizer() is not None
     super(Inspector, self).__init__(parent, id)
-    self._normal_colour, self._pressed_colour = [
-      wx.Colour(*c) for c in [(200,200,210), (180,180,190)] ]
-    if wx.Platform == "__WXGTK__":
-      self._header = wx.lib.stattext.GenStaticText(self, -1, "",
-                                                   style=wx.BORDER_NONE)
-    elif wx.Platform == "__WXMAC__":
-      self._header = wx.StaticText(self)
-    self._header.SetBackgroundColour(self._normal_colour)
-    self._header.Bind(wx.EVT_LEFT_DOWN, self._on_left_down)
-    self._header.Bind(wx.EVT_LEFT_UP, self._on_left_up)
-    self._header.Bind(wx.EVT_LEAVE_WINDOW, self._on_leave_window)
-    self._header.Bind(wx.EVT_ENTER_WINDOW, self._on_enter_window)
+    self._header = InspectorHeader(self, label=label)
+    self._header.on_click = self.Toggle
     self._pane = wx.Panel(self)
-    self._right_triangle = unicodedata.lookup(
-      'BLACK RIGHT-POINTING TRIANGLE')
-    self._down_triangle = unicodedata.lookup(
-      'BLACK DOWN-POINTING TRIANGLE')
-    self._pressing = False
     self._expanded = True
-    self._label = None
-    self.on_click_in_header = None
     s = wx.BoxSizer(wx.VERTICAL)
     s.Add(self._header, 0, wx.EXPAND, 5)
     s.Add(self._pane, flag=wx.LEFT|wx.RIGHT|wx.TOP, border=5)
     self.SetSizer(s)
-    self.SetLabel(label)
-
-  def _on_left_down(self, event):
-    self._header.SetBackgroundColour(self._pressed_colour)
-    self._pressing = True
-    event.Skip()
-
-  def _on_left_up(self, event):
-    self._header.SetBackgroundColour(self._normal_colour)
-    self._pressing = False
-    self._on_click_in_header()
-    event.Skip()
-
-  def _on_enter_window(self, event):
-    if self._pressing:
-      if event.LeftIsDown():
-        self._header.SetBackgroundColour(self._pressed_colour)
-      else:
-        self._pressing = False
-    event.Skip()
-
-  def _on_leave_window(self, event):
-    if self._pressing:
-      self._header.SetBackgroundColour(self._normal_colour)
-    event.Skip()
-
-  def _on_click_in_header(self):
-    self.Collapse(self._expanded)
-    if self.on_click_in_header is not None:
-      self.on_click_in_header()
 
   def IsExpanded(self):
     return self._expanded
@@ -75,20 +162,15 @@ class Inspector(wx.Panel):
     self._expanded = not f
     self._update()
 
-  def SetLabel(self, lbl):
-    if self._label == lbl: return
-    self._label = lbl
+  def Toggle(self):
+    self._expanded = not self._expanded
     self._update()
 
   def _update(self):
     if self._expanded:
-      arrow = self._down_triangle
       self._pane.Show()
     else:
-      arrow = self._right_triangle
       self._pane.Hide()
-    lbl = "%s\t%s" % (arrow, self._label)
-    self._header.SetLabel(lbl)
     top = wx.GetTopLevelParent(self)
     top_sizer = top.GetSizer()
     top_sizer.SetSizeHints(top)
@@ -99,7 +181,7 @@ class Inspector(wx.Panel):
       top.SetClientSize(sz)
 
   def GetLabel(self):
-    return self._label
+    return self._header.GetLabel()
 
   def GetPane(self):
     return self._pane
@@ -134,7 +216,7 @@ class InspectorToolFrame(wx.MiniFrame):
   def Layout(self):
     s = self.Sizer
     for i in self.Children:
-      s.Add(i, 0, wx.EXPAND|wx.BOTTOM, 5)
+      s.Add(i, 0, wx.EXPAND)
     w = max([ i.width_for_stacking() for i in self.Children ])
     s.SetMinSize((w,-1))
     s.SetSizeHints(self)
@@ -158,7 +240,57 @@ class Slider(wx.Slider):
 if __name__ == '__main__':
   a = wx.App(redirect=False)
 
-  w1 = wx.Frame(None, pos=(0, -1))
+  class GradientTestFrame(wx.Frame):
+    def __init__(self):
+      super(GradientTestFrame, self).__init__(None, pos=(0,-1))
+      size = (120, 90)
+      self._left  = wx.Window(self, size=size)
+      self._right = wx.Window(self, size=size)
+      self._left.Bind(wx.EVT_PAINT, self.OnPaintLeft)
+      self._right.Bind(wx.EVT_PAINT, self.OnPaintRight)
+      box = wx.BoxSizer(wx.HORIZONTAL)
+      box.Add(self._left)
+      box.Add(self._right)
+      self.SetSizer(box)
+      box.SetSizeHints(self)
+      self.Show()
+
+    def OnPaintLeft(self, event):
+      self.fill_with_gradient(self._left, direction=wx.SOUTH)
+
+    def OnPaintRight(self, event):
+      self.fill_with_gradient(self._right, direction=wx.EAST)
+
+    def fill_with_gradient(self, window, direction):
+      dc = wx.PaintDC(window)
+      dc.FillWith3DGradient(window.ClientRect,
+                                      colour=wx.Colour(237, 237, 235),
+                                      direction=direction)
+
+  gradient_test_frame = GradientTestFrame()
+
+  class InspectorHeaderTestFrame(wx.Frame):
+    def __init__(self):
+      super(InspectorHeaderTestFrame, self).__init__(None, pos=(300,-1))
+      box = wx.BoxSizer(wx.VERTICAL)
+      inspector = InspectorHeader(self, label="Title")
+      box.Add(inspector, flag=wx.EXPAND)
+      self.log = wx.TextCtrl(self, style=wx.TE_MULTILINE|wx.BORDER_NONE,
+                                   size=(80, 240))
+      self.i = 0
+      inspector.on_click = self.log_click
+      box.Add(self.log, proportion=1, flag=wx.ALL|wx.EXPAND, border=5)
+      self.SetSizer(box)
+      box.SetSizeHints(self)
+      self.Show()
+
+    def log_click(self):
+      self.i += 1
+      self.log.AppendText("Click #%i\n" % self.i)
+
+  inspector_header_test_frame = InspectorHeaderTestFrame()
+
+  w1 = wx.Frame(None, pos=(0, 500))
   s = wx.BoxSizer(wx.VERTICAL)
   w1.SetSizer(s)
   s.Add(Slider(w1, -1, 5, 0, 10, wx.DefaultPosition, (100,-1)))
