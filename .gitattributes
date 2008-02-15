@@ -45,7 +45,6 @@ crys3d/__init__.py -text
 crys3d/images.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_map_viewer.py -text
-gltbx/command_line/pythonw.py -text
 gltbx/wx_controllers.py -text
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
