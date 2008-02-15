@@ -1244,6 +1244,17 @@ input line 2:
   No matching MODEL record.""")
   else: raise Exception_expected
   #
+  for record_name in ["SIGATM", "ANISOU", "SIGUIJ"]:
+    try:
+      pdb.input(source_info=None, lines=flex.std_string([record_name]))
+    except RuntimeError, e:
+      assert not show_diff(str(e), """\
+input line 1:
+  %s
+  ^
+  no matching ATOM or HETATM record.""" % record_name)
+    else: raise Exception_expected
+  #
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
