@@ -1007,6 +1007,13 @@ class environment:
       self.write_dispatcher_in_bin(
         source_file=self.python_exe,
         target_file=module_name+".python")
+    d, b = os.path.split(self.python_exe)
+    pythonw_exe = os.path.join(d, b.replace("python", "pythonw"))
+    if (os.path.isfile(pythonw_exe)):
+      for module_name in module_names:
+        self.write_dispatcher_in_bin(
+          source_file=pythonw_exe,
+          target_file=module_name+".pythonw")
     commands = ["show_build_path", "show_dist_paths"]
     if (have_ipython): commands.append("ipython")
     for command in commands:
