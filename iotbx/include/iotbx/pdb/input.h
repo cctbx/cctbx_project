@@ -1469,9 +1469,9 @@ namespace iotbx { namespace pdb {
           + columns_73_76_eval.number_of_atom_and_hetatm_lines);
         input_atom_labels* current_input_atom_labels = 0;
         atom_data* current_atom_data = 0;
-        bool expect_anisou;
-        bool expect_sigatm;
-        bool expect_siguij;
+        bool expect_anisou = false;
+        bool expect_sigatm = false;
+        bool expect_siguij = false;
         const char* error_message_no_matching_atom
           = "no matching ATOM or HETATM record.";
         unsigned atom___counts = 0;
@@ -1542,28 +1542,34 @@ namespace iotbx { namespace pdb {
             if (!expect_anisou) {
               line_info.set_error(1, error_message_no_matching_atom);
             }
-            expect_anisou = false;
-            anisou_counts++;
-            process_anisou_record(
-              line_info, *current_input_atom_labels, *current_atom_data);
+            else {
+              expect_anisou = false;
+              anisou_counts++;
+              process_anisou_record(
+                line_info, *current_input_atom_labels, *current_atom_data);
+            }
           }
           else if (record_type_info.id == record_type::sigatm) {
             if (!expect_sigatm) {
               line_info.set_error(1, error_message_no_matching_atom);
             }
-            expect_sigatm = false;
-            sigatm_counts++;
-            process_sigatm_record(
-              line_info, *current_input_atom_labels, *current_atom_data);
+            else {
+              expect_sigatm = false;
+              sigatm_counts++;
+              process_sigatm_record(
+                line_info, *current_input_atom_labels, *current_atom_data);
+            }
           }
           else if (record_type_info.id == record_type::siguij) {
             if (!expect_siguij) {
               line_info.set_error(1, error_message_no_matching_atom);
             }
-            expect_siguij = false;
-            siguij_counts++;
-            process_siguij_record(
-              line_info, *current_input_atom_labels, *current_atom_data);
+            else {
+              expect_siguij = false;
+              siguij_counts++;
+              process_siguij_record(
+                line_info, *current_input_atom_labels, *current_atom_data);
+            }
           }
           else {
             record_type_counts_[
