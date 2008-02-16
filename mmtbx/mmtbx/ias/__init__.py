@@ -578,7 +578,6 @@ def set_status(iass, params):
        ias.status = False
     assert ias.status is not None
 
-
 def check_at_bond_vector(ias):
   a1 = ias.atom_1.site_cart
   a2 = ias.atom_2.site_cart
@@ -647,14 +646,15 @@ class manager(object):
              q = self.params.initial_ias_occupancy
           if(site_cart is None):
              site_cart = ias.site_cart_predicted
-          assert [site_cart, b_iso, q].count(None) == 0
-          ias_scatterer = xray.scatterer(
-            label           = ias.name,
-            scattering_type = ias.name,
-            site       = self.xray_structure.unit_cell().fractionalize(site_cart),
-            u               = adptbx.b_as_u(b_iso),
-            occupancy       = q)
-          ias_xray_structure.add_scatterer(ias_scatterer)
+          assert [b_iso, q].count(None) == 0
+          if(site_cart is not None):
+            ias_scatterer = xray.scatterer(
+              label           = ias.name,
+              scattering_type = ias.name,
+              site = self.xray_structure.unit_cell().fractionalize(site_cart),
+              u               = adptbx.b_as_u(b_iso),
+              occupancy       = q)
+            ias_xray_structure.add_scatterer(ias_scatterer)
      ias_xray_structure.scattering_type_registry(
                                              custom_dict = ias_scattering_dict)
      return ias_xray_structure

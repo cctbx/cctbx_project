@@ -11,46 +11,53 @@ class manager(object):
                      model,
                      max_number_of_iterations    = 25,
                      number_of_macro_cycles      = 3,
-                     occupancy_max               = 1,
-                     occupancy_min               = 0,
+                     occupancy_max               = None,
+                     occupancy_min               = None,
                      r_increase_tolerance        = 0.001,
                      log                         = None):
-    self.show(fmodel=fmodel, log= log, message =
-      "individual occupancy refinement: start")
-    selection = model.refinement_flags.occupancies_individual
+    self.show(fmodel=fmodel, log= log, message = "occupancy refinement: start")
+    selections = model.refinement_flags.s_occupancies
     i_selection = flex.size_t()
-    for s in selection:
+    for s in selections:
       for ss in s:
-        i_selection.append(ss)
-    b_selection = flex.bool(fmodel.xray_structure.scatterers().size(),
-      i_selection)
+        i_selection.extend(ss)
     fmodel.xray_structure.scatterers().flags_set_grads(state=False)
     fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
       iselection = i_selection)
-    has_alt_conf = False
-    for i_seq_list in selection:
-      if(len(i_seq_list) > 1):
-        has_alt_conf = True
-        break
+    b_selection = flex.bool(fmodel.xray_structure.scatterers().size(),
+      i_selection)
     fmodel.xray_structure.adjust_occupancy(occ_max   = occupancy_max,
                                            occ_min   = occupancy_min,
                                            selection = b_selection)
     xray_structure_dc = fmodel.xray_structure.deep_copy_scatterers()
-    par_initial = fmodel.xray_structure.scatterers().extract_occupancies()
+    par_initial = flex.double()
+    occupancies = xray_structure_dc.scatterers().extract_occupancies()
+    constrained_groups_selections = []
+    group_counter = 0
+    for sel in selections:
+      ss = []
+      for sel_ in sel:
+        ss.append(group_counter)
+        group_counter += 1
+        val = flex.mean(occupancies.select(sel_))
+        par_initial.append(val)
+      constrained_groups_selections.append(ss)
     minimized = None
     r_work_start = fmodel.r_work()
     for macro_cycle in xrange(number_of_macro_cycles):
       if(minimized is not None): par_initial = minimized.par_min
       minimized = group_minimizer(
-        fmodel                   = fmodel,
-        model                    = model,
-        b_selection              = b_selection,
-        selection                = selection,
-        par_initial              = par_initial,
-        has_alt_conf             = has_alt_conf,
-        max_number_of_iterations = max_number_of_iterations)
+        fmodel                        = fmodel,
+        model                         = model,
+        selections                    = selections,
+        constrained_groups_selections = constrained_groups_selections,
+        par_initial                   = par_initial,
+        max_number_of_iterations      = max_number_of_iterations)
       if(minimized is not None): par_initial = minimized.par_min
-      fmodel.xray_structure.set_occupancies(par_initial)
+      set_refinable_parameters(
+        xray_structure = fmodel.xray_structure,
+        parameters     = par_initial,
+        selections     = selections)
       fmodel.xray_structure.adjust_occupancy(occ_max   = occupancy_max,
                                              occ_min   = occupancy_min,
                                              selection = b_selection)
@@ -69,8 +76,7 @@ class manager(object):
       ).select(i_selection)
     assert flex.min(refined_occ) >= occupancy_min
     assert flex.max(refined_occ) <= occupancy_max
-    self.show(fmodel=fmodel, log= log, message =
-      "individual occupancy refinement: end")
+    self.show(fmodel= fmodel, log = log, message = "occupancy refinement: end")
 
   def show(self, fmodel, message, log):
     r_work = format_value("%6.4f", fmodel.r_work())
@@ -94,14 +100,13 @@ class group_minimizer(object):
   def __init__(self,
                fmodel,
                model,
-               selection,
-               b_selection,
+               constrained_groups_selections,
+               selections,
                par_initial,
-               has_alt_conf,
                max_number_of_iterations):
     adopt_init_args(self, locals())
     self.target_functor = fmodel.target_functor()
-    self.par_min = copy.deepcopy(self.par_initial)
+    self.par_min = self.par_initial.deep_copy()
     self.x = self.pack(self.par_min)
     self.n = self.x.size()
     self.minimizer = lbfgs.run(
@@ -115,29 +120,40 @@ class group_minimizer(object):
     del self.x
 
   def pack(self, par):
-    if(self.has_alt_conf):
-      return pack_unpack(x = par, table = self.selection)
-    else:
-      return par
+    return pack_unpack(x = par, table = self.constrained_groups_selections)
 
   def unpack_x(self):
-    if(self.has_alt_conf):
-      self.par_min = pack_unpack(x = self.x, table = self.selection)
-    else:
-      self.par_min = self.x
+    self.par_min = pack_unpack(x = self.x,
+      table = self.constrained_groups_selections)
 
   def compute_functional_and_gradients(self):
     self.unpack_x()
-    self.fmodel.xray_structure.set_occupancies(self.par_min, self.b_selection)
+    set_refinable_parameters(
+      xray_structure = self.fmodel.xray_structure,
+      parameters     = self.par_min,
+      selections     = self.selections)
     self.fmodel.update_xray_structure(update_f_calc = True)
     t_r = self.target_functor(compute_gradients= True)
     self.f = t_r.target_work()
     g =  t_r.gradients_wrt_atomic_parameters(occupancy = True)
-    if(self.has_alt_conf):
-      self.g = pack_gradients(x = g, table = self.selection)
-    else:
-      self.g = flex.double(g.size(), 0).set_selected(self.b_selection, g)
+    # do group grads first then pack for constraints
+    grads_wrt_par = flex.double()
+    for sel in self.selections:
+      for sel_ in sel:
+        grads_wrt_par.append(flex.sum( g.select(sel_) ))
+    # now apply constraints
+    self.g = pack_gradients(x = grads_wrt_par,
+      table = self.constrained_groups_selections)
     return self.f, self.g
+
+def set_refinable_parameters(xray_structure, parameters, selections):
+  sz = xray_structure.scatterers().size()
+  i = 0
+  for sel in selections:
+    for sel_ in sel:
+      sel__b = flex.bool(sz, flex.size_t(sel_))
+      xray_structure.set_occupancies(parameters[i], sel__b)
+      i+=1
 
 def pack_unpack(x, table):
   result = x.deep_copy()
@@ -153,13 +169,13 @@ def pack_unpack(x, table):
     elif(len(indices) == 3):
       i0,i1,i2 = indices
       result[i0] = x[i0]
-      result[i1] = 1. - x[i0] - x[i2]
-      result[i2] = 1. - x[i0] - x[i1]
+      result[i1] = x[i1]
+      result[i2] = 1 - x[i0] - x[i1]
     elif(len(indices) == 4):
       i0,i1,i2,i3 = indices
       result[i0] = x[i0]
-      result[i1] = 1. - x[i0] - x[i2] - x[i3]
-      result[i2] = 1. - x[i0] - x[i1] - x[i3]
+      result[i1] = x[i1]
+      result[i2] = x[i2]
       result[i3] = 1. - x[i0] - x[i1] - x[i2]
     else:
       raise RuntimeError("Exceed maximum allowable number of conformers (=4).")
@@ -177,15 +193,15 @@ def pack_gradients(x, table):
       result[i1] =-x[i1] # ??? zero or this value?
     elif(len(indices) == 3):
       i0,i1,i2 = indices
-      result[i0] =  x[i0] - x[i1] - x[i2]
-      result[i1] = -x[i2]
-      result[i2] = -x[i1]
-    elif(len(indices) == 4):
-      i0,i1,i2,i3 = indices
       result[i0] = x[i0] - x[i2]
       result[i1] = x[i1] - x[i2]
-      result[i2] = x[i2] - x[i1] - x[i3]
-      result[i3] = x[i3] - x[i2]
+      result[i2] = 0
+    elif(len(indices) == 4):
+      i0,i1,i2,i3 = indices
+      result[i0] = x[i0] - x[i3]
+      result[i1] = x[i1] - x[i3]
+      result[i2] = x[i2] - x[i3]
+      result[i3] = 0
     else:
       raise RuntimeError("Exceed maximum allowable number of conformers (=4).")
   return result
