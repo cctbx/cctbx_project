@@ -13,6 +13,7 @@ def run():
   "$D/mmtbx/refinement/tst_refinement_flags.py",
   "$D/mmtbx/tst_model.py",
   "$D/mmtbx/tst_fmodel.py",
+  "$D/mmtbx/tst_utils.py",
   "$D/mmtbx/tst_alignment.py",
   ["$D/mmtbx/tst_fmodel_fd.py", "P31"],
   "$D/ncs/tst_restraints.py",
