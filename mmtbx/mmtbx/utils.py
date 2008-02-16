@@ -619,8 +619,11 @@ def get_atom_selections(all_chain_proxies,
           selections[i_seq] = selections[i_seq].iselection()
   if(one_selection_array):
     s0 = selections[0]
-    for s in selections:
-      s0 = s0 | s
+    for s in selections[1:]:
+      if(not iselection):
+        s0 = s0 | s
+      else:
+        s0.extend(s)
     selections = s0
   return selections
 
@@ -898,21 +901,61 @@ class process_pdb_file_srv(object):
       if(self.cif_parameters is not None):
         self.cif_parameters.file_name.append(file_name)
 
-def get_constrained_group_occupancy_selections(all_chain_proxies, occupancies):
+def list_3d_as_1d(x):
+  result = []
+  for i in x:
+    for j in i:
+      for k in j:
+        result.append(k)
+  return result
+
+def occupancy_selections(
+      all_chain_proxies,
+      xray_structure,
+      add_water = False,
+      add_hydrogens = False,
+      other_individual_selection_strings = None,
+      other_group_selection_strings = None,
+      as_flex_arrays = True):
+  if(other_individual_selection_strings is not None and
+     len(other_individual_selection_strings) == 0):
+    other_individual_selection_strings = None
+  if(other_group_selection_strings is not None and
+     len(other_group_selection_strings) == 0):
+    other_group_selection_strings = None
   # Returns something like this:
   #
-  # x = constrained group; for example, all atoms within g3 have equal
-  # occupancies, sum of any atoms from g3 and any atom from g4 is equal to 1.
+  #   One constrained group can conatain from 1 to 4 groups of atoms, and one
+  #   group of atoms can conatin from 1 to N atoms, where N - arbitrary.
   #
-  # One constrained group can conatain from 1 to 4 groups of atoms, and one
-  # group of atoms can conatin from 1 to N atoms, where N - arbitrary.
+  #   -------selections for occupancy refinement--------
+  #     xxxxxxx  xxxxxxxxxxxxxxxxx  xxxxxxxxxx  xxxxxx
+  #        g1        g2       g3      g4  g5      g6
+  #   [ [[1,2]], [[3,4,5],[6,7,8]], [[9],[10]], [[11]] ]
   #
-  # ----------------selections for occupancy refinement-----------------
-  #   xxxxxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  xxxxxxxxxx   xxxxxx
-  #    g1  g2           g3               g4         g5    g6     g7
-  # [ [[3],[2]], [[11,12,13,14,15], [8,9,10,6,7]], [[17],[16]], [[19]] ]
+  #   For example:
+  #     - occupancy of atom 11 is refined as individual (unconstrained group
+  #       consisting of one atom)
+  #     - occupancies of atoms 9 and 10 are refined as individual with the sum
+  #       of them constrained to be equal to 1.0
+  #     - one occupancy (q1) is refined for atoms 3,4,5 and one occupancy (q2)
+  #       is refined for atoms 6,7,8 and q1+q2=1
+  #     - one occupancy is refined per atoms 1,2 and no constrains.
+  #
+  # Behavior:
+  #   always selected (constrains are determined automatically):
+  #     - atoms in alternative conformations (constrained: individual if two
+  #       atoms are involved or grouped otherwise)
+  #     - atoms with partial non-zero occupancies
+  #   plus (optional, based on parameters specified):
+  #     - user defined selection for individual occupancies
+  #     - user defined selection for group occupancies
+  #     - add H (D) and/or water if requested
+  #
+  result = []
   residues = []
   selections = []
+  occupancies = xray_structure.scatterers().extract_occupancies()
   for model in all_chain_proxies.stage_1.get_models_and_conformers():
     n_conformers = len(model.conformers)
     for conformer in model.conformers:
@@ -920,9 +963,7 @@ def get_constrained_group_occupancy_selections(all_chain_proxies, occupancies):
       for chain in conformer.get_chains():
         for residue in chain.residues:
           if(n_conformers == 1):
-            result = flex.size_t()
-            result = residue.iselection
-            selections.append(result)
+            selections.append(residue.iselection)
           else:
             residues_in_conformer.append(residue)
       residues.append(residues_in_conformer)
@@ -943,34 +984,83 @@ def get_constrained_group_occupancy_selections(all_chain_proxies, occupancies):
               if(s not in s_uri):
                 s_uri.append(s)
         selections.append(s_uri)
-  result = []
   for s in selections:
     s = list(s)
-    group = []
-    for i in residues:
-      for j in i:
-        j = list(j.iselection)
-        js = set(j)
-        ss = set(s)
-        if(js.issubset(ss)):
-          res = list(ss-js)
-          if(len(res) > 0):
-            group.append(list(ss-js))
-    if(len(group) > 0):
-      result.append(group)
-    else:
-      for si in s:
-        occ = occupancies[si]
-        if(abs(occ-1.) > 1.e-3 and abs(occ) > 1.e-3):
-          result.append([[si]])
-  result_as_1d_array = []
-  for i in result:
-    for j in i:
-      for k in j:
-        result_as_1d_array.append(k)
+    s_set = set(s)
+    res = []
+    for rr in residues:
+      for r in rr:
+        r_is = list(r.iselection)
+        r_is_set = set(r_is)
+        if(r_is_set.issubset(s_set)):
+          res.append(r_is_set)
+    zz = []
+    for i, si in enumerate(res):
+      for j, sj in enumerate(res):
+        if(i!=j):
+          r = list(si - sj)
+          if(r not in zz and r != []): zz.append(r)
+    if(zz != []):
+      result.append(zz)
+  if(other_individual_selection_strings is not None):
+    sel = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = other_individual_selection_strings,
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = True)
+    result_as_1d_array = list_3d_as_1d(x = result)
+    sel_checked = []
+    for i in list(sel):
+      if(i not in result_as_1d_array):
+        sel_checked.append([[i]])
+    if(len(sel_checked) > 0):
+      result.extend(sel_checked)
+  if(other_group_selection_strings is not None):
+    sel = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = other_group_selection_strings,
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = False)
+    result.extend( [[list(i)] for i in sel] )
+  if(add_water):
+    result_as_1d_array = list_3d_as_1d(x = result)
+    water_selection = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = ['water'],
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = True)
+    for w_i_seq in water_selection:
+      if(w_i_seq not in result_as_1d_array):
+        result.append([[w_i_seq]])
+  if(add_hydrogens):
+    result_as_1d_array = list_3d_as_1d(x = result)
+    h_selection = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = ['element H or element D'],
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = True)
+    for h_i_seq in h_selection:
+      if(h_i_seq not in result_as_1d_array):
+        result.append([[h_i_seq]])
+  result_as_1d_array = list_3d_as_1d(x = result)
   for i_seq, occ in enumerate(occupancies):
     if(abs(occ-1.) > 1.e-3 and abs(occ) > 1.e-3):
       if(i_seq not in result_as_1d_array):
         result.append([[i_seq]])
-  #print result
-  return selections
+  result_as_1d_array = list_3d_as_1d(x=result)
+  if(len(result_as_1d_array) != len(set(result_as_1d_array))):
+    raise Sorry("Duplicate selection for occupancies.")
+  if(as_flex_arrays):
+    result_ = []
+    for gsel in result:
+      result__ = []
+      for sel in gsel:
+        result__.append(flex.size_t(sel))
+      result_.append(result__)
+    result = result_
+  if(result == []): result = None
+  return result

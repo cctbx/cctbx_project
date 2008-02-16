@@ -39,7 +39,7 @@ def calculate_fobs(resolution   = 1.0,
 def exercise_1(hkl = "enk_gor.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="phenix_regression/pdb/enk_gor_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 strategy=group_occupancies structure_factors_and_gradients_accuracy.cos_sin_table=false"
+  opt0= "main.number_of_macro_cycles=3 strategy=occupancies structure_factors_and_gradients_accuracy.cos_sin_table=false"
   opt1= "main.target=ls ls_target_names.target_name=ls_wunit_kunit group_occupancy.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false "
@@ -53,7 +53,7 @@ def exercise_1(hkl = "enk_gor.mtz"):
 def exercise_2(hkl = "enk_gor.mtz"):
   pdb = libtbx.env.find_in_repositories(
                               relative_path="phenix_regression/pdb/enk_gor_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 strategy=group_occupancies structure_factors_and_gradients_accuracy.cos_sin_table=false"
+  opt0= "main.number_of_macro_cycles=10 strategy=occupancies structure_factors_and_gradients_accuracy.cos_sin_table=false"
   opt1= "main.target=ls ls_target_names.target_name=ls_wunit_kunit group_occupancy.run_finite_differences_test=true"
   opt2= "output.write_maps=false output.write_map_coefficients=false" \
         " output.write_geo_file=true output.write_def_file=false fake_f_obs.scattering_table=wk1995  "
@@ -96,7 +96,7 @@ def run(args):
      random.seed(random_seed)
      flex.set_random_seed(value=random_seed)
      calculate_fobs()
-     exercise_1()
+     #exercise_1()
      exercise_2()
      check_result()
      sys.stdout.flush()
@@ -105,4 +105,5 @@ def run(args):
        break
 
 if (__name__ == "__main__"):
-  run(sys.argv[1:])
+  pass
+  #run(sys.argv[1:])

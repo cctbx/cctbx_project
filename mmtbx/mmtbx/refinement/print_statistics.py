@@ -418,10 +418,8 @@ class refinement_monitor(object):
           print >> out, remark + "1_rbr: rigid body refinement                                            "
        if("group_adp" in self.params.refine.strategy):
           print >> out, remark + "1_gbr: group B-factor refinement                                        "
-       if("individual_occupancies" in self.params.refine.strategy):
-          print >> out, remark + "1_occ: refinement of individual occupancies                             "
-       if("group_occupancies" in self.params.refine.strategy):
-          print >> out, remark + "1_gor: refinement of grouped occupancies                                "
+       if("occupancies" in self.params.refine.strategy):
+          print >> out, remark + "1_occ: refinement of occupancies                                        "
        print >> out, remark + separator
     #
     #

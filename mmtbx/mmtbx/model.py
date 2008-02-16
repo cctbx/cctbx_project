@@ -238,13 +238,13 @@ class manager(object):
          occupancy_flags = []
          ms = self.ias_selection.count(False)
          for i in range(1, self.ias_selection.count(True)+1):
-           occupancy_flags.append(flex.size_t([ms+i-1]))
+           occupancy_flags.append([flex.size_t([ms+i-1])])
          # set flags
          self.refinement_flags.inflate(
-           sites_individual       = ssites,
-           occupancies_individual = occupancy_flags,
-           adp_individual_iso     = sadp,
-           adp_individual_aniso   = sadp)
+           sites_individual     = ssites,
+           s_occupancies        = occupancy_flags,
+           adp_individual_iso   = sadp,
+           adp_individual_aniso = sadp)
          # adjust flags
          self.refinement_flags.sites_individual.set_selected(self.ias_selection, False)
          self.refinement_flags.sites_individual.set_selected(~self.ias_selection, True)
@@ -492,7 +492,7 @@ class manager(object):
     if(refine_occupancies):
       occupancy_flags = []
       for i in range(1, solvent_xray_structure.scatterers().size()+1):
-        occupancy_flags.append(flex.size_t([ms+i-1]))
+        occupancy_flags.append([flex.size_t([ms+i-1])])
     if(self.refinement_flags.individual_sites):
       ssites = flex.bool(solvent_xray_structure.scatterers().size(), True)
     else: ssites = None
@@ -506,7 +506,7 @@ class manager(object):
       sites_individual       = ssites,
       adp_individual_iso     = sadp_iso,
       adp_individual_aniso   = sadp_aniso,
-      occupancies_individual = occupancy_flags)
+      s_occupancies          = occupancy_flags)
     new_atom_name = atom_name.strip()
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "

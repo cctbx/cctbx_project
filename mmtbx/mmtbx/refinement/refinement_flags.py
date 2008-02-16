@@ -11,8 +11,7 @@ class manager(object):
                      individual_adp         = False,
                      group_adp              = False,
                      tls                    = False,
-                     individual_occupancies = False,
-                     group_occupancies      = False,
+                     occupancies            = False,
                      group_anomalous        = False,
                      sites_individual       = None,
                      sites_rigid_body       = None,
@@ -21,8 +20,7 @@ class manager(object):
                      adp_group              = None,
                      group_h                = None,
                      adp_tls                = None,
-                     occupancies_individual = None,
-                     occupancies_group      = None):
+                     s_occupancies          = None):
                      # XXX group_anomalous should be here
     adopt_init_args(self, locals())
     self.sites_individual       = self._deep_copy(self.sites_individual)
@@ -32,8 +30,7 @@ class manager(object):
     self.adp_group              = self._deep_copy(self.adp_group)
     self.group_h                = self._deep_copy(self.group_h)
     self.adp_tls                = self._deep_copy(self.adp_tls)
-    self.occupancies_individual = self._deep_copy(self.occupancies_individual)
-    self.occupancies_group      = self._deep_copy(self.occupancies_group)
+    self.s_occupancies          = self._deep_copy(self.s_occupancies)
     self.check_all()
 
   def _deep_copy(self, x):
@@ -41,11 +38,20 @@ class manager(object):
     if(x is None): result = x
     elif(self.is_bool(x) or self.is_size_t(x)):
       result = x.deep_copy()
-    else:
+    elif(self.is_size_t(x[0])):
       for item in x:
         if(self.is_size_t(item)):
           result.append(item.deep_copy())
         else: raise RuntimeError("Bad selection array type.")
+    elif(self.is_size_t(x[0][0])):
+      for item1 in x:
+        tmp = []
+        for item2 in item1:
+          if(self.is_size_t(item2)):
+            tmp.append(item2.deep_copy())
+          else: raise RuntimeError("Bad selection array type.")
+        result.append(tmp)
+    else: raise RuntimeError("Bad selection array type.")
     return result
 
   def deep_copy(self):
@@ -55,8 +61,7 @@ class manager(object):
       individual_adp         = self.individual_adp,
       group_adp              = self.group_adp,
       tls                    = self.tls,
-      individual_occupancies = self.individual_occupancies,
-      group_occupancies      = self.group_occupancies,
+      occupancies            = self.occupancies,
       group_anomalous        = self.group_anomalous,
       sites_individual       = self._deep_copy(self.sites_individual),
       sites_rigid_body       = self._deep_copy(self.sites_rigid_body),
@@ -65,8 +70,7 @@ class manager(object):
       adp_group              = self._deep_copy(self.adp_group),
       group_h                = self._deep_copy(self.group_h),
       adp_tls                = self._deep_copy(self.adp_tls),
-      occupancies_individual = self._deep_copy(self.occupancies_individual),
-      occupancies_group      = self._deep_copy(self.occupancies_group))
+      s_occupancies          = self._deep_copy(self.s_occupancies))
       # XXX group_anomalous should be here
 
   def is_size_t(self, x):
@@ -86,28 +90,26 @@ class manager(object):
       if(selections.count(True) == 0): result = False
     elif(self.is_size_t(selections)):
       if(selections.size() == 0): result = False
-    else:
+    elif(self.is_size_t(selections[0]) or self.is_bool(selections[0])):
+      as_1d = []
       for sel in selections:
         if(self.is_size_t(sel)):
-          if(sel.size() == 0):
-            result = False
-            break
-        elif(len(sel) == 0):
+          as_1d.extend(list(sel))
+        elif(self.is_bool(sel)):
+          as_1d.extend(list(sel.iselection()))
+        else:
           result = False
           break
-      sel0 = selections[0]
-      if(not self.is_size_t(sel0)): result = False
-      for sel in selections[1:]:
-        if(not self.is_size_t(sel)): result = False
-        sel0.extend(sel)
-      perm = flex.sort_permutation(sel0)
-      sel0_ = sel0.select(perm)
-      sz = sel0_.size()
-      for i,e in enumerate(sel0_):
-        if(i+1 < sz):
-          if(sel0_[i]-sel0_[i+1]==0):
-            result = False
-            break
+      if(len(as_1d) != len(set(as_1d))):
+        result = False
+    else:
+      as_1d = []
+      for i in selections:
+        for j in i:
+          for k in j:
+            as_1d.append(k)
+      if(len(as_1d) != len(set(as_1d))):
+        result = False
     return result
 
   def check_all(self):
@@ -137,12 +139,9 @@ class manager(object):
     if(self.tls):
       if(not self._count_selected(self.adp_tls)):
         raise Sorry(prefix%"adp_tls.")
-    if(self.individual_occupancies):
-      if(not self._count_selected(self.occupancies_individual)):
-        raise Sorry(prefix%"occupancies_individual.")
-    if(self.group_occupancies):
-      if(not self._count_selected(self.occupancies_group)):
-        raise Sorry(prefix%"occupancies_group.")
+    if(self.occupancies and self.s_occupancies is not None):
+      if(not self._count_selected(self.s_occupancies)):
+        raise Sorry(prefix%"occupancies.")
     if(self.group_anomalous):
       pass # XXX selections not used in common framework
 
@@ -159,6 +158,28 @@ class manager(object):
       return str(flex.sum(flex.size_t([i.size() for i in x])))
     else: raise RuntimeError("Bad selection array type.")
 
+  def count_occupancies(self, x):
+    class count(object):
+      def __init__(self, x):
+        self.n_constrained_groups = 0
+        self.n_free_groups = 0
+        self.n_individual = 0
+        self.n_constrained_individual = 0
+        if(x is not None):
+          for cg in x:
+            if(len(cg) > 1):
+              for g in cg:
+                if(g.size() == 1):
+                  self.n_constrained_individual += 1
+                elif(g.size() > 1): self.n_constrained_groups += 1
+                else: raise RuntimeError
+            elif(len(cg) == 1):
+              if(cg[0].size() == 1): self.n_individual += 1
+              elif(cg[0].size() > 1): self.n_free_groups += 1
+              else: raise RuntimeError
+            else: raise RuntimeError
+    return count(x = x)
+
   def show(self, log = None):
     if(log is None): log = sys.stdout
     print >> log, "Refinement flags and selection counts:"
@@ -174,12 +195,14 @@ class manager(object):
       str(self.group_adp), self.ca(self.adp_group), self.szs(self.adp_group))
     print >> log, "  tls                    = %5s (%s atoms in %s groups)" % (
       str(self.tls), self.ca(self.adp_tls), self.szs(self.adp_tls))
-    print >> log, "  individual_occupancies = %5s (%s atoms)"%(
-      str(self.individual_occupancies), self.ca(self.occupancies_individual))
-    print >> log, "  group_occupancies      = %5s (%s atoms in %s groups)"%(
-     str(self.group_occupancies), self.ca(self.occupancies_group),
-     self.szs(self.occupancies_group))
+    co_res = self.count_occupancies(self.s_occupancies)
+    print >> log, "  occupancies            = %5s"%(str(self.occupancies))
+    print >> log, "    constrained_groups     = %s"%(str(co_res.n_constrained_groups))
+    print >> log, "    constrained_individual = %s"%(str(co_res.n_constrained_individual))
+    print >> log, "    free_groups            = %s"%(str(co_res.n_free_groups))
+    print >> log, "    individual             = %s"%(str(co_res.n_individual))
     print >> log, "  group_anomalous        = %5s"%self.group_anomalous # XXX selections not available
+    log.flush()
 
   def _select(self, x, selection):
     try: lx = len(x)
@@ -192,6 +215,17 @@ class manager(object):
       for i_seq, item in enumerate(x):
         val = flex.bool(selection.size(), item).select(selection).iselection()
         if(val.size() > 0): x_new.append(val)
+      x = x_new
+    elif(self.is_size_t(x[0][0])):
+      x_new = []
+      for item1 in x:
+        tmp = []
+        for item2 in item1:
+          if(self.is_size_t(item2)):
+            v=flex.bool(selection.size(),item2).select(selection).iselection()
+            if(v.size() > 0): tmp.append(v)
+          else: raise RuntimeError("Bad selection array type.")
+        if(len(tmp) > 0): x_new.append(tmp)
       x = x_new
     else: raise RuntimeError("Bad selection array type.")
     return x
@@ -213,12 +247,8 @@ class manager(object):
       self.group_h = self._select(self.group_h, selection)
     if(self.adp_tls is not None):
       self.adp_tls = self._select(self.adp_tls, selection)
-    if(self.occupancies_individual is not None):
-      self.occupancies_individual = self._select(self.occupancies_individual,
-        selection)
-    if(self.occupancies_group is not None):
-      self.occupancies_group = self._select(self.occupancies_group, selection)
-    # XXX group_anomalous selection should be added
+    if(self.s_occupancies is not None):
+      self.s_occupancies = self._select(self.s_occupancies, selection)
     return self
 
   def inflate(self, sites_individual       = None,
@@ -228,7 +258,7 @@ class manager(object):
                     adp_group              = None,
                     group_h                = None,
                     adp_tls                = None,
-                    occupancies_individual = None,
+                    s_occupancies          = None,
                     occupancies_group      = None):
                     # XXX group_anomalous selection should be added
     if(sites_individual is not None):
@@ -252,12 +282,9 @@ class manager(object):
     if(adp_tls is not None):
       assert hasattr(adp_tls, 'count')
       self.adp_tls.extend(adp_tls)
-    if(occupancies_individual is not None):
-      assert hasattr(occupancies_individual, 'count')
-      self.occupancies_individual.extend(occupancies_individual)
-    if(occupancies_group is not None):
-      assert hasattr(occupancies_group, 'count')
-      self.occupancies_group.extend(occupancies_group)
+    if(s_occupancies is not None):
+      assert hasattr(s_occupancies, 'count')
+      self.s_occupancies.extend(s_occupancies)
     self.check_all()
     return self
 
