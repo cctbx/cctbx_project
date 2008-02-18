@@ -21,7 +21,7 @@ Instructions for documentation writers
 When a pure Python class A uses the Boost.Python wrapping of a C++ class B,
 the docstring of A should feature a link to the doxygen-generated
 documentation of B. That link shall be written as e.g.
-  U{:doxyclass:`scitbx::lbfgs::drop_convergence_test`}
+  :doxyclass:`scitbx::lbfgs::drop_convergence_test`
 and will give
 <a href="../c_plus_plus/classscitbx_1_1lbfgs_1_1drop__convergence__test.html">
 class scitbx::lbfgs::drop_convergence_test</a>
