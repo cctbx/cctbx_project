@@ -13,22 +13,25 @@ class from_scatterers(manager):
                      algorithm=None):
     """
     Evaluate structure factors and return the result
-    @type xray_structure: L{cctbx.xray.structure}
-    @param xray_structure: the X-ray structure to evaluate the structure
-    factors of
-    @type miller_set: L{cctbx.miller.set}
-    @param miller_set: the set of miller indicies to evaluate the structure
-    factors at
-    @type algorithm: string
-    @param algorithm: the name of the evaluation method, either "direct",
-    "fft", or None
-    @rtype: a type s.t. an instance e provides the evaluated structure factors
-    as C{e.f_calc()}
-    @return: an instance of
-    L{cctbx.xray.structure_factors.from_scatterers_direct} or
-    L{cctbx.xray.structure_factors.from_scatterers_fft} when C{algorithm} is
-    respectively equal to "direct" or "fft", or the best suited of the two of
-    them when C{algorithm} is None
+
+    :Parameters:
+
+      xray_structure : `cctbx.xray.structure`
+        the X-ray structure to evaluate the structure factors of
+      miller_set : `cctbx.miller.set`
+        the set of miller indicies to evaluate the structure factors at
+      algorithm : string
+        the name of the evaluation method, either "direct", "fft", or None
+
+    :return:
+      an instance of
+      `cctbx.xray.structure_factors.from_scatterers_direct` or
+      `cctbx.xray.structure_factors.from_scatterers_fft`
+      when C{algorithm} is respectively equal to "direct" or "fft",
+      or the best suited of the two of them when C{algorithm} is None
+    :rtype:
+      a type s.t. an instance e provides the evaluated structure factors
+      as C{e.f_calc()}
     """
     assert algorithm in ("direct", "fft", None)
     if (algorithm is None):

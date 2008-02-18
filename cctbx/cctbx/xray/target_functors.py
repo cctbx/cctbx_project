@@ -79,13 +79,15 @@ class unified_least_squares_residual(object):
     """
     Construct a least-square residuals
 
-    S{sum} w[i] ( f_obs.data[i] - k abs(f_calc.data[i]) )^2
-    / S{sum} w[i] f_obs.data[i]^2
+    .. |Sigma|  unicode:: U+003A3 .. GREEK CAPITAL LETTER SIGMA
+
+    |Sigma|:sub:`i`  w[i] ( f_obs.data[i] - k abs(f_calc.data[i]) )^2
+    /  |Sigma|:sub:`i` w[i] f_obs.data[i]^2
 
     or
 
-    S{sum} w[i] ( f_obs_square.data[i] - k abs(f_calc.data[i])^2 )^2
-    / S{sum} w[i] f_obs_square.data[i]^2
+    |Sigma|:sub:`i` w[i] ( f_obs_square.data[i] - k abs(f_calc.data[i])^2 )^2
+    /  |Sigma|:sub:`i` w[i] f_obs_square.data[i]^2
 
     depending on which of f_obs and f_obs_square is not None.
 
@@ -94,15 +96,21 @@ class unified_least_squares_residual(object):
       - f_calc is to be passed to the __call__ method,
       - the weights w and the scale factor k are discussed below.
 
-    @type obs: real miller.array
-    @param obs: the observed reflections, with F and sigma(F) (or F^2 and
-    sigma(F^2)) respectively in obs.data() and obs.sigmas()
-    @param is_amplitude: a flag to discriminate the type of data in obs if the
-    latter does not spell out whether it contains amplitudes or intensities;
-    the default means that in the latter case, one falls back for amplitudes
-    obs do not
-    @param weighting: a weighting scheme for the data (c.f.
-    cctbx.xray.weighting for common ones) or None, which means no weights
+    :Parameters:
+
+      obs : real miller.array
+        the observed reflections, with F and sigma(F) (or F^2 and sigma(F^2))
+        respectively in obs.data() and obs.sigmas()
+
+      is_amplitude : bool
+        a flag to discriminate the type of data in obs if the latter does not
+        spell out whether it contains amplitudes or intensities;
+        the default means that amplitudes is the default when data type is
+        unknown.
+
+      weighting
+        a weighting scheme for the data (c.f. cctbx.xray.weighting for common
+        ones) or None, which means no weights
     """
     if not(obs.is_xray_amplitude_array() or obs.is_xray_intensity_array()):
       self._obs = miller.array(obs, data=obs.data(), sigmas=obs.sigmas())
@@ -141,19 +149,22 @@ class unified_least_squares_residual(object):
     """
     Compute the least-squares residual value and perhaps its derivatives
     wrt to the calculated structure factor F_c of the i-th reflection
-    @type f_calc: complex miller.array
-    @param f_calc: f_calc.data()[i] constains F_c for the i-th reflection
-    in f_obs()
-    @type compute_derivatives: bool
-    @param compute_derivatives: whether to compute the derivatives of the
-    least square residual or not
-    @type scale_factor: number
-    @param scale_factor: the scale factor k if not null, otherwise k will
-    be computed as a by-product by the call of this method
-    @rtype: Boost.Python binding of
-    U{least_squares_residual<DOXYCLASS:cctbx::xray::targets::least_squares_residual>}
-    @return: An object holding the residual value, derivatives and scale
-    factor
+
+    :Parameters:
+
+      f_calc : complex `cctbx.miller.array`
+        f_calc.data()[i] constains F_c for the i-th reflection in f_obs()
+      compute_derivatives : bool
+        whether to compute the derivatives of the least square residual or not
+      scale_factor : number
+        the scale factor k if not null,
+        otherwise k will be computed as a by-product of calling this method
+
+    :return:
+       An object holding the residual value, derivatives and scale factor
+    :rtype:
+       Boost.Python binding of
+       :doxyclass:`cctbx::xray::targets::least_squares_residual`
     """
     assert f_calc.unit_cell().is_similar_to(self.obs().unit_cell())
     assert f_calc.space_group() == self.obs().space_group()
