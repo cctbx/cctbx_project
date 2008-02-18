@@ -1,70 +1,67 @@
 #!/usr/bin/env BOOST_ADAPTBX_DOCSTRING_OPTIONS=show_user_defined=True,show_signatures=False ../../../cctbx_build/bin/cctbx.python
 
-"""
-Synopsis
+import os.path
 
-my_epydoc --conf=<path/to/configuration/file>
+help_text = """Synopsis
+
+epydoc_cmd [options]
 
 Description
 
 Generate the epydoc documentation specified by the given configuration file.
+Any option understood by epydoc may be passed to this script.
+If the configuration file is not specified, the file epydoc.conf in the current directory is used.
+
+Requirements
+
+Epydoc 3.0 must be installed in the Python in use to run this script.
 
 Instructions for documentation writers
 
 When a pure Python class A uses the Boost.Python wrapping of a C++ class B,
 the docstring of A should feature a link to the doxygen-generated
 documentation of B. That link shall be written as e.g.
-  U{DOXYCLASS:scitbx::lbfgs::minimizer}
+  U{:doxyclass:`scitbx::lbfgs::drop_convergence_test`}
 and will give
 <a href="../c_plus_plus/classscitbx_1_1lbfgs_1_1drop__convergence__test.html">
-class scitbx::lbfgs::minimizer</a>
-The other magic keyword is DOXYSTRUCT for struct instead of class.
+class scitbx::lbfgs::drop_convergence_test</a>
+The other magic keyword is "doxystruct" for struct instead of class.
 
-This relies on 3 requirements on the part of the C++ documentation writers:
-(a) the doxygen configuration file is assumed to be at ../dox/Doxyfile w.r.t
-this script;
-(b) the C++ documentation root directory is given by the HTML_OUTPUT
-configuration entry in the doxyfile (c_plus_plus  in our example above);
-(c) the C++ documentation root directory and the Python documentation root
-directory will be in the same directory on the server.
+This relies on an essential requirement on the part of the C++ documentation writers: the C++ documentation root directory and the Python documentation
+root directory shall be in the same directory on the server.
 """
 
-import epydoc.cli
-options, names = epydoc.cli.parse_arguments()
-epydoc.cli.main(options, names)
-output_dir = options.target
-doxyfile = open('Doxyfile')
-import re
-html_output_pat = re.compile(r'^HTML_OUTPUT\s*=\s*(.*)$')
-for li in doxyfile:
-  m = html_output_pat.search(li)
-  if m is not None:
-    cpp_doc = "../" + m.group(1)
-    cpp_doc = cpp_doc.replace('//', '/')
-    break
-import os, os.path, fnmatch
-doxypat = re.compile(r'(href=")? DOXY ( CLASS | STRUCT ) : ([:\w]+)',
-                   re.VERBOSE)
-def repl(m):
-  klass = m.group(2).lower()
-  name = m.group(3)
-  href = m.group(1)
-  if href:
-    return "%s%s/%s%s.html" % (
-      href,
-      cpp_doc,
-      klass,
-      name.replace('_', '__').replace('::', '_1_1'),
-    )
-  else:
-    return "%s %s" % (klass, name)
+def help():
+  print help_text
+  exit(1)
 
-for root, dirs, files in os.walk(output_dir):
-  for f in [ os.path.join(root,f) for f in fnmatch.filter(files, '*.html') ]:
-    tmp = '%s.tmp' % f
-    fin = open(f)
-    fout = open(tmp, 'w')
-    for li in fin:
-      li = doxypat.sub(repl, li)
-      fout.write(li)
-    os.rename(tmp, f)
+# create our own custom external link classes
+import epydoc.docwriter.xlink
+class DoxygenUrlGenerator(epydoc.docwriter.xlink.UrlGenerator):
+
+  def get_url(self, name):
+    url = name.replace('_', '__')     \
+              .replace('::', '_1_1')
+    url = "../c_plus_plus/%s%s.html" % (self.what_is_documented, url)
+    return url
+
+class DoxygenClassUrlGenerator(DoxygenUrlGenerator):
+  what_is_documented = 'class'
+
+class DoxygenStructUrlGenerator(DoxygenUrlGenerator):
+  what_is_documented = 'struct'
+
+# then register them
+epydoc.docwriter.xlink.register_api('doxyclass', DoxygenClassUrlGenerator())
+epydoc.docwriter.xlink.create_api_role('doxyclass', problematic=False)
+epydoc.docwriter.xlink.register_api('doxystruct', DoxygenClassUrlGenerator())
+epydoc.docwriter.xlink.create_api_role('doxystruct', problematic=False)
+
+# let epydoc handle the command-line arguments
+import epydoc.cli
+import sys
+if '--conf=' not in sys.argv[1:]:
+  sys.argv.append('--conf=epydoc.conf')
+options = epydoc.cli.parse_arguments()
+# run it
+epydoc.cli.main(options)
