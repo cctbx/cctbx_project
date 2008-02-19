@@ -382,6 +382,17 @@ namespace pdb {
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
 
+      //! Not available in Python.
+      unsigned
+      reset_parents()
+      {
+        if (data->parents.capacity() == 0) return 0U;
+        unsigned result = parents_size();
+        std::vector<weak_ptr<residue_data> > buffer;
+        data->parents.swap(buffer);
+        return result;
+      }
+
       void
       pre_allocate_parents(unsigned number_of_additional_parents)
       {
@@ -524,7 +535,7 @@ namespace pdb {
         pre_allocate_atoms(number_of_additional_atoms);
         for(unsigned i=0;i<number_of_additional_atoms;i++) {
           atom new_atom;
-          new_atom.pre_allocate_parents(1);
+          new_atom.pre_allocate_parents(1U);
           new_atom.add_parent(*this);
           data->atoms.push_back(new_atom);
         }

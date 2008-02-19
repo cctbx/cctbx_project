@@ -341,6 +341,8 @@ def show_summary(
   if (msg is not None): print >> out, msg
   #
   msg = pdb_inp.have_altloc_mix_message(prefix=prefix+"  ")
+  if (msg is None):
+    msg = pdb_inp.have_blank_altloc_message(prefix=prefix+"  ")
   if (msg is not None): print >> out, msg
   #
   if (level_id is not None):
@@ -649,18 +651,38 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
 
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 
+def _one_of(n):
+  if (n != 1): return " (one of %d)" % n
+  return ""
+
 class _input(boost.python.injector, ext.input):
 
+  def have_blank_altloc_message(self, prefix=""):
+    n = self.number_of_alternative_groups_with_blank_altloc()
+    if (n == 0):
+      return None
+    result = [
+      prefix + "alternative group with blank altloc%s:" % _one_of(n=n)]
+    iall = self.input_atom_labels_list()
+    for i_seq in self.i_seqs_alternative_group_with_blank_altloc():
+      result.append(prefix + "  " + iall[i_seq].pdb_format())
+    return "\n".join(result)
+
+  def raise_blank_altloc_if_necessary(self):
+    msg = self.have_blank_altloc_message()
+    if (msg is not None): raise Sorry(msg)
+
   def have_altloc_mix_message(self, prefix=""):
-    if (self.number_of_chains_with_altloc_mix() == 0):
+    n = self.number_of_chains_with_altloc_mix()
+    if (n == 0):
       return None
     iall = self.input_atom_labels_list()
     result = [
-      prefix + "mix of alternative groups with and without blank altlocs:"]
-    result.append(prefix + "  alternative group with blank altloc:")
-    for i_seq in self.i_seqs_alternative_group_with_blank_altloc():
-      result.append(prefix + "    " + iall[i_seq].pdb_format())
-    result.append(prefix + "  alternative group without blank altloc:")
+      prefix + "mix of alternative groups with and without blank altlocs"
+        " (in %d chain%s):" % plural_s(n)]
+    result.append(self.have_blank_altloc_message(prefix=prefix+"  "))
+    result.append(prefix + "  alternative group without blank altloc%s:" %
+      _one_of(n=self.number_of_alternative_groups_without_blank_altloc()))
     for i_seq in self.i_seqs_alternative_group_without_blank_altloc():
       result.append(prefix + "    " + iall[i_seq].pdb_format())
     return "\n".join(result)

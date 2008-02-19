@@ -1421,6 +1421,19 @@ namespace iotbx { namespace pdb {
       }
   };
 
+  namespace detail {
+
+    inline
+    void
+    pre_allocate_atom_parents(pdb::atom& atom, unsigned number_of_parents)
+    {
+       bool number_of_old_parents = atom.reset_parents();
+       SCITBX_ASSERT(number_of_old_parents == 0);
+       atom.pre_allocate_parents(number_of_parents);
+    }
+
+  } // namespace detail
+
   //! Processing of PDB strings.
   class input
   {
@@ -1671,6 +1684,8 @@ namespace iotbx { namespace pdb {
         if (anisou_counts != 0) record_type_counts_["ANISOU"] += anisou_counts;
         if (siguij_counts != 0) record_type_counts_["SIGUIJ"] += siguij_counts;
         construct_hierarchy_was_called_before = false;
+        number_of_alternative_groups_with_blank_altloc_ = 0;
+        number_of_alternative_groups_without_blank_altloc_ = 0;
         number_of_chains_with_altloc_mix_ = 0;
       }
 
@@ -1830,10 +1845,13 @@ namespace iotbx { namespace pdb {
 
       //! not const because atom parents are modified.
       hierarchy
-      construct_hierarchy()
+      construct_hierarchy(bool ignore_altloc=false)
       {
-        SCITBX_ASSERT(!construct_hierarchy_was_called_before);
-        construct_hierarchy_was_called_before = true;
+        number_of_alternative_groups_with_blank_altloc_ = 0;
+        number_of_alternative_groups_without_blank_altloc_ = 0;
+        number_of_chains_with_altloc_mix_ = 0;
+        i_seqs_alternative_group_with_blank_altloc_.clear();
+        i_seqs_alternative_group_without_blank_altloc_.clear();
         af::const_ref<int>
           model_numbers = model_numbers_.const_ref();
         af::const_ref<std::vector<unsigned> >
@@ -1841,6 +1859,8 @@ namespace iotbx { namespace pdb {
         SCITBX_ASSERT(chain_indices.size() == model_numbers.size());
         hierarchy result;
         result.new_models(model_numbers.size());
+        af::shared<std::size_t>
+          first_i_seqs_alternative_group_with_blank_altloc;
         static const std::size_t large_residue_size = 100; // not critical
         std::vector<unsigned> residue_indices;       // outside loop to
         residue_indices.reserve(large_residue_size); // allocate only once
@@ -1883,7 +1903,12 @@ namespace iotbx { namespace pdb {
                 }
                 else {
                   bool this_group_has_blank_altloc = false;
-                  alternatives[sj->altloc()].push_back(sj->i_seq);
+                  if (!ignore_altloc) {
+                    alternatives[sj->altloc()].push_back(sj->i_seq);
+                  }
+                  else {
+                    common_sel.push_back(sj->i_seq);
+                  }
                   const i_seq_input_atom_labels* sb = sj;
                   while (sb != si) {
                     // scan backwards to find beginning of group
@@ -1891,7 +1916,12 @@ namespace iotbx { namespace pdb {
                       sb++;
                       break;
                     }
-                    alternatives[blank_altloc_char].push_back(sb->i_seq);
+                    if (!ignore_altloc) {
+                      alternatives[blank_altloc_char].push_back(sb->i_seq);
+                    }
+                    else {
+                      common_sel.push_back(sb->i_seq);
+                    }
                     this_group_has_blank_altloc = true;
                   }
                   // process all preceeding with blank altlocs
@@ -1902,7 +1932,12 @@ namespace iotbx { namespace pdb {
                     if (!sj->labels.equal_ignoring_altloc(si->labels)) {
                       break;
                     }
-                    alternatives[si->altloc()].push_back(si->i_seq);
+                    if (!ignore_altloc) {
+                      alternatives[si->altloc()].push_back(si->i_seq);
+                    }
+                    else {
+                      common_sel.push_back(si->i_seq);
+                    }
                     if (si->altloc() == blank_altloc_char) {
                       this_group_has_blank_altloc = true;
                     }
@@ -1918,6 +1953,12 @@ namespace iotbx { namespace pdb {
                       while (sb != si) {
                         i_seqs_alternative_group_with_blank_altloc_
                           .push_back((sb++)->i_seq);
+                      }
+                      if (first_i_seqs_alternative_group_with_blank_altloc
+                            .size() == 0) {
+                        first_i_seqs_alternative_group_with_blank_altloc =
+                          i_seqs_alternative_group_with_blank_altloc_
+                            .deep_copy();
                       }
                     }
                   }
@@ -1938,6 +1979,10 @@ namespace iotbx { namespace pdb {
               }
               // process all remaining with blank altlocs
               while (si != se) common_sel.push_back((si++)->i_seq);
+              number_of_alternative_groups_with_blank_altloc_
+                += n_alternative_groups_with_blank_altloc;
+              number_of_alternative_groups_without_blank_altloc_
+                += n_alternative_groups_without_blank_altloc;
               if (   n_alternative_groups_with_blank_altloc != 0
                   && n_alternative_groups_without_blank_altloc != 0) {
                 number_of_chains_with_altloc_mix_++;
@@ -1958,9 +2003,11 @@ namespace iotbx { namespace pdb {
             unsigned n_cs = common_sel.size();
             if (n_cs != 0) {
               const unsigned* cs_i = &*common_sel.begin();
-              atoms[*cs_i].pre_allocate_parents(alternatives_size);
+              detail::pre_allocate_atom_parents(
+                atoms[*cs_i], alternatives_size);
               for(unsigned i_cs=1;i_cs<n_cs;i_cs++) {
-                atoms[*(++cs_i)].pre_allocate_parents(alternatives_size);
+                detail::pre_allocate_atom_parents(
+                  atoms[*(++cs_i)], alternatives_size);
               }
             }
             // loop over conformers
@@ -1974,9 +2021,9 @@ namespace iotbx { namespace pdb {
               unsigned n_as = alt_sel.size();
               if (n_as) {
                 const unsigned* as_i = &*alt_sel.begin();
-                atoms[*as_i].pre_allocate_parents(1U);
+                detail::pre_allocate_atom_parents(atoms[*as_i], 1U);
                 for(unsigned i_as=1;i_as<n_as;i_as++) {
-                  atoms[*(++as_i)].pre_allocate_parents(1U);
+                  detail::pre_allocate_atom_parents(atoms[*(++as_i)], 1U);
                 }
               }
               // combine common_sel and alt_sel to obtain the selection
@@ -2051,17 +2098,30 @@ namespace iotbx { namespace pdb {
           next_chain_range_begin = ch_r.end;
         }
         if (number_of_chains_with_altloc_mix_ == 0) {
+          i_seqs_alternative_group_with_blank_altloc_.swap(
+            first_i_seqs_alternative_group_with_blank_altloc);
           // free memory
-          {
-            af::shared<std::size_t> empty;
-            i_seqs_alternative_group_with_blank_altloc_.swap(empty);
-          }
           {
             af::shared<std::size_t> empty;
             i_seqs_alternative_group_without_blank_altloc_.swap(empty);
           }
         }
+        construct_hierarchy_was_called_before = true;
         return result;
+      }
+
+      unsigned
+      number_of_alternative_groups_with_blank_altloc() const
+      {
+        SCITBX_ASSERT(construct_hierarchy_was_called_before);
+        return number_of_alternative_groups_with_blank_altloc_;
+      }
+
+      unsigned
+      number_of_alternative_groups_without_blank_altloc() const
+      {
+        SCITBX_ASSERT(construct_hierarchy_was_called_before);
+        return number_of_alternative_groups_without_blank_altloc_;
       }
 
       unsigned
@@ -2172,6 +2232,8 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> connectivity_section_;
       af::shared<std::string> bookkeeping_section_;
       bool construct_hierarchy_was_called_before;
+      unsigned number_of_alternative_groups_with_blank_altloc_;
+      unsigned number_of_alternative_groups_without_blank_altloc_;
       unsigned number_of_chains_with_altloc_mix_;
       af::shared<std::size_t> i_seqs_alternative_group_with_blank_altloc_;
       af::shared<std::size_t> i_seqs_alternative_group_without_blank_altloc_;
