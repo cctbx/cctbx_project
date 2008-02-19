@@ -29,6 +29,10 @@ class option_parser(OptionParser):
     self.show_defaults_callback = show_defaults_callback()
     self.chunk_callback = chunk_callback()
 
+  def call_with_self_as_first_argument(self, callable, **kw):
+    callable(option_parser=self, **kw)
+    return self
+
   def option(self, *args, **kw):
     self.add_option(make_option(*args, **kw))
     return self
