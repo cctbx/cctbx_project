@@ -634,6 +634,8 @@ def exercise_pdb_input():
     out = StringIO()
     pdb_inp.construct_hierarchy().show(out=out)
     assert len(out.getvalue()) == 0
+    assert pdb_inp.number_of_alternative_groups_with_blank_altloc() == 0
+    assert pdb_inp.number_of_alternative_groups_without_blank_altloc() == 0
     assert pdb_inp.number_of_chains_with_altloc_mix() == 0
     assert pdb_inp.i_seqs_alternative_group_with_blank_altloc().size() == 0
     assert pdb_inp.i_seqs_alternative_group_without_blank_altloc().size() == 0
@@ -1767,18 +1769,85 @@ model id=0 #chains=1
        & " CB "
 """)
   assert pdb_inp.number_of_chains_with_altloc_mix() == 0
-  c = hierarchy.models()[0].chains()[0]
-  for f in c.conformers():
-    assert [r.number_of_alternative_atoms() for r in f.residues()] == [2,4]
-    assert f.number_of_atoms() == 11
-    assert f.number_of_alternative_atoms() == 6
-  c.reset_atom_tmp(new_value=1)
-  assert c.reset_atom_tmp(new_value=0) == 17
-  try: pdb_inp.construct_hierarchy()
+  def _local(hierarchy):
+    c = hierarchy.models()[0].chains()[0]
+    for f in c.conformers():
+      assert [r.number_of_alternative_atoms() for r in f.residues()] == [2,4]
+      assert f.number_of_atoms() == 11
+      assert f.number_of_alternative_atoms() == 6
+    c.reset_atom_tmp(new_value=1)
+    assert c.reset_atom_tmp(new_value=0) == 17
+  _local(hierarchy)
+  try: pdb_inp.construct_hierarchy(ignore_altloc=True)
   except RuntimeError, e:
     assert str(e).endswith(
-      "): SCITBX_ASSERT(!construct_hierarchy_was_called_before) failure.")
+      "): SCITBX_ASSERT(number_of_old_parents == 0) failure.")
   else: raise Exception_expected
+  del hierarchy
+  pdb_inp.construct_hierarchy(ignore_altloc=False)
+  hierarchy = pdb_inp.construct_hierarchy(ignore_altloc=True)
+  check_hierarchy(
+    hierarchy=hierarchy,
+    expected_formatted="""\
+model id=0 #chains=1
+  chain id=" " #conformers=1
+    conformer id=" " #residues=2 #atoms=17
+      residue name="SER" seq="  35" icode=" " #atoms=8
+         " OG "
+         " N  "
+         " C  "
+         " CA "
+         " OG "
+         " CB "
+         " O  "
+         " CB "
+      ### chain break ###
+      residue name="ASN" seq="  36" icode=" " #atoms=9
+         " N  "
+         " CA "
+         " C  "
+         " CA "
+         " N  "
+         " O  "
+         " CB "
+         " O  "
+         " CB "
+""")
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+HEADER    OXIDOREDUCTASE                          22-MAY-01   1H5I
+HETATM 2794  O   HOH Z 297
+HETATM 2795  O  BHOH Z 297
+END
+"""))
+  pdb_inp.construct_hierarchy()
+  assert not show_diff(pdb_inp.have_blank_altloc_message(prefix="@"), '''\
+@alternative group with blank altloc:
+@  " O   HOH Z 297 "
+@  " O  BHOH Z 297 "''')
+  try: pdb_inp.raise_blank_altloc_if_necessary()
+  except Sorry, e:
+    assert not show_diff(str(e), '''\
+alternative group with blank altloc:
+  " O   HOH Z 297 "
+  " O  BHOH Z 297 "''')
+  else: raise Exception_expected
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+HETATM    1  O   HOH Z 297
+HETATM    2  O  BHOH Z 297
+HETATM    3  O   HOH Z 298
+HETATM    4  O  BHOH Z 298
+END
+"""))
+  pdb_inp.construct_hierarchy()
+  assert not show_diff(pdb_inp.have_blank_altloc_message(prefix="%"), '''\
+%alternative group with blank altloc (one of 2):
+%  " O   HOH Z 297 "
+%  " O  BHOH Z 297 "''')
   #
   pdb_inp = pdb.input(
     source_info=None,
@@ -1795,31 +1864,57 @@ ATOM   2105  CB BGLU A 256
 END
 """))
   pdb_inp.construct_hierarchy()
+  assert pdb_inp.number_of_alternative_groups_with_blank_altloc() == 1
+  assert pdb_inp.number_of_alternative_groups_without_blank_altloc() == 2
   assert pdb_inp.number_of_chains_with_altloc_mix() == 1
   assert list(pdb_inp.i_seqs_alternative_group_with_blank_altloc()) == [5,6,7]
   assert list(pdb_inp.i_seqs_alternative_group_without_blank_altloc()) == [0,2]
   assert pdb_inp.atom_element_counts() == {"  ": 8}
   assert not show_diff(pdb_inp.have_altloc_mix_message(prefix="="), '''\
-=mix of alternative groups with and without blank altlocs:
+=mix of alternative groups with and without blank altlocs (in 1 chain):
 =  alternative group with blank altloc:
 =    " CB  GLU A 256 "
 =    " CB AGLU A 256 "
 =    " CB BGLU A 256 "
-=  alternative group without blank altloc:
+=  alternative group without blank altloc (one of 2):
 =    " CA ASER A   1 "
 =    " CA BSER A   1 "''')
   try: pdb_inp.raise_altloc_mix_if_necessary()
   except Sorry, e:
     assert not show_diff(str(e), '''\
-mix of alternative groups with and without blank altlocs:
+mix of alternative groups with and without blank altlocs (in 1 chain):
   alternative group with blank altloc:
     " CB  GLU A 256 "
     " CB AGLU A 256 "
     " CB BGLU A 256 "
-  alternative group without blank altloc:
+  alternative group without blank altloc (one of 2):
     " CA ASER A   1 "
     " CA BSER A   1 "''')
   else: raise Exception_expected
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM      1  CA ASER A   1
+ATOM      2  CB BSER A   1
+ATOM      3  CB  GLU A   2
+ATOM      4  CB AGLU A   2
+ATOM      5  CB BGLU A   2
+ATOM      6  CA ASER B   1
+ATOM      7  CB BSER B   1
+ATOM      8  CB  GLU B   2
+ATOM      9  CB AGLU B   2
+ATOM     10  CB BGLU B   2
+END
+"""))
+  pdb_inp.construct_hierarchy()
+  assert not show_diff(pdb_inp.have_altloc_mix_message(prefix="*"), '''\
+*mix of alternative groups with and without blank altlocs (in 2 chains):
+*  alternative group with blank altloc (one of 2):
+*    " CB  GLU A   2 "
+*    " CB AGLU A   2 "
+*    " CB BGLU A   2 "
+*  alternative group without blank altloc (one of 4):
+*    " CA ASER A   1 "''')
   #
   pdb_inp = pdb.input(
     source_info=None,
