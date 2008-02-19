@@ -1704,6 +1704,7 @@ namespace raw {
                          Ciyou Zhu
       in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
    */
+  inline
   void
   freev(
     int const& n,
