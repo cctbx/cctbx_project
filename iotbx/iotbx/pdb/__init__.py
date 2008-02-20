@@ -397,7 +397,7 @@ class _atom(boost.python.injector, ext.atom):
       if (input_atom_labels is None):
         icode = " "
       else:
-        icode = input_atom_labels.resseq()
+        icode = input_atom_labels.icode()
     if (record_name is None):
       if (self.hetero): record_name = "HETATM"
       else:             record_name = "ATOM"

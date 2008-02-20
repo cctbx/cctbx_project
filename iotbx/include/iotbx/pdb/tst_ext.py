@@ -2725,6 +2725,25 @@ ATOM      0  O   DUM     1       6.215  22.789  24.067  1.00  0.00            -2
       element="I",
       charge="J"), "A         0 B   CD   E   FG   "
                    "1000.0002000.0003000.000  4.00  5.00      H    I J")
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM  12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
+HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
+"""))
+  result = []
+  for atom,serial,input_atom_labels in zip(
+        pdb_inp.atoms(),
+        pdb_inp.atom_serial_number_strings(),
+        pdb_inp.input_atom_labels_list()):
+    result.append(atom.format_atom_record(
+      serial=serial,
+      input_atom_labels=input_atom_labels)+"\n")
+  assert not show_diff("".join(result), """\
+ATOM  12345 N123AR12 C1234I   1234.6781234.6781234.678123.56213.56      S123E1C1
+HETATM12345 N123AR12 C1234I   1234.6781234.6781234.678123.56213.56      S123E1C1
+""")
 
 def exercise(args):
   forever = "--forever" in args
