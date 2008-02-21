@@ -14,6 +14,7 @@ from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx.utils import plural_s, Sorry
 from libtbx.itertbx import count
 from libtbx import dict_with_default_0
+from cStringIO import StringIO
 import md5
 import sys
 
@@ -588,6 +589,53 @@ class _conformer(boost.python.injector, ext.conformer):
       i = j
     return result
 
+class _chain(boost.python.injector, ext.chain):
+
+  def combine_conformers(self):
+    result = []
+    conformers = [conformer.residues() for conformer in self.conformers()]
+    pivots = [0] * len(conformers)
+    while True:
+      pivot_memory_ids = {}
+      for i_conf,i_piv in enumerate(pivots):
+        residues = conformers[i_conf]
+        if (i_piv == len(residues)): continue
+        pivot_memory_ids[residues[i_piv].memory_id()] = i_conf
+      if (len(pivot_memory_ids) == 0):
+        break
+      def find_i_conf_next():
+        for i_conf,i_piv in enumerate(pivots):
+          if (i_piv == len(conformers[i_conf])): continue
+          def can_be_next():
+            result = set([i_conf])
+            for atom in conformers[i_conf][i_piv].atoms():
+              if (atom.is_alternative()): continue
+              for parent in atom.parents():
+                j_conf = pivot_memory_ids.get(parent.memory_id())
+                if (j_conf is None):
+                  return None
+                result.add(j_conf)
+            return result
+          i_confs = can_be_next()
+          if (i_confs is not None):
+            return i_confs
+        raise RuntimeError
+      i_confs = sorted(find_i_conf_next())
+      flag = True
+      for i_conf in i_confs:
+        i_residue = pivots[i_conf]
+        residue = conformers[i_conf][i_residue]
+        suppress_chain_break = (i_residue == 0)
+        for atom in residue.atoms():
+          if (flag or atom.is_alternative()):
+            if (not suppress_chain_break and not residue.link_to_previous):
+              result.append(None)
+            result.append(atom)
+            suppress_chain_break = True
+        flag = False
+        pivots[i_conf] += 1
+    return result
+
 hierarchy_level_ids = ["model", "chain", "conformer", "residue", "atom"]
 
 class _hierarchy(boost.python.injector, ext.hierarchy):
@@ -648,6 +696,47 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
               else:
                 raise RuntimeError(
                   "parent residue not in list of atom parents")
+
+  def as_str(self,
+        prefix="",
+        level_id=None,
+        level_id_exception=ValueError):
+    out = StringIO()
+    self.show(
+      out=out,
+      prefix=prefix,
+      level_id=level_id,
+      level_id_exception=level_id_exception)
+    return out.getvalue()
+
+  def as_pdb_records(self, pdb_inp, append_end=False):
+    result = []
+    iall = pdb_inp.input_atom_labels_list()
+    pdb_inp.reset_atom_tmp()
+    models = self.models()
+    for model in models:
+      if (len(models) != 1):
+        result.append("MODEL %7d" % model.id)
+      atom_serial = 0
+      for chain in model.chains():
+        for atom in chain.combine_conformers():
+          if (atom is None):
+            result.append("BREAK")
+            continue
+          atom_serial += 1
+          result.append(atom.format_atom_record(
+            serial=atom_serial,
+            input_atom_labels=iall[atom.tmp]))
+        result.append("TER")
+      if (len(models) != 1):
+        result.append("ENDMDL")
+    if (append_end):
+      result.append("END")
+    return result
+
+  def as_pdb_string(self, pdb_inp, append_end=False):
+    return "\n".join(self.as_pdb_records(
+      pdb_inp=pdb_inp, append_end=append_end))+"\n"
 
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 

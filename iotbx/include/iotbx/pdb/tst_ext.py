@@ -7,6 +7,7 @@ from libtbx.utils import Sorry, user_plus_sys_time, format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
+import md5
 import sys, os
 
 def exercise_hybrid_36():
@@ -492,15 +493,12 @@ def check_hierarchy(
   assert sum(overall_counts.residue_name_classes.values()) \
     == sum(overall_counts.residue_names.values())
 
-def exercise_columns_73_76_evaluator():
-  pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
-  if (pdb_dir is None):
+def exercise_columns_73_76_evaluator(pdb_file_names):
+  if (pdb_file_names is None):
     print "Skipping exercise_columns_73_76_evaluator():" \
           " input files not available"
     return
-  for node in os.listdir(pdb_dir):
-    if (not (node.endswith(".pdb") or node.endswith(".ent"))): continue
-    file_name = os.path.join(pdb_dir, node)
+  for file_name in pdb_file_names:
     lines = flex.split_lines(open(file_name).read())
     py_eval = pdb.parser.columns_73_76_evaluator(raw_records=lines)
     cpp_eval = pdb.columns_73_76_evaluator(lines=lines)
@@ -2745,7 +2743,157 @@ ATOM  12345 N123AR12 C1234I   1234.6781234.6781234.678123.56213.56      S123E1C1
 HETATM12345 N123AR12 C1234I   1234.6781234.6781234.678123.56213.56      S123E1C1
 """)
 
+def exercise_hierarchy_as_pdb_string(pdb_file_names):
+  if (pdb_file_names is None):
+    print "Skipping exercise_hierarchy_as_pdb_string():" \
+          " input files not available"
+  expected_md5_raw = """\
+1234.pdb bb4aa46a957eb44bf7c4c2d10f2d4d1f
+1OC2_tst.pdb e2ef980d1252b121f79e65faf6fc57aa
+1akg.pdb faf877351bd4e289601b6630e4118d53
+1ee3_stripped.pdb ebeb1bdfaa60c148508b6ff30f7e3400
+1hnn_cys_only.pdb 6c430cee838fec3c135cd119626ec6da
+1yjp_h.pdb 947b6041c931e682e03f7ec7f41fa4f5
+2ERL.pdb d917a4725a457aa3b479db0c7629ccea
+2ERL_noH.pdb 46f0b14806b0dd7ee542062240e40951
+2_residues_and_1and2_altconfs.pdb df71abbdb0c6ea08ccf1990074645aba
+2izq_a_9_13.pdb 931dcad7e241c7c479138299c80aec4f
+5PTI_mod.pdb 6bf8753131bcd5bfd1750548ca0db610
+Build_combine_extend_4.pdb 6fd6fe454d0d4b4910f51a06646908f8
+LWmodel.pdb 8a36b0845f0a31c7ae33f1ceb4b54847
+adp_out_stat.pdb 32ad74fe58027460d618550b5e218c92
+adp_restraints.pdb 1405b574c6dbfeace2e840311b0f63dd
+aldose_joint_001.pdb e8881e813d80379a763e88f99b024ba6
+arg_bad.pdb eeccccad74e4133b36fd66dce451a0db
+arg_good.pdb 6587bd1dde1ad6a8bc835a98302e935b
+arg_h_hohh1_sh.pdb a2c8c1667d34b287fab4a1643c1fe169
+ccp4_mon_lib_rna_dna.pdb 49af483283871a3a9a1f0c6556f5ea3b
+chains_mixed_case.pdb ef463fbf3fe786e9128d4e51c2351057
+cis_peptide.pdb 1c237a03fa29bd204b7e275f3d32435f
+cis_proline.pdb ac0462d70ec84fe28b075b7f51088d0a
+conf_seq_mix.pdb a55dc89c1468a6625f58498fa222542a
+enk.pdb 8be64bacddbf52a9075852ddea3e7c5e
+enk_doc.pdb 6707aa654c0a07f75c94220537f167d7
+enk_gbr.pdb 23d5319194b34ec3e39db699247d44e0
+enk_gbr_e.pdb 03f94cc310776d5bc004409d375d9af5
+enk_gm.pdb 8abbfeb576d0df0399edc59bb55941eb
+enk_gm_0.8.pdb a6ad32f82d57968717a94a5923008b4a
+enk_gor.pdb cbff5b5b1c4856b776815edda18dbec0
+enk_gor_e.pdb 185f0f8cebfa44bbe10a6d26627e01e7
+enk_rbr.pdb 3aca21af48b2846dd4f83405167566dd
+explicit_break.pdb 5e7b082ed9e76dda67736f92670de6e4
+f_obs_complex.pdb 919a99597f08eba8f4ebbcee1cd455b2
+fab.pdb d92e0f7c0593f424648b1a7357749334
+fab_a_cut.pdb 48347df5a6826f0c4a9305a1cdc2a22d
+fab_a_cut_1.pdb 6f2d88ff6a8ce2e1fdd1291722d64985
+gly_mse_gly.pdb 04307fa53053a6b403721b5bf41cc851
+gly_mse_gly_reduce.pdb 9b0b9ac1b480411b6e554a0f843869e3
+gocr.pdb f14b48b01426734279ed95204919aa9e
+gocr_occ_randomized.pdb f75bf33200e4a2d115e67a950ee79f81
+jcm.pdb 969092fc49ee4a382f5c3a5abd2d9043
+l.pdb 3e066c66213f18ef41c4470806b6191c
+large_bond.pdb 6d8866c16366db1445b0972e6503a6ca
+lys_gm.pdb c8e4421cdc2c7ab196c41fd2a7e1f14a
+lys_rigid_body.pdb 4f3bb7eb14270da435e83bd0d91dfb9e
+lysozyme_allHwithzeroQ.pdb f87a1397f41ad8cf108736f27ea208cc
+lysozyme_h.pdb 1121e8e5d2a98acad51f8f172e2b53b3
+lysozyme_noH.pdb 60237001d11fc8d4ee633ed9dc80bd6b
+lysozyme_nohoh.pdb 8b43c49375fc1d749961bf26948727c0
+lysozyme_nohoh_plus6H.pdb 72b03da153d4d24c6c77df60ea72d476
+occ_1_answer.pdb b810690bca5326610f8ffe5cb8758edf
+occ_1_bad1.pdb a78de46ac43e587e653cad3c3a7d3231
+occ_1_bad2.pdb 5ca650b8e18802361a6fce997ccaadbe
+occ_2_answer.pdb 3cd2849cf77b9db4b83f8c7ec554c91a
+occ_2_bad1.pdb 9bc5800bbc2c6f047e3038d8b3ec60f5
+occ_2_bad2.pdb ee3ad6b6d583330e63833843b16a950a
+occ_3_answer.pdb 072107ffea8edcd228ee2a18f0cb1339
+occ_3_bad1.pdb b1170a73b5a91e02d2885453fd0e5390
+occ_3_bad2.pdb 63fac24fdadf9243844a143d8593755e
+occ_4_answer.pdb eb599949e3e9cbd7f86e38ad2893f2b1
+ot1_ot2.pdb ec9ce2a55ef22a076cd2bc77a5bbb933
+pdb103l.ent 27b3ed5858604a056b17c410895d2ba1
+pdb118d.ent 66416908c8187445b2d3be136c08b1f6
+pdb139l.ent 4874b58ed421b51a7de2e4bfeb39083f
+pdb13gs.ent 69acffdc6d9e70de31f31c7e354f936a
+pdb161d.ent 3e08dd45574e92c8812e3643e49c17e9
+pdb1a1q.ent cce3f81d40ccf3e563af595a64eb118d
+pdb1a3k.ent 5fa2cd5ffd1cfd79f7d84206b0cbcab3
+pdb1a3l.ent 70859567b937711b24682265b3a4c12b
+pdb1anp.ent 0471fcd797437e129f852ebbe96ae27a
+pdb1etn.ent 4dffd464a01b57a2f44aff4a7934117d
+pdb1gky.ent 33d8331955f086da145018177bf7611f
+pdb1jxt.ent 7d54de3acdc52fd756caa87aa2bc1f4b
+pdb1yjo.ent 97691a65a908d9212ba3c9204f97cb6b
+pdb1zff.ent ec86df4000aff778a8cb60626198016b
+pdb2caz.ent de54200b397061ffd330231ba0fb26d9
+pdb2caz_A.ent 844712aba7006724b026dc4d89104324
+pdb2caz_B.ent c27fbe89c9129078d1e3ca2383fd7e51
+pdb2caz_CDEF.ent edf0cec3bb6df196524b956cffc8a20c
+pdb2dpg.ent 0968bb7284d9d95cd202fed31ee6ca4d
+phe.pdb 6df6a47e43ebc988bd85c41a876d9b59
+phe_a.pdb 6ac56dcc3886103a783f842bb657097a
+phe_abc_tlsanl_out.pdb 3e4cc6cf924db22a290d87f6708c3db4
+phe_abc_tlsanl_out_geometry_minimized.pdb 447959c80378282972b15219ef8ad396
+phe_abc_w_h.pdb 7779e463dd9b22df57b2f1169e4406e1
+phe_adp_refinement.pdb 38f629d5676c453194aa0412061f5862
+phe_adp_refinement_hoh.pdb 3d17f18b5d19633aee16c0e41c630547
+phe_adp_refinement_hoh_h.pdb 732f09bd1c625c9e8a77b8f3fc98cbde
+phe_d.pdb 6ac56dcc3886103a783f842bb657097a
+phe_e.pdb 27a52718bcf510c62b3a63c63de741c9
+phe_group_adp_refinement.pdb a16fd3afbdacc5fe5384fcc9c8008a50
+phe_h.pdb 7ca10829565931bba92e8b668e03375a
+phe_h_bad.pdb ef9d07d5c3e54104dcdb103c7ccad673
+phe_i.pdb 6ac56dcc3886103a783f842bb657097a
+t.pdb 6672aeea4d24eb415447cc178dcbabd0
+tgg.pdb 3c813b671b1def41f71072bb38167f63
+tom01.pdb 4ba2c83ad685fecdebc604d661f7082b
+trans_peptide.pdb b26cfa8e9799ebbc71160c79b1191bbe
+trans_proline.pdb df92bfb9c21694c7a52e0ff308375bee
+two_models.pdb b778274785382647c98eaa0ad54d8e49
+ygg.pdb ee33d02b2a60b19a4ec36166295903bb
+ygg_01.pdb e5b973412d31b983ede7df0659f08bbe
+ygg_02.pdb 9f93d7e00b27c0d5b03273745202fc1c
+ygg_03.pdb a315b1bf82bcde6f324469157ece303e
+"""
+  expected_md5 = {}
+  for line in expected_md5_raw.splitlines():
+    file_name, m = line.split()
+    expected_md5[file_name] = m
+  for file_name in pdb_file_names:
+    pdb_inp_1 = iotbx.pdb.input(file_name=file_name)
+    hierarchy_1 = pdb_inp_1.construct_hierarchy()
+    pdb_str_1 = hierarchy_1.as_pdb_string(pdb_inp=pdb_inp_1, append_end=True)
+    pdb_inp_2 = iotbx.pdb.input(
+      lines=flex.split_lines(pdb_str_1), source_info=None)
+    hierarchy_2 = pdb_inp_2.construct_hierarchy()
+    pdb_str_2 = hierarchy_2.as_pdb_string(pdb_inp=pdb_inp_2, append_end=False)
+    assert not show_diff(
+      hierarchy_1.as_str(level_id="residue"),
+      hierarchy_2.as_str(level_id="residue"))
+    assert not show_diff(pdb_str_1, pdb_str_2+"END\n")
+    e = expected_md5.get(os.path.basename(file_name))
+    m = md5.md5(pdb_str_1).hexdigest()
+    if (m is not None and m != e):
+      raise AssertionError("""\
+Unexpected md5 hexdigest:
+  PDB file: %s
+    expected md5: %s
+     current md5: %s
+  If you just changed this pdb file, please update the
+  expected_md5_raw in the test script.""" % (file_name, e, m))
+
+def get_phenix_regression_pdb_file_names():
+  pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
+  if (pdb_dir is None): return None
+  result = []
+  for node in os.listdir(pdb_dir):
+    if (not (node.endswith(".pdb") or node.endswith(".ent"))): continue
+    result.append(os.path.join(pdb_dir, node))
+  assert len(result) != 0
+  return result
+
 def exercise(args):
+  phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   forever = "--forever" in args
   while True:
     exercise_hybrid_36()
@@ -2756,9 +2904,12 @@ def exercise(args):
     exercise_conformer()
     exercise_model()
     exercise_hierarchy()
-    exercise_columns_73_76_evaluator()
+    exercise_columns_73_76_evaluator(
+      pdb_file_names=phenix_regression_pdb_file_names)
     exercise_line_info_exceptions()
     exercise_pdb_input()
+    exercise_hierarchy_as_pdb_string(
+      pdb_file_names=phenix_regression_pdb_file_names)
     exercise_xray_structure_simple()
     if (not forever): break
   print format_cpu_times()
