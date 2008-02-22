@@ -414,6 +414,32 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, conformer, conformers)
 
+    static boost::python::list
+    combined_conformers_as_list_of_lists(w_t const& self)
+    {
+      boost::python::list result_py;
+      combined_conformers result(self.conformers());
+      typedef std::vector<std::vector<residue> > residue_groups_t;
+      residue_groups_t::const_iterator
+        residue_groups_end = result.residue_groups.end();
+      for(residue_groups_t::const_iterator
+            residues = result.residue_groups.begin();
+            residues != residue_groups_end;
+            residues++) {
+        boost::python::list residue_group_py;
+        typedef std::vector<residue> residues_t;
+        residues_t::const_iterator residues_end = residues->end();
+        for(residues_t::const_iterator
+              residue = residues->begin();
+              residue != residues_end;
+              residue++) {
+          residue_group_py.append(*residue);
+        }
+        result_py.append(residue_group_py);
+      }
+      return result_py;
+    }
+
     static void
     wrap()
     {
@@ -434,6 +460,7 @@ namespace {
         .def("conformers_size", &w_t::conformers_size)
         .def("conformers", get_conformers)
         .def("has_multiple_conformers", &w_t::has_multiple_conformers)
+        .def("combined_conformers", combined_conformers_as_list_of_lists)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
         .def("extract_sites_cart", &w_t::extract_sites_cart)
       ;
