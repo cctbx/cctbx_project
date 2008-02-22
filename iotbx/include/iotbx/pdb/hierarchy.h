@@ -8,6 +8,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
 #include <boost/optional.hpp>
+#include <boost/scoped_array.hpp>
 #include <boost/noncopyable.hpp>
 #include <vector>
 #include <string>
@@ -37,6 +38,8 @@ namespace pdb {
   class residue_data;
   class residue;
   class atom;
+
+  class combined_conformers;
 
   //! Holder for hierarchy attributes (to be held by a shared_ptr).
   class hierarchy_data : boost::noncopyable
@@ -183,6 +186,7 @@ namespace pdb {
   {
     protected:
       friend class atom;
+      friend class combined_conformers;
       std::vector<weak_ptr<residue_data> > parents;
     public:
       str4 name;
@@ -868,6 +872,96 @@ namespace pdb {
           sel = residue_class_selection(residue_names, negate);
         if (sel.size() != residues().size()) {
           select_residues_in_place(sel.const_ref());
+        }
+      }
+  };
+
+  class combined_conformers : boost::noncopyable
+  {
+    public:
+      std::vector<std::vector<residue> > residue_groups;
+
+      combined_conformers(
+        std::vector<conformer> const& conformers)
+      {
+        unsigned n_conf = static_cast<unsigned>(conformers.size());
+        //
+        unsigned max_residues_size = 0;
+        for(unsigned i_conf=0;i_conf<n_conf;i_conf++) {
+          scitbx::math::update_max(
+            max_residues_size, conformers[i_conf].residues_size());
+        }
+        residue_groups.reserve(max_residues_size);
+        //
+        boost::scoped_array<unsigned>
+          i_residue_to_do_owner(new unsigned[n_conf]);
+        unsigned* i_residue_to_do = i_residue_to_do_owner.get();
+        std::fill_n(i_residue_to_do, n_conf, 0U);
+        std::map<const residue_data*, unsigned> residue_todo_data_ptrs;
+        for(unsigned i_conf=0;i_conf<n_conf;i_conf++) {
+          std::vector<residue> const& residues = conformers[i_conf].residues();
+          if (residues.size() == 0) continue;
+          residue_todo_data_ptrs[residues[0].data.get()] = i_conf;
+        }
+        while (residue_todo_data_ptrs.size() != 0) {
+          std::map<const residue_data*, unsigned>::const_iterator
+            residue_todo_data_ptrs_end = residue_todo_data_ptrs.end();
+          // find a conformer that shares atoms only with pivot residues
+          typedef std::set<unsigned> i_confs_t;
+          i_confs_t i_confs;
+          for(unsigned i_conf=0;i_conf<n_conf;i_conf++) {
+            std::vector<residue> const&
+              residues = conformers[i_conf].residues();
+            unsigned i_res = i_residue_to_do[i_conf];
+            if (i_res == residues.size()) continue;
+            // test if this conformer shares atoms only with pivot residues
+            i_confs.clear();
+            i_confs.insert(i_conf);
+            typedef std::vector<atom> atoms_t;
+            atoms_t const& atoms = residues[i_res].atoms();
+            atoms_t::const_iterator atoms_end = atoms.end();
+            for(atoms_t::const_iterator atom = atoms.begin();
+                atom != atoms_end;
+                atom++) {
+              if (atom->is_alternative()) continue;
+              typedef std::vector<weak_ptr<residue_data> > parents_t;
+              parents_t const& parents = atom->data->parents;
+              parents_t::const_iterator parents_end = parents.end();
+              for(parents_t::const_iterator parent = parents.begin();
+                  parent != parents_end;
+                  parent++) {
+                const residue_data* p = parent->lock().get();
+                std::map<const residue_data*, unsigned>::const_iterator
+                  m = residue_todo_data_ptrs.find(p);
+                if (m == residue_todo_data_ptrs_end) {
+                  goto try_next_i_conf;
+                }
+                i_confs.insert(m->second);
+              }
+            }
+            goto process_i_confs;
+            try_next_i_conf:;
+          }
+          throw std::runtime_error("conformers form a knot.");
+          process_i_confs:
+          residue_groups.resize(residue_groups.size()+1);
+          std::vector<residue>& residue_group = residue_groups.back();
+          residue_group.reserve(i_confs.size());
+          i_confs_t::const_iterator i_confs_end = i_confs.end();
+          for(i_confs_t::const_iterator i_conf_iter=i_confs.begin();
+              i_conf_iter != i_confs_end;
+              i_conf_iter++) {
+            unsigned i_conf = *i_conf_iter;
+            conformer const& c = conformers[i_conf];
+            unsigned i_res = i_residue_to_do[i_conf]++;
+            std::vector<residue>::const_iterator
+              r = c.residues().begin() + (i_res++);
+            residue_group.push_back(*r);
+            residue_todo_data_ptrs.erase(r->data.get());
+            if (i_res != c.residues_size()) {
+              residue_todo_data_ptrs[(++r)->data.get()] = i_conf;
+            }
+          }
         }
       }
   };
