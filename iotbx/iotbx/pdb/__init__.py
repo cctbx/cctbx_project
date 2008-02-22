@@ -589,28 +589,6 @@ class _conformer(boost.python.injector, ext.conformer):
       i = j
     return result
 
-class _chain(boost.python.injector, ext.chain):
-
-  def combine_conformers(self):
-    result = []
-    first_in_conformer = set()
-    for conformer in self.conformers():
-      residues = conformer.residues()
-      if (len(residues) != 0):
-        first_in_conformer.add(residues[0].memory_id())
-    for residue_group in self.combined_conformers():
-      flag = True
-      for residue in residue_group:
-        suppress_chain_break = (residue.memory_id() in first_in_conformer)
-        for atom in residue.atoms():
-          if (flag or atom.is_alternative()):
-            if (not suppress_chain_break and not residue.link_to_previous):
-              result.append(None)
-            result.append(atom)
-            suppress_chain_break = True
-        flag = False
-    return result
-
 hierarchy_level_ids = ["model", "chain", "conformer", "residue", "atom"]
 
 class _hierarchy(boost.python.injector, ext.hierarchy):
@@ -694,10 +672,13 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
         result.append("MODEL %7d" % model.id)
       atom_serial = 0
       for chain in model.chains():
-        for atom in chain.combine_conformers():
-          if (atom is None):
+        combined_conformers = chain.combined_conformers()
+        break_indices = iter(combined_conformers.break_indices())
+        break_index = break_indices.next()
+        for i_atom,atom in enumerate(combined_conformers.atoms()):
+          if (i_atom == break_index):
             result.append("BREAK")
-            continue
+            break_index = break_indices.next()
           atom_serial += 1
           result.append(atom.format_atom_record(
             serial=atom_serial,

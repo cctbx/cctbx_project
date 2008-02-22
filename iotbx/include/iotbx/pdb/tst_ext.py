@@ -378,6 +378,10 @@ def exercise_chain():
   del m2
   assert c.parent() is None
   assert not c.has_multiple_conformers()
+  assert c.number_of_atoms() == 0
+  cc = c.combined_conformers()
+  assert cc.atoms().size() == 0
+  assert cc.break_indices().size() == 1
   #
   c = pdb.chain()
   c.pre_allocate_conformers(number_of_additional_conformers=2)
@@ -840,8 +844,9 @@ END""")
     assert pdb_inp.model_numbers_are_unique()
     assert list(pdb_inp.model_atom_counts()) == [4,2]
     assert len(pdb_inp.find_duplicate_atom_labels()) == 0
+    hierarchy = pdb_inp.construct_hierarchy()
     check_hierarchy(
-      hierarchy=pdb_inp.construct_hierarchy(),
+      hierarchy=hierarchy,
       expected_formatted="""\
 model id=1 #chains=1
   chain id="A" #conformers=1
@@ -875,6 +880,12 @@ model id=3 #chains=2
     assert [atom.tmp for atom in pdb_inp.atoms()] == range(6)
     pdb_inp.reset_atom_tmp(first_value=3, increment=4)
     assert [atom.tmp for atom in pdb_inp.atoms()] == range(3,3+4*6,4)
+    expected_number_of_atoms = iter([4,1,1])
+    for model in hierarchy.models():
+      for chain in model.chains():
+        assert chain.number_of_atoms() == expected_number_of_atoms.next()
+        cc = chain.combined_conformers()
+        assert cc.atoms().size() == chain.number_of_atoms()
   #
   pdb_inp = pdb.input(
     source_info=None,

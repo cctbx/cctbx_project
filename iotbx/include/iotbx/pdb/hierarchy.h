@@ -876,23 +876,19 @@ namespace pdb {
       }
   };
 
-  class combined_conformers : boost::noncopyable
+  class combined_conformers
   {
-    public:
-      std::vector<std::vector<residue> > residue_groups;
+    protected:
+      af::shared<atom> atoms_;
+      af::shared<std::size_t> break_indices_;
 
+    public:
       combined_conformers(
-        std::vector<conformer> const& conformers)
+        std::vector<conformer> const& conformers,
+        unsigned number_of_atoms)
       {
+        atoms_.reserve(number_of_atoms);
         unsigned n_conf = static_cast<unsigned>(conformers.size());
-        //
-        unsigned max_residues_size = 0;
-        for(unsigned i_conf=0;i_conf<n_conf;i_conf++) {
-          scitbx::math::update_max(
-            max_residues_size, conformers[i_conf].residues_size());
-        }
-        residue_groups.reserve(max_residues_size);
-        //
         boost::scoped_array<unsigned>
           i_residue_to_do_owner(new unsigned[n_conf]);
         unsigned* i_residue_to_do = i_residue_to_do_owner.get();
@@ -944,9 +940,7 @@ namespace pdb {
           }
           throw std::runtime_error("conformers form a knot.");
           process_i_confs:
-          residue_groups.resize(residue_groups.size()+1);
-          std::vector<residue>& residue_group = residue_groups.back();
-          residue_group.reserve(i_confs.size());
+          bool is_first_of_group = true;
           i_confs_t::const_iterator i_confs_end = i_confs.end();
           for(i_confs_t::const_iterator i_conf_iter=i_confs.begin();
               i_conf_iter != i_confs_end;
@@ -955,12 +949,43 @@ namespace pdb {
             conformer const& c = conformers[i_conf];
             unsigned i_res = i_residue_to_do[i_conf]++;
             std::vector<residue>::const_iterator
-              r = c.residues().begin() + (i_res++);
-            residue_group.push_back(*r);
+              r = c.residues().begin() + i_res;
+            append_atoms(is_first_of_group, *r, (i_res == 0));
+            is_first_of_group = false;
             residue_todo_data_ptrs.erase(r->data.get());
-            if (i_res != c.residues_size()) {
+            if (++i_res != c.residues_size()) {
               residue_todo_data_ptrs[(++r)->data.get()] = i_conf;
             }
+          }
+        }
+        break_indices_.push_back(atoms_.size());
+      }
+
+      af::shared<atom> const&
+      atoms() const { return atoms_; }
+
+      af::shared<std::size_t> const&
+      break_indices() const { return break_indices_; }
+
+    protected:
+      void
+      append_atoms(
+        bool is_first_of_group,
+        const pdb::residue& residue,
+        bool suppress_chain_break)
+      {
+        typedef std::vector<atom> atoms_t;
+        atoms_t const& atoms = residue.atoms();
+        atoms_t::const_iterator atoms_end = atoms.end();
+        for(atoms_t::const_iterator atom = atoms.begin();
+              atom != atoms_end;
+              atom++) {
+          if (is_first_of_group || atom->is_alternative()) {
+            if (!suppress_chain_break && !residue.data->link_to_previous) {
+              break_indices_.push_back(atoms_.size());
+            }
+            atoms_.push_back(*atom);
+            suppress_chain_break = true;
           }
         }
       }
@@ -1042,6 +1067,27 @@ namespace pdb {
       has_multiple_conformers() const
       {
         return data->has_multiple_conformers();
+      }
+
+      unsigned
+      number_of_atoms() const
+      {
+        unsigned n = conformers_size();
+        if (n == 0) return 0;
+        const conformer* f = &*data->conformers.begin();
+        unsigned result = (f++)->number_of_atoms();
+        for(unsigned i=1;i<n;i++) {
+          result += (f++)->number_of_alternative_atoms();
+        }
+        return result;
+      }
+
+      pdb::combined_conformers
+      combined_conformers() const
+      {
+        return pdb::combined_conformers(
+          conformers(),
+          number_of_atoms());
       }
 
       unsigned

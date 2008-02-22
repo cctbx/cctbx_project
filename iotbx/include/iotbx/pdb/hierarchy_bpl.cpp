@@ -6,6 +6,8 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/list.hpp>
 #include <boost/python/str.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
@@ -399,6 +401,22 @@ namespace {
     }
   };
 
+  struct combined_conformers_wrappers
+  {
+    typedef combined_conformers w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("combined_conformers", no_init)
+        .def("atoms", &w_t::atoms, rbv())
+        .def("break_indices", &w_t::break_indices, rbv())
+      ;
+    }
+  };
+
   struct chain_wrappers
   {
     typedef chain w_t;
@@ -413,32 +431,6 @@ namespace {
     }
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, conformer, conformers)
-
-    static boost::python::list
-    combined_conformers_as_list_of_lists(w_t const& self)
-    {
-      boost::python::list result_py;
-      combined_conformers result(self.conformers());
-      typedef std::vector<std::vector<residue> > residue_groups_t;
-      residue_groups_t::const_iterator
-        residue_groups_end = result.residue_groups.end();
-      for(residue_groups_t::const_iterator
-            residues = result.residue_groups.begin();
-            residues != residue_groups_end;
-            residues++) {
-        boost::python::list residue_group_py;
-        typedef std::vector<residue> residues_t;
-        residues_t::const_iterator residues_end = residues->end();
-        for(residues_t::const_iterator
-              residue = residues->begin();
-              residue != residues_end;
-              residue++) {
-          residue_group_py.append(*residue);
-        }
-        result_py.append(residue_group_py);
-      }
-      return result_py;
-    }
 
     static void
     wrap()
@@ -460,7 +452,8 @@ namespace {
         .def("conformers_size", &w_t::conformers_size)
         .def("conformers", get_conformers)
         .def("has_multiple_conformers", &w_t::has_multiple_conformers)
-        .def("combined_conformers", combined_conformers_as_list_of_lists)
+        .def("number_of_atoms", &w_t::number_of_atoms)
+        .def("combined_conformers", &w_t::combined_conformers)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
         .def("extract_sites_cart", &w_t::extract_sites_cart)
       ;
@@ -570,6 +563,7 @@ namespace {
     atom_wrappers::wrap();
     residue_wrappers::wrap();
     conformer_wrappers::wrap();
+    combined_conformers_wrappers::wrap();
     chain_wrappers::wrap();
     model_wrappers::wrap();
     hierarchy_wrappers::wrap();
