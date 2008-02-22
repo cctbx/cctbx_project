@@ -659,7 +659,7 @@ class manager(manager_mixin):
                                 force_update_f_mask      = True,
                                 out                      = None)
           self.update_solvent_and_scale(params=params, out=None, verbose=-1)
-          rw_ = self.r_work()
+          rw_ = self.r_free()
           if(rw_ is not None and (rw is None or rw_ < rw)):
              rw = rw_
              r_solv_ = r_solv

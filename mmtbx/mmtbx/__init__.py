@@ -134,7 +134,7 @@ class fmodels(object):
     return result
 
   def target_and_gradients(self, weights, compute_gradients,
-        u_iso_refinable_params = None):
+        u_iso_refinable_params = None, occupancy = False):
     tfx = self.target_functor_result_xray
     tfn = self.target_functor_result_neutron
     class tg(object):
@@ -146,8 +146,11 @@ class fmodels(object):
         self.target_work_xray_weighted = self.target_work_xray * wx
         self.gradient_xray = None
         if(compute_gradients):
-           sf = tfx_r.gradients_wrt_atomic_parameters(
-             u_iso_refinable_params = u_iso_refinable_params).packed()
+           if(occupancy):
+             sf = tfx_r.gradients_wrt_atomic_parameters(occupancy = occupancy)
+           else:
+             sf = tfx_r.gradients_wrt_atomic_parameters(
+               u_iso_refinable_params = u_iso_refinable_params).packed()
            self.gradient_xray = sf
            self.gradient_xray_weighted = sf * wx
         if(fmodels.fmodel_neutron() is not None):
@@ -156,8 +159,11 @@ class fmodels(object):
           self.target_work_neutron = tfn_r.target_work()
           self.target_work_neutron_weighted = self.target_work_neutron * wn
           if(compute_gradients):
-            sf = tfn_r.gradients_wrt_atomic_parameters(
-              u_iso_refinable_params=u_iso_refinable_params).packed()
+            if(occupancy):
+              sf = tfn_r.gradients_wrt_atomic_parameters(occupancy = occupancy)
+            else:
+              sf = tfn_r.gradients_wrt_atomic_parameters(
+                u_iso_refinable_params=u_iso_refinable_params).packed()
             self.gradient_neutron = sf
             self.gradient_neutron_weighted = sf * wn
       def target(self):
