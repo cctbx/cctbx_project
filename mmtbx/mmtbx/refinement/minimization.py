@@ -35,6 +35,11 @@ class lbfgs(object):
     global time_site_individual
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
+    self.xray_structure = self.fmodels.fmodel_xray().xray_structure
+    self.xray_structure.tidy_us()
+    self.hd_selection = self.xray_structure.hd_selection()
+    self.hd_flag = self.hd_selection.count(True) > 0
+    self.regularize_h_and_update_xray_structure()
     self.weights = None
     if(refine_xyz and target_weights is not None):
       self.weights = target_weights.xyz_weights_result
@@ -58,12 +63,8 @@ class lbfgs(object):
                            refine_adp     = refine_adp,
                            refine_occ     = False)
     self.monitor.collect()
-    fmodels.create_target_functors()
+    self.fmodels.create_target_functors()
     assert [refine_xyz, refine_adp].count(False) == 1
-    self.xray_structure = self.fmodels.fmodel_xray().xray_structure
-    self.xray_structure.tidy_us()
-    self.hd_selection = self.xray_structure.hd_selection()
-    self.hd_flag = self.hd_selection.count(True) > 0
     if(refine_xyz):
       if(self.h_params.refine_sites == "riding"):
         occupancies_cache = self.xray_structure.scatterers().extract_occupancies()
@@ -82,13 +83,8 @@ class lbfgs(object):
     self.xray_structure.tidy_us()
     if(refine_xyz and self.h_params.refine_sites == "riding" and self.hd_flag):
       self.xray_structure.set_occupancies(occupancies_cache)
-    if(self.h_params is not None and refine_xyz and self.hd_flag and
-       self.h_params.refine_sites != "individual"):
-      self.model.idealize_h(xh_bond_distance_deviation_limit =
-        self.h_params.xh_bond_distance_deviation_limit)
-    self.fmodels.update_xray_structure(
-      update_f_calc  = True,
-      xray_structure = self.xray_structure)
+    self.regularize_h_and_update_xray_structure(xray_structure =
+      self.xray_structure)
     self.monitor.collect(iter = self.minimizer.iter(),
                          nfun = self.minimizer.nfun())
     time_site_individual += timer.elapsed()
@@ -186,6 +182,18 @@ class lbfgs(object):
       print self.f, math.sqrt(flex.mean_sq(self.g))
     return self.f, self.g
 
+  def regularize_h_and_update_xray_structure(self, xray_structure = None):
+    if(xray_structure is None): xray_structure = self.model.xray_structure
+    self.fmodels.update_xray_structure(
+      xray_structure = xray_structure,
+      update_f_calc  = True)
+    if(self.h_params is not None and self.refine_xyz and self.hd_flag and
+       self.h_params.refine_sites != "individual"):
+      self.model.idealize_h(xh_bond_distance_deviation_limit =
+        self.h_params.xh_bond_distance_deviation_limit)
+      self.fmodels.update_xray_structure(
+        xray_structure = xray_structure,
+        update_f_calc  = True)
 
 class monitor(object):
   def __init__(self, weights,
