@@ -17,7 +17,8 @@ builder(
   source=[
     "hybrid_36_c.c",
     "utils.cpp",
-    "hierarchy.cpp"])
+    "hierarchy.cpp",
+    "input.cpp"])
 
 if (not env_etc.no_boost_python):
   Import("env_iotbx_boost_python_ext")
