@@ -662,7 +662,7 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
       level_id_exception=level_id_exception)
     return out.getvalue()
 
-  def as_pdb_records(self, pdb_inp, append_end=False):
+  def as_pdb_records(self, append_end=False):
     result = []
     models = self.models()
     for model in models:
@@ -680,9 +680,8 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
       result.append("END")
     return result
 
-  def as_pdb_string(self, pdb_inp, append_end=False):
-    return "\n".join(self.as_pdb_records(
-      pdb_inp=pdb_inp, append_end=append_end))+"\n"
+  def as_pdb_string(self, append_end=False):
+    return "\n".join(self.as_pdb_records(append_end=append_end))+"\n"
 
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 

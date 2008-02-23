@@ -2792,7 +2792,7 @@ HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
 ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
 """))
   hierarchy = pdb_inp.construct_hierarchy()
-  assert not show_diff(hierarchy.as_pdb_string(pdb_inp=pdb_inp), """\
+  assert not show_diff(hierarchy.as_pdb_string(), """\
 HETATM    1  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
 ATOM      2  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
 TER
@@ -2917,11 +2917,11 @@ ygg_03.pdb a315b1bf82bcde6f324469157ece303e
   for file_name in pdb_file_names:
     pdb_inp_1 = iotbx.pdb.input(file_name=file_name)
     hierarchy_1 = pdb_inp_1.construct_hierarchy()
-    pdb_str_1 = hierarchy_1.as_pdb_string(pdb_inp=pdb_inp_1, append_end=True)
+    pdb_str_1 = hierarchy_1.as_pdb_string(append_end=True)
     pdb_inp_2 = iotbx.pdb.input(
       lines=flex.split_lines(pdb_str_1), source_info=None)
     hierarchy_2 = pdb_inp_2.construct_hierarchy()
-    pdb_str_2 = hierarchy_2.as_pdb_string(pdb_inp=pdb_inp_2, append_end=False)
+    pdb_str_2 = hierarchy_2.as_pdb_string(append_end=False)
     assert not show_diff(
       hierarchy_1.as_str(level_id="residue"),
       hierarchy_2.as_str(level_id="residue"))
