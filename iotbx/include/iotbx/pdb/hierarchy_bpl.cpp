@@ -421,6 +421,64 @@ namespace {
     }
   };
 
+  struct chain_append_atom_records_helper : combine_conformers
+  {
+    std::string chain_id;
+    boost::python::list pdb_records;
+    int atom_serial;
+
+    chain_append_atom_records_helper(
+      chain const& self,
+      boost::python::list pdb_records_,
+      int atom_serial_)
+    :
+      chain_id(self.data->id),
+      pdb_records(pdb_records_),
+      atom_serial(atom_serial_)
+    {
+      process_conformers(self.conformers());
+    }
+
+    void
+    process_next_residue(
+      std::string const& conformer_id,
+      bool is_first_of_group,
+      const pdb::residue& residue,
+      bool suppress_chain_break)
+    {
+      const char* chain_id = this->chain_id.c_str();
+      const char* altloc = conformer_id.c_str();
+      const char* resname = residue.data->name.elems;
+      const char* resseq = residue.data->seq.elems;
+      const char* icode = residue.data->icode.elems;
+      typedef std::vector<atom> atoms_t;
+      atoms_t const& atoms = residue.atoms();
+      atoms_t::const_iterator atoms_end = atoms.end();
+      for(atoms_t::const_iterator atom = atoms.begin();
+            atom != atoms_end;
+            atom++) {
+        bool is_alt = atom->is_alternative();
+        if (is_first_of_group || is_alt) {
+          if (!suppress_chain_break && !residue.data->link_to_previous) {
+            pdb_records.append("BREAK");
+          }
+          boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
+          PyObject* str_obj = str_hdl.get();
+          char* str_begin = PyString_AS_STRING(str_obj);
+          unsigned str_len = atom->format_atom_record(
+            str_begin, ++atom_serial, resname, resseq, icode,
+            (is_alt ? altloc : 0), chain_id);
+          str_hdl.release();
+          if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+            boost::python::throw_error_already_set();
+          }
+          pdb_records.append(boost::python::handle<>(str_obj));
+          suppress_chain_break = true;
+        }
+      }
+    }
+  };
+
   struct chain_wrappers
   {
     typedef chain w_t;
@@ -436,64 +494,6 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, conformer, conformers)
 
-    struct append_atom_records_helper : combine_conformers
-    {
-      std::string chain_id;
-      boost::python::list pdb_records;
-      int atom_serial;
-
-      append_atom_records_helper(
-        w_t const& self,
-        boost::python::list pdb_records_,
-        int atom_serial_)
-      :
-        chain_id(self.data->id),
-        pdb_records(pdb_records_),
-        atom_serial(atom_serial_)
-      {
-        process_conformers(self.conformers());
-      }
-
-      void
-      process_next_residue(
-        std::string const& conformer_id,
-        bool is_first_of_group,
-        const pdb::residue& residue,
-        bool suppress_chain_break)
-      {
-        const char* chain_id = this->chain_id.c_str();
-        const char* altloc = conformer_id.c_str();
-        const char* resname = residue.data->name.elems;
-        const char* resseq = residue.data->seq.elems;
-        const char* icode = residue.data->icode.elems;
-        typedef std::vector<atom> atoms_t;
-        atoms_t const& atoms = residue.atoms();
-        atoms_t::const_iterator atoms_end = atoms.end();
-        for(atoms_t::const_iterator atom = atoms.begin();
-              atom != atoms_end;
-              atom++) {
-          bool is_alt = atom->is_alternative();
-          if (is_first_of_group || is_alt) {
-            if (!suppress_chain_break && !residue.data->link_to_previous) {
-              pdb_records.append("BREAK");
-            }
-            boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
-            PyObject* str_obj = str_hdl.get();
-            char* str_begin = PyString_AS_STRING(str_obj);
-            unsigned str_len = atom->format_atom_record(
-              str_begin, ++atom_serial, resname, resseq, icode,
-              (is_alt ? altloc : 0), chain_id);
-            str_hdl.release();
-            if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
-              boost::python::throw_error_already_set();
-            }
-            pdb_records.append(boost::python::handle<>(str_obj));
-            suppress_chain_break = true;
-          }
-        }
-      }
-    };
-
     static
     int
     append_atom_records(
@@ -501,7 +501,7 @@ namespace {
       boost::python::list pdb_records,
       int atom_serial)
     {
-      return append_atom_records_helper(self, pdb_records, atom_serial)
+      return chain_append_atom_records_helper(self, pdb_records, atom_serial)
         .atom_serial;
     }
 
