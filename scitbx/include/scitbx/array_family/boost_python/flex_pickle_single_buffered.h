@@ -31,8 +31,10 @@ namespace scitbx { namespace af { namespace boost_python {
 
       PyObject* finalize()
       {
-        SCITBX_ASSERT(_PyString_Resize(&str_obj,
-          static_cast<int>(str_end - str_begin)) == 0);
+        if (_PyString_Resize(&str_obj,
+              static_cast<int>(str_end - str_begin)) != 0) {
+          boost::python::throw_error_already_set();
+        }
         return str_obj;
       }
 
