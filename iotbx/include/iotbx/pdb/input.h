@@ -7,8 +7,7 @@
 #include <scitbx/misc/file_utils.h>
 #include <scitbx/misc/fill_ranges.h>
 #include <scitbx/auto_array.h>
-#include <map>
-#include <set>
+#include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace pdb {
 
