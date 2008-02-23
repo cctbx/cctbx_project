@@ -664,25 +664,15 @@ class _hierarchy(boost.python.injector, ext.hierarchy):
 
   def as_pdb_records(self, pdb_inp, append_end=False):
     result = []
-    iall = pdb_inp.input_atom_labels_list()
-    pdb_inp.reset_atom_tmp()
     models = self.models()
     for model in models:
       if (len(models) != 1):
         result.append("MODEL %7d" % model.id)
       atom_serial = 0
       for chain in model.chains():
-        combined_conformers = chain.combined_conformers()
-        break_indices = iter(combined_conformers.break_indices())
-        break_index = break_indices.next()
-        for i_atom,atom in enumerate(combined_conformers.atoms()):
-          if (i_atom == break_index):
-            result.append("BREAK")
-            break_index = break_indices.next()
-          atom_serial += 1
-          result.append(atom.format_atom_record(
-            serial=atom_serial,
-            input_atom_labels=iall[atom.tmp]))
+        atom_serial = chain.append_atom_records(
+          pdb_records=result,
+          atom_serial=atom_serial)
         result.append("TER")
       if (len(models) != 1):
         result.append("ENDMDL")

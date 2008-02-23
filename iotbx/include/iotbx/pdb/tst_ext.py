@@ -127,6 +127,17 @@ def exercise_atom():
   assert a.tmp == 0
   a.tmp = 3
   assert a.tmp == 3
+  assert not show_diff(a.format_atom_record_using_parents(serial=0),
+    "HETATM    0 xyzh                 1.000  -2.000   3.000  0.50  5.00"
+    "      stuvca2+")
+  a = pdb.atom()
+  assert not show_diff(a.format_atom_record_using_parents(serial=1),
+    "ATOM      1                      0.000   0.000   0.000  0.00  0.00")
+  for i in xrange(1,5):
+    a.segid = "STUV"[:i]
+    assert not show_diff(a.format_atom_record_using_parents(serial=100000+i),
+      "ATOM  A000%d                      0.000   0.000   0.000  0.00  0.00"
+      "      %s" % (i, a.segid))
   #
   a = (pdb.atom()
     .set_name(new_name="NaMe")
@@ -379,9 +390,9 @@ def exercise_chain():
   assert c.parent() is None
   assert not c.has_multiple_conformers()
   assert c.number_of_atoms() == 0
-  cc = c.combined_conformers()
-  assert cc.atoms().size() == 0
-  assert cc.break_indices().size() == 1
+  l = []
+  assert c.append_atom_records(pdb_records=l, atom_serial=0) == 0
+  assert len(l) == 0
   #
   c = pdb.chain()
   c.pre_allocate_conformers(number_of_additional_conformers=2)
@@ -881,11 +892,22 @@ model id=3 #chains=2
     pdb_inp.reset_atom_tmp(first_value=3, increment=4)
     assert [atom.tmp for atom in pdb_inp.atoms()] == range(3,3+4*6,4)
     expected_number_of_atoms = iter([4,1,1])
+    pdb_records = []
+    atom_serial = 0
     for model in hierarchy.models():
       for chain in model.chains():
         assert chain.number_of_atoms() == expected_number_of_atoms.next()
-        cc = chain.combined_conformers()
-        assert cc.atoms().size() == chain.number_of_atoms()
+        atom_serial = chain.append_atom_records(
+          pdb_records=pdb_records, atom_serial=atom_serial)
+    assert not show_diff("\n".join(pdb_records), """\
+ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
+ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
+BREAK
+HETATM    3  C   MET A   2       7.478  21.387  22.491  1.00  0.00           C
+ATOM      4  O   MET A   2       8.406  20.895  23.132  1.00  0.00           O
+HETATM    5 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
+ATOM      6  N   CYSCH   6      14.270   2.464   3.364  1.00  0.07""")
+    assert atom_serial == 6
   #
   pdb_inp = pdb.input(
     source_info=None,

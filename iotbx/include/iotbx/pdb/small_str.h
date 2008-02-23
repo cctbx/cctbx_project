@@ -6,6 +6,27 @@
 
 namespace iotbx { namespace pdb {
 
+  inline
+  void
+  copy_padded(
+    char* dest,
+    unsigned dest_size,
+    const char *src,
+    unsigned src_size,
+    char pad_with)
+  {
+    unsigned i = 0;
+    if (src != 0) {
+      unsigned n = (dest_size < src_size ? dest_size : src_size);
+      while(i<n) {
+        char c = src[i];
+        if (c == '\0') break;
+        dest[i++] = c;
+      }
+    }
+    while(i<dest_size) dest[i++] = pad_with;
+  }
+
   template <unsigned N>
   struct small_str
   {
@@ -115,6 +136,12 @@ namespace iotbx { namespace pdb {
     operator>=(small_str const& other) const
     {
       return (std::strcmp(elems, other.elems) >= 0);
+    }
+
+    void
+    copy_padded(char* dest, unsigned dest_size, char pad_with) const
+    {
+      pdb::copy_padded(dest, dest_size, elems, N, pad_with);
     }
   };
 
