@@ -150,6 +150,24 @@ namespace {
       return result;
     }
 
+    static
+    boost::python::object
+    format_atom_record_using_parents(
+      w_t const& self,
+      int serial)
+    {
+      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
+      PyObject* str_obj = str_hdl.get();
+      char* str_begin = PyString_AS_STRING(str_obj);
+      unsigned str_len = self.format_atom_record_using_parents(
+        str_begin, serial);
+      str_hdl.release();
+      if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+        boost::python::throw_error_already_set();
+      }
+      return boost::python::object(boost::python::handle<>(str_obj));
+    }
+
     static void
     wrap()
     {
@@ -211,6 +229,8 @@ namespace {
           &w_t::determine_chemical_element_simple)
         .def("uij_is_defined", &w_t::uij_is_defined)
         .def("siguij_is_defined", &w_t::siguij_is_defined)
+        .def("format_atom_record_using_parents",
+          format_atom_record_using_parents, (arg_("serial")))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<
@@ -401,22 +421,6 @@ namespace {
     }
   };
 
-  struct combined_conformers_wrappers
-  {
-    typedef combined_conformers w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("combined_conformers", no_init)
-        .def("atoms", &w_t::atoms, rbv())
-        .def("break_indices", &w_t::break_indices, rbv())
-      ;
-    }
-  };
-
   struct chain_wrappers
   {
     typedef chain w_t;
@@ -431,6 +435,75 @@ namespace {
     }
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, conformer, conformers)
+
+    struct append_atom_records_helper : combine_conformers
+    {
+      std::string chain_id;
+      boost::python::list pdb_records;
+      int atom_serial;
+
+      append_atom_records_helper(
+        w_t const& self,
+        boost::python::list pdb_records_,
+        int atom_serial_)
+      :
+        chain_id(self.data->id),
+        pdb_records(pdb_records_),
+        atom_serial(atom_serial_)
+      {
+        process_conformers(self.conformers());
+      }
+
+      void
+      process_next_residue(
+        std::string const& conformer_id,
+        bool is_first_of_group,
+        const pdb::residue& residue,
+        bool suppress_chain_break)
+      {
+        const char* chain_id = this->chain_id.c_str();
+        const char* altloc = conformer_id.c_str();
+        const char* resname = residue.data->name.elems;
+        const char* resseq = residue.data->seq.elems;
+        const char* icode = residue.data->icode.elems;
+        typedef std::vector<atom> atoms_t;
+        atoms_t const& atoms = residue.atoms();
+        atoms_t::const_iterator atoms_end = atoms.end();
+        for(atoms_t::const_iterator atom = atoms.begin();
+              atom != atoms_end;
+              atom++) {
+          bool is_alt = atom->is_alternative();
+          if (is_first_of_group || is_alt) {
+            if (!suppress_chain_break && !residue.data->link_to_previous) {
+              pdb_records.append("BREAK");
+            }
+            boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
+            PyObject* str_obj = str_hdl.get();
+            char* str_begin = PyString_AS_STRING(str_obj);
+            unsigned str_len = atom->format_atom_record(
+              str_begin, ++atom_serial, resname, resseq, icode,
+              (is_alt ? altloc : 0), chain_id);
+            str_hdl.release();
+            if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+              boost::python::throw_error_already_set();
+            }
+            pdb_records.append(boost::python::handle<>(str_obj));
+            suppress_chain_break = true;
+          }
+        }
+      }
+    };
+
+    static
+    int
+    append_atom_records(
+      w_t const& self,
+      boost::python::list pdb_records,
+      int atom_serial)
+    {
+      return append_atom_records_helper(self, pdb_records, atom_serial)
+        .atom_serial;
+    }
 
     static void
     wrap()
@@ -453,9 +526,10 @@ namespace {
         .def("conformers", get_conformers)
         .def("has_multiple_conformers", &w_t::has_multiple_conformers)
         .def("number_of_atoms", &w_t::number_of_atoms)
-        .def("combined_conformers", &w_t::combined_conformers)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
         .def("extract_sites_cart", &w_t::extract_sites_cart)
+        .def("append_atom_records", append_atom_records, (
+          arg_("pdb_records"), arg_("atom_serial")))
       ;
     }
   };
@@ -563,7 +637,6 @@ namespace {
     atom_wrappers::wrap();
     residue_wrappers::wrap();
     conformer_wrappers::wrap();
-    combined_conformers_wrappers::wrap();
     chain_wrappers::wrap();
     model_wrappers::wrap();
     hierarchy_wrappers::wrap();

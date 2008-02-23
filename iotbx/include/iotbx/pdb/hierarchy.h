@@ -2,6 +2,7 @@
 #define IOTBX_PDB_HIERARCHY_H
 
 #include <iotbx/pdb/common_residue_names.h>
+#include <iotbx/pdb/hybrid_36_c.h>
 #include <cctbx/eltbx/chemical_elements.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/sym_mat3.h>
@@ -39,7 +40,7 @@ namespace pdb {
   class residue;
   class atom;
 
-  class combined_conformers;
+  class combine_conformers;
 
   //! Holder for hierarchy attributes (to be held by a shared_ptr).
   class hierarchy_data : boost::noncopyable
@@ -103,6 +104,7 @@ namespace pdb {
   class conformer_data : boost::noncopyable
   {
     protected:
+      friend class atom;
       friend class conformer;
       weak_ptr<chain_data> parent;
     public:
@@ -133,6 +135,7 @@ namespace pdb {
   class residue_data : boost::noncopyable
   {
     protected:
+      friend class atom;
       friend class residue;
       weak_ptr<conformer_data> parent;
     public:
@@ -186,7 +189,7 @@ namespace pdb {
   {
     protected:
       friend class atom;
-      friend class combined_conformers;
+      friend class combine_conformers;
       std::vector<weak_ptr<residue_data> > parents;
     public:
       str4 name;
@@ -467,6 +470,91 @@ namespace pdb {
       {
         return !data->siguij.const_ref().all_eq(-1);
       }
+
+      //! Not available in Python.
+      /*! result must point to an array of size 81 (or greater).
+          On return, result is null-terminated.
+       */
+      unsigned
+      format_atom_record(
+        char* result,
+        int serial,
+        const char* resname,
+        const char* resseq,
+        const char* icode,
+        const char* altloc,
+        const char* chain_id) const
+      {
+        char blank = ' ';
+        atom_data const& d = *data;
+        std::memcpy(result, (d.hetero ? "HETATM" : "ATOM  "), 6U);
+        const char* errmsg = hy36encode(5U, serial, result+6);
+        if (errmsg != 0) throw std::runtime_error(
+          std::string("hy36encode: ") + errmsg);
+        result[11] = blank;
+        d.name.copy_padded(result+12, 4U, blank);
+        copy_padded(result+16, 1U, altloc, 1U, blank);
+        copy_padded(result+17, 3U, resname, 3U, blank);
+        if (chain_id == 0 || chain_id[0] == '\0') {
+          result[20] = blank;
+          result[21] = blank;
+        }
+        else if (chain_id[1] == '\0') {
+          result[20] = blank;
+          result[21] = chain_id[0];
+        }
+        else {
+          result[20] = chain_id[0];
+          result[21] = chain_id[1];
+        }
+        copy_padded(result+22, 4U, resseq, 4U, blank);
+        copy_padded(result+26, 4U, icode, 1U, blank);
+        char *r = result + 30;
+        for(unsigned i=0;i<3;i++) {
+          std::sprintf(r, "%8.3f", d.xyz[i]);
+          r += 8;
+          if (*r != '\0') {
+            throw std::runtime_error(
+              std::string("atom ") + "XYZ"[i] + " coordinate value"
+              " does not fit into F8.3 format.");
+          }
+        }
+        std::sprintf(r, "%6.2f", d.occ);
+        r += 6;
+        if (*r != '\0') {
+          throw std::runtime_error(
+            std::string("atom ") + "occupancy factor"
+            " does not fit into F6.2 format.");
+        }
+        std::sprintf(r, "%6.2f", d.b);
+        r += 6;
+        if (*r != '\0') {
+          throw std::runtime_error(
+            std::string("atom ") + "B-factor"
+            " does not fit into F6.2 format.");
+        }
+        copy_padded(r, 6U, 0, 0U, blank);
+        d.segid.copy_padded(result+72, 4U, blank);
+        d.element.copy_padded(result+76, 2U, blank);
+        d.charge.copy_padded(result+78, 2U, blank);
+        for(unsigned i=79;i!=71;i--) {
+          if (result[i] != blank) {
+            result[i+1] = '\0';
+            return i+1;
+          }
+        }
+        result[66] = '\0';
+        return 66U;
+      }
+
+      //! Not available in Python.
+      /*! result must point to an array of size 81 (or greater).
+          On return, result is null-terminated.
+       */
+      unsigned
+      format_atom_record_using_parents(
+        char* result,
+        int serial) const;
   };
 
   //! Residue attributes.
@@ -876,119 +964,108 @@ namespace pdb {
       }
   };
 
-  class combined_conformers
+  //! Not available from Python.
+  struct combine_conformers
   {
-    protected:
-      af::shared<atom> atoms_;
-      af::shared<std::size_t> break_indices_;
+    virtual
+    void
+    process_next_residue(
+      std::string const& conformer_id,
+      bool is_first_of_group,
+      const pdb::residue& residue,
+      bool suppress_chain_break) = 0;
 
-    public:
-      combined_conformers(
-        std::vector<conformer> const& conformers,
-        unsigned number_of_atoms)
-      {
-        atoms_.reserve(number_of_atoms);
-        unsigned n_conf = static_cast<unsigned>(conformers.size());
-        boost::scoped_array<unsigned>
-          i_residue_to_do_owner(new unsigned[n_conf]);
-        unsigned* i_residue_to_do = i_residue_to_do_owner.get();
-        std::fill_n(i_residue_to_do, n_conf, 0U);
-        std::map<const residue_data*, unsigned> residue_todo_data_ptrs;
-        for(unsigned i_conf=0;i_conf<n_conf;i_conf++) {
-          std::vector<residue> const& residues = conformers[i_conf].residues();
-          if (residues.size() == 0) continue;
-          residue_todo_data_ptrs[residues[0].data.get()] = i_conf;
-        }
-        while (residue_todo_data_ptrs.size() != 0) {
-          std::map<const residue_data*, unsigned>::const_iterator
-            residue_todo_data_ptrs_end = residue_todo_data_ptrs.end();
-          // find a conformer that shares atoms only with pivot residues
-          typedef std::set<unsigned> i_confs_t;
-          i_confs_t i_confs;
-          for(unsigned i_conf=0;i_conf<n_conf;i_conf++) {
-            std::vector<residue> const&
-              residues = conformers[i_conf].residues();
-            unsigned i_res = i_residue_to_do[i_conf];
-            if (i_res == residues.size()) continue;
-            // test if this conformer shares atoms only with pivot residues
-            i_confs.clear();
-            i_confs.insert(i_conf);
-            typedef std::vector<atom> atoms_t;
-            atoms_t const& atoms = residues[i_res].atoms();
-            atoms_t::const_iterator atoms_end = atoms.end();
-            for(atoms_t::const_iterator atom = atoms.begin();
-                atom != atoms_end;
-                atom++) {
-              if (atom->is_alternative()) continue;
-              typedef std::vector<weak_ptr<residue_data> > parents_t;
-              parents_t const& parents = atom->data->parents;
-              parents_t::const_iterator parents_end = parents.end();
-              for(parents_t::const_iterator parent = parents.begin();
-                  parent != parents_end;
-                  parent++) {
-                const residue_data* p = parent->lock().get();
-                std::map<const residue_data*, unsigned>::const_iterator
-                  m = residue_todo_data_ptrs.find(p);
-                if (m == residue_todo_data_ptrs_end) {
-                  goto try_next_i_conf;
-                }
-                i_confs.insert(m->second);
-              }
-            }
-            goto process_i_confs;
-            try_next_i_conf:;
-          }
-          throw std::runtime_error("conformers form a knot.");
-          process_i_confs:
-          bool is_first_of_group = true;
-          i_confs_t::const_iterator i_confs_end = i_confs.end();
-          for(i_confs_t::const_iterator i_conf_iter=i_confs.begin();
-              i_conf_iter != i_confs_end;
-              i_conf_iter++) {
-            unsigned i_conf = *i_conf_iter;
-            conformer const& c = conformers[i_conf];
-            unsigned i_res = i_residue_to_do[i_conf]++;
-            std::vector<residue>::const_iterator
-              r = c.residues().begin() + i_res;
-            append_atoms(is_first_of_group, *r, (i_res == 0));
-            is_first_of_group = false;
-            residue_todo_data_ptrs.erase(r->data.get());
-            if (++i_res != c.residues_size()) {
-              residue_todo_data_ptrs[(++r)->data.get()] = i_conf;
-            }
-          }
-        }
-        break_indices_.push_back(atoms_.size());
+    void
+    process_single_conformer(pdb::conformer const& conformer)
+    {
+      std::string const& conformer_id = conformer.data->id;
+      std::vector<residue> const& residues = conformer.residues();
+      unsigned n = static_cast<unsigned>(residues.size());
+      const residue* r = (n == 0 ? 0 : &*residues.begin());
+      for(unsigned i=0;i<n;i++) {
+        process_next_residue(conformer_id, true, *r++, (i==0));
       }
+    }
 
-      af::shared<atom> const&
-      atoms() const { return atoms_; }
-
-      af::shared<std::size_t> const&
-      break_indices() const { return break_indices_; }
-
-    protected:
-      void
-      append_atoms(
-        bool is_first_of_group,
-        const pdb::residue& residue,
-        bool suppress_chain_break)
-      {
-        typedef std::vector<atom> atoms_t;
-        atoms_t const& atoms = residue.atoms();
-        atoms_t::const_iterator atoms_end = atoms.end();
-        for(atoms_t::const_iterator atom = atoms.begin();
+    void
+    process_conformers(std::vector<conformer> const& conformers)
+    {
+      unsigned n_conf = static_cast<unsigned>(conformers.size());
+      if (n_conf == 1) { // shortcut to increase efficiency
+        process_single_conformer(conformers[0]);
+        return;
+      }
+      boost::scoped_array<unsigned>
+        i_residue_to_do_owner(new unsigned[n_conf]);
+      unsigned* i_residue_to_do = i_residue_to_do_owner.get();
+      std::fill_n(i_residue_to_do, n_conf, 0U);
+      std::map<const residue_data*, unsigned> residue_todo_data_ptrs;
+      for(unsigned i_conf=0;i_conf<n_conf;i_conf++) {
+        std::vector<residue> const& residues = conformers[i_conf].residues();
+        if (residues.size() == 0) continue;
+        residue_todo_data_ptrs[residues[0].data.get()] = i_conf;
+      }
+      while (residue_todo_data_ptrs.size() != 0) {
+        std::map<const residue_data*, unsigned>::const_iterator
+          residue_todo_data_ptrs_end = residue_todo_data_ptrs.end();
+        // find a conformer that shares atoms only with pivot residues
+        typedef std::set<unsigned> i_confs_t;
+        i_confs_t i_confs;
+        for(unsigned i_conf=0;i_conf<n_conf;i_conf++) {
+          std::vector<residue> const&
+            residues = conformers[i_conf].residues();
+          unsigned i_res = i_residue_to_do[i_conf];
+          if (i_res == residues.size()) continue;
+          // test if this conformer shares atoms only with pivot residues
+          i_confs.clear();
+          i_confs.insert(i_conf);
+          typedef std::vector<atom> atoms_t;
+          atoms_t const& atoms = residues[i_res].atoms();
+          atoms_t::const_iterator atoms_end = atoms.end();
+          for(atoms_t::const_iterator atom = atoms.begin();
               atom != atoms_end;
               atom++) {
-          if (is_first_of_group || atom->is_alternative()) {
-            if (!suppress_chain_break && !residue.data->link_to_previous) {
-              break_indices_.push_back(atoms_.size());
+            if (atom->is_alternative()) continue;
+            typedef std::vector<weak_ptr<residue_data> > parents_t;
+            parents_t const& parents = atom->data->parents;
+            parents_t::const_iterator parents_end = parents.end();
+            for(parents_t::const_iterator parent = parents.begin();
+                parent != parents_end;
+                parent++) {
+              const residue_data* p = parent->lock().get();
+              std::map<const residue_data*, unsigned>::const_iterator
+                m = residue_todo_data_ptrs.find(p);
+              if (m == residue_todo_data_ptrs_end) {
+                goto try_next_i_conf;
+              }
+              i_confs.insert(m->second);
             }
-            atoms_.push_back(*atom);
-            suppress_chain_break = true;
+          }
+          goto process_i_confs;
+          try_next_i_conf:;
+        }
+        throw std::runtime_error("conformers form a knot.");
+        process_i_confs:
+        bool is_first_of_group = true;
+        i_confs_t::const_iterator i_confs_end = i_confs.end();
+        for(i_confs_t::const_iterator i_conf_iter=i_confs.begin();
+            i_conf_iter != i_confs_end;
+            i_conf_iter++) {
+          unsigned i_conf = *i_conf_iter;
+          conformer const& c = conformers[i_conf];
+          unsigned i_res = i_residue_to_do[i_conf]++;
+          std::vector<residue>::const_iterator
+            r = c.residues().begin() + i_res;
+          process_next_residue(
+            c.data->id, is_first_of_group, *r, (i_res == 0));
+          is_first_of_group = false;
+          residue_todo_data_ptrs.erase(r->data.get());
+          if (++i_res != c.residues_size()) {
+            residue_todo_data_ptrs[(++r)->data.get()] = i_conf;
           }
         }
       }
+    }
   };
 
   //! Chain attributes.
@@ -1080,14 +1157,6 @@ namespace pdb {
           result += (f++)->number_of_alternative_atoms();
         }
         return result;
-      }
-
-      pdb::combined_conformers
-      combined_conformers() const
-      {
-        return pdb::combined_conformers(
-          conformers(),
-          number_of_atoms());
       }
 
       unsigned
@@ -1636,6 +1705,49 @@ namespace pdb {
       }
     }
     data->parents.push_back(new_parent.data);
+  }
+
+  inline
+  unsigned
+  atom::format_atom_record_using_parents(
+    char* result,
+    int serial) const
+  {
+    atom_data const& d = *data;
+    boost::shared_ptr<conformer_data> f_lock;
+    boost::shared_ptr<chain_data> c_lock;
+    unsigned n = static_cast<unsigned>(d.parents.size());
+    for(unsigned i=0;i<n;i++) {
+      shared_ptr<residue_data> res1 = data->parents[i].lock();
+      const residue_data* r1 = res1.get();
+      if (r1 != 0) {
+        f_lock = r1->parent.lock();
+        const conformer_data* f = f_lock.get();
+        const chain_data* c = 0;
+        if (f != 0) {
+          c_lock = f->parent.lock();
+          c = c_lock.get();
+        }
+        for(unsigned j=i+1;j<n;j++) {
+          shared_ptr<residue_data> res2 = data->parents[j].lock();
+          if (res2.get() != 0) {
+            return format_atom_record(
+              result,
+              serial,
+              r1->name.elems, r1->seq.elems, r1->icode.elems,
+              0,
+              (c != 0 ? c->id.c_str() : 0));
+          }
+        }
+        return format_atom_record(
+          result,
+          serial,
+          r1->name.elems, r1->seq.elems, r1->icode.elems,
+          (f != 0 ? f->id.c_str() : 0),
+          (c != 0 ? c->id.c_str() : 0));
+      }
+    }
+    return format_atom_record(result, serial, 0, 0, 0, 0, 0);
   }
 
 }} // namespace iotbx::pdb
