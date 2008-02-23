@@ -2906,14 +2906,19 @@ ygg_03.pdb a315b1bf82bcde6f324469157ece303e
     assert not show_diff(pdb_str_1, pdb_str_2+"END\n")
     e = expected_md5.get(os.path.basename(file_name))
     m = md5.md5(pdb_str_1).hexdigest()
-    if (m is not None and m != e):
+    if (m != e):
+      if (e is None): just_what = "added"
+      else: just_what = "changed"
       raise AssertionError("""\
 Unexpected md5 hexdigest:
   PDB file: %s
     expected md5: %s
      current md5: %s
-  If you just changed this pdb file, please update the
-  expected_md5_raw in the test script.""" % (file_name, e, m))
+  If you just %s this pdb file, please update
+    expected_md5_raw
+  in the test script.
+  The traceback above shows the path to the script.""" % (
+    file_name, e, m, just_what))
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
