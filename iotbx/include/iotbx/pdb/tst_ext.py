@@ -124,6 +124,9 @@ def exercise_atom():
   assert not a.hetero
   a.hetero = True
   assert a.hetero
+  assert not a.flag_altloc
+  a.flag_altloc = True
+  assert a.flag_altloc
   assert a.tmp == 0
   a.tmp = 3
   assert a.tmp == 3
@@ -152,7 +155,8 @@ def exercise_atom():
     .set_sigb(new_sigb=0.7)
     .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
     .set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9))
-    .set_hetero(new_hetero=True))
+    .set_hetero(new_hetero=True)
+    .set_flag_altloc(new_flag_altloc=True))
   assert a.name == "NaMe"
   assert a.segid == "sEgI"
   assert a.element == "El"
@@ -166,6 +170,7 @@ def exercise_atom():
   assert approx_equal(a.uij, (1.3,2.1,3.2,4.3,2.7,9.3))
   assert approx_equal(a.siguij, (.1,.2,.3,.6,.1,.9))
   assert a.hetero
+  assert a.flag_altloc
   assert not a.is_alternative()
   assert a.determine_chemical_element_simple() is None
   a.name = "NA  "
@@ -208,6 +213,7 @@ def exercise_atom():
   assert ac.uij == a.uij
   assert ac.siguij == a.siguij
   assert ac.hetero == a.hetero
+  assert ac.flag_altloc == a.flag_altloc
   assert ac.is_alternative() == a.is_alternative()
   assert a.tmp == 0
   #
@@ -662,6 +668,7 @@ def exercise_pdb_input():
     assert pdb_inp.extract_atom_uij().size() == 0
     assert pdb_inp.extract_atom_siguij().size() == 0
     assert pdb_inp.extract_atom_hetero().size() == 0
+    assert pdb_inp.extract_atom_flag_altloc().size() == 0
     pdb_inp = pdb.input(
       source_info="file/name",
       lines=flex.split_lines("""\
@@ -2356,8 +2363,8 @@ ATOM      3  Q   GLN A   3      35.130   8.880  17.864  0.84 37.52           C
 ANISOU    3  Q   GLN A   3     7875   3041   3340   -981    727   2663       C
 SIGUIJ    3  Q   GLN A   3       75     41     40     -1      7     63       C
 ATOM      4  O   GLN A   3      34.548   7.819  17.724  1.00 38.54      STUV
-ATOM      5 1CB  GLN A   3      32.979  10.223  18.469  1.00 37.80
-HETATM    6 CA   ION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
+ATOM      5 1CB AGLN A   3      32.979  10.223  18.469  1.00 37.80
+HETATM    6 CA  AION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
   assert pdb_inp.atom_element_counts() == {" C": 2, "  ": 3, " N": 1, "CA": 1}
@@ -2402,6 +2409,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1)])
   assert list(pdb_inp.extract_atom_hetero()) == [5,6]
+  assert list(pdb_inp.extract_atom_flag_altloc()) == [4,5]
   #
   assert not show_diff(pdb_inp.atoms()[1].format_anisou_record(
     serial=10,
@@ -2493,8 +2501,8 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
 " Q   GLN A   3 " C      4 ( 0.5721  0.1620  0.4103) 0.84 [ - ] 0.4752
      u_cart =  0.788  0.304  0.334 -0.098  0.073  0.266
 " O   GLN A   3 " segid="STUV" O      4 ( 0.5626  0.1426  0.4070) 1.00 0.4881 [ - ]
-"1CB  GLN A   3 " C      4 ( 0.5370  0.1865  0.4242) 1.00 0.4787 [ - ]
-"CA   ION B   1 " Ca2+   4 ( 0.5270  0.2023  0.3975) 0.92 0.4554 [ - ]
+"1CB AGLN A   3 " C      4 ( 0.5370  0.1865  0.4242) 1.00 0.4787 [ - ]
+"CA  AION B   1 " Ca2+   4 ( 0.5270  0.2023  0.3975) 0.92 0.4554 [ - ]
 "CA   ION B   2 " Ca     4 ( 0.5019  0.1945  0.3948) 1.00 0.4670 [ - ]
 """)
   #
@@ -2517,8 +2525,8 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
 " Q   GLN A   3 " C      1 (35.1300  8.8800 17.8640) 0.84 [ - ] 0.4752
      u_cart =  0.788  0.304  0.334 -0.098  0.073  0.266
 " O   GLN A   3 " segid="STUV" O      1 (34.5480  7.8190 17.7240) 1.00 0.4881 [ - ]
-"1CB  GLN A   3 " C      1 (32.9790 10.2230 18.4690) 1.00 0.4787 [ - ]
-"CA   ION B   1 " Ca2+   1 (32.3600 11.0920 17.3080) 0.92 0.4554 [ - ]
+"1CB AGLN A   3 " C      1 (32.9790 10.2230 18.4690) 1.00 0.4787 [ - ]
+"CA  AION B   1 " Ca2+   1 (32.3600 11.0920 17.3080) 0.92 0.4554 [ - ]
 "CA   ION B   2 " Ca     1 (30.8220 10.6650 17.1900) 1.00 0.4670 [ - ]
 """)
   #
@@ -2777,6 +2785,19 @@ HETATM12345 N123AR12 C1234I   1234.6781234.6781234.678123.56213.56      S123E1C1
 """)
 
 def exercise_hierarchy_as_pdb_string(pdb_file_names):
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
+ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
+"""))
+  hierarchy = pdb_inp.construct_hierarchy()
+  assert not show_diff(hierarchy.as_pdb_string(pdb_inp=pdb_inp), """\
+HETATM    1  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
+ATOM      2  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
+TER
+""")
+  #
   if (pdb_file_names is None):
     print "Skipping exercise_hierarchy_as_pdb_string():" \
           " input files not available"
@@ -2843,6 +2864,7 @@ occ_3_answer.pdb 072107ffea8edcd228ee2a18f0cb1339
 occ_3_bad1.pdb b1170a73b5a91e02d2885453fd0e5390
 occ_3_bad2.pdb 63fac24fdadf9243844a143d8593755e
 occ_4_answer.pdb eb599949e3e9cbd7f86e38ad2893f2b1
+one_conf_but_altloc.pdb de37e6723c60864cc317ec44928139e1
 ot1_ot2.pdb ec9ce2a55ef22a076cd2bc77a5bbb933
 pdb103l.ent 27b3ed5858604a056b17c410895d2ba1
 pdb118d.ent 66416908c8187445b2d3be136c08b1f6

@@ -717,7 +717,6 @@ namespace iotbx { namespace pdb {
     altloc() const { return *labels.altloc_begin(); }
   };
 
-  inline
   scitbx::auto_array<i_seq_input_atom_labels>
   sort_input_atom_labels(
     const pdb::input_atom_labels* input_atom_labels_list,
@@ -737,11 +736,11 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  inline
   atom
   process_atom_record(pdb::line_info& line_info, bool hetero)
   {
     // 13 - 16  Atom          name          Atom name.
+    // 17       Character     altLoc        Alternate location indicator.
     // 31 - 38  Real(8.3)     x             Orthogonal coordinates for X in
     //                                      Angstroms.
     // 39 - 46  Real(8.3)     y             Orthogonal coordinates for Y in
@@ -769,7 +768,9 @@ namespace iotbx { namespace pdb {
       0, // sigb
       sym_mat3(-1,-1,-1,-1,-1,-1), // uij
       sym_mat3(-1,-1,-1,-1,-1,-1), // siguij
-      hetero);
+      hetero,
+      (   line_info.size > 16
+       && line_info.data[16] != blank_altloc_char)); // flag_altloc
   }
 
   void
@@ -1616,6 +1617,18 @@ namespace iotbx { namespace pdb {
     std::size_t i_seq = 0;
     for(const atom* a=atoms_.begin();a!=atoms_end;a++,i_seq++) {
       if (a->data->hetero) result.push_back(i_seq);
+    }
+    return result;
+  }
+
+  af::shared<std::size_t>
+  input::extract_atom_flag_altloc() const
+  {
+    af::shared<std::size_t> result;
+    const atom* atoms_end = atoms_.end();
+    std::size_t i_seq = 0;
+    for(const atom* a=atoms_.begin();a!=atoms_end;a++,i_seq++) {
+      if (a->data->flag_altloc) result.push_back(i_seq);
     }
     return result;
   }

@@ -591,6 +591,7 @@ namespace iotbx { namespace pdb {
     b(other.b), sigb(other.sigb),
     uij(other.uij), siguij(other.siguij),
     hetero(other.hetero),
+    flag_altloc(other.flag_altloc),
     tmp(0)
   {}
 

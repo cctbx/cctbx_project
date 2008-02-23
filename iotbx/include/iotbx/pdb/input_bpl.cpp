@@ -171,6 +171,7 @@ namespace {
         .def("extract_atom_uij", &w_t::extract_atom_uij)
         .def("extract_atom_siguij", &w_t::extract_atom_siguij)
         .def("extract_atom_hetero", &w_t::extract_atom_hetero)
+        .def("extract_atom_flag_altloc", &w_t::extract_atom_flag_altloc)
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, reset_atom_tmp_overloads((
           arg_("first_value")=0, arg_("increment")=1)))
       ;
