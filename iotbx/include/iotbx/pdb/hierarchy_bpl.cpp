@@ -132,6 +132,15 @@ namespace {
       self.data->hetero = new_hetero;
     }
 
+    static bool
+    get_flag_altloc(w_t const& self) { return self.data->flag_altloc; }
+
+    static void
+    set_flag_altloc(w_t const& self, bool new_flag_altloc)
+    {
+      self.data->flag_altloc = new_flag_altloc;
+    }
+
     static int
     get_tmp(w_t const& self) { return self.data->tmp; }
 
@@ -190,6 +199,8 @@ namespace {
         .def("set_uij", set_uij, (arg_("new_uij")), return_self<>())
         .def("set_siguij", set_siguij, (arg_("new_siguij")), return_self<>())
         .def("set_hetero", set_hetero, (arg_("new_hetero")), return_self<>())
+        .def("set_flag_altloc", set_flag_altloc, (
+          arg_("new_flag_altloc")), return_self<>())
         .add_property("name",
           make_function(get_name), make_function(set_name))
         .add_property("segid",
@@ -216,6 +227,8 @@ namespace {
           make_function(get_siguij), make_function(set_siguij))
         .add_property("hetero",
           make_function(get_hetero), make_function(set_hetero))
+        .add_property("flag_altloc",
+          make_function(get_flag_altloc), make_function(set_flag_altloc))
         .add_property("tmp",
           make_function(get_tmp), make_function(set_tmp))
         .def("memory_id", &w_t::memory_id)
@@ -457,7 +470,7 @@ namespace {
       for(atoms_t::const_iterator atom = atoms.begin();
             atom != atoms_end;
             atom++) {
-        bool is_alt = atom->is_alternative();
+        bool is_alt = (atom->data->flag_altloc || atom->is_alternative());
         if (is_first_of_group || is_alt) {
           if (!suppress_chain_break && !residue.data->link_to_previous) {
             pdb_records.append("BREAK");

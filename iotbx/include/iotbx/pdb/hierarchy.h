@@ -188,6 +188,7 @@ namespace pdb {
       sym_mat3 uij;
       sym_mat3 siguij;
       bool hetero;
+      bool flag_altloc;
       mutable int tmp;
 
     protected:
@@ -197,7 +198,8 @@ namespace pdb {
         double occ_, double sigocc_,
         double b_, double sigb_,
         sym_mat3 const& uij_, sym_mat3 const& siguij_,
-        bool hetero_)
+        bool hetero_,
+        bool flag_altloc_)
       :
         name(name_), segid(segid_), element(element_), charge(charge_),
         xyz(xyz_), sigxyz(sigxyz_),
@@ -205,6 +207,7 @@ namespace pdb {
         b(b_), sigb(sigb_),
         uij(uij_), siguij(siguij_),
         hetero(hetero_),
+        flag_altloc(flag_altloc_),
         tmp(0)
       {}
 
@@ -236,7 +239,8 @@ namespace pdb {
         double occ, double sigocc,
         double b, double sigb,
         sym_mat3 const& uij, sym_mat3 const& siguij,
-        bool hetero)
+        bool hetero,
+        bool flag_altloc)
       :
         data(new atom_data(
           name, segid, element, charge,
@@ -244,7 +248,8 @@ namespace pdb {
           occ, sigocc,
           b, sigb,
           uij, siguij,
-          hetero))
+          hetero,
+          flag_altloc))
       {}
 
       atom(
@@ -255,7 +260,8 @@ namespace pdb {
         double b=0, double sigb=0,
         sym_mat3 const& uij=sym_mat3(-1,-1,-1,-1,-1,-1),
         sym_mat3 const& siguij=sym_mat3(-1,-1,-1,-1,-1,-1),
-        bool hetero=false)
+        bool hetero=false,
+        bool flag_altloc=false)
       :
         data(new atom_data(
           name, segid, element, charge,
@@ -263,7 +269,8 @@ namespace pdb {
           occ, sigocc,
           b, sigb,
           uij, siguij,
-          hetero))
+          hetero,
+          flag_altloc))
       {}
 
       inline
@@ -359,6 +366,13 @@ namespace pdb {
       set_hetero(double new_hetero)
       {
         data->hetero = new_hetero;
+        return *this;
+      }
+
+      atom&
+      set_flag_altloc(double new_flag_altloc)
+      {
+        data->flag_altloc = new_flag_altloc;
         return *this;
       }
 

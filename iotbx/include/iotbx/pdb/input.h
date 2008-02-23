@@ -602,6 +602,9 @@ namespace iotbx { namespace pdb {
       af::shared<std::size_t>
       extract_atom_hetero() const;
 
+      af::shared<std::size_t>
+      extract_atom_flag_altloc() const;
+
       void
       reset_atom_tmp(int first_value=0, int increment=1) const;
 
