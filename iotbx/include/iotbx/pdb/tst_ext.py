@@ -2802,6 +2802,7 @@ TER
     print "Skipping exercise_hierarchy_as_pdb_string():" \
           " input files not available"
   expected_md5_raw = """\
+jf.pdb 82b7d19bedd08a0d9b6da3a683f1df7c
 1234.pdb bb4aa46a957eb44bf7c4c2d10f2d4d1f
 1OC2_tst.pdb e2ef980d1252b121f79e65faf6fc57aa
 1akg.pdb faf877351bd4e289601b6630e4118d53
