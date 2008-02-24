@@ -156,13 +156,19 @@ class manager(object):
     assert peaks.sites.size() == peaks.heights.size()
     assert peaks.heights.size() == peaks.iseqs_of_closest_atoms.size()
     print >> self.log
+    #
+    result = {}
     for s, h, i_seq in zip(peaks.sites, peaks.heights, peaks.iseqs_of_closest_atoms):
       d = self.fmodel.xray_structure.unit_cell().distance(s, scatterers[i_seq].site)
       element = scatterers[i_seq].element_symbol()
-      print >> self.log, "peak= %8.3f closest distance to %s = %8.3f"%(
+      out_str = "peak= %8.3f closest distance to %s = %8.3f"%(
         h, atom_attributes_list[i_seq].pdb_format(), d)
+      result.setdefault(atom_attributes_list[i_seq].residue_id(),[]).append(out_str)
       assert d <= self.params.map_next_to_model.max_model_peak_dist
       assert d >= self.params.map_next_to_model.min_model_peak_dist
+    for val in result.values():
+      for v in val:
+        print >> self.log, v
 
 def show_highest_peaks_and_deepest_holes(fmodel,
                                          atom_attributes_list,

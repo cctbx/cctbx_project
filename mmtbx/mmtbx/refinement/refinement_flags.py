@@ -38,6 +38,7 @@ class manager(object):
     if(x is None): result = x
     elif(self.is_bool(x) or self.is_size_t(x)):
       result = x.deep_copy()
+    elif(len(x)==0): result = x
     elif(self.is_size_t(x[0])):
       for item in x:
         if(self.is_size_t(item)):
@@ -159,26 +160,13 @@ class manager(object):
     else: raise RuntimeError("Bad selection array type.")
 
   def count_occupancies(self, x):
-    class count(object):
-      def __init__(self, x):
-        self.n_constrained_groups = 0
-        self.n_free_groups = 0
-        self.n_individual = 0
-        self.n_constrained_individual = 0
-        if(x is not None):
-          for cg in x:
-            if(len(cg) > 1):
-              for g in cg:
-                if(g.size() == 1):
-                  self.n_constrained_individual += 1
-                elif(g.size() > 1): self.n_constrained_groups += 1
-                else: raise RuntimeError
-            elif(len(cg) == 1):
-              if(cg[0].size() == 1): self.n_individual += 1
-              elif(cg[0].size() > 1): self.n_free_groups += 1
-              else: raise RuntimeError
-            else: raise RuntimeError
-    return count(x = x)
+    result = flex.size_t()
+    if(x is not None):
+      for i in x:
+        for j in i:
+          for k in j:
+            result.append(k)
+    return str(result.size())
 
   def show(self, log = None):
     if(log is None): log = sys.stdout
@@ -196,11 +184,8 @@ class manager(object):
     print >> log, "  tls                    = %5s (%s atoms in %s groups)" % (
       str(self.tls), self.ca(self.adp_tls), self.szs(self.adp_tls))
     co_res = self.count_occupancies(self.s_occupancies)
-    print >> log, "  occupancies            = %5s"%(str(self.occupancies))
-    print >> log, "    constrained_groups     = %s"%(str(co_res.n_constrained_groups))
-    print >> log, "    constrained_individual = %s"%(str(co_res.n_constrained_individual))
-    print >> log, "    free_groups            = %s"%(str(co_res.n_free_groups))
-    print >> log, "    individual             = %s"%(str(co_res.n_individual))
+    print >> log, "  occupancies            = %5s (%s atoms)"%(
+      str(self.occupancies), co_res)
     print >> log, "  group_anomalous        = %5s"%self.group_anomalous # XXX selections not available
     log.flush()
 
@@ -338,18 +323,35 @@ class manager(object):
       if(added == 0 and squeeze_in):
         x_new.extend([flex.size_t([next_to_i_seq+1])])
       return x_new
+    elif(self.is_size_t(x[0][0])):
+      xx_new = []
+      added = 0
+      for xx in x:
+        x_new = []
+        for x_ in xx:
+          result = self._add_to_single_size_t(x_, next_to_i_seq, squeeze_in)
+          added += result[2]
+          if(result[1] is None): x_new.extend([result[0]])
+          else:
+            x_new.extend([result[0],result[1]])
+            #print [list(result[0]), list(result[1])], [list(h) for h in x_new]
+        #if(added == 0 and squeeze_in):
+        #  x_new.extend([flex.size_t([next_to_i_seq+1])])
+        if(len(x_new) > 0): xx_new.append(x_new)
+      if(added == 0 and squeeze_in):
+        xx_new.append([flex.size_t([next_to_i_seq+1])])
+      return xx_new
     else: raise RuntimeError("Bad selection array type.")
 
   def add(self, next_to_i_seqs,
-                sites_individual       = False,
-                sites_rigid_body       = False,
-                adp_individual_iso     = False,
-                adp_individual_aniso   = False,
-                adp_group              = False,
-                group_h                = False,
-                adp_tls                = False,
-                occupancies_individual = False,
-                occupancies_group      = False):
+                sites_individual     = False,
+                sites_rigid_body     = False,
+                adp_individual_iso   = False,
+                adp_individual_aniso = False,
+                adp_group            = False,
+                group_h              = False,
+                adp_tls              = False,
+                s_occupancies        = False):
                 # XXX group_anomalous selection should be added
     perm = flex.sort_permutation(next_to_i_seqs, reverse = True)
     next_to_i_seqs = next_to_i_seqs.select(perm)
@@ -389,14 +391,9 @@ class manager(object):
           x             = self.adp_tls,
           next_to_i_seq = next_to_i_seq,
           squeeze_in    = adp_tls)
-      if(self.occupancies_individual is not None):
-        self.occupancies_individual = self._add(
-          x             = self.occupancies_individual,
+      if(self.s_occupancies is not None):
+        self.s_occupancies = self._add(
+          x             = self.s_occupancies,
           next_to_i_seq = next_to_i_seq,
-          squeeze_in    = occupancies_individual)
-      if(self.occupancies_group is not None):
-        self.occupancies_group = self._add(
-          x             = self.occupancies_group,
-          next_to_i_seq = next_to_i_seq,
-          squeeze_in    = occupancies_group)
+          squeeze_in    = s_occupancies)
     return self
