@@ -147,15 +147,11 @@ class manager(object):
       from mmtbx.refinement import minimization
       import scitbx.lbfgs
       if(self.params.new_solvent == "anisotropic"):
-        selection_aniso = flex.bool(
-          self.model.refinement_flags.adp_individual_aniso.size(), False)
-        selection_aniso = self.model.refinement_flags.adp_individual_aniso
-        selection_aniso.set_selected(~self.model.solvent_selection(), False)
+        selection_aniso = self.model.solvent_selection().deep_copy()
         selection_aniso.set_selected(self.model.xray_structure.hd_selection(), False)
         self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
       else:
-        selection_iso = self.model.refinement_flags.adp_individual_iso.deep_copy()
-        selection_iso.set_selected(~self.model.solvent_selection(), False)
+        selection_iso = self.model.solvent_selection().deep_copy()
         selection_iso.set_selected(self.model.xray_structure.hd_selection(), False)
         self.model.set_refine_individual_adp(selection_iso = selection_iso)
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
