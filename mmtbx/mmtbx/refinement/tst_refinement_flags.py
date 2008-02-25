@@ -305,7 +305,7 @@ def exercise_add_1b():
   assert approx_equal(rm.adp_group            , iarr_result)
   assert approx_equal(rm.group_h              , iarr_result)
   assert approx_equal(rm.adp_tls              , iarr_result)
-  assert approx_equal(rm.s_occupancies        , oarr_result)
+  compare_selections(rm.s_occupancies, oarr_result)
 
 def exercise_add_1c():
   rm = all_defined()
@@ -315,8 +315,9 @@ def exercise_add_1c():
   # [0,1,1,0,1,1,0,1,1,0, 1, 1, 0, 1, 0, 0] - original
   # [0,1,1,0,1,1,1,1,0,1,1,1,0, 1, 1, 0, 1, 0, 0] - after insertion for tuples
   #
-  # [ [[1],[2]], [[4,5],[7,8]], [[10]], [[11,13]] ] - original
-  # [ [[1],[2]], [[4]], [[5,6,7],[9,10,11]], [[13]], [[14,16]] ]  - after insertion for tuples
+  # [ [[1],[2]], [[4,5],[7,8]],  [[10]], [[11,13]] ] - original
+  #
+  # [ [[1],[2]], [[5,7],[9,10]], [[13]], [[14,16]], [[4]], [[6]], [[11]] ] - after insertion for tuples
   rm = rm.add(
     next_to_i_seqs       = flex.size_t([4,8,3]),
     sites_individual     = True,
@@ -343,9 +344,9 @@ Refinement flags and selection counts:
   iarr_result = [ flex.size_t([1]), flex.size_t([2]),
     flex.size_t([5,6,7]), flex.size_t([9,10,11]), flex.size_t([13]),
     flex.size_t([14,16]), flex.size_t([4]) ]
-  oarr_result = [ [flex.size_t([1]), flex.size_t([2])],
-    [flex.size_t([5,6,7]), flex.size_t([9,10,11])], [flex.size_t([13])],
-    [flex.size_t([14,16])], [flex.size_t([4])] ]
+  oarr_result = [ [flex.size_t([1]),flex.size_t([2])], [flex.size_t([5,7]),
+    flex.size_t([9,10])], [flex.size_t([13])], [flex.size_t([14,16])],
+    [flex.size_t([4])], [flex.size_t([6])], [flex.size_t([11])] ]
   assert approx_equal(rm.sites_individual    , barr_result)
   assert approx_equal(rm.sites_rigid_body    , iarr_result)
   assert approx_equal(rm.adp_individual_iso  , barr_result)
@@ -353,7 +354,7 @@ Refinement flags and selection counts:
   assert approx_equal(rm.adp_group           , iarr_result)
   assert approx_equal(rm.group_h             , iarr_result)
   assert approx_equal(rm.adp_tls             , iarr_result)
-  assert approx_equal(rm.s_occupancies       , oarr_result)
+  compare_selections(rm.s_occupancies, oarr_result)
 
 def exercise_add_2b():
   rm = all_defined_1()
@@ -391,10 +392,8 @@ Refinement flags and selection counts:
   barr_result = flex.bool([1,0,1,1,0,1,1,0,0,1,0,0,0,0,1,1,1,0,1,0])
   iarr_result = [ flex.size_t([0]), flex.size_t([2,3]), flex.size_t([5,6]),
     flex.size_t([9]), flex.size_t([14,15,16]), flex.size_t([18]) ]
-
   oarr_result = [ [flex.size_t([0]),flex.size_t([2,3])], [flex.size_t([5,6])],
     [flex.size_t([9])], [flex.size_t([14,15,16]),flex.size_t([18])] ]
-
   assert approx_equal(rm.sites_individual    , barr_result)
   assert approx_equal(rm.sites_rigid_body    , iarr_result)
   assert approx_equal(rm.adp_individual_iso  , barr_result)
@@ -402,7 +401,7 @@ Refinement flags and selection counts:
   assert approx_equal(rm.adp_group           , iarr_result)
   assert approx_equal(rm.group_h             , iarr_result)
   assert approx_equal(rm.adp_tls             , iarr_result)
-  assert approx_equal(rm.s_occupancies       , oarr_result)
+  compare_selections(rm.s_occupancies, oarr_result)
 
 def exercise_add_2c():
   rm = all_defined_1()
@@ -410,8 +409,7 @@ def exercise_add_2c():
   # [ [0], [1], [2,3], [5,6], [9], [12], [14,15,16,17], [18], [19] ]  - after insertion for tuples
   #
   # [ [[0],[1,2]], [[4,5]], [[8]], [[12,13,14],[15]] ] - original
-  # [ [[0,1],[2,3]], [[5,6]], [[9]], [[11]], [[14,15,16,17],[18,19]] ]  - after insertion for tuples
-  # [ [[0], [1], [2, 3]], [[5, 6]], [[9]], [[14, 15, 16, 17], [18], [19]], [[12]]]
+  # [ [[0],[2,3]], [[5,6]], [[9]], [[14,15,16],[18]], [[1]], [[12]], [[17]], [[19]] ] - after insertion for tuples
   #
   #  0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
   # [1,1,1,0,1,1,0,0,1,0, 0, 0, 1, 1, 1, 1] - original
@@ -428,30 +426,40 @@ def exercise_add_2c():
     s_occupancies        = True)
   out = StringIO()
   rm.show(log = out)
-#  assert not show_diff(out.getvalue(), """\
-#Refinement flags and selection counts:
-#  individual_sites       = %s (9 atoms)
-#  rigid_body             = %s (9 atoms in 7 groups)
-#  individual_adp         = %s (iso = 9 aniso = 9)
-#  group_adp              = %s (9 atoms in 7 groups)
-#  tls                    = %s (9 atoms in 7 groups)
-#  individual_occupancies = %s (9 atoms)
-#  group_occupancies      = %s (9 atoms in 7 groups)
-#  group_anomalous        = %s
-#""" % tuple(["%5s" % str(True)]*8))
+  assert not show_diff(out.getvalue(), """\
+Refinement flags and selection counts:
+  individual_sites       = %s (14 atoms)
+  rigid_body             = %s (14 atoms in 9 groups)
+  individual_adp         = %s (iso = 14 aniso = 14)
+  group_adp              = %s (14 atoms in 9 groups)
+  tls                    = %s (14 atoms in 9 groups)
+  occupancies            = %s (14 atoms)
+  group_anomalous        = %s
+""" % tuple(["%5s" % str(True)]*7))
   barr_result = flex.bool([1,1,1,1,0,1,1,0,0,1,0,0,1,0,1,1,1,1,1,1])
   iarr_result = [ flex.size_t([0]), flex.size_t([1]), flex.size_t([2,3]),
     flex.size_t([5,6]), flex.size_t([9]), flex.size_t([14,15,16,17]),
     flex.size_t([18]), flex.size_t([19]), flex.size_t([12])]
-#  assert approx_equal(rm.sites_individual      , barr_result)
-#  assert approx_equal(rm.sites_rigid_body      , iarr_result)
-#  assert approx_equal(rm.adp_individual_iso    , barr_result)
-#  assert approx_equal(rm.adp_individual_aniso  , barr_result)
-#  assert approx_equal(rm.adp_group             , iarr_result)
-#  assert approx_equal(rm.group_h               , iarr_result)
-#  assert approx_equal(rm.adp_tls               , iarr_result)
-  #assert approx_equal(rm.s_occupancies , oarr_result)
-  print [[list(k) for k in i] for i in rm.s_occupancies]
+  oarr_result = [ [flex.size_t([0]),flex.size_t([2,3])], [flex.size_t([5,6])],
+                  [flex.size_t([9])], [flex.size_t([14,15,16]),flex.size_t([18])],
+                  [flex.size_t([1])], [flex.size_t([12])], [flex.size_t([17])],
+                  [flex.size_t([19])] ]
+  assert approx_equal(rm.sites_individual      , barr_result)
+  assert approx_equal(rm.sites_rigid_body      , iarr_result)
+  assert approx_equal(rm.adp_individual_iso    , barr_result)
+  assert approx_equal(rm.adp_individual_aniso  , barr_result)
+  assert approx_equal(rm.adp_group             , iarr_result)
+  assert approx_equal(rm.group_h               , iarr_result)
+  assert approx_equal(rm.adp_tls               , iarr_result)
+  compare_selections(rm.s_occupancies, oarr_result)
+
+def compare_selections(x, y):
+  x = [[list(k) for k in i] for i in x][:]
+  y = [[list(k) for k in i] for i in y][:]
+  x.sort()
+  y.sort()
+  assert approx_equal(x, y)
+
 
 def exercise():
   exercise_deepcopy_show_select()
@@ -461,7 +469,7 @@ def exercise():
   exercise_add_1b()
   exercise_add_1c()
   exercise_add_2b()
-  #exercise_add_2c()
+  exercise_add_2c()
 
 if(__name__ == "__main__"):
    exercise()

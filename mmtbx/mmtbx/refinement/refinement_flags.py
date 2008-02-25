@@ -273,7 +273,7 @@ class manager(object):
     self.check_all()
     return self
 
-  def _add_to_single_size_t(self, x, next_to_i_seq, squeeze_in):
+  def _add_to_single_size_t(self, x, next_to_i_seq, squeeze_in, mode=1):
     tmp_x = []
     new_independent_element = None
     added = 0
@@ -283,10 +283,15 @@ class manager(object):
       elif(sel == next_to_i_seq):
         tmp_x.append(sel)
         if(squeeze_in):
-          if(x.size() > 1):
-            tmp_x.append(next_to_i_seq+1)
-            added = 1
-          elif(x.size() == 1):
+          if(mode == 1):
+            if(x.size() > 1):
+              tmp_x.append(next_to_i_seq+1)
+              added = 1
+            elif(x.size() == 1):
+              new_independent_element = [next_to_i_seq+1]
+              added = 1
+            else: raise RuntimeError
+          elif(mode == 2):
             new_independent_element = [next_to_i_seq+1]
             added = 1
           else: raise RuntimeError
@@ -326,17 +331,18 @@ class manager(object):
     elif(self.is_size_t(x[0][0])):
       xx_new = []
       added = 0
+      result_1 = None
       for xx in x:
         x_new = []
         for x_ in xx:
-          result = self._add_to_single_size_t(x_, next_to_i_seq, squeeze_in)
+          result = self._add_to_single_size_t(x_, next_to_i_seq, squeeze_in, 2)
           added += result[2]
-          if(result[1] is None): x_new.extend([result[0]])
+          if(result[1] is None):
+            x_new.extend([result[0]])
           else:
-            x_new.extend([result[0],result[1]])
-            #print [list(result[0]), list(result[1])], [list(h) for h in x_new]
-        #if(added == 0 and squeeze_in):
-        #  x_new.extend([flex.size_t([next_to_i_seq+1])])
+            x_new.extend([result[0]])
+          if(result[1] is not None):
+            xx_new.append([result[1]])
         if(len(x_new) > 0): xx_new.append(x_new)
       if(added == 0 and squeeze_in):
         xx_new.append([flex.size_t([next_to_i_seq+1])])
