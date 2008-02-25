@@ -1824,34 +1824,6 @@ model id=0 #chains=1
   else: raise Exception_expected
   del hierarchy_v1
   pdb_inp.construct_hierarchy_v1()
-  hierarchy_v1 = pdb_inp.construct_hierarchy_v1()
-  check_hierarchy_v1(
-    hierarchy=hierarchy_v1,
-    expected_formatted="""\
-model id=0 #chains=1
-  chain id=" " #conformers=1
-    conformer id=" " #residues=2 #atoms=17
-      residue name="SER" seq="  35" icode=" " #atoms=8
-         " OG "
-         " N  "
-         " C  "
-         " CA "
-         " OG "
-         " CB "
-         " O  "
-         " CB "
-      ### chain break ###
-      residue name="ASN" seq="  36" icode=" " #atoms=9
-         " N  "
-         " CA "
-         " C  "
-         " CA "
-         " N  "
-         " O  "
-         " CB "
-         " O  "
-         " CB "
-""")
   #
   pdb_inp = pdb.input(
     source_info=None,
