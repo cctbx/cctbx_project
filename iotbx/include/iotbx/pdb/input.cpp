@@ -1330,7 +1330,7 @@ namespace iotbx { namespace pdb {
   }
 
   hierarchy_v1::root
-  input::construct_hierarchy_v1(bool ignore_altloc)
+  input::construct_hierarchy_v1()
   {
     number_of_alternative_groups_with_blank_altloc_ = 0;
     number_of_alternative_groups_without_blank_altloc_ = 0;
@@ -1388,12 +1388,7 @@ namespace iotbx { namespace pdb {
             }
             else {
               bool this_group_has_blank_altloc = false;
-              if (!ignore_altloc) {
-                alternatives[sj->altloc()].push_back(sj->i_seq);
-              }
-              else {
-                common_sel.push_back(sj->i_seq);
-              }
+              alternatives[sj->altloc()].push_back(sj->i_seq);
               const i_seq_input_atom_labels* sb = sj;
               while (sb != si) {
                 // scan backwards to find beginning of group
@@ -1401,12 +1396,7 @@ namespace iotbx { namespace pdb {
                   sb++;
                   break;
                 }
-                if (!ignore_altloc) {
-                  alternatives[blank_altloc_char].push_back(sb->i_seq);
-                }
-                else {
-                  common_sel.push_back(sb->i_seq);
-                }
+                alternatives[blank_altloc_char].push_back(sb->i_seq);
                 this_group_has_blank_altloc = true;
               }
               // process all preceeding with blank altlocs
@@ -1417,12 +1407,7 @@ namespace iotbx { namespace pdb {
                 if (!sj->labels.equal_ignoring_altloc(si->labels)) {
                   break;
                 }
-                if (!ignore_altloc) {
-                  alternatives[si->altloc()].push_back(si->i_seq);
-                }
-                else {
-                  common_sel.push_back(si->i_seq);
-                }
+                alternatives[si->altloc()].push_back(si->i_seq);
                 if (si->altloc() == blank_altloc_char) {
                   this_group_has_blank_altloc = true;
                 }

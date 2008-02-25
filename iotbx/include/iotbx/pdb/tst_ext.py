@@ -1817,14 +1817,14 @@ model id=0 #chains=1
     c.reset_atom_tmp(new_value=1)
     assert c.reset_atom_tmp(new_value=0) == 17
   _local(hierarchy_v1)
-  try: pdb_inp.construct_hierarchy_v1(ignore_altloc=True)
+  try: pdb_inp.construct_hierarchy_v1()
   except RuntimeError, e:
     assert str(e).endswith(
       "): SCITBX_ASSERT(number_of_old_parents == 0) failure.")
   else: raise Exception_expected
   del hierarchy_v1
-  pdb_inp.construct_hierarchy_v1(ignore_altloc=False)
-  hierarchy_v1 = pdb_inp.construct_hierarchy_v1(ignore_altloc=True)
+  pdb_inp.construct_hierarchy_v1()
+  hierarchy_v1 = pdb_inp.construct_hierarchy_v1()
   check_hierarchy_v1(
     hierarchy=hierarchy_v1,
     expected_formatted="""\
