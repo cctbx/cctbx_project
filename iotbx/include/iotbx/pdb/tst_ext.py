@@ -445,7 +445,7 @@ def exercise_model():
   assert m.reset_atom_tmp(new_value=2) == 0
 
 def exercise_hierarchy():
-  h = pdb.hierarchy()
+  h = pdb.root()
   m = pdb.model()
   m.set_parent(new_parent=h)
   assert m.parent().memory_id() == h.memory_id()
@@ -458,7 +458,7 @@ def exercise_hierarchy():
   del h
   assert m.parent() is None
   #
-  h = pdb.hierarchy()
+  h = pdb.root()
   assert h.info.size() == 0
   h.info.append("abc")
   assert h.info.size() == 1

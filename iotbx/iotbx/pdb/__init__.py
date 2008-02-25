@@ -591,7 +591,7 @@ class _conformer(boost.python.injector, ext.conformer):
 
 hierarchy_level_ids = ["model", "chain", "conformer", "residue", "atom"]
 
-class _hierarchy(boost.python.injector, ext.hierarchy):
+class _root(boost.python.injector, ext.root):
 
   def show(self,
         out=None,

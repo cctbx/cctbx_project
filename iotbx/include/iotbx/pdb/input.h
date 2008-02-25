@@ -469,7 +469,7 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> const&
       atom_serial_number_strings() const { return atom_serial_number_strings_;}
 
-      af::shared<atom> const&
+      af::shared<hierarchy::atom> const&
       atoms() const { return atoms_; }
 
       af::shared<int> const&
@@ -535,7 +535,7 @@ namespace iotbx { namespace pdb {
       find_duplicate_atom_labels() const;
 
       //! not const because atom parents are modified.
-      hierarchy
+      hierarchy::root
       construct_hierarchy(bool ignore_altloc=false);
 
       unsigned
@@ -583,8 +583,8 @@ namespace iotbx { namespace pdb {
         af::shared<attr_type > result( \
           atoms_.size(), af::init_functor_null<attr_type >()); \
         attr_type* r = result.begin(); \
-        const atom* atoms_end = atoms_.end(); \
-        for(const atom* a=atoms_.begin();a!=atoms_end;a++) { \
+        const hierarchy::atom* atoms_end = atoms_.end(); \
+        for(const hierarchy::atom* a=atoms_.begin();a!=atoms_end;a++) { \
           *r++ = a->data->attr; \
         } \
         return result; \
@@ -622,7 +622,7 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> crystallographic_section_;
       af::shared<input_atom_labels> input_atom_labels_list_;
       af::shared<std::string> atom_serial_number_strings_;
-      af::shared<atom>        atoms_;
+      af::shared<hierarchy::atom> atoms_;
       af::shared<int>         model_numbers_;
       af::shared<std::size_t> model_indices_;
       af::shared<std::size_t> ter_indices_;
