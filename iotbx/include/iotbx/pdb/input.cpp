@@ -736,7 +736,7 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  atom
+  hierarchy::atom
   process_atom_record(pdb::line_info& line_info, bool hetero)
   {
     // 13 - 16  Atom          name          Atom name.
@@ -752,7 +752,7 @@ namespace iotbx { namespace pdb {
     // 73 - 76  LString(4)    segID         Segment identifier, left-justified.
     // 77 - 78  LString(2)    element       Element symbol, right-justified.
     // 79 - 80  LString(2)    charge        Charge on the atom.
-    return atom(
+    return hierarchy::atom(
       str4(line_info.data,line_info.size,12,' '), // name
       str4(line_info.data,line_info.size,72,' '), // segid
       str2(line_info.data,line_info.size,76,' '), // element
@@ -777,7 +777,7 @@ namespace iotbx { namespace pdb {
   process_sigatm_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    pdb::atom_data& atom_data)
+    hierarchy::atom_data& atom_data)
   {
     atom_data.sigxyz = vec3(
       field_as_double(line_info,30,38),
@@ -792,7 +792,7 @@ namespace iotbx { namespace pdb {
   process_anisou_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    pdb::atom_data& atom_data)
+    hierarchy::atom_data& atom_data)
   {
     // 29 - 35  Integer       U(1,1)
     // 36 - 42  Integer       U(2,2)
@@ -814,7 +814,7 @@ namespace iotbx { namespace pdb {
   process_siguij_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    pdb::atom_data& atom_data)
+    hierarchy::atom_data& atom_data)
   {
     atom_data.siguij[0] = field_as_int(line_info,28,35);
     atom_data.siguij[1] = field_as_int(line_info,35,42);
@@ -1027,7 +1027,7 @@ namespace iotbx { namespace pdb {
   };
 
   void
-  pre_allocate_atom_parents(pdb::atom& atom, unsigned number_of_parents)
+  pre_allocate_atom_parents(hierarchy::atom& atom, unsigned number_of_parents)
   {
      bool number_of_old_parents = atom.reset_parents();
      SCITBX_ASSERT(number_of_old_parents == 0);
@@ -1071,7 +1071,7 @@ namespace iotbx { namespace pdb {
         atoms_.size()
       + columns_73_76_eval.number_of_atom_and_hetatm_lines);
     input_atom_labels* current_input_atom_labels = 0;
-    atom_data* current_atom_data = 0;
+    hierarchy::atom_data* current_atom_data = 0;
     bool expect_anisou = false;
     bool expect_sigatm = false;
     bool expect_siguij = false;
@@ -1328,7 +1328,7 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  hierarchy
+  hierarchy::root
   input::construct_hierarchy(bool ignore_altloc)
   {
     number_of_alternative_groups_with_blank_altloc_ = 0;
@@ -1341,7 +1341,7 @@ namespace iotbx { namespace pdb {
     af::const_ref<std::vector<unsigned> >
       chain_indices = chain_indices_.const_ref();
     SCITBX_ASSERT(chain_indices.size() == model_numbers.size());
-    hierarchy result;
+    hierarchy::root result;
     result.new_models(model_numbers.size());
     af::shared<std::size_t>
       first_i_seqs_alternative_group_with_blank_altloc;
@@ -1349,16 +1349,16 @@ namespace iotbx { namespace pdb {
     std::vector<unsigned> residue_indices;       // outside loop to
     residue_indices.reserve(large_residue_size); // allocate only once
     const input_atom_labels* iall = input_atom_labels_list_.begin();
-    atom* atoms = atoms_.begin();
+    hierarchy::atom* atoms = atoms_.begin();
     unsigned next_chain_range_begin = 0;
     for(unsigned i_model=0;i_model<model_numbers.size();i_model++) {
-      pdb::model model = result.models()[i_model];
+      hierarchy::model model = result.models()[i_model];
       model.data->id = model_numbers[i_model];
       model.new_chains(chain_indices[i_model].size());
       range_loop<unsigned> ch_r(
         chain_indices[i_model], next_chain_range_begin);
       for(unsigned i_chain=0;ch_r.next();i_chain++) {
-        pdb::chain chain = model.get_chain(i_chain);
+        hierarchy::chain chain = model.get_chain(i_chain);
         chain.data->id = iall[ch_r.begin].chain();
         // convert break_indices to break_range_ids
         boost::scoped_array<unsigned>
@@ -1536,7 +1536,7 @@ namespace iotbx { namespace pdb {
               }
             }
             residue_indices.push_back(n_cfs);
-            pdb::conformer conformer = chain.get_conformer(i_conformer);
+            hierarchy::conformer conformer = chain.get_conformer(i_conformer);
             conformer.data->id = std::string(1, alt->first);
             // pre-allocate to avoid repeated re-allocation
             conformer.pre_allocate_residues(residue_indices.size());
@@ -1549,7 +1549,7 @@ namespace iotbx { namespace pdb {
               const input_atom_labels* ial = &iall[*cfs_i];
               unsigned curr_break_range_id \
                 = break_range_ids[(*cfs_i)-ch_r.begin];
-              pdb::residue residue = conformer.new_residue(
+              hierarchy::residue residue = conformer.new_residue(
                 ial->resname_small().elems,
                 ial->resseq_small().elems,
                 ial->icode_small().elems,
@@ -1597,8 +1597,8 @@ namespace iotbx { namespace pdb {
   {
     std::map<std::string, unsigned> result;
     std::map<str2, unsigned> counts;
-    const atom* atoms_end = atoms_.end();
-    for(const atom* a=atoms_.begin();a!=atoms_end;a++) {
+    const hierarchy::atom* atoms_end = atoms_.end();
+    for(const hierarchy::atom* a=atoms_.begin();a!=atoms_end;a++) {
       counts[a->data->element]++;
     }
     for(std::map<str2, unsigned>::const_iterator
@@ -1613,9 +1613,9 @@ namespace iotbx { namespace pdb {
   input::extract_atom_hetero() const
   {
     af::shared<std::size_t> result;
-    const atom* atoms_end = atoms_.end();
+    const hierarchy::atom* atoms_end = atoms_.end();
     std::size_t i_seq = 0;
-    for(const atom* a=atoms_.begin();a!=atoms_end;a++,i_seq++) {
+    for(const hierarchy::atom* a=atoms_.begin();a!=atoms_end;a++,i_seq++) {
       if (a->data->hetero) result.push_back(i_seq);
     }
     return result;
@@ -1625,9 +1625,9 @@ namespace iotbx { namespace pdb {
   input::extract_atom_flag_altloc() const
   {
     af::shared<std::size_t> result;
-    const atom* atoms_end = atoms_.end();
+    const hierarchy::atom* atoms_end = atoms_.end();
     std::size_t i_seq = 0;
-    for(const atom* a=atoms_.begin();a!=atoms_end;a++,i_seq++) {
+    for(const hierarchy::atom* a=atoms_.begin();a!=atoms_end;a++,i_seq++) {
       if (a->data->flag_altloc) result.push_back(i_seq);
     }
     return result;
@@ -1636,9 +1636,9 @@ namespace iotbx { namespace pdb {
   void
   input::reset_atom_tmp(int first_value, int increment) const
   {
-    const atom* atoms_end = atoms_.end();
+    const hierarchy::atom* atoms_end = atoms_.end();
     int value = first_value;
-    for(const atom* a=atoms_.begin();a!=atoms_end;a++) {
+    for(const hierarchy::atom* a=atoms_.begin();a!=atoms_end;a++) {
       a->data->tmp = value;
       value += increment;
     }

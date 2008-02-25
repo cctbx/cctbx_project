@@ -16,7 +16,7 @@
 
 namespace boost_python_meta_ext { struct holder {}; }
 
-namespace iotbx { namespace pdb {
+namespace iotbx { namespace pdb { namespace hierarchy {
 namespace {
 
 #define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
@@ -456,7 +456,7 @@ namespace {
     process_next_residue(
       std::string const& conformer_id,
       bool is_first_of_group,
-      const pdb::residue& residue,
+      const hierarchy::residue& residue,
       bool suppress_chain_break)
     {
       const char* chain_id = this->chain_id.c_str();
@@ -564,12 +564,12 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("model", no_init)
-        .def(init<hierarchy const&, optional<int> >((
+        .def(init<root const&, optional<int> >((
           arg_("parent"), arg_("id")=0)))
         .def(init<int>((arg_("id")=0)))
         .add_property("id", make_function(get_id), make_function(set_id))
         .def("memory_id", &w_t::memory_id)
-        .def("parent", get_parent<model, hierarchy>::wrapper)
+        .def("parent", get_parent<model, root>::wrapper)
         .def("set_parent", &w_t::set_parent, (arg_("new_parent")))
         .def("pre_allocate_chains", &w_t::pre_allocate_chains,
           (arg_("number_of_additional_chains")))
@@ -584,9 +584,9 @@ namespace {
     }
   };
 
-  struct hierarchy_wrappers
+  struct root_wrappers
   {
-    typedef hierarchy w_t;
+    typedef root w_t;
 
     static af::shared<std::string>
     get_info(w_t const& self) { return self.data->info; }
@@ -597,14 +597,14 @@ namespace {
       self.data->info = new_info;
     }
 
-    IOTBX_PDB_HIERARCHY_GET_CHILDREN(hierarchy, model, models)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(root, model, models)
 
     static boost::python::object
     overall_counts(w_t const& self)
     {
       boost::python::object result = boost::python::object(
         boost_python_meta_ext::holder());
-      boost::shared_ptr<hierarchy::overall_counts_holder>
+      boost::shared_ptr<root::overall_counts_holder>
         counts = self.overall_counts();
       result.attr("n_models") = counts->n_models;
       result.attr("n_chains") = counts->n_chains;
@@ -626,7 +626,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
-      class_<w_t>("hierarchy", no_init)
+      class_<w_t>("root", no_init)
         .def(init<>())
         .add_property("info", make_function(get_info), make_function(set_info))
         .def("memory_id", &w_t::memory_id)
@@ -652,14 +652,14 @@ namespace {
     conformer_wrappers::wrap();
     chain_wrappers::wrap();
     model_wrappers::wrap();
-    hierarchy_wrappers::wrap();
+    root_wrappers::wrap();
   }
 
-} // namespace <anonymous>
+}} // namespace hierarchy::<anonymous>
 
 namespace boost_python {
 
   void
-  wrap_hierarchy() { wrap_hierarchy_impl(); }
+  wrap_hierarchy() { hierarchy::wrap_hierarchy_impl(); }
 
 }}} // namespace iotbx::pdb::boost_python

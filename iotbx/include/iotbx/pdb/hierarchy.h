@@ -26,8 +26,10 @@ namespace pdb {
   using boost::shared_ptr;
   using boost::weak_ptr;
 
-  class hierarchy_data;
-  class hierarchy;
+namespace hierarchy {
+
+  class root_data;
+  class root;
   class model_data;
   class model;
   class chain_data;
@@ -40,11 +42,11 @@ namespace pdb {
 
   class combine_conformers;
 
-  //! Holder for hierarchy attributes (to be held by a shared_ptr).
-  class hierarchy_data : boost::noncopyable
+  //! Holder for root attributes (to be held by a shared_ptr).
+  class root_data : boost::noncopyable
   {
     protected:
-      friend class hierarchy;
+      friend class root;
     public:
       af::shared<std::string> info;
     protected:
@@ -56,7 +58,7 @@ namespace pdb {
   {
     protected:
       friend class model;
-      weak_ptr<hierarchy_data> parent;
+      weak_ptr<root_data> parent;
     public:
       int id;
     protected:
@@ -64,7 +66,7 @@ namespace pdb {
 
       inline
       model_data(
-        weak_ptr<hierarchy_data> const& parent,
+        weak_ptr<root_data> const& parent,
         int id);
 
       inline
@@ -666,11 +668,11 @@ namespace pdb {
     process_next_residue(
       std::string const& conformer_id,
       bool is_first_of_group,
-      const pdb::residue& residue,
+      const hierarchy::residue& residue,
       bool suppress_chain_break) = 0;
 
     void
-    process_single_conformer(pdb::conformer const& conformer);
+    process_single_conformer(hierarchy::conformer const& conformer);
 
     void
     process_conformers(std::vector<conformer> const& conformers);
@@ -778,7 +780,7 @@ namespace pdb {
 
       inline
       model(
-        hierarchy const& parent,
+        root const& parent,
         int id=0);
 
       model(int id=0) : data(new model_data(id)) {}
@@ -786,12 +788,12 @@ namespace pdb {
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
 
-      boost::optional<hierarchy>
+      boost::optional<root>
       parent() const;
 
       inline
       void
-      set_parent(hierarchy const& new_parent);
+      set_parent(root const& new_parent);
 
       void
       pre_allocate_chains(unsigned number_of_additional_chains)
@@ -837,26 +839,26 @@ namespace pdb {
       reset_atom_tmp(int new_value) const;
   };
 
-  //! Hierarchy attributes.
-  class hierarchy
+  //! Root attributes.
+  class root
   {
     public:
-      shared_ptr<hierarchy_data> data;
+      shared_ptr<root_data> data;
 
     protected:
       friend class model;
-      hierarchy(shared_ptr<hierarchy_data> const& data_, bool) : data(data_) {}
+      root(shared_ptr<root_data> const& data_, bool) : data(data_) {}
 
     public:
-      hierarchy(
-        shared_ptr<hierarchy_data> const& data_)
+      root(
+        shared_ptr<root_data> const& data_)
       :
         data(data_)
       {
         SCITBX_ASSERT(data.get() != 0);
       }
 
-      hierarchy() : data(new hierarchy_data) {}
+      root() : data(new root_data) {}
 
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
@@ -925,7 +927,7 @@ namespace pdb {
 
   inline
   model_data::model_data(
-    weak_ptr<hierarchy_data> const& parent_,
+    weak_ptr<root_data> const& parent_,
     int id_)
   :
     parent(parent_),
@@ -937,7 +939,7 @@ namespace pdb {
 
   inline
   model::model(
-    hierarchy const& parent,
+    root const& parent,
     int id)
   :
     data(new model_data(parent.data, id))
@@ -946,7 +948,7 @@ namespace pdb {
   inline
   void
   model::set_parent(
-    hierarchy const& new_parent)
+    root const& new_parent)
   {
     data->parent = new_parent.data;
   }
@@ -1087,6 +1089,6 @@ namespace pdb {
     data(new atom_data(parent.data, *other.data))
   {}
 
-}} // namespace iotbx::pdb
+}}} // namespace iotbx::pdb::hierarchy
 
 #endif // IOTBX_PDB_HIERARCHY_H

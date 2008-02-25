@@ -5,10 +5,10 @@
 #include <boost/scoped_array.hpp>
 #include <ctype.h>
 
-namespace iotbx { namespace pdb {
+namespace iotbx { namespace pdb { namespace hierarchy {
 
   void
-  hierarchy::new_models(unsigned number_of_additional_models)
+  root::new_models(unsigned number_of_additional_models)
   {
     pre_allocate_models(number_of_additional_models);
     for(unsigned i=0;i<number_of_additional_models;i++) {
@@ -17,7 +17,7 @@ namespace iotbx { namespace pdb {
   }
 
   unsigned
-  hierarchy::reset_atom_tmp(int new_value) const
+  root::reset_atom_tmp(int new_value) const
   {
     unsigned n = models_size();
     if (n == 0) return 0;
@@ -29,8 +29,8 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  boost::shared_ptr<hierarchy::overall_counts_holder>
-  hierarchy::overall_counts() const
+  boost::shared_ptr<root::overall_counts_holder>
+  root::overall_counts() const
   {
     reset_atom_tmp(0);
     boost::shared_ptr<overall_counts_holder>
@@ -80,12 +80,12 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  boost::optional<hierarchy>
+  boost::optional<root>
   model::parent() const
   {
-    shared_ptr<hierarchy_data> parent = data->parent.lock();
-    if (parent.get() == 0) return boost::optional<hierarchy>();
-    return boost::optional<hierarchy>(hierarchy(parent, true));
+    shared_ptr<root_data> parent = data->parent.lock();
+    if (parent.get() == 0) return boost::optional<root>();
+    return boost::optional<root>(root(parent, true));
   }
 
   void
@@ -179,7 +179,7 @@ namespace iotbx { namespace pdb {
 
   void
   combine_conformers::process_single_conformer(
-    pdb::conformer const& conformer)
+    hierarchy::conformer const& conformer)
   {
     std::string const& conformer_id = conformer.data->id;
     std::vector<residue> const& residues = conformer.residues();
@@ -797,4 +797,4 @@ namespace iotbx { namespace pdb {
     return format_atom_record(result, serial, 0, 0, 0, 0, 0);
   }
 
-}} // namespace iotbx::pdb
+}}} // namespace iotbx::pdb::hierarchy
