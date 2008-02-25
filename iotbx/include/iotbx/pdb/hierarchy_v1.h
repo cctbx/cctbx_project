@@ -1,5 +1,5 @@
-#ifndef IOTBX_PDB_HIERARCHY_H
-#define IOTBX_PDB_HIERARCHY_H
+#ifndef IOTBX_PDB_HIERARCHY_V1_H
+#define IOTBX_PDB_HIERARCHY_V1_H
 
 #include <iotbx/pdb/small_str.h>
 #include <scitbx/array_family/shared.h>
@@ -26,7 +26,7 @@ namespace pdb {
   using boost::shared_ptr;
   using boost::weak_ptr;
 
-namespace hierarchy {
+namespace hierarchy_v1 {
 
   class root_data;
   class root;
@@ -668,11 +668,11 @@ namespace hierarchy {
     process_next_residue(
       std::string const& conformer_id,
       bool is_first_of_group,
-      const hierarchy::residue& residue,
+      const hierarchy_v1::residue& residue,
       bool suppress_chain_break) = 0;
 
     void
-    process_single_conformer(hierarchy::conformer const& conformer);
+    process_single_conformer(hierarchy_v1::conformer const& conformer);
 
     void
     process_conformers(std::vector<conformer> const& conformers);
@@ -1089,6 +1089,6 @@ namespace hierarchy {
     data(new atom_data(parent.data, *other.data))
   {}
 
-}}} // namespace iotbx::pdb::hierarchy
+}}} // namespace iotbx::pdb::hierarchy_v1
 
-#endif // IOTBX_PDB_HIERARCHY_H
+#endif // IOTBX_PDB_HIERARCHY_V1_H

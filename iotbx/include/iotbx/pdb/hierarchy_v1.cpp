@@ -1,11 +1,11 @@
-#include <iotbx/pdb/hierarchy.h>
+#include <iotbx/pdb/hierarchy_v1.h>
 #include <iotbx/pdb/common_residue_names.h>
 #include <iotbx/pdb/hybrid_36_c.h>
 #include <cctbx/eltbx/chemical_elements.h>
 #include <boost/scoped_array.hpp>
 #include <ctype.h>
 
-namespace iotbx { namespace pdb { namespace hierarchy {
+namespace iotbx { namespace pdb { namespace hierarchy_v1 {
 
   void
   root::new_models(unsigned number_of_additional_models)
@@ -179,7 +179,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
 
   void
   combine_conformers::process_single_conformer(
-    hierarchy::conformer const& conformer)
+    hierarchy_v1::conformer const& conformer)
   {
     std::string const& conformer_id = conformer.data->id;
     std::vector<residue> const& residues = conformer.residues();
@@ -797,4 +797,4 @@ namespace iotbx { namespace pdb { namespace hierarchy {
     return format_atom_record(result, serial, 0, 0, 0, 0, 0);
   }
 
-}}} // namespace iotbx::pdb::hierarchy
+}}} // namespace iotbx::pdb::hierarchy_v1

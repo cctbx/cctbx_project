@@ -13,14 +13,14 @@
 #include <boost/python/return_arg.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <iotbx/pdb/hierarchy.h>
+#include <iotbx/pdb/hierarchy_v1.h>
 
 namespace boost_python_meta_ext { struct holder {}; }
 
-namespace iotbx { namespace pdb { namespace hierarchy {
+namespace iotbx { namespace pdb { namespace hierarchy_v1 {
 namespace {
 
-#define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
+#define IOTBX_PDB_HIERARCHY_V1_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
     static \
     boost::python::str \
     get_##attr(w_t const& self) \
@@ -47,10 +47,10 @@ namespace {
   {
     typedef atom w_t;
 
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
+    IOTBX_PDB_HIERARCHY_V1_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
+    IOTBX_PDB_HIERARCHY_V1_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
+    IOTBX_PDB_HIERARCHY_V1_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
+    IOTBX_PDB_HIERARCHY_V1_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
 
     static vec3
     get_xyz(w_t const& self) { return self.data->xyz; }
@@ -266,7 +266,7 @@ namespace {
     }
   };
 
-#define IOTBX_PDB_HIERARCHY_GET_CHILDREN(parent_t, child_t, method) \
+#define IOTBX_PDB_HIERARCHY_V1_GET_CHILDREN(parent_t, child_t, method) \
   static \
   boost::python::list \
   get_##method(parent_t const& parent) \
@@ -282,9 +282,9 @@ namespace {
   {
     typedef residue w_t;
 
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(seq)
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
+    IOTBX_PDB_HIERARCHY_V1_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
+    IOTBX_PDB_HIERARCHY_V1_DATA_WRAPPERS_SMALL_STR_GET_SET(seq)
+    IOTBX_PDB_HIERARCHY_V1_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
 
     static bool
     get_link_to_previous(w_t const& self)
@@ -301,7 +301,7 @@ namespace {
     static std::string
     id(w_t const& self) { return self.data->id(); }
 
-    IOTBX_PDB_HIERARCHY_GET_CHILDREN(residue, atom, atoms)
+    IOTBX_PDB_HIERARCHY_V1_GET_CHILDREN(residue, atom, atoms)
 
     static void
     wrap()
@@ -363,7 +363,7 @@ namespace {
       self.data->id = new_id;
     }
 
-    IOTBX_PDB_HIERARCHY_GET_CHILDREN(conformer, residue, residues)
+    IOTBX_PDB_HIERARCHY_V1_GET_CHILDREN(conformer, residue, residues)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       new_residue_overloads, new_residue, 0, 4)
@@ -457,7 +457,7 @@ namespace {
     process_next_residue(
       std::string const& conformer_id,
       bool is_first_of_group,
-      const hierarchy::residue& residue,
+      const hierarchy_v1::residue& residue,
       bool suppress_chain_break)
     {
       const char* chain_id = this->chain_id.c_str();
@@ -506,7 +506,7 @@ namespace {
       self.data->id = new_id;
     }
 
-    IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, conformer, conformers)
+    IOTBX_PDB_HIERARCHY_V1_GET_CHILDREN(chain, conformer, conformers)
 
     static
     int
@@ -558,7 +558,7 @@ namespace {
     static void
     set_id(w_t const& self, int new_id) { self.data->id = new_id; }
 
-    IOTBX_PDB_HIERARCHY_GET_CHILDREN(model, chain, chains)
+    IOTBX_PDB_HIERARCHY_V1_GET_CHILDREN(model, chain, chains)
 
     static void
     wrap()
@@ -598,7 +598,7 @@ namespace {
       self.data->info = new_info;
     }
 
-    IOTBX_PDB_HIERARCHY_GET_CHILDREN(root, model, models)
+    IOTBX_PDB_HIERARCHY_V1_GET_CHILDREN(root, model, models)
 
     static boost::python::object
     overall_counts(w_t const& self)
@@ -646,7 +646,7 @@ namespace {
   };
 
   void
-  wrap_hierarchy()
+  wrap_hierarchy_v1()
   {
     atom_wrappers::wrap();
     residue_wrappers::wrap();
@@ -656,9 +656,9 @@ namespace {
     root_wrappers::wrap();
   }
 
-}}}} // namespace iotbx::pdb::hierarchy::<anonymous>
+}}}} // namespace iotbx::pdb::hierarchy_v1::<anonymous>
 
-BOOST_PYTHON_MODULE(iotbx_pdb_hierarchy_ext)
+BOOST_PYTHON_MODULE(iotbx_pdb_hierarchy_v1_ext)
 {
-  iotbx::pdb::hierarchy::wrap_hierarchy();
+  iotbx::pdb::hierarchy_v1::wrap_hierarchy_v1();
 }

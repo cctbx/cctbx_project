@@ -48,7 +48,7 @@ crys3d/wx_map_viewer.py -text
 gltbx/wx_controllers.py -text
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
-iotbx/include/iotbx/pdb/hierarchy.cpp svneol=native#text/plain
+iotbx/include/iotbx/pdb/hierarchy_v1.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/input.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/rna_dna_atom_names.h -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names_bpl.cpp -text
@@ -61,7 +61,7 @@ iotbx/iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/iotbx/detectors/cbf.py -text
 iotbx/iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/iotbx/pdb/extract_rfactors_resolutions_sigma.py -text
-iotbx/iotbx/pdb/hierarchy.py svneol=native#text/x-python
+iotbx/iotbx/pdb/hierarchy_v1.py svneol=native#text/x-python
 iotbx/iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/iotbx/shelx/errors.py -text
 iotbx/iotbx/shelx/fcf.py -text

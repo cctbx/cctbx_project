@@ -1,6 +1,6 @@
 import boost.python
-ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
-from iotbx_pdb_hierarchy_ext import *
+ext = boost.python.import_ext("iotbx_pdb_hierarchy_v1_ext")
+from iotbx_pdb_hierarchy_v1_ext import *
 
 from libtbx import dict_with_default_0
 from cStringIO import StringIO
