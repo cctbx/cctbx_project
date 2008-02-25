@@ -536,7 +536,7 @@ namespace iotbx { namespace pdb {
 
       //! not const because atom parents are modified.
       hierarchy_v1::root
-      construct_hierarchy_v1(bool ignore_altloc=false);
+      construct_hierarchy_v1();
 
       unsigned
       number_of_alternative_groups_with_blank_altloc() const

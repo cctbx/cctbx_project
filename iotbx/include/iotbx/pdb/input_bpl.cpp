@@ -89,9 +89,6 @@ namespace {
     }
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      construct_hierarchy_v1_overloads, construct_hierarchy_v1, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       reset_atom_tmp_overloads, reset_atom_tmp, 0, 2)
 
     static void
@@ -148,9 +145,7 @@ namespace {
         .def("model_numbers_are_unique", &w_t::model_numbers_are_unique)
         .def("model_atom_counts", &w_t::model_atom_counts)
         .def("find_duplicate_atom_labels", &w_t::find_duplicate_atom_labels)
-        .def("construct_hierarchy_v1", &w_t::construct_hierarchy_v1,
-          construct_hierarchy_v1_overloads((
-            arg_("ignore_altloc")=false)))
+        .def("construct_hierarchy_v1", &w_t::construct_hierarchy_v1)
         .def("number_of_alternative_groups_with_blank_altloc",
           &w_t::number_of_alternative_groups_with_blank_altloc)
         .def("number_of_alternative_groups_without_blank_altloc",
