@@ -75,7 +75,7 @@ def exercise_base_256_ordinal():
   assert sorted(char4s, o_cmp) == char4s
 
 def exercise_atom():
-  a = pdb.hierarchy.atom()
+  a = pdb.hierarchy_v1.atom()
   assert a.name == ""
   a.name = "abcd"
   assert a.name == "abcd"
@@ -133,7 +133,7 @@ def exercise_atom():
   assert not show_diff(a.format_atom_record_using_parents(serial=0),
     "HETATM    0 xyzh                 1.000  -2.000   3.000  0.50  5.00"
     "      stuvca2+")
-  a = pdb.hierarchy.atom()
+  a = pdb.hierarchy_v1.atom()
   assert not show_diff(a.format_atom_record_using_parents(serial=1),
     "ATOM      1                      0.000   0.000   0.000  0.00  0.00")
   for i in xrange(1,5):
@@ -142,7 +142,7 @@ def exercise_atom():
       "ATOM  A000%d                      0.000   0.000   0.000  0.00  0.00"
       "      %s" % (i, a.segid))
   #
-  a = (pdb.hierarchy.atom()
+  a = (pdb.hierarchy_v1.atom()
     .set_name(new_name="NaMe")
     .set_segid(new_segid="sEgI")
     .set_element(new_element="El")
@@ -194,8 +194,8 @@ def exercise_atom():
   assert a.element == ""
   assert a.charge == ""
   #
-  r = pdb.hierarchy.residue()
-  ac = pdb.hierarchy.atom(parent=r, other=a)
+  r = pdb.hierarchy_v1.residue()
+  ac = pdb.hierarchy_v1.atom(parent=r, other=a)
   assert ac.memory_id() != a.memory_id()
   assert a.parents_size() == 0
   assert ac.parents_size() == 1
@@ -217,10 +217,10 @@ def exercise_atom():
   assert ac.is_alternative() == a.is_alternative()
   assert a.tmp == 0
   #
-  r1 = pdb.hierarchy.residue(name="abc", seq=" 123", icode="m")
-  r2 = pdb.hierarchy.residue(name="efg", seq=" 234", icode="b")
+  r1 = pdb.hierarchy_v1.residue(name="abc", seq=" 123", icode="m")
+  r2 = pdb.hierarchy_v1.residue(name="efg", seq=" 234", icode="b")
   assert r1.memory_id() != r2.memory_id()
-  a = pdb.hierarchy.atom()
+  a = pdb.hierarchy_v1.atom()
   a.pre_allocate_parents(number_of_additional_parents=2)
   a.add_parent(r1)
   p = a.parents()
@@ -246,19 +246,19 @@ def exercise_atom():
   assert a.parents_size() == 0
 
 def exercise_residue():
-  r = pdb.hierarchy.residue()
+  r = pdb.hierarchy_v1.residue()
   assert r.name == ""
   assert r.seq == ""
   assert r.icode == ""
   assert r.id() == "       "
   assert r.link_to_previous
-  r = pdb.hierarchy.residue(name=None, seq=None, icode=None)
+  r = pdb.hierarchy_v1.residue(name=None, seq=None, icode=None)
   assert r.name == ""
   assert r.seq == ""
   assert r.icode == ""
   assert r.id() == "       "
   assert r.link_to_previous
-  r = pdb.hierarchy.residue(
+  r = pdb.hierarchy_v1.residue(
     name="xyz", seq=" 123", icode="i", link_to_previous=False)
   assert r.name == "xyz"
   assert r.seq == " 123"
@@ -276,9 +276,9 @@ def exercise_residue():
   r.icode = "b"
   assert r.id() == "foo  -3b"
   #
-  f = pdb.hierarchy.conformer(id="a")
-  r.add_atom(new_atom=pdb.hierarchy.atom().set_name(new_name="n"))
-  rc = pdb.hierarchy.residue(parent=f, other=r)
+  f = pdb.hierarchy_v1.conformer(id="a")
+  r.add_atom(new_atom=pdb.hierarchy_v1.atom().set_name(new_name="n"))
+  rc = pdb.hierarchy_v1.residue(parent=f, other=r)
   assert rc.memory_id() != r.memory_id()
   assert r.parent() is None
   assert rc.parent().memory_id() == f.memory_id()
@@ -287,16 +287,16 @@ def exercise_residue():
   assert rc.atoms_size() == 1
   assert rc.atoms()[0].memory_id() != r.atoms()[0].memory_id()
   assert rc.atoms()[0].name == "n"
-  r.add_atom(new_atom=pdb.hierarchy.atom().set_name(new_name="o"))
+  r.add_atom(new_atom=pdb.hierarchy_v1.atom().set_name(new_name="o"))
   assert rc.atoms_size() == 1
   assert r.atoms_size() == 2
   #
-  c1 = pdb.hierarchy.conformer(id="a")
-  c2 = pdb.hierarchy.conformer(id="b")
+  c1 = pdb.hierarchy_v1.conformer(id="a")
+  c2 = pdb.hierarchy_v1.conformer(id="b")
   assert c1.memory_id() != c2.memory_id()
-  r = pdb.hierarchy.residue(parent=c1)
+  r = pdb.hierarchy_v1.residue(parent=c1)
   assert r.parent().memory_id() == c1.memory_id()
-  r = pdb.hierarchy.residue()
+  r = pdb.hierarchy_v1.residue()
   assert r.parent() is None
   r.set_parent(new_parent=c1)
   assert r.parent().memory_id() == c1.memory_id()
@@ -306,7 +306,7 @@ def exercise_residue():
   assert r.parent() is None
   assert not r.parent_chain_has_multiple_conformers()
   #
-  c1 = pdb.hierarchy.conformer(id="a")
+  c1 = pdb.hierarchy_v1.conformer(id="a")
   r = c1.new_residue(name="a", seq="   1", icode="i", link_to_previous=False)
   assert r.parent().memory_id() == c1.memory_id()
   del c1
@@ -316,10 +316,10 @@ def exercise_residue():
   assert r.atoms_size() == 0
   assert len(r.atoms()) == 0
   assert r.atom_names().size() == 0
-  r.add_atom(new_atom=pdb.hierarchy.atom().set_name(new_name="ca"))
+  r.add_atom(new_atom=pdb.hierarchy_v1.atom().set_name(new_name="ca"))
   assert r.atoms_size() == 1
   assert len(r.atoms()) == 1
-  r.add_atom(new_atom=pdb.hierarchy.atom().set_name(new_name="n"))
+  r.add_atom(new_atom=pdb.hierarchy_v1.atom().set_name(new_name="n"))
   assert r.atoms_size() == 2
   assert len(r.atoms()) == 2
   assert [atom.name for atom in r.atoms()] == ["ca", "n"]
@@ -338,19 +338,19 @@ def exercise_residue():
   assert r.center_of_geometry() == (0,0,0)
 
 def exercise_conformer():
-  c = pdb.hierarchy.conformer()
+  c = pdb.hierarchy_v1.conformer()
   assert c.id == ""
-  c = pdb.hierarchy.conformer(id="a")
+  c = pdb.hierarchy_v1.conformer(id="a")
   assert c.id == "a"
   c.id = "x"
   assert c.id == "x"
   #
-  c1 = pdb.hierarchy.chain(id="a")
-  c2 = pdb.hierarchy.chain(id="b")
+  c1 = pdb.hierarchy_v1.chain(id="a")
+  c2 = pdb.hierarchy_v1.chain(id="b")
   assert c1.memory_id() != c2.memory_id()
-  f = pdb.hierarchy.conformer(parent=c1)
+  f = pdb.hierarchy_v1.conformer(parent=c1)
   assert f.parent().memory_id() == c1.memory_id()
-  f = pdb.hierarchy.conformer()
+  f = pdb.hierarchy_v1.conformer()
   assert f.parent() is None
   f.set_parent(new_parent=c1)
   assert f.parent().memory_id() == c1.memory_id()
@@ -360,7 +360,7 @@ def exercise_conformer():
   assert f.parent() is None
   assert not f.parent_chain_has_multiple_conformers()
   #
-  c1 = pdb.hierarchy.conformer(id="a")
+  c1 = pdb.hierarchy_v1.conformer(id="a")
   c1.pre_allocate_residues(number_of_additional_residues=2)
   assert c1.residues_size() == 0
   assert len(c1.residues()) == 0
@@ -375,19 +375,19 @@ def exercise_conformer():
   assert list(c1.residue_centers_of_geometry()) == [(0,0,0), (0,0,0)]
 
 def exercise_chain():
-  c = pdb.hierarchy.chain()
+  c = pdb.hierarchy_v1.chain()
   assert c.id == ""
-  c = pdb.hierarchy.chain(id="a")
+  c = pdb.hierarchy_v1.chain(id="a")
   assert c.id == "a"
   c.id = "x"
   assert c.id == "x"
   #
-  m1 = pdb.hierarchy.model(id=1)
-  m2 = pdb.hierarchy.model(id=2)
+  m1 = pdb.hierarchy_v1.model(id=1)
+  m2 = pdb.hierarchy_v1.model(id=2)
   assert m1.memory_id() != m2.memory_id()
-  c = pdb.hierarchy.chain(parent=m1)
+  c = pdb.hierarchy_v1.chain(parent=m1)
   assert c.parent().memory_id() == m1.memory_id()
-  c = pdb.hierarchy.chain()
+  c = pdb.hierarchy_v1.chain()
   assert c.parent() is None
   c.set_parent(new_parent=m1)
   assert c.parent().memory_id() == m1.memory_id()
@@ -401,7 +401,7 @@ def exercise_chain():
   assert c.append_atom_records(pdb_records=l, atom_serial=0) == 0
   assert len(l) == 0
   #
-  c = pdb.hierarchy.chain()
+  c = pdb.hierarchy_v1.chain()
   c.pre_allocate_conformers(number_of_additional_conformers=2)
   assert c.conformers_size() == 0
   assert len(c.conformers()) == 0
@@ -414,14 +414,14 @@ def exercise_chain():
   assert c.extract_sites_cart().size() == 0
 
 def exercise_model():
-  m = pdb.hierarchy.model()
+  m = pdb.hierarchy_v1.model()
   assert m.id == 0
-  m = pdb.hierarchy.model(id=42)
+  m = pdb.hierarchy_v1.model(id=42)
   assert m.id == 42
   m.id = -23
   assert m.id == -23
   #
-  m = pdb.hierarchy.model(id=1)
+  m = pdb.hierarchy_v1.model(id=1)
   assert m.parent() is None
   m.pre_allocate_chains(number_of_additional_chains=2)
   assert m.chains_size() == 0
@@ -430,7 +430,7 @@ def exercise_model():
   assert ch_a.parent().memory_id() == m.memory_id()
   assert m.chains_size() == 1
   assert len(m.chains()) == 1
-  ch_b = pdb.hierarchy.chain(id="b")
+  ch_b = pdb.hierarchy_v1.chain(id="b")
   assert ch_b.parent() is None
   m.adopt_chain(new_chain=ch_b)
   assert m.chains_size() == 2
@@ -445,21 +445,21 @@ def exercise_model():
     assert chain.parent().memory_id() == m.memory_id()
   assert m.reset_atom_tmp(new_value=2) == 0
 
-def exercise_hierarchy():
-  h = pdb.hierarchy.root()
-  m = pdb.hierarchy.model()
+def exercise_hierarchy_v1():
+  h = pdb.hierarchy_v1.root()
+  m = pdb.hierarchy_v1.model()
   m.set_parent(new_parent=h)
   assert m.parent().memory_id() == h.memory_id()
-  m = pdb.hierarchy.model(parent=h)
+  m = pdb.hierarchy_v1.model(parent=h)
   assert m.parent().memory_id() == h.memory_id()
   assert m.id == 0
-  m = pdb.hierarchy.model(parent=h, id=2)
+  m = pdb.hierarchy_v1.model(parent=h, id=2)
   assert m.parent().memory_id() == h.memory_id()
   assert m.id == 2
   del h
   assert m.parent() is None
   #
-  h = pdb.hierarchy.root()
+  h = pdb.hierarchy_v1.root()
   assert h.info.size() == 0
   h.info.append("abc")
   assert h.info.size() == 1
@@ -472,7 +472,7 @@ def exercise_hierarchy():
   assert m_a.parent().memory_id() == h.memory_id()
   assert h.models_size() == 1
   assert len(h.models()) == 1
-  m_b = pdb.hierarchy.model(id=5)
+  m_b = pdb.hierarchy_v1.model(id=5)
   assert m_b.parent() is None
   h.adopt_model(new_model=m_b)
   assert h.models_size() == 2
@@ -487,7 +487,7 @@ def exercise_hierarchy():
     assert model.parent().memory_id() == h.memory_id()
   h.reset_atom_tmp(new_value=1) == 0
 
-def check_hierarchy(
+def check_hierarchy_v1(
       hierarchy,
       expected_formatted=None,
       expected_overall_counts=None):
@@ -652,7 +652,7 @@ def exercise_pdb_input():
     assert pdb_inp.model_atom_counts().size() == 0
     assert len(pdb_inp.find_duplicate_atom_labels()) == 0
     out = StringIO()
-    pdb_inp.construct_hierarchy().show(out=out)
+    pdb_inp.construct_hierarchy_v1().show(out=out)
     assert len(out.getvalue()) == 0
     assert pdb_inp.number_of_alternative_groups_with_blank_altloc() == 0
     assert pdb_inp.number_of_alternative_groups_without_blank_altloc() == 0
@@ -863,9 +863,9 @@ END""")
     assert pdb_inp.model_numbers_are_unique()
     assert list(pdb_inp.model_atom_counts()) == [4,2]
     assert len(pdb_inp.find_duplicate_atom_labels()) == 0
-    hierarchy = pdb_inp.construct_hierarchy()
-    check_hierarchy(
-      hierarchy=hierarchy,
+    hierarchy_v1 = pdb_inp.construct_hierarchy_v1()
+    check_hierarchy_v1(
+      hierarchy=hierarchy_v1,
       expected_formatted="""\
 model id=1 #chains=1
   chain id="A" #conformers=1
@@ -902,7 +902,7 @@ model id=3 #chains=2
     expected_number_of_atoms = iter([4,1,1])
     pdb_records = []
     atom_serial = 0
-    for model in hierarchy.models():
+    for model in hierarchy_v1.models():
       for chain in model.chains():
         assert chain.number_of_atoms() == expected_number_of_atoms.next()
         atom_serial = chain.append_atom_records(
@@ -923,8 +923,8 @@ ATOM      6  N   CYSCH   6      14.270   2.464   3.364  1.00  0.07""")
 ATOM1000001  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
 ATOM1000002  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=1
@@ -948,8 +948,8 @@ ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
 ATOM      2  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 ENDMDL
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=1 #chains=1
   chain id="A" #conformers=1
@@ -981,9 +981,9 @@ ATOM      6  C   MET A   2       2.615  27.289  20.467  1.00  0.00           O
 ATOM      7  C   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 ATOM      8  C   MET A   1       2.615  27.289  20.467  1.00  0.00           O
 """))
-  hierarchy = pdb_inp.construct_hierarchy()
-  check_hierarchy(
-    hierarchy=hierarchy,
+  hierarchy_v1 = pdb_inp.construct_hierarchy_v1()
+  check_hierarchy_v1(
+    hierarchy=hierarchy_v1,
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=1
@@ -1003,7 +1003,7 @@ model id=0 #chains=1
          " C  "
          " C  "
 """)
-  c = hierarchy.models()[0].chains()[0]
+  c = hierarchy_v1.models()[0].chains()[0]
   sites_cart = c.extract_sites_cart()
   assert sites_cart.size() == 8
   assert approx_equal(sites_cart.mean(), [3.515, 26.164, 21.3669999])
@@ -1028,8 +1028,8 @@ ATOM      2  CG  LYS   109      17.058   6.315  47.703  1.00 20.00      A
 ATOM      3  CB  LYS   109      26.721   1.908  15.275  1.00 20.00      B
 ATOM      4  CG  LYS   109      27.664   2.793  16.091  1.00 20.00      B
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=2
   chain id=" " #conformers=1
@@ -1067,8 +1067,8 @@ HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
     assert ial.icode() == "I"
     assert ial.segid() == "S123"
     assert ial.pdb_format() == '"N123AR12 C1234I" segid="S123"'
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="C" #conformers=1
@@ -1092,8 +1092,8 @@ HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
     assert ial.icode() == "I"
     assert ial.segid() == "    "
     assert ial.pdb_format() == '"N123AR12 C1234I"'
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="C" #conformers=1
@@ -1117,8 +1117,8 @@ HETATM
     assert ial.icode() == " "
     assert ial.segid() == "    "
     assert ial.pdb_format() == '"               "'
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -1134,8 +1134,8 @@ model id=0 #chains=1
 """))
   assert list(pdb_inp.model_indices()) == []
   assert list(pdb_inp.chain_indices()) == []
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 """,
     expected_overall_counts=dicts.easy(
@@ -1150,8 +1150,8 @@ ATOM
 """))
   assert list(pdb_inp.model_indices()) == [1]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[1]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -1167,8 +1167,8 @@ ENDMDL
 """))
   assert list(pdb_inp.model_indices()) == [0]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=1 #chains=0
 """)
@@ -1181,8 +1181,8 @@ ENDMDL
 """))
   assert list(pdb_inp.model_indices()) == [1]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[1]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=1 #chains=1
   chain id=" " #conformers=1
@@ -1200,8 +1200,8 @@ ENDMDL
 """))
   assert list(pdb_inp.model_indices()) == [0,0]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[],[]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=1 #chains=0
 model id=2 #chains=0
@@ -1217,8 +1217,8 @@ ENDMDL
 """))
   assert list(pdb_inp.model_indices()) == [0,1]
   assert [list(v) for v in pdb_inp.chain_indices()] == [[],[1]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=1 #chains=0
 model id=2 #chains=1
@@ -1331,8 +1331,8 @@ ENDMDL
   assert list(pdb_inp.model_indices()) == [5,10,15,20]
   assert [list(v) for v in pdb_inp.chain_indices()] \
       == [[2,3,5],[7,9,10],[11,13,15], [18,20]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=1 #chains=3
   chain id="C" #conformers=1
@@ -1403,8 +1403,8 @@ model id=4 #chains=2
     lines=flex.split_lines("""\
 ATOM     54  CA  GLY A   9
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=1
@@ -1417,8 +1417,8 @@ model id=0 #chains=1
     lines=flex.split_lines("""\
 ATOM     54  CA BGLY A   9
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=1
@@ -1432,8 +1432,8 @@ model id=0 #chains=1
 ATOM     54  CA BGLY A   9
 ATOM     55  CA CGLY A   9
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
@@ -1450,8 +1450,8 @@ model id=0 #chains=1
 ATOM     54  CA  GLY A   9
 ATOM     55  CA CGLY A   9
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
@@ -1468,8 +1468,8 @@ model id=0 #chains=1
 ATOM     54  CA BGLY A   9
 ATOM     55  CA  GLY A   9
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
@@ -1489,8 +1489,8 @@ ATOM     54  CA BGLY A   9
 ATOM     55  CA  GLY A   9
 ATOM     56  CA AGLY A   9
 """).select(perm))
-    check_hierarchy(
-      hierarchy=pdb_inp.construct_hierarchy(),
+    check_hierarchy_v1(
+      hierarchy=pdb_inp.construct_hierarchy_v1(),
       expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=3
@@ -1515,8 +1515,8 @@ ATOM     55  CA  GLY A   9
 ATOM     56  CA AGLY A   9
 ATOM     57  O   GLY A   9
 """).select(perm.concatenate(flex.size_t([3]))))
-    check_hierarchy(
-      hierarchy=pdb_inp.construct_hierarchy(),
+    check_hierarchy_v1(
+      hierarchy=pdb_inp.construct_hierarchy_v1(),
       expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=3
@@ -1543,8 +1543,8 @@ ATOM     54  CA BGLY A   9
 ATOM     55  CA  GLY A   9
 ATOM     56  CA AGLY A   9
 """).select(flex.size_t([0]).concatenate(perm)))
-    check_hierarchy(
-      hierarchy=pdb_inp.construct_hierarchy(),
+    check_hierarchy_v1(
+      hierarchy=pdb_inp.construct_hierarchy_v1(),
       expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=3
@@ -1570,8 +1570,8 @@ ATOM     54  O   GLY A   9
 ATOM     55  CA  GLY A   9
 ATOM     56  CA AGLY A   9
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=3
@@ -1596,8 +1596,8 @@ ATOM     55  CA  GLY A   9
 ATOM     56  CA BGLY A   9
 """))
   assert [list(a) for a in pdb_inp.find_duplicate_atom_labels()] == [[0, 1]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
@@ -1618,8 +1618,8 @@ ATOM     55  CA BGLY A   9
 ATOM     56  CA  GLY A   9
 """))
   assert [list(a) for a in pdb_inp.find_duplicate_atom_labels()] == [[0, 2]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
@@ -1639,8 +1639,8 @@ ATOM     55  CA  GLY A   9
 ATOM     56  CA  GLY A   9
 """))
   assert [list(a) for a in pdb_inp.find_duplicate_atom_labels()] == [[1, 2]]
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
@@ -1664,8 +1664,8 @@ ATOM     56  CA BGLY A   9
     invp = perm.inverse_permutation()
     assert [list(a) for a in pdb_inp.find_duplicate_atom_labels()] \
         == [sorted([invp[1], invp[2]])]
-    check_hierarchy(
-      hierarchy=pdb_inp.construct_hierarchy(),
+    check_hierarchy_v1(
+      hierarchy=pdb_inp.construct_hierarchy_v1(),
       expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
@@ -1695,8 +1695,8 @@ ATOM    108  CA ATRP A  16
 ATOM    122  CA BARG A  16
 ATOM    140  CA  CYS A  17
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id="A" #conformers=2
@@ -1770,9 +1770,9 @@ ATOM    257  CB  ASN    36
 ATOM    255  O   ASN    36
 ATOM    258  CB BASN    36
 """))
-  hierarchy = pdb_inp.construct_hierarchy()
-  check_hierarchy(
-    hierarchy=hierarchy,
+  hierarchy_v1 = pdb_inp.construct_hierarchy_v1()
+  check_hierarchy_v1(
+    hierarchy=hierarchy_v1,
     expected_formatted="""\
 model id=0 #chains=1
   chain id=" " #conformers=2
@@ -1808,25 +1808,25 @@ model id=0 #chains=1
        & " CB "
 """)
   assert pdb_inp.number_of_chains_with_altloc_mix() == 0
-  def _local(hierarchy):
-    c = hierarchy.models()[0].chains()[0]
+  def _local(hierarchy_v1):
+    c = hierarchy_v1.models()[0].chains()[0]
     for f in c.conformers():
       assert [r.number_of_alternative_atoms() for r in f.residues()] == [2,4]
       assert f.number_of_atoms() == 11
       assert f.number_of_alternative_atoms() == 6
     c.reset_atom_tmp(new_value=1)
     assert c.reset_atom_tmp(new_value=0) == 17
-  _local(hierarchy)
-  try: pdb_inp.construct_hierarchy(ignore_altloc=True)
+  _local(hierarchy_v1)
+  try: pdb_inp.construct_hierarchy_v1(ignore_altloc=True)
   except RuntimeError, e:
     assert str(e).endswith(
       "): SCITBX_ASSERT(number_of_old_parents == 0) failure.")
   else: raise Exception_expected
-  del hierarchy
-  pdb_inp.construct_hierarchy(ignore_altloc=False)
-  hierarchy = pdb_inp.construct_hierarchy(ignore_altloc=True)
-  check_hierarchy(
-    hierarchy=hierarchy,
+  del hierarchy_v1
+  pdb_inp.construct_hierarchy_v1(ignore_altloc=False)
+  hierarchy_v1 = pdb_inp.construct_hierarchy_v1(ignore_altloc=True)
+  check_hierarchy_v1(
+    hierarchy=hierarchy_v1,
     expected_formatted="""\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -1861,7 +1861,7 @@ HETATM 2794  O   HOH Z 297
 HETATM 2795  O  BHOH Z 297
 END
 """))
-  pdb_inp.construct_hierarchy()
+  pdb_inp.construct_hierarchy_v1()
   assert not show_diff(pdb_inp.have_blank_altloc_message(prefix="@"), '''\
 @alternative group with blank altloc:
 @  " O   HOH Z 297 "
@@ -1882,7 +1882,7 @@ HETATM    3  O   HOH Z 298
 HETATM    4  O  BHOH Z 298
 END
 """))
-  pdb_inp.construct_hierarchy()
+  pdb_inp.construct_hierarchy_v1()
   assert not show_diff(pdb_inp.have_blank_altloc_message(prefix="%"), '''\
 %alternative group with blank altloc (one of 2):
 %  " O   HOH Z 297 "
@@ -1902,7 +1902,7 @@ ATOM   2100  CB AGLU A 256
 ATOM   2105  CB BGLU A 256
 END
 """))
-  pdb_inp.construct_hierarchy()
+  pdb_inp.construct_hierarchy_v1()
   assert pdb_inp.number_of_alternative_groups_with_blank_altloc() == 1
   assert pdb_inp.number_of_alternative_groups_without_blank_altloc() == 2
   assert pdb_inp.number_of_chains_with_altloc_mix() == 1
@@ -1945,7 +1945,7 @@ ATOM      9  CB AGLU B   2
 ATOM     10  CB BGLU B   2
 END
 """))
-  pdb_inp.construct_hierarchy()
+  pdb_inp.construct_hierarchy_v1()
   assert not show_diff(pdb_inp.have_altloc_mix_message(prefix="*"), '''\
 *mix of alternative groups with and without blank altlocs (in 2 chains):
 *  alternative group with blank altloc (one of 2):
@@ -1983,7 +1983,7 @@ REMARK
 ATOM      1  CB  LYS   109
 BREAK
 ATOM      2  CG  LYS   109
-""")).construct_hierarchy()
+""")).construct_hierarchy_v1()
   except RuntimeError, e:
     assert not show_diff(str(e), "Misplaced BREAK record (input line 3).")
   else: raise Exception_expected
@@ -1997,7 +1997,7 @@ BREAK
 ATOM      3  CA  LYS   110
 BREAK
 ATOM      4  CB  LYS   110
-""")).construct_hierarchy()
+""")).construct_hierarchy_v1()
   except RuntimeError, e:
     assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
   else: raise Exception_expected
@@ -2010,8 +2010,8 @@ ATOM      1  CA  SER     1       1.212 -12.134   3.757  1.00  0.00
 ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
 """)
   pdb_inp = pdb.input(file_name="tmp.pdb")
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -2027,7 +2027,7 @@ model id=0 #chains=1
   else: raise Exception_expected
   #
   out = StringIO()
-  pdb_inp, hierarchy = pdb.show_summary(
+  pdb_inp, hierarchy_v1 = pdb.show_summary(
     source_info="s",
     lines=flex.split_lines("""\
 MODEL 1
@@ -2106,8 +2106,9 @@ ATOM         C   ALA    10
 ATOM         O   TIP    11
 ATOM         O   TIP    12
 """)
-  hierarchy = pdb.input(source_info=None, lines=lines).construct_hierarchy()
-  f = hierarchy.models()[0].chains()[0].conformers()[0]
+  hierarchy_v1 = pdb.input(
+    source_info=None, lines=lines).construct_hierarchy_v1()
+  f = hierarchy_v1.models()[0].chains()[0].conformers()[0]
   assert list(f.residue_class_selection(class_name="common_amino_acid")) == [0,2,9]
   assert list(f.residue_class_selection(class_name="common_rna_dna")) == [6]
   assert list(f.residue_class_selection(class_name="ccp4_mon_lib_rna_dna")) \
@@ -2147,7 +2148,7 @@ ATOM         O   TIP    12
     f.select_residues_in_place(
       selection=f.residue_class_selection(class_name="common_water"))
     out = StringIO()
-    hierarchy.show(out=out)
+    hierarchy_v1.show(out=out)
     assert not show_diff(out.getvalue(), """\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -2174,18 +2175,19 @@ model id=0 #chains=1
   f.select_residues_in_place(selection=f.residue_class_selection(
     class_name="common_water", negate=True))
   out = StringIO()
-  hierarchy.show(out=out)
+  hierarchy_v1.show(out=out)
   assert not show_diff(out.getvalue(), """\
 model id=0 #chains=1
   chain id=" " #conformers=1
     conformer id=" " #residues=0 #atoms=0
 """)
-  hierarchy = pdb.input(source_info=None, lines=lines).construct_hierarchy()
-  f = hierarchy.models()[0].chains()[0].conformers()[0]
+  hierarchy_v1 = pdb.input(
+    source_info=None, lines=lines).construct_hierarchy_v1()
+  f = hierarchy_v1.models()[0].chains()[0].conformers()[0]
   for i in [0,1]:
     f.select_residue_class_in_place(class_name="common_water", negate=True)
     out = StringIO()
-    hierarchy.show(out=out)
+    hierarchy_v1.show(out=out)
     assert not show_diff(out.getvalue(), """\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -2206,7 +2208,7 @@ model id=0 #chains=1
     f.select_residue_class_in_place(
       residue_names=flex.std_string(["GLU", "ALA"]), negate=False)
     out = StringIO()
-    hierarchy.show(out=out)
+    hierarchy_v1.show(out=out)
     assert not show_diff(out.getvalue(), """\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -2222,7 +2224,7 @@ model id=0 #chains=1
     f.select_residue_class_in_place(
       residue_names=flex.std_string(["ALA"]), negate=True)
     out = StringIO()
-    hierarchy.show(out=out)
+    hierarchy_v1.show(out=out)
     assert not show_diff(out.getvalue(), """\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -2257,8 +2259,8 @@ ATOM        CD   CD      4
 ATOM         S   SO4     5
 ATOM         N   ABC     6
 """))
-  check_hierarchy(
-    hierarchy=pdb_inp.construct_hierarchy(),
+  check_hierarchy_v1(
+    hierarchy=pdb_inp.construct_hierarchy_v1(),
     expected_formatted="""\
 model id=0 #chains=1
   chain id=" " #conformers=1
@@ -2315,7 +2317,7 @@ model id=0 #chains=1
       assert pdb.rna_dna_reference_residue_name(
         common_name=" "+n.lower()+" ") == r
   #
-  hierarchy = pdb.input(
+  hierarchy_v1 = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 MODEL        0
@@ -2328,9 +2330,9 @@ ENDMDL
 MODEL        2
 ATOM      1  CA  LYSAB1234A                                             SEGM
 ENDMDL
-""")).construct_hierarchy()
+""")).construct_hierarchy_v1()
   out = StringIO()
-  for model in hierarchy.models():
+  for model in hierarchy_v1.models():
     for chain in model.chains():
       for conformer in chain.conformers():
         for residue in conformer.residues():
@@ -2785,14 +2787,14 @@ ATOM  12345 N123AR12 C1234I   1234.6781234.6781234.678123.56213.56      S123E1C1
 HETATM12345 N123AR12 C1234I   1234.6781234.6781234.678123.56213.56      S123E1C1
 """)
 
-def exercise_hierarchy_as_pdb_string(pdb_file_names):
+def exercise_hierarchy_v1_as_pdb_string(pdb_file_names):
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
 ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
 """))
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy_v1()
   assert not show_diff(hierarchy.as_pdb_string(), """\
 HETATM    1  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
 ATOM      2  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
@@ -2800,7 +2802,7 @@ TER
 """)
   #
   if (pdb_file_names is None):
-    print "Skipping exercise_hierarchy_as_pdb_string():" \
+    print "Skipping exercise_hierarchy_v1_as_pdb_string():" \
           " input files not available"
   expected_md5_raw = """\
 jf.pdb 82b7d19bedd08a0d9b6da3a683f1df7c
@@ -2918,11 +2920,11 @@ ygg_03.pdb a315b1bf82bcde6f324469157ece303e
     expected_md5[file_name] = m
   for file_name in pdb_file_names:
     pdb_inp_1 = iotbx.pdb.input(file_name=file_name)
-    hierarchy_1 = pdb_inp_1.construct_hierarchy()
+    hierarchy_1 = pdb_inp_1.construct_hierarchy_v1()
     pdb_str_1 = hierarchy_1.as_pdb_string(append_end=True)
     pdb_inp_2 = iotbx.pdb.input(
       lines=flex.split_lines(pdb_str_1), source_info=None)
-    hierarchy_2 = pdb_inp_2.construct_hierarchy()
+    hierarchy_2 = pdb_inp_2.construct_hierarchy_v1()
     pdb_str_2 = hierarchy_2.as_pdb_string(append_end=False)
     assert not show_diff(
       hierarchy_1.as_str(level_id="residue"),
@@ -2965,12 +2967,12 @@ def exercise(args):
     exercise_chain()
     exercise_conformer()
     exercise_model()
-    exercise_hierarchy()
+    exercise_hierarchy_v1()
     exercise_columns_73_76_evaluator(
       pdb_file_names=phenix_regression_pdb_file_names)
     exercise_line_info_exceptions()
     exercise_pdb_input()
-    exercise_hierarchy_as_pdb_string(
+    exercise_hierarchy_v1_as_pdb_string(
       pdb_file_names=phenix_regression_pdb_file_names)
     exercise_xray_structure_simple()
     if (not forever): break

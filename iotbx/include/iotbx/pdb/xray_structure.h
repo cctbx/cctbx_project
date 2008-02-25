@@ -66,7 +66,7 @@ namespace iotbx { namespace pdb {
       range_loop<std::size_t> model_range;
       std::size_t i_atom;
       const input_atom_labels *ial;
-      const hierarchy::atom *atom;
+      const hierarchy_v1::atom *atom;
       XrayScattererType scatterer;
       boost::optional<std::string> scattering_type;
 

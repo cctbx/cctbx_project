@@ -4,7 +4,7 @@ import boost.python
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
-import iotbx.pdb.hierarchy
+import iotbx.pdb.hierarchy_v1
 
 from iotbx.pdb.atom_name_interpretation import \
   interpreters as protein_atom_name_interpreters
@@ -288,7 +288,7 @@ def show_summary(
       prefix=""):
   pdb_inp = input(file_name=file_name, source_info=source_info, lines=lines)
   print >> out, prefix+"source info:", pdb_inp.source_info()
-  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy = pdb_inp.construct_hierarchy_v1()
   overall_counts = hierarchy.overall_counts()
   assert overall_counts.n_atoms == pdb_inp.input_atom_labels_list().size()
   fmt = "%%%dd" % len(str(overall_counts.n_atoms))
@@ -362,6 +362,9 @@ def _one_of(n):
   return ""
 
 class _input(boost.python.injector, ext.input):
+
+  def construct_hierarchy(self):
+    return self.construct_hierarchy_v1()
 
   def have_blank_altloc_message(self, prefix=""):
     n = self.number_of_alternative_groups_with_blank_altloc()

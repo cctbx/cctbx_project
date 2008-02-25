@@ -15,7 +15,7 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       type="string",
       default=None,
       help="level of detail",
-      metavar="|".join(pdb.hierarchy.level_ids))
+      metavar="|".join(pdb.hierarchy_v1.level_ids))
     .option(None, "--duplicate_max_show",
       action="store",
       type="int",
