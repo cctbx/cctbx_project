@@ -32,6 +32,9 @@ if (not env_etc.no_boost_python):
       "hybrid_36_bpl.cpp",
       "common_residue_names_bpl.cpp",
       "rna_dna_atom_names_bpl.cpp",
-      "hierarchy_bpl.cpp",
       "input_bpl.cpp",
       "xray_structure_bpl.cpp"])
+  env.SharedLibrary(
+    target="#lib/iotbx_pdb_hierarchy_ext",
+    source=[
+      "hierarchy_ext.cpp"])

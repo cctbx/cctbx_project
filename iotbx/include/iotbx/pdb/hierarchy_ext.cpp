@@ -1,5 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
@@ -645,7 +646,7 @@ namespace {
   };
 
   void
-  wrap_hierarchy_impl()
+  wrap_hierarchy()
   {
     atom_wrappers::wrap();
     residue_wrappers::wrap();
@@ -655,11 +656,9 @@ namespace {
     root_wrappers::wrap();
   }
 
-}} // namespace hierarchy::<anonymous>
+}}}} // namespace iotbx::pdb::hierarchy::<anonymous>
 
-namespace boost_python {
-
-  void
-  wrap_hierarchy() { hierarchy::wrap_hierarchy_impl(); }
-
-}}} // namespace iotbx::pdb::boost_python
+BOOST_PYTHON_MODULE(iotbx_pdb_hierarchy_ext)
+{
+  iotbx::pdb::hierarchy::wrap_hierarchy();
+}
