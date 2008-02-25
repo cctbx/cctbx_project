@@ -32,7 +32,7 @@ def extract_sequence_and_sites(pdb_input):
   seq = []
   sites = flex.vec3_double()
   use_sites = flex.bool()
-  model = pdb_input.construct_hierarchy().models()[0]
+  model = pdb_input.construct_hierarchy_v1().models()[0]
   for chain in model.chains():
     selected_residues = chain.conformers()[0].residue_class_selection(
       class_name="common_amino_acid")
