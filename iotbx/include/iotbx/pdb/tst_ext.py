@@ -75,7 +75,7 @@ def exercise_base_256_ordinal():
   assert sorted(char4s, o_cmp) == char4s
 
 def exercise_atom():
-  a = pdb.atom()
+  a = pdb.hierarchy.atom()
   assert a.name == ""
   a.name = "abcd"
   assert a.name == "abcd"
@@ -133,7 +133,7 @@ def exercise_atom():
   assert not show_diff(a.format_atom_record_using_parents(serial=0),
     "HETATM    0 xyzh                 1.000  -2.000   3.000  0.50  5.00"
     "      stuvca2+")
-  a = pdb.atom()
+  a = pdb.hierarchy.atom()
   assert not show_diff(a.format_atom_record_using_parents(serial=1),
     "ATOM      1                      0.000   0.000   0.000  0.00  0.00")
   for i in xrange(1,5):
@@ -142,7 +142,7 @@ def exercise_atom():
       "ATOM  A000%d                      0.000   0.000   0.000  0.00  0.00"
       "      %s" % (i, a.segid))
   #
-  a = (pdb.atom()
+  a = (pdb.hierarchy.atom()
     .set_name(new_name="NaMe")
     .set_segid(new_segid="sEgI")
     .set_element(new_element="El")
@@ -194,8 +194,8 @@ def exercise_atom():
   assert a.element == ""
   assert a.charge == ""
   #
-  r = pdb.residue()
-  ac = pdb.atom(parent=r, other=a)
+  r = pdb.hierarchy.residue()
+  ac = pdb.hierarchy.atom(parent=r, other=a)
   assert ac.memory_id() != a.memory_id()
   assert a.parents_size() == 0
   assert ac.parents_size() == 1
@@ -217,10 +217,10 @@ def exercise_atom():
   assert ac.is_alternative() == a.is_alternative()
   assert a.tmp == 0
   #
-  r1 = pdb.residue(name="abc", seq=" 123", icode="m")
-  r2 = pdb.residue(name="efg", seq=" 234", icode="b")
+  r1 = pdb.hierarchy.residue(name="abc", seq=" 123", icode="m")
+  r2 = pdb.hierarchy.residue(name="efg", seq=" 234", icode="b")
   assert r1.memory_id() != r2.memory_id()
-  a = pdb.atom()
+  a = pdb.hierarchy.atom()
   a.pre_allocate_parents(number_of_additional_parents=2)
   a.add_parent(r1)
   p = a.parents()
@@ -246,19 +246,20 @@ def exercise_atom():
   assert a.parents_size() == 0
 
 def exercise_residue():
-  r = pdb.residue()
+  r = pdb.hierarchy.residue()
   assert r.name == ""
   assert r.seq == ""
   assert r.icode == ""
   assert r.id() == "       "
   assert r.link_to_previous
-  r = pdb.residue(name=None, seq=None, icode=None)
+  r = pdb.hierarchy.residue(name=None, seq=None, icode=None)
   assert r.name == ""
   assert r.seq == ""
   assert r.icode == ""
   assert r.id() == "       "
   assert r.link_to_previous
-  r = pdb.residue(name="xyz", seq=" 123", icode="i", link_to_previous=False)
+  r = pdb.hierarchy.residue(
+    name="xyz", seq=" 123", icode="i", link_to_previous=False)
   assert r.name == "xyz"
   assert r.seq == " 123"
   assert r.icode == "i"
@@ -275,9 +276,9 @@ def exercise_residue():
   r.icode = "b"
   assert r.id() == "foo  -3b"
   #
-  f = pdb.conformer(id="a")
-  r.add_atom(new_atom=pdb.atom().set_name(new_name="n"))
-  rc = pdb.residue(parent=f, other=r)
+  f = pdb.hierarchy.conformer(id="a")
+  r.add_atom(new_atom=pdb.hierarchy.atom().set_name(new_name="n"))
+  rc = pdb.hierarchy.residue(parent=f, other=r)
   assert rc.memory_id() != r.memory_id()
   assert r.parent() is None
   assert rc.parent().memory_id() == f.memory_id()
@@ -286,16 +287,16 @@ def exercise_residue():
   assert rc.atoms_size() == 1
   assert rc.atoms()[0].memory_id() != r.atoms()[0].memory_id()
   assert rc.atoms()[0].name == "n"
-  r.add_atom(new_atom=pdb.atom().set_name(new_name="o"))
+  r.add_atom(new_atom=pdb.hierarchy.atom().set_name(new_name="o"))
   assert rc.atoms_size() == 1
   assert r.atoms_size() == 2
   #
-  c1 = pdb.conformer(id="a")
-  c2 = pdb.conformer(id="b")
+  c1 = pdb.hierarchy.conformer(id="a")
+  c2 = pdb.hierarchy.conformer(id="b")
   assert c1.memory_id() != c2.memory_id()
-  r = pdb.residue(parent=c1)
+  r = pdb.hierarchy.residue(parent=c1)
   assert r.parent().memory_id() == c1.memory_id()
-  r = pdb.residue()
+  r = pdb.hierarchy.residue()
   assert r.parent() is None
   r.set_parent(new_parent=c1)
   assert r.parent().memory_id() == c1.memory_id()
@@ -305,7 +306,7 @@ def exercise_residue():
   assert r.parent() is None
   assert not r.parent_chain_has_multiple_conformers()
   #
-  c1 = pdb.conformer(id="a")
+  c1 = pdb.hierarchy.conformer(id="a")
   r = c1.new_residue(name="a", seq="   1", icode="i", link_to_previous=False)
   assert r.parent().memory_id() == c1.memory_id()
   del c1
@@ -315,10 +316,10 @@ def exercise_residue():
   assert r.atoms_size() == 0
   assert len(r.atoms()) == 0
   assert r.atom_names().size() == 0
-  r.add_atom(new_atom=pdb.atom().set_name(new_name="ca"))
+  r.add_atom(new_atom=pdb.hierarchy.atom().set_name(new_name="ca"))
   assert r.atoms_size() == 1
   assert len(r.atoms()) == 1
-  r.add_atom(new_atom=pdb.atom().set_name(new_name="n"))
+  r.add_atom(new_atom=pdb.hierarchy.atom().set_name(new_name="n"))
   assert r.atoms_size() == 2
   assert len(r.atoms()) == 2
   assert [atom.name for atom in r.atoms()] == ["ca", "n"]
@@ -337,19 +338,19 @@ def exercise_residue():
   assert r.center_of_geometry() == (0,0,0)
 
 def exercise_conformer():
-  c = pdb.conformer()
+  c = pdb.hierarchy.conformer()
   assert c.id == ""
-  c = pdb.conformer(id="a")
+  c = pdb.hierarchy.conformer(id="a")
   assert c.id == "a"
   c.id = "x"
   assert c.id == "x"
   #
-  c1 = pdb.chain(id="a")
-  c2 = pdb.chain(id="b")
+  c1 = pdb.hierarchy.chain(id="a")
+  c2 = pdb.hierarchy.chain(id="b")
   assert c1.memory_id() != c2.memory_id()
-  f = pdb.conformer(parent=c1)
+  f = pdb.hierarchy.conformer(parent=c1)
   assert f.parent().memory_id() == c1.memory_id()
-  f = pdb.conformer()
+  f = pdb.hierarchy.conformer()
   assert f.parent() is None
   f.set_parent(new_parent=c1)
   assert f.parent().memory_id() == c1.memory_id()
@@ -359,7 +360,7 @@ def exercise_conformer():
   assert f.parent() is None
   assert not f.parent_chain_has_multiple_conformers()
   #
-  c1 = pdb.conformer(id="a")
+  c1 = pdb.hierarchy.conformer(id="a")
   c1.pre_allocate_residues(number_of_additional_residues=2)
   assert c1.residues_size() == 0
   assert len(c1.residues()) == 0
@@ -374,19 +375,19 @@ def exercise_conformer():
   assert list(c1.residue_centers_of_geometry()) == [(0,0,0), (0,0,0)]
 
 def exercise_chain():
-  c = pdb.chain()
+  c = pdb.hierarchy.chain()
   assert c.id == ""
-  c = pdb.chain(id="a")
+  c = pdb.hierarchy.chain(id="a")
   assert c.id == "a"
   c.id = "x"
   assert c.id == "x"
   #
-  m1 = pdb.model(id=1)
-  m2 = pdb.model(id=2)
+  m1 = pdb.hierarchy.model(id=1)
+  m2 = pdb.hierarchy.model(id=2)
   assert m1.memory_id() != m2.memory_id()
-  c = pdb.chain(parent=m1)
+  c = pdb.hierarchy.chain(parent=m1)
   assert c.parent().memory_id() == m1.memory_id()
-  c = pdb.chain()
+  c = pdb.hierarchy.chain()
   assert c.parent() is None
   c.set_parent(new_parent=m1)
   assert c.parent().memory_id() == m1.memory_id()
@@ -400,7 +401,7 @@ def exercise_chain():
   assert c.append_atom_records(pdb_records=l, atom_serial=0) == 0
   assert len(l) == 0
   #
-  c = pdb.chain()
+  c = pdb.hierarchy.chain()
   c.pre_allocate_conformers(number_of_additional_conformers=2)
   assert c.conformers_size() == 0
   assert len(c.conformers()) == 0
@@ -413,14 +414,14 @@ def exercise_chain():
   assert c.extract_sites_cart().size() == 0
 
 def exercise_model():
-  m = pdb.model()
+  m = pdb.hierarchy.model()
   assert m.id == 0
-  m = pdb.model(id=42)
+  m = pdb.hierarchy.model(id=42)
   assert m.id == 42
   m.id = -23
   assert m.id == -23
   #
-  m = pdb.model(id=1)
+  m = pdb.hierarchy.model(id=1)
   assert m.parent() is None
   m.pre_allocate_chains(number_of_additional_chains=2)
   assert m.chains_size() == 0
@@ -429,7 +430,7 @@ def exercise_model():
   assert ch_a.parent().memory_id() == m.memory_id()
   assert m.chains_size() == 1
   assert len(m.chains()) == 1
-  ch_b = pdb.chain(id="b")
+  ch_b = pdb.hierarchy.chain(id="b")
   assert ch_b.parent() is None
   m.adopt_chain(new_chain=ch_b)
   assert m.chains_size() == 2
@@ -445,20 +446,20 @@ def exercise_model():
   assert m.reset_atom_tmp(new_value=2) == 0
 
 def exercise_hierarchy():
-  h = pdb.root()
-  m = pdb.model()
+  h = pdb.hierarchy.root()
+  m = pdb.hierarchy.model()
   m.set_parent(new_parent=h)
   assert m.parent().memory_id() == h.memory_id()
-  m = pdb.model(parent=h)
+  m = pdb.hierarchy.model(parent=h)
   assert m.parent().memory_id() == h.memory_id()
   assert m.id == 0
-  m = pdb.model(parent=h, id=2)
+  m = pdb.hierarchy.model(parent=h, id=2)
   assert m.parent().memory_id() == h.memory_id()
   assert m.id == 2
   del h
   assert m.parent() is None
   #
-  h = pdb.root()
+  h = pdb.hierarchy.root()
   assert h.info.size() == 0
   h.info.append("abc")
   assert h.info.size() == 1
@@ -471,7 +472,7 @@ def exercise_hierarchy():
   assert m_a.parent().memory_id() == h.memory_id()
   assert h.models_size() == 1
   assert len(h.models()) == 1
-  m_b = pdb.model(id=5)
+  m_b = pdb.hierarchy.model(id=5)
   assert m_b.parent() is None
   h.adopt_model(new_model=m_b)
   assert h.models_size() == 2
