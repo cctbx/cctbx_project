@@ -50,6 +50,7 @@ gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
 iotbx/include/iotbx/pdb/hierarchy_v1.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/input.cpp svneol=native#text/plain
+iotbx/include/iotbx/pdb/namespace.h svneol=native#text/plain
 iotbx/include/iotbx/pdb/rna_dna_atom_names.h -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names_bpl.cpp -text
 iotbx/include/iotbx/pdb/tst_rna_dna_atom_names.py -text

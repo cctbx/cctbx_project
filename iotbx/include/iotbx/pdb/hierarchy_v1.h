@@ -1,11 +1,8 @@
 #ifndef IOTBX_PDB_HIERARCHY_V1_H
 #define IOTBX_PDB_HIERARCHY_V1_H
 
+#include <iotbx/pdb/namespace.h>
 #include <iotbx/pdb/small_str.h>
-#include <scitbx/array_family/shared.h>
-#include <scitbx/sym_mat3.h>
-#include <boost/shared_ptr.hpp>
-#include <boost/weak_ptr.hpp>
 #include <boost/optional.hpp>
 #include <boost/noncopyable.hpp>
 #include <map>
@@ -13,20 +10,7 @@
 #include <vector>
 #include <string>
 
-namespace iotbx {
-
-//! Handling of files in PDB format.
-namespace pdb {
-
-  namespace af = scitbx::af;
-
-  typedef scitbx::vec3<double> vec3;
-  typedef scitbx::sym_mat3<double> sym_mat3;
-
-  using boost::shared_ptr;
-  using boost::weak_ptr;
-
-namespace hierarchy_v1 {
+namespace iotbx { namespace pdb { namespace hierarchy_v1 {
 
   class root_data;
   class root;
