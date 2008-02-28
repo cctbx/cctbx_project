@@ -437,6 +437,10 @@ namespace hierarchy_v2 {
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
 
+      static
+      std::size_t
+      sizeof_data() { return sizeof(atom_data); }
+
       boost::optional<atom_group>
       parent() const;
 
