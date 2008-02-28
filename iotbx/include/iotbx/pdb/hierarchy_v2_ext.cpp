@@ -242,6 +242,9 @@ namespace {
 
     IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(atom_group, atom, atoms)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      find_atom_index_overloads, find_atom_index, 1, 2)
+
     static void
     wrap()
     {
@@ -267,9 +270,17 @@ namespace {
           (arg_("number_of_additional_atoms")))
         .def("new_atoms", &w_t::new_atoms,
           (arg_("number_of_additional_atoms")))
+        .def("insert_atom", &w_t::insert_atom, (arg_("i"), arg_("atom")))
         .def("append_atom", &w_t::append_atom, (arg_("atom")))
+        .def("remove_atom",
+          (void(w_t::*)(long)) &w_t::remove_atom, (arg_("i")))
+        .def("remove_atom",
+          (void(w_t::*)(atom&)) &w_t::remove_atom, (arg_("atom")))
         .def("atoms", get_atoms)
         .def("atoms_size", &w_t::atoms_size)
+        .def("find_atom_index", &w_t::find_atom_index,
+          find_atom_index_overloads((
+            arg_("atom"), arg_("must_be_present")=false)))
         .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
       ;
     }

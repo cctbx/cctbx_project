@@ -281,8 +281,12 @@ namespace hierarchy_v2 {
 
     protected:
       friend class atom_group; // to support atom_group::append_atom()
+
       atom&
       set_parent(atom_group const& parent);
+
+      void
+      clear_parent() { data->parent.reset(); }
 
     public:
       atom(shared_ptr<atom_data> const& data_)
@@ -511,9 +515,33 @@ namespace hierarchy_v2 {
       new_atoms(unsigned number_of_additional_atoms);
 
       void
+      insert_atom(long i, hierarchy_v2::atom& atom)
+      {
+        data->atoms.insert(
+          data->atoms.begin()
+            + positive_getitem_index(i, data->atoms.size(), true),
+          atom.set_parent(*this));
+      }
+
+      void
       append_atom(hierarchy_v2::atom& atom)
       {
         data->atoms.push_back(atom.set_parent(*this));
+      }
+
+      void
+      remove_atom(long i)
+      {
+        std::size_t j =  positive_getitem_index(i, data->atoms.size());
+        data->atoms[j].clear_parent();
+        data->atoms.erase(data->atoms.begin() + j);
+      }
+
+      void
+      remove_atom(hierarchy_v2::atom& atom)
+      {
+        data->atoms.erase(data->atoms.begin() + find_atom_index(atom, true));
+        atom.clear_parent();
       }
 
       unsigned
@@ -524,6 +552,11 @@ namespace hierarchy_v2 {
 
       std::vector<atom> const&
       atoms() const { return data->atoms; }
+
+      long
+      find_atom_index(
+        hierarchy_v2::atom const& atom,
+        bool must_be_present=false) const;
 
       unsigned
       reset_atom_tmp(int new_value) const;

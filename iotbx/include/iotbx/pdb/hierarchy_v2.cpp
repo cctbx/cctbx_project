@@ -271,6 +271,21 @@ namespace {
     }
   }
 
+  long
+  atom_group::find_atom_index(
+    hierarchy_v2::atom const& atom,
+    bool must_be_present) const
+  {
+    long n = static_cast<long>(data->atoms.size());
+    for(long i=0;i<n;i++) {
+      if (data->atoms[i].data.get() == atom.data.get()) return i;
+    }
+    if (must_be_present) {
+      throw std::runtime_error("atom not in atom_group.");
+    }
+    return -1;
+  }
+
   unsigned
   atom_group::reset_atom_tmp(int new_value) const
   {
