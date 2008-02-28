@@ -163,12 +163,14 @@ class manager(object):
       element = scatterers[i_seq].element_symbol()
       out_str = "peak= %8.3f closest distance to %s = %8.3f"%(
         h, atom_attributes_list[i_seq].pdb_format(), d)
-      result.setdefault(atom_attributes_list[i_seq].residue_id(),[]).append(out_str)
+      result.setdefault(atom_attributes_list[i_seq].chainID, {}).\
+             setdefault(atom_attributes_list[i_seq].residue_id(),[]).append(out_str)
       assert d <= self.params.map_next_to_model.max_model_peak_dist
       assert d >= self.params.map_next_to_model.min_model_peak_dist
-    for val in result.values():
-      for v in val:
-        print >> self.log, v
+    for v0 in result.values():
+      for v1 in v0.values():
+        for v in v1:
+          print >> self.log, v
 
 def show_highest_peaks_and_deepest_holes(fmodel,
                                          atom_attributes_list,

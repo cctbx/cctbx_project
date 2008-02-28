@@ -637,12 +637,18 @@ def write_pdb_file(xray_structure,
                    write_cryst1_record = True,
                    selection = None,
                    out = None):
-  if(out is None): out = sys.stdout
+  raw_records = []
   crystal_symmetry = xray_structure.crystal_symmetry()
   if(write_cryst1_record):
-    print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
-    print >> out, pdb.format_scale_records(
-      unit_cell = crystal_symmetry.unit_cell())
+    line = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
+    raw_records.append(line)
+    if(out is not None):
+      print >> out, line
+    line = pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell())
+    if(out is not None):
+      print >> out, line
+    for line_ in line.splitlines():
+      raw_records.append(line_)
   xrs = xray_structure
   sites_cart  = xrs.sites_cart()
   scatterers  = xrs.scatterers()
@@ -668,7 +674,7 @@ def write_pdb_file(xray_structure,
          else: element = atom.element
          if(atom.charge is None): charge = "  "
          else: charge = atom.charge
-         print >> out, pdb.format_atom_record(
+         line = pdb.format_atom_record(
                                   record_name = atom.record_name(),
                                   serial      = i_seq+1,
                                   name        = name,
@@ -683,8 +689,11 @@ def write_pdb_file(xray_structure,
                                   segID       = segID,
                                   element     = scat_types[i_seq],#element,
                                   charge      = charge)
+         if(out is not None):
+           print >> out, line
+         raw_records.append(line)
          if(scatterers[i_seq].flags.use_u_aniso()):
-            print >> out, pdb.format_anisou_record(
+            line = pdb.format_anisou_record(
                                   serial      = i_seq+1,
                                   name        = name,
                                   altLoc      = altLoc,
@@ -696,7 +705,11 @@ def write_pdb_file(xray_structure,
                                   segID       = segID,
                                   element     = scat_types[i_seq],#element,
                                   charge      = charge)
-     print >> out, "END"
+            if(out is not None):
+              print >> out, line
+            raw_records.append(line)
+     if(out is not None):
+       print >> out, "END"
   else:
      for i_seq,atom in enumerate(atom_attributes_list):
          if(selection[i_seq]):
@@ -716,7 +729,7 @@ def write_pdb_file(xray_structure,
             else: element = atom.element
             if(atom.charge is None): charge = "  "
             else: charge = atom.charge
-            print >> out, pdb.format_atom_record(
+            line = pdb.format_atom_record(
                                   record_name = atom.record_name(),
                                   serial      = i_seq+1,
                                   name        = name,
@@ -731,8 +744,11 @@ def write_pdb_file(xray_structure,
                                   segID       = segID,
                                   element     = scat_types[i_seq],#element,
                                   charge      = charge)
+            if(out is not None):
+              print >> out, line
+            raw_records.append(line)
             if(scatterers[i_seq].flags.use_u_aniso()):
-               print >> out, pdb.format_anisou_record(
+               line = pdb.format_anisou_record(
                                   serial      = i_seq+1,
                                   name        = name,
                                   altLoc      = altLoc,
@@ -744,7 +760,12 @@ def write_pdb_file(xray_structure,
                                   segID       = segID,
                                   element     = scat_types[i_seq],#element,
                                   charge      = charge)
-     print >> out, "END"
+               if(out is not None):
+                 print >> out, line
+               raw_records.append(line)
+     if(out is not None):
+       print >> out, "END"
+  return raw_records
 
 def print_programs_start_header(log, text):
   print >> log
@@ -829,33 +850,37 @@ class process_pdb_file_srv(object):
     else: self.ener_lib = ener_lib
     if(self.log is None): self.log = sys.stdout
 
-  def process_pdb_files(self, pdb_file_names):
+  def process_pdb_files(self, pdb_file_names = None, raw_records = None):
+    assert [pdb_file_names, raw_records].count(None) == 1
     if(self.cif_objects is not None):
       self._process_monomer_cif_files()
-    return self._process_pdb_file(pdb_file_names = pdb_file_names)
+    return self._process_pdb_file(pdb_file_names = pdb_file_names,
+                                  raw_records    = raw_records)
 
-  def _process_pdb_file(self, pdb_file_names):
-    pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
-    pdb_combined.report_non_unique(out=self.log)
-    if (len(pdb_combined.unique_file_names) == 0):
-      raise Sorry("No coordinate file given.")
-    if(self.pdb_parameters is not None):
-      self.pdb_parameters.file_name = [os.path.abspath(file_name)
-        for file_name in pdb_combined.unique_file_names]
-    pdb_inp = iotbx.pdb.input(
-      source_info=None,
-      lines=flex.std_string(pdb_combined.raw_records))
+  def _process_pdb_file(self, pdb_file_names, raw_records):
+    if(raw_records is None):
+      pdb_combined = combine_unique_pdb_files(file_names=pdb_file_names)
+      pdb_combined.report_non_unique(out=self.log)
+      if (len(pdb_combined.unique_file_names) == 0):
+        raise Sorry("No coordinate file given.")
+      if(self.pdb_parameters is not None):
+        self.pdb_parameters.file_name = [os.path.abspath(file_name)
+          for file_name in pdb_combined.unique_file_names]
+      raw_records = pdb_combined.raw_records
+    pdb_inp = iotbx.pdb.input(source_info = None,
+                              lines       = flex.std_string(raw_records))
     if(pdb_inp.atoms().size() == 0):
       msg = ["No atomic coordinates found in PDB files:"]
-      for file_name in pdb_file_names:
-        msg.append("  %s" % show_string(file_name))
+      if(pdb_file_names is not None):
+        for file_name in pdb_file_names:
+          msg.append("  %s" % show_string(file_name))
       raise Sorry("\n".join(msg))
     pdb_inp.raise_duplicate_atom_labels_if_necessary()
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv              = self.mon_lib_srv,
       ener_lib                 = self.ener_lib,
       params                   = self.pdb_interpretation_params,
-      raw_records              = pdb_combined.raw_records,
+      raw_records              = raw_records,
       strict_conflict_handling = False,
       crystal_symmetry         = self.crystal_symmetry,
       force_symmetry           = True,

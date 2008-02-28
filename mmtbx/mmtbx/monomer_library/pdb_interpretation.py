@@ -56,6 +56,19 @@ class ad_hoc_single_atom_residue(object):
     self.scattering_type = None
     self.energy_type = None
 
+clash_guard_params_str = """\
+  clash_guard
+    .expert_level=2
+  {
+    nonbonded_distance_threshold = 0.5
+      .type = float
+    max_number_of_distances_below_threshold = 100
+      .type = int
+    max_fraction_of_distances_below_threshold = 0.1
+      .type = float
+  }
+"""
+
 master_params = iotbx.phil.parse("""\
   apply_cif_modification
     .optional = True
@@ -113,17 +126,8 @@ master_params = iotbx.phil.parse("""\
   translate_cns_dna_rna_residue_names = None
     .type=bool
     .optional=False
-  clash_guard
-    .expert_level=2
-  {
-    nonbonded_distance_threshold = 0.5
-      .type = float
-    max_number_of_distances_below_threshold = 100
-      .type = int
-    max_fraction_of_distances_below_threshold = 0.1
-      .type = float
-  }
-""")
+  %s
+"""%clash_guard_params_str)
 
 geometry_restraints_edits = iotbx.phil.parse("""\
 bond

@@ -174,6 +174,9 @@ input {
 f_model {
 %s
 }
+pdb_interpretation {
+  include scope mmtbx.monomer_library.pdb_interpretation.master_params
+}
 geometry_minimization {
   include scope mmtbx.command_line.geometry_minimization.master_params
 }
@@ -611,7 +614,7 @@ class interpreter:
     processed_pdb_files_srv = utils.process_pdb_file_srv(
       crystal_symmetry          = self.crystal_symmetry,
       pdb_parameters            = self.params.input.pdb,
-      pdb_interpretation_params = None,
+      pdb_interpretation_params = self.params.pdb_interpretation,
       stop_for_unknowns         = True,
       log                       = self.log,
       mon_lib_srv               = self.mon_lib_srv,
