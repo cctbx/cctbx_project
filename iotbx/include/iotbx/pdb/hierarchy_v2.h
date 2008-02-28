@@ -288,6 +288,13 @@ namespace hierarchy_v2 {
       void
       clear_parent() { data->parent.reset(); }
 
+      unsigned
+      reset_atom_tmp(int new_value) const
+      {
+        data->tmp = new_value;
+        return 1U;
+      }
+
     public:
       atom(shared_ptr<atom_data> const& data_)
       :
@@ -468,12 +475,17 @@ namespace hierarchy_v2 {
 
     protected:
       friend class atom; // to support atom::parent()
+
       atom_group(
         shared_ptr<atom_group_data> const& data_, bool) : data(data_) {}
 
       friend class residue_group; // to support atom_group::append_atom_group()
+
       atom_group&
       set_parent(residue_group const& parent);
+
+      void
+      clear_parent() { data->parent.reset(); }
 
     public:
       atom_group(shared_ptr<atom_group_data> const& data_)
@@ -509,58 +521,34 @@ namespace hierarchy_v2 {
       boost::optional<residue_group>
       parent() const;
 
-      void
-      pre_allocate_atoms(unsigned number_of_additional_atoms)
-      {
-        data->atoms.reserve(data->atoms.size()+number_of_additional_atoms);
-      }
-
-      void
-      new_atoms(unsigned number_of_additional_atoms);
-
-      void
-      insert_atom(long i, hierarchy_v2::atom& atom)
-      {
-        data->atoms.insert(
-          data->atoms.begin()
-            + positive_getitem_index(i, data->atoms.size(), true),
-          atom.set_parent(*this));
-      }
-
-      void
-      append_atom(hierarchy_v2::atom& atom)
-      {
-        data->atoms.push_back(atom.set_parent(*this));
-      }
-
-      void
-      remove_atom(long i)
-      {
-        std::size_t j =  positive_getitem_index(i, data->atoms.size());
-        data->atoms[j].clear_parent();
-        data->atoms.erase(data->atoms.begin() + j);
-      }
-
-      void
-      remove_atom(hierarchy_v2::atom& atom)
-      {
-        data->atoms.erase(data->atoms.begin() + find_atom_index(atom, true));
-        atom.clear_parent();
-      }
-
       unsigned
-      atoms_size() const
-      {
-        return static_cast<unsigned>(data->atoms.size());
-      }
+      atoms_size() const;
 
       std::vector<atom> const&
-      atoms() const { return data->atoms; }
+      atoms() const;
 
       long
       find_atom_index(
         hierarchy_v2::atom const& atom,
         bool must_be_present=false) const;
+
+      void
+      pre_allocate_atoms(unsigned number_of_additional_atoms);
+
+      void
+      new_atoms(unsigned number_of_additional_atoms);
+
+      void
+      insert_atom(long i, hierarchy_v2::atom& atom);
+
+      void
+      append_atom(hierarchy_v2::atom& atom);
+
+      void
+      remove_atom(long i);
+
+      void
+      remove_atom(hierarchy_v2::atom& atom);
 
       unsigned
       reset_atom_tmp(int new_value) const;
@@ -574,12 +562,17 @@ namespace hierarchy_v2 {
 
     protected:
       friend class atom_group; // to support atom_group::parent()
+
       residue_group(
         shared_ptr<residue_group_data> const& data_, bool) : data(data_) {}
 
       friend class chain; // to support chain::append_residue_group()
+
       residue_group&
       set_parent(chain const& parent);
+
+      void
+      clear_parent() { data->parent.reset(); }
 
     public:
       residue_group(shared_ptr<residue_group_data> const& data_)
@@ -618,15 +611,34 @@ namespace hierarchy_v2 {
       boost::optional<chain>
       parent() const;
 
+      unsigned
+      atom_groups_size() const;
+
+      std::vector<atom_group> const&
+      atom_groups() const;
+
+      long
+      find_atom_group_index(
+        hierarchy_v2::atom_group const& atom_group,
+        bool must_be_present=false) const;
+
       void
-      pre_allocate_atom_groups(unsigned number_of_additional_atom_groups)
-      {
-        data->atom_groups.reserve(
-          data->atom_groups.size()+number_of_additional_atom_groups);
-      }
+      pre_allocate_atom_groups(unsigned number_of_additional_atom_groups);
 
       void
       new_atom_groups(unsigned number_of_additional_atom_groups);
+
+      void
+      insert_atom_group(long i, hierarchy_v2::atom_group& atom_group);
+
+      void
+      append_atom_group(hierarchy_v2::atom_group& atom_group);
+
+      void
+      remove_atom_group(long i);
+
+      void
+      remove_atom_group(hierarchy_v2::atom_group& atom_group);
 
       atom_group
       new_atom_group(
@@ -637,21 +649,6 @@ namespace hierarchy_v2 {
           atom_group(*this, altloc, resname));
         return data->atom_groups.back();
       }
-
-      void
-      append_atom_group(hierarchy_v2::atom_group& atom_group)
-      {
-        data->atom_groups.push_back(atom_group.set_parent(*this));
-      }
-
-      unsigned
-      atom_groups_size() const
-      {
-        return static_cast<unsigned>(data->atom_groups.size());
-      }
-
-      std::vector<atom_group> const&
-      atom_groups() const { return data->atom_groups; }
 
       unsigned
       reset_atom_tmp(int new_value) const;
@@ -665,11 +662,16 @@ namespace hierarchy_v2 {
 
     protected:
       friend class residue_group; // to support residue_group::parent()
+
       chain(shared_ptr<chain_data> const& data_, bool) : data(data_) {}
 
       friend class model; // to support model::append_chain()
+
       chain&
       set_parent(model const& parent);
+
+      void
+      clear_parent() { data->parent.reset(); }
 
     public:
       chain(shared_ptr<chain_data> const& data_)
@@ -703,15 +705,34 @@ namespace hierarchy_v2 {
       boost::optional<model>
       parent() const;
 
+      unsigned
+      residue_groups_size() const;
+
+      std::vector<residue_group> const&
+      residue_groups() const;
+
+      long
+      find_residue_group_index(
+        hierarchy_v2::residue_group const& residue_group,
+        bool must_be_present=false) const;
+
       void
-      pre_allocate_residue_groups(unsigned number_of_additional_residue_groups)
-      {
-        data->residue_groups.reserve(
-          data->residue_groups.size()+number_of_additional_residue_groups);
-      }
+      pre_allocate_residue_groups(unsigned number_of_additional_residue_groups);
 
       void
       new_residue_groups(unsigned number_of_additional_residue_groups);
+
+      void
+      insert_residue_group(long i, hierarchy_v2::residue_group& residue_group);
+
+      void
+      append_residue_group(hierarchy_v2::residue_group& residue_group);
+
+      void
+      remove_residue_group(long i);
+
+      void
+      remove_residue_group(hierarchy_v2::residue_group& residue_group);
 
       residue_group
       new_residue_group(
@@ -723,21 +744,6 @@ namespace hierarchy_v2 {
           residue_group(*this, resseq, icode, link_to_previous));
         return data->residue_groups.back();
       }
-
-      void
-      append_residue_group(hierarchy_v2::residue_group& residue_group)
-      {
-        data->residue_groups.push_back(residue_group.set_parent(*this));
-      }
-
-      unsigned
-      residue_groups_size() const
-      {
-        return static_cast<unsigned>(data->residue_groups.size());
-      }
-
-      std::vector<residue_group> const&
-      residue_groups() const { return data->residue_groups; }
 
       unsigned
       reset_atom_tmp(int new_value) const;
@@ -754,8 +760,12 @@ namespace hierarchy_v2 {
       model(shared_ptr<model_data> const& data_, bool) : data(data_) {}
 
       friend class root; // to support root::append_model()
+
       model&
       set_parent(root const& parent);
+
+      void
+      clear_parent() { data->parent.reset(); }
 
     public:
       model(
@@ -786,37 +796,41 @@ namespace hierarchy_v2 {
       boost::optional<root>
       parent() const;
 
+      unsigned
+      chains_size() const;
+
+      std::vector<chain> const&
+      chains() const;
+
+      long
+      find_chain_index(
+        hierarchy_v2::chain const& chain,
+        bool must_be_present=false) const;
+
       void
-      pre_allocate_chains(unsigned number_of_additional_chains)
-      {
-        data->chains.reserve(
-          data->chains.size()+number_of_additional_chains);
-      }
+      pre_allocate_chains(unsigned number_of_additional_chains);
 
       void
       new_chains(unsigned number_of_additional_chains);
 
+      void
+      insert_chain(long i, hierarchy_v2::chain& chain);
+
+      void
+      append_chain(hierarchy_v2::chain& chain);
+
+      void
+      remove_chain(long i);
+
+      void
+      remove_chain(hierarchy_v2::chain& chain);
+
       chain
-      new_chain(std::string const& id)
+      new_chain(std::string const& id="")
       {
         data->chains.push_back(chain(*this, id));
         return data->chains.back();
       }
-
-      void
-      append_chain(hierarchy_v2::chain& chain)
-      {
-        data->chains.push_back(chain.set_parent(*this));
-      }
-
-      unsigned
-      chains_size() const
-      {
-        return static_cast<unsigned>(data->chains.size());
-      }
-
-      std::vector<chain> const&
-      chains() const { return data->chains; }
 
       unsigned
       reset_atom_tmp(int new_value) const;
@@ -830,6 +844,7 @@ namespace hierarchy_v2 {
 
     protected:
       friend class model; // to support model::parent()
+
       root(shared_ptr<root_data> const& data_, bool) : data(data_) {}
 
     public:
@@ -849,37 +864,41 @@ namespace hierarchy_v2 {
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
 
+      unsigned
+      models_size() const;
+
+      std::vector<model> const&
+      models() const;
+
+      long
+      find_model_index(
+        hierarchy_v2::model const& model,
+        bool must_be_present=false) const;
+
       void
-      pre_allocate_models(unsigned number_of_additional_models)
-      {
-        data->models.reserve(
-          data->models.size()+number_of_additional_models);
-      }
+      pre_allocate_models(unsigned number_of_additional_models);
 
       void
       new_models(unsigned number_of_additional_models);
 
+      void
+      insert_model(long i, hierarchy_v2::model& model);
+
+      void
+      append_model(hierarchy_v2::model& model);
+
+      void
+      remove_model(long i);
+
+      void
+      remove_model(hierarchy_v2::model& model);
+
       model
-      new_model(std::string const& id)
+      new_model(std::string const& id="")
       {
         data->models.push_back(model(*this, id));
         return data->models.back();
       }
-
-      void
-      append_model(hierarchy_v2::model& model)
-      {
-        data->models.push_back(model.set_parent(*this));
-      }
-
-      unsigned
-      models_size() const
-      {
-        return static_cast<unsigned>(data->models.size());
-      }
-
-      std::vector<model> const&
-      models() const { return data->models; }
 
       unsigned
       reset_atom_tmp(int new_value) const;

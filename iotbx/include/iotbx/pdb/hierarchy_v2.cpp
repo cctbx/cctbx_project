@@ -1,9 +1,5 @@
 #include <iotbx/pdb/hierarchy_v2.h>
-#include <iotbx/pdb/common_residue_names.h>
-#include <iotbx/pdb/hybrid_36_c.h>
 #include <cctbx/eltbx/chemical_elements.h>
-#include <boost/scoped_array.hpp>
-#include <ctype.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 {
 
@@ -28,277 +24,140 @@ namespace {
 
 } // namespace <anonymous>
 
+#define IOTBX_PDB_HIERARCHY_V2_SET_PARENT_ETC(P, T) \
+  T& \
+  T::set_parent(P const& parent) \
+  { \
+    if (data->parent.lock().get() != 0) { \
+      throw std::runtime_error(#T " has another parent " #P " already."); \
+    } \
+    data->parent = parent.data; \
+    return *this; \
+  } \
+\
+  boost::optional<P> \
+  T::parent() const \
+  { \
+    shared_ptr<P##_data> parent = data->parent.lock(); \
+    if (parent.get() == 0) return boost::optional<P>(); \
+    return boost::optional<P>(P(parent, true)); \
+  }
+
+#define IOTBX_PDB_HIERARCHY_V2_APPEND_ETC(T, C) \
+  unsigned \
+  T::C##s_size() const \
+  { \
+    return static_cast<unsigned>(data->C##s.size()); \
+  } \
+\
+  std::vector<C> const& \
+  T::C##s() const { return data->C##s; } \
+\
+  long \
+  T::find_##C##_index( \
+    hierarchy_v2::C const& C, \
+    bool must_be_present) const \
+  { \
+    long n = static_cast<long>(data->C##s.size()); \
+    for(long i=0;i<n;i++) { \
+      if (data->C##s[i].data.get() == C.data.get()) return i; \
+    } \
+    if (must_be_present) { \
+      throw std::runtime_error(#C " not in " #T "."); \
+    } \
+    return -1; \
+  } \
+\
+  void \
+  T::pre_allocate_##C##s(unsigned number_of_additional_##C##s) \
+  { \
+    data->C##s.reserve(data->C##s.size()+number_of_additional_##C##s); \
+  } \
+\
+  void \
+  T::new_##C##s(unsigned number_of_additional_##C##s) \
+  { \
+    pre_allocate_##C##s(number_of_additional_##C##s); \
+    for(unsigned i=0;i<number_of_additional_##C##s;i++) { \
+      data->C##s.push_back(C(*this)); \
+    } \
+  } \
+\
+  void \
+  T::insert_##C(long i, hierarchy_v2::C& C) \
+  { \
+    data->C##s.insert( \
+      data->C##s.begin() \
+        + positive_getitem_index(i, data->C##s.size(), true), \
+      C.set_parent(*this)); \
+  } \
+\
+  void \
+  T::append_##C(hierarchy_v2::C& C) \
+  { \
+    data->C##s.push_back(C.set_parent(*this)); \
+  } \
+\
+  void \
+  T::remove_##C(long i) \
+  { \
+    std::size_t j =  positive_getitem_index(i, data->C##s.size()); \
+    data->C##s[j].clear_parent(); \
+    data->C##s.erase(data->C##s.begin() + j); \
+  } \
+\
+  void \
+  T::remove_##C(hierarchy_v2::C& C) \
+  { \
+    data->C##s.erase(data->C##s.begin() + find_##C##_index(C, true)); \
+    C.clear_parent(); \
+  } \
+\
+  unsigned \
+  T::reset_atom_tmp(int new_value) const \
+  { \
+    unsigned n = C##s_size(); \
+    if (n == 0) return 0; \
+    unsigned result = 0; \
+    const C* c = &*data->C##s.begin(); \
+    for(unsigned i=0;i<n;i++) { \
+      result += (c++)->reset_atom_tmp(new_value); \
+    } \
+    return result; \
+  }
+
+#define IOTBX_PDB_HIERARCHY_V2_DETACHED_COPY_ETC(P, T, C) \
+  IOTBX_PDB_HIERARCHY_V2_SET_PARENT_ETC(P, T) \
+  T::T( \
+    P const& parent, \
+    T const& other) \
+  : \
+    data(new T##_data(parent.data, *other.data)) \
+  { \
+    detach_copy_children(*this, data->C##s, other.data->C##s); \
+  } \
+\
+  T \
+  T::detached_copy() const \
+  { \
+    T result; \
+    detach_copy_children(result, result.data->C##s, data->C##s); \
+    return result; \
+  } \
+  IOTBX_PDB_HIERARCHY_V2_APPEND_ETC(T, C)
+
+  IOTBX_PDB_HIERARCHY_V2_APPEND_ETC(root, model)
+  IOTBX_PDB_HIERARCHY_V2_DETACHED_COPY_ETC(root, model, chain)
+  IOTBX_PDB_HIERARCHY_V2_DETACHED_COPY_ETC(model, chain, residue_group)
+  IOTBX_PDB_HIERARCHY_V2_DETACHED_COPY_ETC(chain, residue_group, atom_group)
+  IOTBX_PDB_HIERARCHY_V2_DETACHED_COPY_ETC(residue_group, atom_group, atom)
+  IOTBX_PDB_HIERARCHY_V2_SET_PARENT_ETC(atom_group, atom)
+
   root
   root::deep_copy() const
   {
     root result;
     detach_copy_children(result, result.data->models, data->models);
-    return result;
-  }
-
-  void
-  root::new_models(unsigned number_of_additional_models)
-  {
-    pre_allocate_models(number_of_additional_models);
-    for(unsigned i=0;i<number_of_additional_models;i++) {
-      data->models.push_back(model(*this));
-    }
-  }
-
-  unsigned
-  root::reset_atom_tmp(int new_value) const
-  {
-    unsigned n = models_size();
-    if (n == 0) return 0;
-    unsigned result = 0;
-    const model* m = &*data->models.begin();
-    for(unsigned i=0;i<n;i++) {
-      result += (m++)->reset_atom_tmp(new_value);
-    }
-    return result;
-  }
-
-  model::model(
-    root const& parent,
-    model const& other)
-  :
-    data(new model_data(parent.data, *other.data))
-  {
-    detach_copy_children(*this, data->chains, other.data->chains);
-  }
-
-  model
-  model::detached_copy() const
-  {
-    model result;
-    detach_copy_children(result, result.data->chains, data->chains);
-    return result;
-  }
-
-  model&
-  model::set_parent(root const& parent)
-  {
-    bool root_has_parent = (data->parent.lock().get() != 0);
-    SCITBX_ASSERT(!root_has_parent);
-    data->parent = parent.data;
-    return *this;
-  }
-
-  boost::optional<root>
-  model::parent() const
-  {
-    shared_ptr<root_data> parent = data->parent.lock();
-    if (parent.get() == 0) return boost::optional<root>();
-    return boost::optional<root>(root(parent, true));
-  }
-
-  void
-  model::new_chains(unsigned number_of_additional_chains)
-  {
-    pre_allocate_chains(number_of_additional_chains);
-    for(unsigned i=0;i<number_of_additional_chains;i++) {
-      data->chains.push_back(chain(*this));
-    }
-  }
-
-  unsigned
-  model::reset_atom_tmp(int new_value) const
-  {
-    unsigned n = chains_size();
-    if (n == 0) return 0;
-    unsigned result = 0;
-    const chain* c = &*data->chains.begin();
-    for(unsigned i=0;i<n;i++) {
-      result += (c++)->reset_atom_tmp(new_value);
-    }
-    return result;
-  }
-
-  chain::chain(
-    model const& parent,
-    chain const& other)
-  :
-    data(new chain_data(parent.data, *other.data))
-  {
-    detach_copy_children(
-      *this, data->residue_groups, other.data->residue_groups);
-  }
-
-  chain
-  chain::detached_copy() const
-  {
-    chain result;
-    detach_copy_children(
-      result, result.data->residue_groups, data->residue_groups);
-    return result;
-  }
-
-  chain&
-  chain::set_parent(model const& parent)
-  {
-    bool chain_has_parent = (data->parent.lock().get() != 0);
-    SCITBX_ASSERT(!chain_has_parent);
-    data->parent = parent.data;
-    return *this;
-  }
-
-  boost::optional<model>
-  chain::parent() const
-  {
-    shared_ptr<model_data> parent = data->parent.lock();
-    if (parent.get() == 0) return boost::optional<model>();
-    return boost::optional<model>(model(parent, true));
-  }
-
-  void
-  chain::new_residue_groups(unsigned number_of_additional_residue_groups)
-  {
-    pre_allocate_residue_groups(number_of_additional_residue_groups);
-    for(unsigned i=0;i<number_of_additional_residue_groups;i++) {
-      data->residue_groups.push_back(residue_group(*this));
-    }
-  }
-
-  unsigned
-  chain::reset_atom_tmp(int new_value) const
-  {
-    unsigned n = residue_groups_size();
-    if (n == 0) return 0;
-    unsigned result = 0;
-    const residue_group* rg = &*data->residue_groups.begin();
-    for(unsigned i=0;i<n;i++) {
-      result += (rg++)->reset_atom_tmp(new_value);
-    }
-    return result;
-  }
-
-  residue_group::residue_group(
-    chain const& parent,
-    residue_group const& other)
-  :
-    data(new residue_group_data(parent.data, *other.data))
-  {
-    detach_copy_children(*this, data->atom_groups, other.data->atom_groups);
-  }
-
-  residue_group
-  residue_group::detached_copy() const
-  {
-    residue_group result;
-    detach_copy_children(result, result.data->atom_groups, data->atom_groups);
-    return result;
-  }
-
-  residue_group&
-  residue_group::set_parent(chain const& parent)
-  {
-    bool residue_group_has_parent = (data->parent.lock().get() != 0);
-    SCITBX_ASSERT(!residue_group_has_parent);
-    data->parent = parent.data;
-    return *this;
-  }
-
-  boost::optional<chain>
-  residue_group::parent() const
-  {
-    shared_ptr<chain_data> parent = data->parent.lock();
-    if (parent.get() == 0) return boost::optional<chain>();
-    return boost::optional<chain>(chain(parent, true));
-  }
-
-  void
-  residue_group::new_atom_groups(unsigned number_of_additional_atom_groups)
-  {
-    pre_allocate_atom_groups(number_of_additional_atom_groups);
-    for(unsigned i=0;i<number_of_additional_atom_groups;i++) {
-      data->atom_groups.push_back(atom_group(*this));
-    }
-  }
-
-  unsigned
-  residue_group::reset_atom_tmp(int new_value) const
-  {
-    unsigned n = atom_groups_size();
-    if (n == 0) return 0;
-    unsigned result = 0;
-    const atom_group* ag = &*data->atom_groups.begin();
-    for(unsigned i=0;i<n;i++) {
-      result += (ag++)->reset_atom_tmp(new_value);
-    }
-    return result;
-  }
-
-  atom_group::atom_group(
-    residue_group const& parent,
-    atom_group const& other)
-  :
-    data(new atom_group_data(parent.data, *other.data))
-  {
-    detach_copy_children(*this, data->atoms, other.data->atoms);
-  }
-
-  atom_group
-  atom_group::detached_copy() const
-  {
-    atom_group result;
-    detach_copy_children(result, result.data->atoms, data->atoms);
-    return result;
-  }
-
-  atom_group&
-  atom_group::set_parent(residue_group const& parent)
-  {
-    bool atom_group_has_parent = (data->parent.lock().get() != 0);
-    SCITBX_ASSERT(!atom_group_has_parent);
-    data->parent = parent.data;
-    return *this;
-  }
-
-  boost::optional<residue_group>
-  atom_group::parent() const
-  {
-    shared_ptr<residue_group_data> parent = data->parent.lock();
-    if (parent.get() == 0) return boost::optional<residue_group>();
-    return boost::optional<residue_group>(residue_group(parent, true));
-  }
-
-  void
-  atom_group::new_atoms(unsigned number_of_additional_atoms)
-  {
-    pre_allocate_atoms(number_of_additional_atoms);
-    for(unsigned i=0;i<number_of_additional_atoms;i++) {
-      data->atoms.push_back(atom(*this));
-    }
-  }
-
-  long
-  atom_group::find_atom_index(
-    hierarchy_v2::atom const& atom,
-    bool must_be_present) const
-  {
-    long n = static_cast<long>(data->atoms.size());
-    for(long i=0;i<n;i++) {
-      if (data->atoms[i].data.get() == atom.data.get()) return i;
-    }
-    if (must_be_present) {
-      throw std::runtime_error("atom not in atom_group.");
-    }
-    return -1;
-  }
-
-  unsigned
-  atom_group::reset_atom_tmp(int new_value) const
-  {
-    unsigned n = atoms_size();
-    if (n == 0) return 0;
-    unsigned result = 0;
-    const atom* a = &*data->atoms.begin();
-    for(unsigned i=0;i<n;i++,a++) {
-      if (a->data->tmp != new_value) {
-        a->data->tmp = new_value;
-        result++;
-      }
-    }
     return result;
   }
 
@@ -331,23 +190,6 @@ namespace {
       data->b, data->sigb,
       data->uij, data->siguij,
       data->hetero);
-  }
-
-  atom&
-  atom::set_parent(atom_group const& parent)
-  {
-    bool atom_has_parent = (data->parent.lock().get() != 0);
-    SCITBX_ASSERT(!atom_has_parent);
-    data->parent = parent.data;
-    return *this;
-  }
-
-  boost::optional<atom_group>
-  atom::parent() const
-  {
-    shared_ptr<atom_group_data> parent = data->parent.lock();
-    if (parent.get() == 0) return boost::optional<atom_group>();
-    return boost::optional<atom_group>(atom_group(parent, true));
   }
 
   boost::optional<std::string>
