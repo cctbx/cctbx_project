@@ -208,6 +208,8 @@ namespace {
         .add_property("tmp",
           make_function(get_tmp), make_function(set_tmp))
         .def("memory_id", &w_t::memory_id)
+        .def("sizeof_data", &w_t::sizeof_data)
+        .staticmethod("sizeof_data")
         .def("parent", get_parent<atom, atom_group>::wrapper)
         .def("uij_is_defined", &w_t::uij_is_defined)
         .def("siguij_is_defined", &w_t::siguij_is_defined)

@@ -5,6 +5,8 @@ from libtbx.utils import format_cpu_times
 import sys
 
 def exercise_atom():
+  print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
+    pdb.hierarchy_v2.atom.sizeof_data()
   a = pdb.hierarchy_v2.atom()
   assert a.name == ""
   a.name = "abcd"
