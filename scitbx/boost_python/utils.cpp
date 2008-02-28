@@ -17,19 +17,6 @@ namespace scitbx { namespace boost_python {
     boost::python::throw_error_already_set();
   }
 
-  std::size_t
-  positive_getitem_index(long i, std::size_t size, bool allow_i_eq_size)
-  {
-    if (i >= 0) {
-      std::size_t result = static_cast<std::size_t>(i);
-      if (   result > size
-          || result == size && !allow_i_eq_size) raise_index_error();
-      return result;
-    }
-    if (static_cast<std::size_t>(-i) > size) raise_index_error();
-    return size + i;
-  }
-
   boost::python::object
   range(long start, long len, long step)
   {

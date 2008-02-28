@@ -4,7 +4,7 @@
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
-#include <scitbx/boost_python/utils.h>
+#include <scitbx/misc/positive_getitem_index.h>
 
 namespace cctbx { namespace maptbx { namespace boost_python {
 
@@ -17,7 +17,7 @@ namespace {
     static af::tiny<long, 3>
     grid_indices(w_t const& self, long i)
     {
-      using scitbx::boost_python::positive_getitem_index;
+      using scitbx::positive_getitem_index;
       std::size_t j = positive_getitem_index(i, self.grid_indices().size());
       return self.grid_indices()[j];
     }
