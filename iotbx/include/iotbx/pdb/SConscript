@@ -18,6 +18,7 @@ builder(
     "hybrid_36_c.c",
     "utils.cpp",
     "hierarchy_v1.cpp",
+    "hierarchy_v2.cpp",
     "input.cpp"])
 
 if (not env_etc.no_boost_python):
@@ -38,3 +39,7 @@ if (not env_etc.no_boost_python):
     target="#lib/iotbx_pdb_hierarchy_v1_ext",
     source=[
       "hierarchy_v1_ext.cpp"])
+  env.SharedLibrary(
+    target="#lib/iotbx_pdb_hierarchy_v2_ext",
+    source=[
+      "hierarchy_v2_ext.cpp"])
