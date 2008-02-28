@@ -99,9 +99,9 @@ def exercise_once(flipping_type,
                   target_structure, f_obs, d_min, verbose=False):
   result = group_args(had_phase_transition=False,
                       emma_match=False,
-                      sharp_correlation_map=False,
                       first_correct_correlation_peak=None,
-                      inverted_solution=False)
+                      inverted_solution=False,
+                      succeeded=True)
 
   f_target = miller.build_set(
     crystal_symmetry=target_structure,
@@ -121,17 +121,21 @@ def exercise_once(flipping_type,
   solving = charge_flipping.solving_iterator(flipping,
                                              yield_during_delta_guessing=True,
                                              yield_solving_interval=1)
-
-  while solving.state is not solving.finished:
-    # Guessing a value of delta leading to subsequent good convergence
-    if verbose=="highly":
-      print "Guessing delta..."
-      print "%10s | %10s | %10s | %10s | %10s" % ('delta', 'R', 'c_tot',
-                                                  'c_flip', 'c_tot/c_flip')
-      print "-"*64
-    for flipping in solving:
-      assert solving.state in (solving.guessing_delta, solving.solving)
-      if verbose=="highly":
+  previous_state = None
+  for flipping in solving:
+    if solving.state is solving.guessing_delta:
+      # Guessing a value of delta leading to subsequent good convergence
+      if verbose:
+        if previous_state is solving.solving:
+          print "** Restarting (no phase transition) **"
+        elif previous_state is solving.evaluating:
+          print "** Restarting (no sharp correlation map) **"
+      if verbose == "highly":
+        if previous_state is not solving.guessing_delta:
+          print "Guessing delta..."
+          print "%10s | %10s | %10s | %10s | %10s" % ('delta', 'R', 'c_tot',
+                                                      'c_flip', 'c_tot/c_flip')
+          print "-"*64
         rho = flipping.rho_map
         c_tot = rho.c_tot()
         c_flip = rho.c_flip(flipping.delta)
@@ -140,47 +144,33 @@ def exercise_once(flipping_type,
         print "%10.4f | %10.3f | %10.1f | %10.1f | %10.2f"\
               % (flipping.delta, flipping.r1_factor(),
                  c_tot, c_flip, c_tot/c_flip)
-        if solving.state is not solving.guessing_delta: break
 
-    # main charge flipping loop to solve the structure
-    if verbose=="highly":
-      print
-      print "Solving..."
-      print "with delta=%.4f" % flipping.delta
-      print
-      print "%5s | %10s | %10s" % ('#', 'R1', 'c_tot/c_flip')
-      print '-'*33
-    for flipping in solving:
-      assert solving.state in (solving.solving,
-                               solving.guessing_delta,
-                               solving.polishing)
-      r1 = flipping.r1_factor()
-      r = flipping.c_tot_over_c_flip()
+    elif solving.state is solving.solving:
+      # main charge flipping loop to solve the structure
       if verbose=="highly":
+        if previous_state is not solving.solving:
+          print
+          print "Solving..."
+          print "with delta=%.4f" % flipping.delta
+          print
+          print "%5s | %10s | %10s" % ('#', 'R1', 'c_tot/c_flip')
+          print '-'*33
+        r1 = flipping.r1_factor()
+        r = flipping.c_tot_over_c_flip()
         print "%5i | %10.3f | %10.3f" % (solving.iteration_index, r1, r)
-      if solving.state is not solving.solving:
-        break
 
-    # need to restart
-    if solving.state is solving.guessing_delta:
-      msg = "%s Restarting %s" % (('****',)*2)
-      print
-      print "*" * len(msg)
-      print msg
-      print "*" * len(msg)
-      print
-      continue
+    elif solving.state is solving.finished:
+      break
 
-    # polishing
-    for flipping in solving:
-      assert solving.state in (solving.polishing, solving.finished)
-      if solving.state is solving.finished: break
+    previous_state = solving.state
 
   # check whether a phase transition has occured
   result.had_phase_transition = (solving.state == solving.finished
-                                 and not solving.max_attemps_exceeded)
+                                 and not solving.max_attempts_exceeded)
   if not result.had_phase_transition:
-    if verbose: print "** no phase transition **"
+    result.succeeded = False
+    if verbose:
+      print "@@ No phase transition @@"
     return result
 
   flipping = solving.flipping_iterator
@@ -209,55 +199,50 @@ def exercise_once(flipping_type,
     and refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
   )
   if not result.emma_match:
+    result.succeeded = False
     if verbose:
       print "** no Euclidean matching **"
-    return result
   result.inverted_solution = refined_matches[0].rt.r == mat.inversion(3)
   reference_shift = -refined_matches[0].rt.t
 
   # Find the translation to bring back the structure to the same space-group
   # setting as the starting f_obs from correlation map analysis
-  correlation_map_peak_search, correlation_map = flipping.search_origin(
-    return_correlation_map_too=True)
   is_allowed= lambda x: f_target.space_group_info().is_allowed_origin_shift(
-    x, tolerance=0.02)
-  i=0
-  while 1:
-    peak = correlation_map_peak_search.next()
-    result.sharp_correlation_map = peak.height >= 0.9
-    if not result.sharp_correlation_map:
-      if verbose:
-        print "** weak correlation map highest peak **"
-      return result
-    shift = mat.col(peak.site)
+    x, tolerance=0.1)
+  weak_peak_signaled = False
+  for i, (f_calc, shift, cc_peak_height) in enumerate(
+                                                    solving.f_calc_solutions):
+    if not result.emma_match: continue
     if (   is_allowed(shift - reference_shift)
         or is_allowed(shift + reference_shift)):
       result.first_correct_correlation_peak = i
       break
-    i += 1
-  if verbose and result.first_correct_correlation_peak != 0:
-    print "First correct correlation peak: #%i"\
-          % result.first_correct_correlation_peak
+    else:
+      if verbose == "more":
+        print "++ Incorrect peak: shift=(%.3f, %.3f, %.3f), height=%.2f"\
+              % (tuple(shift)+(cc_peak_height,))
+        print "   Reference shift=(%.3f, %.3f, %.3f)" % tuple(reference_shift)
+  if verbose:
+    if result.first_correct_correlation_peak is None:
+      result.succeeded = False
+      print "** No correct correlation peak **"
+    elif result.first_correct_correlation_peak != 0:
+      print "** First correct correlation peak: #%i **"\
+            % result.first_correct_correlation_peak
 
-  # Shift the structure back accordingly
-  multiplier = 1000
-  shift *= multiplier
-  cb_op = sgtbx.change_of_basis_op(
-    sgtbx.rt_mx(sgtbx.tr_vec(shift.as_int(), multiplier)))
-  f_calc = flipping.f_calc
-  f_calc = f_calc.change_basis(cb_op)
-  f_calc = f_calc.customized_copy(space_group_info=f_obs.space_group_info())\
-                 .merge_equivalents().array()
-  from crys3d import wx_map_viewer
-  isinstance(f_calc, miller.array)
-  wx_map_viewer.display(f_calc.fft_map())
-
-  dphi = flex.fmod_positive(f_calc.phases().data() - f_target.phases().data(),
-                            2*math.pi)
+  #from crys3d import wx_map_viewer
+  #wx_map_viewer.display(f_calc.fft_map())
 
 
   # return a bunch of Boolean flags telling where it failed
   # or whether it succeeded
+  if result.succeeded:
+    if result.first_correct_correlation_peak > 0:
+      print "@@ Success (but not first solution) @@"
+    else:
+      print "@@ Success @@"
+  else:
+    print "@@ Failure @@"
   return result
 
 def exercise(flags, space_group_info, flipping_type):
@@ -265,6 +250,7 @@ def exercise(flags, space_group_info, flipping_type):
   if flags.Verbose:
     print flipping_type.__name__
   n = len(space_group_info.group())
+  if n > 48: return False
   n_C = 12//n or 1
   n_O = 6//n
   n_N = 3//n
@@ -292,23 +278,22 @@ def run():
       #flipping_type=charge_flipping.weak_reflection_improved_iterator,
       flipping_type=charge_flipping.basic_iterator,
     ))
-  results = flat_list(results)
+  results = flat_list([ x for x in results if x is not None ])
   n_tests = len(results)
 
   n_phase_transitions = [
     r.had_phase_transition for r in results ].count(True)
   n_emma_matches = [
     r.emma_match for r in results ].count(True)
-  n_sharp_correlation_map = [
-    r.sharp_correlation_map for r in results ].count(True)
   n_found_shift = [
     r.first_correct_correlation_peak is not None for r in results ].count(True)
+  n_success = [ r.succeeded for r in results ].count(True)
   print "%i test cases:" % n_tests
+  print "\t%i successes" % n_success
   print "\t%i phase transitions" % n_phase_transitions
   print "\t%i Euclidean matches with correct structure" % n_emma_matches
-  print "\t%i sharp correlation maps" % n_sharp_correlation_map
   print "\t%i found shifts" % n_found_shift
-  assert n_found_shift/n_tests > 2/3
+  assert n_success/n_tests > 2/3
 
 if __name__ == '__main__':
   run()

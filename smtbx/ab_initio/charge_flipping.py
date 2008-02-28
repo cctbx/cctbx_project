@@ -39,6 +39,8 @@ from libtbx.assert_utils import is_numeric
 from libtbx import itertbx
 from libtbx import adopt_init_args
 
+from scitbx import matrix as mat
+
 from cctbx.array_family import flex
 from cctbx import sgtbx
 from cctbx import miller
@@ -164,44 +166,52 @@ class density_modification_iterator(object):
   def c_tot_over_c_flip(self):
     return self.rho_map.c_tot()/self.rho_map.c_flip(self.delta)
 
-  def search_origin(self,
-                    grid_resolution_factor=1/3,
-                    return_correlation_map_too=False):
-    """ The fast correlation map as per cctbx.translation_search.fast_nv1995
-    is computed and its peaks studied.
-    Inspiration from phenix.substructure.hyss for the parameters tuning.
-    """
-    f_obs = self.original_f_obs
-    f_calc = self.f_calc
-    crystal_gridding = f_obs.crystal_gridding(
+  def f_calc_symmetrisations(self):
+    # The fast correlation map as per cctbx.translation_search.fast_nv1995
+    # is computed and its peaks studied.
+    # Inspiration from phenix.substructure.hyss for the parameters tuning.
+    crystal_gridding = self.original_f_obs.crystal_gridding(
       symmetry_flags=translation_search.symmetry_flags(
         is_isotropic_search_model=False,
         have_f_part=False),
-      resolution_factor=grid_resolution_factor
+      resolution_factor=1/3
     )
     correlation_map = translation_search.fast_nv1995(
       gridding=crystal_gridding.n_real(),
-      space_group=f_obs.space_group(),
-      anomalous_flag=f_obs.anomalous_flag(),
-      miller_indices_f_obs=f_obs.indices(),
-      f_obs=f_obs.data(),
+      space_group=self.original_f_obs.space_group(),
+      anomalous_flag=self.original_f_obs.anomalous_flag(),
+      miller_indices_f_obs=self.original_f_obs.indices(),
+      f_obs=self.original_f_obs.data(),
       f_part=flex.complex_double(), ## no sub-structure is already fixed
-      miller_indices_p1_f_calc=f_calc.indices(),
-      p1_f_calc=f_calc.data()).target_map()
+      miller_indices_p1_f_calc=self.f_calc.indices(),
+      p1_f_calc=self.f_calc.data()).target_map()
     search_parameters = maptbx.peak_search_parameters(
       peak_search_level=1,
       peak_cutoff=0.5,
       interpolate=True,
       min_distance_sym_equiv=1e-6,
       general_positions_only=False,
-      min_cross_distance=f_obs.d_min()/2)
+      min_cross_distance=self.original_f_obs.d_min()/2)
     ## The correlation map is not a miller.fft_map, just a 3D flex.double
-    result = crystal_gridding.tags().peak_search(
+    correlation_map_peaks = crystal_gridding.tags().peak_search(
       map=correlation_map,
       parameters=search_parameters)
-    if return_correlation_map_too:
-      result = (result, correlation_map)
-    return result
+    # iterate over the strong peak; for each, shift and symmetrised f_calc
+    for peak in correlation_map_peaks:
+      if peak.height < 0.8: break
+      shift = mat.col(peak.site)
+      multiplier = 1000
+      cb_op = sgtbx.change_of_basis_op(
+        sgtbx.rt_mx(sgtbx.tr_vec(shift.as_int(), multiplier)))
+      symm_f_calc = (self.f_calc.change_basis(cb_op)
+                                .customized_copy(space_group_info
+                                      =self.original_f_obs.space_group_info())
+                                .merge_equivalents()
+                                .array() )
+      m = self.original_f_obs.match_indices(symm_f_calc)
+      assert not m.have_singles()
+      symm_f_calc = symm_f_calc.select(m.permutation())
+      yield symm_f_calc, shift, peak.height
 
 
 class basic_iterator(density_modification_iterator):
@@ -269,87 +279,118 @@ class solving_iterator(object):
                initial_flipped_fraction=0.8,
                yield_during_delta_guessing=False,
                max_solving_iterations=500,
-               max_attempts=5,
+               max_attempts_to_get_phase_transition=5,
+               max_attempts_to_get_sharp_correlation_map=5,
                yield_solving_interval=10,
                phase_transition_tail_len=12,
                polishing_iterations=5):
     adopt_init_args(self, locals())
     self.attempts = []
-    self.max_attemps_exceeded = False
+    self.f_calc_solutions = []
+    self.max_attempts_exceeded = False
     self.state = self.guessing_delta = self._guessing_delta()
     self.solving = self._solving()
     self.polishing = self._polishing()
+    self.evaluating = self._evaluating()
     self.finished = self._finished()
 
   def __iter__(self):
-    for result, self.state in self.state:
-      yield result
+    while 1:
+      try: state = self.state.next()
+      except StopIteration: break
+      yield self.flipping_iterator
+      self.state = state
 
   def _finished(self):
-    yield self.flipping_iterator, self.finished
+    yield self.finished
 
   def _guessing_delta(self):
     flipping = self.flipping_iterator
-    flipping.delta = flipping.rho_map.flipped_fraction_as_delta(
-      self.initial_flipped_fraction)
+    delta_needs_initialisation = True
     while 1:
-      for state in itertbx.islice(flipping,
-                                  self.delta_guessing_sub_iterations):
+      self.f_calc_solutions = []
+      if delta_needs_initialisation:
+        flipping.delta = flipping.rho_map.flipped_fraction_as_delta(
+                                                self.initial_flipped_fraction)
+        delta_needs_initialisation = False
+      for foo in itertbx.islice(flipping,
+                                self.delta_guessing_sub_iterations):
         pass
       r = flipping.c_tot_over_c_flip()
       # magic numbers from SUPERFLIP
-      ok = False
-      if r < 0.8:
-        flipping.delta *= 0.9
-      elif r > 1:
-        flipping.delta *= 1.07
+      low, high = 0.8, 1.
+      if low <= r <= high:
+        yield self.solving
+        flipping.restart()
+        delta_needs_initialisation = True
       else:
-        ok = True
-      if ok:
-        yield flipping, self.solving
-      elif self.yield_during_delta_guessing:
-        yield flipping, self.guessing_delta
-      flipping.restart()
+        if self.yield_during_delta_guessing:
+          yield self.guessing_delta
+        if r < low:
+          flipping.delta *= 0.9
+        elif r > high:
+          flipping.delta *= 1.07
 
   def _solving(self):
-    i_attempt = 0
-    while i_attempt < self.max_attempts:
-      i_attempt += 1
-      r1 = observable_evolution(self.phase_transition_tail_len)
-      ctot_over_cflip = observable_evolution(self.phase_transition_tail_len)
-      for n, flipping in enumerate(
-        itertbx.islice(self.flipping_iterator,
-                       0, self.max_solving_iterations)):
-        self.iteration_index = n
-        if n % self.yield_solving_interval == 0:
-          yield flipping, self.solving
-        r1.append(flipping.r1_factor())
-        ctot_over_cflip.append(flipping.c_tot_over_c_flip())
-        if n < self.phase_transition_tail_len: continue
-        if abs(r1.min_diff_index - ctot_over_cflip.min_diff_index) > 4:
-          continue
-        r1_transition = r1.had_phase_transition()
-        ctot_over_cflip_transition = ctot_over_cflip.had_phase_transition()
-        phase_transition = r1_transition and ctot_over_cflip_transition
-        if phase_transition:
-          self.attempts.append(n)
-          yield flipping, self.polishing
-      else:
-        if i_attempt != self.max_attempts:
-          yield flipping, self.guessing_delta
-    self.max_attemps_exceeded = True
-    yield self.flipping_iterator, self.finished
+    while 1:
+      i_attempt = 0
+      while i_attempt < self.max_attempts_to_get_phase_transition:
+        i_attempt += 1
+        if i_attempt > 2:
+          self.max_solving_iterations *= 1.5
+        r1 = observable_evolution(self.phase_transition_tail_len)
+        ctot_over_cflip = observable_evolution(self.phase_transition_tail_len)
+        for n, flipping in enumerate(
+          itertbx.islice(self.flipping_iterator,
+                         0, self.max_solving_iterations)):
+          self.iteration_index = n
+          if n % self.yield_solving_interval == 0:
+            yield self.solving
+          r1.append(flipping.r1_factor())
+          ctot_over_cflip.append(flipping.c_tot_over_c_flip())
+          if n < self.phase_transition_tail_len: continue
+          if abs(r1.min_diff_index - ctot_over_cflip.min_diff_index) > 4:
+            continue
+          r1_transition = r1.had_phase_transition()
+          ctot_over_cflip_transition = ctot_over_cflip.had_phase_transition()
+          phase_transition = r1_transition and ctot_over_cflip_transition
+          if phase_transition:
+            self.attempts.append(n)
+            yield self.polishing
+            break
+        else:
+          if i_attempt != self.max_attempts_to_get_phase_transition:
+            yield self.guessing_delta
+      self.max_attempts_exceeded = True
+      yield self.finished
 
   def _polishing(self):
-    flipping = self.flipping_iterator
-    polishing = low_density_elimination_iterator(
-      f_obs=flipping.f_obs,
-      f_calc=flipping.f_calc,
-      f_000=0,
-      rho_c=lambda: flipping.delta)
-    for state in itertbx.islice(polishing, self.polishing_iterations):
-      pass
-    yield flipping, self.finished
+    while 1:
+      flipping = self.flipping_iterator
+      polishing = low_density_elimination_iterator(
+        f_obs=flipping.f_obs,
+        f_calc=flipping.f_calc,
+        f_000=0,
+        rho_c=lambda: flipping.delta)
+      for state in itertbx.islice(polishing, self.polishing_iterations):
+        pass
+      yield self.evaluating
+
+  def _evaluating(self):
+    while 1:
+      attempts = 0
+      while attempts < self.max_attempts_to_get_sharp_correlation_map:
+        attempts += 1
+        self.f_calc_solutions = []
+        for f_calc, shift, cc_peak_height\
+                           in self.flipping_iterator.f_calc_symmetrisations():
+          if not self.f_calc_solutions and cc_peak_height < 0.9:
+            yield self.guessing_delta
+            break
+          self.f_calc_solutions.append((f_calc, shift, cc_peak_height))
+        else:
+          yield self.finished
+      selt.max_attempts_exceeded = True
 
 
 class observable_evolution(object):
@@ -402,11 +443,13 @@ class observable_evolution(object):
     v_t = tail_stats.unweighted_sample_variance()
     head = self.values[max(before - self.phase_transition_tail_len//2, 0)
                        : before]
-    if len(head) > 1:
+    if head.size() > 1:
       head_stats = flex.mean_and_variance(head)
       m_h = head_stats.mean()
       v_h = head_stats.unweighted_sample_variance()
       fall_significance = abs(m_h - m_t)/math.sqrt(v_h + v_t)
-    else:
+    elif head.size() > 0:
       fall_significance = abs(head[0] - m_t)/math.sqrt(v_t)
+    else:
+      return False
     return fall_significance > 3
