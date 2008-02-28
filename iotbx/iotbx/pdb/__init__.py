@@ -5,6 +5,7 @@ ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
 import iotbx.pdb.hierarchy_v1
+import iotbx.pdb.hierarchy_v2
 
 from iotbx.pdb.atom_name_interpretation import \
   interpreters as protein_atom_name_interpreters
