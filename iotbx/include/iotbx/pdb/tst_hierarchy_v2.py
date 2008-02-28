@@ -224,6 +224,29 @@ def exercise_atom_group():
   for atom in ag.atoms():
     assert atom.tmp == 7
   assert [a.name for a in ag.atoms()] == ["ca", "n", "", "", ""]
+  #
+  ag.insert_atom(i=0, atom=pdb.hierarchy_v2.atom().set_name(new_name="0"))
+  assert [a.name for a in ag.atoms()] == ["0", "ca", "n", "", "", ""]
+  ag.insert_atom(i=-1, atom=pdb.hierarchy_v2.atom().set_name(new_name="x"))
+  assert [a.name for a in ag.atoms()] == ["0", "ca", "n", "", "", "x", ""]
+  a = ag.atoms()[-1]
+  assert a.parent().memory_id() == ag.memory_id()
+  ag.remove_atom(i=-1)
+  assert a.parent() is None
+  assert [a.name for a in ag.atoms()] == ["0", "ca", "n", "", "", "x"]
+  ag.remove_atom(i=1)
+  assert [a.name for a in ag.atoms()] == ["0", "n", "", "", "x"]
+  a = ag.atoms()[-2]
+  assert a.parent().memory_id() == ag.memory_id()
+  assert ag.find_atom_index(atom=a, must_be_present=True) == 3
+  ag.remove_atom(i=-2)
+  assert a.parent() is None
+  assert [a.name for a in ag.atoms()] == ["0", "n", "", "x"]
+  a = pdb.hierarchy_v2.atom().set_name(new_name="y")
+  assert ag.find_atom_index(atom=a, must_be_present=False) == -1
+  ag.insert_atom(i=4, atom=a)
+  assert ag.find_atom_index(atom=a) == 4
+  assert [a.name for a in ag.atoms()] == ["0", "n", "", "x", "y"]
 
 def exercise_residue_group():
   rg = pdb.hierarchy_v2.residue_group()
