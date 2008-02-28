@@ -141,6 +141,7 @@ scitbx/error/tst_error.py -text
 scitbx/include/scitbx/error_utils.h -text
 scitbx/include/scitbx/iso_surface.h -text
 scitbx/include/scitbx/matrix/delta_tensors.h -text
+scitbx/include/scitbx/misc/positive_getitem_index.h svneol=native#text/plain
 scitbx/include/scitbx/sparse/dfs.h -text
 scitbx/include/scitbx/sparse/io.h -text
 scitbx/include/scitbx/sparse/lu_factorization.h -text

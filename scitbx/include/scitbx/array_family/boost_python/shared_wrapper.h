@@ -9,11 +9,12 @@
 #include <scitbx/array_family/shared.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/ref_from_array.h>
+#include <scitbx/misc/positive_getitem_index.h>
 #include <scitbx/error.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  using scitbx::boost_python::positive_getitem_index;
+  using scitbx::positive_getitem_index;
 
   template <typename ElementType,
             typename GetitemReturnValuePolicy

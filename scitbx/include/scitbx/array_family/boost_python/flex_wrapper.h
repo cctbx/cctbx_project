@@ -19,10 +19,11 @@
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/boost_python/ref_flex_conversions.h>
 #include <scitbx/array_family/boost_python/utils.h>
+#include <scitbx/misc/positive_getitem_index.h>
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  using scitbx::boost_python::positive_getitem_index;
+  using scitbx::positive_getitem_index;
 
   template <typename ElementType>
   struct flex_default_element
