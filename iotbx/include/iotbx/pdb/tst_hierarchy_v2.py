@@ -245,7 +245,11 @@ def exercise_atom_group():
   assert a.parent() is None
   assert [a.name for a in ag.atoms()] == ["0", "n", "", "x"]
   a = pdb.hierarchy_v2.atom().set_name(new_name="y")
-  assert ag.find_atom_index(atom=a, must_be_present=False) == -1
+  assert ag.find_atom_index(atom=a) == -1
+  try: ag.find_atom_index(atom=a, must_be_present=True)
+  except RuntimeError, e:
+    assert str(e) == "atom not in atom_group."
+  else: raise Exception_expected
   ag.insert_atom(i=4, atom=a)
   assert ag.find_atom_index(atom=a) == 4
   assert [a.name for a in ag.atoms()] == ["0", "n", "", "x", "y"]
@@ -309,6 +313,32 @@ def exercise_residue_group():
   for residue_group in c1.residue_groups():
     assert residue_group.parent().memory_id() == c1.memory_id()
   assert c1.reset_atom_tmp(new_value=8) == 0
+  #
+  for altloc in ["w", "v", "u"]:
+    rg.insert_atom_group(
+      i=0, atom_group=pdb.hierarchy_v2.atom_group(altloc=altloc))
+  assert [ag.altloc for ag in rg.atom_groups()] == ["u", "v", "w"]
+  rg.remove_atom_group(i=-1)
+  assert [ag.altloc for ag in rg.atom_groups()] == ["u", "v"]
+  ag = rg.atom_groups()[1]
+  assert ag.parent().memory_id() == rg.memory_id()
+  assert rg.find_atom_group_index(atom_group=ag) == 1
+  rg.remove_atom_group(atom_group=ag)
+  assert ag.parent() is None
+  assert rg.find_atom_group_index(atom_group=ag) == -1
+  try: rg.find_atom_group_index(atom_group=ag, must_be_present=True)
+  except RuntimeError, e:
+    assert str(e) == "atom_group not in residue_group."
+  else: raise Exception_expected
+  #
+  ag1 = pdb.hierarchy_v2.atom_group()
+  ag2 = pdb.hierarchy_v2.atom_group()
+  a = pdb.hierarchy_v2.atom()
+  ag1.append_atom(atom=a)
+  try: ag2.append_atom(atom=a)
+  except RuntimeError, e:
+    assert str(e) == "atom has another parent atom_group already."
+  else: raise Exception_expected
 
 def exercise_chain():
   c = pdb.hierarchy_v2.chain()
@@ -360,6 +390,33 @@ def exercise_chain():
     assert cc.residue_groups_size() == 2
     assert [rg.resseq for rg in c.residue_groups()] \
         == ["ugh", "", "000", "001"][:i+3]
+  #
+  c.insert_residue_group(
+    i=3, residue_group=pdb.hierarchy_v2.residue_group(resseq="b012"))
+  assert [rg.resseq for rg in c.residue_groups()] \
+      == ["ugh", "", "000", "b012", "001"]
+  c.remove_residue_group(i=1)
+  assert [rg.resseq for rg in c.residue_groups()] \
+      == ["ugh", "000", "b012", "001"]
+  rg = c.residue_groups()[1]
+  assert rg.parent().memory_id() == c.memory_id()
+  assert c.find_residue_group_index(residue_group=rg) == 1
+  c.remove_residue_group(residue_group=rg)
+  assert rg.parent() is None
+  assert c.find_residue_group_index(residue_group=rg) == -1
+  try: c.find_residue_group_index(residue_group=rg, must_be_present=True)
+  except RuntimeError, e:
+    assert str(e) == "residue_group not in chain."
+  else: raise Exception_expected
+  #
+  rg1 = pdb.hierarchy_v2.residue_group()
+  rg2 = pdb.hierarchy_v2.residue_group()
+  ag = pdb.hierarchy_v2.atom_group()
+  rg1.append_atom_group(atom_group=ag)
+  try: rg2.append_atom_group(atom_group=ag)
+  except RuntimeError, e:
+    assert str(e) == "atom_group has another parent residue_group already."
+  else: raise Exception_expected
 
 def exercise_model():
   m = pdb.hierarchy_v2.model()
@@ -411,6 +468,32 @@ def exercise_model():
     assert mc.chains_size() == 5
     assert [c.id for c in m.chains()] \
         == ["a", "b", "", "", "", "0", "1"][:i+6]
+  #
+  m.insert_chain(i=-3, chain=pdb.hierarchy_v2.chain(id="3"))
+  assert [c.id for c in m.chains()] \
+      == ["a", "b", "", "", "3", "", "0", "1"]
+  m.remove_chain(i=-2)
+  assert [c.id for c in m.chains()] \
+      == ["a", "b", "", "", "3", "", "1"]
+  c = m.chains()[0]
+  assert c.parent().memory_id() == m.memory_id()
+  assert m.find_chain_index(chain=c) == 0
+  m.remove_chain(chain=c)
+  assert c.parent() is None
+  assert m.find_chain_index(chain=c) == -1
+  try: m.find_chain_index(chain=c, must_be_present=True)
+  except RuntimeError, e:
+    assert str(e) == "chain not in model."
+  else: raise Exception_expected
+  #
+  m1 = pdb.hierarchy_v2.model()
+  m2 = pdb.hierarchy_v2.model()
+  c = pdb.hierarchy_v2.chain()
+  m1.append_chain(chain=c)
+  try: m2.append_chain(chain=c)
+  except RuntimeError, e:
+    assert str(e) == "chain has another parent model already."
+  else: raise Exception_expected
 
 def exercise_root():
   r = pdb.hierarchy_v2.root()
@@ -467,6 +550,33 @@ def exercise_root():
   assert r.models_size() == 6
   assert rc.models_size() == 6
   assert [m.id for m in rc.models()] == ["3", "5", "", "", "", "8"]
+  #
+  r = rc.deep_copy()
+  r.insert_model(i=4, model=pdb.hierarchy_v2.model(id="M"))
+  assert [m.id for m in r.models()] \
+      == ["3", "5", "", "", "M", "", "8"]
+  r.remove_model(i=1)
+  assert [m.id for m in r.models()] \
+      == ["3", "", "", "M", "", "8"]
+  m = r.models()[-1]
+  assert m.parent().memory_id() == r.memory_id()
+  assert r.find_model_index(model=m) == 5
+  r.remove_model(model=m)
+  assert m.parent() is None
+  assert r.find_model_index(model=m) == -1
+  try: r.find_model_index(model=m, must_be_present=True)
+  except RuntimeError, e:
+    assert str(e) == "model not in root."
+  else: raise Exception_expected
+  #
+  r1 = pdb.hierarchy_v2.root()
+  r2 = pdb.hierarchy_v2.root()
+  m = pdb.hierarchy_v2.model()
+  r1.append_model(model=m)
+  try: r2.append_model(model=m)
+  except RuntimeError, e:
+    assert str(e) == "model has another parent root already."
+  else: raise Exception_expected
 
 def exercise(args):
   assert len(args) == 0
