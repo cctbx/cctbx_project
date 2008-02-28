@@ -64,6 +64,7 @@ namespace {
     IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
     IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
     IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(serial)
 
     static vec3
     get_xyz(w_t const& self) { return self.data->xyz; }
@@ -166,6 +167,7 @@ namespace {
         .def("set_segid", set_segid, (arg_("new_segid")), return_self<>())
         .def("set_element", set_element, (arg_("new_element")), return_self<>())
         .def("set_charge", set_charge, (arg_("new_charge")), return_self<>())
+        .def("set_serial", set_serial, (arg_("new_serial")), return_self<>())
         .def("set_xyz", set_xyz, (arg_("new_xyz")), return_self<>())
         .def("set_sigxyz", set_sigxyz, (arg_("new_sigxyz")), return_self<>())
         .def("set_occ", set_occ, (arg_("new_occ")), return_self<>())
@@ -183,6 +185,8 @@ namespace {
           make_function(get_element), make_function(set_element))
         .add_property("charge",
           make_function(get_charge), make_function(set_charge))
+        .add_property("serial",
+          make_function(get_serial), make_function(set_serial))
         .add_property("xyz",
           make_function(get_xyz), make_function(set_xyz))
         .add_property("sigxyz",
