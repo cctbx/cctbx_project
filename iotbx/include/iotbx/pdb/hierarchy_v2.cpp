@@ -296,6 +296,7 @@ namespace {
     segid(other.segid),
     element(other.element),
     charge(other.charge),
+    serial(other.serial),
     xyz(other.xyz), sigxyz(other.sigxyz),
     occ(other.occ), sigocc(other.sigocc),
     b(other.b), sigb(other.sigb),
@@ -309,7 +310,7 @@ namespace {
   {
     return atom(
       data->name.elems, data->segid.elems,
-      data->element.elems, data->charge.elems,
+      data->element.elems, data->charge.elems, data->serial.elems,
       data->xyz, data->sigxyz,
       data->occ, data->sigocc,
       data->b, data->sigb,

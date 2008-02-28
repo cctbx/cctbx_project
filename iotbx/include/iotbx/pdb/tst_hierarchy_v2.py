@@ -23,6 +23,9 @@ def exercise_atom():
   assert a.charge == ""
   a.charge = "2+"
   assert a.charge == "2+"
+  assert a.serial == ""
+  a.serial = "A0000"
+  assert a.serial == "A0000"
   assert a.xyz == (0,0,0)
   a.xyz = (1,-2,3)
   assert a.xyz == (1,-2,3)
@@ -63,6 +66,7 @@ def exercise_atom():
     .set_segid(new_segid="sEgI")
     .set_element(new_element="El")
     .set_charge(new_charge="cH")
+    .set_serial(new_serial="B1234")
     .set_xyz(new_xyz=(1.3,2.1,3.2))
     .set_sigxyz(new_sigxyz=(.1,.2,.3))
     .set_occ(new_occ=0.4)
@@ -76,6 +80,7 @@ def exercise_atom():
   assert a.segid == "sEgI"
   assert a.element == "El"
   assert a.charge == "cH"
+  assert a.serial == "B1234"
   assert approx_equal(a.xyz, (1.3,2.1,3.2))
   assert approx_equal(a.sigxyz, (.1,.2,.3))
   assert approx_equal(a.occ, 0.4)
@@ -94,6 +99,7 @@ def exercise_atom():
   assert ac.segid == "sEgI"
   assert ac.element == "El"
   assert ac.charge == "cH"
+  assert ac.serial == "B1234"
   assert approx_equal(ac.xyz, (1.3,2.1,3.2))
   assert approx_equal(ac.sigxyz, (.1,.2,.3))
   assert approx_equal(ac.occ, 0.4)
@@ -121,10 +127,12 @@ def exercise_atom():
   a.set_segid(new_segid=None)
   a.set_element(new_element=None)
   a.set_charge(new_charge=None)
+  a.set_serial(new_serial=None)
   assert a.name == ""
   assert a.segid == ""
   assert a.element == ""
   assert a.charge == ""
+  assert a.serial == ""
   #
   ag = pdb.hierarchy_v2.atom_group()
   ac = pdb.hierarchy_v2.atom(parent=ag, other=a)
@@ -134,6 +142,7 @@ def exercise_atom():
   assert ac.segid == a.segid
   assert ac.element == a.element
   assert ac.charge == a.charge
+  assert ac.serial == a.serial
   assert ac.xyz == a.xyz
   assert ac.sigxyz == a.sigxyz
   assert ac.occ == a.occ

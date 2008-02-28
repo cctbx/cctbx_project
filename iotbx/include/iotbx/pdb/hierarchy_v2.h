@@ -36,6 +36,7 @@ namespace iotbx { namespace pdb {
             segid
             element
             charge
+            serial
             xyz sigxyz
             occ sigocc
             b sigb
@@ -214,6 +215,7 @@ namespace hierarchy_v2 {
       str4 segid;
       str2 element;
       str2 charge;
+      str5 serial;
       vec3 xyz;
       vec3 sigxyz;
       double occ;
@@ -228,7 +230,8 @@ namespace hierarchy_v2 {
     protected:
       atom_data(
         weak_ptr<atom_group_data> const& parent_,
-        str4 name_, str4 segid_, str2 element_, str2 charge_,
+        str4 name_, str4 segid_,
+        str2 element_, str2 charge_, str5 serial_,
         vec3 const& xyz_, vec3 const& sigxyz_,
         double occ_, double sigocc_,
         double b_, double sigb_,
@@ -236,7 +239,8 @@ namespace hierarchy_v2 {
         bool hetero_)
       :
         parent(parent_),
-        name(name_), segid(segid_), element(element_), charge(charge_),
+        name(name_), segid(segid_),
+        element(element_), charge(charge_), serial(serial_),
         xyz(xyz_), sigxyz(sigxyz_),
         occ(occ_), sigocc(sigocc_),
         b(b_), sigb(sigb_),
@@ -246,14 +250,16 @@ namespace hierarchy_v2 {
       {}
 
       atom_data(
-        str4 name_, str4 segid_, str2 element_, str2 charge_,
+        str4 name_, str4 segid_,
+        str2 element_, str2 charge_, str5 serial_,
         vec3 const& xyz_, vec3 const& sigxyz_,
         double occ_, double sigocc_,
         double b_, double sigb_,
         sym_mat3 const& uij_, sym_mat3 const& siguij_,
         bool hetero_)
       :
-        name(name_), segid(segid_), element(element_), charge(charge_),
+        name(name_), segid(segid_),
+        element(element_), charge(charge_), serial(serial_),
         xyz(xyz_), sigxyz(sigxyz_),
         occ(occ_), sigocc(sigocc_),
         b(b_), sigb(sigb_),
@@ -290,7 +296,7 @@ namespace hierarchy_v2 {
       atom(
         atom_group const& parent,
         const char* name="", const char* segid="",
-        const char* element="", const char* charge="",
+        const char* element="", const char* charge="", const char* serial="",
         vec3 const& xyz=vec3(0,0,0), vec3 const& sigxyz=vec3(0,0,0),
         double occ=0, double sigocc=0,
         double b=0, double sigb=0,
@@ -300,7 +306,7 @@ namespace hierarchy_v2 {
 
       atom(
         const char* name="", const char* segid="",
-        const char* element="", const char* charge="",
+        const char* element="", const char* charge="", const char* serial="",
         vec3 const& xyz=vec3(0,0,0), vec3 const& sigxyz=vec3(0,0,0),
         double occ=0, double sigocc=0,
         double b=0, double sigb=0,
@@ -309,7 +315,8 @@ namespace hierarchy_v2 {
         bool hetero=false)
       :
         data(new atom_data(
-          name, segid, element, charge,
+          name, segid,
+          element, charge, serial,
           xyz, sigxyz,
           occ, sigocc,
           b, sigb,
@@ -350,6 +357,13 @@ namespace hierarchy_v2 {
       set_charge(const char* new_charge)
       {
         data->charge = new_charge;
+        return *this;
+      }
+
+      atom&
+      set_serial(const char* new_serial)
+      {
+        data->serial = new_serial;
         return *this;
       }
 
@@ -980,27 +994,28 @@ namespace hierarchy_v2 {
     data(new atom_group_data(parent.data, altloc, resname))
   {}
 
-      inline
-      atom::atom(
-        atom_group const& parent,
-        const char* name, const char* segid,
-        const char* element, const char* charge,
-        vec3 const& xyz, vec3 const& sigxyz,
-        double occ, double sigocc,
-        double b, double sigb,
-        sym_mat3 const& uij,
-        sym_mat3 const& siguij,
-        bool hetero)
-      :
-        data(new atom_data(
-          parent.data,
-          name, segid, element, charge,
-          xyz, sigxyz,
-          occ, sigocc,
-          b, sigb,
-          uij, siguij,
-          hetero))
-      {}
+  inline
+  atom::atom(
+    atom_group const& parent,
+    const char* name, const char* segid,
+    const char* element, const char* charge, const char* serial,
+    vec3 const& xyz, vec3 const& sigxyz,
+    double occ, double sigocc,
+    double b, double sigb,
+    sym_mat3 const& uij,
+    sym_mat3 const& siguij,
+    bool hetero)
+  :
+    data(new atom_data(
+      parent.data,
+      name, segid,
+      element, charge, serial,
+      xyz, sigxyz,
+      occ, sigocc,
+      b, sigb,
+      uij, siguij,
+      hetero))
+  {}
 
   inline
   atom::atom(
