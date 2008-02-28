@@ -428,9 +428,11 @@ class structure(crystal.special_position_settings):
 
   def hd_selection(self):
     scattering_types = self._scatterers.extract_scattering_types()
-    d_selection = (scattering_types == "D")
-    h_selection = (scattering_types == "H")
-    return (d_selection | h_selection)
+    result = flex.bool()
+    for sct in scattering_types:
+      if(sct.strip() in ['H','D']): result.append(True)
+      else: result.append(False)
+    return result
 
   def apply_rigid_body_shift(self, rot, trans, selection = None):
     if(selection is None):
