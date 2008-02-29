@@ -118,51 +118,11 @@ def exercise_once(flipping_type,
     f_obs = abs(f_target)
 
   flipping = flipping_type(f_obs, delta=None)
-  solving = charge_flipping.solving_iterator(flipping,
-                                             yield_during_delta_guessing=True,
-                                             yield_solving_interval=1)
-  previous_state = None
-  for flipping in solving:
-    if solving.state is solving.guessing_delta:
-      # Guessing a value of delta leading to subsequent good convergence
-      if verbose:
-        if previous_state is solving.solving:
-          print "** Restarting (no phase transition) **"
-        elif previous_state is solving.evaluating:
-          print "** Restarting (no sharp correlation map) **"
-      if verbose == "highly":
-        if previous_state is not solving.guessing_delta:
-          print "Guessing delta..."
-          print "%10s | %10s | %10s | %10s | %10s" % ('delta', 'R', 'c_tot',
-                                                      'c_flip', 'c_tot/c_flip')
-          print "-"*64
-        rho = flipping.rho_map
-        c_tot = rho.c_tot()
-        c_flip = rho.c_flip(flipping.delta)
-        # to compare with superflip output
-        c_tot *= flipping.fft_scale; c_flip *= flipping.fft_scale
-        print "%10.4f | %10.3f | %10.1f | %10.1f | %10.2f"\
-              % (flipping.delta, flipping.r1_factor(),
-                 c_tot, c_flip, c_tot/c_flip)
-
-    elif solving.state is solving.solving:
-      # main charge flipping loop to solve the structure
-      if verbose=="highly":
-        if previous_state is not solving.solving:
-          print
-          print "Solving..."
-          print "with delta=%.4f" % flipping.delta
-          print
-          print "%5s | %10s | %10s" % ('#', 'R1', 'c_tot/c_flip')
-          print '-'*33
-        r1 = flipping.r1_factor()
-        r = flipping.c_tot_over_c_flip()
-        print "%5i | %10.3f | %10.3f" % (solving.iteration_index, r1, r)
-
-    elif solving.state is solving.finished:
-      break
-
-    previous_state = solving.state
+  solving = charge_flipping.solving_iterator(
+    flipping,
+    yield_during_delta_guessing=True,
+    yield_solving_interval=1)
+  charge_flipping.loop(solving, verbose=verbose)
 
   # check whether a phase transition has occured
   result.had_phase_transition = (solving.state == solving.finished
