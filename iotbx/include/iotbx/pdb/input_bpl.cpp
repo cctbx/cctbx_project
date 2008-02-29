@@ -126,6 +126,7 @@ namespace {
         .def("atom_serial_number_strings",
           &w_t::atom_serial_number_strings, rbv())
         .def("atoms", &w_t::atoms, rbv())
+        .def("atoms_v2", &w_t::atoms_v2, rbv())
         .def("model_numbers", &w_t::model_numbers, rbv())
         .def("model_indices", &w_t::model_indices, rbv())
         .def("ter_indices", &w_t::ter_indices, rbv())
@@ -146,6 +147,7 @@ namespace {
         .def("model_atom_counts", &w_t::model_atom_counts)
         .def("find_duplicate_atom_labels", &w_t::find_duplicate_atom_labels)
         .def("construct_hierarchy_v1", &w_t::construct_hierarchy_v1)
+        .def("construct_hierarchy_v2", &w_t::construct_hierarchy_v2)
         .def("number_of_alternative_groups_with_blank_altloc",
           &w_t::number_of_alternative_groups_with_blank_altloc)
         .def("number_of_alternative_groups_without_blank_altloc",
