@@ -1,6 +1,7 @@
 #ifndef IOTBX_PDB_SMALL_STR_H
 #define IOTBX_PDB_SMALL_STR_H
 
+#include <cstdio>
 #include <cstring>
 #include <ctype.h> // cannot use <cctype> since MIPSpro 7.3.1.2 defines macros
 
@@ -40,45 +41,19 @@ namespace iotbx { namespace pdb {
       elems[1] = '\0';
     }
 
-    small_str(const char* s)
+    small_str(const char* s, bool truncate_to_fit=false)
     {
-      replace_with(s);
+      replace_with(s, truncate_to_fit);
     }
 
     small_str(
       const char* s_data,
       unsigned s_size,
       unsigned i_begin=0,
-      char pad_with='\0')
-    {
-      unsigned j = 0;
-      while (i_begin < s_size) {
-        if (j == N) {
-          elems[j] = '\0';
-          return;
-        }
-        elems[j++] = s_data[i_begin++];
-      }
-      if (pad_with != '\0') {
-        while (j < N) {
-          elems[j++] = ' ';
-        }
-      }
-      elems[j] = '\0';
-    }
+      char pad_with='\0');
 
-    bool
-    replace_with(const char* s)
-    {
-      if (s == 0) s = "";
-      unsigned i = 0;
-      while(i<N) {
-        elems[i++] = *s;
-        if (*s++ == '\0') return true;
-      }
-      elems[i] = '\0';
-      return (*s == '\0');
-    }
+    void
+    replace_with(const char* s, bool truncate_to_fit=false);
 
     static
     unsigned
@@ -88,19 +63,7 @@ namespace iotbx { namespace pdb {
     size() const { return std::strlen(elems); }
 
     unsigned
-    stripped_size() const
-    {
-      const char* e = elems;
-      do {
-        if (*e == '\0') return 0;
-      }
-      while (isspace(*e++));
-      unsigned i = 0;
-      for(unsigned j=0;e[j]!='\0';j++) {
-        if (!isspace(e[j])) i = j;
-      }
-      return i+1;
-    }
+    stripped_size() const;
 
     bool
     operator==(small_str const& other) const
@@ -144,6 +107,67 @@ namespace iotbx { namespace pdb {
       pdb::copy_padded(dest, dest_size, elems, N, pad_with);
     }
   };
+
+  template <unsigned N>
+  small_str<N>::small_str(
+      const char* s_data,
+      unsigned s_size,
+      unsigned i_begin,
+      char pad_with)
+  {
+    unsigned j = 0;
+    while (i_begin < s_size) {
+      if (j == N) {
+        elems[j] = '\0';
+        return;
+      }
+      elems[j++] = s_data[i_begin++];
+    }
+    if (pad_with != '\0') {
+      while (j < N) {
+        elems[j++] = ' ';
+      }
+    }
+    elems[j] = '\0';
+  }
+
+  template <unsigned N>
+  void
+  small_str<N>::replace_with(const char* s, bool truncate_to_fit)
+  {
+    if (s == 0) s = "";
+    unsigned i = 0;
+    while (i < N) {
+      elems[i++] = *s;
+      if (*s++ == '\0') return;
+    }
+    elems[i] = '\0';
+    if (!truncate_to_fit && *s != '\0') {
+      char buf[128];
+      std::sprintf(buf,
+        "string is too long for target variable"
+        " (maximum length is %u character%s, %lu given).",
+          capacity(), (capacity() == 1 ? "" : "s"),
+          N+static_cast<unsigned long>(std::strlen(s)));
+      throw std::invalid_argument(buf);
+    }
+  }
+
+  template <unsigned N>
+  unsigned
+  small_str<N>::stripped_size() const
+  {
+    const char* e = elems;
+    do {
+      if (*e == '\0') return 0;
+    }
+    while (isspace(*e++));
+    unsigned i = 0;
+    for(unsigned j=0;e[j]!='\0';j++) {
+      if (!isspace(e[j])) i = j;
+    }
+    return i+1;
+  }
 
   typedef small_str<1> str1;
   typedef small_str<2> str2;

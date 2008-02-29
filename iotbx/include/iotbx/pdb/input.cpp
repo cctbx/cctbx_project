@@ -662,7 +662,7 @@ namespace iotbx { namespace pdb {
       resseq_begin(), icode_begin());
     std::string result;
     result += buf;
-    if (str4(segid_begin()).stripped_size() != 0) {
+    if (segid_small().stripped_size() != 0) {
       result += " segid=\"" + segid() + "\"";
     }
     return result;
