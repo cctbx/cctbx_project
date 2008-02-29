@@ -1,7 +1,9 @@
 from iotbx import pdb
 from cctbx.array_family import flex
-from libtbx.test_utils import Exception_expected, approx_equal
+from libtbx.test_utils import Exception_expected, approx_equal, show_diff
+from libtbx.str_utils import show_string
 from libtbx.utils import format_cpu_times
+from cStringIO import StringIO
 import sys
 
 def exercise_atom():
@@ -589,6 +591,60 @@ def exercise_root():
     assert str(e) == "model has another parent root already."
   else: raise Exception_expected
 
+def exercise_construct_hierarchy():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        1
+ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
+ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
+BREAK
+HETATM    3  C   MET A   2       7.478  21.387  22.491  1.00  0.00           C
+ATOM      4  O   MET A   2       8.406  20.895  23.132  1.00  0.00           O
+ENDMDL
+MODEL 3
+HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
+SIGATM    9 2H3  MPR B   5       0.155   0.175   0.155  0.00  0.05
+ANISOU    9 2H3  MPR B   5      848    848    848      0      0      0
+SIGUIJ    9 2H3  MPR B   5      510    510    510      0      0      0
+TER
+ATOM     10  N   CYSCH   6      14.270   2.464   3.364  1.00  0.07
+SIGATM   10  N   CYSCH   6       0.012   0.012   0.011  0.00  0.00
+ANISOU   10  N   CYSCH   6      788    626    677   -344    621   -232
+SIGUIJ   10  N   CYSCH   6        3     13      4     11      6     13
+TER
+ENDMDL
+END
+"""))
+  assert [atom.name for atom in pdb_inp.atoms_v2()] \
+      == [" N  ", " CA ", " C  ", " O  ", "2H3 ", " N  "]
+  sio = StringIO()
+  root = pdb_inp.construct_hierarchy_v2()
+  for model in root.models():
+    print >> sio, "m:", show_string(model.id)
+    for chain in model.chains():
+      print >> sio, "  c:", show_string(chain.id)
+      for residue_group in chain.residue_groups():
+        print >> sio, "    rg:", \
+          show_string(residue_group.resseq + residue_group.icode)
+        atom_groups = residue_group.atom_groups()
+        for atom_group in atom_groups:
+          print >> sio, "      ag:", \
+            show_string(atom_group.altloc), show_string(atom_group.resname)
+  assert not show_diff(sio.getvalue(), """\
+m: "   1"
+  c: "A"
+    rg: "   1 "
+      ag: " " "MET"
+    rg: "   2 "
+      ag: " " "MET"
+m: "   3"
+  c: "B"
+    rg: "   5 "
+      ag: " " "MPR"
+  c: "CH"
+    rg: "   6 "
+      ag: " " "CYS"
+""")
+
 def exercise(args):
   assert len(args) == 0
   exercise_atom()
@@ -597,6 +653,7 @@ def exercise(args):
   exercise_chain()
   exercise_model()
   exercise_root()
+  exercise_construct_hierarchy()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

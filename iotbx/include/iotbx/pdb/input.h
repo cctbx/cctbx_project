@@ -2,6 +2,7 @@
 #define IOTBX_PDB_INPUT_H
 
 #include <iotbx/pdb/hierarchy_v1.h>
+#include <iotbx/pdb/hierarchy_v2.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny.h>
 
@@ -223,6 +224,11 @@ namespace iotbx { namespace pdb {
     str1        icode_small() const { return str1(icode_begin(), true); }
     std::string icode()       const { return std::string(icode_begin(),1); }
 
+    char*       resid_begin()       { return compacted+9; }
+    const char* resid_begin() const { return compacted+9; }
+    str5        resid_small() const { return str5(resid_begin(), true); }
+    std::string resid()       const { return std::string(resid_begin(),5); }
+
     char*       segid_begin()       { return compacted+14; }
     const char* segid_begin() const { return compacted+14; }
     str4        segid_small() const { return str4(segid_begin(), true); }
@@ -232,6 +238,13 @@ namespace iotbx { namespace pdb {
     const char* altloc_begin() const { return compacted+18; }
     str1        altloc_small() const { return str1(altloc_begin(), true); }
     std::string altloc()       const { return std::string(altloc_begin(),1); }
+
+    str4 altloc_resname_small() const
+    {
+      str4 result(compacted+3, true);
+      result.elems[0] = *altloc_begin();
+      return result;
+    }
 
     input_atom_labels() {}
 
@@ -472,6 +485,9 @@ namespace iotbx { namespace pdb {
       af::shared<hierarchy_v1::atom> const&
       atoms() const { return atoms_; }
 
+      af::shared<hierarchy_v2::atom>
+      atoms_v2();
+
       af::shared<int> const&
       model_numbers() const { return model_numbers_; }
 
@@ -537,6 +553,10 @@ namespace iotbx { namespace pdb {
       //! not const because atom parents are modified.
       hierarchy_v1::root
       construct_hierarchy_v1();
+
+      //! not const because atom parents are modified.
+      hierarchy_v2::root
+      construct_hierarchy_v2();
 
       unsigned
       number_of_alternative_groups_with_blank_altloc() const
@@ -623,6 +643,7 @@ namespace iotbx { namespace pdb {
       af::shared<input_atom_labels> input_atom_labels_list_;
       af::shared<std::string> atom_serial_number_strings_;
       af::shared<hierarchy_v1::atom> atoms_;
+      af::shared<hierarchy_v2::atom> atoms_v2_;
       af::shared<int>         model_numbers_;
       af::shared<std::size_t> model_indices_;
       af::shared<std::size_t> ter_indices_;

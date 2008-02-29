@@ -527,6 +527,9 @@ namespace hierarchy_v2 {
       std::vector<atom> const&
       atoms() const;
 
+      std::vector<atom>::iterator
+      atoms_begin() const { return data->atoms.begin(); }
+
       long
       find_atom_index(
         hierarchy_v2::atom const& atom,
@@ -616,6 +619,9 @@ namespace hierarchy_v2 {
 
       std::vector<atom_group> const&
       atom_groups() const;
+
+      std::vector<atom_group>::iterator
+      atom_groups_begin() const { return data->atom_groups.begin(); }
 
       long
       find_atom_group_index(
@@ -711,6 +717,9 @@ namespace hierarchy_v2 {
       std::vector<residue_group> const&
       residue_groups() const;
 
+      std::vector<residue_group>::iterator
+      residue_groups_begin() const { return data->residue_groups.begin(); }
+
       long
       find_residue_group_index(
         hierarchy_v2::residue_group const& residue_group,
@@ -802,6 +811,9 @@ namespace hierarchy_v2 {
       std::vector<chain> const&
       chains() const;
 
+      std::vector<chain>::iterator
+      chains_begin() const { return data->chains.begin(); }
+
       long
       find_chain_index(
         hierarchy_v2::chain const& chain,
@@ -869,6 +881,9 @@ namespace hierarchy_v2 {
 
       std::vector<model> const&
       models() const;
+
+      std::vector<model>::iterator
+      models_begin() const { return data->models.begin(); }
 
       long
       find_model_index(
