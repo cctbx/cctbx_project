@@ -192,12 +192,12 @@ namespace iotbx { namespace pdb {
 
     char*       name_begin()       { return compacted; }
     const char* name_begin() const { return compacted; }
-    str4        name_small() const { return str4(name_begin()); }
+    str4        name_small() const { return str4(name_begin(), true); }
     std::string name()       const { return std::string(name_begin(),4); }
 
     char*       resname_begin()       { return compacted+4; }
     const char* resname_begin() const { return compacted+4; }
-    str3        resname_small() const { return str3(resname_begin()); }
+    str3        resname_small() const { return str3(resname_begin(), true); }
     std::string resname()       const { return std::string(resname_begin(),3);}
 
     char*       chain_begin()       { return compacted+7; }
@@ -205,7 +205,7 @@ namespace iotbx { namespace pdb {
     str2        chain_small() const
     {
       if (chain_begin()[0] == ' ') return str2(chain_begin()[1]);
-      return str2(chain_begin());
+      return str2(chain_begin(), true);
     }
     std::string chain()       const
     {
@@ -215,22 +215,22 @@ namespace iotbx { namespace pdb {
 
     char*       resseq_begin()       { return compacted+9; }
     const char* resseq_begin() const { return compacted+9; }
-    str4        resseq_small() const { return str4(resseq_begin()); }
+    str4        resseq_small() const { return str4(resseq_begin(), true); }
     std::string resseq()       const { return std::string(resseq_begin(),4); }
 
     char*       icode_begin()       { return compacted+13; }
     const char* icode_begin() const { return compacted+13; }
-    str1        icode_small() const { return str1(icode_begin()); }
+    str1        icode_small() const { return str1(icode_begin(), true); }
     std::string icode()       const { return std::string(icode_begin(),1); }
 
     char*       segid_begin()       { return compacted+14; }
     const char* segid_begin() const { return compacted+14; }
-    str4        segid_small() const { return str4(segid_begin()); }
+    str4        segid_small() const { return str4(segid_begin(), true); }
     std::string segid()       const { return std::string(segid_begin(),4); }
 
     char*       altloc_begin()       { return compacted+18; }
     const char* altloc_begin() const { return compacted+18; }
-    str1        altloc_small() const { return str1(altloc_begin()); }
+    str1        altloc_small() const { return str1(altloc_begin(), true); }
     std::string altloc()       const { return std::string(altloc_begin(),1); }
 
     input_atom_labels() {}

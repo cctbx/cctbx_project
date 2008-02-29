@@ -12,8 +12,8 @@ def exercise_atom():
   a.name = "abcd"
   assert a.name == "abcd"
   try: a.name = "xyzhkl"
-  except ValueError, e:
-    assert str(e) == "string is too long for name attribute " \
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "string is too long for target variable " \
       "(maximum length is 4 characters, 6 given)."
   else: raise Exception_expected
   assert a.segid == ""
@@ -93,11 +93,16 @@ def exercise_atom():
   assert approx_equal(a.siguij, (.1,.2,.3,.6,.1,.9))
   assert a.hetero
   assert a.tmp == 0
+  try: a.set_name(new_name="12345")
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "string is too long for target variable " \
+      "(maximum length is 4 characters, 5 given)."
+  else: raise Exception_expected
   #
   a.tmp = 7
   ac = a.detached_copy()
   assert ac.tmp == 0
-  assert ac.name == "NaMe"
+  assert ac.name == "1234"
   assert ac.segid == "sEgI"
   assert ac.element == "El"
   assert ac.charge == "cH"
@@ -253,6 +258,12 @@ def exercise_atom_group():
   ag.insert_atom(i=4, atom=a)
   assert ag.find_atom_index(atom=a) == 4
   assert [a.name for a in ag.atoms()] == ["0", "n", "", "x", "y"]
+  #
+  try: pdb.hierarchy_v2.atom_group(altloc="ab")
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "string is too long for target variable " \
+      "(maximum length is 1 character, 2 given)."
+  else: raise Exception_expected
 
 def exercise_residue_group():
   rg = pdb.hierarchy_v2.residue_group()

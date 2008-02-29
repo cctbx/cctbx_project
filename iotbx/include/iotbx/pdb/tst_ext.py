@@ -80,8 +80,8 @@ def exercise_atom():
   a.name = "abcd"
   assert a.name == "abcd"
   try: a.name = "xyzhkl"
-  except ValueError, e:
-    assert str(e) == "string is too long for name attribute " \
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "string is too long for target variable " \
       "(maximum length is 4 characters, 6 given)."
   else: raise Exception_expected
   assert a.segid == ""
