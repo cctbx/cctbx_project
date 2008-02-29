@@ -137,31 +137,9 @@ class manager(object):
         self.find_peaks_2fofc()
         self.show(message = "2Fo-Fc map selection:")
     #
-    if(not self.filter_only and self.params.refine_adp and
-       self.model.refinement_flags.individual_adp and
-       self.model.solvent_selection().count(True) > 0):
-      self.fmodels.update_xray_structure(
-         xray_structure = self.model.xray_structure,
-         update_f_calc  = True,
-         update_f_mask  = True)
-      from mmtbx.refinement import minimization
-      import scitbx.lbfgs
-      if(self.params.new_solvent == "anisotropic"):
-        selection_aniso = self.model.solvent_selection().deep_copy()
-        selection_aniso.set_selected(self.model.xray_structure.hd_selection(), False)
-        self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
-      else:
-        selection_iso = self.model.solvent_selection().deep_copy()
-        selection_iso.set_selected(self.model.xray_structure.hd_selection(), False)
-        self.model.set_refine_individual_adp(selection_iso = selection_iso)
-      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
-          max_iterations = 25)
-      minimized = minimization.lbfgs(
-        restraints_manager       = None,
-        fmodels                  = fmodels,
-        model                    = model,
-        refine_adp               = True,
-        lbfgs_termination_params = lbfgs_termination_params)
+    self.refine_adp()
+    self.refine_occupancies()
+    #
     self.filter_solvent()
     self.show(message = "Final:")
     self.move_solvent_to_the_end_of_atom_list()
@@ -396,6 +374,75 @@ class manager(object):
       chain_id               = self.params.output_chain_id,
       refine_occupancies     = self.params.refine_occupancies,
       refine_adp             = self.params.new_solvent)
+
+  def refine_adp(self):
+    if(not self.filter_only and self.params.refine_adp and
+       self.model.refinement_flags.individual_adp and
+       self.model.solvent_selection().count(True) > 0):
+      self.fmodels.update_xray_structure(
+         xray_structure = self.model.xray_structure,
+         update_f_calc  = True,
+         update_f_mask  = True)
+      print >> self.log, \
+        "ADP refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
+        self.fmodel.r_work(), self.fmodel.r_free())
+      from mmtbx.refinement import minimization
+      import scitbx.lbfgs
+      if(self.params.new_solvent == "anisotropic"):
+        selection_aniso = self.model.solvent_selection().deep_copy()
+        selection_iso = flex.bool(selection_aniso.size(), False)
+        selection_aniso.set_selected(self.model.xray_structure.hd_selection(),
+          False)
+        self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
+      else:
+        selection_iso = self.model.solvent_selection().deep_copy()
+        selection_aniso = flex.bool(selection_iso.size(), False)
+        selection_iso.set_selected(self.model.xray_structure.hd_selection(),
+          False)
+      self.model.set_refine_individual_adp(selection_iso   = selection_iso,
+                                           selection_aniso = selection_aniso)
+      lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+          max_iterations = 25)
+      minimized = minimization.lbfgs(
+        restraints_manager       = None,
+        fmodels                  = self.fmodels,
+        model                    = self.model,
+        refine_adp               = True,
+        lbfgs_termination_params = lbfgs_termination_params)
+      print >> self.log,\
+        "ADP refinement (water only), final r_work=%6.4f r_free=%6.4f"%(
+        self.fmodel.r_work(), self.fmodel.r_free())
+
+  def refine_occupancies(self):
+    if(not self.filter_only and self.params.refine_occupancies and
+       self.model.refinement_flags.occupancies and
+       self.model.solvent_selection().count(True) > 0):
+      self.fmodels.update_xray_structure(
+         xray_structure = self.model.xray_structure,
+         update_f_calc  = True,
+         update_f_mask  = True)
+      print >> self.log,\
+        "occupancy refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
+        self.fmodel.r_work(), self.fmodel.r_free())
+      import mmtbx.refinement.occupancies
+      save_occ_sel = self.model.refinement_flags.deep_copy().s_occupancies
+      sol_occ_sel = []
+      for ss in self.model.solvent_selection().iselection():
+        sol_occ_sel.append([flex.size_t([ss])])
+      self.model.refinement_flags.s_occupancies = sol_occ_sel
+      occ_min_manager = mmtbx.refinement.occupancies.manager(
+        fmodels                    = self.fmodels,
+        model                      = self.model,
+        max_number_of_iterations   = 25,
+        number_of_macro_cycles     = 2,
+        occupancy_max              = 1,
+        occupancy_min              = 0,
+        r_increase_tolerance       = 0.001,
+        log                        = None)
+      self.model.refinement_flags.s_occupancies = save_occ_sel
+      print >> self.log,\
+        "occupancy refinement (water only), start r_work=%6.4f r_free=%6.4f"%(
+        self.fmodel.r_work(), self.fmodel.r_free())
 
 def show_histogram(data,
                    n_slots,

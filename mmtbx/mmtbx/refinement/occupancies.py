@@ -83,22 +83,23 @@ class manager(object):
     self.show(fmodels= fmodels, log = log, message="occupancy refinement: end")
 
   def show(self, fmodels, message, log):
-    print >> log, "|-"+message+"-"*(79-len("|-"+message+"|"))+"|"
-    fm_x, fm_n = fmodels.fmodel_xray(), fmodels.fmodel_neutron()
-    if(fm_n is not None):
-      print >> log, "|"+" "*36+"X-ray"+" "*36+"|"
-    self.show_helper(fmodel = fm_x, log = log)
-    if(fm_n is not None):
-      print >> log, "|"+" "*35+"neutron"+" "*35+"|"
-      self.show_helper(fmodel = fm_n, log = log)
-    occupancies = fm_x.xray_structure.scatterers().extract_occupancies()
-    occ_max = format_value("%4.2f", flex.max(occupancies))
-    occ_min = format_value("%4.2f", flex.min(occupancies))
-    number_small = format_value("%8d", (occupancies < 0.1).count(True))
-    print >> log, \
-      "| occupancies: max = %s  min = %s   number of occupancies < 0.1: %s |"%(
-      occ_max, occ_min, number_small)
-    print >> log, "|"+"-"*77+"|"
+    if(log is not None):
+      print >> log, "|-"+message+"-"*(79-len("|-"+message+"|"))+"|"
+      fm_x, fm_n = fmodels.fmodel_xray(), fmodels.fmodel_neutron()
+      if(fm_n is not None):
+        print >> log, "|"+" "*36+"X-ray"+" "*36+"|"
+      self.show_helper(fmodel = fm_x, log = log)
+      if(fm_n is not None):
+        print >> log, "|"+" "*35+"neutron"+" "*35+"|"
+        self.show_helper(fmodel = fm_n, log = log)
+      occupancies = fm_x.xray_structure.scatterers().extract_occupancies()
+      occ_max = format_value("%4.2f", flex.max(occupancies))
+      occ_min = format_value("%4.2f", flex.min(occupancies))
+      number_small = format_value("%8d", (occupancies < 0.1).count(True))
+      print >> log, \
+        "| occupancies: max = %s  min = %s   number of occupancies < 0.1: %s |"%(
+        occ_max, occ_min, number_small)
+      print >> log, "|"+"-"*77+"|"
 
   def show_helper(self, fmodel, log):
     r_work = format_value("%6.4f", fmodel.r_work())

@@ -20,13 +20,13 @@ resolution_factor = 1./4.
 map_next_to_model
 {
   min_model_peak_dist = 0.7
-  max_model_peak_dist = 1.15
+  max_model_peak_dist = 1.2
   min_peak_peak_dist = 1.0
   use_hydrogens = True
 }
 peak_search
 {
-  peak_search_level = 3
+  peak_search_level = 1
   min_cross_distance = 1.0
 }
 """))
@@ -115,30 +115,30 @@ def extract_hoh_peaks(peaks, atom_attributes_list, xray_structure, log):
             print >> log, "  ", jhp.height, jhp.dist, angl
   return result
 
-def rebuild_hydrogens(h_peaks, model):
-  items = h_peaks.items()
-  items.sort()
-  items.reverse()
-  h_peaks_as_tuple = [(key, value) for key, value in items]
-  # add H ato xray_structure and aal
-  # important: asume atoms are aded from tail to head of the list
-  #            asume only one bonded atom is added
-  sca = model.xray_structure.scatterers()
-  aal = model.atom_attributres_list
-  xh_ct = model
-  for hp in h_peaks_as_tuple:
-    i = hp[0]
-    label = "H1"
-    sc = xray.scatterer(label           = label,
-                        scattering_type = "H",
-                        site            = hp[1].site_frac,
-                        u               = hp.scatterer_o.u_iso, # XXX if aniso, then convert to iso
-                        occupancy       = hp.scatterer_o.occupancy)
-    sca = sca[:i+1]+sc+sca[i+1:]
-    #HETATM   35  H1  HOH S   4       7.424  12.171   7.250  1.00 15.00           H
-    fmt = "HETATM    0  %2s  HOH%2s%4s    %8.3f%8.3f%8.3f%6.2f%6.2f%12s"
-
-  # invalidate relevant memebrs of model
+#def rebuild_hydrogens(h_peaks, model):
+#  items = h_peaks.items()
+#  items.sort()
+#  items.reverse()
+#  h_peaks_as_tuple = [(key, value) for key, value in items]
+#  # add H ato xray_structure and aal
+#  # important: asume atoms are aded from tail to head of the list
+#  #            asume only one bonded atom is added
+#  sca = model.xray_structure.scatterers()
+#  aal = model.atom_attributres_list
+#  xh_ct = model
+#  for hp in h_peaks_as_tuple:
+#    i = hp[0]
+#    label = "H1"
+#    sc = xray.scatterer(label           = label,
+#                        scattering_type = "H",
+#                        site            = hp[1].site_frac,
+#                        u               = hp.scatterer_o.u_iso, # XXX if aniso, then convert to iso
+#                        occupancy       = hp.scatterer_o.occupancy)
+#    sca = sca[:i+1]+sc+sca[i+1:]
+#    #HETATM   35  H1  HOH S   4       7.424  12.171   7.250  1.00 15.00           H
+#    fmt = "HETATM    0  %2s  HOH%2s%4s    %8.3f%8.3f%8.3f%6.2f%6.2f%12s"
+#
+#  # invalidate relevant memebrs of model
 
 def run(fmodel, model, log):
   params = all_master_params().extract()
