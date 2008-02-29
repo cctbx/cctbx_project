@@ -112,22 +112,20 @@ class manager(object):
     max_dist = self.params.map_next_to_model.max_model_peak_dist
     min_dist = self.params.map_next_to_model.min_model_peak_dist
     xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
+    use_selection = None
     if(not self.params.map_next_to_model.use_hydrogens):
-      hd_sel = xray_structure.hd_selection()
-      xray_structure = xray_structure.select(~hd_sel)
+      use_selection = ~xray_structure.hd_selection()
     initial_number_of_sites = self.peaks_.sites.size()
     print >> self.log, "Filter by distance & map next to the model:"
     result = xray_structure.closest_distances(sites_frac = self.peaks_.sites,
-      distance_cutoff = max_dist)
+      distance_cutoff = max_dist, use_selection = use_selection)
     smallest_distances_sq = result.smallest_distances_sq
     smallest_distances = result.smallest_distances
     in_box = smallest_distances_sq > 0
     not_too_far = smallest_distances_sq <= max_dist**2
     not_too_close = smallest_distances_sq >= min_dist**2
     selection = (not_too_far & not_too_close & in_box)
-    if(self.params.map_next_to_model.use_hydrogens):
-      iseqs_of_closest_atoms = result.i_seqs.select(selection)
-    else: iseqs_of_closest_atoms = None
+    iseqs_of_closest_atoms = result.i_seqs.select(selection)
     peaks = peaks_holder(
       heights                = self.peaks_.heights.select(selection),
       sites                  = result.sites_frac.select(selection),
