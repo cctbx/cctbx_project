@@ -269,7 +269,8 @@ class manager(object):
       self.adp_tls.extend(adp_tls)
     if(s_occupancies is not None):
       assert hasattr(s_occupancies, 'count')
-      self.s_occupancies.extend(s_occupancies)
+      if(self.s_occupancies is not None):
+        self.s_occupancies.extend(s_occupancies)
     self.check_all()
     return self
 
