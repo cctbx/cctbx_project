@@ -1065,9 +1065,9 @@ class structure(crystal.special_position_settings):
   def rms_difference(self, other):
     return self.sites_cart().rms_difference(other.sites_cart())
 
-  def closest_distances(self, sites_frac, distance_cutoff):
+  def closest_distances(self, sites_frac, distance_cutoff, use_selection=None):
     class map_next_to_model_and_find_closest_distances(object):
-      def __init__(self, xray_structure, sites_frac):
+      def __init__(self, xray_structure, sites_frac, use_selection):
         asu_mappings = xray_structure.asu_mappings(buffer_thickness =
           distance_cutoff)
         asu_mappings.process_sites_frac(sites_frac, min_distance_sym_equiv =
@@ -1100,10 +1100,11 @@ class structure(crystal.special_position_settings):
             i_seq_new_site_frac = pair.i_seq - n_xray
             new_site_frac = rt_mx_ij * sites_frac[i_seq_new_site_frac]
             jn = pair.j_seq
-          if(smallest_distances_sq[i_seq_new_site_frac] >= pair.dist_sq):
-            smallest_distances_sq[i_seq_new_site_frac] = pair.dist_sq
-            new_sites_frac[i_seq_new_site_frac] = new_site_frac
-            i_seqs[i_seq_new_site_frac] = jn
+          if(use_selection[jn]):
+            if(smallest_distances_sq[i_seq_new_site_frac] >= pair.dist_sq):
+              smallest_distances_sq[i_seq_new_site_frac] = pair.dist_sq
+              new_sites_frac[i_seq_new_site_frac] = new_site_frac
+              i_seqs[i_seq_new_site_frac] = jn
         self.remove_selection = smallest_distances_sq > distance_cutoff**2
         self.sites_frac = new_sites_frac
         self.smallest_distances = flex.sqrt(
@@ -1111,8 +1112,13 @@ class structure(crystal.special_position_settings):
         self.smallest_distances_sq = smallest_distances_sq.set_selected(
           self.remove_selection, -1)
         self.i_seqs = i_seqs
+    if(use_selection is not None):
+      assert use_selection.size() == self._scatterers.size()
+    else:
+      use_selection = flex.bool(self._scatterers.size(), True)
     result = map_next_to_model_and_find_closest_distances(
-      xray_structure = self, sites_frac = sites_frac)
+      xray_structure = self, sites_frac = sites_frac, use_selection =
+      use_selection)
     return result
 
   def orthorhombic_unit_cell_around_centered_scatterers(self, buffer_size):
