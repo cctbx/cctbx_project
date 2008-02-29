@@ -22,7 +22,7 @@ map_next_to_model
   min_model_peak_dist = 0.7
   max_model_peak_dist = 1.2
   min_peak_peak_dist = 1.0
-  use_hydrogens = True
+  use_hydrogens = False
 }
 peak_search
 {
