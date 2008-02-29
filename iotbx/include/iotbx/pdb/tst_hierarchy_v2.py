@@ -645,6 +645,47 @@ m: "   3"
       ag: " " "CYS"
 """)
 
+def exercise_format_atom_record_using_parents():
+  for hetero,record_name in [(False, "ATOM  "), (True, "HETATM")]:
+    a = (pdb.hierarchy_v2.atom()
+      .set_name(new_name="NaMe")
+      .set_segid(new_segid="sEgI")
+      .set_element(new_element="El")
+      .set_charge(new_charge="cH")
+      .set_serial(new_serial="B1234")
+      .set_xyz(new_xyz=(1.3,2.1,3.2))
+      .set_sigxyz(new_sigxyz=(.1,.2,.3))
+      .set_occ(new_occ=0.4)
+      .set_sigocc(new_sigocc=0.1)
+      .set_b(new_b=4.8)
+      .set_sigb(new_sigb=0.7)
+      .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
+      .set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9))
+      .set_hetero(new_hetero=hetero))
+    s = a.format_atom_record_using_parents()
+    assert not show_diff(s, """\
+%sB1234 NaMe                 1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
+      % record_name)
+    ag = pdb.hierarchy_v2.atom_group(altloc="x", resname="uvw")
+    ag.append_atom(atom=a)
+    s = a.format_atom_record_using_parents()
+    assert not show_diff(s, """\
+%sB1234 NaMexuvw             1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
+      % record_name)
+    rg = pdb.hierarchy_v2.residue_group(resseq="pqrs", icode="t")
+    rg.append_atom_group(atom_group=ag)
+    s = a.format_atom_record_using_parents()
+    assert not show_diff(s, """\
+%sB1234 NaMexuvw  pqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
+      % record_name)
+    for chain_id in ["", "g", "hi"]:
+      ch = pdb.hierarchy_v2.chain(id=chain_id)
+      ch.append_residue_group(residue_group=rg)
+      s = a.format_atom_record_using_parents()
+      assert not show_diff(s, """\
+%sB1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
+      % (record_name, chain_id))
+
 def exercise(args):
   assert len(args) == 0
   exercise_atom()
@@ -654,6 +695,7 @@ def exercise(args):
   exercise_model()
   exercise_root()
   exercise_construct_hierarchy()
+  exercise_format_atom_record_using_parents()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

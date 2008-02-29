@@ -192,6 +192,103 @@ namespace {
       data->hetero);
   }
 
+  unsigned
+  atom::format_atom_record(
+    char* result,
+    const char* altloc,
+    const char* resname,
+    const char* resseq,
+    const char* icode,
+    const char* chain_id) const
+  {
+    char blank = ' ';
+    atom_data const& d = *data;
+    std::memcpy(result, (d.hetero ? "HETATM" : "ATOM  "), 6U);
+    d.serial.copy_padded(result+6, 5U, blank);
+    result[11] = blank;
+    d.name.copy_padded(result+12, 4U, blank);
+    copy_padded(result+16, 1U, altloc, 1U, blank);
+    copy_padded(result+17, 3U, resname, 3U, blank);
+    if (chain_id == 0 || chain_id[0] == '\0') {
+      result[20] = blank;
+      result[21] = blank;
+    }
+    else if (chain_id[1] == '\0') {
+      result[20] = blank;
+      result[21] = chain_id[0];
+    }
+    else {
+      result[20] = chain_id[0];
+      result[21] = chain_id[1];
+    }
+    copy_padded(result+22, 4U, resseq, 4U, blank);
+    copy_padded(result+26, 4U, icode, 1U, blank);
+    char *r = result + 30;
+    for(unsigned i=0;i<3;i++) {
+      std::sprintf(r, "%8.3f", d.xyz[i]);
+      r += 8;
+      if (*r != '\0') {
+        throw std::runtime_error(
+          std::string("atom ") + "XYZ"[i] + " coordinate value"
+          " does not fit into F8.3 format.");
+      }
+    }
+    std::sprintf(r, "%6.2f", d.occ);
+    r += 6;
+    if (*r != '\0') {
+      throw std::runtime_error(
+        std::string("atom ") + "occupancy factor"
+        " does not fit into F6.2 format.");
+    }
+    std::sprintf(r, "%6.2f", d.b);
+    r += 6;
+    if (*r != '\0') {
+      throw std::runtime_error(
+        std::string("atom ") + "B-factor"
+        " does not fit into F6.2 format.");
+    }
+    copy_padded(r, 6U, 0, 0U, blank);
+    d.segid.copy_padded(result+72, 4U, blank);
+    d.element.copy_padded(result+76, 2U, blank);
+    d.charge.copy_padded(result+78, 2U, blank);
+    for(unsigned i=79;i!=71;i--) {
+      if (result[i] != blank) {
+        result[i+1] = '\0';
+        return i+1;
+      }
+    }
+    result[66] = '\0';
+    return 66U;
+  }
+
+  unsigned
+  atom::format_atom_record_using_parents(
+    char* result) const
+  {
+    shared_ptr<atom_group_data> ag_lock = data->parent.lock();
+    const atom_group_data* ag = ag_lock.get();
+    if (ag == 0) {
+      return format_atom_record(result,
+        0, 0,
+        0, 0,
+        0);
+    }
+    shared_ptr<residue_group_data> rg_lock = ag->parent.lock();
+    const residue_group_data* rg = rg_lock.get();
+    if (rg == 0) {
+      return format_atom_record(result,
+        ag->altloc.elems, ag->resname.elems,
+        0, 0,
+        0);
+    }
+    shared_ptr<chain_data> c_lock = rg->parent.lock();
+    chain_data const* c = c_lock.get();
+    return format_atom_record(result,
+      ag->altloc.elems, ag->resname.elems,
+      rg->resseq.elems, rg->icode.elems,
+      (c == 0 ? 0 : c->id.c_str()));
+  }
+
   boost::optional<std::string>
   atom::determine_chemical_element_simple() const
   {

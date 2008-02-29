@@ -95,6 +95,7 @@ namespace hierarchy_v2 {
   {
     protected:
       friend class model;
+      friend class atom; // to support efficient backtracking to parents
       weak_ptr<root_data> parent;
     public:
       std::string id;
@@ -121,6 +122,7 @@ namespace hierarchy_v2 {
   {
     protected:
       friend class chain;
+      friend class atom; // to support efficient backtracking to parents
       weak_ptr<model_data> parent;
     public:
       std::string id;
@@ -147,6 +149,7 @@ namespace hierarchy_v2 {
   {
     protected:
       friend class residue_group;
+      friend class atom; // to support efficient backtracking to parents
       weak_ptr<chain_data> parent;
     public:
       str4 resseq;
@@ -179,6 +182,7 @@ namespace hierarchy_v2 {
   {
     protected:
       friend class atom_group;
+      friend class atom; // to support efficient backtracking to parents
       weak_ptr<residue_group_data> parent;
     public:
       str1 altloc;
@@ -462,6 +466,27 @@ namespace hierarchy_v2 {
       {
         return !data->siguij.const_ref().all_eq(-1);
       }
+
+      //! Not available in Python.
+      /*! result must point to an array of size 81 (or greater).
+          On return, result is null-terminated.
+       */
+      unsigned
+      format_atom_record(
+        char* result,
+        const char* altloc,
+        const char* resname,
+        const char* resseq,
+        const char* icode,
+        const char* chain_id) const;
+
+      //! Not available in Python.
+      /*! result must point to an array of size 81 (or greater).
+          On return, result is null-terminated.
+       */
+      unsigned
+      format_atom_record_using_parents(
+        char* result) const;
 
       boost::optional<std::string>
       determine_chemical_element_simple() const;
