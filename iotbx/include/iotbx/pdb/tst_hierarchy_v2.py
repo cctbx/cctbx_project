@@ -208,6 +208,8 @@ def exercise_atom_group():
   #
   rg1 = pdb.hierarchy_v2.residue_group()
   ag = rg1.new_atom_group(altloc="a", resname="xyz")
+  assert ag.altloc == "a"
+  assert ag.resname == "xyz"
   assert ag.parent().memory_id() == rg1.memory_id()
   del rg1
   assert ag.parent() is None
@@ -316,6 +318,11 @@ def exercise_residue_group():
   del c1
   assert rg.parent() is None
   #
+  c1 = pdb.hierarchy_v2.chain(id="p")
+  rg13l = c1.new_residue_group(resseq="13", icode="l")
+  assert rg13l.resseq == "13"
+  assert rg13l.icode == "l"
+  #
   c1 = pdb.hierarchy_v2.chain(id="a")
   c1.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c1.residue_groups_size() == 0
@@ -370,6 +377,8 @@ def exercise_chain():
   assert c.parent().memory_id() == m1.memory_id()
   del m1
   assert c.parent() is None
+  #
+  c = pdb.hierarchy_v2.chain()
   #
   c = pdb.hierarchy_v2.chain()
   c.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
@@ -445,10 +454,12 @@ def exercise_model():
   assert m.chains_size() == 0
   assert len(m.chains()) == 0
   ch_a = m.new_chain(id="a")
+  assert ch_a.id == "a"
   assert ch_a.parent().memory_id() == m.memory_id()
   assert m.chains_size() == 1
   assert len(m.chains()) == 1
   ch_b = pdb.hierarchy_v2.chain(id="b")
+  assert ch_b.id == "b"
   assert ch_b.parent() is None
   m.append_chain(chain=ch_b)
   assert m.chains_size() == 2
@@ -531,6 +542,7 @@ def exercise_root():
   assert r.models_size() == 0
   assert len(r.models()) == 0
   m_a = r.new_model(id="3")
+  assert m_a.id == "3"
   assert m_a.parent().memory_id() == r.memory_id()
   assert r.models_size() == 1
   assert len(r.models()) == 1
@@ -591,60 +603,6 @@ def exercise_root():
     assert str(e) == "model has another parent root already."
   else: raise Exception_expected
 
-def exercise_construct_hierarchy():
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
-MODEL        1
-ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
-ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
-BREAK
-HETATM    3  C   MET A   2       7.478  21.387  22.491  1.00  0.00           C
-ATOM      4  O   MET A   2       8.406  20.895  23.132  1.00  0.00           O
-ENDMDL
-MODEL 3
-HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
-SIGATM    9 2H3  MPR B   5       0.155   0.175   0.155  0.00  0.05
-ANISOU    9 2H3  MPR B   5      848    848    848      0      0      0
-SIGUIJ    9 2H3  MPR B   5      510    510    510      0      0      0
-TER
-ATOM     10  N   CYSCH   6      14.270   2.464   3.364  1.00  0.07
-SIGATM   10  N   CYSCH   6       0.012   0.012   0.011  0.00  0.00
-ANISOU   10  N   CYSCH   6      788    626    677   -344    621   -232
-SIGUIJ   10  N   CYSCH   6        3     13      4     11      6     13
-TER
-ENDMDL
-END
-"""))
-  assert [atom.name for atom in pdb_inp.atoms_v2()] \
-      == [" N  ", " CA ", " C  ", " O  ", "2H3 ", " N  "]
-  sio = StringIO()
-  root = pdb_inp.construct_hierarchy_v2()
-  for model in root.models():
-    print >> sio, "m:", show_string(model.id)
-    for chain in model.chains():
-      print >> sio, "  c:", show_string(chain.id)
-      for residue_group in chain.residue_groups():
-        print >> sio, "    rg:", \
-          show_string(residue_group.resseq + residue_group.icode)
-        atom_groups = residue_group.atom_groups()
-        for atom_group in atom_groups:
-          print >> sio, "      ag:", \
-            show_string(atom_group.altloc), show_string(atom_group.resname)
-  assert not show_diff(sio.getvalue(), """\
-m: "   1"
-  c: "A"
-    rg: "   1 "
-      ag: " " "MET"
-    rg: "   2 "
-      ag: " " "MET"
-m: "   3"
-  c: "B"
-    rg: "   5 "
-      ag: " " "MPR"
-  c: "CH"
-    rg: "   6 "
-      ag: " " "CYS"
-""")
-
 def exercise_format_atom_record_using_parents():
   for hetero,record_name in [(False, "ATOM  "), (True, "HETATM")]:
     a = (pdb.hierarchy_v2.atom()
@@ -686,6 +644,137 @@ def exercise_format_atom_record_using_parents():
 %sB1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % (record_name, chain_id))
 
+def exercise_construct_hierarchy():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        1
+ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
+ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
+BREAK
+HETATM    3  C   MET A   2       7.478  21.387  22.491  1.00  0.00           C
+ATOM      4  O   MET A   2       8.406  20.895  23.132  1.00  0.00           O
+ENDMDL
+MODEL 3
+HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
+SIGATM    9 2H3  MPR B   5       0.155   0.175   0.155  0.00  0.05
+ANISOU    9 2H3  MPR B   5      848    848    848      0      0      0
+SIGUIJ    9 2H3  MPR B   5      510    510    510      0      0      0
+TER
+ATOM     10  N   CYSCH   6      14.270   2.464   3.364  1.00  0.07
+SIGATM   10  N   CYSCH   6       0.012   0.012   0.011  0.00  0.00
+ANISOU   10  N   CYSCH   6      788    626    677   -344    621   -232
+SIGUIJ   10  N   CYSCH   6        3     13      4     11      6     13
+TER
+ENDMDL
+END
+"""))
+  assert [atom.name for atom in pdb_inp.atoms_v2()] \
+      == [" N  ", " CA ", " C  ", " O  ", "2H3 ", " N  "]
+  sio = StringIO()
+  root = pdb_inp.construct_hierarchy_v2()
+  for model in root.models():
+    print >> sio, "m:", show_string(model.id)
+    for chain in model.chains():
+      print >> sio, "  c:", show_string(chain.id)
+      for residue_group in chain.residue_groups():
+        print >> sio, "    rg:", \
+          show_string(residue_group.resseq + residue_group.icode)
+        for atom_group in residue_group.atom_groups():
+          print >> sio, "      ag:", \
+            show_string(atom_group.altloc), show_string(atom_group.resname)
+  assert not show_diff(sio.getvalue(), """\
+m: "   1"
+  c: "A"
+    rg: "   1 "
+      ag: " " "MET"
+    rg: "   2 "
+      ag: " " "MET"
+m: "   3"
+  c: "B"
+    rg: "   5 "
+      ag: " " "MPR"
+  c: "CH"
+    rg: "   6 "
+      ag: " " "CYS"
+""")
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+REMARK    ANTIBIOTIC                              26-JUL-06   2IZQ
+ATOM    220  N  ATRP A  11      20.498  12.832  34.558  0.50  6.03           N
+ATOM    221  CA ATRP A  11      21.094  12.032  35.602  0.50  5.24           C
+ATOM    222  C  ATRP A  11      22.601  12.088  35.532  0.50  6.49           C
+ATOM    223  O  ATRP A  11      23.174  12.012  34.439  0.50  7.24           O
+ATOM    234  H  ATRP A  11      20.540  12.567  33.741  0.50  7.24           H
+ATOM    235  HA ATRP A  11      20.771  12.306  36.485  0.50  6.28           H
+ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
+ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92           C
+ATOM    246  C  CPHE A  11      22.448  12.425  35.436  0.15  6.32           C
+ATOM    247  O  CPHE A  11      22.961  12.790  34.373  0.15  6.08           O
+ATOM    255  N  BTYR A  11      20.553  12.751  34.549  0.35  5.21           N
+ATOM    256  CA BTYR A  11      21.106  11.838  35.524  0.35  5.51           C
+ATOM    257  C  BTYR A  11      22.625  11.920  35.572  0.35  5.42           C
+ATOM    258  O  BTYR A  11      23.299  11.781  34.538  0.35  5.30           O
+ATOM    262  HB2CPHE A  11      21.221  10.536  34.146  0.15  7.21           H
+ATOM    263  CD2BTYR A  11      18.463  10.012  36.681  0.35  9.08           C
+ATOM    264  HB3CPHE A  11      21.198  10.093  35.647  0.15  7.21           H
+ATOM    265  CE1BTYR A  11      17.195   9.960  34.223  0.35 10.76           C
+ATOM    266  HD1CPHE A  11      19.394   9.937  32.837  0.15 10.53           H
+ATOM    267  CE2BTYR A  11      17.100   9.826  36.693  0.35 11.29           C
+ATOM    268  HD2CPHE A  11      18.873  10.410  36.828  0.15  9.24           H
+ATOM    269  CZ BTYR A  11      16.546   9.812  35.432  0.35 11.90           C
+ATOM    270  HE1CPHE A  11      17.206   9.172  32.650  0.15 12.52           H
+ATOM    271  OH BTYR A  11      15.178   9.650  35.313  0.35 19.29           O
+ATOM    272  HE2CPHE A  11      16.661   9.708  36.588  0.15 11.13           H
+ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
+ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
+ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
+ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
+"""))
+  lines = []
+  root = pdb_inp.construct_hierarchy_v2()
+  for model in root.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        lines.append("@residue_group")
+        for atom_group in residue_group.atom_groups():
+          lines.append("@atom_group")
+          for atom in atom_group.atoms():
+            lines.append(atom.format_atom_record_using_parents())
+  assert not show_diff("\n".join(lines)+"\n", """\
+@residue_group
+@atom_group
+ATOM    220  N  ATRP A  11      20.498  12.832  34.558  0.50  6.03           N
+ATOM    221  CA ATRP A  11      21.094  12.032  35.602  0.50  5.24           C
+ATOM    222  C  ATRP A  11      22.601  12.088  35.532  0.50  6.49           C
+ATOM    223  O  ATRP A  11      23.174  12.012  34.439  0.50  7.24           O
+ATOM    234  H  ATRP A  11      20.540  12.567  33.741  0.50  7.24           H
+ATOM    235  HA ATRP A  11      20.771  12.306  36.485  0.50  6.28           H
+@atom_group
+ATOM    255  N  BTYR A  11      20.553  12.751  34.549  0.35  5.21           N
+ATOM    256  CA BTYR A  11      21.106  11.838  35.524  0.35  5.51           C
+ATOM    257  C  BTYR A  11      22.625  11.920  35.572  0.35  5.42           C
+ATOM    258  O  BTYR A  11      23.299  11.781  34.538  0.35  5.30           O
+ATOM    263  CD2BTYR A  11      18.463  10.012  36.681  0.35  9.08           C
+ATOM    265  CE1BTYR A  11      17.195   9.960  34.223  0.35 10.76           C
+ATOM    267  CE2BTYR A  11      17.100   9.826  36.693  0.35 11.29           C
+ATOM    269  CZ BTYR A  11      16.546   9.812  35.432  0.35 11.90           C
+ATOM    271  OH BTYR A  11      15.178   9.650  35.313  0.35 19.29           O
+ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
+ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
+ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
+@atom_group
+ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
+ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92           C
+ATOM    246  C  CPHE A  11      22.448  12.425  35.436  0.15  6.32           C
+ATOM    247  O  CPHE A  11      22.961  12.790  34.373  0.15  6.08           O
+ATOM    262  HB2CPHE A  11      21.221  10.536  34.146  0.15  7.21           H
+ATOM    264  HB3CPHE A  11      21.198  10.093  35.647  0.15  7.21           H
+ATOM    266  HD1CPHE A  11      19.394   9.937  32.837  0.15 10.53           H
+ATOM    268  HD2CPHE A  11      18.873  10.410  36.828  0.15  9.24           H
+ATOM    270  HE1CPHE A  11      17.206   9.172  32.650  0.15 12.52           H
+ATOM    272  HE2CPHE A  11      16.661   9.708  36.588  0.15 11.13           H
+ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
+""")
+
 def exercise(args):
   assert len(args) == 0
   exercise_atom()
@@ -694,8 +783,8 @@ def exercise(args):
   exercise_chain()
   exercise_model()
   exercise_root()
-  exercise_construct_hierarchy()
   exercise_format_atom_record_using_parents()
+  exercise_construct_hierarchy()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
