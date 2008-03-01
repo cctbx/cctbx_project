@@ -42,7 +42,8 @@ namespace iotbx { namespace pdb {
         iall->resseq_small().elems,
         iall->icode_small().elems);
       rg.pre_allocate_atom_groups(altloc_resname_indices.size());
-      char* altloc = " ";
+      char altloc[2];
+      altloc[1] = '\0';
       typedef std::map<str4, std::vector<unsigned> >::const_iterator ari_it;
       ari_it ari_end = altloc_resname_indices.end();
       for(ari_it ari=altloc_resname_indices.begin(); ari!=ari_end; ari++) {
