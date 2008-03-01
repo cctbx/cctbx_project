@@ -1,12 +1,12 @@
-import time, os, sys
-from cStringIO import StringIO
 from mmtbx import utils
 import mmtbx.model
-import libtbx.load_env
 import mmtbx.restraints
 import iotbx.pdb
 from scitbx.array_family import flex
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, show_diff
+from libtbx.utils import format_cpu_times
+from cStringIO import StringIO
+import sys
 
 input_model = """\
 CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
@@ -117,8 +117,8 @@ def run():
     if(r2.startswith("ATOM") or r2.startswith("HETATM")): result2.append(r2)
   assert len(result1) == len(result2)
   for r1, r2 in zip(result1, result2):
-    assert r1[:30] == r2[:30]
-    assert r1[55:] == r2[55:]
+    assert not show_diff(r1[:30], r2[:30])
+    assert not show_diff(r1[55:], r2[55:])
   ####
   cntr = 0
   xrs1 = iotbx.pdb.input(source_info = None, lines = flex.std_string(
@@ -131,6 +131,7 @@ def run():
       assert approx_equal(s1.site, s2.site)
       cntr += 1
   assert cntr == 19
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()
