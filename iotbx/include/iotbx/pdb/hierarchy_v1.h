@@ -648,6 +648,9 @@ namespace iotbx { namespace pdb { namespace hierarchy_v1 {
   struct combine_conformers
   {
     virtual
+    ~combine_conformers() {}
+
+    virtual
     void
     process_next_residue(
       std::string const& conformer_id,
