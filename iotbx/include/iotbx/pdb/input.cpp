@@ -942,8 +942,6 @@ namespace iotbx { namespace pdb {
           current_chain_indices = &chain_indices.back();
         }
         char* p = previous_chain_and_segid;
-        bool same_chain = (   p[0] == current_labels.chain_begin()[0]
-                           && p[1] == current_labels.chain_begin()[1]);
         if (*p != '\n') {
           // test if previous labels and current labels belong to
           // different chains:

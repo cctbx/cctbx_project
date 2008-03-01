@@ -493,7 +493,6 @@ namespace iotbx { namespace pdb { namespace hierarchy_v1 {
   :
     data(new residue_data(parent.data, *other.data))
   {
-    std::vector<atom> const& other_atoms = other.data->atoms;
     unsigned n = other.atoms_size();
     data->atoms.reserve(n);
     const atom* oa = (n == 0 ? 0 : &*other.atoms().begin());
