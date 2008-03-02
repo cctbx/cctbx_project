@@ -1,4 +1,5 @@
 from cctbx import sgtbx
+from scitbx.array_family import flex
 import sys
 
 class left_decomposition(object):
@@ -32,6 +33,21 @@ class left_decomposition(object):
       self.partitions.append(partition)
     if (len(self.partitions) * len(h) != len(g)):
       raise RuntimeError("h is not a subgroup of g")
+    #sort cosets by operator order
+    self.sort_cosets()
+
+  def sort_cosets(self):
+    new_partitions = []
+    for pp in self.partitions:
+      orders = []
+      for op in pp:
+        orders.append( op.r().info().type() )
+      orders = flex.sort_permutation( flex.int(orders) )
+      tmp = []
+      for ii in orders:
+        tmp.append( pp[ii] )
+      new_partitions.append( tmp )
+    self.partitions = new_partitions
 
   def show(self,out=None):
     if out is None:
@@ -49,8 +65,9 @@ class left_decomposition(object):
       print >> out
       count += 1
       for item in part:
-        print "%20s     Rotation: %4s ; direction: %10s ; screw/glide: %10s "%(
+        print "%20s  %20s   Rotation: %4s ; direction: %10s ; screw/glide: %10s "%(
           item,
+          item.r().as_hkl(),
           item.r().info().type() ,
           item.r().info().ev(),
           "("+item.t().as_string()+")" )
