@@ -6,10 +6,10 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
+from libtbx.utils import hashlib_md5
 from libtbx.itertbx import count
 from libtbx import adopt_init_args
 from cStringIO import StringIO
-import md5
 import sys
 
 def trial_structure():
@@ -923,7 +923,7 @@ def exercise_coordination_sequences_shell_asu_tables():
   structure.show_distances(pair_asu_table=s1_asu_table, out=s)
   print >> s
   s = s.getvalue().replace("-0.0000", " 0.0000")
-  if (md5.md5(s).hexdigest() != "2644729423835c824fafc53919d2ccf4"):
+  if (hashlib_md5(s).hexdigest() != "2644729423835c824fafc53919d2ccf4"):
     sys.stderr.write(s)
     raise AssertionError("Unexpected show_distances() output.")
 

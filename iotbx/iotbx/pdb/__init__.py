@@ -14,8 +14,7 @@ import scitbx.stl.set
 from libtbx import smart_open
 from libtbx.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
-from libtbx.utils import plural_s, Sorry
-import md5
+from libtbx.utils import plural_s, Sorry, hashlib_md5
 import sys
 
 cns_dna_rna_residue_names = {
@@ -229,7 +228,7 @@ class combine_unique_pdb_files(object):
         r = [s.expandtabs().rstrip()
           for s in smart_open.for_reading(
             file_name=file_name).read().splitlines()]
-        m = md5.new()
+        m = hashlib_md5()
         m.update("\n".join(r))
         m = m.hexdigest()
         l = self.md5_registry.get(m)

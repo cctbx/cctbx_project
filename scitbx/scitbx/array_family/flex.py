@@ -10,7 +10,7 @@ import scitbx_array_family_flex_ext as ext
 
 import scitbx.stl.map
 from libtbx.str_utils import format_value
-import md5
+from libtbx.utils import hashlib_md5
 import time
 import sys, os
 
@@ -19,7 +19,7 @@ builtin_long = __builtins__["long"]
 builtin_max = __builtins__["max"]
 
 def bool_md5(self):
-  result = md5.new()
+  result = hashlib_md5()
   result.update(self.__getstate__()[1])
   return result
 bool.md5 = bool_md5
