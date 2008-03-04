@@ -167,6 +167,16 @@ class angle_proxy_registry(proxy_registry_base):
         self.counts[i_list] += 1
     return result
 
+  def lookup_i_proxy(self, i_seqs):
+    "See also: cctbx::geometry_restraints::angle_proxy::sort_i_seqs()"
+    (i0, i1, i2) = i_seqs
+    tab_i_seq_1 = self.table.get(i1)
+    if (tab_i_seq_1 is None):
+      return None
+    if (i0 > i2):
+      return tab_i_seq_1.get((i2, i0))
+    return tab_i_seq_1.get((i0, i2))
+
 class dihedral_proxy_registry(proxy_registry_base):
 
   def __init__(self, strict_conflict_handling):
@@ -202,6 +212,21 @@ class dihedral_proxy_registry(proxy_registry_base):
       if (not result.is_conflicting):
         self.counts[i_list] += 1
     return result
+
+  def lookup_i_proxy(self, i_seqs):
+    "See also: cctbx::geometry_restraints::dihedral_proxy::sort_i_seqs()"
+    (i0, i1, i2, i3) = i_seqs
+    angle_sign = 1
+    if (i0 > i3):
+      i0, i3 = i3, i0
+      angle_sign *= -1
+    if (i1 > i2):
+      i1, i2 = i2, i1
+      angle_sign *= -1
+    tab_i_seq_0 = self.table.get(i0)
+    if (tab_i_seq_0 is None):
+      return (None, None)
+    return (tab_i_seq_0.get((i1, i2, i3)), angle_sign)
 
 class chirality_proxy_registry(proxy_registry_base):
 
