@@ -150,7 +150,9 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
                 a1[i], a2[i], eps, multiplier, out, prefix+"  "):
         return False
     return True
-  if hasattr(a1, "real") and hasattr(a2, "real"): # complex & complex
+  is_complex_1 = isinstance(a1, complex)
+  is_complex_2 = isinstance(a2, complex)
+  if (is_complex_1 and is_complex_2): # complex & complex
     if not approx_equal_core(
               a1.real, a2.real, eps, multiplier, out, prefix+"real "):
       return False
@@ -158,7 +160,7 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
               a1.imag, a2.imag, eps, multiplier, out, prefix+"imag "):
       return False
     return True
-  elif hasattr(a1, "real"): # complex & number
+  elif (is_complex_1): # complex & number
     if not approx_equal_core(
               a1.real, a2, eps, multiplier, out, prefix+"real "):
       return False
@@ -166,7 +168,7 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
               a1.imag, 0, eps, multiplier, out, prefix+"imag "):
       return False
     return True
-  elif hasattr(a2, "real"): #number & complex
+  elif (is_complex_2): # number & complex
     if not approx_equal_core(
               a1, a2.real, eps, multiplier, out, prefix+"real "):
       return False
@@ -213,7 +215,7 @@ def eps_eq_core(a1, a2, eps, out, prefix):
       if (not eps_eq_core(a1[i], a2[i], eps, out, prefix+"  ")):
         return False
     return True
-  if (hasattr(a1, "real")): # complex numbers
+  if (isinstance(a1, complex)): # complex numbers
     if (not eps_eq_core(a1.real, a2.real, eps, out, prefix+"real ")):
       return False
     if (not eps_eq_core(a1.imag, a2.imag, eps, out, prefix+"imag ")):
