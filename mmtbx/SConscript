@@ -31,3 +31,5 @@ SConscript("bulk_solvent/SConscript")
 SConscript("tls/SConscript")
 SConscript("scaling/SConscript")
 SConscript("f_model/SConscript")
+SConscript("utils/SConscript")
+
