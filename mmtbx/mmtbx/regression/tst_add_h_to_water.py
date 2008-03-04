@@ -117,8 +117,9 @@ def run():
     if(r2.startswith("ATOM") or r2.startswith("HETATM")): result2.append(r2)
   assert len(result1) == len(result2)
   for r1, r2 in zip(result1, result2):
-    assert not show_diff(r1[:30], r2[:30])
-    assert not show_diff(r1[55:], r2[55:])
+    r1 = r1[:30] + r1[55:]
+    r2 = r2[:30] + r2[55:]
+    assert not show_diff(r1, r2)
   ####
   cntr = 0
   xrs1 = iotbx.pdb.input(source_info = None, lines = flex.std_string(
