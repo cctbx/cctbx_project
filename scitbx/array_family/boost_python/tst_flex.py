@@ -1603,21 +1603,21 @@ def exercise_extract_attributes():
   for i in xrange(3):
     groups.append(group(i, i+1))
   for array in [groups, tuple(groups)]:
-    as = flex.extract_double_attributes(
+    eas = flex.extract_double_attributes(
       array=array, attribute_name="a", none_substitute=None)
-    assert approx_equal(as, [0,1,2])
-    bs = flex.extract_double_attributes(
+    assert approx_equal(eas, [0,1,2])
+    ebs = flex.extract_double_attributes(
       array=array, attribute_name="b", none_substitute=None)
-    assert approx_equal(bs, [1,2,3])
+    assert approx_equal(ebs, [1,2,3])
   groups[1].a = None
   groups[2].b = None
   for array in [groups, tuple(groups)]:
-    as = flex.extract_double_attributes(
+    eas = flex.extract_double_attributes(
       array=array, attribute_name="a", none_substitute=3)
-    assert approx_equal(as, [0,3,2])
-    bs = flex.extract_double_attributes(
+    assert approx_equal(eas, [0,3,2])
+    ebs = flex.extract_double_attributes(
       array=array, attribute_name="b", none_substitute=-4)
-    assert approx_equal(bs, [1,2,-4])
+    assert approx_equal(ebs, [1,2,-4])
 
 def exercise_exceptions():
   f = flex.double(flex.grid((2,3)))
