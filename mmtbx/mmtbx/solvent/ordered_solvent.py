@@ -137,8 +137,9 @@ class manager(object):
         self.find_peaks_2fofc()
         self.show(message = "2Fo-Fc map selection:")
     #
-    self.refine_adp()
-    self.refine_occupancies()
+    for i in [1,2]:
+      self.refine_adp()
+      self.refine_occupancies()
     #
     self.filter_solvent()
     self.show(message = "Final:")

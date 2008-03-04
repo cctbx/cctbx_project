@@ -1009,6 +1009,7 @@ def occupancy_selections(
               if(s not in s_uri):
                 s_uri.append(s)
         selections.append(s_uri)
+  hd_selection = xray_structure.hd_selection().iselection()
   for s in selections:
     s = list(s)
     s_set = set(s)
@@ -1027,6 +1028,19 @@ def occupancy_selections(
           if(r not in zz and r != []): zz.append(r)
     if(zz != []):
       result.append(zz)
+  # exclude H
+  result_ = []
+  for r in result:
+    result__ = []
+    for rr in r:
+      result___ = []
+      for rrr in rr:
+        if(rrr not in hd_selection):
+          result___.append(rrr)
+      result__.append(result___)
+    result_.append(result__)
+  result = result_
+  #
   if(other_individual_selection_strings is not None):
     sel = get_atom_selections(
       all_chain_proxies   = all_chain_proxies,

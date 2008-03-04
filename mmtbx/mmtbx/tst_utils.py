@@ -145,8 +145,29 @@ def exercise_00():
   target.extend([[[0]], [[1]], [[4, 5]], [[21]], [[23]]])
   assert approx_equal(res, target)
 
+def exercise_01():
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/ala_h.pdb",
+    test=os.path.isfile)
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log = StringIO())
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  xray_structure = processed_pdb_file.xray_structure()
+  aal = processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  #
+  base = [ [[0,1,2,3,4],[5,6,7,8,9]],
+           [[10]],[[11]],[[12]],[[13]],[[14]],[[15]],[[16]],[[17]],[[18]],[[19]],[[20]],[[21]],[[22]],[[23]] ]
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    add_hydrogens     = True,
+    as_flex_arrays    = False)
+  assert approx_equal(res, base)
+
 def run():
   exercise_00()
+  exercise_01()
 
 if (__name__ == "__main__"):
   run()
