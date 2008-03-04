@@ -4,7 +4,12 @@ from libtbx import sge_utils
 from libtbx.str_utils import show_string
 try: import gzip
 except ImportError: gzip = None
-import md5
+try:
+  import hashlib
+  hashlib_md5 = hashlib.md5
+except ImportError:
+  import md5
+  hashlib_md5 = md5.new
 import glob
 import time
 import atexit
@@ -35,7 +40,7 @@ def warn_if_unexpected_md5_hexdigest(
       expected_md5_hexdigests,
       hints=[],
       out=None):
-  m = md5.new()
+  m = hashlib_md5()
   m.update("\n".join(open(path).read().splitlines()))
   current_md5_hexdigest = m.hexdigest()
   if (m.hexdigest() in expected_md5_hexdigests): return False

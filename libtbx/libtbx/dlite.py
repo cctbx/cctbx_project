@@ -1,7 +1,7 @@
 "light-weight, simple source_path, target_path dependency management"
 
 from libtbx import easy_pickle
-import md5
+from libtbx.utils import hashlib_md5
 import time
 import sys, os
 
@@ -24,7 +24,7 @@ class node_info(object):
   def current_md5(self, path_prefix=None):
     full_path = self.full_path(path_prefix=path_prefix)
     if (not os.path.exists(full_path)): return None
-    m = md5.new()
+    m = hashlib_md5()
     m.update(open(full_path, "rb").read())
     return m.hexdigest()
 

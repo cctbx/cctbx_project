@@ -3,11 +3,11 @@ from iotbx.pdb import hybrid_36
 import iotbx.pdb.parser
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
-from libtbx.utils import Sorry, user_plus_sys_time, format_cpu_times
+from libtbx.utils import Sorry, user_plus_sys_time, format_cpu_times, \
+  hashlib_md5
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
-import md5
 import sys, os
 
 def exercise_hybrid_36():
@@ -2903,7 +2903,7 @@ ygg_03.pdb a315b1bf82bcde6f324469157ece303e
       hierarchy_2.as_str(level_id="residue"))
     assert not show_diff(pdb_str_1, pdb_str_2+"END\n")
     e = expected_md5.get(os.path.basename(file_name))
-    m = md5.md5(pdb_str_1).hexdigest()
+    m = hashlib_md5(pdb_str_1).hexdigest()
     if (m != e):
       if (e is None): just_what = "added"
       else: just_what = "changed"
