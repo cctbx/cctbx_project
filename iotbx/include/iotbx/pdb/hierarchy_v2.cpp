@@ -320,6 +320,17 @@ namespace {
     return boost::optional<std::string>();
   }
 
+  std::string
+  residue_group::resid() const
+  {
+    char blank = ' ';
+    char result[6];
+    data->resseq.copy_padded(result, 4U, blank);
+    data->icode.copy_padded(result+4, 1U, blank);
+    result[5] = '\0';
+    return std::string(result);
+  }
+
   void
   residue_group::merge_atom_groups(
     atom_group& primary,

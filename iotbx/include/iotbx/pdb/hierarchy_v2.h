@@ -690,6 +690,9 @@ namespace hierarchy_v2 {
       unsigned
       reset_atom_tmp(int new_value) const;
 
+      std::string
+      resid() const;
+
       void
       merge_atom_groups(
         atom_group& primary,

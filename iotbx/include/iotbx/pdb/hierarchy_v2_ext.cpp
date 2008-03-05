@@ -348,6 +348,7 @@ namespace {
         .def("new_atom_group", &w_t::new_atom_group, new_atom_group_overloads((
           arg_("altloc")="", arg_("resname")="")))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(atom_group)
+        .def("resid", &w_t::resid)
         .def("merge_atom_groups", &w_t::merge_atom_groups, (
           arg_("primary"), arg_("secondary")))
       ;
