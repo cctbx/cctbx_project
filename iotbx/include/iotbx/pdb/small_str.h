@@ -9,7 +9,7 @@ namespace iotbx { namespace pdb {
 
   inline
   void
-  copy_padded(
+  copy_left_justified(
     char* dest,
     unsigned dest_size,
     const char *src,
@@ -102,9 +102,9 @@ namespace iotbx { namespace pdb {
     }
 
     void
-    copy_padded(char* dest, unsigned dest_size, char pad_with) const
+    copy_left_justified(char* dest, unsigned dest_size, char pad_with) const
     {
-      pdb::copy_padded(dest, dest_size, elems, N, pad_with);
+      pdb::copy_left_justified(dest, dest_size, elems, N, pad_with);
     }
   };
 
