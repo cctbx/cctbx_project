@@ -1,5 +1,6 @@
 #include <iotbx/pdb/input.h>
 #include <scitbx/misc/fill_ranges.h>
+#include <scitbx/array_family/sort.h>
 #include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
 
@@ -41,12 +42,24 @@ namespace iotbx { namespace pdb {
       hierarchy_v2::residue_group rg = chain.new_residue_group(
         iall->resseq_small().elems,
         iall->icode_small().elems);
-      rg.pre_allocate_atom_groups(altloc_resname_indices.size());
+      unsigned n_ag = static_cast<unsigned>(altloc_resname_indices.size());
+      rg.pre_allocate_atom_groups(n_ag);
+      typedef std::map<str4, std::vector<unsigned> >::const_iterator ari_it;
+      boost::scoped_array<ari_it> ari_iters(new ari_it[n_ag]);
+      boost::scoped_array<unsigned> first_indices(new unsigned[n_ag]);
+      ari_it ari_end = altloc_resname_indices.end();
+      unsigned i = 0;
+      for(ari_it ari=altloc_resname_indices.begin(); ari!=ari_end; ari++,i++) {
+        ari_iters[i] = ari;
+        first_indices[i] = (ari->second.size() ? ari->second[0] : 0);
+      }
+      af::shared<std::size_t> permutation = af::sort_permutation(
+        af::const_ref<unsigned>(first_indices.get(), n_ag));
+      const std::size_t* perm = permutation.begin();
       char altloc[2];
       altloc[1] = '\0';
-      typedef std::map<str4, std::vector<unsigned> >::const_iterator ari_it;
-      ari_it ari_end = altloc_resname_indices.end();
-      for(ari_it ari=altloc_resname_indices.begin(); ari!=ari_end; ari++) {
+      for(i=0;i<n_ag;i++) {
+        ari_it ari = ari_iters[perm[i]];
         altloc[0] = ari->first.elems[0];
         hierarchy_v2::atom_group ag = rg.new_atom_group(
           altloc, ari->first.elems+1);
