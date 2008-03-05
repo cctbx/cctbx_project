@@ -360,6 +360,7 @@ class manager(object):
                 adp_tls              = False,
                 s_occupancies        = False):
                 # XXX group_anomalous selection should be added
+    next_to_i_seqs = flex.size_t(next_to_i_seqs)
     perm = flex.sort_permutation(next_to_i_seqs, reverse = True)
     next_to_i_seqs = next_to_i_seqs.select(perm)
     for next_to_i_seq in next_to_i_seqs:

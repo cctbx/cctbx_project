@@ -137,7 +137,7 @@ class manager(object):
         self.find_peaks_2fofc()
         self.show(message = "2Fo-Fc map selection:")
     #
-    for i in [1,2]:
+    for i in [1,]:
       self.refine_adp()
       self.refine_occupancies()
     #
@@ -149,12 +149,12 @@ class manager(object):
     solsel = flex.bool(self.model.solvent_selection().count(False), False)
     solsel.extend(flex.bool(self.model.solvent_selection().count(True), True))
     xrs_sol =  self.model.xray_structure.select(self.model.solvent_selection())
-    scat_types = xrs_sol.scatterers().extract_scattering_types()
-    if(scat_types.count('H')+scat_types.count('D')==0):
+    if(xrs_sol.hd_selection().count(True) == 0):
       self.reset_solvent(
         solvent_selection      = solsel,
         solvent_xray_structure = xrs_sol)
-    #else: XXX
+    else: # XXX re-number at least
+      self.model.renumber_water()
 
   def is_water_last(self):
     result = True

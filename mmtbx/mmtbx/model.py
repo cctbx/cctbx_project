@@ -141,9 +141,9 @@ class manager(object):
     self.atom_attributes_list = self.atom_attributes_list[:next_to_i_seq+1] + \
       [attr] + self.atom_attributes_list[next_to_i_seq+1:]
 
-  def add_hydrogens(self, element = "H"):
-    get_class = iotbx.pdb.common_residue_names_get_class
+  def extact_water(self):
     top = {}
+    get_class = iotbx.pdb.common_residue_names_get_class
     for i_seq, aal in enumerate(self.atom_attributes_list):
       if(get_class(name = aal.resName) == "common_water"):
         top.setdefault(aal.chainID,      {}).\
@@ -152,10 +152,21 @@ class manager(object):
     for v0 in top.values():
       for v1 in v0.values():
         water_residues.append(v1)
-    #
+    return water_residues
+
+  def renumber_water(self):
+    water_residues = self.extact_water()
+    for i_seq, water_residue in enumerate(water_residues):
+      for wra in water_residue:
+        wra[1].resSeq = i_seq
+
+  def add_hydrogens(self, element = "H"):
+    water_residues = self.extact_water()
     result = []
+    n_built = 0
     for water_residue in water_residues:
       if(len(water_residue) == 2):
+        n_built += 1
         o_attr = None
         h_attr = None
         for wr in water_residue:
@@ -182,71 +193,75 @@ class manager(object):
                                   element        = h_attr[1].element,
                                   atom_name      = atom_name)
         result.append([o_attr[0], h_attr])
-      if(len(water_residue) == 1):
+      elif(len(water_residue) == 1):
+        n_built += 1
+        water_residue = water_residue[0]
+        assert water_residue[1].element.strip() == "O"
         for atom_name in (element+"1", element+"2"):
-          h_attr = create_atom_attr(other_attr     = water_residue[0][1],
-                                    i_seq          = water_residue[0][0],
+          h_attr = create_atom_attr(other_attr     = water_residue[1],
+                                    i_seq          = water_residue[0],
                                     xray_structure = self.xray_structure,
                                     element        = element,
                                     atom_name      = atom_name)
-          result.append([water_residue[0][0], h_attr])
+          result.append([water_residue[0], h_attr])
     #
     result.sort()
     result.reverse()
     next_to_i_seqs = []
-    for res in result:
-      i_seq, attr = res[0], res[1]
-      next_to_i_seqs.append(i_seq)
-      scatterer = xray.scatterer(
-        label           = attr.name,
-        scattering_type = attr.element,
-        site            = self.xray_structure.unit_cell().fractionalize(attr.coordinates),
-        u               = adptbx.b_as_u(attr.tempFactor),
-        occupancy       = attr.occupancy)
-      self.xray_structure.add_scatterer(
-        scatterer = scatterer,
-        insert_at_index = i_seq+1)
-      self.add_to_aal(next_to_i_seq = i_seq, attr = attr)
-    if(self.refinement_flags is not None):
-      self.refinement_flags.add(next_to_i_seqs     = next_to_i_seqs,
-                                sites_individual   = True,
-                                adp_individual_iso = True,
-                                group_h            = True,
-                                s_occupancies      = True)
-    # XXX very inefficient: re-process PDB from scratch and create restraints
-    raw_records = self.write_pdb_file()
-    processed_pdb_file, pdb_inp = self.processed_pdb_files_srv.\
-      process_pdb_files(raw_records = raw_records)
-    new_xray_structure = processed_pdb_file.xray_structure(
-      show_summary = False).deep_copy_scatterers()
-    new_atom_attributes_list = \
-      processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list[:]
-    assert approx_equal(new_xray_structure.sites_cart(),
-      self.xray_structure.sites_cart())
-    for attr1, attr2 in zip(self.atom_attributes_list, new_atom_attributes_list):
-      assert attr1.name == attr2.name
-      assert attr1.chainID == attr2.chainID
-      assert attr1.residue_id() == attr2.residue_id()
-      assert attr1.element == attr2.element
-    # XXX now we gonna loose old grm (with all NCS, edits, etc...)
-    if(self.restraints_manager.ncs_groups is not None):
-      raise Sorry("Hydrogen building is not compatible with NCS refinement.")
+    print >> self.log, "Number of H added:", len(result)
+    if(len(result) > 0):
+      for res in result:
+        i_seq, attr = res[0], res[1]
+        next_to_i_seqs.append(i_seq)
+        scatterer = xray.scatterer(
+          label           = attr.name,
+          scattering_type = attr.element,
+          site            = self.xray_structure.unit_cell().fractionalize(attr.coordinates),
+          u               = adptbx.b_as_u(attr.tempFactor),
+          occupancy       = attr.occupancy)
+        self.xray_structure.add_scatterer(
+          scatterer = scatterer,
+          insert_at_index = i_seq+1)
+        self.add_to_aal(next_to_i_seq = i_seq, attr = attr)
+      if(self.refinement_flags is not None):
+        self.refinement_flags.add(next_to_i_seqs     = next_to_i_seqs,
+                                  sites_individual   = True,
+                                  adp_individual_iso = True,
+                                  group_h            = True,
+                                  s_occupancies      = True)
+      # XXX very inefficient: re-process PDB from scratch and create restraints
+      raw_records = self.write_pdb_file()
+      processed_pdb_file, pdb_inp = self.processed_pdb_files_srv.\
+        process_pdb_files(raw_records = raw_records)
+      new_xray_structure = processed_pdb_file.xray_structure(
+        show_summary = False).deep_copy_scatterers()
+      new_atom_attributes_list = \
+        processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list[:]
+      assert approx_equal(new_xray_structure.sites_cart(),
+        self.xray_structure.sites_cart(), 0.001)
+      assert len(new_atom_attributes_list) == len(self.atom_attributes_list)
+      for attr1, attr2 in zip(self.atom_attributes_list, new_atom_attributes_list):
+        assert attr1.name.strip() == attr2.name.strip()
+        assert attr1.element.strip() == attr2.element.strip()
+      self.atom_attributes_list = new_atom_attributes_list[:]
+      # XXX now we gonna loose old grm (with all NCS, edits, etc...)
+      if(self.restraints_manager.ncs_groups is not None):
+        raise Sorry("Hydrogen building is not compatible with NCS refinement.")
 
-    sctr_keys = \
-      self.xray_structure.scattering_type_registry().type_count_dict().keys()
-    has_hd = "H" in sctr_keys or "D" in sctr_keys
-    geometry = processed_pdb_file.geometry_restraints_manager(
-      show_energies      = False,
-      plain_pairs_radius = self.restraints_manager.geometry.plain_pairs_radius,
-      edits              = None, #self.params.geometry_restraints.edits, XXX
-      assume_hydrogens_all_missing = not has_hd)
-    # self.remove_selected_geometry_restraints(manager = geometry) XXX this is lost too
-    new_restraints_manager = mmtbx.restraints.manager(
-      geometry      = geometry,
-      normalization = self.restraints_manager.normalization)
-    self.restraints_manager = new_restraints_manager
-    print >> self.log, "Adding H atoms..."
-    self.idealize_h()
+      sctr_keys = \
+        self.xray_structure.scattering_type_registry().type_count_dict().keys()
+      has_hd = "H" in sctr_keys or "D" in sctr_keys
+      geometry = processed_pdb_file.geometry_restraints_manager(
+        show_energies      = False,
+        plain_pairs_radius = self.restraints_manager.geometry.plain_pairs_radius,
+        edits              = None, #self.params.geometry_restraints.edits, XXX
+        assume_hydrogens_all_missing = not has_hd)
+      # self.remove_selected_geometry_restraints(manager = geometry) XXX this is lost too
+      new_restraints_manager = mmtbx.restraints.manager(
+        geometry      = geometry,
+        normalization = self.restraints_manager.normalization)
+      self.restraints_manager = new_restraints_manager
+      self.idealize_h()
 
   def geometry_minimization(self,
                             max_number_of_iterations = 500,
@@ -761,21 +776,33 @@ class manager(object):
 def create_atom_attr(other_attr, i_seq, xray_structure, element, atom_name):
   x,y,z = xray_structure.sites_cart()[i_seq]
   r = random.randrange(10000, 11000)/10000. * random.choice([-1,1])
+  if(other_attr.altLoc is None): altLoc = " "
+  else: altLoc = other_attr.altLoc
+  if(other_attr.chainID is None): chainID = " "
+  else: chainID = other_attr.chainID
+  if(other_attr.resSeq is None): resSeq = 1
+  else: resSeq = other_attr.resSeq
+  if(other_attr.iCode is None): iCode = " "
+  else: iCode = other_attr.iCode
+  if(other_attr.segID is None): segID = "    "
+  else: segID = other_attr.segID
+  if(other_attr.charge is None): charge = "  "
+  else: charge = other_attr.charge
   pdb_record = pdb.format_atom_record(
     record_name = other_attr.record_name(),
     serial      = 0,
     name        = atom_name,
-    altLoc      = other_attr.altLoc,
+    altLoc      = altLoc,
     resName     = other_attr.resName,
-    chainID     = other_attr.chainID,
-    resSeq      = other_attr.resSeq,
-    iCode       = other_attr.iCode,
+    chainID     = chainID,
+    resSeq      = resSeq,
+    iCode       = iCode,
     site        = (x+r,y,z),
-    occupancy   = 0,
+    occupancy   = 0.0,
     tempFactor  = adptbx.u_as_b(xray_structure.extract_u_iso_or_u_equiv()[i_seq]),
-    segID       = other_attr.segID,
+    segID       = segID,
     element     = element,
-    charge      = other_attr.charge)
+    charge      = charge)
   attr = pdb.atom.attributes()
   attr.set_from_ATOM_record(pdb.parser.pdb_record(pdb_record))
   return attr

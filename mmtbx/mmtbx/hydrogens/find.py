@@ -5,7 +5,9 @@ from mmtbx import utils
 import iotbx.phil
 from scitbx import matrix
 from libtbx import adopt_init_args
-from scitbx.math import euler_angles_as_matrix
+from mmtbx.refinement import print_statistics
+import boost.python
+utils_ext = boost.python.import_ext("mmtbx_utils_ext")
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -14,6 +16,9 @@ map_type = mFobs-DFmodel
 map_cutoff = 2.0
   .type = float
   .help = Map cutoff
+angular_step = 3.0
+  .type = float
+  .help = Step in degrees for 6D rigid body search for best fit
 """)
 
 master_params_part2 = find_peaks.master_params.fetch(iotbx.phil.parse("""\
@@ -105,14 +110,12 @@ def extract_hoh_peaks(peaks, atom_attributes_list, xray_structure, log):
   for i_seq_o, aa in enumerate(atom_attributes_list):
     if(get_class(name = aa.resName) == "common_water"):
       if(result.has_key(aa)):
-        print aa.pdb_format()
         i_seqs_h = []
         for i_seq_h, aa_i in enumerate(atom_attributes_list):
           if(get_class(name = aa_i.resName) == "common_water"):
             if(aa.chainID == aa_i.chainID and
                aa.residue_id() == aa_i.residue_id() and
                aa_i.element.strip() != 'O'):
-              print "  ", aa_i.pdb_format()
               i_seqs_h.append(i_seq_h)
         res = water_and_peaks(i_seq_o          = i_seq_o,
                               i_seq_h1         = i_seqs_h[0],
@@ -121,37 +124,23 @@ def extract_hoh_peaks(peaks, atom_attributes_list, xray_structure, log):
         waters_and_peaks.append(res)
   return waters_and_peaks
 
-def fit_water(water_and_peaks, xray_structure):
+def fit_water(water_and_peaks, xray_structure, params, log):
   scatterers = xray_structure.scatterers()
   uc = xray_structure.unit_cell()
-  water_sites_cart = flex.vec3_double()
-  origin       = uc.orthogonalize(scatterers[water_and_peaks.i_seq_o ].site)
-  site_cart_o  = uc.orthogonalize(scatterers[water_and_peaks.i_seq_o ].site)
-  site_cart_h1 = uc.orthogonalize(scatterers[water_and_peaks.i_seq_h1].site)
-  site_cart_h2 = uc.orthogonalize(scatterers[water_and_peaks.i_seq_h2].site)
-  #
   site_frac_o  = scatterers[water_and_peaks.i_seq_o ].site
   site_frac_h1 = scatterers[water_and_peaks.i_seq_h1].site
   site_frac_h2 = scatterers[water_and_peaks.i_seq_h2].site
-
-  water_sites_cart = flex.vec3_double([site_cart_o, site_cart_h1, site_cart_h2])
-  water_sites_cart_ref = water_sites_cart - origin
-
   peak_sites_frac = water_and_peaks.peaks_sites_frac
-  water_sites_cart_fitted = None
   if(len(peak_sites_frac) == 1):
-    print "1 peak search..."
-    import boost.python
-    ext = boost.python.import_ext("mmtbx_utils_ext")
-    result = ext.fit_hoh(
-      site_frac_o     = uc.fractionalize(water_sites_cart[0]),
-      site_frac_h1    = uc.fractionalize(water_sites_cart[1]),
-      site_frac_h2    = uc.fractionalize(water_sites_cart[2]),
+    result = utils_ext.fit_hoh(
+      site_frac_o     = site_frac_o,
+      site_frac_h1    = site_frac_h1,
+      site_frac_h2    = site_frac_h2,
       site_frac_peak1 = peak_sites_frac[0],
       site_frac_peak2 = peak_sites_frac[0],
-      angular_shift   = 3.,
+      angular_shift   = params.angular_step,
       unit_cell       = uc)
-    d_best = result.dist_best
+    d_best = result.dist_best()
     o = uc.fractionalize(result.site_cart_o_fitted)
     h1 = uc.fractionalize(result.site_cart_h1_fitted)
     h2 = uc.fractionalize(result.site_cart_h2_fitted)
@@ -161,33 +150,32 @@ def fit_water(water_and_peaks, xray_structure):
       for j, s2 in enumerate(peak_sites_frac):
         if i < j:
           peak_pairs.append([s1,s2])
-    print "2 peak search..."
-    import boost.python
-    ext = boost.python.import_ext("mmtbx_utils_ext")
     d_best = 999.
     for pair in peak_pairs:
-      result = ext.fit_hoh(
-        site_frac_o     = uc.fractionalize(water_sites_cart[0]),
-        site_frac_h1    = uc.fractionalize(water_sites_cart[1]),
-        site_frac_h2    = uc.fractionalize(water_sites_cart[2]),
+      result = utils_ext.fit_hoh(
+        site_frac_o     = site_frac_o,
+        site_frac_h1    = site_frac_h1,
+        site_frac_h2    = site_frac_h2,
         site_frac_peak1 = pair[0],
         site_frac_peak2 = pair[1],
-        angular_shift   = 5.,
+        angular_shift   = params.angular_step,
         unit_cell       = uc)
-      print result.dist_best
-      if(result.dist_best < d_best):
-        d_best = result.dist_best
+      if(result.dist_best() < d_best):
+        d_best = result.dist_best()
         o = uc.fractionalize(result.site_cart_o_fitted)
         h1 = uc.fractionalize(result.site_cart_h1_fitted)
         h2 = uc.fractionalize(result.site_cart_h2_fitted)
-
-  print "   ", d_best
   scatterers[water_and_peaks.i_seq_o ].site = o
   scatterers[water_and_peaks.i_seq_h1].site = h1
   scatterers[water_and_peaks.i_seq_h2].site = h2
+  print >> log, "%6.3f"%d_best
 
-def run(fmodel, model, log):
-  params = all_master_params().extract()
+def run(fmodel, model, log, params = None):
+  print_statistics.make_header("Fit water hydrogens into residual map",
+    out = log)
+  if(params is None):
+    params = all_master_params().extract()
+  print_statistics.make_sub_header("find peak-candidates", out = log)
   peaks = find_hydrogen_peaks(
     fmodel               = fmodel,
     atom_attributes_list = model.atom_attributes_list,
@@ -198,10 +186,10 @@ def run(fmodel, model, log):
     atom_attributes_list = model.atom_attributes_list,
     xray_structure       = model.xray_structure,
     log                  = log)
-  #
+  print_statistics.make_sub_header("6D rigid body fit of HOH", out = log)
+  print >> log, "Fit quality:"
   for water_and_peaks in waters_and_peaks:
     fit_water(water_and_peaks = water_and_peaks,
-              xray_structure  = model.xray_structure)
-  #
-  model.write_pdb_file(out = open("fitted.pdb","w"))
-
+              xray_structure  = model.xray_structure,
+              params          = params,
+              log             = log)
