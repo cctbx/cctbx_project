@@ -7,8 +7,6 @@ from cStringIO import StringIO
 import sys
 
 def exercise_atom():
-  print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
-    pdb.hierarchy_v2.atom.sizeof_data()
   a = pdb.hierarchy_v2.atom()
   assert a.name == ""
   a.name = "abcd"
@@ -749,6 +747,18 @@ ATOM    223  O  ATRP A  11      23.174  12.012  34.439  0.50  7.24           O
 ATOM    234  H  ATRP A  11      20.540  12.567  33.741  0.50  7.24           H
 ATOM    235  HA ATRP A  11      20.771  12.306  36.485  0.50  6.28           H
 @atom_group
+ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
+ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92           C
+ATOM    246  C  CPHE A  11      22.448  12.425  35.436  0.15  6.32           C
+ATOM    247  O  CPHE A  11      22.961  12.790  34.373  0.15  6.08           O
+ATOM    262  HB2CPHE A  11      21.221  10.536  34.146  0.15  7.21           H
+ATOM    264  HB3CPHE A  11      21.198  10.093  35.647  0.15  7.21           H
+ATOM    266  HD1CPHE A  11      19.394   9.937  32.837  0.15 10.53           H
+ATOM    268  HD2CPHE A  11      18.873  10.410  36.828  0.15  9.24           H
+ATOM    270  HE1CPHE A  11      17.206   9.172  32.650  0.15 12.52           H
+ATOM    272  HE2CPHE A  11      16.661   9.708  36.588  0.15 11.13           H
+ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
+@atom_group
 ATOM    255  N  BTYR A  11      20.553  12.751  34.549  0.35  5.21           N
 ATOM    256  CA BTYR A  11      21.106  11.838  35.524  0.35  5.51           C
 ATOM    257  C  BTYR A  11      22.625  11.920  35.572  0.35  5.42           C
@@ -761,30 +771,175 @@ ATOM    271  OH BTYR A  11      15.178   9.650  35.313  0.35 19.29           O
 ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
 ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
 ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
-@atom_group
-ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
-ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92           C
-ATOM    246  C  CPHE A  11      22.448  12.425  35.436  0.15  6.32           C
-ATOM    247  O  CPHE A  11      22.961  12.790  34.373  0.15  6.08           O
-ATOM    262  HB2CPHE A  11      21.221  10.536  34.146  0.15  7.21           H
-ATOM    264  HB3CPHE A  11      21.198  10.093  35.647  0.15  7.21           H
-ATOM    266  HD1CPHE A  11      19.394   9.937  32.837  0.15 10.53           H
-ATOM    268  HD2CPHE A  11      18.873  10.410  36.828  0.15  9.24           H
-ATOM    270  HE1CPHE A  11      17.206   9.172  32.650  0.15 12.52           H
-ATOM    272  HE2CPHE A  11      16.661   9.708  36.588  0.15 11.13           H
-ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
 """)
 
+exercise_merge_pdb_inp = pdb.input(
+  source_info=None, lines=flex.split_lines("""\
+ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
+ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
+ATOM   1718  CB ALEU   190      26.715   3.852  18.800  0.70  4.15           C
+ATOM   1719  CG ALEU   190      25.758   4.277  17.672  0.70  4.34           C
+ATOM   1829  N  BLEU   190      28.428   4.746  20.343  0.30  5.13           N
+ATOM   1830  CA BLEU   190      27.378   5.229  19.418  0.30  4.89           C
+ATOM   1831  CB BLEU   190      26.539   4.062  18.892  0.30  4.88           C
+ATOM   1832  CG BLEU   190      25.427   4.359  17.878  0.30  5.95           C
+ATOM   1724  N  ATHR   191      27.350   7.274  20.124  0.70  3.35           N
+ATOM   1725  CA ATHR   191      26.814   8.243  21.048  0.70  3.27           C
+ATOM   1726  CB ATHR   191      27.925   9.229  21.468  0.70  3.73           C
+ATOM   1727  OG1ATHR   191      28.519   9.718  20.259  0.70  5.22           O
+ATOM   1728  CG2ATHR   191      28.924   8.567  22.345  0.70  4.21           C
+ATOM   1729  C  ATHR   191      25.587   8.983  20.559  0.70  3.53           C
+ATOM   1730  O  ATHR   191      24.872   9.566  21.383  0.70  3.93           O
+ATOM   1833  CD1BLEU   190      26.014   4.711  16.521  0.30  6.21           C
+ATOM   1835  C  BLEU   190      26.506   6.219  20.135  0.30  4.99           C
+ATOM   1836  O  BLEU   190      25.418   5.939  20.669  0.30  5.91           O
+ATOM   1721  CD2ALEU   190      24.674   3.225  17.536  0.70  5.31           C
+ATOM   1722  C  ALEU   190      26.781   6.055  20.023  0.70  3.36           C
+ATOM   1723  O  ALEU   190      25.693   5.796  20.563  0.70  3.68           O
+ATOM   8722  C  DLEU   190      26.781   6.055  20.023  0.70  3.36           C
+ATOM   8723  O  DLEU   190      25.693   5.796  20.563  0.70  3.68           O
+ATOM   9722  C  CLEU   190      26.781   6.055  20.023  0.70  3.36           C
+ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
+"""))
+
+def exercise_merge_atom_groups():
+  lines = []
+  root = exercise_merge_pdb_inp.construct_hierarchy_v2()
+  chain = root.models()[0].chains()[0]
+  residue_groups = chain.residue_groups()
+  assert len(residue_groups) == 3
+  for i_ag in [0,1]:
+    primary_atom_group = residue_groups[0].atom_groups()[i_ag]
+    assert (primary_atom_group.altloc, primary_atom_group.resname) \
+        == ("AB"[i_ag], "LEU")
+    secondary_atom_group = residue_groups[2].atom_groups()[1-i_ag]
+    try:
+      residue_groups[0].merge_atom_groups(
+        primary=secondary_atom_group,
+        secondary=primary_atom_group)
+    except RuntimeError, e:
+      assert not show_diff(str(e), """\
+"primary" atom_group has a different or no parent\
+ (this residue_group must be the parent).""")
+    else: raise Exception_expected
+    try:
+      residue_groups[0].merge_atom_groups(
+        primary=primary_atom_group,
+        secondary=primary_atom_group)
+    except RuntimeError, e:
+      assert not show_diff(str(e), """\
+"primary" and "secondary" atom_groups are identical.""")
+    else: raise Exception_expected
+    try:
+      residue_groups[0].merge_atom_groups(
+        primary=primary_atom_group,
+        secondary=residue_groups[2].atom_groups()[i_ag])
+    except RuntimeError, e:
+      assert str(e).find("secondary.data->altloc == primary.data->altloc") > 0
+    else: raise Exception_expected
+    assert primary_atom_group.atoms_size() == 4
+    assert secondary_atom_group.atoms_size() == 3
+    residue_groups[0].merge_atom_groups(
+      primary=primary_atom_group,
+      secondary=secondary_atom_group)
+    assert primary_atom_group.atoms_size() == 7
+    assert secondary_atom_group.atoms_size() == 0
+    sio = StringIO()
+    for atom in primary_atom_group.atoms():
+      print >> sio, atom.format_atom_record_using_parents()
+    assert not show_diff(sio.getvalue(), ["""\
+ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
+ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
+ATOM   1718  CB ALEU   190      26.715   3.852  18.800  0.70  4.15           C
+ATOM   1719  CG ALEU   190      25.758   4.277  17.672  0.70  4.34           C
+ATOM   1721  CD2ALEU   190      24.674   3.225  17.536  0.70  5.31           C
+ATOM   1722  C  ALEU   190      26.781   6.055  20.023  0.70  3.36           C
+ATOM   1723  O  ALEU   190      25.693   5.796  20.563  0.70  3.68           O
+""", """\
+ATOM   1829  N  BLEU   190      28.428   4.746  20.343  0.30  5.13           N
+ATOM   1830  CA BLEU   190      27.378   5.229  19.418  0.30  4.89           C
+ATOM   1831  CB BLEU   190      26.539   4.062  18.892  0.30  4.88           C
+ATOM   1832  CG BLEU   190      25.427   4.359  17.878  0.30  5.95           C
+ATOM   1833  CD1BLEU   190      26.014   4.711  16.521  0.30  6.21           C
+ATOM   1835  C  BLEU   190      26.506   6.219  20.135  0.30  4.99           C
+ATOM   1836  O  BLEU   190      25.418   5.939  20.669  0.30  5.91           O
+"""][i_ag])
+
+def exercise_merge_residue_groups():
+  lines = []
+  root = exercise_merge_pdb_inp.construct_hierarchy_v2()
+  chain = root.models()[0].chains()[0]
+  residue_groups = chain.residue_groups()
+  assert len(residue_groups) == 3
+  try:
+    chain.merge_residue_groups(
+      primary=residue_groups[0],
+      secondary=residue_groups[1])
+  except RuntimeError, e:
+    assert str(e).find("secondary.data->resseq == primary.data->resseq") > 0
+  else: raise Exception_expected
+  assert residue_groups[0].atom_groups_size() == 2
+  assert residue_groups[2].atom_groups_size() == 4
+  assert residue_groups[2].parent().memory_id() == chain.memory_id()
+  assert chain.residue_groups_size() == 3
+  chain.merge_residue_groups(
+    primary=residue_groups[0],
+    secondary=residue_groups[2])
+  assert residue_groups[0].atom_groups_size() == 4
+  assert residue_groups[2].atom_groups_size() == 0
+  assert residue_groups[2].parent() is None
+  assert chain.residue_groups_size() == 2
+  sio = StringIO()
+  for atom_group in residue_groups[0].atom_groups():
+    for atom in atom_group.atoms():
+      print >> sio, atom.format_atom_record_using_parents()
+  assert not show_diff(sio.getvalue(), """\
+ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
+ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
+ATOM   1718  CB ALEU   190      26.715   3.852  18.800  0.70  4.15           C
+ATOM   1719  CG ALEU   190      25.758   4.277  17.672  0.70  4.34           C
+ATOM   1721  CD2ALEU   190      24.674   3.225  17.536  0.70  5.31           C
+ATOM   1722  C  ALEU   190      26.781   6.055  20.023  0.70  3.36           C
+ATOM   1723  O  ALEU   190      25.693   5.796  20.563  0.70  3.68           O
+ATOM   1829  N  BLEU   190      28.428   4.746  20.343  0.30  5.13           N
+ATOM   1830  CA BLEU   190      27.378   5.229  19.418  0.30  4.89           C
+ATOM   1831  CB BLEU   190      26.539   4.062  18.892  0.30  4.88           C
+ATOM   1832  CG BLEU   190      25.427   4.359  17.878  0.30  5.95           C
+ATOM   1833  CD1BLEU   190      26.014   4.711  16.521  0.30  6.21           C
+ATOM   1835  C  BLEU   190      26.506   6.219  20.135  0.30  4.99           C
+ATOM   1836  O  BLEU   190      25.418   5.939  20.669  0.30  5.91           O
+ATOM   8722  C  DLEU   190      26.781   6.055  20.023  0.70  3.36           C
+ATOM   8723  O  DLEU   190      25.693   5.796  20.563  0.70  3.68           O
+ATOM   9722  C  CLEU   190      26.781   6.055  20.023  0.70  3.36           C
+ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
+""")
+  for i_rg,j_rg,s in [(2,2,"primary"),(0,2,"secondary")]:
+    try:
+      chain.merge_residue_groups(
+        primary=residue_groups[i_rg],
+        secondary=residue_groups[j_rg])
+    except RuntimeError, e:
+      assert not show_diff(str(e), """\
+"%s" residue_group has a different or no parent\
+ (this chain must be the parent).""" % s)
+    else: raise Exception_expected
+
 def exercise(args):
-  assert len(args) == 0
-  exercise_atom()
-  exercise_atom_group()
-  exercise_residue_group()
-  exercise_chain()
-  exercise_model()
-  exercise_root()
-  exercise_format_atom_record_using_parents()
-  exercise_construct_hierarchy()
+  print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
+    pdb.hierarchy_v2.atom.sizeof_data()
+  forever = "--forever" in args
+  while True:
+    exercise_atom()
+    exercise_atom_group()
+    exercise_residue_group()
+    exercise_chain()
+    exercise_model()
+    exercise_root()
+    exercise_format_atom_record_using_parents()
+    exercise_construct_hierarchy()
+    exercise_merge_atom_groups()
+    exercise_merge_residue_groups()
+    if (not forever): break
   print format_cpu_times()
 
 if (__name__ == "__main__"):

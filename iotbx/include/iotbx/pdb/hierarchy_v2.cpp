@@ -1,5 +1,6 @@
 #include <iotbx/pdb/hierarchy_v2.h>
 #include <cctbx/eltbx/chemical_elements.h>
+#include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 {
 
@@ -317,6 +318,96 @@ namespace {
       }
     }
     return boost::optional<std::string>();
+  }
+
+  void
+  residue_group::merge_atom_groups(
+    atom_group& primary,
+    atom_group& secondary)
+  {
+    SCITBX_ASSERT(secondary.data->altloc == primary.data->altloc);
+    SCITBX_ASSERT(secondary.data->resname == primary.data->resname);
+    if (primary.parent_ptr().get() != data.get()) {
+      throw std::runtime_error(
+        "\"primary\" atom_group has a different or no parent"
+        " (this residue_group must be the parent).");
+    }
+    if (secondary.data.get() == primary.data.get()) {
+      throw std::runtime_error(
+        "\"primary\" and \"secondary\" atom_groups are identical.");
+    }
+    unsigned n_atoms = secondary.atoms_size();
+    boost::scoped_array<atom> atom_buffer(new atom[n_atoms]);
+    for(unsigned i=0;i<n_atoms;i++) { // copy to buffer ...
+      atom_buffer[i] = secondary.atoms()[i];
+    }
+    for(unsigned i=n_atoms;i!=0;) { // ... so we can remove from end ...
+      secondary.remove_atom(--i);
+    }
+    primary.pre_allocate_atoms(n_atoms);
+    for(unsigned i=0;i<n_atoms;i++) { // ... and then append in original order.
+      primary.append_atom(atom_buffer[i]);
+    }
+    SCITBX_ASSERT(secondary.atoms_size() == 0);
+  }
+
+  void
+  chain::merge_residue_groups(
+    residue_group& primary,
+    residue_group& secondary)
+  {
+    SCITBX_ASSERT(secondary.data->resseq == primary.data->resseq);
+    SCITBX_ASSERT(secondary.data->icode == primary.data->icode);
+    const chain_data* data_get = data.get();
+    if (primary.parent_ptr().get() != data_get) {
+      throw std::runtime_error(
+        "\"primary\" residue_group has a different or no parent"
+        " (this chain must be the parent).");
+    }
+    if (secondary.parent_ptr().get() != data_get) {
+      throw std::runtime_error(
+        "\"secondary\" residue_group has a different or no parent"
+        " (this chain must be the parent).");
+    }
+    typedef std::map<str3, atom_group> s3ag;
+    typedef std::map<str1, s3ag> s1s3ag;
+    s1s3ag altloc_resname_dict;
+    unsigned n_ag = primary.atom_groups_size();
+    for(unsigned i=0;i<n_ag;i++) {
+      atom_group const& ag = primary.atom_groups()[i];
+      altloc_resname_dict[ag.data->altloc][ag.data->resname] = ag;
+    }
+    n_ag = secondary.atom_groups_size();
+    std::vector<atom_group> append_buffer;
+    append_buffer.reserve(n_ag);
+    for(unsigned i=n_ag;i!=0;) {
+      i--;
+      atom_group ag = secondary.atom_groups()[i];
+      bool have_primary = false;
+      s1s3ag::const_iterator altloc_iter = altloc_resname_dict.find(
+        ag.data->altloc);
+      if (altloc_iter != altloc_resname_dict.end()) {
+        s3ag::const_iterator resname_iter = altloc_iter->second.find(
+          ag.data->resname);
+        if (resname_iter != altloc_iter->second.end()) {
+          secondary.remove_atom_group(i);
+          atom_group primary_ag = resname_iter->second;
+          primary.merge_atom_groups(primary_ag, ag);
+          have_primary = true;
+        }
+      }
+      if (!have_primary) {
+        secondary.remove_atom_group(i);
+        append_buffer.push_back(ag);
+      }
+    }
+    n_ag = static_cast<unsigned>(append_buffer.size());
+    for(unsigned i=n_ag;i!=0;) {
+      i--;
+      primary.append_atom_group(append_buffer[i]);
+    }
+    SCITBX_ASSERT(secondary.atom_groups_size() == 0);
+    remove_residue_group(secondary);
   }
 
 }}} // namespace iotbx::pdb::hierarchy_v2

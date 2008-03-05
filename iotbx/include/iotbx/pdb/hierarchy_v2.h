@@ -512,6 +512,9 @@ namespace hierarchy_v2 {
       void
       clear_parent() { data->parent.reset(); }
 
+      shared_ptr<residue_group_data>
+      parent_ptr() const { return data->parent.lock(); }
+
     public:
       atom_group(shared_ptr<atom_group_data> const& data_)
       :
@@ -602,6 +605,9 @@ namespace hierarchy_v2 {
       void
       clear_parent() { data->parent.reset(); }
 
+      shared_ptr<chain_data>
+      parent_ptr() const { return data->parent.lock(); }
+
     public:
       residue_group(shared_ptr<residue_group_data> const& data_)
       :
@@ -683,6 +689,11 @@ namespace hierarchy_v2 {
 
       unsigned
       reset_atom_tmp(int new_value) const;
+
+      void
+      merge_atom_groups(
+        atom_group& primary,
+        atom_group& secondary);
   };
 
   //! Chain attributes.
@@ -781,6 +792,11 @@ namespace hierarchy_v2 {
 
       unsigned
       reset_atom_tmp(int new_value) const;
+
+      void
+      merge_residue_groups(
+        residue_group& primary,
+        residue_group& secondary);
   };
 
   //! Model attributes.
