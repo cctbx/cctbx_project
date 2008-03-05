@@ -219,65 +219,32 @@ def run(args, command_name="phenix.twin_map_utils"):
       reflection_files=[])
 
     miller_array = None
-
-    miller_array = xray_data_server.get_xray_data(
-      file_name = params.twin_utils.input.xray_data.file_name,
-      labels = params.twin_utils.input.xray_data.obs_labels,
-      ignore_all_zeros = True,
-      parameter_scope = 'twin_utils.input.xray_data',
-      parameter_name = 'obs_labels'
-      )
-
-    info = miller_array.info()
-
-    miller_array = miller_array.map_to_asu()
-
-    miller_array = miller_array.select(
-      miller_array.indices() != (0,0,0))
-
-    miller_array = miller_array.select(
-      miller_array.data() > 0 )
-    if  miller_array.sigmas() is not None:
-      miller_array = miller_array.select(
-        miller_array.sigmas() > 0 )
-
-    if (miller_array.is_xray_intensity_array()):
-      miller_array = miller_array.f_sq_as_f()
-    elif (miller_array.is_complex_array()):
-      miller_array = abs(miller_array)
-
-    miller_array.set_info(info)
-
-    if miller_array.anomalous_flag():
-      miller_array = miller_array.average_bijvoet_mates()
-
     free_flags = None
 
-    tmp_params = utils.r_free_flags_params.extract()
-    tmp_params.label = params.twin_utils.input.xray_data.free_flag
+    tmp_params = utils.data_and_flags.extract()
+    print dir(tmp_params)
+    # insert proper values please
     tmp_params.file_name = params.twin_utils.input.xray_data.file_name
+    tmp_params.labels = params.twin_utils.input.xray_data.obs_labels
+    tmp_params.r_free_flags.file_name=params.twin_utils.input.xray_data.file_name
+    tmp_params.r_free_flags.label=params.twin_utils.input.xray_data.free_flag
+
+    tmp_object = utils.determine_data_and_flags( reflection_file_server = xray_data_server,
+                                                 parameters = tmp_params )
+
+    miller_array = tmp_object.extract_data()
+    free_flags = tmp_object.extract_flags(data = miller_array)
+
     print >> log
     print >> log, "Attempting to extract Free R flags"
 
-    free_flags = utils.determine_r_free_flags(reflection_file_server = xray_data_server,
-                                              data = miller_array,
-                                              generate_r_free_flags = False,
-                                              parameters = tmp_params,
-                                              parameter_scope = 'twin_utils.input.xray_data',
-                                              working_point_group = None,
-                                              symmetry_safety_check = False,
-                                              log = log,
-                                              neutron_flag = None )
+    free_flags = free_flags.customized_copy( data = flex.bool( free_flags.data()==1 ) )
 
     if free_flags is None:
       free_flags = miller_array.generate_r_free_flags(use_lattice_symmetry=True)
     if free_flags.anomalous_flag():
       free_flags = free_flags.average_bijvoet_mates()
       merged_anomalous=True
-    free_flags = free_flags.map_to_asu()
-    free_flags = free_flags.common_set( miller_array )
-    free_flags = free_flags.customized_copy(
-      data = flex.bool( free_flags.data() == 1 ))
 
 
 
@@ -349,15 +316,15 @@ def run(args, command_name="phenix.twin_map_utils"):
       twin_model.show_k_sol_b_sol_b_cart_target()
       twin_model.show_essential()
 
-      tfofc  = twin_model.map_coefficients(map_type="k*Fobs-n*Fmodel",k=2,n=1)
-      wtfofc = twin_model.map_coefficients(map_type="2m*Fobs-D*Fmodel" )
-      grad   = twin_model.map_coefficients(map_type="gradient" )
+      wfofc  = twin_model.map_coefficients(map_type="mFo-DFc"  )
+      wtfofc = twin_model.map_coefficients(map_type="2mFo-DFc" )
+      grad   = twin_model.map_coefficients(map_type="gradient"       )
 
-      mtz_dataset = tfofc.as_mtz_dataset(
-        column_root_label="2FOFC")
+      mtz_dataset = wtfofc.as_mtz_dataset(
+        column_root_label="FWT")
       mtz_dataset = mtz_dataset.add_miller_array(
-        miller_array = wtfofc,
-        column_root_label = "FWT"
+        miller_array = wfofc,
+        column_root_label = "DFWT"
         )
       mtz_dataset = mtz_dataset.add_miller_array(
         miller_array = grad,
@@ -388,8 +355,8 @@ def run(args, command_name="phenix.twin_map_utils"):
         r_free_flags = free_flags,
         xray_structure = model )
       f_model_object.update_solvent_and_scale(out=log)
-      tfofc =  f_model_object.map_coefficients(map_type="2m*Fobs-D*Fmodel")
-      fofc = f_model_object.map_coefficients(map_type="m*Fobs-D*Fmodel")
+      tfofc =  f_model_object.map_coefficients(map_type="2mFobs-DFmodel")
+      fofc = f_model_object.map_coefficients(map_type="mFobs-DFmodel")
       mtz_dataset = tfofc.as_mtz_dataset(
         column_root_label="FWT")
       mtz_dataset = mtz_dataset.add_miller_array(
