@@ -357,6 +357,13 @@ def exercise_residue_group():
   except RuntimeError, e:
     assert str(e) == "atom has another parent atom_group already."
   else: raise Exception_expected
+  #
+  rg = pdb.hierarchy_v2.residue_group()
+  assert rg.resid() == "     "
+  rg = pdb.hierarchy_v2.residue_group(resseq="1", icode="i")
+  assert rg.resid() == "1   i"
+  rg = pdb.hierarchy_v2.residue_group(resseq=" 1 ", icode="j")
+  assert rg.resid() == " 1  j"
 
 def exercise_chain():
   c = pdb.hierarchy_v2.chain()
