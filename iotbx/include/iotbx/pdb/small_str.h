@@ -28,6 +28,38 @@ namespace iotbx { namespace pdb {
     while(i<dest_size) dest[i++] = pad_with;
   }
 
+  inline
+  void
+  copy_right_justified(
+    char* dest,
+    unsigned dest_size,
+    const char *src,
+    unsigned src_size,
+    char pad_with)
+  {
+    unsigned i = 0;
+    if (src == 0) {
+      while(i<dest_size) dest[i++] = pad_with;
+    }
+    else {
+      unsigned n = (dest_size < src_size ? dest_size : src_size);
+      while(i<n) {
+        if (src[i] == '\0') break;
+        i++;
+      }
+      while(i<dest_size) {
+        *dest++ = pad_with;
+        i++;
+      }
+      i = 0;
+      while(i<n) {
+        char c = src[i];
+        if (c == '\0') break;
+        dest[i++] = c;
+      }
+    }
+  }
+
   template <unsigned N>
   struct small_str
   {
@@ -105,6 +137,12 @@ namespace iotbx { namespace pdb {
     copy_left_justified(char* dest, unsigned dest_size, char pad_with) const
     {
       pdb::copy_left_justified(dest, dest_size, elems, N, pad_with);
+    }
+
+    void
+    copy_right_justified(char* dest, unsigned dest_size, char pad_with) const
+    {
+      pdb::copy_right_justified(dest, dest_size, elems, N, pad_with);
     }
   };
 

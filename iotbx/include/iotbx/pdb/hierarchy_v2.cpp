@@ -205,24 +205,13 @@ namespace {
     char blank = ' ';
     atom_data const& d = *data;
     std::memcpy(result, (d.hetero ? "HETATM" : "ATOM  "), 6U);
-    d.serial.copy_left_justified(result+6, 5U, blank);
+    d.serial.copy_right_justified(result+6, 5U, blank);
     result[11] = blank;
     d.name.copy_left_justified(result+12, 4U, blank);
     copy_left_justified(result+16, 1U, altloc, 1U, blank);
-    copy_left_justified(result+17, 3U, resname, 3U, blank);
-    if (chain_id == 0 || chain_id[0] == '\0') {
-      result[20] = blank;
-      result[21] = blank;
-    }
-    else if (chain_id[1] == '\0') {
-      result[20] = blank;
-      result[21] = chain_id[0];
-    }
-    else {
-      result[20] = chain_id[0];
-      result[21] = chain_id[1];
-    }
-    copy_left_justified(result+22, 4U, resseq, 4U, blank);
+    copy_right_justified(result+17, 3U, resname, 3U, blank);
+    copy_right_justified(result+20, 2U, chain_id, 2U, blank);
+    copy_right_justified(result+22, 4U, resseq, 4U, blank);
     copy_left_justified(result+26, 4U, icode, 1U, blank);
     char *r = result + 30;
     for(unsigned i=0;i<3;i++) {
@@ -250,7 +239,7 @@ namespace {
     }
     copy_left_justified(r, 6U, 0, 0U, blank);
     d.segid.copy_left_justified(result+72, 4U, blank);
-    d.element.copy_left_justified(result+76, 2U, blank);
+    d.element.copy_right_justified(result+76, 2U, blank);
     d.charge.copy_left_justified(result+78, 2U, blank);
     for(unsigned i=79;i!=71;i--) {
       if (result[i] != blank) {
@@ -325,7 +314,7 @@ namespace {
   {
     char blank = ' ';
     char result[6];
-    data->resseq.copy_left_justified(result, 4U, blank);
+    data->resseq.copy_right_justified(result, 4U, blank);
     data->icode.copy_left_justified(result+4, 1U, blank);
     result[5] = '\0';
     return std::string(result);
