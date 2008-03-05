@@ -1,10 +1,8 @@
-#include <cctbx/boost_python/flex_fwd.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <mmtbx/utils/utils.h>
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 
@@ -32,10 +30,13 @@ namespace {
                                               arg_("site_frac_peak2"),
                                               arg_("angular_shift"),
                                               arg_("unit_cell"))))
-       .add_property("site_cart_o_fitted", make_getter(&fit_hoh<>::site_cart_o_fitted, rbv()))
-       .add_property("site_cart_h1_fitted", make_getter(&fit_hoh<>::site_cart_h1_fitted, rbv()))
-       .add_property("site_cart_h2_fitted", make_getter(&fit_hoh<>::site_cart_h2_fitted, rbv()))
-       .add_property("dist_best", make_getter(&fit_hoh<>::dist_best, rbv()))
+       .add_property("site_cart_o_fitted",
+          make_getter(&fit_hoh<>::site_cart_o_fitted, rbv()))
+       .add_property("site_cart_h1_fitted",
+          make_getter(&fit_hoh<>::site_cart_h1_fitted, rbv()))
+       .add_property("site_cart_h2_fitted",
+          make_getter(&fit_hoh<>::site_cart_h2_fitted, rbv()))
+       .def("dist_best", &fit_hoh<>::dist_best)
     ;
   }
 

@@ -7,6 +7,12 @@ from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
 from cStringIO import StringIO
 import sys
+from cctbx import miller
+from mmtbx import monomer_library
+import mmtbx.monomer_library.pdb_interpretation
+import mmtbx.monomer_library.server
+from mmtbx.hydrogens import find as find_hydrogens
+
 
 input_model = """\
 CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
@@ -83,7 +89,7 @@ ATOM     33 H2   HOH S   2       8.914  12.031  15.494  0.00  6.00           H
 END
 """
 
-def run():
+def exercise_01():
   pdb_file_name = "add_h_to_hoh.pdb"
   tmp_f = open(pdb_file_name, "w")
   tmp_f.write(input_model)
@@ -132,7 +138,156 @@ def run():
       assert approx_equal(s1.site, s2.site)
       cntr += 1
   assert cntr == 19
-  print format_cpu_times()
+
+model_good = """\
+CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
+ATOM      1  CB  PHE A   1      12.073   9.948  11.650  1.00  5.00           C
+ATOM      2  CG  PHE A   1      11.316   9.114  12.643  1.00  5.00           C
+ATOM      3  CD1 PHE A   1      10.646   7.971  12.240  1.00  5.00           C
+ATOM      4  CD2 PHE A   1      11.276   9.472  13.980  1.00  5.00           C
+ATOM      5  CE1 PHE A   1       9.949   7.202  13.152  1.00  5.00           C
+ATOM      6  CE2 PHE A   1      10.581   8.706  14.897  1.00  5.00           C
+ATOM      7  CZ  PHE A   1       9.916   7.570  14.482  1.00  5.00           C
+ATOM      8  C   PHE A   1      12.110  11.913  10.097  1.00  5.00           C
+ATOM      9  O   PHE A   1      12.051  11.781   8.875  1.00  5.00           O
+ATOM     10  OXT PHE A   1      12.892  12.748  10.551  1.00  5.00           O
+ATOM     11  N   PHE A   1      10.096  10.513  10.307  1.00  5.00           N
+ATOM     12  CA  PHE A   1      11.240  11.067  11.021  1.00  5.00           C
+HETATM   13  O   HOH     1      13.866  16.009  12.098  1.00  3.00           O
+HETATM   14  H1  HOH     1      13.327  16.140  12.905  1.00  3.00           H
+HETATM   15  H2  HOH     1      14.117  16.901  11.777  1.00  3.00           H
+HETATM   16  O   HOH     2      17.215  16.288  11.122  1.00  3.00           O
+HETATM   17  H1  HOH     2      17.912  15.900  10.553  1.00  3.00           H
+HETATM   18  H2  HOH     2      17.641  16.523  11.973  1.00  3.00           H
+HETATM   19  O   HOH     3       8.927  12.312  13.459  1.00  3.00           O
+HETATM   20  H1  HOH     3       8.879  11.933  14.362  1.00  3.00           H
+HETATM   21  H2  HOH     3       8.721  11.584  12.835  1.00  3.00           H
+HETATM   22  O   HOH     4      16.005  11.974   8.964  1.00  3.00           O
+HETATM   23  H1  HOH     4      16.817  12.516   9.046  1.00  3.00           H
+HETATM   24  H2  HOH     4      15.632  12.153   8.076  0.00  3.00           H
+HETATM   25  O   HOH     5      13.626   9.207   8.521  1.00  3.00           O
+HETATM   26  H1  HOH     5      13.711   9.868   7.803  1.00  3.00           H
+HETATM   27  H2  HOH     5      14.464   9.228   9.028  0.00  3.00           H
+HETATM   28  O   HOH     6       9.841  14.509  11.210  1.00  3.00           O
+HETATM   29  H1  HOH     6      10.096  14.540  12.156  1.00  3.00           H
+HETATM   30  H2  HOH     6       9.341  13.676  11.079  0.00  3.00           H
+END
+"""
+model_bad = """\
+CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
+ATOM      1  CB  PHE A   1      12.073   9.948  11.650  1.00  5.00           C
+ATOM      2  CG  PHE A   1      11.316   9.114  12.643  1.00  5.00           C
+ATOM      3  CD1 PHE A   1      10.646   7.971  12.240  1.00  5.00           C
+ATOM      4  CD2 PHE A   1      11.276   9.472  13.980  1.00  5.00           C
+ATOM      5  CE1 PHE A   1       9.949   7.202  13.152  1.00  5.00           C
+ATOM      6  CE2 PHE A   1      10.581   8.706  14.897  1.00  5.00           C
+ATOM      7  CZ  PHE A   1       9.916   7.570  14.482  1.00  5.00           C
+ATOM      8  C   PHE A   1      12.110  11.913  10.097  1.00  5.00           C
+ATOM      9  O   PHE A   1      12.051  11.781   8.875  1.00  5.00           O
+ATOM     10  OXT PHE A   1      12.892  12.748  10.551  1.00  5.00           O
+ATOM     11  N   PHE A   1      10.096  10.513  10.307  1.00  5.00           N
+ATOM     12  CA  PHE A   1      11.240  11.067  11.021  1.00  5.00           C
+HETATM   13  O   HOH     1      13.866  16.009  12.098  1.00  3.00           O
+HETATM   14  H1  HOH     1      13.114  16.628  12.001  0.00  3.00           H
+HETATM   15  H2  HOH     1      13.771  15.335  11.392  0.00  3.00           H
+HETATM   16  O   HOH     2      17.215  16.288  11.122  1.00  3.00           O
+HETATM   17  H1  HOH     2      16.474  16.378  10.487  0.00  3.00           H
+HETATM   18  H2  HOH     2      17.045  15.476  11.644  0.00  3.00           H
+HETATM   19  O   HOH     3       8.927  12.312  13.459  1.00  3.00           O
+HETATM   20  H1  HOH     3       8.895  11.898  14.347  0.00  3.00           H
+HETATM   21  H2  HOH     3       7.999  12.412  13.159  0.00  3.00           H
+HETATM   22  O   HOH     4      16.005  11.974   8.964  1.00  3.00           O
+HETATM   23  H1  HOH     4      16.427  11.730   9.814  0.00  3.00           H
+HETATM   24  H2  HOH     4      16.642  11.748   8.255  0.00  3.00           H
+HETATM   25  O   HOH     5      13.626   9.207   8.521  1.00  3.00           O
+HETATM   26  H1  HOH     5      13.711   9.868   7.803  0.00  3.00           H
+HETATM   27  H2  HOH     5      14.464   9.228   9.028  0.00  3.00           H
+HETATM   28  O   HOH     6       9.839  14.506  11.213  1.00  3.00           O
+HETATM   29  H1  HOH     6      10.483  13.917  10.766  0.00  3.00           H
+HETATM   30  H2  HOH     6       9.067  14.586  10.614  0.00  3.00           H
+END
+"""
+expected_result2 = """\
+
+==================== Fit water hydrogens into residual map ====================
+
+
+                    ----------find peak-candidates----------
+
+Number of peaks found at mFobs-DFmodel map (map cutoff=5.00 sigma)= 9
+Filter by distance & map next to the model:
+   mapped sites are within: 0.980 - 1.009
+   number of sites selected in [dist_min= 0.70, dist_max= 1.20]: 9 from: 9
+   mapped sites are within: 0.980 - 1.009
+
+peak=   22.181 closest distance to " O   HOH     3 " =    0.989
+peak=   21.092 closest distance to " O   HOH     3 " =    0.980
+peak=   22.511 closest distance to " O   HOH     2 " =    0.999
+peak=   21.318 closest distance to " O   HOH     2 " =    0.997
+peak=   20.578 closest distance to " O   HOH     6 " =    1.009
+peak=   23.103 closest distance to " O   HOH     1 " =    0.990
+peak=   20.801 closest distance to " O   HOH     1 " =    0.981
+peak=   22.035 closest distance to " O   HOH     5 " =    0.987
+peak=   21.254 closest distance to " O   HOH     4 " =    0.998
+
+                  ----------6D rigid body fit of HOH----------
+
+Fit quality:
+ 0.028
+ 0.039
+ 0.021
+ 0.018
+ 0.008
+ 0.028
+"""
+
+def exercise_02():
+  for file_name, input_model in [("m_good.pdb",model_good), ("m_bad.pdb",model_bad)]:
+    tmp_f = open(file_name, "w")
+    tmp_f.write(input_model)
+    tmp_f.close()
+  xrs_exact = iotbx.pdb.input(file_name = "m_good.pdb").xray_structure_simple()
+  xrs_part = iotbx.pdb.input(file_name = "m_bad.pdb").xray_structure_simple()
+  miller_set = miller.build_set(
+    crystal_symmetry = xrs_exact.crystal_symmetry(),
+    anomalous_flag   = False,
+    d_min            = 0.6)
+  f_obs = abs(miller_set.structure_factors_from_scatterers(
+    xray_structure = xrs_exact,
+    algorithm      = "direct",
+    cos_sin_table  = False).f_calc())
+  sf_par = mmtbx.f_model.sf_and_grads_accuracy_params.extract()
+  sf_par.algorithm = "direct"
+  sf_par.cos_sin_table = False
+  flags = f_obs.array(data=flex.bool(f_obs.data().size(),False))
+  fmodel = mmtbx.f_model.manager(
+    xray_structure               = xrs_part,
+    sf_and_grads_accuracy_params = sf_par,
+    r_free_flags                 = flags,
+    target_name                  = "ls_wunit_k1",
+    f_obs                        = f_obs)
+  #
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv              = mon_lib_srv,
+    ener_lib                 = ener_lib,
+    file_name                = "m_bad.pdb")
+  aal = processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
+  model = mmtbx.model.manager(
+    xray_structure             = xrs_part,
+    atom_attributes_list       = aal,
+    log                        = None)
+  #
+  out = StringIO()
+  params = find_hydrogens.all_master_params().extract()
+  params.map_cutoff=5
+  find_hydrogens.run(fmodel=fmodel, model=model, log=out, params=params)
+  for a,b in zip(out.getvalue().splitlines(), expected_result2.splitlines()):
+    a = a.strip()
+    b = b.strip()
+    assert not show_diff(a, b)
 
 if (__name__ == "__main__"):
-  run()
+  exercise_01()
+  exercise_02()

@@ -4,18 +4,9 @@
 #include <scitbx/array_family/shared.h>
 #include <mmtbx/error.h>
 #include <cctbx/uctbx.h>
-//
-#include <cctbx/xray/scatterer.h>
-#include <cctbx/sgtbx/sym_equiv_sites.h>
-#include <cctbx/sgtbx/site_symmetry_table.h>
-#include <scitbx/array_family/versa.h>
-#include <scitbx/array_family/accessors/flex_grid.h>
-#include <cstdio>
-//
 
 using namespace std;
 namespace mmtbx { namespace utils {
-namespace af=scitbx::af;
 using scitbx::mat3;
 using cctbx::uctbx::unit_cell;
 
@@ -27,7 +18,7 @@ class fit_hoh
     cctbx_frac site_cart_h1_fitted;
     cctbx_frac site_cart_h2_fitted;
     scitbx::vec3<FloatType> origin_cart;
-    FloatType dist_best;
+    FloatType dist_best_sq;
 
     fit_hoh() {}
 
@@ -43,7 +34,7 @@ class fit_hoh
     site_cart_o_fitted(unit_cell.orthogonalize(site_frac_o)),
     site_cart_h1_fitted(unit_cell.orthogonalize(site_frac_h1)),
     site_cart_h2_fitted(unit_cell.orthogonalize(site_frac_h2)),
-    dist_best(1.e+9)
+    dist_best_sq(1.e+9)
     {
       CCTBX_ASSERT(angular_shift > 0 && angular_shift < 360);
       bool is_one_peak = false;
@@ -53,38 +44,42 @@ class fit_hoh
       cctbx_frac site_cart_h1 = site_cart_h1_fitted;
       cctbx_frac site_cart_h2 = site_cart_h2_fitted;
       for(FloatType x=0; x<360; x+=angular_shift) {
+        FloatType x_ = x * pi_180;
+        FloatType cos_x = std::cos(x_);
+        FloatType sin_x = std::sin(x_);
         for(FloatType y=0; y<360; y+=angular_shift) {
+          FloatType y_ = y * pi_180;
+          FloatType cos_y = std::cos(y_);
+          FloatType sin_y = std::sin(y_);
           for(FloatType z=0; z<360; z+=angular_shift) {
-            FloatType x_ = x * pi_180;
-            FloatType y_ = y * pi_180;
             FloatType z_ = z * pi_180;
-            scitbx::af::tiny<double,3> c(std::cos(x_),std::cos(y_),std::cos(z_));
-            scitbx::af::tiny<double,3> s(std::sin(x_),std::sin(y_),std::sin(z_));
+            FloatType cos_z = std::cos(z_);
+            FloatType sin_z = std::sin(z_);
             mat3<double> rot_mat = mat3<double>(
-               c[0]*c[1]*c[2]-s[0]*s[2],
-              -c[0]*c[1]*s[2]-s[0]*c[2],
-               c[0]*s[1],
-               s[0]*c[1]*c[2]+c[0]*s[2],
-              -s[0]*c[1]*s[2]+c[0]*c[2],
-               s[0]*s[1],
-              -s[1]*c[2],
-               s[1]*s[2],
-               c[1]);
+               cos_x*cos_y*cos_z-sin_x*sin_z,
+              -cos_x*cos_y*sin_z-sin_x*cos_z,
+               cos_x*sin_y,
+               sin_x*cos_y*cos_z+cos_x*sin_z,
+              -sin_x*cos_y*sin_z+cos_x*cos_z,
+               sin_x*sin_y,
+              -sin_y*cos_z,
+               sin_y*sin_z,
+               cos_y);
             cctbx_frac sites_cart_h1_new =
               (site_cart_h1 - origin_cart) * rot_mat + origin_cart;
             cctbx_frac sites_cart_h2_new =
               (site_cart_h2 - origin_cart) * rot_mat + origin_cart;
             cctbx_frac sites_frac_h1_new = unit_cell.fractionalize(
               sites_cart_h1_new);
-            FloatType dist = std::sqrt(unit_cell.distance_sq(sites_frac_h1_new,
-              site_frac_peak1));
+            FloatType dist = unit_cell.distance_sq(sites_frac_h1_new,
+              site_frac_peak1);
             if(!is_one_peak) {
               cctbx_frac sites_frac_h2_new = unit_cell.fractionalize(
                 sites_cart_h2_new);
-              dist += std::sqrt(unit_cell.distance_sq(sites_frac_h2_new,site_frac_peak2));
+              dist += unit_cell.distance_sq(sites_frac_h2_new,site_frac_peak2);
             }
-            if(dist < dist_best) {
-              dist_best = dist;
+            if(dist < dist_best_sq) {
+              dist_best_sq = dist;
               site_cart_o_fitted = origin_cart;
               site_cart_h1_fitted = sites_cart_h1_new;
               site_cart_h2_fitted = sites_cart_h2_new;
@@ -93,6 +88,8 @@ class fit_hoh
         }
       }
     }
+
+    double dist_best() { return std::sqrt(dist_best_sq); }
 };
 
 }} // namespace mmtbx::utils
