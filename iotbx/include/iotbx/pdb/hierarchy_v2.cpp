@@ -320,6 +320,19 @@ namespace {
     return std::string(result);
   }
 
+  bool
+  residue_group::have_conformers() const
+  {
+    typedef std::vector<atom_group>::const_iterator agi_t;
+    agi_t ag_end = data->atom_groups.end();
+    for(agi_t agi=data->atom_groups.begin();agi!=ag_end;agi++) {
+      if (agi->data->altloc.elems[0] != blank_altloc_char) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void
   residue_group::merge_atom_groups(
     atom_group& primary,
@@ -379,7 +392,7 @@ namespace {
     }
     n_ag = secondary.atom_groups_size();
     std::vector<atom_group> append_buffer;
-    append_buffer.reserve(n_ag);
+    append_buffer.reserve(n_ag);// allocate potential max to avoid reallocation
     for(unsigned i=n_ag;i!=0;) {
       i--;
       atom_group ag = secondary.atom_groups()[i];
@@ -408,6 +421,130 @@ namespace {
     }
     SCITBX_ASSERT(secondary.atom_groups_size() == 0);
     remove_residue_group(secondary);
+  }
+
+  af::shared<std::size_t>
+  chain::merge_disconnected_residue_groups_with_pure_altloc()
+  {
+    af::shared<std::size_t> result;
+    typedef std::map<str1, std::vector<unsigned> > s1i;
+    typedef std::map<str4, s1i> s4s1i;
+    s4s1i matching_resseq_icode;
+    unsigned n_rg = residue_groups_size();
+    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
+      residue_group const& rg = data->residue_groups[i_rg];
+      matching_resseq_icode[rg.data->resseq][rg.data->icode].push_back(i_rg);
+    }
+    std::vector<residue_group> residue_groups_copy;
+    std::vector<unsigned> flags; // 0: not modified, 1: primary, 2: secondary
+    unsigned result_size = 0;
+    s4s1i::const_iterator mri_end = matching_resseq_icode.end();
+    for(s4s1i::const_iterator
+          mri=matching_resseq_icode.begin();mri!=mri_end;mri++) {
+      s1i::const_iterator mrii_end = mri->second.end();
+      for(s1i::const_iterator
+            mrii=mri->second.begin();mrii!=mrii_end;mrii++) {
+        std::vector<unsigned> const& i_rgs = mrii->second;
+        unsigned n_i_rgs = static_cast<unsigned>(i_rgs.size());
+        if (n_i_rgs == 1U) continue;
+        std::set<str1> altlocs;
+        altlocs.insert(blank_altloc_char);
+        unsigned altlocs_size = 1U;
+        for(unsigned i_i_rgs=0;i_i_rgs<n_i_rgs;i_i_rgs++) {
+          unsigned i_rg = i_rgs[i_i_rgs];
+          residue_group const& rg = (
+            result_size == 0 ? data->residue_groups[i_rg]
+                             : residue_groups_copy[i_rg]);
+          unsigned n_ag = rg.atom_groups_size();
+          std::vector<atom_group> const& ags = rg.atom_groups();
+          for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+            altlocs.insert(ags[i_ag].data->altloc);
+            if (altlocs.size() == altlocs_size) {
+              goto next_i_rgs;
+            }
+            altlocs_size++;
+          }
+        }
+        { // merge
+          if (result_size == 0) {
+            residue_groups_copy = residue_groups();
+            flags.resize(n_rg, 0);
+          }
+          unsigned i_rg = i_rgs[0];
+          residue_group& primary = residue_groups_copy[i_rg];
+          flags[i_rg] = 1U;
+          for(unsigned i_i_rgs=1U;i_i_rgs<n_i_rgs;i_i_rgs++) {
+            i_rg = i_rgs[i_i_rgs];
+            residue_group& secondary = residue_groups_copy[i_rg];
+            flags[i_rg] = 2U;
+            merge_residue_groups(primary, secondary);
+            SCITBX_ASSERT(secondary.atom_groups_size() == 0);
+            SCITBX_ASSERT(secondary.parent_ptr().get() == 0);
+          }
+          result_size++;
+        }
+        next_i_rgs:;
+      }
+    }
+    if (result_size != 0) {
+      result.reserve(result_size);
+      unsigned j_rg = 0;
+      for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
+        unsigned f = flags[i_rg];
+        if      (f == 0) j_rg++;
+        else if (f == 1U) result.push_back(j_rg++);
+      }
+      SCITBX_ASSERT(result.size() == result_size);
+    }
+    return result;
+  }
+
+  af::shared<af::tiny<std::size_t, 2> >
+  chain::split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
+  {
+    af::shared<af::tiny<std::size_t, 2> > result;
+    std::vector<unsigned> split_indices;
+    unsigned n_rg = residue_groups_size();
+    split_indices.reserve(n_rg);// allocate potential max to avoid reallocation
+    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
+      residue_group const& rg = data->residue_groups[i_rg];
+      if (rg.atom_groups_size() < 2U) continue;
+      if (!rg.have_conformers()) {
+        split_indices.push_back(i_rg);
+      }
+    }
+    unsigned n_si = static_cast<unsigned>(split_indices.size());
+    if (n_si != 0) {
+      result.resize(n_si);
+      // process the residue groups in reverse order
+      std::reverse(split_indices.begin(), split_indices.end());
+      for(unsigned i_si=0;i_si<n_si;i_si++) {
+        unsigned i_rg = split_indices[i_si];
+        residue_group rg = data->residue_groups[i_rg];
+        unsigned n_ag = rg.atom_groups_size();
+        result[n_si-1U-i_si] = af::tiny<std::size_t, 2>(i_rg, n_ag);
+        std::vector<atom_group> atom_groups_copy = rg.atom_groups();
+        for(unsigned i_ag=n_ag;i_ag!=1U;) rg.remove_atom_group(--i_ag);
+        data->residue_groups.insert(
+          data->residue_groups.begin()+i_rg+1U, n_ag-1U, residue_group());
+        for(unsigned i_ag=1;i_ag<n_ag;i_ag++) {
+          data->residue_groups[i_rg+i_ag] = residue_group(
+            /* parent */ *this,
+            rg.data->resseq.elems,
+            rg.data->icode.elems,
+            /* link_to_previous */ true);
+          data->residue_groups[i_rg+i_ag].append_atom_group(
+            atom_groups_copy[i_ag]);
+        }
+      }
+      // adjust split_indices in forward order
+      unsigned shift = 0;
+      for(unsigned i_si=0;i_si<n_si;i_si++) {
+        result[i_si][0] += shift;
+        shift += (result[i_si][1] - 1U);
+      }
+    }
+    return result;
   }
 
 }}} // namespace iotbx::pdb::hierarchy_v2
