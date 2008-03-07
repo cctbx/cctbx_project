@@ -349,6 +349,7 @@ namespace {
           arg_("altloc")="", arg_("resname")="")))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(atom_group)
         .def("resid", &w_t::resid)
+        .def("have_conformers", &w_t::have_conformers)
         .def("merge_atom_groups", &w_t::merge_atom_groups, (
           arg_("primary"), arg_("secondary")))
       ;
@@ -399,6 +400,10 @@ namespace {
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(residue_group)
         .def("merge_residue_groups", &w_t::merge_residue_groups, (
           arg_("primary"), arg_("secondary")))
+        .def("merge_disconnected_residue_groups_with_pure_altloc",
+          &w_t::merge_disconnected_residue_groups_with_pure_altloc)
+        .def("split_residue_groups_with_mixed_resnames_but_only_blank_altloc",
+          &w_t::split_residue_groups_with_mixed_resnames_but_only_blank_altloc)
       ;
     }
   };

@@ -63,6 +63,8 @@ A residue object is NOT a parent of the atoms.
 
 namespace hierarchy_v2 {
 
+  static const char blank_altloc_char = ' ';
+
   class root_data;
   class root;
   class model_data;
@@ -693,6 +695,9 @@ namespace hierarchy_v2 {
       std::string
       resid() const;
 
+      bool
+      have_conformers() const;
+
       void
       merge_atom_groups(
         atom_group& primary,
@@ -800,6 +805,12 @@ namespace hierarchy_v2 {
       merge_residue_groups(
         residue_group& primary,
         residue_group& secondary);
+
+      af::shared<std::size_t>
+      merge_disconnected_residue_groups_with_pure_altloc();
+
+      af::shared<af::tiny<std::size_t, 2> >
+      split_residue_groups_with_mixed_resnames_but_only_blank_altloc();
   };
 
   //! Model attributes.

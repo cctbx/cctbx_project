@@ -368,6 +368,14 @@ def exercise_residue_group():
   assert rg.resid() == "ABCD "
   rg = pdb.hierarchy_v2.residue_group(resseq="ABCD", icode="E")
   assert rg.resid() == "ABCDE"
+  #
+  rg = pdb.hierarchy_v2.residue_group()
+  ag = pdb.hierarchy_v2.atom_group(altloc=" ")
+  rg.append_atom_group(atom_group=ag)
+  assert not rg.have_conformers()
+  ag = pdb.hierarchy_v2.atom_group(altloc="a")
+  rg.append_atom_group(atom_group=ag)
+  assert rg.have_conformers()
 
 def exercise_chain():
   c = pdb.hierarchy_v2.chain()
@@ -935,6 +943,120 @@ ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
  (this chain must be the parent).""" % s)
     else: raise Exception_expected
 
+def get_single_chain(root):
+  assert root.models_size() == 1
+  model = root.models()[0]
+  assert model.chains_size() == 1
+  return model.chains()[0]
+
+def exercise_chain_merge_and_split_residue_groups():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+HEADER    HYDROLASE                               22-NOV-07   2VHL
+HETATM 6362  O   HOH B2048      47.616  10.724 150.212  1.00 46.48           O
+HETATM 6363  O  AHOH B2049      46.408  16.672 146.066  0.50 12.81           O
+HETATM 6364  O   HOH B2050      29.343  12.806 185.898  1.00 35.57           O
+HETATM 6365  O  BHOH B2049      43.786  12.615 147.734  0.50 28.43           O
+HETATM 6366  O   HOH B2052      35.068  19.167 155.349  1.00 15.97           O
+"""))
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  assert chain.residue_groups_size() == 5
+  indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+  assert list(indices) == [1]
+  assert chain.residue_groups_size() == 4
+  indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+  assert indices.size() == 0
+  lines = flex.split_lines("""\
+HETATM 6363  O  AHOH B2049
+HETATM 6364  O  ZHOH B2050
+HETATM 6365  O  BHOH B2049
+HETATM 6366  O  YHOH B2052
+HETATM 9365  O  CHOH B2049
+HETATM 9367  O  XHOH B2052
+""")
+  pdb_inp = pdb.input(source_info=None, lines=lines)
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  assert chain.residue_groups_size() == 6
+  indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+  assert list(indices) == [0, 2]
+  assert chain.residue_groups_size() == 3
+  indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+  assert indices.size() == 0
+  for i_trial in xrange(100):
+    pdb_inp = pdb.input(
+      source_info=None,
+      lines=lines.select(flex.random_permutation(size=lines.size())))
+    chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+    indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+    assert indices.size() <= 2
+    indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+    assert indices.size() == 0
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+HEADER    SERINE PROTEASE                         10-NOV-95   1RTF
+HETATM 2397  P   PO4     1      -7.520  25.376  38.369  1.00 39.37           P
+HETATM 2398  O1  PO4     1      -6.610  24.262  38.967  1.00 40.00           O
+HETATM 2399  O2  PO4     1      -6.901  25.919  37.049  1.00 41.07           O
+HETATM 2400  O3  PO4     1      -8.894  24.741  38.097  1.00 45.09           O
+HETATM 2401  O4  PO4     1      -7.722  26.556  39.350  1.00 42.48           O
+HETATM 2402  C1  BEN     1      -6.921  31.206  33.893  1.00 23.35           C
+HETATM 2403  C2  BEN     1      -8.189  30.836  34.344  1.00 23.15           C
+HETATM 2404  C3  BEN     1      -8.335  29.863  35.342  1.00 20.74           C
+HETATM 2405  C4  BEN     1      -7.206  29.254  35.893  1.00 19.45           C
+HETATM 2406  C5  BEN     1      -5.932  29.618  35.445  1.00 20.83           C
+HETATM 2407  C6  BEN     1      -5.794  30.589  34.450  1.00 20.99           C
+HETATM 2408  C   BEN     1      -6.767  32.249  32.859  1.00 24.30           C
+HETATM 2409  N1  BEN     1      -5.570  32.641  32.497  1.00 24.56           N
+HETATM 2410  N2  BEN     1      -7.824  32.785  32.299  1.00 24.58           N
+HETATM 2415  O   HOH     1       4.020  20.521  19.336  1.00 38.74           O
+HETATM 2418  O   WAT     2      14.154  16.852  21.753  1.00 49.41           O
+"""))
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  assert chain.residue_groups_size() == 2
+  assert list(
+    chain.split_residue_groups_with_mixed_resnames_but_only_blank_altloc()) \
+      == [(0,3)]
+  assert chain.residue_groups_size() == 4
+  assert [residue_group.resid() for residue_group in chain.residue_groups()] \
+      == ["   1 ", "   1 ", "   1 ", "   2 "]
+  for residue_group in chain.residue_groups():
+    assert residue_group.atom_groups_size() == 1
+    assert residue_group.atom_groups()[0].parent().memory_id() \
+        == residue_group.memory_id()
+  assert [residue_group.atom_groups()[0].resname
+           for residue_group in chain.residue_groups()] \
+      == ["PO4", "BEN", "HOH", "WAT"]
+  assert list(
+    chain.split_residue_groups_with_mixed_resnames_but_only_blank_altloc()) \
+      == []
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+HETATM 2418  O   WAT     2
+HETATM 2397  P   PO4     1
+HETATM 2398  O1  PO4     1
+HETATM 2402  C1  BEN     1
+HETATM 2403  C2  BEN     1
+HETATM 2404  C3  BEN     1
+HETATM 2415  O   HOH     1
+HETATM 9418  O   WAT     2
+HETATM 9397  P   PO4     1
+HETATM 9398  O1  PO4     1
+HETATM 9402  C1  BEN     1
+HETATM 9403  C2  BEN     1
+HETATM 9404  C3  BEN     1
+HETATM 9415  O   HOH     1
+"""))
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  assert chain.residue_groups_size() == 4
+  assert list(
+    chain.split_residue_groups_with_mixed_resnames_but_only_blank_altloc()) \
+      == [(1,3), (5,3)]
+  assert list(
+    chain.split_residue_groups_with_mixed_resnames_but_only_blank_altloc()) \
+      == []
+  for residue_group in chain.residue_groups():
+    assert residue_group.atom_groups_size() == 1
+    assert residue_group.atom_groups()[0].parent().memory_id() \
+        == residue_group.memory_id()
+
 def exercise(args):
   print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
     pdb.hierarchy_v2.atom.sizeof_data()
@@ -950,6 +1072,7 @@ def exercise(args):
     exercise_construct_hierarchy()
     exercise_merge_atom_groups()
     exercise_merge_residue_groups()
+    exercise_chain_merge_and_split_residue_groups()
     if (not forever): break
   print format_cpu_times()
 
