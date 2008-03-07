@@ -687,7 +687,7 @@ END
   assert [atom.name for atom in pdb_inp.atoms_v2()] \
       == [" N  ", " CA ", " C  ", " O  ", "2H3 ", " N  "]
   sio = StringIO()
-  root = pdb_inp.construct_hierarchy_v2()
+  root = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
   for model in root.models():
     print >> sio, "m:", show_string(model.id)
     for chain in model.chains():
@@ -747,7 +747,7 @@ ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
 ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
 """))
   lines = []
-  root = pdb_inp.construct_hierarchy_v2()
+  root = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
   for model in root.models():
     for chain in model.chains():
       for residue_group in chain.residue_groups():
@@ -823,7 +823,8 @@ ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
 
 def exercise_merge_atom_groups():
   lines = []
-  root = exercise_merge_pdb_inp.construct_hierarchy_v2()
+  root = exercise_merge_pdb_inp.construct_hierarchy_v2(
+    residue_group_post_processing=False)
   chain = root.models()[0].chains()[0]
   residue_groups = chain.residue_groups()
   assert len(residue_groups) == 3
@@ -886,7 +887,8 @@ ATOM   1836  O  BLEU   190      25.418   5.939  20.669  0.30  5.91           O
 
 def exercise_merge_residue_groups():
   lines = []
-  root = exercise_merge_pdb_inp.construct_hierarchy_v2()
+  root = exercise_merge_pdb_inp.construct_hierarchy_v2(
+    residue_group_post_processing=False)
   chain = root.models()[0].chains()[0]
   residue_groups = chain.residue_groups()
   assert len(residue_groups) == 3
@@ -958,7 +960,8 @@ HETATM 6364  O   HOH B2050      29.343  12.806 185.898  1.00 35.57           O
 HETATM 6365  O  BHOH B2049      43.786  12.615 147.734  0.50 28.43           O
 HETATM 6366  O   HOH B2052      35.068  19.167 155.349  1.00 15.97           O
 """))
-  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2(
+    residue_group_post_processing=False))
   assert chain.residue_groups_size() == 5
   indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
   assert list(indices) == [1]
@@ -974,7 +977,8 @@ HETATM 9365  O  CHOH B2049
 HETATM 9367  O  XHOH B2052
 """)
   pdb_inp = pdb.input(source_info=None, lines=lines)
-  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2(
+    residue_group_post_processing=False))
   assert chain.residue_groups_size() == 6
   indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
   assert list(indices) == [0, 2]
@@ -985,9 +989,14 @@ HETATM 9367  O  XHOH B2052
     pdb_inp = pdb.input(
       source_info=None,
       lines=lines.select(flex.random_permutation(size=lines.size())))
-    chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+    chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2(
+      residue_group_post_processing=False))
     indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
     assert indices.size() <= 2
+    indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+    assert indices.size() == 0
+    del chain
+    chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
     indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
     assert indices.size() == 0
   #
@@ -1010,11 +1019,12 @@ HETATM 2410  N2  BEN     1      -7.824  32.785  32.299  1.00 24.58           N
 HETATM 2415  O   HOH     1       4.020  20.521  19.336  1.00 38.74           O
 HETATM 2418  O   WAT     2      14.154  16.852  21.753  1.00 49.41           O
 """))
-  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2(
+    residue_group_post_processing=False))
   assert chain.residue_groups_size() == 2
-  assert list(
-    chain.split_residue_groups_with_mixed_resnames_but_only_blank_altloc()) \
-      == [(0,3)]
+  index_count_pairs = chain \
+    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
+  assert list(index_count_pairs) == [(0,3)]
   assert chain.residue_groups_size() == 4
   assert [residue_group.resid() for residue_group in chain.residue_groups()] \
       == ["   1 ", "   1 ", "   1 ", "   2 "]
@@ -1025,9 +1035,9 @@ HETATM 2418  O   WAT     2      14.154  16.852  21.753  1.00 49.41           O
   assert [residue_group.atom_groups()[0].resname
            for residue_group in chain.residue_groups()] \
       == ["PO4", "BEN", "HOH", "WAT"]
-  assert list(
-    chain.split_residue_groups_with_mixed_resnames_but_only_blank_altloc()) \
-      == []
+  index_count_pairs = chain \
+    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
+  assert index_count_pairs.size() == 0
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 HETATM 2418  O   WAT     2
 HETATM 2397  P   PO4     1
@@ -1044,18 +1054,25 @@ HETATM 9403  C2  BEN     1
 HETATM 9404  C3  BEN     1
 HETATM 9415  O   HOH     1
 """))
-  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2(
+    residue_group_post_processing=False))
   assert chain.residue_groups_size() == 4
-  assert list(
-    chain.split_residue_groups_with_mixed_resnames_but_only_blank_altloc()) \
-      == [(1,3), (5,3)]
-  assert list(
-    chain.split_residue_groups_with_mixed_resnames_but_only_blank_altloc()) \
-      == []
+  index_count_pairs = chain \
+    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
+  assert list(index_count_pairs) == [(1,3), (5,3)]
+  index_count_pairs = chain \
+    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
+  assert index_count_pairs.size() == 0
   for residue_group in chain.residue_groups():
     assert residue_group.atom_groups_size() == 1
     assert residue_group.atom_groups()[0].parent().memory_id() \
         == residue_group.memory_id()
+  del residue_group
+  del chain
+  chain = get_single_chain(root=pdb_inp.construct_hierarchy_v2())
+  index_count_pairs = chain \
+    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
+  assert index_count_pairs.size() == 0
 
 def exercise(args):
   print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
