@@ -76,7 +76,8 @@ namespace iotbx { namespace pdb {
   } // namespace <anonymous>
 
   hierarchy_v2::root
-  input::construct_hierarchy_v2()
+  input::construct_hierarchy_v2(
+    bool residue_group_post_processing)
   {
     af::const_ref<int>
       model_numbers = model_numbers_.const_ref();
@@ -123,6 +124,12 @@ namespace iotbx { namespace pdb {
         if (prev_resid != 0) {
           append_residue_group(
             iall+rg_start, atoms+rg_start, chain, altloc_resname_indices);
+        }
+        if (residue_group_post_processing) {
+          chain \
+            .merge_disconnected_residue_groups_with_pure_altloc();
+          chain \
+            .split_residue_groups_with_mixed_resnames_but_only_blank_altloc();
         }
       }
       next_chain_range_begin = ch_r.end;
