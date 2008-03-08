@@ -64,6 +64,7 @@ A residue object is NOT a parent of the atoms.
 namespace hierarchy_v2 {
 
   static const char blank_altloc_char = ' ';
+  static const char* blank_altloc_cstr = " ";
 
   class root_data;
   class root;
@@ -720,6 +721,9 @@ namespace hierarchy_v2 {
 
       unsigned
       move_blank_altloc_atom_groups_to_front();
+
+      af::tiny<unsigned, 2>
+      edit_blank_altloc();
   };
 
   //! Chain attributes.
