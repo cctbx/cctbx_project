@@ -64,7 +64,7 @@ A residue object is NOT a parent of the atoms.
 namespace hierarchy_v2 {
 
   static const char blank_altloc_char = ' ';
-  static const char* blank_altloc_cstr = " ";
+  static const char blank_altloc_cstr[2] = {blank_altloc_char, '\0'};
 
   class root_data;
   class root;
