@@ -18,7 +18,7 @@
 #define MMTBX_CHECK_POINT \
   std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
 #define MMTBX_EXAMINE(A) \
-  std::cout << "variable " << #A << ": " << A << " " << std::endl << std::flush
+  std::cout << "variable " << #A << ": " << A << std::endl << std::flush
 
 //! Common mmtbx namespace.
 namespace mmtbx {
