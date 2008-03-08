@@ -538,6 +538,13 @@ namespace hierarchy_v2 {
         data(new atom_group_data(altloc, resname))
       {}
 
+      atom_group(const atom_group_data* other)
+      :
+        data(new atom_group_data(
+          other->altloc.elems,
+          other->resname.elems))
+      {}
+
       atom_group(
         residue_group const& parent,
         atom_group const& other);
@@ -632,6 +639,14 @@ namespace hierarchy_v2 {
         bool link_to_previous=true)
       :
         data(new residue_group_data(resseq, icode, link_to_previous))
+      {}
+
+      residue_group(const residue_group_data* other)
+      :
+        data(new residue_group_data(
+          other->resseq.elems,
+          other->icode.elems,
+          other->link_to_previous))
       {}
 
       residue_group(
@@ -742,6 +757,11 @@ namespace hierarchy_v2 {
         data(new chain_data(id))
       {}
 
+      chain(const chain_data* other)
+      :
+        data(new chain_data(other->id))
+      {}
+
       chain(
         model const& parent,
         chain const& other);
@@ -846,6 +866,11 @@ namespace hierarchy_v2 {
         std::string const& id="");
 
       model(std::string const& id="") : data(new model_data(id)) {}
+
+      model(const model_data* other)
+      :
+        data(new model_data(other->id))
+      {}
 
       model(
         root const& parent,
