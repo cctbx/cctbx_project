@@ -352,6 +352,8 @@ namespace {
         .def("have_conformers", &w_t::have_conformers)
         .def("merge_atom_groups", &w_t::merge_atom_groups, (
           arg_("primary"), arg_("secondary")))
+        .def("move_blank_altloc_atom_groups_to_front",
+          &w_t::move_blank_altloc_atom_groups_to_front)
       ;
     }
   };

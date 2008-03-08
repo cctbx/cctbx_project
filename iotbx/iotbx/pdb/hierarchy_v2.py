@@ -56,19 +56,6 @@ class _residue_group(boost.python.injector, ext.residue_group):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def move_blank_altloc_atom_groups_to_front(self):
-    blank_altloc_char = ' '
-    n_blank_altloc_atom_groups = 0
-    for i_atom_group,atom_group in enumerate(self.atom_groups()):
-      if (atom_group.altloc in ["", blank_altloc_char]):
-        if (i_atom_group != n_blank_altloc_atom_groups):
-          self.remove_atom_group(
-            i=i_atom_group)
-          self.insert_atom_group(
-            i=n_blank_altloc_atom_groups, atom_group=atom_group)
-        n_blank_altloc_atom_groups += 1
-    return n_blank_altloc_atom_groups
-
   def process_blank_altloc(self):
     blank_altloc_char = ' '
     n_blank_altloc_atom_groups = self.move_blank_altloc_atom_groups_to_front()

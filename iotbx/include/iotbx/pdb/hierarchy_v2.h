@@ -717,6 +717,9 @@ namespace hierarchy_v2 {
       merge_atom_groups(
         atom_group& primary,
         atom_group& secondary);
+
+      unsigned
+      move_blank_altloc_atom_groups_to_front();
   };
 
   //! Chain attributes.
