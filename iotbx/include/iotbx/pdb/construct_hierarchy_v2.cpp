@@ -37,11 +37,13 @@ namespace iotbx { namespace pdb {
       const input_atom_labels* iall,
       hierarchy_v2::atom* atoms,
       hierarchy_v2::chain& chain,
+      bool link_to_previous,
       std::map<str4, std::vector<unsigned> >& altloc_resname_indices)
     {
       hierarchy_v2::residue_group rg = chain.new_residue_group(
         iall->resseq_small().elems,
-        iall->icode_small().elems);
+        iall->icode_small().elems,
+        link_to_previous);
       unsigned n_ag = static_cast<unsigned>(altloc_resname_indices.size());
       rg.pre_allocate_atom_groups(n_ag);
       typedef std::map<str4, std::vector<unsigned> >::const_iterator ari_it;
@@ -101,29 +103,54 @@ namespace iotbx { namespace pdb {
         chain.data->id = iall[ch_r.begin].chain();
         // convert break_indices to break_range_ids
         boost::scoped_array<unsigned>
-          break_range_ids(new unsigned[ch_r.size]);
+          break_range_ids_owner(new unsigned[ch_r.size]);
         scitbx::misc::fill_ranges(
           ch_r.begin, ch_r.end,
           break_indices_.begin(), break_indices_.end(),
-          break_range_ids.get());
-        unsigned rg_start = ch_r.begin;
+          break_range_ids_owner.get());
+        const unsigned* break_range_ids = break_range_ids_owner.get();
         std::map<str4, std::vector<unsigned> > altloc_resname_indices;
+        unsigned rg_start = ch_r.begin;
+        bool link_to_previous = false;
+        unsigned prev_break_range_id = 0;
         const char* prev_resid = 0;
         for (unsigned i_atom=ch_r.begin; i_atom!=ch_r.end; i_atom++) {
+          unsigned break_range_id = *break_range_ids++;
           const char* resid = iall[i_atom].resid_begin();
-          if (   prev_resid != 0
-              && std::memcmp(prev_resid, resid, 5U) != 0) {
-            append_residue_group(
-              iall+rg_start, atoms+rg_start, chain, altloc_resname_indices);
-            rg_start = i_atom;
+          if (prev_resid != 0) {
+            if (std::memcmp(prev_resid, resid, 5U) != 0) {
+              append_residue_group(
+                iall+rg_start,
+                atoms+rg_start,
+                chain,
+                link_to_previous,
+                altloc_resname_indices);
+              rg_start = i_atom;
+              link_to_previous = (break_range_id == prev_break_range_id);
+            }
+            else if (break_range_id != prev_break_range_id) {
+              char buf[64];
+              std::sprintf(buf,
+                "Misplaced BREAK record (%s line %u).",
+                source_info_.size()
+                  ? (source_info_ + ",").c_str()
+                  : "input",
+                break_record_line_numbers[prev_break_range_id]);
+              throw std::runtime_error(buf);
+            }
           }
+          prev_break_range_id = break_range_id;
           prev_resid = resid;
           altloc_resname_indices[iall[i_atom].altloc_resname_small()]
             .push_back(i_atom-rg_start);
         }
         if (prev_resid != 0) {
           append_residue_group(
-            iall+rg_start, atoms+rg_start, chain, altloc_resname_indices);
+            iall+rg_start,
+            atoms+rg_start,
+            chain,
+            link_to_previous,
+            altloc_resname_indices);
         }
         if (residue_group_post_processing) {
           chain

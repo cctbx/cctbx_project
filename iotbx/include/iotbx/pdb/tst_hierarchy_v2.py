@@ -693,7 +693,6 @@ def exercise_construct_hierarchy():
 MODEL        1
 ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
 ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
-BREAK
 HETATM    3  C   MET A   2       7.478  21.387  22.491  1.00  0.00           C
 ATOM      4  O   MET A   2       8.406  20.895  23.132  1.00  0.00           O
 ENDMDL
@@ -721,23 +720,24 @@ END
       print >> sio, "  c:", show_string(chain.id)
       for residue_group in chain.residue_groups():
         print >> sio, "    rg:", \
-          show_string(residue_group.resseq + residue_group.icode)
+          show_string(residue_group.resid()), \
+          int(residue_group.link_to_previous)
         for atom_group in residue_group.atom_groups():
           print >> sio, "      ag:", \
             show_string(atom_group.altloc), show_string(atom_group.resname)
   assert not show_diff(sio.getvalue(), """\
 m: "   1"
   c: "A"
-    rg: "   1 "
+    rg: "   1 " 0
       ag: " " "MET"
-    rg: "   2 "
+    rg: "   2 " 1
       ag: " " "MET"
 m: "   3"
   c: "B"
-    rg: "   5 "
+    rg: "   5 " 0
       ag: " " "MPR"
   c: "CH"
-    rg: "   6 "
+    rg: "   6 " 0
       ag: " " "CYS"
 """)
   #
@@ -818,6 +818,78 @@ ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
 ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
 ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
 """)
+  #
+  root = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+BREAK
+""")).construct_hierarchy_v2()
+  assert root.models_size() == 0
+  root = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+BREAK
+ATOM      1  CB  LYS   109
+BREAK
+TER
+""")).construct_hierarchy_v2()
+  assert not root.only_residue_group().link_to_previous
+  root = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+BREAK
+ATOM      1  CB  LYS   109
+ATOM      2  CG  LYS   109
+BREAK
+TER
+""")).construct_hierarchy_v2()
+  assert not root.only_residue_group().link_to_previous
+  lines=flex.split_lines("""\
+ATOM      1  CB  LYS   109
+ATOM      2  CG  LYS   109
+ATOM      3  CA  LYS   110
+ATOM      4  CB  LYS   110
+BREAK
+ATOM      5  CA  LYS   111
+ATOM      6  CB  LYS   111
+ATOM      7  CA  LYS   112
+ATOM      8  CB  LYS   112
+""")
+  for i_proc in [0,1]:
+    root = pdb.input(source_info=None, lines=lines).construct_hierarchy_v2()
+    residue_groups = root.only_chain().residue_groups()
+    assert len(residue_groups) == 4
+    assert not residue_groups[0].link_to_previous
+    assert residue_groups[1].link_to_previous
+    assert not residue_groups[2].link_to_previous
+    assert residue_groups[3].link_to_previous
+    if (i_proc == 0):
+      lines = lines.select(flex.size_t([0,2,4,5,7]))
+  try: pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+REMARK
+ATOM      1  CB  LYS   109
+BREAK
+ATOM      2  CG  LYS   109
+""")).construct_hierarchy_v2()
+  except RuntimeError, e:
+    assert not show_diff(str(e), "Misplaced BREAK record (input line 3).")
+  else: raise Exception_expected
+  try: pdb.input(
+    source_info="file abc",
+    lines=flex.split_lines("""\
+REMARK
+ATOM      1  CA  LYS   109
+ATOM      2  CB  LYS   109
+BREAK
+ATOM      3  CA  LYS   110
+BREAK
+ATOM      4  CB  LYS   110
+""")).construct_hierarchy_v2()
+  except RuntimeError, e:
+    assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
+  else: raise Exception_expected
 
 def exercise_only():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
