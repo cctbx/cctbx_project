@@ -117,7 +117,6 @@ file or the model will be used.
 """ % vars()
 
 def run(args, command_name="phenix.twin_map_utils"):
-  print
   log=sys.stdout
   params=None
   if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
@@ -222,7 +221,6 @@ def run(args, command_name="phenix.twin_map_utils"):
     free_flags = None
 
     tmp_params = utils.data_and_flags.extract()
-    print dir(tmp_params)
     # insert proper values please
     tmp_params.file_name = params.twin_utils.input.xray_data.file_name
     tmp_params.labels = params.twin_utils.input.xray_data.obs_labels
@@ -230,7 +228,7 @@ def run(args, command_name="phenix.twin_map_utils"):
     tmp_params.r_free_flags.label=params.twin_utils.input.xray_data.free_flag
 
     tmp_object = utils.determine_data_and_flags( reflection_file_server = xray_data_server,
-                                                 parameters = tmp_params )
+                                                 parameters = tmp_params, log=log )
 
     miller_array = tmp_object.extract_data()
     free_flags = tmp_object.extract_flags(data = miller_array)
@@ -331,7 +329,9 @@ def run(args, command_name="phenix.twin_map_utils"):
         column_root_label = "GRAD"
         )
       name = params.twin_utils.output.map_coeffs_root+"_"+str(operator_count)+".mtz"
-      print "writing %s for twin law %s"%(name,operator_hkl)
+      print >> log
+      print >> log, "Writing %s for twin law %s"%(name,operator_hkl)
+      print >> log
       mtz_dataset.mtz_object().write(
         file_name=name)
 
@@ -380,7 +380,7 @@ def run(args, command_name="phenix.twin_map_utils"):
 
     print >> log
     print >> log
-    print >> log, "All done "
-    print >> log
+    print >> log, "All done \n"
     logfile = open(params.twin_utils.output.logfile,'w')
     print >> logfile,  string_buffer.getvalue()
+    print >> log
