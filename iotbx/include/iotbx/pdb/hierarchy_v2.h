@@ -838,6 +838,9 @@ namespace hierarchy_v2 {
 
       af::shared<af::tiny<std::size_t, 2> >
       split_residue_groups_with_mixed_resnames_but_only_blank_altloc();
+
+      void
+      edit_blank_altloc();
   };
 
   //! Model attributes.

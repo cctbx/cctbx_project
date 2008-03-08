@@ -126,10 +126,12 @@ namespace iotbx { namespace pdb {
             iall+rg_start, atoms+rg_start, chain, altloc_resname_indices);
         }
         if (residue_group_post_processing) {
-          chain \
+          chain
             .merge_disconnected_residue_groups_with_pure_altloc();
-          chain \
+          chain
             .split_residue_groups_with_mixed_resnames_but_only_blank_altloc();
+          chain
+            .edit_blank_altloc();
         }
       }
       next_chain_range_begin = ch_r.end;
