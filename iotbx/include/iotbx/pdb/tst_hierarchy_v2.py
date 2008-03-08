@@ -381,9 +381,21 @@ def exercise_residue_group():
   ag = pdb.hierarchy_v2.atom_group(altloc=" ")
   rg.append_atom_group(atom_group=ag)
   assert not rg.have_conformers()
+  ag = pdb.hierarchy_v2.atom_group(altloc="")
+  rg.append_atom_group(atom_group=ag)
+  assert not rg.have_conformers()
   ag = pdb.hierarchy_v2.atom_group(altloc="a")
   rg.append_atom_group(atom_group=ag)
   assert rg.have_conformers()
+  #
+  rg = pdb.hierarchy_v2.residue_group()
+  assert rg.move_blank_altloc_atom_groups_to_front() == 0
+  ag = pdb.hierarchy_v2.atom_group(altloc="a")
+  rg.append_atom_group(atom_group=ag)
+  assert rg.move_blank_altloc_atom_groups_to_front() == 0
+  ag = pdb.hierarchy_v2.atom_group(altloc=" ")
+  rg.append_atom_group(atom_group=ag)
+  assert rg.move_blank_altloc_atom_groups_to_front() == 1
 
 def exercise_chain():
   c = pdb.hierarchy_v2.chain()
@@ -466,6 +478,8 @@ def exercise_chain():
   except RuntimeError, e:
     assert str(e) == "atom_group has another parent residue_group already."
   else: raise Exception_expected
+  #
+  c.edit_blank_altloc()
 
 def exercise_model():
   m = pdb.hierarchy_v2.model()
@@ -993,14 +1007,17 @@ HETATM 6364  O   HOH B2050      29.343  12.806 185.898  1.00 35.57           O
 HETATM 6365  O  BHOH B2049      43.786  12.615 147.734  0.50 28.43           O
 HETATM 6366  O   HOH B2052      35.068  19.167 155.349  1.00 15.97           O
 """))
-  chain = pdb_inp.construct_hierarchy_v2(
-    residue_group_post_processing=False).only_chain()
-  assert chain.residue_groups_size() == 5
-  indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
-  assert list(indices) == [1]
-  assert chain.residue_groups_size() == 4
-  indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
-  assert indices.size() == 0
+  for rgpp in [False, True]:
+    chain = pdb_inp.construct_hierarchy_v2(
+      residue_group_post_processing=rgpp).only_chain()
+    if (not rgpp):
+      assert chain.residue_groups_size() == 5
+      indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+      assert list(indices) == [1]
+    assert chain.residue_groups_size() == 4
+    indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+    assert indices.size() == 0
+    del chain
   lines = flex.split_lines("""\
 HETATM 6363  O  AHOH B2049
 HETATM 6364  O  ZHOH B2050
@@ -1106,42 +1123,69 @@ HETATM 9415  O   HOH     1
   index_count_pairs = chain \
     .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
   assert index_count_pairs.size() == 0
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+HETATM 6362  O  CHOH B   1
+HETATM 6363  O  AHOH B   1
+HETATM 6364  O   HOH B   2
+HETATM 6365  O   HOH B   1
+"""))
+  chain = pdb_inp.construct_hierarchy_v2(
+    residue_group_post_processing=False).only_chain()
+  assert chain.residue_groups_size() == 3
+  assert chain.residue_groups()[2].only_atom_group().altloc == " "
+  chain.edit_blank_altloc()
+  assert chain.residue_groups()[2].only_atom_group().altloc == ""
+  indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
+  assert indices.size() == 0
+  assert chain.residue_groups_size() == 3
 
 def exercise_edit_blank_altloc(n_trials=30):
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1
 ATOM         N2
 """))
-  residue_group = pdb_inp.construct_hierarchy_v2(
-    residue_group_post_processing=False).only_residue_group()
-  for i_proc in [0,1]:
-    assert residue_group.edit_blank_altloc() == (1,0)
+  for rgpp in [False, True]:
+    residue_group = pdb_inp.construct_hierarchy_v2(
+      residue_group_post_processing=rgpp).only_residue_group()
+    for i_proc in [0,1]:
+      assert residue_group.edit_blank_altloc() == (1,0)
+    del residue_group
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1 A
 ATOM         N2 B
 """))
-  residue_group = pdb_inp.construct_hierarchy_v2(
-    residue_group_post_processing=False).only_residue_group()
-  for i_proc in [0,1]:
-    assert residue_group.edit_blank_altloc() == (0,0)
+  for rgpp in [False, True]:
+    residue_group = pdb_inp.construct_hierarchy_v2(
+      residue_group_post_processing=rgpp).only_residue_group()
+    rgc = residue_group.detached_copy()
+    assert rgc.move_blank_altloc_atom_groups_to_front() == 0
+    for i_proc in [0,1]:
+      assert residue_group.edit_blank_altloc() == (0,0)
+    del residue_group
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1
 ATOM         N2 B
 """))
-  residue_group = pdb_inp.construct_hierarchy_v2(
-    residue_group_post_processing=False).only_residue_group()
-  atom_groups = residue_group.atom_groups()
-  assert len(atom_groups) == 2
-  assert atom_groups[0].altloc == " "
-  assert atom_groups[1].altloc == "B"
-  for i_proc in [0,1]:
-    assert residue_group.edit_blank_altloc() == (1,0)
-    atom_groups = residue_group.atom_groups()
-    assert len(atom_groups) == 2
-    assert atom_groups[0].altloc == ""
-    assert atom_groups[1].altloc == "B"
+  for rgpp in [False, True]:
+    residue_group = pdb_inp.construct_hierarchy_v2(
+      residue_group_post_processing=rgpp).only_residue_group()
+    if (not rgpp):
+      atom_groups = residue_group.atom_groups()
+      assert len(atom_groups) == 2
+      assert atom_groups[0].altloc == " "
+      assert atom_groups[1].altloc == "B"
+    for i_proc in [0,1]:
+      if (not rgpp or i_proc != 0):
+        assert residue_group.edit_blank_altloc() == (1,0)
+      atom_groups = residue_group.atom_groups()
+      assert len(atom_groups) == 2
+      assert atom_groups[0].altloc == ""
+      assert atom_groups[1].altloc == "B"
+    del atom_groups
+    del residue_group
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1
@@ -1153,6 +1197,8 @@ ATOM         N1 B
   assert len(atom_groups) == 2
   assert atom_groups[0].altloc == " "
   assert atom_groups[1].altloc == "B"
+  rgc = residue_group.detached_copy()
+  assert rgc.move_blank_altloc_atom_groups_to_front() == 1
   for i_proc in [0,1]:
     assert residue_group.edit_blank_altloc() == (0,1)
     atom_groups = residue_group.atom_groups()
@@ -1164,18 +1210,28 @@ ATOM         N1 B
 ATOM         N1 B
 ATOM         N1
 """))
-  residue_group = pdb_inp.construct_hierarchy_v2(
-    residue_group_post_processing=False).only_residue_group()
-  atom_groups = residue_group.atom_groups()
-  assert len(atom_groups) == 2
-  assert atom_groups[0].altloc == "B"
-  assert atom_groups[1].altloc == " "
-  for i_proc in [0,1]:
-    assert residue_group.edit_blank_altloc() == (0,1)
+  for edit_chain in [False, True]:
+    chain = pdb_inp.construct_hierarchy_v2(
+      residue_group_post_processing=False).only_chain()
+    residue_group = chain.only_residue_group()
     atom_groups = residue_group.atom_groups()
     assert len(atom_groups) == 2
-    assert atom_groups[0].altloc == " "
-    assert atom_groups[1].altloc == "B"
+    assert atom_groups[0].altloc == "B"
+    assert atom_groups[1].altloc == " "
+    rgc = residue_group.detached_copy()
+    assert rgc.move_blank_altloc_atom_groups_to_front() == 1
+    for i_proc in [0,1]:
+      if (not edit_chain):
+        assert residue_group.edit_blank_altloc() == (0,1)
+      else:
+        chain.edit_blank_altloc()
+      atom_groups = residue_group.atom_groups()
+      assert len(atom_groups) == 2
+      assert atom_groups[0].altloc == " "
+      assert atom_groups[1].altloc == "B"
+    del atom_groups
+    del residue_group
+    del chain
   #
   lines = flex.split_lines("""\
 ATOM         N1 B
@@ -1310,32 +1366,39 @@ ATOM         N2 BR03
 ATOM         N2 CR03
 ATOM         N3  R03
 """)
+  pdb_inp = pdb.input(source_info=None, lines=lines)
   for i_trial in xrange(n_trials):
-    pdb_inp = pdb.input(source_info=None, lines=lines)
-    residue_group = pdb_inp.construct_hierarchy_v2(
-      residue_group_post_processing=False).only_residue_group()
-    atom_groups = residue_group.atom_groups()
-    assert len(atom_groups) == 8
-    altlocs = [atom_group.altloc for atom_group in atom_groups]
-    resnames = [atom_group.resname for atom_group in atom_groups]
-    if (i_trial == 0):
-      assert altlocs == ["B","A","C"," ","B","C","B"," "]
-    else:
-      assert sorted(altlocs) == [" "," ","A","B","B","B","C","C"]
-    for i_proc in [0,1]:
-      assert residue_group.edit_blank_altloc() == (2,1)
-      atom_groups = residue_group.atom_groups()
-      assert len(atom_groups) == 9
-      altlocs = [atom_group.altloc for atom_group in atom_groups]
-      resnames = [atom_group.resname for atom_group in atom_groups]
-      expected_altlocs = ["",""," ","B","A","C","B","C","B"]
-      expected_resnames=["R02","R03","R02","R01","R01","R01","R02","R03","R03"]
-      if (i_trial == 0):
-        assert altlocs == expected_altlocs
-        assert resnames == expected_resnames
-      else:
-        assert sorted(altlocs) == sorted(expected_altlocs)
-        assert sorted(resnames) == sorted(expected_resnames)
+    for rgpp in [False, True]:
+      residue_group = pdb_inp.construct_hierarchy_v2(
+        residue_group_post_processing=rgpp).only_residue_group()
+      if (not rgpp):
+        atom_groups = residue_group.atom_groups()
+        assert len(atom_groups) == 8
+        altlocs = [atom_group.altloc for atom_group in atom_groups]
+        resnames = [atom_group.resname for atom_group in atom_groups]
+        if (i_trial == 0):
+          assert altlocs == ["B","A","C"," ","B","C","B"," "]
+        else:
+          assert sorted(altlocs) == [" "," ","A","B","B","B","C","C"]
+      for i_proc in [0,1]:
+        if (not rgpp or i_proc != 0):
+          assert residue_group.edit_blank_altloc() == (2,1)
+        atom_groups = residue_group.atom_groups()
+        assert len(atom_groups) == 9
+        altlocs = [atom_group.altloc for atom_group in atom_groups]
+        resnames = [atom_group.resname for atom_group in atom_groups]
+        expected_altlocs = ["",""," ","B","A","C","B","C","B"]
+        expected_resnames=[
+          "R02","R03","R02","R01","R01","R01","R02","R03","R03"]
+        if (i_trial == 0):
+          assert altlocs == expected_altlocs
+          assert resnames == expected_resnames
+        else:
+          assert sorted(altlocs) == sorted(expected_altlocs)
+          assert sorted(resnames) == sorted(expected_resnames)
+      del atom_group
+      del atom_groups
+      del residue_group
     lines = lines.select(flex.random_permutation(size=lines.size()))
 
 def exercise(args):

@@ -327,7 +327,8 @@ namespace {
     typedef std::vector<atom_group>::const_iterator agi_t;
     agi_t ag_end = data->atom_groups.end();
     for(agi_t agi=data->atom_groups.begin();agi!=ag_end;agi++) {
-      if (agi->data->altloc.elems[0] != blank_altloc_char) {
+      char altloc = agi->data->altloc.elems[0];
+      if (altloc != '\0' && altloc != blank_altloc_char) {
         return true;
       }
     }
@@ -563,8 +564,9 @@ namespace {
         unsigned n_i_rgs = static_cast<unsigned>(i_rgs.size());
         if (n_i_rgs == 1U) continue;
         std::set<str1> altlocs;
+        altlocs.insert('\0');
         altlocs.insert(blank_altloc_char);
-        unsigned altlocs_size = 1U;
+        unsigned altlocs_size = 2U;
         for(unsigned i_i_rgs=0;i_i_rgs<n_i_rgs;i_i_rgs++) {
           unsigned i_rg = i_rgs[i_i_rgs];
           residue_group const& rg = (
@@ -660,6 +662,15 @@ namespace {
       }
     }
     return result;
+  }
+
+  void
+  chain::edit_blank_altloc()
+  {
+    unsigned n_rg = residue_groups_size();
+    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
+      data->residue_groups[i_rg].edit_blank_altloc();
+    }
   }
 
 }}} // namespace iotbx::pdb::hierarchy_v2

@@ -407,6 +407,7 @@ namespace {
           &w_t::merge_disconnected_residue_groups_with_pure_altloc)
         .def("split_residue_groups_with_mixed_resnames_but_only_blank_altloc",
           &w_t::split_residue_groups_with_mixed_resnames_but_only_blank_altloc)
+        .def("edit_blank_altloc", &w_t::edit_blank_altloc)
       ;
     }
   };
