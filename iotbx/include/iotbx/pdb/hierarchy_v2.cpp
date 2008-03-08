@@ -141,7 +141,7 @@ namespace {
   T \
   T::detached_copy() const \
   { \
-    T result; \
+    T result(data.get()); \
     detach_copy_children(result, result.data->C##s, data->C##s); \
     return result; \
   } \
@@ -158,6 +158,7 @@ namespace {
   root::deep_copy() const
   {
     root result;
+    result.data->info = data->info.deep_copy();
     detach_copy_children(result, result.data->models, data->models);
     return result;
   }

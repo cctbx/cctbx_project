@@ -176,6 +176,8 @@ def exercise_atom_group():
   assert ag.altloc == ""
   assert ag.resname == ""
   #
+  ag.altloc = "l"
+  ag.resname = "res"
   ag.append_atom(atom=pdb.hierarchy_v2.atom().set_name(new_name="n"))
   rg = pdb.hierarchy_v2.residue_group()
   for i,agc in enumerate([
@@ -187,6 +189,8 @@ def exercise_atom_group():
       assert agc.parent().memory_id() == rg.memory_id()
     else:
       assert agc.parent() is None
+    assert agc.altloc == "l"
+    assert agc.resname == "res"
     assert agc.atoms_size() == 1
     assert agc.atoms()[0].memory_id() != ag.atoms()[0].memory_id()
     assert agc.atoms()[0].name == "n"
@@ -283,6 +287,7 @@ def exercise_residue_group():
   assert not rg.link_to_previous
   rg.link_to_previous = True
   assert rg.link_to_previous
+  rg.link_to_previous = False
   #
   ag = pdb.hierarchy_v2.atom_group(altloc="a")
   assert ag.parent() is None
@@ -298,6 +303,9 @@ def exercise_residue_group():
       assert rgc.parent().memory_id() == c.memory_id()
     else:
       assert rgc.parent() is None
+    assert rgc.resseq == "   2"
+    assert rgc.icode == "j"
+    assert not rgc.link_to_previous
     assert rgc.atom_groups_size() == 1
     assert rgc.atom_groups()[0].memory_id() != rg.atom_groups()[0].memory_id()
     assert rgc.atom_groups()[0].altloc == "a"
@@ -409,6 +417,7 @@ def exercise_chain():
   assert c.reset_atom_tmp(new_value=9) == 0
   #
   c.residue_groups()[0].resseq = "ugh"
+  c.id = "ci"
   m = pdb.hierarchy_v2.model()
   for i,cc in enumerate([
                 pdb.hierarchy_v2.chain(parent=m, other=c),
@@ -419,6 +428,7 @@ def exercise_chain():
       assert cc.parent().memory_id() == m.memory_id()
     else:
       assert cc.parent() is None
+    assert cc.id == "ci"
     assert cc.residue_groups_size() == 2
     assert cc.residue_groups()[0].memory_id() \
          != c.residue_groups()[0].memory_id()
@@ -465,7 +475,7 @@ def exercise_model():
   m.id = "-23"
   assert m.id == "-23"
   #
-  m = pdb.hierarchy_v2.model(id="1")
+  m = pdb.hierarchy_v2.model(id="17")
   assert m.parent() is None
   m.pre_allocate_chains(number_of_additional_chains=2)
   assert m.chains_size() == 0
@@ -501,6 +511,7 @@ def exercise_model():
       assert mc.parent().memory_id() == r.memory_id()
     else:
       assert mc.parent() is None
+    assert mc.id == "17"
     assert mc.chains_size() == 5
     assert mc.chains()[0].memory_id() != m.chains()[0].memory_id()
     assert mc.chains()[0].id == "a"
@@ -580,6 +591,8 @@ def exercise_root():
   #
   rc = r.deep_copy()
   assert rc.memory_id() != r.memory_id()
+  assert list(rc.info) == ["a", "b"]
+  assert rc.info.id() != r.info.id()
   assert rc.models_size() == 5
   assert rc.models()[0].memory_id() != r.models()[0].memory_id()
   assert rc.models()[0].id == "3"
