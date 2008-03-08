@@ -365,6 +365,26 @@ namespace {
     SCITBX_ASSERT(secondary.atoms_size() == 0);
   }
 
+  unsigned
+  residue_group::move_blank_altloc_atom_groups_to_front()
+  {
+    unsigned n_blank_altloc_atom_groups = 0;
+    unsigned n_ag = atom_groups_size();
+    for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+      atom_group const& ag = data->atom_groups[i_ag];
+      char altloc = ag.data->altloc.elems[0];
+      if (altloc == '\0' || altloc == blank_altloc_char) {
+        if (i_ag != n_blank_altloc_atom_groups) {
+          atom_group ag_by_value = ag;
+          remove_atom_group(i_ag);
+          insert_atom_group(n_blank_altloc_atom_groups, ag_by_value);
+        }
+        n_blank_altloc_atom_groups++;
+      }
+    }
+    return n_blank_altloc_atom_groups;
+  }
+
   void
   chain::merge_residue_groups(
     residue_group& primary,
