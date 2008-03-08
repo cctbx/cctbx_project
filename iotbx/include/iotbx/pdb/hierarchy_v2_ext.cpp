@@ -354,6 +354,7 @@ namespace {
           arg_("primary"), arg_("secondary")))
         .def("move_blank_altloc_atom_groups_to_front",
           &w_t::move_blank_altloc_atom_groups_to_front)
+        .def("edit_blank_altloc", &w_t::edit_blank_altloc)
       ;
     }
   };

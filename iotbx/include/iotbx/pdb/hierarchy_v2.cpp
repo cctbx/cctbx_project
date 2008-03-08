@@ -385,6 +385,100 @@ namespace {
     return n_blank_altloc_atom_groups;
   }
 
+  af::tiny<unsigned, 2>
+  residue_group::edit_blank_altloc()
+  {
+    unsigned
+      n_blank_altloc_atom_groups = move_blank_altloc_atom_groups_to_front();
+    if (n_blank_altloc_atom_groups == 0) {
+      return af::tiny<unsigned, 2>(0, 0);
+    }
+    typedef std::set<str4> ss4;
+    typedef std::map<str3, ss4> ms3ss4;
+    ms3ss4 blank_name_sets;
+    unsigned i_ag = 0;
+    for(;i_ag<n_blank_altloc_atom_groups;i_ag++) {
+      atom_group& ag = data->atom_groups[i_ag];
+      ag.data->altloc.elems[0] = '\0';
+      ss4& blank_name_set = blank_name_sets[ag.data->resname];
+      unsigned n_atoms = ag.atoms_size();
+      for(unsigned i_atom=0;i_atom<n_atoms;i_atom++) {
+        blank_name_set.insert(ag.atoms()[i_atom].data->name);
+      }
+    }
+    ms3ss4 blank_but_alt_sets;
+    ms3ss4::const_iterator blank_name_sets_end = blank_name_sets.end();
+    unsigned n_ag = atom_groups_size();
+    for(;i_ag<n_ag;i_ag++) {
+      atom_group& ag = data->atom_groups[i_ag];
+      ms3ss4::const_iterator blank_name_sets_iter = blank_name_sets.find(
+        ag.data->resname);
+      if (blank_name_sets_iter == blank_name_sets_end) continue;
+      ss4 const& blank_name_set = blank_name_sets_iter->second;
+      ss4::const_iterator blank_name_set_end = blank_name_set.end();
+      ss4* blank_but_alt_resname = 0;
+      unsigned n_atoms = ag.atoms_size();
+      for(unsigned i_atom=0;i_atom<n_atoms;i_atom++) {
+        str4 const& atom_name = ag.atoms()[i_atom].data->name;
+        ss4::const_iterator blank_name_set_iter = blank_name_set.find(
+          atom_name);
+        if (blank_name_set_iter == blank_name_set_end) continue;
+        if (blank_but_alt_resname == 0) {
+          blank_but_alt_resname = &blank_but_alt_sets[ag.data->resname];
+        }
+        blank_but_alt_resname->insert(atom_name);
+      }
+    }
+    unsigned n_blank_but_alt_atom_groups = 0;
+    if (blank_but_alt_sets.size() != 0) {
+      ms3ss4::const_iterator blank_but_alt_sets_end = blank_but_alt_sets.end();
+      for(unsigned i_ag=0;i_ag<n_blank_altloc_atom_groups;) {
+        atom_group ag = data->atom_groups[i_ag];
+        ms3ss4::const_iterator
+          blank_but_alt_sets_iter = blank_but_alt_sets.find(ag.data->resname);
+        if (blank_but_alt_sets_iter == blank_but_alt_sets_end) {
+          i_ag++;
+          continue;
+        }
+        ss4::const_iterator
+          blank_but_alt_set_end = blank_but_alt_sets_iter->second.end();
+        atom_group* new_atom_group = 0;
+        unsigned n_atoms = ag.atoms_size();
+        for(unsigned i_atom=0;i_atom<n_atoms;) {
+          hierarchy_v2::atom atom = ag.atoms()[i_atom];
+          ss4::const_iterator
+            blank_but_alt_set_iter = blank_but_alt_sets_iter->second.find(
+              atom.data->name);
+          if (blank_but_alt_set_iter == blank_but_alt_set_end) {
+            i_atom++;
+            continue;
+          }
+          if (new_atom_group == 0) {
+            unsigned i = n_blank_altloc_atom_groups
+                       + n_blank_but_alt_atom_groups;
+            atom_group new_ag(blank_altloc_cstr, ag.data->resname.elems);
+            insert_atom_group(i, new_ag);
+            new_atom_group = &data->atom_groups[i];
+            n_blank_but_alt_atom_groups++;
+          }
+          ag.remove_atom(i_atom);
+          n_atoms--;
+          new_atom_group->append_atom(atom);
+        }
+        if (ag.atoms_size() == 0) {
+          remove_atom_group(i_ag);
+          n_blank_altloc_atom_groups--;
+        }
+        else {
+          i_ag++;
+        }
+      }
+    }
+    return af::tiny<unsigned, 2>(
+      n_blank_altloc_atom_groups,
+      n_blank_but_alt_atom_groups);
+  }
+
   void
   chain::merge_residue_groups(
     residue_group& primary,

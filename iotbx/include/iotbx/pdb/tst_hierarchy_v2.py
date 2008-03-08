@@ -1107,7 +1107,7 @@ HETATM 9415  O   HOH     1
     .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
   assert index_count_pairs.size() == 0
 
-def exercise_process_blank_altloc(n_trials=30):
+def exercise_edit_blank_altloc(n_trials=30):
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1
 ATOM         N2
@@ -1115,7 +1115,7 @@ ATOM         N2
   residue_group = pdb_inp.construct_hierarchy_v2(
     residue_group_post_processing=False).only_residue_group()
   for i_proc in [0,1]:
-    assert residue_group.process_blank_altloc() == (1,0)
+    assert residue_group.edit_blank_altloc() == (1,0)
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1 A
@@ -1124,7 +1124,7 @@ ATOM         N2 B
   residue_group = pdb_inp.construct_hierarchy_v2(
     residue_group_post_processing=False).only_residue_group()
   for i_proc in [0,1]:
-    assert residue_group.process_blank_altloc() == (0,0)
+    assert residue_group.edit_blank_altloc() == (0,0)
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1
@@ -1137,7 +1137,7 @@ ATOM         N2 B
   assert atom_groups[0].altloc == " "
   assert atom_groups[1].altloc == "B"
   for i_proc in [0,1]:
-    assert residue_group.process_blank_altloc() == (1,0)
+    assert residue_group.edit_blank_altloc() == (1,0)
     atom_groups = residue_group.atom_groups()
     assert len(atom_groups) == 2
     assert atom_groups[0].altloc == ""
@@ -1154,7 +1154,7 @@ ATOM         N1 B
   assert atom_groups[0].altloc == " "
   assert atom_groups[1].altloc == "B"
   for i_proc in [0,1]:
-    assert residue_group.process_blank_altloc() == (0,1)
+    assert residue_group.edit_blank_altloc() == (0,1)
     atom_groups = residue_group.atom_groups()
     assert len(atom_groups) == 2
     assert atom_groups[0].altloc == " "
@@ -1171,7 +1171,7 @@ ATOM         N1
   assert atom_groups[0].altloc == "B"
   assert atom_groups[1].altloc == " "
   for i_proc in [0,1]:
-    assert residue_group.process_blank_altloc() == (0,1)
+    assert residue_group.edit_blank_altloc() == (0,1)
     atom_groups = residue_group.atom_groups()
     assert len(atom_groups) == 2
     assert atom_groups[0].altloc == " "
@@ -1197,7 +1197,7 @@ ATOM         N3
       assert sorted([atom_group.altloc for atom_group in atom_groups]) \
           == [" ", "B"]
     for i_proc in [0,1]:
-      assert residue_group.process_blank_altloc() == (1,1)
+      assert residue_group.edit_blank_altloc() == (1,1)
       atom_groups = residue_group.atom_groups()
       assert len(atom_groups) == 3
       assert atom_groups[0].altloc == ""
@@ -1235,7 +1235,7 @@ ATOM         N3  R03
     else:
       assert sorted(altlocs) == [" "," "," ","B","B","B"]
     for i_proc in [0,1]:
-      assert residue_group.process_blank_altloc() == (3,3)
+      assert residue_group.edit_blank_altloc() == (3,3)
       atom_groups = residue_group.atom_groups()
       assert len(atom_groups) == 9
       altlocs = [atom_group.altloc for atom_group in atom_groups]
@@ -1278,7 +1278,7 @@ ATOM         N3  R03
     else:
       assert sorted(altlocs) == [" "," "," ","A","B","B","B"]
     for i_proc in [0,1]:
-      assert residue_group.process_blank_altloc() == (3,2)
+      assert residue_group.edit_blank_altloc() == (3,2)
       atom_groups = residue_group.atom_groups()
       assert len(atom_groups) == 9
       altlocs = [atom_group.altloc for atom_group in atom_groups]
@@ -1323,7 +1323,7 @@ ATOM         N3  R03
     else:
       assert sorted(altlocs) == [" "," ","A","B","B","B","C","C"]
     for i_proc in [0,1]:
-      assert residue_group.process_blank_altloc() == (2,1)
+      assert residue_group.edit_blank_altloc() == (2,1)
       atom_groups = residue_group.atom_groups()
       assert len(atom_groups) == 9
       altlocs = [atom_group.altloc for atom_group in atom_groups]
@@ -1355,7 +1355,7 @@ def exercise(args):
     exercise_merge_atom_groups()
     exercise_merge_residue_groups()
     exercise_chain_merge_and_split_residue_groups()
-    exercise_process_blank_altloc()
+    exercise_edit_blank_altloc()
     if (not forever): break
   print format_cpu_times()
 
