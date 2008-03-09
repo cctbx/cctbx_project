@@ -381,6 +381,44 @@ namespace {
       find_residue_group_index_overloads, find_residue_group_index, 1, 2)
 
     static void
+    append_atom_records(
+      w_t const& self,
+      boost::python::list pdb_records)
+    {
+      const char* chain_id = self.data->id.c_str();
+      unsigned n_rg = self.residue_groups_size();
+      for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
+        residue_group const& rg = self.residue_groups()[i_rg];
+        if (i_rg != 0 && !rg.data->link_to_previous) {
+          pdb_records.append("BREAK");
+        }
+        const char* resseq = rg.data->resseq.elems;
+        const char* icode = rg.data->icode.elems;
+        unsigned n_ag = rg.atom_groups_size();
+        for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+          atom_group const& ag = rg.atom_groups()[i_ag];
+          const char* altloc = ag.data->altloc.elems;
+          const char* resname = ag.data->resname.elems;
+          typedef std::vector<atom> va;
+          va const& atoms = ag.atoms();
+          va::const_iterator atoms_end = atoms.end();
+          for(va::const_iterator atom=atoms.begin();atom!=atoms_end;atom++) {
+            boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
+            PyObject* str_obj = str_hdl.get();
+            char* str_begin = PyString_AS_STRING(str_obj);
+            unsigned str_len = atom->format_atom_record(
+              str_begin, altloc, resname, resseq, icode, chain_id);
+            str_hdl.release();
+            if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+              boost::python::throw_error_already_set();
+            }
+            pdb_records.append(boost::python::handle<>(str_obj));
+          }
+        }
+      }
+    }
+
+    static void
     wrap()
     {
       using namespace boost::python;
@@ -408,6 +446,7 @@ namespace {
         .def("split_residue_groups_with_mixed_resnames_but_only_blank_altloc",
           &w_t::split_residue_groups_with_mixed_resnames_but_only_blank_altloc)
         .def("edit_blank_altloc", &w_t::edit_blank_altloc)
+        .def("append_atom_records", append_atom_records, (arg_("pdb_records")))
       ;
     }
   };
