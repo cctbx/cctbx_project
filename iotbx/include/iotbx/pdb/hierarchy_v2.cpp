@@ -311,6 +311,17 @@ namespace {
   }
 
   std::string
+  atom_group::confid() const
+  {
+    char blank = ' ';
+    char result[5];
+    data->altloc.copy_left_justified(result, 1U, blank);
+    data->resname.copy_right_justified(result+1, 3U, blank);
+    result[4] = '\0';
+    return std::string(result);
+  }
+
+  std::string
   residue_group::resid() const
   {
     char blank = ' ';

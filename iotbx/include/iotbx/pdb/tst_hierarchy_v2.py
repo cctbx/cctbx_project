@@ -177,9 +177,11 @@ def exercise_atom_group():
   ag.resname = None
   assert ag.altloc == ""
   assert ag.resname == ""
+  assert ag.confid() == "    "
   #
   ag.altloc = "l"
   ag.resname = "res"
+  assert ag.confid() == "lres"
   ag.append_atom(atom=pdb.hierarchy_v2.atom().set_name(new_name="n"))
   rg = pdb.hierarchy_v2.residue_group()
   for i,agc in enumerate([
@@ -918,6 +920,75 @@ ATOM      4  CB  LYS   110
     assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
   else: raise Exception_expected
 
+def exercise_convenience_generators():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        1
+ATOM      1  N  AR11 A   1
+ATOM      2  O  AR11 A   1
+ATOM      3  N  BR21 A   1
+ATOM      4  O  BR21 A   1
+ATOM      5  N  AR12 A   2
+ATOM      6  O  AR12 A   2
+ATOM      7  N  BR22 A   2
+ATOM      8  O  BR22 A   2
+TER
+ATOM      9  N  AR11 B   1
+ATOM     10  O  AR11 B   1
+ATOM     11  N  BR21 B   1
+ATOM     12  O  BR21 B   1
+ATOM     13  N  AR12 B   2
+ATOM     14  O  AR12 B   2
+ATOM     15  N  BR22 B   2
+ATOM     16  O  BR22 B   2
+TER
+ENDMDL
+MODEL        2
+ATOM      1  N  AR11 A   1
+ATOM      2  O  AR11 A   1
+ATOM      3  N  BR21 A   1
+ATOM      4  O  BR21 A   1
+ATOM      5  N  AR12 A   2
+ATOM      6  O  AR12 A   2
+ATOM      7  N  BR22 A   2
+ATOM      8  O  BR22 A   2
+TER
+ATOM      9  N  AR11 B   1
+ATOM     10  O  AR11 B   1
+ATOM     11  N  BR21 B   1
+ATOM     12  O  BR21 B   1
+ATOM     13  N  AR12 B   2
+ATOM     14  O  AR12 B   2
+ATOM     15  N  BR22 B   2
+ATOM     16  O  BR22 B   2
+TER
+ENDMDL
+"""))
+  obj = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
+  assert [model.id for model in obj.models()] == ["   1", "   2"]
+  assert [chain.id for chain in obj.chains()] == ["A", "B"] * 2
+  assert [rg.resid() for rg in obj.residue_groups()] == ["   1 ", "   2 "] * 4
+  assert [ag.confid() for ag in obj.atom_groups()] \
+      == ["AR11", "BR21", "AR12", "BR22"] * 4
+  assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "] * 16
+  obj = obj.models()[0]
+  assert [chain.id for chain in obj.chains()] == ["A", "B"]
+  assert [rg.resid() for rg in obj.residue_groups()] == ["   1 ", "   2 "] * 2
+  assert [ag.confid() for ag in obj.atom_groups()] \
+      == ["AR11", "BR21", "AR12", "BR22"] * 2
+  assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "] * 8
+  obj = obj.chains()[0]
+  assert [rg.resid() for rg in obj.residue_groups()] == ["   1 ", "   2 "]
+  assert [ag.confid() for ag in obj.atom_groups()] \
+      == ["AR11", "BR21", "AR12", "BR22"]
+  assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "] * 4
+  obj = obj.residue_groups()[0]
+  assert [ag.confid() for ag in obj.atom_groups()] \
+      == ["AR11", "BR21"]
+  assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "] * 2
+  obj = obj.atom_groups()[0]
+  assert len(list(obj.atoms())) == 2
+  assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "]
+
 def exercise_only():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 MODEL        1
@@ -1596,6 +1667,7 @@ def exercise(args):
     exercise_root()
     exercise_format_atom_record_using_parents()
     exercise_construct_hierarchy()
+    exercise_convenience_generators()
     exercise_only()
     exercise_merge_atom_groups()
     exercise_merge_residue_groups()

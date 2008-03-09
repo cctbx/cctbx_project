@@ -292,6 +292,7 @@ namespace {
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<atom_group, residue_group>::wrapper)
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(atom)
+        .def("confid", &w_t::confid)
       ;
     }
   };

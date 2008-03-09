@@ -1,8 +1,36 @@
+from __future__ import generators
+
 import boost.python
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_v2_ext")
 from iotbx_pdb_hierarchy_v2_ext import *
 
 class _root(boost.python.injector, ext.root):
+
+  def chains(self):
+    for model in self.models():
+      for chain in model.chains():
+        yield chain
+
+  def residue_groups(self):
+    for model in self.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          yield rg
+
+  def atom_groups(self):
+    for model in self.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            yield ag
+
+  def atoms(self):
+    for model in self.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for ag in rg.atom_groups():
+            for atom in ag.atoms():
+              yield atom
 
   def only_model(self):
     assert self.models_size() == 1
@@ -41,6 +69,24 @@ class _root(boost.python.injector, ext.root):
 
 class _model(boost.python.injector, ext.model):
 
+  def residue_groups(self):
+    for chain in self.chains():
+      for rg in chain.residue_groups():
+        yield rg
+
+  def atom_groups(self):
+    for chain in self.chains():
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          yield ag
+
+  def atoms(self):
+    for chain in self.chains():
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          for atom in ag.atoms():
+            yield atom
+
   def only_chain(self):
     assert self.chains_size() == 1
     return self.chains()[0]
@@ -55,6 +101,17 @@ class _model(boost.python.injector, ext.model):
     return self.only_atom_group().only_atom()
 
 class _chain(boost.python.injector, ext.chain):
+
+  def atom_groups(self):
+    for rg in self.residue_groups():
+      for ag in rg.atom_groups():
+        yield ag
+
+  def atoms(self):
+    for rg in self.residue_groups():
+      for ag in rg.atom_groups():
+        for atom in ag.atoms():
+          yield atom
 
   def only_residue_group(self):
     assert self.residue_groups_size() == 1
@@ -91,6 +148,11 @@ class _chain(boost.python.injector, ext.chain):
     return result
 
 class _residue_group(boost.python.injector, ext.residue_group):
+
+  def atoms(self):
+    for ag in self.atom_groups():
+      for atom in ag.atoms():
+        yield atom
 
   def only_atom_group(self):
     assert self.atom_groups_size() == 1
