@@ -1,4 +1,5 @@
 #include <iotbx/pdb/hierarchy_v2.h>
+#include <iotbx/pdb/common_residue_names.h>
 #include <cctbx/eltbx/chemical_elements.h>
 #include <boost/scoped_array.hpp>
 
@@ -682,6 +683,54 @@ namespace {
     for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
       data->residue_groups[i_rg].edit_blank_altloc();
     }
+  }
+
+  af::shared<af::tiny<std::size_t, 2> >
+  chain::find_pure_altloc_ranges(
+    const char* common_residue_name_class_only) const
+  {
+    af::shared<af::tiny<std::size_t, 2> > result;
+    unsigned n_rg = residue_groups_size();
+    unsigned range_start = n_rg;
+    unsigned skip = 0;
+    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
+      residue_group const& rg = data->residue_groups[i_rg];
+      unsigned n_ags = rg.atom_groups_size();
+      std::vector<atom_group> const& ags = rg.atom_groups();
+      bool is_pure_altloc = (   n_ags != 0
+                             && ags[0].data->altloc.elems[0] != '\0');
+      if (common_residue_name_class_only != 0) {
+        skip = 1;
+        for(unsigned i_ag=0;i_ag<n_ags;i_ag++) {
+          if (   common_residue_names::get_class(ags[i_ag].data->resname)
+              == common_residue_name_class_only) {
+            skip = 0;
+            break;
+          }
+        }
+      }
+      if (skip != 0 || !rg.data->link_to_previous) {
+        if (range_start+1U < i_rg) {
+          result.push_back(af::tiny<std::size_t, 2>(range_start, i_rg));
+        }
+        range_start = (is_pure_altloc ? i_rg+skip : n_rg);
+      }
+      else {
+        if (!is_pure_altloc) {
+          if (range_start+1U < i_rg) {
+            result.push_back(af::tiny<std::size_t, 2>(range_start, i_rg));
+          }
+          range_start = n_rg;
+        }
+        else if (range_start == n_rg) {
+          range_start = i_rg + skip;
+        }
+      }
+    }
+    if (range_start+1U < n_rg) {
+      result.push_back(af::tiny<std::size_t, 2>(range_start, n_rg));
+    }
+    return result;
   }
 
 }}} // namespace iotbx::pdb::hierarchy_v2

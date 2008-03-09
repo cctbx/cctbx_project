@@ -844,6 +844,10 @@ namespace hierarchy_v2 {
 
       void
       edit_blank_altloc();
+
+      af::shared<af::tiny<std::size_t, 2> >
+      find_pure_altloc_ranges(
+        const char* common_residue_name_class_only=0) const;
   };
 
   //! Model attributes.
