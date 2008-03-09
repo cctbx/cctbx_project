@@ -1650,6 +1650,96 @@ HETATM10996  O   HOH    40     -65.221 -13.774 -33.183  1.00 36.14           O
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
   assert len(c.find_pure_altloc_ranges()) == 0
+  #
+  caa = "common_amino_acid"
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            AALA     1
+ATOM            BGLY     1
+ATOM            ATYR     2
+ATOM            BTHR     2
+ATOM            AHOH     3
+ATOM            BHOH     3
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert c.find_pure_altloc_ranges() == [(0,3)]
+  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+    == [(0,2)]
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            AHOH     3
+ATOM            BHOH     3
+ATOM            AALA     1
+ATOM            BGLY     1
+ATOM            ATYR     2
+ATOM            BTHR     2
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert c.find_pure_altloc_ranges() == [(0,3)]
+  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+    == [(1,3)]
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            AALA     1
+ATOM            BGLY     1
+ATOM            AHOH     3
+ATOM            BHOH     3
+ATOM            ATYR     2
+ATOM            BTHR     2
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert c.find_pure_altloc_ranges() == [(0,3)]
+  assert len(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
+    == 0
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            AALA     1
+ATOM            BGLY     1
+ATOM            AHOH     3
+ATOM            BHOH     3
+ATOM            ATYR     2
+ATOM            BTHR     2
+ATOM            ASER     4
+ATOM            BSER     4
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert c.find_pure_altloc_ranges() == [(0,4)]
+  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+    == [(2,4)]
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            ASER     4
+ATOM            BSER     4
+ATOM            AALA     1
+ATOM            BGLY     1
+ATOM            AHOH     3
+ATOM            BHOH     3
+ATOM            ATYR     2
+ATOM            BTHR     2
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert c.find_pure_altloc_ranges() == [(0,4)]
+  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+    == [(0,2)]
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM             MET     1
+ATOM            ALEU     2
+ATOM            ASER     3
+ATOM            BSER     3
+ATOM            AALA     4
+ATOM            BGLY     4
+ATOM            AHOH     5
+ATOM            BHOH     5
+ATOM            AHOH     6
+ATOM            ATYR     7
+ATOM            BTHR     7
+ATOM            AGLY     8
+ATOM            BGLY     8
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert c.find_pure_altloc_ranges() == [(1,8)]
+  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+      == [(1,4), (6,8)]
 
 def exercise_as_pdb_string(pdb_file_names, comprehensive):
   pdb_string = """\
