@@ -1209,3 +1209,131 @@ and Unix shells where possible, but nested constructs of quotes and
 backslashes are still prone to cause surprises. In unusual situations,
 probably the fastest method to obtain the desired result is trial
 and error (as opposed to studying the intricate rules).
+
+scope.show(attributes_level=3)
+------------------------------
+
+In this document, the ``scope.show()`` method is used extensively
+in the examples. With the defaults for the method parameters, it
+only shows the Phil scope or definition names and and associated
+values. It is also possible to include some or all Phil scope or
+definition attributes in the ``.show()`` output, as directed by the
+``attributes_level`` parameter::
+
+  attributes_level=0: shows only names and values
+                   1: also shows the .help attribute
+                   2: shows all attributes which are not None
+                   3: shows all attributes
+
+``scope.show(attributes_level=2)`` can be used to pretty-print
+master files without any loss of information. ``attributes_level=3``
+is useful to obtain a full listing of all available attributes,
+but all information is preserved with the usually much less verbose
+``attributes_level=2``. This is illustrated by the following example::
+
+  ## extract code begin: libtbx_phil_examples.py
+
+  master_phil = parse("""
+    minimization {
+      input
+        .help = "File names and data labels."
+        .multiple = True
+      {
+        file_name = None
+          .type = path
+        label = None
+          .help = "A unique substring of the data label is sufficient."
+          .type = str
+      }
+    }
+    """)
+
+  for attributes_level in xrange(4):
+    master_phil.show(attributes_level=attributes_level)
+
+  ## extract code end
+
+Output with ``attributes_level=0`` (the default)::
+
+  minimization {
+    input {
+      file_name = None
+      label = None
+    }
+  }
+
+Output with ``attributes_level=1``::
+
+  minimization {
+    input
+      .help = "File names and data labels."
+    {
+      file_name = None
+      label = None
+        .help = "A unique substring of the data label is sufficient."
+    }
+  }
+
+Output with ``attributes_level=2``::
+
+  minimization {
+    input
+      .help = "File names and data labels."
+      .multiple = True
+    {
+      file_name = None
+        .type = path
+      label = None
+        .help = "A unique substring of the data label is sufficient."
+        .type = str
+    }
+  }
+
+Output with ``attributes_level=3``::
+
+  minimization
+    .style = None
+    .help = None
+    .caption = None
+    .short_caption = None
+    .optional = None
+    .call = None
+    .multiple = None
+    .sequential_format = None
+    .disable_add = None
+    .disable_delete = None
+    .expert_level = None
+  {
+    input
+      .style = None
+      .help = "File names and data labels."
+      .caption = None
+      .short_caption = None
+      .optional = None
+      .call = None
+      .multiple = True
+      .sequential_format = None
+      .disable_add = None
+      .disable_delete = None
+      .expert_level = None
+    {
+      file_name = None
+        .help = None
+        .caption = None
+        .short_caption = None
+        .optional = None
+        .type = path
+        .multiple = None
+        .input_size = None
+        .expert_level = None
+      label = None
+        .help = "A unique substring of the data label is sufficient."
+        .caption = None
+        .short_caption = None
+        .optional = None
+        .type = str
+        .multiple = None
+        .input_size = None
+        .expert_level = None
+    }
+  }
