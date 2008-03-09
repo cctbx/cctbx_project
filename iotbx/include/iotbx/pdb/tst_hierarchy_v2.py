@@ -4,7 +4,8 @@ from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.str_utils import show_string
 from libtbx.utils import format_cpu_times
 from cStringIO import StringIO
-import sys
+import libtbx.load_env
+import sys, os
 
 def exercise_atom():
   a = pdb.hierarchy_v2.atom()
@@ -480,6 +481,31 @@ def exercise_chain():
   else: raise Exception_expected
   #
   c.edit_blank_altloc()
+  #
+  c = pdb.hierarchy_v2.chain(id="c")
+  records = []
+  c.append_atom_records(pdb_records=records)
+  assert len(records) == 0
+  rg = c.new_residue_group(resseq="s", icode="j")
+  ag = rg.new_atom_group(altloc="a", resname="r")
+  ag.append_atom(pdb.hierarchy_v2.atom().set_name("n"))
+  c.append_atom_records(pdb_records=records)
+  assert records == [
+    "ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00"]
+  rg = c.new_residue_group(resseq="t", icode="k")
+  ag = rg.new_atom_group(altloc="b", resname="q")
+  ag.append_atom(pdb.hierarchy_v2.atom().set_name("m"))
+  rg = c.new_residue_group(resseq="u", icode="l", link_to_previous=False)
+  ag = rg.new_atom_group(altloc="d", resname="p")
+  ag.append_atom(pdb.hierarchy_v2.atom().set_name("o"))
+  records = []
+  c.append_atom_records(pdb_records=records)
+  assert not show_diff("\n".join(records)+"\n", """\
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+BREAK
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+""")
 
 def exercise_model():
   m = pdb.hierarchy_v2.model()
@@ -1473,10 +1499,43 @@ ATOM         N3  R03
       del residue_group
     lines = lines.select(flex.random_permutation(size=lines.size()))
 
+def exercise_as_pdb_string(pdb_file_names):
+  pdb_string = """\
+HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
+ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
+"""
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
+  hierarchy = pdb_inp.construct_hierarchy_v2()
+  assert not show_diff(hierarchy.as_pdb_string(), pdb_string+"TER\n")
+  #
+  if (pdb_file_names is None):
+    print "Skipping exercise_as_pdb_string(): input files not available"
+    return
+  for file_name in pdb_file_names:
+    pdb_inp_1 = pdb.input(file_name=file_name)
+    hierarchy_1 = pdb_inp_1.construct_hierarchy_v2()
+    pdb_str_1 = hierarchy_1.as_pdb_string(append_end=True)
+    pdb_inp_2 = pdb.input(
+      source_info=None, lines=flex.split_lines(pdb_str_1))
+    hierarchy_2 = pdb_inp_2.construct_hierarchy_v2()
+    pdb_str_2 = hierarchy_2.as_pdb_string(append_end=False)
+    assert not show_diff(pdb_str_1, pdb_str_2+"END\n")
+
+def get_phenix_regression_pdb_file_names():
+  pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
+  if (pdb_dir is None): return None
+  result = []
+  for node in os.listdir(pdb_dir):
+    if (not (node.endswith(".pdb") or node.endswith(".ent"))): continue
+    result.append(os.path.join(pdb_dir, node))
+  assert len(result) != 0
+  return result
+
 def exercise(args):
+  forever = "--forever" in args
   print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
     pdb.hierarchy_v2.atom.sizeof_data()
-  forever = "--forever" in args
+  phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
     exercise_atom()
     exercise_atom_group()
@@ -1491,6 +1550,7 @@ def exercise(args):
     exercise_merge_residue_groups()
     exercise_chain_merge_and_split_residue_groups()
     exercise_edit_blank_altloc()
+    exercise_as_pdb_string(pdb_file_names=phenix_regression_pdb_file_names)
     if (not forever): break
   print format_cpu_times()
 
