@@ -2776,6 +2776,7 @@ TER
   if (pdb_file_names is None):
     print "Skipping exercise_hierarchy_v1_as_pdb_string():" \
           " input files not available"
+    return
   expected_md5_raw = """\
 ala_h.pdb 210c6f7452c721f4d181276df4d1b3e6
 jf.pdb 82b7d19bedd08a0d9b6da3a683f1df7c
