@@ -5,6 +5,7 @@ from libtbx.str_utils import show_string
 from libtbx.utils import format_cpu_times
 from cStringIO import StringIO
 import libtbx.load_env
+import random
 import sys, os
 
 def exercise_atom():
@@ -1499,7 +1500,54 @@ ATOM         N3  R03
       del residue_group
     lines = lines.select(flex.random_permutation(size=lines.size()))
 
-def exercise_as_pdb_string(pdb_file_names):
+def exercise_find_pure_altloc_ranges():
+  c = pdb.hierarchy_v2.chain()
+  assert len(c.find_pure_altloc_ranges()) == 0
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            A        1
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert len(c.find_pure_altloc_ranges()) == 0
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            A        1
+ATOM            B        2
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert c.find_pure_altloc_ranges() == [(0,2)]
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            A        1
+BREAK
+ATOM            B        2
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert len(c.find_pure_altloc_ranges()) == 0
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            A        1
+ATOM            B        2
+ATOM            C        3
+ATOM                     4
+ATOM            E        5
+ATOM            F        6
+ATOM            G        6
+ATOM            H        6
+ATOM                     7
+ATOM                     8
+ATOM            I        9
+ATOM            J       10
+BREAK
+ATOM            L       11
+ATOM            M       12
+ATOM         N1 N       13
+ATOM         N2         13
+ATOM            O       14
+ATOM                    14
+ATOM            P       15
+ATOM                    15
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert c.find_pure_altloc_ranges() == [(0,3),(4,6),(8,10),(10,12),(13,15)]
+
+def exercise_as_pdb_string(pdb_file_names, comprehensive):
   pdb_string = """\
 HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
 ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
@@ -1512,6 +1560,8 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
     print "Skipping exercise_as_pdb_string(): input files not available"
     return
   for file_name in pdb_file_names:
+    if (not comprehensive and random.random() > 0.1):
+      continue
     pdb_inp_1 = pdb.input(file_name=file_name)
     hierarchy_1 = pdb_inp_1.construct_hierarchy_v2()
     pdb_str_1 = hierarchy_1.as_pdb_string(append_end=True)
@@ -1532,6 +1582,7 @@ def get_phenix_regression_pdb_file_names():
   return result
 
 def exercise(args):
+  comprehensive = "--comprehensive" in args
   forever = "--forever" in args
   print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
     pdb.hierarchy_v2.atom.sizeof_data()
@@ -1550,7 +1601,10 @@ def exercise(args):
     exercise_merge_residue_groups()
     exercise_chain_merge_and_split_residue_groups()
     exercise_edit_blank_altloc()
-    exercise_as_pdb_string(pdb_file_names=phenix_regression_pdb_file_names)
+    exercise_find_pure_altloc_ranges()
+    exercise_as_pdb_string(
+      pdb_file_names=phenix_regression_pdb_file_names,
+      comprehensive=comprehensive)
     if (not forever): break
   print format_cpu_times()
 

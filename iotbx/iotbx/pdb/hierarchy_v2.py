@@ -66,6 +66,30 @@ class _chain(boost.python.injector, ext.chain):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
+  def find_pure_altloc_ranges(self):
+    result = []
+    n_rg = self.residue_groups_size()
+    range_start = n_rg
+    for i_rg,rg in enumerate(self.residue_groups()):
+      ags = rg.atom_groups()
+      if (not rg.link_to_previous):
+        if (range_start+1 < i_rg):
+          result.append((range_start, i_rg))
+        if (len(ags) == 0 or ags[0].altloc == ""):
+          range_start = n_rg
+        else:
+          range_start = i_rg
+      else:
+        if (len(ags) == 0 or ags[0].altloc == ""):
+          if (range_start+1 < i_rg):
+            result.append((range_start, i_rg))
+            range_start = n_rg
+        elif (range_start == n_rg):
+          range_start = i_rg
+    if (range_start+1 < n_rg):
+      result.append((range_start, n_rg))
+    return result
+
 class _residue_group(boost.python.injector, ext.residue_group):
 
   def only_atom_group(self):
