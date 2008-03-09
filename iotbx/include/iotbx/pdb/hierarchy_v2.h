@@ -593,6 +593,9 @@ namespace hierarchy_v2 {
 
       unsigned
       reset_atom_tmp(int new_value) const;
+
+      std::string
+      confid() const;
   };
 
   //! residue_group attributes.
