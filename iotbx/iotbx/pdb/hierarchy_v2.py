@@ -123,39 +123,6 @@ class _chain(boost.python.injector, ext.chain):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def find_pure_altloc_ranges(self, common_residue_name_class_only=None):
-    result = []
-    n_rg = self.residue_groups_size()
-    range_start = n_rg
-    for i_rg,rg in enumerate(self.residue_groups()):
-      ags = rg.atom_groups()
-      skip = 0
-      if (common_residue_name_class_only is not None):
-        from iotbx.pdb import common_residue_names_get_class
-        for ag in ags:
-          if (   common_residue_names_get_class(name=ag.resname)
-              == common_residue_name_class_only):
-            break
-        else:
-          skip = 1
-      if (skip != 0 or not rg.link_to_previous):
-        if (range_start+1 < i_rg):
-          result.append((range_start, i_rg))
-        if (len(ags) == 0 or ags[0].altloc == ""):
-          range_start = n_rg
-        else:
-          range_start = i_rg + skip
-      else:
-        if (len(ags) == 0 or ags[0].altloc == ""):
-          if (range_start+1 < i_rg):
-            result.append((range_start, i_rg))
-          range_start = n_rg
-        elif (range_start == n_rg):
-          range_start = i_rg + skip
-    if (range_start+1 < n_rg):
-      result.append((range_start, n_rg))
-    return result
-
 class _residue_group(boost.python.injector, ext.residue_group):
 
   def atoms(self):

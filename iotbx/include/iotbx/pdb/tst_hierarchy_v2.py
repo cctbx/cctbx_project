@@ -1573,27 +1573,27 @@ ATOM         N3  R03
 
 def exercise_find_pure_altloc_ranges():
   c = pdb.hierarchy_v2.chain()
-  assert len(c.find_pure_altloc_ranges()) == 0
+  assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert len(c.find_pure_altloc_ranges()) == 0
+  assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 ATOM            B        1
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert len(c.find_pure_altloc_ranges()) == 0
+  assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 ATOM            B        2
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert c.find_pure_altloc_ranges() == [(0,2)]
+  assert list(c.find_pure_altloc_ranges()) == [(0,2)]
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
@@ -1601,7 +1601,7 @@ BREAK
 ATOM            B        2
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert len(c.find_pure_altloc_ranges()) == 0
+  assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
@@ -1609,7 +1609,7 @@ ATOM            B        1
 ATOM                     2
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert len(c.find_pure_altloc_ranges()) == 0
+  assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
@@ -1635,7 +1635,8 @@ ATOM            P       15
 ATOM                    15
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert c.find_pure_altloc_ranges() == [(0,3),(4,6),(8,10),(10,12),(13,15)]
+  assert list(c.find_pure_altloc_ranges()) \
+      == [(0,3),(4,6),(8,10),(10,12),(13,15)]
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 HEADER    CELL CYCLE                              13-SEP-05   2B05
@@ -1649,7 +1650,7 @@ HETATM10995  O  BHOH    39     -69.097 -21.979 -50.740  0.50 21.64           O
 HETATM10996  O   HOH    40     -65.221 -13.774 -33.183  1.00 36.14           O
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert len(c.find_pure_altloc_ranges()) == 0
+  assert c.find_pure_altloc_ranges().size() == 0
   #
   caa = "common_amino_acid"
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -1661,8 +1662,8 @@ ATOM            AHOH     3
 ATOM            BHOH     3
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert c.find_pure_altloc_ranges() == [(0,3)]
-  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+  assert list(c.find_pure_altloc_ranges()) == [(0,3)]
+  assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
     == [(0,2)]
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -1674,8 +1675,8 @@ ATOM            ATYR     2
 ATOM            BTHR     2
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert c.find_pure_altloc_ranges() == [(0,3)]
-  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+  assert list(c.find_pure_altloc_ranges()) == [(0,3)]
+  assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
     == [(1,3)]
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -1687,8 +1688,8 @@ ATOM            ATYR     2
 ATOM            BTHR     2
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert c.find_pure_altloc_ranges() == [(0,3)]
-  assert len(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
+  assert list(c.find_pure_altloc_ranges()) == [(0,3)]
+  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa).size() \
     == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -1702,8 +1703,8 @@ ATOM            ASER     4
 ATOM            BSER     4
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert c.find_pure_altloc_ranges() == [(0,4)]
-  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+  assert list(c.find_pure_altloc_ranges()) == [(0,4)]
+  assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
     == [(2,4)]
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -1717,8 +1718,8 @@ ATOM            ATYR     2
 ATOM            BTHR     2
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert c.find_pure_altloc_ranges() == [(0,4)]
-  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+  assert list(c.find_pure_altloc_ranges()) == [(0,4)]
+  assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
     == [(0,2)]
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -1737,8 +1738,8 @@ ATOM            AGLY     8
 ATOM            BGLY     8
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
-  assert c.find_pure_altloc_ranges() == [(1,8)]
-  assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa) \
+  assert list(c.find_pure_altloc_ranges()) == [(1,8)]
+  assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
       == [(1,4), (6,8)]
 
 def exercise_as_pdb_string(pdb_file_names, comprehensive):

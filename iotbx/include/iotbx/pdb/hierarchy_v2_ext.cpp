@@ -381,6 +381,9 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_residue_group_index_overloads, find_residue_group_index, 1, 2)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      find_pure_altloc_ranges_overloads, find_pure_altloc_ranges, 0, 1)
+
     static void
     append_atom_records(
       w_t const& self,
@@ -447,6 +450,9 @@ namespace {
         .def("split_residue_groups_with_mixed_resnames_but_only_blank_altloc",
           &w_t::split_residue_groups_with_mixed_resnames_but_only_blank_altloc)
         .def("edit_blank_altloc", &w_t::edit_blank_altloc)
+        .def("find_pure_altloc_ranges", &w_t::find_pure_altloc_ranges,
+          find_pure_altloc_ranges_overloads((
+            arg_("common_residue_name_class_only")=0)))
         .def("append_atom_records", append_atom_records, (arg_("pdb_records")))
       ;
     }
