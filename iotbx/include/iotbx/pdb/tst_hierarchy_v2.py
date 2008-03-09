@@ -1574,17 +1574,27 @@ ATOM         N3  R03
 def exercise_find_pure_altloc_ranges():
   c = pdb.hierarchy_v2.chain()
   assert len(c.find_pure_altloc_ranges()) == 0
+  #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
   assert len(c.find_pure_altloc_ranges()) == 0
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            A        1
+ATOM            B        1
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert len(c.find_pure_altloc_ranges()) == 0
+  #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 ATOM            B        2
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
   assert c.find_pure_altloc_ranges() == [(0,2)]
+  #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 BREAK
@@ -1592,6 +1602,15 @@ ATOM            B        2
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
   assert len(c.find_pure_altloc_ranges()) == 0
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM            A        1
+ATOM            B        1
+ATOM                     2
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert len(c.find_pure_altloc_ranges()) == 0
+  #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 ATOM            B        2
@@ -1617,6 +1636,20 @@ ATOM                    15
 """))
   c = pdb_inp.construct_hierarchy_v2().only_chain()
   assert c.find_pure_altloc_ranges() == [(0,3),(4,6),(8,10),(10,12),(13,15)]
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+HEADER    CELL CYCLE                              13-SEP-05   2B05
+HETATM10989  O   HOH    29     -66.337 -28.299 -26.997  1.00 40.05           O
+HETATM10990  O  AHOH    32     -57.432 -22.290 -45.876  0.50  2.46           O
+HETATM10991  O  BHOH    32     -59.435 -22.422 -45.055  0.50 17.09           O
+HETATM10992  O   HOH    36     -56.803 -18.433 -29.790  1.00 43.00           O
+HETATM10993  O   HOH    37     -51.860 -26.755 -35.092  1.00 35.90           O
+HETATM10994  O  AHOH    39     -68.867 -23.643 -49.077  0.50 12.37           O
+HETATM10995  O  BHOH    39     -69.097 -21.979 -50.740  0.50 21.64           O
+HETATM10996  O   HOH    40     -65.221 -13.774 -33.183  1.00 36.14           O
+"""))
+  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  assert len(c.find_pure_altloc_ranges()) == 0
 
 def exercise_as_pdb_string(pdb_file_names, comprehensive):
   pdb_string = """\
