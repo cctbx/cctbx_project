@@ -140,7 +140,7 @@ class _chain(boost.python.injector, ext.chain):
         if (len(ags) == 0 or ags[0].altloc == ""):
           if (range_start+1 < i_rg):
             result.append((range_start, i_rg))
-            range_start = n_rg
+          range_start = n_rg
         elif (range_start == n_rg):
           range_start = i_rg
     if (range_start+1 < n_rg):
