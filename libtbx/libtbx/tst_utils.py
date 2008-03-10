@@ -2,6 +2,17 @@ from libtbx import utils
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
 
+def exercise_user_plus_sys_time():
+  s = StringIO()
+  utils.user_plus_sys_time().show_elapsed(out=s, prefix="e: ")
+  s = s.getvalue()
+  assert s.startswith("e: ")
+  assert s.endswith(" s")
+  utils.user_plus_sys_time().show_delta(out=s, prefix="d: ")
+  s = s.getvalue()
+  assert s.startswith("d: ")
+  assert s.endswith(" s")
+
 def exercise_indented_display():
   out = StringIO()
   level0 = utils.buffered_indentor(file_object=out)
