@@ -1192,6 +1192,12 @@ namespace hierarchy_v2 {
     data(new atom_data(parent.data, *other.data))
   {}
 
+  void
+  atoms_reset_tmp(
+    af::const_ref<atom> const& atoms,
+    int first_value=0,
+    int increment=1);
+
 }}} // namespace iotbx::pdb::hierarchy_v2
 
 #endif // IOTBX_PDB_HIERARCHY_V2_H

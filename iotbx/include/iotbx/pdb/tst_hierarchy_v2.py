@@ -162,6 +162,22 @@ def exercise_atom():
   assert ac.siguij == a.siguij
   assert ac.hetero == a.hetero
   assert ac.tmp == 0
+  #
+  atoms = pdb.hierarchy_v2.af_shared_atom()
+  atoms.reset_tmp()
+  atoms.append(pdb.hierarchy_v2.atom())
+  assert [atom.tmp for atom in atoms] == [0]
+  atoms.reset_tmp(first_value=2)
+  assert [atom.tmp for atom in atoms] == [2]
+  atoms.append(pdb.hierarchy_v2.atom())
+  atoms.append(pdb.hierarchy_v2.atom())
+  assert [atom.tmp for atom in atoms] == [2,0,0]
+  atoms.reset_tmp()
+  assert [atom.tmp for atom in atoms] == [0,1,2]
+  atoms.reset_tmp(first_value=0, increment=0)
+  assert [atom.tmp for atom in atoms] == [0] * 3
+  atoms.reset_tmp(first_value=5, increment=-3)
+  assert [atom.tmp for atom in atoms] == [5,2,-1]
 
 def exercise_atom_group():
   ag = pdb.hierarchy_v2.atom_group()
