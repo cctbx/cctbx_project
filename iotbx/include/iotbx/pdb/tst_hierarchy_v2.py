@@ -222,17 +222,17 @@ def exercise_atom_group():
   #
   ag.pre_allocate_atoms(number_of_additional_atoms=2)
   assert ag.atoms_size() == 0
-  assert len(ag.atoms()) == 0
+  assert ag.atoms().size() == 0
   ag.append_atom(atom=pdb.hierarchy_v2.atom().set_name(new_name="ca"))
   assert ag.atoms_size() == 1
-  assert len(ag.atoms()) == 1
+  assert ag.atoms().size() == 1
   ag.append_atom(atom=pdb.hierarchy_v2.atom().set_name(new_name="n"))
   assert ag.atoms_size() == 2
-  assert len(ag.atoms()) == 2
+  assert ag.atoms().size() == 2
   assert [atom.name for atom in ag.atoms()] == ["ca", "n"]
   ag.new_atoms(number_of_additional_atoms=3)
   assert ag.atoms_size() == 5
-  assert len(ag.atoms()) == 5
+  assert ag.atoms().size() == 5
   for atom in ag.atoms():
     assert atom.parent().memory_id() == ag.memory_id()
   for atom in ag.atoms():
@@ -343,6 +343,8 @@ def exercise_residue_group():
   for residue_group in c1.residue_groups():
     assert residue_group.parent().memory_id() == c1.memory_id()
   assert c1.reset_atom_tmp(new_value=8) == 0
+  assert c1.atoms_size() == 0
+  assert c1.atoms().size() == 0
   #
   for altloc in ["w", "v", "u"]:
     rg.insert_atom_group(
@@ -431,6 +433,8 @@ def exercise_chain():
   for residue_group in c.residue_groups():
     assert residue_group.parent().memory_id() == c.memory_id()
   assert c.reset_atom_tmp(new_value=9) == 0
+  assert c.atoms_size() == 0
+  assert c.atoms().size() == 0
   #
   c.residue_groups()[0].resseq = "ugh"
   c.id = "ci"
@@ -541,6 +545,8 @@ def exercise_model():
   for chain in m.chains():
     assert chain.parent().memory_id() == m.memory_id()
   assert m.reset_atom_tmp(new_value=2) == 0
+  assert m.atoms_size() == 0
+  assert m.atoms().size() == 0
   #
   r = pdb.hierarchy_v2.root()
   for i,mc in enumerate([
@@ -629,6 +635,8 @@ def exercise_root():
   for model in r.models():
     assert model.parent().memory_id() == r.memory_id()
   r.reset_atom_tmp(new_value=1) == 0
+  assert r.atoms_size() == 0
+  assert r.atoms().size() == 0
   #
   rc = r.deep_copy()
   assert rc.memory_id() != r.memory_id()
@@ -741,6 +749,8 @@ END
       == [" N  ", " CA ", " C  ", " O  ", "2H3 ", " N  "]
   sio = StringIO()
   root = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
+  assert root.atoms_size() == 6
+  assert root.atoms().size() == 6
   for model in root.models():
     print >> sio, "m:", show_string(model.id)
     for chain in model.chains():
@@ -967,24 +977,33 @@ ENDMDL
   assert [rg.resid() for rg in obj.residue_groups()] == ["   1 ", "   2 "] * 4
   assert [ag.confid() for ag in obj.atom_groups()] \
       == ["AR11", "BR21", "AR12", "BR22"] * 4
+  assert obj.atoms_size() == 32
+  assert obj.atoms().size() == 32
   assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "] * 16
   obj = obj.models()[0]
   assert [chain.id for chain in obj.chains()] == ["A", "B"]
   assert [rg.resid() for rg in obj.residue_groups()] == ["   1 ", "   2 "] * 2
   assert [ag.confid() for ag in obj.atom_groups()] \
       == ["AR11", "BR21", "AR12", "BR22"] * 2
+  assert obj.atoms_size() == 16
+  assert obj.atoms().size() == 16
   assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "] * 8
   obj = obj.chains()[0]
   assert [rg.resid() for rg in obj.residue_groups()] == ["   1 ", "   2 "]
   assert [ag.confid() for ag in obj.atom_groups()] \
       == ["AR11", "BR21", "AR12", "BR22"]
+  assert obj.atoms_size() == 8
+  assert obj.atoms().size() == 8
   assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "] * 4
   obj = obj.residue_groups()[0]
   assert [ag.confid() for ag in obj.atom_groups()] \
       == ["AR11", "BR21"]
+  assert obj.atoms_size() == 4
+  assert obj.atoms().size() == 4
   assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "] * 2
   obj = obj.atom_groups()[0]
-  assert len(list(obj.atoms())) == 2
+  assert obj.atoms_size() == 2
+  assert obj.atoms().size() == 2
   assert [atom.name for atom in obj.atoms()] == [" N  ", " O  "]
 
 def exercise_only():
@@ -1756,7 +1775,7 @@ def exercise_occupancy_groups_simple():
         pdb_inp,
         common_residue_name_class_only="common_amino_acid"):
     hierarchy = pdb_inp.construct_hierarchy_v2()
-    atoms = list(hierarchy.atoms())
+    atoms = hierarchy.atoms()
     for i,atom in enumerate(atoms):
       if (atom.element in [" H", " D"]):
         atom.tmp = -1
