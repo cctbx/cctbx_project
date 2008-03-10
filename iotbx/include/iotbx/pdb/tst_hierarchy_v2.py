@@ -483,8 +483,6 @@ def exercise_chain():
     assert str(e) == "atom_group has another parent residue_group already."
   else: raise Exception_expected
   #
-  c.edit_blank_altloc()
-  #
   c = pdb.hierarchy_v2.chain(id="c")
   records = []
   c.append_atom_records(pdb_records=records)
@@ -1304,7 +1302,8 @@ HETATM 6365  O   HOH B   1
     residue_group_post_processing=False).only_chain()
   assert chain.residue_groups_size() == 3
   assert chain.residue_groups()[2].only_atom_group().altloc == " "
-  chain.edit_blank_altloc()
+  for rg in chain.residue_groups():
+    rg.edit_blank_altloc()
   assert chain.residue_groups()[2].only_atom_group().altloc == ""
   indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
   assert indices.size() == 0
@@ -1394,7 +1393,8 @@ ATOM         N1
       if (not edit_chain):
         assert residue_group.edit_blank_altloc() == (0,1)
       else:
-        chain.edit_blank_altloc()
+        for rg in chain.residue_groups():
+          rg.edit_blank_altloc()
       atom_groups = residue_group.atom_groups()
       assert len(atom_groups) == 2
       assert atom_groups[0].altloc == " "

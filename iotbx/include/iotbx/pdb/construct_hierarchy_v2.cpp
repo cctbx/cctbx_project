@@ -38,7 +38,8 @@ namespace iotbx { namespace pdb {
       hierarchy_v2::atom* atoms,
       hierarchy_v2::chain& chain,
       bool link_to_previous,
-      std::map<str4, std::vector<unsigned> >& altloc_resname_indices)
+      std::map<str4, std::vector<unsigned> >& altloc_resname_indices,
+      bool residue_group_post_processing)
     {
       hierarchy_v2::residue_group rg = chain.new_residue_group(
         iall->resseq_small().elems,
@@ -73,6 +74,9 @@ namespace iotbx { namespace pdb {
         }
       }
       altloc_resname_indices.clear();
+      if (residue_group_post_processing) {
+        rg.edit_blank_altloc();
+      }
     }
 
   } // namespace <anonymous>
@@ -124,7 +128,8 @@ namespace iotbx { namespace pdb {
                 atoms+rg_start,
                 chain,
                 link_to_previous,
-                altloc_resname_indices);
+                altloc_resname_indices,
+                residue_group_post_processing);
               rg_start = i_atom;
               link_to_previous = (break_range_id == prev_break_range_id);
             }
@@ -150,15 +155,14 @@ namespace iotbx { namespace pdb {
             atoms+rg_start,
             chain,
             link_to_previous,
-            altloc_resname_indices);
+            altloc_resname_indices,
+            residue_group_post_processing);
         }
         if (residue_group_post_processing) {
           chain
             .merge_disconnected_residue_groups_with_pure_altloc();
           chain
             .split_residue_groups_with_mixed_resnames_but_only_blank_altloc();
-          chain
-            .edit_blank_altloc();
         }
       }
       next_chain_range_begin = ch_r.end;
