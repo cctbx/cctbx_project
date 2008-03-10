@@ -391,6 +391,15 @@ namespace {
       (c == 0 ? 0 : c->id.c_str()));
   }
 
+  bool
+  atom::element_is_hydrogen() const
+  {
+    const char* e = data->element.elems;
+    return (
+         (e[0] == ' ' && (e[1] == 'H' || e[1] == 'D'))
+      || ((e[0] == 'H' || e[0] == 'D') && (e[1] == ' ' || e[1] == '\0')));
+  }
+
   boost::optional<std::string>
   atom::determine_chemical_element_simple() const
   {
@@ -844,6 +853,16 @@ namespace {
     for(const atom* a=atoms.begin();a!=atoms.end();a++) {
       a->data->tmp = value;
       value += increment;
+    }
+  }
+
+  void
+  atoms_reset_tmp_for_occupancy_groups_simple(
+    af::const_ref<atom> const& atoms)
+  {
+    int value = 0;
+    for(const atom* a=atoms.begin();a!=atoms.end();a++,value++) {
+      a->data->tmp = (a->element_is_hydrogen() ? -1 : value);
     }
   }
 
