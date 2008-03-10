@@ -123,6 +123,49 @@ class _chain(boost.python.injector, ext.chain):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
+  def occupancy_groups_simple(self, common_residue_name_class_only=None):
+    result = []
+    residue_groups = self.residue_groups()
+    n_rg = len(residue_groups)
+    done = [False] * n_rg
+    def process_range(i_begin, i_end):
+      isolated_var_occ = []
+      groups = {}
+      for i_rg in xrange(i_begin, i_end):
+        done[i_rg] = True
+        for ag in residue_groups[i_rg].atom_groups():
+          altloc = ag.altloc
+          if (altloc == ""):
+            for atom in ag.atoms():
+              if (atom.tmp < 0): continue
+              if (atom.occ > 0 and atom.occ < 1):
+                isolated_var_occ.append(atom.tmp)
+          else:
+            group = []
+            for atom in ag.atoms():
+              if (atom.tmp < 0): continue
+              group.append(atom.tmp)
+            if (len(group) != 0):
+              groups.setdefault(altloc, []).extend(group)
+      groups = groups.values()
+      if (len(groups) != 0):
+        for group in groups: group.sort()
+        def group_cmp(a, b): return cmp(a[0], b[0])
+        groups.sort(group_cmp)
+        result.append(groups)
+      for i in isolated_var_occ:
+        result.append([[i]])
+    for i_begin,i_end in self.find_pure_altloc_ranges(
+          common_residue_name_class_only=common_residue_name_class_only):
+      process_range(i_begin, i_end)
+    for i_rg in xrange(n_rg):
+      if (done[i_rg]): continue
+      process_range(i_rg, i_rg+1)
+    def groups_cmp(a, b):
+      return cmp(a[0][0], b[0][0])
+    result.sort(groups_cmp)
+    return result
+
 class _residue_group(boost.python.injector, ext.residue_group):
 
   def atoms(self):
