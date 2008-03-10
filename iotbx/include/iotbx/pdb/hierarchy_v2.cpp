@@ -834,4 +834,17 @@ namespace {
     return result;
   }
 
+  void
+  atoms_reset_tmp(
+    af::const_ref<atom> const& atoms,
+    int first_value,
+    int increment)
+  {
+    int value = first_value;
+    for(const atom* a=atoms.begin();a!=atoms.end();a++) {
+      a->data->tmp = value;
+      value += increment;
+    }
+  }
+
 }}} // namespace iotbx::pdb::hierarchy_v2

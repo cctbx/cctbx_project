@@ -7,7 +7,6 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/list.hpp>
 #include <boost/python/str.hpp>
-#include <boost/python/return_internal_reference.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <iotbx/pdb/hierarchy_v2.h>
@@ -156,11 +155,13 @@ namespace {
       return boost::python::object(boost::python::handle<>(str_obj));
     }
 
+    BOOST_PYTHON_FUNCTION_OVERLOADS(
+      atoms_reset_tmp_overloads, atoms_reset_tmp, 1, 3)
+
     static void
     wrap()
     {
       using namespace boost::python;
-      typedef return_internal_reference<> rir;
       class_<w_t>("atom", no_init)
         .def(init<>())
         .def(init<atom_group const&, atom const&>((
@@ -222,8 +223,12 @@ namespace {
           &w_t::determine_chemical_element_simple)
       ;
       {
-        scitbx::af::boost_python::shared_wrapper<
-          atom, rir>::wrap("af_shared_atom");
+        scitbx::af::boost_python::shared_wrapper<atom>::wrap("af_shared_atom")
+          .def("reset_tmp", atoms_reset_tmp, atoms_reset_tmp_overloads((
+            arg_("self"),
+            arg_("first_value")=0,
+            arg_("increment")=1)))
+        ;
       }
     }
   };
