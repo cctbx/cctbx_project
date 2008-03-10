@@ -484,6 +484,9 @@ namespace hierarchy_v2 {
       format_atom_record_using_parents(
         char* result) const;
 
+      bool
+      element_is_hydrogen() const;
+
       boost::optional<std::string>
       determine_chemical_element_simple() const;
   };
@@ -1197,6 +1200,10 @@ namespace hierarchy_v2 {
     af::const_ref<atom> const& atoms,
     int first_value=0,
     int increment=1);
+
+  void
+  atoms_reset_tmp_for_occupancy_groups_simple(
+    af::const_ref<atom> const& atoms);
 
 }}} // namespace iotbx::pdb::hierarchy_v2
 

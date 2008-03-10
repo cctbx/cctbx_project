@@ -219,6 +219,7 @@ namespace {
         .def("siguij_is_defined", &w_t::siguij_is_defined)
         .def("format_atom_record_using_parents",
           format_atom_record_using_parents)
+        .def("element_is_hydrogen", &w_t::element_is_hydrogen)
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)
       ;
@@ -228,6 +229,8 @@ namespace {
             arg_("self"),
             arg_("first_value")=0,
             arg_("increment")=1)))
+          .def("reset_tmp_for_occupancy_groups_simple",
+            atoms_reset_tmp_for_occupancy_groups_simple)
         ;
       }
     }

@@ -59,6 +59,14 @@ class _root(boost.python.injector, ext.root):
   def as_pdb_string(self, append_end=False):
     return "\n".join(self.as_pdb_records(append_end=append_end))+"\n"
 
+  def occupancy_groups_simple(self, common_residue_name_class_only=None):
+    self.atoms().reset_tmp_for_occupancy_groups_simple()
+    result = []
+    for chain in self.chains():
+      result.extend(chain.occupancy_groups_simple(
+        common_residue_name_class_only=common_residue_name_class_only))
+    return result
+
 class _model(boost.python.injector, ext.model):
 
   def residue_groups(self):

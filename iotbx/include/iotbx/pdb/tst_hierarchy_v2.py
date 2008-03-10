@@ -119,6 +119,15 @@ def exercise_atom():
   assert approx_equal(ac.siguij, (.1,.2,.3,.6,.1,.9))
   assert ac.hetero
   #
+  for e in ["H", "H ", " H", "D", "D ", " D"]:
+    a.element = e
+    assert a.element_is_hydrogen()
+  for e in ["", "h", "h ", " h", "d", "d ", " d"]:
+    a.element = e
+    assert not a.element_is_hydrogen()
+  #
+  a.name = "1234"
+  a.element = "El"
   assert a.determine_chemical_element_simple() is None
   a.name = "NA  "
   a.element = " N"
@@ -178,6 +187,13 @@ def exercise_atom():
   assert [atom.tmp for atom in atoms] == [0] * 3
   atoms.reset_tmp(first_value=5, increment=-3)
   assert [atom.tmp for atom in atoms] == [5,2,-1]
+  #
+  atoms.reset_tmp_for_occupancy_groups_simple()
+  assert [atom.tmp for atom in atoms] == [0,1,2]
+  atoms[0].element = "D"
+  atoms[2].element = "H"
+  atoms.reset_tmp_for_occupancy_groups_simple()
+  assert [atom.tmp for atom in atoms] == [-1,1,-1]
 
 def exercise_atom_group():
   ag = pdb.hierarchy_v2.atom_group()
@@ -1783,11 +1799,7 @@ def exercise_occupancy_groups_simple():
         common_residue_name_class_only="common_amino_acid"):
     hierarchy = pdb_inp.construct_hierarchy_v2()
     atoms = hierarchy.atoms()
-    for i,atom in enumerate(atoms):
-      if (atom.element in [" H", " D"]):
-        atom.tmp = -1
-      else:
-        atom.tmp = i
+    atoms.reset_tmp_for_occupancy_groups_simple()
     chain = hierarchy.only_chain()
     return atom_serials(atoms, chain.occupancy_groups_simple(
       common_residue_name_class_only=common_residue_name_class_only))
@@ -2016,6 +2028,17 @@ HETATM  288  CG BDLE A  12      25.429   9.378  36.572  0.35 15.20           C
     [[221, 224], [245, 248], [256, 259]], [[285, 287], [286, 288]]]
   assert grouped_serials(pdb_inp, common_residue_name_class_only=None) == [
     [[221, 224, 285, 287], [245, 248], [256, 259, 286, 288]]]
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      1  O  AHOH A   1                                                   O
+ATOM      2  O  BHOH A   1                                                   O
+ATOM      3  O  AHOH B   1                                                   O
+ATOM      4  O  BHOH B   1                                                   O
+"""))
+  hierarchy = pdb_inp.construct_hierarchy_v2()
+  list_of_groups = hierarchy.occupancy_groups_simple(
+    common_residue_name_class_only="common_amino_acid")
+  assert list_of_groups == [[[0], [1]], [[2], [3]]]
 
 def exercise_as_pdb_string(pdb_file_names, comprehensive):
   pdb_string = """\
