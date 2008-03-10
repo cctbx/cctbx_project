@@ -711,6 +711,12 @@ namespace hierarchy_v2 {
       unsigned
       reset_atom_tmp(int new_value) const;
 
+      unsigned
+      atoms_size() const;
+
+      af::shared<atom>
+      atoms() const;
+
       std::string
       resid() const;
 
@@ -831,6 +837,12 @@ namespace hierarchy_v2 {
       unsigned
       reset_atom_tmp(int new_value) const;
 
+      unsigned
+      atoms_size() const;
+
+      af::shared<atom>
+      atoms() const;
+
       void
       merge_residue_groups(
         residue_group& primary,
@@ -940,6 +952,12 @@ namespace hierarchy_v2 {
 
       unsigned
       reset_atom_tmp(int new_value) const;
+
+      unsigned
+      atoms_size() const;
+
+      af::shared<atom>
+      atoms() const;
   };
 
   //! Root attributes.
@@ -1011,6 +1029,12 @@ namespace hierarchy_v2 {
 
       unsigned
       reset_atom_tmp(int new_value) const;
+
+      unsigned
+      atoms_size() const;
+
+      af::shared<atom>
+      atoms() const;
   };
 
   inline

@@ -265,7 +265,14 @@ namespace {
     IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(altloc)
     IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(resname)
 
-    IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(atom_group, atom, atoms)
+    static
+    af::shared<atom>
+    get_atoms(w_t const& self)
+    {
+      std::vector<atom> const& ats = self.atoms();
+      if (ats.size() == 0) return af::shared<atom>();
+      return af::shared<atom>(&*ats.begin(), &*ats.end());
+    }
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_atom_index_overloads, find_atom_index, 1, 2)
@@ -349,6 +356,8 @@ namespace {
         .def("new_atom_group", &w_t::new_atom_group, new_atom_group_overloads((
           arg_("altloc")="", arg_("resname")="")))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(atom_group)
+        .def("atoms_size", &w_t::atoms_size)
+        .def("atoms", &w_t::atoms)
         .def("resid", &w_t::resid)
         .def("have_conformers", &w_t::have_conformers)
         .def("merge_atom_groups", &w_t::merge_atom_groups, (
@@ -443,6 +452,8 @@ namespace {
             arg_("icode")="",
             arg_("link_to_previous")=true)))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(residue_group)
+        .def("atoms_size", &w_t::atoms_size)
+        .def("atoms", &w_t::atoms)
         .def("merge_residue_groups", &w_t::merge_residue_groups, (
           arg_("primary"), arg_("secondary")))
         .def("merge_disconnected_residue_groups_with_pure_altloc",
@@ -495,6 +506,8 @@ namespace {
         .def("new_chain", &w_t::new_chain, new_chain_overloads((
           arg_("id")="")))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(chain)
+        .def("atoms_size", &w_t::atoms_size)
+        .def("atoms", &w_t::atoms)
       ;
     }
   };
@@ -532,6 +545,8 @@ namespace {
         .def("new_model", &w_t::new_model, new_model_overloads((
           arg_("id")="")))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(model)
+        .def("atoms_size", &w_t::atoms_size)
+        .def("atoms", &w_t::atoms)
       ;
     }
   };
