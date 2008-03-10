@@ -676,15 +676,6 @@ namespace {
     return result;
   }
 
-  void
-  chain::edit_blank_altloc()
-  {
-    unsigned n_rg = residue_groups_size();
-    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
-      data->residue_groups[i_rg].edit_blank_altloc();
-    }
-  }
-
   af::shared<af::tiny<std::size_t, 2> >
   chain::find_pure_altloc_ranges(
     const char* common_residue_name_class_only) const
