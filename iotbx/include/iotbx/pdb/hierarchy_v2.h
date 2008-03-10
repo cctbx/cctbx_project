@@ -295,13 +295,6 @@ namespace hierarchy_v2 {
       void
       clear_parent() { data->parent.reset(); }
 
-      unsigned
-      reset_atom_tmp(int new_value) const
-      {
-        data->tmp = new_value;
-        return 1U;
-      }
-
     public:
       atom(shared_ptr<atom_data> const& data_)
       :
@@ -591,9 +584,6 @@ namespace hierarchy_v2 {
       void
       remove_atom(hierarchy_v2::atom& atom);
 
-      unsigned
-      reset_atom_tmp(int new_value) const;
-
       std::string
       confid() const;
   };
@@ -707,9 +697,6 @@ namespace hierarchy_v2 {
           atom_group(*this, altloc, resname));
         return data->atom_groups.back();
       }
-
-      unsigned
-      reset_atom_tmp(int new_value) const;
 
       unsigned
       atoms_size() const;
@@ -835,9 +822,6 @@ namespace hierarchy_v2 {
       }
 
       unsigned
-      reset_atom_tmp(int new_value) const;
-
-      unsigned
       atoms_size() const;
 
       af::shared<atom>
@@ -951,9 +935,6 @@ namespace hierarchy_v2 {
       }
 
       unsigned
-      reset_atom_tmp(int new_value) const;
-
-      unsigned
       atoms_size() const;
 
       af::shared<atom>
@@ -1026,9 +1007,6 @@ namespace hierarchy_v2 {
         data->models.push_back(model(*this, id));
         return data->models.back();
       }
-
-      unsigned
-      reset_atom_tmp(int new_value) const;
 
       unsigned
       atoms_size() const;

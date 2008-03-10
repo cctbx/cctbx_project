@@ -255,8 +255,7 @@ namespace {
         .def("remove_" #C, \
           (void(w_t::*)(long)) &w_t::remove_##C, (arg_("i"))) \
         .def("remove_" #C, \
-          (void(w_t::*)(C&)) &w_t::remove_##C, (arg_(#C))) \
-        .def("reset_atom_tmp", &w_t::reset_atom_tmp, (arg_("new_value")))
+          (void(w_t::*)(C&)) &w_t::remove_##C, (arg_(#C)))
 
   struct atom_group_wrappers
   {

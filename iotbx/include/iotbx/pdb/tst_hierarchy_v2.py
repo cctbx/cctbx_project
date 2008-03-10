@@ -235,11 +235,6 @@ def exercise_atom_group():
   assert ag.atoms().size() == 5
   for atom in ag.atoms():
     assert atom.parent().memory_id() == ag.memory_id()
-  for atom in ag.atoms():
-    assert atom.tmp == 0
-  assert ag.reset_atom_tmp(new_value=7) == 5
-  for atom in ag.atoms():
-    assert atom.tmp == 7
   assert [a.name for a in ag.atoms()] == ["ca", "n", "", "", ""]
   #
   ag.insert_atom(i=0, atom=pdb.hierarchy_v2.atom().set_name(new_name="0"))
@@ -342,7 +337,6 @@ def exercise_residue_group():
   assert len(c1.residue_groups()) == 2
   for residue_group in c1.residue_groups():
     assert residue_group.parent().memory_id() == c1.memory_id()
-  assert c1.reset_atom_tmp(new_value=8) == 0
   assert c1.atoms_size() == 0
   assert c1.atoms().size() == 0
   #
@@ -432,7 +426,6 @@ def exercise_chain():
   assert len(c.residue_groups()) == 2
   for residue_group in c.residue_groups():
     assert residue_group.parent().memory_id() == c.memory_id()
-  assert c.reset_atom_tmp(new_value=9) == 0
   assert c.atoms_size() == 0
   assert c.atoms().size() == 0
   #
@@ -544,7 +537,6 @@ def exercise_model():
   assert len(m.chains()) == 5
   for chain in m.chains():
     assert chain.parent().memory_id() == m.memory_id()
-  assert m.reset_atom_tmp(new_value=2) == 0
   assert m.atoms_size() == 0
   assert m.atoms().size() == 0
   #
@@ -634,7 +626,6 @@ def exercise_root():
   assert len(r.models()) == 5
   for model in r.models():
     assert model.parent().memory_id() == r.memory_id()
-  r.reset_atom_tmp(new_value=1) == 0
   assert r.atoms_size() == 0
   assert r.atoms().size() == 0
   #

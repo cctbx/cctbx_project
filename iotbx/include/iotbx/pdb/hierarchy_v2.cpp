@@ -113,19 +113,6 @@ namespace {
   { \
     data->C##s.erase(data->C##s.begin() + find_##C##_index(C, true)); \
     C.clear_parent(); \
-  } \
-\
-  unsigned \
-  T::reset_atom_tmp(int new_value) const \
-  { \
-    unsigned n = C##s_size(); \
-    if (n == 0) return 0; \
-    unsigned result = 0; \
-    const C* c = &*data->C##s.begin(); \
-    for(unsigned i=0;i<n;i++) { \
-      result += (c++)->reset_atom_tmp(new_value); \
-    } \
-    return result; \
   }
 
 #define IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(P, T, C) \
