@@ -223,6 +223,14 @@ class user_plus_sys_time(object):
     self.t = t
     return d
 
+  def show_elapsed(self, prefix="", out=None):
+    if (out == None): out = sys.stdout
+    print >> out, prefix+"%.2f s" % self.elapsed()
+
+  def show_delta(self, prefix="", out=None):
+    if (out == None): out = sys.stdout
+    print >> out, prefix+"%.2f s" % self.delta()
+
 class time_log(object):
 
   def __init__(self, label):
