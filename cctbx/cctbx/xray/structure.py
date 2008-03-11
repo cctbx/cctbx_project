@@ -403,6 +403,12 @@ class structure(crystal.special_position_settings):
   def set_sites_cart(self, sites_cart):
     self.set_sites_frac(self.unit_cell().fractionalize(sites_cart=sites_cart))
 
+  def scattering_types(self):
+    result = flex.std_string()
+    for sct in self._scatterers.extract_scattering_types():
+      result.append(sct.strip().upper())
+    return result
+
   def extract_u_cart_or_u_cart_plus_u_iso(self):
     return self._scatterers.extract_u_cart_or_u_cart_plus_u_iso(
       unit_cell=self.unit_cell())
