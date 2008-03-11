@@ -6,8 +6,7 @@ import iotbx.phil
 from scitbx import matrix
 from libtbx import adopt_init_args
 from mmtbx.refinement import print_statistics
-import boost.python
-utils_ext = boost.python.import_ext("mmtbx_utils_ext")
+import mmtbx.utils
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -27,7 +26,7 @@ resolution_factor = 1./4.
 map_next_to_model
 {
   min_model_peak_dist = 0.7
-  max_model_peak_dist = 1.2
+  max_model_peak_dist = 1.05
   min_peak_peak_dist = 1.0
   use_hydrogens = False
 }
@@ -132,7 +131,7 @@ def fit_water(water_and_peaks, xray_structure, params, log):
   site_frac_h2 = scatterers[water_and_peaks.i_seq_h2].site
   peak_sites_frac = water_and_peaks.peaks_sites_frac
   if(len(peak_sites_frac) == 1):
-    result = utils_ext.fit_hoh(
+    result = mmtbx.utils.fit_hoh(
       site_frac_o     = site_frac_o,
       site_frac_h1    = site_frac_h1,
       site_frac_h2    = site_frac_h2,
@@ -152,7 +151,7 @@ def fit_water(water_and_peaks, xray_structure, params, log):
           peak_pairs.append([s1,s2])
     d_best = 999.
     for pair in peak_pairs:
-      result = utils_ext.fit_hoh(
+      result = mmtbx.utils.fit_hoh(
         site_frac_o     = site_frac_o,
         site_frac_h1    = site_frac_h1,
         site_frac_h2    = site_frac_h2,

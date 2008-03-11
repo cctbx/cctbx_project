@@ -116,6 +116,14 @@ class fmodels(object):
       print_statistics.make_sub_header("neutron data", out = self.log)
       self.fmodel_neutron().remove_outliers(show = True, log = self.log)
 
+  def show_targets(self, log, text=""):
+    prefix_x = ""
+    if(self.fmodel_n is not None):
+      prefix_x = "xray"
+    self.fmodel_xray().info().show_targets(out = log, text = prefix_x+" "+text)
+    if(self.fmodel_n is not None):
+      self.fmodel_neutron().info().show_targets(out= log, text="neutron "+text)
+
   def create_target_functors(self):
     self.target_functor_xray = self.fmodel_xray().target_functor()
     self.target_functor_neutron = None

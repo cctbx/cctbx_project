@@ -54,17 +54,17 @@ SCALE1      0.066667  0.011755 -0.028131        0.00000
 SCALE2      0.000000  0.067695 -0.017615        0.00000
 SCALE3      0.000000  0.000000  0.073308        0.00000
 HETATM    1  O   HOH X   1      20.319  10.959   7.882  1.00  1.00           O
-HETATM    2 H1   HOH X   1      19.339  10.959   7.882  0.00  1.00           H
-HETATM    3 H2   HOH X   1      19.339  10.959   7.882  0.00  1.00           H
+HETATM    2 H1   HOH X   1      19.339  10.959   7.882  1.00  1.00           H
+HETATM    3 H2   HOH X   1      19.339  10.959   7.882  1.00  1.00           H
 HETATM    4  H1  HOH X   2      20.024  13.469  10.445  1.00  2.00           H
 HETATM    5  O   HOH X   2      19.563  13.548   9.584  1.00  1.00           O
-HETATM    6 H2   HOH X   2      18.608  13.419   9.761  0.00  1.00           H
+HETATM    6 H2   HOH X   2      18.608  13.419   9.761  1.00  1.00           H
 HETATM    7  O   HOH     1      17.253  15.650  10.892  1.00  2.00           O
 HETATM    8  H1  HOH     1      18.146  15.616  11.293  1.00  2.00           H
 HETATM    9  H2  HOH     1      17.357  15.408   9.948  1.00  2.00           H
 HETATM   10  O   HOH     2       5.150  11.586  12.474  1.00  3.00           O
-HETATM   11 H1   HOH     2       4.364  12.000  12.888  0.00  3.00           H
-HETATM   12 H2   HOH     2       5.938  11.998  12.886  0.00  3.00           H
+HETATM   11 H1   HOH     2       4.364  12.000  12.888  1.00  3.00           H
+HETATM   12 H2   HOH     2       5.938  11.998  12.886  1.00  3.00           H
 ATOM     13  CB  PHE A   1      11.914  10.410  11.811  1.00  2.00           C
 ATOM     14  CG  PHE A   1      11.204   9.472  12.746  1.00  2.00           C
 ATOM     15  CD1 PHE A   1      10.636   8.301  12.273  1.00  2.00           C
@@ -78,14 +78,14 @@ ATOM     22  OXT PHE A   1      12.531  13.314  10.864  1.00  2.00           O
 ATOM     23  N   PHE A   1       9.929  10.880  10.444  1.00  2.00           N
 ATOM     24  CA  PHE A   1      11.008  11.488  11.213  1.00  2.00           C
 ATOM     25  O   HOH Q   1      15.736  13.074   8.108  1.00  4.00           O
-ATOM     26 D2   HOH Q   1      16.514  12.892   7.541  0.00  4.00           D
+ATOM     26 D2   HOH Q   1      16.514  12.892   7.541  1.00  4.00           D
 ATOM     27  D1  HOH Q   1      14.941  12.899   7.563  1.00  4.00           D
 ATOM     28  O   HOH S   1      14.337  16.126   9.974  1.00  5.00           O
-ATOM     29 H1   HOH S   1      14.734  15.233  10.041  0.00  5.00           H
+ATOM     29 H1   HOH S   1      14.734  15.233  10.041  1.00  5.00           H
 ATOM     30  H2  HOH S   1      14.968  16.680   9.469  1.00  5.00           H
 ATOM     31  O   HOH S   2       9.491  12.823  15.494  1.00  6.00           O
-ATOM     32 H1   HOH S   2       8.899  13.604  15.494  0.00  6.00           H
-ATOM     33 H2   HOH S   2       8.914  12.031  15.494  0.00  6.00           H
+ATOM     32 H1   HOH S   2       8.899  13.604  15.494  1.00  6.00           H
+ATOM     33 H2   HOH S   2       8.914  12.031  15.494  1.00  6.00           H
 END
 """
 
@@ -217,7 +217,7 @@ expected_result2 = """\
 Number of peaks found at mFobs-DFmodel map (map cutoff=5.00 sigma)= 9
 Filter by distance & map next to the model:
    mapped sites are within: 0.980 - 1.009
-   number of sites selected in [dist_min= 0.70, dist_max= 1.20]: 9 from: 9
+   number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
    mapped sites are within: 0.980 - 1.009
 
 peak=   22.181 closest distance to " O   HOH     3 " =    0.989

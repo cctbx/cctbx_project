@@ -34,6 +34,10 @@ from mmtbx.refinement import print_statistics
 import libtbx.load_env
 from mmtbx.solvent import ordered_solvent
 
+import boost.python
+utils_ext = boost.python.import_ext("mmtbx_utils_ext")
+from mmtbx_utils_ext import *
+
 def miller_array_symmetry_safety_check(miller_array,
                                        data_description,
                                        working_point_group,
@@ -938,7 +942,6 @@ def occupancy_selections(
       all_chain_proxies,
       xray_structure,
       add_water = False,
-      add_hydrogens = False,
       other_individual_selection_strings = None,
       other_group_selection_strings = None,
       as_flex_arrays = True):
@@ -1074,20 +1077,10 @@ def occupancy_selections(
     for w_i_seq in water_selection:
       if(w_i_seq not in result_as_1d_array):
         result.append([[w_i_seq]])
-  if(add_hydrogens):
-    result_as_1d_array = list_3d_as_1d(x = result)
-    h_selection = get_atom_selections(
-      all_chain_proxies   = all_chain_proxies,
-      selection_strings   = ['element H or element D'],
-      iselection          = True,
-      xray_structure      = xray_structure,
-      one_selection_array = True)
-    for h_i_seq in h_selection:
-      if(h_i_seq not in result_as_1d_array):
-        result.append([[h_i_seq]])
   result_as_1d_array = list_3d_as_1d(x = result)
   for i_seq, occ in enumerate(occupancies):
-    if(abs(occ-1.) > 1.e-3 and abs(occ) > 1.e-3):
+    if(abs(occ-1.) > 1.e-3 and abs(occ) > 1.e-3 and
+       not xray_structure.hd_selection()[i_seq]):
       if(i_seq not in result_as_1d_array):
         result.append([[i_seq]])
   result_as_1d_array = list_3d_as_1d(x=result)
@@ -1103,3 +1096,18 @@ def occupancy_selections(
     result = result_
   if(result == []): result = None
   return result
+
+def assert_xray_structures_equal(x1, x2, selection = None, sites = True,
+                                 adp = True, occupancies = True):
+  assert x1.scatterers().size() == x2.scatterers().size()
+  if(selection is not None):
+    x1 = x1.select(selection)
+    x2 = x2.select(selection)
+  if(sites):
+    assert approx_equal(x1.sites_frac(), x2.sites_frac())
+  if(adp):
+    assert approx_equal(x1.extract_u_iso_or_u_equiv(),
+                        x2.extract_u_iso_or_u_equiv())
+  if(occupancies):
+    assert approx_equal(x1.scatterers().extract_occupancies(),
+                        x2.scatterers().extract_occupancies())

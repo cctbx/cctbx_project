@@ -38,6 +38,22 @@ namespace {
           make_getter(&fit_hoh<>::site_cart_h2_fitted, rbv()))
        .def("dist_best", &fit_hoh<>::dist_best)
     ;
+
+    def("select_water_by_distance",
+         (af::shared<std::size_t>(*)
+               (af::shared<vec3<double> > const&,
+                af::shared<std::string> const&,
+                af::shared<std::size_t> const&,
+                double const&,
+                double const&,
+                cctbx::uctbx::unit_cell const&)) select_water_by_distance,
+                                                          (arg_("sites_frac_all"),
+                                                           arg_("element_symbols_all"),
+                                                           arg_("water_selection_o"),
+                                                           arg_("dist_max"),
+                                                           arg_("dist_min"),
+                                                           arg_("unit_cell")))
+   ;
   }
 
 } // namespace <anonymous>

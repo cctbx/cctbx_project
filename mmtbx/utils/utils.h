@@ -7,7 +7,9 @@
 
 using namespace std;
 namespace mmtbx { namespace utils {
+namespace af=scitbx::af;
 using scitbx::mat3;
+using scitbx::vec3;
 using cctbx::uctbx::unit_cell;
 
 template <typename FloatType=double, typename cctbx_frac=cctbx::fractional<> >
@@ -91,6 +93,42 @@ class fit_hoh
 
     double dist_best() { return std::sqrt(dist_best_sq); }
 };
+
+template <typename FloatType>
+af::shared<std::size_t>
+  select_water_by_distance(af::shared<vec3<FloatType> > const& sites_frac_all,
+                           af::shared<std::string> const& element_symbols_all,
+                           af::shared<std::size_t> const& water_selection_o,
+                           FloatType const& dist_max,
+                           FloatType const& dist_min,
+                           cctbx::uctbx::unit_cell const& unit_cell)
+{
+  af::shared<std::size_t> result_selection;
+  for(std::size_t i=0; i<water_selection_o.size(); i+=1) {
+    std::size_t i_wat = water_selection_o[i];
+    MMTBX_ASSERT(element_symbols_all[i_wat] != "H");
+    MMTBX_ASSERT(element_symbols_all[i_wat] != "D");
+    FloatType dist_closest = 999.;
+    std::string closest_element;
+    for(std::size_t j=0; j<sites_frac_all.size(); j+=1) {
+      if(element_symbols_all[j]!="H"&&element_symbols_all[j]!="D"&&j!=i_wat) {
+        FloatType dist = unit_cell.distance(
+          cctbx::fractional<>(sites_frac_all[i_wat]),
+          cctbx::fractional<>(sites_frac_all[j]));
+        if(dist < dist_closest) {
+          dist_closest = dist;
+          closest_element = element_symbols_all[j];
+        }
+      }
+    }
+    if(dist_closest<=dist_max&&dist_closest>=dist_min&&(closest_element=="N"||
+       closest_element=="O")) {
+      result_selection.push_back(i_wat);
+    }
+  }
+  return result_selection;
+}
+
 
 }} // namespace mmtbx::utils
 

@@ -127,8 +127,12 @@ class manager(object):
     fmodel.update_xray_structure(xray_structure = fmodel_copy.xray_structure,
                                  update_f_calc  = True)
     if(refine_occ):
-      fmodel.xray_structure.adjust_occupancy(occ_max = occupancy_max,
-                                             occ_min = occupancy_min)
+      i_selection = flex.size_t()
+      for sel in selections:
+        i_selection.extend(sel)
+      fmodel.xray_structure.adjust_occupancy(occ_max   = occupancy_max,
+                                             occ_min   = occupancy_min,
+                                             selection = i_selection)
     self.fmodel = fmodel
     time_group_py += timer.elapsed()
 

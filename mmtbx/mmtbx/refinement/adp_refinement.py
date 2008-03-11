@@ -186,48 +186,10 @@ class manager(object):
           run_finite_differences_test = group_adp_params.run_finite_differences_test,
           refine_adp               = True,
           log                      = log)
-    if(fmodels.fmodel_xray().xray_structure.hd_selection().count(True) > 0 and
-       not model.use_ias and h_params.refine_adp != "individual" and
-       fmodels.fmodel_neutron() is None and h_params.contribute_to_f_calc
-       and h_params.refine_adp is not None):
-       print_statistics.make_sub_header(text= "group isotropic ADP refinement for H atoms",
-                                        out = log)
-       # XXX FUTURE: smart decision about which selection to use and at which resolution.
-       if(h_params.refine_adp == "one_b_per_residue"):
-          sel_mode = group_adp_selections_h
-       elif(h_params.refine_adp == "one_b_per_molecule"):
-          sel_mode = [fmodels.fmodel_xray().xray_structure.hd_selection().iselection()]
-       else: raise RuntimeError
-       if(h_params.refine_occupancies != "individual"):
-         if(h_params.refine_adp == "one_b_per_residue"):
-           sel_mode_q = group_adp_selections_h
-         elif(h_params.refine_adp == "one_b_per_molecule"):
-           sel_mode_q = [fmodels.fmodel_xray().xray_structure.hd_selection().iselection()]
-         else: raise RuntimeError
-         group_occ_manager = mmtbx.refinement.group.manager(
-            fmodel                   = fmodels.fmodel_xray(),
-            selections               = sel_mode_q,
-            convergence_test         = group_adp_params.convergence_test,
-            max_number_of_iterations = 30,
-            number_of_macro_cycles   = 1,
-            run_finite_differences_test = group_adp_params.run_finite_differences_test,
-            refine_occ               = True,
-            occupancy_max            = 1,
-            occupancy_min            = 0,
-            log                      = log)
-       group_b_manager = mmtbx.refinement.group.manager(
-          fmodel                   = fmodels.fmodel_xray(),
-          selections               = sel_mode,
-          convergence_test         = group_adp_params.convergence_test,
-          max_number_of_iterations = 30,
-          number_of_macro_cycles   = 1,
-          run_finite_differences_test = group_adp_params.run_finite_differences_test,
-          refine_adp               = True,
-          log                      = log)
     time_adp_refinement_py += timer.elapsed()
 
 def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log):
-  model.set_refine_individual_adp(h_mode = h_params.refine_adp)
+  model.set_refine_individual_adp()
   print_statistics.make_sub_header(text="Individual ADP refinement", out = log)
   lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
     max_iterations = individual_adp_params.iso.max_number_of_iterations)
