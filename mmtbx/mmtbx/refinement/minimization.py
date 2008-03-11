@@ -27,10 +27,8 @@ class lbfgs(object):
                      use_fortran              = False,
                      verbose                  = 0,
                      iso_restraints           = None,
-                     occupancy_max            = None,
-                     occupancy_min            = None,
                      h_params                 = None,
-                     u_min                    = adptbx.b_as_u(-100.0),
+                     u_min                    = adptbx.b_as_u(-30.0),
                      u_max                    = adptbx.b_as_u(1000.0)):
     global time_site_individual
     timer = user_plus_sys_time()
@@ -64,7 +62,6 @@ class lbfgs(object):
                            refine_occ     = False)
     self.monitor.collect()
     self.fmodels.create_target_functors()
-    assert [refine_xyz, refine_adp].count(False) == 1
     if(refine_xyz):
       if(self.h_params.refine_sites == "riding"):
         occupancies_cache = self.xray_structure.scatterers().extract_occupancies()

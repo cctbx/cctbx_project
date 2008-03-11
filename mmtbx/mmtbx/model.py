@@ -753,22 +753,15 @@ class manager(object):
       iselection = selection.iselection())
 
   def set_refine_individual_adp(self, selection_iso = None,
-                                      selection_aniso = None,
-                                      h_mode = None):
+                                      selection_aniso = None):
     self.xray_structure.scatterers().flags_set_grads(state=False)
     if(selection_iso is None):
       selection_iso = self.refinement_flags.adp_individual_iso
-      if(selection_iso is not None):
-        if(h_mode is not None and h_mode != "individual"):
-          selection_iso.set_selected(self.xray_structure.hd_selection(), False)
     if(selection_iso is not None):
       self.xray_structure.scatterers().flags_set_grad_u_iso(
         iselection = selection_iso.iselection())
     if(selection_aniso is None):
       selection_aniso = self.refinement_flags.adp_individual_aniso
-      if(selection_aniso is not None):
-        if(h_mode is not None and h_mode != "individual"):
-          selection_aniso.set_selected(self.xray_structure.hd_selection(),False)
     if(selection_aniso is not None):
       self.xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
@@ -798,7 +791,7 @@ def create_atom_attr(other_attr, i_seq, xray_structure, element, atom_name):
     resSeq      = resSeq,
     iCode       = iCode,
     site        = (x+r,y,z),
-    occupancy   = 0.0,
+    occupancy   = 1.0,
     tempFactor  = adptbx.u_as_b(xray_structure.extract_u_iso_or_u_equiv()[i_seq]),
     segID       = segID,
     element     = element,
