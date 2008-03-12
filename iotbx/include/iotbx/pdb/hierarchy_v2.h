@@ -344,13 +344,6 @@ namespace hierarchy_v2 {
       clear_parent() { data->parent.reset(); }
 
     public:
-      atom(shared_ptr<atom_data> const& data_)
-      :
-        data(data_)
-      {
-        SCITBX_ASSERT(data.get() != 0);
-      }
-
       inline
       atom(
         atom_group const& parent,
@@ -563,13 +556,6 @@ namespace hierarchy_v2 {
       parent_ptr() const { return data->parent.lock(); }
 
     public:
-      atom_group(shared_ptr<atom_group_data> const& data_)
-      :
-        data(data_)
-      {
-        SCITBX_ASSERT(data.get() != 0);
-      }
-
       inline
       atom_group(
         residue_group const& parent,
@@ -663,13 +649,6 @@ namespace hierarchy_v2 {
       parent_ptr() const { return data->parent.lock(); }
 
     public:
-      residue_group(shared_ptr<residue_group_data> const& data_)
-      :
-        data(data_)
-      {
-        SCITBX_ASSERT(data.get() != 0);
-      }
-
       inline
       residue_group(
         chain const& parent,
@@ -793,13 +772,6 @@ namespace hierarchy_v2 {
       clear_parent() { data->parent.reset(); }
 
     public:
-      chain(shared_ptr<chain_data> const& data_)
-      :
-        data(data_)
-      {
-        SCITBX_ASSERT(data.get() != 0);
-      }
-
       inline
       chain(
         model const& parent,
@@ -910,14 +882,6 @@ namespace hierarchy_v2 {
       clear_parent() { data->parent.reset(); }
 
     public:
-      model(
-        shared_ptr<model_data> const& data_)
-      :
-        data(data_)
-      {
-        SCITBX_ASSERT(data.get() != 0);
-      }
-
       inline
       model(
         root const& parent,
@@ -1001,14 +965,6 @@ namespace hierarchy_v2 {
       root(shared_ptr<root_data> const& data_, bool) : data(data_) {}
 
     public:
-      root(
-        shared_ptr<root_data> const& data_)
-      :
-        data(data_)
-      {
-        SCITBX_ASSERT(data.get() != 0);
-      }
-
       root() : data(new root_data) {}
 
       root
