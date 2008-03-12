@@ -131,12 +131,20 @@ def fit_water(water_and_peaks, xray_structure, params, log):
   site_frac_h2 = scatterers[water_and_peaks.i_seq_h2].site
   peak_sites_frac = water_and_peaks.peaks_sites_frac
   if(len(peak_sites_frac) == 1):
+    sc1 = scatterers[water_and_peaks.i_seq_h1]
+    sc2 = scatterers[water_and_peaks.i_seq_h2]
+    if(sc1.occupancy < sc2.occupancy and sc2.occupancy > 0.3):
+      site_frac_h2 = sc2.site
+    elif(sc1.occupancy > sc2.occupancy and sc1.occupancy > 0.3):
+      site_frac_h2 = scatterers[water_and_peaks.i_seq_h1].site
+    else:
+      site_frac_h2 = peak_sites_frac[0]
     result = mmtbx.utils.fit_hoh(
       site_frac_o     = site_frac_o,
       site_frac_h1    = site_frac_h1,
       site_frac_h2    = site_frac_h2,
       site_frac_peak1 = peak_sites_frac[0],
-      site_frac_peak2 = peak_sites_frac[0],
+      site_frac_peak2 = site_frac_h2,
       angular_shift   = params.angular_step,
       unit_cell       = uc)
     d_best = result.dist_best()
@@ -164,9 +172,10 @@ def fit_water(water_and_peaks, xray_structure, params, log):
         o = uc.fractionalize(result.site_cart_o_fitted)
         h1 = uc.fractionalize(result.site_cart_h1_fitted)
         h2 = uc.fractionalize(result.site_cart_h2_fitted)
-  scatterers[water_and_peaks.i_seq_o ].site = o
-  scatterers[water_and_peaks.i_seq_h1].site = h1
-  scatterers[water_and_peaks.i_seq_h2].site = h2
+  if(d_best < 1.0):
+    scatterers[water_and_peaks.i_seq_o ].site = o
+    scatterers[water_and_peaks.i_seq_h1].site = h1
+    scatterers[water_and_peaks.i_seq_h2].site = h2
   print >> log, "%6.3f"%d_best
 
 def run(fmodel, model, log, params = None):
@@ -192,3 +201,10 @@ def run(fmodel, model, log, params = None):
               xray_structure  = model.xray_structure,
               params          = params,
               log             = log)
+  # adjust ADP for H
+  u_isos = model.xray_structure.extract_u_iso_or_u_equiv()
+  u_iso_mean = flex.mean(u_isos)
+  sel_big = u_isos > u_iso_mean*2
+  hd_sel = model.xray_structure.hd_selection()
+  sel_big.set_selected(~hd_sel, False)
+  model.xray_structure.set_u_iso(value = u_iso_mean, selection = sel_big)
