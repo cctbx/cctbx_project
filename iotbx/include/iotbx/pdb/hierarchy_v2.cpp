@@ -142,6 +142,9 @@ namespace {
   IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(residue_group, atom_group, atom)
   IOTBX_PDB_HIERARCHY_V2_CPP_SET_PARENT_ETC(atom_group, atom)
 
+  IOTBX_PDB_HIERARCHY_V2_CPP_SET_PARENT_ETC(chain, conformer)
+  IOTBX_PDB_HIERARCHY_V2_CPP_SET_PARENT_ETC(conformer, residue)
+
   root
   root::deep_copy() const
   {
@@ -260,6 +263,19 @@ namespace {
     return result;
   }
 
+  unsigned
+  conformer::atoms_size() const
+  {
+    unsigned result = 0;
+    unsigned n_rds = residues_size();
+    std::vector<residue> const& rds = residues();
+    for(unsigned i_rd=0;i_rd<n_rds;i_rd++) {
+      unsigned n_ats = rds[i_rd].atoms_size();
+      result += n_ats;
+    }
+    return result;
+  }
+
   af::shared<atom>
   root::atoms() const
   {
@@ -301,6 +317,22 @@ namespace {
     af::shared<atom> result((af::reserve(atoms_size())));
     IOTBX_PDB_HIERARCHY_V2_CPP_RESIDUE_GROUP_ATOM_GROUPS_LOOPS
       IOTBX_PDB_HIERARCHY_V2_CPP_ATOM_GROUP_PUSH_BACK_LOOP
+    }
+    return result;
+  }
+
+  af::shared<atom>
+  conformer::atoms() const
+  {
+    af::shared<atom> result((af::reserve(atoms_size())));
+    unsigned n_rds = residues_size();
+    std::vector<residue> const& rds = residues();
+    for(unsigned i_rd=0;i_rd<n_rds;i_rd++) {
+      unsigned n_ats = rds[i_rd].atoms_size();
+      std::vector<atom> const& ats = rds[i_rd].atoms();
+      for(unsigned i_at=0;i_at<n_ats;i_at++) {
+        result.push_back(ats[i_at]);
+      }
     }
     return result;
   }
@@ -441,8 +473,11 @@ namespace {
     return std::string(result);
   }
 
+namespace {
+
+  template <typename DataType>
   std::string
-  residue_group::resid() const
+  make_resid(DataType const& data)
   {
     char blank = ' ';
     char result[6];
@@ -451,6 +486,14 @@ namespace {
     result[5] = '\0';
     return std::string(result);
   }
+
+} // namespace <anonymous>
+
+  std::string
+  residue_group::resid() const { return make_resid(data); }
+
+  std::string
+  residue::resid() const { return make_resid(data); }
 
   bool
   residue_group::have_conformers() const
@@ -816,6 +859,26 @@ namespace {
     for(const atom* a=atoms.begin();a!=atoms.end();a++,value++) {
       a->data->tmp = (a->element_is_hydrogen() ? -1 : value);
     }
+  }
+
+  void
+  residue::append_atoms(af::const_ref<atom> const& atoms)
+  {
+    data->atoms.assign(atoms.begin(), atoms.end());
+  }
+
+  void
+  conformer::append_residue(
+    const char* resname,
+    const char* resseq,
+    const char* icode,
+    bool link_to_previous,
+    bool is_pure_primary,
+    af::const_ref<atom> const& atoms)
+  {
+    data->residues.push_back(residue(
+      *this, resname, resseq, icode, link_to_previous, is_pure_primary));
+    data->residues.back().append_atoms(atoms);
   }
 
 }}} // namespace iotbx::pdb::hierarchy_v2
