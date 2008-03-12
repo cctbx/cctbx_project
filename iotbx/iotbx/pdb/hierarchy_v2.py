@@ -153,6 +153,49 @@ class _chain(boost.python.injector, ext.chain):
     result.sort(groups_cmp)
     return result
 
+  def conformers(self):
+    altlocs = []
+    altloc_indices = {}
+    for rg in self.residue_groups():
+      for ag in rg.atom_groups():
+        altloc = ag.altloc
+        if (altloc == ""): continue
+        if (altloc in altloc_indices): continue
+        altlocs.append(altloc)
+        altloc_indices[altloc] = len(altloc_indices)
+    if (len(altlocs) == 0):
+      altlocs = [""]
+    result = [conformer(altloc=altloc, residues=[]) for altloc in altlocs]
+    for rg in self.residue_groups():
+      altloc_ags = [[] for altloc in altlocs]
+      for ag in rg.atom_groups():
+        if (ag.altloc == ""):
+          for ags in altloc_ags:
+            ags.append(ag)
+        else:
+          altloc_ags[altloc_indices[ag.altloc]].append(ag)
+      for cf,ags in zip(result, altloc_ags):
+        resnames = []
+        resname_atoms = {}
+        resnames_with_altloc = {}
+        for ag in ags:
+          atoms = resname_atoms.get(ag.resname)
+          if (atoms is None):
+            resnames.append(ag.resname)
+            atoms = resname_atoms[ag.resname] = af_shared_atom()
+          atoms.extend(ag.atoms())
+          if (ag.altloc != ""):
+            resnames_with_altloc[ag.resname] = None
+        for resname in resnames:
+          cf.residues().append(residue(
+            resname=resname,
+            resseq=rg.resseq,
+            icode=rg.icode,
+            link_to_previous=rg.link_to_previous,
+            is_pure_primary=not resname in resnames_with_altloc,
+            atoms=resname_atoms[resname]))
+    return result
+
 class _residue_group(boost.python.injector, ext.residue_group):
 
   def only_atom_group(self):
@@ -167,3 +210,37 @@ class _atom_group(boost.python.injector, ext.atom_group):
   def only_atom(self):
     assert self.atoms_size() == 1
     return self.atoms()[0]
+
+class residue(object):
+
+  def __init__(self,
+        resname,
+        resseq,
+        icode,
+        link_to_previous,
+        is_pure_primary,
+        atoms):
+    self.resname = resname
+    self.resseq = resseq
+    self.icode = icode
+    self.link_to_previous = link_to_previous
+    self.is_pure_primary = is_pure_primary
+    self._atoms = atoms
+
+  def atoms_size(self):
+    return len(self._atoms)
+
+  def atoms(self):
+    return self._atoms
+
+class conformer(object):
+
+  def __init__(self, altloc, residues):
+    self.altloc = altloc
+    self._residues = residues
+
+  def residues_size(self):
+    return len(self._residues)
+
+  def residues(self):
+    return self._residues
