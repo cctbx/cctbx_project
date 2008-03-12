@@ -118,11 +118,35 @@ namespace iotbx { namespace pdb {
         bool link_to_previous = false;
         unsigned prev_break_range_id = 0;
         const char* prev_resid = 0;
+        const char* prev_resname = 0;
+        bool open_resname_run_has_blank_altloc = false;
         for (unsigned i_atom=ch_r.begin; i_atom!=ch_r.end; i_atom++) {
           unsigned break_range_id = *break_range_ids++;
-          const char* resid = iall[i_atom].resid_begin();
+          input_atom_labels const& ial = iall[i_atom];
+          const char* resid = ial.resid_begin();
+          const char* resname = ial.resname_begin();
+          bool curr_blank_altloc = (ial.altloc_begin()[0]==blank_altloc_char);
           if (prev_resid != 0) {
-            if (std::memcmp(prev_resid, resid, 5U) != 0) {
+            bool is_boundary = (std::memcmp(prev_resid, resid, 5U) != 0);
+            if (!is_boundary && std::memcmp(prev_resname, resname, 3U) != 0) {
+              if (open_resname_run_has_blank_altloc || curr_blank_altloc) {
+                is_boundary = true;
+              }
+              else {
+                for (unsigned j_atom=i_atom+1; j_atom!=ch_r.end; j_atom++) {
+                  input_atom_labels const& fwd_ial = iall[j_atom];
+                  const char* fwd_resid = fwd_ial.resid_begin();
+                  const char* fwd_resname = fwd_ial.resname_begin();
+                  if (std::memcmp(resname, fwd_resname, 3U) != 0) break;
+                  if (std::memcmp(resid, fwd_resid, 5U) != 0) break;
+                  if (fwd_ial.altloc_begin()[0] == blank_altloc_char) {
+                    is_boundary = true;
+                    break;
+                  }
+                }
+              }
+            }
+            if (is_boundary) {
               append_residue_group(
                 iall+rg_start,
                 atoms+rg_start,
@@ -132,6 +156,7 @@ namespace iotbx { namespace pdb {
                 residue_group_post_processing);
               rg_start = i_atom;
               link_to_previous = (break_range_id == prev_break_range_id);
+              open_resname_run_has_blank_altloc = false;
             }
             else if (break_range_id != prev_break_range_id) {
               char buf[64];
@@ -146,8 +171,10 @@ namespace iotbx { namespace pdb {
           }
           prev_break_range_id = break_range_id;
           prev_resid = resid;
-          altloc_resname_indices[iall[i_atom].altloc_resname_small()]
-            .push_back(i_atom-rg_start);
+          prev_resname = resname;
+          if (curr_blank_altloc) open_resname_run_has_blank_altloc = true;
+          altloc_resname_indices[ial.altloc_resname_small()].push_back(
+            i_atom-rg_start);
         }
         if (prev_resid != 0) {
           append_residue_group(
