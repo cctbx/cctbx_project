@@ -46,16 +46,19 @@ namespace iotbx { namespace pdb {
 Convenience objects:
 <pre>
   residue
-    altloc
-    name
+    parent
+    resname
     resseq
     icode
+    link_to_previous
+    is_pure_primary
     atoms
 </pre>
 A residue object is NOT a parent of the atoms.
 <p>
 <pre>
   conformer
+    parent
     altloc
     residues
 </pre>
@@ -79,7 +82,9 @@ namespace hierarchy_v2 {
   class atom_data;
   class atom;
 
+  class conformer_data;
   class conformer;
+  class residue_data;
   class residue;
 
   //! Holder for root attributes (to be held by a shared_ptr).
@@ -278,6 +283,60 @@ namespace hierarchy_v2 {
       atom_data(
         weak_ptr<atom_group_data> const& parent_,
         atom_data const& other);
+  };
+
+  //! Holder for conformer attributes (to be held by a shared_ptr).
+  class conformer_data : boost::noncopyable
+  {
+    protected:
+      friend class conformer;
+      weak_ptr<chain_data> parent;
+    public:
+      std::string altloc;
+    protected:
+      std::vector<residue> residues;
+
+      inline
+      conformer_data(
+        weak_ptr<chain_data> const& parent_,
+        std::string const& altloc_);
+
+      inline
+      conformer_data(
+        std::string const& altloc_);
+  };
+
+  //! Holder for residue attributes (to be held by a shared_ptr).
+  class residue_data : boost::noncopyable
+  {
+    protected:
+      friend class residue;
+      weak_ptr<conformer_data> parent;
+    public:
+      str3 resname;
+      str4 resseq;
+      str1 icode;
+      bool link_to_previous;
+      bool is_pure_primary;
+    protected:
+      std::vector<atom> atoms;
+
+      inline
+      residue_data(
+        weak_ptr<conformer_data> const& parent_,
+        const char* resname_,
+        const char* resseq_,
+        const char* const& icode_,
+        bool link_to_previous_,
+        bool is_pure_primary_);
+
+      inline
+      residue_data(
+        const char* resname_,
+        const char* resseq_,
+        const char* icode_,
+        bool link_to_previous_,
+        bool is_pure_primary_);
   };
 
   //! Atom attributes.
@@ -629,7 +688,6 @@ namespace hierarchy_v2 {
         const char* icode="",
         bool link_to_previous=true);
 
-      inline
       residue_group(
         const char* resseq="",
         const char* icode="",
@@ -733,6 +791,7 @@ namespace hierarchy_v2 {
 
     protected:
       friend class residue_group; // to support residue_group::parent()
+      friend class conformer; // to support conformer::parent()
 
       chain(shared_ptr<chain_data> const& data_, bool) : data(data_) {}
 
@@ -1015,6 +1074,134 @@ namespace hierarchy_v2 {
       atoms() const;
   };
 
+  //! Residue attributes.
+  class residue
+  {
+    public:
+      shared_ptr<residue_data> data;
+
+    protected:
+      residue&
+      set_parent(conformer const& parent);
+
+      friend class conformer; // to support conformer::append_residue
+
+      void
+      append_atoms(af::const_ref<atom> const& atoms);
+
+    public:
+      residue(shared_ptr<residue_data> const& data_)
+      :
+        data(data_)
+      {
+        SCITBX_ASSERT(data.get() != 0);
+      }
+
+      inline
+      residue(
+        conformer const& parent,
+        const char* resname="",
+        const char* resseq="",
+        const char* icode="",
+        bool link_to_previous=true,
+        bool is_pure_primary=false);
+
+      residue(
+        const char* resname="",
+        const char* resseq="",
+        const char* icode="",
+        bool link_to_previous=true,
+        bool is_pure_primary=false)
+      :
+        data(new residue_data(
+          resname, resseq, icode, link_to_previous, is_pure_primary))
+      {}
+
+      std::size_t
+      memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      boost::optional<conformer>
+      parent() const;
+
+      unsigned
+      atoms_size() const
+      {
+        return static_cast<unsigned>(data->atoms.size());
+      }
+
+      std::vector<atom> const&
+      atoms() const { return data->atoms; }
+
+      std::string
+      resid() const;
+  };
+
+  //! Conformer attributes.
+  class conformer
+  {
+    public:
+      shared_ptr<conformer_data> data;
+
+    protected:
+      friend class residue; // to support residue::parent()
+
+      conformer(shared_ptr<conformer_data> const& data_, bool) : data(data_) {}
+
+      conformer&
+      set_parent(chain const& parent);
+
+    public:
+      conformer(shared_ptr<conformer_data> const& data_)
+      :
+        data(data_)
+      {
+        SCITBX_ASSERT(data.get() != 0);
+      }
+
+      conformer(
+        chain const& parent,
+        std::string const& altloc="")
+      :
+        data(new conformer_data(parent.data, altloc))
+      {}
+
+      conformer(
+        std::string const& altloc="")
+      :
+        data(new conformer_data(altloc))
+      {}
+
+      std::size_t
+      memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      boost::optional<chain>
+      parent() const;
+
+      unsigned
+      residues_size() const
+      {
+        return static_cast<unsigned>(data->residues.size());
+      }
+
+      std::vector<residue> const&
+      residues() const { return data->residues; }
+
+      unsigned
+      atoms_size() const;
+
+      af::shared<atom>
+      atoms() const;
+
+      void
+      append_residue(
+        const char* resname,
+        const char* resseq,
+        const char* icode,
+        bool link_to_previous,
+        bool is_pure_primary,
+        af::const_ref<atom> const& atoms);
+  };
+
   inline
   model_data::model_data(
     weak_ptr<root_data> const& parent_,
@@ -1201,6 +1388,67 @@ namespace hierarchy_v2 {
   void
   atoms_reset_tmp_for_occupancy_groups_simple(
     af::const_ref<atom> const& atoms);
+
+  inline
+  residue_data::residue_data(
+    weak_ptr<conformer_data> const& parent_,
+    const char* resname_,
+    const char* resseq_,
+    const char* const& icode_,
+    bool link_to_previous_,
+    bool is_pure_primary_)
+  :
+    parent(parent_),
+    resname(resname_),
+    resseq(resseq_),
+    icode(icode_),
+    link_to_previous(link_to_previous_),
+    is_pure_primary(is_pure_primary_)
+  {}
+
+  inline
+  residue_data::residue_data(
+    const char* resname_,
+    const char* resseq_,
+    const char* icode_,
+    bool link_to_previous_,
+    bool is_pure_primary_)
+  :
+    resname(resname_),
+    resseq(resseq_),
+    icode(icode_),
+    link_to_previous(link_to_previous_),
+    is_pure_primary(is_pure_primary_)
+  {}
+
+  inline
+  residue::residue(
+    conformer const& parent,
+    const char* resname,
+    const char* resseq,
+    const char* icode,
+    bool link_to_previous,
+    bool is_pure_primary)
+  :
+    data(new residue_data(
+      parent.data, resname, resseq, icode, link_to_previous, is_pure_primary))
+  {}
+
+  inline
+  conformer_data::conformer_data(
+    weak_ptr<chain_data> const& parent_,
+    std::string const& altloc_)
+  :
+    parent(parent_),
+    altloc(altloc_)
+  {}
+
+  inline
+  conformer_data::conformer_data(
+    std::string const& altloc_)
+  :
+    altloc(altloc_)
+  {}
 
 }}} // namespace iotbx::pdb::hierarchy_v2
 

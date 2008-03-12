@@ -265,6 +265,15 @@ namespace {
         .def("remove_" #C, \
           (void(w_t::*)(C&)) &w_t::remove_##C, (arg_(#C)))
 
+  template <typename ElementType>
+  af::shared<ElementType>
+  std_vector_as_af_shared(
+    std::vector<ElementType> const& v)
+  {
+    if (v.size() == 0) return af::shared<ElementType>();
+    return af::shared<ElementType>(&*v.begin(), &*v.end());
+  }
+
   struct atom_group_wrappers
   {
     typedef atom_group w_t;
@@ -276,9 +285,7 @@ namespace {
     af::shared<atom>
     get_atoms(w_t const& self)
     {
-      std::vector<atom> const& ats = self.atoms();
-      if (ats.size() == 0) return af::shared<atom>();
-      return af::shared<atom>(&*ats.begin(), &*ats.end());
+      return std_vector_as_af_shared(self.atoms());
     }
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
@@ -556,6 +563,126 @@ namespace {
     }
   };
 
+  struct residue_wrappers
+  {
+    typedef residue w_t;
+
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(resname)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(resseq)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
+
+    static bool
+    get_link_to_previous(w_t const& self)
+    {
+      return self.data->link_to_previous;
+    }
+
+    static void
+    set_link_to_previous(w_t const& self, bool new_link_to_previous)
+    {
+      self.data->link_to_previous = new_link_to_previous;
+    }
+
+    static bool
+    get_is_pure_primary(w_t const& self)
+    {
+      return self.data->is_pure_primary;
+    }
+
+    static void
+    set_is_pure_primary(w_t const& self, bool new_is_pure_primary)
+    {
+      self.data->is_pure_primary = new_is_pure_primary;
+    }
+
+    static
+    af::shared<atom>
+    get_atoms(w_t const& self)
+    {
+      return std_vector_as_af_shared(self.atoms());
+    }
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("residue", no_init)
+        .def(init<
+          conformer const&,
+            optional<const char*, const char*, const char*, bool, bool> >((
+              arg_("parent"),
+              arg_("resname")="", arg_("resseq")="", arg_("icode")="",
+              arg_("link_to_previous")=true,
+              arg_("is_pure_primary")=false)))
+        .def(init<
+          optional<const char*, const char*, const char*, bool, bool> >((
+            arg_("resname")="", arg_("resseq")="", arg_("icode")="",
+            arg_("link_to_previous")=true,
+            arg_("is_pure_primary")=false)))
+        .add_property("resname",
+          make_function(get_resname), make_function(set_resname))
+        .add_property("resseq",
+          make_function(get_resseq), make_function(set_resseq))
+        .add_property("icode",
+          make_function(get_icode), make_function(set_icode))
+        .add_property("link_to_previous",
+          make_function(get_link_to_previous),
+          make_function(set_link_to_previous))
+        .add_property("is_pure_primary",
+          make_function(get_is_pure_primary),
+          make_function(set_is_pure_primary))
+        .def("memory_id", &w_t::memory_id)
+        .def("parent", get_parent<residue, conformer>::wrapper)
+        .def("atoms", get_atoms)
+        .def("atoms_size", &w_t::atoms_size)
+        .def("resid", &w_t::resid)
+      ;
+    }
+  };
+
+  struct conformer_wrappers
+  {
+    typedef conformer w_t;
+
+    static std::string
+    get_altloc(w_t const& self) { return self.data->altloc; }
+
+    static void
+    set_altloc(w_t const& self, std::string const& new_altloc)
+    {
+      self.data->altloc = new_altloc;
+    }
+
+    IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(conformer, residue, residues)
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("conformer", no_init)
+        .def(init<chain const&, optional<std::string const&> >((
+          arg_("parent"), arg_("altloc")="")))
+        .def(init<std::string const&>((
+          arg_("altloc")="")))
+        .add_property("altloc",
+          make_function(get_altloc), make_function(set_altloc))
+        .def("memory_id", &w_t::memory_id)
+        .def("parent", get_parent<conformer, chain>::wrapper)
+        .def("residues_size", &w_t::residues_size)
+        .def("residues", get_residues)
+        .def("atoms_size", &w_t::atoms_size)
+        .def("atoms", &w_t::atoms)
+        .def("append_residue", &w_t::append_residue, (
+          arg_("resname"),
+          arg_("resseq"),
+          arg_("icode"),
+          arg_("link_to_previous"),
+          arg_("is_pure_primary"),
+          arg_("atoms")))
+      ;
+    }
+  };
+
   void
   wrap_hierarchy_v2()
   {
@@ -565,6 +692,9 @@ namespace {
     chain_wrappers::wrap();
     model_wrappers::wrap();
     root_wrappers::wrap();
+
+    residue_wrappers::wrap();
+    conformer_wrappers::wrap();
   }
 
 }}}} // namespace iotbx::pdb::hierarchy_v2::<anonymous>
