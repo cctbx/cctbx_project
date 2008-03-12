@@ -300,10 +300,6 @@ namespace hierarchy_v2 {
       conformer_data(
         weak_ptr<chain_data> const& parent_,
         std::string const& altloc_);
-
-      inline
-      conformer_data(
-        std::string const& altloc_);
   };
 
   //! Holder for residue attributes (to be held by a shared_ptr).
@@ -328,15 +324,8 @@ namespace hierarchy_v2 {
         const char* resseq_,
         const char* const& icode_,
         bool link_to_previous_,
-        bool is_pure_primary_);
-
-      inline
-      residue_data(
-        const char* resname_,
-        const char* resseq_,
-        const char* icode_,
-        bool link_to_previous_,
-        bool is_pure_primary_);
+        bool is_pure_primary_,
+        af::const_ref<atom> const& atoms_);
   };
 
   //! Atom attributes.
@@ -1081,42 +1070,18 @@ namespace hierarchy_v2 {
       shared_ptr<residue_data> data;
 
     protected:
-      residue&
-      set_parent(conformer const& parent);
+      friend class conformer; // to support conformer:append_residue
 
-      friend class conformer; // to support conformer::append_residue
-
-      void
-      append_atoms(af::const_ref<atom> const& atoms);
-
-    public:
-      residue(shared_ptr<residue_data> const& data_)
-      :
-        data(data_)
-      {
-        SCITBX_ASSERT(data.get() != 0);
-      }
-
-      inline
       residue(
         conformer const& parent,
-        const char* resname="",
-        const char* resseq="",
-        const char* icode="",
-        bool link_to_previous=true,
-        bool is_pure_primary=false);
+        const char* resname,
+        const char* resseq,
+        const char* icode,
+        bool link_to_previous,
+        bool is_pure_primary,
+        af::const_ref<atom> const& atoms);
 
-      residue(
-        const char* resname="",
-        const char* resseq="",
-        const char* icode="",
-        bool link_to_previous=true,
-        bool is_pure_primary=false)
-      :
-        data(new residue_data(
-          resname, resseq, icode, link_to_previous, is_pure_primary))
-      {}
-
+    public:
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
 
@@ -1147,28 +1112,12 @@ namespace hierarchy_v2 {
 
       conformer(shared_ptr<conformer_data> const& data_, bool) : data(data_) {}
 
-      conformer&
-      set_parent(chain const& parent);
-
     public:
-      conformer(shared_ptr<conformer_data> const& data_)
-      :
-        data(data_)
-      {
-        SCITBX_ASSERT(data.get() != 0);
-      }
-
       conformer(
         chain const& parent,
-        std::string const& altloc="")
+        std::string const& altloc)
       :
         data(new conformer_data(parent.data, altloc))
-      {}
-
-      conformer(
-        std::string const& altloc="")
-      :
-        data(new conformer_data(altloc))
       {}
 
       std::size_t
@@ -1396,42 +1345,16 @@ namespace hierarchy_v2 {
     const char* resseq_,
     const char* const& icode_,
     bool link_to_previous_,
-    bool is_pure_primary_)
+    bool is_pure_primary_,
+    af::const_ref<atom> const& atoms_)
   :
     parent(parent_),
     resname(resname_),
     resseq(resseq_),
     icode(icode_),
     link_to_previous(link_to_previous_),
-    is_pure_primary(is_pure_primary_)
-  {}
-
-  inline
-  residue_data::residue_data(
-    const char* resname_,
-    const char* resseq_,
-    const char* icode_,
-    bool link_to_previous_,
-    bool is_pure_primary_)
-  :
-    resname(resname_),
-    resseq(resseq_),
-    icode(icode_),
-    link_to_previous(link_to_previous_),
-    is_pure_primary(is_pure_primary_)
-  {}
-
-  inline
-  residue::residue(
-    conformer const& parent,
-    const char* resname,
-    const char* resseq,
-    const char* icode,
-    bool link_to_previous,
-    bool is_pure_primary)
-  :
-    data(new residue_data(
-      parent.data, resname, resseq, icode, link_to_previous, is_pure_primary))
+    is_pure_primary(is_pure_primary_),
+    atoms(atoms_.begin(), atoms_.end())
   {}
 
   inline
@@ -1440,13 +1363,6 @@ namespace hierarchy_v2 {
     std::string const& altloc_)
   :
     parent(parent_),
-    altloc(altloc_)
-  {}
-
-  inline
-  conformer_data::conformer_data(
-    std::string const& altloc_)
-  :
     altloc(altloc_)
   {}
 

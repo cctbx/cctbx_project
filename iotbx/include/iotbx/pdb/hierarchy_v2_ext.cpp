@@ -29,19 +29,25 @@ namespace {
     }
   };
 
-#define IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
+#define IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(attr) \
     static \
     boost::python::str \
     get_##attr(w_t const& self) \
     { \
       return boost::python::str(self.data->attr.elems); \
-    } \
+    }
+
+#define IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_SET(attr) \
     static \
     void \
     set_##attr(w_t& self, const char* value) \
     { \
       self.data->attr.replace_with(value); \
     }
+
+#define IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
+  IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(attr) \
+  IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_SET(attr)
 
   struct atom_wrappers
   {
@@ -567,9 +573,9 @@ namespace {
   {
     typedef residue w_t;
 
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(resname)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(resseq)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(resname)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(resseq)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(icode)
 
     static bool
     get_link_to_previous(w_t const& self)
@@ -577,22 +583,10 @@ namespace {
       return self.data->link_to_previous;
     }
 
-    static void
-    set_link_to_previous(w_t const& self, bool new_link_to_previous)
-    {
-      self.data->link_to_previous = new_link_to_previous;
-    }
-
     static bool
     get_is_pure_primary(w_t const& self)
     {
       return self.data->is_pure_primary;
-    }
-
-    static void
-    set_is_pure_primary(w_t const& self, bool new_is_pure_primary)
-    {
-      self.data->is_pure_primary = new_is_pure_primary;
     }
 
     static
@@ -607,30 +601,11 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("residue", no_init)
-        .def(init<
-          conformer const&,
-            optional<const char*, const char*, const char*, bool, bool> >((
-              arg_("parent"),
-              arg_("resname")="", arg_("resseq")="", arg_("icode")="",
-              arg_("link_to_previous")=true,
-              arg_("is_pure_primary")=false)))
-        .def(init<
-          optional<const char*, const char*, const char*, bool, bool> >((
-            arg_("resname")="", arg_("resseq")="", arg_("icode")="",
-            arg_("link_to_previous")=true,
-            arg_("is_pure_primary")=false)))
-        .add_property("resname",
-          make_function(get_resname), make_function(set_resname))
-        .add_property("resseq",
-          make_function(get_resseq), make_function(set_resseq))
-        .add_property("icode",
-          make_function(get_icode), make_function(set_icode))
-        .add_property("link_to_previous",
-          make_function(get_link_to_previous),
-          make_function(set_link_to_previous))
-        .add_property("is_pure_primary",
-          make_function(get_is_pure_primary),
-          make_function(set_is_pure_primary))
+        .add_property("resname", make_function(get_resname))
+        .add_property("resseq", make_function(get_resseq))
+        .add_property("icode", make_function(get_icode))
+        .add_property("link_to_previous", make_function(get_link_to_previous))
+        .add_property("is_pure_primary", make_function(get_is_pure_primary))
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<residue, conformer>::wrapper)
         .def("atoms", get_atoms)
@@ -647,12 +622,6 @@ namespace {
     static std::string
     get_altloc(w_t const& self) { return self.data->altloc; }
 
-    static void
-    set_altloc(w_t const& self, std::string const& new_altloc)
-    {
-      self.data->altloc = new_altloc;
-    }
-
     IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(conformer, residue, residues)
 
     static void
@@ -660,12 +629,9 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("conformer", no_init)
-        .def(init<chain const&, optional<std::string const&> >((
-          arg_("parent"), arg_("altloc")="")))
-        .def(init<std::string const&>((
-          arg_("altloc")="")))
-        .add_property("altloc",
-          make_function(get_altloc), make_function(set_altloc))
+        .def(init<chain const&, std::string const&>((
+          arg_("parent"), arg_("altloc"))))
+        .add_property("altloc", make_function(get_altloc))
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<conformer, chain>::wrapper)
         .def("residues_size", &w_t::residues_size)
