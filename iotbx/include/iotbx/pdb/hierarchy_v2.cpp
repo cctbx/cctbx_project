@@ -26,7 +26,7 @@ namespace {
 
 } // namespace <anonymous>
 
-#define IOTBX_PDB_HIERARCHY_V2_CPP_SET_PARENT_ETC(P, T) \
+#define IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_SET(P, T) \
   T& \
   T::set_parent(P const& parent) \
   { \
@@ -35,8 +35,9 @@ namespace {
     } \
     data->parent = parent.data; \
     return *this; \
-  } \
-\
+  }
+
+#define IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET(P, T) \
   boost::optional<P> \
   T::parent() const \
   { \
@@ -44,6 +45,10 @@ namespace {
     if (parent.get() == 0) return boost::optional<P>(); \
     return boost::optional<P>(P(parent, true)); \
   }
+
+#define IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET_SET(P, T) \
+  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_SET(P, T) \
+  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET(P, T)
 
 #define IOTBX_PDB_HIERARCHY_V2_CPP_APPEND_ETC(T, C) \
   unsigned \
@@ -116,7 +121,7 @@ namespace {
   }
 
 #define IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(P, T, C) \
-  IOTBX_PDB_HIERARCHY_V2_CPP_SET_PARENT_ETC(P, T) \
+  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET_SET(P, T) \
   T::T( \
     P const& parent, \
     T const& other) \
@@ -140,10 +145,10 @@ namespace {
   IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(model, chain, residue_group)
   IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(chain, residue_group, atom_group)
   IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(residue_group, atom_group, atom)
-  IOTBX_PDB_HIERARCHY_V2_CPP_SET_PARENT_ETC(atom_group, atom)
+  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET_SET(atom_group, atom)
 
-  IOTBX_PDB_HIERARCHY_V2_CPP_SET_PARENT_ETC(chain, conformer)
-  IOTBX_PDB_HIERARCHY_V2_CPP_SET_PARENT_ETC(conformer, residue)
+  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET(chain, conformer)
+  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET(conformer, residue)
 
   root
   root::deep_copy() const
@@ -861,11 +866,20 @@ namespace {
     }
   }
 
-  void
-  residue::append_atoms(af::const_ref<atom> const& atoms)
-  {
-    data->atoms.assign(atoms.begin(), atoms.end());
-  }
+  residue::residue(
+    conformer const& parent,
+    const char* resname,
+    const char* resseq,
+    const char* icode,
+    bool link_to_previous,
+    bool is_pure_primary,
+    af::const_ref<atom> const& atoms)
+  :
+    data(new residue_data(
+      parent.data,
+      resname, resseq, icode, link_to_previous, is_pure_primary,
+      atoms))
+  {}
 
   void
   conformer::append_residue(
@@ -877,8 +891,9 @@ namespace {
     af::const_ref<atom> const& atoms)
   {
     data->residues.push_back(residue(
-      *this, resname, resseq, icode, link_to_previous, is_pure_primary));
-    data->residues.back().append_atoms(atoms);
+      *this,
+      resname, resseq, icode, link_to_previous, is_pure_primary,
+      atoms));
   }
 
 }}} // namespace iotbx::pdb::hierarchy_v2
