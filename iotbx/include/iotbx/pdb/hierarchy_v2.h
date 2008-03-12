@@ -839,9 +839,6 @@ namespace hierarchy_v2 {
       merge_disconnected_residue_groups_with_pure_altloc();
 
       af::shared<af::tiny<std::size_t, 2> >
-      split_residue_groups_with_mixed_resnames_but_only_blank_altloc();
-
-      af::shared<af::tiny<std::size_t, 2> >
       find_pure_altloc_ranges(
         const char* common_residue_name_class_only=0) const;
   };

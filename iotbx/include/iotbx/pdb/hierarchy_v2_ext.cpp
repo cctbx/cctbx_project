@@ -465,8 +465,6 @@ namespace {
           arg_("primary"), arg_("secondary")))
         .def("merge_disconnected_residue_groups_with_pure_altloc",
           &w_t::merge_disconnected_residue_groups_with_pure_altloc)
-        .def("split_residue_groups_with_mixed_resnames_but_only_blank_altloc",
-          &w_t::split_residue_groups_with_mixed_resnames_but_only_blank_altloc)
         .def("find_pure_altloc_ranges", &w_t::find_pure_altloc_ranges,
           find_pure_altloc_ranges_overloads((
             arg_("common_residue_name_class_only")=0)))
