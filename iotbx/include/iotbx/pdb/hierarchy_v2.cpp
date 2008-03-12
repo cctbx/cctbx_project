@@ -748,54 +748,6 @@ namespace {
   }
 
   af::shared<af::tiny<std::size_t, 2> >
-  chain::split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
-  {
-    af::shared<af::tiny<std::size_t, 2> > result;
-    std::vector<unsigned> split_indices;
-    unsigned n_rg = residue_groups_size();
-    split_indices.reserve(n_rg);// allocate potential max to avoid reallocation
-    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
-      residue_group const& rg = data->residue_groups[i_rg];
-      if (rg.atom_groups_size() < 2U) continue;
-      if (!rg.have_conformers()) {
-        split_indices.push_back(i_rg);
-      }
-    }
-    unsigned n_si = static_cast<unsigned>(split_indices.size());
-    if (n_si != 0) {
-      result.resize(n_si);
-      // process the residue groups in reverse order
-      std::reverse(split_indices.begin(), split_indices.end());
-      for(unsigned i_si=0;i_si<n_si;i_si++) {
-        unsigned i_rg = split_indices[i_si];
-        residue_group rg = data->residue_groups[i_rg];
-        unsigned n_ag = rg.atom_groups_size();
-        result[n_si-1U-i_si] = af::tiny<std::size_t, 2>(i_rg, n_ag);
-        std::vector<atom_group> atom_groups_copy = rg.atom_groups();
-        for(unsigned i_ag=n_ag;i_ag!=1U;) rg.remove_atom_group(--i_ag);
-        data->residue_groups.insert(
-          data->residue_groups.begin()+i_rg+1U, n_ag-1U, residue_group());
-        for(unsigned i_ag=1;i_ag<n_ag;i_ag++) {
-          data->residue_groups[i_rg+i_ag] = residue_group(
-            /* parent */ *this,
-            rg.data->resseq.elems,
-            rg.data->icode.elems,
-            /* link_to_previous */ true);
-          data->residue_groups[i_rg+i_ag].append_atom_group(
-            atom_groups_copy[i_ag]);
-        }
-      }
-      // adjust split_indices in forward order
-      unsigned shift = 0;
-      for(unsigned i_si=0;i_si<n_si;i_si++) {
-        result[i_si][0] += shift;
-        shift += (result[i_si][1] - 1U);
-      }
-    }
-    return result;
-  }
-
-  af::shared<af::tiny<std::size_t, 2> >
   chain::find_pure_altloc_ranges(
     const char* common_residue_name_class_only) const
   {

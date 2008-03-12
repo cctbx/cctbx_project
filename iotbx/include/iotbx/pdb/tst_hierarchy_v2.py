@@ -1442,10 +1442,6 @@ HETATM 2418  O   WAT     2      14.154  16.852  21.753  1.00 49.41           O
   chain = pdb_inp.construct_hierarchy_v2(
     residue_group_post_processing=False).only_chain()
   assert chain.residue_groups_size() == 4
-  index_count_pairs = chain \
-    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
-  assert list(index_count_pairs) == []
-  assert chain.residue_groups_size() == 4
   assert [residue_group.resid() for residue_group in chain.residue_groups()] \
       == ["   1 ", "   1 ", "   1 ", "   2 "]
   for residue_group in chain.residue_groups():
@@ -1455,9 +1451,6 @@ HETATM 2418  O   WAT     2      14.154  16.852  21.753  1.00 49.41           O
   assert [residue_group.atom_groups()[0].resname
            for residue_group in chain.residue_groups()] \
       == ["PO4", "BEN", "HOH", "WAT"]
-  index_count_pairs = chain \
-    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
-  assert index_count_pairs.size() == 0
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 HETATM 2418  O   WAT     2
 HETATM 2397  P   PO4     1
@@ -1477,22 +1470,10 @@ HETATM 9415  O   HOH     1
   chain = pdb_inp.construct_hierarchy_v2(
     residue_group_post_processing=False).only_chain()
   assert chain.residue_groups_size() == 8
-  index_count_pairs = chain \
-    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
-  assert list(index_count_pairs) == []
-  index_count_pairs = chain \
-    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
-  assert index_count_pairs.size() == 0
   for residue_group in chain.residue_groups():
     assert residue_group.atom_groups_size() == 1
     assert residue_group.atom_groups()[0].parent().memory_id() \
         == residue_group.memory_id()
-  del residue_group
-  del chain
-  chain = pdb_inp.construct_hierarchy_v2().only_chain()
-  index_count_pairs = chain \
-    .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
-  assert index_count_pairs.size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 HETATM 6362  O  CHOH B   1
