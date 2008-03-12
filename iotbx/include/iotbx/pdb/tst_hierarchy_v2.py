@@ -746,8 +746,31 @@ def exercise_format_atom_record_using_parents():
 %sB1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % (record_name, chain_id))
 
+def hierarchy_as_str(root):
+  s = StringIO()
+  for model in root.models():
+    print >> s, "@model", show_string(model.id)
+    for chain in model.chains():
+      print >> s, "@chain", show_string(chain.id)
+      for rg in chain.residue_groups():
+        print >> s, "@rg", show_string(rg.resid()), int(rg.link_to_previous)
+        for ag in rg.atom_groups():
+          print >> s, "@ag", show_string(ag.confid())
+          for atom in ag.atoms():
+            print >> s, atom.format_atom_record_using_parents()[:27].rstrip()
+  return s.getvalue()
+
 def exercise_construct_hierarchy():
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+  def check(pdb_string, expected):
+    pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
+    root = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
+    s = hierarchy_as_str(root)
+    if (len(expected) == 0):
+      sys.stdout.write(s)
+    else:
+      assert not show_diff(s, expected)
+  #
+  check("""\
 MODEL        1
 ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
 ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
@@ -767,41 +790,187 @@ SIGUIJ   10  N   CYSCH   6        3     13      4     11      6     13
 TER
 ENDMDL
 END
-"""))
-  assert [atom.name for atom in pdb_inp.atoms_v2()] \
-      == [" N  ", " CA ", " C  ", " O  ", "2H3 ", " N  "]
-  sio = StringIO()
-  root = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
-  assert root.atoms_size() == 6
-  assert root.atoms().size() == 6
-  for model in root.models():
-    print >> sio, "m:", show_string(model.id)
-    for chain in model.chains():
-      print >> sio, "  c:", show_string(chain.id)
-      for residue_group in chain.residue_groups():
-        print >> sio, "    rg:", \
-          show_string(residue_group.resid()), \
-          int(residue_group.link_to_previous)
-        for atom_group in residue_group.atom_groups():
-          print >> sio, "      ag:", \
-            show_string(atom_group.altloc), show_string(atom_group.resname)
-  assert not show_diff(sio.getvalue(), """\
-m: "   1"
-  c: "A"
-    rg: "   1 " 0
-      ag: " " "MET"
-    rg: "   2 " 1
-      ag: " " "MET"
-m: "   3"
-  c: "B"
-    rg: "   5 " 0
-      ag: " " "MPR"
-  c: "CH"
-    rg: "   6 " 0
-      ag: " " "CYS"
+""", """\
+@model "   1"
+@chain "A"
+@rg "   1 " 0
+@ag " MET"
+ATOM      1  N   MET A   1
+ATOM      2  CA  MET A   1
+@rg "   2 " 1
+@ag " MET"
+HETATM    3  C   MET A   2
+ATOM      4  O   MET A   2
+@model "   3"
+@chain "B"
+@rg "   5 " 0
+@ag " MPR"
+HETATM    9 2H3  MPR B   5
+@chain "CH"
+@rg "   6 " 0
+@ag " CYS"
+ATOM     10  N   CYSCH   6
 """)
   #
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+  check("""\
+ATOM         N1 AR01
+ATOM         N2 BR01
+ATOM         N1 CR02
+ATOM         N2  R02
+""", """\
+@model "   0"
+@chain " "
+@rg "     " 0
+@ag "AR01"
+ATOM         N1 AR01
+@ag "BR01"
+ATOM         N2 BR01
+@rg "     " 1
+@ag "CR02"
+ATOM         N1 CR02
+@ag " R02"
+ATOM         N2  R02
+""")
+  #
+  check("""\
+ATOM         N1 BR01
+ATOM         N1  R01
+ATOM         N2  R01
+ATOM         N3 BR01
+ATOM         N3  R01
+ATOM         N1  R02
+ATOM         N1 BR02
+ATOM         N2  R02
+ATOM         N3 BR02
+ATOM         N3  R02
+ATOM         N1  R03
+ATOM         N1 BR03
+ATOM         N2  R03
+ATOM         N3 BR03
+ATOM         N3  R03
+""", """\
+@model "   0"
+@chain " "
+@rg "     " 0
+@ag "BR01"
+ATOM         N1 BR01
+ATOM         N3 BR01
+@ag " R01"
+ATOM         N1  R01
+ATOM         N2  R01
+ATOM         N3  R01
+@rg "     " 1
+@ag " R02"
+ATOM         N1  R02
+ATOM         N2  R02
+ATOM         N3  R02
+@ag "BR02"
+ATOM         N1 BR02
+ATOM         N3 BR02
+@rg "     " 1
+@ag " R03"
+ATOM         N1  R03
+ATOM         N2  R03
+ATOM         N3  R03
+@ag "BR03"
+ATOM         N1 BR03
+ATOM         N3 BR03
+""")
+  #
+  check("""\
+ATOM         N1 BR01
+ATOM         N1  R01
+ATOM         N2  R01
+ATOM         N3 BR01
+ATOM         N3  R01
+ATOM         N1 AR02
+ATOM         N1 BR02
+ATOM         N2  R02
+ATOM         N3 BR02
+ATOM         N3 AR02
+ATOM         N1  R03
+ATOM         N1 BR03
+ATOM         N2  R03
+ATOM         N3 BR03
+ATOM         N3  R03
+""", """\
+@model "   0"
+@chain " "
+@rg "     " 0
+@ag "BR01"
+ATOM         N1 BR01
+ATOM         N3 BR01
+@ag " R01"
+ATOM         N1  R01
+ATOM         N2  R01
+ATOM         N3  R01
+@rg "     " 1
+@ag "AR02"
+ATOM         N1 AR02
+ATOM         N3 AR02
+@ag "BR02"
+ATOM         N1 BR02
+ATOM         N3 BR02
+@ag " R02"
+ATOM         N2  R02
+@rg "     " 1
+@ag " R03"
+ATOM         N1  R03
+ATOM         N2  R03
+ATOM         N3  R03
+@ag "BR03"
+ATOM         N1 BR03
+ATOM         N3 BR03
+""")
+  #
+  check("""\
+ATOM         N1 BR01
+ATOM         N1 AR01
+ATOM         N2 CR01
+ATOM         N3 BR01
+ATOM         N3 AR01
+ATOM         N1  R02
+ATOM         N1 BR02
+ATOM         N2  R02
+ATOM         N3 BR02
+ATOM         N3  R02
+ATOM         N1 CR03
+ATOM         N1 BR03
+ATOM         N2 BR03
+ATOM         N2 CR03
+ATOM         N3  R03
+""", """\
+@model "   0"
+@chain " "
+@rg "     " 0
+@ag "BR01"
+ATOM         N1 BR01
+ATOM         N3 BR01
+@ag "AR01"
+ATOM         N1 AR01
+ATOM         N3 AR01
+@ag "CR01"
+ATOM         N2 CR01
+@rg "     " 1
+@ag " R02"
+ATOM         N1  R02
+ATOM         N2  R02
+ATOM         N3  R02
+@ag "BR02"
+ATOM         N1 BR02
+ATOM         N3 BR02
+@rg "     " 1
+@ag "CR03"
+ATOM         N1 CR03
+ATOM         N2 CR03
+@ag "BR03"
+ATOM         N1 BR03
+ATOM         N2 BR03
+@ag " R03"
+ATOM         N3  R03
+""")
+  #
+  check("""\
 REMARK    ANTIBIOTIC                              26-JUL-06   2IZQ
 ATOM    220  N  ATRP A  11      20.498  12.832  34.558  0.50  6.03           N
 ATOM    221  CA ATRP A  11      21.094  12.032  35.602  0.50  5.24           C
@@ -832,51 +1001,42 @@ ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
 ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
 ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
 ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
-"""))
-  lines = []
-  root = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
-  for model in root.models():
-    for chain in model.chains():
-      for residue_group in chain.residue_groups():
-        lines.append("@residue_group")
-        for atom_group in residue_group.atom_groups():
-          lines.append("@atom_group")
-          for atom in atom_group.atoms():
-            lines.append(atom.format_atom_record_using_parents())
-  assert not show_diff("\n".join(lines)+"\n", """\
-@residue_group
-@atom_group
-ATOM    220  N  ATRP A  11      20.498  12.832  34.558  0.50  6.03           N
-ATOM    221  CA ATRP A  11      21.094  12.032  35.602  0.50  5.24           C
-ATOM    222  C  ATRP A  11      22.601  12.088  35.532  0.50  6.49           C
-ATOM    223  O  ATRP A  11      23.174  12.012  34.439  0.50  7.24           O
-ATOM    234  H  ATRP A  11      20.540  12.567  33.741  0.50  7.24           H
-ATOM    235  HA ATRP A  11      20.771  12.306  36.485  0.50  6.28           H
-@atom_group
-ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
-ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92           C
-ATOM    246  C  CPHE A  11      22.448  12.425  35.436  0.15  6.32           C
-ATOM    247  O  CPHE A  11      22.961  12.790  34.373  0.15  6.08           O
-ATOM    262  HB2CPHE A  11      21.221  10.536  34.146  0.15  7.21           H
-ATOM    264  HB3CPHE A  11      21.198  10.093  35.647  0.15  7.21           H
-ATOM    266  HD1CPHE A  11      19.394   9.937  32.837  0.15 10.53           H
-ATOM    268  HD2CPHE A  11      18.873  10.410  36.828  0.15  9.24           H
-ATOM    270  HE1CPHE A  11      17.206   9.172  32.650  0.15 12.52           H
-ATOM    272  HE2CPHE A  11      16.661   9.708  36.588  0.15 11.13           H
-ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
-@atom_group
-ATOM    255  N  BTYR A  11      20.553  12.751  34.549  0.35  5.21           N
-ATOM    256  CA BTYR A  11      21.106  11.838  35.524  0.35  5.51           C
-ATOM    257  C  BTYR A  11      22.625  11.920  35.572  0.35  5.42           C
-ATOM    258  O  BTYR A  11      23.299  11.781  34.538  0.35  5.30           O
-ATOM    263  CD2BTYR A  11      18.463  10.012  36.681  0.35  9.08           C
-ATOM    265  CE1BTYR A  11      17.195   9.960  34.223  0.35 10.76           C
-ATOM    267  CE2BTYR A  11      17.100   9.826  36.693  0.35 11.29           C
-ATOM    269  CZ BTYR A  11      16.546   9.812  35.432  0.35 11.90           C
-ATOM    271  OH BTYR A  11      15.178   9.650  35.313  0.35 19.29           O
-ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
-ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
-ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
+""", """\
+@model "   0"
+@chain "A"
+@rg "  11 " 0
+@ag "ATRP"
+ATOM    220  N  ATRP A  11
+ATOM    221  CA ATRP A  11
+ATOM    222  C  ATRP A  11
+ATOM    223  O  ATRP A  11
+ATOM    234  H  ATRP A  11
+ATOM    235  HA ATRP A  11
+@ag "CPHE"
+ATOM    244  N  CPHE A  11
+ATOM    245  CA CPHE A  11
+ATOM    246  C  CPHE A  11
+ATOM    247  O  CPHE A  11
+ATOM    262  HB2CPHE A  11
+ATOM    264  HB3CPHE A  11
+ATOM    266  HD1CPHE A  11
+ATOM    268  HD2CPHE A  11
+ATOM    270  HE1CPHE A  11
+ATOM    272  HE2CPHE A  11
+ATOM    273  HZ CPHE A  11
+@ag "BTYR"
+ATOM    255  N  BTYR A  11
+ATOM    256  CA BTYR A  11
+ATOM    257  C  BTYR A  11
+ATOM    258  O  BTYR A  11
+ATOM    263  CD2BTYR A  11
+ATOM    265  CE1BTYR A  11
+ATOM    267  CE2BTYR A  11
+ATOM    269  CZ BTYR A  11
+ATOM    271  OH BTYR A  11
+ATOM    274  H  BTYR A  11
+ATOM    275  HA BTYR A  11
+ATOM    276  HB2BTYR A  11
 """)
   #
   root = pdb.input(
@@ -1281,10 +1441,10 @@ HETATM 2418  O   WAT     2      14.154  16.852  21.753  1.00 49.41           O
 """))
   chain = pdb_inp.construct_hierarchy_v2(
     residue_group_post_processing=False).only_chain()
-  assert chain.residue_groups_size() == 2
+  assert chain.residue_groups_size() == 4
   index_count_pairs = chain \
     .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
-  assert list(index_count_pairs) == [(0,3)]
+  assert list(index_count_pairs) == []
   assert chain.residue_groups_size() == 4
   assert [residue_group.resid() for residue_group in chain.residue_groups()] \
       == ["   1 ", "   1 ", "   1 ", "   2 "]
@@ -1316,10 +1476,10 @@ HETATM 9415  O   HOH     1
 """))
   chain = pdb_inp.construct_hierarchy_v2(
     residue_group_post_processing=False).only_chain()
-  assert chain.residue_groups_size() == 4
+  assert chain.residue_groups_size() == 8
   index_count_pairs = chain \
     .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
-  assert list(index_count_pairs) == [(1,3), (5,3)]
+  assert list(index_count_pairs) == []
   index_count_pairs = chain \
     .split_residue_groups_with_mixed_resnames_but_only_blank_altloc()
   assert index_count_pairs.size() == 0
@@ -1472,146 +1632,6 @@ ATOM         N3
       assert atom_groups[1].altloc == " "
       assert atom_groups[2].altloc == "B"
       lines = lines.select(flex.random_permutation(size=lines.size()))
-  #
-  lines = flex.split_lines("""\
-ATOM         N1 BR01
-ATOM         N1  R01
-ATOM         N2  R01
-ATOM         N3 BR01
-ATOM         N3  R01
-ATOM         N1  R02
-ATOM         N1 BR02
-ATOM         N2  R02
-ATOM         N3 BR02
-ATOM         N3  R02
-ATOM         N1  R03
-ATOM         N1 BR03
-ATOM         N2  R03
-ATOM         N3 BR03
-ATOM         N3  R03
-""")
-  for i_trial in xrange(n_trials):
-    pdb_inp = pdb.input(source_info=None, lines=lines)
-    residue_group = pdb_inp.construct_hierarchy_v2(
-      residue_group_post_processing=False).only_residue_group()
-    atom_groups = residue_group.atom_groups()
-    assert len(atom_groups) == 6
-    altlocs = [atom_group.altloc for atom_group in atom_groups]
-    resnames = [atom_group.resname for atom_group in atom_groups]
-    if (i_trial == 0):
-      assert altlocs == ["B"," "," ","B"," ","B"]
-    else:
-      assert sorted(altlocs) == [" "," "," ","B","B","B"]
-    for i_proc in [0,1]:
-      assert residue_group.edit_blank_altloc() == (3,3)
-      atom_groups = residue_group.atom_groups()
-      assert len(atom_groups) == 9
-      altlocs = [atom_group.altloc for atom_group in atom_groups]
-      resnames = [atom_group.resname for atom_group in atom_groups]
-      assert altlocs == ["","",""," "," "," ","B","B","B"]
-      expected_resnames=["R01","R02","R03","R01","R02","R03","R01","R02","R03"]
-      if (i_trial == 0):
-        assert resnames == expected_resnames
-      else:
-        assert sorted(resnames) == sorted(expected_resnames)
-    lines = lines.select(flex.random_permutation(size=lines.size()))
-  #
-  lines = flex.split_lines("""\
-ATOM         N1 BR01
-ATOM         N1  R01
-ATOM         N2  R01
-ATOM         N3 BR01
-ATOM         N3  R01
-ATOM         N1 AR02
-ATOM         N1 BR02
-ATOM         N2  R02
-ATOM         N3 BR02
-ATOM         N3 AR02
-ATOM         N1  R03
-ATOM         N1 BR03
-ATOM         N2  R03
-ATOM         N3 BR03
-ATOM         N3  R03
-""")
-  for i_trial in xrange(n_trials):
-    pdb_inp = pdb.input(source_info=None, lines=lines)
-    residue_group = pdb_inp.construct_hierarchy_v2(
-      residue_group_post_processing=False).only_residue_group()
-    atom_groups = residue_group.atom_groups()
-    assert len(atom_groups) == 7
-    altlocs = [atom_group.altloc for atom_group in atom_groups]
-    resnames = [atom_group.resname for atom_group in atom_groups]
-    if (i_trial == 0):
-      assert altlocs == ["B"," ","A","B"," "," ","B"]
-    else:
-      assert sorted(altlocs) == [" "," "," ","A","B","B","B"]
-    for i_proc in [0,1]:
-      assert residue_group.edit_blank_altloc() == (3,2)
-      atom_groups = residue_group.atom_groups()
-      assert len(atom_groups) == 9
-      altlocs = [atom_group.altloc for atom_group in atom_groups]
-      resnames = [atom_group.resname for atom_group in atom_groups]
-      expected_altlocs = ["","",""," "," ","B","A","B","B"]
-      expected_resnames=["R01","R02","R03","R01","R03","R01","R02","R02","R03"]
-      if (i_trial == 0):
-        assert altlocs == expected_altlocs
-        assert resnames == expected_resnames
-      else:
-        assert sorted(altlocs) == sorted(expected_altlocs)
-        assert sorted(resnames) == sorted(expected_resnames)
-    lines = lines.select(flex.random_permutation(size=lines.size()))
-  #
-  lines = flex.split_lines("""\
-ATOM         N1 BR01
-ATOM         N1 AR01
-ATOM         N2 CR01
-ATOM         N3 BR01
-ATOM         N3 AR01
-ATOM         N1  R02
-ATOM         N1 BR02
-ATOM         N2  R02
-ATOM         N3 BR02
-ATOM         N3  R02
-ATOM         N1 CR03
-ATOM         N1 BR03
-ATOM         N2 BR03
-ATOM         N2 CR03
-ATOM         N3  R03
-""")
-  pdb_inp = pdb.input(source_info=None, lines=lines)
-  for i_trial in xrange(n_trials):
-    for rgpp in [False, True]:
-      residue_group = pdb_inp.construct_hierarchy_v2(
-        residue_group_post_processing=rgpp).only_residue_group()
-      if (not rgpp):
-        atom_groups = residue_group.atom_groups()
-        assert len(atom_groups) == 8
-        altlocs = [atom_group.altloc for atom_group in atom_groups]
-        resnames = [atom_group.resname for atom_group in atom_groups]
-        if (i_trial == 0):
-          assert altlocs == ["B","A","C"," ","B","C","B"," "]
-        else:
-          assert sorted(altlocs) == [" "," ","A","B","B","B","C","C"]
-      for i_proc in [0,1]:
-        if (not rgpp or i_proc != 0):
-          assert residue_group.edit_blank_altloc() == (2,1)
-        atom_groups = residue_group.atom_groups()
-        assert len(atom_groups) == 9
-        altlocs = [atom_group.altloc for atom_group in atom_groups]
-        resnames = [atom_group.resname for atom_group in atom_groups]
-        expected_altlocs = ["",""," ","B","A","C","B","C","B"]
-        expected_resnames=[
-          "R02","R03","R02","R01","R01","R01","R02","R03","R03"]
-        if (i_trial == 0):
-          assert altlocs == expected_altlocs
-          assert resnames == expected_resnames
-        else:
-          assert sorted(altlocs) == sorted(expected_altlocs)
-          assert sorted(resnames) == sorted(expected_resnames)
-      del atom_group
-      del atom_groups
-      del residue_group
-    lines = lines.select(flex.random_permutation(size=lines.size()))
 
 def exercise_find_pure_altloc_ranges():
   c = pdb.hierarchy_v2.chain()
@@ -2201,7 +2221,7 @@ conformer: "A"
   residue: "R01" "   1" "I" 0 0
     atom: " N2 "
     atom: " N1 "
-  residue: "R02" "   1" "I" 0 1
+  residue: "R02" "   1" "I" 1 1
     atom: " N1 "
     atom: " N2 "
 """)
@@ -2216,7 +2236,7 @@ conformer: "A"
   residue: "R01" "   1" "I" 0 0
     atom: " N2 "
     atom: " N1 "
-  residue: "R02" "   1" "I" 0 0
+  residue: "R02" "   1" "I" 1 0
     atom: " N2 "
     atom: " N1 "
 """)
@@ -2231,12 +2251,12 @@ conformer: "A"
   residue: "R01" "   1" "I" 0 0
     atom: " N2 "
     atom: " N1 "
-  residue: "R02" "   1" "I" 0 1
+  residue: "R02" "   1" "I" 1 1
     atom: " N2 "
 conformer: "B"
   residue: "R01" "   1" "I" 0 1
     atom: " N2 "
-  residue: "R02" "   1" "I" 0 0
+  residue: "R02" "   1" "I" 1 0
     atom: " N2 "
     atom: " N1 "
 """)
@@ -2248,16 +2268,16 @@ ATOM         N1  R02     1I
 ATOM         N2  R02     1I
 """, """\
 conformer: "A"
-  residue: "R02" "   1" "I" 0 1
-    atom: " N1 "
-    atom: " N2 "
   residue: "R01" "   1" "I" 0 0
     atom: " N1 "
+  residue: "R02" "   1" "I" 1 1
+    atom: " N1 "
+    atom: " N2 "
 conformer: "B"
-  residue: "R02" "   1" "I" 0 1
-    atom: " N1 "
-    atom: " N2 "
   residue: "R01" "   1" "I" 0 0
+    atom: " N2 "
+  residue: "R02" "   1" "I" 1 1
+    atom: " N1 "
     atom: " N2 "
 """)
   #
@@ -2268,17 +2288,17 @@ ATOM         N1 CR02     1I
 ATOM         N2  R02     1I
 """, """\
 conformer: "A"
-  residue: "R02" "   1" "I" 0 1
-    atom: " N2 "
   residue: "R01" "   1" "I" 0 0
     atom: " N1 "
-conformer: "B"
-  residue: "R02" "   1" "I" 0 1
+  residue: "R02" "   1" "I" 1 1
     atom: " N2 "
+conformer: "B"
   residue: "R01" "   1" "I" 0 0
     atom: " N2 "
+  residue: "R02" "   1" "I" 1 1
+    atom: " N2 "
 conformer: "C"
-  residue: "R02" "   1" "I" 0 0
+  residue: "R02" "   1" "I" 1 0
     atom: " N2 "
     atom: " N1 "
 """)
@@ -2474,8 +2494,6 @@ HETATM  894  O   HOH     5      -0.924  19.122  -8.629  1.00 11.73           O
 HETATM  895  O   HOH     6     -19.752  11.918   3.524  1.00 13.44           O
 """, """\
 conformer: "A"
-  residue: "HOH" "   5" " " 0 1
-    atom: " O  "
   residue: "CRS" "   5" " " 0 0
     atom: " C1 "
     atom: " C2 "
@@ -2485,11 +2503,11 @@ conformer: "A"
     atom: " C6 "
     atom: " C7 "
     atom: " O1 "
+  residue: "HOH" "   5" " " 1 1
+    atom: " O  "
   residue: "HOH" "   6" " " 1 1
     atom: " O  "
 conformer: "B"
-  residue: "HOH" "   5" " " 0 1
-    atom: " O  "
   residue: "CRS" "   5" " " 0 0
     atom: " C1 "
     atom: " C2 "
@@ -2499,6 +2517,8 @@ conformer: "B"
     atom: " C6 "
     atom: " C7 "
     atom: " O1 "
+  residue: "HOH" "   5" " " 1 1
+    atom: " O  "
   residue: "HOH" "   6" " " 1 1
     atom: " O  "
 """)
