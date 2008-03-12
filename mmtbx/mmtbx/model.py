@@ -108,6 +108,9 @@ class manager(object):
       xhd = flex.double()
       for t in self.xh_connectivity_table():
         xhd.append(abs(t[-1]-t[-2]))
+        if(abs(t[3]-t[4]) < xh_bond_distance_deviation_limit):
+          sol_hd[t[1]] = False
+          mac_hd[t[1]] = False
       if(show):
         print >> self.log, \
         "X-H deviation from ideal before regularization (bond): mean=%6.3f max=%6.3f"%\
@@ -128,14 +131,13 @@ class manager(object):
       sites_cart_mac_after = self.xray_structure.sites_cart().select(selx)
       assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
         sites_cart_mac_after.as_double()), 0)
-      if(xh_bond_distance_deviation_limit == 0):
-        xhd = flex.double()
-        for t in self.xh_connectivity_table():
-          xhd.append(abs(t[-1]-t[-2]))
-        if(show):
-          print >> self.log,\
-          "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
-          (flex.mean(xhd), flex.max(xhd))
+      xhd = flex.double()
+      for t in self.xh_connectivity_table():
+        xhd.append(abs(t[-1]-t[-2]))
+      if(show):
+        print >> self.log,\
+        "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
+        (flex.mean(xhd), flex.max(xhd))
 
   def add_to_aal(self, next_to_i_seq, attr):
     self.atom_attributes_list = self.atom_attributes_list[:next_to_i_seq+1] + \
@@ -224,11 +226,8 @@ class manager(object):
           insert_at_index = i_seq+1)
         self.add_to_aal(next_to_i_seq = i_seq, attr = attr)
       if(self.refinement_flags is not None):
-        self.refinement_flags.add(next_to_i_seqs     = next_to_i_seqs,
-                                  sites_individual   = True,
-                                  adp_individual_iso = True,
-                                  group_h            = True,
-                                  s_occupancies      = True)
+        self.refinement_flags.add(next_to_i_seqs   = next_to_i_seqs,
+                                  sites_individual = True)
       # XXX very inefficient: re-process PDB from scratch and create restraints
       raw_records = self.write_pdb_file()
       processed_pdb_file, pdb_inp = self.processed_pdb_files_srv.\
