@@ -522,7 +522,7 @@ namespace hierarchy_v2 {
           On return, result is null-terminated.
        */
       unsigned
-      format_atom_record_using_parents(
+      format_atom_record(
         char* result) const;
 
       bool

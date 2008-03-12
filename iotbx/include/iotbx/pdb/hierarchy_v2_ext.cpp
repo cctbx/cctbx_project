@@ -148,12 +148,12 @@ namespace {
 
     static
     boost::python::object
-    format_atom_record_using_parents(w_t const& self)
+    format_atom_record(w_t const& self)
     {
       boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
       PyObject* str_obj = str_hdl.get();
       char* str_begin = PyString_AS_STRING(str_obj);
-      unsigned str_len = self.format_atom_record_using_parents(str_begin);
+      unsigned str_len = self.format_atom_record(str_begin);
       str_hdl.release();
       if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
         boost::python::throw_error_already_set();
@@ -223,8 +223,7 @@ namespace {
         .def("parent", get_parent<atom, atom_group>::wrapper)
         .def("uij_is_defined", &w_t::uij_is_defined)
         .def("siguij_is_defined", &w_t::siguij_is_defined)
-        .def("format_atom_record_using_parents",
-          format_atom_record_using_parents)
+        .def("format_atom_record", format_atom_record)
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)

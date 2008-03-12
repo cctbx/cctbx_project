@@ -401,7 +401,7 @@ namespace {
   }
 
   unsigned
-  atom::format_atom_record_using_parents(
+  atom::format_atom_record(
     char* result) const
   {
     shared_ptr<atom_group_data> ag_lock = data->parent.lock();

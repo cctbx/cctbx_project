@@ -705,7 +705,7 @@ def exercise_root():
     assert str(e) == "model has another parent root already."
   else: raise Exception_expected
 
-def exercise_format_atom_record_using_parents():
+def exercise_format_atom_record():
   for hetero,record_name in [(False, "ATOM  "), (True, "HETATM")]:
     a = (pdb.hierarchy_v2.atom()
       .set_name(new_name="NaMe")
@@ -722,26 +722,26 @@ def exercise_format_atom_record_using_parents():
       .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
       .set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9))
       .set_hetero(new_hetero=hetero))
-    s = a.format_atom_record_using_parents()
+    s = a.format_atom_record()
     assert not show_diff(s, """\
 %sB1234 NaMe                 1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % record_name)
     ag = pdb.hierarchy_v2.atom_group(altloc="x", resname="uvw")
     ag.append_atom(atom=a)
-    s = a.format_atom_record_using_parents()
+    s = a.format_atom_record()
     assert not show_diff(s, """\
 %sB1234 NaMexuvw             1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % record_name)
     rg = pdb.hierarchy_v2.residue_group(resseq="pqrs", icode="t")
     rg.append_atom_group(atom_group=ag)
-    s = a.format_atom_record_using_parents()
+    s = a.format_atom_record()
     assert not show_diff(s, """\
 %sB1234 NaMexuvw  pqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % record_name)
     for chain_id in ["", "g", "hi"]:
       ch = pdb.hierarchy_v2.chain(id=chain_id)
       ch.append_residue_group(residue_group=rg)
-      s = a.format_atom_record_using_parents()
+      s = a.format_atom_record()
       assert not show_diff(s, """\
 %sB1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % (record_name, chain_id))
@@ -757,7 +757,7 @@ def hierarchy_as_str(root):
         for ag in rg.atom_groups():
           print >> s, "@ag", show_string(ag.confid())
           for atom in ag.atoms():
-            print >> s, atom.format_atom_record_using_parents()[:27].rstrip()
+            print >> s, atom.format_atom_record()[:27].rstrip()
   return s.getvalue()
 
 def exercise_construct_hierarchy():
@@ -1290,7 +1290,7 @@ def exercise_merge_atom_groups():
     assert secondary_atom_group.atoms_size() == 0
     sio = StringIO()
     for atom in primary_atom_group.atoms():
-      print >> sio, atom.format_atom_record_using_parents()
+      print >> sio, atom.format_atom_record()
     assert not show_diff(sio.getvalue(), ["""\
 ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
 ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
@@ -1336,7 +1336,7 @@ def exercise_merge_residue_groups():
   sio = StringIO()
   for atom_group in residue_groups[0].atom_groups():
     for atom in atom_group.atoms():
-      print >> sio, atom.format_atom_record_using_parents()
+      print >> sio, atom.format_atom_record()
   assert not show_diff(sio.getvalue(), """\
 ATOM   1716  N  ALEU   190      28.628   4.549  20.230  0.70  3.78           N
 ATOM   1717  CA ALEU   190      27.606   5.007  19.274  0.70  3.71           C
@@ -2578,7 +2578,7 @@ def exercise(args):
     exercise_chain()
     exercise_model()
     exercise_root()
-    exercise_format_atom_record_using_parents()
+    exercise_format_atom_record()
     exercise_construct_hierarchy()
     exercise_convenience_generators()
     exercise_only()
