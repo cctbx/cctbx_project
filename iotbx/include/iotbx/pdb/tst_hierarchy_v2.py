@@ -1784,6 +1784,113 @@ ATOM            BGLY     8
   assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
       == [(1,4), (6,8)]
 
+pdb_1nym_60 = """\
+HEADER    HYDROLASE                               12-FEB-03   1NYM
+ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM     63  CB ALYS A  32       9.197   8.686  12.246  0.29 14.71           C
+ATOM     64  CB BLYS A  32       9.193   8.732  12.170  0.71 12.23           C
+ATOM     74  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+ATOM     82  CA ALYS A  34      14.979   4.895  12.608  0.60 15.67           C
+ATOM     83  CA BLYS A  34      14.977   5.207  12.331  0.40 16.38           C
+ATOM     88  CB ALYS A  34      15.128   3.896  11.472  0.60 12.11           C
+ATOM     89  CB BLYS A  34      15.132   4.867  10.839  0.40 13.86           C
+ATOM    100  CA AASP A  35      15.328   8.688  12.044  0.60 16.75           C
+ATOM    101  CA BASP A  35      15.474   8.937  12.096  0.40 17.43           C
+ATOM    106  CB AASP A  35      14.367   9.683  11.373  0.60 16.80           C
+ATOM    107  CB BASP A  35      14.491   9.903  11.431  0.40 18.66           C
+ATOM    115  CA  ALA A  36      14.978   9.140  15.828  1.00 12.65           C
+ATOM    118  CB  ALA A  36      13.768   8.688  16.639  1.00 13.00           C
+ATOM    121  CA AGLU A  37      17.683   6.514  16.549  0.59 12.26           C
+ATOM    122  CA BGLU A  37      17.999   6.949  16.048  0.41 12.47           C
+ATOM    127  CB AGLU A  37      17.694   5.030  16.164  0.59 11.08           C
+ATOM    128  CB BGLU A  37      18.148   5.560  15.440  0.41 12.53           C
+ATOM    139  CA AASP A  38      19.923   8.463  14.202  0.59 17.31           C
+ATOM    140  CA BASP A  38      19.789   9.284  13.597  0.41 19.32           C
+ATOM    145  CB AASP A  38      19.615   8.739  12.727  0.59 24.06           C
+ATOM    146  CB BASP A  38      19.279   9.626  12.201  0.41 26.28           C
+ATOM    155  CA AGLN A  39      19.069  11.941  15.596  0.62 19.31           C
+ATOM    156  CA BGLN A  39      18.919  12.283  15.753  0.38 20.06           C
+ATOM    161  CB AGLN A  39      17.681  12.586  15.630  0.62 21.92           C
+ATOM    162  CB BGLN A  39      17.560  12.987  15.681  0.38 21.79           C
+ATOM    172  CA  LEU A  40      19.526  10.711  19.160  1.00 13.99           C
+ATOM    175  CB  LEU A  40      18.478   9.858  19.880  1.00 13.56           C
+"""
+
+pdb_2izq_220 = """\
+HEADER    ANTIBIOTIC                              26-JUL-06   2IZQ
+ATOM    220  N  ATRP A  11      20.498  12.832  34.558  0.50  6.03           N
+ATOM    221  CA ATRP A  11      21.094  12.032  35.602  0.50  5.24           C
+ATOM    222  C  ATRP A  11      22.601  12.088  35.532  0.50  6.49           C
+ATOM    223  O  ATRP A  11      23.174  12.012  34.439  0.50  7.24           O
+ATOM    224  CB ATRP A  11      20.690  10.588  35.288  0.50  6.15           C
+ATOM    225  CG ATRP A  11      19.252  10.269  35.140  0.50  5.91           C
+ATOM    226  CD1ATRP A  11      18.524  10.178  33.986  0.50  7.01           C
+ATOM    227  CD2ATRP A  11      18.371   9.973  36.236  0.50  5.97           C
+ATOM    228  NE1ATRP A  11      17.252   9.820  34.321  0.50  9.83           N
+ATOM    229  CE2ATRP A  11      17.132   9.708  35.665  0.50  7.37           C
+ATOM    230  CE3ATRP A  11      18.543   9.924  37.615  0.50  6.38           C
+ATOM    231  CZ2ATRP A  11      16.033   9.388  36.460  0.50  8.25           C
+ATOM    232  CZ3ATRP A  11      17.448   9.586  38.402  0.50  8.04           C
+ATOM    233  CH2ATRP A  11      16.240   9.320  37.784  0.50  8.66           C
+ATOM    234  H  ATRP A  11      20.540  12.567  33.741  0.50  7.24           H
+ATOM    235  HA ATRP A  11      20.771  12.306  36.485  0.50  6.28           H
+ATOM    236  HB2ATRP A  11      21.135  10.330  34.466  0.50  7.38           H
+ATOM    237  HB3ATRP A  11      21.045  10.023  35.993  0.50  7.38           H
+ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
+ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92           C
+ATOM    246  C  CPHE A  11      22.448  12.425  35.436  0.15  6.32           C
+ATOM    247  O  CPHE A  11      22.961  12.790  34.373  0.15  6.08           O
+ATOM    248  CB CPHE A  11      20.768  10.667  34.994  0.15  6.01           C
+ATOM    249  CG CPHE A  11      19.330  10.235  34.845  0.15  7.05           C
+ATOM    250  CD1CPHE A  11      18.847   9.877  33.587  0.15  8.78           C
+ATOM    251  CD2CPHE A  11      18.533  10.174  35.995  0.15  7.70           C
+ATOM    252  CE1CPHE A  11      17.551   9.436  33.473  0.15 10.43           C
+ATOM    253  CE2CPHE A  11      17.230   9.752  35.854  0.15  9.27           C
+ATOM    254  CZ CPHE A  11      16.789   9.396  34.594  0.15 10.98           C
+ATOM    255  N  BTYR A  11      20.553  12.751  34.549  0.35  5.21           N
+ATOM    256  CA BTYR A  11      21.106  11.838  35.524  0.35  5.51           C
+ATOM    257  C  BTYR A  11      22.625  11.920  35.572  0.35  5.42           C
+ATOM    258  O  BTYR A  11      23.299  11.781  34.538  0.35  5.30           O
+ATOM    259  CB BTYR A  11      20.694  10.354  35.327  0.35  5.65           C
+ATOM    260  CG BTYR A  11      19.188  10.175  35.507  0.35  7.68           C
+ATOM    261  CD1BTYR A  11      18.548  10.134  34.268  0.35  9.45           C
+ATOM    262  HB2CPHE A  11      21.221  10.536  34.146  0.15  7.21           H
+ATOM    263  CD2BTYR A  11      18.463  10.012  36.681  0.35  9.08           C
+ATOM    264  HB3CPHE A  11      21.198  10.093  35.647  0.15  7.21           H
+ATOM    265  CE1BTYR A  11      17.195   9.960  34.223  0.35 10.76           C
+ATOM    266  HD1CPHE A  11      19.394   9.937  32.837  0.15 10.53           H
+ATOM    267  CE2BTYR A  11      17.100   9.826  36.693  0.35 11.29           C
+ATOM    268  HD2CPHE A  11      18.873  10.410  36.828  0.15  9.24           H
+ATOM    269  CZ BTYR A  11      16.546   9.812  35.432  0.35 11.90           C
+ATOM    270  HE1CPHE A  11      17.206   9.172  32.650  0.15 12.52           H
+ATOM    271  OH BTYR A  11      15.178   9.650  35.313  0.35 19.29           O
+ATOM    272  HE2CPHE A  11      16.661   9.708  36.588  0.15 11.13           H
+ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
+ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
+ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
+HETATM  283  N   DLE A  12      23.179  12.148  36.720  1.00  7.16           N
+HETATM  284  CA  DLE A  12      24.625  12.084  36.893  1.00  8.29           C
+HETATM  285  CB ADLE A  12      25.039  10.717  37.621  0.65  9.02           C
+HETATM  286  CB BDLE A  12      25.209  10.741  37.032  0.35 12.70           C
+HETATM  287  CG ADLE A  12      24.658   9.548  36.780  0.65 12.06           C
+HETATM  288  CG BDLE A  12      25.429   9.378  36.572  0.35 15.20           C
+HETATM  289  CD1ADLE A  12      25.656   9.433  35.596  0.65 16.84           C
+HETATM  290  CD1BDLE A  12      26.192   8.543  37.585  0.35 16.77           C
+HETATM  291  CD2ADLE A  12      24.682   8.288  37.613  0.65 15.34           C
+HETATM  292  CD2BDLE A  12      24.065   8.724  36.277  0.35 16.96           C
+HETATM  293  C   DLE A  12      25.029  13.153  37.899  1.00  8.11           C
+HETATM  294  O   DLE A  12      24.343  13.330  38.907  1.00 11.62           O
+HETATM  295  H  ADLE A  12      22.682  12.228  37.418  0.50  8.60           H
+HETATM  296  HA ADLE A  12      25.095  12.196  36.041  0.50  9.94           H
+HETATM  297  HB1ADLE A  12      25.997  10.708  37.775  0.65 10.83           H
+HETATM  298  HB1BDLE A  12      26.135  11.000  37.162  0.35 15.23           H
+HETATM  299  HB2ADLE A  12      24.595  10.659  38.481  0.65 10.83           H
+HETATM  300  HB2BDLE A  12      24.897  10.541  37.929  0.35 15.23           H
+HETATM  301  HG ADLE A  12      23.753   9.685  36.429  0.65 14.47           H
+HETATM  302  HG BDLE A  12      25.946   9.409  35.740  0.35 18.24           H
+"""
+
 def exercise_occupancy_groups_simple():
   def atom_serials(atoms, list_of_occ_groups):
     result = []
@@ -1882,38 +1989,7 @@ ATOM      3  H2  HOH     1                              0.60                 H
 """))
   assert grouped_serials(pdb_inp) == [[[1]]]
   #
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
-HEADER    HYDROLASE                               12-FEB-03   1NYM
-ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
-ATOM     63  CB ALYS A  32       9.197   8.686  12.246  0.29 14.71           C
-ATOM     64  CB BLYS A  32       9.193   8.732  12.170  0.71 12.23           C
-ATOM     74  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
-ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
-ATOM     82  CA ALYS A  34      14.979   4.895  12.608  0.60 15.67           C
-ATOM     83  CA BLYS A  34      14.977   5.207  12.331  0.40 16.38           C
-ATOM     88  CB ALYS A  34      15.128   3.896  11.472  0.60 12.11           C
-ATOM     89  CB BLYS A  34      15.132   4.867  10.839  0.40 13.86           C
-ATOM    100  CA AASP A  35      15.328   8.688  12.044  0.60 16.75           C
-ATOM    101  CA BASP A  35      15.474   8.937  12.096  0.40 17.43           C
-ATOM    106  CB AASP A  35      14.367   9.683  11.373  0.60 16.80           C
-ATOM    107  CB BASP A  35      14.491   9.903  11.431  0.40 18.66           C
-ATOM    115  CA  ALA A  36      14.978   9.140  15.828  1.00 12.65           C
-ATOM    118  CB  ALA A  36      13.768   8.688  16.639  1.00 13.00           C
-ATOM    121  CA AGLU A  37      17.683   6.514  16.549  0.59 12.26           C
-ATOM    122  CA BGLU A  37      17.999   6.949  16.048  0.41 12.47           C
-ATOM    127  CB AGLU A  37      17.694   5.030  16.164  0.59 11.08           C
-ATOM    128  CB BGLU A  37      18.148   5.560  15.440  0.41 12.53           C
-ATOM    139  CA AASP A  38      19.923   8.463  14.202  0.59 17.31           C
-ATOM    140  CA BASP A  38      19.789   9.284  13.597  0.41 19.32           C
-ATOM    145  CB AASP A  38      19.615   8.739  12.727  0.59 24.06           C
-ATOM    146  CB BASP A  38      19.279   9.626  12.201  0.41 26.28           C
-ATOM    155  CA AGLN A  39      19.069  11.941  15.596  0.62 19.31           C
-ATOM    156  CA BGLN A  39      18.919  12.283  15.753  0.38 20.06           C
-ATOM    161  CB AGLN A  39      17.681  12.586  15.630  0.62 21.92           C
-ATOM    162  CB BGLN A  39      17.560  12.987  15.681  0.38 21.79           C
-ATOM    172  CA  LEU A  40      19.526  10.711  19.160  1.00 13.99           C
-ATOM    175  CB  LEU A  40      18.478   9.858  19.880  1.00 13.56           C
-"""))
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_1nym_60))
   assert grouped_serials(pdb_inp) == [
     [[63],[64]],
     [[82,88,100,106],[83,89,101,107]],
@@ -1933,79 +2009,7 @@ ATOM    107  CB BASP A  35      14.491   9.903  11.431  0.40 18.66           C
     [[82,88],[83,89]],
     [[100,106],[101,107]]]
   #
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
-HEADER    ANTIBIOTIC                              26-JUL-06   2IZQ
-ATOM    220  N  ATRP A  11      20.498  12.832  34.558  0.50  6.03           N
-ATOM    221  CA ATRP A  11      21.094  12.032  35.602  0.50  5.24           C
-ATOM    222  C  ATRP A  11      22.601  12.088  35.532  0.50  6.49           C
-ATOM    223  O  ATRP A  11      23.174  12.012  34.439  0.50  7.24           O
-ATOM    224  CB ATRP A  11      20.690  10.588  35.288  0.50  6.15           C
-ATOM    225  CG ATRP A  11      19.252  10.269  35.140  0.50  5.91           C
-ATOM    226  CD1ATRP A  11      18.524  10.178  33.986  0.50  7.01           C
-ATOM    227  CD2ATRP A  11      18.371   9.973  36.236  0.50  5.97           C
-ATOM    228  NE1ATRP A  11      17.252   9.820  34.321  0.50  9.83           N
-ATOM    229  CE2ATRP A  11      17.132   9.708  35.665  0.50  7.37           C
-ATOM    230  CE3ATRP A  11      18.543   9.924  37.615  0.50  6.38           C
-ATOM    231  CZ2ATRP A  11      16.033   9.388  36.460  0.50  8.25           C
-ATOM    232  CZ3ATRP A  11      17.448   9.586  38.402  0.50  8.04           C
-ATOM    233  CH2ATRP A  11      16.240   9.320  37.784  0.50  8.66           C
-ATOM    234  H  ATRP A  11      20.540  12.567  33.741  0.50  7.24           H
-ATOM    235  HA ATRP A  11      20.771  12.306  36.485  0.50  6.28           H
-ATOM    236  HB2ATRP A  11      21.135  10.330  34.466  0.50  7.38           H
-ATOM    237  HB3ATRP A  11      21.045  10.023  35.993  0.50  7.38           H
-ATOM    244  N  CPHE A  11      20.226  13.044  34.556  0.15  6.35           N
-ATOM    245  CA CPHE A  11      20.950  12.135  35.430  0.15  5.92           C
-ATOM    246  C  CPHE A  11      22.448  12.425  35.436  0.15  6.32           C
-ATOM    247  O  CPHE A  11      22.961  12.790  34.373  0.15  6.08           O
-ATOM    248  CB CPHE A  11      20.768  10.667  34.994  0.15  6.01           C
-ATOM    249  CG CPHE A  11      19.330  10.235  34.845  0.15  7.05           C
-ATOM    250  CD1CPHE A  11      18.847   9.877  33.587  0.15  8.78           C
-ATOM    251  CD2CPHE A  11      18.533  10.174  35.995  0.15  7.70           C
-ATOM    252  CE1CPHE A  11      17.551   9.436  33.473  0.15 10.43           C
-ATOM    253  CE2CPHE A  11      17.230   9.752  35.854  0.15  9.27           C
-ATOM    254  CZ CPHE A  11      16.789   9.396  34.594  0.15 10.98           C
-ATOM    255  N  BTYR A  11      20.553  12.751  34.549  0.35  5.21           N
-ATOM    256  CA BTYR A  11      21.106  11.838  35.524  0.35  5.51           C
-ATOM    257  C  BTYR A  11      22.625  11.920  35.572  0.35  5.42           C
-ATOM    258  O  BTYR A  11      23.299  11.781  34.538  0.35  5.30           O
-ATOM    259  CB BTYR A  11      20.694  10.354  35.327  0.35  5.65           C
-ATOM    260  CG BTYR A  11      19.188  10.175  35.507  0.35  7.68           C
-ATOM    261  CD1BTYR A  11      18.548  10.134  34.268  0.35  9.45           C
-ATOM    262  HB2CPHE A  11      21.221  10.536  34.146  0.15  7.21           H
-ATOM    263  CD2BTYR A  11      18.463  10.012  36.681  0.35  9.08           C
-ATOM    264  HB3CPHE A  11      21.198  10.093  35.647  0.15  7.21           H
-ATOM    265  CE1BTYR A  11      17.195   9.960  34.223  0.35 10.76           C
-ATOM    266  HD1CPHE A  11      19.394   9.937  32.837  0.15 10.53           H
-ATOM    267  CE2BTYR A  11      17.100   9.826  36.693  0.35 11.29           C
-ATOM    268  HD2CPHE A  11      18.873  10.410  36.828  0.15  9.24           H
-ATOM    269  CZ BTYR A  11      16.546   9.812  35.432  0.35 11.90           C
-ATOM    270  HE1CPHE A  11      17.206   9.172  32.650  0.15 12.52           H
-ATOM    271  OH BTYR A  11      15.178   9.650  35.313  0.35 19.29           O
-ATOM    272  HE2CPHE A  11      16.661   9.708  36.588  0.15 11.13           H
-ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
-ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
-ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
-HETATM  283  N   DLE A  12      23.179  12.148  36.720  1.00  7.16           N
-HETATM  284  CA  DLE A  12      24.625  12.084  36.893  1.00  8.29           C
-HETATM  285  CB ADLE A  12      25.039  10.717  37.621  0.65  9.02           C
-HETATM  286  CB BDLE A  12      25.209  10.741  37.032  0.35 12.70           C
-HETATM  287  CG ADLE A  12      24.658   9.548  36.780  0.65 12.06           C
-HETATM  288  CG BDLE A  12      25.429   9.378  36.572  0.35 15.20           C
-HETATM  289  CD1ADLE A  12      25.656   9.433  35.596  0.65 16.84           C
-HETATM  290  CD1BDLE A  12      26.192   8.543  37.585  0.35 16.77           C
-HETATM  291  CD2ADLE A  12      24.682   8.288  37.613  0.65 15.34           C
-HETATM  292  CD2BDLE A  12      24.065   8.724  36.277  0.35 16.96           C
-HETATM  293  C   DLE A  12      25.029  13.153  37.899  1.00  8.11           C
-HETATM  294  O   DLE A  12      24.343  13.330  38.907  1.00 11.62           O
-HETATM  295  H  ADLE A  12      22.682  12.228  37.418  0.50  8.60           H
-HETATM  296  HA ADLE A  12      25.095  12.196  36.041  0.50  9.94           H
-HETATM  297  HB1ADLE A  12      25.997  10.708  37.775  0.65 10.83           H
-HETATM  298  HB1BDLE A  12      26.135  11.000  37.162  0.35 15.23           H
-HETATM  299  HB2ADLE A  12      24.595  10.659  38.481  0.65 10.83           H
-HETATM  300  HB2BDLE A  12      24.897  10.541  37.929  0.35 15.23           H
-HETATM  301  HG ADLE A  12      23.753   9.685  36.429  0.65 14.47           H
-HETATM  302  HG BDLE A  12      25.946   9.409  35.740  0.35 18.24           H
-"""))
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_2izq_220))
   assert grouped_serials(pdb_inp) == [
     [[220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233],
      [244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254],
@@ -2039,6 +2043,492 @@ ATOM      4  O  BHOH B   1                                                   O
   list_of_groups = hierarchy.occupancy_groups_simple(
     common_residue_name_class_only="common_amino_acid")
   assert list_of_groups == [[[0], [1]], [[2], [3]]]
+
+def conformers_as_str(conformers):
+  s = StringIO()
+  for cf in conformers:
+    print >> s, "conformer:", show_string(cf.altloc)
+    for rd in cf.residues():
+      print >> s, "  residue:", \
+        show_string(rd.resname), \
+        show_string(rd.resseq), \
+        show_string(rd.icode), \
+        int(rd.link_to_previous), \
+        int(rd.is_pure_primary)
+      for atom in rd.atoms():
+        print >> s, "    atom:", show_string(atom.name)
+  return s.getvalue()
+
+def exercise_conformers():
+  def check(pdb_string, expected):
+    pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
+    chain = pdb_inp.construct_hierarchy_v2().only_chain()
+    conformers = chain.conformers()
+    s = conformers_as_str(conformers)
+    if (len(expected) == 0):
+      sys.stdout.write(s)
+    else:
+      assert not show_diff(s, expected)
+  #
+  check("""\
+ATOM         N   RES     1I
+""", """\
+conformer: ""
+  residue: "RES" "   1" "I" 0 1
+    atom: " N  "
+""")
+  #
+  check("""\
+ATOM         N  ARES     1I
+""", """\
+conformer: "A"
+  residue: "RES" "   1" "I" 0 0
+    atom: " N  "
+""")
+  #
+  check("""\
+ATOM         N1  RES     1I
+ATOM         N2 ARES     1I
+""", """\
+conformer: "A"
+  residue: "RES" "   1" "I" 0 0
+    atom: " N1 "
+    atom: " N2 "
+""")
+  #
+  for altloc_o2_a in ["A", " "]:
+    check("""\
+ATOM         S   SO4     1I
+ATOM         O1 %sSO4     1I
+ATOM         O1 BSO4     1I
+""" % altloc_o2_a, """\
+conformer: "%s"
+  residue: "SO4" "   1" "I" 0 0
+    atom: " S  "
+    atom: " O1 "
+conformer: "B"
+  residue: "SO4" "   1" "I" 0 0
+    atom: " S  "
+    atom: " O1 "
+""" % altloc_o2_a)
+  #
+  check("""\
+ATOM         S  ASO4     1
+ATOM         O1 ASO4     1
+ATOM         O2 ASO4     1
+ATOM         S  BSO4     1
+ATOM         O1 BSO4     1
+ATOM         O2 BSO4     1
+""", """\
+conformer: "A"
+  residue: "SO4" "   1" " " 0 0
+    atom: " S  "
+    atom: " O1 "
+    atom: " O2 "
+conformer: "B"
+  residue: "SO4" "   1" " " 0 0
+    atom: " S  "
+    atom: " O1 "
+    atom: " O2 "
+""")
+  #
+  check("""\
+ATOM         S  ASO4     1
+ATOM         O1 ASO4     1
+ATOM         O2 ASO4     1
+ATOM         S  BSO4     1
+ATOM         O1 BSO4     1
+ATOM         O2 BSO4     1
+ATOM         O   HOH     2
+""", """\
+conformer: "A"
+  residue: "SO4" "   1" " " 0 0
+    atom: " S  "
+    atom: " O1 "
+    atom: " O2 "
+  residue: "HOH" "   2" " " 1 1
+    atom: " O  "
+conformer: "B"
+  residue: "SO4" "   1" " " 0 0
+    atom: " S  "
+    atom: " O1 "
+    atom: " O2 "
+  residue: "HOH" "   2" " " 1 1
+    atom: " O  "
+""")
+  #
+  check("""\
+ATOM         S   SO4     6
+ATOM         O1 ASO4     6
+ATOM         O2 ASO4     6
+ATOM         O3 BSO4     6
+ATOM         O4 BSO4     6
+""", """\
+conformer: "A"
+  residue: "SO4" "   6" " " 0 0
+    atom: " S  "
+    atom: " O1 "
+    atom: " O2 "
+conformer: "B"
+  residue: "SO4" "   6" " " 0 0
+    atom: " S  "
+    atom: " O3 "
+    atom: " O4 "
+""")
+  #
+  check("""\
+ATOM         N1  R01     1I
+ATOM         N2  R01     1I
+ATOM         N1  R02     1I
+ATOM         N2  R02     1I
+""", """\
+conformer: ""
+  residue: "R01" "   1" "I" 0 1
+    atom: " N1 "
+    atom: " N2 "
+  residue: "R02" "   1" "I" 1 1
+    atom: " N1 "
+    atom: " N2 "
+""")
+  #
+  check("""\
+ATOM         N1 AR01     1I
+ATOM         N2  R01     1I
+ATOM         N1  R02     1I
+ATOM         N2  R02     1I
+""", """\
+conformer: "A"
+  residue: "R01" "   1" "I" 0 0
+    atom: " N2 "
+    atom: " N1 "
+  residue: "R02" "   1" "I" 0 1
+    atom: " N1 "
+    atom: " N2 "
+""")
+  #
+  check("""\
+ATOM         N1 AR01     1I
+ATOM         N2  R01     1I
+ATOM         N1 AR02     1I
+ATOM         N2  R02     1I
+""", """\
+conformer: "A"
+  residue: "R01" "   1" "I" 0 0
+    atom: " N2 "
+    atom: " N1 "
+  residue: "R02" "   1" "I" 0 0
+    atom: " N2 "
+    atom: " N1 "
+""")
+  #
+  check("""\
+ATOM         N1 AR01     1I
+ATOM         N2  R01     1I
+ATOM         N1 BR02     1I
+ATOM         N2  R02     1I
+""", """\
+conformer: "A"
+  residue: "R01" "   1" "I" 0 0
+    atom: " N2 "
+    atom: " N1 "
+  residue: "R02" "   1" "I" 0 1
+    atom: " N2 "
+conformer: "B"
+  residue: "R01" "   1" "I" 0 1
+    atom: " N2 "
+  residue: "R02" "   1" "I" 0 0
+    atom: " N2 "
+    atom: " N1 "
+""")
+  #
+  check("""\
+ATOM         N1 AR01     1I
+ATOM         N2 BR01     1I
+ATOM         N1  R02     1I
+ATOM         N2  R02     1I
+""", """\
+conformer: "A"
+  residue: "R02" "   1" "I" 0 1
+    atom: " N1 "
+    atom: " N2 "
+  residue: "R01" "   1" "I" 0 0
+    atom: " N1 "
+conformer: "B"
+  residue: "R02" "   1" "I" 0 1
+    atom: " N1 "
+    atom: " N2 "
+  residue: "R01" "   1" "I" 0 0
+    atom: " N2 "
+""")
+  #
+  check("""\
+ATOM         N1 AR01     1I
+ATOM         N2 BR01     1I
+ATOM         N1 CR02     1I
+ATOM         N2  R02     1I
+""", """\
+conformer: "A"
+  residue: "R02" "   1" "I" 0 1
+    atom: " N2 "
+  residue: "R01" "   1" "I" 0 0
+    atom: " N1 "
+conformer: "B"
+  residue: "R02" "   1" "I" 0 1
+    atom: " N2 "
+  residue: "R01" "   1" "I" 0 0
+    atom: " N2 "
+conformer: "C"
+  residue: "R02" "   1" "I" 0 0
+    atom: " N2 "
+    atom: " N1 "
+""")
+  #
+  check("""\
+ATOM         N1 AR01     1I
+ATOM         N2 BR01     1I
+ATOM         N1 CR02     1I
+ATOM         N2 DR02     1I
+""", """\
+conformer: "A"
+  residue: "R01" "   1" "I" 0 0
+    atom: " N1 "
+conformer: "B"
+  residue: "R01" "   1" "I" 0 0
+    atom: " N2 "
+conformer: "C"
+  residue: "R02" "   1" "I" 0 0
+    atom: " N1 "
+conformer: "D"
+  residue: "R02" "   1" "I" 0 0
+    atom: " N2 "
+""")
+  #
+  check(pdb_1nym_60, """\
+conformer: "A"
+  residue: "LYS" "  32" " " 0 0
+    atom: " CA "
+    atom: " CB "
+  residue: "VAL" "  33" " " 1 1
+    atom: " CA "
+    atom: " CB "
+  residue: "LYS" "  34" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "ASP" "  35" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "ALA" "  36" " " 1 1
+    atom: " CA "
+    atom: " CB "
+  residue: "GLU" "  37" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "ASP" "  38" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "GLN" "  39" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "LEU" "  40" " " 1 1
+    atom: " CA "
+    atom: " CB "
+conformer: "B"
+  residue: "LYS" "  32" " " 0 0
+    atom: " CA "
+    atom: " CB "
+  residue: "VAL" "  33" " " 1 1
+    atom: " CA "
+    atom: " CB "
+  residue: "LYS" "  34" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "ASP" "  35" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "ALA" "  36" " " 1 1
+    atom: " CA "
+    atom: " CB "
+  residue: "GLU" "  37" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "ASP" "  38" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "GLN" "  39" " " 1 0
+    atom: " CA "
+    atom: " CB "
+  residue: "LEU" "  40" " " 1 1
+    atom: " CA "
+    atom: " CB "
+""")
+  #
+  check(pdb_2izq_220, """\
+conformer: "A"
+  residue: "TRP" "  11" " " 0 0
+    atom: " N  "
+    atom: " CA "
+    atom: " C  "
+    atom: " O  "
+    atom: " CB "
+    atom: " CG "
+    atom: " CD1"
+    atom: " CD2"
+    atom: " NE1"
+    atom: " CE2"
+    atom: " CE3"
+    atom: " CZ2"
+    atom: " CZ3"
+    atom: " CH2"
+    atom: " H  "
+    atom: " HA "
+    atom: " HB2"
+    atom: " HB3"
+  residue: "DLE" "  12" " " 1 0
+    atom: " N  "
+    atom: " CA "
+    atom: " C  "
+    atom: " O  "
+    atom: " CB "
+    atom: " CG "
+    atom: " CD1"
+    atom: " CD2"
+    atom: " H  "
+    atom: " HA "
+    atom: " HB1"
+    atom: " HB2"
+    atom: " HG "
+conformer: "C"
+  residue: "PHE" "  11" " " 0 0
+    atom: " N  "
+    atom: " CA "
+    atom: " C  "
+    atom: " O  "
+    atom: " CB "
+    atom: " CG "
+    atom: " CD1"
+    atom: " CD2"
+    atom: " CE1"
+    atom: " CE2"
+    atom: " CZ "
+    atom: " HB2"
+    atom: " HB3"
+    atom: " HD1"
+    atom: " HD2"
+    atom: " HE1"
+    atom: " HE2"
+    atom: " HZ "
+  residue: "DLE" "  12" " " 1 1
+    atom: " N  "
+    atom: " CA "
+    atom: " C  "
+    atom: " O  "
+conformer: "B"
+  residue: "TYR" "  11" " " 0 0
+    atom: " N  "
+    atom: " CA "
+    atom: " C  "
+    atom: " O  "
+    atom: " CB "
+    atom: " CG "
+    atom: " CD1"
+    atom: " CD2"
+    atom: " CE1"
+    atom: " CE2"
+    atom: " CZ "
+    atom: " OH "
+    atom: " H  "
+    atom: " HA "
+  residue: "DLE" "  12" " " 1 0
+    atom: " N  "
+    atom: " CA "
+    atom: " C  "
+    atom: " O  "
+    atom: " CB "
+    atom: " CG "
+    atom: " CD1"
+    atom: " CD2"
+    atom: " HB1"
+    atom: " HB2"
+    atom: " HG "
+""")
+  #
+  check("""\
+HEADER    HORMONE                                 01-MAY-98   1ZEH
+HETATM  878  C1 ACRS     5      12.880  14.021   1.197  0.50 33.23           C
+HETATM  879  C1 BCRS     5      12.880  14.007   1.210  0.50 34.27           C
+HETATM  880  C2 ACRS     5      12.755  14.853   0.093  0.50 33.88           C
+HETATM  881  C2 BCRS     5      13.935  13.115   1.278  0.50 34.25           C
+HETATM  882  C3 ACRS     5      13.668  14.754  -0.945  0.50 33.82           C
+HETATM  883  C3 BCRS     5      14.848  13.014   0.238  0.50 34.30           C
+HETATM  884  C4 ACRS     5      14.707  13.834  -0.888  0.50 33.46           C
+HETATM  885  C4 BCRS     5      14.695  13.821  -0.884  0.50 34.40           C
+HETATM  886  C5 ACRS     5      14.835  13.001   0.219  0.50 33.30           C
+HETATM  887  C5 BCRS     5      13.635  14.719  -0.957  0.50 34.78           C
+HETATM  888  C6 ACRS     5      13.916  13.105   1.252  0.50 33.26           C
+HETATM  889  C6 BCRS     5      12.731  14.813   0.090  0.50 34.86           C
+HETATM  890  C7 ACRS     5      13.552  15.660  -2.169  0.50 33.90           C
+HETATM  891  C7 BCRS     5      16.001  12.014   0.353  0.50 34.77           C
+HETATM  892  O1 ACRS     5      11.973  14.116   2.233  0.50 34.24           O
+HETATM  893  O1 BCRS     5      11.973  14.107   2.248  0.50 35.28           O
+HETATM  894  O   HOH     5      -0.924  19.122  -8.629  1.00 11.73           O
+HETATM  895  O   HOH     6     -19.752  11.918   3.524  1.00 13.44           O
+""", """\
+conformer: "A"
+  residue: "HOH" "   5" " " 0 1
+    atom: " O  "
+  residue: "CRS" "   5" " " 0 0
+    atom: " C1 "
+    atom: " C2 "
+    atom: " C3 "
+    atom: " C4 "
+    atom: " C5 "
+    atom: " C6 "
+    atom: " C7 "
+    atom: " O1 "
+  residue: "HOH" "   6" " " 1 1
+    atom: " O  "
+conformer: "B"
+  residue: "HOH" "   5" " " 0 1
+    atom: " O  "
+  residue: "CRS" "   5" " " 0 0
+    atom: " C1 "
+    atom: " C2 "
+    atom: " C3 "
+    atom: " C4 "
+    atom: " C5 "
+    atom: " C6 "
+    atom: " C7 "
+    atom: " O1 "
+  residue: "HOH" "   6" " " 1 1
+    atom: " O  "
+""")
+  check("""\
+HEADER    HYDROLASE                               22-NOV-07   2VHL
+HETATM 6362  O   HOH B2048      47.616  10.724 150.212  1.00 46.48           O
+HETATM 6363  O  AHOH B2049      46.408  16.672 146.066  0.50 12.81           O
+HETATM 6364  O   HOH B2050      29.343  12.806 185.898  1.00 35.57           O
+HETATM 6365  O  BHOH B2049      43.786  12.615 147.734  0.50 28.43           O
+HETATM 6366  O   HOH B2052      35.068  19.167 155.349  1.00 15.97           O
+""", """\
+conformer: "A"
+  residue: "HOH" "2048" " " 0 1
+    atom: " O  "
+  residue: "HOH" "2049" " " 1 0
+    atom: " O  "
+  residue: "HOH" "2050" " " 1 1
+    atom: " O  "
+  residue: "HOH" "2052" " " 1 1
+    atom: " O  "
+conformer: "B"
+  residue: "HOH" "2048" " " 0 1
+    atom: " O  "
+  residue: "HOH" "2049" " " 1 0
+    atom: " O  "
+  residue: "HOH" "2050" " " 1 1
+    atom: " O  "
+  residue: "HOH" "2052" " " 1 1
+    atom: " O  "
+""")
 
 def exercise_as_pdb_string(pdb_file_names, comprehensive):
   pdb_string = """\
@@ -2097,6 +2587,7 @@ def exercise(args):
     exercise_edit_blank_altloc()
     exercise_find_pure_altloc_ranges()
     exercise_occupancy_groups_simple()
+    exercise_conformers()
     exercise_as_pdb_string(
       pdb_file_names=phenix_regression_pdb_file_names,
       comprehensive=comprehensive)
