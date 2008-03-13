@@ -649,13 +649,6 @@ namespace {
         .def("residues", get_residues)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
-        .def("append_residue", &w_t::append_residue, (
-          arg_("resname"),
-          arg_("resseq"),
-          arg_("icode"),
-          arg_("link_to_previous"),
-          arg_("is_pure_primary"),
-          arg_("atoms")))
       ;
     }
   };

@@ -873,7 +873,7 @@ namespace {
     const char* icode,
     bool link_to_previous,
     bool is_pure_primary,
-    af::const_ref<atom> const& atoms)
+    std::vector<atom> const& atoms)
   :
     data(new residue_data(
       parent.data,
@@ -888,7 +888,7 @@ namespace {
     const char* icode,
     bool link_to_previous,
     bool is_pure_primary,
-    af::const_ref<atom> const& atoms)
+    std::vector<atom> const& atoms)
   {
     data->residues.push_back(residue(
       *this,
@@ -983,7 +983,6 @@ namespace {
           str3 const& resname = resnames[i_rn];
           ms3va::const_iterator rai = resname_atoms.find(resname);
           SCITBX_ASSERT(rai != resname_atoms.end());
-          std::vector<atom> const& atoms = rai->second;
           result[i_cf].append_residue(
             resname.elems,
             rg.data->resseq.elems,
@@ -991,7 +990,7 @@ namespace {
             rg.data->link_to_previous,
             /* is_pure_primary */ (   resnames_with_altloc.find(resname)
                                    == resnames_with_altloc.end()),
-            af::const_ref<atom>(&*atoms.begin(), atoms.size()));
+            rai->second);
         }
       }
     }

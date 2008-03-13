@@ -325,7 +325,7 @@ namespace hierarchy_v2 {
         const char* const& icode_,
         bool link_to_previous_,
         bool is_pure_primary_,
-        af::const_ref<atom> const& atoms_);
+        std::vector<atom> const& atoms_);
   };
 
   //! Atom attributes.
@@ -1038,7 +1038,7 @@ namespace hierarchy_v2 {
         const char* icode,
         bool link_to_previous,
         bool is_pure_primary,
-        af::const_ref<atom> const& atoms);
+        std::vector<atom> const& atoms);
 
     public:
       std::size_t
@@ -1071,6 +1071,17 @@ namespace hierarchy_v2 {
 
       conformer(shared_ptr<conformer_data> const& data_, bool) : data(data_) {}
 
+      friend class chain; // to support chain::conformers()
+
+      void
+      append_residue(
+        const char* resname,
+        const char* resseq,
+        const char* icode,
+        bool link_to_previous,
+        bool is_pure_primary,
+        std::vector<atom> const& atoms);
+
     public:
       conformer(
         chain const& parent,
@@ -1099,15 +1110,6 @@ namespace hierarchy_v2 {
 
       af::shared<atom>
       atoms() const;
-
-      void
-      append_residue(
-        const char* resname,
-        const char* resseq,
-        const char* icode,
-        bool link_to_previous,
-        bool is_pure_primary,
-        af::const_ref<atom> const& atoms);
   };
 
   inline
@@ -1305,7 +1307,7 @@ namespace hierarchy_v2 {
     const char* const& icode_,
     bool link_to_previous_,
     bool is_pure_primary_,
-    af::const_ref<atom> const& atoms_)
+    std::vector<atom> const& atoms_)
   :
     parent(parent_),
     resname(resname_),
