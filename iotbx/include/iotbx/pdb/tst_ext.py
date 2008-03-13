@@ -2778,6 +2778,8 @@ TER
           " input files not available"
     return
   expected_md5_raw = """\
+phe_hoh_good.pdb d61d20c6647dace787a80a4ffc63e517
+phe_hoh_bad.pdb b48fb18cde198c24b214ddffac01e900
 ala_h.pdb 210c6f7452c721f4d181276df4d1b3e6
 jf.pdb 82b7d19bedd08a0d9b6da3a683f1df7c
 1234.pdb bb4aa46a957eb44bf7c4c2d10f2d4d1f
