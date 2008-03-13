@@ -4,6 +4,10 @@ import boost.python
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_v2_ext")
 from iotbx_pdb_hierarchy_v2_ext import *
 
+from cStringIO import StringIO
+
+level_ids = ["model", "chain", "residue_group", "atom_group", "atom"]
+
 class _root(boost.python.injector, ext.root):
 
   def chains(self):
@@ -39,6 +43,56 @@ class _root(boost.python.injector, ext.root):
 
   def only_atom(self):
     return self.only_atom_group().only_atom()
+
+  def show(self,
+        out=None,
+        prefix="",
+        level_id=None,
+        level_id_exception=ValueError):
+    if (level_id == None): level_id = "atom"
+    try: level_no = level_ids.index(level_id)
+    except ValueError:
+      raise level_id_exception('Unknown level_id="%s"' % level_id)
+    if (out is None): out = sys.stdout
+    for model in self.models():
+      chains = model.chains()
+      print >> out, prefix+'model id="%s"' % model.id, \
+        "#chains=%d" % len(chains)
+      if (level_no == 0): continue
+      for chain in chains:
+        rgs = chain.residue_groups()
+        print >> out, prefix+'  chain id="%s"' % chain.id, \
+          "#residue_groups=%d" % len(rgs)
+        if (level_no == 1): continue
+        suppress_chain_break = True
+        for rg in rgs:
+          if (not rg.link_to_previous and not suppress_chain_break):
+            print >> out, prefix+"    ### chain break ###"
+          suppress_chain_break = False
+          ags = rg.atom_groups()
+          print >> out, prefix+'    resid="%s"' % rg.resid(), \
+            "#atom_groups=%d" % len(ags)
+          if (level_no == 2): continue
+          for ag in ags:
+            atoms = ag.atoms()
+            print >> out, prefix+'      altloc="%s"' % ag.altloc, \
+              'resname="%s"' % ag.resname, \
+              "#atoms=%d" % len(atoms)
+            if (level_no == 3): continue
+            for atom in atoms:
+              print >> out, prefix+'        "%s"' % atom.name
+
+  def as_str(self,
+        prefix="",
+        level_id=None,
+        level_id_exception=ValueError):
+    out = StringIO()
+    self.show(
+      out=out,
+      prefix=prefix,
+      level_id=level_id,
+      level_id_exception=level_id_exception)
+    return out.getvalue()
 
   def as_pdb_records(self, append_end=False):
     result = []

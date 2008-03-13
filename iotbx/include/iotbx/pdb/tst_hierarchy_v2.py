@@ -761,14 +761,24 @@ def hierarchy_as_str(root):
   return s.getvalue()
 
 def exercise_construct_hierarchy():
-  def check(pdb_string, expected):
+  def check(pdb_string, expected, expected_show=None, level_id=None):
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-    root = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
-    s = hierarchy_as_str(root)
-    if (len(expected) == 0):
-      sys.stdout.write(s)
-    else:
-      assert not show_diff(s, expected)
+    if (expected is not None):
+      root = pdb_inp.construct_hierarchy_v2(
+        residue_group_post_processing=False)
+      s = hierarchy_as_str(root)
+      if (len(expected) == 0):
+        sys.stdout.write(s)
+      else:
+        assert not show_diff(s, expected)
+      del root
+    if (expected_show is not None):
+      root = pdb_inp.construct_hierarchy_v2()
+      s = root.as_str(level_id=level_id)
+      if (len(expected_show) == 0):
+        sys.stdout.write(s)
+      else:
+        assert not show_diff(s, expected_show)
   #
   check("""\
 MODEL        1
@@ -810,6 +820,26 @@ HETATM    9 2H3  MPR B   5
 @rg "   6 " 0
 @ag " CYS"
 ATOM     10  N   CYSCH   6
+""", """\
+model id="   1" #chains=1
+  chain id="A" #residue_groups=2
+    resid="   1 " #atom_groups=1
+      altloc="" resname="MET" #atoms=2
+        " N  "
+        " CA "
+    resid="   2 " #atom_groups=1
+      altloc="" resname="MET" #atoms=2
+        " C  "
+        " O  "
+model id="   3" #chains=2
+  chain id="B" #residue_groups=1
+    resid="   5 " #atom_groups=1
+      altloc="" resname="MPR" #atoms=1
+        "2H3 "
+  chain id="CH" #residue_groups=1
+    resid="   6 " #atom_groups=1
+      altloc="" resname="CYS" #atoms=1
+        " N  "
 """)
   #
   check("""\
@@ -830,6 +860,19 @@ ATOM         N2 BR01
 ATOM         N1 CR02
 @ag " R02"
 ATOM         N2  R02
+""", """\
+model id="   0" #chains=1
+  chain id=" " #residue_groups=2
+    resid="     " #atom_groups=2
+      altloc="A" resname="R01" #atoms=1
+        " N1 "
+      altloc="B" resname="R01" #atoms=1
+        " N2 "
+    resid="     " #atom_groups=2
+      altloc="" resname="R02" #atoms=1
+        " N2 "
+      altloc="C" resname="R02" #atoms=1
+        " N1 "
 """)
   #
   check("""\
@@ -875,6 +918,36 @@ ATOM         N3  R03
 @ag "BR03"
 ATOM         N1 BR03
 ATOM         N3 BR03
+""", """\
+model id="   0" #chains=1
+  chain id=" " #residue_groups=3
+    resid="     " #atom_groups=3
+      altloc="" resname="R01" #atoms=1
+        " N2 "
+      altloc=" " resname="R01" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="B" resname="R01" #atoms=2
+        " N1 "
+        " N3 "
+    resid="     " #atom_groups=3
+      altloc="" resname="R02" #atoms=1
+        " N2 "
+      altloc=" " resname="R02" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="B" resname="R02" #atoms=2
+        " N1 "
+        " N3 "
+    resid="     " #atom_groups=3
+      altloc="" resname="R03" #atoms=1
+        " N2 "
+      altloc=" " resname="R03" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="B" resname="R03" #atoms=2
+        " N1 "
+        " N3 "
 """)
   #
   check("""\
@@ -1037,7 +1110,14 @@ ATOM    271  OH BTYR A  11
 ATOM    274  H  BTYR A  11
 ATOM    275  HA BTYR A  11
 ATOM    276  HB2BTYR A  11
-""")
+""", """\
+model id="   0" #chains=1
+  chain id="A" #residue_groups=1
+    resid="  11 " #atom_groups=3
+      altloc="A" resname="TRP" #atoms=6
+      altloc="C" resname="PHE" #atoms=11
+      altloc="B" resname="TYR" #atoms=12
+""", level_id="atom_group")
   #
   root = pdb.input(
     source_info=None,
@@ -1064,7 +1144,7 @@ BREAK
 TER
 """)).construct_hierarchy_v2()
   assert not root.only_residue_group().link_to_previous
-  lines=flex.split_lines("""\
+  pdb_str = """\
 ATOM      1  CB  LYS   109
 ATOM      2  CG  LYS   109
 ATOM      3  CA  LYS   110
@@ -1074,7 +1154,8 @@ ATOM      5  CA  LYS   111
 ATOM      6  CB  LYS   111
 ATOM      7  CA  LYS   112
 ATOM      8  CB  LYS   112
-""")
+"""
+  lines = flex.split_lines(pdb_str)
   for i_proc in [0,1]:
     root = pdb.input(source_info=None, lines=lines).construct_hierarchy_v2()
     residue_groups = root.only_chain().residue_groups()
@@ -1110,6 +1191,61 @@ ATOM      4  CB  LYS   110
   except RuntimeError, e:
     assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
   else: raise Exception_expected
+  #
+  check(pdb_str, None, """\
+model id="   0" #chains=1
+  chain id=" " #residue_groups=4
+    resid=" 109 " #atom_groups=1
+      altloc="" resname="LYS" #atoms=2
+        " CB "
+        " CG "
+    resid=" 110 " #atom_groups=1
+      altloc="" resname="LYS" #atoms=2
+        " CA "
+        " CB "
+    ### chain break ###
+    resid=" 111 " #atom_groups=1
+      altloc="" resname="LYS" #atoms=2
+        " CA "
+        " CB "
+    resid=" 112 " #atom_groups=1
+      altloc="" resname="LYS" #atoms=2
+        " CA "
+        " CB "
+""")
+  #
+  check(pdb_str, None, """\
+model id="   0" #chains=1
+  chain id=" " #residue_groups=4
+    resid=" 109 " #atom_groups=1
+      altloc="" resname="LYS" #atoms=2
+    resid=" 110 " #atom_groups=1
+      altloc="" resname="LYS" #atoms=2
+    ### chain break ###
+    resid=" 111 " #atom_groups=1
+      altloc="" resname="LYS" #atoms=2
+    resid=" 112 " #atom_groups=1
+      altloc="" resname="LYS" #atoms=2
+""", level_id="atom_group")
+  #
+  check(pdb_str, None, """\
+model id="   0" #chains=1
+  chain id=" " #residue_groups=4
+    resid=" 109 " #atom_groups=1
+    resid=" 110 " #atom_groups=1
+    ### chain break ###
+    resid=" 111 " #atom_groups=1
+    resid=" 112 " #atom_groups=1
+""", level_id="residue_group")
+  #
+  check(pdb_str, None, """\
+model id="   0" #chains=1
+  chain id=" " #residue_groups=4
+""", level_id="chain")
+  #
+  check(pdb_str, None, """\
+model id="   0" #chains=1
+""", level_id="model")
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
