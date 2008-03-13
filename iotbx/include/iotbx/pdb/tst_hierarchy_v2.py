@@ -746,39 +746,16 @@ def exercise_format_atom_record():
 %sB1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % (record_name, chain_id))
 
-def hierarchy_as_str(root):
-  s = StringIO()
-  for model in root.models():
-    print >> s, "@model", show_string(model.id)
-    for chain in model.chains():
-      print >> s, "@chain", show_string(chain.id)
-      for rg in chain.residue_groups():
-        print >> s, "@rg", show_string(rg.resid()), int(rg.link_to_previous)
-        for ag in rg.atom_groups():
-          print >> s, "@ag", show_string(ag.confid())
-          for atom in ag.atoms():
-            print >> s, atom.format_atom_record()[:27].rstrip()
-  return s.getvalue()
-
 def exercise_construct_hierarchy():
-  def check(pdb_string, expected, expected_show=None, level_id=None):
+  def check(pdb_string, expected_as_str=None, level_id=None):
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-    if (expected is not None):
-      root = pdb_inp.construct_hierarchy_v2(
-        residue_group_post_processing=False)
-      s = hierarchy_as_str(root)
-      if (len(expected) == 0):
-        sys.stdout.write(s)
-      else:
-        assert not show_diff(s, expected)
-      del root
-    if (expected_show is not None):
+    if (expected_as_str is not None):
       root = pdb_inp.construct_hierarchy_v2()
       s = root.as_str(level_id=level_id)
-      if (len(expected_show) == 0):
+      if (len(expected_as_str) == 0):
         sys.stdout.write(s)
       else:
-        assert not show_diff(s, expected_show)
+        assert not show_diff(s, expected_as_str)
   #
   check("""\
 MODEL        1
@@ -800,26 +777,6 @@ SIGUIJ   10  N   CYSCH   6        3     13      4     11      6     13
 TER
 ENDMDL
 END
-""", """\
-@model "   1"
-@chain "A"
-@rg "   1 " 0
-@ag " MET"
-ATOM      1  N   MET A   1
-ATOM      2  CA  MET A   1
-@rg "   2 " 1
-@ag " MET"
-HETATM    3  C   MET A   2
-ATOM      4  O   MET A   2
-@model "   3"
-@chain "B"
-@rg "   5 " 0
-@ag " MPR"
-HETATM    9 2H3  MPR B   5
-@chain "CH"
-@rg "   6 " 0
-@ag " CYS"
-ATOM     10  N   CYSCH   6
 """, """\
 model id="   1" #chains=1
   chain id="A" #residue_groups=2
@@ -846,19 +803,6 @@ model id="   3" #chains=2
 ATOM         N1 AR01
 ATOM         N2 BR01
 ATOM         N1 CR02
-ATOM         N2  R02
-""", """\
-@model "   0"
-@chain " "
-@rg "     " 0
-@ag "AR01"
-ATOM         N1 AR01
-@ag "BR01"
-ATOM         N2 BR01
-@rg "     " 1
-@ag "CR02"
-ATOM         N1 CR02
-@ag " R02"
 ATOM         N2  R02
 """, """\
 model id="   0" #chains=1
@@ -891,33 +835,6 @@ ATOM         N1 BR03
 ATOM         N2  R03
 ATOM         N3 BR03
 ATOM         N3  R03
-""", """\
-@model "   0"
-@chain " "
-@rg "     " 0
-@ag "BR01"
-ATOM         N1 BR01
-ATOM         N3 BR01
-@ag " R01"
-ATOM         N1  R01
-ATOM         N2  R01
-ATOM         N3  R01
-@rg "     " 1
-@ag " R02"
-ATOM         N1  R02
-ATOM         N2  R02
-ATOM         N3  R02
-@ag "BR02"
-ATOM         N1 BR02
-ATOM         N3 BR02
-@rg "     " 1
-@ag " R03"
-ATOM         N1  R03
-ATOM         N2  R03
-ATOM         N3  R03
-@ag "BR03"
-ATOM         N1 BR03
-ATOM         N3 BR03
 """, """\
 model id="   0" #chains=1
   chain id=" " #residue_groups=3
@@ -967,33 +884,35 @@ ATOM         N2  R03
 ATOM         N3 BR03
 ATOM         N3  R03
 """, """\
-@model "   0"
-@chain " "
-@rg "     " 0
-@ag "BR01"
-ATOM         N1 BR01
-ATOM         N3 BR01
-@ag " R01"
-ATOM         N1  R01
-ATOM         N2  R01
-ATOM         N3  R01
-@rg "     " 1
-@ag "AR02"
-ATOM         N1 AR02
-ATOM         N3 AR02
-@ag "BR02"
-ATOM         N1 BR02
-ATOM         N3 BR02
-@ag " R02"
-ATOM         N2  R02
-@rg "     " 1
-@ag " R03"
-ATOM         N1  R03
-ATOM         N2  R03
-ATOM         N3  R03
-@ag "BR03"
-ATOM         N1 BR03
-ATOM         N3 BR03
+model id="   0" #chains=1
+  chain id=" " #residue_groups=3
+    resid="     " #atom_groups=3
+      altloc="" resname="R01" #atoms=1
+        " N2 "
+      altloc=" " resname="R01" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="B" resname="R01" #atoms=2
+        " N1 "
+        " N3 "
+    resid="     " #atom_groups=3
+      altloc="" resname="R02" #atoms=1
+        " N2 "
+      altloc="A" resname="R02" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="B" resname="R02" #atoms=2
+        " N1 "
+        " N3 "
+    resid="     " #atom_groups=3
+      altloc="" resname="R03" #atoms=1
+        " N2 "
+      altloc=" " resname="R03" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="B" resname="R03" #atoms=2
+        " N1 "
+        " N3 "
 """)
   #
   check("""\
@@ -1013,34 +932,35 @@ ATOM         N2 BR03
 ATOM         N2 CR03
 ATOM         N3  R03
 """, """\
-@model "   0"
-@chain " "
-@rg "     " 0
-@ag "BR01"
-ATOM         N1 BR01
-ATOM         N3 BR01
-@ag "AR01"
-ATOM         N1 AR01
-ATOM         N3 AR01
-@ag "CR01"
-ATOM         N2 CR01
-@rg "     " 1
-@ag " R02"
-ATOM         N1  R02
-ATOM         N2  R02
-ATOM         N3  R02
-@ag "BR02"
-ATOM         N1 BR02
-ATOM         N3 BR02
-@rg "     " 1
-@ag "CR03"
-ATOM         N1 CR03
-ATOM         N2 CR03
-@ag "BR03"
-ATOM         N1 BR03
-ATOM         N2 BR03
-@ag " R03"
-ATOM         N3  R03
+model id="   0" #chains=1
+  chain id=" " #residue_groups=3
+    resid="     " #atom_groups=3
+      altloc="B" resname="R01" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="A" resname="R01" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="C" resname="R01" #atoms=1
+        " N2 "
+    resid="     " #atom_groups=3
+      altloc="" resname="R02" #atoms=1
+        " N2 "
+      altloc=" " resname="R02" #atoms=2
+        " N1 "
+        " N3 "
+      altloc="B" resname="R02" #atoms=2
+        " N1 "
+        " N3 "
+    resid="     " #atom_groups=3
+      altloc="" resname="R03" #atoms=1
+        " N3 "
+      altloc="C" resname="R03" #atoms=2
+        " N1 "
+        " N2 "
+      altloc="B" resname="R03" #atoms=2
+        " N1 "
+        " N2 "
 """)
   #
   check("""\
@@ -1074,42 +994,6 @@ ATOM    273  HZ CPHE A  11      15.908   9.110  34.509  0.15 13.18           H
 ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
 ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
 ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
-""", """\
-@model "   0"
-@chain "A"
-@rg "  11 " 0
-@ag "ATRP"
-ATOM    220  N  ATRP A  11
-ATOM    221  CA ATRP A  11
-ATOM    222  C  ATRP A  11
-ATOM    223  O  ATRP A  11
-ATOM    234  H  ATRP A  11
-ATOM    235  HA ATRP A  11
-@ag "CPHE"
-ATOM    244  N  CPHE A  11
-ATOM    245  CA CPHE A  11
-ATOM    246  C  CPHE A  11
-ATOM    247  O  CPHE A  11
-ATOM    262  HB2CPHE A  11
-ATOM    264  HB3CPHE A  11
-ATOM    266  HD1CPHE A  11
-ATOM    268  HD2CPHE A  11
-ATOM    270  HE1CPHE A  11
-ATOM    272  HE2CPHE A  11
-ATOM    273  HZ CPHE A  11
-@ag "BTYR"
-ATOM    255  N  BTYR A  11
-ATOM    256  CA BTYR A  11
-ATOM    257  C  BTYR A  11
-ATOM    258  O  BTYR A  11
-ATOM    263  CD2BTYR A  11
-ATOM    265  CE1BTYR A  11
-ATOM    267  CE2BTYR A  11
-ATOM    269  CZ BTYR A  11
-ATOM    271  OH BTYR A  11
-ATOM    274  H  BTYR A  11
-ATOM    275  HA BTYR A  11
-ATOM    276  HB2BTYR A  11
 """, """\
 model id="   0" #chains=1
   chain id="A" #residue_groups=1
@@ -1192,7 +1076,7 @@ ATOM      4  CB  LYS   110
     assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
   else: raise Exception_expected
   #
-  check(pdb_str, None, """\
+  check(pdb_str, """\
 model id="   0" #chains=1
   chain id=" " #residue_groups=4
     resid=" 109 " #atom_groups=1
@@ -1214,7 +1098,7 @@ model id="   0" #chains=1
         " CB "
 """)
   #
-  check(pdb_str, None, """\
+  check(pdb_str, """\
 model id="   0" #chains=1
   chain id=" " #residue_groups=4
     resid=" 109 " #atom_groups=1
@@ -1228,7 +1112,7 @@ model id="   0" #chains=1
       altloc="" resname="LYS" #atoms=2
 """, level_id="atom_group")
   #
-  check(pdb_str, None, """\
+  check(pdb_str, """\
 model id="   0" #chains=1
   chain id=" " #residue_groups=4
     resid=" 109 " #atom_groups=1
@@ -1238,12 +1122,12 @@ model id="   0" #chains=1
     resid=" 112 " #atom_groups=1
 """, level_id="residue_group")
   #
-  check(pdb_str, None, """\
+  check(pdb_str, """\
 model id="   0" #chains=1
   chain id=" " #residue_groups=4
 """, level_id="chain")
   #
-  check(pdb_str, None, """\
+  check(pdb_str, """\
 model id="   0" #chains=1
 """, level_id="model")
 
