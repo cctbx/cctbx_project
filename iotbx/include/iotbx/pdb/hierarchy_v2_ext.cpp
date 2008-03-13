@@ -9,6 +9,7 @@
 #include <boost/python/str.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/boost_python/array_as_list.h>
 #include <iotbx/pdb/hierarchy_v2.h>
 
 namespace boost_python_meta_ext { struct holder {}; }
@@ -412,6 +413,16 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_pure_altloc_ranges_overloads, find_pure_altloc_ranges, 0, 1)
 
+    static
+    boost::python::object
+    conformers(
+      w_t const& self)
+    {
+      af::shared<conformer> result = self.conformers();
+      return scitbx::boost_python::array_as_list(
+        result.begin(), result.size());
+    }
+
     static void
     append_atom_records(
       w_t const& self,
@@ -480,6 +491,7 @@ namespace {
         .def("find_pure_altloc_ranges", &w_t::find_pure_altloc_ranges,
           find_pure_altloc_ranges_overloads((
             arg_("common_residue_name_class_only")=0)))
+        .def("conformers", conformers)
         .def("append_atom_records", append_atom_records, (arg_("pdb_records")))
       ;
     }
