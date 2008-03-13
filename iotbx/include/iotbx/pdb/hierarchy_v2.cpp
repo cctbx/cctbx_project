@@ -896,4 +896,106 @@ namespace {
       atoms));
   }
 
+  af::shared<conformer>
+  chain::conformers() const
+  {
+    const char nulc = '\0';
+    std::vector<char> altlocs;
+    typedef std::map<char, unsigned> mcu;
+    mcu altloc_indices;
+    unsigned n_rg = residue_groups_size();
+    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
+      residue_group const& rg = data->residue_groups[i_rg];
+      unsigned n_ag = rg.atom_groups_size();
+      std::vector<atom_group> const& ags = rg.atom_groups();
+      for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+        char altloc = ags[i_ag].data->altloc.elems[0];
+        if (altloc == nulc) continue;
+        if (altloc_indices.find(altloc) == altloc_indices.end()) {
+          altlocs.push_back(altloc);
+          unsigned i = altloc_indices.size(); // important to get .size() ...
+          altloc_indices[altloc] = i; // ... before using []
+        }
+      }
+    }
+    unsigned n_cf = static_cast<unsigned>(altloc_indices.size());
+    if (n_cf == 0) {
+      altlocs.push_back(nulc);
+      n_cf++;
+    }
+    af::shared<conformer> result((af::reserve(n_cf)));
+    for(unsigned i_cf=0;i_cf<n_cf;i_cf++) {
+      result.push_back(conformer(*this, str1(altlocs[i_cf]).elems));
+    }
+    std::vector<str3> resnames; // allocate once
+    resnames.reserve(32U); // not critical
+    std::set<str3> resnames_with_altloc; // allocate once
+    std::vector<std::vector<atom_group> > altloc_ags(n_cf); // allocate once
+    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
+      residue_group const& rg = data->residue_groups[i_rg];
+      for(unsigned i_cf=0;i_cf<n_cf;i_cf++) {
+        // preserving allocations reduces re-allocations
+        altloc_ags[i_cf].clear();
+      }
+      unsigned n_ag = rg.atom_groups_size();
+      std::vector<atom_group> const& ags = rg.atom_groups();
+      for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+        atom_group const& ag = ags[i_ag];
+        char altloc = ag.data->altloc.elems[0];
+        if (altloc == nulc) {
+          for(unsigned i_cf=0;i_cf<n_cf;i_cf++) {
+            altloc_ags[i_cf].push_back(ag);
+          }
+        }
+        else {
+          altloc_ags[altloc_indices[altloc]].push_back(ag);
+        }
+      }
+      for(unsigned i_cf=0;i_cf<n_cf;i_cf++) {
+        resnames.clear();
+        typedef std::map<str3, std::vector<atom> > ms3va;
+        ms3va resname_atoms;
+        resnames_with_altloc.clear();
+        std::vector<atom_group> const& ags = altloc_ags[i_cf];
+        unsigned n_ag = static_cast<unsigned>(ags.size());
+        for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+          atom_group const& ag = ags[i_ag];
+          ms3va::iterator rai = resname_atoms.find(ag.data->resname);
+          std::vector<atom>* atoms;
+          if (rai != resname_atoms.end()) {
+            atoms = &rai->second;
+          }
+          else {
+            resnames.push_back(ag.data->resname);
+            atoms = &resname_atoms[ag.data->resname];
+            unsigned n_reserve = 100U / n_ag; // not critical
+            if (n_reserve != 0) {
+              atoms->reserve(n_reserve);
+            }
+          }
+          atoms->insert(atoms->end(), ag.atoms().begin(), ag.atoms().end());
+          if (ag.data->altloc.elems[0] != nulc) {
+            resnames_with_altloc.insert(ag.data->resname);
+          }
+        }
+        unsigned n_rn = static_cast<unsigned>(resnames.size());
+        for(unsigned i_rn=0;i_rn<n_rn;i_rn++) {
+          str3 const& resname = resnames[i_rn];
+          ms3va::const_iterator rai = resname_atoms.find(resname);
+          SCITBX_ASSERT(rai != resname_atoms.end());
+          std::vector<atom> const& atoms = rai->second;
+          result[i_cf].append_residue(
+            resname.elems,
+            rg.data->resseq.elems,
+            rg.data->icode.elems,
+            rg.data->link_to_previous,
+            /* is_pure_primary */ (   resnames_with_altloc.find(resname)
+                                   == resnames_with_altloc.end()),
+            af::const_ref<atom>(&*atoms.begin(), atoms.size()));
+        }
+      }
+    }
+    return result;
+  }
+
 }}} // namespace iotbx::pdb::hierarchy_v2
