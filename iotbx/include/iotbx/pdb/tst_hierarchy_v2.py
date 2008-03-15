@@ -1363,11 +1363,14 @@ MODEL     1
 ENDMDL
 """, """\
 model id="   1" #chains=0  ### WARNING: duplicate model id ###
+  ### WARNING: empty model ###
 model id="   1" #chains=0  ### WARNING: duplicate model id ###
+  ### WARNING: empty model ###
 model id="   1" #chains=0  ### WARNING: duplicate model id ###
+  ### WARNING: empty model ###
 """, """\
 total number of:
-  models:     3 (3 with duplicate model ids)
+  models:     3 (3 with duplicate model ids; 3 empty)
   chains:     0
   alt. conf.: 0
   residues:   0
@@ -1779,6 +1782,117 @@ number of consecutive residue groups with same resid: 4
     "ATOM      4  N   R04     1I"
   -------------------------------
   ... 1 remaining instance not shown
+""")
+  #
+  root = pdb.hierarchy_v2.root()
+  assert not show_diff(root.as_str(), """\
+### WARNING: empty hierarchy ###
+""")
+  assert not show_diff(root.overall_counts().as_str(), """\
+total number of:
+  models:     0
+  chains:     0
+  alt. conf.: 0
+  residues:   0
+  atoms:      0
+number of atom element+charge types: 0
+residue name classes: None
+number of chain ids: 0
+number of alt. conf. ids: 0
+number of residue names: 0
+""")
+  model = pdb.hierarchy_v2.model()
+  root.append_model(model=model)
+  assert not show_diff(root.as_str(), """\
+model id="" #chains=0
+  ### WARNING: empty model ###
+""")
+  assert not show_diff(root.overall_counts().as_str(), """\
+total number of:
+  models:     1 (1 empty)
+  chains:     0
+  alt. conf.: 0
+  residues:   0
+  atoms:      0
+number of atom element+charge types: 0
+residue name classes: None
+number of chain ids: 0
+number of alt. conf. ids: 0
+number of residue names: 0
+""")
+  chain = pdb.hierarchy_v2.chain()
+  model.append_chain(chain=chain)
+  assert not show_diff(root.as_str(), """\
+model id="" #chains=1
+  chain id="" #residue_groups=0
+    ### WARNING: empty chain ###
+""")
+  assert not show_diff(root.overall_counts().as_str(), """\
+total number of:
+  models:     1
+  chains:     1 (1 empty)
+  alt. conf.: 0
+  residues:   0
+  atoms:      0
+number of atom element+charge types: 0
+residue name classes: None
+number of chain ids: 1
+histogram of chain id frequency:
+  "" 1
+number of alt. conf. ids: 0
+number of residue names: 0
+""")
+  residue_group = pdb.hierarchy_v2.residue_group()
+  chain.append_residue_group(residue_group=residue_group)
+  assert not show_diff(root.as_str(), """\
+model id="" #chains=1
+  chain id="" #residue_groups=1
+    resid="     " #atom_groups=0
+      ### WARNING: empty residue_group ###
+""")
+  assert not show_diff(root.overall_counts().as_str(), """\
+total number of:
+  models:     1
+  chains:     1
+  alt. conf.: 0
+  residues:   1
+  atoms:      0
+  empty residue_groups: 1
+number of atom element+charge types: 0
+residue name classes: None
+number of chain ids: 1
+histogram of chain id frequency:
+  "" 1
+number of alt. conf. ids: 0
+number of residue names: 0
+""")
+  atom_group = pdb.hierarchy_v2.atom_group()
+  residue_group.append_atom_group(atom_group=atom_group)
+  assert not show_diff(root.as_str(), """\
+model id="" #chains=1
+  chain id="" #residue_groups=1
+    resid="     " #atom_groups=1
+      altloc="" resname="" #atoms=0
+        ### WARNING: empty atom_group ###
+""")
+  assert not show_diff(root.overall_counts().as_str(), """\
+total number of:
+  models:     1
+  chains:     1
+  alt. conf.: 0
+  residues:   1
+  atoms:      0
+  empty atom_groups: 1
+number of atom element+charge types: 0
+residue name classes:
+  "other" 1
+number of chain ids: 1
+histogram of chain id frequency:
+  "" 1
+number of alt. conf. ids: 0
+number of residue names: 1
+histogram of residue name frequency:
+  "" 1    other
 """)
 
 def exercise_convenience_generators():
