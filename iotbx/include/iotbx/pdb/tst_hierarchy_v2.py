@@ -1778,7 +1778,7 @@ ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
  (this chain must be the parent).""" % s)
     else: raise Exception_expected
 
-def exercise_chain_merge_and_split_residue_groups(n_trials=30):
+def exercise_chain_merge_residue_groups(n_trials=30):
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 HEADER    HYDROLASE                               22-NOV-07   2VHL
 HETATM 6362  O   HOH B2048      47.616  10.724 150.212  1.00 46.48           O
@@ -2994,7 +2994,7 @@ def exercise(args):
     exercise_only()
     exercise_merge_atom_groups()
     exercise_merge_residue_groups()
-    exercise_chain_merge_and_split_residue_groups()
+    exercise_chain_merge_residue_groups()
     exercise_edit_blank_altloc()
     exercise_find_pure_altloc_ranges()
     exercise_occupancy_groups_simple()
