@@ -13,7 +13,11 @@ level_ids = ["model", "chain", "residue_group", "atom_group", "atom"]
 
 class overall_counts(object):
 
-  def show(self, out=None, prefix="", duplicate_max_show=10):
+  def show(self,
+        out=None,
+        prefix="",
+        consecutive_residue_groups_max_show=10,
+        duplicate_atom_labels_max_show=10):
     from iotbx.pdb import common_residue_names_get_class
     if (out is None): out = sys.stdout
     fmt = "%%%dd" % len(str(self.n_atoms))
@@ -109,18 +113,66 @@ class overall_counts(object):
           annotation_appearance[common_residue_names_get_class(name=name)]
             for name in c.keys()])
     #
+    self.show_consecutive_residue_groups_with_same_resid(
+      out=out, prefix=prefix, max_show=consecutive_residue_groups_max_show)
+    #
     msg = self.have_duplicate_atom_labels_message(
-      max_show=duplicate_max_show,
+      max_show=duplicate_atom_labels_max_show,
       prefix=prefix)
     if (msg is not None): print >> out, msg
 
-  def as_str(self, prefix="", duplicate_max_show=10):
+  def as_str(self,
+        prefix="",
+        consecutive_residue_groups_max_show=10,
+        duplicate_atom_labels_max_show=10):
     out = StringIO()
     self.show(
       out=out,
       prefix=prefix,
-      duplicate_max_show=duplicate_max_show)
+      consecutive_residue_groups_max_show=consecutive_residue_groups_max_show,
+      duplicate_atom_labels_max_show=duplicate_atom_labels_max_show)
     return out.getvalue()
+
+  def show_consecutive_residue_groups_with_same_resid(self,
+        out=None,
+        prefix="",
+        max_show=10):
+    cons = self.consecutive_residue_groups_with_same_resid
+    if (len(cons) == 0): return
+    if (out is None): out = sys.stdout
+    print >> out, \
+      prefix+"number of consecutive residue groups with same resid: %d" % \
+        len(cons)
+    if (max_show <= 0): return
+    delim = prefix+"  "+"-"*31
+    prev_rg = None
+    for rgs in cons[:max_show]:
+      for next,rg in zip(["", "next "], rgs):
+        if (rg is prev_rg): continue
+        elif (next == "" and prev_rg is not None):
+          print >> out, delim
+        prev_rg = rg
+        print >> out, prefix+"  %sresidue group:" % next
+        atoms = rg.atoms()
+        if (atoms.size() == 0):
+          ch = rg.parent()
+          if (ch is None): ch = "  "
+          else:            ch = "%s" % ch.id
+          print >> out, prefix+'    empty: "%s%s"' % (ch, rg.resid())
+        else:
+          def show_atom(atom):
+            print >> out, prefix+'    "%s"' % atom.format_atom_record()[:27]
+          if (atoms.size() <= 3):
+            for atom in atoms: show_atom(atom)
+          else:
+            show_atom(atoms[0])
+            print >> out, prefix+'    ... %d atom%s not shown' % plural_s(
+              atoms.size()-2)
+            show_atom(atoms[-1])
+    if (len(cons) > max_show):
+      print >> out, delim
+      print >> out, prefix + "  ... %d remaining instance%s not shown" % \
+        plural_s(len(cons)-max_show)
 
   def have_duplicate_atom_labels_message(self, max_show=10, prefix=""):
     dup = self.duplicate_atom_labels
@@ -201,6 +253,7 @@ class _root(boost.python.injector, ext.root):
     n_alt_conf_improper = 0
     alt_conf_proper = None
     alt_conf_improper = None
+    consecutive_residue_groups_with_same_resid = []
     n_chains_with_mix_of_proper_and_improper_alt_conf = 0
     n_duplicate_model_ids = 0
     n_duplicate_chain_ids = 0
@@ -213,6 +266,7 @@ class _root(boost.python.injector, ext.root):
       model_ids[model.id] += 1
       model_chain_ids = dict_with_default_0()
       model_atom_labels_i_seqs = {}
+      prev_rg = None
       for chain in model.chains():
         model_chain_ids[chain.id] += 1
         chain_ids[chain.id] += 1
@@ -241,6 +295,7 @@ class _root(boost.python.injector, ext.root):
                 atom.pdb_label_columns(), []).append(atom.tmp)
               element_charge_types[
                 "%2s%-2s" % (atom.element, atom.charge)] += 1
+              rg_last_atom = atom
           if (have_blank_altloc):
             n_alt_conf_improper += 1
             if (chain_alt_conf_improper is None):
@@ -261,6 +316,10 @@ class _root(boost.python.injector, ext.root):
             n_residue_groups += 1
           for resname in rg_resnames:
             resnames[resname] += 1
+          if (    prev_rg is not None
+              and prev_rg.resid() == rg.resid()):
+            consecutive_residue_groups_with_same_resid.append((prev_rg, rg))
+          prev_rg = rg
         for altloc in chain_altlocs:
           alt_conf_ids[altloc] += 1
         if (    chain_alt_conf_proper is not None
@@ -313,6 +372,8 @@ class _root(boost.python.injector, ext.root):
     result.n_alt_conf_improper = n_alt_conf_improper
     result.alt_conf_proper = alt_conf_proper
     result.alt_conf_improper = alt_conf_improper
+    result.consecutive_residue_groups_with_same_resid \
+         = consecutive_residue_groups_with_same_resid
     result.n_chains_with_mix_of_proper_and_improper_alt_conf \
          = n_chains_with_mix_of_proper_and_improper_alt_conf
     return result

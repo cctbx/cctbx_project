@@ -778,7 +778,10 @@ def exercise_construct_hierarchy():
       else:
         assert not show_diff(s, expected_root_as_str)
     if (expected_overall_counts_as_str is not None):
-      s = root.overall_counts().as_str(prefix=prefix)
+      s = root.overall_counts().as_str(
+        prefix=prefix,
+        consecutive_residue_groups_max_show=3,
+        duplicate_atom_labels_max_show=3)
       if (len(expected_overall_counts_as_str) == 0):
         sys.stdout.write(s)
       else:
@@ -1010,6 +1013,19 @@ ATOM         N3  R03
     "R01" 1    other
     "R02" 1    other
     "R03" 1    other
+  number of consecutive residue groups with same resid: 2
+    residue group:
+      "ATOM         N2  R01       "
+      ... 3 atoms not shown
+      "ATOM         N3 BR01       "
+    next residue group:
+      "ATOM         N2  R02       "
+      ... 3 atoms not shown
+      "ATOM         N3 BR02       "
+    next residue group:
+      "ATOM         N2  R03       "
+      ... 3 atoms not shown
+      "ATOM         N3 BR03       "
 """, prefix="  ")
   #
   check("""\
@@ -1102,6 +1118,19 @@ histogram of residue name frequency:
   "R01" 1    other
   "R02" 1    other
   "R03" 1    other
+number of consecutive residue groups with same resid: 2
+  residue group:
+    "ATOM         N1 BR01       "
+    ... 3 atoms not shown
+    "ATOM         N2 CR01       "
+  next residue group:
+    "ATOM         N2  R02       "
+    ... 3 atoms not shown
+    "ATOM         N3 BR02       "
+  next residue group:
+    "ATOM         N3  R03       "
+    ... 3 atoms not shown
+    "ATOM         N2 BR03       "
 """)
   #
   check("""\
@@ -1433,6 +1462,18 @@ number of alt. conf. ids: 0
 number of residue names: 1
 histogram of residue name frequency:
   "   " 10    other
+number of consecutive residue groups with same resid: 3
+  residue group:
+    "ATOM                 A     "
+  next residue group:
+    "ATOM                 B     "
+  next residue group:
+    "ATOM                 A     "
+  -------------------------------
+  residue group:
+    "ATOM                 B     "
+  next residue group:
+    "ATOM                 A     "
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
   group "ATOM                 A     "
@@ -1490,9 +1531,7 @@ number of groups of duplicate atom labels: 1
         "ATOM     55  CA  GLY A   9 "
 """)
   #
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM     68  HD1 LEU B 441
 ATOM     69  HD1 LEU B 441
 ATOM     70  HD1 LEU B 441
@@ -1520,6 +1559,227 @@ number of groups of duplicate atom labels: 2
   group "ATOM     71  HD2 LEU B 441 "
         "ATOM     72  HD2 LEU B 441 "
         "ATOM     73  HD2 LEU B 441 "''')
+  #
+  check("""\
+ATOM     68  HD1 LEU B 441
+ATOM     69  HD2 LEU B 441
+ATOM     70  HD3 LEU B 441
+ATOM     71  HD4 LEU B 441
+ATOM     72  HD1 LEU B 441
+ATOM     73  HD2 LEU B 441
+ATOM     74  HD3 LEU B 441
+ATOM     75  HD4 LEU B 441
+""", None, """\
+total number of:
+  models:     1
+  chains:     1
+  alt. conf.: 0
+  residues:   1
+  atoms:      8 (8 with duplicate labels)
+number of atom element+charge types: 1
+histogram of atom element+charge frequency:
+  "    " 8
+residue name classes:
+  "common_amino_acid" 1
+number of chain ids: 1
+histogram of chain id frequency:
+  "B" 1
+number of alt. conf. ids: 0
+number of residue names: 1
+histogram of residue name frequency:
+  "LEU" 1
+number of groups of duplicate atom labels: 4
+  total number of affected atoms:          8
+  group "ATOM     68  HD1 LEU B 441 "
+        "ATOM     72  HD1 LEU B 441 "
+  group "ATOM     69  HD2 LEU B 441 "
+        "ATOM     73  HD2 LEU B 441 "
+  group "ATOM     70  HD3 LEU B 441 "
+        "ATOM     74  HD3 LEU B 441 "
+  ... 1 remaining group not shown
+""")
+  #
+  check("""\
+HEADER    HYDROLASE                               19-JUL-05   2BWX
+ATOM   2038  N   CYS A 249      68.746  44.381  71.143  0.70 21.04           N
+ATOM   2039  CA  CYS A 249      68.957  43.022  71.606  0.70 21.28           C
+ATOM   2040  C   CYS A 249      70.359  42.507  71.362  0.70 19.80           C
+ATOM   2041  O   CYS A 249      71.055  42.917  70.439  0.70 19.80           O
+ATOM   2042  CB ACYS A 249      67.945  42.064  70.987  0.40 24.99           C
+ATOM   2044  SG ACYS A 249      66.261  42.472  71.389  0.40 27.94           S
+ATOM   2043  CB BCYS A 249      67.928  42.101  70.948  0.30 23.34           C
+ATOM   2045  SG BCYS A 249      67.977  40.404  71.507  0.30 26.46           S
+HETATM 2046  N  CCSO A 249      68.746  44.381  71.143  0.30 21.04           N
+HETATM 2047  CA CCSO A 249      68.957  43.022  71.606  0.30 21.28           C
+HETATM 2048  CB CCSO A 249      67.945  42.064  70.987  0.30 24.99           C
+HETATM 2049  SG CCSO A 249      66.261  42.472  71.389  0.30 27.94           S
+HETATM 2050  C  CCSO A 249      70.359  42.507  71.362  0.30 19.80           C
+HETATM 2051  O  CCSO A 249      71.055  42.917  70.439  0.30 19.80           O
+HETATM 2052  OD CCSO A 249      66.275  42.201  72.870  0.30 23.67           O
+""", """\
+model id="   0" #chains=1
+  chain id="A" #residue_groups=2
+    resid=" 249 " #atom_groups=3
+      altloc="" resname="CYS" #atoms=4
+      altloc="A" resname="CYS" #atoms=2
+      altloc="B" resname="CYS" #atoms=2
+    resid=" 249 " #atom_groups=1
+      altloc="C" resname="CSO" #atoms=7
+""", """\
+total number of:
+  models:      1
+  chains:      1
+  alt. conf.:  3
+  residues:    2
+  atoms:      15
+number of atom element+charge types: 4
+histogram of atom element+charge frequency:
+  " C  " 7
+  " O  " 3
+  " S  " 3
+  " N  " 2
+residue name classes:
+  "common_amino_acid" 1
+  "other"             1
+number of chain ids: 1
+histogram of chain id frequency:
+  "A" 1
+number of alt. conf. ids: 3
+histogram of alt. conf. id frequency:
+  "A" 1
+  "B" 1
+  "C" 1
+residue alt. conf. situations:
+  pure main conf.:     0
+  pure alt. conf.:     1
+  proper alt. conf.:   1
+  improper alt. conf.: 0
+chains with mix of proper and improper alt. conf.: 0
+number of residue names: 2
+histogram of residue name frequency:
+  "CSO" 1    other
+  "CYS" 1
+number of consecutive residue groups with same resid: 1
+  residue group:
+    "ATOM   2038  N   CYS A 249 "
+    ... 6 atoms not shown
+    "ATOM   2045  SG BCYS A 249 "
+  next residue group:
+    "HETATM 2046  N  CCSO A 249 "
+    ... 5 atoms not shown
+    "HETATM 2052  OD CCSO A 249 "
+""", level_id="atom_group")
+  #
+  check("""\
+HEADER    OXIDOREDUCTASE                          17-SEP-97   1OHJ
+HETATM 1552  C3  COP   188      11.436  28.065  13.009  1.00  8.51           C
+HETATM 1553  C1  COP   188      13.269  26.907  13.759  1.00  8.86           C
+HETATM 1582  O24 COP   188      13.931  34.344  22.009  1.00 20.08           O
+HETATM 1583  O25 COP   188      13.443  32.717  20.451  1.00 20.18           O
+HETATM 1608  O   HOH   188      20.354  30.097  11.632  1.00 21.33           O
+HETATM 1569  C28ACOP   188      14.231  36.006  18.087  0.50 25.20           C
+HETATM 1571  C29ACOP   188      13.126  36.948  17.945  0.50 26.88           C
+HETATM 1604  O40ACOP   188      15.720  40.117  14.909  0.50 31.54           O
+HETATM 1606  O41ACOP   188      15.816  42.243  14.385  0.50 31.73           O
+HETATM 1570  C28BCOP   188      14.190  36.055  18.102  0.50 24.97           C
+HETATM 1572  C29BCOP   188      13.133  37.048  18.009  0.50 26.45           C
+HETATM 1605  O40BCOP   188      10.794  41.093  18.747  0.50 30.51           O
+HETATM 1607  O41BCOP   188      12.838  40.007  19.337  0.50 30.37           O
+""", """\
+model id="   0" #chains=1
+  chain id=" " #residue_groups=3
+    resid=" 188 " #atom_groups=1
+      altloc="" resname="COP" #atoms=4
+    resid=" 188 " #atom_groups=1
+      altloc="" resname="HOH" #atoms=1
+    resid=" 188 " #atom_groups=2
+      altloc="A" resname="COP" #atoms=4
+      altloc="B" resname="COP" #atoms=4
+""", """\
+total number of:
+  models:      1
+  chains:      1
+  alt. conf.:  2
+  residues:    3
+  atoms:      13
+number of atom element+charge types: 2
+histogram of atom element+charge frequency:
+  " O  " 7
+  " C  " 6
+residue name classes:
+  "other"        2
+  "common_water" 1
+number of chain ids: 1
+histogram of chain id frequency:
+  " " 1
+number of alt. conf. ids: 2
+histogram of alt. conf. id frequency:
+  "A" 1
+  "B" 1
+residue alt. conf. situations:
+  pure main conf.:     2
+  pure alt. conf.:     1
+  proper alt. conf.:   0
+  improper alt. conf.: 0
+chains with mix of proper and improper alt. conf.: 0
+number of residue names: 2
+histogram of residue name frequency:
+  "COP" 2    other
+  "HOH" 1    common water
+number of consecutive residue groups with same resid: 2
+  residue group:
+    "HETATM 1552  C3  COP   188 "
+    ... 2 atoms not shown
+    "HETATM 1583  O25 COP   188 "
+  next residue group:
+    "HETATM 1608  O   HOH   188 "
+  next residue group:
+    "HETATM 1569  C28ACOP   188 "
+    ... 6 atoms not shown
+    "HETATM 1607  O41BCOP   188 "
+""", level_id="atom_group")
+  #
+  check("""\
+ATOM      1  N   R01     1I
+ATOM      2  N   R02     1I
+ATOM      3  N   R03     1I
+ATOM      4  N   R04     1I
+ATOM      5  N   R05     1I
+""", None, """\
+total number of:
+  models:     1
+  chains:     1
+  alt. conf.: 0
+  residues:   5
+  atoms:      5
+number of atom element+charge types: 1
+histogram of atom element+charge frequency:
+  "    " 5
+residue name classes:
+  "other" 5
+number of chain ids: 1
+histogram of chain id frequency:
+  " " 1
+number of alt. conf. ids: 0
+number of residue names: 5
+histogram of residue name frequency:
+  "R01" 1    other
+  "R02" 1    other
+  "R03" 1    other
+  "R04" 1    other
+  "R05" 1    other
+number of consecutive residue groups with same resid: 4
+  residue group:
+    "ATOM      1  N   R01     1I"
+  next residue group:
+    "ATOM      2  N   R02     1I"
+  next residue group:
+    "ATOM      3  N   R03     1I"
+  next residue group:
+    "ATOM      4  N   R04     1I"
+  -------------------------------
+  ... 1 remaining instance not shown
+""")
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
