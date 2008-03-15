@@ -270,7 +270,7 @@ class _root(boost.python.injector, ext.root):
       for chain in model.chains():
         model_chain_ids[chain.id] += 1
         chain_ids[chain.id] += 1
-        chain_altlocs = {}
+        chain_altlocs = {} # FUTURE: set
         chain_alt_conf_proper = None
         chain_alt_conf_improper = None
         suppress_chain_break = True
@@ -280,8 +280,8 @@ class _root(boost.python.injector, ext.root):
           suppress_chain_break = False
           have_main_conf = False
           have_blank_altloc = False
-          rg_altlocs = {}
-          rg_resnames = {}
+          rg_altlocs = {} # FUTURE: set
+          rg_resnames = {} # FUTURE: set
           for ag in rg.atom_groups():
             if (ag.altloc == ""):
               have_main_conf = True
@@ -404,8 +404,13 @@ class _root(boost.python.injector, ext.root):
             print >> out, prefix+"    ### chain break ###"
           suppress_chain_break = False
           ags = rg.atom_groups()
+          resnames = {} # FUTURE: set
+          for ag in rg.atom_groups():
+            resnames[ag.resname] = None
+          if (len(resnames) > 1): s = " *** with mixed residue names ***"
+          else: s = ""
           print >> out, prefix+'    resid="%s"' % rg.resid(), \
-            "#atom_groups=%d" % len(ags)
+            "#atom_groups=%d%s" % (len(ags), s)
           if (level_no == 2): continue
           for ag in ags:
             atoms = ag.atoms()

@@ -1167,7 +1167,7 @@ ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
 """, """\
 model id="   0" #chains=1
   chain id="A" #residue_groups=1
-    resid="  11 " #atom_groups=3
+    resid="  11 " #atom_groups=3 *** with mixed residue names ***
       altloc="A" resname="TRP" #atoms=6
       altloc="C" resname="PHE" #atoms=11
       altloc="B" resname="TYR" #atoms=12
