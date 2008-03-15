@@ -24,24 +24,29 @@ class overall_counts(object):
     fmt = "%%%dd" % len(str(self.n_atoms))
     print >> out, prefix+"total number of:"
     print >> out, prefix+"  models:    ", fmt % self.n_models,
+    infos = []
     if (self.n_duplicate_model_ids != 0):
-      print >> out, "(%d with duplicate model id%s)" % plural_s(
-        self.n_duplicate_model_ids),
+      infos.append("%d with duplicate model id%s" % plural_s(
+        self.n_duplicate_model_ids))
+    if (self.n_empty_models != 0):
+      infos.append("%d empty" % self.n_empty_models)
+    if (len(infos) != 0): print >> out, "(%s)" % "; ".join(infos),
     print >> out
     print >> out, prefix+"  chains:    ", fmt % self.n_chains,
-    problems = []
+    infos = []
     if (self.n_duplicate_chain_ids != 0):
-      problems.append("%d with duplicate chain id%s" % plural_s(
+      infos.append("%d with duplicate chain id%s" % plural_s(
         self.n_duplicate_chain_ids))
+    if (self.n_empty_chains != 0):
+      infos.append("%d empty" % self.n_empty_chains)
     if (self.n_explicit_chain_breaks != 0):
-      problems.append("%d explicit chain break%s" % plural_s(
+      infos.append("%d explicit chain break%s" % plural_s(
         self.n_explicit_chain_breaks))
-    if (len(problems) != 0):
-      print >> out, "(%s)" % "; ".join(problems),
+    if (len(infos) != 0): print >> out, "(%s)" % "; ".join(infos),
     print >> out
     print >> out, prefix+"  alt. conf.:", fmt % self.n_alt_conf
     print >> out, prefix+"  residues:  ", fmt % (
-      self.n_residues + self.n_residue_groups),
+      self.n_residues + self.n_residue_groups + self.n_empty_residue_groups),
     if (self.n_residue_groups != 0):
       print >> out, "(%d with mixed residue names)" % self.n_residue_groups,
     print >> out
@@ -49,6 +54,12 @@ class overall_counts(object):
     if (self.n_duplicate_atom_labels != 0):
       print >> out, "(%d with duplicate labels)" %self.n_duplicate_atom_labels,
     print >> out
+    if (self.n_empty_residue_groups != 0):
+      print >> out, prefix+"  empty residue_groups:", \
+        fmt % self.n_empty_residue_groups
+    if (self.n_empty_atom_groups != 0):
+      print >> out, prefix+"  empty atom_groups:", \
+        fmt % self.n_empty_atom_groups
     #
     c = self.element_charge_types
     print >> out, prefix+"number of atom element+charge types:", len(c)
@@ -239,6 +250,10 @@ class _root(boost.python.injector, ext.root):
   def overall_counts(self):
     from iotbx.pdb import common_residue_names_get_class
     blank_altloc_char = " "
+    n_empty_models = 0
+    n_empty_chains = 0
+    n_empty_residue_groups = 0
+    n_empty_atom_groups = 0
     n_models = self.models_size()
     n_residues = 0
     n_residue_groups = 0
@@ -263,11 +278,13 @@ class _root(boost.python.injector, ext.root):
     atoms = self.atoms()
     atoms.reset_tmp()
     for model in self.models():
+      if (model.chains_size() == 0): n_empty_models += 1
       model_ids[model.id] += 1
       model_chain_ids = dict_with_default_0()
       model_atom_labels_i_seqs = {}
       prev_rg = None
       for chain in model.chains():
+        if (chain.residue_groups_size() == 0): n_empty_chains += 1
         model_chain_ids[chain.id] += 1
         chain_ids[chain.id] += 1
         chain_altlocs = {} # FUTURE: set
@@ -275,6 +292,7 @@ class _root(boost.python.injector, ext.root):
         chain_alt_conf_improper = None
         suppress_chain_break = True
         for rg in chain.residue_groups():
+          if (rg.atom_groups_size() == 0): n_empty_residue_groups += 1
           if (not rg.link_to_previous and not suppress_chain_break):
             n_explicit_chain_breaks += 1
           suppress_chain_break = False
@@ -283,6 +301,7 @@ class _root(boost.python.injector, ext.root):
           rg_altlocs = {} # FUTURE: set
           rg_resnames = {} # FUTURE: set
           for ag in rg.atom_groups():
+            if (ag.atoms_size() == 0): n_empty_atom_groups += 1
             if (ag.altloc == ""):
               have_main_conf = True
             else:
@@ -312,7 +331,7 @@ class _root(boost.python.injector, ext.root):
           chain_altlocs.update(rg_altlocs)
           if (len(rg_resnames) == 1):
             n_residues += 1
-          else:
+          elif (len(rg_resnames) != 0):
             n_residue_groups += 1
           for resname in rg_resnames:
             resnames[resname] += 1
@@ -350,6 +369,10 @@ class _root(boost.python.injector, ext.root):
       resname_classes[common_residue_names_get_class(name=resname)] += count
     result = overall_counts()
     result.root = self
+    result.n_empty_models = n_empty_models
+    result.n_empty_chains = n_empty_chains
+    result.n_empty_residue_groups = n_empty_residue_groups
+    result.n_empty_atom_groups = n_empty_atom_groups
     result.n_duplicate_model_ids = n_duplicate_model_ids
     result.n_duplicate_chain_ids = n_duplicate_chain_ids
     result.n_duplicate_atom_labels = n_duplicate_atom_labels
@@ -388,6 +411,8 @@ class _root(boost.python.injector, ext.root):
     except ValueError:
       raise level_id_exception('Unknown level_id="%s"' % level_id)
     if (out is None): out = sys.stdout
+    if (self.models_size() == 0):
+      print >> out, prefix+'### WARNING: empty hierarchy ###'
     model_ids = dict_with_default_0()
     for model in self.models():
       model_ids[model.id] += 1
@@ -399,6 +424,8 @@ class _root(boost.python.injector, ext.root):
       print >> out, prefix+'model id="%s"' % model.id, \
         "#chains=%d%s" % (len(chains), s)
       if (level_no == 0): continue
+      if (model.chains_size() == 0):
+        print >> out, prefix+'  ### WARNING: empty model ###'
       model_chain_ids = dict_with_default_0()
       for chain in chains:
         model_chain_ids[chain.id] += 1
@@ -410,6 +437,8 @@ class _root(boost.python.injector, ext.root):
         print >> out, prefix+'  chain id="%s"' % chain.id, \
           "#residue_groups=%d%s" % (len(rgs), s)
         if (level_no == 1): continue
+        if (chain.residue_groups_size() == 0):
+          print >> out, prefix+'    ### WARNING: empty chain ###'
         suppress_chain_break = True
         prev_resid = ""
         for rg in rgs:
@@ -430,12 +459,16 @@ class _root(boost.python.injector, ext.root):
           print >> out, prefix+'    resid="%s"' % resid, \
             "#atom_groups=%d%s" % (len(ags), s)
           if (level_no == 2): continue
+          if (rg.atom_groups_size() == 0):
+            print >> out, prefix+'      ### WARNING: empty residue_group ###'
           for ag in ags:
             atoms = ag.atoms()
             print >> out, prefix+'      altloc="%s"' % ag.altloc, \
               'resname="%s"' % ag.resname, \
               "#atoms=%d" % len(atoms)
             if (level_no == 3): continue
+            if (ag.atoms_size() == 0):
+              print >> out, prefix+'        ### WARNING: empty atom_group ###'
             for atom in atoms:
               print >> out, prefix+'        "%s"' % atom.name
 
