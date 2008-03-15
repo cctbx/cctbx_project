@@ -2,7 +2,7 @@ from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.str_utils import show_string
-from libtbx.utils import format_cpu_times
+from libtbx.utils import Sorry, format_cpu_times
 from cStringIO import StringIO
 import libtbx.load_env
 import random
@@ -764,15 +764,25 @@ def exercise_format_atom_record():
       % (record_name, chain_id))
 
 def exercise_construct_hierarchy():
-  def check(pdb_string, expected_as_str=None, level_id=None):
+  def check(pdb_string,
+        expected_root_as_str=None,
+        expected_overall_counts_as_str=None,
+        level_id=None,
+        prefix=""):
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-    if (expected_as_str is not None):
-      root = pdb_inp.construct_hierarchy_v2()
-      s = root.as_str(level_id=level_id)
-      if (len(expected_as_str) == 0):
+    root = pdb_inp.construct_hierarchy_v2()
+    if (expected_root_as_str is not None):
+      s = root.as_str(prefix=prefix, level_id=level_id)
+      if (len(expected_root_as_str) == 0):
         sys.stdout.write(s)
       else:
-        assert not show_diff(s, expected_as_str)
+        assert not show_diff(s, expected_root_as_str)
+    if (expected_overall_counts_as_str is not None):
+      s = root.overall_counts().as_str(prefix=prefix)
+      if (len(expected_overall_counts_as_str) == 0):
+        sys.stdout.write(s)
+      else:
+        assert not show_diff(s, expected_overall_counts_as_str)
   #
   check("""\
 MODEL        1
@@ -814,6 +824,33 @@ model id="   3" #chains=2
     resid="   6 " #atom_groups=1
       altloc="" resname="CYS" #atoms=1
         " N  "
+""", """\
+total number of:
+  models:     2
+  chains:     3
+  alt. conf.: 0
+  residues:   4
+  atoms:      6
+number of atom element+charge types: 4
+histogram of atom element+charge frequency:
+  "    " 2
+  " C  " 2
+  " N  " 1
+  " O  " 1
+residue name classes:
+  "common_amino_acid" 3
+  "other"             1
+number of chain ids: 3
+histogram of chain id frequency:
+  "A"  1
+  "B"  1
+  "CH" 1
+number of alt. conf. ids: 0
+number of residue names: 3
+histogram of residue name frequency:
+  "MET" 2
+  "CYS" 1
+  "MPR" 1    other
 """)
   #
   check("""\
@@ -901,36 +938,79 @@ ATOM         N2  R03
 ATOM         N3 BR03
 ATOM         N3  R03
 """, """\
-model id="   0" #chains=1
-  chain id=" " #residue_groups=3
-    resid="     " #atom_groups=3
-      altloc="" resname="R01" #atoms=1
-        " N2 "
-      altloc=" " resname="R01" #atoms=2
-        " N1 "
-        " N3 "
-      altloc="B" resname="R01" #atoms=2
-        " N1 "
-        " N3 "
-    resid="     " #atom_groups=3
-      altloc="" resname="R02" #atoms=1
-        " N2 "
-      altloc="A" resname="R02" #atoms=2
-        " N1 "
-        " N3 "
-      altloc="B" resname="R02" #atoms=2
-        " N1 "
-        " N3 "
-    resid="     " #atom_groups=3
-      altloc="" resname="R03" #atoms=1
-        " N2 "
-      altloc=" " resname="R03" #atoms=2
-        " N1 "
-        " N3 "
-      altloc="B" resname="R03" #atoms=2
-        " N1 "
-        " N3 "
-""")
+  model id="   0" #chains=1
+    chain id=" " #residue_groups=3
+      resid="     " #atom_groups=3
+        altloc="" resname="R01" #atoms=1
+          " N2 "
+        altloc=" " resname="R01" #atoms=2
+          " N1 "
+          " N3 "
+        altloc="B" resname="R01" #atoms=2
+          " N1 "
+          " N3 "
+      resid="     " #atom_groups=3
+        altloc="" resname="R02" #atoms=1
+          " N2 "
+        altloc="A" resname="R02" #atoms=2
+          " N1 "
+          " N3 "
+        altloc="B" resname="R02" #atoms=2
+          " N1 "
+          " N3 "
+      resid="     " #atom_groups=3
+        altloc="" resname="R03" #atoms=1
+          " N2 "
+        altloc=" " resname="R03" #atoms=2
+          " N1 "
+          " N3 "
+        altloc="B" resname="R03" #atoms=2
+          " N1 "
+          " N3 "
+""", """\
+  total number of:
+    models:      1
+    chains:      1
+    alt. conf.:  3
+    residues:    3
+    atoms:      15
+  number of atom element+charge types: 1
+  histogram of atom element+charge frequency:
+    "    " 15
+  residue name classes:
+    "other" 3
+  number of chain ids: 1
+  histogram of chain id frequency:
+    " " 1
+  number of alt. conf. ids: 3
+  histogram of alt. conf. id frequency:
+    " " 1
+    "A" 1
+    "B" 1
+  residue alt. conf. situations:
+    pure main conf.:     0
+    pure alt. conf.:     0
+    proper alt. conf.:   1
+    improper alt. conf.: 2
+  residue with proper altloc
+    ATOM         N2  R02
+    ATOM         N1 AR02
+    ATOM         N3 AR02
+    ATOM         N1 BR02
+    ATOM         N3 BR02
+  residue with improper altloc
+    ATOM         N2  R01
+    ATOM         N1  R01
+    ATOM         N3  R01
+    ATOM         N1 BR01
+    ATOM         N3 BR01
+  chains with mix of proper and improper alt. conf.: 0
+  number of residue names: 3
+  histogram of residue name frequency:
+    "R01" 1    other
+    "R02" 1    other
+    "R03" 1    other
+""", prefix="  ")
   #
   check("""\
 ATOM         N1 BR01
@@ -978,6 +1058,50 @@ model id="   0" #chains=1
       altloc="B" resname="R03" #atoms=2
         " N1 "
         " N2 "
+""", """\
+total number of:
+  models:      1
+  chains:      1
+  alt. conf.:  4
+  residues:    3
+  atoms:      15
+number of atom element+charge types: 1
+histogram of atom element+charge frequency:
+  "    " 15
+residue name classes:
+  "other" 3
+number of chain ids: 1
+histogram of chain id frequency:
+  " " 1
+number of alt. conf. ids: 4
+histogram of alt. conf. id frequency:
+  " " 1
+  "A" 1
+  "B" 1
+  "C" 1
+residue alt. conf. situations:
+  pure main conf.:     0
+  pure alt. conf.:     1
+  proper alt. conf.:   1
+  improper alt. conf.: 1
+residue with proper altloc
+  ATOM         N3  R03
+  ATOM         N1 CR03
+  ATOM         N2 CR03
+  ATOM         N1 BR03
+  ATOM         N2 BR03
+residue with improper altloc
+  ATOM         N2  R02
+  ATOM         N1  R02
+  ATOM         N3  R02
+  ATOM         N1 BR02
+  ATOM         N3 BR02
+chains with mix of proper and improper alt. conf.: 0
+number of residue names: 3
+histogram of residue name frequency:
+  "R01" 1    other
+  "R02" 1    other
+  "R03" 1    other
 """)
   #
   check("""\
@@ -1018,6 +1142,40 @@ model id="   0" #chains=1
       altloc="A" resname="TRP" #atoms=6
       altloc="C" resname="PHE" #atoms=11
       altloc="B" resname="TYR" #atoms=12
+""", """\
+total number of:
+  models:      1
+  chains:      1
+  alt. conf.:  3
+  residues:    1 (1 with mixed residue names)
+  atoms:      29
+number of atom element+charge types: 4
+histogram of atom element+charge frequency:
+  " H  " 12
+  " C  " 10
+  " O  "  4
+  " N  "  3
+residue name classes:
+  "common_amino_acid" 3
+number of chain ids: 1
+histogram of chain id frequency:
+  "A" 1
+number of alt. conf. ids: 3
+histogram of alt. conf. id frequency:
+  "A" 1
+  "B" 1
+  "C" 1
+residue alt. conf. situations:
+  pure main conf.:     0
+  pure alt. conf.:     1
+  proper alt. conf.:   0
+  improper alt. conf.: 0
+chains with mix of proper and improper alt. conf.: 0
+number of residue names: 3
+histogram of residue name frequency:
+  "PHE" 1
+  "TRP" 1
+  "TYR" 1
 """, level_id="atom_group")
   #
   root = pdb.input(
@@ -1094,26 +1252,45 @@ ATOM      4  CB  LYS   110
   else: raise Exception_expected
   #
   check(pdb_str, """\
-model id="   0" #chains=1
-  chain id=" " #residue_groups=4
-    resid=" 109 " #atom_groups=1
-      altloc="" resname="LYS" #atoms=2
-        " CB "
-        " CG "
-    resid=" 110 " #atom_groups=1
-      altloc="" resname="LYS" #atoms=2
-        " CA "
-        " CB "
-    ### chain break ###
-    resid=" 111 " #atom_groups=1
-      altloc="" resname="LYS" #atoms=2
-        " CA "
-        " CB "
-    resid=" 112 " #atom_groups=1
-      altloc="" resname="LYS" #atoms=2
-        " CA "
-        " CB "
-""")
+:=model id="   0" #chains=1
+:=  chain id=" " #residue_groups=4
+:=    resid=" 109 " #atom_groups=1
+:=      altloc="" resname="LYS" #atoms=2
+:=        " CB "
+:=        " CG "
+:=    resid=" 110 " #atom_groups=1
+:=      altloc="" resname="LYS" #atoms=2
+:=        " CA "
+:=        " CB "
+:=    ### chain break ###
+:=    resid=" 111 " #atom_groups=1
+:=      altloc="" resname="LYS" #atoms=2
+:=        " CA "
+:=        " CB "
+:=    resid=" 112 " #atom_groups=1
+:=      altloc="" resname="LYS" #atoms=2
+:=        " CA "
+:=        " CB "
+""", """\
+:=total number of:
+:=  models:     1
+:=  chains:     1 (1 explicit chain break)
+:=  alt. conf.: 0
+:=  residues:   4
+:=  atoms:      8
+:=number of atom element+charge types: 1
+:=histogram of atom element+charge frequency:
+:=  "    " 8
+:=residue name classes:
+:=  "common_amino_acid" 4
+:=number of chain ids: 1
+:=histogram of chain id frequency:
+:=  " " 1
+:=number of alt. conf. ids: 0
+:=number of residue names: 1
+:=histogram of residue name frequency:
+:=  "LYS" 4
+""", prefix=":=")
   #
   check(pdb_str, """\
 model id="   0" #chains=1
@@ -1147,6 +1324,202 @@ model id="   0" #chains=1
   check(pdb_str, """\
 model id="   0" #chains=1
 """, level_id="model")
+  #
+  check("""\
+MODEL        1
+ENDMDL
+MODEL 1
+ENDMDL
+MODEL     1
+ENDMDL
+""", """\
+model id="   1" #chains=0
+model id="   1" #chains=0
+model id="   1" #chains=0
+""", """\
+total number of:
+  models:     3 (3 with duplicate model ids)
+  chains:     0
+  alt. conf.: 0
+  residues:   0
+  atoms:      0
+number of atom element+charge types: 0
+residue name classes: None
+number of chain ids: 0
+number of alt. conf. ids: 0
+number of residue names: 0
+""")
+  #
+  check("""\
+MODEL        1
+ATOM                 A
+ATOM                 B
+ATOM                 A
+ENDMDL
+MODEL 1
+ATOM                 A   1
+BREAK
+ATOM                 A   2
+ATOM                 B
+ATOM                 A
+ENDMDL
+MODEL     2
+ATOM                 A
+BREAK
+ATOM                 A    I
+ATOM                 B
+ENDMDL
+""", """\
+model id="   1" #chains=3
+  chain id="A" #residue_groups=1
+    resid="     " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+  chain id="B" #residue_groups=1
+    resid="     " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+  chain id="A" #residue_groups=1
+    resid="     " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+model id="   1" #chains=3
+  chain id="A" #residue_groups=2
+    resid="   1 " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+    ### chain break ###
+    resid="   2 " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+  chain id="B" #residue_groups=1
+    resid="     " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+  chain id="A" #residue_groups=1
+    resid="     " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+model id="   2" #chains=2
+  chain id="A" #residue_groups=2
+    resid="     " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+    ### chain break ###
+    resid="    I" #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+  chain id="B" #residue_groups=1
+    resid="     " #atom_groups=1
+      altloc="" resname="   " #atoms=1
+        "    "
+""", """\
+total number of:
+  models:      3 (2 with duplicate model ids)
+  chains:      8 (4 with duplicate chain ids; 2 explicit chain breaks)
+  alt. conf.:  0
+  residues:   10
+  atoms:      10 (2 with duplicate labels)
+number of atom element+charge types: 1
+histogram of atom element+charge frequency:
+  "    " 10
+residue name classes:
+  "other" 10
+number of chain ids: 2
+histogram of chain id frequency:
+  "A" 5
+  "B" 3
+number of alt. conf. ids: 0
+number of residue names: 1
+histogram of residue name frequency:
+  "   " 10    other
+number of groups of duplicate atom labels: 1
+  total number of affected atoms:          2
+  group "ATOM                 A     "
+        "ATOM                 A     "
+""")
+  #
+  check("""\
+ATOM     54  CA  GLY A   9
+ATOM     55  CA  GLY A   9
+ATOM     56  CA BGLY A   9
+""", """\
+model id="   0" #chains=1
+  chain id="A" #residue_groups=1
+    resid="   9 " #atom_groups=2
+      altloc=" " resname="GLY" #atoms=2
+        " CA "
+        " CA "
+      altloc="B" resname="GLY" #atoms=1
+        " CA "
+""", """\
+total number of:
+  models:     1
+  chains:     1
+  alt. conf.: 2
+  residues:   1
+  atoms:      3 (2 with duplicate labels)
+number of atom element+charge types: 1
+histogram of atom element+charge frequency:
+  "    " 3
+residue name classes:
+  "common_amino_acid" 1
+number of chain ids: 1
+histogram of chain id frequency:
+  "A" 1
+number of alt. conf. ids: 2
+histogram of alt. conf. id frequency:
+  " " 1
+  "B" 1
+residue alt. conf. situations:
+  pure main conf.:     0
+  pure alt. conf.:     0
+  proper alt. conf.:   0
+  improper alt. conf.: 1
+residue with improper altloc
+  ATOM     54  CA  GLY A   9
+  ATOM     55  CA  GLY A   9
+  ATOM     56  CA BGLY A   9
+chains with mix of proper and improper alt. conf.: 0
+number of residue names: 1
+histogram of residue name frequency:
+  "GLY" 1
+number of groups of duplicate atom labels: 1
+  total number of affected atoms:          2
+  group "ATOM     54  CA  GLY A   9 "
+        "ATOM     55  CA  GLY A   9 "
+""")
+  #
+  pdb_inp = pdb.input(
+    source_info=None,
+    lines=flex.split_lines("""\
+ATOM     68  HD1 LEU B 441
+ATOM     69  HD1 LEU B 441
+ATOM     70  HD1 LEU B 441
+ATOM     71  HD2 LEU B 441
+ATOM     72  HD2 LEU B 441
+ATOM     73  HD2 LEU B 441
+"""))
+  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  try: oc.raise_duplicate_atom_labels_if_necessary(max_show=1)
+  except Sorry, e:
+    assert not show_diff(str(e), '''\
+number of groups of duplicate atom labels: 2
+  total number of affected atoms:          6
+  group "ATOM     68  HD1 LEU B 441 "
+        "ATOM     69  HD1 LEU B 441 "
+        "ATOM     70  HD1 LEU B 441 "
+  ... 1 remaining group not shown''')
+  else: raise Exception_expected
+  assert not show_diff(oc.have_duplicate_atom_labels_message(), '''\
+number of groups of duplicate atom labels: 2
+  total number of affected atoms:          6
+  group "ATOM     68  HD1 LEU B 441 "
+        "ATOM     69  HD1 LEU B 441 "
+        "ATOM     70  HD1 LEU B 441 "
+  group "ATOM     71  HD2 LEU B 441 "
+        "ATOM     72  HD2 LEU B 441 "
+        "ATOM     73  HD2 LEU B 441 "''')
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
