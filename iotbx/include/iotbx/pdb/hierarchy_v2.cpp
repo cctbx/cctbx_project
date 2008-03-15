@@ -82,15 +82,6 @@ namespace {
   } \
 \
   void \
-  T::new_##C##s(unsigned number_of_additional_##C##s) \
-  { \
-    pre_allocate_##C##s(number_of_additional_##C##s); \
-    for(unsigned i=0;i<number_of_additional_##C##s;i++) { \
-      data->C##s.push_back(C(*this)); \
-    } \
-  } \
-\
-  void \
   T::insert_##C(long i, hierarchy_v2::C& C) \
   { \
     data->C##s.insert( \

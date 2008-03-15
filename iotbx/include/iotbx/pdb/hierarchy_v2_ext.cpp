@@ -263,8 +263,6 @@ namespace {
             arg_(#C), arg_("must_be_present")=false))) \
         .def("pre_allocate_" #C "s", &w_t::pre_allocate_##C##s, \
           (arg_("number_of_additional_" #C "s"))) \
-        .def("new_" #C "s", &w_t::new_##C##s, \
-          (arg_("number_of_additional_" #C "s"))) \
         .def("insert_" #C, &w_t::insert_##C, (arg_("i"), arg_(#C))) \
         .def("append_" #C, &w_t::append_##C, (arg_(#C))) \
         .def("remove_" #C, \
@@ -347,9 +345,6 @@ namespace {
     IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(residue_group, atom_group, atom_groups)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      new_atom_group_overloads, new_atom_group, 0, 2)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_atom_group_index_overloads, find_atom_group_index, 1, 2)
 
     static void
@@ -374,8 +369,6 @@ namespace {
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<residue_group, chain>::wrapper)
-        .def("new_atom_group", &w_t::new_atom_group, new_atom_group_overloads((
-          arg_("altloc")="", arg_("resname")="")))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(atom_group)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
@@ -404,9 +397,6 @@ namespace {
     }
 
     IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(chain, residue_group, residue_groups)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      new_residue_group_overloads, new_residue_group, 0, 3)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_residue_group_index_overloads, find_residue_group_index, 1, 2)
@@ -478,11 +468,6 @@ namespace {
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<chain, model>::wrapper)
-        .def("new_residue_group", &w_t::new_residue_group,
-          new_residue_group_overloads((
-            arg_("resseq")="",
-            arg_("icode")="",
-            arg_("link_to_previous")=true)))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(residue_group)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
@@ -515,9 +500,6 @@ namespace {
     IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(model, chain, chains)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      new_chain_overloads, new_chain, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_chain_index_overloads, find_chain_index, 1, 2)
 
     static void
@@ -534,8 +516,6 @@ namespace {
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<model, root>::wrapper)
-        .def("new_chain", &w_t::new_chain, new_chain_overloads((
-          arg_("id")="")))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(chain)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
@@ -559,9 +539,6 @@ namespace {
     IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(root, model, models)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      new_model_overloads, new_model, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_model_index_overloads, find_model_index, 1, 2)
 
     static void
@@ -573,8 +550,6 @@ namespace {
         .add_property("info", make_function(get_info), make_function(set_info))
         .def("deep_copy", &w_t::deep_copy)
         .def("memory_id", &w_t::memory_id)
-        .def("new_model", &w_t::new_model, new_model_overloads((
-          arg_("id")="")))
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(model)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
