@@ -224,6 +224,7 @@ namespace {
         .def("parent", get_parent<atom, atom_group>::wrapper)
         .def("uij_is_defined", &w_t::uij_is_defined)
         .def("siguij_is_defined", &w_t::siguij_is_defined)
+        .def("pdb_label_columns", &w_t::pdb_label_columns)
         .def("format_atom_record", format_atom_record)
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)
         .def("determine_chemical_element_simple",
@@ -428,20 +429,21 @@ namespace {
       w_t const& self,
       boost::python::list pdb_records)
     {
-      const char* chain_id = self.data->id.c_str();
+      atom_label_columns_formatter label_formatter;
+      label_formatter.chain_id = self.data->id.c_str();
       unsigned n_rg = self.residue_groups_size();
       for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
         residue_group const& rg = self.residue_groups()[i_rg];
         if (i_rg != 0 && !rg.data->link_to_previous) {
           pdb_records.append("BREAK");
         }
-        const char* resseq = rg.data->resseq.elems;
-        const char* icode = rg.data->icode.elems;
+        label_formatter.resseq = rg.data->resseq.elems;
+        label_formatter.icode = rg.data->icode.elems;
         unsigned n_ag = rg.atom_groups_size();
         for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
           atom_group const& ag = rg.atom_groups()[i_ag];
-          const char* altloc = ag.data->altloc.elems;
-          const char* resname = ag.data->resname.elems;
+          label_formatter.altloc = ag.data->altloc.elems;
+          label_formatter.resname = ag.data->resname.elems;
           typedef std::vector<atom> va;
           va const& atoms = ag.atoms();
           va::const_iterator atoms_end = atoms.end();
@@ -450,7 +452,7 @@ namespace {
             PyObject* str_obj = str_hdl.get();
             char* str_begin = PyString_AS_STRING(str_obj);
             unsigned str_len = atom->format_atom_record(
-              str_begin, altloc, resname, resseq, icode, chain_id);
+              str_begin, &label_formatter);
             str_hdl.release();
             if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
               boost::python::throw_error_already_set();

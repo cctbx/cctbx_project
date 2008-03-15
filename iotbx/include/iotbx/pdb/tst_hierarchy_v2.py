@@ -172,6 +172,8 @@ def exercise_atom():
   assert ac.hetero == a.hetero
   assert ac.tmp == 0
   #
+  assert a.pdb_label_columns() == "               "
+  #
   atoms = pdb.hierarchy_v2.af_shared_atom()
   atoms.reset_tmp()
   atoms.append(pdb.hierarchy_v2.atom())
@@ -519,6 +521,7 @@ def exercise_chain():
   rg = c.new_residue_group(resseq="s", icode="j")
   ag = rg.new_atom_group(altloc="a", resname="r")
   ag.append_atom(pdb.hierarchy_v2.atom().set_name("n"))
+  assert ag.only_atom().pdb_label_columns() == "n   a  r c   sj"
   c.append_atom_records(pdb_records=records)
   assert records == [
     "ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00"]
@@ -536,6 +539,20 @@ ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 """)
+  #
+  a = pdb.hierarchy_v2.atom()
+  assert a.pdb_label_columns() == "               "
+  a.set_name("n123")
+  assert a.pdb_label_columns() == "n123           "
+  ag = pdb.hierarchy_v2.atom_group(altloc="a", resname="res")
+  ag.append_atom(a)
+  assert a.pdb_label_columns() == "n123ares       "
+  rg = pdb.hierarchy_v2.residue_group(resseq="a000", icode="i")
+  rg.append_atom_group(ag)
+  assert a.pdb_label_columns() == "n123ares  a000i"
+  c = pdb.hierarchy_v2.chain(id="ke")
+  c.append_residue_group(rg)
+  assert a.pdb_label_columns() == "n123areskea000i"
 
 def exercise_model():
   m = pdb.hierarchy_v2.model()
