@@ -869,7 +869,7 @@ model id="   0" #chains=1
         " N1 "
       altloc="B" resname="R01" #atoms=1
         " N2 "
-    resid="     " #atom_groups=2
+    resid="     " #atom_groups=2  ### Info: same as previous resid ###
       altloc="" resname="R02" #atoms=1
         " N2 "
       altloc="C" resname="R02" #atoms=1
@@ -904,7 +904,7 @@ model id="   0" #chains=1
       altloc="B" resname="R01" #atoms=2
         " N1 "
         " N3 "
-    resid="     " #atom_groups=3
+    resid="     " #atom_groups=3  ### Info: same as previous resid ###
       altloc="" resname="R02" #atoms=1
         " N2 "
       altloc=" " resname="R02" #atoms=2
@@ -913,7 +913,7 @@ model id="   0" #chains=1
       altloc="B" resname="R02" #atoms=2
         " N1 "
         " N3 "
-    resid="     " #atom_groups=3
+    resid="     " #atom_groups=3  ### Info: same as previous resid ###
       altloc="" resname="R03" #atoms=1
         " N2 "
       altloc=" " resname="R03" #atoms=2
@@ -952,7 +952,7 @@ ATOM         N3  R03
         altloc="B" resname="R01" #atoms=2
           " N1 "
           " N3 "
-      resid="     " #atom_groups=3
+      resid="     " #atom_groups=3  ### Info: same as previous resid ###
         altloc="" resname="R02" #atoms=1
           " N2 "
         altloc="A" resname="R02" #atoms=2
@@ -961,7 +961,7 @@ ATOM         N3  R03
         altloc="B" resname="R02" #atoms=2
           " N1 "
           " N3 "
-      resid="     " #atom_groups=3
+      resid="     " #atom_groups=3  ### Info: same as previous resid ###
         altloc="" resname="R03" #atoms=1
           " N2 "
         altloc=" " resname="R03" #atoms=2
@@ -1056,7 +1056,7 @@ model id="   0" #chains=1
         " N3 "
       altloc="C" resname="R01" #atoms=1
         " N2 "
-    resid="     " #atom_groups=3
+    resid="     " #atom_groups=3  ### Info: same as previous resid ###
       altloc="" resname="R02" #atoms=1
         " N2 "
       altloc=" " resname="R02" #atoms=2
@@ -1065,7 +1065,7 @@ model id="   0" #chains=1
       altloc="B" resname="R02" #atoms=2
         " N1 "
         " N3 "
-    resid="     " #atom_groups=3
+    resid="     " #atom_groups=3  ### Info: same as previous resid ###
       altloc="" resname="R03" #atoms=1
         " N3 "
       altloc="C" resname="R03" #atoms=2
@@ -1167,7 +1167,7 @@ ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
 """, """\
 model id="   0" #chains=1
   chain id="A" #residue_groups=1
-    resid="  11 " #atom_groups=3 *** with mixed residue names ***
+    resid="  11 " #atom_groups=3  ### Info: with mixed residue names ###
       altloc="A" resname="TRP" #atoms=6
       altloc="C" resname="PHE" #atoms=11
       altloc="B" resname="TYR" #atoms=12
@@ -1362,9 +1362,9 @@ ENDMDL
 MODEL     1
 ENDMDL
 """, """\
-model id="   1" #chains=0
-model id="   1" #chains=0
-model id="   1" #chains=0
+model id="   1" #chains=0  ### WARNING: duplicate model id ###
+model id="   1" #chains=0  ### WARNING: duplicate model id ###
+model id="   1" #chains=0  ### WARNING: duplicate model id ###
 """, """\
 total number of:
   models:     3 (3 with duplicate model ids)
@@ -1399,8 +1399,8 @@ ATOM                 A    I
 ATOM                 B
 ENDMDL
 """, """\
-model id="   1" #chains=3
-  chain id="A" #residue_groups=1
+model id="   1" #chains=3  ### WARNING: duplicate model id ###
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1408,12 +1408,12 @@ model id="   1" #chains=3
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
-  chain id="A" #residue_groups=1
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
-model id="   1" #chains=3
-  chain id="A" #residue_groups=2
+model id="   1" #chains=3  ### WARNING: duplicate model id ###
+  chain id="A" #residue_groups=2  ### WARNING: duplicate chain id ###
     resid="   1 " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1425,7 +1425,7 @@ model id="   1" #chains=3
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
-  chain id="A" #residue_groups=1
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1623,7 +1623,7 @@ model id="   0" #chains=1
       altloc="" resname="CYS" #atoms=4
       altloc="A" resname="CYS" #atoms=2
       altloc="B" resname="CYS" #atoms=2
-    resid=" 249 " #atom_groups=1
+    resid=" 249 " #atom_groups=1  ### Info: same as previous resid ###
       altloc="C" resname="CSO" #atoms=7
 """, """\
 total number of:
@@ -1690,9 +1690,9 @@ model id="   0" #chains=1
   chain id=" " #residue_groups=3
     resid=" 188 " #atom_groups=1
       altloc="" resname="COP" #atoms=4
-    resid=" 188 " #atom_groups=1
+    resid=" 188 " #atom_groups=1  ### Info: same as previous resid ###
       altloc="" resname="HOH" #atoms=1
-    resid=" 188 " #atom_groups=2
+    resid=" 188 " #atom_groups=2  ### Info: same as previous resid ###
       altloc="A" resname="COP" #atoms=4
       altloc="B" resname="COP" #atoms=4
 """, """\

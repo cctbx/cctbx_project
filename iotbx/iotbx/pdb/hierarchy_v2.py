@@ -6,6 +6,7 @@ from iotbx_pdb_hierarchy_v2_ext import *
 
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s
+from libtbx import dict_with_default_0
 from cStringIO import StringIO
 import sys
 
@@ -237,7 +238,6 @@ class _root(boost.python.injector, ext.root):
 
   def overall_counts(self):
     from iotbx.pdb import common_residue_names_get_class
-    from libtbx import dict_with_default_0
     blank_altloc_char = " "
     n_models = self.models_size()
     n_residues = 0
@@ -388,17 +388,30 @@ class _root(boost.python.injector, ext.root):
     except ValueError:
       raise level_id_exception('Unknown level_id="%s"' % level_id)
     if (out is None): out = sys.stdout
+    model_ids = dict_with_default_0()
+    for model in self.models():
+      model_ids[model.id] += 1
     for model in self.models():
       chains = model.chains()
+      if (model_ids[model.id] != 1):
+        s = "  ### WARNING: duplicate model id ###"
+      else: s = ""
       print >> out, prefix+'model id="%s"' % model.id, \
-        "#chains=%d" % len(chains)
+        "#chains=%d%s" % (len(chains), s)
       if (level_no == 0): continue
+      model_chain_ids = dict_with_default_0()
+      for chain in chains:
+        model_chain_ids[chain.id] += 1
       for chain in chains:
         rgs = chain.residue_groups()
+        if (model_chain_ids[chain.id] != 1):
+          s = "  ### WARNING: duplicate chain id ###"
+        else: s = ""
         print >> out, prefix+'  chain id="%s"' % chain.id, \
-          "#residue_groups=%d" % len(rgs)
+          "#residue_groups=%d%s" % (len(rgs), s)
         if (level_no == 1): continue
         suppress_chain_break = True
+        prev_resid = ""
         for rg in rgs:
           if (not rg.link_to_previous and not suppress_chain_break):
             print >> out, prefix+"    ### chain break ###"
@@ -407,9 +420,14 @@ class _root(boost.python.injector, ext.root):
           resnames = {} # FUTURE: set
           for ag in rg.atom_groups():
             resnames[ag.resname] = None
-          if (len(resnames) > 1): s = " *** with mixed residue names ***"
+          infos = []
+          if (len(resnames) > 1): infos.append("with mixed residue names")
+          resid = rg.resid()
+          if (prev_resid == resid): infos.append("same as previous resid")
+          prev_resid = resid
+          if (len(infos) != 0): s = "  ### Info: %s ###" % "; ".join(infos)
           else: s = ""
-          print >> out, prefix+'    resid="%s"' % rg.resid(), \
+          print >> out, prefix+'    resid="%s"' % resid, \
             "#atom_groups=%d%s" % (len(ags), s)
           if (level_no == 2): continue
           for ag in ags:
