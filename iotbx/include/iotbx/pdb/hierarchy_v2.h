@@ -130,7 +130,7 @@ namespace hierarchy_v2 {
   {
     protected:
       friend class chain;
-      friend class atom; // to support efficient backtracking to parents
+      friend class atom_label_columns_formatter;
       weak_ptr<model_data> parent;
     public:
       std::string id;
@@ -157,7 +157,7 @@ namespace hierarchy_v2 {
   {
     protected:
       friend class residue_group;
-      friend class atom; // to support efficient backtracking to parents
+      friend class atom_label_columns_formatter;
       weak_ptr<chain_data> parent;
     public:
       str4 resseq;
@@ -190,7 +190,7 @@ namespace hierarchy_v2 {
   {
     protected:
       friend class atom_group;
-      friend class atom; // to support efficient backtracking to parents
+      friend class atom_label_columns_formatter;
       weak_ptr<residue_group_data> parent;
     public:
       str1 altloc;
@@ -220,7 +220,7 @@ namespace hierarchy_v2 {
   {
     protected:
       friend class atom;
-      friend class combine_conformers;
+      friend class atom_label_columns_formatter;
       weak_ptr<atom_group_data> parent;
     public:
       str4 name;
@@ -326,6 +326,34 @@ namespace hierarchy_v2 {
         bool link_to_previous_,
         bool is_pure_primary_,
         std::vector<atom> const& atoms_);
+  };
+
+  //! Not available in Python.
+  struct atom_label_columns_formatter
+  {
+    const char* name;
+    const char* altloc;
+    const char* resname;
+    const char* resseq;
+    const char* icode;
+    const char* chain_id;
+
+    //! All labels must be defined externally.
+    /*! result must point to an array of size 15 (or greater).
+        On return, result is NOT null-terminated.
+     */
+    void
+    format(
+      char* result) const;
+
+    //! All labels are extracted from the atom and its parents.
+    /*! result must point to an array of size 15 (or greater).
+        On return, result is NOT null-terminated.
+     */
+    void
+    format(
+      char* result,
+      hierarchy_v2::atom const& atom);
   };
 
   //! Atom attributes.
@@ -504,18 +532,8 @@ namespace hierarchy_v2 {
         return !data->siguij.const_ref().all_eq(-1);
       }
 
-      //! Not available in Python.
-      /*! result must point to an array of size 81 (or greater).
-          On return, result is null-terminated.
-       */
-      unsigned
-      format_atom_record(
-        char* result,
-        const char* altloc,
-        const char* resname,
-        const char* resseq,
-        const char* icode,
-        const char* chain_id) const;
+      std::string
+      pdb_label_columns() const;
 
       //! Not available in Python.
       /*! result must point to an array of size 81 (or greater).
@@ -523,7 +541,8 @@ namespace hierarchy_v2 {
        */
       unsigned
       format_atom_record(
-        char* result) const;
+        char* result,
+        atom_label_columns_formatter* label_formatter=0) const;
 
       bool
       element_is_hydrogen() const;

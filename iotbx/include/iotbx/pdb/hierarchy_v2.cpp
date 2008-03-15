@@ -342,26 +342,77 @@ namespace {
     return result;
   }
 
+  void
+  atom_label_columns_formatter::format(
+    char* result) const
+  {
+    char blank = ' ';
+    copy_left_justified(result, 4U, name, 4U, blank);
+    copy_left_justified(result+4, 1U, altloc, 1U, blank);
+    copy_right_justified(result+5, 3U, resname, 3U, blank);
+    copy_right_justified(result+8, 2U, chain_id, 2U, blank);
+    copy_right_justified(result+10, 4U, resseq, 4U, blank);
+    copy_left_justified(result+14, 1U, icode, 1U, blank);
+  }
+
+  void
+  atom_label_columns_formatter::format(
+    char* result,
+    hierarchy_v2::atom const& atom)
+  {
+    name = atom.data->name.elems;
+    shared_ptr<atom_group_data> ag_lock = atom.data->parent.lock();
+    const atom_group_data* ag = ag_lock.get();
+    if (ag == 0) {
+      altloc = resname = resseq = icode = chain_id = 0;
+      format(result);
+    }
+    else {
+      altloc = ag->altloc.elems;
+      resname = ag->resname.elems;
+      shared_ptr<residue_group_data> rg_lock = ag->parent.lock();
+      const residue_group_data* rg = rg_lock.get();
+      if (rg == 0) {
+        resseq = icode = chain_id = 0;
+        format(result);
+      }
+      else {
+        resseq = rg->resseq.elems;
+        icode = rg->icode.elems;
+        shared_ptr<chain_data> c_lock = rg->parent.lock();
+        chain_data const* c = c_lock.get();
+        chain_id = (c == 0 ? 0 : c->id.c_str());
+        format(result);
+      }
+    }
+  }
+
+  std::string
+  atom::pdb_label_columns() const
+  {
+    char result[15];
+    atom_label_columns_formatter().format(result, *this);
+    return std::string(result, 15U);
+  }
+
   unsigned
   atom::format_atom_record(
     char* result,
-    const char* altloc,
-    const char* resname,
-    const char* resseq,
-    const char* icode,
-    const char* chain_id) const
+    atom_label_columns_formatter* label_formatter) const
   {
     char blank = ' ';
     atom_data const& d = *data;
     std::memcpy(result, (d.hetero ? "HETATM" : "ATOM  "), 6U);
     d.serial.copy_right_justified(result+6, 5U, blank);
     result[11] = blank;
-    d.name.copy_left_justified(result+12, 4U, blank);
-    copy_left_justified(result+16, 1U, altloc, 1U, blank);
-    copy_right_justified(result+17, 3U, resname, 3U, blank);
-    copy_right_justified(result+20, 2U, chain_id, 2U, blank);
-    copy_right_justified(result+22, 4U, resseq, 4U, blank);
-    copy_left_justified(result+26, 4U, icode, 1U, blank);
+    if (label_formatter == 0) {
+      atom_label_columns_formatter().format(result+12, *this);
+    }
+    else {
+      label_formatter->name = d.name.elems;
+      label_formatter->format(result+12);
+    }
+    copy_left_justified(result+27, 3U, 0, 0U, blank);
     char *r = result + 30;
     for(unsigned i=0;i<3;i++) {
       std::sprintf(r, "%8.3f", d.xyz[i]);
@@ -398,34 +449,6 @@ namespace {
     }
     result[66] = '\0';
     return 66U;
-  }
-
-  unsigned
-  atom::format_atom_record(
-    char* result) const
-  {
-    shared_ptr<atom_group_data> ag_lock = data->parent.lock();
-    const atom_group_data* ag = ag_lock.get();
-    if (ag == 0) {
-      return format_atom_record(result,
-        0, 0,
-        0, 0,
-        0);
-    }
-    shared_ptr<residue_group_data> rg_lock = ag->parent.lock();
-    const residue_group_data* rg = rg_lock.get();
-    if (rg == 0) {
-      return format_atom_record(result,
-        ag->altloc.elems, ag->resname.elems,
-        0, 0,
-        0);
-    }
-    shared_ptr<chain_data> c_lock = rg->parent.lock();
-    chain_data const* c = c_lock.get();
-    return format_atom_record(result,
-      ag->altloc.elems, ag->resname.elems,
-      rg->resseq.elems, rg->icode.elems,
-      (c == 0 ? 0 : c->id.c_str()));
   }
 
   bool
