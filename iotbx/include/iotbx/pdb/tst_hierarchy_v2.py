@@ -247,7 +247,8 @@ def exercise_atom_group():
   assert ag.parent() is None
   #
   rg1 = pdb.hierarchy_v2.residue_group()
-  ag = rg1.new_atom_group(altloc="a", resname="xyz")
+  ag = pdb.hierarchy_v2.atom_group(altloc="a", resname="xyz")
+  rg1.append_atom_group(atom_group=ag)
   assert ag.altloc == "a"
   assert ag.resname == "xyz"
   assert ag.parent().memory_id() == rg1.memory_id()
@@ -264,7 +265,8 @@ def exercise_atom_group():
   assert ag.atoms_size() == 2
   assert ag.atoms().size() == 2
   assert [atom.name for atom in ag.atoms()] == ["ca", "n"]
-  ag.new_atoms(number_of_additional_atoms=3)
+  for i in xrange(3):
+    ag.append_atom(pdb.hierarchy_v2.atom())
   assert ag.atoms_size() == 5
   assert ag.atoms().size() == 5
   for atom in ag.atoms():
@@ -358,7 +360,8 @@ def exercise_residue_group():
   assert rg.parent() is None
   #
   c1 = pdb.hierarchy_v2.chain(id="p")
-  rg13l = c1.new_residue_group(resseq="13", icode="l")
+  rg13l = pdb.hierarchy_v2.residue_group(resseq="13", icode="l")
+  c1.append_residue_group(rg13l)
   assert rg13l.resseq == "13"
   assert rg13l.icode == "l"
   #
@@ -366,7 +369,8 @@ def exercise_residue_group():
   c1.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c1.residue_groups_size() == 0
   assert len(c1.residue_groups()) == 0
-  c1.new_residue_groups(number_of_additional_residue_groups=2)
+  for i in xrange(2):
+    c1.append_residue_group(residue_group=pdb.hierarchy_v2.residue_group())
   assert c1.residue_groups_size() == 2
   assert len(c1.residue_groups()) == 2
   for residue_group in c1.residue_groups():
@@ -455,7 +459,8 @@ def exercise_chain():
   c.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c.residue_groups_size() == 0
   assert len(c.residue_groups()) == 0
-  c.new_residue_groups(number_of_additional_residue_groups=2)
+  for i in xrange(2):
+    c.append_residue_group(residue_group=pdb.hierarchy_v2.residue_group())
   assert c.residue_groups_size() == 2
   assert len(c.residue_groups()) == 2
   for residue_group in c.residue_groups():
@@ -518,18 +523,25 @@ def exercise_chain():
   records = []
   c.append_atom_records(pdb_records=records)
   assert len(records) == 0
-  rg = c.new_residue_group(resseq="s", icode="j")
-  ag = rg.new_atom_group(altloc="a", resname="r")
+  rg = pdb.hierarchy_v2.residue_group(resseq="s", icode="j")
+  c.append_residue_group(residue_group=rg)
+  ag = pdb.hierarchy_v2.atom_group(altloc="a", resname="r")
+  rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy_v2.atom().set_name("n"))
   assert ag.only_atom().pdb_label_columns() == "n   a  r c   sj"
   c.append_atom_records(pdb_records=records)
   assert records == [
     "ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00"]
-  rg = c.new_residue_group(resseq="t", icode="k")
-  ag = rg.new_atom_group(altloc="b", resname="q")
+  rg = pdb.hierarchy_v2.residue_group(resseq="t", icode="k")
+  c.append_residue_group(residue_group=rg)
+  ag =  pdb.hierarchy_v2.atom_group(altloc="b", resname="q")
+  rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy_v2.atom().set_name("m"))
-  rg = c.new_residue_group(resseq="u", icode="l", link_to_previous=False)
-  ag = rg.new_atom_group(altloc="d", resname="p")
+  rg = pdb.hierarchy_v2.residue_group(
+    resseq="u", icode="l", link_to_previous=False)
+  c.append_residue_group(residue_group=rg)
+  ag = pdb.hierarchy_v2.atom_group(altloc="d", resname="p")
+  rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy_v2.atom().set_name("o"))
   records = []
   c.append_atom_records(pdb_records=records)
@@ -567,7 +579,8 @@ def exercise_model():
   m.pre_allocate_chains(number_of_additional_chains=2)
   assert m.chains_size() == 0
   assert len(m.chains()) == 0
-  ch_a = m.new_chain(id="a")
+  ch_a = pdb.hierarchy_v2.chain(id="a")
+  m.append_chain(chain=ch_a)
   assert ch_a.id == "a"
   assert ch_a.parent().memory_id() == m.memory_id()
   assert m.chains_size() == 1
@@ -581,7 +594,8 @@ def exercise_model():
   assert len(chains) == 2
   assert chains[0].memory_id() == ch_a.memory_id()
   assert chains[1].memory_id() == ch_b.memory_id()
-  m.new_chains(number_of_additional_chains=3)
+  for i in xrange(3):
+    m.append_chain(pdb.hierarchy_v2.chain())
   assert m.chains_size() == 5
   assert len(m.chains()) == 5
   for chain in m.chains():
@@ -657,7 +671,8 @@ def exercise_root():
   r.pre_allocate_models(number_of_additional_models=2)
   assert r.models_size() == 0
   assert len(r.models()) == 0
-  m_a = r.new_model(id="3")
+  m_a = pdb.hierarchy_v2.model(id="3")
+  r.append_model(model=m_a)
   assert m_a.id == "3"
   assert m_a.parent().memory_id() == r.memory_id()
   assert r.models_size() == 1
@@ -670,7 +685,8 @@ def exercise_root():
   assert len(models) == 2
   assert models[0].memory_id() == m_a.memory_id()
   assert models[1].memory_id() == m_b.memory_id()
-  r.new_models(number_of_additional_models=3)
+  for i in xrange(3):
+    r.append_model(model=pdb.hierarchy_v2.model())
   assert r.models_size() == 5
   assert len(r.models()) == 5
   for model in r.models():

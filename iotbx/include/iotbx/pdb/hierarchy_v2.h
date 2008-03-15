@@ -626,9 +626,6 @@ namespace hierarchy_v2 {
       pre_allocate_atoms(unsigned number_of_additional_atoms);
 
       void
-      new_atoms(unsigned number_of_additional_atoms);
-
-      void
       insert_atom(long i, hierarchy_v2::atom& atom);
 
       void
@@ -722,9 +719,6 @@ namespace hierarchy_v2 {
       pre_allocate_atom_groups(unsigned number_of_additional_atom_groups);
 
       void
-      new_atom_groups(unsigned number_of_additional_atom_groups);
-
-      void
       insert_atom_group(long i, hierarchy_v2::atom_group& atom_group);
 
       void
@@ -735,16 +729,6 @@ namespace hierarchy_v2 {
 
       void
       remove_atom_group(hierarchy_v2::atom_group& atom_group);
-
-      atom_group
-      new_atom_group(
-        const char* altloc="",
-        const char* resname="")
-      {
-        data->atom_groups.push_back(
-          atom_group(*this, altloc, resname));
-        return data->atom_groups.back();
-      }
 
       unsigned
       atoms_size() const;
@@ -838,9 +822,6 @@ namespace hierarchy_v2 {
       pre_allocate_residue_groups(unsigned number_of_additional_residue_groups);
 
       void
-      new_residue_groups(unsigned number_of_additional_residue_groups);
-
-      void
       insert_residue_group(long i, hierarchy_v2::residue_group& residue_group);
 
       void
@@ -851,17 +832,6 @@ namespace hierarchy_v2 {
 
       void
       remove_residue_group(hierarchy_v2::residue_group& residue_group);
-
-      residue_group
-      new_residue_group(
-        const char* resseq="",
-        const char* icode="",
-        bool link_to_previous=true)
-      {
-        data->residue_groups.push_back(
-          residue_group(*this, resseq, icode, link_to_previous));
-        return data->residue_groups.back();
-      }
 
       unsigned
       atoms_size() const;
@@ -947,9 +917,6 @@ namespace hierarchy_v2 {
       pre_allocate_chains(unsigned number_of_additional_chains);
 
       void
-      new_chains(unsigned number_of_additional_chains);
-
-      void
       insert_chain(long i, hierarchy_v2::chain& chain);
 
       void
@@ -960,13 +927,6 @@ namespace hierarchy_v2 {
 
       void
       remove_chain(hierarchy_v2::chain& chain);
-
-      chain
-      new_chain(std::string const& id="")
-      {
-        data->chains.push_back(chain(*this, id));
-        return data->chains.back();
-      }
 
       unsigned
       atoms_size() const;
@@ -1013,9 +973,6 @@ namespace hierarchy_v2 {
       pre_allocate_models(unsigned number_of_additional_models);
 
       void
-      new_models(unsigned number_of_additional_models);
-
-      void
       insert_model(long i, hierarchy_v2::model& model);
 
       void
@@ -1026,13 +983,6 @@ namespace hierarchy_v2 {
 
       void
       remove_model(hierarchy_v2::model& model);
-
-      model
-      new_model(std::string const& id="")
-      {
-        data->models.push_back(model(*this, id));
-        return data->models.back();
-      }
 
       unsigned
       atoms_size() const;
