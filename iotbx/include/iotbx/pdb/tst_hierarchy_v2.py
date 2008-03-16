@@ -1988,7 +1988,11 @@ chains with mix of proper and improper alt. conf.: 1
   else: raise Exception_expected
   #
   sio = StringIO()
-  summary = pdb.hierarchy_v2.show_summary(out=sio, pdb_string="""\
+  summary = pdb.hierarchy_v2.show_summary(
+    out=sio,
+    consecutive_residue_groups_max_show=None,
+    duplicate_atom_labels_max_show=None,
+    pdb_string="""\
 HEADER    HYDROLASE (SERINE PROTEINASE)           24-APR-89   1P04
 HETATM 1410  N   B2I P   1      14.927  32.740  15.704  1.00 12.51           N
 HETATM 1411  CA  B2I P   1      14.664  32.247  14.329  1.00 13.81           C

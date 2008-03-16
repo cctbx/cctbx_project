@@ -221,7 +221,8 @@ class overall_counts(object):
     print >> out, \
       prefix+"number of consecutive residue groups with same resid: %d" % \
         len(cons)
-    if (max_show <= 0): return
+    if (max_show is None): max_show = len(cons)
+    elif (max_show <= 0): return
     delim = prefix+"  "+"-"*31
     prev_rg = None
     for rgs in cons[:max_show]:
@@ -262,7 +263,8 @@ class overall_counts(object):
       fmt % len(dup)
     print >> out, prefix+"  total number of affected atoms:         ", \
       fmt % self.n_duplicate_atom_labels
-    if (max_show <= 0): return
+    if (max_show is None): max_show = len(dup)
+    elif (max_show <= 0): return
     for atoms in dup[:max_show]:
       prfx = "  group "
       for atom in atoms:
