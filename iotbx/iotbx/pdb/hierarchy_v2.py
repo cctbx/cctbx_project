@@ -312,8 +312,7 @@ class _root(boost.python.injector, ext.root):
             for atom in ag.atoms():
               model_atom_labels_i_seqs.setdefault(
                 atom.pdb_label_columns(), []).append(atom.tmp)
-              element_charge_types[
-                "%2s%-2s" % (atom.element, atom.charge)] += 1
+              element_charge_types[atom.pdb_element_charge_columns()] += 1
               rg_last_atom = atom
           if (have_blank_altloc):
             n_alt_conf_improper += 1
