@@ -1498,18 +1498,6 @@ number of alt. conf. ids: 0
 number of residue names: 1
 histogram of residue name frequency:
   "   " 10    other
-number of consecutive residue groups with same resid: 3
-  residue group:
-    "ATOM                 A     "
-  next residue group:
-    "ATOM                 B     "
-  next residue group:
-    "ATOM                 A     "
-  -------------------------------
-  residue group:
-    "ATOM                 B     "
-  next residue group:
-    "ATOM                 A     "
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
   group "ATOM                 A     "
@@ -1965,6 +1953,27 @@ chains with mix of proper and improper alt. conf.: 1
     "ATOM         N1  R01     1 "
     "ATOM         N1 BR01     1 "''')
   else: raise Exception_expected
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+HEADER    HYDROLASE (SERINE PROTEINASE)           24-APR-89   1P04
+HETATM 1410  N   B2I P   1      14.927  32.740  15.704  1.00 12.51           N
+HETATM 1411  CA  B2I P   1      14.664  32.247  14.329  1.00 13.81           C
+HETATM 1412  CB  B2I P   1      15.498  33.033  13.284  1.00 15.18           C
+HETATM 1413  CG1 B2I P   1      15.052  34.514  13.266  1.00 15.84           C
+HETATM 1414  CG2 B2I P   1      17.012  33.028  13.465  1.00 13.83           C
+HETATM 1415  CD1 B2I P   1      13.720  34.655  12.538  1.00 16.03           C
+HETATM 1416  B   B2I P   1      14.742  30.705  14.151  1.00 13.29           B
+HETATM 1417  O1  B2I P   1      14.883  30.181  12.718  1.00 12.46           O
+HETATM 1418  O2  B2I P   1      13.824  30.019  15.080  1.00 12.11           O
+TER    1419      B2I P   1
+HETATM 1420  S   SO4     1      32.724  31.060  29.009  0.99 34.51           S
+HETATM 1421  O1  SO4     1      33.557  31.197  30.235  0.95 37.71           O
+HETATM 1422  O2  SO4     1      31.648  32.120  28.923  0.86 36.50           O
+HETATM 1423  O3  SO4     1      33.681  31.215  27.852  0.96 31.36           O
+HETATM 1424  O4  SO4     1      32.067  29.709  28.958  1.00 44.58           O
+"""))
+  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  assert len(oc.consecutive_residue_groups_with_same_resid) == 0
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
