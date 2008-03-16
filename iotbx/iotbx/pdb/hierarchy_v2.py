@@ -51,7 +51,7 @@ class overall_counts(object):
     if (len(infos) != 0): print >> out, "(%s)" % "; ".join(infos),
     print >> out
     if (self.n_duplicate_chain_ids != 0):
-      add_err("  ### ERROR: duplicate chain ids ###")
+      add_warn("  ### WARNING: duplicate chain ids ###")
     if (self.n_empty_chains != 0):
       add_warn("  ### WARNING: empty chain ###")
     print >> out, prefix+"  chains:    ", fmt % self.n_chains,
@@ -79,11 +79,11 @@ class overall_counts(object):
       print >> out, "(%d with duplicate labels)" %self.n_duplicate_atom_labels,
     print >> out
     if (self.n_empty_residue_groups != 0):
-      add_err("  ### ERROR: empty residue_group ###")
+      add_warn("  ### WARNING: empty residue_group ###")
       print >> out, prefix+"  empty residue_groups:", \
         fmt % self.n_empty_residue_groups
     if (self.n_empty_atom_groups != 0):
-      add_err("  ### ERROR: empty atom_group ###")
+      add_warn("  ### WARNING: empty atom_group ###")
       print >> out, prefix+"  empty atom_groups:", \
         fmt % self.n_empty_atom_groups
     #
@@ -499,7 +499,7 @@ class _root(boost.python.injector, ext.root):
       for chain in chains:
         rgs = chain.residue_groups()
         if (model_chain_ids[chain.id] != 1):
-          s = "  ### ERROR: duplicate chain id ###"
+          s = "  ### WARNING: duplicate chain id ###"
         else: s = ""
         print >> out, prefix+'  chain id="%s"' % chain.id, \
           "#residue_groups=%d%s" % (len(rgs), s)
