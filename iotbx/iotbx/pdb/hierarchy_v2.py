@@ -308,7 +308,6 @@ class _root(boost.python.injector, ext.root):
       model_ids[model.id] += 1
       model_chain_ids = dict_with_default_0()
       model_atom_labels_i_seqs = {}
-      prev_rg = None
       for chain in model.chains():
         if (chain.residue_groups_size() == 0): n_empty_chains += 1
         model_chain_ids[chain.id] += 1
@@ -317,6 +316,7 @@ class _root(boost.python.injector, ext.root):
         chain_alt_conf_proper = None
         chain_alt_conf_improper = None
         suppress_chain_break = True
+        prev_rg = None
         for rg in chain.residue_groups():
           if (rg.atom_groups_size() == 0): n_empty_residue_groups += 1
           if (not rg.link_to_previous and not suppress_chain_break):
