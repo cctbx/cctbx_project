@@ -1450,7 +1450,7 @@ ATOM                 B
 ENDMDL
 """, """\
 model id="   1" #chains=3  ### ERROR: duplicate model id ###
-  chain id="A" #residue_groups=1  ### ERROR: duplicate chain id ###
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1458,12 +1458,12 @@ model id="   1" #chains=3  ### ERROR: duplicate model id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
-  chain id="A" #residue_groups=1  ### ERROR: duplicate chain id ###
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
 model id="   1" #chains=3  ### ERROR: duplicate model id ###
-  chain id="A" #residue_groups=2  ### ERROR: duplicate chain id ###
+  chain id="A" #residue_groups=2  ### WARNING: duplicate chain id ###
     resid="   1 " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1475,7 +1475,7 @@ model id="   1" #chains=3  ### ERROR: duplicate model id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
-  chain id="A" #residue_groups=1  ### ERROR: duplicate chain id ###
+  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1496,7 +1496,7 @@ model id="   2" #chains=2
 total number of:
   ### ERROR: duplicate model ids ###
   models:      3 (2 with duplicate model ids)
-  ### ERROR: duplicate chain ids ###
+  ### WARNING: duplicate chain ids ###
   chains:      8 (4 with duplicate chain ids; 2 explicit chain breaks)
   alt. conf.:  0
   residues:   10
@@ -1910,7 +1910,7 @@ total number of:
   alt. conf.: 0
   residues:   1
   atoms:      0
-  ### ERROR: empty residue_group ###
+  ### WARNING: empty residue_group ###
   empty residue_groups: 1
 number of atom element+charge types: 0
 residue name classes: None
@@ -1937,7 +1937,7 @@ total number of:
   alt. conf.: 0
   residues:   1
   atoms:      0
-  ### ERROR: empty atom_group ###
+  ### WARNING: empty atom_group ###
   empty atom_groups: 1
 number of atom element+charge types: 0
 residue name classes:
@@ -1950,8 +1950,8 @@ number of residue names: 1
 histogram of residue name frequency:
   "" 1    other
 """)
-  assert oc.errors() == ['### ERROR: empty atom_group ###']
-  assert len(oc.warnings()) == 0
+  assert len(oc.errors()) == 0
+  assert oc.warnings() == ['### WARNING: empty atom_group ###']
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1 BR01     1
