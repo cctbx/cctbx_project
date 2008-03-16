@@ -4,6 +4,7 @@ import boost.python
 ext = boost.python.import_ext("iotbx_pdb_hierarchy_v2_ext")
 from iotbx_pdb_hierarchy_v2_ext import *
 
+from cctbx.array_family import flex
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import dict_with_default_0
@@ -678,3 +679,39 @@ class _atom_group(boost.python.injector, ext.atom_group):
   def only_atom(self):
     assert self.atoms_size() == 1
     return self.atoms()[0]
+
+class show_summary(object):
+
+  def __init__(self,
+        file_name=None,
+        pdb_string=None,
+        out=None,
+        prefix="",
+        flag_errors=True,
+        flag_warnings=True,
+        consecutive_residue_groups_max_show=10,
+        duplicate_atom_labels_max_show=10,
+        level_id=None,
+        level_id_exception=ValueError):
+    assert [file_name, pdb_string].count(None) == 1
+    if (out is None): out = sys.stdout
+    import iotbx.pdb
+    if (file_name is not None):
+      self.pdb_inp = iotbx.pdb.input(file_name=file_name)
+    else:
+      self.pdb_inp = iotbx.pdb.input(
+        source_info="string", lines=flex.split_lines(pdb_string))
+    print >> out, prefix+self.pdb_inp.source_info()
+    self.hierarchy = self.pdb_inp.construct_hierarchy_v2()
+    self.overall_counts = self.hierarchy.overall_counts()
+    self.overall_counts.show(
+      out=out,
+      prefix=prefix+"  ",
+      consecutive_residue_groups_max_show=consecutive_residue_groups_max_show,
+      duplicate_atom_labels_max_show=duplicate_atom_labels_max_show)
+    if (level_id is not None):
+      self.hierarchy.show(
+        out=out,
+        prefix=prefix+"  ",
+        level_id=level_id,
+        level_id_exception=level_id_exception)

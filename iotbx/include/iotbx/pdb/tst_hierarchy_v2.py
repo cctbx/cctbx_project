@@ -1987,7 +1987,8 @@ chains with mix of proper and improper alt. conf.: 1
     "ATOM         N1 BR01     1 "''')
   else: raise Exception_expected
   #
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+  sio = StringIO()
+  summary = pdb.hierarchy_v2.show_summary(out=sio, pdb_string="""\
 HEADER    HYDROLASE (SERINE PROTEINASE)           24-APR-89   1P04
 HETATM 1410  N   B2I P   1      14.927  32.740  15.704  1.00 12.51           N
 HETATM 1411  CA  B2I P   1      14.664  32.247  14.329  1.00 13.81           C
@@ -2004,9 +2005,12 @@ HETATM 1421  O1  SO4     1      33.557  31.197  30.235  0.95 37.71           O
 HETATM 1422  O2  SO4     1      31.648  32.120  28.923  0.86 36.50           O
 HETATM 1423  O3  SO4     1      33.681  31.215  27.852  0.96 31.36           O
 HETATM 1424  O4  SO4     1      32.067  29.709  28.958  1.00 44.58           O
-"""))
-  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+""")
+  assert summary.pdb_inp.atoms().size() == 14
+  assert summary.hierarchy.atoms().size() == 14
+  oc = summary.overall_counts
   assert len(oc.consecutive_residue_groups_with_same_resid) == 0
+  assert len(sio.getvalue().splitlines()) == 26
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
