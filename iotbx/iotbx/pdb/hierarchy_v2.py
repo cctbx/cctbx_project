@@ -5,7 +5,7 @@ ext = boost.python.import_ext("iotbx_pdb_hierarchy_v2_ext")
 from iotbx_pdb_hierarchy_v2_ext import *
 
 from libtbx.str_utils import show_sorted_by_counts
-from libtbx.utils import Sorry, plural_s
+from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import dict_with_default_0
 from cStringIO import StringIO
 import sys
@@ -14,15 +14,33 @@ level_ids = ["model", "chain", "residue_group", "atom_group", "atom"]
 
 class overall_counts(object):
 
+  def __init__(self):
+    self._errors = None
+    self._warnings = None
+
   def show(self,
         out=None,
         prefix="",
+        flag_errors=True,
+        flag_warnings=True,
         consecutive_residue_groups_max_show=10,
         duplicate_atom_labels_max_show=10):
     from iotbx.pdb import common_residue_names_get_class
     if (out is None): out = sys.stdout
+    self._errors = []
+    self._warnings = []
+    def add_err(msg):
+      if (flag_errors): print >> out, prefix+msg
+      self._errors.append(msg.strip())
+    def add_warn(msg):
+      if (flag_warnings): print >> out, prefix+msg
+      self._warnings.append(msg.strip())
     fmt = "%%%dd" % len(str(self.n_atoms))
     print >> out, prefix+"total number of:"
+    if (self.n_duplicate_model_ids != 0):
+      add_err("  ### ERROR: duplicate model ids ###")
+    if (self.n_empty_models != 0):
+      add_warn("  ### WARNING: empty model ###")
     print >> out, prefix+"  models:    ", fmt % self.n_models,
     infos = []
     if (self.n_duplicate_model_ids != 0):
@@ -32,6 +50,10 @@ class overall_counts(object):
       infos.append("%d empty" % self.n_empty_models)
     if (len(infos) != 0): print >> out, "(%s)" % "; ".join(infos),
     print >> out
+    if (self.n_duplicate_chain_ids != 0):
+      add_err("  ### ERROR: duplicate chain ids ###")
+    if (self.n_empty_chains != 0):
+      add_warn("  ### WARNING: empty chain ###")
     print >> out, prefix+"  chains:    ", fmt % self.n_chains,
     infos = []
     if (self.n_duplicate_chain_ids != 0):
@@ -50,14 +72,18 @@ class overall_counts(object):
     if (self.n_residue_groups != 0):
       print >> out, "(%d with mixed residue names)" % self.n_residue_groups,
     print >> out
+    if (self.n_duplicate_atom_labels != 0):
+      add_err("  ### ERROR: duplicate atom labels ###")
     print >> out, prefix+"  atoms:     ", fmt % self.n_atoms,
     if (self.n_duplicate_atom_labels != 0):
       print >> out, "(%d with duplicate labels)" %self.n_duplicate_atom_labels,
     print >> out
     if (self.n_empty_residue_groups != 0):
+      add_err("  ### ERROR: empty residue_group ###")
       print >> out, prefix+"  empty residue_groups:", \
         fmt % self.n_empty_residue_groups
     if (self.n_empty_atom_groups != 0):
+      add_err("  ### ERROR: empty atom_group ###")
       print >> out, prefix+"  empty atom_groups:", \
         fmt % self.n_empty_atom_groups
     #
@@ -94,6 +120,8 @@ class overall_counts(object):
       print >> out, prefix+"  pure main conf.:    ", fmt%self.n_alt_conf_none
       print >> out, prefix+"  pure alt. conf.:    ", fmt%self.n_alt_conf_pure
       print >> out, prefix+"  proper alt. conf.:  ", fmt%self.n_alt_conf_proper
+      if (self.n_alt_conf_improper != 0):
+        add_err("  ### ERROR: improper alt. conf. ###")
       print >> out, prefix+"  improper alt. conf.:", \
         fmt % self.n_alt_conf_improper
       self.show_chains_with_mix_of_proper_and_improper_alt_conf(
@@ -116,6 +144,8 @@ class overall_counts(object):
           annotation_appearance[common_residue_names_get_class(name=name)]
             for name in c.keys()])
     #
+    if (len(self.consecutive_residue_groups_with_same_resid) != 0):
+      add_warn("### WARNING: consecutive residue_groups with same resid ###")
     self.show_consecutive_residue_groups_with_same_resid(
       out=out, prefix=prefix, max_show=consecutive_residue_groups_max_show)
     #
@@ -133,6 +163,17 @@ class overall_counts(object):
       consecutive_residue_groups_max_show=consecutive_residue_groups_max_show,
       duplicate_atom_labels_max_show=duplicate_atom_labels_max_show)
     return out.getvalue()
+
+  def errors(self):
+    if (self._errors is None): self.show(out=null_out())
+    return self._errors
+
+  def warnings(self):
+    if (self._warnings is None): self.show(out=null_out())
+    return self._warnings
+
+  def errors_and_warnings(self):
+    return self.errors() + self.warnings()
 
   def show_improper_alt_conf(self, out=None, prefix=""):
     if (self.n_alt_conf_improper == 0): return
@@ -445,7 +486,7 @@ class _root(boost.python.injector, ext.root):
     for model in self.models():
       chains = model.chains()
       if (model_ids[model.id] != 1):
-        s = "  ### WARNING: duplicate model id ###"
+        s = "  ### ERROR: duplicate model id ###"
       else: s = ""
       print >> out, prefix+'model id="%s"' % model.id, \
         "#chains=%d%s" % (len(chains), s)
@@ -458,7 +499,7 @@ class _root(boost.python.injector, ext.root):
       for chain in chains:
         rgs = chain.residue_groups()
         if (model_chain_ids[chain.id] != 1):
-          s = "  ### WARNING: duplicate chain id ###"
+          s = "  ### ERROR: duplicate chain id ###"
         else: s = ""
         print >> out, prefix+'  chain id="%s"' % chain.id, \
           "#residue_groups=%d%s" % (len(rgs), s)

@@ -819,6 +819,7 @@ def exercise_construct_hierarchy():
         sys.stdout.write(s)
       else:
         assert not show_diff(s, expected_overall_counts_as_str)
+    return root
   #
   check("""\
 MODEL        1
@@ -957,7 +958,7 @@ model id="   0" #chains=1
         " N3 "
 """)
   #
-  check("""\
+  root = check("""\
 ATOM         N1 BR01
 ATOM         N1  R01
 ATOM         N2  R01
@@ -1027,6 +1028,7 @@ ATOM         N3  R03
     pure main conf.:     0
     pure alt. conf.:     0
     proper alt. conf.:   1
+    ### ERROR: improper alt. conf. ###
     improper alt. conf.: 2
   chains with mix of proper and improper alt. conf.: 1
     residue with proper altloc
@@ -1046,6 +1048,7 @@ ATOM         N3  R03
     "R01" 1    other
     "R02" 1    other
     "R03" 1    other
+  ### WARNING: consecutive residue_groups with same resid ###
   number of consecutive residue groups with same resid: 2
     residue group:
       "ATOM         N2  R01       "
@@ -1060,6 +1063,13 @@ ATOM         N3  R03
       ... 3 atoms not shown
       "ATOM         N3 BR03       "
 """, prefix="  ")
+  oc = root.overall_counts()
+  assert oc.warnings() == [
+    '### WARNING: consecutive residue_groups with same resid ###']
+  assert oc.errors() == ['### ERROR: improper alt. conf. ###']
+  assert oc.errors_and_warnings() == [
+    '### ERROR: improper alt. conf. ###',
+    '### WARNING: consecutive residue_groups with same resid ###']
   #
   check("""\
 ATOM         N1 BR01
@@ -1132,6 +1142,7 @@ residue alt. conf. situations:
   pure main conf.:     0
   pure alt. conf.:     1
   proper alt. conf.:   1
+  ### ERROR: improper alt. conf. ###
   improper alt. conf.: 1
 chains with mix of proper and improper alt. conf.: 1
   residue with proper altloc
@@ -1151,6 +1162,7 @@ histogram of residue name frequency:
   "R01" 1    other
   "R02" 1    other
   "R03" 1    other
+### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 2
   residue group:
     "ATOM         N1 BR01       "
@@ -1395,14 +1407,16 @@ ENDMDL
 MODEL     1
 ENDMDL
 """, """\
-model id="   1" #chains=0  ### WARNING: duplicate model id ###
+model id="   1" #chains=0  ### ERROR: duplicate model id ###
   ### WARNING: empty model ###
-model id="   1" #chains=0  ### WARNING: duplicate model id ###
+model id="   1" #chains=0  ### ERROR: duplicate model id ###
   ### WARNING: empty model ###
-model id="   1" #chains=0  ### WARNING: duplicate model id ###
+model id="   1" #chains=0  ### ERROR: duplicate model id ###
   ### WARNING: empty model ###
 """, """\
 total number of:
+  ### ERROR: duplicate model ids ###
+  ### WARNING: empty model ###
   models:     3 (3 with duplicate model ids; 3 empty)
   chains:     0
   alt. conf.: 0
@@ -1435,8 +1449,8 @@ ATOM                 A    I
 ATOM                 B
 ENDMDL
 """, """\
-model id="   1" #chains=3  ### WARNING: duplicate model id ###
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+model id="   1" #chains=3  ### ERROR: duplicate model id ###
+  chain id="A" #residue_groups=1  ### ERROR: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1444,12 +1458,12 @@ model id="   1" #chains=3  ### WARNING: duplicate model id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+  chain id="A" #residue_groups=1  ### ERROR: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
-model id="   1" #chains=3  ### WARNING: duplicate model id ###
-  chain id="A" #residue_groups=2  ### WARNING: duplicate chain id ###
+model id="   1" #chains=3  ### ERROR: duplicate model id ###
+  chain id="A" #residue_groups=2  ### ERROR: duplicate chain id ###
     resid="   1 " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1461,7 +1475,7 @@ model id="   1" #chains=3  ### WARNING: duplicate model id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
-  chain id="A" #residue_groups=1  ### WARNING: duplicate chain id ###
+  chain id="A" #residue_groups=1  ### ERROR: duplicate chain id ###
     resid="     " #atom_groups=1
       altloc="" resname="   " #atoms=1
         "    "
@@ -1480,10 +1494,13 @@ model id="   2" #chains=2
         "    "
 """, """\
 total number of:
+  ### ERROR: duplicate model ids ###
   models:      3 (2 with duplicate model ids)
+  ### ERROR: duplicate chain ids ###
   chains:      8 (4 with duplicate chain ids; 2 explicit chain breaks)
   alt. conf.:  0
   residues:   10
+  ### ERROR: duplicate atom labels ###
   atoms:      10 (2 with duplicate labels)
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
@@ -1523,6 +1540,7 @@ total number of:
   chains:     1
   alt. conf.: 2
   residues:   1
+  ### ERROR: duplicate atom labels ###
   atoms:      3 (2 with duplicate labels)
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
@@ -1540,6 +1558,7 @@ residue alt. conf. situations:
   pure main conf.:     0
   pure alt. conf.:     0
   proper alt. conf.:   0
+  ### ERROR: improper alt. conf. ###
   improper alt. conf.: 1
 chains with mix of proper and improper alt. conf.: 0
 residue with improper altloc
@@ -1564,6 +1583,8 @@ ATOM     72  HD2 LEU B 441
 ATOM     73  HD2 LEU B 441
 """))
   oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  assert oc.errors() == ['### ERROR: duplicate atom labels ###']
+  assert len(oc.warnings()) == 0
   oc.raise_improper_alt_conf_if_necessary()
   oc.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
   try: oc.raise_duplicate_atom_labels_if_necessary(max_show=1)
@@ -1604,6 +1625,7 @@ total number of:
   chains:     1
   alt. conf.: 0
   residues:   1
+  ### ERROR: duplicate atom labels ###
   atoms:      8 (8 with duplicate labels)
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
@@ -1688,6 +1710,7 @@ number of residue names: 2
 histogram of residue name frequency:
   "CSO" 1    other
   "CYS" 1
+### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 1
   residue group:
     "ATOM   2038  N   CYS A 249 "
@@ -1755,6 +1778,7 @@ number of residue names: 2
 histogram of residue name frequency:
   "COP" 2    other
   "HOH" 1    common water
+### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 2
   residue group:
     "HETATM 1552  C3  COP   188 "
@@ -1797,6 +1821,7 @@ histogram of residue name frequency:
   "R03" 1    other
   "R04" 1    other
   "R05" 1    other
+### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 4
   residue group:
     "ATOM      1  N   R01     1I"
@@ -1835,6 +1860,7 @@ model id="" #chains=0
 """)
   assert not show_diff(root.overall_counts().as_str(), """\
 total number of:
+  ### WARNING: empty model ###
   models:     1 (1 empty)
   chains:     0
   alt. conf.: 0
@@ -1856,6 +1882,7 @@ model id="" #chains=1
   assert not show_diff(root.overall_counts().as_str(), """\
 total number of:
   models:     1
+  ### WARNING: empty chain ###
   chains:     1 (1 empty)
   alt. conf.: 0
   residues:   0
@@ -1883,6 +1910,7 @@ total number of:
   alt. conf.: 0
   residues:   1
   atoms:      0
+  ### ERROR: empty residue_group ###
   empty residue_groups: 1
 number of atom element+charge types: 0
 residue name classes: None
@@ -1901,13 +1929,15 @@ model id="" #chains=1
       altloc="" resname="" #atoms=0
         ### WARNING: empty atom_group ###
 """)
-  assert not show_diff(root.overall_counts().as_str(), """\
+  oc = root.overall_counts()
+  assert not show_diff(oc.as_str(), """\
 total number of:
   models:     1
   chains:     1
   alt. conf.: 0
   residues:   1
   atoms:      0
+  ### ERROR: empty atom_group ###
   empty atom_groups: 1
 number of atom element+charge types: 0
 residue name classes:
@@ -1920,6 +1950,8 @@ number of residue names: 1
 histogram of residue name frequency:
   "" 1    other
 """)
+  assert oc.errors() == ['### ERROR: empty atom_group ###']
+  assert len(oc.warnings()) == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         N1 BR01     1
@@ -1929,6 +1961,7 @@ ATOM         N1 BR02     2
 ATOM         N2  R02     2
 """))
   oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  assert len(oc.warnings()) == 0
   oc.raise_duplicate_atom_labels_if_necessary()
   try: oc.raise_improper_alt_conf_if_necessary()
   except Sorry, e:
