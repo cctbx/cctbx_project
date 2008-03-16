@@ -545,7 +545,8 @@ namespace hierarchy_v2 {
       unsigned
       format_atom_record(
         char* result,
-        atom_label_columns_formatter* label_formatter=0) const;
+        atom_label_columns_formatter* label_formatter=0,
+        bool cut_after_label_columns=false) const;
 
       //! Not available in Python.
       /*! result must point to an array of size 4 (or greater).

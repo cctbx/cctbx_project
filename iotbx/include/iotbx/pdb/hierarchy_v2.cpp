@@ -397,7 +397,8 @@ namespace {
   unsigned
   atom::format_atom_record(
     char* result,
-    atom_label_columns_formatter* label_formatter) const
+    atom_label_columns_formatter* label_formatter,
+    bool cut_after_label_columns) const
   {
     char blank = ' ';
     atom_data const& d = *data;
@@ -410,6 +411,10 @@ namespace {
     else {
       label_formatter->name = d.name.elems;
       label_formatter->format(result+12);
+    }
+    if (cut_after_label_columns) {
+      result[27U] = '\0';
+      return 27U;
     }
     copy_left_justified(result+27, 3U, 0, 0U, blank);
     char *r = result + 30;

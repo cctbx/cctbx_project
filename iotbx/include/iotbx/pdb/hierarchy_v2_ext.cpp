@@ -149,18 +149,25 @@ namespace {
 
     static
     boost::python::object
-    format_atom_record(w_t const& self)
+    format_atom_record(
+      w_t const& self,
+      bool cut_after_label_columns=false)
     {
-      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
+      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0,
+        (cut_after_label_columns ? 28 : 81)));
       PyObject* str_obj = str_hdl.get();
       char* str_begin = PyString_AS_STRING(str_obj);
-      unsigned str_len = self.format_atom_record(str_begin);
+      unsigned str_len = self.format_atom_record(
+        str_begin, 0, cut_after_label_columns);
       str_hdl.release();
       if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
         boost::python::throw_error_already_set();
       }
       return boost::python::object(boost::python::handle<>(str_obj));
     }
+
+    BOOST_PYTHON_FUNCTION_OVERLOADS(
+      format_atom_record_overloads, format_atom_record, 1, 2)
 
     BOOST_PYTHON_FUNCTION_OVERLOADS(
       atoms_reset_tmp_overloads, atoms_reset_tmp, 1, 3)
@@ -226,7 +233,10 @@ namespace {
         .def("siguij_is_defined", &w_t::siguij_is_defined)
         .def("pdb_label_columns", &w_t::pdb_label_columns)
         .def("pdb_element_charge_columns", &w_t::pdb_element_charge_columns)
-        .def("format_atom_record", format_atom_record)
+        .def("format_atom_record", format_atom_record,
+          format_atom_record_overloads((
+            arg_("self"),
+            arg_("cut_after_label_columns")=false)))
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)

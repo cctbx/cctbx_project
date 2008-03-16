@@ -103,7 +103,8 @@ class overall_counts(object):
           print >> out, prefix+"residue with %s altloc" % label
           for ag in residue_group.atom_groups():
             for atom in ag.atoms():
-              print >> out, prefix+"  "+atom.format_atom_record()[:27].rstrip()
+              print >> out, prefix+'  "%s"' % atom.format_atom_record(
+                cut_after_label_columns=True)
       print >> out, \
         prefix+"chains with mix of proper and improper alt. conf.:", \
         self.n_chains_with_mix_of_proper_and_improper_alt_conf
@@ -173,7 +174,8 @@ class overall_counts(object):
           print >> out, prefix+'    empty: "%s%s"' % (ch, rg.resid())
         else:
           def show_atom(atom):
-            print >> out, prefix+'    "%s"' % atom.format_atom_record()[:27]
+            print >> out, prefix+'    "%s"' % atom.format_atom_record(
+              cut_after_label_columns=True)
           if (atoms.size() <= 3):
             for atom in atoms: show_atom(atom)
           else:
@@ -200,7 +202,8 @@ class overall_counts(object):
         prfx = "  group "
         for atom in atoms:
           result.append(
-            prefix + prfx + '"' + atom.format_atom_record()[:27] + '"')
+            prefix + prfx + '"%s"' % atom.format_atom_record(
+              cut_after_label_columns=True))
           prfx = "        "
       if (len(dup) > max_show):
         result.append(prefix + "  ... %d remaining group%s not shown" %
