@@ -129,10 +129,8 @@ class overall_counts(object):
     self.show_consecutive_residue_groups_with_same_resid(
       out=out, prefix=prefix, max_show=consecutive_residue_groups_max_show)
     #
-    msg = self.have_duplicate_atom_labels_message(
-      max_show=duplicate_atom_labels_max_show,
-      prefix=prefix)
-    if (msg is not None): print >> out, msg
+    self.show_duplicate_atom_labels(
+      out=out, prefix=prefix, max_show=duplicate_atom_labels_max_show)
 
   def as_str(self,
         prefix="",
@@ -188,31 +186,31 @@ class overall_counts(object):
       print >> out, prefix + "  ... %d remaining instance%s not shown" % \
         plural_s(len(cons)-max_show)
 
-  def have_duplicate_atom_labels_message(self, max_show=10, prefix=""):
+  def show_duplicate_atom_labels(self, out=None, prefix="", max_show=10):
     dup = self.duplicate_atom_labels
-    if (len(dup) == 0):
-      return None
+    if (len(dup) == 0): return
+    if (out is None): out = sys.stdout
     fmt = "%%%dd" % len(str(self.n_duplicate_atom_labels))
-    result = [
-      prefix + "number of groups of duplicate atom labels: " + fmt % len(dup),
-      prefix + "  total number of affected atoms:          " + fmt %
-        self.n_duplicate_atom_labels]
-    if (max_show > 0):
-      for atoms in dup[:max_show]:
-        prfx = "  group "
-        for atom in atoms:
-          result.append(
-            prefix + prfx + '"%s"' % atom.format_atom_record(
-              cut_after_label_columns=True))
-          prfx = "        "
-      if (len(dup) > max_show):
-        result.append(prefix + "  ... %d remaining group%s not shown" %
-          plural_s(len(dup)-max_show))
-    return "\n".join(result)
+    print >> out, prefix+"number of groups of duplicate atom labels:", \
+      fmt % len(dup)
+    print >> out, prefix+"  total number of affected atoms:         ", \
+      fmt % self.n_duplicate_atom_labels
+    if (max_show <= 0): return
+    for atoms in dup[:max_show]:
+      prfx = "  group "
+      for atom in atoms:
+        print >> out, prefix+prfx+'"%s"' % atom.format_atom_record(
+          cut_after_label_columns=True)
+        prfx = "        "
+    if (len(dup) > max_show):
+      print >> out, prefix+"  ... %d remaining group%s not shown" % \
+        plural_s(len(dup)-max_show)
 
   def raise_duplicate_atom_labels_if_necessary(self, max_show=10):
-    msg = self.have_duplicate_atom_labels_message(max_show=max_show)
-    if (msg is not None): raise Sorry(msg)
+    sio = StringIO()
+    self.show_duplicate_atom_labels(out=sio, max_show=max_show)
+    msg = sio.getvalue()
+    if (len(msg) != 0): raise Sorry(msg.rstrip())
 
 class _root(boost.python.injector, ext.root):
 

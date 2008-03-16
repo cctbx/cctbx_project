@@ -1586,7 +1586,9 @@ number of groups of duplicate atom labels: 2
         "ATOM     70  HD1 LEU B 441 "
   ... 1 remaining group not shown''')
   else: raise Exception_expected
-  assert not show_diff(oc.have_duplicate_atom_labels_message(), '''\
+  sio = StringIO()
+  oc.show_duplicate_atom_labels(out=sio)
+  assert not show_diff(sio.getvalue(), """\
 number of groups of duplicate atom labels: 2
   total number of affected atoms:          6
   group "ATOM     68  HD1 LEU B 441 "
@@ -1594,7 +1596,8 @@ number of groups of duplicate atom labels: 2
         "ATOM     70  HD1 LEU B 441 "
   group "ATOM     71  HD2 LEU B 441 "
         "ATOM     72  HD2 LEU B 441 "
-        "ATOM     73  HD2 LEU B 441 "''')
+        "ATOM     73  HD2 LEU B 441 "
+""")
   #
   check("""\
 ATOM     68  HD1 LEU B 441
