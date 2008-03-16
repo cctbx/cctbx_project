@@ -15,8 +15,15 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       type="string",
       default=None,
       help="level of detail",
-      metavar="|".join(pdb.hierarchy_v1.level_ids))
-    .option(None, "--duplicate_max_show",
+      metavar="|".join(pdb.hierarchy_v2.level_ids))
+    .option(None, "--consecutive_residue_groups_max_show",
+      action="store",
+      type="int",
+      default=10,
+      help="maximum number of consecutive residue groups with same resid"
+           " to be listed",
+      metavar="INT")
+    .option(None, "--duplicate_atom_labels_max_show",
       action="store",
       type="int",
       default=10,
@@ -34,19 +41,26 @@ def run(args, command_name="phenix.pdb.hierarchy"):
     if (not os.path.isfile(file_name)): continue
     execute(
       file_name=file_name,
-      level_id=co.details,
-      duplicate_max_show=co.duplicate_max_show,
-      prefix=co.prefix)
+      prefix=co.prefix,
+      consecutive_residue_groups_max_show=
+        co.consecutive_residue_groups_max_show,
+      duplicate_atom_labels_max_show=co.duplicate_atom_labels_max_show,
+      level_id=co.details)
     print co.prefix.rstrip()
 
-def execute(file_name, level_id=None, duplicate_max_show=10, prefix=""):
+def execute(
+      file_name,
+      prefix="",
+      consecutive_residue_groups_max_show=10,
+      duplicate_atom_labels_max_show=10,
+      level_id=None):
   try:
-    pdb.show_summary(
+    return pdb.hierarchy_v2.show_summary(
       file_name=file_name,
-      level_id=level_id,
-      level_id_exception=Sorry,
-      duplicate_max_show=duplicate_max_show,
-      prefix=prefix)
+      prefix=prefix,
+      consecutive_residue_groups_max_show=consecutive_residue_groups_max_show,
+      duplicate_atom_labels_max_show=duplicate_atom_labels_max_show,
+      level_id=level_id)
   except KeyboardInterrupt: raise
   except Exception, e:
     print "Exception: file %s: %s: %s" % (
