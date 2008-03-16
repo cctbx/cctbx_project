@@ -768,18 +768,24 @@ def exercise_format_atom_record():
     assert not show_diff(s, """\
 %sB1234 NaMe                 1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % record_name)
+    sc = a.format_atom_record(cut_after_label_columns=True)
+    assert not show_diff(sc, s[:27])
     ag = pdb.hierarchy_v2.atom_group(altloc="x", resname="uvw")
     ag.append_atom(atom=a)
     s = a.format_atom_record()
     assert not show_diff(s, """\
 %sB1234 NaMexuvw             1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % record_name)
+    sc = a.format_atom_record(cut_after_label_columns=True)
+    assert not show_diff(sc, s[:27])
     rg = pdb.hierarchy_v2.residue_group(resseq="pqrs", icode="t")
     rg.append_atom_group(atom_group=ag)
     s = a.format_atom_record()
     assert not show_diff(s, """\
 %sB1234 NaMexuvw  pqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % record_name)
+    sc = a.format_atom_record(cut_after_label_columns=True)
+    assert not show_diff(sc, s[:27])
     for chain_id in ["", "g", "hi"]:
       ch = pdb.hierarchy_v2.chain(id=chain_id)
       ch.append_residue_group(residue_group=rg)
@@ -787,6 +793,8 @@ def exercise_format_atom_record():
       assert not show_diff(s, """\
 %sB1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
       % (record_name, chain_id))
+      sc = a.format_atom_record(cut_after_label_columns=True)
+      assert not show_diff(sc, s[:27])
 
 def exercise_construct_hierarchy():
   def check(pdb_string,
@@ -1021,17 +1029,17 @@ ATOM         N3  R03
     proper alt. conf.:   1
     improper alt. conf.: 2
   residue with proper altloc
-    ATOM         N2  R02
-    ATOM         N1 AR02
-    ATOM         N3 AR02
-    ATOM         N1 BR02
-    ATOM         N3 BR02
+    "ATOM         N2  R02       "
+    "ATOM         N1 AR02       "
+    "ATOM         N3 AR02       "
+    "ATOM         N1 BR02       "
+    "ATOM         N3 BR02       "
   residue with improper altloc
-    ATOM         N2  R01
-    ATOM         N1  R01
-    ATOM         N3  R01
-    ATOM         N1 BR01
-    ATOM         N3 BR01
+    "ATOM         N2  R01       "
+    "ATOM         N1  R01       "
+    "ATOM         N3  R01       "
+    "ATOM         N1 BR01       "
+    "ATOM         N3 BR01       "
   chains with mix of proper and improper alt. conf.: 0
   number of residue names: 3
   histogram of residue name frequency:
@@ -1126,17 +1134,17 @@ residue alt. conf. situations:
   proper alt. conf.:   1
   improper alt. conf.: 1
 residue with proper altloc
-  ATOM         N3  R03
-  ATOM         N1 CR03
-  ATOM         N2 CR03
-  ATOM         N1 BR03
-  ATOM         N2 BR03
+  "ATOM         N3  R03       "
+  "ATOM         N1 CR03       "
+  "ATOM         N2 CR03       "
+  "ATOM         N1 BR03       "
+  "ATOM         N2 BR03       "
 residue with improper altloc
-  ATOM         N2  R02
-  ATOM         N1  R02
-  ATOM         N3  R02
-  ATOM         N1 BR02
-  ATOM         N3 BR02
+  "ATOM         N2  R02       "
+  "ATOM         N1  R02       "
+  "ATOM         N3  R02       "
+  "ATOM         N1 BR02       "
+  "ATOM         N3 BR02       "
 chains with mix of proper and improper alt. conf.: 0
 number of residue names: 3
 histogram of residue name frequency:
@@ -1546,9 +1554,9 @@ residue alt. conf. situations:
   proper alt. conf.:   0
   improper alt. conf.: 1
 residue with improper altloc
-  ATOM     54  CA  GLY A   9
-  ATOM     55  CA  GLY A   9
-  ATOM     56  CA BGLY A   9
+  "ATOM     54  CA  GLY A   9 "
+  "ATOM     55  CA  GLY A   9 "
+  "ATOM     56  CA BGLY A   9 "
 chains with mix of proper and improper alt. conf.: 0
 number of residue names: 1
 histogram of residue name frequency:
