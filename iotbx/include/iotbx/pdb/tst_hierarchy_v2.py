@@ -565,6 +565,15 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
   c = pdb.hierarchy_v2.chain(id="ke")
   c.append_residue_group(rg)
   assert a.pdb_label_columns() == "n123areskea000i"
+  #
+  assert a.pdb_element_charge_columns() == "    "
+  a.set_element("e")
+  assert a.pdb_element_charge_columns() == " e  "
+  a.set_charge("+")
+  assert a.pdb_element_charge_columns() == " e+ "
+  a.set_element("el")
+  a.set_charge("2+")
+  assert a.pdb_element_charge_columns() == "el2+"
 
 def exercise_model():
   m = pdb.hierarchy_v2.model()

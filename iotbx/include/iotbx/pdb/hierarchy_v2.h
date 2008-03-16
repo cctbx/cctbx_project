@@ -535,6 +535,9 @@ namespace hierarchy_v2 {
       std::string
       pdb_label_columns() const;
 
+      std::string
+      pdb_element_charge_columns() const;
+
       //! Not available in Python.
       /*! result must point to an array of size 81 (or greater).
           On return, result is null-terminated.
@@ -543,6 +546,14 @@ namespace hierarchy_v2 {
       format_atom_record(
         char* result,
         atom_label_columns_formatter* label_formatter=0) const;
+
+      //! Not available in Python.
+      /*! result must point to an array of size 4 (or greater).
+          On return, result is NOT null-terminated.
+       */
+      void
+      format_pdb_element_charge_columns(
+        char* result) const;
 
       bool
       element_is_hydrogen() const;

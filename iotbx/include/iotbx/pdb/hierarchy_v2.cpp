@@ -386,6 +386,14 @@ namespace {
     return std::string(result, 15U);
   }
 
+  std::string
+  atom::pdb_element_charge_columns() const
+  {
+    char result[4];
+    format_pdb_element_charge_columns(result);
+    return std::string(result, 4U);
+  }
+
   unsigned
   atom::format_atom_record(
     char* result,
@@ -430,8 +438,7 @@ namespace {
     }
     copy_left_justified(r, 6U, 0, 0U, blank);
     d.segid.copy_left_justified(result+72, 4U, blank);
-    d.element.copy_right_justified(result+76, 2U, blank);
-    d.charge.copy_left_justified(result+78, 2U, blank);
+    format_pdb_element_charge_columns(result+76);
     for(unsigned i=79;i!=71;i--) {
       if (result[i] != blank) {
         result[i+1] = '\0';
@@ -440,6 +447,15 @@ namespace {
     }
     result[66] = '\0';
     return 66U;
+  }
+
+  void
+  atom::format_pdb_element_charge_columns(
+    char* result) const
+  {
+    char blank = ' ';
+    data->element.copy_right_justified(result, 2U, blank);
+    data->charge.copy_left_justified(result+2, 2U, blank);
   }
 
   bool
