@@ -1028,19 +1028,19 @@ ATOM         N3  R03
     pure alt. conf.:     0
     proper alt. conf.:   1
     improper alt. conf.: 2
-  residue with proper altloc
-    "ATOM         N2  R02       "
-    "ATOM         N1 AR02       "
-    "ATOM         N3 AR02       "
-    "ATOM         N1 BR02       "
-    "ATOM         N3 BR02       "
-  residue with improper altloc
-    "ATOM         N2  R01       "
-    "ATOM         N1  R01       "
-    "ATOM         N3  R01       "
-    "ATOM         N1 BR01       "
-    "ATOM         N3 BR01       "
-  chains with mix of proper and improper alt. conf.: 0
+  chains with mix of proper and improper alt. conf.: 1
+    residue with proper altloc
+      "ATOM         N2  R02       "
+      "ATOM         N1 AR02       "
+      "ATOM         N3 AR02       "
+      "ATOM         N1 BR02       "
+      "ATOM         N3 BR02       "
+    residue with improper altloc
+      "ATOM         N2  R01       "
+      "ATOM         N1  R01       "
+      "ATOM         N3  R01       "
+      "ATOM         N1 BR01       "
+      "ATOM         N3 BR01       "
   number of residue names: 3
   histogram of residue name frequency:
     "R01" 1    other
@@ -1133,19 +1133,19 @@ residue alt. conf. situations:
   pure alt. conf.:     1
   proper alt. conf.:   1
   improper alt. conf.: 1
-residue with proper altloc
-  "ATOM         N3  R03       "
-  "ATOM         N1 CR03       "
-  "ATOM         N2 CR03       "
-  "ATOM         N1 BR03       "
-  "ATOM         N2 BR03       "
-residue with improper altloc
-  "ATOM         N2  R02       "
-  "ATOM         N1  R02       "
-  "ATOM         N3  R02       "
-  "ATOM         N1 BR02       "
-  "ATOM         N3 BR02       "
-chains with mix of proper and improper alt. conf.: 0
+chains with mix of proper and improper alt. conf.: 1
+  residue with proper altloc
+    "ATOM         N3  R03       "
+    "ATOM         N1 CR03       "
+    "ATOM         N2 CR03       "
+    "ATOM         N1 BR03       "
+    "ATOM         N2 BR03       "
+  residue with improper altloc
+    "ATOM         N2  R02       "
+    "ATOM         N1  R02       "
+    "ATOM         N3  R02       "
+    "ATOM         N1 BR02       "
+    "ATOM         N3 BR02       "
 number of residue names: 3
 histogram of residue name frequency:
   "R01" 1    other
@@ -1553,11 +1553,11 @@ residue alt. conf. situations:
   pure alt. conf.:     0
   proper alt. conf.:   0
   improper alt. conf.: 1
+chains with mix of proper and improper alt. conf.: 0
 residue with improper altloc
   "ATOM     54  CA  GLY A   9 "
   "ATOM     55  CA  GLY A   9 "
   "ATOM     56  CA BGLY A   9 "
-chains with mix of proper and improper alt. conf.: 0
 number of residue names: 1
 histogram of residue name frequency:
   "GLY" 1
@@ -1576,6 +1576,8 @@ ATOM     72  HD2 LEU B 441
 ATOM     73  HD2 LEU B 441
 """))
   oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  oc.raise_improper_alt_conf_if_necessary()
+  oc.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
   try: oc.raise_duplicate_atom_labels_if_necessary(max_show=1)
   except Sorry, e:
     assert not show_diff(str(e), '''\
@@ -1930,6 +1932,39 @@ number of residue names: 1
 histogram of residue name frequency:
   "" 1    other
 """)
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM         N1 BR01     1
+ATOM         N1  R01     1
+ATOM         N1 AR02     2
+ATOM         N1 BR02     2
+ATOM         N2  R02     2
+"""))
+  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  oc.raise_duplicate_atom_labels_if_necessary()
+  try: oc.raise_improper_alt_conf_if_necessary()
+  except Sorry, e:
+    assert not show_diff(str(e), '''\
+residue with proper altloc
+  "ATOM         N2  R02     2 "
+  "ATOM         N1 AR02     2 "
+  "ATOM         N1 BR02     2 "
+residue with improper altloc
+  "ATOM         N1  R01     1 "
+  "ATOM         N1 BR01     1 "''')
+  else: raise Exception_expected
+  try: oc.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
+  except Sorry, e:
+    assert not show_diff(str(e), '''\
+chains with mix of proper and improper alt. conf.: 1
+  residue with proper altloc
+    "ATOM         N2  R02     2 "
+    "ATOM         N1 AR02     2 "
+    "ATOM         N1 BR02     2 "
+  residue with improper altloc
+    "ATOM         N1  R01     1 "
+    "ATOM         N1 BR01     1 "''')
+  else: raise Exception_expected
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\

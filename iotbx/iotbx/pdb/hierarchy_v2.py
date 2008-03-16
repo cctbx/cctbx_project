@@ -96,18 +96,8 @@ class overall_counts(object):
       print >> out, prefix+"  proper alt. conf.:  ", fmt%self.n_alt_conf_proper
       print >> out, prefix+"  improper alt. conf.:", \
         fmt % self.n_alt_conf_improper
-      if (self.n_alt_conf_improper != 0):
-        for residue_group,label in [(self.alt_conf_proper, "proper"),
-                                    (self.alt_conf_improper, "improper")]:
-          if (residue_group is None): continue
-          print >> out, prefix+"residue with %s altloc" % label
-          for ag in residue_group.atom_groups():
-            for atom in ag.atoms():
-              print >> out, prefix+'  "%s"' % atom.format_atom_record(
-                cut_after_label_columns=True)
-      print >> out, \
-        prefix+"chains with mix of proper and improper alt. conf.:", \
-        self.n_chains_with_mix_of_proper_and_improper_alt_conf
+      self.show_chains_with_mix_of_proper_and_improper_alt_conf(
+        out=out, prefix=prefix)
     #
     c = self.resnames
     print >> out, prefix+"number of residue names: %d" % len(c)
@@ -143,6 +133,41 @@ class overall_counts(object):
       consecutive_residue_groups_max_show=consecutive_residue_groups_max_show,
       duplicate_atom_labels_max_show=duplicate_atom_labels_max_show)
     return out.getvalue()
+
+  def show_improper_alt_conf(self, out=None, prefix=""):
+    if (self.n_alt_conf_improper == 0): return
+    if (out is None): out = sys.stdout
+    for residue_group,label in [(self.alt_conf_proper, "proper"),
+                                (self.alt_conf_improper, "improper")]:
+      if (residue_group is None): continue
+      print >> out, prefix+"residue with %s altloc" % label
+      for ag in residue_group.atom_groups():
+        for atom in ag.atoms():
+          print >> out, prefix+'  "%s"' % atom.format_atom_record(
+            cut_after_label_columns=True)
+
+  def raise_improper_alt_conf_if_necessary(self):
+    sio = StringIO()
+    self.show_improper_alt_conf(out=sio)
+    msg = sio.getvalue()
+    if (len(msg) != 0): raise Sorry(msg.rstrip())
+
+  def show_chains_with_mix_of_proper_and_improper_alt_conf(self,
+        out=None,
+        prefix=""):
+    if (out is None): out = sys.stdout
+    n = self.n_chains_with_mix_of_proper_and_improper_alt_conf
+    print >> out, \
+      prefix+"chains with mix of proper and improper alt. conf.:", n
+    if (n != 0): prefix = prefix + "  "
+    self.show_improper_alt_conf(out=out, prefix=prefix)
+
+  def raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary(self):
+    if (self.n_chains_with_mix_of_proper_and_improper_alt_conf == 0):
+      return
+    sio = StringIO()
+    self.show_chains_with_mix_of_proper_and_improper_alt_conf(out=sio)
+    raise Sorry(sio.getvalue().rstrip())
 
   def show_consecutive_residue_groups_with_same_resid(self,
         out=None,
@@ -343,6 +368,7 @@ class _root(boost.python.injector, ext.root):
           alt_conf_ids[altloc] += 1
         if (    chain_alt_conf_proper is not None
             and chain_alt_conf_improper is not None):
+          n_chains_with_mix_of_proper_and_improper_alt_conf += 1
           if (   alt_conf_proper is None
               or alt_conf_improper is None):
             alt_conf_proper = chain_alt_conf_proper
