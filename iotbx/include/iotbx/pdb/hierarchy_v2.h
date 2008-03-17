@@ -535,6 +535,10 @@ namespace hierarchy_v2 {
       std::string
       pdb_label_columns() const;
 
+      //! Not available in Python.
+      small_str<15>
+      pdb_label_columns_small_str() const;
+
       std::string
       pdb_element_charge_columns() const;
 
