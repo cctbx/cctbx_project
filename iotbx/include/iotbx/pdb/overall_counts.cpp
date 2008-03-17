@@ -1,16 +1,94 @@
 #include <iotbx/pdb/hierarchy_v2.h>
 #include <iotbx/pdb/common_residue_names.h>
+#include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 {
 
 namespace detail {
 
-  bool
-  cmp_first_elements_of_vectors(
-    const std::vector<unsigned>* a,
-    const std::vector<unsigned>* b)
+  struct cmp_atom_labels_functor
   {
-    return ((*a)[0] < (*b)[0]);
+    const small_str<15>* labels;
+
+    cmp_atom_labels_functor(
+      const small_str<15>* labels_)
+    :
+      labels(labels_)
+    {}
+
+    bool
+    operator()(
+      unsigned i,
+      unsigned j) const
+    {
+      return (std::memcmp(labels[i].elems, labels[j].elems, 15U) < 0);
+    }
+  };
+
+  bool
+  cmp_first_element_of_vectors(
+    std::vector<unsigned> const& a,
+    std::vector<unsigned> const& b)
+  {
+    return (a[0] < b[0]);
+  }
+
+  unsigned
+  find_duplicate_atom_labels(
+    af::shared<af::shared<atom> >& duplicate_atom_labels,
+    hierarchy_v2::model const& model,
+    unsigned model_atoms_size,
+    const small_str<15>* model_atom_labels)
+  {
+    if (model_atoms_size == 0) return 0;
+    boost::scoped_array<unsigned> indices(new unsigned[model_atoms_size]);
+    for(unsigned j=0;j<model_atoms_size;j++) {
+      indices[j] = j;
+    }
+    std::sort(
+      indices.get(),
+      indices.get()+model_atoms_size,
+      cmp_atom_labels_functor(model_atom_labels));
+    std::vector<std::vector<unsigned> > groups;
+    std::vector<unsigned> group;
+    unsigned j_start = 0;
+    for(unsigned j=1;j<model_atoms_size+1U;j++) {
+      if (j != model_atoms_size) {
+        if (std::memcmp(
+              model_atom_labels[indices[j_start]].elems,
+              model_atom_labels[indices[j      ]].elems, 15U) == 0) continue;
+      }
+      if (j_start+1U == j) {
+        j_start++;
+      }
+      else {
+        group.reserve(j-j_start);
+        while (j_start != j) group.push_back(indices[j_start++]);
+        std::sort(group.begin(), group.end());
+        groups.push_back(std::vector<unsigned>());
+        groups.back().swap(group);
+      }
+    }
+    unsigned result = 0;
+    if (groups.size() != 0) {
+      std::sort(groups.begin(), groups.end(), cmp_first_element_of_vectors);
+      af::shared<atom> atoms_owner = model.atoms();
+      af::const_ref<atom> atoms = atoms_owner.const_ref();
+      SCITBX_ASSERT(atoms.size() == model_atoms_size);
+      unsigned n_groups = static_cast<unsigned>(groups.size());
+      duplicate_atom_labels.reserve(duplicate_atom_labels.size() + n_groups);
+      for(unsigned i_g=0;i_g<n_groups;i_g++) {
+        std::vector<unsigned> const& g = groups[i_g];
+        af::shared<atom> ga((af::reserve(g.size())));
+        unsigned n_i = static_cast<unsigned>(g.size());
+        for(unsigned i_i=0;i_i<n_i;i_i++) {
+          ga.push_back(atoms[g[i_i]]);
+        }
+        duplicate_atom_labels.push_back(ga);
+        result += n_i;
+      }
+    }
+    return result;
   }
 
 } // namespace detail
@@ -32,22 +110,22 @@ namespace detail {
     n_residues(0),
     n_residue_groups(0),
     n_explicit_chain_breaks(0),
+    n_atoms(0),
     n_alt_conf_none(0),
     n_alt_conf_pure(0),
     n_alt_conf_proper(0),
     n_alt_conf_improper(0),
     n_chains_with_mix_of_proper_and_improper_alt_conf(0)
   {
-    af::shared<atom> atoms_owner = root.atoms();
-    n_atoms = static_cast<unsigned>(atoms_owner.size());
-    const atom* atoms = atoms_owner.begin();
-    atoms_reset_tmp(atoms_owner.const_ref());
     for(unsigned i_md=0;i_md<n_models;i_md++) {
       hierarchy_v2::model const& model = root.models()[i_md];
       if (model.chains_size() == 0) n_empty_models++;
       model_ids[model.data->id]++;
       std::map<std::string, unsigned> model_chain_ids;
-      std::map<std::string, std::vector<unsigned> > model_atom_labels_i_seqs;
+      unsigned model_atoms_size = model.atoms_size();
+      boost::scoped_array<small_str<15> > model_atom_labels(
+        new small_str<15>[model_atoms_size]);
+      unsigned i_model_atom = 0;
       unsigned n_ch = model.chains_size();
       n_chains += n_ch;
       for(unsigned i_ch=0;i_ch<n_ch;i_ch++) {
@@ -87,11 +165,11 @@ namespace detail {
               rg_altlocs.insert(altloc);
             }
             rg_resnames.insert(ag.data->resname);
-            unsigned n_atoms = ag.atoms_size();
-            for(unsigned i_at=0;i_at<n_atoms;i_at++) {
+            unsigned n_ats = ag.atoms_size();
+            for(unsigned i_at=0;i_at<n_ats;i_at++) {
               hierarchy_v2::atom const& atom = ag.atoms()[i_at];
-              model_atom_labels_i_seqs[atom.pdb_label_columns()]
-                .push_back(atom.data->tmp);
+              model_atom_labels[i_model_atom++] =
+                atom.pdb_label_columns_small_str();
               element_charge_types[atom.pdb_element_charge_columns()]++;
             }
           }
@@ -165,34 +243,13 @@ namespace detail {
           if (count != 1) n_duplicate_chain_ids += count;
         }
       }
-      {
-        std::vector<std::vector<unsigned>*> model_duplicate_atom_labels;
-        typedef std::map<std::string, std::vector<unsigned> >::iterator it;
-        it i_end = model_atom_labels_i_seqs.end();
-        for(it i=model_atom_labels_i_seqs.begin();i!=i_end;i++) {
-          if (i->second.size() == 1) continue;
-          model_duplicate_atom_labels.push_back(&(i->second));
-        }
-        std::size_t n_mdal = model_duplicate_atom_labels.size();
-        if (n_mdal != 0) {
-          std::sort(
-            model_duplicate_atom_labels.begin(),
-            model_duplicate_atom_labels.end(),
-            detail::cmp_first_elements_of_vectors);
-          duplicate_atom_labels.reserve(duplicate_atom_labels.size() + n_mdal);
-          for(std::size_t i_mdal=0;i_mdal<n_mdal;i_mdal++) {
-            std::vector<unsigned>&
-              i_seqs = *model_duplicate_atom_labels[i_mdal];
-            unsigned n_is = static_cast<unsigned>(i_seqs.size());
-            n_duplicate_atom_labels += n_is;
-            af::shared<atom> group((af::reserve(n_is)));
-            for(unsigned i_is=0;i_is<n_is;i_is++) {
-              group.push_back(atoms[i_seqs[i_is]]);
-            }
-            duplicate_atom_labels.push_back(group);
-          }
-        }
-      }
+      SCITBX_ASSERT(i_model_atom == model_atoms_size);
+      n_atoms += model_atoms_size;
+      n_duplicate_atom_labels += detail::find_duplicate_atom_labels(
+        duplicate_atom_labels,
+        model,
+        model_atoms_size,
+        model_atom_labels.get());
     }
     {
       typedef std::map<std::string, unsigned>::const_iterator it;
