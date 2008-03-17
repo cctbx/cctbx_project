@@ -373,6 +373,7 @@ namespace hierarchy_v2 {
 
     public:
       inline
+      explicit
       atom(
         atom_group const& parent,
         const char* name="", const char* segid="",
@@ -384,6 +385,7 @@ namespace hierarchy_v2 {
         sym_mat3 const& siguij=sym_mat3(-1,-1,-1,-1,-1,-1),
         bool hetero=false);
 
+      explicit
       atom(
         const char* name="", const char* segid="",
         const char* element="", const char* charge="", const char* serial="",
@@ -592,11 +594,13 @@ namespace hierarchy_v2 {
 
     public:
       inline
+      explicit
       atom_group(
         residue_group const& parent,
         const char* altloc="",
         const char* resname="");
 
+      explicit
       atom_group(
         const char* altloc="",
         const char* resname="")
@@ -604,6 +608,7 @@ namespace hierarchy_v2 {
         data(new atom_group_data(altloc, resname))
       {}
 
+      explicit
       atom_group(const atom_group_data* other)
       :
         data(new atom_group_data(
@@ -682,12 +687,14 @@ namespace hierarchy_v2 {
 
     public:
       inline
+      explicit
       residue_group(
         chain const& parent,
         const char* resseq="",
         const char* icode="",
         bool link_to_previous=true);
 
+      explicit
       residue_group(
         const char* resseq="",
         const char* icode="",
@@ -696,6 +703,7 @@ namespace hierarchy_v2 {
         data(new residue_group_data(resseq, icode, link_to_previous))
       {}
 
+      explicit
       residue_group(const residue_group_data* other)
       :
         data(new residue_group_data(
@@ -792,16 +800,19 @@ namespace hierarchy_v2 {
 
     public:
       inline
+      explicit
       chain(
         model const& parent,
         std::string const& id="");
 
+      explicit
       chain(
         std::string const& id="")
       :
         data(new chain_data(id))
       {}
 
+      explicit
       chain(const chain_data* other)
       :
         data(new chain_data(other->id))
@@ -891,12 +902,15 @@ namespace hierarchy_v2 {
 
     public:
       inline
+      explicit
       model(
         root const& parent,
         std::string const& id="");
 
+      explicit
       model(std::string const& id="") : data(new model_data(id)) {}
 
+      explicit
       model(const model_data* other)
       :
         data(new model_data(other->id))
