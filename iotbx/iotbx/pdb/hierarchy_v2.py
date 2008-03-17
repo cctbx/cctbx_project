@@ -318,6 +318,7 @@ class _root(boost.python.injector, ext.root):
     return self.only_atom_group().only_atom()
 
   def overall_counts(self):
+    result = overall_counts()
     from iotbx.pdb import common_residue_names_get_class
     blank_altloc_char = " "
     n_empty_models = 0
@@ -328,6 +329,7 @@ class _root(boost.python.injector, ext.root):
     n_residues = 0
     n_residue_groups = 0
     n_explicit_chain_breaks = 0
+    model_ids = dict_with_default_0()
     chain_ids = dict_with_default_0()
     alt_conf_ids = dict_with_default_0()
     resnames = dict_with_default_0()
@@ -344,7 +346,6 @@ class _root(boost.python.injector, ext.root):
     n_duplicate_chain_ids = 0
     n_duplicate_atom_labels = 0
     duplicate_atom_labels = []
-    model_ids = dict_with_default_0()
     atoms = self.atoms()
     atoms.reset_tmp()
     for model in self.models():
@@ -383,7 +384,6 @@ class _root(boost.python.injector, ext.root):
               model_atom_labels_i_seqs.setdefault(
                 atom.pdb_label_columns(), []).append(atom.tmp)
               element_charge_types[atom.pdb_element_charge_columns()] += 1
-              rg_last_atom = atom
           if (have_blank_altloc):
             n_alt_conf_improper += 1
             if (chain_alt_conf_improper is None):
@@ -422,7 +422,7 @@ class _root(boost.python.injector, ext.root):
             alt_conf_proper = chain_alt_conf_proper
           if (alt_conf_improper is None):
             alt_conf_improper = chain_alt_conf_improper
-      for chain_id,count in model_chain_ids.items():
+      for count in model_chain_ids.values():
         if (count != 1): n_duplicate_chain_ids += count
       model_duplicate_atom_labels = []
       for i_seqs in model_atom_labels_i_seqs.values():
@@ -432,12 +432,11 @@ class _root(boost.python.injector, ext.root):
       for i_seqs in model_duplicate_atom_labels:
         n_duplicate_atom_labels += len(i_seqs)
         duplicate_atom_labels.append([atoms[i_seq] for i_seq in i_seqs])
-    for model_id,count in model_ids.items():
+    for count in model_ids.values():
       if (count != 1): n_duplicate_model_ids += count
     resname_classes = dict_with_default_0()
     for resname,count in resnames.items():
       resname_classes[common_residue_names_get_class(name=resname)] += count
-    result = overall_counts()
     result.root = self
     result.n_empty_models = n_empty_models
     result.n_empty_chains = n_empty_chains
