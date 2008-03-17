@@ -6,13 +6,13 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/list.hpp>
+#include <boost/python/tuple.hpp>
 #include <boost/python/str.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/boost_python/array_as_list.h>
 #include <iotbx/pdb/hierarchy_v2.h>
-
-namespace boost_python_meta_ext { struct holder {}; }
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 {
 namespace {
@@ -553,6 +553,76 @@ namespace {
       find_model_index_overloads, find_model_index, 1, 2)
 
     static void
+    get_overall_counts(
+      w_t const& self,
+      boost::python::object result)
+    {
+      using scitbx::boost_python::array_as_list;
+      using scitbx::boost_python::stl_map_as_dict;
+#define IOTBX_LOC_SA(N) \
+      result.attr(#N) = oc.N;
+      //
+#define IOTBX_LOC_SAA(N) \
+      result.attr(#N) = array_as_list(oc.N.begin(), oc.N.size());
+      //
+#define IOTBX_LOC_SAM(N) \
+      result.attr(#N) = stl_map_as_dict(oc.N);
+      //
+#define IOTBX_LOC_SAO(N) \
+      { \
+        boost::python::object v; \
+        if (oc.N) v = boost::python::object(*oc.N); \
+        result.attr(#N) = v; \
+      }
+      //
+      hierarchy_v2::overall_counts oc(self);
+      IOTBX_LOC_SA(root)
+      IOTBX_LOC_SA(n_empty_models)
+      IOTBX_LOC_SA(n_empty_chains)
+      IOTBX_LOC_SA(n_empty_residue_groups)
+      IOTBX_LOC_SA(n_empty_atom_groups)
+      IOTBX_LOC_SA(n_duplicate_model_ids)
+      IOTBX_LOC_SA(n_duplicate_chain_ids)
+      IOTBX_LOC_SA(n_duplicate_atom_labels)
+      IOTBX_LOC_SAA(duplicate_atom_labels)
+      IOTBX_LOC_SA(n_models)
+      IOTBX_LOC_SA(n_chains)
+      IOTBX_LOC_SA(n_alt_conf)
+      IOTBX_LOC_SA(n_residues)
+      IOTBX_LOC_SA(n_residue_groups)
+      IOTBX_LOC_SA(n_explicit_chain_breaks)
+      IOTBX_LOC_SA(n_atoms)
+      IOTBX_LOC_SAM(model_ids)
+      IOTBX_LOC_SAM(chain_ids)
+      IOTBX_LOC_SAM(alt_conf_ids)
+      IOTBX_LOC_SAM(resnames)
+      IOTBX_LOC_SAM(resname_classes)
+      IOTBX_LOC_SAM(element_charge_types)
+      IOTBX_LOC_SA(n_alt_conf_none)
+      IOTBX_LOC_SA(n_alt_conf_pure)
+      IOTBX_LOC_SA(n_alt_conf_proper)
+      IOTBX_LOC_SA(n_alt_conf_improper)
+      IOTBX_LOC_SAO(alt_conf_proper)
+      IOTBX_LOC_SAO(alt_conf_improper)
+      {
+        boost::python::list l;
+        std::size_t n = oc.consecutive_residue_groups_with_same_resid.size();
+        for(std::size_t i=0;i<n;i++) {
+          af::tiny<residue_group, 2> const&
+            rgs = oc.consecutive_residue_groups_with_same_resid[i];
+          l.append(boost::python::make_tuple(rgs[0], rgs[1]));
+        }
+        result.attr("consecutive_residue_groups_with_same_resid") = l;
+      }
+      IOTBX_LOC_SA(n_chains_with_mix_of_proper_and_improper_alt_conf)
+      //
+#undef IOTBX_LOC_SA
+#undef IOTBX_LOC_SAA
+#undef IOTBX_LOC_SAM
+#undef IOTBX_LOC_SAO
+    }
+
+    static void
     wrap()
     {
       using namespace boost::python;
@@ -564,6 +634,7 @@ namespace {
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(model)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
+        .def("get_overall_counts", get_overall_counts)
       ;
     }
   };

@@ -1003,6 +1003,44 @@ namespace hierarchy_v2 {
       atoms() const;
   };
 
+  struct overall_counts
+  {
+    hierarchy_v2::root root;
+    unsigned n_empty_models;
+    unsigned n_empty_chains;
+    unsigned n_empty_residue_groups;
+    unsigned n_empty_atom_groups;
+    unsigned n_duplicate_model_ids;
+    unsigned n_duplicate_chain_ids;
+    unsigned n_duplicate_atom_labels;
+    af::shared<af::shared<atom> > duplicate_atom_labels;
+    unsigned n_models;
+    unsigned n_chains;
+    unsigned n_alt_conf;
+    unsigned n_residues;
+    unsigned n_residue_groups;
+    unsigned n_explicit_chain_breaks;
+    unsigned n_atoms;
+    std::map<std::string, unsigned> model_ids;
+    std::map<std::string, unsigned> chain_ids;
+    std::map<std::string, unsigned> alt_conf_ids;
+    std::map<std::string, unsigned> resnames;
+    std::map<std::string, unsigned> resname_classes;
+    std::map<std::string, unsigned> element_charge_types;
+    unsigned n_alt_conf_none;
+    unsigned n_alt_conf_pure;
+    unsigned n_alt_conf_proper;
+    unsigned n_alt_conf_improper;
+    boost::optional<residue_group> alt_conf_proper;
+    boost::optional<residue_group> alt_conf_improper;
+    af::shared<af::tiny<residue_group, 2> >
+      consecutive_residue_groups_with_same_resid;
+    unsigned n_chains_with_mix_of_proper_and_improper_alt_conf;
+
+    overall_counts(
+      hierarchy_v2::root const& root_);
+  };
+
   //! Residue attributes.
   class residue
   {

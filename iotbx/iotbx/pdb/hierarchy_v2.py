@@ -227,7 +227,8 @@ class overall_counts(object):
     prev_rg = None
     for rgs in cons[:max_show]:
       for next,rg in zip(["", "next "], rgs):
-        if (rg is prev_rg): continue
+        if (    prev_rg is not None
+            and prev_rg.memory_id() == rg.memory_id()): continue
         elif (next == "" and prev_rg is not None):
           print >> out, delim
         prev_rg = rg
@@ -319,155 +320,7 @@ class _root(boost.python.injector, ext.root):
 
   def overall_counts(self):
     result = overall_counts()
-    from iotbx.pdb import common_residue_names_get_class
-    blank_altloc_char = " "
-    n_empty_models = 0
-    n_empty_chains = 0
-    n_empty_residue_groups = 0
-    n_empty_atom_groups = 0
-    n_models = self.models_size()
-    n_residues = 0
-    n_residue_groups = 0
-    n_explicit_chain_breaks = 0
-    model_ids = dict_with_default_0()
-    chain_ids = dict_with_default_0()
-    alt_conf_ids = dict_with_default_0()
-    resnames = dict_with_default_0()
-    element_charge_types = dict_with_default_0()
-    n_alt_conf_none = 0
-    n_alt_conf_pure = 0
-    n_alt_conf_proper = 0
-    n_alt_conf_improper = 0
-    alt_conf_proper = None
-    alt_conf_improper = None
-    consecutive_residue_groups_with_same_resid = []
-    n_chains_with_mix_of_proper_and_improper_alt_conf = 0
-    n_duplicate_model_ids = 0
-    n_duplicate_chain_ids = 0
-    n_duplicate_atom_labels = 0
-    duplicate_atom_labels = []
-    atoms = self.atoms()
-    atoms.reset_tmp()
-    for model in self.models():
-      if (model.chains_size() == 0): n_empty_models += 1
-      model_ids[model.id] += 1
-      model_chain_ids = dict_with_default_0()
-      model_atom_labels_i_seqs = {}
-      for chain in model.chains():
-        if (chain.residue_groups_size() == 0): n_empty_chains += 1
-        model_chain_ids[chain.id] += 1
-        chain_ids[chain.id] += 1
-        chain_altlocs = {} # FUTURE: set
-        chain_alt_conf_proper = None
-        chain_alt_conf_improper = None
-        suppress_chain_break = True
-        prev_rg = None
-        for rg in chain.residue_groups():
-          if (rg.atom_groups_size() == 0): n_empty_residue_groups += 1
-          if (not rg.link_to_previous and not suppress_chain_break):
-            n_explicit_chain_breaks += 1
-          suppress_chain_break = False
-          have_main_conf = False
-          have_blank_altloc = False
-          rg_altlocs = {} # FUTURE: set
-          rg_resnames = {} # FUTURE: set
-          for ag in rg.atom_groups():
-            if (ag.atoms_size() == 0): n_empty_atom_groups += 1
-            if (ag.altloc == ""):
-              have_main_conf = True
-            else:
-              if (ag.altloc == blank_altloc_char):
-                have_blank_altloc = True
-              rg_altlocs[ag.altloc] = None
-            rg_resnames[ag.resname] = None
-            for atom in ag.atoms():
-              model_atom_labels_i_seqs.setdefault(
-                atom.pdb_label_columns(), []).append(atom.tmp)
-              element_charge_types[atom.pdb_element_charge_columns()] += 1
-          if (have_blank_altloc):
-            n_alt_conf_improper += 1
-            if (chain_alt_conf_improper is None):
-              chain_alt_conf_improper = rg
-          elif (have_main_conf):
-            if (len(rg_altlocs) == 0):
-              n_alt_conf_none += 1
-            else:
-              n_alt_conf_proper += 1
-              if (chain_alt_conf_proper is None):
-                chain_alt_conf_proper = rg
-          elif (len(rg_altlocs) != 0):
-            n_alt_conf_pure += 1
-          chain_altlocs.update(rg_altlocs)
-          if (len(rg_resnames) == 1):
-            n_residues += 1
-          elif (len(rg_resnames) != 0):
-            n_residue_groups += 1
-          for resname in rg_resnames:
-            resnames[resname] += 1
-          if (    prev_rg is not None
-              and prev_rg.resid() == rg.resid()):
-            consecutive_residue_groups_with_same_resid.append((prev_rg, rg))
-          prev_rg = rg
-        for altloc in chain_altlocs:
-          alt_conf_ids[altloc] += 1
-        if (    chain_alt_conf_proper is not None
-            and chain_alt_conf_improper is not None):
-          n_chains_with_mix_of_proper_and_improper_alt_conf += 1
-          if (   alt_conf_proper is None
-              or alt_conf_improper is None):
-            alt_conf_proper = chain_alt_conf_proper
-            alt_conf_improper = chain_alt_conf_improper
-        else:
-          if (alt_conf_proper is None):
-            alt_conf_proper = chain_alt_conf_proper
-          if (alt_conf_improper is None):
-            alt_conf_improper = chain_alt_conf_improper
-      for count in model_chain_ids.values():
-        if (count != 1): n_duplicate_chain_ids += count
-      model_duplicate_atom_labels = []
-      for i_seqs in model_atom_labels_i_seqs.values():
-        if (len(i_seqs) != 1):
-          model_duplicate_atom_labels.append(i_seqs)
-      model_duplicate_atom_labels.sort()
-      for i_seqs in model_duplicate_atom_labels:
-        n_duplicate_atom_labels += len(i_seqs)
-        duplicate_atom_labels.append([atoms[i_seq] for i_seq in i_seqs])
-    for count in model_ids.values():
-      if (count != 1): n_duplicate_model_ids += count
-    resname_classes = dict_with_default_0()
-    for resname,count in resnames.items():
-      resname_classes[common_residue_names_get_class(name=resname)] += count
-    result.root = self
-    result.n_empty_models = n_empty_models
-    result.n_empty_chains = n_empty_chains
-    result.n_empty_residue_groups = n_empty_residue_groups
-    result.n_empty_atom_groups = n_empty_atom_groups
-    result.n_duplicate_model_ids = n_duplicate_model_ids
-    result.n_duplicate_chain_ids = n_duplicate_chain_ids
-    result.n_duplicate_atom_labels = n_duplicate_atom_labels
-    result.duplicate_atom_labels = duplicate_atom_labels
-    result.n_models = n_models
-    result.n_chains = sum(chain_ids.values())
-    result.n_alt_conf = sum(alt_conf_ids.values())
-    result.n_residues = n_residues
-    result.n_residue_groups = n_residue_groups
-    result.n_explicit_chain_breaks = n_explicit_chain_breaks
-    result.n_atoms = sum(element_charge_types.values())
-    result.chain_ids = chain_ids
-    result.alt_conf_ids = alt_conf_ids
-    result.resnames = resnames
-    result.resname_classes = resname_classes
-    result.element_charge_types = element_charge_types
-    result.n_alt_conf_none = n_alt_conf_none
-    result.n_alt_conf_pure = n_alt_conf_pure
-    result.n_alt_conf_proper = n_alt_conf_proper
-    result.n_alt_conf_improper = n_alt_conf_improper
-    result.alt_conf_proper = alt_conf_proper
-    result.alt_conf_improper = alt_conf_improper
-    result.consecutive_residue_groups_with_same_resid \
-         = consecutive_residue_groups_with_same_resid
-    result.n_chains_with_mix_of_proper_and_improper_alt_conf \
-         = n_chains_with_mix_of_proper_and_improper_alt_conf
+    self.get_overall_counts(result)
     return result
 
   def show(self,
