@@ -386,6 +386,15 @@ namespace {
     return std::string(result, 15U);
   }
 
+  small_str<15>
+  atom::pdb_label_columns_small_str() const
+  {
+    small_str<15> result;
+    atom_label_columns_formatter().format(result.elems, *this);
+    result.elems[15] = '\0';
+    return result;
+  }
+
   std::string
   atom::pdb_element_charge_columns() const
   {
