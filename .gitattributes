@@ -56,6 +56,7 @@ iotbx/include/iotbx/pdb/hierarchy_v2.h svneol=native#text/plain
 iotbx/include/iotbx/pdb/hierarchy_v2_ext.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/input.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/namespace.h svneol=native#text/plain
+iotbx/include/iotbx/pdb/overall_counts.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/rna_dna_atom_names.h -text
 iotbx/include/iotbx/pdb/rna_dna_atom_names_bpl.cpp -text
 iotbx/include/iotbx/pdb/tst_hierarchy_v2.py svneol=native#text/x-python
