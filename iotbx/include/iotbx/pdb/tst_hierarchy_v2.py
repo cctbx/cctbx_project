@@ -2960,7 +2960,7 @@ def conformers_as_str(conformers):
         show_string(rd.resseq), \
         show_string(rd.icode), \
         int(rd.link_to_previous), \
-        int(rd.is_pure_primary)
+        int(rd.is_pure_main_conf)
       for atom in rd.atoms():
         print >> s, "    atom:", show_string(atom.name)
   return s.getvalue()

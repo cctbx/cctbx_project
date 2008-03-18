@@ -654,9 +654,9 @@ namespace {
     }
 
     static bool
-    get_is_pure_primary(w_t const& self)
+    get_is_pure_main_conf(w_t const& self)
     {
-      return self.data->is_pure_primary;
+      return self.data->is_pure_main_conf;
     }
 
     static
@@ -675,7 +675,7 @@ namespace {
         .add_property("resseq", make_function(get_resseq))
         .add_property("icode", make_function(get_icode))
         .add_property("link_to_previous", make_function(get_link_to_previous))
-        .add_property("is_pure_primary", make_function(get_is_pure_primary))
+        .add_property("is_pure_main_conf",make_function(get_is_pure_main_conf))
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<residue, conformer>::wrapper)
         .def("atoms", get_atoms)

@@ -916,12 +916,12 @@ namespace {
     const char* resseq,
     const char* icode,
     bool link_to_previous,
-    bool is_pure_primary,
+    bool is_pure_main_conf,
     std::vector<atom> const& atoms)
   :
     data(new residue_data(
       parent.data,
-      resname, resseq, icode, link_to_previous, is_pure_primary,
+      resname, resseq, icode, link_to_previous, is_pure_main_conf,
       atoms))
   {}
 
@@ -931,12 +931,12 @@ namespace {
     const char* resseq,
     const char* icode,
     bool link_to_previous,
-    bool is_pure_primary,
+    bool is_pure_main_conf,
     std::vector<atom> const& atoms)
   {
     data->residues.push_back(residue(
       *this,
-      resname, resseq, icode, link_to_previous, is_pure_primary,
+      resname, resseq, icode, link_to_previous, is_pure_main_conf,
       atoms));
   }
 
@@ -1032,8 +1032,8 @@ namespace {
             rg.data->resseq.elems,
             rg.data->icode.elems,
             rg.data->link_to_previous,
-            /* is_pure_primary */ (   resnames_with_altloc.find(resname)
-                                   == resnames_with_altloc.end()),
+            /* is_pure_main_conf */ (   resnames_with_altloc.find(resname)
+                                     == resnames_with_altloc.end()),
             rai->second);
         }
       }
