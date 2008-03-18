@@ -6,6 +6,7 @@ from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
 from libtbx.utils import Sorry, format_exception, import_python_object
 from libtbx.itertbx import count
+from libtbx import Auto
 from cStringIO import StringIO
 import tokenize as python_tokenize
 import math
@@ -42,6 +43,11 @@ def is_plain_none(words):
           and words[0].quote_token is None
           and words[0].value.lower() == "none")
 
+def is_plain_auto(words):
+  return (len(words) == 1
+          and words[0].quote_token is None
+          and words[0].value.lower() == "auto")
+
 class words_converters(object):
 
   phil_type = "words"
@@ -50,22 +56,28 @@ class words_converters(object):
 
   def from_words(self, words, master):
     if (is_plain_none(words=words)): return None
+    if (is_plain_auto(words=words)): return Auto
     return words
 
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
     for word in python_object:
       assert isinstance(word, tokenizer.word)
     return python_object
 
 def strings_from_words(words):
   if (is_plain_none(words=words)): return None
+  if (is_plain_auto(words=words)): return Auto
   return [word.value for word in words]
 
 def strings_as_words(python_object):
   if (python_object is None):
     return [tokenizer.word(value="None")]
+  if (python_object is Auto):
+    return [tokenizer.word(value="Auto")]
   words = []
   for value in python_object:
     if (is_standard_identifier(value)):
@@ -88,6 +100,7 @@ class strings_converters(object):
 
 def str_from_words(words):
   if (is_plain_none(words=words)): return None
+  if (is_plain_auto(words=words)): return Auto
   return " ".join([word.value for word in words])
 
 class str_converters(object):
@@ -102,6 +115,8 @@ class str_converters(object):
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=python_object, quote_token='"')]
 
 class path_converters(str_converters):
@@ -119,6 +134,7 @@ class key_converters(str_converters):
 def bool_from_words(words, path):
   value_string = str_from_words(words)
   if (value_string is None): return None
+  if (value_string is Auto): return Auto
   value_lower = value_string.lower()
   if (value_lower in ["false", "no", "off", "0"]): return False
   if (value_lower in ["true", "yes", "on", "1"]): return True
@@ -139,6 +155,8 @@ class bool_converters(object):
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
     if (python_object):
       return [tokenizer.word(value="True")]
     else:
@@ -147,6 +165,7 @@ class bool_converters(object):
 def number_from_words(words, path):
   value_string = str_from_words(words)
   if (value_string is None): return None
+  if (value_string is Auto): return Auto
   if (value_string.lower() in ["true", "false"]):
     raise RuntimeError(
       'Error interpreting "%s" as a numeric expression%s' % (
@@ -160,7 +179,7 @@ def number_from_words(words, path):
 
 def int_from_words(words, path):
   result = number_from_words(words=words, path=path)
-  if (result is not None):
+  if (result is not None and result is not Auto):
     if (isinstance(result, float)
         and round(result) == result):
       result = int(result)
@@ -182,11 +201,13 @@ class int_converters(object):
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=str(python_object))]
 
 def float_from_words(words, path):
   result = number_from_words(words=words, path=path)
-  if (result is not None):
+  if (result is not None and result is not Auto):
     if (isinstance(result, int)):
       result = float(result)
     elif (not isinstance(result, float)):
@@ -207,6 +228,8 @@ class float_converters(object):
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value="%.10g" % python_object)]
 
 class choice_converters(object):
@@ -221,7 +244,9 @@ class choice_converters(object):
     return self.phil_type
 
   def from_words(self, words, master):
-    if (self.multi):
+    if (is_plain_auto(words=words)):
+      result = Auto
+    elif (self.multi):
       result = []
       for word in words:
         if (word.value.startswith("*")):
@@ -251,6 +276,8 @@ class choice_converters(object):
     return result
 
   def as_words(self, python_object, master):
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
     assert not self.multi or python_object is not None
     if (self.multi):
       use_flags = dict([(value, False) for value in python_object])
@@ -298,6 +325,10 @@ class choice_converters(object):
     return words
 
   def fetch(self, source_words, master):
+    assert not is_plain_none(words=master.words)
+    assert not is_plain_auto(words=master.words)
+    if (is_plain_auto(words=source_words)):
+      return master.customized_copy(words=[tokenizer.word(value="Auto")])
     flags = {}
     for word in master.words:
       if (word.value.startswith("*")): value = word.value[1:]
@@ -411,6 +442,7 @@ def definition_converters_from_words(
       converter_registry,
       converter_cache):
   if (is_plain_none(words=words)): return None
+  if (is_plain_auto(words=words)): return Auto
   call_expression_raw = str_from_words(words).strip()
   try:
     call_expression = normalize_call_expression(expression=call_expression_raw)
@@ -800,6 +832,7 @@ class scope_extract_call_proxy_object(object):
 
 def scope_extract_call_proxy(full_path, words, cache):
   if (is_plain_none(words=words)): return None
+  if (is_plain_auto(words=words)): return Auto
   call_expression_raw = str_from_words(words).strip()
   try:
     call_expression = normalize_call_expression(expression=call_expression_raw)
@@ -1296,6 +1329,8 @@ class scope(object):
         multiple_scopes_done[object.name] = False
       if (python_object is None):
         result.append(object.format(None))
+      elif (python_object is Auto):
+        result.append(object.format(Auto))
       else:
         if (isinstance(python_object, scope_extract)):
           python_object = [python_object]

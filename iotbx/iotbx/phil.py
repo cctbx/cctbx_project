@@ -2,6 +2,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 import libtbx.phil
 from libtbx.phil import tokenizer
+from libtbx import Auto
 
 class unit_cell_converters(object):
 
@@ -12,11 +13,14 @@ class unit_cell_converters(object):
   def from_words(self, words, master):
     s = libtbx.phil.str_from_words(words=words)
     if (s is None): return None
+    if (s is Auto): return Auto
     return uctbx.unit_cell(s)
 
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value="%.10g" % v)
       for v in python_object.parameters()]
 
@@ -29,11 +33,14 @@ class space_group_converters(object):
   def from_words(self, words, master):
     symbol = libtbx.phil.str_from_words(words)
     if (symbol is None): return None
+    if (symbol is Auto): return Auto
     return sgtbx.space_group_info(symbol=symbol)
 
   def as_words(self, python_object, master):
     if (python_object is None):
       return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=str(python_object), quote_token='"')]
 
 default_converter_registry = libtbx.phil.extended_converter_registry(
