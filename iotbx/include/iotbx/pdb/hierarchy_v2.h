@@ -51,7 +51,7 @@ Convenience objects:
     resseq
     icode
     link_to_previous
-    is_pure_primary
+    is_pure_main_conf
     atoms
 </pre>
 A residue object is NOT a parent of the atoms.
@@ -313,7 +313,7 @@ namespace hierarchy_v2 {
       str4 resseq;
       str1 icode;
       bool link_to_previous;
-      bool is_pure_primary;
+      bool is_pure_main_conf;
     protected:
       std::vector<atom> atoms;
 
@@ -324,7 +324,7 @@ namespace hierarchy_v2 {
         const char* resseq_,
         const char* const& icode_,
         bool link_to_previous_,
-        bool is_pure_primary_,
+        bool is_pure_main_conf_,
         std::vector<atom> const& atoms_);
   };
 
@@ -1074,7 +1074,7 @@ namespace hierarchy_v2 {
         const char* resseq,
         const char* icode,
         bool link_to_previous,
-        bool is_pure_primary,
+        bool is_pure_main_conf,
         std::vector<atom> const& atoms);
 
     public:
@@ -1116,7 +1116,7 @@ namespace hierarchy_v2 {
         const char* resseq,
         const char* icode,
         bool link_to_previous,
-        bool is_pure_primary,
+        bool is_pure_main_conf,
         std::vector<atom> const& atoms);
 
     public:
@@ -1343,7 +1343,7 @@ namespace hierarchy_v2 {
     const char* resseq_,
     const char* const& icode_,
     bool link_to_previous_,
-    bool is_pure_primary_,
+    bool is_pure_main_conf_,
     std::vector<atom> const& atoms_)
   :
     parent(parent_),
@@ -1351,7 +1351,7 @@ namespace hierarchy_v2 {
     resseq(resseq_),
     icode(icode_),
     link_to_previous(link_to_previous_),
-    is_pure_primary(is_pure_primary_),
+    is_pure_main_conf(is_pure_main_conf_),
     atoms(atoms_.begin(), atoms_.end())
   {}
 
