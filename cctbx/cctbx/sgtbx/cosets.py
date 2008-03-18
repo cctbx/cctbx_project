@@ -5,36 +5,50 @@ import sys
 class left_decomposition(object):
 
   def __init__(self, g, h):
-    self.h_name = str( sgtbx.space_group_info( group = h ) )
-    self.g_name = str( sgtbx.space_group_info( group = g ) )
-    g = [s for s in g] # for speed, convert to plain Python list
-    h = [s for s in h]
-    assert len(g) % len(h) == 0
-    assert h[0].is_unit_mx()
-    self.partition_indices = [-1] * len(g)
-    self.partitions = []
-    for i,gi in enumerate(g):
-      if (self.partition_indices[i] != -1): continue
-      self.partition_indices[i] = len(self.partitions)
-      partition = [gi]
-      for hj in h[1:]:
-        gihj = gi.multiply(hj)
-        for k in xrange(i+1,len(g)):
-          if (self.partition_indices[k] != -1): continue
-          gk = g[k]
-          if (gk.r().num() == gihj.r().num()):
-            self.partition_indices[k] = len(self.partitions)
-            partition.append(gk)
-            break
-        else:
+    if self.is_subgroup(g,h):
+      self.h_name = str( sgtbx.space_group_info( group = h ) )
+      self.g_name = str( sgtbx.space_group_info( group = g ) )
+      g = [s for s in g] # for speed, convert to plain Python list
+      h = [s for s in h]
+      assert len(g) % len(h) == 0
+      assert h[0].is_unit_mx()
+      self.partition_indices = [-1] * len(g)
+      self.partitions = []
+      for i,gi in enumerate(g):
+        if (self.partition_indices[i] != -1): continue
+        self.partition_indices[i] = len(self.partitions)
+        partition = [gi]
+        for hj in h[1:]:
+          gihj = gi.multiply(hj)
+          for k in xrange(i+1,len(g)):
+            if (self.partition_indices[k] != -1): continue
+            gk = g[k]
+            if (gk.r().num() == gihj.r().num()):
+              self.partition_indices[k] = len(self.partitions)
+              partition.append(gk)
+              break
+          else:
+            raise RuntimeError("h is not a subgroup of g")
+        if (len(partition) != len(h)):
           raise RuntimeError("h is not a subgroup of g")
-      if (len(partition) != len(h)):
+        self.partitions.append(partition)
+      if (len(self.partitions) * len(h) != len(g)):
         raise RuntimeError("h is not a subgroup of g")
-      self.partitions.append(partition)
-    if (len(self.partitions) * len(h) != len(g)):
+      #sort cosets by operator order
+      self.sort_cosets()
+    else:
       raise RuntimeError("h is not a subgroup of g")
-    #sort cosets by operator order
-    self.sort_cosets()
+
+  def is_subgroup(self, g, h):
+    tst_group = str( sgtbx.space_group_info(group=g) )
+    tst_group = sgtbx.space_group_info( tst_group ).group()
+    h = [s for s in h]
+    for s in h:
+      tst_group.expand_smx( s )
+    if str(sgtbx.space_group_info(group=tst_group)) == str( sgtbx.space_group_info(group=g) ):
+      return True
+    else:
+      return False
 
   def sort_cosets(self):
     new_partitions = []
@@ -54,18 +68,24 @@ class left_decomposition(object):
       out = sys.stdout
     count=0
     print >> out, "Left cosets of :"
-    print >> out, "  subgroup  H: %s "%( self.h_name )
-    print >> out, "  and group G: %s "%( self.g_name )
+    print >> out, "  subgroup  H: %s"%( self.h_name )
+    print >> out, "  and group G: %s"%( self.g_name )
     for part in self.partitions:
-      extra_txt=" (all operators from H)"
+      extra_txt="   (all operators from H)"
+
+      tmp_group = sgtbx.space_group_info( self.h_name ).group()
+      tmp_group.expand_smx( part[0] )
+      tmp_group = sgtbx.space_group_info( group=tmp_group)
+
+
       if count>0:
-        extra_txt = ""
+        extra_txt = "   (H+coset[%i] = %s)"%(count,tmp_group)
       print >> out
-      print >> out, "  Coset number : %5s  %s"%(count, extra_txt)
+      print >> out, "  Coset number : %5s%s"%(count, extra_txt)
       print >> out
       count += 1
       for item in part:
-        print "%20s  %20s   Rotation: %4s ; direction: %10s ; screw/glide: %10s "%(
+        print >> out, "%20s  %20s   Rotation: %4s ; direction: %10s ; screw/glide: %10s"%(
           item,
           item.r().as_hkl(),
           item.r().info().type() ,
