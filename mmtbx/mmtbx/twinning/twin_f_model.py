@@ -383,7 +383,7 @@ class de_bulk_solvent_scaler(object):
      cr=0.7,
      n_cross=2,
      eps=1e-8,
-     show_progress=False, #True,
+     show_progress=False,
      max_iter = 500,
      insert_solution_vector = flex.double(solution_vector )
     )
@@ -646,7 +646,8 @@ class bulk_solvent_scaling_manager(object):
 
     print >> self.out
     print >> self.out, "#--------------------------------------------#"
-    print >> self.out, "| score        :     %8.6e            |"%(score)
+    if score is not None:
+      print >> self.out, "| score        :     %8.6e            |"%(score)
     print >> self.out, "| k_overall    :     %8.6e            |"%(
       scaling_params.k_overall)
     print >> self.out, "| b_cart(ii)   : %8s %8s %8s  |"%("%5.2f"%(b_cart[0]),
@@ -662,6 +663,9 @@ class bulk_solvent_scaling_manager(object):
       twin_fractions.twin_fraction)
     print >> self.out, "#--------------------------------------------#"
     print >> self.out
+
+  def print_best(self):
+    self.print_it( self.best_score_until_now, self.best_scaling_parameters, self.best_twin_fraction)
 
 
   def initial_scale_and_twin_fraction(self):
@@ -1276,6 +1280,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     if de_search:
       self.did_search += 1
       self.bss.de_search()
+
       self.twin_fraction_object = self.bss.best_twin_fraction
       self.scaling_parameters = self.bss.best_scaling_parameters
       refine = True
@@ -2119,14 +2124,14 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        w1       = None,
                        w2       = None
                        ):
-    assert map_type in ("Fo-Fc",
-                        "2mFo-DFc",
-                        "mFo-DFc",
+    assert map_type in ("Fo-Fc", "Fobs-Fmodel",
+                        "2mFo-DFc", "2mFobs-DFmodel",
+                        "mFo-DFc", "mFobs-DFmodel",
                         "gradient",
                         "m_gradient"
                         )
     # this is to modify default behavoir of phenix.refine
-    if map_type == "mFo-DFc":
+    if (map_type == "mFo-DFc") or (map_type == "mFobs-DFmodel") :
       if self.map_types.fofc == "gradient":
         map_type = "gradient"
       if self.map_types.fofc == "m_gradient":
@@ -2134,7 +2139,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
       if self.map_types.fofc == "m_dtfo_d_fc":
         map_type = "m_dtfo_d_fc"
 
-    if map_type == "2mFo-DFc":
+    if (map_type == "2mFo-DFc") or (map_type=="2mFobs-DFmodel") :
       if self.map_types.twofofc == "two_m_dtfo_d_fc":
         map_type = "two_m_dtfo_d_fc"
       if  self.map_types.twofofc == "two_dtfo_fc":
@@ -2150,7 +2155,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
     if map_type not in ["gradient","m_gradient"]:
       result = None
-      if map_type == "Fobs-Fmodel":
+      if map_type == "Fo-Fc":
         if ([k,n]).count(None) > 0:
           raise Sorry("Map coefficient multipliers (k and n) must be provided to generate detwinned maps")
         result = self._map_coeff( f_obs         = dt_f_obs,
@@ -2216,17 +2221,16 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
 
   def electron_density_map(self,
-                           map_type          = "Fobs-Fmodel",
+                           map_type          = "Fo-Fc",
                            k                 = 1,
                            n                 = 1,
                            w1                = None,
                            w2                = None,
                            resolution_factor = 1/3.,
                            symmetry_flags = None):
-
-    assert map_type in ("Fobs-Fmodel",
-                        "2mFobs-DFmodel",
-                        "mFobs-DFmodel",
+    assert map_type in ("Fo-Fc", "Fobs-Fmodel"
+                        "2mFo-DFc", "2mFobs-DFmodel",
+                        "mFo-DFc", "mFobs-DFmodel",
                         "gradient",
                         "m_gradient")
 
