@@ -1,6 +1,12 @@
 import libtbx.forward_compatibility
 import sys, os
 
+class AutoType(object):
+
+  def __str__(self): return "Auto"
+
+Auto = AutoType()
+
 if (getattr(sys, "api_version", 0) >= 1013):
 
   class dict_with_default_0(dict):

@@ -2,6 +2,7 @@ from libtbx import phil
 import libtbx.phil.command_line
 from libtbx.utils import Sorry
 from libtbx.test_utils import Exception_expected, show_diff
+from libtbx import Auto
 from cStringIO import StringIO
 import copy
 import sys, os
@@ -4498,6 +4499,115 @@ a=None
       ' SyntaxError: invalid syntax (line 1) (input line 2)'
   else: raise Exception_expected
 
+def exercise_auto():
+  for nao in [None, Auto]:
+    na = str(nao)
+    master = phil.parse(input_string="""\
+abool=%(na)s
+  .type=bool
+aint=%(na)s
+  .type=int
+afloat=%(na)s
+  .type=float
+astr=%(na)s
+  .type=str
+achoice=a b
+  .type=choice
+achoicemand=*a b
+  .type=choice
+  .optional=False
+achoicemult=a b
+  .type=choice(multi=True)
+achoicemultmand=*a b
+  .type=choice(multi=True)
+  .optional=False
+apath=%(na)s
+  .type=path
+akey=%(na)s
+  .type=key
+anone=%(na)s
+  .type=None
+astrings=%(na)s
+  .type=strings
+awords=%(na)s
+  .type=words
+""" % vars())
+    for i in xrange(3):
+      params = master.extract()
+      assert params.abool is nao
+      assert params.aint is nao
+      assert params.afloat is nao
+      assert params.astr is nao
+      assert params.achoice is None
+      assert params.achoicemand == "a"
+      assert params.achoicemult == []
+      assert params.achoicemultmand == ["a"]
+      assert params.apath is nao
+      assert params.akey is nao
+      assert params.anone is nao
+      assert params.astrings is nao
+      assert params.awords is nao
+      master = master.fetch()
+    assert not show_diff(master.format(params).as_str(), """\
+abool = %(na)s
+aint = %(na)s
+afloat = %(na)s
+astr = %(na)s
+achoice = a b
+achoicemand = *a b
+achoicemult = a b
+achoicemultmand = *a b
+apath = %(na)s
+akey = %(na)s
+anone = %(na)s
+astrings = %(na)s
+awords = %(na)s
+""" % vars())
+    custom = phil.parse(input_string="""\
+abool=Auto
+aint=Auto
+afloat=Auto
+astr=Auto
+achoice=Auto
+achoicemand=Auto
+achoicemult=Auto
+achoicemultmand=Auto
+apath=Auto
+akey=Auto
+anone=Auto
+astrings=Auto
+awords=Auto
+""")
+    params = master.fetch(source=custom).extract()
+    assert params.abool is Auto
+    assert params.aint is Auto
+    assert params.afloat is Auto
+    assert params.astr is Auto
+    assert params.achoice is Auto
+    assert params.achoicemand is Auto
+    assert params.achoicemult is Auto
+    assert params.achoicemultmand is Auto
+    assert params.apath is Auto
+    assert params.akey is Auto
+    assert params.anone is Auto
+    assert params.astrings is Auto
+    assert params.awords is Auto
+    assert not show_diff(master.format(params).as_str(), """\
+abool = Auto
+aint = Auto
+afloat = Auto
+astr = Auto
+achoice = Auto
+achoicemand = Auto
+achoicemult = Auto
+achoicemultmand = Auto
+apath = Auto
+akey = Auto
+anone = Auto
+astrings = Auto
+awords = Auto
+""")
+
 def exercise_command_line():
   master_phil = phil.parse(input_string="""\
 foo {
@@ -4810,6 +4920,7 @@ def exercise():
   exercise_type_constructors()
   exercise_choice()
   exercise_scope_call()
+  exercise_auto()
   exercise_command_line()
   exercise_choice_multi_plus_support()
   print "OK"

@@ -1,27 +1,47 @@
 import iotbx.phil
 from libtbx.test_utils import show_diff
-from cStringIO import StringIO
+from libtbx import Auto
 
 def exercise():
-  parameters = iotbx.phil.parse(input_string="""\
+  master = iotbx.phil.parse(input_string="""\
 u=10,12 13 80,90 100
   .type=unit_cell
 s=19
   .type=space_group
-U=none
+U=None
   .type=unit_cell
-S=none
+S=None
+  .type=space_group
+ua=Auto
+  .type=unit_cell
+sa=Auto
   .type=space_group
 """)
-  out = StringIO()
-  extracted = parameters.fetch(source=parameters).extract()
-  parameters.format(extracted).show(out=out)
-  assert out.getvalue() == """\
+  assert not show_diff(master.format(master.extract()).as_str(), """\
 u = 10 12 13 80 90 100
 s = "P 21 21 21"
 U = None
 S = None
-"""
+ua = Auto
+sa = Auto
+""")
+  custom = iotbx.phil.parse(input_string="""\
+ua = None
+s = Auto
+U = 1,2,3
+u = Auto
+S = 33
+sa = None
+""")
+  assert not show_diff(
+    master.fetch(source=custom).extract_format().as_str(), """\
+u = Auto
+s = Auto
+U = 1 2 3 90 90 90
+S = "P n a 21"
+ua = None
+sa = None
+""")
   #
   master = iotbx.phil.parse(input_string="""\
 s=None
