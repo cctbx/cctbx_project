@@ -29,6 +29,7 @@ cctbx/cctbx/regression/structure_start.pickle -text
 cctbx/cctbx/regression/tst_adp_constraints_cartesian.py -text
 cctbx/cctbx/regression/tst_weighting_schemes.py -text
 cctbx/cctbx/regression/tst_xray_minimization_failure.py -text
+cctbx/cctbx/sgtbx/show_cosets.py -text
 cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
