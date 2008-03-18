@@ -56,6 +56,8 @@ twin_utils{
       .type=str
       max_delta=3.0
       .type=float
+      detwin_mode=*algebraic proportional
+      .type=choice
     }
   }
   output{
@@ -231,20 +233,20 @@ def run(args, command_name="phenix.twin_map_utils"):
                                                  parameters = tmp_params, log=log )
 
     miller_array = tmp_object.extract_data()
-    free_flags = tmp_object.extract_flags(data = miller_array)
+    if miller_array.is_xray_intensity_array():
+      miller_array = miller_array.f_sq_as_f()
+    assert miller_array.is_xray_amplitude_array()
 
+     
+    free_flags = tmp_object.extract_flags(data = miller_array)
     print >> log
     print >> log, "Attempting to extract Free R flags"
 
     free_flags = free_flags.customized_copy( data = flex.bool( free_flags.data()==1 ) )
-
     if free_flags is None:
       free_flags = miller_array.generate_r_free_flags(use_lattice_symmetry=True)
-    if free_flags.anomalous_flag():
-      free_flags = free_flags.average_bijvoet_mates()
-      merged_anomalous=True
 
-
+    assert miller_array.observation_type() is not None
 
     print >> log
     print >> log, "Summary info of observed data"
@@ -293,7 +295,6 @@ def run(args, command_name="phenix.twin_map_utils"):
       tmp_law = sgtbx.rt_mx( params.twin_utils.parameters.twinning.twin_law )
       tmp_law = twin_analyses.twin_law(tmp_law,None,None,None,None,None)
       twin_laws.operators = [ tmp_law ]
-
     for twin_law in twin_laws.operators:
       operator_count += 1
       operator_hkl = sgtbx.change_of_basis_op( twin_law.operator ).as_hkl()
@@ -302,6 +303,7 @@ def run(args, command_name="phenix.twin_map_utils"):
         free_array = free_flags,
         xray_structure=model,
         twin_law = twin_law.operator,
+        detwin_mode = params.twin_utils.parameters.twinning.detwin_mode,
         out=log)
 
 
