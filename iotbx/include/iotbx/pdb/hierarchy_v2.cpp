@@ -378,6 +378,53 @@ namespace {
     }
   }
 
+  void
+  atom::format_atom_record_serial_label_columns(
+    char* result,
+    atom_label_columns_formatter* label_formatter) const
+  {
+    char blank = ' ';
+    data->serial.copy_right_justified(result+6, 5U, blank);
+    result[11] = blank;
+    if (label_formatter == 0) {
+      atom_label_columns_formatter().format(result+12, *this);
+    }
+    else {
+      label_formatter->name = data->name.elems;
+      label_formatter->format(result+12);
+    }
+  }
+
+  unsigned
+  atom::format_atom_record_segid_element_charge_columns(
+    char* result,
+    unsigned blanks_start_at) const
+  {
+    char blank = ' ';
+    data->segid.copy_left_justified(result+72, 4U, blank);
+    data->element.copy_right_justified(result+76, 2U, blank);
+    data->charge.copy_left_justified(result+78, 2U, blank);
+    for(unsigned i=79;i!=71;i--) {
+      if (result[i] != blank) {
+        copy_left_justified(
+          result+blanks_start_at, 72U-blanks_start_at, 0, 0U, blank);
+        result[i+1] = '\0';
+        return i+1;
+      }
+    }
+    result[blanks_start_at] = '\0';
+    return blanks_start_at;
+  }
+
+  void
+  atom::format_pdb_element_charge_columns(
+    char* result) const
+  {
+    char blank = ' ';
+    data->element.copy_right_justified(result, 2U, blank);
+    data->charge.copy_left_justified(result+2, 2U, blank);
+  }
+
   std::string
   atom::pdb_label_columns() const
   {
@@ -410,17 +457,8 @@ namespace {
     bool cut_after_label_columns) const
   {
     char blank = ' ';
-    atom_data const& d = *data;
-    std::memcpy(result, (d.hetero ? "HETATM" : "ATOM  "), 6U);
-    d.serial.copy_right_justified(result+6, 5U, blank);
-    result[11] = blank;
-    if (label_formatter == 0) {
-      atom_label_columns_formatter().format(result+12, *this);
-    }
-    else {
-      label_formatter->name = d.name.elems;
-      label_formatter->format(result+12);
-    }
+    std::memcpy(result, (data->hetero ? "HETATM" : "ATOM  "), 6U);
+    format_atom_record_serial_label_columns(result, label_formatter);
     if (cut_after_label_columns) {
       result[27U] = '\0';
       return 27U;
@@ -428,7 +466,7 @@ namespace {
     copy_left_justified(result+27, 3U, 0, 0U, blank);
     char *r = result + 30;
     for(unsigned i=0;i<3;i++) {
-      std::sprintf(r, "%8.3f", d.xyz[i]);
+      std::sprintf(r, "%8.3f", data->xyz[i]);
       r += 8;
       if (*r != '\0') {
         throw std::runtime_error(
@@ -436,40 +474,105 @@ namespace {
           " does not fit into F8.3 format.");
       }
     }
-    std::sprintf(r, "%6.2f", d.occ);
+    std::sprintf(r, "%6.2f", data->occ);
     r += 6;
     if (*r != '\0') {
       throw std::runtime_error(
         std::string("atom ") + "occupancy factor"
         " does not fit into F6.2 format.");
     }
-    std::sprintf(r, "%6.2f", d.b);
+    std::sprintf(r, "%6.2f", data->b);
     r += 6;
     if (*r != '\0') {
       throw std::runtime_error(
         std::string("atom ") + "B-factor"
         " does not fit into F6.2 format.");
     }
-    copy_left_justified(r, 6U, 0, 0U, blank);
-    d.segid.copy_left_justified(result+72, 4U, blank);
-    format_pdb_element_charge_columns(result+76);
-    for(unsigned i=79;i!=71;i--) {
-      if (result[i] != blank) {
-        result[i+1] = '\0';
-        return i+1;
-      }
-    }
-    result[66] = '\0';
-    return 66U;
+    return format_atom_record_segid_element_charge_columns(result, 66U);
   }
 
-  void
-  atom::format_pdb_element_charge_columns(
-    char* result) const
+  unsigned
+  atom::format_sigatm_record(
+    char* result,
+    atom_label_columns_formatter* label_formatter) const
   {
     char blank = ' ';
-    data->element.copy_right_justified(result, 2U, blank);
-    data->charge.copy_left_justified(result+2, 2U, blank);
+    std::memcpy(result, "SIGATM", 6U);
+    format_atom_record_serial_label_columns(result, label_formatter);
+    copy_left_justified(result+27, 3U, 0, 0U, blank);
+    char *r = result + 30;
+    for(unsigned i=0;i<3;i++) {
+      std::sprintf(r, "%8.3f", data->sigxyz[i]);
+      r += 8;
+      if (*r != '\0') {
+        throw std::runtime_error(
+          std::string("atom sigma ") + "XYZ"[i] + " coordinate value"
+          " does not fit into F8.3 format.");
+      }
+    }
+    std::sprintf(r, "%6.2f", data->sigocc);
+    r += 6;
+    if (*r != '\0') {
+      throw std::runtime_error(
+        std::string("atom sigma ") + "occupancy factor"
+        " does not fit into F6.2 format.");
+    }
+    std::sprintf(r, "%6.2f", data->sigb);
+    r += 6;
+    if (*r != '\0') {
+      throw std::runtime_error(
+        std::string("atom sigma ") + "B-factor"
+        " does not fit into F6.2 format.");
+    }
+    return format_atom_record_segid_element_charge_columns(result, 66U);
+  }
+
+  unsigned
+  atom::format_anisou_record(
+    char* result,
+    atom_label_columns_formatter* label_formatter) const
+  {
+    char blank = ' ';
+    std::memcpy(result, "ANISOU", 6U);
+    format_atom_record_serial_label_columns(result, label_formatter);
+    result[27] = blank;
+    char *r = result + 28;
+    for(unsigned i=0;i<6;i++) {
+      std::sprintf(r, "%7.0f", data->uij[i]*10000.);
+      r += 7;
+      if (*r != '\0') {
+        static const char* uij_labels[] = {
+          "U11", "U22", "U33", "U12", "U13", "U23"};
+        throw std::runtime_error(
+          std::string("atom ") + uij_labels[i] + " value * 10000"
+          " does not fit into F7.0 format.");
+      }
+    }
+    return format_atom_record_segid_element_charge_columns(result, 70U);
+  }
+
+  unsigned
+  atom::format_siguij_record(
+    char* result,
+    atom_label_columns_formatter* label_formatter) const
+  {
+    char blank = ' ';
+    std::memcpy(result, "SIGUIJ", 6U);
+    format_atom_record_serial_label_columns(result, label_formatter);
+    result[27] = blank;
+    char *r = result + 28;
+    for(unsigned i=0;i<6;i++) {
+      std::sprintf(r, "%7.0f", data->siguij[i]*10000.);
+      r += 7;
+      if (*r != '\0') {
+        static const char* uij_labels[] = {
+          "U11", "U22", "U33", "U12", "U13", "U23"};
+        throw std::runtime_error(
+          std::string("atom sigma ") + uij_labels[i] + " value * 10000"
+          " does not fit into F7.0 format.");
+      }
+    }
+    return format_atom_record_segid_element_charge_columns(result, 70U);
   }
 
   bool

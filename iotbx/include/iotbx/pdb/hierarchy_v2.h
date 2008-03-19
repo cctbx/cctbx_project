@@ -534,6 +534,33 @@ namespace hierarchy_v2 {
         return !data->siguij.const_ref().all_eq(-1);
       }
 
+      //! Not available in Python.
+      /*! result must point to an array of size 27 (or greater).
+          The first 6 characters are not modified.
+          On return, result is NOT null-terminated.
+       */
+      void
+      format_atom_record_serial_label_columns(
+        char* result,
+        atom_label_columns_formatter* label_formatter=0) const;
+
+      //! Not available in Python.
+      /*! result must point to an array of size 81 (or greater).
+          On return, result is null-terminated.
+       */
+      unsigned
+      format_atom_record_segid_element_charge_columns(
+        char* result,
+        unsigned blanks_start_at) const;
+
+      //! Not available in Python.
+      /*! result must point to an array of size 4 (or greater).
+          On return, result is NOT null-terminated.
+       */
+      void
+      format_pdb_element_charge_columns(
+        char* result) const;
+
       std::string
       pdb_label_columns() const;
 
@@ -555,12 +582,31 @@ namespace hierarchy_v2 {
         bool cut_after_label_columns=false) const;
 
       //! Not available in Python.
-      /*! result must point to an array of size 4 (or greater).
-          On return, result is NOT null-terminated.
+      /*! result must point to an array of size 81 (or greater).
+          On return, result is null-terminated.
        */
-      void
-      format_pdb_element_charge_columns(
-        char* result) const;
+      unsigned
+      format_sigatm_record(
+        char* result,
+        atom_label_columns_formatter* label_formatter) const;
+
+      //! Not available in Python.
+      /*! result must point to an array of size 81 (or greater).
+          On return, result is null-terminated.
+       */
+      unsigned
+      format_anisou_record(
+        char* result,
+        atom_label_columns_formatter* label_formatter=0) const;
+
+      //! Not available in Python.
+      /*! result must point to an array of size 81 (or greater).
+          On return, result is null-terminated.
+       */
+      unsigned
+      format_siguij_record(
+        char* result,
+        atom_label_columns_formatter* label_formatter=0) const;
 
       bool
       element_is_hydrogen() const;

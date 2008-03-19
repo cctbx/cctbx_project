@@ -748,53 +748,94 @@ def exercise_root():
   else: raise Exception_expected
 
 def exercise_format_atom_record():
+  a = (pdb.hierarchy_v2.atom()
+    .set_name(new_name="NaMe")
+    .set_serial(new_serial="B1234")
+    .set_xyz(new_xyz=(1.3,2.1,3.2))
+    .set_sigxyz(new_sigxyz=(.1,.2,.3))
+    .set_occ(new_occ=0.4)
+    .set_sigocc(new_sigocc=0.1)
+    .set_b(new_b=4.8)
+    .set_sigb(new_sigb=0.7)
+    .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
+    .set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)))
   for hetero,record_name in [(False, "ATOM  "), (True, "HETATM")]:
-    a = (pdb.hierarchy_v2.atom()
-      .set_name(new_name="NaMe")
-      .set_segid(new_segid="sEgI")
-      .set_element(new_element="El")
-      .set_charge(new_charge="cH")
-      .set_serial(new_serial="B1234")
-      .set_xyz(new_xyz=(1.3,2.1,3.2))
-      .set_sigxyz(new_sigxyz=(.1,.2,.3))
-      .set_occ(new_occ=0.4)
-      .set_sigocc(new_sigocc=0.1)
-      .set_b(new_b=4.8)
-      .set_sigb(new_sigb=0.7)
-      .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
-      .set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9))
-      .set_hetero(new_hetero=hetero))
-    s = a.format_atom_record()
-    assert not show_diff(s, """\
-%sB1234 NaMe                 1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
-      % record_name)
-    sc = a.format_atom_record(cut_after_label_columns=True)
-    assert not show_diff(sc, s[:27])
-    ag = pdb.hierarchy_v2.atom_group(altloc="x", resname="uvw")
-    ag.append_atom(atom=a)
-    s = a.format_atom_record()
-    assert not show_diff(s, """\
-%sB1234 NaMexuvw             1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
-      % record_name)
-    sc = a.format_atom_record(cut_after_label_columns=True)
-    assert not show_diff(sc, s[:27])
-    rg = pdb.hierarchy_v2.residue_group(resseq="pqrs", icode="t")
-    rg.append_atom_group(atom_group=ag)
-    s = a.format_atom_record()
-    assert not show_diff(s, """\
-%sB1234 NaMexuvw  pqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
-      % record_name)
-    sc = a.format_atom_record(cut_after_label_columns=True)
-    assert not show_diff(sc, s[:27])
-    for chain_id in ["", "g", "hi"]:
-      ch = pdb.hierarchy_v2.chain(id=chain_id)
-      ch.append_residue_group(residue_group=rg)
-      s = a.format_atom_record()
-      assert not show_diff(s, """\
-%sB1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      sEgIElcH"""
-      % (record_name, chain_id))
-      sc = a.format_atom_record(cut_after_label_columns=True)
-      assert not show_diff(sc, s[:27])
+    a.set_hetero(new_hetero=hetero)
+    for segid in ["", "    ", "s", "sEgI"]:
+      a.set_segid(new_segid=segid)
+      for element in ["", "  ", "e", "El"]:
+        a.set_element(new_element=element)
+        for charge in ["", "  ", "c", "cH"]:
+          a.set_charge(new_charge=charge)
+          segielch = "%-4s%2s%-2s" % (segid, element, charge)
+          s = a.format_atom_record()
+          assert not show_diff(s, ("""%s\
+B1234 NaMe                 1.300   2.100   3.200  0.40  4.80      \
+%s""" % (record_name, segielch)).rstrip())
+          sc = a.format_atom_record(cut_after_label_columns=True)
+          assert not show_diff(sc, s[:27])
+          assert not show_diff(a.format_sigatm_record(), ("""SIGATM\
+B1234 NaMe                 0.100   0.200   0.300  0.10  0.70      \
+%s""" % segielch).rstrip())
+          assert not show_diff(a.format_anisou_record(), ("""ANISOU\
+B1234 NaMe              13000  21000  32000  43000  27000  93000  \
+%s""" % segielch).rstrip())
+          assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+B1234 NaMe               1000   2000   3000   6000   1000   9000  \
+%s""" % segielch).rstrip())
+          ag = pdb.hierarchy_v2.atom_group(altloc="x", resname="uvw")
+          ag.append_atom(atom=a)
+          s = a.format_atom_record()
+          assert not show_diff(s, ("""%s\
+B1234 NaMexuvw             1.300   2.100   3.200  0.40  4.80      \
+%s""" % (record_name, segielch)).rstrip())
+          sc = a.format_atom_record(cut_after_label_columns=True)
+          assert not show_diff(sc, s[:27])
+          assert not show_diff(a.format_sigatm_record(), ("""SIGATM\
+B1234 NaMexuvw             0.100   0.200   0.300  0.10  0.70      \
+%s""" % segielch).rstrip())
+          assert not show_diff(a.format_anisou_record(), ("""ANISOU\
+B1234 NaMexuvw          13000  21000  32000  43000  27000  93000  \
+%s""" % segielch).rstrip())
+          assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+B1234 NaMexuvw           1000   2000   3000   6000   1000   9000  \
+%s""" % segielch).rstrip())
+          rg = pdb.hierarchy_v2.residue_group(resseq="pqrs", icode="t")
+          rg.append_atom_group(atom_group=ag)
+          s = a.format_atom_record()
+          assert not show_diff(s, ("""%s\
+B1234 NaMexuvw  pqrst      1.300   2.100   3.200  0.40  4.80      \
+%s""" % (record_name, segielch)).rstrip())
+          sc = a.format_atom_record(cut_after_label_columns=True)
+          assert not show_diff(sc, s[:27])
+          assert not show_diff(a.format_sigatm_record(), ("""SIGATM\
+B1234 NaMexuvw  pqrst      0.100   0.200   0.300  0.10  0.70      \
+%s""" % segielch).rstrip())
+          assert not show_diff(a.format_anisou_record(), ("""ANISOU\
+B1234 NaMexuvw  pqrst   13000  21000  32000  43000  27000  93000  \
+%s""" % segielch).rstrip())
+          assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+B1234 NaMexuvw  pqrst    1000   2000   3000   6000   1000   9000  \
+%s""" % segielch).rstrip())
+          for chain_id in ["", "g", "hi"]:
+            ch = pdb.hierarchy_v2.chain(id=chain_id)
+            ch.append_residue_group(residue_group=rg)
+            s = a.format_atom_record()
+            assert not show_diff(s, ("""%s\
+B1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      \
+%s""" % (record_name, chain_id, segielch)).rstrip())
+            sc = a.format_atom_record(cut_after_label_columns=True)
+            assert not show_diff(sc, s[:27])
+            assert not show_diff(a.format_sigatm_record(), ("""SIGATM\
+B1234 NaMexuvw%2spqrst      0.100   0.200   0.300  0.10  0.70      \
+%s""" % (chain_id, segielch)).rstrip())
+            assert not show_diff(a.format_anisou_record(), ("""ANISOU\
+B1234 NaMexuvw%2spqrst   13000  21000  32000  43000  27000  93000  \
+%s""" % (chain_id, segielch)).rstrip())
+            assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+B1234 NaMexuvw%2spqrst    1000   2000   3000   6000   1000   9000  \
+%s""" % (chain_id, segielch)).rstrip())
+          del ag, rg, ch
 
 def exercise_construct_hierarchy():
   def check(pdb_string,
