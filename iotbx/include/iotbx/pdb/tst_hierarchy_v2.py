@@ -521,7 +521,7 @@ def exercise_chain():
   #
   c = pdb.hierarchy_v2.chain(id="c")
   records = []
-  c.append_atom_records(pdb_records=records)
+  c.append_atom_record_groups(pdb_records=records)
   assert len(records) == 0
   rg = pdb.hierarchy_v2.residue_group(resseq="s", icode="j")
   c.append_residue_group(residue_group=rg)
@@ -529,7 +529,7 @@ def exercise_chain():
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy_v2.atom().set_name("n"))
   assert ag.only_atom().pdb_label_columns() == "n   a  r c   sj"
-  c.append_atom_records(pdb_records=records)
+  c.append_atom_record_groups(pdb_records=records)
   assert records == [
     "ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00"]
   rg = pdb.hierarchy_v2.residue_group(resseq="t", icode="k")
@@ -544,13 +544,85 @@ def exercise_chain():
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy_v2.atom().set_name("o"))
   records = []
-  c.append_atom_records(pdb_records=records)
+  c.append_atom_record_groups(pdb_records=records)
   assert not show_diff("\n".join(records)+"\n", """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 """)
+  #
+  atoms = c.atoms()
+  assert atoms.size() == 3
+  atoms[0].set_sigxyz((1,2,3)).set_sigocc(4).set_sigb(5)
+  atoms[1].set_uij((6,7,8,3,5,4))
+  atoms[2].set_siguij((.6,.7,.8,.3,.5,.4))
+  records = []
+  c.append_atom_record_groups(pdb_records=records)
+  assert len(records) == 4
+  assert not show_diff("\n".join(records), """\
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
+SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
+BREAK
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000""")
+  atoms[0].set_uij((6,3,8,2,9,1))
+  atoms[0].set_siguij((.6,.3,.8,.2,.9,.1))
+  atoms[0].set_charge("Cg")
+  records = []
+  c.append_atom_record_groups(pdb_records=records)
+  assert len(records) == 4
+  assert not show_diff("\n".join(records), """\
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
+BREAK
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000""")
+  records = []
+  c.append_atom_record_groups(pdb_records=records, atom_hetatm=False)
+  c.append_atom_record_groups(pdb_records=records, sigatm=False)
+  c.append_atom_record_groups(pdb_records=records, anisou=False)
+  c.append_atom_record_groups(pdb_records=records, siguij=False)
+  assert len(records) == 16
+  assert not show_diff("\n".join(records), """\
+SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
+BREAK
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
+BREAK
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+BREAK
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
+BREAK
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00""")
+  records = []
+  c.append_atom_record_groups(pdb_records=records,
+    atom_hetatm=False, sigatm=False, anisou=False, siguij=False)
+  assert records == ["", "", "BREAK", ""]
   #
   a = pdb.hierarchy_v2.atom()
   assert a.pdb_label_columns() == "               "

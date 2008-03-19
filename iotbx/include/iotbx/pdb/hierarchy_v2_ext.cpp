@@ -452,10 +452,20 @@ namespace {
     }
 
     static void
-    append_atom_records(
+    append_atom_record_groups(
       w_t const& self,
-      boost::python::list pdb_records)
+      boost::python::list pdb_records,
+      bool atom_hetatm=true,
+      bool sigatm=true,
+      bool anisou=true,
+      bool siguij=true)
     {
+      boost::python::ssize_t max_str_len = 0;
+      if (atom_hetatm) max_str_len += 81;
+      if (sigatm) max_str_len += 81;
+      if (anisou) max_str_len += 81;
+      if (siguij) max_str_len += 81;
+      if (max_str_len == 0) max_str_len = 1;
       atom_label_columns_formatter label_formatter;
       label_formatter.chain_id = self.data->id.c_str();
       unsigned n_rg = self.residue_groups_size();
@@ -475,11 +485,13 @@ namespace {
           va const& atoms = ag.atoms();
           va::const_iterator atoms_end = atoms.end();
           for(va::const_iterator atom=atoms.begin();atom!=atoms_end;atom++) {
-            boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
+            boost::python::handle<> str_hdl(PyString_FromStringAndSize(
+              0, max_str_len));
             PyObject* str_obj = str_hdl.get();
             char* str_begin = PyString_AS_STRING(str_obj);
-            unsigned str_len = atom->format_atom_record(
-              str_begin, &label_formatter);
+            unsigned str_len = atom->format_atom_record_group(
+              str_begin, &label_formatter,
+              atom_hetatm, sigatm, anisou, siguij);
             str_hdl.release();
             if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
               boost::python::throw_error_already_set();
@@ -489,6 +501,9 @@ namespace {
         }
       }
     }
+
+    BOOST_PYTHON_FUNCTION_OVERLOADS(
+      append_atom_record_groups_overloads, append_atom_record_groups, 2, 6)
 
     static void
     wrap()
@@ -516,7 +531,14 @@ namespace {
           find_pure_altloc_ranges_overloads((
             arg_("common_residue_name_class_only")=0)))
         .def("conformers", conformers)
-        .def("append_atom_records", append_atom_records, (arg_("pdb_records")))
+        .def("append_atom_record_groups", append_atom_record_groups,
+          append_atom_record_groups_overloads((
+          arg_("self"),
+          arg_("pdb_records"),
+          arg_("atom_hetatm")=true,
+          arg_("sigatm")=true,
+          arg_("anisou")=true,
+          arg_("siguij")=true)))
       ;
     }
   };
