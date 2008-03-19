@@ -63,20 +63,28 @@ class left_decomposition(object):
       new_partitions.append( tmp )
     self.partitions = new_partitions
 
-  def show(self,out=None):
+  def show(self,out=None, cb_op=None):
     if out is None:
       out = sys.stdout
     count=0
+    group_g = self.g_name
+    group_h = self.h_name
+    if cb_op is not None:
+      group_g = str( sgtbx.space_group_info( self.g_name ).change_basis( cb_op ) )
+      group_h = str( sgtbx.space_group_info( self.h_name ).change_basis( cb_op ) )
+
     print >> out, "Left cosets of :"
-    print >> out, "  subgroup  H: %s"%( self.h_name )
-    print >> out, "  and group G: %s"%( self.g_name )
+    print >> out, "  subgroup  H: %s"%( group_h )
+    print >> out, "  and group G: %s"%( group_g )
     for part in self.partitions:
       extra_txt="   (all operators from H)"
 
       tmp_group = sgtbx.space_group_info( self.h_name ).group()
       tmp_group.expand_smx( part[0] )
-      tmp_group = sgtbx.space_group_info( group=tmp_group)
-
+      if cb_op is None:
+        tmp_group = sgtbx.space_group_info( group=tmp_group)
+      else:
+        tmp_group = sgtbx.space_group_info( group=tmp_group).change_basis(cb_op)
 
       if count>0:
         extra_txt = "   (H+coset[%i] = %s)"%(count,tmp_group)
@@ -85,11 +93,17 @@ class left_decomposition(object):
       print >> out
       count += 1
       for item in part:
+        tmp_item = None
+        if cb_op is None:
+          tmp_item = item
+        else:
+          tmp_item = cb_op.apply( item )
+
         print >> out, "%20s  %20s   Rotation: %4s ; direction: %10s ; screw/glide: %10s"%(
-          item,
-          item.r().as_hkl(),
-          item.r().info().type() ,
-          item.r().info().ev(),
+          tmp_item,
+          tmp_item.r().as_hkl(),
+          tmp_item.r().info().type() ,
+          tmp_item.r().info().ev(),
           "("+item.t().as_string()+")" )
 
 
