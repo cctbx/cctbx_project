@@ -608,6 +608,19 @@ namespace hierarchy_v2 {
         char* result,
         atom_label_columns_formatter* label_formatter=0) const;
 
+      //! Not available in Python.
+      /*! result must point to an array of size 324 (or greater).
+          On return, result is null-terminated.
+       */
+      unsigned
+      format_atom_record_group(
+        char* result,
+        atom_label_columns_formatter* label_formatter,
+        bool atom_hetatm,
+        bool sigatm,
+        bool anisou,
+        bool siguij) const;
+
       bool
       element_is_hydrogen() const;
 

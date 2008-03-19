@@ -406,15 +406,21 @@ class _root(boost.python.injector, ext.root):
       level_id_exception=level_id_exception)
     return out.getvalue()
 
-  def as_pdb_records(self, append_end=False):
+  def as_pdb_records(self,
+        append_end=False,
+        atom_hetatm=True,
+        sigatm=True,
+        anisou=True,
+        siguij=True):
     result = []
     models = self.models()
     for model in models:
       if (len(models) != 1):
         result.append("MODEL %7s" % model.id)
       for chain in model.chains():
-        atom_serial = chain.append_atom_records(
-          pdb_records=result)
+        chain.append_atom_record_groups(
+          pdb_records=result,
+          atom_hetatm=atom_hetatm, sigatm=sigatm, anisou=anisou, siguij=siguij)
         result.append("TER")
       if (len(models) != 1):
         result.append("ENDMDL")
@@ -422,8 +428,18 @@ class _root(boost.python.injector, ext.root):
       result.append("END")
     return result
 
-  def as_pdb_string(self, append_end=False):
-    return "\n".join(self.as_pdb_records(append_end=append_end))+"\n"
+  def as_pdb_string(self,
+        append_end=False,
+        atom_hetatm=True,
+        sigatm=True,
+        anisou=True,
+        siguij=True):
+    return "\n".join(self.as_pdb_records(
+      append_end=append_end,
+      atom_hetatm=atom_hetatm,
+      sigatm=sigatm,
+      anisou=anisou,
+      siguij=siguij))+"\n"
 
   def occupancy_groups_simple(self, common_residue_name_class_only=None):
     self.atoms().reset_tmp_for_occupancy_groups_simple()

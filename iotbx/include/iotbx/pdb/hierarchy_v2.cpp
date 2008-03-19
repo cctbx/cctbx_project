@@ -575,6 +575,39 @@ namespace {
     return format_atom_record_segid_element_charge_columns(result, 70U);
   }
 
+  unsigned
+  atom::format_atom_record_group(
+    char* result,
+    atom_label_columns_formatter* label_formatter,
+    bool atom_hetatm,
+    bool sigatm,
+    bool anisou,
+    bool siguij) const
+  {
+    char newline = '\n';
+    unsigned str_len = 0;
+    if (atom_hetatm) {
+      str_len += format_atom_record(result, label_formatter);
+    }
+    if (  sigatm
+        && (  !data->sigxyz.const_ref().all_le(0)
+            || data->sigocc > 0
+            || data->sigb > 0)) {
+      if (str_len != 0) result[str_len++] = newline;
+      str_len += format_sigatm_record(result+str_len, label_formatter);
+    }
+    if (anisou && uij_is_defined()) {
+      if (str_len != 0) result[str_len++] = newline;
+      str_len += format_anisou_record(result+str_len, label_formatter);
+    }
+    if (siguij && siguij_is_defined()) {
+      if (str_len != 0) result[str_len++] = newline;
+      str_len += format_siguij_record(result+str_len, label_formatter);
+    }
+    if (str_len == 0) result[0] = '\0';
+    return str_len;
+  }
+
   bool
   atom::element_is_hydrogen() const
   {
