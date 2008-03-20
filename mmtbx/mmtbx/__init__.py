@@ -31,6 +31,18 @@ class fmodels(object):
       self.fmodel_x.xray_structure.deep_copy_scatterers())
     return result
 
+  def resolution_filter(self, d_min):
+    fmodel_n_dc = None
+    if(self.fmodel_n is not None):
+      fmodel_n_dc = self.fmodel_n.resolution_filter(d_min = d_min)
+    result = fmodels(
+      fmodel_xray             = self.fmodel_x.resolution_filter(d_min = d_min),
+      fmodel_neutron          = fmodel_n_dc,
+      xray_scattering_dict    = self.xray_scattering_dict,
+      neutron_scattering_dict = self.neutron_scattering_dict,
+      log                     = self.log)
+    return result
+
   def fmodel_xray(self, xray_structure = None):
     if(self.fmodel_x is not None):
       if(self.fmodel_n is not None):

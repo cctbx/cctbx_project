@@ -61,7 +61,7 @@ master_params = iotbx.phil.parse("""\
   occupancy_min = 0.1
     .type=float
     .help = Minimum occupancy value, waters with smaller value will be rejected
-  occupancy_max = 1.2
+  occupancy_max = 1.0
     .type=float
     .help = Maximum occupancy value, waters with bigger value will be rejected
   occupancy = 1.0
@@ -73,11 +73,11 @@ master_params = iotbx.phil.parse("""\
     .type=float
   secondary_map_type = 2mFobs-DFmodel
     .type=str
-  secondary_map_cutoff = 1.5
+  secondary_map_cutoff = 1.
     .type=float
-  use_h_bond_rejection_criteria = True
-    .type = bool
-  h_bond_min = 1.8
+  h_bond_min_mac = 1.8
+    .type = float
+  h_bond_min_sol = 1.8
     .type = float
   h_bond_max = 3.2
     .type = float
@@ -145,14 +145,18 @@ class manager(object):
       if(self.params.filter_at_start):
         self.filter_solvent()
         self.show(message = "Filtered:")
-      if(self.params.secondary_map_type is not None):
-        self.find_peaks_2fofc()
-        self.show(message = "2Fo-Fc map selection:")
+      #if(self.params.secondary_map_type is not None):
+      #  self.find_peaks_2fofc()
+      #  self.show(message = "2Fo-Fc map selection:")
     #
     for i in xrange(self.params.n_cycles):
       self.refine_adp()
       self.refine_occupancies()
     #
+    if(not self.filter_only):
+      if(self.params.secondary_map_type is not None):
+        self.find_peaks_2fofc()
+        self.show(message = "2Fo-Fc map selection:")
     self.show(message = "Before filtering:")
     self.filter_solvent()
     self.show(message = "Final:")
@@ -195,7 +199,8 @@ class manager(object):
       element_symbols_all = self.model.xray_structure.scattering_types(),
       water_selection_o   = sol_sel.set_selected(hd_sel, False).iselection(),
       dist_max            = self.params.h_bond_max,
-      dist_min            = self.params.h_bond_min,
+      dist_min_mac        = self.params.h_bond_min_mac,
+      dist_min_sol        = self.params.h_bond_min_sol,
       unit_cell           = self.model.xray_structure.unit_cell())
     distance_selection = flex.bool(scatterers.size(), distance_iselection)
     #
@@ -225,7 +230,6 @@ class manager(object):
       solvent_xray_structure.scatterers().size()
     self.model = self.model.remove_solvent()
     self.model.add_solvent(
-      solvent_selection      = solvent_selection,
       solvent_xray_structure = solvent_xray_structure,
       residue_name           = self.params.output_residue_name,
       atom_name              = self.params.output_atom_name,
@@ -290,35 +294,30 @@ class manager(object):
                               log        = self.log)
 
   def find_peaks_2fofc(self):
-    peaks = self.find_peaks(
-      map_type   = self.params.secondary_map_type,
-      map_cutoff = self.params.secondary_map_cutoff).peaks()
-    sites_2nd, heights_2nd = peaks.sites, peaks.heights
-    step= self.fmodel.f_obs.d_min()*self.find_peaks_params.resolution_factor
-    if(step < 0.3): step = 0.3 # XXX
-    zz = self.model.xray_structure.select(self.model.solvent_selection())
-    result = zz.closest_distances(sites_frac = sites_2nd,
-      distance_cutoff = 6.0) # XXX
-    smallest_distances = result.smallest_distances
-    selection = (smallest_distances <= step) & (smallest_distances >= 0)
-    cs = self.model.xray_structure.crystal_symmetry()
-    sp = crystal.special_position_settings(cs)
-    scatterers = flex.xray_scatterer()
-    for site in result.sites_frac:
-      scatterers.append(xray.scatterer("o", site))
-    xrs_2nd = xray.structure(sp, scatterers)
-    smallest_distances = xrs_2nd.closest_distances(sites_frac =
-      zz.sites_frac(), distance_cutoff = 6.0).smallest_distances # XXX
-    selection = (smallest_distances <= step) & (smallest_distances >= 0)
-    new_ss = flex.bool(self.model.solvent_selection().count(False), True)
-    new_ss.extend(selection)
-    # correct for H
+    fft_map = self.fmodel.electron_density_map(
+      map_type          = self.params.secondary_map_type,
+      resolution_factor = self.find_peaks_params.resolution_factor,
+      symmetry_flags    = maptbx.use_space_group_symmetry)
+    fft_map.apply_sigma_scaling()
+    fft_map_data = fft_map.real_map_unpadded()
+    selection = self.model.solvent_selection()
+    scatterers = self.model.xray_structure.scatterers()
+    for i_seq, sel_i in enumerate(selection):
+      if(sel_i):
+        ed_val = maptbx.eight_point_interpolation(fft_map_data,
+          scatterers[i_seq].site)
+        if(ed_val < self.params.secondary_map_cutoff):
+          selection[i_seq] = False
+    sol_sel = self.model.solvent_selection()
+    hd_sel = self.model.xray_structure.hd_selection()
+    selection.set_selected(hd_sel, True)
+    selection.set_selected(~sol_sel, True)
     xht = self.model.xh_connectivity_table()
     if(xht is not None):
       for ti in xht:
-        if(not new_ss[ti[0]]): new_ss[ti[1]]=False
-        if(new_ss[ti[0]]): new_ss[ti[1]]=True
-    self.model = self.model.select(new_ss)
+        if(not selection[ti[0]]): selection[ti[1]]=False
+        if(selection[ti[0]]): selection[ti[1]]=True
+    self.model = self.model.select(selection)
 
   def add_new_solvent(self):
     if(self.params.b_iso is None):
@@ -359,7 +358,6 @@ class manager(object):
     sol_sel = flex.bool(xrs_mac.scatterers().size(), False)
     sol_sel.extend( flex.bool(xrs_sol.scatterers().size(), True) )
     self.model.add_solvent(
-      solvent_selection      = sol_sel,
       solvent_xray_structure = solvent_xray_structure,
       residue_name           = self.params.output_residue_name,
       atom_name              = self.params.output_atom_name,
@@ -427,8 +425,8 @@ class manager(object):
         model                    = self.model,
         lbfgs_termination_params = lbfgs_termination_params)
       self.fmodels.fmodel_xray().xray_structure.adjust_occupancy(
-        occ_max   = 1,
-        occ_min   = 0,
+        occ_max   = self.params.occupancy_max,
+        occ_min   = self.params.occupancy_min,
         selection = i_selection)
       #
       print >> self.log,\
