@@ -129,6 +129,7 @@ mmtbx/mmtbx/refinement/refinement_flags.py -text
 mmtbx/mmtbx/refinement/tst_refinement_flags.py -text
 mmtbx/mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/mmtbx/regression/tst_altloc_chain_break.py -text
+mmtbx/mmtbx/scaling/absences.py -text
 mmtbx/mmtbx/tst_alignment.py -text
 mmtbx/mmtbx/tst_pdbtools.py -text
 mmtbx/mmtbx/tst_utils.py -text
