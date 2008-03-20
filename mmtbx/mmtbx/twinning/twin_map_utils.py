@@ -237,7 +237,6 @@ def run(args, command_name="phenix.twin_map_utils"):
       miller_array = miller_array.f_sq_as_f()
     assert miller_array.is_xray_amplitude_array()
 
-     
     free_flags = tmp_object.extract_flags(data = miller_array)
     print >> log
     print >> log, "Attempting to extract Free R flags"
