@@ -154,11 +154,13 @@ class manager(object):
     for v0 in top.values():
       for v1 in v0.values():
         water_residues.append(v1)
+        assert len(v1) <= 3
     return water_residues
 
   def renumber_water(self):
     water_residues = self.extact_water()
     for i_seq, water_residue in enumerate(water_residues):
+      assert len(water_residue) <= 3
       for wra in water_residue:
         wra[1].resSeq = i_seq
 
@@ -591,14 +593,12 @@ class manager(object):
       out                  = out)
 
   def add_solvent(self, solvent_xray_structure,
-                        solvent_selection,
                         atom_name    = "O",
                         residue_name = "HOH",
                         chain_id     = None,
                         refine_occupancies = False,
                         refine_adp = None):
     assert refine_adp is not None
-    # XXX print list(solvent_xray_structure.scatterers().extract_scattering_types())
     if(refine_adp == "isotropic"):
       solvent_xray_structure.convert_to_isotropic()
     elif(refine_adp == "anisotropic"):
@@ -629,7 +629,14 @@ class manager(object):
     new_atom_name = atom_name.strip()
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
-    i_seq = 0
+    #
+    water_resseqs = flex.size_t()
+    get_class = iotbx.pdb.common_residue_names_get_class
+    for aattr in self.atom_attributes_list:
+      if(get_class(name = aattr.resName) == "common_water"):
+        water_resseqs.append(aattr.resSeq)
+    i_seq = flex.max_default(water_resseqs, 0)
+    #
     for sc in solvent_xray_structure.scatterers():
         i_seq += 1
         new_attr = pdb.atom.attributes(name        = new_atom_name,
