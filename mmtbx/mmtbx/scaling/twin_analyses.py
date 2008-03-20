@@ -2418,9 +2418,9 @@ class twin_analyses(object):
     except Sorry: pass
 
     try:
-      # Look at systematic absenses please
+      # Look at systematic absences please
       import absences
-      abs_anal = absences.analyze_absenses(miller_array = self.normalised_intensities.all,
+      abs_anal = absences.analyze_absences(miller_array = self.normalised_intensities.all,
                                            isigi_cut = 3.0, out=out)
     except Sorry: pass
 
