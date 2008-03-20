@@ -32,14 +32,13 @@ def extract_sequence_and_sites(pdb_input):
   seq = []
   sites = flex.vec3_double()
   use_sites = flex.bool()
-  model = pdb_input.construct_hierarchy_v1().models()[0]
+  model = pdb_input.construct_hierarchy_v2().models()[0]
   for chain in model.chains():
-    selected_residues = chain.conformers()[0].residue_class_selection(
-      class_name="common_amino_acid")
-    residues = chain.conformers()[0].residues()
-    for ires in selected_residues:
-      resi = residues[ires]
-      resn = resi.name[0:3]
+    for resi in chain.conformers()[0].residues():
+      if (   iotbx.pdb.common_residue_names_get_class(name=resi.resname)
+          != "common_amino_acid"):
+        continue
+      resn = resi.resname
       single = amino_acid_codes.one_letter_given_three_letter[resn]
       seq.append(single)
       use = False

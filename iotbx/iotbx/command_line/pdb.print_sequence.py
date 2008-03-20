@@ -63,8 +63,7 @@ def run(filename,
                        lines=flex.split_lines(filename))
   else:
     assert 0
-  hierarchy      = pdb_io.construct_hierarchy_v1()
-  overall_counts = hierarchy.overall_counts()
+  hierarchy      = pdb_io.construct_hierarchy_v2()
 
   outl = ""
   unk = ""
@@ -74,30 +73,24 @@ def run(filename,
     for chain in model.chains():
       for i_conformer, conformer in enumerate(chain.conformers()):
         for residue in conformer.residues():
-          atoms = residue.atoms()
-          def have_alternative():
-            for atom in atoms:
-              if(atom.is_alternative()):
-                return True
-            return False
-          if(i_conformer!=0 and not have_alternative()): continue
-          if residue.name.strip() in ps_lookup:
-            outl += "%s" % ps_lookup[residue.name.strip()]
-          elif residue.name.strip() in ds_lookup:
-            outl += "%s" % ds_lookup[residue.name.strip()]
+          if(i_conformer!=0 and not residue.is_pure_main_conf): continue
+          if residue.resname.strip() in ps_lookup:
+            outl += "%s" % ps_lookup[residue.resname.strip()]
+          elif residue.resname.strip() in ds_lookup:
+            outl += "%s" % ds_lookup[residue.resname.strip()]
             protein_only = False
-          elif residue.name.strip() in ignore_residues:
-            if unk.find(residue.name.strip())==-1:
-              unk += "%s " % residue.name.strip()
-          elif residue.name.strip() in dna_rna_sequence_to_three.keys():
-            outl += "%s" % residue.name.strip()
+          elif residue.resname.strip() in ignore_residues:
+            if unk.find(residue.resname.strip())==-1:
+              unk += "%s " % residue.resname.strip()
+          elif residue.resname.strip() in dna_rna_sequence_to_three.keys():
+            outl += "%s" % residue.resname.strip()
             protein_only = False
           else:
             if not protein_only:
               if not residue.atoms()[0].hetero:
                 error_outl += \
                   "This residue is not converted to letter code : %s\n" % (
-                  residue.name.strip(),
+                  residue.resname.strip(),
                   )
       outl+="\n"
   if unk and print_unknown:

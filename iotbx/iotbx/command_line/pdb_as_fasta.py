@@ -5,7 +5,7 @@ def run(args):
   for arg in args:
     assert os.path.isfile(arg)
     pdb_obj = iotbx.pdb.input(file_name=arg)
-    hierarchy = pdb_obj.construct_hierarchy_v1()
+    hierarchy = pdb_obj.construct_hierarchy_v2()
     for model in hierarchy.models():
       for chain in model.chains():
         for conformer in chain.conformers():

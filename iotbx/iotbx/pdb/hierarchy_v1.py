@@ -181,68 +181,6 @@ class _atom(boost.python.injector, ext.atom):
          charge=charge))
      return result
 
-class _residue(boost.python.injector, ext.residue):
-
-  def residue_name_plus_atom_names_interpreter(self,
-        translate_cns_dna_rna_residue_names=None,
-        return_mon_lib_dna_name=False):
-    from iotbx.pdb import residue_name_plus_atom_names_interpreter
-    return residue_name_plus_atom_names_interpreter(
-      residue_name=self.name,
-      atom_names=self.atom_names(),
-      translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
-      return_mon_lib_dna_name=return_mon_lib_dna_name)
-
-class _conformer(boost.python.injector, ext.conformer):
-
-  def format_fasta(self, max_line_length=79):
-    from iotbx.pdb import common_residue_names_get_class
-    rn_seq = []
-    residue_classes = dict_with_default_0()
-    for residue in self.residues():
-      rnpani = residue.residue_name_plus_atom_names_interpreter()
-      rn = rnpani.work_residue_name
-      rn_seq.append(rn)
-      if (rn is None):
-        c = None
-      else:
-        c = common_residue_names_get_class(name=rn)
-      residue_classes[c] += 1
-    seq = []
-    n_aa = residue_classes["common_amino_acid"]
-    n_na = residue_classes["common_rna_dna"]
-    if (n_aa > n_na):
-      from iotbx.pdb.amino_acid_codes import one_letter_given_three_letter
-      aa_3_as_1 = one_letter_given_three_letter.get
-      for rn in rn_seq:
-        seq.append(aa_3_as_1(rn, "X"))
-    elif (n_na != 0):
-      for rn in rn_seq:
-        seq.append({
-          "A": "A",
-          "C": "C",
-          "G": "G",
-          "U": "U",
-          "DA": "A",
-          "DC": "C",
-          "DG": "G",
-          "DT": "T"}.get(rn, "N"))
-    n = len(seq)
-    if (n == 0): return None
-    comment = [">"]
-    p = self.parent()
-    if (p is not None):
-      comment.append('chain "%2s"' % p.id)
-    comment.append('conformer "%s"' % self.id)
-    result = [" ".join(comment)]
-    i = 0
-    while True:
-      j = min(n, i+max_line_length)
-      if (j == i): break
-      result.append("".join(seq[i:j]))
-      i = j
-    return result
-
 level_ids = ["model", "chain", "conformer", "residue", "atom"]
 
 class _root(boost.python.injector, ext.root):
