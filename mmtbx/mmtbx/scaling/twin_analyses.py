@@ -475,8 +475,12 @@ class detect_pseudo_translations(object):
           if additional_symop is not None:
             symops.append( additional_symop )
 
+
     tmp_space_group = sgtbx.space_group_info( group=self.space_group )
-    tmp_space_group = sgtbx.space_group_info( str(tmp_space_group), space_group_t_den=t_den)
+    try:
+      tmp_space_group = sgtbx.space_group_info( str(tmp_space_group), space_group_t_den=t_den)
+    except: pass
+
     for so in symops:
       sg_str = None
       try:
@@ -547,7 +551,7 @@ class detect_pseudo_translations(object):
       result=0.0
     return result
 
-  def closest_rational(self, fraction, eps=0.01,return_text=True):
+  def closest_rational(self, fraction, eps=0.02,return_text=True):
     tmp_fraction = abs(fraction)
     sign = "+"
     if fraction < 0:
