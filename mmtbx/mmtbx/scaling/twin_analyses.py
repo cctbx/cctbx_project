@@ -479,7 +479,8 @@ class detect_pseudo_translations(object):
     tmp_space_group = sgtbx.space_group_info( group=self.space_group )
     try:
       tmp_space_group = sgtbx.space_group_info( str(tmp_space_group), space_group_t_den=t_den)
-    except: pass
+    except KeyboardInterrupt: raise
+    except : pass
 
     for so in symops:
       sg_str = None
