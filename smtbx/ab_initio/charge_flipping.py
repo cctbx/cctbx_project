@@ -186,6 +186,13 @@ class density_modification_iterator(object):
       f_part=flex.complex_double(), ## no sub-structure is already fixed
       miller_indices_p1_f_calc=self.f_calc.indices(),
       p1_f_calc=self.f_calc.data()).target_map()
+
+    if 0:
+      from crys3d import wx_map_viewer
+      wx_map_viewer.display(title="Target",
+                            raw_map=correlation_map,
+                            unit_cell=self.f_calc.unit_cell())
+
     search_parameters = maptbx.peak_search_parameters(
       peak_search_level=1,
       peak_cutoff=0.5,
@@ -201,14 +208,16 @@ class density_modification_iterator(object):
     for peak in correlation_map_peaks:
       if peak.height < 0.8: break
       shift = mat.col(peak.site)
-      multiplier = 1000
+      multiplier = int(1e4)
+      shift_1 = shift*multiplier
       cb_op = sgtbx.change_of_basis_op(
-        sgtbx.rt_mx(sgtbx.tr_vec(shift.as_int(), multiplier)))
-      symm_f_calc = (self.f_calc.change_basis(cb_op)
-                                .customized_copy(space_group_info
-                                      =self.original_f_obs.space_group_info())
-                                .merge_equivalents()
-                                .array() )
+        sgtbx.rt_mx(sgtbx.tr_vec(shift_1.as_int(), multiplier)))
+      symm_f_calc = (self.f_calc
+        .change_basis(cb_op)
+        .customized_copy(
+          space_group_info=self.original_f_obs.space_group_info()))
+      merging = symm_f_calc.merge_equivalents()
+      symm_f_calc = merging.array()
       m = self.original_f_obs.match_indices(symm_f_calc)
       assert not m.have_singles()
       symm_f_calc = symm_f_calc.select(m.permutation())

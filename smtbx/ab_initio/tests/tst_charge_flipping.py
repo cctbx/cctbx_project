@@ -98,6 +98,7 @@ def randomly_exercise(flipping_type,
 def exercise_once(flipping_type,
                   target_structure, f_obs, d_min, verbose=False):
   result = group_args(had_phase_transition=False,
+                      emma_match_in_p1=False,
                       emma_match=False,
                       first_correct_correlation_peak=None,
                       inverted_solution=False,
@@ -137,7 +138,7 @@ def exercise_once(flipping_type,
   f_result_in_p1 = solving.flipping_iterator.f_calc
 
   # Euclidean matching of the peaks from the obtained map
-  # against those of the correct structure
+  # against those of the correct structure (in P1)
   target_structure_in_p1 = target_structure.expand_to_p1()
   search_parameters = maptbx.peak_search_parameters(
     interpolate=True,
@@ -153,26 +154,28 @@ def exercise_once(flipping_type,
     peak_structure,
     break_if_match_with_no_singles=True
     ).refined_matches
-  result.emma_match = (
+  result.emma_match_in_p1 = (
         not refined_matches[0].singles1 # all sites match a peak
     and refined_matches[0].rms < 0.1 # no farther than that
     and refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
   )
-  if not result.emma_match:
+  if not result.emma_match_in_p1:
     result.succeeded = False
     if verbose:
-      print "** no Euclidean matching **"
+      print "** no Euclidean matching in P1 **"
   result.inverted_solution = refined_matches[0].rt.r == mat.inversion(3)
   reference_shift = -refined_matches[0].rt.t
+
+  if not result.succeeded:
+    print "@@ Failure @@"
+    return result
 
   # Find the translation to bring back the structure to the same space-group
   # setting as the starting f_obs from correlation map analysis
   is_allowed= lambda x: f_target.space_group_info().is_allowed_origin_shift(
     x, tolerance=0.1)
-  weak_peak_signaled = False
   for i, (f_calc, shift, cc_peak_height) in enumerate(
                                                     solving.f_calc_solutions):
-    if not result.emma_match: continue
     if (   is_allowed(shift - reference_shift)
         or is_allowed(shift + reference_shift)):
       result.first_correct_correlation_peak = i
@@ -187,11 +190,46 @@ def exercise_once(flipping_type,
       result.succeeded = False
       print "** No correct correlation peak **"
     elif result.first_correct_correlation_peak != 0:
-      print "** First correct correlation peak: #%i **"\
-            % result.first_correct_correlation_peak
+      print "** First correct correlation peak: #%i (%.3f) **"\
+            % (result.first_correct_correlation_peak, cc_peak_height)
 
-  #from crys3d import wx_map_viewer
-  #wx_map_viewer.display(f_calc.fft_map())
+  if not result.succeeded:
+    print "@@ Failure @@"
+    return result
+
+
+  # check Euclidean matching in the original space-group
+  search_parameters = maptbx.peak_search_parameters(
+    interpolate=True,
+    min_distance_sym_equiv=1.,
+    max_clusters=int(target_structure.scatterers().size()*1.05))
+  solution_fft_map = f_calc.fft_map(
+    symmetry_flags=maptbx.use_space_group_symmetry)
+  solution_peaks = solution_fft_map.peak_search(search_parameters,
+                                                verify_symmetry=False)
+  solution_peak_structure = emma.model(
+    target_structure.crystal_symmetry().special_position_settings(),
+    positions=[ emma.position('Q%i' % i, x)
+                for i,x in enumerate(solution_peaks.all().sites()) ])
+  refined_matches = emma.model_matches(
+    target_structure.as_emma_model(),
+    solution_peak_structure,
+    break_if_match_with_no_singles=True
+    ).refined_matches
+  if refined_matches:
+    result.emma_match = (
+          not refined_matches[0].singles1 # all sites match a peak
+      and refined_matches[0].rms < 0.1 # no farther than that
+      and refined_matches[0].rt.r in (mat.identity(3), mat.inversion(3))
+    )
+  else:
+    result.emma_match = False
+  if not result.emma_match:
+    result.succeeded = False
+    if verbose:
+      print "** no Euclidean matching in original spacegroup **"
+
+
 
 
   # return a bunch of Boolean flags telling where it failed
@@ -214,6 +252,9 @@ def exercise(flags, space_group_info, flipping_type):
   n_C = 12//n or 1
   n_O = 6//n
   n_N = 3//n
+  #n_C = 3
+  #n_O = 0
+  #n_N = 0
   if flags.Verbose:
     print "C%i O%i N%i" % (n_C*n, n_O*n, n_N*n)
   result = randomly_exercise(
@@ -243,6 +284,8 @@ def run():
 
   n_phase_transitions = [
     r.had_phase_transition for r in results ].count(True)
+  n_emma_matches_in_p1 = [
+    r.emma_match_in_p1 for r in results ].count(True)
   n_emma_matches = [
     r.emma_match for r in results ].count(True)
   n_found_shift = [
@@ -251,8 +294,11 @@ def run():
   print "%i test cases:" % n_tests
   print "\t%i successes" % n_success
   print "\t%i phase transitions" % n_phase_transitions
-  print "\t%i Euclidean matches with correct structure" % n_emma_matches
+  print ("\t%i Euclidean matches with correct structure "
+         "in P1" % n_emma_matches_in_p1)
   print "\t%i found shifts" % n_found_shift
+  print ("\t%i Euclidean matches with correct structure "
+         "in original spacegroup" % n_emma_matches)
   assert n_success/n_tests > 2/3
 
 if __name__ == '__main__':
