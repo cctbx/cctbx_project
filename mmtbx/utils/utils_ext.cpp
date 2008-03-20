@@ -46,12 +46,14 @@ namespace {
                 af::shared<std::size_t> const&,
                 double const&,
                 double const&,
+                double const&,
                 cctbx::uctbx::unit_cell const&)) select_water_by_distance,
                                                           (arg_("sites_frac_all"),
                                                            arg_("element_symbols_all"),
                                                            arg_("water_selection_o"),
                                                            arg_("dist_max"),
-                                                           arg_("dist_min"),
+                                                           arg_("dist_min_mac"),
+                                                           arg_("dist_min_sol"),
                                                            arg_("unit_cell")))
    ;
   }

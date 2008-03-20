@@ -100,10 +100,12 @@ af::shared<std::size_t>
                            af::shared<std::string> const& element_symbols_all,
                            af::shared<std::size_t> const& water_selection_o,
                            FloatType const& dist_max,
-                           FloatType const& dist_min,
+                           FloatType const& dist_min_mac,
+                           FloatType const& dist_min_sol,
                            cctbx::uctbx::unit_cell const& unit_cell)
 {
   af::shared<std::size_t> result_selection;
+  std::size_t closest_index=0;
   for(std::size_t i=0; i<water_selection_o.size(); i+=1) {
     std::size_t i_wat = water_selection_o[i];
     MMTBX_ASSERT(element_symbols_all[i_wat] != "H");
@@ -118,9 +120,19 @@ af::shared<std::size_t>
         if(dist < dist_closest) {
           dist_closest = dist;
           closest_element = element_symbols_all[j];
+          closest_index = j;
         }
       }
     }
+    bool is_closest_index_water = false;
+    for(std::size_t k=0; k<water_selection_o.size(); k+=1) {
+      if(water_selection_o[k] == closest_index) {
+        is_closest_index_water = true;
+        break;
+      }
+    }
+    double dist_min = dist_min_mac;
+    if(is_closest_index_water) dist_min = dist_min_sol;
     if(dist_closest<=dist_max&&dist_closest>=dist_min&&(closest_element=="N"||
        closest_element=="O")) {
       result_selection.push_back(i_wat);
