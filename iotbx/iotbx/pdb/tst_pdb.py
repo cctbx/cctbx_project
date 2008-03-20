@@ -750,7 +750,7 @@ def exercise_format_fasta():
   for node in os.listdir(regression_pdb):
     if (not (node.endswith(".pdb") or node.endswith(".ent"))): continue
     pdb_inp = pdb.input(file_name=os.path.join(regression_pdb, node))
-    hierarchy = pdb_inp.construct_hierarchy_v1()
+    hierarchy = pdb_inp.construct_hierarchy_v2()
     fasta = []
     for model in hierarchy.models():
       for chain in model.chains():
@@ -758,7 +758,7 @@ def exercise_format_fasta():
           fasta.append(conformer.format_fasta())
     if (node == "pdb1zff.ent"):
       assert fasta == [
-        ['> chain " A" conformer " "', "CCGAATTCGG"]]
+        ['> chain " A" conformer ""', "CCGAATTCGG"]]
       looking_for.remove(node)
     elif (node == "1ee3_stripped.pdb"):
       assert fasta == [
@@ -769,7 +769,7 @@ def exercise_format_fasta():
       looking_for.remove(node)
     elif (node == "jcm.pdb"):
       assert fasta == [
-        ['> chain " A" conformer " "',
+        ['> chain " A" conformer ""',
          'MSSIFINREYLLPDYIPDELPHREDQIRKIASILAPLYREEKPNNIFIY'
          'GLTGTGKTAVVKFVLSKLHKKFLGKFKHVY',
          'INTRQIDTPYRVLADLLESLDVKVPFTGLSIAELYRRLVKAVRDYGSQV'
@@ -779,7 +779,7 @@ def exercise_format_fasta():
          'RVSGEIAERMKDTKVKEEYVYMAKEEIERDRVRDIILTLPFHSKLVLMA'
          'VVSISSEENVVSTTGAVYETYLNICKKLGV',
          'EAVTQRRVSDIINELDMVGILTVVNRGRYGKTKEIGLAVDKNIIVRSLIESDS'],
-        ['> chain " B" conformer " "',
+        ['> chain " B" conformer ""',
          'KNPKVFIDPLSVFKEIPFREDILRDAAIAIRYFVKNEVKFSNLFLGLTG'
          'TGKTFVSKYIFNEIEEVKKEDEEYKDVKQA',
          'YVNCREVGGTPQAVLSSLAGKLAGFSVPKHGINLGEYIDKIKNGTRNIR'
@@ -789,7 +789,7 @@ def exercise_format_fasta():
          'LLFRAAQLASGGGIIRKEHVDKAIVDYEQERLIEAVKALPFHYKLALRS'
          'LIESEDVMSAHKMYTDLCNKFKQKPLSYRR',
          'FSDIISELDMFGIVKIRIINRGRAGGVKKYALVEDKEKVLRALNET'],
-        ['> chain " C" conformer " "',
+        ['> chain " C" conformer ""',
          'TGTAAATTTCCTACGTTTCATCTGAAAATCTAGAGATTTTCAGATGAAACGTAGGAAATTTACATC'],
          None]
       looking_for.remove(node)
