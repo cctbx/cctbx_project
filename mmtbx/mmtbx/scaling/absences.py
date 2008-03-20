@@ -222,11 +222,11 @@ of violations in the non-absent class.
           isi_tot   = isi_tot/n_tot
           i_tot   = i_tot/n_tot
 
-        table_rows.append( [condition, str("%8.2f  (%i, %4.1f%s)"%(isi_abs,n_abs_viol, 100.0*float(n_abs_viol)/n_abs,'%' )),
+        table_rows.append( [condition, str("%8.2f  (%i, %4.1f%s)"%(isi_abs,n_abs_viol, 100.0*float(n_abs_viol)/max(1,n_abs),'%' )),
                                        str("%8.0f"%(n_abs)),
-                                       str("%8.2f  (%i, %4.1f%s)"%(isi_n_abs,n_n_abs_viol, 100.0*float(n_n_abs_viol)/n_n_abs,'%' )),
+                                       str("%8.2f  (%i, %4.1f%s)"%(isi_n_abs,n_n_abs_viol, 100.0*float(n_n_abs_viol)/max(1,n_n_abs),'%' )),
                                        str("%8.0f"%(n_n_abs)),
-                                       str("%8.2f  (%i, %4.1f%s)"%(isi_tot,n_tot_viol, 100.0*float(n_tot_viol)/n_tot,'%' )),
+                                       str("%8.2f  (%i, %4.1f%s)"%(isi_tot,n_tot_viol, 100.0*float(n_tot_viol)/max(1,n_tot),'%' )),
                                        str("%8.0f"%(n_tot))] )
       print >> self.out, table_text
       self.table = table_utils.format([table_labels]+table_rows,
