@@ -307,6 +307,7 @@ class wilson_normalised_intensities(object):
       work_array = miller_array.deep_copy().set_observation_type(miller_array)
       work_array = work_array.select(work_array.data()>0)
 
+    self.all = work_array
     self.acentric = work_array.select_acentric().as_intensity_array()
     self.centric = work_array.select_centric().as_intensity_array()
 
@@ -584,6 +585,9 @@ class detect_pseudo_translations(object):
   def show(self,out=None):
     if out is None:
       out = sys.stdout
+    print >> out
+    print >> out," Patterson analyses"
+    print >> out, "------------------"
     print >> out
     print >> out," Largest Patterson peak with length larger than 15 Angstrom "
     print >> out
@@ -2408,6 +2412,14 @@ class twin_analyses(object):
         out=out, verbose=verbose)
     except Sorry: pass
 
+    try:
+      # Look at systematic absenses please
+      import absences
+      abs_anal = absences.analyze_absenses(miller_array = self.normalised_intensities.all,
+                                           isigi_cut = 3.0, out=out)
+    except Sorry: pass
+
+
     centric_cut = self.normalised_intensities.centric
 
     acentric_cut = self.normalised_intensities.acentric
@@ -2476,6 +2488,11 @@ class twin_analyses(object):
       ##------------------------
 
     ##--------------------------
+
+
+
+
+
 
     self.n_twin_laws = len(possible_twin_laws.operators)
 
