@@ -124,7 +124,7 @@ class absences(object):
 
 
 
-class analyze_absenses(object):
+class analyze_absences(object):
   def __init__(self, miller_array, isigi_cut=3, out=None):
     if out is None:
       out = sys.stdout
@@ -144,7 +144,7 @@ class analyze_absenses(object):
     table_text = """
 
 
-Systematic absenses
+Systematic absences
 -------------------
 
 The following table gives informaton about systematic absences.
@@ -240,6 +240,10 @@ of violations in the non-absent class.
       print >> self.out
 
 
+
+class space_group_choices(object):
+  def __init__(self, miller_array):
+    print
 
 
 def test():
