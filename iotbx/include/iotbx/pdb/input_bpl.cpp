@@ -81,18 +81,8 @@ namespace {
       return result;
     }
 
-    static
-    boost::python::dict
-    atom_element_counts_as_dict(w_t const& self)
-    {
-      return scitbx::boost_python::stl_map_as_dict(self.atom_element_counts());
-    }
-
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       construct_hierarchy_v2_overloads, construct_hierarchy_v2, 0, 1)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      reset_atom_tmp_overloads, reset_atom_tmp, 0, 2)
 
     static void
     wrap()
@@ -126,9 +116,7 @@ namespace {
           &w_t::miscellaneous_features_section, rbv())
         .def("crystallographic_section", &w_t::crystallographic_section, rbv())
         .def("input_atom_labels_list", &w_t::input_atom_labels_list, rbv())
-        .def("atom_serial_number_strings",
-          &w_t::atom_serial_number_strings, rbv())
-        .def("atoms", &w_t::atoms, rbv())
+        .def("atom_serial_number_strings", &w_t::atom_serial_number_strings)
         .def("atoms_v2", &w_t::atoms_v2, rbv())
         .def("model_numbers", &w_t::model_numbers, rbv())
         .def("model_indices", &w_t::model_indices, rbv())
@@ -148,22 +136,9 @@ namespace {
         //
         .def("model_numbers_are_unique", &w_t::model_numbers_are_unique)
         .def("model_atom_counts", &w_t::model_atom_counts)
-        .def("find_duplicate_atom_labels", &w_t::find_duplicate_atom_labels)
-        .def("construct_hierarchy_v1", &w_t::construct_hierarchy_v1)
         .def("construct_hierarchy_v2", &w_t::construct_hierarchy_v2,
           construct_hierarchy_v2_overloads((
             arg_("residue_group_post_processing")=true)))
-        .def("number_of_alternative_groups_with_blank_altloc",
-          &w_t::number_of_alternative_groups_with_blank_altloc)
-        .def("number_of_alternative_groups_without_blank_altloc",
-          &w_t::number_of_alternative_groups_without_blank_altloc)
-        .def("number_of_chains_with_altloc_mix",
-          &w_t::number_of_chains_with_altloc_mix)
-        .def("i_seqs_alternative_group_with_blank_altloc",
-          &w_t::i_seqs_alternative_group_with_blank_altloc, rbv())
-        .def("i_seqs_alternative_group_without_blank_altloc",
-          &w_t::i_seqs_alternative_group_without_blank_altloc, rbv())
-        .def("atom_element_counts", atom_element_counts_as_dict)
         .def("extract_atom_xyz", &w_t::extract_atom_xyz)
         .def("extract_atom_sigxyz", &w_t::extract_atom_sigxyz)
         .def("extract_atom_occ", &w_t::extract_atom_occ)
@@ -173,9 +148,6 @@ namespace {
         .def("extract_atom_uij", &w_t::extract_atom_uij)
         .def("extract_atom_siguij", &w_t::extract_atom_siguij)
         .def("extract_atom_hetero", &w_t::extract_atom_hetero)
-        .def("extract_atom_flag_altloc", &w_t::extract_atom_flag_altloc)
-        .def("reset_atom_tmp", &w_t::reset_atom_tmp, reset_atom_tmp_overloads((
-          arg_("first_value")=0, arg_("increment")=1)))
       ;
     }
   };

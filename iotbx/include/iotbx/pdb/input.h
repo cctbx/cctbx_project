@@ -1,7 +1,6 @@
 #ifndef IOTBX_PDB_INPUT_H
 #define IOTBX_PDB_INPUT_H
 
-#include <iotbx/pdb/hierarchy_v1.h>
 #include <iotbx/pdb/hierarchy_v2.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny.h>
@@ -268,16 +267,6 @@ namespace iotbx { namespace pdb {
     }
 
     static
-    af::tiny<char, 5>
-    extract_serial_number_string(
-      pdb::line_info& line_info)
-    {
-      af::tiny<char, 5> result;
-      extract(line_info,6,5,result.begin());
-      return result;
-    }
-
-    static
     void
     extract(
       pdb::line_info& line_info,
@@ -479,14 +468,11 @@ namespace iotbx { namespace pdb {
       af::shared<input_atom_labels> const&
       input_atom_labels_list() const { return input_atom_labels_list_; }
 
-      af::shared<std::string> const&
-      atom_serial_number_strings() const { return atom_serial_number_strings_;}
+      af::shared<hierarchy_v2::atom> const&
+      atoms_v2() const { return atoms_v2_; }
 
-      af::shared<hierarchy_v1::atom> const&
-      atoms() const { return atoms_; }
-
-      af::shared<hierarchy_v2::atom>
-      atoms_v2();
+      af::shared<std::string>
+      atom_serial_number_strings() const;
 
       af::shared<int> const&
       model_numbers() const { return model_numbers_; }
@@ -547,65 +533,20 @@ namespace iotbx { namespace pdb {
       af::shared<std::size_t>
       model_atom_counts() const;
 
-      af::shared<std::vector<unsigned> >
-      find_duplicate_atom_labels() const;
-
-      //! not const because atom parents are modified.
-      hierarchy_v1::root
-      construct_hierarchy_v1();
-
       //! not const because atom parents are modified.
       hierarchy_v2::root
       construct_hierarchy_v2(
         bool residue_group_post_processing=true);
-
-      unsigned
-      number_of_alternative_groups_with_blank_altloc() const
-      {
-        SCITBX_ASSERT(construct_hierarchy_v1_was_called_before);
-        return number_of_alternative_groups_with_blank_altloc_;
-      }
-
-      unsigned
-      number_of_alternative_groups_without_blank_altloc() const
-      {
-        SCITBX_ASSERT(construct_hierarchy_v1_was_called_before);
-        return number_of_alternative_groups_without_blank_altloc_;
-      }
-
-      unsigned
-      number_of_chains_with_altloc_mix() const
-      {
-        SCITBX_ASSERT(construct_hierarchy_v1_was_called_before);
-        return number_of_chains_with_altloc_mix_;
-      }
-
-      af::shared<std::size_t> const&
-      i_seqs_alternative_group_with_blank_altloc() const
-      {
-        SCITBX_ASSERT(construct_hierarchy_v1_was_called_before);
-        return i_seqs_alternative_group_with_blank_altloc_;
-      }
-
-      af::shared<std::size_t> const&
-      i_seqs_alternative_group_without_blank_altloc() const
-      {
-        SCITBX_ASSERT(construct_hierarchy_v1_was_called_before);
-        return i_seqs_alternative_group_without_blank_altloc_;
-      }
-
-      std::map<std::string, unsigned>
-      atom_element_counts() const;
 
 #define IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(attr, attr_type) \
       af::shared<attr_type > \
       extract_atom_##attr() const \
       { \
         af::shared<attr_type > result( \
-          atoms_.size(), af::init_functor_null<attr_type >()); \
+          atoms_v2_.size(), af::init_functor_null<attr_type >()); \
         attr_type* r = result.begin(); \
-        const hierarchy_v1::atom* atoms_end = atoms_.end(); \
-        for(const hierarchy_v1::atom* a=atoms_.begin();a!=atoms_end;a++) { \
+        const hierarchy_v2::atom* atoms_end = atoms_v2_.end(); \
+        for(const hierarchy_v2::atom* a=atoms_v2_.begin();a!=atoms_end;a++) { \
           *r++ = a->data->attr; \
         } \
         return result; \
@@ -623,12 +564,6 @@ namespace iotbx { namespace pdb {
       af::shared<std::size_t>
       extract_atom_hetero() const;
 
-      af::shared<std::size_t>
-      extract_atom_flag_altloc() const;
-
-      void
-      reset_atom_tmp(int first_value=0, int increment=1) const;
-
     protected:
       std::string source_info_;
       record_type_counts_t record_type_counts_;
@@ -642,8 +577,6 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> miscellaneous_features_section_;
       af::shared<std::string> crystallographic_section_;
       af::shared<input_atom_labels> input_atom_labels_list_;
-      af::shared<std::string> atom_serial_number_strings_;
-      af::shared<hierarchy_v1::atom> atoms_;
       af::shared<hierarchy_v2::atom> atoms_v2_;
       af::shared<int>         model_numbers_;
       af::shared<std::size_t> model_indices_;
@@ -653,12 +586,6 @@ namespace iotbx { namespace pdb {
       af::shared<unsigned>    break_record_line_numbers;
       af::shared<std::string> connectivity_section_;
       af::shared<std::string> bookkeeping_section_;
-      bool construct_hierarchy_v1_was_called_before;
-      unsigned number_of_alternative_groups_with_blank_altloc_;
-      unsigned number_of_alternative_groups_without_blank_altloc_;
-      unsigned number_of_chains_with_altloc_mix_;
-      af::shared<std::size_t> i_seqs_alternative_group_with_blank_altloc_;
-      af::shared<std::size_t> i_seqs_alternative_group_without_blank_altloc_;
       //
       mutable bool            name_selection_cache_is_up_to_date_;
       mutable str_sel_cache_t name_selection_cache_;

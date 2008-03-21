@@ -17,7 +17,6 @@ builder(
   source=[
     "hybrid_36_c.c",
     "utils.cpp",
-    "hierarchy_v1.cpp",
     "hierarchy_v2.cpp",
     "overall_counts.cpp",
     "input.cpp"])

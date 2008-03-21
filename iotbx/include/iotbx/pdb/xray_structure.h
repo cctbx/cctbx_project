@@ -51,7 +51,7 @@ namespace iotbx { namespace pdb {
         model_range(self_->model_indices().const_ref()),
         i_atom(0),
         ial(self_->input_atom_labels_list().begin()),
-        atom(self_->atoms().begin()),
+        atom(self_->atoms_v2().begin()),
         scatterer("", cctbx::fractional<>(0,0,0), 0, 0, "", 0, 0)
       {
         CCTBX_ASSERT(!use_scale_matrix || !fractional_coordinates);
@@ -66,7 +66,7 @@ namespace iotbx { namespace pdb {
       range_loop<std::size_t> model_range;
       std::size_t i_atom;
       const input_atom_labels *ial;
-      const hierarchy_v1::atom *atom;
+      const hierarchy_v2::atom *atom;
       XrayScattererType scatterer;
       boost::optional<std::string> scattering_type;
 

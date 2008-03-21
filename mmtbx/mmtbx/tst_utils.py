@@ -2,6 +2,7 @@ from cctbx.array_family import flex
 import math, time, sys, os
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
 import mmtbx.model
 from libtbx import introspection
 import libtbx.load_env
@@ -109,6 +110,7 @@ def exercise_01():
 def run():
   exercise_00()
   exercise_01()
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()

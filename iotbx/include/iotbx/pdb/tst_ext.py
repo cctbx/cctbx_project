@@ -207,8 +207,6 @@ def exercise_pdb_input():
     assert pdb_inp.bookkeeping_section().size() == 0
     assert pdb_inp.model_numbers_are_unique()
     assert pdb_inp.model_atom_counts().size() == 0
-    assert len(pdb_inp.find_duplicate_atom_labels()) == 0
-    assert pdb_inp.atom_element_counts() == {}
     assert pdb_inp.extract_atom_xyz().size() == 0
     assert pdb_inp.extract_atom_sigxyz().size() == 0
     assert pdb_inp.extract_atom_occ().size() == 0
@@ -218,7 +216,6 @@ def exercise_pdb_input():
     assert pdb_inp.extract_atom_uij().size() == 0
     assert pdb_inp.extract_atom_siguij().size() == 0
     assert pdb_inp.extract_atom_hetero().size() == 0
-    assert pdb_inp.extract_atom_flag_altloc().size() == 0
     pdb_inp = pdb.input(
       source_info="file/name",
       lines=flex.split_lines("""\
@@ -409,50 +406,7 @@ END""")
         == [[0,1,2,3,4,5]]
     assert pdb_inp.model_numbers_are_unique()
     assert list(pdb_inp.model_atom_counts()) == [4,2]
-    assert len(pdb_inp.find_duplicate_atom_labels()) == 0
   #
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM1000001  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
-ATOM1000002  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
-"""))
-  dup = pdb_inp.find_duplicate_atom_labels()
-  assert dup.size() == 1
-  assert list(dup[0]) == [0,1]
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-MODEL 1
-ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
-ATOM      2  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
-ENDMDL
-MODEL 2
-ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
-ATOM      2  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
-ENDMDL
-"""))
-  dup = pdb_inp.find_duplicate_atom_labels()
-  assert dup.size() == 2
-  assert list(dup[0]) == [0,1]
-  assert list(dup[1]) == [2,3]
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
-ATOM      2  N   MET A   2       2.615  27.289  20.467  1.00  0.00           O
-ATOM      3  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
-ATOM      4  N   MET A   1       2.615  27.289  20.467  1.00  0.00           O
-ATOM      5  C   MET A   1       6.215  22.789  24.067  1.00  0.00           N
-BREAK
-ATOM      6  C   MET A   2       2.615  27.289  20.467  1.00  0.00           O
-ATOM      7  C   MET A   1       2.615  27.289  20.467  1.00  0.00           O
-ATOM      8  C   MET A   1       2.615  27.289  20.467  1.00  0.00           O
-"""))
-  dup = pdb_inp.find_duplicate_atom_labels()
-  assert dup.size() == 2
-  assert list(dup[0]) == [0,2,3]
-  assert list(dup[1]) == [4,6,7]
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -461,7 +415,6 @@ ATOM      2  CG  LYS   109      17.058   6.315  47.703  1.00 20.00      A
 ATOM      3  CB  LYS   109      26.721   1.908  15.275  1.00 20.00      B
 ATOM      4  CG  LYS   109      27.664   2.793  16.091  1.00 20.00      B
 """))
-  assert pdb_inp.find_duplicate_atom_labels().size() == 0
   expected_pdb_format = """\
 " CB  LYS   109 " segid="A   "
 " CG  LYS   109 " segid="A   "
@@ -469,7 +422,7 @@ ATOM      4  CG  LYS   109      27.664   2.793  16.091  1.00 20.00      B
 " CG  LYS   109 " segid="B   "
 """.splitlines()
   for il,ef in zip(pdb_inp.input_atom_labels_list(),expected_pdb_format):
-    assert il.pdb_format() == ef
+    assert not show_diff(il.pdb_format(), ef)
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
@@ -672,236 +625,6 @@ ENDMDL
   assert [list(v) for v in pdb_inp.chain_indices()] \
       == [[2,3,5],[7,9,10],[11,13,15], [18,20]]
   #
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     54  CA  GLY A   9
-"""))
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     54  CA BGLY A   9
-"""))
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     54  CA BGLY A   9
-ATOM     55  CA CGLY A   9
-"""))
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     54  CA  GLY A   9
-ATOM     55  CA CGLY A   9
-"""))
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     54  CA BGLY A   9
-ATOM     55  CA  GLY A   9
-"""))
-  perm = flex.size_t((0,1,2))
-  for i_trial in xrange(6):
-    pdb_inp = pdb.input(
-      source_info=None,
-      lines=flex.split_lines("""\
-ATOM     54  CA BGLY A   9
-ATOM     55  CA  GLY A   9
-ATOM     56  CA AGLY A   9
-""").select(perm))
-    perm.next_permutation()
-  perm = flex.size_t((0,1,2))
-  for i_trial in xrange(6):
-    pdb_inp = pdb.input(
-      source_info=None,
-      lines=flex.split_lines("""\
-ATOM     54  CA BGLY A   9
-ATOM     55  CA  GLY A   9
-ATOM     56  CA AGLY A   9
-ATOM     57  O   GLY A   9
-""").select(perm.concatenate(flex.size_t([3]))))
-  perm = flex.size_t((1,2,3))
-  for i_trial in xrange(6):
-    pdb_inp = pdb.input(
-      source_info=None,
-      lines=flex.split_lines("""\
-ATOM     53  O   GLY A   9
-ATOM     54  CA BGLY A   9
-ATOM     55  CA  GLY A   9
-ATOM     56  CA AGLY A   9
-""").select(flex.size_t([0]).concatenate(perm)))
-    perm.next_permutation()
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     53  CA BGLY A   9
-ATOM     54  O   GLY A   9
-ATOM     55  CA  GLY A   9
-ATOM     56  CA AGLY A   9
-"""))
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     54  CA  GLY A   9
-ATOM     55  CA  GLY A   9
-ATOM     56  CA BGLY A   9
-"""))
-  assert [list(a) for a in pdb_inp.find_duplicate_atom_labels()] == [[0, 1]]
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     54  CA  GLY A   9
-ATOM     55  CA BGLY A   9
-ATOM     56  CA  GLY A   9
-"""))
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     54  CA BGLY A   9
-ATOM     55  CA  GLY A   9
-ATOM     56  CA  GLY A   9
-"""))
-  assert [list(a) for a in pdb_inp.find_duplicate_atom_labels()] == [[1, 2]]
-  perm = flex.size_t((0,1,2))
-  for i_trial in xrange(6):
-    pdb_inp = pdb.input(
-      source_info=None,
-      lines=flex.split_lines("""\
-ATOM     54  CA  GLY A   9
-ATOM     55  CA BGLY A   9
-ATOM     56  CA BGLY A   9
-""").select(perm))
-    invp = perm.inverse_permutation()
-    assert [list(a) for a in pdb_inp.find_duplicate_atom_labels()] \
-        == [sorted([invp[1], invp[2]])]
-    perm.next_permutation()
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-HEADER    SUGAR BINDING PROTEIN                   20-MAR-00   1EN2
-ATOM     54  CA  GLY A   9
-ATOM     58  CA AGLY A  10
-ATOM     62  CA BSER A  10
-ATOM     68  CA  THR A  11
-ATOM     75  CA  CYS A  12
-ATOM     81  CA  PRO A  13
-ATOM     88  CA AALA A  14
-ATOM     93  CA BGLY A  14
-ATOM     97  CA  LEU A  15
-ATOM    108  CA ATRP A  16
-ATOM    122  CA BARG A  16
-ATOM    140  CA  CYS A  17
-"""))
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-HEADER    HYDROLASE(ENDORIBONUCLEASE)             07-JUN-93   1RGA
-ATOM    247  OG  SER    35
-ATOM    242  N   SER    35
-ATOM    244  C   SER    35
-ATOM    243  CA  SER    35
-ATOM    248  OG BSER    35
-ATOM    246  CB BSER    35
-ATOM    245  O   SER    35
-ATOM    246  CB  SER    35
-BREAK
-ATOM    250  N  BASN    36
-ATOM    252  CA BASN    36
-ATOM    253  C   ASN    36
-ATOM    251  CA  ASN    36
-ATOM    249  N   ASN    36
-ATOM    256  O  BASN    36
-ATOM    257  CB  ASN    36
-ATOM    255  O   ASN    36
-ATOM    258  CB BASN    36
-"""))
-  #
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-HEADER    OXIDOREDUCTASE                          22-MAY-01   1H5I
-HETATM 2794  O   HOH Z 297
-HETATM 2795  O  BHOH Z 297
-END
-"""))
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-HEADER    OXIDOREDUCTASE                          25-NOV-00   1HEU
-ATOM      2  CA ASER A   1
-ATOM      5  CB ASER A   1
-ATOM      8  CA BSER A   1
-ATOM     11  CB BSER A   1
-ATOM   2092  CA  GLU A 256
-ATOM   2095  CB  GLU A 256
-ATOM   2100  CB AGLU A 256
-ATOM   2105  CB BGLU A 256
-END
-"""))
-  assert pdb_inp.atom_element_counts() == {"  ": 8}
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM      1  CA ASER A   1
-ATOM      2  CB BSER A   1
-ATOM      3  CB  GLU A   2
-ATOM      4  CB AGLU A   2
-ATOM      5  CB BGLU A   2
-ATOM      6  CA ASER B   1
-ATOM      7  CB BSER B   1
-ATOM      8  CB  GLU B   2
-ATOM      9  CB AGLU B   2
-ATOM     10  CB BGLU B   2
-END
-"""))
-  #
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-ATOM     68  HD1 LEU B 441
-ATOM     69  HD1 LEU B 441
-ATOM     70  HD1 LEU B 441
-ATOM     71  HD2 LEU B 441
-ATOM     72  HD2 LEU B 441
-ATOM     73  HD2 LEU B 441
-"""))
-  try: pdb_inp.raise_duplicate_atom_labels_if_necessary(max_show=1)
-  except Sorry, e:
-    assert not show_diff(str(e), '''\
-number of groups of duplicate atom labels:    2
-  total number of affected atoms:             6
-  group " HD1 LEU B 441 "
-        " HD1 LEU B 441 "
-        " HD1 LEU B 441 "
-  ... 1 remaining group not shown''')
-  else: raise Exception_expected
-  #
-  try: pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
-REMARK
-ATOM      1  CB  LYS   109
-BREAK
-ATOM      2  CG  LYS   109
-""")).construct_hierarchy_v1()
-  except RuntimeError, e:
-    assert not show_diff(str(e), "Misplaced BREAK record (input line 3).")
-  else: raise Exception_expected
-  try: pdb.input(
-    source_info="file abc",
-    lines=flex.split_lines("""\
-REMARK
-ATOM      1  CA  LYS   109
-ATOM      2  CB  LYS   109
-BREAK
-ATOM      3  CA  LYS   110
-BREAK
-ATOM      4  CB  LYS   110
-""")).construct_hierarchy_v1()
-  except RuntimeError, e:
-    assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
-  else: raise Exception_expected
-  #
   open("tmp.pdb", "w")
   pdb_inp = pdb.input(file_name="tmp.pdb")
   assert pdb_inp.source_info() == "file tmp.pdb"
@@ -964,7 +687,6 @@ ATOM      5 1CB AGLN A   3      32.979  10.223  18.469  1.00 37.80
 HETATM    6 CA  AION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
-  assert pdb_inp.atom_element_counts() == {" C": 2, "  ": 3, " N": 1, "CA": 1}
   assert approx_equal(pdb_inp.extract_atom_xyz(), [
     (35.299,11.075,19.070),
     (34.482,9.927,18.794),
@@ -1006,7 +728,6 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1)])
   assert list(pdb_inp.extract_atom_hetero()) == [5,6]
-  assert list(pdb_inp.extract_atom_flag_altloc()) == [4,5]
   #
   for use_scale_matrix_if_available in [False, True]:
     xray_structure = pdb_inp.xray_structure_simple(
