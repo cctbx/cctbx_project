@@ -6,30 +6,6 @@
 
 namespace iotbx { namespace pdb {
 
-  af::shared<hierarchy_v2::atom>
-  input::atoms_v2()
-  {
-    unsigned n_atoms = static_cast<unsigned>(atoms_.size());
-    if (atoms_v2_.size() == 0 && atoms_.size() != 0) {
-      SCITBX_ASSERT(atom_serial_number_strings_.size() == atoms_.size());
-      atoms_v2_.reserve(n_atoms);
-      hierarchy_v1::atom* a = atoms_.begin();
-      std::string* s = atom_serial_number_strings_.begin();
-      for(unsigned i=0;i<n_atoms;i++,a++,s++) {
-        const hierarchy_v1::atom_data* d = a->data.get();
-        atoms_v2_.push_back(hierarchy_v2::atom(
-          d->name.elems, d->segid.elems,
-          d->element.elems, d->charge.elems, s->c_str(),
-          d->xyz, d->sigxyz,
-          d->occ, d->sigocc,
-          d->b, d->sigb,
-          d->uij, d->siguij,
-          d->hetero));
-      }
-    }
-    return atoms_v2_;
-  }
-
   namespace {
 
     void
@@ -94,7 +70,6 @@ namespace iotbx { namespace pdb {
     hierarchy_v2::root result;
     result.pre_allocate_models(model_numbers.size());
     const input_atom_labels* iall = input_atom_labels_list_.begin();
-    atoms_v2(); // to fill array
     hierarchy_v2::atom* atoms = atoms_v2_.begin();
     unsigned next_chain_range_begin = 0;
     for(unsigned i_model=0;i_model<model_numbers.size();i_model++) {

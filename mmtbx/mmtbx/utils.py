@@ -879,7 +879,8 @@ class process_pdb_file_srv(object):
         for file_name in pdb_file_names:
           msg.append("  %s" % show_string(file_name))
       raise Sorry("\n".join(msg))
-    pdb_inp.raise_duplicate_atom_labels_if_necessary()
+    pdb_inp.construct_hierarchy_v2().overall_counts() \
+      .raise_duplicate_atom_labels_if_necessary()
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv              = self.mon_lib_srv,
       ener_lib                 = self.ener_lib,

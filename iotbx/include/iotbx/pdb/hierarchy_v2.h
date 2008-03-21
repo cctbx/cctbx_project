@@ -406,6 +406,26 @@ namespace hierarchy_v2 {
           hetero))
       {}
 
+      explicit
+      atom(
+        str4 name, str4 segid,
+        str2 element, str2 charge, str5 serial,
+        vec3 const& xyz, vec3 const& sigxyz,
+        double occ, double sigocc,
+        double b, double sigb,
+        sym_mat3 const& uij, sym_mat3 const& siguij,
+        bool hetero)
+      :
+        data(new atom_data(
+          name, segid,
+          element, charge, serial,
+          xyz, sigxyz,
+          occ, sigocc,
+          b, sigb,
+          uij, siguij,
+          hetero))
+      {}
+
       inline
       atom(
         atom_group const& parent,
