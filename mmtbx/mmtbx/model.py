@@ -145,11 +145,15 @@ class manager(object):
 
   def extact_water(self):
     top = {}
+    solvent_sel = self.solvent_selection()
     get_class = iotbx.pdb.common_residue_names_get_class
     for i_seq, aal in enumerate(self.atom_attributes_list):
       if(get_class(name = aal.resName) == "common_water"):
+        assert solvent_sel[i_seq]
         top.setdefault(aal.chainID,      {}).\
             setdefault(aal.residue_id(), []).append([i_seq,aal])
+      else:
+        assert not solvent_sel[i_seq]
     water_residues = []
     for v0 in top.values():
       for v1 in v0.values():
@@ -455,12 +459,11 @@ class manager(object):
       disable_asu_cache = disable_asu_cache)
 
   def solvent_selection(self):
-    labels = self.xray_structure.scatterers().extract_labels()
     water = ordered_solvent.water_ids()
     result = flex.bool()
     get_class = iotbx.pdb.common_residue_names_get_class
     for a in self.atom_attributes_list:
-      element = (a.element).strip()
+      element = (a.element).strip().upper()
       resName = (a.resName).strip()
       name    = (a.name).strip()
       if((element in water.element_types) and
@@ -634,7 +637,7 @@ class manager(object):
     get_class = iotbx.pdb.common_residue_names_get_class
     for aattr in self.atom_attributes_list:
       if(get_class(name = aattr.resName) == "common_water"):
-        water_resseqs.append(aattr.resSeq)
+        water_resseqs.append(int(aattr.resSeq))
     i_seq = flex.max_default(water_resseqs, 0)
     #
     for sc in solvent_xray_structure.scatterers():
