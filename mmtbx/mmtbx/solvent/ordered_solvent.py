@@ -170,8 +170,7 @@ class manager(object):
       self.reset_solvent(
         solvent_selection      = solsel,
         solvent_xray_structure = xrs_sol)
-    else: # XXX re-number at least
-      self.model.renumber_water()
+    self.model.renumber_water()
 
   def is_water_last(self):
     result = True
