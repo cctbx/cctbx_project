@@ -2123,11 +2123,34 @@ HETATM 1422  O2  SO4     1      31.648  32.120  28.923  0.86 36.50           O
 HETATM 1423  O3  SO4     1      33.681  31.215  27.852  0.96 31.36           O
 HETATM 1424  O4  SO4     1      32.067  29.709  28.958  1.00 44.58           O
 """)
-  assert summary.pdb_inp.atoms().size() == 14
+  assert summary.pdb_inp.atoms_v2().size() == 14
   assert summary.hierarchy.atoms().size() == 14
   oc = summary.overall_counts
   assert len(oc.consecutive_residue_groups_with_same_resid) == 0
   assert len(sio.getvalue().splitlines()) == 26
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM         CA  ASN     1
+ATOM         C   ASN     1
+ATOM         O   HOH     2
+ATOM         H1  HOH     2
+ATOM         H2  HOH     2
+ATOM         CA  GLU     3
+ATOM         C   GLU     3
+ATOM         O   H2O     4
+ATOM         O   OH2     5
+ATOM         O   DOD     6
+ATOM         P   U       7
+ATOM         O   D2O     8
+ATOM         O   OD2     9
+ATOM         CA  ALA    10
+ATOM         C   ALA    10
+ATOM         O   TIP    11
+ATOM         O   TIP    12
+"""))
+  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  assert oc.resname_classes == {
+    'common_water': 8, 'common_rna_dna': 1, 'common_amino_acid': 3}
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\

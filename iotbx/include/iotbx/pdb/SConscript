@@ -38,10 +38,6 @@ if (not env_etc.no_boost_python):
       "construct_hierarchy_v2.cpp",
       "xray_structure_bpl.cpp"])
   env.SharedLibrary(
-    target="#lib/iotbx_pdb_hierarchy_v1_ext",
-    source=[
-      "hierarchy_v1_ext.cpp"])
-  env.SharedLibrary(
     target="#lib/iotbx_pdb_hierarchy_v2_ext",
     source=[
       "hierarchy_v2_ext.cpp"])

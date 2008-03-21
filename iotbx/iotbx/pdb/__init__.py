@@ -4,7 +4,6 @@ import boost.python
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
-import iotbx.pdb.hierarchy_v1
 import iotbx.pdb.hierarchy_v2
 
 from iotbx.pdb.atom_name_interpretation import \
@@ -277,84 +276,6 @@ def input(
   assert source_info is not Please_pass_string_or_None
   return ext.input(source_info=source_info, lines=lines)
 
-def show_summary(
-      file_name=None,
-      source_info=Please_pass_string_or_None,
-      lines=None,
-      level_id=None,
-      level_id_exception=ValueError,
-      duplicate_max_show=10,
-      out=None,
-      prefix=""):
-  pdb_inp = input(file_name=file_name, source_info=source_info, lines=lines)
-  print >> out, prefix+"source info:", pdb_inp.source_info()
-  hierarchy = pdb_inp.construct_hierarchy_v1()
-  overall_counts = hierarchy.overall_counts()
-  assert overall_counts.n_atoms == pdb_inp.input_atom_labels_list().size()
-  fmt = "%%%dd" % len(str(overall_counts.n_atoms))
-  print >> out, prefix+"  total number of:"
-  print >> out, prefix+"    models:    ", fmt % overall_counts.n_models
-  print >> out, prefix+"    chains:    ", fmt % overall_counts.n_chains
-  print >> out, prefix+"    alt. conf.:", fmt % (
-    overall_counts.n_conformers - overall_counts.n_chains)
-  print >> out, prefix+"    residues:  ", fmt % overall_counts.n_residues
-  print >> out, prefix+"    atoms:     ", fmt % overall_counts.n_atoms
-  #
-  c = pdb_inp.atom_element_counts()
-  print >> out, prefix+"  number of atom element types: %d"%len(c)
-  print >> out, prefix+"  histogram of atom element frequency:"
-  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
-  #
-  c = overall_counts.residue_name_classes
-  print >> out, prefix+"  residue name classes:"
-  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
-  #
-  c = overall_counts.chain_ids
-  print >> out, prefix+"  number of chain ids: %d"% len(c)
-  print >> out, prefix+"  histogram of chain id frequency:"
-  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
-  #
-  c = overall_counts.conformer_ids
-  print >> out, prefix+"  number of conformer ids: %d"%len(c)
-  print >> out, prefix+"  histogram of conformer id frequency:"
-  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ")
-  #
-  c = overall_counts.residue_names
-  print >> out, prefix+"  number of residue names: %d"%len(c)
-  print >> out, prefix+"  histogram of residue name frequency:"
-  annotation_appearance = {
-    "common_amino_acid": None,
-    "common_rna_dna": None,
-    "common_water": "   common water",
-    "common_small_molecule": "   common small molecule",
-    "common_element": "   common element",
-    "other": "   other"
-  }
-  show_sorted_by_counts(c.items(), out=out, prefix=prefix+"    ",
-    annotations=[
-      annotation_appearance[common_residue_names_get_class(name=name)]
-        for name in c.keys()])
-  #
-  msg = pdb_inp.have_duplicate_atom_labels_message(
-    max_show=duplicate_max_show,
-    prefix=prefix+"  ")
-  if (msg is not None): print >> out, msg
-  #
-  msg = pdb_inp.have_altloc_mix_message(prefix=prefix+"  ")
-  if (msg is None):
-    msg = pdb_inp.have_blank_altloc_message(prefix=prefix+"  ")
-  if (msg is not None): print >> out, msg
-  #
-  if (level_id is not None):
-    print >> out, prefix+"  hierarchy level of detail = %s" % level_id
-    hierarchy.show(
-      out=out,
-      prefix=prefix+"    ",
-      level_id=level_id,
-      level_id_exception=level_id_exception)
-  #
-  return pdb_inp, hierarchy
-
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 
 def _one_of(n):
@@ -362,9 +283,6 @@ def _one_of(n):
   return ""
 
 class _input(boost.python.injector, ext.input):
-
-  def construct_hierarchy(self):
-    return self.construct_hierarchy_v1()
 
   def have_blank_altloc_message(self, prefix=""):
     n = self.number_of_alternative_groups_with_blank_altloc()

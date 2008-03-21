@@ -177,7 +177,7 @@ the best course of action."""
       file = open(name, "w")
       for ser, lbl, atom in zip( pdb_inp.atom_serial_number_strings(),
                                  pdb_inp.input_atom_labels_list(),
-                                 pdb_inp.atoms() ):
+                                 pdb_inp.atoms_v2() ):
         r = self.matches[index][1]
         t = self.matches[index][2]
         print >> file, pdb.format_atom_record(
