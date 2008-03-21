@@ -150,7 +150,7 @@ namespace iotbx { namespace pdb {
           prev_resid = resid;
           prev_resname = resname;
           if (curr_blank_altloc) open_resname_run_has_blank_altloc = true;
-          altloc_resname_indices[ial.altloc_resname_small()].push_back(
+          altloc_resname_indices[ial.confid_small()].push_back(
             i_atom-rg_start);
         }
         if (prev_resid != 0) {

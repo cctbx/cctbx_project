@@ -187,7 +187,7 @@ namespace iotbx { namespace pdb {
   //! Efficient processing of input atom labels.
   struct input_atom_labels
   {
-    static const unsigned compacted_size = 4+3+2+4+1+4+1;
+    static const unsigned compacted_size = 4+1+3+2+4+1+4;
     char compacted[compacted_size];
 
     char*       name_begin()       { return compacted; }
@@ -195,13 +195,23 @@ namespace iotbx { namespace pdb {
     str4        name_small() const { return str4(name_begin(), true); }
     std::string name()       const { return std::string(name_begin(),4); }
 
-    char*       resname_begin()       { return compacted+4; }
-    const char* resname_begin() const { return compacted+4; }
+    char*       altloc_begin()       { return compacted+4; }
+    const char* altloc_begin() const { return compacted+4; }
+    str1        altloc_small() const { return str1(altloc_begin(), true); }
+    std::string altloc()       const { return std::string(altloc_begin(),1); }
+
+    char*       resname_begin()       { return compacted+5; }
+    const char* resname_begin() const { return compacted+5; }
     str3        resname_small() const { return str3(resname_begin(), true); }
     std::string resname()       const { return std::string(resname_begin(),3);}
 
-    char*       chain_begin()       { return compacted+7; }
-    const char* chain_begin() const { return compacted+7; }
+    char*       confid_begin()       { return compacted+4; }
+    const char* confid_begin() const { return compacted+4; }
+    str4        confid_small() const { return str4(confid_begin(), true); }
+    std::string confid()       const { return std::string(confid_begin(),4);}
+
+    char*       chain_begin()       { return compacted+8; }
+    const char* chain_begin() const { return compacted+8; }
     str2        chain_small() const
     {
       if (chain_begin()[0] == ' ') return str2(chain_begin()[1]);
@@ -213,37 +223,25 @@ namespace iotbx { namespace pdb {
       return std::string(chain_begin(),2);
     }
 
-    char*       resseq_begin()       { return compacted+9; }
-    const char* resseq_begin() const { return compacted+9; }
+    char*       resseq_begin()       { return compacted+10; }
+    const char* resseq_begin() const { return compacted+10; }
     str4        resseq_small() const { return str4(resseq_begin(), true); }
     std::string resseq()       const { return std::string(resseq_begin(),4); }
 
-    char*       icode_begin()       { return compacted+13; }
-    const char* icode_begin() const { return compacted+13; }
+    char*       icode_begin()       { return compacted+14; }
+    const char* icode_begin() const { return compacted+14; }
     str1        icode_small() const { return str1(icode_begin(), true); }
     std::string icode()       const { return std::string(icode_begin(),1); }
 
-    char*       resid_begin()       { return compacted+9; }
-    const char* resid_begin() const { return compacted+9; }
+    char*       resid_begin()       { return compacted+10; }
+    const char* resid_begin() const { return compacted+10; }
     str5        resid_small() const { return str5(resid_begin(), true); }
     std::string resid()       const { return std::string(resid_begin(),5); }
 
-    char*       segid_begin()       { return compacted+14; }
-    const char* segid_begin() const { return compacted+14; }
+    char*       segid_begin()       { return compacted+15; }
+    const char* segid_begin() const { return compacted+15; }
     str4        segid_small() const { return str4(segid_begin(), true); }
     std::string segid()       const { return std::string(segid_begin(),4); }
-
-    char*       altloc_begin()       { return compacted+18; }
-    const char* altloc_begin() const { return compacted+18; }
-    str1        altloc_small() const { return str1(altloc_begin(), true); }
-    std::string altloc()       const { return std::string(altloc_begin(),1); }
-
-    str4 altloc_resname_small() const
-    {
-      str4 result(compacted+3, true);
-      result.elems[0] = *altloc_begin();
-      return result;
-    }
 
     input_atom_labels() {}
 
@@ -304,103 +302,6 @@ namespace iotbx { namespace pdb {
 
     void
     check_equivalence(pdb::line_info& line_info) const;
-
-    int
-    compare(input_atom_labels const& other) const
-    {
-      const char* s = compacted;
-      const char* o = other.compacted;
-      if (*  s < *  o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      if (*++s < *++o) return -1; if (*s > *o) return 1;
-      return 0;
-    }
-
-    bool
-    operator!=(input_atom_labels const& other) const
-    {
-      const char* s = compacted;
-      const char* o = other.compacted;
-      if (*  s != *  o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      if (*++s != *++o) return true;
-      return false;
-    }
-
-    bool
-    equal_ignoring_altloc(input_atom_labels const& other) const
-    {
-      const char* s = compacted;
-      const char* o = other.compacted;
-      if (*  s != *  o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      return true;
-    }
-
-    bool
-    is_in_same_residue(input_atom_labels const& other) const
-    {
-      const char* s = resname_begin();
-      const char* o = other.resname_begin();
-      if (*  s != *  o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      s = resseq_begin();
-      o = other.resseq_begin();
-      if (*  s != *  o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      if (*++s != *++o) return false;
-      return (*icode_begin() == *other.icode_begin());
-    }
   };
 
   //! Processing of PDB strings.
