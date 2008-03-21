@@ -176,7 +176,7 @@ of the aligned length of the fixed molecule sequence.
   out = open(params.super.moved, "w")
   for serial, label, atom in zip(moving_pdb.atom_serial_number_strings(),
                                  moving_pdb.input_atom_labels_list(),
-                                 moving_pdb.atoms()):
+                                 moving_pdb.atoms_v2()):
     print >> out, iotbx.pdb.format_atom_record(
       record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
       serial=int(serial),

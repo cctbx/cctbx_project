@@ -124,7 +124,7 @@ def write_as_pdb_file( input_xray_structure = None,
 
   for serial, label, atom, xyz, adp in zip(input_pdb.atom_serial_number_strings(),
                                            input_pdb.input_atom_labels_list(),
-                                           input_pdb.atoms(),
+                                           input_pdb.atoms_v2(),
                                            input_xray_structure.sites_cart(),
                                            u_iso_array
                                            ):

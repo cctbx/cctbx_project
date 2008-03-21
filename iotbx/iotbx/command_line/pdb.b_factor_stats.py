@@ -16,7 +16,7 @@ def run(args):
       libtbx.utils.format_exception()
     isotropic_b_factors = flex.double()
     all_eigenvalues = flex.double()
-    for atom in pdb_inp.atoms():
+    for atom in pdb_inp.atoms_v2():
       if (atom.uij == (-1,-1,-1,-1,-1,-1)):
         isotropic_b_factors.append(atom.b)
       else:
