@@ -2,7 +2,7 @@
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 {
 
-namespace detail {
+namespace {
 
   void
   append_range(
@@ -13,11 +13,33 @@ namespace detail {
     for(;i_seq!=i_seq_end;i_seq++) v.push_back(i_seq);
   }
 
-} // namespace detail
+  template <typename StrType>
+  void
+  map_array_transfer(
+    std::map<StrType, std::vector<unsigned> >& map_s,
+    std::map<std::string, std::vector<unsigned> >& map)
+  {
+    typedef typename std::map<StrType, std::vector<unsigned> >::iterator it;
+    it i_end = map_s.end();
+    for(it i=map_s.begin();i!=i_end;i++) {
+      map[i->first.elems].swap(i->second);
+    }
+  }
+
+} // namespace <anonymous>
 
   atom_selection_cache::atom_selection_cache(
     hierarchy_v2::root const& root)
   {
+    std::map<str4, std::vector<unsigned> > name_s;
+    std::map<str1, std::vector<unsigned> > altloc_s;
+    std::map<str3, std::vector<unsigned> > resname_s;
+    std::map<str4, std::vector<unsigned> > resseq_s;
+    std::map<str1, std::vector<unsigned> > icode_s;
+    std::map<str5, std::vector<unsigned> > resid_s;
+    std::map<str4, std::vector<unsigned> > segid_s;
+    std::map<str2, std::vector<unsigned> > element_s;
+    std::map<str2, std::vector<unsigned> > charge_s;
     unsigned i_seq = 0;
     std::vector<model> const& models = root.models();
     unsigned n_mds = root.models_size();
@@ -41,43 +63,42 @@ namespace detail {
             atom_group const& ag = ags[i_ag];
             unsigned n_ats = ag.atoms_size();
             std::vector<atom> const& ats = ag.atoms();
-            for(unsigned i_at=0;i_at<n_ats;i_at++) {
-              name[ats[i_at].data->name.elems].push_back(i_seq++);
-            }
-            i_seq = ag_i_seq_start;
-            for(unsigned i_at=0;i_at<n_ats;i_at++) {
-              segid[ats[i_at].data->segid.elems].push_back(i_seq++);
-            }
-            i_seq = ag_i_seq_start;
-            for(unsigned i_at=0;i_at<n_ats;i_at++) {
-              element[ats[i_at].data->element.elems].push_back(i_seq++);
-            }
-            i_seq = ag_i_seq_start;
-            for(unsigned i_at=0;i_at<n_ats;i_at++) {
-              charge[ats[i_at].data->charge.elems].push_back(i_seq++);
-            }
-            i_seq = ag_i_seq_start;
             for(unsigned i_at=0;i_at<n_ats;i_at++,i_seq++) {
-              if (ats[i_at].uij_is_defined()) anisou.push_back(i_seq);
+              atom const& a = ats[i_at];
+              atom_data const& ad = *a.data;
+              name_s[ad.name].push_back(i_seq);
+              segid_s[ad.segid].push_back(i_seq);
+              element_s[ad.element].push_back(i_seq);
+              charge_s[ad.charge].push_back(i_seq);
+              if (a.uij_is_defined()) anisou.push_back(i_seq);
             }
-            detail::append_range(
-              altloc[ag.data->altloc.elems[0] == '\0'
-                ? " " : ag.data->altloc.elems], ag_i_seq_start, i_seq);
-            detail::append_range(
-              resname[ag.data->resname.elems], ag_i_seq_start, i_seq);
+            append_range(altloc_s[ag.data->altloc], ag_i_seq_start, i_seq);
+            append_range(resname_s[ag.data->resname], ag_i_seq_start, i_seq);
           }
-          detail::append_range(
-            resseq[rg.data->resseq.elems], rg_i_seq_start, i_seq);
-          detail::append_range(
-            icode[rg.data->icode.elems], rg_i_seq_start, i_seq);
-          detail::append_range(
-            resid[rg.resid()], rg_i_seq_start, i_seq);
+          append_range(resseq_s[rg.data->resseq], rg_i_seq_start, i_seq);
+          append_range(icode_s[rg.data->icode], rg_i_seq_start, i_seq);
+          append_range(resid_s[rg.resid_small_str()], rg_i_seq_start, i_seq);
         }
-        detail::append_range(chain_id[ch.data->id], chain_i_seq_start, i_seq);
+        append_range(chain_id[ch.data->id], chain_i_seq_start, i_seq);
       }
-      detail::append_range(model_id[mo.data->id], model_i_seq_start, i_seq);
+      append_range(model_id[mo.data->id], model_i_seq_start, i_seq);
     }
     n_seq = i_seq;
+    if (altloc_s.find(str1("")) != altloc_s.end()) {
+      std::vector<unsigned> const& s0 = altloc_s[str1("")];
+      std::vector<unsigned>& s1 = altloc_s[str1(" ")];
+      s1.insert(s1.end(), s0.begin(), s0.end());
+      altloc_s.erase(str1(""));
+    }
+    map_array_transfer(name_s, name);
+    map_array_transfer(altloc_s, altloc);
+    map_array_transfer(resname_s, resname);
+    map_array_transfer(resseq_s, resseq);
+    map_array_transfer(icode_s, icode);
+    map_array_transfer(resid_s, resid);
+    map_array_transfer(segid_s, segid);
+    map_array_transfer(element_s, element);
+    map_array_transfer(charge_s, charge);
   }
 
 }}} // namespace iotbx::pdb::hierarchy_v2

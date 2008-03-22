@@ -842,6 +842,10 @@ namespace hierarchy_v2 {
       std::string
       resid() const;
 
+      //! Not available in Python.
+      str5
+      resid_small_str() const;
+
       bool
       have_conformers() const;
 
