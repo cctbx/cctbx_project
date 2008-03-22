@@ -171,12 +171,12 @@ END
   assert list(isel(r"element o")) == [65,66,67,68]
   assert list(isel(r"charge 4+")) == [64]
   assert list(isel(r"anisou")) == [1, 3]
-  try: isel(r"resSeq")
+  try: isel(r"resseq")
   except pdb.atom_selection.AtomSelectionError, e:
     assert str(e).find(
-      "Missing argument for resSeq.") >= 0
+      "Missing argument for resseq.") >= 0
   else: raise Exception_expected
-  try: isel(r"resSeq 3:2")
+  try: isel(r"resseq 3:2")
   except pdb.atom_selection.AtomSelectionError, e:
     assert str(e).find(
       "range with first index > last index: resseq 3:2") >= 0
@@ -206,7 +206,7 @@ Atom selection string leading to error:
   assert list(sel[0]) == [1,7,18,25,33]
   for i_seq in list(sel[0]):
     assert sel_cache.atoms[i_seq].name == " CA "
-  sel = sel_cache.get_labels(resSeq="   5")
+  sel = sel_cache.get_labels(resseq="   5")
   assert len(sel) == 1
   assert list(sel[0]) == [76, 83]
   #

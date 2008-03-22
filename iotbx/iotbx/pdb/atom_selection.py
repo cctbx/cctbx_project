@@ -101,20 +101,20 @@ class cache(object):
     self.n_seq = len(atoms)
     self.wildcard_escape_char = wildcard_escape_char
     self.name = stl.map.stl_string_stl_vector_unsigned()
-    self.altLoc = stl.map.stl_string_stl_vector_unsigned()
-    self.resName = stl.map.stl_string_stl_vector_unsigned()
-    self.chainID = stl.map.stl_string_stl_vector_unsigned()
-    self.resSeq = stl.map.stl_string_stl_vector_unsigned()
-    self.iCode = stl.map.stl_string_stl_vector_unsigned()
+    self.altloc = stl.map.stl_string_stl_vector_unsigned()
+    self.resname = stl.map.stl_string_stl_vector_unsigned()
+    self.chain_id = stl.map.stl_string_stl_vector_unsigned()
+    self.resseq = stl.map.stl_string_stl_vector_unsigned()
+    self.icode = stl.map.stl_string_stl_vector_unsigned()
     self.resid = stl.map.stl_string_stl_vector_unsigned()
-    self.segID = stl.map.stl_string_stl_vector_unsigned()
-    self.MODELserial = stl.map.stl_string_stl_vector_unsigned()
+    self.segid = stl.map.stl_string_stl_vector_unsigned()
+    self.model_id = stl.map.stl_string_stl_vector_unsigned()
     self.element = stl.map.stl_string_stl_vector_unsigned()
     self.charge = stl.map.stl_string_stl_vector_unsigned()
     self.anisou = stl.vector.unsigned()
     for i_seq,atom in enumerate(atoms):
       resname = "   "
-      chainid = " "
+      chain_id = " "
       resseq = "    "
       icode = " "
       model_serial = "    "
@@ -134,14 +134,14 @@ class cache(object):
             if (mo is not None):
               model_id = mo.id
       self.name.setdefault(atom.name).append(i_seq)
-      self.altLoc.setdefault(altloc).append(i_seq)
-      self.resName.setdefault(resname).append(i_seq)
-      self.chainID.setdefault(chain_id).append(i_seq)
-      self.resSeq.setdefault(resseq).append(i_seq)
-      self.iCode.setdefault(icode).append(i_seq)
+      self.altloc.setdefault(altloc).append(i_seq)
+      self.resname.setdefault(resname).append(i_seq)
+      self.chain_id.setdefault(chain_id).append(i_seq)
+      self.resseq.setdefault(resseq).append(i_seq)
+      self.icode.setdefault(icode).append(i_seq)
       self.resid.setdefault(resseq+icode).append(i_seq)
-      self.segID.setdefault(atom.segid).append(i_seq)
-      self.MODELserial.setdefault(model_id).append(i_seq)
+      self.segid.setdefault(atom.segid).append(i_seq)
+      self.model_id.setdefault(model_id).append(i_seq)
       self.element.setdefault(atom.element).append(i_seq)
       self.charge.setdefault(atom.charge).append(i_seq)
       if (atom.uij_is_defined()): self.anisou.append(i_seq)
@@ -152,37 +152,37 @@ class cache(object):
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_altLoc(self, pattern):
+  def get_altloc(self, pattern):
     return _get_map_string(
-      map=self.altLoc,
+      map=self.altloc,
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_resName(self, pattern):
+  def get_resname(self, pattern):
     return _get_map_string(
-      map=self.resName,
+      map=self.resname,
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_chainID(self, pattern):
+  def get_chain_id(self, pattern):
     return _get_map_string(
-      map=self.chainID,
+      map=self.chain_id,
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_resSeq(self, pattern):
+  def get_resseq(self, pattern):
     return _get_map_string(
-      map=self.resSeq,
+      map=self.resseq,
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_resSeq_range(self, start, stop):
+  def get_resseq_range(self, start, stop):
     return _get_serial_range(
-      sel_keyword="resseq", map=self.resSeq, start=start, stop=stop)
+      sel_keyword="resseq", map=self.resseq, start=start, stop=stop)
 
-  def get_iCode(self, pattern):
+  def get_icode(self, pattern):
     return _get_map_string(
-      map=self.iCode,
+      map=self.icode,
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
@@ -216,21 +216,21 @@ class cache(object):
       result.append(iselection)
     return result
 
-  def get_segID(self, pattern):
+  def get_segid(self, pattern):
     return _get_map_string(
-      map=self.segID,
+      map=self.segid,
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_MODELserial(self, pattern):
+  def get_model_id(self, pattern):
     return _get_map_string(
-      map=self.MODELserial,
+      map=self.model_id,
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_MODELserial_range(self, start, stop):
+  def get_model_id_range(self, start, stop):
     return _get_serial_range(
-      sel_keyword="model", map=self.MODELserial, start=start, stop=stop)
+      sel_keyword="model", map=self.model_id, start=start, stop=stop)
 
   def get_element(self, pattern):
     return _get_map_string(
@@ -260,23 +260,23 @@ class cache(object):
   def sel_name(self, pattern):
     return self.union(iselections=self.get_name(pattern=pattern))
 
-  def sel_altLoc(self, pattern):
-    return self.union(iselections=self.get_altLoc(pattern=pattern))
+  def sel_altloc(self, pattern):
+    return self.union(iselections=self.get_altloc(pattern=pattern))
 
-  def sel_resName(self, pattern):
-    return self.union(iselections=self.get_resName(pattern=pattern))
+  def sel_resname(self, pattern):
+    return self.union(iselections=self.get_resname(pattern=pattern))
 
-  def sel_chainID(self, pattern):
-    return self.union(iselections=self.get_chainID(pattern=pattern))
+  def sel_chain_id(self, pattern):
+    return self.union(iselections=self.get_chain_id(pattern=pattern))
 
-  def sel_resSeq(self, pattern):
-    return self.union(iselections=self.get_resSeq(pattern=pattern))
+  def sel_resseq(self, pattern):
+    return self.union(iselections=self.get_resseq(pattern=pattern))
 
-  def sel_resSeq_range(self, start, stop):
-    return self.union(iselections=self.get_resSeq_range(start=start,stop=stop))
+  def sel_resseq_range(self, start, stop):
+    return self.union(iselections=self.get_resseq_range(start=start,stop=stop))
 
-  def sel_iCode(self, pattern):
-    return self.union(iselections=self.get_iCode(pattern=pattern))
+  def sel_icode(self, pattern):
+    return self.union(iselections=self.get_icode(pattern=pattern))
 
   def sel_resid(self, pattern):
     return self.union(iselections=self.get_resid(pattern=pattern))
@@ -284,14 +284,14 @@ class cache(object):
   def sel_resid_range(self, start, stop):
     return self.union(iselections=self.get_resid_range(start=start,stop=stop))
 
-  def sel_segID(self, pattern):
-    return self.union(iselections=self.get_segID(pattern=pattern))
+  def sel_segid(self, pattern):
+    return self.union(iselections=self.get_segid(pattern=pattern))
 
-  def sel_MODELserial(self, pattern):
-    return self.union(iselections=self.get_MODELserial(pattern=pattern))
+  def sel_model_id(self, pattern):
+    return self.union(iselections=self.get_model_id(pattern=pattern))
 
-  def sel_MODELserial_range(self, start, stop):
-    return self.union(iselections=self.get_MODELserial_range(
+  def sel_model_id_range(self, start, stop):
+    return self.union(iselections=self.get_model_id_range(
       start=start,stop=stop))
 
   def sel_element(self, pattern):
@@ -340,42 +340,42 @@ class cache(object):
             self.sel_name(pattern=word_iterator.pop_argument(word.value)))
         elif (lword in ["altloc", "altid"]):
           result_stack.append(
-            self.sel_altLoc(pattern=word_iterator.pop_argument(word.value)))
+            self.sel_altloc(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "resname"):
           result_stack.append(
-            self.sel_resName(pattern=word_iterator.pop_argument(word.value)))
+            self.sel_resname(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "chain"):
           result_stack.append(
-            self.sel_chainID(pattern=word_iterator.pop_argument(word.value)))
+            self.sel_chain_id(pattern=word_iterator.pop_argument(word.value)))
         elif (lword in ["resseq", "resid", "resi", "model"]):
           arg = word_iterator.pop_argument(word.value)
           i_colon_or_dash = arg.value.find(":")
           if (i_colon_or_dash < 0): i_colon_or_dash = arg.value.find("-")
           if (i_colon_or_dash < 0):
             if (lword == "resseq"):
-              result_stack.append(self.sel_resSeq(pattern=arg))
+              result_stack.append(self.sel_resseq(pattern=arg))
             elif (lword in ["resid", "resi"]):
               result_stack.append(self.sel_resid(pattern=arg))
             else:
-              result_stack.append(self.sel_MODELserial(pattern=arg))
+              result_stack.append(self.sel_model_id(pattern=arg))
           else:
             start = arg.value[:i_colon_or_dash]
             stop = arg.value[i_colon_or_dash+1:]
             if (lword == "resseq"):
               result_stack.append(
-                self.sel_resSeq_range(start=start, stop=stop))
+                self.sel_resseq_range(start=start, stop=stop))
             elif (lword in ["resid", "resi"]):
               result_stack.append(
                 self.sel_resid_range(start=start, stop=stop))
             else:
               result_stack.append(
-                self.sel_MODELserial_range(start=start, stop=stop))
+                self.sel_model_id_range(start=start, stop=stop))
         elif (lword == "icode"):
           result_stack.append(
-            self.sel_iCode(pattern=word_iterator.pop_argument(word.value)))
+            self.sel_icode(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "segid"):
           result_stack.append(
-            self.sel_segID(pattern=word_iterator.pop_argument(word.value)))
+            self.sel_segid(pattern=word_iterator.pop_argument(word.value)))
         elif (lword == "element"):
           result_stack.append(
             self.sel_element(pattern=word_iterator.pop_argument(word.value)))
@@ -423,22 +423,22 @@ class cache(object):
 
   def get_labels(self,
         name=None,
-        altLoc=None,
-        resName=None,
-        chainID=None,
-        resSeq=None,
-        iCode=None,
-        segID=None,
-        MODELserial=None):
+        altloc=None,
+        resname=None,
+        chain_id=None,
+        resseq=None,
+        icode=None,
+        segid=None,
+        model_id=None):
     result = []
     for arg,attr in [(name, self.name),
-                     (altLoc, self.altLoc),
-                     (resName, self.resName),
-                     (chainID, self.chainID),
-                     (resSeq, self.resSeq),
-                     (iCode, self.iCode),
-                     (segID, self.segID),
-                     (MODELserial, self.MODELserial)]:
+                     (altloc, self.altloc),
+                     (resname, self.resname),
+                     (chain_id, self.chain_id),
+                     (resseq, self.resseq),
+                     (icode, self.icode),
+                     (segid, self.segid),
+                     (model_id, self.model_id)]:
       if (arg is not None):
         isel = attr.get(arg, None)
         if (isel is not None): result.append(isel)
@@ -449,14 +449,14 @@ class cache(object):
     fs = flex.size_t
     return [
                     fs(self.name.get(link_record.name1, sel_null))
-      .intersection(fs(self.altLoc.get(link_record.altLoc1, sel_null)))
-      .intersection(fs(self.resName.get(link_record.resName1, sel_null)))
-      .intersection(fs(self.chainID.get(link_record.chainID1, sel_null)))
-      .intersection(fs(self.resSeq.get(link_record.resSeq1, sel_null)))
-      .intersection(fs(self.iCode.get(link_record.iCode1, sel_null))),
+      .intersection(fs(self.altloc.get(link_record.altLoc1, sel_null)))
+      .intersection(fs(self.resname.get(link_record.resName1, sel_null)))
+      .intersection(fs(self.chain_id.get(link_record.chainID1, sel_null)))
+      .intersection(fs(self.resseq.get(link_record.resSeq1, sel_null)))
+      .intersection(fs(self.icode.get(link_record.iCode1, sel_null))),
                     fs(self.name.get(link_record.name2, sel_null))
-      .intersection(fs(self.altLoc.get(link_record.altLoc2, sel_null)))
-      .intersection(fs(self.resName.get(link_record.resName2, sel_null)))
-      .intersection(fs(self.chainID.get(link_record.chainID2, sel_null)))
-      .intersection(fs(self.resSeq.get(link_record.resSeq2, sel_null)))
-      .intersection(fs(self.iCode.get(link_record.iCode2, sel_null)))]
+      .intersection(fs(self.altloc.get(link_record.altLoc2, sel_null)))
+      .intersection(fs(self.resname.get(link_record.resName2, sel_null)))
+      .intersection(fs(self.chain_id.get(link_record.chainID2, sel_null)))
+      .intersection(fs(self.resseq.get(link_record.resSeq2, sel_null)))
+      .intersection(fs(self.icode.get(link_record.iCode2, sel_null)))]
