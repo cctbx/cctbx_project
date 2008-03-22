@@ -19,6 +19,7 @@ builder(
     "utils.cpp",
     "hierarchy_v2.cpp",
     "overall_counts.cpp",
+    "atom_selection.cpp",
     "input.cpp"])
 
 if (not env_etc.no_boost_python):

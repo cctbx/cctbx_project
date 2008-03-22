@@ -672,6 +672,30 @@ namespace {
     }
 
     static void
+    get_atom_selection_cache(
+      w_t const& self,
+      boost::python::object result)
+    {
+      atom_selection_cache asc(self);
+#define IOTBX_LOC(A) \
+      result.attr(#A) = asc.A;
+      IOTBX_LOC(n_seq)
+      IOTBX_LOC(name)
+      IOTBX_LOC(altloc)
+      IOTBX_LOC(resname)
+      IOTBX_LOC(chain_id)
+      IOTBX_LOC(resseq)
+      IOTBX_LOC(icode)
+      IOTBX_LOC(resid)
+      IOTBX_LOC(segid)
+      IOTBX_LOC(model_id)
+      IOTBX_LOC(element)
+      IOTBX_LOC(charge)
+      IOTBX_LOC(anisou)
+#undef IOTBX_LOC
+    }
+
+    static void
     wrap()
     {
       using namespace boost::python;
@@ -684,6 +708,7 @@ namespace {
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
         .def("get_overall_counts", get_overall_counts)
+        .def("get_atom_selection_cache", get_atom_selection_cache)
       ;
     }
   };

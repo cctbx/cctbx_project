@@ -204,8 +204,9 @@ Atom selection string leading to error:
   sel = sel_cache.get_labels(name=" CA ")
   assert len(sel) == 1
   assert list(sel[0]) == [1,7,18,25,33]
-  for i_seq in list(sel[0]):
-    assert sel_cache.atoms[i_seq].name == " CA "
+  atoms = hierarchy.atoms()
+  for i_seq in sel[0]:
+    assert atoms[i_seq].name == " CA "
   sel = sel_cache.get_labels(resseq="   5")
   assert len(sel) == 1
   assert list(sel[0]) == [76, 83]

@@ -96,55 +96,9 @@ class AtomSelectionError(Sorry):
 
 class cache(object):
 
-  def __init__(self, atoms, wildcard_escape_char='\\'):
-    self.atoms = atoms
-    self.n_seq = len(atoms)
+  def __init__(self, root, wildcard_escape_char='\\'):
     self.wildcard_escape_char = wildcard_escape_char
-    self.name = stl.map.stl_string_stl_vector_unsigned()
-    self.altloc = stl.map.stl_string_stl_vector_unsigned()
-    self.resname = stl.map.stl_string_stl_vector_unsigned()
-    self.chain_id = stl.map.stl_string_stl_vector_unsigned()
-    self.resseq = stl.map.stl_string_stl_vector_unsigned()
-    self.icode = stl.map.stl_string_stl_vector_unsigned()
-    self.resid = stl.map.stl_string_stl_vector_unsigned()
-    self.segid = stl.map.stl_string_stl_vector_unsigned()
-    self.model_id = stl.map.stl_string_stl_vector_unsigned()
-    self.element = stl.map.stl_string_stl_vector_unsigned()
-    self.charge = stl.map.stl_string_stl_vector_unsigned()
-    self.anisou = stl.vector.unsigned()
-    for i_seq,atom in enumerate(atoms):
-      resname = "   "
-      chain_id = " "
-      resseq = "    "
-      icode = " "
-      model_serial = "    "
-      ag = atom.parent()
-      if (ag is not None):
-        altloc = ag.altloc
-        if (altloc == ""): altloc = " "
-        resname = ag.resname
-        rg = ag.parent()
-        if (rg is not None):
-          resseq = rg.resseq
-          icode = rg.icode
-          ch = rg.parent()
-          if (ch is not None):
-            chain_id = ch.id
-            mo = ch.parent()
-            if (mo is not None):
-              model_id = mo.id
-      self.name.setdefault(atom.name).append(i_seq)
-      self.altloc.setdefault(altloc).append(i_seq)
-      self.resname.setdefault(resname).append(i_seq)
-      self.chain_id.setdefault(chain_id).append(i_seq)
-      self.resseq.setdefault(resseq).append(i_seq)
-      self.icode.setdefault(icode).append(i_seq)
-      self.resid.setdefault(resseq+icode).append(i_seq)
-      self.segid.setdefault(atom.segid).append(i_seq)
-      self.model_id.setdefault(model_id).append(i_seq)
-      self.element.setdefault(atom.element).append(i_seq)
-      self.charge.setdefault(atom.charge).append(i_seq)
-      if (atom.uij_is_defined()): self.anisou.append(i_seq)
+    root.get_atom_selection_cache(self)
 
   def get_name(self, pattern):
     return _get_map_string(
