@@ -69,8 +69,10 @@ iotbx/iotbx/command_line/pdb.print_sequence.py -text
 iotbx/iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/iotbx/detectors/cbf.py -text
 iotbx/iotbx/pdb/Hy36.java svneol=native#text/plain
+iotbx/iotbx/pdb/atom_selection.py svneol=native#text/x-python
 iotbx/iotbx/pdb/extract_rfactors_resolutions_sigma.py -text
 iotbx/iotbx/pdb/hierarchy_v2.py svneol=native#text/x-python
+iotbx/iotbx/pdb/tst_atom_selection.py svneol=native#text/x-python
 iotbx/iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/iotbx/shelx/errors.py -text
 iotbx/iotbx/shelx/fcf.py -text

@@ -11,6 +11,7 @@ def run():
   ["$D/iotbx/pdb/hybrid_36.py", "exercise"],
   "$D/include/iotbx/pdb/tst_hierarchy_v2.py",
   "$D/include/iotbx/pdb/tst_ext.py",
+  "$D/include/iotbx/pdb/tst_atom_selection.py",
   "$D/include/iotbx/pdb/tst_rna_dna_atom_names.py",
   "$D/iotbx/pdb/tst_atom_name_interpretation.py",
   "$D/iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py",
