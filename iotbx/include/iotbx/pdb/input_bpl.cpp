@@ -89,7 +89,6 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      typedef return_internal_reference<> rir;
       class_<w_t, boost::shared_ptr<input> >("input", no_init)
         .def(init<
           std::string const&>((
@@ -125,15 +124,6 @@ namespace {
         .def("break_indices", &w_t::break_indices, rbv())
         .def("connectivity_section", &w_t::connectivity_section, rbv())
         .def("bookkeeping_section", &w_t::bookkeeping_section, rbv())
-        //
-        .def("name_selection_cache", &w_t::name_selection_cache, rir())
-        .def("altloc_selection_cache", &w_t::altloc_selection_cache, rir())
-        .def("resname_selection_cache", &w_t::resname_selection_cache, rir())
-        .def("chain_selection_cache", &w_t::chain_selection_cache, rir())
-        .def("resseq_selection_cache", &w_t::resseq_selection_cache, rir())
-        .def("icode_selection_cache", &w_t::icode_selection_cache, rir())
-        .def("segid_selection_cache", &w_t::segid_selection_cache, rir())
-        //
         .def("model_numbers_are_unique", &w_t::model_numbers_are_unique)
         .def("model_atom_counts", &w_t::model_atom_counts)
         .def("construct_hierarchy_v2", &w_t::construct_hierarchy_v2,

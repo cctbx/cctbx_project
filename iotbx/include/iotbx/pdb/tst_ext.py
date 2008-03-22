@@ -380,30 +380,6 @@ CONECT 5332 5333 5334 5335 5336""")
     assert not show_diff("\n".join(pdb_inp.bookkeeping_section()), """\
 MASTER       81    0    0    7    3    0    0    645800   20    0   12
 END""")
-    assert pdb_inp.name_selection_cache().keys() \
-        == [" C  ", " CA ", " N  ", " O  ", "2H3 "]
-    assert [list(v) for v in pdb_inp.name_selection_cache().values()] \
-        == [[2], [1], [0,5], [3], [4]]
-    assert pdb_inp.altloc_selection_cache().keys() == [" "]
-    assert [list(v) for v in pdb_inp.altloc_selection_cache().values()] \
-        == [[0,1,2,3,4,5]]
-    assert pdb_inp.resname_selection_cache().keys() == ["CYS", "MET", "MPR"]
-    assert [list(v) for v in pdb_inp.resname_selection_cache().values()] \
-        == [[5], [0,1,2,3], [4]]
-    assert pdb_inp.chain_selection_cache().keys() == ["A", "B", "CH"]
-    assert [list(v) for v in pdb_inp.chain_selection_cache().values()] \
-        == [[0,1,2,3], [4], [5]]
-    for resseq,i_seqs in [("   1",[0,1]),
-                          ("   2",[2,3]),
-                          ("   5",[4]),
-                          ("   6",[5])]:
-      assert list(pdb_inp.resseq_selection_cache()[resseq]) == i_seqs
-    assert pdb_inp.icode_selection_cache().keys() == [" "]
-    assert [list(v) for v in pdb_inp.icode_selection_cache().values()] \
-        == [[0,1,2,3,4,5]]
-    assert pdb_inp.segid_selection_cache().keys() == ["    "]
-    assert [list(v) for v in pdb_inp.segid_selection_cache().values()] \
-        == [[0,1,2,3,4,5]]
     assert pdb_inp.model_numbers_are_unique()
     assert list(pdb_inp.model_atom_counts()) == [4,2]
   #

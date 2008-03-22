@@ -962,13 +962,6 @@ namespace iotbx { namespace pdb {
   void
   input::process(af::const_ref<std::string> const& lines)
   {
-    name_selection_cache_is_up_to_date_ = false;
-    altloc_selection_cache_is_up_to_date_ = false;
-    resname_selection_cache_is_up_to_date_ = false;
-    chain_selection_cache_is_up_to_date_ = false;
-    resseq_selection_cache_is_up_to_date_ = false;
-    icode_selection_cache_is_up_to_date_ = false;
-    segid_selection_cache_is_up_to_date_ = false;
     columns_73_76_evaluator columns_73_76_eval(lines);
     input_atom_labels_list_.reserve(
         input_atom_labels_list_.size()

@@ -309,7 +309,6 @@ namespace iotbx { namespace pdb {
   {
     public:
       typedef std::map<str6, unsigned> record_type_counts_t;
-      typedef std::map<std::string, std::vector<unsigned> > str_sel_cache_t;
 
       input() {}
 
@@ -396,38 +395,6 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> const&
       bookkeeping_section() const { return bookkeeping_section_; }
 
-#define IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(attr, type) \
-      str_sel_cache_t const& \
-      attr##_selection_cache() const \
-      { \
-        if (!attr##_selection_cache_is_up_to_date_) { \
-          /* intermediate map to avoid frequent construction of string */ \
-          typedef std::map<type, std::vector<unsigned> > interm_map_t; \
-          interm_map_t sel_cache; \
-          unsigned i_seq = 0; \
-          const input_atom_labels* iall_end = input_atom_labels_list_.end();\
-          for(const input_atom_labels* ial=input_atom_labels_list_.begin(); \
-                                       ial!=iall_end;ial++) { \
-            sel_cache[ial->attr##_small()].push_back(i_seq++); \
-          } \
-          for(interm_map_t::iterator sc=sel_cache.begin(); \
-                                     sc!=sel_cache.end();sc++) { \
-            attr##_selection_cache_[     /* swap avoids deep copy */ \
-              std::string(sc->first.elems)].swap(sc->second); \
-          } \
-          attr##_selection_cache_is_up_to_date_ = true; \
-        } \
-        return attr##_selection_cache_; \
-      }
-
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(name, str4)
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(altloc, str1)
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(resname, str3)
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(chain, str2)
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(resseq, str4)
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(icode, str1)
-      IOTBX_PDB_INPUT_SELECTION_STR_SEL_CACHE_MEMBER_FUNCTION(segid, str4)
-
       bool
       model_numbers_are_unique() const;
 
@@ -487,21 +454,6 @@ namespace iotbx { namespace pdb {
       af::shared<unsigned>    break_record_line_numbers;
       af::shared<std::string> connectivity_section_;
       af::shared<std::string> bookkeeping_section_;
-      //
-      mutable bool            name_selection_cache_is_up_to_date_;
-      mutable str_sel_cache_t name_selection_cache_;
-      mutable bool            altloc_selection_cache_is_up_to_date_;
-      mutable str_sel_cache_t altloc_selection_cache_;
-      mutable bool            resname_selection_cache_is_up_to_date_;
-      mutable str_sel_cache_t resname_selection_cache_;
-      mutable bool            chain_selection_cache_is_up_to_date_;
-      mutable str_sel_cache_t chain_selection_cache_;
-      mutable bool            resseq_selection_cache_is_up_to_date_;
-      mutable str_sel_cache_t resseq_selection_cache_;
-      mutable bool            icode_selection_cache_is_up_to_date_;
-      mutable str_sel_cache_t icode_selection_cache_;
-      mutable bool            segid_selection_cache_is_up_to_date_;
-      mutable str_sel_cache_t segid_selection_cache_;
   };
 
 }} // namespace iotbx::pdb
