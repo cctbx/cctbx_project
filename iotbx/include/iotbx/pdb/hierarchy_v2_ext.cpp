@@ -663,6 +663,7 @@ namespace {
         result.attr("consecutive_residue_groups_with_same_resid") = l;
       }
       IOTBX_LOC_SA(n_chains_with_mix_of_proper_and_improper_alt_conf)
+      IOTBX_LOC_SAA(residue_groups_with_multiple_resnames_using_same_altloc)
       //
 #undef IOTBX_LOC_SA
 #undef IOTBX_LOC_SAA

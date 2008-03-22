@@ -1133,6 +1133,8 @@ namespace hierarchy_v2 {
     af::shared<af::tiny<residue_group, 2> >
       consecutive_residue_groups_with_same_resid;
     unsigned n_chains_with_mix_of_proper_and_improper_alt_conf;
+    af::shared<residue_group>
+      residue_groups_with_multiple_resnames_using_same_altloc;
 
     overall_counts(
       hierarchy_v2::root const& root_);

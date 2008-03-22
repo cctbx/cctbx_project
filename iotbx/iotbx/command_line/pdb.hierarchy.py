@@ -16,12 +16,12 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       default=None,
       help="level of detail",
       metavar="|".join(pdb.hierarchy_v2.level_ids))
-    .option(None, "--consecutive_residue_groups_max_show",
+    .option(None, "--residue_groups_max_show",
       action="store",
       type="int",
       default=10,
-      help="maximum number of consecutive residue groups with same resid"
-           " to be listed",
+      help="maximum number of residue groups to be listed along with"
+           " errors or warnings",
       metavar="INT")
     .option(None, "--duplicate_atom_labels_max_show",
       action="store",
@@ -42,8 +42,7 @@ def run(args, command_name="phenix.pdb.hierarchy"):
     execute(
       file_name=file_name,
       prefix=co.prefix,
-      consecutive_residue_groups_max_show=
-        co.consecutive_residue_groups_max_show,
+      residue_groups_max_show=co.residue_groups_max_show,
       duplicate_atom_labels_max_show=co.duplicate_atom_labels_max_show,
       level_id=co.details)
     print co.prefix.rstrip()
@@ -51,14 +50,14 @@ def run(args, command_name="phenix.pdb.hierarchy"):
 def execute(
       file_name,
       prefix="",
-      consecutive_residue_groups_max_show=10,
+      residue_groups_max_show=10,
       duplicate_atom_labels_max_show=10,
       level_id=None):
   try:
     return pdb.hierarchy_v2.show_summary(
       file_name=file_name,
       prefix=prefix,
-      consecutive_residue_groups_max_show=consecutive_residue_groups_max_show,
+      residue_groups_max_show=residue_groups_max_show,
       duplicate_atom_labels_max_show=duplicate_atom_labels_max_show,
       level_id=level_id)
   except KeyboardInterrupt: raise
