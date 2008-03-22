@@ -677,6 +677,17 @@ namespace {
   std::string
   residue_group::resid() const { return make_resid(data); }
 
+  str5
+  residue_group::resid_small_str() const
+  {
+    char blank = ' ';
+    str5 result;
+    data->resseq.copy_right_justified(result.elems, 4U, blank);
+    data->icode.copy_left_justified(result.elems+4, 1U, blank);
+    result.elems[5] = '\0';
+    return result;
+  }
+
   std::string
   residue::resid() const { return make_resid(data); }
 
