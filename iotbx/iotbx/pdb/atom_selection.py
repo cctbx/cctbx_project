@@ -52,6 +52,28 @@ def _get_map_string(map, pattern, wildcard_escape_char='\\'):
       match()
   return result
 
+def _get_serial_range(sel_keyword, map, start, stop):
+  from iotbx.pdb import utils_base_256_ordinal as o
+  o_start = None
+  o_stop = None
+  if (start is not None and start.count(" ") != len(start)):
+    o_start = o(start)
+  if (stop is not None and stop.count(" ") != len(stop)):
+    o_stop = o(stop)
+  if (    o_start is not None
+      and o_stop is not None
+      and o_start > o_stop):
+    raise RuntimeError(
+      "range with first index > last index: %s %s:%s" % (
+        sel_keyword, start, stop))
+  result = []
+  for s,iselection in map.items():
+    os = o(s)
+    if (o_start is not None and os < o_start): continue
+    if (o_stop  is not None and os > o_stop): continue
+    result.append(iselection)
+  return result
+
 class selection_tokenizer(tokenizer.word_iterator):
 
   def __init__(self, string, contiguous_word_characters=None):
@@ -86,7 +108,7 @@ class cache(object):
     self.iCode = stl.map.stl_string_stl_vector_unsigned()
     self.resid = stl.map.stl_string_stl_vector_unsigned()
     self.segID = stl.map.stl_string_stl_vector_unsigned()
-    self.MODELserial = stl.map.int_stl_vector_unsigned()
+    self.MODELserial = stl.map.stl_string_stl_vector_unsigned()
     self.element = stl.map.stl_string_stl_vector_unsigned()
     self.charge = stl.map.stl_string_stl_vector_unsigned()
     self.anisou = stl.vector.unsigned()
@@ -119,39 +141,10 @@ class cache(object):
       self.iCode.setdefault(icode).append(i_seq)
       self.resid.setdefault(resseq+icode).append(i_seq)
       self.segID.setdefault(atom.segid).append(i_seq)
-      self.MODELserial.setdefault(int(model_id)).append(i_seq)
+      self.MODELserial.setdefault(model_id).append(i_seq)
       self.element.setdefault(atom.element).append(i_seq)
       self.charge.setdefault(atom.charge).append(i_seq)
       if (atom.uij_is_defined()): self.anisou.append(i_seq)
-
-  def get_all_altLocs_sorted(self):
-    result = self.altLoc.keys()
-    if (" " in self.altLoc):
-      result.remove(" ")
-    result.sort()
-    result.insert(0, " ")
-    return result
-
-  def get_model_indices(self):
-    if (self.MODELserial.size() < 2):
-      return None
-    result = flex.size_t(self.n_seq, self.n_seq)
-    for model_index,selection in self.MODELserial.items():
-      assert model_index >= 0
-      result.set_selected(selection, model_index)
-    assert result.all_ne(self.n_seq)
-    return result
-
-  def get_conformer_indices(self):
-    result = flex.size_t(self.n_seq, self.n_seq)
-    for i,altLoc in enumerate(self.get_all_altLocs_sorted()):
-      selection = self.altLoc.get(altLoc, None)
-      if (selection is None):
-        assert altLoc == " "
-      else:
-        result.set_selected(selection, i)
-    assert result.all_ne(self.n_seq)
-    return result
 
   def get_name(self, pattern):
     return _get_map_string(
@@ -184,25 +177,8 @@ class cache(object):
       wildcard_escape_char=self.wildcard_escape_char)
 
   def get_resSeq_range(self, start, stop):
-    from iotbx.pdb import utils_base_256_ordinal as o
-    o_start = None
-    o_stop = None
-    if (start is not None and start.count(" ") != len(start)):
-      o_start = o(start)
-    if (stop is not None and stop.count(" ") != len(stop)):
-      o_stop = o(stop)
-    if (    o_start is not None
-        and o_stop is not None
-        and o_start > o_stop):
-      raise RuntimeError(
-        "range with first index > last index: resseq %s:%s" % (start, stop))
-    result = []
-    for s,iselection in self.resSeq.items():
-      os = o(s)
-      if (o_start is not None and os < o_start): continue
-      if (o_stop  is not None and os > o_stop): continue
-      result.append(iselection)
-    return result
+    return _get_serial_range(
+      sel_keyword="resseq", map=self.resSeq, start=start, stop=stop)
 
   def get_iCode(self, pattern):
     return _get_map_string(
@@ -246,21 +222,15 @@ class cache(object):
       pattern=pattern,
       wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_MODELserial(self, i):
-    result = self.MODELserial.get(i, None)
-    if (result is None): return []
-    return [result]
+  def get_MODELserial(self, pattern):
+    return _get_map_string(
+      map=self.MODELserial,
+      pattern=pattern,
+      wildcard_escape_char=self.wildcard_escape_char)
 
-  def get_MODELserial_range(self, i, j):
-    if (i is None): i = min(self.MODELserial.keys())
-    if (j is None): j = max(self.MODELserial.keys())
-    if (i > j):
-      raise RuntimeError("MODELserial range with first index > last index.")
-    result = []
-    for i in xrange(i,j+1):
-      iselection = self.MODELserial.get(i, None)
-      if (iselection is not None): result.append(iselection)
-    return result
+  def get_MODELserial_range(self, start, stop):
+    return _get_serial_range(
+      sel_keyword="model", map=self.MODELserial, start=start, stop=stop)
 
   def get_element(self, pattern):
     return _get_map_string(
@@ -317,11 +287,12 @@ class cache(object):
   def sel_segID(self, pattern):
     return self.union(iselections=self.get_segID(pattern=pattern))
 
-  def sel_MODELserial(self, i):
-    return self.union(iselections=self.get_MODELserial(i=i))
+  def sel_MODELserial(self, pattern):
+    return self.union(iselections=self.get_MODELserial(pattern=pattern))
 
-  def sel_MODELserial_range(self, i, j):
-    return self.union(iselections=self.get_MODELserial_range(i=i, j=j))
+  def sel_MODELserial_range(self, start, stop):
+    return self.union(iselections=self.get_MODELserial_range(
+      start=start,stop=stop))
 
   def sel_element(self, pattern):
     return self.union(iselections=self.get_element(pattern=pattern))
@@ -386,9 +357,7 @@ class cache(object):
             elif (lword in ["resid", "resi"]):
               result_stack.append(self.sel_resid(pattern=arg))
             else:
-              try: i = int(arg.value)
-              except ValueError: raise RuntimeError("Value error.")
-              result_stack.append(self.sel_MODELserial(i=i))
+              result_stack.append(self.sel_MODELserial(pattern=arg))
           else:
             start = arg.value[:i_colon_or_dash]
             stop = arg.value[i_colon_or_dash+1:]
@@ -399,17 +368,8 @@ class cache(object):
               result_stack.append(
                 self.sel_resid_range(start=start, stop=stop))
             else:
-              if (len(start) == 0):
-                i = None
-              else:
-                try: i = int(start)
-                except ValueError: raise RuntimeError("Value error.")
-              if (len(stop) == 0):
-                j = None
-              else:
-                try: j = int(stop)
-                except ValueError: raise RuntimeError("Value error.")
-              result_stack.append(self.sel_MODELserial_range(i=i, j=j))
+              result_stack.append(
+                self.sel_MODELserial_range(start=start, stop=stop))
         elif (lword == "icode"):
           result_stack.append(
             self.sel_iCode(pattern=word_iterator.pop_argument(word.value)))
