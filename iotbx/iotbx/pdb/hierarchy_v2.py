@@ -476,6 +476,10 @@ class _root(boost.python.injector, ext.root):
       anisou=anisou,
       siguij=siguij))+"\n"
 
+  def atom_selection_cache(self):
+    from iotbx.pdb.atom_selection import cache
+    return cache(atoms=self.atoms())
+
   def occupancy_groups_simple(self, common_residue_name_class_only=None):
     self.atoms().reset_tmp_for_occupancy_groups_simple()
     result = []
