@@ -51,6 +51,7 @@ crys3d/wx_map_viewer.py -text
 gltbx/wx_controllers.py -text
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
+iotbx/include/iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/construct_hierarchy_v2.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/hierarchy_v2.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/hierarchy_v2.h svneol=native#text/plain

@@ -1100,7 +1100,7 @@ namespace hierarchy_v2 {
       atoms() const;
   };
 
-  struct overall_counts
+  struct overall_counts : boost::noncopyable
   {
     hierarchy_v2::root root;
     unsigned n_empty_models;
@@ -1138,6 +1138,27 @@ namespace hierarchy_v2 {
 
     overall_counts(
       hierarchy_v2::root const& root_);
+  };
+
+  struct atom_selection_cache : boost::noncopyable
+  {
+    typedef std::map<std::string, std::vector<unsigned> > map;
+    unsigned n_seq;
+    map name;
+    map altloc;
+    map resname;
+    map chain_id;
+    map resseq;
+    map icode;
+    map resid;
+    map segid;
+    map model_id;
+    map element;
+    map charge;
+    af::shared<std::size_t> anisou;
+
+    atom_selection_cache(
+      hierarchy_v2::root const& root);
   };
 
   //! Residue attributes.
