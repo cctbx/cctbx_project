@@ -926,7 +926,7 @@ def exercise_construct_hierarchy():
     if (expected_overall_counts_as_str is not None):
       s = root.overall_counts().as_str(
         prefix=prefix,
-        consecutive_residue_groups_max_show=3,
+        residue_groups_max_show=3,
         duplicate_atom_labels_max_show=3)
       if (len(expected_overall_counts_as_str) == 0):
         sys.stdout.write(s)
@@ -2103,7 +2103,7 @@ chains with mix of proper and improper alt. conf.: 1
   sio = StringIO()
   summary = pdb.hierarchy_v2.show_summary(
     out=sio,
-    consecutive_residue_groups_max_show=None,
+    residue_groups_max_show=None,
     duplicate_atom_labels_max_show=None,
     pdb_string="""\
 HEADER    HYDROLASE (SERINE PROTEINASE)           24-APR-89   1P04
@@ -2151,6 +2151,75 @@ ATOM         O   TIP    12
   oc = pdb_inp.construct_hierarchy_v2().overall_counts()
   assert oc.resname_classes == {
     'common_water': 8, 'common_rna_dna': 1, 'common_amino_acid': 3}
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM         N  AASN     1
+ATOM         CA AASN     1
+ATOM         N  AGLY     1
+ATOM         CA AGLY     1
+ATOM         CA AASN     2
+ATOM         CA AGLY     2
+"""))
+  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  assert not show_diff(oc.as_str(), """\
+total number of:
+  models:     1
+  chains:     1
+  alt. conf.: 1
+  residues:   2 (2 with mixed residue names)
+  atoms:      6
+number of atom element+charge types: 1
+histogram of atom element+charge frequency:
+  "    " 6
+residue name classes:
+  "common_amino_acid" 4
+number of chain ids: 1
+histogram of chain id frequency:
+  " " 1
+number of alt. conf. ids: 1
+histogram of alt. conf. id frequency:
+  "A" 1
+residue alt. conf. situations:
+  pure main conf.:     0
+  pure alt. conf.:     2
+  proper alt. conf.:   0
+  improper alt. conf.: 0
+chains with mix of proper and improper alt. conf.: 0
+number of residue names: 2
+histogram of residue name frequency:
+  "ASN" 2
+  "GLY" 2
+### ERROR: residue group with multiple resnames using same altloc ###
+residue groups with multiple resnames using same altloc: 2
+  residue group:
+    "ATOM         N  AASN     1 "
+    ... 2 atoms not shown
+    "ATOM         CA AGLY     1 "
+  residue group:
+    "ATOM         CA AASN     2 "
+    "ATOM         CA AGLY     2 "
+""")
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM         N  AASN     1
+ATOM         N  AGLY     1
+ATOM         CA AGLY     1
+ATOM         CA AASN     2
+ATOM         CA AGLY     2
+"""))
+  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  try: oc \
+   .raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary(
+      max_show=1)
+  except Sorry, e:
+    assert not show_diff(str(e), """\
+residue groups with multiple resnames using same altloc: 2
+  residue group:
+    "ATOM         N  AASN     1 "
+    "ATOM         N  AGLY     1 "
+    "ATOM         CA AGLY     1 "
+  ... 1 remaining instance not shown""")
+  else: raise Exception_expected
 
 def exercise_convenience_generators():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\

@@ -13,6 +13,25 @@ import sys
 
 level_ids = ["model", "chain", "residue_group", "atom_group", "atom"]
 
+def _show_residue_group(rg, out, prefix):
+  atoms = rg.atoms()
+  if (atoms.size() == 0):
+    ch = rg.parent()
+    if (ch is None): ch = "  "
+    else:            ch = "%s" % ch.id
+    print >> out, prefix+'empty: "%s%s"' % (ch, rg.resid())
+  else:
+    def show_atom(atom):
+      print >> out, prefix+'"%s"' % atom.format_atom_record(
+        cut_after_label_columns=True)
+    if (atoms.size() <= 3):
+      for atom in atoms: show_atom(atom)
+    else:
+      show_atom(atoms[0])
+      print >> out, prefix+'... %d atom%s not shown' % plural_s(
+        atoms.size()-2)
+      show_atom(atoms[-1])
+
 class overall_counts(object):
 
   def __init__(self):
@@ -24,7 +43,7 @@ class overall_counts(object):
         prefix="",
         flag_errors=True,
         flag_warnings=True,
-        consecutive_residue_groups_max_show=10,
+        residue_groups_max_show=10,
         duplicate_atom_labels_max_show=10):
     from iotbx.pdb import common_residue_names_get_class
     if (out is None): out = sys.stdout
@@ -148,20 +167,26 @@ class overall_counts(object):
     if (len(self.consecutive_residue_groups_with_same_resid) != 0):
       add_warn("### WARNING: consecutive residue_groups with same resid ###")
     self.show_consecutive_residue_groups_with_same_resid(
-      out=out, prefix=prefix, max_show=consecutive_residue_groups_max_show)
+      out=out, prefix=prefix, max_show=residue_groups_max_show)
+    #
+    if (len(self.residue_groups_with_multiple_resnames_using_same_altloc)!= 0):
+      add_err("### ERROR: residue group with multiple resnames using"
+        " same altloc ###")
+      self.show_residue_groups_with_multiple_resnames_using_same_altloc(
+        out=out, prefix=prefix, max_show=residue_groups_max_show)
     #
     self.show_duplicate_atom_labels(
       out=out, prefix=prefix, max_show=duplicate_atom_labels_max_show)
 
   def as_str(self,
         prefix="",
-        consecutive_residue_groups_max_show=10,
+        residue_groups_max_show=10,
         duplicate_atom_labels_max_show=10):
     out = StringIO()
     self.show(
       out=out,
       prefix=prefix,
-      consecutive_residue_groups_max_show=consecutive_residue_groups_max_show,
+      residue_groups_max_show=residue_groups_max_show,
       duplicate_atom_labels_max_show=duplicate_atom_labels_max_show)
     return out.getvalue()
 
@@ -233,27 +258,37 @@ class overall_counts(object):
           print >> out, delim
         prev_rg = rg
         print >> out, prefix+"  %sresidue group:" % next
-        atoms = rg.atoms()
-        if (atoms.size() == 0):
-          ch = rg.parent()
-          if (ch is None): ch = "  "
-          else:            ch = "%s" % ch.id
-          print >> out, prefix+'    empty: "%s%s"' % (ch, rg.resid())
-        else:
-          def show_atom(atom):
-            print >> out, prefix+'    "%s"' % atom.format_atom_record(
-              cut_after_label_columns=True)
-          if (atoms.size() <= 3):
-            for atom in atoms: show_atom(atom)
-          else:
-            show_atom(atoms[0])
-            print >> out, prefix+'    ... %d atom%s not shown' % plural_s(
-              atoms.size()-2)
-            show_atom(atoms[-1])
+        _show_residue_group(rg=rg, out=out, prefix=prefix+"    ")
     if (len(cons) > max_show):
       print >> out, delim
       print >> out, prefix + "  ... %d remaining instance%s not shown" % \
         plural_s(len(cons)-max_show)
+
+  def show_residue_groups_with_multiple_resnames_using_same_altloc(self,
+        out=None,
+        prefix="",
+        max_show=10):
+    rgs = self.residue_groups_with_multiple_resnames_using_same_altloc
+    if (len(rgs) == 0): return
+    print >> out, prefix+"residue groups with multiple resnames using" \
+      " same altloc:", len(rgs)
+    if (max_show is None): max_show = len(cons)
+    elif (max_show <= 0): return
+    for rg in rgs[:max_show]:
+      print >> out, prefix+"  residue group:"
+      _show_residue_group(rg=rg, out=out, prefix=prefix+"    ")
+    if (len(rgs) > max_show):
+      print >> out, prefix + "  ... %d remaining instance%s not shown" % \
+        plural_s(len(rgs)-max_show)
+
+  def \
+    raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary(
+        self, max_show=10):
+    sio = StringIO()
+    self.show_residue_groups_with_multiple_resnames_using_same_altloc(
+      out=sio, max_show=max_show)
+    msg = sio.getvalue()
+    if (len(msg) != 0): raise Sorry(msg.rstrip())
 
   def show_duplicate_atom_labels(self, out=None, prefix="", max_show=10):
     dup = self.duplicate_atom_labels
@@ -621,7 +656,7 @@ class show_summary(object):
         prefix="",
         flag_errors=True,
         flag_warnings=True,
-        consecutive_residue_groups_max_show=10,
+        residue_groups_max_show=10,
         duplicate_atom_labels_max_show=10,
         level_id=None,
         level_id_exception=ValueError):
@@ -639,7 +674,7 @@ class show_summary(object):
     self.overall_counts.show(
       out=out,
       prefix=prefix+"  ",
-      consecutive_residue_groups_max_show=consecutive_residue_groups_max_show,
+      residue_groups_max_show=residue_groups_max_show,
       duplicate_atom_labels_max_show=duplicate_atom_labels_max_show)
     if (level_id is not None):
       self.hierarchy.show(

@@ -150,6 +150,7 @@ namespace detail {
           bool have_blank_altloc = false;
           std::set<char> rg_altlocs;
           std::set<str3> rg_resnames;
+          std::map<char, std::vector<str3> > altloc_resnames;
           unsigned n_ag = rg.atom_groups_size();
           for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
             atom_group const& ag = rg.atom_groups()[i_ag];
@@ -165,6 +166,7 @@ namespace detail {
               rg_altlocs.insert(altloc);
             }
             rg_resnames.insert(ag.data->resname);
+            altloc_resnames[altloc].push_back(ag.data->resname);
             unsigned n_ats = ag.atoms_size();
             for(unsigned i_at=0;i_at<n_ats;i_at++) {
               hierarchy_v2::atom const& atom = ag.atoms()[i_at];
@@ -178,6 +180,16 @@ namespace detail {
             it i_end = rg_resnames.end();
             for(it i=rg_resnames.begin();i!=i_end;i++) {
               resnames[std::string((*i).elems)]++;
+            }
+          }
+          {
+            typedef std::map<char, std::vector<str3> >::const_iterator it;
+            it i_end = altloc_resnames.end();
+            for(it i=altloc_resnames.begin();i!=i_end;i++) {
+              if (i->second.size() != 1U) {
+                residue_groups_with_multiple_resnames_using_same_altloc
+                  .push_back(rg);
+              }
             }
           }
           if (have_blank_altloc) {
