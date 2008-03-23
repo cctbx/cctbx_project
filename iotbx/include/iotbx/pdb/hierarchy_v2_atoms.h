@@ -41,6 +41,11 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
   extract_hetero(
     af::const_ref<atom> const& atoms);
 
+  af::shared<std::string>
+  extract_element(
+    af::const_ref<atom> const& atoms,
+    bool strip=false);
+
   void
   set_xyz(
     af::ref<atom> const& atoms,

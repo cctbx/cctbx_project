@@ -3651,7 +3651,7 @@ ATOM      3  Q   GLN A   3      35.130   8.880  17.864  0.84 37.52           C
 ANISOU    3  Q   GLN A   3     7875   3041   3340   -981    727   2663       C
 SIGUIJ    3  Q   GLN A   3       75     41     40     -1      7     63       C
 ATOM      4  O   GLN A   3      34.548   7.819  17.724  1.00 38.54      STUV
-ATOM      5 1CB AGLN A   3      32.979  10.223  18.469  1.00 37.80
+ATOM      5 1CB AGLN A   3      32.979  10.223  18.469  1.00 37.80          X
 HETATM    6 CA  AION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
@@ -3705,6 +3705,9 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1)])
   assert list(atoms.extract_hetero()) == [5,6]
+  assert list(atoms.extract_element()) == [" N"," C"," C","  ","X ","CA","  "]
+  assert atoms.extract_element(strip=False).all_eq(atoms.extract_element())
+  assert list(atoms.extract_element(strip=True)) ==["N","C","C","","X","CA",""]
   #
   assert atoms.set_xyz(new_xyz=xyz+(1,2,3)) is atoms
   assert approx_equal(atoms.extract_xyz(), [
@@ -3759,7 +3762,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   for i in xrange(2):
     s = h.as_pdb_string()
     d = hashlib_md5(s).hexdigest()
-    assert d == "e2da3bb63e6468141e4830e6f6aa220c"
+    assert d == "c4089359af431bb2962d6a8e457dd86f"
     h = pdb.input(
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy_v2()
 

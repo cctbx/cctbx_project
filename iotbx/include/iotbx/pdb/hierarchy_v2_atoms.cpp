@@ -41,6 +41,26 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     return result;
   }
 
+  af::shared<std::string>
+  extract_element(
+    af::const_ref<atom> const& atoms,
+    bool strip)
+  {
+    af::shared<std::string> result;
+    const hierarchy_v2::atom* atoms_end = atoms.end();
+    if (strip) {
+      for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {
+        result.push_back(a->data->element.strip().elems);
+      }
+    }
+    else {
+      for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {
+        result.push_back(a->data->element.elems);
+      }
+    }
+    return result;
+  }
+
 #define IOTBX_LOC(attr, attr_type) \
   void \
   set_##attr( \

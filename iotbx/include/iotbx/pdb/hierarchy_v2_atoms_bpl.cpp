@@ -10,6 +10,9 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
 
 namespace {
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    extract_element_overloads, extract_element, 1, 2)
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(reset_tmp_overloads, reset_tmp, 1, 3)
 
 } // namespace <anonymous>
@@ -28,6 +31,9 @@ namespace {
       .def("extract_uij", extract_uij)
       .def("extract_siguij", extract_siguij)
       .def("extract_hetero", extract_hetero)
+      .def("extract_element", extract_element, extract_element_overloads((
+        arg_("self"),
+        arg_("strip")=false)))
       .def("set_xyz", set_xyz, (arg_("new_xyz")), return_self<>())
       .def("set_sigxyz", set_sigxyz, (arg_("new_sigxyz")), return_self<>())
       .def("set_occ", set_occ, (arg_("new_occ")), return_self<>())

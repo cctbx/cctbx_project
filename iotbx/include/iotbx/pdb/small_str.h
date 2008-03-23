@@ -60,10 +60,14 @@ namespace iotbx { namespace pdb {
     }
   }
 
+  enum small_str_no_init_t { small_str_no_init };
+
   template <unsigned N>
   struct small_str
   {
     char elems[N+1];
+
+    small_str(small_str_no_init_t) {}
 
     small_str() { elems[0] = '\0'; }
 
@@ -96,6 +100,9 @@ namespace iotbx { namespace pdb {
 
     unsigned
     stripped_size() const;
+
+    small_str<N>
+    strip() const;
 
     bool
     operator==(small_str const& other) const
@@ -196,15 +203,36 @@ namespace iotbx { namespace pdb {
   small_str<N>::stripped_size() const
   {
     const char* e = elems;
-    do {
+    for(;;) {
       if (*e == '\0') return 0;
+      if (!isspace(*e)) break;
+      e++;
     }
-    while (isspace(*e++));
     unsigned i = 0;
-    for(unsigned j=0;e[j]!='\0';j++) {
+    for(unsigned j=1;e[j]!='\0';j++) {
       if (!isspace(e[j])) i = j;
     }
     return i+1;
+  }
+
+  template <unsigned N>
+  small_str<N>
+  small_str<N>::strip() const
+  {
+    const char* e = elems;
+    for(;;) {
+      if (*e == '\0') return small_str<N>();
+      if (!isspace(*e)) break;
+      e++;
+    }
+    unsigned i = 0;
+    for(unsigned j=1;e[j]!='\0';j++) {
+      if (!isspace(e[j])) i = j;
+    }
+    small_str<N> result(small_str_no_init);
+    std::memcpy(result.elems, e, ++i);
+    result.elems[i] = '\0';
+    return result;
   }
 
   typedef small_str<1> str1;
