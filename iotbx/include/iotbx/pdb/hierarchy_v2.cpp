@@ -1034,29 +1034,6 @@ namespace {
     return result;
   }
 
-  void
-  atoms_reset_tmp(
-    af::const_ref<atom> const& atoms,
-    int first_value,
-    int increment)
-  {
-    int value = first_value;
-    for(const atom* a=atoms.begin();a!=atoms.end();a++) {
-      a->data->tmp = value;
-      value += increment;
-    }
-  }
-
-  void
-  atoms_reset_tmp_for_occupancy_groups_simple(
-    af::const_ref<atom> const& atoms)
-  {
-    int value = 0;
-    for(const atom* a=atoms.begin();a!=atoms.end();a++,value++) {
-      a->data->tmp = (a->element_is_hydrogen() ? -1 : value);
-    }
-  }
-
   residue::residue(
     conformer const& parent,
     const char* resname,

@@ -1194,17 +1194,4 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  af::shared<std::size_t>
-  input::extract_atom_hetero() const
-  {
-    af::shared<std::size_t> result;
-    const hierarchy_v2::atom* atoms_end = atoms_v2_.end();
-    std::size_t i_seq = 0;
-    for(const hierarchy_v2::atom*
-          a=atoms_v2_.begin();a!=atoms_end;a++,i_seq++) {
-      if (a->data->hetero) result.push_back(i_seq);
-    }
-    return result;
-  }
-
 }} // namespace iotbx::pdb

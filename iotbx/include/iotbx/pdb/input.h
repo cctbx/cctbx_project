@@ -406,32 +406,6 @@ namespace iotbx { namespace pdb {
       construct_hierarchy_v2(
         bool residue_group_post_processing=true);
 
-#define IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(attr, attr_type) \
-      af::shared<attr_type > \
-      extract_atom_##attr() const \
-      { \
-        af::shared<attr_type > result( \
-          atoms_v2_.size(), af::init_functor_null<attr_type >()); \
-        attr_type* r = result.begin(); \
-        const hierarchy_v2::atom* atoms_end = atoms_v2_.end(); \
-        for(const hierarchy_v2::atom* a=atoms_v2_.begin();a!=atoms_end;a++) { \
-          *r++ = a->data->attr; \
-        } \
-        return result; \
-      }
-
-      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(xyz, vec3)
-      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(sigxyz, vec3)
-      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(occ, double)
-      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(sigocc, double)
-      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(b, double)
-      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(sigb, double)
-      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(uij, sym_mat3)
-      IOTBX_PDB_INPUT_EXTRACT_ATOM_ATTR(siguij, sym_mat3)
-
-      af::shared<std::size_t>
-      extract_atom_hetero() const;
-
     protected:
       std::string source_info_;
       record_type_counts_t record_type_counts_;

@@ -7,7 +7,6 @@
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
 #include <boost/python/dict.hpp>
-#include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <iotbx/pdb/input.h>
 
@@ -129,15 +128,6 @@ namespace {
         .def("construct_hierarchy_v2", &w_t::construct_hierarchy_v2,
           construct_hierarchy_v2_overloads((
             arg_("residue_group_post_processing")=true)))
-        .def("extract_atom_xyz", &w_t::extract_atom_xyz)
-        .def("extract_atom_sigxyz", &w_t::extract_atom_sigxyz)
-        .def("extract_atom_occ", &w_t::extract_atom_occ)
-        .def("extract_atom_sigocc", &w_t::extract_atom_sigocc)
-        .def("extract_atom_b", &w_t::extract_atom_b)
-        .def("extract_atom_sigb", &w_t::extract_atom_sigb)
-        .def("extract_atom_uij", &w_t::extract_atom_uij)
-        .def("extract_atom_siguij", &w_t::extract_atom_siguij)
-        .def("extract_atom_hetero", &w_t::extract_atom_hetero)
       ;
     }
   };
