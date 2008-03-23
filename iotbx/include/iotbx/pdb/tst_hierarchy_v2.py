@@ -3641,6 +3641,58 @@ conformer: "B"
     atom: " O  "
 """)
 
+def exercise_is_identical_topology():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        0
+ATOM      1  N   MET A   1
+ATOM      2  CA  MET A   1
+ATOM      3  N   GLY A   2
+ATOM      4  CA  GLY A   2
+ENDMDL
+MODEL        1
+ATOM      1  N   MET A   1
+ATOM      2  CA  MET A   1
+ATOM      3  N   GLY A   2
+ATOM      4  CA  GLY A   2
+ENDMDL
+MODEL        2
+ATOM      1  N   MET A   1
+HETATM    2  CA  MET A   1
+ATOM      3  N   GLY A   2
+ATOM      4  CA  GLY A   2
+ENDMDL
+MODEL        3
+ATOM      1  N   MET A   1
+ATOM     12  CA  MET A   1
+ATOM      3  N   GLY A   2
+ATOM      4  CA  GLY A   2
+ENDMDL
+MODEL        4
+ATOM      1  N   MET A   1
+ATOM      2  CA  MET A   1
+ATOM      3  NX  GLY A   2
+ATOM      4  CA  GLY A   2
+ENDMDL
+MODEL        5
+ATOM      1  N   MET A   1                                                   E
+ATOM      2  CA  MET A   1
+ATOM      3  N   GLY A   2
+ATOM      4  CA  GLY A   2
+ENDMDL
+MODEL        6
+ATOM      1  N   MET A   1
+ATOM      2  CA  MET A   1
+ATOM      3  N   GLY A   2                                                    X
+ATOM      4  CA  GLY A   2
+ENDMDL
+"""))
+  models = pdb_inp.construct_hierarchy_v2().models()
+  assert models[0].is_identical_topology(models[1])
+  assert models[1].is_identical_topology(models[0])
+  for other in models[2:]:
+    assert not models[0].is_identical_topology(other=other)
+    assert not other.is_identical_topology(other=models[0])
+
 def exercise_atoms():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
@@ -3824,6 +3876,7 @@ def exercise(args):
     exercise_find_pure_altloc_ranges()
     exercise_occupancy_groups_simple()
     exercise_conformers()
+    exercise_is_identical_topology()
     exercise_atoms()
     exercise_as_pdb_string(
       pdb_file_names=phenix_regression_pdb_file_names,
