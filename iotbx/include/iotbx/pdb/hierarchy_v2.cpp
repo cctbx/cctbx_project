@@ -436,7 +436,7 @@ namespace {
   small_str<15>
   atom::pdb_label_columns_small_str() const
   {
-    small_str<15> result;
+    small_str<15> result(small_str_no_init);
     atom_label_columns_formatter().format(result.elems, *this);
     result.elems[15] = '\0';
     return result;
@@ -681,7 +681,7 @@ namespace {
   residue_group::resid_small_str() const
   {
     char blank = ' ';
-    str5 result;
+    str5 result(small_str_no_init);
     data->resseq.copy_right_justified(result.elems, 4U, blank);
     data->icode.copy_left_justified(result.elems+4, 1U, blank);
     result.elems[5] = '\0';
