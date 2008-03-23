@@ -739,6 +739,11 @@ namespace hierarchy_v2 {
 
       std::string
       confid() const;
+
+      //! Not available in Python.
+      bool
+      is_identical_topology(
+        atom_group const& other) const;
   };
 
   //! residue_group attributes.
@@ -859,6 +864,11 @@ namespace hierarchy_v2 {
 
       af::tiny<unsigned, 2>
       edit_blank_altloc();
+
+      //! Not available in Python.
+      bool
+      is_identical_topology(
+        residue_group const& other) const;
   };
 
   //! Chain attributes.
@@ -961,6 +971,11 @@ namespace hierarchy_v2 {
       find_pure_altloc_ranges(
         const char* common_residue_name_class_only=0) const;
 
+      //! Not available in Python.
+      bool
+      is_identical_topology(
+        chain const& other) const;
+
       af::shared<conformer>
       conformers() const;
   };
@@ -1046,6 +1061,10 @@ namespace hierarchy_v2 {
 
       af::shared<atom>
       atoms() const;
+
+      bool
+      is_identical_topology(
+        model const& other) const;
   };
 
   //! Root attributes.

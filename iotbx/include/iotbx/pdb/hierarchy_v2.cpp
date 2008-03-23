@@ -1165,4 +1165,79 @@ namespace {
     return result;
   }
 
+  bool
+  atom_group::is_identical_topology(
+    atom_group const& other) const
+  {
+    atom_group_data const& d = *data;
+    atom_group_data const& od = *other.data;
+    if (d.altloc != od.altloc) return false;
+    if (d.resname != od.resname) return false;
+    std::vector<atom> const& ats = d.atoms;
+    std::vector<atom> const& oats = od.atoms;
+    unsigned n = static_cast<unsigned>(ats.size());
+    if (n != static_cast<unsigned>(oats.size())) return false;
+    for(unsigned i=0;i<n;i++) {
+      atom_data const& a = *ats[i].data;
+      atom_data const& oa = *oats[i].data;
+      if (a.name != oa.name) return false;
+      if (a.element != oa.element) return false;
+      if (a.charge != oa.charge) return false;
+      if (a.serial != oa.serial) return false;
+      if (a.hetero != oa.hetero) return false;
+    }
+    return true;
+  }
+
+  bool
+  residue_group::is_identical_topology(
+    residue_group const& other) const
+  {
+    residue_group_data const& d = *data;
+    residue_group_data const& od = *other.data;
+    if (d.resseq != od.resseq) return false;
+    if (d.icode != od.icode) return false;
+    std::vector<atom_group> const& ags = d.atom_groups;
+    std::vector<atom_group> const& oags = od.atom_groups;
+    unsigned n = static_cast<unsigned>(ags.size());
+    if (n != static_cast<unsigned>(oags.size())) return false;
+    for(unsigned i=0;i<n;i++) {
+      if (!ags[i].is_identical_topology(oags[i])) return false;
+    }
+    return true;
+  }
+
+  bool
+  chain::is_identical_topology(
+    chain const& other) const
+  {
+    chain_data const& d = *data;
+    chain_data const& od = *other.data;
+    if (d.id != od.id) return false;
+    std::vector<residue_group> const& rgs = d.residue_groups;
+    std::vector<residue_group> const& orgs = od.residue_groups;
+    unsigned n = static_cast<unsigned>(rgs.size());
+    if (n != static_cast<unsigned>(orgs.size())) return false;
+    for(unsigned i=0;i<n;i++) {
+      if (!rgs[i].is_identical_topology(orgs[i])) return false;
+    }
+    return true;
+  }
+
+  bool
+  model::is_identical_topology(
+    model const& other) const
+  {
+    model_data const& d = *data;
+    model_data const& od = *other.data;
+    std::vector<chain> const& chs = d.chains;
+    std::vector<chain> const& ochs = od.chains;
+    unsigned n = static_cast<unsigned>(chs.size());
+    if (n != static_cast<unsigned>(ochs.size())) return false;
+    for(unsigned i=0;i<n;i++) {
+      if (!chs[i].is_identical_topology(ochs[i])) return false;
+    }
+    return true;
+  }
+
 }}} // namespace iotbx::pdb::hierarchy_v2
