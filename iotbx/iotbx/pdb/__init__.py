@@ -376,7 +376,9 @@ class _input(boost.python.injector, ext.input):
     from cctbx import crystal
     assert crystal_symmetry is None or not unit_cube_pseudo_crystal
     if (not unit_cube_pseudo_crystal):
-      crystal_symmetry = self.crystal_symmetry()
+      crystal_symmetry = self.crystal_symmetry(
+        crystal_symmetry=crystal_symmetry,
+        weak_symmetry=weak_symmetry)
     if (crystal_symmetry is None
         or (    crystal_symmetry.unit_cell() is None
             and crystal_symmetry.space_group_info() is None)):
