@@ -287,6 +287,34 @@ class _input(boost.python.injector, ext.input):
         return cryst1_interpretation.crystal_symmetry(cryst1_record=line)
     return None
 
+  def crystal_symmetry(self,
+        crystal_symmetry=None,
+        weak_symmetry=False):
+    cryst1_symmetry = self.crystal_symmetry_from_cryst1()
+    if (crystal_symmetry is None):
+      return cryst1_symmetry
+    if (cryst1_symmetry is None):
+      return crystal_symmetry
+    return cryst1_symmetry.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=not weak_symmetry)
+
+  def special_position_settings(self,
+        special_position_settings=None,
+        weak_symmetry=False,
+        min_distance_sym_equiv=0.5,
+        u_star_tolerance=0):
+    crystal_symmetry = self.crystal_symmetry(
+      crystal_symmetry=special_position_settings,
+      weak_symmetry=weak_symmetry)
+    if (crystal_symmetry is None): return None
+    if (special_position_settings is not None):
+      min_distance_sym_equiv=special_position_settings.min_distance_sym_equiv()
+      u_star_tolerance = special_position_settings.u_star_tolerance()
+    return crystal_symmetry.special_position_settings(
+      min_distance_sym_equiv=min_distance_sym_equiv,
+      u_star_tolerance=u_star_tolerance)
+
   def scale_matrix(self):
     if (not hasattr(self, "_scale_matrix")):
       source_info = self.source_info()
@@ -348,13 +376,7 @@ class _input(boost.python.injector, ext.input):
     from cctbx import crystal
     assert crystal_symmetry is None or not unit_cube_pseudo_crystal
     if (not unit_cube_pseudo_crystal):
-      cryst1_symmetry = self.crystal_symmetry_from_cryst1()
-      if (crystal_symmetry is None):
-        crystal_symmetry = cryst1_symmetry
-      elif (cryst1_symmetry is not None):
-        crystal_symmetry = cryst1_symmetry.join_symmetry(
-          other_symmetry=crystal_symmetry,
-          force=not weak_symmetry)
+      crystal_symmetry = self.crystal_symmetry()
     if (crystal_symmetry is None
         or (    crystal_symmetry.unit_cell() is None
             and crystal_symmetry.space_group_info() is None)):
