@@ -632,9 +632,7 @@ ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
         common_name=" "+n.lower()+" ") == r
 
 def exercise_xray_structure_simple():
-  pdb_inp = pdb.input(
-    source_info=None,
-    lines=flex.split_lines("""\
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 CRYST1   61.410   54.829   43.543  90.00  90.00  90.00 P 21 21 21    8
 ORIGX1      1.000000  0.000000  0.000000        0.00000
 ORIGX2      0.000000  1.000000  0.000000        0.00000
@@ -654,48 +652,6 @@ ATOM      5 1CB AGLN A   3      32.979  10.223  18.469  1.00 37.80
 HETATM    6 CA  AION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
-  assert approx_equal(pdb_inp.atoms_v2().extract_xyz(), [
-    (35.299,11.075,19.070),
-    (34.482,9.927,18.794),
-    (35.130,8.880,17.864),
-    (34.548,7.819,17.724),
-    (32.979,10.223,18.469),
-    (32.360,11.092,17.308),
-    (30.822,10.665,17.190)])
-  assert approx_equal(pdb_inp.atoms_v2().extract_sigxyz(), [
-    (0,0,0),
-    (1.2,2.3,3.4),
-    (0,0,0),
-    (0,0,0),
-    (0,0,0),
-    (0,0,0),
-    (0,0,0)])
-  assert approx_equal(pdb_inp.atoms_v2().extract_occ(),
-    [1.00,0.63,0.84,1.00,1.00,0.92,1.00])
-  assert approx_equal(pdb_inp.atoms_v2().extract_sigocc(),
-    [0,0.04,0,0,0,0,0])
-  assert approx_equal(pdb_inp.atoms_v2().extract_b(),
-    [36.89,37.88,37.52,38.54,37.80,35.96,36.87])
-  assert approx_equal(pdb_inp.atoms_v2().extract_sigb(),
-    [0,0.05,0,0,0,0,0])
-  assert approx_equal(pdb_inp.atoms_v2().extract_uij(), [
-    (-1,-1,-1,-1,-1,-1),
-    (0.7794, 0.3221, 0.3376, -0.1227, 0.1064, 0.2601),
-    (0.7875, 0.3041, 0.3340, -0.0981, 0.0727, 0.2663),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1)])
-  assert approx_equal(pdb_inp.atoms_v2().extract_siguij(), [
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (0.0075, 0.0041, 0.0040, -0.0001, 0.0007, 0.0063),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1)])
-  assert list(pdb_inp.atoms_v2().extract_hetero()) == [5,6]
-  #
   for use_scale_matrix_if_available in [False, True]:
     xray_structure = pdb_inp.xray_structure_simple(
       use_scale_matrix_if_available=use_scale_matrix_if_available)

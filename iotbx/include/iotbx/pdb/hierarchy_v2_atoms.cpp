@@ -41,6 +41,30 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     return result;
   }
 
+#define IOTBX_LOC(attr, attr_type) \
+  void \
+  set_##attr( \
+    af::ref<atom> const& atoms, \
+    af::const_ref<attr_type > const& new_##attr) \
+  { \
+    SCITBX_ASSERT(new_##attr.size() == atoms.size()); \
+    unsigned n = static_cast<unsigned>(atoms.size()); \
+    for(unsigned i=0;i<n;i++) { \
+      atoms[i].data->attr = new_##attr[i]; \
+    } \
+  }
+
+  IOTBX_LOC(xyz, vec3)
+  IOTBX_LOC(sigxyz, vec3)
+  IOTBX_LOC(occ, double)
+  IOTBX_LOC(sigocc, double)
+  IOTBX_LOC(b, double)
+  IOTBX_LOC(sigb, double)
+  IOTBX_LOC(uij, sym_mat3)
+  IOTBX_LOC(siguij, sym_mat3)
+
+#undef IOTBX_LOC
+
   void
   reset_tmp(
     af::const_ref<atom> const& atoms,

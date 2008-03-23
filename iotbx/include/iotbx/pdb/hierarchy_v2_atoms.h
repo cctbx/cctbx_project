@@ -42,6 +42,46 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     af::const_ref<atom> const& atoms);
 
   void
+  set_xyz(
+    af::ref<atom> const& atoms,
+    af::const_ref<vec3> const& new_xyz);
+
+  void
+  set_sigxyz(
+    af::ref<atom> const& atoms,
+    af::const_ref<vec3> const& new_sigxyz);
+
+  void
+  set_occ(
+    af::ref<atom> const& atoms,
+    af::const_ref<double> const& new_occ);
+
+  void
+  set_sigocc(
+    af::ref<atom> const& atoms,
+    af::const_ref<double> const& new_sigocc);
+
+  void
+  set_b(
+    af::ref<atom> const& atoms,
+    af::const_ref<double> const& new_b);
+
+  void
+  set_sigb(
+    af::ref<atom> const& atoms,
+    af::const_ref<double> const& new_sigb);
+
+  void
+  set_uij(
+    af::ref<atom> const& atoms,
+    af::const_ref<sym_mat3> const& new_uij);
+
+  void
+  set_siguij(
+    af::ref<atom> const& atoms,
+    af::const_ref<sym_mat3> const& new_siguij);
+
+  void
   reset_tmp(
     af::const_ref<atom> const& atoms,
     int first_value=0,
