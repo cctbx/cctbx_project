@@ -1432,16 +1432,6 @@ namespace hierarchy_v2 {
     data(new atom_data(parent.data, *other.data))
   {}
 
-  void
-  atoms_reset_tmp(
-    af::const_ref<atom> const& atoms,
-    int first_value=0,
-    int increment=1);
-
-  void
-  atoms_reset_tmp_for_occupancy_groups_simple(
-    af::const_ref<atom> const& atoms);
-
   inline
   residue_data::residue_data(
     weak_ptr<conformer_data> const& parent_,

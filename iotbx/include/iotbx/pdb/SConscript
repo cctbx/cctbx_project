@@ -18,6 +18,7 @@ builder(
     "hybrid_36_c.c",
     "utils.cpp",
     "hierarchy_v2.cpp",
+    "hierarchy_v2_atoms.cpp",
     "overall_counts.cpp",
     "atom_selection.cpp",
     "input.cpp"])
@@ -40,4 +41,5 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/iotbx_pdb_hierarchy_v2_ext",
     source=[
-      "hierarchy_v2_ext.cpp"])
+      "hierarchy_v2_ext.cpp",
+      "hierarchy_v2_atoms_bpl.cpp"])

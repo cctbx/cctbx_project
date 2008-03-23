@@ -9,12 +9,14 @@
 #include <boost/python/tuple.hpp>
 #include <boost/python/str.hpp>
 #include <boost/python/return_arg.hpp>
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/boost_python/array_as_list.h>
 #include <iotbx/pdb/hierarchy_v2.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 {
+
+namespace atoms { void bpl_wrap(); }
+
 namespace {
 
   template <typename ChildType, typename ParentType>
@@ -192,9 +194,6 @@ namespace {
     BOOST_PYTHON_FUNCTION_OVERLOADS(
       format_atom_record_overloads, format_atom_record, 1, 2)
 
-    BOOST_PYTHON_FUNCTION_OVERLOADS(
-      atoms_reset_tmp_overloads, atoms_reset_tmp, 1, 3)
-
     static void
     wrap()
     {
@@ -267,16 +266,6 @@ namespace {
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)
       ;
-      {
-        scitbx::af::boost_python::shared_wrapper<atom>::wrap("af_shared_atom")
-          .def("reset_tmp", atoms_reset_tmp, atoms_reset_tmp_overloads((
-            arg_("self"),
-            arg_("first_value")=0,
-            arg_("increment")=1)))
-          .def("reset_tmp_for_occupancy_groups_simple",
-            atoms_reset_tmp_for_occupancy_groups_simple)
-        ;
-      }
     }
   };
 
@@ -798,6 +787,8 @@ namespace {
 
     residue_wrappers::wrap();
     conformer_wrappers::wrap();
+
+    atoms::bpl_wrap();
   }
 
 }}}} // namespace iotbx::pdb::hierarchy_v2::<anonymous>
