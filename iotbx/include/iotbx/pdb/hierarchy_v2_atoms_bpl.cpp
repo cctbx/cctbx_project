@@ -2,6 +2,7 @@
 
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/return_arg.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <iotbx/pdb/hierarchy_v2_atoms.h>
 
@@ -27,6 +28,14 @@ namespace {
       .def("extract_uij", extract_uij)
       .def("extract_siguij", extract_siguij)
       .def("extract_hetero", extract_hetero)
+      .def("set_xyz", set_xyz, (arg_("new_xyz")), return_self<>())
+      .def("set_sigxyz", set_sigxyz, (arg_("new_sigxyz")), return_self<>())
+      .def("set_occ", set_occ, (arg_("new_occ")), return_self<>())
+      .def("set_sigocc", set_sigocc, (arg_("new_sigocc")), return_self<>())
+      .def("set_b", set_b, (arg_("new_b")), return_self<>())
+      .def("set_sigb", set_sigb, (arg_("new_sigb")), return_self<>())
+      .def("set_uij", set_uij, (arg_("new_uij")), return_self<>())
+      .def("set_siguij", set_siguij, (arg_("new_siguij")), return_self<>())
       .def("reset_tmp", reset_tmp, reset_tmp_overloads((
         arg_("self"),
         arg_("first_value")=0,

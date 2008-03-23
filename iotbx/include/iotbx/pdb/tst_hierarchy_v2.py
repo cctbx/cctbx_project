@@ -2,7 +2,7 @@ from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.str_utils import show_string
-from libtbx.utils import Sorry, format_cpu_times
+from libtbx.utils import hashlib_md5, Sorry, format_cpu_times
 from cStringIO import StringIO
 import libtbx.load_env
 import random
@@ -3641,6 +3641,128 @@ conformer: "B"
     atom: " O  "
 """)
 
+def exercise_atoms():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
+ATOM      2  CA  GLN A   3      34.482   9.927  18.794  0.63 37.88           C
+SIGATM    2  CA  GLN A   3       1.200   2.300   3.400  0.04  0.05           C
+ANISOU    2  CA  GLN A   3     7794   3221   3376  -1227   1064   2601       C
+ATOM      3  Q   GLN A   3      35.130   8.880  17.864  0.84 37.52           C
+ANISOU    3  Q   GLN A   3     7875   3041   3340   -981    727   2663       C
+SIGUIJ    3  Q   GLN A   3       75     41     40     -1      7     63       C
+ATOM      4  O   GLN A   3      34.548   7.819  17.724  1.00 38.54      STUV
+ATOM      5 1CB AGLN A   3      32.979  10.223  18.469  1.00 37.80
+HETATM    6 CA  AION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
+HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
+"""))
+  atoms = pdb_inp.atoms_v2()
+  xyz = atoms.extract_xyz()
+  assert approx_equal(xyz, [
+    (35.299,11.075,19.070),
+    (34.482,9.927,18.794),
+    (35.130,8.880,17.864),
+    (34.548,7.819,17.724),
+    (32.979,10.223,18.469),
+    (32.360,11.092,17.308),
+    (30.822,10.665,17.190)])
+  sigxyz = atoms.extract_sigxyz()
+  assert approx_equal(sigxyz, [
+    (0,0,0),
+    (1.2,2.3,3.4),
+    (0,0,0),
+    (0,0,0),
+    (0,0,0),
+    (0,0,0),
+    (0,0,0)])
+  occ = atoms.extract_occ()
+  assert approx_equal(occ,
+    [1.00,0.63,0.84,1.00,1.00,0.92,1.00])
+  sigocc = atoms.extract_sigocc()
+  assert approx_equal(sigocc,
+    [0,0.04,0,0,0,0,0])
+  b = atoms.extract_b()
+  assert approx_equal(b,
+    [36.89,37.88,37.52,38.54,37.80,35.96,36.87])
+  sigb = atoms.extract_sigb()
+  assert approx_equal(sigb,
+    [0,0.05,0,0,0,0,0])
+  uij = atoms.extract_uij()
+  assert approx_equal(uij, [
+    (-1,-1,-1,-1,-1,-1),
+    (0.7794, 0.3221, 0.3376, -0.1227, 0.1064, 0.2601),
+    (0.7875, 0.3041, 0.3340, -0.0981, 0.0727, 0.2663),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1)])
+  siguij = atoms.extract_siguij()
+  assert approx_equal(siguij, [
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (0.0075, 0.0041, 0.0040, -0.0001, 0.0007, 0.0063),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1)])
+  assert list(atoms.extract_hetero()) == [5,6]
+  #
+  assert atoms.set_xyz(new_xyz=xyz+(1,2,3)) is atoms
+  assert approx_equal(atoms.extract_xyz(), [
+    (36.299,13.075,22.070),
+    (35.482,11.927,21.794),
+    (36.130,10.880,20.864),
+    (35.548,9.819,20.724),
+    (33.979,12.223,21.469),
+    (33.360,13.092,20.308),
+    (31.822,12.665,20.190)])
+  assert atoms.set_sigxyz(new_sigxyz=sigxyz+(1,2,3)) is atoms
+  assert approx_equal(atoms.extract_sigxyz(), [
+    (1,2,3),
+    (2.2,4.3,6.4),
+    (1,2,3),
+    (1,2,3),
+    (1,2,3),
+    (1,2,3),
+    (1,2,3)])
+  assert atoms.set_occ(new_occ=occ+1.23) is atoms
+  assert approx_equal(atoms.extract_occ(),
+    [2.23,1.86,2.07,2.23,2.23,2.15,2.23])
+  assert atoms.set_sigocc(new_sigocc=sigocc+3) is atoms
+  assert approx_equal(atoms.extract_sigocc(),
+    [3,3.04,3,3,3,3,3])
+  assert atoms.set_b(new_b=b+10) is atoms
+  assert approx_equal(atoms.extract_b(),
+    [46.89,47.88,47.52,48.54,47.80,45.96,46.87])
+  assert atoms.set_sigb(new_sigb=sigb+5) is atoms
+  assert approx_equal(atoms.extract_sigb(),
+    [5,5.05,5,5,5,5,5])
+  assert atoms.set_uij(new_uij=siguij) is atoms
+  assert approx_equal(atoms.extract_uij(), [
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (0.0075, 0.0041, 0.0040, -0.0001, 0.0007, 0.0063),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1)])
+  assert atoms.set_siguij(new_siguij=uij) is atoms
+  assert approx_equal(atoms.extract_siguij(), [
+    (-1,-1,-1,-1,-1,-1),
+    (0.7794, 0.3221, 0.3376, -0.1227, 0.1064, 0.2601),
+    (0.7875, 0.3041, 0.3340, -0.0981, 0.0727, 0.2663),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1),
+    (-1,-1,-1,-1,-1,-1)])
+  #
+  h = pdb_inp.construct_hierarchy_v2()
+  for i in xrange(2):
+    s = h.as_pdb_string()
+    d = hashlib_md5(s).hexdigest()
+    assert d == "e2da3bb63e6468141e4830e6f6aa220c"
+    h = pdb.input(
+      source_info=None, lines=flex.split_lines(s)).construct_hierarchy_v2()
+
 def exercise_as_pdb_string(pdb_file_names, comprehensive):
   pdb_string = """\
 HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
@@ -3699,6 +3821,7 @@ def exercise(args):
     exercise_find_pure_altloc_ranges()
     exercise_occupancy_groups_simple()
     exercise_conformers()
+    exercise_atoms()
     exercise_as_pdb_string(
       pdb_file_names=phenix_regression_pdb_file_names,
       comprehensive=comprehensive)
