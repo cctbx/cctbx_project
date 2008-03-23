@@ -567,6 +567,8 @@ namespace {
         IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(chain)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
+        .def("is_identical_topology", &w_t::is_identical_topology, (
+          arg_("other")))
       ;
     }
   };

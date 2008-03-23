@@ -514,12 +514,6 @@ class _model(boost.python.injector, ext.model):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def is_identical_topology(self, other):
-    if (self.chains_size() != other.chains_size()): return False
-    for a,b in zip(self.chains(), other.chains()):
-      if (not a.is_identical_topology(b)): return False
-    return True
-
 class _chain(boost.python.injector, ext.chain):
 
   def atom_groups(self):
@@ -536,13 +530,6 @@ class _chain(boost.python.injector, ext.chain):
 
   def only_atom(self):
     return self.only_atom_group().only_atom()
-
-  def is_identical_topology(self, other):
-    if (self.id != other.id): return False
-    if (self.residue_groups_size() !=other.residue_groups_size()): return False
-    for a,b in zip(self.residue_groups(), other.residue_groups()):
-      if (not a.is_identical_topology(b)): return False
-    return True
 
   def occupancy_groups_simple(self, common_residue_name_class_only=None):
     result = []
@@ -596,30 +583,11 @@ class _residue_group(boost.python.injector, ext.residue_group):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def is_identical_topology(self, other):
-    if (self.resid() != other.resid()): return False
-    if (self.atom_groups_size() != other.atom_groups_size()): return False
-    for a,b in zip(self.atom_groups(), other.atom_groups()):
-      if (not a.is_identical_topology(b)): return False
-    return True
-
 class _atom_group(boost.python.injector, ext.atom_group):
 
   def only_atom(self):
     assert self.atoms_size() == 1
     return self.atoms()[0]
-
-  def is_identical_topology(self, other):
-    if (self.altloc != other.altloc): return False
-    if (self.resname != other.resname): return False
-    if (self.atoms_size() != other.atoms_size()): return False
-    for a,b in zip(self.atoms(), other.atoms()):
-      if (a.name != b.name): return False
-      if (a.element != b.element): return False
-      if (a.charge != b.charge): return False
-      if (a.serial != b.serial): return False
-      if (a.hetero != b.hetero): return False
-    return True
 
 class _conformer(boost.python.injector, ext.conformer):
 
