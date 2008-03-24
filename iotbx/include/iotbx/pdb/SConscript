@@ -19,6 +19,7 @@ builder(
     "utils.cpp",
     "hierarchy_v2.cpp",
     "hierarchy_v2_atoms.cpp",
+    "construct_hierarchy_v2.cpp",
     "overall_counts.cpp",
     "atom_selection.cpp",
     "input.cpp"])
@@ -36,7 +37,6 @@ if (not env_etc.no_boost_python):
       "common_residue_names_bpl.cpp",
       "rna_dna_atom_names_bpl.cpp",
       "input_bpl.cpp",
-      "construct_hierarchy_v2.cpp",
       "xray_structure_bpl.cpp"])
   env.SharedLibrary(
     target="#lib/iotbx_pdb_hierarchy_v2_ext",
