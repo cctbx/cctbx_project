@@ -14,7 +14,7 @@ from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
-from libtbx import easy_pickle
+from libtbx import easy_pickle, smart_open
 from libtbx.utils import Sorry, detect_binary_file
 import sys, os, os.path
 import re
@@ -108,7 +108,7 @@ class any_reflection_file(object):
       return
     if (self._observation_type is not None):
       try: self._file_content = shelx_hklf.reader(
-        open(file_name))
+        smart_open.for_reading(file_name))
       except KeyboardInterrupt: raise
       except:
         raise Sorry("Not a SHELX reflection file: %s\n"
@@ -164,6 +164,8 @@ class any_reflection_file(object):
         and self._observation_type == 'hklf+ins/res'
         ):
         name, ext = os.path.splitext(self._file_name)
+        if ext != '.hkl': # it may be compressed: name.hkl.gz
+          name, ext = os.path.splitext(name)
         for shelx_file_name in ('%s.ins' % name, '%s.res' % name):
           try:
             shelx_file = open(shelx_file_name)
@@ -172,7 +174,7 @@ class any_reflection_file(object):
             continue
         else:
           raise Sorry("Can't open files %s.ins or %s.res"
-                      "required by the option hklf+ins/res" % name)
+                      "required by the option hklf+ins/res" % ((name,)*2))
         crystal_symmetry = crystal_symmetry_from_ins.extract_from(
           file=shelx_file)
         shelx_file.seek(0)
