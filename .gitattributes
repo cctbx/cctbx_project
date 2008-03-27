@@ -190,6 +190,9 @@ smtbx/ab_initio/__init__.py -text
 smtbx/ab_initio/ab_initio_ext.cpp -text
 smtbx/ab_initio/charge_flipping.py -text
 smtbx/ab_initio/density_modification.h -text
+smtbx/ab_initio/examples/03srv209.hkl.gz -text
+smtbx/ab_initio/examples/03srv209.res -text
+smtbx/ab_initio/examples/solve_shelx.py -text
 smtbx/ab_initio/tests/__init__.py -text
 smtbx/ab_initio/tests/tst_ab_initio_ext.py -text
 smtbx/ab_initio/tests/tst_charge_flipping.py -text
