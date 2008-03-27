@@ -122,6 +122,10 @@ mmtbx/mmtbx/ias/__init__.py -text
 mmtbx/mmtbx/ias/tst_ias.py -text
 mmtbx/mmtbx/maps.py -text
 mmtbx/mmtbx/model_statistics.py -text
+mmtbx/mmtbx/monomer_library/apply_mod_rna.py svneol=native#text/x-python
+mmtbx/mmtbx/monomer_library/mod_rnaC2.cif -text
+mmtbx/mmtbx/monomer_library/mod_rnaC3.cif -text
+mmtbx/mmtbx/monomer_library/mod_rnaEsd.cif -text
 mmtbx/mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/mmtbx/monomer_library/tst_protein_interpretation.py -text
 mmtbx/mmtbx/monomer_library/tst_rna_dna_interpretation.py -text

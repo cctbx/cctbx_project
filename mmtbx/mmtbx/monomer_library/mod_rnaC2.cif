@@ -1,0 +1,64 @@
+data_mod_rnaC2
+#
+loop_
+_chem_mod_bond.mod_id
+_chem_mod_bond.function
+_chem_mod_bond.atom_id_1
+_chem_mod_bond.atom_id_2
+_chem_mod_bond.new_type
+_chem_mod_bond.new_value_dist
+_chem_mod_bond.new_value_dist_esd
+ rnaC2 change C1* C2* coval 1.526 0.015
+ rnaC2 change C2* C3* coval 1.525 0.015
+ rnaC2 change C3* C4* coval 1.527 0.015
+ rnaC2 change C3* O3* coval 1.427 0.015
+ rnaC2 change C4* C5* coval 1.509 0.015
+ rnaC2 change C4* O4* coval 1.454 0.015
+ rnaC2 change O4* C1* coval 1.415 0.015
+ rnaC2 change C5* O5* coval 1.424 0.015
+ rnaC2 change C2* O2* coval 1.412 0.015
+ rnaC2 change N9 C1* coval 1.465 0.015
+loop_
+_chem_mod_angle.mod_id
+_chem_mod_angle.function
+_chem_mod_angle.atom_id_1
+_chem_mod_angle.atom_id_2
+_chem_mod_angle.atom_id_3
+_chem_mod_angle.new_value_angle
+_chem_mod_angle.new_value_angle_esd
+ rnaC2 change N9 C1* O4* 108.2 2.0
+ rnaC2 change N9 C1* C2* 114.0 2.0
+ rnaC2 change O4* C1* C2* 105.8 2.0
+ rnaC2 change C1* C2* C3* 101.5 2.0
+ rnaC2 change C2* C3* C4* 102.6 2.0
+ rnaC2 change C2* C3* O3* 109.5 2.0
+ rnaC2 change O3* C3* C4* 109.4 2.0
+ rnaC2 change C3* C4* C5* 115.2 2.0
+ rnaC2 change C3* C4* O4* 106.1 2.0
+ rnaC2 change O4* C4* C5* 109.1 2.0
+ rnaC2 change C4* O4* C1* 109.7 2.0
+ rnaC2 change C4* C5* O5* 111.7 2.0
+ rnaC2 change C1* C2* O2* 111.8 2.0
+ rnaC2 change O2* C2* C3* 114.6 2.0
+loop_
+_chem_mod_tor.mod_id
+_chem_mod_tor.function
+_chem_mod_tor.id
+_chem_mod_tor.atom_id_1
+_chem_mod_tor.atom_id_2
+_chem_mod_tor.atom_id_3
+_chem_mod_tor.atom_id_4
+_chem_mod_tor.new_value_angle
+_chem_mod_tor.new_value_angle_esd
+_chem_mod_tor.new_period
+ rnaC2 change beta P O5* C5* C4* 170.0 40.0 1
+ rnaC2 change gamma O5* C5* C4* C3* 55.0 15.0 3
+ rnaC2 change delta C5* C4* C3* O3* 147.0 8.0 1
+ rnaC2 add epsilon P O3* C3* C4* 250.0 40.0 1
+ rnaC2 change nu0 C4* O4* C1* C2* 339.0 8.0 1
+ rnaC2 change nu1 O4* C1* C2* C3* 35.0 8.0 1
+ rnaC2 add nu2 C1* C2* C3* C4* 325.0 8.0 1
+ rnaC2 add nu3 C2* C3* C4* O4* 24.0 8.0 1
+ rnaC2 add realnu4 C3* C4* O4* C1* 358.0 8.0 1
+ rnaC2 change wasnu4 C5* C4* O4* C1* 123.0 8.0 1
+
