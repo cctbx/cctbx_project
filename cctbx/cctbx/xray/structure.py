@@ -92,17 +92,17 @@ class structure(crystal.special_position_settings):
     if(selection is None): selection = flex.bool(s.size(), True)
     else:                  assert selection.size() == s.size()
     if(value is not None):
-       s.set_u_iso(flex.double(s.size(), value), selection)
+      s.set_u_iso(flex.double(s.size(), value), selection)
     else:
-       assert values.size() == s.size()
-       s.set_u_iso(values, selection)
+      assert values.size() == s.size()
+      s.set_u_iso(values, selection)
     return self
 
   def set_b_iso(self, value = None, values = None, selection = None):
     assert [value, values].count(None) == 1
     s = self._scatterers
     if(value is not None):
-       self.set_u_iso(value = adptbx.b_as_u(value), selection = selection)
+      self.set_u_iso(value = adptbx.b_as_u(value), selection = selection)
     else:
       assert values.size() == s.size()
       b_iso = values
@@ -113,9 +113,9 @@ class structure(crystal.special_position_settings):
   def random_remove_sites_selection(self, fraction):
     scatterers_size = self._scatterers.size()
     if(abs(fraction-0.0) < 1.e-3):
-       return flex.bool(scatterers_size, True)
+      return flex.bool(scatterers_size, True)
     if(fraction < 0.01 or fraction > 0.99):
-       raise RuntimeError("fraction must be between 0.01 and 0.99.")
+      raise RuntimeError("fraction must be between 0.01 and 0.99.")
     tol = 999.
     selection = None
     l = max(fraction - 0.05, 0.0)
@@ -126,8 +126,8 @@ class structure(crystal.special_position_settings):
         sel = arr > 0.0
         deleted = float((scatterers_size - sel.count(True))) / scatterers_size
         if abs(fraction - deleted) < tol:
-           tol = abs(fraction - deleted)
-           selection = sel
+          tol = abs(fraction - deleted)
+          selection = sel
         l += 0.0001
     return selection
 
@@ -196,7 +196,7 @@ class structure(crystal.special_position_settings):
     s1 = self.sites_cart().select(selection)
     s2 = other.sites_cart().select(selection)
     if(s1.size() != s2.size()):
-       raise RuntimeError("Models must of equal size.")
+      raise RuntimeError("Models must of equal size.")
     return flex.sqrt((s1 - s2).dot())
 
   def max_distance(self, other):
@@ -207,13 +207,13 @@ class structure(crystal.special_position_settings):
 
   def scale_adp(self, factor, selection=None):
     if(selection is not None):
-       assert selection.size() == self._scatterers.size()
+      assert selection.size() == self._scatterers.size()
     else:
-       selection = flex.bool(self._scatterers.size(), True)
+      selection = flex.bool(self._scatterers.size(), True)
     for sc,sel in zip(self._scatterers, selection):
       if(sc.flags.use()):
         if(sc.flags.use_u_iso()):
-           sc.u_iso = sc.u_iso * factor
+          sc.u_iso = sc.u_iso * factor
         if(sc.flags.use_u_aniso()):
           result = []
           for i in xrange(6): result.append(sc.u_star[i] * factor)
@@ -224,40 +224,40 @@ class structure(crystal.special_position_settings):
     assert [b_max, b_min].count(None) in [0,2]
     if([b_max, b_min].count(None) == 0): assert spread == 0.0
     if([b_max, b_min].count(None) == 2):
-       u_isos = self._scatterers.extract_u_iso().select(self.use_u_iso())
-       if(u_isos.size() > 0):
-          b_mean = adptbx.u_as_b(flex.mean(u_isos))
-          b_max = int(b_mean + spread)
-          b_min = int(max(0.0, b_mean - spread))
+      u_isos = self._scatterers.extract_u_iso().select(self.use_u_iso())
+      if(u_isos.size() > 0):
+        b_mean = adptbx.u_as_b(flex.mean(u_isos))
+        b_max = int(b_mean + spread)
+        b_min = int(max(0.0, b_mean - spread))
     assert b_min <= b_max
     if(selection is not None):
-       assert selection.size() == self._scatterers.size()
+      assert selection.size() == self._scatterers.size()
     else:
-       selection = flex.bool(self._scatterers.size(), True)
+      selection = flex.bool(self._scatterers.size(), True)
     is_special_position = self.site_symmetry_table().is_special_position
     for i_seq,sc,sel in zip(count(), self._scatterers, selection):
-        if(sel and sc.flags.use()):
-           if(sc.flags.use_u_iso() and b_min != b_max):
-              r = max(0, random.randrange(b_min, b_max, 1) + random.random())
-              sc.u_iso=adptbx.b_as_u(r)
-           if(sc.flags.use_u_aniso() and not keep_anisotropic):
-              result = []
-              for i in xrange(6):
-                result.append(sc.u_star[i]+sc.u_star[i]*random.choice(
-                                                 (-aniso_spread,aniso_spread)))
-              if(is_special_position(i_seq=i_seq)):
-                 result = self.space_group().average_u_star(result)
-              sc.u_star = result
+      if(sel and sc.flags.use()):
+        if(sc.flags.use_u_iso() and b_min != b_max):
+          r = max(0, random.randrange(b_min, b_max, 1) + random.random())
+          sc.u_iso=adptbx.b_as_u(r)
+        if(sc.flags.use_u_aniso() and not keep_anisotropic):
+          result = []
+          for i in xrange(6):
+            result.append(sc.u_star[i]+sc.u_star[i]*random.choice(
+                                             (-aniso_spread,aniso_spread)))
+          if(is_special_position(i_seq=i_seq)):
+            result = self.space_group().average_u_star(result)
+          sc.u_star = result
 
   def shake_adp_if_all_equal(self, b_iso_tolerance = 0.1):
     performed = False
     if(self.use_u_aniso().count(True) == 0):
-       u_isos = self.extract_u_iso_or_u_equiv()
-       b_max  = adptbx.u_as_b(flex.max(u_isos))
-       b_min  = adptbx.u_as_b(flex.min(u_isos))
-       b_mean = adptbx.u_as_b(flex.mean(u_isos))
-       if(abs(b_max - b_mean) <= b_iso_tolerance and
-                                       abs(b_min - b_mean) <= b_iso_tolerance):
+      u_isos = self.extract_u_iso_or_u_equiv()
+      b_max  = adptbx.u_as_b(flex.max(u_isos))
+      b_min  = adptbx.u_as_b(flex.min(u_isos))
+      b_mean = adptbx.u_as_b(flex.mean(u_isos))
+      if(abs(b_max - b_mean) <= b_iso_tolerance and
+                                      abs(b_min - b_mean) <= b_iso_tolerance):
           self.shake_adp()
           performed = True
     return performed
@@ -275,10 +275,10 @@ class structure(crystal.special_position_settings):
     s = self._scatterers
     q_new = flex.random_double(s.size())*2.
     if(selection is None):
-       s.set_occupancies(q_new)
+      s.set_occupancies(q_new)
     else:
-       assert selection.size() == s.size()
-       s.set_occupancies(q_new, selection)
+      assert selection.size() == s.size()
+      s.set_occupancies(q_new, selection)
 
   def set_occupancies(self, value, selection = None):
     s = self._scatterers
@@ -442,7 +442,7 @@ class structure(crystal.special_position_settings):
 
   def apply_rigid_body_shift(self, rot, trans, selection = None):
     if(selection is None):
-       selection = flex.bool(self._scatterers.size(), True).iselection()
+      selection = flex.bool(self._scatterers.size(), True).iselection()
     rbs_obj = self.apply_rigid_body_shift_obj(
                                         sites_cart     = self.sites_cart(),
                                         sites_frac     = self.sites_frac(),
@@ -471,10 +471,10 @@ class structure(crystal.special_position_settings):
 
   def convert_to_isotropic(self, selection=None):
     if(selection is None):
-       self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell())
+      self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell())
     else:
-       self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell(),
-                                             selection=selection)
+      self._scatterers.convert_to_isotropic(unit_cell=self.unit_cell(),
+                                            selection=selection)
 
   def convert_to_anisotropic(self, selection=None):
     if(selection is None):
@@ -487,9 +487,9 @@ class structure(crystal.special_position_settings):
     if(out is None): out = sys.stdout
     size = self._scatterers.size()
     if(use_hydrogens):
-       hd_selection = flex.bool(size, True)
+      hd_selection = flex.bool(size, True)
     else:
-       hd_selection = self.hd_selection()
+      hd_selection = self.hd_selection()
     epis = 8*math.pi**2
     use_u_aniso = self.use_u_aniso().select(~hd_selection)
     use_u_iso   = self.use_u_iso().select(~hd_selection)
@@ -695,14 +695,14 @@ class structure(crystal.special_position_settings):
       custom_dict = strp1.custom_dict,
       d_min       = strp1.d_min,
       table       = strp1.table,
-      types_without_a_scattering_contribution = \
-                                 strp1.types_without_a_scattering_contribution)
+      types_without_a_scattering_contribution =
+                                strp1.types_without_a_scattering_contribution)
     self.scattering_type_registry(
       custom_dict = strp2.custom_dict,
       d_min       = strp2.d_min,
       table       = strp2.table,
-      types_without_a_scattering_contribution = \
-                                 strp2.types_without_a_scattering_contribution)
+      types_without_a_scattering_contribution =
+                                strp2.types_without_a_scattering_contribution)
 
   def replace_scatterers(self, scatterers, site_symmetry_table="existing"):
     if (site_symmetry_table == "existing"):
@@ -755,7 +755,8 @@ class structure(crystal.special_position_settings):
 
   def show_scatterers(self, f=None):
     if (f is None): f = sys.stdout
-    print >> f, "Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso"
+    print >> f, ("Label, Scattering, Multiplicity, Coordinates, Occupancy, "
+                 "Uiso, Ustar as Uiso")
     for scatterer in self.scatterers():
       scatterer.show(f=f, unit_cell=self.unit_cell())
     return self
@@ -811,12 +812,12 @@ class structure(crystal.special_position_settings):
 
   def shift_occupancies(self, q_shift, selection=None):
     if(selection is not None):
-       ext.shift_occupancies(scatterers = self._scatterers,
-                             q_shift    = q_shift,
-                             selection  = selection)
+      ext.shift_occupancies(scatterers = self._scatterers,
+                            q_shift    = q_shift,
+                            selection  = selection)
     else:
-       ext.shift_occupancies(scatterers = self._scatterers,
-                             q_shift    = q_shift)
+      ext.shift_occupancies(scatterers = self._scatterers,
+                            q_shift    = q_shift)
 
   def apply_symmetry_sites(self):
     ext.apply_symmetry_sites(
@@ -987,12 +988,12 @@ class structure(crystal.special_position_settings):
     #XXX move to C++ (after anisotropic_flag is gone)
     result_ = 0
     for sc in self.scatterers():
-        if(sc.flags.grad_site()     ): result_ +=3
-        if(sc.flags.grad_u_iso()   and sc.anisotropic_flag==False): result_ +=1
-        if(sc.flags.grad_u_aniso() and sc.anisotropic_flag==True): result_ +=6
-        if(sc.flags.grad_occupancy()): result_ +=1
-        if(sc.flags.grad_fp()       ): result_ +=1
-        if(sc.flags.grad_fdp()      ): result_ +=1
+      if(sc.flags.grad_site()     ): result_ +=3
+      if(sc.flags.grad_u_iso()   and sc.anisotropic_flag==False): result_ +=1
+      if(sc.flags.grad_u_aniso() and sc.anisotropic_flag==True): result_ +=6
+      if(sc.flags.grad_occupancy()): result_ +=1
+      if(sc.flags.grad_fp()       ): result_ +=1
+      if(sc.flags.grad_fdp()      ): result_ +=1
     return result_
 
   def n_grad_u_iso(self):
@@ -1027,7 +1028,8 @@ class structure(crystal.special_position_settings):
         distance_cutoff=None,
         asu_mappings_buffer_thickness=None,
         asu_is_inside_epsilon=None):
-    assert distance_cutoff is not None or asu_mappings_buffer_thickness is not None
+    assert (distance_cutoff is not None 
+            or asu_mappings_buffer_thickness is not None)
     if (asu_mappings_buffer_thickness is None):
       asu_mappings_buffer_thickness = distance_cutoff
     asu_mappings = self.asu_mappings(
