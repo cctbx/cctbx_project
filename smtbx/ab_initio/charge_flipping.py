@@ -218,9 +218,6 @@ class density_modification_iterator(object):
           space_group_info=self.original_f_obs.space_group_info()))
       merging = symm_f_calc.merge_equivalents()
       symm_f_calc = merging.array()
-      m = self.original_f_obs.match_indices(symm_f_calc)
-      assert not m.have_singles()
-      symm_f_calc = symm_f_calc.select(m.permutation())
       yield symm_f_calc, shift, peak.height
 
 
