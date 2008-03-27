@@ -14,7 +14,7 @@ If the configuration file is not specified, the file epydoc.conf in the current 
 
 Requirements
 
-Epydoc 3.0 must be installed in the Python in use to run this script.
+Epydoc 3.0 and docutils.
 
 Instructions for documentation writers
 
