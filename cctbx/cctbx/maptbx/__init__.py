@@ -1,3 +1,5 @@
+from __future__ import generators
+
 import cctbx.sgtbx
 
 import boost.python
@@ -305,6 +307,12 @@ class peak_cluster_analysis(object):
     self._sites = flex.vec3_double()
     self._heights = flex.double()
     self._fixed_site_indices = flex.size_t()
+    
+  def __iter__(self):
+    while 1:
+      site_info = self.next()
+      if site_info is None: break
+      yield site_info
 
   def peak_list(self):
     return self._peak_list
