@@ -585,12 +585,32 @@ BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000""")
   records = []
+  c.append_atom_record_groups(pdb_records=records, interleaved_conf=1)
+  c.append_atom_record_groups(pdb_records=records, interleaved_conf=2)
   c.append_atom_record_groups(pdb_records=records, atom_hetatm=False)
   c.append_atom_record_groups(pdb_records=records, sigatm=False)
   c.append_atom_record_groups(pdb_records=records, anisou=False)
   c.append_atom_record_groups(pdb_records=records, siguij=False)
-  assert len(records) == 16
+  assert len(records) == 24
   assert not show_diff("\n".join(records), """\
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
+BREAK
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
+SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
+ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
+BREAK
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
 ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
 SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
@@ -3818,6 +3838,147 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     h = pdb.input(
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy_v2()
 
+def exercise_atoms_interleaved_conf():
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      1  N  ATRP A   1I
+ATOM      4  N  CPHE A   1I
+ATOM      2  C  ATRP A   1I
+ATOM      8  CA BTYR A   1I
+ATOM      3  O  ATRP A   1I
+ATOM      5  CA CPHE A   1I
+ATOM      6  C  CPHE A   1I
+ATOM      9  C  BTYR A   1I
+ATOM      7  O  CPHE A   1I
+ATOM     10  O  BTYR A   1I
+"""))
+  hierarchy = pdb_inp.construct_hierarchy_v2()
+  rs = [atom.format_atom_record(cut_after_label_columns=True)
+    for atom in hierarchy.only_residue_group().atoms_interleaved_conf()]
+  assert not show_diff("\n".join(rs), """\
+ATOM      1  N  ATRP A   1I
+ATOM      2  C  ATRP A   1I
+ATOM      3  O  ATRP A   1I
+ATOM      4  N  CPHE A   1I
+ATOM      5  CA CPHE A   1I
+ATOM      6  C  CPHE A   1I
+ATOM      7  O  CPHE A   1I
+ATOM      8  CA BTYR A   1I
+ATOM      9  C  BTYR A   1I
+ATOM     10  O  BTYR A   1I""")
+  rs = [atom.format_atom_record(cut_after_label_columns=True)
+    for atom in hierarchy.only_residue_group().atoms_interleaved_conf(
+      group_residue_names=False)]
+  assert not show_diff("\n".join(rs), """\
+ATOM      1  N  ATRP A   1I
+ATOM      4  N  CPHE A   1I
+ATOM      2  C  ATRP A   1I
+ATOM      6  C  CPHE A   1I
+ATOM      9  C  BTYR A   1I
+ATOM      3  O  ATRP A   1I
+ATOM      7  O  CPHE A   1I
+ATOM     10  O  BTYR A   1I
+ATOM      5  CA CPHE A   1I
+ATOM      8  CA BTYR A   1I""")
+  trailing = " A   1I      0.000   0.000   0.000  0.00  0.00"
+  assert not show_diff(
+    hierarchy.as_pdb_string(interleaved_conf=1).replace(trailing,""), """\
+ATOM      1  N  ATRP
+ATOM      2  C  ATRP
+ATOM      3  O  ATRP
+ATOM      4  N  CPHE
+ATOM      5  CA CPHE
+ATOM      6  C  CPHE
+ATOM      7  O  CPHE
+ATOM      8  CA BTYR
+ATOM      9  C  BTYR
+ATOM     10  O  BTYR
+TER
+""")
+  assert not show_diff(
+    hierarchy.as_pdb_string(interleaved_conf=2).replace(trailing,""), """\
+ATOM      1  N  ATRP
+ATOM      4  N  CPHE
+ATOM      2  C  ATRP
+ATOM      6  C  CPHE
+ATOM      9  C  BTYR
+ATOM      3  O  ATRP
+ATOM      7  O  CPHE
+ATOM     10  O  BTYR
+ATOM      5  CA CPHE
+ATOM      8  CA BTYR
+TER
+""")
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      1  N  ATRP A   1I
+ATOM      4  N  CPHE A   1I
+ATOM      2  C  ATRP A   1I
+ATOM      8  CA BTRP A   1I
+ATOM      3  O  ATRP A   1I
+ATOM      5  CA CPHE A   1I
+ATOM      6  C  CPHE A   1I
+ATOM      9  C  BTRP A   1I
+ATOM      7  O  CPHE A   1I
+ATOM     10  O  BTRP A   1I
+"""))
+  hierarchy = pdb_inp.construct_hierarchy_v2()
+  rs = [atom.format_atom_record(cut_after_label_columns=True)
+    for atom in hierarchy.only_residue_group().atoms_interleaved_conf()]
+  assert not show_diff("\n".join(rs), """\
+ATOM      1  N  ATRP A   1I
+ATOM      2  C  ATRP A   1I
+ATOM      9  C  BTRP A   1I
+ATOM      3  O  ATRP A   1I
+ATOM     10  O  BTRP A   1I
+ATOM      4  N  CPHE A   1I
+ATOM      5  CA CPHE A   1I
+ATOM      6  C  CPHE A   1I
+ATOM      7  O  CPHE A   1I
+ATOM      8  CA BTRP A   1I""")
+  rs = [atom.format_atom_record(cut_after_label_columns=True)
+    for atom in hierarchy.only_residue_group().atoms_interleaved_conf(
+      group_residue_names=False)]
+  assert not show_diff("\n".join(rs), """\
+ATOM      1  N  ATRP A   1I
+ATOM      4  N  CPHE A   1I
+ATOM      2  C  ATRP A   1I
+ATOM      6  C  CPHE A   1I
+ATOM      9  C  BTRP A   1I
+ATOM      3  O  ATRP A   1I
+ATOM      7  O  CPHE A   1I
+ATOM     10  O  BTRP A   1I
+ATOM      5  CA CPHE A   1I
+ATOM      8  CA BTRP A   1I""")
+  assert not show_diff(
+    hierarchy.as_pdb_string(interleaved_conf=1).replace(trailing,""), """\
+ATOM      1  N  ATRP
+ATOM      2  C  ATRP
+ATOM      3  O  ATRP
+ATOM      4  N  CPHE
+ATOM      5  CA CPHE
+ATOM      6  C  CPHE
+ATOM      7  O  CPHE
+ATOM      8  CA BTRP
+ATOM      9  C  BTRP
+ATOM     10  O  BTRP
+TER
+""")
+  for interleaved_conf in [2,3,4]:
+    assert not show_diff(hierarchy.as_pdb_string(
+      interleaved_conf=interleaved_conf).replace(trailing,""), """\
+ATOM      1  N  ATRP
+ATOM      4  N  CPHE
+ATOM      2  C  ATRP
+ATOM      6  C  CPHE
+ATOM      9  C  BTRP
+ATOM      3  O  ATRP
+ATOM      7  O  CPHE
+ATOM     10  O  BTRP
+ATOM      5  CA CPHE
+ATOM      8  CA BTRP
+TER
+""")
+
 def exercise_as_pdb_string(pdb_file_names, comprehensive):
   pdb_string = """\
 HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
@@ -3878,6 +4039,7 @@ def exercise(args):
     exercise_conformers()
     exercise_is_identical_topology()
     exercise_atoms()
+    exercise_atoms_interleaved_conf()
     exercise_as_pdb_string(
       pdb_file_names=phenix_regression_pdb_file_names,
       comprehensive=comprehensive)

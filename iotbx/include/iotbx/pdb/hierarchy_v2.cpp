@@ -1240,4 +1240,42 @@ namespace {
     return true;
   }
 
+  af::shared<atom>
+  residue_group::atoms_interleaved_conf(
+    bool group_residue_names) const
+  {
+    af::shared<atom> result;
+    unsigned n_ag = atom_groups_size();
+    std::vector<atom_group> const& ags = atom_groups();
+    std::map<str7, std::vector<atom> > key_atoms;
+#define IOTBX_LOC_OPEN \
+    for(unsigned i_ag=0;i_ag<n_ag;i_ag++) { \
+      atom_group const& ag = ags[i_ag]; \
+      unsigned n_at = ag.atoms_size(); \
+      std::vector<atom> const& ats = ag.atoms(); \
+      for(unsigned i_at=0;i_at<n_at;i_at++) { \
+        atom const& a = ats[i_at]; \
+        str7 key( \
+          group_residue_names \
+            ? a.data->name.concatenate(ag.data->resname) \
+            : a.data->name.elems);
+#define IOTBX_LOC_CLOSE \
+      } \
+    }
+    IOTBX_LOC_OPEN
+        key_atoms[key].push_back(a);
+    IOTBX_LOC_CLOSE
+    IOTBX_LOC_OPEN
+        std::vector<atom>& related_atoms = key_atoms[key];
+        if (related_atoms.size() != 0) {
+          result.insert(
+            result.end(), &*related_atoms.begin(), &*related_atoms.end());
+          related_atoms.clear();
+        }
+    IOTBX_LOC_CLOSE
+#undef IOTBX_LOC_OPEN
+#undef IOTBX_LOC_CLOSE
+    return result;
+  }
+
 }}} // namespace iotbx::pdb::hierarchy_v2

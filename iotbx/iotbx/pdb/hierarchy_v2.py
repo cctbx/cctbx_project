@@ -443,6 +443,7 @@ class _root(boost.python.injector, ext.root):
 
   def as_pdb_records(self,
         append_end=False,
+        interleaved_conf=0,
         atom_hetatm=True,
         sigatm=True,
         anisou=True,
@@ -455,6 +456,7 @@ class _root(boost.python.injector, ext.root):
       for chain in model.chains():
         chain.append_atom_record_groups(
           pdb_records=result,
+          interleaved_conf=interleaved_conf,
           atom_hetatm=atom_hetatm, sigatm=sigatm, anisou=anisou, siguij=siguij)
         result.append("TER")
       if (len(models) != 1):
@@ -465,12 +467,14 @@ class _root(boost.python.injector, ext.root):
 
   def as_pdb_string(self,
         append_end=False,
+        interleaved_conf=0,
         atom_hetatm=True,
         sigatm=True,
         anisou=True,
         siguij=True):
     return "\n".join(self.as_pdb_records(
       append_end=append_end,
+      interleaved_conf=interleaved_conf,
       atom_hetatm=atom_hetatm,
       sigatm=sigatm,
       anisou=anisou,
@@ -582,6 +586,24 @@ class _residue_group(boost.python.injector, ext.residue_group):
 
   def only_atom(self):
     return self.only_atom_group().only_atom()
+
+  def _atoms_interleaved_conf(self, group_residue_names=True):
+    result = []
+    atom_name_atoms = {}
+    for ag in self.atom_groups():
+      for atom in ag.atoms():
+        if (group_residue_names): key = atom.name+ag.resname
+        else: key = atom.name
+        atom_name_atoms.setdefault(key, []).append(atom)
+    for ag in self.atom_groups():
+      for atom in ag.atoms():
+        if (group_residue_names): key = atom.name+ag.resname
+        else: key = atom.name
+        related_atoms = atom_name_atoms[key]
+        if (related_atoms is None): continue
+        result.extend(related_atoms)
+        atom_name_atoms[key] = None
+    return result
 
 class _atom_group(boost.python.injector, ext.atom_group):
 
