@@ -373,6 +373,9 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_atom_group_index_overloads, find_atom_group_index, 1, 2)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      atoms_interleaved_conf_overloads, atoms_interleaved_conf, 0, 1)
+
     static void
     wrap()
     {
@@ -405,6 +408,9 @@ namespace {
         .def("move_blank_altloc_atom_groups_to_front",
           &w_t::move_blank_altloc_atom_groups_to_front)
         .def("edit_blank_altloc", &w_t::edit_blank_altloc)
+        .def("atoms_interleaved_conf", &w_t::atoms_interleaved_conf,
+          atoms_interleaved_conf_overloads((
+            arg_("group_residue_names")=true)))
       ;
     }
   };
@@ -444,6 +450,7 @@ namespace {
     append_atom_record_groups(
       w_t const& self,
       boost::python::list pdb_records,
+      int interleaved_conf=0,
       bool atom_hetatm=true,
       bool sigatm=true,
       bool anisou=true,
@@ -465,34 +472,52 @@ namespace {
         }
         label_formatter.resseq = rg.data->resseq.elems;
         label_formatter.icode = rg.data->icode.elems;
-        unsigned n_ag = rg.atom_groups_size();
-        for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
-          atom_group const& ag = rg.atom_groups()[i_ag];
-          label_formatter.altloc = ag.data->altloc.elems;
-          label_formatter.resname = ag.data->resname.elems;
-          typedef std::vector<atom> va;
-          va const& atoms = ag.atoms();
-          va::const_iterator atoms_end = atoms.end();
-          for(va::const_iterator atom=atoms.begin();atom!=atoms_end;atom++) {
-            boost::python::handle<> str_hdl(PyString_FromStringAndSize(
-              0, max_str_len));
-            PyObject* str_obj = str_hdl.get();
-            char* str_begin = PyString_AS_STRING(str_obj);
-            unsigned str_len = atom->format_atom_record_group(
-              str_begin, &label_formatter,
-              atom_hetatm, sigatm, anisou, siguij);
-            str_hdl.release();
-            if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
-              boost::python::throw_error_already_set();
+        if (interleaved_conf <= 1) {
+          unsigned n_ag = rg.atom_groups_size();
+          for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+            atom_group const& ag = rg.atom_groups()[i_ag];
+            label_formatter.altloc = ag.data->altloc.elems;
+            label_formatter.resname = ag.data->resname.elems;
+            typedef std::vector<atom> va;
+            va const& atoms = ag.atoms();
+            va::const_iterator atoms_end = atoms.end();
+            for(va::const_iterator atom=atoms.begin();atom!=atoms_end;atom++) {
+#define IOTBX_LOC \
+              boost::python::handle<> str_hdl(PyString_FromStringAndSize( \
+                0, max_str_len)); \
+              PyObject* str_obj = str_hdl.get(); \
+              char* str_begin = PyString_AS_STRING(str_obj); \
+              unsigned str_len = atom->format_atom_record_group( \
+                str_begin, &label_formatter, \
+                atom_hetatm, sigatm, anisou, siguij); \
+              str_hdl.release(); \
+              if (_PyString_Resize(&str_obj, static_cast<int>(str_len))!=0) { \
+                boost::python::throw_error_already_set(); \
+              } \
+              pdb_records.append(boost::python::handle<>(str_obj));
+              IOTBX_LOC
             }
-            pdb_records.append(boost::python::handle<>(str_obj));
+          }
+        }
+        else { // interleaved_conf > 0
+          af::shared<atom> atoms_ilc = rg.atoms_interleaved_conf(
+            /* group_residue_names */ (interleaved_conf < 2));
+          af::const_ref<atom> ats = atoms_ilc.const_ref();
+          unsigned n_at = static_cast<unsigned>(ats.size());
+          for(unsigned i_at=0;i_at<n_at;i_at++) {
+            hierarchy_v2::atom const* atom = &ats[i_at];
+            shared_ptr<atom_group_data> ag_data = atom->parent_ptr();
+            label_formatter.altloc = ag_data->altloc.elems;
+            label_formatter.resname = ag_data->resname.elems;
+            IOTBX_LOC
           }
         }
       }
+#undef IOTBX_LOC
     }
 
     BOOST_PYTHON_FUNCTION_OVERLOADS(
-      append_atom_record_groups_overloads, append_atom_record_groups, 2, 6)
+      append_atom_record_groups_overloads, append_atom_record_groups, 2, 7)
 
     static void
     wrap()
@@ -524,6 +549,7 @@ namespace {
           append_atom_record_groups_overloads((
           arg_("self"),
           arg_("pdb_records"),
+          arg_("interleaved_conf")=0,
           arg_("atom_hetatm")=true,
           arg_("sigatm")=true,
           arg_("anisou")=true,

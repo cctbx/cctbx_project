@@ -1,6 +1,7 @@
 #ifndef IOTBX_PDB_SMALL_STR_H
 #define IOTBX_PDB_SMALL_STR_H
 
+#include <stdexcept>
 #include <cstdio>
 #include <cstring>
 #include <ctype.h> // cannot use <cctype> since MIPSpro 7.3.1.2 defines macros
@@ -151,6 +152,11 @@ namespace iotbx { namespace pdb {
     {
       pdb::copy_right_justified(dest, dest_size, elems, N, pad_with);
     }
+
+    template <unsigned OtherN>
+    small_str<N+OtherN>
+    concatenate(
+      small_str<OtherN> const& other) const;
   };
 
   template <unsigned N>
@@ -235,12 +241,29 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
+  template <unsigned N>
+  template <unsigned OtherN>
+  small_str<N+OtherN>
+  small_str<N>::concatenate(
+    small_str<OtherN> const& other) const
+  {
+    small_str<N+OtherN> result((small_str_no_init));
+    char *r = result.elems;
+    const char *c = elems;
+    while(*c != '\0') *r++ = *c++;
+    c = other.elems;
+    while(*c != '\0') *r++ = *c++;
+    *r = '\0';
+    return result;
+  }
+
   typedef small_str<1> str1;
   typedef small_str<2> str2;
   typedef small_str<3> str3;
   typedef small_str<4> str4;
   typedef small_str<5> str5;
   typedef small_str<6> str6;
+  typedef small_str<7> str7;
 
 }} // namespace iotbx::pdb
 

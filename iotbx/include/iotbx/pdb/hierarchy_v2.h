@@ -539,6 +539,10 @@ namespace hierarchy_v2 {
       std::size_t
       sizeof_data() { return sizeof(atom_data); }
 
+      //! Not available in Python.
+      shared_ptr<atom_group_data>
+      parent_ptr() const { return data->parent.lock(); }
+
       boost::optional<atom_group>
       parent() const;
 
@@ -668,9 +672,6 @@ namespace hierarchy_v2 {
       void
       clear_parent() { data->parent.reset(); }
 
-      shared_ptr<residue_group_data>
-      parent_ptr() const { return data->parent.lock(); }
-
     public:
       inline
       explicit
@@ -704,6 +705,9 @@ namespace hierarchy_v2 {
 
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      shared_ptr<residue_group_data>
+      parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<residue_group>
       parent() const;
@@ -766,9 +770,6 @@ namespace hierarchy_v2 {
       void
       clear_parent() { data->parent.reset(); }
 
-      shared_ptr<chain_data>
-      parent_ptr() const { return data->parent.lock(); }
-
     public:
       inline
       explicit
@@ -805,6 +806,9 @@ namespace hierarchy_v2 {
 
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      shared_ptr<chain_data>
+      parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<chain>
       parent() const;
@@ -869,6 +873,10 @@ namespace hierarchy_v2 {
       bool
       is_identical_topology(
         residue_group const& other) const;
+
+      af::shared<atom>
+      atoms_interleaved_conf(
+        bool group_residue_names=true) const;
   };
 
   //! Chain attributes.
@@ -920,6 +928,9 @@ namespace hierarchy_v2 {
 
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      shared_ptr<model_data>
+      parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<model>
       parent() const;
@@ -1023,6 +1034,9 @@ namespace hierarchy_v2 {
 
       std::size_t
       memory_id() const { return reinterpret_cast<std::size_t>(data.get()); }
+
+      shared_ptr<root_data>
+      parent_ptr() const { return data->parent.lock(); }
 
       boost::optional<root>
       parent() const;
