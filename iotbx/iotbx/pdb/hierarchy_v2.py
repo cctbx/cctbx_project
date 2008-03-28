@@ -587,24 +587,6 @@ class _residue_group(boost.python.injector, ext.residue_group):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
-  def _atoms_interleaved_conf(self, group_residue_names=True):
-    result = []
-    atom_name_atoms = {}
-    for ag in self.atom_groups():
-      for atom in ag.atoms():
-        if (group_residue_names): key = atom.name+ag.resname
-        else: key = atom.name
-        atom_name_atoms.setdefault(key, []).append(atom)
-    for ag in self.atom_groups():
-      for atom in ag.atoms():
-        if (group_residue_names): key = atom.name+ag.resname
-        else: key = atom.name
-        related_atoms = atom_name_atoms[key]
-        if (related_atoms is None): continue
-        result.extend(related_atoms)
-        atom_name_atoms[key] = None
-    return result
-
 class _atom_group(boost.python.injector, ext.atom_group):
 
   def only_atom(self):
