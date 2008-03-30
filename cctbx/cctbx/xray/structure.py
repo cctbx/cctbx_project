@@ -1028,7 +1028,7 @@ class structure(crystal.special_position_settings):
         distance_cutoff=None,
         asu_mappings_buffer_thickness=None,
         asu_is_inside_epsilon=None):
-    assert (distance_cutoff is not None 
+    assert (distance_cutoff is not None
             or asu_mappings_buffer_thickness is not None)
     if (asu_mappings_buffer_thickness is None):
       asu_mappings_buffer_thickness = distance_cutoff

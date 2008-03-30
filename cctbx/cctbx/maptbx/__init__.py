@@ -307,7 +307,7 @@ class peak_cluster_analysis(object):
     self._sites = flex.vec3_double()
     self._heights = flex.double()
     self._fixed_site_indices = flex.size_t()
-    
+
   def __iter__(self):
     while 1:
       site_info = self.next()
