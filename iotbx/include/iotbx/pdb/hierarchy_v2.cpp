@@ -1240,6 +1240,21 @@ namespace {
     return true;
   }
 
+  void
+  model::transfer_chains_from_other(
+    model& other)
+  {
+    std::vector<chain>& other_chains = other.data->chains;
+    unsigned n = other.chains_size();
+    pre_allocate_chains(n);
+    for(unsigned i=0;i<n;i++) {
+      other_chains[i].clear_parent();
+      append_chain(other_chains[i]);
+    }
+    std::vector<chain> empty;
+    other_chains.swap(empty);
+  }
+
   af::shared<atom>
   residue_group::atoms_interleaved_conf(
     bool group_residue_names) const

@@ -3,8 +3,9 @@ from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.str_utils import show_string
 from libtbx.utils import hashlib_md5, Sorry, format_cpu_times
-from cStringIO import StringIO
 import libtbx.load_env
+from libtbx import Auto
+from cStringIO import StringIO
 import random
 import sys, os
 
@@ -4003,6 +4004,128 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
     pdb_str_2 = hierarchy_2.as_pdb_string(append_end=False)
     assert not show_diff(pdb_str_1, pdb_str_2+"END\n")
 
+def exercise_transfer_chains_from_other():
+  atoms_x = """\
+ATOM      1  X1      A
+ATOM      2  X2      A
+ATOM      3  X1      B
+ATOM      4  X2      B"""
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        1
+%s
+ENDMDL
+MODEL        2
+%s
+ENDMDL
+""" % (atoms_x, atoms_x.replace("X","Y"))))
+  hierarchy = pdb_inp.construct_hierarchy_v2()
+  models = hierarchy.models()
+  assert [md.chains_size() for md in models] == [2, 2]
+  models[0].transfer_chains_from_other(other=models[1])
+  assert [md.chains_size() for md in models] == [4, 0]
+  hierarchy.remove_model(model=models[1])
+  trailing = "           0.000   0.000   0.000  0.00  0.00"
+  assert not show_diff(hierarchy.as_pdb_string().replace(trailing, ""), """\
+ATOM      1  X1      A
+ATOM      2  X2      A
+TER
+ATOM      3  X1      B
+ATOM      4  X2      B
+TER
+ATOM      1  Y1      A
+ATOM      2  Y2      A
+TER
+ATOM      3  Y1      B
+ATOM      4  Y2      B
+TER
+""")
+  #
+  for suffixes in [Auto, "FG"]:
+    roots = [
+      pdb.input(source_info=None, lines=flex.split_lines(lines))
+        .construct_hierarchy_v2()
+          for lines in [atoms_x, atoms_x.replace("X","Y")]]
+    joined = pdb.hierarchy_v2.join_roots(
+      roots=roots, chain_id_suffixes=suffixes)
+    if (suffixes is Auto): f,g = "1", "2"
+    else:                  f,g = "F", "G"
+    trailing = "           0.000   0.000   0.000  0.00  0.00"
+    assert not show_diff(joined.as_pdb_string().replace(trailing, ""), """\
+ATOM      1  X1     A%s
+ATOM      2  X2     A%s
+TER
+ATOM      3  X1     B%s
+ATOM      4  X2     B%s
+TER
+ATOM      1  Y1     A%s
+ATOM      2  Y2     A%s
+TER
+ATOM      3  Y1     B%s
+ATOM      4  Y2     B%s
+TER
+""" % (f,f,f,f,g,g,g,g))
+  #
+  roots = [pdb_inp.construct_hierarchy_v2() for pdb_inp in [
+    pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        1
+%s
+ENDMDL
+MODEL        1
+%s
+ENDMDL
+MODEL        1
+%s
+ENDMDL
+""" % (atoms_x, atoms_x.replace("X","Y"), atoms_x.replace("X","Z")))),
+    pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        3
+%s
+ENDMDL
+MODEL        3
+%s
+ENDMDL
+""" % (atoms_x.replace("X","P"), atoms_x.replace("X","Q"))))]]
+  joined = pdb.hierarchy_v2.join_roots(roots=roots)
+  trailing = "           0.000   0.000   0.000  0.00  0.00"
+  assert not show_diff(joined.as_pdb_string().replace(trailing, ""), """\
+MODEL        1
+ATOM      1  X1     A1
+ATOM      2  X2     A1
+TER
+ATOM      3  X1     B1
+ATOM      4  X2     B1
+TER
+ATOM      1  P1     A2
+ATOM      2  P2     A2
+TER
+ATOM      3  P1     B2
+ATOM      4  P2     B2
+TER
+ENDMDL
+MODEL        2
+ATOM      1  Y1     A1
+ATOM      2  Y2     A1
+TER
+ATOM      3  Y1     B1
+ATOM      4  Y2     B1
+TER
+ATOM      1  Q1     A2
+ATOM      2  Q2     A2
+TER
+ATOM      3  Q1     B2
+ATOM      4  Q2     B2
+TER
+ENDMDL
+MODEL        3
+ATOM      1  Z1     A1
+ATOM      2  Z2     A1
+TER
+ATOM      3  Z1     B1
+ATOM      4  Z2     B1
+TER
+ENDMDL
+""")
+
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None): return None
@@ -4043,6 +4166,7 @@ def exercise(args):
     exercise_as_pdb_string(
       pdb_file_names=phenix_regression_pdb_file_names,
       comprehensive=comprehensive)
+    exercise_transfer_chains_from_other()
     if (not forever): break
   print format_cpu_times()
 

@@ -595,6 +595,8 @@ namespace {
         .def("atoms", &w_t::atoms)
         .def("is_identical_topology", &w_t::is_identical_topology, (
           arg_("other")))
+        .def("transfer_chains_from_other", &w_t::transfer_chains_from_other, (
+          arg_("other")))
       ;
     }
   };

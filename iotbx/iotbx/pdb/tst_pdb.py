@@ -106,6 +106,21 @@ INFO: PDB files with identical content:
 
 """)
 
+def exercise_pdb_codes_fragment_files():
+  all_codes = {} # FUTURE: set
+  first_codes = []
+  lines = pdb.pdb_codes_fragment_files.splitlines()
+  for line in lines:
+    codes = line.split()
+    for code in codes:
+      assert len(code) == 4
+      assert not code in all_codes
+      all_codes[code] = None
+    assert len(codes) >= 2
+    assert sorted(codes) == codes
+    first_codes.append(codes[0])
+  assert sorted(first_codes) == first_codes
+
 def exercise_format_records():
   crystal_symmetry = crystal.symmetry(
     unit_cell=(10,10,13,90,90,120),
@@ -844,6 +859,7 @@ def write_icosahedron():
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_combine_unique_pdb_files()
+  exercise_pdb_codes_fragment_files()
   exercise_format_records()
   exercise_remark_290_interpretation()
   exercise_parser()
