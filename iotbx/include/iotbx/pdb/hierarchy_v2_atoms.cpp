@@ -1,4 +1,5 @@
 #include <iotbx/pdb/hierarchy_v2_atoms.h>
+#include <iotbx/pdb/hybrid_36_c.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
 
@@ -84,6 +85,23 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
   IOTBX_LOC(siguij, sym_mat3)
 
 #undef IOTBX_LOC
+
+  void
+  reset_serial(
+    af::const_ref<atom> const& atoms,
+    int first_value)
+  {
+    int value = first_value;
+    for(const atom* a=atoms.begin();a!=atoms.end();a++) {
+      const char* errmsg = hy36encode(5U, value++, a->data->serial.elems);
+      if (errmsg != 0) {
+        if (std::strcmp(errmsg, "value out of range.")) {
+          errmsg = "PDB atom serial number out of range.";
+        }
+        throw std::runtime_error(errmsg);
+      }
+    }
+  }
 
   void
   reset_tmp(

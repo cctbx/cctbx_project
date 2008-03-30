@@ -13,6 +13,8 @@ namespace {
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     extract_element_overloads, extract_element, 1, 2)
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(reset_serial_overloads, reset_serial, 1, 2)
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(reset_tmp_overloads, reset_tmp, 1, 3)
 
 } // namespace <anonymous>
@@ -42,6 +44,9 @@ namespace {
       .def("set_sigb", set_sigb, (arg_("new_sigb")), return_self<>())
       .def("set_uij", set_uij, (arg_("new_uij")), return_self<>())
       .def("set_siguij", set_siguij, (arg_("new_siguij")), return_self<>())
+      .def("reset_serial", reset_serial, reset_serial_overloads((
+        arg_("self"),
+        arg_("first_value")=1)))
       .def("reset_tmp", reset_tmp, reset_tmp_overloads((
         arg_("self"),
         arg_("first_value")=0,

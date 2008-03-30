@@ -87,6 +87,11 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     af::const_ref<sym_mat3> const& new_siguij);
 
   void
+  reset_serial(
+    af::const_ref<atom> const& atoms,
+    int first_value=1);
+
+  void
   reset_tmp(
     af::const_ref<atom> const& atoms,
     int first_value=0,

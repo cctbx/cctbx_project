@@ -176,15 +176,22 @@ def exercise_atom():
   assert a.pdb_label_columns() == "               "
   #
   atoms = pdb.hierarchy_v2.af_shared_atom()
+  atoms.reset_serial()
   atoms.reset_tmp()
   atoms.append(pdb.hierarchy_v2.atom())
+  assert [atom.serial for atom in atoms] == [""]
   assert [atom.tmp for atom in atoms] == [0]
+  atoms.reset_serial(first_value=2)
   atoms.reset_tmp(first_value=2)
+  assert [atom.serial for atom in atoms] == ["    2"]
   assert [atom.tmp for atom in atoms] == [2]
   atoms.append(pdb.hierarchy_v2.atom())
   atoms.append(pdb.hierarchy_v2.atom())
+  assert [atom.serial for atom in atoms] == ["    2", "", ""]
   assert [atom.tmp for atom in atoms] == [2,0,0]
+  atoms.reset_serial()
   atoms.reset_tmp()
+  assert [atom.serial for atom in atoms] == ["    1", "    2", "    3"]
   assert [atom.tmp for atom in atoms] == [0,1,2]
   atoms.reset_tmp(first_value=0, increment=0)
   assert [atom.tmp for atom in atoms] == [0] * 3
