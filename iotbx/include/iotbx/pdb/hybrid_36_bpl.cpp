@@ -18,6 +18,9 @@ namespace {
           throw std::runtime_error("internal error: result not reset.");
         }
       }
+      if (std::strcmp(errmsg, "value out of range.") == 0) {
+        throw std::invalid_argument(errmsg);
+      }
       throw std::runtime_error(errmsg);
     }
     return std::string(result);
@@ -31,6 +34,9 @@ namespace {
     if (errmsg) {
       if (result != 0) {
         throw std::runtime_error("internal error: result not reset.");
+      }
+      if (std::strcmp(errmsg, "invalid number literal.") == 0) {
+        throw std::invalid_argument(errmsg);
       }
       throw std::runtime_error(errmsg);
     }
