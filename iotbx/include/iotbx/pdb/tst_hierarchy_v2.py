@@ -1795,6 +1795,23 @@ number of groups of duplicate atom labels: 4
   ... 1 remaining group not shown
 """)
   #
+  for segid in ["", "SEGI"]:
+    oc = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM     68  HD1 LEU   441                                             %s
+ATOM     72  HD1 LEU   441
+""" % segid)).construct_hierarchy_v2().overall_counts()
+    if (segid != ""):
+      oc.raise_duplicate_atom_labels_if_necessary()
+    else:
+      try: oc.raise_duplicate_atom_labels_if_necessary()
+      except Sorry, e:
+        assert not show_diff(str(e), '''\
+number of groups of duplicate atom labels: 1
+  total number of affected atoms:          2
+  group "ATOM     68  HD1 LEU   441 .*.        "
+        "ATOM     72  HD1 LEU   441 .*.        "''')
+      else: raise Exception_expected
+  #
   check("""\
 HEADER    HYDROLASE                               19-JUL-05   2BWX
 ATOM   2038  N   CYS A 249      68.746  44.381  71.143  0.70 21.04           N
