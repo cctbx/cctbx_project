@@ -470,6 +470,7 @@ def exercise():
   exercise_add_1c()
   exercise_add_2b()
   exercise_add_2c()
+  print format_cpu_times()
 
 if(__name__ == "__main__"):
    exercise()
