@@ -313,6 +313,9 @@ def show_diff(a, b, selections=None, expected_number_of_lines=None):
       a.append("...\n")
     a = "".join(a[:-1])
   if (a != b):
+    if (not a.endswith("\n") or not b.endswith("\n")):
+      a += "\n"
+      b += "\n"
     print "".join(diff_function(b.splitlines(1), a.splitlines(1)))
     return True
   if (    expected_number_of_lines is not None
