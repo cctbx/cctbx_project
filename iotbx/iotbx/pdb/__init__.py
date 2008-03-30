@@ -13,7 +13,8 @@ import scitbx.stl.set
 from libtbx import smart_open
 from libtbx.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
-from libtbx.utils import plural_s, Sorry, hashlib_md5
+from libtbx.utils import plural_s, Sorry, hashlib_md5, date_and_time
+from libtbx import Auto
 import sys
 
 cns_dna_rna_residue_names = {
@@ -430,6 +431,88 @@ class _input(boost.python.injector, ext.input):
         special_position_settings=special_position_settings,
         scatterers=loop.scatterers))
     return result
+
+# Table of structures split into multiple PDB files.
+# Assembled manually.
+# Based on 46377 PDB files as of Tuesday Oct 02, 2007
+#   noticed in passing: misleading REMARK 400 in 1VSA (1vs9 and 2i1c
+#   don't exist)
+pdb_codes_fragment_files = """\
+1pns 1pnu
+1pnx 1pny
+1s1h 1s1i
+1ti2 1vld
+1ti4 1vle
+1ti6 1vlf
+1voq 1vor 1vos 1vou 1vov 1vow 1vox 1voy 1voz 1vp0
+1vs5 1vs6 1vs7 1vs8
+1vsa 2ow8
+1yl3 1yl4
+2avy 2aw4 2aw7 2awb
+2b64 2b66
+2b9m 2b9n
+2b9o 2b9p
+2gy9 2gya
+2gyb 2gyc
+2hgi 2hgj
+2hgp 2hgq
+2hgr 2hgu
+2i2p 2i2t 2i2u 2i2v
+2qal 2qam 2qan 2qao
+2qb9 2qba 2qbb 2qbc
+2qbd 2qbe 2qbf 2qbg
+2qbh 2qbi 2qbj 2qbk
+2qou 2qov 2qow 2qox
+2qoy 2qoz 2qp0 2qp1
+2z4k 2z4l 2z4m 2z4n
+"""
+
+def join_fragment_files(file_names):
+  info = flex.std_string()
+  info.append("REMARK JOINED FRAGMENT FILES (iotbx.pdb)")
+  info.append("REMARK " + date_and_time())
+  roots = []
+  cryst1 = Auto
+  sum_z = None
+  z_warning = 'REMARK ' \
+    'Warning: CRYST1 Z field (columns 67-70) is not an integer: "%-4.4s"'
+  for file_name in file_names:
+    info.append("REMARK %s" % show_string(file_name))
+    pdb_inp = iotbx.pdb.input(file_name=file_name)
+    roots.append(pdb_inp.construct_hierarchy_v2())
+    c1s = []
+    for line in pdb_inp.crystallographic_section():
+      if (line.startswith("CRYST1")):
+        info.append("REMARK %s" % line.rstrip())
+        c1s.append(line)
+        if (cryst1 is Auto):
+          cryst1 = line[:66]
+          try: sum_z = int(line[66:70])
+          except ValueError:
+            info.append(z_warning % line[66:70])
+            sum_z = None
+        elif (cryst1 is not None and line[:66] != cryst1):
+          info.append("REMARK Warning: CRYST1 mismatch.")
+          cryst1 = None
+          sum_z = None
+        elif (sum_z is not None):
+          try: sum_z += int(line[66:70])
+          except ValueError:
+            info.append(z_warning % line[66:70])
+            sum_z = None
+    if (len(c1s) == 0):
+      info.append("REMARK Warning: CRYST1 record not available.")
+      sum_z = None
+    elif (len(c1s) > 1):
+      info.append("REMARK Warning: Multiple CRYST1 records.")
+      sum_z = None
+  if (cryst1 is not Auto and cryst1 is not None):
+    if (sum_z is not None):
+      cryst1 = "%-66s%4d" % (cryst1, sum_z)
+    info.append(cryst1.rstrip())
+  result = iotbx.pdb.hierarchy_v2.join_roots(roots=roots)
+  result.info.extend(info)
+  return result
 
 def atom_labels_pdb_format(model, chain, conformer, residue, atom):
   result = []

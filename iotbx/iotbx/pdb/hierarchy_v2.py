@@ -7,7 +7,7 @@ from iotbx_pdb_hierarchy_v2_ext import *
 from cctbx.array_family import flex
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
-from libtbx import dict_with_default_0
+from libtbx import Auto, dict_with_default_0
 from cStringIO import StringIO
 import sys
 
@@ -452,7 +452,7 @@ class _root(boost.python.injector, ext.root):
     models = self.models()
     for model in models:
       if (len(models) != 1):
-        result.append("MODEL %7s" % model.id)
+        result.append(("MODEL %8s" % model.id).rstrip())
       for chain in model.chains():
         chain.append_atom_record_groups(
           pdb_records=result,
@@ -479,6 +479,22 @@ class _root(boost.python.injector, ext.root):
       sigatm=sigatm,
       anisou=anisou,
       siguij=siguij))+"\n"
+
+  def transfer_chains_from_other(self, other):
+    from iotbx.pdb import hy36encode
+    i_model = 0
+    other_models = other.models()
+    for md,other_md in zip(self.models(), other_models):
+      i_model += 1
+      md.id = hy36encode(width=4, value=i_model)
+      md.transfer_chains_from_other(other=other_md)
+    msz, omsz = self.models_size(), other.models_size()
+    if (omsz > msz):
+      for other_md in other_models[msz:]:
+        i_model += 1
+        md = model(id = hy36encode(width=4, value=i_model))
+        md.transfer_chains_from_other(other=other_md)
+        self.append_model(model=md)
 
   def atom_selection_cache(self):
     from iotbx.pdb.atom_selection import cache
@@ -690,3 +706,23 @@ class show_summary(object):
         prefix=prefix+"  ",
         level_id=level_id,
         level_id_exception=level_id_exception)
+
+def append_chain_id_suffixes(roots, suffixes=Auto):
+  if (suffixes is Auto):
+    suffixes="123456789" \
+             "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+             "abcdefghijklmnopqrstuvwxyz"
+  assert len(roots) <= len(suffixes)
+  for root,suffix in zip(roots, suffixes):
+    for model in root.models():
+      for chain in model.chains():
+        assert len(chain.id) == 1
+        chain.id += suffix
+
+def join_roots(roots, chain_id_suffixes=Auto):
+  if (chain_id_suffixes is not None):
+    append_chain_id_suffixes(roots=roots, suffixes=chain_id_suffixes)
+  result = root()
+  for rt in roots:
+    result.transfer_chains_from_other(other=rt)
+  return result

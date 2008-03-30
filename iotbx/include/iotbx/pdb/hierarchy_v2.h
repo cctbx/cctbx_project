@@ -1079,6 +1079,10 @@ namespace hierarchy_v2 {
       bool
       is_identical_topology(
         model const& other) const;
+
+      void
+      transfer_chains_from_other(
+        model& other);
   };
 
   //! Root attributes.
