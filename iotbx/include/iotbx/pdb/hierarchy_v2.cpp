@@ -398,18 +398,26 @@ namespace {
   unsigned
   atom::format_atom_record_segid_element_charge_columns(
     char* result,
+    unsigned segid_start,
     unsigned blanks_start_at) const
   {
     char blank = ' ';
-    data->segid.copy_left_justified(result+72, 4U, blank);
-    data->element.copy_right_justified(result+76, 2U, blank);
-    data->charge.copy_left_justified(result+78, 2U, blank);
-    for(unsigned i=79;i!=71;i--) {
-      if (result[i] != blank) {
-        copy_left_justified(
-          result+blanks_start_at, 72U-blanks_start_at, 0, 0U, blank);
-        result[i+1] = '\0';
-        return i+1;
+    data->segid.copy_left_justified(result+segid_start, 4U, blank);
+    unsigned i = segid_start + 4U;
+    data->element.copy_right_justified(result+i, 2U, blank);
+    i += 2U;
+    data->charge.copy_left_justified(result+i, 2U, blank);
+    i += 2U;
+    if (blanks_start_at != i) {
+      for(;;) {
+        i--;
+        if (result[i] != blank) {
+          copy_left_justified(
+            result+blanks_start_at, segid_start-blanks_start_at, 0, 0U, blank);
+          result[i+1] = '\0';
+          return i+1;
+        }
+        if (i == segid_start) break;
       }
     }
     result[blanks_start_at] = '\0';
@@ -454,41 +462,52 @@ namespace {
   atom::format_atom_record(
     char* result,
     atom_label_columns_formatter* label_formatter,
-    bool cut_after_label_columns) const
+    const char* replace_floats_with) const
   {
     char blank = ' ';
     std::memcpy(result, (data->hetero ? "HETATM" : "ATOM  "), 6U);
     format_atom_record_serial_label_columns(result, label_formatter);
-    if (cut_after_label_columns) {
-      result[27U] = '\0';
-      return 27U;
+    unsigned segid_start;
+    unsigned blanks_start_at;
+    if (replace_floats_with != 0) {
+      segid_start = 27U;
+      unsigned i=0;
+      while (replace_floats_with[i] != '\0' && segid_start != 72U) {
+        result[segid_start++] = replace_floats_with[i++];
+      }
+      blanks_start_at = segid_start + 8U;
     }
-    copy_left_justified(result+27, 3U, 0, 0U, blank);
-    char *r = result + 30;
-    for(unsigned i=0;i<3;i++) {
-      std::sprintf(r, "%8.3f", data->xyz[i]);
-      r += 8;
+    else {
+      copy_left_justified(result+27, 3U, 0, 0U, blank);
+      char *r = result + 30;
+      for(unsigned i=0;i<3;i++) {
+        std::sprintf(r, "%8.3f", data->xyz[i]);
+        r += 8;
+        if (*r != '\0') {
+          throw std::runtime_error(
+            std::string("atom ") + "XYZ"[i] + " coordinate value"
+            " does not fit into F8.3 format.");
+        }
+      }
+      std::sprintf(r, "%6.2f", data->occ);
+      r += 6;
       if (*r != '\0') {
         throw std::runtime_error(
-          std::string("atom ") + "XYZ"[i] + " coordinate value"
-          " does not fit into F8.3 format.");
+          std::string("atom ") + "occupancy factor"
+          " does not fit into F6.2 format.");
       }
+      std::sprintf(r, "%6.2f", data->b);
+      r += 6;
+      if (*r != '\0') {
+        throw std::runtime_error(
+          std::string("atom ") + "B-factor"
+          " does not fit into F6.2 format.");
+      }
+      segid_start = 72U;
+      blanks_start_at = 66U;
     }
-    std::sprintf(r, "%6.2f", data->occ);
-    r += 6;
-    if (*r != '\0') {
-      throw std::runtime_error(
-        std::string("atom ") + "occupancy factor"
-        " does not fit into F6.2 format.");
-    }
-    std::sprintf(r, "%6.2f", data->b);
-    r += 6;
-    if (*r != '\0') {
-      throw std::runtime_error(
-        std::string("atom ") + "B-factor"
-        " does not fit into F6.2 format.");
-    }
-    return format_atom_record_segid_element_charge_columns(result, 66U);
+    return format_atom_record_segid_element_charge_columns(
+      result, segid_start, blanks_start_at);
   }
 
   unsigned
@@ -524,7 +543,7 @@ namespace {
         std::string("atom sigma ") + "B-factor"
         " does not fit into F6.2 format.");
     }
-    return format_atom_record_segid_element_charge_columns(result, 66U);
+    return format_atom_record_segid_element_charge_columns(result, 72U, 66U);
   }
 
   unsigned
@@ -548,7 +567,7 @@ namespace {
           " does not fit into F7.0 format.");
       }
     }
-    return format_atom_record_segid_element_charge_columns(result, 70U);
+    return format_atom_record_segid_element_charge_columns(result, 72U, 70U);
   }
 
   unsigned
@@ -572,7 +591,7 @@ namespace {
           " does not fit into F7.0 format.");
       }
     }
-    return format_atom_record_segid_element_charge_columns(result, 70U);
+    return format_atom_record_segid_element_charge_columns(result, 72U, 70U);
   }
 
   unsigned
