@@ -4,6 +4,9 @@ from libtbx import easy_run
 from libtbx.path import norm_join, full_command_path
 import sys, os
 
+if (hasattr(Environment, "Clone")):
+  Environment.Copy = Environment.Clone # XXX backward compatibility 2008_03_30
+
 def SCons_Action_FunctionAction_get_contents(self, target, source, env,
                                                    dict=None):
   import cPickle, string
