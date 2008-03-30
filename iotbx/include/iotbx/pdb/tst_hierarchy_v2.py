@@ -872,8 +872,12 @@ def exercise_format_atom_record():
           assert not show_diff(s, ("""%s\
 B1234 NaMe                 1.300   2.100   3.200  0.40  4.80      \
 %s""" % (record_name, segielch)).rstrip())
-          sc = a.format_atom_record(cut_after_label_columns=True)
-          assert not show_diff(sc, s[:27])
+          sc = a.format_atom_record(replace_floats_with=None)
+          assert not show_diff(sc, s)
+          sc = a.format_atom_record(replace_floats_with="")
+          assert not show_diff(sc, "%-27.27s%-8.8s" % (s[:27], s[72:]))
+          sc = a.format_atom_record(replace_floats_with=" ")
+          assert not show_diff(sc, "%-27.27s %-8.8s" % (s[:27], s[72:]))
           assert not show_diff(a.format_sigatm_record(), ("""SIGATM\
 B1234 NaMe                 0.100   0.200   0.300  0.10  0.70      \
 %s""" % segielch).rstrip())
@@ -889,8 +893,8 @@ B1234 NaMe               1000   2000   3000   6000   1000   9000  \
           assert not show_diff(s, ("""%s\
 B1234 NaMexuvw             1.300   2.100   3.200  0.40  4.80      \
 %s""" % (record_name, segielch)).rstrip())
-          sc = a.format_atom_record(cut_after_label_columns=True)
-          assert not show_diff(sc, s[:27])
+          sc = a.format_atom_record(replace_floats_with=".*.")
+          assert not show_diff(sc, "%-27.27s.*.%-8.8s" % (s[:27], s[72:]))
           assert not show_diff(a.format_sigatm_record(), ("""SIGATM\
 B1234 NaMexuvw             0.100   0.200   0.300  0.10  0.70      \
 %s""" % segielch).rstrip())
@@ -906,8 +910,8 @@ B1234 NaMexuvw           1000   2000   3000   6000   1000   9000  \
           assert not show_diff(s, ("""%s\
 B1234 NaMexuvw  pqrst      1.300   2.100   3.200  0.40  4.80      \
 %s""" % (record_name, segielch)).rstrip())
-          sc = a.format_atom_record(cut_after_label_columns=True)
-          assert not show_diff(sc, s[:27])
+          sc = a.format_atom_record(replace_floats_with=".*.")
+          assert not show_diff(sc, "%-27.27s.*.%-8.8s" % (s[:27], s[72:]))
           assert not show_diff(a.format_sigatm_record(), ("""SIGATM\
 B1234 NaMexuvw  pqrst      0.100   0.200   0.300  0.10  0.70      \
 %s""" % segielch).rstrip())
@@ -924,8 +928,8 @@ B1234 NaMexuvw  pqrst    1000   2000   3000   6000   1000   9000  \
             assert not show_diff(s, ("""%s\
 B1234 NaMexuvw%2spqrst      1.300   2.100   3.200  0.40  4.80      \
 %s""" % (record_name, chain_id, segielch)).rstrip())
-            sc = a.format_atom_record(cut_after_label_columns=True)
-            assert not show_diff(sc, s[:27])
+            sc = a.format_atom_record(replace_floats_with=".*.")
+            assert not show_diff(sc, "%-27.27s.*.%-8.8s" % (s[:27], s[72:]))
             assert not show_diff(a.format_sigatm_record(), ("""SIGATM\
 B1234 NaMexuvw%2spqrst      0.100   0.200   0.300  0.10  0.70      \
 %s""" % (chain_id, segielch)).rstrip())
@@ -1173,17 +1177,17 @@ ATOM         N3  R03
     improper alt. conf.: 2
   chains with mix of proper and improper alt. conf.: 1
     residue with proper altloc
-      "ATOM         N2  R02       "
-      "ATOM         N1 AR02       "
-      "ATOM         N3 AR02       "
-      "ATOM         N1 BR02       "
-      "ATOM         N3 BR02       "
+      "ATOM         N2  R02       .*.        "
+      "ATOM         N1 AR02       .*.        "
+      "ATOM         N3 AR02       .*.        "
+      "ATOM         N1 BR02       .*.        "
+      "ATOM         N3 BR02       .*.        "
     residue with improper altloc
-      "ATOM         N2  R01       "
-      "ATOM         N1  R01       "
-      "ATOM         N3  R01       "
-      "ATOM         N1 BR01       "
-      "ATOM         N3 BR01       "
+      "ATOM         N2  R01       .*.        "
+      "ATOM         N1  R01       .*.        "
+      "ATOM         N3  R01       .*.        "
+      "ATOM         N1 BR01       .*.        "
+      "ATOM         N3 BR01       .*.        "
   number of residue names: 3
   histogram of residue name frequency:
     "R01" 1    other
@@ -1192,17 +1196,17 @@ ATOM         N3  R03
   ### WARNING: consecutive residue_groups with same resid ###
   number of consecutive residue groups with same resid: 2
     residue group:
-      "ATOM         N2  R01       "
+      "ATOM         N2  R01       .*.        "
       ... 3 atoms not shown
-      "ATOM         N3 BR01       "
+      "ATOM         N3 BR01       .*.        "
     next residue group:
-      "ATOM         N2  R02       "
+      "ATOM         N2  R02       .*.        "
       ... 3 atoms not shown
-      "ATOM         N3 BR02       "
+      "ATOM         N3 BR02       .*.        "
     next residue group:
-      "ATOM         N2  R03       "
+      "ATOM         N2  R03       .*.        "
       ... 3 atoms not shown
-      "ATOM         N3 BR03       "
+      "ATOM         N3 BR03       .*.        "
 """, prefix="  ")
   oc = root.overall_counts()
   assert oc.warnings() == [
@@ -1287,17 +1291,17 @@ residue alt. conf. situations:
   improper alt. conf.: 1
 chains with mix of proper and improper alt. conf.: 1
   residue with proper altloc
-    "ATOM         N3  R03       "
-    "ATOM         N1 CR03       "
-    "ATOM         N2 CR03       "
-    "ATOM         N1 BR03       "
-    "ATOM         N2 BR03       "
+    "ATOM         N3  R03       .*.        "
+    "ATOM         N1 CR03       .*.        "
+    "ATOM         N2 CR03       .*.        "
+    "ATOM         N1 BR03       .*.        "
+    "ATOM         N2 BR03       .*.        "
   residue with improper altloc
-    "ATOM         N2  R02       "
-    "ATOM         N1  R02       "
-    "ATOM         N3  R02       "
-    "ATOM         N1 BR02       "
-    "ATOM         N3 BR02       "
+    "ATOM         N2  R02       .*.        "
+    "ATOM         N1  R02       .*.        "
+    "ATOM         N3  R02       .*.        "
+    "ATOM         N1 BR02       .*.        "
+    "ATOM         N3 BR02       .*.        "
 number of residue names: 3
 histogram of residue name frequency:
   "R01" 1    other
@@ -1306,17 +1310,17 @@ histogram of residue name frequency:
 ### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 2
   residue group:
-    "ATOM         N1 BR01       "
+    "ATOM         N1 BR01       .*.        "
     ... 3 atoms not shown
-    "ATOM         N2 CR01       "
+    "ATOM         N2 CR01       .*.        "
   next residue group:
-    "ATOM         N2  R02       "
+    "ATOM         N2  R02       .*.        "
     ... 3 atoms not shown
-    "ATOM         N3 BR02       "
+    "ATOM         N3 BR02       .*.        "
   next residue group:
-    "ATOM         N3  R03       "
+    "ATOM         N3  R03       .*.        "
     ... 3 atoms not shown
-    "ATOM         N2 BR03       "
+    "ATOM         N2 BR03       .*.        "
 """)
   #
   check("""\
@@ -1658,8 +1662,8 @@ histogram of residue name frequency:
   "   " 10    other
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
-  group "ATOM                 A     "
-        "ATOM                 A     "
+  group "ATOM                 A     .*.        "
+        "ATOM                 A     .*.        "
 """)
   #
   check("""\
@@ -1703,16 +1707,16 @@ residue alt. conf. situations:
   improper alt. conf.: 1
 chains with mix of proper and improper alt. conf.: 0
 residue with improper altloc
-  "ATOM     54  CA  GLY A   9 "
-  "ATOM     55  CA  GLY A   9 "
-  "ATOM     56  CA BGLY A   9 "
+  "ATOM     54  CA  GLY A   9 .*.        "
+  "ATOM     55  CA  GLY A   9 .*.        "
+  "ATOM     56  CA BGLY A   9 .*.        "
 number of residue names: 1
 histogram of residue name frequency:
   "GLY" 1
 number of groups of duplicate atom labels: 1
   total number of affected atoms:          2
-  group "ATOM     54  CA  GLY A   9 "
-        "ATOM     55  CA  GLY A   9 "
+  group "ATOM     54  CA  GLY A   9 .*.        "
+        "ATOM     55  CA  GLY A   9 .*.        "
 """)
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -1733,9 +1737,9 @@ ATOM     73  HD2 LEU B 441
     assert not show_diff(str(e), '''\
 number of groups of duplicate atom labels: 2
   total number of affected atoms:          6
-  group "ATOM     68  HD1 LEU B 441 "
-        "ATOM     69  HD1 LEU B 441 "
-        "ATOM     70  HD1 LEU B 441 "
+  group "ATOM     68  HD1 LEU B 441 .*.        "
+        "ATOM     69  HD1 LEU B 441 .*.        "
+        "ATOM     70  HD1 LEU B 441 .*.        "
   ... 1 remaining group not shown''')
   else: raise Exception_expected
   sio = StringIO()
@@ -1743,12 +1747,12 @@ number of groups of duplicate atom labels: 2
   assert not show_diff(sio.getvalue(), """\
 number of groups of duplicate atom labels: 2
   total number of affected atoms:          6
-  group "ATOM     68  HD1 LEU B 441 "
-        "ATOM     69  HD1 LEU B 441 "
-        "ATOM     70  HD1 LEU B 441 "
-  group "ATOM     71  HD2 LEU B 441 "
-        "ATOM     72  HD2 LEU B 441 "
-        "ATOM     73  HD2 LEU B 441 "
+  group "ATOM     68  HD1 LEU B 441 .*.        "
+        "ATOM     69  HD1 LEU B 441 .*.        "
+        "ATOM     70  HD1 LEU B 441 .*.        "
+  group "ATOM     71  HD2 LEU B 441 .*.        "
+        "ATOM     72  HD2 LEU B 441 .*.        "
+        "ATOM     73  HD2 LEU B 441 .*.        "
 """)
   #
   check("""\
@@ -1782,12 +1786,12 @@ histogram of residue name frequency:
   "LEU" 1
 number of groups of duplicate atom labels: 4
   total number of affected atoms:          8
-  group "ATOM     68  HD1 LEU B 441 "
-        "ATOM     72  HD1 LEU B 441 "
-  group "ATOM     69  HD2 LEU B 441 "
-        "ATOM     73  HD2 LEU B 441 "
-  group "ATOM     70  HD3 LEU B 441 "
-        "ATOM     74  HD3 LEU B 441 "
+  group "ATOM     68  HD1 LEU B 441 .*.        "
+        "ATOM     72  HD1 LEU B 441 .*.        "
+  group "ATOM     69  HD2 LEU B 441 .*.        "
+        "ATOM     73  HD2 LEU B 441 .*.        "
+  group "ATOM     70  HD3 LEU B 441 .*.        "
+        "ATOM     74  HD3 LEU B 441 .*.        "
   ... 1 remaining group not shown
 """)
   #
@@ -1854,13 +1858,13 @@ histogram of residue name frequency:
 ### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 1
   residue group:
-    "ATOM   2038  N   CYS A 249 "
+    "ATOM   2038  N   CYS A 249 .*.     N  "
     ... 6 atoms not shown
-    "ATOM   2045  SG BCYS A 249 "
+    "ATOM   2045  SG BCYS A 249 .*.     S  "
   next residue group:
-    "HETATM 2046  N  CCSO A 249 "
+    "HETATM 2046  N  CCSO A 249 .*.     N  "
     ... 5 atoms not shown
-    "HETATM 2052  OD CCSO A 249 "
+    "HETATM 2052  OD CCSO A 249 .*.     O  "
 """, level_id="atom_group")
   #
   check("""\
@@ -1922,15 +1926,15 @@ histogram of residue name frequency:
 ### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 2
   residue group:
-    "HETATM 1552  C3  COP   188 "
+    "HETATM 1552  C3  COP   188 .*.     C  "
     ... 2 atoms not shown
-    "HETATM 1583  O25 COP   188 "
+    "HETATM 1583  O25 COP   188 .*.     O  "
   next residue group:
-    "HETATM 1608  O   HOH   188 "
+    "HETATM 1608  O   HOH   188 .*.     O  "
   next residue group:
-    "HETATM 1569  C28ACOP   188 "
+    "HETATM 1569  C28ACOP   188 .*.     C  "
     ... 6 atoms not shown
-    "HETATM 1607  O41BCOP   188 "
+    "HETATM 1607  O41BCOP   188 .*.     O  "
 """, level_id="atom_group")
   #
   check("""\
@@ -1965,14 +1969,14 @@ histogram of residue name frequency:
 ### WARNING: consecutive residue_groups with same resid ###
 number of consecutive residue groups with same resid: 4
   residue group:
-    "ATOM      1  N   R01     1I"
+    "ATOM      1  N   R01     1I.*.        "
   next residue group:
-    "ATOM      2  N   R02     1I"
+    "ATOM      2  N   R02     1I.*.        "
   next residue group:
-    "ATOM      3  N   R03     1I"
+    "ATOM      3  N   R03     1I.*.        "
   next residue group:
-    "ATOM      4  N   R04     1I"
-  -------------------------------
+    "ATOM      4  N   R04     1I.*.        "
+  ------------------------------------------
   ... 1 remaining instance not shown
 """)
   #
@@ -2108,24 +2112,24 @@ ATOM         N2  R02     2
   except Sorry, e:
     assert not show_diff(str(e), '''\
 residue with proper altloc
-  "ATOM         N2  R02     2 "
-  "ATOM         N1 AR02     2 "
-  "ATOM         N1 BR02     2 "
+  "ATOM         N2  R02     2 .*.        "
+  "ATOM         N1 AR02     2 .*.        "
+  "ATOM         N1 BR02     2 .*.        "
 residue with improper altloc
-  "ATOM         N1  R01     1 "
-  "ATOM         N1 BR01     1 "''')
+  "ATOM         N1  R01     1 .*.        "
+  "ATOM         N1 BR01     1 .*.        "''')
   else: raise Exception_expected
   try: oc.raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary()
   except Sorry, e:
     assert not show_diff(str(e), '''\
 chains with mix of proper and improper alt. conf.: 1
   residue with proper altloc
-    "ATOM         N2  R02     2 "
-    "ATOM         N1 AR02     2 "
-    "ATOM         N1 BR02     2 "
+    "ATOM         N2  R02     2 .*.        "
+    "ATOM         N1 AR02     2 .*.        "
+    "ATOM         N1 BR02     2 .*.        "
   residue with improper altloc
-    "ATOM         N1  R01     1 "
-    "ATOM         N1 BR01     1 "''')
+    "ATOM         N1  R01     1 .*.        "
+    "ATOM         N1 BR01     1 .*.        "''')
   else: raise Exception_expected
   #
   sio = StringIO()
@@ -2220,12 +2224,12 @@ histogram of residue name frequency:
 ### ERROR: residue group with multiple resnames using same altloc ###
 residue groups with multiple resnames using same altloc: 2
   residue group:
-    "ATOM         N  AASN     1 "
+    "ATOM         N  AASN     1 .*.        "
     ... 2 atoms not shown
-    "ATOM         CA AGLY     1 "
+    "ATOM         CA AGLY     1 .*.        "
   residue group:
-    "ATOM         CA AASN     2 "
-    "ATOM         CA AGLY     2 "
+    "ATOM         CA AASN     2 .*.        "
+    "ATOM         CA AGLY     2 .*.        "
 """)
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -2243,9 +2247,9 @@ ATOM         CA AGLY     2
     assert not show_diff(str(e), """\
 residue groups with multiple resnames using same altloc: 2
   residue group:
-    "ATOM         N  AASN     1 "
-    "ATOM         N  AGLY     1 "
-    "ATOM         CA AGLY     1 "
+    "ATOM         N  AASN     1 .*.        "
+    "ATOM         N  AGLY     1 .*.        "
+    "ATOM         CA AGLY     1 .*.        "
   ... 1 remaining instance not shown""")
   else: raise Exception_expected
 
@@ -3860,9 +3864,9 @@ ATOM      7  O  CPHE A   1I
 ATOM     10  O  BTYR A   1I
 """))
   hierarchy = pdb_inp.construct_hierarchy_v2()
-  rs = [atom.format_atom_record(cut_after_label_columns=True)
+  rs = [atom.format_atom_record(replace_floats_with="")
     for atom in hierarchy.only_residue_group().atoms_interleaved_conf()]
-  assert not show_diff("\n".join(rs), """\
+  assert not show_diff("\n".join([r[:-8] for r in rs]), """\
 ATOM      1  N  ATRP A   1I
 ATOM      2  C  ATRP A   1I
 ATOM      3  O  ATRP A   1I
@@ -3873,10 +3877,10 @@ ATOM      7  O  CPHE A   1I
 ATOM      8  CA BTYR A   1I
 ATOM      9  C  BTYR A   1I
 ATOM     10  O  BTYR A   1I""")
-  rs = [atom.format_atom_record(cut_after_label_columns=True)
+  rs = [atom.format_atom_record(replace_floats_with="")
     for atom in hierarchy.only_residue_group().atoms_interleaved_conf(
       group_residue_names=False)]
-  assert not show_diff("\n".join(rs), """\
+  assert not show_diff("\n".join([r[:-8] for r in rs]), """\
 ATOM      1  N  ATRP A   1I
 ATOM      4  N  CPHE A   1I
 ATOM      2  C  ATRP A   1I
@@ -3930,9 +3934,9 @@ ATOM      7  O  CPHE A   1I
 ATOM     10  O  BTRP A   1I
 """))
   hierarchy = pdb_inp.construct_hierarchy_v2()
-  rs = [atom.format_atom_record(cut_after_label_columns=True)
+  rs = [atom.format_atom_record(replace_floats_with="")
     for atom in hierarchy.only_residue_group().atoms_interleaved_conf()]
-  assert not show_diff("\n".join(rs), """\
+  assert not show_diff("\n".join([r[:-8] for r in rs]), """\
 ATOM      1  N  ATRP A   1I
 ATOM      2  C  ATRP A   1I
 ATOM      9  C  BTRP A   1I
@@ -3943,10 +3947,10 @@ ATOM      5  CA CPHE A   1I
 ATOM      6  C  CPHE A   1I
 ATOM      7  O  CPHE A   1I
 ATOM      8  CA BTRP A   1I""")
-  rs = [atom.format_atom_record(cut_after_label_columns=True)
+  rs = [atom.format_atom_record(replace_floats_with="")
     for atom in hierarchy.only_residue_group().atoms_interleaved_conf(
       group_residue_names=False)]
-  assert not show_diff("\n".join(rs), """\
+  assert not show_diff("\n".join([r[:-8] for r in rs]), """\
 ATOM      1  N  ATRP A   1I
 ATOM      4  N  CPHE A   1I
 ATOM      2  C  ATRP A   1I

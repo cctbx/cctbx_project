@@ -23,7 +23,7 @@ def _show_residue_group(rg, out, prefix):
   else:
     def show_atom(atom):
       print >> out, prefix+'"%s"' % atom.format_atom_record(
-        cut_after_label_columns=True)
+        replace_floats_with=".*.")
     if (atoms.size() <= 3):
       for atom in atoms: show_atom(atom)
     else:
@@ -211,7 +211,7 @@ class overall_counts(object):
       for ag in residue_group.atom_groups():
         for atom in ag.atoms():
           print >> out, prefix+'  "%s"' % atom.format_atom_record(
-            cut_after_label_columns=True)
+            replace_floats_with=".*.")
 
   def raise_improper_alt_conf_if_necessary(self):
     sio = StringIO()
@@ -248,7 +248,7 @@ class overall_counts(object):
         len(cons)
     if (max_show is None): max_show = len(cons)
     elif (max_show <= 0): return
-    delim = prefix+"  "+"-"*31
+    delim = prefix+"  "+"-"*42
     prev_rg = None
     for rgs in cons[:max_show]:
       for next,rg in zip(["", "next "], rgs):
@@ -305,7 +305,7 @@ class overall_counts(object):
       prfx = "  group "
       for atom in atoms:
         print >> out, prefix+prfx+'"%s"' % atom.format_atom_record(
-          cut_after_label_columns=True)
+          replace_floats_with=".*.")
         prfx = "        "
     if (len(dup) > max_show):
       print >> out, prefix+"  ... %d remaining group%s not shown" % \

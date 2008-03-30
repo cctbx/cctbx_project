@@ -153,14 +153,13 @@ namespace {
     boost::python::object
     format_atom_record(
       w_t const& self,
-      bool cut_after_label_columns=false)
+      const char* replace_floats_with=0)
     {
-      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0,
-        (cut_after_label_columns ? 28 : 81)));
+      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
       PyObject* str_obj = str_hdl.get();
       char* str_begin = PyString_AS_STRING(str_obj);
       unsigned str_len = self.format_atom_record(
-        str_begin, 0, cut_after_label_columns);
+        str_begin, 0, replace_floats_with);
       str_hdl.release();
       if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
         boost::python::throw_error_already_set();
@@ -258,7 +257,7 @@ namespace {
         .def("format_atom_record", format_atom_record,
           format_atom_record_overloads((
             arg_("self"),
-            arg_("cut_after_label_columns")=false)))
+            arg_("replace_floats_with")=0)))
         .def("format_sigatm_record", format_sigatm_record)
         .def("format_anisou_record", format_anisou_record)
         .def("format_siguij_record", format_siguij_record)

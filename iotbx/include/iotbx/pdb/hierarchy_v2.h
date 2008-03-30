@@ -575,6 +575,7 @@ namespace hierarchy_v2 {
       unsigned
       format_atom_record_segid_element_charge_columns(
         char* result,
+        unsigned segid_start,
         unsigned blanks_start_at) const;
 
       //! Not available in Python.
@@ -603,7 +604,7 @@ namespace hierarchy_v2 {
       format_atom_record(
         char* result,
         atom_label_columns_formatter* label_formatter=0,
-        bool cut_after_label_columns=false) const;
+        const char* replace_floats_with=0) const;
 
       //! Not available in Python.
       /*! result must point to an array of size 81 (or greater).
