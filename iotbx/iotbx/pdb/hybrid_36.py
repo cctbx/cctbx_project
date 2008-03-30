@@ -124,7 +124,7 @@ def hy36encode(width, value):
     if (i < 26*36**(width-1)):
       i += 10*36**(width-1)
       return encode_pure(digits_lower, i)
-  raise RuntimeError("value out of range.")
+  raise ValueError("value out of range.")
 
 def hy36decode(width, s):
   "decodes base-10/upper-case base-36/lower-case base-36 hybrid"
@@ -142,7 +142,7 @@ def hy36decode(width, s):
       try: return decode_pure(
         digits_values=digits_lower_values, s=s) + 16*36**(width-1) + 10**width
       except KeyError: pass
-  raise RuntimeError("invalid number literal.")
+  raise ValueError("invalid number literal.")
 
 def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
   for digits,digits_values in [(digits_upper, digits_upper_values),
@@ -265,7 +265,7 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
   for width in [4,5]:
     for value in [-(10**(width-1)), 10**width+2*26*36**(width-1)]:
       try: hy36enc(width=width, value=value)
-      except RuntimeError, e:
+      except (ValueError, RuntimeError), e:
         assert str(e) == "value out of range."
       else: raise RuntimeError("Exception expected.")
   #
@@ -274,7 +274,7 @@ def exercise(hy36enc=hy36encode, hy36dec=hy36decode):
       (5, ["", "     0", " abcd", "ABCD-", "a=bcd", "410b0", "410B0"])]:
     for s in ss:
       try: hy36dec(width, s=s)
-      except RuntimeError, e:
+      except (ValueError, RuntimeError), e:
         assert str(e) == "invalid number literal."
       else: raise RuntimeError("Exception expected.")
   #
