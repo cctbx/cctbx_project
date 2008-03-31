@@ -1198,6 +1198,7 @@ namespace hierarchy_v2 {
     unsigned n_residue_groups;
     unsigned n_explicit_chain_breaks;
     unsigned n_atoms;
+    unsigned n_anisou;
     std::map<std::string, unsigned> model_ids;
     std::map<std::string, unsigned> chain_ids;
     std::map<std::string, unsigned> alt_conf_ids;

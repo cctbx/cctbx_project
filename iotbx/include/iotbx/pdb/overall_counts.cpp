@@ -111,6 +111,7 @@ namespace detail {
     n_residue_groups(0),
     n_explicit_chain_breaks(0),
     n_atoms(0),
+    n_anisou(0),
     n_alt_conf_none(0),
     n_alt_conf_pure(0),
     n_alt_conf_proper(0),
@@ -170,6 +171,7 @@ namespace detail {
             unsigned n_ats = ag.atoms_size();
             for(unsigned i_at=0;i_at<n_ats;i_at++) {
               hierarchy_v2::atom const& atom = ag.atoms()[i_at];
+              if (atom.uij_is_defined()) n_anisou++;
               model_atom_labels[i_model_atom++] =
                 atom.pdb_label_columns_segid_small_str();
               element_charge_types[atom.pdb_element_charge_columns()]++;
