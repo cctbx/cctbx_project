@@ -195,7 +195,6 @@ class twin_laws(object):
 
         tlq = twin_law_quality( miller_array,
                                 cb_op.apply(partition[0]) )
-        print cb_op, partition[0]
         tl = twin_law( cb_op.apply(partition[0]),
                        str(twin_type),
                        tlq.delta_le_page()[1],
@@ -2435,11 +2434,12 @@ class twin_analyses(object):
     except Sorry: pass
 
     try:
-      # Look at systematic absences please
-      import absences
-      abs_anal = absences.analyze_absences(miller_array = self.normalised_intensities.all,
-                                           isigi_cut = 3.0, out=out)
-      abs_sg_anal = absences.protein_space_group_choices(miller_array = self.normalised_intensities.all)
+      if miller_array.sigmas() is not None:
+        # Look at systematic absences please
+        import absences
+        abs_anal = absences.analyze_absences(miller_array = self.normalised_intensities.all,
+                                             isigi_cut = 3.0, out=out)
+        abs_sg_anal = absences.protein_space_group_choices(miller_array = self.normalised_intensities.all)
     except Sorry: pass
 
 
