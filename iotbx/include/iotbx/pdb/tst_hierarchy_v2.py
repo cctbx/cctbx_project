@@ -62,6 +62,10 @@ def exercise_atom():
   assert not a.hetero
   a.hetero = True
   assert a.hetero
+  assert a.i_seq == 0
+  try: a.i_seq = 1
+  except AttributeError: pass
+  else: raise Exception_expected
   assert a.tmp == 0
   a.tmp = 3
   assert a.tmp == 3
@@ -177,21 +181,28 @@ def exercise_atom():
   #
   atoms = pdb.hierarchy_v2.af_shared_atom()
   atoms.reset_serial()
+  atoms.reset_i_seq()
   atoms.reset_tmp()
   atoms.append(pdb.hierarchy_v2.atom())
   assert [atom.serial for atom in atoms] == [""]
+  assert [atom.i_seq for atom in atoms] == [0]
   assert [atom.tmp for atom in atoms] == [0]
   atoms.reset_serial(first_value=2)
+  atoms.reset_i_seq()
   atoms.reset_tmp(first_value=2)
   assert [atom.serial for atom in atoms] == ["    2"]
+  assert [atom.i_seq for atom in atoms] == [0]
   assert [atom.tmp for atom in atoms] == [2]
   atoms.append(pdb.hierarchy_v2.atom())
   atoms.append(pdb.hierarchy_v2.atom())
   assert [atom.serial for atom in atoms] == ["    2", "", ""]
+  assert [atom.i_seq for atom in atoms] == [0,0,0]
   assert [atom.tmp for atom in atoms] == [2,0,0]
   atoms.reset_serial()
+  atoms.reset_i_seq()
   atoms.reset_tmp()
   assert [atom.serial for atom in atoms] == ["    1", "    2", "    3"]
+  assert [atom.i_seq for atom in atoms] == [0,1,2]
   assert [atom.tmp for atom in atoms] == [0,1,2]
   atoms.reset_tmp(first_value=0, increment=0)
   assert [atom.tmp for atom in atoms] == [0] * 3
@@ -3813,6 +3824,11 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert list(atoms.extract_element()) == [" N"," C"," C","  ","X ","CA","  "]
   assert atoms.extract_element(strip=False).all_eq(atoms.extract_element())
   assert list(atoms.extract_element(strip=True)) ==["N","C","C","","X","CA",""]
+  atoms.reset_i_seq()
+  assert list(atoms.extract_i_seq()) == range(7)
+  assert list(
+    pdb.hierarchy_v2.af_shared_atom([atoms[3], atoms[6]]).extract_i_seq()) == \
+      [3, 6]
   #
   assert atoms.set_xyz(new_xyz=xyz+(1,2,3)) is atoms
   assert approx_equal(atoms.extract_xyz(), [

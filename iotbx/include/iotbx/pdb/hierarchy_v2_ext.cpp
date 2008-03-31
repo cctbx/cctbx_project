@@ -143,6 +143,9 @@ namespace {
       self.data->hetero = new_hetero;
     }
 
+    static unsigned
+    get_i_seq(w_t const& self) { return self.data->i_seq; }
+
     static int
     get_tmp(w_t const& self) { return self.data->tmp; }
 
@@ -244,6 +247,7 @@ namespace {
           make_function(get_siguij), make_function(set_siguij))
         .add_property("hetero",
           make_function(get_hetero), make_function(set_hetero))
+        .add_property("i_seq", make_function(get_i_seq))
         .add_property("tmp",
           make_function(get_tmp), make_function(set_tmp))
         .def("memory_id", &w_t::memory_id)

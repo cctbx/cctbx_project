@@ -165,6 +165,7 @@ namespace {
     b(other.b), sigb(other.sigb),
     uij(other.uij), siguij(other.siguij),
     hetero(other.hetero),
+    i_seq(0),
     tmp(0)
   {}
 

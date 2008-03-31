@@ -237,7 +237,8 @@ namespace hierarchy_v2 {
       sym_mat3 uij;
       sym_mat3 siguij;
       bool hetero;
-      mutable int tmp;
+      unsigned i_seq;
+      int tmp;
 
     protected:
       atom_data(
@@ -258,6 +259,7 @@ namespace hierarchy_v2 {
         b(b_), sigb(sigb_),
         uij(uij_), siguij(siguij_),
         hetero(hetero_),
+        i_seq(0),
         tmp(0)
       {}
 
@@ -277,6 +279,7 @@ namespace hierarchy_v2 {
         b(b_), sigb(sigb_),
         uij(uij_), siguij(siguij_),
         hetero(hetero_),
+        i_seq(0),
         tmp(0)
       {}
 

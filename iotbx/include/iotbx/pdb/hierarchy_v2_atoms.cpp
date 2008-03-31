@@ -50,6 +50,7 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
   IOTBX_LOC(sigb, double)
   IOTBX_LOC(uij, sym_mat3)
   IOTBX_LOC(siguij, sym_mat3)
+  IOTBX_LOC(i_seq, std::size_t)
 
 #undef IOTBX_LOC
 
@@ -124,6 +125,16 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
         }
         throw std::runtime_error(errmsg);
       }
+    }
+  }
+
+  void
+  reset_i_seq(
+    af::const_ref<atom> const& atoms)
+  {
+    unsigned value = 0;
+    for(const atom* a=atoms.begin();a!=atoms.end();a++) {
+      a->data->i_seq = value++;
     }
   }
 
