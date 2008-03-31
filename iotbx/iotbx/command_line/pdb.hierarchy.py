@@ -15,7 +15,7 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       type="string",
       default=None,
       help="level of detail",
-      metavar="|".join(pdb.hierarchy_v2.level_ids))
+      metavar="|".join(pdb.hierarchy.level_ids))
     .option(None, "--residue_groups_max_show",
       action="store",
       type="int",
@@ -54,7 +54,7 @@ def execute(
       duplicate_atom_labels_max_show=10,
       level_id=None):
   try:
-    return pdb.hierarchy_v2.show_summary(
+    return pdb.hierarchy.show_summary(
       file_name=file_name,
       prefix=prefix,
       residue_groups_max_show=residue_groups_max_show,

@@ -765,7 +765,7 @@ def exercise_format_fasta():
   for node in os.listdir(regression_pdb):
     if (not (node.endswith(".pdb") or node.endswith(".ent"))): continue
     pdb_inp = pdb.input(file_name=os.path.join(regression_pdb, node))
-    hierarchy = pdb_inp.construct_hierarchy_v2()
+    hierarchy = pdb_inp.construct_hierarchy()
     fasta = []
     for model in hierarchy.models():
       for chain in model.chains():

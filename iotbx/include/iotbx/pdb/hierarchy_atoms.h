@@ -1,9 +1,9 @@
-#ifndef IOTBX_PDB_HIERARCHY_V2_ATOMS_H
-#define IOTBX_PDB_HIERARCHY_V2_ATOMS_H
+#ifndef IOTBX_PDB_HIERARCHY_ATOMS_H
+#define IOTBX_PDB_HIERARCHY_ATOMS_H
 
-#include <iotbx/pdb/hierarchy_v2.h>
+#include <iotbx/pdb/hierarchy.h>
 
-namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
+namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
 
   af::shared<std::string>
   extract_serial(
@@ -121,6 +121,6 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
   reset_tmp_for_occupancy_groups_simple(
     af::const_ref<atom> const& atoms);
 
-}}}} // namespace iotbx::pdb::hierarchy_v2::atoms
+}}}} // namespace iotbx::pdb::hierarchy::atoms
 
-#endif // IOTBX_PDB_HIERARCHY_V2_ATOMS_H
+#endif // IOTBX_PDB_HIERARCHY_ATOMS_H

@@ -1,7 +1,7 @@
 #ifndef IOTBX_PDB_INPUT_H
 #define IOTBX_PDB_INPUT_H
 
-#include <iotbx/pdb/hierarchy_v2.h>
+#include <iotbx/pdb/hierarchy.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny.h>
 
@@ -368,8 +368,8 @@ namespace iotbx { namespace pdb {
       af::shared<input_atom_labels> const&
       input_atom_labels_list() const { return input_atom_labels_list_; }
 
-      af::shared<hierarchy_v2::atom> const&
-      atoms_v2() const { return atoms_v2_; }
+      af::shared<hierarchy::atom> const&
+      atoms() const { return atoms_; }
 
       af::shared<std::string>
       atom_serial_number_strings() const;
@@ -402,8 +402,8 @@ namespace iotbx { namespace pdb {
       model_atom_counts() const;
 
       //! not const because atom parents are modified.
-      hierarchy_v2::root
-      construct_hierarchy_v2(
+      hierarchy::root
+      construct_hierarchy(
         bool residue_group_post_processing=true);
 
     protected:
@@ -419,7 +419,7 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> miscellaneous_features_section_;
       af::shared<std::string> crystallographic_section_;
       af::shared<input_atom_labels> input_atom_labels_list_;
-      af::shared<hierarchy_v2::atom> atoms_v2_;
+      af::shared<hierarchy::atom> atoms_;
       af::shared<int>         model_numbers_;
       af::shared<std::size_t> model_indices_;
       af::shared<std::size_t> ter_indices_;

@@ -4,7 +4,7 @@ import boost.python
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
-import iotbx.pdb.hierarchy_v2
+import iotbx.pdb.hierarchy
 
 from iotbx.pdb.atom_name_interpretation import \
   interpreters as protein_atom_name_interpreters
@@ -479,7 +479,7 @@ def join_fragment_files(file_names):
   for file_name in file_names:
     info.append("REMARK %s" % show_string(file_name))
     pdb_inp = iotbx.pdb.input(file_name=file_name)
-    roots.append(pdb_inp.construct_hierarchy_v2())
+    roots.append(pdb_inp.construct_hierarchy())
     c1s = []
     for line in pdb_inp.crystallographic_section():
       if (line.startswith("CRYST1")):
@@ -510,7 +510,7 @@ def join_fragment_files(file_names):
     if (sum_z is not None):
       cryst1 = "%-66s%4d" % (cryst1, sum_z)
     info.append(cryst1.rstrip())
-  result = iotbx.pdb.hierarchy_v2.join_roots(roots=roots)
+  result = iotbx.pdb.hierarchy.join_roots(roots=roots)
   result.info.extend(info)
   return result
 

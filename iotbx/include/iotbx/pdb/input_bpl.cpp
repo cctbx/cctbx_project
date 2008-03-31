@@ -81,7 +81,7 @@ namespace {
     }
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      construct_hierarchy_v2_overloads, construct_hierarchy_v2, 0, 1)
+      construct_hierarchy_overloads, construct_hierarchy, 0, 1)
 
     static void
     wrap()
@@ -115,7 +115,7 @@ namespace {
         .def("crystallographic_section", &w_t::crystallographic_section, rbv())
         .def("input_atom_labels_list", &w_t::input_atom_labels_list, rbv())
         .def("atom_serial_number_strings", &w_t::atom_serial_number_strings)
-        .def("atoms_v2", &w_t::atoms_v2, rbv())
+        .def("atoms", &w_t::atoms, rbv())
         .def("model_numbers", &w_t::model_numbers, rbv())
         .def("model_indices", &w_t::model_indices, rbv())
         .def("ter_indices", &w_t::ter_indices, rbv())
@@ -125,8 +125,8 @@ namespace {
         .def("bookkeeping_section", &w_t::bookkeeping_section, rbv())
         .def("model_numbers_are_unique", &w_t::model_numbers_are_unique)
         .def("model_atom_counts", &w_t::model_atom_counts)
-        .def("construct_hierarchy_v2", &w_t::construct_hierarchy_v2,
-          construct_hierarchy_v2_overloads((
+        .def("construct_hierarchy", &w_t::construct_hierarchy,
+          construct_hierarchy_overloads((
             arg_("residue_group_post_processing")=true)))
       ;
     }

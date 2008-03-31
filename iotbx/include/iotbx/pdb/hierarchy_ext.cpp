@@ -12,9 +12,9 @@
 #include <boost/python/return_arg.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/boost_python/array_as_list.h>
-#include <iotbx/pdb/hierarchy_v2.h>
+#include <iotbx/pdb/hierarchy.h>
 
-namespace iotbx { namespace pdb { namespace hierarchy_v2 {
+namespace iotbx { namespace pdb { namespace hierarchy {
 
 namespace atoms { void bpl_wrap(); }
 
@@ -33,7 +33,7 @@ namespace {
     }
   };
 
-#define IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(attr) \
+#define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(attr) \
     static \
     boost::python::str \
     get_##attr(w_t const& self) \
@@ -41,7 +41,7 @@ namespace {
       return boost::python::str(self.data->attr.elems); \
     }
 
-#define IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_SET(attr) \
+#define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_SET(attr) \
     static \
     void \
     set_##attr(w_t& self, const char* value) \
@@ -49,9 +49,9 @@ namespace {
       self.data->attr.replace_with(value); \
     }
 
-#define IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
-  IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(attr) \
-  IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_SET(attr)
+#define IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(attr) \
+  IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(attr) \
+  IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_SET(attr)
 
   struct atom_wrappers
   {
@@ -182,11 +182,11 @@ namespace {
       self.data->hetero = new_hetero;
     }
 
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(serial)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(serial)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
 
     static
     boost::python::object
@@ -316,7 +316,7 @@ namespace {
     }
   };
 
-#define IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(parent_t, child_t, method) \
+#define IOTBX_PDB_HIERARCHY_GET_CHILDREN(parent_t, child_t, method) \
   static \
   boost::python::list \
   get_##method(parent_t const& parent) \
@@ -328,7 +328,7 @@ namespace {
     return result; \
   }
 
-#define IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(C) \
+#define IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(C) \
         .def(#C "s", get_##C##s) \
         .def(#C "s_size", &w_t::C##s_size) \
         .def("find_" #C "_index", &w_t::find_##C##_index, \
@@ -356,8 +356,8 @@ namespace {
   {
     typedef atom_group w_t;
 
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(altloc)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(resname)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(altloc)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(resname)
 
     static
     af::shared<atom>
@@ -390,7 +390,7 @@ namespace {
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<atom_group, residue_group>::wrapper)
-        IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(atom)
+        IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(atom)
         .def("confid", &w_t::confid)
       ;
     }
@@ -400,8 +400,8 @@ namespace {
   {
     typedef residue_group w_t;
 
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(resseq)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(resseq)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
 
     static bool
     get_link_to_previous(w_t const& self)
@@ -415,7 +415,7 @@ namespace {
       self.data->link_to_previous = new_link_to_previous;
     }
 
-    IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(residue_group, atom_group, atom_groups)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(residue_group, atom_group, atom_groups)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_atom_group_index_overloads, find_atom_group_index, 1, 2)
@@ -445,7 +445,7 @@ namespace {
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<residue_group, chain>::wrapper)
-        IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(atom_group)
+        IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(atom_group)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
         .def("resid", &w_t::resid)
@@ -475,7 +475,7 @@ namespace {
       self.data->id = new_id;
     }
 
-    IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(chain, residue_group, residue_groups)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, residue_group, residue_groups)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_residue_group_index_overloads, find_residue_group_index, 1, 2)
@@ -555,7 +555,7 @@ namespace {
           af::const_ref<atom> ats = atoms_ilc.const_ref();
           unsigned n_at = static_cast<unsigned>(ats.size());
           for(unsigned i_at=0;i_at<n_at;i_at++) {
-            hierarchy_v2::atom const* atom = &ats[i_at];
+            hierarchy::atom const* atom = &ats[i_at];
             shared_ptr<atom_group_data> ag_data = atom->parent_ptr();
             label_formatter.altloc = ag_data->altloc.elems;
             label_formatter.resname = ag_data->resname.elems;
@@ -584,7 +584,7 @@ namespace {
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<chain, model>::wrapper)
-        IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(residue_group)
+        IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(residue_group)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
         .def("merge_residue_groups", &w_t::merge_residue_groups, (
@@ -621,7 +621,7 @@ namespace {
       self.data->id = new_id;
     }
 
-    IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(model, chain, chains)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(model, chain, chains)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_chain_index_overloads, find_chain_index, 1, 2)
@@ -640,7 +640,7 @@ namespace {
         .def("detached_copy", &w_t::detached_copy)
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<model, root>::wrapper)
-        IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(chain)
+        IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(chain)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
         .def("is_identical_topology", &w_t::is_identical_topology, (
@@ -664,7 +664,7 @@ namespace {
       self.data->info = new_info;
     }
 
-    IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(root, model, models)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(root, model, models)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_model_index_overloads, find_model_index, 1, 2)
@@ -692,7 +692,7 @@ namespace {
         result.attr(#N) = v; \
       }
       //
-      hierarchy_v2::overall_counts oc(self);
+      hierarchy::overall_counts oc(self);
       IOTBX_LOC_SA(root)
       IOTBX_LOC_SA(n_empty_models)
       IOTBX_LOC_SA(n_empty_chains)
@@ -774,7 +774,7 @@ namespace {
         .add_property("info", make_function(get_info), make_function(set_info))
         .def("deep_copy", &w_t::deep_copy)
         .def("memory_id", &w_t::memory_id)
-        IOTBX_PDB_HIERARCHY_V2_DEF_APPEND_ETC(model)
+        IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(model)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms)
         .def("get_overall_counts", get_overall_counts)
@@ -787,9 +787,9 @@ namespace {
   {
     typedef residue w_t;
 
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(resname)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(resseq)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET(icode)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(resname)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(resseq)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(icode)
 
     static bool
     get_link_to_previous(w_t const& self)
@@ -836,7 +836,7 @@ namespace {
     static std::string
     get_altloc(w_t const& self) { return self.data->altloc; }
 
-    IOTBX_PDB_HIERARCHY_V2_GET_CHILDREN(conformer, residue, residues)
+    IOTBX_PDB_HIERARCHY_GET_CHILDREN(conformer, residue, residues)
 
     static void
     wrap()
@@ -857,7 +857,7 @@ namespace {
   };
 
   void
-  wrap_hierarchy_v2()
+  wrap_hierarchy()
   {
     atom_wrappers::wrap();
     atom_group_wrappers::wrap();
@@ -872,9 +872,9 @@ namespace {
     atoms::bpl_wrap();
   }
 
-}}}} // namespace iotbx::pdb::hierarchy_v2::<anonymous>
+}}}} // namespace iotbx::pdb::hierarchy::<anonymous>
 
-BOOST_PYTHON_MODULE(iotbx_pdb_hierarchy_v2_ext)
+BOOST_PYTHON_MODULE(iotbx_pdb_hierarchy_ext)
 {
-  iotbx::pdb::hierarchy_v2::wrap_hierarchy_v2();
+  iotbx::pdb::hierarchy::wrap_hierarchy();
 }

@@ -656,7 +656,7 @@ namespace iotbx { namespace pdb {
     }
   }
 
-  hierarchy_v2::atom
+  hierarchy::atom
   process_atom_record(pdb::line_info& line_info, bool hetero)
   {
     // 13 - 16  Atom          name          Atom name.
@@ -672,7 +672,7 @@ namespace iotbx { namespace pdb {
     // 73 - 76  LString(4)    segID         Segment identifier, left-justified.
     // 77 - 78  LString(2)    element       Element symbol, right-justified.
     // 79 - 80  LString(2)    charge        Charge on the atom.
-    return hierarchy_v2::atom(
+    return hierarchy::atom(
       vec3(
         field_as_double(line_info,30,38),
         field_as_double(line_info,38,46),
@@ -696,7 +696,7 @@ namespace iotbx { namespace pdb {
   process_sigatm_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    hierarchy_v2::atom_data& atom_data)
+    hierarchy::atom_data& atom_data)
   {
     atom_data.sigxyz = vec3(
       field_as_double(line_info,30,38),
@@ -711,7 +711,7 @@ namespace iotbx { namespace pdb {
   process_anisou_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    hierarchy_v2::atom_data& atom_data)
+    hierarchy::atom_data& atom_data)
   {
     // 29 - 35  Integer       U(1,1)
     // 36 - 42  Integer       U(2,2)
@@ -733,7 +733,7 @@ namespace iotbx { namespace pdb {
   process_siguij_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    hierarchy_v2::atom_data&
+    hierarchy::atom_data&
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
                              atom_data
 #endif
@@ -972,11 +972,11 @@ namespace iotbx { namespace pdb {
     input_atom_labels_list_.reserve(
         input_atom_labels_list_.size()
       + columns_73_76_eval.number_of_atom_and_hetatm_lines);
-    atoms_v2_.reserve(
-        atoms_v2_.size()
+    atoms_.reserve(
+        atoms_.size()
       + columns_73_76_eval.number_of_atom_and_hetatm_lines);
     input_atom_labels* current_input_atom_labels = 0;
-    hierarchy_v2::atom_data* current_atom_data = 0;
+    hierarchy::atom_data* current_atom_data = 0;
     bool expect_anisou = false;
     bool expect_sigatm = false;
     bool expect_siguij = false;
@@ -1003,16 +1003,16 @@ namespace iotbx { namespace pdb {
       if      (record_type_info.id == record_type::atom__) {
         if (model_record_oversight.atom_is_allowed_here()) {
           input_atom_labels_list_.push_back(input_atom_labels(line_info));
-          atoms_v2_.push_back(process_atom_record(line_info,/*hetero*/false));
+          atoms_.push_back(process_atom_record(line_info,/*hetero*/false));
           if (line_info.error_occured()) {
             input_atom_labels_list_.pop_back();
-            atoms_v2_.pop_back();
+            atoms_.pop_back();
           }
           else {
             atom___counts++;
             current_input_atom_labels = &input_atom_labels_list_.back();
             chain_tracker.next_atom_labels(*current_input_atom_labels);
-            current_atom_data = atoms_v2_.back().data.get();
+            current_atom_data = atoms_.back().data.get();
             expect_anisou = true;
             expect_sigatm = true;
             expect_siguij = true;
@@ -1022,16 +1022,16 @@ namespace iotbx { namespace pdb {
       else if (record_type_info.id == record_type::hetatm) {
         if (model_record_oversight.atom_is_allowed_here()) {
           input_atom_labels_list_.push_back(input_atom_labels(line_info));
-          atoms_v2_.push_back(process_atom_record(line_info,/*hetero*/true));
+          atoms_.push_back(process_atom_record(line_info,/*hetero*/true));
           if (line_info.error_occured()) {
             input_atom_labels_list_.pop_back();
-            atoms_v2_.pop_back();
+            atoms_.pop_back();
           }
           else {
             hetatm_counts++;
             current_input_atom_labels = &input_atom_labels_list_.back();
             chain_tracker.next_atom_labels(*current_input_atom_labels);
-            current_atom_data = atoms_v2_.back().data.get();
+            current_atom_data = atoms_.back().data.get();
             expect_anisou = true;
             expect_sigatm = true;
             expect_siguij = true;
@@ -1175,9 +1175,9 @@ namespace iotbx { namespace pdb {
   af::shared<std::string>
   input::atom_serial_number_strings() const
   {
-    af::shared<std::string> result((af::reserve(atoms_v2_.size())));
-    const hierarchy_v2::atom* atoms_end = atoms_v2_.end();
-    for(const hierarchy_v2::atom* a=atoms_v2_.begin();a!=atoms_end;a++) {
+    af::shared<std::string> result((af::reserve(atoms_.size())));
+    const hierarchy::atom* atoms_end = atoms_.end();
+    for(const hierarchy::atom* a=atoms_.begin();a!=atoms_end;a++) {
       result.push_back(std::string(a->data->serial.elems));
     }
     return result;

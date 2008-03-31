@@ -32,7 +32,7 @@ def extract_sequence_and_sites(pdb_input):
   seq = []
   sites = flex.vec3_double()
   use_sites = flex.bool()
-  model = pdb_input.construct_hierarchy_v2().models()[0]
+  model = pdb_input.construct_hierarchy().models()[0]
   for chain in model.chains():
     for resi in chain.conformers()[0].residues():
       if (   iotbx.pdb.common_residue_names_get_class(name=resi.resname)
@@ -176,7 +176,7 @@ of the aligned length of the fixed molecule sequence.
   out = open(params.super.moved, "w")
   for serial, label, atom in zip(moving_pdb.atom_serial_number_strings(),
                                  moving_pdb.input_atom_labels_list(),
-                                 moving_pdb.atoms_v2()):
+                                 moving_pdb.atoms()):
     print >> out, iotbx.pdb.format_atom_record(
       record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
       serial=int(serial),

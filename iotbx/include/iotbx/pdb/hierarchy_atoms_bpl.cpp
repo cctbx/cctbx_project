@@ -4,9 +4,9 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
-#include <iotbx/pdb/hierarchy_v2_atoms.h>
+#include <iotbx/pdb/hierarchy_atoms.h>
 
-namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
+namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
 
 namespace {
 
@@ -64,4 +64,4 @@ namespace {
     ;
   }
 
-}}}} // namespace iotbx::pdb::hierarchy_v2::atoms
+}}}} // namespace iotbx::pdb::hierarchy::atoms

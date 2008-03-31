@@ -1,6 +1,6 @@
-#include <iotbx/pdb/hierarchy_v2.h>
+#include <iotbx/pdb/hierarchy.h>
 
-namespace iotbx { namespace pdb { namespace hierarchy_v2 {
+namespace iotbx { namespace pdb { namespace hierarchy {
 
 namespace {
 
@@ -29,7 +29,7 @@ namespace {
 } // namespace <anonymous>
 
   atom_selection_cache::atom_selection_cache(
-    hierarchy_v2::root const& root)
+    hierarchy::root const& root)
   {
     std::map<str4, std::vector<unsigned> > name_s;
     std::map<str1, std::vector<unsigned> > altloc_s;
@@ -101,4 +101,4 @@ namespace {
     map_array_transfer(charge_s, charge);
   }
 
-}}} // namespace iotbx::pdb::hierarchy_v2
+}}} // namespace iotbx::pdb::hierarchy

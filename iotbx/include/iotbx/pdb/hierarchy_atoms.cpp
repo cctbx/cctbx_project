@@ -1,15 +1,15 @@
-#include <iotbx/pdb/hierarchy_v2_atoms.h>
+#include <iotbx/pdb/hierarchy_atoms.h>
 #include <iotbx/pdb/hybrid_36_c.h>
 
-namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
+namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
 
   af::shared<std::string>
   extract_serial(
     af::const_ref<atom> const& atoms)
   {
     af::shared<std::string> result((af::reserve(atoms.size())));
-    const hierarchy_v2::atom* atoms_end = atoms.end(); \
-    for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {
+    const hierarchy::atom* atoms_end = atoms.end(); \
+    for(const hierarchy::atom* a=atoms.begin();a!=atoms_end;a++) {
       result.push_back(a->data->serial.elems);
     }
     return result;
@@ -20,8 +20,8 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     af::const_ref<atom> const& atoms)
   {
     af::shared<std::string> result((af::reserve(atoms.size())));
-    const hierarchy_v2::atom* atoms_end = atoms.end(); \
-    for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {
+    const hierarchy::atom* atoms_end = atoms.end(); \
+    for(const hierarchy::atom* a=atoms.begin();a!=atoms_end;a++) {
       result.push_back(a->data->name.elems);
     }
     return result;
@@ -35,8 +35,8 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     af::shared<attr_type > result( \
       atoms.size(), af::init_functor_null<attr_type >()); \
     attr_type* r = result.begin(); \
-    const hierarchy_v2::atom* atoms_end = atoms.end(); \
-    for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) { \
+    const hierarchy::atom* atoms_end = atoms.end(); \
+    for(const hierarchy::atom* a=atoms.begin();a!=atoms_end;a++) { \
       *r++ = a->data->attr; \
     } \
     return result; \
@@ -61,9 +61,9 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     af::const_ref<atom> const& atoms)
   {
     af::shared<std::size_t> result;
-    const hierarchy_v2::atom* atoms_end = atoms.end();
+    const hierarchy::atom* atoms_end = atoms.end();
     std::size_t i_seq = 0;
-    for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++,i_seq++) {
+    for(const hierarchy::atom* a=atoms.begin();a!=atoms_end;a++,i_seq++) {
       if (a->data->hetero) result.push_back(i_seq);
     }
     return result;
@@ -75,14 +75,14 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     bool strip)
   {
     af::shared<std::string> result((af::reserve(atoms.size())));
-    const hierarchy_v2::atom* atoms_end = atoms.end();
+    const hierarchy::atom* atoms_end = atoms.end();
     if (strip) {
-      for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {
+      for(const hierarchy::atom* a=atoms.begin();a!=atoms_end;a++) {
         result.push_back(a->data->element.strip().elems);
       }
     }
     else {
-      for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {
+      for(const hierarchy::atom* a=atoms.begin();a!=atoms_end;a++) {
         result.push_back(a->data->element.elems);
       }
     }
@@ -165,4 +165,4 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     }
   }
 
-}}}} // namespace iotbx::pdb::hierarchy_v2::atoms
+}}}} // namespace iotbx::pdb::hierarchy::atoms
