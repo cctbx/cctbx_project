@@ -165,7 +165,7 @@ def exercise_once(flipping_type,
     if verbose:
       print "** no Euclidean matching in P1 **"
     if verbose == "debug":
-      print refined_matches[0]
+      print refined_matches[0].show()
   result.inverted_solution = refined_matches[0].rt.r == mat.inversion(3)
   reference_shift = -refined_matches[0].rt.t
 
