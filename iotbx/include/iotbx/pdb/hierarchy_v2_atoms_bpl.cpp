@@ -38,6 +38,7 @@ namespace {
       .def("extract_element", extract_element, extract_element_overloads((
         arg_("self"),
         arg_("strip")=false)))
+      .def("extract_i_seq", extract_i_seq)
       .def("set_xyz", set_xyz, (arg_("new_xyz")), return_self<>())
       .def("set_sigxyz", set_sigxyz, (arg_("new_sigxyz")), return_self<>())
       .def("set_occ", set_occ, (arg_("new_occ")), return_self<>())
@@ -49,6 +50,7 @@ namespace {
       .def("reset_serial", reset_serial, reset_serial_overloads((
         arg_("self"),
         arg_("first_value")=1)))
+      .def("reset_i_seq", reset_i_seq)
       .def("reset_tmp", reset_tmp, reset_tmp_overloads((
         arg_("self"),
         arg_("first_value")=0,
