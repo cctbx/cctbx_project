@@ -7,6 +7,7 @@ try:
 except ImportError:
   wx_map_viewer = None
 
+
 def run(hkl_path, verbose):
   # Get the reflections from the specified path
   reflections = reflection_file_reader.any_reflection_file(
