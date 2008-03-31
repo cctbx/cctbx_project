@@ -3,6 +3,30 @@
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
 
+  af::shared<std::string>
+  extract_serial(
+    af::const_ref<atom> const& atoms)
+  {
+    af::shared<std::string> result((af::reserve(atoms.size())));
+    const hierarchy_v2::atom* atoms_end = atoms.end(); \
+    for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {
+      result.push_back(a->data->serial.elems);
+    }
+    return result;
+  }
+
+  af::shared<std::string>
+  extract_name(
+    af::const_ref<atom> const& atoms)
+  {
+    af::shared<std::string> result((af::reserve(atoms.size())));
+    const hierarchy_v2::atom* atoms_end = atoms.end(); \
+    for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {
+      result.push_back(a->data->name.elems);
+    }
+    return result;
+  }
+
 #define IOTBX_LOC(attr, attr_type) \
   af::shared<attr_type > \
   extract_##attr( \
@@ -47,7 +71,7 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     af::const_ref<atom> const& atoms,
     bool strip)
   {
-    af::shared<std::string> result;
+    af::shared<std::string> result((af::reserve(atoms.size())));
     const hierarchy_v2::atom* atoms_end = atoms.end();
     if (strip) {
       for(const hierarchy_v2::atom* a=atoms.begin();a!=atoms_end;a++) {

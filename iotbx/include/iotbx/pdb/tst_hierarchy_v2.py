@@ -3757,6 +3757,10 @@ HETATM    6 CA  AION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
   atoms = pdb_inp.atoms_v2()
+  assert list(atoms.extract_serial()) == [
+    "    1", "    2", "    3", "    4", "    5", "    6", "    7"]
+  assert list(atoms.extract_name()) == [
+    " N  ", " CA ", " Q  ", " O  ", "1CB ", "CA  ", "CA  "]
   xyz = atoms.extract_xyz()
   assert approx_equal(xyz, [
     (35.299,11.075,19.070),
