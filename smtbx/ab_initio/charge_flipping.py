@@ -356,8 +356,6 @@ class solving_iterator(object):
           r1.append(flipping.r1_factor())
           ctot_over_cflip.append(flipping.c_tot_over_c_flip())
           if n < self.phase_transition_tail_len: continue
-          if abs(r1.min_diff_index - ctot_over_cflip.min_diff_index) > 4:
-            continue
           r1_transition = r1.had_phase_transition()
           ctot_over_cflip_transition = ctot_over_cflip.had_phase_transition()
           phase_transition = r1_transition and ctot_over_cflip_transition
@@ -458,11 +456,13 @@ class observable_evolution(object):
     self.values.append(x)
     if len(self.values) > 1:
       diff = self.values[-1] - self.values[-2]
-      if self.min_diff is None or diff < self.min_diff:
-        self.min_diff = diff
-        self.min_diff_index = len(self.differences)
       self.differences.append(diff)
-
+    if len(self.differences) > 5:
+      smoothed_diff = flex.mean(self.differences[-5:])
+      if self.min_diff is None or smoothed_diff < self.min_diff:
+        self.min_diff = smoothed_diff
+        self.min_diff_index = len(self.differences)
+      
   def had_phase_transition(self):
     if (len(self.differences) - self.min_diff_index
         < self.phase_transition_tail_len): return False
