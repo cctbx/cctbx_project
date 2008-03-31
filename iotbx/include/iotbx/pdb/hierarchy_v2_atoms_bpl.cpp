@@ -24,6 +24,8 @@ namespace {
   {
     using namespace boost::python;
     scitbx::af::boost_python::shared_wrapper<atom>::wrap("af_shared_atom")
+      .def("extract_serial", extract_serial)
+      .def("extract_name", extract_name)
       .def("extract_xyz", extract_xyz)
       .def("extract_sigxyz", extract_sigxyz)
       .def("extract_occ", extract_occ)

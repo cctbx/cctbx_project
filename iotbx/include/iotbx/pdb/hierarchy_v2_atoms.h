@@ -5,6 +5,14 @@
 
 namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
 
+  af::shared<std::string>
+  extract_serial(
+    af::const_ref<atom> const& atoms);
+
+  af::shared<std::string>
+  extract_name(
+    af::const_ref<atom> const& atoms);
+
   af::shared<vec3>
   extract_xyz(
     af::const_ref<atom> const& atoms);
