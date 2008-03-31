@@ -673,11 +673,6 @@ namespace iotbx { namespace pdb {
     // 77 - 78  LString(2)    element       Element symbol, right-justified.
     // 79 - 80  LString(2)    charge        Charge on the atom.
     return hierarchy_v2::atom(
-      str4(line_info.data,line_info.size,12,' '), // name
-      str4(line_info.data,line_info.size,72,' '), // segid
-      str2(line_info.data,line_info.size,76,' '), // element
-      str2(line_info.data,line_info.size,78,' '), // charge
-      str5(line_info.data,line_info.size, 6,' '), // serial
       vec3(
         field_as_double(line_info,30,38),
         field_as_double(line_info,38,46),
@@ -689,7 +684,12 @@ namespace iotbx { namespace pdb {
       0, // sigb
       sym_mat3(-1,-1,-1,-1,-1,-1), // uij
       sym_mat3(-1,-1,-1,-1,-1,-1), // siguij
-      hetero);
+      hetero,
+      str5(line_info.data,line_info.size, 6,' '), // serial
+      str4(line_info.data,line_info.size,12,' '), // name
+      str4(line_info.data,line_info.size,72,' '), // segid
+      str2(line_info.data,line_info.size,76,' '), // element
+      str2(line_info.data,line_info.size,78,' ')); // charge
   }
 
   void
