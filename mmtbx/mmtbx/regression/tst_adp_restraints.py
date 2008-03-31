@@ -26,17 +26,19 @@ def run():
     min_u_sum = 1.e-6
   sel = flex.bool(xray_structure.scatterers().size(), True)
   xray_structure.scatterers().flags_set_grad_u_iso(sel.iselection())
-  energies_adp = cctbx.adp_restraints.energies_iso(
-    geometry_restraints_manager=grm,
-    xray_structure=xray_structure,
-    use_u_local_only = False,
-    parameters=parameters)
-  u_iso_restraints = grm.harmonic_restraints(
+  for use_hd in [True, False]:
+    energies_adp = cctbx.adp_restraints.energies_iso(
+      geometry_restraints_manager=grm,
+      xray_structure=xray_structure,
+      use_hd = use_hd,
+      use_u_local_only = False,
+      parameters=parameters)
+    u_iso_restraints = grm.harmonic_restraints(
                       variables    = xray_structure.extract_u_iso_or_u_equiv(),
                       type_indices = None,
                       type_weights = 1.0)
-  assert approx_equal(u_iso_restraints.residual_sum, energies_adp.residual_sum)
-  assert approx_equal(u_iso_restraints.gradients, energies_adp.gradients)
+    assert approx_equal(u_iso_restraints.residual_sum, energies_adp.residual_sum)
+    assert approx_equal(u_iso_restraints.gradients, energies_adp.gradients)
 
 if (__name__ == "__main__"):
   run()
