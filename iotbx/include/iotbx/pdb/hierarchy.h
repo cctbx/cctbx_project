@@ -1,5 +1,5 @@
-#ifndef IOTBX_PDB_HIERARCHY_V2_H
-#define IOTBX_PDB_HIERARCHY_V2_H
+#ifndef IOTBX_PDB_HIERARCHY_H
+#define IOTBX_PDB_HIERARCHY_H
 
 #if defined(__INTEL_COMPILER) // XXX exercise on one platform
 #define IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
@@ -68,7 +68,7 @@ A residue object is NOT a parent of the atoms.
 </pre>
  */
 
-namespace hierarchy_v2 {
+namespace hierarchy {
 
   static const char blank_altloc_char = ' ';
   static const char blank_altloc_cstr[2] = {blank_altloc_char, '\0'};
@@ -372,7 +372,7 @@ namespace hierarchy_v2 {
     void
     format(
       char* result,
-      hierarchy_v2::atom const& atom);
+      hierarchy::atom const& atom);
   };
 
   //! Atom attributes.
@@ -762,23 +762,23 @@ namespace hierarchy_v2 {
 
       long
       find_atom_index(
-        hierarchy_v2::atom const& atom,
+        hierarchy::atom const& atom,
         bool must_be_present=false) const;
 
       void
       pre_allocate_atoms(unsigned number_of_additional_atoms);
 
       void
-      insert_atom(long i, hierarchy_v2::atom& atom);
+      insert_atom(long i, hierarchy::atom& atom);
 
       void
-      append_atom(hierarchy_v2::atom& atom);
+      append_atom(hierarchy::atom& atom);
 
       void
       remove_atom(long i);
 
       void
-      remove_atom(hierarchy_v2::atom& atom);
+      remove_atom(hierarchy::atom& atom);
 
       std::string
       confid() const;
@@ -863,23 +863,23 @@ namespace hierarchy_v2 {
 
       long
       find_atom_group_index(
-        hierarchy_v2::atom_group const& atom_group,
+        hierarchy::atom_group const& atom_group,
         bool must_be_present=false) const;
 
       void
       pre_allocate_atom_groups(unsigned number_of_additional_atom_groups);
 
       void
-      insert_atom_group(long i, hierarchy_v2::atom_group& atom_group);
+      insert_atom_group(long i, hierarchy::atom_group& atom_group);
 
       void
-      append_atom_group(hierarchy_v2::atom_group& atom_group);
+      append_atom_group(hierarchy::atom_group& atom_group);
 
       void
       remove_atom_group(long i);
 
       void
-      remove_atom_group(hierarchy_v2::atom_group& atom_group);
+      remove_atom_group(hierarchy::atom_group& atom_group);
 
       unsigned
       atoms_size() const;
@@ -985,23 +985,23 @@ namespace hierarchy_v2 {
 
       long
       find_residue_group_index(
-        hierarchy_v2::residue_group const& residue_group,
+        hierarchy::residue_group const& residue_group,
         bool must_be_present=false) const;
 
       void
       pre_allocate_residue_groups(unsigned number_of_additional_residue_groups);
 
       void
-      insert_residue_group(long i, hierarchy_v2::residue_group& residue_group);
+      insert_residue_group(long i, hierarchy::residue_group& residue_group);
 
       void
-      append_residue_group(hierarchy_v2::residue_group& residue_group);
+      append_residue_group(hierarchy::residue_group& residue_group);
 
       void
       remove_residue_group(long i);
 
       void
-      remove_residue_group(hierarchy_v2::residue_group& residue_group);
+      remove_residue_group(hierarchy::residue_group& residue_group);
 
       unsigned
       atoms_size() const;
@@ -1091,23 +1091,23 @@ namespace hierarchy_v2 {
 
       long
       find_chain_index(
-        hierarchy_v2::chain const& chain,
+        hierarchy::chain const& chain,
         bool must_be_present=false) const;
 
       void
       pre_allocate_chains(unsigned number_of_additional_chains);
 
       void
-      insert_chain(long i, hierarchy_v2::chain& chain);
+      insert_chain(long i, hierarchy::chain& chain);
 
       void
-      append_chain(hierarchy_v2::chain& chain);
+      append_chain(hierarchy::chain& chain);
 
       void
       remove_chain(long i);
 
       void
-      remove_chain(hierarchy_v2::chain& chain);
+      remove_chain(hierarchy::chain& chain);
 
       unsigned
       atoms_size() const;
@@ -1155,23 +1155,23 @@ namespace hierarchy_v2 {
 
       long
       find_model_index(
-        hierarchy_v2::model const& model,
+        hierarchy::model const& model,
         bool must_be_present=false) const;
 
       void
       pre_allocate_models(unsigned number_of_additional_models);
 
       void
-      insert_model(long i, hierarchy_v2::model& model);
+      insert_model(long i, hierarchy::model& model);
 
       void
-      append_model(hierarchy_v2::model& model);
+      append_model(hierarchy::model& model);
 
       void
       remove_model(long i);
 
       void
-      remove_model(hierarchy_v2::model& model);
+      remove_model(hierarchy::model& model);
 
       unsigned
       atoms_size() const;
@@ -1182,7 +1182,7 @@ namespace hierarchy_v2 {
 
   struct overall_counts : boost::noncopyable
   {
-    hierarchy_v2::root root;
+    hierarchy::root root;
     unsigned n_empty_models;
     unsigned n_empty_chains;
     unsigned n_empty_residue_groups;
@@ -1218,7 +1218,7 @@ namespace hierarchy_v2 {
       residue_groups_with_multiple_resnames_using_same_altloc;
 
     overall_counts(
-      hierarchy_v2::root const& root_);
+      hierarchy::root const& root_);
   };
 
   struct atom_selection_cache : boost::noncopyable
@@ -1239,7 +1239,7 @@ namespace hierarchy_v2 {
     af::shared<std::size_t> anisou;
 
     atom_selection_cache(
-      hierarchy_v2::root const& root);
+      hierarchy::root const& root);
   };
 
   //! Residue attributes.
@@ -1536,6 +1536,6 @@ namespace hierarchy_v2 {
     altloc(altloc_)
   {}
 
-}}} // namespace iotbx::pdb::hierarchy_v2
+}}} // namespace iotbx::pdb::hierarchy
 
-#endif // IOTBX_PDB_HIERARCHY_V2_H
+#endif // IOTBX_PDB_HIERARCHY_H

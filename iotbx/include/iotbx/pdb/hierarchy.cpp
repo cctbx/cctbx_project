@@ -1,9 +1,9 @@
-#include <iotbx/pdb/hierarchy_v2.h>
+#include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/common_residue_names.h>
 #include <cctbx/eltbx/chemical_elements.h>
 #include <boost/scoped_array.hpp>
 
-namespace iotbx { namespace pdb { namespace hierarchy_v2 {
+namespace iotbx { namespace pdb { namespace hierarchy {
 
 namespace {
 
@@ -26,7 +26,7 @@ namespace {
 
 } // namespace <anonymous>
 
-#define IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_SET(P, T) \
+#define IOTBX_PDB_HIERARCHY_CPP_PARENT_SET(P, T) \
   T& \
   T::set_parent(P const& parent) \
   { \
@@ -37,7 +37,7 @@ namespace {
     return *this; \
   }
 
-#define IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET(P, T) \
+#define IOTBX_PDB_HIERARCHY_CPP_PARENT_GET(P, T) \
   boost::optional<P> \
   T::parent() const \
   { \
@@ -46,11 +46,11 @@ namespace {
     return boost::optional<P>(P(parent, true)); \
   }
 
-#define IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET_SET(P, T) \
-  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_SET(P, T) \
-  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET(P, T)
+#define IOTBX_PDB_HIERARCHY_CPP_PARENT_GET_SET(P, T) \
+  IOTBX_PDB_HIERARCHY_CPP_PARENT_SET(P, T) \
+  IOTBX_PDB_HIERARCHY_CPP_PARENT_GET(P, T)
 
-#define IOTBX_PDB_HIERARCHY_V2_CPP_APPEND_ETC(T, C) \
+#define IOTBX_PDB_HIERARCHY_CPP_APPEND_ETC(T, C) \
   unsigned \
   T::C##s_size() const \
   { \
@@ -62,7 +62,7 @@ namespace {
 \
   long \
   T::find_##C##_index( \
-    hierarchy_v2::C const& C, \
+    hierarchy::C const& C, \
     bool must_be_present) const \
   { \
     long n = static_cast<long>(data->C##s.size()); \
@@ -82,7 +82,7 @@ namespace {
   } \
 \
   void \
-  T::insert_##C(long i, hierarchy_v2::C& C) \
+  T::insert_##C(long i, hierarchy::C& C) \
   { \
     data->C##s.insert( \
       data->C##s.begin() \
@@ -91,7 +91,7 @@ namespace {
   } \
 \
   void \
-  T::append_##C(hierarchy_v2::C& C) \
+  T::append_##C(hierarchy::C& C) \
   { \
     data->C##s.push_back(C.set_parent(*this)); \
   } \
@@ -105,14 +105,14 @@ namespace {
   } \
 \
   void \
-  T::remove_##C(hierarchy_v2::C& C) \
+  T::remove_##C(hierarchy::C& C) \
   { \
     data->C##s.erase(data->C##s.begin() + find_##C##_index(C, true)); \
     C.clear_parent(); \
   }
 
-#define IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(P, T, C) \
-  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET_SET(P, T) \
+#define IOTBX_PDB_HIERARCHY_CPP_DETACHED_COPY_ETC(P, T, C) \
+  IOTBX_PDB_HIERARCHY_CPP_PARENT_GET_SET(P, T) \
   T::T( \
     P const& parent, \
     T const& other) \
@@ -129,17 +129,17 @@ namespace {
     detach_copy_children(result, result.data->C##s, data->C##s); \
     return result; \
   } \
-  IOTBX_PDB_HIERARCHY_V2_CPP_APPEND_ETC(T, C)
+  IOTBX_PDB_HIERARCHY_CPP_APPEND_ETC(T, C)
 
-  IOTBX_PDB_HIERARCHY_V2_CPP_APPEND_ETC(root, model)
-  IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(root, model, chain)
-  IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(model, chain, residue_group)
-  IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(chain, residue_group, atom_group)
-  IOTBX_PDB_HIERARCHY_V2_CPP_DETACHED_COPY_ETC(residue_group, atom_group, atom)
-  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET_SET(atom_group, atom)
+  IOTBX_PDB_HIERARCHY_CPP_APPEND_ETC(root, model)
+  IOTBX_PDB_HIERARCHY_CPP_DETACHED_COPY_ETC(root, model, chain)
+  IOTBX_PDB_HIERARCHY_CPP_DETACHED_COPY_ETC(model, chain, residue_group)
+  IOTBX_PDB_HIERARCHY_CPP_DETACHED_COPY_ETC(chain, residue_group, atom_group)
+  IOTBX_PDB_HIERARCHY_CPP_DETACHED_COPY_ETC(residue_group, atom_group, atom)
+  IOTBX_PDB_HIERARCHY_CPP_PARENT_GET_SET(atom_group, atom)
 
-  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET(chain, conformer)
-  IOTBX_PDB_HIERARCHY_V2_CPP_PARENT_GET(conformer, residue)
+  IOTBX_PDB_HIERARCHY_CPP_PARENT_GET(chain, conformer)
+  IOTBX_PDB_HIERARCHY_CPP_PARENT_GET(conformer, residue)
 
   root
   root::deep_copy() const
@@ -188,7 +188,7 @@ namespace {
   root::atoms_size() const
   {
     unsigned result = 0;
-#define IOTBX_PDB_HIERARCHY_V2_CPP_ROOT_ATOM_GROUPS_LOOPS \
+#define IOTBX_PDB_HIERARCHY_CPP_ROOT_ATOM_GROUPS_LOOPS \
     std::vector<model> const& models = this->models(); \
     unsigned n_mds = models_size(); \
     for(unsigned i_md=0;i_md<n_mds;i_md++) { \
@@ -202,7 +202,7 @@ namespace {
           std::vector<atom_group> const& ags = rgs[i_rg].atom_groups(); \
           for(unsigned i_ag=0;i_ag<n_ags;i_ag++) { \
             unsigned n_ats = ags[i_ag].atoms_size();
-    IOTBX_PDB_HIERARCHY_V2_CPP_ROOT_ATOM_GROUPS_LOOPS
+    IOTBX_PDB_HIERARCHY_CPP_ROOT_ATOM_GROUPS_LOOPS
       result += n_ats;
     }}}}
     return result;
@@ -212,7 +212,7 @@ namespace {
   model::atoms_size() const
   {
     unsigned result = 0;
-#define IOTBX_PDB_HIERARCHY_V2_CPP_MODEL_ATOM_GROUPS_LOOPS \
+#define IOTBX_PDB_HIERARCHY_CPP_MODEL_ATOM_GROUPS_LOOPS \
     unsigned n_chs = chains_size(); \
     std::vector<chain> const& chains = this->chains(); \
     for(unsigned i_ch=0;i_ch<n_chs;i_ch++) { \
@@ -223,7 +223,7 @@ namespace {
         std::vector<atom_group> const& ags = rgs[i_rg].atom_groups(); \
         for(unsigned i_ag=0;i_ag<n_ags;i_ag++) { \
           unsigned n_ats = ags[i_ag].atoms_size();
-    IOTBX_PDB_HIERARCHY_V2_CPP_MODEL_ATOM_GROUPS_LOOPS
+    IOTBX_PDB_HIERARCHY_CPP_MODEL_ATOM_GROUPS_LOOPS
       result += n_ats;
     }}}
     return result;
@@ -233,7 +233,7 @@ namespace {
   chain::atoms_size() const
   {
     unsigned result = 0;
-#define IOTBX_PDB_HIERARCHY_V2_CPP_CHAIN_ATOM_GROUPS_LOOPS \
+#define IOTBX_PDB_HIERARCHY_CPP_CHAIN_ATOM_GROUPS_LOOPS \
     unsigned n_rgs = residue_groups_size(); \
     std::vector<residue_group> const& rgs = residue_groups(); \
     for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) { \
@@ -241,7 +241,7 @@ namespace {
       std::vector<atom_group> const& ags = rgs[i_rg].atom_groups(); \
       for(unsigned i_ag=0;i_ag<n_ags;i_ag++) { \
         unsigned n_ats = ags[i_ag].atoms_size();
-    IOTBX_PDB_HIERARCHY_V2_CPP_CHAIN_ATOM_GROUPS_LOOPS
+    IOTBX_PDB_HIERARCHY_CPP_CHAIN_ATOM_GROUPS_LOOPS
       result += n_ats;
     }}
     return result;
@@ -251,12 +251,12 @@ namespace {
   residue_group::atoms_size() const
   {
     unsigned result = 0;
-#define IOTBX_PDB_HIERARCHY_V2_CPP_RESIDUE_GROUP_ATOM_GROUPS_LOOPS \
+#define IOTBX_PDB_HIERARCHY_CPP_RESIDUE_GROUP_ATOM_GROUPS_LOOPS \
     unsigned n_ags = atom_groups_size(); \
     std::vector<atom_group> const& ags = atom_groups(); \
     for(unsigned i_ag=0;i_ag<n_ags;i_ag++) { \
       unsigned n_ats = ags[i_ag].atoms_size();
-    IOTBX_PDB_HIERARCHY_V2_CPP_RESIDUE_GROUP_ATOM_GROUPS_LOOPS
+    IOTBX_PDB_HIERARCHY_CPP_RESIDUE_GROUP_ATOM_GROUPS_LOOPS
       result += n_ats;
     }
     return result;
@@ -279,13 +279,13 @@ namespace {
   root::atoms() const
   {
     af::shared<atom> result((af::reserve(atoms_size())));
-    IOTBX_PDB_HIERARCHY_V2_CPP_ROOT_ATOM_GROUPS_LOOPS
-#define IOTBX_PDB_HIERARCHY_V2_CPP_ATOM_GROUP_PUSH_BACK_LOOP \
+    IOTBX_PDB_HIERARCHY_CPP_ROOT_ATOM_GROUPS_LOOPS
+#define IOTBX_PDB_HIERARCHY_CPP_ATOM_GROUP_PUSH_BACK_LOOP \
       std::vector<atom> const& ats = ags[i_ag].atoms(); \
       for(unsigned i_at=0;i_at<n_ats;i_at++) { \
         result.push_back(ats[i_at]); \
       }
-      IOTBX_PDB_HIERARCHY_V2_CPP_ATOM_GROUP_PUSH_BACK_LOOP
+      IOTBX_PDB_HIERARCHY_CPP_ATOM_GROUP_PUSH_BACK_LOOP
     }}}}
     return result;
   }
@@ -294,8 +294,8 @@ namespace {
   model::atoms() const
   {
     af::shared<atom> result((af::reserve(atoms_size())));
-    IOTBX_PDB_HIERARCHY_V2_CPP_MODEL_ATOM_GROUPS_LOOPS
-      IOTBX_PDB_HIERARCHY_V2_CPP_ATOM_GROUP_PUSH_BACK_LOOP
+    IOTBX_PDB_HIERARCHY_CPP_MODEL_ATOM_GROUPS_LOOPS
+      IOTBX_PDB_HIERARCHY_CPP_ATOM_GROUP_PUSH_BACK_LOOP
     }}}
     return result;
   }
@@ -304,8 +304,8 @@ namespace {
   chain::atoms() const
   {
     af::shared<atom> result((af::reserve(atoms_size())));
-    IOTBX_PDB_HIERARCHY_V2_CPP_CHAIN_ATOM_GROUPS_LOOPS
-      IOTBX_PDB_HIERARCHY_V2_CPP_ATOM_GROUP_PUSH_BACK_LOOP
+    IOTBX_PDB_HIERARCHY_CPP_CHAIN_ATOM_GROUPS_LOOPS
+      IOTBX_PDB_HIERARCHY_CPP_ATOM_GROUP_PUSH_BACK_LOOP
     }}
     return result;
   }
@@ -314,8 +314,8 @@ namespace {
   residue_group::atoms() const
   {
     af::shared<atom> result((af::reserve(atoms_size())));
-    IOTBX_PDB_HIERARCHY_V2_CPP_RESIDUE_GROUP_ATOM_GROUPS_LOOPS
-      IOTBX_PDB_HIERARCHY_V2_CPP_ATOM_GROUP_PUSH_BACK_LOOP
+    IOTBX_PDB_HIERARCHY_CPP_RESIDUE_GROUP_ATOM_GROUPS_LOOPS
+      IOTBX_PDB_HIERARCHY_CPP_ATOM_GROUP_PUSH_BACK_LOOP
     }
     return result;
   }
@@ -352,7 +352,7 @@ namespace {
   void
   atom_label_columns_formatter::format(
     char* result,
-    hierarchy_v2::atom const& atom)
+    hierarchy::atom const& atom)
   {
     name = atom.data->name.elems;
     shared_ptr<atom_group_data> ag_lock = atom.data->parent.lock();
@@ -846,7 +846,7 @@ namespace {
         atom_group* new_atom_group = 0;
         unsigned n_atoms = ag.atoms_size();
         for(unsigned i_atom=0;i_atom<n_atoms;) {
-          hierarchy_v2::atom atom = ag.atoms()[i_atom];
+          hierarchy::atom atom = ag.atoms()[i_atom];
           ss4::const_iterator
             blank_but_alt_set_iter = blank_but_alt_sets_iter->second.find(
               atom.data->name);
@@ -1323,4 +1323,4 @@ namespace {
     return result;
   }
 
-}}} // namespace iotbx::pdb::hierarchy_v2
+}}} // namespace iotbx::pdb::hierarchy

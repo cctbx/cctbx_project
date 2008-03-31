@@ -1,8 +1,8 @@
 from __future__ import generators
 
 import boost.python
-ext = boost.python.import_ext("iotbx_pdb_hierarchy_v2_ext")
-from iotbx_pdb_hierarchy_v2_ext import *
+ext = boost.python.import_ext("iotbx_pdb_hierarchy_ext")
+from iotbx_pdb_hierarchy_ext import *
 
 from cctbx.array_family import flex
 from libtbx.str_utils import show_sorted_by_counts
@@ -694,7 +694,7 @@ class show_summary(object):
       self.pdb_inp = iotbx.pdb.input(
         source_info="string", lines=flex.split_lines(pdb_string))
     print >> out, prefix+self.pdb_inp.source_info()
-    self.hierarchy = self.pdb_inp.construct_hierarchy_v2()
+    self.hierarchy = self.pdb_inp.construct_hierarchy()
     self.overall_counts = self.hierarchy.overall_counts()
     self.overall_counts.show(
       out=out,

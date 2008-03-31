@@ -11,13 +11,13 @@ namespace iotbx { namespace pdb {
     void
     append_residue_group(
       const input_atom_labels* iall,
-      hierarchy_v2::atom* atoms,
-      hierarchy_v2::chain& chain,
+      hierarchy::atom* atoms,
+      hierarchy::chain& chain,
       bool link_to_previous,
       std::map<str4, std::vector<unsigned> >& altloc_resname_indices,
       bool residue_group_post_processing)
     {
-      hierarchy_v2::residue_group rg(
+      hierarchy::residue_group rg(
         iall->resseq_small().elems,
         iall->icode_small().elems,
         link_to_previous);
@@ -41,7 +41,7 @@ namespace iotbx { namespace pdb {
       for(i=0;i<n_ag;i++) {
         ari_it ari = ari_iters[perm[i]];
         altloc[0] = ari->first.elems[0];
-        hierarchy_v2::atom_group ag(altloc, ari->first.elems+1);
+        hierarchy::atom_group ag(altloc, ari->first.elems+1);
         rg.append_atom_group(ag);
         ag.pre_allocate_atoms(ari->second.size());
         typedef std::vector<unsigned>::const_iterator i_it;
@@ -58,8 +58,8 @@ namespace iotbx { namespace pdb {
 
   } // namespace <anonymous>
 
-  hierarchy_v2::root
-  input::construct_hierarchy_v2(
+  hierarchy::root
+  input::construct_hierarchy(
     bool residue_group_post_processing)
   {
     af::const_ref<int>
@@ -67,20 +67,20 @@ namespace iotbx { namespace pdb {
     af::const_ref<std::vector<unsigned> >
       chain_indices = chain_indices_.const_ref();
     SCITBX_ASSERT(chain_indices.size() == model_numbers.size());
-    hierarchy_v2::root result;
+    hierarchy::root result;
     result.pre_allocate_models(model_numbers.size());
     const input_atom_labels* iall = input_atom_labels_list_.begin();
-    hierarchy_v2::atom* atoms = atoms_v2_.begin();
+    hierarchy::atom* atoms = atoms_.begin();
     unsigned next_chain_range_begin = 0;
     for(unsigned i_model=0;i_model<model_numbers.size();i_model++) {
-      hierarchy_v2::model model((
+      hierarchy::model model((
         boost::format("%4d") % model_numbers[i_model]).str());
       result.append_model(model);
       model.pre_allocate_chains(chain_indices[i_model].size());
       range_loop<unsigned> ch_r(
         chain_indices[i_model], next_chain_range_begin);
       for(unsigned i_chain=0;ch_r.next();i_chain++) {
-        hierarchy_v2::chain chain(iall[ch_r.begin].chain());
+        hierarchy::chain chain(iall[ch_r.begin].chain());
         model.append_chain(chain);
         // convert break_indices to break_range_ids
         boost::scoped_array<unsigned>

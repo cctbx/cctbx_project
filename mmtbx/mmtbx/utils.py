@@ -873,13 +873,13 @@ class process_pdb_file_srv(object):
       raw_records = pdb_combined.raw_records
     pdb_inp = iotbx.pdb.input(source_info = None,
                               lines       = flex.std_string(raw_records))
-    if(pdb_inp.atoms_v2().size() == 0):
+    if(pdb_inp.atoms().size() == 0):
       msg = ["No atomic coordinates found in PDB files:"]
       if(pdb_file_names is not None):
         for file_name in pdb_file_names:
           msg.append("  %s" % show_string(file_name))
       raise Sorry("\n".join(msg))
-    pdb_inp.construct_hierarchy_v2().overall_counts() \
+    pdb_inp.construct_hierarchy().overall_counts() \
       .raise_duplicate_atom_labels_if_necessary()
     processed_pdb_file = monomer_library.pdb_interpretation.process(
       mon_lib_srv              = self.mon_lib_srv,

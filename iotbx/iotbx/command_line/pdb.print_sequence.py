@@ -63,7 +63,7 @@ def run(filename,
                        lines=flex.split_lines(filename))
   else:
     assert 0
-  hierarchy      = pdb_io.construct_hierarchy_v2()
+  hierarchy      = pdb_io.construct_hierarchy()
 
   outl = ""
   unk = ""

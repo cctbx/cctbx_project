@@ -198,7 +198,7 @@ def exercise_pdb_input():
     assert pdb_inp.crystallographic_section().size() == 0
     assert pdb_inp.input_atom_labels_list().size() == 0
     assert pdb_inp.atom_serial_number_strings().size() == 0
-    assert pdb_inp.atoms_v2().size() == 0
+    assert pdb_inp.atoms().size() == 0
     assert pdb_inp.model_numbers().size() == 0
     assert pdb_inp.model_indices().size() == 0
     assert pdb_inp.ter_indices().size() == 0
@@ -360,7 +360,7 @@ TVECT    1   0.00000   0.00000  20.42000""")
     assert pdb_inp.input_atom_labels_list().size() == 6
     assert list(pdb_inp.atom_serial_number_strings()) \
         == ["    1", "    2", "    3", "    4", "    9", "   10"]
-    assert [atom.element for atom in pdb_inp.atoms_v2()] \
+    assert [atom.element for atom in pdb_inp.atoms()] \
         == [" N", " C", " C", " O", "  ", "  "]
     assert list(pdb_inp.model_numbers()) == [1,3]
     assert list(pdb_inp.model_indices()) == [4,6]

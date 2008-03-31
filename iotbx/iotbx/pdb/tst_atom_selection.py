@@ -104,7 +104,7 @@ ATOM   2016  A1  CCCZZA003       9.242  30.200  62.974  1.00 46.62
 ATOM   2017  A1  AAAUU  1K       8.753  29.755  61.685  1.00 49.13
 ENDMDL
 END
-""")).construct_hierarchy_v2()
+""")).construct_hierarchy()
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert isel("").size() == 0
@@ -235,7 +235,7 @@ ATOM     22  CA  GLN a   4       0.384   1.888   3.199  1.00 10.53           C
 ATOM     31  CA  GLN a   5       3.270   2.361   5.640  1.00 11.39           C
 ATOM     40  CA  ASN a   6       6.831   2.310   4.318  1.00 12.30           C
 END
-""")).construct_hierarchy_v2()
+""")).construct_hierarchy()
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert list(isel("chain A")) == [0,1,2]
@@ -253,7 +253,7 @@ ATOM     22  CA  GLN b   4       0.384   1.888   3.199  1.00 10.53           C
 ATOM     31  CA  GLN b   5       3.270   2.361   5.640  1.00 11.39           C
 ATOM     40  CA  ASN b   6       6.831   2.310   4.318  1.00 12.30           C
 END
-""")).construct_hierarchy_v2()
+""")).construct_hierarchy()
   sel_cache = hierarchy.atom_selection_cache()
   isel = sel_cache.iselection
   assert list(isel("resname asn")) == [1,2,5]

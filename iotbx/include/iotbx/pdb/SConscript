@@ -32,9 +32,9 @@ builder(
   source=[
     "hybrid_36_c.c",
     "utils.cpp",
-    "hierarchy_v2.cpp",
-    "hierarchy_v2_atoms.cpp",
-    "construct_hierarchy_v2.cpp",
+    "hierarchy.cpp",
+    "hierarchy_atoms.cpp",
+    "construct_hierarchy.cpp",
     "overall_counts.cpp",
     "atom_selection.cpp",
     "input.cpp"])
@@ -55,7 +55,7 @@ if (not env_etc.no_boost_python):
       "input_bpl.cpp",
       "xray_structure_bpl.cpp"])
   env.SharedLibrary(
-    target="#lib/iotbx_pdb_hierarchy_v2_ext",
+    target="#lib/iotbx_pdb_hierarchy_ext",
     source=[
-      "hierarchy_v2_ext.cpp",
-      "hierarchy_v2_atoms_bpl.cpp"])
+      "hierarchy_ext.cpp",
+      "hierarchy_atoms_bpl.cpp"])

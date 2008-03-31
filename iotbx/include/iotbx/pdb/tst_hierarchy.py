@@ -10,7 +10,7 @@ import random
 import sys, os
 
 def exercise_atom():
-  a = pdb.hierarchy_v2.atom()
+  a = pdb.hierarchy.atom()
   assert a.name == ""
   a.name = "abcd"
   assert a.name == "abcd"
@@ -55,7 +55,7 @@ def exercise_atom():
   assert a.uij == (1,-2,3,4,-5,6)
   assert a.uij_is_defined()
   assert not a.siguij_is_defined()
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     assert a.siguij == (-1,-1,-1,-1,-1,-1)
     a.siguij = (-2,3,4,-5,6,1)
     assert a.siguij == (-2,3,4,-5,6,1)
@@ -71,7 +71,7 @@ def exercise_atom():
   a.tmp = 3
   assert a.tmp == 3
   #
-  a = (pdb.hierarchy_v2.atom()
+  a = (pdb.hierarchy.atom()
     .set_name(new_name="NaMe")
     .set_segid(new_segid="sEgI")
     .set_element(new_element="El")
@@ -85,7 +85,7 @@ def exercise_atom():
     .set_sigb(new_sigb=0.7)
     .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
     .set_hetero(new_hetero=True))
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     assert a.set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)) is a
   assert a.name == "NaMe"
   assert a.segid == "sEgI"
@@ -99,7 +99,7 @@ def exercise_atom():
   assert approx_equal(a.b, 4.8)
   assert approx_equal(a.sigb, 0.7)
   assert approx_equal(a.uij, (1.3,2.1,3.2,4.3,2.7,9.3))
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     assert approx_equal(a.siguij, (.1,.2,.3,.6,.1,.9))
   assert a.hetero
   assert a.tmp == 0
@@ -124,7 +124,7 @@ def exercise_atom():
   assert approx_equal(ac.b, 4.8)
   assert approx_equal(ac.sigb, 0.7)
   assert approx_equal(ac.uij, (1.3,2.1,3.2,4.3,2.7,9.3))
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     assert approx_equal(ac.siguij, (.1,.2,.3,.6,.1,.9))
   assert ac.hetero
   #
@@ -161,8 +161,8 @@ def exercise_atom():
   assert a.charge == ""
   assert a.serial == ""
   #
-  ag = pdb.hierarchy_v2.atom_group()
-  ac = pdb.hierarchy_v2.atom(parent=ag, other=a)
+  ag = pdb.hierarchy.atom_group()
+  ac = pdb.hierarchy.atom(parent=ag, other=a)
   assert ac.memory_id() != a.memory_id()
   assert ac.parent().memory_id() == ag.memory_id()
   assert ac.name == a.name
@@ -177,18 +177,18 @@ def exercise_atom():
   assert ac.b == a.b
   assert ac.sigb == a.sigb
   assert ac.uij == a.uij
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     assert ac.siguij == a.siguij
   assert ac.hetero == a.hetero
   assert ac.tmp == 0
   #
   assert a.pdb_label_columns() == "               "
   #
-  atoms = pdb.hierarchy_v2.af_shared_atom()
+  atoms = pdb.hierarchy.af_shared_atom()
   atoms.reset_serial()
   atoms.reset_i_seq()
   atoms.reset_tmp()
-  atoms.append(pdb.hierarchy_v2.atom())
+  atoms.append(pdb.hierarchy.atom())
   assert [atom.serial for atom in atoms] == [""]
   assert [atom.i_seq for atom in atoms] == [0]
   assert [atom.tmp for atom in atoms] == [0]
@@ -198,8 +198,8 @@ def exercise_atom():
   assert [atom.serial for atom in atoms] == ["    2"]
   assert [atom.i_seq for atom in atoms] == [0]
   assert [atom.tmp for atom in atoms] == [2]
-  atoms.append(pdb.hierarchy_v2.atom())
-  atoms.append(pdb.hierarchy_v2.atom())
+  atoms.append(pdb.hierarchy.atom())
+  atoms.append(pdb.hierarchy.atom())
   assert [atom.serial for atom in atoms] == ["    2", "", ""]
   assert [atom.i_seq for atom in atoms] == [0,0,0]
   assert [atom.tmp for atom in atoms] == [2,0,0]
@@ -222,13 +222,13 @@ def exercise_atom():
   assert [atom.tmp for atom in atoms] == [-1,1,-1]
 
 def exercise_atom_group():
-  ag = pdb.hierarchy_v2.atom_group()
+  ag = pdb.hierarchy.atom_group()
   assert ag.altloc == ""
   assert ag.resname == ""
-  ag = pdb.hierarchy_v2.atom_group(altloc=None, resname=None)
+  ag = pdb.hierarchy.atom_group(altloc=None, resname=None)
   assert ag.altloc == ""
   assert ag.resname == ""
-  ag = pdb.hierarchy_v2.atom_group(altloc="a", resname="xyz")
+  ag = pdb.hierarchy.atom_group(altloc="a", resname="xyz")
   assert ag.altloc == "a"
   assert ag.resname == "xyz"
   ag.altloc = None
@@ -240,10 +240,10 @@ def exercise_atom_group():
   ag.altloc = "l"
   ag.resname = "res"
   assert ag.confid() == "lres"
-  ag.append_atom(atom=pdb.hierarchy_v2.atom().set_name(new_name="n"))
-  rg = pdb.hierarchy_v2.residue_group()
+  ag.append_atom(atom=pdb.hierarchy.atom().set_name(new_name="n"))
+  rg = pdb.hierarchy.residue_group()
   for i,agc in enumerate([
-                 pdb.hierarchy_v2.atom_group(parent=rg, other=ag),
+                 pdb.hierarchy.atom_group(parent=rg, other=ag),
                  ag.detached_copy()]):
     assert agc.memory_id() != ag.memory_id()
     assert ag.parent() is None
@@ -256,22 +256,22 @@ def exercise_atom_group():
     assert agc.atoms_size() == 1
     assert agc.atoms()[0].memory_id() != ag.atoms()[0].memory_id()
     assert agc.atoms()[0].name == "n"
-    ag.append_atom(atom=pdb.hierarchy_v2.atom().set_name(new_name="o"))
+    ag.append_atom(atom=pdb.hierarchy.atom().set_name(new_name="o"))
     assert ag.atoms_size() == 2+i
     assert agc.atoms_size() == 1
   #
-  ag = pdb.hierarchy_v2.atom_group()
+  ag = pdb.hierarchy.atom_group()
   assert ag.parent() is None
-  rg1 = pdb.hierarchy_v2.residue_group()
-  rg2 = pdb.hierarchy_v2.residue_group()
+  rg1 = pdb.hierarchy.residue_group()
+  rg2 = pdb.hierarchy.residue_group()
   assert rg1.memory_id() != rg2.memory_id()
-  ag = pdb.hierarchy_v2.atom_group(parent=rg1)
+  ag = pdb.hierarchy.atom_group(parent=rg1)
   assert ag.parent().memory_id() == rg1.memory_id()
   del rg1
   assert ag.parent() is None
   #
-  rg1 = pdb.hierarchy_v2.residue_group()
-  ag = pdb.hierarchy_v2.atom_group(altloc="a", resname="xyz")
+  rg1 = pdb.hierarchy.residue_group()
+  ag = pdb.hierarchy.atom_group(altloc="a", resname="xyz")
   rg1.append_atom_group(atom_group=ag)
   assert ag.altloc == "a"
   assert ag.resname == "xyz"
@@ -282,24 +282,24 @@ def exercise_atom_group():
   ag.pre_allocate_atoms(number_of_additional_atoms=2)
   assert ag.atoms_size() == 0
   assert ag.atoms().size() == 0
-  ag.append_atom(atom=pdb.hierarchy_v2.atom().set_name(new_name="ca"))
+  ag.append_atom(atom=pdb.hierarchy.atom().set_name(new_name="ca"))
   assert ag.atoms_size() == 1
   assert ag.atoms().size() == 1
-  ag.append_atom(atom=pdb.hierarchy_v2.atom().set_name(new_name="n"))
+  ag.append_atom(atom=pdb.hierarchy.atom().set_name(new_name="n"))
   assert ag.atoms_size() == 2
   assert ag.atoms().size() == 2
   assert [atom.name for atom in ag.atoms()] == ["ca", "n"]
   for i in xrange(3):
-    ag.append_atom(pdb.hierarchy_v2.atom())
+    ag.append_atom(pdb.hierarchy.atom())
   assert ag.atoms_size() == 5
   assert ag.atoms().size() == 5
   for atom in ag.atoms():
     assert atom.parent().memory_id() == ag.memory_id()
   assert [a.name for a in ag.atoms()] == ["ca", "n", "", "", ""]
   #
-  ag.insert_atom(i=0, atom=pdb.hierarchy_v2.atom().set_name(new_name="0"))
+  ag.insert_atom(i=0, atom=pdb.hierarchy.atom().set_name(new_name="0"))
   assert [a.name for a in ag.atoms()] == ["0", "ca", "n", "", "", ""]
-  ag.insert_atom(i=-1, atom=pdb.hierarchy_v2.atom().set_name(new_name="x"))
+  ag.insert_atom(i=-1, atom=pdb.hierarchy.atom().set_name(new_name="x"))
   assert [a.name for a in ag.atoms()] == ["0", "ca", "n", "", "", "x", ""]
   a = ag.atoms()[-1]
   assert a.parent().memory_id() == ag.memory_id()
@@ -314,7 +314,7 @@ def exercise_atom_group():
   ag.remove_atom(i=-2)
   assert a.parent() is None
   assert [a.name for a in ag.atoms()] == ["0", "n", "", "x"]
-  a = pdb.hierarchy_v2.atom().set_name(new_name="y")
+  a = pdb.hierarchy.atom().set_name(new_name="y")
   assert ag.find_atom_index(atom=a) == -1
   try: ag.find_atom_index(atom=a, must_be_present=True)
   except RuntimeError, e:
@@ -324,18 +324,18 @@ def exercise_atom_group():
   assert ag.find_atom_index(atom=a) == 4
   assert [a.name for a in ag.atoms()] == ["0", "n", "", "x", "y"]
   #
-  try: pdb.hierarchy_v2.atom_group(altloc="ab")
+  try: pdb.hierarchy.atom_group(altloc="ab")
   except (ValueError, RuntimeError), e:
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 1 character, 2 given)."
   else: raise Exception_expected
 
 def exercise_residue_group():
-  rg = pdb.hierarchy_v2.residue_group()
+  rg = pdb.hierarchy.residue_group()
   assert rg.resseq == ""
   assert rg.icode == ""
   assert rg.link_to_previous
-  rg = pdb.hierarchy_v2.residue_group(
+  rg = pdb.hierarchy.residue_group(
     resseq="   1", icode="i", link_to_previous=False)
   assert rg.resseq == "   1"
   rg.resseq = "   2"
@@ -348,13 +348,13 @@ def exercise_residue_group():
   assert rg.link_to_previous
   rg.link_to_previous = False
   #
-  ag = pdb.hierarchy_v2.atom_group(altloc="a")
+  ag = pdb.hierarchy.atom_group(altloc="a")
   assert ag.parent() is None
   rg.append_atom_group(atom_group=ag)
   assert ag.parent().memory_id() == rg.memory_id()
-  c = pdb.hierarchy_v2.chain()
+  c = pdb.hierarchy.chain()
   for i,rgc in enumerate([
-                 pdb.hierarchy_v2.residue_group(parent=c, other=rg),
+                 pdb.hierarchy.residue_group(parent=c, other=rg),
                  rg.detached_copy()]):
     assert rgc.memory_id() != rg.memory_id()
     assert rg.parent() is None
@@ -368,33 +368,33 @@ def exercise_residue_group():
     assert rgc.atom_groups_size() == 1
     assert rgc.atom_groups()[0].memory_id() != rg.atom_groups()[0].memory_id()
     assert rgc.atom_groups()[0].altloc == "a"
-    rg.append_atom_group(atom_group=pdb.hierarchy_v2.atom_group(altloc="%d"%i))
+    rg.append_atom_group(atom_group=pdb.hierarchy.atom_group(altloc="%d"%i))
     assert rg.atom_groups_size() == 2+i
     assert rgc.atom_groups_size() == 1
     assert [ag.altloc for ag in rg.atom_groups()] == ["a", "0", "1"][:i+2]
   #
-  c1 = pdb.hierarchy_v2.chain(id="a")
-  c2 = pdb.hierarchy_v2.chain(id="b")
+  c1 = pdb.hierarchy.chain(id="a")
+  c2 = pdb.hierarchy.chain(id="b")
   assert c1.memory_id() != c2.memory_id()
-  rg = pdb.hierarchy_v2.residue_group()
+  rg = pdb.hierarchy.residue_group()
   assert rg.parent() is None
-  rg = pdb.hierarchy_v2.residue_group(parent=c1)
+  rg = pdb.hierarchy.residue_group(parent=c1)
   assert rg.parent().memory_id() == c1.memory_id()
   del c1
   assert rg.parent() is None
   #
-  c1 = pdb.hierarchy_v2.chain(id="p")
-  rg13l = pdb.hierarchy_v2.residue_group(resseq="13", icode="l")
+  c1 = pdb.hierarchy.chain(id="p")
+  rg13l = pdb.hierarchy.residue_group(resseq="13", icode="l")
   c1.append_residue_group(rg13l)
   assert rg13l.resseq == "13"
   assert rg13l.icode == "l"
   #
-  c1 = pdb.hierarchy_v2.chain(id="a")
+  c1 = pdb.hierarchy.chain(id="a")
   c1.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c1.residue_groups_size() == 0
   assert len(c1.residue_groups()) == 0
   for i in xrange(2):
-    c1.append_residue_group(residue_group=pdb.hierarchy_v2.residue_group())
+    c1.append_residue_group(residue_group=pdb.hierarchy.residue_group())
   assert c1.residue_groups_size() == 2
   assert len(c1.residue_groups()) == 2
   for residue_group in c1.residue_groups():
@@ -404,7 +404,7 @@ def exercise_residue_group():
   #
   for altloc in ["w", "v", "u"]:
     rg.insert_atom_group(
-      i=0, atom_group=pdb.hierarchy_v2.atom_group(altloc=altloc))
+      i=0, atom_group=pdb.hierarchy.atom_group(altloc=altloc))
   assert [ag.altloc for ag in rg.atom_groups()] == ["u", "v", "w"]
   rg.remove_atom_group(i=-1)
   assert [ag.altloc for ag in rg.atom_groups()] == ["u", "v"]
@@ -419,72 +419,72 @@ def exercise_residue_group():
     assert str(e) == "atom_group not in residue_group."
   else: raise Exception_expected
   #
-  ag1 = pdb.hierarchy_v2.atom_group()
-  ag2 = pdb.hierarchy_v2.atom_group()
-  a = pdb.hierarchy_v2.atom()
+  ag1 = pdb.hierarchy.atom_group()
+  ag2 = pdb.hierarchy.atom_group()
+  a = pdb.hierarchy.atom()
   ag1.append_atom(atom=a)
   try: ag2.append_atom(atom=a)
   except RuntimeError, e:
     assert str(e) == "atom has another parent atom_group already."
   else: raise Exception_expected
   #
-  rg = pdb.hierarchy_v2.residue_group()
+  rg = pdb.hierarchy.residue_group()
   assert rg.resid() == "     "
-  rg = pdb.hierarchy_v2.residue_group(resseq="1", icode="i")
+  rg = pdb.hierarchy.residue_group(resseq="1", icode="i")
   assert rg.resid() == "   1i"
-  rg = pdb.hierarchy_v2.residue_group(resseq=" 1 ", icode="j")
+  rg = pdb.hierarchy.residue_group(resseq=" 1 ", icode="j")
   assert rg.resid() == "  1 j"
-  rg = pdb.hierarchy_v2.residue_group(resseq="ABCD", icode="")
+  rg = pdb.hierarchy.residue_group(resseq="ABCD", icode="")
   assert rg.resid() == "ABCD "
-  rg = pdb.hierarchy_v2.residue_group(resseq="ABCD", icode="E")
+  rg = pdb.hierarchy.residue_group(resseq="ABCD", icode="E")
   assert rg.resid() == "ABCDE"
   #
-  rg = pdb.hierarchy_v2.residue_group()
-  ag = pdb.hierarchy_v2.atom_group(altloc=" ")
+  rg = pdb.hierarchy.residue_group()
+  ag = pdb.hierarchy.atom_group(altloc=" ")
   rg.append_atom_group(atom_group=ag)
   assert not rg.have_conformers()
-  ag = pdb.hierarchy_v2.atom_group(altloc="")
+  ag = pdb.hierarchy.atom_group(altloc="")
   rg.append_atom_group(atom_group=ag)
   assert not rg.have_conformers()
-  ag = pdb.hierarchy_v2.atom_group(altloc="a")
+  ag = pdb.hierarchy.atom_group(altloc="a")
   rg.append_atom_group(atom_group=ag)
   assert rg.have_conformers()
   #
-  rg = pdb.hierarchy_v2.residue_group()
+  rg = pdb.hierarchy.residue_group()
   assert rg.move_blank_altloc_atom_groups_to_front() == 0
-  ag = pdb.hierarchy_v2.atom_group(altloc="a")
+  ag = pdb.hierarchy.atom_group(altloc="a")
   rg.append_atom_group(atom_group=ag)
   assert rg.move_blank_altloc_atom_groups_to_front() == 0
-  ag = pdb.hierarchy_v2.atom_group(altloc=" ")
+  ag = pdb.hierarchy.atom_group(altloc=" ")
   rg.append_atom_group(atom_group=ag)
   assert rg.move_blank_altloc_atom_groups_to_front() == 1
 
 def exercise_chain():
-  c = pdb.hierarchy_v2.chain()
+  c = pdb.hierarchy.chain()
   assert c.id == ""
-  c = pdb.hierarchy_v2.chain(id="a")
+  c = pdb.hierarchy.chain(id="a")
   assert c.id == "a"
   c.id = "x"
   assert c.id == "x"
   #
-  m1 = pdb.hierarchy_v2.model(id="1")
-  m2 = pdb.hierarchy_v2.model(id="2")
+  m1 = pdb.hierarchy.model(id="1")
+  m2 = pdb.hierarchy.model(id="2")
   assert m1.memory_id() != m2.memory_id()
-  c = pdb.hierarchy_v2.chain()
+  c = pdb.hierarchy.chain()
   assert c.parent() is None
-  c = pdb.hierarchy_v2.chain(parent=m1)
+  c = pdb.hierarchy.chain(parent=m1)
   assert c.parent().memory_id() == m1.memory_id()
   del m1
   assert c.parent() is None
   #
-  c = pdb.hierarchy_v2.chain()
+  c = pdb.hierarchy.chain()
   #
-  c = pdb.hierarchy_v2.chain()
+  c = pdb.hierarchy.chain()
   c.pre_allocate_residue_groups(number_of_additional_residue_groups=2)
   assert c.residue_groups_size() == 0
   assert len(c.residue_groups()) == 0
   for i in xrange(2):
-    c.append_residue_group(residue_group=pdb.hierarchy_v2.residue_group())
+    c.append_residue_group(residue_group=pdb.hierarchy.residue_group())
   assert c.residue_groups_size() == 2
   assert len(c.residue_groups()) == 2
   for residue_group in c.residue_groups():
@@ -494,9 +494,9 @@ def exercise_chain():
   #
   c.residue_groups()[0].resseq = "ugh"
   c.id = "ci"
-  m = pdb.hierarchy_v2.model()
+  m = pdb.hierarchy.model()
   for i,cc in enumerate([
-                pdb.hierarchy_v2.chain(parent=m, other=c),
+                pdb.hierarchy.chain(parent=m, other=c),
                 c.detached_copy()]):
     assert cc.memory_id() != c.memory_id()
     assert c.parent() is None
@@ -510,14 +510,14 @@ def exercise_chain():
          != c.residue_groups()[0].memory_id()
     assert cc.residue_groups()[0].resseq == "ugh"
     c.append_residue_group(
-      residue_group=pdb.hierarchy_v2.residue_group(resseq="%03d"%i))
+      residue_group=pdb.hierarchy.residue_group(resseq="%03d"%i))
     assert c.residue_groups_size() == 3+i
     assert cc.residue_groups_size() == 2
     assert [rg.resseq for rg in c.residue_groups()] \
         == ["ugh", "", "000", "001"][:i+3]
   #
   c.insert_residue_group(
-    i=3, residue_group=pdb.hierarchy_v2.residue_group(resseq="b012"))
+    i=3, residue_group=pdb.hierarchy.residue_group(resseq="b012"))
   assert [rg.resseq for rg in c.residue_groups()] \
       == ["ugh", "", "000", "b012", "001"]
   c.remove_residue_group(i=1)
@@ -534,39 +534,39 @@ def exercise_chain():
     assert str(e) == "residue_group not in chain."
   else: raise Exception_expected
   #
-  rg1 = pdb.hierarchy_v2.residue_group()
-  rg2 = pdb.hierarchy_v2.residue_group()
-  ag = pdb.hierarchy_v2.atom_group()
+  rg1 = pdb.hierarchy.residue_group()
+  rg2 = pdb.hierarchy.residue_group()
+  ag = pdb.hierarchy.atom_group()
   rg1.append_atom_group(atom_group=ag)
   try: rg2.append_atom_group(atom_group=ag)
   except RuntimeError, e:
     assert str(e) == "atom_group has another parent residue_group already."
   else: raise Exception_expected
   #
-  c = pdb.hierarchy_v2.chain(id="c")
+  c = pdb.hierarchy.chain(id="c")
   records = []
   c.append_atom_record_groups(pdb_records=records)
   assert len(records) == 0
-  rg = pdb.hierarchy_v2.residue_group(resseq="s", icode="j")
+  rg = pdb.hierarchy.residue_group(resseq="s", icode="j")
   c.append_residue_group(residue_group=rg)
-  ag = pdb.hierarchy_v2.atom_group(altloc="a", resname="r")
+  ag = pdb.hierarchy.atom_group(altloc="a", resname="r")
   rg.append_atom_group(atom_group=ag)
-  ag.append_atom(pdb.hierarchy_v2.atom().set_name("n"))
+  ag.append_atom(pdb.hierarchy.atom().set_name("n"))
   assert ag.only_atom().pdb_label_columns() == "n   a  r c   sj"
   c.append_atom_record_groups(pdb_records=records)
   assert records == [
     "ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00"]
-  rg = pdb.hierarchy_v2.residue_group(resseq="t", icode="k")
+  rg = pdb.hierarchy.residue_group(resseq="t", icode="k")
   c.append_residue_group(residue_group=rg)
-  ag =  pdb.hierarchy_v2.atom_group(altloc="b", resname="q")
+  ag =  pdb.hierarchy.atom_group(altloc="b", resname="q")
   rg.append_atom_group(atom_group=ag)
-  ag.append_atom(pdb.hierarchy_v2.atom().set_name("m"))
-  rg = pdb.hierarchy_v2.residue_group(
+  ag.append_atom(pdb.hierarchy.atom().set_name("m"))
+  rg = pdb.hierarchy.residue_group(
     resseq="u", icode="l", link_to_previous=False)
   c.append_residue_group(residue_group=rg)
-  ag = pdb.hierarchy_v2.atom_group(altloc="d", resname="p")
+  ag = pdb.hierarchy.atom_group(altloc="d", resname="p")
   rg.append_atom_group(atom_group=ag)
-  ag.append_atom(pdb.hierarchy_v2.atom().set_name("o"))
+  ag.append_atom(pdb.hierarchy.atom().set_name("o"))
   records = []
   c.append_atom_record_groups(pdb_records=records)
   assert not show_diff("\n".join(records)+"\n", """\
@@ -581,7 +581,7 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
   atoms[0].set_sigxyz((1,2,3)).set_sigocc(4).set_sigb(5)
   atoms[1].set_uij((6,7,8,3,5,4))
   siguij_2_line = ""
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     atoms[2].set_siguij((.6,.7,.8,.3,.5,.4))
     siguij_2_line = """
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000"""
@@ -598,7 +598,7 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00%s""" %
     siguij_2_line)
   atoms[0].set_uij((6,3,8,2,9,1))
   siguij_0_line = ""
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     atoms[0].set_siguij((.6,.3,.8,.2,.9,.1))
     siguij_0_line = """
 SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg"""
@@ -669,7 +669,7 @@ ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00"""
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     assert len(records) == 24
     assert not show_diff("\n".join(records), expected)
   else:
@@ -686,17 +686,17 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00"""
     atom_hetatm=False, sigatm=False, anisou=False, siguij=False)
   assert records == ["BREAK"]
   #
-  a = pdb.hierarchy_v2.atom()
+  a = pdb.hierarchy.atom()
   assert a.pdb_label_columns() == "               "
   a.set_name("n123")
   assert a.pdb_label_columns() == "n123           "
-  ag = pdb.hierarchy_v2.atom_group(altloc="a", resname="res")
+  ag = pdb.hierarchy.atom_group(altloc="a", resname="res")
   ag.append_atom(a)
   assert a.pdb_label_columns() == "n123ares       "
-  rg = pdb.hierarchy_v2.residue_group(resseq="a000", icode="i")
+  rg = pdb.hierarchy.residue_group(resseq="a000", icode="i")
   rg.append_atom_group(ag)
   assert a.pdb_label_columns() == "n123ares  a000i"
-  c = pdb.hierarchy_v2.chain(id="ke")
+  c = pdb.hierarchy.chain(id="ke")
   c.append_residue_group(rg)
   assert a.pdb_label_columns() == "n123areskea000i"
   #
@@ -710,25 +710,25 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00"""
   assert a.pdb_element_charge_columns() == "el2+"
 
 def exercise_model():
-  m = pdb.hierarchy_v2.model()
+  m = pdb.hierarchy.model()
   assert m.id == ""
-  m = pdb.hierarchy_v2.model(id="42")
+  m = pdb.hierarchy.model(id="42")
   assert m.id == "42"
   m.id = "-23"
   assert m.id == "-23"
   #
-  m = pdb.hierarchy_v2.model(id="17")
+  m = pdb.hierarchy.model(id="17")
   assert m.parent() is None
   m.pre_allocate_chains(number_of_additional_chains=2)
   assert m.chains_size() == 0
   assert len(m.chains()) == 0
-  ch_a = pdb.hierarchy_v2.chain(id="a")
+  ch_a = pdb.hierarchy.chain(id="a")
   m.append_chain(chain=ch_a)
   assert ch_a.id == "a"
   assert ch_a.parent().memory_id() == m.memory_id()
   assert m.chains_size() == 1
   assert len(m.chains()) == 1
-  ch_b = pdb.hierarchy_v2.chain(id="b")
+  ch_b = pdb.hierarchy.chain(id="b")
   assert ch_b.id == "b"
   assert ch_b.parent() is None
   m.append_chain(chain=ch_b)
@@ -738,7 +738,7 @@ def exercise_model():
   assert chains[0].memory_id() == ch_a.memory_id()
   assert chains[1].memory_id() == ch_b.memory_id()
   for i in xrange(3):
-    m.append_chain(pdb.hierarchy_v2.chain())
+    m.append_chain(pdb.hierarchy.chain())
   assert m.chains_size() == 5
   assert len(m.chains()) == 5
   for chain in m.chains():
@@ -746,9 +746,9 @@ def exercise_model():
   assert m.atoms_size() == 0
   assert m.atoms().size() == 0
   #
-  r = pdb.hierarchy_v2.root()
+  r = pdb.hierarchy.root()
   for i,mc in enumerate([
-                pdb.hierarchy_v2.model(parent=r, other=m),
+                pdb.hierarchy.model(parent=r, other=m),
                 m.detached_copy()]):
     assert mc.memory_id() != m.memory_id()
     assert m.parent() is None
@@ -760,13 +760,13 @@ def exercise_model():
     assert mc.chains_size() == 5
     assert mc.chains()[0].memory_id() != m.chains()[0].memory_id()
     assert mc.chains()[0].id == "a"
-    m.append_chain(chain=pdb.hierarchy_v2.chain(id="%d"%i))
+    m.append_chain(chain=pdb.hierarchy.chain(id="%d"%i))
     assert m.chains_size() == 6+i
     assert mc.chains_size() == 5
     assert [c.id for c in m.chains()] \
         == ["a", "b", "", "", "", "0", "1"][:i+6]
   #
-  m.insert_chain(i=-3, chain=pdb.hierarchy_v2.chain(id="3"))
+  m.insert_chain(i=-3, chain=pdb.hierarchy.chain(id="3"))
   assert [c.id for c in m.chains()] \
       == ["a", "b", "", "", "3", "", "0", "1"]
   m.remove_chain(i=-2)
@@ -783,9 +783,9 @@ def exercise_model():
     assert str(e) == "chain not in model."
   else: raise Exception_expected
   #
-  m1 = pdb.hierarchy_v2.model()
-  m2 = pdb.hierarchy_v2.model()
-  c = pdb.hierarchy_v2.chain()
+  m1 = pdb.hierarchy.model()
+  m2 = pdb.hierarchy.model()
+  c = pdb.hierarchy.chain()
   m1.append_chain(chain=c)
   try: m2.append_chain(chain=c)
   except RuntimeError, e:
@@ -793,19 +793,19 @@ def exercise_model():
   else: raise Exception_expected
 
 def exercise_root():
-  r = pdb.hierarchy_v2.root()
-  m = pdb.hierarchy_v2.model()
+  r = pdb.hierarchy.root()
+  m = pdb.hierarchy.model()
   assert m.parent() is None
-  m = pdb.hierarchy_v2.model(parent=r)
+  m = pdb.hierarchy.model(parent=r)
   assert m.parent().memory_id() == r.memory_id()
   assert m.id == ""
-  m = pdb.hierarchy_v2.model(parent=r, id="2")
+  m = pdb.hierarchy.model(parent=r, id="2")
   assert m.parent().memory_id() == r.memory_id()
   assert m.id == "2"
   del r
   assert m.parent() is None
   #
-  r = pdb.hierarchy_v2.root()
+  r = pdb.hierarchy.root()
   assert r.info.size() == 0
   r.info.append("abc")
   assert r.info.size() == 1
@@ -814,13 +814,13 @@ def exercise_root():
   r.pre_allocate_models(number_of_additional_models=2)
   assert r.models_size() == 0
   assert len(r.models()) == 0
-  m_a = pdb.hierarchy_v2.model(id="3")
+  m_a = pdb.hierarchy.model(id="3")
   r.append_model(model=m_a)
   assert m_a.id == "3"
   assert m_a.parent().memory_id() == r.memory_id()
   assert r.models_size() == 1
   assert len(r.models()) == 1
-  m_b = pdb.hierarchy_v2.model(id="5")
+  m_b = pdb.hierarchy.model(id="5")
   assert m_b.parent() is None
   r.append_model(model=m_b)
   assert r.models_size() == 2
@@ -829,7 +829,7 @@ def exercise_root():
   assert models[0].memory_id() == m_a.memory_id()
   assert models[1].memory_id() == m_b.memory_id()
   for i in xrange(3):
-    r.append_model(model=pdb.hierarchy_v2.model())
+    r.append_model(model=pdb.hierarchy.model())
   assert r.models_size() == 5
   assert len(r.models()) == 5
   for model in r.models():
@@ -844,18 +844,18 @@ def exercise_root():
   assert rc.models_size() == 5
   assert rc.models()[0].memory_id() != r.models()[0].memory_id()
   assert rc.models()[0].id == "3"
-  r.append_model(model=pdb.hierarchy_v2.model(id="7"))
+  r.append_model(model=pdb.hierarchy.model(id="7"))
   assert r.models_size() == 6
   assert rc.models_size() == 5
   assert [m.id for m in r.models()] == ["3", "5", "", "", "", "7"]
   assert [m.id for m in rc.models()] == ["3", "5", "", "", ""]
-  rc.append_model(model=pdb.hierarchy_v2.model(id="8"))
+  rc.append_model(model=pdb.hierarchy.model(id="8"))
   assert r.models_size() == 6
   assert rc.models_size() == 6
   assert [m.id for m in rc.models()] == ["3", "5", "", "", "", "8"]
   #
   r = rc.deep_copy()
-  r.insert_model(i=4, model=pdb.hierarchy_v2.model(id="M"))
+  r.insert_model(i=4, model=pdb.hierarchy.model(id="M"))
   assert [m.id for m in r.models()] \
       == ["3", "5", "", "", "M", "", "8"]
   r.remove_model(i=1)
@@ -872,9 +872,9 @@ def exercise_root():
     assert str(e) == "model not in root."
   else: raise Exception_expected
   #
-  r1 = pdb.hierarchy_v2.root()
-  r2 = pdb.hierarchy_v2.root()
-  m = pdb.hierarchy_v2.model()
+  r1 = pdb.hierarchy.root()
+  r2 = pdb.hierarchy.root()
+  m = pdb.hierarchy.model()
   r1.append_model(model=m)
   try: r2.append_model(model=m)
   except RuntimeError, e:
@@ -882,7 +882,7 @@ def exercise_root():
   else: raise Exception_expected
 
 def exercise_format_atom_record():
-  a = (pdb.hierarchy_v2.atom()
+  a = (pdb.hierarchy.atom()
     .set_name(new_name="NaMe")
     .set_serial(new_serial="B1234")
     .set_xyz(new_xyz=(1.3,2.1,3.2))
@@ -892,7 +892,7 @@ def exercise_format_atom_record():
     .set_b(new_b=4.8)
     .set_sigb(new_sigb=0.7)
     .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3)))
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     assert a.set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)) is a
   for hetero,record_name in [(False, "ATOM  "), (True, "HETATM")]:
     a.set_hetero(new_hetero=hetero)
@@ -919,7 +919,7 @@ B1234 NaMe                 0.100   0.200   0.300  0.10  0.70      \
           assert not show_diff(a.format_anisou_record(), ("""ANISOU\
 B1234 NaMe              13000  21000  32000  43000  27000  93000  \
 %s""" % segielch).rstrip())
-          if (pdb.hierarchy_v2.atom.has_siguij()):
+          if (pdb.hierarchy.atom.has_siguij()):
             assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMe               1000   2000   3000   6000   1000   9000  \
 %s""" % segielch).rstrip())
@@ -927,7 +927,7 @@ B1234 NaMe               1000   2000   3000   6000   1000   9000  \
             assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMe             -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % segielch).rstrip())
-          ag = pdb.hierarchy_v2.atom_group(altloc="x", resname="uvw")
+          ag = pdb.hierarchy.atom_group(altloc="x", resname="uvw")
           ag.append_atom(atom=a)
           s = a.format_atom_record()
           assert not show_diff(s, ("""%s\
@@ -941,7 +941,7 @@ B1234 NaMexuvw             0.100   0.200   0.300  0.10  0.70      \
           assert not show_diff(a.format_anisou_record(), ("""ANISOU\
 B1234 NaMexuvw          13000  21000  32000  43000  27000  93000  \
 %s""" % segielch).rstrip())
-          if (pdb.hierarchy_v2.atom.has_siguij()):
+          if (pdb.hierarchy.atom.has_siguij()):
             assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMexuvw           1000   2000   3000   6000   1000   9000  \
 %s""" % segielch).rstrip())
@@ -949,7 +949,7 @@ B1234 NaMexuvw           1000   2000   3000   6000   1000   9000  \
             assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMexuvw         -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % segielch).rstrip())
-          rg = pdb.hierarchy_v2.residue_group(resseq="pqrs", icode="t")
+          rg = pdb.hierarchy.residue_group(resseq="pqrs", icode="t")
           rg.append_atom_group(atom_group=ag)
           s = a.format_atom_record()
           assert not show_diff(s, ("""%s\
@@ -963,7 +963,7 @@ B1234 NaMexuvw  pqrst      0.100   0.200   0.300  0.10  0.70      \
           assert not show_diff(a.format_anisou_record(), ("""ANISOU\
 B1234 NaMexuvw  pqrst   13000  21000  32000  43000  27000  93000  \
 %s""" % segielch).rstrip())
-          if (pdb.hierarchy_v2.atom.has_siguij()):
+          if (pdb.hierarchy.atom.has_siguij()):
             assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMexuvw  pqrst    1000   2000   3000   6000   1000   9000  \
 %s""" % segielch).rstrip())
@@ -972,7 +972,7 @@ B1234 NaMexuvw  pqrst    1000   2000   3000   6000   1000   9000  \
 B1234 NaMexuvw  pqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % segielch).rstrip())
           for chain_id in ["", "g", "hi"]:
-            ch = pdb.hierarchy_v2.chain(id=chain_id)
+            ch = pdb.hierarchy.chain(id=chain_id)
             ch.append_residue_group(residue_group=rg)
             s = a.format_atom_record()
             assert not show_diff(s, ("""%s\
@@ -986,7 +986,7 @@ B1234 NaMexuvw%2spqrst      0.100   0.200   0.300  0.10  0.70      \
             assert not show_diff(a.format_anisou_record(), ("""ANISOU\
 B1234 NaMexuvw%2spqrst   13000  21000  32000  43000  27000  93000  \
 %s""" % (chain_id, segielch)).rstrip())
-            if (pdb.hierarchy_v2.atom.has_siguij()):
+            if (pdb.hierarchy.atom.has_siguij()):
               assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMexuvw%2spqrst    1000   2000   3000   6000   1000   9000  \
 %s""" % (chain_id, segielch)).rstrip())
@@ -1003,7 +1003,7 @@ def exercise_construct_hierarchy():
         level_id=None,
         prefix=""):
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-    root = pdb_inp.construct_hierarchy_v2()
+    root = pdb_inp.construct_hierarchy()
     if (expected_root_as_str is not None):
       s = root.as_str(prefix=prefix, level_id=level_id)
       if (len(expected_root_as_str) == 0):
@@ -1460,7 +1460,7 @@ histogram of residue name frequency:
     source_info=None,
     lines=flex.split_lines("""\
 BREAK
-""")).construct_hierarchy_v2()
+""")).construct_hierarchy()
   assert root.models_size() == 0
   root = pdb.input(
     source_info=None,
@@ -1469,7 +1469,7 @@ BREAK
 ATOM      1  CB  LYS   109
 BREAK
 TER
-""")).construct_hierarchy_v2()
+""")).construct_hierarchy()
   assert not root.only_residue_group().link_to_previous
   root = pdb.input(
     source_info=None,
@@ -1479,7 +1479,7 @@ ATOM      1  CB  LYS   109
 ATOM      2  CG  LYS   109
 BREAK
 TER
-""")).construct_hierarchy_v2()
+""")).construct_hierarchy()
   assert not root.only_residue_group().link_to_previous
   pdb_str = """\
 ATOM      1  CB  LYS   109
@@ -1494,7 +1494,7 @@ ATOM      8  CB  LYS   112
 """
   lines = flex.split_lines(pdb_str)
   for i_proc in [0,1]:
-    root = pdb.input(source_info=None, lines=lines).construct_hierarchy_v2()
+    root = pdb.input(source_info=None, lines=lines).construct_hierarchy()
     residue_groups = root.only_chain().residue_groups()
     assert len(residue_groups) == 4
     assert not residue_groups[0].link_to_previous
@@ -1510,7 +1510,7 @@ REMARK
 ATOM      1  CB  LYS   109
 BREAK
 ATOM      2  CG  LYS   109
-""")).construct_hierarchy_v2()
+""")).construct_hierarchy()
   except RuntimeError, e:
     assert not show_diff(str(e), "Misplaced BREAK record (input line 3).")
   else: raise Exception_expected
@@ -1524,7 +1524,7 @@ BREAK
 ATOM      3  CA  LYS   110
 BREAK
 ATOM      4  CB  LYS   110
-""")).construct_hierarchy_v2()
+""")).construct_hierarchy()
   except RuntimeError, e:
     assert not show_diff(str(e), "Misplaced BREAK record (file abc, line 6).")
   else: raise Exception_expected
@@ -1790,7 +1790,7 @@ ATOM     71  HD2 LEU B 441
 ATOM     72  HD2 LEU B 441
 ATOM     73  HD2 LEU B 441
 """))
-  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  oc = pdb_inp.construct_hierarchy().overall_counts()
   assert oc.errors() == ['### ERROR: duplicate atom labels ###']
   assert len(oc.warnings()) == 0
   oc.raise_improper_alt_conf_if_necessary()
@@ -1863,7 +1863,7 @@ number of groups of duplicate atom labels: 4
     oc = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM     68  HD1 LEU   441                                             %s
 ATOM     72  HD1 LEU   441
-""" % segid)).construct_hierarchy_v2().overall_counts()
+""" % segid)).construct_hierarchy().overall_counts()
     if (segid != ""):
       oc.raise_duplicate_atom_labels_if_necessary()
     else:
@@ -2064,7 +2064,7 @@ number of consecutive residue groups with same resid: 4
   ... 1 remaining instance not shown
 """)
   #
-  root = pdb.hierarchy_v2.root()
+  root = pdb.hierarchy.root()
   assert not show_diff(root.as_str(), """\
 ### WARNING: empty hierarchy ###
 """)
@@ -2082,7 +2082,7 @@ number of chain ids: 0
 number of alt. conf. ids: 0
 number of residue names: 0
 """)
-  model = pdb.hierarchy_v2.model()
+  model = pdb.hierarchy.model()
   root.append_model(model=model)
   assert not show_diff(root.as_str(), """\
 model id="" #chains=0
@@ -2103,7 +2103,7 @@ number of chain ids: 0
 number of alt. conf. ids: 0
 number of residue names: 0
 """)
-  chain = pdb.hierarchy_v2.chain()
+  chain = pdb.hierarchy.chain()
   model.append_chain(chain=chain)
   assert not show_diff(root.as_str(), """\
 model id="" #chains=1
@@ -2127,7 +2127,7 @@ histogram of chain id frequency:
 number of alt. conf. ids: 0
 number of residue names: 0
 """)
-  residue_group = pdb.hierarchy_v2.residue_group()
+  residue_group = pdb.hierarchy.residue_group()
   chain.append_residue_group(residue_group=residue_group)
   assert not show_diff(root.as_str(), """\
 model id="" #chains=1
@@ -2153,7 +2153,7 @@ histogram of chain id frequency:
 number of alt. conf. ids: 0
 number of residue names: 0
 """)
-  atom_group = pdb.hierarchy_v2.atom_group()
+  atom_group = pdb.hierarchy.atom_group()
   residue_group.append_atom_group(atom_group=atom_group)
   assert not show_diff(root.as_str(), """\
 model id="" #chains=1
@@ -2194,7 +2194,7 @@ ATOM         N1 AR02     2
 ATOM         N1 BR02     2
 ATOM         N2  R02     2
 """))
-  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  oc = pdb_inp.construct_hierarchy().overall_counts()
   assert len(oc.warnings()) == 0
   oc.raise_duplicate_atom_labels_if_necessary()
   try: oc.raise_improper_alt_conf_if_necessary()
@@ -2222,7 +2222,7 @@ chains with mix of proper and improper alt. conf.: 1
   else: raise Exception_expected
   #
   sio = StringIO()
-  summary = pdb.hierarchy_v2.show_summary(
+  summary = pdb.hierarchy.show_summary(
     out=sio,
     residue_groups_max_show=None,
     duplicate_atom_labels_max_show=None,
@@ -2244,7 +2244,7 @@ HETATM 1422  O2  SO4     1      31.648  32.120  28.923  0.86 36.50           O
 HETATM 1423  O3  SO4     1      33.681  31.215  27.852  0.96 31.36           O
 HETATM 1424  O4  SO4     1      32.067  29.709  28.958  1.00 44.58           O
 """)
-  assert summary.pdb_inp.atoms_v2().size() == 14
+  assert summary.pdb_inp.atoms().size() == 14
   assert summary.hierarchy.atoms().size() == 14
   oc = summary.overall_counts
   assert len(oc.consecutive_residue_groups_with_same_resid) == 0
@@ -2269,7 +2269,7 @@ ATOM         C   ALA    10
 ATOM         O   TIP    11
 ATOM         O   TIP    12
 """))
-  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  oc = pdb_inp.construct_hierarchy().overall_counts()
   assert oc.resname_classes == {
     'common_water': 8, 'common_rna_dna': 1, 'common_amino_acid': 3}
   #
@@ -2281,7 +2281,7 @@ ATOM         CA AGLY     1
 ATOM         CA AASN     2
 ATOM         CA AGLY     2
 """))
-  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  oc = pdb_inp.construct_hierarchy().overall_counts()
   assert not show_diff(oc.as_str(), """\
 total number of:
   models:     1
@@ -2329,7 +2329,7 @@ ATOM         CA AGLY     1
 ATOM         CA AASN     2
 ATOM         CA AGLY     2
 """))
-  oc = pdb_inp.construct_hierarchy_v2().overall_counts()
+  oc = pdb_inp.construct_hierarchy().overall_counts()
   try: oc \
    .raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary(
       max_show=1)
@@ -2386,7 +2386,7 @@ ATOM     16  O  BR22 B   2
 TER
 ENDMDL
 """))
-  obj = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
+  obj = pdb_inp.construct_hierarchy(residue_group_post_processing=False)
   assert [model.id for model in obj.models()] == ["   1", "   2"]
   assert [chain.id for chain in obj.chains()] == ["A", "B"] * 2
   assert [rg.resid() for rg in obj.residue_groups()] == ["   1 ", "   2 "] * 4
@@ -2427,7 +2427,7 @@ MODEL        1
 ATOM      2  N  ARES C   3I
 ENDMDL
 """))
-  obj = pdb_inp.construct_hierarchy_v2(residue_group_post_processing=False)
+  obj = pdb_inp.construct_hierarchy(residue_group_post_processing=False)
   assert obj.only_model().id == "   1"
   assert obj.only_chain().id == "C"
   assert obj.only_residue_group().resid() == "   3I"
@@ -2479,7 +2479,7 @@ ATOM   9723  O  CLEU   190      25.693   5.796  20.563  0.70  3.68           O
 
 def exercise_merge_atom_groups():
   lines = []
-  root = exercise_merge_pdb_inp.construct_hierarchy_v2(
+  root = exercise_merge_pdb_inp.construct_hierarchy(
     residue_group_post_processing=False)
   chain = root.models()[0].chains()[0]
   residue_groups = chain.residue_groups()
@@ -2542,7 +2542,7 @@ ATOM   1836  O  BLEU   190      25.418   5.939  20.669  0.30  5.91           O
 """][i_ag])
 
 def exercise_merge_residue_groups():
-  root = exercise_merge_pdb_inp.construct_hierarchy_v2(
+  root = exercise_merge_pdb_inp.construct_hierarchy(
     residue_group_post_processing=False)
   chain = root.models()[0].chains()[0]
   residue_groups = chain.residue_groups()
@@ -2610,7 +2610,7 @@ HETATM 6365  O  BHOH B2049      43.786  12.615 147.734  0.50 28.43           O
 HETATM 6366  O   HOH B2052      35.068  19.167 155.349  1.00 15.97           O
 """))
   for rgpp in [False, True]:
-    chain = pdb_inp.construct_hierarchy_v2(
+    chain = pdb_inp.construct_hierarchy(
       residue_group_post_processing=rgpp).only_chain()
     if (not rgpp):
       assert chain.residue_groups_size() == 5
@@ -2629,7 +2629,7 @@ HETATM 9365  O  CHOH B2049
 HETATM 9367  O  XHOH B2052
 """)
   pdb_inp = pdb.input(source_info=None, lines=lines)
-  chain = pdb_inp.construct_hierarchy_v2(
+  chain = pdb_inp.construct_hierarchy(
     residue_group_post_processing=False).only_chain()
   assert chain.residue_groups_size() == 6
   indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
@@ -2641,14 +2641,14 @@ HETATM 9367  O  XHOH B2052
     pdb_inp = pdb.input(
       source_info=None,
       lines=lines.select(flex.random_permutation(size=lines.size())))
-    chain = pdb_inp.construct_hierarchy_v2(
+    chain = pdb_inp.construct_hierarchy(
       residue_group_post_processing=False).only_chain()
     indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
     assert indices.size() <= 2
     indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
     assert indices.size() == 0
     del chain
-    chain = pdb_inp.construct_hierarchy_v2().only_chain()
+    chain = pdb_inp.construct_hierarchy().only_chain()
     indices = chain.merge_disconnected_residue_groups_with_pure_altloc()
     assert indices.size() == 0
   #
@@ -2671,7 +2671,7 @@ HETATM 2410  N2  BEN     1      -7.824  32.785  32.299  1.00 24.58           N
 HETATM 2415  O   HOH     1       4.020  20.521  19.336  1.00 38.74           O
 HETATM 2418  O   WAT     2      14.154  16.852  21.753  1.00 49.41           O
 """))
-  chain = pdb_inp.construct_hierarchy_v2(
+  chain = pdb_inp.construct_hierarchy(
     residue_group_post_processing=False).only_chain()
   assert chain.residue_groups_size() == 4
   assert [residue_group.resid() for residue_group in chain.residue_groups()] \
@@ -2699,7 +2699,7 @@ HETATM 9403  C2  BEN     1
 HETATM 9404  C3  BEN     1
 HETATM 9415  O   HOH     1
 """))
-  chain = pdb_inp.construct_hierarchy_v2(
+  chain = pdb_inp.construct_hierarchy(
     residue_group_post_processing=False).only_chain()
   assert chain.residue_groups_size() == 8
   for residue_group in chain.residue_groups():
@@ -2713,7 +2713,7 @@ HETATM 6363  O  AHOH B   1
 HETATM 6364  O   HOH B   2
 HETATM 6365  O   HOH B   1
 """))
-  chain = pdb_inp.construct_hierarchy_v2(
+  chain = pdb_inp.construct_hierarchy(
     residue_group_post_processing=False).only_chain()
   assert chain.residue_groups_size() == 3
   assert chain.residue_groups()[2].only_atom_group().altloc == " "
@@ -2730,7 +2730,7 @@ ATOM         N1
 ATOM         N2
 """))
   for rgpp in [False, True]:
-    residue_group = pdb_inp.construct_hierarchy_v2(
+    residue_group = pdb_inp.construct_hierarchy(
       residue_group_post_processing=rgpp).only_residue_group()
     for i_proc in [0,1]:
       assert residue_group.edit_blank_altloc() == (1,0)
@@ -2741,7 +2741,7 @@ ATOM         N1 A
 ATOM         N2 B
 """))
   for rgpp in [False, True]:
-    residue_group = pdb_inp.construct_hierarchy_v2(
+    residue_group = pdb_inp.construct_hierarchy(
       residue_group_post_processing=rgpp).only_residue_group()
     rgc = residue_group.detached_copy()
     assert rgc.move_blank_altloc_atom_groups_to_front() == 0
@@ -2754,7 +2754,7 @@ ATOM         N1
 ATOM         N2 B
 """))
   for rgpp in [False, True]:
-    residue_group = pdb_inp.construct_hierarchy_v2(
+    residue_group = pdb_inp.construct_hierarchy(
       residue_group_post_processing=rgpp).only_residue_group()
     if (not rgpp):
       atom_groups = residue_group.atom_groups()
@@ -2775,7 +2775,7 @@ ATOM         N2 B
 ATOM         N1
 ATOM         N1 B
 """))
-  residue_group = pdb_inp.construct_hierarchy_v2(
+  residue_group = pdb_inp.construct_hierarchy(
     residue_group_post_processing=False).only_residue_group()
   atom_groups = residue_group.atom_groups()
   assert len(atom_groups) == 2
@@ -2795,7 +2795,7 @@ ATOM         N1 B
 ATOM         N1
 """))
   for edit_chain in [False, True]:
-    chain = pdb_inp.construct_hierarchy_v2(
+    chain = pdb_inp.construct_hierarchy(
       residue_group_post_processing=False).only_chain()
     residue_group = chain.only_residue_group()
     atom_groups = residue_group.atom_groups()
@@ -2827,7 +2827,7 @@ ATOM         N3
 """)
   for i_trial in xrange(n_trials):
     pdb_inp = pdb.input(source_info=None, lines=lines)
-    residue_group = pdb_inp.construct_hierarchy_v2(
+    residue_group = pdb_inp.construct_hierarchy(
       residue_group_post_processing=False).only_residue_group()
     atom_groups = residue_group.atom_groups()
     assert len(atom_groups) == 2
@@ -2847,27 +2847,27 @@ ATOM         N3
       lines = lines.select(flex.random_permutation(size=lines.size()))
 
 def exercise_find_pure_altloc_ranges():
-  c = pdb.hierarchy_v2.chain()
+  c = pdb.hierarchy.chain()
   assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 ATOM            B        1
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM            A        1
 ATOM            B        2
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert list(c.find_pure_altloc_ranges()) == [(0,2)]
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -2875,7 +2875,7 @@ ATOM            A        1
 BREAK
 ATOM            B        2
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -2883,7 +2883,7 @@ ATOM            A        1
 ATOM            B        1
 ATOM                     2
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert c.find_pure_altloc_ranges().size() == 0
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -2909,7 +2909,7 @@ ATOM                    14
 ATOM            P       15
 ATOM                    15
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert list(c.find_pure_altloc_ranges()) \
       == [(0,3),(4,6),(8,10),(10,12),(13,15)]
   #
@@ -2924,7 +2924,7 @@ HETATM10994  O  AHOH    39     -68.867 -23.643 -49.077  0.50 12.37           O
 HETATM10995  O  BHOH    39     -69.097 -21.979 -50.740  0.50 21.64           O
 HETATM10996  O   HOH    40     -65.221 -13.774 -33.183  1.00 36.14           O
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert c.find_pure_altloc_ranges().size() == 0
   #
   caa = "common_amino_acid"
@@ -2936,7 +2936,7 @@ ATOM            BTHR     2
 ATOM            AHOH     3
 ATOM            BHOH     3
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert list(c.find_pure_altloc_ranges()) == [(0,3)]
   assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
     == [(0,2)]
@@ -2949,7 +2949,7 @@ ATOM            BGLY     1
 ATOM            ATYR     2
 ATOM            BTHR     2
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert list(c.find_pure_altloc_ranges()) == [(0,3)]
   assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
     == [(1,3)]
@@ -2962,7 +2962,7 @@ ATOM            BHOH     3
 ATOM            ATYR     2
 ATOM            BTHR     2
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert list(c.find_pure_altloc_ranges()) == [(0,3)]
   assert c.find_pure_altloc_ranges(common_residue_name_class_only=caa).size() \
     == 0
@@ -2977,7 +2977,7 @@ ATOM            BTHR     2
 ATOM            ASER     4
 ATOM            BSER     4
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert list(c.find_pure_altloc_ranges()) == [(0,4)]
   assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
     == [(2,4)]
@@ -2992,7 +2992,7 @@ ATOM            BHOH     3
 ATOM            ATYR     2
 ATOM            BTHR     2
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert list(c.find_pure_altloc_ranges()) == [(0,4)]
   assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
     == [(0,2)]
@@ -3012,7 +3012,7 @@ ATOM            BTHR     7
 ATOM            AGLY     8
 ATOM            BGLY     8
 """))
-  c = pdb_inp.construct_hierarchy_v2().only_chain()
+  c = pdb_inp.construct_hierarchy().only_chain()
   assert list(c.find_pure_altloc_ranges()) == [(1,8)]
   assert list(c.find_pure_altloc_ranges(common_residue_name_class_only=caa)) \
       == [(1,4), (6,8)]
@@ -3137,7 +3137,7 @@ def exercise_occupancy_groups_simple():
   def grouped_serials(
         pdb_inp,
         common_residue_name_class_only="common_amino_acid"):
-    hierarchy = pdb_inp.construct_hierarchy_v2()
+    hierarchy = pdb_inp.construct_hierarchy()
     atoms = hierarchy.atoms()
     atoms.reset_tmp_for_occupancy_groups_simple()
     chain = hierarchy.only_chain()
@@ -3272,7 +3272,7 @@ ATOM      2  O  BHOH A   1                                                   O
 ATOM      3  O  AHOH B   1                                                   O
 ATOM      4  O  BHOH B   1                                                   O
 """))
-  hierarchy = pdb_inp.construct_hierarchy_v2()
+  hierarchy = pdb_inp.construct_hierarchy()
   list_of_groups = hierarchy.occupancy_groups_simple(
     common_residue_name_class_only="common_amino_acid")
   assert list_of_groups == [[[0], [1]], [[2], [3]]]
@@ -3295,7 +3295,7 @@ def conformers_as_str(conformers):
 def exercise_conformers():
   def check(pdb_string, expected):
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-    chain = pdb_inp.construct_hierarchy_v2().only_chain()
+    chain = pdb_inp.construct_hierarchy().only_chain()
     conformers = chain.conformers()
     s = conformers_as_str(conformers)
     if (len(expected) == 0):
@@ -3808,7 +3808,7 @@ ATOM      3  N   GLY A   2                                                    X
 ATOM      4  CA  GLY A   2
 ENDMDL
 """))
-  models = pdb_inp.construct_hierarchy_v2().models()
+  models = pdb_inp.construct_hierarchy().models()
   assert models[0].is_identical_topology(models[1])
   assert models[1].is_identical_topology(models[0])
   for other in models[2:]:
@@ -3829,7 +3829,7 @@ ATOM      5 1CB AGLN A   3      32.979  10.223  18.469  1.00 37.80          X
 HETATM    6 CA  AION B   1      32.360  11.092  17.308  0.92 35.96          CA2+
 HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
 """))
-  atoms = pdb_inp.atoms_v2()
+  atoms = pdb_inp.atoms()
   assert list(atoms.extract_serial()) == [
     "    1", "    2", "    3", "    4", "    5", "    6", "    7"]
   assert list(atoms.extract_name()) == [
@@ -3881,7 +3881,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1)]
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     siguij = atoms.extract_siguij()
     assert approx_equal(siguij, expected_siguij)
   assert list(atoms.extract_hetero()) == [5,6]
@@ -3891,7 +3891,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   atoms.reset_i_seq()
   assert list(atoms.extract_i_seq()) == range(7)
   assert list(
-    pdb.hierarchy_v2.af_shared_atom([atoms[3], atoms[6]]).extract_i_seq()) == \
+    pdb.hierarchy.af_shared_atom([atoms[3], atoms[6]]).extract_i_seq()) == \
       [3, 6]
   #
   assert atoms.set_xyz(new_xyz=xyz+(1,2,3)) is atoms
@@ -3926,7 +3926,7 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     [5,5.05,5,5,5,5,5])
   assert atoms.set_uij(new_uij=flex.sym_mat3_double(expected_siguij)) is atoms
   assert approx_equal(atoms.extract_uij(), expected_siguij)
-  if (pdb.hierarchy_v2.atom.has_siguij()):
+  if (pdb.hierarchy.atom.has_siguij()):
     assert atoms.set_siguij(new_siguij=uij) is atoms
     assert approx_equal(atoms.extract_siguij(), [
       (-1,-1,-1,-1,-1,-1),
@@ -3937,16 +3937,16 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
       (-1,-1,-1,-1,-1,-1),
       (-1,-1,-1,-1,-1,-1)])
   #
-  h = pdb_inp.construct_hierarchy_v2()
+  h = pdb_inp.construct_hierarchy()
   for i in xrange(2):
     s = h.as_pdb_string()
     d = hashlib_md5(s).hexdigest()
-    if (pdb.hierarchy_v2.atom.has_siguij()):
+    if (pdb.hierarchy.atom.has_siguij()):
       assert d == "c4089359af431bb2962d6a8e457dd86f"
     else:
       assert d == "a1dd6605ed08b56862b9d7ae6b9a547b"
     h = pdb.input(
-      source_info=None, lines=flex.split_lines(s)).construct_hierarchy_v2()
+      source_info=None, lines=flex.split_lines(s)).construct_hierarchy()
 
 def exercise_atoms_interleaved_conf():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -3961,7 +3961,7 @@ ATOM      9  C  BTYR A   1I
 ATOM      7  O  CPHE A   1I
 ATOM     10  O  BTYR A   1I
 """))
-  hierarchy = pdb_inp.construct_hierarchy_v2()
+  hierarchy = pdb_inp.construct_hierarchy()
   rs = [atom.format_atom_record(replace_floats_with="")
     for atom in hierarchy.only_residue_group().atoms_interleaved_conf()]
   assert not show_diff("\n".join([r[:-8] for r in rs]), """\
@@ -4031,7 +4031,7 @@ ATOM      9  C  BTRP A   1I
 ATOM      7  O  CPHE A   1I
 ATOM     10  O  BTRP A   1I
 """))
-  hierarchy = pdb_inp.construct_hierarchy_v2()
+  hierarchy = pdb_inp.construct_hierarchy()
   rs = [atom.format_atom_record(replace_floats_with="")
     for atom in hierarchy.only_residue_group().atoms_interleaved_conf()]
   assert not show_diff("\n".join([r[:-8] for r in rs]), """\
@@ -4095,7 +4095,7 @@ HETATM  145  C21 DA7  3014      18.627   3.558  25.202  0.50 29.50           C
 ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
 """
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
-  hierarchy = pdb_inp.construct_hierarchy_v2()
+  hierarchy = pdb_inp.construct_hierarchy()
   assert not show_diff(hierarchy.as_pdb_string(), pdb_string+"TER\n")
   #
   if (pdb_file_names is None):
@@ -4105,11 +4105,11 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
     if (not comprehensive and random.random() > 0.1):
       continue
     pdb_inp_1 = pdb.input(file_name=file_name)
-    hierarchy_1 = pdb_inp_1.construct_hierarchy_v2()
+    hierarchy_1 = pdb_inp_1.construct_hierarchy()
     pdb_str_1 = hierarchy_1.as_pdb_string(append_end=True)
     pdb_inp_2 = pdb.input(
       source_info=None, lines=flex.split_lines(pdb_str_1))
-    hierarchy_2 = pdb_inp_2.construct_hierarchy_v2()
+    hierarchy_2 = pdb_inp_2.construct_hierarchy()
     pdb_str_2 = hierarchy_2.as_pdb_string(append_end=False)
     assert not show_diff(pdb_str_1, pdb_str_2+"END\n")
 
@@ -4127,7 +4127,7 @@ MODEL        2
 %s
 ENDMDL
 """ % (atoms_x, atoms_x.replace("X","Y"))))
-  hierarchy = pdb_inp.construct_hierarchy_v2()
+  hierarchy = pdb_inp.construct_hierarchy()
   models = hierarchy.models()
   assert [md.chains_size() for md in models] == [2, 2]
   models[0].transfer_chains_from_other(other=models[1])
@@ -4152,9 +4152,9 @@ TER
   for suffixes in [Auto, "FG"]:
     roots = [
       pdb.input(source_info=None, lines=flex.split_lines(lines))
-        .construct_hierarchy_v2()
+        .construct_hierarchy()
           for lines in [atoms_x, atoms_x.replace("X","Y")]]
-    joined = pdb.hierarchy_v2.join_roots(
+    joined = pdb.hierarchy.join_roots(
       roots=roots, chain_id_suffixes=suffixes)
     if (suffixes is Auto): f,g = "1", "2"
     else:                  f,g = "F", "G"
@@ -4174,7 +4174,7 @@ ATOM      4  Y2     B%s
 TER
 """ % (f,f,f,f,g,g,g,g))
   #
-  roots = [pdb_inp.construct_hierarchy_v2() for pdb_inp in [
+  roots = [pdb_inp.construct_hierarchy() for pdb_inp in [
     pdb.input(source_info=None, lines=flex.split_lines("""\
 MODEL        1
 %s
@@ -4194,7 +4194,7 @@ MODEL        3
 %s
 ENDMDL
 """ % (atoms_x.replace("X","P"), atoms_x.replace("X","Q"))))]]
-  joined = pdb.hierarchy_v2.join_roots(roots=roots)
+  joined = pdb.hierarchy.join_roots(roots=roots)
   trailing = "           0.000   0.000   0.000  0.00  0.00"
   assert not show_diff(joined.as_pdb_string().replace(trailing, ""), """\
 MODEL        1
@@ -4248,11 +4248,11 @@ def get_phenix_regression_pdb_file_names():
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
-  print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
-    pdb.hierarchy_v2.atom.sizeof_data()
-  offsets = pdb.hierarchy_v2.atom.data_offsets()
+  print "iotbx.pdb.hierarchy.atom.sizeof_data():", \
+    pdb.hierarchy.atom.sizeof_data()
+  offsets = pdb.hierarchy.atom.data_offsets()
   if (comprehensive):
-    print "iotbx.pdb.hierarchy_v2.atom.data_offsets():"
+    print "iotbx.pdb.hierarchy.atom.data_offsets():"
     prev = 0
     for key,value in sorted(offsets.items()):
       print "  %+3d %3d %s" % (key-prev, key, value)

@@ -1,8 +1,8 @@
-#include <iotbx/pdb/hierarchy_v2.h>
+#include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/common_residue_names.h>
 #include <boost/scoped_array.hpp>
 
-namespace iotbx { namespace pdb { namespace hierarchy_v2 {
+namespace iotbx { namespace pdb { namespace hierarchy {
 
 namespace detail {
 
@@ -36,7 +36,7 @@ namespace detail {
   unsigned
   find_duplicate_atom_labels(
     af::shared<af::shared<atom> >& duplicate_atom_labels,
-    hierarchy_v2::model const& model,
+    hierarchy::model const& model,
     unsigned model_atoms_size,
     const small_str<19>* model_atom_labels)
   {
@@ -94,7 +94,7 @@ namespace detail {
 } // namespace detail
 
   overall_counts::overall_counts(
-    hierarchy_v2::root const& root_)
+    hierarchy::root const& root_)
   :
     root(root_),
     n_empty_models(0),
@@ -119,7 +119,7 @@ namespace detail {
     n_chains_with_mix_of_proper_and_improper_alt_conf(0)
   {
     for(unsigned i_md=0;i_md<n_models;i_md++) {
-      hierarchy_v2::model const& model = root.models()[i_md];
+      hierarchy::model const& model = root.models()[i_md];
       if (model.chains_size() == 0) n_empty_models++;
       model_ids[model.data->id]++;
       std::map<std::string, unsigned> model_chain_ids;
@@ -130,7 +130,7 @@ namespace detail {
       unsigned n_ch = model.chains_size();
       n_chains += n_ch;
       for(unsigned i_ch=0;i_ch<n_ch;i_ch++) {
-        hierarchy_v2::chain const& chain = model.chains()[i_ch];
+        hierarchy::chain const& chain = model.chains()[i_ch];
         if (chain.residue_groups_size() == 0) n_empty_chains += 1;
         model_chain_ids[chain.data->id]++;
         chain_ids[chain.data->id]++;
@@ -170,7 +170,7 @@ namespace detail {
             altloc_resnames[altloc].push_back(ag.data->resname);
             unsigned n_ats = ag.atoms_size();
             for(unsigned i_at=0;i_at<n_ats;i_at++) {
-              hierarchy_v2::atom const& atom = ag.atoms()[i_at];
+              hierarchy::atom const& atom = ag.atoms()[i_at];
               if (atom.uij_is_defined()) n_anisou++;
               model_atom_labels[i_model_atom++] =
                 atom.pdb_label_columns_segid_small_str();
@@ -282,4 +282,4 @@ namespace detail {
     }
   }
 
-}}} // namespace iotbx::pdb::hierarchy_v2
+}}} // namespace iotbx::pdb::hierarchy
