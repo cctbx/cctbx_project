@@ -709,6 +709,7 @@ namespace {
       IOTBX_LOC_SA(n_residue_groups)
       IOTBX_LOC_SA(n_explicit_chain_breaks)
       IOTBX_LOC_SA(n_atoms)
+      IOTBX_LOC_SA(n_anisou)
       IOTBX_LOC_SAM(model_ids)
       IOTBX_LOC_SAM(chain_ids)
       IOTBX_LOC_SAM(alt_conf_ids)

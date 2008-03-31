@@ -1068,6 +1068,7 @@ total number of:
   alt. conf.: 0
   residues:   4
   atoms:      6
+  anisou:     2
 number of atom element+charge types: 4
 histogram of atom element+charge frequency:
   "    " 2
@@ -1211,6 +1212,7 @@ ATOM         N3  R03
     alt. conf.:  3
     residues:    3
     atoms:      15
+    anisou:      0
   number of atom element+charge types: 1
   histogram of atom element+charge frequency:
     "    " 15
@@ -1324,6 +1326,7 @@ total number of:
   alt. conf.:  4
   residues:    3
   atoms:      15
+  anisou:      0
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
   "    " 15
@@ -1423,6 +1426,7 @@ total number of:
   alt. conf.:  3
   residues:    1 (1 with mixed residue names)
   atoms:      29
+  anisou:      0
 number of atom element+charge types: 4
 histogram of atom element+charge frequency:
   " H  " 12
@@ -1552,6 +1556,7 @@ ATOM      4  CB  LYS   110
 :=  alt. conf.: 0
 :=  residues:   4
 :=  atoms:      8
+:=  anisou:     0
 :=number of atom element+charge types: 1
 :=histogram of atom element+charge frequency:
 :=  "    " 8
@@ -1622,6 +1627,7 @@ total number of:
   alt. conf.: 0
   residues:   0
   atoms:      0
+  anisou:     0
 number of atom element+charge types: 0
 residue name classes: None
 number of chain ids: 0
@@ -1702,6 +1708,7 @@ total number of:
   residues:   10
   ### ERROR: duplicate atom labels ###
   atoms:      10 (2 with duplicate labels)
+  anisou:      0
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
   "    " 10
@@ -1742,6 +1749,7 @@ total number of:
   residues:   1
   ### ERROR: duplicate atom labels ###
   atoms:      3 (2 with duplicate labels)
+  anisou:     0
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
   "    " 3
@@ -1827,6 +1835,7 @@ total number of:
   residues:   1
   ### ERROR: duplicate atom labels ###
   atoms:      8 (8 with duplicate labels)
+  anisou:     0
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
   "    " 8
@@ -1900,6 +1909,7 @@ total number of:
   alt. conf.:  3
   residues:    2
   atoms:      15
+  anisou:      0
 number of atom element+charge types: 4
 histogram of atom element+charge frequency:
   " C  " 7
@@ -1971,6 +1981,7 @@ total number of:
   alt. conf.:  2
   residues:    3
   atoms:      13
+  anisou:      0
 number of atom element+charge types: 2
 histogram of atom element+charge frequency:
   " O  " 7
@@ -2022,6 +2033,7 @@ total number of:
   alt. conf.: 0
   residues:   5
   atoms:      5
+  anisou:     0
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
   "    " 5
@@ -2063,6 +2075,7 @@ total number of:
   alt. conf.: 0
   residues:   0
   atoms:      0
+  anisou:     0
 number of atom element+charge types: 0
 residue name classes: None
 number of chain ids: 0
@@ -2083,6 +2096,7 @@ total number of:
   alt. conf.: 0
   residues:   0
   atoms:      0
+  anisou:     0
 number of atom element+charge types: 0
 residue name classes: None
 number of chain ids: 0
@@ -2104,6 +2118,7 @@ total number of:
   alt. conf.: 0
   residues:   0
   atoms:      0
+  anisou:     0
 number of atom element+charge types: 0
 residue name classes: None
 number of chain ids: 1
@@ -2127,6 +2142,7 @@ total number of:
   alt. conf.: 0
   residues:   1
   atoms:      0
+  anisou:     0
   ### WARNING: empty residue_group ###
   empty residue_groups: 1
 number of atom element+charge types: 0
@@ -2154,6 +2170,7 @@ total number of:
   alt. conf.: 0
   residues:   1
   atoms:      0
+  anisou:     0
   ### WARNING: empty atom_group ###
   empty atom_groups: 1
 number of atom element+charge types: 0
@@ -2231,7 +2248,7 @@ HETATM 1424  O4  SO4     1      32.067  29.709  28.958  1.00 44.58           O
   assert summary.hierarchy.atoms().size() == 14
   oc = summary.overall_counts
   assert len(oc.consecutive_residue_groups_with_same_resid) == 0
-  assert len(sio.getvalue().splitlines()) == 26
+  assert len(sio.getvalue().splitlines()) == 27
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM         CA  ASN     1
@@ -2272,6 +2289,7 @@ total number of:
   alt. conf.: 1
   residues:   2 (2 with mixed residue names)
   atoms:      6
+  anisou:     0
 number of atom element+charge types: 1
 histogram of atom element+charge frequency:
   "    " 6

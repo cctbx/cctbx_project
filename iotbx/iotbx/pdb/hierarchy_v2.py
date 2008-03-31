@@ -98,6 +98,7 @@ class overall_counts(object):
     if (self.n_duplicate_atom_labels != 0):
       print >> out, "(%d with duplicate labels)" %self.n_duplicate_atom_labels,
     print >> out
+    print >> out, prefix+"  anisou:    ", fmt % self.n_anisou
     if (self.n_empty_residue_groups != 0):
       add_warn("  ### WARNING: empty residue_group ###")
       print >> out, prefix+"  empty residue_groups:", \
