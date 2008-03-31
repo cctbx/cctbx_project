@@ -161,6 +161,27 @@ class manager(object):
     self.filter_solvent()
     self.show(message = "Final:")
     self.move_solvent_to_the_end_of_atom_list()
+    self.convert_water_adp()
+
+  def convert_water_adp(self):
+    sol_sel = self.model.solvent_selection().iselection()
+    if(self.params.new_solvent == "isotropic"):
+      self.model.xray_structure.convert_to_isotropic(selection = sol_sel)
+    elif(self.params.new_solvent == "anisotropic"):
+      selection_aniso = self.model.solvent_selection().deep_copy()
+      selection_iso = self.model.solvent_selection().deep_copy()
+      selection_aniso.set_selected(self.model.xray_structure.hd_selection(),
+        False)
+      #
+      scatterers = self.model.xray_structure.scatterers()
+      occ = scatterers.extract_occupancies()
+      occ_sel = occ < 0.5
+      selection_aniso.set_selected(occ_sel, False)
+      selection_iso.set_selected(selection_aniso, False)
+      selection_iso.set_selected(self.model.xray_structure.hd_selection(), True)
+      #
+      self.model.xray_structure.convert_to_anisotropic(selection = selection_aniso)
+      self.model.xray_structure.convert_to_isotropic(selection = selection_iso)
 
   def move_solvent_to_the_end_of_atom_list(self):
     solsel = flex.bool(self.model.solvent_selection().count(False), False)
@@ -377,17 +398,25 @@ class manager(object):
         self.fmodel.r_work(), self.fmodel.r_free())
       if(self.params.new_solvent == "anisotropic"):
         selection_aniso = self.model.solvent_selection().deep_copy()
-        selection_iso = flex.bool(selection_aniso.size(), False)
+        selection_iso = self.model.solvent_selection().deep_copy()
         selection_aniso.set_selected(self.model.xray_structure.hd_selection(),
           False)
-        self.model.set_refine_individual_adp(selection_aniso = selection_aniso)
-      else:
-        selection_iso = self.model.solvent_selection().deep_copy()
-        selection_aniso = flex.bool(selection_iso.size(), False)
+        #
+        scatterers = self.model.xray_structure.scatterers()
+        occ = scatterers.extract_occupancies()
+        occ_sel = occ < 0.5
+        selection_aniso.set_selected(occ_sel, False)
+        selection_iso.set_selected(selection_aniso, False)
         selection_iso.set_selected(self.model.xray_structure.hd_selection(),
           False)
-      self.model.set_refine_individual_adp(selection_iso   = selection_iso,
-                                           selection_aniso = selection_aniso)
+        #
+        self.model.set_refine_individual_adp(selection_aniso = selection_aniso,
+                                             selection_iso   = selection_iso)
+      else:
+        selection_iso = self.model.solvent_selection().deep_copy()
+        selection_iso.set_selected(self.model.xray_structure.hd_selection(),
+          False)
+        self.model.set_refine_individual_adp(selection_iso = selection_iso)
       lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
           max_iterations = 25)
       minimized = minimization.lbfgs(

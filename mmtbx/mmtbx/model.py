@@ -605,7 +605,10 @@ class manager(object):
     if(refine_adp == "isotropic"):
       solvent_xray_structure.convert_to_isotropic()
     elif(refine_adp == "anisotropic"):
-      solvent_xray_structure.convert_to_anisotropic()
+      occ = solvent_xray_structure.scatterers().extract_occupancies()
+      occ_sel_iso = (occ < 0.5).iselection()
+      solvent_xray_structure.convert_to_anisotropic(selection = ~occ_sel_iso)
+      solvent_xray_structure.convert_to_isotropic(selection = occ_sel_iso)
     else: raise RuntimeError
     ms = self.xray_structure.scatterers().size() #
     self.xray_structure = \
@@ -722,7 +725,7 @@ class manager(object):
     time_model_show += timer.elapsed()
     return result
 
-  def energies_adp(self, iso_restraints, compute_gradients):
+  def energies_adp(self, iso_restraints, compute_gradients, use_hd):
     assert self.refinement_flags is not None
     n_aniso = 0
     if(self.refinement_flags.adp_individual_aniso is not None):
@@ -732,6 +735,7 @@ class manager(object):
         xray_structure    = self.xray_structure,
         parameters        = iso_restraints,
         use_u_local_only  = iso_restraints.use_u_local_only,
+        use_hd            = use_hd,
         compute_gradients = compute_gradients)
       target = energies_adp_iso.target
     else:

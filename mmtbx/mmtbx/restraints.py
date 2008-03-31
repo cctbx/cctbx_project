@@ -67,6 +67,7 @@ class manager(object):
         xray_structure,
         parameters,
         use_u_local_only,
+        use_hd,
         wilson_b=None,
         compute_gradients=False,
         tan_b_iso_max=None,
@@ -86,6 +87,7 @@ class manager(object):
         xray_structure=xray_structure,
         parameters=parameters,
         wilson_b=wilson_b,
+        use_hd = use_hd,
         use_u_local_only=use_u_local_only,
         compute_gradients=compute_gradients,
         gradients=result.gradients)

@@ -141,6 +141,7 @@ class determine_data_and_flags(object):
                      working_point_group = None,
                      symmetry_safety_check = None,
                      remark_r_free_flags_md5_hexdigest = None,
+                     extract_r_free_flags = True,
                      log = None):
     adopt_init_args(self, locals())
     self.intensity_flag = False
@@ -152,12 +153,14 @@ class determine_data_and_flags(object):
       print_statistics.make_header(data_description, out = log)
     self.raw_data = self.extract_data()
     data_info = self.raw_data.info()
-    self.raw_flags = self.extract_flags(data = self.raw_data)
-    flags_info = self.raw_flags.info()
+    if(extract_r_free_flags):
+      self.raw_flags = self.extract_flags(data = self.raw_data)
+      flags_info = self.raw_flags.info()
     self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
-    self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
-      self.flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags = self.raw_flags)
-    self.r_free_flags.set_info(flags_info)
+    if(extract_r_free_flags):
+      self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
+        self.flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags = self.raw_flags)
+      self.r_free_flags.set_info(flags_info)
     self.f_obs.set_info(data_info)
 
   def extract_data(self):

@@ -143,8 +143,11 @@ class lbfgs(object):
     if(self.refine_adp and self.restraints_manager is not None and
        self.restraints_manager.geometry is not None
        and self.weights.w > 0.0 and self.iso_restraints is not None):
+      use_hd = False
+      if(self.fmodels.fmodel_n is not None): use_hd = True
       energies_adp = self.model.energies_adp(
         iso_restraints    = self.iso_restraints,
+        use_hd            = use_hd,
         compute_gradients = compute_gradients)
       self.f += energies_adp.target * self.weights.w
       if(compute_gradients):
@@ -185,7 +188,8 @@ class lbfgs(object):
       xray_structure = xray_structure,
       update_f_calc  = True)
     if(self.h_params is not None and self.refine_xyz and self.hd_flag and
-       self.h_params.refine_sites != "individual"):
+       self.h_params.refine_sites != "individual" and
+       self.fmodels.fmodel_neutron() is None):
       self.model.idealize_h(xh_bond_distance_deviation_limit =
         self.h_params.xh_bond_distance_deviation_limit)
       self.fmodels.update_xray_structure(
@@ -230,7 +234,11 @@ class monitor(object):
       er = self.model.restraints_manager_energies_sites(
         compute_gradients = False).target
     elif(self.refine_adp and self.weights.w > 0):
-      er = self.model.energies_adp(iso_restraints = self.iso_restraints,
+      use_hd = False
+      if(self.fmodels.fmodel_n is not None): use_hd = True
+      er = self.model.energies_adp(
+        iso_restraints = self.iso_restraints,
+        use_hd = use_hd,
         compute_gradients = False).target
     elif(self.refine_occ):
       er = 0
