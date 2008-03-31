@@ -1,5 +1,6 @@
 #include <iotbx/pdb/hierarchy_atoms.h>
 #include <iotbx/pdb/hybrid_36_c.h>
+#include <memory>
 
 namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
 
@@ -142,27 +143,59 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
     }
   }
 
-  void
+  atom_tmp_sentinel::atom_tmp_sentinel(
+    af::const_ref<atom> const& atoms)
+  :
+    atoms_(atoms.begin(), atoms.end()) // copy
+  {
+    typedef std::vector<atom>::iterator it;
+    it i_end = atoms_.end();
+    for(it i=atoms_.begin();i!=i_end;i++) {
+      atom_data* d = i->data.get();
+      if (d->have_sentinel) {
+        throw std::runtime_error(
+          "Another associated atom_tmp_sentinel instance still exists.");
+      }
+      d->have_sentinel = true;
+    }
+  }
+
+  atom_tmp_sentinel::~atom_tmp_sentinel()
+  {
+    typedef std::vector<atom>::iterator it;
+    it i_end = atoms_.end();
+    for(it i=atoms_.begin();i!=i_end;i++) {
+      atom_data* d = i->data.get();
+      d->tmp = 0;
+      d->have_sentinel = false;
+    }
+  }
+
+  std::auto_ptr<atom_tmp_sentinel>
   reset_tmp(
     af::const_ref<atom> const& atoms,
     int first_value,
     int increment)
   {
+    std::auto_ptr<atom_tmp_sentinel> result(new atom_tmp_sentinel(atoms));
     int value = first_value;
     for(const atom* a=atoms.begin();a!=atoms.end();a++) {
       a->data->tmp = value;
       value += increment;
     }
+    return result;
   }
 
-  void
+  std::auto_ptr<atom_tmp_sentinel>
   reset_tmp_for_occupancy_groups_simple(
     af::const_ref<atom> const& atoms)
   {
+    std::auto_ptr<atom_tmp_sentinel> result(new atom_tmp_sentinel(atoms));
     int value = 0;
     for(const atom* a=atoms.begin();a!=atoms.end();a++,value++) {
       a->data->tmp = (a->element_is_hydrogen() ? -1 : value);
     }
+    return result;
   }
 
 }}}} // namespace iotbx::pdb::hierarchy::atoms

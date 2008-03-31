@@ -79,6 +79,7 @@ namespace {
 #endif
       IOTBX_LOC(i_seq)
       IOTBX_LOC(tmp)
+      IOTBX_LOC(have_sentinel)
       IOTBX_LOC(hetero)
       IOTBX_LOC(serial)
       IOTBX_LOC(name)

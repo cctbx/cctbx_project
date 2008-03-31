@@ -111,13 +111,25 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
   reset_i_seq(
     af::const_ref<atom> const& atoms);
 
-  void
+  class atom_tmp_sentinel : boost::noncopyable
+  {
+    protected:
+      std::vector<atom> atoms_;
+
+    public:
+      atom_tmp_sentinel(
+        af::const_ref<atom> const& atoms);
+
+      ~atom_tmp_sentinel();
+  };
+
+  std::auto_ptr<atom_tmp_sentinel>
   reset_tmp(
     af::const_ref<atom> const& atoms,
     int first_value=0,
     int increment=1);
 
-  void
+  std::auto_ptr<atom_tmp_sentinel>
   reset_tmp_for_occupancy_groups_simple(
     af::const_ref<atom> const& atoms);
 
