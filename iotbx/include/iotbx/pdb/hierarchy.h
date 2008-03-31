@@ -239,6 +239,7 @@ namespace hierarchy {
 #endif
       unsigned i_seq;
       int tmp;
+      bool have_sentinel;
       bool hetero;
       str5 serial;
       str4 name;
@@ -269,7 +270,7 @@ namespace hierarchy {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         siguij(siguij_),
 #endif
-        i_seq(0), tmp(0),
+        i_seq(0), tmp(0), have_sentinel(false),
         hetero(hetero_), serial(serial_), name(name_),
         segid(segid_), element(element_), charge(charge_)
       {}
@@ -294,7 +295,7 @@ namespace hierarchy {
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         siguij(siguij_),
 #endif
-        i_seq(0), tmp(0),
+        i_seq(0), tmp(0), have_sentinel(false),
         hetero(hetero_), serial(serial_), name(name_),
         segid(segid_), element(element_), charge(charge_)
       {}

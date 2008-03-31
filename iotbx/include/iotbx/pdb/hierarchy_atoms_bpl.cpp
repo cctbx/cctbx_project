@@ -1,5 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
@@ -23,6 +24,9 @@ namespace {
   bpl_wrap()
   {
     using namespace boost::python;
+    class_<atom_tmp_sentinel,
+           std::auto_ptr<atom_tmp_sentinel>,
+           boost::noncopyable>("atom_data_tmp_sentinel", no_init);
     scitbx::af::boost_python::shared_wrapper<atom>::wrap("af_shared_atom")
       .def("extract_serial", extract_serial)
       .def("extract_name", extract_name)

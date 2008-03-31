@@ -194,7 +194,7 @@ def exercise_atom():
   assert [atom.tmp for atom in atoms] == [0]
   atoms.reset_serial(first_value=2)
   atoms.reset_i_seq()
-  atoms.reset_tmp(first_value=2)
+  sentinel = atoms.reset_tmp(first_value=2)
   assert [atom.serial for atom in atoms] == ["    2"]
   assert [atom.i_seq for atom in atoms] == [0]
   assert [atom.tmp for atom in atoms] == [2]
@@ -203,23 +203,39 @@ def exercise_atom():
   assert [atom.serial for atom in atoms] == ["    2", "", ""]
   assert [atom.i_seq for atom in atoms] == [0,0,0]
   assert [atom.tmp for atom in atoms] == [2,0,0]
+  del sentinel
+  assert [atom.tmp for atom in atoms] == [0,0,0]
   atoms.reset_serial()
   atoms.reset_i_seq()
-  atoms.reset_tmp()
+  sentinel = atoms.reset_tmp()
   assert [atom.serial for atom in atoms] == ["    1", "    2", "    3"]
   assert [atom.i_seq for atom in atoms] == [0,1,2]
   assert [atom.tmp for atom in atoms] == [0,1,2]
-  atoms.reset_tmp(first_value=0, increment=0)
+  del sentinel
+  assert [atom.tmp for atom in atoms] == [0,0,0]
+  sentinel = atoms.reset_tmp(first_value=0, increment=0)
   assert [atom.tmp for atom in atoms] == [0] * 3
-  atoms.reset_tmp(first_value=5, increment=-3)
+  del sentinel
+  sentinel = atoms.reset_tmp(first_value=5, increment=-3)
   assert [atom.tmp for atom in atoms] == [5,2,-1]
+  del sentinel
   #
-  atoms.reset_tmp_for_occupancy_groups_simple()
+  sentinel = atoms.reset_tmp_for_occupancy_groups_simple()
   assert [atom.tmp for atom in atoms] == [0,1,2]
+  del sentinel
   atoms[0].element = "D"
   atoms[2].element = "H"
-  atoms.reset_tmp_for_occupancy_groups_simple()
+  sentinel = atoms.reset_tmp_for_occupancy_groups_simple()
   assert [atom.tmp for atom in atoms] == [-1,1,-1]
+  del sentinel
+  assert [atom.tmp for atom in atoms] == [0,0,0]
+  #
+  sentinel = atoms.reset_tmp()
+  try: atoms.reset_tmp()
+  except RuntimeError, e:
+    assert str(e) == \
+      "Another associated atom_tmp_sentinel instance still exists."
+  else: raise Exception_expected
 
 def exercise_atom_group():
   ag = pdb.hierarchy.atom_group()
@@ -3139,7 +3155,7 @@ def exercise_occupancy_groups_simple():
         common_residue_name_class_only="common_amino_acid"):
     hierarchy = pdb_inp.construct_hierarchy()
     atoms = hierarchy.atoms()
-    atoms.reset_tmp_for_occupancy_groups_simple()
+    sentinel = atoms.reset_tmp_for_occupancy_groups_simple()
     chain = hierarchy.only_chain()
     return atom_serials(atoms, chain.occupancy_groups_simple(
       common_residue_name_class_only=common_residue_name_class_only))

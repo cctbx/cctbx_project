@@ -502,11 +502,12 @@ class _root(boost.python.injector, ext.root):
     return cache(root=self)
 
   def occupancy_groups_simple(self, common_residue_name_class_only=None):
-    self.atoms().reset_tmp_for_occupancy_groups_simple()
+    sentinel = self.atoms().reset_tmp_for_occupancy_groups_simple()
     result = []
     for chain in self.chains():
       result.extend(chain.occupancy_groups_simple(
         common_residue_name_class_only=common_residue_name_class_only))
+    del sentinel
     return result
 
 class _model(boost.python.injector, ext.model):
