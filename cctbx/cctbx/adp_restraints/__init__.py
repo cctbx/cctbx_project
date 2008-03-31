@@ -16,6 +16,7 @@ class energies_iso(scitbx.restraints.energies):
         xray_structure,
         parameters,
         use_u_local_only,
+        use_hd,
         wilson_b=None,
         compute_gradients=True,
         gradients=None,
@@ -34,15 +35,19 @@ class energies_iso(scitbx.restraints.energies):
     unit_cell = xray_structure.unit_cell()
     if(use_u_local_only):
        u_isos = xray_structure.scatterers().extract_u_iso()
-       #assert (u_isos < 0.0).count(True) == 0
+       #assert (u_isos < 0.0).count(True) == 0 XXX
     else:
        u_isos = xray_structure.extract_u_iso_or_u_equiv()
+    if(use_hd):
+      selection = ~xray_structure.hd_selection()
+    else:
+      selection = xray_structure.all_selection()
     energies = crystal.adp_iso_local_sphere_restraints_energies(
       pair_sym_table=geometry_restraints_manager.plain_pair_sym_table,
       orthogonalization_matrix=unit_cell.orthogonalization_matrix(),
       sites_frac=xray_structure.sites_frac(),
       u_isos=u_isos,
-      selection = ~xray_structure.hd_selection(),
+      selection = selection,
       use_u_iso = xray_structure.use_u_iso(),
       grad_u_iso= xray_structure.scatterers().extract_grad_u_iso(),
       sphere_radius=parameters.sphere_radius,
