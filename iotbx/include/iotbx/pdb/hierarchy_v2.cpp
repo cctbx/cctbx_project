@@ -155,31 +155,27 @@ namespace {
     atom_data const& other)
   :
     parent(parent_),
-    name(other.name),
-    segid(other.segid),
-    element(other.element),
-    charge(other.charge),
-    serial(other.serial),
     xyz(other.xyz), sigxyz(other.sigxyz),
     occ(other.occ), sigocc(other.sigocc),
     b(other.b), sigb(other.sigb),
-    uij(other.uij), siguij(other.siguij),
-    hetero(other.hetero),
-    i_seq(0),
-    tmp(0)
+    uij(other.uij),
+    siguij(other.siguij),
+    i_seq(0), tmp(0),
+    hetero(other.hetero), serial(other.serial), name(other.name),
+    segid(other.segid), element(other.element), charge(other.charge)
   {}
 
   atom
   atom::detached_copy() const
   {
     return atom(
-      data->name.elems, data->segid.elems,
-      data->element.elems, data->charge.elems, data->serial.elems,
       data->xyz, data->sigxyz,
       data->occ, data->sigocc,
       data->b, data->sigb,
-      data->uij, data->siguij,
-      data->hetero);
+      data->uij,
+      data->siguij,
+      data->hetero, data->serial.elems, data->name.elems,
+      data->segid.elems, data->element.elems, data->charge.elems);
   }
 
   unsigned

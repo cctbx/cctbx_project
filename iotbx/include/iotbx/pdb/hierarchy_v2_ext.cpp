@@ -5,9 +5,10 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/str.hpp>
 #include <boost/python/list.hpp>
 #include <boost/python/tuple.hpp>
-#include <boost/python/str.hpp>
+#include <boost/python/dict.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/boost_python/array_as_list.h>
@@ -56,11 +57,36 @@ namespace {
   {
     typedef atom w_t;
 
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
-    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(serial)
+    static boost::python::dict
+    data_offsets()
+    {
+      boost::python::dict result;
+      atom a;
+      atom_data* d = a.data.get();
+      char* p = reinterpret_cast<char*>(d);
+#define IOTBX_LOC(attr) \
+      result[static_cast<long>(reinterpret_cast<char*>(&(d->attr)) - p)] = \
+        #attr;
+      IOTBX_LOC(xyz)
+      IOTBX_LOC(sigxyz)
+      IOTBX_LOC(occ)
+      IOTBX_LOC(sigocc)
+      IOTBX_LOC(b)
+      IOTBX_LOC(sigb)
+      IOTBX_LOC(uij)
+      IOTBX_LOC(siguij)
+      IOTBX_LOC(i_seq)
+      IOTBX_LOC(tmp)
+      IOTBX_LOC(hetero)
+      IOTBX_LOC(serial)
+      IOTBX_LOC(name)
+      IOTBX_LOC(segid)
+      IOTBX_LOC(element)
+      IOTBX_LOC(charge)
+#undef IOTBX_LOC
+      result[atom::sizeof_data()] = "atom::sizeof_data()";
+      return result;
+    }
 
     static vec3
     get_xyz(w_t const& self) { return self.data->xyz; }
@@ -134,6 +160,15 @@ namespace {
       self.data->siguij = new_siguij;
     }
 
+    static unsigned
+    get_i_seq(w_t const& self) { return self.data->i_seq; }
+
+    static int
+    get_tmp(w_t const& self) { return self.data->tmp; }
+
+    static void
+    set_tmp(w_t const& self, int new_tmp) { self.data->tmp = new_tmp; }
+
     static bool
     get_hetero(w_t const& self) { return self.data->hetero; }
 
@@ -143,14 +178,11 @@ namespace {
       self.data->hetero = new_hetero;
     }
 
-    static unsigned
-    get_i_seq(w_t const& self) { return self.data->i_seq; }
-
-    static int
-    get_tmp(w_t const& self) { return self.data->tmp; }
-
-    static void
-    set_tmp(w_t const& self, int new_tmp) { self.data->tmp = new_tmp; }
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(serial)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
+    IOTBX_PDB_HIERARCHY_V2_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
 
     static
     boost::python::object
@@ -205,11 +237,6 @@ namespace {
         .def(init<atom_group const&, atom const&>((
           arg_("parent"), arg_("other"))))
         .def("detached_copy", &w_t::detached_copy)
-        .def("set_name", set_name, (arg_("new_name")), return_self<>())
-        .def("set_segid", set_segid, (arg_("new_segid")), return_self<>())
-        .def("set_element", set_element, (arg_("new_element")), return_self<>())
-        .def("set_charge", set_charge, (arg_("new_charge")), return_self<>())
-        .def("set_serial", set_serial, (arg_("new_serial")), return_self<>())
         .def("set_xyz", set_xyz, (arg_("new_xyz")), return_self<>())
         .def("set_sigxyz", set_sigxyz, (arg_("new_sigxyz")), return_self<>())
         .def("set_occ", set_occ, (arg_("new_occ")), return_self<>())
@@ -219,16 +246,11 @@ namespace {
         .def("set_uij", set_uij, (arg_("new_uij")), return_self<>())
         .def("set_siguij", set_siguij, (arg_("new_siguij")), return_self<>())
         .def("set_hetero", set_hetero, (arg_("new_hetero")), return_self<>())
-        .add_property("name",
-          make_function(get_name), make_function(set_name))
-        .add_property("segid",
-          make_function(get_segid), make_function(set_segid))
-        .add_property("element",
-          make_function(get_element), make_function(set_element))
-        .add_property("charge",
-          make_function(get_charge), make_function(set_charge))
-        .add_property("serial",
-          make_function(get_serial), make_function(set_serial))
+        .def("set_serial", set_serial, (arg_("new_serial")), return_self<>())
+        .def("set_name", set_name, (arg_("new_name")), return_self<>())
+        .def("set_segid", set_segid, (arg_("new_segid")), return_self<>())
+        .def("set_element", set_element, (arg_("new_element")), return_self<>())
+        .def("set_charge", set_charge, (arg_("new_charge")), return_self<>())
         .add_property("xyz",
           make_function(get_xyz), make_function(set_xyz))
         .add_property("sigxyz",
@@ -245,14 +267,26 @@ namespace {
           make_function(get_uij), make_function(set_uij))
         .add_property("siguij",
           make_function(get_siguij), make_function(set_siguij))
-        .add_property("hetero",
-          make_function(get_hetero), make_function(set_hetero))
         .add_property("i_seq", make_function(get_i_seq))
         .add_property("tmp",
           make_function(get_tmp), make_function(set_tmp))
+        .add_property("hetero",
+          make_function(get_hetero), make_function(set_hetero))
+        .add_property("serial",
+          make_function(get_serial), make_function(set_serial))
+        .add_property("name",
+          make_function(get_name), make_function(set_name))
+        .add_property("segid",
+          make_function(get_segid), make_function(set_segid))
+        .add_property("element",
+          make_function(get_element), make_function(set_element))
+        .add_property("charge",
+          make_function(get_charge), make_function(set_charge))
         .def("memory_id", &w_t::memory_id)
         .def("sizeof_data", &w_t::sizeof_data)
         .staticmethod("sizeof_data")
+        .def("data_offsets", data_offsets)
+        .staticmethod("data_offsets")
         .def("parent", get_parent<atom, atom_group>::wrapper)
         .def("uij_is_defined", &w_t::uij_is_defined)
         .def("siguij_is_defined", &w_t::siguij_is_defined)

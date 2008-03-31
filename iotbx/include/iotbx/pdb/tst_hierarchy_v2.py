@@ -4189,6 +4189,13 @@ def exercise(args):
   forever = "--forever" in args
   print "iotbx.pdb.hierarchy_v2.atom.sizeof_data():", \
     pdb.hierarchy_v2.atom.sizeof_data()
+  offsets = pdb.hierarchy_v2.atom.data_offsets()
+  if (comprehensive):
+    print "iotbx.pdb.hierarchy_v2.atom.data_offsets():"
+    prev = 0
+    for key,value in sorted(offsets.items()):
+      print "  %+3d %3d %s" % (key-prev, key, value)
+      prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
     exercise_atom()
