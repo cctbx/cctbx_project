@@ -49,7 +49,9 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
   IOTBX_LOC(b, double)
   IOTBX_LOC(sigb, double)
   IOTBX_LOC(uij, sym_mat3)
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
   IOTBX_LOC(siguij, sym_mat3)
+#endif
   IOTBX_LOC(i_seq, std::size_t)
 
 #undef IOTBX_LOC
@@ -107,7 +109,9 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
   IOTBX_LOC(b, double)
   IOTBX_LOC(sigb, double)
   IOTBX_LOC(uij, sym_mat3)
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
   IOTBX_LOC(siguij, sym_mat3)
+#endif
 
 #undef IOTBX_LOC
 

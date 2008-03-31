@@ -733,8 +733,13 @@ namespace iotbx { namespace pdb {
   process_siguij_record(
     pdb::line_info& line_info,
     pdb::input_atom_labels const& input_atom_labels,
-    hierarchy_v2::atom_data& atom_data)
+    hierarchy_v2::atom_data&
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
+                             atom_data
+#endif
+                                      )
   {
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
     atom_data.siguij[0] = field_as_int(line_info,28,35);
     atom_data.siguij[1] = field_as_int(line_info,35,42);
     atom_data.siguij[2] = field_as_int(line_info,42,49);
@@ -742,6 +747,7 @@ namespace iotbx { namespace pdb {
     atom_data.siguij[4] = field_as_int(line_info,56,63);
     atom_data.siguij[5] = field_as_int(line_info,63,70);
     atom_data.siguij *= anisou_factor;
+#endif
     input_atom_labels.check_equivalence(line_info);
   }
 

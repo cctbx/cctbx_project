@@ -41,9 +41,11 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
   extract_uij(
     af::const_ref<atom> const& atoms);
 
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
   af::shared<sym_mat3>
   extract_siguij(
     af::const_ref<atom> const& atoms);
+#endif
 
   af::shared<std::size_t>
   extract_hetero(
@@ -93,10 +95,12 @@ namespace iotbx { namespace pdb { namespace hierarchy_v2 { namespace atoms {
     af::ref<atom> const& atoms,
     af::const_ref<sym_mat3> const& new_uij);
 
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
   void
   set_siguij(
     af::ref<atom> const& atoms,
     af::const_ref<sym_mat3> const& new_siguij);
+#endif
 
   void
   reset_serial(

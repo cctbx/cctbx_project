@@ -74,7 +74,9 @@ namespace {
       IOTBX_LOC(b)
       IOTBX_LOC(sigb)
       IOTBX_LOC(uij)
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       IOTBX_LOC(siguij)
+#endif
       IOTBX_LOC(i_seq)
       IOTBX_LOC(tmp)
       IOTBX_LOC(hetero)
@@ -151,6 +153,7 @@ namespace {
       self.data->uij = new_uij;
     }
 
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
     static sym_mat3
     get_siguij(w_t const& self) { return self.data->siguij; }
 
@@ -159,6 +162,7 @@ namespace {
     {
       self.data->siguij = new_siguij;
     }
+#endif
 
     static unsigned
     get_i_seq(w_t const& self) { return self.data->i_seq; }
@@ -244,7 +248,9 @@ namespace {
         .def("set_b", set_b, (arg_("new_b")), return_self<>())
         .def("set_sigb", set_sigb, (arg_("new_sigb")), return_self<>())
         .def("set_uij", set_uij, (arg_("new_uij")), return_self<>())
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         .def("set_siguij", set_siguij, (arg_("new_siguij")), return_self<>())
+#endif
         .def("set_hetero", set_hetero, (arg_("new_hetero")), return_self<>())
         .def("set_serial", set_serial, (arg_("new_serial")), return_self<>())
         .def("set_name", set_name, (arg_("new_name")), return_self<>())
@@ -265,8 +271,10 @@ namespace {
           make_function(get_sigb), make_function(set_sigb))
         .add_property("uij",
           make_function(get_uij), make_function(set_uij))
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         .add_property("siguij",
           make_function(get_siguij), make_function(set_siguij))
+#endif
         .add_property("i_seq", make_function(get_i_seq))
         .add_property("tmp",
           make_function(get_tmp), make_function(set_tmp))
@@ -289,6 +297,8 @@ namespace {
         .staticmethod("data_offsets")
         .def("parent", get_parent<atom, atom_group>::wrapper)
         .def("uij_is_defined", &w_t::uij_is_defined)
+        .def("has_siguij", &w_t::has_siguij)
+        .staticmethod("has_siguij")
         .def("siguij_is_defined", &w_t::siguij_is_defined)
         .def("pdb_label_columns", &w_t::pdb_label_columns)
         .def("pdb_element_charge_columns", &w_t::pdb_element_charge_columns)
@@ -527,11 +537,14 @@ namespace {
               unsigned str_len = atom->format_atom_record_group( \
                 str_begin, &label_formatter, \
                 atom_hetatm, sigatm, anisou, siguij); \
-              str_hdl.release(); \
-              if (_PyString_Resize(&str_obj, static_cast<int>(str_len))!=0) { \
-                boost::python::throw_error_already_set(); \
-              } \
-              pdb_records.append(boost::python::handle<>(str_obj));
+              if (str_len != 0) { \
+                str_hdl.release(); \
+                if (_PyString_Resize( \
+                      &str_obj, static_cast<int>(str_len)) != 0) { \
+                  boost::python::throw_error_already_set(); \
+                } \
+                pdb_records.append(boost::python::handle<>(str_obj)); \
+              }
               IOTBX_LOC
             }
           }
