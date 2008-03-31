@@ -33,7 +33,9 @@ namespace {
       .def("extract_b", extract_b)
       .def("extract_sigb", extract_sigb)
       .def("extract_uij", extract_uij)
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       .def("extract_siguij", extract_siguij)
+#endif
       .def("extract_hetero", extract_hetero)
       .def("extract_element", extract_element, extract_element_overloads((
         arg_("self"),
@@ -46,7 +48,9 @@ namespace {
       .def("set_b", set_b, (arg_("new_b")), return_self<>())
       .def("set_sigb", set_sigb, (arg_("new_sigb")), return_self<>())
       .def("set_uij", set_uij, (arg_("new_uij")), return_self<>())
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       .def("set_siguij", set_siguij, (arg_("new_siguij")), return_self<>())
+#endif
       .def("reset_serial", reset_serial, reset_serial_overloads((
         arg_("self"),
         arg_("first_value")=1)))

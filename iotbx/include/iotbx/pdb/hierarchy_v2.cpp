@@ -159,7 +159,9 @@ namespace {
     occ(other.occ), sigocc(other.sigocc),
     b(other.b), sigb(other.sigb),
     uij(other.uij),
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
     siguij(other.siguij),
+#endif
     i_seq(0), tmp(0),
     hetero(other.hetero), serial(other.serial), name(other.name),
     segid(other.segid), element(other.element), charge(other.charge)
@@ -173,7 +175,11 @@ namespace {
       data->occ, data->sigocc,
       data->b, data->sigb,
       data->uij,
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       data->siguij,
+#else
+      sym_mat3(-1,-1,-1,-1,-1,-1),
+#endif
       data->hetero, data->serial.elems, data->name.elems,
       data->segid.elems, data->element.elems, data->charge.elems);
   }
@@ -580,7 +586,13 @@ namespace {
     result[27] = blank;
     char *r = result + 28;
     for(unsigned i=0;i<6;i++) {
-      std::sprintf(r, "%7.0f", data->siguij[i]*10000.);
+      std::sprintf(r, "%7.0f",
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
+        data->siguij[i]
+#else
+        -1
+#endif
+        *10000.);
       r += 7;
       if (*r != '\0') {
         static const char* uij_labels[] = {

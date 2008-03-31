@@ -1,6 +1,10 @@
 #ifndef IOTBX_PDB_HIERARCHY_V2_H
 #define IOTBX_PDB_HIERARCHY_V2_H
 
+#if defined(__INTEL_COMPILER) // XXX exercise on one platform
+#define IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
+#endif
+
 #include <iotbx/pdb/namespace.h>
 #include <iotbx/pdb/small_str.h>
 #include <boost/optional.hpp>
@@ -230,7 +234,9 @@ namespace hierarchy_v2 {
       double b;
       double sigb;
       sym_mat3 uij;
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
       sym_mat3 siguij;
+#endif
       unsigned i_seq;
       int tmp;
       bool hetero;
@@ -247,7 +253,11 @@ namespace hierarchy_v2 {
         double occ_, double sigocc_,
         double b_, double sigb_,
         sym_mat3 const& uij_,
-        sym_mat3 const& siguij_,
+        sym_mat3 const&
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
+                        siguij_
+#endif
+                               ,
         bool hetero_, str5 serial_, str4 name_,
         str4 segid_, str2 element_, str2 charge_)
       :
@@ -256,7 +266,9 @@ namespace hierarchy_v2 {
         occ(occ_), sigocc(sigocc_),
         b(b_), sigb(sigb_),
         uij(uij_),
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         siguij(siguij_),
+#endif
         i_seq(0), tmp(0),
         hetero(hetero_), serial(serial_), name(name_),
         segid(segid_), element(element_), charge(charge_)
@@ -267,7 +279,11 @@ namespace hierarchy_v2 {
         double occ_, double sigocc_,
         double b_, double sigb_,
         sym_mat3 const& uij_,
-        sym_mat3 const& siguij_,
+        sym_mat3 const&
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
+                        siguij_
+#endif
+                               ,
         bool hetero_, str5 serial_, str4 name_,
         str4 segid_, str2 element_, str2 charge_)
       :
@@ -275,7 +291,9 @@ namespace hierarchy_v2 {
         occ(occ_), sigocc(sigocc_),
         b(b_), sigb(sigb_),
         uij(uij_),
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         siguij(siguij_),
+#endif
         i_seq(0), tmp(0),
         hetero(hetero_), serial(serial_), name(name_),
         segid(segid_), element(element_), charge(charge_)
@@ -483,9 +501,15 @@ namespace hierarchy_v2 {
       }
 
       atom&
-      set_siguij(sym_mat3 const& new_siguij)
+      set_siguij(sym_mat3 const&
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
+                                 new_siguij
+#endif
+                                           )
       {
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         data->siguij = new_siguij;
+#endif
         return *this;
       }
 
@@ -551,10 +575,25 @@ namespace hierarchy_v2 {
         return !data->uij.const_ref().all_eq(-1);
       }
 
+      static
+      bool
+      has_siguij()
+      {
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
+        return true;
+#else
+        return false;
+#endif
+      }
+
       bool
       siguij_is_defined() const
       {
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         return !data->siguij.const_ref().all_eq(-1);
+#else
+        return false;
+#endif
       }
 
       //! Not available in Python.

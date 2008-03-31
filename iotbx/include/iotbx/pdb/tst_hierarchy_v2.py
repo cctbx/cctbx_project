@@ -54,11 +54,12 @@ def exercise_atom():
   a.uij = (1,-2,3,4,-5,6)
   assert a.uij == (1,-2,3,4,-5,6)
   assert a.uij_is_defined()
-  assert a.siguij == (-1,-1,-1,-1,-1,-1)
   assert not a.siguij_is_defined()
-  a.siguij = (-2,3,4,-5,6,1)
-  assert a.siguij == (-2,3,4,-5,6,1)
-  assert a.siguij_is_defined()
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    assert a.siguij == (-1,-1,-1,-1,-1,-1)
+    a.siguij = (-2,3,4,-5,6,1)
+    assert a.siguij == (-2,3,4,-5,6,1)
+    assert a.siguij_is_defined()
   assert not a.hetero
   a.hetero = True
   assert a.hetero
@@ -83,8 +84,9 @@ def exercise_atom():
     .set_b(new_b=4.8)
     .set_sigb(new_sigb=0.7)
     .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
-    .set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9))
     .set_hetero(new_hetero=True))
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    assert a.set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)) is a
   assert a.name == "NaMe"
   assert a.segid == "sEgI"
   assert a.element == "El"
@@ -97,7 +99,8 @@ def exercise_atom():
   assert approx_equal(a.b, 4.8)
   assert approx_equal(a.sigb, 0.7)
   assert approx_equal(a.uij, (1.3,2.1,3.2,4.3,2.7,9.3))
-  assert approx_equal(a.siguij, (.1,.2,.3,.6,.1,.9))
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    assert approx_equal(a.siguij, (.1,.2,.3,.6,.1,.9))
   assert a.hetero
   assert a.tmp == 0
   try: a.set_name(new_name="12345")
@@ -121,7 +124,8 @@ def exercise_atom():
   assert approx_equal(ac.b, 4.8)
   assert approx_equal(ac.sigb, 0.7)
   assert approx_equal(ac.uij, (1.3,2.1,3.2,4.3,2.7,9.3))
-  assert approx_equal(ac.siguij, (.1,.2,.3,.6,.1,.9))
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    assert approx_equal(ac.siguij, (.1,.2,.3,.6,.1,.9))
   assert ac.hetero
   #
   for e in ["H", "H ", " H", "D", "D ", " D"]:
@@ -173,7 +177,8 @@ def exercise_atom():
   assert ac.b == a.b
   assert ac.sigb == a.sigb
   assert ac.uij == a.uij
-  assert ac.siguij == a.siguij
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    assert ac.siguij == a.siguij
   assert ac.hetero == a.hetero
   assert ac.tmp == 0
   #
@@ -575,7 +580,11 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
   assert atoms.size() == 3
   atoms[0].set_sigxyz((1,2,3)).set_sigocc(4).set_sigb(5)
   atoms[1].set_uij((6,7,8,3,5,4))
-  atoms[2].set_siguij((.6,.7,.8,.3,.5,.4))
+  siguij_2_line = ""
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    atoms[2].set_siguij((.6,.7,.8,.3,.5,.4))
+    siguij_2_line = """
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000"""
   records = []
   c.append_atom_record_groups(pdb_records=records)
   assert len(records) == 4
@@ -585,10 +594,14 @@ SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
-ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000""")
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00%s""" %
+    siguij_2_line)
   atoms[0].set_uij((6,3,8,2,9,1))
-  atoms[0].set_siguij((.6,.3,.8,.2,.9,.1))
+  siguij_0_line = ""
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    atoms[0].set_siguij((.6,.3,.8,.2,.9,.1))
+    siguij_0_line = """
+SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg"""
   atoms[0].set_charge("Cg")
   records = []
   c.append_atom_record_groups(pdb_records=records)
@@ -596,13 +609,12 @@ SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000""")
   assert not show_diff("\n".join(records), """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
-ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
-SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg%s
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
-ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000""")
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00%s""" % (
+    siguij_0_line, siguij_2_line))
   records = []
   c.append_atom_record_groups(pdb_records=records, interleaved_conf=1)
   c.append_atom_record_groups(pdb_records=records, interleaved_conf=2)
@@ -610,8 +622,7 @@ SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000""")
   c.append_atom_record_groups(pdb_records=records, sigatm=False)
   c.append_atom_record_groups(pdb_records=records, anisou=False)
   c.append_atom_record_groups(pdb_records=records, siguij=False)
-  assert len(records) == 24
-  assert not show_diff("\n".join(records), """\
+  expected = """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
 ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
@@ -657,11 +668,23 @@ ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
-ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00""")
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00"""
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    assert len(records) == 24
+    assert not show_diff("\n".join(records), expected)
+  else:
+    assert len(records) == 23
+    def filter_expected():
+      result = []
+      for line in expected.splitlines():
+        if (line.startswith("SIGUIJ")): continue
+        result.append(line)
+      return "\n".join(result)
+    assert not show_diff("\n".join(records), filter_expected())
   records = []
   c.append_atom_record_groups(pdb_records=records,
     atom_hetatm=False, sigatm=False, anisou=False, siguij=False)
-  assert records == ["", "", "BREAK", ""]
+  assert records == ["BREAK"]
   #
   a = pdb.hierarchy_v2.atom()
   assert a.pdb_label_columns() == "               "
@@ -868,8 +891,9 @@ def exercise_format_atom_record():
     .set_sigocc(new_sigocc=0.1)
     .set_b(new_b=4.8)
     .set_sigb(new_sigb=0.7)
-    .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3))
-    .set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)))
+    .set_uij(new_uij=(1.3,2.1,3.2,4.3,2.7,9.3)))
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    assert a.set_siguij(new_siguij=(.1,.2,.3,.6,.1,.9)) is a
   for hetero,record_name in [(False, "ATOM  "), (True, "HETATM")]:
     a.set_hetero(new_hetero=hetero)
     for segid in ["", "    ", "s", "sEgI"]:
@@ -895,8 +919,13 @@ B1234 NaMe                 0.100   0.200   0.300  0.10  0.70      \
           assert not show_diff(a.format_anisou_record(), ("""ANISOU\
 B1234 NaMe              13000  21000  32000  43000  27000  93000  \
 %s""" % segielch).rstrip())
-          assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+          if (pdb.hierarchy_v2.atom.has_siguij()):
+            assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMe               1000   2000   3000   6000   1000   9000  \
+%s""" % segielch).rstrip())
+          else:
+            assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+B1234 NaMe             -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % segielch).rstrip())
           ag = pdb.hierarchy_v2.atom_group(altloc="x", resname="uvw")
           ag.append_atom(atom=a)
@@ -912,8 +941,13 @@ B1234 NaMexuvw             0.100   0.200   0.300  0.10  0.70      \
           assert not show_diff(a.format_anisou_record(), ("""ANISOU\
 B1234 NaMexuvw          13000  21000  32000  43000  27000  93000  \
 %s""" % segielch).rstrip())
-          assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+          if (pdb.hierarchy_v2.atom.has_siguij()):
+            assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMexuvw           1000   2000   3000   6000   1000   9000  \
+%s""" % segielch).rstrip())
+          else:
+            assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+B1234 NaMexuvw         -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % segielch).rstrip())
           rg = pdb.hierarchy_v2.residue_group(resseq="pqrs", icode="t")
           rg.append_atom_group(atom_group=ag)
@@ -929,8 +963,13 @@ B1234 NaMexuvw  pqrst      0.100   0.200   0.300  0.10  0.70      \
           assert not show_diff(a.format_anisou_record(), ("""ANISOU\
 B1234 NaMexuvw  pqrst   13000  21000  32000  43000  27000  93000  \
 %s""" % segielch).rstrip())
-          assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+          if (pdb.hierarchy_v2.atom.has_siguij()):
+            assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMexuvw  pqrst    1000   2000   3000   6000   1000   9000  \
+%s""" % segielch).rstrip())
+          else:
+            assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+B1234 NaMexuvw  pqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % segielch).rstrip())
           for chain_id in ["", "g", "hi"]:
             ch = pdb.hierarchy_v2.chain(id=chain_id)
@@ -947,8 +986,13 @@ B1234 NaMexuvw%2spqrst      0.100   0.200   0.300  0.10  0.70      \
             assert not show_diff(a.format_anisou_record(), ("""ANISOU\
 B1234 NaMexuvw%2spqrst   13000  21000  32000  43000  27000  93000  \
 %s""" % (chain_id, segielch)).rstrip())
-            assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+            if (pdb.hierarchy_v2.atom.has_siguij()):
+              assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMexuvw%2spqrst    1000   2000   3000   6000   1000   9000  \
+%s""" % (chain_id, segielch)).rstrip())
+            else:
+              assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
+B1234 NaMexuvw%2spqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % (chain_id, segielch)).rstrip())
           del ag, rg, ch
 
@@ -3811,15 +3855,17 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1)])
-  siguij = atoms.extract_siguij()
-  assert approx_equal(siguij, [
+  expected_siguij = [
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1),
     (0.0075, 0.0041, 0.0040, -0.0001, 0.0007, 0.0063),
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1),
     (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1)])
+    (-1,-1,-1,-1,-1,-1)]
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    siguij = atoms.extract_siguij()
+    assert approx_equal(siguij, expected_siguij)
   assert list(atoms.extract_hetero()) == [5,6]
   assert list(atoms.extract_element()) == [" N"," C"," C","  ","X ","CA","  "]
   assert atoms.extract_element(strip=False).all_eq(atoms.extract_element())
@@ -3860,30 +3906,27 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert atoms.set_sigb(new_sigb=sigb+5) is atoms
   assert approx_equal(atoms.extract_sigb(),
     [5,5.05,5,5,5,5,5])
-  assert atoms.set_uij(new_uij=siguij) is atoms
-  assert approx_equal(atoms.extract_uij(), [
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (0.0075, 0.0041, 0.0040, -0.0001, 0.0007, 0.0063),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1)])
-  assert atoms.set_siguij(new_siguij=uij) is atoms
-  assert approx_equal(atoms.extract_siguij(), [
-    (-1,-1,-1,-1,-1,-1),
-    (0.7794, 0.3221, 0.3376, -0.1227, 0.1064, 0.2601),
-    (0.7875, 0.3041, 0.3340, -0.0981, 0.0727, 0.2663),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1),
-    (-1,-1,-1,-1,-1,-1)])
+  assert atoms.set_uij(new_uij=flex.sym_mat3_double(expected_siguij)) is atoms
+  assert approx_equal(atoms.extract_uij(), expected_siguij)
+  if (pdb.hierarchy_v2.atom.has_siguij()):
+    assert atoms.set_siguij(new_siguij=uij) is atoms
+    assert approx_equal(atoms.extract_siguij(), [
+      (-1,-1,-1,-1,-1,-1),
+      (0.7794, 0.3221, 0.3376, -0.1227, 0.1064, 0.2601),
+      (0.7875, 0.3041, 0.3340, -0.0981, 0.0727, 0.2663),
+      (-1,-1,-1,-1,-1,-1),
+      (-1,-1,-1,-1,-1,-1),
+      (-1,-1,-1,-1,-1,-1),
+      (-1,-1,-1,-1,-1,-1)])
   #
   h = pdb_inp.construct_hierarchy_v2()
   for i in xrange(2):
     s = h.as_pdb_string()
     d = hashlib_md5(s).hexdigest()
-    assert d == "c4089359af431bb2962d6a8e457dd86f"
+    if (pdb.hierarchy_v2.atom.has_siguij()):
+      assert d == "c4089359af431bb2962d6a8e457dd86f"
+    else:
+      assert d == "a1dd6605ed08b56862b9d7ae6b9a547b"
     h = pdb.input(
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy_v2()
 
