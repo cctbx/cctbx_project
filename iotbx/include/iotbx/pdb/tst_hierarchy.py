@@ -3982,9 +3982,10 @@ ATOM     10  O  BTYR A   1I
               hierarchy.only_chain(),
               hierarchy.only_model(),
               hierarchy]:
-    rs = [atom.format_atom_record(replace_floats_with="")
-      for atom in obj.atoms(interleaved_conf=1)]
-    assert not show_diff("\n".join([r[:-8] for r in rs]), """\
+    for interleaved_conf in [-1,0,1]:
+      rs = [atom.format_atom_record(replace_floats_with="")
+        for atom in obj.atoms(interleaved_conf=interleaved_conf)]
+      assert not show_diff("\n".join([r[:-8] for r in rs]), """\
 ATOM      1  N  ATRP A   1I
 ATOM      2  C  ATRP A   1I
 ATOM      3  O  ATRP A   1I
@@ -4063,11 +4064,11 @@ ATOM      2  C  ATRP A   1I
 ATOM      9  C  BTRP A   1I
 ATOM      3  O  ATRP A   1I
 ATOM     10  O  BTRP A   1I
+ATOM      8  CA BTRP A   1I
 ATOM      4  N  CPHE A   1I
 ATOM      5  CA CPHE A   1I
 ATOM      6  C  CPHE A   1I
-ATOM      7  O  CPHE A   1I
-ATOM      8  CA BTRP A   1I""")
+ATOM      7  O  CPHE A   1I""")
   rs = [atom.format_atom_record(replace_floats_with="")
     for atom in hierarchy.only_residue_group().atoms(interleaved_conf=2)]
   assert not show_diff("\n".join([r[:-8] for r in rs]), """\
@@ -4088,11 +4089,11 @@ ATOM      2  C  ATRP
 ATOM      9  C  BTRP
 ATOM      3  O  ATRP
 ATOM     10  O  BTRP
+ATOM      8  CA BTRP
 ATOM      4  N  CPHE
 ATOM      5  CA CPHE
 ATOM      6  C  CPHE
 ATOM      7  O  CPHE
-ATOM      8  CA BTRP
 TER
 """)
   for interleaved_conf in [2,3,4]:
