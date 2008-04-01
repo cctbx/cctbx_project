@@ -1,19 +1,5 @@
 Import("env_base", "env_etc")
 
-def patch_compilation_warning_flags(env):
-  if (env_etc.compiler != "unix_gcc"): return
-  for flags in ["CCFLAGS", "SHCCFLAGS", "CXXFLAGS", "SHCXXFLAGS"]:
-    have_change = False
-    patched_flags = []
-    for item in env[flags]:
-      if (item == "-w"):
-        patched_flags.extend(["-Wall", "-Wno-sign-compare"])
-        have_change = True
-      else:
-        patched_flags.append(item)
-    if (have_change):
-      env.Replace(**{flags: patched_flags})
-
 env = env_base.Copy(
   CCFLAGS=env_etc.ccflags_base,
   SHCCFLAGS=env_etc.ccflags_base,
@@ -21,7 +7,7 @@ env = env_base.Copy(
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
 )
-patch_compilation_warning_flags(env=env)
+env_etc.enable_more_warnings(env=env)
 env_etc.include_registry.append(
   env=env,
   paths=env_etc.iotbx_common_includes)
@@ -44,7 +30,7 @@ if (not env_etc.no_boost_python):
   env = env_iotbx_boost_python_ext.Copy()
   env.Append(LIBPATH=["#lib"])
   env.Prepend(LIBS=["iotbx_pdb", "cctbx", "scitbx_boost_python"])
-  patch_compilation_warning_flags(env=env)
+  env_etc.enable_more_warnings(env=env)
   env.SharedLibrary(
     target="#lib/iotbx_pdb_ext",
     source=[
