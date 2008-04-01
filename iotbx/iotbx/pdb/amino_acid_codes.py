@@ -19,8 +19,7 @@ one_letter_given_three_letter = {
 "THR": "T",
 "TRP": "W",
 "TYR": "Y",
-"VAL": "V",
-"SEP": "X"}
+"VAL": "V"}
 
 three_letter_given_one_letter = {
 "A": "ALA",
@@ -42,5 +41,4 @@ three_letter_given_one_letter = {
 "T": "THR",
 "V": "VAL",
 "W": "TRP",
-"Y": "TYR",
-"X": "SEP"}
+"Y": "TYR"}
