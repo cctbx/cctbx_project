@@ -116,6 +116,23 @@ if (env_etc.compiler == "unix_icpc"):
 
 static_exe = libtbx.env.build_options.static_exe
 
+def enable_more_warnings(env):
+  if (env_etc._enable_more_warnings == "gcc"):
+    for flags in ["CCFLAGS", "SHCCFLAGS", "CXXFLAGS", "SHCXXFLAGS"]:
+      have_change = False
+      patched_flags = []
+      for item in env[flags]:
+        if (item == "-w"):
+          patched_flags.extend(["-Wall", "-Wno-sign-compare"])
+          have_change = True
+        else:
+          patched_flags.append(item)
+      if (have_change):
+        env.Replace(**{flags: patched_flags})
+
+env_etc.enable_more_warnings = enable_more_warnings
+env_etc._enable_more_warnings = None
+
 if (sys.platform == "win32"):
   env_etc.static_libraries = 1
   env_etc.static_bpl = 0
@@ -343,6 +360,7 @@ else:
     )
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = "-w"
+      env_etc._enable_more_warnings = "gcc"
     elif (libtbx.env.build_options.warning_level == 1):
       warn_options = "-Wall -Wno-sign-compare"
     else:
@@ -502,6 +520,7 @@ else:
     )
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = "-w"
+      env_etc._enable_more_warnings = "gcc"
     elif (libtbx.env.build_options.warning_level == 1):
       warn_options = "-Wall -Wno-sign-compare"
     else:
