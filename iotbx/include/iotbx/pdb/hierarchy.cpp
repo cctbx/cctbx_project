@@ -1291,41 +1291,100 @@ namespace {
     other_chains.swap(empty);
   }
 
+namespace {
+
+  struct interleaved_conf_helper
+  {
+    const atom* atom_ptr;
+    unsigned resname_index;
+    unsigned atom_name_index;
+    unsigned sequential_index;
+
+    static const str3 empty;
+
+    interleaved_conf_helper(
+      const atom* atom_ptr_,
+      unsigned resname_index_,
+      unsigned atom_name_index_,
+      unsigned sequential_index_)
+    :
+      atom_ptr(atom_ptr_),
+      resname_index(resname_index_),
+      atom_name_index(atom_name_index_),
+      sequential_index(sequential_index_)
+    {}
+
+    bool
+    operator<(interleaved_conf_helper const& other) const
+    {
+      if (resname_index < other.resname_index) return true;
+      if (resname_index > other.resname_index) return false;
+      if (atom_name_index < other.atom_name_index) return true;
+      if (atom_name_index > other.atom_name_index) return false;
+      return (sequential_index < other.sequential_index);
+    }
+  };
+
+} // namespace <anonymous>
+
   void
   residue_group::atoms_interleaved_conf_impl(
     bool group_residue_names,
     af::shared<atom>& result) const
   {
+    std::map<str3, unsigned> resname_indices;
+    unsigned resname_indices_size = 0;
+    unsigned resname_index = 0;
+    std::vector<std::map<str4, unsigned> > resname_atom_name_indices;
+    std::map<str4, unsigned>* atom_name_indices = 0;
+    unsigned atom_name_indices_size = 0;
+    if (!group_residue_names) {
+      resname_atom_name_indices.resize(1U);
+      atom_name_indices = &resname_atom_name_indices[0];
+    }
+    typedef std::vector<interleaved_conf_helper> tab_t;
+    tab_t tab;
+    tab.reserve(100U); // not critical
+    unsigned sequential_index = 0;
     unsigned n_ag = atom_groups_size();
     std::vector<atom_group> const& ags = atom_groups();
-    std::map<str7, std::vector<atom> > key_atoms;
-#define IOTBX_LOC_OPEN \
-    for(unsigned i_ag=0;i_ag<n_ag;i_ag++) { \
-      atom_group const& ag = ags[i_ag]; \
-      unsigned n_at = ag.atoms_size(); \
-      std::vector<atom> const& ats = ag.atoms(); \
-      for(unsigned i_at=0;i_at<n_at;i_at++) { \
-        atom const& a = ats[i_at]; \
-        str7 key( \
-          group_residue_names \
-            ? a.data->name.concatenate(ag.data->resname) \
-            : a.data->name.elems);
-#define IOTBX_LOC_CLOSE \
-      } \
-    }
-    IOTBX_LOC_OPEN
-        key_atoms[key].push_back(a);
-    IOTBX_LOC_CLOSE
-    IOTBX_LOC_OPEN
-        std::vector<atom>& related_atoms = key_atoms[key];
-        if (related_atoms.size() != 0) {
-          result.insert(
-            result.end(), &*related_atoms.begin(), &*related_atoms.end());
-          related_atoms.clear();
+    for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+      atom_group const& ag = ags[i_ag];
+      if (group_residue_names) {
+        resname_index = resname_indices[ag.data->resname];
+        if (resname_index == 0) {
+          resname_indices[ag.data->resname]
+            = resname_index
+            = ++resname_indices_size;
+          resname_atom_name_indices.resize(resname_indices_size);
         }
-    IOTBX_LOC_CLOSE
-#undef IOTBX_LOC_OPEN
-#undef IOTBX_LOC_CLOSE
+        atom_name_indices = &resname_atom_name_indices[resname_index-1U];
+        atom_name_indices_size = static_cast<unsigned>(
+          atom_name_indices->size());
+      }
+      unsigned n_at = ag.atoms_size();
+      std::vector<atom> const& ats = ag.atoms();
+      for(unsigned i_at=0;i_at<n_at;i_at++) {
+        atom const& a = ats[i_at];
+        unsigned atom_name_index = (*atom_name_indices)[a.data->name];
+        if (atom_name_index == 0) {
+          (*atom_name_indices)[a.data->name]
+            = atom_name_index
+            = ++atom_name_indices_size;
+        }
+        tab.push_back(interleaved_conf_helper(
+          &a,
+          resname_index,
+          atom_name_index,
+          sequential_index++));
+      }
+    }
+    std::sort(tab.begin(), tab.end());
+    typedef tab_t::const_iterator it;
+    it i_end = tab.end();
+    for(it i=tab.begin();i!=i_end;i++) {
+      result.push_back(*(i->atom_ptr));
+    }
   }
 
   af::shared<atom>
