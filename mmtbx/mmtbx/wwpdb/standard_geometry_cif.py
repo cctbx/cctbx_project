@@ -119,3 +119,9 @@ def process_chem_comps(file_name):
     raise RuntimeError("Unexpected end of file.")
   assert len(buffer) == 0
   return chem_comps
+
+
+if __name__=="__main__":
+  import os, sys
+  process_chem_comps(sys.argv[1])
+    

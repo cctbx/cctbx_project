@@ -3,6 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+  "$D/mmtbx/chemical_components/tst.py",
   "$D/mmtbx/regression/tst_add_h_to_water.py",
   "$D/mmtbx/rotamer/rotamer_eval.py",
   "$D/mmtbx/wwpdb/tst_standard_geometry_cif.py",
@@ -44,7 +45,7 @@ def run():
   "$D/mmtbx/examples/f_model_manager.py",
   "$D/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py",
   "$D/mmtbx/alignment.py",
-  "$D/mmtbx/invariant_domain.py"
+  "$D/mmtbx/invariant_domain.py",
   )
 
   build_dir = libtbx.env.under_build("mmtbx")
