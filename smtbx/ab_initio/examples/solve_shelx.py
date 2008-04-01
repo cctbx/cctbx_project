@@ -1,6 +1,10 @@
+import re, os
 from smtbx.ab_initio import charge_flipping
 from iotbx import reflection_file_reader
+from iotbx.shelx.from_ins import from_ins
 from cctbx import maptbx
+from cctbx import euclidean_model_matching as emma
+
 from  libtbx.itertbx import izip
 try:
   from crys3d import wx_map_viewer
@@ -36,17 +40,38 @@ def run(hkl_path, verbose):
     fft_map = f_calc.fft_map(
         symmetry_flags=maptbx.use_space_group_symmetry)
     # 3D display of the electron density iso-contours
-    if wx_map_viewer is not None:
+    if 0 and wx_map_viewer is not None:
       wx_map_viewer.display(fft_map)
     # search and print Fourier peaks
+    nb_peaks_to_search = int(f_calc.unit_cell().volume()/18.6
+                          / len(f_calc.space_group()))
     peaks = fft_map.peak_search(
       parameters=maptbx.peak_search_parameters(
         min_distance_sym_equiv=1.0,
-        max_clusters=30,),
+        max_clusters=nb_peaks_to_search,),
       verify_symmetry=False
       ).all()
     for q,h in izip(peaks.sites(), peaks.heights()):
       print "(%.3f, %.3f, %.3f) -> %.3f" % (q+(h,))
+    if verbose:
+      shelx = re.sub(r'(\.(hkl|gz))+$', '', hkl_path)
+      ins, res = shelx+'.ins', shelx+'.res'
+      if os.path.isfile(ins): shelx = ins
+      elif os.path.isfile(res): shelx = res
+      else: raise RuntimeError('How did we manage to get here?')
+      xs = from_ins(shelx)
+      solution_peak_structure = emma.model(
+        xs.special_position_settings(),
+        positions=[ emma.position('Q%i' % i, x)
+                    for i,x in enumerate(peaks.sites()) ])
+      refined_matches = emma.model_matches(
+        xs.as_emma_model(),
+        solution_peak_structure,
+        break_if_match_with_no_singles=True
+        ).refined_matches
+      assert refined_matches
+      print refined_matches[0].show()
+      
 
 if __name__ == '__main__':
   from libtbx.option_parser import option_parser
