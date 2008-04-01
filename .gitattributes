@@ -112,6 +112,9 @@ libtbx/windows_dispatcher.exe -text
 mmtbx/alignment.h svneol=native#text/plain
 mmtbx/alignment_ext.cpp svneol=native#text/plain
 mmtbx/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
+mmtbx/mmtbx/chemical_components/__init__.py -text
+mmtbx/mmtbx/chemical_components/cif_parser.py -text
+mmtbx/mmtbx/chemical_components/tst.py -text
 mmtbx/mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/mmtbx/command_line/maps.py -text
 mmtbx/mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
