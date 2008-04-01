@@ -885,8 +885,9 @@ namespace hierarchy {
       unsigned
       atoms_size() const;
 
+      //! Not available in Python.
       af::shared<atom>
-      atoms() const;
+      atoms_sequential_conf() const;
 
       std::string
       resid() const;
@@ -914,9 +915,20 @@ namespace hierarchy {
       is_identical_topology(
         residue_group const& other) const;
 
+      //! Not available in Python.
+      void
+      atoms_interleaved_conf_impl(
+        bool group_residue_names,
+        af::shared<atom>& result) const;
+
+      //! Not available in Python.
       af::shared<atom>
       atoms_interleaved_conf(
         bool group_residue_names=true) const;
+
+      af::shared<atom>
+      atoms(
+        int interleaved_conf=0) const;
   };
 
   //! Chain attributes.
@@ -1007,8 +1019,9 @@ namespace hierarchy {
       unsigned
       atoms_size() const;
 
+      //! Not available in Python.
       af::shared<atom>
-      atoms() const;
+      atoms_sequential_conf() const;
 
       void
       merge_residue_groups(
@@ -1029,6 +1042,15 @@ namespace hierarchy {
 
       af::shared<conformer>
       conformers() const;
+
+      //! Not available in Python.
+      af::shared<atom>
+      atoms_interleaved_conf(
+        bool group_residue_names=true) const;
+
+      af::shared<atom>
+      atoms(
+        int interleaved_conf=0) const;
   };
 
   //! Model attributes.
@@ -1113,12 +1135,22 @@ namespace hierarchy {
       unsigned
       atoms_size() const;
 
+      //! Not available in Python.
       af::shared<atom>
-      atoms() const;
+      atoms_sequential_conf() const;
 
       bool
       is_identical_topology(
         model const& other) const;
+
+      //! Not available in Python.
+      af::shared<atom>
+      atoms_interleaved_conf(
+        bool group_residue_names=true) const;
+
+      af::shared<atom>
+      atoms(
+        int interleaved_conf=0) const;
 
       void
       transfer_chains_from_other(
@@ -1177,8 +1209,18 @@ namespace hierarchy {
       unsigned
       atoms_size() const;
 
+      //! Not available in Python.
       af::shared<atom>
-      atoms() const;
+      atoms_sequential_conf() const;
+
+      //! Not available in Python.
+      af::shared<atom>
+      atoms_interleaved_conf(
+        bool group_residue_names=true) const;
+
+      af::shared<atom>
+      atoms(
+        int interleaved_conf=0) const;
   };
 
   struct overall_counts : boost::noncopyable

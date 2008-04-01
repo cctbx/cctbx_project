@@ -421,8 +421,7 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_atom_group_index_overloads, find_atom_group_index, 1, 2)
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      atoms_interleaved_conf_overloads, atoms_interleaved_conf, 0, 1)
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
 
     static void
     wrap()
@@ -448,7 +447,8 @@ namespace {
         .def("parent", get_parent<residue_group, chain>::wrapper)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(atom_group)
         .def("atoms_size", &w_t::atoms_size)
-        .def("atoms", &w_t::atoms)
+        .def("atoms", &w_t::atoms, atoms_overloads((
+          arg_("interleaved_conf")=0)))
         .def("resid", &w_t::resid)
         .def("have_conformers", &w_t::have_conformers)
         .def("merge_atom_groups", &w_t::merge_atom_groups, (
@@ -456,9 +456,6 @@ namespace {
         .def("move_blank_altloc_atom_groups_to_front",
           &w_t::move_blank_altloc_atom_groups_to_front)
         .def("edit_blank_altloc", &w_t::edit_blank_altloc)
-        .def("atoms_interleaved_conf", &w_t::atoms_interleaved_conf,
-          atoms_interleaved_conf_overloads((
-            arg_("group_residue_names")=true)))
       ;
     }
   };
@@ -494,6 +491,8 @@ namespace {
         result.begin(), result.size());
     }
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
+
     static void
     append_atom_record_groups(
       w_t const& self,
@@ -520,7 +519,7 @@ namespace {
         }
         label_formatter.resseq = rg.data->resseq.elems;
         label_formatter.icode = rg.data->icode.elems;
-        if (interleaved_conf <= 1) {
+        if (interleaved_conf <= 0) {
           unsigned n_ag = rg.atom_groups_size();
           for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
             atom_group const& ag = rg.atom_groups()[i_ag];
@@ -587,7 +586,8 @@ namespace {
         .def("parent", get_parent<chain, model>::wrapper)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(residue_group)
         .def("atoms_size", &w_t::atoms_size)
-        .def("atoms", &w_t::atoms)
+        .def("atoms", &w_t::atoms, atoms_overloads((
+          arg_("interleaved_conf")=0)))
         .def("merge_residue_groups", &w_t::merge_residue_groups, (
           arg_("primary"), arg_("secondary")))
         .def("merge_disconnected_residue_groups_with_pure_altloc",
@@ -627,6 +627,8 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_chain_index_overloads, find_chain_index, 1, 2)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
+
     static void
     wrap()
     {
@@ -643,7 +645,8 @@ namespace {
         .def("parent", get_parent<model, root>::wrapper)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(chain)
         .def("atoms_size", &w_t::atoms_size)
-        .def("atoms", &w_t::atoms)
+        .def("atoms", &w_t::atoms, atoms_overloads((
+          arg_("interleaved_conf")=0)))
         .def("is_identical_topology", &w_t::is_identical_topology, (
           arg_("other")))
         .def("transfer_chains_from_other", &w_t::transfer_chains_from_other, (
@@ -669,6 +672,8 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_model_index_overloads, find_model_index, 1, 2)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
 
     static void
     get_overall_counts(
@@ -777,7 +782,8 @@ namespace {
         .def("memory_id", &w_t::memory_id)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(model)
         .def("atoms_size", &w_t::atoms_size)
-        .def("atoms", &w_t::atoms)
+        .def("atoms", &w_t::atoms, atoms_overloads((
+          arg_("interleaved_conf")=0)))
         .def("get_overall_counts", get_overall_counts)
         .def("get_atom_selection_cache", get_atom_selection_cache)
       ;
@@ -823,8 +829,8 @@ namespace {
         .add_property("is_pure_main_conf",make_function(get_is_pure_main_conf))
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<residue, conformer>::wrapper)
-        .def("atoms", get_atoms)
         .def("atoms_size", &w_t::atoms_size)
+        .def("atoms", get_atoms)
         .def("resid", &w_t::resid)
       ;
     }
