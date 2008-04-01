@@ -1300,8 +1300,6 @@ namespace {
     unsigned atom_name_index;
     unsigned sequential_index;
 
-    static const str3 empty;
-
     interleaved_conf_helper(
       const atom* atom_ptr_,
       unsigned resname_index_,
