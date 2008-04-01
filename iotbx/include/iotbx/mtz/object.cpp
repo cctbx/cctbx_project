@@ -588,6 +588,8 @@ namespace iotbx { namespace mtz {
         column const& sigmas,
         int i_refl)
       :
+        datum(0),
+        sigma(0),
         is_consistent(true),
         is_usable(true)
       {
