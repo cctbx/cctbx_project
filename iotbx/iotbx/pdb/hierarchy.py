@@ -445,10 +445,14 @@ class _root(boost.python.injector, ext.root):
   def as_pdb_records(self,
         append_end=False,
         interleaved_conf=0,
+        atoms_reset_serial_first_value=None,
         atom_hetatm=True,
         sigatm=True,
         anisou=True,
         siguij=True):
+    if (atoms_reset_serial_first_value is not None):
+      self.atoms(interleaved_conf=interleaved_conf).reset_serial(
+        first_value=atoms_reset_serial_first_value)
     result = []
     models = self.models()
     for model in models:
@@ -469,6 +473,7 @@ class _root(boost.python.injector, ext.root):
   def as_pdb_string(self,
         append_end=False,
         interleaved_conf=0,
+        atoms_reset_serial_first_value=None,
         atom_hetatm=True,
         sigatm=True,
         anisou=True,
@@ -476,6 +481,7 @@ class _root(boost.python.injector, ext.root):
     return "\n".join(self.as_pdb_records(
       append_end=append_end,
       interleaved_conf=interleaved_conf,
+      atoms_reset_serial_first_value=atoms_reset_serial_first_value,
       atom_hetatm=atom_hetatm,
       sigatm=sigatm,
       anisou=anisou,

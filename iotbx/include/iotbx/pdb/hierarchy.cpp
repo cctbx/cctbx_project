@@ -188,7 +188,7 @@ namespace {
   root::atoms_size() const
   {
     unsigned result = 0;
-#define IOTBX_PDB_HIERARCHY_CPP_ROOT_ATOM_GROUPS_LOOPS \
+#define IOTBX_PDB_HIERARCHY_CPP_ROOT_RESIDUE_GROUPS_LOOPS \
     std::vector<model> const& models = this->models(); \
     unsigned n_mds = models_size(); \
     for(unsigned i_md=0;i_md<n_mds;i_md++) { \
@@ -197,7 +197,9 @@ namespace {
       for(unsigned i_ch=0;i_ch<n_chs;i_ch++) { \
         unsigned n_rgs = chains[i_ch].residue_groups_size(); \
         std::vector<residue_group> const& rgs = chains[i_ch].residue_groups(); \
-        for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) { \
+        for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) {
+#define IOTBX_PDB_HIERARCHY_CPP_ROOT_ATOM_GROUPS_LOOPS \
+        IOTBX_PDB_HIERARCHY_CPP_ROOT_RESIDUE_GROUPS_LOOPS \
           unsigned n_ags = rgs[i_rg].atom_groups_size(); \
           std::vector<atom_group> const& ags = rgs[i_rg].atom_groups(); \
           for(unsigned i_ag=0;i_ag<n_ags;i_ag++) { \
@@ -212,13 +214,15 @@ namespace {
   model::atoms_size() const
   {
     unsigned result = 0;
-#define IOTBX_PDB_HIERARCHY_CPP_MODEL_ATOM_GROUPS_LOOPS \
+#define IOTBX_PDB_HIERARCHY_CPP_MODEL_RESIDUE_GROUPS_LOOPS \
     unsigned n_chs = chains_size(); \
     std::vector<chain> const& chains = this->chains(); \
     for(unsigned i_ch=0;i_ch<n_chs;i_ch++) { \
       unsigned n_rgs = chains[i_ch].residue_groups_size(); \
       std::vector<residue_group> const& rgs = chains[i_ch].residue_groups(); \
-      for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) { \
+      for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) {
+#define IOTBX_PDB_HIERARCHY_CPP_MODEL_ATOM_GROUPS_LOOPS \
+        IOTBX_PDB_HIERARCHY_CPP_MODEL_RESIDUE_GROUPS_LOOPS \
         unsigned n_ags = rgs[i_rg].atom_groups_size(); \
         std::vector<atom_group> const& ags = rgs[i_rg].atom_groups(); \
         for(unsigned i_ag=0;i_ag<n_ags;i_ag++) { \
@@ -233,10 +237,12 @@ namespace {
   chain::atoms_size() const
   {
     unsigned result = 0;
-#define IOTBX_PDB_HIERARCHY_CPP_CHAIN_ATOM_GROUPS_LOOPS \
+#define IOTBX_PDB_HIERARCHY_CPP_CHAIN_RESIDUE_GROUPS_LOOPS \
     unsigned n_rgs = residue_groups_size(); \
     std::vector<residue_group> const& rgs = residue_groups(); \
-    for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) { \
+    for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) {
+#define IOTBX_PDB_HIERARCHY_CPP_CHAIN_ATOM_GROUPS_LOOPS \
+        IOTBX_PDB_HIERARCHY_CPP_CHAIN_RESIDUE_GROUPS_LOOPS \
       unsigned n_ags = rgs[i_rg].atom_groups_size(); \
       std::vector<atom_group> const& ags = rgs[i_rg].atom_groups(); \
       for(unsigned i_ag=0;i_ag<n_ags;i_ag++) { \
@@ -276,7 +282,7 @@ namespace {
   }
 
   af::shared<atom>
-  root::atoms() const
+  root::atoms_sequential_conf() const
   {
     af::shared<atom> result((af::reserve(atoms_size())));
     IOTBX_PDB_HIERARCHY_CPP_ROOT_ATOM_GROUPS_LOOPS
@@ -291,7 +297,7 @@ namespace {
   }
 
   af::shared<atom>
-  model::atoms() const
+  model::atoms_sequential_conf() const
   {
     af::shared<atom> result((af::reserve(atoms_size())));
     IOTBX_PDB_HIERARCHY_CPP_MODEL_ATOM_GROUPS_LOOPS
@@ -301,7 +307,7 @@ namespace {
   }
 
   af::shared<atom>
-  chain::atoms() const
+  chain::atoms_sequential_conf() const
   {
     af::shared<atom> result((af::reserve(atoms_size())));
     IOTBX_PDB_HIERARCHY_CPP_CHAIN_ATOM_GROUPS_LOOPS
@@ -311,7 +317,7 @@ namespace {
   }
 
   af::shared<atom>
-  residue_group::atoms() const
+  residue_group::atoms_sequential_conf() const
   {
     af::shared<atom> result((af::reserve(atoms_size())));
     IOTBX_PDB_HIERARCHY_CPP_RESIDUE_GROUP_ATOM_GROUPS_LOOPS
@@ -1285,11 +1291,11 @@ namespace {
     other_chains.swap(empty);
   }
 
-  af::shared<atom>
-  residue_group::atoms_interleaved_conf(
-    bool group_residue_names) const
+  void
+  residue_group::atoms_interleaved_conf_impl(
+    bool group_residue_names,
+    af::shared<atom>& result) const
   {
-    af::shared<atom> result;
     unsigned n_ag = atom_groups_size();
     std::vector<atom_group> const& ags = atom_groups();
     std::map<str7, std::vector<atom> > key_atoms;
@@ -1320,7 +1326,64 @@ namespace {
     IOTBX_LOC_CLOSE
 #undef IOTBX_LOC_OPEN
 #undef IOTBX_LOC_CLOSE
+  }
+
+  af::shared<atom>
+  residue_group::atoms_interleaved_conf(
+    bool group_residue_names) const
+  {
+    af::shared<atom> result((af::reserve(atoms_size())));
+    atoms_interleaved_conf_impl(group_residue_names, result);
     return result;
   }
+
+  af::shared<atom>
+  chain::atoms_interleaved_conf(
+    bool group_residue_names) const
+  {
+    af::shared<atom> result((af::reserve(atoms_size())));
+    IOTBX_PDB_HIERARCHY_CPP_CHAIN_RESIDUE_GROUPS_LOOPS
+      rgs[i_rg].atoms_interleaved_conf_impl(group_residue_names, result);
+    }
+    return result;
+  }
+
+  af::shared<atom>
+  model::atoms_interleaved_conf(
+    bool group_residue_names) const
+  {
+    af::shared<atom> result((af::reserve(atoms_size())));
+    IOTBX_PDB_HIERARCHY_CPP_MODEL_RESIDUE_GROUPS_LOOPS
+      rgs[i_rg].atoms_interleaved_conf_impl(group_residue_names, result);
+    }}
+    return result;
+  }
+
+  af::shared<atom>
+  root::atoms_interleaved_conf(
+    bool group_residue_names) const
+  {
+    af::shared<atom> result((af::reserve(atoms_size())));
+    IOTBX_PDB_HIERARCHY_CPP_ROOT_RESIDUE_GROUPS_LOOPS
+      rgs[i_rg].atoms_interleaved_conf_impl(group_residue_names, result);
+    }}}
+    return result;
+  }
+
+#define IOTBX_LOC(T) \
+  af::shared<atom> \
+  T::atoms( \
+    int interleaved_conf) const \
+  { \
+    if (interleaved_conf <= 0) return atoms_sequential_conf(); \
+    return atoms_interleaved_conf((interleaved_conf < 2)); \
+  }
+
+  IOTBX_LOC(residue_group)
+  IOTBX_LOC(chain)
+  IOTBX_LOC(model)
+  IOTBX_LOC(root)
+
+#undef IOTBX_LOC
 
 }}} // namespace iotbx::pdb::hierarchy
