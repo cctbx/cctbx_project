@@ -1,4 +1,4 @@
-#include <iotbx/pdb/hierarchy.h>
+#include <iotbx/pdb/hierarchy_atoms.h>
 #include <fstream>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
@@ -26,37 +26,31 @@ namespace {
 } // namespace <anonymous>
 
   void
-  root::write_pdb_file(
-    const char* file_name,
-    bool open_append,
+  models_as_pdb_string(
+    stream_write& write,
+    std::vector<model> const& models,
     bool append_end,
     int interleaved_conf,
-    boost::optional<int> const& atoms_reset_serial_first_value,
     bool atom_hetatm,
     bool sigatm,
     bool anisou,
-    bool siguij) const
+    bool siguij)
   {
-    SCITBX_ASSERT(file_name != 0);
-    std::ios::openmode mode = std::ios::out | std::ios::binary;
-    if (open_append) mode |= std::ios::app;
-    std::ofstream out(file_name, mode);
     char buf[81U + 81U + 81U + 81U];
     atom_label_columns_formatter label_formatter;
-    std::vector<model> const& models = this->models();
-    unsigned n_mds = models_size();
+    unsigned n_mds = static_cast<unsigned>(models.size());
     for(unsigned i_md=0;i_md<n_mds;i_md++) {
       if (n_mds != 1U) {
-        out.write("MODEL", 5U);
+        write("MODEL", 5U);
         std::string model_id = models[i_md].data->id;
         rstrip_in_place(model_id);
         unsigned n = static_cast<unsigned>(model_id.size());
         if (n != 0) {
-          out.put(' ');
-          for(unsigned i=n;i<8U;i++) out.put(' ');
-          out.write(model_id.c_str(), n);
+          write(" ", 1U);
+          for(unsigned i=n;i<8U;i++) write(" ", 1U);
+          write(model_id.c_str(), n);
         }
-        out.put('\n');
+        write("\n", 1U);
       }
       unsigned n_chs = models[i_md].chains_size();
       std::vector<chain> const& chains = models[i_md].chains();
@@ -67,7 +61,7 @@ namespace {
         for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
           residue_group const& rg = ch.residue_groups()[i_rg];
           if (i_rg != 0 && !rg.data->link_to_previous) {
-            out.write("BREAK\n", 6U);
+            write("BREAK\n", 6U);
           }
           label_formatter.resseq = rg.data->resseq.elems;
           label_formatter.icode = rg.data->icode.elems;
@@ -87,8 +81,8 @@ namespace {
                   buf, &label_formatter, \
                   atom_hetatm, sigatm, anisou, siguij); \
                 if (str_len != 0) { \
-                  out.write(buf, str_len); \
-                  out.put('\n'); \
+                  buf[str_len] = '\n'; \
+                  write(buf, str_len+1U); \
                 }
                 IOTBX_LOC
               }
@@ -109,15 +103,61 @@ namespace {
           }
 #undef IOTBX_LOC
         }
-        out.write("TER\n", 4U);
+        write("TER\n", 4U);
       }
       if (n_mds != 1U) {
-        out.write("ENDMDL\n", 7U);
+        write("ENDMDL\n", 7U);
       }
     }
     if (append_end) {
-      out.write("END\n", 4U);
+      write("END\n", 4U);
     }
+  }
+
+  struct fstream_write : stream_write
+  {
+    std::ofstream* stream;
+
+    fstream_write(std::ofstream* stream_) : stream(stream_) {}
+
+    virtual void
+    operator()(const char* s, unsigned n)
+    {
+      stream->write(s, n);
+    }
+  };
+
+  void
+  root::write_pdb_file(
+    const char* file_name,
+    bool open_append,
+    bool append_end,
+    int interleaved_conf,
+    boost::optional<int> const& atoms_reset_serial_first_value,
+    bool atom_hetatm,
+    bool sigatm,
+    bool anisou,
+    bool siguij) const
+  {
+    SCITBX_ASSERT(file_name != 0);
+    if (atoms_reset_serial_first_value) {
+      atoms::reset_serial(
+        atoms(interleaved_conf).const_ref(),
+        *atoms_reset_serial_first_value);
+    }
+    std::ios::openmode mode = std::ios::out | std::ios::binary;
+    if (open_append) mode |= std::ios::app;
+    std::ofstream out(file_name, mode);
+    fstream_write write(&out);
+    models_as_pdb_string(
+      write,
+      models(),
+      append_end,
+      interleaved_conf,
+      atom_hetatm,
+      sigatm,
+      anisou,
+      siguij);
     out.close();
   }
 

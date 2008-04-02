@@ -13,7 +13,7 @@
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/boost_python/array_as_list.h>
 #include <cStringIO.h>
-#include <iotbx/pdb/hierarchy.h>
+#include <iotbx/pdb/hierarchy_atoms.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
 
@@ -670,6 +670,56 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
 
+    struct cstringio_write : stream_write
+    {
+      PyObject* sio;
+
+      cstringio_write(PyObject* sio_) : sio(sio_) {}
+
+      virtual void
+      operator()(const char* s, unsigned n)
+      {
+        PycStringIO->cwrite(sio, s, static_cast<boost::python::ssize_t>(n));
+      }
+    };
+
+    static void
+    as_pdb_string_cstringio(
+      w_t const& self,
+      boost::python::object cstringio,
+      bool append_end=false,
+      int interleaved_conf=0,
+      boost::optional<int>
+        atoms_reset_serial_first_value=boost::optional<int>(),
+      bool atom_hetatm=true,
+      bool sigatm=true,
+      bool anisou=true,
+      bool siguij=true)
+    {
+      if (!PycStringIO_OutputCheck(cstringio.ptr())) {
+        throw std::invalid_argument(
+          "cstringio argument must be a cStringIO.StringIO instance.");
+      }
+      if (atoms_reset_serial_first_value) {
+        atoms::reset_serial(
+          self.atoms(interleaved_conf).const_ref(),
+          *atoms_reset_serial_first_value);
+      }
+      cstringio_write write(cstringio.ptr());
+      models_as_pdb_string(
+        write,
+        self.models(),
+        append_end,
+        interleaved_conf,
+        atom_hetatm,
+        sigatm,
+        anisou,
+        siguij);
+    }
+
+    BOOST_PYTHON_FUNCTION_OVERLOADS(
+      as_pdb_string_cstringio_overloads, as_pdb_string_cstringio, 2, 9)
+
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       write_pdb_file_overloads, write_pdb_file, 1, 9)
 
@@ -782,6 +832,17 @@ namespace {
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, atoms_overloads((
           arg_("interleaved_conf")=0)))
+        .def("as_pdb_string_cstringio", as_pdb_string_cstringio,
+          as_pdb_string_cstringio_overloads((
+            arg_("self"),
+            arg_("cstringio"),
+            arg_("append_end")=false,
+            arg_("interleaved_conf")=0,
+            arg_("atoms_reset_serial_first_value")=boost::optional<int>(),
+            arg_("atom_hetatm")=true,
+            arg_("sigatm")=true,
+            arg_("anisou")=true,
+            arg_("siguij")=true)))
         .def("write_pdb_file", &w_t::write_pdb_file, write_pdb_file_overloads((
           arg_("file_name"),
           arg_("open_append")=false,

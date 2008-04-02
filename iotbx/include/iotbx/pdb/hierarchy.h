@@ -1236,6 +1236,26 @@ namespace hierarchy {
         bool siguij=true) const;
   };
 
+  struct stream_write
+  {
+    virtual void
+    operator()(const char*, unsigned) = 0;
+
+    virtual
+    ~stream_write() {}
+  };
+
+  void
+  models_as_pdb_string(
+    stream_write& write,
+    std::vector<model> const& models,
+    bool append_end,
+    int interleaved_conf,
+    bool atom_hetatm,
+    bool sigatm,
+    bool anisou,
+    bool siguij);
+
   struct overall_counts : boost::noncopyable
   {
     hierarchy::root root;

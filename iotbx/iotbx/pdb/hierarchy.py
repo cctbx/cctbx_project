@@ -450,25 +450,17 @@ class _root(boost.python.injector, ext.root):
         sigatm=True,
         anisou=True,
         siguij=True):
-    if (atoms_reset_serial_first_value is not None):
-      self.atoms(interleaved_conf=interleaved_conf).reset_serial(
-        first_value=atoms_reset_serial_first_value)
-    result = StringIO()
-    models = self.models()
-    for model in models:
-      if (len(models) != 1):
-        result.write(("MODEL %8s" % model.id).rstrip()+"\n")
-      for chain in model.chains():
-        chain.write_atom_record_groups(
-          cstringio=result,
-          interleaved_conf=interleaved_conf,
-          atom_hetatm=atom_hetatm, sigatm=sigatm, anisou=anisou, siguij=siguij)
-        result.write("TER\n")
-      if (len(models) != 1):
-        result.write("ENDMDL\n")
-    if (append_end):
-      result.write("END\n")
-    return result.getvalue()
+    sio = StringIO()
+    self.as_pdb_string_cstringio(
+      cstringio=sio,
+      append_end=append_end,
+      interleaved_conf=interleaved_conf,
+      atoms_reset_serial_first_value=atoms_reset_serial_first_value,
+      atom_hetatm=atom_hetatm,
+      sigatm=sigatm,
+      anisou=anisou,
+      siguij=siguij)
+    return sio.getvalue()
 
   def transfer_chains_from_other(self, other):
     from iotbx.pdb import hy36encode
