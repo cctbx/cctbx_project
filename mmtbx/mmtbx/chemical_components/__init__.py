@@ -24,6 +24,11 @@ def get_cif_filename(code):
                           )
   return filename
 
+def is_code(code):
+  filename = get_cif_filename()
+  if os.path.exists(filename): return True
+  return False
+
 def get_cif_dictionary(code):
   if code in loaded_cifs:
     cif = loaded_cifs[code]
@@ -109,36 +114,6 @@ def get_bond_pairs(code, alternate=False):
       tmp.append([item.atom_id_1, item.atom_id_2])
   return tmp
 
-def get_elbow_molecule(code, alternate=False):
-  from elbow.chemistry.MoleculeClass import MoleculeClass
-  orders = {"SING" : 1,
-            "DOUB" : 2,
-            "TRIP" : 3,
-            }
-  cif = get_cif_dictionary(code)
-  if not cif: return cif
-  molecule = MoleculeClass()
-  for item in cif["_chem_comp_atom"]:
-    molecule.AddAtom(item.type_symbol,
-                     xyz=(item.pdbx_model_Cartn_x_ideal,
-                          item.pdbx_model_Cartn_y_ideal,
-                          item.pdbx_model_Cartn_z_ideal,
-                          ),
-                     )
-    molecule[-1].name = item.atom_id
-    if item.charge!=0:
-      molecule[-1].charge+=item.charge
-      molecule.charge += item.charge
-  bonds = cif.get("_chem_comp_bond", {})
-  for item in bonds:
-    atom1 = molecule.GetAtomByName(item.atom_id_1)
-    atom2 = molecule.GetAtomByName(item.atom_id_2)
-    molecule.AddBond(atom1, atom2, order=orders[item.value_order])
-    if item.pdbx_aromatic_flag=="Y":
-      molecule.bonds[-1].order = 1.5
-  molecule.UpdateAtomBonded()
-  return molecule
-
 if __name__=="__main__":
   print '\nSMILES'
   print get_smiles(sys.argv[1])
@@ -158,5 +133,3 @@ if __name__=="__main__":
   print get_bond_pairs(sys.argv[1])
   print '\nAlternate name bond pairs'
   print get_bond_pairs(sys.argv[1], alternate=True)
-  print '\neLBOW molecule'
-  print get_elbow_molecule(sys.argv[1]).DisplayBrief()
