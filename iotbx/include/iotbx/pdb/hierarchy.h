@@ -1221,6 +1221,19 @@ namespace hierarchy {
       af::shared<atom>
       atoms(
         int interleaved_conf=0) const;
+
+      void
+      write_pdb_file(
+        const char* file_name,
+        bool open_append=false,
+        bool append_end=false,
+        int interleaved_conf=0,
+        boost::optional<int> const&
+          atoms_reset_serial_first_value = boost::optional<int>(),
+        bool atom_hetatm=true,
+        bool sigatm=true,
+        bool anisou=true,
+        bool siguij=true) const;
   };
 
   struct overall_counts : boost::noncopyable

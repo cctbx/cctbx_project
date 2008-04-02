@@ -22,6 +22,7 @@ builder(
     "hierarchy_atoms.cpp",
     "construct_hierarchy.cpp",
     "overall_counts.cpp",
+    "hierarchy_write.cpp",
     "atom_selection.cpp",
     "input.cpp"])
 
