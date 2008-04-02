@@ -208,65 +208,72 @@ class map_names(object):
     k,n = None,None
     ml_map = False
     s = map_name_string.lower()
-    s = s.replace(" ","")
-    s = s.replace("*","")
-    if(s.count('_')==1): self.error(map_name_string)
-    found = False
-    for item in ['fobs','fob','fo']:
-      if(s.count(item)==1):
-        s = s.replace(item,"_")
-        found = True
-    if(not found): self.error(map_name_string)
-    found = False
-    for item in ['fcalc','fcal','fc', 'fmodel','fmod','fm']:
-      if(s.count(item)==1):
-        if(not s.endswith(item)): self.error(map_name_string)
-        s = s.replace(item,"_")
-        found = True
-    if(not found): self.error(map_name_string)
-    if(s.count('m')==1):
-      if(s.count('d')==0): self.error(map_name_string)
-      s = s.replace('m',"_")
-      s = s.replace('d',"_")
-      ml_map = True
-    if(s.count('d')==1): self.error(map_name_string)
-    # at this point we can only have numbers or eventually "-"
-    if(s.count('-')==1 and not s.startswith('-')):
-      if(len(s)==1): self.error(map_name_string)
-      if(s.endswith('-')):
-        n = 1
-      else:
-        n = s[s.index('-')+1:]
-      k = s[:s.index('-')]
-      s = s.replace('-',"_")
-    if(len(s) == s.count('_')):
-      k, n = 1, 1
-      s = s.replace('_','')
-    if(len(s) > 0):
-      first = []
-      second = []
-      start_first = True
-      start_second = False
-      for item in s:
-        if(item != '_' and start_first): first.append(item)
-        if(item == '_' and len(first) > 0): start_first = False
-        if(item != '_' and not start_first): second.append(item)
-      tmp_result = "".join(first)
-      if(tmp_result == '-'): tmp_result = -1
-      else: tmp_result = "".join(first)
-      try: k = float(tmp_result)
-      except: self.error(map_name_string)
-      if(len(second)==0): n = 1
-      else:
-        tmp_result = "".join(second)
-        if(tmp_result.startswith('--')): tmp_result = tmp_result[1:]
-        try: n = float(tmp_result)
-        except: self.error(map_name_string)
-    if([k,n].count(None) > 0): self.error(map_name_string)
-    assert ml_map is not None
-    self.k = float(k)
-    self.n = float(n)
+    self.k = k
+    self.n = n
     self.ml_map = ml_map
+    self.anomalous = True
+    if(s.count('anom')):
+      self.anomalous = True
+    else:
+      s = s.replace(" ","")
+      s = s.replace("*","")
+      if(s.count('_')==1): self.error(map_name_string)
+      found = False
+      for item in ['fobs','fob','fo']:
+        if(s.count(item)==1):
+          s = s.replace(item,"_")
+          found = True
+      if(not found): self.error(map_name_string)
+      found = False
+      for item in ['fcalc','fcal','fc', 'fmodel','fmod','fm']:
+        if(s.count(item)==1):
+          if(not s.endswith(item)): self.error(map_name_string)
+          s = s.replace(item,"_")
+          found = True
+      if(not found): self.error(map_name_string)
+      if(s.count('m')==1):
+        if(s.count('d')==0): self.error(map_name_string)
+        s = s.replace('m',"_")
+        s = s.replace('d',"_")
+        ml_map = True
+      if(s.count('d')==1): self.error(map_name_string)
+      # at this point we can only have numbers or eventually "-"
+      if(s.count('-')==1 and not s.startswith('-')):
+        if(len(s)==1): self.error(map_name_string)
+        if(s.endswith('-')):
+          n = 1
+        else:
+          n = s[s.index('-')+1:]
+        k = s[:s.index('-')]
+        s = s.replace('-',"_")
+      if(len(s) == s.count('_')):
+        k, n = 1, 1
+        s = s.replace('_','')
+      if(len(s) > 0):
+        first = []
+        second = []
+        start_first = True
+        start_second = False
+        for item in s:
+          if(item != '_' and start_first): first.append(item)
+          if(item == '_' and len(first) > 0): start_first = False
+          if(item != '_' and not start_first): second.append(item)
+        tmp_result = "".join(first)
+        if(tmp_result == '-'): tmp_result = -1
+        else: tmp_result = "".join(first)
+        try: k = float(tmp_result)
+        except: self.error(map_name_string)
+        if(len(second)==0): n = 1
+        else:
+          tmp_result = "".join(second)
+          if(tmp_result.startswith('--')): tmp_result = tmp_result[1:]
+          try: n = float(tmp_result)
+          except: self.error(map_name_string)
+      if([k,n].count(None) > 0): self.error(map_name_string)
+      assert ml_map is not None
+      self.k = float(k)
+      self.n = float(n)
+      self.ml_map = ml_map
 
   def error(self, s):
     raise RuntimeError("Wrong map type requested: "+s)
