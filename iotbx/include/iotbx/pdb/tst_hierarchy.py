@@ -3967,7 +3967,10 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy()
 
 def check_wpf(hierarchy, kwargs={}, trailing=None, expected=None):
-  pdb_str = hierarchy.as_pdb_string(**kwargs)
+  if ("atoms_reset_serial_first_value" in kwargs):
+    pdb_str = hierarchy.deep_copy().as_pdb_string(**kwargs)
+  else:
+    pdb_str = hierarchy.as_pdb_string(**kwargs)
   if (trailing is not None): pdb_str = pdb_str.replace(trailing, "")
   if (expected is None):
     sys.stdout.write(pdb_str)
