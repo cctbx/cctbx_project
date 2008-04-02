@@ -12,6 +12,7 @@
 #include <boost/python/return_arg.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/boost_python/array_as_list.h>
+#include <cStringIO.h>
 #include <iotbx/pdb/hierarchy.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
@@ -494,28 +495,29 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
 
     static void
-    append_atom_record_groups(
+    write_atom_record_groups(
       w_t const& self,
-      boost::python::list pdb_records,
+      boost::python::object cstringio,
       int interleaved_conf=0,
       bool atom_hetatm=true,
       bool sigatm=true,
       bool anisou=true,
       bool siguij=true)
     {
-      boost::python::ssize_t max_str_len = 0;
-      if (atom_hetatm) max_str_len += 81;
-      if (sigatm) max_str_len += 81;
-      if (anisou) max_str_len += 81;
-      if (siguij) max_str_len += 81;
-      if (max_str_len == 0) max_str_len = 1;
+      if (!PycStringIO_OutputCheck(cstringio.ptr())) {
+        throw std::invalid_argument(
+          "cstringio argument must be a cStringIO.StringIO instance.");
+      }
+      PyObject* sio = cstringio.ptr();
+      char buf[81U + 81U + 81U + 81U];
       atom_label_columns_formatter label_formatter;
       label_formatter.chain_id = self.data->id.c_str();
       unsigned n_rg = self.residue_groups_size();
       for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
         residue_group const& rg = self.residue_groups()[i_rg];
         if (i_rg != 0 && !rg.data->link_to_previous) {
-          pdb_records.append("BREAK");
+          PycStringIO->cwrite(
+            sio, "BREAK\n", static_cast<boost::python::ssize_t>(6));
         }
         label_formatter.resseq = rg.data->resseq.elems;
         label_formatter.icode = rg.data->icode.elems;
@@ -530,20 +532,13 @@ namespace {
             va::const_iterator atoms_end = atoms.end();
             for(va::const_iterator atom=atoms.begin();atom!=atoms_end;atom++) {
 #define IOTBX_LOC \
-              boost::python::handle<> str_hdl(PyString_FromStringAndSize( \
-                0, max_str_len)); \
-              PyObject* str_obj = str_hdl.get(); \
-              char* str_begin = PyString_AS_STRING(str_obj); \
               unsigned str_len = atom->format_atom_record_group( \
-                str_begin, &label_formatter, \
+                buf, &label_formatter, \
                 atom_hetatm, sigatm, anisou, siguij); \
               if (str_len != 0) { \
-                str_hdl.release(); \
-                if (_PyString_Resize( \
-                      &str_obj, static_cast<int>(str_len)) != 0) { \
-                  boost::python::throw_error_already_set(); \
-                } \
-                pdb_records.append(boost::python::handle<>(str_obj)); \
+                buf[str_len] = '\n'; \
+                PycStringIO->cwrite( \
+                  sio, buf, static_cast<boost::python::ssize_t>(str_len+1U)); \
               }
               IOTBX_LOC
             }
@@ -567,7 +562,7 @@ namespace {
     }
 
     BOOST_PYTHON_FUNCTION_OVERLOADS(
-      append_atom_record_groups_overloads, append_atom_record_groups, 2, 7)
+      write_atom_record_groups_overloads, write_atom_record_groups, 2, 7)
 
     static void
     wrap()
@@ -596,10 +591,10 @@ namespace {
           find_pure_altloc_ranges_overloads((
             arg_("common_residue_name_class_only")=0)))
         .def("conformers", conformers)
-        .def("append_atom_record_groups", append_atom_record_groups,
-          append_atom_record_groups_overloads((
+        .def("write_atom_record_groups", write_atom_record_groups,
+          write_atom_record_groups_overloads((
           arg_("self"),
-          arg_("pdb_records"),
+          arg_("cstringio"),
           arg_("interleaved_conf")=0,
           arg_("atom_hetatm")=true,
           arg_("sigatm")=true,
@@ -896,5 +891,6 @@ namespace {
 
 BOOST_PYTHON_MODULE(iotbx_pdb_hierarchy_ext)
 {
+  PycString_IMPORT;
   iotbx::pdb::hierarchy::wrap_hierarchy();
 }

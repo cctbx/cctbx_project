@@ -560,18 +560,19 @@ def exercise_chain():
   else: raise Exception_expected
   #
   c = pdb.hierarchy.chain(id="c")
-  records = []
-  c.append_atom_record_groups(pdb_records=records)
-  assert len(records) == 0
+  sio = StringIO()
+  c.write_atom_record_groups(cstringio=sio)
+  assert len(sio.getvalue()) == 0
   rg = pdb.hierarchy.residue_group(resseq="s", icode="j")
   c.append_residue_group(residue_group=rg)
   ag = pdb.hierarchy.atom_group(altloc="a", resname="r")
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy.atom().set_name("n"))
   assert ag.only_atom().pdb_label_columns() == "n   a  r c   sj"
-  c.append_atom_record_groups(pdb_records=records)
-  assert records == [
-    "ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00"]
+  c.write_atom_record_groups(cstringio=sio)
+  assert not show_diff(sio.getvalue(), """\
+ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
+""")
   rg = pdb.hierarchy.residue_group(resseq="t", icode="k")
   c.append_residue_group(residue_group=rg)
   ag =  pdb.hierarchy.atom_group(altloc="b", resname="q")
@@ -583,9 +584,9 @@ def exercise_chain():
   ag = pdb.hierarchy.atom_group(altloc="d", resname="p")
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy.atom().set_name("o"))
-  records = []
-  c.append_atom_record_groups(pdb_records=records)
-  assert not show_diff("\n".join(records)+"\n", """\
+  sio = StringIO()
+  c.write_atom_record_groups(cstringio=sio)
+  assert not show_diff(sio.getvalue(), """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 BREAK
@@ -599,45 +600,45 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
   siguij_2_line = ""
   if (pdb.hierarchy.atom.has_siguij()):
     atoms[2].set_siguij((.6,.7,.8,.3,.5,.4))
-    siguij_2_line = """
-SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000"""
-  records = []
-  c.append_atom_record_groups(pdb_records=records)
-  assert len(records) == 4
-  assert not show_diff("\n".join(records), """\
+    siguij_2_line = """\
+SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+"""
+  sio = StringIO()
+  c.write_atom_record_groups(cstringio=sio)
+  assert not show_diff(sio.getvalue(), """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
-ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00%s""" %
-    siguij_2_line)
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+%s""" % siguij_2_line)
   atoms[0].set_uij((6,3,8,2,9,1))
   siguij_0_line = ""
   if (pdb.hierarchy.atom.has_siguij()):
     atoms[0].set_siguij((.6,.3,.8,.2,.9,.1))
-    siguij_0_line = """
-SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg"""
+    siguij_0_line = """\
+SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
+"""
   atoms[0].set_charge("Cg")
-  records = []
-  c.append_atom_record_groups(pdb_records=records)
-  assert len(records) == 4
-  assert not show_diff("\n".join(records), """\
+  sio = StringIO()
+  c.write_atom_record_groups(cstringio=sio)
+  assert not show_diff(sio.getvalue(), """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
-ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg%s
-ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
+ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
+%sATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
-ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00%s""" % (
-    siguij_0_line, siguij_2_line))
-  records = []
-  c.append_atom_record_groups(pdb_records=records, interleaved_conf=1)
-  c.append_atom_record_groups(pdb_records=records, interleaved_conf=2)
-  c.append_atom_record_groups(pdb_records=records, atom_hetatm=False)
-  c.append_atom_record_groups(pdb_records=records, sigatm=False)
-  c.append_atom_record_groups(pdb_records=records, anisou=False)
-  c.append_atom_record_groups(pdb_records=records, siguij=False)
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+%s""" % (siguij_0_line, siguij_2_line))
+  sio = StringIO()
+  c.write_atom_record_groups(cstringio=sio, interleaved_conf=1)
+  c.write_atom_record_groups(cstringio=sio, interleaved_conf=2)
+  c.write_atom_record_groups(cstringio=sio, atom_hetatm=False)
+  c.write_atom_record_groups(cstringio=sio, sigatm=False)
+  c.write_atom_record_groups(cstringio=sio, anisou=False)
+  c.write_atom_record_groups(cstringio=sio, siguij=False)
   expected = """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
@@ -684,23 +685,22 @@ ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
-ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00"""
+ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+"""
   if (pdb.hierarchy.atom.has_siguij()):
-    assert len(records) == 24
-    assert not show_diff("\n".join(records), expected)
+    assert not show_diff(sio.getvalue(), expected)
   else:
-    assert len(records) == 23
     def filter_expected():
       result = []
       for line in expected.splitlines():
         if (line.startswith("SIGUIJ")): continue
         result.append(line)
-      return "\n".join(result)
-    assert not show_diff("\n".join(records), filter_expected())
-  records = []
-  c.append_atom_record_groups(pdb_records=records,
+      return "\n".join(result)+"\n"
+    assert not show_diff(sio.getvalue(), filter_expected())
+  sio = StringIO()
+  c.write_atom_record_groups(cstringio=sio,
     atom_hetatm=False, sigatm=False, anisou=False, siguij=False)
-  assert records == ["BREAK"]
+  assert not show_diff(sio.getvalue(), "BREAK\n")
   #
   a = pdb.hierarchy.atom()
   assert a.pdb_label_columns() == "               "
