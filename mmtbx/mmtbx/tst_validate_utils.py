@@ -8,6 +8,19 @@ import libtbx.load_env
 
 import sys, os, getopt
 
+def find_rotarama_data_dir(optional=False):
+  result = libtbx.env.find_in_repositories("rotarama_data")
+  if result is None:
+    result = libtbx.env.find_in_repositories(
+      os.path.join("ext_ref_files", "rotarama_data"))
+    if result is None and not optional:
+      raise Sorry("""\
+Can't find ext_ref_files/rotarama_data/ directory:
+  Please run
+    svn co svn://quiddity.biochem.duke.edu:21/phenix/rotarama_data
+  to resolve this problem.""")
+  return result
+
 #{{{ exercise_ramalyze
 def exercise_ramalyze():
   #pdb_io = iotbx.pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -18,6 +31,9 @@ def exercise_ramalyze():
     test=os.path.isfile)
   if (regression_pdb is None):
     print "Skipping exercise_ramalyze(): input pdb (jcm.pdb) not available"
+    return
+  if (find_rotarama_data_dir(optional=True) is None):
+    print "Skipping exercise_ramalyze(): rotarama_data directory not available"
     return
   pdb_io = pdb.input(file_name=regression_pdb)
 
@@ -63,6 +79,9 @@ def exercise_rotalyze():
     test=os.path.isfile)
   if (regression_pdb is None):
     print "Skipping exercise_rotalyze(): input pdb (jcm.pdb) not available"
+    return
+  if (find_rotarama_data_dir(optional=True) is None):
+    print "Skipping exercise_rotalyze(): rotarama_data directory not available"
     return
   pdb_io = pdb.input(file_name=regression_pdb)
 
