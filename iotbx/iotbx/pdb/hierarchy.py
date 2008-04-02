@@ -442,7 +442,7 @@ class _root(boost.python.injector, ext.root):
       level_id_exception=level_id_exception)
     return out.getvalue()
 
-  def as_pdb_records(self,
+  def as_pdb_string(self,
         append_end=False,
         interleaved_conf=0,
         atoms_reset_serial_first_value=None,
@@ -453,39 +453,22 @@ class _root(boost.python.injector, ext.root):
     if (atoms_reset_serial_first_value is not None):
       self.atoms(interleaved_conf=interleaved_conf).reset_serial(
         first_value=atoms_reset_serial_first_value)
-    result = []
+    result = StringIO()
     models = self.models()
     for model in models:
       if (len(models) != 1):
-        result.append(("MODEL %8s" % model.id).rstrip())
+        result.write(("MODEL %8s" % model.id).rstrip()+"\n")
       for chain in model.chains():
-        chain.append_atom_record_groups(
-          pdb_records=result,
+        chain.write_atom_record_groups(
+          cstringio=result,
           interleaved_conf=interleaved_conf,
           atom_hetatm=atom_hetatm, sigatm=sigatm, anisou=anisou, siguij=siguij)
-        result.append("TER")
+        result.write("TER\n")
       if (len(models) != 1):
-        result.append("ENDMDL")
+        result.write("ENDMDL\n")
     if (append_end):
-      result.append("END")
-    return result
-
-  def as_pdb_string(self,
-        append_end=False,
-        interleaved_conf=0,
-        atoms_reset_serial_first_value=None,
-        atom_hetatm=True,
-        sigatm=True,
-        anisou=True,
-        siguij=True):
-    return "\n".join(self.as_pdb_records(
-      append_end=append_end,
-      interleaved_conf=interleaved_conf,
-      atoms_reset_serial_first_value=atoms_reset_serial_first_value,
-      atom_hetatm=atom_hetatm,
-      sigatm=sigatm,
-      anisou=anisou,
-      siguij=siguij))+"\n"
+      result.write("END\n")
+    return result.getvalue()
 
   def transfer_chains_from_other(self, other):
     from iotbx.pdb import hy36encode
