@@ -1,28 +1,12 @@
 import libtbx.load_env
 from mmtbx.rotamer.n_dim_table import NDimTable
+from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
+from mmtbx.rotamer.rotamer_eval import open_rotarama_dlite
 from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
 import weakref
 import sys, os
-
-def find_ramachandran_data_dir(optional=False):
-  result = libtbx.env.find_in_repositories("rotarama_data")
-  if result is None:
-    result = libtbx.env.find_in_repositories(
-      os.path.join("ext_ref_files", "rotarama_data"))
-    if result is None and not optional:
-      raise Sorry("""\
-Can't find ext_ref_files/rotarama_data/ directory:
-  Please run
-    svn co svn://quiddity.biochem.duke.edu:21/phenix/rotarama_data
-  to resolve this problem.""")
-  return result
-
-def open_rotarama_dlite(rama_data_dir=None):
-  if (rama_data_dir is None):
-    rama_data_dir = find_ramachandran_data_dir()
-  return dlite.target_db(os.path.join(rama_data_dir, "rotarama.dlite"))
 
 # maps programatic name to file name
 aminoAcids = {
@@ -44,8 +28,8 @@ class RamachandranEval:
         for aa,ndt_weakref in main_aaTables.items():
             # convert existing weak references to strong references
             self.aaTables[aa] = ndt_weakref()
-        rama_data_dir = find_ramachandran_data_dir()
-        target_db = open_rotarama_dlite(rama_data_dir=rama_data_dir)
+        rama_data_dir = find_rotarama_data_dir()
+        target_db = open_rotarama_dlite(rotarama_data_dir=rama_data_dir)
         for aa, aafile in aminoAcids.items():
                 if (self.aaTables.get(aa) is not None): continue
                 data_file = "rama500-"+aafile+".data"
@@ -77,7 +61,7 @@ class RamachandranEval:
         return ndt.valueAt(phiPsi)
 
 def exercise(args):
-  if (find_ramachandran_data_dir(optional=True) is None):
+  if (find_rotarama_data_dir(optional=True) is None):
     print "Skipping exercise(): rotarama_data directory not available"
   else:
     from mmtbx.command_line import rebuild_rotarama_cache
