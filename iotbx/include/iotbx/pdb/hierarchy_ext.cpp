@@ -21,6 +21,19 @@ namespace atoms { void bpl_wrap(); }
 
 namespace {
 
+  struct cstringio_write : stream_write
+  {
+    PyObject* sio;
+
+    cstringio_write(PyObject* sio_) : sio(sio_) {}
+
+    virtual void
+    operator()(const char* s, unsigned n)
+    {
+      PycStringIO->cwrite(sio, s, static_cast<boost::python::ssize_t>(n));
+    }
+  };
+
   template <typename ChildType, typename ParentType>
   struct get_parent
   {
@@ -508,57 +521,15 @@ namespace {
         throw std::invalid_argument(
           "cstringio argument must be a cStringIO.StringIO instance.");
       }
-      PyObject* sio = cstringio.ptr();
-      char buf[81U + 81U + 81U + 81U];
+      cstringio_write write(cstringio.ptr());
       atom_label_columns_formatter label_formatter;
       label_formatter.chain_id = self.data->id.c_str();
-      unsigned n_rg = self.residue_groups_size();
-      for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
-        residue_group const& rg = self.residue_groups()[i_rg];
-        if (i_rg != 0 && !rg.data->link_to_previous) {
-          PycStringIO->cwrite(
-            sio, "BREAK\n", static_cast<boost::python::ssize_t>(6));
-        }
-        label_formatter.resseq = rg.data->resseq.elems;
-        label_formatter.icode = rg.data->icode.elems;
-        if (interleaved_conf <= 0) {
-          unsigned n_ag = rg.atom_groups_size();
-          for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
-            atom_group const& ag = rg.atom_groups()[i_ag];
-            label_formatter.altloc = ag.data->altloc.elems;
-            label_formatter.resname = ag.data->resname.elems;
-            typedef std::vector<atom> va;
-            va const& atoms = ag.atoms();
-            va::const_iterator atoms_end = atoms.end();
-            for(va::const_iterator atom=atoms.begin();atom!=atoms_end;atom++) {
-#define IOTBX_LOC \
-              unsigned str_len = atom->format_atom_record_group( \
-                buf, &label_formatter, \
-                atom_hetatm, sigatm, anisou, siguij); \
-              if (str_len != 0) { \
-                buf[str_len] = '\n'; \
-                PycStringIO->cwrite( \
-                  sio, buf, static_cast<boost::python::ssize_t>(str_len+1U)); \
-              }
-              IOTBX_LOC
-            }
-          }
-        }
-        else { // interleaved_conf > 0
-          af::shared<atom> atoms_ilc = rg.atoms_interleaved_conf(
-            /* group_residue_names */ (interleaved_conf < 2));
-          af::const_ref<atom> ats = atoms_ilc.const_ref();
-          unsigned n_at = static_cast<unsigned>(ats.size());
-          for(unsigned i_at=0;i_at<n_at;i_at++) {
-            hierarchy::atom const* atom = &ats[i_at];
-            shared_ptr<atom_group_data> ag_data = atom->parent_ptr();
-            label_formatter.altloc = ag_data->altloc.elems;
-            label_formatter.resname = ag_data->resname.elems;
-            IOTBX_LOC
-          }
-        }
-      }
-#undef IOTBX_LOC
+      residue_groups_as_pdb_string(
+        write,
+        label_formatter,
+        self.residue_groups(),
+        interleaved_conf,
+        atom_hetatm, sigatm, anisou, siguij);
     }
 
     BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -669,19 +640,6 @@ namespace {
       find_model_index_overloads, find_model_index, 1, 2)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
-
-    struct cstringio_write : stream_write
-    {
-      PyObject* sio;
-
-      cstringio_write(PyObject* sio_) : sio(sio_) {}
-
-      virtual void
-      operator()(const char* s, unsigned n)
-      {
-        PycStringIO->cwrite(sio, s, static_cast<boost::python::ssize_t>(n));
-      }
-    };
 
     static void
     as_pdb_string_cstringio(

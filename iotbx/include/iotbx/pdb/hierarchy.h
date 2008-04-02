@@ -1245,6 +1245,18 @@ namespace hierarchy {
     ~stream_write() {}
   };
 
+  //! label_formatter chain_id must be set before this function is called.
+  void
+  residue_groups_as_pdb_string(
+    stream_write& write,
+    atom_label_columns_formatter& label_formatter,
+    std::vector<residue_group> const& residue_groups,
+    int interleaved_conf,
+    bool atom_hetatm,
+    bool sigatm,
+    bool anisou,
+    bool siguij);
+
   void
   models_as_pdb_string(
     stream_write& write,
