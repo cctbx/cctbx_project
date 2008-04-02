@@ -675,6 +675,9 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      write_pdb_file_overloads, write_pdb_file, 1, 9)
+
     static void
     get_overall_counts(
       w_t const& self,
@@ -784,6 +787,16 @@ namespace {
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, atoms_overloads((
           arg_("interleaved_conf")=0)))
+        .def("write_pdb_file", &w_t::write_pdb_file, write_pdb_file_overloads((
+          arg_("file_name"),
+          arg_("open_append")=false,
+          arg_("append_end")=false,
+          arg_("interleaved_conf")=0,
+          arg_("atoms_reset_serial_first_value")=boost::optional<int>(),
+          arg_("atom_hetatm")=true,
+          arg_("sigatm")=true,
+          arg_("anisou")=true,
+          arg_("siguij")=true)))
         .def("get_overall_counts", get_overall_counts)
         .def("get_atom_selection_cache", get_atom_selection_cache)
       ;

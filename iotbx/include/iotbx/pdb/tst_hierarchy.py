@@ -3961,8 +3961,23 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
       assert d == "c4089359af431bb2962d6a8e457dd86f"
     else:
       assert d == "a1dd6605ed08b56862b9d7ae6b9a547b"
+    h.write_pdb_file(file_name="tmp.pdb")
+    assert not show_diff(open("tmp.pdb").read(), s)
     h = pdb.input(
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy()
+
+def check_wpf(hierarchy, kwargs={}, trailing=None, expected=None):
+  pdb_str = hierarchy.as_pdb_string(**kwargs)
+  if (trailing is not None): pdb_str = pdb_str.replace(trailing, "")
+  if (expected is None):
+    sys.stdout.write(pdb_str)
+  else:
+    assert not show_diff(pdb_str, expected)
+  hierarchy.write_pdb_file(file_name="tmp.pdb", **kwargs)
+  pdb_file = open("tmp.pdb").read()
+  if (trailing is not None): pdb_file = pdb_file.replace(trailing, "")
+  assert not show_diff(pdb_file, pdb_str)
+  return pdb_str
 
 def exercise_atoms_interleaved_conf():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
@@ -4014,8 +4029,7 @@ ATOM     10  O  BTYR A   1I
 ATOM      5  CA CPHE A   1I
 ATOM      8  CA BTYR A   1I""")
   trailing = " A   1I      0.000   0.000   0.000  0.00  0.00"
-  assert not show_diff(
-    hierarchy.as_pdb_string(interleaved_conf=1).replace(trailing,""), """\
+  check_wpf(hierarchy, {"interleaved_conf":1}, trailing, """\
 ATOM      1  N  ATRP
 ATOM      2  C  ATRP
 ATOM      3  O  ATRP
@@ -4028,8 +4042,7 @@ ATOM      9  C  BTYR
 ATOM     10  O  BTYR
 TER
 """)
-  assert not show_diff(
-    hierarchy.as_pdb_string(interleaved_conf=2).replace(trailing,""), """\
+  check_wpf(hierarchy, {"interleaved_conf":2}, trailing, """\
 ATOM      1  N  ATRP
 ATOM      4  N  CPHE
 ATOM      2  C  ATRP
@@ -4082,8 +4095,7 @@ ATOM      7  O  CPHE A   1I
 ATOM     10  O  BTRP A   1I
 ATOM      5  CA CPHE A   1I
 ATOM      8  CA BTRP A   1I""")
-  assert not show_diff(
-    hierarchy.as_pdb_string(interleaved_conf=1).replace(trailing,""), """\
+  check_wpf(hierarchy, {"interleaved_conf":1}, trailing, """\
 ATOM      1  N  ATRP
 ATOM      2  C  ATRP
 ATOM      9  C  BTRP
@@ -4097,8 +4109,7 @@ ATOM      7  O  CPHE
 TER
 """)
   for interleaved_conf in [2,3,4]:
-    assert not show_diff(hierarchy.as_pdb_string(
-      interleaved_conf=interleaved_conf).replace(trailing,""), """\
+    check_wpf(hierarchy, {"interleaved_conf":interleaved_conf}, trailing, """\
 ATOM      1  N  ATRP
 ATOM      4  N  CPHE
 ATOM      2  C  ATRP
@@ -4111,9 +4122,9 @@ ATOM      5  CA CPHE
 ATOM      8  CA BTRP
 TER
 """)
-  assert not show_diff(hierarchy.as_pdb_string(
-    interleaved_conf=2,
-    atoms_reset_serial_first_value=13).replace(trailing,""), """\
+  check_wpf(hierarchy,
+    {"interleaved_conf":2,
+     "atoms_reset_serial_first_value": 13}, trailing, """\
 ATOM     13  N  ATRP
 ATOM     14  N  CPHE
 ATOM     15  C  ATRP
@@ -4137,7 +4148,12 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
 """
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
   hierarchy = pdb_inp.construct_hierarchy()
-  assert not show_diff(hierarchy.as_pdb_string(), pdb_string+"TER\n")
+  check_wpf(hierarchy, expected=pdb_string+"TER\n")
+  r = "REMARK EXERCISE"
+  print >> open("tmp.pdb", "w"), r
+  hierarchy.write_pdb_file(
+    file_name="tmp.pdb", open_append=True, append_end=True)
+  assert not show_diff(open("tmp.pdb").read(), r+"\n"+pdb_string+"TER\nEND\n")
   #
   if (pdb_file_names is None):
     print "Skipping exercise_as_pdb_string(): input files not available"
@@ -4147,12 +4163,14 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
       continue
     pdb_inp_1 = pdb.input(file_name=file_name)
     hierarchy_1 = pdb_inp_1.construct_hierarchy()
-    pdb_str_1 = hierarchy_1.as_pdb_string(append_end=True)
+    pdb_str_1 = hierarchy_1.as_pdb_string(append_end=False)
     pdb_inp_2 = pdb.input(
       source_info=None, lines=flex.split_lines(pdb_str_1))
     hierarchy_2 = pdb_inp_2.construct_hierarchy()
-    pdb_str_2 = hierarchy_2.as_pdb_string(append_end=False)
-    assert not show_diff(pdb_str_1, pdb_str_2+"END\n")
+    check_wpf(
+      hierarchy=hierarchy_2,
+      kwargs={"append_end": True},
+      expected=pdb_str_1+"END\n")
 
 def exercise_transfer_chains_from_other():
   atoms_x = """\
@@ -4175,7 +4193,7 @@ ENDMDL
   assert [md.chains_size() for md in models] == [4, 0]
   hierarchy.remove_model(model=models[1])
   trailing = "           0.000   0.000   0.000  0.00  0.00"
-  assert not show_diff(hierarchy.as_pdb_string().replace(trailing, ""), """\
+  check_wpf(hierarchy, trailing=trailing, expected="""\
 ATOM      1  X1      A
 ATOM      2  X2      A
 TER
@@ -4200,7 +4218,7 @@ TER
     if (suffixes is Auto): f,g = "1", "2"
     else:                  f,g = "F", "G"
     trailing = "           0.000   0.000   0.000  0.00  0.00"
-    assert not show_diff(joined.as_pdb_string().replace(trailing, ""), """\
+    check_wpf(joined, trailing=trailing, expected="""\
 ATOM      1  X1     A%s
 ATOM      2  X2     A%s
 TER
@@ -4237,7 +4255,7 @@ ENDMDL
 """ % (atoms_x.replace("X","P"), atoms_x.replace("X","Q"))))]]
   joined = pdb.hierarchy.join_roots(roots=roots)
   trailing = "           0.000   0.000   0.000  0.00  0.00"
-  assert not show_diff(joined.as_pdb_string().replace(trailing, ""), """\
+  check_wpf(joined, trailing=trailing, expected="""\
 MODEL        1
 ATOM      1  X1     A1
 ATOM      2  X2     A1
