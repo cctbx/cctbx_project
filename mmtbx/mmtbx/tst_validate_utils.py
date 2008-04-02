@@ -1,7 +1,7 @@
 #(jEdit options) :folding=explicit:collapseFolds=1:
 from mmtbx.command_line import ramalyze
 from mmtbx.command_line import rotalyze
-from mmtbx.rotamer.rotamer_eval import find_rotamer_data_dir
+from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx import pdb
 #import iotbx.pdb.interpretation
 from cctbx.array_family import flex
@@ -20,7 +20,7 @@ def exercise_ramalyze():
   if (regression_pdb is None):
     print "Skipping exercise_ramalyze(): input pdb (jcm.pdb) not available"
     return
-  if (find_rotamer_data_dir(optional=True) is None):
+  if (find_rotarama_data_dir(optional=True) is None):
     print "Skipping exercise_ramalyze(): rotarama_data directory not available"
     return
   pdb_io = pdb.input(file_name=regression_pdb)
@@ -68,7 +68,7 @@ def exercise_rotalyze():
   if (regression_pdb is None):
     print "Skipping exercise_rotalyze(): input pdb (jcm.pdb) not available"
     return
-  if (find_rotamer_data_dir(optional=True) is None):
+  if (find_rotarama_data_dir(optional=True) is None):
     print "Skipping exercise_rotalyze(): rotarama_data directory not available"
     return
   pdb_io = pdb.input(file_name=regression_pdb)

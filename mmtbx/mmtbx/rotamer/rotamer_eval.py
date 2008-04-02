@@ -7,7 +7,7 @@ from mmtbx.rotamer.sidechain_angles import PropertyFile
 import weakref
 import sys, os
 
-def find_rotamer_data_dir(optional=False):
+def find_rotarama_data_dir(optional=False):
   result = libtbx.env.find_in_repositories("rotarama_data")
   if result is None:
     result = libtbx.env.find_in_repositories(
@@ -20,10 +20,10 @@ Can't find ext_ref_files/rotarama_data/ directory:
   to resolve this problem.""")
   return result
 
-def open_rotarama_dlite(rotamer_data_dir=None):
-  if (rotamer_data_dir is None):
-    rotamer_data_dir = find_rotamer_data_dir()
-  return dlite.target_db(os.path.join(rotamer_data_dir, "rotarama.dlite"))
+def open_rotarama_dlite(rotarama_data_dir=None):
+  if (rotarama_data_dir is None):
+    rotarama_data_dir = find_rotarama_data_dir()
+  return dlite.target_db(os.path.join(rotarama_data_dir, "rotarama.dlite"))
 
 # maps aa name to file name
 aminoAcids = {
@@ -59,8 +59,8 @@ class RotamerEval:
         for aa,ndt_weakref in main_aaTables.items():
             # convert existing weak references to strong references
             self.aaTables[aa] = ndt_weakref()
-        rotamer_data_dir = find_rotamer_data_dir()
-        target_db = open_rotarama_dlite(rotamer_data_dir=rotamer_data_dir)
+        rotamer_data_dir = find_rotarama_data_dir()
+        target_db = open_rotarama_dlite(rotarama_data_dir=rotamer_data_dir)
         for aa, aafile in aminoAcids.items():
                 if (self.aaTables.get(aa) is not None): continue
                 data_file = "rota500-"+aafile+".data"
@@ -183,7 +183,7 @@ class NamedRot:
 #}}}
 
 def exercise(args):
-  if (find_rotamer_data_dir(optional=True) is None):
+  if (find_rotarama_data_dir(optional=True) is None):
     print "Skipping exercise(): rotarama_data directory not available"
   else:
     from mmtbx.command_line import rebuild_rotarama_cache

@@ -11,17 +11,17 @@ import sys, os
 # NB:  this can be run from the command line as "mmtbx.rebuild_rotarama_cache"
 def run():
     initial_current_working_directory = os.getcwd()
-    rotamer_data_dir = rotamer_eval.find_rotamer_data_dir()
+    rotamer_data_dir = rotamer_eval.find_rotarama_data_dir()
     target_db = rotamer_eval.open_rotarama_dlite(
-        rotamer_data_dir=rotamer_data_dir)
+        rotarama_data_dir=rotamer_data_dir)
     rebuild_pickle_files(data_dir=rotamer_data_dir,
         file_prefix="rota500-",
         target_db=target_db,
         amino_acids=rotamer_eval.aminoAcids)
     #
-    ramachandran_data_dir = ramachandran_eval.find_ramachandran_data_dir()
-    target_db = ramachandran_eval.open_rotarama_dlite(
-      rama_data_dir=ramachandran_data_dir)
+    ramachandran_data_dir = rotamer_eval.find_rotarama_data_dir()
+    target_db = rotamer_eval.open_rotarama_dlite(
+      rotarama_data_dir=ramachandran_data_dir)
     rebuild_pickle_files(data_dir=rotamer_data_dir,
         file_prefix="rama500-",
         target_db=target_db,
