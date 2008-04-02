@@ -1332,6 +1332,22 @@ class manager(manager_mixin):
 
   def map_coefficients(self, map_type):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
+    if(map_name_manager.anomalous and self.f_obs.anomalous_flag()):
+      anom_diff = self.f_obs.anomalous_differences()
+      fom = miller.array(miller_set = self.f_obs,
+                         data       = self.figures_of_merit())
+      fom = fom.as_non_anomalous_array().merge_equivalents().array()
+      fom_match_anom_diff = fom.common_set(other = anom_diff)
+      fmodel = self.f_model().as_non_anomalous_array().merge_equivalents().array()
+      fc_match_anom_diff = fmodel.common_set(other = anom_diff)
+      fc_match_anom_diff.indices().all_eq(anom_diff.indices())
+      fc_match_anom_diff *= (1-1j)
+      d_obs = miller.array(miller_set = fc_match_anom_diff,
+                           data       = anom_diff.data()
+                          ).phase_transfer(phase_source = fc_match_anom_diff)
+      return miller.array(miller_set = fc_match_anom_diff,
+                          data       = d_obs.data()*fom_match_anom_diff.data())
+    #
     fb_cart  = self.fb_cart()
     scale_k2 = self.scale_k2()
     f_obs_scale   = 1.0 / fb_cart * scale_k2
