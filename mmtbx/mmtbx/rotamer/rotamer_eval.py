@@ -3,6 +3,7 @@ from mmtbx.rotamer.n_dim_table import NDimTable
 from libtbx import easy_pickle
 from libtbx import dlite
 from libtbx.utils import Sorry
+from mmtbx.rotamer.sidechain_angles import PropertyFile
 import weakref
 import sys, os
 
@@ -87,6 +88,99 @@ class RotamerEval:
         ndt = self.aaTables.get(aaName.lower())
         if (ndt is None): return None
         return ndt.valueAt(chiAngles)
+
+#{{{ RotamerID (new for reading in rotamer names from rotamer_names.props)
+class RotamerID:
+
+  names = {}
+
+  def __init__(self):
+    self.names = {}
+    source_dir = self.find_source_dir()
+    #f = PropertyFile()
+    # can't use f.properties to read in rotamer_names.props
+    # some of the rotamer names aren't unique, so they get dropped as keys!
+    rota_names_list = self.process(os.path.join(source_dir, "rotamer_names.props"))
+    for line in rota_names_list:
+      split_line = line.split("=")
+      aa_name = split_line[0].strip()
+      ranges = split_line[1].strip().strip("\"")
+      name_split = aa_name.split(" ")
+      aa = name_split[0]
+      rot_name = name_split[1]
+      rot = NamedRot(aa, rot_name, ranges)
+      rotList = []
+      if aa in self.names:
+        rotList = self.names[aa]
+      rotList.append(rot)
+      self.names[aa] = rotList
+
+  def identify(self, aa_name, chis):
+    aa_name = aa_name.lower()
+    if aa_name not in self.names: raise Sorry("Unknown residue name")
+    wrap_chis = self.wrap_chis(aa_name, chis)
+    rotList = self.names[aa_name]
+    for rot in rotList:
+      if(rot.contains(wrap_chis)): return rot.rotamer_name
+    return ""
+
+  def find_source_dir(optional=False):
+    #result = libtbx.env.find_in_repositories("mmtbx")
+    #if result is None:
+    result = libtbx.env.find_in_repositories(
+      os.path.join("mmtbx", "mmtbx", "rotamer"))
+    if result is None and not optional:
+      raise Sorry("""\
+Can't seem to find mmtbx/mmtbx/rotamer/ directory.
+    """)
+    return result
+
+  def process(self, fileLoc):
+    rotaList = []
+    try:
+      f = open(fileLoc)
+    except ImportError, e:
+      print fileLoc+" file not found"
+      sys.exit()
+    for line in f:
+      if (line.startswith("#") or line == "\n"): continue
+      else: rotaList.append(line)
+    f.close()
+    return rotaList
+
+  def wrap_chis(self, aa_name, chis):
+    aa_name = aa_name.lower()
+    wrap_chis = []
+    for i in range(0, len(chis)):
+      wrap_chis.append(chis[i] % 360)
+      if wrap_chis[i] < 0:
+        wrap_chis[i] += 360
+    if (aa_name == "asp" or aa_name == "glu" or aa_name == "phe" or aa_name == "tyr"):
+      i = len(wrap_chis) - 1
+      wrap_chis[i] = wrap_chis[i] % 180
+      if wrap_chis[i] < 0:
+        wrap_chis[i] += 180
+    return wrap_chis
+
+#}}}
+
+#{{{ NamedRot
+class NamedRot:
+
+  def __init__(self, aa, rotamer_name, bounds):
+    self.aa_name = aa
+    self.rotamer_name = rotamer_name
+    self.bounds = map(int, bounds.split(", "))
+
+  def __str__(self):
+    return str(self.rotamer_name) + "=" + str(self.bounds)
+
+  def contains(self, angles):
+    for i in range(0, len(self.bounds), 2):
+      #print str(angles[i/2]) + " is between " + str(self.bounds[i]) + " and " + str(self.bounds[i+1])
+      if (angles[i/2] < self.bounds[i] or angles[i/2] > self.bounds[i+1]): return False
+    return True
+#}}}
 
 def exercise(args):
   if (find_rotamer_data_dir(optional=True) is None):
