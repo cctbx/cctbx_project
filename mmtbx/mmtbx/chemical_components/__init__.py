@@ -29,7 +29,6 @@ def get_cif_dictionary(code):
     cif = loaded_cifs[code]
   else:
     filename = get_cif_filename(code)
-    print filename
     cif = cif_parser.run(filename)
     loaded_cifs[code] = cif
   return cif
@@ -38,6 +37,31 @@ def get_alternative_name(code, name):
   for atom, alt in zip(get_atom_names(code),
                        get_atom_names(code, alternate=True)):
     if atom==name: return alt
+
+def get_smiles(code):
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  desc = cif.get("_pdbx_chem_comp_descriptor", {})
+  for item in desc:
+    try:
+      if item.program=="CATVS" and item.type=="SMILES_CANONICAL":
+        return item.descriptor
+    except: pass
+  for item in desc:
+    try:
+      if item.program=="CATVS" and item.type=="SMILES":
+        return item.descriptor
+    except: pass
+  try: return item.descriptor
+  except: return ""
+
+def get_name(code):
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  desc = cif.get("_pdbx_chem_comp_identifier", {})
+  for item in desc:
+    if item.identifier:
+      return item.identifier
 
 def get_atom_names(code, alternate=False):
   cif = get_cif_dictionary(code)
@@ -75,7 +99,8 @@ def get_bond_pairs(code, alternate=False):
   cif = get_cif_dictionary(code)
   if not cif: return cif
   tmp = []
-  for item in cif["_chem_comp_bond"]:
+  bonds = cif.get("_chem_comp_bond", {})
+  for item in bonds:
     if alternate:
       atom1 = get_alternative_name(code, item.atom_id_1)
       atom2 = get_alternative_name(code, item.atom_id_2)
@@ -84,7 +109,41 @@ def get_bond_pairs(code, alternate=False):
       tmp.append([item.atom_id_1, item.atom_id_2])
   return tmp
 
+def get_elbow_molecule(code, alternate=False):
+  from elbow.chemistry.MoleculeClass import MoleculeClass
+  orders = {"SING" : 1,
+            "DOUB" : 2,
+            "TRIP" : 3,
+            }
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  molecule = MoleculeClass()
+  for item in cif["_chem_comp_atom"]:
+    molecule.AddAtom(item.type_symbol,
+                     xyz=(item.pdbx_model_Cartn_x_ideal,
+                          item.pdbx_model_Cartn_y_ideal,
+                          item.pdbx_model_Cartn_z_ideal,
+                          ),
+                     )
+    molecule[-1].name = item.atom_id
+    if item.charge!=0:
+      molecule[-1].charge+=item.charge
+      molecule.charge += item.charge
+  bonds = cif.get("_chem_comp_bond", {})
+  for item in bonds:
+    atom1 = molecule.GetAtomByName(item.atom_id_1)
+    atom2 = molecule.GetAtomByName(item.atom_id_2)
+    molecule.AddBond(atom1, atom2, order=orders[item.value_order])
+    if item.pdbx_aromatic_flag=="Y":
+      molecule.bonds[-1].order = 1.5
+  molecule.UpdateAtomBonded()
+  return molecule
+
 if __name__=="__main__":
+  print '\nSMILES'
+  print get_smiles(sys.argv[1])
+  print '\nName'
+  print get_name(sys.argv[1])
   print '\nAtom names'
   print get_atom_names(sys.argv[1])
   print '\nAlternate atom names'
@@ -99,3 +158,5 @@ if __name__=="__main__":
   print get_bond_pairs(sys.argv[1])
   print '\nAlternate name bond pairs'
   print get_bond_pairs(sys.argv[1], alternate=True)
+  print '\neLBOW molecule'
+  print get_elbow_molecule(sys.argv[1]).DisplayBrief()
