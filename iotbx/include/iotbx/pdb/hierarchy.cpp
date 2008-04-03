@@ -1,6 +1,7 @@
 #include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/common_residue_names.h>
 #include <cctbx/eltbx/chemical_elements.h>
+#include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
@@ -493,26 +494,29 @@ namespace {
       char *r = result + 30;
       for(unsigned i=0;i<3;i++) {
         std::sprintf(r, "%8.3f", data->xyz[i]);
-        r += 8;
-        if (*r != '\0') {
+        if (r[8] != '\0' && r[5] != '.' && r[6] != '.' && r[7] != '.') {
           throw std::runtime_error(
             std::string("atom ") + "XYZ"[i] + " coordinate value"
-            " does not fit into F8.3 format.");
+            " does not fit into F8.3 format:\n"
+            + "  \"" + std::string(result, 27U) + "\"\n"
+            + "  value: " + (boost::format("%.3f") % data->xyz[i]).str());
         }
+        r += 8;
       }
       std::sprintf(r, "%6.2f", data->occ);
-      r += 6;
-      if (*r != '\0') {
+      if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
         throw std::runtime_error(
-          std::string("atom ") + "occupancy factor"
-          " does not fit into F6.2 format.");
+          std::string("atom occupancy factor does not fit into F6.2 format:\n")
+          + "  \"" + std::string(result, 27U) + "\"\n"
+          + "  occupancy factor: " + (boost::format("%.2f") % data->occ).str());
       }
-      std::sprintf(r, "%6.2f", data->b);
       r += 6;
-      if (*r != '\0') {
+      std::sprintf(r, "%6.2f", data->b);
+      if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
         throw std::runtime_error(
-          std::string("atom ") + "B-factor"
-          " does not fit into F6.2 format.");
+          std::string("atom B-factor does not fit into F6.2 format:\n")
+          + "  \"" + std::string(result, 27U) + "\"\n"
+          + "  B-factor: " + (boost::format("%.2f") % data->b).str());
       }
       segid_start = 72U;
       blanks_start_at = 66U;
@@ -533,30 +537,54 @@ namespace {
     char *r = result + 30;
     for(unsigned i=0;i<3;i++) {
       std::sprintf(r, "%8.3f", data->sigxyz[i]);
-      r += 8;
-      if (*r != '\0') {
+      if (r[8] != '\0' && r[5] != '.' && r[6] != '.' && r[7] != '.') {
         throw std::runtime_error(
           std::string("atom sigma ") + "XYZ"[i] + " coordinate value"
-          " does not fit into F8.3 format.");
+          " does not fit into F8.3 format:\n"
+          + "  \"" + std::string(result, 27U) + "\"\n"
+          + "  value: " + (boost::format("%.3f") % data->sigxyz[i]).str());
       }
+      r += 8;
     }
     std::sprintf(r, "%6.2f", data->sigocc);
-    r += 6;
-    if (*r != '\0') {
-      throw std::runtime_error(
-        std::string("atom sigma ") + "occupancy factor"
-        " does not fit into F6.2 format.");
+    if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
+      throw std::runtime_error(std::string(
+          "atom sigma occupancy factor does not fit into F6.2 format:\n")
+        + "  \"" + std::string(result, 27U) + "\"\n"
+        + "  sigma occupancy factor: "
+        + (boost::format("%.2f") % data->sigocc).str());
     }
-    std::sprintf(r, "%6.2f", data->sigb);
     r += 6;
-    if (*r != '\0') {
-      throw std::runtime_error(
-        std::string("atom sigma ") + "B-factor"
-        " does not fit into F6.2 format.");
+    std::sprintf(r, "%6.2f", data->sigb);
+    if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
+      throw std::runtime_error(std::string(
+          "atom sigma B-factor does not fit into F6.2 format:\n")
+        + "  \"" + std::string(result, 27U) + "\"\n"
+        + "  sigma B-factor: "
+        + (boost::format("%.2f") % data->sigb).str());
     }
     return format_atom_record_segid_element_charge_columns(result, 72U, 66U);
   }
 
+namespace {
+
+  void
+  throw_f70_error(
+    unsigned i,
+    double value,
+    const char* result,
+    const char* sigma)
+  {
+    static const char* uij_labels[] = {
+      "U11", "U22", "U33", "U12", "U13", "U23"};
+    throw std::runtime_error(
+      std::string("atom ") + sigma + uij_labels[i]
+      + " value * 10000 does not fit into F7.0 format:\n"
+      + "  \"" + std::string(result, 27U) + "\"\n"
+      + "  value * 10000: " + (boost::format("%.0f") % value).str());
+  }
+
+} // namespace <anonymous>
   unsigned
   atom::format_anisou_record(
     char* result,
@@ -568,15 +596,10 @@ namespace {
     result[27] = blank;
     char *r = result + 28;
     for(unsigned i=0;i<6;i++) {
-      std::sprintf(r, "%7.0f", data->uij[i]*10000.);
+      double value = data->uij[i]*10000.;
+      std::sprintf(r, "%7.0f", value);
       r += 7;
-      if (*r != '\0') {
-        static const char* uij_labels[] = {
-          "U11", "U22", "U33", "U12", "U13", "U23"};
-        throw std::runtime_error(
-          std::string("atom ") + uij_labels[i] + " value * 10000"
-          " does not fit into F7.0 format.");
-      }
+      if (*r != '\0') throw_f70_error(i, value, result, "");
     }
     return format_atom_record_segid_element_charge_columns(result, 72U, 70U);
   }
@@ -592,21 +615,16 @@ namespace {
     result[27] = blank;
     char *r = result + 28;
     for(unsigned i=0;i<6;i++) {
-      std::sprintf(r, "%7.0f",
+      double value =
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
         data->siguij[i]
 #else
         -1
 #endif
-        *10000.);
+        *10000.;
+      std::sprintf(r, "%7.0f", value);
       r += 7;
-      if (*r != '\0') {
-        static const char* uij_labels[] = {
-          "U11", "U22", "U33", "U12", "U13", "U23"};
-        throw std::runtime_error(
-          std::string("atom sigma ") + uij_labels[i] + " value * 10000"
-          " does not fit into F7.0 format.");
-      }
+      if (*r != '\0') throw_f70_error(i, value, result, "sigma ");
     }
     return format_atom_record_segid_element_charge_columns(result, 72U, 70U);
   }

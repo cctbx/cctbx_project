@@ -1011,6 +1011,86 @@ B1234 NaMexuvw%2spqrst    1000   2000   3000   6000   1000   9000  \
 B1234 NaMexuvw%2spqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % (chain_id, segielch)).rstrip())
           del ag, rg, ch
+  #
+  atom = pdb.hierarchy.atom()
+  atom.name = "NaMe"
+  atom.xyz = (1.e6,-1.e5,1.e5)
+  atom.occ = 9999.
+  atom.b = 99999.
+  assert not show_diff(atom.format_atom_record(), """\
+ATOM        NaMe              1000000.-100000.100000.09999.099999.""")
+  atom.xyz = (0,1.e7,0)
+  try: atom.format_atom_record()
+  except RuntimeError, e: assert not show_diff(str(e), """\
+atom Y coordinate value does not fit into F8.3 format:
+  "ATOM        NaMe           "
+  value: 10000000.000""")
+  else: raise Exception_expected
+  atom.xyz = (0,0,0)
+  atom.occ = 100000
+  try: atom.format_atom_record()
+  except RuntimeError, e: assert not show_diff(str(e), """\
+atom occupancy factor does not fit into F6.2 format:
+  "ATOM        NaMe           "
+  occupancy factor: 100000.00""")
+  else: raise Exception_expected
+  atom.occ = 0
+  atom.b = 200000
+  try: atom.format_atom_record()
+  except RuntimeError, e: assert not show_diff(str(e), """\
+atom B-factor does not fit into F6.2 format:
+  "ATOM        NaMe           "
+  B-factor: 200000.00""")
+  else: raise Exception_expected
+  #
+  atom.sigxyz = (1.e6,-1.e5,1.e5)
+  atom.sigocc = 99999.
+  atom.sigb = 9999.
+  assert not show_diff(atom.format_sigatm_record(), """\
+SIGATM      NaMe              1000000.-100000.100000.099999.9999.0""")
+  atom.sigxyz = (0,0,2.e7)
+  try: atom.format_sigatm_record()
+  except RuntimeError, e: assert not show_diff(str(e), """\
+atom sigma Z coordinate value does not fit into F8.3 format:
+  "SIGATM      NaMe           "
+  value: 20000000.000""")
+  else: raise Exception_expected
+  atom.sigxyz = (0,0,0)
+  atom.sigocc = 200000
+  try: atom.format_sigatm_record()
+  except RuntimeError, e: assert not show_diff(str(e), """\
+atom sigma occupancy factor does not fit into F6.2 format:
+  "SIGATM      NaMe           "
+  sigma occupancy factor: 200000.00""")
+  else: raise Exception_expected
+  atom.sigocc = 0
+  atom.sigb = 300000
+  try: atom.format_sigatm_record()
+  except RuntimeError, e: assert not show_diff(str(e), """\
+atom sigma B-factor does not fit into F6.2 format:
+  "SIGATM      NaMe           "
+  sigma B-factor: 300000.00""")
+  else: raise Exception_expected
+  #
+  atom.uij = (0,1000,0,0,0,0)
+  try: atom.format_anisou_record()
+  except RuntimeError, e: assert not show_diff(str(e), """\
+atom U22 value * 10000 does not fit into F7.0 format:
+  "ANISOU      NaMe           "
+  value * 10000: 10000000""")
+  else: raise Exception_expected
+  #
+  atom.siguij = (0,0,0,0,3333,0)
+  if (pdb.hierarchy.atom.has_siguij()):
+    try: atom.format_siguij_record()
+    except RuntimeError, e: assert not show_diff(str(e), """\
+atom sigma U13 value * 10000 does not fit into F7.0 format:
+  "SIGUIJ      NaMe           "
+  value * 10000: 33330000""")
+    else: raise Exception_expected
+  else:
+    assert not show_diff(atom.format_siguij_record(), """\
+SIGUIJ      NaMe             -10000 -10000 -10000 -10000 -10000 -10000""")
 
 def exercise_construct_hierarchy():
   def check(pdb_string,
