@@ -7,7 +7,11 @@ namespace scitbx { namespace boost_python {
   import_module(const char* module_name)
   {
     using namespace boost::python;
+#if PY_VERSION_HEX >= 0x02050000
+    return handle<>(PyImport_ImportModule(module_name));
+#else
     return handle<>(PyImport_ImportModule(const_cast<char*>(module_name)));
+#endif
   }
 
   void

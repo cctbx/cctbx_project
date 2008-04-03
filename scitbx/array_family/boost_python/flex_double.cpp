@@ -163,7 +163,11 @@ namespace {
     boost::python::object none_substitute)
   {
     PyObject* array_ptr = array.ptr();
+#if PY_VERSION_HEX >= 0x02050000
+    const char* attr_name = attribute_name;
+#else
     char* attr_name = const_cast<char*>(attribute_name);
+#endif
     PyObject* none_substitute_ptr = none_substitute.ptr();
     if (PyList_Check(array_ptr)) {
       std::size_t len_array = PyList_GET_SIZE(array_ptr);

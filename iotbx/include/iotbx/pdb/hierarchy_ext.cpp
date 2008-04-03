@@ -32,7 +32,11 @@ namespace {
     {
       PycStringIO->cwrite(
         sio,
+#if PY_VERSION_HEX >= 0x02050000
+        s,
+#else
         const_cast<char*>(s),
+#endif
         static_cast<boost::python::ssize_t>(n));
     }
   };
