@@ -694,6 +694,17 @@ namespace {
     return std::string(result);
   }
 
+  str4
+  atom_group::confid_small_str() const
+  {
+    char blank = ' ';
+    str4 result;
+    data->altloc.copy_left_justified(result.elems, 1U, blank);
+    data->resname.copy_right_justified(result.elems+1, 3U, blank);
+    result.elems[4] = '\0';
+    return result;
+  }
+
 namespace {
 
   template <typename DataType>
@@ -1243,35 +1254,130 @@ namespace {
     return true;
   }
 
-  bool
-  chain::is_identical_topology(
-    chain const& other) const
+namespace {
+
+  void
+  get_confid_atom_names(
+    std::map<str4, std::vector<str4> >& result,
+    residue_group const& rg)
   {
-    chain_data const& d = *data;
-    chain_data const& od = *other.data;
-    if (d.id != od.id) return false;
-    std::vector<residue_group> const& rgs = d.residue_groups;
-    std::vector<residue_group> const& orgs = od.residue_groups;
+    unsigned n_ag = rg.atom_groups_size();
+    std::vector<atom_group> const& ags = rg.atom_groups();
+    for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
+      atom_group const& ag = ags[i_ag];
+      std::vector<str4>& atom_names = result[ag.confid_small_str()];
+      unsigned n_at = ag.atoms_size();
+      std::vector<atom> const& ats = ag.atoms();
+      for(unsigned i_at=0;i_at<n_at;i_at++) {
+        atom_names.push_back(ats[i_at].data->name);
+      }
+    }
+    typedef std::map<str4, std::vector<str4> >::iterator it;
+    it i_end = result.end();
+    for(it i=result.begin();i!=i_end;i++) {
+      std::sort(i->second.begin(), i->second.end());
+    }
+  }
+
+} // namespace <anonymous>
+
+  bool
+  residue_group::is_similar_hierarchy(
+    residue_group const& other) const
+  {
+    residue_group_data const& d = *data;
+    residue_group_data const& od = *other.data;
+    if (d.resseq != od.resseq) return false;
+    if (d.icode != od.icode) return false;
+    std::map<str4, std::vector<str4> > confid_atom_names[2];
+    get_confid_atom_names(confid_atom_names[0], *this);
+    get_confid_atom_names(confid_atom_names[1], other);
+    typedef std::map<str4, std::vector<str4> >::const_iterator it;
+    if (   confid_atom_names[0].size()
+        != confid_atom_names[1].size()) return false;
+    it i_end = confid_atom_names[0].end();
+    it j_end = confid_atom_names[1].end();
+    for(it i=confid_atom_names[0].begin();i!=i_end;i++) {
+      it j = confid_atom_names[1].find(i->first);
+      if (j == j_end) return false;
+      if (j->second != i->second) return false;
+    }
+    return true;
+  }
+
+namespace {
+
+  bool
+  chain_equivalence(
+    chain const& self,
+    chain const& other,
+    int equivalence_type)
+  {
+    if (self.data->id != other.data->id) return false;
+    std::vector<residue_group> const& rgs = self.residue_groups();
+    std::vector<residue_group> const& orgs = other.residue_groups();
     unsigned n = static_cast<unsigned>(rgs.size());
     if (n != static_cast<unsigned>(orgs.size())) return false;
     for(unsigned i=0;i<n;i++) {
-      if (!rgs[i].is_identical_topology(orgs[i])) return false;
+      if (equivalence_type == 0) {
+        if (!rgs[i].is_identical_topology(orgs[i])) return false;
+      }
+      else {
+        return rgs[i].is_similar_hierarchy(orgs[i]);
+      }
     }
     return true;
   }
 
   bool
-  model::is_identical_topology(
-    model const& other) const
+  model_equivalence(
+    model const& self,
+    model const& other,
+    int equivalence_type)
   {
-    model_data const& d = *data;
-    model_data const& od = *other.data;
-    std::vector<chain> const& chs = d.chains;
-    std::vector<chain> const& ochs = od.chains;
+    std::vector<chain> const& chs = self.chains();
+    std::vector<chain> const& ochs = other.chains();
     unsigned n = static_cast<unsigned>(chs.size());
     if (n != static_cast<unsigned>(ochs.size())) return false;
     for(unsigned i=0;i<n;i++) {
-      if (!chs[i].is_identical_topology(ochs[i])) return false;
+      if (equivalence_type == 0) {
+        if (!chs[i].is_identical_topology(ochs[i])) return false;
+      }
+      else {
+        if (!chs[i].is_similar_hierarchy(ochs[i])) return false;
+      }
+    }
+    return true;
+  }
+
+} // namespace <anonymous>
+
+  bool
+  chain::is_identical_topology(
+    chain const& other) const { return chain_equivalence(*this, other, 0); }
+
+  bool
+  chain::is_similar_hierarchy(
+    chain const& other) const { return chain_equivalence(*this, other, 1); }
+
+  bool
+  model::is_identical_topology(
+    model const& other) const { return model_equivalence(*this, other, 0); }
+
+  bool
+  model::is_similar_hierarchy(
+    model const& other) const { return model_equivalence(*this, other, 1); }
+
+  bool
+  root::is_similar_hierarchy(
+    root const& other) const
+  {
+    std::vector<model> const& mds = models();
+    std::vector<model> const& omds = other.models();
+    unsigned n = static_cast<unsigned>(mds.size());
+    if (n != static_cast<unsigned>(omds.size())) return false;
+    for(unsigned i=0;i<n;i++) {
+      if (!mds[i].is_similar_hierarchy(omds[i])) return false;
     }
     return true;
   }
