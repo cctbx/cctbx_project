@@ -1,5 +1,5 @@
-#ifndef SUPERPOSE_H_
-#define SUPERPOSE_H_
+#ifndef SCITBX_MATH_SUPERPOSE_H
+#define SCITBX_MATH_SUPERPOSE_H
 
 #include <scitbx/vec3.h>
 #include <scitbx/mat3.h>
@@ -303,4 +303,4 @@ least_squares_fit::other_sites_rmsd() const
 
 }  }  } // namespace scitbx::math::superpose
 
-#endif /*SUPERPOSE_H_*/
+#endif // SCITBX_MATH_SUPERPOSE_H

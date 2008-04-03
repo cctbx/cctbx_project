@@ -7,6 +7,7 @@
 #include <scitbx/math/chebyshev.h>
 #include <scitbx/math/lambertw.h>
 #include <scitbx/math/eigensystem.h>
+#include <scitbx/math/superpose.h>
 #include <scitbx/math/phase_error.h>
 #include <scitbx/math/resample.h>
 #include <scitbx/math/halton.h>
@@ -75,6 +76,15 @@ namespace {
         eigensystem::real_symmetric<>(m).values().begin());
     }
     return result / static_cast<double>(n_repetitions);
+  }
+
+  mat3<double>
+  superpose_kearsley_rotation(
+    af::const_ref<vec3<double> > const& reference_sites,
+    af::const_ref<vec3<double> > const& other_sites)
+  {
+    return superpose::superposition::kearsley_rotation(
+      reference_sites, other_sites);
   }
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -175,6 +185,9 @@ namespace {
     wrap_halton();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
+
+    def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
+      arg_("reference_sites"), arg_("other_sites")));
 
     def("signed_phase_error",
       (double(*)(
