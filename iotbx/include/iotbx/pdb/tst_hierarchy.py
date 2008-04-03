@@ -3779,7 +3779,7 @@ conformer: "B"
     atom: " O  "
 """)
 
-def exercise_is_identical_topology():
+def exercise_is_identical_hierarchy():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 MODEL        0
 ATOM      1  N   MET A   1
@@ -3825,11 +3825,11 @@ ATOM      4  CA  GLY A   2
 ENDMDL
 """))
   models = pdb_inp.construct_hierarchy().models()
-  assert models[0].is_identical_topology(models[1])
-  assert models[1].is_identical_topology(models[0])
+  assert models[0].is_identical_hierarchy(models[1])
+  assert models[1].is_identical_hierarchy(models[0])
   for other in models[2:]:
-    assert not models[0].is_identical_topology(other=other)
-    assert not other.is_identical_topology(other=models[0])
+    assert not models[0].is_identical_hierarchy(other=other)
+    assert not other.is_identical_hierarchy(other=models[0])
 
 def exercise_is_similar_hierarchy():
   s0 = """\
@@ -4425,7 +4425,7 @@ def exercise(args):
     exercise_find_pure_altloc_ranges()
     exercise_occupancy_groups_simple()
     exercise_conformers()
-    exercise_is_identical_topology()
+    exercise_is_identical_hierarchy()
     exercise_is_similar_hierarchy()
     exercise_atoms()
     exercise_atoms_interleaved_conf()
