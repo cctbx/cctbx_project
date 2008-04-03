@@ -4158,6 +4158,52 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
     file_name="tmp.pdb", open_append=True, append_end=True)
   assert not show_diff(open("tmp.pdb").read(), r+"\n"+pdb_string+"TER\nEND\n")
   #
+  # only pdb entry (as of 2008 Mar 26) for which
+  # s1 = h1.as_pdb_string(interleaved_conf=1)
+  # s2 = h2.as_pdb_string(interleaved_conf=1)
+  # leads to s1 != s2
+  i1 = pdb.input(source_info=None, lines=flex.split_lines("""\
+HEADER    TRANSPORT PROTEIN                       21-AUG-07   2V93
+ATOM   1549  O  ACYS A 211      24.080  12.057  26.978  0.95  0.00           O
+ATOM   1550  SG ACYS A 211      24.960  15.526  27.230  0.16  0.00           S
+ATOM   1551  SG BCYS A 211      24.418  16.196  28.728  0.16  0.00           S
+ATOM   1552  N  CCYS A 211      12.649  13.688  18.306  0.05  0.00           N
+ATOM   1553  CA CCYS A 211      12.104  13.010  17.135  0.05  0.00           C
+ATOM   1554  C  CCYS A 211      13.148  12.135  16.481  0.05  0.00           C
+ATOM   1555  O  CCYS A 211      12.770  11.031  16.051  0.05  0.00           O
+ATOM   1556  CB CCYS A 211      11.540  14.072  16.172  0.05  0.00           C
+ATOM   1557  SG CCYS A 211      24.361  15.163  26.341  0.16  0.00           S
+"""))
+  h1 = i1.construct_hierarchy()
+  s1 = h1.as_pdb_string(interleaved_conf=1)
+  assert not show_diff(s1, """\
+ATOM   1549  O  ACYS A 211      24.080  12.057  26.978  0.95  0.00           O
+ATOM   1555  O  CCYS A 211      12.770  11.031  16.051  0.05  0.00           O
+ATOM   1550  SG ACYS A 211      24.960  15.526  27.230  0.16  0.00           S
+ATOM   1551  SG BCYS A 211      24.418  16.196  28.728  0.16  0.00           S
+ATOM   1557  SG CCYS A 211      24.361  15.163  26.341  0.16  0.00           S
+ATOM   1552  N  CCYS A 211      12.649  13.688  18.306  0.05  0.00           N
+ATOM   1553  CA CCYS A 211      12.104  13.010  17.135  0.05  0.00           C
+ATOM   1554  C  CCYS A 211      13.148  12.135  16.481  0.05  0.00           C
+ATOM   1556  CB CCYS A 211      11.540  14.072  16.172  0.05  0.00           C
+TER
+""")
+  i2 = pdb.input(source_info=None, lines=flex.split_lines(s1))
+  h2 = i2.construct_hierarchy()
+  s2 = h2.as_pdb_string(interleaved_conf=1)
+  assert not show_diff(s2, """\
+ATOM   1549  O  ACYS A 211      24.080  12.057  26.978  0.95  0.00           O
+ATOM   1555  O  CCYS A 211      12.770  11.031  16.051  0.05  0.00           O
+ATOM   1550  SG ACYS A 211      24.960  15.526  27.230  0.16  0.00           S
+ATOM   1557  SG CCYS A 211      24.361  15.163  26.341  0.16  0.00           S
+ATOM   1551  SG BCYS A 211      24.418  16.196  28.728  0.16  0.00           S
+ATOM   1552  N  CCYS A 211      12.649  13.688  18.306  0.05  0.00           N
+ATOM   1553  CA CCYS A 211      12.104  13.010  17.135  0.05  0.00           C
+ATOM   1554  C  CCYS A 211      13.148  12.135  16.481  0.05  0.00           C
+ATOM   1556  CB CCYS A 211      11.540  14.072  16.172  0.05  0.00           C
+TER
+""")
+  #
   if (pdb_file_names is None):
     print "Skipping exercise_as_pdb_string(): input files not available"
     return
