@@ -30,7 +30,10 @@ namespace {
     virtual void
     operator()(const char* s, unsigned n)
     {
-      PycStringIO->cwrite(sio, s, static_cast<boost::python::ssize_t>(n));
+      PycStringIO->cwrite(
+        sio,
+        const_cast<char*>(s),
+        static_cast<boost::python::ssize_t>(n));
     }
   };
 
