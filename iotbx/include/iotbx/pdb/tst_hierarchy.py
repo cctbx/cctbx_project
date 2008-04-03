@@ -3831,6 +3831,33 @@ ENDMDL
     assert not models[0].is_identical_topology(other=other)
     assert not other.is_identical_topology(other=models[0])
 
+def exercise_is_similar_hierarchy():
+  s0 = """\
+MODEL        0
+ATOM      1  %s  MET A   1
+ATOM      2  CA AMET A   1
+ATOM      3  N   GLY A   2
+ATOM      4  CA AGLY A   2
+ENDMDL
+MODEL        1
+ATOM      1  N   MET A   1
+ATOM      2  CA AMET A   1
+ATOM      3  N   %3s A   2
+ATOM      4  CA A%3s A   2
+ENDMDL
+"""
+  i1 = pdb.input(source_info=None, lines=flex.split_lines(
+    s0 % ("N ", "GLY", "GLY")))
+  h1 = i1.construct_hierarchy()
+  assert h1.is_similar_hierarchy(other=h1)
+  assert h1.is_similar_hierarchy(other=h1.deep_copy())
+  for an,rn in [("C ", "GLY"), ("N ", "ALA")]:
+    i2 = pdb.input(source_info=None, lines=flex.split_lines(
+      s0 % (an, rn, rn)))
+    h2 = i2.construct_hierarchy()
+    assert not h1.is_similar_hierarchy(other=h2)
+    assert not h2.is_similar_hierarchy(other=h1)
+
 def exercise_atoms():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
@@ -4203,10 +4230,13 @@ ATOM   1554  C  CCYS A 211      13.148  12.135  16.481  0.05  0.00           C
 ATOM   1556  CB CCYS A 211      11.540  14.072  16.172  0.05  0.00           C
 TER
 """)
+  assert h1.is_similar_hierarchy(other=h2)
+  assert h2.is_similar_hierarchy(other=h1)
   #
   if (pdb_file_names is None):
     print "Skipping exercise_as_pdb_string(): input files not available"
     return
+  prev_file_name = None
   for file_name in pdb_file_names:
     if (not comprehensive and random.random() > 0.1):
       continue
@@ -4220,6 +4250,17 @@ TER
       hierarchy=hierarchy_2,
       kwargs={"append_end": True},
       expected=pdb_str_1+"END\n")
+    assert hierarchy_1.is_similar_hierarchy(other=hierarchy_2)
+    assert hierarchy_2.is_similar_hierarchy(other=hierarchy_1)
+    if (prev_file_name is not None):
+      if (   hierarchy_1.is_similar_hierarchy(other=prev_hierarchy)
+          or prev_hierarchy.is_similar_hierarchy(other=hierarchy_1)):
+        print "WARNING: similar hierarchies:"
+        print " ", show_string(prev_file_name)
+        print " ", show_string(file_name)
+    prev_file_name = file_name
+    prev_pdb_str = pdb_str_1
+    prev_hierarchy = hierarchy_1
 
 def exercise_transfer_chains_from_other():
   atoms_x = """\
@@ -4385,6 +4426,7 @@ def exercise(args):
     exercise_occupancy_groups_simple()
     exercise_conformers()
     exercise_is_identical_topology()
+    exercise_is_similar_hierarchy()
     exercise_atoms()
     exercise_atoms_interleaved_conf()
     exercise_as_pdb_string(
