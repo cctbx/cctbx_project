@@ -3827,9 +3827,17 @@ ENDMDL
   models = pdb_inp.construct_hierarchy().models()
   assert models[0].is_identical_hierarchy(models[1])
   assert models[1].is_identical_hierarchy(models[0])
+  assert models[0].only_chain().is_identical_hierarchy(
+    other=models[1].only_chain())
+  assert models[0].only_chain().residue_groups()[0].is_identical_hierarchy(
+    other=models[1].only_chain().residue_groups()[0])
   for other in models[2:]:
     assert not models[0].is_identical_hierarchy(other=other)
     assert not other.is_identical_hierarchy(other=models[0])
+    assert not models[0].only_chain().is_identical_hierarchy(
+      other=other.only_chain())
+    assert not models[0].only_chain().residue_groups()[0] \
+      .is_identical_hierarchy(other=models[2].only_chain().residue_groups()[0])
 
 def exercise_is_similar_hierarchy():
   s0 = """\
@@ -3851,12 +3859,25 @@ ENDMDL
   h1 = i1.construct_hierarchy()
   assert h1.is_similar_hierarchy(other=h1)
   assert h1.is_similar_hierarchy(other=h1.deep_copy())
+  assert h1.models()[0].is_similar_hierarchy(
+    other=h1.models()[1])
+  assert h1.models()[0].only_chain().is_similar_hierarchy(
+    other=h1.models()[1].only_chain())
+  assert h1.models()[0].only_chain().residue_groups()[0].is_similar_hierarchy(
+    other=h1.models()[1].only_chain().residue_groups()[0])
   for an,rn in [("C ", "GLY"), ("N ", "ALA")]:
     i2 = pdb.input(source_info=None, lines=flex.split_lines(
       s0 % (an, rn, rn)))
     h2 = i2.construct_hierarchy()
     assert not h1.is_similar_hierarchy(other=h2)
     assert not h2.is_similar_hierarchy(other=h1)
+    assert not h1.models()[0].is_similar_hierarchy(
+      other=h2.models()[0]) == (rn == "GLY")
+    assert h1.models()[0].only_chain().is_similar_hierarchy(
+      other=h2.models()[0].only_chain()) == (an == "N ")
+    assert h1.models()[0].only_chain().residue_groups()[0] \
+      .is_similar_hierarchy(
+        other=h2.models()[0].only_chain().residue_groups()[0]) == (an == "N ")
 
 def exercise_atoms():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\

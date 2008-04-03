@@ -914,12 +914,10 @@ namespace hierarchy {
       af::tiny<unsigned, 2>
       edit_blank_altloc();
 
-      //! Not available in Python.
       bool
       is_identical_hierarchy(
         residue_group const& other) const;
 
-      //! Not available in Python.
       bool
       is_similar_hierarchy(
         residue_group const& other) const;
@@ -1044,12 +1042,10 @@ namespace hierarchy {
       find_pure_altloc_ranges(
         const char* common_residue_name_class_only=0) const;
 
-      //! Not available in Python.
       bool
       is_identical_hierarchy(
         chain const& other) const;
 
-      //! Not available in Python.
       bool
       is_similar_hierarchy(
         chain const& other) const;
@@ -1157,7 +1153,6 @@ namespace hierarchy {
       is_identical_hierarchy(
         model const& other) const;
 
-      //! Not available in Python.
       bool
       is_similar_hierarchy(
         model const& other) const;

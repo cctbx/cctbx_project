@@ -470,6 +470,10 @@ namespace {
         .def("move_blank_altloc_atom_groups_to_front",
           &w_t::move_blank_altloc_atom_groups_to_front)
         .def("edit_blank_altloc", &w_t::edit_blank_altloc)
+        .def("is_identical_hierarchy", &w_t::is_identical_hierarchy, (
+          arg_("other")))
+        .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
+          arg_("other")))
       ;
     }
   };
@@ -562,6 +566,10 @@ namespace {
           find_pure_altloc_ranges_overloads((
             arg_("common_residue_name_class_only")=0)))
         .def("conformers", conformers)
+        .def("is_identical_hierarchy", &w_t::is_identical_hierarchy, (
+          arg_("other")))
+        .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
+          arg_("other")))
         .def("write_atom_record_groups", write_atom_record_groups,
           write_atom_record_groups_overloads((
           arg_("self"),
@@ -614,6 +622,8 @@ namespace {
         .def("atoms", &w_t::atoms, atoms_overloads((
           arg_("interleaved_conf")=0)))
         .def("is_identical_hierarchy", &w_t::is_identical_hierarchy, (
+          arg_("other")))
+        .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
           arg_("other")))
         .def("transfer_chains_from_other", &w_t::transfer_chains_from_other, (
           arg_("other")))
