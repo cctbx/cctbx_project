@@ -1323,7 +1323,7 @@ namespace {
         if (!rgs[i].is_identical_topology(orgs[i])) return false;
       }
       else {
-        return rgs[i].is_similar_hierarchy(orgs[i]);
+        if (!rgs[i].is_similar_hierarchy(orgs[i])) return false;
       }
     }
     return true;
@@ -1377,6 +1377,7 @@ namespace {
     unsigned n = static_cast<unsigned>(mds.size());
     if (n != static_cast<unsigned>(omds.size())) return false;
     for(unsigned i=0;i<n;i++) {
+      if (mds[i].data->id != omds[i].data->id) return false;
       if (!mds[i].is_similar_hierarchy(omds[i])) return false;
     }
     return true;
