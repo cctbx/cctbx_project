@@ -4356,9 +4356,12 @@ TER
     if (prev_file_name is not None):
       if (   hierarchy_1.is_similar_hierarchy(other=prev_hierarchy)
           or prev_hierarchy.is_similar_hierarchy(other=hierarchy_1)):
-        print "WARNING: similar hierarchies:"
-        print " ", show_string(prev_file_name)
-        print " ", show_string(file_name)
+        # some files are known to be similar
+        if (   os.path.basename(prev_file_name)[:3]
+            != os.path.basename(     file_name)[:3]):
+          print "WARNING: similar hierarchies:"
+          print " ", show_string(prev_file_name)
+          print " ", show_string(file_name)
     prev_file_name = file_name
     prev_pdb_str = pdb_str_1
     prev_hierarchy = hierarchy_1
