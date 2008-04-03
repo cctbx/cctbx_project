@@ -1,85 +1,74 @@
 #ifndef SCITBX_MATH_SUPERPOSE_H
 #define SCITBX_MATH_SUPERPOSE_H
 
-#include <scitbx/vec3.h>
-#include <scitbx/mat3.h>
-#include <scitbx/array_family/shared.h>
-#include <scitbx/array_family/ref.h>
-#include <scitbx/array_family/tiny.h>
+#include <scitbx/math/eigensystem.h>
+#include <scitbx/array_family/shared_reductions.h>
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/ref_algebra.h>
-#include <scitbx/array_family/shared_reductions.h>
-#include <scitbx/array_family/ref_reductions.h>
-#include <scitbx/array_family/accessors/c_grid.h>
-#include <scitbx/math/eigensystem.h>
 
 #include <boost/lambda/lambda.hpp>
 #include <boost/lambda/bind.hpp>
 
-#include <algorithm>
-
-using namespace scitbx;
-
 namespace scitbx {  namespace math {  namespace superpose {
 
+  template <typename FloatType=double>
   class superposition
   {
     private:
-      mat3< double > rotation_;
-      vec3< double > translation_;
+      mat3< FloatType > rotation_;
+      vec3< FloatType > translation_;
 
     public:
       superposition(
-          const af::const_ref< vec3< double > >& reference,
-          const af::const_ref< vec3< double > >& moving,
-          const mat3< double > (*rotation_calculation)(
-              const af::const_ref< vec3< double > >&,
-              const af::const_ref< vec3< double > >& ) =
+          const af::const_ref< vec3< FloatType > >& reference,
+          const af::const_ref< vec3< FloatType > >& moving,
+          const mat3< FloatType > (*rotation_calculation)(
+              const af::const_ref< vec3< FloatType > >&,
+              const af::const_ref< vec3< FloatType > >& ) =
             superposition::kearsley_rotation );
-      ~superposition();
 
       // Accessors
-      const mat3< double >& get_rotation() const;
-      const vec3< double >& get_translation() const;
+      const mat3< FloatType >& get_rotation() const;
+      const vec3< FloatType >& get_translation() const;
 
       // Rotation calculation alternatives
-      static const mat3< double > kearsley_rotation(
-          const af::const_ref< vec3< double > >& reference,
-          const af::const_ref< vec3< double > >& moving );
+      static const mat3< FloatType > kearsley_rotation(
+          const af::const_ref< vec3< FloatType > >& reference,
+          const af::const_ref< vec3< FloatType > >& moving );
 
       // Helper functions
-      static const af::tiny< af::shared< double >, 3 >
+      static const af::tiny< af::shared< FloatType >, 3 >
       decompose_array_of_vec3(
-          const af::const_ref< vec3< double > >& array );
+          const af::const_ref< vec3< FloatType > >& array );
 
-      static const mat3< double > quaternion_to_rotmat(
-          double q1,
-          double q2,
-          double q3,
-          double q4 );
+      static const mat3< FloatType > quaternion_to_rotmat(
+          FloatType const& q1,
+          FloatType const& q2,
+          FloatType const& q3,
+          FloatType const& q4 );
   };
 
 
+  template <typename FloatType=double>
   class least_squares_fit
   {
     private:
-      superposition superposition_;
-      af::shared< vec3< double > > reference_sites_;
-      af::shared< vec3< double > > other_sites_best_fit_;
+      superposition<FloatType> superposition_;
+      af::shared< vec3< FloatType > > reference_sites_;
+      af::shared< vec3< FloatType > > other_sites_best_fit_;
 
     public:
       least_squares_fit(
-          const af::shared< vec3< double > >& reference_sites,
-          const af::shared< vec3< double > >& moving_sites );
-      ~least_squares_fit();
+          const af::shared< vec3< FloatType > >& reference_sites,
+          const af::shared< vec3< FloatType > >& moving_sites );
 
       // Accessors
-      const mat3< double >& get_rotation() const;
-      const vec3< double >& get_translation() const;
-      const af::shared< vec3< double > >& other_sites_best_fit() const;
+      const mat3< FloatType >& get_rotation() const;
+      const vec3< FloatType >& get_translation() const;
+      const af::shared< vec3< FloatType > >& other_sites_best_fit() const;
 
       // Methods
-      double other_sites_rmsd() const;
+      FloatType other_sites_rmsd() const;
   };
 
 
@@ -89,15 +78,16 @@ namespace scitbx {  namespace math {  namespace superpose {
 
 
 // Constructor
-superposition::superposition(
-    const af::const_ref< vec3< double > >& reference_coords,
-    const af::const_ref< vec3< double > >& moving_coords,
-    const mat3< double > (*rotation_calculation)(
-        const af::const_ref< vec3< double > >&,
-        const af::const_ref< vec3< double > >& ) )
+template <typename FloatType>
+superposition<FloatType>::superposition(
+    const af::const_ref< vec3< FloatType > >& reference_coords,
+    const af::const_ref< vec3< FloatType > >& moving_coords,
+    const mat3< FloatType > (*rotation_calculation)(
+        const af::const_ref< vec3< FloatType > >&,
+        const af::const_ref< vec3< FloatType > >& ) )
 {
-  vec3< double > reference_mean = af::mean( reference_coords );
-  vec3< double > moving_mean = af::mean( moving_coords );
+  vec3< FloatType > reference_mean = af::mean( reference_coords );
+  vec3< FloatType > moving_mean = af::mean( moving_coords );
 
   rotation_ = rotation_calculation(
       ( reference_coords - reference_mean ).const_ref(),
@@ -107,44 +97,41 @@ superposition::superposition(
 }
 
 
-// Destructor
-superposition::~superposition()
-{
-}
-
-
 // Accessors
-const mat3< double >&
-superposition::get_rotation() const
+template <typename FloatType>
+const mat3< FloatType >&
+superposition<FloatType>::get_rotation() const
 {
   return rotation_;
 }
 
 
-const vec3< double >&
-superposition::get_translation() const
+template <typename FloatType>
+const vec3< FloatType >&
+superposition<FloatType>::get_translation() const
 {
   return translation_;
 }
 
 
 // Rotation calculation altenatives
-const mat3< double >
-superposition::kearsley_rotation(
-    const af::const_ref< vec3< double > >& reference,
-    const af::const_ref< vec3< double > >& moving )
+template <typename FloatType>
+const mat3< FloatType >
+superposition<FloatType>::kearsley_rotation(
+    const af::const_ref< vec3< FloatType > >& reference,
+    const af::const_ref< vec3< FloatType > >& moving )
 {
   assert ( reference.size() == moving.size() );
 
-  af::tiny< af::shared< double >, 3 > diff(
+  af::tiny< af::shared< FloatType >, 3 > diff(
       decompose_array_of_vec3( ( reference - moving ).const_ref() ) );
-  af::tiny< af::shared< double >, 3 > summ(
+  af::tiny< af::shared< FloatType >, 3 > summ(
       decompose_array_of_vec3( ( reference + moving ).const_ref() ) );
 
   // Fill up 4*4 matrix
-  double matrix_memory[16];
+  FloatType matrix_memory[16];
 
-  af::ref< double, af::c_grid< 2 > > matrix(
+  af::ref< FloatType, af::c_grid< 2 > > matrix(
       matrix_memory,
       af::c_grid< 2 >( 4, 4 ) );
 
@@ -175,7 +162,7 @@ superposition::kearsley_rotation(
   matrix( 3, 2 ) = matrix( 2, 3 );
 
   // Solve characteristic equation
-  math::eigensystem::real_symmetric< double > eigenvalues( matrix );
+  math::eigensystem::real_symmetric< FloatType > eigenvalues( matrix );
 
   // The eigenvectors corresponding to the lowest four eignevalues form
   // a unit quaternion
@@ -188,11 +175,12 @@ superposition::kearsley_rotation(
 
 
 // Helper methods
-const af::tiny< af::shared< double >, 3 >
-superposition::decompose_array_of_vec3(
-    const af::const_ref< vec3< double > >& array_of_vec3 )
+template <typename FloatType>
+const af::tiny< af::shared< FloatType >, 3 >
+superposition<FloatType>::decompose_array_of_vec3(
+    const af::const_ref< vec3< FloatType > >& array_of_vec3 )
 {
-  af::tiny< af::shared< double >, 3 > array_of_coordinates;
+  af::tiny< af::shared< FloatType >, 3 > array_of_coordinates;
   size_t array_length( array_of_vec3.size() );
 
   for ( int coord = 0; coord < 3; ++coord )
@@ -202,17 +190,22 @@ superposition::decompose_array_of_vec3(
         array_of_vec3.begin(),
         array_of_vec3.end(),
         std::back_inserter( array_of_coordinates[ coord ] ),
-        boost::lambda::ret< double >( boost::lambda::_1[ coord ] ) );
+        boost::lambda::ret< FloatType >( boost::lambda::_1[ coord ] ) );
   }
 
   return array_of_coordinates;
 }
 
 
-const mat3< double >
-superposition::quaternion_to_rotmat( double q1, double q2, double q3, double q4 )
+template <typename FloatType>
+const mat3< FloatType >
+superposition<FloatType>::quaternion_to_rotmat(
+  FloatType const& q1,
+  FloatType const& q2,
+  FloatType const& q3,
+  FloatType const& q4 )
 {
-  return mat3< double >(
+  return mat3< FloatType >(
       q1*q1 + q2*q2 - q3*q3 - q4*q4,      // Element ( 1, 1 )
       2.0 * ( q2*q3 + q1*q4 ),            // Element ( 1, 2 )
       2.0 * ( q2*q4 - q1*q3 ),            // Element ( 1, 3 )
@@ -231,9 +224,10 @@ superposition::quaternion_to_rotmat( double q1, double q2, double q3, double q4 
 
 
 // Constructor
-least_squares_fit::least_squares_fit(
-    const af::shared< vec3< double > >& reference_sites,
-    const af::shared< vec3< double > >& moving_sites )
+template <typename FloatType>
+least_squares_fit<FloatType>::least_squares_fit(
+    const af::shared< vec3< FloatType > >& reference_sites,
+    const af::shared< vec3< FloatType > >& moving_sites )
     : superposition_(
           reference_sites.const_ref(),
           moving_sites.const_ref() ),
@@ -246,46 +240,44 @@ least_squares_fit::least_squares_fit(
       moving_sites.begin(),
       moving_sites.end(),
       std::back_inserter( other_sites_best_fit_ ),
-      boost::lambda::ret< vec3< double > >(
-          boost::lambda::ret< vec3< double > >(
+      boost::lambda::ret< vec3< FloatType > >(
+          boost::lambda::ret< vec3< FloatType > >(
               superposition_.get_rotation() * boost::lambda::_1 )
               + superposition_.get_translation() ) );
 }
 
 
-// Destructor
-least_squares_fit::~least_squares_fit()
-{
-}
-
-
 // Accessors
-const mat3< double >&
-least_squares_fit::get_rotation() const
+template <typename FloatType>
+const mat3< FloatType >&
+least_squares_fit<FloatType>::get_rotation() const
 {
   return superposition_.get_rotation();
 }
 
 
-const vec3< double >&
-least_squares_fit::get_translation() const
+template <typename FloatType>
+const vec3< FloatType >&
+least_squares_fit<FloatType>::get_translation() const
 {
   return superposition_.get_translation();
 }
 
 
-const af::shared< vec3< double > >&
-least_squares_fit::other_sites_best_fit() const
+template <typename FloatType>
+const af::shared< vec3< FloatType > >&
+least_squares_fit<FloatType>::other_sites_best_fit() const
 {
   return other_sites_best_fit_;
 }
 
 
 // Methods
-double
-least_squares_fit::other_sites_rmsd() const
+template <typename FloatType>
+FloatType
+least_squares_fit<FloatType>::other_sites_rmsd() const
 {
-  af::shared< double > length_difference_sq;
+  af::shared< FloatType > length_difference_sq;
   length_difference_sq.reserve( reference_sites_.size() );
 
   std::transform(
@@ -293,9 +285,9 @@ least_squares_fit::other_sites_rmsd() const
       reference_sites_.end(),
       other_sites_best_fit_.begin(),
       std::back_inserter( length_difference_sq ),
-      boost::lambda::bind< double >(
-          &vec3< double >::length_sq,
-          boost::lambda::ret< vec3< double > >(
+      boost::lambda::bind< FloatType >(
+          &vec3< FloatType >::length_sq,
+          boost::lambda::ret< vec3< FloatType > >(
               boost::lambda::_1 - boost::lambda::_2 ) ) );
 
   return sqrt( af::sum( length_difference_sq ) / length_difference_sq.size() );

@@ -83,7 +83,7 @@ namespace {
     af::const_ref<vec3<double> > const& reference_sites,
     af::const_ref<vec3<double> > const& other_sites)
   {
-    return superpose::superposition::kearsley_rotation(
+    return superpose::superposition<>::kearsley_rotation(
       reference_sites, other_sites);
   }
 
