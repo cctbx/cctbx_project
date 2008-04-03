@@ -785,6 +785,10 @@ namespace hierarchy {
       confid() const;
 
       //! Not available in Python.
+      str4
+      confid_small_str() const;
+
+      //! Not available in Python.
       bool
       is_identical_topology(
         atom_group const& other) const;
@@ -916,6 +920,11 @@ namespace hierarchy {
         residue_group const& other) const;
 
       //! Not available in Python.
+      bool
+      is_similar_hierarchy(
+        residue_group const& other) const;
+
+      //! Not available in Python.
       void
       atoms_interleaved_conf_impl(
         bool group_residue_names,
@@ -1040,6 +1049,11 @@ namespace hierarchy {
       is_identical_topology(
         chain const& other) const;
 
+      //! Not available in Python.
+      bool
+      is_similar_hierarchy(
+        chain const& other) const;
+
       af::shared<conformer>
       conformers() const;
 
@@ -1144,6 +1158,11 @@ namespace hierarchy {
         model const& other) const;
 
       //! Not available in Python.
+      bool
+      is_similar_hierarchy(
+        model const& other) const;
+
+      //! Not available in Python.
       af::shared<atom>
       atoms_interleaved_conf(
         bool group_residue_names=true) const;
@@ -1221,6 +1240,10 @@ namespace hierarchy {
       af::shared<atom>
       atoms(
         int interleaved_conf=0) const;
+
+      bool
+      is_similar_hierarchy(
+        root const& other) const;
 
       void
       write_pdb_file(

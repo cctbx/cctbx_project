@@ -790,6 +790,8 @@ namespace {
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, atoms_overloads((
           arg_("interleaved_conf")=0)))
+        .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
+          arg_("other")))
         .def("as_pdb_string_cstringio", as_pdb_string_cstringio,
           as_pdb_string_cstringio_overloads((
             arg_("self"),
