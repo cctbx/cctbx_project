@@ -167,6 +167,10 @@ namespace {
     std::ios::openmode mode = std::ios::out | std::ios::binary;
     if (open_append) mode |= std::ios::app;
     std::ofstream out(file_name, mode);
+    if (out.fail()) {
+      throw std::runtime_error(
+        "Cannot open file for writing: \"" + std::string(file_name) + "\"");
+    }
     fstream_write write(&out);
     models_as_pdb_string(
       write,
@@ -177,6 +181,10 @@ namespace {
       sigatm,
       anisou,
       siguij);
+    if (out.fail()) {
+      throw std::runtime_error(
+        "Failure writing to file: \"" + std::string(file_name) + "\"");
+    }
     out.close();
   }
 
