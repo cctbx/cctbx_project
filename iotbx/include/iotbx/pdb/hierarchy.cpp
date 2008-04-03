@@ -1216,12 +1216,8 @@ namespace {
   atom_group::is_identical_hierarchy(
     atom_group const& other) const
   {
-    atom_group_data const& d = *data;
-    atom_group_data const& od = *other.data;
-    if (d.altloc != od.altloc) return false;
-    if (d.resname != od.resname) return false;
-    std::vector<atom> const& ats = d.atoms;
-    std::vector<atom> const& oats = od.atoms;
+    std::vector<atom> const& ats = data->atoms;
+    std::vector<atom> const& oats = other.data->atoms;
     unsigned n = static_cast<unsigned>(ats.size());
     if (n != static_cast<unsigned>(oats.size())) return false;
     for(unsigned i=0;i<n;i++) {
@@ -1240,15 +1236,13 @@ namespace {
   residue_group::is_identical_hierarchy(
     residue_group const& other) const
   {
-    residue_group_data const& d = *data;
-    residue_group_data const& od = *other.data;
-    if (d.resseq != od.resseq) return false;
-    if (d.icode != od.icode) return false;
-    std::vector<atom_group> const& ags = d.atom_groups;
-    std::vector<atom_group> const& oags = od.atom_groups;
+    std::vector<atom_group> const& ags = data->atom_groups;
+    std::vector<atom_group> const& oags = other.data->atom_groups;
     unsigned n = static_cast<unsigned>(ags.size());
     if (n != static_cast<unsigned>(oags.size())) return false;
     for(unsigned i=0;i<n;i++) {
+      if (ags[i].data->altloc != oags[i].data->altloc) return false;
+      if (ags[i].data->resname != oags[i].data->resname) return false;
       if (!ags[i].is_identical_hierarchy(oags[i])) return false;
     }
     return true;
@@ -1285,10 +1279,6 @@ namespace {
   residue_group::is_similar_hierarchy(
     residue_group const& other) const
   {
-    residue_group_data const& d = *data;
-    residue_group_data const& od = *other.data;
-    if (d.resseq != od.resseq) return false;
-    if (d.icode != od.icode) return false;
     std::map<str4, std::vector<str4> > confid_atom_names[2];
     get_confid_atom_names(confid_atom_names[0], *this);
     get_confid_atom_names(confid_atom_names[1], other);
@@ -1313,12 +1303,13 @@ namespace {
     chain const& other,
     int equivalence_type)
   {
-    if (self.data->id != other.data->id) return false;
     std::vector<residue_group> const& rgs = self.residue_groups();
     std::vector<residue_group> const& orgs = other.residue_groups();
     unsigned n = static_cast<unsigned>(rgs.size());
     if (n != static_cast<unsigned>(orgs.size())) return false;
     for(unsigned i=0;i<n;i++) {
+      if (rgs[i].data->resseq != orgs[i].data->resseq) return false;
+      if (rgs[i].data->icode != orgs[i].data->icode) return false;
       if (equivalence_type == 0) {
         if (!rgs[i].is_identical_hierarchy(orgs[i])) return false;
       }
@@ -1340,6 +1331,7 @@ namespace {
     unsigned n = static_cast<unsigned>(chs.size());
     if (n != static_cast<unsigned>(ochs.size())) return false;
     for(unsigned i=0;i<n;i++) {
+      if (chs[i].data->id != ochs[i].data->id) return false;
       if (equivalence_type == 0) {
         if (!chs[i].is_identical_hierarchy(ochs[i])) return false;
       }
