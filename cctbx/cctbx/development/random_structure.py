@@ -63,33 +63,33 @@ def random_modify_adp_and_adp_flags_2(
     sc.u_iso = u_iso
     assert sc.u_iso > 0.0 and sc.u_star != (-1.,-1.,-1.,-1.,-1.,-1.)
     if(allow_mix):
-       choice = random.random()
-       if(choice < 0.5):
-          sc.flags.set_use_u_iso(True)
-          if(parameter_name != "u_star"):
-             sc.flags.set_use_u_aniso(False)
-          else:
-             sc.flags.set_use_u_aniso(use_u_aniso)
-       else:
-          if(parameter_name != "u_iso"):
-             sc.flags.set_use_u_iso(False)
-          else:
-             sc.flags.set_use_u_iso(use_u_iso)
-          sc.flags.set_use_u_aniso(True)
+      choice = random.random()
+      if(choice < 0.5):
+        sc.flags.set_use_u_iso(True)
+        if(parameter_name != "u_star"):
+          sc.flags.set_use_u_aniso(False)
+        else:
+          sc.flags.set_use_u_aniso(use_u_aniso)
+      else:
+        if(parameter_name != "u_iso"):
+          sc.flags.set_use_u_iso(False)
+        else:
+          sc.flags.set_use_u_iso(use_u_iso)
+        sc.flags.set_use_u_aniso(True)
     else:
-       sc.flags.set_use_u_iso(use_u_iso)
-       sc.flags.set_use_u_aniso(use_u_aniso)
+      sc.flags.set_use_u_iso(use_u_iso)
+      sc.flags.set_use_u_aniso(use_u_aniso)
     if(not sc.flags.use_u_aniso()):
-       choice = random.random()
-       if(choice < 0.5): sc.u_star = (-10.0,-10.0,-10.0,-10.0,-10.0,-10.0)
+      choice = random.random()
+      if(choice < 0.5): sc.u_star = (-10.0,-10.0,-10.0,-10.0,-10.0,-10.0)
     if(not sc.flags.use_u_iso()):
-       choice = random.random()
-       if(choice < 0.5): sc.u_iso = -10.0
+      choice = random.random()
+      if(choice < 0.5): sc.u_iso = -10.0
     if(not sc.flags.use_u_iso() and not sc.flags.use_u_aniso()):
-       choice = random.random()
-       if(choice < 0.5):
-          sc.u_iso = -10.0
-          sc.u_star = (-10.0,-10.0,-10.0,-10.0,-10.0,-10.0)
+      choice = random.random()
+      if(choice < 0.5):
+        sc.u_iso = -10.0
+        sc.u_star = (-10.0,-10.0,-10.0,-10.0,-10.0,-10.0)
 
 
 def have_suitable_hetero_distance(existing_sites,
