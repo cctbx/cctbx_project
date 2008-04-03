@@ -613,7 +613,7 @@ namespace {
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, atoms_overloads((
           arg_("interleaved_conf")=0)))
-        .def("is_identical_topology", &w_t::is_identical_topology, (
+        .def("is_identical_hierarchy", &w_t::is_identical_hierarchy, (
           arg_("other")))
         .def("transfer_chains_from_other", &w_t::transfer_chains_from_other, (
           arg_("other")))

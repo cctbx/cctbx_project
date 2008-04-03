@@ -1213,7 +1213,7 @@ namespace {
   }
 
   bool
-  atom_group::is_identical_topology(
+  atom_group::is_identical_hierarchy(
     atom_group const& other) const
   {
     atom_group_data const& d = *data;
@@ -1237,7 +1237,7 @@ namespace {
   }
 
   bool
-  residue_group::is_identical_topology(
+  residue_group::is_identical_hierarchy(
     residue_group const& other) const
   {
     residue_group_data const& d = *data;
@@ -1249,7 +1249,7 @@ namespace {
     unsigned n = static_cast<unsigned>(ags.size());
     if (n != static_cast<unsigned>(oags.size())) return false;
     for(unsigned i=0;i<n;i++) {
-      if (!ags[i].is_identical_topology(oags[i])) return false;
+      if (!ags[i].is_identical_hierarchy(oags[i])) return false;
     }
     return true;
   }
@@ -1320,7 +1320,7 @@ namespace {
     if (n != static_cast<unsigned>(orgs.size())) return false;
     for(unsigned i=0;i<n;i++) {
       if (equivalence_type == 0) {
-        if (!rgs[i].is_identical_topology(orgs[i])) return false;
+        if (!rgs[i].is_identical_hierarchy(orgs[i])) return false;
       }
       else {
         if (!rgs[i].is_similar_hierarchy(orgs[i])) return false;
@@ -1341,7 +1341,7 @@ namespace {
     if (n != static_cast<unsigned>(ochs.size())) return false;
     for(unsigned i=0;i<n;i++) {
       if (equivalence_type == 0) {
-        if (!chs[i].is_identical_topology(ochs[i])) return false;
+        if (!chs[i].is_identical_hierarchy(ochs[i])) return false;
       }
       else {
         if (!chs[i].is_similar_hierarchy(ochs[i])) return false;
@@ -1353,7 +1353,7 @@ namespace {
 } // namespace <anonymous>
 
   bool
-  chain::is_identical_topology(
+  chain::is_identical_hierarchy(
     chain const& other) const { return chain_equivalence(*this, other, 0); }
 
   bool
@@ -1361,7 +1361,7 @@ namespace {
     chain const& other) const { return chain_equivalence(*this, other, 1); }
 
   bool
-  model::is_identical_topology(
+  model::is_identical_hierarchy(
     model const& other) const { return model_equivalence(*this, other, 0); }
 
   bool

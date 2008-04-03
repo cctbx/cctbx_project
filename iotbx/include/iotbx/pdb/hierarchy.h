@@ -790,7 +790,7 @@ namespace hierarchy {
 
       //! Not available in Python.
       bool
-      is_identical_topology(
+      is_identical_hierarchy(
         atom_group const& other) const;
   };
 
@@ -916,7 +916,7 @@ namespace hierarchy {
 
       //! Not available in Python.
       bool
-      is_identical_topology(
+      is_identical_hierarchy(
         residue_group const& other) const;
 
       //! Not available in Python.
@@ -1046,7 +1046,7 @@ namespace hierarchy {
 
       //! Not available in Python.
       bool
-      is_identical_topology(
+      is_identical_hierarchy(
         chain const& other) const;
 
       //! Not available in Python.
@@ -1154,7 +1154,7 @@ namespace hierarchy {
       atoms_sequential_conf() const;
 
       bool
-      is_identical_topology(
+      is_identical_hierarchy(
         model const& other) const;
 
       //! Not available in Python.
