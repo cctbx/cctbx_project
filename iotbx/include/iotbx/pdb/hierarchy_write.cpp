@@ -12,7 +12,7 @@ namespace {
     if (i == 0) return;
     for(;;) {
       i--;
-      if (!std::isspace(s[i])) {
+      if (!isspace(s[i])) {
         s.resize(i+1U);
         return;
       }
