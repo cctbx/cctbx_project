@@ -897,6 +897,46 @@ def exercise_root():
     assert str(e) == "model has another parent root already."
   else: raise Exception_expected
 
+def exercise_atom_all_labels():
+  a = pdb.hierarchy.atom()
+  a.set_name(new_name="NaMe")
+  a.set_serial(new_serial="B1234")
+  assert a.all_labels() == 'pdb="NaMe           "'
+  ag = pdb.hierarchy.atom_group(altloc="A", resname="GLY")
+  ag.append_atom(a)
+  assert a.all_labels() == 'pdb="NaMeAGLY       "'
+  rg = pdb.hierarchy.residue_group(resseq="1234", icode="J")
+  rg.append_atom_group(ag)
+  assert a.all_labels() == 'pdb="NaMeAGLY  1234J"'
+  ch = pdb.hierarchy.chain(id="Ch")
+  ch.append_residue_group(rg)
+  assert a.all_labels() == 'pdb="NaMeAGLYCh1234J"'
+  md = pdb.hierarchy.model()
+  md.append_chain(ch)
+  assert a.all_labels() == 'pdb="NaMeAGLYCh1234J"'
+  md.id = "   0"
+  assert a.all_labels() == 'pdb="NaMeAGLYCh1234J"'
+  md.id = "1"
+  assert a.all_labels() == 'model="   1" pdb="NaMeAGLYCh1234J"'
+  md.id = "12345678"
+  assert a.all_labels() == 'model="12345678" pdb="NaMeAGLYCh1234J"'
+  md.id = "123456789"
+  try: a.all_labels()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      'model id with excessive length (max 8): "123456789"')
+  else: raise Exception_expected
+  md.id = "12345678"
+  a.segid = "1234"
+  assert a.all_labels() == 'model="12345678" pdb="NaMeAGLYCh1234J" segid="1234"'
+  md.id = ""
+  assert a.all_labels() == 'pdb="NaMeAGLYCh1234J" segid="1234"'
+  rt = pdb.hierarchy.root()
+  rt.append_model(md)
+  assert a.all_labels() == 'pdb="NaMeAGLYCh1234J" segid="1234"'
+  rt.append_model(pdb.hierarchy.model())
+  assert a.all_labels() == 'model="    " pdb="NaMeAGLYCh1234J" segid="1234"'
+
 def exercise_format_atom_record():
   a = (pdb.hierarchy.atom()
     .set_name(new_name="NaMe")
@@ -4518,6 +4558,7 @@ def exercise(args):
     exercise_chain()
     exercise_model()
     exercise_root()
+    exercise_atom_all_labels()
     exercise_format_atom_record()
     exercise_construct_hierarchy()
     exercise_convenience_generators()

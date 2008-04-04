@@ -96,6 +96,7 @@ namespace hierarchy {
   {
     protected:
       friend class root;
+      friend class atom_label_columns_formatter;
     public:
       af::shared<std::string> info;
     protected:
@@ -108,6 +109,7 @@ namespace hierarchy {
     protected:
       friend class model;
       friend class atom; // to support efficient backtracking to parents
+      friend class atom_label_columns_formatter;
       weak_ptr<root_data> parent;
     public:
       std::string id;
@@ -352,28 +354,36 @@ namespace hierarchy {
   struct atom_label_columns_formatter
   {
     const char* name;
+    const char* segid;
     const char* altloc;
     const char* resname;
     const char* resseq;
     const char* icode;
     const char* chain_id;
+    const char* model_id;
 
     //! All labels must be defined externally.
     /*! result must point to an array of size 15 (or greater).
         On return, result is NOT null-terminated.
-     */
-    void
-    format(
-      char* result) const;
-
-    //! All labels are extracted from the atom and its parents.
-    /*! result must point to an array of size 15 (or greater).
-        On return, result is NOT null-terminated.
+        If add_model_and_segid is true, the size of the result
+        array must be 52 (or greater) and result IS null-terminated.
      */
     void
     format(
       char* result,
-      hierarchy::atom const& atom);
+      bool add_model_and_segid=false) const;
+
+    //! All labels are extracted from the atom and its parents.
+    /*! result must point to an array of size 15 (or greater).
+        On return, result is NOT null-terminated.
+        If add_model_and_segid is true, the size of the result
+        array must be 52 (or greater) and result IS null-terminated.
+     */
+    void
+    format(
+      char* result,
+      hierarchy::atom const& atom,
+      bool add_model_and_segid=false);
   };
 
   //! Atom attributes.
@@ -634,6 +644,10 @@ namespace hierarchy {
 
       std::string
       pdb_element_charge_columns() const;
+
+      //! model="   1" pdb=" N   GLY A   1 " segid="S001"
+      std::string
+      all_labels() const;
 
       //! Not available in Python.
       /*! result must point to an array of size 81 (or greater).
