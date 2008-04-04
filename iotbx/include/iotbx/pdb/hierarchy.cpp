@@ -345,28 +345,63 @@ namespace {
 
   void
   atom_label_columns_formatter::format(
-    char* result) const
+    char* result,
+    bool add_model_and_segid) const
   {
     char blank = ' ';
+    if (add_model_and_segid) {
+      if (model_id != 0) {
+        std::size_t l = std::strlen(model_id);
+        if (l > 8U) {
+          throw std::runtime_error(
+            std::string("model id with excessive length (max 8): \"")
+            + model_id + "\"");
+        }
+        unsigned n = static_cast<unsigned>(l);
+        unsigned m = std::max(4U, n);
+        std::memcpy(result, "model=\"", 7U);
+        result += 7;
+        copy_right_justified(result, m, model_id, n, blank);
+        result += m;
+        std::memcpy(result, "\" ", 2U);
+        result += 2;
+      }
+      std::memcpy(result, "pdb=\"", 5U);
+      result += 5;
+    }
     copy_left_justified(result, 4U, name, 4U, blank);
     copy_left_justified(result+4, 1U, altloc, 1U, blank);
     copy_right_justified(result+5, 3U, resname, 3U, blank);
     copy_right_justified(result+8, 2U, chain_id, 2U, blank);
     copy_right_justified(result+10, 4U, resseq, 4U, blank);
     copy_left_justified(result+14, 1U, icode, 1U, blank);
+    if (add_model_and_segid) {
+      result[15] = '"';
+      if (segid == 0 || str4(segid).stripped_size() == 0) {
+        result[16] = '\0';
+      }
+      else {
+        std::memcpy(result+16, " segid=\"", 8U);
+        copy_left_justified(result+24, 4U, segid, 4U, blank);
+        result[28] = '"';
+        result[29] = '\0';
+      }
+    }
   }
 
   void
   atom_label_columns_formatter::format(
     char* result,
-    hierarchy::atom const& atom)
+    hierarchy::atom const& atom,
+    bool add_model_and_segid)
   {
     name = atom.data->name.elems;
+    segid = atom.data->segid.elems;
     shared_ptr<atom_group_data> ag_lock = atom.data->parent.lock();
     const atom_group_data* ag = ag_lock.get();
     if (ag == 0) {
-      altloc = resname = resseq = icode = chain_id = 0;
-      format(result);
+      altloc = resname = resseq = icode = chain_id = model_id = 0;
+      format(result, add_model_and_segid);
     }
     else {
       altloc = ag->altloc.elems;
@@ -374,16 +409,44 @@ namespace {
       shared_ptr<residue_group_data> rg_lock = ag->parent.lock();
       const residue_group_data* rg = rg_lock.get();
       if (rg == 0) {
-        resseq = icode = chain_id = 0;
-        format(result);
+        resseq = icode = chain_id = model_id = 0;
+        format(result, add_model_and_segid);
       }
       else {
         resseq = rg->resseq.elems;
         icode = rg->icode.elems;
-        shared_ptr<chain_data> c_lock = rg->parent.lock();
-        chain_data const* c = c_lock.get();
-        chain_id = (c == 0 ? 0 : c->id.c_str());
-        format(result);
+        shared_ptr<chain_data> ch_lock = rg->parent.lock();
+        chain_data const* ch = ch_lock.get();
+        if (ch == 0) {
+          chain_id = model_id = 0;
+          format(result, add_model_and_segid);
+        }
+        else {
+          chain_id = ch->id.c_str();
+          if (!add_model_and_segid) {
+            model_id = 0;
+            format(result, false);
+          }
+          else {
+            shared_ptr<model_data> md_lock = ch->parent.lock();
+            model_data const* md = md_lock.get();
+            if (md == 0) {
+              model_id = 0;
+              format(result, true);
+            }
+            else {
+              shared_ptr<root_data> rt_lock = md->parent.lock();
+              if (   (stripped_size(md->id.c_str()) != 0 && md->id != "   0")
+                  || (rt_lock.get() != 0 && rt_lock->models.size() != 1U)) {
+                model_id = md->id.c_str();
+              }
+              else {
+                model_id = 0;
+              }
+              format(result, true);
+            }
+          }
+        }
       }
     }
   }
@@ -468,6 +531,15 @@ namespace {
     char result[4];
     format_pdb_element_charge_columns(result);
     return std::string(result, 4U);
+  }
+
+  std::string
+  atom::all_labels() const
+  {
+    char result[52];
+    atom_label_columns_formatter().format(
+      result, *this, /* add_model_and_segid */ true);
+    return std::string(result);
   }
 
   unsigned

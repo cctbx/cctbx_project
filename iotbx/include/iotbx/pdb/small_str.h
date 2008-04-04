@@ -9,6 +9,22 @@
 namespace iotbx { namespace pdb {
 
   inline
+  unsigned
+  stripped_size(const char* s)
+  {
+    for(;;) {
+      if (*s == '\0') return 0;
+      if (!isspace(*s)) break;
+      s++;
+    }
+    unsigned i = 0;
+    for(unsigned j=1;s[j]!='\0';j++) {
+      if (!isspace(s[j])) i = j;
+    }
+    return i+1;
+  }
+
+  inline
   void
   copy_left_justified(
     char* dest,
@@ -208,17 +224,7 @@ namespace iotbx { namespace pdb {
   unsigned
   small_str<N>::stripped_size() const
   {
-    const char* e = elems;
-    for(;;) {
-      if (*e == '\0') return 0;
-      if (!isspace(*e)) break;
-      e++;
-    }
-    unsigned i = 0;
-    for(unsigned j=1;e[j]!='\0';j++) {
-      if (!isspace(e[j])) i = j;
-    }
-    return i+1;
+    return pdb::stripped_size(elems);
   }
 
   template <unsigned N>

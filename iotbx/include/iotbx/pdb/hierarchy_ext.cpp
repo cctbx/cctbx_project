@@ -324,6 +324,7 @@ namespace {
         .def("siguij_is_defined", &w_t::siguij_is_defined)
         .def("pdb_label_columns", &w_t::pdb_label_columns)
         .def("pdb_element_charge_columns", &w_t::pdb_element_charge_columns)
+        .def("all_labels", &w_t::all_labels)
         .def("format_atom_record", format_atom_record,
           format_atom_record_overloads((
             arg_("self"),
