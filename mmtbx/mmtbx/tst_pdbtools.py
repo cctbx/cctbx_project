@@ -4,7 +4,7 @@ import sys, os, math, time
 from cctbx.array_family import flex
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
-from libtbx.utils import remove_files
+from libtbx.utils import remove_files, search_for
 from mmtbx import utils
 from libtbx.test_utils import approx_equal, not_approx_equal, run_command, \
   show_diff
@@ -343,15 +343,13 @@ def check_all_none(cmd, xrsp_init, output, verbose, tolerance=1.e-3):
 
 def check_keep_remove_conflict(cmd, output, verbose):
   cmd += " keep=all remove=all "
-  result = run_command(command=cmd, verbose=verbose)
-  target_line = \
-    "Sorry: Ambiguous selection: 'keep' and 'remove' keywords cannot be used simultaneously."
-  target_line_detected = False
-  for line in result.stdout_lines:
-    if(line.count(target_line)):
-      target_line_detected = True
-      break
-  assert target_line_detected
+  cmd_result = run_command(command=cmd, verbose=verbose, sorry_expected=True)
+  sorry_lines = search_for(
+    pattern="Sorry: Ambiguous selection:"
+            " 'keep' and 'remove' keywords cannot be used simultaneously:",
+    mode="==",
+    lines=cmd_result.stdout_lines)
+  assert len(sorry_lines) == 1
 
 def exercise_multiple(pdb_dir, verbose):
   params = """\

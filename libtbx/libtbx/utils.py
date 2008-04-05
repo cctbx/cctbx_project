@@ -655,6 +655,42 @@ class detect_binary_file(object):
     return detector.is_binary_file(block=block)
   from_initial_block = staticmethod(from_initial_block)
 
+def search_for(
+      pattern,
+      mode,
+      re_flags=0,
+      lines=None,
+      file_name=None):
+  assert mode in ["==", "find", "startswith", "endswith", "re.search", "re.match"]
+  assert [lines, file_name].count(None) == 1
+  if (lines is None):
+    lines = open(file_name).read().splitlines()
+  result = []
+  a = result.append
+  if (mode == "=="):
+    for l in lines:
+      if (l == pattern): a(l)
+  elif (mode == "startswith"):
+    for l in lines:
+      if (l.startswith(pattern)): a(l)
+  elif (mode == "endswith"):
+    for l in lines:
+      if (l.endswith(pattern)): a(l)
+  elif (mode == "find"):
+    for l in lines:
+      if (l.find(pattern) >= 0): a(l)
+  elif (mode == "re.search"):
+    import re
+    for l in lines:
+      if (re.search(pattern=pattern, string=l, flags=re_flags) is not None):
+        a(l)
+  else:
+    import re
+    for l in lines:
+      if (re.match(pattern=pattern, string=l, flags=re_flags) is not None):
+        a(l)
+  return result
+
 def exercise():
   from libtbx.test_utils import approx_equal
   host_and_user().show(prefix="### ")
@@ -683,6 +719,19 @@ def exercise():
   assert tupleize(1) == (1,)
   assert tupleize("abcde") == ('a', 'b', 'c', 'd', 'e')
   assert tupleize([1,2,3]) == (1,2,3)
+  #
+  assert search_for(pattern="fox", mode="==", lines=["fox", "foxes"]) \
+      == ["fox"]
+  assert search_for(pattern="o", mode="find", lines=["fox", "bird", "mouse"]) \
+      == ["fox", "mouse"]
+  assert search_for(pattern="fox", mode="startswith", lines=["fox", "foxes"]) \
+      == ["fox", "foxes"]
+  assert search_for(pattern="xes", mode="endswith", lines=["fox", "foxes"]) \
+      == ["foxes"]
+  assert search_for(pattern="es$", mode="re.search", lines=["geese", "foxes"]) \
+      == ["foxes"]
+  assert search_for(pattern="ge", mode="re.match", lines=["geese", "angel"]) \
+      == ["geese"]
   #
   print "OK"
 

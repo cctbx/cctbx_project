@@ -1,6 +1,7 @@
 from __future__ import generators
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
+from libtbx.str_utils import show_string
 from libtbx import easy_run
 from libtbx import introspection
 import difflib
@@ -326,33 +327,83 @@ def show_diff(a, b, selections=None, expected_number_of_lines=None):
     return True
   return False
 
-class RunCommandError(Sorry): pass
+class RunCommandError(RuntimeError): pass
 
-def run_command(command, verbose=0):
+def _check_command_output(
+    lines=None,
+    file_name=None,
+    show_command_if_error=None,
+    sorry_expected=False):
+  assert [lines, file_name].count(None) == 1
+  if (lines is None):
+    lines = open(file_name).read().splitlines()
+  def show():
+    if (show_command_if_error):
+      print show_command_if_error
+      print
+    print "\n".join(lines)
+  have_sorry = False
+  for line in lines:
+    if (line == "Traceback (most recent call last):"):
+      show()
+      raise RunCommandError("Traceback detected in output.")
+    if (line.startswith("Sorry:")):
+      have_sorry = True
+  if (have_sorry and not sorry_expected):
+    show()
+    raise RunCommandError('"Sorry:" detected in output.')
+
+def run_command(
+      command,
+      verbose=0,
+      buffered=True,
+      log=None,
+      stdout_file_name=None,
+      result_files=[],
+      sorry_expected=False):
   assert verbose >= 0
   if (verbose > 0):
     print command
     print
-  result = easy_run.fully_buffered(command=command)
-  if (len(result.stderr_lines) != 0):
-    if (verbose == 0):
-      print command
-      print
-    print "\n".join(result.stdout_lines)
-    result.raise_if_errors()
+    show_command_if_error = None
   else:
-    for line in result.stdout_lines:
-      if (line == "Traceback (most recent call last):"):
-        if (verbose == 0):
-          print command
-          print
-        print "\n".join(result.stdout_lines)
+    show_command_if_error = command
+  for file_name in [log, stdout_file_name] + result_files:
+    if (file_name is None): continue
+    if (os.path.isfile(file_name)): os.remove(file_name)
+    if (os.path.exists(file_name)):
+      raise RunCommandError(
+        "Unable to remove file: %s" % show_string(file_name))
+  if (buffered):
+    cmd_result = easy_run.fully_buffered(command=command)
+    if (len(cmd_result.stderr_lines) != 0):
+      if (verbose == 0):
+        print command
         print
-        raise RunCommandError("Traceback detected in output.")
-  if (verbose > 1):
-    print "\n".join(result.stdout_lines)
+      print "\n".join(cmd_result.stdout_lines)
+      cmd_result.raise_if_errors()
+    _check_command_output(
+      lines=cmd_result.stdout_lines,
+      show_command_if_error=show_command_if_error,
+      sorry_expected=sorry_expected)
+  else:
+    easy_run.call(command=command)
+    cmd_result = None
+  for file_name in [log, stdout_file_name] + result_files:
+    if (file_name is None): continue
+    if (not os.path.isfile(file_name)):
+      raise RunCommandError(
+        "Missing output file: %s" % show_string(file_name))
+  for file_name in [log, stdout_file_name]:
+    if (file_name is None): continue
+    _check_command_output(
+      file_name=file_name,
+      show_command_if_error=show_command_if_error,
+      sorry_expected=sorry_expected)
+  if (verbose > 1 and cmd_result is not None):
+    print "\n".join(cmd_result.stdout_lines)
     print
-  return result
+  return cmd_result
 
 def exercise():
   from cStringIO import StringIO
