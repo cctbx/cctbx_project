@@ -167,6 +167,7 @@ scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text
+scitbx/include/scitbx/array_family/boost_python/selections_wrapper.h svneol=native#text/plain
 scitbx/include/scitbx/error_utils.h -text
 scitbx/include/scitbx/iso_surface.h -text
 scitbx/include/scitbx/math/superpose.h -text

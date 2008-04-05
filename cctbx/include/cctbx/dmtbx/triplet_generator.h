@@ -17,6 +17,7 @@
 #include <cctbx/dmtbx/triplet_phase_relation.h>
 #include <cctbx/miller/sym_equiv.h>
 #include <scitbx/array_family/sort.h>
+#include <scitbx/array_family/selections.h>
 #include <boost/scoped_array.hpp>
 
 namespace cctbx {
