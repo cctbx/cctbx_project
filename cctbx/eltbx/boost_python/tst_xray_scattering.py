@@ -26,6 +26,15 @@ def exercise_basic():
   except RuntimeError, e:
     assert str(e) == 'Unknown scattering type label: "SI1+"'
   else: raise Exception_expected
+  #
+  from cctbx.eltbx import tiny_pse
+  for sl in std_labels:
+    e, c = xray_scattering.get_element_and_charge_symbols(scattering_type=sl)
+    assert e == "T" or tiny_pse.table(e, True).symbol() == e
+    if (c != ""):
+      assert len(c) == 2
+      assert "123456789".find(c[0]) >= 0
+      assert c[1] in ["+", "-"]
 
 def exercise_gaussian():
   g = xray_scattering.gaussian(0)
