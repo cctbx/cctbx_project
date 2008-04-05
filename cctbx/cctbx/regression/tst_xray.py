@@ -1014,7 +1014,6 @@ def exercise_add_scatterer_insert():
 
 def run():
   exercise_add_scatterer_insert()
-  return # XXX
   exercise_replace_sites()
   exercise_min_u_cart_eigenvalue()
   exercise_set_occupancies()
