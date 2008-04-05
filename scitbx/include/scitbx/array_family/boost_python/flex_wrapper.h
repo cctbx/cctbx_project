@@ -18,7 +18,7 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/boost_python/ref_flex_conversions.h>
-#include <scitbx/array_family/boost_python/utils.h>
+#include <scitbx/array_family/boost_python/selections_wrapper.h>
 #include <scitbx/misc/positive_getitem_index.h>
 
 namespace scitbx { namespace af { namespace boost_python {
@@ -382,57 +382,6 @@ namespace scitbx { namespace af { namespace boost_python {
       return result;
     }
 
-    static shared<e_t>
-    select_bool(
-      af::const_ref<e_t> const& a,
-      af::const_ref<bool> const& flags)
-    {
-      if (a.size() != flags.size()) raise_incompatible_arrays();
-      std::size_t n = 0;
-      for(std::size_t i=0;i<flags.size();i++) if (flags[i]) n++;
-      shared<e_t> result((af::reserve(n)));
-      for(std::size_t i=0;i<flags.size();i++) {
-        if (flags[i]) result.push_back(a[i]);
-      }
-      return result;
-    }
-
-    static shared<e_t>
-    select_size_t_3(
-      af::const_ref<e_t> const& self,
-      af::const_ref<std::size_t> const& indices,
-      bool reverse)
-    {
-      if (!reverse) {
-        shared<e_t> result((af::reserve(indices.size())));
-        for(std::size_t i=0;i<indices.size();i++) {
-          SCITBX_ASSERT(indices[i] < self.size());
-          result.push_back(self[indices[i]]);
-        }
-        return result;
-      }
-      if (self.size() != indices.size()) {
-        raise_incompatible_arrays();
-      }
-      shared<e_t> result;
-      if (self.size()) {
-        result.resize(self.size(), self[0]); // avoid requirement that e_t is
-        for(std::size_t i=1;i<self.size();i++) {     // default constructible
-          SCITBX_ASSERT(indices[i] < self.size());
-          result[indices[i]] = self[i];
-        }
-      }
-      return result;
-    }
-
-    static shared<e_t>
-    select_size_t_2(
-      af::const_ref<e_t> const& self,
-      af::const_ref<std::size_t> const& indices)
-    {
-      return select_size_t_3(self, indices, false);
-    }
-
     static boost::python::object
     set_selected_bool_a(
       boost::python::object flex_object,
@@ -766,11 +715,9 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("extend", extend)
         .def("concatenate", concatenate)
         .def("reversed", reversed)
-        .def("select", select_bool)
-        .def("select", select_size_t_3, (
-          arg_("self"), arg_("indices"), arg_("reverse")))
-        .def("select", select_size_t_2, (
-          arg_("self"), arg_("indices")))
+      ;
+      select_wrappers<ElementType>::wrap(result);
+      result
         .def("set_selected", set_selected_bool_a)
         .def("set_selected", set_selected_bool_s)
         .def("set_selected",

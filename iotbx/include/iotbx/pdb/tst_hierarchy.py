@@ -4133,6 +4133,15 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
     assert not show_diff(open("tmp.pdb").read(), s)
     h = pdb.input(
       source_info=None, lines=flex.split_lines(s)).construct_hierarchy()
+  #
+  atoms = h.atoms().select(indices=flex.size_t([2,5,3,0]))
+  assert [a.name for a in atoms] == [" Q  ", "CA  ", " O  ", " N  "]
+  atoms = atoms.select(indices=flex.size_t([3,0,1,2]), reverse=True)
+  assert [a.name for a in atoms] == ["CA  ", " O  ", " N  ", " Q  "]
+  atoms = atoms.select(indices=flex.size_t([3,0,1,2]), reverse=False)
+  assert [a.name for a in atoms] == [" Q  ", "CA  ", " O  ", " N  "]
+  atoms = atoms.select(flex.bool([False,True,False,False]))
+  assert [a.name for a in atoms] == ["CA  "]
 
 def check_wpf(hierarchy, kwargs={}, trailing=None, expected=None):
   if ("atoms_reset_serial_first_value" in kwargs):

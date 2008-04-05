@@ -2,7 +2,7 @@
 #define CCTBX_MAPTBX_PEAK_SEARCH_H
 
 #include <scitbx/indexed_value.h>
-#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/selections.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/array_family/loops.h>

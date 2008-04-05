@@ -46,21 +46,6 @@ namespace scitbx { namespace af {
     }
   }
 
-  template <typename DataType>
-  shared<DataType>
-  select(
-    const_ref<DataType> const& data,
-    const_ref<std::size_t> const& permutation)
-  {
-    shared<DataType> result((reserve(data.size())));
-    for(std::size_t i=0;i<permutation.size();i++) {
-      std::size_t permutation_i = permutation[i];
-      SCITBX_ASSERT(permutation_i < data.size());
-      result.push_back(data[permutation_i]);
-    }
-    return result;
-  }
-
 }} // namespace scitbx::af
 
 #endif // SCITBX_ARRAY_FAMILY_SORT_H

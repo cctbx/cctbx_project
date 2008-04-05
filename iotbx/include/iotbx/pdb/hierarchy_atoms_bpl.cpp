@@ -5,6 +5,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/array_family/boost_python/selections_wrapper.h>
 #include <iotbx/pdb/hierarchy_atoms.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
@@ -27,8 +28,10 @@ namespace {
     class_<atom_tmp_sentinel,
            std::auto_ptr<atom_tmp_sentinel>,
            boost::noncopyable>("atom_data_tmp_sentinel", no_init);
-    scitbx::af::boost_python::shared_wrapper<atom>::wrap("af_shared_atom")
-      .def("extract_serial", extract_serial)
+    typedef scitbx::af::boost_python::shared_wrapper<atom> wat;
+    class_<wat::w_t> wa = wat::wrap("af_shared_atom");
+    scitbx::af::boost_python::select_wrappers<atom>::wrap(wa);
+    wa.def("extract_serial", extract_serial)
       .def("extract_name", extract_name)
       .def("extract_xyz", extract_xyz)
       .def("extract_sigxyz", extract_sigxyz)
