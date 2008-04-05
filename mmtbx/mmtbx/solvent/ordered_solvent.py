@@ -181,7 +181,7 @@ class manager(object):
       selection_iso.set_selected(self.model.xray_structure.hd_selection(), True)
       #
       self.model.xray_structure.convert_to_anisotropic(selection = selection_aniso)
-      self.model.xray_structure.convert_to_isotropic(selection = selection_iso)
+      self.model.xray_structure.convert_to_isotropic(selection = selection_iso.iselection())
 
   def move_solvent_to_the_end_of_atom_list(self):
     solsel = flex.bool(self.model.solvent_selection().count(False), False)
