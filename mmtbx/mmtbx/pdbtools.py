@@ -219,9 +219,10 @@ class modify(object):
           xray_structure    = xray_structure,
           log               = self.log)[0])
     if(self.remove_selection is not None and self.keep_selection is not None):
-      raise Sorry("Ambiguous selection: 'keep' and 'remove' keywords cannot"\
-        " be used simultaneously. \nkeep=%s\nremove=%s"%(params_keep_selection,
-        params_remove_selection))
+      raise Sorry("Ambiguous selection: 'keep' and 'remove' keywords cannot"
+        " be used simultaneously:\n  keep=%s\n  remove=%s" % (
+          show_string(params_keep_selection),
+          show_string(params_remove_selection)))
     if(self.keep_selection is not None):
       assert self.remove_selection is None
       self.remove_selection = flex.smart_selection(flags =
