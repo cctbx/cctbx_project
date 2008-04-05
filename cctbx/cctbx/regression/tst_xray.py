@@ -21,6 +21,12 @@ if (1):
   flex.set_random_seed(0)
 
 def exercise_scatterer():
+  assert xray.scatterer(scattering_type="si4+").element_and_charge_symbols() \
+      == ("Si", "4+")
+  assert xray.scatterer(scattering_type="si+4").element_and_charge_symbols() \
+      == ("Si", "")
+  assert xray.scatterer(scattering_type="x").element_and_charge_symbols() \
+      == ("", "")
   assert xray.scatterer(scattering_type="Cval").element_symbol() == "C"
   assert xray.scatterer(scattering_type="si+4").element_symbol() == "Si"
   assert xray.scatterer(scattering_type="x").element_symbol() is None

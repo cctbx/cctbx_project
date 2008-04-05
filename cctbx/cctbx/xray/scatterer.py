@@ -59,11 +59,14 @@ class _scatterer(boost.python.injector, ext.scatterer):
       fp=fp,
       fdp=fdp)
 
-  def element_symbol(self):
-    try:
-      return eltbx.tiny_pse.table(self.scattering_type).symbol()
-    except RuntimeError:
-      return None
+  def element_and_charge_symbols(self, exact=False):
+    return eltbx.xray_scattering.get_element_and_charge_symbols(
+      scattering_type=self.scattering_type, exact=exact)
+
+  def element_symbol(self, exact=False):
+    e, c = self.element_and_charge_symbols(exact=exact)
+    if (len(e) == 0): return None
+    return e
 
   def show(self, f=None, unit_cell=None):
     if (f is None): f = sys.stdout
