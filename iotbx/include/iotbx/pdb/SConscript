@@ -45,4 +45,5 @@ if (not env_etc.no_boost_python):
     target="#lib/iotbx_pdb_hierarchy_ext",
     source=[
       "hierarchy_ext.cpp",
+      "hierarchy_atom_bpl.cpp",
       "hierarchy_atoms_bpl.cpp"])
