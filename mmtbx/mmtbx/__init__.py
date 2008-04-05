@@ -211,7 +211,7 @@ class map_names(object):
     self.k = k
     self.n = n
     self.ml_map = ml_map
-    self.anomalous = True
+    self.anomalous = False
     if(s.count('anom')):
       self.anomalous = True
     else:

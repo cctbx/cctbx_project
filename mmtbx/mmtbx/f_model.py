@@ -1341,12 +1341,12 @@ class manager(manager_mixin):
       fmodel = self.f_model().as_non_anomalous_array().merge_equivalents().array()
       fc_match_anom_diff = fmodel.common_set(other = anom_diff)
       fc_match_anom_diff.indices().all_eq(anom_diff.indices())
-      fc_match_anom_diff *= (1-1j)
-      d_obs = miller.array(miller_set = fc_match_anom_diff,
-                           data       = anom_diff.data()
+      fc_match_anom_diff = \
+        miller.array(miller_set = fc_match_anom_diff,
+                     data = fc_match_anom_diff.data()*(1j))
+      return miller.array(miller_set = anom_diff,
+                          data       = anom_diff.data()*fom_match_anom_diff.data()
                           ).phase_transfer(phase_source = fc_match_anom_diff)
-      return miller.array(miller_set = fc_match_anom_diff,
-                          data       = d_obs.data()*fom_match_anom_diff.data())
     #
     fb_cart  = self.fb_cart()
     scale_k2 = self.scale_k2()
