@@ -2133,6 +2133,21 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     assert q.all_ge(0)
     return array(self, q)
 
+  def phased_translation_function_coeff(self, phase_source, other):
+    assert self.indices().all_eq(other.indices())
+    assert self.indices().all_eq(phase_source.indices())
+    assert self.is_real_array()
+    assert other.is_complex_array()
+    f1 = self.array(data = self.data()).phase_transfer(
+      phase_source = phase_source).data()
+    f2 = flex.conj(other.data())
+    coeff = f1 * f2
+    f3 = flex.sum(flex.abs(self.data()) * flex.abs(self.data()))
+    f4 = flex.sum(flex.abs(other.data()) * flex.abs(other.data()))
+    den = math.sqrt(f3 * f4)
+    assert den != 0
+    return self.array(data = coeff/den)
+
   def __abs__(self):
     return array(self, flex.abs(self.data()), self.sigmas())
 
