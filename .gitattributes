@@ -61,6 +61,7 @@ iotbx/include/iotbx/pdb/hierarchy_atoms.h svneol=native#text/plain
 iotbx/include/iotbx/pdb/hierarchy_atoms_bpl.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/hierarchy_bpl.h svneol=native#text/plain
 iotbx/include/iotbx/pdb/hierarchy_ext.cpp svneol=native#text/plain
+iotbx/include/iotbx/pdb/hierarchy_select.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/hierarchy_write.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/input.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/namespace.h svneol=native#text/plain

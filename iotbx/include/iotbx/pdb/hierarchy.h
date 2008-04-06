@@ -1266,6 +1266,10 @@ namespace hierarchy {
         bool sigatm=true,
         bool anisou=true,
         bool siguij=true) const;
+
+      root
+      select(
+        af::const_ref<bool> const& atom_selection) const;
   };
 
   struct stream_write
