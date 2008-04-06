@@ -361,6 +361,33 @@ def run_command(
       stdout_file_name=None,
       result_files=[],
       sorry_expected=False):
+  """\
+This function starts another process to run command, with some
+pre-call and post-call processing.
+Before running command, the expected output files are removed:
+
+  log
+  stdout_file_name
+  result_files
+
+After command is finished, log and stdout_file_name are scanned
+for Traceback and Sorry. An exception is raised if there are any
+matches. sorry_expected=True suppresses the scanning for Sorry.
+
+With buffered=True easy_run.fully_buffered() is used. If there
+is any output to stderr of the child process, an exception is
+raised. The run_command() return value is the result of the
+easy_run.fully_buffered() call.
+
+With buffered=False easy_run.call() is used. I.e. stdout and stderr
+of the command are connected to stdout and stderr of the parent
+process. stderr is not checked. The run_command() return value is None.
+
+It is generally best to use buffered=True, and even better not to
+use this function at all if command is another Python script. It
+is better to organize the command script such that it can be called
+directly from within the same Python process running the unit tests.
+"""
   assert verbose >= 0
   if (verbose > 0):
     print command
