@@ -4537,6 +4537,67 @@ TER
 ENDMDL
 """)
 
+def exercise_root_select(n_trials=100):
+  h_all = pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        1
+ATOM      1
+ATOM      2
+ATOM      3
+ATOM      4
+ATOM      5
+ATOM      6
+ATOM      7
+ATOM      8
+ENDMDL
+MODEL        2
+ATOM     11
+ATOM     12
+ATOM     13
+ATOM     14
+ATOM     15
+ATOM     16
+ATOM     17
+ATOM     18
+ENDMDL
+""")).construct_hierarchy()
+  try: h_all.select(atom_selection=flex.bool())
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "atom_selection array too short."
+  try: h_all.select(atom_selection=flex.bool(17, False))
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "atom_selection array too large."
+  h_sel = h_all.select(atom_selection=flex.bool(16, False))
+  assert h_sel.models_size() == 0
+  assert h_sel.select(atom_selection=flex.bool()).models_size() == 0
+  try: h_sel.select(atom_selection=flex.bool(1, False))
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "atom_selection array too large."
+  h_sel = h_all.select(atom_selection=flex.bool(16, True))
+  assert h_sel.is_similar_hierarchy(other=h_all)
+  assert h_all.is_similar_hierarchy(other=h_sel)
+  h_sel = h_all.select(atom_selection=flex.bool([True]*8+[False]*8))
+  assert h_sel.models_size() == 1
+  assert h_sel.only_model().is_identical_hierarchy(other=h_all.models()[0])
+  assert not h_sel.only_model().is_identical_hierarchy(other=h_all.models()[1])
+  h_sel = h_all.select(atom_selection=flex.bool([False]*8+[True]*8))
+  assert h_sel.models_size() == 1
+  assert not h_sel.only_model().is_identical_hierarchy(other=h_all.models()[0])
+  assert h_sel.only_model().is_identical_hierarchy(other=h_all.models()[1])
+  h_sel = h_all.select(atom_selection=flex.bool([False,True]*8))
+  assert [a.serial.lstrip() for a in h_sel.atoms()] \
+      == ["2", "4", "6", "8", "12", "14", "16", "18"]
+  h_sel = h_all.select(atom_selection=flex.bool([True,False]*8))
+  assert [a.serial.lstrip() for a in h_sel.atoms()] \
+      == ["1", "3", "5", "7", "11", "13", "15", "17"]
+  a_all = h_all.atoms()
+  for i_trial in xrange(n_trials):
+    sel = flex.random_bool(size=16, threshold=0.5)
+    a_sel = a_all.select(sel)
+    h_sel = h_all.select(sel)
+    assert h_sel.atoms_size() == sel.count(True)
+    assert [a.serial for a in a_sel] \
+        == [a.serial for a in h_sel.atoms()]
+
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None): return None
@@ -4587,6 +4648,7 @@ def exercise(args):
       pdb_file_names=phenix_regression_pdb_file_names,
       comprehensive=comprehensive)
     exercise_transfer_chains_from_other()
+    exercise_root_select()
     if (not forever): break
   print format_cpu_times()
 

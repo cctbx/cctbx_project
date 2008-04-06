@@ -19,6 +19,7 @@ builder(
     "hybrid_36_c.c",
     "utils.cpp",
     "hierarchy.cpp",
+    "hierarchy_select.cpp",
     "hierarchy_atoms.cpp",
     "construct_hierarchy.cpp",
     "overall_counts.cpp",

@@ -530,6 +530,7 @@ namespace {
           arg_("sigatm")=true,
           arg_("anisou")=true,
           arg_("siguij")=true)))
+        .def("select", &w_t::select, (arg_("atom_selection")))
         .def("get_overall_counts", get_overall_counts)
         .def("get_atom_selection_cache", get_atom_selection_cache)
       ;
