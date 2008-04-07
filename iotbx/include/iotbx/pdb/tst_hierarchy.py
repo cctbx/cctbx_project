@@ -4563,40 +4563,80 @@ ENDMDL
   try: h_all.select(atom_selection=flex.bool())
   except (ValueError, RuntimeError), e:
     assert str(e) == "atom_selection array too short."
+  else: raise Exception_expected
   try: h_all.select(atom_selection=flex.bool(17, False))
   except (ValueError, RuntimeError), e:
     assert str(e) == "atom_selection array too large."
-  h_sel = h_all.select(atom_selection=flex.bool(16, False))
-  assert h_sel.models_size() == 0
-  assert h_sel.select(atom_selection=flex.bool()).models_size() == 0
+  else: raise Exception_expected
+  try: h_all.select(atom_selection=flex.size_t([1,0]))
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "atom_selection indices not in strictly ascending order."
+  else: raise Exception_expected
+  try: h_all.select(atom_selection=flex.size_t([16]))
+  except (ValueError, RuntimeError), e:
+    assert str(e) \
+        == "atom_selection indices greater than or equal to number of atoms."
+  else: raise Exception_expected
+  for atom_selections in [[flex.bool(16, False), flex.bool()],
+                          [flex.size_t(), flex.size_t()]]:
+    h_sel = h_all.select(atom_selection=atom_selections[0])
+    assert h_sel.models_size() == 0
+    assert h_sel.select(atom_selection=atom_selections[1]).models_size() == 0
   try: h_sel.select(atom_selection=flex.bool(1, False))
   except (ValueError, RuntimeError), e:
     assert str(e) == "atom_selection array too large."
-  h_sel = h_all.select(atom_selection=flex.bool(16, True))
-  assert h_sel.is_similar_hierarchy(other=h_all)
-  assert h_all.is_similar_hierarchy(other=h_sel)
-  h_sel = h_all.select(atom_selection=flex.bool([True]*8+[False]*8))
-  assert h_sel.models_size() == 1
-  assert h_sel.only_model().is_identical_hierarchy(other=h_all.models()[0])
-  assert not h_sel.only_model().is_identical_hierarchy(other=h_all.models()[1])
-  h_sel = h_all.select(atom_selection=flex.bool([False]*8+[True]*8))
-  assert h_sel.models_size() == 1
-  assert not h_sel.only_model().is_identical_hierarchy(other=h_all.models()[0])
-  assert h_sel.only_model().is_identical_hierarchy(other=h_all.models()[1])
-  h_sel = h_all.select(atom_selection=flex.bool([False,True]*8))
-  assert [a.serial.lstrip() for a in h_sel.atoms()] \
-      == ["2", "4", "6", "8", "12", "14", "16", "18"]
-  h_sel = h_all.select(atom_selection=flex.bool([True,False]*8))
-  assert [a.serial.lstrip() for a in h_sel.atoms()] \
-      == ["1", "3", "5", "7", "11", "13", "15", "17"]
+  else: raise Exception_expected
+  try: h_sel.select(atom_selection=flex.size_t([0]))
+  except (ValueError, RuntimeError), e:
+    assert str(e) \
+        == "atom_selection indices greater than or equal to number of atoms."
+  else: raise Exception_expected
+  for atom_selection in [flex.bool(16, True),
+                         flex.size_t_range(16)]:
+    h_sel = h_all.select(atom_selection=atom_selection)
+    assert h_sel.is_similar_hierarchy(other=h_all)
+    assert h_all.is_similar_hierarchy(other=h_sel)
+  for atom_selection in [flex.bool([True]*8+[False]*8),
+                         flex.size_t_range(8)]:
+    h_sel = h_all.select(atom_selection=atom_selection)
+    assert h_sel.models_size() == 1
+    assert h_sel.only_model().is_identical_hierarchy(
+      other=h_all.models()[0])
+    assert not h_sel.only_model().is_identical_hierarchy(
+      other=h_all.models()[1])
+  for atom_selection in [flex.bool([False]*8+[True]*8),
+                         flex.size_t_range(8,16)]:
+    h_sel = h_all.select(atom_selection=atom_selection)
+    assert h_sel.models_size() == 1
+    assert not h_sel.only_model().is_identical_hierarchy(
+      other=h_all.models()[0])
+    assert h_sel.only_model().is_identical_hierarchy(
+      other=h_all.models()[1])
+  for atom_selection in [flex.bool([False,True]*8),
+                         flex.size_t_range(1,16,2)]:
+    h_sel = h_all.select(atom_selection=atom_selection)
+    assert [a.serial.lstrip() for a in h_sel.atoms()] \
+        == ["2", "4", "6", "8", "12", "14", "16", "18"]
+  for atom_selection in [flex.bool([True,False]*8),
+                         flex.size_t_range(0,16,2)]:
+    h_sel = h_all.select(atom_selection=atom_selection)
+    assert [a.serial.lstrip() for a in h_sel.atoms()] \
+        == ["1", "3", "5", "7", "11", "13", "15", "17"]
   a_all = h_all.atoms()
   for i_trial in xrange(n_trials):
     sel = flex.random_bool(size=16, threshold=0.5)
     a_sel = a_all.select(sel)
     h_sel = h_all.select(sel)
     assert h_sel.atoms_size() == sel.count(True)
-    assert [a.serial for a in a_sel] \
-        == [a.serial for a in h_sel.atoms()]
+    def check(h_sel):
+      assert [a.serial for a in a_sel] \
+          == [a.serial for a in h_sel.atoms()]
+    check(h_sel)
+    h_isel = h_all.select(sel.iselection())
+    check(h_isel)
+    assert h_isel.is_similar_hierarchy(h_sel)
+    assert h_sel.is_similar_hierarchy(h_isel)
+    assert h_sel.as_pdb_string() == h_isel.as_pdb_string()
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")

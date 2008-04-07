@@ -1270,6 +1270,10 @@ namespace hierarchy {
       root
       select(
         af::const_ref<bool> const& atom_selection) const;
+
+      root
+      select(
+        af::const_ref<std::size_t> const& atom_selection) const;
   };
 
   struct stream_write
