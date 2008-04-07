@@ -1115,30 +1115,40 @@ def exercise_squaring_and_patterson_map(space_group_info,
       assert grid_tags.n_grid_misses() == 0
       assert grid_tags.verify(patterson_map.real_map())
 
-def exercise_phased_translation_coeff(d_min = 0.3):
+def exercise_phased_translation_coeff(d_min = 0.3,
+                                      algorithm = "direct",
+                                      shift = [0.7, 1.2, 1.4],
+                                      resolution_factor = 1/10.):
   cs = crystal.symmetry((5, 5, 5, 90, 90, 90), "P 1")
   sp = crystal.special_position_settings(cs)
   scatterers = flex.xray_scatterer(
-    [xray.scatterer("c", (0.5, 0.5, 0.5), u=0.2, occupancy=1)])
+    [xray.scatterer("c", (0.2, 0.3, 0.4), u=0.2, occupancy=1)])
   xrs = xray.structure(sp, scatterers)
-  f_calc = xrs.structure_factors(d_min = d_min, algorithm = "direct").f_calc()
+  f_calc = xrs.structure_factors(d_min = d_min, algorithm = algorithm).f_calc()
   f_obs = abs(f_calc)
-  xrs_t = xrs.translate(x = 1, y = 1, z = 0)
-  f_calc_t = xrs_t.structure_factors(d_min = d_min, algorithm = "direct").f_calc()
-  result = f_obs.phased_translation_function_coeff(
-    phase_source = f_calc,
-    other = f_calc_t)
-  from cctbx import maptbx
-  fft_map = result.fft_map(resolution_factor = 1/10.,
-                           symmetry_flags = maptbx.use_space_group_symmetry)
-  fft_map.apply_sigma_scaling()
-  fft_map_data = fft_map.real_map_unpadded()
-  crystal_gridding_tags = fft_map.tags()
-  cluster_analysis = crystal_gridding_tags.peak_search(
-    parameters = maptbx.peak_search_parameters(),
-    map = fft_map_data)
-  print "heights= ", list(cluster_analysis.heights())
-  print "sites=", list(cluster_analysis.sites())
+  xrs_t = xrs.translate(x = shift[0], y = shift[1], z = shift[2])
+  f_calc_t = xrs_t.structure_factors(d_min = d_min,
+    algorithm = algorithm).f_calc()
+  for fom in [None, f_obs.array(data=flex.double(f_obs.data().size(),1))]:
+    result = f_obs.phased_translation_function_coeff(
+      phase_source = f_calc,
+      f_calc = f_calc_t,
+      fom = fom)
+    from cctbx import maptbx
+    fft_map = result.fft_map(resolution_factor = resolution_factor,
+                             symmetry_flags = maptbx.use_space_group_symmetry)
+    fft_map.apply_sigma_scaling()
+    fft_map_data = fft_map.real_map_unpadded()
+    crystal_gridding_tags = fft_map.tags()
+    cluster_analysis = crystal_gridding_tags.peak_search(
+      parameters = maptbx.peak_search_parameters(),
+      map = fft_map_data)
+    expected_shift = [1.-(0.7/5), 1.-(1.2/5), 1.-(1.4/5)]
+    #print "heights= ", list(cluster_analysis.heights())
+    #print "sites=", list(cluster_analysis.sites())
+    #print "expected: ", expected_shift
+    assert cluster_analysis.sites().size() == 1
+    assert approx_equal(expected_shift, cluster_analysis.sites()[0])
 
 def exercise_common_set((a, b), permutation_only):
   ab = a.common_set(b)
