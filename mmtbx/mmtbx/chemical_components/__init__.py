@@ -25,8 +25,13 @@ def get_cif_filename(code):
   return filename
 
 def is_code(code):
-  filename = get_cif_filename()
+  filename = get_cif_filename(code)
   if os.path.exists(filename): return True
+  return False
+
+def is_residue_specified(code, alternate=False):
+  if is_code(code):
+    return get_atom_names(code, alternate=alternate)
   return False
 
 def get_cif_dictionary(code):
