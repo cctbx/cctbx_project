@@ -49,7 +49,8 @@ def run(args):
       print 'model: "%s"' % model.id
       for chain in model.chains():
         print 'chain: "%s"' % chain.id
-        for residue in chain.conformers()[0].residues():
+        # The next line will fail (AssertionError) if there are alt. conf.
+        for residue in chain.only_conformer().residues():
           print '    residue: resname="%s" resseq="%s" icode="%s"' % (
             residue.resname, residue.resseq, residue.icode)
           for atom in residue.atoms():

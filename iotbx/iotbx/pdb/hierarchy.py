@@ -348,8 +348,14 @@ class _root(boost.python.injector, ext.root):
   def only_residue_group(self):
     return self.only_chain().only_residue_group()
 
+  def only_conformer(self):
+    return self.only_chain().only_conformer()
+
   def only_atom_group(self):
     return self.only_residue_group().only_atom_group()
+
+  def only_residue(self):
+    return self.only_conformer().only_residue()
 
   def only_atom(self):
     return self.only_atom_group().only_atom()
@@ -511,8 +517,14 @@ class _model(boost.python.injector, ext.model):
   def only_residue_group(self):
     return self.only_chain().only_residue_group()
 
+  def only_conformer(self):
+    return self.only_chain().only_conformer()
+
   def only_atom_group(self):
     return self.only_residue_group().only_atom_group()
+
+  def only_residue(self):
+    return self.only_conformer().only_residue()
 
   def only_atom(self):
     return self.only_atom_group().only_atom()
@@ -528,8 +540,16 @@ class _chain(boost.python.injector, ext.chain):
     assert self.residue_groups_size() == 1
     return self.residue_groups()[0]
 
+  def only_conformer(self):
+    conformers = self.conformers()
+    assert len(conformers) == 1
+    return conformers[0]
+
   def only_atom_group(self):
     return self.only_residue_group().only_atom_group()
+
+  def only_residue(self):
+    return self.only_conformer().only_residue()
 
   def only_atom(self):
     return self.only_atom_group().only_atom()
@@ -594,6 +614,14 @@ class _atom_group(boost.python.injector, ext.atom_group):
 
 class _conformer(boost.python.injector, ext.conformer):
 
+  def only_residue(self):
+    residues = self.residues()
+    assert len(residues) == 1
+    return residues[0]
+
+  def only_atom(self):
+    return self.only_residue().only_atom()
+
   def format_fasta(self, max_line_length=79):
     from iotbx.pdb import common_residue_names_get_class
     rn_seq = []
@@ -643,6 +671,10 @@ class _conformer(boost.python.injector, ext.conformer):
     return result
 
 class _residue(boost.python.injector, ext.residue):
+
+  def only_atom(self):
+    assert self.atoms_size() == 1
+    return self.atoms()[0]
 
   def residue_name_plus_atom_names_interpreter(self,
         translate_cns_dna_rna_residue_names=None,

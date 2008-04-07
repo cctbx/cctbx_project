@@ -2563,7 +2563,8 @@ MODEL        1
 ATOM      2  N  ARES C   3I
 ENDMDL
 """))
-  obj = pdb_inp.construct_hierarchy(residue_group_post_processing=False)
+  hierarchy = pdb_inp.construct_hierarchy(residue_group_post_processing=False)
+  obj = hierarchy
   assert obj.only_model().id == "   1"
   assert obj.only_chain().id == "C"
   assert obj.only_residue_group().resid() == "   3I"
@@ -2582,6 +2583,21 @@ ENDMDL
   assert obj.only_atom_group().resname == "RES"
   assert obj.only_atom().name == " N  "
   obj = obj.only_atom_group()
+  assert obj.only_atom().name == " N  "
+  #
+  obj = hierarchy
+  assert obj.only_conformer().altloc == "A"
+  assert obj.only_residue().resname == "RES"
+  obj = obj.only_model()
+  assert obj.only_conformer().altloc == "A"
+  assert obj.only_residue().resname == "RES"
+  obj = obj.only_chain()
+  assert obj.only_conformer().altloc == "A"
+  assert obj.only_residue().resname == "RES"
+  obj = obj.only_conformer()
+  assert obj.only_residue().resname == "RES"
+  assert obj.only_atom().name == " N  "
+  obj = obj.only_residue()
   assert obj.only_atom().name == " N  "
 
 exercise_merge_pdb_inp = pdb.input(
