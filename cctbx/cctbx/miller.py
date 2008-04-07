@@ -826,12 +826,11 @@ class set(crystal.symmetry):
         map = map.deep_copy()
       fft = fftpack.complex_to_complex_3d(map.focus())
     map = fft.forward(map)
-    conjugate_flag = True
     from_map = maptbx.structure_factors.from_map(
       anomalous_flag=self.anomalous_flag(),
       miller_indices=self.indices(),
       complex_map=map,
-      conjugate_flag=conjugate_flag)
+      conjugate_flag=True)
     return array(miller_set=self, data=from_map.data())
 
   def structure_factors_from_scatterers(self, xray_structure,
