@@ -530,7 +530,10 @@ namespace {
           arg_("sigatm")=true,
           arg_("anisou")=true,
           arg_("siguij")=true)))
-        .def("select", &w_t::select, (arg_("atom_selection")))
+        .def("select", (root(w_t::*)(af::const_ref<bool> const&) const)
+          &w_t::select, (arg_("atom_selection")))
+        .def("select", (root(w_t::*)(af::const_ref<std::size_t> const&) const)
+          &w_t::select, (arg_("atom_selection")))
         .def("get_overall_counts", get_overall_counts)
         .def("get_atom_selection_cache", get_atom_selection_cache)
       ;
