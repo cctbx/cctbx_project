@@ -773,6 +773,12 @@ namespace {
     return boost::optional<std::string>();
   }
 
+  void
+  atom_group::append_atom_with_other_parent(hierarchy::atom const& atom)
+  {
+    data->atoms.push_back(atom);
+  }
+
   std::string
   atom_group::confid() const
   {

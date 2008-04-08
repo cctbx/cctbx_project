@@ -345,6 +345,17 @@ def exercise_atom_group():
     assert str(e) == "string is too long for target variable " \
       "(maximum length is 1 character, 2 given)."
   else: raise Exception_expected
+  #
+  ag1 = pdb.hierarchy.atom_group()
+  atom = pdb.hierarchy.atom()
+  assert atom.parent() is None
+  ag1.append_atom(atom=atom)
+  assert atom.parent().memory_id() == ag1.memory_id()
+  ag2 = pdb.hierarchy.atom_group()
+  ag2.append_atom_with_other_parent(atom=atom)
+  assert atom.parent().memory_id() == ag1.memory_id()
+  del ag1
+  assert atom.parent() is None
 
 def exercise_residue_group():
   rg = pdb.hierarchy.residue_group()
@@ -4639,20 +4650,30 @@ ENDMDL
     assert [a.serial.lstrip() for a in h_sel.atoms()] \
         == ["1", "3", "5", "7", "11", "13", "15", "17"]
   a_all = h_all.atoms()
-  for i_trial in xrange(n_trials):
-    sel = flex.random_bool(size=16, threshold=0.5)
-    a_sel = a_all.select(sel)
-    h_sel = h_all.select(sel)
-    assert h_sel.atoms_size() == sel.count(True)
-    def check(h_sel):
-      assert [a.serial for a in a_sel] \
-          == [a.serial for a in h_sel.atoms()]
-    check(h_sel)
-    h_isel = h_all.select(sel.iselection())
-    check(h_isel)
-    assert h_isel.is_similar_hierarchy(h_sel)
-    assert h_sel.is_similar_hierarchy(h_isel)
-    assert h_sel.as_pdb_string() == h_isel.as_pdb_string()
+  a_all.reset_i_seq()
+  sentinel = a_all.reset_tmp(first_value=1, increment=0)
+  for copy_atoms in [False, True]:
+    for i_trial in xrange(n_trials):
+      sel = flex.random_bool(size=16, threshold=0.5)
+      a_sel = a_all.select(sel)
+      h_sel = h_all.select(sel, copy_atoms=copy_atoms)
+      assert h_sel.atoms_size() == sel.count(True)
+      def check(h_sel):
+        for a,b in zip(a_sel, h_sel.atoms()):
+          assert a.serial == b.serial
+          if (copy_atoms):
+            assert a.memory_id() != b.memory_id()
+            assert a.tmp == 1
+            assert b.tmp == 0
+            assert b.i_seq == 0
+          else:
+            assert a.memory_id() == b.memory_id()
+      check(h_sel)
+      h_isel = h_all.select(sel.iselection(), copy_atoms=copy_atoms)
+      check(h_isel)
+      assert h_isel.is_similar_hierarchy(h_sel)
+      assert h_sel.is_similar_hierarchy(h_isel)
+      assert h_sel.as_pdb_string() == h_isel.as_pdb_string()
 
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
