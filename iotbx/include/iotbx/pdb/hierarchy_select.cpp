@@ -5,7 +5,8 @@ namespace iotbx { namespace pdb { namespace hierarchy {
 
   root
   root::select(
-    af::const_ref<bool> const& atom_selection) const
+    af::const_ref<bool> const& atom_selection,
+    bool copy_atoms) const
   {
     root result;
     unsigned n_sel = static_cast<unsigned>(atom_selection.size());
@@ -45,8 +46,13 @@ namespace iotbx { namespace pdb { namespace hierarchy {
             if (r_n_ats != 0) { \
               r_ag.pre_allocate_atoms(r_n_ats); \
               for(unsigned i_at=0;i_at<r_n_ats;i_at++) { \
-                atom r_at = r_atoms[i_at].detached_copy(); \
-                r_ag.append_atom(r_at); \
+                if (copy_atoms) { \
+                  atom r_at = r_atoms[i_at].detached_copy(); \
+                  r_ag.append_atom(r_at); \
+                } \
+                else { \
+                  r_ag.append_atom_with_other_parent(r_atoms[i_at]); \
+                } \
               } \
               r_rg.append_atom_group(r_ag); \
               BREAK \
@@ -78,7 +84,8 @@ namespace iotbx { namespace pdb { namespace hierarchy {
 
   root
   root::select(
-    af::const_ref<std::size_t> const& atom_selection) const
+    af::const_ref<std::size_t> const& atom_selection,
+    bool copy_atoms) const
   {
     root result;
     const std::size_t* a_s_end = atom_selection.end();

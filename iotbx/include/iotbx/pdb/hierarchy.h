@@ -795,6 +795,9 @@ namespace hierarchy {
       void
       remove_atom(hierarchy::atom& atom);
 
+      void
+      append_atom_with_other_parent(hierarchy::atom const& atom);
+
       std::string
       confid() const;
 
@@ -1269,11 +1272,13 @@ namespace hierarchy {
 
       root
       select(
-        af::const_ref<bool> const& atom_selection) const;
+        af::const_ref<bool> const& atom_selection,
+        bool copy_atoms=false) const;
 
       root
       select(
-        af::const_ref<std::size_t> const& atom_selection) const;
+        af::const_ref<std::size_t> const& atom_selection,
+        bool copy_atoms=false) const;
   };
 
   struct stream_write

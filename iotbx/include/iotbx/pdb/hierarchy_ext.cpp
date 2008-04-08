@@ -113,6 +113,8 @@ namespace {
         .def("memory_id", &w_t::memory_id)
         .def("parent", get_parent<atom_group, residue_group>::wrapper)
         IOTBX_PDB_HIERARCHY_DEF_APPEND_ETC(atom)
+        .def("append_atom_with_other_parent",
+          &w_t::append_atom_with_other_parent, (arg_("atom")))
         .def("confid", &w_t::confid)
       ;
     }
@@ -494,6 +496,8 @@ namespace {
 #undef IOTBX_LOC
     }
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(select_overloads, select, 1, 2)
+
     static void
     wrap()
     {
@@ -530,10 +534,14 @@ namespace {
           arg_("sigatm")=true,
           arg_("anisou")=true,
           arg_("siguij")=true)))
-        .def("select", (root(w_t::*)(af::const_ref<bool> const&) const)
-          &w_t::select, (arg_("atom_selection")))
-        .def("select", (root(w_t::*)(af::const_ref<std::size_t> const&) const)
-          &w_t::select, (arg_("atom_selection")))
+        .def("select",
+          (root(w_t::*)(af::const_ref<bool> const&, bool) const)
+            &w_t::select, select_overloads((
+              arg_("atom_selection"), arg_("copy_atoms")=false)))
+        .def("select",
+          (root(w_t::*)(af::const_ref<std::size_t> const&, bool) const)
+            &w_t::select, select_overloads((
+              arg_("atom_selection"), arg_("copy_atoms")=false)))
         .def("get_overall_counts", get_overall_counts)
         .def("get_atom_selection_cache", get_atom_selection_cache)
       ;
