@@ -1,18 +1,12 @@
-from iotbx import pdb
-import iotbx.pdb.interpretation
-import iotbx.pdb.remark_3_interpretation
-from cctbx.array_family import flex
-from libtbx.utils import format_cpu_times
-import sys, math, time, os
-from libtbx.test_utils import approx_equal
-import libtbx.load_env
-from cctbx import adptbx
+from mmtbx.tls import tools
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-
-from mmtbx.tls import tools
-from mmtbx_tls_ext import *
+import iotbx.pdb.remark_3_interpretation
+from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
+import libtbx.load_env
+import os
 
 def uaniso_from_tls_and_back():
   mon_lib_srv = monomer_library.server.server()
@@ -75,7 +69,8 @@ def uaniso_from_tls_and_back():
     assert approx_equal(input_tls_data_.l,      tls_from_uanisos_.l, 1.e-4)
     assert approx_equal(input_tls_data_.s,      tls_from_uanisos_.s, 1.e-4)
     assert approx_equal(input_tls_data_.origin, tls_from_uanisos_.origin, 1.e-3)
+  #
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   uaniso_from_tls_and_back()
-  print format_cpu_times()
