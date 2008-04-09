@@ -734,6 +734,19 @@ namespace {
     return str_len;
   }
 
+  std::string
+  atom::show(bool full) const
+  {
+    char result[82];
+    result[0] = '"';
+    unsigned str_len = format_atom_record(
+      result+1,
+      /* label_formatter */ 0,
+      /* replace_floats_with */ (full ? 0 : ".*."));
+    result[++str_len] = '"';
+    return std::string(result, ++str_len);
+  }
+
   bool
   atom::element_is_hydrogen() const
   {

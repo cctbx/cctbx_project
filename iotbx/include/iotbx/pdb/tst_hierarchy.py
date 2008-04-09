@@ -1061,6 +1061,12 @@ B1234 NaMexuvw%2spqrst    1000   2000   3000   6000   1000   9000  \
               assert not show_diff(a.format_siguij_record(), ("""SIGUIJ\
 B1234 NaMexuvw%2spqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % (chain_id, segielch)).rstrip())
+          #
+          assert not show_diff(
+            a.show(), '"'+a.format_atom_record(replace_floats_with=".*.")+'"')
+          assert not show_diff(
+            a.show(full=True), '"'+a.format_atom_record()+'"')
+          #
           del ag, rg, ch
   #
   atom = pdb.hierarchy.atom()
