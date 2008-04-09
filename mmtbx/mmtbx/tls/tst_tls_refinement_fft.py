@@ -1,21 +1,15 @@
-from iotbx import pdb
-import iotbx.pdb.interpretation
-import iotbx.pdb.remark_3_interpretation
-from cctbx.array_family import flex
-from libtbx.utils import format_cpu_times
-import sys, math, time, os
-from libtbx.test_utils import approx_equal
-import libtbx.load_env
-from cctbx import adptbx
+from mmtbx.tls import tools
+import mmtbx.f_model
+import mmtbx.model
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-import mmtbx.f_model
-import mmtbx.model
+from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal
+from libtbx.utils import format_cpu_times
+import libtbx.load_env
 import random
-import sys
-from mmtbx.tls import tools
-from mmtbx_tls_ext import *
+import sys, os
 
 def exercise_2(eps = 1.e-6):
 ###> Get started from PDB
@@ -199,7 +193,7 @@ def exercise(args):
     exercise_2()
     if (not forever): break
     random_seed += 1
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])
-  print format_cpu_times()
