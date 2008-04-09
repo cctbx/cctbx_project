@@ -264,6 +264,46 @@ class combine_unique_pdb_files(object):
     if (n_ignored != 0 or n_identical != 0):
       print >> out, prefix.rstrip()
 
+class header_date:
+
+  def __init__(self, field):
+    "Expected format: DD-MMM-YY"
+    self.dd = None
+    self.mmm = None
+    self.yy = None
+    if (len(field) != 9): return
+    if (field.count("-") != 2): return
+    if (field[2] != "-" or field[6] != "-"): return
+    dd, mmm, yy = field.split("-")
+    try: self.dd = int(dd)
+    except ValueError: pass
+    else:
+      if (self.dd < 1 or self.dd > 31): self.dd = None
+    if (mmm.upper() in [
+          "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+          "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]):
+      self.mmm = mmm.upper()
+    try: self.yy = int(yy)
+    except ValueError: pass
+    else:
+      if (self.yy < 0 or self.yy > 99): self.yy = None
+
+  def is_fully_defined(self):
+    return self.dd is not None \
+       and self.mmm is not None \
+       and self.yy is not None
+
+def header_year(record):
+  if (record.startswith("HEADER")):
+    date = header_date(field=record[50:59])
+    if (date.is_fully_defined()): return date.yy
+    fields = record.split()
+    fields.reverse()
+    for field in fields:
+      date = header_date(field=field)
+      if (date.is_fully_defined()): return date.yy
+  return None
+
 class Please_pass_string_or_None(object): pass
 
 def input(
@@ -281,6 +321,20 @@ default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 
 class _input(boost.python.injector, ext.input):
 
+  def extract_header_year(self):
+    for line in self.title_section():
+      if (line.startswith("HEADER ")):
+        return header_year(line)
+    return None
+
+  def extract_remark_iii_records(self, iii):
+    result = []
+    pattern = "REMARK %3d " % iii
+    for line in self.remark_section():
+      if (line.startswith(pattern)):
+        result.append(line)
+    return result
+
   def crystal_symmetry_from_cryst1(self):
     from iotbx.pdb import cryst1_interpretation
     for line in self.crystallographic_section():
@@ -288,15 +342,26 @@ class _input(boost.python.injector, ext.input):
         return cryst1_interpretation.crystal_symmetry(cryst1_record=line)
     return None
 
+  def crystal_symmetry_from_cns_remark_sg(self):
+    from iotbx.cns import pdb_remarks
+    for line in self.remark_section():
+      if (line.startswith("REMARK sg=")):
+        crystal_symmetry = pdb_remarks.extract_symmetry(pdb_record=line)
+        if (crystal_symmetry is not None):
+          return crystal_symmetry
+    return None
+
   def crystal_symmetry(self,
         crystal_symmetry=None,
         weak_symmetry=False):
-    cryst1_symmetry = self.crystal_symmetry_from_cryst1()
+    self_symmetry = self.crystal_symmetry_from_cryst1()
+    if (self_symmetry is None):
+      self_symmetry = self.crystal_symmetry_from_cns_remark_sg()
     if (crystal_symmetry is None):
-      return cryst1_symmetry
-    if (cryst1_symmetry is None):
+      return self_symmetry
+    if (self_symmetry is None):
       return crystal_symmetry
-    return cryst1_symmetry.join_symmetry(
+    return self_symmetry.join_symmetry(
       other_symmetry=crystal_symmetry,
       force=not weak_symmetry)
 

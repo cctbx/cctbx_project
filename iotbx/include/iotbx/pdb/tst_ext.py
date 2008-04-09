@@ -632,31 +632,43 @@ ATOM      2  CA  LEU     2       1.118  -9.777   0.735  1.00  0.00
       assert pdb.rna_dna_reference_residue_name(
         common_name=" "+n.lower()+" ") == r
   #
-  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+  for line in """\
 CRYST1   61.410   54.829   43.543  90.00  90.00  90.00 P 21 21 21    8
-"""))
-  cs = pdb_inp.crystal_symmetry()
-  assert str(cs.unit_cell()) == "(61.41, 54.829, 43.543, 90, 90, 90)"
-  assert str(cs.space_group_info()) == "P 21 21 21"
-  sps = pdb_inp.special_position_settings()
-  assert sps.is_similar_symmetry(cs)
-  assert approx_equal(sps.min_distance_sym_equiv(), 0.5)
-  for weak_symmetry in [False, True]:
-    cs = pdb_inp.crystal_symmetry(
-      crystal_symmetry=crystal.symmetry(
-        unit_cell=(10,10,10,90,90,90)),
-        weak_symmetry=weak_symmetry)
-    if (weak_symmetry):
-      assert str(cs.unit_cell()) == "(61.41, 54.829, 43.543, 90, 90, 90)"
-    else:
-      assert str(cs.unit_cell()) == "(10, 10, 10, 90, 90, 90)"
+REMARK sg= P2(1)2(1)2(1) a= 61.410 b= 54.829 c= 43.543 alpha= 90 beta= 90 gamma= 90
+""".splitlines():
+    pdb_inp = pdb.input(source_info=None, lines=flex.std_string([line]))
+    cs = pdb_inp.crystal_symmetry()
+    assert str(cs.unit_cell()) == "(61.41, 54.829, 43.543, 90, 90, 90)"
     assert str(cs.space_group_info()) == "P 21 21 21"
-    sps = pdb_inp.special_position_settings(
-      special_position_settings=cs.special_position_settings(
-        min_distance_sym_equiv=3),
-      weak_symmetry=weak_symmetry)
+    sps = pdb_inp.special_position_settings()
     assert sps.is_similar_symmetry(cs)
-    assert approx_equal(sps.min_distance_sym_equiv(), 3)
+    assert approx_equal(sps.min_distance_sym_equiv(), 0.5)
+    for weak_symmetry in [False, True]:
+      cs = pdb_inp.crystal_symmetry(
+        crystal_symmetry=crystal.symmetry(
+          unit_cell=(10,10,10,90,90,90)),
+          weak_symmetry=weak_symmetry)
+      if (weak_symmetry):
+        assert str(cs.unit_cell()) == "(61.41, 54.829, 43.543, 90, 90, 90)"
+      else:
+        assert str(cs.unit_cell()) == "(10, 10, 10, 90, 90, 90)"
+      assert str(cs.space_group_info()) == "P 21 21 21"
+      sps = pdb_inp.special_position_settings(
+        special_position_settings=cs.special_position_settings(
+          min_distance_sym_equiv=3),
+        weak_symmetry=weak_symmetry)
+      assert sps.is_similar_symmetry(cs)
+      assert approx_equal(sps.min_distance_sym_equiv(), 3)
+  #
+  assert pdb_inp.extract_header_year() is None
+  assert pdb_inp.extract_remark_iii_records(iii=2) == []
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+HEADER                                            02-JUL-92
+REMARK   2 RESOLUTION. 1.7  ANGSTROMS.
+"""))
+  assert pdb_inp.extract_header_year() == 92
+  assert pdb_inp.extract_remark_iii_records(iii=2) \
+      == ['REMARK   2 RESOLUTION. 1.7  ANGSTROMS.']
 
 def exercise_xray_structure_simple():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\

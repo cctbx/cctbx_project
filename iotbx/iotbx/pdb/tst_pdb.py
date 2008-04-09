@@ -299,7 +299,7 @@ def exercise_interpretation(verbose=0, quick=True):
                               ("12-Jul-34x", (None, None, None)),
                               ("12-Jul.34", (None, None, None)),
                               ("12.Jul-34", (None, None, None))]:
-    date = pdb.interpretation.header_date(field=field)
+    date = pdb.header_date(field=field)
     assert (date.dd, date.mmm, date.yy) == expected_date
     if (field == "12-Jul-34"):
       assert date.is_fully_defined()
@@ -314,7 +314,7 @@ def exercise_interpretation(verbose=0, quick=True):
       94),
     ("HEADER    ----         05-FAB-94                  XX-XXX-XX   xxxx",
       None)]:
-    assert pdb.interpretation.header_year(record=record) == expected_year
+    assert pdb.header_year(record=record) == expected_year
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None):
     print "Skipping exercise_interpretation():" \
