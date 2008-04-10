@@ -6,6 +6,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
+from cStringIO import StringIO
 import sys, os
 
 mon_lib_srv = mmtbx.monomer_library.server.server()
@@ -39,13 +40,16 @@ def exercise_00(inputs, verbose=0):
     print "Skipping exercise_00(): input file not available"
     return
   structure_ = inputs.xray_structure.deep_copy_scatterers()
+  if (verbose): log = sys.stdout
+  else:         log = StringIO()
   cartesian_dynamics.cartesian_dynamics(
     structure = structure_,
     restraints_manager = inputs.restraints_manager,
     temperature = 300,
     n_steps = 200,
     time_step = 0.0005,
-    verbose=-1)
+    log = log,
+    verbose = 1)
   rms1 = inputs.xray_structure.rms_difference(structure_)
   rms2 = structure_.rms_difference(inputs.xray_structure)
   assert rms1 == rms2
@@ -71,27 +75,31 @@ def exercise_00(inputs, verbose=0):
     for s in selected:
       print s
 
-def exercise_01(inputs):
+def exercise_01(inputs, verbose=0):
   #
   # run at T = 0K
   #
   if (inputs.xray_structure is None):
     print "Skipping exercise_01(): input file not available"
     return
-  structure_ = inputs.xray_structure.deep_copy_scatterers()
-  inst = cartesian_dynamics.cartesian_dynamics(
-    structure = structure_,
-    restraints_manager = inputs.restraints_manager,
-    temperature = 0,
-    n_steps = 200,
-    time_step = 0.0005,
-    verbose = -1)
-  assert inputs.xray_structure.rms_difference(structure_) \
-      == structure_.rms_difference(inputs.xray_structure)
-  assert approx_equal(
-    structure_.rms_difference(inputs.xray_structure), 0.0, 1e-6)
+  if (verbose): log = sys.stdout
+  else:         log = StringIO()
+  for l,v in [(None,-1), (log, verbose)]:
+    structure_ = inputs.xray_structure.deep_copy_scatterers()
+    inst = cartesian_dynamics.cartesian_dynamics(
+      structure = structure_,
+      restraints_manager = inputs.restraints_manager,
+      temperature = 0,
+      n_steps = 200,
+      time_step = 0.0005,
+      log = l,
+      verbose = v)
+    assert inputs.xray_structure.rms_difference(structure_) \
+        == structure_.rms_difference(inputs.xray_structure)
+    assert approx_equal(
+      structure_.rms_difference(inputs.xray_structure), 0.0, 1e-6)
 
-def exercise_02(inputs):
+def exercise_02(inputs, verbose=0):
   #
   # run at n_step = 0
   #
@@ -99,13 +107,16 @@ def exercise_02(inputs):
     print "Skipping exercise_02(): input file not available"
     return
   structure_ = inputs.xray_structure.deep_copy_scatterers()
+  if (verbose): log = sys.stdout
+  else:         log = StringIO()
   cartesian_dynamics.cartesian_dynamics(
     structure = structure_,
     restraints_manager = inputs.restraints_manager,
     temperature = 300,
     n_steps = 0,
     time_step = 0.0005,
-    verbose = -1)
+    log = log,
+    verbose = 1)
   assert inputs.xray_structure.rms_difference(structure_) \
       == structure_.rms_difference(inputs.xray_structure)
   assert approx_equal(
@@ -128,13 +139,16 @@ def exercise_03(verbose=0):
   restraints_manager = mmtbx.restraints.manager(
     geometry=processed_pdb.geometry_restraints_manager())
   structure_ = xray_structure.deep_copy_scatterers()
+  if (verbose): log = sys.stdout
+  else:         log = StringIO()
   cartesian_dynamics.cartesian_dynamics(
-                   structure                   = structure_,
-                   restraints_manager = restraints_manager,
-                   temperature                 = 300,
-                   n_steps                     = 200,
-                   time_step                   = 0.0005,
-                   verbose                     = -1)
+    structure = structure_,
+    restraints_manager = restraints_manager,
+    temperature = 300,
+    n_steps = 200,
+    time_step = 0.0005,
+    log = log,
+    verbose = 1)
   rms1 = xray_structure.rms_difference(structure_)
   rms2 = structure_.rms_difference(xray_structure)
   assert rms1 == rms2
@@ -164,8 +178,8 @@ def run():
   verbose = "--verbose" in sys.argv[1:]
   inputs = get_inputs()
   exercise_00(inputs=inputs, verbose=verbose)
-  exercise_01(inputs=inputs)
-  exercise_02(inputs=inputs)
+  exercise_01(inputs=inputs, verbose=verbose)
+  exercise_02(inputs=inputs, verbose=verbose)
   exercise_03(verbose=verbose)
   print format_cpu_times()
 
