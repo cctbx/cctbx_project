@@ -1347,6 +1347,32 @@ def exercise_map_correlation():
   y = a.phase_transfer(ph, deg=True)
   assert approx_equal(x.map_correlation(y), 1./math.sqrt(2.0))
 
+def exercise_concatenate():
+  xs = crystal.symmetry((3,4,5), "P 2 2 2")
+  mi = flex.miller_index(((1,-2,3), (0,0,-4)))
+  data = flex.double((1,2))
+  sigmas = flex.double((0.1,0.2))
+  ms = miller.set(xs, mi)
+  ma1 = miller.array(ms, data, sigmas)
+  #
+  mi = flex.miller_index(((2,-4,6), (0,0,-8)))
+  data = flex.double((2,4))
+  sigmas = flex.double((0.2,0.4))
+  ms = miller.set(xs, mi)
+  ma2 = miller.array(ms, data, sigmas)
+  result = ma1.concatenate(other = ma2)
+  assert approx_equal(result.indices(), [(1,-2,3),(0,0,-4),(2,-4,6),(0,0,-8)])
+  assert approx_equal(result.data(), [1.0, 2.0, 2.0, 4.0])
+  assert approx_equal(result.sigmas(), [0.1, 0.2, 0.2, 0.4])
+  mi = flex.miller_index(((2,-4,6), (0,0,-8)))
+  data = flex.double((2,4))
+  ms = miller.set(xs, mi)
+  ma3 = miller.array(ms, data)
+  result = ma1.concatenate(other = ma3)
+  assert approx_equal(result.indices(), [(1,-2,3),(0,0,-4),(2,-4,6),(0,0,-8)])
+  assert approx_equal(result.data(), [1.0, 2.0, 2.0, 4.0])
+  assert result.sigmas() is None
+
 def run_call_back(flags, space_group_info):
   exercise_array_2(space_group_info)
   exercise_map_to_asu(space_group_info)
@@ -1357,6 +1383,7 @@ def run_call_back(flags, space_group_info):
   exercise_generate_r_free_flag_on_lat_sym(space_group_info)
 
 def run(args):
+  exercise_concatenate()
   exercise_phased_translation_coeff()
   exercise_set()
   exercise_generate_r_free_flags(use_lattice_symmetry=False, verbose="--verbose" in args)
