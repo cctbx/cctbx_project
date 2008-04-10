@@ -8,23 +8,21 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
 import iotbx.pdb
-from mmtbx.monomer_library import server
-from mmtbx.monomer_library import pdb_interpretation
+import mmtbx.monomer_library.server
+import mmtbx.monomer_library.pdb_interpretation
 
 def exercise(test_00 = True,
              test_01 = True,
              test_02 = True,
              test_03 = True):
-  try: mon_lib_srv = server.server()
-  except server.MonomerLibraryServerError: return
-  try: ener_lib = server.ener_lib()
-  except server.MonomerLibraryServerError: return
+  mon_lib_srv = mmtbx.monomer_library.server.server()
+  ener_lib = mmtbx.monomer_library.server.ener_lib()
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/phe.pdb", test=os.path.isfile)
   if (pdb_file is None):
     print "Skipping exercise(): input file not available"
     return
-  processed_pdb = pdb_interpretation.process(
+  processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
     file_name=pdb_file)
@@ -106,7 +104,7 @@ def exercise(test_00 = True,
       print "Skipping test_03: input file not available"
       test_03 = False
   if (test_03):
-    processed_pdb = pdb_interpretation.process(
+    processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
                            mon_lib_srv                           = mon_lib_srv,
                            ener_lib                              = ener_lib,
                            file_name                             = pdb_file)
