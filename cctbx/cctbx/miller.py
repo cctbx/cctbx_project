@@ -598,6 +598,22 @@ class set(crystal.symmetry):
       unit_cell = self.unit_cell(),
       space_group_info = self.space_group_info())
 
+  def combine(self, other, scale = True, scale_for_lones = 1):
+    f1_c, f2_c = self.common_sets(other = other)
+    f1_l, f2_l = self.lone_sets(other = other)
+    scale_k1 = 1
+    if(scale):
+      scale_k1 = flex.sum(flex.abs(f1_c.data())*flex.abs(f2_c.data())) / \
+                 flex.sum(flex.abs(f2_c.data())*flex.abs(f2_c.data()))
+    result_data = f1_c.data() + f2_c.data()*scale_k1
+    result_data.extend(f1_l.data()*scale_for_lones)
+    result_data.extend(f2_l.data()*scale_k1*scale_for_lones)
+    result_indices = f1_c.indices()
+    result_indices.extend(f1_l.indices())
+    result_indices.extend(f2_l.indices())
+    ms = set(self.crystal_symmetry(), result_indices)
+    return ms.array(data = result_data)
+
   def generate_r_free_flags_on_lattice_symmetry(self,
                                                 fraction=0.10,
                                                 max_free=2000,
@@ -983,6 +999,12 @@ class set(crystal.symmetry):
   def clear_binner(self):
     self._binner = None
 
+  def concatenate(self, other):
+    assert self.is_similar_symmetry(other)
+    return set(
+      crystal_symmetry = self,
+      indices = self._indices.concatenate(other.indices()))
+
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
   result = set(
     crystal_symmetry,
@@ -1204,6 +1226,15 @@ class array(set):
       space_group_info=space_group_info)
     return array(miller_set=miller_set, data=data, sigmas=sigmas)\
            .set_observation_type(observation_type)
+
+  def concatenate(self, other):
+    if([self.sigmas(), other.sigmas()].count(None) == 0):
+      return self.set().concatenate(other = other.set()).array(
+        data   = self.data().concatenate(other.data()),
+        sigmas = self.sigmas().concatenate(other.sigmas()))
+    else:
+      return self.set().concatenate(other = other.set()).array(
+        data = self.data().concatenate(other.data()))
 
   def set(self,
         crystal_symmetry=Keep,
