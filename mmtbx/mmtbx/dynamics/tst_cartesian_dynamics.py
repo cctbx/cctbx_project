@@ -1,152 +1,172 @@
-import mmtbx.restraints
-from mmtbx import dynamics
 from mmtbx.dynamics import cartesian_dynamics
+import mmtbx.restraints
+import mmtbx.monomer_library.pdb_interpretation
+import mmtbx.monomer_library.server
 from cctbx.array_family import flex
-import time, math, os
-from iotbx import pdb
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
-import iotbx.pdb
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
+import sys, os
 
-def exercise(test_00 = True,
-             test_01 = True,
-             test_02 = True,
-             test_03 = True):
-  mon_lib_srv = mmtbx.monomer_library.server.server()
-  ener_lib = mmtbx.monomer_library.server.ener_lib()
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/phe.pdb", test=os.path.isfile)
-  if (pdb_file is None):
-    print "Skipping exercise(): input file not available"
-    return
-  processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
-    mon_lib_srv=mon_lib_srv,
-    ener_lib=ener_lib,
-    file_name=pdb_file)
-  structure_initial = processed_pdb.xray_structure()
-  assert structure_initial.scatterers().size() == 15
-  restraints_manager = mmtbx.restraints.manager(
-    geometry=processed_pdb.geometry_restraints_manager())
-#
-# normal run:
-#
-  if (test_00):
-    print_flag = False
-    structure_ = structure_initial.deep_copy_scatterers()
-    cartesian_dynamics.cartesian_dynamics(
-      structure = structure_,
-      restraints_manager = restraints_manager,
-      temperature = 300,
-      n_steps = 200,
-      time_step = 0.0005,
-      verbose=-1)
-    rms1 = structure_initial.rms_difference(structure_)
-    rms2 = structure_.rms_difference(structure_initial)
-    assert rms1 == rms2
-    rms = rms1
-    if(print_flag):
-      print "rms between structures before and after dynamics = ", rms
-    array_of_distances_between_each_atom = \
-         flex.sqrt(structure_.difference_vectors_cart(structure_initial).dot())
-    if(print_flag):
-      print
-      for d in array_of_distances_between_each_atom:
-        print d
-    n_rms = 4.0
-    selected_by_rms = (array_of_distances_between_each_atom > n_rms * rms)
-    if(n_rms > 1.0):
-      assert selected_by_rms.count(True) == 0
-    if(print_flag):
-      print "number of outliers = ", selected_by_rms.count(True)
-    selected = array_of_distances_between_each_atom.select(selected_by_rms)
-    if(print_flag):
-      print "list of outliers : "
-      for s in selected:
-        print s
-#
-# ran at T = 0K
-#
-  if (test_01):
-    structure_ = structure_initial.deep_copy_scatterers()
-    inst = cartesian_dynamics.cartesian_dynamics(
-      structure = structure_,
-      restraints_manager = restraints_manager,
-      temperature = 0,
-      n_steps = 200,
-      time_step = 0.0005,
-      verbose = -1)
-    assert structure_initial.rms_difference(structure_) == structure_.rms_difference(structure_initial)
-    assert approx_equal(structure_.rms_difference(structure_initial),0.0,1e-6)
-#
-# ran at n_step = 0
-#
-  if (test_02):
-    structure_ = structure_initial.deep_copy_scatterers()
-    cartesian_dynamics.cartesian_dynamics(
-      structure = structure_,
-      restraints_manager = restraints_manager,
-      temperature = 300,
-      n_steps = 0,
-      time_step = 0.0005,
-      verbose = -1)
-    assert structure_initial.rms_difference(structure_) == structure_.rms_difference(structure_initial)
-    assert approx_equal(structure_.rms_difference(structure_initial),0.0,1e-6)
-#
-# normal run with real model :
-#
-  if (test_03):
+mon_lib_srv = mmtbx.monomer_library.server.server()
+ener_lib = mmtbx.monomer_library.server.ener_lib()
+
+class get_inputs(object):
+
+  def __init__(self):
     pdb_file = libtbx.env.find_in_repositories(
-      relative_path="phenix_regression/pdb/2ERL_noH.pdb", test=os.path.isfile)
+      relative_path="phenix_regression/pdb/phe.pdb", test=os.path.isfile)
     if (pdb_file is None):
-      print "Skipping test_03: input file not available"
-      test_03 = False
-  if (test_03):
+      self.xray_structure = None
+      self.restraints_manager = None
+      return
     processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
-                           mon_lib_srv                           = mon_lib_srv,
-                           ener_lib                              = ener_lib,
-                           file_name                             = pdb_file)
-    structure_initial = processed_pdb.xray_structure()
+      mon_lib_srv=mon_lib_srv,
+      ener_lib=ener_lib,
+      file_name=pdb_file)
+    xray_structure = processed_pdb.xray_structure()
+    assert xray_structure.scatterers().size() == 15
     restraints_manager = mmtbx.restraints.manager(
       geometry=processed_pdb.geometry_restraints_manager())
-    print_flag = False
-    structure_ = structure_initial.deep_copy_scatterers()
-    cartesian_dynamics.cartesian_dynamics(
-                     structure                   = structure_,
-                     restraints_manager = restraints_manager,
-                     temperature                 = 300,
-                     n_steps                     = 200,
-                     time_step                   = 0.0005,
-                     verbose                     = -1)
-    rms1 = structure_initial.rms_difference(structure_)
-    rms2 = structure_.rms_difference(structure_initial)
-    assert rms1 == rms2
-    rms = rms1
-    if(print_flag):
-      print "rms between structures before and after dynamics = ", rms
-    array_of_distances_between_each_atom = \
-         flex.sqrt(structure_.difference_vectors_cart(structure_initial).dot())
-    if(print_flag):
-      print
-      for d in array_of_distances_between_each_atom:
-        print d
-    n_rms = 5.0
-    selected_by_rms = (array_of_distances_between_each_atom > n_rms * rms)
-    if(n_rms > 1.0):
-      assert selected_by_rms.count(True) == 0
-    if(print_flag):
-      print "number of outliers = ", selected_by_rms.count(True)
+    self.xray_structure = xray_structure
+    self.restraints_manager = restraints_manager
+
+def exercise_00(inputs, verbose=0):
+  #
+  # normal run
+  #
+  if (inputs.xray_structure is None):
+    print "Skipping exercise_00(): input file not available"
+    return
+  structure_ = inputs.xray_structure.deep_copy_scatterers()
+  cartesian_dynamics.cartesian_dynamics(
+    structure = structure_,
+    restraints_manager = inputs.restraints_manager,
+    temperature = 300,
+    n_steps = 200,
+    time_step = 0.0005,
+    verbose=-1)
+  rms1 = inputs.xray_structure.rms_difference(structure_)
+  rms2 = structure_.rms_difference(inputs.xray_structure)
+  assert rms1 == rms2
+  rms = rms1
+  if(verbose):
+    print "rms between structures before and after dynamics = ", rms
+  array_of_distances_between_each_atom = \
+       flex.sqrt(structure_.difference_vectors_cart(
+         inputs.xray_structure).dot())
+  if(verbose):
+    print
+    for d in array_of_distances_between_each_atom:
+      print d
+  n_rms = 4.0
+  selected_by_rms = (array_of_distances_between_each_atom > n_rms * rms)
+  if(n_rms > 1.0):
     assert selected_by_rms.count(True) == 0
-    selected = array_of_distances_between_each_atom.select(selected_by_rms)
-    if(print_flag):
-      print "list of outliers : "
-      for s in selected:
-        print s
+  if(verbose):
+    print "number of outliers = ", selected_by_rms.count(True)
+  selected = array_of_distances_between_each_atom.select(selected_by_rms)
+  if(verbose):
+    print "list of outliers : "
+    for s in selected:
+      print s
+
+def exercise_01(inputs):
+  #
+  # run at T = 0K
+  #
+  if (inputs.xray_structure is None):
+    print "Skipping exercise_01(): input file not available"
+    return
+  structure_ = inputs.xray_structure.deep_copy_scatterers()
+  inst = cartesian_dynamics.cartesian_dynamics(
+    structure = structure_,
+    restraints_manager = inputs.restraints_manager,
+    temperature = 0,
+    n_steps = 200,
+    time_step = 0.0005,
+    verbose = -1)
+  assert inputs.xray_structure.rms_difference(structure_) \
+      == structure_.rms_difference(inputs.xray_structure)
+  assert approx_equal(
+    structure_.rms_difference(inputs.xray_structure), 0.0, 1e-6)
+
+def exercise_02(inputs):
+  #
+  # run at n_step = 0
+  #
+  if (inputs.xray_structure is None):
+    print "Skipping exercise_02(): input file not available"
+    return
+  structure_ = inputs.xray_structure.deep_copy_scatterers()
+  cartesian_dynamics.cartesian_dynamics(
+    structure = structure_,
+    restraints_manager = inputs.restraints_manager,
+    temperature = 300,
+    n_steps = 0,
+    time_step = 0.0005,
+    verbose = -1)
+  assert inputs.xray_structure.rms_difference(structure_) \
+      == structure_.rms_difference(inputs.xray_structure)
+  assert approx_equal(
+    structure_.rms_difference(inputs.xray_structure), 0.0, 1e-6)
+
+def exercise_03(verbose=0):
+  #
+  # normal run with real model
+  #
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/2ERL_noH.pdb", test=os.path.isfile)
+  if (pdb_file is None):
+    print "Skipping exercise_03: input file not available"
+    return
+  processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
+                         mon_lib_srv                           = mon_lib_srv,
+                         ener_lib                              = ener_lib,
+                         file_name                             = pdb_file)
+  xray_structure = processed_pdb.xray_structure()
+  restraints_manager = mmtbx.restraints.manager(
+    geometry=processed_pdb.geometry_restraints_manager())
+  structure_ = xray_structure.deep_copy_scatterers()
+  cartesian_dynamics.cartesian_dynamics(
+                   structure                   = structure_,
+                   restraints_manager = restraints_manager,
+                   temperature                 = 300,
+                   n_steps                     = 200,
+                   time_step                   = 0.0005,
+                   verbose                     = -1)
+  rms1 = xray_structure.rms_difference(structure_)
+  rms2 = structure_.rms_difference(xray_structure)
+  assert rms1 == rms2
+  rms = rms1
+  if(verbose):
+    print "rms between structures before and after dynamics = ", rms
+  array_of_distances_between_each_atom = \
+       flex.sqrt(structure_.difference_vectors_cart(xray_structure).dot())
+  if(verbose):
+    print
+    for d in array_of_distances_between_each_atom:
+      print d
+  n_rms = 5.0
+  selected_by_rms = (array_of_distances_between_each_atom > n_rms * rms)
+  if(n_rms > 1.0):
+    assert selected_by_rms.count(True) == 0
+  if(verbose):
+    print "number of outliers = ", selected_by_rms.count(True)
+  assert selected_by_rms.count(True) == 0
+  selected = array_of_distances_between_each_atom.select(selected_by_rms)
+  if(verbose):
+    print "list of outliers : "
+    for s in selected:
+      print s
 
 def run():
-  exercise()
+  verbose = "--verbose" in sys.argv[1:]
+  inputs = get_inputs()
+  exercise_00(inputs=inputs, verbose=verbose)
+  exercise_01(inputs=inputs)
+  exercise_02(inputs=inputs)
+  exercise_03(verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
