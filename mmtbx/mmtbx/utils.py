@@ -158,10 +158,15 @@ class determine_data_and_flags(object):
       flags_info = self.raw_flags.info()
     self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
     if(extract_r_free_flags):
-      self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
-        self.flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags = self.raw_flags)
+      self.get_r_free_flags()
       self.r_free_flags.set_info(flags_info)
     self.f_obs.set_info(data_info)
+
+  def get_r_free_flags(self):
+    self.r_free_flags,self.test_flag_value,self.r_free_flags_md5_hexdigest =\
+      self.flags_as_r_free_flags(f_obs = self.f_obs, r_free_flags =
+      self.raw_flags)
+    self.r_free_flags.set_info(self.raw_flags.info())
 
   def extract_data(self):
     data = self.reflection_file_server.get_xray_data(
