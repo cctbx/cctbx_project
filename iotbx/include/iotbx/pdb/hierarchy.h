@@ -718,7 +718,7 @@ namespace hierarchy {
         bool siguij) const;
 
       std::string
-      show(bool full=false) const;
+      quote(bool full=false) const;
 
       bool
       element_is_hydrogen() const;

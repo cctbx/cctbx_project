@@ -1071,9 +1071,9 @@ B1234 NaMexuvw%2spqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
 %s""" % (chain_id, segielch)).rstrip())
           #
           assert not show_diff(
-            a.show(), '"'+a.format_atom_record(replace_floats_with=".*.")+'"')
+            a.quote(), '"'+a.format_atom_record(replace_floats_with=".*.")+'"')
           assert not show_diff(
-            a.show(full=True), '"'+a.format_atom_record()+'"')
+            a.quote(full=True), '"'+a.format_atom_record()+'"')
           #
           del ag, rg, ch
   #
