@@ -29,7 +29,8 @@ namespace {
 } // namespace <anonymous>
 
   atom_selection_cache::atom_selection_cache(
-    hierarchy::root const& root)
+    hierarchy::root const& root,
+    bool altloc_only)
   {
     std::map<str4, std::vector<unsigned> > name_s;
     std::map<str1, std::vector<unsigned> > altloc_s;
@@ -62,43 +63,56 @@ namespace {
             unsigned ag_i_seq_start = i_seq;
             atom_group const& ag = ags[i_ag];
             unsigned n_ats = ag.atoms_size();
-            std::vector<atom> const& ats = ag.atoms();
-            for(unsigned i_at=0;i_at<n_ats;i_at++,i_seq++) {
-              atom const& a = ats[i_at];
-              atom_data const& ad = *a.data;
-              name_s[ad.name].push_back(i_seq);
-              segid_s[ad.segid].push_back(i_seq);
-              element_s[ad.element].push_back(i_seq);
-              charge_s[ad.charge].push_back(i_seq);
-              if (a.uij_is_defined()) anisou.push_back(i_seq);
+            if (!altloc_only) {
+              std::vector<atom> const& ats = ag.atoms();
+              for(unsigned i_at=0;i_at<n_ats;i_at++,i_seq++) {
+                atom const& a = ats[i_at];
+                atom_data const& ad = *a.data;
+                name_s[ad.name].push_back(i_seq);
+                segid_s[ad.segid].push_back(i_seq);
+                element_s[ad.element].push_back(i_seq);
+                charge_s[ad.charge].push_back(i_seq);
+                if (a.uij_is_defined()) anisou.push_back(i_seq);
+              }
+              append_range(resname_s[ag.data->resname], ag_i_seq_start, i_seq);
+            }
+            else {
+              i_seq += n_ats;
             }
             append_range(altloc_s[ag.data->altloc], ag_i_seq_start, i_seq);
-            append_range(resname_s[ag.data->resname], ag_i_seq_start, i_seq);
           }
-          append_range(resseq_s[rg.data->resseq], rg_i_seq_start, i_seq);
-          append_range(icode_s[rg.data->icode], rg_i_seq_start, i_seq);
-          append_range(resid_s[rg.resid_small_str()], rg_i_seq_start, i_seq);
+          if (!altloc_only) {
+            append_range(resseq_s[rg.data->resseq], rg_i_seq_start, i_seq);
+            append_range(icode_s[rg.data->icode], rg_i_seq_start, i_seq);
+            append_range(resid_s[rg.resid_small_str()], rg_i_seq_start, i_seq);
+          }
         }
-        append_range(chain_id[ch.data->id], chain_i_seq_start, i_seq);
+        if (!altloc_only) {
+          append_range(chain_id[ch.data->id], chain_i_seq_start, i_seq);
+        }
       }
-      append_range(model_id[mo.data->id], model_i_seq_start, i_seq);
+      if (!altloc_only) {
+        append_range(model_id[mo.data->id], model_i_seq_start, i_seq);
+      }
     }
     n_seq = i_seq;
-    if (altloc_s.find(str1("")) != altloc_s.end()) {
-      std::vector<unsigned> const& s0 = altloc_s[str1("")];
-      std::vector<unsigned>& s1 = altloc_s[str1(" ")];
-      s1.insert(s1.end(), s0.begin(), s0.end());
-      altloc_s.erase(str1(""));
+    if (!altloc_only) {
+      if (altloc_s.find(str1("")) != altloc_s.end()) {
+        std::vector<unsigned> const& s0 = altloc_s[str1("")];
+        std::vector<unsigned>& s1 = altloc_s[str1(" ")];
+        s1.insert(s1.end(), s0.begin(), s0.end());
+        altloc_s.erase(str1(""));
+      }
+      map_array_transfer(name_s, name);
+      map_array_transfer(resname_s, resname);
+      map_array_transfer(resseq_s, resseq);
+      map_array_transfer(icode_s, icode);
+      map_array_transfer(resid_s, resid);
+      map_array_transfer(segid_s, segid);
+      map_array_transfer(element_s, element);
+      map_array_transfer(charge_s, charge);
     }
-    map_array_transfer(name_s, name);
     map_array_transfer(altloc_s, altloc);
-    map_array_transfer(resname_s, resname);
-    map_array_transfer(resseq_s, resseq);
-    map_array_transfer(icode_s, icode);
-    map_array_transfer(resid_s, resid);
-    map_array_transfer(segid_s, segid);
-    map_array_transfer(element_s, element);
-    map_array_transfer(charge_s, charge);
   }
 
 }}} // namespace iotbx::pdb::hierarchy

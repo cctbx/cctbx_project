@@ -106,6 +106,7 @@ ENDMDL
 END
 """)).construct_hierarchy()
   sel_cache = hierarchy.atom_selection_cache()
+  assert sel_cache.n_seq == hierarchy.atoms_size()
   isel = sel_cache.iselection
   assert isel("").size() == 0
   assert isel("all").size() == sel_cache.n_seq

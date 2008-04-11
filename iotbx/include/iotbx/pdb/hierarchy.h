@@ -1393,7 +1393,8 @@ namespace hierarchy {
     af::shared<std::size_t> anisou;
 
     atom_selection_cache(
-      hierarchy::root const& root);
+      hierarchy::root const& root,
+      bool altloc_only=false);
   };
 
   //! Residue attributes.
