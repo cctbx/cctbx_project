@@ -947,6 +947,14 @@ def exercise_atom_all_labels():
   assert a.all_labels() == 'pdb="NaMeAGLYCh1234J" segid="1234"'
   rt.append_model(pdb.hierarchy.model())
   assert a.all_labels() == 'model="    " pdb="NaMeAGLYCh1234J" segid="1234"'
+  #
+  cf = ch.only_conformer()
+  rd = cf.only_residue()
+  assert rd.id_str() == 'model="    " pdbres="GLYCh1234J"'
+  md.id = "12345678"
+  assert rd.id_str() == 'model="12345678" pdbres="GLYCh1234J"'
+  del cf
+  assert rd.id_str() == 'pdbres="GLY  1234J"'
 
 def exercise_format_atom_record():
   a = (pdb.hierarchy.atom()
