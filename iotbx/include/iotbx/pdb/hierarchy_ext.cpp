@@ -400,6 +400,8 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       write_pdb_file_overloads, write_pdb_file, 1, 9)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(select_overloads, select, 1, 2)
+
     static void
     get_overall_counts(
       w_t const& self,
@@ -496,7 +498,14 @@ namespace {
 #undef IOTBX_LOC
     }
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(select_overloads, select, 1, 2)
+    static
+    boost::python::object
+    altloc_indices(
+      w_t const& self)
+    {
+      return boost::python::object(
+        atom_selection_cache(self, /* altloc_only */ true).altloc);
+    }
 
     static void
     wrap()
@@ -544,6 +553,7 @@ namespace {
               arg_("atom_selection"), arg_("copy_atoms")=false)))
         .def("get_overall_counts", get_overall_counts)
         .def("get_atom_selection_cache", get_atom_selection_cache)
+        .def("altloc_indices", altloc_indices)
       ;
     }
   };

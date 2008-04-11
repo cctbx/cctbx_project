@@ -4689,6 +4689,33 @@ ENDMDL
       assert h_sel.is_similar_hierarchy(h_isel)
       assert h_sel.as_pdb_string() == h_isel.as_pdb_string()
 
+def exercise_root_altloc_indices(n_trials=10):
+  lines = flex.split_lines("""\
+ATOM      1  N
+ATOM      2  CB A
+ATOM      3  CA
+ATOM      4  CB B
+ATOM      5  CG
+ATOM      6  CG A
+ATOM      7  CD A
+ATOM      8  C
+ATOM      9  CD B
+ATOM     10  O
+""")
+  for i_trial in xrange(n_trials):
+    pdb_inp = pdb.input(
+      source_info=None,
+      lines=lines.select(flex.random_permutation(size=lines.size())))
+    hierarchy = pdb_inp.construct_hierarchy()
+    atoms = hierarchy.atoms()
+    ai = dict([(k,sorted([int(atoms[i].serial) for i in v]))
+      for k,v in hierarchy.altloc_indices().items()])
+    assert ai == {
+      "": [1, 3, 8, 10],
+      " ": [5],
+      "A": [2, 6, 7],
+      "B": [4, 9]}
+
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None): return None
@@ -4740,6 +4767,7 @@ def exercise(args):
       comprehensive=comprehensive)
     exercise_transfer_chains_from_other()
     exercise_root_select()
+    exercise_root_altloc_indices()
     if (not forever): break
   print format_cpu_times()
 
