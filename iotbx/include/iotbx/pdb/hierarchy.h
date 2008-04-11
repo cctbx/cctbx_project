@@ -665,7 +665,7 @@ namespace hierarchy {
 
       //! model="   1" pdb=" N   GLY A   1 " segid="S001"
       std::string
-      all_labels() const;
+      id_str() const;
 
       //! Not available in Python.
       /*! result must point to an array of size 81 (or greater).

@@ -574,7 +574,7 @@ namespace {
   }
 
   std::string
-  atom::all_labels() const
+  atom::id_str() const
   {
     char result[52];
     atom_label_columns_formatter().format(
