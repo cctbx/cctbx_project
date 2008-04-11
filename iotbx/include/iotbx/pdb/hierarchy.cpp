@@ -775,7 +775,7 @@ namespace {
   }
 
   std::string
-  atom::show(bool full) const
+  atom::quote(bool full) const
   {
     char result[82];
     result[0] = '"';
