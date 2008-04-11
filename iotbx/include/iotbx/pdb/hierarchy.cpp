@@ -366,25 +366,74 @@ namespace {
         std::memcpy(result, "\" ", 2U);
         result += 2;
       }
-      std::memcpy(result, "pdb=\"", 5U);
-      result += 5;
-    }
-    copy_left_justified(result, 4U, name, 4U, blank);
-    copy_left_justified(result+4, 1U, altloc, 1U, blank);
-    copy_right_justified(result+5, 3U, resname, 3U, blank);
-    copy_right_justified(result+8, 2U, chain_id, 2U, blank);
-    copy_right_justified(result+10, 4U, resseq, 4U, blank);
-    copy_left_justified(result+14, 1U, icode, 1U, blank);
-    if (add_model_and_segid) {
-      result[15] = '"';
-      if (segid == 0 || str4(segid).stripped_size() == 0) {
-        result[16] = '\0';
+      if (name != 0) {
+        std::memcpy(result, "pdb=\"", 5U);
+        result += 5;
       }
       else {
-        std::memcpy(result+16, " segid=\"", 8U);
-        copy_left_justified(result+24, 4U, segid, 4U, blank);
-        result[28] = '"';
-        result[29] = '\0';
+        std::memcpy(result, "pdbres=\"", 8U);
+        result += 8;
+      }
+    }
+    if (name != 0) {
+      copy_left_justified(result, 4U, name, 4U, blank);
+      copy_left_justified(result+4, 1U, altloc, 1U, blank);
+      result += 5;
+    }
+    copy_right_justified(result, 3U, resname, 3U, blank);
+    copy_right_justified(result+3, 2U, chain_id, 2U, blank);
+    copy_right_justified(result+5, 4U, resseq, 4U, blank);
+    copy_left_justified(result+9, 1U, icode, 1U, blank);
+    result += 10;
+    if (add_model_and_segid) {
+      result[0] = '"';
+      if (segid == 0 || str4(segid).stripped_size() == 0) {
+        result[1] = '\0';
+      }
+      else {
+        std::memcpy(result+1, " segid=\"", 8U);
+        copy_left_justified(result+9, 4U, segid, 4U, blank);
+        result[13] = '"';
+        result[14] = '\0';
+      }
+    }
+  }
+
+  void
+  atom_label_columns_formatter::format(
+    char* result,
+    shared_ptr<chain_data> const& ch_lock,
+    bool add_model_and_segid)
+  {
+    chain_data const* ch = ch_lock.get();
+    if (ch == 0) {
+      chain_id = model_id = 0;
+      format(result, add_model_and_segid);
+    }
+    else {
+      chain_id = ch->id.c_str();
+      if (!add_model_and_segid) {
+        model_id = 0;
+        format(result, false);
+      }
+      else {
+        shared_ptr<model_data> md_lock = ch->parent.lock();
+        model_data const* md = md_lock.get();
+        if (md == 0) {
+          model_id = 0;
+          format(result, true);
+        }
+        else {
+          shared_ptr<root_data> rt_lock = md->parent.lock();
+          if (   (stripped_size(md->id.c_str()) != 0 && md->id != "   0")
+              || (rt_lock.get() != 0 && rt_lock->models.size() != 1U)) {
+            model_id = md->id.c_str();
+          }
+          else {
+            model_id = 0;
+          }
+          format(result, true);
+        }
       }
     }
   }
@@ -415,39 +464,30 @@ namespace {
       else {
         resseq = rg->resseq.elems;
         icode = rg->icode.elems;
-        shared_ptr<chain_data> ch_lock = rg->parent.lock();
-        chain_data const* ch = ch_lock.get();
-        if (ch == 0) {
-          chain_id = model_id = 0;
-          format(result, add_model_and_segid);
-        }
-        else {
-          chain_id = ch->id.c_str();
-          if (!add_model_and_segid) {
-            model_id = 0;
-            format(result, false);
-          }
-          else {
-            shared_ptr<model_data> md_lock = ch->parent.lock();
-            model_data const* md = md_lock.get();
-            if (md == 0) {
-              model_id = 0;
-              format(result, true);
-            }
-            else {
-              shared_ptr<root_data> rt_lock = md->parent.lock();
-              if (   (stripped_size(md->id.c_str()) != 0 && md->id != "   0")
-                  || (rt_lock.get() != 0 && rt_lock->models.size() != 1U)) {
-                model_id = md->id.c_str();
-              }
-              else {
-                model_id = 0;
-              }
-              format(result, true);
-            }
-          }
-        }
+        format(result, rg->parent.lock(), add_model_and_segid);
       }
+    }
+  }
+
+  void
+  atom_label_columns_formatter::format(
+    char* result,
+    hierarchy::residue const& residue)
+  {
+    name = 0;
+    segid = 0;
+    altloc = 0;
+    resname = residue.data->resname.elems;
+    resseq = residue.data->resseq.elems;
+    icode = residue.data->icode.elems;
+    shared_ptr<conformer_data> cf_lock = residue.data->parent.lock();
+    const conformer_data* cf = cf_lock.get();
+    if (cf == 0) {
+      chain_id = model_id = 0;
+      format(result, /* add_model_and_segid */ true);
+    }
+    else {
+      format(result, cf->parent.lock(), /* add_model_and_segid */ true);
     }
   }
 
@@ -846,6 +886,14 @@ namespace {
 
   std::string
   residue::resid() const { return make_resid(data); }
+
+  std::string
+  residue::id_str() const
+  {
+    char result[37];
+    atom_label_columns_formatter().format(result, *this);
+    return std::string(result);
+  }
 
   bool
   residue_group::have_conformers() const

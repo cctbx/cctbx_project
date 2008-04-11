@@ -590,6 +590,7 @@ namespace {
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", get_atoms)
         .def("resid", &w_t::resid)
+        .def("id_str", &w_t::id_str)
       ;
     }
   };

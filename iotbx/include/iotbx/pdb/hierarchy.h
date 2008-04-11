@@ -312,6 +312,7 @@ namespace hierarchy {
   {
     protected:
       friend class conformer;
+      friend class atom_label_columns_formatter;
       weak_ptr<chain_data> parent;
     public:
       std::string altloc;
@@ -329,6 +330,7 @@ namespace hierarchy {
   {
     protected:
       friend class residue;
+      friend class atom_label_columns_formatter;
       weak_ptr<conformer_data> parent;
     public:
       str3 resname;
@@ -373,6 +375,13 @@ namespace hierarchy {
       char* result,
       bool add_model_and_segid=false) const;
 
+    //! Extracts chain_id and model_id, then calls format(char*, bool).
+    void
+    format(
+      char* result,
+      shared_ptr<chain_data> const& ch_lock,
+      bool add_model_and_segid);
+
     //! All labels are extracted from the atom and its parents.
     /*! result must point to an array of size 15 (or greater).
         On return, result is NOT null-terminated.
@@ -384,6 +393,15 @@ namespace hierarchy {
       char* result,
       hierarchy::atom const& atom,
       bool add_model_and_segid=false);
+
+    //! All relevant labels are extracted from the residue and its parents.
+    /*! result must point to an array of size 37 (or greater).
+        On return, result IS null-terminated.
+     */
+    void
+    format(
+      char* result,
+      hierarchy::residue const& residue);
   };
 
   //! Atom attributes.
@@ -1414,6 +1432,10 @@ namespace hierarchy {
 
       std::string
       resid() const;
+
+      //! model="   1" pdbres="GLY A   1 "
+      std::string
+      id_str() const;
   };
 
   //! Conformer attributes.
