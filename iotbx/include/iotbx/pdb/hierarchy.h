@@ -96,7 +96,7 @@ namespace hierarchy {
   {
     protected:
       friend class root;
-      friend class atom_label_columns_formatter;
+      friend struct atom_label_columns_formatter;
     public:
       af::shared<std::string> info;
     protected:
@@ -109,7 +109,7 @@ namespace hierarchy {
     protected:
       friend class model;
       friend class atom; // to support efficient backtracking to parents
-      friend class atom_label_columns_formatter;
+      friend struct atom_label_columns_formatter;
       weak_ptr<root_data> parent;
     public:
       std::string id;
@@ -136,7 +136,7 @@ namespace hierarchy {
   {
     protected:
       friend class chain;
-      friend class atom_label_columns_formatter;
+      friend struct atom_label_columns_formatter;
       weak_ptr<model_data> parent;
     public:
       std::string id;
@@ -163,7 +163,7 @@ namespace hierarchy {
   {
     protected:
       friend class residue_group;
-      friend class atom_label_columns_formatter;
+      friend struct atom_label_columns_formatter;
       weak_ptr<chain_data> parent;
     public:
       str4 resseq;
@@ -196,7 +196,7 @@ namespace hierarchy {
   {
     protected:
       friend class atom_group;
-      friend class atom_label_columns_formatter;
+      friend struct atom_label_columns_formatter;
       weak_ptr<residue_group_data> parent;
     public:
       str1 altloc;
@@ -226,7 +226,7 @@ namespace hierarchy {
   {
     protected:
       friend class atom;
-      friend class atom_label_columns_formatter;
+      friend struct atom_label_columns_formatter;
       weak_ptr<atom_group_data> parent;
     public:
       vec3 xyz;
@@ -312,7 +312,7 @@ namespace hierarchy {
   {
     protected:
       friend class conformer;
-      friend class atom_label_columns_formatter;
+      friend struct atom_label_columns_formatter;
       weak_ptr<chain_data> parent;
     public:
       std::string altloc;
@@ -330,7 +330,7 @@ namespace hierarchy {
   {
     protected:
       friend class residue;
-      friend class atom_label_columns_formatter;
+      friend struct atom_label_columns_formatter;
       weak_ptr<conformer_data> parent;
     public:
       str3 resname;
