@@ -139,6 +139,40 @@ def exercise_format_records():
       == ["SCALE1      0.138527 -0.005617 -0.005402       -1.00000",
           "SCALE2      0.000000  0.138641 -0.005402        2.00000",
           "SCALE3      0.000000  0.000000  0.138746       -3.00000"]
+  #
+  f = iotbx.pdb.format_cryst1_and_scale_records
+  assert not show_diff(f(), """\
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
+SCALE1      1.000000  0.000000  0.000000        0.00000
+SCALE2      0.000000  1.000000  0.000000        0.00000
+SCALE3      0.000000  0.000000  1.000000        0.00000""")
+  assert not show_diff(f(crystal_symmetry=crystal_symmetry), """\
+CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R 3 :R
+SCALE1      0.138527 -0.005617 -0.005402        0.00000
+SCALE2      0.000000  0.138641 -0.005402        0.00000
+SCALE3      0.000000  0.000000  0.138746        0.00000""")
+  for s in [f(crystal_symmetry=crystal_symmetry.unit_cell()),
+            f(crystal_symmetry=crystal_symmetry.unit_cell().parameters()),
+            f(scale_fractionalization_matrix=crystal_symmetry.unit_cell()
+              .fractionalization_matrix())]:
+    assert not show_diff(s, """\
+CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 P 1
+SCALE1      0.138527 -0.005617 -0.005402        0.00000
+SCALE2      0.000000  0.138641 -0.005402        0.00000
+SCALE3      0.000000  0.000000  0.138746        0.00000""")
+  assert not show_diff(f(cryst1_z=3), """\
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           3
+SCALE1      1.000000  0.000000  0.000000        0.00000
+SCALE2      0.000000  1.000000  0.000000        0.00000
+SCALE3      0.000000  0.000000  1.000000        0.00000""")
+  assert not show_diff(f(write_scale_records=False), """\
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1""")
+  assert not show_diff(f(scale_u=(1,2,3)), """\
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
+SCALE1      1.000000  0.000000  0.000000        1.00000
+SCALE2      0.000000  1.000000  0.000000        2.00000
+SCALE3      0.000000  0.000000  1.000000        3.00000""")
+  #
   assert iotbx.pdb.format_atom_record() \
     == "ATOM      0  C   DUM     1       0.000   0.000   0.000  1.00  0.00"
   assert iotbx.pdb.format_anisou_record() \

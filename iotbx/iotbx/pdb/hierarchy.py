@@ -449,16 +449,32 @@ class _root(boost.python.injector, ext.root):
     return out.getvalue()
 
   def as_pdb_string(self,
+        crystal_symmetry=None,
+        cryst1_z=None,
+        write_scale_records=True,
         append_end=False,
         interleaved_conf=0,
         atoms_reset_serial_first_value=None,
         atom_hetatm=True,
         sigatm=True,
         anisou=True,
-        siguij=True):
-    sio = StringIO()
-    self.as_pdb_string_cstringio(
-      cstringio=sio,
+        siguij=True,
+        cstringio=None,
+        return_cstringio=Auto):
+    if (cstringio is None):
+      cstringio = StringIO()
+      if (return_cstringio is Auto):
+        return_cstringio = False
+    elif (return_cstringio is Auto):
+      return_cstringio = True
+    if (crystal_symmetry is not None or cryst1_z is not None):
+      from iotbx.pdb import format_cryst1_and_scale_records
+      print >> cstringio, format_cryst1_and_scale_records(
+        crystal_symmetry=crystal_symmetry,
+        cryst1_z=cryst1_z,
+        write_scale_records=write_scale_records)
+    self._as_pdb_string_cstringio(
+      cstringio=cstringio,
       append_end=append_end,
       interleaved_conf=interleaved_conf,
       atoms_reset_serial_first_value=atoms_reset_serial_first_value,
@@ -466,7 +482,42 @@ class _root(boost.python.injector, ext.root):
       sigatm=sigatm,
       anisou=anisou,
       siguij=siguij)
-    return sio.getvalue()
+    if (return_cstringio):
+      return cstringio
+    return cstringio.getvalue()
+
+  def write_pdb_file(self,
+        file_name,
+        open_append=False,
+        crystal_symmetry=None,
+        cryst1_z=None,
+        write_scale_records=True,
+        append_end=False,
+        interleaved_conf=0,
+        atoms_reset_serial_first_value=None,
+        atom_hetatm=True,
+        sigatm=True,
+        anisou=True,
+        siguij=True):
+    if (crystal_symmetry is not None or cryst1_z is not None):
+      from iotbx.pdb import format_cryst1_and_scale_records
+      if (open_append): mode = "ab"
+      else:             mode = "wb"
+      print >> open(file_name, mode), format_cryst1_and_scale_records(
+        crystal_symmetry=crystal_symmetry,
+        cryst1_z=cryst1_z,
+        write_scale_records=write_scale_records)
+      open_append = True
+    self._write_pdb_file(
+      file_name=file_name,
+      open_append=open_append,
+      append_end=append_end,
+      interleaved_conf=interleaved_conf,
+      atoms_reset_serial_first_value=atoms_reset_serial_first_value,
+      atom_hetatm=atom_hetatm,
+      sigatm=sigatm,
+      anisou=anisou,
+      siguij=siguij)
 
   def transfer_chains_from_other(self, other):
     from iotbx.pdb import hy36encode

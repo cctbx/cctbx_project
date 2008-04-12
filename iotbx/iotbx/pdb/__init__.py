@@ -625,12 +625,58 @@ def format_scale_records(unit_cell=None,
     assert len(fractionalization_matrix) == 9
     f = fractionalization_matrix
   assert len(u) == 3
-  return ("SCALE1    %10.6f%10.6f%10.6f     %10.5f\n"
-          "SCALE2    %10.6f%10.6f%10.6f     %10.5f\n"
-          "SCALE3    %10.6f%10.6f%10.6f     %10.5f") % (
+  return (("SCALE1    %10.6f%10.6f%10.6f     %10.5f\n"
+           "SCALE2    %10.6f%10.6f%10.6f     %10.5f\n"
+           "SCALE3    %10.6f%10.6f%10.6f     %10.5f") % (
     f[0], f[1], f[2], u[0],
     f[3], f[4], f[5], u[1],
-    f[6], f[7], f[8], u[2])
+    f[6], f[7], f[8], u[2])).replace(" -0.000000", "  0.000000")
+
+def format_cryst1_and_scale_records(
+      crystal_symmetry=None,
+      cryst1_z=None,
+      write_scale_records=True,
+      scale_fractionalization_matrix=None,
+      scale_u=[0,0,0]):
+  from cctbx import crystal
+  from cctbx import sgtbx
+  from cctbx import uctbx
+  from scitbx import matrix
+  if (crystal_symmetry is None):
+    unit_cell = None
+    space_group_info = None
+  elif (isinstance(crystal_symmetry, crystal.symmetry)):
+    unit_cell = crystal_symmetry.unit_cell()
+    space_group_info = crystal_symmetry.space_group_info()
+  elif (isinstance(crystal_symmetry, uctbx.ext.unit_cell)):
+    unit_cell = crystal_symmetry
+    space_group_info = None
+  elif (isinstance(crystal_symmetry, (list, tuple))):
+    assert len(crystal_symmetry) == 6 # unit cell parameters
+    unit_cell = uctbx.unit_cell(crystal_symmetry)
+    space_group_info = None
+  else:
+    raise ValueError("invalid crystal_symmetry object")
+  if (unit_cell is None):
+    if (scale_fractionalization_matrix is None):
+      unit_cell = uctbx.unit_cell((1,1,1,90,90,90))
+    else:
+      unit_cell = uctbx.unit_cell(
+        orthogonalization_matrix=matrix.sqr(
+          scale_fractionalization_matrix).inverse())
+  if (space_group_info is None):
+    space_group_info = sgtbx.space_group_info(symbol="P 1")
+  result = format_cryst1_record(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=unit_cell, space_group_info=space_group_info),
+    z=cryst1_z)
+  if (write_scale_records):
+    if (scale_fractionalization_matrix is None):
+      scale_fractionalization_matrix = unit_cell.fractionalization_matrix()
+    result += "\n" + format_scale_records(
+      fractionalization_matrix=scale_fractionalization_matrix,
+      u=scale_u)
+  return result
 
 class read_scale_record:
 

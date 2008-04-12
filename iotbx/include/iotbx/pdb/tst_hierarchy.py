@@ -4370,11 +4370,35 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
   hierarchy = pdb_inp.construct_hierarchy()
   check_wpf(hierarchy, expected=pdb_string+"TER\n")
-  r = "REMARK EXERCISE"
-  print >> open("tmp.pdb", "w"), r
+  rem = "REMARK EXERCISE"
+  print >> open("tmp.pdb", "w"), rem
   hierarchy.write_pdb_file(
     file_name="tmp.pdb", open_append=True, append_end=True)
-  assert not show_diff(open("tmp.pdb").read(), r+"\n"+pdb_string+"TER\nEND\n")
+  assert not show_diff(open("tmp.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
+  check_wpf(
+    hierarchy,
+    kwargs={"crystal_symmetry": (2,3,4,80,90,100), "cryst1_z": 5},
+    expected="""\
+CRYST1    2.000    3.000    4.000  80.00  90.00 100.00 P 1           5
+SCALE1      0.500000  0.088163 -0.015793        0.00000
+SCALE2      0.000000  0.338476 -0.060632        0.00000
+SCALE3      0.000000  0.000000  0.253979        0.00000
+""" + pdb_string+"TER\n")
+  check_wpf(
+    hierarchy,
+    kwargs={"cryst1_z": 7, "write_scale_records": False},
+    expected="""\
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
+""" + pdb_string+"TER\n")
+  print >> open("tmp.pdb", "w"), rem
+  hierarchy.write_pdb_file(
+    file_name="tmp.pdb",
+    cryst1_z="",
+    write_scale_records=False,
+    open_append=True)
+  assert not show_diff(open("tmp.pdb").read(), rem + """
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
+""" + pdb_string+"TER\n")
   #
   # only pdb entry (as of 2008 Mar 26) for which
   # s1 = h1.as_pdb_string(interleaved_conf=1)

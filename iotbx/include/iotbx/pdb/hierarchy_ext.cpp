@@ -394,12 +394,6 @@ namespace {
         siguij);
     }
 
-    BOOST_PYTHON_FUNCTION_OVERLOADS(
-      as_pdb_string_cstringio_overloads, as_pdb_string_cstringio, 2, 9)
-
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
-      write_pdb_file_overloads, write_pdb_file, 1, 9)
-
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(select_overloads, select, 1, 2)
 
     static void
@@ -522,27 +516,26 @@ namespace {
           arg_("interleaved_conf")=0)))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
           arg_("other")))
-        .def("as_pdb_string_cstringio", as_pdb_string_cstringio,
-          as_pdb_string_cstringio_overloads((
-            arg_("self"),
-            arg_("cstringio"),
-            arg_("append_end")=false,
-            arg_("interleaved_conf")=0,
-            arg_("atoms_reset_serial_first_value")=boost::optional<int>(),
-            arg_("atom_hetatm")=true,
-            arg_("sigatm")=true,
-            arg_("anisou")=true,
-            arg_("siguij")=true)))
-        .def("write_pdb_file", &w_t::write_pdb_file, write_pdb_file_overloads((
+        .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (
+          arg_("self"),
+          arg_("cstringio"),
+          arg_("append_end"),
+          arg_("interleaved_conf"),
+          arg_("atoms_reset_serial_first_value"),
+          arg_("atom_hetatm"),
+          arg_("sigatm"),
+          arg_("anisou"),
+          arg_("siguij")))
+        .def("_write_pdb_file", &w_t::write_pdb_file, (
           arg_("file_name"),
-          arg_("open_append")=false,
-          arg_("append_end")=false,
-          arg_("interleaved_conf")=0,
-          arg_("atoms_reset_serial_first_value")=boost::optional<int>(),
-          arg_("atom_hetatm")=true,
-          arg_("sigatm")=true,
-          arg_("anisou")=true,
-          arg_("siguij")=true)))
+          arg_("open_append"),
+          arg_("append_end"),
+          arg_("interleaved_conf"),
+          arg_("atoms_reset_serial_first_value"),
+          arg_("atom_hetatm"),
+          arg_("sigatm"),
+          arg_("anisou"),
+          arg_("siguij")))
         .def("select",
           (root(w_t::*)(af::const_ref<bool> const&, bool) const)
             &w_t::select, select_overloads((
