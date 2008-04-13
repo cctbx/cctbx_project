@@ -551,84 +551,81 @@ def get_atom_selections(all_chain_proxies,
     print >> log
   #
   if(hydrogens_only):
-     assert xray_structure is not None
+    assert xray_structure is not None
   if(selection_strings is None or isinstance(selection_strings, str)):
-     selection_strings = [selection_strings]
+    selection_strings = [selection_strings]
   elif (len(selection_strings) == 0):
-     selection_strings = [None]
+    selection_strings = [None]
   n_none = selection_strings.count(None)
   ss_size = len(selection_strings)
   if((one_group_per_residue and n_none==0) or (ss_size > 1 and n_none > 0)):
-     raise Sorry('Ambiguous selection.')
+    raise Sorry('Ambiguous selection.') # XXX NEED MORE INFORMATIVE MESSAGE
   selections = []
   if(ss_size == 1 and n_none == 1 and not one_group_per_residue):
-     selections.append(atom_selection(all_chain_proxies = all_chain_proxies,
-                                      string            = "all"))
+    selections.append(flex.bool(
+      len(all_chain_proxies.stage_1.atom_attributes_list), True))
   elif(one_group_per_residue and ss_size == 1 and n_none == 1):
-     assert iselection
-     assert len(selections) == 0
-     residues = []
-     hd_selection = None
-     if(hydrogens_only):
-        scat_types = xray_structure.scatterers().extract_scattering_types()
-        d_selection = (scat_types == "D")
-        h_selection = (scat_types == "H")
-        hd_selection = d_selection | h_selection
-     if(hd_selection is not None and hd_selection.count(True) == 0 and hydrogens_only):
+    assert iselection
+    residues = []
+    hd_selection = None
+    if (hydrogens_only):
+      scat_types = xray_structure.scatterers().extract_scattering_types()
+      hd_selection = (scat_types == "H") | (scat_types == "D")
+      if (hd_selection.count(True) == 0):
         raise Sorry('No hydrogens to select.')
-     for model in all_chain_proxies.stage_1.get_models_and_conformers():
-         n_conformers = len(model.conformers)
-         for conformer in model.conformers:
-             residues_in_conformer = []
-             for chain in conformer.get_chains():
-                 for residue in chain.residues:
-                     if(n_conformers == 1):
-                        result = flex.size_t()
-                        if(hydrogens_only):
-                           for i_sel in residue.iselection:
-                               if(scat_types[i_sel] in ["H", "D"]):
-                                  result.append(i_sel)
-                        else:
-                           result = residue.iselection
-                        selections.append(result)
-                     else:
-                        residues_in_conformer.append(residue)
-             residues.append(residues_in_conformer)
-         if(n_conformers > 1):
-            assert len(selections) == 0
-            res = []
-            unique_res_ids = []
-            for residuesi in residues:
-              for residue in residuesi:
-                res.append(residue)
-                if(residue.id() not in unique_res_ids):
-                  unique_res_ids.append(residue.id())
-            for uri in unique_res_ids:
-              s_uri = flex.size_t()
-              for r in res:
-                if(r.id() == uri):
-                  for s in r.iselection:
-                    if(s not in s_uri):
-                      s_uri.append(s)
-              selections.append(s_uri)
-            # XXX what is this ?
-            if(hydrogens_only):
-               for i_seq, sel in enumerate(selections):
-                 result = flex.size_t()
-                 for si in sel:
-                   if(scat_types[si] in ["H", "D"]):
-                      result.append(si)
-                 selections[i_seq] = result
+    for model in all_chain_proxies.stage_1.get_models_and_conformers():
+      n_conformers = len(model.conformers)
+      for conformer in model.conformers:
+        residues_in_conformer = []
+        for chain in conformer.get_chains():
+          for residue in chain.residues:
+            if(n_conformers == 1):
+              result = flex.size_t()
+              if(hydrogens_only):
+                for i_sel in residue.iselection:
+                  if(scat_types[i_sel] in ["H", "D"]):
+                    result.append(i_sel)
+              else:
+                result = residue.iselection
+              selections.append(result)
+            else:
+              residues_in_conformer.append(residue)
+        residues.append(residues_in_conformer)
+      if(n_conformers > 1):
+         assert len(selections) == 0
+         res = []
+         unique_res_ids = []
+         for residuesi in residues:
+           for residue in residuesi:
+             res.append(residue)
+             if(residue.id() not in unique_res_ids):
+               unique_res_ids.append(residue.id())
+         for uri in unique_res_ids:
+           s_uri = flex.size_t()
+           for r in res:
+             if(r.id() == uri):
+               for s in r.iselection:
+                 if(s not in s_uri):
+                   s_uri.append(s)
+           selections.append(s_uri)
+         # XXX what is this ?
+         if(hydrogens_only):
+            for i_seq, sel in enumerate(selections):
+              result = flex.size_t()
+              for si in sel:
+                if(scat_types[si] in ["H", "D"]):
+                   result.append(si)
+              selections[i_seq] = result
   elif(ss_size != 1 or n_none == 0 and not one_group_per_residue):
-     for selection_string in selection_strings:
-        selections.append(atom_selection(all_chain_proxies = all_chain_proxies,
-                                         string            = selection_string))
+    for selection_string in selection_strings:
+      selections.append(atom_selection(all_chain_proxies = all_chain_proxies,
+                                       string            = selection_string))
   else:
-     raise Sorry('Ambiguous selection.')
+    raise Sorry('Ambiguous selection.')
   if(iselection):
-     for i_seq, selection in enumerate(selections):
-       if(hasattr(selection, "iselection")):
-          selections[i_seq] = selections[i_seq].iselection()
+    for i_seq, selection in enumerate(selections):
+      if(hasattr(selection, "iselection")):
+        selections[i_seq] = selections[i_seq].iselection()
   if(one_selection_array):
     s0 = selections[0]
     for s in selections[1:]:
