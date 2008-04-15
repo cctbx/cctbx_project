@@ -1699,4 +1699,20 @@ namespace {
 
 #undef IOTBX_LOC
 
+  af::shared<atom>
+  root::atoms_with_i_seq_mismatch() const
+  {
+    af::shared<atom> result;
+    unsigned i_seq = 0;
+    IOTBX_PDB_HIERARCHY_CPP_ROOT_ATOM_GROUPS_LOOPS
+      std::vector<atom> const& ats = ags[i_ag].atoms();
+      for(unsigned i_at=0;i_at<n_ats;i_at++) {
+        if (ats[i_at].data->i_seq != i_seq++) {
+          result.push_back(ats[i_at]);
+        }
+      }
+    }}}}
+    return result;
+  }
+
 }}} // namespace iotbx::pdb::hierarchy
