@@ -1274,6 +1274,9 @@ namespace hierarchy {
       atoms(
         int interleaved_conf=0) const;
 
+      af::shared<atom>
+      atoms_with_i_seq_mismatch() const;
+
       bool
       is_similar_hierarchy(
         root const& other) const;

@@ -4183,6 +4183,12 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert [a.name for a in atoms] == [" Q  ", "CA  ", " O  ", " N  "]
   atoms = atoms.select(flex.bool([False,True,False,False]))
   assert [a.name for a in atoms] == ["CA  "]
+  #
+  assert [int(a.serial) for a in h.atoms_with_i_seq_mismatch()] \
+      == [2, 3, 4, 5, 6, 7]
+  h.atoms().reset_i_seq()
+  assert h.atoms_with_i_seq_mismatch().size() == 0
+  assert pdb.hierarchy.root().atoms_with_i_seq_mismatch().size() == 0
 
 def check_wpf(hierarchy, kwargs={}, trailing=None, expected=None):
   if ("atoms_reset_serial_first_value" in kwargs):
