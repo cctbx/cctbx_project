@@ -357,20 +357,21 @@ def run_command(
       command,
       verbose=0,
       buffered=True,
-      log=None,
+      log_file_name=None,
       stdout_file_name=None,
-      result_files=[],
+      result_file_names=[],
+      show_diff_log_stdout=False,
       sorry_expected=False):
   """\
 This function starts another process to run command, with some
 pre-call and post-call processing.
 Before running command, the expected output files are removed:
 
-  log
+  log_file_name
   stdout_file_name
-  result_files
+  result_file_names
 
-After command is finished, log and stdout_file_name are scanned
+After command is finished, log_file_name and stdout_file_name are scanned
 for Traceback and Sorry. An exception is raised if there are any
 matches. sorry_expected=True suppresses the scanning for Sorry.
 
@@ -395,7 +396,8 @@ directly from within the same Python process running the unit tests.
     show_command_if_error = None
   else:
     show_command_if_error = command
-  for file_name in [log, stdout_file_name] + result_files:
+  all_file_names = [log_file_name, stdout_file_name] + result_file_names
+  for file_name in all_file_names:
     if (file_name is None): continue
     if (os.path.isfile(file_name)): os.remove(file_name)
     if (os.path.exists(file_name)):
@@ -416,12 +418,12 @@ directly from within the same Python process running the unit tests.
   else:
     easy_run.call(command=command)
     cmd_result = None
-  for file_name in [log, stdout_file_name] + result_files:
+  for file_name in all_file_names:
     if (file_name is None): continue
     if (not os.path.isfile(file_name)):
       raise RunCommandError(
         "Missing output file: %s" % show_string(file_name))
-  for file_name in [log, stdout_file_name]:
+  for file_name in [log_file_name, stdout_file_name]:
     if (file_name is None): continue
     _check_command_output(
       file_name=file_name,
@@ -430,6 +432,16 @@ directly from within the same Python process running the unit tests.
   if (verbose > 1 and cmd_result is not None):
     print "\n".join(cmd_result.stdout_lines)
     print
+  if (    show_diff_log_stdout
+      and log_file_name is not None
+      and stdout_file_name is not None):
+    if (verbose > 0):
+      print "diff %s %s" % (show_string(log_file_name),
+                            show_string(stdout_file_name))
+    if (show_diff(open(log_file_name).read(), open(stdout_file_name).read())):
+      introspection.show_stack(
+        frames_back=1, reverse=True, prefix="INFO_LOG_STDOUT_DIFFERENCE: ")
+      print "ERROR_LOG_STDOUT_DIFFERENCE"
   return cmd_result
 
 def exercise():
