@@ -438,6 +438,7 @@ directly from within the same Python process running the unit tests.
     if (verbose > 0):
       print "diff %s %s" % (show_string(log_file_name),
                             show_string(stdout_file_name))
+      print
     if (show_diff(open(log_file_name).read(), open(stdout_file_name).read())):
       introspection.show_stack(
         frames_back=1, reverse=True, prefix="INFO_LOG_STDOUT_DIFFERENCE: ")
