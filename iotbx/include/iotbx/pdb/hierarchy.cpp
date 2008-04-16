@@ -442,9 +442,10 @@ namespace {
   atom_label_columns_formatter::format(
     char* result,
     hierarchy::atom const& atom,
-    bool add_model_and_segid)
+    bool add_model_and_segid,
+    bool pdbres)
   {
-    name = atom.data->name.elems;
+    name = (pdbres ? 0 : atom.data->name.elems);
     segid = atom.data->segid.elems;
     shared_ptr<atom_group_data> ag_lock = atom.data->parent.lock();
     const atom_group_data* ag = ag_lock.get();
@@ -574,11 +575,11 @@ namespace {
   }
 
   std::string
-  atom::id_str() const
+  atom::id_str(bool pdbres) const
   {
     char result[52];
     atom_label_columns_formatter().format(
-      result, *this, /* add_model_and_segid */ true);
+      result, *this, /* add_model_and_segid */ true, pdbres);
     return std::string(result);
   }
 
