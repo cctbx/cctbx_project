@@ -12,6 +12,7 @@
 #include <scitbx/math/resample.h>
 #include <scitbx/math/halton.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/math/euler_angles.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -85,6 +86,51 @@ namespace {
   {
     return superpose::superposition<>::kearsley_rotation(
       reference_sites, other_sites);
+  }
+
+  mat3< double >
+  euler_angles_xyz_matrix(
+        const double x_deg,
+        const double y_deg,
+        const double z_deg )
+  {
+    return euler_angles::xyz_matrix( x_deg, y_deg, z_deg );
+  }
+
+  vec3< double >
+  euler_angles_xyz_angles( const mat3< double >& m, const double eps = 1.0e-12 )
+  {
+    return euler_angles::xyz_angles( m, eps );
+  }
+
+  mat3< double >
+  euler_angles_yzx_matrix(
+        const double y_deg,
+        const double z_deg,
+        const double x_deg )
+  {
+    return euler_angles::yzx_matrix( y_deg, z_deg, x_deg );
+  }
+
+  vec3< double >
+  euler_angles_yzx_angles( const mat3< double >& m, const double eps = 1.0e-12 )
+  {
+    return euler_angles::yzx_angles( m, eps );
+  }
+
+  mat3< double >
+  euler_angles_zyz_matrix(
+        const double z1_deg,
+        const double y2_deg,
+        const double z3_deg )
+  {
+    return euler_angles::zyz_matrix( z1_deg, y2_deg, z3_deg );
+  }
+
+  vec3< double >
+  euler_angles_zyz_angles( const mat3< double >& m, const double eps = 1.0e-12 )
+  {
+    return euler_angles::zyz_angles( m, eps );
   }
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
@@ -189,6 +235,16 @@ namespace {
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg_("reference_sites"), arg_("other_sites")));
 
+    def( "euler_angles_xyz_matrix", euler_angles_xyz_matrix );
+    def( "euler_angles_xyz_angles", euler_angles_xyz_angles );
+
+    def( "euler_angles_yzx_matrix", euler_angles_yzx_matrix );
+    def( "euler_angles_yzx_angles", euler_angles_yzx_angles );
+
+    
+    def( "euler_angles_zyz_matrix", euler_angles_zyz_matrix );
+    def( "euler_angles_zyz_angles", euler_angles_zyz_angles );
+    
     def("signed_phase_error",
       (double(*)(
         double const&, double const&, bool))
