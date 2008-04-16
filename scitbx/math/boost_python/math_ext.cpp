@@ -90,11 +90,11 @@ namespace {
 
   mat3< double >
   euler_angles_xyz_matrix(
-        const double x_deg,
-        const double y_deg,
-        const double z_deg )
+    const double ax,
+    const double ay,
+    const double az )
   {
-    return euler_angles::xyz_matrix( x_deg, y_deg, z_deg );
+    return euler_angles::xyz_matrix( ax, ay, az );
   }
 
   vec3< double >
@@ -105,11 +105,11 @@ namespace {
 
   mat3< double >
   euler_angles_yzx_matrix(
-        const double y_deg,
-        const double z_deg,
-        const double x_deg )
+    const double ay,
+    const double az,
+    const double ax )
   {
-    return euler_angles::yzx_matrix( y_deg, z_deg, x_deg );
+    return euler_angles::yzx_matrix( ay, az, ax );
   }
 
   vec3< double >
@@ -120,11 +120,11 @@ namespace {
 
   mat3< double >
   euler_angles_zyz_matrix(
-        const double z1_deg,
-        const double y2_deg,
-        const double z3_deg )
+    const double az1,
+    const double ay,
+    const double az3 )
   {
-    return euler_angles::zyz_matrix( z1_deg, y2_deg, z3_deg );
+    return euler_angles::zyz_matrix( az1, ay, az3 );
   }
 
   vec3< double >
@@ -132,6 +132,13 @@ namespace {
   {
     return euler_angles::zyz_angles( m, eps );
   }
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    euler_angles_xyz_angles_overloads, euler_angles_xyz_angles, 1, 2)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    euler_angles_yzx_angles_overloads, euler_angles_yzx_angles, 1, 2)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    euler_angles_zyz_angles_overloads, euler_angles_zyz_angles, 1, 2)
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     gamma_complete_overloads,
@@ -235,16 +242,24 @@ namespace {
     def("superpose_kearsley_rotation", superpose_kearsley_rotation, (
       arg_("reference_sites"), arg_("other_sites")));
 
-    def( "euler_angles_xyz_matrix", euler_angles_xyz_matrix );
-    def( "euler_angles_xyz_angles", euler_angles_xyz_angles );
+    def( "euler_angles_xyz_matrix", euler_angles_xyz_matrix, (
+      arg_("ax"), arg_("ay"), arg_("az")));
+    def( "euler_angles_xyz_angles", euler_angles_xyz_angles,
+      euler_angles_xyz_angles_overloads((
+        arg_("m"), arg_("eps")=1.e-12)));
 
-    def( "euler_angles_yzx_matrix", euler_angles_yzx_matrix );
-    def( "euler_angles_yzx_angles", euler_angles_yzx_angles );
+    def( "euler_angles_yzx_matrix", euler_angles_yzx_matrix, (
+      arg_("ay"), arg_("az"), arg_("ax")));
+    def( "euler_angles_yzx_angles", euler_angles_yzx_angles,
+      euler_angles_yzx_angles_overloads((
+        arg_("m"), arg_("eps")=1.e-12)));
 
-    
-    def( "euler_angles_zyz_matrix", euler_angles_zyz_matrix );
-    def( "euler_angles_zyz_angles", euler_angles_zyz_angles );
-    
+    def( "euler_angles_zyz_matrix", euler_angles_zyz_matrix, (
+      arg_("az1"), arg_("ay"), arg_("az3")));
+    def( "euler_angles_zyz_angles", euler_angles_zyz_angles,
+      euler_angles_zyz_angles_overloads((
+        arg_("m"), arg_("eps")=1.e-12)));
+
     def("signed_phase_error",
       (double(*)(
         double const&, double const&, bool))
