@@ -189,6 +189,8 @@ namespace {
 
 #undef IOTBX_LOC
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 1)
+
     BOOST_PYTHON_FUNCTION_OVERLOADS(
       format_atom_record_overloads, format_atom_record, 1, 2)
 
@@ -264,7 +266,7 @@ namespace {
         .def("siguij_is_defined", &w_t::siguij_is_defined)
         .def("pdb_label_columns", &w_t::pdb_label_columns)
         .def("pdb_element_charge_columns", &w_t::pdb_element_charge_columns)
-        .def("id_str", &w_t::id_str)
+        .def("id_str", &w_t::id_str, id_str_overloads((arg_("pdbres")=false)))
         .def("format_atom_record", format_atom_record,
           format_atom_record_overloads((
             arg_("self"),

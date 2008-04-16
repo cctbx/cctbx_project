@@ -392,7 +392,8 @@ namespace hierarchy {
     format(
       char* result,
       hierarchy::atom const& atom,
-      bool add_model_and_segid=false);
+      bool add_model_and_segid=false,
+      bool pdbres=false);
 
     //! All relevant labels are extracted from the residue and its parents.
     /*! result must point to an array of size 37 (or greater).
@@ -665,7 +666,7 @@ namespace hierarchy {
 
       //! model="   1" pdb=" N   GLY A   1 " segid="S001"
       std::string
-      id_str() const;
+      id_str(bool pdbres=false) const;
 
       //! Not available in Python.
       /*! result must point to an array of size 81 (or greater).

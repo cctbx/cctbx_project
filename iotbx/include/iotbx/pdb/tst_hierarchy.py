@@ -913,40 +913,55 @@ def exercise_atom_id_str():
   a.set_name(new_name="NaMe")
   a.set_serial(new_serial="B1234")
   assert a.id_str() == 'pdb="NaMe           "'
+  assert a.id_str(pdbres=True) == 'pdbres="          "'
   ag = pdb.hierarchy.atom_group(altloc="A", resname="GLY")
   ag.append_atom(a)
   assert a.id_str() == 'pdb="NaMeAGLY       "'
+  assert a.id_str(True) == 'pdbres="GLY       "'
   rg = pdb.hierarchy.residue_group(resseq="1234", icode="J")
   rg.append_atom_group(ag)
   assert a.id_str() == 'pdb="NaMeAGLY  1234J"'
+  assert a.id_str(pdbres=True) == 'pdbres="GLY  1234J"'
   ch = pdb.hierarchy.chain(id="Ch")
   ch.append_residue_group(rg)
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J"'
+  assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J"'
   md = pdb.hierarchy.model()
   md.append_chain(ch)
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J"'
+  assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J"'
   md.id = "   0"
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J"'
+  assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J"'
   md.id = "1"
   assert a.id_str() == 'model="   1" pdb="NaMeAGLYCh1234J"'
+  assert a.id_str(pdbres=True) == 'model="   1" pdbres="GLYCh1234J"'
   md.id = "12345678"
   assert a.id_str() == 'model="12345678" pdb="NaMeAGLYCh1234J"'
+  assert a.id_str(pdbres=True) == 'model="12345678" pdbres="GLYCh1234J"'
   md.id = "123456789"
-  try: a.id_str()
-  except RuntimeError, e:
-    assert not show_diff(str(e),
-      'model id with excessive length (max 8): "123456789"')
-  else: raise Exception_expected
+  for pdbres in [False, True]:
+    try: a.id_str(pdbres=pdbres)
+    except RuntimeError, e:
+      assert not show_diff(str(e),
+        'model id with excessive length (max 8): "123456789"')
+    else: raise Exception_expected
   md.id = "12345678"
   a.segid = "1234"
   assert a.id_str() == 'model="12345678" pdb="NaMeAGLYCh1234J" segid="1234"'
+  assert a.id_str(pdbres=True) \
+      == 'model="12345678" pdbres="GLYCh1234J" segid="1234"'
   md.id = ""
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J" segid="1234"'
+  assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J" segid="1234"'
   rt = pdb.hierarchy.root()
   rt.append_model(md)
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J" segid="1234"'
+  assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J" segid="1234"'
   rt.append_model(pdb.hierarchy.model())
   assert a.id_str() == 'model="    " pdb="NaMeAGLYCh1234J" segid="1234"'
+  assert a.id_str(pdbres=True) \
+      == 'model="    " pdbres="GLYCh1234J" segid="1234"'
   #
   cf = ch.only_conformer()
   rd = cf.only_residue()
