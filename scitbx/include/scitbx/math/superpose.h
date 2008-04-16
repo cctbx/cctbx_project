@@ -2,6 +2,7 @@
 #define SCITBX_MATH_SUPERPOSE_H
 
 #include <scitbx/math/eigensystem.h>
+#include <scitbx/math/r3_rotation.h>
 #include <scitbx/array_family/shared_reductions.h>
 #include <scitbx/array_family/shared_algebra.h>
 #include <scitbx/array_family/ref_algebra.h>
@@ -166,7 +167,7 @@ superposition<FloatType>::kearsley_rotation(
 
   // The eigenvectors corresponding to the lowest four eignevalues form
   // a unit quaternion
-  return quaternion_to_rotmat(
+  return math::r3_rotation::quaternion_as_matrix(
       eigenvalues.vectors()[12],
       eigenvalues.vectors()[13],
       eigenvalues.vectors()[14],
@@ -194,27 +195,6 @@ superposition<FloatType>::decompose_array_of_vec3(
   }
 
   return array_of_coordinates;
-}
-
-
-template <typename FloatType>
-const mat3< FloatType >
-superposition<FloatType>::quaternion_to_rotmat(
-  FloatType const& q1,
-  FloatType const& q2,
-  FloatType const& q3,
-  FloatType const& q4 )
-{
-  return mat3< FloatType >(
-      q1*q1 + q2*q2 - q3*q3 - q4*q4,      // Element ( 1, 1 )
-      2.0 * ( q2*q3 + q1*q4 ),            // Element ( 1, 2 )
-      2.0 * ( q2*q4 - q1*q3 ),            // Element ( 1, 3 )
-      2.0 * ( q2*q3 - q1*q4 ),            // Element ( 2, 1 )
-      q1 * q1 + q3*q3 - q2*q2 - q4*q4,    // Element ( 2, 2 )
-      2.0 * ( q3*q4 + q1*q2 ),            // Element ( 2, 3 )
-      2.0 * ( q2*q4 + q1*q3 ),            // Element ( 3, 1 )
-      2.0 * ( q3*q4 - q1*q2 ),            // Element ( 3, 2 )
-      q1*q1 + q4*q4 - q2*q2 - q3*q3 );    // Element ( 3, 3 )
 }
 
 

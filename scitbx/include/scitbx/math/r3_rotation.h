@@ -182,6 +182,27 @@ namespace scitbx { namespace math {
     }
   };
 
+  //! Matrix from quaternion
+  template <typename FloatType>
+  const mat3< FloatType >
+  quaternion_as_matrix(
+    FloatType const& q1,
+    FloatType const& q2,
+    FloatType const& q3,
+    FloatType const& q4 )
+  {
+    return mat3< FloatType >(
+        q1*q1 + q2*q2 - q3*q3 - q4*q4,      // Element ( 1, 1 )
+        2.0 * ( q2*q3 + q1*q4 ),            // Element ( 1, 2 )
+        2.0 * ( q2*q4 - q1*q3 ),            // Element ( 1, 3 )
+        2.0 * ( q2*q3 - q1*q4 ),            // Element ( 2, 1 )
+        q1 * q1 + q3*q3 - q2*q2 - q4*q4,    // Element ( 2, 2 )
+        2.0 * ( q3*q4 + q1*q2 ),            // Element ( 2, 3 )
+        2.0 * ( q2*q4 + q1*q3 ),            // Element ( 3, 1 )
+        2.0 * ( q3*q4 - q1*q2 ),            // Element ( 3, 2 )
+        q1*q1 + q4*q4 - q2*q2 - q3*q3 );    // Element ( 3, 3 )
+  }
+
 }}} // namespace scitbx::math::r3_rotation
 
 #endif // SCITBX_MATH_R3_ROTATION_H
