@@ -64,6 +64,11 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       action="store_true",
       default=False,
       help="suppress SIGATM records when writing PDB file")
+    .option(None, "--no_cryst",
+      action="store_true",
+      default=False,
+      help="suppress crystallographic records (e.g. CRYST1 and SCALEn)"
+           " when writing PDB file")
   ).process(args=args)
   co = command_line.options
   for file_name in command_line.args:
@@ -75,8 +80,12 @@ def run(args, command_name="phenix.pdb.hierarchy"):
       duplicate_atom_labels_max_show=co.duplicate_atom_labels_max_show,
       level_id=co.details)
     if (co.write_pdb_file is not None):
+      if (not co.no_cryst):
+        print >> open(co.write_pdb_file, "wb"), \
+          "\n".join(pdb_objs.pdb_inp.crystallographic_section())
       pdb_objs.hierarchy.write_pdb_file(
         file_name=co.write_pdb_file,
+        open_append=(not co.no_cryst),
         append_end=True,
         interleaved_conf=co.interleaved_conf,
         atoms_reset_serial_first_value=co.reset_serial_first_value,
