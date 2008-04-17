@@ -255,6 +255,7 @@ class manager(manager_mixin):
          n_ordered_water              = 0,
          b_ordered_water              = 0.0,
          max_number_of_bins           = 30):
+    self.twin = False
     assert f_obs is not None
     assert f_obs.is_real_array()
     self.f_obs             = f_obs
