@@ -90,45 +90,51 @@ namespace {
 
   mat3< double >
   euler_angles_xyz_matrix(
-    const double ax,
-    const double ay,
-    const double az )
+      const double& ax,
+      const double& ay,
+      const double& az )
   {
     return euler_angles::xyz_matrix( ax, ay, az );
   }
 
   vec3< double >
-  euler_angles_xyz_angles( const mat3< double >& m, const double eps = 1.0e-12 )
+  euler_angles_xyz_angles(
+      const mat3< double >& m,
+      const double& eps = 1.0e-12 )
   {
     return euler_angles::xyz_angles( m, eps );
   }
 
   mat3< double >
   euler_angles_yzx_matrix(
-    const double ay,
-    const double az,
-    const double ax )
+      const double& ay,
+      const double& az,
+      const double& ax )
   {
     return euler_angles::yzx_matrix( ay, az, ax );
   }
 
   vec3< double >
-  euler_angles_yzx_angles( const mat3< double >& m, const double eps = 1.0e-12 )
+  euler_angles_yzx_angles(
+      const mat3< double >& m,
+      const double& eps = 1.0e-12 )
   {
     return euler_angles::yzx_angles( m, eps );
   }
 
   mat3< double >
   euler_angles_zyz_matrix(
-    const double az1,
-    const double ay,
-    const double az3 )
+      const double& az1,
+      const double& ay,
+      const double& az3 )
   {
     return euler_angles::zyz_matrix( az1, ay, az3 );
   }
 
   vec3< double >
-  euler_angles_zyz_angles( const mat3< double >& m, const double eps = 1.0e-12 )
+  euler_angles_zyz_angles(
+      const mat3< double >& m,
+      const double& eps = 1.0e-12 )
   {
     return euler_angles::zyz_angles( m, eps );
   }
