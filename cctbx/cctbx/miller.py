@@ -599,12 +599,14 @@ class set(crystal.symmetry):
       space_group_info = self.space_group_info())
 
   def combine(self, other, scale = True, scale_for_lones = 1):
+    assert self.anomalous_flag() == other.anomalous_flag()
     f1_c, f2_c = self.common_sets(other = other)
     f1_l, f2_l = self.lone_sets(other = other)
     scale_k1 = 1
     if(scale):
-      scale_k1 = flex.sum(flex.abs(f1_c.data())*flex.abs(f2_c.data())) / \
-                 flex.sum(flex.abs(f2_c.data())*flex.abs(f2_c.data()))
+      den = flex.sum(flex.abs(f2_c.data())*flex.abs(f2_c.data()))
+      if(den != 0):
+        scale_k1 = flex.sum(flex.abs(f1_c.data())*flex.abs(f2_c.data())) / den
     result_data = f1_c.data() + f2_c.data()*scale_k1
     result_data.extend(f1_l.data()*scale_for_lones)
     result_data.extend(f2_l.data()*scale_k1*scale_for_lones)
@@ -1001,9 +1003,11 @@ class set(crystal.symmetry):
 
   def concatenate(self, other):
     assert self.is_similar_symmetry(other)
+    assert self.anomalous_flag() == other.anomalous_flag()
     return set(
       crystal_symmetry = self,
-      indices = self._indices.concatenate(other.indices()))
+      indices          = self._indices.concatenate(other.indices()),
+      anomalous_flag   = self.anomalous_flag())
 
 def build_set(crystal_symmetry, anomalous_flag, d_min, d_max=None):
   result = set(
