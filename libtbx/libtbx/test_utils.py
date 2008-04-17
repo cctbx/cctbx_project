@@ -337,21 +337,25 @@ def _check_command_output(
   assert [lines, file_name].count(None) == 1
   if (lines is None):
     lines = open(file_name).read().splitlines()
-  def show():
+  def show_and_raise(detected):
     if (show_command_if_error):
       print show_command_if_error
       print
     print "\n".join(lines)
+    msg = detected + " detected in output"
+    if (file_name is None):
+      msg += "."
+    else:
+      msg += ": " + show_string(file_name)
+    raise RunCommandError(msg)
   have_sorry = False
   for line in lines:
     if (line == "Traceback (most recent call last):"):
-      show()
-      raise RunCommandError("Traceback detected in output.")
+      show_and_raise(detected="Traceback")
     if (line.startswith("Sorry:")):
       have_sorry = True
   if (have_sorry and not sorry_expected):
-    show()
-    raise RunCommandError('"Sorry:" detected in output.')
+    show_and_raise(detected='"Sorry:"')
 
 def run_command(
       command,
@@ -420,17 +424,17 @@ directly from within the same Python process running the unit tests.
   else:
     easy_run.call(command=command)
     cmd_result = None
+  for file_name in [log_file_name, stdout_file_name]:
+    if (file_name is None or not os.path.isfile(file_name)): continue
+    _check_command_output(
+      file_name=file_name,
+      show_command_if_error=show_command_if_error,
+      sorry_expected=sorry_expected)
   for file_name in all_file_names:
     if (file_name is None): continue
     if (not os.path.isfile(file_name)):
       raise RunCommandError(
         "Missing output file: %s" % show_string(file_name))
-  for file_name in [log_file_name, stdout_file_name]:
-    if (file_name is None): continue
-    _check_command_output(
-      file_name=file_name,
-      show_command_if_error=show_command_if_error,
-      sorry_expected=sorry_expected)
   if (verbose > 1 and cmd_result is not None):
     print "\n".join(cmd_result.stdout_lines)
     print
