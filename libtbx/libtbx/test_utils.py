@@ -404,6 +404,8 @@ directly from within the same Python process running the unit tests.
       raise RunCommandError(
         "Unable to remove file: %s" % show_string(file_name))
   if (buffered):
+    sys.stdout.flush()
+    sys.stderr.flush()
     cmd_result = easy_run.fully_buffered(command=command)
     if (len(cmd_result.stderr_lines) != 0):
       if (verbose == 0):
@@ -443,6 +445,7 @@ directly from within the same Python process running the unit tests.
       introspection.show_stack(
         frames_back=1, reverse=True, prefix="INFO_LOG_STDOUT_DIFFERENCE: ")
       print "ERROR_LOG_STDOUT_DIFFERENCE"
+  sys.stdout.flush()
   return cmd_result
 
 def exercise():
