@@ -497,6 +497,29 @@ class _input(boost.python.injector, ext.input):
         scatterers=loop.scatterers))
     return result
 
+class rewrite_normalized(object):
+
+  def __init__(self,
+        input_file_name,
+        output_file_name,
+        keep_original_crystallographic_section=False,
+        keep_original_atom_serial=False):
+    self.pdb_inp = input(file_name=input_file_name)
+    if (keep_original_crystallographic_section):
+      print >> open(output_file_name, "wb"), \
+        "\n".join(self.pdb_inp.crystallographic_section())
+      crystal_symmetry = None
+    else:
+      crystal_symmetry = self.pdb_inp.crystal_symmetry()
+    self.hierarchy = self.pdb_inp.construct_hierarchy()
+    if (not keep_original_atom_serial):
+      self.hierarchy.atoms().reset_serial()
+    self.hierarchy.write_pdb_file(
+      file_name=output_file_name,
+      open_append=keep_original_crystallographic_section,
+      append_end=True,
+      crystal_symmetry=crystal_symmetry)
+
 # Table of structures split into multiple PDB files.
 # Assembled manually.
 # Based on 46377 PDB files as of Tuesday Oct 02, 2007
