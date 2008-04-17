@@ -858,6 +858,7 @@ class process_pdb_file_srv(object):
     if(ener_lib is None): self.ener_lib = monomer_library.server.ener_lib()
     else: self.ener_lib = ener_lib
     if(self.log is None): self.log = sys.stdout
+    if(self.log == False): self.log = None
 
   def process_pdb_files(self, pdb_file_names = None, raw_records = None):
     assert [pdb_file_names, raw_records].count(None) == 1
@@ -895,7 +896,8 @@ class process_pdb_file_srv(object):
       crystal_symmetry         = self.crystal_symmetry,
       force_symmetry           = True,
       log                      = self.log)
-    print >> self.log
+    if(self.log):
+      print >> self.log
     msg = processed_pdb_file.all_chain_proxies.fatal_problems_message()
     if(msg is not None and self.stop_for_unknowns):
        msg = "\n  ".join([msg,

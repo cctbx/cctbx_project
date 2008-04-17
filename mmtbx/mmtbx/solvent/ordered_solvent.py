@@ -95,6 +95,9 @@ master_params = iotbx.phil.parse("""\
     .type = bool
   n_cycles = 1
     .type = int
+  ignore_final_filtering_step = False
+    .type = bool
+    .expert_level=2
 """)
 
 class water_ids(object):

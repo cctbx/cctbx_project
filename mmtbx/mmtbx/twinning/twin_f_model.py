@@ -912,6 +912,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                map_types = master_params.extract().detwin.map_types
                 ):
     self.alpha_beta_params=None
+    self.twin = True
     self.sfg_params = sf_and_grads_accuracy_params
     self.target_name="twin_lsq_f"
     self._target_attributes = target_attributes()
