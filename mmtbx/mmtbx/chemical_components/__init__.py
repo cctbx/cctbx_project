@@ -65,6 +65,12 @@ def get_smiles(code):
   try: return item.descriptor
   except: return ""
 
+def get_type(code):
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  desc = cif.get("_chem_comp", {})[0]
+  return getattr(desc, "type", "")
+
 def get_name(code):
   cif = get_cif_dictionary(code)
   if not cif: return cif
