@@ -1,5 +1,5 @@
 from __future__ import division
-from libtbx.str_utils import size_as_string_with_commas
+from libtbx import Auto
 import sys, os
 
 def varnames(frames_back=0):
@@ -144,6 +144,7 @@ class virtual_memory_info(proc_file_reader):
 
   def show(self, out=None, prefix="", show_max=False):
     if (out is None): out = sys.stdout
+    from libtbx.str_utils import size_as_string_with_commas
     vms = size_as_string_with_commas(self.virtual_memory_size())
     rss = size_as_string_with_commas(self.resident_set_size())
     sts = size_as_string_with_commas(self.stack_size())
@@ -195,22 +196,92 @@ class machine_memory_info(proc_file_reader):
 
   def show(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
+    from libtbx.str_utils import size_as_string_with_commas
     mt = size_as_string_with_commas(self.memory_total())
     mf = size_as_string_with_commas(self.memory_free())
     fmt = "%%%ds" % max(len(mt), len(mf))
     print >> out, prefix+"Memory total: ", fmt % mt
     print >> out, prefix+"Memory free:  ", fmt % mf
 
+_number_of_processors = Auto
+
+def number_of_processors(return_value_if_unknown=None):
+  global _number_of_processors
+  if (_number_of_processors is Auto):
+    _number_of_processors = None
+    cpuinfo = "/proc/cpuinfo" # Linux
+    if (os.path.isfile(cpuinfo)):
+      n = 0
+      for line in open(cpuinfo).read().splitlines():
+        if (not line.startswith("processor")): continue
+        line = line[9:].replace(" ", "").replace("\t", "")
+        if (not line.startswith(":")): continue
+        n += 1
+      if (n != 0):
+        _number_of_processors = n
+    if (_number_of_processors is None):
+      cmd = "/usr/sbin/system_profiler" # Mac OS X
+      if (os.path.isfile(cmd)):
+        keys = [
+          "Total Number Of Cores: ",
+          "Number Of CPUs: ",
+          "Number Of Processors: "]
+        ns = [None] * len(keys)
+        from libtbx import easy_run
+        for line in easy_run.fully_buffered(
+                      command=cmd+" SPHardwareDataType").stdout_lines:
+          line = line.strip()
+          for i,key in enumerate(keys):
+            if (line.startswith(key)):
+              try: n = int(line[len(key):])
+              except ValueError: continue
+              if (n > 0 and ns[i] is None):
+                ns[i] = n
+        for n in ns:
+          if (n is not None):
+            _number_of_processors = n
+            break
+    if (_number_of_processors is None):
+      n = os.environ.get("NUMBER_OF_PROCESSORS") # Windows
+      if (n is not None):
+        try: n = int(n)
+        except ValueError: pass
+        else: _number_of_processors = n
+    if (_number_of_processors is None):
+      cmd = "/sbin/hinv" # IRIX
+      if (os.path.isfile(cmd)):
+        from libtbx import easy_run
+        for line in easy_run.fully_buffered(command=cmd).stdout_lines:
+          if (line.endswith(" Processors")):
+            try: n = int(line.split(" ", 1)[0])
+            except ValueError: continue
+            if (n > 0):
+              _number_of_processors = n
+              break
+  if (_number_of_processors is not None):
+    return _number_of_processors
+  return return_value_if_unknown
+
 if (__name__ == "__main__"):
   def exercise_varnames(a, b, c):
     d = 0
     return varnames()
   assert exercise_varnames(1,2,3) == ("a", "b", "c")
+  #
+  assert _number_of_processors is Auto
+  print "number of processors:", number_of_processors(
+    return_value_if_unknown="unknown")
+  assert _number_of_processors is not Auto
+  assert number_of_processors() is _number_of_processors
+  #
   virtual_memory_info().show()
   buffer = [0]*1000000
   virtual_memory_info().update_max()
   del buffer
   virtual_memory_info().show(show_max=True)
+  #
   machine_memory_info().show()
+  #
   assert str(caller_location()).find("introspection") > 0
+  #
   print "OK"
