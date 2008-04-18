@@ -12,6 +12,14 @@
 #include <boost/python/args.hpp>
 #include <boost/cstdint.hpp>
 
+// for number_of_processors()
+#if !defined(_MSC_VER)
+#include <unistd.h>
+#endif
+#if defined(__APPLE_CC__)
+#include <sys/sysctl.h>
+#endif
+
 #if defined(__linux) \
  || defined(__alpha__) \
  || defined(__host_mips) \
@@ -37,6 +45,26 @@
 #endif
 
 namespace {
+
+  long
+  number_of_processors()
+  {
+#if defined(CTL_HW) && defined(HW_NCPU)
+    int mib[2];
+    mib[0] = CTL_HW;
+    mib[1] = HW_NCPU;
+    int ncpu;
+    size_t len = sizeof(ncpu);
+    sysctl(mib, 2, &ncpu, &len, 0, 0);
+    return static_cast<long>(ncpu);
+#elif defined(_SC_NPROCESSORS_ONLN)
+    return sysconf(_SC_NPROCESSORS_ONLN);
+#elif defined(_SC_NPROCESSORS_CONF)
+    return sysconf(_SC_NPROCESSORS_CONF);
+#else
+    return 0L;
+#endif
+  }
 
   bool
   libtbx_introspection_show_stack()
@@ -460,6 +488,7 @@ namespace boost_python_meta_ext { struct holder {}; }
 BOOST_PYTHON_MODULE(boost_python_meta_ext)
 {
   using namespace boost::python;
+  def("number_of_processors", number_of_processors);
   def("boost_adptbx_libc_backtrace", boost_adptbx_libc_backtrace);
   def("libtbx_introspection_show_stack", libtbx_introspection_show_stack);
   def("platform_info", platform_info);

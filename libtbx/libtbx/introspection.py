@@ -209,16 +209,23 @@ def number_of_processors(return_value_if_unknown=None):
   global _number_of_processors
   if (_number_of_processors is Auto):
     _number_of_processors = None
-    cpuinfo = "/proc/cpuinfo" # Linux
-    if (os.path.isfile(cpuinfo)):
-      n = 0
-      for line in open(cpuinfo).read().splitlines():
-        if (not line.startswith("processor")): continue
-        line = line[9:].replace(" ", "").replace("\t", "")
-        if (not line.startswith(":")): continue
-        n += 1
+    try: import boost.python
+    except ImportError: pass
+    else:
+      n = boost.python.ext.number_of_processors()
       if (n != 0):
         _number_of_processors = n
+    if (_number_of_processors is None):
+      cpuinfo = "/proc/cpuinfo" # Linux
+      if (os.path.isfile(cpuinfo)):
+        n = 0
+        for line in open(cpuinfo).read().splitlines():
+          if (not line.startswith("processor")): continue
+          line = line[9:].replace(" ", "").replace("\t", "")
+          if (not line.startswith(":")): continue
+          n += 1
+        if (n != 0):
+          _number_of_processors = n
     if (_number_of_processors is None):
       cmd = "/usr/sbin/system_profiler" # Mac OS X
       if (os.path.isfile(cmd)):
