@@ -873,11 +873,11 @@ class manager(manager_mixin):
                         data       = self.scale_k1()*self.f_model().data())
 
   def f_model_scaled_with_k1_t(self):
-    return miller.array(miller_set = self.f_obs_t(),
+    return miller.array(miller_set = self.f_obs_t,
                         data       = self.scale_k1_t()*self.f_model_t().data())
 
   def f_model_scaled_with_k1_w(self):
-    return miller.array(miller_set = self.f_obs_w(),
+    return miller.array(miller_set = self.f_obs_w,
                         data       = self.scale_k1_w()*self.f_model_w().data())
 
   def f_model_w(self):
