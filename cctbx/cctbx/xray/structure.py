@@ -281,6 +281,8 @@ class structure(crystal.special_position_settings):
       s.set_occupancies(q_new, selection)
 
   def set_occupancies(self, value, selection = None):
+    if(selection is not None and isinstance(selection, flex.size_t)):
+      selection = flex.bool(self._scatterers.size(), selection)
     s = self._scatterers
     if(hasattr(value, 'size')):
       values = value
@@ -617,7 +619,6 @@ class structure(crystal.special_position_settings):
       scatterers=self._scatterers.select(selection),
       site_symmetry_table=self._site_symmetry_table.select(selection),
       scattering_type_registry=self._scattering_type_registry)
-
 
   def select_inplace(self, selection):
     assert self.scatterers() is not None
