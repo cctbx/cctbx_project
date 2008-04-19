@@ -7,6 +7,7 @@ from scitbx import matrix
 from libtbx import adopt_init_args
 from mmtbx.refinement import print_statistics
 import mmtbx.utils
+from cctbx import maptbx
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -208,3 +209,55 @@ def run(fmodel, model, log, params = None):
   hd_sel = model.xray_structure.hd_selection()
   sel_big.set_selected(~hd_sel, False)
   model.xray_structure.set_u_iso(value = u_iso_mean, selection = sel_big)
+
+def run_flip_hd(fmodel, model, log, params = None):
+  if(params is None):
+    params = all_master_params().extract()
+  params.map_next_to_model.min_model_peak_dist = 0 # XXX
+  print_statistics.make_sub_header("find peak-candidates", out = log)
+  xray_structure_dc = fmodel.xray_structure.deep_copy_scatterers()
+  xh_connectivity_table = model.xh_connectivity_table()
+  scatterers = fmodel.xray_structure.scatterers()
+  scattering_types = scatterers.extract_scattering_types()
+  fmodel_dc = fmodel.deep_copy()
+  for h_in_residue in model.refinement_flags.group_h:
+    #print list(h_in_residue)
+    x_atoms = []
+    for i_seq_h in h_in_residue:
+      for xh_connectivity_table_i in xh_connectivity_table:
+        if(i_seq_h in xh_connectivity_table_i[:2]):
+          x_atoms.append(xh_connectivity_table_i[0])
+          break
+    #print x_atoms
+    xray_structure_dc_dc = xray_structure_dc.deep_copy_scatterers()
+    xray_structure_dc_dc.set_occupancies(value = 0, selection = h_in_residue)
+    fmodel_dc.update_xray_structure(
+      xray_structure = xray_structure_dc_dc,
+      update_f_calc  = True,
+      update_f_mask  = True)
+    #
+    fft_map = fmodel_dc.electron_density_map(
+      map_type          = "mFo-DFc",
+      resolution_factor = 1/4.,
+      symmetry_flags    = maptbx.use_space_group_symmetry)
+    fft_map.apply_sigma_scaling()
+    fft_map_data = fft_map.real_map_unpadded()
+    for i_seq_h in h_in_residue:
+      ed_val = maptbx.eight_point_interpolation(fft_map_data,
+          scatterers[i_seq_h].site)
+      assert fmodel_dc.xray_structure.scatterers()[i_seq_h].occupancy == 0
+      if(ed_val < 0 and scattering_types[i_seq_h]=='D' or
+         ed_val > 0 and scattering_types[i_seq_h]=='H'):
+        #print >> log, "%3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
+          model.atom_attributes_list[i_seq_h].pdb_format()
+      #if(abs(ed_val) < 1.0):
+        #print >> log, "*** %3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
+      #  model.atom_attributes_list[i_seq_h].pdb_format()
+      #  for map_cutoff in [3, -3]:
+      #    params.map_cutoff = map_cutoff
+      #    peaks = find_hydrogen_peaks(
+      #      fmodel               = fmodel,
+      #      atom_attributes_list = model.atom_attributes_list,
+      #      params               = params,
+      #      log                  = log)
+
