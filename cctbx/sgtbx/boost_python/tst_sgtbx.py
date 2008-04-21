@@ -1063,6 +1063,14 @@ def exercise_space_group_type():
       g_out2 = sgtbx.space_group(sgtbx.space_group_symbols(ehm)) \
         .change_basis(sgtbx.change_of_basis_op(cb[:-1]))
       assert g_out2 == g_out
+  #
+  # ensure universal_hermann_mauguin_symbol ":H" is consistently upper-case
+  t = sgtbx.space_group_type("r -3 M :h (3*z,-x+2*z,-y+z)")
+  assert t.universal_hermann_mauguin_symbol() == "R -3 m :H (3*z,-x+2*z,-y+z)"
+  assert t.lookup_symbol() == "R -3 m :H (3*z,-x+2*z,-y+z)"
+  t = sgtbx.space_group_type("r -3 M :h")
+  assert t.universal_hermann_mauguin_symbol() == "R -3 m :H"
+  assert t.lookup_symbol() == "R -3 m :H"
 
 def exercise_phase_info():
   phase_info = sgtbx.phase_info

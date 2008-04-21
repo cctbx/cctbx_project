@@ -822,7 +822,20 @@ namespace cctbx { namespace sgtbx {
 
   namespace {
 
-    inline
+    std::string
+    uhm_reference_symbol(std::size_t space_group_number)
+    {
+      std::string result(
+        reference_settings::hermann_mauguin_symbol_table(space_group_number));
+      std::size_t i = result.size();
+      if (i > 1) {
+        i--;
+        std::size_t j = i--;
+        if (result[i] == ':' && result[j] == 'h') result[j] = 'H';
+      }
+      return result;
+    }
+
     std::string
     uhm_change_of_basis_symbol(change_of_basis_op const& cb_op)
     {
@@ -836,8 +849,7 @@ namespace cctbx { namespace sgtbx {
   {
     if (tidy_cb_op) {
       if (uhm_symbol_tidy_true_.size() == 0) {
-        uhm_symbol_tidy_true_ = std::string(
-          reference_settings::hermann_mauguin_symbol_table(number_));
+        uhm_symbol_tidy_true_ = uhm_reference_symbol(number_);
         if (!cb_op_.is_identity_op()) {
           if (cb_op_is_tidy_) {
             uhm_symbol_tidy_true_ += uhm_change_of_basis_symbol(cb_op_);
@@ -866,8 +878,7 @@ namespace cctbx { namespace sgtbx {
     }
     else {
       if (uhm_symbol_tidy_false_.size() == 0) {
-        uhm_symbol_tidy_false_ = std::string(
-          reference_settings::hermann_mauguin_symbol_table(number_));
+        uhm_symbol_tidy_false_ = uhm_reference_symbol(number_);
         if (!cb_op_.is_identity_op()) {
           uhm_symbol_tidy_false_ += uhm_change_of_basis_symbol(cb_op_);
         }
