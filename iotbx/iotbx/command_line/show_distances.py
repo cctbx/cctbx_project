@@ -2,7 +2,6 @@ from cctbx.crystal import coordination_sequences
 from cctbx import xray
 from cctbx import crystal
 from iotbx.kriber import strudat
-from iotbx import pdb
 import iotbx.pdb.interpretation
 from iotbx.option_parser import option_parser
 import sys
@@ -75,10 +74,10 @@ def run(args):
   else:
     coseq_dict = None
   for file_name in command_line.args:
-    if (pdb.interpretation.is_pdb_file(file_name=file_name)):
-      stage_1 = pdb.interpretation.stage_1(file_name=file_name)
-      xray_structure = stage_1.extract_xray_structure(
-        unknown_scattering_type_substitute="?")
+    if (iotbx.pdb.interpretation.is_pdb_file(file_name=file_name)):
+      xray_structure = iotbx.pdb.input(
+        file_name=file_name).xray_structure_simple(
+          enable_scattering_type_unknown=True)
       display(
         distance_cutoff=command_line.options.distance_cutoff,
         show_cartesian=command_line.options.show_cartesian,
