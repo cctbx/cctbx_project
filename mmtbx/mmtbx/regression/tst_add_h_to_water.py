@@ -78,11 +78,11 @@ ATOM     22  OXT PHE A   1      12.531  13.314  10.864  1.00  2.00           O
 ATOM     23  N   PHE A   1       9.929  10.880  10.444  1.00  2.00           N
 ATOM     24  CA  PHE A   1      11.008  11.488  11.213  1.00  2.00           C
 ATOM     25  O   HOH Q   1      15.736  13.074   8.108  1.00  4.00           O
-ATOM     26 D2   HOH Q   1      16.514  12.892   7.541  1.00  4.00           D
-ATOM     27  D1  HOH Q   1      14.941  12.899   7.563  1.00  4.00           D
+ATOM     26  D1  HOH Q   1      14.941  12.899   7.563  1.00  4.00           D
+ATOM     27 D2   HOH Q   1      16.514  12.892   7.541  1.00  4.00           D
 ATOM     28  O   HOH S   1      14.337  16.126   9.974  1.00  5.00           O
-ATOM     29 H1   HOH S   1      14.734  15.233  10.041  1.00  5.00           H
-ATOM     30  H2  HOH S   1      14.968  16.680   9.469  1.00  5.00           H
+ATOM     29  H2  HOH S   1      14.968  16.680   9.469  1.00  5.00           H
+ATOM     30 H1   HOH S   1      14.734  15.233  10.041  1.00  5.00           H
 ATOM     31  O   HOH S   2       9.491  12.823  15.494  1.00  6.00           O
 ATOM     32 H1   HOH S   2       8.899  13.604  15.494  1.00  6.00           H
 ATOM     33 H2   HOH S   2       8.914  12.031  15.494  1.00  6.00           H
@@ -98,7 +98,6 @@ def exercise_01():
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file_name])
   xray_structure = processed_pdb_file.xray_structure()
-  aal = processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   #
   geometry = processed_pdb_file.geometry_restraints_manager(
     show_energies = False, assume_hydrogens_all_missing = True)
@@ -109,11 +108,13 @@ def exercise_01():
     processed_pdb_files_srv = processed_pdb_files_srv,
     restraints_manager      = restraints_manager,
     xray_structure          = xray_structure,
-    atom_attributes_list    = aal,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
     log                     = None)
   ####
   model.add_hydrogens()
-  result = model.write_pdb_file()
+  result = StringIO()
+  model.write_pdb_file(out=result)
+  result = result.getvalue().splitlines()
   ####
   result1 = []
   for r1 in result:
@@ -220,15 +221,15 @@ Filter by distance & map next to the model:
    number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
    mapped sites are within: 0.980 - 1.009
 
-peak=   22.181 closest distance to " O   HOH     3 " =    0.989
-peak=   21.092 closest distance to " O   HOH     3 " =    0.980
-peak=   22.511 closest distance to " O   HOH     2 " =    0.999
-peak=   21.318 closest distance to " O   HOH     2 " =    0.997
-peak=   20.578 closest distance to " O   HOH     6 " =    1.009
-peak=   23.103 closest distance to " O   HOH     1 " =    0.990
-peak=   20.801 closest distance to " O   HOH     1 " =    0.981
-peak=   22.035 closest distance to " O   HOH     5 " =    0.987
-peak=   21.254 closest distance to " O   HOH     4 " =    0.998
+peak=   23.103 closest distance to pdb=" O   HOH     1 " =    0.990
+peak=   20.801 closest distance to pdb=" O   HOH     1 " =    0.981
+peak=   22.511 closest distance to pdb=" O   HOH     2 " =    0.999
+peak=   21.318 closest distance to pdb=" O   HOH     2 " =    0.997
+peak=   22.181 closest distance to pdb=" O   HOH     3 " =    0.989
+peak=   21.092 closest distance to pdb=" O   HOH     3 " =    0.980
+peak=   21.254 closest distance to pdb=" O   HOH     4 " =    0.998
+peak=   22.035 closest distance to pdb=" O   HOH     5 " =    0.987
+peak=   20.578 closest distance to pdb=" O   HOH     6 " =    1.009
 
                   ----------6D rigid body fit of HOH----------
 
@@ -273,10 +274,9 @@ def exercise_02():
     mon_lib_srv              = mon_lib_srv,
     ener_lib                 = ener_lib,
     file_name                = "m_bad.pdb")
-  aal = processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   model = mmtbx.model.manager(
     xray_structure             = xrs_part,
-    atom_attributes_list       = aal,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
     log                        = None)
   #
   out = StringIO()

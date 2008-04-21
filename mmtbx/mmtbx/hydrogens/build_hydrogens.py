@@ -1,22 +1,13 @@
+from mmtbx.monomer_library import pdb_interpretation
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
-import sys, math
-from libtbx.test_utils import approx_equal
 from iotbx import pdb
-from cctbx.array_family import flex
-from mmtbx.monomer_library import pdb_interpretation
 from cctbx.geometry_restraints.lbfgs import lbfgs as geometry_restraints_lbfgs
 import scitbx.lbfgs
+from libtbx.test_utils import approx_equal
 import libtbx.load_env
-import os
-
-
-def print_h(site):
-  s1 = "ATOM      1  H   XXX H   1    "
-  s3 = "  1.00 15.00           H"
-  s2 = "%8.3f%8.3f%8.3f"%(site[0],site[1],site[2])
-  print s1+s2+s3
+import math
+import sys, os
 
 
 def add_ring_h(site_0,site_1,site_2,d0,alpha,beta):
@@ -296,18 +287,15 @@ def run(file_name):
     file_name             = file_name,
     keep_monomer_mappings = True,
     log                   = sys.stdout).all_chain_proxies
-  pdb_atoms = processed.stage_1.atom_attributes_list
   total_missing = 0.0
   still_missing = 0.0
   still_missing_h = []
   atom_number = 0
   file_name_ =  os.path.basename(file_name)+"_h"
   file = open(file_name_,"w")
-  crystal_symmetry = processed.stage_1.crystal_symmetry
 
-  for monomer_mapping in processed.monomer_mappings():
+  for monomer_mapping in processed.all_monomer_mappings:
     atom_number = write_atoms(monomer_mapping,
-                              pdb_atoms,
                               atom_number,
                               file)
     bond_list = monomer_mapping.monomer.bond_list
@@ -329,10 +317,9 @@ def run(file_name):
         if(h == bl.atom_id_1 or h == bl.atom_id_2):
           for atom in (bl.atom_id_1,bl.atom_id_2):
             if(h != atom): target_atom_name = atom
-          for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
+          for atom_name,atom in monomer_mapping.expected_atoms.items():
             if(atom_name == target_atom_name):
-              target_site = pdb_atoms[i_seq].coordinates
-              #print atom_name, pdb_atoms[i_seq].name, target_site
+              target_site = atom.xyz
           bond_dist = bl.value_dist
           format="missing %4s: bond: %4s %4s bond distance = %5.3f"
           print format % (h, bl.atom_id_1, bl.atom_id_2, bl.value_dist)
@@ -380,19 +367,18 @@ def run(file_name):
             site_0 = None
             site_1 = None
             site_2 = None
-            for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
+            for atom_name,atom in monomer_mapping.expected_atoms.items():
               if(atom_name == targets[0]):
-                site_0 = pdb_atoms[i_seq].coordinates
+                site_0 = atom.xyz
               if(atom_name == targets[1]):
-                site_1 = pdb_atoms[i_seq].coordinates
+                site_1 = atom.xyz
               if(atom_name == targets[2]):
-                site_2 = pdb_atoms[i_seq].coordinates
+                site_2 = atom.xyz
             alpha = angles[0][0]
             beta  = angles[1][0]
             assert site_0 is not None and site_1 is not None and site_2 is not None
             xyz = add_ring_h(site_0,site_1,site_2,bond_dist,alpha,beta)
             atom_number = write_atoms(monomer_mapping,
-                                      pdb_atoms,
                                       atom_number,
                                       file,
                                       new_atom_name        = h,
@@ -415,26 +401,24 @@ def run(file_name):
           site_0 = None
           site_1 = None
           site_2 = None
-          for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
+          for atom_name,atom in monomer_mapping.expected_atoms.items():
             if(atom_name == "CA"):
-              site_0 = pdb_atoms[i_seq].coordinates
+              site_0 = atom.xyz
             if(atom_name == "C"):
-              site_1 = pdb_atoms[i_seq].coordinates
+              site_1 = atom.xyz
             if(atom_name == "N"):
-              site_2 = pdb_atoms[i_seq].coordinates
+              site_2 = atom.xyz
           if(site_0 is not None and site_1 is not None and site_2 is not None):
             for angle in angles:
               if("C" in angle and "CA" in angle): alpha = angle[0]
               if("N" in angle and "CA" in angle): beta  = angle[0]
             xyz = add_ca_ha1_and_ha2(site_0,site_1,site_2,bond_dist,alpha,beta)
             atom_number = write_atoms(monomer_mapping,
-                                      pdb_atoms,
                                       atom_number,
                                       file,
                                       new_atom_name        = "HA1",
                                       new_atom_coordinates = xyz[0])
             atom_number = write_atoms(monomer_mapping,
-                                      pdb_atoms,
                                       atom_number,
                                       file,
                                       new_atom_name        = "HA2",
@@ -447,15 +431,15 @@ def run(file_name):
           site_1 = None
           site_2 = None
           site_3 = None
-          for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
+          for atom_name,atom in monomer_mapping.expected_atoms.items():
             if(atom_name == "CA"):
-              site_0 = pdb_atoms[i_seq].coordinates
+              site_0 = atom.xyz
             if(atom_name == "C"):
-              site_1 = pdb_atoms[i_seq].coordinates
+              site_1 = atom.xyz
             if(atom_name == "N"):
-              site_2 = pdb_atoms[i_seq].coordinates
+              site_2 = atom.xyz
             if(atom_name == "CB" or atom_name == "HA1" or atom_name == "HA2"):
-              site_3 = pdb_atoms[i_seq].coordinates
+              site_3 = atom.xyz
               cb_or_ha1_or_ha2 = atom_name
           if(site_0 is not None and site_1 is not None and site_2 is not None):
             for angle in angles:
@@ -464,7 +448,6 @@ def run(file_name):
               if("CA" in angle and cb_or_ha1_or_ha2 in angle): gamma = angle[0]
             xyz = add_ca_ha1_or_ha2(site_0,site_1,site_2,site_3,bond_dist,alpha,beta,gamma)
             atom_number = write_atoms(monomer_mapping,
-                                      pdb_atoms,
                                       atom_number,
                                       file,
                                       new_atom_name        = h,
@@ -500,27 +483,24 @@ def run(file_name):
                 site_0 = None
                 site_1 = None
                 site_2 = None
-                #print monomer_mapping.expected_atom_i_seqs.items()
-                for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
+                for atom_name,atom in monomer_mapping.expected_atoms.items():
                   if(atom_name == targets[0]):
-                    site_0 = pdb_atoms[i_seq].coordinates
+                    site_0 = atom.xyz
                   if(atom_name == targets[1]):
-                    site_1 = pdb_atoms[i_seq].coordinates
+                    site_1 = atom.xyz
                   if(atom_name == targets[2]):
-                    site_2 = pdb_atoms[i_seq].coordinates
+                    site_2 = atom.xyz
                 if(site_0 is not None and site_1 is not None and site_2 is not None):
                   for angle in angles:
                     if(targets[1] in angle and targets[0] in angle): alpha = angle[0]
                     if(targets[0] in angle and targets[2] in angle): beta  = angle[0]
                   xyz = add_ca_ha1_and_ha2(site_0,site_1,site_2,bond_dist,alpha,beta)
                   atom_number = write_atoms(monomer_mapping,
-                                      pdb_atoms,
                                       atom_number,
                                       file,
                                       new_atom_name        = h,
                                       new_atom_coordinates = xyz[0])
                   atom_number = write_atoms(monomer_mapping,
-                                      pdb_atoms,
                                       atom_number,
                                       file,
                                       new_atom_name        = targets[3],
@@ -536,15 +516,15 @@ def run(file_name):
                 alpha  = None
                 beta   = None
                 gamma  = None
-                for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
+                for atom_name,atom in monomer_mapping.expected_atoms.items():
                   if(atom_name == targets[0]):
-                    site_0 = pdb_atoms[i_seq].coordinates
+                    site_0 = atom.xyz
                   if(atom_name == targets[1]):
-                    site_1 = pdb_atoms[i_seq].coordinates
+                    site_1 = atom.xyz
                   if(atom_name == targets[2]):
-                    site_2 = pdb_atoms[i_seq].coordinates
+                    site_2 = atom.xyz
                   if(atom_name == h or atom_name == targets[3]):
-                    site_3 = pdb_atoms[i_seq].coordinates
+                    site_3 = atom.xyz
                     cb_or_ha1_or_ha2 = atom_name
                 if(site_0 is not None and site_1 is not None and site_2 is not None and site_3 is not None):
                   for angle in angles:
@@ -554,7 +534,6 @@ def run(file_name):
                   if(alpha is not None and beta is not None and gamma is not None):
                     xyz = add_ca_ha1_or_ha2(site_0,site_1,site_2,site_3,bond_dist,alpha,beta,gamma)
                     atom_number = write_atoms(monomer_mapping,
-                                      pdb_atoms,
                                       atom_number,
                                       file,
                                       new_atom_name        = h,
@@ -587,11 +566,11 @@ def run(file_name):
         for target in targets:
           site_0 = None
           site_1 = None
-          for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
+          for atom_name,atom in monomer_mapping.expected_atoms.items():
             if(atom_name == target[0]):
-              site_0 = pdb_atoms[i_seq].coordinates
+              site_0 = atom.xyz
             if(atom_name == target[1]):
-              site_1 = pdb_atoms[i_seq].coordinates
+              site_1 = atom.xyz
           alpha = angles[0][0]
           beta  = angles[2][0]
           if(site_0 is not None and site_1 is not None):
@@ -599,7 +578,6 @@ def run(file_name):
             xyz = add_hhh(site_0,site_1,bond_dist,alpha,beta)
             for atom_name, coordinates in zip((h,target[2],target[3]),(xyz[0],xyz[1][0],xyz[1][1])):
               atom_number = write_atoms(monomer_mapping,
-                                        pdb_atoms,
                                         atom_number,
                                         file,
                                         new_atom_name        = atom_name,
@@ -623,33 +601,30 @@ def run(file_name):
           site_0 = None
           site_1 = None
           site_2 = None
-          for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
+          for atom_name,atom in monomer_mapping.expected_atoms.items():
             if(atom_name == target[0]):
-              site_0 = pdb_atoms[i_seq].coordinates
+              site_0 = atom.xyz
             if(atom_name == target[1]):
-              site_1 = pdb_atoms[i_seq].coordinates
+              site_1 = atom.xyz
             if(atom_name == target[2]):
-              site_2 = pdb_atoms[i_seq].coordinates
+              site_2 = atom.xyz
           alpha = angles[0][0]
           if(site_0 is not None and site_1 is not None and site_2 is not None):
             print "Building:", h, " ..."
             xyz = add_arg_like_h(site_0,site_1,site_2,bond_dist,alpha,flag = target[4])
             if(target[4] == 1):
               atom_number = write_atoms(monomer_mapping,
-                                        pdb_atoms,
                                         atom_number,
                                         file,
                                         new_atom_name        = h,
                                         new_atom_coordinates = xyz)
             if(target[4] == 2):
               atom_number = write_atoms(monomer_mapping,
-                                        pdb_atoms,
                                         atom_number,
                                         file,
                                         new_atom_name        = h,
                                         new_atom_coordinates = xyz[0])
               atom_number = write_atoms(monomer_mapping,
-                                        pdb_atoms,
                                         atom_number,
                                         file,
                                         new_atom_name        = target[3],
@@ -679,15 +654,14 @@ def run(file_name):
   file.close()
   file = open(file_name_,"r")
   processed_pdb_file = pdb_interpretation.process(
-    mon_lib_srv                           = mon_lib_srv,
-    ener_lib                              = ener_lib,
-    file_name                             = file_name_,
-    strict_conflict_handling              = False,
-    crystal_symmetry                      = processed.stage_1.crystal_symmetry,
-    force_symmetry                        = True,
-    log                                   = sys.stdout)
+    mon_lib_srv = mon_lib_srv,
+    ener_lib = ener_lib,
+    file_name = file_name_,
+    strict_conflict_handling = False,
+    crystal_symmetry = processed.pdb_inp.crystal_symmetry(),
+    force_symmetry = True,
+    log = sys.stdout)
   file.close()
-  file = open("out.pdb","w")
   assert processed_pdb_file.xray_structure() is not None
   assert processed_pdb_file.geometry_restraints_manager() is not None
   xray_structure = processed_pdb_file.xray_structure()
@@ -695,14 +669,12 @@ def run(file_name):
   regularize_model(xray_structure = xray_structure,
                    geometry_restraints_manager = geometry_restraints_manager,
                    max_iterations = 50000)
-  processed_pdb_file.all_chain_proxies.stage_1.write_modified(
-      out=file,
-      new_sites_cart = xray_structure.sites_cart())
-  file.close()
-
+  processed_pdb_file.all_chain_proxies.pdb_atoms.set_xyz(
+    new_xyz=xray_structure.sites_cart())
+  processed_pdb_file.all_chain_proxies.pdb_hierarchy.write_pdb_file(
+    file_name="out.pdb")
 
 def write_atoms(monomer_mapping,
-                pdb_atoms,
                 atom_number,
                 file_object,
                 new_atom_name = None,
@@ -716,43 +688,24 @@ def write_atoms(monomer_mapping,
     print >> file_object, pdb.format_scale_records(
                                         unit_cell=crystal_symmetry.unit_cell())
   if(new_atom_name is None and new_atom_coordinates is None):
-    for atom_name,i_seq in monomer_mapping.expected_atom_i_seqs.items():
-      atom = pdb_atoms[i_seq]
-      assert atom_name.lstrip().rstrip() == atom.name.lstrip().rstrip()
+    for atom_name,atom in monomer_mapping.expected_atoms.items():
+      assert atom_name.strip() == atom.name.strip()
       atom_number += 1
-      print >> file_object, pdb.format_atom_record(
-         record_name = atom.record_name(),
-         serial      = atom_number,
-         name        = atom.name,
-         altLoc      = atom.altLoc,
-         resName     = atom.resName,
-         chainID     = atom.chainID,
-         resSeq      = atom.resSeq,
-         iCode       = atom.iCode,
-         site        = atom.coordinates,
-         occupancy   = atom.occupancy,
-         tempFactor  = atom.tempFactor,
-         segID       = atom.segID,
-         element     = atom.element,
-         charge      = atom.charge)
+      orig = atom.serial
+      atom.serial = "%5d" % atom_number
+      print >> file_object, atom.format_atom_record()
+      atom.serial = orig
   else:
-    atom = pdb_atoms[monomer_mapping.expected_atom_i_seqs.items()[0][1]]
+    atom = monomer_mapping.expected_atoms.values()[0]
     atom_number += 1
-    print >> file_object, pdb.format_atom_record(
-         record_name = atom.record_name(),
-         serial      = atom_number,
-         name        = new_atom_name,
-         altLoc      = atom.altLoc,
-         resName     = atom.resName,
-         chainID     = atom.chainID,
-         resSeq      = atom.resSeq,
-         iCode       = atom.iCode,
-         site        = new_atom_coordinates,
-         occupancy   = 1.0,
-         tempFactor  = 0.0,
-         segID       = atom.segID,
-         element     = atom.element,
-         charge      = atom.charge)
+    orig = atom.serial, atom.name, atom.xyz, atom.occ, atom.b
+    atom.serial = "%5d" % atom_number
+    atom.name = new_atom_name
+    atom.xyz = new_atom_coordinates
+    atom.occ = 1
+    atom.b = 0
+    print >> file_object, atom.format_atom_record()
+    atom.serial, atom.name, atom.xyz, atom.occ, atom.b = orig
   return atom_number
 
 def regularize_model(xray_structure,

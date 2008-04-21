@@ -29,7 +29,6 @@ def exercise_2(eps = 1.e-6):
   xray_structure.convert_to_isotropic()
   u_iso_start = xray_structure.extract_u_iso_or_u_equiv()
   xray_structure.convert_to_anisotropic()
-  stage_1 = processed_pdb_file.all_chain_proxies.stage_1
   selections = []
   selection_strings = ["chain A", "chain B", "chain C"]
   for string in selection_strings:
@@ -42,7 +41,6 @@ def exercise_2(eps = 1.e-6):
   restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
                                                 normalization = False)
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   class refinement_flags: pass
   refinement_flags.adp_tls = selections
   tls_groups = tools.tls_groups(selection_strings = selection_strings)
@@ -52,11 +50,11 @@ def exercise_2(eps = 1.e-6):
           value          = 0.0)
   tls_groups.tlsos = tlsos
   model = mmtbx.model.manager(
-             refinement_flags       = refinement_flags,
-             restraints_manager     = restraints_manager,
-             xray_structure         = xray_structure,
-             tls_groups             = tls_groups,
-             atom_attributes_list   = aal)
+    refinement_flags = refinement_flags,
+    restraints_manager = restraints_manager,
+    xray_structure = xray_structure,
+    tls_groups = tls_groups,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
 ################
 ###> Get TLS <-> Ucart
   T_initial = []

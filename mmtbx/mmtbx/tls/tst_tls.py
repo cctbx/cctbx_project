@@ -21,13 +21,13 @@ def uaniso_from_tls_and_back():
                                        raw_records               = None,
                                        force_symmetry            = True)
   xray_structure = processed_pdb_file.xray_structure()
-  stage_1 = processed_pdb_file.all_chain_proxies.stage_1
   selections = []
   for string in ["chain A", "chain B"]:
       selections.append(processed_pdb_file.all_chain_proxies.selection(
                                                               string = string))
   input_tls_data = iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
-                                                      stage_1.remark_3_records)
+    remark_3_records=processed_pdb_file.all_chain_proxies.pdb_inp
+      .extract_remark_iii_records(iii=3))
   tls_params = []
   for item in input_tls_data:
       tls_params.append(tools.tlso(t      = item.T,
@@ -41,15 +41,16 @@ def uaniso_from_tls_and_back():
                         tlsos      = tls_params)
 
   i = 0
-  for utls,atom in zip(uanisos_from_tls, stage_1.atom_attributes_list):
-    updb = atom.Ucart
+  for utls,atom in zip(uanisos_from_tls,
+                       processed_pdb_file.all_chain_proxies.pdb_atoms):
+    updb = atom.uij
     #i += 1
     #print "      ", i
     #print "%6.4f %6.4f %6.4f %6.4f %6.4f %6.4f "% \
     #                         (utls[0],utls[1],utls[2],utls[3],utls[4],utls[5])
     #print "%6.4f %6.4f %6.4f %6.4f %6.4f %6.4f "% \
     #                         (updb[0],updb[1],updb[2],updb[3],updb[4],updb[5])
-  assert approx_equal(utls,updb, 1.e-4)
+    assert approx_equal(utls,updb, 1.e-4)
 
   tlsos_initial = []
   for input_tls_data_ in input_tls_data:

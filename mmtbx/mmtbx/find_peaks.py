@@ -145,33 +145,30 @@ class manager(object):
     self.peaks_ = peaks
     return peaks
 
-  def show_mapped(self, atom_attributes_list):
+  def show_mapped(self, pdb_atoms):
     peaks = self.peaks()
     if(peaks.iseqs_of_closest_atoms is None):
       raise RuntimeError("iseqs_of_closest_atoms is None")
     scatterers = self.fmodel.xray_structure.scatterers()
-    assert scatterers.size() == len(atom_attributes_list)
+    assert scatterers.size() == pdb_atoms.size()
     assert peaks.sites.size() == peaks.heights.size()
     assert peaks.heights.size() == peaks.iseqs_of_closest_atoms.size()
     print >> self.log
-    #
-    result = {}
-    for s, h, i_seq in zip(peaks.sites, peaks.heights, peaks.iseqs_of_closest_atoms):
-      d = self.fmodel.xray_structure.unit_cell().distance(s, scatterers[i_seq].site)
-      element = scatterers[i_seq].element_symbol()
-      out_str = "peak= %8.3f closest distance to %s = %8.3f"%(
-        h, atom_attributes_list[i_seq].pdb_format(), d)
-      result.setdefault(atom_attributes_list[i_seq].chainID, {}).\
-             setdefault(atom_attributes_list[i_seq].residue_id(),[]).append(out_str)
+    dist = self.fmodel.xray_structure.unit_cell().distance
+    for i in flex.sort_permutation(data=peaks.iseqs_of_closest_atoms):
+      s = peaks.sites[i]
+      h = peaks.heights[i]
+      i_seq = peaks.iseqs_of_closest_atoms[i]
+      sc = scatterers[i_seq]
+      d = dist(s, sc.site)
+      element = sc.element_symbol()
+      print >> self.log, "peak= %8.3f closest distance to %s = %8.3f" % (
+        h, pdb_atoms[i_seq].id_str(), d)
       assert d <= self.params.map_next_to_model.max_model_peak_dist
       assert d >= self.params.map_next_to_model.min_model_peak_dist
-    for v0 in result.values():
-      for v1 in v0.values():
-        for v in v1:
-          print >> self.log, v
 
 def show_highest_peaks_and_deepest_holes(fmodel,
-                                         atom_attributes_list,
+                                         pdb_atoms,
                                          map_type,
                                          map_cutoff_plus,
                                          map_cutoff_minus,
@@ -192,4 +189,4 @@ def show_highest_peaks_and_deepest_holes(fmodel,
                      params     = fp_params,
                      log        = log)
     result.peaks_mapped()
-    result.show_mapped(atom_attributes_list = atom_attributes_list)
+    result.show_mapped(pdb_atoms = pdb_atoms)

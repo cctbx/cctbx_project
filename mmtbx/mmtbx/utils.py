@@ -531,24 +531,15 @@ def get_atom_selections(all_chain_proxies,
                         one_selection_array   = False,
                         log                   = None):
   if(log is None): log = sys.stdout
-  # XXX Fix atom_attributes_list in-place to be able to select by element type
-  # XXX in cases when it's not available.
-  aal_modified_counter = 0
-  aal = all_chain_proxies.stage_1.atom_attributes_list
+  atoms = all_chain_proxies.pdb_atoms
   scatterers = xray_structure.scatterers()
-  for aal_i, sc in zip(aal,scatterers):
-    aal_element = aal_i.element
-    if(len(aal_element.strip())==0):
-      aal_i.element = sc.element_symbol()
-      aal_modified_counter += 1
-    if(aal_i.element is None):
-      aal_i.element = "  "
-  all_chain_proxies.stage_1.selection_cache(force_selection_cache_update=True)
-  if(aal_modified_counter > 0):
-    print >> log
-    print >> log, "atom_attributes_list is modified in-place to define",\
-       "missing element types when possible."
-    print >> log
+  assert atoms.size() == scatterers.size()
+  for atom, sc in zip(atoms, scatterers):
+    if (len(atom.element.strip()) == 0):
+      e,c = sc.element_and_charge_symbols()
+      if (len(e) != 0):
+        atom.element = "%2s" % e.upper()
+        atom.charge = "%-2s" % c.upper()
   #
   if(hydrogens_only):
     assert xray_structure is not None
@@ -562,8 +553,7 @@ def get_atom_selections(all_chain_proxies,
     raise Sorry('Ambiguous selection.') # XXX NEED MORE INFORMATIVE MESSAGE
   selections = []
   if(ss_size == 1 and n_none == 1 and not one_group_per_residue):
-    selections.append(flex.bool(
-      len(all_chain_proxies.stage_1.atom_attributes_list), True))
+    selections.append(flex.bool(all_chain_proxies.pdb_atoms.size(), True))
   elif(one_group_per_residue and ss_size == 1 and n_none == 1):
     assert iselection
     residues = []
@@ -573,49 +563,18 @@ def get_atom_selections(all_chain_proxies,
       hd_selection = (scat_types == "H") | (scat_types == "D")
       if (hd_selection.count(True) == 0):
         raise Sorry('No hydrogens to select.')
-    for model in all_chain_proxies.stage_1.get_models_and_conformers():
-      n_conformers = len(model.conformers)
-      for conformer in model.conformers:
-        residues_in_conformer = []
-        for chain in conformer.get_chains():
-          for residue in chain.residues:
-            if(n_conformers == 1):
-              result = flex.size_t()
-              if(hydrogens_only):
-                for i_sel in residue.iselection:
-                  if(scat_types[i_sel] in ["H", "D"]):
-                    result.append(i_sel)
-              else:
-                result = residue.iselection
-              selections.append(result)
-            else:
-              residues_in_conformer.append(residue)
-        residues.append(residues_in_conformer)
-      if(n_conformers > 1):
-         assert len(selections) == 0
-         res = []
-         unique_res_ids = []
-         for residuesi in residues:
-           for residue in residuesi:
-             res.append(residue)
-             if(residue.id() not in unique_res_ids):
-               unique_res_ids.append(residue.id())
-         for uri in unique_res_ids:
-           s_uri = flex.size_t()
-           for r in res:
-             if(r.id() == uri):
-               for s in r.iselection:
-                 if(s not in s_uri):
-                   s_uri.append(s)
-           selections.append(s_uri)
-         # XXX what is this ?
-         if(hydrogens_only):
-            for i_seq, sel in enumerate(selections):
-              result = flex.size_t()
-              for si in sel:
-                if(scat_types[si] in ["H", "D"]):
-                   result.append(si)
-              selections[i_seq] = result
+    for model in all_chain_proxies.pdb_hierarchy.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          rg_i_seqs = []
+          for ag in rg.atom_groups():
+            for atom in ag.atoms():
+              i_seq = atom.i_seq
+              if (   not hydrogens_only
+                  or scat_types[i_seq] in ["H", "D"]):
+                rg_i_seqs.append(atom.i_seq)
+          if (len(rg_i_seqs) != 0):
+            selections.append(flex.size_t(rg_i_seqs))
   elif(ss_size != 1 or n_none == 0 and not one_group_per_residue):
     for selection_string in selection_strings:
       selections.append(atom_selection(all_chain_proxies = all_chain_proxies,
@@ -641,140 +600,58 @@ def atom_selection(all_chain_proxies, string):
   except KeyboardInterrupt: raise
   except Exception: raise Sorry("Invalid atom selection: %s" % string)
 
-def write_pdb_file(xray_structure,
-                   atom_attributes_list,
-                   write_cryst1_record = True,
-                   selection = None,
-                   out = None):
-  raw_records = []
-  crystal_symmetry = xray_structure.crystal_symmetry()
-  if(write_cryst1_record):
-    line = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
-    raw_records.append(line)
-    if(out is not None):
-      print >> out, line
-    line = pdb.format_scale_records(unit_cell = crystal_symmetry.unit_cell())
-    if(out is not None):
-      print >> out, line
-    for line_ in line.splitlines():
-      raw_records.append(line_)
+def write_pdb_file(
+      xray_structure,
+      pdb_hierarchy,
+      pdb_atoms = None,
+      write_cryst1_record = True,
+      selection = None,
+      atoms_reset_serial = True,
+      out = None):
+  if (write_cryst1_record):
+    crystal_symmetry = xray_structure.crystal_symmetry()
+    print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
+    print >> out, pdb.format_scale_records(
+      unit_cell = crystal_symmetry.unit_cell())
+  # XXX PDB_TRANSITION SLOW
   xrs = xray_structure
-  sites_cart  = xrs.sites_cart()
-  scatterers  = xrs.scatterers()
+  scatterers = xrs.scatterers()
+  sites_cart = xrs.sites_cart()
+  u_isos = xrs.extract_u_iso_or_u_equiv()
+  if (selection is not None):
+    pdb_hierarchy = pdb_hierarchy.select(selection)
+    pdb_atoms = None
+    scatterers = scatterers.select(selection)
+    sites_cart = sites_cart.select(selection)
+    u_isos = u_isos.select(selection)
   occupancies = scatterers.extract_occupancies()
   u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(xrs.unit_cell())
-  u_isos      = xrs.extract_u_iso_or_u_equiv()
-  scat_types  = scatterers.extract_scattering_types()
-  if(selection is None):
-     for i_seq,atom in enumerate(atom_attributes_list):
-         if(atom.name is None): name = "    "
-         else: name = atom.name
-         if(atom.altLoc is None): altLoc = " "
-         else: altLoc = atom.altLoc
-         if(atom.chainID is None): chainID = " "
-         else: chainID = atom.chainID
-         if(atom.resSeq is None): resSeq = 1
-         else: resSeq = atom.resSeq
-         if(atom.iCode is None): iCode = " "
-         else: iCode = atom.iCode
-         if(atom.segID is None): segID = "    "
-         else: segID = atom.segID
-         if(atom.element is None): element = "  "
-         else: element = atom.element
-         if(atom.charge is None): charge = "  "
-         else: charge = atom.charge
-         line = pdb.format_atom_record(
-                                  record_name = atom.record_name(),
-                                  serial      = i_seq+1,
-                                  name        = name,
-                                  altLoc      = altLoc,
-                                  resName     = atom.resName,
-                                  chainID     = chainID,
-                                  resSeq      = resSeq,
-                                  iCode       = iCode,
-                                  site        = sites_cart[i_seq],
-                                  occupancy   = occupancies[i_seq],
-                                  tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                  segID       = segID,
-                                  element     = scat_types[i_seq],#element,
-                                  charge      = charge)
-         if(out is not None):
-           print >> out, line
-         raw_records.append(line)
-         if(scatterers[i_seq].flags.use_u_aniso()):
-            line = pdb.format_anisou_record(
-                                  serial      = i_seq+1,
-                                  name        = name,
-                                  altLoc      = altLoc,
-                                  resName     = atom.resName,
-                                  chainID     = chainID,
-                                  resSeq      = resSeq,
-                                  iCode       = iCode,
-                                  u_cart      = u_carts[i_seq],
-                                  segID       = segID,
-                                  element     = scat_types[i_seq],#element,
-                                  charge      = charge)
-            if(out is not None):
-              print >> out, line
-            raw_records.append(line)
-     if(out is not None):
-       print >> out, "END"
-  else:
-     for i_seq,atom in enumerate(atom_attributes_list):
-         if(selection[i_seq]):
-            if(atom.name is None): name = "    "
-            else: name = atom.name
-            if(atom.altLoc is None): altLoc = " "
-            else: altLoc = atom.altLoc
-            if(atom.chainID is None): chainID = " "
-            else: chainID = atom.chainID
-            if(atom.resSeq is None): resSeq = 1
-            else: resSeq = atom.resSeq
-            if(atom.iCode is None): iCode = " "
-            else: iCode = atom.iCode
-            if(atom.segID is None): segID = "    "
-            else: segID = atom.segID
-            if(atom.element is None): element = "  "
-            else: element = atom.element
-            if(atom.charge is None): charge = "  "
-            else: charge = atom.charge
-            line = pdb.format_atom_record(
-                                  record_name = atom.record_name(),
-                                  serial      = i_seq+1,
-                                  name        = name,
-                                  altLoc      = altLoc,
-                                  resName     = atom.resName,
-                                  chainID     = chainID,
-                                  resSeq      = resSeq,
-                                  iCode       = iCode,
-                                  site        = sites_cart[i_seq],
-                                  occupancy   = occupancies[i_seq],
-                                  tempFactor  = adptbx.u_as_b(u_isos[i_seq]),
-                                  segID       = segID,
-                                  element     = scat_types[i_seq],#element,
-                                  charge      = charge)
-            if(out is not None):
-              print >> out, line
-            raw_records.append(line)
-            if(scatterers[i_seq].flags.use_u_aniso()):
-               line = pdb.format_anisou_record(
-                                  serial      = i_seq+1,
-                                  name        = name,
-                                  altLoc      = altLoc,
-                                  resName     = atom.resName,
-                                  chainID     = chainID,
-                                  resSeq      = resSeq,
-                                  iCode       = iCode,
-                                  u_cart      = u_carts[i_seq],
-                                  segID       = segID,
-                                  element     = scat_types[i_seq],#element,
-                                  charge      = charge)
-               if(out is not None):
-                 print >> out, line
-               raw_records.append(line)
-     if(out is not None):
-       print >> out, "END"
-  return raw_records
+  scat_types = scatterers.extract_scattering_types()
+  if (pdb_atoms is None):
+    pdb_atoms = pdb_hierarchy.atoms()
+  # XXX PDB_TRANSITION SLOW
+  for j_seq,atom in enumerate(pdb_atoms):
+    atom.xyz = sites_cart[j_seq]
+    atom.occ = occupancies[j_seq]
+    atom.b = adptbx.u_as_b(u_isos[j_seq])
+    # XXX AD-HOC (dirty) manipulation of element+charge
+    e = scat_types[j_seq]
+    if (len(e) > 1 and "+-0123456789".find(e[1]) >= 0):
+      atom.element = "%2s" % e[:1]
+      atom.charge = "%-2s" % e[1:]
+    elif (len(e) > 2):
+      atom.element = "%2s" % e[:2]
+      atom.charge = "%-2s" % e[2:]
+    else:
+      atom.element = "%2s" % e
+      atom.charge = "  "
+    if (scatterers[j_seq].flags.use_u_aniso()):
+      atom.uij = u_carts[j_seq]
+    else:
+      atom.uij = (-1,-1,-1,-1,-1,-1)
+  if (atoms_reset_serial):
+    pdb_atoms.reset_serial()
+  out.write(pdb_hierarchy.as_pdb_string(append_end=True))
 
 def print_programs_start_header(log, text):
   print >> log
@@ -959,98 +836,8 @@ def occupancy_selections(
   if(other_group_selection_strings is not None and
      len(other_group_selection_strings) == 0):
     other_group_selection_strings = None
-  # Returns something like this:
-  #
-  #   One constrained group can conatain from 1 to 4 groups of atoms, and one
-  #   group of atoms can conatin from 1 to N atoms, where N - arbitrary.
-  #
-  #   -------selections for occupancy refinement--------
-  #     xxxxxxx  xxxxxxxxxxxxxxxxx  xxxxxxxxxx  xxxxxx
-  #        g1        g2       g3      g4  g5      g6
-  #   [ [[1,2]], [[3,4,5],[6,7,8]], [[9],[10]], [[11]] ]
-  #
-  #   For example:
-  #     - occupancy of atom 11 is refined as individual (unconstrained group
-  #       consisting of one atom)
-  #     - occupancies of atoms 9 and 10 are refined as individual with the sum
-  #       of them constrained to be equal to 1.0
-  #     - one occupancy (q1) is refined for atoms 3,4,5 and one occupancy (q2)
-  #       is refined for atoms 6,7,8 and q1+q2=1
-  #     - one occupancy is refined per atoms 1,2 and no constrains.
-  #
-  # Behavior:
-  #   always selected (constrains are determined automatically):
-  #     - atoms in alternative conformations (constrained: individual if two
-  #       atoms are involved or grouped otherwise)
-  #     - atoms with partial non-zero occupancies
-  #   plus (optional, based on parameters specified):
-  #     - user defined selection for individual occupancies
-  #     - user defined selection for group occupancies
-  #     - add H (D) and/or water if requested
-  #
-  result = []
-  residues = []
-  selections = []
-  occupancies = xray_structure.scatterers().extract_occupancies()
-  for model in all_chain_proxies.stage_1.get_models_and_conformers():
-    n_conformers = len(model.conformers)
-    for conformer in model.conformers:
-      residues_in_conformer = []
-      for chain in conformer.get_chains():
-        for residue in chain.residues:
-          if(n_conformers == 1):
-            selections.append(residue.iselection)
-          else:
-            residues_in_conformer.append(residue)
-      residues.append(residues_in_conformer)
-    if(n_conformers > 1):
-      assert len(selections) == 0
-      res = []
-      unique_res_ids = []
-      for residuesi in residues:
-        for residue in residuesi:
-          res.append(residue)
-          if(residue.id() not in unique_res_ids):
-            unique_res_ids.append(residue.id())
-      for uri in unique_res_ids:
-        s_uri = flex.size_t()
-        for r in res:
-          if(r.id() == uri):
-            for s in r.iselection:
-              if(s not in s_uri):
-                s_uri.append(s)
-        selections.append(s_uri)
-  hd_selection = xray_structure.hd_selection().iselection()
-  for s in selections:
-    s = list(s)
-    s_set = set(s)
-    res = []
-    for rr in residues:
-      for r in rr:
-        r_is = list(r.iselection)
-        r_is_set = set(r_is)
-        if(r_is_set.issubset(s_set)):
-          res.append(r_is_set)
-    zz = []
-    for i, si in enumerate(res):
-      for j, sj in enumerate(res):
-        if(i!=j):
-          r = list(si - sj)
-          if(r not in zz and r != []): zz.append(r)
-    if(zz != []):
-      result.append(zz)
-  # exclude H
-  result_ = []
-  for r in result:
-    result__ = []
-    for rr in r:
-      result___ = []
-      for rrr in rr:
-        if(rrr not in hd_selection):
-          result___.append(rrr)
-      result__.append(result___)
-    result_.append(result__)
-  result = result_
+  result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
+    common_residue_name_class_only="common_amino_acid")
   #
   if(other_individual_selection_strings is not None):
     sel = get_atom_selections(
@@ -1062,7 +849,7 @@ def occupancy_selections(
     result_as_1d_array = list_3d_as_1d(x = result)
     sel_checked = []
     for i in list(sel):
-      if(i not in result_as_1d_array):
+      if(i not in result_as_1d_array): # XXX HIDEOUSLY INEFFICIENT
         sel_checked.append([[i]])
     if(len(sel_checked) > 0):
       result.extend(sel_checked)
@@ -1073,7 +860,7 @@ def occupancy_selections(
       iselection          = True,
       xray_structure      = xray_structure,
       one_selection_array = False)
-    result.extend( [[list(i)] for i in sel] )
+    result.extend( [[list(i)] for i in sel] ) # XXX no check here?
   if(add_water):
     result_as_1d_array = list_3d_as_1d(x = result)
     water_selection = get_atom_selections(
@@ -1083,13 +870,13 @@ def occupancy_selections(
       xray_structure      = xray_structure,
       one_selection_array = True)
     for w_i_seq in water_selection:
-      if(w_i_seq not in result_as_1d_array):
+      if(w_i_seq not in result_as_1d_array): # XXX HIDEOUSLY INEFFICIENT
         result.append([[w_i_seq]])
   result_as_1d_array = list_3d_as_1d(x = result)
-  for i_seq, occ in enumerate(occupancies):
+  for i_seq,occ in enumerate(xray_structure.scatterers().extract_occupancies()):
     if(abs(occ-1.) > 1.e-3 and abs(occ) > 1.e-3 and
        not xray_structure.hd_selection()[i_seq]):
-      if(i_seq not in result_as_1d_array):
+      if(i_seq not in result_as_1d_array): # XXX HIDEOUSLY INEFFICIENT
         result.append([[i_seq]])
   result_as_1d_array = list_3d_as_1d(x=result)
   if(len(result_as_1d_array) != len(set(result_as_1d_array))):
@@ -1102,7 +889,7 @@ def occupancy_selections(
         result__.append(flex.size_t(sel))
       result_.append(result__)
     result = result_
-  if(result == []): result = None
+  if(len(result) == 0): result = None
   return result
 
 def assert_xray_structures_equal(x1, x2, selection = None, sites = True,

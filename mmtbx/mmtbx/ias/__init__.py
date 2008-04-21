@@ -155,12 +155,12 @@ class extract_ias(object):
   def __init__(self,
                xray_structure,
                bond_proxies_simple,
-               atom_attributes_list,
+               pdb_atoms,
                planarity_proxies,
                log = None):
     if(log is None): self.log = sys.stdout
-    assert xray_structure.scatterers().size() == len(atom_attributes_list)
-    self.atom_attributes_list = atom_attributes_list
+    assert xray_structure.scatterers().size() == pdb_atoms.size()
+    self.pdb_atoms = pdb_atoms
     self.sites_cart = xray_structure.sites_cart()
     self.u_iso = xray_structure.extract_u_iso_or_u_equiv()
     self.b_iso = self.u_iso*math.pi**2*8.
@@ -192,19 +192,20 @@ class extract_ias(object):
                                   type   = "L") )
 
   def _get_atom(self, i_seq):
+    pdb_atom = self.pdb_atoms[i_seq]
     return atom(site_cart = self.sites_cart[i_seq],
                 q         = self.occupancies[i_seq],
                 b_iso     = self.b_iso[i_seq],
-                name      = self.atom_attributes_list[i_seq].name.strip(),
+                name      = pdb_atom.name.strip(),
                 i_seq     = i_seq,
-                element   = self.atom_attributes_list[i_seq].element.strip())
+                element   = pdb_atom.element.strip())
 
   def _is_phe_tyr_ring(self, i_seqs):
     ring_atoms = ["CZ","CE1","CE2","CD1","CD2","CG"]
     counter = 0
     cz_i_seq, cg_i_seq = None, None
     for i_seq in i_seqs:
-        atom_i_name = self.atom_attributes_list[i_seq].name.strip()
+        atom_i_name = self.pdb_atoms[i_seq].name.strip()
         if(atom_i_name in ring_atoms):
            counter += 1
         if(atom_i_name == "CZ"): cz_i_seq = i_seq
@@ -219,7 +220,7 @@ class extract_ias(object):
     counter = 0
     ca_i_seq, c_i_seq, o_i_seq = None, None, None
     for i_seq in i_seqs:
-        atom_i_name = self.atom_attributes_list[i_seq].name.strip()
+        atom_i_name = self.pdb_atoms[i_seq].name.strip()
         if(atom_i_name in peptide_atoms):
            counter += 1
         if(atom_i_name == "CA"): ca_i_seq = i_seq
@@ -589,7 +590,7 @@ def check_at_bond_vector(ias):
 
 class manager(object):
   def __init__(self, geometry,
-                     atom_attributes_list,
+                     pdb_atoms,
                      xray_structure,
                      params    = None,
                      fmodel    = None,
@@ -603,7 +604,7 @@ class manager(object):
                   "Total number of covalent bonds = ", len(bond_proxies_simple)
      iass = extract_ias(xray_structure       = self.xray_structure,
                         bond_proxies_simple  = bond_proxies_simple,
-                        atom_attributes_list = self.atom_attributes_list,
+                        pdb_atoms            = self.pdb_atoms,
                         planarity_proxies    = self.geometry.planarity_proxies,
                         log                  = self.log).iass
      iass = set_ias_name_and_predicted_position(iass)

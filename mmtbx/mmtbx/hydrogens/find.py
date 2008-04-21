@@ -49,14 +49,14 @@ class h_peak(object):
                      height,
                      dist,
                      scatterer_o,
-                     atom_attribute_o,
+                     pdb_atom_o,
                      i_seq_o):
-    self.site_frac        = site_frac
-    self.height           = height
-    self.dist             = dist
-    self.scatterer_o      = scatterer_o
-    self.atom_attribute_o = atom_attribute_o
-    self.i_seq_o          = i_seq_o
+    self.site_frac = site_frac
+    self.height = height
+    self.dist = dist
+    self.scatterer_o = scatterer_o
+    self.pdb_atom_o = pdb_atom_o
+    self.i_seq_o = i_seq_o
 
 class water_and_peaks(object):
   def __init__(self, i_seq_o,
@@ -75,7 +75,7 @@ def water_bond_angle(o,h1,h2):
   return a.angle(b, deg=True)
 
 def find_hydrogen_peaks(fmodel,
-                        atom_attributes_list,
+                        pdb_atoms,
                         params,
                         log):
   fp_manager = find_peaks.manager(fmodel     = fmodel,
@@ -84,45 +84,59 @@ def find_hydrogen_peaks(fmodel,
                                   params     = params,
                                   log        = log)
   result = fp_manager.peaks_mapped()
-  fp_manager.show_mapped(atom_attributes_list = atom_attributes_list)
+  fp_manager.show_mapped(pdb_atoms = pdb_atoms)
   return result
 
-def extract_hoh_peaks(peaks, atom_attributes_list, xray_structure, log):
+def extract_hoh_peaks(peaks, pdb_hierarchy, pdb_atoms, xray_structure):
   scatterers = xray_structure.scatterers()
-  assert scatterers.size() == len(atom_attributes_list)
+  assert scatterers.size() == pdb_atoms.size()
   assert peaks.sites.size() == peaks.heights.size()
   assert peaks.heights.size() == peaks.iseqs_of_closest_atoms.size()
-  perm = flex.sort_permutation(peaks.iseqs_of_closest_atoms)
-  sites = peaks.sites.select(perm)
-  heights = peaks.heights.select(perm)
-  iseqs_of_closest_atoms = peaks.iseqs_of_closest_atoms.select(perm)
-  result = {}
-  tmp = []
-  unit_cell = xray_structure.unit_cell()
+  sentinel = pdb_atoms.reset_tmp(first_value=0, increment=0)
+  for i_seq in peaks.iseqs_of_closest_atoms:
+    pdb_atoms[i_seq].tmp = 1
   get_class = iotbx.pdb.common_residue_names_get_class
-  for s, h, i_seq in zip(sites, heights, iseqs_of_closest_atoms):
-    aa = atom_attributes_list[i_seq]
-    assert aa.element.strip() not in ['H','D']
-    if(get_class(name = aa.resName) == "common_water"):
-      assert aa.element.strip() == 'O'
-      result.setdefault(aa, []).append(s)
-  waters_and_peaks = []
-  for i_seq_o, aa in enumerate(atom_attributes_list):
-    if(get_class(name = aa.resName) == "common_water"):
-      if(result.has_key(aa)):
-        i_seqs_h = []
-        for i_seq_h, aa_i in enumerate(atom_attributes_list):
-          if(get_class(name = aa_i.resName) == "common_water"):
-            if(aa.chainID == aa_i.chainID and
-               aa.residue_id() == aa_i.residue_id() and
-               aa_i.element.strip() != 'O'):
-              i_seqs_h.append(i_seq_h)
-        res = water_and_peaks(i_seq_o          = i_seq_o,
-                              i_seq_h1         = i_seqs_h[0],
-                              i_seq_h2         = i_seqs_h[1],
-                              peaks_sites_frac = result[aa])
-        waters_and_peaks.append(res)
-  return waters_and_peaks
+  o_i_seq_ag = {}
+  result = []
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          is_water = (get_class(name=ag.resname) == "common_water")
+          for atom in ag.atoms():
+            if (atom.tmp == 0): continue
+            assert atom.element.strip() not in ['H','D']
+            if (is_water):
+              assert atom.element.strip() == 'O'
+              o_i_seq_ag[atom.i_seq] = ag
+              break
+  del sentinel
+  o_i_seq_i_peak = {}
+  for i_seq in o_i_seq_ag:
+    o_i_seq_i_peak[i_seq] = []
+  for i_peak,i_seq in enumerate(peaks.iseqs_of_closest_atoms):
+    o_i_seq_i_peak[i_seq].append(i_peak)
+  for i_seq,ag in o_i_seq_ag.items():
+    ag_atoms = ag.atoms()
+    assert ag_atoms.size() == 3
+    o_atom = None
+    h_atoms = []
+    for atom in ag_atoms:
+      el = atom.element.strip()
+      if (el == 'O'):
+        o_atom = atom
+      else:
+        assert el in ['H','D']
+        h_atoms.append(atom)
+    assert o_atom is not None
+    assert len(h_atoms) == 2
+    result.append(water_and_peaks(
+      i_seq_o = o_atom.i_seq,
+      i_seq_h1 = h_atoms[0].i_seq,
+      i_seq_h2 = h_atoms[1].i_seq,
+      peaks_sites_frac = [peaks.sites[i_peak]
+        for i_peak in o_i_seq_i_peak[i_seq]]))
+  return result
 
 def fit_water(water_and_peaks, xray_structure, params, log):
   scatterers = xray_structure.scatterers()
@@ -186,15 +200,15 @@ def run(fmodel, model, log, params = None):
     params = all_master_params().extract()
   print_statistics.make_sub_header("find peak-candidates", out = log)
   peaks = find_hydrogen_peaks(
-    fmodel               = fmodel,
-    atom_attributes_list = model.atom_attributes_list,
-    params               = params,
-    log                  = log)
+    fmodel = fmodel,
+    pdb_atoms = model.pdb_atoms,
+    params = params,
+    log = log)
   waters_and_peaks = extract_hoh_peaks(
-    peaks                = peaks,
-    atom_attributes_list = model.atom_attributes_list,
-    xray_structure       = model.xray_structure,
-    log                  = log)
+    peaks = peaks,
+    pdb_hierarchy = model.pdb_hierarchy,
+    pdb_atoms = model.pdb_atoms,
+    xray_structure = model.xray_structure)
   print_statistics.make_sub_header("6D rigid body fit of HOH", out = log)
   print >> log, "Fit quality:"
   for water_and_peaks in waters_and_peaks:

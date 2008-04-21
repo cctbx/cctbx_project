@@ -29,7 +29,6 @@ def exercise():
                                        raw_records               = None,
                                        force_symmetry            = True)
   xray_structure = processed_pdb_file.xray_structure()
-  aal = processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   geometry = processed_pdb_file.geometry_restraints_manager(
                                                     show_energies      = True,
                                                     plain_pairs_radius = 5.0)
@@ -40,11 +39,13 @@ def exercise():
 
   # get ias manager
   params = ias.ias_master_params.extract()
+  pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
   all = ias.ias_master_params.extract().build_ias_types
   for opt in [["L"], ["R"], ["B"], ["BH"], all]:
-    mol = mmtbx.model.manager(restraints_manager     = restraints_manager,
-                              xray_structure         = xray_structure,
-                              atom_attributes_list   = aal).deep_copy()
+    mol = mmtbx.model.manager(
+      restraints_manager = restraints_manager,
+      xray_structure = xray_structure,
+      pdb_hierarchy = pdb_hierarchy).deep_copy()
     if(opt == ["L"]):
       params.build_ias_types = opt
       mol.add_ias(fmodel = None, ias_params = params)

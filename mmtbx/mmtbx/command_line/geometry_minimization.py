@@ -50,8 +50,7 @@ def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
     geometry_restraints_manager(show_energies = False)
   special_position_settings = all_chain_proxies.special_position_settings
   sites_cart = all_chain_proxies.sites_cart_exact().deep_copy()
-  atom_labels = [atom.pdb_format()
-    for atom in all_chain_proxies.stage_1.atom_attributes_list]
+  atom_labels = [atom.id_str() for atom in all_chain_proxies.pdb_atoms]
   geometry_restraints_manager.site_symmetry_table \
     .show_special_position_shifts(
       special_position_settings=special_position_settings,
