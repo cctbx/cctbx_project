@@ -8,7 +8,7 @@ from scitbx.array_family import flex
 from  libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 
-import ab_initio
+from smtbx import ab_initio
 
 def run():
   structure = random_structure.xray_structure(
