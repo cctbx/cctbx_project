@@ -1,23 +1,25 @@
 from iotbx import pdb
-import iotbx.pdb.interpretation
 from cctbx.array_family import flex
 import sys
 
-def run():
-  stage_1 = pdb.interpretation.stage_1(file_name=sys.argv[1])
+def run(args):
+  assert len(args) == 1
+  pdb_inp = pdb.input(file_name=args[0])
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  pdb_atoms = pdb_hierarchy.atoms()
 
   # add random numbers [-0.5,0.5) to coordinates
-  new_sites_cart = stage_1.get_sites_cart().as_double()
-  new_sites_cart += flex.random_double(size=new_sites_cart.size())-0.5
-  new_sites_cart = flex.vec3_double(new_sites_cart)
+  new_xyz = pdb_atoms.extract_xyz() + flex.vec3_double(
+    flex.random_double(size=pdb_atoms.size()*3)-0.5)
+  pdb_atoms.set_xyz(new_xyz=new_xyz)
 
-  # reset B-factors (min=0.01, max=0.21)
-  new_u_iso = flex.random_double(size=new_sites_cart.size(), factor=0.2) + 0.01
+  # reset B-factors (min=1, max=20)
+  new_b = flex.random_double(size=pdb_atoms.size(), factor=19) + 1
+  pdb_atoms.set_b(new_b=new_b)
 
-  stage_1.write_modified(
-    out=sys.stdout,
-    new_sites_cart=new_sites_cart,
-    new_u_iso=new_u_iso)
+  sys.stdout.write(pdb_hierarchy.as_pdb_string(
+    crystal_symmetry=pdb_inp.crystal_symmetry(),
+    append_end=True))
 
 if (__name__ == "__main__"):
-  run()
+  run(args=sys.argv[1:])
