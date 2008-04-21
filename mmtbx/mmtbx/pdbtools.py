@@ -533,9 +533,9 @@ def run(args, command_name="phenix.pdbtools"):
   if(command_line_interpreter.command_line.options.show_adp_statistics):
     utils.print_header("ADP statistics", out = log)
     model = mmtbx.model.manager(
-      xray_structure       = xray_structure,
-      atom_attributes_list = all_chain_proxies.stage_1.atom_attributes_list,
-      log                  = log)
+      xray_structure = xray_structure,
+      pdb_hierarchy = all_chain_proxies.pdb_hierarchy,
+      log = log)
     model.show_adp_statistics(out = log, padded = True)
     return
 ### add hydrogens and exit
@@ -566,13 +566,13 @@ def run(args, command_name="phenix.pdbtools"):
                   log               = log)
   result.report_number_of_atoms_to_be_removed()
   utils.print_header("Writing output model", out = log)
-  atom_attributes_list = all_chain_proxies.stage_1.atom_attributes_list
 ### write output file (if got to this point)
   print >> log, "Output model file name: ", ofn
   ofo = open(ofn, "w")
   utils.write_pdb_file(
     xray_structure       = xray_structure,
-    atom_attributes_list = atom_attributes_list,
+    pdb_hierarchy        = all_chain_proxies.pdb_hierarchy,
+    pdb_atoms            = all_chain_proxies.pdb_atoms,
     selection            = getattr(result.remove_selection, "flags", None),
     write_cryst1_record  = not command_line_interpreter.fake_crystal_symmetry,
     out                  = ofo)

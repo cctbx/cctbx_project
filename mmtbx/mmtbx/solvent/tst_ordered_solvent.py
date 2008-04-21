@@ -6,7 +6,6 @@ import time
 import math
 import sys, os
 from iotbx import pdb
-import iotbx.pdb.interpretation
 from cctbx.array_family import flex
 
 def evaluate(pdb_file,
@@ -64,8 +63,8 @@ def run():
   f_calcs = []
   for pdb_file in pdb_files:
       exercise_1(pdb_file = pdb_file)
-      xray_structure = pdb.interpretation.stage_1(file_name =
-                             pdb_file[:-4]+"_001.pdb").extract_xray_structure()
+      xray_structure = pdb.input(
+        file_name=pdb_file[:-4]+"_001.pdb").xray_structure_simple()
       f_calc = xray_structure.structure_factors(algorithm = "fft",
                                                 d_min     = 1.5).f_calc()
       f_calcs.append(f_calc)

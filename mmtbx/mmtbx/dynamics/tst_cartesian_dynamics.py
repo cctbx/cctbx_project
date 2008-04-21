@@ -14,17 +14,20 @@ ener_lib = mmtbx.monomer_library.server.ener_lib()
 
 class get_inputs(object):
 
-  def __init__(self):
+  def __init__(self, verbose):
     pdb_file = libtbx.env.find_in_repositories(
       relative_path="phenix_regression/pdb/phe.pdb", test=os.path.isfile)
     if (pdb_file is None):
       self.xray_structure = None
       self.restraints_manager = None
       return
+    if (verbose): log = sys.stdout
+    else:         log = StringIO()
     processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
-      file_name=pdb_file)
+      file_name=pdb_file,
+      log=log)
     xray_structure = processed_pdb.xray_structure()
     assert xray_structure.scatterers().size() == 15
     restraints_manager = mmtbx.restraints.manager(
@@ -131,16 +134,17 @@ def exercise_03(verbose=0):
   if (pdb_file is None):
     print "Skipping exercise_03: input file not available"
     return
+  if (verbose): log = sys.stdout
+  else:         log = StringIO()
   processed_pdb = mmtbx.monomer_library.pdb_interpretation.process(
-                         mon_lib_srv                           = mon_lib_srv,
-                         ener_lib                              = ener_lib,
-                         file_name                             = pdb_file)
+    mon_lib_srv = mon_lib_srv,
+    ener_lib = ener_lib,
+    file_name = pdb_file,
+    log = log)
   xray_structure = processed_pdb.xray_structure()
   restraints_manager = mmtbx.restraints.manager(
     geometry=processed_pdb.geometry_restraints_manager())
   structure_ = xray_structure.deep_copy_scatterers()
-  if (verbose): log = sys.stdout
-  else:         log = StringIO()
   cartesian_dynamics.cartesian_dynamics(
     structure = structure_,
     restraints_manager = restraints_manager,
@@ -176,7 +180,7 @@ def exercise_03(verbose=0):
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
-  inputs = get_inputs()
+  inputs = get_inputs(verbose=verbose)
   exercise_00(inputs=inputs, verbose=verbose)
   exercise_01(inputs=inputs, verbose=verbose)
   exercise_02(inputs=inputs, verbose=verbose)

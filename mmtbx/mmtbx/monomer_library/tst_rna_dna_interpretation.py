@@ -27,16 +27,14 @@ def run(args, residue_type, expected_results):
       ener_lib=ener_lib,
       file_name=os.path.join(pdb_files, file_name),
       log=log)
-    for mm in processed_pdb_file.all_chain_proxies.monomer_mapping_summaries():
-      assert len(mm.duplicate_atom_i_seqs) == 0
-      assert len(mm.ignored_atom_i_seqs) == 0
+    for mm in processed_pdb_file.all_chain_proxies.all_monomer_mappings:
+      assert len(mm.duplicate_atoms) == 0
+      assert len(mm.ignored_atoms) == 0
       assert not mm.is_unusual
-      aal = processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
-      unexpected_names = [aal[i_seq].name
-        for i_seq in mm.unexpected_atom_i_seqs]
+      unexpected_names = [atom.name for atom in mm.unexpected_atoms]
       result = [
         mm.residue_name,
-        len(mm.expected_atom_i_seqs),
+        len(mm.expected_atoms),
         unexpected_names,
         mm.classification,
         mm.is_terminus,

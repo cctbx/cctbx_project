@@ -2,10 +2,10 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
 from iotbx import pdb
-import iotbx.pdb.interpretation
-from cStringIO import StringIO
+from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
 from libtbx.itertbx import count
+from cStringIO import StringIO
 import sys
 
 pdb_records_gly_bnz = """\
@@ -624,21 +624,18 @@ def exercise(args):
   mod_bnz_to_tyr_sidechain = mon_lib_srv.mod_mod_id_dict[
     "bnz_to_tyr_sidechain"]
   #
-  stage_1_object = pdb.interpretation.stage_1(raw_records=pdb_records_gly_bnz)
-  models = stage_1_object.get_models_and_conformers()
-  assert len(models) == 1
-  conformers = models[0].conformers
-  assert len(conformers) == 1
-  chains = conformers[0].get_chains()
-  assert len(chains) == 1
-  residues = chains[0].residues
+  pdb_inp = pdb.input(
+    source_info=None, lines=flex.std_string(pdb_records_gly_bnz))
+  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  residues = pdb_hierarchy.only_conformer().residues()
   assert len(residues) == 2
   monomer_definitions = []
   for residue in residues:
     md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-      residue_name=residue.name(), atom_names=residue.atom_names())
+      residue_name=residue.resname,
+      atom_names=residue.atoms().extract_name())
     if (ani is not None):
-      assert residue.name() == "GLY"
+      assert residue.resname == "GLY"
       assert ani.mon_lib_names() == ["N", "CA", "C", "O", None]
     monomer_definitions.append(md)
   gly_plus_c_beta = monomer_definitions[0].apply_mod(mod=mod_gly_plus_c_beta)

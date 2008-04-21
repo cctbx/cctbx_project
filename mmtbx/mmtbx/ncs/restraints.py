@@ -23,12 +23,7 @@ class selection_properties(object):
     self.string = string
     self.iselection = iselection
 
-class mm_active_i_seqs(object):
-
-  def __init__(self, mm, active_i_seqs):
-    self.mm = mm
-    self.active_i_seqs = active_i_seqs
-
+# XXX rename
 def match_ordered_chain_members(a, b):
   result = []
   na = len(a)
@@ -76,134 +71,135 @@ def match_ordered_chain_members(a, b):
     if (ib == nb): break
   return result
 
-class conformer_selection_properties(object):
+class resconfid(object):
 
-  def __init__(self, selection_properties, mma_with_selected_atoms_by_chain):
-    self.string = selection_properties.string
-    self.iselection = selection_properties.iselection
-    self.mma_with_selected_atoms_by_chain = mma_with_selected_atoms_by_chain
-    self._residue_names_by_chain = None
-    self._residue_ids_by_chain = None
+  def __init__(self, residue_group):
+    self.residue_group = residue_group
+    self.resid = residue_group.resid()
+    confs = {}
+    for ag in residue_group.atom_groups():
+      altloc = ag.altloc
+      assert not altloc in confs
+      confs[altloc] = ag.resname
+    self.confs = confs
 
-  def residue_names_by_chain(self):
-    if (self._residue_names_by_chain is None):
-      self._residue_names_by_chain = []
-      for mma_with_selected_atoms in self.mma_with_selected_atoms_by_chain:
-        residue_names = []
-        for mma in mma_with_selected_atoms:
-          residue_names.append(mma.mm.residue_name.split("%")[0])
-        self._residue_names_by_chain.append(residue_names)
-    return self._residue_names_by_chain
+  def __eq__(self, other):
+    if (self.resid != other.resid): return False
+    return self.confs_eq(other=other)
 
-  def residue_ids_by_chain(self, atom_attributes_list=None):
-    if (self._residue_ids_by_chain is None):
-      assert atom_attributes_list is not None
-      self._residue_ids_by_chain = []
-      for mma_with_selected_atoms in self.mma_with_selected_atoms_by_chain:
-        residue_ids = []
-        for mma in mma_with_selected_atoms:
-          i_seq = mma.active_i_seqs[0]
-          residue_ids.append(atom_attributes_list[i_seq].residue_id())
-        self._residue_ids_by_chain.append(residue_ids)
-    return self._residue_ids_by_chain
+  def confs_eq(self, other):
+    for altloc,resname in self.confs.items():
+      other_resname = other.confs.get(altloc)
+      if (other_resname is None): continue
+      if (other_resname != resname): return False
+    return True
 
-  def match_residue_ids(self, other, atom_attributes_list):
-    result = []
-    self_rnbc = self.residue_names_by_chain()
-    other_rnbc = other.residue_names_by_chain()
-    for i,an,bn in zip(count(), self_rnbc, other_rnbc):
-      if (an == bn):
-        result.append([(i,i) for i in xrange(len(an))])
-      else:
-        ai = self.residue_ids_by_chain(atom_attributes_list)[i]
-        bi = other.residue_ids_by_chain(atom_attributes_list)[i]
-        result.append(match_ordered_chain_members(a=ai, b=bi))
-    return result
+  def __repr__(self): # XXX remove
+    return str(self.resid) + ":" + str(self.confs)
 
-  def match_atoms(self,
-        other,
-        pairs_list,
-        j_ncs,
-        atom_attributes_list,
-        special_position_indices,
-        registry,
-        selection_strings,
-        special_position_warnings_only,
-        log):
-    for mma_i,mma_j,pairs in zip(
-          self.mma_with_selected_atoms_by_chain,
-          other.mma_with_selected_atoms_by_chain,
-          pairs_list):
-      for i_mm_i,i_mm_j in pairs:
-        other_map = {}
-        for i_seq_j in mma_j[i_mm_j].active_i_seqs:
-          aa = atom_attributes_list[i_seq_j]
-          key = aa.name + aa.altLoc
-          assert not other_map.has_key(key)
-          other_map[key] = i_seq_j
-        for i_seq_i in mma_i[i_mm_i].active_i_seqs:
-          aa = atom_attributes_list[i_seq_i]
-          key = aa.name + aa.altLoc
-          i_seq_j = other_map.get(key, None)
-          if (i_seq_j is not None):
-            assert i_seq_j >= 0
-            msg = None
-            for which,i_seq in [(self, i_seq_i), (other, i_seq_j)]:
-              if (i_seq in special_position_indices):
-                msg = (
-                    "NCS selection includes an atom on a special position:\n"
-                  + "  Selection: %s\n" % show_string(which.string)
-                  + "    Atom: %s" % atom_attributes_list[i_seq].pdb_format())
-                if (not special_position_warnings_only):
-                  raise Sorry(msg)
-                elif (log is not None):
-                  print >> log, "WARNING:", msg
-            if (msg is not None): continue
-            if (i_seq_i == i_seq_j):
-              raise Sorry("NCS selections restrain atom to itself:\n"
-                + "  Reference selection: %s\n" % show_string(self.string)
-                + "      Other selection: %s\n" % show_string(other.string)
-                + "    Atom: %s" % atom_attributes_list[i_seq_i].pdb_format())
-            stat, i_diag = registry.enter(
-              i_seq=i_seq_i, j_seq=i_seq_j, j_ncs=j_ncs)
-            if (stat == 1):
-              assert i_diag != j_ncs
-              raise Sorry(
-                "Two different NCS operators applied to same pair of atoms:\n"
-                + "       Reference selection: %s\n" % show_string(
-                    self.string)
-                + "  Previous other selection: %s\n" % show_string(
-                    selection_strings[i_diag])
-                + "   Current other selection: %s\n" % show_string(
-                    other.string)
-                + "    Atom 1: %s\n" %
-                    atom_attributes_list[i_seq_i].pdb_format()
-                + "    Atom 2: %s" %
-                    atom_attributes_list[i_seq_j].pdb_format())
-            if (stat == 2):
-              raise Sorry(
-                "Current reference atom previously other atom:\n"
-                + "  Current reference selection: %s\n" % show_string(
-                    self.string)
-                + "     Previous other selection: %s\n" % show_string(
-                    selection_strings[i_diag])
-                + "    Atom: %s" %
-                    atom_attributes_list[i_seq_i].pdb_format())
-            if (stat == 3):
-              raise Sorry(
-                "Two other atoms mapped to same reference atom:\n"
-                + "  Reference selection: %s\n" % show_string(
-                    self.string)
-                + "      Other selection: %s\n" % show_string(
-                    other.string)
-                + "    Reference atom: %s\n" %
-                    atom_attributes_list[i_seq_i].pdb_format()
-                + "    Other atom 1: %s\n" %
-                    atom_attributes_list[i_diag].pdb_format()
-                + "    Other atom 2: %s" %
-                    atom_attributes_list[i_seq_j].pdb_format())
-            assert stat == 0
-            other_map[key] = -1
+def all_confs_eq(resconfids_i, resconfids_j):
+  if (len(resconfids_i) != len(resconfids_j)): return False
+  for i,j in zip(resconfids_i, resconfids_j):
+    if (not i.confs_eq(other=j)): return False
+  return True
+
+def get_resconfids(model):
+  result = []
+  for rg in model.residue_groups():
+    result.append(resconfid(residue_group=rg))
+  return result
+
+def match_atoms(
+      special_position_indices,
+      special_position_warnings_only,
+      pdb_atoms,
+      selection_strings,
+      registry,
+      reference_model,
+      j_ncs,
+      other_model,
+      log):
+  r_resconfids = get_resconfids(model=reference_model)
+  o_resconfids = get_resconfids(model=other_model)
+  if (all_confs_eq(resconfids_i=r_resconfids, resconfids_j=o_resconfids)):
+    pairs_list = [(i,i) for i in xrange(len(r_resconfids))]
+  else:
+    pairs_list = match_ordered_chain_members(a=r_resconfids, b=o_resconfids)
+  for i,j in pairs_list:
+    r_rg = r_resconfids[i].residue_group
+    o_rg = o_resconfids[j].residue_group
+    r_ag_dict = {}
+    for r_ag in r_rg.atom_groups():
+      confid = r_ag.confid()
+      assert not confid in r_ag_dict
+      r_ag_dict[confid] = r_ag
+    for o_ag in o_rg.atom_groups():
+      r_ag = r_ag_dict.get(o_ag.confid())
+      if (r_ag is None): continue
+      r_atom_dict = {}
+      for r_atom in r_ag.atoms():
+        atom_name = r_atom.name
+        assert atom_name not in r_atom_dict # duplicate atom names
+        r_atom_dict[atom_name] = r_atom
+      for o_atom in o_ag.atoms():
+        r_atom = r_atom_dict.get(o_atom.name, o_atom)
+        if (r_atom is o_atom): continue
+        assert r_atom is not None # duplicate atom names
+        r_atom_dict[r_atom.name] = None
+        msg = None
+        for i_ncs,atom in [(0,r_atom), (j_ncs,o_atom)]:
+          if (atom.i_seq in special_position_indices):
+            msg = (
+                "NCS selection includes an atom on a special position:\n"
+              + "  Selection: %s\n" % show_string(selection_strings[i_ncs])
+              + '    %s' % atom.quote())
+            if (not special_position_warnings_only):
+              raise Sorry(msg)
+            elif (log is not None):
+              print >> log, "WARNING:", msg
+        if (msg is not None): continue
+        i_seq_i = r_atom.i_seq
+        i_seq_j = o_atom.i_seq
+        if (i_seq_i == i_seq_j):
+          raise Sorry("NCS selections restrain atom to itself:\n"
+            + "  Reference selection: %s\n" % show_string(
+              selection_strings[0]),
+            + "      Other selection: %s\n" % show_string(
+              selection_strings[j_ncw]),
+            + '    %s' % r_atom.quote())
+        stat, i_diag = registry.enter(
+          i_seq=i_seq_i, j_seq=i_seq_j, j_ncs=j_ncs)
+        if (stat == 1):
+          assert i_diag != j_ncs
+          raise Sorry(
+            "Two different NCS operators applied to same pair of atoms:\n"
+            + "       Reference selection: %s\n" % show_string(
+                selection_strings[0])
+            + "  Previous other selection: %s\n" % show_string(
+                selection_strings[i_diag])
+            + "   Current other selection: %s\n" % show_string(
+                selection_strings[j_ncs])
+            + '    %s\n' % r_atom.quote()
+            + '    %s' % o_atom.quote())
+        if (stat == 2):
+          raise Sorry(
+            "Current reference atom previously other atom:\n"
+            + "  Current reference selection: %s\n" % show_string(
+                selection_strings[0])
+            + "     Previous other selection: %s\n" % show_string(
+                selection_strings[i_diag])
+            + '    %s\n' % r_atom.quote())
+        if (stat == 3):
+          raise Sorry(
+            "Two other atoms mapped to same reference atom:\n"
+            + "  Reference selection: %s\n" % show_string(
+                selection_strings[0])
+            + "      Other selection: %s\n" % show_string(
+                selection_strings[j_ncs])
+            + '    Reference: %s\n' % r_atom.quote()
+            + '      Other 1: %s\n' % pdb_atoms[i_diag].quote()
+            + '      Other 2: %s' % o_atom.quote())
+        assert stat == 0
 
 class pair_lists_generator(object):
 
@@ -230,12 +226,12 @@ class pair_lists_generator(object):
           show_string(self.selection_strings[0]))
     # shortcuts
     all_chain_proxies = self.processed_pdb.all_chain_proxies
-    atom_attributes_list = all_chain_proxies.stage_1.atom_attributes_list
-    self.n_seq = len(all_chain_proxies.stage_1.atom_attributes_list)
+    self.n_seq = all_chain_proxies.pdb_atoms.size()
     #
     self.selection_properties = []
     for selection_string in self.selection_strings:
-      iselection = all_chain_proxies.iselection(string=selection_string)
+      selection = all_chain_proxies.selection(string=selection_string)
+      iselection = selection.iselection()
       if (iselection.size() == 0):
         raise Sorry("Empty NCS restraints selection: %s" % (
           show_string(selection_string)))
@@ -246,24 +242,43 @@ class pair_lists_generator(object):
     self.registry = pair_registry(n_seq=self.n_seq, n_ncs=n_ncs)
     special_position_indices = scitbx.stl.set.unsigned(iter(
       all_chain_proxies.site_symmetry_table().special_position_indices()))
-    for model in all_chain_proxies.processed_models:
-      for conformer in model.conformers:
-        conformer_selection_properties = \
-          self.get_conformer_selection_properties(conformer)
-        reference = conformer_selection_properties[0]
-        for j_ncs in xrange(1,n_ncs):
-          other = conformer_selection_properties[j_ncs]
-          reference.match_atoms(
-            other=other,
-            pairs_list=reference.match_residue_ids(
-              other=other, atom_attributes_list=atom_attributes_list),
-            j_ncs=j_ncs,
-            atom_attributes_list=atom_attributes_list,
-            special_position_indices=special_position_indices,
-            registry=self.registry,
-            selection_strings=self.selection_strings,
-            special_position_warnings_only=special_position_warnings_only,
-            log=log)
+    pdb_hierarchy = all_chain_proxies.pdb_hierarchy
+    reference_hierarchy = pdb_hierarchy.select(
+      atom_selection=self.selection_properties[0].iselection)
+    for j_ncs in xrange(1,n_ncs):
+      other_hierarchy = pdb_hierarchy.select(
+        atom_selection=self.selection_properties[j_ncs].iselection)
+      r_models = reference_hierarchy.models()
+      o_models = other_hierarchy.models()
+      if (len(r_models) != len(o_models)):
+        raise Sorry(
+          "NCS restraints selections yield different number of PDB MODELs:\n"
+          + "  reference selection: %s\n" %
+            show_string(self.selection_strings[0])
+          + "      other selection: %s\n" %
+            show_string(self.selection_strings[j_ncs])
+          + "  number of reference MODELs: %d\n" % len(r_models)
+          + "  number of     other MODELs: %d" % len(o_models))
+      for r_model,o_model in zip(r_models, o_models):
+        if (r_model.id != o_model.id):
+          raise Sorry(
+            "NCS restraints selections lead to PDB MODEL mismatches:\n"
+            + "  reference selection: %s\n" %
+              show_string(self.selection_strings[0])
+            + "      other selection: %s\n" %
+              show_string(self.selection_strings[j_ncs])
+            + "  reference MODEL id: %s\n" % show_string(r_model.id)
+            + "      other MODEL id: %s" % show_string(o_model.id))
+        match_atoms(
+          special_position_indices=special_position_indices,
+          special_position_warnings_only=special_position_warnings_only,
+          pdb_atoms=all_chain_proxies.pdb_atoms,
+          selection_strings=self.selection_strings,
+          registry=self.registry,
+          reference_model=r_model,
+          j_ncs=j_ncs,
+          other_model=o_model,
+          log=log)
     #
     for i_pair,pair in enumerate(self.registry.selection_pairs()):
       if (pair[0].size() < 2):
@@ -274,27 +289,6 @@ class pair_lists_generator(object):
           "  Reference selection: %s" % show_string(self.selection_strings[0]),
           "      Other selection: %s" % show_string(
             self.selection_strings[i_pair+1])]))
-
-  def get_conformer_selection_properties(self, conformer):
-    result = []
-    for selection_properties in self.selection_properties:
-      conformer_selection = flex.intersection(
-        size=self.n_seq,
-        iselections=[selection_properties.iselection, conformer.iselection])
-      mma_with_selected_atoms_by_chain = []
-      for chain in conformer.chains:
-        mma_with_selected_atoms = []
-        for mm in chain.monomer_mapping_summaries():
-          active_i_seqs = conformer_selection.filter_indices(
-            mm.all_associated_i_seqs())
-          if (active_i_seqs.size() > 0):
-            mma_with_selected_atoms.append(mm_active_i_seqs(mm, active_i_seqs))
-        if (len(mma_with_selected_atoms) > 0):
-          mma_with_selected_atoms_by_chain.append(mma_with_selected_atoms)
-      result.append(conformer_selection_properties(
-        selection_properties=selection_properties,
-        mma_with_selected_atoms_by_chain=mma_with_selected_atoms_by_chain))
-    return result
 
 class group(object):
 

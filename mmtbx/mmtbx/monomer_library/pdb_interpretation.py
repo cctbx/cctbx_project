@@ -14,7 +14,7 @@ from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
-from libtbx.utils import format_exception, buffered_indentor
+from libtbx.utils import format_exception
 from libtbx import group_args
 from cStringIO import StringIO
 import string
@@ -174,6 +174,11 @@ def flush_log(log):
     flush = getattr(log, "flush", None)
     if (flush is not None): flush()
 
+def all_atoms_are_in_main_conf(atoms):
+  for atom in atoms:
+    if (atom.parent().altloc != ""): return False
+  return True
+
 class counters(object):
 
   def __init__(self, label):
@@ -209,16 +214,25 @@ class source_info_server(object):
 
   def labels(self):
     if (self.m_j is None):
-      return "residue: %s" % self.m_i.residue_conformer_label()
+      return "residue: %s" % self.m_i.residue_altloc()
     return "residues: %s + %s" % (
-      self.m_i.residue_conformer_label(),
-      self.m_j.residue_conformer_label())
+      self.m_i.residue_altloc(),
+      self.m_j.residue_altloc())
 
   def n_expected_atoms(self):
     if (self.m_j is None):
-      return len(self.m_i.expected_atom_i_seqs)
-    return len(self.m_i.expected_atom_i_seqs) \
-         + len(self.m_j.expected_atom_i_seqs)
+      return len(self.m_i.expected_atoms)
+    return len(self.m_i.expected_atoms) \
+         + len(self.m_j.expected_atoms)
+
+def _show_atom_labels(pdb_atoms, i_seqs, out=None, prefix="", max_lines=None):
+  if (out is None): out = sys.stdout
+  for i_line,i_seq in enumerate(i_seqs):
+    if (i_line == max_lines and len(i_seqs) > max_lines+1):
+      print >> out, prefix + "... (remaining %d not shown)" % (
+        len(i_seqs)-max_lines)
+      break
+    print >> out, prefix + pdb_atoms[i_seq].quote()
 
 def format_exception_message(
       m_i,
@@ -238,8 +252,8 @@ def format_exception_message(
   if (show_residue_names):
     print >> s, "  " + source_info_server(m_i, m_j).labels()
   print >> s, "  atom%s:" % plural_s(len(i_seqs))[1]
-  stage_1 = m_i.pdb_residue.chain.conformer.model.stage_1
-  stage_1.show_atom_labels(i_seqs=i_seqs, f=s, prefix="    ", max_lines=10)
+  _show_atom_labels(
+    pdb_atoms=m_i.pdb_atoms, i_seqs=i_seqs, out=s, prefix="    ", max_lines=10)
   return s.getvalue()[:-1]
 
 def discard_conflicting_pdb_element_column(mm):
@@ -271,9 +285,10 @@ class type_symbol_registry_base(object):
   def assign_directly(self, i_seq, symbol):
     self.symbols[i_seq] = symbol
 
-  def assign_from_monomer_mapping(self, conformer_label, mm):
+  def assign_from_monomer_mapping(self, conf_altloc, mm):
     atom_dict = mm.monomer_atom_dict
-    for atom_id,i_seq in mm.expected_atom_i_seqs.items():
+    for atom_id,atom in mm.expected_atoms.items():
+      i_seq = atom.i_seq
       if (self.type_label == "scattering"):
         symbol = atom_dict[atom_id].type_symbol
         if (symbol == "H" and self.symbols[i_seq] == "D"):
@@ -281,8 +296,8 @@ class type_symbol_registry_base(object):
       else:
         symbol = atom_dict[atom_id].type_energy
       if (symbol is None): continue
-      source_label = mm.residue_conformer_label()
-      source_n_expected_atoms = len(mm.expected_atom_i_seqs)
+      source_label = mm.residue_altloc()
+      source_n_expected_atoms = len(mm.expected_atoms)
       prev_symbol = self.symbols[i_seq]
       prev_source_label = self.source_labels[i_seq]
       prev_source_n_expected_atoms = self.source_n_expected_atoms[i_seq]
@@ -337,14 +352,15 @@ class type_symbol_registry_base(object):
   def report_unknown_message(self):
     return "Number of atoms with unknown %s type symbols" % self.type_label
 
-  def report(self, stage_1, log, prefix, max_lines=10):
+  def report(self, pdb_atoms, log, prefix, max_lines=10):
     n_unknown = self.n_unknown_type_symbols()
     if (n_unknown > 0):
       print >> log, "%s%s: %d" % (
         prefix, self.report_unknown_message(), n_unknown)
       i_seqs = (self.symbols == "").iselection()
-      stage_1.show_atom_labels(
-        i_seqs=i_seqs, f=log, prefix=prefix+"  ", max_lines=max_lines)
+      _show_atom_labels(
+        pdb_atoms=pdb_atoms, i_seqs=i_seqs,
+        out=log, prefix=prefix+"  ", max_lines=max_lines)
     if (self.n_resolved_conflicts > 0):
       print >> log, "%sNumber of resolved %s type symbol conflicts: %d" % (
         prefix, self.type_label, self.n_resolved_conflicts)
@@ -368,12 +384,12 @@ class nonbonded_energy_type_registry(type_symbol_registry_base):
 class monomer_mapping_summary(object):
 
   __slots__ = [
-    "conformer_label",
+    "conf_altloc",
     "residue_name",
-    "expected_atom_i_seqs",
-    "unexpected_atom_i_seqs",
-    "duplicate_atom_i_seqs",
-    "ignored_atom_i_seqs",
+    "expected_atoms",
+    "unexpected_atoms",
+    "duplicate_atoms",
+    "ignored_atoms",
     "classification",
     "incomplete_info",
     "is_terminus",
@@ -385,28 +401,34 @@ class monomer_mapping_summary(object):
 
   def all_associated_i_seqs(self):
     return flex.size_t(
-        self.expected_atom_i_seqs
-      + self.unexpected_atom_i_seqs
-      + self.duplicate_atom_i_seqs
-      + self.ignored_atom_i_seqs)
+        [a.i_seq for a in self.expected_atoms]
+      + [a.i_seq for a in self.unexpected_atoms]
+      + [a.i_seq for a in self.duplicate_atoms]
+      + [a.i_seq for a in self.ignored_atoms])
+
+  def summary(self):
+    return self
 
 class monomer_mapping(object):
 
   def __init__(self,
+        pdb_atoms,
         mon_lib_srv,
         translate_cns_dna_rna_residue_names,
         apply_cif_modifications,
-        apply_cif_links_labels_mm_dict,
+        apply_cif_links_mm_pdbres_dict,
+        i_model,
         i_conformer,
-        conformer_label,
+        is_first_conformer_in_chain,
+        conf_altloc,
         pdb_residue):
+    self.pdb_atoms = pdb_atoms
     self.i_conformer = i_conformer
-    self.conformer_label = conformer_label
+    self.is_first_conformer_in_chain = is_first_conformer_in_chain
+    self.conf_altloc = conf_altloc
     self.pdb_residue = pdb_residue
-    stage_1 = self.pdb_residue.chain.conformer.model.stage_1
-    atom = stage_1.atom_attributes_list[self.pdb_residue.iselection[0]]
-    labels = atom.residue_and_model_labels()
-    self.residue_name = atom.resName
+    self.pdb_residue_id_str = pdb_residue.id_str()
+    self.residue_name = pdb_residue.resname
     self._collect_atom_names()
     self.monomer, self.atom_name_interpretation \
       = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
@@ -418,10 +440,19 @@ class monomer_mapping(object):
       self.mon_lib_names = None
     else:
       self.mon_lib_names = self.atom_name_interpretation.mon_lib_names()
-    if (self.monomer is not None):
+    if (self.monomer is None):
+      self.expected_atoms = {}
+      self.unexpected_atoms = {}
+      self.duplicate_atoms = {}
+      for atom,atom_name in zip(self.active_atoms, self.atom_names_given):
+        self.unexpected_atoms[atom_name] = atom
+      self.incomplete_info = None
+      self.is_terminus = None
+    else:
       self._get_mappings(mon_lib_srv=mon_lib_srv)
       self.chem_mod_ids = []
-      for apply_data_mod in apply_cif_modifications.get(labels, []):
+      for apply_data_mod in apply_cif_modifications.get(
+                              self.pdb_residue_id_str, []):
         self.apply_mod(
           mon_lib_srv=mon_lib_srv,
           mod_mod_id=mon_lib_srv.mod_mod_id_dict[apply_data_mod])
@@ -430,28 +461,27 @@ class monomer_mapping(object):
       self.monomer.set_classification()
       if (self.incomplete_info is None):
         self.resolve_unexpected(mon_lib_srv=mon_lib_srv)
-    if (labels in apply_cif_links_labels_mm_dict):
-      apply_cif_links_labels_mm_dict[labels] = self
+    if (self.pdb_residue_id_str in apply_cif_links_mm_pdbres_dict):
+      apply_cif_links_mm_pdbres_dict[self.pdb_residue_id_str].setdefault(
+        self.i_conformer, []).append(self)
 
   def _collect_atom_names(self):
-    aal = self.pdb_residue.chain.conformer.model.stage_1.atom_attributes_list
-    self.active_i_seqs = []
+    self.ignored_atoms = {}
+    self.active_atoms = []
     self.atom_names_given = []
-    for i_seq in self.pdb_residue.iselection:
-      atom = aal[i_seq]
+    for atom in self.pdb_residue.atoms():
       if (atom.element.strip() == "Q"):
-        self.ignored_atom_i_seqs.setdefault(atom.name, []).append(i_seq)
-        continue
-      self.active_i_seqs.append(i_seq)
-      self.atom_names_given.append(atom.name.replace(" ",""))
+        self.ignored_atoms.setdefault(atom.name, []).append(atom)
+      else:
+        self.active_atoms.append(atom)
+        self.atom_names_given.append(atom.name.replace(" ",""))
 
   def _get_mappings(self, mon_lib_srv):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
     processed_atom_names = {}
-    self.expected_atom_i_seqs = {}
-    self.unexpected_atom_i_seqs = {}
-    self.ignored_atom_i_seqs = {}
-    self.duplicate_atom_i_seqs = {}
+    self.expected_atoms = {}
+    self.unexpected_atoms = {}
+    self.duplicate_atoms = {}
     if (self.atom_name_interpretation is not None):
       replace_primes = False
     elif (self.monomer.is_rna_dna()):
@@ -463,13 +493,12 @@ class monomer_mapping(object):
         if (atom_name.find("'") >= 0): n_primes += 1
         if (atom_name.find("*") >= 0): n_stars += 1
       replace_primes = (n_primes != 0 and n_stars == 0)
-    stage_1 = self.pdb_residue.chain.conformer.model.stage_1
-    for i_i_seq,i_seq in enumerate(self.active_i_seqs):
-      atom_name_given = self.atom_names_given[i_i_seq]
+    for i_atom,atom in enumerate(self.active_atoms):
+      atom_name_given = self.atom_names_given[i_atom]
       if (self.mon_lib_names is None):
         atom_name = atom_name_given
       else:
-        atom_name = self.mon_lib_names[i_i_seq]
+        atom_name = self.mon_lib_names[i_atom]
         if (atom_name is None):
           atom_name = atom_name_given
       if (not atom_dict.has_key(atom_name)):
@@ -496,51 +525,51 @@ class monomer_mapping(object):
             if (atom_name is not None): break
           else:
             atom_name = atom_name_given
-      i_seq_prev = processed_atom_names.get(atom_name, None)
-      if (i_seq_prev is None):
-        processed_atom_names[atom_name] = i_seq
+      prev_atom = processed_atom_names.get(atom_name)
+      if (prev_atom is None):
+        processed_atom_names[atom_name] = atom
         if (atom_dict.has_key(atom_name)):
-          self.expected_atom_i_seqs[atom_name] = i_seq
+          self.expected_atoms[atom_name] = atom
         else:
-          self.unexpected_atom_i_seqs[atom_name] = i_seq
+          self.unexpected_atoms[atom_name] = atom
       else:
-        self.duplicate_atom_i_seqs.setdefault(atom_name, []).append(i_seq)
+        self.duplicate_atoms.setdefault(atom_name, []).append(atom)
     if (    self.monomer.is_peptide()
         and self.atom_name_interpretation is None):
       self._rename_ot1_ot2("OXT" in atom_dict)
     self._set_missing_atoms()
 
   def _rename_ot1_ot2(self, oxt_in_atom_dict):
-    if (not self.expected_atom_i_seqs.has_key("O")):
-      i_seq = self.unexpected_atom_i_seqs.get("OT1", None)
+    if (not self.expected_atoms.has_key("O")):
+      i_seq = self.unexpected_atoms.get("OT1", None)
       if (i_seq is not None):
-        self.expected_atom_i_seqs["O"] = i_seq
-        del self.unexpected_atom_i_seqs["OT1"]
+        self.expected_atoms["O"] = i_seq
+        del self.unexpected_atoms["OT1"]
     if (oxt_in_atom_dict):
-      oxt_dict = self.expected_atom_i_seqs
+      oxt_dict = self.expected_atoms
     else:
-      oxt_dict = self.unexpected_atom_i_seqs
+      oxt_dict = self.unexpected_atoms
     if (not oxt_dict.has_key("OXT")):
-      i_seq = self.unexpected_atom_i_seqs.get("OT2", None)
+      i_seq = self.unexpected_atoms.get("OT2", None)
       if (i_seq is not None):
         oxt_dict["OXT"] = i_seq
-        del self.unexpected_atom_i_seqs["OT2"]
+        del self.unexpected_atoms["OT2"]
 
   def _set_missing_atoms(self):
     self.missing_non_hydrogen_atoms = {}
     self.missing_hydrogen_atoms = {}
     for atom in self.monomer.atom_list:
-      if (not self.expected_atom_i_seqs.has_key(atom.atom_id)):
+      if (not self.expected_atoms.has_key(atom.atom_id)):
         if (atom.type_symbol != "H"):
           self.missing_non_hydrogen_atoms[atom.atom_id] = atom
         else:
           self.missing_hydrogen_atoms[atom.atom_id] = atom
 
   def _get_incomplete_info(self):
-    if (    len(self.unexpected_atom_i_seqs) == 0
+    if (    len(self.unexpected_atoms) == 0
         and len(self.missing_non_hydrogen_atoms) > 0):
       if (self.monomer.is_peptide()):
-        atom_ids = self.expected_atom_i_seqs.keys()
+        atom_ids = self.expected_atoms.keys()
         atom_ids.sort()
         atom_ids = " ".join(atom_ids)
         if (atom_ids == "CA"): return "c_alpha_only"
@@ -548,7 +577,7 @@ class monomer_mapping(object):
         if (atom_ids == "C CA N O"): return "backbone_only"
         if (atom_ids == "C CA CB N O"): return "truncation_to_alanine"
       elif (self.monomer.is_rna_dna()):
-        atom_ids = " ".join(self.expected_atom_i_seqs.keys())
+        atom_ids = " ".join(self.expected_atoms.keys())
         if (atom_ids == "P"): return "p_only"
     return None
 
@@ -558,7 +587,7 @@ class monomer_mapping(object):
   def resolve_unexpected(self, mon_lib_srv):
     mod_mod_ids = []
     ani = self.atom_name_interpretation
-    u = self.unexpected_atom_i_seqs
+    u = self.unexpected_atoms
     if (self.monomer.classification == "peptide"):
       if (ani is not None):
         u_mon_lib = {}
@@ -635,7 +664,7 @@ Please contact cctbx@cci.lbl.gov for more information.""")
         if ("O3T" in u):
           mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["p5*END"])
         else:
-          e = self.expected_atom_i_seqs
+          e = self.expected_atoms
           if (    not "P"   in e
               and not "OP1" in e
               and not "OP2" in e):
@@ -659,27 +688,33 @@ Please contact cctbx@cci.lbl.gov for more information.""")
       self.is_terminus = True # AD HOC manipulation
     self._get_mappings(mon_lib_srv=mon_lib_srv)
 
-  def residue_conformer_label(self):
+  def residue_altloc(self):
     result = self.residue_name
-    if (self.conformer_label != " "):
-      result += ", conformer %s" % self.conformer_label
+    if (self.conf_altloc != ""):
+      result += ', conformer "%s"' % self.conf_altloc
     return result
 
   def is_unusual(self):
-    if (self.monomer.is_peptide()): return False
-    if (self.monomer.is_rna_dna()): return False
-    if (self.monomer.is_water()): return False
+    m = self.monomer
+    if (m is None): return True
+    if (m.is_peptide()): return False
+    if (m.is_rna_dna()): return False
+    if (m.is_water()): return False
     return True
 
   def summary(self):
+    if (self.monomer is None):
+      classification = None
+    else:
+      classification = self.monomer.classification
     return monomer_mapping_summary(
-      conformer_label=self.conformer_label,
+      conf_altloc=self.conf_altloc,
       residue_name=self.residue_name,
-      expected_atom_i_seqs=self.expected_atom_i_seqs.values(),
-      unexpected_atom_i_seqs=self.unexpected_atom_i_seqs.values(),
-      duplicate_atom_i_seqs=flat_list(self.duplicate_atom_i_seqs.values()),
-      ignored_atom_i_seqs=self.ignored_atom_i_seqs.values(),
-      classification=self.monomer.classification,
+      expected_atoms=self.expected_atoms.values(),
+      unexpected_atoms=self.unexpected_atoms.values(),
+      duplicate_atoms=flat_list(self.duplicate_atoms.values()),
+      ignored_atoms=self.ignored_atoms.values(),
+      classification=classification,
       incomplete_info=self.incomplete_info,
       is_terminus=self.is_terminus,
       is_unusual=self.is_unusual())
@@ -805,7 +840,7 @@ class link_match(object):
 
 def get_lib_link_peptide(mon_lib_srv, m_i, m_j):
   link_id = "TRANS"
-  if (m_j.expected_atom_i_seqs.get("CN", None) is not None):
+  if (m_j.expected_atoms.get("CN", None) is not None):
     link_id = "NM" + link_id
   elif (m_j.monomer.chem_comp.id == "PRO"):
     link_id = "P" + link_id
@@ -874,10 +909,10 @@ def evaluate_registry_process_result(
       source_labels=registry_process_result.conflict_source_labels,
       show_residue_names=False,
       lines=lines))
+  pdb_atoms = m_i.pdb_atoms
+  atoms = [pdb_atoms[i_seq] for i_seq in i_seqs]
   if (not registry_process_result.is_new
-      and (   m_i.i_conformer == 0
-           or not m_i.pdb_residue.chain.conformer.model
-                    .stage_1.are_all_blank_altLocs(i_seqs))):
+      and not all_atoms_are_in_main_conf(atoms=atoms)):
     raise AssertionError(format_exception_message(
       m_i=m_i,
       m_j=m_j,
@@ -895,18 +930,18 @@ class add_bond_proxies(object):
         bond_simple_proxy_registry,
         sites_cart=None,
         distance_cutoff=None):
-    assert m_i.i_conformer == m_j.i_conformer
+    if (m_i.i_conformer != 0 and m_j.i_conformer != 0):
+      assert m_i.i_conformer == m_j.i_conformer
     self.counters = counters
     self.broken_bond_i_seq_pairs = {} # XXX future: set
-    stage_1 = m_i.pdb_residue.chain.conformer.model.stage_1
     for bond in bond_list:
       if (   not m_i.monomer_atom_dict.has_key(bond.atom_id_1)
           or not m_j.monomer_atom_dict.has_key(bond.atom_id_2)):
         counters.corrupt_monomer_library_definitions += 1
         continue
-      i_seqs = (m_i.expected_atom_i_seqs.get(bond.atom_id_1, None),
-                m_j.expected_atom_i_seqs.get(bond.atom_id_2, None))
-      if (None in i_seqs):
+      atoms = (m_i.expected_atoms.get(bond.atom_id_1, None),
+               m_j.expected_atoms.get(bond.atom_id_2, None))
+      if (None in atoms):
         if (   m_i.monomer_atom_dict[bond.atom_id_1].type_symbol == "H"
             or m_j.monomer_atom_dict[bond.atom_id_2].type_symbol == "H"):
           counters.unresolved_hydrogen += 1
@@ -917,6 +952,7 @@ class add_bond_proxies(object):
         counters.undefined += 1
       else:
         counters.resolved += 1
+        i_seqs = [atom.i_seq for atom in atoms]
         proxy = geometry_restraints.bond_simple_proxy(
           i_seqs=i_seqs,
           distance_ideal=bond.value_dist,
@@ -928,8 +964,8 @@ class add_bond_proxies(object):
             is_large_distance = True
             self.broken_bond_i_seq_pairs[tuple(sorted(i_seqs))] = None
         if (not is_large_distance):
-          if (    m_i.i_conformer > 0
-              and stage_1.are_all_blank_altLocs(i_seqs)):
+          if (    not m_i.is_first_conformer_in_chain
+              and all_atoms_are_in_main_conf(atoms=atoms)):
             counters.already_assigned_to_first_conformer += 1
           else:
             registry_process_result = bond_simple_proxy_registry.process(
@@ -952,9 +988,8 @@ class add_angle_proxies(object):
     self.counters = counters
     if (m_j is None):
       m_1,m_2,m_3 = m_i,m_i,m_i
-    else:
+    elif (m_i.i_conformer != 0 and m_j.i_conformer != 0):
       assert m_i.i_conformer == m_j.i_conformer
-    stage_1 = m_i.pdb_residue.chain.conformer.model.stage_1
     for angle in angle_list:
       if (m_j is not None):
         m_1,m_2,m_3 = [(m_i, m_j)[comp_id-1] for comp_id in (
@@ -964,10 +999,10 @@ class add_angle_proxies(object):
           or not m_3.monomer_atom_dict.has_key(angle.atom_id_3)):
         counters.corrupt_monomer_library_definitions += 1
         continue
-      i_seqs = (m_1.expected_atom_i_seqs.get(angle.atom_id_1, None),
-                m_2.expected_atom_i_seqs.get(angle.atom_id_2, None),
-                m_3.expected_atom_i_seqs.get(angle.atom_id_3, None))
-      if (None in i_seqs):
+      atoms = (m_1.expected_atoms.get(angle.atom_id_1, None),
+               m_2.expected_atoms.get(angle.atom_id_2, None),
+               m_3.expected_atoms.get(angle.atom_id_3, None))
+      if (None in atoms):
         if (   m_1.monomer_atom_dict[angle.atom_id_1].type_symbol == "H"
             or m_2.monomer_atom_dict[angle.atom_id_2].type_symbol == "H"
             or m_3.monomer_atom_dict[angle.atom_id_3].type_symbol == "H"):
@@ -979,6 +1014,7 @@ class add_angle_proxies(object):
         counters.undefined += 1
       else:
         counters.resolved += 1
+        i_seqs = [atom.i_seq for atom in atoms]
         if (involves_special_positions(special_position_indices, i_seqs)):
           counters.discarded_because_of_special_positions += 1
         elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
@@ -1013,9 +1049,8 @@ class add_dihedral_proxies(object):
       sites_cart = None
     if (m_j is None):
       m_1,m_2,m_3,m_4 = m_i,m_i,m_i,m_i
-    else:
+    elif (m_i.i_conformer != 0 and m_j.i_conformer != 0):
       assert m_i.i_conformer == m_j.i_conformer
-    stage_1 = m_i.pdb_residue.chain.conformer.model.stage_1
     for tor in tor_list:
       if (m_j is not None):
         m_1,m_2,m_3,m_4 = [(m_i, m_j)[comp_id-1] for comp_id in (
@@ -1029,11 +1064,11 @@ class add_dihedral_proxies(object):
           or not m_4.monomer_atom_dict.has_key(tor.atom_id_4)):
         counters.corrupt_monomer_library_definitions += 1
         continue
-      i_seqs = (m_1.expected_atom_i_seqs.get(tor.atom_id_1, None),
-                m_2.expected_atom_i_seqs.get(tor.atom_id_2, None),
-                m_3.expected_atom_i_seqs.get(tor.atom_id_3, None),
-                m_4.expected_atom_i_seqs.get(tor.atom_id_4, None))
-      if (None in i_seqs):
+      atoms = (m_1.expected_atoms.get(tor.atom_id_1, None),
+               m_2.expected_atoms.get(tor.atom_id_2, None),
+               m_3.expected_atoms.get(tor.atom_id_3, None),
+               m_4.expected_atoms.get(tor.atom_id_4, None))
+      if (None in atoms):
         if (   m_1.monomer_atom_dict[tor.atom_id_1].type_symbol == "H"
             or m_2.monomer_atom_dict[tor.atom_id_2].type_symbol == "H"
             or m_3.monomer_atom_dict[tor.atom_id_3].type_symbol == "H"
@@ -1046,6 +1081,7 @@ class add_dihedral_proxies(object):
         counters.undefined += 1
       else:
         counters.resolved += 1
+        i_seqs = [atom.i_seq for atom in atoms]
         if (involves_special_positions(special_position_indices, i_seqs)):
           counters.discarded_because_of_special_positions += 1
         elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
@@ -1096,9 +1132,8 @@ class add_chirality_proxies(object):
     self.counters.unsupported_volume_sign = dicts.with_default_value(0)
     if (m_j is None):
       m_c,m_1,m_2,m_3 = m_i,m_i,m_i,m_i
-    else:
+    elif (m_i.i_conformer != 0 and m_j.i_conformer != 0):
       assert m_i.i_conformer == m_j.i_conformer
-    stage_1 = m_i.pdb_residue.chain.conformer.model.stage_1
     for chir in chir_list:
       if (m_j is not None):
         m_c,m_1,m_2,m_3 = [(m_i, m_j)[comp_id-1] for comp_id in (
@@ -1118,11 +1153,11 @@ class add_chirality_proxies(object):
           or not m_3.monomer_atom_dict.has_key(chir.atom_id_3)):
         counters.corrupt_monomer_library_definitions += 1
         continue
-      i_seqs = (m_c.expected_atom_i_seqs.get(chir.atom_id_centre, None),
-                m_1.expected_atom_i_seqs.get(chir.atom_id_1, None),
-                m_2.expected_atom_i_seqs.get(chir.atom_id_2, None),
-                m_3.expected_atom_i_seqs.get(chir.atom_id_3, None))
-      if (None in i_seqs):
+      atoms = (m_c.expected_atoms.get(chir.atom_id_centre, None),
+               m_1.expected_atoms.get(chir.atom_id_1, None),
+               m_2.expected_atoms.get(chir.atom_id_2, None),
+               m_3.expected_atoms.get(chir.atom_id_3, None))
+      if (None in atoms):
         if (   m_c.monomer_atom_dict[chir.atom_id_centre].type_symbol == "H"
             or m_1.monomer_atom_dict[chir.atom_id_1].type_symbol == "H"
             or m_2.monomer_atom_dict[chir.atom_id_2].type_symbol == "H"
@@ -1143,6 +1178,7 @@ class add_chirality_proxies(object):
           counters.undefined += 1
         else:
           counters.resolved += 1
+          i_seqs = [atom.i_seq for atom in atoms]
           if (involves_special_positions(special_position_indices, i_seqs)):
             counters.discarded_because_of_special_positions += 1
           elif (involves_broken_bonds(broken_bond_i_seq_pairs, i_seqs)):
@@ -1171,9 +1207,9 @@ class add_planarity_proxies(object):
         broken_bond_i_seq_pairs=None):
     self.counters = counters
     self.counters.less_than_four_sites = dicts.with_default_value(0)
-    if (m_j is not None):
+    if (    m_j is not None
+        and m_i.i_conformer != 0 and m_j.i_conformer != 0):
       assert m_i.i_conformer == m_j.i_conformer
-    stage_1 = m_i.pdb_residue.chain.conformer.model.stage_1
     for plane in plane_list:
       this_plane_has_unresolved_non_hydrogen = False
       i_seqs = []
@@ -1187,8 +1223,8 @@ class add_planarity_proxies(object):
         if (not m_x.monomer_atom_dict.has_key(plane_atom.atom_id)):
           counters.corrupt_monomer_library_definitions += 1
           continue
-        i_seq = m_x.expected_atom_i_seqs.get(plane_atom.atom_id, None)
-        if (i_seq is None):
+        atom = m_x.expected_atoms.get(plane_atom.atom_id, None)
+        if (atom is None):
           if (m_x.monomer_atom_dict[plane_atom.atom_id].type_symbol == "H"):
             counters.unresolved_hydrogen += 1
           else:
@@ -1198,6 +1234,7 @@ class add_planarity_proxies(object):
           counters.undefined += 1
         else:
           counters.resolved += 1
+          i_seq = atom.i_seq
           if (special_position_indices is not None
               and i_seq in special_position_indices):
             counters.discarded_because_of_special_positions += 1
@@ -1259,100 +1296,14 @@ def ener_lib_as_nonbonded_params(
   return params
 
 def is_same_model_as_before(model_type_indices, i_model, models):
-  stage_1 = models[0].stage_1
-  selection_cache = stage_1.selection_cache()
-  atoms = stage_1.atom_attributes_list
-  sel_i = selection_cache.get_MODELserial(models[i_model].serial)[0]
+  m_i = models[i_model]
   for j_model in xrange(0, i_model):
     if (model_type_indices[j_model] != j_model): continue
-    sel_j = selection_cache.get_MODELserial(models[j_model].serial)[0]
-    if (sel_j.size() == sel_i.size()):
-      is_same = True
-      for i,j in zip(sel_i, sel_j):
-        if (not atoms[i].is_label_equivalent(atoms[j])):
-          is_same = False
-          break
-      if (is_same):
-        model_type_indices[i_model] = j_model
-        return True
+    if (m_i.is_identical_hierarchy(other=models[j_model])):
+      model_type_indices[i_model] = j_model
+      return True
   model_type_indices[i_model] = i_model
   return False
-
-class processed_model(pdb.interpretation.model):
-
-  def __init__(self, stage_1, serial):
-    pdb.interpretation.model.__init__(self,
-      stage_1=stage_1, serial=serial)
-
-  def monomer_mappings(self):
-    for conformer in self.conformers:
-      for mm in conformer.monomer_mappings():
-        yield mm
-
-  def monomer_mapping_summaries(self):
-    for conformer in self.conformers:
-      for mm in conformer.monomer_mapping_summaries():
-        yield mm
-
-class processed_conformer(pdb.interpretation.conformer_base):
-
-  def __init__(self, model, altLoc, iselection):
-    pdb.interpretation.conformer_base.__init__(self,
-      model=model, altLoc=altLoc, iselection=iselection)
-    self.chains = []
-
-  def add_chain(self, chain):
-    self.chains.append(chain)
-
-  def monomer_mappings(self):
-    for chain in self.chains:
-      assert chain.monomer_mappings is not None
-      for mm in chain.monomer_mappings:
-        yield mm
-
-  def monomer_mapping_summaries(self):
-    for chain in self.chains:
-      for mm in chain.monomer_mapping_summaries():
-        yield mm
-
-class processed_chain(object):
-
-  def __init__(self,
-        model_index,
-        conformer_index,
-        chainID,
-        segID,
-        keep_monomer_mappings):
-    self.model_index = model_index
-    self.conformer_index = conformer_index
-    self.chainID = chainID
-    self.segID = segID
-    if (keep_monomer_mappings):
-      self.monomer_mappings = []
-      self.monomer_mapping_summaries_ = None
-    else:
-      self.monomer_mappings = None
-      self.monomer_mapping_summaries_ = []
-
-  def add_residue(self, monomer_mapping):
-    if (self.monomer_mappings is not None):
-      self.monomer_mappings.append(monomer_mapping)
-    else:
-      self.monomer_mapping_summaries_.append(monomer_mapping.summary())
-
-  def monomer_mapping_summaries(self):
-    if (self.monomer_mappings is not None):
-      for mm in self.monomer_mappings:
-        yield mm.summary()
-    else:
-      for mm in self.monomer_mapping_summaries_:
-        yield mm
-
-  def residue_names(self):
-    result = []
-    for mm in self.monomer_mapping_summaries():
-      result.append(mm.residue_name.split("%")[0])
-    return result
 
 class build_chain_proxies(object):
 
@@ -1361,34 +1312,28 @@ class build_chain_proxies(object):
         ener_lib,
         translate_cns_dna_rna_residue_names,
         apply_cif_modifications,
-        apply_cif_links,
-        apply_cif_links_labels_mm_dict,
+        apply_cif_links_mm_pdbres_dict,
         link_distance_cutoff,
         chir_volume_esd,
         peptide_link_params,
-        stage_1,
+        pdb_hierarchy,
+        pdb_atoms,
         sites_cart,
         special_position_indices,
         keep_monomer_mappings,
+        all_monomer_mappings,
+        model_indices,
         scattering_type_registry,
         nonbonded_energy_type_registry,
         geometry_proxy_registries,
         cystein_sulphur_i_seqs,
         cystein_monomer_mappings,
-        i_model,
         is_unique_model,
+        i_model,
         i_conformer,
+        is_first_conformer_in_chain,
         conformer,
-        chain,
         log):
-    self.i_model = i_model
-    self.i_conformer = i_conformer
-    self.processed = processed_chain(
-      model_index=i_model,
-      conformer_index=i_conformer,
-      chainID=chain.chainID,
-      segID=chain.segID,
-      keep_monomer_mappings=keep_monomer_mappings)
     unknown_residues = dicts.with_default_value(0)
     ad_hoc_single_atom_residues = dicts.with_default_value(0)
     unusual_residues = dicts.with_default_value(0)
@@ -1420,38 +1365,37 @@ class build_chain_proxies(object):
     planarities_with_less_than_four_sites = dicts.with_default_value(0)
     n_unresolved_non_hydrogen_planarities = 0
     n_planarities_discarded_because_of_special_positions = 0
-    n_unresolved_apply_cif_link_bonds = 0
-    n_unresolved_apply_cif_link_angles = 0
-    n_unresolved_apply_cif_link_dihedrals = 0
-    n_unresolved_apply_cif_link_chiralities = 0
-    n_unresolved_apply_cif_link_planarities = 0
-    break_block_identifiers = stage_1.get_break_block_identifiers()
-    prev_break_block_identifier = None
     mm = None
     prev_mm = None
-    for i_residue,residue in enumerate(chain.residues):
-      break_block_identifier = break_block_identifiers[residue.iselection[0]]
+    for i_residue,residue in enumerate(conformer.residues()):
+      for atom in residue.atoms():
+        i_seq = atom.i_seq
+        model_indices[i_seq] = i_model
       mm = monomer_mapping(
+        pdb_atoms=pdb_atoms,
         mon_lib_srv=mon_lib_srv,
         translate_cns_dna_rna_residue_names
           =translate_cns_dna_rna_residue_names,
         apply_cif_modifications=apply_cif_modifications,
-        apply_cif_links_labels_mm_dict=apply_cif_links_labels_mm_dict,
+        apply_cif_links_mm_pdbres_dict=apply_cif_links_mm_pdbres_dict,
+        i_model=i_model,
         i_conformer=i_conformer,
-        conformer_label=conformer.altLoc,
+        is_first_conformer_in_chain=is_first_conformer_in_chain,
+        conf_altloc=conformer.altloc,
         pdb_residue=residue)
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
-          if (residue.iselection.size() != 1): return False
-          i_seq = residue.iselection[0]
-          atom = stage_1.atom_attributes_list[i_seq]
+          if (   residue.atoms_size() != 1
+              or len(mm.active_atoms) != 1): return False
+          atom = mm.active_atoms[0]
           ad_hoc = ad_hoc_single_atom_residue(
-            residue_name=residue.name(),
+            residue_name=residue.resname,
             atom_name=atom.name,
             atom_element=atom.element)
           if (ad_hoc.scattering_type is None): return False
           entry = ener_lib.lib_atom.get(ad_hoc.energy_type, None)
           if (entry is None): return False
+          i_seq = atom.i_seq
           scattering_type_registry.assign_directly(
             i_seq=i_seq, symbol=ad_hoc.scattering_type)
           nonbonded_energy_type_registry.assign_directly(
@@ -1461,8 +1405,7 @@ class build_chain_proxies(object):
         if (not use_scattering_type_if_available_to_define_nonbonded_type()):
           unknown_residues[mm.residue_name] += 1
         n_chain_breaks += 1
-      elif (break_block_identifier != prev_break_block_identifier
-            and prev_break_block_identifier is not None):
+      elif (prev_mm is not None and not residue.link_to_previous):
         n_chain_breaks += 1
       else:
         if (prev_mm is not None and prev_mm.monomer is not None):
@@ -1548,16 +1491,14 @@ class build_chain_proxies(object):
           unusual_residues[mm.residue_name] += 1
         if (    mm.is_terminus == True
             and i_residue > 0
-            and i_residue < len(chain.residues)-1):
-          inner_chain_residues_flagged_as_termini.append(
-            stage_1.atom_attributes_list[residue.iselection[0]]
-              .residue_labels())
-        n_expected_atoms += len(mm.expected_atom_i_seqs)
-        for atom_name in mm.unexpected_atom_i_seqs.keys():
+            and i_residue < conformer.residues_size()-1):
+          inner_chain_residues_flagged_as_termini.append(residue.id_str())
+        n_expected_atoms += len(mm.expected_atoms)
+        for atom_name in mm.unexpected_atoms.keys():
           unexpected_atoms[mm.residue_name+","+atom_name] += 1
-        for atom_name,i_seqs in mm.ignored_atom_i_seqs.items():
+        for atom_name,i_seqs in mm.ignored_atoms.items():
           ignored_atoms[mm.residue_name+","+atom_name] += len(i_seqs)
-        for atom_name,i_seqs in mm.duplicate_atom_i_seqs.items():
+        for atom_name,i_seqs in mm.duplicate_atoms.items():
           duplicate_atoms[mm.residue_name+","+atom_name] += len(i_seqs)
         if (mm.incomplete_info is not None):
           incomplete_infos[mm.incomplete_info] += 1
@@ -1566,9 +1507,9 @@ class build_chain_proxies(object):
         for chem_mod_id in mm.chem_mod_ids:
           modifications_used[chem_mod_id] += 1
         scattering_type_registry.assign_from_monomer_mapping(
-          conformer_label=conformer.altLoc, mm=mm)
+          conf_altloc=conformer.altloc, mm=mm)
         nonbonded_energy_type_registry.assign_from_monomer_mapping(
-          conformer_label=conformer.altLoc, mm=mm)
+          conf_altloc=conformer.altloc, mm=mm)
         mm.add_bond_proxies(
           bond_simple_proxy_registry=geometry_proxy_registries.bond_simple)
         n_bond_proxies_already_assigned_to_first_conformer += \
@@ -1624,103 +1565,22 @@ class build_chain_proxies(object):
         n_planarities_discarded_because_of_special_positions \
           += mm.planarity_counters.discarded_because_of_special_positions
         if (mm.monomer.chem_comp.id == "CYS"):
-          sulphur_i_seq = mm.expected_atom_i_seqs.get("SG", None)
+          sulphur_atom = mm.expected_atoms.get("SG", None)
           # XXX keep track of weights
-          if (sulphur_i_seq is not None
-              and sulphur_i_seq not in cystein_sulphur_i_seqs):
-            cystein_sulphur_i_seqs.append(sulphur_i_seq)
+          if (sulphur_atom is not None
+              and sulphur_atom.i_seq not in cystein_sulphur_i_seqs):
+            cystein_sulphur_i_seqs.append(sulphur_atom.i_seq)
             cystein_monomer_mappings.append(mm)
-        self.processed.add_residue(monomer_mapping=mm)
-      prev_break_block_identifier = break_block_identifier
+      if (keep_monomer_mappings):
+        all_monomer_mappings.append(mm)
+      else:
+        all_monomer_mappings.append(mm.summary())
       prev_mm = mm
       prev_mm.lib_link = None
     #
-    for apply in apply_cif_links:
-      if (apply.was_used): continue
-      mms = []
-      for labels in apply.labels_pair:
-        mms.append(apply_cif_links_labels_mm_dict[labels])
-      if (mms.count(None) == 0):
-        apply.was_used = True
-        def raise_if_corrupt(link_resolution):
-          counters = link_resolution.counters
-          if (counters.corrupt_monomer_library_definitions != 0):
-            raise Sorry(
-              "Error processing %s:\n" % counters.label
-              + "  data_link: %s\n" % show_string(apply.data_link)
-              + "  residue 1: %s\n" % apply.labels_pair[0]
-              + "  residue 2: %s\n" % apply.labels_pair[1]
-              + "  Possible problems giving rise to this error include:\n"
-              + "    - residue selections in apply_cif_link block swapped\n"
-              + "    - corrupt CIF link definition\n"
-              + "    - corrupt or missing CIF modifications associated with"
-                  " this link\n"
-              + "  If none of this applies, send email to:\n"
-              + "    bugs@phenix-online.org")
-        link = mon_lib_srv.link_link_id_dict[apply.data_link]
-        link_resolution = add_bond_proxies(
-          counters=counters(label="apply_cif_link_bond"),
-          m_i=mms[0],
-          m_j=mms[1],
-          bond_list=link.bond_list,
-          bond_simple_proxy_registry=geometry_proxy_registries.bond_simple,
-          sites_cart=sites_cart,
-          distance_cutoff=link_distance_cutoff)
-        raise_if_corrupt(link_resolution)
-        n_bond_proxies_already_assigned_to_first_conformer \
-          += link_resolution.counters.already_assigned_to_first_conformer
-        n_unresolved_apply_cif_link_bonds \
-          += link_resolution.counters.unresolved_non_hydrogen
-        link_resolution = add_angle_proxies(
-          counters=counters(label="apply_cif_link_angle"),
-          m_i=mms[0],
-          m_j=mms[1],
-          angle_list=link.angle_list,
-          angle_proxy_registry=geometry_proxy_registries.angle,
-          special_position_indices=special_position_indices)
-        raise_if_corrupt(link_resolution)
-        n_unresolved_apply_cif_link_angles \
-          += link_resolution.counters.unresolved_non_hydrogen
-        link_resolution = add_dihedral_proxies(
-          counters=counters(label="apply_cif_link_dihedral"),
-          m_i=mms[0],
-          m_j=mms[1],
-          tor_list=link.tor_list,
-          peptide_link_params=peptide_link_params,
-          dihedral_proxy_registry=geometry_proxy_registries.dihedral,
-          special_position_indices=special_position_indices,
-          sites_cart=sites_cart,
-          chem_link_id=link.chem_link.id)
-        raise_if_corrupt(link_resolution)
-        n_unresolved_apply_cif_link_dihedrals \
-          += link_resolution.counters.unresolved_non_hydrogen
-        link_ids[link_resolution.chem_link_id] += 1
-        link_resolution = add_chirality_proxies(
-          counters=counters(label="apply_cif_link_chirality"),
-          m_i=mms[0],
-          m_j=mms[1],
-          chir_list=link.chir_list,
-          chirality_proxy_registry=geometry_proxy_registries.chirality,
-          special_position_indices=special_position_indices,
-          chir_volume_esd=chir_volume_esd,
-          lib_link=link)
-        raise_if_corrupt(link_resolution)
-        n_unresolved_apply_cif_link_chiralities \
-          += link_resolution.counters.unresolved_non_hydrogen
-        link_resolution = add_planarity_proxies(
-          counters=counters(label="apply_cif_link_planarity"),
-          m_i=mms[0],
-          m_j=mms[1],
-          plane_list=link.get_planes(),
-          planarity_proxy_registry=geometry_proxy_registries.planarity,
-          special_position_indices=special_position_indices)
-        raise_if_corrupt(link_resolution)
-        n_unresolved_apply_cif_link_planarities \
-          += link_resolution.counters.unresolved_non_hydrogen
-    #
     if (is_unique_model and log is not None):
       print >> log, "        Number of residues, atoms: %d, %d" % (
-        len(chain.residues),
+        conformer.residues_size(),
         n_expected_atoms + flex.sum(flex.long(unexpected_atoms.values())))
       if (len(unknown_residues) > 0):
         print >> log, "          Unknown residues:", unknown_residues
@@ -1818,27 +1678,6 @@ class build_chain_proxies(object):
         print >> log, \
           "          bond proxies already assigned to first conformer:", \
           n_bond_proxies_already_assigned_to_first_conformer
-      if (n_unresolved_apply_cif_link_bonds > 0):
-        print >> log, \
-          "          Unresolved apply_cif_link bonds:", \
-          n_unresolved_apply_cif_link_bonds
-      if (n_unresolved_apply_cif_link_angles > 0):
-        print >> log, \
-          "          Unresolved apply_cif_link angles:", \
-          n_unresolved_apply_cif_link_angles
-      if (n_unresolved_apply_cif_link_dihedrals > 0):
-        print >> log, \
-          "          Unresolved apply_cif_link dihedrals:", \
-          n_unresolved_apply_cif_link_dihedrals
-      if (n_unresolved_apply_cif_link_chiralities > 0):
-        print >> log, \
-          "          Unresolved apply_cif_link chiralities:", \
-          n_unresolved_apply_cif_link_chiralities
-      if (n_unresolved_apply_cif_link_planarities > 0):
-        print >> log, \
-          "          Unresolved apply_cif_link planarities:", \
-          n_unresolved_apply_cif_link_planarities
-    self.n_duplicate_atoms = len(duplicate_atoms)
 
 class geometry_restraints_proxy_registries(object):
 
@@ -1908,36 +1747,49 @@ class build_all_chain_proxies(object):
         keep_monomer_mappings=False,
         max_atoms=None,
         log=None):
+    assert special_position_settings is None or crystal_symmetry is None
     if (params is None): params = master_params.extract()
     self.params = params
     timer = user_plus_sys_time()
     self.time_building_chain_proxies = None
     if (log is not None and file_name is not None):
       print >> log, file_name
-    self.stage_1 = pdb.interpretation.stage_1(
-      file_name=file_name,
-      raw_records=raw_records)
+    if (file_name is not None):
+      self.pdb_inp = pdb.input(file_name=file_name)
+    else:
+      if (isinstance(raw_records, str)):
+        raw_records = flex.split_lines(raw_records)
+      elif (not isinstance(raw_records, flex.std_string)):
+        raw_records = flex.std_string(raw_records)
+      self.pdb_inp = pdb.input(source_info=None, lines=raw_records)
+    self.pdb_hierarchy = self.pdb_inp.construct_hierarchy()
+    self.pdb_atoms = self.pdb_hierarchy.atoms()
+    self.pdb_atoms.reset_i_seq()
     if (log is not None):
       print >> log, "  Monomer Library directory:"
       print >> log, "   ", show_string(mon_lib_srv.root_path)
-      print >> log, "  Total number of atoms:", \
-        len(self.stage_1.atom_attributes_list)
+      print >> log, "  Total number of atoms:", self.pdb_atoms.size()
     self.special_position_settings = None
     self._site_symmetry_table = None
     self.sites_cart = None
     self._sites_cart_exact = None
     if (max_atoms is not None
-        and len(self.stage_1.atom_attributes_list) > max_atoms):
+        and self.pdb_atoms.size() > max_atoms):
       if (log is not None):
         print >> log, "  More than %d atoms: no processing." % max_atoms
         return
-    self.sites_cart = self.stage_1.get_sites_cart()
-    self.special_position_settings \
-      = self.stage_1.get_special_position_settings(
-          special_position_settings=special_position_settings,
-          crystal_symmetry=crystal_symmetry,
-          force_symmetry=force_symmetry)
-    if (self.special_position_settings is None
+    self.sites_cart = self.pdb_atoms.extract_xyz()
+    if (    special_position_settings is None
+        and crystal_symmetry is not None):
+      special_position_settings = crystal_symmetry.special_position_settings()
+    self.special_position_settings = self.pdb_inp.special_position_settings(
+      special_position_settings=special_position_settings,
+      weak_symmetry=not force_symmetry)
+    if (self.special_position_settings is not None
+        and (   self.special_position_settings.unit_cell() is None
+             or self.special_position_settings.space_group_info() is None)):
+      self.special_position_settings = None
+    if (    self.special_position_settings is None
         and substitute_non_crystallographic_unit_cell_if_necessary):
       self.special_position_settings = crystal.non_crystallographic_symmetry(
         sites_cart=self.sites_cart).special_position_settings()
@@ -1948,93 +1800,220 @@ class build_all_chain_proxies(object):
         self.site_symmetry_table().special_position_indices()
     self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
     self.process_apply_cif_link(mon_lib_srv=mon_lib_srv, log=log)
-    models = self.stage_1.get_models_and_conformers()
+    models = self.pdb_hierarchy.models()
     if (log is not None):
       print >> log, "  Number of models:", len(models)
     model_type_indices = [-1] * len(models)
+    n_seq = self.pdb_atoms.size()
+    self.model_indices = flex.size_t(n_seq, n_seq)
+    self.conformer_indices = flex.size_t(n_seq, 0)
+    altloc_i_conformer = {}
+    def set_conformer_indices():
+      altloc_indices = self.pdb_hierarchy.altloc_indices()
+      if ("" in altloc_indices): p = 0
+      else:                      p = 1
+      altlocs = sorted(altloc_indices.keys())
+      for i,altloc in enumerate(altlocs):
+        if (altloc == ""): continue
+        self.conformer_indices.set_selected(altloc_indices[altloc], i+p)
+        altloc_i_conformer[altloc] = i+p
+      altloc_i_conformer[""] = 0
+    set_conformer_indices()
+    self.all_monomer_mappings = []
     self.scattering_type_registry = scattering_type_registry(
-      scattering_types=self.stage_1.get_element_symbols(strip_symbols=True),
+      # XXX should be same as in pdb_inp.xray_structure_simple
+      scattering_types=self.pdb_atoms.extract_element(strip=True),
       strict_conflict_handling=strict_conflict_handling)
     self.nonbonded_energy_type_registry = nonbonded_energy_type_registry(
-      n_seq=len(self.stage_1.atom_attributes_list),
+      n_seq=self.pdb_atoms.size(),
       strict_conflict_handling=strict_conflict_handling)
     self.geometry_proxy_registries = geometry_restraints_proxy_registries(
-      n_seq=len(self.stage_1.atom_attributes_list),
+      n_seq=self.pdb_atoms.size(),
       strict_conflict_handling=strict_conflict_handling)
     self.cystein_sulphur_i_seqs = flex.size_t()
     self.cystein_monomer_mappings = []
-    self.processed_models = []
-    self.n_duplicate_atoms = 0
     n_unique_models = 0
     for i_model,model in enumerate(models):
       if (log is not None):
-        print >> log, "  Model:", model.serial
+        print >> log, "  Model:", model.id
       is_unique_model = not is_same_model_as_before(
         model_type_indices, i_model, models)
       if (is_unique_model):
         n_unique_models += 1
       elif (log is not None):
         print >> log, "    Same as model", \
-          models[model_type_indices[i_model]].serial
-      processed_model_ = processed_model(
-        stage_1=model.stage_1, serial=model.serial)
-      self.processed_models.append(processed_model_)
+          models[model_type_indices[i_model]].id
       if (is_unique_model and log is not None):
-        print >> log, "    Number of conformers:", len(model.conformers)
+        print >> log, "    Number of chains:", model.chains_size()
+      flush_log(log)
       self.geometry_proxy_registries.initialize_tables()
-      for i_conformer,conformer in enumerate(model.conformers):
+      apply_cif_links_mm_pdbres_dict = dict(
+        self.empty_apply_cif_links_mm_pdbres_dict)
+      for chain in model.chains():
+        conformers = chain.conformers()
         if (is_unique_model and log is not None):
-          print >> log, '    Conformer: "%s"' % conformer.altLoc
-          print >> log, "      Number of atoms:", conformer.iselection.size()
-        for j in xrange(i_conformer):
-          other = model.conformers[j]
-          n = conformer.iselection_common_atoms(other=other).size()
+          print >> log, '    Chain: "%s"' % chain.id
+          print >> log, "      Number of atoms:", chain.atoms_size()
+          print >> log, "      Number of conformers:", len(conformers)
+          flush_log(log)
+        for j_conformer,conformer in enumerate(conformers):
           if (is_unique_model and log is not None):
-            print >> log, '      Common with "%s":' % other.altLoc, n
-        chains = conformer.get_chains()
-        if (is_unique_model and log is not None):
-          print >> log, "      Number of chains:", len(chains)
-        processed_conformer_ = processed_conformer(
-          model=processed_model_,
-          altLoc=conformer.altLoc,
-          iselection=conformer.iselection)
-        processed_model_.add_conformer(processed_conformer_)
-        for chain in chains:
+            print >> log, '      Conformer: "%s"' % conformer.altloc
+            flush_log(log)
+          i_conformer = altloc_i_conformer[conformer.altloc]
           chain_proxies = build_chain_proxies(
             mon_lib_srv=mon_lib_srv,
             ener_lib=ener_lib,
             translate_cns_dna_rna_residue_names
               =self.params.translate_cns_dna_rna_residue_names,
             apply_cif_modifications=self.apply_cif_modifications,
-            apply_cif_links=self.apply_cif_links,
-            apply_cif_links_labels_mm_dict=self.apply_cif_links_labels_mm_dict,
+            apply_cif_links_mm_pdbres_dict=apply_cif_links_mm_pdbres_dict,
             link_distance_cutoff=self.params.link_distance_cutoff,
             chir_volume_esd=self.params.chir_volume_esd,
             peptide_link_params=self.params.peptide_link,
-            stage_1=self.stage_1,
+            pdb_hierarchy=self.pdb_hierarchy,
+            pdb_atoms=self.pdb_atoms,
             sites_cart=self.sites_cart,
             special_position_indices=self.special_position_indices,
             keep_monomer_mappings=keep_monomer_mappings,
+            all_monomer_mappings=self.all_monomer_mappings,
+            model_indices=self.model_indices,
             scattering_type_registry=self.scattering_type_registry,
             nonbonded_energy_type_registry=self.nonbonded_energy_type_registry,
             geometry_proxy_registries=self.geometry_proxy_registries,
             cystein_sulphur_i_seqs=self.cystein_sulphur_i_seqs,
             cystein_monomer_mappings=self.cystein_monomer_mappings,
-            i_model=i_model,
             is_unique_model=is_unique_model,
+            i_model=i_model,
             i_conformer=i_conformer,
+            is_first_conformer_in_chain=(j_conformer == 0),
             conformer=conformer,
-            chain=chain,
             log=log)
-          processed_conformer_.add_chain(chain_proxies.processed)
-          self.n_duplicate_atoms += chain_proxies.n_duplicate_atoms
           del chain_proxies
           flush_log(log)
+      #
+      n_unresolved_apply_cif_link_bonds = 0
+      n_unresolved_apply_cif_link_angles = 0
+      n_unresolved_apply_cif_link_dihedrals = 0
+      n_unresolved_apply_cif_link_chiralities = 0
+      n_unresolved_apply_cif_link_planarities = 0
+      for apply in self.apply_cif_links:
+        if (apply.was_used): continue
+        mms = []
+        for pdbres in apply.pdbres_pair:
+          mms.append(apply_cif_links_mm_pdbres_dict[pdbres])
+        for m_i_list in mms[0].values():
+          assert len(m_i_list) == 1
+          m_i = m_i_list[0]
+          for m_j_list in mms[1].values():
+            assert len(m_j_list) == 1
+            m_j = m_j_list[0]
+            if (    m_i.i_conformer != 0
+                and m_j.i_conformer != 0
+                and m_i.i_conformer != m_j.i_conformer):
+              continue
+            apply.was_used = True
+            def raise_if_corrupt(link_resolution):
+              counters = link_resolution.counters
+              if (counters.corrupt_monomer_library_definitions != 0):
+                raise Sorry(
+                  "Error processing %s:\n" % counters.label
+                  + "  data_link: %s\n" % show_string(apply.data_link)
+                  + "  residue 1: %s\n" % apply.pdbres_pair[0]
+                  + "  residue 2: %s\n" % apply.pdbres_pair[1]
+                  + "  Possible problems giving rise to this error include:\n"
+                  + "    - residue selections in apply_cif_link block swapped\n"
+                  + "    - corrupt CIF link definition\n"
+                  + "    - corrupt or missing CIF modifications associated with"
+                      " this link\n"
+                  + "  If none of this applies, send email to:\n"
+                  + "    bugs@phenix-online.org")
+            link = mon_lib_srv.link_link_id_dict[apply.data_link]
+            link_resolution = add_bond_proxies(
+              counters=counters(label="apply_cif_link_bond"),
+              m_i=m_i,
+              m_j=m_j,
+              bond_list=link.bond_list,
+              bond_simple_proxy_registry=self.geometry_proxy_registries
+                .bond_simple,
+              sites_cart=self.sites_cart,
+              distance_cutoff=self.params.link_distance_cutoff)
+            raise_if_corrupt(link_resolution)
+            n_unresolved_apply_cif_link_bonds \
+              += link_resolution.counters.unresolved_non_hydrogen
+            link_resolution = add_angle_proxies(
+              counters=counters(label="apply_cif_link_angle"),
+              m_i=m_i,
+              m_j=m_j,
+              angle_list=link.angle_list,
+              angle_proxy_registry=self.geometry_proxy_registries.angle,
+              special_position_indices=self.special_position_indices)
+            raise_if_corrupt(link_resolution)
+            n_unresolved_apply_cif_link_angles \
+              += link_resolution.counters.unresolved_non_hydrogen
+            link_resolution = add_dihedral_proxies(
+              counters=counters(label="apply_cif_link_dihedral"),
+              m_i=m_i,
+              m_j=m_j,
+              tor_list=link.tor_list,
+              peptide_link_params=self.params.peptide_link,
+              dihedral_proxy_registry=self.geometry_proxy_registries.dihedral,
+              special_position_indices=self.special_position_indices,
+              sites_cart=self.sites_cart,
+              chem_link_id=link.chem_link.id)
+            raise_if_corrupt(link_resolution)
+            n_unresolved_apply_cif_link_dihedrals \
+              += link_resolution.counters.unresolved_non_hydrogen
+            link_resolution = add_chirality_proxies(
+              counters=counters(label="apply_cif_link_chirality"),
+              m_i=m_i,
+              m_j=m_j,
+              chir_list=link.chir_list,
+              chirality_proxy_registry=self.geometry_proxy_registries.chirality,
+              special_position_indices=self.special_position_indices,
+              chir_volume_esd=self.params.chir_volume_esd,
+              lib_link=link)
+            raise_if_corrupt(link_resolution)
+            n_unresolved_apply_cif_link_chiralities \
+              += link_resolution.counters.unresolved_non_hydrogen
+            link_resolution = add_planarity_proxies(
+              counters=counters(label="apply_cif_link_planarity"),
+              m_i=m_i,
+              m_j=m_j,
+              plane_list=link.get_planes(),
+              planarity_proxy_registry=self.geometry_proxy_registries.planarity,
+              special_position_indices=self.special_position_indices)
+            raise_if_corrupt(link_resolution)
+            n_unresolved_apply_cif_link_planarities \
+              += link_resolution.counters.unresolved_non_hydrogen
+      if (log is not None):
+        if (n_unresolved_apply_cif_link_bonds > 0):
+          print >> log, \
+            "          Unresolved apply_cif_link bonds:", \
+            n_unresolved_apply_cif_link_bonds
+        if (n_unresolved_apply_cif_link_angles > 0):
+          print >> log, \
+            "          Unresolved apply_cif_link angles:", \
+            n_unresolved_apply_cif_link_angles
+        if (n_unresolved_apply_cif_link_dihedrals > 0):
+          print >> log, \
+            "          Unresolved apply_cif_link dihedrals:", \
+            n_unresolved_apply_cif_link_dihedrals
+        if (n_unresolved_apply_cif_link_chiralities > 0):
+          print >> log, \
+            "          Unresolved apply_cif_link chiralities:", \
+            n_unresolved_apply_cif_link_chiralities
+        if (n_unresolved_apply_cif_link_planarities > 0):
+          print >> log, \
+            "          Unresolved apply_cif_link planarities:", \
+            n_unresolved_apply_cif_link_planarities
+        flush_log(log)
+    assert self.model_indices.count(n_seq) == 0
     for apply in self.apply_cif_links:
       if (not apply.was_used):
         raise RuntimeError(
           "Unused apply_cif_link: %s %s" % (
-            apply.data_link, str(apply.labels_pair)))
+            apply.data_link, str(apply.pdbres_pair)))
     self.geometry_proxy_registries.discard_tables()
     self.scattering_type_registry.discard_tables()
     self.nonbonded_energy_type_registry.discard_tables()
@@ -2043,16 +2022,13 @@ class build_all_chain_proxies(object):
         print >> log, "  Number of unique models:", n_unique_models
       self.geometry_proxy_registries.report(log=log, prefix="  ")
       self.scattering_type_registry.report(
-        stage_1=self.stage_1, log=log, prefix="  ")
+        pdb_atoms=self.pdb_atoms, log=log, prefix="  ")
       self.nonbonded_energy_type_registry.report(
-        stage_1=self.stage_1, log=log, prefix="  ")
+        pdb_atoms=self.pdb_atoms, log=log, prefix="  ")
     self.time_building_chain_proxies = timer.elapsed()
 
   def fatal_problems_message(self):
     result = ["Fatal problems interpreting PDB file:"]
-    if (self.n_duplicate_atoms):
-      result.append(
-        "  Number of duplicate atoms: %d" % self.n_duplicate_atoms)
     for reg in [self.scattering_type_registry,
                 self.nonbonded_energy_type_registry]:
       n_unknown = reg.n_unknown_type_symbols()
@@ -2060,16 +2036,6 @@ class build_all_chain_proxies(object):
         result.append("  %s: %d" % (reg.report_unknown_message(), n_unknown))
     if (len(result) == 1): return None
     return "\n".join(result)
-
-  def monomer_mappings(self):
-    for model in self.processed_models:
-      for mm in model.monomer_mappings():
-        yield mm
-
-  def monomer_mapping_summaries(self):
-    for model in self.processed_models:
-      for mm in model.monomer_mapping_summaries():
-        yield mm
 
   def site_symmetry_table(self):
     if (self._site_symmetry_table is None):
@@ -2088,34 +2054,33 @@ class build_all_chain_proxies(object):
     return self._sites_cart_exact
 
   def sel_classification(self, classification):
-    result = flex.bool(len(self.stage_1.atom_attributes_list), False)
-    for summary in self.monomer_mapping_summaries():
+    result = flex.bool(self.pdb_atoms.size(), False)
+    for summary in self.all_monomer_mappings:
       if (summary.classification == classification):
         result.set_selected(summary.all_associated_i_seqs(), True)
     return result
 
   def sel_backbone_or_sidechain(self, backbone_flag, sidechain_flag):
-    result = flex.bool(len(self.stage_1.atom_attributes_list), False)
-    atoms = self.stage_1.atom_attributes_list
-    for summary in self.monomer_mapping_summaries():
+    result = flex.bool(self.pdb_atoms.size(), False)
+    for summary in self.all_monomer_mappings:
       if (summary.classification == "peptide"):
-        for i_seq in summary.expected_atom_i_seqs:
+        for atom in summary.expected_atoms:
           # XXX hydrogens not included
-          if (atoms[i_seq].name.strip() in ["N", "CA", "C", "O"]):
-            result[i_seq] = backbone_flag
+          if (atom.name.strip() in ["N", "CA", "C", "O"]):
+            result[atom.i_seq] = backbone_flag
           else:
-            result[i_seq] = sidechain_flag
+            result[atom.i_seq] = sidechain_flag
       elif (summary.classification in ["RNA", "DNA"]):
-        for i_seq in summary.expected_atom_i_seqs:
+        for atom in summary.expected_atoms:
           # XXX hydrogens not included
-          if (atoms[i_seq].name.strip()
+          if (atom.name.strip()
                 in ["P", "O1P", "O2P", "O3'", "O5'",
                                        "O3*", "O5*",
                     "O4'", "C1'", "C2'", "C3'", "C4'", "C5'",
                     "O4*", "C1*", "C2*", "C3*", "C4*", "C5*"]):
-            result[i_seq] = backbone_flag
+            result[atom.i_seq] = backbone_flag
           else:
-            result[i_seq] = sidechain_flag
+            result[atom.i_seq] = sidechain_flag
     return result
 
   def sel_backbone(self):
@@ -2125,27 +2090,25 @@ class build_all_chain_proxies(object):
     return self.sel_backbone_or_sidechain(False, True)
 
   def sel_phosphate(self):
-    result = flex.bool(len(self.stage_1.atom_attributes_list), False)
-    atoms = self.stage_1.atom_attributes_list
-    for summary in self.monomer_mapping_summaries():
+    result = flex.bool(self.pdb_atoms.size(), False)
+    for summary in self.all_monomer_mappings:
       if (summary.classification in ["RNA", "DNA"]):
-        for i_seq in summary.expected_atom_i_seqs:
-          if (atoms[i_seq].name.strip()
+        for atom in summary.expected_atoms:
+          if (atom.name.strip()
                 in ["P", "O1P", "O2P", "O3'", "O5'",
                                        "O3*", "O5*"]):
-            result[i_seq] = True
+            result[atom.i_seq] = True
     return result
 
   def sel_ribose(self):
-    result = flex.bool(len(self.stage_1.atom_attributes_list), False)
-    atoms = self.stage_1.atom_attributes_list
-    for summary in self.monomer_mapping_summaries():
+    result = flex.bool(self.pdb_atoms.size(), False)
+    for summary in self.all_monomer_mappings:
       if (summary.classification in ["RNA", "DNA"]):
-        for i_seq in summary.expected_atom_i_seqs:
-          if (atoms[i_seq].name.strip()
+        for atom in summary.expected_atoms:
+          if (atom.name.strip()
                 in ["O4'", "C1'", "C2'", "C3'", "C4'", "C5'",
                     "O4*", "C1*", "C2*", "C3*", "C4*", "C5*"]):
-            result[i_seq] = True
+            result[atom.i_seq] = True
     return result
 
   def sel_within(self, radius, primary_selection):
@@ -2184,7 +2147,7 @@ class build_all_chain_proxies(object):
       assert word_iterator.pop().value == "("
       radius = float(word_iterator.pop().value)
       assert word_iterator.pop().value == ","
-      sel = self.stage_1.selection_cache().selection_parser(
+      sel = self.pdb_hierarchy.atom_selection_cache().selection_parser(
         word_iterator=word_iterator,
         callback=self._selection_callback,
         expect_nonmatching_closing_parenthesis=True)
@@ -2194,7 +2157,7 @@ class build_all_chain_proxies(object):
     return True
 
   def selection(self, string, cache=None):
-    if (cache is None): cache = self.stage_1.selection_cache()
+    if (cache is None): cache = self.pdb_hierarchy.atom_selection_cache()
     return cache.selection(
       string=string,
       callback=self._selection_callback)
@@ -2204,8 +2167,8 @@ class build_all_chain_proxies(object):
 
   def process_apply_cif_modification(self, mon_lib_srv, log):
     self.apply_cif_modifications = {}
+    atoms = self.pdb_atoms
     sel_cache = None
-    aal = self.stage_1.atom_attributes_list
     for apply in self.params.apply_cif_modification:
       if (apply.data_mod is None): continue
       print >> log, "  apply_cif_modification:"
@@ -2219,23 +2182,23 @@ class build_all_chain_proxies(object):
           + "  with the modification as an additional argument.")
       print >> log, "    residue_selection:", apply.residue_selection
       if (sel_cache is None):
-        sel_cache = self.stage_1.selection_cache()
+        sel_cache = self.pdb_hierarchy.atom_selection_cache()
       iselection = self.phil_atom_selection(
         cache=sel_cache,
         scope_extract=apply,
         attr="residue_selection").iselection()
-      unique_residue_keys = {}
+      pdbres_set = {}
       for i_seq in iselection:
-        unique_residue_keys[aal[i_seq].residue_and_model_labels()] = None
-      for key in unique_residue_keys:
-        self.apply_cif_modifications.setdefault(key, []).append(
+        pdbres_set[atoms[i_seq].id_str(pdbres=True)] = None
+      for pdbres in pdbres_set:
+        self.apply_cif_modifications.setdefault(pdbres, []).append(
           apply.data_mod)
 
   def process_apply_cif_link(self, mon_lib_srv, log):
     self.apply_cif_links = []
-    self.apply_cif_links_labels_mm_dict = {}
+    self.empty_apply_cif_links_mm_pdbres_dict = {}
+    atoms = self.pdb_atoms
     sel_cache = None
-    aal = self.stage_1.atom_attributes_list
     for apply in self.params.apply_cif_link:
       if (apply.data_link is None): continue
       print >> log, "  apply_cif_link:"
@@ -2262,39 +2225,36 @@ class build_all_chain_proxies(object):
               + "  Please check for spelling errors or specify the file name\n"
               + "  with the modification as an additional argument.")
       sel_attrs = ["residue_selection_"+n for n in ["1", "2"]]
-      labels_pair = []
+      pdbres_pair = []
       for attr in sel_attrs:
         print >> log, "    %s:" % attr, getattr(apply, attr)
         if (sel_cache is None):
-          sel_cache = self.stage_1.selection_cache()
+          sel_cache = self.pdb_hierarchy.atom_selection_cache()
         iselection = self.phil_atom_selection(
           cache=sel_cache,
           scope_extract=apply,
           attr=attr).iselection()
-        unique_residue_keys = {}
+        pdbres_set = {}
         for i_seq in iselection:
-          unique_residue_keys[aal[i_seq].residue_and_model_labels()] = None
-        if (len(unique_residue_keys) != 1):
+          pdbres_set[atoms[i_seq].id_str(pdbres=True)] = None
+        if (len(pdbres_set) != 1):
           raise Sorry("Not exactly one residue selected.") # XXX models?
-        labels_pair.append(unique_residue_keys.keys()[0])
-      for labels,mod_id in zip(labels_pair, mod_ids):
+        pdbres_pair.append(pdbres_set.keys()[0])
+      for pdbres,mod_id in zip(pdbres_pair, mod_ids):
         if (mod_id is not None):
-          self.apply_cif_modifications.setdefault(labels, []).append(mod_id)
+          self.apply_cif_modifications.setdefault(pdbres, []).append(mod_id)
       self.apply_cif_links.append(group_args(
-        labels_pair=labels_pair,
+        pdbres_pair=pdbres_pair,
         data_link=apply.data_link,
         was_used=False))
-      for labels in labels_pair:
-        self.apply_cif_links_labels_mm_dict[labels] = None
+      for pdbres in pdbres_pair:
+        self.empty_apply_cif_links_mm_pdbres_dict[pdbres] = {}
 
-  def create_disulfides(self,
-        disulfide_distance_cutoff,
-        model_indices,
-        conformer_indices,
-        log=None):
-    if (model_indices is not None):
-      model_indices = model_indices.select(self.cystein_sulphur_i_seqs)
-    conformer_indices = conformer_indices.select(self.cystein_sulphur_i_seqs)
+  def create_disulfides(self, disulfide_distance_cutoff, log=None):
+    if (self.model_indices is not None):
+      model_indices = self.model_indices.select(self.cystein_sulphur_i_seqs)
+    conformer_indices = self.conformer_indices.select(
+      self.cystein_sulphur_i_seqs)
     asu_mappings = self.special_position_settings.asu_mappings(
       buffer_thickness=disulfide_distance_cutoff)
     sulphur_sites_cart = self.sites_cart.select(self.cystein_sulphur_i_seqs)
@@ -2311,7 +2271,7 @@ class build_all_chain_proxies(object):
       nonbonded_types=flex.std_string(conformer_indices.size()),
       nonbonded_distance_cutoff_plus_buffer=disulfide_distance_cutoff,
       shell_asu_tables=[pair_asu_table])
-    labels = [self.stage_1.atom_attributes_list[i_seq].pdb_format()
+    labels = [self.pdb_atoms[i_seq].id_str()
       for i_seq in self.cystein_sulphur_i_seqs]
     for proxy in nonbonded_proxies.simple:
       pair_asu_table.add_pair(proxy.i_seqs)
@@ -2395,7 +2355,7 @@ class build_all_chain_proxies(object):
     result = []
     if (len(edits.bond) == 0): return result
     print >> log, "  Custom bonds:"
-    aal = self.stage_1.atom_attributes_list
+    atoms = self.pdb_atoms
     unit_cell = self.special_position_settings.unit_cell()
     space_group = self.special_position_settings.space_group()
     max_bond_length = unit_cell.shortest_vector_sq()**0.5
@@ -2445,7 +2405,7 @@ class build_all_chain_proxies(object):
           proxy=p)
         print >> log, "    bond:"
         for i in [0,1]:
-          print >> log, "      atom %d:" % (i+1), aal[p.i_seqs[i]].pdb_format()
+          print >> log, "      atom %d:" % (i+1), atoms[p.i_seqs[i]].quote()
         print >> log, "      symmetry operation:", str(p.rt_mx_ji)
         if (not space_group.contains(smx=p.rt_mx_ji)):
           raise Sorry(
@@ -2477,7 +2437,7 @@ class build_all_chain_proxies(object):
     else:
       special_position_indices = self.special_position_indices
     print >> log, "  Custom angles:"
-    aal = self.stage_1.atom_attributes_list
+    atoms = self.pdb_atoms
     sel_attrs = ["atom_selection_"+n for n in ["1", "2", "3"]]
     for angle in edits.angle:
       def show_atom_selections():
@@ -2512,7 +2472,7 @@ class build_all_chain_proxies(object):
         print >> log, "    angle:"
         n_special = 0
         for i,i_seq in enumerate(p.i_seqs):
-          print >> log, "      atom %d:" % (i+1), aal[i_seq].pdb_format(),
+          print >> log, "      atom %d:" % (i+1), atoms[i_seq].quote(),
           if (i_seq in special_position_indices):
             n_special += 1
             print >> log, "# SPECIAL POSITION",
@@ -2547,11 +2507,8 @@ class build_all_chain_proxies(object):
         log=None):
     assert self.special_position_settings is not None
     timer = user_plus_sys_time()
-    sel_cache = self.stage_1.selection_cache()
-    model_indices = sel_cache.get_model_indices()
-    conformer_indices = sel_cache.get_conformer_indices()
     bond_params_table = geometry_restraints.extract_bond_params(
-      n_seq=sel_cache.n_seq,
+      n_seq=self.sites_cart.size(),
       bond_simple_proxies=self.geometry_proxy_registries.bond_simple.proxies)
     bond_distances_model = geometry_restraints.bond_distances_model(
       sites_cart=self.sites_cart,
@@ -2561,7 +2518,7 @@ class build_all_chain_proxies(object):
         bond_distances_model > self.special_position_settings.unit_cell()
           .shortest_vector_sq()**.5).iselection()
       if (excessive_bonds.size() > 0):
-        atoms = self.stage_1.atom_attributes_list
+        atoms = self.pdb_atoms
         proxies = self.geometry_proxy_registries.bond_simple.proxies
         print >> log, "  Bonds with excessive lengths:"
         for i_proxy in excessive_bonds:
@@ -2570,15 +2527,13 @@ class build_all_chain_proxies(object):
             sites_cart=self.sites_cart, proxy=proxy)
           print >> log, "    Distance model: %.6g (ideal: %.6g)" % (
             bond.distance_model, bond.distance_ideal)
-          for i,i_seq in enumerate(proxy.i_seqs):
-            print >> log, "      atom %d: %s" % (i+1,atoms[i_seq].pdb_format())
+          for i_seq in proxy.i_seqs:
+            print >> log, "      %s" % atoms[i_seq].format_atom_record()
         raise Sorry("Number of bonds with excessive lengths: %d" %
           excessive_bonds.size())
     disulfide_sym_table, max_disulfide_bond_distance = \
       self.create_disulfides(
         disulfide_distance_cutoff=self.params.disulfide_distance_cutoff,
-        model_indices=model_indices,
-        conformer_indices=conformer_indices,
         log=log)
     max_bond_distance = max_disulfide_bond_distance
     if (bond_distances_model.size() > 0):
@@ -2614,6 +2569,7 @@ class build_all_chain_proxies(object):
         rt_mx_ji=sym_pair.rt_mx_ji)
     #
     if (edits is not None):
+      sel_cache = self.pdb_hierarchy.atom_selection_cache()
       processed_edits = self.process_geometry_restraints_edits(
         sel_cache=sel_cache, edits=edits, log=log)
       for proxy in processed_edits.bond_sym_proxies:
@@ -2641,8 +2597,8 @@ class build_all_chain_proxies(object):
       minimum_distance=self.params.min_vdw_distance)
     result = geometry_restraints.manager.manager(
       crystal_symmetry=self.special_position_settings,
-      model_indices=model_indices,
-      conformer_indices=conformer_indices,
+      model_indices=self.model_indices,
+      conformer_indices=self.conformer_indices,
       site_symmetry_table=self.site_symmetry_table(),
       bond_params_table=bond_params_table,
       shell_sym_tables=shell_sym_tables,
@@ -2659,15 +2615,53 @@ class build_all_chain_proxies(object):
     self.time_building_geometry_restraints_manager = timer.elapsed()
     return result
 
-  def extract_xray_structure(self):
+  def extract_xray_structure(self, unknown_scattering_type_substitute = "?"):
+    from cctbx import xray
+    from cctbx import adptbx
+    from cctbx import eltbx
+    import cctbx.eltbx.xray_scattering
+    from libtbx.itertbx import count
     assert self.special_position_settings is not None
-    return self.stage_1.extract_xray_structure(
-      special_position_settings=self.special_position_settings,
-      force_symmetry=True,
-      sites_cart=self.sites_cart_exact(),
-      site_symmetry_table=self.site_symmetry_table(),
-      scattering_types=self.scattering_type_registry.symbols,
-      unknown_scattering_type_substitute="?")
+    result = xray.structure(
+      special_position_settings=self.special_position_settings)
+    sites_frac = result.unit_cell().fractionalize(
+      sites_cart=self.sites_cart_exact())
+    site_symmetry_table = self.site_symmetry_table()
+    if (site_symmetry_table is not None):
+      assert site_symmetry_table.indices().size() == sites_frac.size()
+    scattering_types = self.scattering_type_registry.symbols
+    if (scattering_types is None):
+      scattering_types = self.get_element_symbols(strip_symbols=True)
+    site_symmetry_ops = None
+    for i_seq,atom,site_frac,scattering_type in zip(
+          count(),
+          self.pdb_atoms,
+          sites_frac,
+          scattering_types):
+      assert atom.i_seq == i_seq
+      try:
+        scattering_type = eltbx.xray_scattering.get_standard_label(
+          label=scattering_type, exact=True)
+      except RuntimeError:
+        if (unknown_scattering_type_substitute is None):
+          raise RuntimeError("Unknown scattering type: %s" %
+            atom.format_atom_record(cut_after_label_columns=True))
+        scattering_type = unknown_scattering_type_substitute
+      if (not atom.uij_is_defined()):
+        u = adptbx.b_as_u(atom.b)
+      else:
+        u = adptbx.u_cart_as_u_star(result.unit_cell(), atom.uij)
+      if (site_symmetry_table is not None):
+        site_symmetry_ops = site_symmetry_table.get(i_seq=i_seq)
+      result.add_scatterer(
+        scatterer=xray.scatterer(
+          label=atom.id_str(),
+          site=site_frac,
+          u=u,
+          occupancy=atom.occ,
+          scattering_type=scattering_type),
+        site_symmetry_ops=site_symmetry_ops)
+    return result
 
 class process(object):
 
@@ -2706,7 +2700,7 @@ class process(object):
         "  Time building chain proxies: %.2f, per 1000 atoms: %.2f" % (
           self.all_chain_proxies.time_building_chain_proxies,
           self.all_chain_proxies.time_building_chain_proxies * 1000
-            / max(1,len(self.all_chain_proxies.stage_1.atom_attributes_list)))
+            / max(1,self.all_chain_proxies.pdb_atoms.size()))
     self._geometry_restraints_manager = None
     self._xray_structure = None
 
@@ -2732,8 +2726,8 @@ class process(object):
           "  Time building geometry restraints manager: %.2f seconds" % (
             self.all_chain_proxies.time_building_geometry_restraints_manager)
         flush_log(self.log)
-        labels = [atom.pdb_format()
-          for atom in self.all_chain_proxies.stage_1.atom_attributes_list]
+        labels = [atom.id_str()
+          for atom in self.all_chain_proxies.pdb_atoms]
         pair_proxies = self._geometry_restraints_manager.pair_proxies(
           sites_cart=self.all_chain_proxies.sites_cart_exact())
         pair_proxies.bond_proxies.show_histogram_of_model_distances(
@@ -2845,40 +2839,18 @@ class process(object):
         header_lines=None,
         out=None,
         prefix=""):
-    atom_attributes_list = self.all_chain_proxies.stage_1.atom_attributes_list
-    assert selection.size() == len(atom_attributes_list)
     if (out is None): out = sys.stdout
-    buffer_main = buffered_indentor(file_object=out, indent=prefix)
     if (header_lines is not None):
       for line in header_lines:
-        print >> buffer_main, line
-    selection = selection.deep_copy()
-    for i_model,model in enumerate(self.all_chain_proxies.processed_models):
-      buffer_model = buffer_main.shift_right()
-      print >> buffer_model, "Model %d," % (i_model+1), \
-        "PDB serial number:", model.serial
-      for i_conformer,conformer in enumerate(model.conformers):
-        buffer_conformer = buffer_model.shift_right()
-        print >> buffer_conformer, "Conformer %d," % (i_conformer+1), \
-          "PDB altLoc:", show_string(conformer.altLoc)
-        for i_chain,chain in enumerate(conformer.chains):
-          buffer_chain = buffer_conformer.shift_right()
-          print >> buffer_chain, "Chain %d," % (i_chain+1), \
-            "PDB chainID: %s," % show_string(chain.chainID), \
-            "segID: %s" % show_string(chain.segID)
-          for mm in chain.monomer_mapping_summaries():
-            i_seqs = mm.all_associated_i_seqs()
-            if (selection.select(i_seqs).count(True) > 0):
-              buffer_residue = buffer_chain.shift_right()
-              print >> buffer_residue, \
-                '"' + atom_attributes_list[i_seqs[0]].pdb_format()[6:]
-              for i_seq in i_seqs:
-                buffer_atom = buffer_residue.shift_right()
-                if (selection[i_seq]):
-                  selection[i_seq] = False
-                  print >> buffer_atom, \
-                    atom_attributes_list[i_seq].pdb_format()[:6]+'"'
-                  buffer_atom.write_buffer()
+        print >> out, prefix+line
+    sub_hierarchy = self.all_chain_proxies.pdb_hierarchy.select(
+      atom_selection=selection)
+    s = sub_hierarchy.as_pdb_string()
+    if (prefix == ""):
+      out.write(s)
+    else:
+      for line in s.splitlines():
+        print >> out, prefix+line
 
   def show_atoms_without_ncs_restraints(self,
         ncs_restraints_groups,
@@ -2886,7 +2858,7 @@ class process(object):
         prefix=""):
     self.show_selected_atoms(
       selection=~ncs_restraints_groups.selection_restrained(
-        n_seq=len(self.all_chain_proxies.stage_1.atom_attributes_list)),
+        n_seq=self.all_chain_proxies.pdb_atoms.size()),
       header_lines=["Atoms without NCS restraints:"],
       out=out,
       prefix=prefix)

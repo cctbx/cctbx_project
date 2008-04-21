@@ -11,6 +11,7 @@ import mmtbx.monomer_library.pdb_interpretation
 from cStringIO import StringIO
 from mmtbx import model_statistics
 from mmtbx import utils
+from libtbx.utils import format_cpu_times
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
@@ -31,11 +32,10 @@ def exercise():
                                                 normalization = False)
   xray_structure = processed_pdb_file.xray_structure()
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   mol = mmtbx.model.manager(
-             restraints_manager     = restraints_manager,
-             xray_structure         = xray_structure,
-             atom_attributes_list   = aal)
+    restraints_manager = restraints_manager,
+    xray_structure = xray_structure,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   mol.xray_structure.scattering_type_registry(table = "wk1995")
 ################
 
@@ -60,11 +60,10 @@ def exercise():
                                                 normalization = False)
   xray_structure = processed_pdb_file.xray_structure()
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   mol_other = mmtbx.model.manager(
-             restraints_manager     = restraints_manager,
-             xray_structure         = xray_structure,
-             atom_attributes_list   = aal)
+    restraints_manager = restraints_manager,
+    xray_structure = xray_structure,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   mol_other.xray_structure.scattering_type_registry(table = "wk1995")
 ################
 
@@ -112,11 +111,10 @@ def exercise_2():
                                                 normalization = False)
   xray_structure = processed_pdb_file.xray_structure()
   selection = flex.bool(xray_structure.scatterers().size(), True)
-  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   mol = mmtbx.model.manager(
-             restraints_manager     = restraints_manager,
-             xray_structure         = xray_structure,
-             atom_attributes_list   = aal)
+    restraints_manager = restraints_manager,
+    xray_structure = xray_structure,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
   mol.xray_structure.scattering_type_registry(table = "wk1995")
 
   out = StringIO()
@@ -167,13 +165,12 @@ def exercise_3():
   restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
                                                 normalization = False)
   xray_structure = processed_pdb_file.xray_structure()
-  aal= processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list
   out = StringIO()
   mol = mmtbx.model.manager(
-    restraints_manager     = restraints_manager,
-    xray_structure         = xray_structure,
-    atom_attributes_list   = aal,
-    log                    = out)
+    restraints_manager = restraints_manager,
+    xray_structure = xray_structure,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    log = out)
   #
   mol.idealize_h()
   assert out.getvalue().splitlines()[0] == \
@@ -185,6 +182,7 @@ def run():
   exercise()
   exercise_2()
   exercise_3()
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()

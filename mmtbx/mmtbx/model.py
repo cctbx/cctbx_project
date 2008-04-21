@@ -23,6 +23,23 @@ import iotbx.pdb
 
 time_model_show = 0.0
 
+def find_common_water_resseq_max(pdb_hierarchy):
+  get_class = iotbx.pdb.common_residue_names_get_class
+  hy36decode = iotbx.pdb.hy36decode
+  result = None
+  for model in pdb_hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          if (get_class(name=ag.resname) == "common_water"):
+            try: i = hy36decode(width=4, s=rg.resseq)
+            except (RuntimeError, ValueError): pass
+            else:
+              if (result is None or result < i):
+                result = i
+            break
+  return result
+
 class xh_connectivity_table(object):
   # XXX need angle information as well
   def __init__(self, geometry, xray_structure):
@@ -54,7 +71,7 @@ class xh_connectivity_table(object):
 
 class manager(object):
   def __init__(self, xray_structure,
-                     atom_attributes_list,
+                     pdb_hierarchy,
                      processed_pdb_files_srv = None,
                      restraints_manager = None,
                      ias_xray_structure = None,
@@ -69,7 +86,9 @@ class manager(object):
     self.restraints_manager = restraints_manager
     self.xray_structure = xray_structure
     self.xray_structure_initial = self.xray_structure.deep_copy_scatterers()
-    self.atom_attributes_list = atom_attributes_list
+    self.pdb_hierarchy = pdb_hierarchy
+    self.pdb_atoms = pdb_hierarchy.atoms()
+    self.pdb_atoms.reset_i_seq()
     self.refinement_flags = refinement_flags
     self.wilson_b = wilson_b
     self.tls_groups = tls_groups
@@ -139,49 +158,98 @@ class manager(object):
         "X-H deviation from ideal after  regularization (bond): mean=%6.3f max=%6.3f"%\
         (flex.mean(xhd), flex.max(xhd))
 
-  def add_to_aal(self, next_to_i_seq, attr):
-    self.atom_attributes_list = self.atom_attributes_list[:next_to_i_seq+1] + \
-      [attr] + self.atom_attributes_list[next_to_i_seq+1:]
-
-  def extact_water(self):
-    top = {}
+  def extract_water_residue_groups(self):
+    result = []
     solvent_sel = self.solvent_selection()
     get_class = iotbx.pdb.common_residue_names_get_class
-    for i_seq, aal in enumerate(self.atom_attributes_list):
-      if(get_class(name = aal.resName) == "common_water"):
-        assert solvent_sel[i_seq]
-        top.setdefault(aal.chainID,      {}).\
-            setdefault(aal.residue_id(), []).append([i_seq,aal])
-      else:
-        assert not solvent_sel[i_seq]
-    water_residues = []
-    for v0 in top.values():
-      for v1 in v0.values():
-        water_residues.append(v1)
-        assert len(v1) <= 3
-    return water_residues
+    for model in self.pdb_hierarchy.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          first_water = None
+          first_other = None
+          for ag in rg.atom_groups():
+            residue_id = "%3s%4s%1s" % (ag.resname, rg.resseq, rg.icode)
+            if (get_class(name=ag.resname) == "common_water"):
+              for atom in ag.atoms():
+                i_seq = atom.i_seq
+                assert solvent_sel[i_seq]
+                if (first_water is None):
+                  first_water = atom
+            else:
+              for atom in ag.atoms():
+                assert not solvent_sel[atom.i_seq]
+                if (first_other is None):
+                  first_other = atom
+          if (first_water is not None):
+            if (first_other is not None):
+              raise RuntimeError(
+                "residue_group with mix of water and non-water:\n"
+                + "  %s\n" % first_water.quote()
+                + "  %s" % first_other.quote())
+            result.append(rg)
+    return result
 
   def renumber_water(self):
-    water_residues = self.extact_water()
-    for i_seq, water_residue in enumerate(water_residues):
-      assert len(water_residue) <= 3
-      for wra in water_residue:
-        wra[1].resSeq = i_seq
+    for i,rg in enumerate(self.extract_water_residue_groups()):
+      rg.resseq = pdb.resseq_encode(value=i+1)
+      rg.icode = " "
 
   def add_hydrogens(self, element = "H"):
-    water_residues = self.extact_water()
     result = []
-    n_built = 0
-    for water_residue in water_residues:
-      if(len(water_residue) == 2):
-        n_built += 1
-        o_attr = None
-        h_attr = None
-        for wr in water_residue:
-          if(wr[1].element.strip() == "O"): o_attr = wr
-          else: h_attr = wr
-        assert [o_attr, h_attr].count(None) == 0
-        h_name = h_attr[1].name.strip()
+    xs = self.xray_structure
+    frac = xs.unit_cell().fractionalize
+    sites_cart = xs.sites_cart()
+    u_isos = xs.extract_u_iso_or_u_equiv()
+    next_to_i_seqs = []
+    last_insert_i_seq = [sites_cart.size()]
+    def insert_atoms(atom, atom_names, element):
+      i_seq = atom.i_seq
+      assert i_seq < last_insert_i_seq[0]
+      last_insert_i_seq[0] = i_seq
+      x,y,z = sites_cart[i_seq]
+      for i,atom_name in enumerate(atom_names):
+        # XXX XXX XXX use point on unit sphere
+        r = random.randrange(10000, 11000)/10000. * random.choice([-1,1])
+        h = atom.detached_copy()
+        h.name = atom_name
+        h.xyz = (x+r,y,z)
+        h.sigxyz = (0,0,0)
+        h.occ = 1.0
+        h.sigocc = 0
+        h.b = adptbx.u_as_b(u_isos[i_seq])
+        h.sigb = 0
+        h.uij = (-1,-1,-1,-1,-1,-1)
+        if (pdb.hierarchy.atom.has_siguij()):
+          h.siguij = (-1,-1,-1,-1,-1,-1)
+        h.element = "%2s" % element.strip()
+        ag.append_atom(atom=h)
+        scatterer = xray.scatterer(
+          label           = h.name,
+          scattering_type = h.element,
+          site            = frac(h.xyz),
+          u               = adptbx.b_as_u(h.b),
+          occupancy       = h.occ)
+        xs.add_scatterer(
+          scatterer = scatterer,
+          insert_at_index = i_seq+i+1)
+        next_to_i_seqs.append(i_seq) # not i_seq+i because refinement_flags.add
+                                     # sorts next_to_i_seqs internally :-(
+    water_rgs = self.extract_water_residue_groups()
+    water_rgs.reverse()
+    for rg in water_rgs:
+      if (rg.atom_groups_size() != 1):
+        raise RuntimeError(
+          "Not implemented: cannot handle water with alt. conf.")
+      ag = rg.only_atom_group()
+      atoms = ag.atoms()
+      if (atoms.size() == 2):
+        o_atom = None
+        h_atom = None
+        for atom in atoms:
+          if (atom.element.strip() == "O"): o_atom = atom
+          else:                             h_atom = atom
+        assert [o_atom, h_atom].count(None) == 0
+        h_name = h_atom.name.strip()
         if(len(h_name) == 1):
           atom_name = h_name+"1"
         elif(len(h_name) == 2):
@@ -195,78 +263,59 @@ class manager(object):
             else: raise RuntimeError
           else: raise RuntimeError
         else: raise RuntimeError
-        h_attr = create_atom_attr(other_attr     = o_attr[1],
-                                  i_seq          = o_attr[0],
-                                  xray_structure = self.xray_structure,
-                                  element        = h_attr[1].element,
-                                  atom_name      = atom_name)
-        result.append([o_attr[0], h_attr])
-      elif(len(water_residue) == 1):
-        n_built += 1
-        water_residue = water_residue[0]
-        assert water_residue[1].element.strip() == "O"
-        for atom_name in (element+"1", element+"2"):
-          h_attr = create_atom_attr(other_attr     = water_residue[1],
-                                    i_seq          = water_residue[0],
-                                    xray_structure = self.xray_structure,
-                                    element        = element,
-                                    atom_name      = atom_name)
-          result.append([water_residue[0], h_attr])
+        insert_atoms(
+          atom=o_atom,
+          atom_names=[atom_name],
+          element=h_atom.element)
+      elif (atoms.size() == 1):
+        atom = atoms[0]
+        assert atom.element.strip() == "O"
+        insert_atoms(
+          atom=atom,
+          atom_names=[element+n for n in ["1","2"]],
+          element=element)
     #
-    result.sort()
-    result.reverse()
-    next_to_i_seqs = []
-    print >> self.log, "Number of H added:", len(result)
-    if(len(result) > 0):
-      for res in result:
-        i_seq, attr = res[0], res[1]
-        next_to_i_seqs.append(i_seq)
-        scatterer = xray.scatterer(
-          label           = attr.name,
-          scattering_type = attr.element,
-          site            = self.xray_structure.unit_cell().fractionalize(attr.coordinates),
-          u               = adptbx.b_as_u(attr.tempFactor),
-          occupancy       = attr.occupancy)
-        self.xray_structure.add_scatterer(
-          scatterer = scatterer,
-          insert_at_index = i_seq+1)
-        self.add_to_aal(next_to_i_seq = i_seq, attr = attr)
-      if(self.refinement_flags is not None):
-        self.refinement_flags.add(next_to_i_seqs   = next_to_i_seqs,
-                                  sites_individual = True)
-      # XXX very inefficient: re-process PDB from scratch and create restraints
-      raw_records = self.write_pdb_file()
-      processed_pdb_file, pdb_inp = self.processed_pdb_files_srv.\
-        process_pdb_files(raw_records = raw_records)
-      new_xray_structure = processed_pdb_file.xray_structure(
-        show_summary = False).deep_copy_scatterers()
-      new_atom_attributes_list = \
-        processed_pdb_file.all_chain_proxies.stage_1.atom_attributes_list[:]
-      assert approx_equal(new_xray_structure.sites_cart(),
-        self.xray_structure.sites_cart(), 0.001)
-      assert len(new_atom_attributes_list) == len(self.atom_attributes_list)
-      for attr1, attr2 in zip(self.atom_attributes_list, new_atom_attributes_list):
-        assert attr1.name.strip() == attr2.name.strip()
-        assert attr1.element.strip() == attr2.element.strip()
-      self.atom_attributes_list = new_atom_attributes_list[:]
-      # XXX now we gonna loose old grm (with all NCS, edits, etc...)
-      if(self.restraints_manager.ncs_groups is not None):
-        raise Sorry("Hydrogen building is not compatible with NCS refinement.")
-
-      sctr_keys = \
-        self.xray_structure.scattering_type_registry().type_count_dict().keys()
-      has_hd = "H" in sctr_keys or "D" in sctr_keys
-      geometry = processed_pdb_file.geometry_restraints_manager(
-        show_energies      = False,
-        plain_pairs_radius = self.restraints_manager.geometry.plain_pairs_radius,
-        edits              = None, #self.params.geometry_restraints.edits, XXX
-        assume_hydrogens_all_missing = not has_hd)
-      # self.remove_selected_geometry_restraints(manager = geometry) XXX this is lost too
-      new_restraints_manager = mmtbx.restraints.manager(
-        geometry      = geometry,
-        normalization = self.restraints_manager.normalization)
-      self.restraints_manager = new_restraints_manager
-      self.idealize_h()
+    print >> self.log, "Number of H added:", len(next_to_i_seqs)
+    if (len(next_to_i_seqs) == 0): return
+    if (self.refinement_flags is not None):
+      self.refinement_flags.add(
+        next_to_i_seqs=next_to_i_seqs,
+        sites_individual=True)
+    # XXX very inefficient: re-process PDB from scratch and create restraints
+    raw_records = [pdb.format_cryst1_record(
+      crystal_symmetry=self.xray_structure)]
+    raw_records.extend(self.pdb_hierarchy.as_pdb_string().splitlines())
+    processed_pdb_file, pdb_inp = self.processed_pdb_files_srv.\
+      process_pdb_files(raw_records = raw_records)
+    new_xray_structure = processed_pdb_file.xray_structure(
+      show_summary = False).deep_copy_scatterers()
+    new_pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy
+    new_pdb_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms
+    old_pdb_atoms = self.pdb_hierarchy.atoms()
+    assert len(new_pdb_atoms) == len(old_pdb_atoms)
+    for a1, a2 in zip(old_pdb_atoms, new_pdb_atoms):
+      assert a1.name.strip() == a2.name.strip()
+      assert a1.element.strip() == a2.element.strip()
+      assert approx_equal(a1.xyz, a2.xyz, 0.001)
+    self.pdb_hierarchy = new_pdb_hierarchy
+    self.pdb_atoms = new_pdb_atoms
+    # XXX now we gonna loose old grm (with all NCS, edits, etc...)
+    if(self.restraints_manager.ncs_groups is not None):
+      raise Sorry("Hydrogen building is not compatible with NCS refinement.")
+    sctr_keys = \
+      self.xray_structure.scattering_type_registry().type_count_dict().keys()
+    has_hd = "H" in sctr_keys or "D" in sctr_keys
+    geometry = processed_pdb_file.geometry_restraints_manager(
+      show_energies      = False,
+      plain_pairs_radius = self.restraints_manager.geometry.plain_pairs_radius,
+      edits              = None, #self.params.geometry_restraints.edits, XXX
+      assume_hydrogens_all_missing = not has_hd)
+    # self.remove_selected_geometry_restraints(manager = geometry) XXX this is lost too
+    new_restraints_manager = mmtbx.restraints.manager(
+      geometry      = geometry,
+      normalization = self.restraints_manager.normalization)
+    self.restraints_manager = new_restraints_manager
+    self.idealize_h()
 
   def geometry_minimization(self,
                             max_number_of_iterations = 500,
@@ -332,7 +381,7 @@ class manager(object):
     if not build_only: self.use_ias = True
     self.ias_manager = ias.manager(
                     geometry             = self.restraints_manager.geometry,
-                    atom_attributes_list = self.atom_attributes_list,
+                    pdb_atoms            = self.pdb_atoms,
                     xray_structure       = self.xray_structure,
                     fmodel               = fmodel,
                     params               = ias_params,
@@ -381,20 +430,37 @@ class manager(object):
          self.xray_structure.convert_to_anisotropic(selection = sel)
          self.refinement_flags.adp_individual_aniso.set_selected(sel, True)
          self.refinement_flags.adp_individual_iso.set_selected(sel, False)
-    # add to aal:
+    # add to pdb_hierarchy:
+    # XXX XXX CONSOLIDATE WITH add_solvent
+    pdb_model = self.pdb_hierarchy.only_model()
+    new_chain = pdb.hierarchy.chain(id=" ")
+    orth = self.ias_xray_structure.unit_cell().orthogonalize
+    n_seq = self.pdb_atoms.size()
     i_seq = 0
     for sc in self.ias_xray_structure.scatterers():
       i_seq += 1
       new_atom_name = sc.label.strip()
       if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
       while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
-      new_attr = pdb.atom.attributes(name        = new_atom_name,
-                                     resName     = "IAS",
-                                     element     = sc.element_symbol(),
-                                     is_hetatm   = True,
-                                     resSeq      = i_seq)
-      self.atom_attributes_list.append(new_attr)
-
+      new_atom = (pdb.hierarchy.atom()
+        .set_serial(new_serial=pdb.hy36encode(width=5, value=n_seq+i_seq))
+        .set_name(new_name=new_atom_name)
+        .set_xyz(new_xyz=orth(sc.site))
+        .set_occ(new_occ=sc.occupancy)
+        .set_b(new_b=adptbx.u_as_b(sc.u_iso))
+        .set_element(sc.scattering_type[:1])
+        .set_charge(sc.scattering_type[1:3])
+        .set_hetero(new_hetero=True))
+      new_atom_group = pdb.hierarchy.atom_group(altloc="", resname="IAS")
+      new_atom_group.append_atom(atom=new_atom)
+      new_residue_group = pdb.hierarchy.residue_group(
+        resseq=pdb.resseq_encode(value=i_seq), icode=" ")
+      new_residue_group.append_atom_group(atom_group=new_atom_group)
+      new_chain.append_residue_group(residue_group=new_residue_group)
+    if (new_chain.residue_groups_size() != 0):
+      pdb_model.append_chain(chain=new_chain)
+    self.pdb_atoms = self.pdb_hierarchy.atoms()
+    self.pdb_atoms.reset_i_seq()
 
   def remove_ias(self):
     print >> self.log, ">>> Removing IAS..............."
@@ -405,42 +471,40 @@ class manager(object):
        self.refinement_flags = self.old_refinement_flags.deep_copy()
        self.old_refinement_flags = None
     if(self.ias_selection is not None):
-       self.xray_structure.select_inplace(selection = ~self.ias_selection)
-       n_non_ias = self.ias_selection.count(False)
-       self.ias_selection = None
+       self.xray_structure.select_inplace(
+         selection = ~self.ias_selection)
        self.xray_structure.scattering_type_registry().show()
-       self.atom_attributes_list = self.atom_attributes_list[:n_non_ias]
+       self.pdb_hierarchy = self.pdb_hierarchy.select(
+         atom_selection = ~self.ias_selection)
+       self.pdb_atoms = self.pdb_hierarchy.atoms()
+       self.ias_selection = None
 
   def show_rigid_bond_test(self, out=None):
-    if(out is None): out = sys.stdout
-    bond_proxies_simple = \
-            self.restraints_manager.geometry.pair_proxies().bond_proxies.simple
+    if (out is None): out = sys.stdout
     scatterers = self.xray_structure.scatterers()
     unit_cell = self.xray_structure.unit_cell()
     rbt_array = flex.double()
-    for proxy in bond_proxies_simple:
-        i_seqs = proxy.i_seqs
-        i,j = proxy.i_seqs
-        atom_i = self.atom_attributes_list[i]
-        atom_j = self.atom_attributes_list[j]
-        if(atom_i.element.strip() not in ["H","D"] and
-                                      atom_j.element.strip() not in ["H","D"]):
-           sc_i = scatterers[i]
-           sc_j = scatterers[j]
-           if(sc_i.flags.use_u_aniso() and sc_j.flags.use_u_aniso()):
-              p = adp_restraints.rigid_bond_pair(sc_i.site,
-                                                 sc_j.site,
-                                                 sc_i.u_star,
-                                                 sc_j.u_star,
-                                                 unit_cell)
-              rbt_value = p.delta_z()*10000.
-              rbt_array.append(rbt_value)
-              print >> out, "%s %s %10.3f"%(atom_i.name, atom_j.name, rbt_value)
-    print >> out, "RBT values (*10000):"
-    print >> out, "  mean = %.3f"%flex.mean(rbt_array)
-    print >> out, "  max  = %.3f"%flex.max(rbt_array)
-    print >> out, "  min  = %.3f"%flex.min(rbt_array)
-
+    for proxy in self.restraints_manager.geometry.pair_proxies() \
+                   .bond_proxies.simple:
+      i_seqs = proxy.i_seqs
+      i,j = proxy.i_seqs
+      atom_i = self.pdb_atoms[i]
+      atom_j = self.pdb_atoms[j]
+      if (    atom_i.element.strip() not in ["H","D"]
+          and atom_j.element.strip() not in ["H","D"]):
+        sc_i = scatterers[i]
+        sc_j = scatterers[j]
+        if (sc_i.flags.use_u_aniso() and sc_j.flags.use_u_aniso()):
+          p = adp_restraints.rigid_bond_pair(
+            sc_i.site, sc_j.site, sc_i.u_star, sc_j.u_star, unit_cell)
+          rbt_value = p.delta_z()*10000.
+          rbt_array.append(rbt_value)
+          print >> out, "%s %s %10.3f"%(atom_i.name, atom_j.name, rbt_value)
+    if (rbt_array.size() != 0):
+      print >> out, "RBT values (*10000):"
+      print >> out, "  mean = %.3f"%flex.mean(rbt_array)
+      print >> out, "  max  = %.3f"%flex.max(rbt_array)
+      print >> out, "  min  = %.3f"%flex.min(rbt_array)
 
   def restraints_manager_energies_sites(self,
                                         geometry_flags    = None,
@@ -462,13 +526,13 @@ class manager(object):
     water = ordered_solvent.water_ids()
     result = flex.bool()
     get_class = iotbx.pdb.common_residue_names_get_class
-    for a in self.atom_attributes_list:
+    for a in self.pdb_atoms:
       element = (a.element).strip().upper()
-      resName = (a.resName).strip()
+      resname = (a.parent().resname).strip()
       name    = (a.name).strip()
       if((element in water.element_types) and
          (name in water.atom_names) and \
-         (get_class(name = resName) == "common_water")):
+         (get_class(name = resname) == "common_water")):
         result.append(True)
       else: result.append(False)
     return result
@@ -481,9 +545,7 @@ class manager(object):
 
   def select(self, selection):
     # XXX ignores IAS
-    new_atom_attributes_list = []
-    for attr, sel in zip(self.atom_attributes_list, selection):
-      if(sel): new_atom_attributes_list.append(attr)
+    new_pdb_hierarchy = self.pdb_hierarchy.select(selection, copy_atoms=True)
     new_refinement_flags = None
     if(self.refinement_flags is not None):
       new_refinement_flags = self.refinement_flags.select(selection)
@@ -497,7 +559,7 @@ class manager(object):
       processed_pdb_files_srv    = self.processed_pdb_files_srv,
       restraints_manager         = new_restraints_manager,
       xray_structure             = self.xray_structure.select(selection),
-      atom_attributes_list       = new_atom_attributes_list,
+      pdb_hierarchy              = new_pdb_hierarchy,
       refinement_flags           = new_refinement_flags,
       tls_groups                 = self.tls_groups, # XXX not selected, potential bug
       anomalous_scatterer_groups = self.anomalous_scatterer_groups,
@@ -531,25 +593,28 @@ class manager(object):
     natoms_total = self.xray_structure.scatterers().size()
     print >> out, next % (natoms_total, len(selections))
     print >> out, "| group: start point:                        end point:                       |"
-    print >> out, "|               x      B  atom   residue <>        x      B  atom   residue   |"
-    next = "| %5d: %8.3f %6.2f %5s %4s %4s <> %8.3f %6.2f %5s %4s %4s   |"
+    print >> out, "|               x      B  atom  residue  <>        x      B  atom  residue    |"
+    next = "| %5d: %8.3f %6.2f %5s %3s %5s <> %8.3f %6.2f %5s %3s %5s   |"
     sites = self.xray_structure.sites_cart()
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
-    n_atoms = 0
     for i_seq, selection in enumerate(selections):
-        try:
-          i_selection = selection.iselection()
-          n_atoms += i_selection.size()
-        except:
-          i_selection = selection
-          n_atoms += i_selection.size()
-        start = i_selection[0]
-        final = i_selection[i_selection.size()-1]
-        first = self.atom_attributes_list[start]
-        last  = self.atom_attributes_list[final]
-        print >> out, next % (i_seq+1, sites[start][0], b_isos[start],
-          first.name, first.resName, first.resSeq, sites[final][0],
-          b_isos[final], last.name, last.resName, last.resSeq)
+      if (isinstance(selection, flex.bool)):
+        i_selection = selection.iselection()
+      else:
+        i_selection = selection
+      start = i_selection[0]
+      final = i_selection[i_selection.size()-1]
+      first = self.pdb_atoms[start]
+      last  = self.pdb_atoms[final]
+      first_ag = first.parent()
+      first_rg = first_ag.parent()
+      last_ag = last.parent()
+      last_rg = last_ag.parent()
+      print >> out, next % (i_seq+1,
+        sites[start][0], b_isos[start],
+          first.name, first_ag.resname, first_rg.resid(),
+        sites[final][0], b_isos[final],
+          last.name, last_ag.resname, last_rg.resid())
     print >> out, "|"+"-"*77+"|"
     print >> out
     out.flush()
@@ -591,14 +656,15 @@ class manager(object):
   def write_pdb_file(self, out = None, selection = None, xray_structure = None):
     return utils.write_pdb_file(
       xray_structure       = self.xray_structure,
-      atom_attributes_list = self.atom_attributes_list,
+      pdb_hierarchy        = self.pdb_hierarchy,
+      pdb_atoms            = self.pdb_atoms,
       selection            = selection,
       out                  = out)
 
   def add_solvent(self, solvent_xray_structure,
                         atom_name    = "O",
                         residue_name = "HOH",
-                        chain_id     = None,
+                        chain_id     = " ",
                         refine_occupancies = False,
                         refine_adp = None):
     assert refine_adp is not None
@@ -637,22 +703,39 @@ class manager(object):
     if(len(new_atom_name) < 4): new_atom_name = " " + new_atom_name
     while(len(new_atom_name) < 4): new_atom_name = new_atom_name+" "
     #
-    water_resseqs = flex.size_t()
-    get_class = iotbx.pdb.common_residue_names_get_class
-    for aattr in self.atom_attributes_list:
-      if(get_class(name = aattr.resName) == "common_water"):
-        water_resseqs.append(int(aattr.resSeq))
-    i_seq = flex.max_default(water_resseqs, 0)
+    i_seq = find_common_water_resseq_max(pdb_hierarchy=self.pdb_hierarchy)
+    if (i_seq is None or i_seq < 0): i_seq = 0
     #
+    # XXX XXX CONSOLIDATE WITH add_ias
+    pdb_model = self.pdb_hierarchy.only_model()
+    new_chain = pdb.hierarchy.chain(id=chain_id)
+    orth = solvent_xray_structure.unit_cell().orthogonalize
+    serial_offs = self.pdb_atoms.size() - i_seq
     for sc in solvent_xray_structure.scatterers():
-        i_seq += 1
-        new_attr = pdb.atom.attributes(name        = new_atom_name,
-                                       resName     = residue_name,
-                                       chainID     = chain_id,
-                                       element     = sc.element_symbol(),
-                                       is_hetatm   = True,
-                                       resSeq      = i_seq)
-        self.atom_attributes_list.append(new_attr)
+      i_seq += 1
+      new_atom = (pdb.hierarchy.atom()
+        .set_serial(new_serial=pdb.hy36encode(width=5, value=serial_offs+i_seq))
+        .set_name(new_name=new_atom_name)
+        .set_xyz(new_xyz=orth(sc.site))
+        .set_occ(new_occ=sc.occupancy)
+        .set_b(new_b=adptbx.u_as_b(sc.u_iso))
+        .set_element(sc.scattering_type[:1])
+        .set_charge(sc.scattering_type[1:3])
+        .set_hetero(new_hetero=True))
+      new_atom_group = pdb.hierarchy.atom_group(
+        altloc="", resname=residue_name)
+      assert new_atom.parent() is None
+      new_atom_group.append_atom(atom=new_atom)
+      assert new_atom.parent().memory_id() == new_atom_group.memory_id()
+      new_residue_group = pdb.hierarchy.residue_group(
+        resseq=pdb.resseq_encode(value=i_seq), icode=" ")
+      new_residue_group.append_atom_group(atom_group=new_atom_group)
+      new_chain.append_residue_group(residue_group=new_residue_group)
+    if (new_chain.residue_groups_size() != 0):
+      pdb_model.append_chain(chain=new_chain)
+    self.pdb_atoms = self.pdb_hierarchy.atoms()
+    self.pdb_atoms.reset_i_seq()
+    #
     geometry = self.restraints_manager.geometry
     number_of_new_solvent = solvent_xray_structure.scatterers().size()
     if(geometry.model_indices is None):
@@ -678,9 +761,7 @@ class manager(object):
         number=number_of_new_solvent)
     self.restraints_manager.geometry.update_plain_pair_sym_table(
                                  sites_frac = self.xray_structure.sites_frac())
-    assert len(self.atom_attributes_list) == \
-                                        self.xray_structure.scatterers().size()
-
+    assert self.pdb_atoms.size() == self.xray_structure.scatterers().size()
 
   def scale_adp(self, scale_max, scale_min):
     b_isos = self.xray_structure.extract_u_iso_or_u_equiv() * math.pi**2*8
@@ -779,37 +860,3 @@ class manager(object):
     if(selection_aniso is not None):
       self.xray_structure.scatterers().flags_set_grad_u_aniso(
         iselection = selection_aniso.iselection())
-
-def create_atom_attr(other_attr, i_seq, xray_structure, element, atom_name):
-  x,y,z = xray_structure.sites_cart()[i_seq]
-  r = random.randrange(10000, 11000)/10000. * random.choice([-1,1])
-  if(other_attr.altLoc is None): altLoc = " "
-  else: altLoc = other_attr.altLoc
-  if(other_attr.chainID is None): chainID = " "
-  else: chainID = other_attr.chainID
-  if(other_attr.resSeq is None): resSeq = 1
-  else: resSeq = other_attr.resSeq
-  if(other_attr.iCode is None): iCode = " "
-  else: iCode = other_attr.iCode
-  if(other_attr.segID is None): segID = "    "
-  else: segID = other_attr.segID
-  if(other_attr.charge is None): charge = "  "
-  else: charge = other_attr.charge
-  pdb_record = pdb.format_atom_record(
-    record_name = other_attr.record_name(),
-    serial      = 0,
-    name        = atom_name,
-    altLoc      = altLoc,
-    resName     = other_attr.resName,
-    chainID     = chainID,
-    resSeq      = resSeq,
-    iCode       = iCode,
-    site        = (x+r,y,z),
-    occupancy   = 1.0,
-    tempFactor  = adptbx.u_as_b(xray_structure.extract_u_iso_or_u_equiv()[i_seq]),
-    segID       = segID,
-    element     = element,
-    charge      = charge)
-  attr = pdb.atom.attributes()
-  attr.set_from_ATOM_record(pdb.parser.pdb_record(pdb_record))
-  return attr

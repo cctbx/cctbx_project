@@ -46,7 +46,7 @@ def exercise_two_models_with_holes(processed_pdb):
     coordinate_sigma=0.05,
     b_factor_weight=0.4321,
     special_position_warnings_only=False)
-  sites_cart = processed_pdb.all_chain_proxies.stage_1.get_sites_cart()
+  sites_cart = processed_pdb.all_chain_proxies.pdb_atoms.extract_xyz()
   ncs_operators = group.operators(sites_cart=sites_cart)
   out = StringIO()
   ncs_operators.show(sites_cart=sites_cart, out=out, prefix="{*")
@@ -120,8 +120,8 @@ def exercise_two_models_with_holes(processed_pdb):
   assert eps_eq(energies_sites.rms_with_respect_to_average,
    energies_sites_no_gradients.rms_with_respect_to_average)
   site_labels = [
-    atom.pdb_format() for atom in
-      processed_pdb.all_chain_proxies.stage_1.atom_attributes_list]
+    '"'+atom.pdb_label_columns()+'"' for atom in
+      processed_pdb.all_chain_proxies.pdb_atoms]
   out = StringIO()
   energies_sites.show_distances_to_average(
     site_labels=site_labels, out=out, prefix="#^")
@@ -139,8 +139,8 @@ def exercise_two_models_with_holes(processed_pdb):
 #^  " N   GLN C   1 ":   0.4135
 #^  " CA  GLN C   1 ":   0.5070
 ...
-#^  " CA BSER D   4 ":   0.4444
 #^  " C   SER D   4 ":   0.6943
+#^  " CA BSER D   4 ":   0.4444
 #^  " N   THR D   6 ":   0.3724
 #^  " CA  THR D   6 ":   0.4129
 #^  " C   THR D   6 ":   0.4017
@@ -186,8 +186,8 @@ Y$NCS selection: "chain B"
 Y$                       B-iso   NCS ave  Difference
 Y$  " N   GLU B   2 ":   12.87 -   10.35 =   2.5225
 ...
-Y$  " CA BSER D   4 ":    5.23 -    7.00 =  -1.7667
 Y$  " C   SER D   4 ":    7.29 -   10.45 =  -3.1575
+Y$  " CA BSER D   4 ":    5.23 -    7.00 =  -1.7667
 Y$  " N   THR D   6 ":    4.55 -    8.69 =  -4.1425
 Y$  " CA  THR D   6 ":    8.78 -    7.65 =   1.1250
 Y$  " C   THR D   6 ":   10.80 -   10.99 =  -0.1925
@@ -319,52 +319,38 @@ K&    RMS difference with respect to the reference: 0.724248
     ncs_restraints_groups=groups, out=out, prefix="%&")
   assert not show_diff(out.getvalue(), """\
 %&Atoms without NCS restraints:
-%&  Model 1, PDB serial number: 1
-%&    Conformer 1, PDB altLoc: "A"
-%&      Chain 2, PDB chainID: "B", segID: "    "
-%&        "ALA B   3 "
-%&          " CA  "
-%&          " C   "
-%&          " N   "
-%&        "SER B   4 "
-%&          " CA  "
-%&      Chain 3, PDB chainID: "C", segID: "    "
-%&        "ALA C   3 "
-%&          " CA  "
-%&          " C   "
-%&          " N   "
-%&      Chain 4, PDB chainID: "D", segID: "    "
-%&        "ALA D   3 "
-%&          " CA  "
-%&          " C   "
-%&          " N   "
-%&    Conformer 3, PDB altLoc: "C"
-%&      Chain 4, PDB chainID: "D", segID: "    "
-%&        "SER D   4 "
-%&          " CA C"
-%&  Model 2, PDB serial number: 2
-%&    Conformer 1, PDB altLoc: "A"
-%&      Chain 2, PDB chainID: "B", segID: "    "
-%&        "ALA B   3 "
-%&          " CA  "
-%&          " C   "
-%&          " N   "
-%&        "SER B   4 "
-%&          " CA  "
-%&      Chain 3, PDB chainID: "C", segID: "    "
-%&        "ALA C   3 "
-%&          " CA  "
-%&          " C   "
-%&          " N   "
-%&      Chain 4, PDB chainID: "D", segID: "    "
-%&        "ALA D   3 "
-%&          " CA  "
-%&          " C   "
-%&          " N   "
-%&    Conformer 3, PDB altLoc: "C"
-%&      Chain 4, PDB chainID: "D", segID: "    "
-%&        "SER D   4 "
-%&          " CA C"
+%&MODEL        1
+%&ATOM     20  N   ALA B   3     111.517   7.175  -8.669  1.00 10.73
+%&ATOM     21  CA  ALA B   3     112.152   8.103  -8.026  1.00 16.28
+%&ATOM     22  C   ALA B   3     111.702   8.243  -5.903  1.00  9.19
+%&ATOM     24  CA  SER B   4     111.797   9.689  -4.364  1.00  8.91
+%&TER
+%&ATOM     38  N   ALA C   3     109.043  27.391  28.663  1.00 15.05
+%&ATOM     39  CA  ALA C   3     109.073  26.531  28.433  1.00  3.14
+%&ATOM     40  C   ALA C   3     108.930  26.867  26.637  1.00 15.22
+%&TER
+%&ATOM     57  N   ALA D   3      65.439   9.903 -12.471  1.00  7.59
+%&ATOM     58  CA  ALA D   3      65.019   9.566 -11.201  1.00 15.62
+%&ATOM     59  C   ALA D   3      65.679  11.045 -11.097  1.00  2.65
+%&ATOM     61  CA CSER D   4      65.657  12.870  -8.333  1.00  5.84
+%&TER
+%&ENDMDL
+%&MODEL        2
+%&ATOM     86  N   ALA B   3     111.984   7.364  -8.288  1.00  3.16
+%&ATOM     87  CA  ALA B   3     112.389   8.456  -7.544  1.00 12.73
+%&ATOM     88  C   ALA B   3     111.615   8.267  -6.238  1.00  7.17
+%&ATOM     90  CA  SER B   4     111.707   9.131  -4.317  1.00 13.83
+%&TER
+%&ATOM    104  N   ALA C   3     109.237  27.879  29.334  1.00  6.45
+%&ATOM    105  CA  ALA C   3     109.043  26.399  28.156  1.00 15.21
+%&ATOM    106  C   ALA C   3     108.983  26.760  27.178  1.00 11.73
+%&TER
+%&ATOM    123  N   ALA D   3      65.188  10.335 -12.959  1.00  6.94
+%&ATOM    124  CA  ALA D   3      65.543   9.614 -11.242  1.00  5.18
+%&ATOM    125  C   ALA D   3      65.064  11.402 -10.648  1.00 16.01
+%&ATOM    127  CA CSER D   4      65.127  12.969  -9.218  1.00  9.03
+%&TER
+%&ENDMDL
 """)
   #
   for group in groups.members:
@@ -460,7 +446,7 @@ NCS restraints selections produce only one pair of matching atoms:
       assert not show_diff(str(e), '''\
 NCS selection includes an atom on a special position:
   Selection: "chain A"
-    Atom: " NE  ARG A  60 "''')
+    "ATOM    456  NE  ARG A  60 .*.     N  "''')
     else: raise Exception_expected
     log = StringIO()
     group = ncs.restraints.group.from_atom_selections(
@@ -474,7 +460,7 @@ NCS selection includes an atom on a special position:
     assert not show_diff(log.getvalue(), '''\
 WARNING: NCS selection includes an atom on a special position:
   Selection: "chain A"
-    Atom: " NE  ARG A  60 "
+    "ATOM    456  NE  ARG A  60 .*.     N  "
 ''')
     assert len(group.selection_pairs) == 1
     assert list(group.selection_pairs[0][0]) == [0,1,2,3,4,5,6,8,9,10]
@@ -499,8 +485,8 @@ Two different NCS operators applied to same pair of atoms:
        Reference selection: "chain A"
   Previous other selection: "chain B"
    Current other selection: "chain B and resname SER"
-    Atom 1: " C   SER A   4 "
-    Atom 2: " C   SER B   4 "''')
+    "ATOM      7  N   SER A   4 .*.        "
+    "ATOM     23  N   SER B   4 .*.        "''')
     exercise_two_models_with_holes(processed_pdb=processed_pdb)
   print format_cpu_times()
 
