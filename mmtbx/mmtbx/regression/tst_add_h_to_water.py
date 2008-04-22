@@ -1,18 +1,17 @@
-from mmtbx import utils
+from mmtbx.hydrogens import find as find_hydrogens
+import mmtbx.utils
 import mmtbx.model
 import mmtbx.restraints
+from mmtbx import monomer_library
+import mmtbx.monomer_library.pdb_interpretation
+import mmtbx.monomer_library.server
 import iotbx.pdb
+from cctbx import miller
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, show_diff
 from libtbx.utils import format_cpu_times
 from cStringIO import StringIO
 import sys
-from cctbx import miller
-from mmtbx import monomer_library
-import mmtbx.monomer_library.pdb_interpretation
-import mmtbx.monomer_library.server
-from mmtbx.hydrogens import find as find_hydrogens
-
 
 input_model = """\
 CRYST1   15.000   15.000   15.000  80.00  70.00 100.00 P 1
@@ -94,7 +93,7 @@ def exercise_01():
   tmp_f = open(pdb_file_name, "w")
   tmp_f.write(input_model)
   tmp_f.close()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(log = StringIO())
+  processed_pdb_files_srv = mmtbx.utils.process_pdb_file_srv(log = StringIO())
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file_name])
   xray_structure = processed_pdb_file.xray_structure()
@@ -283,11 +282,15 @@ def exercise_02():
   params = find_hydrogens.all_master_params().extract()
   params.map_cutoff=5
   find_hydrogens.run(fmodel=fmodel, model=model, log=out, params=params)
-  for a,b in zip(out.getvalue().splitlines(), expected_result2.splitlines()):
-    a = a.strip()
-    b = b.strip()
-    assert not show_diff(a, b)
+  lines = []
+  for line in out.getvalue().splitlines():
+    lines.append(line.rstrip())
+  assert not show_diff("\n".join(lines)+"\n", expected_result2)
 
-if (__name__ == "__main__"):
+def exercise():
   exercise_01()
   exercise_02()
+  print format_cpu_times()
+
+if (__name__ == "__main__"):
+  exercise()
