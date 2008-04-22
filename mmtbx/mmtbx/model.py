@@ -207,10 +207,16 @@ class manager(object):
       assert i_seq < last_insert_i_seq[0]
       last_insert_i_seq[0] = i_seq
       xyz = sites_cart[i_seq]
+      sign = True
       for i,atom_name in enumerate(atom_names):
         h = atom.detached_copy()
         h.name = atom_name
-        h.xyz = [a+b for a,b in zip(xyz, flex.random_double_point_on_sphere())]
+        if(sign):
+          h.xyz = [a+b for a,b in zip(xyz, (1,0,0))]
+          sign = False
+        else:
+          h.xyz = [a+b for a,b in zip(xyz, (-1,0,0))]
+          sign = True
         h.sigxyz = (0,0,0)
         h.occ = 1.0
         h.sigocc = 0
