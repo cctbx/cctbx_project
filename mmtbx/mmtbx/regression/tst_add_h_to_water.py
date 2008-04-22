@@ -282,10 +282,16 @@ def exercise_02():
   params = find_hydrogens.all_master_params().extract()
   params.map_cutoff=5
   find_hydrogens.run(fmodel=fmodel, model=model, log=out, params=params)
-  lines = []
-  for line in out.getvalue().splitlines():
-    lines.append(line.rstrip())
-  assert not show_diff("\n".join(lines)+"\n", expected_result2)
+  for a,b in zip(out.getvalue().splitlines(), expected_result2.splitlines()):
+    a = a.strip()
+    b = b.strip()
+    try:
+      a = float(a)
+      b = float(b)
+      assert a < 0.05
+      assert b < 0.05
+    except:
+      assert not show_diff(a, b)
 
 def exercise():
   exercise_01()
