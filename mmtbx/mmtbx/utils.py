@@ -823,6 +823,25 @@ def list_3d_as_1d(x):
         result.append(k)
   return result
 
+def add_occupancy_selection(result, size, selection, hd_special=None):
+  result_as_1d_array = list_3d_as_1d(x = result)
+  result_as_1d_array_b = flex.bool(size, flex.size_t(result_as_1d_array))
+  sel_b = selection
+  if(isinstance(selection, flex.size_t)):
+    sel_b = flex.bool(size, selection)
+  if(hd_special is not None):
+    not_common = ((sel_b != result_as_1d_array_b) & (sel_b == True))
+    not_common_ = ((not_common != hd_special) & (not_common == True)).iselection()
+    not_common = not_common_
+  else:
+    not_common = ((sel_b != result_as_1d_array_b) & (sel_b == True)).iselection()
+  sel_checked = []
+  for i in not_common:
+    sel_checked.append([[i]])
+  if(len(sel_checked) > 0):
+    result.extend(sel_checked)
+  return result
+
 def occupancy_selections(
       all_chain_proxies,
       xray_structure,
@@ -846,13 +865,11 @@ def occupancy_selections(
       iselection          = True,
       xray_structure      = xray_structure,
       one_selection_array = True)
-    result_as_1d_array = list_3d_as_1d(x = result)
-    sel_checked = []
-    for i in list(sel):
-      if(i not in result_as_1d_array): # XXX HIDEOUSLY INEFFICIENT
-        sel_checked.append([[i]])
-    if(len(sel_checked) > 0):
-      result.extend(sel_checked)
+    result = add_occupancy_selection(
+      result     = result,
+      size       = xray_structure.scatterers().size(),
+      selection  = sel,
+      hd_special = None)
   if(other_group_selection_strings is not None):
     sel = get_atom_selections(
       all_chain_proxies   = all_chain_proxies,
@@ -862,22 +879,25 @@ def occupancy_selections(
       one_selection_array = False)
     result.extend( [[list(i)] for i in sel] ) # XXX no check here?
   if(add_water):
-    result_as_1d_array = list_3d_as_1d(x = result)
     water_selection = get_atom_selections(
       all_chain_proxies   = all_chain_proxies,
       selection_strings   = ['water'],
       iselection          = True,
       xray_structure      = xray_structure,
       one_selection_array = True)
-    for w_i_seq in water_selection:
-      if(w_i_seq not in result_as_1d_array): # XXX HIDEOUSLY INEFFICIENT
-        result.append([[w_i_seq]])
-  result_as_1d_array = list_3d_as_1d(x = result)
-  for i_seq,occ in enumerate(xray_structure.scatterers().extract_occupancies()):
-    if(abs(occ-1.) > 1.e-3 and abs(occ) > 1.e-3 and
-       not xray_structure.hd_selection()[i_seq]):
-      if(i_seq not in result_as_1d_array): # XXX HIDEOUSLY INEFFICIENT
-        result.append([[i_seq]])
+    result = add_occupancy_selection(
+      result     = result,
+      size       = xray_structure.scatterers().size(),
+      selection  = water_selection,
+      hd_special = None)
+  hd_selection = xray_structure.hd_selection() # XXX not need in N or XN refinement
+  occupancies = xray_structure.scatterers().extract_occupancies()
+  sel = (occupancies != 1.) & (occupancies != 0.)
+  result = add_occupancy_selection(
+      result     = result,
+      size       = xray_structure.scatterers().size(),
+      selection  = sel,
+      hd_special = hd_selection) # XXX not need in N or XN refinement
   result_as_1d_array = list_3d_as_1d(x=result)
   if(len(result_as_1d_array) != len(set(result_as_1d_array))):
     raise Sorry("Duplicate selection for occupancies.")
