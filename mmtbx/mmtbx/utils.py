@@ -845,6 +845,7 @@ def add_occupancy_selection(result, size, selection, hd_special=None):
 def occupancy_selections(
       all_chain_proxies,
       xray_structure,
+      ignore_hydrogens=True,
       add_water = False,
       other_individual_selection_strings = None,
       other_group_selection_strings = None,
@@ -856,7 +857,8 @@ def occupancy_selections(
      len(other_group_selection_strings) == 0):
     other_group_selection_strings = None
   result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
-    common_residue_name_class_only="common_amino_acid")
+    common_residue_name_class_only="common_amino_acid",
+    ignore_hydrogens = ignore_hydrogens)
   #
   if(other_individual_selection_strings is not None):
     sel = get_atom_selections(
@@ -890,14 +892,17 @@ def occupancy_selections(
       size       = xray_structure.scatterers().size(),
       selection  = water_selection,
       hd_special = None)
-  hd_selection = xray_structure.hd_selection() # XXX not need in N or XN refinement
+  if(ignore_hydrogens):
+    hd_selection = xray_structure.hd_selection()
+  else:
+    hd_selection = None
   occupancies = xray_structure.scatterers().extract_occupancies()
   sel = (occupancies != 1.) & (occupancies != 0.)
   result = add_occupancy_selection(
       result     = result,
       size       = xray_structure.scatterers().size(),
       selection  = sel,
-      hd_special = hd_selection) # XXX not need in N or XN refinement
+      hd_special = hd_selection)
   result_as_1d_array = list_3d_as_1d(x=result)
   if(len(result_as_1d_array) != len(set(result_as_1d_array))):
     raise Sorry("Duplicate selection for occupancies.")
