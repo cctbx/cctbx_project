@@ -2,7 +2,7 @@ from cctbx.array_family import flex
 import math, time
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal, not_approx_equal
-import sys, random
+import sys
 from stdlib import math
 from cctbx import xray
 from cctbx import adptbx
@@ -206,13 +206,11 @@ class manager(object):
       i_seq = atom.i_seq
       assert i_seq < last_insert_i_seq[0]
       last_insert_i_seq[0] = i_seq
-      x,y,z = sites_cart[i_seq]
+      xyz = sites_cart[i_seq]
       for i,atom_name in enumerate(atom_names):
-        # XXX XXX XXX use point on unit sphere
-        r = random.randrange(10000, 11000)/10000. * random.choice([-1,1])
         h = atom.detached_copy()
         h.name = atom_name
-        h.xyz = (x+r,y,z)
+        h.xyz = [a+b for a,b in zip(xyz, flex.random_double_point_on_sphere())]
         h.sigxyz = (0,0,0)
         h.occ = 1.0
         h.sigocc = 0
