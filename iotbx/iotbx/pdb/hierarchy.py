@@ -539,8 +539,12 @@ class _root(boost.python.injector, ext.root):
     from iotbx.pdb.atom_selection import cache
     return cache(root=self)
 
-  def occupancy_groups_simple(self, common_residue_name_class_only=None):
-    sentinel = self.atoms().reset_tmp_for_occupancy_groups_simple()
+  def occupancy_groups_simple(self, common_residue_name_class_only=None,
+                              ignore_hydrogens=True):
+    if(ignore_hydrogens):
+      sentinel = self.atoms().reset_tmp_for_occupancy_groups_simple()
+    else:
+      sentinel = self.atoms().reset_tmp(first_value=0, increment=1)
     result = []
     for chain in self.chains():
       result.extend(chain.occupancy_groups_simple(
