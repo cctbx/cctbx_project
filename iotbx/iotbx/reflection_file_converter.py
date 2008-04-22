@@ -9,6 +9,7 @@ from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time, plural_s
+import random
 import os
 
 def run(
@@ -51,7 +52,8 @@ def run(
     .option(None, "--use_lattice_symmetry_in_r_free_flag_generation",
       action="store_true",
       default=False,
-      help="group twin/pseudo symmetry related reflections together in r-free set.")
+      help="group twin/pseudo symmetry related reflections together"
+           " in r-free set.")
     .option(None, "--r_free_flags_fraction",
       action="store",
       default=0.10,
@@ -63,6 +65,12 @@ def run(
       default=2000,
       type="int",
       help="Maximum number of free reflections (default: 2000).",
+      metavar="INT")
+    .option(None, "--random_seed",
+      action="store",
+      type="int",
+      help="Seed for random number generator (affects generation of"
+           " R-free flags).",
       metavar="INT")
     .option(None, "--change_of_basis",
       action="store",
@@ -105,7 +113,10 @@ def run(
     .option(None,"--massage_intensities",
       action="store_true",
       default=False,
-      help="'Treat' negative intensities to get a positive amplitude. |Fnew| = sqrt((Io+sqrt(Io**2 +2sigma**2))/2.0). Requires intensities as input and the flags --mtz, --write_mtz_amplitudes and --mtz_root_label.")
+      help="'Treat' negative intensities to get a positive amplitude."
+           " |Fnew| = sqrt((Io+sqrt(Io**2 +2sigma**2))/2.0). Requires"
+           " intensities as input and the flags --mtz,"
+           " --write_mtz_amplitudes and --mtz_root_label.")
     .option(None, "--scale_max",
       action="store",
       type="float",
@@ -143,23 +154,27 @@ def run(
       help="write data to SHELX FILE ('--shelx .' copies name of input file)",
       metavar="FILE")
   ).process(args=args)
-  if (    command_line.options.write_mtz_amplitudes
-      and command_line.options.write_mtz_intensities):
+  co = command_line.options
+  if (co.random_seed is not None):
+    random.seed(co.random_seed)
+    flex.set_random_seed(value=co.random_seed)
+  if (    co.write_mtz_amplitudes
+      and co.write_mtz_intensities):
     print
     print "--write_mtz_amplitudes and --write_mtz_intensities" \
           " are mutually exclusive."
     print
     return None
-  if (   command_line.options.write_mtz_amplitudes
-      or command_line.options.write_mtz_intensities):
-    if (command_line.options.mtz_root_label is None):
+  if (   co.write_mtz_amplitudes
+      or co.write_mtz_intensities):
+    if (co.mtz_root_label is None):
       print
       print "--write_mtz_amplitudes and --write_mtz_intensities" \
             " require --mtz_root_label."
       print
       return None
-  if (    command_line.options.scale_max is not None
-      and command_line.options.scale_factor is not None):
+  if (    co.scale_max is not None
+      and co.scale_factor is not None):
     print
     print "--scale_max and --scale_factor are mutually exclusive."
     print
@@ -188,7 +203,7 @@ def run(
     selected_array = all_miller_arrays[0]
     r_free_flags = None
     r_free_info = None
-  elif (command_line.options.label is None):
+  elif (co.label is None):
     print
     print "Please use --label to select a reflection array."
     print "For example: --label=%s" % str(
@@ -198,16 +213,16 @@ def run(
     return None
   else:
     selected_array = label_table.match_data_label(
-      label=command_line.options.label,
+      label=co.label,
       command_line_switch="--label")
     if (selected_array is None):
       return None
-    if (command_line.options.r_free_label is None):
+    if (co.r_free_label is None):
       r_free_flags = None
       r_free_info = None
     else:
       r_free_flags = label_table.match_data_label(
-        label=command_line.options.r_free_label,
+        label=co.r_free_label,
         command_line_switch="--r_free_label")
       if (r_free_flags is None):
         return None
@@ -215,10 +230,9 @@ def run(
       if (not r_free_flags.is_bool_array()):
         test_flag_value = reflection_file_utils.get_r_free_flags_scores(
           miller_arrays=[r_free_flags],
-          test_flag_value=command_line.options.r_free_test_flag_value) \
-            .test_flag_values[0]
+          test_flag_value=co.r_free_test_flag_value).test_flag_values[0]
         if (test_flag_value is None):
-          if (command_line.options.r_free_test_flag_value is None):
+          if (co.r_free_test_flag_value is None):
             raise Sorry(
               "Cannot automatically determine r_free_test_flag_value."
               " Please use --r_free_test_flag_value to specify a value.")
@@ -237,7 +251,7 @@ def run(
   processed_array = selected_array.customized_copy(
     crystal_symmetry=selected_array.join_symmetry(
       other_symmetry=command_line.symmetry,
-      force=not command_line.options.weak_symmetry)).set_observation_type(
+      force=not co.weak_symmetry)).set_observation_type(
         selected_array.observation_type())
   if (r_free_flags is not None):
     r_free_flags = r_free_flags.customized_copy(
@@ -258,18 +272,18 @@ def run(
   if (r_free_flags is not None):
     r_free_flags = r_free_flags.customized_copy(
       crystal_symmetry=processed_array)
-  if (command_line.options.change_of_basis is not None):
+  if (co.change_of_basis is not None):
     print "Change of basis:"
-    if   (command_line.options.change_of_basis == "to_reference_setting"):
+    if   (co.change_of_basis == "to_reference_setting"):
       cb_op = processed_array.change_of_basis_op_to_reference_setting()
-    elif (command_line.options.change_of_basis == "to_primitive_setting"):
+    elif (co.change_of_basis == "to_primitive_setting"):
       cb_op = processed_array.change_of_basis_op_to_primitive_setting()
-    elif (command_line.options.change_of_basis == "to_niggli_cell"):
+    elif (co.change_of_basis == "to_niggli_cell"):
       cb_op = processed_array.change_of_basis_op_to_niggli_cell()
-    elif (command_line.options.change_of_basis == "to_inverse_hand"):
+    elif (co.change_of_basis == "to_inverse_hand"):
       cb_op = processed_array.change_of_basis_op_to_inverse_hand()
     else:
-      cb_op = sgtbx.change_of_basis_op(command_line.options.change_of_basis)
+      cb_op = sgtbx.change_of_basis_op(co.change_of_basis)
     if (cb_op.c_inv().t().is_zero()):
       print "  Change of basis operator in both h,k,l and x,y,z notation:"
       print "   ", cb_op.as_hkl()
@@ -278,11 +292,11 @@ def run(
     print "    %s [Inverse: %s]" % (cb_op.as_xyz(), cb_op.inverse().as_xyz())
     d = cb_op.c().r().determinant()
     print "  Determinant:", d
-    if (d < 0 and command_line.options.change_of_basis != "to_inverse_hand"):
+    if (d < 0 and co.change_of_basis != "to_inverse_hand"):
       print "  **************************************************************"
       print "  W A R N I N G: This change of basis operator changes the hand!"
       print "  **************************************************************"
-    if(command_line.options.eliminate_invalid_indices):
+    if(co.eliminate_invalid_indices):
       sel = cb_op.apply_results_in_non_integral_indices(
         miller_indices=processed_array.indices())
       toss = flex.bool(processed_array.indices().size(),sel)
@@ -290,7 +304,8 @@ def run(
       keep_array = processed_array.select(keep)
       toss_array = processed_array.select(toss)
       print "  Mean value for kept reflections:", flex.mean(keep_array.data())
-      print "  Mean value for invalid reflections:", flex.mean(toss_array.data())
+      print "  Mean value for invalid reflections:", \
+        flex.mean(toss_array.data())
       processed_array=keep_array
     processed_array = processed_array.change_basis(cb_op=cb_op)
     print "  Crystal symmetry after change of basis:"
@@ -317,7 +332,7 @@ def run(
     del merged
     r_free_flags.show_comprehensive_summary(prefix="  ")
     print
-  if (command_line.options.expand_to_p1):
+  if (co.expand_to_p1):
     print "Expanding symmetry and resetting space group to P1:"
     if (r_free_flags is not None):
       raise Sorry(
@@ -325,12 +340,12 @@ def run(
     processed_array = processed_array.expand_to_p1()
     processed_array.show_comprehensive_summary(prefix="  ")
     print
-  if (command_line.options.change_to_space_group is not None):
+  if (co.change_to_space_group is not None):
     if (r_free_flags is not None):
       raise Sorry(
         "--change_to_space_group not supported for arrays of R-free flags.")
     new_space_group_info = sgtbx.space_group_info(
-      symbol=command_line.options.change_to_space_group)
+      symbol=co.change_to_space_group)
     print "Change to space group:", new_space_group_info
     new_crystal_symmetry = crystal.symmetry(
       unit_cell=processed_array.unit_cell(),
@@ -359,8 +374,7 @@ def run(
       del merged
       processed_array.show_comprehensive_summary(prefix="    ")
       print
-  if (processed_array.anomalous_flag()
-      and command_line.options.non_anomalous):
+  if (processed_array.anomalous_flag() and co.non_anomalous):
     print "Converting data array from anomalous to non-anomalous."
     if (not processed_array.is_xray_intensity_array()):
       processed_array = processed_array.average_bijvoet_mates()
@@ -371,11 +385,11 @@ def run(
       processed_array.set_observation_type_xray_intensity()
   if (r_free_flags is not None
       and r_free_flags.anomalous_flag()
-      and command_line.options.non_anomalous):
+      and co.non_anomalous):
     print "Converting R-free flags from anomalous to non-anomalous."
     r_free_flags = r_free_flags.average_bijvoet_mates()
-  d_max = command_line.options.low_resolution
-  d_min = command_line.options.resolution
+  d_max = co.low_resolution
+  d_min = co.resolution
   if (d_max is not None or d_min is not None):
     if (d_max is not None):
       print "Applying low resolution cutoff: d_max=%.6g" % d_max
@@ -385,54 +399,57 @@ def run(
       d_max=d_max, d_min=d_min)
     print "Number of reflections:", processed_array.indices().size()
     print
-  if (command_line.options.scale_max is not None):
-    print "Scaling data such that the maximum value is: %.6g" \
-      % command_line.options.scale_max
-    processed_array = processed_array.apply_scaling(
-      target_max=command_line.options.scale_max)
+  if (co.scale_max is not None):
+    print "Scaling data such that the maximum value is: %.6g" % co.scale_max
+    processed_array = processed_array.apply_scaling(target_max=co.scale_max)
     print
-  if (command_line.options.scale_factor is not None):
-    print "Multiplying data with the factor: %.6g" \
-      % command_line.options.scale_factor
-    processed_array = processed_array.apply_scaling(
-      factor=command_line.options.scale_factor)
+  if (co.scale_factor is not None):
+    print "Multiplying data with the factor: %.6g" % co.scale_factor
+    processed_array = processed_array.apply_scaling(factor=co.scale_factor)
     print
 
-  if ( ([command_line.options.remove_negatives,
-         command_line.options.massage_intensities]).count(True) == 2 ):
-    raise Sorry("It is not allowed to use --remove_negatives and --massage_intensities at the same time")
+  if (([co.remove_negatives, co.massage_intensities]).count(True) == 2):
+    raise Sorry(
+      "It is not possible to use --remove_negatives and"
+      " --massage_intensities at the same time.")
 
-  if (command_line.options.remove_negatives):
+  if (co.remove_negatives):
     if processed_array.is_real_array():
       print "Removing negatives items"
-      processed_array = processed_array.select( processed_array.data() > 0 )
+      processed_array = processed_array.select(
+        processed_array.data() > 0)
       if processed_array.sigmas() is not None:
-        processed_array = processed_array.select( processed_array.sigmas() > 0 )
+        processed_array = processed_array.select(
+          processed_array.sigmas() > 0)
     else:
       raise Sorry("--remove_negatives not applicable to complex data arrays.")
 
-  if (command_line.options.massage_intensities):
+  if (co.massage_intensities):
     if processed_array.is_real_array():
       if processed_array.is_xray_intensity_array():
-        if (command_line.options.mtz is not None):
-          if (command_line.options.write_mtz_amplitudes):
-            print "The supplied intensities will be used to estimate "
-            print "amplitudes in the following way:  "
-            print " Fobs = Sqrt[ (Iobs + Sqrt(Iobs**2 + 2sigmaIobs**2))/2 ] "
-            print "Sigmas are estimated in a similar manner."
+        if (co.mtz is not None):
+          if (co.write_mtz_amplitudes):
+            print "The supplied intensities will be used to estimate"
+            print " amplitudes in the following way:  "
+            print " Fobs = Sqrt[ (Iobs + Sqrt(Iobs**2 + 2sigmaIobs**2))/2 ]"
+            print " Sigmas are estimated in a similar manner."
             print
             processed_array = processed_array.enforce_positive_amplitudes()
           else:
-            raise Sorry("--write_mtz_amplitudes has to be specified when using --massage_intensities")
+            raise Sorry(
+              "--write_mtz_amplitudes has to be specified when using"
+              " --massage_intensities")
         else:
           raise Sorry("--mtz has to be used when using --massage_intensities")
       else:
-        raise Sorry("Intensities must be supplied when using the option --massage_intensities")
+        raise Sorry(
+          "Intensities must be supplied when using the option"
+          " --massage_intensities")
     else:
-      raise Sorry("--massage_intensities not applicable to complex data arrays.")
+      raise Sorry(
+        "--massage_intensities not applicable to complex data arrays.")
 
-
-  if (not command_line.options.generate_r_free_flags):
+  if (not co.generate_r_free_flags):
     if (r_free_flags is None):
       r_free_info = []
     else:
@@ -459,16 +476,14 @@ def run(
         "--r_free_label and --generate_r_free_flags are mutually exclusive.")
     print "Generating a new array of R-free flags:"
     r_free_flags = processed_array.generate_r_free_flags(
-      fraction=command_line.options.r_free_flags_fraction,
-      max_free=command_line.options.r_free_flags_max_free,
-      use_lattice_symmetry=command_line.options.use_lattice_symmetry_in_r_free_flag_generation)
+      fraction=co.r_free_flags_fraction,
+      max_free=co.r_free_flags_max_free,
+      use_lattice_symmetry=co.use_lattice_symmetry_in_r_free_flag_generation)
     r_free_info = [
       "R-free flags generated by %s:" % command_name]
     r_free_info.append("  "+date_and_time())
-    r_free_info.append("  fraction: %.6g" %
-      command_line.options.r_free_flags_fraction)
-    r_free_info.append("  max_free: %s" %
-      str(command_line.options.r_free_flags_max_free))
+    r_free_info.append("  fraction: %.6g" % co.r_free_flags_fraction)
+    r_free_info.append("  max_free: %s" % str(co.r_free_flags_max_free))
     r_free_info.append("  size of work set: %d" %
       r_free_flags.data().count(False))
     r_free_info.append("  size of free set: %d" %
@@ -478,12 +493,12 @@ def run(
     print
 
   n_output_files = 0
-  if (command_line.options.sca is not None):
-    if (command_line.options.generate_r_free_flags):
+  if (co.sca is not None):
+    if (co.generate_r_free_flags):
       raise Sorry("Cannot write R-free flags to Scalepack file.")
     file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=[selected_array.info().source],
-      user_file_name=command_line.options.sca,
+      user_file_name=co.sca,
       file_type_label="Scalepack",
       file_extension="sca")
     print "Writing Scalepack file:", file_name
@@ -492,10 +507,10 @@ def run(
       miller_array=processed_array)
     n_output_files += 1
     print
-  if (command_line.options.mtz is not None):
+  if (co.mtz is not None):
     file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=[selected_array.info().source],
-      user_file_name=command_line.options.mtz,
+      user_file_name=co.mtz,
       file_type_label="MTZ",
       file_extension="mtz")
     print "Writing MTZ file:", file_name
@@ -509,17 +524,17 @@ def run(
     mtz_history_buffer.append("> input labels: %s" %
       selected_array.info().label_string())
     mtz_output_array = processed_array
-    if (command_line.options.write_mtz_amplitudes):
+    if (co.write_mtz_amplitudes):
       if (not mtz_output_array.is_xray_amplitude_array()):
         print "  Converting intensities to amplitudes."
         mtz_output_array = mtz_output_array.f_sq_as_f()
         mtz_history_buffer.append("> Intensities converted to amplitudes.")
-    elif (command_line.options.write_mtz_intensities):
+    elif (co.write_mtz_intensities):
       if (not mtz_output_array.is_xray_intensity_array()):
         print "  Converting amplitudes to intensities."
         mtz_output_array = mtz_output_array.f_as_f_sq()
         mtz_history_buffer.append("> Amplitudes converted to intensities.")
-    column_root_label = command_line.options.mtz_root_label
+    column_root_label = co.mtz_root_label
     if (column_root_label is None):
       column_root_label = file_name[:min(24,len(file_name)-4)]
     mtz_dataset = mtz_output_array.as_mtz_dataset(
@@ -540,10 +555,10 @@ def run(
     mtz_object.write(file_name=file_name)
     n_output_files += 1
     print
-  if (command_line.options.cns is not None):
+  if (co.cns is not None):
     file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=[selected_array.info().source],
-      user_file_name=command_line.options.cns,
+      user_file_name=co.cns,
       file_type_label="CNS",
       file_extension="cns")
     print "Writing CNS file:", file_name
@@ -554,12 +569,12 @@ def run(
       r_free_flags=r_free_flags)
     n_output_files += 1
     print
-  if (command_line.options.shelx is not None):
-    if (command_line.options.generate_r_free_flags):
+  if (co.shelx is not None):
+    if (co.generate_r_free_flags):
       raise Sorry("Cannot write R-free flags to SHELX file.")
     file_name = reflection_file_utils.construct_output_file_name(
       input_file_names=[selected_array.info().source],
-      user_file_name=command_line.options.shelx,
+      user_file_name=co.shelx,
       file_type_label="SHELX",
       file_extension="shelx")
     print "Writing SHELX file:", file_name
