@@ -815,17 +815,18 @@ class process_pdb_file_srv(object):
       if(self.cif_parameters is not None):
         self.cif_parameters.file_name.append(file_name)
 
-def list_3d_as_1d(x):
-  result = []
-  for i in x:
+def list_3d_as_bool_selection(list_3d, size):
+  result = flex.bool(size, False)
+  for i in list_3d:
     for j in i:
       for k in j:
-        result.append(k)
+        if (result[k]):
+          raise Sorry("Duplicate selection for occupancies.")
+        result[k] = True
   return result
 
 def add_occupancy_selection(result, size, selection, hd_special=None):
-  result_as_1d_array = list_3d_as_1d(x = result)
-  result_as_1d_array_b = flex.bool(size, flex.size_t(result_as_1d_array))
+  result_as_1d_array_b = list_3d_as_bool_selection(list_3d=result, size=size)
   sel_b = selection
   if(isinstance(selection, flex.size_t)):
     sel_b = flex.bool(size, selection)
@@ -903,9 +904,8 @@ def occupancy_selections(
       size       = xray_structure.scatterers().size(),
       selection  = sel,
       hd_special = hd_selection)
-  result_as_1d_array = list_3d_as_1d(x=result)
-  if(len(result_as_1d_array) != len(set(result_as_1d_array))):
-    raise Sorry("Duplicate selection for occupancies.")
+  list_3d_as_bool_selection(
+    list_3d=result, size=xray_structure.scatterers().size())
   if(as_flex_arrays):
     result_ = []
     for gsel in result:
