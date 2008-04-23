@@ -424,7 +424,7 @@ class peak_cluster_analysis(object):
       site = site_symmetry.exact_site()
       equiv_sites = sgtbx.sym_equiv_sites(site_symmetry)
       keep = True
-      if (self._sites.size() > 50):
+      if (self._sites.size() > 250):
         import warnings
         warnings.warn(
           message="This function should not be used for"
