@@ -141,6 +141,35 @@ af::shared<std::size_t>
   return result_selection;
 }
 
+///
+template <typename FloatType>
+void correct_drifted_waters(af::ref<vec3<FloatType> > const& sites_frac_all,
+                            af::const_ref<vec3<FloatType> > const& sites_frac_peaks,
+                            af::const_ref<bool> const& water_selection,
+                            cctbx::uctbx::unit_cell const& unit_cell)
+{
+  MMTBX_ASSERT(sites_frac_all.size() == water_selection.size());
+  for(std::size_t i=0; i<sites_frac_all.size(); i+=1) {
+    if(water_selection[i]) {
+      FloatType dist_min = 999.;
+      vec3<FloatType> closest_site;
+      for(std::size_t j=0; j<sites_frac_peaks.size(); j+=1) {
+        FloatType dist = unit_cell.distance(
+          cctbx::fractional<>(sites_frac_all[i]),
+          cctbx::fractional<>(sites_frac_peaks[j]));
+        if(dist < dist_min) {
+          dist_min = dist;
+          closest_site = sites_frac_peaks[j];
+        }
+      }
+      if(dist_min < 0.5 && dist_min > 0.1) {
+        sites_frac_all[i] = closest_site;
+      }
+    }
+  }
+}
+///
+
 
 }} // namespace mmtbx::utils
 

@@ -152,6 +152,9 @@ class manager(object):
       #  self.find_peaks_2fofc()
       #  self.show(message = "2Fo-Fc map selection:")
     #
+    if(not self.filter_only):
+      self.correct_drifted_waters(map_cutoff = self.params.secondary_map_cutoff)
+    #
     for i in xrange(self.params.n_cycles):
       self.refine_adp()
       self.refine_occupancies()
@@ -315,6 +318,33 @@ class manager(object):
                               map_cutoff = map_cutoff,
                               params     = self.find_peaks_params,
                               log        = self.log)
+
+  def correct_drifted_waters(self, map_cutoff):
+    self.fmodel.update_xray_structure(
+      xray_structure = self.model.xray_structure,
+      update_f_calc  = True)
+    find_peaks_params_drifted = find_peaks.master_params.extract()
+    find_peaks_params_drifted.map_next_to_model.min_model_peak_dist=0.01
+    find_peaks_params_drifted.map_next_to_model.min_peak_peak_dist=0.01
+    find_peaks_params_drifted.map_next_to_model.max_model_peak_dist=0.5
+    find_peaks_params_drifted.peak_search.min_cross_distance=0.5
+    peaks = find_peaks.manager(fmodel     = self.fmodel,
+                               map_type   = "2mFobs-DFmodel",
+                               map_cutoff = map_cutoff,
+                               params     = find_peaks_params_drifted,
+                               log        = self.log).peaks_mapped()
+    sites_frac, heights = peaks.sites, peaks.heights
+    model_sites_frac = self.model.xray_structure.sites_frac()
+    solvent_selection = self.model.solvent_selection()
+    mmtbx.utils.correct_drifted_waters(
+      sites_frac_all   = model_sites_frac,
+      sites_frac_peaks = sites_frac,
+      water_selection  = solvent_selection,
+      unit_cell        = self.model.xray_structure.unit_cell())
+    self.model.xray_structure.set_sites_frac(sites_frac = model_sites_frac)
+    self.fmodel.update_xray_structure(
+      xray_structure = self.model.xray_structure,
+      update_f_calc  = True)
 
   def find_peaks_2fofc(self):
     fft_map = self.fmodel.electron_density_map(
