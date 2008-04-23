@@ -127,16 +127,17 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   #
   # Processing of input PDB files.
   #
-  stage_1s = []
+  pdb_objs = []
   sites_carts = []
   centers_of_mass = []
   for param_group in [params.reference, params.other]:
-    stage_1 = pdb.interpretation.stage_1(file_name=param_group.file_name)
-    stage_1s.append(stage_1)
-    sites_carts.append(stage_1.get_sites_cart())
+    pdb_obj = pdb.hierarchy.input(file_name=param_group.file_name)
+    pdb_objs.append(pdb_obj)
+    sites_carts.append(pdb_obj.atoms.extract_xyz())
     sites_sel = sites_carts[-1]
     if (param_group.atom_selection is not None):
-      sel = stage_1.selection_cache().selection(param_group.atom_selection)
+      sel = pdb_obj.hierarchy.atom_selection_cache().selection(
+        param_group.atom_selection)
       sites_sel = sites_sel.select(sel)
     print "Number of selected sites:", sites_sel.size()
     centers_of_mass.append(sites_sel.mean())
@@ -144,8 +145,8 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   # Consolidation of crystal symmetries.
   #
   crystal_symmetry = command_line.symmetry
-  for stage_1 in stage_1s:
-    crystal_symmetry_from_pdb = stage_1.get_special_position_settings()
+  for pdb_obj in pdb_objs:
+    crystal_symmetry_from_pdb = pdb_obj.pdb_inp.crystal_symmetry()
     if (crystal_symmetry_from_pdb is not None):
       crystal_symmetry = crystal_symmetry.join_symmetry(
         other_symmetry=crystal_symmetry_from_pdb,
@@ -216,15 +217,22 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   sites_cart_other_superposed = crystal_symmetry.unit_cell().orthogonalize(
     sites_frac=sites_frac_other_superposed)
   #
-  # Write transformed coordinates.
+  # Replace original coordinates with transformed coordinates.
   #
-  sel = None
+  pdb_objs[1].atoms.set_xyz(new_xyz=sites_cart_other_superposed)
+  #
+  # Write (selected) transformed coordinates.
+  #
+  pdb_hierarchy = pdb_objs[1].hierarchy
   if (params.output.atom_selection is not None):
-    sel = stage_1s[1].selection_cache().selection(params.output.atom_selection)
-  stage_1s[1].write_modified(
-    out=open(params.output.file_name, "w"),
-    new_sites_cart=sites_cart_other_superposed,
-    selection=sel)
+    sel = pdb_hierarchy.atom_selection_cache().selection(
+      params.output.atom_selection)
+    pdb_hierarchy = pdb_hierarchy.select(atom_selection=sel)
+  pdb_hierarchy.write_pdb_file(
+    file_name=params.output.file_name,
+    crystal_symmetry=crystal_symmetry,
+    append_end=True,
+    atoms_reset_serial_first_value=1)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
