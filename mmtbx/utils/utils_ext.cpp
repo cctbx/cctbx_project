@@ -56,6 +56,18 @@ namespace {
                                                            arg_("dist_min_sol"),
                                                            arg_("unit_cell")))
    ;
+       def("correct_drifted_waters",
+         (void(*)
+               (af::ref<vec3<double> > const&,
+                af::const_ref<vec3<double> > const&,
+                af::const_ref<bool> const&,
+                cctbx::uctbx::unit_cell const&)) correct_drifted_waters,
+                                                          (arg_("sites_frac_all"),
+                                                           arg_("sites_frac_peaks"),
+                                                           arg_("water_selection"),
+                                                           arg_("unit_cell")))
+   ;
+
   }
 
 } // namespace <anonymous>
