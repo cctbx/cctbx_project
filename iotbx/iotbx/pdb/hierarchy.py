@@ -747,11 +747,11 @@ class input(object):
     assert [file_name, pdb_string].count(None) == 1
     import iotbx.pdb
     if (file_name is not None):
-      self.pdb_inp = iotbx.pdb.input(file_name=file_name)
+      self.input = iotbx.pdb.input(file_name=file_name)
     else:
-      self.pdb_inp = iotbx.pdb.input(
+      self.input = iotbx.pdb.input(
         source_info="string", lines=flex.split_lines(pdb_string))
-    self.hierarchy = self.pdb_inp.construct_hierarchy()
+    self.hierarchy = self.input.construct_hierarchy()
     self.atoms = self.hierarchy.atoms()
 
 class show_summary(input):
@@ -768,7 +768,7 @@ class show_summary(input):
         level_id=None,
         level_id_exception=ValueError):
     input.__init__(self, file_name=file_name, pdb_string=pdb_string)
-    print >> out, prefix+self.pdb_inp.source_info()
+    print >> out, prefix+self.input.source_info()
     self.overall_counts = self.hierarchy.overall_counts()
     self.overall_counts.show(
       out=out,

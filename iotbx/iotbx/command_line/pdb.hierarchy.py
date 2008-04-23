@@ -82,7 +82,7 @@ def run(args, command_name="phenix.pdb.hierarchy"):
     if (co.write_pdb_file is not None):
       if (not co.no_cryst):
         print >> open(co.write_pdb_file, "wb"), \
-          "\n".join(pdb_objs.pdb_inp.crystallographic_section())
+          "\n".join(pdb_objs.input.crystallographic_section())
       pdb_objs.hierarchy.write_pdb_file(
         file_name=co.write_pdb_file,
         open_append=(not co.no_cryst),

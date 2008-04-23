@@ -2420,8 +2420,9 @@ HETATM 1422  O2  SO4     1      31.648  32.120  28.923  0.86 36.50           O
 HETATM 1423  O3  SO4     1      33.681  31.215  27.852  0.96 31.36           O
 HETATM 1424  O4  SO4     1      32.067  29.709  28.958  1.00 44.58           O
 """)
-  assert summary.pdb_inp.atoms().size() == 14
+  assert summary.input.atoms().size() == 14
   assert summary.hierarchy.atoms().size() == 14
+  assert summary.atoms.size() == 14
   oc = summary.overall_counts
   assert len(oc.consecutive_residue_groups_with_same_resid) == 0
   assert len(sio.getvalue().splitlines()) == 27

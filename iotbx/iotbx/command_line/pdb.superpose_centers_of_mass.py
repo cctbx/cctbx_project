@@ -146,7 +146,7 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   #
   crystal_symmetry = command_line.symmetry
   for pdb_obj in pdb_objs:
-    crystal_symmetry_from_pdb = pdb_obj.pdb_inp.crystal_symmetry()
+    crystal_symmetry_from_pdb = pdb_obj.input.crystal_symmetry()
     if (crystal_symmetry_from_pdb is not None):
       crystal_symmetry = crystal_symmetry.join_symmetry(
         other_symmetry=crystal_symmetry_from_pdb,

@@ -504,14 +504,14 @@ class rewrite_normalized(object):
         output_file_name,
         keep_original_crystallographic_section=False,
         keep_original_atom_serial=False):
-    self.pdb_inp = input(file_name=input_file_name)
+    self.input = input(file_name=input_file_name)
     if (keep_original_crystallographic_section):
       print >> open(output_file_name, "wb"), \
-        "\n".join(self.pdb_inp.crystallographic_section())
+        "\n".join(self.input.crystallographic_section())
       crystal_symmetry = None
     else:
-      crystal_symmetry = self.pdb_inp.crystal_symmetry()
-    self.hierarchy = self.pdb_inp.construct_hierarchy()
+      crystal_symmetry = self.input.crystal_symmetry()
+    self.hierarchy = self.input.construct_hierarchy()
     if (not keep_original_atom_serial):
       self.hierarchy.atoms().reset_serial()
     self.hierarchy.write_pdb_file(
