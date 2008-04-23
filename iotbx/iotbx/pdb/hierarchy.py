@@ -741,7 +741,20 @@ class _residue(boost.python.injector, ext.residue):
       translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
       return_mon_lib_dna_name=return_mon_lib_dna_name)
 
-class show_summary(object):
+class input(object):
+
+  def __init__(self, file_name=None, pdb_string=None):
+    assert [file_name, pdb_string].count(None) == 1
+    import iotbx.pdb
+    if (file_name is not None):
+      self.pdb_inp = iotbx.pdb.input(file_name=file_name)
+    else:
+      self.pdb_inp = iotbx.pdb.input(
+        source_info="string", lines=flex.split_lines(pdb_string))
+    self.hierarchy = self.pdb_inp.construct_hierarchy()
+    self.atoms = self.hierarchy.atoms()
+
+class show_summary(input):
 
   def __init__(self,
         file_name=None,
@@ -754,16 +767,8 @@ class show_summary(object):
         duplicate_atom_labels_max_show=10,
         level_id=None,
         level_id_exception=ValueError):
-    assert [file_name, pdb_string].count(None) == 1
-    if (out is None): out = sys.stdout
-    import iotbx.pdb
-    if (file_name is not None):
-      self.pdb_inp = iotbx.pdb.input(file_name=file_name)
-    else:
-      self.pdb_inp = iotbx.pdb.input(
-        source_info="string", lines=flex.split_lines(pdb_string))
+    input.__init__(self, file_name=file_name, pdb_string=pdb_string)
     print >> out, prefix+self.pdb_inp.source_info()
-    self.hierarchy = self.pdb_inp.construct_hierarchy()
     self.overall_counts = self.hierarchy.overall_counts()
     self.overall_counts.show(
       out=out,
