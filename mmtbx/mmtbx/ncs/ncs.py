@@ -141,9 +141,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
      count+=1
      if count==1:
        text="refinement.ncs.restraint_group { \n"
-       text+="reference = chain "+str(id)
+       text+="reference = chain '"+str(id)+"'"
      else:
-       text+="selection = chain "+str(id)
+       text+="selection = chain '"+str(id)+"'"
      if residue_ranges:
        first=True
        for residue_range in residue_ranges:
