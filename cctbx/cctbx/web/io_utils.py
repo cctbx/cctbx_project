@@ -1,3 +1,4 @@
+import iotbx.pdb.hierarchy
 from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
@@ -6,9 +7,6 @@ import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx import adptbx
 from cctbx.web import cgi_utils
-from iotbx import pdb
-import iotbx.pdb.interpretation
-from libtbx.test_utils import approx_equal
 
 def show_input_symbol(sgsymbol, convention, label="Input"):
   if (sgsymbol != ""):
@@ -126,22 +124,23 @@ def structure_from_inp_pdb(inp, status):
   for line in pdb_file:
     print line
   print
-  stage_1 = pdb.interpretation.stage_1(raw_records = pdb_file)
-  xray_structure = stage_1.extract_xray_structure()
-  u_from_xrs = xray_structure.scatterers().extract_u_cart(xray_structure.unit_cell())
-  i = 0
-  flag = 0
-  for ux, atom in zip(u_from_xrs, stage_1.atom_attributes_list):
-    u = atom.Ucart
-    i += 1
-    if(not approx_equal(ux,u)):
-      flag += 1
-      if(flag == 1):
-        print "Anisotropic ADP of following atoms were modified:\n"
-      print "atom number in PDB file = ", i
-      print "Ucart(PDB)   = %6.4f %6.4f %6.4f %6.4f %6.4f %6.4f " % \
-            (u[0],u[1],u[2],u[3],u[4],u[5])
-      print "Ucart(CCTBX) = %6.4f %6.4f %6.4f %6.4f %6.4f %6.4f " % \
-            (ux[0],ux[1],ux[2],ux[3],ux[4],ux[5])
-      print
+  pdb_obj = iotbx.pdb.hierarchy.input(pdb_string="\n".join(pdb_file)+"\n")
+  xray_structure = pdb_obj.input.xray_structure_simple(
+    enable_scattering_type_unknown=True)
+  u_tidy = xray_structure.scatterers().extract_u_cart(
+    xray_structure.unit_cell())
+  have_header = False
+  for ut, atom in zip(u_tidy, pdb_obj.atoms):
+    ui = atom.uij
+    sui, sut = [(" %7.4f" * 6) % u for u in [ui, ut]]
+    if (sui != sut):
+      if (not have_header):
+        print "Anisotropic displacement parameters (ANISOU) of the following"
+        print "atoms were modified:"
+        have_header = True
+      print " ", atom.quote()
+      print "    Ucart(input) =" + sui
+      print "    Ucart(tidy)  =" + sut
+  if (have_header):
+    print
   return xray_structure
