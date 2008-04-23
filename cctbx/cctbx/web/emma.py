@@ -105,7 +105,7 @@ class web_to_models(object):
     else:
       if (self.coordinate_format is None):
         try:
-          import iotbx.pdb
+          import iotbx.pdb.parser
           pdb_records = iotbx.pdb.parser.collect_records(
             raw_records=coordinates,
             ignore_master=True)
