@@ -333,8 +333,8 @@ namespace {
             arg_("icode"),
             arg_("altloc"),
             arg_("resname"),
-            arg_("first_in_chain"),
-            arg_("first_after_break"))))
+            arg_("is_first_in_chain"),
+            arg_("is_first_after_break"))))
         .def_readwrite("model_id", &w_t::model_id)
         .def_readwrite("chain_id", &w_t::chain_id)
         .add_property("resseq",
@@ -345,8 +345,8 @@ namespace {
           make_function(get_altloc), make_function(set_altloc))
         .add_property("resname",
           make_function(get_resname), make_function(set_resname))
-        .def_readwrite("first_in_chain", &w_t::first_in_chain)
-        .def_readwrite("first_after_break", &w_t::first_after_break)
+        .def_readwrite("is_first_in_chain", &w_t::is_first_in_chain)
+        .def_readwrite("is_first_after_break", &w_t::is_first_after_break)
         .def("id_str", &w_t::id_str, id_str_overloads((arg_("pdbres")=false)))
         .def("format_atom_record_group", &w_t::format_atom_record_group,
           format_atom_record_group_overloads((

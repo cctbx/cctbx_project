@@ -1504,8 +1504,8 @@ namespace hierarchy {
       str1 icode;
       str1 altloc;
       str3 resname;
-      bool first_in_chain;
-      bool first_after_break;
+      bool is_first_in_chain;
+      bool is_first_after_break;
 
       atom_with_labels();
 
@@ -1517,8 +1517,8 @@ namespace hierarchy {
         const char* icode_,
         const char* altloc_,
         const char* resname_,
-        bool first_in_chain_,
-        bool first_after_break_);
+        bool is_first_in_chain_,
+        bool is_first_after_break_);
 
       //! model="   1" pdb=" N   GLY A   1 " segid="S001"
       std::string
