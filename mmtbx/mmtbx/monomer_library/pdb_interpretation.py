@@ -2846,6 +2846,8 @@ class process(object):
     sub_hierarchy = self.all_chain_proxies.pdb_hierarchy.select(
       atom_selection=selection)
     s = sub_hierarchy.as_pdb_string()
+    if (len(s) == 0 and header_lines is not None):
+      s = "  None\n"
     if (prefix == ""):
       out.write(s)
     else:
