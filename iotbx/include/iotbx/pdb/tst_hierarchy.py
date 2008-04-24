@@ -4557,8 +4557,8 @@ ATOM                             0.000   0.000   0.000  0.00  0.00""")
   assert awl.icode == ""
   assert awl.altloc == ""
   assert awl.resname == ""
-  assert not awl.first_in_chain
-  assert not awl.first_after_break
+  assert not awl.is_first_in_chain
+  assert not awl.is_first_after_break
   awl.serial = "12345"
   awl.name = "NaMe"
   awl.model_id = "MoDl"
@@ -4568,10 +4568,10 @@ ATOM                             0.000   0.000   0.000  0.00  0.00""")
   awl.icode = "I"
   awl.altloc = "l"
   awl.resname = "rNm"
-  awl.first_in_chain = True
-  assert awl.first_in_chain
-  awl.first_after_break = True
-  assert awl.first_after_break
+  awl.is_first_in_chain = True
+  assert awl.is_first_in_chain
+  awl.is_first_after_break = True
+  assert awl.is_first_after_break
   assert not show_diff(awl.format_atom_record_group(), """\
 ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
   assert not show_diff(awl.quote(), '''\
@@ -4636,8 +4636,8 @@ ENDMDL
   sio = StringIO()
   for awl in hierarchy.atoms_with_labels():
     print >> sio, awl.format_atom_record_group(), \
-      int(awl.first_in_chain), \
-      int(awl.first_after_break)
+      int(awl.is_first_in_chain), \
+      int(awl.is_first_after_break)
   assert not show_diff(sio.getvalue(), """\
 ATOM      1  C   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0
 ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0

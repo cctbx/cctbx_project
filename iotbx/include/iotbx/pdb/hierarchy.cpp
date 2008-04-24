@@ -1771,8 +1771,8 @@ namespace {
 
   atom_with_labels::atom_with_labels()
   :
-    first_in_chain(false),
-    first_after_break(false)
+    is_first_in_chain(false),
+    is_first_after_break(false)
   {}
 
   atom_with_labels::atom_with_labels(
@@ -1783,8 +1783,8 @@ namespace {
     const char* icode_,
     const char* altloc_,
     const char* resname_,
-    bool first_in_chain_,
-    bool first_after_break_)
+    bool is_first_in_chain_,
+    bool is_first_after_break_)
   :
     atom(atom_),
     model_id(model_id_),
@@ -1793,8 +1793,8 @@ namespace {
     icode(icode_),
     altloc(altloc_),
     resname(resname_),
-    first_in_chain(first_in_chain_),
-    first_after_break(first_after_break_)
+    is_first_in_chain(is_first_in_chain_),
+    is_first_after_break(is_first_after_break_)
   {}
 
 }}} // namespace iotbx::pdb::hierarchy
