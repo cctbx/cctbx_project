@@ -374,8 +374,8 @@ namespace iotbx { namespace pdb {
       af::shared<std::string>
       atom_serial_number_strings() const;
 
-      af::shared<int> const&
-      model_numbers() const { return model_numbers_; }
+      af::shared<std::string> const&
+      model_ids() const { return model_ids_; }
 
       af::shared<std::size_t> const&
       model_indices() const { return model_indices_; }
@@ -394,9 +394,6 @@ namespace iotbx { namespace pdb {
 
       af::shared<std::string> const&
       bookkeeping_section() const { return bookkeeping_section_; }
-
-      bool
-      model_numbers_are_unique() const;
 
       af::shared<std::size_t>
       model_atom_counts() const;
@@ -420,7 +417,7 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> crystallographic_section_;
       af::shared<input_atom_labels> input_atom_labels_list_;
       af::shared<hierarchy::atom> atoms_;
-      af::shared<int>         model_numbers_;
+      af::shared<std::string> model_ids_;
       af::shared<std::size_t> model_indices_;
       af::shared<std::size_t> ter_indices_;
       af::shared<std::vector<unsigned> > chain_indices_;

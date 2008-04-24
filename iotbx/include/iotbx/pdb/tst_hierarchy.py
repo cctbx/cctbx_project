@@ -930,7 +930,7 @@ def exercise_atom_id_str():
   md.append_chain(ch)
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J"'
   assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J"'
-  md.id = "   0"
+  md.id = ""
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J"'
   assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J"'
   md.id = "1"
@@ -958,7 +958,7 @@ def exercise_atom_id_str():
   rt.append_model(md)
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J" segid="1234"'
   assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J" segid="1234"'
-  rt.append_model(pdb.hierarchy.model())
+  md.id = "    "
   assert a.id_str() == 'model="    " pdb="NaMeAGLYCh1234J" segid="1234"'
   assert a.id_str(pdbres=True) \
       == 'model="    " pdbres="GLYCh1234J" segid="1234"'
@@ -1273,7 +1273,7 @@ ATOM         N2 BR01
 ATOM         N1 CR02
 ATOM         N2  R02
 """, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id=" " #residue_groups=2
     resid="     " #atom_groups=2
       altloc="A" resname="R01" #atoms=1
@@ -1304,7 +1304,7 @@ ATOM         N2  R03
 ATOM         N3 BR03
 ATOM         N3  R03
 """, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id=" " #residue_groups=3
     resid="     " #atom_groups=3
       altloc="" resname="R01" #atoms=1
@@ -1352,7 +1352,7 @@ ATOM         N2  R03
 ATOM         N3 BR03
 ATOM         N3  R03
 """, """\
-  model id="   0" #chains=1
+  model id="" #chains=1
     chain id=" " #residue_groups=3
       resid="     " #atom_groups=3
         altloc="" resname="R01" #atoms=1
@@ -1466,7 +1466,7 @@ ATOM         N2 BR03
 ATOM         N2 CR03
 ATOM         N3  R03
 """, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id=" " #residue_groups=3
     resid="     " #atom_groups=3
       altloc="B" resname="R01" #atoms=2
@@ -1589,7 +1589,7 @@ ATOM    274  H  BTYR A  11      20.634  12.539  33.720  0.35  6.25           H
 ATOM    275  HA BTYR A  11      20.773  12.116  36.402  0.35  6.61           H
 ATOM    276  HB2BTYR A  11      20.949  10.064  34.437  0.35  6.78           H
 """, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id="A" #residue_groups=1
     resid="  11 " #atom_groups=3  ### Info: with mixed residue names ###
       altloc="A" resname="TRP" #atoms=6
@@ -1706,7 +1706,7 @@ ATOM      4  CB  LYS   110
   else: raise Exception_expected
   #
   check(pdb_str, """\
-:=model id="   0" #chains=1
+:=model id="" #chains=1
 :=  chain id=" " #residue_groups=4
 :=    resid=" 109 " #atom_groups=1
 :=      altloc="" resname="LYS" #atoms=2
@@ -1748,7 +1748,7 @@ ATOM      4  CB  LYS   110
 """, prefix=":=")
   #
   check(pdb_str, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id=" " #residue_groups=4
     resid=" 109 " #atom_groups=1
       altloc="" resname="LYS" #atoms=2
@@ -1762,7 +1762,7 @@ model id="   0" #chains=1
 """, level_id="atom_group")
   #
   check(pdb_str, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id=" " #residue_groups=4
     resid=" 109 " #atom_groups=1
     resid=" 110 " #atom_groups=1
@@ -1772,12 +1772,12 @@ model id="   0" #chains=1
 """, level_id="residue_group")
   #
   check(pdb_str, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id=" " #residue_groups=4
 """, level_id="chain")
   #
   check(pdb_str, """\
-model id="   0" #chains=1
+model id="" #chains=1
 """, level_id="model")
   #
   check("""\
@@ -1909,7 +1909,7 @@ ATOM     54  CA  GLY A   9
 ATOM     55  CA  GLY A   9
 ATOM     56  CA BGLY A   9
 """, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id="A" #residue_groups=1
     resid="   9 " #atom_groups=2
       altloc=" " resname="GLY" #atoms=2
@@ -2070,7 +2070,7 @@ HETATM 2050  C  CCSO A 249      70.359  42.507  71.362  0.30 19.80           C
 HETATM 2051  O  CCSO A 249      71.055  42.917  70.439  0.30 19.80           O
 HETATM 2052  OD CCSO A 249      66.275  42.201  72.870  0.30 23.67           O
 """, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id="A" #residue_groups=2
     resid=" 249 " #atom_groups=3
       altloc="" resname="CYS" #atoms=4
@@ -2141,7 +2141,7 @@ HETATM 1572  C29BCOP   188      13.133  37.048  18.009  0.50 26.45           C
 HETATM 1605  O40BCOP   188      10.794  41.093  18.747  0.50 30.51           O
 HETATM 1607  O41BCOP   188      12.838  40.007  19.337  0.50 30.37           O
 """, """\
-model id="   0" #chains=1
+model id="" #chains=1
   chain id=" " #residue_groups=3
     resid=" 188 " #atom_groups=1
       altloc="" resname="COP" #atoms=4
@@ -4606,12 +4606,11 @@ ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
     'model="MoDl" pdb="NaMelrNmChABCDI" segid="sEgI"')
   assert not show_diff(awl.id_str(pdbres=True),
     'model="MoDl" pdbres="rNmChABCDI" segid="sEgI"')
-  awl.model_id = "    "
+  awl.model_id = ""
   assert not show_diff(awl.id_str(),
     'pdb="NaMelrNmChABCDI" segid="sEgI"')
   assert not show_diff(awl.id_str(pdbres=True),
     'pdbres="rNmChABCDI" segid="sEgI"')
-  awl.model_id = "   0"
   awl.segid = "    "
   assert not show_diff(awl.id_str(),
     'pdb="NaMelrNmChABCDI"')
