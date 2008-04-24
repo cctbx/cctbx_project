@@ -587,31 +587,26 @@ namespace iotbx { namespace pdb {
   } // namespace record_type
 
   //! Tolerant processing of MODEL records.
-  int
-  read_model_number(pdb::line_info& line_info)
+  std::string
+  read_model_id(pdb::line_info& line_info)
   {
+    char blank = ' ';
     unsigned i_col = 6;
-    for(;i_col<line_info.size;i_col++) {
-      if (line_info.data[i_col] != ' ') break;
+    for(;i_col<line_info.size&&i_col<10U;i_col++) {
+      if (line_info.data[i_col] != blank) break;
     }
-    bool ok = true;
-    char buf[16];
+    char buf[8];
     unsigned i_buf = 0;
-    for(;i_col<line_info.size;i_col++) {
-      if (line_info.data[i_col] == ' ') break;
+    for(;i_col<line_info.size&&i_col<14U;i_col++) {
       buf[i_buf++] = line_info.data[i_col];
-      if (i_buf == sizeof buf) {
-        ok = false;
-        break;
-      }
     }
-    if (ok && i_buf != 0) {
-      buf[i_buf] = '\0';
-      char *endptr;
-      long result = std::strtol(buf, &endptr, 10);
-      if (endptr == buf + i_buf) return result;
+    if (i_buf < 4U) {
+      unsigned n = 4U - i_buf;
+      std::memmove(buf+n, buf, i_buf);
+      std::fill_n(buf, n, blank);
+      i_buf = 4U;
     }
-    return field_as_int(line_info,10,14);
+    return std::string(buf, i_buf);
   }
 
   std::string
@@ -1093,7 +1088,7 @@ namespace iotbx { namespace pdb {
         }
         else if (record_type_info.id == record_type::model_) {
           if (model_record_oversight.model_is_allowed_here()) {
-            model_numbers_.push_back(read_model_number(line_info));
+            model_ids_.push_back(read_model_id(line_info));
           }
         }
         else if (record_type_info.id == record_type::endmdl) {
@@ -1160,10 +1155,10 @@ namespace iotbx { namespace pdb {
     }
     if (   model_indices_.size() == 0
         && input_atom_labels_list_.size() != 0) {
-      model_numbers_.push_back(0);
+      model_ids_.push_back("");
       model_indices_.push_back(input_atom_labels_list_.size());
     }
-    SCITBX_ASSERT(model_indices_.size() == model_numbers_.size());
+    SCITBX_ASSERT(model_indices_.size() == model_ids_.size());
     SCITBX_ASSERT(model_indices_.size() == chain_indices_.size());
     if (atom___counts != 0) record_type_counts_["ATOM  "] += atom___counts;
     if (hetatm_counts != 0) record_type_counts_["HETATM"] += hetatm_counts;
@@ -1181,14 +1176,6 @@ namespace iotbx { namespace pdb {
       result.push_back(std::string(a->data->serial.elems));
     }
     return result;
-  }
-
-  bool
-  input::model_numbers_are_unique() const
-  {
-    std::set<int> unique_numbers(
-      model_numbers_.begin(), model_numbers_.end());
-    return (unique_numbers.size() == model_numbers_.size());
   }
 
   af::shared<std::size_t>

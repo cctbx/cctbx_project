@@ -116,14 +116,13 @@ namespace {
         .def("input_atom_labels_list", &w_t::input_atom_labels_list, rbv())
         .def("atom_serial_number_strings", &w_t::atom_serial_number_strings)
         .def("atoms", &w_t::atoms, rbv())
-        .def("model_numbers", &w_t::model_numbers, rbv())
+        .def("model_ids", &w_t::model_ids, rbv())
         .def("model_indices", &w_t::model_indices, rbv())
         .def("ter_indices", &w_t::ter_indices, rbv())
         .def("chain_indices", &w_t::chain_indices, rbv())
         .def("break_indices", &w_t::break_indices, rbv())
         .def("connectivity_section", &w_t::connectivity_section, rbv())
         .def("bookkeeping_section", &w_t::bookkeeping_section, rbv())
-        .def("model_numbers_are_unique", &w_t::model_numbers_are_unique)
         .def("model_atom_counts", &w_t::model_atom_counts)
         .def("construct_hierarchy", &w_t::construct_hierarchy,
           construct_hierarchy_overloads((

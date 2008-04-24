@@ -424,14 +424,7 @@ namespace {
           format(result, true);
         }
         else {
-          shared_ptr<root_data> rt_lock = md->parent.lock();
-          if (   (stripped_size(md->id.c_str()) != 0 && md->id != "   0")
-              || (rt_lock.get() != 0 && rt_lock->models.size() != 1U)) {
-            model_id = md->id.c_str();
-          }
-          else {
-            model_id = 0;
-          }
+          model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
           format(result, true);
         }
       }
@@ -504,13 +497,8 @@ namespace {
     label_formatter.resseq = self.resseq.elems;
     label_formatter.icode = self.icode.elems;
     label_formatter.chain_id = self.chain_id.c_str();
-    if (   stripped_size(self.model_id.c_str()) != 0
-        && self.model_id != "   0") {
-      label_formatter.model_id = self.model_id.c_str();
-    }
-    else {
-      label_formatter.model_id = 0;
-    }
+    label_formatter.model_id = (
+      self.model_id.size() == 0 ? 0 : self.model_id.c_str());
   }
 
 } // namespace <anonymous>

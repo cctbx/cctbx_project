@@ -1,7 +1,6 @@
 #include <iotbx/pdb/input.h>
 #include <scitbx/misc/fill_ranges.h>
 #include <scitbx/array_family/sort.h>
-#include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace pdb {
@@ -62,19 +61,18 @@ namespace iotbx { namespace pdb {
   input::construct_hierarchy(
     bool residue_group_post_processing)
   {
-    af::const_ref<int>
-      model_numbers = model_numbers_.const_ref();
+    af::const_ref<std::string>
+      model_ids = model_ids_.const_ref();
     af::const_ref<std::vector<unsigned> >
       chain_indices = chain_indices_.const_ref();
-    SCITBX_ASSERT(chain_indices.size() == model_numbers.size());
+    SCITBX_ASSERT(chain_indices.size() == model_ids.size());
     hierarchy::root result;
-    result.pre_allocate_models(model_numbers.size());
+    result.pre_allocate_models(model_ids.size());
     const input_atom_labels* iall = input_atom_labels_list_.begin();
     hierarchy::atom* atoms = atoms_.begin();
     unsigned next_chain_range_begin = 0;
-    for(unsigned i_model=0;i_model<model_numbers.size();i_model++) {
-      hierarchy::model model((
-        boost::format("%4d") % model_numbers[i_model]).str());
+    for(unsigned i_model=0;i_model<model_ids.size();i_model++) {
+      hierarchy::model model(model_ids[i_model]);
       result.append_model(model);
       model.pre_allocate_chains(chain_indices[i_model].size());
       range_loop<unsigned> ch_r(

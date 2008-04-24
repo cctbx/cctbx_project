@@ -199,14 +199,13 @@ def exercise_pdb_input():
     assert pdb_inp.input_atom_labels_list().size() == 0
     assert pdb_inp.atom_serial_number_strings().size() == 0
     assert pdb_inp.atoms().size() == 0
-    assert pdb_inp.model_numbers().size() == 0
+    assert pdb_inp.model_ids().size() == 0
     assert pdb_inp.model_indices().size() == 0
     assert pdb_inp.ter_indices().size() == 0
     assert pdb_inp.chain_indices().size() == 0
     assert pdb_inp.break_indices().size() == 0
     assert pdb_inp.connectivity_section().size() == 0
     assert pdb_inp.bookkeeping_section().size() == 0
-    assert pdb_inp.model_numbers_are_unique()
     assert pdb_inp.model_atom_counts().size() == 0
     pdb_inp = pdb.input(
       source_info="file/name",
@@ -362,7 +361,7 @@ TVECT    1   0.00000   0.00000  20.42000""")
         == ["    1", "    2", "    3", "    4", "    9", "   10"]
     assert [atom.element for atom in pdb_inp.atoms()] \
         == [" N", " C", " C", " O", "  ", "  "]
-    assert list(pdb_inp.model_numbers()) == [1,3]
+    assert list(pdb_inp.model_ids()) == ["   1", "   3"]
     assert list(pdb_inp.model_indices()) == [4,6]
     assert list(pdb_inp.ter_indices()) == [5,6]
     assert [list(v) for v in pdb_inp.chain_indices()] == [[4],[5,6]]
@@ -372,7 +371,6 @@ CONECT 5332 5333 5334 5335 5336""")
     assert not show_diff("\n".join(pdb_inp.bookkeeping_section()), """\
 MASTER       81    0    0    7    3    0    0    645800   20    0   12
 END""")
-    assert pdb_inp.model_numbers_are_unique()
     assert list(pdb_inp.model_atom_counts()) == [4,2]
   #
   pdb_inp = pdb.input(
