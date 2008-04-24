@@ -492,6 +492,29 @@ namespace {
     }
   }
 
+namespace {
+
+  void
+  atom_with_labels_init_label_formatter(
+    atom_with_labels const& self,
+    atom_label_columns_formatter& label_formatter)
+  {
+    label_formatter.altloc = self.altloc.elems;
+    label_formatter.resname = self.resname.elems;
+    label_formatter.resseq = self.resseq.elems;
+    label_formatter.icode = self.icode.elems;
+    label_formatter.chain_id = self.chain_id.c_str();
+    if (   stripped_size(self.model_id.c_str()) != 0
+        && self.model_id != "   0") {
+      label_formatter.model_id = self.model_id.c_str();
+    }
+    else {
+      label_formatter.model_id = 0;
+    }
+  }
+
+} // namespace <anonymous>
+
   void
   atom::format_atom_record_serial_label_columns(
     char* result,
@@ -580,6 +603,18 @@ namespace {
     char result[52];
     atom_label_columns_formatter().format(
       result, *this, /* add_model_and_segid */ true, pdbres);
+    return std::string(result);
+  }
+
+  std::string
+  atom_with_labels::id_str(bool pdbres) const
+  {
+    char result[52];
+    atom_label_columns_formatter label_formatter;
+    label_formatter.name = (pdbres ? 0 : data->name.elems);
+    label_formatter.segid = data->segid.elems;
+    atom_with_labels_init_label_formatter(*this, label_formatter);
+    label_formatter.format(result, /* add_model_and_segid */ true);
     return std::string(result);
   }
 
@@ -776,6 +811,21 @@ namespace {
   }
 
   std::string
+  atom_with_labels::format_atom_record_group(
+    bool atom_hetatm,
+    bool sigatm,
+    bool anisou,
+    bool siguij) const
+  {
+    char result[324];
+    atom_label_columns_formatter label_formatter;
+    atom_with_labels_init_label_formatter(*this, label_formatter);
+    unsigned str_len = atom::format_atom_record_group(
+      result, &label_formatter, atom_hetatm, sigatm, anisou, siguij);
+    return std::string(result, str_len);
+  }
+
+  std::string
   atom::quote(bool full) const
   {
     char result[82];
@@ -783,6 +833,21 @@ namespace {
     unsigned str_len = format_atom_record(
       result+1,
       /* label_formatter */ 0,
+      /* replace_floats_with */ (full ? 0 : ".*."));
+    result[++str_len] = '"';
+    return std::string(result, ++str_len);
+  }
+
+  std::string
+  atom_with_labels::quote(bool full) const
+  {
+    char result[82];
+    atom_label_columns_formatter label_formatter;
+    atom_with_labels_init_label_formatter(*this, label_formatter);
+    result[0] = '"';
+    unsigned str_len = format_atom_record(
+      result+1,
+      &label_formatter,
       /* replace_floats_with */ (full ? 0 : ".*."));
     result[++str_len] = '"';
     return std::string(result, ++str_len);
@@ -1715,5 +1780,33 @@ namespace {
     }}}}
     return result;
   }
+
+  atom_with_labels::atom_with_labels()
+  :
+    first_in_chain(false),
+    first_after_break(false)
+  {}
+
+  atom_with_labels::atom_with_labels(
+    atom const& atom_,
+    const char* model_id_,
+    const char* chain_id_,
+    const char* resseq_,
+    const char* icode_,
+    const char* altloc_,
+    const char* resname_,
+    bool first_in_chain_,
+    bool first_after_break_)
+  :
+    atom(atom_),
+    model_id(model_id_),
+    chain_id(chain_id_),
+    resseq(resseq_),
+    icode(icode_),
+    altloc(altloc_),
+    resname(resname_),
+    first_in_chain(first_in_chain_),
+    first_after_break(first_after_break_)
+  {}
 
 }}} // namespace iotbx::pdb::hierarchy

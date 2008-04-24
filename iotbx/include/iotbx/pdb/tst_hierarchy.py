@@ -4545,6 +4545,111 @@ END
     prev_pdb_str = pdb_str_1
     prev_hierarchy = hierarchy_1
 
+def exercise_atom_with_labels():
+  awl = pdb.hierarchy.atom_with_labels()
+  assert not show_diff(awl.format_atom_record_group(), """\
+ATOM                             0.000   0.000   0.000  0.00  0.00""")
+  assert awl.serial == ""
+  assert awl.name == ""
+  assert awl.model_id == ""
+  assert awl.chain_id == ""
+  assert awl.resseq == ""
+  assert awl.icode == ""
+  assert awl.altloc == ""
+  assert awl.resname == ""
+  assert not awl.first_in_chain
+  assert not awl.first_after_break
+  awl.serial = "12345"
+  awl.name = "NaMe"
+  awl.model_id = "MoDl"
+  assert awl.model_id == "MoDl"
+  awl.chain_id = "Ch"
+  awl.resseq = "ABCD"
+  awl.icode = "I"
+  awl.altloc = "l"
+  awl.resname = "rNm"
+  awl.first_in_chain = True
+  assert awl.first_in_chain
+  awl.first_after_break = True
+  assert awl.first_after_break
+  assert not show_diff(awl.format_atom_record_group(), """\
+ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
+  assert not show_diff(awl.quote(), '''\
+"ATOM  12345 NaMelrNmChABCDI.*.        "''')
+  assert not show_diff(awl.quote(full=True), '''\
+"ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00"''')
+  awl.sigxyz = (0.1,0.2,0.3)
+  awl.uij = (1,2,3,0.1,0.2,0.3)
+  awl.siguij = (3,1,2,0.3,0.1,0.2)
+  if (pdb.hierarchy.atom.has_siguij()):
+    assert not show_diff(awl.format_atom_record_group(), """\
+ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00
+SIGATM12345 NaMelrNmChABCDI      0.100   0.200   0.300  0.00  0.00
+ANISOU12345 NaMelrNmChABCDI   10000  20000  30000   1000   2000   3000
+SIGUIJ12345 NaMelrNmChABCDI   30000  10000  20000   3000   1000   2000""")
+  else:
+    assert not show_diff(awl.format_atom_record_group(), """\
+ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00
+SIGATM12345 NaMelrNmChABCDI      0.100   0.200   0.300  0.00  0.00
+ANISOU12345 NaMelrNmChABCDI   10000  20000  30000   1000   2000   3000""")
+  assert not show_diff(
+    awl.format_atom_record_group(sigatm=False, anisou=False, siguij=False),
+    """\
+ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
+  #
+  assert not show_diff(awl.id_str(),
+    'model="MoDl" pdb="NaMelrNmChABCDI"')
+  assert not show_diff(awl.id_str(pdbres=True),
+    'model="MoDl" pdbres="rNmChABCDI"')
+  awl.segid = "sEgI"
+  assert not show_diff(awl.id_str(),
+    'model="MoDl" pdb="NaMelrNmChABCDI" segid="sEgI"')
+  assert not show_diff(awl.id_str(pdbres=True),
+    'model="MoDl" pdbres="rNmChABCDI" segid="sEgI"')
+  awl.model_id = "    "
+  assert not show_diff(awl.id_str(),
+    'pdb="NaMelrNmChABCDI" segid="sEgI"')
+  assert not show_diff(awl.id_str(pdbres=True),
+    'pdbres="rNmChABCDI" segid="sEgI"')
+  awl.model_id = "   0"
+  awl.segid = "    "
+  assert not show_diff(awl.id_str(),
+    'pdb="NaMelrNmChABCDI"')
+  assert not show_diff(awl.id_str(pdbres=True),
+    'pdbres="rNmChABCDI"')
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        0
+ATOM      1  C   MET A   1
+ATOM      2  CA AMET A   1
+BREAK
+ATOM      3  N   GLY A   2
+ATOM      4  CA AGLY A   2
+ENDMDL
+MODEL        1
+ATOM      1  N   MET A   1
+ATOM      2  CA AMET A   1
+ATOM      3  N   ALA B   2
+ATOM      4  CA AALA B   2
+ENDMDL
+"""))
+  hierarchy = pdb_inp.construct_hierarchy()
+  sio = StringIO()
+  for awl in hierarchy.atoms_with_labels():
+    print >> sio, awl.format_atom_record_group(), \
+      int(awl.first_in_chain), \
+      int(awl.first_after_break)
+  assert not show_diff(sio.getvalue(), """\
+ATOM      1  C   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0
+ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0
+ATOM      3  N   GLY A   2       0.000   0.000   0.000  0.00  0.00 0 1
+ATOM      4  CA AGLY A   2       0.000   0.000   0.000  0.00  0.00 0 0
+ATOM      1  N   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0
+ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0
+ATOM      3  N   ALA B   2       0.000   0.000   0.000  0.00  0.00 1 0
+ATOM      4  CA AALA B   2       0.000   0.000   0.000  0.00  0.00 0 0
+""")
+
 def exercise_transfer_chains_from_other():
   atoms_x = """\
 ATOM      1  X1      A
@@ -4854,6 +4959,7 @@ def exercise(args):
     exercise_as_pdb_string(
       pdb_file_names=phenix_regression_pdb_file_names,
       comprehensive=comprehensive)
+    exercise_atom_with_labels()
     exercise_transfer_chains_from_other()
     exercise_root_select()
     exercise_root_altloc_indices()

@@ -519,6 +519,27 @@ class _root(boost.python.injector, ext.root):
       anisou=anisou,
       siguij=siguij)
 
+  def atoms_with_labels(self):
+    for model in self.models():
+      for chain in model.chains():
+        first_in_chain = True
+        for rg in chain.residue_groups():
+          first_after_break = not (first_in_chain or rg.link_to_previous)
+          for ag in rg.atom_groups():
+            for atom in ag.atoms():
+              yield atom_with_labels(
+                atom=atom,
+                model_id=model.id,
+                chain_id=chain.id,
+                resseq=rg.resseq,
+                icode=rg.icode,
+                altloc=ag.altloc,
+                resname=ag.resname,
+                first_in_chain=first_in_chain,
+                first_after_break=first_after_break)
+              first_in_chain = False
+              first_after_break = False
+
   def transfer_chains_from_other(self, other):
     from iotbx.pdb import hy36encode
     i_model = 0
