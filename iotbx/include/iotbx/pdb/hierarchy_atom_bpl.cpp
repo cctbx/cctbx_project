@@ -282,12 +282,90 @@ namespace {
     }
   };
 
+  struct atom_with_labels_wrappers
+  {
+    typedef atom_with_labels w_t;
+
+#define IOTBX_LOC(attr) \
+    static \
+    boost::python::str \
+    get_##attr(w_t const& self) \
+    { \
+      return boost::python::str(self.attr.elems); \
+    } \
+\
+    static \
+    void \
+    set_##attr(w_t& self, const char* value) \
+    { \
+      self.attr.replace_with(value); \
+    }
+
+    IOTBX_LOC(resseq)
+    IOTBX_LOC(icode)
+    IOTBX_LOC(altloc)
+    IOTBX_LOC(resname)
+
+#undef IOTBX_LOC
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 1)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      format_atom_record_group_overloads, format_atom_record_group, 0, 4)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(quote_overloads, quote, 0, 1)
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<atom> >("atom_with_labels", no_init)
+        .def(init<>())
+        .def(init<
+          atom const&,
+          const char*, const char*, const char*,
+          const char*, const char*, const char*,
+          bool, bool>((
+            arg_("atom"),
+            arg_("model_id"),
+            arg_("chain_id"),
+            arg_("resseq"),
+            arg_("icode"),
+            arg_("altloc"),
+            arg_("resname"),
+            arg_("first_in_chain"),
+            arg_("first_after_break"))))
+        .def_readwrite("model_id", &w_t::model_id)
+        .def_readwrite("chain_id", &w_t::chain_id)
+        .add_property("resseq",
+          make_function(get_resseq), make_function(set_resseq))
+        .add_property("icode",
+          make_function(get_icode), make_function(set_icode))
+        .add_property("altloc",
+          make_function(get_altloc), make_function(set_altloc))
+        .add_property("resname",
+          make_function(get_resname), make_function(set_resname))
+        .def_readwrite("first_in_chain", &w_t::first_in_chain)
+        .def_readwrite("first_after_break", &w_t::first_after_break)
+        .def("id_str", &w_t::id_str, id_str_overloads((arg_("pdbres")=false)))
+        .def("format_atom_record_group", &w_t::format_atom_record_group,
+          format_atom_record_group_overloads((
+            arg_("atom_hetatm")=true,
+            arg_("sigatm")=true,
+            arg_("anisou")=true,
+            arg_("siguij")=true)))
+        .def("quote", &w_t::quote, quote_overloads((arg_("full")=false)))
+      ;
+    }
+  };
+
 } // namespace <anonymous>
 
   void
   atom_bpl_wrap()
   {
     atom_wrappers::wrap();
+    atom_with_labels_wrappers::wrap();
   }
 
 }}} // namespace iotbx::pdb::hierarchy

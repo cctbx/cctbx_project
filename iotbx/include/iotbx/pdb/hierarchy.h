@@ -1495,6 +1495,46 @@ namespace hierarchy {
       atoms() const;
   };
 
+  class atom_with_labels : public atom
+  {
+    public:
+      std::string model_id;
+      std::string chain_id;
+      str4 resseq;
+      str1 icode;
+      str1 altloc;
+      str3 resname;
+      bool first_in_chain;
+      bool first_after_break;
+
+      atom_with_labels();
+
+      atom_with_labels(
+        atom const& atom_,
+        const char* model_id_,
+        const char* chain_id_,
+        const char* resseq_,
+        const char* icode_,
+        const char* altloc_,
+        const char* resname_,
+        bool first_in_chain_,
+        bool first_after_break_);
+
+      //! model="   1" pdb=" N   GLY A   1 " segid="S001"
+      std::string
+      id_str(bool pdbres=false) const;
+
+      std::string
+      format_atom_record_group(
+        bool atom_hetatm=true,
+        bool sigatm=true,
+        bool anisou=true,
+        bool siguij=true) const;
+
+      std::string
+      quote(bool full=false) const;
+  };
+
   inline
   model_data::model_data(
     weak_ptr<root_data> const& parent_,
