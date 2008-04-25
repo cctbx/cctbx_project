@@ -2,7 +2,7 @@ from cctbx.crystal import coordination_sequences
 from cctbx import xray
 from cctbx import crystal
 from iotbx.kriber import strudat
-import iotbx.pdb.interpretation
+import iotbx.pdb
 from iotbx.option_parser import option_parser
 import sys
 

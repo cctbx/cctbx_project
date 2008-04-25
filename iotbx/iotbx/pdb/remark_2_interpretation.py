@@ -1,8 +1,3 @@
-from iotbx import pdb
-import iotbx.pdb.interpretation
-import sys, math, time, os
-import mmtbx
-
 def get_resolution(st):
   result = None
   q1 = (st.count("REMARK   2 ")==1 and st.count("RESOLUTION")>0 and
@@ -12,6 +7,7 @@ def get_resolution(st):
      try:
        result = float(ch[3])
        assert result < 100.0 and result > 0.01
+     except KeyboardInterrupt: raise
      except:
        pass
   return result

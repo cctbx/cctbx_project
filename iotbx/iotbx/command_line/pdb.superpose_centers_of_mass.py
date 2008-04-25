@@ -1,6 +1,5 @@
 from iotbx import pdb
-import iotbx.pdb.interpretation
-from iotbx import phil
+import iotbx.phil
 from iotbx.option_parser import option_parser
 from cctbx import euclidean_model_matching
 from cctbx import sgtbx

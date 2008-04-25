@@ -1,7 +1,3 @@
-from iotbx import pdb
-import iotbx.pdb.interpretation
-import sys, math, time, os
-
 example_of_tls_parameters_in_remark_3 = """\
 REMARK   3
 REMARK   3  TLS DETAILS

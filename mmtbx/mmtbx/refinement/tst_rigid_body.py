@@ -1,6 +1,5 @@
 from cctbx.array_family import flex
 from iotbx import pdb
-import iotbx.pdb.interpretation
 import mmtbx.f_model
 from libtbx import introspection
 import libtbx.load_env
