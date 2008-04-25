@@ -1,5 +1,6 @@
 import os, sys
 
+import mmtbx.chemical_components
 from mmtbx.chemical_components import get_atom_names, get_hydrogen_names
 from mmtbx.chemical_components import get_bond_pairs
 
@@ -20,9 +21,12 @@ def excercise(code):
   print get_bond_pairs(code, alternate=True)
 
 def run():
-  for code in ["HOH", "ATP", "hem"]:
-    print "\n%s\n%s" % ('_'*80,("%s " % code)*20)
-    excercise(code)
+  if (mmtbx.chemical_components.data_dir is None):
+    print "Skipping tests: mmtbx.chemical_components.data_dir not available"
+  else:
+    for code in ["HOH", "ATP", "hem"]:
+      print "\n%s\n%s" % ('_'*80,("%s " % code)*20)
+      excercise(code)
   print "OK"
 
 if __name__=="__main__":
