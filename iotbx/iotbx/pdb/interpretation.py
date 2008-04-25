@@ -15,20 +15,6 @@ from libtbx.test_utils import not_approx_equal
 import string
 import sys
 
-def is_pdb_file(file_name):
-  for raw_record in open(file_name):
-    if (   raw_record.startswith("CRYST1")
-        or raw_record.startswith("ATOM  ")
-        or raw_record.startswith("HETATM")):
-      try:
-        pdb.parser.pdb_record(
-          raw_record=raw_record,
-          line_number=None,
-          ignore_columns_73_and_following=True)
-      except: pass
-      else: return True
-  return False
-
 class empty: pass
 
 class model(object):

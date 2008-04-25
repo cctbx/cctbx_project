@@ -74,7 +74,7 @@ def run(args):
   else:
     coseq_dict = None
   for file_name in command_line.args:
-    if (iotbx.pdb.interpretation.is_pdb_file(file_name=file_name)):
+    if (iotbx.pdb.is_pdb_file(file_name=file_name)):
       xray_structure = iotbx.pdb.input(
         file_name=file_name).xray_structure_simple(
           enable_scattering_type_unknown=True)
