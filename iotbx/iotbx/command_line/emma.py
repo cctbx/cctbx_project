@@ -2,7 +2,6 @@
 
 from iotbx import crystal_symmetry_from_any
 import iotbx.pdb
-import iotbx.pdb.interpretation
 from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx.cns import sdb_reader

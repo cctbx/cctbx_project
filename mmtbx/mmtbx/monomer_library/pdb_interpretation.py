@@ -1,7 +1,6 @@
 from __future__ import generators
 from __future__ import division
 from iotbx import pdb
-import iotbx.pdb.interpretation
 import iotbx.phil
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types

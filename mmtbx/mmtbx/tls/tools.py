@@ -1,5 +1,4 @@
 from iotbx import pdb
-import iotbx.pdb.interpretation
 from cctbx.array_family import flex
 import sys, math, time, random
 from scitbx import lbfgs

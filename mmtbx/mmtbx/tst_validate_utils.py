@@ -3,7 +3,6 @@ from mmtbx.command_line import ramalyze
 from mmtbx.command_line import rotalyze
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx import pdb
-#import iotbx.pdb.interpretation
 from cctbx.array_family import flex
 import libtbx.load_env
 
@@ -11,9 +10,6 @@ import sys, os, getopt
 
 #{{{ exercise_ramalyze
 def exercise_ramalyze():
-  #pdb_io = iotbx.pdb.input(source_info=None, lines=flex.split_lines("""\
-#ATOM   1748  CD  PRO A 260      75.791 136.003  84.241  1.00 37.59           C
-#"""))
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/jcm.pdb",
     test=os.path.isfile)
