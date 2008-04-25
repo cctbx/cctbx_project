@@ -41,6 +41,7 @@ from libtbx.str_utils import format_value, show_string
 from mmtbx.scaling import outlier_rejection
 from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling.twin_analyses
+from libtbx import Auto
 
 master_params =  iotbx.phil.parse("""
   twin_law = None
@@ -930,7 +931,9 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                                   "gradient",
                                   "auto"
                                   ]
-    self.detwin_mode = string.lower(str(detwin_mode))
+    self.detwin_mode = detwin_mode
+    if self.detwin_mode is Auto:
+      self.detwin_mode="auto"
     assert self.detwin_mode in self.possible_detwin_modes
     self.detwin_switch_twin_fraction = 0.45
 
