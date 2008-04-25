@@ -35,7 +35,7 @@ import libtbx.phil.command_line
 from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 from scitbx import differential_evolution
-import sys, os, math, time
+import sys, os, math, time, string
 import mmtbx.f_model
 from libtbx.str_utils import format_value, show_string
 from mmtbx.scaling import outlier_rejection
@@ -930,8 +930,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                                   "gradient",
                                   "auto"
                                   ]
-    assert detwin_mode in self.possible_detwin_modes
-    self.detwin_mode = detwin_mode
+    self.detwin_mode = string.lower(str(detwin_mode))
+    assert self.detwin_mode in self.possible_detwin_modes
     self.detwin_switch_twin_fraction = 0.45
 
     self.map_types = map_types
