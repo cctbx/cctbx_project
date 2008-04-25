@@ -4,25 +4,21 @@ import libtbx.load_env
 
 from mmtbx.chemical_components import cif_parser
 
-mmtbx_repository_dir = os.path.dirname(libtbx.env.dist_path("mmtbx"))
-above_mmtbx_repository_dir = os.path.dirname(mmtbx_repository_dir)
-
 loaded_cifs = {}
 
+def find_data_dir():
+  for relative_path in ["chemical_components",
+                        "ext_ref_files/chemical_components"]:
+    result = libtbx.env.find_in_repositories(relative_path=relative_path)
+    if (result is not None): return result
+  return None
+
+data_dir = find_data_dir()
+
 def get_cif_filename(code):
-  filename = os.path.join(mmtbx_repository_dir,
-                          "chemical_components",
-                          "%s" % code[0].lower(),
-                          "data_%s.cif" % code.upper(),
-                          )
-  if os.path.exists(filename): return filename
-  filename = os.path.join(mmtbx_repository_dir,
-                          "ext_ref_files",
-                          "chemical_components",
-                          "%s" % code[0].lower(),
-                          "data_%s.cif" % code.upper(),
-                          )
-  return filename
+  if (data_dir is None): return ""
+  return os.path.join(
+    data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())
 
 def is_code(code):
   filename = get_cif_filename(code)
