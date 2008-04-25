@@ -690,7 +690,7 @@ class interpreter:
         if (params is not None):
           parsed_params.append(params)
           arg_is_processed = True
-        elif (pdb.interpretation.is_pdb_file(file_name=arg)):
+        elif (pdb.is_pdb_file(file_name=arg)):
           self.pdb_file_names.append(arg)
           arg_is_processed = True
           try:

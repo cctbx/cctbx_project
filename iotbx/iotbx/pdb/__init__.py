@@ -17,6 +17,22 @@ from libtbx.utils import plural_s, Sorry, hashlib_md5, date_and_time
 from libtbx import Auto
 import sys
 
+def is_pdb_file(file_name):
+  from iotbx.pdb.parser import pdb_record
+  for raw_record in open(file_name):
+    if (   raw_record.startswith("CRYST1")
+        or raw_record.startswith("ATOM  ")
+        or raw_record.startswith("HETATM")):
+      try:
+        pdb_record(
+          raw_record=raw_record,
+          line_number=None,
+          ignore_columns_73_and_following=True)
+      except KeyboardInterrupt: raise
+      except: pass
+      else: return True
+  return False
+
 cns_dna_rna_residue_names = {
   "ADE": "A",
   "CYT": "C",

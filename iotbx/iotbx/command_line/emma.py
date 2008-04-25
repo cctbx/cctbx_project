@@ -114,7 +114,7 @@ def get_emma_model(file_name, crystal_symmetry):
       crystal_symmetry=crystal_symmetry)
   except KeyboardInterrupt: raise
   except:
-    if (iotbx.pdb.interpretation.is_pdb_file(file_name)): raise
+    if (iotbx.pdb.is_pdb_file(file_name)): raise
   try:
     return get_emma_model_from_sdb(
       file_name=file_name,
