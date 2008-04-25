@@ -13,14 +13,14 @@ def get_cif_filename(code):
   filename = os.path.join(mmtbx_repository_dir,
                           "chemical_components",
                           "%s" % code[0].lower(),
-                          "%s.cif" % code.upper(),
+                          "data_%s.cif" % code.upper(),
                           )
   if os.path.exists(filename): return filename
   filename = os.path.join(mmtbx_repository_dir,
                           "ext_ref_files",
                           "chemical_components",
                           "%s" % code[0].lower(),
-                          "%s.cif" % code.upper(),
+                          "data_%s.cif" % code.upper(),
                           )
   return filename
 
