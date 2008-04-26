@@ -1,4 +1,4 @@
-import iotbx.pdb
+import iotbx.pdb.hierarchy
 from cctbx import xray
 from cctbx import adptbx
 from cStringIO import StringIO
@@ -23,43 +23,34 @@ def as_pdb_file(self,
     print >> s, "REMARK Cartesian coordinates"
   print >> s, iotbx.pdb.format_cryst1_record(crystal_symmetry=self)
   print >> s, iotbx.pdb.format_scale_records(unit_cell=self.unit_cell())
+  atom = iotbx.pdb.hierarchy.atom_with_labels()
   if (res_name is not None):
-    res_name_i = res_name.upper()
+    atom.resname = res_name.upper()
   serial = 0
   for scatterer in self.scatterers():
     serial += 1
+    atom.serial = iotbx.pdb.hy36encode(width=5, value=serial)
     if (scatterer.anisotropic_flag):
-      u_cart = adptbx.u_star_as_u_cart(self.unit_cell(), scatterer.u_star)
-      u = adptbx.u_cart_as_u_iso(u_cart)
+      atom.uij = adptbx.u_star_as_u_cart(self.unit_cell(), scatterer.u_star)
+      atom.b = adptbx.u_as_b(adptbx.u_cart_as_u_iso(atom.uij))
     else:
-      u_cart = None
-      u = scatterer.u_iso
-    xyz = scatterer.site
-    if (not fractional_coordinates):
-      xyz = self.unit_cell().orthogonalize(xyz)
+      atom.uij = (-1,-1,-1,-1,-1,-1)
+      atom.b = adptbx.u_as_b(scatterer.u_iso)
+    if (fractional_coordinates):
+      atom.xyz = scatterer.site
+    else:
+      atom.xyz = self.unit_cell().orthogonalize(scatterer.site)
+    atom.occ = scatterer.occupancy
     label = scatterer.label.upper()
+    atom.name = label[:4]
+    if (res_name is None):
+      atom.resname = label[:3]
     element_symbol = scatterer.element_symbol()
     if (element_symbol is None): element_symbol = "Q"
     assert len(element_symbol) in (1,2)
-    if (res_name is None):
-      res_name_i = label[:3]
-    print >> s, iotbx.pdb.format_atom_record(
-      serial=serial,
-      name=label[:4],
-      resName=res_name_i,
-      resSeq=serial,
-      site=xyz,
-      occupancy=scatterer.occupancy,
-      tempFactor=adptbx.u_as_b(u),
-      element=element_symbol.upper())
-    if (u_cart is not None):
-      print >> s, iotbx.pdb.format_anisou_record(
-        serial=serial,
-        name=label[:4],
-        resName=res_name_i,
-        resSeq=serial,
-        u_cart=u_cart,
-        element=element_symbol.upper())
+    atom.element = element_symbol.upper()
+    atom.resseq = iotbx.pdb.hy36encode(width=4, value=serial)
+    print >> s, atom.format_atom_record_group()
   if (connect is not None):
     assert len(connect) == self.scatterers().size()
     i = 0

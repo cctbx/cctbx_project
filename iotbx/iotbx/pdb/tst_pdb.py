@@ -1,6 +1,5 @@
 from iotbx import pdb
 import iotbx.pdb.remark_290_interpretation
-import iotbx.pdb.atom
 import iotbx.pdb.parser
 from cctbx import crystal
 from cctbx import sgtbx
@@ -173,16 +172,8 @@ SCALE3      0.000000  0.000000  1.000000        3.00000""")
   #
   assert iotbx.pdb.format_atom_record() \
     == "ATOM      0  C   DUM     1       0.000   0.000   0.000  1.00  0.00"
-  assert iotbx.pdb.format_anisou_record() \
-    == "ANISOU    0  C   DUM     1        0      0      0      0      0      0"
-  assert iotbx.pdb.format_ter_record() \
-    == "TER       0      DUM     1"
   assert iotbx.pdb.format_atom_record(serial=-1, resSeq=-999) \
     == "ATOM     -1  C   DUM  -999       0.000   0.000   0.000  1.00  0.00"
-  assert iotbx.pdb.format_anisou_record(serial=100000, resSeq=10000) \
-    == "ANISOUA0000  C   DUM  A000        0      0      0      0      0      0"
-  assert iotbx.pdb.format_ter_record(serial=100001, resSeq=10001) \
-    == "TER   A0001      DUM  A001"
   assert iotbx.pdb.format_atom_record(serial="xyzab", resSeq="TUVW") \
     == "ATOM  xyzab  C   DUM  TUVW       0.000   0.000   0.000  1.00  0.00"
 
@@ -234,63 +225,6 @@ def exercise_remark_290_interpretation():
       assert expected_sym_op is None
     else:
       assert sym_op == sgtbx.rt_mx(expected_sym_op)
-
-def exercise_atom():
-  for lbls in [pdb.atom.labels(),
-               pdb.atom.labels_from_string(" C  ,,,,,,,"),
-               pdb.atom.labels_from_string(" C  ,A,GLY,C,1,I,S,4")]:
-    assert str(lbls) == str(pdb.atom.labels_from_string(str(lbls)))
-  atom_etc_records = """\
-ATOM     10  N  ACYS "   6       4.535   4.190  -0.757  1.00  0.05      1ETN N1+
-SIGATM   10  N  ACYS "   6       0.010   0.210   0.310  0.02  0.03      1ETN N1+
-ANISOU   10  N  ACYS "   6      441    580    402     48    -72    -88  1ETN N1+
-SIGUIJ   10  N  ACYS "   6        3      2      8      3      8      6  1ETN N1+
-""".splitlines()
-  attr = pdb.atom.attributes()
-  attr.set_from_ATOM_record(pdb.parser.pdb_record(atom_etc_records[0]))
-  attr.set_from_SIGATM_record(pdb.parser.pdb_record(atom_etc_records[1]))
-  attr.set_from_ANISOU_record(pdb.parser.pdb_record(atom_etc_records[2]))
-  attr.set_from_SIGUIJ_record(pdb.parser.pdb_record(atom_etc_records[3]))
-  assert str(attr) == " N  ,A,CYS,\",   6, ,1ETN,None"
-  s = StringIO()
-  attr.show(f=s, prefix="  ")
-  assert not show_diff(s.getvalue(), """\
-  record name: ATOM
-  name:        " N  "
-  altLoc:      "A"
-  resName:     "CYS"
-  chainID:     "\\""
-  resSeq:      "   6"
-  iCode:       " "
-  segID:       "1ETN"
-  element:     " N"
-  charge:      "1+"
-  coordinates: (4.535, 4.19, -0.757)
-  sigCoor:     (0.01, 0.21, 0.31)
-  occupancy:   1
-  sigOcc:      0.02
-  tempFactor:  0.05
-  sigTemp:     0.03
-  Ucart:       (0.0441, 0.058, 0.0402, 0.0048, -0.0072, -0.0088)
-  sigUcart:    (0.0003, 0.0002, 0.0008, 0.0003, 0.0008, 0.0006)
-""")
-  #
-  atom_records = """\
-ATOM      1  CA  CYS A   6       0.000   0.000   0.000  1.00  0.00
-ATOM      2  CA  CYSB    6       0.000   0.000   0.000  1.00  0.00
-ATOM      3  CA  CYSAB   7       0.000   0.000   0.000  1.00  0.00
-""".splitlines()
-  expected_pdb_format = iter("""\
-" CA  CYS A   6 "
-" CA  CYSB    6 "
-" CA  CYSAB   7 "
-""".splitlines())
-  for record,chainID in zip(atom_records, ["A", "B ", "AB"]):
-    attr = pdb.atom.attributes()
-    assert attr.pdb_format() == '"               "'
-    attr.set_from_ATOM_record(pdb.parser.pdb_record(raw_record=record))
-    assert attr.chainID == chainID
-    assert attr.pdb_format() == expected_pdb_format.next()
 
 def exercise_residue_name_plus_atom_names_interpreter():
   rnpani = iotbx.pdb.residue_name_plus_atom_names_interpreter
@@ -427,7 +361,6 @@ def run():
   exercise_format_records()
   exercise_remark_290_interpretation()
   exercise_parser()
-  exercise_atom()
   exercise_residue_name_plus_atom_names_interpreter()
   exercise_format_fasta()
   for use_u_aniso in (False, True):
