@@ -34,7 +34,7 @@ def as_pdb_file(self,
       atom.uij = adptbx.u_star_as_u_cart(self.unit_cell(), scatterer.u_star)
       atom.b = adptbx.u_as_b(adptbx.u_cart_as_u_iso(atom.uij))
     else:
-      atom.uij = (-1,-1,-1,-1,-1,-1)
+      atom.uij_erase()
       atom.b = adptbx.u_as_b(scatterer.u_iso)
     if (fractional_coordinates):
       atom.xyz = scatterer.site

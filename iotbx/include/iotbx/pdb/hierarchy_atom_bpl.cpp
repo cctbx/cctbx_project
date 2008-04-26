@@ -261,9 +261,11 @@ namespace {
         .staticmethod("data_offsets")
         .def("parent", get_parent<atom, atom_group>::wrapper)
         .def("uij_is_defined", &w_t::uij_is_defined)
+        .def("uij_erase", &w_t::uij_erase)
         .def("has_siguij", &w_t::has_siguij)
         .staticmethod("has_siguij")
         .def("siguij_is_defined", &w_t::siguij_is_defined)
+        .def("siguij_erase", &w_t::siguij_erase)
         .def("pdb_label_columns", &w_t::pdb_label_columns)
         .def("pdb_element_charge_columns", &w_t::pdb_element_charge_columns)
         .def("id_str", &w_t::id_str, id_str_overloads((arg_("pdbres")=false)))
@@ -335,6 +337,7 @@ namespace {
             arg_("resname"),
             arg_("is_first_in_chain"),
             arg_("is_first_after_break"))))
+        .def("detached_copy", &w_t::detached_copy)
         .def_readwrite("model_id", &w_t::model_id)
         .def_readwrite("chain_id", &w_t::chain_id)
         .add_property("resseq",

@@ -1797,4 +1797,19 @@ namespace {
     is_first_after_break(is_first_after_break_)
   {}
 
+  atom_with_labels
+  atom_with_labels::detached_copy() const
+  {
+    return atom_with_labels(
+      static_cast<atom>(*this).detached_copy(),
+      model_id.c_str(),
+      chain_id.c_str(),
+      resseq.elems,
+      icode.elems,
+      altloc.elems,
+      resname.elems,
+      is_first_in_chain,
+      is_first_after_break);
+  }
+
 }}} // namespace iotbx::pdb::hierarchy
