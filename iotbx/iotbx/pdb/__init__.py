@@ -618,21 +618,6 @@ def join_fragment_files(file_names):
   result.info.extend(info)
   return result
 
-def atom_labels_pdb_format(model, chain, conformer, residue, atom):
-  result = []
-  if (model.id != 0):
-    result.append('model="%4d"' % model.id)
-  result.append('"%4s%1s%3s%2s%4s%1s"' % (
-    atom.name,
-    conformer.id,
-    residue.name,
-    chain.id,
-    residue.seq,
-    residue.icode))
-  if (atom.segid != "    "):
-    result.append('segid="%s"' % atom.segid)
-  return " ".join(result)
-
 def format_cryst1_record(crystal_symmetry, z=None):
   # CRYST1
   #  7 - 15       Real(9.3)      a             a (Angstroms).
@@ -798,58 +783,3 @@ def format_atom_record(record_name="ATOM",
       encode_serial_number(width=4, value=resSeq), iCode,
       site[0], site[1], site[2], occupancy, tempFactor,
       segID, element, charge)).rstrip()
-
-def format_anisou_record(
-      serial=0,
-      name=" C  ",
-      altLoc=" ",
-      resName="DUM",
-      chainID=" ",
-      resSeq=1,
-      iCode=" ",
-      u_cart=(0,0,0,0,0,0),
-      segID="    ",
-      element="  ",
-      charge="  "):
-  # ANISOU
-  #  7 - 11  Integer       serial        Atom serial number.
-  # 13 - 16  Atom          name          Atom name.
-  # 17       Character     altLoc        Alternate location indicator.
-  # 18 - 20  Residue name  resName       Residue name.
-  # 21 - 22                chainID       Chain identifier.
-  # 23 - 26  Integer       resSeq        Residue sequence number.
-  # 27       AChar         iCode         Code for insertion of residues.
-  # 29 - 35  Integer       u[0][0]       U(1,1)
-  # 36 - 42  Integer       u[1][1]       U(2,2)
-  # 43 - 49  Integer       u[2][2]       U(3,3)
-  # 50 - 56  Integer       u[0][1]       U(1,2)
-  # 57 - 63  Integer       u[0][2]       U(1,3)
-  # 64 - 70  Integer       u[1][2]       U(2,3)
-  # 73 - 76  LString(4)    segID         Segment identifier, left-justified.
-  # 77 - 78  LString(2)    element       Element symbol, right-justified.
-  # 79 - 80  LString(2)    charge        Charge on the atom.
-  return ((
-    "%-6.6s%5.5s %-4.4s%1.1s%-3.3s%2.2s%4.4s%1.1s"
-    " %7d%7d%7d%7d%7d%7d"
-    "  %-4.4s%2.2s%2.2s") % ((
-      "ANISOU",
-      encode_serial_number(width=5, value=serial),
-      name, altLoc, resName, chainID,
-      encode_serial_number(width=4, value=resSeq), iCode)
-    + tuple([iround(u*10000) for u in u_cart])
-    + (segID, element, charge))).rstrip()
-
-def format_ter_record(serial=0,
-                      resName="DUM",
-                      chainID=" ",
-                      resSeq=1,
-                      iCode=" "):
-  #  7 - 11  Integer         serial     Serial number.
-  # 18 - 20  Residue name    resName    Residue name.
-  # 21 - 22  Character       chainID    Chain identifier.
-  # 23 - 26  Integer         resSeq     Residue sequence number.
-  # 27       AChar           iCode      Insertion code.
-  return ("%-6.6s%5.5s      %-3.3s%2.2s%4.4s%1.1s" % (
-    "TER",
-    encode_serial_number(width=5, value=serial), resName, chainID,
-    encode_serial_number(width=4, value=resSeq), iCode)).rstrip()
