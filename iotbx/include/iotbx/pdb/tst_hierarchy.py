@@ -54,12 +54,16 @@ def exercise_atom():
   a.uij = (1,-2,3,4,-5,6)
   assert a.uij == (1,-2,3,4,-5,6)
   assert a.uij_is_defined()
+  a.uij_erase()
+  assert not a.uij_is_defined()
   assert not a.siguij_is_defined()
   if (pdb.hierarchy.atom.has_siguij()):
     assert a.siguij == (-1,-1,-1,-1,-1,-1)
     a.siguij = (-2,3,4,-5,6,1)
     assert a.siguij == (-2,3,4,-5,6,1)
     assert a.siguij_is_defined()
+  a.siguij_erase()
+  assert not a.siguij_is_defined()
   assert not a.hetero
   a.hetero = True
   assert a.hetero
@@ -4559,10 +4563,13 @@ ATOM                             0.000   0.000   0.000  0.00  0.00""")
   assert awl.resname == ""
   assert not awl.is_first_in_chain
   assert not awl.is_first_after_break
+  awlc = awl.detached_copy()
   awl.serial = "12345"
+  assert awlc.serial == ""
   awl.name = "NaMe"
   awl.model_id = "MoDl"
   assert awl.model_id == "MoDl"
+  assert awlc.model_id == ""
   awl.chain_id = "Ch"
   awl.resseq = "ABCD"
   awl.icode = "I"
@@ -4635,6 +4642,9 @@ ENDMDL
   hierarchy = pdb_inp.construct_hierarchy()
   sio = StringIO()
   for awl in hierarchy.atoms_with_labels():
+    assert awl.parent() is not None
+    awlc = awl.detached_copy()
+    assert awlc.parent() is None
     print >> sio, awl.format_atom_record_group(), \
       int(awl.is_first_in_chain), \
       int(awl.is_first_after_break)

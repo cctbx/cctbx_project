@@ -605,6 +605,9 @@ namespace hierarchy {
         return !data->uij.const_ref().all_eq(-1);
       }
 
+      void
+      uij_erase() const { data->uij.fill(-1); }
+
       static
       bool
       has_siguij()
@@ -623,6 +626,14 @@ namespace hierarchy {
         return !data->siguij.const_ref().all_eq(-1);
 #else
         return false;
+#endif
+      }
+
+      void
+      siguij_erase() const
+      {
+#ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
+        data->siguij.fill(-1);
 #endif
       }
 
@@ -1519,6 +1530,9 @@ namespace hierarchy {
         const char* resname_,
         bool is_first_in_chain_,
         bool is_first_after_break_);
+
+      atom_with_labels
+      detached_copy() const;
 
       //! model="   1" pdb=" N   GLY A   1 " segid="S001"
       std::string
