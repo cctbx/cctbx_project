@@ -4548,6 +4548,17 @@ END
     prev_file_name = file_name
     prev_pdb_str = pdb_str_1
     prev_hierarchy = hierarchy_1
+    #
+    awls = []
+    for obj in [pdb_inp_2, hierarchy_2]:
+      sio = StringIO()
+      for awl in obj.atoms_with_labels():
+        print >> sio, awl.format_atom_record_group(), \
+          int(awl.is_first_in_chain), \
+          int(awl.is_first_after_break), \
+          awl.model_id
+      awls.append(sio.getvalue())
+    assert not show_diff(*awls), file_name
 
 def exercise_atom_with_labels():
   awl = pdb.hierarchy.atom_with_labels()
@@ -4640,23 +4651,25 @@ ATOM      4  CA AALA B   2
 ENDMDL
 """))
   hierarchy = pdb_inp.construct_hierarchy()
-  sio = StringIO()
-  for awl in hierarchy.atoms_with_labels():
-    assert awl.parent() is not None
-    awlc = awl.detached_copy()
-    assert awlc.parent() is None
-    print >> sio, awl.format_atom_record_group(), \
-      int(awl.is_first_in_chain), \
-      int(awl.is_first_after_break)
-  assert not show_diff(sio.getvalue(), """\
-ATOM      1  C   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0
-ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0
-ATOM      3  N   GLY A   2       0.000   0.000   0.000  0.00  0.00 0 1
-ATOM      4  CA AGLY A   2       0.000   0.000   0.000  0.00  0.00 0 0
-ATOM      1  N   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0
-ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0
-ATOM      3  N   ALA B   2       0.000   0.000   0.000  0.00  0.00 1 0
-ATOM      4  CA AALA B   2       0.000   0.000   0.000  0.00  0.00 0 0
+  for obj in [hierarchy, pdb_inp]:
+    sio = StringIO()
+    for awl in obj.atoms_with_labels():
+      assert awl.parent() is not None
+      awlc = awl.detached_copy()
+      assert awlc.parent() is None
+      print >> sio, awl.format_atom_record_group(), \
+        int(awl.is_first_in_chain), \
+        int(awl.is_first_after_break), \
+        awl.model_id
+    assert not show_diff(sio.getvalue(), """\
+ATOM      1  C   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0    0
+ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0    0
+ATOM      3  N   GLY A   2       0.000   0.000   0.000  0.00  0.00 0 1    0
+ATOM      4  CA AGLY A   2       0.000   0.000   0.000  0.00  0.00 0 0    0
+ATOM      1  N   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0    1
+ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0    1
+ATOM      3  N   ALA B   2       0.000   0.000   0.000  0.00  0.00 1 0    1
+ATOM      4  CA AALA B   2       0.000   0.000   0.000  0.00  0.00 0 0    1
 """)
 
 def exercise_transfer_chains_from_other():

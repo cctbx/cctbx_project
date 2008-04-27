@@ -27,10 +27,10 @@ def get_emma_model_from_pdb(file_name=None,
   if (crystal_symmetry.space_group_info() is None):
     raise RuntimeError("Space group unknown.")
   positions = []
-  for lbls,atom in zip(pdb_inp.input_atom_labels_list(), pdb_inp.atoms()):
+  for atom in pdb_inp.atoms_with_labels():
     positions.append(emma.position(
       ":".join([str(len(positions)+1),
-                atom.name, lbls.resname(), lbls.chain()]),
+                atom.name, atom.resname, atom.chain_id]),
       crystal_symmetry.unit_cell().fractionalize(atom.xyz)))
   assert len(positions) > 0
   result = emma.model(
