@@ -1,6 +1,5 @@
 from iotbx import pdb
 import iotbx.pdb.remark_290_interpretation
-import iotbx.pdb.parser
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx.development import random_structure
@@ -10,6 +9,92 @@ from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
+
+def exercise_records():
+  r = pdb.records.header(pdb_str="""\
+HEADER    PLANT SEED PROTEIN                      31-JAN-97   1AB1""")
+  assert r.classification == "PLANT SEED PROTEIN                      "
+  assert r.depdate == "31-JAN-97"
+  assert r.idcode == "1AB1"
+  #
+  r = pdb.records.expdta(pdb_str="""\
+EXPDTA    X-RAY DIFFRACTION""")
+  assert r.continuation == "  "
+  assert r.technique == "X-RAY DIFFRACTION" + " " * 43
+  assert r.keywords == ["X-RAY DIFFRACTION"]
+  #
+  r = pdb.records.remark_002(pdb_str="""\
+REMARK   2 RESOLUTION. 0.89 ANGSTROMS.""")
+  assert r.text == "RESOLUTION. 0.89 ANGSTROMS." + " " * 32
+  assert r.resolution == 0.89
+  r = pdb.records.remark_002(pdb_str="""\
+REMARK   2""")
+  assert r.text == " " * 59
+  assert r.resolution is None
+  #
+  r = pdb.records.cryst1(pdb_str="""\
+CRYST1   40.759   18.404   22.273  90.00  90.70  90.00 P 1 21 1      2""")
+  assert r.ucparams == [40.759, 18.404, 22.273, 90.00, 90.70, 90.00]
+  assert r.sgroup == "P 1 21 1"
+  assert r.z == 2
+  #
+  r = pdb.records.scalen(pdb_str="""\
+SCALE1      0.024534  0.000000  0.000300        0.00000""")
+  assert r.n == 1
+  assert r.sn1 == 0.024534
+  assert r.sn2 == 0.000000
+  assert r.sn3 == 0.000300
+  assert r.un == 0.000000
+  #
+  r = pdb.records.conect(pdb_str="""\
+CONECT 1021  544 1017 1020 1022 1211 1222 5424 1311""")
+  assert r.serial == " 1021"
+  assert r.serial_numbers_bonded_atoms == ["  544", " 1017", " 1020", " 1022"]
+  assert r.serial_numbers_hydrogen_bonded_atoms == [" 1211", " 1222", " 1311"]
+  assert r.serial_numbers_salt_bridged_atoms == [" 5424"]
+  #
+  for i,pdb_str in enumerate("""\
+LINK         O1  DDA     1                 C3  DDL     2
+LINK        MN    MN   391                 OE2 GLU   217            2565
+LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
+""".splitlines()):
+    r = pdb.records.link(pdb_str=pdb_str)
+    _1 = [r.name1,r.altloc1,r.resname1,r.chain_id1,r.resseq1,r.icode1,r.sym1]
+    _2 = [r.name2,r.altloc2,r.resname2,r.chain_id2,r.resseq2,r.icode2,r.sym2]
+    if (i == 0):
+      assert _1 == [" O1 ", " ", "DDA", " ", "   1", " ", "      "]
+      assert _2 == [" C3 ", " ", "DDL", " ", "   2", " ", "      "]
+      assert r.distance is None
+      assert r.margin == "        "
+    elif (i == 1):
+      assert _1 == ["MN  ", " ", " MN", " ", " 391", " ", "      "]
+      assert _2 == [" OE2", " ", "GLU", " ", " 217", " ", "  2565"]
+      assert r.distance is None
+      assert r.margin == "        "
+    else:
+      assert _1 == [" NZ ", " ", "LYS", "A", " 680", " ", "      "]
+      assert _2 == [" C4A", " ", "PLP", "D", "   1", " ", "      "]
+      assert r.distance == 1.260
+      assert r.margin == "LYS-PLP "
+  #
+  r = pdb.records.sltbrg(pdb_str="""\
+SLTBRG       OE1 GLU B 695                 NZ  LYS B 822""")
+  assert r.margin == "        "
+  #
+  r = pdb.records.ssbond(pdb_str="""\
+SSBOND 123 CYScB  250i   CYScB  277j                         1555   1555""")
+  assert r.sernum == "123"
+  assert r.resname1 == "CYS"
+  assert r.chain_id1 == "cB"
+  assert r.resseq1 == " 250"
+  assert r.icode1 == "i"
+  assert r.resname2 == "CYS"
+  assert r.chain_id2 == "cB"
+  assert r.resseq2 == " 277"
+  assert r.icode2 == "j"
+  assert r.sym1 == "  1555"
+  assert r.sym2 == "  1555"
+  assert r.margin == "        "
 
 def exercise_combine_unique_pdb_files():
   for file_name,s in [("tmp1", "1"),
@@ -177,31 +262,6 @@ SCALE3      0.000000  0.000000  1.000000        3.00000""")
   assert iotbx.pdb.format_atom_record(serial="xyzab", resSeq="TUVW") \
     == "ATOM  xyzab  C   DUM  TUVW       0.000   0.000   0.000  1.00  0.00"
 
-def exercise_parser():
-  for i,raw_record in enumerate("""\
-LINK         O1  DDA     1                 C3  DDL     2
-LINK        MN    MN   391                 OE2 GLU   217            2565
-LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
-""".splitlines()):
-    r = iotbx.pdb.parser.pdb_record(raw_record=raw_record)
-    _1 = [r.name1,r.altLoc1,r.resName1,r.chainID1,r.resSeq1,r.iCode1,r.sym1]
-    _2 = [r.name2,r.altLoc2,r.resName2,r.chainID2,r.resSeq2,r.iCode2,r.sym2]
-    if (i == 0):
-      assert _1 == [' O1 ', ' ', 'DDA', ' ', '   1', ' ', '      ']
-      assert _2 == [' C3 ', ' ', 'DDL', ' ', '   2', ' ', '      ']
-      assert r.distance is None
-      assert r.margin == '        '
-    elif (i == 1):
-      assert _1 == ['MN  ', ' ', ' MN', ' ', ' 391', ' ', '      ']
-      assert _2 == [' OE2', ' ', 'GLU', ' ', ' 217', ' ', '  2565']
-      assert r.distance is None
-      assert r.margin == '        '
-    else:
-      assert _1 == [' NZ ', ' ', 'LYS', 'A', ' 680', ' ', '      ']
-      assert _2 == [' C4A', ' ', 'PLP', 'D', '   1', ' ', '      ']
-      assert r.distance == float(1.260)
-      assert r.margin == 'LYS-PLP '
-
 def exercise_remark_290_interpretation():
   symmetry_operators=pdb.remark_290_interpretation.extract_symmetry_operators(
     remark_290_records=pdb.remark_290_interpretation.example.splitlines())
@@ -262,7 +322,9 @@ def exercise_format_fasta():
   looking_for = ["1ee3_stripped.pdb", "jcm.pdb", "pdb1zff.ent"]
   for node in os.listdir(regression_pdb):
     if (not (node.endswith(".pdb") or node.endswith(".ent"))): continue
-    pdb_inp = pdb.input(file_name=os.path.join(regression_pdb, node))
+    file_name = os.path.join(regression_pdb, node)
+    assert pdb.is_pdb_file(file_name=file_name)
+    pdb_inp = pdb.input(file_name=file_name)
     hierarchy = pdb_inp.construct_hierarchy()
     fasta = []
     for model in hierarchy.models():
@@ -356,11 +418,11 @@ def write_icosahedron():
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
+  exercise_records()
   exercise_combine_unique_pdb_files()
   exercise_pdb_codes_fragment_files()
   exercise_format_records()
   exercise_remark_290_interpretation()
-  exercise_parser()
   exercise_residue_name_plus_atom_names_interpreter()
   exercise_format_fasta()
   for use_u_aniso in (False, True):

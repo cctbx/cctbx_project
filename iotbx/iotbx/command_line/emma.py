@@ -2,15 +2,11 @@
 
 from iotbx import crystal_symmetry_from_any
 import iotbx.pdb
-from iotbx.pdb import cryst1_interpretation
-from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx.cns import sdb_reader
 from iotbx.shelx import from_ins
 from iotbx.kriber import strudat
 from iotbx.option_parser import option_parser
 from cctbx import euclidean_model_matching as emma
-from cctbx import crystal
-from libtbx.itertbx import count
 import sys, os
 
 class MultipleEntriesError(RuntimeError): pass
@@ -20,36 +16,25 @@ def get_emma_model_from_pdb(file_name=None,
                             crystal_symmetry=None):
   assert [file_name, pdb_records].count(None) == 1
   if (pdb_records is None):
-    pdb_records = iotbx.pdb.parser.collect_records(
-      raw_records=open(file_name),
-      ignore_master=True)
-  cryst1_symmetry = None
-  for record in pdb_records:
-    if (record.record_name.startswith("CRYST1")):
-      try:
-        cryst1_symmetry = cryst1_interpretation.crystal_symmetry(
-          cryst1_record=record)
-      except KeyboardInterrupt: raise
-      except: pass
-      break
-  if (cryst1_symmetry is not None):
-    crystal_symmetry = cryst1_symmetry.join_symmetry(
-      other_symmetry=crystal_symmetry,
-      force=False)
+    pdb_inp = iotbx.pdb.input(file_name=file_name)
+  else:
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_records)
+  crystal_symmetry = pdb_inp.crystal_symmetry(
+    crystal_symmetry=crystal_symmetry,
+    weak_symmetry=True)
+  if (crystal_symmetry.unit_cell() is None):
+    raise RuntimeError("Unit cell parameters unknown.")
+  if (crystal_symmetry.space_group_info() is None):
+    raise RuntimeError("Space group unknown.")
   positions = []
-  for record in pdb_records:
-    if (not record.record_name in ("ATOM", "HETATM")): continue
-    if (crystal_symmetry.unit_cell() is None):
-      raise RuntimeError("Unit cell parameters unknown.")
+  for lbls,atom in zip(pdb_inp.input_atom_labels_list(), pdb_inp.atoms()):
     positions.append(emma.position(
       ":".join([str(len(positions)+1),
-                record.name, record.resName, record.chainID]),
-      crystal_symmetry.unit_cell().fractionalize(record.coordinates)))
+                atom.name, lbls.resname(), lbls.chain()]),
+      crystal_symmetry.unit_cell().fractionalize(atom.xyz)))
   assert len(positions) > 0
-  assert crystal_symmetry.unit_cell() is not None
-  assert crystal_symmetry.space_group_info() is not None
   result = emma.model(
-    crystal.special_position_settings(crystal_symmetry),
+    crystal_symmetry.special_position_settings(),
     positions)
   if (file_name is not None):
     result.label = file_name
@@ -66,15 +51,16 @@ def get_emma_model_from_sdb(file_name, crystal_symmetry):
     other_symmetry=sdb_file.crystal_symmetry(),
     force=True)
   positions = []
-  for i,site in zip(count(1),sdb_file.sites):
+  for i,site in enumerate(sdb_file.sites):
+    print "HELLO"
     if (crystal_symmetry.unit_cell() is None):
       raise RuntimeError("Unit cell parameters unknown.")
     positions.append(emma.position(
-      ":".join((str(i), site.segid, site.type)),
+      ":".join((str(i+1), site.segid, site.type)),
       crystal_symmetry.unit_cell().fractionalize((site.x, site.y, site.z))))
   assert len(positions) > 0
   result = emma.model(
-    crystal.special_position_settings(crystal_symmetry),
+    crystal_symmetry.special_position_settings(),
     positions)
   result.label = sdb_file.file_name
   return result
@@ -88,7 +74,7 @@ def get_emma_model_from_solve(file_name, crystal_symmetry):
     positions.append(emma.position("site"+str(len(positions)+1), site))
   assert len(positions) > 0
   result = emma.model(
-    crystal.special_position_settings(crystal_symmetry),
+    crystal_symmetry.special_position_settings(),
     positions)
   result.label = file_name
   return result

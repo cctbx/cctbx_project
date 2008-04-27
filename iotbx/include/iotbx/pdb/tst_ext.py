@@ -1,6 +1,5 @@
 from iotbx import pdb
 from iotbx.pdb import hybrid_36
-import iotbx.pdb.parser
 from cctbx import crystal
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, user_plus_sys_time, format_cpu_times
@@ -68,8 +67,8 @@ def exercise_base_256_ordinal():
   def o_cmp(a, b): return cmp(o(a), o(b))
   char4s = ["%4s" % i for i in xrange(-999,9999+1)]
   assert sorted(char4s, o_cmp) == char4s
-  m = iotbx.pdb.hy36decode(width=4, s="zzzz")
-  e = iotbx.pdb.hy36encode
+  m = pdb.hy36decode(width=4, s="zzzz")
+  e = pdb.hy36encode
   char4s = [e(width=4, value=i) for i in xrange(-999,m+1,51)]
   assert sorted(char4s, o_cmp) == char4s
 
@@ -78,12 +77,39 @@ def exercise_columns_73_76_evaluator(pdb_file_names):
     print "Skipping exercise_columns_73_76_evaluator():" \
           " input files not available"
     return
+  known_blank = """\
+occ_3_bad2.pdb
+enk_gm.pdb
+t.pdb
+phe_a.pdb
+f_obs_complex.pdb
+phe_h_bad.pdb
+one_conf_but_altloc.pdb
+""".splitlines()
+  known_exactly_one = """\
+pdb103l.ent
+pdb1etn.ent
+pdb118d.ent
+pdb161d.ent
+pdb139l.ent
+pdb1anp.ent
+pdb1gky.ent
+""".splitlines()
+  n_known = [0, 0]
   for file_name in pdb_file_names:
     lines = flex.split_lines(open(file_name).read())
-    py_eval = pdb.parser.columns_73_76_evaluator(raw_records=lines)
-    cpp_eval = pdb.columns_73_76_evaluator(lines=lines)
-    assert cpp_eval.finding == py_eval.finding
-    assert cpp_eval.is_old_style == py_eval.is_old_style
+    e = pdb.columns_73_76_evaluator(lines=lines)
+    bn = os.path.basename(file_name)
+    if (bn in known_blank):
+      assert e.finding == "Blank columns 73-76 on ATOM and HETATM records."
+      assert not e.is_old_style
+      n_known[0] += 1
+    elif (bn in known_exactly_one):
+      assert e.finding == "Exactly one common label in columns 73-76."
+      assert e.is_old_style
+      n_known[1] += 1
+  assert n_known[0] >= 3
+  assert n_known[1] >= 3
   #
   lines = flex.split_lines("""\
 HEADER    HYDROLASE(METALLOPROTEINASE)            17-NOV-93   1THL
@@ -92,9 +118,9 @@ ATOM      2  CA  ILE     1       8.335  52.235  -0.041  1.00 52.95      1THL 159
 ATOM      3  C   ILE     1       7.959  53.741   0.036  1.00 26.88      1THL 160
 END
 """)
-  cpp_eval = pdb.columns_73_76_evaluator(lines=lines)
-  assert cpp_eval.finding == "Exactly one common label in columns 73-76."
-  assert cpp_eval.is_old_style
+  e = pdb.columns_73_76_evaluator(lines=lines)
+  assert e.finding == "Exactly one common label in columns 73-76."
+  assert e.is_old_style
 
 def exercise_line_info_exceptions():
   pdb.input(source_info=None, lines=flex.std_string(["ATOM"]))

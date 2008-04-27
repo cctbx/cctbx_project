@@ -1,10 +1,9 @@
 from iotbx import pdb
-import iotbx.pdb.parser
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected
 
 def exercise_selection():
-  hierarchy = iotbx.pdb.input(source_info=None, lines=flex.split_lines("""\
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
 CRYST1   50.800   50.800  155.300  90.00  90.00  90.00 P 43 21 2     8
 MODEL        1
 ATOM      4  N   SER     1       8.753  29.755  61.685  1.00 49.13
@@ -213,8 +212,8 @@ Atom selection string leading to error:
   assert list(sel[0]) == [76, 83]
   #
   link_records = [
-    iotbx.pdb.parser.pdb_record(raw_record=raw_record)
-      for raw_record in """\
+    pdb.records.link(pdb_str=pdb_str)
+      for pdb_str in """\
 LINK         S   SO4 S 188                 O1  SO4 S 188
 LINK         S   SO4 S 188                 O2  SO4 S 188
 LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
@@ -227,7 +226,7 @@ LINK         NZ  LYS A 680        1.260    C4A PLP D   1                LYS-PLP
     assert [list(sel) for sel in sel_cache.link_iselections(link_record)] \
         == expected
   #
-  hierarchy = iotbx.pdb.input(source_info=None, lines=flex.split_lines("""\
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C
@@ -245,7 +244,7 @@ END
   assert list(isel("resname asn")) == []
   assert list(isel("resname ASN")) == [1,5]
   assert list(isel("resname Asn")) == [2]
-  hierarchy = iotbx.pdb.input(source_info=None, lines=flex.split_lines("""\
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      6  CA  ASN A   2      -6.522   2.038   2.831  1.00 14.10           C

@@ -4,6 +4,7 @@ import boost.python
 ext = boost.python.import_ext("iotbx_pdb_ext")
 from iotbx_pdb_ext import *
 
+import iotbx.pdb.records
 import iotbx.pdb.hierarchy
 
 from iotbx.pdb.atom_name_interpretation import \
@@ -18,19 +19,22 @@ from libtbx import Auto
 import sys
 
 def is_pdb_file(file_name):
-  from iotbx.pdb.parser import pdb_record
-  for raw_record in open(file_name):
-    if (   raw_record.startswith("CRYST1")
-        or raw_record.startswith("ATOM  ")
-        or raw_record.startswith("HETATM")):
-      try:
-        pdb_record(
-          raw_record=raw_record,
-          line_number=None,
-          ignore_columns_73_and_following=True)
+  for pdb_str in open(file_name):
+    if (pdb_str.startswith("CRYST1")):
+      try: cryst1 = iotbx.pdb.records.cryst1(pdb_str=pdb_str)
+      except iotbx.pdb.records.FormatError: continue
+      if (cryst1.ucparams is not None and cryst1.sgroup is not None):
+        return True
+    elif (   pdb_str.startswith("ATOM  ")
+          or pdb_str.startswith("HETATM")):
+      try: pdb_inp = ext.input(
+        source_info=None, lines=flex.std_string([pdb_str]))
       except KeyboardInterrupt: raise
-      except: pass
-      else: return True
+      except: continue
+      if (pdb_inp.atoms().size() == 1):
+        atom = pdb_inp.atoms()[0]
+        if (atom.name != "    "):
+          return True
   return False
 
 cns_dna_rna_residue_names = {
@@ -331,6 +335,10 @@ def input(
       source_info="file " + file_name,
       lines=flex.split_lines(smart_open.for_reading(file_name).read()))
   assert source_info is not Please_pass_string_or_None
+  if (isinstance(lines, str)):
+    lines = flex.split_lines(lines)
+  elif (isinstance(lines, (list, tuple))):
+    lines = flex.std_string(lines)
   return ext.input(source_info=source_info, lines=lines)
 
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
