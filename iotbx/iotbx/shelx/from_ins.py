@@ -148,8 +148,7 @@ class ins_record(object):
 
   def Error(self, message=None):
     if(message is not None):
-      sys.stdout.write(message)
-      sys.exit(1)
+      raise RuntimeError(message)
 
   def read_ATOM_XYZQU(self):
     atom_rec        = self.raw
