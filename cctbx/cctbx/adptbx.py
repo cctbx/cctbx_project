@@ -8,6 +8,9 @@ import scitbx.math
 import random
 import math
 
+u_as_b_factor = u_as_b(1)
+b_as_u_factor = b_as_u(1)
+
 mtps = -2 * math.pi**2
 mtpss = mtps**2
 
