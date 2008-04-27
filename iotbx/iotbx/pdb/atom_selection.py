@@ -403,14 +403,14 @@ class cache(object):
     fs = flex.size_t
     return [
                     fs(self.name.get(link_record.name1, sel_null))
-      .intersection(fs(self.altloc.get(link_record.altLoc1, sel_null)))
-      .intersection(fs(self.resname.get(link_record.resName1, sel_null)))
-      .intersection(fs(self.chain_id.get(link_record.chainID1, sel_null)))
-      .intersection(fs(self.resseq.get(link_record.resSeq1, sel_null)))
-      .intersection(fs(self.icode.get(link_record.iCode1, sel_null))),
+      .intersection(fs(self.altloc.get(link_record.altloc1, sel_null)))
+      .intersection(fs(self.resname.get(link_record.resname1, sel_null)))
+      .intersection(fs(self.chain_id.get(link_record.chain_id1, sel_null)))
+      .intersection(fs(self.resseq.get(link_record.resseq1, sel_null)))
+      .intersection(fs(self.icode.get(link_record.icode1, sel_null))),
                     fs(self.name.get(link_record.name2, sel_null))
-      .intersection(fs(self.altloc.get(link_record.altLoc2, sel_null)))
-      .intersection(fs(self.resname.get(link_record.resName2, sel_null)))
-      .intersection(fs(self.chain_id.get(link_record.chainID2, sel_null)))
-      .intersection(fs(self.resseq.get(link_record.resSeq2, sel_null)))
-      .intersection(fs(self.icode.get(link_record.iCode2, sel_null)))]
+      .intersection(fs(self.altloc.get(link_record.altloc2, sel_null)))
+      .intersection(fs(self.resname.get(link_record.resname2, sel_null)))
+      .intersection(fs(self.chain_id.get(link_record.chain_id2, sel_null)))
+      .intersection(fs(self.resseq.get(link_record.resseq2, sel_null)))
+      .intersection(fs(self.icode.get(link_record.icode2, sel_null)))]

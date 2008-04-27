@@ -35,35 +35,24 @@ def interpret_generic_coordinate_line(line, skip_columns):
     raise RuntimeError, "FormatError: " + line
   return " ".join(flds[:skip_columns]), site
 
-def pdb_file_to_emma_model(crystal_symmetry, pdb_records, other_symmetry):
-  from iotbx.pdb import cryst1_interpretation
-  cryst1_symmetry = None
-  for record in pdb_records:
-    if (record.record_name.startswith("CRYST1")):
-      try:
-        cryst1_symmetry = cryst1_interpretation.crystal_symmetry(
-          cryst1_record=record)
-      except: pass
-      break
-  if (cryst1_symmetry is not None):
-    crystal_symmetry = cryst1_symmetry.join_symmetry(
-      other_symmetry=crystal_symmetry,
-      force=True)
+def pdb_file_to_emma_model(crystal_symmetry, pdb_inp, other_symmetry):
+  crystal_symmetry = pdb_inp.crystal_symmetry(
+    crystal_symmetry=crystal_symmetry,
+    weak_symmetry=False)
   if (other_symmetry is not None):
     crystal_symmetry = crystal_symmetry.join_symmetry(
       other_symmetry=other_symmetry,
       force=False)
   positions = []
-  for record in pdb_records:
-    if (not record.record_name in ("ATOM", "HETATM")): continue
+  for lbls,atom in zip(pdb_inp.input_atom_labels_list(), pdb_inp.atoms()):
     if (crystal_symmetry.unit_cell() is None):
       raise RuntimeError("Unit cell parameters unknown.")
     positions.append(emma.position(
       ":".join([str(len(positions)+1),
-                record.name, record.resName, record.chainID]),
-      crystal_symmetry.unit_cell().fractionalize(record.coordinates)))
+                atom.name, lbls.resname(), lbls.chain()]),
+      crystal_symmetry.unit_cell().fractionalize(atom.xyz)))
   m = emma.model(
-    crystal.special_position_settings(crystal_symmetry),
+    crystal_symmetry.special_position_settings(),
     positions)
   m.label = "Other model"
   return m
@@ -77,7 +66,7 @@ def sdb_file_to_emma_model(crystal_symmetry, sdb_file):
       ":".join((str(i), site.segid, site.type)),
       crystal_symmetry.unit_cell().fractionalize((site.x, site.y, site.z))))
   m = emma.model(
-    crystal.special_position_settings(crystal_symmetry),
+    crystal_symmetry.special_position_settings(),
     positions)
   m.label = sdb_file.file_name
   return m
@@ -105,21 +94,21 @@ class web_to_models(object):
     else:
       if (self.coordinate_format is None):
         try:
-          import iotbx.pdb.parser
-          pdb_records = iotbx.pdb.parser.collect_records(
-            raw_records=coordinates,
-            ignore_master=True)
+          import iotbx.pdb
+          pdb_inp = iotbx.pdb.input(source_info=None, lines=coordinates)
+        except KeyboardInterrupt: raise
         except:
           pass
         else:
           self.pdb_model = pdb_file_to_emma_model(
-            self.crystal_symmetry(), pdb_records, other_symmetry)
+            self.crystal_symmetry(), pdb_inp, other_symmetry)
           if (len(self.pdb_model.positions()) > 0):
             self.coordinate_format = "pdb"
       if (self.coordinate_format is None):
         try:
           from iotbx.cns import sdb_reader
           self.sdb_files = sdb_reader.multi_sdb_parser(coordinates)
+        except KeyboardInterrupt: raise
         except:
           pass
         else:

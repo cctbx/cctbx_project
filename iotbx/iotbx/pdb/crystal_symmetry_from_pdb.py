@@ -19,8 +19,7 @@ def extract_from(file_name=None, file=None, monitor_initial=None):
         detect_binary = None
     if (line.startswith("CRYST1")):
       return cryst1_interpretation.crystal_symmetry(
-        cryst1_record=line,
-        line_number=line_number)
+        cryst1_record=line)
     crystal_symmetry = cns_pdb_remarks.extract_symmetry(
       pdb_record=line)
     if (crystal_symmetry is not None):

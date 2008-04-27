@@ -1,4 +1,4 @@
-from iotbx.pdb import parser as pdb_parser
+import iotbx.pdb
 from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import uctbx
@@ -93,18 +93,16 @@ class categorize(object):
       return sgtbx.space_group_info(special[self.symbol])
     raise RuntimeError, "Programming error (should be unreachable)."
 
-def crystal_symmetry(cryst1_record, line_number=None):
+def crystal_symmetry(cryst1_record):
   if (isinstance(cryst1_record, str)):
-    cryst1_record = pdb_parser.pdb_record(
-      raw_record=cryst1_record,
-      line_number=line_number)
+    cryst1_record = iotbx.pdb.records.cryst1(pdb_str=cryst1_record)
   if (    cryst1_record.ucparams in ([0]*6, [1,1,1,90,90,90])
-      and (   cryst1_record.sGroup is None
-           or cryst1_record.sGroup.replace(" ","") == "P1")):
+      and (   cryst1_record.sgroup is None
+           or cryst1_record.sgroup.replace(" ","") == "P1")):
     return crystal.symmetry(
       unit_cell=None,
       space_group_info=None)
-  space_group_info = categorize(cryst1_record.sGroup).space_group_info(
+  space_group_info = categorize(cryst1_record.sgroup).space_group_info(
     unit_cell=cryst1_record.ucparams)
   return crystal.symmetry(
     unit_cell=cryst1_record.ucparams,

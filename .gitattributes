@@ -82,6 +82,7 @@ iotbx/iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/iotbx/pdb/atom_selection.py svneol=native#text/x-python
 iotbx/iotbx/pdb/extract_rfactors_resolutions_sigma.py -text
 iotbx/iotbx/pdb/hierarchy.py svneol=native#text/x-python
+iotbx/iotbx/pdb/records.py svneol=native#text/x-python
 iotbx/iotbx/pdb/tst_atom_selection.py svneol=native#text/x-python
 iotbx/iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py -text
 iotbx/iotbx/shelx/errors.py -text
