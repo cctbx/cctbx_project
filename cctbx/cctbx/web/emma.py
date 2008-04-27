@@ -44,12 +44,12 @@ def pdb_file_to_emma_model(crystal_symmetry, pdb_inp, other_symmetry):
       other_symmetry=other_symmetry,
       force=False)
   positions = []
-  for lbls,atom in zip(pdb_inp.input_atom_labels_list(), pdb_inp.atoms()):
+  for atom in pdb_inp.atoms_with_labels():
     if (crystal_symmetry.unit_cell() is None):
       raise RuntimeError("Unit cell parameters unknown.")
     positions.append(emma.position(
       ":".join([str(len(positions)+1),
-                atom.name, lbls.resname(), lbls.chain()]),
+                atom.name, atom.resname, atom.chain_id]),
       crystal_symmetry.unit_cell().fractionalize(atom.xyz)))
   m = emma.model(
     crystal_symmetry.special_position_settings(),
