@@ -196,8 +196,14 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(quote_overloads, quote, 0, 1)
 
+    // not inline to work around bug in
+    // g++ (GCC) 3.2.3 20030502 (Red Hat Linux 3.2.3-34) x86_64
     static void
-    wrap()
+    wrap();
+  };
+
+    void
+    atom_wrappers::wrap()
     {
       using namespace boost::python;
       class_<w_t>("atom", no_init)
@@ -282,7 +288,6 @@ namespace {
           &w_t::determine_chemical_element_simple)
       ;
     }
-  };
 
   struct atom_with_labels_wrappers
   {
