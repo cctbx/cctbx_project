@@ -952,12 +952,20 @@ def exercise_atom_id_str():
     else: raise Exception_expected
   md.id = "12345678"
   a.segid = "1234"
-  assert a.id_str() == 'model="12345678" pdb="NaMeAGLYCh1234J" segid="1234"'
+  assert a.id_str(suppress_segid=False) \
+      == 'model="12345678" pdb="NaMeAGLYCh1234J" segid="1234"'
+  assert a.id_str(suppress_segid=True) \
+      == 'model="12345678" pdb="NaMeAGLYCh1234J"'
   assert a.id_str(pdbres=True) \
       == 'model="12345678" pdbres="GLYCh1234J" segid="1234"'
+  assert a.id_str(pdbres=True, suppress_segid=True) \
+      == 'model="12345678" pdbres="GLYCh1234J"'
   md.id = ""
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J" segid="1234"'
-  assert a.id_str(pdbres=True) == 'pdbres="GLYCh1234J" segid="1234"'
+  assert a.id_str(pdbres=True) \
+      == 'pdbres="GLYCh1234J" segid="1234"'
+  assert a.id_str(pdbres=True, suppress_segid=True) \
+      == 'pdbres="GLYCh1234J"'
   rt = pdb.hierarchy.root()
   rt.append_model(md)
   assert a.id_str() == 'pdb="NaMeAGLYCh1234J" segid="1234"'
@@ -969,11 +977,27 @@ def exercise_atom_id_str():
   #
   cf = ch.only_conformer()
   rd = cf.only_residue()
-  assert rd.id_str() == 'model="    " pdbres="GLYCh1234J"'
+  assert rd.id_str() == 'model="    " pdbres="GLYCh1234J" segid="1234"'
+  assert rd.id_str(suppress_segid=1) == 'model="    " pdbres="GLYCh1234J"'
   md.id = "12345678"
-  assert rd.id_str() == 'model="12345678" pdbres="GLYCh1234J"'
+  assert rd.id_str() == 'model="12345678" pdbres="GLYCh1234J" segid="1234"'
+  assert rd.id_str(suppress_segid=1) == 'model="12345678" pdbres="GLYCh1234J"'
   del cf
-  assert rd.id_str() == 'pdbres="GLY  1234J"'
+  assert rd.id_str(suppress_segid=-1) == 'pdbres="GLY  1234J" segid="1234"'
+  assert rd.id_str(suppress_segid=1) == 'pdbres="GLY  1234J"'
+  #
+  a2 = pdb.hierarchy.atom().set_segid(new_segid="abcd")
+  ag.append_atom(atom=a2)
+  cf = ch.only_conformer()
+  rd = cf.only_residue()
+  assert rd.id_str(suppress_segid=1) == 'model="12345678" pdbres="GLYCh1234J"'
+  assert rd.id_str(suppress_segid=-1) == 'model="12345678" pdbres="GLYCh1234J"'
+  try: rd.id_str()
+  except RuntimeError, e:
+    assert not show_diff(str(e), '''\
+residue.id_str(suppress_segid=false): segid is not unique:
+  model="12345678" pdbres="GLYCh1234J" segid="1234"''')
+  else: raise Exception_expected
 
 def exercise_format_atom_record():
   a = (pdb.hierarchy.atom()
@@ -4622,13 +4646,17 @@ ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
   awl.segid = "sEgI"
   assert not show_diff(awl.id_str(),
     'model="MoDl" pdb="NaMelrNmChABCDI" segid="sEgI"')
+  assert not show_diff(awl.id_str(suppress_segid=True),
+    'model="MoDl" pdb="NaMelrNmChABCDI"')
   assert not show_diff(awl.id_str(pdbres=True),
     'model="MoDl" pdbres="rNmChABCDI" segid="sEgI"')
   awl.model_id = ""
-  assert not show_diff(awl.id_str(),
+  assert not show_diff(awl.id_str(suppress_segid=False),
     'pdb="NaMelrNmChABCDI" segid="sEgI"')
   assert not show_diff(awl.id_str(pdbres=True),
     'pdbres="rNmChABCDI" segid="sEgI"')
+  assert not show_diff(awl.id_str(pdbres=True, suppress_segid=True),
+    'pdbres="rNmChABCDI"')
   awl.segid = "    "
   assert not show_diff(awl.id_str(),
     'pdb="NaMelrNmChABCDI"')

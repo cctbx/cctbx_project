@@ -189,7 +189,7 @@ namespace {
 
 #undef IOTBX_LOC
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 1)
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 2)
 
     BOOST_PYTHON_FUNCTION_OVERLOADS(
       format_atom_record_overloads, format_atom_record, 1, 2)
@@ -274,7 +274,9 @@ namespace {
         .def("siguij_erase", &w_t::siguij_erase)
         .def("pdb_label_columns", &w_t::pdb_label_columns)
         .def("pdb_element_charge_columns", &w_t::pdb_element_charge_columns)
-        .def("id_str", &w_t::id_str, id_str_overloads((arg_("pdbres")=false)))
+        .def("id_str", &w_t::id_str, id_str_overloads((
+          arg_("pdbres")=false,
+          arg_("suppress_segid")=false)))
         .def("format_atom_record", format_atom_record,
           format_atom_record_overloads((
             arg_("self"),
@@ -315,7 +317,7 @@ namespace {
 
 #undef IOTBX_LOC
 
-    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 1)
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 2)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       format_atom_record_group_overloads, format_atom_record_group, 0, 4)
@@ -355,7 +357,9 @@ namespace {
           make_function(get_resname), make_function(set_resname))
         .def_readwrite("is_first_in_chain", &w_t::is_first_in_chain)
         .def_readwrite("is_first_after_break", &w_t::is_first_after_break)
-        .def("id_str", &w_t::id_str, id_str_overloads((arg_("pdbres")=false)))
+        .def("id_str", &w_t::id_str, id_str_overloads((
+          arg_("pdbres")=false,
+          arg_("suppress_segid")=false)))
         .def("format_atom_record_group", &w_t::format_atom_record_group,
           format_atom_record_group_overloads((
             arg_("atom_hetatm")=true,

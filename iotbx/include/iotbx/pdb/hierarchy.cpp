@@ -346,10 +346,11 @@ namespace {
   void
   atom_label_columns_formatter::format(
     char* result,
-    bool add_model_and_segid) const
+    bool add_model,
+    bool add_segid) const
   {
     char blank = ' ';
-    if (add_model_and_segid) {
+    if (add_model) {
       if (model_id != 0) {
         std::size_t l = std::strlen(model_id);
         if (l > 8U) {
@@ -385,17 +386,18 @@ namespace {
     copy_right_justified(result+5, 4U, resseq, 4U, blank);
     copy_left_justified(result+9, 1U, icode, 1U, blank);
     result += 10;
-    if (add_model_and_segid) {
+    if (add_model) {
       result[0] = '"';
-      if (segid == 0 || str4(segid).stripped_size() == 0) {
-        result[1] = '\0';
-      }
-      else {
-        std::memcpy(result+1, " segid=\"", 8U);
-        copy_left_justified(result+9, 4U, segid, 4U, blank);
-        result[13] = '"';
-        result[14] = '\0';
-      }
+      result++;
+    }
+    if (add_segid && segid != 0 && str4(segid).stripped_size() != 0) {
+      std::memcpy(result, " segid=\"", 8U);
+      copy_left_justified(result+8, 4U, segid, 4U, blank);
+      result[12] = '"';
+      result += 13;
+    }
+    if (add_model || add_segid) {
+      result[0] = '\0';
     }
   }
 
@@ -403,29 +405,30 @@ namespace {
   atom_label_columns_formatter::format(
     char* result,
     shared_ptr<chain_data> const& ch_lock,
-    bool add_model_and_segid)
+    bool add_model,
+    bool add_segid)
   {
     chain_data const* ch = ch_lock.get();
     if (ch == 0) {
       chain_id = model_id = 0;
-      format(result, add_model_and_segid);
+      format(result, add_model, add_segid);
     }
     else {
       chain_id = ch->id.c_str();
-      if (!add_model_and_segid) {
+      if (!add_model) {
         model_id = 0;
-        format(result, false);
+        format(result, add_model, add_segid);
       }
       else {
         shared_ptr<model_data> md_lock = ch->parent.lock();
         model_data const* md = md_lock.get();
         if (md == 0) {
           model_id = 0;
-          format(result, true);
+          format(result, add_model, add_segid);
         }
         else {
           model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
-          format(result, true);
+          format(result, add_model, add_segid);
         }
       }
     }
@@ -435,7 +438,8 @@ namespace {
   atom_label_columns_formatter::format(
     char* result,
     hierarchy::atom const& atom,
-    bool add_model_and_segid,
+    bool add_model,
+    bool add_segid,
     bool pdbres)
   {
     name = (pdbres ? 0 : atom.data->name.elems);
@@ -444,7 +448,7 @@ namespace {
     const atom_group_data* ag = ag_lock.get();
     if (ag == 0) {
       altloc = resname = resseq = icode = chain_id = model_id = 0;
-      format(result, add_model_and_segid);
+      format(result, add_model, add_segid);
     }
     else {
       altloc = ag->altloc.elems;
@@ -453,12 +457,12 @@ namespace {
       const residue_group_data* rg = rg_lock.get();
       if (rg == 0) {
         resseq = icode = chain_id = model_id = 0;
-        format(result, add_model_and_segid);
+        format(result, add_model, add_segid);
       }
       else {
         resseq = rg->resseq.elems;
         icode = rg->icode.elems;
-        format(result, rg->parent.lock(), add_model_and_segid);
+        format(result, rg->parent.lock(), add_model, add_segid);
       }
     }
   }
@@ -469,7 +473,6 @@ namespace {
     hierarchy::residue const& residue)
   {
     name = 0;
-    segid = 0;
     altloc = 0;
     resname = residue.data->resname.elems;
     resseq = residue.data->resseq.elems;
@@ -478,10 +481,12 @@ namespace {
     const conformer_data* cf = cf_lock.get();
     if (cf == 0) {
       chain_id = model_id = 0;
-      format(result, /* add_model_and_segid */ true);
+      format(
+        result, /* add_model */ true, /* add_segid */ true);
     }
     else {
-      format(result, cf->parent.lock(), /* add_model_and_segid */ true);
+      format(
+        result, cf->parent.lock(), /* add_model */ true, /* add_segid */ true);
     }
   }
 
@@ -586,23 +591,60 @@ namespace {
   }
 
   std::string
-  atom::id_str(bool pdbres) const
+  atom::id_str(bool pdbres, bool suppress_segid) const
   {
     char result[52];
     atom_label_columns_formatter().format(
-      result, *this, /* add_model_and_segid */ true, pdbres);
+      result,
+      *this,
+      /* add_model */ true,
+      /* add_segid */ !suppress_segid,
+      pdbres);
     return std::string(result);
   }
 
   std::string
-  atom_with_labels::id_str(bool pdbres) const
+  atom_with_labels::id_str(bool pdbres, bool suppress_segid) const
   {
     char result[52];
     atom_label_columns_formatter label_formatter;
     label_formatter.name = (pdbres ? 0 : data->name.elems);
     label_formatter.segid = data->segid.elems;
     atom_with_labels_init_label_formatter(*this, label_formatter);
-    label_formatter.format(result, /* add_model_and_segid */ true);
+    label_formatter.format(
+      result, /* add_model */ true, /* add_segid */ !suppress_segid);
+    return std::string(result);
+  }
+
+  std::string
+  residue::id_str(int suppress_segid) const
+  {
+    char result[50];
+    bool throw_segid_not_unique = false;
+    atom_label_columns_formatter label_formatter;
+    label_formatter.segid = 0;
+    if (suppress_segid <= 0) {
+      std::vector<atom> const& ats = atoms();
+      unsigned n_ats = atoms_size();
+      std::set<str4> segid_set;
+      for(unsigned i_at=0;i_at<n_ats;i_at++) {
+        atom const& a = ats[i_at];
+        segid_set.insert(a.data->segid);
+      }
+      if (segid_set.size() != 0) {
+        throw_segid_not_unique = (   segid_set.size() != 1U
+                                  && suppress_segid == 0);
+        if (throw_segid_not_unique || segid_set.size() == 1U) {
+          label_formatter.segid = ats[0].data->segid.elems;
+        }
+      }
+    }
+    label_formatter.format(result, *this);
+    if (throw_segid_not_unique) {
+      throw std::runtime_error(
+        "residue.id_str(suppress_segid=false): segid is not unique:\n"
+        + ("  " + std::string(result)));
+    }
     return std::string(result);
   }
 
@@ -940,14 +982,6 @@ namespace {
 
   std::string
   residue::resid() const { return make_resid(data); }
-
-  std::string
-  residue::id_str() const
-  {
-    char result[37];
-    atom_label_columns_formatter().format(result, *this);
-    return std::string(result);
-  }
 
   bool
   residue_group::have_conformers() const
