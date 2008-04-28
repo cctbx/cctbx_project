@@ -2884,7 +2884,9 @@ def run(
       log=log)
     processed_pdb_file.geometry_restraints_manager()
     processed_pdb_file.xray_structure()
-  return processed_pdb_file
+  if (len(args) > 0):
+    return processed_pdb_file
+  return None
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
