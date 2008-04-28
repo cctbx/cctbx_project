@@ -206,6 +206,18 @@ alpha_beta_params = iotbx.phil.parse("""\
   }
 """, process_includes=True)
 
+def _scale_helper(num, den, selection=None, num_num=False):
+  if (selection is not None):
+    num = num.select(selection)
+    den = den.select(selection)
+  if (den.size() == 0):
+    raise RuntimeError("No data for scale calculation.")
+  denom = flex.sum(den*den)
+  if (denom == 0):
+    raise RuntimeError("Zero denominator in scale calculation.")
+  if (num_num): return flex.sum(num*num) / denom
+  return flex.sum(num*den) / denom
+
 class manager(manager_mixin):
 
   target_names = {
@@ -1166,56 +1178,64 @@ class manager(manager_mixin):
                           f_model = self.core.f_model.data())
 
   def scale_k1(self, selection = None):
-    fo = self.f_obs.data()
-    fc = flex.abs(self.core.f_model.data())
-    if(selection is not None):
-       fo = fo.select(selection)
-       fc = fc.select(selection)
-    return flex.sum(fo*fc) / flex.sum(fc*fc)
+    return _scale_helper(
+      num=self.f_obs.data(),
+      den=flex.abs(self.core.f_model.data()),
+      selection=selection)
 
   def scale_k1_w(self, selection = None):
-    fo = self.f_obs_w.data()
-    fc = flex.abs(self.core.f_model_w.data())
-    if(selection is not None):
-       fo = fo.select(selection)
-       fc = fc.select(selection)
-    return flex.sum(fo*fc) / flex.sum(fc*fc)
+    return _scale_helper(
+      num=self.f_obs_w.data(),
+      den=flex.abs(self.core.f_model_w.data()),
+      selection=selection)
 
-  def scale_k1_t(self):
-    fo = self.f_obs_t.data()
-    fc = flex.abs(self.core.f_model_t.data())
-    return flex.sum(fo*fc) / flex.sum(fc*fc)
+  def scale_k1_t(self, selection = None):
+    return _scale_helper(
+      num=self.f_obs_t.data(),
+      den=flex.abs(self.core.f_model_t.data()),
+      selection=selection)
 
-  def scale_k2(self):
-    fo = self.f_obs.data()
-    fc = flex.abs(self.core.f_model.data())
-    return flex.sum(fo*fc) / flex.sum(fo*fo)
+  def scale_k2(self, selection = None):
+    return _scale_helper(
+      num=flex.abs(self.core.f_model.data()),
+      den=self.f_obs.data(),
+      selection=selection)
 
-  def scale_k2_w(self):
-    fo = self.f_obs_w.data()
-    fc = flex.abs(self.core.f_model_w.data())
-    return flex.sum(fo*fc) / flex.sum(fo*fo)
+  def scale_k2_w(self, selection = None):
+    return _scale_helper(
+      num=flex.abs(self.core.f_model_w.data()),
+      den=self.f_obs_w.data(),
+      selection=selection)
 
-  def scale_k2_t(self):
-    fo = self.f_obs_t.data()
-    fc = flex.abs(self.core.f_model_t.data())
-    return flex.sum(fo*fc) / flex.sum(fo*fo)
+  def scale_k2_t(self, selection = None):
+    return _scale_helper(
+      num=flex.abs(self.core.f_model_t.data()),
+      den=self.f_obs_t.data(),
+      selection=selection)
 
-  def scale_k3_w(self):
-    eps = self.f_obs_w.epsilons().data().as_double()
-    mul = self.f_obs_w.multiplicities().data().as_double()
-    fo = self.f_obs_w.data()
-    fc = flex.abs(self.core.f_model_w.data())
-    return math.sqrt(flex.sum(fo * fo * mul / eps) / \
-                     flex.sum(fc * fc * mul / eps) )
+  def scale_k3_w(self, selection = None):
+    mul_eps_sqrt = flex.sqrt(
+        self.f_obs_w.multiplicities().data().as_double()
+      / self.f_obs_w.epsilons().data().as_double())
+    result = _scale_helper(
+      num=self.f_obs_w.data() * mul_eps_sqrt,
+      den=flex.abs(self.core.f_model_w.data()) * mul_eps_sqrt,
+      selection=selection,
+      num_num=True)
+    if (result is None): return None
+    return result**0.5
 
-  def scale_k3_t(self):
-    eps = self.f_obs_t.epsilons().data().as_double()
-    mul = self.f_obs_t.multiplicities().data().as_double()
-    fo = self.f_obs_t.data()
-    fc = flex.abs(self.core.f_model_t.data())
-    return math.sqrt(flex.sum(fo * fo * mul / eps) / \
-                     flex.sum(fc * fc * mul / eps) )
+  def scale_k3_t(self, selection = None):
+    mul_eps_sqrt = flex.sqrt(
+        self.f_obs_t.multiplicities().data().as_double()
+      / self.f_obs_t.epsilons().data().as_double())
+    result = _scale_helper(
+      num=self.f_obs_t.data() * mul_eps_sqrt,
+      den=flex.abs(self.core.f_model_t.data()) * mul_eps_sqrt,
+      selection=selection,
+      num_num=True)
+    if (result is None): return None
+    return result**0.5
 
   def r_overall_low_high(self, d = 6.0):
     r_work = self.r_work()
@@ -1971,7 +1991,7 @@ class info(object):
         target_free  = sel_tpr_t,
         n_work       = sel_fo_w.data().size(),
         n_free       = sel_fo_t.data().size(),
-        scale_k1_work= flex.sum(s_fo_w_d*s_fc_w_d_a)/flex.sum(s_fc_w_d_a*s_fc_w_d_a),
+        scale_k1_work= _scale_helper(num=s_fo_w_d, den=s_fc_w_d_a),
         mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
         fom_work     = flex.mean_default(fom.select(sel_w),None),
         pher_work    = flex.mean_default(pher_w.select(sel_w),None),
