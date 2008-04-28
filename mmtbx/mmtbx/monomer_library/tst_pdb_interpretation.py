@@ -174,6 +174,56 @@ END
       pattern=pattern, mode="re.match", lines=log.getvalue().splitlines())
     assert len(lines) == 1
   #
+  raw_records = """\
+REMARK    HYDROLASE                               05-SEP-07   2VB1
+CRYST1   27.070   31.250   33.760  87.98 108.00 112.11 P 1           1
+ATOM      1  N   LYS A   1       1.984   5.113  14.226  1.00  6.14           N
+ATOM      2  CA  LYS A   1       1.811   6.069  13.092  1.00  5.23           C
+ATOM      3  C   LYS A   1       2.502   7.339  13.503  1.00  4.84           C
+ATOM      4  O   LYS A   1       2.414   7.746  14.659  1.00  5.74           O
+ATOM      5  CB  LYS A   1       0.325   6.305  12.891  1.00  5.48           C
+ATOM      6  CG  LYS A   1       0.013   7.371  11.851  1.00  5.12           C
+ATOM      7  CD  LYS A   1      -1.494   7.455  11.617  1.00  5.56           C
+ATOM      8  HA  LYS A   1       2.215   5.709  12.275  1.00  6.28           H
+ATOM      9  HB2 LYS A   1      -0.091   5.472  12.620  1.00  6.57           H
+ATOM     10  HB3 LYS A   1      -0.068   6.569  13.738  1.00  6.57           H
+ATOM     11  HG2 LYS A   1       0.344   8.231  12.157  1.00  6.14           H
+ATOM     12  HG3 LYS A   1       0.461   7.155  11.018  1.00  6.14           H
+ATOM     13  CE ALYS A   1      -1.966   8.606  10.745  0.69  5.10           C
+ATOM     14  NZ ALYS A   1      -1.548   8.473   9.287  0.69  4.56           N
+ATOM     15  HD2ALYS A   1      -1.786   6.625  11.210  0.50  6.67           H
+ATOM     16  HD3ALYS A   1      -1.933   7.526  12.479  0.50  6.67           H
+ATOM     17  HE2ALYS A   1      -2.934   8.658  10.791  0.69  6.12           H
+ATOM     18  HE3ALYS A   1      -1.610   9.436  11.100  0.69  6.12           H
+ATOM     19  HZ1ALYS A   1      -1.884   7.721   8.949  0.69  6.84           H
+ATOM     20  HZ2ALYS A   1      -1.854   9.169   8.825  0.69  6.84           H
+ATOM     21  HZ3ALYS A   1      -0.659   8.450   9.234  0.69  6.84           H
+ATOM     22  CE BLYS A   1      -1.791   8.575  10.680  0.31  5.79           C
+ATOM     23  NZ BLYS A   1      -3.148   8.376  10.084  0.31  6.86           N
+ATOM     24  H1 BLYS A   1       2.852   4.975  14.368  0.50  9.20           H
+ATOM     25  H2 BLYS A   1       1.614   5.454  14.960  0.50  9.20           H
+ATOM     26  H3 BLYS A   1       1.589   4.341  14.026  0.50  9.20           H
+ATOM     27  HE2BLYS A   1      -1.763   9.419  11.157  0.31  6.95           H
+ATOM     28  HE3BLYS A   1      -1.124   8.601   9.977  0.31  6.95           H
+ATOM     29  HZ1BLYS A   1      -3.755   8.339  10.733  0.31 10.29           H
+ATOM     30  HZ2BLYS A   1      -3.335   9.055   9.540  0.31 10.29           H
+ATOM     31  HZ3BLYS A   1      -3.160   7.615   9.622  0.31 10.29           H
+END
+""".splitlines()
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    log=log)
+  lines = search_for(
+    pattern="""\
+  Number of resolved chirality restraint conflicts: 1""",
+    mode="==",
+    lines=log.getvalue().splitlines())
+  assert len(lines) == 1
+  #
   print "OK"
 
 if (__name__ == "__main__"):

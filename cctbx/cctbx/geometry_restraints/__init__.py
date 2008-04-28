@@ -92,7 +92,7 @@ class proxy_registry_base(object):
       self.n_resolved_conflicts += 1
       if (self.source_n_expected_atoms[i_list] < source_n_expected_atoms):
         self.proxies[i_list] = proxy
-        self.source_labels[i_list].append(source_info.labels())
+        self.source_labels[i_list] += ", " + source_info.labels()
         self.source_n_expected_atoms[i_list] = source_n_expected_atoms
         process_result.tabulated_proxy = proxy
 
