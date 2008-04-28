@@ -426,9 +426,9 @@ class monomer_mapping(object):
     self.is_first_conformer_in_chain = is_first_conformer_in_chain
     self.conf_altloc = conf_altloc
     self.pdb_residue = pdb_residue
-    self.pdb_residue_id_str = pdb_residue.id_str()
+    self.pdb_residue_id_str = pdb_residue.id_str(suppress_segid=-1)
     self.residue_name = pdb_residue.resname
-    self._collect_atom_names()
+    atom_id_str_pdbres_list = self._collect_atom_names()
     self.monomer, self.atom_name_interpretation \
       = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
           residue_name=self.residue_name,
@@ -450,11 +450,11 @@ class monomer_mapping(object):
     else:
       self._get_mappings(mon_lib_srv=mon_lib_srv)
       self.chem_mod_ids = []
-      for apply_data_mod in apply_cif_modifications.get(
-                              self.pdb_residue_id_str, []):
-        self.apply_mod(
-          mon_lib_srv=mon_lib_srv,
-          mod_mod_id=mon_lib_srv.mod_mod_id_dict[apply_data_mod])
+      for id_str in atom_id_str_pdbres_list:
+        for apply_data_mod in apply_cif_modifications.get(id_str, []):
+          self.apply_mod(
+            mon_lib_srv=mon_lib_srv,
+            mod_mod_id=mon_lib_srv.mod_mod_id_dict[apply_data_mod])
       self._set_incomplete_info()
       self.is_terminus = None
       self.monomer.set_classification()
@@ -468,12 +468,15 @@ class monomer_mapping(object):
     self.ignored_atoms = {}
     self.active_atoms = []
     self.atom_names_given = []
+    atom_id_str_pdbres_set = {}
     for atom in self.pdb_residue.atoms():
+      atom_id_str_pdbres_set[atom.id_str(pdbres=True)] = None
       if (atom.element.strip() == "Q"):
         self.ignored_atoms.setdefault(atom.name, []).append(atom)
       else:
         self.active_atoms.append(atom)
         self.atom_names_given.append(atom.name.replace(" ",""))
+    return sorted(atom_id_str_pdbres_set)
 
   def _get_mappings(self, mon_lib_srv):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
@@ -2234,10 +2237,19 @@ class build_all_chain_proxies(object):
           scope_extract=apply,
           attr=attr).iselection()
         pdbres_set = {}
+        pdbres_set_no_segid = {}
         for i_seq in iselection:
-          pdbres_set[atoms[i_seq].id_str(pdbres=True)] = None
+          atom = atoms[i_seq]
+          pdbres_set[
+            atom.id_str(pdbres=True)] = None
+          pdbres_set_no_segid[
+            atom.id_str(pdbres=True, suppress_segid=True)] = None
         if (len(pdbres_set) != 1):
-          raise Sorry("Not exactly one residue selected.") # XXX models?
+          # XXX models?
+          if (len(pdbres_set_no_segid) != 1):
+            raise Sorry("Not exactly one residue selected.")
+          raise Sorry(
+            "Selected residue has multiple segid. This is not supported.")
         pdbres_pair.append(pdbres_set.keys()[0])
       for pdbres,mod_id in zip(pdbres_pair, mod_ids):
         if (mod_id is not None):

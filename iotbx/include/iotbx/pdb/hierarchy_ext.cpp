@@ -579,6 +579,8 @@ namespace {
       return std_vector_as_af_shared(self.atoms());
     }
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 1)
+
     static void
     wrap()
     {
@@ -594,7 +596,8 @@ namespace {
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", get_atoms)
         .def("resid", &w_t::resid)
-        .def("id_str", &w_t::id_str)
+        .def("id_str", &w_t::id_str, id_str_overloads((
+          arg_("suppress_segid")=0)))
       ;
     }
   };

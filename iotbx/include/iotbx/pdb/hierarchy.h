@@ -367,32 +367,35 @@ namespace hierarchy {
     //! All labels must be defined externally.
     /*! result must point to an array of size 15 (or greater).
         On return, result is NOT null-terminated.
-        If add_model_and_segid is true, the size of the result
+        If add_model or add_segid is true, the size of the result
         array must be 52 (or greater) and result IS null-terminated.
      */
     void
     format(
       char* result,
-      bool add_model_and_segid=false) const;
+      bool add_model=false,
+      bool add_segid=false) const;
 
     //! Extracts chain_id and model_id, then calls format(char*, bool).
     void
     format(
       char* result,
       shared_ptr<chain_data> const& ch_lock,
-      bool add_model_and_segid);
+      bool add_model,
+      bool add_segid);
 
     //! All labels are extracted from the atom and its parents.
     /*! result must point to an array of size 15 (or greater).
         On return, result is NOT null-terminated.
-        If add_model_and_segid is true, the size of the result
+        If add_model or add_segid is true, the size of the result
         array must be 52 (or greater) and result IS null-terminated.
      */
     void
     format(
       char* result,
       hierarchy::atom const& atom,
-      bool add_model_and_segid=false,
+      bool add_model=false,
+      bool add_segid=false,
       bool pdbres=false);
 
     //! All relevant labels are extracted from the residue and its parents.
@@ -677,7 +680,7 @@ namespace hierarchy {
 
       //! model="   1" pdb=" N   GLY A   1 " segid="S001"
       std::string
-      id_str(bool pdbres=false) const;
+      id_str(bool pdbres=false, bool suppress_segid=false) const;
 
       //! Not available in Python.
       /*! result must point to an array of size 81 (or greater).
@@ -1449,9 +1452,9 @@ namespace hierarchy {
       std::string
       resid() const;
 
-      //! model="   1" pdbres="GLY A   1 "
+      //! model="   1" pdbres="GLY A   1 " segid="S001"
       std::string
-      id_str() const;
+      id_str(int suppress_segid=0) const;
   };
 
   //! Conformer attributes.
@@ -1536,7 +1539,7 @@ namespace hierarchy {
 
       //! model="   1" pdb=" N   GLY A   1 " segid="S001"
       std::string
-      id_str(bool pdbres=false) const;
+      id_str(bool pdbres=false, bool suppress_segid=false) const;
 
       std::string
       format_atom_record_group(
