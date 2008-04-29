@@ -1,27 +1,18 @@
-from cctbx import miller
-from cctbx import crystal
-from cctbx import uctbx
-from cctbx import sgtbx
-from cctbx import xray
-from cctbx import eltbx
-import cctbx.xray.structure_factors
-from cctbx.array_family import flex
-from libtbx.utils import Sorry, date_and_time, multi_out
-import iotbx.phil
+from mmtbx import xmanip_tasks
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
-from iotbx.pdb import xray_structure
-from iotbx import pdb
+import iotbx.phil
+import iotbx.pdb
+from cctbx import crystal
+from cctbx import sgtbx
+from cctbx import adptbx
+from cctbx.array_family import flex
+from scitbx.math import matrix
+from libtbx.utils import Sorry, multi_out
 import libtbx.phil.command_line
 from cStringIO import StringIO
-from scitbx.python_utils import easy_pickle
-from scitbx.math import matrix
-from cctbx import adptbx
-from mmtbx import xmanip_tasks
 import sys, os
-
-
 
 def construct_output_labels(labels, label_appendix, out=None ):
   if out is None:
@@ -64,19 +55,12 @@ def read_data(file_name, labels, xs, log=None):
     raise Sorry("No such file: >%s<"%(file_name) )
   reflection_file = reflection_file_reader.any_reflection_file(
     file_name= file_name)
-
   miller_arrays = reflection_file.as_miller_arrays(crystal_symmetry=xs)
   label_table = reflection_file_utils.label_table(miller_arrays)
-
-  #now select a miller array or set of miller arrays if needed
-  miller_array = miller_arrays[0]
-  if len(miller_arrays)>1:
-    miller_array = label_table.match_data_label(
-      label=labels,
-      command_line_switch="xray_data.label",
-      f=log)
-  return miller_array
-
+  return label_table.select_array(
+    label=labels,
+    command_line_switch="xray_data.labels",
+    f=log)
 
 def chain_name_modifier(chain_id, increment):
   ids=["A","B","C","D","E","F","G","H","I","J","K",
@@ -89,63 +73,38 @@ def chain_name_modifier(chain_id, increment):
     result = ids[new_index]
   return result
 
-
-def write_as_pdb_file( input_xray_structure = None,
-                       input_crystal_symmetry = None,
-                       input_pdb = None,
-                       out = None,
-                       chain_id_increment=5,
-                       additional_remark=None,
-                       print_cryst_and_scale=True
-                       ):
+def write_as_pdb_file(input_xray_structure = None,
+                      input_crystal_symmetry = None,
+                      input_pdb = None,
+                      out = None,
+                      chain_id_increment=5,
+                      additional_remark=None,
+                      print_cryst_and_scale=True):
   assert chain_id_increment is not None
-  if out is None:
-    out = sys.stdout
+  if out is None: out = sys.stdout
 
   xs = input_crystal_symmetry
-  if xs is None:
-    xs = crystal.symmetry( unit_cell = input_xray_structure.unit_cell(),
-                           space_group = input_xray_structure.space_group() )
+  if xs is None: xs = input_xray_structure
 
-
-  sg_info_object = sgtbx.space_group_info(group=xs.space_group() )
   if additional_remark is not None:
-    print >> out, "REMARK     %s"%(additional_remark)
+    print >> out, "REMARK %s" % additional_remark
   if print_cryst_and_scale:
-    print >> out, "REMARK    SYMMETRY: %s"%( str(sg_info_object) )
-    print >> out, pdb.format_cryst1_record(
-      crystal_symmetry = xs )
-    print >> out, pdb.format_scale_records(
-      unit_cell = xs.unit_cell() )
+    print >> out, "REMARK Space group: %s" % str(xs.space_group_info())
+  else:
+    xs = None
 
-  u_iso_array = input_xray_structure.scatterers().extract_u_iso().as_double()
-  u_aniso_array = input_xray_structure.scatterers().extract_u_cart_or_u_cart_plus_u_iso(  input_xray_structure.unit_cell() )
-  #print list(u_aniso_array)
+  pdb_atoms = input_pdb.atoms()
+  pdb_atoms.set_xyz(
+    new_xyz=input_xray_structure.sites_cart())
+  pdb_atoms.set_b(
+    new_b=input_xray_structure.scatterers().extract_u_iso()
+         *adptbx.u_as_b_factor)
 
-  for serial, label, atom, xyz, adp in zip(input_pdb.atom_serial_number_strings(),
-                                           input_pdb.input_atom_labels_list(),
-                                           input_pdb.atoms(),
-                                           input_xray_structure.sites_cart(),
-                                           u_iso_array
-                                           ):
-    print >> out, iotbx.pdb.format_atom_record(
-      record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
-      serial=int(serial),
-      name=label.name(),
-      altLoc=label.altloc(),
-      resName=label.resname(),
-      resSeq=label.resseq(),
-      chainID=chain_name_modifier(label.chain(),chain_id_increment),
-      iCode=label.icode(),
-      site=xyz,
-      occupancy=atom.occ,
-      tempFactor=adptbx.u_as_b( adp ),
-      segID=atom.segid,
-      element=atom.element,
-      charge=atom.charge)
+  hierarchy = input_pdb.construct_hierarchy()
+  for chain in hierarchy.chains():
+    chain.id = chain_name_modifier(chain.id, chain_id_increment)
 
-
-
+  print >> out, hierarchy.as_pdb_string(crystal_symmetry=xs)
 
 master_params = iotbx.phil.parse("""\
 xmanip{
@@ -524,7 +483,8 @@ def run(args, command_name="phenix.xmanip"):
     pdb_model = None
     model = None
     if params.xmanip.input.model.file_name is not None:
-      pdb_model = pdb.input(file_name=params.xmanip.input.model.file_name)
+      pdb_model = iotbx.pdb.input(
+        file_name=params.xmanip.input.model.file_name)
       model = pdb_model.xray_structure_simple(crystal_symmetry=phil_xs)
       print >> log, "Atomic model summary"
       print >> log, "===================="
@@ -644,7 +604,7 @@ def run(args, command_name="phenix.xmanip"):
           input_xray_structure = new_model,
           out = pdb_file,
           chain_id_increment= 0,
-          additional_remark = "GENERATED BY %s" % command_name)
+          additional_remark = "Generated by %s" % command_name)
 
         pdb_file.close()
       if ( [miller_array,new_model]).count(None)==2:
@@ -707,10 +667,6 @@ def run(args, command_name="phenix.xmanip"):
                            additional_remark = None,
                            print_cryst_and_scale=True)
         pdb_file.close()
-
-
-
-
 
     #write the logfile
     logger = open( params.xmanip.output.logfile, 'w')

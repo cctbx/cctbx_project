@@ -3,6 +3,7 @@ from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.path
 from libtbx.itertbx import count
+from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
 import math
 import sys, os
@@ -81,6 +82,7 @@ class label_table(object):
 
   def match_data_label(self, label, command_line_switch, f=None):
     if (f is None): f = self.err
+    assert label is not None
     scores = self.scores(label=label)
     selected_array = None
     for high_score in xrange(max(scores),0,-1):
@@ -98,6 +100,28 @@ class label_table(object):
     print >> f
     self.show_possible_choices(f=f)
     return None
+
+  def select_array(self, label, command_line_switch, f=None):
+    if (f is None): f = self.err
+    if (len(self.miller_arrays) == 0):
+      print >> f
+      print >> f, "No reflection arrays available."
+      print >> f
+      return None
+    if (len(self.miller_arrays) == 1):
+      return self.miller_arrays[0]
+    if (label is None):
+      print >> f
+      s = command_line_switch
+      print >> f, "Please use %s to select a reflection array." % s
+      print >> f, "For example: %s=%s" % (s, show_string(str(
+        self.miller_arrays[1].info()).split(":")[-1]))
+      print >> f
+      self.show_possible_choices(f=f)
+      return None
+    return self.match_data_label(
+      label=label,
+      command_line_switch=command_line_switch)
 
 def get_amplitude_scores(miller_arrays):
   result = []
