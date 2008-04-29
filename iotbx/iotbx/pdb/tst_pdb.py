@@ -96,6 +96,43 @@ SSBOND 123 CYScB  250i   CYScB  277j                         1555   1555""")
   assert r.sym2 == "  1555"
   assert r.margin == "        "
 
+def exercise_make_atom_with_labels():
+  awl = pdb.make_atom_with_labels()
+  assert not show_diff(awl.format_atom_record_group(siguij=False), """\
+ATOM                             0.000   0.000   0.000  0.00  0.00""")
+  awl = pdb.make_atom_with_labels(
+    xyz=(1,2,3),
+    sigxyz=(4,5,6),
+    occ=7,
+    sigocc=8,
+    b=9,
+    sigb=10,
+    uij=(11,12,13,14,15,16),
+    siguij=(17,18,19,20,21,22),
+    hetero=True,
+    serial="ABCDE",
+    name="FGHI",
+    segid="JKLM",
+    element="NO",
+    charge="PQ",
+    model_id="RSTU",
+    chain_id="VW",
+    resseq="XYZa",
+    icode="b",
+    altloc="c",
+    resname="def")
+  expected = """\
+HETATMABCDE FGHIcdefVWXYZab      1.000   2.000   3.000  7.00  9.00      JKLMNOPQ
+SIGATMABCDE FGHIcdefVWXYZab      4.000   5.000   6.000  8.00 10.00      JKLMNOPQ
+ANISOUABCDE FGHIcdefVWXYZab  110000 120000 130000 140000 150000 160000  JKLMNOPQ
+"""[:-1]
+  assert not show_diff(
+    awl.format_atom_record_group(siguij=False), expected)
+  if (pdb.hierarchy.atom.has_siguij()):
+    assert not show_diff(awl.format_atom_record_group(), expected + """
+SIGUIJABCDE FGHIcdefVWXYZab  170000 180000 190000 200000 210000 220000  JKLMNOPQ
+"""[:-1])
+
 def exercise_combine_unique_pdb_files():
   for file_name,s in [("tmp1", "1"),
                       ("tmp2", "        2"),
@@ -419,6 +456,7 @@ def write_icosahedron():
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_records()
+  exercise_make_atom_with_labels()
   exercise_combine_unique_pdb_files()
   exercise_pdb_codes_fragment_files()
   exercise_format_records()

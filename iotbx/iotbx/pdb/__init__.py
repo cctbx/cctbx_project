@@ -797,6 +797,50 @@ def encode_serial_number(width, value):
     return hy36encode(width=width, value=value)
   raise RuntimeError("serial number value must be str or int.")
 
+def make_atom_with_labels(
+      xyz=None,
+      sigxyz=None,
+      occ=None,
+      sigocc=None,
+      b=None,
+      sigb=None,
+      uij=None,
+      siguij=None,
+      hetero=None,
+      serial=None,
+      name=None,
+      segid=None,
+      element=None,
+      charge=None,
+      model_id=None,
+      chain_id=None,
+      resseq=None,
+      icode=None,
+      altloc=None,
+      resname=None):
+  result = hierarchy.atom_with_labels()
+  if (xyz is not None): result.xyz = xyz
+  if (sigxyz is not None): result.sigxyz = sigxyz
+  if (occ is not None): result.occ = occ
+  if (sigocc is not None): result.sigocc = sigocc
+  if (b is not None): result.b = b
+  if (sigb is not None): result.sigb = sigb
+  if (uij is not None): result.uij = uij
+  if (siguij is not None): result.siguij = siguij
+  if (hetero is not None): result.hetero = hetero
+  if (serial is not None): result.serial = serial
+  if (name is not None): result.name = name
+  if (segid is not None): result.segid = segid
+  if (element is not None): result.element = element
+  if (charge is not None): result.charge = charge
+  if (model_id is not None): result.model_id = model_id
+  if (chain_id is not None): result.chain_id = chain_id
+  if (resseq is not None): result.resseq = resseq
+  if (icode is not None): result.icode = icode
+  if (altloc is not None): result.altloc = altloc
+  if (resname is not None): result.resname = resname
+  return result
+
 def format_atom_record(record_name="ATOM",
                        serial=0,
                        name=" C  ",
