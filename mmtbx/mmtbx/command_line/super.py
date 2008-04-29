@@ -173,25 +173,10 @@ of the aligned length of the fixed molecule sequence.
   print
 
   print "Writing moved pdb to file: %s" % params.super.moved
-  out = open(params.super.moved, "w")
-  for serial, label, atom in zip(moving_pdb.atom_serial_number_strings(),
-                                 moving_pdb.input_atom_labels_list(),
-                                 moving_pdb.atoms()):
-    print >> out, iotbx.pdb.format_atom_record(
-      record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
-      serial=int(serial),
-      name=label.name(),
-      altLoc=label.altloc(),
-      resName=label.resname(),
-      resSeq=label.resseq(),
-      chainID=label.chain(),
-      iCode=label.icode(),
-      site=lsq_fit.r * matrix.col(atom.xyz) + lsq_fit.t,
-      occupancy=atom.occ,
-      tempFactor=atom.b,
-      segID=atom.segid,
-      element=atom.element,
-      charge=atom.charge)
+  pdb_hierarchy = moving_pdb.construct_hierarchy()
+  for atom in pdb_hierarchy.atoms():
+    atom.xyz = lsq_fit.r * matrix.col(atom.xyz) + lsq_fit.t
+  pdb_hierarchy.write_pdb_file(file_name=params.super.moved, append_end=True)
   print
 
 if (__name__ == "__main__"):
