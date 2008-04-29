@@ -199,47 +199,31 @@ def run(
     return None
   label_table = reflection_file_utils.label_table(
     miller_arrays=all_miller_arrays)
-  if (len(all_miller_arrays) == 1):
-    selected_array = all_miller_arrays[0]
-    r_free_flags = None
-    r_free_info = None
-  elif (co.label is None):
-    print
-    print "Please use --label to select a reflection array."
-    print "For example: --label=%s" % str(
-      all_miller_arrays[1].info()).split(":")[-1]
-    print
-    label_table.show_possible_choices()
-    return None
-  else:
-    selected_array = label_table.match_data_label(
-      label=co.label,
-      command_line_switch="--label")
-    if (selected_array is None):
+  selected_array = label_table.select_array(
+    label=co.label, command_line_switch="--label")
+  if (selected_array is None): return None
+  r_free_flags = None
+  r_free_info = None
+  if (co.r_free_label is not None):
+    r_free_flags = label_table.match_data_label(
+      label=co.r_free_label,
+      command_line_switch="--r_free_label")
+    if (r_free_flags is None):
       return None
-    if (co.r_free_label is None):
-      r_free_flags = None
-      r_free_info = None
-    else:
-      r_free_flags = label_table.match_data_label(
-        label=co.r_free_label,
-        command_line_switch="--r_free_label")
-      if (r_free_flags is None):
-        return None
-      r_free_info = str(r_free_flags.info())
-      if (not r_free_flags.is_bool_array()):
-        test_flag_value = reflection_file_utils.get_r_free_flags_scores(
-          miller_arrays=[r_free_flags],
-          test_flag_value=co.r_free_test_flag_value).test_flag_values[0]
-        if (test_flag_value is None):
-          if (co.r_free_test_flag_value is None):
-            raise Sorry(
-              "Cannot automatically determine r_free_test_flag_value."
-              " Please use --r_free_test_flag_value to specify a value.")
-          else:
-            raise Sorry("Invalid --r_free_test_flag_value.")
-        r_free_flags = r_free_flags.customized_copy(
-          data=(r_free_flags.data() == test_flag_value))
+    r_free_info = str(r_free_flags.info())
+    if (not r_free_flags.is_bool_array()):
+      test_flag_value = reflection_file_utils.get_r_free_flags_scores(
+        miller_arrays=[r_free_flags],
+        test_flag_value=co.r_free_test_flag_value).test_flag_values[0]
+      if (test_flag_value is None):
+        if (co.r_free_test_flag_value is None):
+          raise Sorry(
+            "Cannot automatically determine r_free_test_flag_value."
+            " Please use --r_free_test_flag_value to specify a value.")
+        else:
+          raise Sorry("Invalid --r_free_test_flag_value.")
+      r_free_flags = r_free_flags.customized_copy(
+        data=(r_free_flags.data() == test_flag_value))
   print "Selected data:"
   print " ", selected_array.info()
   print "  Observation type:", selected_array.observation_type()

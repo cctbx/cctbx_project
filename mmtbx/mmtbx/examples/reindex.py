@@ -1,60 +1,16 @@
+from mmtbx.xmanip import write_as_pdb_file
 import iotbx.pdb
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
 import iotbx.phil
 from cctbx import crystal
 from cctbx import sgtbx
-from cctbx import adptbx
 from cctbx.array_family import flex
 from scitbx.math import matrix
 from libtbx.utils import Sorry, multi_out
 import libtbx.phil.command_line
 from cStringIO import StringIO
 import sys, os
-
-def chain_name_modifier(chain_id, increment):
-  ids=["A","B","C","D","E","F","G","H","I","J","K",
-       "L","M","N","O","P","Q","R","S","T","U","V",
-       "W","X","Y","Z","0","1","2","3","4","5","6",
-       "7","8","9"]
-  result=chain_id
-  if chain_id in ids:
-    new_index = (ids.index( chain_id ) + increment)%len(ids)
-    result = ids[new_index]
-  return result
-
-def write_as_pdb_file( input_xray_structure = None,
-                       input_crystal_symmetry = None,
-                       input_pdb = None,
-                       out = None,
-                       chain_id_increment=5,
-                       additional_remark=None,
-                       print_cryst_and_scale=True):
-  assert chain_id_increment is not None
-  if out is None: out = sys.stdout
-
-  xs = input_crystal_symmetry
-  if xs is None: xs = input_xray_structure
-
-  if additional_remark is not None:
-    print >> out, "REMARK %s" % additional_remark
-  if print_cryst_and_scale:
-    print >> out, "REMARK Space group: %s" % str(xs.space_group_info())
-  else:
-    xs = None
-
-  pdb_atoms = input_pdb.atoms()
-  pdb_atoms.set_xyz(
-    new_xyz=input_xray_structure.sites_cart())
-  pdb_atoms.set_b(
-    new_b=input_xray_structure.scatterers().extract_u_iso()
-         *adptbx.u_as_b_factor)
-
-  hierarchy = input_pdb.construct_hierarchy()
-  for chain in hierarchy.chains():
-    chain.id = chain_name_modifier(chain.id, chain_id_increment)
-
-  print >> out, hierarchy.as_pdb_string(crystal_symmetry=xs)
 
 master_params = iotbx.phil.parse("""\
 reindex_utils{
