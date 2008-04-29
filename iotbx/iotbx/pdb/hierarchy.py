@@ -630,6 +630,9 @@ class _chain(boost.python.injector, ext.chain):
   def only_atom(self):
     return self.only_atom_group().only_atom()
 
+  def residues(self):
+    return self.only_conformer().residues()
+
   def occupancy_groups_simple(self, common_residue_name_class_only=None):
     result = []
     residue_groups = self.residue_groups()

@@ -2668,6 +2668,27 @@ ENDMDL
   assert obj.only_atom().name == " N  "
   obj = obj.only_residue()
   assert obj.only_atom().name == " N  "
+  #
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM      1      R01 A
+ATOM      2      R01 A
+ATOM      3      R02 A
+ATOM      4      R02 A
+ATOM      5      R01 B
+"""))
+  hierarchy = pdb_inp.construct_hierarchy(residue_group_post_processing=False)
+  sio = StringIO()
+  for chain in hierarchy.chains():
+    for residue in chain.residues():
+      for atom in residue.atoms():
+        print >> sio, atom.quote()
+  assert not show_diff(sio.getvalue(), """\
+"ATOM      1      R01 A     .*.        "
+"ATOM      2      R01 A     .*.        "
+"ATOM      3      R02 A     .*.        "
+"ATOM      4      R02 A     .*.        "
+"ATOM      5      R01 B     .*.        "
+""")
 
 exercise_merge_pdb_inp = pdb.input(
   source_info=None, lines=flex.split_lines("""\
