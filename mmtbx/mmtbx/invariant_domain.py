@@ -1,10 +1,7 @@
-import sys
-from iotbx import pdb
 from cctbx.array_family import flex
 from scitbx.math import euler_angles_as_matrix
-from scitbx.math import superpose, matrix
-import random
-from libtbx.test_utils import approx_equal
+from scitbx.math import superpose
+import sys
 
 class find_domain(object):
   """This class tries to find pseudo invariant domain given a set of sites.
@@ -171,32 +168,9 @@ the best course of action."""
     max_loc = flex.max_index( sizes )
     return max_size, max_loc
 
-  def write_ensemble(self, pdb_inp, out):
-    for index in xrange( len(self.matches) ):
-      name = out+"_%s.pdb"%(index)
-      file = open(name, "w")
-      for ser, lbl, atom in zip( pdb_inp.atom_serial_number_strings(),
-                                 pdb_inp.input_atom_labels_list(),
-                                 pdb_inp.atoms() ):
-        r = self.matches[index][1]
-        t = self.matches[index][2]
-        print >> file, pdb.format_atom_record(
-          record_name={False: "ATOM", True: "HETATM"}[atom.hetero],
-          serial=int(ser),
-          name=lbl.name(),
-          altLoc=lbl.altloc(),
-          resName=lbl.resname(),
-          resSeq=lbl.resseq,
-          chainID=lbl.chain(),
-          iCode=lbl.icode(),
-          site=r * matrix.col(atom.xyz) + t,
-          occupancy=atom.occ,
-          tempFactor=atom.b,
-          segID=atom.segid,
-          element=atom.element,
-          charge=atom.charge)
-
 def exercise_core(n=10, verbose=0):
+  from libtbx.test_utils import approx_equal
+  import random
   # make two random sets of sites please
   c = euler_angles_as_matrix([random.uniform(0,360) for i in xrange(3)])
   set_1 = flex.vec3_double(flex.random_double(n*3)*10-2)
@@ -218,6 +192,7 @@ def exercise_core(n=10, verbose=0):
   assert approx_equal(tmp.matches[0][4],n,eps=1e-5)
 
 def exercise():
+  import random
   if (1): # fixed random seed to avoid rare failures
     random.seed(0)
     flex.set_random_seed(0)
