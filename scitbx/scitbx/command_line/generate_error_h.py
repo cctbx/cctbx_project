@@ -15,6 +15,8 @@ def as_string(module_name):
 
 #define %(mn_upper)s_CHECK_POINT \
   std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
+#define %(mn_upper)s_CHECK_POINT_MSG(msg) \
+  std::cout << msg << " @ " __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
 #define %(mn_upper)s_EXAMINE(A) \
   std::cout << "variable " << #A << ": " << A << std::endl << std::flush
 
