@@ -9,6 +9,11 @@
 extern "C" {
 #endif
 
+#define HY36_WIDTH_4_MIN -999
+#define HY36_WIDTH_4_MAX 2436111 /* 10000 + 2*26*36*36*36 - 1 */
+#define HY36_WIDTH_5_MIN -9999
+#define HY36_WIDTH_5_MAX 87440031 /* 100000 + 2*26*36*36*36*36 - 1 */
+
 const char*
 hy36encode(unsigned width, int value, char* result);
 

@@ -1,3 +1,4 @@
+from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx.crystal import close_packing
 from cctbx import crystal
 from cctbx.crystal.direct_space_asu import non_crystallographic_asu_mappings
@@ -6,7 +7,6 @@ from cctbx import uctbx
 from cctbx.array_family import flex
 from cctbx.development import debug_utils
 from scitbx import matrix
-import iotbx.pdb
 from libtbx.math_utils import ifloor, iceil
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
@@ -169,15 +169,6 @@ def check_distances(sites_cart, point_distance, verbose):
   if (len(neighbors) > 0):
     assert max(neighbors.values()) <= 12
 
-def dump_pdb(file_name, crystal_symmetry, sites_cart):
-  f = open(file_name, "w")
-  print >> f, iotbx.pdb.format_cryst1_record(
-    crystal_symmetry=crystal_symmetry)
-  for serial,site in zip(count(1), sites_cart):
-    print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
-  print >> f, "END"
-  f.close()
-
 def check_with_grid_tags(inp_symmetry, symmetry_flags,
                          sites_cart, point_distance,
                          strictly_inside, flag_write_pdb, verbose):
@@ -295,7 +286,10 @@ def run_call_back(flags, space_group_info):
       flag_write_pdb=flags.write_pdb,
       verbose=flags.Verbose)
   if (flags.write_pdb):
-    dump_pdb("hex_sites.pdb", crystal_symmetry, sites_cart)
+    dump_pdb(
+      file_name="hex_sites.pdb",
+      crystal_symmetry=crystal_symmetry,
+      sites_cart=sites_cart)
 
 def exercise_all_twelve_neighbors():
   sites_cart = hexagonal_close_packing_sampling(

@@ -1,5 +1,6 @@
 #include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/common_residue_names.h>
+#include <iotbx/pdb/hybrid_36_cpp.h>
 #include <cctbx/eltbx/chemical_elements.h>
 #include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
@@ -952,14 +953,13 @@ namespace {
 
 namespace {
 
-  template <typename DataType>
   std::string
-  make_resid(DataType const& data)
+  make_resid(str4 const& resseq, str1 const& icode)
   {
     char blank = ' ';
     char result[6];
-    data->resseq.copy_right_justified(result, 4U, blank);
-    data->icode.copy_left_justified(result+4, 1U, blank);
+    resseq.copy_right_justified(result, 4U, blank);
+    icode.copy_left_justified(result+4, 1U, blank);
     result[5] = '\0';
     return std::string(result);
   }
@@ -967,7 +967,10 @@ namespace {
 } // namespace <anonymous>
 
   std::string
-  residue_group::resid() const { return make_resid(data); }
+  residue_group::resid() const
+  {
+    return make_resid(data->resseq, data->icode);
+  }
 
   str5
   residue_group::resid_small_str() const
@@ -981,7 +984,16 @@ namespace {
   }
 
   std::string
-  residue::resid() const { return make_resid(data); }
+  residue::resid() const
+  {
+    return make_resid(data->resseq, data->icode);
+  }
+
+  std::string
+  atom_with_labels::resid() const
+  {
+    return make_resid(resseq, icode);
+  }
 
   bool
   residue_group::have_conformers() const
@@ -1844,6 +1856,34 @@ namespace {
       resname.elems,
       is_first_in_chain,
       is_first_after_break);
+  }
+
+  int
+  atom::serial_as_int() const
+  {
+    str5 const& s = data->serial;
+    return hybrid_36::decode(5U, s.elems, s.size());
+  }
+
+  int
+  residue_group::resseq_as_int() const
+  {
+    str4 const& s = data->resseq;
+    return hybrid_36::decode(4U, s.elems, s.size());
+  }
+
+  int
+  residue::resseq_as_int() const
+  {
+    str4 const& s = data->resseq;
+    return hybrid_36::decode(4U, s.elems, s.size());
+  }
+
+  int
+  atom_with_labels::resseq_as_int() const
+  {
+    str4 const& s = resseq;
+    return hybrid_36::decode(4U, s.elems, s.size());
   }
 
 }}} // namespace iotbx::pdb::hierarchy

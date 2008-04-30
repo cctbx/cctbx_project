@@ -1,5 +1,6 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
+#include <iotbx/pdb/hybrid_36_cpp.h>
 #include <iotbx/pdb/hybrid_36_c.h>
 #include <string>
 #include <stdexcept>
@@ -9,38 +10,13 @@ namespace {
   std::string
   hy36encode_wrapper(unsigned width, int value)
   {
-    char result[16];
-    result[0] = ' ';
-    const char* errmsg = hy36encode(width, value, result);
-    if (errmsg) {
-      for(unsigned i=0;i<width;i++) {
-        if (result[i] != '*') {
-          throw std::runtime_error("internal error: result not reset.");
-        }
-      }
-      if (std::strcmp(errmsg, "value out of range.") == 0) {
-        throw std::invalid_argument(errmsg);
-      }
-      throw std::runtime_error(errmsg);
-    }
-    return std::string(result);
+    return iotbx::pdb::hybrid_36::encode(width, value);
   }
 
   int
   hy36decode_wrapper(unsigned width, std::string const& s)
   {
-    int result = -1;
-    const char* errmsg = hy36decode(width, s.c_str(), s.size(), &result);
-    if (errmsg) {
-      if (result != 0) {
-        throw std::runtime_error("internal error: result not reset.");
-      }
-      if (std::strcmp(errmsg, "invalid number literal.") == 0) {
-        throw std::invalid_argument(errmsg);
-      }
-      throw std::runtime_error(errmsg);
-    }
-    return result;
+    return iotbx::pdb::hybrid_36::decode(width, s);
   }
 
   unsigned

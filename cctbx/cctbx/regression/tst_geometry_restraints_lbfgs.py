@@ -1,4 +1,4 @@
-import iotbx.pdb
+from iotbx.pdb.tst_pdb import dump_pdb
 from iotbx.pymol import pml_stick, pml_write
 from cctbx import geometry_restraints
 from cctbx import adp_restraints
@@ -60,11 +60,7 @@ def exercise(verbose=0):
     angle_proxies.append(geometry_restraints.angle_proxy(
       i_seqs=i_seqs, angle_ideal=angle_ideal, weight=1))
   if (0 or verbose):
-    f = open("manual.pdb", "w")
-    for serial,site in zip(count(1), sites_cart_manual):
-      print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
-    print >> f, "END"
-    f.close()
+    dump_pdb(file_name="manual.pdb", sites_cart=sites_cart_manual)
   for traditional_convergence_test in [True,False]:
     for sites_cart_selection in [True, False]:
       sites_cart = sites_cart_manual.deep_copy()
@@ -93,11 +89,8 @@ def exercise(verbose=0):
       s = StringIO()
       manager.show_interactions(f=s)
       if (0 or verbose):
-        f = open("minimized_1.pdb", "w")
-        for serial,site in zip(count(1), sites_cart_minimized_1):
-          print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
-        print >> f, "END"
-        f.close()
+        dump_pdb(
+          file_name="minimized_1.pdb", sites_cart=sites_cart_minimized_1)
       bond_deltas = geometry_restraints.bond_deltas(
         sites_cart=sites_cart_minimized_1,
         proxies=bond_proxies.simple)
@@ -306,11 +299,7 @@ def exercise(verbose=0):
       if (0 or verbose):
         pdb_file_name = "minimized_%d.pdb" % i_pdb.next()
         print "Writing file:", pdb_file_name
-        f = open(pdb_file_name, "w")
-        for serial,site in zip(count(1), sites_cart):
-          print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
-        print >> f, "END"
-        f.close()
+        dump_pdb(file_name=pdb_file_name, sites_cart=sites_cart)
       if (manager.site_symmetry_table is None):
         additional_site_symmetry_table = None
       else:

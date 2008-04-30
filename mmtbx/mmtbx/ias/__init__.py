@@ -661,20 +661,20 @@ class manager(object):
      return ias_xray_structure
 
   def write_pdb_file(self, out = None):
-    if(out is None):
-       out = sys.stdout
+    if (out is None): out = sys.stdout
     sites_cart = self.ias_xray_structure.sites_cart()
     for i_seq, sc in enumerate(self.ias_xray_structure.scatterers()):
-        print >> out, pdb.format_atom_record(
-                                    record_name = "HETATM",
-                                    serial      = i_seq+1,
-                                    name        = sc.label,
-                                    resName     = "IAS",
-                                    resSeq      = i_seq+1,
-                                    site        = sites_cart[i_seq],
-                                    occupancy   = sc.occupancy,
-                                    tempFactor  = adptbx.u_as_b(sc.u_iso),
-                                    element     = sc.label)
+      a = pdb.hierarchy.atom_with_labels()
+      a.hetero = True
+      a.serial = i_seq+1
+      a.name = sc.label[:4] # XXX
+      a.resname = "IAS"
+      a.resseq = i_seq+1
+      a.xyz = sites_cart[i_seq]
+      a.occ = sc.occupancy
+      a.b = adptbx.u_as_b(sc.u_iso)
+      a.element = sc.label[:2] # XXX
+      print >> out, a.format_atom_record_group()
 
   def all_bonds(self, iass, file_name):
     sorted = []

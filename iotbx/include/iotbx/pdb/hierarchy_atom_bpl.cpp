@@ -142,7 +142,10 @@ namespace {
       self.data->hetero = new_hetero;
     }
 
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(serial)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(serial)
+    IOTBX_PDB_HIERARCHY_WRAPPERS_SET_HY36(serial, data->serial, 5U,
+      /* HY36_WIDTH_5_MIN */ -9999,
+      /* HY36_WIDTH_5_MAX */ 87440031)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(name)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(segid)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(element)
@@ -252,6 +255,7 @@ namespace {
           make_function(get_hetero), make_function(set_hetero))
         .add_property("serial",
           make_function(get_serial), make_function(set_serial))
+        .def("serial_as_int", &w_t::serial_as_int)
         .add_property("name",
           make_function(get_name), make_function(set_name))
         .add_property("segid",
@@ -295,14 +299,15 @@ namespace {
   {
     typedef atom_with_labels w_t;
 
-#define IOTBX_LOC(attr) \
+#define IOTBX_LOC_GET(attr) \
     static \
     boost::python::str \
     get_##attr(w_t const& self) \
     { \
       return boost::python::str(self.attr.elems); \
-    } \
-\
+    }
+
+#define IOTBX_LOC_SET(attr) \
     static \
     void \
     set_##attr(w_t& self, const char* value) \
@@ -310,12 +315,21 @@ namespace {
       self.attr.replace_with(value); \
     }
 
-    IOTBX_LOC(resseq)
-    IOTBX_LOC(icode)
-    IOTBX_LOC(altloc)
-    IOTBX_LOC(resname)
+#define IOTBX_LOC_GET_SET(attr) \
+  IOTBX_LOC_GET(attr) \
+  IOTBX_LOC_SET(attr)
 
-#undef IOTBX_LOC
+    IOTBX_PDB_HIERARCHY_WRAPPERS_SET_HY36(resseq, resseq, 4U,
+      /* HY36_WIDTH_4_MIN */ -999,
+      /* HY36_WIDTH_4_MAX */ 2436111)
+    IOTBX_LOC_GET(resseq)
+    IOTBX_LOC_GET_SET(icode)
+    IOTBX_LOC_GET_SET(altloc)
+    IOTBX_LOC_GET_SET(resname)
+
+#undef IOTBX_LOC_GET
+#undef IOTBX_LOC_SET
+#undef IOTBX_LOC_GET_SET
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 2)
 
@@ -357,6 +371,8 @@ namespace {
           make_function(get_resname), make_function(set_resname))
         .def_readwrite("is_first_in_chain", &w_t::is_first_in_chain)
         .def_readwrite("is_first_after_break", &w_t::is_first_after_break)
+        .def("resseq_as_int", &w_t::resseq_as_int)
+        .def("resid", &w_t::resid)
         .def("id_str", &w_t::id_str, id_str_overloads((
           arg_("pdbres")=false,
           arg_("suppress_segid")=false)))

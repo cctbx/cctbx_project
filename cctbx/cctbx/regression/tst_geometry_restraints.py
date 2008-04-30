@@ -1,6 +1,6 @@
+from iotbx.pdb.tst_pdb import dump_pdb
 from cctbx import geometry_restraints
 from iotbx.pymol import pml_stick, pml_write
-import iotbx.pdb
 from cctbx.array_family import flex
 from scitbx.matrix import col, sqr
 from scitbx.math import euler_angles_as_matrix
@@ -238,13 +238,6 @@ def exercise_dihedral():
     sites = [col(site) for site in sites]
     exercise_dihedral_core(
       sites, angle_ideal, angle_esd, period, angle_model)
-
-def dump_pdb(file_name, sites_cart):
-  f = open(file_name, "w")
-  for serial,site in enumerate(sites_cart):
-    print >> f, iotbx.pdb.format_atom_record(serial=serial, site=site)
-  print >> f, "END"
-  f.close()
 
 def improper_permutation(sites):
   return [sites[0], sites[1], sites[3], sites[2]]
