@@ -1,5 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <cctbx/xray/scatterer.h>
+
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_pickle_double_buffered.h>
 #include <scitbx/array_family/boost_python/ref_pickle_double_buffered.h>
@@ -700,6 +702,14 @@ namespace scitbx { namespace af { namespace boost_python {
       CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_fp)
       CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_fdp)
     ;
+  }
+  
+  void wrap_flex_xray_scatterer_flags() {
+    using namespace cctbx;
+    using namespace boost::python;
+    
+    flex_wrapper<cctbx::xray::scatterer_flags,
+                 return_internal_reference<> >::plain("xray_scatterer_flags");
   }
 
 }}} // namespace scitbx::af::boost_python
