@@ -31,6 +31,7 @@ def exercise_atom():
   assert a.serial == ""
   a.serial = "A0000"
   assert a.serial == "A0000"
+  assert a.serial_as_int() == 100000
   assert a.xyz == (0,0,0)
   a.xyz = (1,-2,3)
   assert a.xyz == (1,-2,3)
@@ -187,6 +188,38 @@ def exercise_atom():
   assert ac.tmp == 0
   #
   assert a.pdb_label_columns() == "               "
+  #
+  a = pdb.hierarchy.atom()
+  assert a.set_serial(new_serial="ABCDE") is a
+  assert a.serial == "ABCDE"
+  a.serial = "CDEFG"
+  assert a.serial == "CDEFG"
+  assert a.set_serial(new_serial=200000) is a
+  assert a.serial == "A255S"
+  assert a.serial_as_int() == 200000
+  a.serial = 100000
+  assert a.serial == "A0000"
+  try: a.set_serial(new_serial="ABCDEF")
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "string is too long for target variable " \
+      "(maximum length is 5 characters, 6 given)."
+  else: raise Exception_expected
+  try: a.set_serial(new_serial=-10000)
+  except ValueError, e:
+    assert str(e) == "value is less than -9999"
+  else: raise Exception_expected
+  try: a.set_serial(new_serial=87440032)
+  except ValueError, e:
+    assert str(e) == "value is greater than 87440031"
+  else: raise Exception_expected
+  try: a.set_serial(new_serial=sys)
+  except TypeError, e:
+    assert str(e) == "value must be a Python str or int."
+  else: raise Exception_expected
+  try: a.serial = sys
+  except TypeError, e:
+    assert str(e) == "value must be a Python str or int."
+  else: raise Exception_expected
   #
   atoms = pdb.hierarchy.af_shared_atom()
   atoms.reset_serial()
@@ -366,6 +399,9 @@ def exercise_residue_group():
   assert rg.resseq == ""
   assert rg.icode == ""
   assert rg.link_to_previous
+  rg.resseq = 10000
+  assert rg.resseq == "A000"
+  assert rg.resseq_as_int() == 10000
   rg = pdb.hierarchy.residue_group(
     resseq="   1", icode="i", link_to_previous=False)
   assert rg.resseq == "   1"
@@ -489,6 +525,13 @@ def exercise_residue_group():
   ag = pdb.hierarchy.atom_group(altloc=" ")
   rg.append_atom_group(atom_group=ag)
   assert rg.move_blank_altloc_atom_groups_to_front() == 1
+  #
+  rg = pdb.hierarchy.residue_group()
+  rg.resseq = "x"
+  try: rg.resseq_as_int()
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "invalid number literal."
+  else: raise Exception_expected
 
 def exercise_chain():
   c = pdb.hierarchy.chain()
@@ -3524,6 +3567,7 @@ def conformers_as_str(conformers):
   for cf in conformers:
     print >> s, "conformer:", show_string(cf.altloc)
     for rd in cf.residues():
+      assert rd.resseq_as_int() == pdb.hy36decode(width=4, s=rd.resseq)
       print >> s, "  residue:", \
         show_string(rd.resname), \
         show_string(rd.resseq), \
@@ -4628,7 +4672,9 @@ ATOM                             0.000   0.000   0.000  0.00  0.00""")
   assert awlc.model_id == ""
   awl.chain_id = "Ch"
   awl.resseq = "ABCD"
+  assert awl.resseq_as_int() == 24701
   awl.icode = "I"
+  assert awl.resid() == "ABCDI"
   awl.altloc = "l"
   awl.resname = "rNm"
   awl.is_first_in_chain = True

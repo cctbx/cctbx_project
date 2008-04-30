@@ -124,7 +124,10 @@ namespace {
   {
     typedef residue_group w_t;
 
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(resseq)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET(resseq)
+    IOTBX_PDB_HIERARCHY_WRAPPERS_SET_HY36(resseq, data->resseq, 4U,
+      /* HY36_WIDTH_4_MIN */ -999,
+      /* HY36_WIDTH_4_MAX */ 2436111)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(icode)
 
     static bool
@@ -172,6 +175,7 @@ namespace {
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", &w_t::atoms, atoms_overloads((
           arg_("interleaved_conf")=0)))
+        .def("resseq_as_int", &w_t::resseq_as_int)
         .def("resid", &w_t::resid)
         .def("have_conformers", &w_t::have_conformers)
         .def("merge_atom_groups", &w_t::merge_atom_groups, (
@@ -595,6 +599,7 @@ namespace {
         .def("parent", get_parent<residue, conformer>::wrapper)
         .def("atoms_size", &w_t::atoms_size)
         .def("atoms", get_atoms)
+        .def("resseq_as_int", &w_t::resseq_as_int)
         .def("resid", &w_t::resid)
         .def("id_str", &w_t::id_str, id_str_overloads((
           arg_("suppress_segid")=0)))

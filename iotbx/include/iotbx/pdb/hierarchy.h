@@ -602,6 +602,9 @@ namespace hierarchy {
       boost::optional<atom_group>
       parent() const;
 
+      int
+      serial_as_int() const;
+
       bool
       uij_is_defined() const
       {
@@ -945,6 +948,9 @@ namespace hierarchy {
       //! Not available in Python.
       af::shared<atom>
       atoms_sequential_conf() const;
+
+      int
+      resseq_as_int() const;
 
       std::string
       resid() const;
@@ -1449,6 +1455,9 @@ namespace hierarchy {
       std::vector<atom> const&
       atoms() const { return data->atoms; }
 
+      int
+      resseq_as_int() const;
+
       std::string
       resid() const;
 
@@ -1536,6 +1545,12 @@ namespace hierarchy {
 
       atom_with_labels
       detached_copy() const;
+
+      int
+      resseq_as_int() const;
+
+      std::string
+      resid() const;
 
       //! model="   1" pdb=" N   GLY A   1 " segid="S001"
       std::string

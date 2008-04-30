@@ -17,6 +17,7 @@ builder(
   target="#lib/iotbx_pdb",
   source=[
     "hybrid_36_c.c",
+    "hybrid_36_cpp.cpp",
     "utils.cpp",
     "hierarchy.cpp",
     "hierarchy_select.cpp",

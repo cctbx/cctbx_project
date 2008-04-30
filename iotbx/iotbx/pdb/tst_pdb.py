@@ -291,13 +291,6 @@ CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 SCALE1      1.000000  0.000000  0.000000        1.00000
 SCALE2      0.000000  1.000000  0.000000        2.00000
 SCALE3      0.000000  0.000000  1.000000        3.00000""")
-  #
-  assert iotbx.pdb.format_atom_record() \
-    == "ATOM      0  C   DUM     1       0.000   0.000   0.000  1.00  0.00"
-  assert iotbx.pdb.format_atom_record(serial=-1, resSeq=-999) \
-    == "ATOM     -1  C   DUM  -999       0.000   0.000   0.000  1.00  0.00"
-  assert iotbx.pdb.format_atom_record(serial="xyzab", resSeq="TUVW") \
-    == "ATOM  xyzab  C   DUM  TUVW       0.000   0.000   0.000  1.00  0.00"
 
 def exercise_remark_290_interpretation():
   symmetry_operators=pdb.remark_290_interpretation.extract_symmetry_operators(
@@ -443,15 +436,30 @@ def exercise_xray_structure(use_u_aniso, verbose=0):
       assert approx_equal(
         regression.y_intercept(), 0, eps=flex.max(f_abs.data())*0.01)
 
+def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
+  f = open(file_name, "w")
+  if (crystal_symmetry is not None):
+    print >> f, iotbx.pdb.format_cryst1_record(
+      crystal_symmetry=crystal_symmetry)
+  for i,site in enumerate(sites_cart):
+    a = iotbx.pdb.hierarchy.atom_with_labels()
+    a.serial = i+1
+    a.name = " C  "
+    a.resname = "DUM"
+    a.resseq = 1
+    a.xyz = site
+    a.occ = 1
+    print >> f, a.format_atom_record_group()
+  print >> f, "END"
+  f.close()
+
 def write_icosahedron():
   for level in xrange(3):
     icosahedron = scitbx.math.icosahedron(level=level)
     scale = 1.5/icosahedron.next_neighbors_distance()
-    f = open("icosahedron_%d.pdb"%level, "w")
-    for i,site in enumerate(icosahedron.sites*scale):
-      print >> f, iotbx.pdb.format_atom_record(serial=i+1, site=site)
-    print >> f, "END"
-    f.close()
+    dump_pdb(
+      file_name="icosahedron_%d.pdb"%level,
+      sites_cart=icosahedron.sites*scale)
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
