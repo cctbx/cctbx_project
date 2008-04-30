@@ -123,6 +123,12 @@ namespace cctbx { namespace xray {
       set_tan_u_iso(tan_u_iso);
     }
 
+    /// Whether for each corresponding pair of bits a and b from bits
+    // and other.bits, one has a => b (logical implication)
+    bool implies (scatterer_flags const& other) {
+      return (bits & ~other.bits) == 0;
+    }
+
 #define CCTBX_XRAY_SCATTERER_FLAGS_GET_SET(attr) \
     bool \
     attr() const { return bits & attr##_bit; } \
