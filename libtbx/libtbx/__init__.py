@@ -38,6 +38,32 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
       _key = "_" + key
       assert not hasattr(obj.__dict__, _key)
       obj.__dict__[_key] = args[key]
+      
+def adopt_optional_init_args(obj, kwds):
+  """\
+  Description:
+    Easy management of long list of arguments with default value
+    passed to __init__
+  Synopsis:
+    class foo(object):
+      z = 1
+      def __init__(self, x, y, **kwds):
+        self.x = x
+        self.y = y
+        adopt_optional_init_args(self, kwds)
+        
+    a = foo(x,y)
+    assert a.z == 1
+    a = foo(x,y, z=10)
+    assert a.z == 10
+  """
+  for k,v in kwds.iteritems():
+    if not hasattr(obj.__class__, k):
+      raise RuntimeError("%s must be a class attribute of %s to "
+                         "be adopted as optional init argument "
+                         "by an instance of that class."
+                         % (k, obj.__class__))
+    setattr(obj, k, v)
 
 class copy_init_args(object):
 
