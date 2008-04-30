@@ -11,12 +11,18 @@ class _extended_wxDC(oop.injector, wx.DC):
   def FillWith3DGradient(self, rect, colour, direction, step=1):
     """ Based on Horst Puschmann's ImageTools.gradient_bgr in Olex """
     x,y,w,h = rect
-    if direction in (wx.NORTH, wx.SOUTH):
+    if direction == wx.SOUTH:
       d = h
       draw_line = lambda i: self.DrawLine(x, y+i, x+w, y+i)
-    else:
+    elif direction == wx.EAST:
       d = w
       draw_line = lambda i: self.DrawLine(x+i, y, x+i, y+h)
+    elif direction == wx.NORTH:
+      d = h
+      draw_line = lambda i: self.DrawLine(x, y+d-1-i, x+w, y+d-1-i)
+    elif direction == wx.WEST:
+      d = w
+      draw_line = lambda i: self.DrawLine(x+w-1-i, y, x+w-1-i, y+h)
     slope_breaks       = (0,     d//10+1,     d//5+1,       d)
     step_adjustements  = (  0.6,          1.2,        1.4)
     slopes = [ x*step/d for x in step_adjustements ]
@@ -24,7 +30,8 @@ class _extended_wxDC(oop.injector, wx.DC):
     blue_slopes      = [ x*44 for x in slopes ]
     ranges = [ xrange(slope_breaks[i], slope_breaks[i+1])
                for i in xrange(len(slope_breaks)-1) ]
-    for range, red_green_slope, blue_slope in zip(ranges, red_green_slopes, blue_slopes):
+    for range, red_green_slope, blue_slope in zip(
+      ranges, red_green_slopes, blue_slopes):
       for i in range:
         r = int(colour.Red()   - i*red_green_slope)
         g = int(colour.Green() - i*red_green_slope)
@@ -104,16 +111,17 @@ class InspectorHeader(wx.PyControl, MouseClickButtonMixin):
       dc = wx.ClientDC(self)
       dc.SetFont(self.Font)
       w_txt, h_txt = dc.GetTextExtent(self.Label)
-      self.triangle_base_length = 2*(h_txt//2) - 2
+      self.triangle_base_length = 2*(h_txt//2) - 4
       h_txt += 2*self.vertical_margin
       w_txt += 4*self.vertical_margin + self.triangle_base_length
       self._best_size = (w_txt, h_txt)
       return self._best_size
 
   def OnPaint(self, event):
-    dc = wx.BufferedPaintDC(self)
+    dc = wx.PaintDC(self)
     dc.SetFont(self.Font)
-    dc.FillWith3DGradient(self.Rect, self.colour, direction=wx.SOUTH)
+    dc.FillWith3DGradient(self.Rect, self.colour,
+                          direction=wx.SOUTH, step=0.6)
     w_t = self.triangle_base_length
     h_t = w_t//2
     h = self.GetSize()[1]
@@ -129,7 +137,9 @@ class InspectorHeader(wx.PyControl, MouseClickButtonMixin):
                               wx.Point(h_t, -h_t) ),
                      xoffset=self.horizontal_margin + h_t,
                      yoffset=(h-w_t)//2 + w_t)
-    dc.DrawText(self.Label, w_t + 3*self.horizontal_margin, self.vertical_margin)
+    dc.DrawText(self.Label, w_t + 3*self.horizontal_margin,
+                            self.vertical_margin)
+    del dc
 
   def OnResize(self, event):
     event.Skip()
@@ -140,7 +150,7 @@ class InspectorHeader(wx.PyControl, MouseClickButtonMixin):
     self.on_click()
 
 
-class Inspector(wx.Panel):
+class Inspector(wx.PyPanel):
 
   def __init__(self, parent, id=wx.ID_ANY, label="", colour=wx.BLACK,
                pos=wx.DefaultPosition, size=wx.DefaultSize, style=0):
@@ -166,6 +176,9 @@ class Inspector(wx.Panel):
     self._expanded = not self._expanded
     self._update()
 
+  def DoLayout(self):
+    self.Sizer.Layout()
+
   def _update(self):
     if self._expanded:
       self._pane.Show()
@@ -186,11 +199,8 @@ class Inspector(wx.Panel):
   def GetPane(self):
     return self._pane
 
-  def width_for_stacking(self):
-    w_h = self._header.GetBestSize()[0]
-    w_p = self._pane.GetBestSize()[0]
-    w = max(w_h, w_p)
-    return w
+  def DoGetBestSize(self):
+    return self.Sizer.CalcMin()
 
 
 class InspectorToolFrame(wx.MiniFrame):
@@ -217,7 +227,7 @@ class InspectorToolFrame(wx.MiniFrame):
     s = self.Sizer
     for i in self.Children:
       s.Add(i, 0, wx.EXPAND)
-    w = max([ i.width_for_stacking() for i in self.Children ])
+    w = max([ i.GetBestSize()[0] for i in self.Children ])
     s.SetMinSize((w,-1))
     s.SetSizeHints(self)
 
@@ -241,35 +251,35 @@ if __name__ == '__main__':
   a = wx.App(redirect=False)
 
   class GradientTestFrame(wx.Frame):
+
     def __init__(self):
       super(GradientTestFrame, self).__init__(None, pos=(0,-1))
       size = (120, 90)
-      self._left  = wx.Window(self, size=size)
-      self._right = wx.Window(self, size=size)
-      self._left.Bind(wx.EVT_PAINT, self.OnPaintLeft)
-      self._right.Bind(wx.EVT_PAINT, self.OnPaintRight)
-      box = wx.BoxSizer(wx.HORIZONTAL)
-      box.Add(self._left)
-      box.Add(self._right)
+      box = wx.BoxSizer(wx.VERTICAL)
+      for direction in (wx.NORTH, wx.EAST, wx.SOUTH, wx.WEST):
+        p = wx.Window(self, style=wx.BORDER_NONE)
+        p.SetMinSize(size)
+        box.Add(p)
+        p.Bind(wx.EVT_PAINT, self.make_on_paint(p, direction))
       self.SetSizer(box)
       box.SetSizeHints(self)
       self.Show()
 
-    def OnPaintLeft(self, event):
-      self.fill_with_gradient(self._left, direction=wx.SOUTH)
-
-    def OnPaintRight(self, event):
-      self.fill_with_gradient(self._right, direction=wx.EAST)
-
-    def fill_with_gradient(self, window, direction):
-      dc = wx.PaintDC(window)
-      dc.FillWith3DGradient(window.ClientRect,
-                                      colour=wx.Colour(237, 237, 235),
-                                      direction=direction)
+    def make_on_paint(window, direction):
+      def on_paint(event):
+        dc = wx.PaintDC(window)
+        dc.FillWith3DGradient(window.ClientRect,
+                              colour=wx.Colour(237, 237, 235),
+                              direction=direction)
+        del dc
+      return on_paint
+    make_on_paint = staticmethod(make_on_paint)
 
   gradient_test_frame = GradientTestFrame()
 
+
   class InspectorHeaderTestFrame(wx.Frame):
+
     def __init__(self):
       super(InspectorHeaderTestFrame, self).__init__(None, pos=(300,-1))
       box = wx.BoxSizer(wx.VERTICAL)
@@ -301,17 +311,19 @@ if __name__ == '__main__':
   w1.Fit()
   a.SetTopWindow(w1)
 
-  w = InspectorToolFrame(w1)
+  w = InspectorToolFrame(w1, pos=(100, 500))
 
   i1 = Inspector(w, label="Header")
   def f():
     print "Click in 'Header'"
   i1.on_click_in_header = f
   pane = i1.GetPane()
+  top = wx.BoxSizer(wx.VERTICAL)
   s = wx.BoxSizer(wx.HORIZONTAL)
   s.Add(wx.Button(pane, label="Click me!"))
   s.Add(wx.CheckBox(pane, label="Check me!"))
-  pane.SetSizer(s)
+  top.Add(s, flag=wx.ALL, border=5)
+  pane.SetSizer(top)
 
   i2 = Inspector(w, label="Longer header")
   def g():
