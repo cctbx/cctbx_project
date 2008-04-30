@@ -20,6 +20,7 @@ namespace {
       class_<w_t>("scatterer_flags", no_init)
         .def(init<>())
         .def(init<w_t const&>()) // copy constructor
+        .def("implies", &w_t::implies)
         .def("use", &w_t::use)
         .def("use_u_iso", &w_t::use_u_iso)
         .def("use_u_aniso", &w_t::use_u_aniso)

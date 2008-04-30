@@ -113,6 +113,20 @@ def exercise_scatterer_flags():
     assert f.tan_u_iso()                == state
     assert f.param                      == 42
 
+  f1 = xray.scatterer_flags()
+  f1.set_grad_site(True)
+  f1.set_grad_u_aniso(True)
+  f1.set_grad_fp(True)
+  f2 = xray.scatterer_flags()
+  assert f2.implies(f1)
+  f2.set_grad_site(True)
+  f2.set_grad_u_aniso(True)
+  f2.set_grad_fp(True)
+  assert f2.implies(f1)
+  f2.set_grad_u_iso(True)
+  assert not f2.implies(f1)
+
+
 def exercise_set_scatterer_grad_flags():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))
   y = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=1.0)
