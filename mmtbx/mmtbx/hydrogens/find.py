@@ -115,7 +115,8 @@ def extract_hoh_peaks(peaks, pdb_hierarchy, pdb_atoms, xray_structure):
   for i_seq in o_i_seq_ag:
     o_i_seq_i_peak[i_seq] = []
   for i_peak,i_seq in enumerate(peaks.iseqs_of_closest_atoms):
-    o_i_seq_i_peak[i_seq].append(i_peak)
+    if(o_i_seq_i_peak.get(i_seq) is not None):
+      o_i_seq_i_peak[i_seq].append(i_peak)
   for i_seq,ag in o_i_seq_ag.items():
     ag_atoms = ag.atoms()
     assert ag_atoms.size() == 3

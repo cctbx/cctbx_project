@@ -675,11 +675,8 @@ class manager(object):
     if(refine_adp == "isotropic"):
       solvent_xray_structure.convert_to_isotropic()
     elif(refine_adp == "anisotropic"):
-      occ = solvent_xray_structure.scatterers().extract_occupancies()
-      occ_sel_iso = (occ < 0.5)
-      solvent_xray_structure.convert_to_anisotropic(selection = ~occ_sel_iso)
-      solvent_xray_structure.convert_to_isotropic(selection =
-        occ_sel_iso.iselection())
+      solvent_xray_structure.convert_to_anisotropic(selection =
+        ~solvent_xray_structure.hd_selection())
     else: raise RuntimeError
     ms = self.xray_structure.scatterers().size() #
     self.xray_structure = \
