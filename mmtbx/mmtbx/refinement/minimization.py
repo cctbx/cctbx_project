@@ -89,10 +89,10 @@ class lbfgs(object):
   def apply_shifts(self):
     # XXX inefficient
     if(self.refine_adp):
-       sel = self.x < self.u_min
-       if(sel.count(True) > 0): self.x.set_selected(sel, self.u_min)
-       sel = self.x > self.u_max
-       if(sel.count(True) > 0): self.x.set_selected(sel, self.u_max)
+      sel = self.x < self.u_min
+      if(sel.count(True) > 0): self.x.set_selected(sel, self.u_min)
+      sel = self.x > self.u_max
+      if(sel.count(True) > 0): self.x.set_selected(sel, self.u_max)
     # XXX inefficient
     apply_shifts_result = xray.ext.minimization_apply_shifts(
                               unit_cell      = self.xray_structure.unit_cell(),
@@ -100,17 +100,17 @@ class lbfgs(object):
                               shifts         = self.x)
     scatterers_shifted = apply_shifts_result.shifted_scatterers
     if(self.refine_xyz):
-       site_symmetry_table = self.xray_structure.site_symmetry_table()
-       for i_seq in site_symmetry_table.special_position_indices():
-         scatterers_shifted[i_seq].site = crystal.correct_special_position(
-                crystal_symmetry = self.xray_structure,
-                special_op       = site_symmetry_table.get(i_seq).special_op(),
-                site_frac        = scatterers_shifted[i_seq].site)
+      site_symmetry_table = self.xray_structure.site_symmetry_table()
+      for i_seq in site_symmetry_table.special_position_indices():
+        scatterers_shifted[i_seq].site = crystal.correct_special_position(
+               crystal_symmetry = self.xray_structure,
+               special_op       = site_symmetry_table.get(i_seq).special_op(),
+               site_frac        = scatterers_shifted[i_seq].site)
     self.xray_structure.replace_scatterers(scatterers = scatterers_shifted)
     if(self.refine_adp):
-       return apply_shifts_result.u_iso_refinable_params
+      return apply_shifts_result.u_iso_refinable_params
     else:
-       return None
+      return None
 
   def compute_target(self, compute_gradients, u_iso_refinable_params):
     self.stereochemistry_residuals = None
