@@ -334,6 +334,9 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 2)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      format_atom_record_overloads, format_atom_record, 0, 1)
+
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       format_atom_record_group_overloads, format_atom_record_group, 0, 4)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(quote_overloads, quote, 0, 1)
@@ -376,6 +379,12 @@ namespace {
         .def("id_str", &w_t::id_str, id_str_overloads((
           arg_("pdbres")=false,
           arg_("suppress_segid")=false)))
+        .def("format_atom_record", &w_t::format_atom_record,
+          format_atom_record_overloads((
+            arg_("replace_floats_with")=0)))
+        .def("format_sigatm_record", &w_t::format_sigatm_record)
+        .def("format_anisou_record", &w_t::format_anisou_record)
+        .def("format_siguij_record", &w_t::format_siguij_record)
         .def("format_atom_record_group", &w_t::format_atom_record_group,
           format_atom_record_group_overloads((
             arg_("atom_hetatm")=true,
