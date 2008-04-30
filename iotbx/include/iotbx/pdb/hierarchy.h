@@ -1557,6 +1557,19 @@ namespace hierarchy {
       id_str(bool pdbres=false, bool suppress_segid=false) const;
 
       std::string
+      format_atom_record(
+        const char* replace_floats_with=0) const;
+
+      std::string
+      format_sigatm_record() const;
+
+      std::string
+      format_anisou_record() const;
+
+      std::string
+      format_siguij_record() const;
+
+      std::string
       format_atom_record_group(
         bool atom_hetatm=true,
         bool sigatm=true,

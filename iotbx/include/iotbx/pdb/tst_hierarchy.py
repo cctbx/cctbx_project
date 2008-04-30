@@ -4651,6 +4651,10 @@ END
 
 def exercise_atom_with_labels():
   awl = pdb.hierarchy.atom_with_labels()
+  assert not show_diff(awl.format_atom_record(), """\
+ATOM                             0.000   0.000   0.000  0.00  0.00""")
+  assert not show_diff(awl.format_atom_record(replace_floats_with="#"), """\
+ATOM                       #        """)
   assert not show_diff(awl.format_atom_record_group(), """\
 ATOM                             0.000   0.000   0.000  0.00  0.00""")
   assert awl.serial == ""
@@ -4683,6 +4687,8 @@ ATOM                             0.000   0.000   0.000  0.00  0.00""")
   assert awl.is_first_after_break
   assert not show_diff(awl.format_atom_record_group(), """\
 ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
+  assert not show_diff(awl.format_atom_record(), """\
+ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
   assert not show_diff(awl.quote(), '''\
 "ATOM  12345 NaMelrNmChABCDI.*.        "''')
   assert not show_diff(awl.quote(full=True), '''\
@@ -4690,13 +4696,21 @@ ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
   awl.sigxyz = (0.1,0.2,0.3)
   awl.uij = (1,2,3,0.1,0.2,0.3)
   awl.siguij = (3,1,2,0.3,0.1,0.2)
+  assert not show_diff(awl.format_sigatm_record(), """\
+SIGATM12345 NaMelrNmChABCDI      0.100   0.200   0.300  0.00  0.00""")
+  assert not show_diff(awl.format_anisou_record(), """\
+ANISOU12345 NaMelrNmChABCDI   10000  20000  30000   1000   2000   3000""")
   if (pdb.hierarchy.atom.has_siguij()):
+    assert not show_diff(awl.format_siguij_record(), """\
+SIGUIJ12345 NaMelrNmChABCDI   30000  10000  20000   3000   1000   2000""")
     assert not show_diff(awl.format_atom_record_group(), """\
 ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00
 SIGATM12345 NaMelrNmChABCDI      0.100   0.200   0.300  0.00  0.00
 ANISOU12345 NaMelrNmChABCDI   10000  20000  30000   1000   2000   3000
 SIGUIJ12345 NaMelrNmChABCDI   30000  10000  20000   3000   1000   2000""")
   else:
+    assert not show_diff(awl.format_siguij_record(), """\
+SIGUIJ12345 NaMelrNmChABCDI  -10000 -10000 -10000 -10000 -10000 -10000""")
     assert not show_diff(awl.format_atom_record_group(), """\
 ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00
 SIGATM12345 NaMelrNmChABCDI      0.100   0.200   0.300  0.00  0.00
@@ -4747,16 +4761,17 @@ ENDMDL
 """))
   hierarchy = pdb_inp.construct_hierarchy()
   for obj in [hierarchy, pdb_inp]:
-    sio = StringIO()
-    for awl in obj.atoms_with_labels():
-      assert awl.parent() is not None
-      awlc = awl.detached_copy()
-      assert awlc.parent() is None
-      print >> sio, awl.format_atom_record_group(), \
-        int(awl.is_first_in_chain), \
-        int(awl.is_first_after_break), \
-        awl.model_id
-    assert not show_diff(sio.getvalue(), """\
+    for fmt in ["format_atom_record_group", "format_atom_record_group"]:
+      sio = StringIO()
+      for awl in obj.atoms_with_labels():
+        assert awl.parent() is not None
+        awlc = awl.detached_copy()
+        assert awlc.parent() is None
+        print >> sio, getattr(awl, fmt)(), \
+          int(awl.is_first_in_chain), \
+          int(awl.is_first_after_break), \
+          awl.model_id
+      assert not show_diff(sio.getvalue(), """\
 ATOM      1  C   MET A   1       0.000   0.000   0.000  0.00  0.00 1 0    0
 ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0    0
 ATOM      3  N   GLY A   2       0.000   0.000   0.000  0.00  0.00 0 1    0

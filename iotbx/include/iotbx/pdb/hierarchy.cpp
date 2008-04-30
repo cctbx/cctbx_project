@@ -808,6 +808,36 @@ namespace {
     return format_atom_record_segid_element_charge_columns(result, 72U, 70U);
   }
 
+  std::string
+  atom_with_labels::format_atom_record(
+    const char* replace_floats_with) const
+  {
+    char result[81];
+    atom_label_columns_formatter label_formatter;
+    atom_with_labels_init_label_formatter(*this, label_formatter);
+    unsigned str_len = atom::format_atom_record(
+      result, &label_formatter, replace_floats_with);
+    return std::string(result, str_len);
+  }
+
+#define IOTBX_LOC(type) \
+  std::string \
+  atom_with_labels::format_##type##_record() const \
+  { \
+    char result[81]; \
+    atom_label_columns_formatter label_formatter; \
+    atom_with_labels_init_label_formatter(*this, label_formatter); \
+    unsigned str_len = atom::format_##type##_record( \
+      result, &label_formatter); \
+    return std::string(result, str_len); \
+  }
+
+  IOTBX_LOC(sigatm)
+  IOTBX_LOC(anisou)
+  IOTBX_LOC(siguij)
+
+#undef IOTBX_LOC
+
   unsigned
   atom::format_atom_record_group(
     char* result,
@@ -876,7 +906,7 @@ namespace {
     atom_label_columns_formatter label_formatter;
     atom_with_labels_init_label_formatter(*this, label_formatter);
     result[0] = '"';
-    unsigned str_len = format_atom_record(
+    unsigned str_len = atom::format_atom_record(
       result+1,
       &label_formatter,
       /* replace_floats_with */ (full ? 0 : ".*."));
@@ -1847,7 +1877,7 @@ namespace {
   atom_with_labels::detached_copy() const
   {
     return atom_with_labels(
-      static_cast<atom>(*this).detached_copy(),
+      atom::detached_copy(),
       model_id.c_str(),
       chain_id.c_str(),
       resseq.elems,
