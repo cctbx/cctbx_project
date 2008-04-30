@@ -98,6 +98,9 @@ master_params = iotbx.phil.parse("""\
   ignore_final_filtering_step = False
     .type = bool
     .expert_level=2
+  correct_drifted_waters = True
+    .type = bool
+    .expert_level=2
 """)
 
 class water_ids(object):
@@ -148,11 +151,8 @@ class manager(object):
       if(self.params.filter_at_start):
         self.filter_solvent()
         self.show(message = "Filtered:")
-      #if(self.params.secondary_map_type is not None):
-      #  self.find_peaks_2fofc()
-      #  self.show(message = "2Fo-Fc map selection:")
     #
-    if(not self.filter_only):
+    if(not self.filter_only and self.params.correct_drifted_waters):
       self.correct_drifted_waters(map_cutoff = self.params.secondary_map_cutoff)
     #
     for i in xrange(self.params.n_cycles):
@@ -178,11 +178,6 @@ class manager(object):
       selection_iso = self.model.solvent_selection().deep_copy()
       selection_aniso.set_selected(self.model.xray_structure.hd_selection(),
         False)
-      #
-      scatterers = self.model.xray_structure.scatterers()
-      occ = scatterers.extract_occupancies()
-      occ_sel = occ < 0.5
-      selection_aniso.set_selected(occ_sel, False)
       selection_iso.set_selected(selection_aniso, False)
       selection_iso.set_selected(self.model.xray_structure.hd_selection(), True)
       #
@@ -235,15 +230,18 @@ class manager(object):
     selection &= b_isos <= self.params.b_iso_max
     selection &= occ >= self.params.occupancy_min
     selection &= occ <= self.params.occupancy_max
-    selection &= anisotropy > self.params.anisotropy_min
+    # XXX selection &= anisotropy > self.params.anisotropy_min
     selection.set_selected(hd_sel, True)
     selection.set_selected(~sol_sel, True)
     # ISOR
-    #anisosel = anisotropy_sol > self.params.anisotropy_min
-    #self.model.xray_structure.convert_to_isotropic(selection =
-    #  anisosel.iselection())
-    #self.model.xray_structure.convert_to_anisotropic(selection =
-    #  anisosel.iselection())
+    anisosel = anisotropy < self.params.anisotropy_min
+    anisosel.set_selected(hd_sel, False)
+    anisosel.set_selected(~sol_sel, False)
+    self.model.xray_structure.convert_to_isotropic(selection =
+      anisosel.iselection())
+    self.model.xray_structure.convert_to_anisotropic(selection =
+      anisosel.iselection())
+    #
     xht = self.model.xh_connectivity_table()
     if(xht is not None):
       for ti in xht:
@@ -434,11 +432,6 @@ class manager(object):
         selection_iso = self.model.solvent_selection().deep_copy()
         selection_aniso.set_selected(self.model.xray_structure.hd_selection(),
           False)
-        #
-        scatterers = self.model.xray_structure.scatterers()
-        occ = scatterers.extract_occupancies()
-        occ_sel = occ < 0.5
-        selection_aniso.set_selected(occ_sel, False)
         selection_iso.set_selected(selection_aniso, False)
         selection_iso.set_selected(self.model.xray_structure.hd_selection(),
           False)
