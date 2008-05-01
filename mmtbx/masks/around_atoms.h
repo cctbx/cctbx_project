@@ -5,10 +5,13 @@
 #ifndef MMTBX_MASKS_AROUND_ATOMS_H
 #define MMTBX_MASKS_AROUND_ATOMS_H
 
+#include <mmtbx/error.h>
 #include <cctbx/uctbx.h>
+#include <cctbx/math/mod.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
-#include <mmtbx/error.h>
+#include <map>
+#include <vector>
 
 namespace mmtbx { namespace masks {
 

@@ -17,6 +17,9 @@
 
 #define SCITBX_CHECK_POINT \
   std::cout << __FILE__ << "(" << __LINE__ << ")" << std::endl << std::flush
+#define SCITBX_CHECK_POINT_MSG(msg) \
+  std::cout << msg << " @ " __FILE__ << "(" << __LINE__ << ")" \
+    << std::endl << std::flush
 #define SCITBX_EXAMINE(A) \
   std::cout << "variable " << #A << ": " << A << std::endl << std::flush
 

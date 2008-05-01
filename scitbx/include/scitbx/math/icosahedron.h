@@ -2,6 +2,7 @@
 #define SCITBX_MATH_ICOSAHEDRON_H
 
 #include <scitbx/array_family/shared.h>
+#include <scitbx/vec3.h>
 #include <cmath>
 
 namespace scitbx { namespace math {

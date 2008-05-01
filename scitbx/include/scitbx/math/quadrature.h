@@ -1,14 +1,12 @@
-#ifndef SCITBX_MATH_QUADRATURE
-#define SCITBX_MATH_QUADRATURE
+#ifndef SCITBX_MATH_QUADRATURE_H
+#define SCITBX_MATH_QUADRATURE_H
 
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/ref.h>
+#include <vector>
 
-
-namespace scitbx{
-namespace math{
-namespace quadrature{
+namespace scitbx{ namespace math{ namespace quadrature{
 
   /*  This file deal with approximation the following integral:
    *  Q = \int_{-\infty}^{\infty} exp(-x^2) f(x)
@@ -737,7 +735,6 @@ namespace quadrature{
 
   };
 
+}}} // namespace scitbx::math::quadrature
 
-
-}}}
-#endif
+#endif // SCITBX_MATH_QUADRATURE_H

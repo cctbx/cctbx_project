@@ -1,8 +1,12 @@
 #ifndef CCTBX_XRAY_MINIMIZATION_H
 #define CCTBX_XRAY_MINIMIZATION_H
 
+#include <cctbx/xray/scatterer.h>
+#include <cctbx/uctbx.h>
 #include <cctbx/xray/packing_order.h>
 #include <scitbx/array_family/block_iterator.h>
+#include <scitbx/sym_mat3.h>
+#include <cctbx/import_scitbx_af.h>
 
 namespace cctbx { namespace xray { namespace minimization {
 

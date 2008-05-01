@@ -2,7 +2,9 @@
 #define CCTBX_GEOMETRY_RESTRAINTS_PLANARITY_H
 
 #include <cctbx/geometry_restraints/utils.h>
+#include <scitbx/math/eigensystem.h>
 #include <scitbx/array_family/sort.h>
+#include <scitbx/sym_mat3.h>
 
 namespace cctbx { namespace geometry_restraints {
 

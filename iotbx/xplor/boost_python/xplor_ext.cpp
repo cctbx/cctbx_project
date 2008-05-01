@@ -2,6 +2,7 @@
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/uctbx.h>
 #include <scitbx/array_family/flex_types.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>

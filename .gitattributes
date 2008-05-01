@@ -31,6 +31,7 @@ cctbx/cctbx/regression/tst_show_cosets.py -text
 cctbx/cctbx/regression/tst_weighting_schemes.py -text
 cctbx/cctbx/regression/tst_xray_minimization_failure.py -text
 cctbx/cctbx/sgtbx/show_cosets.py -text
+cctbx/cctbx/source_generators/flex_fwd_h.py -text
 cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
@@ -202,6 +203,7 @@ scitbx/scitbx/iso_surface/iso_surface_ext.cpp -text
 scitbx/scitbx/iso_surface/tst_iso_surface.m -text
 scitbx/scitbx/iso_surface/tst_iso_surface.py -text
 scitbx/scitbx/math/sphere_sphere_intersection.py svneol=native#text/x-python
+scitbx/scitbx/source_generators/flex_fwd_h.py -text
 scitbx/scitbx/sparse/__init__.py -text
 scitbx/scitbx/sparse/boost_python/SConscript -text
 scitbx/scitbx/sparse/boost_python/matrix.cpp -text

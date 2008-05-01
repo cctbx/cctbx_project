@@ -1,10 +1,12 @@
 #ifndef MMTBX_F_MODEL_H
 #define MMTBX_F_MODEL_H
 
-#include <scitbx/array_family/shared.h>
 #include <mmtbx/error.h>
 #include <cctbx/miller.h>
+#include <cctbx/uctbx.h>
 #include <cctbx/xray/targets.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/sym_mat3.h>
 
 using namespace std;
 namespace mmtbx { namespace f_model {

@@ -4,6 +4,7 @@
 #include <scitbx/matrix/move.h>
 #include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/array_family/shared.h>
+#include <vector>
 
 namespace scitbx { namespace matrix { namespace cholesky {
 

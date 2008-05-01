@@ -11,6 +11,8 @@ from cStringIO import StringIO
 import re
 import sys, os
 
+default_write_full_flex_fwd_h = sys.platform.startswith("irix")
+
 def get_hostname():
   try: import socket
   except KeyboardInterrupt: raise
@@ -523,6 +525,7 @@ class environment:
         static_libraries=command_line.options.static_libraries,
         static_exe=command_line.options.static_exe,
         scan_boost=command_line.options.scan_boost,
+        write_full_flex_fwd_h=command_line.options.write_full_flex_fwd_h,
         boost_python_no_py_signatures\
           =command_line.options.boost_python_no_py_signatures)
       if (command_line.options.command_version_suffix is not None):
@@ -1351,6 +1354,7 @@ class build_options:
         static_libraries,
         static_exe,
         scan_boost,
+        write_full_flex_fwd_h=default_write_full_flex_fwd_h,
         build_boost_python_extensions=True,
         boost_python_no_py_signatures=False):
     adopt_init_args(self, locals())
@@ -1371,6 +1375,7 @@ class build_options:
     print >> f, "Static libraries:", self.static_libraries
     print >> f, "Static exe:", self.static_exe
     print >> f, "Scan Boost headers:", self.scan_boost
+    print >> f, "Write full flex_fwd.h files:", self.write_full_flex_fwd_h
     print >> f, "Build Boost.Python extensions:", \
       self.build_boost_python_extensions
     print >> f, "Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
@@ -1485,6 +1490,11 @@ class pre_process_args:
         action="store_true",
         default=False,
         help="enable implicit dependency scan")
+      parser.option(None, "--write_full_flex_fwd_h",
+        action="store_true",
+        default=default_write_full_flex_fwd_h,
+        help="create full flex_fwd.h files to work around platform-specific"
+             " problems (see comments in cctbx.source_generators.flex_fwd_h)")
       parser.option(None, "--command_version_suffix",
         action="store",
         type="string",
@@ -1567,6 +1577,9 @@ def unpickle():
   # XXX backward compatibility 2007-07-28
   if (not hasattr(env.build_options, "boost_python_no_py_signatures")):
     env.build_options.boost_python_no_py_signatures = False
+  # XXX backward compatibility 2008-04-30
+  if (not hasattr(env.build_options, "write_full_flex_fwd_h")):
+    env.build_options.write_full_flex_fwd_h = default_write_full_flex_fwd_h
   return env
 
 def warm_start(args):

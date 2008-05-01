@@ -6,6 +6,7 @@
 #include <scitbx/stl/map_fwd.h>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/args.hpp>
+#include <vector>
 #include <map>
 
 namespace scitbx { namespace af { namespace boost_python {

@@ -10,6 +10,7 @@
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/sym_mat3.h>
 #include <cctbx/error.h>
+#include <cctbx/math/mod.h>
 #include <cctbx/import_scitbx_af.h>
 
 namespace cctbx { namespace maptbx {

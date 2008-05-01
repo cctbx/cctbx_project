@@ -5,6 +5,8 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/make_constructor.hpp>
+#include <vector>
+#include <set>
 #include "flex_helpers.h"
 
 namespace scitbx { namespace af {

@@ -2,6 +2,7 @@
 
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/serialization/single_buffered.h>
+#include <scitbx/sym_mat3.h>
 #include <boost/python/make_constructor.hpp>
 #include <boost/python/return_arg.hpp>
 

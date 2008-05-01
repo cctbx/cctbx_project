@@ -4,6 +4,7 @@
 #include <cctbx/crystal/neighbors_fast.h>
 #include <boost/scoped_array.hpp>
 #include <map>
+#include <set>
 
 namespace cctbx { namespace crystal {
 

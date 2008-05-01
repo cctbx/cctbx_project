@@ -1,6 +1,9 @@
 #ifndef CCTBX_MAPTBX_GENERIC_GRID_H
 #define CCTBX_MAPTBX_GENERIC_GRID_H
 
+#include <cctbx/import_scitbx_af.h>
+#include <scitbx/array_family/accessors/c_grid_padded.h>
+
 namespace cctbx {
 
 namespace maptbx {
