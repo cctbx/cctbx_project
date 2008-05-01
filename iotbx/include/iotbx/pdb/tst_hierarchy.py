@@ -669,8 +669,8 @@ ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-TER
-%s""" % siguij_2_line)
+%sTER
+""" % siguij_2_line)
   atoms[0].set_uij((6,3,8,2,9,1))
   siguij_0_line = ""
   if (pdb.hierarchy.atom.has_siguij()):
@@ -687,8 +687,8 @@ ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
-TER
-%s""" % (siguij_0_line, siguij_2_line))
+%sTER
+""" % (siguij_0_line, siguij_2_line))
   sio = StringIO()
   assert r.as_pdb_string(cstringio=sio, interleaved_conf=1) is sio
   assert r.as_pdb_string(cstringio=sio, interleaved_conf=2) is sio
