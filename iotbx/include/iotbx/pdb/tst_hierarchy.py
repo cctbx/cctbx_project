@@ -4313,6 +4313,22 @@ def check_wpf(hierarchy, kwargs={}, trailing=None, expected=None):
   pdb_file = open("tmp.pdb").read()
   if (trailing is not None): pdb_file = pdb_file.replace(trailing, "")
   assert not show_diff(pdb_file, pdb_str)
+  #
+  pdb_inp = pdb.input(file_name="tmp.pdb")
+  assert pdb_inp.atoms().size() == hierarchy.atoms_size()
+  kwargs = dict(kwargs)
+  for discard in ["atoms_reset_serial_first_value", "interleaved_conf"]:
+    if (discard in kwargs): del kwargs[discard]
+  pdb_inp.write_pdb_file(file_name="tmp2.pdb", **kwargs)
+  pdb_str2 = pdb_inp.as_pdb_string(**kwargs)
+  assert not show_diff(open("tmp2.pdb").read(), pdb_str2)
+  pdb_inp2 = pdb.input(file_name="tmp2.pdb")
+  assert pdb_inp2.atoms().size() == pdb_inp.atoms().size()
+  assert pdb_inp.extract_cryst1_z_columns() \
+      == pdb_inp2.extract_cryst1_z_columns()
+  if ("cryst1_z" in kwargs):
+    assert pdb_inp.extract_cryst1_z_columns() == ("%4s" % kwargs["cryst1_z"])
+  #
   return pdb_str
 
 def exercise_atoms_interleaved_conf():
@@ -4486,10 +4502,12 @@ ATOM    146  C8 ADA7  3015       9.021 -13.845  22.131  0.50 26.57           C
   hierarchy = pdb_inp.construct_hierarchy()
   check_wpf(hierarchy, expected=pdb_string+"TER\n")
   rem = "REMARK EXERCISE"
-  print >> open("tmp.pdb", "w"), rem
-  hierarchy.write_pdb_file(
-    file_name="tmp.pdb", open_append=True, append_end=True)
-  assert not show_diff(open("tmp.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
+  for obj in [pdb_inp, hierarchy]:
+    print >> open("tmp.pdb", "w"), rem
+    obj.write_pdb_file(
+      file_name="tmp.pdb", open_append=True, append_end=True)
+    assert not show_diff(
+      open("tmp.pdb").read(), rem+"\n"+pdb_string+"TER\nEND\n")
   check_wpf(
     hierarchy,
     kwargs={"crystal_symmetry": (2,3,4,80,90,100), "cryst1_z": 5},
@@ -4505,13 +4523,14 @@ SCALE3      0.000000  0.000000  0.253979        0.00000
     expected="""\
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           7
 """ + pdb_string+"TER\n")
-  print >> open("tmp.pdb", "w"), rem
-  hierarchy.write_pdb_file(
-    file_name="tmp.pdb",
-    cryst1_z="",
-    write_scale_records=False,
-    open_append=True)
-  assert not show_diff(open("tmp.pdb").read(), rem + """
+  for obj in [pdb_inp, hierarchy]:
+    print >> open("tmp.pdb", "w"), rem
+    obj.write_pdb_file(
+      file_name="tmp.pdb",
+      cryst1_z="",
+      write_scale_records=False,
+      open_append=True)
+    assert not show_diff(open("tmp.pdb").read(), rem + """
 CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 """ + pdb_string+"TER\n")
   #
@@ -4611,7 +4630,7 @@ END
     return
   prev_file_name = None
   for file_name in pdb_file_names:
-    if (not comprehensive and random.random() > 0.1):
+    if (not comprehensive and random.random() > 0.05):
       continue
     pdb_inp_1 = pdb.input(file_name=file_name)
     hierarchy_1 = pdb_inp_1.construct_hierarchy()
@@ -4781,6 +4800,30 @@ ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00 0 0    1
 ATOM      3  N   ALA B   2       0.000   0.000   0.000  0.00  0.00 1 0    1
 ATOM      4  CA AALA B   2       0.000   0.000   0.000  0.00  0.00 0 0    1
 """)
+  #
+  expected = """\
+MODEL        0
+ATOM      1  C   MET A   1       0.000   0.000   0.000  0.00  0.00
+ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00
+BREAK
+ATOM      3  N   GLY A   2       0.000   0.000   0.000  0.00  0.00
+ATOM      4  CA AGLY A   2       0.000   0.000   0.000  0.00  0.00
+TER
+ENDMDL
+MODEL        1
+ATOM      1  N   MET A   1       0.000   0.000   0.000  0.00  0.00
+ATOM      2  CA AMET A   1       0.000   0.000   0.000  0.00  0.00
+TER
+ATOM      3  N   ALA B   2       0.000   0.000   0.000  0.00  0.00
+ATOM      4  CA AALA B   2       0.000   0.000   0.000  0.00  0.00
+TER
+ENDMDL
+"""
+  for append_end in [False, True]:
+    if (append_end): expected += "END\n"
+    assert not show_diff(pdb_inp.as_pdb_string(append_end=append_end),expected)
+    pdb_inp.write_pdb_file(file_name="tmp.pdb", append_end=append_end)
+    assert not show_diff(open("tmp.pdb").read(), expected)
 
 def exercise_transfer_chains_from_other():
   atoms_x = """\

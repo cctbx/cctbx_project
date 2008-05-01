@@ -17,6 +17,7 @@ from libtbx.math_utils import iround
 from libtbx.str_utils import show_string, show_sorted_by_counts
 from libtbx.utils import plural_s, Sorry, hashlib_md5, date_and_time
 from libtbx import Auto
+from cStringIO import StringIO
 import sys
 
 def is_pdb_file(file_name):
@@ -415,6 +416,14 @@ class _input(boost.python.injector, ext.input):
         return cryst1_interpretation.crystal_symmetry(cryst1_record=line)
     return None
 
+  def extract_cryst1_z_columns(self):
+    for line in self.crystallographic_section():
+      if (line.startswith("CRYST1")):
+        result = line[66:]
+        if (len(result) < 4): result += " " * (4-len(result))
+        return result
+    return None
+
   def crystal_symmetry_from_cns_remark_sg(self):
     from iotbx.cns import pdb_remarks
     for line in self.remark_section():
@@ -475,6 +484,77 @@ class _input(boost.python.injector, ext.input):
         raise RuntimeError(
           "Incomplete set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
+
+  def as_pdb_string(self,
+        crystal_symmetry=Auto,
+        cryst1_z=Auto,
+        write_scale_records=True,
+        append_end=False,
+        atom_hetatm=True,
+        sigatm=True,
+        anisou=True,
+        siguij=True,
+        cstringio=None,
+        return_cstringio=Auto):
+    if (cstringio is None):
+      cstringio = StringIO()
+      if (return_cstringio is Auto):
+        return_cstringio = False
+    elif (return_cstringio is Auto):
+      return_cstringio = True
+    if (crystal_symmetry is Auto):
+      crystal_symmetry = self.crystal_symmetry()
+    if (cryst1_z is Auto):
+      cryst1_z = self.extract_cryst1_z_columns()
+    if (crystal_symmetry is not None or cryst1_z is not None):
+      from iotbx.pdb import format_cryst1_and_scale_records
+      print >> cstringio, format_cryst1_and_scale_records(
+        crystal_symmetry=crystal_symmetry,
+        cryst1_z=cryst1_z,
+        write_scale_records=write_scale_records)
+    self._as_pdb_string_cstringio(
+      cstringio=cstringio,
+      append_end=append_end,
+      atom_hetatm=atom_hetatm,
+      sigatm=sigatm,
+      anisou=anisou,
+      siguij=siguij)
+    if (return_cstringio):
+      return cstringio
+    return cstringio.getvalue()
+
+  def write_pdb_file(self,
+        file_name,
+        open_append=False,
+        crystal_symmetry=Auto,
+        cryst1_z=Auto,
+        write_scale_records=True,
+        append_end=False,
+        atom_hetatm=True,
+        sigatm=True,
+        anisou=True,
+        siguij=True):
+    if (crystal_symmetry is Auto):
+      crystal_symmetry = self.crystal_symmetry()
+    if (cryst1_z is Auto):
+      cryst1_z = self.extract_cryst1_z_columns()
+    if (crystal_symmetry is not None or cryst1_z is not None):
+      from iotbx.pdb import format_cryst1_and_scale_records
+      if (open_append): mode = "ab"
+      else:             mode = "wb"
+      print >> open(file_name, mode), format_cryst1_and_scale_records(
+        crystal_symmetry=crystal_symmetry,
+        cryst1_z=cryst1_z,
+        write_scale_records=write_scale_records)
+      open_append = True
+    self._write_pdb_file(
+      file_name=file_name,
+      open_append=open_append,
+      append_end=append_end,
+      atom_hetatm=atom_hetatm,
+      sigatm=sigatm,
+      anisou=anisou,
+      siguij=siguij)
 
   def xray_structure_simple(self,
         crystal_symmetry=None,

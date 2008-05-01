@@ -9,6 +9,7 @@
 #include <boost/python/dict.hpp>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <iotbx/pdb/input.h>
+#include <iotbx/pdb/write_utils_bpl.h>
 
 namespace iotbx { namespace pdb {
 namespace {
@@ -80,6 +81,27 @@ namespace {
       return result;
     }
 
+    static void
+    as_pdb_string_cstringio(
+      w_t const& self,
+      boost::python::object cstringio,
+      bool append_end=false,
+      bool atom_hetatm=true,
+      bool sigatm=true,
+      bool anisou=true,
+      bool siguij=true)
+    {
+      write_utils::cstringio_write write(cstringio.ptr());
+      input_as_pdb_string(
+        write,
+        self,
+        append_end,
+        atom_hetatm,
+        sigatm,
+        anisou,
+        siguij);
+    }
+
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       construct_hierarchy_overloads, construct_hierarchy, 0, 1)
 
@@ -124,6 +146,22 @@ namespace {
         .def("connectivity_section", &w_t::connectivity_section, rbv())
         .def("bookkeeping_section", &w_t::bookkeeping_section, rbv())
         .def("model_atom_counts", &w_t::model_atom_counts)
+        .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (
+          arg_("self"),
+          arg_("cstringio"),
+          arg_("append_end"),
+          arg_("atom_hetatm"),
+          arg_("sigatm"),
+          arg_("anisou"),
+          arg_("siguij")))
+        .def("_write_pdb_file", &w_t::write_pdb_file, (
+          arg_("file_name"),
+          arg_("open_append"),
+          arg_("append_end"),
+          arg_("atom_hetatm"),
+          arg_("sigatm"),
+          arg_("anisou"),
+          arg_("siguij")))
         .def("construct_hierarchy", &w_t::construct_hierarchy,
           construct_hierarchy_overloads((
             arg_("residue_group_post_processing")=true)))
@@ -134,6 +172,7 @@ namespace {
   void
   wrap_input_impl()
   {
+    PycString_IMPORT;
     columns_73_76_evaluator_wrappers::wrap();
     input_atom_labels_wrappers::wrap();
     input_wrappers::wrap();
