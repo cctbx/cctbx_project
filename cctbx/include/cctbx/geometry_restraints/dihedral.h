@@ -2,6 +2,7 @@
 #define CCTBX_GEOMETRY_RESTRAINTS_DIHEDRAL_H
 
 #include <cctbx/geometry_restraints/utils.h>
+#include <scitbx/constants.h>
 
 namespace cctbx { namespace geometry_restraints {
 

@@ -1,8 +1,35 @@
+from scitbx.source_generators.utils import join_open
+from scitbx.source_generators.utils import write_this_is_auto_generated
+import libtbx.load_env
+
+this = "cctbx.source_generators.flex_fwd_h"
+
+motivation = """\
+/* The declarations in this file facilitate cross-module functionality
+   on platforms that do not support comparison of type expressions
+   across dynamically loaded library boundaries. On such platforms
+   Boost.Python uses type_id::name() for comparing type expressions.
+   For a given type, with some compilers (e.g. some EDG based
+   compilers) the result of type_id::name() depends on the first type
+   expression encountered in a translation unit. To ensure that
+   type_id::name() produces the same result in all translation
+   units, this file should be included at the top of all Boost.Python
+   extension modules that involve the types in the function
+   signatures below.
+ */
+"""
+
+common_code = """\
 #ifndef SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 #define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
 
 #include <boost/python/detail/prefix.hpp>
 
+%s#endif // SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
+"""
+
+full_code = """\
+%s
 #include <complex>
 #include <vector>
 #include <set>
@@ -29,19 +56,6 @@ namespace scitbx { namespace boost_python {
 #include <boost_adaptbx/optional_fwd.h>
 
 #if defined(__sgi) && !defined(__GNUC__)
-
-/* The declarations in this file facilitate cross-module functionality
-   on platforms that do not support comparison of type expressions
-   across dynamically loaded library boundaries. On such platforms
-   Boost.Python uses type_id::name() for comparing type expressions.
-   For a given type, with some compilers (e.g. some EDG based
-   compilers) the result of type_id::name() depends on the first type
-   expression encountered in a translation unit. To ensure that
-   type_id::name() produces the same result in all translation
-   units, this file should be included at the top of all Boost.Python
-   extension modules that involve the types in the function
-   signatures below.
- */
 
 namespace scitbx { namespace af { namespace boost_python {
 
@@ -100,4 +114,19 @@ namespace scitbx { namespace af { namespace boost_python {
 
 #endif // defined(__sgi) && !defined(__GNUC__)
 
-#endif // SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_H
+"""
+
+def write(this, target_dir, common_code, full_code):
+  f = join_open(target_dir, "flex_fwd.h", "w")
+  write_this_is_auto_generated(f, this)
+  if (libtbx.env.build_options.write_full_flex_fwd_h):
+    code = full_code % motivation
+  else:
+    code = ""
+  f.write(common_code % code)
+
+def run(target_dir):
+  write(this, target_dir, common_code, full_code)
+
+if (__name__ == "__main__"):
+  run(".")

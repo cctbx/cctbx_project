@@ -38,7 +38,7 @@ def adopt_init_args(obj, args, exclude=(), hide=False):
       _key = "_" + key
       assert not hasattr(obj.__dict__, _key)
       obj.__dict__[_key] = args[key]
-      
+
 def adopt_optional_init_args(obj, kwds):
   """\
   Description:
@@ -51,7 +51,7 @@ def adopt_optional_init_args(obj, kwds):
         self.x = x
         self.y = y
         adopt_optional_init_args(self, kwds)
-        
+
     a = foo(x,y)
     assert a.z == 1
     a = foo(x,y, z=10)

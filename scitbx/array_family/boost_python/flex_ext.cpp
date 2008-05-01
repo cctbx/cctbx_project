@@ -5,7 +5,9 @@
 #include <scitbx/misc/fill_ranges.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/sym_mat2.h>
+#include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/tiny_types.h>
+#include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
@@ -17,6 +19,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <vector>
 
 namespace scitbx { namespace af { namespace boost_python {
 

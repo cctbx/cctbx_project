@@ -3,6 +3,7 @@
 
 #include <cctbx/geometry_restraints/asu_cache.h>
 #include <cctbx/geometry_restraints/sorted_asu_proxies.h>
+#include <set>
 
 namespace cctbx { namespace geometry_restraints {
 

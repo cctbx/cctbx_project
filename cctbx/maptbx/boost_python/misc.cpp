@@ -1,5 +1,8 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <cctbx/import_scitbx_af.h>
+#include <scitbx/array_family/versa.h>
+#include <scitbx/array_family/accessors/flex_grid.h>
 #include <boost/python/def.hpp>
 
 namespace cctbx { namespace maptbx { namespace boost_python {

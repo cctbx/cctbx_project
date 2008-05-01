@@ -3,6 +3,7 @@
 
 #include <scitbx/array_family/block_iterator.h>
 #include <scitbx/sym_mat3.h>
+#include <cctbx/xray/scatterer.h>
 #include <cctbx/xray/packing_order.h>
 #include <cctbx/sgtbx/site_symmetry_table.h>
 #include <cctbx/coordinates.h>

@@ -1,3 +1,8 @@
+from scitbx.source_generators.flex_fwd_h import write
+
+this = "cctbx.source_generators.flex_fwd_h"
+
+common_code = """\
 #ifndef CCTBX_BOOST_PYTHON_FLEX_FWD_H
 #define CCTBX_BOOST_PYTHON_FLEX_FWD_H
 
@@ -10,6 +15,11 @@
 #include <boost/python/def.hpp>
 #endif
 
+%s#endif // CCTBX_BOOST_PYTHON_FLEX_FWD_H
+"""
+
+full_code = """\
+%s
 #include <cctbx/maptbx/accessors/c_grid_p1.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/miller.h>
@@ -54,4 +64,10 @@ namespace cctbx { namespace boost_python {
 
 #endif // defined(__sgi) && !defined(__GNUC__)
 
-#endif // CCTBX_BOOST_PYTHON_FLEX_FWD_H
+"""
+
+def run(target_dir):
+  write(this, target_dir, common_code, full_code)
+
+if (__name__ == "__main__"):
+  run(".")

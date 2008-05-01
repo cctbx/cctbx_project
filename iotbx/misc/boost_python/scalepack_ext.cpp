@@ -1,6 +1,9 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
+
 #include <cctbx/miller.h>
 #include <cctbx/error.h>
+#include <cctbx/import_scitbx_af.h>
+#include <scitbx/array_family/shared.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <fstream>

@@ -1,6 +1,10 @@
 #ifndef SCITBX_MATH_HALTON_H
 #define SCITBX_MATH_HALTON_H
 
+#include <scitbx/array_family/shared.h>
+#include <scitbx/error.h>
+#include <vector>
+
 namespace scitbx{ namespace math {
 namespace halton {
 
@@ -124,9 +128,6 @@ namespace halton {
     halton<FloatType> halton_;
   };
 
-
-
 }}} //scitbx::math::halton
-
 
 #endif // SCITBX_MATH_HALTON_H

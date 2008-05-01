@@ -1,13 +1,14 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/sgtbx/sym_equiv_sites.h>
+#include <cctbx/import_scitbx_af.h>
 #include <scitbx/boost_python/is_polymorphic_workaround.h>
-#include <vector>
-
+#include <scitbx/array_family/versa.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <vector>
 
 namespace cctbx { namespace boost_python { namespace emma_ext {
 

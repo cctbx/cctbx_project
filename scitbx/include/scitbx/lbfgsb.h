@@ -6,6 +6,7 @@
 #endif
 
 #include <scitbx/lbfgsb/raw.h>
+#include <scitbx/array_family/shared.h>
 
 namespace scitbx {
 

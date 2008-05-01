@@ -1,15 +1,16 @@
 #ifndef CCTBX_XRAY_TARGETS_H
 #define CCTBX_XRAY_TARGETS_H
 
-#include <scitbx/array_family/shared.h>
+#include <cctbx/hendrickson_lattman.h>
 #include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
-#include <complex>
-#include <cmath>
 #include <scitbx/math/bessel.h>
-#include <cctbx/hendrickson_lattman.h>
+#include <scitbx/math/utils.h>
+#include <scitbx/array_family/shared.h>
 #include <boost/scoped_array.hpp>
 #include <boost/optional.hpp>
+#include <complex>
+#include <cmath>
 
 namespace cctbx { namespace xray {
 

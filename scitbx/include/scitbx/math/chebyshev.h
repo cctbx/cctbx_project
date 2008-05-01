@@ -1,11 +1,12 @@
 #ifndef SCITBX_MATH_CHEBYSHEV_H
 #define SCITBX_MATH_CHEBYSHEV_H
 
+#include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/ref.h>
 #include <scitbx/math/floating_point_epsilon.h>
 #include <scitbx/constants.h>
 #include <cmath>
 #include <cstdio>
-#include <iostream>
 
 namespace scitbx { namespace math {
 namespace chebyshev{
@@ -130,7 +131,6 @@ namespace chebyshev{
     f_t epsilon;
     epsilon = 1.0E-12;
     f_t result=0;
-    //std::cout << low_limit_ << " " << high_limit_ << std::endl;
     result = (x_in - (low_limit_ + high_limit_)*0.5)
       / (0.5*(high_limit_ - low_limit_));
     SCITBX_ASSERT (result<=1+epsilon);

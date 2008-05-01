@@ -2,7 +2,9 @@
 #define SCITBX_MATH_BASIC_STATISTICS_H
 
 #include <scitbx/array_family/misc_functions.h>
+#include <scitbx/array_family/ref.h>
 #include <cmath>
+#include <cstddef>
 
 namespace scitbx { namespace math {
 

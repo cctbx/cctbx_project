@@ -1,5 +1,6 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <cctbx/hendrickson_lattman.h>
 #include <cctbx/miller/merge_equivalents.h>
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>

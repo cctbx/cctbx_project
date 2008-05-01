@@ -2,6 +2,8 @@
 #define CCTBX_MILLER_PHASE_INTEGRATOR_H
 
 #include <cctbx/sgtbx/space_group.h>
+#include <cctbx/hendrickson_lattman.h>
+#include <boost/scoped_array.hpp>
 
 namespace cctbx { namespace miller {
 

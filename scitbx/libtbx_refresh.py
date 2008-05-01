@@ -1,8 +1,12 @@
 from scitbx.source_generators.array_family import generate_all
 from libtbx.utils import warn_if_unexpected_md5_hexdigest
+from scitbx.source_generators import flex_fwd_h
 import os
 
 if (self.env.is_ready_for_build()):
+  message_template = '  Generating C++ files in:\n    "%s"'
+
+  # array_family
   target_dir = self.env.under_build("include/scitbx/array_family/detail")
   if (not os.path.isdir(target_dir)):
     os.makedirs(target_dir)
@@ -20,3 +24,10 @@ if (self.env.is_ready_for_build()):
       "  Files to review:",
       "    scitbx/include/scitbx/random.h",
       "    scitbx/libtbx_refresh.py"])
+
+  # flex_fwd.h
+  target_dir = self.env.under_build("include/scitbx/array_family/boost_python")
+  print message_template % target_dir
+  if not os.path.isdir(target_dir):
+    os.makedirs(target_dir)
+  flex_fwd_h.run(target_dir)

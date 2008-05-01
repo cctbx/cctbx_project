@@ -1,5 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
+#include <cctbx/hendrickson_lattman.h>
+#include <cctbx/error.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/serialization/single_buffered.h>
 #include <boost/python/args.hpp>

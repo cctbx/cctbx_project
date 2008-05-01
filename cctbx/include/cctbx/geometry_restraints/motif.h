@@ -1,6 +1,8 @@
 #ifndef CCTBX_GEOMETRY_RESTRAINTS_MOTIF_H
 #define CCTBX_GEOMETRY_RESTRAINTS_MOTIF_H
 
+#include <cctbx/error.h>
+#include <cctbx/import_scitbx_af.h>
 #include <scitbx/array_family/shared.h>
 #include <string>
 
