@@ -22,6 +22,15 @@ namespace pdb {
   using boost::shared_ptr;
   using boost::weak_ptr;
 
+  struct stream_write
+  {
+    virtual void
+    operator()(const char*, unsigned) = 0;
+
+    virtual
+    ~stream_write() {}
+  };
+
 }} // namespace iotbx::pdb
 
 #endif // IOTBX_PDB_NAMESPACE_H

@@ -19,6 +19,7 @@ builder(
     "hybrid_36_c.c",
     "hybrid_36_cpp.cpp",
     "utils.cpp",
+    "write_utils.cpp",
     "hierarchy.cpp",
     "hierarchy_select.cpp",
     "hierarchy_atoms.cpp",
@@ -26,7 +27,8 @@ builder(
     "overall_counts.cpp",
     "hierarchy_write.cpp",
     "atom_selection.cpp",
-    "input.cpp"])
+    "input.cpp",
+    "input_write.cpp"])
 
 if (not env_etc.no_boost_python):
   Import("env_iotbx_boost_python_ext")

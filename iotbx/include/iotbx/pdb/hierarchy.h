@@ -1326,15 +1326,6 @@ namespace hierarchy {
         bool copy_atoms=false) const;
   };
 
-  struct stream_write
-  {
-    virtual void
-    operator()(const char*, unsigned) = 0;
-
-    virtual
-    ~stream_write() {}
-  };
-
   //! label_formatter chain_id must be set before this function is called.
   void
   residue_groups_as_pdb_string(

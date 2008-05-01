@@ -7,9 +7,9 @@
 #include <boost/python/tuple.hpp>
 #include <scitbx/boost_python/stl_map_as_dict.h>
 #include <scitbx/boost_python/array_as_list.h>
-#include <cStringIO.h>
 #include <iotbx/pdb/hierarchy_atoms.h>
 #include <iotbx/pdb/hierarchy_bpl.h>
+#include <iotbx/pdb/write_utils_bpl.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
 
@@ -17,26 +17,6 @@ void atom_bpl_wrap();
 namespace atoms { void bpl_wrap(); }
 
 namespace {
-
-  struct cstringio_write : stream_write
-  {
-    PyObject* sio;
-
-    cstringio_write(PyObject* sio_) : sio(sio_) {}
-
-    virtual void
-    operator()(const char* s, unsigned n)
-    {
-      PycStringIO->cwrite(
-        sio,
-#if PY_VERSION_HEX >= 0x02050000
-        s,
-#else
-        const_cast<char*>(s),
-#endif
-        static_cast<boost::python::ssize_t>(n));
-    }
-  };
 
 #define IOTBX_PDB_HIERARCHY_GET_CHILDREN(parent_t, child_t, method) \
   static \
@@ -234,11 +214,7 @@ namespace {
       bool anisou=true,
       bool siguij=true)
     {
-      if (!PycStringIO_OutputCheck(cstringio.ptr())) {
-        throw std::invalid_argument(
-          "cstringio argument must be a cStringIO.StringIO instance.");
-      }
-      cstringio_write write(cstringio.ptr());
+      write_utils::cstringio_write write(cstringio.ptr());
       atom_label_columns_formatter label_formatter;
       label_formatter.chain_id = self.data->id.c_str();
       residue_groups_as_pdb_string(
@@ -377,16 +353,12 @@ namespace {
       bool anisou=true,
       bool siguij=true)
     {
-      if (!PycStringIO_OutputCheck(cstringio.ptr())) {
-        throw std::invalid_argument(
-          "cstringio argument must be a cStringIO.StringIO instance.");
-      }
       if (atoms_reset_serial_first_value) {
         atoms::reset_serial(
           self.atoms(interleaved_conf).const_ref(),
           *atoms_reset_serial_first_value);
       }
-      cstringio_write write(cstringio.ptr());
+      write_utils::cstringio_write write(cstringio.ptr());
       models_as_pdb_string(
         write,
         self.models(),

@@ -398,6 +398,16 @@ namespace iotbx { namespace pdb {
       af::shared<std::size_t>
       model_atom_counts() const;
 
+      void
+      write_pdb_file(
+        const char* file_name,
+        bool open_append=false,
+        bool append_end=false,
+        bool atom_hetatm=true,
+        bool sigatm=true,
+        bool anisou=true,
+        bool siguij=true) const;
+
       //! not const because atom parents are modified.
       hierarchy::root
       construct_hierarchy(
@@ -426,6 +436,16 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> connectivity_section_;
       af::shared<std::string> bookkeeping_section_;
   };
+
+  void
+  input_as_pdb_string(
+    stream_write& write,
+    input const& input_,
+    bool append_end,
+    bool atom_hetatm,
+    bool sigatm,
+    bool anisou,
+    bool siguij);
 
 }} // namespace iotbx::pdb
 

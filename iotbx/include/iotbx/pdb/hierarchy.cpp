@@ -1863,8 +1863,8 @@ namespace {
     bool is_first_after_break_)
   :
     atom(atom_),
-    model_id(model_id_),
-    chain_id(chain_id_),
+    model_id(model_id_ ? model_id_ : ""),
+    chain_id(chain_id_ ? chain_id_ : ""),
     resseq(resseq_),
     icode(icode_),
     altloc(altloc_),

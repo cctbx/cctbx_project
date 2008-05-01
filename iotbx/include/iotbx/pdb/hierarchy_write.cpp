@@ -1,29 +1,7 @@
 #include <iotbx/pdb/hierarchy_atoms.h>
-#include <fstream>
+#include <iotbx/pdb/write_utils.h>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
-
-namespace {
-
-  void
-  rstrip_in_place(std::string& s)
-  {
-    unsigned i = static_cast<unsigned>(s.size());
-    if (i == 0) return;
-    for(;;) {
-      i--;
-      if (!isspace(s[i])) {
-        s.resize(i+1U);
-        return;
-      }
-      if (i == 0) {
-        s.resize(0);
-        return;
-      }
-    }
-  }
-
-} // namespace <anonymous>
 
   void
   residue_groups_as_pdb_string(
@@ -100,16 +78,7 @@ namespace {
     unsigned n_mds = static_cast<unsigned>(models.size());
     for(unsigned i_md=0;i_md<n_mds;i_md++) {
       if (n_mds != 1U) {
-        write("MODEL", 5U);
-        std::string model_id = models[i_md].data->id;
-        rstrip_in_place(model_id);
-        unsigned n = static_cast<unsigned>(model_id.size());
-        if (n != 0) {
-          write(" ", 1U);
-          for(unsigned i=n;i<8U;i++) write(" ", 1U);
-          write(model_id.c_str(), n);
-        }
-        write("\n", 1U);
+        write_utils::model_record(write, models[i_md].data->id);
       }
       unsigned n_chs = models[i_md].chains_size();
       std::vector<chain> const& chains = models[i_md].chains();
@@ -133,19 +102,6 @@ namespace {
     }
   }
 
-  struct fstream_write : stream_write
-  {
-    std::ofstream* stream;
-
-    fstream_write(std::ofstream* stream_) : stream(stream_) {}
-
-    virtual void
-    operator()(const char* s, unsigned n)
-    {
-      stream->write(s, n);
-    }
-  };
-
   void
   root::write_pdb_file(
     const char* file_name,
@@ -158,20 +114,13 @@ namespace {
     bool anisou,
     bool siguij) const
   {
-    SCITBX_ASSERT(file_name != 0);
     if (atoms_reset_serial_first_value) {
       atoms::reset_serial(
         atoms(interleaved_conf).const_ref(),
         *atoms_reset_serial_first_value);
     }
-    std::ios::openmode mode = std::ios::out | std::ios::binary;
-    if (open_append) mode |= std::ios::app;
-    std::ofstream out(file_name, mode);
-    if (out.fail()) {
-      throw std::runtime_error(
-        "Cannot open file for writing: \"" + std::string(file_name) + "\"");
-    }
-    fstream_write write(&out);
+    write_utils::fstream_open_close foc(file_name, open_append);
+    write_utils::fstream_write write(&foc.out);
     models_as_pdb_string(
       write,
       models(),
@@ -181,11 +130,6 @@ namespace {
       sigatm,
       anisou,
       siguij);
-    if (out.fail()) {
-      throw std::runtime_error(
-        "Failure writing to file: \"" + std::string(file_name) + "\"");
-    }
-    out.close();
   }
 
 }}} // namespace iotbx::pdb::hierarchy
