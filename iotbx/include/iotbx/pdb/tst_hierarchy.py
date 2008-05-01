@@ -617,19 +617,21 @@ def exercise_chain():
     assert str(e) == "atom_group has another parent residue_group already."
   else: raise Exception_expected
   #
+  r = pdb.hierarchy.root()
+  m = pdb.hierarchy.model()
+  r.append_model(m)
   c = pdb.hierarchy.chain(id="c")
-  sio = StringIO()
-  c.write_atom_record_groups(cstringio=sio)
-  assert len(sio.getvalue()) == 0
+  m.append_chain(c)
+  assert r.as_pdb_string() == "TER\n"
   rg = pdb.hierarchy.residue_group(resseq="s", icode="j")
   c.append_residue_group(residue_group=rg)
   ag = pdb.hierarchy.atom_group(altloc="a", resname="r")
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy.atom().set_name("n"))
   assert ag.only_atom().pdb_label_columns() == "n   a  r c   sj"
-  c.write_atom_record_groups(cstringio=sio)
-  assert not show_diff(sio.getvalue(), """\
+  assert not show_diff(r.as_pdb_string(), """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
+TER
 """)
   rg = pdb.hierarchy.residue_group(resseq="t", icode="k")
   c.append_residue_group(residue_group=rg)
@@ -642,13 +644,12 @@ ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
   ag = pdb.hierarchy.atom_group(altloc="d", resname="p")
   rg.append_atom_group(atom_group=ag)
   ag.append_atom(pdb.hierarchy.atom().set_name("o"))
-  sio = StringIO()
-  c.write_atom_record_groups(cstringio=sio)
-  assert not show_diff(sio.getvalue(), """\
+  assert not show_diff(r.as_pdb_string(), """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+TER
 """)
   #
   atoms = c.atoms()
@@ -661,15 +662,14 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
     siguij_2_line = """\
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
 """
-  sio = StringIO()
-  c.write_atom_record_groups(cstringio=sio)
-  assert not show_diff(sio.getvalue(), """\
+  assert not show_diff(r.as_pdb_string(), """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00
 ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+TER
 %s""" % siguij_2_line)
   atoms[0].set_uij((6,3,8,2,9,1))
   siguij_0_line = ""
@@ -679,9 +679,7 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
 """
   atoms[0].set_charge("Cg")
-  sio = StringIO()
-  c.write_atom_record_groups(cstringio=sio)
-  assert not show_diff(sio.getvalue(), """\
+  assert not show_diff(r.as_pdb_string(), """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
 ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
@@ -689,14 +687,17 @@ ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+TER
 %s""" % (siguij_0_line, siguij_2_line))
   sio = StringIO()
-  c.write_atom_record_groups(cstringio=sio, interleaved_conf=1)
-  c.write_atom_record_groups(cstringio=sio, interleaved_conf=2)
-  c.write_atom_record_groups(cstringio=sio, atom_hetatm=False)
-  c.write_atom_record_groups(cstringio=sio, sigatm=False)
-  c.write_atom_record_groups(cstringio=sio, anisou=False)
-  c.write_atom_record_groups(cstringio=sio, siguij=False)
+  assert r.as_pdb_string(cstringio=sio, interleaved_conf=1) is sio
+  assert r.as_pdb_string(cstringio=sio, interleaved_conf=2) is sio
+  assert r.as_pdb_string(cstringio=sio, atom_hetatm=False) is sio
+  assert r.as_pdb_string(cstringio=sio, sigatm=False) is sio
+  assert r.as_pdb_string(cstringio=sio, anisou=False) is sio
+  assert isinstance(
+    r.as_pdb_string(cstringio=sio, siguij=False, return_cstringio=False),
+    str)
   expected = """\
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
@@ -707,6 +708,7 @@ ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+TER
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
 ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
@@ -716,12 +718,14 @@ ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+TER
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
 ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
 SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+TER
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
 SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
@@ -730,6 +734,7 @@ ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+TER
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
 SIGUIJ      n   a  r c   sj    6000   3000   8000   2000   9000   1000        Cg
@@ -737,6 +742,7 @@ ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
 SIGUIJ      o   d  p c   ul    6000   7000   8000   3000   5000   4000
+TER
 ATOM        n   a  r c   sj      0.000   0.000   0.000  0.00  0.00            Cg
 SIGATM      n   a  r c   sj      1.000   2.000   3.000  4.00  5.00            Cg
 ANISOU      n   a  r c   sj   60000  30000  80000  20000  90000  10000        Cg
@@ -744,6 +750,7 @@ ATOM        m   b  q c   tk      0.000   0.000   0.000  0.00  0.00
 ANISOU      m   b  q c   tk   60000  70000  80000  30000  50000  40000
 BREAK
 ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
+TER
 """
   if (pdb.hierarchy.atom.has_siguij()):
     assert not show_diff(sio.getvalue(), expected)
@@ -755,10 +762,11 @@ ATOM        o   d  p c   ul      0.000   0.000   0.000  0.00  0.00
         result.append(line)
       return "\n".join(result)+"\n"
     assert not show_diff(sio.getvalue(), filter_expected())
-  sio = StringIO()
-  c.write_atom_record_groups(cstringio=sio,
-    atom_hetatm=False, sigatm=False, anisou=False, siguij=False)
-  assert not show_diff(sio.getvalue(), "BREAK\n")
+  assert not show_diff(r.as_pdb_string(
+    atom_hetatm=False, sigatm=False, anisou=False, siguij=False), """\
+BREAK
+TER
+""")
   #
   a = pdb.hierarchy.atom()
   assert a.pdb_label_columns() == "               "
