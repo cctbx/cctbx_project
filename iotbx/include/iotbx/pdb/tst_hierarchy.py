@@ -4656,8 +4656,10 @@ END
       if (   hierarchy_1.is_similar_hierarchy(other=prev_hierarchy)
           or prev_hierarchy.is_similar_hierarchy(other=hierarchy_1)):
         # some files are known to be similar
-        if (   os.path.basename(prev_file_name)[:3]
-            != os.path.basename(     file_name)[:3]):
+        p = os.path.basename(prev_file_name)
+        c = os.path.basename(     file_name)
+        if (    p[:3] != c[:3]
+            and (len(p) < 15 or len(c) < 15 or p[-12:] != c[-12:])):
           print "WARNING: similar hierarchies:"
           print " ", show_string(prev_file_name)
           print " ", show_string(file_name)
