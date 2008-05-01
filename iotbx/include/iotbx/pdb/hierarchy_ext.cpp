@@ -205,30 +205,6 @@ namespace {
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
 
     static void
-    write_atom_record_groups(
-      w_t const& self,
-      boost::python::object cstringio,
-      int interleaved_conf=0,
-      bool atom_hetatm=true,
-      bool sigatm=true,
-      bool anisou=true,
-      bool siguij=true)
-    {
-      write_utils::cstringio_write write(cstringio.ptr());
-      atom_label_columns_formatter label_formatter;
-      label_formatter.chain_id = self.data->id.c_str();
-      residue_groups_as_pdb_string(
-        write,
-        label_formatter,
-        self.residue_groups(),
-        interleaved_conf,
-        atom_hetatm, sigatm, anisou, siguij);
-    }
-
-    BOOST_PYTHON_FUNCTION_OVERLOADS(
-      write_atom_record_groups_overloads, write_atom_record_groups, 2, 7)
-
-    static void
     wrap()
     {
       using namespace boost::python;
@@ -259,15 +235,6 @@ namespace {
           arg_("other")))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
           arg_("other")))
-        .def("write_atom_record_groups", write_atom_record_groups,
-          write_atom_record_groups_overloads((
-          arg_("self"),
-          arg_("cstringio"),
-          arg_("interleaved_conf")=0,
-          arg_("atom_hetatm")=true,
-          arg_("sigatm")=true,
-          arg_("anisou")=true,
-          arg_("siguij")=true)))
       ;
     }
   };
