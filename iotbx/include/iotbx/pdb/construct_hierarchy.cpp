@@ -170,4 +170,57 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
+  void
+  input_atoms_with_labels_generator::run(input const& inp)
+  {
+    af::const_ref<std::string>
+      model_ids = inp.model_ids().const_ref();
+    af::const_ref<std::vector<unsigned> >
+      chain_indices = inp.chain_indices().const_ref();
+    SCITBX_ASSERT(chain_indices.size() == model_ids.size());
+    const std::size_t* break_index = inp.break_indices().begin();
+    const std::size_t* break_indices_end = inp.break_indices().end();
+    unsigned next_break_index = static_cast<unsigned>(
+      break_index == break_indices_end ?
+        inp.atoms().size() : *break_index++);
+    const input_atom_labels* iall = inp.input_atom_labels_list().begin();
+    const hierarchy::atom* atoms = inp.atoms().begin();
+    unsigned next_chain_range_begin = 0;
+    for(unsigned i_model=0;i_model<model_ids.size();i_model++) {
+      std::string const& model_id = model_ids[i_model];
+      if (!process_model(model_id)) return;
+      range_loop<unsigned> ch_r(
+        chain_indices[i_model], next_chain_range_begin);
+      for(unsigned i_chain=0;ch_r.next();i_chain++) {
+        bool is_first_in_chain = true;
+        for (unsigned i_atom=ch_r.begin; i_atom!=ch_r.end; i_atom++) {
+          input_atom_labels const& ial = iall[i_atom];
+          bool is_first_after_break = (i_atom == next_break_index);
+          if (is_first_after_break) {
+            next_break_index = static_cast<unsigned>(
+              break_index == break_indices_end ?
+                inp.atoms().size() : *break_index++);
+            if (!process_break()) return;
+          }
+          if (!process_atom(hierarchy::atom_with_labels(
+                 atoms[i_atom],
+                 model_id.c_str(),
+                 ial.chain_small().elems,
+                 ial.resseq_small().elems,
+                 ial.icode_small().elems,
+                 ial.altloc_small().elems,
+                 ial.resname_small().elems,
+                 is_first_in_chain,
+                 is_first_after_break))) return;
+          is_first_in_chain = false;
+        }
+        if (!process_ter()) return;
+      }
+      if (!process_endmdl(model_id)) return;
+      next_chain_range_begin = ch_r.end;
+    }
+    SCITBX_ASSERT(break_index == break_indices_end);
+    process_end();
+  }
+
 }} // namespace iotbx::pdb

@@ -437,10 +437,37 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> bookkeeping_section_;
   };
 
+  struct input_atoms_with_labels_generator
+  {
+    virtual
+    ~input_atoms_with_labels_generator() {}
+
+    virtual bool
+    process_model(std::string const& /* model_id */) { return true; }
+
+    virtual bool
+    process_endmdl(std::string const& /* model_id */) { return true; }
+
+    virtual bool
+    process_atom(hierarchy::atom_with_labels const&) { return true; }
+
+    virtual bool
+    process_break() { return true; }
+
+    virtual bool
+    process_ter() { return true; }
+
+    virtual void
+    process_end() {}
+
+    void
+    run(input const& inp);
+  };
+
   void
   input_as_pdb_string(
+    input const& self,
     stream_write& write,
-    input const& input_,
     bool append_end,
     bool atom_hetatm,
     bool sigatm,
