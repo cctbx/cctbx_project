@@ -347,54 +347,6 @@ default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 
 class _input(boost.python.injector, ext.input):
 
-  def atoms_with_labels(self):
-    model_ids = self.model_ids()
-    if (model_ids.size() == 0):
-      return
-    model_id = model_ids[0]
-    m = self.model_indices()
-    c = self.chain_indices()
-    b = self.break_indices()
-    m_i = m[0]
-    c_i = c[0][0]
-    if (len(b) != 0): b_i = b[0]
-    else:             b_i = -1
-    i_m = 0
-    i_c = 0
-    i_b = 0
-    i_a = 0
-    atom_with_labels = iotbx.pdb.hierarchy.atom_with_labels
-    for lbls,atom in zip(self.input_atom_labels_list(), self.atoms()):
-      if (i_a == m_i):
-        i_m += 1
-        model_id = model_ids[i_m]
-        m_i = m[i_m]
-        c_i = c[i_m][0]
-        is_first_in_chain = True
-      elif (i_a == 0):
-        is_first_in_chain = True
-      else:
-        is_first_in_chain = (i_a == c_i)
-        if (is_first_in_chain):
-          i_c += 1
-          c_i = c[i_m][i_c]
-      is_first_after_break = (i_a == b_i)
-      if (is_first_after_break):
-        i_b += 1
-        if (i_b != len(b)):
-          b_i = b[i_b]
-      yield atom_with_labels(
-        atom=atom,
-        model_id=model_id,
-        chain_id=lbls.chain(),
-        resseq=lbls.resseq(),
-        icode=lbls.icode(),
-        altloc=lbls.altloc(),
-        resname=lbls.resname(),
-        is_first_in_chain=is_first_in_chain,
-        is_first_after_break=is_first_after_break)
-      i_a += 1
-
   def extract_header_year(self):
     for line in self.title_section():
       if (line.startswith("HEADER ")):
