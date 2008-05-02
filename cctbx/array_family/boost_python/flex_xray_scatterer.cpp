@@ -703,13 +703,5 @@ namespace scitbx { namespace af { namespace boost_python {
       CCTBX_XRAY_SCATTERERS_SET_BPL_DEF(grad_fdp)
     ;
   }
-  
-  void wrap_flex_xray_scatterer_flags() {
-    using namespace cctbx;
-    using namespace boost::python;
-    
-    flex_wrapper<cctbx::xray::scatterer_flags,
-                 return_internal_reference<> >::plain("xray_scatterer_flags");
-  }
 
 }}} // namespace scitbx::af::boost_python
