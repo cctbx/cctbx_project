@@ -199,7 +199,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
   template <typename NumType, unsigned MaxNRows, unsigned NCols>
   struct full_pivoting_small
   {
-    af::tiny<NumType, NCols*NCols> echelon_form;
+    af::small<NumType, NCols*NCols> echelon_form;
     af::small<unsigned, MaxNRows> row_perm;
     af::tiny<unsigned, NCols> col_perm;
     af::small<unsigned, NCols> pivot_cols;
@@ -214,8 +214,6 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     {
       SCITBX_ASSERT(m_work.accessor()[0] <= MaxNRows)(m_work.accessor()[0])
                                                      (MaxNRows);
-      // std::copy below accesses NCols*NCols
-      SCITBX_ASSERT(m_work.accessor()[0] >= NCols);
       SCITBX_ASSERT(m_work.accessor()[1] == NCols);
       unsigned n_rows = m_work.accessor()[0];
       for(unsigned i=0;i<n_rows;i++) row_perm.push_back(i);
@@ -262,12 +260,10 @@ namespace scitbx { namespace matrix { namespace row_echelon {
         else {
           free_cols.push_back(pc);
         }
-        // copy result to local memory
-        std::copy(
-          m_work.begin(),
-          m_work.begin()+(NCols*NCols),
-          echelon_form.begin());
       }
+      // copy result to local memory
+      echelon_form.assign(m_work.begin(),
+                          m_work.begin() + row_rank()*NCols);
     }
 
     unsigned row_rank() {
@@ -281,7 +277,9 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       for (unsigned i=0; i < pivot_cols.size(); i++) {
         NumType a = v[col_perm[i]]/echelon_form[pr_pc];
         if (a != 0) {
-          for (int k=i; k < v.size(); k++) v[col_perm[k]] -= a*echelon_form[pr_pc++];
+          for (int k=i; k < v.size(); k++) {
+            v[col_perm[k]] -= a*echelon_form[pr_pc++];
+          }
         }
         pr_pc += i+1;
       }
