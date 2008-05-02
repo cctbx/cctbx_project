@@ -125,7 +125,7 @@ def exercise_scatterer_flags():
   assert f2.implies(f1)
   f2.set_grad_u_iso(True)
   assert not f2.implies(f1)
-  
+
   flags = xray.scatterer_flags_array()
   f1 = xray.scatterer_flags()
   f1.set_use_u_iso(True)
