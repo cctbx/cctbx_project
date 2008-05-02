@@ -84,7 +84,10 @@ iotbx/iotbx/command_line/pdb.join_fragment_files.py svneol=native#text/x-python
 iotbx/iotbx/command_line/pdb.print_sequence.py -text
 iotbx/iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/iotbx/detectors/cbf.py -text
+iotbx/iotbx/examples/__init__.py svneol=native#text/x-python
+iotbx/iotbx/examples/mtz_free_flipper.py svneol=native#text/x-python
 iotbx/iotbx/examples/pdb_hierarchy.py svneol=native#text/x-python
+iotbx/iotbx/examples/tst_mtz_free_flipper.py svneol=native#text/x-python
 iotbx/iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/iotbx/pdb/atom_selection.py svneol=native#text/x-python
 iotbx/iotbx/pdb/extract_rfactors_resolutions_sigma.py -text

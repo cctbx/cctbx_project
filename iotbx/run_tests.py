@@ -23,6 +23,7 @@ def run():
   "$D/include/iotbx/mtz/tst_ext.py",
   "$D/iotbx/mtz/extract_from_symop_lib.py",
   ["$D/iotbx/mtz/tst.py", "P31"],
+  "$D/iotbx/examples/tst_mtz_free_flipper.py",
   "$D/iotbx/tst_reflection_file_utils.py",
   "$D/iotbx/detectors/tst_adsc.py",
   "$D/iotbx/detectors/tst_debug_write.py",
