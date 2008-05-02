@@ -107,6 +107,28 @@ namespace iotbx { namespace mtz {
     return result;
   }
 
+  void
+  column::set_values(
+    af::const_ref<float> const& values,
+    af::const_ref<bool> const& selection_valid) const
+  {
+    int n_refl = mtz_object().n_reflections();
+    CCTBX_ASSERT(values.size() == static_cast<std::size_t>(n_refl));
+    if (selection_valid.size() != 0) {
+      CCTBX_ASSERT(selection_valid.size() == static_cast<std::size_t>(n_refl));
+    }
+    float const& not_a_number_value = mtz_object().not_a_number_value();
+    float* ref = ptr()->ref;
+    for(int i=0;i<n_refl;i++) {
+      if (selection_valid.size() == 0 || selection_valid[i]) {
+        ref[i] = values[i];
+      }
+      else {
+        ref[i] = not_a_number_value;
+      }
+    }
+  }
+
   af::shared<int>
   column::set_reals(
     af::const_ref<cctbx::miller::index<> > const& miller_indices,

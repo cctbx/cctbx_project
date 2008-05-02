@@ -481,11 +481,22 @@ namespace mtz {
       void
       write(const char* file_name);
 
+      //! Read-only access to "not-a-number" value.
+      /*! Not available in Python.
+       */
+      const float&
+      not_a_number_value() { return not_a_number_value_.f; }
+
     protected:
       boost::shared_ptr<CMtz::MTZ> ptr_;
 
       static void
       ptr_deleter(CMtz::MTZ* ptr);
+
+      union float_uint_uchar not_a_number_value_;
+
+      void
+      init_not_a_number_value();
   };
 
 }} // namespace iotbx::mtz
