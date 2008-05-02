@@ -23,6 +23,7 @@ namespace iotbx { namespace mtz {
   {
     if (ptr_.get() == 0) throw cctbx::error("MtzMalloc failed.");
     ptr_->refs_in_memory = true;
+    init_not_a_number_value();
   }
 
   object::object(const char* file_name)
@@ -32,6 +33,19 @@ namespace iotbx { namespace mtz {
       CMtz::MtzGetUserCellTolerance(file_name, true, 0), ptr_deleter);
     if (ptr_.get() == 0) {
       throw cctbx::error(std::string("MTZ file read error: ") + file_name);
+    }
+    init_not_a_number_value();
+  }
+
+  void
+  object::init_not_a_number_value()
+  {
+    // based on code from MtzAddColumn()
+    if (strncmp(ptr()->mnf.amnf, "NAN", 3U) == 0) {
+      not_a_number_value_ = CCP4::ccp4_nan();
+    }
+    else {
+      not_a_number_value_.f = ptr()->mnf.fmnf;
     }
   }
 

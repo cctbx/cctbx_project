@@ -121,6 +121,22 @@ namespace iotbx { namespace mtz {
       af::shared<float>
       extract_values(float not_a_number_substitute=0) const;
 
+      //! Copy values into this column.
+      /*! selection_valid[i] == false indicates "not-a-number".
+       */
+      void
+      set_values(
+        af::const_ref<float> const& values,
+        af::const_ref<bool> const& selection_valid) const;
+
+      //! Copy values into this column.
+      void
+      set_values(
+        af::const_ref<float> const& values) const
+      {
+        set_values(values, af::const_ref<bool>(0,0));
+      }
+
       //! Write access given Miller indices and corresponding data.
       af::shared<int>
       set_reals(

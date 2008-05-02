@@ -1011,6 +1011,33 @@ Crystal 2:
   assert not mtz_object.extract_miller_indices().all_eq(new_miller_indices)
   assert mtz_object.extract_miller_indices().all_eq(original_miller_indices)
   #
+  c = mtz_object.get_column(label="F")
+  s = c.selection_valid()
+  v = c.extract_values(not_a_number_substitute=-1)
+  assert list(s) == [True, True, True, False]
+  assert approx_equal(v, [10.0, 20.0, 30.0, -1.0])
+  c.set_values(values=flex.float([5,9,3,7]), selection_valid=None)
+  v = c.extract_values(not_a_number_substitute=-1)
+  assert approx_equal(v, [5.0, 9.0, 3.0, 7.0])
+  c.set_values(values=flex.float([7,8,2,0]))
+  v = c.extract_values(not_a_number_substitute=-1)
+  assert approx_equal(v, [7.0, 8.0, 2.0, 0.0])
+  c.set_values(
+    values=flex.float([5,9,3,7]),
+    selection_valid=flex.bool([False]*4))
+  v = c.extract_values(not_a_number_substitute=-1)
+  assert approx_equal(v, [-1]*4)
+  for i_trial in xrange(10):
+    s = flex.random_bool(size=4, threshold=0.5)
+    v = flex.float(list(flex.random_double(size=4)*10-5))
+    c.set_values(values=v, selection_valid=s)
+    sx = c.selection_valid()
+    vx = c.extract_values(not_a_number_substitute=99)
+    assert list(s) == list(sx)
+    assert vx.select(s).all_eq(v.select(s))
+    assert vx.select(~s).all_ne(v.select(~s))
+    assert vx.select(~s).all_eq(99)
+  #
   values_in = count()
   values_out = count()
   for i_batch in xrange(10):

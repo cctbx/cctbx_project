@@ -43,6 +43,13 @@ namespace {
         .def("selection_valid", &w_t::selection_valid)
         .def("extract_values", &w_t::extract_values, extract_values_overloads((
           arg_("not_a_number_substitute"))))
+        .def("set_values", (void(w_t::*)(
+          af::const_ref<float> const&,
+          af::const_ref<bool> const&) const)&w_t::set_values, (
+            arg_("values"), arg_("selection_valid")))
+        .def("set_values", (void(w_t::*)(
+          af::const_ref<float> const&) const)&w_t::set_values, (
+            arg_("values")))
         .def("set_reals",
           (af::shared<int>(w_t::*)(
             af::const_ref<cctbx::miller::index<> > const&,
