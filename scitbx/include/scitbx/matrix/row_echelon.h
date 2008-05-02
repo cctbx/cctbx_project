@@ -214,6 +214,8 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     {
       SCITBX_ASSERT(m_work.accessor()[0] <= MaxNRows)(m_work.accessor()[0])
                                                      (MaxNRows);
+      // std::copy below accesses NCols*NCols
+      SCITBX_ASSERT(m_work.accessor()[0] >= NCols);
       SCITBX_ASSERT(m_work.accessor()[1] == NCols);
       unsigned n_rows = m_work.accessor()[0];
       for(unsigned i=0;i<n_rows;i++) row_perm.push_back(i);
