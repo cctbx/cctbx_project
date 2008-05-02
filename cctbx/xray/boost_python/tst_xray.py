@@ -125,7 +125,19 @@ def exercise_scatterer_flags():
   assert f2.implies(f1)
   f2.set_grad_u_iso(True)
   assert not f2.implies(f1)
-
+  
+  flags = xray.scatterer_flags_array()
+  f1 = xray.scatterer_flags()
+  f1.set_use_u_iso(True)
+  f1.set_grad_u_iso(True)
+  f1.set_grad_fp(True)
+  flags.append(f1)
+  f2 = xray.scatterer_flags()
+  f2.set_grad_site(True)
+  f2.set_grad_u_aniso(True)
+  flags.append(f2)
+  assert flags[0].bits == f1.bits
+  assert flags[1].bits == f2.bits
 
 def exercise_set_scatterer_grad_flags():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))

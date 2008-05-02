@@ -3,7 +3,9 @@
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
+#include <boost/python/return_internal_reference.hpp>
 #include <cctbx/xray/scatterer.h>
+#include <scitbx/array_family/boost_python/shared_wrapper.h>
 
 namespace cctbx { namespace xray { namespace boost_python {
 
@@ -89,6 +91,10 @@ namespace {
         .def_readonly("bits", &w_t::bits)
         .def_readwrite("param", &w_t::param)
       ;
+      {
+        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
+          "scatterer_flags_array");
+      }
     }
   };
 
