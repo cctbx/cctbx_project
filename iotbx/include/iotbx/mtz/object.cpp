@@ -220,7 +220,7 @@ namespace iotbx { namespace mtz {
               ccp4array_resize(col_k->ref, new_nref);
               for(int iref=old_size;iref<new_nref;iref++) {
                 *(reinterpret_cast<union float_uint_uchar*>(
-                  &col_k->ref[iref])) = CCP4::ccp4_nan();
+                  &col_k->ref[iref])) = not_a_number_value_;
               }
             }
           }
