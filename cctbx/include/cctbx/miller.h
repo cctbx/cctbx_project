@@ -85,6 +85,17 @@ namespace cctbx {
       }
 #endif
 
+#if defined(__GNUC__) \
+ && __GNUC__ == 3 \
+ && __GNUC_MINOR__ == 2 \
+ && __GNUC_PATCHLEVEL__ != 0 // 3 known to fail, 0 OK, others unknown
+      // work around compiler bug
+      bool operator!=(index const& other) const
+      {
+        return static_cast<base_type>(*this) != static_cast<base_type>(other);
+      }
+#endif
+
       std::string
       as_string() const
       {
