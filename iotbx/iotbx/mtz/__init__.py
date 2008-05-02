@@ -337,31 +337,32 @@ class _object(boost.python.injector, ext.object):
   def show_column_data_machine_readable(self, out=None):
     if (out is None): out = sys.stdout
     miller_indices, labels, pairs = self._show_column_data_preparation()
-    print "Machine readable colum data:"
-    print "Number of columns:", len(labels)
-    print "Column labels (one per line):"
+    print >> out, "Machine readable colum data:"
+    print >> out, "Number of columns:", len(labels)
+    print >> out, "Column labels (one per line):"
     for label in labels:
-      print label
-    print "Number of Miller indices:", miller_indices.size()
-    print "Column data (HKL followed by data):"
+      print >> out, label
+    print >> out, "Number of Miller indices:", miller_indices.size()
+    print >> out, "Column data (HKL followed by data):"
     for iref,h in enumerate(miller_indices):
       print >> out, " ".join([str(i) for i in h])
       for i,(data,selection) in enumerate(pairs):
         if (selection[iref]): print >> out, "%.7g" % data[iref]
         else:                 print >> out, "None"
-    print "End of column data."
+    print >> out, "End of column data."
     return self
 
   def show_column_data_spreadsheet(self, out=None):
     if (out is None): out = sys.stdout
     miller_indices, labels, pairs = self._show_column_data_preparation()
-    print ",".join([label.replace(",","_") for label in ["H","K","L"]+labels])
+    print >> out, ",".join([label.replace(",","_")
+      for label in ["H","K","L"]+labels])
     for iref,h in enumerate(miller_indices):
       row = [str(i) for i in h]
       for i,(data,selection) in enumerate(pairs):
         if (selection[iref]): row.append("%.7g" % data[iref])
         else:                 row.append("")
-      print ",".join(row)
+      print >> out, ",".join(row)
     return self
 
   def show_column_data(self, out=None, format="human_readable"):
