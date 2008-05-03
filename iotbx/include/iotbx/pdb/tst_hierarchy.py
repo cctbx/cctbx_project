@@ -4834,6 +4834,19 @@ ENDMDL
     assert not show_diff(pdb_inp.as_pdb_string(append_end=append_end),expected)
     pdb_inp.write_pdb_file(file_name="tmp.pdb", append_end=append_end)
     assert not show_diff(open("tmp.pdb").read(), expected)
+  #
+  lines = flex.split_lines("""\
+MODEL     SKDI
+HETATMB1234 NaMeLResChUvwqI      1.300   2.100   3.200  0.40  4.80      sEgIElcH
+ENDMDL
+""")
+  pdb_inp = pdb.input(source_info=None, lines=lines)
+  hierarchy = pdb_inp.construct_hierarchy()
+  awl = hierarchy.atoms()[0].fetch_labels()
+  assert not show_diff(awl.format_atom_record(), lines[1])
+  assert awl.model_id == "SKDI"
+  assert not awl.is_first_in_chain
+  assert not awl.is_first_after_break
 
 def exercise_transfer_chains_from_other():
   atoms_x = """\
