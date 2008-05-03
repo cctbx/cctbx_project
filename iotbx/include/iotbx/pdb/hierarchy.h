@@ -86,6 +86,8 @@ namespace hierarchy {
   class atom_data;
   class atom;
 
+  class atom_with_labels;
+
   class conformer_data;
   class conformer;
   class residue_data;
@@ -737,6 +739,9 @@ namespace hierarchy {
 
       std::string
       quote(bool full=false) const;
+
+      atom_with_labels
+      fetch_labels() const;
 
       bool
       element_is_hydrogen() const;

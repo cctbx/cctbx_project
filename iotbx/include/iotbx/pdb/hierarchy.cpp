@@ -914,6 +914,45 @@ namespace {
     return std::string(result, ++str_len);
   }
 
+  atom_with_labels
+  atom::fetch_labels() const
+  {
+    std::string model_id;
+    std::string chain_id;
+    str4 resseq;
+    str1 icode;
+    str1 altloc;
+    str3 resname;
+    boost::optional<atom_group> ag = parent();
+    if (ag) {
+      altloc = ag->data->altloc;
+      resname = ag->data->resname;
+      boost::optional<residue_group> rg = ag->parent();
+      if (rg) {
+        resseq = rg->data->resseq;
+        icode = rg->data->icode;
+        boost::optional<chain> ch = rg->parent();
+        if (ch) {
+          chain_id = ch->data->id;
+          boost::optional<model> md = ch->parent();
+          if (md) {
+            model_id = md->data->id;
+          }
+        }
+      }
+    }
+    return atom_with_labels(
+      *this,
+      model_id.c_str(),
+      chain_id.c_str(),
+      resseq.elems,
+      icode.elems,
+      altloc.elems,
+      resname.elems,
+      /* is_first_in_chain */ false,
+      /* is_first_after_break */ false);
+  }
+
   bool
   atom::element_is_hydrogen() const
   {

@@ -289,6 +289,7 @@ namespace {
         .def("format_anisou_record", format_anisou_record)
         .def("format_siguij_record", format_siguij_record)
         .def("quote", &w_t::quote, quote_overloads((arg_("full")=false)))
+        .def("fetch_labels", &w_t::fetch_labels)
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)
         .def("determine_chemical_element_simple",
           &w_t::determine_chemical_element_simple)
