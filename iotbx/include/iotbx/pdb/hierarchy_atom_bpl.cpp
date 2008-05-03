@@ -192,10 +192,34 @@ namespace {
 
 #undef IOTBX_LOC
 
+    static
+    boost::python::object
+    format_atom_record_group(
+      w_t const& self,
+      bool atom_hetatm=true,
+      bool sigatm=true,
+      bool anisou=true,
+      bool siguij=true)
+    {
+      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 324));
+      PyObject* str_obj = str_hdl.get();
+      char* str_begin = PyString_AS_STRING(str_obj);
+      unsigned str_len = self.format_atom_record_group(
+        str_begin, 0, atom_hetatm, sigatm, anisou, siguij);
+      str_hdl.release();
+      if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
+        boost::python::throw_error_already_set();
+      }
+      return boost::python::object(boost::python::handle<>(str_obj));
+    }
+
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(id_str_overloads, id_str, 0, 2)
 
     BOOST_PYTHON_FUNCTION_OVERLOADS(
       format_atom_record_overloads, format_atom_record, 1, 2)
+
+    BOOST_PYTHON_FUNCTION_OVERLOADS(
+      format_atom_record_group_overloads, format_atom_record_group, 1, 5)
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(quote_overloads, quote, 0, 1)
 
@@ -288,6 +312,13 @@ namespace {
         .def("format_sigatm_record", format_sigatm_record)
         .def("format_anisou_record", format_anisou_record)
         .def("format_siguij_record", format_siguij_record)
+        .def("format_atom_record_group", format_atom_record_group,
+          format_atom_record_group_overloads((
+            arg_("self"),
+            arg_("atom_hetatm")=true,
+            arg_("sigatm")=true,
+            arg_("anisou")=true,
+            arg_("siguij")=true)))
         .def("quote", &w_t::quote, quote_overloads((arg_("full")=false)))
         .def("fetch_labels", &w_t::fetch_labels)
         .def("element_is_hydrogen", &w_t::element_is_hydrogen)

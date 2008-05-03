@@ -1170,6 +1170,27 @@ B1234 NaMexuvw%2spqrst  -10000 -10000 -10000 -10000 -10000 -10000  \
             a.quote(full=True), '"'+a.format_atom_record()+'"')
           #
           del ag, rg, ch
+          #
+          rs = [
+            a.format_atom_record(),
+            a.format_sigatm_record(),
+            a.format_anisou_record()]
+          if (a.has_siguij()):
+            rs.append(a.format_siguij_record())
+          assert not show_diff(
+            a.format_atom_record_group(), "\n".join(rs))
+          assert not show_diff(
+            a.format_atom_record_group(atom_hetatm=False), "\n".join(rs[1:]))
+          assert not show_diff(
+            a.format_atom_record_group(sigatm=False), "\n".join(rs[:1]+rs[2:]))
+          assert not show_diff(
+            a.format_atom_record_group(anisou=False), "\n".join(rs[:2]+rs[3:]))
+          if (a.has_siguij()):
+            assert not show_diff(
+              a.format_atom_record_group(siguij=False), "\n".join(rs[:-1]))
+          else:
+            assert not show_diff(
+              a.format_atom_record_group(siguij=False), "\n".join(rs))
   #
   atom = pdb.hierarchy.atom()
   atom.name = "NaMe"
