@@ -13,6 +13,8 @@ cctbx links
 
 - `Mailing list <http://www.phenix-online.org/mailman/listinfo/cctbxbb>`_
 
+- `Tutorials SBGrid 2008 (Quo Vadis) <sbgrid2008/>`_
+
 - `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_
 
 - Newsletter articles
