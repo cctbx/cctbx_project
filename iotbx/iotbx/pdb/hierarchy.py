@@ -322,7 +322,17 @@ class _root(boost.python.injector, ext.root):
 
   def __getstate__(self):
     version = 1
-    return (version, self.info, self.as_pdb_string())
+    pdb_string = StringIO()
+    self._as_pdb_string_cstringio(
+      cstringio=pdb_string,
+      append_end=True,
+      interleaved_conf=0,
+      atoms_reset_serial_first_value=None,
+      atom_hetatm=True,
+      sigatm=True,
+      anisou=True,
+      siguij=True)
+    return (version, self.info, pdb_string.getvalue())
 
   def __setstate__(self, state):
     assert len(state) == 3
