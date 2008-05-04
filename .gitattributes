@@ -87,6 +87,15 @@ iotbx/iotbx/detectors/cbf.py -text
 iotbx/iotbx/examples/__init__.py svneol=native#text/x-python
 iotbx/iotbx/examples/mtz_free_flipper.py svneol=native#text/x-python
 iotbx/iotbx/examples/pdb_hierarchy.py svneol=native#text/x-python
+iotbx/iotbx/examples/pdb_truncate_to_ala/crambin_pieces.pdb -text
+iotbx/iotbx/examples/pdb_truncate_to_ala/resname_mix.pdb -text
+iotbx/iotbx/examples/pdb_truncate_to_ala/tst.py svneol=native#text/x-python
+iotbx/iotbx/examples/pdb_truncate_to_ala/tutorial.txt svneol=native#text/plain
+iotbx/iotbx/examples/pdb_truncate_to_ala/v0_getting_started.py svneol=native#text/x-python
+iotbx/iotbx/examples/pdb_truncate_to_ala/v1_loop_over_atoms.py svneol=native#text/x-python
+iotbx/iotbx/examples/pdb_truncate_to_ala/v2_simple.py svneol=native#text/x-python
+iotbx/iotbx/examples/pdb_truncate_to_ala/v3_better.py svneol=native#text/x-python
+iotbx/iotbx/examples/pdb_truncate_to_ala/v4_with_bells_and_whistles.py svneol=native#text/x-python
 iotbx/iotbx/examples/tst_mtz_free_flipper.py svneol=native#text/x-python
 iotbx/iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/iotbx/pdb/atom_selection.py svneol=native#text/x-python

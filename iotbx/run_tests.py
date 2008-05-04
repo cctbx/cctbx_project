@@ -16,6 +16,7 @@ def run():
   "$D/iotbx/pdb/tst_atom_name_interpretation.py",
   "$D/iotbx/pdb/tst_extract_rfactors_resolutions_sigma.py",
   "$D/iotbx/pdb/tst_pdb.py",
+  "$D/iotbx/examples/pdb_truncate_to_ala/tst.py",
   "$D/iotbx/cns/space_group_symbols.py",
   "$D/iotbx/cns/tst_cns.py",
   ["$D/iotbx/scalepack/tst_merge.py", "P31"],
