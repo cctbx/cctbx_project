@@ -320,6 +320,22 @@ class overall_counts(object):
 
 class _root(boost.python.injector, ext.root):
 
+  def __getstate__(self):
+    version = 1
+    return (version, self.info, self.as_pdb_string())
+
+  def __setstate__(self, state):
+    assert len(state) == 3
+    assert state[0] == 1 # version
+    self.info = state[1]
+    import iotbx.pdb
+    models = iotbx.pdb.input(
+      source_info="pickle",
+      lines=flex.split_lines(state[2])).construct_hierarchy().models()
+    self.pre_allocate_models(number_of_additional_models=len(models))
+    for model in models:
+      self.append_model(model=model)
+
   def chains(self):
     for model in self.models():
       for chain in model.chains():

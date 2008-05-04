@@ -6,6 +6,8 @@ from libtbx.utils import hashlib_md5, Sorry, format_cpu_times
 import libtbx.load_env
 from libtbx import Auto
 from cStringIO import StringIO
+import cPickle
+import pickle
 import random
 import sys, os
 
@@ -5129,6 +5131,37 @@ ATOM     10  O
       "A": [2, 6, 7],
       "B": [4, 9]}
 
+def exercise_root_pickling():
+  pdb_inp = pdb.input(source_info=None, lines="""\
+MODEL        1
+ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
+ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
+BREAK
+HETATM    3  C   MET A   2       7.478  21.387  22.491  1.00  0.00           C
+ATOM      4  O   MET A   2       8.406  20.895  23.132  1.00  0.00           O
+ENDMDL
+MODEL 3
+HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
+SIGATM    9 2H3  MPR B   5       0.155   0.175   0.155  0.00  0.05
+ANISOU    9 2H3  MPR B   5      848    848    848      0      0      0
+SIGUIJ    9 2H3  MPR B   5      510    510    510      0      0      0
+TER
+ATOM     10  N   CYSCH   6      14.270   2.464   3.364  1.00  0.07
+SIGATM   10  N   CYSCH   6       0.012   0.012   0.011  0.00  0.00
+ANISOU   10  N   CYSCH   6      788    626    677   -344    621   -232
+SIGUIJ   10  N   CYSCH   6        3     13      4     11      6     13
+TER
+ENDMDL
+""")
+  hierarchy = pdb_inp.construct_hierarchy()
+  hierarchy.info.append("a")
+  hierarchy.info.append("b")
+  for p in [pickle, cPickle]:
+    s = p.dumps(hierarchy, 1)
+    l = p.loads(s)
+    assert not show_diff("\n".join(l.info), "\n".join(hierarchy.info))
+    assert not show_diff(l.as_pdb_string(), hierarchy.as_pdb_string())
+
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None): return None
@@ -5182,6 +5215,7 @@ def exercise(args):
     exercise_transfer_chains_from_other()
     exercise_root_select()
     exercise_root_altloc_indices()
+    exercise_root_pickling()
     if (not forever): break
   print format_cpu_times()
 

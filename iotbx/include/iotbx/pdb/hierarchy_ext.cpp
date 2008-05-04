@@ -450,6 +450,7 @@ namespace {
       using namespace boost::python;
       class_<w_t>("root", no_init)
         .def(init<>())
+        .enable_pickling()
         .add_property("info", make_function(get_info), make_function(set_info))
         .def("deep_copy", &w_t::deep_copy)
         .def("memory_id", &w_t::memory_id)
