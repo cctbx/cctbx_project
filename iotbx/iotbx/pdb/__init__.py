@@ -345,7 +345,37 @@ def input(
 
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]
 
+input_sections = (
+  "unknown_section",
+  "title_section",
+  "remark_section",
+  "primary_structure_section",
+  "heterogen_section",
+  "secondary_structure_section",
+  "connectivity_annotation_section",
+  "miscellaneous_features_section",
+  "crystallographic_section",
+  "connectivity_section",
+  "bookkeeping_section")
+
 class _input(boost.python.injector, ext.input):
+
+  def __getinitargs__(self):
+    lines = flex.std_string()
+    for section in input_sections[:-2]:
+      lines.extend(getattr(self, section)())
+    pdb_string = StringIO()
+    self._as_pdb_string_cstringio(
+      cstringio=pdb_string,
+      append_end=False,
+      atom_hetatm=True,
+      sigatm=True,
+      anisou=True,
+      siguij=True)
+    lines.extend(flex.split_lines(pdb_string.getvalue()))
+    for section in input_sections[-2:]:
+      lines.extend(getattr(self, section)())
+    return ("pickle", lines)
 
   def extract_header_year(self):
     for line in self.title_section():

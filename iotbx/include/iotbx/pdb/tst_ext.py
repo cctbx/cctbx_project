@@ -2,10 +2,13 @@ from iotbx import pdb
 from iotbx.pdb import hybrid_36
 from cctbx import crystal
 from cctbx.array_family import flex
-from libtbx.utils import Sorry, user_plus_sys_time, format_cpu_times
+from libtbx.utils import hashlib_md5, Sorry, \
+  user_plus_sys_time, format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
 from cStringIO import StringIO
+import cPickle
+import pickle
 import sys, os
 
 def exercise_hybrid_36():
@@ -206,36 +209,7 @@ some.pdb, line 1:
   unexpected character.""")
   else: raise Exception_expected
 
-def exercise_pdb_input():
-  for i_trial in xrange(3):
-    pdb_inp = pdb.input(
-      source_info=None,
-      lines=flex.split_lines(""))
-    assert pdb_inp.source_info() == ""
-    assert len(pdb_inp.record_type_counts()) == 0
-    assert pdb_inp.unknown_section().size() == 0
-    assert pdb_inp.title_section().size() == 0
-    assert pdb_inp.remark_section().size() == 0
-    assert pdb_inp.primary_structure_section().size() == 0
-    assert pdb_inp.heterogen_section().size() == 0
-    assert pdb_inp.secondary_structure_section().size() == 0
-    assert pdb_inp.connectivity_annotation_section().size() == 0
-    assert pdb_inp.miscellaneous_features_section().size() == 0
-    assert pdb_inp.crystallographic_section().size() == 0
-    assert pdb_inp.input_atom_labels_list().size() == 0
-    assert pdb_inp.atom_serial_number_strings().size() == 0
-    assert pdb_inp.atoms().size() == 0
-    assert pdb_inp.model_ids().size() == 0
-    assert pdb_inp.model_indices().size() == 0
-    assert pdb_inp.ter_indices().size() == 0
-    assert pdb_inp.chain_indices().size() == 0
-    assert pdb_inp.break_indices().size() == 0
-    assert pdb_inp.connectivity_section().size() == 0
-    assert pdb_inp.bookkeeping_section().size() == 0
-    assert pdb_inp.model_atom_counts().size() == 0
-    pdb_inp = pdb.input(
-      source_info="file/name",
-      lines=flex.split_lines("""\
+pdb_string_all_sections = """\
 HEADER    ISOMERASE                               02-JUL-92   1FKB
 ONHOLD    26-JUN-99
 OBSLTE     07-DEC-04 1A0Y      1Y4P
@@ -313,7 +287,38 @@ CONECT 5332 5333 5334 5335 5336
 
 MASTER       81    0    0    7    3    0    0    645800   20    0   12
 END
-"""))
+"""
+
+def exercise_pdb_input():
+  for i_trial in xrange(3):
+    pdb_inp = pdb.input(
+      source_info=None,
+      lines=flex.split_lines(""))
+    assert pdb_inp.source_info() == ""
+    assert len(pdb_inp.record_type_counts()) == 0
+    assert pdb_inp.unknown_section().size() == 0
+    assert pdb_inp.title_section().size() == 0
+    assert pdb_inp.remark_section().size() == 0
+    assert pdb_inp.primary_structure_section().size() == 0
+    assert pdb_inp.heterogen_section().size() == 0
+    assert pdb_inp.secondary_structure_section().size() == 0
+    assert pdb_inp.connectivity_annotation_section().size() == 0
+    assert pdb_inp.miscellaneous_features_section().size() == 0
+    assert pdb_inp.crystallographic_section().size() == 0
+    assert pdb_inp.input_atom_labels_list().size() == 0
+    assert pdb_inp.atom_serial_number_strings().size() == 0
+    assert pdb_inp.atoms().size() == 0
+    assert pdb_inp.model_ids().size() == 0
+    assert pdb_inp.model_indices().size() == 0
+    assert pdb_inp.ter_indices().size() == 0
+    assert pdb_inp.chain_indices().size() == 0
+    assert pdb_inp.break_indices().size() == 0
+    assert pdb_inp.connectivity_section().size() == 0
+    assert pdb_inp.bookkeeping_section().size() == 0
+    assert pdb_inp.model_atom_counts().size() == 0
+    pdb_inp = pdb.input(
+      source_info="file/name",
+      lines=pdb_string_all_sections)
     assert pdb_inp.source_info() == "file/name"
     assert pdb_inp.record_type_counts() == {
       "KEYWDS": 1, "SEQRES": 1, "LINK  ": 1, "ORIGX1": 1, "SITE  ": 1,
@@ -694,6 +699,24 @@ REMARK   2 RESOLUTION. 1.7  ANGSTROMS.
   assert pdb_inp.extract_remark_iii_records(iii=2) \
       == ['REMARK   2 RESOLUTION. 1.7  ANGSTROMS.']
 
+def exercise_input_pickling():
+  pdb_inp = pdb.input(source_info="file/name", lines=pdb_string_all_sections)
+  for p in [pickle, cPickle]:
+    s = p.dumps(pdb_inp, 1)
+    l = p.loads(s)
+    assert not show_diff(l.as_pdb_string(), pdb_inp.as_pdb_string())
+    assert l.source_info() == "pickle"
+    for section in pdb.input_sections:
+      assert not show_diff(
+        "\n".join(getattr(l, section)()),
+        "\n".join(getattr(pdb_inp, section)()))
+    s = "\n".join(l.__getinitargs__()[1])
+    d = hashlib_md5(s).hexdigest()
+    if (pdb.hierarchy.atom.has_siguij()):
+      assert d == "680349fe2a399908338405337361c5cf"
+    else:
+      assert d == "b2c84ceb3fc2a5636b219a27b4449c31"
+
 def exercise_xray_structure_simple():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 CRYST1   61.410   54.829   43.543  90.00  90.00  90.00 P 21 21 21    8
@@ -980,6 +1003,7 @@ def exercise(args):
       pdb_file_names=phenix_regression_pdb_file_names)
     exercise_line_info_exceptions()
     exercise_pdb_input()
+    exercise_input_pickling()
     exercise_xray_structure_simple()
     if (not forever): break
   print format_cpu_times()

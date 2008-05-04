@@ -141,6 +141,7 @@ namespace {
             arg_("source_info"),
             arg_("lines"))))
         //
+        .enable_pickling()
         .def("source_info", &w_t::source_info, rbv())
         .def("record_type_counts", record_type_counts_as_dict)
         .def("unknown_section", &w_t::unknown_section, rbv())
