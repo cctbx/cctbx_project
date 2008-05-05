@@ -804,6 +804,16 @@ class input(object):
     self.hierarchy = self.input.construct_hierarchy()
     self.atoms = self.hierarchy.atoms()
 
+  def hierarchy_to_input_atom_permutation(self):
+    h_atoms = self.hierarchy.atoms()
+    sentinel = h_atoms.reset_tmp(first_value=0, increment=1)
+    return self.input.atoms().extract_tmp_as_size_t()
+
+  def input_to_hierarchy_atom_permutation(self):
+    i_atoms = self.input.atoms()
+    sentinel = i_atoms.reset_tmp(first_value=0, increment=1)
+    return self.hierarchy.atoms().extract_tmp_as_size_t()
+
 class show_summary(input):
 
   def __init__(self,
