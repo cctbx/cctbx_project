@@ -5169,6 +5169,20 @@ ENDMDL
     assert not show_diff("\n".join(l.info), "\n".join(hierarchy.info))
     assert not show_diff(l.as_pdb_string(), hierarchy.as_pdb_string())
 
+def exercise_hierarchy_input():
+  pdb_obj = pdb.hierarchy.input(pdb_string=pdb_2izq_220)
+  i_atoms = pdb_obj.input.atoms()
+  h_atoms = pdb_obj.hierarchy.atoms()
+  assert i_atoms.size() == 70
+  assert h_atoms.size() == 70
+  h_i_perm = pdb_obj.hierarchy_to_input_atom_permutation()
+  i_h_perm = pdb_obj.input_to_hierarchy_atom_permutation()
+  def check(atoms, atoms_perm):
+    for a,ap in zip(atoms, atoms_perm):
+      assert ap.memory_id() == a.memory_id()
+  check(h_atoms.select(h_i_perm), i_atoms)
+  check(i_atoms.select(i_h_perm), h_atoms)
+
 def get_phenix_regression_pdb_file_names():
   pdb_dir = libtbx.env.find_in_repositories("phenix_regression/pdb")
   if (pdb_dir is None): return None
@@ -5223,6 +5237,7 @@ def exercise(args):
     exercise_root_select()
     exercise_root_altloc_indices()
     exercise_root_pickling()
+    exercise_hierarchy_input()
     if (not forever): break
   print format_cpu_times()
 
