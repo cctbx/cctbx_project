@@ -12,6 +12,8 @@ def run(args):
     module_name="iotbx",
     path="iotbx/examples/pdb_truncate_to_ala",
     test=os.path.isdir)
+  if ("set" not in libtbx.forward_compatibility.__builtins__):
+    libtbx.forward_compatibility.__builtins__["set"] = list
   for file_name in ["crambin_pieces.pdb", "resname_mix.pdb"]:
     file_path = os.path.join(tutorial_dir, file_name)
     if (   not os.path.isfile(file_name)
