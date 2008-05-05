@@ -25,6 +25,23 @@ namespace iotbx { namespace pdb {
   }
 
   inline
+  unsigned
+  rstripped_size(const char* s)
+  {
+    unsigned i = static_cast<unsigned>(std::strlen(s));
+    if (i == 0) return 0;
+    for(;;) {
+      i--;
+      if (!isspace(s[i])) {
+        return i+1U;
+      }
+      if (i == 0) {
+        return 0;
+      }
+    }
+  }
+
+  inline
   void
   copy_left_justified(
     char* dest,
@@ -113,13 +130,16 @@ namespace iotbx { namespace pdb {
     capacity() { return N; }
 
     unsigned
-    size() const { return std::strlen(elems); }
+    size() const { return static_cast<unsigned>(std::strlen(elems)); }
 
     unsigned
-    stripped_size() const;
+    stripped_size() const { return pdb::stripped_size(elems); }
 
     small_str<N>
     strip() const;
+
+    unsigned
+    rstripped_size() const { return pdb::rstripped_size(elems); }
 
     bool
     operator==(small_str const& other) const
@@ -221,13 +241,6 @@ namespace iotbx { namespace pdb {
   }
 
   template <unsigned N>
-  unsigned
-  small_str<N>::stripped_size() const
-  {
-    return pdb::stripped_size(elems);
-  }
-
-  template <unsigned N>
   small_str<N>
   small_str<N>::strip() const
   {
@@ -270,6 +283,7 @@ namespace iotbx { namespace pdb {
   typedef small_str<5> str5;
   typedef small_str<6> str6;
   typedef small_str<7> str7;
+  typedef small_str<8> str8;
 
 }} // namespace iotbx::pdb
 

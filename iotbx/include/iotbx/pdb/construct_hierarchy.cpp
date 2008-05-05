@@ -61,7 +61,7 @@ namespace iotbx { namespace pdb {
   input::construct_hierarchy(
     bool residue_group_post_processing)
   {
-    af::const_ref<std::string>
+    af::const_ref<str8>
       model_ids = model_ids_.const_ref();
     af::const_ref<std::vector<unsigned> >
       chain_indices = chain_indices_.const_ref();
@@ -72,13 +72,13 @@ namespace iotbx { namespace pdb {
     hierarchy::atom* atoms = atoms_.begin();
     unsigned next_chain_range_begin = 0;
     for(unsigned i_model=0;i_model<model_ids.size();i_model++) {
-      hierarchy::model model(model_ids[i_model]);
+      hierarchy::model model(model_ids[i_model].elems);
       result.append_model(model);
       model.pre_allocate_chains(chain_indices[i_model].size());
       range_loop<unsigned> ch_r(
         chain_indices[i_model], next_chain_range_begin);
       for(unsigned i_chain=0;ch_r.next();i_chain++) {
-        hierarchy::chain chain(iall[ch_r.begin].chain());
+        hierarchy::chain chain(iall[ch_r.begin].chain_small().elems);
         model.append_chain(chain);
         // convert break_indices to break_range_ids
         boost::scoped_array<unsigned>
@@ -173,8 +173,8 @@ namespace iotbx { namespace pdb {
   void
   input_atoms_with_labels_generator::run(input const& inp)
   {
-    af::const_ref<std::string>
-      model_ids = inp.model_ids().const_ref();
+    af::const_ref<str8>
+      model_ids = inp.model_ids_small().const_ref();
     af::const_ref<std::vector<unsigned> >
       chain_indices = inp.chain_indices().const_ref();
     SCITBX_ASSERT(chain_indices.size() == model_ids.size());
@@ -187,7 +187,7 @@ namespace iotbx { namespace pdb {
     const hierarchy::atom* atoms = inp.atoms().begin();
     unsigned next_chain_range_begin = 0;
     for(unsigned i_model=0;i_model<model_ids.size();i_model++) {
-      std::string const& model_id = model_ids[i_model];
+      str8 const& model_id = model_ids[i_model];
       if (!process_model(model_id)) return;
       range_loop<unsigned> ch_r(
         chain_indices[i_model], next_chain_range_begin);
@@ -204,7 +204,7 @@ namespace iotbx { namespace pdb {
           }
           if (!process_atom(hierarchy::atom_with_labels(
                  atoms[i_atom],
-                 model_id.c_str(),
+                 model_id.elems,
                  ial.chain_small().elems,
                  ial.resseq_small().elems,
                  ial.icode_small().elems,

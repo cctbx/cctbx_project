@@ -587,7 +587,7 @@ namespace iotbx { namespace pdb {
   } // namespace record_type
 
   //! Tolerant processing of MODEL records.
-  std::string
+  str8
   read_model_id(pdb::line_info& line_info)
   {
     char blank = ' ';
@@ -595,18 +595,19 @@ namespace iotbx { namespace pdb {
     for(;i_col<line_info.size&&i_col<10U;i_col++) {
       if (line_info.data[i_col] != blank) break;
     }
-    char buf[8];
-    unsigned i_buf = 0;
+    str8 result;
+    unsigned i = 0;
     for(;i_col<line_info.size&&i_col<14U;i_col++) {
-      buf[i_buf++] = line_info.data[i_col];
+      result.elems[i++] = line_info.data[i_col];
     }
-    if (i_buf < 4U) {
-      unsigned n = 4U - i_buf;
-      std::memmove(buf+n, buf, i_buf);
-      std::fill_n(buf, n, blank);
-      i_buf = 4U;
+    if (i < 4U) {
+      unsigned n = 4U - i;
+      std::memmove(result.elems+n, result.elems, i);
+      std::fill_n(result.elems, n, blank);
+      i = 4U;
     }
-    return std::string(buf, i_buf);
+    result.elems[i] = '\0';
+    return result;
   }
 
   std::string
@@ -1155,7 +1156,7 @@ namespace iotbx { namespace pdb {
     }
     if (   model_indices_.size() == 0
         && input_atom_labels_list_.size() != 0) {
-      model_ids_.push_back("");
+      model_ids_.push_back(str8());
       model_indices_.push_back(input_atom_labels_list_.size());
     }
     SCITBX_ASSERT(model_indices_.size() == model_ids_.size());
@@ -1174,6 +1175,17 @@ namespace iotbx { namespace pdb {
     const hierarchy::atom* atoms_end = atoms_.end();
     for(const hierarchy::atom* a=atoms_.begin();a!=atoms_end;a++) {
       result.push_back(std::string(a->data->serial.elems));
+    }
+    return result;
+  }
+
+  af::shared<std::string>
+  input::model_ids() const
+  {
+    af::shared<std::string> result((af::reserve(model_ids_.size())));
+    const str8* model_ids_end = model_ids_.end();
+    for(const str8* i=model_ids_.begin();i!=model_ids_end;i++) {
+      result.push_back(std::string(i->elems));
     }
     return result;
   }

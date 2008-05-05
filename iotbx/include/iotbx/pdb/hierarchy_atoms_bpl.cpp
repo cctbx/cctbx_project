@@ -48,6 +48,7 @@ namespace {
         arg_("self"),
         arg_("strip")=false)))
       .def("extract_i_seq", extract_i_seq)
+      .def("extract_tmp_as_size_t", extract_tmp_as_size_t)
       .def("set_xyz", set_xyz, (arg_("new_xyz")), return_self<>())
       .def("set_sigxyz", set_sigxyz, (arg_("new_sigxyz")), return_self<>())
       .def("set_occ", set_occ, (arg_("new_occ")), return_self<>())

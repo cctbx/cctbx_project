@@ -60,6 +60,10 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
   extract_i_seq(
     af::const_ref<atom> const& atoms);
 
+  af::shared<std::size_t>
+  extract_tmp_as_size_t(
+    af::const_ref<atom> const& atoms);
+
   void
   set_xyz(
     af::ref<atom> const& atoms,

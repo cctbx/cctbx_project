@@ -996,13 +996,11 @@ def exercise_atom_id_str():
   md.id = "12345678"
   assert a.id_str() == 'model="12345678" pdb="NaMeAGLYCh1234J"'
   assert a.id_str(pdbres=True) == 'model="12345678" pdbres="GLYCh1234J"'
-  md.id = "123456789"
-  for pdbres in [False, True]:
-    try: a.id_str(pdbres=pdbres)
-    except RuntimeError, e:
-      assert not show_diff(str(e),
-        'model id with excessive length (max 8): "123456789"')
-    else: raise Exception_expected
+  try: md.id = "123456789"
+  except (ValueError, RuntimeError), e:
+    assert str(e) == "string is too long for target variable " \
+      "(maximum length is 8 characters, 9 given)."
+  else: raise Exception_expected
   md.id = "12345678"
   a.segid = "1234"
   assert a.id_str(suppress_segid=False) \
@@ -4258,6 +4256,15 @@ HETATM    7 CA   ION B   2      30.822  10.665  17.190  1.00 36.87
   assert list(
     pdb.hierarchy.af_shared_atom([atoms[3], atoms[6]]).extract_i_seq()) == \
       [3, 6]
+  assert list(atoms.extract_tmp_as_size_t()) == [0]*7
+  for i,atom in enumerate(atoms): atom.tmp = i+3
+  assert list(atoms.extract_tmp_as_size_t()) == [3,4,5,6,7,8,9]
+  atoms[3].tmp = -1
+  try: atoms.extract_tmp_as_size_t()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "atom.tmp less than zero: cannot convert to unsigned value.")
+  else: raise Exception_expected
   #
   assert atoms.set_xyz(new_xyz=xyz+(1,2,3)) is atoms
   assert approx_equal(atoms.extract_xyz(), [
