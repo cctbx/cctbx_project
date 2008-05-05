@@ -121,8 +121,8 @@ namespace detail {
     for(unsigned i_md=0;i_md<n_models;i_md++) {
       hierarchy::model const& model = root.models()[i_md];
       if (model.chains_size() == 0) n_empty_models++;
-      model_ids[model.data->id]++;
-      std::map<std::string, unsigned> model_chain_ids;
+      model_ids[std::string(model.data->id.elems)]++;
+      std::map<str2, unsigned> model_chain_ids;
       unsigned model_atoms_size = model.atoms_size();
       boost::scoped_array<small_str<19> > model_atom_labels(
         new small_str<19>[model_atoms_size]);
@@ -133,7 +133,7 @@ namespace detail {
         hierarchy::chain const& chain = model.chains()[i_ch];
         if (chain.residue_groups_size() == 0) n_empty_chains += 1;
         model_chain_ids[chain.data->id]++;
-        chain_ids[chain.data->id]++;
+        chain_ids[std::string(chain.data->id.elems)]++;
         std::set<char> chain_altlocs;
         boost::optional<residue_group> chain_alt_conf_proper;
         boost::optional<residue_group> chain_alt_conf_improper;
@@ -250,7 +250,7 @@ namespace detail {
         }
       }
       {
-        typedef std::map<std::string, unsigned>::const_iterator it;
+        typedef std::map<str2, unsigned>::const_iterator it;
         it i_end = model_chain_ids.end();
         for(it i=model_chain_ids.begin();i!=i_end;i++) {
           unsigned count = i->second;

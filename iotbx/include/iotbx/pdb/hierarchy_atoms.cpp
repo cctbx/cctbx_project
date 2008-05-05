@@ -58,6 +58,25 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
 #undef IOTBX_LOC
 
   af::shared<std::size_t>
+  extract_tmp_as_size_t(
+    af::const_ref<atom> const& atoms)
+  {
+    af::shared<std::size_t> result(
+      atoms.size(), af::init_functor_null<std::size_t>());
+    std::size_t* r = result.begin();
+    const hierarchy::atom* atoms_end = atoms.end();
+    for(const hierarchy::atom* a=atoms.begin();a!=atoms_end;a++) {
+      int tmp = a->data->tmp;
+      if (tmp < 0) {
+        throw std::runtime_error(
+          "atom.tmp less than zero: cannot convert to unsigned value.");
+      }
+      *r++ = static_cast<std::size_t>(tmp);
+    }
+    return result;
+  }
+
+  af::shared<std::size_t>
   extract_hetero(
     af::const_ref<atom> const& atoms)
   {

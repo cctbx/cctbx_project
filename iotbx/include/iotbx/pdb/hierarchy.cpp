@@ -354,11 +354,7 @@ namespace {
     if (add_model) {
       if (model_id != 0) {
         std::size_t l = std::strlen(model_id);
-        if (l > 8U) {
-          throw std::runtime_error(
-            std::string("model id with excessive length (max 8): \"")
-            + model_id + "\"");
-        }
+        SCITBX_ASSERT(l <= 8);
         unsigned n = static_cast<unsigned>(l);
         unsigned m = std::max(4U, n);
         std::memcpy(result, "model=\"", 7U);
@@ -415,7 +411,7 @@ namespace {
       format(result, add_model, add_segid);
     }
     else {
-      chain_id = ch->id.c_str();
+      chain_id = ch->id.elems;
       if (!add_model) {
         model_id = 0;
         format(result, add_model, add_segid);
@@ -428,7 +424,7 @@ namespace {
           format(result, add_model, add_segid);
         }
         else {
-          model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
+          model_id = (md->id.size() == 0 ? 0 : md->id.elems);
           format(result, add_model, add_segid);
         }
       }
@@ -502,9 +498,9 @@ namespace {
     label_formatter.resname = self.resname.elems;
     label_formatter.resseq = self.resseq.elems;
     label_formatter.icode = self.icode.elems;
-    label_formatter.chain_id = self.chain_id.c_str();
+    label_formatter.chain_id = self.chain_id.elems;
     label_formatter.model_id = (
-      self.model_id.size() == 0 ? 0 : self.model_id.c_str());
+      self.model_id.size() == 0 ? 0 : self.model_id.elems);
   }
 
 } // namespace <anonymous>
@@ -917,8 +913,8 @@ namespace {
   atom_with_labels
   atom::fetch_labels() const
   {
-    std::string model_id;
-    std::string chain_id;
+    str8 model_id;
+    str2 chain_id;
     str4 resseq;
     str1 icode;
     str1 altloc;
@@ -943,8 +939,8 @@ namespace {
     }
     return atom_with_labels(
       *this,
-      model_id.c_str(),
-      chain_id.c_str(),
+      model_id.elems,
+      chain_id.elems,
       resseq.elems,
       icode.elems,
       altloc.elems,
@@ -1902,8 +1898,8 @@ namespace {
     bool is_first_after_break_)
   :
     atom(atom_),
-    model_id(model_id_ ? model_id_ : ""),
-    chain_id(chain_id_ ? chain_id_ : ""),
+    model_id(model_id_),
+    chain_id(chain_id_),
     resseq(resseq_),
     icode(icode_),
     altloc(altloc_),
@@ -1917,8 +1913,8 @@ namespace {
   {
     return atom_with_labels(
       atom::detached_copy(),
-      model_id.c_str(),
-      chain_id.c_str(),
+      model_id.elems,
+      chain_id.elems,
       resseq.elems,
       icode.elems,
       altloc.elems,

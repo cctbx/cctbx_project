@@ -15,12 +15,12 @@ namespace iotbx { namespace pdb { namespace hierarchy {
     unsigned n_mds = models_size(); \
     for(unsigned i_md=0;i_md<n_mds;i_md++) { \
       model const& md = data->models[i_md]; \
-      model r_md(md.data->id); \
+      model r_md(md.data->id.elems); \
       unsigned n_chs = md.chains_size(); \
       std::vector<chain> const& chs = md.chains(); \
       for(unsigned i_ch=0;i_ch<n_chs;i_ch++) { \
         chain const& ch = chs[i_ch]; \
-        chain r_ch(ch.data->id); \
+        chain r_ch(ch.data->id.elems); \
         unsigned n_rgs = ch.residue_groups_size(); \
         std::vector<residue_group> const& rgs = ch.residue_groups(); \
         for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) { \

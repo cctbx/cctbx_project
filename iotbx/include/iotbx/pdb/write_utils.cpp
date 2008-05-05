@@ -3,33 +3,17 @@
 
 namespace iotbx { namespace pdb { namespace write_utils {
 
-  unsigned
-  rstripped_size(std::string const& s)
-  {
-    unsigned i = static_cast<unsigned>(s.size());
-    if (i == 0) return 0;
-    for(;;) {
-      i--;
-      if (!isspace(s[i])) {
-        return i+1U;
-      }
-      if (i == 0) {
-        return 0;
-      }
-    }
-  }
-
   void
   model_record(
     stream_write& write,
-    std::string const& model_id)
+    str8 const& model_id)
   {
     write("MODEL", 5U);
-    unsigned n = rstripped_size(model_id);
+    unsigned n = model_id.rstripped_size();
     if (n != 0) {
       write(" ", 1U);
       for(unsigned i=n;i<8U;i++) write(" ", 1U);
-      write(model_id.c_str(), n);
+      write(model_id.elems, n);
     }
     write("\n", 1U);
   }

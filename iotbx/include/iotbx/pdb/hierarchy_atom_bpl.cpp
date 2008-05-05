@@ -351,6 +351,8 @@ namespace {
   IOTBX_LOC_GET(attr) \
   IOTBX_LOC_SET(attr)
 
+    IOTBX_LOC_GET_SET(model_id)
+    IOTBX_LOC_GET_SET(chain_id)
     IOTBX_PDB_HIERARCHY_WRAPPERS_SET_HY36(resseq, resseq, 4U,
       /* HY36_WIDTH_4_MIN */ -999,
       /* HY36_WIDTH_4_MAX */ 2436111)
@@ -394,8 +396,10 @@ namespace {
             arg_("is_first_in_chain"),
             arg_("is_first_after_break"))))
         .def("detached_copy", &w_t::detached_copy)
-        .def_readwrite("model_id", &w_t::model_id)
-        .def_readwrite("chain_id", &w_t::chain_id)
+        .add_property("model_id",
+          make_function(get_model_id), make_function(set_model_id))
+        .add_property("chain_id",
+          make_function(get_chain_id), make_function(set_chain_id))
         .add_property("resseq",
           make_function(get_resseq), make_function(set_resseq))
         .add_property("icode",

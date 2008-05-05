@@ -114,18 +114,18 @@ namespace hierarchy {
       friend struct atom_label_columns_formatter;
       weak_ptr<root_data> parent;
     public:
-      std::string id;
+      str8 id;
     protected:
       std::vector<chain> chains;
 
       inline
       model_data(
         weak_ptr<root_data> const& parent,
-        std::string const& id);
+        const char* id);
 
       inline
       model_data(
-        std::string const& id);
+        const char* id);
 
       inline
       model_data(
@@ -141,18 +141,18 @@ namespace hierarchy {
       friend struct atom_label_columns_formatter;
       weak_ptr<model_data> parent;
     public:
-      std::string id;
+      str2 id;
     protected:
       std::vector<residue_group> residue_groups;
 
       inline
       chain_data(
         weak_ptr<model_data> const& parent,
-        std::string const& id);
+        const char* id);
 
       inline
       chain_data(
-        std::string const& id);
+        const char* id);
 
       inline
       chain_data(
@@ -1027,11 +1027,11 @@ namespace hierarchy {
       explicit
       chain(
         model const& parent,
-        std::string const& id="");
+        const char* id="");
 
       explicit
       chain(
-        std::string const& id="")
+        const char* id="")
       :
         data(new chain_data(id))
       {}
@@ -1039,7 +1039,7 @@ namespace hierarchy {
       explicit
       chain(const chain_data* other)
       :
-        data(new chain_data(other->id))
+        data(new chain_data(other->id.elems))
       {}
 
       chain(
@@ -1150,15 +1150,15 @@ namespace hierarchy {
       explicit
       model(
         root const& parent,
-        std::string const& id="");
+        const char* id="");
 
       explicit
-      model(std::string const& id="") : data(new model_data(id)) {}
+      model(const char* id="") : data(new model_data(id)) {}
 
       explicit
       model(const model_data* other)
       :
-        data(new model_data(other->id))
+        data(new model_data(other->id.elems))
       {}
 
       model(
@@ -1517,8 +1517,8 @@ namespace hierarchy {
   class atom_with_labels : public atom
   {
     public:
-      std::string model_id;
-      std::string chain_id;
+      str8 model_id;
+      str2 chain_id;
       str4 resseq;
       str1 icode;
       str1 altloc;
@@ -1579,14 +1579,14 @@ namespace hierarchy {
   inline
   model_data::model_data(
     weak_ptr<root_data> const& parent_,
-    std::string const& id_)
+    const char* id_)
   :
     parent(parent_),
     id(id_)
   {}
 
   inline
-  model_data::model_data(std::string const& id_) : id(id_) {}
+  model_data::model_data(const char* id_) : id(id_) {}
 
   inline
   model_data::model_data(
@@ -1600,7 +1600,7 @@ namespace hierarchy {
   inline
   model::model(
     root const& parent,
-    std::string const& id)
+    const char* id)
   :
     data(new model_data(parent.data, id))
   {}
@@ -1608,7 +1608,7 @@ namespace hierarchy {
   inline
   chain_data::chain_data(
     weak_ptr<model_data> const& parent_,
-    std::string const& id_)
+    const char* id_)
   :
     parent(parent_),
     id(id_)
@@ -1616,7 +1616,7 @@ namespace hierarchy {
 
   inline
   chain_data::chain_data(
-    std::string const& id_)
+    const char* id_)
   :
     id(id_)
   {}
@@ -1633,7 +1633,7 @@ namespace hierarchy {
   inline
   chain::chain(
     model const& parent,
-    std::string const& id)
+    const char* id)
   :
     data(new chain_data(parent.data, id))
   {}

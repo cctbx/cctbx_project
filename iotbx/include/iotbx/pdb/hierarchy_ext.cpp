@@ -175,14 +175,7 @@ namespace {
   {
     typedef chain w_t;
 
-    static std::string
-    get_id(w_t const& self) { return self.data->id; }
-
-    static void
-    set_id(w_t const& self, std::string const& new_id)
-    {
-      self.data->id = new_id;
-    }
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(id)
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(chain, residue_group, residue_groups)
 
@@ -209,9 +202,9 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("chain", no_init)
-        .def(init<model const&, optional<std::string const&> >((
+        .def(init<model const&, optional<const char*> >((
           arg_("parent"), arg_("id")="")))
-        .def(init<std::string const&>((
+        .def(init<const char*>((
           arg_("id")="")))
         .def(init<model const&, chain const&>((
           arg_("parent"), arg_("other"))))
@@ -243,14 +236,7 @@ namespace {
   {
     typedef model w_t;
 
-    static std::string
-    get_id(w_t const& self) { return self.data->id; }
-
-    static void
-    set_id(w_t const& self, std::string const& new_id)
-    {
-      self.data->id = new_id;
-    }
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(id)
 
     IOTBX_PDB_HIERARCHY_GET_CHILDREN(model, chain, chains)
 
@@ -264,9 +250,9 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("model", no_init)
-        .def(init<root const&, optional<std::string> >((
+        .def(init<root const&, optional<const char*> >((
           arg_("parent"), arg_("id")="")))
-        .def(init<std::string>((arg_("id")="")))
+        .def(init<const char*>((arg_("id")="")))
         .def(init<root const&, model const&>((
           arg_("parent"), arg_("other"))))
         .add_property("id", make_function(get_id), make_function(set_id))

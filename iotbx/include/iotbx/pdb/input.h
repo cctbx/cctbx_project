@@ -374,8 +374,11 @@ namespace iotbx { namespace pdb {
       af::shared<std::string>
       atom_serial_number_strings() const;
 
-      af::shared<std::string> const&
-      model_ids() const { return model_ids_; }
+      af::shared<str8> const&
+      model_ids_small() const { return model_ids_; }
+
+      af::shared<std::string>
+      model_ids() const;
 
       af::shared<std::size_t> const&
       model_indices() const { return model_indices_; }
@@ -427,7 +430,7 @@ namespace iotbx { namespace pdb {
       af::shared<std::string> crystallographic_section_;
       af::shared<input_atom_labels> input_atom_labels_list_;
       af::shared<hierarchy::atom> atoms_;
-      af::shared<std::string> model_ids_;
+      af::shared<str8>        model_ids_;
       af::shared<std::size_t> model_indices_;
       af::shared<std::size_t> ter_indices_;
       af::shared<std::vector<unsigned> > chain_indices_;
@@ -443,10 +446,10 @@ namespace iotbx { namespace pdb {
     ~input_atoms_with_labels_generator() {}
 
     virtual bool
-    process_model(std::string const& /* model_id */) { return true; }
+    process_model(str8 const& /* model_id */) { return true; }
 
     virtual bool
-    process_endmdl(std::string const& /* model_id */) { return true; }
+    process_endmdl(str8 const& /* model_id */) { return true; }
 
     virtual bool
     process_atom(hierarchy::atom_with_labels const&) { return true; }
