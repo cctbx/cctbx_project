@@ -1,4 +1,4 @@
-import iotbx.pdb.hierarchy
+import iotbx.pdb
 from cctbx import xray
 from cctbx import crystal
 from cctbx import sgtbx
@@ -124,13 +124,13 @@ def structure_from_inp_pdb(inp, status):
   for line in pdb_file:
     print line
   print
-  pdb_obj = iotbx.pdb.hierarchy.input(pdb_string="\n".join(pdb_file)+"\n")
-  xray_structure = pdb_obj.input.xray_structure_simple(
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_file)
+  xray_structure = pdb_inp.xray_structure_simple(
     enable_scattering_type_unknown=True)
   u_tidy = xray_structure.scatterers().extract_u_cart(
     xray_structure.unit_cell())
   have_header = False
-  for ut, atom in zip(u_tidy, pdb_obj.atoms):
+  for ut, atom in zip(u_tidy, pdb_inp.atoms_with_labels()):
     ui = atom.uij
     sui, sut = [(" %7.4f" * 6) % u for u in [ui, ut]]
     if (sui != sut):

@@ -793,16 +793,21 @@ class _residue(boost.python.injector, ext.residue):
 
 class input(object):
 
-  def __init__(self, file_name=None, pdb_string=None):
+  def __init__(self, file_name=None, pdb_string=None, source_info=Auto):
     assert [file_name, pdb_string].count(None) == 1
     import iotbx.pdb
     if (file_name is not None):
+      assert source_info is Auto
       self.input = iotbx.pdb.input(file_name=file_name)
     else:
+      if (source_info is Auto): source_info = "string"
       self.input = iotbx.pdb.input(
-        source_info="string", lines=flex.split_lines(pdb_string))
+        source_info=source_info, lines=flex.split_lines(pdb_string))
     self.hierarchy = self.input.construct_hierarchy()
-    self.atoms = self.hierarchy.atoms()
+
+  def __getinitargs__(self):
+    from pickle import PicklingError
+    raise PicklingError
 
   def hierarchy_to_input_atom_permutation(self):
     h_atoms = self.hierarchy.atoms()

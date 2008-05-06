@@ -131,6 +131,7 @@ def run(args, command_name="iotbx.pdb.superpose_centers_of_mass"):
   centers_of_mass = []
   for param_group in [params.reference, params.other]:
     pdb_obj = pdb.hierarchy.input(file_name=param_group.file_name)
+    pdb_obj.atoms = pdb_obj.hierarchy.atoms()
     pdb_objs.append(pdb_obj)
     sites_carts.append(pdb_obj.atoms.extract_xyz())
     sites_sel = sites_carts[-1]
