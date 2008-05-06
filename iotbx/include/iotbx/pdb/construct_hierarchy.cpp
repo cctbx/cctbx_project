@@ -1,5 +1,4 @@
 #include <iotbx/pdb/input.h>
-#include <scitbx/misc/fill_ranges.h>
 #include <scitbx/array_family/sort.h>
 #include <boost/scoped_array.hpp>
 
@@ -65,6 +64,11 @@ namespace iotbx { namespace pdb {
       model_ids = model_ids_.const_ref();
     af::const_ref<std::vector<unsigned> >
       chain_indices = chain_indices_.const_ref();
+    const std::size_t* break_index = break_indices_.begin();
+    const std::size_t* break_indices_end = break_indices_.end();
+    unsigned next_break_index = static_cast<unsigned>(
+      break_index == break_indices_end ?
+        atoms_.size() : *break_index++);
     SCITBX_ASSERT(chain_indices.size() == model_ids.size());
     hierarchy::root result;
     result.pre_allocate_models(model_ids.size());
@@ -80,23 +84,19 @@ namespace iotbx { namespace pdb {
       for(unsigned i_chain=0;ch_r.next();i_chain++) {
         hierarchy::chain chain(iall[ch_r.begin].chain_small().elems);
         model.append_chain(chain);
-        // convert break_indices to break_range_ids
-        boost::scoped_array<unsigned>
-          break_range_ids_owner(new unsigned[ch_r.size]);
-        scitbx::misc::fill_ranges(
-          ch_r.begin, ch_r.end,
-          break_indices_.begin(), break_indices_.end(),
-          break_range_ids_owner.get());
-        const unsigned* break_range_ids = break_range_ids_owner.get();
         std::map<str4, std::vector<unsigned> > altloc_resname_indices;
         unsigned rg_start = ch_r.begin;
         bool link_to_previous = false;
-        unsigned prev_break_range_id = 0;
         const char* prev_resid = 0;
         const char* prev_resname = 0;
         bool open_resname_run_has_blank_altloc = false;
         for (unsigned i_atom=ch_r.begin; i_atom!=ch_r.end; i_atom++) {
-          unsigned break_range_id = *break_range_ids++;
+          bool is_first_after_break = (i_atom == next_break_index);
+          if (is_first_after_break) {
+            next_break_index = static_cast<unsigned>(
+              break_index == break_indices_end ?
+                atoms_.size() : *break_index++);
+          }
           input_atom_labels const& ial = iall[i_atom];
           const char* resid = ial.resid_begin();
           const char* resname = ial.resname_begin();
@@ -130,21 +130,21 @@ namespace iotbx { namespace pdb {
                 altloc_resname_indices,
                 residue_group_post_processing);
               rg_start = i_atom;
-              link_to_previous = (break_range_id == prev_break_range_id);
+              link_to_previous = !is_first_after_break;
               open_resname_run_has_blank_altloc = false;
             }
-            else if (break_range_id != prev_break_range_id) {
+            else if (is_first_after_break) {
               char buf[64];
               std::sprintf(buf,
                 "Misplaced BREAK record (%s line %u).",
                 source_info_.size()
                   ? (source_info_ + ",").c_str()
                   : "input",
-                break_record_line_numbers[prev_break_range_id]);
+                break_record_line_numbers[
+                  break_index - break_indices_.begin() - 1]);
               throw std::runtime_error(buf);
             }
           }
-          prev_break_range_id = break_range_id;
           prev_resid = resid;
           prev_resname = resname;
           if (curr_blank_altloc) open_resname_run_has_blank_altloc = true;
@@ -167,6 +167,7 @@ namespace iotbx { namespace pdb {
       }
       next_chain_range_begin = ch_r.end;
     }
+    SCITBX_ASSERT(break_index == break_indices_end);
     return result;
   }
 
