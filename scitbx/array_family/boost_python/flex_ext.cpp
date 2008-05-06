@@ -2,7 +2,6 @@
 
 #include <scitbx/math/linear_regression.h>
 #include <scitbx/math/linear_correlation.h>
-#include <scitbx/misc/fill_ranges.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/sym_mat2.h>
 #include <scitbx/array_family/shared.h>
@@ -295,20 +294,6 @@ namespace {
     return boost::python::make_tuple(result_type, result_value);
   }
 
-  af::shared<std::size_t>
-  fill_ranges_shared(
-    std::size_t begin,
-    std::size_t end,
-    af::const_ref<std::size_t> boundaries)
-  {
-    SCITBX_ASSERT(end >= begin);
-    af::shared<std::size_t> result(
-      end-begin, af::init_functor_null<std::size_t>());
-    misc::fill_ranges(
-      begin, end, boundaries.begin(), boundaries.end(), result.begin());
-    return result;
-  }
-
   void init_module()
   {
     using namespace boost::python;
@@ -350,9 +335,6 @@ namespace {
     linear_correlation_wrappers::wrap();
 
     def("integer_offsets_vs_pointers", integer_offsets_vs_pointers);
-
-    def("fill_ranges", fill_ranges_shared, (
-      arg_("begin"), arg_("end"), arg_("boundaries")));
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
