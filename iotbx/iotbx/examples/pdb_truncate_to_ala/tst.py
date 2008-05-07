@@ -3,6 +3,7 @@ import v1_loop_over_atoms
 import v2_simple
 import v3_better
 import v4_with_bells_and_whistles
+from libtbx.path import is_same_file
 import libtbx.load_env
 import sys, os
 
@@ -17,7 +18,7 @@ def run(args):
   for file_name in ["crambin_pieces.pdb", "resname_mix.pdb"]:
     file_path = os.path.join(tutorial_dir, file_name)
     if (   not os.path.isfile(file_name)
-        or not os.path.samefile(file_path, file_name)):
+        or not is_same_file(file_names=[file_path, file_name])):
       libtbx.utils.copy_file(source=file_path, target=file_name)
     for vx in [v0_getting_started,
                v1_loop_over_atoms,
