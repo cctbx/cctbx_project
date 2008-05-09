@@ -17,6 +17,7 @@ def exercise_bond():
     weight=1)
   assert approx_equal(p.distance_ideal, 3.5)
   assert approx_equal(p.weight, 1)
+  assert approx_equal(p.slack, 0)
   p.distance_ideal = 35
   assert approx_equal(p.distance_ideal, 35)
   p.distance_ideal = 3.5
@@ -25,6 +26,10 @@ def exercise_bond():
   assert approx_equal(p.weight, 10)
   p.weight = 1
   assert approx_equal(p.weight, 1)
+  p.slack = 3
+  assert approx_equal(p.slack, 3)
+  p.slack = 0
+  assert approx_equal(p.slack, 0)
   #
   t = geometry_restraints.bond_params_table()
   assert t.size() == 0
@@ -309,6 +314,41 @@ def exercise_bond():
     pair_asu_table=pair_asu_table)
   assert sorted_asu_proxies.simple.size() == 1
   assert sorted_asu_proxies.asu.size() == 0
+  #
+  def sign(x):
+    if (x < 0): return -1
+    return 1
+  mt = flex.mersenne_twister(seed=0)
+  for slack in [0, 1/3., 2/3., 1]:
+    for ish in xrange(9):
+      sh = ish / 2.
+      site1 = matrix.col((1,2,3)) \
+            + sh * matrix.col(mt.random_double_point_on_sphere())
+      b = geometry_restraints.bond(
+        sites=[(1,2,3),site1],
+        distance_ideal=2,
+        weight=1,
+        slack=slack)
+      assert approx_equal(b.distance_model, sh)
+      assert approx_equal(
+        b.delta_slack,
+        sign(b.delta) * max(0, (abs(b.delta) - b.slack)))
+      #
+      for i in xrange(3):
+        rs = []
+        eps = 1.e-6
+        for signed_eps in [eps, -eps]:
+          site0 = [1,2,3]
+          site0[i] += signed_eps
+          be = geometry_restraints.bond(
+            sites=[site0,site1],
+            distance_ideal=2,
+            weight=1,
+            slack=slack)
+          rs.append(be.residual())
+        g_fin = (rs[0]-rs[1])/(2*eps)
+        g_ana = b.gradients()[0][i]
+        assert approx_equal(g_ana, g_fin)
 
 class py_nonbonded_cos(object): # prototype
 

@@ -27,9 +27,11 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("bond_params", no_init)
-        .def(init<double, double>((arg_("distance_ideal"), arg_("weight"))))
+        .def(init<double, double, optional<double> >((
+          arg_("distance_ideal"), arg_("weight"), arg_("slack")=0)))
         .def_readwrite("distance_ideal", &w_t::distance_ideal)
         .def_readwrite("weight", &w_t::weight)
+        .def_readwrite("slack", &w_t::slack)
       ;
     }
   };
@@ -112,8 +114,12 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t, bases<bond_params> >("bond_simple_proxy", no_init)
-        .def(init<af::tiny<unsigned, 2> const&, double, double>(
-          (arg_("i_seqs"), arg_("distance_ideal"), arg_("weight"))))
+        .def(init<
+          af::tiny<unsigned, 2> const&, double, double, optional<double> >((
+            arg_("i_seqs"),
+            arg_("distance_ideal"),
+            arg_("weight"),
+            arg_("slack")=0)))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
       ;
@@ -139,11 +145,13 @@ namespace {
           af::tiny<unsigned, 2> const&,
           sgtbx::rt_mx const&,
           double,
-          double>(
-            (arg_("i_seqs"),
-             arg_("rt_mx_ji"),
-             arg_("distance_ideal"),
-             arg_("weight"))))
+          double,
+          optional<double> >((
+            arg_("i_seqs"),
+            arg_("rt_mx_ji"),
+            arg_("distance_ideal"),
+            arg_("weight"),
+            arg_("slack")=0)))
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("rt_mx_ji", &w_t::rt_mx_ji)
       ;
@@ -160,8 +168,12 @@ namespace {
       using namespace boost::python;
       class_<w_t, bases<bond_params, asu_mapping_index_pair> >(
             "bond_asu_proxy", no_init)
-        .def(init<asu_mapping_index_pair const&, double, double>(
-          (arg_("pair"), arg_("distance_ideal"), arg_("weight"))))
+        .def(init<
+          asu_mapping_index_pair const&, double, double, optional<double> >((
+            arg_("pair"),
+            arg_("distance_ideal"),
+            arg_("weight"),
+            arg_("slack")=0)))
         .def(init<asu_mapping_index_pair const&, bond_params const&>(
           (arg_("pair"), arg_("params"))))
         .def("as_simple_proxy", &w_t::as_simple_proxy)
@@ -184,8 +196,15 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t, bases<bond_params> >("bond", no_init)
-        .def(init<af::tiny<scitbx::vec3<double>, 2> const&, double, double>(
-          (arg_("sites"), arg_("distance_ideal"), arg_("weight"))))
+        .def(init<
+          af::tiny<scitbx::vec3<double>, 2> const&,
+          double,
+          double,
+          optional<double> >((
+            arg_("sites"),
+            arg_("distance_ideal"),
+            arg_("weight"),
+            arg_("slack")=0)))
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   bond_simple_proxy const&>(
           (arg_("sites_cart"), arg_("proxy"))))
@@ -200,6 +219,7 @@ namespace {
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def_readonly("distance_model", &w_t::distance_model)
         .def_readonly("delta", &w_t::delta)
+        .def_readonly("delta_slack", &w_t::delta_slack)
         .def("residual", &w_t::residual)
         .def("gradients", &w_t::gradients)
       ;
