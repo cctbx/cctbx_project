@@ -14,15 +14,22 @@ namespace cctbx { namespace geometry_restraints {
     bond_params() {}
 
     //! Constructor.
-    bond_params(double distance_ideal_, double weight_)
+    bond_params(
+      double distance_ideal_,
+      double weight_,
+      double slack_=0)
     :
-      distance_ideal(distance_ideal_), weight(weight_)
+      distance_ideal(distance_ideal_),
+      weight(weight_),
+      slack(slack_)
     {}
 
     //! Parameter.
     double distance_ideal;
     //! Parameter.
     double weight;
+    //! Parameter.
+    double slack;
   };
 
   //! Dictionary of bond parameters for a given index i_seq.
@@ -40,9 +47,10 @@ namespace cctbx { namespace geometry_restraints {
     bond_simple_proxy(
       af::tiny<unsigned, 2> const& i_seqs_,
       double distance_ideal_,
-      double weight_)
+      double weight_,
+      double slack_=0)
     :
-      bond_params(distance_ideal_, weight_),
+      bond_params(distance_ideal_, weight_, slack_),
       i_seqs(i_seqs_)
     {}
 
@@ -83,9 +91,10 @@ namespace cctbx { namespace geometry_restraints {
       af::tiny<unsigned, 2> const& i_seqs_,
       sgtbx::rt_mx const& rt_mx_ji_,
       double distance_ideal_,
-      double weight_)
+      double weight_,
+      double slack_=0)
     :
-      bond_params(distance_ideal_, weight_),
+      bond_params(distance_ideal_, weight_, slack_),
       i_seqs(i_seqs_),
       rt_mx_ji(rt_mx_ji_)
     {}
@@ -123,9 +132,10 @@ namespace cctbx { namespace geometry_restraints {
     bond_asu_proxy(
       asu_mapping_index_pair const& pair_,
       double distance_ideal_,
-      double weight_)
+      double weight_,
+      double slack_=0)
     :
-      bond_params(distance_ideal_, weight_),
+      bond_params(distance_ideal_, weight_, slack_),
       asu_mapping_index_pair(pair_)
     {}
 
@@ -145,7 +155,8 @@ namespace cctbx { namespace geometry_restraints {
       return bond_simple_proxy(
         af::tiny<unsigned, 2>(i_seq, j_seq),
         distance_ideal,
-        weight);
+        weight,
+        slack);
     }
   };
 
@@ -163,9 +174,10 @@ namespace cctbx { namespace geometry_restraints {
       bond(
         af::tiny<scitbx::vec3<double>, 2> const& sites_,
         double distance_ideal_,
-        double weight_)
+        double weight_,
+        double slack_=0)
       :
-        bond_params(distance_ideal_, weight_),
+        bond_params(distance_ideal_, weight_, slack_),
         sites(sites_)
       {
         init_distance_model();
@@ -178,7 +190,7 @@ namespace cctbx { namespace geometry_restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         bond_simple_proxy const& proxy)
       :
-        bond_params(proxy.distance_ideal, proxy.weight)
+        bond_params(proxy.distance_ideal, proxy.weight, proxy.slack)
       {
         for(int i=0;i<2;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -197,7 +209,7 @@ namespace cctbx { namespace geometry_restraints {
         af::const_ref<scitbx::vec3<double> > const& sites_cart,
         bond_sym_proxy const& proxy)
       :
-        bond_params(proxy.distance_ideal, proxy.weight)
+        bond_params(proxy.distance_ideal, proxy.weight, proxy.slack)
       {
         for(int i=0;i<2;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
@@ -217,7 +229,7 @@ namespace cctbx { namespace geometry_restraints {
         direct_space_asu::asu_mappings<> const& asu_mappings,
         bond_asu_proxy const& proxy)
       :
-        bond_params(proxy.distance_ideal, proxy.weight)
+        bond_params(proxy.distance_ideal, proxy.weight, proxy.slack)
       {
         sites[0] = asu_mappings.map_moved_site_to_asu(
           sites_cart[proxy.i_seq], proxy.i_seq, 0);
@@ -231,18 +243,18 @@ namespace cctbx { namespace geometry_restraints {
         asu_cache<> const& cache,
         bond_asu_proxy const& proxy)
       :
-        bond_params(proxy.distance_ideal, proxy.weight)
+        bond_params(proxy.distance_ideal, proxy.weight, proxy.slack)
       {
         sites[0] = cache.sites[proxy.i_seq][0];
         sites[1] = cache.sites[proxy.j_seq][proxy.j_sym];
         init_distance_model();
       }
 
-      //! weight * delta**2.
+      //! weight * delta_slack**2.
       /*! See also: Hendrickson, W.A. (1985). Meth. Enzym. 115, 252-270.
        */
       double
-      residual() const { return weight * scitbx::fn::pow2(delta); }
+      residual() const { return weight * scitbx::fn::pow2(delta_slack); }
 
       //! Gradient with respect to sites[0].
       /*! Not available in Python.
@@ -251,7 +263,11 @@ namespace cctbx { namespace geometry_restraints {
       gradient_0(double epsilon=1.e-100) const
       {
         if (distance_model < epsilon) return scitbx::vec3<double>(0,0,0);
-        return -weight * 2 * delta / distance_model * (sites[0] - sites[1]);
+        if (delta < -slack || delta > slack) {
+          return -weight * 2 * delta_slack
+                         / distance_model * (sites[0] - sites[1]);
+        }
+        return scitbx::vec3<double>(0,0,0);
       }
 
       //! Gradients with respect to both sites.
@@ -316,6 +332,8 @@ namespace cctbx { namespace geometry_restraints {
       double distance_model;
       //! Difference distance_ideal - distance_model.
       double delta;
+      //! sign(delta) * max(0, (abs(delta) - slack)).
+      double delta_slack;
 
     protected:
       void
@@ -323,6 +341,16 @@ namespace cctbx { namespace geometry_restraints {
       {
         distance_model = (sites[0] - sites[1]).length();
         delta = distance_ideal - distance_model;
+        CCTBX_ASSERT(slack >= 0);
+        if (delta > slack) {
+          delta_slack = delta - slack;
+        }
+        else if (delta >= -slack) {
+          delta_slack = 0;
+        }
+        else {
+          delta_slack = delta + slack;
+        }
       }
   };
 
