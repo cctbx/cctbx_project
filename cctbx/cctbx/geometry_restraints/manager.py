@@ -461,6 +461,8 @@ class manager(object):
               sites_cart=sites_cart, proxy=proxy).distance_model
           print >> f, "  distance_ideal: %.6g" % proxy.distance_ideal
           print >> f, "  weight: %.6g" % proxy.weight
+          if (proxy.slack > 0):
+            print >> f, "  slack: %.6g" % proxy.slack
       if (pair_proxies.bond_proxies.asu.size() > 0):
         asu_mappings = pair_proxies.bond_proxies.asu_mappings()
         for proxy in pair_proxies.bond_proxies.asu:
@@ -479,6 +481,8 @@ class manager(object):
                 proxy=proxy).distance_model
             print >> f, "  distance_ideal: %.6g" % proxy.distance_ideal
             print >> f, "  weight: %.6g" % proxy.weight
+            if (proxy.slack > 0):
+              print >> f, "  slack: %.6g" % proxy.slack
     if (self.angle_proxies is not None):
       for proxy in self.angle_proxies:
         if (i_seq is None or i_seq in proxy.i_seqs):

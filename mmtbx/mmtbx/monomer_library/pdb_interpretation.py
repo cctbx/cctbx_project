@@ -148,6 +148,8 @@ bond
     .type = float
   sigma = None
     .type = float
+  slack = None
+    .type = float
 }
 angle
   .optional = True
@@ -2377,6 +2379,9 @@ class build_all_chain_proxies(object):
         for attr in sel_attrs:
           print >> log, "      %s = %s" % (
             attr, show_string(getattr(bond, attr, None)))
+      slack = bond.slack
+      if (slack is None or slack < 0):
+        slack = 0
       if (bond.distance_ideal is None):
         print >> log, "    Warning: Ignoring bond with distance_ideal = None:"
         show_atom_selections()
@@ -2388,11 +2393,12 @@ class build_all_chain_proxies(object):
         print >> log, "    Warning: Ignoring bond with sigma = None:"
         show_atom_selections()
         print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
-      elif (bond.sigma is None or bond.sigma <= 0):
+      elif (bond.sigma <= 0):
         print >> log, "    Warning: Ignoring bond with sigma <= 0:"
         show_atom_selections()
         print >> log, "      distance_ideal = %.6g" % bond.distance_ideal
         print >> log, "      sigma = %.6g" % bond.sigma
+        print >> log, "      slack = %.6g" % slack
       elif (bond.action != "add"):
         raise Sorry("%s.action = %s not implemented." % (
           bond.__phil_path__(), bond.action))
@@ -2408,6 +2414,7 @@ class build_all_chain_proxies(object):
           i_seqs=i_seqs,
           distance_ideal=bond.distance_ideal,
           weight=geometry_restraints.sigma_as_weight(sigma=bond.sigma),
+          slack=slack,
           rt_mx_ji=rt_mx_ji)
         result.append(p)
         b = geometry_restraints.bond(
@@ -2428,7 +2435,9 @@ class build_all_chain_proxies(object):
         print >> log, "      distance_model: %7.3f" % b.distance_model
         print >> log, "      distance_ideal: %7.3f" % b.distance_ideal
         print >> log, "      ideal - model:  %7.3f" % b.delta
-        print >> log, "      sigma: %.6g" % \
+        print >> log, "      slack:          %7.3f" % b.slack
+        print >> log, "      delta_slack:    %7.3f" % b.delta_slack
+        print >> log, "      sigma:          %8.4f" % \
           geometry_restraints.weight_as_sigma(weight=b.weight)
         if (b.distance_model > max_bond_length):
           print >> log, "      *** WARNING: EXCESSIVE BOND LENGTH. ***"
