@@ -5,7 +5,10 @@ from cctbx.sgtbx import pointgroup_tools as pgt
 from cctbx.sgtbx import sub_lattice_tools as slt
 from cctbx import crystal
 from iotbx.option_parser import option_parser
+from libtbx import easy_run
 from libtbx.utils import Sorry, date_and_time, multi_out
+from libtbx.str_utils import show_string
+import libtbx.path
 from cStringIO import StringIO
 
 import sys, os
@@ -67,24 +70,20 @@ def make_graph_of_graph(pg_object,
   if out is None:
     out = sys.stdout
 
-  graphviz = os.popen3("""
-dot<< EOF
-EOF""", "r"
-                )
-  if len(graphviz[2].readlines())>0:
-    raise Sorry("The program dot has not been installed or is not in the path; get it from http://www.graphviz.org")
+  dot_path = libtbx.path.full_command_path(command="dot")
+  if (dot_path is None):
+    raise Sorry("""\
+The program "dot" is not on PATH:
+  For information about "dot" visit: http://www.graphviz.org/""")
 
-  # it seems graphviz is there, please proceed
   buffer = StringIO()
-
   pg_object.graphviz_pg_graph(out=buffer)
-  exec_command = """dot -Tpng >""" + str(file_name) + """ << EOF""" + """
-""" + buffer.getvalue()
-  exec_command += """
-EOF
-  """
-  graphviz = os.popen( exec_command, "r" )
-  print >> out, "A file named" ,  file_name, " contains a graphical representation "
+  command = "%s -Tpng > %s" % (show_string(dot_path), show_string(file_name))
+  easy_run.fully_buffered(
+    command=command,
+    stdin_lines=buffer.getvalue().splitlines()).raise_if_errors_or_output()
+  print >> out, "A file named", show_string(file_name), \
+    "contains a graphical representation "
   print >> out, "of the point group relations."
 
 
@@ -117,7 +116,8 @@ unit cell are sought that match the other.""")
     .option(None, "--graph",
             action="store",
             default=None,
-            help="A graphical representation of the graph will be written out. Requiers Graphviz to be installed and in path.")
+            help="A graphical representation of the graph will be written out."
+                 " Requires Graphviz to be installed and on PATH.")
 
     .option(None, "--centring_type",
             action="store",
