@@ -1,4 +1,5 @@
 from iotbx import pdb
+import iotbx.pdb.cryst1_interpretation
 import iotbx.pdb.remark_290_interpretation
 from cctbx import crystal
 from cctbx import sgtbx
@@ -6,6 +7,7 @@ from cctbx.development import random_structure
 from cctbx.array_family import flex
 import scitbx.math
 from libtbx.test_utils import approx_equal, show_diff
+from libtbx.utils import format_cpu_times
 import libtbx.load_env
 from cStringIO import StringIO
 import sys, os
@@ -245,7 +247,7 @@ def exercise_format_records():
     unit_cell=(10,10,13,90,90,120),
     space_group_symbol="R 3").primitive_setting()
   assert iotbx.pdb.format_cryst1_record(crystal_symmetry=crystal_symmetry) \
-    == "CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R 3 :R"
+    == "CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R 3"
   assert iotbx.pdb.format_scale_records(
     unit_cell=crystal_symmetry.unit_cell()).splitlines() \
       == ["SCALE1      0.138527 -0.005617 -0.005402        0.00000",
@@ -266,7 +268,7 @@ SCALE1      1.000000  0.000000  0.000000        0.00000
 SCALE2      0.000000  1.000000  0.000000        0.00000
 SCALE3      0.000000  0.000000  1.000000        0.00000""")
   assert not show_diff(f(crystal_symmetry=crystal_symmetry), """\
-CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R 3 :R
+CRYST1    7.219    7.219    7.219  87.68  87.68  87.68 R 3
 SCALE1      0.138527 -0.005617 -0.005402        0.00000
 SCALE2      0.000000  0.138641 -0.005402        0.00000
 SCALE3      0.000000  0.000000  0.138746        0.00000""")
@@ -291,6 +293,15 @@ CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
 SCALE1      1.000000  0.000000  0.000000        1.00000
 SCALE2      0.000000  1.000000  0.000000        2.00000
 SCALE3      0.000000  0.000000  1.000000        3.00000""")
+
+def exercise_format_and_interpret_cryst1():
+  for symbols in sgtbx.space_group_symbol_iterator():
+    sgi = sgtbx.space_group_info(group=sgtbx.space_group(
+      space_group_symbols=symbols))
+    cs = sgi.any_compatible_crystal_symmetry(volume=1000)
+    pdb_str = iotbx.pdb.format_cryst1_record(crystal_symmetry=cs)
+    cs2 = pdb.cryst1_interpretation.crystal_symmetry(cryst1_record=pdb_str)
+    assert cs2.is_similar_symmetry(other=cs)
 
 def exercise_remark_290_interpretation():
   symmetry_operators=pdb.remark_290_interpretation.extract_symmetry_operators(
@@ -468,13 +479,14 @@ def run():
   exercise_combine_unique_pdb_files()
   exercise_pdb_codes_fragment_files()
   exercise_format_records()
+  exercise_format_and_interpret_cryst1()
   exercise_remark_290_interpretation()
   exercise_residue_name_plus_atom_names_interpreter()
   exercise_format_fasta()
   for use_u_aniso in (False, True):
     exercise_xray_structure(use_u_aniso, verbose=verbose)
   write_icosahedron()
-  print "OK"
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   run()
