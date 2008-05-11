@@ -737,6 +737,33 @@ def join_fragment_files(file_names):
   result.info.extend(info)
   return result
 
+standard_rhombohedral_space_group_symbols = [
+"R 3 :H",
+"R 3 :R",
+"R -3 :H",
+"R -3 :R",
+"R 3 2 :H",
+"R 3 2 :R",
+"R 3 m :H",
+"R 3 m :R",
+"R 3 c :H",
+"R 3 c :R",
+"R -3 m :H",
+"R -3 m :R",
+"R -3 c :H",
+"R -3 c :R"]
+if ("set" in __builtins__):
+  standard_rhombohedral_space_group_symbols = set(
+    standard_rhombohedral_space_group_symbols)
+
+def format_cryst1_sgroup(space_group_info):
+  result = space_group_info.type().lookup_symbol()
+  if (result in standard_rhombohedral_space_group_symbols):
+    result = result[-1] + result[1:-3]
+  if (len(result) > 11):
+    result = result.replace(" ", "")
+  return result
+
 def format_cryst1_record(crystal_symmetry, z=None):
   # CRYST1
   #  7 - 15       Real(9.3)      a             a (Angstroms).
@@ -751,7 +778,9 @@ def format_cryst1_record(crystal_symmetry, z=None):
   else: z = str(z)
   return ("CRYST1%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f %-11.11s%4.4s" % (
     crystal_symmetry.unit_cell().parameters()
-    + (str(crystal_symmetry.space_group_info()), z))).rstrip()
+    + (format_cryst1_sgroup(
+         space_group_info=crystal_symmetry.space_group_info()),
+       z))).rstrip()
 
 def format_scale_records(unit_cell=None,
                          fractionalization_matrix=None,

@@ -16,8 +16,18 @@ def equiv(r,s,t, eps=0.01):
 rhombohedral = {
   "R3": "R 3",
   "H3": "R 3",
+  "R-3": "R -3",
+  "H-3": "R -3",
   "R32": "R 3 2",
   "H32": "R 3 2",
+  "R3M": "R 3 m",
+  "H3M": "R 3 m",
+  "R3C": "R 3 c",
+  "H3C": "R 3 c",
+  "R-3M": "R -3 m",
+  "H-3M": "R -3 m",
+  "R-3C": "R -3 c",
+  "H-3C": "R -3 c",
 }
 
 short_mono = (
