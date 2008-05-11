@@ -123,10 +123,95 @@ def exercise_01(verbose):
   res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
   assert approx_equal(res, base)
 
+def exercise_02(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/ala_h.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  base = [ [[0,1,2,3,4,10,12,14,16,18,20,22], [5,6,7,8,9,11,13,15,17,19,21,23]] ]
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    ignore_hydrogens  = False,
+    as_flex_arrays    = False)
+  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  assert approx_equal(res, base)
+
+def exercise_03(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/ala_hd.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  base = [ [[7]], [[8,9,10,11], [12,13,14]] ]
+  res = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = processed_pdb_file.xray_structure(),
+    ignore_hydrogens  = False,
+    as_flex_arrays    = False)
+  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  assert approx_equal(res, base)
+
+def exercise_04(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/ala_hd.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  base = [ [[8]], [[9],[12]], [[10],[13]], [[11],[14]] ]
+  res = utils.occupancy_selections(
+    all_chain_proxies   = processed_pdb_file.all_chain_proxies,
+    xray_structure      = processed_pdb_file.xray_structure(),
+    ignore_hydrogens    = True,
+    expect_exangable_hd = True,
+    as_flex_arrays      = False)
+  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  assert approx_equal(res, base)
+
+def exercise_05(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/ala_lys_arg_ser_tyr_neutron_hd.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  base = [ [[9],[12]],  [[10],[13]], [[11],[14]], [[33],[37]], [[34],[38]],
+           [[35],[39]], [[36],[40]], [[59],[65]], [[60],[66]], [[61],[67]],
+           [[62],[68]], [[63],[69]], [[64],[70]], [[80],[82]], [[81],[83]],
+           [[103],[105]], [[104],[106]]]
+  res = utils.occupancy_selections(
+    all_chain_proxies   = processed_pdb_file.all_chain_proxies,
+    xray_structure      = processed_pdb_file.xray_structure(),
+    ignore_hydrogens    = True,
+    expect_exangable_hd = True,
+    as_flex_arrays      = False)
+  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
+  assert approx_equal(res, base)
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_00(verbose=verbose)
   exercise_01(verbose=verbose)
+  exercise_02(verbose=verbose)
+  exercise_03(verbose=verbose)
+  exercise_04(verbose=verbose)
+  exercise_05(verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):

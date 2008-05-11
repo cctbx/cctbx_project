@@ -843,23 +843,50 @@ def add_occupancy_selection(result, size, selection, hd_special=None):
     result.extend(sel_checked)
   return result
 
+def combine_hd_exchangable(hierarchy):
+  result = []
+  for model in hierarchy.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        for i_gr1, atom_group_1 in enumerate(residue_group.atom_groups()):
+          for i_gr2, atom_group_2 in enumerate(residue_group.atom_groups()):
+            if(atom_group_1.altloc != atom_group_2.altloc and i_gr2 > i_gr1):
+              for atom1 in atom_group_1.atoms():
+                for atom2 in atom_group_2.atoms():
+                  if(atom1.element.strip() in ["H","D"] and
+                     atom2.element.strip() in ["H","D"] and
+                     atom1.element.strip() != atom2.element.strip() and
+                     atom1.name.strip() != atom2.name.strip() and
+                     atom1.name.strip()[1:] == atom2.name.strip()[1:]):
+                    result.append([[int(atom1.i_seq)], [int(atom2.i_seq)]])
+  return result
+
 def occupancy_selections(
       all_chain_proxies,
       xray_structure,
-      ignore_hydrogens=True,
-      add_water = False,
+      ignore_hydrogens                   = True,
+      add_water                          = False,
       other_individual_selection_strings = None,
-      other_group_selection_strings = None,
-      as_flex_arrays = True):
+      other_group_selection_strings      = None,
+      expect_exangable_hd                = False,
+      as_flex_arrays                     = True):
   if(other_individual_selection_strings is not None and
      len(other_individual_selection_strings) == 0):
     other_individual_selection_strings = None
   if(other_group_selection_strings is not None and
      len(other_group_selection_strings) == 0):
     other_group_selection_strings = None
-  result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
-    common_residue_name_class_only="common_amino_acid",
-    ignore_hydrogens = ignore_hydrogens)
+  if(not expect_exangable_hd):
+    result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
+      common_residue_name_class_only="common_amino_acid",
+      ignore_hydrogens = ignore_hydrogens)
+  else:
+    result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
+      common_residue_name_class_only="common_amino_acid",
+      ignore_hydrogens = True)
+    tmp = combine_hd_exchangable(hierarchy = all_chain_proxies.pdb_hierarchy)
+    result.extend(tmp)
+    del tmp
   #
   if(other_individual_selection_strings is not None):
     sel = get_atom_selections(

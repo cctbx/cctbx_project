@@ -349,11 +349,14 @@ class manager(object):
       sites_cart_orig = sites_cart.deep_copy()
       if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
         sites_cart = sites_cart.select(~self.ias_selection)
+      exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
+        ignore_line_search_failed_step_at_lower_bound = True)
       minimized = geometry_minimization.lbfgs(
         sites_cart                  = sites_cart,
         geometry_restraints_manager = self.restraints_manager.geometry,
         geometry_restraints_flags   = geometry_restraints_flags,
         lbfgs_termination_params    = lbfgs_termination_params,
+        lbfgs_exception_handling_params = exception_handling_params,
         sites_cart_selection        = selection)
       if(self.ias_selection is not None):
         for i_seq, ias_s in enumerate(self.ias_selection): # assumes that IAS appended to the back

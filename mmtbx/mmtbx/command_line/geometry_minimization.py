@@ -31,13 +31,15 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
         geometry_restraints_manager,
         geometry_restraints_flags,
         lbfgs_termination_params,
-        sites_cart_selection=None):
+        sites_cart_selection=None,
+        lbfgs_exception_handling_params=None):
     geometry_restraints.lbfgs.lbfgs.__init__(self,
       sites_cart=sites_cart,
       geometry_restraints_manager=geometry_restraints_manager,
       geometry_restraints_flags=geometry_restraints_flags,
       lbfgs_termination_params=lbfgs_termination_params,
-      sites_cart_selection=sites_cart_selection)
+      sites_cart_selection=sites_cart_selection,
+      lbfgs_exception_handling_params=lbfgs_exception_handling_params)
 
   def callback_after_step(self, minimizer):
     self.apply_shifts()
