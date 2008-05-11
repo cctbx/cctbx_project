@@ -261,12 +261,12 @@ def run_flip_hd(fmodel, model, log, params = None):
       ed_val = maptbx.eight_point_interpolation(fft_map_data,
           scatterers[i_seq_h].site)
       assert fmodel_dc.xray_structure.scatterers()[i_seq_h].occupancy == 0
-      if(ed_val < 0 and scattering_types[i_seq_h]=='D' or
-         ed_val > 0 and scattering_types[i_seq_h]=='H'):
+      if 1:#((ed_val < 0 and scattering_types[i_seq_h]=='D') or
+         #(ed_val > 0 and scattering_types[i_seq_h]=='H')):
         print >> log, "%3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
           model.pdb_atoms[i_seq_h].quote()
       #if(abs(ed_val) < 1.0):
-        #print >> log, "*** %3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
+      #  print >> log, "*** %3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
       #  model.pdb_atoms[i_seq_h].quote()
       #  for map_cutoff in [3, -3]:
       #    params.map_cutoff = map_cutoff
