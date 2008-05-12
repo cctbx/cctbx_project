@@ -5,9 +5,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
-#include <boost/python/return_internal_reference.hpp>
 #include <boost/python/dict.hpp>
-#include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <iotbx/pdb/input.h>
 #include <iotbx/pdb/write_utils_bpl.h>
 
@@ -34,32 +32,6 @@ namespace {
         .def_readonly("finding", &w_t::finding)
         .def_readonly("is_old_style", &w_t::is_old_style)
       ;
-    }
-  };
-
-  struct input_atom_labels_wrappers
-  {
-    typedef input_atom_labels w_t;
-
-    static void
-    wrap()
-    {
-      using namespace boost::python;
-      typedef return_internal_reference<> rir;
-      class_<w_t>("input_atom_labels", no_init)
-        .def("name", &w_t::name)
-        .def("resname", &w_t::resname)
-        .def("chain", &w_t::chain)
-        .def("resseq", &w_t::resseq)
-        .def("icode", &w_t::icode)
-        .def("segid", &w_t::segid)
-        .def("altloc", &w_t::altloc)
-        .def("pdb_format", &w_t::pdb_format)
-      ;
-      {
-        scitbx::af::boost_python::shared_wrapper<
-          input_atom_labels, rir>::wrap("af_shared_input_atom_labels");
-      }
     }
   };
 
@@ -197,7 +169,6 @@ namespace {
   {
     PycString_IMPORT;
     columns_73_76_evaluator_wrappers::wrap();
-    input_atom_labels_wrappers::wrap();
     input_wrappers::wrap();
   }
 

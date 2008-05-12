@@ -305,7 +305,7 @@ def exercise_pdb_input():
     assert pdb_inp.connectivity_annotation_section().size() == 0
     assert pdb_inp.miscellaneous_features_section().size() == 0
     assert pdb_inp.crystallographic_section().size() == 0
-    assert pdb_inp.input_atom_labels_list().size() == 0
+    assert len(pdb_inp.atoms_with_labels()) == 0
     assert pdb_inp.atom_serial_number_strings().size() == 0
     assert pdb_inp.atoms().size() == 0
     assert pdb_inp.model_ids().size() == 0
@@ -387,7 +387,7 @@ MTRIX1   1  0.739109  0.012922 -0.673462       17.07460    1
 MTRIX2   1  0.015672 -0.999875 -0.001986       21.64730    1
 MTRIX3   1 -0.673404 -0.009087 -0.739219       44.75290    1
 TVECT    1   0.00000   0.00000  20.42000""")
-    assert pdb_inp.input_atom_labels_list().size() == 6
+    assert len(pdb_inp.atoms_with_labels()) == 6
     assert list(pdb_inp.atom_serial_number_strings()) \
         == ["    1", "    2", "    3", "    4", "    9", "   10"]
     assert [atom.element for atom in pdb_inp.atoms()] \
@@ -412,59 +412,59 @@ ATOM      2  CG  LYS   109      17.058   6.315  47.703  1.00 20.00      A
 ATOM      3  CB  LYS   109      26.721   1.908  15.275  1.00 20.00      B
 ATOM      4  CG  LYS   109      27.664   2.793  16.091  1.00 20.00      B
 """))
-  expected_pdb_format = """\
-" CB  LYS   109 " segid="A   "
-" CG  LYS   109 " segid="A   "
-" CB  LYS   109 " segid="B   "
-" CG  LYS   109 " segid="B   "
+  expected_id_strs = """\
+pdb=" CB  LYS   109 " segid="A   "
+pdb=" CG  LYS   109 " segid="A   "
+pdb=" CB  LYS   109 " segid="B   "
+pdb=" CG  LYS   109 " segid="B   "
 """.splitlines()
-  for il,ef in zip(pdb_inp.input_atom_labels_list(),expected_pdb_format):
-    assert not show_diff(il.pdb_format(), ef)
+  for awl,eids in zip(pdb_inp.atoms_with_labels(), expected_id_strs):
+    assert not show_diff(awl.id_str(), eids)
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM  12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
 HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdefS123E1C1
 """))
-  for ial in pdb_inp.input_atom_labels_list():
-    assert ial.name() == "N123"
-    assert ial.altloc() == "A"
-    assert ial.resname() == "R12"
-    assert ial.chain() == "C"
-    assert ial.resseq() == "1234"
-    assert ial.icode() == "I"
-    assert ial.segid() == "S123"
-    assert ial.pdb_format() == '"N123AR12 C1234I" segid="S123"'
+  for awl in pdb_inp.atoms_with_labels():
+    assert awl.name == "N123"
+    assert awl.altloc == "A"
+    assert awl.resname == "R12"
+    assert awl.chain_id == "C"
+    assert awl.resseq == "1234"
+    assert awl.icode == "I"
+    assert awl.segid == "S123"
+    assert awl.id_str() == 'pdb="N123AR12 C1234I" segid="S123"'
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM  12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
 HETATM12345qN123AR12 C1234Ixyz1234.6781234.6781234.678123.56213.56abcdef    E1C1
 """))
-  for ial in pdb_inp.input_atom_labels_list():
-    assert ial.name() == "N123"
-    assert ial.altloc() == "A"
-    assert ial.resname() == "R12"
-    assert ial.chain() == "C"
-    assert ial.resseq() == "1234"
-    assert ial.icode() == "I"
-    assert ial.segid() == "    "
-    assert ial.pdb_format() == '"N123AR12 C1234I"'
+  for awl in pdb_inp.atoms_with_labels():
+    assert awl.name == "N123"
+    assert awl.altloc == "A"
+    assert awl.resname == "R12"
+    assert awl.chain_id == "C"
+    assert awl.resseq == "1234"
+    assert awl.icode == "I"
+    assert awl.segid == "    "
+    assert awl.id_str() == 'pdb="N123AR12 C1234I"'
   pdb_inp = pdb.input(
     source_info=None,
     lines=flex.split_lines("""\
 ATOM
 HETATM
 """))
-  for ial in pdb_inp.input_atom_labels_list():
-    assert ial.name() == "    "
-    assert ial.altloc() == " "
-    assert ial.resname() == "   "
-    assert ial.chain() == " "
-    assert ial.resseq() == "    "
-    assert ial.icode() == " "
-    assert ial.segid() == "    "
-    assert ial.pdb_format() == '"               "'
+  for awl in pdb_inp.atoms_with_labels():
+    assert awl.name == "    "
+    assert awl.altloc == " "
+    assert awl.resname == "   "
+    assert awl.chain_id == " "
+    assert awl.resseq == "    "
+    assert awl.icode == " "
+    assert awl.segid == "    "
+    assert awl.id_str() == 'pdb="               "'
   #
   pdb_inp = pdb.input(
     source_info=None,

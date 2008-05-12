@@ -4,6 +4,7 @@ from iotbx import pdb
 import iotbx.phil
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
+from mmtbx.monomer_library import rna_sugar_pucker_analysis
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
