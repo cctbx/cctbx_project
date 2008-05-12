@@ -2,6 +2,7 @@
 #include <cbflib_adaptbx/basic.h>
 #include <cbflib_adaptbx/mar_adaptor.h>
 #include <cbflib_adaptbx/cbf_adaptor.h>
+#include <cbflib_adaptbx/sls_pilatus_adaptor.h>
 
 struct dummy {}; // work around gcc-3.3-darwin bug
 
@@ -50,5 +51,8 @@ BOOST_PYTHON_MODULE(cbflib_ext)
      .def("twotheta",&CBFAdaptor::twotheta)
      .def("raster_description",&CBFAdaptor::raster_description)
      //.def("test",&CBFAdaptor::test)
+   ;
+   class_<MiniCBFAdaptor, bases<CBFAdaptor> >("MiniCBFAdaptor",init<std::string>())
+     .def("read_data",&MiniCBFAdaptor::read_data)
    ;
 }
