@@ -6,6 +6,11 @@ from iotbx_detectors_ext import *
 from iotbx_detectors_bruker_ext import Bruker_base
 
 import exceptions
+class ImageException(exceptions.Exception):
+  def __init__(self,string):
+    self.message = string
+  def __str__(self): return self.message
+
 from iotbx.detectors.adsc import ADSCImage
 from iotbx.detectors.mar import MARImage
 from iotbx.detectors.marIP import MARIPImage
@@ -15,15 +20,12 @@ from iotbx.detectors.raxis_nonsquare import NonSquareRAXISImage
 from iotbx.detectors.macscience import DIPImage
 from iotbx.detectors.saturn import SaturnImage
 from iotbx.detectors.bruker import BrukerImage
+from iotbx.detectors.pilatus_minicbf import PilatusImage
 
-class ImageException(exceptions.Exception):
-  def __init__(self,string):
-    self.message = string
-  def __str__(self): return self.message
 
 all_image_types = [SaturnImage,DIPImage,ADSCImage,
                   MARImage,MARIPImage,RAXISImage,
-                  NonSquareRAXISImage,CBFImage,BrukerImage]
+                  NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 
 def ImageFactory(filename):
   for itype in all_image_types:
