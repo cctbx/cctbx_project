@@ -10,7 +10,9 @@ import iotbx.phil
 from iotbx import reflection_file_reader
 from iotbx import reflection_file_utils
 from iotbx import crystal_symmetry_from_any
+from iotbx import pdb
 from iotbx.option_parser import option_parser
+from mmtbx import pdbtools
 import mmtbx.scaling
 from mmtbx.scaling import absolute_scaling
 from mmtbx.scaling import matthews, twin_analyses
@@ -143,14 +145,17 @@ scaling.input {
          .help="Labels"
          unit_cell=None
          .type=unit_cell
-         .help=""UNit cell parameters"
+         .help=""Unit cell parameters"
          space_group=None
          .type=space_group
          .help="Space group"
        }
-
+       structure{
+         file_name=None
+         .type=path
+         .help="Filename of reference PDB file"
+       }
      }
-
    }
 
    optional
@@ -336,6 +341,10 @@ class xtriage_analyses(object):
       self.params = master_params.fetch(sources=[])
       self.params = self.params.extract()
 
+
+
+
+
     print >> self.text_out
     print >> self.text_out,"##----------------------------------------------------##"
     print >> self.text_out,"##                    Basic statistics                ##"
@@ -399,7 +408,6 @@ class xtriage_analyses(object):
 
 
 def run(args, command_name="phenix.xtriage"):
-
   command_line = (option_parser(
     usage=command_name+" [options] reflection_file parameters [...]",
     description="Example: %s data1.mtz" % command_name)
@@ -435,9 +443,6 @@ def run(args, command_name="phenix.xtriage"):
 
     print_banner(appl=command_name, out=log)
     print >> log, "#phil __OFF__"
-    print >> log, "  This cryptic code, together with the tags __ON__ and __OFF__"
-    print >> log, "  allows one to use the log file as an input file for xtriage."
-    print >> log, "  Try : %s  <logfile> to give it a try!" % command_name
     print >> log
     print >> log, date_and_time()
     print >> log
@@ -670,6 +675,14 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
       f_calc_miller = f_calc_miller.eliminate_sys_absent(integral_only=True, log=log)
 
+    reference_structure = None
+    if params.scaling.input.xray_data.calc_labels is None:
+      if params.scaling.input.xray_data.reference.structure.file_name is not None:
+        assert f_calc_miller is None
+        reference_structure = iotbx.pdb.input( file_name=params.scaling.input.xray_data.reference.structure.file_name).xray_structure_simple(
+          crystal_symmetry = miller_array.crystal_symmetry() )
+        tmp_obj = pdbtools.fmodel_from_xray_structure( xray_structure = reference_structure, f_obs = miller_array)
+        f_calc_miller = abs( tmp_obj.f_model ).eliminate_sys_absent(integral_only=True, log=log).set_observation_type_xray_amplitude()
     twin_results = None
 
 
