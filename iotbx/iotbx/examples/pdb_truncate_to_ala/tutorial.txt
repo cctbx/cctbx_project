@@ -154,7 +154,7 @@ object are probably immediately obvious to someone familiar with
 the content of PDB files. The ``residue_group`` and ``atom_group``
 levels are more complex. This complexity is related to *alternative
 conformations*. If there are no alternative conformations in
-a PDB file, all residue groups contain extactly one atom group,
+a PDB file, all residue groups contain exactly one atom group,
 which contains all the atoms of a residue. A file with alternative
 conformations will lead to residue groups with multiple atom groups,
 one for each conformer. The `crambin_pieces.pdb`_ file used above
