@@ -306,7 +306,6 @@ def exercise_pdb_input():
     assert pdb_inp.miscellaneous_features_section().size() == 0
     assert pdb_inp.crystallographic_section().size() == 0
     assert len(pdb_inp.atoms_with_labels()) == 0
-    assert pdb_inp.atom_serial_number_strings().size() == 0
     assert pdb_inp.atoms().size() == 0
     assert pdb_inp.model_ids().size() == 0
     assert pdb_inp.model_indices().size() == 0
@@ -388,7 +387,7 @@ MTRIX2   1  0.015672 -0.999875 -0.001986       21.64730    1
 MTRIX3   1 -0.673404 -0.009087 -0.739219       44.75290    1
 TVECT    1   0.00000   0.00000  20.42000""")
     assert len(pdb_inp.atoms_with_labels()) == 6
-    assert list(pdb_inp.atom_serial_number_strings()) \
+    assert [atom.serial for atom in pdb_inp.atoms()] \
         == ["    1", "    2", "    3", "    4", "    9", "   10"]
     assert [atom.element for atom in pdb_inp.atoms()] \
         == [" N", " C", " C", " O", "  ", "  "]

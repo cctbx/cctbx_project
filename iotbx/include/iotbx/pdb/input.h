@@ -371,9 +371,6 @@ namespace iotbx { namespace pdb {
       af::shared<hierarchy::atom> const&
       atoms() const { return atoms_; }
 
-      af::shared<std::string>
-      atom_serial_number_strings() const;
-
       af::shared<str8> const&
       model_ids_small() const { return model_ids_; }
 
