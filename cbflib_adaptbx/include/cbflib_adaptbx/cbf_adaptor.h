@@ -21,7 +21,7 @@ namespace iotbx {
   namespace detectors {
 
 class CBFAdaptor {
- private:
+ protected:
   std::string filename;
   cbf_handle cbf_h;
   FILE *private_file;
