@@ -1169,17 +1169,6 @@ namespace iotbx { namespace pdb {
   }
 
   af::shared<std::string>
-  input::atom_serial_number_strings() const
-  {
-    af::shared<std::string> result((af::reserve(atoms_.size())));
-    const hierarchy::atom* atoms_end = atoms_.end();
-    for(const hierarchy::atom* a=atoms_.begin();a!=atoms_end;a++) {
-      result.push_back(std::string(a->data->serial.elems));
-    }
-    return result;
-  }
-
-  af::shared<std::string>
   input::model_ids() const
   {
     af::shared<std::string> result((af::reserve(model_ids_.size())));
