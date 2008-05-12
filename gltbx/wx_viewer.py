@@ -145,7 +145,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.autospin = False
 
   def OnMouseWheel(self, event):
-    scale = 0.02*event.GetWheelRotation()
+    scale = 0.002*event.GetWheelRotation()
     self.OnScale(scale)
 
   def OnLeftClick(self,event):
