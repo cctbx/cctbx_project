@@ -1467,7 +1467,7 @@ class twin_law_dependend_twin_tests(object):
       if miller_calc is not None:
         ## Magic number to control influence of hiugh resolutiuon reflections
         d_weight=0.25
-        try: 
+        try:
           self.correlation = correlation_analyses(normalized_intensities,
                                                   miller_calc,
                                                   twin_law.operator,
