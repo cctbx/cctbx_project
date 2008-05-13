@@ -7,7 +7,7 @@ def as_pdb_file(self,
       remark,
       remarks,
       fractional_coordinates,
-      res_name,
+      resname,
       connect):
   if (remark is not None):
     remarks.insert(0, remark)
@@ -24,8 +24,8 @@ def as_pdb_file(self,
   print >> s, iotbx.pdb.format_cryst1_record(crystal_symmetry=self)
   print >> s, iotbx.pdb.format_scale_records(unit_cell=self.unit_cell())
   atom = iotbx.pdb.hierarchy.atom_with_labels()
-  if (res_name is not None):
-    atom.resname = res_name.upper()
+  if (resname is not None):
+    atom.resname = resname.upper()
   serial = 0
   for scatterer in self.scatterers():
     serial += 1
@@ -43,7 +43,7 @@ def as_pdb_file(self,
     atom.occ = scatterer.occupancy
     label = scatterer.label.upper()
     atom.name = label[:4]
-    if (res_name is None):
+    if (resname is None):
       atom.resname = label[:3]
     element_symbol = scatterer.element_symbol()
     if (element_symbol is None): element_symbol = "Q"
