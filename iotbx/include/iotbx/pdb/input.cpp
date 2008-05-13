@@ -1179,4 +1179,13 @@ namespace detail {
     return result;
   }
 
+  af::shared<hierarchy::atom_with_labels>
+  input::atoms_with_labels() const
+  {
+    input_atoms_with_labels_af_shared g;
+    g.result.reserve(atoms_.size());
+    g.run(*this);
+    return g.result;
+  }
+
 }} // namespace iotbx::pdb

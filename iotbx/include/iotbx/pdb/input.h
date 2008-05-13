@@ -384,6 +384,9 @@ namespace detail {
       af::shared<std::size_t>
       model_atom_counts() const;
 
+      af::shared<hierarchy::atom_with_labels>
+      atoms_with_labels() const;
+
       void
       write_pdb_file(
         const char* file_name,
@@ -448,6 +451,18 @@ namespace detail {
 
     void
     run(input const& inp);
+  };
+
+  struct input_atoms_with_labels_af_shared : input_atoms_with_labels_generator
+  {
+    af::shared<hierarchy::atom_with_labels> result;
+
+    bool
+    process_atom(hierarchy::atom_with_labels const& awl)
+    {
+      result.push_back(awl);
+      return true;
+    }
   };
 
   void
