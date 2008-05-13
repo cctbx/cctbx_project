@@ -610,6 +610,8 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
+namespace detail {
+
   void
   input_atom_labels::check_equivalence(pdb::line_info& line_info) const
   {
@@ -636,6 +638,8 @@ namespace iotbx { namespace pdb {
       line_info.set_error(74, "segid mismatch.");
     }
   }
+
+} // namespace detail
 
   hierarchy::atom
   process_atom_record(pdb::line_info& line_info, bool hetero)
@@ -676,7 +680,7 @@ namespace iotbx { namespace pdb {
   void
   process_sigatm_record(
     pdb::line_info& line_info,
-    pdb::input_atom_labels const& input_atom_labels,
+    detail::input_atom_labels const& input_atom_labels,
     hierarchy::atom_data& atom_data)
   {
     atom_data.sigxyz = vec3(
@@ -691,7 +695,7 @@ namespace iotbx { namespace pdb {
   void
   process_anisou_record(
     pdb::line_info& line_info,
-    pdb::input_atom_labels const& input_atom_labels,
+    detail::input_atom_labels const& input_atom_labels,
     hierarchy::atom_data& atom_data)
   {
     // 29 - 35  Integer       U(1,1)
@@ -713,7 +717,7 @@ namespace iotbx { namespace pdb {
   void
   process_siguij_record(
     pdb::line_info& line_info,
-    pdb::input_atom_labels const& input_atom_labels,
+    detail::input_atom_labels const& input_atom_labels,
     hierarchy::atom_data&
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
                              atom_data
@@ -841,7 +845,7 @@ namespace iotbx { namespace pdb {
       }
 
       void
-      next_atom_labels(const pdb::input_atom_labels& current_labels)
+      next_atom_labels(const detail::input_atom_labels& current_labels)
       {
         if (current_chain_indices == 0) {
           chain_indices.push_back(std::vector<unsigned>());
@@ -956,7 +960,7 @@ namespace iotbx { namespace pdb {
     atoms_.reserve(
         atoms_.size()
       + columns_73_76_eval.number_of_atom_and_hetatm_lines);
-    input_atom_labels* current_input_atom_labels = 0;
+    detail::input_atom_labels* current_input_atom_labels = 0;
     hierarchy::atom_data* current_atom_data = 0;
     bool expect_anisou = false;
     bool expect_sigatm = false;
@@ -983,7 +987,8 @@ namespace iotbx { namespace pdb {
       record_type::info record_type_info(line_info.data, line_info.size);
       if      (record_type_info.id == record_type::atom__) {
         if (model_record_oversight.atom_is_allowed_here()) {
-          input_atom_labels_list_.push_back(input_atom_labels(line_info));
+          input_atom_labels_list_.push_back(
+            detail::input_atom_labels(line_info));
           atoms_.push_back(process_atom_record(line_info,/*hetero*/false));
           if (line_info.error_occured()) {
             input_atom_labels_list_.pop_back();
@@ -1002,7 +1007,8 @@ namespace iotbx { namespace pdb {
       }
       else if (record_type_info.id == record_type::hetatm) {
         if (model_record_oversight.atom_is_allowed_here()) {
-          input_atom_labels_list_.push_back(input_atom_labels(line_info));
+          input_atom_labels_list_.push_back(
+            detail::input_atom_labels(line_info));
           atoms_.push_back(process_atom_record(line_info,/*hetero*/true));
           if (line_info.error_occured()) {
             input_atom_labels_list_.pop_back();
