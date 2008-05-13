@@ -152,6 +152,24 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
     }
   }
 
+} // namespace atoms
+
+  void
+  root::atoms_reset_serial(
+    int interleaved_conf,
+    int first_value) const
+  {
+    std::vector<model> const& models = this->models();
+    unsigned n_mds = models_size();
+    for(unsigned i_md=0;i_md<n_mds;i_md++) {
+      atoms::reset_serial(
+        models[i_md].atoms(interleaved_conf).const_ref(),
+        first_value);
+    }
+  }
+
+namespace atoms {
+
   void
   reset_i_seq(
     af::const_ref<atom> const& atoms)

@@ -4529,6 +4529,27 @@ TER
   assert list(hierarchy.atoms().extract_serial()) == [
     "   13", "   15", "   18", "   14", "   21",
     "   16", "   19", "   22", "   17", "   20"]
+  #
+  hierarchy = pdb.input(source_info=None, lines=flex.split_lines("""\
+MODEL        1
+ATOM      1  N   MET A   1
+ATOM      2  CA  MET A   1
+ATOM      3  N   GLY A   2
+ATOM      4  CA  GLY A   2
+ENDMDL
+MODEL        2
+ATOM      1  N   MET A   1
+ATOM      2  CA  MET A   1
+ATOM      3  N   GLY A   2
+ATOM      4  CA  GLY A   2
+ENDMDL
+""")).construct_hierarchy()
+  hierarchy.atoms_reset_serial(interleaved_conf=0, first_value=10)
+  assert list(hierarchy.atoms().extract_serial()) \
+      == ["   10", "   11", "   12", "   13"] * 2
+  hierarchy.atoms_reset_serial()
+  assert list(hierarchy.atoms().extract_serial()) \
+      == ["    1", "    2", "    3", "    4"] * 2
 
 def exercise_as_pdb_string(pdb_file_names, comprehensive):
   pdb_string = """\

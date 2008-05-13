@@ -1303,6 +1303,11 @@ namespace hierarchy {
       af::shared<atom>
       atoms_with_i_seq_mismatch() const;
 
+      void
+      atoms_reset_serial(
+        int interleaved_conf=0,
+        int first_value=1) const;
+
       bool
       is_similar_hierarchy(
         root const& other) const;
