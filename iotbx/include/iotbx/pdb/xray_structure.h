@@ -49,6 +49,7 @@ namespace iotbx { namespace pdb {
         loop_state(0),
         use_scale_matrix(scale_r.determinant() != 0),
         model_range(self_->model_indices().const_ref()),
+        model_id(self_->model_ids_small().begin()),
         i_atom(0),
         ial(self_->input_atom_labels_list().begin()),
         atom(self_->atoms().begin()),
@@ -64,6 +65,7 @@ namespace iotbx { namespace pdb {
       unsigned loop_state;
       bool use_scale_matrix;
       range_loop<std::size_t> model_range;
+      const str8* model_id;
       std::size_t i_atom;
       const input_atom_labels *ial;
       const hierarchy::atom *atom;
@@ -79,7 +81,17 @@ namespace iotbx { namespace pdb {
           scatterers = af::shared<XrayScattererType>();
           scatterers.reserve(model_range.size);
           for(;i_atom!=model_range.end;i_atom++,ial++,atom++) {
-            scatterer.label = ial->pdb_format();
+            hierarchy::atom_with_labels awl(
+              *atom,
+              /* model_id */ model_id->elems,
+              /* chain_id */ ial->chain_small().elems,
+              /* resseq */ ial->resseq_small().elems,
+              /* icode */ ial->icode_small().elems,
+              /* altloc */ ial->altloc_small().elems,
+              /* resname */ ial->resname_small().elems,
+              /* is_first_in_chain */ false,
+              /* is_first_after_break */ false);
+            scatterer.label = awl.id_str();
             if (unit_cube_pseudo_crystal_ || fractional_coordinates_) {
               scatterer.site = atom->data->xyz;
             }
@@ -118,8 +130,8 @@ namespace iotbx { namespace pdb {
                 chemical_element = atom->determine_chemical_element_simple();
               if (!chemical_element && !enable_scattering_type_unknown_) {
                 throw std::runtime_error(
-                  "Unknown chemical element type: PDB ATOM " + scatterer.label
-                  + " element=\"" + atom->data->element.elems + "\"\n"
+                  std::string("Unknown chemical element type:\n")
+                  + "  " + awl.quote() + "\n"
                   + "  To resolve this problem, specify a"
                     + " chemical element type in\n"
                   + "  columns 77-78 of the PDB file, right justified"
@@ -138,9 +150,9 @@ namespace iotbx { namespace pdb {
               if (charge.elems[0] == ' ' && charge.elems[1] != ' ') {
                 if (!enable_scattering_type_unknown_) {
                   throw std::runtime_error(
-                    "Unknown charge: PDB ATOM " + scatterer.label
-                    + " element=\"" + atom->data->element.elems
-                    + "\" charge=\"" + atom->data->charge.elems + "\"");
+                    std::string("Unknown charge:\n")
+                    + "  " + awl.quote() + "\n"
+                    + "                                       ^^");
                 }
                 chemical_element.reset();
               }
@@ -162,16 +174,17 @@ namespace iotbx { namespace pdb {
               }
               else {
                 throw std::runtime_error(
-                  "Unknown scattering type: PDB ATOM " + scatterer.label
-                  + " element=\"" + atom->data->element.elems
-                  + "\" charge=\"" + atom->data->charge.elems + "\"");
+                  std::string("Unknown scattering type:\n")
+                  + "  " + awl.quote() + "\n"
+                  + "               ^^^^                  ^^^^");
               }
             }
             scatterers.push_back(scatterer);
           }
           loop_state = 1;
           return true;
-          continue_after_return:;
+          continue_after_return:
+          model_id++;
         }
         if (loop_state == 0) {
           loop_state = 2;

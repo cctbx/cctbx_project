@@ -752,15 +752,16 @@ Space group: P 21 21 21 (No. 19)
     xray_structure.show_scatterers(f=out)
     assert not show_diff(out.getvalue(), """\
 Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
-" N   GLN A   3 " N      4 ( 0.5748  0.2020  0.4380) 1.00 0.4672 [ - ]
-" CA  GLN A   3 " C      4 ( 0.5615  0.1811  0.4316) 0.63 [ - ] 0.4797
+pdb=" N   GLN A   3 " N      4 ( 0.5748  0.2020  0.4380) 1.00 0.4672 [ - ]
+pdb=" CA  GLN A   3 " C      4 ( 0.5615  0.1811  0.4316) 0.63 [ - ] 0.4797
      u_cart =  0.779  0.322  0.338 -0.123  0.106  0.260
-" Q   GLN A   3 " C      4 ( 0.5721  0.1620  0.4103) 0.84 [ - ] 0.4752
+pdb=" Q   GLN A   3 " C      4 ( 0.5721  0.1620  0.4103) 0.84 [ - ] 0.4752
      u_cart =  0.788  0.304  0.334 -0.098  0.073  0.266
-" O   GLN A   3 " segid="STUV" O      4 ( 0.5626  0.1426  0.4070) 1.00 0.4881 [ - ]
-"1CB AGLN A   3 " C      4 ( 0.5370  0.1865  0.4242) 1.00 0.4787 [ - ]
-"CA  AION B   1 " Ca2+   4 ( 0.5270  0.2023  0.3975) 0.92 0.4554 [ - ]
-"CA   ION B   2 " Ca     4 ( 0.5019  0.1945  0.3948) 1.00 0.4670 [ - ]
+pdb=" O   GLN A   3 " segid="STUV" O      4 ( 0.5626  0.1426  0.4070)\
+ 1.00 0.4881 [ - ]
+pdb="1CB AGLN A   3 " C      4 ( 0.5370  0.1865  0.4242) 1.00 0.4787 [ - ]
+pdb="CA  AION B   1 " Ca2+   4 ( 0.5270  0.2023  0.3975) 0.92 0.4554 [ - ]
+pdb="CA   ION B   2 " Ca     4 ( 0.5019  0.1945  0.3948) 1.00 0.4670 [ - ]
 """)
   #
   xray_structure = pdb_inp.xray_structure_simple(unit_cube_pseudo_crystal=True)
@@ -776,15 +777,16 @@ Space group: P 1 (No. 1)
   xray_structure.show_scatterers(f=out)
   assert not show_diff(out.getvalue(), """\
 Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
-" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700) 1.00 0.4672 [ - ]
-" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940) 0.63 [ - ] 0.4797
+pdb=" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700) 1.00 0.4672 [ - ]
+pdb=" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940) 0.63 [ - ] 0.4797
      u_cart =  0.779  0.322  0.338 -0.123  0.106  0.260
-" Q   GLN A   3 " C      1 (35.1300  8.8800 17.8640) 0.84 [ - ] 0.4752
+pdb=" Q   GLN A   3 " C      1 (35.1300  8.8800 17.8640) 0.84 [ - ] 0.4752
      u_cart =  0.788  0.304  0.334 -0.098  0.073  0.266
-" O   GLN A   3 " segid="STUV" O      1 (34.5480  7.8190 17.7240) 1.00 0.4881 [ - ]
-"1CB AGLN A   3 " C      1 (32.9790 10.2230 18.4690) 1.00 0.4787 [ - ]
-"CA  AION B   1 " Ca2+   1 (32.3600 11.0920 17.3080) 0.92 0.4554 [ - ]
-"CA   ION B   2 " Ca     1 (30.8220 10.6650 17.1900) 1.00 0.4670 [ - ]
+pdb=" O   GLN A   3 " segid="STUV" O      1 (34.5480  7.8190 17.7240)\
+ 1.00 0.4881 [ - ]
+pdb="1CB AGLN A   3 " C      1 (32.9790 10.2230 18.4690) 1.00 0.4787 [ - ]
+pdb="CA  AION B   1 " Ca2+   1 (32.3600 11.0920 17.3080) 0.92 0.4554 [ - ]
+pdb="CA   ION B   2 " Ca     1 (30.8220 10.6650 17.1900) 1.00 0.4670 [ - ]
 """)
   #
   pdb_inp = pdb.input(
@@ -799,7 +801,8 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89      STUV A
     pdb_inp.xray_structure_simple()
   except RuntimeError, e:
     assert not show_diff(str(e), """\
-Unknown chemical element type: PDB ATOM " N   GLN A   3 " segid="STUV" element=" A"
+Unknown chemical element type:
+  "ATOM      1  N   GLN A   3 .*.STUV A  "
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
   else: raise Exception_expected
@@ -815,7 +818,8 @@ ATOM      1 1A   GLN A   3      35.299  11.075  99.070  1.00 36.89
     pdb_inp.xray_structure_simple()
   except RuntimeError, e:
     assert not show_diff(str(e), """\
-Unknown chemical element type: PDB ATOM "1A   GLN A   3 " element="  "
+Unknown chemical element type:
+  "ATOM      1 1A   GLN A   3 .*.        "
   To resolve this problem, specify a chemical element type in
   columns 77-78 of the PDB file, right justified (e.g. " C").""")
   else: raise Exception_expected
@@ -831,7 +835,9 @@ ATOM      1  N   GLN A   3      35.299  11.075  99.070  1.00 36.89           B 5
     pdb_inp.xray_structure_simple()
   except RuntimeError, e:
     assert not show_diff(str(e), '''\
-Unknown charge: PDB ATOM " N   GLN A   3 " element=" B" charge=" 5"''')
+Unknown charge:
+  "ATOM      1  N   GLN A   3 .*.     B 5"
+                                       ^^''')
   else: raise Exception_expected
   pdb_inp = pdb.input(
     source_info=None,
@@ -856,7 +862,9 @@ Number of scattering types: 1
     pdb_inp.xray_structure_simple(scattering_type_exact=True)
   except RuntimeError, e:
     assert not show_diff(str(e), '''\
-Unknown scattering type: PDB ATOM " N   GLN A   3 " element="Cs" charge="3-"''')
+Unknown scattering type:
+  "ATOM      1  N   GLN A   3 .*.    Cs3-"
+               ^^^^                  ^^^^''')
   else: raise Exception_expected
   #
   pdb_inp = pdb.input(
@@ -876,10 +884,14 @@ ENDMDL
   xray_structure.show_scatterers(f=out)
   assert not show_diff(out.getvalue(), """\
 Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
-" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700) 1.00 0.4672 [ - ]
-" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940) 0.63 0.4798 [ - ]
-" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700) 0.54 0.3406 [ - ]
-" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940) 1.00 0.3531 [ - ]
+model="   1" pdb=" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700)\
+ 1.00 0.4672 [ - ]
+model="   1" pdb=" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940)\
+ 0.63 0.4798 [ - ]
+model="   1" pdb=" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700)\
+ 0.54 0.3406 [ - ]
+model="   1" pdb=" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940)\
+ 1.00 0.3531 [ - ]
 """)
   xray_structures = pdb_inp.xray_structures_simple()
   assert len(xray_structures) == 2
@@ -887,15 +899,19 @@ Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
   xray_structures[0].show_scatterers(f=out)
   assert not show_diff(out.getvalue(), """\
 Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
-" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700) 1.00 0.4672 [ - ]
-" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940) 0.63 0.4798 [ - ]
+model="   1" pdb=" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700)\
+ 1.00 0.4672 [ - ]
+model="   1" pdb=" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940)\
+ 0.63 0.4798 [ - ]
 """)
   out = StringIO()
   xray_structures[1].show_scatterers(f=out)
   assert not show_diff(out.getvalue(), """\
 Label, Scattering, Multiplicity, Coordinates, Occupancy, Uiso, Ustar as Uiso
-" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700) 0.54 0.3406 [ - ]
-" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940) 1.00 0.3531 [ - ]
+model="   2" pdb=" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700)\
+ 0.54 0.3406 [ - ]
+model="   2" pdb=" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940)\
+ 1.00 0.3531 [ - ]
 """)
   #
   pdb_inp = pdb.input(
