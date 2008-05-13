@@ -888,9 +888,9 @@ model="   1" pdb=" N   GLN A   3 " N      1 (35.2990 11.0750 19.0700)\
  1.00 0.4672 [ - ]
 model="   1" pdb=" CA  GLN A   3 " C      1 (34.4820  9.9270 18.7940)\
  0.63 0.4798 [ - ]
-model="   1" pdb=" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700)\
+model="   2" pdb=" N   GLN A   3 " N      1 (25.2990  1.0750  9.0700)\
  0.54 0.3406 [ - ]
-model="   1" pdb=" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940)\
+model="   2" pdb=" CA  GLN A   3 " C      1 (24.4820 -1.9270  8.7940)\
  1.00 0.3531 [ - ]
 """)
   xray_structures = pdb_inp.xray_structures_simple()

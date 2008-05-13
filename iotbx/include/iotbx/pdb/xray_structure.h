@@ -12,6 +12,7 @@ namespace iotbx { namespace pdb {
   {
     protected:
       boost::shared_ptr<input> self_;
+      af::shared<hierarchy::atom_with_labels> atoms_with_labels_;
       bool unit_cube_pseudo_crystal_;
       bool fractional_coordinates_;
       bool scattering_type_exact_;
@@ -37,6 +38,7 @@ namespace iotbx { namespace pdb {
         scitbx::vec3<double> const& scale_t)
       :
         self_(self),
+        atoms_with_labels_(self_->atoms_with_labels()),
         unit_cube_pseudo_crystal_(unit_cube_pseudo_crystal),
         fractional_coordinates_(fractional_coordinates),
         scattering_type_exact_(scattering_type_exact),
@@ -49,10 +51,8 @@ namespace iotbx { namespace pdb {
         loop_state(0),
         use_scale_matrix(scale_r.determinant() != 0),
         model_range(self_->model_indices().const_ref()),
-        model_id(self_->model_ids_small().begin()),
         i_atom(0),
-        ial(self_->input_atom_labels_list().begin()),
-        atom(self_->atoms().begin()),
+        atom(atoms_with_labels_.begin()),
         scatterer("", cctbx::fractional<>(0,0,0), 0, 0, "", 0, 0)
       {
         CCTBX_ASSERT(!use_scale_matrix || !fractional_coordinates);
@@ -65,10 +65,8 @@ namespace iotbx { namespace pdb {
       unsigned loop_state;
       bool use_scale_matrix;
       range_loop<std::size_t> model_range;
-      const str8* model_id;
       std::size_t i_atom;
-      const detail::input_atom_labels *ial;
-      const hierarchy::atom *atom;
+      const hierarchy::atom_with_labels *atom;
       XrayScattererType scatterer;
       boost::optional<std::string> scattering_type;
 
@@ -80,18 +78,8 @@ namespace iotbx { namespace pdb {
         while (model_range.next()) {
           scatterers = af::shared<XrayScattererType>();
           scatterers.reserve(model_range.size);
-          for(;i_atom!=model_range.end;i_atom++,ial++,atom++) {
-            hierarchy::atom_with_labels awl(
-              *atom,
-              /* model_id */ model_id->elems,
-              /* chain_id */ ial->chain_small().elems,
-              /* resseq */ ial->resseq_small().elems,
-              /* icode */ ial->icode_small().elems,
-              /* altloc */ ial->altloc_small().elems,
-              /* resname */ ial->resname_small().elems,
-              /* is_first_in_chain */ false,
-              /* is_first_after_break */ false);
-            scatterer.label = awl.id_str();
+          for(;i_atom!=model_range.end;i_atom++,atom++) {
+            scatterer.label = atom->id_str();
             if (unit_cube_pseudo_crystal_ || fractional_coordinates_) {
               scatterer.site = atom->data->xyz;
             }
@@ -131,7 +119,7 @@ namespace iotbx { namespace pdb {
               if (!chemical_element && !enable_scattering_type_unknown_) {
                 throw std::runtime_error(
                   std::string("Unknown chemical element type:\n")
-                  + "  " + awl.quote() + "\n"
+                  + "  " + atom->quote() + "\n"
                   + "  To resolve this problem, specify a"
                     + " chemical element type in\n"
                   + "  columns 77-78 of the PDB file, right justified"
@@ -151,7 +139,7 @@ namespace iotbx { namespace pdb {
                 if (!enable_scattering_type_unknown_) {
                   throw std::runtime_error(
                     std::string("Unknown charge:\n")
-                    + "  " + awl.quote() + "\n"
+                    + "  " + atom->quote() + "\n"
                     + "                                       ^^");
                 }
                 chemical_element.reset();
@@ -175,7 +163,7 @@ namespace iotbx { namespace pdb {
               else {
                 throw std::runtime_error(
                   std::string("Unknown scattering type:\n")
-                  + "  " + awl.quote() + "\n"
+                  + "  " + atom->quote() + "\n"
                   + "               ^^^^                  ^^^^");
               }
             }
@@ -183,8 +171,7 @@ namespace iotbx { namespace pdb {
           }
           loop_state = 1;
           return true;
-          continue_after_return:
-          model_id++;
+          continue_after_return:;
         }
         if (loop_state == 0) {
           loop_state = 2;
