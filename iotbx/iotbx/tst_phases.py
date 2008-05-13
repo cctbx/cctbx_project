@@ -75,7 +75,7 @@ def generate_random_f_calc(
   print "Writing tmp.pdb"
   s = structure.as_pdb_file(
     remark="random structure",
-    res_name="RND")
+    resname="RND")
   open("tmp.pdb", "w").write(s)
   if (0 or verbose):
     print

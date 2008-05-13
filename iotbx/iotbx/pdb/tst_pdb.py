@@ -424,12 +424,12 @@ def exercise_xray_structure(use_u_aniso, verbose=0):
     use_u_aniso=use_u_aniso)
   f_abs = abs(structure.structure_factors(
     anomalous_flag=False, d_min=2, algorithm="direct").f_calc())
-  for res_name in (None, "res"):
+  for resname in (None, "res"):
     for fractional_coordinates in (False, True):
       pdb_file = structure.as_pdb_file(
         remark="Title", remarks=["Any", "Thing"],
         fractional_coordinates=fractional_coordinates,
-        res_name=res_name)
+        resname=resname)
       if (0 or verbose):
         sys.stdout.write(pdb_file)
       structure_read = iotbx.pdb.input(

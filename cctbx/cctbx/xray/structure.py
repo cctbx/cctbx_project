@@ -1161,15 +1161,19 @@ class structure(crystal.special_position_settings):
         remark=None,
         remarks=[],
         fractional_coordinates=False,
-        res_name=None,
-        connect=None):
+        res_name=None, # XXX backward compatibility 2008-05-13
+        connect=None,
+        resname=None):
+    assert res_name is None or resname is None
+    if (resname is None): resname = res_name
     import iotbx.pdb.xray_structure
     return iotbx.pdb.xray_structure.as_pdb_file(
       self=self,
       remark=remark,
       remarks=remarks,
       fractional_coordinates=fractional_coordinates,
-      res_name=res_name, connect=connect)
+      resname=resname,
+      connect=connect)
 
 class conservative_pair_proxies(object):
 
