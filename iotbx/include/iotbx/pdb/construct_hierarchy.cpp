@@ -8,7 +8,7 @@ namespace iotbx { namespace pdb {
 
     void
     append_residue_group(
-      const input_atom_labels* iall,
+      const detail::input_atom_labels* iall,
       hierarchy::atom* atoms,
       hierarchy::chain& chain,
       bool link_to_previous,
@@ -72,7 +72,7 @@ namespace iotbx { namespace pdb {
     SCITBX_ASSERT(chain_indices.size() == model_ids.size());
     hierarchy::root result;
     result.pre_allocate_models(model_ids.size());
-    const input_atom_labels* iall = input_atom_labels_list_.begin();
+    const detail::input_atom_labels* iall = input_atom_labels_list_.begin();
     hierarchy::atom* atoms = atoms_.begin();
     unsigned next_chain_range_begin = 0;
     for(unsigned i_model=0;i_model<model_ids.size();i_model++) {
@@ -97,7 +97,7 @@ namespace iotbx { namespace pdb {
               break_index == break_indices_end ?
                 atoms_.size() : *break_index++);
           }
-          input_atom_labels const& ial = iall[i_atom];
+          detail::input_atom_labels const& ial = iall[i_atom];
           const char* resid = ial.resid_begin();
           const char* resname = ial.resname_begin();
           bool curr_blank_altloc = (ial.altloc_begin()[0]==blank_altloc_char);
@@ -109,7 +109,7 @@ namespace iotbx { namespace pdb {
               }
               else {
                 for (unsigned j_atom=i_atom+1; j_atom!=ch_r.end; j_atom++) {
-                  input_atom_labels const& fwd_ial = iall[j_atom];
+                  detail::input_atom_labels const& fwd_ial = iall[j_atom];
                   const char* fwd_resid = fwd_ial.resid_begin();
                   const char* fwd_resname = fwd_ial.resname_begin();
                   if (std::memcmp(resname, fwd_resname, 3U) != 0) break;
@@ -184,7 +184,8 @@ namespace iotbx { namespace pdb {
     unsigned next_break_index = static_cast<unsigned>(
       break_index == break_indices_end ?
         inp.atoms().size() : *break_index++);
-    const input_atom_labels* iall = inp.input_atom_labels_list().begin();
+    const detail::input_atom_labels*
+      iall = inp.input_atom_labels_list().begin();
     const hierarchy::atom* atoms = inp.atoms().begin();
     unsigned next_chain_range_begin = 0;
     for(unsigned i_model=0;i_model<model_ids.size();i_model++) {
@@ -195,7 +196,7 @@ namespace iotbx { namespace pdb {
       for(unsigned i_chain=0;ch_r.next();i_chain++) {
         bool is_first_in_chain = true;
         for (unsigned i_atom=ch_r.begin; i_atom!=ch_r.end; i_atom++) {
-          input_atom_labels const& ial = iall[i_atom];
+          detail::input_atom_labels const& ial = iall[i_atom];
           bool is_first_after_break = (i_atom == next_break_index);
           if (is_first_after_break) {
             next_break_index = static_cast<unsigned>(
