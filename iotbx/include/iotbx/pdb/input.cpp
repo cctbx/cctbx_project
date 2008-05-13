@@ -610,21 +610,6 @@ namespace iotbx { namespace pdb {
     return result;
   }
 
-  std::string
-  input_atom_labels::pdb_format() const
-  {
-    char buf[128];
-    std::sprintf(buf, "\"%4.4s%1.1s%3.3s%2.2s%4.4s%1.1s\"",
-      name_begin(), altloc_begin(), resname_begin(), chain_begin(),
-      resseq_begin(), icode_begin());
-    std::string result;
-    result += buf;
-    if (segid_small().stripped_size() != 0) {
-      result += " segid=\"" + segid() + "\"";
-    }
-    return result;
-  }
-
   void
   input_atom_labels::check_equivalence(pdb::line_info& line_info) const
   {

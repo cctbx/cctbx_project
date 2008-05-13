@@ -297,9 +297,6 @@ namespace iotbx { namespace pdb {
       return true;
     }
 
-    std::string
-    pdb_format() const;
-
     void
     check_equivalence(pdb::line_info& line_info) const;
   };
