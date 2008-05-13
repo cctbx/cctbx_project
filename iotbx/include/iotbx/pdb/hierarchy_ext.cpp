@@ -293,6 +293,9 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
 
+    BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
+      atoms_reset_serial_overloads, atoms_reset_serial, 0, 2)
+
     static void
     as_pdb_string_cstringio(
       w_t const& self,
@@ -307,9 +310,8 @@ namespace {
       bool siguij=true)
     {
       if (atoms_reset_serial_first_value) {
-        atoms::reset_serial(
-          self.atoms(interleaved_conf).const_ref(),
-          *atoms_reset_serial_first_value);
+        self.atoms_reset_serial(
+          interleaved_conf, *atoms_reset_serial_first_value);
       }
       write_utils::cstringio_write write(cstringio.ptr());
       models_as_pdb_string(
@@ -445,6 +447,10 @@ namespace {
         .def("atoms", &w_t::atoms, atoms_overloads((
           arg_("interleaved_conf")=0)))
         .def("atoms_with_i_seq_mismatch", &w_t::atoms_with_i_seq_mismatch)
+        .def("atoms_reset_serial", &w_t::atoms_reset_serial,
+          atoms_reset_serial_overloads((
+            arg_("interleaved_conf")=0,
+            arg_("first_value")=1)))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
           arg_("other")))
         .def("_as_pdb_string_cstringio", as_pdb_string_cstringio, (

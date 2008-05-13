@@ -115,9 +115,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
     bool siguij) const
   {
     if (atoms_reset_serial_first_value) {
-      atoms::reset_serial(
-        atoms(interleaved_conf).const_ref(),
-        *atoms_reset_serial_first_value);
+      atoms_reset_serial(interleaved_conf, *atoms_reset_serial_first_value);
     }
     write_utils::fstream_open_close foc(file_name, open_append);
     write_utils::fstream_write write(&foc.out);

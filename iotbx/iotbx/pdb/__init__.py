@@ -647,13 +647,16 @@ class rewrite_normalized(object):
     else:
       crystal_symmetry = self.input.crystal_symmetry()
     self.hierarchy = self.input.construct_hierarchy()
-    if (not keep_original_atom_serial):
-      self.hierarchy.atoms().reset_serial()
+    if (keep_original_atom_serial):
+      atoms_reset_serial_first_value = None
+    else:
+      atoms_reset_serial_first_value = 1
     self.hierarchy.write_pdb_file(
       file_name=output_file_name,
       open_append=keep_original_crystallographic_section,
+      crystal_symmetry=crystal_symmetry,
       append_end=True,
-      crystal_symmetry=crystal_symmetry)
+      atoms_reset_serial_first_value=atoms_reset_serial_first_value)
 
 # Table of structures split into multiple PDB files.
 # Assembled manually.

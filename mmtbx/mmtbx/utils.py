@@ -650,8 +650,12 @@ def write_pdb_file(
     else:
       atom.uij = (-1,-1,-1,-1,-1,-1)
   if (atoms_reset_serial):
-    pdb_atoms.reset_serial()
-  out.write(pdb_hierarchy.as_pdb_string(append_end=True))
+    atoms_reset_serial_first_value = 1
+  else:
+    atoms_reset_serial_first_value = None
+  out.write(pdb_hierarchy.as_pdb_string(
+    append_end=True,
+    atoms_reset_serial_first_value=atoms_reset_serial_first_value))
 
 def print_programs_start_header(log, text):
   print >> log
