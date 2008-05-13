@@ -179,7 +179,7 @@ class twin_laws(object):
         euclid_check = sgtbx.space_group( self.euclid )
         try:
           euclid_check.expand_smx( partition[0] )
-        except KeyboardInterupt: raise
+        except KeyboardInterrupt: raise
         except:
           is_pseudo_merohedral=True
           twin_type = str(" PM")
@@ -1330,6 +1330,7 @@ class correlation_analyses(object):
       self.out = sys.stdout
 
     self.twin_law=sgtbx.change_of_basis_op( twin_law )
+    print "RDEN TDEN", miller_calc.space_group().r_den(), miller_calc.space_group().t_den()
     self.twin_law= self.twin_law.new_denominators( r_den=miller_calc.space_group().r_den(),
                                                    t_den=miller_calc.space_group().t_den() )
 
@@ -1466,12 +1467,14 @@ class twin_law_dependend_twin_tests(object):
       if miller_calc is not None:
         ## Magic number to control influence of hiugh resolutiuon reflections
         d_weight=0.25
-        self.correlation = correlation_analyses(normalized_intensities,
-                                                miller_calc,
-                                                twin_law.operator,
-                                                d_weight,
-                                                out)
-
+        try: 
+          self.correlation = correlation_analyses(normalized_intensities,
+                                                  miller_calc,
+                                                  twin_law.operator,
+                                                  d_weight,
+                                                  out)
+        except KeyboardInterrupt: raise
+        except: pass
 
 
       if normalized_intensities.sigmas() is not None:
