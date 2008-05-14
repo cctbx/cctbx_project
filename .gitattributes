@@ -194,6 +194,7 @@ scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text
 scitbx/include/scitbx/array_family/boost_python/selections_wrapper.h svneol=native#text/plain
+scitbx/include/scitbx/boost_python/cstringio_utils.h svneol=native#text/plain
 scitbx/include/scitbx/error_utils.h -text
 scitbx/include/scitbx/iso_surface.h -text
 scitbx/include/scitbx/math/euler_angles.h -text

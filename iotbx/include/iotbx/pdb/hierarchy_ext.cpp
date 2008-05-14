@@ -586,6 +586,6 @@ namespace {
 
 BOOST_PYTHON_MODULE(iotbx_pdb_hierarchy_ext)
 {
-  PycString_IMPORT;
+  scitbx::boost_python::cstringio_import();
   iotbx::pdb::hierarchy::wrap_hierarchy();
 }

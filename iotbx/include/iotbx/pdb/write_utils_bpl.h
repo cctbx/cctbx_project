@@ -2,7 +2,7 @@
 #define IOTBX_PDB_WRITE_UTILS_BPL_H
 
 #include <iotbx/pdb/write_utils.h>
-#include <cStringIO.h>
+#include <scitbx/boost_python/cstringio_utils.h>
 
 namespace iotbx { namespace pdb { namespace write_utils {
 
