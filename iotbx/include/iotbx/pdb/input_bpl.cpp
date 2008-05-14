@@ -166,7 +166,7 @@ namespace {
   void
   wrap_input_impl()
   {
-    PycString_IMPORT;
+    scitbx::boost_python::cstringio_import();
     columns_73_76_evaluator_wrappers::wrap();
     input_wrappers::wrap();
   }
