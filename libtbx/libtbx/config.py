@@ -1303,7 +1303,21 @@ class module:
         source_dir = libtbx.path.norm_join(dist_path, source_dir)
         if (not os.path.isdir(source_dir)): continue
         print 'Processing: "%s"' % source_dir
-        for file_name in os.listdir(source_dir):
+        def is_py_sh(file_name):
+          return file_name.endswith(".sh") \
+              or file_name.endswith(".py")
+        nodes = os.listdir(source_dir)
+        py_sh_dict = {}
+        for file_name in nodes:
+          if (is_py_sh(file_name)):
+            py_sh_dict.setdefault(file_name[:-3], []).append(file_name[-2:])
+        for file_name in nodes:
+          if (    is_py_sh(file_name)
+              and len(py_sh_dict[file_name[:-3]]) == 2):
+            if (os.name == "nt"): skip = ".sh"
+            else:                 skip = ".py"
+            if (file_name.endswith(skip)):
+              continue
           self.write_dispatcher(
             source_dir=source_dir,
             file_name=file_name,
