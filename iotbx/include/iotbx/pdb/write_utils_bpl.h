@@ -14,23 +14,13 @@ namespace iotbx { namespace pdb { namespace write_utils {
     :
       sio(sio_)
     {
-      if (!PycStringIO_OutputCheck(sio)) {
-        throw std::invalid_argument(
-          "cstringio argument must be a cStringIO.StringIO instance.");
-      }
+      scitbx::boost_python::cstringio_output_check(sio);
     }
 
     virtual void
     operator()(const char* s, unsigned n)
     {
-      PycStringIO->cwrite(
-        sio,
-#if PY_VERSION_HEX >= 0x02050000
-        s,
-#else
-        const_cast<char*>(s),
-#endif
-        static_cast<boost::python::ssize_t>(n));
+      scitbx::boost_python::cstringio_cwrite(sio, s, n);
     }
   };
 
