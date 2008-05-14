@@ -23,6 +23,24 @@ if (1):
 
 class empty: pass
 
+def get_gcc_version():
+  gcc_version = easy_run.fully_buffered(command="gcc --version") \
+    .raise_if_errors() \
+    .stdout_lines[0].strip()
+  flds = gcc_version.split()
+  if (len(flds) < 3 or flds[0] != "gcc" or flds[1] != "(GCC)"):
+    return None
+  major_minor_patchlevel = flds[2].split(".")
+  if (len(major_minor_patchlevel) != 3):
+    return None
+  num = []
+  for fld in major_minor_patchlevel:
+    try: i = int(fld)
+    except ValueError:
+      return None
+    num.append(i)
+  return ((num[0]*100)+num[1])*100+num[2]
+
 def set_python_include_and_libs(env_etc):
   env_etc.python_include = libtbx.config.python_include_path()
   if (sys.platform == "win32"):
@@ -43,6 +61,7 @@ env_etc.no_boost_python = ARGUMENTS.get(
   "no_boost_python",
   not libtbx.env.build_options.build_boost_python_extensions)
 env_etc.norm_join = norm_join
+env_etc.gcc_version = None
 
 env_etc.include_registry = libtbx.config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
@@ -347,6 +366,7 @@ else:
                         + " -expect_unresolved '_Py*'"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_gcc"):
+    env_etc.gcc_version = get_gcc_version()
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     env_base.Replace(
@@ -378,7 +398,10 @@ else:
       %s
     """ % warn_options)
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math", "-ftrapping-math"]
+      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      if (env_etc.gcc_version >= 40300):
+        opts.append("-fno-associative-math")
+      opts.append("-ftrapping-math")
     else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
