@@ -16,7 +16,7 @@ namespace scitbx {
     if (i >= 0) {
       SizeType result = static_cast<SizeType>(i);
       if (   result > size
-          || result == size && !allow_i_eq_size) {
+          || (result == size && !allow_i_eq_size)) {
         throw std::out_of_range(index_out_of_range);
       }
       return result;
