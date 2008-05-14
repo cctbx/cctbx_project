@@ -21,7 +21,7 @@ namespace iotbx { namespace pdb {
     for(unsigned j=1;s[j]!='\0';j++) {
       if (!isspace(s[j])) i = j;
     }
-    return i+1;
+    return i+1U;
   }
 
   inline
@@ -99,7 +99,7 @@ namespace iotbx { namespace pdb {
   template <unsigned N>
   struct small_str
   {
-    char elems[N+1];
+    char elems[N+1U];
 
     small_str(small_str_no_init_t) {}
 
@@ -230,12 +230,13 @@ namespace iotbx { namespace pdb {
     }
     elems[i] = '\0';
     if (!truncate_to_fit && *s != '\0') {
+      unsigned given = N+1U;
+      while (*(++s) != '\0') given++;
       char buf[128];
       std::sprintf(buf,
         "string is too long for target variable"
-        " (maximum length is %u character%s, %lu given).",
-          capacity(), (capacity() == 1 ? "" : "s"),
-          N+static_cast<unsigned long>(std::strlen(s)));
+        " (maximum length is %u character%s, %u given).",
+          capacity(), (capacity() == 1U ? "" : "s"), given);
       throw std::invalid_argument(buf);
     }
   }
