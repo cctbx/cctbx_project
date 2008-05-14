@@ -8,20 +8,29 @@
 namespace cctbx { namespace xray { namespace structure_factors {
 
   template <typename CosSinType, typename ScattererType>
-  struct direct_one_h_one_scatterer
+  struct direct_sum_over_equivalent_h
   {
     typedef typename ScattererType::float_type float_type;
+    typedef std::complex<float_type> complex_type;
 
-    direct_one_h_one_scatterer(
-      CosSinType const& cos_sin,
-      hr_ht_cache<float_type> const& hr_ht,
-      float_type d_star_sq,
-      ScattererType const& scatterer)
+    direct_sum_over_equivalent_h(
+      CosSinType const& cos_sin_,
+      sgtbx::space_group const& space_group_,
+      miller::index<> h,
+      float_type d_star_sq_)
     :
-      f_calc(0,0)
+      cos_sin(cos_sin_),
+      hr_ht(cos_sin_, space_group_, h),
+      d_star_sq(d_star_sq_),
+      sum_f_calc(0,0)
+    {}
+
+    void add_contribution_of(ScattererType const& scatterer,
+                             float_type f0)
     {
       typedef float_type f_t;
-      typedef std::complex<f_t> c_t;
+      typedef complex_type c_t;
+      c_t f_calc(0,0);
       for(std::size_t i=0;i<hr_ht.groups.size();i++) {
         hr_ht_group<f_t> const& g = hr_ht.groups[i];
         f_t hrx = g.hr * scatterer.site;
@@ -32,66 +41,39 @@ namespace cctbx { namespace xray { namespace structure_factors {
         }
         f_calc += term;
       }
+      if (hr_ht.is_origin_centric) {
+        f_calc = c_t(2*f_calc.real(),0);
+      }
+      else if (hr_ht.is_centric) {
+        f_calc += std::conj(f_calc) * hr_ht.f_h_inv_t;
+      }
       if (scatterer.flags.use_u_iso() && scatterer.u_iso != 0) {
         f_t dw=adptbx::debye_waller_factor_u_iso(d_star_sq/4, scatterer.u_iso);
         f_calc *= dw;
       }
+      f_t w = scatterer.weight();
+      f_t f0p_w = (f0 + scatterer.fp) * w;
+      f_t fdp_w = scatterer.fdp;
+      if (fdp_w != 0) {
+        fdp_w *= w;
+        f_calc *= c_t(f0p_w, fdp_w);
+      }
+      else {
+        f_calc *= f0p_w;
+      }
+      sum_f_calc += f_calc;
     }
 
-    std::complex<float_type> f_calc;
-  };
-
-  template <typename CosSinType, typename ScattererType>
-  struct direct_one_h
-  {
-    typedef typename ScattererType::float_type float_type;
-
-    direct_one_h(
-      CosSinType const& cos_sin,
-      sgtbx::space_group const& space_group,
-      af::const_ref<ScattererType> const& scatterers,
-      af::const_ref<std::size_t> scattering_type_indices,
-      miller::index<> h,
-      float_type d_star_sq,
-      af::const_ref<double> const& form_factors)
-    :
-      f_calc(0,0)
-    {
-      typedef float_type f_t;
-      typedef std::complex<float_type> c_t;
-      hr_ht_cache<f_t> hr_ht(space_group, h);
-      c_t f_h_inv_t(0,0);
-      if (!hr_ht.is_origin_centric && hr_ht.is_centric) {
-        f_h_inv_t = cos_sin.get(hr_ht.h_inv_t);
-      }
-      for(std::size_t i_sc=0;i_sc<scatterers.size();i_sc++) {
-        ScattererType const& scatterer = scatterers[i_sc];
-        f_t w = scatterer.weight();
-        f_t f0 = form_factors[scattering_type_indices[i_sc]];
-        f_t f0p_w = (f0 + scatterer.fp) * w;
-        f_t fdp_w = scatterer.fdp;
-        bool have_fdp = fdp_w != 0;
-        if (have_fdp) fdp_w *= w;
-        direct_one_h_one_scatterer<CosSinType, ScattererType> sf(
-          cos_sin,
-          hr_ht,
-          d_star_sq,
-          scatterer);
-        if (hr_ht.is_origin_centric) {
-          sf.f_calc = c_t(2*sf.f_calc.real(),0);
-        }
-        else if (hr_ht.is_centric) {
-          sf.f_calc += std::conj(sf.f_calc) * f_h_inv_t;
-        }
-        if (have_fdp) sf.f_calc *= c_t(f0p_w, fdp_w);
-        else sf.f_calc *= f0p_w;
-        f_calc += sf.f_calc;
-      }
-      f_calc *= static_cast<f_t>(space_group.n_ltr());
+    complex_type f_calc() {
+      return sum_f_calc * hr_ht.ltr_factor;;
     }
 
-    std::complex<float_type> f_calc;
+    CosSinType const &cos_sin;
+    hr_ht_cache<float_type> hr_ht;
+    float_type d_star_sq;
+    complex_type sum_f_calc;
   };
+
 
   template <typename ScattererType=scatterer<> >
   class direct
@@ -145,24 +127,21 @@ namespace cctbx { namespace xray { namespace structure_factors {
         typedef float_type f_t;
         typedef std::complex<float_type> c_t;
         f_calc_.reserve(miller_indices.size());
-        af::shared<std::size_t>
-          scattering_type_indices_memory
-            = scattering_type_registry.unique_indices(scatterers);
-        af::const_ref<std::size_t>
-          scattering_type_indices = scattering_type_indices_memory.const_ref();
+        af::shared<std::size_t> scattering_type_indices
+          = scattering_type_registry.unique_indices(scatterers);
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> h = miller_indices[i];
           f_t d_star_sq = unit_cell.d_star_sq(h);
-          af::shared<double>
-            form_factors_memory
-              = scattering_type_registry.unique_form_factors_at_d_star_sq(
-                  d_star_sq);
-          af::const_ref<double> form_factors = form_factors_memory.const_ref();
-          f_calc_.push_back(
-            direct_one_h<CosSinType, ScattererType>(
-              cos_sin, space_group, scatterers, scattering_type_indices,
-              h, d_star_sq, form_factors).f_calc
-          );
+          af::shared<double> form_factors
+            = scattering_type_registry.unique_form_factors_at_d_star_sq(
+                d_star_sq);
+          direct_sum_over_equivalent_h<CosSinType, ScattererType>
+            sum(cos_sin, space_group, h, d_star_sq);
+          for(std::size_t j=0; j<scatterers.size(); ++j) {
+            sum.add_contribution_of(scatterers[j],
+                                    form_factors[scattering_type_indices[j]]);
+          }
+          f_calc_.push_back(sum.f_calc());
         }
       }
   };
