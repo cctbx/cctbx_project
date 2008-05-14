@@ -25,12 +25,28 @@ namespace cctbx { namespace xray { namespace structure_factors {
   {
     typedef FloatType f_t;
 
-    hr_ht_cache(
-      sgtbx::space_group const& space_group,
-      miller::index<> const& h)
-    :
-      is_centric(space_group.is_centric())
+    hr_ht_cache(sgtbx::space_group const& space_group,
+                miller::index<> const& h)
     {
+      init(space_group, h);
+    }
+
+    template<class CosSinType>
+    hr_ht_cache(CosSinType const &cos_sin,
+                sgtbx::space_group const& space_group,
+                miller::index<> const& h)
+    {
+      init(space_group, h);
+      if (!is_origin_centric && is_centric) {
+        f_h_inv_t = cos_sin.get(h_inv_t);
+      }
+    }
+
+    void init(sgtbx::space_group const& space_group,
+              miller::index<> const& h)
+    {
+      ltr_factor = space_group.n_ltr();
+      is_centric = space_group.is_centric();
       f_t t_den = static_cast<f_t>(space_group.t_den());
       if (!is_centric) {
         h_inv_t = -1;
@@ -50,7 +66,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
 
     bool is_centric;
     bool is_origin_centric;
+    f_t ltr_factor;
     f_t h_inv_t;
+    std::complex<f_t> f_h_inv_t;
     af::small<hr_ht_group<f_t>, sgtbx::n_max_repr_rot_mx> groups;
   };
 
