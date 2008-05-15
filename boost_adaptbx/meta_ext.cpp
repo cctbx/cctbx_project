@@ -44,6 +44,11 @@
 #endif
 #endif
 
+#if defined(__linux)
+#include <gnu/libc-version.h>
+#define BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC-VERSION_H
+#endif
+
 namespace {
 
   long
@@ -418,6 +423,10 @@ namespace {
     P(PY_UNICODE_TYPE)
 #endif
 #undef P
+#if defined(BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC)
+    result += "gnu libc version: ";
+    result += gnu_get_libc_version() + nl;
+#endif
     return result;
   }
 
