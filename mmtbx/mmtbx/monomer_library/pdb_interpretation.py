@@ -1840,7 +1840,7 @@ class build_all_chain_proxies(object):
     n_unique_models = 0
     for i_model,model in enumerate(models):
       if (log is not None):
-        print >> log, "  Model:", model.id
+        print >> log, '  Model: "%s"' % model.id
       is_unique_model = not is_same_model_as_before(
         model_type_indices, i_model, models)
       if (is_unique_model):

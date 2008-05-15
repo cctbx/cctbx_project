@@ -2,11 +2,12 @@ from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
 from libtbx.utils import search_for
+from libtbx.test_utils import block_show_diff
+import libtbx.load_env
 from cStringIO import StringIO
+import os
 
-def exercise():
-  mon_lib_srv = monomer_library.server.server()
-  ener_lib = monomer_library.server.ener_lib()
+def exercise_pdb_string(mon_lib_srv, ener_lib):
   raw_records = """\
 CRYST1   50.066   67.126   47.862  90.00  92.41  90.00 P 1 21 1
 ATOM      0  N   MET     0      18.670  12.527  40.988  1.00 52.89           N
@@ -223,7 +224,41 @@ END
     mode="==",
     lines=log.getvalue().splitlines())
   assert len(lines) == 1
-  #
+
+def exercise_cns_rna(mon_lib_srv, ener_lib):
+  file_name = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/cns_rna.pdb",
+    test=os.path.isfile)
+  if (file_name is None):
+    print "Skipping exercise_cns_rna(): input file not available"
+    return
+  log = StringIO()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=file_name,
+    log=log)
+  lines = log.getvalue().splitlines()
+  assert not block_show_diff(log.getvalue(), """\
+  Total number of atoms: 646
+  Number of models: 1
+  Model: ""
+    Number of chains: 1
+    Chain: " "
+      Number of atoms: 646
+      Number of conformers: 1
+      Conformer: ""
+        Number of residues, atoms: 20, 646
+          Classifications: {'RNA': 20}
+          Modifications used: {'p5*END': 1, '3*END': 1}
+          Link IDs: {'p': 19}
+  Time building chain proxies: """, last_startswith=True)
+
+def exercise():
+  mon_lib_srv = monomer_library.server.server()
+  ener_lib = monomer_library.server.ener_lib()
+  exercise_pdb_string(mon_lib_srv, ener_lib)
+  exercise_cns_rna(mon_lib_srv, ener_lib)
   print "OK"
 
 if (__name__ == "__main__"):
