@@ -327,6 +327,42 @@ def show_diff(a, b, selections=None, expected_number_of_lines=None):
     return True
   return False
 
+def block_show_diff(lines, expected, last_startswith=False):
+  if (isinstance(lines, str)):
+    lines = lines.splitlines()
+  if (isinstance(expected, str)):
+    expected = expected.splitlines()
+  assert len(expected) > 1
+  def raise_not_found():
+    print "block_show_diff() lines:"
+    print "-"*80
+    print "\n".join(lines)
+    print "-"*80
+    raise AssertionError('Expected line not found: "%s"' % eline)
+  eline = expected[0]
+  for i,line in enumerate(lines):
+    if (line == eline):
+      lines = lines[i:]
+      break
+  else:
+    raise_not_found()
+  eline = expected[-1]
+  for i,line in enumerate(lines):
+    if (last_startswith):
+      if (line.startswith(eline)):
+        lines = lines[:i]
+        expected = expected[:-1]
+        break
+    else:
+      if (line == eline):
+        lines = lines[:i+1]
+        break
+  else:
+    raise_not_found()
+  lines = "\n".join(lines)+"\n"
+  expected = "\n".join(expected)+"\n"
+  assert not show_diff(lines, expected)
+
 class RunCommandError(RuntimeError): pass
 
 def _check_command_output(
