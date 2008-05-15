@@ -18,7 +18,7 @@ def perl_header(selfx, command):
 #
 # and was written in May 2003 by Ralf W. Grosse-Kunstleve.
 # See also:
-#   http://cvs.sourceforge.net/viewcvs.py/cctbx/libtbx/LICENSE.txt?view=markup
+#   http://cctbx.svn.sourceforge.net/viewvc/*checkout*/cctbx/trunk/libtbx/LICENSE_2_0.txt
 #
 # The above copyright notice does *not* apply to the attached tar.gz file.
 #
