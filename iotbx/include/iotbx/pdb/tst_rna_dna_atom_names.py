@@ -312,7 +312,7 @@ def exercise_mon_lib_names():
     interp_mon_names = interpreted.mon_lib_names()
     for inp,out in zip(mon_names, interp_mon_names):
       if (inp == "HO5*"):
-        assert out is None # HOP3, but not covered by monomer library
+        assert out == "HOP3" # added to monomer library
       else:
         assert out == inp
     #

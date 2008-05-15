@@ -138,8 +138,8 @@ rna_dna_atom_names_reference_to_mon_lib_translation_dict = {
   "H5''": "H5*2",
   "HO2'": "HO2*",
   "HO3'": "HO3*",
-  "HO5'": "HO5*"
-# "HOP3": not covered by monomer library
+  "HO5'": "HO5*",
+  "HOP3": "HOP3" # added to monomer library
 }
 
 class rna_dna_atom_names_interpretation(object):
