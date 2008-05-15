@@ -96,3 +96,15 @@ CCD_IMAGE_SATURATION=65535;
     elif attr=='deltaphi' : return self.parameters['OSC_RANGE']
     elif attr=='twotheta' : return self.parameters['TWOTHETA']
     elif attr=='serial_number' : return self.parameters['DETECTOR_SN']
+
+  def show_header(self):
+    print "File:",self.filename
+    print "Number of pixels: slow=%d fast=%d"%(self.size1,self.size2)
+    print "Pixel size: %f mm"%self.pixel_size
+    print "Saturation: %.0f"%self.saturation
+    print "Detector distance: %.2f"%self.distance
+    print "Detector 2theta swing: %.2f deg"%self.twotheta
+    print "Rotation start: %.2f deg."%self.osc_start
+    print "Rotation width: %.2f deg"%self.deltaphi
+    print "Beam center x, %.2f mm  y, %.2f mm"%(self.beamx,self.beamy)
+    print "Wavelength: %f Ang."%self.wavelength
