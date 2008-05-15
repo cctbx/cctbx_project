@@ -5,6 +5,7 @@
 #include <boost/scoped_array.hpp>
 #include <map>
 #include <string>
+#include <cstring>
 
 namespace gltbx { namespace fonts { namespace ucs {
 
