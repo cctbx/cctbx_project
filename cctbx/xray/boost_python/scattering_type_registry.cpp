@@ -15,9 +15,31 @@ namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
 
+  template<class FormFactorType>
+  struct scattering_type_registry_traits;
+
+  template<>
+  struct scattering_type_registry_traits<eltbx::xray_scattering::gaussian>
+  {
+    typedef scitbx::math::gaussian::sum<double> assignable_form_factor_t;
+
+    static
+    std::string class_name() {
+      return "scattering_type_registry";
+    }
+
+    static
+    std::string form_factor_name() {
+      return "gaussian";
+    }
+  };
+
+
+  template<class FormFactorType>
   struct scattering_type_registry_wrappers
   {
-    typedef scattering_type_registry w_t;
+    typedef generic_scattering_type_registry<FormFactorType> w_t;
+    typedef scattering_type_registry_traits<FormFactorType> traits;
 
     static
     boost::python::dict
@@ -32,7 +54,7 @@ namespace {
     unique_gaussians_as_list(w_t const& self)
     {
       return scitbx::stl::boost_python::vector_as_list(
-        self.unique_gaussians.const_ref());
+        self.unique_form_factors.const_ref());
     }
 
     static
@@ -49,20 +71,29 @@ namespace {
     std::auto_ptr<w_t>
     constructor_for_pickle(
       boost::python::dict const& type_index_pairs,
-      boost::python::list const& unique_gaussians,
-      w_t::unique_counts_t const& unique_counts)
+      boost::python::list const& unique_form_factors,
+      typename w_t::unique_counts_t const& unique_counts)
     {
       std::auto_ptr<w_t> self(new w_t);
       scitbx::stl::boost_python::update_map_from_dict(
         self->type_index_pairs, type_index_pairs);
       scitbx::stl::boost_python::update_vector_from_list(
-        self->unique_gaussians, unique_gaussians);
+        self->unique_form_factors, unique_form_factors);
       self->unique_counts = unique_counts;
-      CCTBX_ASSERT(self->unique_gaussians.size() \
+      CCTBX_ASSERT(self->unique_form_factors.size() \
                 == self->type_index_pairs.size());
       CCTBX_ASSERT(self->unique_counts.size() \
                 == self->type_index_pairs.size());
       return self;
+    }
+
+    static
+    bool assign(
+      w_t &self,
+      std::string const &sct,
+      boost::optional<typename traits::assignable_form_factor_t> const &ff)
+    {
+      return self.assign(sct, ff);
     }
 
     static void
@@ -71,7 +102,9 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
       typedef return_value_policy<return_by_value> rbv;
-      class_<w_t>("scattering_type_registry")
+      std::string ff_name = traits::form_factor_name();
+
+      class_<w_t>(traits::class_name().c_str())
         .def("type_index_pairs_as_dict", type_index_pairs_as_dict)
         .def("unique_gaussians_as_list", unique_gaussians_as_list)
         .add_property("unique_counts", make_getter(&w_t::unique_counts, rbv()))
@@ -90,13 +123,27 @@ namespace {
           (af::shared<std::size_t>(w_t::*)(
             af::const_ref<scatterer<> > const&) const) &w_t::unique_indices, (
               arg_("scatterers")))
-        .def("gaussian", &w_t::gaussian, (arg_("scattering_type")), ccr())
-        .def("gaussian_not_optional",
-          &w_t::gaussian_not_optional,
-            (arg_("scattering_type")), ccr())
+        .def("form_factor",
+             &w_t::form_factor,
+             (arg_("scattering_type")),
+             ccr())
+        .def("form_factor_not_optional",
+             &w_t::form_factor_not_optional,
+             (arg_("scattering_type")),
+             ccr())
+        .def(ff_name.c_str(),
+             &w_t::form_factor,
+             (arg_("scattering_type")),
+             ccr())
+        .def((ff_name + std::string("_not_optional")).c_str(),
+              &w_t::form_factor_not_optional,
+              (arg_("scattering_type")),
+              ccr())
         .def("unassigned_types", &w_t::unassigned_types)
-        .def("assign", &w_t::assign, (
-          arg_("scattering_type"), arg_("gaussian")))
+        .def("assign",
+             &assign,
+             (arg_("scattering_type"),
+              arg_(ff_name.c_str())))
         .def("assign_from_table", &w_t::assign_from_table, (
           arg_("table")))
         .def("unique_form_factors_at_d_star_sq",
@@ -114,7 +161,7 @@ namespace {
 
   void wrap_scattering_type_registry()
   {
-    scattering_type_registry_wrappers::wrap();
+    scattering_type_registry_wrappers<eltbx::xray_scattering::gaussian>::wrap();
   }
 
 }}} // namespace cctbx::xray::boost_python
