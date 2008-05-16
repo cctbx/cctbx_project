@@ -65,7 +65,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
     }
 
     complex_type f_calc() {
-      return sum_f_calc * hr_ht.ltr_factor;;
+      return sum_f_calc * hr_ht.ltr_factor;
     }
 
     CosSinType const &cos_sin;
@@ -75,12 +75,15 @@ namespace cctbx { namespace xray { namespace structure_factors {
   };
 
 
-  template <typename ScattererType=scatterer<> >
+  template <class ScattererType=scatterer<>,
+            class FormFactorType=eltbx::xray_scattering::gaussian>
   class direct
   {
     public:
       typedef ScattererType scatterer_type;
       typedef typename ScattererType::float_type float_type;
+      typedef xray::generic_scattering_type_registry<FormFactorType>
+              scattering_type_registry_t;
 
       direct() {}
 
@@ -89,7 +92,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        xray::scattering_type_registry const& scattering_type_registry)
+        scattering_type_registry_t const& scattering_type_registry)
       {
         math::cos_sin_exact<float_type> cos_sin;
         compute(cos_sin, unit_cell, space_group, miller_indices,
@@ -102,7 +105,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        xray::scattering_type_registry const& scattering_type_registry)
+        scattering_type_registry_t const& scattering_type_registry)
       {
         compute(cos_sin, unit_cell, space_group, miller_indices,
                 scatterers, scattering_type_registry);
@@ -122,7 +125,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<ScattererType> const& scatterers,
-        xray::scattering_type_registry const& scattering_type_registry)
+        scattering_type_registry_t const& scattering_type_registry)
       {
         typedef float_type f_t;
         typedef std::complex<float_type> c_t;
