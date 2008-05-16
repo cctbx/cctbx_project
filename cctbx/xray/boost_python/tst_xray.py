@@ -689,6 +689,14 @@ def exercise_scattering_type_registry():
       assert approx_equal(ff, [10.173729, 6.042655, 20.0, 10.0, 7.680404])
     else:
       assert approx_equal(ff, [10.174771, 6.042745, 20.0, 10.0, 7.680404])
+    all_dilated_ffs = reg.dilated_form_factors_at_d_star_sq(
+      d_star_sq=0.1,
+      dilation_coeffs=flex.double_range(1,scatterers.size()+1),
+      unique_indices=unique_indices)
+    for i, dilated_ff in enumerate(all_dilated_ffs):
+      j = unique_indices[i]
+      ref_ff = reg.unique_form_factors_as_list()[j].at_d_star_sq(0.1/(i+1))
+      assert approx_equal(dilated_ff, ref_ff)
     reg.assign(scattering_type="custom", gaussian=None)
     assert reg.gaussian(scattering_type="custom") is None
     s = StringIO()
