@@ -126,8 +126,30 @@ master_params = iotbx.phil.parse("""\
   translate_cns_dna_rna_residue_names = None
     .type=bool
     .optional=False
+  rna_sugar_pucker_analysis {
+    use = True
+      .type=bool
+    include scope mmtbx.monomer_library.rna_sugar_pucker_analysis.master_phil
+  }
+  show_histogram_slots {
+    bond_lengths = 5
+      .type=int
+    nonbonded_interaction_distances = 5
+      .type=int
+    dihedral_angle_deviations_from_ideal = 5
+      .type=int
+  }
+  show_max_lines {
+    bond_restraints_sorted_by_residual = 5
+      .type=int
+    nonbonded_interactions_sorted_by_model_distance = 5
+      .type=int
+    dihedral_angle_restraints_sorted_by_residual = 3
+      .type=int
+  }
   %s
-"""%clash_guard_params_str)
+""" % clash_guard_params_str,
+  process_includes=True)
 
 geometry_restraints_edits = iotbx.phil.parse("""\
 bond
@@ -417,14 +439,17 @@ class monomer_mapping(object):
         pdb_atoms,
         mon_lib_srv,
         translate_cns_dna_rna_residue_names,
+        rna_sugar_pucker_analysis_params,
         apply_cif_modifications,
         apply_cif_links_mm_pdbres_dict,
         i_model,
         i_conformer,
         is_first_conformer_in_chain,
         conf_altloc,
-        pdb_residue):
+        pdb_residue,
+        prev_mm):
     self.pdb_atoms = pdb_atoms
+    self.mon_lib_srv = mon_lib_srv
     self.i_conformer = i_conformer
     self.is_first_conformer_in_chain = is_first_conformer_in_chain
     self.conf_altloc = conf_altloc
@@ -433,7 +458,7 @@ class monomer_mapping(object):
     self.residue_name = pdb_residue.resname
     atom_id_str_pdbres_list = self._collect_atom_names()
     self.monomer, self.atom_name_interpretation \
-      = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+      = self.mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
           residue_name=self.residue_name,
           atom_names=self.atom_names_given,
           translate_cns_dna_rna_residue_names
@@ -451,18 +476,21 @@ class monomer_mapping(object):
       self.incomplete_info = None
       self.is_terminus = None
     else:
-      self._get_mappings(mon_lib_srv=mon_lib_srv)
+      self._get_mappings()
       self.chem_mod_ids = []
+      if (self.atom_name_interpretation is not None):
+        self._rna_sugar_pucker_analysis(
+          params=rna_sugar_pucker_analysis_params,
+          prev_mm=prev_mm)
       for id_str in atom_id_str_pdbres_list:
         for apply_data_mod in apply_cif_modifications.get(id_str, []):
           self.apply_mod(
-            mon_lib_srv=mon_lib_srv,
-            mod_mod_id=mon_lib_srv.mod_mod_id_dict[apply_data_mod])
+            mod_mod_id=self.mon_lib_srv.mod_mod_id_dict[apply_data_mod])
       self._set_incomplete_info()
       self.is_terminus = None
       self.monomer.set_classification()
       if (self.incomplete_info is None):
-        self.resolve_unexpected(mon_lib_srv=mon_lib_srv)
+        self.resolve_unexpected()
     if (self.pdb_residue_id_str in apply_cif_links_mm_pdbres_dict):
       apply_cif_links_mm_pdbres_dict[self.pdb_residue_id_str].setdefault(
         self.i_conformer, []).append(self)
@@ -481,7 +509,36 @@ class monomer_mapping(object):
         self.atom_names_given.append(atom.name.replace(" ",""))
     return sorted(atom_id_str_pdbres_set)
 
-  def _get_mappings(self, mon_lib_srv):
+  def _rna_sugar_pucker_analysis(self, params, prev_mm):
+    if (not params.use): return
+    std_resname = getattr(
+      self.atom_name_interpretation, "residue_name", None)
+    if (    std_resname is not None
+        and std_resname in ["A", "C", "G", "U"]):
+      self.rna_sugar_pucker_analysis_atoms = \
+        rna_sugar_pucker_analysis.extract_required_atoms(
+          resname=std_resname,
+          atoms=self.active_atoms,
+          atom_names=[info.reference_name
+            for info in self.atom_name_interpretation.infos])
+      if (   prev_mm is None
+          or prev_mm.mon_lib_names is None
+          or prev_mm.rna_sugar_pucker_analysis_atoms is None):
+        is_2p = False
+      else:
+        is_2p = rna_sugar_pucker_analysis.evaluate.given_atoms(
+          params=params,
+          atoms_1=prev_mm.rna_sugar_pucker_analysis_atoms,
+          atoms_2=self.rna_sugar_pucker_analysis_atoms).is_2p
+      if (is_2p): primary_mod_id = "rnaC2"
+      else:       primary_mod_id = "rnaC3"
+      for mod_id in [primary_mod_id, "rnaEsd"]:
+        mod_mod_id = self.mon_lib_srv.mod_mod_id_dict[mod_id]
+        self.apply_mod(mod_mod_id=mod_mod_id)
+    else:
+      self.rna_sugar_pucker_analysis_atoms = None
+
+  def _get_mappings(self):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
     processed_atom_names = {}
     self.expected_atoms = {}
@@ -525,7 +582,7 @@ class monomer_mapping(object):
         else:
           auto_synomyms.insert(0, atom_name_given)
           for atom_name in auto_synomyms:
-            atom_name = mon_lib_srv.comp_synonym_atom_list_dict.get(
+            atom_name = self.mon_lib_srv.comp_synonym_atom_list_dict.get(
               self.monomer.chem_comp.id, {}).get(atom_name, None)
             if (atom_name is not None): break
           else:
@@ -589,7 +646,7 @@ class monomer_mapping(object):
   def _set_incomplete_info(self):
     self.incomplete_info = self._get_incomplete_info()
 
-  def resolve_unexpected(self, mon_lib_srv):
+  def resolve_unexpected(self):
     mod_mod_ids = []
     ani = self.atom_name_interpretation
     u = self.unexpected_atoms
@@ -606,7 +663,7 @@ class monomer_mapping(object):
             u_mon_lib[mon_lib_name] = i_seq
         u = u_mon_lib
       if ("OXT" in u):
-        mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["COO"])
+        mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["COO"])
       if (ani is not None):
         nitrogen_hydrogens = []
         for name in u.keys():
@@ -615,12 +672,12 @@ class monomer_mapping(object):
             nitrogen_hydrogens.append(name)
         nitrogen_hydrogen_translation = None
         if (len(nitrogen_hydrogens) == 3):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
         elif (len(nitrogen_hydrogens) == 2):
           if (self.monomer.chem_comp.id == "PRO"):
-            mod_mod_id = mon_lib_srv.mod_mod_id_dict["NH2"]
+            mod_mod_id = self.mon_lib_srv.mod_mod_id_dict["NH2"]
           else:
-            mod_mod_id = mon_lib_srv.mod_mod_id_dict.get("NH2NOTPRO")
+            mod_mod_id = self.mon_lib_srv.mod_mod_id_dict.get("NH2NOTPRO")
             if (mod_mod_id is None):
               raise RuntimeError("""\
 A modified version of the monomer library is required to correctly
@@ -630,7 +687,7 @@ Please contact cctbx@cci.lbl.gov for more information.""")
           mod_mod_ids.append(mod_mod_id)
           nitrogen_hydrogen_translation = ["HN1", "HN2"]
         elif (len(nitrogen_hydrogens) == 1):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH1"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH1"])
           nitrogen_hydrogen_translation = ["HN"]
         if (nitrogen_hydrogen_translation is not None):
           j = 0
@@ -644,42 +701,42 @@ Please contact cctbx@cci.lbl.gov for more information.""")
         if (      ("H1" in u or "1H" in u)
               and ("H2" in u or "2H" in u)
               and ("H3" in u or "3H" in u)):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
         elif (    ("HN1" in u or "1HN" in u)
               and ("HN2" in u or "2HN" in u)):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH2"])
         elif (    "HN" in u):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH1"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH1"])
         elif (    ("H1" in u or "1H" in u)
               or  ("H2" in u or "2H" in u)
               or  ("H3" in u or "3H" in u)):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH3"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
         elif (    ("HN1" in u or "1HN" in u)
               or  ("HN2" in u or "2HN" in u)):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["NH2"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH2"])
     elif (self.monomer.classification in ["RNA", "DNA"]):
       if (ani is not None):
         if (ani.have_op3_or_hop3):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["p5*END"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["p5*END"])
         elif (not ani.have_phosphate):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["5*END"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["5*END"])
         if (ani.have_ho3prime):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["3*END"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["3*END"])
       else:
         if ("O3T" in u):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["p5*END"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["p5*END"])
         else:
           e = self.expected_atoms
           if (    not "P"   in e
               and not "OP1" in e
               and not "OP2" in e):
-            mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["5*END"])
+            mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["5*END"])
         if ("HO3*" in u):
-          mod_mod_ids.append(mon_lib_srv.mod_mod_id_dict["3*END"])
+          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["3*END"])
     for mod_mod_id in mod_mod_ids:
-      self.apply_mod(mon_lib_srv=mon_lib_srv, mod_mod_id=mod_mod_id)
+      self.apply_mod(mod_mod_id=mod_mod_id)
 
-  def apply_mod(self, mon_lib_srv, mod_mod_id):
+  def apply_mod(self, mod_mod_id):
     try:
       mod_mon = self.monomer.apply_mod(mod_mod_id)
     except RuntimeError:
@@ -691,7 +748,7 @@ Please contact cctbx@cci.lbl.gov for more information.""")
     if (    mod_mod_id.chem_mod.name is not None
         and mod_mod_id.chem_mod.name.lower().find("terminus") >= 0):
       self.is_terminus = True # AD HOC manipulation
-    self._get_mappings(mon_lib_srv=mon_lib_srv)
+    self._get_mappings()
 
   def residue_altloc(self):
     result = self.residue_name
@@ -1316,6 +1373,7 @@ class build_chain_proxies(object):
         mon_lib_srv,
         ener_lib,
         translate_cns_dna_rna_residue_names,
+        rna_sugar_pucker_analysis_params,
         apply_cif_modifications,
         apply_cif_links_mm_pdbres_dict,
         link_distance_cutoff,
@@ -1381,13 +1439,15 @@ class build_chain_proxies(object):
         mon_lib_srv=mon_lib_srv,
         translate_cns_dna_rna_residue_names
           =translate_cns_dna_rna_residue_names,
+        rna_sugar_pucker_analysis_params=rna_sugar_pucker_analysis_params,
         apply_cif_modifications=apply_cif_modifications,
         apply_cif_links_mm_pdbres_dict=apply_cif_links_mm_pdbres_dict,
         i_model=i_model,
         i_conformer=i_conformer,
         is_first_conformer_in_chain=is_first_conformer_in_chain,
         conf_altloc=conformer.altloc,
-        pdb_residue=residue)
+        pdb_residue=residue,
+        prev_mm=prev_mm)
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
           if (   residue.atoms_size() != 1
@@ -1424,13 +1484,13 @@ class build_chain_proxies(object):
             mod_id = prev_mm.lib_link.chem_link.mod_id_1
             if (mod_id not in [None, ""]):
               mod_mod_id = mon_lib_srv.mod_mod_id_dict[mod_id]
-              prev_mm.apply_mod(mon_lib_srv=mon_lib_srv, mod_mod_id=mod_mod_id)
-              prev_mm.resolve_unexpected(mon_lib_srv=mon_lib_srv)
+              prev_mm.apply_mod(mod_mod_id=mod_mod_id)
+              prev_mm.resolve_unexpected()
             mod_id = prev_mm.lib_link.chem_link.mod_id_2
             if (mod_id not in [None, ""]):
               mod_mod_id = mon_lib_srv.mod_mod_id_dict[mod_id]
-              mm.apply_mod(mon_lib_srv=mon_lib_srv, mod_mod_id=mod_mod_id)
-              mm.resolve_unexpected(mon_lib_srv=mon_lib_srv)
+              mm.apply_mod(mod_mod_id=mod_mod_id)
+              mm.resolve_unexpected()
             link_resolution = add_bond_proxies(
               counters=counters(label="link_bond"),
               m_i=prev_mm,
@@ -1871,6 +1931,8 @@ class build_all_chain_proxies(object):
             ener_lib=ener_lib,
             translate_cns_dna_rna_residue_names
               =self.params.translate_cns_dna_rna_residue_names,
+            rna_sugar_pucker_analysis_params
+              =self.params.rna_sugar_pucker_analysis,
             apply_cif_modifications=self.apply_cif_modifications,
             apply_cif_links_mm_pdbres_dict=apply_cif_links_mm_pdbres_dict,
             link_distance_cutoff=self.params.link_distance_cutoff,
@@ -2751,8 +2813,10 @@ class process(object):
           for atom in self.all_chain_proxies.pdb_atoms]
         pair_proxies = self._geometry_restraints_manager.pair_proxies(
           sites_cart=self.all_chain_proxies.sites_cart_exact())
+        params = self.all_chain_proxies.params
         pair_proxies.bond_proxies.show_histogram_of_model_distances(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
+          n_slots=params.show_histogram_slots.bond_lengths,
           f=self.log,
           prefix="  ")
         smallest_distance_model = \
@@ -2761,7 +2825,7 @@ class process(object):
             labels=labels,
             f=self.log,
             prefix="  ",
-            max_lines=5)
+            max_lines=params.show_max_lines.bond_restraints_sorted_by_residual)
         if (    smallest_distance_model is not None
             and hard_minimum_bond_distance_model is not None
             and smallest_distance_model < hard_minimum_bond_distance_model):
@@ -2770,6 +2834,7 @@ class process(object):
             hard_minimum_bond_distance_model))
         pair_proxies.nonbonded_proxies.show_histogram_of_model_distances(
           sites_cart=self.all_chain_proxies.sites_cart_exact(),
+          n_slots=params.show_histogram_slots.nonbonded_interaction_distances,
           f=self.log,
           prefix="  ")
         pair_proxies.nonbonded_proxies.show_sorted_by_model_distance(
@@ -2777,11 +2842,14 @@ class process(object):
           labels=labels,
           f=self.log,
           prefix="  ",
-          max_lines=5)
+          max_lines=params.show_max_lines
+            .nonbonded_interactions_sorted_by_model_distance)
         self.clash_guard()
         self._geometry_restraints_manager.dihedral_proxies \
           .show_histogram_of_deltas(
             sites_cart=self.all_chain_proxies.sites_cart_exact(),
+            n_slots=params.show_histogram_slots
+              .dihedral_angle_deviations_from_ideal,
             f=self.log,
             prefix="  ")
         self._geometry_restraints_manager.dihedral_proxies \
@@ -2790,7 +2858,8 @@ class process(object):
             labels=labels,
             f=self.log,
             prefix="  ",
-            max_lines=3)
+            max_lines=params.show_max_lines
+              .dihedral_angle_restraints_sorted_by_residual)
         flush_log(self.log)
         if (show_energies):
           timer = user_plus_sys_time()

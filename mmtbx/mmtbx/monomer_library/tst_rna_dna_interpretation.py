@@ -28,12 +28,19 @@ def run(args, residue_type, expected_results):
       file_name=os.path.join(pdb_files, file_name),
       log=log)
     for mm in processed_pdb_file.all_chain_proxies.all_monomer_mappings:
+      residue_name = mm.residue_name
+      if (mm.classification == "RNA"):
+        for c in ["2", "3"]:
+          expected_mod = "%rnaC"+c+"%rnaEsd"
+          if (mm.residue_name.find(expected_mod) > 0):
+            residue_name = mm.residue_name.replace(expected_mod, "")
+            break
       assert len(mm.duplicate_atoms) == 0
       assert len(mm.ignored_atoms) == 0
       assert not mm.is_unusual
       unexpected_names = [atom.name for atom in mm.unexpected_atoms]
       result = [
-        mm.residue_name,
+        residue_name,
         len(mm.expected_atoms),
         unexpected_names,
         mm.classification,
@@ -43,6 +50,7 @@ def run(args, residue_type, expected_results):
       if (debug):
         print '"%s":' % key
         print " ", str(result)+","
+        print " ", str(expected_results[key])+","
       if (expected_results is not None):
         assert result == expected_results[key]
   print "OK"
