@@ -40,7 +40,35 @@ def _build_required_atom_indices():
 
 required_atom_indices = _build_required_atom_indices()
 
+def extract_required_atoms(resname, atoms, atom_names=None):
+  assert atom_names is None or len(atom_names) == len(atoms)
+  if (atom_names is None):
+    atom_names = [atom.name for atom in atoms]
+  indices = required_atom_indices.get(resname.strip())
+  if (indices is None):
+    raise RuntimeError('Unexpected residue name: "%s"' % resname)
+  result = [None] * len(indices)
+  n_found = 0
+  for atom, atom_name in zip(atoms, atom_names):
+    if (atom_name is None): continue
+    i = indices.get(atom_name.strip())
+    if (i is None): continue
+    if (result[i] is not None):
+      raise RuntimeError('Duplicate atom name: "%s"' % atom_name)
+    result[i] = atom
+    n_found += 1
+  if (n_found != len(result)):
+    result = None
+  return result
+
 class evaluate(object):
+
+  def given_atoms(params, atoms_1, atoms_2):
+    return evaluate(
+      params=params,
+      sites_cart_1=[atom.xyz for atom in atoms_1],
+      sites_cart_2=[atom.xyz for atom in atoms_2])
+  given_atoms = staticmethod(given_atoms)
 
   def __init__(self, params, sites_cart_1, sites_cart_2):
     assert len(sites_cart_1) == 8

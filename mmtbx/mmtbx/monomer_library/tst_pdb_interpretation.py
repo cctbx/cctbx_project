@@ -238,8 +238,15 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
     ener_lib=ener_lib,
     file_name=file_name,
     log=log)
-  lines = log.getvalue().splitlines()
-  assert not block_show_diff(log.getvalue(), """\
+  lines = []
+  lines_modifications_used = []
+  for line in log.getvalue().splitlines():
+    if (line.startswith("""\
+          Modifications used: {""")):
+      lines_modifications_used.append(line)
+    else:
+      lines.append(line)
+  assert not block_show_diff(lines, """\
   Total number of atoms: 646
   Number of models: 1
   Model: ""
@@ -250,9 +257,12 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
       Conformer: ""
         Number of residues, atoms: 20, 646
           Classifications: {'RNA': 20}
-          Modifications used: {'p5*END': 1, '3*END': 1}
           Link IDs: {'p': 19}
   Time building chain proxies: """, last_startswith=True)
+  assert len(lines_modifications_used) == 1
+  modifications_used = eval(lines_modifications_used[0].split(":", 1)[1])
+  assert modifications_used \
+      == {'rnaEsd': 20, 'p5*END': 1, 'rnaC3': 20, '3*END': 1}
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()

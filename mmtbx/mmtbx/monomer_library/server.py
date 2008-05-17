@@ -170,6 +170,7 @@ class server(process_cif_mixin):
     self.convert_all(
       source_info="file: "+list_cif.path,
       cif_object=list_cif.cif, skip_comp_list=True)
+    self.process_rna_sugar_pucker_modifications()
 
   def convert_all(self, source_info, cif_object, skip_comp_list=False):
     self.convert_deriv_list_dict(cif_object=cif_object)
@@ -266,6 +267,15 @@ class server(process_cif_mixin):
                           ("chem_mod_plane_atom","plane_atom_list")]):
       self.mod_mod_id_list.append(mod_mod_id)
       self.mod_mod_id_dict[mod_mod_id.chem_mod.id] = mod_mod_id
+
+  def process_rna_sugar_pucker_modifications(self):
+    dir_name = libtbx.env.under_dist(
+      module_name="mmtbx",
+      path="mmtbx/monomer_library",
+      test=os.path.isdir)
+    assert dir_name is not None
+    for mod_id in ["rnaC2", "rnaC3", "rnaEsd"]:
+      self.process_cif(file_name=os.path.join(dir_name, "mod_"+mod_id+".cif"))
 
   def get_comp_comp_id_direct(self, comp_id):
     comp_id = comp_id.strip().upper()
