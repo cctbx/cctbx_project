@@ -524,18 +524,19 @@ class monomer_mapping(object):
       if (   prev_mm is None
           or prev_mm.mon_lib_names is None
           or prev_mm.rna_sugar_pucker_analysis_atoms is None):
-        is_2p = False
+        is_2p = None
       else:
         is_2p = rna_sugar_pucker_analysis.evaluate.given_atoms(
           params=params,
           atoms_1=prev_mm.rna_sugar_pucker_analysis_atoms,
           atoms_2=self.rna_sugar_pucker_analysis_atoms).is_2p
-      if (is_2p): primary_mod_id = "rnaC2"
-      else:       primary_mod_id = "rnaC3"
-      self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
-        comp_comp_id=self.monomer,
-        mod_ids=(primary_mod_id, "rnaEsd"))
-      self._track_mods(chem_mod_ids=chem_mod_ids)
+        if (is_2p is not None):
+          if (is_2p): primary_mod_id = "rnaC2"
+          else:       primary_mod_id = "rnaC3"
+          self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
+            comp_comp_id=self.monomer,
+            mod_ids=(primary_mod_id, "rnaEsd"))
+          self._track_mods(chem_mod_ids=chem_mod_ids)
     else:
       self.rna_sugar_pucker_analysis_atoms = None
 

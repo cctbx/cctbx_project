@@ -275,7 +275,7 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
           Link IDs: {'p': 19}
   Time building chain proxies: """,
     expected_modifications_used = {
-      'rnaEsd': 20, 'p5*END': 1, 'rnaC3': 20, '3*END': 1})
+      'rnaEsd': 19, 'p5*END': 1, 'rnaC3': 19, '3*END': 1})
 
 def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
   exercise_rna(
@@ -295,7 +295,7 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
           Classifications: {'RNA': 3}
           Link IDs: {'p': 2}
   Time building chain proxies: """,
-    expected_modifications_used = {'rnaEsd': 3, 'rnaC3': 2, 'rnaC2': 1})
+    expected_modifications_used = {'rnaEsd': 2, 'rnaC3': 1, 'rnaC2': 1})
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
