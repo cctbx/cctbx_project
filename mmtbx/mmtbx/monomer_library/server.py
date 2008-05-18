@@ -170,6 +170,7 @@ class server(process_cif_mixin):
     self.convert_all(
       source_info="file: "+list_cif.path,
       cif_object=list_cif.cif, skip_comp_list=True)
+    self.comp_comp_id_mod_dict = {}
     self.process_rna_sugar_pucker_modifications()
 
   def convert_all(self, source_info, cif_object, skip_comp_list=False):
@@ -341,6 +342,20 @@ class server(process_cif_mixin):
     return (
       self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name),
       rnpani.atom_name_interpretation)
+
+  def get_comp_comp_id_mod(self, comp_comp_id, mod_ids):
+    key = "%".join((comp_comp_id.chem_comp.id,) + mod_ids)
+    result = self.comp_comp_id_mod_dict.get(key)
+    if (result is None):
+      mod_comp_comp_id = comp_comp_id
+      chem_mod_ids = []
+      for mod_id in mod_ids:
+        mod_mod_id = self.mod_mod_id_dict[mod_id]
+        mod_comp_comp_id = mod_comp_comp_id.apply_mod(mod=mod_mod_id)
+        chem_mod_ids.append(mod_mod_id.chem_mod.id)
+      result = (mod_comp_comp_id, chem_mod_ids)
+      self.comp_comp_id_mod_dict[key] = result
+    return result
 
 class ener_lib(process_cif_mixin):
 
