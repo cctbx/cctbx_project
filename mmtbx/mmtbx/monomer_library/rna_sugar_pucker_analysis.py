@@ -90,7 +90,6 @@ class evaluate(object):
     distances = [abs(s2-s1) for s1,s2 in bonded_sites]
     if (   min(distances) < params.bond_min_distance
         or max(distances) > params.bond_max_distance):
-      is_reliable = False
       epsilon = None
       delta = None
       p_distance_c1_n_line = None
@@ -99,23 +98,39 @@ class evaluate(object):
       is_2p_p_distance_c1_n_line = None
       is_2p = None
     else:
-      is_reliable = True
       def a(sites): return normalize_angle(geometry_restraints.dihedral(
         sites=sites, angle_ideal=0, weight=1).angle_model, deg=True)
       epsilon = a([p, o3p, c3p, c4p])
       delta = a([c5p, c4p, c3p, o3p])
       p_distance_c1_n_line = scitbx.math.line_given_points(
         points=(c1p, n)).distance_sq(point=p)**0.5
-      is_2p_epsilon = (   epsilon < params.epsilon_range_not_2p_min
-                       or epsilon > params.epsilon_range_not_2p_max)
-      is_2p_delta = (    delta >= params.delta_range_2p_min
-                     and delta <= params.delta_range_2p_max)
-      is_2p_p_distance_c1_n_line = (
-        p_distance_c1_n_line < params.p_distance_c1_n_line_2p_max)
-      is_2p = (   is_2p_epsilon
-               or is_2p_delta
-               or is_2p_p_distance_c1_n_line)
-    self.is_reliable = is_reliable
+      n_decisions = 0
+      if (   params.epsilon_range_not_2p_min is None
+          or params.epsilon_range_not_2p_max is None):
+        is_2p_epsilon = None
+      else:
+        is_2p_epsilon = (   epsilon < params.epsilon_range_not_2p_min
+                         or epsilon > params.epsilon_range_not_2p_max)
+        n_decisions += 1
+      if (   params.delta_range_2p_min is None
+          or params.delta_range_2p_max is None):
+        is_2p_delta = None
+      else:
+        is_2p_delta = (    delta >= params.delta_range_2p_min
+                       and delta <= params.delta_range_2p_max)
+        n_decisions += 1
+      if (params.p_distance_c1_n_line_2p_max is None):
+        is_2p_p_distance_c1_n_line = None
+      else:
+        is_2p_p_distance_c1_n_line = (
+          p_distance_c1_n_line < params.p_distance_c1_n_line_2p_max)
+        n_decisions += 1
+      if (n_decisions == 0):
+        is_2p = None
+      else:
+        is_2p = (   is_2p_epsilon
+                 or is_2p_delta
+                 or is_2p_p_distance_c1_n_line)
     self.epsilon = epsilon
     self.delta = delta
     self.p_distance_c1_n_line = p_distance_c1_n_line
