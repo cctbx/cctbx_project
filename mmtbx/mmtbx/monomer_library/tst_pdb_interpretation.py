@@ -225,18 +225,23 @@ END
     lines=log.getvalue().splitlines())
   assert len(lines) == 1
 
-def exercise_cns_rna(mon_lib_srv, ener_lib):
-  file_name = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/cns_rna.pdb",
+def exercise_rna(
+      mon_lib_srv,
+      ener_lib,
+      file_name,
+      expected_block,
+      expected_modifications_used):
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/"+file_name,
     test=os.path.isfile)
-  if (file_name is None):
-    print "Skipping exercise_cns_rna(): input file not available"
+  if (file_path is None):
+    print 'Skipping exercise_rna("%s"): input file not available' % file_name
     return
   log = StringIO()
   processed_pdb_file = monomer_library.pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
-    file_name=file_name,
+    file_name=file_path,
     log=log)
   lines = []
   lines_modifications_used = []
@@ -246,7 +251,17 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
       lines_modifications_used.append(line)
     else:
       lines.append(line)
-  assert not block_show_diff(lines, """\
+  assert not block_show_diff(lines, expected_block, last_startswith=True)
+  assert len(lines_modifications_used) == 1
+  modifications_used = eval(lines_modifications_used[0].split(":", 1)[1])
+  assert modifications_used == expected_modifications_used
+
+def exercise_cns_rna(mon_lib_srv, ener_lib):
+  exercise_rna(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name="cns_rna.pdb",
+    expected_block= """\
   Total number of atoms: 646
   Number of models: 1
   Model: ""
@@ -258,17 +273,36 @@ def exercise_cns_rna(mon_lib_srv, ener_lib):
         Number of residues, atoms: 20, 646
           Classifications: {'RNA': 20}
           Link IDs: {'p': 19}
-  Time building chain proxies: """, last_startswith=True)
-  assert len(lines_modifications_used) == 1
-  modifications_used = eval(lines_modifications_used[0].split(":", 1)[1])
-  assert modifications_used \
-      == {'rnaEsd': 20, 'p5*END': 1, 'rnaC3': 20, '3*END': 1}
+  Time building chain proxies: """,
+    expected_modifications_used = {
+      'rnaEsd': 20, 'p5*END': 1, 'rnaC3': 20, '3*END': 1})
+
+def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
+  exercise_rna(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name="rna_3p_2p.pdb",
+    expected_block= """\
+  Total number of atoms: 63
+  Number of models: 1
+  Model: ""
+    Number of chains: 1
+    Chain: "A"
+      Number of atoms: 63
+      Number of conformers: 1
+      Conformer: ""
+        Number of residues, atoms: 3, 63
+          Classifications: {'RNA': 3}
+          Link IDs: {'p': 2}
+  Time building chain proxies: """,
+    expected_modifications_used = {'rnaEsd': 3, 'rnaC3': 2, 'rnaC2': 1})
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   exercise_pdb_string(mon_lib_srv, ener_lib)
   exercise_cns_rna(mon_lib_srv, ener_lib)
+  exercise_rna_3p_2p(mon_lib_srv, ener_lib)
   print "OK"
 
 if (__name__ == "__main__"):
