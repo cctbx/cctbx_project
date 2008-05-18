@@ -532,9 +532,10 @@ class monomer_mapping(object):
           atoms_2=self.rna_sugar_pucker_analysis_atoms).is_2p
       if (is_2p): primary_mod_id = "rnaC2"
       else:       primary_mod_id = "rnaC3"
-      for mod_id in [primary_mod_id, "rnaEsd"]:
-        mod_mod_id = self.mon_lib_srv.mod_mod_id_dict[mod_id]
-        self.apply_mod(mod_mod_id=mod_mod_id)
+      self.monomer, chem_mod_ids = self.mon_lib_srv.get_comp_comp_id_mod(
+        comp_comp_id=self.monomer,
+        mod_ids=(primary_mod_id, "rnaEsd"))
+      self._track_mods(chem_mod_ids=chem_mod_ids)
     else:
       self.rna_sugar_pucker_analysis_atoms = None
 
@@ -736,13 +737,17 @@ Please contact cctbx@cci.lbl.gov for more information.""")
     for mod_mod_id in mod_mod_ids:
       self.apply_mod(mod_mod_id=mod_mod_id)
 
+  def _track_mods(self, chem_mod_ids):
+    for chem_mod_id in chem_mod_ids:
+      self.chem_mod_ids.append(chem_mod_id)
+      self.residue_name += "%" + chem_mod_id
+
   def apply_mod(self, mod_mod_id):
     try:
       mod_mon = self.monomer.apply_mod(mod_mod_id)
     except RuntimeError:
       return
-    self.chem_mod_ids.append(mod_mod_id.chem_mod.id)
-    self.residue_name += "%" + mod_mod_id.chem_mod.id
+    self._track_mods(chem_mod_ids=[mod_mod_id.chem_mod.id])
     mod_mon.classification = self.monomer.classification
     self.monomer = mod_mon
     if (    mod_mod_id.chem_mod.name is not None
