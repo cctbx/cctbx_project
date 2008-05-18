@@ -11,6 +11,11 @@
 #include <boost/python/copy_const_reference.hpp>
 #include <boost/python/return_by_value.hpp>
 
+#if defined(__sgi) && !defined(__GNUC__)
+// see comments in scitbx/scitbx/source_generators/flex_fwd_h.py
+typedef boost::optional<scitbx::math::gaussian::sum<double> > b_o_g_s_d;
+#endif
+
 namespace cctbx { namespace xray { namespace boost_python {
 
 namespace {
@@ -89,8 +94,8 @@ namespace {
       typedef return_value_policy<return_by_value> rbv;
       std::string ff_name = traits::form_factor_name();
 
-      std::string class_name = traits::class_name(); // necessary to work around a bug
-                                                     // in some flavours of gcc 3.2 and 3.3
+      std::string class_name = traits::class_name(); // necessary to work
+        // around a bug in some flavours of gcc 3.2 and 3.3
       class_<w_t>(class_name.c_str())
         .def("type_index_pairs_as_dict", type_index_pairs_as_dict)
         .def("unique_form_factors_as_list", unique_form_factors_as_list)
