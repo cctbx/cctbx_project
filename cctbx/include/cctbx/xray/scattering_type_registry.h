@@ -242,7 +242,7 @@ namespace cctbx { namespace xray {
   template<>
   struct form_factor_traits<eltbx::xray_scattering::gaussian>
   {
-    typedef scitbx::math::gaussian::sum<double> assignable_form_factor_t;
+    typedef eltbx::xray_scattering::gaussian::base_t assignable_form_factor_t;
 
     static std::string form_factor_name() { return "gaussian"; }
   };
