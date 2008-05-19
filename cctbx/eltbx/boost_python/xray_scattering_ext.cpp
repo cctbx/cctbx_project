@@ -28,28 +28,15 @@ namespace {
     return result;
   }
 
-  struct gaussian_wrappers
+  template<class Derived>
+  struct isotropic_form_factor_mixin_wrapper
   {
-    typedef gaussian w_t;
+    typedef isotropic_form_factor_mixin<Derived> w_t;
 
-    static void
-    wrap()
+    static void wrap(char const *name)
     {
       using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t, bases<scitbx::math::gaussian::sum<double> > >(
-        "gaussian", no_init)
-        .def(init<scitbx::math::gaussian::sum<double> const&>())
-        .def(init<double, optional<bool> >())
-        .def(init<
-          af::small<double,
-                    scitbx::math::gaussian::sum<double>::max_n_terms> const&,
-          af::small<double,
-                    scitbx::math::gaussian::sum<double>::max_n_terms> const&,
-          optional<double, bool> >())
-        .def(init<
-          af::const_ref<double> const&,
-          optional<double, bool> >())
+      class_<w_t>(name, no_init)
         .def("at_stol_sq", &w_t::at_stol_sq)
         .def("at_stol", &w_t::at_stol)
         .def("at_d_star_sq",
@@ -59,6 +46,30 @@ namespace {
           (af::shared<double>(w_t::*)(af::const_ref<double> const&) const)
             &w_t::at_d_star_sq)
         .def("at_d_star", &w_t::at_d_star)
+        ;
+    }
+  };
+
+  struct gaussian_wrappers
+  {
+    typedef gaussian w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t,
+            bases<w_t::base_t, isotropic_form_factor_mixin<w_t> >
+            >("gaussian", no_init)
+        .def(init<w_t::base_t const&>())
+        .def(init<double, optional<bool> >())
+        .def(init<
+          af::small<double, gaussian::max_n_terms> const&,
+          af::small<double, gaussian::max_n_terms> const&,
+          optional<double, bool> >())
+        .def(init<
+          af::const_ref<double> const&,
+          optional<double, bool> >())
       ;
       boost_adaptbx::optional_conversions::to_and_from_python<gaussian>();
     }
@@ -149,6 +160,8 @@ namespace {
         arg_("exact")=false,
         arg_("optional")=false)));
 
+    isotropic_form_factor_mixin_wrapper<gaussian>::wrap(
+      "gaussian_mixin");
     gaussian_wrappers::wrap();
 
     def("n_gaussian_table_size", n_gaussian::table_size);

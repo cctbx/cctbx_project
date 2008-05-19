@@ -38,6 +38,7 @@ cctbx/cctbx/xray/weighting_schemes.py -text
 cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/global/error.cpp -text
 cctbx/include/cctbx/crystal_orientation.h -text
+cctbx/include/cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/include/cctbx/maptbx/fft.h -text
 cctbx/sgtbx/boost_python/select_generators.cpp -text
 cctbx/uctbx/boost_python/tst_crystal_orientation.py -text
