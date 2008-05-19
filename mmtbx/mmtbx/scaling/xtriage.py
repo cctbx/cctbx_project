@@ -332,7 +332,7 @@ class xtriage_analyses(object):
     self.text_out    = text_out     # An object with a write method, such as a multi out or StringIO.
                                     # If None, sys.stdout will be used
     if self.text_out == "silent":   # if "silent", a StringIO object will be used
-     self.text_out = null_out       # and all output is supressed
+     self.text_out = null_out()     # and all output is supressed
 
     self.plot_out    = plot_out     # as above. This will contain some ccp4 style plots. If None, no plots will be made
 
