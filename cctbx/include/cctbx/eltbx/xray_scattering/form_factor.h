@@ -1,7 +1,7 @@
 #ifndef CCTBX_ELTBX_XRAY_SCATTERING_FORM_FACTOR_H
 #define CCTBX_ELTBX_XRAY_SCATTERING_FORM_FACTOR_H
 
-#import <scitbx/array_family/shared.h>
+#include <scitbx/array_family/shared.h>
 #include <cctbx/import_scitbx_af.h>
 
 namespace cctbx { namespace eltbx { namespace xray_scattering {
