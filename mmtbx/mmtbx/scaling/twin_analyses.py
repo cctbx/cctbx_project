@@ -2440,9 +2440,7 @@ class twin_analyses(object):
       if miller_array.sigmas() is not None:
         # Look at systematic absences please
         import absences
-        abs_anal = absences.analyze_absences(miller_array = self.normalised_intensities.all,
-                                             isigi_cut = 3.0, out=out)
-        abs_sg_anal = absences.protein_space_group_choices(miller_array = self.normalised_intensities.all)
+        abs_sg_anal = absences.protein_space_group_choices(miller_array = self.normalised_intensities.all, threshold = 3.0, out=out)
     except Sorry: pass
 
 
