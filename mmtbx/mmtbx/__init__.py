@@ -123,10 +123,12 @@ class fmodels(object):
     if(self.fmodel_x is not None):
       if(self.fmodel_n is not None):
         print_statistics.make_sub_header("x-ray data", out = self.log)
-      self.fmodel_xray().remove_outliers(show = True, log = self.log)
+      self.fmodel_x = self.fmodel_xray().remove_outliers(
+        show = True, log = self.log)
     if(self.fmodel_n is not None):
       print_statistics.make_sub_header("neutron data", out = self.log)
-      self.fmodel_neutron().remove_outliers(show = True, log = self.log)
+      self.fmodel_n = self.fmodel_neutron().remove_outliers(
+        show = True, log = self.log)
 
   def show_targets(self, log, text=""):
     prefix_x = ""

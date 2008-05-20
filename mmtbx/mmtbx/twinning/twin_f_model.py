@@ -1120,7 +1120,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
 
   def remove_outliers(self, show = False, log = None):
     # XXX
-    return None
+    return self
 
   def wilson_b(self, force_update = False):
     # XXX

@@ -15,6 +15,7 @@ import cctbx.xray.structure_factors.global_counters
 from mmtbx import bulk_solvent
 from mmtbx import max_lik
 
+
 enable_show_process_info = getenv_bool(
   "MMTBX_PRINT_STATISTICS_ENABLE_SHOW_PROCESS_INFO")
 
@@ -253,7 +254,6 @@ class refinement_monitor(object):
                     rigid_body_shift_accumulator = None):
     global time_collect_and_process
     t1 = time.time()
-    assert fmodel.xray_structure is model.xray_structure
     if(self.model_ini is None): self.model_ini = model.deep_copy()
     if(wilson_b is not None): self.wilson_b = wilson_b
     self.steps.append(step)

@@ -414,6 +414,7 @@ class manager(manager_mixin):
     s3 = result.beamstop_shadow_outliers().data()
     result = s1 & s2 & s3
     if(show):
+      print >> log
       print >> log, "basic_wilson_outliers    =", s1.count(False)
       print >> log, "extreme_wilson_outliers  =", s2.count(False)
       print >> log, "beamstop_shadow_outliers =", s3.count(False)
@@ -421,7 +422,15 @@ class manager(manager_mixin):
     return result
 
   def remove_outliers(self, show = False, log = None):
-    return self.select(selection = self.outlier_selection(show=show,log = log))
+    if(log is None): log = sys.stdout
+    if(show):
+      print >> log, "Distribution of F-obs values before outliers rejection:"
+      show_histogram(data = self.f_obs.data(), n_slots = 10, log = log)
+    result = self.select(selection = self.outlier_selection(show=show,log=log))
+    if(show):
+      print >> log, "\nDistribution of F-obs values after outliers rejection:"
+      show_histogram(data = result.f_obs.data(), n_slots = 10, log = log)
+    return result
 
   def wilson_b(self, force_update = False):
     if(self._wilson_b is None or force_update):
@@ -2228,3 +2237,12 @@ class info(object):
     self.show_rfactors_targets_in_bins(out = out)
     print >> out
     self.show_fom_pher_alpha_beta_in_bins(out = out)
+
+def show_histogram(data, n_slots, log):
+  hm = flex.histogram(data = data, n_slots = n_slots)
+  lc_1 = hm.data_min()
+  s_1 = enumerate(hm.slots())
+  for (i_1,n_1) in s_1:
+    hc_1 = hm.data_min() + hm.slot_width() * (i_1+1)
+    print >> log, "%10.3f - %-10.3f : %d" % (lc_1, hc_1, n_1)
+    lc_1 = hc_1
