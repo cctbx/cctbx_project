@@ -1446,10 +1446,10 @@ class include_registry:
 
 class pre_process_args:
 
-  def __init__(self, args, default_repository=None):
+  def __init__(self, args, default_repositories=None):
     self.repository_paths = []
     if (len(args) == 0): args = ["--help"]
-    if (default_repository is None):
+    if (default_repositories is None):
       command_name = "libtbx.configure"
       self.warm_start = True
     else:
@@ -1529,8 +1529,8 @@ class pre_process_args:
     self.command_line = parser.process(args=args)
     if (not hasattr(os.path, "samefile")):
       self.command_line.options.current_working_directory = None
-    if (default_repository is not None):
-      self.repository_paths.append(default_repository)
+    if (default_repositories is not None):
+      self.repository_paths.extend(default_repositories)
 
   def option_repository(self, option, opt, value, parser):
     if (not os.path.isdir(value)):
@@ -1554,9 +1554,15 @@ def set_preferred_sys_prefix_and_sys_executable(build_path):
             sys.executable = new_executable
 
 def cold_start(args):
+  default_repositories = []
+  r = os.path.dirname(os.path.dirname(args[0]))
+  b = os.path.basename(r)
+  if (b.lower().startswith("cctbx_project")):
+    default_repositories.append(os.path.dirname(r))
+  default_repositories.append(r)
   pre_processed_args = pre_process_args(
     args=args[1:],
-    default_repository=os.path.dirname(os.path.dirname(args[0])))
+    default_repositories=default_repositories)
   build_path=pre_processed_args.command_line.options.current_working_directory
   if (build_path is None):
     build_path = os.getcwd()
