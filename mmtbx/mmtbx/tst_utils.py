@@ -171,7 +171,7 @@ def exercise_04(verbose):
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
-  base = [ [[8]], [[9],[12]], [[10],[13]], [[11],[14]] ]
+  base = [ [[8]], [[9],[12]], [[10],[13]], [[11],[14]], [[7]] ]
   res = utils.occupancy_selections(
     all_chain_proxies   = processed_pdb_file.all_chain_proxies,
     xray_structure      = processed_pdb_file.xray_structure(),
@@ -204,6 +204,36 @@ def exercise_05(verbose):
   res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
   assert approx_equal(res, base)
 
+def exercise_06(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/NAD_594_HD.pdb",
+    test=os.path.isfile)
+  cif_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/NAD_594_HD.cif",
+    test=os.path.isfile)
+  cif_objects = [].append((cif_file,
+    mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+    cif_objects = cif_objects,
+    log         = log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  base = [ [[65],[77]], [[66],[78]], [[67],[79]], [[68],[80]], [[69],[81]],
+           [[70],[82]], [[71],[83]], [[72],[84]], [[73],[85]], [[74],[86]],
+           [[75],[87]], [[76],[88]],
+           [[124],[127]], [[125],[128]], [[126],[129]],
+           [[62]], [[113]] ]
+  res = utils.occupancy_selections(
+    all_chain_proxies   = processed_pdb_file.all_chain_proxies,
+    xray_structure      = processed_pdb_file.xray_structure(),
+    ignore_hydrogens    = True,
+    expect_exangable_hd = True,
+    as_flex_arrays      = False)
+  assert approx_equal(res, base)
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_00(verbose=verbose)
@@ -212,6 +242,7 @@ def run():
   exercise_03(verbose=verbose)
   exercise_04(verbose=verbose)
   exercise_05(verbose=verbose)
+  exercise_06(verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
