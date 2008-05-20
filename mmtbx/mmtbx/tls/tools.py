@@ -494,7 +494,8 @@ def split_u(xray_structure, tls_selections, offset):
         y = flex.double(t)
         z = list(x + y)
         sc.u_star = z
-  u_iso = xray_structure.scatterers().extract_u_iso()
+  u_iso = xray_structure.scatterers().extract_u_iso().select(
+    xray_structure.use_u_iso())
   assert (u_iso < 0.0).count(True) == 0
   u_eq_2  = xray_structure.extract_u_iso_or_u_equiv()
   assert approx_equal(u_eq_1, u_eq_2)
