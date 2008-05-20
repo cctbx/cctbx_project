@@ -521,7 +521,8 @@ class monomer_mapping(object):
           atoms=self.active_atoms,
           atom_names=[info.reference_name
             for info in self.atom_name_interpretation.infos])
-      if (   prev_mm is None
+      if (   self.rna_sugar_pucker_analysis_atoms is None
+          or prev_mm is None
           or prev_mm.mon_lib_names is None
           or prev_mm.rna_sugar_pucker_analysis_atoms is None):
         is_2p = None
