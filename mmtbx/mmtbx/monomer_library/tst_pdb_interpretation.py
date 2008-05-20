@@ -230,7 +230,8 @@ def exercise_rna(
       ener_lib,
       file_name,
       expected_block,
-      expected_modifications_used):
+      expected_block_last_startswith=True,
+      expected_modifications_used=None):
   file_path = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/"+file_name,
     test=os.path.isfile)
@@ -251,10 +252,14 @@ def exercise_rna(
       lines_modifications_used.append(line)
     else:
       lines.append(line)
-  assert not block_show_diff(lines, expected_block, last_startswith=True)
-  assert len(lines_modifications_used) == 1
-  modifications_used = eval(lines_modifications_used[0].split(":", 1)[1])
-  assert modifications_used == expected_modifications_used
+  assert not block_show_diff(
+    lines, expected_block, last_startswith=expected_block_last_startswith)
+  if (expected_modifications_used is None):
+    assert len(lines_modifications_used) == 0
+  else:
+    assert len(lines_modifications_used) == 1
+    modifications_used = eval(lines_modifications_used[0].split(":", 1)[1])
+    assert modifications_used == expected_modifications_used
 
 def exercise_cns_rna(mon_lib_srv, ener_lib):
   exercise_rna(
@@ -296,6 +301,27 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
           Link IDs: {'p': 2}
   Time building chain proxies: """,
     expected_modifications_used = {'rnaEsd': 2, 'rnaC3': 1, 'rnaC2': 1})
+  #
+  exercise_rna(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name="coords_rna_gap.pdb",
+    expected_block= """\
+  Total number of atoms: 90
+  Number of models: 1
+  Model: ""
+    Number of chains: 1
+    Chain: "A"
+      Number of atoms: 90
+      Number of conformers: 1
+      Conformer: ""
+        Number of residues, atoms: 5, 90
+          Classifications: {'RNA': 5}
+          Link IDs: {'p': 4}
+          Chain breaks: 1
+""",
+    expected_block_last_startswith=False,
+    expected_modifications_used={'rnaEsd': 2, 'rnaC3': 2})
 
 def exercise():
   mon_lib_srv = monomer_library.server.server()
