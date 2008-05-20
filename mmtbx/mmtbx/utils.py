@@ -860,7 +860,7 @@ def combine_hd_exchangable(hierarchy):
                   if(atom1.element.strip() in ["H","D"] and
                      atom2.element.strip() in ["H","D"] and
                      atom1.element.strip() != atom2.element.strip() and
-                     atom1.name.strip() != atom2.name.strip() and
+                     #atom1.name.strip() != atom2.name.strip() and
                      atom1.name.strip()[1:] == atom2.name.strip()[1:]):
                     result.append([[int(atom1.i_seq)], [int(atom2.i_seq)]])
   return result
@@ -924,7 +924,7 @@ def occupancy_selections(
       size       = xray_structure.scatterers().size(),
       selection  = water_selection,
       hd_special = None)
-  if(ignore_hydrogens):
+  if(ignore_hydrogens and not expect_exangable_hd):
     hd_selection = xray_structure.hd_selection()
   else:
     hd_selection = None
