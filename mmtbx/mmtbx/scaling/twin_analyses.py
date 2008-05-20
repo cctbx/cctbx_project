@@ -1570,8 +1570,15 @@ class twin_results_interpretation(object):
 
     if self.twin_results.n_twin_laws > 0 :
       if twin_item.results_available:
-        self.twin_results.most_worrysome_twin_law = flex.max_index(
-          flex.double(self.twin_results.britton_alpha) )
+        max_tf = -1
+        max_index = -1
+        for ii, tf in enumerate(self.twin_results.britton_alpha):
+          if tf is not None:
+            if float(tf) > max_tf:
+              max_tf = tf
+              max_index = ii
+
+        self.twin_results.most_worrysome_twin_law = max_index
       else:
         tmp_tf = []
         for tf in self.twin_results.britton_alpha:
@@ -1961,6 +1968,9 @@ class symmetry_issues(object):
     self.score_all()
     self.wind_up()
     self.show(self.out)
+
+    self.xs_with_pg_choice_in_standard_setting = crystal.symmetry( unit_cell   = self.miller_niggli.unit_cell(),
+                                                                   space_group = self.pg_choice ).as_reference_setting()
 
 
   def make_r_table(self):
@@ -2436,11 +2446,12 @@ class twin_analyses(object):
         out=out, verbose=verbose)
     except Sorry: pass
 
+    self.abs_sg_anal = None
     try:
       if miller_array.sigmas() is not None:
         # Look at systematic absences please
         import absences
-        abs_sg_anal = absences.protein_space_group_choices(miller_array = self.normalised_intensities.all, threshold = 3.0, out=out)
+        self.abs_sg_anal = absences.protein_space_group_choices(miller_array = self.normalised_intensities.all, threshold = 3.0, out=out)
     except Sorry: pass
 
 
