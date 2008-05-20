@@ -199,17 +199,17 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
       deep_copy_scatterers().scatterers()
     print >> log, "Start r_free = %6.4f"%fmodels.fmodel_xray().r_free()
     new_scatterers = None
-    scaler_values = [0.,1.,1.5,2.,2.5,3.,3.5,4.,4.5,5.,6.,7.,8.,9.,10.]
+    scaler_values = [1.,1.5,2.,2.5,3.,3.5,4.,4.5,5.,6.,7.,8.,9.,10.]
   else: scaler_values = [1.,]
   r_free = 1.e+9
   cntr = 0
-  wx = target_weights.adp_weights_result.wx
+  w = target_weights.adp_weights_result.w
   for scaler in scaler_values:
     if(target_weights.twp.optimize_wxu):
       fmodels.fmodel_xray().xray_structure.replace_scatterers(
         save_scatterers.deep_copy())
       fmodels.update_xray_structure(update_f_calc = True)
-      target_weights.adp_weights_result.wx = wx * scaler
+      target_weights.adp_weights_result.w = w / scaler
     minimized = minimization.lbfgs(
       restraints_manager       = model.restraints_manager,
       fmodels                  = fmodels,
@@ -243,7 +243,7 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
         fmodels.fmodel_xray().xray_structure.replace_scatterers(
           save_scatterers.deep_copy())
         fmodels.update_xray_structure(update_f_calc = True)
-        target_weights.adp_weights_result.wx = wx * scaler
+        target_weights.adp_weights_result.w = w / scaler
       minimized = minimization.lbfgs(
         restraints_manager       = model.restraints_manager,
         fmodels                  = fmodels,
