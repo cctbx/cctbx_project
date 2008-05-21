@@ -856,12 +856,13 @@ def combine_hd_exchangable(hierarchy):
           for i_gr2, atom_group_2 in enumerate(residue_group.atom_groups()):
             if(atom_group_1.altloc != atom_group_2.altloc and i_gr2 > i_gr1):
               for atom1 in atom_group_1.atoms():
+                e1 = atom1.element.strip()
+                n1 = atom1.name.strip()[1:]
                 for atom2 in atom_group_2.atoms():
-                  if(atom1.element.strip() in ["H","D"] and
-                     atom2.element.strip() in ["H","D"] and
-                     atom1.element.strip() != atom2.element.strip() and
-                     #atom1.name.strip() != atom2.name.strip() and
-                     atom1.name.strip()[1:] == atom2.name.strip()[1:]):
+                  e2 = atom2.element.strip()
+                  n2 = atom2.name.strip()[1:]
+                  if(e1 in ["H","D"] and e2 in ["H","D"] and e1 != e2 and
+                     n1 == n2):
                     result.append([[int(atom1.i_seq)], [int(atom2.i_seq)]])
   return result
 

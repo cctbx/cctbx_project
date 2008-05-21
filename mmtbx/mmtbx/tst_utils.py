@@ -208,16 +208,9 @@ def exercise_06(verbose):
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/NAD_594_HD.pdb",
     test=os.path.isfile)
-  cif_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/NAD_594_HD.cif",
-    test=os.path.isfile)
-  cif_objects = [].append((cif_file,
-    mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
   if (verbose): log = sys.stdout
   else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-    cif_objects = cif_objects,
-    log         = log)
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log = log)
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
