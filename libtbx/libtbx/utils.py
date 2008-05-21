@@ -203,14 +203,11 @@ def date_and_time():
        + " %s %+03d%02d (%.2f s)" % (
            tzname, offs//3600, offs//60%60, seconds_since_epoch)
 
-class user_plus_sys_time(object):
+
+class timer_base(object):
 
   def __init__(self):
     self.t = self.get()
-
-  def get(self):
-    t = os.times()
-    return t[0] + t[1]
 
   def elapsed(self):
     t = self.get()
@@ -230,6 +227,25 @@ class user_plus_sys_time(object):
   def show_delta(self, prefix="", out=None):
     if (out == None): out = sys.stdout
     print >> out, prefix+"%.2f s" % self.delta()
+
+
+class user_plus_sys_time(timer_base):
+
+  def get(self):
+    t = os.times()
+    return t[0] + t[1]
+
+
+class wall_clock_time(timer_base):
+  """ motivation: when running multithreaded code, user_plus_sys_time
+  would report the cumulated times for all threads: not very useful
+  to analyse the scaling with the number of threads! Wall clock time, although
+  it is less reliable is the only solution in that case """
+
+  def get(self):
+    t = os.times()
+    return t[-1]
+
 
 class time_log(object):
 
