@@ -1,12 +1,38 @@
 #(jEdit options) :folding=explicit:collapseFolds=1:
 from mmtbx.command_line import ramalyze
 from mmtbx.command_line import rotalyze
+from mmtbx.command_line import cbetadev
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx import pdb
 from cctbx.array_family import flex
 import libtbx.load_env
 
 import sys, os, getopt
+
+#{{{ exercise_cbetadev
+def exercise_cbetadev():
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1jxt.ent",
+    test=os.path.isfile)
+  if (regression_pdb is None):
+    print "Skipping exercise_regression(): input pdb (pdb1jxt.ent) not available"
+    return
+  pdb_io = pdb.input(file_name=regression_pdb)
+
+  output = cbetadev.analyze_pdb(regression_pdb,pdb_io,True)
+  assert output.count(":b:") == 8
+
+  output = cbetadev.analyze_pdb(regression_pdb,pdb_io, False)
+  assert output.count(":a:") == 24
+
+  output_lines = output.splitlines()
+  assert len(output_lines) == 54
+  assert output_lines[0] == "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
+  assert output_lines[1] == "pdb1jxt : :thr: A:   1 :  0.102:  11.27:   1.00: :"
+  assert output_lines[10] == "pdb1jxt :a:val: A:   8 :  0.184:-155.36:   0.50:a:"
+  assert output_lines[11] == "pdb1jxt :b:val: A:   8 :  0.258:  80.92:   0.30:b:"
+  assert output_lines[12] == "pdb1jxt :c:val: A:   8 :  0.641: -53.98:   0.20:c:"
+  assert output_lines[14] == "pdb1jxt :a:arg: A:  10 :  0.023: 172.24:   1.00:a:"
 
 #{{{ exercise_ramalyze
 def exercise_ramalyze():
@@ -103,6 +129,7 @@ def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_ramalyze()
   exercise_rotalyze()
+  exercise_cbetadev()
   print "OK"
 
 if (__name__ == "__main__"):
