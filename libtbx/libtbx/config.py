@@ -12,6 +12,7 @@ import re
 import sys, os
 
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
+default_enable_boost_threads = False
 
 def get_hostname():
   try: import socket
@@ -527,7 +528,9 @@ class environment:
         scan_boost=command_line.options.scan_boost,
         write_full_flex_fwd_h=command_line.options.write_full_flex_fwd_h,
         boost_python_no_py_signatures\
-          =command_line.options.boost_python_no_py_signatures)
+          =command_line.options.boost_python_no_py_signatures,
+        enable_boost_threads=command_line.options.enable_boost_threads,
+      )
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
           command_line.options.command_version_suffix
@@ -1370,7 +1373,8 @@ class build_options:
         scan_boost,
         write_full_flex_fwd_h=default_write_full_flex_fwd_h,
         build_boost_python_extensions=True,
-        boost_python_no_py_signatures=False):
+        boost_python_no_py_signatures=False,
+        enable_boost_threads=False):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1394,6 +1398,7 @@ class build_options:
       self.build_boost_python_extensions
     print >> f, "Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
       self.boost_python_no_py_signatures
+    print >> f, "Boost threads enabled:", self.enable_boost_threads
 
 class include_registry:
 
@@ -1521,6 +1526,10 @@ class pre_process_args:
       default=None,
       help="build Boost.Python extension modules",
       metavar="True|False")
+    parser.option(None, "--enable_boost_threads",
+      action="store_true",
+      default=False,
+      help="enable threads in Boost")
     if (not self.warm_start):
       parser.option(None, "--boost_python_no_py_signatures",
         action="store_true",
@@ -1600,6 +1609,9 @@ def unpickle():
   # XXX backward compatibility 2008-04-30
   if (not hasattr(env.build_options, "write_full_flex_fwd_h")):
     env.build_options.write_full_flex_fwd_h = default_write_full_flex_fwd_h
+  # XXX backward compatibility 2008-05-21
+  if not hasattr(env.build_options, "enable_boost_threads"):
+    env.build_options.enable_boost_threads = default_enable_boost_threads
   return env
 
 def warm_start(args):
