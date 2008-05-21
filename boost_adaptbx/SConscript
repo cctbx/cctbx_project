@@ -8,6 +8,41 @@ env_etc.boost_dist = libtbx.env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
 env_etc.boost_adaptbx_dist = libtbx.env.dist_path("boost_adaptbx")
 env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
+
+def darwin_shlinkcom(env, lo, dylib):
+  if (env_etc.compiler in ["darwin_c++", "darwin_gcc"]):
+    if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
+      dylib1 = "-ldylib1.o"
+    else:
+      dylib1 = " "
+    env.Replace(SHLINKCOM=[
+      "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
+      "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
+      " %s -o %s %s" % (dylib1, dylib, lo)])
+
+if libtbx.env.build_options.enable_boost_threads:
+  if sys.platform == 'win32':
+    boost_thread_src = [
+      os.path.join('win32', "%s.cpp" % p)
+      for p in ('thread', 'exceptions', 'tss_dll', 'tss_pe') ]
+  else: # assume pthread
+    boost_thread_src = [
+      os.path.join('pthread', "%s.cpp" % p)
+      for p in ('thread', 'exceptions', 'once') ]
+  prefix = '#' + os.path.join(os.path.basename(env_etc.boost_dist),
+                              'libs', 'thread', 'src')
+  boost_thread_src = [ os.path.join(prefix, p) for p in boost_thread_src ]
+  env_boost_threads = env_base.Copy()
+  env_etc.include_registry.append(
+    env=env_boost_threads,
+    paths=[env_etc.boost_include])
+  darwin_shlinkcom(env_boost_threads,
+                   lo="boost/libs/thread/src/libboost_thread.lo",
+                   dylib="lib/libboost_thread.dylib")
+  env_boost_threads.SharedLibrary(
+    target='#lib/boost_thread',
+    source=boost_thread_src)
+
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = [
     "-DBOOST_ALL_NO_LIB", "-DBOOST_PYTHON_MAX_BASES=2"]
@@ -85,16 +120,8 @@ if (not env_etc.no_boost_python):
     env=env,
     paths=[env_etc.boost_include, env_etc.python_include])
 
-  if (env_etc.compiler in ["darwin_c++", "darwin_gcc"]):
-    if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
-      dylib1 = "-ldylib1.o "
-    else:
-      dylib1 = ""
-    lo = "boost/libs/python/src/libboost_python.lo"
-    env.Replace(SHLINKCOM=[
-      "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
-      "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
-        " %s-o lib/libboost_python.dylib %s" % (dylib1, lo)])
+  darwin_shlinkcom(env, lo="boost/libs/python/src/libboost_python.lo",
+                        dylib="lib/libboost_python.dylib")
 
   bpl_dll_sources = []
   prefix = "#"+os.path.join(
