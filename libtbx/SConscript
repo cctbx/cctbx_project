@@ -190,12 +190,13 @@ if (sys.platform == "win32"):
     env_etc.cxxflags_base = env_etc.ccflags_base + """
       /GR
       /EHsc
-      /DBOOST_DISABLE_THREADS
     """.split()
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/Ox"]
     else:
       opts = ["/Od"]
+    if not libtbx.env.build_options.enable_boost_threads:
+      opts.append('/DBOOST_DISABLE_THREADS')
     if (libtbx.env.build_options.debug_symbols):
       raise RuntimeError("Debug build not supported.")
     env_etc.cxxflags_base.extend(opts)
@@ -268,7 +269,6 @@ else:
         -std strict_ansi
         -msg_display_number -msg_disable 186,450,768,1115,1133,1168,1169
         -tlocal
-        -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
         -std1
@@ -279,6 +279,8 @@ else:
       opts = ["-O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    if not libtbx.env.build_options.enable_boost_threads:
+      opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
@@ -313,7 +315,6 @@ else:
       -AA
       -mt
       +W2001,2021,2047,2061,2063,2068,2111,2161,2167,2177,2185,2186,2191,2236,2334,2340,2414,2461,2549,2550,2761,2811,2837,2940,2997,4067,4189,4257
-      -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
       -Ae
@@ -325,6 +326,8 @@ else:
       opts = ["-DNDEBUG", "+O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    if not libtbx.env.build_options.enable_boost_threads:
+      opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
@@ -390,7 +393,6 @@ else:
       -fPIC
       -ftemplate-depth-120
       %s
-      -DBOOST_DISABLE_THREADS
     """ % warn_options)
     env_etc.ccflags_base = Split("""
       -fno-strict-aliasing
@@ -406,6 +408,8 @@ else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    if not libtbx.env.build_options.enable_boost_threads:
+      opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
@@ -426,7 +430,6 @@ else:
     )
     env_etc.cxxflags_base = Split("""
       -fPIC
-      -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
       -fPIC
@@ -437,6 +440,8 @@ else:
       opts = ["-O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    if not libtbx.env.build_options.enable_boost_threads:
+      opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
@@ -454,7 +459,6 @@ else:
     )
     env_etc.cxxflags_base = Split("""
       -fPIC
-      -DBOOST_DISABLE_THREADS
     """)
     env_etc.ccflags_base = Split("""
       -fPIC
@@ -465,6 +469,8 @@ else:
       opts = ["-O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    if not libtbx.env.build_options.enable_boost_threads:
+      opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
@@ -496,7 +502,8 @@ else:
       env_etc.cxxflags_base.insert(0,
         "-I%s/boost/compatibility/cpp_c_headers"
         % libtbx.env.dist_path("boost"))
-    env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
+    if not libtbx.env.build_options.enable_boost_threads:
+      env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     env_etc.ccflags_base = []
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
@@ -556,9 +563,9 @@ else:
     env_etc.cxxflags_base = list(env_etc.ccflags_base)
     if (need_fcoalesce_templates):
       env_etc.cxxflags_base.append("-fcoalesce-templates")
-    env_etc.cxxflags_base.extend([
-      "-ftemplate-depth-130",
-      "-DBOOST_DISABLE_THREADS"])
+    env_etc.cxxflags_base.append("-ftemplate-depth-130")
+    if not libtbx.env.build_options.enable_boost_threads:
+      env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math", "-ftrapping-math"]
       if (cxx == "c++" and cxx_version == "4.0.0"):
