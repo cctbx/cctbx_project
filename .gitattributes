@@ -144,6 +144,7 @@ mmtbx/mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
 mmtbx/mmtbx/chemical_components/__init__.py -text
 mmtbx/mmtbx/chemical_components/cif_parser.py -text
 mmtbx/mmtbx/chemical_components/tst.py -text
+mmtbx/mmtbx/command_line/cbetadev.py -text
 mmtbx/mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/mmtbx/command_line/maps.py -text
 mmtbx/mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
