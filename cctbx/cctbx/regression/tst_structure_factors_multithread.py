@@ -50,19 +50,19 @@ def exercise_structure_factors(space_group_info,
     cols = [ "# CPU" + " "*3,
              "run-time" + " "*3,
              "speed-up" ]
-    print ("First line is non-parallel code"
-           " and the speed-up is with respect to that non-parallel code")
+    print ("First line is the non-parallel ext.structure_factors_direct"
+           " and the speed-up is with respect to that")
     print ''.join(cols)
     fmt = "%%-%ii%%-%i.2fx %%-%i.2f" % tuple([ len(c) for c in cols ])
     for i,t in enumerate(times):
       print fmt % (i, times[i], times[0]/times[i])
 
 def run(args):
-  verbose = '--verbose' in args
-  show_times_at_exit()
   if structure_factors_multithreaded_direct is None:
     print "Skipping multithreaded structure factor computation tests"
     return
+  verbose = '--verbose' in args
+  show_times_at_exit()
   sgi = sgtbx.space_group_info("P21/n")
   elements = ['O']*15 + ['N']*9 + ['C']*100
   exercise_structure_factors(sgi, elements, verbose=verbose)
