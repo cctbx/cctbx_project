@@ -5,6 +5,7 @@ from mmtbx.command_line import cbetadev
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx import pdb
 from cctbx.array_family import flex
+from libtbx.test_utils import show_diff
 import libtbx.load_env
 
 import sys, os, getopt
@@ -27,12 +28,15 @@ def exercise_cbetadev():
 
   output_lines = output.splitlines()
   assert len(output_lines) == 54
-  assert output_lines[0] == "pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:"
-  assert output_lines[1] == "pdb1jxt : :thr: A:   1 :  0.102:  11.27:   1.00: :"
-  assert output_lines[10] == "pdb1jxt :a:val: A:   8 :  0.184:-155.36:   0.50:a:"
-  assert output_lines[11] == "pdb1jxt :b:val: A:   8 :  0.258:  80.92:   0.30:b:"
-  assert output_lines[12] == "pdb1jxt :c:val: A:   8 :  0.641: -53.98:   0.20:c:"
-  assert output_lines[14] == "pdb1jxt :a:arg: A:  10 :  0.023: 172.24:   1.00:a:"
+  assert not show_diff("\n".join(output_lines[:2]), """\
+pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
+pdb1jxt : :thr: A:   1 :  0.102:  11.27:   1.00: :""")
+  assert not show_diff("\n".join(output_lines[10:15]), """\
+pdb1jxt :a:val: A:   8 :  0.184:-155.36:   0.50:a:
+pdb1jxt :b:val: A:   8 :  0.258:  80.92:   0.30:b:
+pdb1jxt :c:val: A:   8 :  0.641: -53.98:   0.20:c:
+pdb1jxt : :ala: A:   9 :  0.061: -82.84:   1.00: :
+pdb1jxt :a:arg: A:  10 :  0.023: 172.24:   1.00:a:""")
 
 #{{{ exercise_ramalyze
 def exercise_ramalyze():
