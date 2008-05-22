@@ -15,7 +15,7 @@ def run(args, label="R-free-flags"):
   print "Number of 1:", (~sel_0 & selection_valid).count(True)
   flags.set_selected( sel_0 & selection_valid, 1)
   flags.set_selected(~sel_0 & selection_valid, 0)
-  values = column.set_values(values=flags, selection_valid=selection_valid)
+  column.set_values(values=flags, selection_valid=selection_valid)
   print "Writing file:", output_file_name
   mtz_obj.write(file_name=output_file_name)
 
