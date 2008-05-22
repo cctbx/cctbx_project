@@ -1,7 +1,9 @@
+import libtbx.load_env
 Import("env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
-env.Prepend(LIBS=["cctbx"])
-env.SharedLibrary(target="#lib/cctbx_xray_ext", source=[
+
+libs = ["cctbx"]
+sources = [
   "xray_ext.cpp",
   "conversions.cpp",
   "gradient_flags.cpp",
@@ -18,4 +20,14 @@ env.SharedLibrary(target="#lib/cctbx_xray_ext", source=[
   "targets.cpp",
   "f_model_bpl.cpp",
   "twin_targets.cpp",
-])
+]
+
+multithreaded_sources = [
+  "structure_factors_direct_multithread.cpp",
+]
+
+if libtbx.env.build_options.enable_boost_threads:
+  libs.append("boost_thread")
+  sources.extend(multithreaded_sources)
+env.Prepend(LIBS=libs)
+env.SharedLibrary(target="#lib/cctbx_xray_ext", source=sources)
