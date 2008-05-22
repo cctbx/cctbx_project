@@ -1,4 +1,5 @@
 from iotbx.examples import mtz_free_flipper
+from iotbx.examples import mtz_convert_free_to_work
 import iotbx.mtz
 from libtbx.test_utils import show_diff
 from libtbx.utils import format_cpu_times
@@ -16,11 +17,13 @@ def exercise():
   label = "R-free-flags(-)"
   mtz_free_flipper.run(args=[input_file_name], label=label)
   mtz_free_flipper.run(args=["free_flipped_l.mtz"], label=label)
+  mtz_convert_free_to_work.run(args=[input_file_name], label=label)
   spreadsheets = []
   for file_name, expected in [
         (input_file_name, (13469,1065,2323)),
         ("free_flipped_l.mtz", (1065,13469,2323)),
-        ("free_flipped_free_flipped_l.mtz", (13469,1065,2323))]:
+        ("free_flipped_free_flipped_l.mtz", (13469,1065,2323)),
+        ("less_free_l.mtz", (14002,532,2323))]:
     s = StringIO()
     mtz_obj = iotbx.mtz.object(file_name=file_name)
     mtz_obj.show_column_data(out=s, format="spreadsheet")
