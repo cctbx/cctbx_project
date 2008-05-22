@@ -89,6 +89,7 @@ iotbx/iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/iotbx/detectors/cbf.py -text
 iotbx/iotbx/detectors/pilatus_minicbf.py -text
 iotbx/iotbx/examples/__init__.py svneol=native#text/x-python
+iotbx/iotbx/examples/mtz_convert_free_to_work.py svneol=native#text/x-python
 iotbx/iotbx/examples/mtz_free_flipper.py svneol=native#text/x-python
 iotbx/iotbx/examples/pdb_hierarchy.py svneol=native#text/x-python
 iotbx/iotbx/examples/pdb_truncate_to_ala/crambin_pieces.pdb -text
