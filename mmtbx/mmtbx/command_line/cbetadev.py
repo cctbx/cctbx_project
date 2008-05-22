@@ -110,8 +110,7 @@ def analyze_pdb(filename, pdb_io, outliers_only=None):
                   #dihedralTemp = dihedral4pt(resN.xyz,resCA.xyz,betaxyz,resCB.xyz)
                   #dihedralNABB = dihedralTemp
 
-                  PDBfileStrVec = filename[0:(len(filename)-4)].split('/')
-                  PDBfileStr = PDBfileStrVec[len(PDBfileStrVec)-1]
+                  PDBfileStr = os.path.basename(filename)[:-4]
                   altchar = ag.altloc.lower()
                   if (len(altchar) == 0):
                     altchar = " "
