@@ -30,6 +30,7 @@ cctbx/cctbx/regression/structure_ideal.pickle -text
 cctbx/cctbx/regression/structure_start.pickle -text
 cctbx/cctbx/regression/tst_adp_constraints_cartesian.py -text
 cctbx/cctbx/regression/tst_show_cosets.py -text
+cctbx/cctbx/regression/tst_structure_factors_multithread.py -text
 cctbx/cctbx/regression/tst_weighting_schemes.py -text
 cctbx/cctbx/regression/tst_xray_minimization_failure.py -text
 cctbx/cctbx/sgtbx/show_cosets.py -text
@@ -40,9 +41,11 @@ cctbx/global/error.cpp -text
 cctbx/include/cctbx/crystal_orientation.h -text
 cctbx/include/cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/include/cctbx/maptbx/fft.h -text
+cctbx/include/cctbx/xray/structure_factors_direct_multithread.h -text
 cctbx/sgtbx/boost_python/select_generators.cpp -text
 cctbx/uctbx/boost_python/tst_crystal_orientation.py -text
 cctbx/uctbx/crystal_orientation.cpp -text
+cctbx/xray/boost_python/structure_factors_direct_multithread.cpp -text
 compcomm/newsletter08/default.css -text
 compcomm/newsletter08/f_square_refinement.py -text
 compcomm/newsletter08/news.txt -text
