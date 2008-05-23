@@ -77,22 +77,29 @@ def run(args, params=None, log=None):
 
 #{{{ analyze_pdb
 def analyze_pdb(filename, pdb_io, outliers_only=None):
+  relevant_atom_names = {
+    " CA ": None, " N  ": None, " C  ": None, " CB ": None} # FUTURE: set
   analysis = 'pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:\n'
   hierarchy = pdb_io.construct_hierarchy()
   for model in hierarchy.models():
     for chain in model.chains():
       for rg in chain.residue_groups():
-          resC, resN, resCA, resCB = None, None, None, None
-          prevC, prevN, prevCA, prevCB = None, None, None, None
-          residue = rg
-          for ag in rg.atom_groups():
-            for atom in ag.atoms():
-              if (atom.name == " CA "): resCA = atom
-              if (atom.name == " N  "): resN = atom
-              if (atom.name == " C  "): resC = atom
-              if (atom.name == " CB "): resCB = atom
-            if (resCA is not None and resN is not None and resC is not None and resCB is not None) and not (resCA == prevCA and resN == prevN and resC == prevC and resCB == prevCB):
-              dist, angleCAB, dihedralNCAB, angleNAB, dihedralCNAB, angleideal=idealized_calpha_angles(ag)
+        for i_cf,cf in enumerate(rg.conformers()):
+          for i_residue,residue in enumerate(cf.residues()):
+            is_first = (i_cf == 0)
+            is_alt_conf = False
+            relevant_atoms = {}
+            for atom in residue.atoms():
+              if (atom.name in relevant_atom_names):
+                relevant_atoms[atom.name] = atom
+                if (len(atom.parent().altloc) != 0):
+                  is_alt_conf = True
+            if ((is_first or is_alt_conf) and len(relevant_atoms) == 4):
+              resCA = relevant_atoms[" CA "]
+              resN  = relevant_atoms[" N  "]
+              resC  = relevant_atoms[" C  "]
+              resCB = relevant_atoms[" CB "]
+              dist, angleCAB, dihedralNCAB, angleNAB, dihedralCNAB, angleideal=idealized_calpha_angles(residue=residue)
               betaNCAB = construct_fourth(resN,resCA,resC,dist,angleCAB,dihedralNCAB,method="NCAB")
               betaCNAB = construct_fourth(resN,resCA,resC,dist,angleNAB,dihedralCNAB,method="CNAB")
               betaxyz = [(betaNCAB[0]+betaCNAB[0])/2,(betaNCAB[1]+betaCNAB[1])/2,(betaNCAB[2]+betaCNAB[2])/2]
@@ -100,7 +107,7 @@ def analyze_pdb(filename, pdb_io, outliers_only=None):
               if(betadist != dist):
                 distTemp = [(betaxyz[0]-resCA.xyz[0]),(betaxyz[1]-resCA.xyz[1]),(betaxyz[2]-resCA.xyz[2])]
                 betaxyz = [(resCA.xyz[0]+distTemp[0]*dist/betadist),(resCA.xyz[1]+distTemp[1]*dist/betadist),(resCA.xyz[2]+distTemp[2]*dist/betadist)]
-              if(ag.resname != "GLY"):
+              if(residue.resname != "GLY"):
                 dev = distance(resCB.xyz,betaxyz)
                 if(dev >=0.25 or outliers_only==False):
                   d = geometry_restraints.dihedral(sites=[resN.xyz,resCA.xyz,betaxyz,resCB.xyz],angle_ideal=0,weight=1)
@@ -111,10 +118,11 @@ def analyze_pdb(filename, pdb_io, outliers_only=None):
                   #dihedralNABB = dihedralTemp
 
                   PDBfileStr = os.path.basename(filename)[:-4]
-                  altchar = ag.altloc.lower()
-                  if (len(altchar) == 0):
+                  if (is_alt_conf):
+                    altchar = cf.altloc.lower()
+                  else:
                     altchar = " "
-                  res=ag.resname.lower()
+                  res=residue.resname.lower()
                   sub=chain.id
                   if(len(sub)==1):
                     sub=" "+sub
@@ -122,7 +130,6 @@ def analyze_pdb(filename, pdb_io, outliers_only=None):
                   resins=" "
                   occ = resCB.occ
                   analysis += '%s :%s:%s:%s:%4d%c:%7.3f:%7.2f:%7.2f:%s:\n' % (PDBfileStr,altchar,res,sub,int(resnum),resins,dev,dihedralNABB,occ,altchar)
-            prevCA, prevN, prevC, prevCB = resCA, resN, resC, resCB
   return analysis.rstrip()
 #}}}
 
