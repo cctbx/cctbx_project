@@ -100,7 +100,7 @@ def analyze_pdb(filename, pdb_io, outliers_only=None):
               if(betadist != dist):
                 distTemp = [(betaxyz[0]-resCA.xyz[0]),(betaxyz[1]-resCA.xyz[1]),(betaxyz[2]-resCA.xyz[2])]
                 betaxyz = [(resCA.xyz[0]+distTemp[0]*dist/betadist),(resCA.xyz[1]+distTemp[1]*dist/betadist),(resCA.xyz[2]+distTemp[2]*dist/betadist)]
-              if(ag.resname[0:3] != "GLY"):
+              if(ag.resname != "GLY"):
                 dev = distance(resCB.xyz,betaxyz)
                 if(dev >=0.25 or outliers_only==False):
                   d = geometry_restraints.dihedral(sites=[resN.xyz,resCA.xyz,betaxyz,resCB.xyz],angle_ideal=0,weight=1)
@@ -114,7 +114,7 @@ def analyze_pdb(filename, pdb_io, outliers_only=None):
                   altchar = ag.altloc.lower()
                   if (len(altchar) == 0):
                     altchar = " "
-                  res=ag.resname[0:3].lower()
+                  res=ag.resname.lower()
                   sub=chain.id
                   if(len(sub)==1):
                     sub=" "+sub
@@ -128,28 +128,28 @@ def analyze_pdb(filename, pdb_io, outliers_only=None):
 
 #{{{ idealized_calpha_angles
 def idealized_calpha_angles(residue):
-  if(residue.resname[0:3] == "ALA"):
+  if(residue.resname == "ALA"):
     dist = 1.536
     angleCAB = 110.1
     dihedralNCAB = 122.9
     angleNAB = 110.6
     dihedralCNAB = -122.6
     angleideal = 111.2
-  elif(residue.resname[0:3] == "PRO"):
+  elif(residue.resname == "PRO"):
     dist = 1.530
     angleCAB = 112.2
     dihedralNCAB = 115.1
     angleNAB = 103.0
     dihedralCNAB = -120.7
     angleideal = 111.8
-  elif(residue.resname[0:3] == "VAL") or (residue.resname[0:3] == "THR") or (residue.resname[0:3] == "ILE"):
+  elif(residue.resname == "VAL") or (residue.resname == "THR") or (residue.resname == "ILE"):
     dist = 1.540
     angleCAB = 109.1
     dihedralNCAB = 123.4
     angleNAB = 111.5
     dihedralCNAB = -122.0
     angleideal = 111.2
-  elif(residue.resname[0:3] == "GLY"):
+  elif(residue.resname == "GLY"):
     dist = 1.10
     angleCAB = 109.3
     dihedralNCAB = 121.6
