@@ -35,7 +35,6 @@ pdb1jxt :b:asp: A:  43 :  0.500:   7.56:   0.25:b:""")
 pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
 pdb1jxt : :thr: A:   1 :  0.102:  11.27:   1.00: :
 pdb1jxt :a:thr: A:   2 :  0.022: -49.31:   0.67:a:
-pdb1jxt :b:thr: A:   2 :  0.196:  24.46:   0.33:b:
 pdb1jxt : :cys: A:   3 :  0.038: 103.68:   1.00: :
 pdb1jxt : :cys: A:   4 :  0.047:-120.73:   1.00: :
 pdb1jxt : :pro: A:   5 :  0.069:-121.41:   1.00: :
@@ -68,7 +67,6 @@ pdb1jxt : :cys: A:  26 :  0.074: -94.70:   1.00: :
 pdb1jxt : :ala: A:  27 :  0.056: -62.15:   1.00: :
 pdb1jxt : :thr: A:  28 :  0.056:-114.82:   1.00: :
 pdb1jxt :a:tyr: A:  29 :  0.068:   0.22:   0.65:a:
-pdb1jxt :b:tyr: A:  29 :  0.043: -92.35:   0.35:b:
 pdb1jxt :a:thr: A:  30 :  0.180: 103.27:   0.70:a:
 pdb1jxt :b:thr: A:  30 :  0.812: -76.98:   0.30:b:
 pdb1jxt : :cys: A:  32 :  0.029: -84.07:   1.00: :
