@@ -100,6 +100,19 @@ namespace {
     }
   };
 
+  template <typename ChainOrResidueGroup>
+  struct conformers_as_list
+  {
+    static
+    boost::python::object
+    get(ChainOrResidueGroup const& self)
+    {
+      af::shared<conformer> result = self.conformers();
+      return scitbx::boost_python::array_as_list(
+        result.begin(), result.size());
+    }
+  };
+
   struct residue_group_wrappers
   {
     typedef residue_group w_t;
@@ -167,6 +180,7 @@ namespace {
           arg_("other")))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (
           arg_("other")))
+        .def("conformers", conformers_as_list<w_t>::get)
       ;
     }
   };
@@ -184,16 +198,6 @@ namespace {
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(
       find_pure_altloc_ranges_overloads, find_pure_altloc_ranges, 0, 1)
-
-    static
-    boost::python::object
-    conformers(
-      w_t const& self)
-    {
-      af::shared<conformer> result = self.conformers();
-      return scitbx::boost_python::array_as_list(
-        result.begin(), result.size());
-    }
 
     BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(atoms_overloads, atoms, 0, 1)
 
@@ -223,7 +227,7 @@ namespace {
         .def("find_pure_altloc_ranges", &w_t::find_pure_altloc_ranges,
           find_pure_altloc_ranges_overloads((
             arg_("common_residue_name_class_only")=0)))
-        .def("conformers", conformers)
+        .def("conformers", conformers_as_list<w_t>::get)
         .def("is_identical_hierarchy", &w_t::is_identical_hierarchy, (
           arg_("other")))
         .def("is_similar_hierarchy", &w_t::is_similar_hierarchy, (

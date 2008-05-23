@@ -1434,16 +1434,20 @@ namespace {
   }
 
   af::shared<conformer>
-  chain::conformers() const
+  conformer::build_from_residue_groups(
+    const hierarchy::chain* chain,
+    const residue_group* residue_groups,
+    unsigned residue_groups_size)
   {
     const char nulc = '\0';
     std::vector<char> altlocs;
     typedef std::map<char, unsigned> mcu;
     mcu altloc_indices;
-    unsigned n_rg = residue_groups_size();
-    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
-      residue_group const& rg = data->residue_groups[i_rg];
+    bool have_at_least_one_atom_group = false;
+    for(unsigned i_rg=0;i_rg<residue_groups_size;i_rg++) {
+      residue_group const& rg = residue_groups[i_rg];
       unsigned n_ag = rg.atom_groups_size();
+      if (n_ag != 0) have_at_least_one_atom_group = true;
       std::vector<atom_group> const& ags = rg.atom_groups();
       for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
         char altloc = ags[i_ag].data->altloc.elems[0];
@@ -1455,6 +1459,7 @@ namespace {
         }
       }
     }
+    if (!have_at_least_one_atom_group) return af::shared<conformer>();
     unsigned n_cf = static_cast<unsigned>(altloc_indices.size());
     if (n_cf == 0) {
       altlocs.push_back(nulc);
@@ -1462,14 +1467,19 @@ namespace {
     }
     af::shared<conformer> result((af::reserve(n_cf)));
     for(unsigned i_cf=0;i_cf<n_cf;i_cf++) {
-      result.push_back(conformer(*this, str1(altlocs[i_cf]).elems));
+      if (chain != 0) {
+        result.push_back(conformer(*chain, str1(altlocs[i_cf]).elems));
+      }
+      else {
+        result.push_back(conformer(str1(altlocs[i_cf]).elems));
+      }
     }
     std::vector<str3> resnames; // allocate once
     resnames.reserve(32U); // not critical
     std::set<str3> resnames_with_altloc; // allocate once
     std::vector<std::vector<atom_group> > altloc_ags(n_cf); // allocate once
-    for(unsigned i_rg=0;i_rg<n_rg;i_rg++) {
-      residue_group const& rg = data->residue_groups[i_rg];
+    for(unsigned i_rg=0;i_rg<residue_groups_size;i_rg++) {
+      residue_group const& rg = residue_groups[i_rg];
       for(unsigned i_cf=0;i_cf<n_cf;i_cf++) {
         // preserving allocations reduces re-allocations
         altloc_ags[i_cf].clear();
@@ -1532,6 +1542,28 @@ namespace {
       }
     }
     return result;
+  }
+
+  af::shared<conformer>
+  chain::conformers() const
+  {
+    unsigned n_rg = residue_groups_size();
+    if (n_rg == 0) return af::shared<conformer>();
+    return conformer::build_from_residue_groups(
+      this, &*residue_groups().begin(), n_rg);
+  }
+
+  af::shared<conformer>
+  residue_group::conformers() const
+  {
+    chain ch;
+    const chain* ch_ptr = 0;
+    shared_ptr<chain_data> p = data->parent.lock();
+    if (p.get() != 0) {
+      ch = chain(p, true);
+      ch_ptr = &ch;
+    }
+    return conformer::build_from_residue_groups(ch_ptr, this, 1U);
   }
 
   bool

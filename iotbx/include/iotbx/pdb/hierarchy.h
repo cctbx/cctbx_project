@@ -325,6 +325,14 @@ namespace hierarchy {
       conformer_data(
         weak_ptr<chain_data> const& parent_,
         std::string const& altloc_);
+
+      explicit
+      inline
+      conformer_data(
+        std::string const& altloc_)
+      :
+        altloc(altloc_)
+      {}
   };
 
   //! Holder for residue attributes (to be held by a shared_ptr).
@@ -986,6 +994,9 @@ namespace hierarchy {
       is_similar_hierarchy(
         residue_group const& other) const;
 
+      af::shared<conformer>
+      conformers() const;
+
       //! Not available in Python.
       void
       atoms_interleaved_conf_impl(
@@ -1478,8 +1489,6 @@ namespace hierarchy {
 
       conformer(shared_ptr<conformer_data> const& data_, bool) : data(data_) {}
 
-      friend class chain; // to support chain::conformers()
-
       void
       append_residue(
         const char* resname,
@@ -1490,11 +1499,26 @@ namespace hierarchy {
         std::vector<atom> const& atoms);
 
     public:
+      //! Not available in Python.
+      static
+      af::shared<conformer>
+      build_from_residue_groups(
+        const hierarchy::chain* chain,
+        const residue_group* residue_groups,
+        unsigned residue_groups_size);
+
       conformer(
         chain const& parent,
         std::string const& altloc)
       :
         data(new conformer_data(parent.data, altloc))
+      {}
+
+      explicit
+      conformer(
+        std::string const& altloc)
+      :
+        data(new conformer_data(altloc))
       {}
 
       std::size_t

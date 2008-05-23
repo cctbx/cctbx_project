@@ -3607,6 +3607,9 @@ def conformers_as_str(conformers):
   return s.getvalue()
 
 def exercise_conformers():
+  assert len(pdb.hierarchy.chain().conformers()) == 0
+  assert len(pdb.hierarchy.residue_group().conformers()) == 0
+  #
   def check(pdb_string, expected):
     pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(pdb_string))
     chain = pdb_inp.construct_hierarchy().only_chain()
@@ -3616,6 +3619,21 @@ def exercise_conformers():
       sys.stdout.write(s)
     else:
       assert not show_diff(s, expected)
+    #
+    for rg in chain.residue_groups():
+      for cf in rg.conformers():
+        assert cf.parent().memory_id() == chain.memory_id()
+        assert cf.residues_size() == 1
+      rgc = rg.detached_copy()
+      for cf in rgc.conformers():
+        assert cf.parent() is None
+        assert cf.residues_size() == 1
+      #
+      if (chain.residue_groups_size() == 1):
+        conformers = rg.conformers()
+        s = conformers_as_str(conformers)
+        if (len(expected) != 0):
+          assert not show_diff(s, expected)
   #
   check("""\
 ATOM         N   RES     1I
