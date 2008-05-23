@@ -52,7 +52,7 @@ def run():
   "$D/cctbx/regression/tst_coordination_sequences.py",
   ["$D/cctbx/regression/tst_crystal_close_packing.py", "R-3mr"],
   ["$D/cctbx/regression/tst_xray.py", "I41/acd"],
-  "$D/cctbx/regression/tst_multithreaded_structure_factors.py",
+  "$D/cctbx/regression/tst_structure_factors_multithread.py",
   ["$D/cctbx/regression/tst_miller.py", "P31"],
   ["$D/cctbx/regression/tst_reciprocal_space_asu.py", "P312"],
   ["$D/cctbx/regression/tst_triplet_generator.py", "P41"],
