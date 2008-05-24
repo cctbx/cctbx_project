@@ -10,7 +10,7 @@ env_etc.boost_adaptbx_dist = libtbx.env.dist_path("boost_adaptbx")
 env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
 
 def darwin_shlinkcom(env, lo, dylib):
-  if (env_etc.compiler in ["darwin_c++", "darwin_gcc"]):
+  if (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc_4.2"]):
     if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
       dylib1 = "-ldylib1.o"
     else:

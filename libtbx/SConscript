@@ -124,6 +124,8 @@ supported_compilers = (
   "irix_CC",
   "darwin_c++",
   "darwin_gcc",
+  "darwin_gcc_4.2", # tested with the "GCC 4.2 Developer Preview 1"
+                    # distributed by Apple
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
@@ -518,13 +520,16 @@ else:
       static_exe = None
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler in ["darwin_c++", "darwin_gcc"]):
+  elif (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc_4.2"]):
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     need_fcoalesce_templates = False
     if (env_etc.compiler == "darwin_gcc"):
       cc = "gcc"
       cxx = "g++"
+    elif env_etc.compiler == "darwin_gcc_4.2":
+      cc = "gcc-4.2"
+      cxx = "g++-4.2"
     else:
       cc = "cc"
       cxx = "c++"
