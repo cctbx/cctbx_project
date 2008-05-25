@@ -329,10 +329,7 @@ namespace hierarchy {
       explicit
       inline
       conformer_data(
-        std::string const& altloc_)
-      :
-        altloc(altloc_)
-      {}
+        std::string const& altloc_);
   };
 
   //! Holder for residue attributes (to be held by a shared_ptr).
@@ -1806,6 +1803,13 @@ namespace hierarchy {
     std::string const& altloc_)
   :
     parent(parent_),
+    altloc(altloc_)
+  {}
+
+  inline
+  conformer_data::conformer_data(
+    std::string const& altloc_)
+  :
     altloc(altloc_)
   {}
 
