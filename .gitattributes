@@ -151,6 +151,7 @@ mmtbx/mmtbx/chemical_components/tst.py -text
 mmtbx/mmtbx/command_line/cbetadev.py -text
 mmtbx/mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/mmtbx/command_line/maps.py -text
+mmtbx/mmtbx/command_line/model_vs_data.py -text
 mmtbx/mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/mmtbx/command_line/pdbtools.py -text
 mmtbx/mmtbx/command_line/ramalyze.py -text
