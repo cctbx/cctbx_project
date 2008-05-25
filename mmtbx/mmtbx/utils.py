@@ -952,6 +952,8 @@ def occupancy_selections(
 def assert_xray_structures_equal(x1, x2, selection = None, sites = True,
                                  adp = True, occupancies = True):
   assert x1.scatterers().size() == x2.scatterers().size()
+  if (not libtbx.env.full_testing):
+    return
   if(selection is not None):
     x1 = x1.select(selection)
     x2 = x2.select(selection)
