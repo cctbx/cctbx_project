@@ -60,7 +60,7 @@ def reflection_file_server(crystal_symmetry, reflection_files):
     err=StringIO())
 
 def show(file_name, fmodel, n_outl, test_flag_value):
-  uc_par = fmodel.xray_structure.unit_cell().parameters()
+  uc = fmodel.xray_structure.unit_cell()
   b_cart = " ".join([("%8.2f"%v).strip() for v in fmodel.b_cart()])
   d_max, d_min = fmodel.f_obs.d_max_min()
   flags_pc = \
@@ -70,39 +70,35 @@ def show(file_name, fmodel, n_outl, test_flag_value):
   n_not_positive_definite = \
     fmodel.xray_structure.is_positive_definite_u().count(False)
   print "Model file: "+format_value("%5s",os.path.basename(file_name))
-  print "  unit cell:    ", " ".join(["%7.3f"%i for i in uc_par])
-  print "  space group:   ",fmodel.xray_structure.crystal_symmetry().\
+  print "  unit cell:       ", uc
+  print "  space group:     ",fmodel.xray_structure.crystal_symmetry().\
     space_group_info().symbol_and_number()
   print "  Data:"
   result = " \n    ".join([
-      "    high_res=     "+format_value("%-5.2f",d_min),
-      "low_res=      "+format_value("%-6.2f",d_max),
-      "R_work=       "+format_value("%-6.4f",fmodel.r_work()),
-      "R_free=       "+format_value("%-6.4f",fmodel.r_free()),
-      "hkl_size=     "+format_value("%-8d",fmodel.f_obs.data().size()),
-      "test_set%=    "+format_value("%-8.1f",flags_pc),
-      "test_flag=    "+format_value("%-d",test_flag_value),
-      "twin=         "+format_value("%-5s",fmodel.twin_test()),
-      "No_Fobs_outl= "+format_value("%-8d",n_outl),
-      "anom_flag=    "+format_value("%-6s",fmodel.f_obs.anomalous_flag())
-                       ]
-                       )
-  print result
+    "high_res=       "+format_value("%-5.2f",d_min),
+    "low_res=        "+format_value("%-6.2f",d_max),
+    "R_work=         "+format_value("%-6.4f",fmodel.r_work()),
+    "R_free=         "+format_value("%-6.4f",fmodel.r_free()),
+    "hkl_size=       "+format_value("%-8d",fmodel.f_obs.data().size()),
+    "test_set%=      "+format_value("%-8.1f",flags_pc),
+    "test_flag=      "+format_value("%-d",test_flag_value),
+    "twin=           "+format_value("%-5s",fmodel.twin_test()),
+    "#Fobs_outl=     "+format_value("%-8d",n_outl),
+    "anom_flag=      "+format_value("%-6s",fmodel.f_obs.anomalous_flag())])
+  print "   ", result
   print "  Model:"
   result = " \n    ".join([
-      "    No. atoms=    "+format_value("%-8d",fmodel.xray_structure.scatterers().size()),
-      "k_sol=        "+format_value("%-5.2f",fmodel.k_sol()),
-      "b_sol=        "+format_value("%-6.1f",fmodel.b_sol()),
-      "b_cart=       "+format_value("%-s",b_cart),
-      "wilsonB=      "+format_value("%-6.1f",fmodel.wilson_b()),
-      "b_mean=       "+format_value("%-6.1f",adptbx.u_as_b(flex.mean(b_isos))),
-      "b_min=        "+format_value("%-6.1f",adptbx.u_as_b(flex.min(b_isos))),
-      "b_max=        "+format_value("%-6.1f",adptbx.u_as_b(flex.max(b_isos))),
-      "No_aniso=     "+format_value("%-7s",n_aniso),
-      "No_NPD=       "+format_value("%-8s",n_not_positive_definite)
-                       ]
-                       )
-  print result
+    "#atoms=         "+format_value("%-8d",fmodel.xray_structure.scatterers().size()),
+    "k_sol=          "+format_value("%-5.2f",fmodel.k_sol()),
+    "b_sol=          "+format_value("%-6.1f",fmodel.b_sol()),
+    "b_cart=         "+format_value("%-s",b_cart),
+    "wilsonB=        "+format_value("%-6.1f",fmodel.wilson_b()),
+    "b_mean=         "+format_value("%-6.1f",adptbx.u_as_b(flex.mean(b_isos))),
+    "b_min=          "+format_value("%-6.1f",adptbx.u_as_b(flex.min(b_isos))),
+    "b_max=          "+format_value("%-6.1f",adptbx.u_as_b(flex.max(b_isos))),
+    "#aniso=         "+format_value("%-7s",n_aniso),
+    "#not pos. def.= "+format_value("%-8s",n_not_positive_definite)])
+  print "   ", result
 
 def run(args, command_name = "phenix.model_vs_data"):
   if(len(args) == 0): args = ["--help"]
