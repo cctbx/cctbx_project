@@ -132,7 +132,11 @@ def run(args, command_name = "phenix.model_vs_data"):
       if(pdb.is_pdb_file(file_name=arg)):
         pdb_file_name = arg
         arg_is_processed = True
-        crystal_symmetry = crystal_symmetry_from_pdb.extract_from(file_name=arg)
+        try:
+          crystal_symmetry = crystal_symmetry_from_pdb.extract_from(
+            file_name=arg)
+        except RuntimeError, e:
+          if(str(e) == "No CRYST1 record."): pass
       if(not arg_is_processed):
         reflection_file = reflection_file_reader.any_reflection_file(
           file_name=arg, ensure_read_access=False)
@@ -168,6 +172,9 @@ def run(args, command_name = "phenix.model_vs_data"):
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=1
+  if(not xray_structure.crystal_symmetry().is_similar_symmetry(
+     f_obs.crystal_symmetry())):
+    raise Sorry("Inconsistent crystal symmetry.")
   fmodel, n_outl = get_fmodel_object(xray_structure = xray_structure,
                                      f_obs          = f_obs,
                                      r_free_flags   = r_free_flags)
