@@ -13,6 +13,7 @@ import sys, os
 
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_enable_boost_threads = False
+default_enable_open_mp = False
 
 def get_hostname():
   try: import socket
@@ -530,6 +531,7 @@ class environment:
         boost_python_no_py_signatures\
           =command_line.options.boost_python_no_py_signatures,
         enable_boost_threads=command_line.options.enable_boost_threads,
+        enable_open_mp=command_line.options.enable_open_mp,
       )
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -1374,7 +1376,8 @@ class build_options:
         write_full_flex_fwd_h=default_write_full_flex_fwd_h,
         build_boost_python_extensions=True,
         boost_python_no_py_signatures=False,
-        enable_boost_threads=False):
+        enable_boost_threads=False,
+        enable_open_mp=False):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1399,6 +1402,7 @@ class build_options:
     print >> f, "Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
       self.boost_python_no_py_signatures
     print >> f, "Boost threads enabled:", self.enable_boost_threads
+    print >> f, "OpenMP enabled:", self.enable_open_mp
 
 class include_registry:
 
@@ -1530,6 +1534,10 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="enable threads in Boost")
+    parser.option(None, "--enable_open_mp",
+      action="store_true",
+      default=False,
+      help="enable OpenMP")
     if (not self.warm_start):
       parser.option(None, "--boost_python_no_py_signatures",
         action="store_true",
@@ -1612,6 +1620,9 @@ def unpickle():
   # XXX backward compatibility 2008-05-21
   if not hasattr(env.build_options, "enable_boost_threads"):
     env.build_options.enable_boost_threads = default_enable_boost_threads
+  # XXX backward compatibility 2008-05-25
+  if not hasattr(env.build_options, "enable_open_mp"):
+    env.build_options.enable_open_mp = default_enable_open_mp
   return env
 
 def warm_start(args):
