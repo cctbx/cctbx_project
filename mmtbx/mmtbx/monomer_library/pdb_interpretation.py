@@ -745,10 +745,7 @@ Please contact cctbx@cci.lbl.gov for more information.""")
       self.residue_name += "%" + chem_mod_id
 
   def apply_mod(self, mod_mod_id):
-    try:
-      mod_mon = self.monomer.apply_mod(mod_mod_id)
-    except RuntimeError:
-      return
+    mod_mon = self.monomer.apply_mod(mod_mod_id)
     self._track_mods(chem_mod_ids=[mod_mod_id.chem_mod.id])
     mod_mon.classification = self.monomer.classification
     self.monomer = mod_mon
