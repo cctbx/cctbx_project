@@ -4,6 +4,7 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
 from libtbx import easy_run
 from libtbx import introspection
+import libtbx.load_env
 import difflib
 from stdlib import math
 import sys, os
@@ -22,6 +23,7 @@ Exception_expected = RuntimeError("Exception expected.")
 class Default: pass
 
 def run_tests(build_dir, dist_dir, tst_list):
+  libtbx.env.full_testing = True
   args = [arg.lower() for arg in sys.argv[1:]]
   command_line = (option_parser(
     usage="run_tests [-j n]",

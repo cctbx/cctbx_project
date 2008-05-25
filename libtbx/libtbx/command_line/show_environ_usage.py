@@ -16,6 +16,9 @@ LIBTBX_PRINT_TRACE
 LIBTBX_NATIVE_TAR
   Inspected by libtbx.bundle_as_selfx to find alternative tar command.
   Example: setenv LIBTBX_NATIVE_TAR $HOME/bin/tar
+
+LIBTBX_FULL_TESTING
+  If set, forces libtbx.env.full_testing = True.
 """
 
 if (__name__ == "__main__"):
