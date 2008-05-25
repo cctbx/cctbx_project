@@ -134,7 +134,7 @@ data_and_flags = iotbx.phil.parse("""\
 
 class determine_data_and_flags(object):
   def __init__(self, reflection_file_server,
-                     parameters,
+                     parameters = None,
                      data_parameter_scope = "",
                      flags_parameter_scope = "",
                      data_description = None,
@@ -142,8 +142,11 @@ class determine_data_and_flags(object):
                      symmetry_safety_check = None,
                      remark_r_free_flags_md5_hexdigest = None,
                      extract_r_free_flags = True,
+                     keep_going = False,
                      log = None):
     adopt_init_args(self, locals())
+    if(self.parameters is None):
+      self.parameters = data_and_flags.extract()
     self.intensity_flag = False
     self.f_obs = None
     self.r_free_flags = None
@@ -155,9 +158,10 @@ class determine_data_and_flags(object):
     data_info = self.raw_data.info()
     if(extract_r_free_flags):
       self.raw_flags = self.extract_flags(data = self.raw_data)
-      flags_info = self.raw_flags.info()
+      if(self.raw_flags is not None):
+        flags_info = self.raw_flags.info()
     self.f_obs = self.data_as_f_obs(f_obs = self.raw_data)
-    if(extract_r_free_flags):
+    if(extract_r_free_flags and self.raw_flags is not None):
       self.get_r_free_flags()
       self.r_free_flags.set_info(flags_info)
     self.f_obs.set_info(data_info)
@@ -224,6 +228,7 @@ class determine_data_and_flags(object):
         if(self.parameters.r_free_flags.generate is not None):
           explain_how_to_generate_array_of_r_free_flags(log = self.log,
             flags_parameter_scope = self.flags_parameter_scope)
+          if(self.keep_going): return None
           raise Sorry("Please try again.")
         r_free_flags, test_flag_value = None, None
       else:
