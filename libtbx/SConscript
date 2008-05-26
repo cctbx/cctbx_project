@@ -615,9 +615,18 @@ env_etc.libtbx_lib = libtbx.env.lib_path
 if not libtbx.env.build_options.disable_openmp:
   openmp_conf = libtbx.config.openmp_config(env_base, env_etc)
   if openmp_conf.is_working:
-    for flags in (env_etc.cxxflags_base, env_etc.shlinkflags,
-                  env_etc.shlinkflags_bpl):
-      flags.append(openmp_conf.command_line_option)
+    try:
+      env_etc.cxxflags_base.append(openmp_conf.command_line_option)
+    except AttributeError:
+      env_etc.cxxflags_base += " " +  openmp_conf.command_line_option
+    try:
+      env_etc.shlinkflags.append(openmp_conf.command_line_option)
+    except AttributeError:
+      env_etc.shlinkflags += " " +  openmp_conf.command_line_option
+    try:
+      env_etc.shlinkflags_bpl.append(openmp_conf.command_line_option)
+    except AttributeError:
+      env_etc.shlinkflags_bpl += " " +  openmp_conf.command_line_option
   else:
     print "libtbx.scons: disabling OpenMP"
     libtbx.env.build_options.disable_openmp = True
