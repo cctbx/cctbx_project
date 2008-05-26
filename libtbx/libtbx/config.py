@@ -70,7 +70,7 @@ int main() {
     if sys.platform == 'linux2':
       # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
       gcc_version = get_gcc_version()
-      if gcc_version is None or gcc_version < 43000: return
+      if gcc_version is None or gcc_version < 40300: return
     self.is_working = True
 
 def get_gcc_version():
