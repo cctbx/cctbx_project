@@ -199,18 +199,11 @@ if (sys.platform == "win32"):
       opts = ["/Od"]
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('/DBOOST_DISABLE_THREADS')
-    if libtbx.env.build_options.enable_open_mp:
-      if env_base["MSVS_VERSION"] == '7.1':
-        raise RuntimeError("OpenMP is only supported by "
-                           "Visual Studio 2005 (Visual C++ 8) and up)")
-      opts.append('/openmp')
     if (libtbx.env.build_options.debug_symbols):
       raise RuntimeError("Debug build not supported.")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "/nologo /incremental:no /dll"
-    if libtbx.env.build_options.enable_open_mp:
-      env_etc.shlinkflags += " /openmp"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
   else:
@@ -290,8 +283,6 @@ else:
       opts.insert(0, "-g")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
-    if libtbx.env.build_options.enable_open_mp:
-      raise RuntimeError('OpenMP not supported on Tru64')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
@@ -339,8 +330,6 @@ else:
       opts.insert(0, "-g")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
-    if libtbx.env.build_options.enable_open_mp:
-      raise RuntimeError('OpenMP not supported on HP-UX')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
@@ -423,27 +412,12 @@ else:
       opts.insert(0, "-g")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
-    if libtbx.env.build_options.enable_open_mp:
-      operating_system = easy_run.fully_buffered(
-        command='/bin/uname -o').stdout_lines[0].strip()
-      kernel_release = easy_run.fully_buffered(
-        command='/bin/uname -r').stdout_lines[0].strip()
-      if (env_etc.gcc_version >= 42000
-          or (env_etc.gcc_version >= 41000
-              and operating_system == 'GNU/Linux'
-              and kernel_release.endswith('FC5'))):
-        opts.append('-fopenmp')
-      else:
-        raise RuntimeError('OpenMP is only supported by gcc 4.2 and up '
-                           'or by gcc 4.1 on fedora core 5')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-static"])
       static_exe = None
     env_etc.shlinkflags = "-shared"
-    if libtbx.env.build_options.enable_open_mp:
-      env_etc.shlinkflags += " -fopenmp"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_ecc"):
     env_etc.static_libraries = 0
@@ -470,8 +444,6 @@ else:
       opts.insert(0, "-g")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
-    if libtbx.env.build_options.enable_open_mp:
-      raise RuntimeError('OpenMP is not supported by ecc')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
@@ -501,9 +473,6 @@ else:
       opts.insert(0, "-g")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
-    if libtbx.env.build_options.enable_open_mp:
-      raise NotImplementedError('OpenMP support not implemented '
-                                'for Intel C++ compiler yet')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = "-shared"
@@ -537,8 +506,6 @@ else:
         % libtbx.env.dist_path("boost"))
     if not libtbx.env.build_options.enable_boost_threads:
       env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
-    if libtbx.env.build_options.enable_open_mp:
-      raise RuntimeError('OpenMP not supported on IRIX')
     env_etc.ccflags_base = []
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2", "-OPT:Olimit=0"]
@@ -604,10 +571,6 @@ else:
     env_etc.cxxflags_base.append("-ftemplate-depth-130")
     if not libtbx.env.build_options.enable_boost_threads:
       env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
-    if libtbx.env.build_options.enable_open_mp:
-      if env_etc.compiler != "darwin_gcc_4.2":
-        raise RuntimeError("OpenMP only supported by gcc 4.2 on MacOS X")
-      env_etc.cxxflags_base.append('-fopenmp')
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math", "-ftrapping-math"]
       if (cxx == "c++" and cxx_version == "4.0.0"):
@@ -627,9 +590,6 @@ else:
       "-w", # suppress "source/lib does not exist" warning
       "-bundle",
       "-undefined", "dynamic_lookup"]
-    if libtbx.env.build_options.enable_open_mp:
-      env_etc.shlinkflags.append('-fopenmp')
-      env_etc.shlinkflags_bpl.insert(0, '-fopenmp')
     if (static_exe):
       # no action required
       static_exe = None
@@ -651,5 +611,15 @@ env_etc.static_exe = libtbx.env.build_options.static_exe
 env_etc.libtbx_build = libtbx.env.build_path
 env_etc.libtbx_include = libtbx.env.under_build("include")
 env_etc.libtbx_lib = libtbx.env.lib_path
+
+if not libtbx.env.build_options.disable_openmp:
+  openmp_conf = libtbx.config.openmp_config(env_base, env_etc)
+  if openmp_conf.is_working:
+    for flags in (env_etc.cxxflags_base, env_etc.shlinkflags,
+                  env_etc.shlinkflags_bpl):
+      flags.append(openmp_conf.command_line_option)
+  else:
+    print "libtbx.scons: disabling OpenMP"
+    libtbx.env.build_options.disable_openmp = True
 
 Export("env_base", "env_etc")

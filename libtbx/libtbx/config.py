@@ -13,7 +13,61 @@ import sys, os
 
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_enable_boost_threads = False
-default_enable_open_mp = False
+default_disable_openmp = False
+
+
+class openmp_config(object):
+  test_code = r"""
+#include <iostream>
+#include <iomanip>
+int main() {
+  double e, pi;
+  const int N=100000;
+  #pragma omp parallel sections shared(e, pi)
+  {
+    #pragma omp section 
+    {
+      e = 1;
+      double a = 1;
+      for(int i=1; i<N; ++i) {
+        a /= i;
+        e += a;
+      }
+    }
+    #pragma omp section
+    {
+      pi = 0;
+      double a=1, b=3;
+      for(int i=1; i<2*N; ++i) {
+        pi += 1/a - 1/b;
+        a += 4;
+        b += 4;
+      }
+      pi *= 4;
+    }
+  }
+  std::cout << std::setprecision(6) << "e=" << e << ", pi=" << pi << "\n";
+}
+"""
+  def __init__(self, env_base, env_etc):
+    self.command_line_option = libtbx.select_matching(
+      key=env_etc.compiler,
+      choices=[
+        ('^win32_cl$' , '/openmp'),
+        ('^win32_icc$', '/Qopenmp'),
+        ('^unix_icc$' , '-openmp'),
+        ('gcc'        , '-fopenmp'),
+      ])
+    if self.command_line_option is None:
+      self.is_working = False
+      return
+    env = env_base.Copy(LIBPATH=[], LIBS=[], CPPDEFINES=[], CPPPATH=[],
+                        CXXFLAGS=self.command_line_option,
+                        LINKFLAGS=self.command_line_option)
+    conf = env.Configure()
+    flag, output = conf.TryRun(self.test_code, extension='.cpp')
+    self.is_working = flag and output.strip() == "e=2.71828, pi=3.14159"
+    conf.Finish()
 
 def get_hostname():
   try: import socket
@@ -531,7 +585,7 @@ class environment:
         boost_python_no_py_signatures\
           =command_line.options.boost_python_no_py_signatures,
         enable_boost_threads=command_line.options.enable_boost_threads,
-        enable_open_mp=command_line.options.enable_open_mp,
+        disable_openmp=command_line.options.disable_openmp,
       )
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
@@ -1377,7 +1431,7 @@ class build_options:
         build_boost_python_extensions=True,
         boost_python_no_py_signatures=False,
         enable_boost_threads=False,
-        enable_open_mp=False):
+        disable_openmp=False):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1402,7 +1456,7 @@ class build_options:
     print >> f, "Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
       self.boost_python_no_py_signatures
     print >> f, "Boost threads enabled:", self.enable_boost_threads
-    print >> f, "OpenMP enabled:", self.enable_open_mp
+    print >> f, "OpenMP enabled:", not self.disable_openmp
 
 class include_registry:
 
@@ -1534,7 +1588,7 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="enable threads in Boost")
-    parser.option(None, "--enable_open_mp",
+    parser.option(None, "--disable_openmp",
       action="store_true",
       default=False,
       help="enable OpenMP")
@@ -1621,8 +1675,8 @@ def unpickle():
   if not hasattr(env.build_options, "enable_boost_threads"):
     env.build_options.enable_boost_threads = default_enable_boost_threads
   # XXX backward compatibility 2008-05-25
-  if not hasattr(env.build_options, "enable_open_mp"):
-    env.build_options.enable_open_mp = default_enable_open_mp
+  if not hasattr(env.build_options, "disable_openmp"):
+    env.build_options.disable_openmp = default_disable_openmp
   return env
 
 def warm_start(args):
