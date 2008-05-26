@@ -50,6 +50,7 @@ int main() {
 }
 """
   def __init__(self, env_base, env_etc):
+    self.is_working = False
     self.command_line_option = libtbx.select_matching(
       key=env_etc.compiler,
       choices=[
@@ -58,16 +59,41 @@ int main() {
         ('^unix_icc$' , '-openmp'),
         ('gcc'        , '-fopenmp'),
       ])
-    if self.command_line_option is None:
-      self.is_working = False
-      return
+    if self.command_line_option is None: return
     env = env_base.Copy(LIBPATH=[], LIBS=[], CPPDEFINES=[], CPPPATH=[],
                         CXXFLAGS=self.command_line_option,
                         LINKFLAGS=self.command_line_option)
     conf = env.Configure()
     flag, output = conf.TryRun(self.test_code, extension='.cpp')
-    self.is_working = flag and output.strip() == "e=2.71828, pi=3.14159"
     conf.Finish()
+    if not(flag and output.strip() == "e=2.71828, pi=3.14159"): return
+    if sys.platform == 'linux2':
+      # on gcc 4.1, although the above simple test passes
+      # share libraries compiled with -fopenmp aren't functional:
+      # ImportError: __import__("boost_python_meta_ext"): libgomp.so.1: 
+      # shared object cannot be dlopen()ed
+      # so quick fix while investigating...
+      gcc_version = get_gcc_version()
+      if gcc_version is None or gcc_version < 42000: return
+    self.is_working = True
+
+def get_gcc_version():
+  gcc_version = easy_run.fully_buffered(command="gcc --version") \
+    .raise_if_errors() \
+    .stdout_lines[0].strip()
+  flds = gcc_version.split()
+  if (len(flds) < 3 or flds[0] != "gcc" or flds[1] != "(GCC)"):
+    return None
+  major_minor_patchlevel = flds[2].split(".")
+  if (len(major_minor_patchlevel) != 3):
+    return None
+  num = []
+  for fld in major_minor_patchlevel:
+    try: i = int(fld)
+    except ValueError:
+      return None
+    num.append(i)
+  return ((num[0]*100)+num[1])*100+num[2]
 
 def get_hostname():
   try: import socket
