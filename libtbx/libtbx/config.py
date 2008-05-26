@@ -68,13 +68,9 @@ int main() {
     conf.Finish()
     if not(flag and output.strip() == "e=2.71828, pi=3.14159"): return
     if sys.platform == 'linux2':
-      # on gcc 4.1, although the above simple test passes
-      # share libraries compiled with -fopenmp aren't functional:
-      # ImportError: __import__("boost_python_meta_ext"): libgomp.so.1: 
-      # shared object cannot be dlopen()ed
-      # so quick fix while investigating...
+      # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
       gcc_version = get_gcc_version()
-      if gcc_version is None or gcc_version < 42000: return
+      if gcc_version is None or gcc_version < 43000: return
     self.is_working = True
 
 def get_gcc_version():
