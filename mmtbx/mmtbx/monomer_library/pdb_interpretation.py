@@ -543,6 +543,7 @@ class monomer_mapping(object):
 
   def _get_mappings(self):
     self.monomer_atom_dict = atom_dict = self.monomer.atom_dict()
+    deuterium_aliases = None
     processed_atom_names = {}
     self.expected_atoms = {}
     self.unexpected_atoms = {}
@@ -584,12 +585,18 @@ class monomer_mapping(object):
           if (atom_dict.has_key(atom_name)): break
         else:
           auto_synomyms.insert(0, atom_name_given)
+          if (deuterium_aliases is None):
+            deuterium_aliases = self.monomer.hydrogen_deuterium_aliases()
           for atom_name in auto_synomyms:
-            atom_name = self.mon_lib_srv.comp_synonym_atom_list_dict.get(
-              self.monomer.chem_comp.id, {}).get(atom_name, None)
+            atom_name = deuterium_aliases.get(atom_name)
             if (atom_name is not None): break
           else:
-            atom_name = atom_name_given
+            for atom_name in auto_synomyms:
+              atom_name = self.mon_lib_srv.comp_synonym_atom_list_dict.get(
+                self.monomer.chem_comp.id, {}).get(atom_name, None)
+              if (atom_name is not None): break
+            else:
+              atom_name = atom_name_given
       prev_atom = processed_atom_names.get(atom_name)
       if (prev_atom is None):
         processed_atom_names[atom_name] = atom
