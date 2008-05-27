@@ -91,13 +91,13 @@ int main() {
         return "False"
       print prefix+"OpenMP working_in_main=%s, working_in_shared_lib=%s" % (
         fmt(self.is_working_in_main), fmt(self.is_working_in_shared_lib))
-      
+    return self
+
   def enable_if_possible(self, env):
     if (not self.is_disabled):
       env.Append(CXXFLAGS=[self.compiler_option])
       if self.linker_option is not None:
         env.Append(LINKFLAGS=[self.linker_option])
-
 
 def get_gcc_version():
   gcc_version = easy_run.fully_buffered(command="gcc --version") \
