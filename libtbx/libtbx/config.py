@@ -50,7 +50,7 @@ int main() {
   }
   std::cout << std::setprecision(6) << "e=" << e << ", pi=" << pi << "\n";
 }
-""" % ['', '#include <omp.h>'][sys.platform == 'win32']
+""" % ['', '#include <omp.h>'][int(sys.platform == 'win32')]
 
   def __init__(self, is_disabled, env_base, env_etc):
     self.is_disabled = is_disabled
