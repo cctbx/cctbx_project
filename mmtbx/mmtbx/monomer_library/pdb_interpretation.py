@@ -18,7 +18,7 @@ from libtbx.utils import format_exception
 from libtbx import group_args
 from cStringIO import StringIO
 import string
-import sys
+import sys, os
 
 # see iotbx/pdb/common_residue_names.h
 ad_hoc_single_atom_residue_element_types = """\
@@ -2975,7 +2975,24 @@ def run(
   if (log is None): log = sys.stdout
   mon_lib_srv = server.server()
   ener_lib = server.ener_lib()
-  for file_name in args:
+  pdb_file_names = []
+  cif_file_names = []
+  for arg in args:
+    if (not os.path.isfile(arg)):
+      raise Sorry("No such file: %s" % show_string(arg))
+    if (iotbx.pdb.is_pdb_file(file_name=arg)):
+      pdb_file_names.append(arg)
+    else:
+      try:
+        cif_object = server.read_cif(file_name=arg)
+      except KeyboardInterrupt: raise
+      except:
+        raise Sorry("Unknown file format: %s" % show_string(arg))
+      else:
+        print >> log, "Processing CIF file: %s" % show_string(arg)
+        for srv in [mon_lib_srv, ener_lib]:
+          srv.process_cif_object(cif_object=cif_object, file_name=arg)
+  for file_name in pdb_file_names:
     processed_pdb_file = process(
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
