@@ -1,7 +1,7 @@
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from libtbx.utils import search_for
+from libtbx.utils import search_for, format_cpu_times
 from libtbx.test_utils import block_show_diff
 import libtbx.load_env
 from cStringIO import StringIO
@@ -323,13 +323,38 @@ def exercise_rna_3p_2p(mon_lib_srv, ener_lib):
     expected_block_last_startswith=False,
     expected_modifications_used={'rnaEsd': 2, 'rnaC3': 2})
 
+def exercise_hydrogen_deuterium_aliases():
+  file_paths = []
+  for file_name in ["NAD_594_HD.pdb", "NAD_594_HD.cif"]:
+    file_path = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/pdb/"+file_name,
+      test=os.path.isfile)
+    if (file_path is None):
+      print "Skipping exercise_hydrogen_deuterium_aliases():", \
+        " input file not available:", file_name
+      return
+    file_paths.append(file_path)
+  log = StringIO()
+  monomer_library.pdb_interpretation.run(args=file_paths, log=log)
+  assert not block_show_diff(
+    log.getvalue(), """\
+  Histogram of bond lengths:
+        0.94 -     1.13: 56
+        1.13 -     1.32: 4
+        1.32 -     1.51: 56
+        1.51 -     1.69: 18
+        1.69 -     1.88: 1
+  Bond restraints sorted by residual:
+""")
+
 def exercise():
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
   exercise_pdb_string(mon_lib_srv, ener_lib)
   exercise_cns_rna(mon_lib_srv, ener_lib)
   exercise_rna_3p_2p(mon_lib_srv, ener_lib)
-  print "OK"
+  exercise_hydrogen_deuterium_aliases()
+  print format_cpu_times()
 
 if (__name__ == "__main__"):
   exercise()
