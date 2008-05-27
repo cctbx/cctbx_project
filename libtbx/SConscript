@@ -597,7 +597,6 @@ env_etc.libtbx_lib = libtbx.env.lib_path
 env_etc.openmp_conf = libtbx.config.openmp_config(
   is_disabled=libtbx.env.build_options.disable_openmp,
   env_base=env_base,
-  env_etc=env_etc)
-env_etc.openmp_conf.report(prefix="libtbx.scons: ")
+  env_etc=env_etc).report(prefix="libtbx.scons: ")
 
 Export("env_base", "env_etc")
