@@ -15,6 +15,7 @@ import time
 import atexit
 import traceback
 import sys, os
+import re
 
 windows_device_names = """\
 CON PRN AUX NUL COM1 COM2 COM3 COM4 COM5 COM6 COM7 COM8 COM9
@@ -138,6 +139,13 @@ def flat_list(nested_list):
   else:
     result.append(nested_list)
   return result
+
+def select_matching(key, choices, default=None):
+  for key_pattern, value in choices:
+    m = re.search(key_pattern, key)
+    if m is not None: return value
+  return default
+
 
 class Keep: pass
 

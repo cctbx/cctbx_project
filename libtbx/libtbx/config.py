@@ -3,6 +3,7 @@ import libtbx.path
 from libtbx.option_parser import option_parser
 from libtbx.str_utils import show_string
 from libtbx.utils import escape_sh_double_quoted, Sorry, detect_binary_file
+from libtbx.utils import select_matching
 from libtbx import adopt_init_args
 from libtbx import easy_run
 import shutil
@@ -18,6 +19,7 @@ default_disable_openmp = False
 class openmp_config(object):
 
   test_code = r"""
+%s
 #include <iostream>
 #include <iomanip>
 int main() {
@@ -48,30 +50,27 @@ int main() {
   }
   std::cout << std::setprecision(6) << "e=" << e << ", pi=" << pi << "\n";
 }
-"""
+""" % ['', '#include <omp.h>'][sys.platform == 'win32']
 
   def __init__(self, is_disabled, env_base, env_etc):
     self.is_disabled = is_disabled
     self.is_working_in_main = False
     self.is_working_in_shared_lib = False
-    def select_matching(key, choices):
-      for key_pattern, value in choices:
-        m = re.search(key_pattern, key)
-        if m is not None: return value
-      return None
-    self.command_line_option = select_matching(
+    self.compiler_option, self.linker_option = select_matching(
       key=env_etc.compiler,
       choices=[
-        ('^win32_cl$' , '/openmp'),
-        ('^win32_icc$', '/Qopenmp'),
-        ('^unix_icc$' , '-openmp'),
-        ('gcc'        , '-fopenmp'),
-      ])
-    if self.command_line_option is None: return
+        ('^win32_cl$' , ('/openmp', None)),
+        ('^win32_icc$', ('/Qopenmp',)*2),
+        ('^unix_icc$' , ('-openmp',)*2),
+        ('gcc'        , ('-fopenmp',)*2),
+      ],
+      default=(None,None)
+    )
+    if self.compiler_option is None: return
     if (self.is_disabled): return
     env = env_base.Copy(LIBPATH=[], LIBS=[], CPPDEFINES=[], CPPPATH=[],
-                        CXXFLAGS=self.command_line_option,
-                        LINKFLAGS=self.command_line_option)
+                        CXXFLAGS=self.compiler_option,
+                        LINKFLAGS=self.linker_option)
     conf = env.Configure()
     flag, output = conf.TryRun(self.test_code, extension='.cpp')
     conf.Finish()
@@ -92,6 +91,13 @@ int main() {
         return "False"
       print prefix+"OpenMP working_in_main=%s, working_in_shared_lib=%s" % (
         fmt(self.is_working_in_main), fmt(self.is_working_in_shared_lib))
+      
+  def enable_if_possible(self, env):
+    if (not self.is_disabled):
+      env.Append(CXXFLAGS=[self.compiler_option])
+      if self.linker_option is not None:
+        env.Append(LINKFLAGS=[self.linker_option])
+
 
 def get_gcc_version():
   gcc_version = easy_run.fully_buffered(command="gcc --version") \
