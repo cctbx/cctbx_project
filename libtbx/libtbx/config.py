@@ -15,8 +15,8 @@ default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_enable_boost_threads = False
 default_disable_openmp = False
 
-
 class openmp_config(object):
+
   test_code = r"""
 #include <iostream>
 #include <iomanip>
@@ -25,7 +25,7 @@ int main() {
   const int N=100000;
   #pragma omp parallel sections shared(e, pi)
   {
-    #pragma omp section 
+    #pragma omp section
     {
       e = 1;
       double a = 1;
@@ -49,9 +49,17 @@ int main() {
   std::cout << std::setprecision(6) << "e=" << e << ", pi=" << pi << "\n";
 }
 """
-  def __init__(self, env_base, env_etc):
-    self.is_working = False
-    self.command_line_option = libtbx.select_matching(
+
+  def __init__(self, is_disabled, env_base, env_etc):
+    self.is_disabled = is_disabled
+    self.is_working_in_main = False
+    self.is_working_in_shared_lib = False
+    def select_matching(key, choices):
+      for key_pattern, value in choices:
+        m = re.search(key_pattern, key)
+        if m is not None: return value
+      return None
+    self.command_line_option = select_matching(
       key=env_etc.compiler,
       choices=[
         ('^win32_cl$' , '/openmp'),
@@ -60,6 +68,7 @@ int main() {
         ('gcc'        , '-fopenmp'),
       ])
     if self.command_line_option is None: return
+    if (self.is_disabled): return
     env = env_base.Copy(LIBPATH=[], LIBS=[], CPPDEFINES=[], CPPPATH=[],
                         CXXFLAGS=self.command_line_option,
                         LINKFLAGS=self.command_line_option)
@@ -67,11 +76,22 @@ int main() {
     flag, output = conf.TryRun(self.test_code, extension='.cpp')
     conf.Finish()
     if not(flag and output.strip() == "e=2.71828, pi=3.14159"): return
+    self.is_working_in_main = True
     if sys.platform == 'linux2':
       # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
       gcc_version = get_gcc_version()
       if gcc_version is None or gcc_version < 40300: return
-    self.is_working = True
+    self.is_working_in_shared_lib = True
+
+  def report(self, prefix):
+    if (self.is_disabled):
+      print prefix+"OpenMP is_disabled=True"
+    else:
+      def fmt(flag):
+        if (flag): return "True"
+        return "False"
+      print prefix+"OpenMP working_in_main=%s, working_in_shared_lib=%s" % (
+        fmt(self.is_working_in_main), fmt(self.is_working_in_shared_lib))
 
 def get_gcc_version():
   gcc_version = easy_run.fully_buffered(command="gcc --version") \

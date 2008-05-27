@@ -1,5 +1,5 @@
 import libtbx.forward_compatibility
-import sys, os, re
+import sys, os
 
 class AutoType(object):
 
@@ -92,10 +92,3 @@ if (sys.platform == "cygwin"):
     return builtin_open(name, mode, buffering)
   __builtins__["open"] = open_realpath
   __builtins__["file"] = open_realpath
-  
-
-def select_matching(key, choices):
-  for key_pattern, value in choices:
-    m = re.search(key_pattern, key)
-    if m is not None: return value
-  return None
