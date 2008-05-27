@@ -186,6 +186,15 @@ class comp_comp_id(object):
       result[atom.atom_id] = atom
     return result
 
+  def hydrogen_deuterium_aliases(self):
+    result = {}
+    for atom in self.atom_list:
+      if (atom.type_symbol != "H"): continue
+      atom_id = atom.atom_id
+      if (atom_id[:1] != "H"): continue
+      result["D"+atom_id[1:]] = atom_id
+    return result
+
   def atom_by_id(self, atom_id):
     for atom in self.atom_list:
       if (atom.atom_id == atom_id):
