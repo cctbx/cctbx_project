@@ -37,5 +37,6 @@ if (not env_etc.no_boost_python):
   SConscript("lbfgsb/boost_python/SConscript")
   SConscript("scitbx/sparse/boost_python/SConscript")
   SConscript("scitbx/iso_surface/SConscript")
+  SConscript("scitbx/openmp/SConscript")
 
 SConscript("include/scitbx/minpack/SConscript")
