@@ -151,6 +151,8 @@ if (sys.platform == "win32"):
       stdout_splitlines=False).stdout_buffer
     if (cl_info.find("Version 13.10") >= 0):
       env_base = Environment(ENV=os.environ, MSVS_VERSION="7.1")
+      # workaround (root cause of failure unknown)
+      libtbx.env.build_options.disable_openmp = True
     elif (cl_info.find("Version 14.00") >= 0):
       env_base = Environment(ENV=os.environ, MSVS_VERSION="8.0")
     else:
