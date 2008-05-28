@@ -1,6 +1,6 @@
 import libtbx.load_env
 from scitbx import openmp
-import scitbx_openmp_tests_ext
+if openmp.available: import scitbx_openmp_tests_ext
 import os
 
 def exercise_environment():
@@ -23,6 +23,7 @@ def exercise_environment():
 def run():
   if not openmp.available:
     print "Skip OpenMP test"
+    return
   exercise_environment()
   print 'OK'
 
