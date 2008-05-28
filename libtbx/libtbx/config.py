@@ -94,7 +94,7 @@ int main() {
 
   def enable_if_possible(self, env):
     if (not self.is_disabled):
-      for flags in ['CFLAGS', 'SHCFLAGS', 'CXXFLAGS', 'SHCXXFLAGS']:
+      for flags in ['CCFLAGS', 'SHCCFLAGS', 'CXXFLAGS', 'SHCXXFLAGS']:
         env.Append(**{flags: [self.compiler_option]})
       if self.linker_option is not None:
         env.Append(LINKFLAGS=[self.linker_option])
