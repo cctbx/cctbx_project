@@ -1263,6 +1263,7 @@ class module:
     self.required_for_build = []
     self.required_for_use = []
     self.optional = []
+    self.exclude_from_binary_bundle = []
     dist_paths = []
     for dist_path in self.dist_paths:
       if (dist_path is not None):
@@ -1304,8 +1305,14 @@ class module:
             "modules_required_for_use", []))
           self.optional.extend(config.get(
             "optional_modules", []))
+          ops = os.path.sep
+          for re_pattern in config.get("exclude_from_binary_bundle", []):
+            if (ops != "/"):
+              re_pattern = re_pattern.replace("/", "\\"+ops)
+            self.exclude_from_binary_bundle.append(re_pattern)
       dist_paths.append(dist_path)
     self.dist_paths = dist_paths
+    print self.exclude_from_binary_bundle
 
   def process_dependencies(self):
     for module_name in self.required_for_build:
