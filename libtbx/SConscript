@@ -121,7 +121,7 @@ static_exe = libtbx.env.build_options.static_exe
 
 def enable_more_warnings(env):
   if (env_etc._enable_more_warnings == "gcc"):
-    for flags in ["CCFLAGS", "SHCCFLAGS", "CXXFLAGS", "SHCXXFLAGS"]:
+    for flags in ["CFLAGS", "SHCFLAGS", "CXXFLAGS", "SHCXXFLAGS"]:
       have_change = False
       patched_flags = []
       for item in env[flags]:

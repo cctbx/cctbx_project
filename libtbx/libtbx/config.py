@@ -68,8 +68,7 @@ int main() {
     )
     if self.compiler_option is None: return
     if (self.is_disabled): return
-    env = env_base.Copy(LIBPATH=[], LIBS=[], CPPDEFINES=[], CPPPATH=[],
-                        CXXFLAGS=self.compiler_option,
+    env = env_base.Copy(CXXFLAGS=self.compiler_option,
                         LINKFLAGS=self.linker_option)
     conf = env.Configure()
     flag, output = conf.TryRun(self.test_code, extension='.cpp')
@@ -95,9 +94,11 @@ int main() {
 
   def enable_if_possible(self, env):
     if (not self.is_disabled):
-      env.Append(CXXFLAGS=[self.compiler_option])
+      for flags in ['CFLAGS', 'SHCFLAGS', 'CXXFLAGS', 'SHCXXFLAGS']:
+        env.Append(**{flags: self.compiler_option})
       if self.linker_option is not None:
-        env.Append(LINKFLAGS=[self.linker_option])
+        env.Append(LINKFLAGS=self.linker_option)
+        env.Append(SHLINKFLAGS=self.linker_option)
 
 def get_gcc_version():
   gcc_version = easy_run.fully_buffered(command="gcc --version") \
