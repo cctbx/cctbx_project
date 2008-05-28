@@ -1,10 +1,11 @@
 import libtbx.bundle.utils
 import libtbx.load_env
 import libtbx.path
+import re
 import shutil
 import sys, os
 
-def copy_dist_files(dist_copy, dirname, names):
+def copy_dist_files((exclude_from_binary_bundle, dist_copy), dirname, names):
   create_target_dir = True
   names_keep = []
   for file_name in names:
@@ -20,28 +21,20 @@ def copy_dist_files(dist_copy, dirname, names):
         or name_is_sub_dir_with_file(".svn", "entries")):
       continue
     names_keep.append(file_name)
-    if (   name == "libtbx_config"
-        or (name == "windows_dispatcher.exe" and os.name == "nt")
-        or name.startswith("authors")
-        or name.startswith("copying")
-        or name.startswith("copyright")
-        or name.startswith("license")
-        or name == "cci_diffs"
-        or name == "academic_software_licence.pdf"
-        or name == "symop.lib"
-        or name == "case_library"
-        or name.endswith(".py")
-        or name.endswith(".params")
-        or name.endswith(".pdb")
-        or name.endswith(".pl")
-        or name.endswith(".pm")
-        or name.endswith(".scm")
-        or name.endswith(".html")
-        or name.endswith(".txt")
-        or name.endswith(".csh")
-        or name.endswith(".sh")):
+    if (name.startswith(".")): continue
+    if (name == "sconscript"): continue
+    if (name.startswith("makefile")): continue
+    if (name.endswith(".exe") and os.name != "nt"): continue
+    for ext in [".pyc", ".pyo", ".h", ".c", ".hpp", ".cpp", ".cc", ".f"]:
+      if (name.endswith(ext)):
+        break
+    else:
       src = libtbx.path.norm_join(dirname, file_name)
-      if (not os.path.isdir(src)):
+      if (os.path.isdir(src)): continue
+      for pattern in exclude_from_binary_bundle:
+        if (re.search(pattern, src) is not None):
+          break
+      else:
         dest = libtbx.path.norm_join(dist_copy, src)
         if (create_target_dir):
           libtbx.path.create_target_dir(dest)
@@ -60,7 +53,8 @@ def run(target_root):
       dist_copy = libtbx.path.norm_join(
         abs_target_root, os.path.basename(dist_path))
       os.chdir(dist_path)
-      os.path.walk(".", copy_dist_files, dist_copy)
+      os.path.walk(
+        ".", copy_dist_files, (module.exclude_from_binary_bundle, dist_copy))
   libtbx.bundle.utils.write_bundle_info(abs_target_root)
   os.chdir(cwd)
 
