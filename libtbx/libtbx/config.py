@@ -1312,7 +1312,6 @@ class module:
             self.exclude_from_binary_bundle.append(re_pattern)
       dist_paths.append(dist_path)
     self.dist_paths = dist_paths
-    print self.exclude_from_binary_bundle
 
   def process_dependencies(self):
     for module_name in self.required_for_build:
