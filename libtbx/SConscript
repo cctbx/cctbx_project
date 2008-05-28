@@ -165,18 +165,16 @@ if (sys.platform == "win32"):
       SHCXX="cl",
       SHLINK="link",
     )
-    env_etc.ccflags_base = """
-      /nologo
-      /D_SECURE_SCL=0
-      /D_CRT_SECURE_NO_DEPRECATE
-      /wd4996
-      /Zm800
-      /MD
-    """.split()
-    env_etc.cxxflags_base = env_etc.ccflags_base + """
-      /GR
-      /EHsc
-    """.split()
+    env_etc.ccflags_base = [
+      "/nologo",
+      "/D_SECURE_SCL=0",
+      "/D_CRT_SECURE_NO_DEPRECATE",
+      "/wd4996",
+      "/Zm800",
+      "/MD"]
+    env_etc.cxxflags_base = env_etc.ccflags_base + [
+      "/GR",
+      "/EHsc"]
     if (libtbx.env.build_options.optimization):
       opts = ["/DNDEBUG", "/Ox"]
     else:
@@ -187,7 +185,7 @@ if (sys.platform == "win32"):
       raise RuntimeError("Debug build not supported.")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
-    env_etc.shlinkflags = "/nologo /incremental:no /dll"
+    env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
   else:
@@ -251,14 +249,12 @@ else:
       SHCXX=cxx,
       SHLINK=cxx,
     )
-    env_etc.cxxflags_base = Split("""
-        -std strict_ansi
-        -msg_display_number -msg_disable 186,450,768,1115,1133,1168,1169
-        -tlocal
-    """)
-    env_etc.ccflags_base = Split("""
-        -std1
-    """)
+    env_etc.cxxflags_base = [
+      "-std", "strict_ansi",
+      "-msg_display_number", "-msg_disable 186,450,768,1115,1133,1168,1169",
+      "-tlocal"]
+    env_etc.ccflags_base = [
+      "-std1"]
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2", "-fast"]
     else:
@@ -272,13 +268,15 @@ else:
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-non_shared"])
       static_exe = None
-    env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
-                        + " -expect_unresolved '_Py*'"
+    env_etc.shlinkflags = [
+      "-shared",
+      "-expect_unresolved", "'Py*'",
+      "-expect_unresolved", "'_Py*'"]
     for line in easy_run.fully_buffered(command="strings /usr/bin/ld") \
                   .raise_if_errors() \
                   .stdout_lines:
       if (line == "lock_registry"):
-        env_etc.shlinkflags += " -Wl,-lock_registry"
+        env_etc.shlinkflags.append("-Wl,-lock_registry")
         break
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "hp_ux11_aCC"):
@@ -297,15 +295,15 @@ else:
       SHCXX="aCC"+abi,
       SHLINK="aCC"+abi,
     )
-    env_etc.cxxflags_base = Split("""
-      -AA
-      -mt
-      +W2001,2021,2047,2061,2063,2068,2111,2161,2167,2177,2185,2186,2191,2236,2334,2340,2414,2461,2549,2550,2761,2811,2837,2940,2997,4067,4189,4257
-    """)
-    env_etc.ccflags_base = Split("""
-      -Ae
-      -mt
-    """)
+    env_etc.cxxflags_base = [
+      "-AA",
+      "-mt",
+      "+W2001,2021,2047,2061,2063,2068,2111,2161,2167,2177,2185,2186,2191,"
+      "2236,2334,2340,2414,2461,2549,2550,2761,2811,2837,2940,2997,4067,"
+      "4189,4257"]
+    env_etc.ccflags_base = [
+      "-Ae",
+      "-mt"]
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O"]
     else:
@@ -320,7 +318,7 @@ else:
       raise RuntimeError("Please customize...")
       env_base.Prepend(LINKFLAGS=[])
       static_exe = None
-    env_etc.shlinkflags = "-b -Wl,-E"
+    env_etc.shlinkflags = ["-b", "-Wl,-E"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "sunos_CC"):
     env_etc.static_libraries = 0
@@ -336,10 +334,8 @@ else:
       SHCXX=cxx,
       SHLINK=cxx,
     )
-    env_etc.cxxflags_base = Split("""
-    """)
-    env_etc.ccflags_base = Split("""
-    """)
+    env_etc.cxxflags_base = []
+    env_etc.ccflags_base = []
     if (libtbx.env.build_options.optimization):
       opts = ["-O"]
     else:
@@ -351,8 +347,10 @@ else:
     if (static_exe):
       env_base.Prepend(LINKFLAGS=[""])
       static_exe = None
-    env_etc.shlinkflags = "-shared -expect_unresolved 'Py*'" \
-                        + " -expect_unresolved '_Py*'"
+    env_etc.shlinkflags = [
+      "-shared",
+      "-expect_unresolved", "'Py*'",
+      "-expect_unresolved", "'_Py*'"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_gcc"):
     env_etc.gcc_version = libtbx.config.get_gcc_version()
@@ -367,24 +365,20 @@ else:
       SHLINK="g++",
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
+    env_etc.ccflags_base = [
+      "-fno-strict-aliasing",
+      "-fPIC"]
+    env_etc.cxxflags_base = env_etc.ccflags_base + [
+      "-ftemplate-depth-120"]
     if (libtbx.env.build_options.warning_level == 0):
-      warn_options = "-w"
+      warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
     elif (libtbx.env.build_options.warning_level == 1):
-      warn_options = "-Wall -Wno-sign-compare"
+      warn_options = ["-Wall", "-Wno-sign-compare"]
     else:
-      warn_options = "-Wall -Wno-sign-compare -Werror"
-    env_etc.cxxflags_base = Split("""
-      -fno-strict-aliasing
-      -fPIC
-      -ftemplate-depth-120
-      %s
-    """ % warn_options)
-    env_etc.ccflags_base = Split("""
-      -fno-strict-aliasing
-      -fPIC
-      %s
-    """ % warn_options)
+      warn_options = ["-Wall", "-Wno-sign-compare", "-Werror"]
+    env_etc.ccflags_base.extend(warn_options)
+    env_etc.cxxflags_base.extend(warn_options)
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O3", "-ffast-math"]
       if (env_etc.gcc_version >= 40300):
@@ -401,36 +395,7 @@ else:
     if (static_exe):
       env_base.Prepend(LINKFLAGS=["-static"])
       static_exe = None
-    env_etc.shlinkflags = "-shared"
-    env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "unix_ecc"):
-    env_etc.static_libraries = 0
-    env_etc.static_bpl = 0
-    env_base.Replace(
-      CC="ecc",
-      SHCC="ecc",
-      CXX="ecc",
-      LINK="ecc",
-      SHCXX="ecc",
-      SHLINK="ecc",
-    )
-    env_etc.cxxflags_base = Split("""
-      -fPIC
-    """)
-    env_etc.ccflags_base = Split("""
-      -fPIC
-    """)
-    if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O", "-tpp2", "-ip", "-ftz"]
-    else:
-      opts = ["-O0"]
-    if (libtbx.env.build_options.debug_symbols):
-      opts.insert(0, "-g")
-    if not libtbx.env.build_options.enable_boost_threads:
-      opts.append('-DBOOST_DISABLE_THREADS')
-    env_etc.cxxflags_base.extend(opts)
-    env_etc.ccflags_base.extend(opts)
-    env_etc.shlinkflags = "-shared"
+    env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_icc"):
     env_etc.static_libraries = 0
@@ -443,12 +408,8 @@ else:
       SHCXX="icpc",
       SHLINK="icpc",
     )
-    env_etc.cxxflags_base = Split("""
-      -fPIC
-    """)
-    env_etc.ccflags_base = Split("""
-      -fPIC
-    """)
+    env_etc.cxxflags_base = ["-fPIC"]
+    env_etc.ccflags_base = ["-fPIC"]
     if (libtbx.env.build_options.optimization):
       opts = ["-DNDEBUG", "-O2"]
     else:
@@ -459,7 +420,7 @@ else:
       opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
-    env_etc.shlinkflags = "-shared"
+    env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "irix_CC"):
     env_etc.mipspro_version = libtbx.config.get_mipspro_version()
@@ -538,15 +499,15 @@ else:
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
     if (libtbx.env.build_options.warning_level == 0):
-      warn_options = "-w"
+      warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
     elif (libtbx.env.build_options.warning_level == 1):
-      warn_options = "-Wall -Wno-sign-compare"
+      warn_options = ["-Wall", "-Wno-sign-compare"]
     else:
-      warn_options = "-Wall -Wno-sign-compare -Werror"
+      warn_options = ["-Wall", "-Wno-sign-compare", "-Werror"]
     env_etc.ccflags_base = [
       "-fno-strict-aliasing",
-      "-fPIC"] + warn_options.split()
+      "-fPIC"] + warn_options
     if (cxx == "c++"):
       env_etc.ccflags_base.extend(["-no-cpp-precomp", "-Wno-long-double"])
     env_etc.cxxflags_base = list(env_etc.ccflags_base)
