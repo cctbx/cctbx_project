@@ -92,13 +92,19 @@ int main() {
         fmt(self.is_working_in_main), fmt(self.is_working_in_shared_lib))
     return self
 
-  def enable_if_possible(self, env):
-    if (not self.is_disabled):
-      for flags in ['CCFLAGS', 'SHCCFLAGS', 'CXXFLAGS', 'SHCXXFLAGS']:
-        env.Append(**{flags: [self.compiler_option]})
-      if self.linker_option is not None:
-        env.Append(LINKFLAGS=[self.linker_option])
-        env.Append(SHLINKFLAGS=[self.linker_option])
+  def enable_if_possible(self, env, target_type):
+    assert target_type in ["main", "shared_lib"]
+    if (self.is_disabled): return False
+    if (target_type == "main"):
+      if (not self.is_working_in_main): return False
+    else:
+      if (not self.is_working_in_shared_lib): return False
+    for flags in ['CCFLAGS', 'SHCCFLAGS', 'CXXFLAGS', 'SHCXXFLAGS']:
+      env.Append(**{flags: [self.compiler_option]})
+    if self.linker_option is not None:
+      env.Append(LINKFLAGS=[self.linker_option])
+      env.Append(SHLINKFLAGS=[self.linker_option])
+    return True
 
 def get_gcc_version():
   gcc_version = easy_run.fully_buffered(command="gcc --version") \

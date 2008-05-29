@@ -1,7 +1,7 @@
 import libtbx.load_env
 Import('env_etc', "env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
-env_etc.openmp_conf.enable_if_possible(env)
+env_etc.openmp_conf.enable_if_possible(env, target_type="shared_lib")
 
 libs = ["cctbx"]
 sources = [
