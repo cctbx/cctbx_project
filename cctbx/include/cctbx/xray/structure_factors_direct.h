@@ -129,9 +129,12 @@ namespace cctbx { namespace xray { namespace structure_factors {
       {
         typedef float_type f_t;
         typedef std::complex<float_type> c_t;
-        f_calc_.reserve(miller_indices.size());
+        f_calc_ = af::shared<std::complex<float_type> >(
+          miller_indices.size(),
+          af::init_functor_null<std::complex<float_type> >());
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
+        #pragma omp parallel for ordered schedule(static)
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller::index<> h = miller_indices[i];
           f_t d_star_sq = unit_cell.d_star_sq(h);
@@ -144,7 +147,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             sum.add_contribution_of(scatterers[j],
                                     form_factors[scattering_type_indices[j]]);
           }
-          f_calc_.push_back(sum.f_calc());
+          f_calc_[i] = sum.f_calc();
         }
       }
   };
