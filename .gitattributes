@@ -41,11 +41,11 @@ cctbx/global/error.cpp -text
 cctbx/include/cctbx/crystal_orientation.h -text
 cctbx/include/cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/include/cctbx/maptbx/fft.h -text
-cctbx/include/cctbx/xray/structure_factors_direct_multithread.h -text
+cctbx/include/cctbx/xray/raw_multithreading/structure_factors_direct.h -text
 cctbx/sgtbx/boost_python/select_generators.cpp -text
 cctbx/uctbx/boost_python/tst_crystal_orientation.py -text
 cctbx/uctbx/crystal_orientation.cpp -text
-cctbx/xray/boost_python/structure_factors_direct_multithread.cpp -text
+cctbx/xray/boost_python/raw_multithreading/structure_factors_direct.cpp -text
 compcomm/newsletter08/default.css -text
 compcomm/newsletter08/f_square_refinement.py -text
 compcomm/newsletter08/news.txt -text

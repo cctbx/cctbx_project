@@ -1,20 +1,23 @@
 from cctbx import sgtbx
 from cctbx.development import random_structure
 try:
-  from cctbx.xray.ext import structure_factors_multithreaded_direct
+  from cctbx.xray.ext import structure_factors_raw_multithreaded_direct
 except ImportError:
-  structure_factors_multithreaded_direct = None
+  structure_factors_raw_multithreaded_direct = None
 from cctbx import math_module
 from libtbx.test_utils import approx_equal
 from libtbx.utils import wall_clock_time, show_times_at_exit
 from libtbx.introspection import number_of_processors
 from libtbx import group_args
 
-def exercise_structure_factors(space_group_info,
-                               elements,
-                               d_min=0.5,
-                               anomalous_flag=False,
-                               verbose=0):
+def exercise_raw(space_group_info,
+                 elements,
+                 d_min=0.5,
+                 anomalous_flag=False,
+                 verbose=0):
+  if structure_factors_raw_multithreaded_direct is None:
+    print "Skipping raw multithreaded structure factor computation tests"
+    return
   xs = random_structure.xray_structure(
     space_group_info=space_group_info,
     elements=elements,
@@ -41,7 +44,7 @@ def exercise_structure_factors(space_group_info,
     if cos_sin_table:
       arg1s = group_args(cos_sin_table=cos_sin_table, **args.__dict__)
     timer = wall_clock_time()
-    multithreaded_calc = structure_factors_multithreaded_direct(
+    multithreaded_calc = structure_factors_raw_multithreaded_direct(
       **arg1s.__dict__)
     times.append(timer.elapsed())
     multithreaded_f = multithreaded_calc.f_calc()
@@ -58,14 +61,11 @@ def exercise_structure_factors(space_group_info,
       print fmt % (i, times[i], times[0]/times[i])
 
 def run(args):
-  if structure_factors_multithreaded_direct is None:
-    print "Skipping multithreaded structure factor computation tests"
-    return
   verbose = '--verbose' in args
   show_times_at_exit()
   sgi = sgtbx.space_group_info("P21/n")
   elements = ['O']*15 + ['N']*9 + ['C']*100
-  exercise_structure_factors(sgi, elements, verbose=verbose)
+  exercise_raw(sgi, elements, verbose=verbose)
 
 if __name__ == '__main__':
   import sys

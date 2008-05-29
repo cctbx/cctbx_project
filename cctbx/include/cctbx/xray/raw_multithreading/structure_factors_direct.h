@@ -54,7 +54,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
 
   template <class ScattererType=scatterer<>,
             class FormFactorType=eltbx::xray_scattering::gaussian>
-  class multithreaded_direct
+  class raw_multithreaded_direct
   {
     public:
       typedef ScattererType scatterer_type;
@@ -66,9 +66,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
         return f_calc_;
       }
 
-      multithreaded_direct() {}
+      raw_multithreaded_direct() {}
 
-      multithreaded_direct(
+      raw_multithreaded_direct(
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
@@ -82,7 +82,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       }
 
       template<class CosSinType>
-      multithreaded_direct(
+      raw_multithreaded_direct(
         CosSinType const& cos_sin,
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,

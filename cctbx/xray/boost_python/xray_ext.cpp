@@ -13,7 +13,7 @@ namespace cctbx { namespace xray { namespace boost_python {
   void wrap_scatterer();
   void wrap_scattering_type_registry();
   void wrap_structure_factors_direct();
-  void wrap_structure_factors_multithreaded_direct();
+  void wrap_structure_factors_raw_multithreaded_direct();
   void wrap_structure_factors_simple();
   void wrap_targets();
   void wrap_f_model_core_data();
@@ -35,7 +35,7 @@ namespace {
     wrap_scattering_type_registry();
     wrap_structure_factors_direct();
     #ifndef BOOST_DISABLE_THREADS
-    wrap_structure_factors_multithreaded_direct();
+    wrap_structure_factors_raw_multithreaded_direct();
     #endif
     wrap_structure_factors_simple();
     wrap_targets();
