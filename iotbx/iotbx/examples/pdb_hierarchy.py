@@ -10,8 +10,9 @@ def run(args):
     #
     hierarchy.overall_counts().show()
     #
+    print """
     # Primary "view" of hierarchy:
-    #   model, chain, residue_group, atom_group, atom
+    #   model, chain, residue_group, atom_group, atom"""
     for model in hierarchy.models():
       print 'model: "%s"' % model.id
       for chain in model.chains():
@@ -29,8 +30,9 @@ def run(args):
               print "        atom.b:    ", atom.b
               print '        atom.segid: "%s"' % atom.segid
     #
-    # Secondary (read-only) "view" of hierarchy:
-    #   model, chain, conformer, residue, atom
+    print """
+    # Secondary (read-only) "view" of the hierarchy:
+    #   model, chain, conformer, residue, atom"""
     for model in hierarchy.models():
       print 'model: "%s"' % model.id
       for chain in model.chains():
@@ -43,18 +45,40 @@ def run(args):
             for atom in residue.atoms():
               print '     ', atom.format_atom_record()
     #
-    # Special case: if there are not alt. conf. you can eliminate one
-    # level of the hierarchy (which may be more intuitive at first).
+    print """
+    # Special case: if there are no alt. conf. you can eliminate one
+    # level of the hierarchy (which may be more intuitive at first)."""
     for model in hierarchy.models():
       print 'model: "%s"' % model.id
       for chain in model.chains():
         print 'chain: "%s"' % chain.id
         # The next line will fail (AssertionError) if there are alt. conf.
-        for residue in chain.only_conformer().residues():
+        for residue in chain.residues():
           print '    residue: resname="%s" resseq="%s" icode="%s"' % (
             residue.resname, residue.resseq, residue.icode)
           for atom in residue.atoms():
             print '     ', atom.format_atom_record()
+    #
+    print """
+    # A third "view" of the hierarchy:
+    #   model, chain, residue_group, conformer, residue, atom
+    # This is useful for handling all conformers of a given residue_group
+    # together.
+    # All meaningful PDB files will only have one residue per conformer."""
+    for model in hierarchy.models():
+      print 'model: "%s"' % model.id
+      for chain in model.chains():
+        print 'chain: "%s"' % chain.id
+        for residue_group in chain.residue_groups():
+          print '  residue_group: resseq="%s" icode="%s"' % (
+            residue_group.resseq, residue_group.icode)
+          for conformer in residue_group.conformers():
+            print '    conformer: altloc="%s"' % (
+              conformer.altloc)
+            residue = conformer.only_residue()
+            print '    residue: resname="%s"' % residue.resname
+            for atom in residue.atoms():
+              print '     ', atom.format_atom_record()
     #
     # Pick a random atom and trace back to its parents.
     # (each time you run the script the result is different!)
@@ -86,7 +110,8 @@ def run(args):
     atom.name = "NEW"
     atom_group.append_atom(atom=atom)
     #
-    # Format entire hierarchy as pdb string and pdb file.
+    print """
+    # Format entire hierarchy as pdb string and pdb file."""
     print hierarchy.as_pdb_string(append_end=True)
     hierarchy.write_pdb_file(file_name="junk.pdb")
 
