@@ -23,7 +23,7 @@ def exercise(data_size, n_repeats):
   print
 
 def run():
-  print ("Given af::shared<double> a and r = a.ref(), "
+  print ("Given 'af::shared<double> a' and 'double *r = a.begin()', "
          "and using the following indexing in a loop:\n")
   for data_size in [1000, 10000, 100000, 1000000, 10000000]:
     n_repeats = 30000000 // data_size
