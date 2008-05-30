@@ -24,6 +24,7 @@ def run():
   "$D/array_family/boost_python/tst_smart_selection.py",
   "$D/array_family/boost_python/tst_shared.py",
   "$D/array_family/boost_python/tst_integer_offsets_vs_pointers.py",
+  "$D/array_family/boost_python/tst_cost_of_m_handle_in_af_shared.py",
   "$D/scitbx/matrix.py",
   "$D/scitbx/python_utils/tst_random_transform.py",
   "$D/scitbx/python_utils/tst_graph.py",

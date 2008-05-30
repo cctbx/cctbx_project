@@ -6,25 +6,18 @@ def exercise(data_size, n_repeats):
   data = flex.random_double(data_size)
   cost = flex.cost_of_m_handle_in_af_shared(data)
   t0 = time.time()
-  cost(n_repeats=0, use_af_shared_indexing=True)
+  cost(n_repeats=0, test_id=0)
   t1 = time.time()
   t_overhead = t1 - t0
-  t0 = time.time()
-  cost(n_repeats=n_repeats, use_af_shared_indexing=True)
-  t1 = time.time()
-  print 'a[i] = ... --> ',
-  print '%.2f s' % (t1 - t0 - t_overhead)
-
-  t0 = time.time()
-  cost(n_repeats=n_repeats, use_af_shared_indexing=False)
-  t1 = time.time()
-  print 'r[i] = ... -->',
-  print '%.2f s' % (t1 - t0 - t_overhead)
+  for test_id in xrange(3):
+    t0 = time.time()
+    label = cost(n_repeats=n_repeats, test_id=test_id)
+    t1 = time.time()
+    print '%s: %.2f s' % (label, t1 - t0 - t_overhead)
   print
 
 def run():
-  print ("Given 'af::shared<double> a' and 'double *r = a.begin()', "
-         "and using the following indexing in a loop:\n")
+  print "Loop over af::shared<double>:"
   for data_size in [1000, 10000, 100000, 1000000, 10000000]:
     n_repeats = 30000000 // data_size
     exercise(data_size, n_repeats)
