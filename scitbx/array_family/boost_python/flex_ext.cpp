@@ -303,24 +303,36 @@ namespace {
         result(data.size(), af::init_functor_null<double>())
     {}
 
-    void operator()(unsigned n_repeats,
-                    bool use_af_shared_indexing)
+    const char*
+    operator()(
+      unsigned n_repeats,
+      unsigned test_id)
     {
-      if(use_af_shared_indexing) {
+      if (test_id == 0) {
         for(int n=0; n < n_repeats; ++n) {
           for(std::size_t i=1; i < input.size(); ++i) {
             result[i] = input[i] - input[i-1];
           }
         }
+        return "size+begin inside  loop";
       }
-      else {
+      if (test_id == 1) {
         for(int n=0; n < n_repeats; ++n) {
           double *r = result.begin();
           for(std::size_t i=1; i < input.size(); ++i) {
             r[i] = input[i] - input[i-1];
           }
         }
+        return "     begin outside loop";
       }
+      for(int n=0; n < n_repeats; ++n) {
+        double *r = result.begin();
+        std::size_t s = input.size();
+        for(std::size_t i=1; i < s; ++i) {
+          r[i] = input[i] - input[i-1];
+        }
+      }
+      return "size+begin outside loop";
     }
   };
 
@@ -372,7 +384,7 @@ namespace {
         .def(init<af::shared<double> const &>((arg_("data"))))
         .add_property("result", &wt::result)
         .def("__call__", &wt::operator(),
-             (arg_("n_repeats"), arg_("use_af_shared_indexing")))
+             (arg_("n_repeats"), arg_("test_id")))
         ;
     }
   }
