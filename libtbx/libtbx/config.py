@@ -3,7 +3,6 @@ import libtbx.path
 from libtbx.option_parser import option_parser
 from libtbx.str_utils import show_string
 from libtbx.utils import escape_sh_double_quoted, Sorry, detect_binary_file
-from libtbx.utils import select_matching
 from libtbx import adopt_init_args
 from libtbx import easy_run
 import shutil
@@ -13,98 +12,6 @@ import re
 import sys, os
 
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
-default_enable_boost_threads = False
-default_disable_openmp = False
-
-class openmp_config(object):
-
-  test_code = r"""
-%s
-#include <iostream>
-#include <iomanip>
-int main() {
-  double e, pi;
-  const int N=100000;
-  #pragma omp parallel sections shared(e, pi)
-  {
-    #pragma omp section
-    {
-      e = 1;
-      double a = 1;
-      for(int i=1; i<N; ++i) {
-        a /= i;
-        e += a;
-      }
-    }
-    #pragma omp section
-    {
-      pi = 0;
-      double a=1, b=3;
-      for(int i=1; i<2*N; ++i) {
-        pi += 1/a - 1/b;
-        a += 4;
-        b += 4;
-      }
-      pi *= 4;
-    }
-  }
-  std::cout << std::setprecision(6) << "e=" << e << ", pi=" << pi << "\n";
-}
-""" % ['', '#include <omp.h>'][int(sys.platform == 'win32')]
-
-  def __init__(self, is_disabled, env_base, env_etc):
-    self.is_disabled = is_disabled
-    self.is_working_in_main = False
-    self.is_working_in_shared_lib = False
-    self.compiler_option, self.linker_option = select_matching(
-      key=env_etc.compiler,
-      choices=[
-        ('^win32_cl$' , ('/openmp', None)),
-        ('^win32_icc$', ('/Qopenmp',)*2),
-        ('^unix_icc$' , ('-openmp',)*2),
-        ('gcc'        , ('-fopenmp',)*2),
-      ],
-      default=(None,None)
-    )
-    if self.compiler_option is None: return
-    if (self.is_disabled): return
-    env = env_base.Copy(CXXFLAGS=self.compiler_option,
-                        LINKFLAGS=self.linker_option)
-    conf = env.Configure()
-    flag, output = conf.TryRun(self.test_code, extension='.cpp')
-    conf.Finish()
-    if not(flag and output.strip() == "e=2.71828, pi=3.14159"): return
-    self.is_working_in_main = True
-    if sys.platform == 'linux2':
-      # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
-      gcc_version = get_gcc_version()
-      if gcc_version is None or gcc_version < 40300: return
-    self.is_working_in_shared_lib = True
-
-  def report(self, prefix):
-    if (self.is_disabled):
-      print prefix+"OpenMP is_disabled=True"
-    else:
-      def fmt(flag):
-        if (flag): return "True"
-        return "False"
-      print prefix+"OpenMP working_in_main=%s, working_in_shared_lib=%s" % (
-        fmt(self.is_working_in_main), fmt(self.is_working_in_shared_lib))
-    return self
-
-  def enable_if_possible(self, env, target_type):
-    assert target_type in ["main", "shared_lib"]
-    if (self.is_disabled): return False
-    if (target_type == "main"):
-      if (not self.is_working_in_main): return False
-    else:
-      if (not self.is_working_in_shared_lib): return False
-    for flags in ['CCFLAGS', 'SHCCFLAGS', 'CXXFLAGS', 'SHCXXFLAGS']:
-      env.Append(**{flags: [self.compiler_option]})
-    if self.linker_option is not None:
-      env.Append(LINKFLAGS=[self.linker_option])
-      env.Append(SHLINKFLAGS=[self.linker_option])
-    return True
 
 def get_gcc_version():
   gcc_version = easy_run.fully_buffered(command="gcc --version") \
@@ -1734,10 +1641,10 @@ def unpickle():
     env.build_options.write_full_flex_fwd_h = default_write_full_flex_fwd_h
   # XXX backward compatibility 2008-05-21
   if not hasattr(env.build_options, "enable_boost_threads"):
-    env.build_options.enable_boost_threads = default_enable_boost_threads
+    env.build_options.enable_boost_threads = False
   # XXX backward compatibility 2008-05-25
   if not hasattr(env.build_options, "disable_openmp"):
-    env.build_options.disable_openmp = default_disable_openmp
+    env.build_options.disable_openmp = False
   return env
 
 def warm_start(args):
