@@ -294,6 +294,8 @@ namespace {
     return boost::python::make_tuple(result_type, result_value);
   }
 
+} // namespace <anonymous>
+
   struct cost_of_m_handle_in_af_shared
   {
     af::shared<double> input, result;
@@ -335,6 +337,8 @@ namespace {
       return "size+begin outside loop";
     }
   };
+
+namespace {
 
   void init_module()
   {
