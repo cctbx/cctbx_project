@@ -196,6 +196,7 @@ mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
 mmtbx/utils/utils.h -text
 mmtbx/utils/utils_ext.cpp -text
+scitbx/array_family/boost_python/tst_cost_of_m_handle_in_af_shared.py -text
 scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-python
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/error/SConscript -text

@@ -294,6 +294,36 @@ namespace {
     return boost::python::make_tuple(result_type, result_value);
   }
 
+  struct cost_of_m_handle_in_af_shared
+  {
+    af::shared<double> input, result;
+
+    cost_of_m_handle_in_af_shared(af::shared<double> const &data)
+      : input(data),
+        result(data.size(), af::init_functor_null<double>())
+    {}
+
+    void operator()(unsigned n_repeats,
+                    bool use_af_shared_indexing)
+    {
+      if(use_af_shared_indexing) {
+        for(int n=0; n < n_repeats; ++n) {
+          for(std::size_t i=1; i < input.size(); ++i) {
+            result[i] = input[i] - input[i-1];
+          }
+        }
+      }
+      else {
+        for(int n=0; n < n_repeats; ++n) {
+          af::ref<double> r = result.ref();
+          for(std::size_t i=1; i < input.size(); ++i) {
+            r[i] = input[i] - input[i-1];
+          }
+        }
+      }
+    }
+  };
+
   void init_module()
   {
     using namespace boost::python;
@@ -335,6 +365,16 @@ namespace {
     linear_correlation_wrappers::wrap();
 
     def("integer_offsets_vs_pointers", integer_offsets_vs_pointers);
+
+    {
+      typedef cost_of_m_handle_in_af_shared wt;
+      class_<wt>("cost_of_m_handle_in_af_shared", no_init)
+        .def(init<af::shared<double> const &>((arg_("data"))))
+        .add_property("result", &wt::result)
+        .def("__call__", &wt::operator(),
+             (arg_("n_repeats"), arg_("use_af_shared_indexing")))
+        ;
+    }
   }
 
 }}}} // namespace scitbx::af::boost_python::<anonymous>
