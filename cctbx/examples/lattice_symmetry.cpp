@@ -71,7 +71,8 @@ namespace cctbx { namespace {
   sgtbx::change_of_basis_op
   get_change_of_basis_op_to_best_cell(
     crystal::symmetry const& input_symmetry,
-    double angular_tolerance=3)
+    double angular_tolerance=3,
+    bool best_monoclinic_beta=true)
   {
     sgtbx::change_of_basis_op best_cb_op;
     crystal::symmetry best_symmetry = input_symmetry;
@@ -89,6 +90,15 @@ namespace cctbx { namespace {
           affine_cb_mx[i_cb_mx]).new_denominators(best_cb_op);
         crystal::symmetry alt_symmetry = input_symmetry.change_basis(cb_op);
         if (alt_symmetry.space_group() == input_symmetry.space_group()) {
+          if (best_monoclinic_beta && unique_axis == 1) {
+            sgtbx::change_of_basis_op
+              cb_op_best_beta = alt_symmetry.unit_cell()
+                .change_of_basis_op_for_best_monoclinic_beta();
+            if (!cb_op_best_beta.is_identity_op()) {
+              cb_op.update(cb_op_best_beta);
+              alt_symmetry = input_symmetry.change_basis(cb_op);
+            }
+          }
           int cmp_result = best_symmetry.unit_cell().compare_monoclinic(
             alt_symmetry.unit_cell(), unique_axis, angular_tolerance);
           if (cmp_result > 0) {
@@ -256,11 +266,21 @@ namespace cctbx { namespace {
 
 }} // namespace cctbx::<anonymous>
 
-int main()
+int main(int argc, const char** /* argv */)
 {
-  cctbx::uctbx::unit_cell unit_cell(scitbx::af::double6(12,12,12.1,89,90,92));
-  cctbx::sgtbx::space_group space_group("F 1");
-  double max_delta = 3;
-  cctbx::example(cctbx::crystal::symmetry(unit_cell, space_group), max_delta);
+  if (argc == 1) {
+    cctbx::uctbx::unit_cell unit_cell(
+      scitbx::af::double6(12,12,12.1,89,90,92));
+    cctbx::sgtbx::space_group space_group("F 1");
+    double max_delta = 3;
+    cctbx::example(cctbx::crystal::symmetry(unit_cell, space_group), max_delta);
+  }
+  else {
+    cctbx::uctbx::unit_cell unit_cell(
+      scitbx::af::double6(22.54,22.54,6.35,90,90,90));
+    cctbx::sgtbx::space_group space_group("I 1");
+    double max_delta = 3;
+    cctbx::example(cctbx::crystal::symmetry(unit_cell, space_group), max_delta);
+  }
   return 0;
 }
