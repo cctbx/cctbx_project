@@ -315,7 +315,7 @@ namespace {
       }
       else {
         for(int n=0; n < n_repeats; ++n) {
-          af::ref<double> r = result.ref();
+          double *r = result.begin();
           for(std::size_t i=1; i < input.size(); ++i) {
             r[i] = input[i] - input[i-1];
           }
