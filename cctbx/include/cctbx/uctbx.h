@@ -697,6 +697,9 @@ namespace cctbx {
         unsigned unique_axis,
         double angular_tolerance) const;
 
+      sgtbx::change_of_basis_op const&
+      change_of_basis_op_for_best_monoclinic_beta() const;
+
     protected:
       void init_volume();
       void init_reciprocal();

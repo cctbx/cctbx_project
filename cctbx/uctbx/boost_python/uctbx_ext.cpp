@@ -10,6 +10,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
+#include <boost/python/return_internal_reference.hpp>
 
 namespace cctbx { namespace uctbx { namespace boost_python {
 
@@ -58,6 +59,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<copy_const_reference> ccr;
+      typedef return_internal_reference<> rir;
       class_<w_t>("unit_cell", no_init)
         .def(init<scitbx::mat3<double> const&>((
           arg_("orthogonalization_matrix"))))
@@ -209,6 +211,8 @@ namespace {
           (arg_("other")))
         .def("compare_monoclinic", &w_t::compare_monoclinic,
           (arg_("other"), arg_("unique_axis"), arg_("angular_tolerance")))
+        .def("change_of_basis_op_for_best_monoclinic_beta",
+          &w_t::change_of_basis_op_for_best_monoclinic_beta, rir())
         .def_pickle(unit_cell_wrappers())
       ;
     }

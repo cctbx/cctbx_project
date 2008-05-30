@@ -230,6 +230,17 @@ def exercise_compare():
     other=u2, unique_axis=1, angular_tolerance=3) == -1
   assert u2.compare_monoclinic(
     other=u1, unique_axis=1, angular_tolerance=3) == 1
+  #
+  u = uctbx.unit_cell((31.8764, 6.35, 22.54, 90, 135, 90))
+  c = u.change_of_basis_op_for_best_monoclinic_beta()
+  assert str(c) == "a+c,b,c"
+  assert c.c().r().den() == 12
+  assert c.c().t().den() == 144
+  u = uctbx.unit_cell((6.35, 31.8764, 16.2514, 90, 101.266, 90))
+  c = u.change_of_basis_op_for_best_monoclinic_beta()
+  assert str(c) == "a,b,c"
+  assert c.c().r().den() == 12
+  assert c.c().t().den() == 144
 
 def exercise_pickle():
   u = uctbx.unit_cell((2,3,5,80,100,110))
