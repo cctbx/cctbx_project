@@ -3,7 +3,10 @@ from cctbx import sgtbx
 
 class find_best_cell(object):
 
-  def __init__(self, input_symmetry, angular_tolerance=None):
+  def __init__(self,
+        input_symmetry,
+        angular_tolerance=None,
+        best_monoclinic_beta=True):
     if (angular_tolerance is None):
       angular_tolerance = 3
     self._all_cells = []
@@ -38,6 +41,12 @@ class find_best_cell(object):
         cb_op = sgtbx.change_of_basis_op(cb_mx).new_denominators(best_cb_op)
         alt_symmetry = input_symmetry.change_basis(cb_op)
         if (alt_symmetry.space_group() == input_symmetry.space_group()):
+          if (best_monoclinic_beta and unique_axis == 1):
+            cb_op_best_beta = alt_symmetry.unit_cell() \
+              .change_of_basis_op_for_best_monoclinic_beta()
+            if (not cb_op_best_beta.is_identity_op()):
+              cb_op.update(cb_op_best_beta)
+              alt_symmetry = input_symmetry.change_basis(cb_op)
           self._all_cells.append(alt_symmetry)
           cmp_result = best_symmetry.unit_cell().compare_monoclinic(
             other=alt_symmetry.unit_cell(),

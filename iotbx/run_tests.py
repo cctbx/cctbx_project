@@ -30,6 +30,7 @@ def run():
   "$D/iotbx/detectors/tst_debug_write.py",
   "$D/iotbx/xplor/tst_xplormap.py",
   ["$D/iotbx/tst_phases.py", "P31"],
+  "$D/iotbx/regression/tst_lattice_symmetry.py",
   ["$D/iotbx/regression/tst_reflection_statistics.py", "Fdd2 P31m"]
   )
 
