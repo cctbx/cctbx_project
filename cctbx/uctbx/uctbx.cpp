@@ -425,4 +425,16 @@ namespace cctbx { namespace uctbx {
     return 0;
   }
 
+  sgtbx::change_of_basis_op const&
+  unit_cell::change_of_basis_op_for_best_monoclinic_beta() const
+  {
+    static const sgtbx::change_of_basis_op cb_op_identity;
+    static const sgtbx::change_of_basis_op cb_op_acbc("a+c,b,c");
+    unit_cell alt = change_basis(cb_op_acbc);
+    double beta = params_[4];
+    double beta_alt = alt.params_[4];
+    if (beta_alt >= 90 && beta_alt < beta) return cb_op_acbc;
+    return cb_op_identity;
+  }
+
 }} // namespace cctbx::uctbx
