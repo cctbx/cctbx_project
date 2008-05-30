@@ -169,7 +169,8 @@ if (sys.platform == "win32"):
       "/nologo",
       "/D_SECURE_SCL=0",
       "/D_CRT_SECURE_NO_DEPRECATE",
-      "/wd4996",
+      "/wd4996", # warning C4996: ... was declared deprecated
+      "/wd4068", # warning C4068: unknown pragma
       "/Zm800",
       "/MD"]
     env_etc.cxxflags_base = env_etc.ccflags_base + [
