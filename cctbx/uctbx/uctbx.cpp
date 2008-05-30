@@ -1,5 +1,5 @@
 #include <cctbx/uctbx/fast_minimum_reduction.h>
-#include <cctbx/sgtbx/rot_mx.h>
+#include <cctbx/sgtbx/change_of_basis_op.h>
 #include <scitbx/math/unimodular_generator.h>
 
 namespace cctbx { namespace uctbx {
@@ -357,6 +357,12 @@ namespace cctbx { namespace uctbx {
   unit_cell::change_basis(sgtbx::rot_mx const& c_inv_r) const
   {
     return change_basis(c_inv_r.as_double(), 0);
+  }
+
+  unit_cell
+  unit_cell::change_basis(sgtbx::change_of_basis_op const& cb_op) const
+  {
+    return change_basis(cb_op.c_inv().r().as_double(), 0);
   }
 
   miller::index<>

@@ -153,6 +153,12 @@ def exercise_change_basis():
   assert approx_equal(
     u.change_basis((0,1,0, 0,0,1, 1,0,0)).parameters(),
     (5,2,3,90,90,90))
+  #
+  from cctbx import sgtbx
+  cb_op = sgtbx.change_of_basis_op("y,z,x").inverse()
+  assert approx_equal(
+    u.change_basis(cb_op=cb_op).parameters(),
+    (5,2,3,90,90,90))
 
 def exercise_miller_index_methods():
   u = uctbx.unit_cell((2,3,5))

@@ -251,8 +251,8 @@ class space_group_info(object):
       params = (1., 1., 1.7, 90, 90, 120)
     else:
       params = (1., 1., 1., 90, 90, 90)
-    unit_cell = self.change_of_basis_op_to_reference_setting().inverse().apply(
-      uctbx.unit_cell(params))
+    unit_cell = uctbx.unit_cell(params).change_basis(
+      cb_op=self.change_of_basis_op_to_reference_setting().inverse())
     f = (volume / unit_cell.volume())**(1/3.)
     params = list(unit_cell.parameters())
     for i in xrange(3): params[i] *= f

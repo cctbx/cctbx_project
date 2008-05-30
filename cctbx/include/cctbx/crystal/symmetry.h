@@ -39,7 +39,7 @@ namespace cctbx { namespace crystal {
       change_basis(sgtbx::change_of_basis_op const& cb_op) const
       {
         return symmetry(
-          cb_op.apply(unit_cell_),
+          unit_cell_.change_basis(cb_op),
           space_group_.change_basis(cb_op));
       }
 
