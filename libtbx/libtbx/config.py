@@ -1311,10 +1311,10 @@ class module:
             "modules_required_for_use", []))
           self.optional.extend(config.get(
             "optional_modules", []))
-          ops = os.path.sep
+          sep = os.sep
           for re_pattern in config.get("exclude_from_binary_bundle", []):
-            if (ops != "/"):
-              re_pattern = re_pattern.replace("/", "\\"+ops)
+            if (sep != "/"):
+              re_pattern = re_pattern.replace("/", "\\"+sep)
             self.exclude_from_binary_bundle.append(re_pattern)
       dist_paths.append(dist_path)
     self.dist_paths = dist_paths
