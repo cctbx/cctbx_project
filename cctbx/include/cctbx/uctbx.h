@@ -14,7 +14,11 @@
 namespace cctbx {
 
   // forward declaration
-  namespace sgtbx { class rot_mx; }
+  namespace sgtbx
+  {
+    class rot_mx;
+    class change_of_basis_op;
+  }
 
   //! Shorthand for default vec3 type in unit cell toolbox.
   typedef scitbx::vec3<double> uc_vec3;
@@ -442,12 +446,14 @@ namespace cctbx {
           that transforms coordinates in the old basis system to
           coodinates in the new basis system.
           <p>
-          See also: sgtbx::change_of_basis::apply()
-          <p>
           Not available in Python.
        */
       unit_cell
       change_basis(sgtbx::rot_mx const& c_inv_r) const;
+
+      //! Transformation (change-of-basis) of unit cell parameters.
+      unit_cell
+      change_basis(sgtbx::change_of_basis_op const& cb_op) const;
 
       /*! \brief Computation of the maximum Miller indices for a given
           minimum d-spacing.

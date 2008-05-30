@@ -103,7 +103,7 @@ def run(file_name, args, cutoff, params,
 def run_and_time(*args, **kw):
   timer = user_plus_sys_time()
   try:
-    apply(run, args, kw)
+    run(*args, **kw)
   finally:
     print "CPU time: %.2f seconds" % timer.elapsed()
 

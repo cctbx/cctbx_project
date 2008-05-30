@@ -68,7 +68,7 @@ def run(server_info, inp, status):
     print
 
     assert space_group_info_old.group().is_compatible_unit_cell(unit_cell_old)
-    unit_cell_new = cb_op.apply(unit_cell_old)
+    unit_cell_new = unit_cell_old.change_basis(cb_op=cb_op)
     print "New unit cell parameters:"
     print " ",
     unit_cell_new.show_parameters()

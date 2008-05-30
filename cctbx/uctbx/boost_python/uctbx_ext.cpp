@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/uctbx.h>
+#include <cctbx/sgtbx/change_of_basis_op.h>
 #include <boost/python/tuple.hpp>
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
@@ -137,6 +138,10 @@ namespace {
           (w_t(w_t::*)(uc_mat3 const&, double) const) 0,
           change_basis_overloads((
             arg_("c_inv_r"), arg_("r_den")=1.)))
+        .def("change_basis",
+          (w_t(w_t::*)(sgtbx::change_of_basis_op const&) const)
+            &w_t::change_basis, (
+              arg_("cb_op")))
         .def("max_miller_indices",
           (mix_t(w_t::*)(double, double) const) 0,
           max_miller_indices_overloads((

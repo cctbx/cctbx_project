@@ -43,7 +43,7 @@ class reindexing_operators(object):
       # compute the mean square difference for the bases
       bases_msd = nxs1.unit_cell() \
                   .bases_mean_square_difference(
-        other=cb_op.apply( nxs2.unit_cell() )  )
+        other=nxs2.unit_cell().change_basis(cb_op=cb_op))
 
       # and find cb_op correspondiong to the the minimum rmsd
       if (min_bases_msd is None

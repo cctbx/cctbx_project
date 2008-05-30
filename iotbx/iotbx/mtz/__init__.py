@@ -389,10 +389,9 @@ class _object(boost.python.injector, ext.object):
     self.set_space_group_info(space_group_info=new_space_group_info)
     for crystal in self.crystals():
       crystal_symmetry = cctbx.crystal.symmetry(
-        unit_cell=cb_op.apply(crystal.unit_cell()),
+        unit_cell=crystal.unit_cell().change_basis(cb_op=cb_op),
         space_group_info=new_space_group_info,
-        assert_is_compatible_unit_cell=assert_is_compatible_unit_cell
-        )
+        assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
       crystal.set_unit_cell_parameters(
         crystal_symmetry.unit_cell().parameters())
 

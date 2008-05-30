@@ -208,13 +208,7 @@ namespace cctbx { namespace sgtbx {
       rt_mx
       apply(rt_mx const& s) const;
 
-      //! Transforms unit cell parameters.
-      /*! Equivalent to ucell.change_basis(c_inv().r()).
-          See cctbx::uctbx::unit_cell::change_basis()
-          <p>
-          To transform in the other direction use inverse() followed by
-          apply().
-       */
+      //! Deprecated. Use cctbx::uctbx::unit_cell::change_basis(cb_op) instead.
       uctbx::unit_cell
       apply(uctbx::unit_cell const& unit_cell) const
       {

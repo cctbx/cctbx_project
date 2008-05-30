@@ -31,7 +31,7 @@ namespace cctbx { namespace miller {
     }
     d_star_sq_max_ = 1. / (resolution_d_min * resolution_d_min);
     uctbx::unit_cell
-      reference_unit_cell = sg_type_.cb_op().apply(unit_cell_);
+      reference_unit_cell = unit_cell_.change_basis(sg_type_.cb_op());
     initialize_loop(reference_unit_cell.max_miller_indices(resolution_d_min));
   }
 

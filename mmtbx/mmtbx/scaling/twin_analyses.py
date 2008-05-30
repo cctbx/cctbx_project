@@ -53,7 +53,7 @@ class twin_law_quality(object):
       symbol = self.twin_in_nig.r().as_xyz() )
 
     self.niggli_cell = self.xs_niggli.unit_cell()
-    self.new_niggli_cell = self.cb_op.apply( self.niggli_cell )
+    self.new_niggli_cell = self.niggli_cell.change_basis(cb_op=self.cb_op)
 
   def delta_santoro(self):
     # santoros measure for quality of a twin law

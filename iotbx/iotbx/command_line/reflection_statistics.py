@@ -88,8 +88,8 @@ class array_cache(object):
     print
 
   def idealized_input_unit_cell(self):
-    return self.change_of_basis_op_to_minimum_cell.inverse().apply(
-      self.lattice_symmetry.unit_cell())
+    return self.lattice_symmetry.unit_cell().change_basis(
+      cb_op=self.change_of_basis_op_to_minimum_cell.inverse())
 
   def possible_twin_laws(self):
     result = []
@@ -138,7 +138,8 @@ class array_cache(object):
       for s in twin_laws:
         hkl_str = s.r().as_hkl()
         cb_op = sgtbx.change_of_basis_op(hkl_str)
-        assert cb_op.apply(idealized_cell).is_similar_to(idealized_cell)
+        assert idealized_cell.change_basis(
+          cb_op=cb_op).is_similar_to(idealized_cell)
         info = ""
         try:
           cb_sg = self.input.space_group_info().change_basis(cb_op=cb_op)
