@@ -132,6 +132,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         f_calc_ = af::shared<std::complex<float_type> >(
           miller_indices.size(),
           af::init_functor_null<std::complex<float_type> >());
+        c_t *f_calc_beg = f_calc_.begin();
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
 // gcc 4.1.0 (Fedora 5) internal compiler error.
@@ -151,7 +152,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
             sum.add_contribution_of(scatterers[j],
                                     form_factors[scattering_type_indices[j]]);
           }
-          f_calc_[i] = sum.f_calc();
+          f_calc_beg[i] = sum.f_calc();
         }
       }
   };
