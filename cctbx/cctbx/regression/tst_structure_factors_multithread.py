@@ -92,7 +92,7 @@ def exercise_raw(space_group_info,
                     miller_indices=single_threaded_f.indices(),
                     scatterers=xs.scatterers(),
                     scattering_type_registry=xs.scattering_type_registry())
-  for i in xrange(1, number_of_processors() + 1):
+  for i in xrange(1, max(2, number_of_processors()) + 1):
     arg1s = group_args(n_threads=i, **args.__dict__)
     if cos_sin_table:
       arg1s = group_args(cos_sin_table=cos_sin_table, **args.__dict__)
