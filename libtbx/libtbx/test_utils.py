@@ -147,7 +147,10 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
 
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
   if hasattr(a1, "__len__"): # traverse list
-    assert len(a1) == len(a2)
+    if (len(a1) != len(a2)):
+      raise AssertionError(
+        "approx_equal ERROR: len(a1) != len(a2): %d != %d" % (
+          len(a1), len(a2)))
     for i in xrange(len(a1)):
       if not approx_equal_core(
                 a1[i], a2[i], eps, multiplier, out, prefix+"  "):
