@@ -25,7 +25,6 @@ def show_times_vs_cpu(times, header):
 
 def exercise_openmp(space_group_info,
                     elements,
-                    d_min=0.5,
                     anomalous_flag=False,
                     verbose=0):
   if not openmp.available:
@@ -43,6 +42,8 @@ def exercise_openmp(space_group_info,
   timer = wall_clock_time()
   times = []
   openmp.environment.num_threads = 1
+  if (verbose): d_min = 0.5
+  else:         d_min = 2.0
   single_threaded_calc = xs.structure_factors(d_min=d_min,
                                               algorithm="direct",
                                               cos_sin_table=cos_sin_table)
@@ -62,7 +63,6 @@ def exercise_openmp(space_group_info,
 
 def exercise_raw(space_group_info,
                  elements,
-                 d_min=0.5,
                  anomalous_flag=False,
                  verbose=0):
   if structure_factors_raw_multithreaded_direct is None:
@@ -80,6 +80,8 @@ def exercise_raw(space_group_info,
   timer = wall_clock_time()
   times = []
   if openmp.available: openmp.environment.num_threads = 1
+  if (verbose): d_min = 0.5
+  else:         d_min = 2.0
   single_threaded_calc = xs.structure_factors(d_min=d_min,
                                               algorithm="direct",
                                               cos_sin_table=cos_sin_table)
