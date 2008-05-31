@@ -132,9 +132,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       {
         typedef float_type f_t;
         typedef std::complex<float_type> c_t;
-        f_calc_ = af::shared<std::complex<float_type> >(
-          miller_indices.size(),
-          af::init_functor_null<std::complex<float_type> >());
+        f_calc_.resize(miller_indices.size());
         c_t *f_calc_beg = f_calc_.begin();
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
