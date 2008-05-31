@@ -29,7 +29,7 @@ def build_boost_thread():
   src = join("libs", "thread", "src", s)
   prefix = "#" + join(os.path.basename(env_etc.boost_dist), src)
   source = []
-  for node in os.listdir(join(env_etc.boost_dist, src)):
+  for node in sorted(os.listdir(join(env_etc.boost_dist, src))):
     if (not node.lower().endswith(".cpp")): continue
     source.append(join(prefix, node))
   env = env_base.Copy(
