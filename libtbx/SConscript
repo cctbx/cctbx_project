@@ -38,97 +38,6 @@ def set_python_include_and_libs(env_etc):
     env_etc.python_framework = "/".join(
       env_etc.python_include.split("/")[:-2] + ["Python"])
 
-class openmp_config(object):
-
-  test_code = r"""
-%s
-#include <iostream>
-#include <iomanip>
-int main() {
-  double e, pi;
-  const int N=100000;
-  #pragma omp parallel sections shared(e, pi)
-  {
-    #pragma omp section
-    {
-      e = 1;
-      double a = 1;
-      for(int i=1; i<N; ++i) {
-        a /= i;
-        e += a;
-      }
-    }
-    #pragma omp section
-    {
-      pi = 0;
-      double a=1, b=3;
-      for(int i=1; i<2*N; ++i) {
-        pi += 1/a - 1/b;
-        a += 4;
-        b += 4;
-      }
-      pi *= 4;
-    }
-  }
-  std::cout << std::setprecision(6) << "e=" << e << ", pi=" << pi << "\n";
-}
-""" % ['', '#include <omp.h>'][int(sys.platform == 'win32')]
-
-  def __init__(self, is_disabled, env_base, env_etc):
-    self.is_disabled = is_disabled
-    self.is_working_in_main = False
-    self.is_working_in_shared_lib = False
-    from libtbx.utils import select_matching
-    self.compiler_option, self.linker_option = select_matching(
-      key=env_etc.compiler,
-      choices=[
-        ('^win32_cl$' , ('/openmp', None)),
-        ('^win32_icc$', ('/Qopenmp',)*2),
-        ('^unix_icc$' , ('-openmp',)*2),
-        ('gcc'        , ('-fopenmp',)*2),
-      ],
-      default=(None,None)
-    )
-    if self.compiler_option is None: return
-    if (self.is_disabled): return
-    env = env_base.Copy(CXXFLAGS=self.compiler_option,
-                        LINKFLAGS=self.linker_option)
-    conf = env.Configure()
-    flag, output = conf.TryRun(self.test_code, extension='.cpp')
-    conf.Finish()
-    if not(flag and output.strip() == "e=2.71828, pi=3.14159"): return
-    self.is_working_in_main = True
-    if sys.platform == 'linux2':
-      # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
-      gcc_version = libtbx.config.get_gcc_version()
-      if gcc_version is None or gcc_version < 40300: return
-    self.is_working_in_shared_lib = True
-
-  def report(self, prefix):
-    if (self.is_disabled):
-      print prefix+"OpenMP is_disabled=True"
-    else:
-      def fmt(flag):
-        if (flag): return "True"
-        return "False"
-      print prefix+"OpenMP working_in_main=%s, working_in_shared_lib=%s" % (
-        fmt(self.is_working_in_main), fmt(self.is_working_in_shared_lib))
-    return self
-
-  def enable_if_possible(self, env, target_type):
-    assert target_type in ["main", "shared_lib"]
-    if (self.is_disabled): return False
-    if (target_type == "main"):
-      if (not self.is_working_in_main): return False
-    else:
-      if (not self.is_working_in_shared_lib): return False
-    for flags in ['CCFLAGS', 'SHCCFLAGS', 'CXXFLAGS', 'SHCXXFLAGS']:
-      env.Append(**{flags: [self.compiler_option]})
-    if self.linker_option is not None:
-      env.Append(LINKFLAGS=[self.linker_option])
-      env.Append(SHLINKFLAGS=[self.linker_option])
-    return True
-
 env_etc = empty()
 env_etc.no_boost_python = ARGUMENTS.get(
   "no_boost_python",
@@ -649,9 +558,78 @@ env_etc.libtbx_build = libtbx.env.build_path
 env_etc.libtbx_include = libtbx.env.under_build("include")
 env_etc.libtbx_lib = libtbx.env.lib_path
 
-env_etc.openmp_conf = openmp_config(
-  is_disabled=libtbx.env.build_options.disable_openmp,
-  env_base=env_base,
-  env_etc=env_etc).report(prefix="libtbx.scons: ")
+def enable_openmp_if_possible():
+  test_code = r"""%s
+#include <iostream>
+#include <iomanip>
+int main() {
+  double e, pi;
+  const int N=100000;
+  #pragma omp parallel sections shared(e, pi)
+  {
+    #pragma omp section
+    {
+      e = 1;
+      double a = 1;
+      for(int i=1; i<N; ++i) {
+        a /= i;
+        e += a;
+      }
+    }
+    #pragma omp section
+    {
+      pi = 0;
+      double a=1, b=3;
+      for(int i=1; i<2*N; ++i) {
+        pi += 1/a - 1/b;
+        a += 4;
+        b += 4;
+      }
+      pi *= 4;
+    }
+  }
+  std::cout << std::setprecision(6) << "e=" << e << ", pi=" << pi << "\n";
+}
+""" % ['', '#include <omp.h>'][int(sys.platform == 'win32')]
+  #
+  env_etc.have_openmp = False
+  if (libtbx.env.build_options.disable_openmp):
+    print "libtbx.scons: OpenMP is disabled."
+    return
+  from libtbx.utils import select_matching
+  compiler_options, linker_options = select_matching(
+    key=env_etc.compiler,
+    choices=[
+      ('^win32_cl$',  [['/openmp'], []]),
+      ('^win32_icc$', [['/Qopenmp']]*2),
+      ('^unix_icc$',  [['-openmp']]*2),
+      ('gcc',         [['-fopenmp']]*2),
+    ],
+    default=[None]*2)
+  if (compiler_options is None):
+    print "libtbx.scons: OpenMP is not supported."
+    return
+  env = env_base.Copy(CXXFLAGS=env_etc.cxxflags_base+compiler_options)
+  env.Append(LINKFLAGS=linker_options)
+  conf = env.Configure()
+  flag, output = conf.TryRun(test_code, extension='.cpp')
+  conf.Finish()
+  if (not flag or output.strip() != "e=2.71828, pi=3.14159"):
+    print "libtbx.scons: OpenMP is not usable."
+    return
+  if (sys.platform == "linux2" and not env_etc.no_boost_python):
+    # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
+    gcc_version = libtbx.config.get_gcc_version()
+    if (gcc_version is None or gcc_version < 40300):
+      print "libtbx.scons: OpenMP is not usable (in shared libraries)."
+      return
+  print "libtbx.scons: OpenMP is available."
+  env_etc.ccflags_base.extend(compiler_options)
+  env_etc.cxxflags_base.extend(compiler_options)
+  env_base.Append(LINKFLAGS=linker_options)
+  env_etc.shlinkflags.extend(linker_options)
+  env_etc.shlinkflags_bpl.extend(linker_options)
+
+enable_openmp_if_possible()
 
 Export("env_base", "env_etc")
