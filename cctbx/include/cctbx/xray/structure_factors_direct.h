@@ -114,7 +114,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
                 scatterers, scattering_type_registry);
       }
 
-      af::shared<std::complex<float_type> >
+      af::shared<std::complex<float_type> > const&
       f_calc() const { return f_calc_; }
 
     protected:

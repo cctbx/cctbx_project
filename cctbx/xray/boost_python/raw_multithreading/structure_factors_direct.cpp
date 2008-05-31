@@ -3,6 +3,8 @@
 #include <cctbx/math/cos_sin_table.h>
 #include <cctbx/xray/raw_multithreading/structure_factors_direct.h>
 #include <boost/python/class.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace xray { namespace structure_factors {
   namespace boost_python {
@@ -19,6 +21,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         wrap()
         {
           using namespace boost::python;
+          typedef return_value_policy<copy_const_reference> ccr;
           class_<w_t>("structure_factors_raw_multithreaded_direct", no_init)
           .def(init<math::cos_sin_table<float_type> const&,
                     uctbx::unit_cell const&,
@@ -44,7 +47,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
                                arg_("scatterers"),
                                arg_("scattering_type_registry"),
                                arg_("n_threads"))))
-          .def("f_calc", &w_t::f_calc)
+          .def("f_calc", &w_t::f_calc, ccr())
           ;
         }
       };

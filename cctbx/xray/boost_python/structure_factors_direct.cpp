@@ -2,6 +2,8 @@
 
 #include <cctbx/xray/structure_factors_direct.h>
 #include <boost/python/class.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace xray { namespace structure_factors {
 namespace boost_python {
@@ -18,6 +20,7 @@ namespace {
     wrap()
     {
       using namespace boost::python;
+      typedef return_value_policy<copy_const_reference> ccr;
       class_<w_t>("structure_factors_direct", no_init)
         .def(init<uctbx::unit_cell const&,
                   sgtbx::space_group const&,
@@ -30,7 +33,7 @@ namespace {
                   af::const_ref<miller::index<> > const&,
                   af::const_ref<scatterer_type> const&,
                   scattering_type_registry const&>())
-        .def("f_calc", &w_t::f_calc)
+        .def("f_calc", &w_t::f_calc, ccr())
       ;
     }
   };
