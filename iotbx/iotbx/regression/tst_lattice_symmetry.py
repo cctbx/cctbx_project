@@ -10,7 +10,7 @@ def run_and_compare(commands, expected_output):
       if (line.strip().startswith("Inverse: ")): continue
       result.append(line)
     result.sort()
-    return result
+    return "\n".join(result)+"\n"
   for command in commands:
     lines = easy_run.fully_buffered(
       command=command).raise_if_errors().stdout_lines
