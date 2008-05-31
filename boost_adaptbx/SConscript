@@ -20,28 +20,33 @@ def darwin_shlinkcom(env, lo, dylib):
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
       " %s -o %s %s" % (dylib1, dylib, lo)])
 
-if libtbx.env.build_options.enable_boost_threads:
-  if sys.platform == 'win32':
-    boost_thread_src = [
-      os.path.join('win32', "%s.cpp" % p)
-      for p in ('thread', 'exceptions', 'tss_dll', 'tss_pe') ]
-  else: # assume pthread
-    boost_thread_src = [
-      os.path.join('pthread', "%s.cpp" % p)
-      for p in ('thread', 'exceptions', 'once') ]
-  prefix = '#' + os.path.join(os.path.basename(env_etc.boost_dist),
-                              'libs', 'thread', 'src')
-  boost_thread_src = [ os.path.join(prefix, p) for p in boost_thread_src ]
-  env_boost_threads = env_base.Copy()
+def build_boost_thread():
+  if (not libtbx.env.build_options.enable_boost_threads):
+    return
+  if (sys.platform == "win32"): s = "win32"
+  else:                         s = "pthread"
+  join = os.path.join
+  src = join("libs", "thread", "src", s)
+  prefix = "#" + join(os.path.basename(env_etc.boost_dist), src)
+  source = []
+  for node in os.listdir(join(env_etc.boost_dist, src)):
+    if (not node.lower().endswith(".cpp")): continue
+    source.append(join(prefix, node))
+  env = env_base.Copy(
+    SHCXXFLAGS=env_etc.cxxflags_base,
+    SHLINKFLAGS=env_etc.shlinkflags)
   env_etc.include_registry.append(
-    env=env_boost_threads,
+    env=env,
     paths=[env_etc.boost_include])
-  darwin_shlinkcom(env_boost_threads,
+  darwin_shlinkcom(env,
                    lo="boost/libs/thread/src/libboost_thread.lo",
                    dylib="lib/libboost_thread.dylib")
-  env_boost_threads.SharedLibrary(
+  env.Repository(os.path.dirname(env_etc.boost_dist))
+  env.SharedLibrary(
     target='#lib/boost_thread',
-    source=boost_thread_src)
+    source=source)
+
+build_boost_thread()
 
 if (not env_etc.no_boost_python):
   env_etc.cxxflags_bpl_defines_base = [
