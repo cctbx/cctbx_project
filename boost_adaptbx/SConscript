@@ -33,7 +33,9 @@ def build_boost_thread():
     if (not node.lower().endswith(".cpp")): continue
     source.append(join(prefix, node))
   env = env_base.Copy(
-    SHCXXFLAGS=env_etc.cxxflags_base,
+    SHCXXFLAGS=env_etc.cxxflags_base + [
+      "-DBOOST_ALL_NO_LIB",
+      "-DBOOST_THREAD_BUILD_DLL"],
     SHLINKFLAGS=env_etc.shlinkflags)
   env_etc.include_registry.append(
     env=env,
