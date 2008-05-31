@@ -251,8 +251,7 @@ class wall_clock_time(timer_base):
   it is less reliable is the only solution in that case """
 
   def get(self):
-    t = os.times()
-    return t[-1]
+    return time.time()
 
 
 class time_log(object):
