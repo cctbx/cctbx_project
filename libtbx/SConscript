@@ -98,7 +98,6 @@ supported_compilers = (
   "win32_cl",
   "sunos_CC",
   "unix_gcc",
-  "unix_ecc",
   "unix_icc",
   "unix_icpc",
   "tru64_cxx",
@@ -617,12 +616,13 @@ int main() {
   if (not flag or output.strip() != "e=2.71828, pi=3.14159"):
     print "libtbx.scons: OpenMP is not usable."
     return
-  if (sys.platform == "linux2" and not env_etc.no_boost_python):
+  if (    sys.platform == "linux2"
+      and not env_etc.no_boost_python
+      and env_etc.gcc_version is not None
+      and env_etc.gcc_version < 40300):
     # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
-    gcc_version = libtbx.config.get_gcc_version()
-    if (gcc_version is None or gcc_version < 40300):
-      print "libtbx.scons: OpenMP is not usable (in shared libraries)."
-      return
+    print "libtbx.scons: OpenMP is not usable (in shared libraries)."
+    return
   print "libtbx.scons: OpenMP is available."
   env_etc.have_openmp = True
   env_etc.ccflags_base.extend(compiler_options)
