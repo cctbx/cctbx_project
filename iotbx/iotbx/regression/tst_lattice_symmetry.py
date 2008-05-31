@@ -2,11 +2,14 @@ from libtbx.test_utils import show_diff
 from libtbx import easy_run
 import sys
 
-def run_and_compare(commands, expected_output):
+def run_and_compare(commands, expected_output, replace=[]):
   for command in commands:
     lines = easy_run.fully_buffered(
       command=command).raise_if_errors().stdout_lines
-    assert not show_diff("\n".join(lines)+"\n", expected_output)
+    output = "\n".join(lines)+"\n"
+    for alt,exp in replace:
+      output = output.replace(alt, exp)
+    assert not show_diff(output, expected_output)
 
 def exercise(args):
   assert len(args) == 0
@@ -260,7 +263,15 @@ Symmetry in minimum-lengths cell: P -1 (No. 2)
                          Inverse: -1/2*x-1/2*z,-1/2*x-1/2*y,1/2*y+1/2*z
       Maximal angular difference: 0.000 degrees
 
-""")
+""",
+   replace=[
+     ("""\
+                 Change of basis: -x+y,z,x+y
+                         Inverse: -1/2*x+1/2*z,1/2*x+1/2*z,y
+""", """\
+                 Change of basis: -x+y,-z,-x-y
+                         Inverse: -1/2*x-1/2*z,1/2*x-1/2*z,-y
+""")])
   #
   run_and_compare(
     ['iotbx.lattice_symmetry --unit-cel="22.54 22.54 6.35 90 90 90" I',
