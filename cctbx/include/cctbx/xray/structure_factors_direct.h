@@ -4,6 +4,9 @@
 #include <cctbx/xray/scattering_type_registry.h>
 #include <cctbx/xray/hr_ht_cache.h>
 #include <cctbx/math/cos_sin_table.h>
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
 
 namespace cctbx { namespace xray { namespace structure_factors {
 
@@ -135,12 +138,13 @@ namespace cctbx { namespace xray { namespace structure_factors {
         c_t *f_calc_beg = f_calc_.begin();
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
+        int n = static_cast<int>(miller_indices.size());
 // gcc 4.1.0 (Fedora 5) internal compiler error.
 #if !(defined(__GNUC__) \
   && __GNUC__ == 4 && __GNUC_MINOR__ == 1 && __GNUC_PATCHLEVEL__ == 0)
         #pragma omp parallel for ordered schedule(static)
 #endif
-        for(std::size_t i=0;i<miller_indices.size();i++) {
+        for(int i=0;i<n;i++) {
           miller::index<> h = miller_indices[i];
           f_t d_star_sq = unit_cell.d_star_sq(h);
           af::shared<double> form_factors

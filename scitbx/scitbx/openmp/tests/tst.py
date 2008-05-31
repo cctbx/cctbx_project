@@ -1,6 +1,8 @@
-import libtbx.load_env
 from scitbx import openmp
-if openmp.available: import scitbx_openmp_tests_ext
+if openmp.available:
+  import boost.python
+  ext = boost.python.import_ext("scitbx_openmp_tests_ext")
+import libtbx.load_env
 import os
 
 def exercise_environment():
@@ -18,14 +20,14 @@ def exercise_environment():
     assert env.num_threads == i
 
   env.num_threads = 2
-  assert scitbx_openmp_tests_ext.tst_environment() == (4,2, 4,4)
+  assert ext.tst_environment() == (4,2, 4,4)
 
-def run():
+def exercise():
   if not openmp.available:
-    print "Skip OpenMP test"
-    return
-  exercise_environment()
+    print "Skipping OpenMP test"
+  else:
+    exercise_environment()
   print 'OK'
 
 if __name__ == '__main__':
-  run()
+  exercise()
