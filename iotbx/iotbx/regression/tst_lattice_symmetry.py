@@ -3,10 +3,18 @@ from libtbx import easy_run
 import sys
 
 def run_and_compare(commands, expected_output):
+  def digest(lines):
+    result = []
+    for line in lines:
+      if (line.strip().startswith("Change of basis: ")): continue
+      if (line.strip().startswith("Inverse: ")): continue
+      result.append(line)
+    result.sort()
+    return result
   for command in commands:
     lines = easy_run.fully_buffered(
       command=command).raise_if_errors().stdout_lines
-    assert not show_diff("\n".join(lines)+"\n", expected_output)
+    assert not show_diff(digest(lines), digest(expected_output.splitlines()))
 
 def exercise(args):
   assert len(args) == 0
