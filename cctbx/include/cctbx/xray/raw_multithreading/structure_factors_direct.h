@@ -62,9 +62,8 @@ namespace cctbx { namespace xray { namespace structure_factors {
       typedef xray::generic_scattering_type_registry<FormFactorType>
               scattering_type_registry_t;
 
-      af::shared<std::complex<float_type> > f_calc() const {
-        return f_calc_;
-      }
+      af::shared<std::complex<float_type> > const&
+      f_calc() const { return f_calc_; }
 
       raw_multithreaded_direct() {}
 
@@ -127,7 +126,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         workers.join_all();
         for(unsigned i_thread=0; i_thread < n_threads; ++i_thread) {
           af::const_ref<std::complex<float_type> >
-            f_calc_chunk = direct_chunks[i_thread].f_calc().ref();
+            f_calc_chunk = direct_chunks[i_thread].f_calc().const_ref();
           f_calc_.extend(f_calc_chunk.begin(), f_calc_chunk.end());
         }
       }
