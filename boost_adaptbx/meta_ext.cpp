@@ -423,6 +423,9 @@ namespace {
     P(PY_UNICODE_TYPE)
 #endif
 #undef P
+#if defined(_OPENMP)
+    result += "_OPENMP = " + to_str(_OPENMP) + nl;
+#endif
 #if defined(BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC)
     result += "gnu libc version: ";
     result += gnu_get_libc_version() + nl;
