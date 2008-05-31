@@ -270,7 +270,7 @@ int main(int argc, const char** /* argv */)
 {
   if (argc == 1) {
     cctbx::uctbx::unit_cell unit_cell(
-      scitbx::af::double6(12,12,12.1,89,90,92));
+      scitbx::af::double6(12,12.2,12.1,89,90,92));
     cctbx::sgtbx::space_group space_group("F 1");
     double max_delta = 3;
     cctbx::example(cctbx::crystal::symmetry(unit_cell, space_group), max_delta);
