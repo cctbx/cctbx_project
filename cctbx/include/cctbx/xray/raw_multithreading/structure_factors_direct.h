@@ -104,6 +104,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
                    scattering_type_registry_t const& scattering_type_registry,
                    unsigned n_threads)
       {
+        CCTBX_ASSERT(n_threads > 0);
         typedef details::delayed_direct<CosSinType,
                                         ScattererType,
                                         FormFactorType> direct_t;
