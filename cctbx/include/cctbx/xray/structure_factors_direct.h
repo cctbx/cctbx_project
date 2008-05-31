@@ -139,11 +139,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
         int n = static_cast<int>(miller_indices.size());
-// gcc 4.1.0 (Fedora 5) internal compiler error.
-#if !(defined(__GNUC__) \
-  && __GNUC__ == 4 && __GNUC_MINOR__ == 1 && __GNUC_PATCHLEVEL__ == 0)
         #pragma omp parallel for ordered schedule(static)
-#endif
         for(int i=0;i<n;i++) {
           miller::index<> h = miller_indices[i];
           f_t d_star_sq = unit_cell.d_star_sq(h);
