@@ -624,6 +624,7 @@ int main() {
       print "libtbx.scons: OpenMP is not usable (in shared libraries)."
       return
   print "libtbx.scons: OpenMP is available."
+  env_etc.have_openmp = True
   env_etc.ccflags_base.extend(compiler_options)
   env_etc.cxxflags_base.extend(compiler_options)
   env_base.Append(LINKFLAGS=linker_options)

@@ -1,6 +1,12 @@
+import boost.python
 try:
-  from  scitbx_openmp_ext import *
+  ext = boost.python.import_ext("scitbx_openmp_ext")
+  from scitbx_openmp_ext import *
   available = True
+except ImportError:
+  available = False
+
+if (available):
 
   class environment(object):
 
@@ -37,5 +43,3 @@ try:
       num_procs, doc="Number of available processors")
 
   environment = environment()
-except ImportError:
-  available = False

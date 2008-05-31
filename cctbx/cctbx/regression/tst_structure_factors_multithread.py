@@ -12,14 +12,16 @@ from libtbx.introspection import number_of_processors
 from libtbx import group_args
 
 def show_times_vs_cpu(times, header):
-    cols = [ "# CPU" + " "*3,
-             "run-time" + " "*3,
-             "speed-up" ]
-    print header
-    print ''.join(cols)
-    fmt = "%%-%ii%%-%i.2fx %%-%i.2f" % tuple([ len(c) for c in cols ])
-    for i,t in enumerate(times):
-      print fmt % (i+1, times[i], times[0]/times[i])
+  cols = [ "# CPU" + " "*3,
+           "run-time" + " "*3,
+           "speed-up" ]
+  print header
+  print ''.join(cols)
+  fmt = "%%-%ii%%-%i.2fx" % tuple([ len(c) for c in cols[:2] ])
+  for i,t in enumerate(times):
+    if (times[i] == 0): s = "Inf"
+    else: s = "%.2f" % (times[0]/times[i])
+    print fmt % (i+1, times[i]), s
 
 def exercise_openmp(space_group_info,
                     elements,
@@ -46,7 +48,7 @@ def exercise_openmp(space_group_info,
                                               cos_sin_table=cos_sin_table)
   times.append(timer.elapsed())
   single_threaded_f = single_threaded_calc.f_calc()
-  for n in xrange(2, number_of_processors() + 1):
+  for n in xrange(2, max(2, number_of_processors()) + 1):
     openmp.environment.num_threads = n
     timer = wall_clock_time()
     multi_threaded_calc = xs.structure_factors(d_min=d_min,
