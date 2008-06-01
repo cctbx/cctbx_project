@@ -813,6 +813,7 @@ class environment:
       if (not os.path.isfile(reg)):
         self._dispatcher_registry[target_file] = source_file
       elif (    os.path.isfile(source_file)
+            and os.name != "nt" # XXX
             and not os.path.samefile(reg, source_file)):
         raise Sorry("Multiple sources for dispatcher:\n"
           + "  target file:\n"
@@ -833,10 +834,15 @@ class environment:
     try: action(source_file, target_file_ext)
     except IOError, e: print "  Ignored:", e
 
-  def write_dispatcher_in_bin(self, source_file, target_file):
+  def _write_dispatcher_in_bin(self, source_file, target_file):
     self.write_dispatcher(
       source_file=source_file,
       target_file=self.under_build("bin/"+target_file))
+
+  def write_dispatcher_in_bin(self, source_file, target_file):
+    self._write_dispatcher_in_bin(
+      source_file=self.abs_path_clean(path=source_file),
+      target_file=target_file)
 
   def write_lib_dispatcher_head(self, target_file="dispatcher_head.sh"):
     if (os.name == "nt"): return
@@ -1007,10 +1013,15 @@ class environment:
       if (os.path.isdir(path)):
         print 'Processing: "%s"' % path
         for file_name in os.listdir(path):
-          if (file_name[0] == "."): continue
-          self.write_dispatcher_in_bin(
+          if (file_name.startswith(".")): continue
+          target_file = file_name
+          if (os.name == "nt"):
+            fnl = file_name.lower()
+            if (fnl.endswith(".exe.manifest")): continue
+            if (fnl.endswith(".exe")): target_file = file_name[:-4]
+          self._write_dispatcher_in_bin(
             source_file=libtbx.path.norm_join(path, file_name),
-            target_file=file_name)
+            target_file=target_file)
 
   def write_python_and_show_path_duplicates(self):
     module_names = {}
@@ -1028,14 +1039,14 @@ class environment:
       module_names[file_name.split(".")[0]] = None
     module_names = module_names.keys()
     for module_name in module_names:
-      self.write_dispatcher_in_bin(
+      self._write_dispatcher_in_bin(
         source_file=self.python_exe,
         target_file=module_name+".python")
     d, b = os.path.split(self.python_exe)
     pythonw_exe = os.path.join(d, b.replace("python", "pythonw"))
     if (os.path.isfile(pythonw_exe)):
       for module_name in module_names:
-        self.write_dispatcher_in_bin(
+        self._write_dispatcher_in_bin(
           source_file=pythonw_exe,
           target_file=module_name+".pythonw")
     commands = ["show_build_path", "show_dist_paths"]
@@ -1044,7 +1055,7 @@ class environment:
       source_file = self.under_dist(
         "libtbx", "libtbx/command_line/"+command+".py")
       for module_name in module_names:
-        self.write_dispatcher_in_bin(
+        self._write_dispatcher_in_bin(
           source_file=source_file,
           target_file=module_name+"."+command)
 
@@ -1107,7 +1118,7 @@ class environment:
     if (self.is_development_environment()):
       python_dispatchers.append("python")
     for file_name in python_dispatchers:
-      self.write_dispatcher_in_bin(
+      self._write_dispatcher_in_bin(
         source_file=self.python_exe,
         target_file=file_name)
     for module in self.module_list:
@@ -1318,7 +1329,7 @@ class module:
       if (not file_name_lower.startswith("main.")
            or file_name_lower.count(".") != 1):
         target_file += "." + os.path.splitext(file_name)[0]
-    self.env.write_dispatcher_in_bin(
+    self.env._write_dispatcher_in_bin(
       source_file=source_file,
       target_file=target_file)
 
