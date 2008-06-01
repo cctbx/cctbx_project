@@ -812,9 +812,11 @@ class environment:
     if (reg != source_file):
       if (not os.path.isfile(reg)):
         self._dispatcher_registry[target_file] = source_file
-      elif (    os.path.isfile(source_file)
-            and os.name != "nt" # XXX
-            and not os.path.samefile(reg, source_file)):
+      elif (os.path.isfile(source_file)
+            and (   not hasattr(os.path, "samefile")
+                 or not os.path.samefile(reg, source_file))
+            and    self.abs_path_short(abs_path=reg)
+                != self.abs_path_short(abs_path=source_file)):
         raise Sorry("Multiple sources for dispatcher:\n"
           + "  target file:\n"
           + "    %s\n" % show_string(target_file)
