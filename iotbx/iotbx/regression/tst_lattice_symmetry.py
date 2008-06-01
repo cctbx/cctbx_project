@@ -271,14 +271,14 @@ Symmetry in minimum-lengths cell: P -1 (No. 2)
 """)
   #
   run_and_compare(
-    ['iotbx.lattice_symmetry --unit-cel="22.54 22.64 6.35 90.1 89.9 90" I',
+    ['iotbx.lattice_symmetry --unit-cel="22.54 22.64 6.35 90.1 89.9 90.3" I',
      'cctbx.lattice_symmetry 1'],
     """\
 
 Input
 =====
 
-Unit cell: (22.54, 22.64, 6.35, 90.1, 89.9, 90)
+Unit cell: (22.54, 22.64, 6.35, 90.1, 89.9, 90.3)
 Space group: P 1 (b+c,a+c,a+b) (No. 1)
 
 Angular tolerance: 3.000 degrees
@@ -287,84 +287,84 @@ Similar symmetries
 ==================
 
 Symmetry in minimum-lengths cell: I 4/m m m (-y+z,x+y,-x+y) (No. 139)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
            Symmetry-adapted cell: (6.35, 16.2861, 16.2861, 87.8219, 78.7581, 78.7581)
             Conventional setting: I 4/m m m (No. 139)
                        Unit cell: (22.5901, 22.5901, 6.35, 90, 90, 90)
                  Change of basis: x,y,z
                          Inverse: x,y,z
-      Maximal angular difference: 0.290 degrees
+      Maximal angular difference: 0.316 degrees
 
 Symmetry in minimum-lengths cell: I m m m (y-z,-x+z,x+z) (No. 71)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
            Symmetry-adapted cell: (6.35, 16.2861, 16.2861, 87.5777, 78.7581, 78.7581)
             Conventional setting: I m m m (No. 71)
                        Unit cell: (6.35, 22.54, 22.64, 90, 90, 90)
-                 Change of basis: z,-x,-y
-                         Inverse: -y,-z,x
-      Maximal angular difference: 0.141 degrees
+                 Change of basis: -z,-x,y
+                         Inverse: -y,z,-x
+      Maximal angular difference: 0.316 degrees
 
 Symmetry in minimum-lengths cell: F m m m (x-y+z,-2*z,2*y) (No. 69)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
-           Symmetry-adapted cell: (6.35, 16.2861, 16.2861, 87.8219, 78.7581, 78.7581)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
+           Symmetry-adapted cell: (6.35, 16.245, 16.327, 87.8218, 78.7867, 78.7293)
             Conventional setting: F m m m (No. 69)
-                       Unit cell: (6.35, 31.9472, 31.9472, 90, 90, 90)
-                 Change of basis: z,-1/2*x+1/2*y,-1/2*x-1/2*y
-                         Inverse: -y-z,y-z,x
+                       Unit cell: (6.35, 31.8634, 32.0307, 90, 90, 90)
+                 Change of basis: -z,-1/2*x-1/2*y,-1/2*x+1/2*y
+                         Inverse: -y-z,-y+z,-x
       Maximal angular difference: 0.290 degrees
 
 Symmetry in minimum-lengths cell: C 1 2/m 1 (-x+y,z,2*x-z) (No. 12)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
-           Symmetry-adapted cell: (6.35, 16.2861, 16.2861, 87.5777, 78.7581, 78.7581)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
+           Symmetry-adapted cell: (6.35, 16.245, 16.327, 87.5777, 78.7867, 78.7293)
             Conventional setting: I 1 2/m 1 (No. 12)
-                       Unit cell: (22.54, 6.35, 22.64, 90, 90, 90)
-                 Change of basis: x,z,-y
-                         Inverse: x,-z,y
+                       Unit cell: (22.54, 6.35, 22.64, 90, 90.3, 90)
+                 Change of basis: x,-z,y
+                         Inverse: x,z,-y
       Maximal angular difference: 0.141 degrees
 
 Symmetry in minimum-lengths cell: C 1 2/m 1 (x-y,2*y,z) (No. 12)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
-           Symmetry-adapted cell: (6.35, 16.2861, 16.286, 87.8219, 78.7584, 78.7581)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
+           Symmetry-adapted cell: (6.35, 16.245, 16.3194, 87.8479, 78.9224, 78.7293)
             Conventional setting: C 1 2/m 1 (No. 12)
-                       Unit cell: (6.35, 31.9472, 16.286, 90, 101.242, 90)
-                 Change of basis: -1/2*x-1/2*y+z,-1/2*x+1/2*y,-x-y
-                         Inverse: -y-1/2*z,y-1/2*z,x-1/2*z
-      Maximal angular difference: 0.290 degrees
-
-Symmetry in minimum-lengths cell: C 1 2/m 1 (x+y,z,-2*y) (No. 12)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
-           Symmetry-adapted cell: (6.35, 16.2784, 16.2861, 87.8479, 78.7581, 78.8942)
-            Conventional setting: C 1 2/m 1 (No. 12)
-                       Unit cell: (6.35, 31.9472, 16.2784, 90, 101.106, 90)
-                 Change of basis: 1/2*x-1/2*y+z,-1/2*x-1/2*y,x-y
-                         Inverse: -y+1/2*z,-y-1/2*z,x-1/2*z
+                       Unit cell: (6.35, 31.8634, 16.3194, 90, 101.078, 90)
+                 Change of basis: -1/2*x+1/2*y-z,-1/2*x-1/2*y,-x+y
+                         Inverse: -y-1/2*z,-y+1/2*z,-x+1/2*z
       Maximal angular difference: 0.254 degrees
 
+Symmetry in minimum-lengths cell: C 1 2/m 1 (x+y,z,-2*y) (No. 12)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
+           Symmetry-adapted cell: (6.35, 16.245, 16.327, 87.8219, 78.7867, 78.7296)
+            Conventional setting: C 1 2/m 1 (No. 12)
+                       Unit cell: (6.35, 32.0307, 16.245, 90, 101.27, 90)
+                 Change of basis: 1/2*x+1/2*y-z,-1/2*x+1/2*y,x+y
+                         Inverse: -y+1/2*z,y+1/2*z,-x+1/2*z
+      Maximal angular difference: 0.290 degrees
+
 Symmetry in minimum-lengths cell: C 1 2/m 1 (z,x-y,x+y) (No. 12)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
            Symmetry-adapted cell: (6.35, 16.2822, 16.2822, 87.6037, 78.8263, 78.8263)
             Conventional setting: I 1 2/m 1 (No. 12)
                        Unit cell: (6.35, 22.54, 22.64, 90, 90.1, 90)
-                 Change of basis: z,x,y
-                         Inverse: y,z,x
-      Maximal angular difference: 0.100 degrees
+                 Change of basis: -z,x,-y
+                         Inverse: y,-z,-x
+      Maximal angular difference: 0.316 degrees
 
 Symmetry in minimum-lengths cell: C 1 2/m 1 (x-y+z,x+y,-x+y) (No. 12)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
-           Symmetry-adapted cell: (6.35, 16.2822, 16.2899, 87.5777, 78.6902, 78.826)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
+           Symmetry-adapted cell: (6.35, 16.2899, 16.2822, 87.5777, 78.826, 78.6902)
             Conventional setting: I 1 2/m 1 (No. 12)
                        Unit cell: (6.35, 22.64, 22.54, 90, 90.1, 90)
-                 Change of basis: z,y,-x
-                         Inverse: -z,y,x
-      Maximal angular difference: 0.100 degrees
+                 Change of basis: -z,y,x
+                         Inverse: z,y,-x
+      Maximal angular difference: 0.316 degrees
 
 Symmetry in minimum-lengths cell: P -1 (No. 2)
-      Input minimum-lengths cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
-           Symmetry-adapted cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
+      Input minimum-lengths cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
+           Symmetry-adapted cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
             Conventional setting: P -1 (No. 2)
-                       Unit cell: (6.35, 16.2784, 16.286, 87.6037, 78.7584, 78.8942)
-                 Change of basis: y-z,x-y,-x-y
-                         Inverse: 1/2*y-1/2*z,-1/2*y-1/2*z,-x-1/2*y-1/2*z
+                       Unit cell: (6.35, 16.245, 16.3194, 87.6037, 78.9224, 78.7296)
+                 Change of basis: -y+z,x+y,-x+y
+                         Inverse: 1/2*y-1/2*z,1/2*y+1/2*z,x+1/2*y+1/2*z
       Maximal angular difference: 0.000 degrees
 
 """)
