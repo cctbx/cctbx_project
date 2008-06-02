@@ -611,7 +611,7 @@ int main() {
       ('^win32_cl$',  [['/openmp'], []]),
       ('^win32_icc$', [['/Qopenmp']]*2),
       ('^unix_icc$',  [['-openmp']]*2),
-      #('^tru64_cxx$',  [['-omp']]*2), # disabled b/o cxx segfault
+      ('^tru64_cxx$', [['-omp']]*2),
       ('gcc',         [['-fopenmp']]*2),
     ],
     default=[None]*2)
