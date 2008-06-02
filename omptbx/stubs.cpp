@@ -118,15 +118,12 @@ omp_test_lock(omp_lock_t* lock)
     *lock = LOCKED;
     return 1;
   }
-  else if (*lock == LOCKED)
-  {
-    return 0;
-  }
-  else
+  else if (*lock != LOCKED)
   {
     fprintf(stderr, "omptbx error: lock not initialized\n");
     exit(1);
   }
+  return 0;
 }
 
 enum { NOOWNER = -1, MASTER = 0 };
