@@ -4,8 +4,8 @@ try:
   from cctbx.xray.ext import structure_factors_raw_multithreaded_direct
 except ImportError:
   structure_factors_raw_multithreaded_direct = None
-from scitbx import openmp
 from cctbx import math_module
+import omptbx
 from libtbx.test_utils import approx_equal
 from libtbx.utils import wall_clock_time, show_times_at_exit
 from libtbx.introspection import number_of_processors
@@ -27,9 +27,8 @@ def exercise_openmp(space_group_info,
                     elements,
                     anomalous_flag=False,
                     verbose=0):
-  if not openmp.available:
-    print "Skipping OpenMP structure factor computation tests"
-    return
+  if (omptbx.have_omp_h): print "omptbx.have_omp_h"
+  if (omptbx.have_stubs_h): print "omptbx.have_stubs_h"
   xs = random_structure.xray_structure(
     space_group_info=space_group_info,
     elements=elements,
@@ -41,7 +40,7 @@ def exercise_openmp(space_group_info,
     cos_sin_table = False
   timer = wall_clock_time()
   times = []
-  openmp.environment.num_threads = 1
+  omptbx.env.num_threads = 1
   if (verbose): d_min = 0.5
   else:         d_min = 2.0
   single_threaded_calc = xs.structure_factors(d_min=d_min,
@@ -50,7 +49,7 @@ def exercise_openmp(space_group_info,
   times.append(timer.elapsed())
   single_threaded_f = single_threaded_calc.f_calc()
   for n in xrange(2, max(2, number_of_processors()) + 1):
-    openmp.environment.num_threads = n
+    omptbx.env.num_threads = n
     timer = wall_clock_time()
     multi_threaded_calc = xs.structure_factors(d_min=d_min,
                                                algorithm='direct',
@@ -58,6 +57,8 @@ def exercise_openmp(space_group_info,
     times.append(timer.elapsed())
     multi_threaded_f = multi_threaded_calc.f_calc()
     assert approx_equal(single_threaded_f.data(), multi_threaded_f.data())
+    if (not omptbx.have_omp_h):
+      break
   if verbose:
     show_times_vs_cpu(times, header="OpenMP")
 

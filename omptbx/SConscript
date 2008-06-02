@@ -1,0 +1,29 @@
+import libtbx.load_env
+import os
+Import("env_base", "env_etc")
+
+env_etc.omptbx_dist = libtbx.env.dist_path("omptbx")
+env_etc.omptbx_include = os.path.dirname(os.path.join(env_etc.omptbx_dist))
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
+)
+env_etc.include_registry.append(
+  env=env,
+  paths=[env_etc.omptbx_include])
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(
+  target="#lib/omptbx",
+  source=["stubs.cpp"])
+
+if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+  env = env_boost_python_ext.Copy()
+  env.Prepend(LIBS=["omptbx"])
+  env.SharedLibrary(target="#lib/omptbx_ext", source="ext.cpp")
+  env_etc.include_registry.append(
+    env=env,
+    paths=[env_etc.omptbx_include])

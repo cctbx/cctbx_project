@@ -8,6 +8,7 @@ env_etc.cctbx_common_includes = [
   env_etc.cctbx_include,
   env_etc.scitbx_include,
   env_etc.chiltbx_include,
+  env_etc.omptbx_include,
   env_etc.boost_include,
 ]
 
@@ -98,9 +99,9 @@ lib_cctbx_sources = [
 ]
 if (env_etc.static_libraries): builder = envlm.StaticLibrary
 else:                          builder = envlm.SharedLibrary
-lib_cctbx_node = builder(
-    target="#lib/cctbx",
-    source=lib_cctbx_sources)
+builder(
+  target="#lib/cctbx",
+  source=lib_cctbx_sources)
 
 SConscript("examples/SConscript")
 
