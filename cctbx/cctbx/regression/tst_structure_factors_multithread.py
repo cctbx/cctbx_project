@@ -18,10 +18,11 @@ def show_times_vs_cpu(times, header):
   print header
   print ''.join(cols)
   fmt = "%%-%ii%%-%i.2fx" % tuple([ len(c) for c in cols[:2] ])
-  for i,t in enumerate(times):
-    if (times[i] == 0): s = "Inf"
-    else: s = "%.2f" % (times[0]/times[i])
-    print fmt % (i+1, times[i]), s
+  t0 = times[0][1]
+  for i,t in times:
+    if (i == 0): s = "Inf"
+    else: s = "%.2f" % (t0/t)
+    print fmt % (i,t), s
 
 def exercise_openmp(space_group_info,
                     elements,
@@ -46,7 +47,7 @@ def exercise_openmp(space_group_info,
   single_threaded_calc = xs.structure_factors(d_min=d_min,
                                               algorithm="direct",
                                               cos_sin_table=cos_sin_table)
-  times.append(timer.elapsed())
+  times.append((1, timer.elapsed()))
   single_threaded_f = single_threaded_calc.f_calc()
   for n in xrange(2, max(2, number_of_processors()) + 1):
     omptbx.env.num_threads = n
@@ -54,7 +55,7 @@ def exercise_openmp(space_group_info,
     multi_threaded_calc = xs.structure_factors(d_min=d_min,
                                                algorithm='direct',
                                                cos_sin_table=cos_sin_table)
-    times.append(timer.elapsed())
+    times.append((n, timer.elapsed()))
     multi_threaded_f = multi_threaded_calc.f_calc()
     assert approx_equal(single_threaded_f.data(), multi_threaded_f.data())
     if (not omptbx.have_omp_h):
@@ -86,7 +87,7 @@ def exercise_raw(space_group_info,
   single_threaded_calc = xs.structure_factors(d_min=d_min,
                                               algorithm="direct",
                                               cos_sin_table=cos_sin_table)
-  times.append(timer.elapsed())
+  times.append((1, timer.elapsed()))
   single_threaded_f = single_threaded_calc.f_calc()
   args = group_args(unit_cell=xs.unit_cell(),
                     space_group=xs.space_group(),
@@ -100,7 +101,7 @@ def exercise_raw(space_group_info,
     timer = wall_clock_time()
     multithreaded_calc = structure_factors_raw_multithreaded_direct(
       **arg1s.__dict__)
-    times.append(timer.elapsed())
+    times.append((i, timer.elapsed()))
     multithreaded_f = multithreaded_calc.f_calc()
     assert approx_equal(single_threaded_f.data(), multithreaded_f)
   if verbose:
