@@ -136,7 +136,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
         c_t *f_calc_beg = f_calc_.begin();
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
+#if !defined(__DECCXX_VER) || (defined(_OPENMP) && _OPENMP > 199819)
         #pragma omp parallel for ordered schedule(static)
+#endif
         for(int i=0;i<n;i++) {
           miller::index<> h = miller_indices[i];
           f_t d_star_sq = unit_cell.d_star_sq(h);

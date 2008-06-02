@@ -53,8 +53,13 @@ namespace omptbx { namespace boost_python { namespace {
         foo += 1;
       }
     }
+#if defined(_OPENMP) && _OPENMP <= 199819
+    omp_set_num_threads(4);
+    #pragma omp parallel sections reduction(+:bar)
+#else
     #pragma omp parallel sections reduction(+:bar) \
                 num_threads(4)
+#endif
     {
       n = omp_get_num_threads();
       #pragma omp section
@@ -84,9 +89,11 @@ namespace omptbx { namespace boost_python { namespace {
 
     scope s;
 #if defined(OMPTBX_HAVE_OMP_H)
+    s.attr("omp_version") = _OPENMP;
     s.attr("have_stubs_h") = false;
     s.attr("have_omp_h") = true;
 #else
+    s.attr("omp_version") = object();
     s.attr("have_stubs_h") = true;
     s.attr("have_omp_h") = false;
 #endif

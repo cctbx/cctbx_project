@@ -4,6 +4,7 @@ import os
 def exercise():
   if (omptbx.have_omp_h): print "omptbx.have_omp_h"
   if (omptbx.have_stubs_h): print "omptbx.have_stubs_h"
+  print "omtbx.omp_version:", omptbx.omp_version
   if (omptbx.have_omp_h):
     assert not omptbx.have_stubs_h
   else:
@@ -14,7 +15,7 @@ def exercise():
   env.dynamic = False
   assert not env.dynamic
   env.dynamic = True
-  if (omptbx.have_omp_h):
+  if (omptbx.have_omp_h and omptbx.omp_version > 199819):
     assert env.dynamic
   else:
     assert not env.dynamic
