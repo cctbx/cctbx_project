@@ -80,9 +80,9 @@ def exercise_raw(space_group_info,
     cos_sin_table = False
   timer = wall_clock_time()
   times = []
-  if openmp.available: openmp.environment.num_threads = 1
   if (verbose): d_min = 0.5
   else:         d_min = 2.0
+  omptbx.env.num_threads = 1
   single_threaded_calc = xs.structure_factors(d_min=d_min,
                                               algorithm="direct",
                                               cos_sin_table=cos_sin_table)
