@@ -15,10 +15,10 @@ namespace cctbx { namespace xray { namespace structure_factors {
     template <class CosSinType,
               class ScattererType=scatterer<>,
               class FormFactorType=eltbx::xray_scattering::gaussian>
-    struct delayed_direct : public direct<ScattererType, FormFactorType>
+    struct delayed_direct
     {
-      typedef direct<ScattererType, FormFactorType> base_t;
-      typedef typename base_t::scattering_type_registry_t
+      typedef direct<ScattererType, FormFactorType> direct_t;
+      typedef typename direct_t::scattering_type_registry_t
               scattering_type_registry_t;
 
       CosSinType const *cos_sin;
@@ -27,6 +27,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
       af::const_ref<miller::index<> > miller_indices;
       af::const_ref<ScattererType> const *scatterers;
       scattering_type_registry_t const *scattering_type_registry;
+
+      boost::shared_ptr<
+        boost::shared_ptr<direct_t> > handle;
 
       delayed_direct(
         CosSinType const& cos_sin_,
@@ -40,13 +43,20 @@ namespace cctbx { namespace xray { namespace structure_factors {
         space_group(&space_group_),
         miller_indices(miller_indices_),
         scatterers(&scatterers_),
-        scattering_type_registry(&scattering_type_registry_)
+        scattering_type_registry(&scattering_type_registry_),
+        handle(new boost::shared_ptr<direct_t>())
       {}
 
       void operator()() {
-        compute(*cos_sin, *unit_cell, *space_group, miller_indices,
-                *scatterers, *scattering_type_registry);
+        *handle = boost::shared_ptr<direct_t>(
+          new direct_t(*cos_sin, *unit_cell,
+                       *space_group, miller_indices,
+                       *scatterers,
+                       *scattering_type_registry));
       }
+
+      af::shared<std::complex<typename direct_t::float_type> > const&
+      f_calc() { return (*handle)->f_calc(); }
     };
 
   } // namespace details

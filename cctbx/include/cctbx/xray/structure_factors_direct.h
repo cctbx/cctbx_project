@@ -100,8 +100,9 @@ namespace cctbx { namespace xray { namespace structure_factors {
                 scatterers, scattering_type_registry);
       }
 
+      template<class CosSinType>
       direct(
-        math::cos_sin_table<float_type> const& cos_sin,
+        CosSinType const& cos_sin,
         uctbx::unit_cell const& unit_cell,
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
@@ -115,7 +116,7 @@ namespace cctbx { namespace xray { namespace structure_factors {
       af::shared<std::complex<float_type> > const&
       f_calc() const { return f_calc_; }
 
-    protected:
+    private:
       af::shared<std::complex<float_type> > f_calc_;
 
       template <typename CosSinType>
@@ -130,11 +131,11 @@ namespace cctbx { namespace xray { namespace structure_factors {
       {
         typedef float_type f_t;
         typedef std::complex<float_type> c_t;
-        f_calc_.resize(miller_indices.size());
+        int n = static_cast<int>(miller_indices.size());
+        f_calc_ = af::shared<c_t>(n, af::init_functor_null<c_t>());
         c_t *f_calc_beg = f_calc_.begin();
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
-        int n = static_cast<int>(miller_indices.size());
         #pragma omp parallel for ordered schedule(static)
         for(int i=0;i<n;i++) {
           miller::index<> h = miller_indices[i];
