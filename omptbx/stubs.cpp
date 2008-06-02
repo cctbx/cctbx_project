@@ -184,6 +184,11 @@ omp_test_nest_lock(omp_nest_lock_t* nlock)
   return nlock->count;
 }
 
+#if defined(_MSC_VER)
+// warning C4297: function assumed not to throw an exception but does
+# pragma warning(disable:4297)
+#endif
+
 double
 omp_get_wtime(void)
 {
