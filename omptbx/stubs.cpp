@@ -64,27 +64,27 @@ omp_get_nested(void)
   return 0;
 }
 
-enum { UNLOCKED = -1, INIT, LOCKED };
+enum { omptbx_stubs_UNLOCKED = -1, omptbx_stubs_INIT, omptbx_stubs_LOCKED };
 
 void
 omp_init_lock(omp_lock_t* lock)
 {
-  *lock = UNLOCKED;
+  *lock = omptbx_stubs_UNLOCKED;
 }
 
 void
 omp_destroy_lock(omp_lock_t* lock)
 {
-  *lock = INIT;
+  *lock = omptbx_stubs_INIT;
 }
 
 void
 omp_set_lock(omp_lock_t* lock)
 {
-  if (*lock == UNLOCKED) {
-    *lock = LOCKED;
+  if (*lock == omptbx_stubs_UNLOCKED) {
+    *lock = omptbx_stubs_LOCKED;
   }
-  else if (*lock == LOCKED) {
+  else if (*lock == omptbx_stubs_LOCKED) {
     fprintf(stderr, "omptbx error: deadlock in using lock variable\n");
     exit(1);
   }
@@ -97,10 +97,10 @@ omp_set_lock(omp_lock_t* lock)
 void
 omp_unset_lock(omp_lock_t* lock)
 {
-  if (*lock == LOCKED) {
-    *lock = UNLOCKED;
+  if (*lock == omptbx_stubs_LOCKED) {
+    *lock = omptbx_stubs_UNLOCKED;
   }
-  else if (*lock == UNLOCKED) {
+  else if (*lock == omptbx_stubs_UNLOCKED) {
     fprintf(stderr, "omptbx error: lock not set\n");
     exit(1);
   }
@@ -113,12 +113,12 @@ omp_unset_lock(omp_lock_t* lock)
 int
 omp_test_lock(omp_lock_t* lock)
 {
-  if (*lock == UNLOCKED)
+  if (*lock == omptbx_stubs_UNLOCKED)
   {
-    *lock = LOCKED;
+    *lock = omptbx_stubs_LOCKED;
     return 1;
   }
-  else if (*lock != LOCKED)
+  else if (*lock != omptbx_stubs_LOCKED)
   {
     fprintf(stderr, "omptbx error: lock not initialized\n");
     exit(1);
@@ -126,30 +126,30 @@ omp_test_lock(omp_lock_t* lock)
   return 0;
 }
 
-enum { NOOWNER = -1, MASTER = 0 };
+enum { omptbx_stubs_NOOWNER = -1, omptbx_stubs_MASTER = 0 };
 
 void
 omp_init_nest_lock(omp_nest_lock_t* nlock)
 {
-  nlock->owner = NOOWNER;
+  nlock->owner = omptbx_stubs_NOOWNER;
   nlock->count = 0;
 }
 
 void
 omp_destroy_nest_lock(omp_nest_lock_t* nlock)
 {
-  nlock->owner = NOOWNER;
-  nlock->count = UNLOCKED;
+  nlock->owner = omptbx_stubs_NOOWNER;
+  nlock->count = omptbx_stubs_UNLOCKED;
 }
 
 void
 omp_set_nest_lock(omp_nest_lock_t* nlock)
 {
-  if (nlock->owner == MASTER && nlock->count >= 1) {
+  if (nlock->owner == omptbx_stubs_MASTER && nlock->count >= 1) {
     nlock->count++;
   }
-  else if (nlock->owner == NOOWNER && nlock->count == 0) {
-    nlock->owner = MASTER;
+  else if (nlock->owner == omptbx_stubs_NOOWNER && nlock->count == 0) {
+    nlock->owner = omptbx_stubs_MASTER;
     nlock->count = 1;
   }
   else {
@@ -161,13 +161,13 @@ omp_set_nest_lock(omp_nest_lock_t* nlock)
 void
 omp_unset_nest_lock(omp_nest_lock_t* nlock)
 {
-  if (nlock->owner == NOOWNER && nlock->count >= 1) {
+  if (nlock->owner == omptbx_stubs_NOOWNER && nlock->count >= 1) {
     nlock->count--;
     if (nlock->count == 0) {
-      nlock->owner = NOOWNER;
+      nlock->owner = omptbx_stubs_NOOWNER;
     }
   }
-  else if (nlock->owner == NOOWNER && nlock->count == 0) {
+  else if (nlock->owner == omptbx_stubs_NOOWNER && nlock->count == 0) {
     fprintf(stderr, "omptbx error: lock not set\n");
     exit(1);
   }
