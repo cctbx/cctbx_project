@@ -475,15 +475,9 @@ else:
     elif env_etc.compiler == "darwin_gcc_4.2":
       cc = "gcc-4.2"
       cxx = "g++-4.2"
-      build_nb = libtbx.config.get_darwin_gcc_build_number(gcc=cxx)
-      min_build_nb = 5553
-      if (libtbx.env.build_options.enable_boost_threads 
-          and build_nb < min_build_nb):
-        raise RuntimeError("With --enable_boost_threads, please "
-                           "either use the stock compiler "
-                           "or GCC 4.2 build %i or higher. "
-                           "Especially Apple GCC 4.2 Preview 1 is not "
-                           "supported with Boost.Thread")
+      if libtbx.env.build_options.enable_boost_threads:
+        raise RuntimeError("Apple GCC 4.2 incompatible with "
+                           "--enable_boost_threads")
     else:
       cc = "cc"
       cxx = "c++"
