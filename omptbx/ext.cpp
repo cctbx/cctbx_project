@@ -7,6 +7,27 @@
 
 namespace omptbx { namespace boost_python { namespace {
 
+  void
+  set_num_threads(int num_threads) { omp_set_num_threads(num_threads); }
+
+  int
+  get_max_threads() { return omp_get_max_threads(); }
+
+  int
+  get_num_procs() { return omp_get_num_procs(); }
+
+  int
+  get_dynamic() { return omp_get_dynamic(); }
+
+  void
+  set_dynamic(int dynamic_threads) { omp_set_dynamic(dynamic_threads); }
+
+  int
+  get_nested() { return omp_get_nested(); }
+
+  void
+  set_nested(int nested) { omp_set_nested(nested); }
+
   boost::python::tuple
   tst_environment()
   {
@@ -70,16 +91,13 @@ namespace omptbx { namespace boost_python { namespace {
     s.attr("have_omp_h") = false;
 #endif
 
-    typedef bool (*boolean_property_getter)();
-    typedef void (*boolean_property_setter)(bool);
-
-    def("omp_set_num_threads", &omp_set_num_threads);
-    def("omp_get_max_threads", &omp_get_max_threads);
-    def("omp_get_num_procs", &omp_get_num_procs);
-    def("omp_get_dynamic", (boolean_property_getter)&omp_get_dynamic);
-    def("omp_set_dynamic", (boolean_property_setter)&omp_set_dynamic);
-    def("omp_get_nested", (boolean_property_getter)&omp_get_nested);
-    def("omp_set_nested", (boolean_property_setter)&omp_set_nested);
+    def("omp_set_num_threads", set_num_threads);
+    def("omp_get_max_threads", get_max_threads);
+    def("omp_get_num_procs", get_num_procs);
+    def("omp_get_dynamic", get_dynamic);
+    def("omp_set_dynamic", set_dynamic);
+    def("omp_get_nested", get_nested);
+    def("omp_set_nested", set_nested);
 
     def("tst_environment", &tst_environment);
   }
