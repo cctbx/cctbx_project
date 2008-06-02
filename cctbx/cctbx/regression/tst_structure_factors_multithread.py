@@ -20,7 +20,7 @@ def show_times_vs_cpu(times, header):
   fmt = "%%-%ii%%-%i.2fx" % tuple([ len(c) for c in cols[:2] ])
   t0 = times[0][1]
   for i,t in times:
-    if (i == 0): s = "Inf"
+    if (t == 0): s = "Inf"
     else: s = "%.2f" % (t0/t)
     print fmt % (i,t), s
 
