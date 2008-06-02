@@ -197,6 +197,14 @@ mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
 mmtbx/utils/utils.h -text
 mmtbx/utils/utils_ext.cpp -text
+omptbx/SConscript -text
+omptbx/__init__.py svneol=native#text/x-python
+omptbx/ext.cpp svneol=native#text/plain
+omptbx/libtbx_config -text
+omptbx/omp_or_stubs.h svneol=native#text/plain
+omptbx/stubs.cpp svneol=native#text/plain
+omptbx/stubs.h svneol=native#text/plain
+omptbx/tst.py svneol=native#text/x-python
 scitbx/array_family/boost_python/tst_cost_of_m_handle_in_af_shared.py -text
 scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-python
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
@@ -228,11 +236,6 @@ scitbx/scitbx/iso_surface/iso_surface_ext.cpp -text
 scitbx/scitbx/iso_surface/tst_iso_surface.m -text
 scitbx/scitbx/iso_surface/tst_iso_surface.py -text
 scitbx/scitbx/math/sphere_sphere_intersection.py svneol=native#text/x-python
-scitbx/scitbx/openmp/SConscript -text
-scitbx/scitbx/openmp/__init__.py -text
-scitbx/scitbx/openmp/openmp.cpp -text
-scitbx/scitbx/openmp/tests/tst.py -text
-scitbx/scitbx/openmp/tests/tst_environment.cpp -text
 scitbx/scitbx/source_generators/flex_fwd_h.py -text
 scitbx/scitbx/sparse/__init__.py -text
 scitbx/scitbx/sparse/boost_python/SConscript -text

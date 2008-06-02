@@ -1,6 +1,6 @@
 {
   "modules_required_for_use": ["scitbx"],
-  "modules_required_for_build": ["chiltbx"],
+  "modules_required_for_build": ["omptbx", "chiltbx"],
   "exclude_from_binary_bundle": [
     r"^reference/henke/",
     r"^reference/sasaki/"],

@@ -1,6 +1,0 @@
-Import("env_scitbx_boost_python_ext", "env_etc")
-if (env_etc.have_openmp):
-  env = env_scitbx_boost_python_ext.Copy()
-  env.SharedLibrary(target="#lib/scitbx_openmp_ext", source="openmp.cpp")
-  env.SharedLibrary(target="#lib/scitbx_openmp_tests_ext",
-                    source="tests/tst_environment.cpp")

@@ -4,9 +4,7 @@
 #include <cctbx/xray/scattering_type_registry.h>
 #include <cctbx/xray/hr_ht_cache.h>
 #include <cctbx/math/cos_sin_table.h>
-#if defined(_OPENMP)
-#include <omp.h>
-#endif
+#include <omptbx/omp_or_stubs.h>
 
 namespace cctbx { namespace xray { namespace structure_factors {
 
