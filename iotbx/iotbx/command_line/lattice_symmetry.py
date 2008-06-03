@@ -57,7 +57,8 @@ class metric_subgroups:
         input_symmetry,
         max_delta,
         enforce_max_delta_for_generated_two_folds=True,
-        bravais_types_only=True):
+        bravais_types_only=True,
+        best_monoclinic_beta=True):
     adopt_init_args(self,locals())
     self.result_groups = []
 
@@ -143,7 +144,8 @@ class metric_subgroups:
                                   space_group=acentric_supergroup)
                                })
   def change_of_basis_op_to_best_cell(self,ref_subsym):
-    return ref_subsym.change_of_basis_op_to_best_cell()
+    return ref_subsym.change_of_basis_op_to_best_cell(
+      best_monoclinic_beta=self.best_monoclinic_beta)
 
   def show_input(self):
     print
