@@ -388,9 +388,27 @@ class environment:
 
   def clear_bin_directory(self):
     if (not os.path.isdir(self.bin_path)): return
+    buffer = []
+    have_libtbx_command = False
     for file_name in os.listdir(self.bin_path):
+      if (    not have_libtbx_command
+          and file_name.lower().startswith("libtbx.")):
+        have_libtbx_command = True
       path = os.path.join(self.bin_path, file_name)
       if (os.path.isfile(path)):
+        buffer.append(path)
+    if (len(buffer) != 0):
+      if (not have_libtbx_command):
+        raise Sorry("""Existing "bin" sub-directory safety-guard:
+  A "bin" sub-directory exists already in the current working directory,
+  but it does not contain any "libtbx." commands. Therefore the current
+  working directory does not appear to be an existing libtbx-managed
+  build directory. To resolve this problem:
+    - If this command was accidentally run in the wrong directory,
+      change to the correct directory.
+    - Remove the "bin" subdirectory, then run this command again.""")
+      #
+      for path in buffer:
         remove_or_rename(path)
 
   def write_command_version_suffix(self):
