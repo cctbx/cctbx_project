@@ -2055,7 +2055,6 @@ class info(object):
       print >> out,pr+" FRACTION: %s"%format_value("%-8.3f", self.twin_fraction)
       print >> out,pr+" OPERATOR: %s"%\
         format_value("%-s", sgtbx.change_of_basis_op(self.twin_law).as_hkl())
-    print >> out,pr
     print >> out,pr+"ERROR ESTIMATES."
     print >> out,pr+" COORDINATE ERROR (MAXIMUM-LIKELIHOOD BASED)     : %s"%\
       format_value("%-8.2f", self.ml_coordinate_error)
