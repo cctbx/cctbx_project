@@ -81,8 +81,6 @@ class geometry(object):
     if(pdb_deposition):
       prefix = "REMARK   3  "
       self.show_overall_2(out = out, prefix = prefix)
-      print >> out, prefix
-      self.show_bond_angle_nonbonded_histogram_2(out = out, prefix = prefix)
     else:
       self.show_bond_angle_nonbonded_histogram_1(out = out, message = message)
       self.show_overall_1(out = out, message = message)
@@ -235,6 +233,7 @@ class model_content(object):
 class adp(object):
   def __init__(self, model,  n_histogram_slots = 10):
     self.wilson_b = model.wilson_b
+    self.rms_b_iso_or_b_equiv_bonded = model.rms_b_iso_or_b_equiv_bonded()
     eps = math.pi**2*8
     solvent_selection = model.solvent_selection()
     hd_selection = model.xray_structure.hd_selection()
@@ -371,15 +370,15 @@ class adp(object):
     else: print >> out, prefix+"|"+"-"*70+"|"
     out.flush()
 
-  def _fmtl2(self,a,b,c,d,e):
+  def _fmtl2(self,a,b):
     n = []
-    for item in [a,b,c,d,e]:
+    for item in [a,b]:
       if(item is None): item = str(item)
       elif(str(item).count(".")): item = str("%8.2f"%item).strip()
       else: item = str("%7d"%item).strip()
       n.append(item)
-    fmt = " %6s %7s  %7s %7s %7s"
-    return fmt%(n[0],n[1],n[2],n[3],n[4])
+    fmt = " %6s %7s"
+    return fmt%(n[0],n[1])
 
   def show_2(self, out, prefix):
     if(self.wilson_b is None):
@@ -388,36 +387,15 @@ class adp(object):
       wilson_b = str("%8.2f"%self.wilson_b).strip()
     print >> out, prefix+"ATOMIC DISPLACEMENT PARAMETERS."
     print >> out, prefix+" WILSON B : %-s"%wilson_b
-    print >> out, prefix+" ATOMS          NUMBER OF ATOMS  ISOTROPIC OR EQUIVALENT"
-    print >> out, prefix+"                  ISO.  ANISO.      MIN     MAX    MEAN"
-    print >> out, prefix+"  ALL         :"+self._fmtl2(self.n_iso_a,self.n_aniso_a,self.b_min_a,self.b_max_a,self.b_mean_a)
-    print >> out, prefix+"  ALL (NO H)  :"+self._fmtl2(self.n_iso_a_noH,self.n_aniso_a_noH,self.b_min_a_noH,self.b_max_a_noH,self.b_mean_a_noH)
-    print >> out, prefix+"  SOLVENT     :"+self._fmtl2(self.n_iso_s_noH,self.n_aniso_s_noH,self.b_min_s_noH,self.b_max_s_noH,self.b_mean_s_noH)
-    print >> out, prefix+"  NON-SOLVENT :"+self._fmtl2(self.n_iso_m_noH,self.n_aniso_m_noH,self.b_min_m_noH,self.b_max_m_noH,self.b_mean_m_noH)
-    print >> out, prefix+"  HYDROGENS   :"+self._fmtl2(self.n_iso_h,self.n_aniso_h,self.b_min_h,self.b_max_h,self.b_mean_h)
-    print >> out, prefix
-    print >> out, prefix+"ATOMIC DISPLACEMENT PARAMETERS (HISTOGRAM, NON-H)."
-    if(self._show_anisotropy):
-      print >> out, prefix+" ISOTROPIC OR EQUIVALENT             ANISOTROPY"
-    else:
-      print >> out, prefix+" ISOTROPIC OR EQUIVALENT"
-    h_1 = self.b_a_noH_histogram
-    h_2 = self.a_a_noH_histogram
-    lc_1 = h_1.data_min()
-    lc_2 = h_2.data_min()
-    s_1 = enumerate(h_1.slots())
-    s_2 = enumerate(h_2.slots())
-    for (i_1,n_1),(i_2,n_2) in zip(s_1, s_2):
-      hc_1 = h_1.data_min() + h_1.slot_width() * (i_1+1)
-      hc_2 = h_2.data_min() + h_2.slot_width() * (i_2+1)
-      if(self._show_anisotropy):
-        fmt = "    %6.2f-%-6.2f %6d     %5.2f-%-5.2f %6d"
-        print >> out, prefix+fmt%(lc_1,hc_1,n_1, lc_2,hc_2,n_2)
-      else:
-        fmt = "    %6.2f-%-6.2f %6d"
-        print >> out, prefix+fmt%(lc_1,hc_1,n_1)
-      lc_1 = hc_1
-      lc_2 = hc_2
+    print >> out, prefix+" RMS(B_ISO_OR_EQUIVALENT_BONDED) : %-s"%format_value(
+      "%8.2f", self.rms_b_iso_or_b_equiv_bonded).strip()
+    print >> out, prefix+" ATOMS          NUMBER OF ATOMS"
+    print >> out, prefix+"                  ISO.  ANISO. "
+    print >> out, prefix+"  ALL         :"+self._fmtl2(self.n_iso_a    ,self.n_aniso_a    )
+    print >> out, prefix+"  ALL (NO H)  :"+self._fmtl2(self.n_iso_a_noH,self.n_aniso_a_noH)
+    print >> out, prefix+"  SOLVENT     :"+self._fmtl2(self.n_iso_s_noH,self.n_aniso_s_noH)
+    print >> out, prefix+"  NON-SOLVENT :"+self._fmtl2(self.n_iso_m_noH,self.n_aniso_m_noH)
+    print >> out, prefix+"  HYDROGENS   :"+self._fmtl2(self.n_iso_h    ,self.n_aniso_h    )
     out.flush()
 
 class model(object):
@@ -436,8 +414,6 @@ class model(object):
   def show(self, out=None, prefix="", padded=None, pdb_deposition=False):
     if(out is None): out = sys.stdout
     if(pdb_deposition): prefix="REMARK   3  "
-    self.content.show(out=out, prefix=prefix, pdb_deposition=pdb_deposition)
-    print >> out, prefix
     self.geometry.show(out=out, prefix=prefix, pdb_deposition=pdb_deposition)
     print >> out, prefix
     self.adp.show(out=out, prefix=prefix, padded=padded,
@@ -493,7 +469,6 @@ class model(object):
     counter = 0
     for group in self.anomalous_scatterer_groups:
       counter += 1
-      #print >>out,pr
       print >>out,pr+" ANOMALOUS SCATTERER GROUP : %-6d"%counter
       lines = line_breaker(group.selection_string, width=45)
       for i_line, line in enumerate(lines):
