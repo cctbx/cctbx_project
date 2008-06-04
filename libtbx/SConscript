@@ -476,8 +476,12 @@ else:
       cc = "gcc-4.2"
       cxx = "g++-4.2"
       if libtbx.env.build_options.enable_boost_threads:
-        raise RuntimeError("Apple GCC 4.2 incompatible with "
-                           "--enable_boost_threads")
+        build_nb = libtbx.config.get_darwin_gcc_build_number(gcc=cxx)
+        min_build_nb = 5564 # XCode 3.1 beta distributed as part of
+                            # the iPhone SDK
+        if build_nb < min_build_nb:
+          raise RuntimeError("Apple GCC 4.2 (build %i) incompatible with "
+                             "--enable_boost_threads" % build_nb)
     else:
       cc = "cc"
       cxx = "c++"
@@ -595,6 +599,10 @@ int main() {
 """ % ['', '#include <omp.h>'][int(sys.platform == 'win32')]
   #
   env_etc.have_openmp = False
+  if libtbx.env.build_options.enable_boost_threads:
+    if not libtbx.env.build_options.disable_openmp:
+      print "libtbx.scons: disable OpenMP because Boost.Thread is enabled"
+    return
   if (libtbx.env.build_options.disable_openmp):
     print "libtbx.scons: OpenMP is disabled."
     return
