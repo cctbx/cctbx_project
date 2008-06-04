@@ -30,6 +30,19 @@ class environment(object):
   nested = property(
     nested, set_nested,
     doc="Whether nested parallelism is enabled")
+  
+  def is_nested_available(self):
+    try:
+      saved = self.nested
+      self.nested = True
+      if self.nested: result = True
+      else: result = False
+      return result
+    finally:
+      self.nested = saved
+  is_nested_available = property(
+    is_nested_available,
+    doc="Whether nested parallelism is available at all")
 
   def num_procs(self):
     return omp_get_num_procs()
