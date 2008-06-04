@@ -194,7 +194,7 @@ class unix_setpaths(common_setpaths):
   def update_path(self, var_name, val):
     val = os.pathsep.join(val)
     for f,action in [(self.s, "prepend"), (self.u, "delete")]:
-      print >> f, '''  %s"`'%s' '%s' %s %s '%s'`"''' % (
+      print >> f, '''  %s"`'%s' '%s' %s %s '%s' < /dev/null`"''' % (
         self._setenv % var_name,
         self.env.python_exe,
         self.env.path_utility,
