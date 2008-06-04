@@ -601,7 +601,7 @@ int main() {
   env_etc.have_openmp = False
   if libtbx.env.build_options.enable_boost_threads:
     if not libtbx.env.build_options.disable_openmp:
-      print "libtbx.scons: disable OpenMP because Boost.Thread is enabled"
+      print "libtbx.scons: OpenMP is disabled because Boost.Thread is enabled."
     return
   if (libtbx.env.build_options.disable_openmp):
     print "libtbx.scons: OpenMP is disabled."
