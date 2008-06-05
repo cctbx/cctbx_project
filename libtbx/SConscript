@@ -634,11 +634,17 @@ int main() {
   if (not flag or output.strip() != "e=2.71828, pi=3.14159"):
     print "libtbx.scons: OpenMP is not usable."
     return
+  msg = "libtbx.scons: OpenMP is not usable (in shared libraries)."
+  if sys.platform == 'darwin':
+    # Tried Apple GCC 4.2 Preview, Apple GCC 4.2 from iPhone SDK
+    # and GNU GCC 4.3 compiled from sources [Luc Bourhis]
+    print msg
+    return
   if (    not env_etc.no_boost_python
       and env_etc.gcc_version is not None
       and env_etc.gcc_version < 40300):
     # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482
-    print "libtbx.scons: OpenMP is not usable (in shared libraries)."
+    print msg
     return
   print "libtbx.scons: OpenMP is available."
   env_etc.have_openmp = True
