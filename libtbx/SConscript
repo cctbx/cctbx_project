@@ -466,6 +466,8 @@ else:
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc_4.2"]):
+    env_etc.gcc_version = libtbx.config.get_gcc_version(
+      shall_be_named_gcc=False)
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     need_fcoalesce_templates = False
@@ -628,8 +630,7 @@ int main() {
   if (not flag or output.strip() != "e=2.71828, pi=3.14159"):
     print "libtbx.scons: OpenMP is not usable."
     return
-  if (    sys.platform == "linux2"
-      and not env_etc.no_boost_python
+  if (    not env_etc.no_boost_python
       and env_etc.gcc_version is not None
       and env_etc.gcc_version < 40300):
     # C.f. http://gcc.gnu.org/bugzilla/show_bug.cgi?id=28482

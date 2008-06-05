@@ -24,12 +24,14 @@ def get_darwin_gcc_build_number(gcc='gcc'):
   except ValueError:
     return None
 
-def get_gcc_version():
+def get_gcc_version(shall_be_named_gcc=True):
   gcc_version = easy_run.fully_buffered(command="gcc --version") \
     .raise_if_errors() \
     .stdout_lines[0].strip()
   flds = gcc_version.split()
-  if (len(flds) < 3 or flds[0] != "gcc" or flds[1] != "(GCC)"):
+  if (len(flds) < 3 
+      or (shall_be_named_gcc and flds[0] != "gcc")
+      or flds[1] != "(GCC)"):
     return None
   major_minor_patchlevel = flds[2].split(".")
   if (len(major_minor_patchlevel) != 3):
