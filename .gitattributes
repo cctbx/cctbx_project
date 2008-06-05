@@ -201,6 +201,7 @@ omptbx/SConscript -text
 omptbx/__init__.py svneol=native#text/x-python
 omptbx/ext.cpp svneol=native#text/plain
 omptbx/libtbx_config -text
+omptbx/lock.h svneol=native#text/plain
 omptbx/omp_or_stubs.h svneol=native#text/plain
 omptbx/stubs.cpp svneol=native#text/plain
 omptbx/stubs.h svneol=native#text/plain
