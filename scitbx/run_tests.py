@@ -38,6 +38,7 @@ def run():
   "$D/scitbx/math/tst_euler_angles.py",
   "$D/scitbx/math/tst_superpose.py",
   "$D/scitbx/math/sieve_of_eratosthenes.py",
+  "$D/scitbx/math/besselk.py",
   "$D/include/scitbx/minpack/tst.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
