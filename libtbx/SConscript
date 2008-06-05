@@ -150,8 +150,6 @@ if (sys.platform == "win32"):
       stdout_splitlines=False).stdout_buffer
     if (cl_info.find("Version 13.10") >= 0):
       env_base = Environment(ENV=os.environ, MSVS_VERSION="7.1")
-      # workaround (root cause of failure unknown)
-      libtbx.env.build_options.disable_openmp = True
     elif (cl_info.find("Version 14.00") >= 0):
       env_base = Environment(ENV=os.environ, MSVS_VERSION="8.0")
     else:
@@ -604,11 +602,14 @@ int main() {
 """ % ['', '#include <omp.h>'][int(sys.platform == 'win32')]
   #
   env_etc.have_openmp = False
-  if libtbx.env.build_options.enable_boost_threads:
-    if not libtbx.env.build_options.disable_openmp:
+  if (env_etc.compiler == "win32_cl" and env_base["MSVS_VERSION"] == "7.1"):
+    print "libtbx.scons: OpenMP is not supported."
+    return
+  if (libtbx.env.build_options.enable_boost_threads):
+    if (libtbx.env.build_options.enable_openmp_if_possible):
       print "libtbx.scons: OpenMP is disabled because Boost.Thread is enabled."
     return
-  if (libtbx.env.build_options.disable_openmp):
+  if (not libtbx.env.build_options.enable_openmp_if_possible):
     print "libtbx.scons: OpenMP is disabled."
     return
   from libtbx.utils import select_matching
