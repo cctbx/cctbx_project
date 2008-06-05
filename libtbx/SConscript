@@ -603,7 +603,7 @@ int main() {
   #
   env_etc.have_openmp = False
   if (env_etc.compiler == "win32_cl" and env_base["MSVS_VERSION"] == "7.1"):
-    print "libtbx.scons: OpenMP is not supported."
+    print "libtbx.scons: OpenMP is not available."
     return
   if (libtbx.env.build_options.enable_boost_threads):
     if (libtbx.env.build_options.enable_openmp_if_possible):
