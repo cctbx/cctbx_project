@@ -2,7 +2,7 @@ import libtbx.load_env
 Import('env_etc', "env_cctbx_boost_python_ext")
 env = env_cctbx_boost_python_ext.Copy()
 
-libs = ["cctbx"]
+libs = ["cctbx", "omptbx"]
 sources = [
   "xray_ext.cpp",
   "conversions.cpp",

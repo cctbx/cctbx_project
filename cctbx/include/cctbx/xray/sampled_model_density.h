@@ -166,8 +166,10 @@ namespace cctbx { namespace xray {
         grid_indices_for_one_scatterer.reserve(sampling_box.n_points);
       }
       std::size_t exp_tab_size = exp_table.table_.size();
+#define CCTBX_XRAY_SAMPLING_LOOP_OMP_REDUCTIONS
 #     include <cctbx/xray/sampling_loop.h>
         if (gifes != 0) {
+          #pragma omp critical
           grid_indices_for_one_scatterer.push_back(i_map);
         }
         if (this->anomalous_flag_) i_map *= 2;
@@ -192,6 +194,7 @@ namespace cctbx { namespace xray {
               if (j >= exp_tab_size) {
                 exp_table.expand(j + 1);
                 exp_tab_size = exp_table.table_.size();
+                #pragma omp flush(exp_tab_size)
               }
               contr += gaussian_ft.as_real_[i]
                      * exp_table.table_[j];
@@ -210,6 +213,7 @@ namespace cctbx { namespace xray {
           }
         }
       CCTBX_XRAY_SAMPLING_LOOP_END
+#undef CCTBX_XRAY_SAMPLING_LOOP_OMP_REDUCTIONS
       if (gifes != 0) {
         gifes[i_seq].assign(
           grid_indices_for_one_scatterer.begin(),

@@ -11,10 +11,16 @@ from cctbx.regression.tst_xray_derivatives import linear_regression_test
 from cctbx.regression.tst_sampled_model_density import assign_custom_gaussians
 from scitbx import fftpack
 from scitbx import matrix
+import omptbx
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
+import libtbx.introspection
 import random
 import sys, math
+
+if (0):
+  random.seed(0)
+  flex.set_random_seed(0)
 
 def randomize_gradient_flags(gradient_flags, anomalous_flag,
                              thresholds=(2/3., 1/3.)):
@@ -150,6 +156,7 @@ class resampling(crystal.symmetry):
                      dp,
                      n_parameters,
                      verbose=0):
+    omptbx.env.num_threads = libtbx.introspection.number_of_processors()
     result = xray.fast_gradients(
       unit_cell=xray_structure.unit_cell(),
       scatterers=xray_structure.scatterers(),
