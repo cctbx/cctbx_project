@@ -12,6 +12,7 @@ import re
 import sys, os
 
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
+default_enable_openmp_if_possible = (sys.platform != "osf1V5")
 
 def get_darwin_gcc_build_number(gcc='gcc'):
   gcc_version = (easy_run.fully_buffered(command='%s --version' % gcc)
@@ -29,7 +30,7 @@ def get_gcc_version(shall_be_named_gcc=True):
     .raise_if_errors() \
     .stdout_lines[0].strip()
   flds = gcc_version.split()
-  if (len(flds) < 3 
+  if (len(flds) < 3
       or (shall_be_named_gcc and flds[0] != "gcc")
       or flds[1] != "(GCC)"):
     return None
@@ -575,11 +576,11 @@ class environment:
         static_exe=command_line.options.static_exe,
         scan_boost=command_line.options.scan_boost,
         write_full_flex_fwd_h=command_line.options.write_full_flex_fwd_h,
-        boost_python_no_py_signatures\
+        boost_python_no_py_signatures
           =command_line.options.boost_python_no_py_signatures,
         enable_boost_threads=command_line.options.enable_boost_threads,
-        disable_openmp=command_line.options.disable_openmp,
-      )
+        enable_openmp_if_possible
+          =command_line.options.enable_openmp_if_possible)
       if (command_line.options.command_version_suffix is not None):
         self.command_version_suffix = \
           command_line.options.command_version_suffix
@@ -1443,7 +1444,7 @@ class build_options:
         build_boost_python_extensions=True,
         boost_python_no_py_signatures=False,
         enable_boost_threads=False,
-        disable_openmp=False):
+        enable_openmp_if_possible=default_enable_openmp_if_possible):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
     assert self.warning_level >= 0
@@ -1468,7 +1469,7 @@ class build_options:
     print >> f, "Define BOOST_PYTHON_NO_PY_SIGNATURES:", \
       self.boost_python_no_py_signatures
     print >> f, "Boost threads enabled:", self.enable_boost_threads
-    print >> f, "OpenMP enabled:", not self.disable_openmp
+    print >> f, "Enable OpenMP if possible:", self.enable_openmp_if_possible
 
 class include_registry:
 
@@ -1600,10 +1601,12 @@ class pre_process_args:
       action="store_true",
       default=False,
       help="enable threads in Boost")
-    parser.option(None, "--disable_openmp",
-      action="store_true",
-      default=False,
-      help="enable OpenMP")
+    parser.option(None, "--enable_openmp_if_possible",
+      action="store",
+      type="bool",
+      default=default_enable_openmp_if_possible,
+      help="use OpenMP if available and known to work",
+      metavar="True|False")
     if (not self.warm_start):
       parser.option(None, "--boost_python_no_py_signatures",
         action="store_true",
@@ -1686,9 +1689,10 @@ def unpickle():
   # XXX backward compatibility 2008-05-21
   if not hasattr(env.build_options, "enable_boost_threads"):
     env.build_options.enable_boost_threads = False
-  # XXX backward compatibility 2008-05-25
-  if not hasattr(env.build_options, "disable_openmp"):
-    env.build_options.disable_openmp = False
+  # XXX backward compatibility 2008-06-05
+  if not hasattr(env.build_options, "enable_openmp_if_possible"):
+    env.build_options.enable_openmp_if_possible \
+      = default_enable_openmp_if_possible
   return env
 
 def warm_start(args):
