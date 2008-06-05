@@ -526,7 +526,10 @@ else:
     if not libtbx.env.build_options.enable_boost_threads:
       env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     if (libtbx.env.build_options.optimization):
-      opts = ["-DNDEBUG", "-O3", "-ffast-math", "-ftrapping-math"]
+      opts = ["-DNDEBUG", "-O3", "-ffast-math"]
+      if env_etc.gcc_version >= 40300:
+        opts.append("-fno-associative-math")
+      opts.append("-ftrapping-math")
       if (cxx == "c++" and cxx_version == "4.0.0"):
         opts[1] = "-O2" # Apple's optimizer is broken
       elif (libtbx.env.build_options.max_optimized):
