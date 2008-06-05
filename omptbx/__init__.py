@@ -2,6 +2,8 @@ import boost.python
 ext = boost.python.import_ext("omptbx_ext")
 from omptbx_ext import *
 
+import libtbx.introspection
+
 class environment(object):
 
   def num_threads(self):
@@ -30,7 +32,7 @@ class environment(object):
   nested = property(
     nested, set_nested,
     doc="Whether nested parallelism is enabled")
-  
+
   def is_nested_available(self):
     try:
       saved = self.nested
@@ -50,3 +52,5 @@ class environment(object):
     num_procs, doc="Number of available processors")
 
 env = environment()
+env.num_threads = libtbx.introspection.number_of_processors()
+env.dynamic = True
