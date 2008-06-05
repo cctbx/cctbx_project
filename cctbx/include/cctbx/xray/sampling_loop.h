@@ -43,10 +43,13 @@
       }
       int g_min0 = g_min[0];
       int g_max0 = g_max[0];
+      omp_set_dynamic(1);
+      #pragma omp parallel for CCTBX_XRAY_SAMPLING_LOOP_OMP_REDUCTIONS
       for(int gp0=g_min0;gp0<=g_max0;gp0++) {
         int g01 = math::mod_positive(gp0, grid_f[0]) * grid_a[1];
         FloatType f0 = FloatType(gp0) / grid_f[0] - coor_frac[0];
         FloatType c00 = orth_mx[0] * f0;
+      #pragma omp parallel for CCTBX_XRAY_SAMPLING_LOOP_OMP_REDUCTIONS
       for(unsigned i_gp1=0;i_gp1<n_gp1;i_gp1++) {
         int g0112 = (g01+gp1g[i_gp1]) * grid_a[2];
         FloatType c01 = o1f1_[i_gp1] + c00;

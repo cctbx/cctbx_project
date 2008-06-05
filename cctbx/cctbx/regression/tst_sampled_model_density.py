@@ -9,9 +9,15 @@ from cctbx.development import structure_factor_utils
 from cctbx.development import debug_utils
 from cctbx.array_family import flex
 from scitbx import fftpack
+import omptbx
 from libtbx.test_utils import approx_equal
+import libtbx.introspection
 import random
 import sys
+
+if (0):
+  random.seed(0)
+  flex.set_random_seed(0)
 
 def assign_custom_gaussians(structure, negative_a=False):
   if (negative_a):
@@ -100,6 +106,7 @@ def exercise(space_group_info, const_gaussian, negative_gaussian,
   assert crystal_gridding.symmetry_flags() is None
   rfft = fftpack.real_to_complex_3d(crystal_gridding.n_real())
   u_base = xray.calc_u_base(d_min, resolution_factor, quality_factor)
+  omptbx.env.num_threads = libtbx.introspection.number_of_processors()
   sampled_density = xray.sampled_model_density(
     unit_cell=structure.unit_cell(),
     scatterers=structure.scatterers(),

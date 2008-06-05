@@ -3,6 +3,7 @@
 
 #include <cctbx/xray/scattering_type_registry.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
+#include <omptbx/lock.h>
 
 namespace cctbx { namespace xray {
 
@@ -119,6 +120,7 @@ namespace cctbx { namespace xray {
         table() const { return table_; }
 
       public: // not protected to allow for manually inlined code
+        omptbx::lock lock_;
         FloatType one_over_step_size_;
         std::vector<FloatType> table_;
 
@@ -129,14 +131,17 @@ namespace cctbx { namespace xray {
     void
     exponent_table<FloatType>::expand(std::size_t n)
     {
-      if (n > excessive_range_error_limit) {
+      if (   n > excessive_range_error_limit
+          && omp_get_num_threads() > 1) {
         throw std::runtime_error(
           __FILE__ ": exponent_table: excessive range.");
       }
+      lock_.set();
       table_.reserve(n);
       for(std::size_t i = table_.size(); i < n; i++) {
         table_.push_back(std::exp(i / one_over_step_size_));
       }
+      lock_.unset();
     }
 
     // ff(hc) = a Exp[-hc.b_arg.hc]
