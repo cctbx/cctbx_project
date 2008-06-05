@@ -15,8 +15,8 @@
       o2f2_.clear();
       o5f2_.clear();
       o8f2_.clear();
-      unsigned n_gp1 = sampling_box.box_edges[1];
-      unsigned n_gp2 = sampling_box.box_edges[2];
+      int n_gp1 = sampling_box.box_edges[1];
+      int n_gp2 = sampling_box.box_edges[2];
       gp1g.reserve(n_gp1);
       o1f1_.reserve(n_gp1);
       o4f1_.reserve(n_gp1);
@@ -50,11 +50,11 @@
         FloatType f0 = FloatType(gp0) / grid_f[0] - coor_frac[0];
         FloatType c00 = orth_mx[0] * f0;
       #pragma omp parallel for CCTBX_XRAY_SAMPLING_LOOP_OMP_REDUCTIONS
-      for(unsigned i_gp1=0;i_gp1<n_gp1;i_gp1++) {
+      for(int i_gp1=0;i_gp1<n_gp1;i_gp1++) {
         int g0112 = (g01+gp1g[i_gp1]) * grid_a[2];
         FloatType c01 = o1f1_[i_gp1] + c00;
         FloatType c11 = o4f1_[i_gp1];
-      for(unsigned i_gp2=0;i_gp2<n_gp2;i_gp2++) {
+      for(int i_gp2=0;i_gp2<n_gp2;i_gp2++) {
         scitbx::vec3<FloatType> d(
           o2f2_[i_gp2] + c01,
           o5f2_[i_gp2] + c11,
