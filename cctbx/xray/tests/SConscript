@@ -1,0 +1,14 @@
+import libtbx.load_env
+Import("env_base", "env_etc")
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+)
+env.Append(LIBPATH=["#lib"])
+env.Prepend(LIBS=["cctbx"])
+env.Append(LIBS=env_etc.libm)
+env_etc.include_registry.append(
+  env=env,
+  paths=["."] + env_etc.cctbx_common_includes)
+
+env.Program(target="#cctbx/xray/tests/tst_sampled_model_density",
+            source=["sampled_model_density.cpp"])
