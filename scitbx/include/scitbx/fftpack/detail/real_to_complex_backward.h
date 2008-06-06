@@ -5,12 +5,11 @@ namespace scitbx { namespace fftpack {
 
   template <typename RealType, typename ComplexType>
   void
-  real_to_complex<RealType,
-                  ComplexType>::backward_compressed(real_type* seq_begin)
+  real_to_complex<RealType, ComplexType>::backward_compressed(
+    real_type* c, /* seq */
+    real_type* ch /* scratch */)
   {
     if (n_ < 2) return;
-    real_type* c = seq_begin;
-    real_type* ch = &(*(ch_.begin()));
     const real_type* wa = &(*(wa_.begin()));
     std::size_t idl1;
     std::size_t ido;

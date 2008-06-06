@@ -1,11 +1,12 @@
 #ifndef SCITBX_FFTPACK_REAL_TO_COMPLEX_H
 #define SCITBX_FFTPACK_REAL_TO_COMPLEX_H
 
-#include <complex>
-#include <cmath>
-#include <scitbx/array_family/shared.h>
 #include <scitbx/fftpack/factorization.h>
 #include <scitbx/fftpack/detail/ref.h>
+#include <scitbx/array_family/shared.h>
+#include <boost/scoped_array.hpp>
+#include <complex>
+#include <cmath>
 
 namespace scitbx { namespace fftpack {
 
@@ -86,10 +87,14 @@ namespace scitbx { namespace fftpack {
           See also: class details.
        */
       template <typename ComplexOrRealIterOrPtrType>
-      void forward(ComplexOrRealIterOrPtrType seq_begin)
+      void
+      forward(
+        ComplexOrRealIterOrPtrType seq_begin,
+        real_type* scratch=0)
       {
-        forward_adaptor(&(*seq_begin));
+        forward_adaptor(&(*seq_begin), scratch);
       }
+
       /*! \brief In-place "backward" Fourier transformation of a sequence
           of n_complex() complex numbers to n_real() real numbers.
        */
@@ -99,20 +104,23 @@ namespace scitbx { namespace fftpack {
           See also: class details.
        */
       template <typename ComplexOrRealIterOrPtrType>
-      void backward(ComplexOrRealIterOrPtrType seq_begin)
+      void
+      backward(
+        ComplexOrRealIterOrPtrType seq_begin,
+        real_type* scratch=0)
       {
-        backward_adaptor(&(*seq_begin));
+        backward_adaptor(&(*seq_begin), scratch);
       }
+
     private:
       std::size_t n_complex_;
       af::shared<real_type> wa_;
-      af::shared<real_type> ch_;
-      void forward_adaptor(complex_type* seq_begin);
-      void forward_adaptor(real_type* seq_begin);
-      void backward_adaptor(complex_type* seq_begin);
-      void backward_adaptor(real_type* seq_begin);
-      void forward_compressed(real_type* seq_begin);
-      void backward_compressed(real_type* seq_begin);
+      void forward_adaptor(complex_type* seq_begin, real_type* scratch);
+      void forward_adaptor(real_type* seq_begin, real_type* scratch);
+      void backward_adaptor(complex_type* seq_begin, real_type* scratch);
+      void backward_adaptor(real_type* seq_begin, real_type* scratch);
+      void forward_compressed(real_type* seq_begin, real_type* scratch);
+      void backward_compressed(real_type* seq_begin, real_type* scratch);
       void passf2(std::size_t ido,
                   std::size_t l1,
                   real_type* cc_start,
@@ -192,8 +200,7 @@ namespace scitbx { namespace fftpack {
                   ComplexType>::real_to_complex(std::size_t n_real)
     : factorization(n_real, true),
       n_complex_(n_complex_from_n_real(n_real)),
-      wa_(n_real),
-      ch_(n_real)
+      wa_(n_real)
   {
     // Computation of the sin and cos terms.
     // Based on the second part of fftpack41/rffti1.f.
@@ -248,18 +255,27 @@ namespace scitbx { namespace fftpack {
 
   template <typename RealType, typename ComplexType>
   void
-  real_to_complex<RealType,
-                  ComplexType>::forward_adaptor(complex_type* seq_begin)
+  real_to_complex<RealType, ComplexType>::forward_adaptor(
+    complex_type* seq_begin,
+    real_type* scratch)
   {
-    forward_adaptor(reinterpret_cast<real_type*>(seq_begin));
+    forward_adaptor(reinterpret_cast<real_type*>(seq_begin), scratch);
   }
 
   template <typename RealType, typename ComplexType>
   void
-  real_to_complex<RealType,
-                  ComplexType>::forward_adaptor(real_type* seq_begin)
+  real_to_complex<RealType, ComplexType>::forward_adaptor(
+    real_type* seq_begin,
+    real_type* scratch)
   {
-    forward_compressed(seq_begin);
+    if (scratch == 0) {
+      boost::scoped_array<real_type> buffer(new real_type[n_]);
+      scratch = buffer.get();
+      forward_compressed(seq_begin, scratch);
+    }
+    else {
+      forward_compressed(seq_begin, scratch);
+    }
     // The imaginary part of the first coefficient is always zero.
     // FFTPACK uses this knowledge to conserve space: the sequence
     // of floating point numbers is shifted down one real-sized slot.
@@ -278,23 +294,32 @@ namespace scitbx { namespace fftpack {
 
   template <typename RealType, typename ComplexType>
   void
-  real_to_complex<RealType,
-                  ComplexType>::backward_adaptor(complex_type* seq_begin)
+  real_to_complex<RealType, ComplexType>::backward_adaptor(
+    complex_type* seq_begin,
+    real_type* scratch)
   {
-    backward_adaptor(reinterpret_cast<real_type*>(seq_begin));
+    backward_adaptor(reinterpret_cast<real_type*>(seq_begin), scratch);
   }
 
   template <typename RealType, typename ComplexType>
   void
-  real_to_complex<RealType,
-                  ComplexType>::backward_adaptor(real_type* seq_begin)
+  real_to_complex<RealType, ComplexType>::backward_adaptor(
+    real_type* seq_begin,
+    real_type* scratch)
   {
     // The imaginary part of the first coefficient is always zero.
     // FFTPACK uses this knowledge to conserve space: the sequence
     // of floating point numbers is shifted down one real-sized slot.
     // Here the shift is applied before calling the core transform.
     std::copy(seq_begin + 2, seq_begin + 2 * n_complex_, seq_begin + 1);
-    backward_compressed(seq_begin);
+    if (scratch == 0) {
+      boost::scoped_array<real_type> buffer(new real_type[n_]);
+      scratch = buffer.get();
+      backward_compressed(seq_begin, scratch);
+    }
+    else {
+      backward_compressed(seq_begin, scratch);
+    }
   }
 
 }} // namespace scitbx::fftpack
