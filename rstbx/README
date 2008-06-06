@@ -1,0 +1,55 @@
+RSTBX: A reciprocal space toolbox to autoindex small molecule Bragg
+       diffraction, given the reciprocal space vectors.
+
+This is a programmer's toolbox.  All results can be accessed by an API; this
+includes the triclinic (primitive) unit cell, all possible higher-symmetry
+lattices, change-of-basis-operators to convert to these settings,
+miller indices for the observed Bragg spots, and deviations of the
+observed spots from the idealized lattice.  Units are in Angstroms and degrees.
+
+Example scripts are in directory indexing.
+
+indexing/tst_auto_monoscan.py: indexes a silicon microcrystal.  Data were
+acquired by positioning a CCD detector 90-degrees from the incident beam,
+and scanning the monochromatic beam through a number of energies.
+
+indexing/tst_dataset1.py: indexes the same dataset, processed differently
+with errors (typographical errors?) in three of the 65 q-vectors.
+
+indexing/do_index.py: contains the core procedures, with the main procedural
+parameters.  The algorithm is very sensitive to max_cell_edge_basis_choice;
+for the silicon unit cell with edge 5.43 Angstrom, it is not possible to derive
+the correct space group if this parameter is set higher than 11.0 Angstroms.
+
+
+INSTALLATION FROM SOURCE
+
+1) Check out the project from sourceforge:
+
+svn checkout https://cctbx.svn.sourceforge.net/svnroot/cctbx/trunk cctbx_project
+
+2) Change directory to cctbx_project, and add boost & scons:
+
+wget http://cci.lbl.gov/sauter/boost_hot.tar.gz
+gunzip -c boost_hot.tar.gz|tar xf -
+wget http://cci.lbl.gov/sauter/scons_hot.tar.gz
+gunzip -c scons_hot.tar.gz|tar xf -
+
+3) Create new directory cctbx_build & build code:
+
+cd cctbx_build
+python ../cctbx_project/libtbx/configure.py rstbx
+source ./setpaths.csh
+libtbx.scons
+
+4) The cctbx_build/setpaths.csh must be sourced in every login shell so
+as to set up the environment.  The compile step can be set to use multiple
+processors as follows:
+
+libtbx.scons -j [number of processors]
+
+5) Run examples
+
+cd cctbx_project/rstbx/indexing
+rstbx.python test_auto_monoscan.py
+rstbx.python test_dataset1.py

@@ -2,6 +2,9 @@ import exceptions,math
 from scitbx import matrix
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror
 from rstbx.dps_core.cell_assessment import unit_cell_too_small,SmallUnitCellVolume
+from rstbx.dps_core import directional_show
+
+diagnostic = False
 
 class AbsenceHandler:
   def __init__(self):
@@ -69,7 +72,7 @@ class SolutionTracker:
     self.volume_filtered = [i for i in self.close_solutions if i['volume']<1.25*self.min_volume]
     self.best_volume_filtered_likelihood = max([i['model_likelihood'] for i in self.volume_filtered])
   def best_combo(self):
-    print "There are %d combos"%(len(self.all_solutions))
+    #print "There are %d combos"%(len(self.all_solutions))
     if len(self.all_solutions)==0: return None
     combo = [i for i in self.volume_filtered if i['model_likelihood']==
             self.best_volume_filtered_likelihood][0]
@@ -106,10 +109,9 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
   maxtry = min(candidates,len(C))
   try_counter = 0
   solutions = SolutionTracker()
-  for x in xrange(ai.n_candidates()):
-    D = ai[x]
-    print "BC%d"%x,"%.4f %8.2f %8.2f kmax=%2d kval=%5.1f kval2=%5.1f kval3=%5.1f"%(D.real,
-    180*D.psi/math.pi, 180.*D.phi/math.pi, D.kmax, D.kval,D.kval2,D.kval3)
+  if diagnostic:
+    for x in xrange(ai.n_candidates()):
+      directional_show(ai[x],message="BC%d"%x)
 
   for combo in C:
     #print "COMBO: (%d,%d,%d)"%(combo[0],combo[1],combo[2])
@@ -138,12 +140,14 @@ def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
     except (RuntimeError),f:
       if str(f).find("Iteration limit exceeded")>0: continue
       if str(f).find("Corrupt metrical matrix")>=0: continue # colinear or coplanar
+      if str(f).find("Matrix is not invertible")>=0: continue# colinear or coplanar
       print "Report this problem to LABELIT developers:"
       print "COMBO: (%d,%d,%d) rejected on C++ runtime error"%(combo[0],combo[1],combo[2])
       #printcombo(ai,combo)
       continue
     except:
       raise
+
     if solutions.halts():
       return solutions
     if try_counter == maxtry: break
@@ -158,7 +162,7 @@ class SelectBasisMetaprocedure:
                                    better_than=0.36,
                                    candidates=25)
     best_combo = all_sol.best_combo()
-    print "Best combo",best_combo
+    #print "Best combo",best_combo
     if best_combo!=None:
       self.evaluate_combo(best_combo)
       return
@@ -172,11 +176,12 @@ class SelectBasisMetaprocedure:
 
   def show_rms(self):
     print "+++++++++++++++++++++++++++++++"
-    print self.input_index_engine.getOrientation().unit_cell()
-    print "RMSDEV:",self.input_index_engine.rmsdev()
+    cell = self.input_index_engine.getOrientation().unit_cell()
+    print "cell=%s volume(A^3)=%.3f"%(cell,cell.volume())
+    print "RMSDEV: %5.3f"%self.input_index_engine.rmsdev()
     print "-------------------------------"
 
     for hkl,obs in zip(self.input_index_engine.hklobserved(),self.input_index_engine.observed()):
       displace = matrix.col(hkl) - matrix.col(obs)
       diff = math.sqrt(displace.dot(displace))
-      print hkl,diff
+      print "%-15s %5.3f"%(hkl,diff)
