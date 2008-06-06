@@ -65,6 +65,9 @@ sampled_model_density_test_case::sampled_model_density_test_case() {
       uc, u_star_t(0.185, 0.098, 0.129, 0.005, 0.047, -0.017));
     scatterers.push_back(h8);
   }
+  for(int i=0; i < scatterers.size(); ++i) {
+    scatterers[i].flags.set_use_u(true, true);
+  }
   scatt_t_registry.process(scatterers.const_ref());
   sampled_model_density = new xray::sampled_model_density<double>(
     uc, scatterers.const_ref(),
