@@ -1,10 +1,14 @@
-#include <cctbx/xray/sampled_model_density.h>
-#include <scitbx/array_family/simple_io.h>
+#include "sampled_model_density.h"
+#include <omptbx/omp_or_stubs.h>
 #include <iostream>
 
-using namespace cctbx;
-
-int main() {
+sampled_model_density_test_case::sampled_model_density_test_case() {
+  #ifdef OMPTBX_HAVE_OMP_H
+    std::cout << "OpenMP enabled:\n";
+    std::cout << "\tmax threads = " << omp_get_max_threads() << std::endl;
+  #else
+    std::cout << "OpenMP disabled" << std::endl;
+  #endif
   uctbx::unit_cell uc(af::double6(6.28196, 8.16654, 10.6793, 83., 109., 129.));
   typedef xray::sampled_model_density<double> smd_t;
   smd_t::grid_point_type fft_n_real(20, 25, 36), fft_m_real(20, 25, 38);
@@ -62,7 +66,7 @@ int main() {
     scatterers.push_back(h8);
   }
   scatt_t_registry.process(scatterers.const_ref());
-  xray::sampled_model_density<double> smd(
+  sampled_model_density = new xray::sampled_model_density<double>(
     uc, scatterers.const_ref(),
     scatt_t_registry,
     fft_n_real, fft_m_real,
@@ -75,5 +79,4 @@ int main() {
     false // use_u_base_as_u_extra
     // store_grid_indices_for_each_scatterer
   );
-  std::cout << smd.real_map().as_1d().const_ref() << std::endl;
 }

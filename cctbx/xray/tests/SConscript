@@ -1,4 +1,5 @@
 import libtbx.load_env
+import os
 Import("env_base", "env_etc")
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
@@ -11,4 +12,14 @@ env_etc.include_registry.append(
   paths=["."] + env_etc.cctbx_common_includes)
 
 env.Program(target="#cctbx/xray/tests/tst_sampled_model_density",
-            source=["sampled_model_density.cpp"])
+            source=["tst_sampled_model_density.cpp",
+                    "sampled_model_density.cpp"])
+env.SharedLibrary(target="#cctbx/xray/tests/sampled_model_density",
+                  source="sampled_model_density.cpp")
+
+env1 = env.Copy()
+env1.Append(LIBPATH=["#cctbx/xray/tests"])
+env1.Append(LIBS=["sampled_model_density"])
+target = "tst_shared_sampled_model_density"
+exe = env1.Program(target=os.path.join("#cctbx/xray/tests", target),
+                   source=[target + ".cpp"])
