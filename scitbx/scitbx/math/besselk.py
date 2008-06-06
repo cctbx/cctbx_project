@@ -13,6 +13,8 @@ No efforst have been made to ensure continuity, nor a rigorous error analyses ha
 carried out. The error should be lower then a 5% over the x range 1E-4 to 100.
 """
 
+import libtbx # for enumerate forward compatibility
+
 def log_besselk_1_4(x):
   result = None
   def funct(a_arr, b_arr, x):
