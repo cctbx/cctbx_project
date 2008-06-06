@@ -1,12 +1,13 @@
 #ifndef SCITBX_FFTPACK_COMPLEX_TO_COMPLEX_H
 #define SCITBX_FFTPACK_COMPLEX_TO_COMPLEX_H
 
+#include <scitbx/fftpack/factorization.h>
+#include <scitbx/fftpack/detail/ref.h>
+#include <scitbx/array_family/shared.h>
+#include <scitbx/auto_array.h>
 #include <algorithm>
 #include <complex>
 #include <cmath>
-#include <scitbx/array_family/shared.h>
-#include <scitbx/fftpack/factorization.h>
-#include <scitbx/fftpack/detail/ref.h>
 
 namespace scitbx {
 
@@ -169,10 +170,14 @@ namespace fftpack {
           Note that 1j is the imaginary number (sqrt(-1)) in Python.
        */
       template <typename ComplexOrRealIterOrPtrType>
-      void forward(ComplexOrRealIterOrPtrType seq_begin)
+      void
+      forward(
+        ComplexOrRealIterOrPtrType seq_begin,
+        real_type* scratch=0)
       {
-        transform(select_sign<forward_tag>(), &(*seq_begin));
+        transform(select_sign<forward_tag>(), &(*seq_begin), scratch);
       }
+
       /*! \brief In-place "backward" Fourier transformation of a
           sequence of length n().
        */
@@ -186,26 +191,40 @@ namespace fftpack {
           Note that 1j is the imaginary number (sqrt(-1)) in Python.
        */
       template <typename ComplexOrRealIterOrPtrType>
-      void backward(ComplexOrRealIterOrPtrType seq_begin)
+      void
+      backward(
+        ComplexOrRealIterOrPtrType seq_begin,
+        real_type* scratch=0)
       {
-        transform(select_sign<backward_tag>(), &(*seq_begin));
+        transform(select_sign<backward_tag>(), &(*seq_begin), scratch);
       }
 
       //! Generic in-place Fourier transformation of a contiguous sequence.
       template <typename Tag>
-      void transform(select_sign<Tag> tag, complex_type* seq_begin)
+      void
+      transform(
+        select_sign<Tag> tag,
+        complex_type* seq_begin,
+        real_type* scratch=0)
       {
-        transform(tag, reinterpret_cast<real_type*>(seq_begin));
+        transform(tag, reinterpret_cast<real_type*>(seq_begin), scratch);
       }
 
       //! Generic in-place Fourier transformation of a contiguous sequence.
       template <typename Tag>
-      void transform(select_sign<Tag> tag, real_type* seq_begin)
+      void
+      transform(
+        select_sign<Tag> tag,
+        real_type* c, /* seq_begin */
+        real_type* ch=0 /* scratch */)
   // FUTURE: move out of class body
   {
     if (n_ < 2) return;
-    real_type* c = seq_begin;
-    real_type* ch = &(*(ch_.begin()));
+    scitbx::auto_array<real_type> scratch;
+    if (ch == 0) {
+      scratch = auto_array<real_type>(new real_type[n_ * 2]);
+      ch = scratch.get();
+    }
     const real_type* wa = &(*(wa_.begin()));
     bool na = false;
     std::size_t l1 = 1;
@@ -272,7 +291,7 @@ namespace fftpack {
       iw = iw+(ip-1)*idot;
     }
     if (na) {
-      std::copy(ch, ch + 2 * n_, seq_begin);
+      std::copy(ch, ch + 2 * n_, c);
     }
   }
     private:
@@ -292,7 +311,6 @@ namespace fftpack {
 
       // Scratch space.
       af::shared<real_type> wa_;
-      af::shared<real_type> ch_;
 
       // Codelets for prime factors 2,3,4,5 and a general transform.
 
@@ -684,7 +702,7 @@ namespace fftpack {
   template <typename RealType,
             typename ComplexType>
   complex_to_complex<RealType, ComplexType>::complex_to_complex(std::size_t n)
-    : factorization(n, false), wa_(2 * n), ch_(2 * n)
+    : factorization(n, false), wa_(2 * n)
   {
     if (n_ < 2) return;
     // Precompute constants for real_type.
