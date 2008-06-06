@@ -5,7 +5,7 @@ env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
 )
 env.Append(LIBPATH=["#lib"])
-env.Prepend(LIBS=["cctbx"])
+env.Prepend(LIBS=["cctbx", "omptbx"])
 env.Append(LIBS=env_etc.libm)
 env_etc.include_registry.append(
   env=env,
