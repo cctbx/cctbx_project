@@ -5,7 +5,7 @@
 using namespace cctbx;
 
 int main() {
-  uctbx::unit_cell uc(af::double6(2., 3., 4., 80., 91., 105.));
+  uctbx::unit_cell uc(af::double6(6.28196, 8.16654, 10.6793, 83., 109., 129.));
   typedef xray::sampled_model_density<double> smd_t;
   smd_t::grid_point_type fft_n_real(20, 25, 36), fft_m_real(20, 25, 38);
   xray::scattering_type_registry scatt_t_registry;
