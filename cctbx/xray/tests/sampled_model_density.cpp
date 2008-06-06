@@ -10,6 +10,7 @@ sampled_model_density_test_case::sampled_model_density_test_case() {
     std::cout << "OpenMP disabled" << std::endl;
   #endif
   uctbx::unit_cell uc(af::double6(6.28196, 8.16654, 10.6793, 83., 109., 129.));
+  sgtbx::space_group sg; // P1
   typedef xray::sampled_model_density<double> smd_t;
   smd_t::grid_point_type fft_n_real(20, 25, 36), fft_m_real(20, 25, 38);
   xray::scattering_type_registry scatt_t_registry;
@@ -67,8 +68,10 @@ sampled_model_density_test_case::sampled_model_density_test_case() {
   }
   for(int i=0; i < scatterers.size(); ++i) {
     scatterers[i].flags.set_use_u(true, true);
+    scatterers[i].apply_symmetry(uc, sg);
   }
   scatt_t_registry.process(scatterers.const_ref());
+  scatt_t_registry.assign_from_table("WK1995");
   sampled_model_density = new xray::sampled_model_density<double>(
     uc, scatterers.const_ref(),
     scatt_t_registry,
