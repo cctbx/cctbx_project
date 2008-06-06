@@ -1,8 +1,10 @@
 import math
 from rstbx.array_family import flex
-from rstbx.dps_core import Direction
+from rstbx.dps_core import Direction, directional_show
 
 # sampling algorithm to cover the directional hemisphere
+
+diagnostic=False
 
 class SimpleSamplerTool:
 
@@ -52,7 +54,7 @@ class HemisphereSamplerBase(SimpleSamplerTool):
 
     hemisphere_solutions = flex.Direction();
     hemisphere_solutions.reserve(size);
-    print "# of input directions", len(input_directions)
+    #print "# of input directions", len(input_directions)
     for i in xrange(len(input_directions)):
       D = sampled_direction = ai.fft_result(input_directions[i])
 
@@ -60,8 +62,7 @@ class HemisphereSamplerBase(SimpleSamplerTool):
       #robust the algorithm is when this value is relaxed.
 
       if D.real < self.max_cell and sampled_direction.kval > kval_cutoff:
-        print i ,"%.4f %.2f %.2f kmax=%d kval=%f"%(D.real,
-    180*D.psi/math.pi, 180.*D.phi/math.pi, D.kmax, D.kval)
+        if diagnostic:  directional_show(D, "%5d"%i)
         hemisphere_solutions.append(sampled_direction)
     if (hemisphere_solutions.size()<3):
       return hemisphere_solutions
@@ -104,8 +105,7 @@ class HemisphereSamplerBase(SimpleSamplerTool):
     if verbose:
       for i in xrange(len(unrefined_basis_vectors)):
         D = unrefined_basis_vectors[i];
-        print i ,"%7.4f %8.2f %8.2f kmax=%2d kval=%5.1f"%(D.real,
-            180*D.psi/math.pi, 180.*D.phi/math.pi, D.kmax, D.kval)
+        if diagnostic:  directional_show(D, "SE%5d"%i)
 
     ai.setSolutions(unrefined_basis_vectors)
 

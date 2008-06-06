@@ -5,7 +5,7 @@ boost.python.import_ext("rstbx_ext")
 from rstbx_ext import *
 import rstbx_ext as ext
 
-import types
+import types,math
 from rstbx.dps_core.constrainment import s_minimizer
 
 from cctbx.crystal_orientation import basis_type
@@ -32,6 +32,11 @@ def combocmp(a,b):
   if a_measure<b_measure: return -1
   if a_measure==b_measure: return 0
   return 1
+
+def directional_show(direction,message):
+  print message,"%.4f %8.2f %8.2f kmax=%2d kval=%5.1f kval2=%5.1f kval3=%5.1f"%(
+    direction.real,180*direction.psi/math.pi, 180.*direction.phi/math.pi,
+    direction.kmax, direction.kval,direction.kval2,direction.kval3)
 
 class dps_core(ext.dps_core):
   def __init__(self):

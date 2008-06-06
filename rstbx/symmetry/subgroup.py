@@ -159,6 +159,16 @@ class MetricSubgroup(dict):
       ' '.join([str(int(x)) for x in self['constraints']]),
       ])
 
+  def short_digest(self,add_inv=False):
+    return "%7.4f %2s (%-9s)"%(self['max_angular_difference'],      self['bravais'],
+      sgtbx.space_group_info(group=self['best_group']).type().lookup_symbol(),
+      )
+
+
+
+  def reference_lookup_symbol(self):
+    return sgtbx.space_group_info(group=self['best_group']).type().lookup_symbol()
+
   def pretty_cb_op(self):
     for x in self['cb_op_inp_best'].c_inv().as_double_array():
       assert int(x)==float(x)
