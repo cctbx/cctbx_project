@@ -203,10 +203,10 @@ def test_comprehensive_rc_1d(max_transform_size):
 
 def run():
   from scitbx.python_utils import command_line
-  flags = command_line.parse_options(sys.argv[1:], (
+  flags = command_line.parse_options(sys.argv[1:], [
     "RandomSeed",
     "Verbose",
-  ))
+  ])
   if (not flags.RandomSeed): random.seed(0)
   assert fftpack.adjust_gridding(13, 5) == 15
   assert fftpack.adjust_gridding(13, 5, 6) == 18
