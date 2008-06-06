@@ -1,0 +1,47 @@
+import libtbx.load_env
+import os
+Import("env_base", "env_etc")
+
+env_etc.rstbx_dist = libtbx.env.dist_path("rstbx")
+env_etc.rstbx_include = os.path.dirname(os.path.join(env_etc.rstbx_dist))
+env_etc.rstbx_common_includes = [
+  env_etc.rstbx_include,
+  env_etc.libtbx_include,
+  env_etc.cctbx_include,
+  env_etc.scitbx_include,
+  env_etc.chiltbx_include,
+  env_etc.omptbx_include,
+  env_etc.boost_include,
+]
+
+env = env_base.Copy(
+  CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
+)
+env_etc.include_registry.append(
+  env=env,
+  paths=env_etc.rstbx_common_includes)
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+builder(
+  target="#lib/rstbx",
+  source=["dps_core/dps_core.cpp",
+          "dps_core/directional_fft.cpp",
+          "dps_core/direction.cpp"
+  ])
+
+if (not env_etc.no_boost_python):
+  Import("env_boost_python_ext")
+  env = env_boost_python_ext.Copy()
+  env.Prepend(LIBS=["rstbx"])
+  env.SharedLibrary(target="#lib/rstbx_ext", source="ext.cpp")
+  env.SharedLibrary(
+                    target="#lib/rstbx_array_family_flex_ext",
+                    source=[
+                      "array_family/ext.cpp",
+                      "array_family/flex_labelit_arrays.cpp",
+                    ])
+  env_etc.include_registry.append(
+    env=env,
+    paths=env_etc.rstbx_common_includes)
