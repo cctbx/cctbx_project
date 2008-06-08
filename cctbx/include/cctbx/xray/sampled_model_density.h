@@ -191,6 +191,7 @@ namespace cctbx { namespace xray {
             for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
               FloatType xs = gaussian_ft.bs_real_[i] * d_sq_et;
               std::size_t j = static_cast<std::size_t>(xs+.5);
+              #pragma omp flush(exp_tab_size)
               if (j >= exp_tab_size) {
                 exp_table.expand(j + 1);
                 exp_tab_size = exp_table.table_.size();
