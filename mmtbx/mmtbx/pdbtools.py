@@ -52,6 +52,8 @@ high_resolution = None
   .type = float
 low_resolution = None
   .type = float
+r_free_flags_fraction = None
+  .type = float
 %s
 output {
   format = *mtz cns
@@ -394,9 +396,14 @@ class modify(object):
 
 class fmodel_from_xray_structure(object):
   def __init__(self, xray_structure, f_obs = None, params = None,
-                     target_name = "ml", r_free_flags_fraction = 0.1):
+                     target_name = "ml", r_free_flags_fraction = None):
     if(params is None):
       params = fmodel_from_xray_structure_master_params.extract()
+    if(r_free_flags_fraction is None):
+      if(params.r_free_flags_fraction is not None):
+        r_free_flags_fraction = params.r_free_flags_fraction
+      else:
+        r_free_flags_fraction = 0.1
     if(f_obs is None):
       hr = None
       try: hr = params.high_resolution
@@ -462,6 +469,9 @@ class fmodel_from_xray_structure(object):
     self.f_model = f_model
     self.params = params
     self.fmodel = fmodel
+    self.r_free_flags = None
+    if(params.r_free_flags_fraction is not None):
+      self.r_free_flags = fmodel.r_free_flags
 
   def Sorry_high_resolution_is_not_defined(self):
     raise Sorry("High resolution limit is not defined. "\
@@ -478,21 +488,40 @@ class fmodel_from_xray_structure(object):
         int(self.f_model.anomalous_flag()), "TRUE")
       for n_t in [("%s"%op.label, "%s"%op.type.upper())]:
         print >> ofo, "DECLare NAME=%s DOMAin=RECIprocal TYPE=%s END"%n_t
+      if(self.params.r_free_flags_fraction is not None):
+        print >> ofo, "DECLare NAME=TEST DOMAin=RECIprocal TYPE=INTeger END"
       if(op.type == "complex"):
         arrays = [
           self.f_model.indices(), flex.abs(self.f_model.data()),
           self.f_model.phases(deg=True).data()]
+        if(self.params.r_free_flags_fraction is not None):
+          arrays.append(self.r_free_flags.data())
         for values in zip(*arrays):
-          print >> ofo, "INDE %d %d %d" % values[0],
-          print >> ofo, " %s= %.6g %.6g" % (op.label, values[1],values[2])
+          if(self.params.r_free_flags_fraction is None):
+            print >> ofo, "INDE %d %d %d" % values[0],
+            print >> ofo, " %s= %.6g %.6g" % (op.label, values[1],values[2])
+          else:
+            print >> ofo, "INDE %d %d %d" % values[0],
+            print >> ofo, " %s= %.6g %.6g TEST=%d" % (op.label, values[1],
+              values[2], values[3])
       else:
         arrays = [
           self.f_model.indices(), self.f_model.data()]
+        if(self.params.r_free_flags_fraction is not None):
+          arrays.append(self.r_free_flags.data())
         for values in zip(*arrays):
-          print >> ofo, "INDE %d %d %d" % values[0],
-          print >> ofo, " %s= %.6g" % (op.label, values[1])
+          if(self.params.r_free_flags_fraction is None):
+            print >> ofo, "INDE %d %d %d" % values[0],
+            print >> ofo, " %s= %.6g" % (op.label, values[1])
+          else:
+            print >> ofo, "INDE %d %d %d" % values[0],
+            print >> ofo, " %s= %.6g TEST=%d" % (op.label, values[1],values[2])
     else:
       mtz_dataset= self.f_model.as_mtz_dataset(column_root_label="%s"%op.label)
+      if(self.params.r_free_flags_fraction is not None):
+        mtz_dataset.add_miller_array(
+          miller_array      = self.r_free_flags,
+          column_root_label = "R-free-flags")
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
 

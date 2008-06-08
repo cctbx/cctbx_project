@@ -529,6 +529,31 @@ def exercise_show_number_of_removed(pdb_dir, verbose):
       n_found += 1
   assert n_found == 1
 
+def exercise_fmodel_with_freeRflags(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "phe.pdb")
+  log = "exercise_fmodel_with_freeRflags.log"
+  for format in ["cns", "mtz"]:
+    cmd = " ".join([
+      'phenix.pdbtools',
+      '%s'%file_name,
+      '--f-model type=real label=fobs high_res=2',
+      'r_free_flags_fraction=0.2',
+      'format=%s'%format,
+      '> %s'%log])
+    remove_files(log)
+    run_command(command = cmd, verbose = verbose)
+    assert os.path.isfile(log)
+  for hkl_file in ["phe.pdb.hkl", "phe.pdb.mtz"]:
+    cmd = 'phenix.refine %s %s --overwrite --dry-run > %s' % (file_name,
+      hkl_file, log)
+    run_command(command=cmd, verbose=verbose)
+    assert os.path.isfile(log)
+    search_lines = search_for(
+      pattern   = "                              overall  716  179  20.0%",
+      mode      = "==",
+      file_name = log)
+    assert len(search_lines) == 1
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -550,6 +575,7 @@ def exercise(args):
   exercise_f_model_option_default(**eargs)
   exercise_f_model_option_custom(**eargs)
   exercise_show_number_of_removed(**eargs)
+  exercise_fmodel_with_freeRflags(**eargs)
   print "OK"
 
 if (__name__ == "__main__"):
