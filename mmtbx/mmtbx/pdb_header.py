@@ -8,15 +8,15 @@ def write_remark_3(info, out):
   print >> out,pr
   print >> out,pr+"REFINEMENT.                                                "
   print >> out,pr+" PROGRAM     : PHENIX (phenix.refine)                      "
-  print >> out,pr+" AUTHORS     : Paul Adams, Pavel Afonine, Vicent Chen, Ian "
+  print >> out,pr+" AUTHORS     : Paul Adams, Pavel Afonine, Vincent Chen, Ian"
   print >> out,pr+"             : Davis, Kreshna Gopal, Ralf Grosse-Kunstleve,"
-  print >> out,pr+"             : Li-Wei Hung, Robert Immormino, Tom Ioerger, "
-  print >> out,pr+"             : Airlie McCoy, Erik McKee, Nigel Moriarty,   "
-  print >> out,pr+"             : Reetal Pai, Randy Read, Jane Richardson,    "
-  print >> out,pr+"             : David Richardson, Tod Romo, Jim             "
-  print >> out,pr+"             : Sacchettini, Nicholas Sauter, Jacob Smith,  "
-  print >> out,pr+"             : Laurent Storoni, Tom Terwilliger, Peter     "
-  print >> out,pr+"             : Zwart                                       "
+  print >> out,pr+"             : Jeffrey Headd, Li-Wei Hung, Robert          "
+  print >> out,pr+"             : Immormino, Tom Ioerger, Airlie McCoy, Erik  "
+  print >> out,pr+"             : McKee, Nigel Moriarty, Reetal Pai,  Randy   "
+  print >> out,pr+"             : Read, Jane Richardson, David Richardson, Tod"
+  print >> out,pr+"             : Romo, Jim Sacchettini, Nicholas Sauter,     "
+  print >> out,pr+"             : Jacob Smith, Laurent Storoni, Tom           "
+  print >> out,pr+"             : Terwilliger, Peter Zwart                    "
   print >> out,pr
   info.show_remark_3(out = out)
   print >> out,pr
