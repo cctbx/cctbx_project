@@ -104,7 +104,6 @@ builder(
   source=lib_cctbx_sources)
 
 SConscript("examples/SConscript")
-SConscript("xray/tests/SConscript")
 
 if (not env_etc.no_boost_python):
   Import("env_no_includes_boost_python_ext")
