@@ -20,7 +20,6 @@ enum SpotClass { GOOD, OVERLAP, SPINDLE, ICE, OTHERIMAGE, FULL_ENTER,
 
 typedef af::shared<scitbx::vec3<double> >    pointlistmm; //memory management
 typedef boost::shared_ptr<Directional_FFT>   fftptr;
-typedef af::shared<Direction>                anglelist;
 typedef cctbx::crystal_orientation           Orientation;
 typedef af::shared<SpotClass>                dps_statuslist;
 typedef af::shared<cctbx::miller::index<> >  hkllistmm;   //memory management
@@ -37,7 +36,7 @@ class dps_core {
   double amax;        //! max cell in Angstroms
   pointlistmm xyzdata;//! original spots, reciprocal orthogonal coords xyz,
                       //!   expressed in inverse Angstroms
-  anglelist hemisphere_solutions;
+  af::shared<Direction> hemisphere_solutions;
   Orientation orientation;
  protected:
   dps_statuslist status;  // scratch pad for spot status
@@ -55,8 +54,8 @@ class dps_core {
   void setXyzData(pointlistmm inputdata){ xyzdata = inputdata; }
   int getXyzSize() const {return xyzdata.size();}
   fftptr fft_factory(Direction&);  //more work needed to enforce const correct
-  void setSolutions(anglelist);
-  anglelist getSolutions() const;
+  void setSolutions(af::shared<Direction>);
+  af::shared<Direction> getSolutions() const;
   inline int n_candidates() const { return hemisphere_solutions.size(); }
   inline Direction candidate(const int &i) const {
                                     return hemisphere_solutions[i];}

@@ -35,9 +35,9 @@ pd::dps_core::fft_factory(pd::Direction& angle) {
 }
 
 void
-pd::dps_core::setSolutions(anglelist nwsoln){
+pd::dps_core::setSolutions(af::shared<pd::Direction> nwsoln){
   //sort
-  typedef anglelist::iterator Ran;
+  typedef af::shared<pd::Direction>::iterator Ran;
   Ran  first = nwsoln.begin();
   Ran last = nwsoln.end();
   std::sort<Ran,kvalcmp>(first,last,kvalcmp());
@@ -62,7 +62,7 @@ pd::dps_core::setSolutions(anglelist nwsoln){
     hemisphere_solutions.pop_back();}
 }
 
-pd::anglelist
+af::shared<pd::Direction>
 pd::dps_core::getSolutions() const {return hemisphere_solutions;}
 
 void pd::dps_core::setOrientation(const Orientation& input_o){
