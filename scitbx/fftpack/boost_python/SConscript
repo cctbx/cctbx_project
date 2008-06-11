@@ -1,4 +1,6 @@
 Import("env_scitbx_boost_python_ext")
-env_scitbx_boost_python_ext.SharedLibrary(
+env = env_scitbx_boost_python_ext.Copy()
+env.Prepend(LIBS=["omptbx"])
+env.SharedLibrary(
   target="#lib/scitbx_fftpack_ext",
   source=["fftpack_ext.cpp"])

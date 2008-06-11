@@ -1,10 +1,13 @@
 from scitbx import fftpack
 from scitbx.array_family import flex
+import omptbx # initializes OpenMP environment
+import libtbx.utils
 from libtbx.utils import time_log
 import random
 import sys
 
-def run(n_iterations=10):
+def run(n_iterations=3):
+  show_times = libtbx.utils.show_times()
   assert len(sys.argv) in (1,2)
   if (len(sys.argv) > 1):
     n_iterations = int(sys.argv[1])
@@ -25,6 +28,7 @@ def run(n_iterations=10):
     t_fft.start()
     map = rfft.forward(map)
     print t_fft.log()
+  show_times()
 
 if (__name__ == "__main__"):
   run()

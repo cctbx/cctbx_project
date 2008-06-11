@@ -14,6 +14,17 @@ import sys, os
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_enable_openmp_if_possible = (sys.platform != "osf1V5")
 
+def darwin_shlinkcom(env_etc, env, lo, dylib):
+  if (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc_4.2"]):
+    if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
+      dylib1 = "-ldylib1.o"
+    else:
+      dylib1 = " "
+    env.Replace(SHLINKCOM=[
+      "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
+      "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
+      " %s -o %s %s" % (dylib1, dylib, lo)])
+
 def get_darwin_gcc_build_number(gcc='gcc'):
   gcc_version = (easy_run.fully_buffered(command='%s --version' % gcc)
                          .raise_if_errors()

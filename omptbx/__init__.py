@@ -52,5 +52,5 @@ class environment(object):
     num_procs, doc="Number of available processors")
 
 env = environment()
+env.dynamic = False
 env.num_threads = libtbx.introspection.number_of_processors()
-env.dynamic = True

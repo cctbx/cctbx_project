@@ -3,6 +3,9 @@
 
 #include <scitbx/fftpack/complex_to_complex.h>
 #include <scitbx/fftpack/real_to_complex.h>
+#include <omptbx/omp_or_stubs.h>
+
+//#define SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP
 
 namespace scitbx { namespace fftpack {
 
@@ -161,45 +164,63 @@ namespace scitbx { namespace fftpack {
   // FUTURE: move out of class body
   {
     // TODO: avoid i, i+1 by casting to complex
-#define SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_TRANSFORM_HEAD \
-    int nx = n_real_[0]; \
-    int ny = n_real_[1]; \
-    int nzc = fft1d_z_.n_complex(); \
-    int seq_size = 2 * std::max(std::max(nx, ny), nzc); \
-    boost::scoped_array<real_type> seq_and_scratch( \
-      new real_type[2 * seq_size]); \
-    real_type* seq = seq_and_scratch.get(); \
-    real_type* scratch = seq + seq_size;
-    SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_TRANSFORM_HEAD
-    for (int ix = 0; ix < nx; ix++) {
+    int nx = n_real_[0];
+    int ny = n_real_[1];
+    int nzc = fft1d_z_.n_complex();
+    int seq_size = 2 * std::max(std::max(nx, ny), nzc);
+    scitbx::auto_array<real_type> seq_and_scratch;
+    omp_set_dynamic(0);
+#if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+    #pragma omp parallel
+#endif
+    {
+      int num_threads = omp_get_num_threads();
+      int i_thread = omp_get_thread_num();
+#if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+      #pragma omp single
+#endif
+      {
+        seq_and_scratch = scitbx::auto_array<real_type>(
+          new real_type[2 * seq_size * num_threads]);
+      }
+      real_type* seq = seq_and_scratch.get() + 2 * seq_size * i_thread;
+      real_type* scratch = seq + seq_size;
+#if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+      #pragma omp for
+#endif
+      for (int ix = 0; ix < nx; ix++) {
+        for (int iy = 0; iy < ny; iy++) {
+          // Transform along z (fast direction)
+          fft1d_z_.forward(&map(ix, iy, 0), scratch);
+        }
+        for (int iz = 0; iz < nzc; iz++) {
+          for (int iy = 0; iy < ny; iy++) {
+            seq[2*iy] = map(ix, iy, 2*iz);
+            seq[2*iy+1] = map(ix, iy, 2*iz+1);
+          }
+          // Transform along y (medium direction)
+          fft1d_y_.transform(select_sign<forward_tag>(), seq, scratch);
+          for (int iy = 0; iy < ny; iy++) {
+            map(ix, iy, 2*iz) = seq[2*iy];
+            map(ix, iy, 2*iz+1) = seq[2*iy+1];
+          }
+        }
+      }
+#if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+      #pragma omp for
+#endif
       for (int iy = 0; iy < ny; iy++) {
-        // Transform along z (fast direction)
-        fft1d_z_.forward(&map(ix, iy, 0), scratch);
-      }
-      for (int iz = 0; iz < nzc; iz++) {
-        for (int iy = 0; iy < ny; iy++) {
-          seq[2*iy] = map(ix, iy, 2*iz);
-          seq[2*iy+1] = map(ix, iy, 2*iz+1);
-        }
-        // Transform along y (medium direction)
-        fft1d_y_.transform(select_sign<forward_tag>(), seq, scratch);
-        for (int iy = 0; iy < ny; iy++) {
-          map(ix, iy, 2*iz) = seq[2*iy];
-          map(ix, iy, 2*iz+1) = seq[2*iy+1];
-        }
-      }
-    }
-    for (int iy = 0; iy < ny; iy++) {
-      for (int iz = 0; iz < nzc; iz++) {
-        for (int ix = 0; ix < nx; ix++) {
-          seq[2*ix] = map(ix, iy, 2*iz);
-          seq[2*ix+1] = map(ix, iy, 2*iz+1);
-        }
-        // Transform along x (slow direction)
-        fft1d_x_.transform(select_sign<forward_tag>(), seq, scratch);
-        for (int ix = 0; ix < nx; ix++) {
-          map(ix, iy, 2*iz) = seq[2*ix];
-          map(ix, iy, 2*iz+1) = seq[2*ix+1];
+        for (int iz = 0; iz < nzc; iz++) {
+          for (int ix = 0; ix < nx; ix++) {
+            seq[2*ix] = map(ix, iy, 2*iz);
+            seq[2*ix+1] = map(ix, iy, 2*iz+1);
+          }
+          // Transform along x (slow direction)
+          fft1d_x_.transform(select_sign<forward_tag>(), seq, scratch);
+          for (int ix = 0; ix < nx; ix++) {
+            map(ix, iy, 2*iz) = seq[2*ix];
+            map(ix, iy, 2*iz+1) = seq[2*ix+1];
+          }
         }
       }
     }
@@ -220,37 +241,65 @@ namespace scitbx { namespace fftpack {
   // FUTURE: move out of class body
   {
     // TODO: avoid i, i+1 by casting to complex
-    SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_TRANSFORM_HEAD
-    for (int iz = 0; iz < nzc; iz++) {
-      for (int iy = 0; iy < ny; iy++) {
-        for (int ix = 0; ix < nx; ix++) {
-          seq[2*ix] = map(ix, iy, 2*iz);
-          seq[2*ix+1] = map(ix, iy, 2*iz+1);
+    int nx = n_real_[0];
+    int ny = n_real_[1];
+    int nzc = fft1d_z_.n_complex();
+    int seq_size = 2 * std::max(std::max(nx, ny), nzc);
+    scitbx::auto_array<real_type> seq_and_scratch;
+    omp_set_dynamic(0);
+#if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+    #pragma omp parallel
+#endif
+    {
+      int num_threads = omp_get_num_threads();
+      int i_thread = omp_get_thread_num();
+#if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+      #pragma omp single
+#endif
+      {
+        seq_and_scratch = scitbx::auto_array<real_type>(
+          new real_type[2 * seq_size * num_threads]);
+      }
+      real_type* seq = seq_and_scratch.get() + 2 * seq_size * i_thread;
+      real_type* scratch = seq + seq_size;
+#if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+      #pragma omp for
+#endif
+      for (int iz = 0; iz < nzc; iz++) {
+        for (int iy = 0; iy < ny; iy++) {
+          for (int ix = 0; ix < nx; ix++) {
+            seq[2*ix] = map(ix, iy, 2*iz);
+            seq[2*ix+1] = map(ix, iy, 2*iz+1);
+          }
+          // Transform along x (slow direction)
+          fft1d_x_.transform(select_sign<backward_tag>(), seq, scratch);
+          for (int ix = 0; ix < nx; ix++) {
+            map(ix, iy, 2*iz) = seq[2*ix];
+            map(ix, iy, 2*iz+1) = seq[2*ix+1];
+          }
         }
-        // Transform along x (slow direction)
-        fft1d_x_.transform(select_sign<backward_tag>(), seq, scratch);
         for (int ix = 0; ix < nx; ix++) {
-          map(ix, iy, 2*iz) = seq[2*ix];
-          map(ix, iy, 2*iz+1) = seq[2*ix+1];
+          for (int iy = 0; iy < ny; iy++) {
+            seq[2*iy] = map(ix, iy, 2*iz);
+            seq[2*iy+1] = map(ix, iy, 2*iz+1);
+          }
+          // Transform along y (medium direction)
+          fft1d_y_.transform(select_sign<backward_tag>(), seq, scratch);
+          for (int iy = 0; iy < ny; iy++) {
+            map(ix, iy, 2*iz) = seq[2*iy];
+            map(ix, iy, 2*iz+1) = seq[2*iy+1];
+          }
         }
       }
+#if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
+      #pragma omp for
+#endif
       for (int ix = 0; ix < nx; ix++) {
         for (int iy = 0; iy < ny; iy++) {
-          seq[2*iy] = map(ix, iy, 2*iz);
-          seq[2*iy+1] = map(ix, iy, 2*iz+1);
+          // Transform along z (fast direction)
+          int i_thread = omp_get_thread_num();
+          fft1d_z_.backward(&map(ix, iy, 0), scratch);
         }
-        // Transform along y (medium direction)
-        fft1d_y_.transform(select_sign<backward_tag>(), seq, scratch);
-        for (int iy = 0; iy < ny; iy++) {
-          map(ix, iy, 2*iz) = seq[2*iy];
-          map(ix, iy, 2*iz+1) = seq[2*iy+1];
-        }
-      }
-    }
-    for (int ix = 0; ix < nx; ix++) {
-      for (int iy = 0; iy < ny; iy++) {
-        // Transform along z (fast direction)
-        fft1d_z_.backward(&map(ix, iy, 0), scratch);
       }
     }
   }

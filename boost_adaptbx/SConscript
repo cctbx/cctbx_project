@@ -1,6 +1,7 @@
 import libtbx.load_env
 from libtbx.str_utils import show_string
 from libtbx.utils import warn_if_unexpected_md5_hexdigest
+from libtbx.config import darwin_shlinkcom
 import string
 import sys, os
 Import("env_base", "env_etc")
@@ -8,17 +9,6 @@ env_etc.boost_dist = libtbx.env.dist_path("boost")
 env_etc.boost_include = env_etc.boost_dist
 env_etc.boost_adaptbx_dist = libtbx.env.dist_path("boost_adaptbx")
 env_etc.boost_adaptbx_include = os.path.dirname(env_etc.boost_adaptbx_dist)
-
-def darwin_shlinkcom(env, lo, dylib):
-  if (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc_4.2"]):
-    if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
-      dylib1 = "-ldylib1.o"
-    else:
-      dylib1 = " "
-    env.Replace(SHLINKCOM=[
-      "ld -dynamic -m -r -d -bind_at_load -o %s $SOURCES" % lo,
-      "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
-      " %s -o %s %s" % (dylib1, dylib, lo)])
 
 def build_boost_thread():
   if (not libtbx.env.build_options.enable_boost_threads):
@@ -40,7 +30,7 @@ def build_boost_thread():
   env_etc.include_registry.append(
     env=env,
     paths=[env_etc.boost_include])
-  darwin_shlinkcom(env,
+  darwin_shlinkcom(env_etc, env,
                    lo="boost/libs/thread/src/libboost_thread.lo",
                    dylib="lib/libboost_thread.dylib")
   env.Repository(os.path.dirname(env_etc.boost_dist))
@@ -127,8 +117,9 @@ if (not env_etc.no_boost_python):
     env=env,
     paths=[env_etc.boost_include, env_etc.python_include])
 
-  darwin_shlinkcom(env, lo="boost/libs/python/src/libboost_python.lo",
-                        dylib="lib/libboost_python.dylib")
+  darwin_shlinkcom(env_etc, env, 
+                   lo="boost/libs/python/src/libboost_python.lo",
+                   dylib="lib/libboost_python.dylib")
 
   bpl_dll_sources = []
   prefix = "#"+os.path.join(

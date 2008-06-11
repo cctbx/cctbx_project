@@ -14,11 +14,12 @@ from scitbx import matrix
 import omptbx
 from libtbx import adopt_init_args
 from libtbx.test_utils import approx_equal
+import libtbx.utils
 import libtbx.introspection
 import random
 import sys, math
 
-if (0):
+if (1):
   random.seed(0)
   flex.set_random_seed(0)
 
@@ -950,14 +951,19 @@ def run_one(space_group_info, n_elements= 9, volume_per_atom=1000, d_min = 2.0,
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in [0,1]:
-      run_one(space_group_info=space_group_info,
-              anomalous_flag=anomalous_flag,
-              verbose=flags.Verbose)
+    run_one(
+      space_group_info=space_group_info,
+      anomalous_flag=anomalous_flag,
+      verbose=flags.Verbose)
 
 def run():
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  show_times = libtbx.utils.show_times()
+  debug_utils.parse_options_loop_space_groups(
+    argv=sys.argv[1:],
+    call_back=run_call_back,
+    show_cpu_times=False)
   xray.structure_factors.global_counters.show()
-  print "OK"
+  show_times()
 
 if (__name__ == "__main__"):
   run()
