@@ -1,7 +1,11 @@
-import sys, os, random, math
-from scitbx.array_family import flex
 from scitbx import fftpack
+from scitbx.array_family import flex
+import omptbx # initializes OpenMP environment
 from libtbx.test_utils import approx_equal
+import libtbx.utils
+import random
+import math
+import sys, os
 
 def fmtfloat(f):
   s = "%.1f" % (f,)
@@ -136,31 +140,40 @@ def test_real_to_complex(verbose):
     assert tuple(y[i:i+2]) == (1, -1)
 
 def test_real_to_complex_3d(verbose):
-  fft = fftpack.real_to_complex_3d((3,4,5))
-  m = fft.m_real()
-  vd = flex.double(flex.grid(m))
-  vc = flex.complex_double(flex.grid((m[0], m[1], m[2]/2)))
-  assert vd.size() == 2 * vc.size()
-  for i in xrange(vd.size()):
-    vd[i] = i
-  for i in xrange(vc.size()):
-    vc[i] = complex(2*i, 2*i+1)
-  vdt = fft.forward(vd)
-  vct = fft.forward(vc)
-  for t in (vdt, vct):
-    assert t.origin() == (0,0,0)
-    assert t.all() == fft.n_complex()
-    assert t.focus() == fft.n_complex()
-  if (verbose): show_rseq_3d(vd, fft.m_real(), fft.m_real())
-  assert_complex_eq_real(vc, vd)
-  vdt = fft.backward(vd)
-  vct = fft.backward(vc)
-  for t in (vdt, vct):
-    assert t.origin() == (0,0,0)
-    assert t.all() == fft.m_real()
-    assert t.focus() == fft.n_real()
-  if (verbose): show_rseq_3d(vd, fft.m_real(), fft.n_real())
-  assert_complex_eq_real(vc, vd)
+  for nx in [3,4]:
+    for ny in [4,5]:
+      for nz in [7,8]:
+        fft = fftpack.real_to_complex_3d((nx,ny,nz))
+        m = fft.m_real()
+        vd = flex.double(flex.grid(m))
+        vc = flex.complex_double(flex.grid((m[0], m[1], m[2]/2)))
+        assert vd.size() == 2 * vc.size()
+        for i in xrange(vd.size()):
+          vd[i] = random.random()*2-1
+        vd_orig = vd.deep_copy()
+        for i in xrange(vc.size()):
+          vc[i] = complex(vd[2*i], vd[2*i+1])
+        vdt = fft.forward(vd)
+        vct = fft.forward(vc)
+        for t in (vdt, vct):
+          assert t.origin() == (0,0,0)
+          assert t.all() == fft.n_complex()
+          assert t.focus() == fft.n_complex()
+        if (verbose): show_rseq_3d(vd, fft.m_real(), fft.m_real())
+        assert_complex_eq_real(vc, vd)
+        vdt = fft.backward(vd)
+        vct = fft.backward(vc)
+        for t in (vdt, vct):
+          assert t.origin() == (0,0,0)
+          assert t.all() == fft.m_real()
+          assert t.focus() == fft.n_real()
+        if (verbose): show_rseq_3d(vd, fft.m_real(), fft.n_real())
+        assert_complex_eq_real(vc, vd)
+        f = nx*ny*nz
+        for ix in xrange(nx):
+          for iy in xrange(ny):
+            for iz in xrange(nz):
+              assert approx_equal(vdt[(ix,iy,iz)], vd_orig[(ix,iy,iz)]*f)
 
 def compare_vectors(n, m, v_in, v_tr):
   for i in xrange(m):
@@ -202,6 +215,7 @@ def test_comprehensive_rc_1d(max_transform_size):
     compare_vectors(n, m, v_in, v_tr)
 
 def run():
+  show_times = libtbx.utils.show_times()
   from scitbx.python_utils import command_line
   flags = command_line.parse_options(sys.argv[1:], [
     "RandomSeed",
@@ -222,8 +236,7 @@ def run():
   max_transform_size = 300
   test_comprehensive_cc_1d(max_transform_size)
   test_comprehensive_rc_1d(max_transform_size)
+  show_times()
 
 if (__name__ == "__main__"):
   run()
-  t = os.times()
-  print "u+s,u,s: %.2f %.2f %.2f" % (t[0] + t[1], t[0], t[1])

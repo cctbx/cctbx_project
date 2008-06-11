@@ -6,6 +6,8 @@
 #include <cctbx/math/cos_sin_table.h>
 #include <omptbx/omp_or_stubs.h>
 
+//#define CCTBX_XRAY_STRUCTURE_FACTORS_DIRECT_NO_PRAGMA_OMP
+
 namespace cctbx { namespace xray { namespace structure_factors {
 
   template <typename CosSinType, typename ScattererType>
@@ -136,8 +138,10 @@ namespace cctbx { namespace xray { namespace structure_factors {
         c_t *f_calc_beg = f_calc_.begin();
         af::shared<std::size_t> scattering_type_indices
           = scattering_type_registry.unique_indices(scatterers);
+#if !defined(CCTBX_XRAY_STRUCTURE_FACTORS_DIRECT_NO_PRAGMA_OMP)
 #if !defined(__DECCXX_VER) || (defined(_OPENMP) && _OPENMP > 199819)
         #pragma omp parallel for schedule(static)
+#endif
 #endif
         for(int i=0;i<n;i++) {
           miller::index<> h = miller_indices[i];

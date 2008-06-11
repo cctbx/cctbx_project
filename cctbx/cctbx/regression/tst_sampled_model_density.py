@@ -11,11 +11,12 @@ from cctbx.array_family import flex
 from scitbx import fftpack
 import omptbx
 from libtbx.test_utils import approx_equal
+import libtbx.utils
 import libtbx.introspection
 import random
 import sys
 
-if (0):
+if (1):
   random.seed(0)
   flex.set_random_seed(0)
 
@@ -293,8 +294,13 @@ def run_call_back(flags, space_group_info):
           allow_mix=allow_mix)
 
 def run():
-  debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+  show_times = libtbx.utils.show_times()
+  debug_utils.parse_options_loop_space_groups(
+    argv=sys.argv[1:],
+    call_back=run_call_back,
+    show_cpu_times=False)
   exercise_negative_parameters()
+  show_times()
 
 if (__name__ == "__main__"):
   run()

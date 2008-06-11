@@ -99,11 +99,20 @@ namespace cctbx { namespace xray {
         explicit
         exponent_table(
           FloatType const& one_over_step_size,
-          std::size_t initial_reserve=2000)// avoids reallocation in most cases
+          std::size_t initial_reserve=10000)//avoids reallocation in most cases
         :
-          one_over_step_size_(one_over_step_size)
+          one_over_step_size_(one_over_step_size),
+          disable_reallocation_(false)
         {
-          table_.reserve(initial_reserve);
+          if (one_over_step_size_ != 0) {
+            if (omp_get_max_threads() > 1) {
+              expand(initial_reserve);
+              disable_reallocation_ = true;
+            }
+            else {
+              table_.reserve(initial_reserve);
+            }
+          }
         }
 
         FloatType
@@ -112,7 +121,10 @@ namespace cctbx { namespace xray {
           if (one_over_step_size_ == 0) return std::exp(x);
           FloatType xs = x * one_over_step_size_;
           std::size_t i = static_cast<std::size_t>(xs+.5);
-          if (i >= table_.size()) expand(i + 1);
+          if (i >= table_.size()) {
+            if (disable_reallocation_) return std::exp(x);
+            expand(i + 1);
+          }
           return table_[i];
         }
 
@@ -122,6 +134,7 @@ namespace cctbx { namespace xray {
       public: // not protected to allow for manually inlined code
         omptbx::lock lock_;
         FloatType one_over_step_size_;
+        bool disable_reallocation_;
         std::vector<FloatType> table_;
 
         void expand(std::size_t n);
@@ -131,17 +144,15 @@ namespace cctbx { namespace xray {
     void
     exponent_table<FloatType>::expand(std::size_t n)
     {
-      if (   n > excessive_range_error_limit
-          && omp_get_num_threads() > 1) {
+      if (n > excessive_range_error_limit) {
         throw std::runtime_error(
           __FILE__ ": exponent_table: excessive range.");
       }
-      lock_.set();
+      CCTBX_ASSERT(!disable_reallocation_);
       table_.reserve(n);
       for(std::size_t i = table_.size(); i < n; i++) {
         table_.push_back(std::exp(i / one_over_step_size_));
       }
-      lock_.unset();
     }
 
     // ff(hc) = a Exp[-hc.b_arg.hc]

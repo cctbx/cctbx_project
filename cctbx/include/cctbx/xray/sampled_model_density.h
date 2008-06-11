@@ -169,7 +169,9 @@ namespace cctbx { namespace xray {
 #define CCTBX_XRAY_SAMPLING_LOOP_OMP_REDUCTIONS
 #     include <cctbx/xray/sampling_loop.h>
         if (gifes != 0) {
+#if !defined(CCTBX_XRAY_SAMPLING_LOOP_NO_PRAGMA_OMP)
           #pragma omp critical
+#endif
           grid_indices_for_one_scatterer.push_back(i_map);
         }
         if (this->anomalous_flag_) i_map *= 2;
@@ -191,14 +193,21 @@ namespace cctbx { namespace xray {
             for (std::size_t i=0;i<gaussian_ft.n_rho_real_terms;i++) {
               FloatType xs = gaussian_ft.bs_real_[i] * d_sq_et;
               std::size_t j = static_cast<std::size_t>(xs+.5);
-              #pragma omp flush(exp_tab_size)
+              FloatType e;
               if (j >= exp_tab_size) {
-                exp_table.expand(j + 1);
-                exp_tab_size = exp_table.table_.size();
-                #pragma omp flush(exp_tab_size)
+                if (exp_table.disable_reallocation_) {
+                  e = std::exp(gaussian_ft.bs_real_[i] * d_sq);
+                }
+                else {
+                  exp_table.expand(j + 1);
+                  exp_tab_size = exp_table.table_.size();
+                  e = exp_table.table_[j];
+                }
               }
-              contr += gaussian_ft.as_real_[i]
-                     * exp_table.table_[j];
+              else {
+                e = exp_table.table_[j];
+              }
+              contr += gaussian_ft.as_real_[i] * e;
             }
             map_begin[i_map] += contr;
           }
