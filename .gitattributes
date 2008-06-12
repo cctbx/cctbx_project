@@ -55,6 +55,13 @@ crys3d/__init__.py -text
 crys3d/images.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_map_viewer.py -text
+fftw3tbx/SConscript -text
+fftw3tbx/__init__.py svneol=native#text/x-python
+fftw3tbx/command_line/install_fftw_from_sources.py svneol=native#text/x-python
+fftw3tbx/ext.cpp svneol=native#text/plain
+fftw3tbx/libtbx_config -text
+fftw3tbx/libtbx_refresh.py svneol=native#text/x-python
+fftw3tbx/tst_ext.py svneol=native#text/x-python
 gltbx/wx_controllers.py -text
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
