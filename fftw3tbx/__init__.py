@@ -1,8 +1,9 @@
-import scitbx.array_family.flex
-
-import boost.python
-try: ext = boost.python.import_ext("fftw3tbx_ext")
-except ImportError: ext = None
+try:
+  import scitbx.array_family.flex
+  import boost.python
+  ext = boost.python.import_ext("fftw3tbx_ext")
+except ImportError:
+  ext = None
 if (ext is not None):
   from fftw3tbx_ext import *
 
