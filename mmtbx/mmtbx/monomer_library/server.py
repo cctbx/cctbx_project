@@ -278,7 +278,7 @@ class server(process_cif_mixin):
     for mod_id in ["rnaC2", "rnaC3", "rnaEsd"]:
       self.process_cif(file_name=os.path.join(dir_name, "mod_"+mod_id+".cif"))
 
-  def get_comp_comp_id_direct(self, comp_id):
+  def get_comp_comp_id_direct(self, comp_id, return_file_name_only=False):
     comp_id = comp_id.strip().upper()
     if (len(comp_id) == 0): return None
     try: return self.comp_comp_id_dict[comp_id]
@@ -305,6 +305,7 @@ class server(process_cif_mixin):
                 return os.path.join(dir_name, node)
       return None
     file_name = find_file()
+    if return_file_name_only: return find_file
     if (file_name is None): return None
     self.process_cif(file_name=file_name)
     if (len(std_comp_id) > 0):
@@ -332,7 +333,8 @@ class server(process_cif_mixin):
   def get_comp_comp_id_and_atom_name_interpretation(self,
         residue_name,
         atom_names,
-        translate_cns_dna_rna_residue_names=None):
+        translate_cns_dna_rna_residue_names=None,
+        return_file_name_only=False):
     rnpani = residue_name_plus_atom_names_interpreter(
       residue_name=residue_name,
       atom_names=atom_names,
@@ -340,7 +342,9 @@ class server(process_cif_mixin):
       return_mon_lib_dna_name=True)
     if (rnpani.work_residue_name is None): return (None, None)
     return (
-      self.get_comp_comp_id_direct(comp_id=rnpani.work_residue_name),
+      self.get_comp_comp_id_direct(
+        comp_id=rnpani.work_residue_name,
+        return_file_name_only=return_file_name_only),
       rnpani.atom_name_interpretation)
 
   def get_comp_comp_id_mod(self, comp_comp_id, mod_ids):
