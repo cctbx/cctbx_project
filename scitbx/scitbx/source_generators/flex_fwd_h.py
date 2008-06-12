@@ -29,6 +29,8 @@ common_code = """\
 """
 
 full_code = """\
+#define SCITBX_ARRAY_FAMILY_BOOST_PYTHON_FLEX_FWD_FULL_CODE
+
 %s
 #include <complex>
 #include <vector>
