@@ -256,15 +256,19 @@ class wall_clock_time(timer_base):
 
 class time_log(object):
 
-  def __init__(self, label):
+  def __init__(self, label, use_wall_clock=False):
     self.label = label
+    self.use_wall_clock = use_wall_clock
     self.accumulation = 0
     self.n = 0
     self.delta = 0
     self.timer = None
 
   def start(self):
-    self.timer = user_plus_sys_time()
+    if (self.use_wall_clock):
+      self.timer = wall_clock_time()
+    else:
+      self.timer = user_plus_sys_time()
     return self
 
   def stop(self):
