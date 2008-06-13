@@ -130,7 +130,7 @@ def test():
      tcc  =  -math.log(math.exp(-z/2.0)*tmp+1E-12)
     assert approx_equal(pac,tac,eps=1e-1)
     assert approx_equal(pcc,tcc,eps=1e-1)
-
+  print "OK"
 
 
 if __name__ == "__main__":
