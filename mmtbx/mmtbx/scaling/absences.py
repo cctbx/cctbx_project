@@ -10,25 +10,40 @@ import math,sys
 
 
 #                           name     hkl selector  condition
-absence_and_conditions = { "2_1 (a)" : [(None,0,0),  (1.0/2.0,0,0)],
+absence_and_conditions = {
+                           "2_0 (a)" : [(None,0,0),  (0 ,0 ,0 ) ],
+                           "2_0 (b)" : [(0,None,0),  (0,0,0)],
+                           "2_0 (c)" : [(0,0,None),  (0,0,0)],
+
+
+                           "2_1 (a)" : [(None,0,0),  (1.0/2.0,0,0)],
                            "2_1 (b)" : [(0,None,0),  (0,1.0/2.0,0)],
                            "2_1 (c)" : [(0,0,None),  (0,0,1.0/2.0)],
 
+
+                           "3_0 (c)" : [(0,0,None),  (0,0,0)],
                            "3_1 (c)" : [(0,0,None),  (0,0,1.0/3.0)],
                            "3_2 (c)" : [(0,0,None),  (0,0,1.0/3.0)],
 
+                           "4_0 (c)" : [(0,0,None),  (0,0,0)],
                            "4_1 (c)" : [(0,0,None),  (0,0,1.0/4.0)],
                            "4_2 (c)" : [(0,0,None),  (0,0,2.0/4.0)],
                            "4_3 (c)" : [(0,0,None),  (0,0,3.0/4.0)],
 
+
+                           "4_0 (a)" : [(None,0,0),  (0,0,0)],
                            "4_1 (a)" : [(None,0,0),  (1.0/4.0,0,0)],
                            "4_2 (a)" : [(None,0,0),  (2.0/4.0,0,0)],
                            "4_3 (a)" : [(None,0,0),  (3.0/4.0,0,0)],
 
+
+                           "4_0 (b)" : [(0,None,0),  (0,0,0)],
                            "4_1 (b)" : [(0,None,0),  (0,1.0/4.0,0)],
                            "4_2 (b)" : [(0,None,0),  (0,2.0/4.0,0)],
                            "4_3 (b)" : [(0,None,0),  (0,3.0/4.0,0)],
 
+
+                           "6_0 (c)" : [(0,0,None),  (0,0,0)],
                            "6_1 (c)" : [(0,0,None),  (0,0,1.0/6.0)],
                            "6_2 (c)" : [(0,0,None),  (0,0,2.0/6.0)],
                            "6_3 (c)" : [(0,0,None),  (0,0,3.0/6.0)],
@@ -52,16 +67,16 @@ absence_and_conditions = { "2_1 (a)" : [(None,0,0),  (1.0/2.0,0,0)],
                          }
 
 
-absence_classes = { "along a 2" : ["2_1 (a)"],
+absence_classes = { "along a 2" : ["2_0 (a)", "2_1 (a)"],
                     "along a"   : ["b (a)", "c (a)", "n (a)", "d (a)"],
-                    "along b 4" : ["4_1 (b)", "4_2 (b)", "4_3 (b)"],
-                    "along b 2" : ["2_1 (b)"],
+                    "along b 4" : ["4_0 (b)", "4_1 (b)", "4_2 (b)", "4_3 (b)"],
+                    "along b 2" : ["2_0 (b)", "2_1 (b)"],
                     "along b"   : ["a (b)", "c (b)", "n (b)", "d (b)"],
                     "along c"   : ["a (c)", "b (c)", "n (c)", "d (c)"],
-                    "along c 2" : ["2_1 (c)"],
-                    "along c 3" : ["3_1 (c)", "3_2 (c)"],
-                    "along c 4" : ["4_1 (c)", "4_2 (c)", "4_3 (c)"],
-                    "along c 6" : ["6_1 (c)", "6_2 (c)", "6_3 (c)", "6_4 (c)", "6_5 (c)"] }
+                    "along c 2" : ["2_0 (c)", "2_1 (c)"],
+                    "along c 3" : ["3_0 (c)", "3_1 (c)", "3_2 (c)"],
+                    "along c 4" : ["4_0 (c)", "4_1 (c)", "4_2 (c)", "4_3 (c)"],
+                    "along c 6" : ["6_0 (c)", "6_1 (c)", "6_2 (c)", "6_3 (c)", "6_4 (c)", "6_5 (c)"] }
 
 
 along_a   = absence_classes["along a"]
@@ -149,9 +164,9 @@ absences_via_intensity_symmetry_prot = {
 "I 2/m 1 1"  : along_b_2       ,# k>=0 and (l>0 or (l==0 and h>=0))
 
 "P m m m"    : along_a_2+along_b_2+along_c_2 ,# h>=0 and k>=0 and l>=0
-"C m m m"    : along_a_2+along_b_2+along_c_2 ,# h>=0 and k>=0 and l>=0
-"A m m m"    : along_a_2+along_b_2+along_c_2 ,# h>=0 and k>=0 and l>=0
-"B m m m"    : along_a_2+along_b_2+along_c_2 ,# h>=0 and k>=0 and l>=0
+"C m m m"    : along_c_2 ,# h>=0 and k>=0 and l>=0
+"A m m m"    : along_a_2 ,# h>=0 and k>=0 and l>=0
+"B m m m"    : along_b_2 ,# h>=0 and k>=0 and l>=0
 "F m m m"    : along_a_2+along_b_2+along_c_2 ,# h>=0 and k>=0 and l>=0
 "I m m m"    : along_a_2+along_b_2+along_c_2 ,# h>=0 and k>=0 and l>=0
 
@@ -193,17 +208,23 @@ lattice_from_string = { "1 (0, 0, 0) 0,1/2,1/2"   : "A",
 symbol_from_string = { "-2 (1, 0, 0) 0,1/2,0" : "b (a)",
                        "-2 (1, 0, 0) 0,0,1/2" : "c (a)",
                        "-2 (1, 0, 0) 0,1/2,1/2" : "n (a)",
+                       "2 (1, 0, 0) 0,0,0" : "2_0 (a)",     # 2a
                        "2 (1, 0, 0) 1/2,0,0" : "2_1 (a)",
                        "-2 (0, 0, 1) 1/2,1/2,0" : "n (c)",
+                       "6 (0, 0, 1) 0,0,0" : "6_0 (c)",     # 6c
                        "6 (0, 0, 1) 0,0,2/3" : "6_4 (c)",
                        "-2 (1, 0, 0) 0,1/4,1/4" : "d (a)",
                        "6 (0, 0, 1) 0,0,5/6" : "6_5 (c)",
                        "6 (0, 0, 1) 0,0,1/2" : "6_3 (c)",
                        "-2 (0, 1, 0) 1/2,0,0" : "a (b)",
+                       "2 (0, 0, 1) 0,0,0"  : "2_0 (c)",    #2c
                        "2 (0, 0, 1) 0,0,1/2" : "2_1 (c)",
+                       "4 (0, 0, 1) 0,0,0" : "4_0 (c)",     #4c
                        "4 (0, 0, 1) 0,0,1/4" : "4_1 (c)",
                        "-2 (0, 0, 1) 1/4,1/4,0" : "d (c)",
                        "4 (1, 0, 0) 1/4,0,0" : "4_1 (a)",
+                       "4 (1, 0, 0) 0,0,0" : "4_0 (a)",     #4a
+                       "3 (0, 0, 1) 0,0,0" : "3_0 (c)",     #3c
                        "3 (0, 0, 1) 0,0,1/3" : "3_1 (c)",
                        "4 (0, 0, 1) 0,0,3/4" : "4_3 (c)",
                        "-2 (0, 0, 1) 0,1/2,0" : "b (c)",
@@ -213,6 +234,7 @@ symbol_from_string = { "-2 (1, 0, 0) 0,1/2,0" : "b (a)",
                        "-2 (0, 1, 0) 0,0,1/2" : "c (b)",
                        "6 (0, 0, 1) 0,0,1/6" : "6_1 (c)",
                        "-2 (0, 0, 1) 1/2,0,0" : "a (c)",
+                       "2 (0, 1, 0) 0,0,0" : "2_0 (b)",     #2b
                        "2 (0, 1, 0) 0,1/2,0" : "2_1 (b)",
                        "-2 (0, 1, 0) 1/4,0,1/4" : "d (b)",
                        "4 (0, 0, 1) 0,0,1/2" : "4_2 (c)",
@@ -231,22 +253,36 @@ string_from_symbol ={"c (b)"  :  "-2 (0, 1, 0) 0,0,1/2",
                      "2_1 (b)":   "2 (0, 1, 0) 0,1/2,0",
                      "2_1 (c)":   "2 (0, 0, 1) 0,0,1/2",
                      "2_1 (a)":   "2 (1, 0, 0) 1/2,0,0",
+                     "2_0 (b)":   "2 (0, 1, 0) 0,0,0",
+                     "2_0 (c)":   "2 (0, 0, 1) 0,0,0",
+                     "2_0 (a)":   "2 (1, 0, 0) 0,0,0",
                      "d (b)"  :  "-2 (0, 1, 0) 1/4,0,1/4",
                      "d (c)"  :  "-2 (0, 0, 1) 1/4,1/4,0",
                      "d (a)"  :  "-2 (1, 0, 0) 0,1/4,1/4",
+                     "4_0 (c)":   "4 (0, 0, 1) 0,0,0",
                      "4_1 (c)":   "4 (0, 0, 1) 0,0,1/4",
                      "4_2 (c)":   "4 (0, 0, 1) 0,0,1/2",
                      "4_3 (c)":   "4 (0, 0, 1) 0,0,3/4",
+                     "4_0 (a)":   "4 (1, 0, 0) 0,0,0",
                      "4_1 (a)":   "4 (1, 0, 0) 1/4,0,0",
                      "4_2 (a)":   "4 (1, 0, 0) 2/4,0,0",
                      "4_3 (a)":   "4 (1, 0, 0) 3/4,0,0",
+                     "3_0 (c)":   "3 (0, 0, 1) 0,0,0",
                      "3_1 (c)":   "3 (0, 0, 1) 0,0,1/3",
                      "3_2 (c)":   "3 (0, 0, 1) 0,0,2/3",
+                     "6_0 (c)":   "6 (0, 0, 1) 0,0,0",
                      "6_1 (c)":   "6 (0, 0, 1) 0,0,1/6",
                      "6_5 (c)":   "6 (0, 0, 1) 0,0,5/6",
                      "6_4 (c)":   "6 (0, 0, 1) 0,0,2/3",
                      "6_2 (c)":   "6 (0, 0, 1) 0,0,1/3",
                      "6_3 (c)":   "6 (0, 0, 1) 0,0,1/2" }
+
+equivs = { "6_1 (c)":"6_5 (c)", "6_2 (c)":"6_4 (c)",
+           "6_5 (c)":"6_1 (c)", "6_4 (c)":"6_2 (c)",
+           "4_1 (c)":"4_3 (c)",
+           "4_3 (c)":"4_1 (c)",
+           "3_1 (c)":"3_2 (c)",
+           "3_2 (c)":"3_1 (c)" }
 
 
 class conditions_for_operator(object):
@@ -344,6 +380,15 @@ class absences(object):
       result = True
     return result
 
+def likelihood(z,sigz,absent_or_centric_or_acentric):
+  e = math.sqrt(z)
+  sige = sigz/(2*e)
+  import absence_likelihood
+  flag = absent_or_centric_or_acentric
+  result = absence_likelihood.log_p( z,sigz,flag )
+  return result
+
+
 class analyze_absences(object):
   def __init__(self, miller_array, isigi_cut=3, out=None):
     if out is None:
@@ -404,11 +449,13 @@ of violations in the non-absent class.
     self.abs_check = absences()
     self.check_conditions()
 
-  def show(self):
-    print >> self.out, self.table_text
-    print >> self.out, self.table
-    print >> self.out
-    print >> self.out
+  def show(self,out=None):
+    if out is None:
+      out = self.out
+    print >> out, self.table_text
+    print >> out, self.table
+    print >> out
+    print >> out
 
 
 
@@ -427,7 +474,17 @@ of violations in the non-absent class.
     observed_but_not_in_sg            = []
     in_sg_but_no_observations         = []
 
-    for op, sc, n, n_n  in zip(self.op_name, self.score, self.n_abs, self.n_n_abs):
+    absent_class_violations     = 0
+    not_absent_class_violations = 0
+
+    total_score = 0
+
+    for op, sc, n, n_n, n_v, n_n_v  in zip(self.op_name, self.score, self.n_abs, self.n_n_abs, self.n_abs_viol, self.n_n_abs_viol ):
+      if op in ops:
+        total_score += sc
+        absent_class_violations += n_v
+        not_absent_class_violations += n_n_v
+
       if n > 0: # observed
         if sc <= thres: # correct
           if op in ops: # in proposed sg
@@ -441,22 +498,12 @@ of violations in the non-absent class.
         if op in ops: #in proposed sg
           in_sg_but_no_observations.append( op )
 
-    """
-    print
-    print "in sg", ops
-    print "in_sg_and_seemingly_correct", in_sg_and_seemingly_correct
-    print "not_in_sg_and_seemingly_incorrect", not_in_sg_and_seemingly_incorrect
-    print "in_sg_and_seemingly_incorrect", in_sg_and_seemingly_incorrect
-    print "observed_but_not_in_sg", observed_but_not_in_sg
-    print "in_sg_but_no_observations", in_sg_but_no_observations
-    print
-    """
 
     pos = len(in_sg_and_seemingly_correct) + len(not_in_sg_and_seemingly_incorrect)
     neg = len(in_sg_and_seemingly_incorrect) + len(observed_but_not_in_sg)
     abstain = len(in_sg_but_no_observations)
 
-    return pos,neg,abstain
+    return total_score,absent_class_violations, not_absent_class_violations
 
 
 
@@ -486,7 +533,7 @@ of violations in the non-absent class.
 
         score = 0
 
-        for hkl, i, sigi in zip(self.miller_array.indices(), self.miller_array.data(), self.miller_array.sigmas() ):
+        for hkl, centric_flag, i, sigi in zip(self.miller_array.indices(), self.miller_array.centric_flags(), self.miller_array.data(), self.miller_array.sigmas() ):
           mc, cc = self.abs_check.check(condition,hkl, return_bool=True)
           if mc: # mask checks out
             if cc: # not absent
@@ -496,7 +543,7 @@ of violations in the non-absent class.
               # should be present. flag if not significant
               if i/sigi < self.cut:
                 n_n_abs_viol += 1
-              score += self.score_isigi(i/sigi,absent=False)
+              score += likelihood(i,sigi,centric_flag[1])
             else: #absent
               n_abs += 1
               isi_abs += i/sigi
@@ -504,7 +551,7 @@ of violations in the non-absent class.
               # should be absent: flag if significant
               if i/sigi > self.cut:
                 n_abs_viol += 1
-              score += self.score_isigi(i/sigi,absent=True)
+              score += likelihood( i,sigi,None)
           else:
             n_tot +=1
             isi_tot += i/sigi
@@ -605,7 +652,7 @@ class protein_space_group_choices(object):
     self.abs_types   = []
     self.tuple_score = []
 
-    legend = [('space group', 'n absent', 'violations (n ; %)', '<Z>_absent', '<Z/sigZ>_absent', '+++', '---', '???')]
+    legend = [('space group', 'n absent', '<Z>_absent', '<Z/sigZ>_absent', '+++', '---', 'score')]
     rows = []
     score = []
 
@@ -635,8 +682,14 @@ class protein_space_group_choices(object):
           if tmp.absence_type() in self.absences_table.op_name:
             ii = self.absences_table.op_name.index( tmp.absence_type() )
             if tmp.absence_type() not in to_be_checked:
-              to_be_checked.append( tmp.absence_type() )
-              tmp_score = self.absences_table.score[ ii ]
+              if equivs.has_key( tmp.absence_type() ):
+                if equivs[ tmp.absence_type() ] not in to_be_checked:
+                  to_be_checked.append( tmp.absence_type() )
+                  tmp_score = self.absences_table.score[ ii ]
+              else:
+                  to_be_checked.append( tmp.absence_type() )
+                  tmp_score = self.absences_table.score[ ii ]
+
       self.abs_types.append( to_be_checked )
       tuple_score =  self.absences_table.propose( to_be_checked )
       self.tuple_score.append( tuple_score )
@@ -646,8 +699,13 @@ class protein_space_group_choices(object):
       self.mean_isigi.append( tmp_mean_isigi )
       self.n.append( tmp_n )
       self.violations.append( tmp_violations )
-      rows.append( [str(sg), '%i'%(tmp_n), '%5i ; %5.1f '%(tmp_violations, 100.0*tmp_violations/max(tmp_n,1)),
-                    '%8.2f  '%(tmp_mean_i), '%8.2f  '%(tmp_mean_isigi), ' %i '%(tuple_score[0]), ' %i '%(tuple_score[1]), ' %i '%(tuple_score[2])  ] )
+      rows.append( [str(sg),
+                    '%i'%(tmp_n),
+                    '%8.2f  '%(tmp_mean_i),
+                    '%8.2f  '%(tmp_mean_isigi),
+                    ' %i '%(tuple_score[1]),
+                    ' %i '%(tuple_score[2]),
+                    ' %8.3e '%(-tuple_score[0])  ] )
 
     self.table = table_utils.format( legend + rows,
                                      comments=None,
@@ -664,47 +722,31 @@ class protein_space_group_choices(object):
                                      postfix=' |')
     print >> self.out
     print >> self.out, "Analyses of the absences table indicates a number of likely space group candidates,"
-    print >> self.out, "which are listed below. for each space group, the number of operators with absence"
-    print >> self.out, "classes arguing for the proposed space group are listed under the '+++' column."
-    print >> self.out, "The number of absences classes arguing against the proposed group are listed under '---'"
-    print >> self.out, "The number of absences associated with an operator in the proposed space group has not"
-    print >> self.out, "been found in the data, are listed under '???'."
+    print >> self.out, "which are listed below. For each space group, the number of absent violations are listed"
+    print >> self.out, "under the '+++' column. The number of present violations (weak reflections) are listed"
+    print >> self.out, "under '---'. The last column is a likelihood based score for the particular space group."
+    print >> self.out, "Note that enantiomorphic spacegroups will have equal scores. Also, if absences were removed"
+    print >> self.out, "while processing the data, they will be regarded as missing information, rather then as "
+    print >> self.out, "enforcing that absence in the space group choices."
     print >> self.out
     print >> self.out, self.sorted_table
     print >> self.out
     print >> self.out
 
-
-
-  def suggest_likely_candidates( self, acceptable_violations = 1 ):
+  def suggest_likely_candidates( self, acceptable_violations = 1e+90 ):
     used = flex.bool( len(self.sg_choices), False )
     order = []
 
     all_done = False
     count = -1
-    while not all_done:
-      # find that spacegroup which is not used, has the largest number of absences, and a low level of acceptable violations
-      max_in_favour = -10
-      max_index = -10
-      count += 1
-      for ii in xrange( used.size() ):
-        if not used[ii]:
-          if self.tuple_score[ii][1] <= acceptable_violations :
-            if self.tuple_score[ii][0] > max_in_favour:
-              max_in_favour = self.tuple_score[ii][0]
-              max_index = ii
-      if max_in_favour < 0:
-        all_done = True
-      else:
-        used[ max_index ] =True
-        order.append( max_index )
-      if all_done:
-        if len(order)==0:
-          all_done=False
-          acceptable_violations += 1
+    tmp_scores = []
+    for tt in self.tuple_score:
+      tmp_scores.append( tt[0] )
+    order = flex.sort_permutation( flex.double( tmp_scores ), False  )
 
 
     sorted_rows = []
+    max_score = flex.min( flex.double( tmp_scores ) )
     for ii in order:
       sg             = self.sg_choices[ii]
       tmp_n          = self.n[ii]
@@ -713,13 +755,15 @@ class protein_space_group_choices(object):
       tmp_mean_isigi = self.mean_isigi[ii]
       tuple_score    = self.tuple_score[ii]
 
-      sorted_rows.append( [str(sg), '%i'%(tmp_n), '%5i ; %5.1f '%(tmp_violations, 100.0*tmp_violations/max(tmp_n,1)),
-                           '%8.2f  '%(tmp_mean_i), '%8.2f  '%(tmp_mean_isigi),  ' %i '%(tuple_score[0]), ' %i '%(tuple_score[1]), ' %i '%(tuple_score[2])
+      sorted_rows.append( [str(sg), '%i'%(tmp_n),
+                           '%8.2f  '%(tmp_mean_i),
+                           '%8.2f  '%(tmp_mean_isigi),
+                           ' %i '%(tuple_score[1]),
+                           ' %i '%(tuple_score[2]),
+                           ' %8.3e '%((tuple_score[0]-max_score))
                           ])
 
     return sorted_rows
-
-
 
 
 def test():
