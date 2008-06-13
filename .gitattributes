@@ -189,6 +189,7 @@ mmtbx/mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/mmtbx/rotamer/rotamer_names.props -text
 mmtbx/mmtbx/rotamer/sidechain_angles.props -text
 mmtbx/mmtbx/rotamer/sidechain_angles.py -text
+mmtbx/mmtbx/scaling/absence_likelihood.py -text
 mmtbx/mmtbx/scaling/absences.py -text
 mmtbx/mmtbx/tst_alignment.py -text
 mmtbx/mmtbx/tst_pdbtools.py -text
