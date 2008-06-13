@@ -25,6 +25,7 @@ def run():
   "$D/mmtbx/regression/tst_adp_restraints.py",
   "$D/mmtbx/scaling/tst_scaling.py",
   "$D/mmtbx/scaling/tst_outlier.py",
+  "$D/mmtbx/scaling/absence_likelihood.py",
   ["$D/mmtbx/scaling/thorough_outlier_test.py", "P21"],
   "$D/mmtbx/twinning/probabalistic_detwinning.py",
   "$D/mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py",
