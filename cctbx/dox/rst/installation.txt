@@ -207,7 +207,7 @@ modules directly from the SVN databases maintained at Sourceforge_.
 To replace the modules extracted from a source code bundle::
 
   cd cctbx_sources
-  set modules=(libtbx boost_adaptbx scitbx chiltbx cctbx cbflib_adaptbx iotbx mmtbx clipper_adaptbx)
+  set modules=(libtbx boost_adaptbx omptbx scitbx chiltbx cctbx cbflib_adaptbx iotbx mmtbx clipper_adaptbx)
   rm -rf $modules
   libtbx.sourceforge_checkout cctbx $modules
 
