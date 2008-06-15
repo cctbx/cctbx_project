@@ -24,6 +24,7 @@ cctbx/boost_python/orientation_ext.cpp -text
 cctbx/cctbx/command_line/version.py -text
 cctbx/cctbx/crystal_orientation.py -text
 cctbx/cctbx/examples/quartz_structure.py svneol=native#text/x-python
+cctbx/cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/cctbx/regression/random_generator_state.pickle -text
 cctbx/cctbx/regression/structure_ideal.pickle -text
