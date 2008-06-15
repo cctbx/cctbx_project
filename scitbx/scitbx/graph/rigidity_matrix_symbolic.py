@@ -1,9 +1,23 @@
 from __future__ import division
+import sys
 
-class dict_with_default_0(dict):
+if (getattr(sys, "api_version", 0) >= 1013):
 
-  def __missing__(self, key):
-    return 0
+  class dict_with_default_0(dict):
+
+    def __missing__(self, key):
+      return 0
+
+else:
+
+  class dict_with_default_0(dict):
+
+    def __getitem__(self, key):
+      try: return dict.__getitem__(self, key)
+      except KeyError: pass
+      val = 0
+      dict.__setitem__(self, key, val)
+      return val
 
 def iiexps_mul(a, b):
   result = dict_with_default_0(a)
@@ -60,7 +74,8 @@ class elem(object):
       # assert that there are no common factors
       count_i = {}
       min_e = {}
-      for it,t in enumerate(terms):
+      for it in xrange(len(terms)):
+        t = terms[it]
         for i,e in t.iiexps.items():
           ci = count_i.get(i, 0)
           if (ci == it):
