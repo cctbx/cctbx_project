@@ -51,6 +51,7 @@ def run():
   "$D/scitbx/examples/immoptibox_ports.py",
   "$D/scitbx/graph/rigidity.py",
   "$D/scitbx/graph/tst_rigidity.py",
+  "$D/scitbx/graph/rigidity_matrix_symbolic.py",
   "$D/scitbx/sparse/tests/tst_sparse.py",
   "$D/scitbx/iso_surface/tst_iso_surface.py",
   )
