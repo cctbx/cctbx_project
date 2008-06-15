@@ -275,6 +275,7 @@ scitbx/scitbx/command_line/generate_error_h.py -text
 scitbx/scitbx/examples/principal_axes_of_inertia.py svneol=native#text/x-python
 scitbx/scitbx/graph/__init__.py -text
 scitbx/scitbx/graph/rigidity.py -text
+scitbx/scitbx/graph/rigidity_matrix_symbolic.py svneol=native#text/x-python
 scitbx/scitbx/graph/tst_rigidity.py -text
 scitbx/scitbx/iso_surface/SConscript -text
 scitbx/scitbx/iso_surface/__init__.py -text
