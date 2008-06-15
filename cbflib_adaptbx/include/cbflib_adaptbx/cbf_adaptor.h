@@ -16,6 +16,7 @@
 #define cbf_failnez(x) { int err; err = (x); if (err) { \
   std::cout<<"error code "<<err<<std::endl; throw iotbx::detectors::Error ( \
   "CBFlib error in " #x " "); }}
+//#include <boost/timer.hpp>
 
 namespace iotbx {
   namespace detectors {
@@ -183,12 +184,14 @@ class CBFAdaptor {
     cbf_failnez (cbf_find_column   (cbf_h, "data"))
 
     //C++ weirdness
-    scitbx::af::flex_int z((scitbx::af::flex_grid<>(dimension[0],dimension[1])));
+    scitbx::af::flex_int z((scitbx::af::flex_grid<>(dimension[0],dimension[1])),
+      scitbx::af::init_functor_null<int>() ); //don't waste 0.04 seconds initializing to zero.
     int* begin = z.begin();
     std::size_t sz = z.size();
 
     /* Read the binary data */
     data_transposed=false;
+    //boost::timer T = boost::timer();
     cbf_failnez (cbf_get_integerarray (cbf_h, //cbf handle
                  &id,                         //ptr to binary section identifier
                  begin,                       //array ptr
@@ -197,6 +200,7 @@ class CBFAdaptor {
                  sz,                          //elements requested
                  &nelem_read                  //elements read
                  ))
+    //std::cout<<"time elapsed for get_integerarray: " <<T.elapsed()<<std::endl;
     SCITBX_ASSERT(sz==nelem_read);
 
     if (file_is_transposed()) {
