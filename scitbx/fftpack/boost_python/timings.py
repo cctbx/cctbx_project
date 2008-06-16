@@ -27,7 +27,7 @@ def one_series(num_threads, n_iterations, quick=False):
   sys.stdout.flush()
   for i_iteration in xrange(n_iterations):
     t_map.start()
-    map = flex.double(flex.grid(rfft.m_real()))
+    map = fftpack.zeros_parallel_double(flex_grid=flex.grid(rfft.m_real()))
     print t_map.log()
     sys.stdout.flush()
     t_fill.start()

@@ -8,8 +8,9 @@
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/module.hpp>
-#include <boost/python/def.hpp>
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
 
 namespace scitbx { namespace fftpack { namespace {
 
@@ -334,6 +335,20 @@ namespace scitbx { namespace fftpack { namespace {
     }
   };
 
+  af::versa<double, af::flex_grid<> >
+  zeros_parallel_double(
+    af::flex_grid<> const& flex_grid)
+  {
+    af::versa<double, af::flex_grid<> > result(
+      flex_grid,
+      af::init_functor_null<double>());
+    double* a = result.begin();
+    long n = static_cast<long>(result.size());
+    #pragma omp parallel for schedule(static)
+    for(long i=0;i<n;i++) a[i] = 0.;
+    return result;
+  }
+
   void init_module()
   {
     using namespace boost::python;
@@ -348,6 +363,8 @@ namespace scitbx { namespace fftpack { namespace {
     real_to_complex_wrappers::wrap();
     complex_to_complex_3d_wrappers::wrap();
     real_to_complex_3d_wrappers::wrap();
+
+    def("zeros_parallel_double", zeros_parallel_double, (arg_("flex_grid")));
   }
 
 }}} // namespace scitbx::fftpack::<anonymous>
