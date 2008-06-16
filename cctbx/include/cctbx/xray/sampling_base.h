@@ -3,7 +3,6 @@
 
 #include <cctbx/xray/scattering_type_registry.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
-#include <omptbx/lock.h>
 
 namespace cctbx { namespace xray {
 
@@ -101,17 +100,10 @@ namespace cctbx { namespace xray {
           FloatType const& one_over_step_size,
           std::size_t initial_reserve=10000)//avoids reallocation in most cases
         :
-          one_over_step_size_(one_over_step_size),
-          disable_reallocation_(false)
+          one_over_step_size_(one_over_step_size)
         {
           if (one_over_step_size_ != 0) {
-            if (omp_get_max_threads() > 1) {
-              expand(initial_reserve);
-              disable_reallocation_ = true;
-            }
-            else {
-              table_.reserve(initial_reserve);
-            }
+            table_.reserve(initial_reserve);
           }
         }
 
@@ -122,7 +114,6 @@ namespace cctbx { namespace xray {
           FloatType xs = x * one_over_step_size_;
           std::size_t i = static_cast<std::size_t>(xs+.5);
           if (i >= table_.size()) {
-            if (disable_reallocation_) return std::exp(x);
             expand(i + 1);
           }
           return table_[i];
@@ -132,9 +123,7 @@ namespace cctbx { namespace xray {
         table() const { return table_; }
 
       public: // not protected to allow for manually inlined code
-        omptbx::lock lock_;
         FloatType one_over_step_size_;
-        bool disable_reallocation_;
         std::vector<FloatType> table_;
 
         void expand(std::size_t n);
@@ -148,7 +137,6 @@ namespace cctbx { namespace xray {
         throw std::runtime_error(
           __FILE__ ": exponent_table: excessive range.");
       }
-      CCTBX_ASSERT(!disable_reallocation_);
       table_.reserve(n);
       for(std::size_t i = table_.size(); i < n; i++) {
         table_.push_back(std::exp(i / one_over_step_size_));

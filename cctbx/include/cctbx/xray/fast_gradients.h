@@ -625,12 +625,6 @@ namespace cctbx { namespace xray {
             scatterer.weight_without_occupancy(), scatterer.weight(),
             *u_cart++, this->u_extra_);
         }
-#define CCTBX_XRAY_SAMPLING_LOOP_OMP_REDUCTIONS reduction(+: \
-  gr_site_0, gr_site_1, gr_site_2, \
-  gr_b_iso, \
-  gr_b_cart_0, gr_b_cart_1, gr_b_cart_2, \
-  gr_b_cart_3, gr_b_cart_4, gr_b_cart_5, \
-  gr_occupancy, gr_fp, gr_fdp)
 #       include <cctbx/xray/sampling_loop.h>
           FloatType f_real(-1.e20); // could be uninitialized
           FloatType f_imag(-1.e20); // could be uninitialized
@@ -718,7 +712,6 @@ namespace cctbx { namespace xray {
             }
           }
         CCTBX_XRAY_SAMPLING_LOOP_END
-#undef CCTBX_XRAY_SAMPLING_LOOP_OMP_REDUCTIONS
         if (need_iso) gr_b_iso = gr_b_cart_0 + gr_b_cart_1 + gr_b_cart_2;
       }
       if (scatterer.flags.grad_site()) {
