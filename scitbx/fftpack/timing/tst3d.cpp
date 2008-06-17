@@ -5,6 +5,7 @@
 
 #include <scitbx/fftpack/complex_to_complex_3d.h>
 #include <scitbx/fftpack/real_to_complex_3d.h>
+#include <scitbx/array_family/tiny_reductions.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 
 #include <fftw.h>
