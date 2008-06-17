@@ -8,7 +8,6 @@ import cctbx.crystal.direct_space_asu
 from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
-import omptbx
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 from cStringIO import StringIO
@@ -1022,10 +1021,7 @@ def exercise_sampled_model_density():
   assert d.anomalous_flag()
   assert d.real_map().size() == 0
   assert d.complex_map().size() == (20*20*22)
-  if (omptbx.env.num_threads < 2):
-    assert d.exp_table_size() == 2889
-  else:
-    assert d.exp_table_size() == 10000
+  assert d.exp_table_size() == 2889
   assert d.max_sampling_box_n_points() == 216
   assert d.sum_sampling_box_n_points() == 341
   assert approx_equal(d.ave_sampling_box_n_points(), 341/2.)
