@@ -3485,6 +3485,16 @@ s.u
     assert object.multiple
   extracted = parameters.extract()
   assert len(extracted.s.u) == 1
+  #
+  parameters = phil.parse(input_string="""\
+a=008 # eval fails since this is an invalid octal literal
+  .type=int
+b=008.34 # just to be sure (eval works for this)
+  .type=float
+""")
+  extracted = parameters.extract()
+  assert extracted.a == 8
+  assert extracted.b == 8.34
 
 def exercise_format():
   parameters = phil.parse(input_string="""\
