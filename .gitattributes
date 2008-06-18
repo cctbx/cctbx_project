@@ -221,7 +221,7 @@ rstbx/__init__.py -text
 rstbx/array_family/__init__.py -text
 rstbx/array_family/ext.cpp -text
 rstbx/array_family/flex.py -text
-rstbx/array_family/flex_labelit_arrays.cpp -text
+rstbx/array_family/flex_rstbx_arrays.cpp -text
 rstbx/command_line/__init__.py -text
 rstbx/command_line/lattice_symmetry.py -text
 rstbx/dps_core/__init__.py -text
