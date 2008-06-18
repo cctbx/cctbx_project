@@ -234,7 +234,6 @@ rstbx/dps_core/directional_fft.cpp -text
 rstbx/dps_core/directional_fft.h -text
 rstbx/dps_core/dps_core.cpp -text
 rstbx/dps_core/dps_core.h -text
-rstbx/dps_core/error.py -text
 rstbx/dps_core/lepage.py -text
 rstbx/dps_core/sampling.py -text
 rstbx/dps_core/zuoreduction.py -text
