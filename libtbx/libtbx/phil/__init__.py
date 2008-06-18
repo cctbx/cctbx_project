@@ -170,6 +170,9 @@ def number_from_words(words, path):
     raise RuntimeError(
       'Error interpreting "%s" as a numeric expression%s' % (
         value_string, words[0].where_str()))
+  try: return int(value_string)
+  except KeyboardInterrupt: raise
+  except: pass
   try: return eval(value_string, math.__dict__, {})
   except KeyboardInterrupt: raise
   except:
