@@ -1,7 +1,7 @@
 #include <scitbx/constants.h>
 #include <rstbx/dps_core/direction.h>
 
-namespace pd = labelit::dptbx;
+namespace pd = rstbx;
 namespace constants = scitbx::constants;
 
 pd::Direction::Direction(const double & psi, const double & phi):

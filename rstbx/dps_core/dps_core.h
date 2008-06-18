@@ -11,8 +11,7 @@
 #include <rstbx/dps_core/directional_fft.h>
 
 namespace af = scitbx::af;
-namespace labelit {
-namespace dptbx {
+namespace rstbx {
 
 enum SpotClass { GOOD, OVERLAP, SPINDLE, ICE, OTHERIMAGE, FULL_ENTER,
   FULL_EXIT, ENTER1, ENTER2, EXIT3, EXIT4, NONE,
@@ -75,6 +74,5 @@ class dps_core {
   hkllistmm hklobserved(const pointlistmm&) const; // choose an observed()
 };
 
-} //namespace
 } //namespace
 #endif //RSTBX_DPS_CORE_H

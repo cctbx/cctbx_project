@@ -10,7 +10,6 @@
 #include <rstbx/dps_core/direction.h>
 
 using namespace boost::python;
-using namespace labelit::dptbx;
 
 namespace rstbx { namespace boost_python { namespace {
 

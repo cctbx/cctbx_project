@@ -6,8 +6,7 @@
 #include <scitbx/array_family/shared.h>
 
 namespace af = scitbx::af;
-namespace labelit {
-namespace dptbx {
+namespace rstbx {
 
 typedef scitbx::vec3<double>                 point;
 typedef scitbx::mat3<double>                 matrix;
@@ -37,8 +36,6 @@ struct Direction {
 struct kvalcmp {
   bool operator()(const Direction&, const Direction&);
 };
-
-} //namespace
 
 } //namespace
 
