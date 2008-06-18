@@ -2,7 +2,7 @@
 
 #include <rstbx/dps_core/directional_fft.h>
 
-labelit::dptbx::Directional_FFT::Directional_FFT (
+rstbx::Directional_FFT::Directional_FFT (
   Direction& angle, veclist_t& xyzdata,
   const double& granularity, const double& amax):
     xy(xyzdata.ref()),
@@ -45,8 +45,8 @@ labelit::dptbx::Directional_FFT::Directional_FFT (
                          scitbx::af::flex_grid<>((fft_n_complex)) );
 }
 
-labelit::dptbx::flexdouble
-labelit::dptbx::Directional_FFT::power_spectrum() {
+rstbx::flexdouble
+rstbx::Directional_FFT::power_spectrum() {
       if (!has_power_spectrum) {
         pspectrum = flexdouble(fft_n_complex);
         for (sztype k=0; k<fft_n_complex; ++k) {
@@ -57,8 +57,8 @@ labelit::dptbx::Directional_FFT::power_spectrum() {
       return pspectrum;
 }
 
-labelit::dptbx::sztype
-labelit::dptbx::Directional_FFT::kmax() {
+rstbx::sztype
+rstbx::Directional_FFT::kmax() {
       if (!has_kval) {
         kval();
       }
@@ -66,7 +66,7 @@ labelit::dptbx::Directional_FFT::kmax() {
 }
 
 double
-labelit::dptbx::Directional_FFT::kval() {
+rstbx::Directional_FFT::kval() {
       if (!has_kval) {
         p_kmax = 0;
         p_kval = 0.0;
@@ -81,14 +81,14 @@ labelit::dptbx::Directional_FFT::kval() {
 }
 
 double
-labelit::dptbx::Directional_FFT::kval0() {
+rstbx::Directional_FFT::kval0() {
       if (!has_kval) { kval(); }
       scitbx::af::ref<double> ps(pspectrum.begin(),pspectrum.size());
       { return ps[0]; }
 }
 
 double
-labelit::dptbx::Directional_FFT::kval2() {
+rstbx::Directional_FFT::kval2() {
       if (!has_kval) { kval(); }
       scitbx::af::ref<double> ps(pspectrum.begin(),pspectrum.size());
       if (p_kmax * 2 < ps.size()) { return ps[p_kmax * 2]; }
@@ -96,7 +96,7 @@ labelit::dptbx::Directional_FFT::kval2() {
 }
 
 double
-labelit::dptbx::Directional_FFT::kval3() {
+rstbx::Directional_FFT::kval3() {
       if (!has_kval) { kval(); }
       scitbx::af::ref<double> ps(pspectrum.begin(),pspectrum.size());
       if (p_kmax * 3 < ps.size()) { return ps[p_kmax * 3]; }
@@ -104,7 +104,7 @@ labelit::dptbx::Directional_FFT::kval3() {
 }
 
 void
-labelit::dptbx::Directional_FFT::extract_directional_properties(const bool PS){
+rstbx::Directional_FFT::extract_directional_properties(const bool PS){
   angle.kmax = kmax();
   angle.kval = kval();
   angle.kval0 = kval0();
@@ -119,8 +119,8 @@ labelit::dptbx::Directional_FFT::extract_directional_properties(const bool PS){
   }
 }
 
-labelit::dptbx::sztype
-labelit::dptbx::primecheck(const sztype& input_m){
+rstbx::sztype
+rstbx::primecheck(const sztype& input_m){
   sztype residual(input_m);
   sztype return_m(input_m);
   while (residual%2==0){ residual/=2; }

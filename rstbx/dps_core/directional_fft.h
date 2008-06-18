@@ -12,8 +12,7 @@
 #include <rstbx/dps_core/direction.h>
 
 namespace af = scitbx::af;
-namespace labelit {
-namespace dptbx {
+namespace rstbx {
 
 typedef std::size_t                          sztype;
 typedef af::shared<scitbx::vec3<double> >    veclist_t;
@@ -64,8 +63,6 @@ struct Directional_FFT {
                       // construct the Directional_FFT
 
 };
-
-} //namespace
 
 } //namespace
 

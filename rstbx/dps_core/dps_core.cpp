@@ -3,7 +3,7 @@
 #include <rstbx/dps_core/dps_core.h>
 
 namespace af = scitbx::af;
-namespace pd = labelit::dptbx;
+namespace pd = rstbx;
 
 double dps_ai_round(const double &x) {
   return std::floor(x+0.5);
