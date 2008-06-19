@@ -30,7 +30,8 @@ primecheck(const sztype& input_m);
 
 struct Directional_FFT {
   Directional_FFT (Direction& angle, veclist_t& xyzdata,
-                   const double& granularity, const double& amax);
+                   const double& granularity, const double& amax,
+                   const sztype& = F0_cutoff);
   flexdouble
   power_spectrum();
 
@@ -59,6 +60,7 @@ struct Directional_FFT {
 
   double amax;        // max cell in Angstroms
   double granularity; // number of bins between lattice planes (n in Rossmann)
+  sztype F0_specific_cutoff; // smallest channel for direct-space maximum
   Direction& angle;   // a reference to the Direction instance used to
                       // construct the Directional_FFT
 

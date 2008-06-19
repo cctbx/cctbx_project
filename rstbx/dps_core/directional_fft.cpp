@@ -4,13 +4,15 @@
 
 rstbx::Directional_FFT::Directional_FFT (
   Direction& angle, veclist_t& xyzdata,
-  const double& granularity, const double& amax):
+  const double& granularity, const double& amax,
+  const sztype& F0_specific_cutoff):
     xy(xyzdata.ref()),
     has_power_spectrum(false),
     has_kval(false),
     amax(amax),
     granularity(granularity),
-    angle(angle){
+    angle(angle),
+    F0_specific_cutoff(F0_specific_cutoff){
 
       shareddouble_t   projections(xy.size());
       shareddouble_ref ps(projections.ref());//optimization
@@ -72,7 +74,7 @@ rstbx::Directional_FFT::kval() {
         p_kval = 0.0;
         power_spectrum();
         scitbx::af::ref<double> ps(pspectrum.begin(),pspectrum.size());
-        for (sztype k = F0_cutoff; k<ps.size(); ++k){
+        for (sztype k = F0_specific_cutoff; k<ps.size(); ++k){
           if ( ps[k] > p_kval ) { p_kval=ps[k]; p_kmax=k;}
         }
         has_kval = true;
