@@ -126,14 +126,20 @@ int main(int /*argc*/, char* /*argv*/[])
   {
     vec3<double> a(1., -2., 5.);
     check_true(__LINE__, std::fabs(a * a.ortho()) < 1.e-6);
+    check_true(__LINE__, std::fabs(a * a.ortho(true)) < 1.e-6);
+    check_true(__LINE__, std::fabs(1-a.ortho(true).length()) < 1.e-6);
   }
   {
     vec3<double> a(-2., 5., 1.);
     check_true(__LINE__, std::fabs(a * a.ortho()) < 1.e-6);
+    check_true(__LINE__, std::fabs(a * a.ortho(true)) < 1.e-6);
+    check_true(__LINE__, std::fabs(1-a.ortho(true).length()) < 1.e-6);
   }
   {
     vec3<double> a(5., 1., -2.);
     check_true(__LINE__, std::fabs(a * a.ortho()) < 1.e-6);
+    check_true(__LINE__, std::fabs(a * a.ortho(true)) < 1.e-6);
+    check_true(__LINE__, std::fabs(1-a.ortho(true).length()) < 1.e-6);
     verify(__LINE__, a, a.as_tiny());
   }
 
