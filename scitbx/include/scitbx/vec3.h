@@ -161,31 +161,17 @@ namespace scitbx {
       //! Returns an orthogonal vector.
       /*! Returns a vector that is orthogonal to this.
        */
-      vec3 ortho(bool normalize=false) const
+      vec3 ortho() const
       {
         NumType x = abs_(this->elems[0]);
         NumType y = abs_(this->elems[1]);
         NumType z = abs_(this->elems[2]);
         // Is z the smallest element? Then use x and y.
-        if (z <= x && z <= y) {
-          vec3 result(-this->elems[1], this->elems[0], 0);
-          if (normalize) {
-            NumType v(1 - z*z);
-            SCITBX_ASSERT(v >= 0);
-            NumType d(std::sqrt(v));
-            SCITBX_ASSERT(d != 0);
-            result /= d;
-          }
-          return result;
-        }
+        if (z <= x && z <= y) return vec3(-this->elems[1], this->elems[0], 0);
         // Is y smallest element? Then use x and z.
-        if (y <= x && y <= z) {
-          vec3 result(-this->elems[2], 0, this->elems[0]);
-          return normalize ? result/std::sqrt(1-y*y) : result;
-        }
+        if (y <= x && y <= z) return vec3(-this->elems[2], 0, this->elems[0]);
         // x is smallest.
-        vec3 result(0, -this->elems[2], this->elems[1]);
-        return normalize ? result/std::sqrt(1-x*x) : result;
+        return vec3(0, -this->elems[2], this->elems[1]);
       }
 
       //! Copies the vector to a tiny instance.
