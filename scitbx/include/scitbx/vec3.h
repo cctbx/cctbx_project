@@ -169,7 +169,14 @@ namespace scitbx {
         // Is z the smallest element? Then use x and y.
         if (z <= x && z <= y) {
           vec3 result(-this->elems[1], this->elems[0], 0);
-          return normalize ? result/std::sqrt(1-z*z) : result;
+          if (normalize) {
+            NumType v(1 - z*z);
+            SCITBX_ASSERT(v >= 0);
+            NumType d(std::sqrt(v));
+            SCITBX_ASSERT(d != 0);
+            result /= d;
+          }
+          return result;
         }
         // Is y smallest element? Then use x and z.
         if (y <= x && y <= z) {
