@@ -1,39 +1,48 @@
+from __future__ import division
+from cctbx import crystal, xray
 from smtbx import refinement
-from iotbx.shelx.from_ins import from_ins
-from iotbx.reflection_file_reader import any_reflection_file
-from cctbx import xray
 
-tests_data_dir = '../smtbx_tests_data/refinement'
+def exercise_parameter_map():
+  cs = crystal.symmetry((8,9,10, 85, 95, 105), "P1")
+  xs = xray.structure(cs.special_position_settings())
+  for i in xrange(5): xs.add_scatterer(xray.scatterer("C%i" % i))
+  grad_site      = (True , False, False, True , False)
+  grad_u_iso     = (False, True , True , False, True )
+  grad_u_aniso   = (True , False, False, True , True )
+  grad_occupancy = (False, True , True , False, False)
+  grad_fp        = (True , True , False, False, False)
+  grad_fdp       = (True , False, True , False, False)
+  for sc, site, u_iso, u_aniso, occ, fp, fdp in zip(xs.scatterers(),
+    grad_site, grad_u_iso, grad_u_aniso, grad_occupancy, grad_fp, grad_fdp):
+    f = sc.flags
+    f.set_grad_site(site)
+    f.set_grad_u_iso(u_iso)
+    f.set_grad_u_aniso(u_aniso)
+    f.set_grad_occupancy(occ)
+    f.set_grad_fp(fp)
+    f.set_grad_fdp(fdp)
+  m = xs.parameter_map()
+  assert m.n_parameters == xs.n_parameters()
 
-def exercise_disorder(name):
-  xs0 = from_ins('%s/%s.res' % (tests_data_dir, name))
-  data_file = any_reflection_file('hklf4=%s/%s.hkl' % (tests_data_dir, name))
-  f_obs_sqr = data_file.as_miller_arrays(xs0.crystal_symmetry())[0]
-  xs = refinement.tests.shaked_structure(xs0,
-                                         thermal_shift=0.01, # in %
-                                         site_shift=0.02)
-  for a in xs.scatterers():
-    a.flags.set_grad_site(True)
-    if a.flags.use_u_iso(): a.flags.set_grad_u_iso(True)
-    if a.flags.use_u_aniso(): a.flags.set_grad_u_aniso(True)
-    assert not( a.flags.use_u_iso() and a.flags.grad_u_aniso() )
-    assert not( a.flags.use_u_aniso() and a.flags.grad_u_iso() )
-  ls = xray.unified_least_squares_residual(f_obs_sqr)
-  minimisation = refinement.minimization.lbfgs(
-    target_functor=ls,
-    xray_structure=xs,
-    cos_sin_table=True,
-  )
-  
-  
+  indices = m[0]
+  assert indices.site == 0
+  assert indices.u_iso == -1
+  assert indices.u_aniso == 3
+  assert indices.occupancy == -1
+  assert indices.fp == 9
+  assert indices.fdp == 10
+
+  indices = m[1]
+  assert indices.site == -1
+  assert indices.u_iso == 11
+  assert indices.u_aniso == -1
+  assert indices.occupancy == 12
+  assert indices.fp == 13
+  assert indices.fdp == -1
 
 def run():
-  exercise_disorder(name='6-ring-twist-disorder')
+
   print 'OK'
 
 if __name__ == '__main__':
   run()
-
-
-
-
