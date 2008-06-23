@@ -138,6 +138,10 @@ def exercise_scatterer_flags():
   flags.append(f2)
   assert flags[0].bits == f1.bits
   assert flags[1].bits == f2.bits
+  for f in flags:
+    f.set_grad_occupancy(True)
+  assert flags[0].grad_occupancy()
+  assert flags[1].grad_occupancy()
 
 def exercise_set_scatterer_grad_flags():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))

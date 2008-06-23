@@ -92,8 +92,8 @@ namespace {
         .def_readwrite("param", &w_t::param)
       ;
       {
-        scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
-          "scatterer_flags_array");
+        scitbx::af::boost_python::shared_wrapper<
+          w_t, return_internal_reference<> >::wrap("scatterer_flags_array");
       }
     }
   };
