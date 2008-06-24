@@ -12,6 +12,7 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from scitbx.python_utils import dicts
 from libtbx import adopt_init_args
+import libtbx.load_env
 import sys, os
 
 debug_peak_cluster_analysis = os.environ.get(
@@ -169,7 +170,7 @@ class crystal_gridding_tags(crystal_gridding):
   def peak_search(self, parameters, map, verify_symmetry=True):
     if (parameters is None):
       parameters = peak_search_parameters()
-    if (verify_symmetry):
+    if (verify_symmetry and libtbx.env.full_testing):
       assert self._tags.verify(map)
     if (map.accessor().is_padded()):
       map = copy(map, flex.grid(map.focus()))
