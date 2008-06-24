@@ -8,6 +8,7 @@
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
+#include <scitbx/array_family/boost_python/passing_flex_as_argument.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
 #include <boost/rational.hpp>
@@ -338,6 +339,52 @@ namespace {
     }
   };
 
+  // Testing argument passing from Python to C++
+  // from flex.double to various scitbx::af array types
+  struct flex_argument_passing
+  {
+    double x[3];
+
+    flex_argument_passing() { x[0] = 1.5; x[1] = 2.5; x[2] = 3.5;}
+
+    void easy_versa_flex_grid_as_reference(versa<double, flex_grid<> > &a_) {
+      flex_1d_argument<double> a(a_);
+      a->extend(x, x+3);
+    }
+
+    template<class A>
+    void check(A &a) {
+      SCITBX_ASSERT(a.size() == 3);
+      SCITBX_ASSERT(a[0] == x[0]);
+      SCITBX_ASSERT(a[1] == x[1]);
+      SCITBX_ASSERT(a[2] == x[2]);
+    }
+
+    void shared_as_reference_fails(shared<double> &a) {
+      a.extend(x, x+3);
+      check(a);
+    }
+
+    void shared_as_value_fails(shared<double> a) {
+      a.extend(x, x+3);
+      check(a);
+    }
+
+    void versa_flex_grid_as_reference_succeeds(versa<double, flex_grid<> > &a){
+      versa<double, flex_grid<> >::base_array_type b = a.as_base_array();
+      b.extend(x, x+3);
+      a.resize(flex_grid<>(b.size()));
+      check(a);
+    }
+
+    void versa_flex_grid_as_value_fails(versa<double, flex_grid<> > a){
+      versa<double, flex_grid<> >::base_array_type b = a.as_base_array();
+      b.extend(x, x+3);
+      a.resize(flex_grid<>(b.size()));
+      check(a);
+    }
+  };
+
 namespace {
 
   void init_module()
@@ -389,6 +436,19 @@ namespace {
         .add_property("result", &wt::result)
         .def("__call__", &wt::operator(),
              (arg_("n_repeats"), arg_("test_id")))
+        ;
+    }
+    {
+      typedef flex_argument_passing wt;
+      class_<wt>("flex_argument_passing")
+        .def("easy_versa_flex_grid_as_reference",
+             &wt::easy_versa_flex_grid_as_reference)
+        .def("shared_as_reference_fails", &wt::shared_as_reference_fails)
+        .def("shared_as_value_fails", &wt::shared_as_value_fails)
+        .def("versa_flex_grid_as_reference_succeeds",
+             &wt::versa_flex_grid_as_reference_succeeds)
+        .def("versa_flex_grid_as_value_fails",
+             &wt::versa_flex_grid_as_value_fails)
         ;
     }
   }
