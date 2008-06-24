@@ -235,6 +235,7 @@ namespace scitbx { namespace af {
       void assign();
       void push_back();
       void append();
+      void extend();
       void pop_back();
       void insert();
       void erase();
