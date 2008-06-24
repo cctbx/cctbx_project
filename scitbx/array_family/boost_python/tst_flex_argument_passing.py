@@ -22,7 +22,7 @@ def exercise():
 
   a = flex.double()
   test.easy_versa_flex_grid_as_reference(a)
-  assert list(a) == [1.5, 2.5, 3.5]
+  assert list(a) == [1.5, 0.5, 2.5, 3.5, 4.5]
 
 def run():
   exercise()
