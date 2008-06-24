@@ -251,11 +251,13 @@ rstbx/symmetry/__init__.py -text
 rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
 scitbx/array_family/boost_python/tst_cost_of_m_handle_in_af_shared.py -text
+scitbx/array_family/boost_python/tst_flex_argument_passing.py -text
 scitbx/array_family/boost_python/tst_smart_selection.py svneol=native#text/x-python
 scitbx/array_family/tst_unsigned_float_arithmetic.cpp -text
 scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text
+scitbx/include/scitbx/array_family/boost_python/passing_flex_as_argument.h -text
 scitbx/include/scitbx/array_family/boost_python/selections_wrapper.h svneol=native#text/plain
 scitbx/include/scitbx/boost_python/cstringio_utils.h svneol=native#text/plain
 scitbx/include/scitbx/error_utils.h -text
