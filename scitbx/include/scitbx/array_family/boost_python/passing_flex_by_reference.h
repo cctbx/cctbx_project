@@ -8,27 +8,23 @@ namespace scitbx { namespace af {
 
 template<class ElementType>
 class flex_1d_argument
+  : public af::versa<ElementType, af::flex_grid<> >::base_array_type
 {
   public:
-    typedef af::versa<ElementType, af::flex_grid<> > array_type;
-    typedef typename array_type::base_array_type base_array_type;
+    typedef af::versa<ElementType, af::flex_grid<> > flex_array_type;
+    typedef typename flex_array_type::base_array_type base_type;
 
-    flex_1d_argument(array_type &array)
-      : a(array), b(array.as_base_array())
+    flex_1d_argument(flex_array_type &array)
+      : a(array), base_type(array.as_base_array())
     {
       SCITBX_ASSERT(array.accessor().nd() == 1 && array.accessor().is_0_based())
                    (array.accessor().nd());
     }
 
-    ~flex_1d_argument() { a.resize(af::flex_grid<>(b.size())); }
-
-    base_array_type *operator->() { return &b; }
-
-    ElementType &operator[](std::size_t i) { return b[i]; }
+    ~flex_1d_argument() { a.resize(af::flex_grid<>(this->size())); }
 
   private:
-    array_type &a;
-    base_array_type b;
+    flex_array_type &a;
 };
 
 }} // namespace scitbx::af

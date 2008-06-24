@@ -8,7 +8,7 @@
 #include <scitbx/array_family/tiny_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/boost_python/c_grid_flex_conversions.h>
-#include <scitbx/array_family/boost_python/passing_flex_as_argument.h>
+#include <scitbx/array_family/boost_python/passing_flex_by_reference.h>
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/boost_python/slice.h>
 #include <boost/rational.hpp>
@@ -349,7 +349,14 @@ namespace {
 
     void easy_versa_flex_grid_as_reference(versa<double, flex_grid<> > &a_) {
       flex_1d_argument<double> a(a_);
-      a->extend(x, x+3);
+      a.extend(x, x+3);
+      check(a);
+      a.push_back(4.5);
+      a.insert(&a[1], 0.5);
+      SCITBX_ASSERT(a.begin() == &a[0]);
+      SCITBX_ASSERT(a.end() == &a[5]);
+      SCITBX_ASSERT(a.ref().size() == 5);
+      SCITBX_ASSERT(a.ref()[2] == 2.5);
     }
 
     template<class A>
