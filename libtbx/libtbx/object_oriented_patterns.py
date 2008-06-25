@@ -41,7 +41,7 @@ class injector:
         for name, attribute in classdict.items():
           if name in ('__module__', '__doc__'): continue
           assert not hasattr(target_class, name), (
-            "class %s has already attribute '%s'"
+            "class %s already has attribute '%s'"
             % (target_class.__name__, name))
           setattr(target_class, name, attribute)
 
