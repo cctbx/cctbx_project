@@ -672,7 +672,9 @@ class monomer_mapping(object):
           else:
             u_mon_lib[mon_lib_name] = i_seq
         u = u_mon_lib
-      if ("OXT" in u):
+      if ("HXT" in u):
+        mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["COOH"])
+      elif ("OXT" in u):
         mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["COO"])
       if (ani is not None):
         nitrogen_hydrogens = []
