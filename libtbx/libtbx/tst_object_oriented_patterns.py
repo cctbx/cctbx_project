@@ -36,7 +36,7 @@ def exercise_injector():
     class d_extension(oop.injector, d):
       def get_square(self): return 0
   except AssertionError, err:
-    assert str(err) == "class d has already attribute 'get_square'"
+    assert str(err) == "class d already has attribute 'get_square'"
 
 def exercise_memoize():
   diagnostic = []
