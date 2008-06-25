@@ -347,8 +347,13 @@ namespace {
 
     flex_argument_passing() { x[0] = 1.5; x[1] = 2.5; x[2] = 3.5;}
 
-    void easy_versa_flex_grid_as_reference(versa<double, flex_grid<> > &a_) {
-      flex_1d_argument<double> a(a_);
+    // This template pattern ensures that this function is as easy to use
+    // from C++ (instantiating it with af::shared<double> for example)
+    // as it is easy to wrap in a Boost.Python binding
+    // which will transparently pass a flex.double through
+    // (instantiating it with af::flex_1d<double>, c.f. below)
+    template<template<class> class SharedArray1D>
+    void easy_versa_flex_grid_as_reference(SharedArray1D<double> a) {
       a.extend(x, x+3);
       check(a);
       a.push_back(4.5);
@@ -447,9 +452,10 @@ namespace {
     }
     {
       typedef flex_argument_passing wt;
+      typedef void (wt::*easy_t)(flex_1d<double>);
       class_<wt>("flex_argument_passing")
         .def("easy_versa_flex_grid_as_reference",
-             &wt::easy_versa_flex_grid_as_reference)
+             (easy_t)&wt::easy_versa_flex_grid_as_reference)
         .def("shared_as_reference_fails", &wt::shared_as_reference_fails)
         .def("shared_as_value_fails", &wt::shared_as_value_fails)
         .def("versa_flex_grid_as_reference_succeeds",

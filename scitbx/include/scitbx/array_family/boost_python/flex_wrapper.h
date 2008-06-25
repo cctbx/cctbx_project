@@ -18,6 +18,7 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <scitbx/array_family/boost_python/shared_flex_conversions.h>
 #include <scitbx/array_family/boost_python/ref_flex_conversions.h>
+#include <scitbx/array_family/boost_python/passing_flex_by_reference.h>
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
 #include <scitbx/misc/positive_getitem_index.h>
 
@@ -662,6 +663,7 @@ namespace scitbx { namespace af { namespace boost_python {
           ::variable_capacity_policy>();
       shared_flex_conversions<ElementType>();
       ref_flex_conversions<ElementType>();
+      flex_1d_from_flex<ElementType>();
 
       class_f_t result(python_name.c_str());
       result
