@@ -48,7 +48,8 @@ class parameter_map
           ids.site = params;
           params += 3;
         }
-        if (sc.flags.use_u_iso() && sc.flags.grad_u_iso()) ids.u_iso = params++;        if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
+        if (sc.flags.use_u_iso() && sc.flags.grad_u_iso()) ids.u_iso = params++;
+        if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
           ids.u_aniso = params;
           params += 6;
         }
