@@ -5,6 +5,12 @@ def create_script(bundle, top_modules):
   return r"""@echo off
 
 set PYTHONHOME=
+set PYTHONSTARTUP=
+set PYTHONDEBUG=
+set PYTHONINSPECT=
+set PYTHONSUPPRESS=
+set PYTHONUNBUFFERED=
+set PYTHONVERBOSE=
 set PYTHONCASEOK=1
 
 if not exist %(bundle)s_sources\TAG goto find_python

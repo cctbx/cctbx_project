@@ -19,6 +19,13 @@ set minimum_python_version=%(minimum_python_version)s
 
 unsetenv PYTHONHOME
 unsetenv PYTHONPATH
+unsetenv PYTHONSTARTUP
+unsetenv PYTHONDEBUG
+unsetenv PYTHONINSPECT
+unsetenv PYTHONSUPPRESS
+unsetenv PYTHONUNBUFFERED
+unsetenv PYTHONVERBOSE
+unsetenv PYTHONCASEOK
 set noglob
 unalias cat
 unalias cut
