@@ -1,0 +1,7 @@
+Import("env_smtbx_boost_python_ext")
+env = env_smtbx_boost_python_ext.Copy()
+for stl_t in ["map", ]:
+  env.SharedLibrary(target="#lib/smtbx_stl_%s_ext" % stl_t,
+  source=[
+    "%s_ext.cpp" % stl_t,
+    ])
