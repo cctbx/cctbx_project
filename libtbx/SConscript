@@ -162,6 +162,7 @@ if (sys.platform == "win32"):
       SHCXX="cl",
       SHLINK="link",
     )
+    env_etc.c_link = "link"
     env_etc.ccflags_base = [
       "/nologo",
       "/D_SECURE_SCL=0",
@@ -247,6 +248,7 @@ else:
       SHCXX=cxx,
       SHLINK=cxx,
     )
+    env_etc.c_link = "cc"
     env_etc.cxxflags_base = [
       "-std", "strict_ansi",
       "-msg_display_number", "-msg_disable", "186,450,768,1115,1133,1168,1169",
@@ -293,6 +295,7 @@ else:
       SHCXX="aCC"+abi,
       SHLINK="aCC"+abi,
     )
+    env_etc.c_link = "cc"+abi
     env_etc.cxxflags_base = [
       "-AA",
       "-mt",
@@ -332,6 +335,7 @@ else:
       SHCXX=cxx,
       SHLINK=cxx,
     )
+    env_etc.c_link = "cc"
     env_etc.cxxflags_base = []
     env_etc.ccflags_base = []
     if (libtbx.env.build_options.optimization):
@@ -363,6 +367,7 @@ else:
       SHLINK="g++",
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
+    env_etc.c_link = "gcc"
     env_etc.ccflags_base = [
       "-fno-strict-aliasing",
       "-fPIC"]
@@ -406,6 +411,7 @@ else:
       SHCXX="icpc",
       SHLINK="icpc",
     )
+    env_etc.c_link = "icc"
     env_etc.cxxflags_base = ["-fPIC"]
     env_etc.ccflags_base = ["-fPIC"]
     if (libtbx.env.build_options.optimization):
@@ -434,6 +440,7 @@ else:
       SHCXX=cxx,
       SHLINK=cxx,
     )
+    env_etc.c_link = "cc"
     if (env_etc.mipspro_version == "73"):
       env_etc.cxxflags_base = [
         "-woff", "1001,1183,1188,1234,1311,1682,3439"]
@@ -505,6 +512,7 @@ else:
       SHLINK=cxx,
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
+    env_etc.c_link = "cc"
     if (libtbx.env.build_options.warning_level == 0):
       warn_options = ["-w"]
       env_etc._enable_more_warnings = "gcc"
