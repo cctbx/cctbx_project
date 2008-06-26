@@ -325,4 +325,8 @@ smtbx/refinement/tests/__init__.py -text
 smtbx/refinement/tests/tst_minimization.py -text
 smtbx/refinement/tests/tst_minimization_at_random.py -text
 smtbx/run_tests.py -text
+smtbx/stl/SConscript -text
+smtbx/stl/__init__.py -text
+smtbx/stl/map.py -text
+smtbx/stl/map_ext.cpp -text
 smtbx/util.py -text
