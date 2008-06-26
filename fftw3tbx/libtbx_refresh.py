@@ -3,8 +3,9 @@ from libtbx import easy_run
 import sys, os
 
 if (self.env.is_ready_for_build()):
-  source = self.env.under_build("base/lib/"+fftw3tbx.libfftw3)
-  if (os.path.isfile(source)):
-    target = self.env.under_build("lib/"+fftw3tbx.libfftw3)
-    print "Copying:", fftw3tbx.libfftw3
-    open(target, "wb").write(open(source, "rb").read())
+  for libfftw3 in [fftw3tbx.libfftw3, fftw3tbx.libfftw3f]:
+    source = self.env.under_build("base/lib/"+libfftw3)
+    if (os.path.isfile(source)):
+      target = self.env.under_build("lib/"+libfftw3)
+      print "Copying:", libfftw3
+      open(target, "wb").write(open(source, "rb").read())

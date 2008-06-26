@@ -13,5 +13,7 @@ fftw3_h = "fftw3.h"
 
 if (sys.platform.startswith("darwin")):
   libfftw3 = "libfftw3.dylib"
+  libfftw3f = "libfftw3f.dylib"
 else:
   libfftw3 = "libfftw3.so.3"
+  libfftw3f = "libfftw3f.so.3"
