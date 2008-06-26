@@ -6,15 +6,8 @@ import libtbx.introspection
 import libtbx.load_env
 import sys, os
 
-def run(args):
-  print
-  if (len(args) != 1):
-    raise Usage("%s fftw-*.tar.gz" % libtbx.env.dispatcher_name)
-  tgz = args[0]
-  if (not os.path.isfile(tgz)):
-    raise Sorry(
-      "Not a file: %s" % show_string(tgz))
-  tgz = os.path.abspath(tgz)
+def install(tgz, precision, n_proc):
+  assert precision in ["double", "float"]
   #
   print "cd %s" % show_string(libtbx.env.build_path)
   os.chdir(libtbx.env.build_path)
@@ -43,8 +36,14 @@ def run(args):
   os.chdir(src)
   print
   #
-  command = "./configure --prefix=%s --enable-shared" % show_string(
-    libtbx.env.under_build("base"))
+  if (precision == "float"):
+    s = " --enable-single"
+    libfftw3 = fftw3tbx.libfftw3f
+  else:
+    s = ""
+    libfftw3 = fftw3tbx.libfftw3
+  command = "./configure --prefix=%s --enable-shared%s" % (show_string(
+    libtbx.env.under_build("base")), s)
   print command
   easy_run.call(command=command)
   print
@@ -53,12 +52,11 @@ def run(args):
       "./configure command failed: Makefile does not exist.")
   #
   command = "make"
-  n_proc = libtbx.introspection.number_of_processors()
   if (n_proc is not None): command += " -j%d" % n_proc
   print command
   easy_run.call(command=command)
   print
-  f = ".libs/" + fftw3tbx.libfftw3
+  f = ".libs/" + libfftw3
   if (not os.path.isfile(f)):
     raise Sorry(
       "make command failed: %s does not exist." % show_string(f))
@@ -68,7 +66,7 @@ def run(args):
   easy_run.call(command=command)
   print
   for f in ["base/include/"+fftw3tbx.fftw3_h,
-            "base/lib/"+fftw3tbx.libfftw3]:
+            "base/lib/"+libfftw3]:
     f = libtbx.env.under_build(f)
     if (not os.path.isfile(f)):
       raise Sorry(
@@ -82,6 +80,19 @@ def run(args):
   print command
   easy_run.call(command=command)
   print
+
+def run(args):
+  print
+  if (len(args) != 1):
+    raise Usage("%s fftw-*.tar.gz" % libtbx.env.dispatcher_name)
+  tgz = args[0]
+  if (not os.path.isfile(tgz)):
+    raise Sorry(
+      "Not a file: %s" % show_string(tgz))
+  tgz = os.path.abspath(tgz)
+  n_proc = libtbx.introspection.number_of_processors()
+  install(tgz=tgz, precision="double", n_proc=n_proc)
+  install(tgz=tgz, precision="float", n_proc=n_proc)
   #
   command = "libtbx.refresh"
   print command
