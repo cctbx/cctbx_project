@@ -507,7 +507,7 @@ of violations in the non-absent class.
 
 
 
-  def check_conditions(self):
+  def check_conditions(self,abs_lower_i_threshold=1e-6):
     table_labels = ('Operator', 'absent under operator\n <I/sigI> (violations)','\nn absent',
                                 'not absent under operator \n <I/sigI> (violations)', '\nn not absent',
                                 'all other reflections \n <I/sigI> (violations)', '\nn compl', '\n Score' )
@@ -535,6 +535,8 @@ of violations in the non-absent class.
 
         for hkl, centric_flag, i, sigi in zip(self.miller_array.indices(), self.miller_array.centric_flags(), self.miller_array.data(), self.miller_array.sigmas() ):
           mc, cc = self.abs_check.check(condition,hkl, return_bool=True)
+          if abs(i) < abs_lower_i_threshold:
+            sigi=max(sigi,abs_lower_i_threshold)
           if mc: # mask checks out
             if cc: # not absent
               n_n_abs += 1
