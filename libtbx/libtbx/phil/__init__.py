@@ -573,7 +573,7 @@ class definition(object):
 
   attribute_names = [
     "help", "caption", "short_caption", "optional",
-    "type", "multiple", "input_size", "expert_level"]
+    "type", "multiple", "input_size", "gui_style", "expert_level"]
 
   __slots__ = ["name", "words", "primary_id", "primary_parent_scope",
                "is_disabled", "is_template", "where_str", "merge_names",
@@ -596,6 +596,7 @@ class definition(object):
         type=None,
         multiple=None,
         input_size=None,
+        gui_style=None,
         expert_level=None):
     if (is_reserved_identifier(name)):
       raise RuntimeError('Reserved identifier: "%s"%s' % (name, where_str))
@@ -617,6 +618,7 @@ class definition(object):
     self.type = type
     self.multiple = multiple
     self.input_size = input_size
+    self.gui_style = gui_style
     self.expert_level = expert_level
 
   if (_need_getstate):
@@ -997,6 +999,7 @@ class scope(object):
     "sequential_format",
     "disable_add",
     "disable_delete",
+    "gui_style",
     "expert_level"]
 
   __slots__ = [
@@ -1028,6 +1031,7 @@ class scope(object):
         sequential_format=None,
         disable_add=None,
         disable_delete=None,
+        gui_style=None,
         expert_level=None):
     self.name = name
     self.objects = objects
@@ -1047,6 +1051,7 @@ class scope(object):
     self.sequential_format = sequential_format
     self.disable_add = disable_add
     self.disable_delete = disable_delete
+    self.gui_style = gui_style
     self.expert_level = expert_level
     if (objects is None):
       self.objects = []
