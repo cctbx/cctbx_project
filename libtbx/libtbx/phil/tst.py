@@ -65,6 +65,7 @@ name = value
   .type = None
   .multiple = None
   .input_size = None
+  .gui_style = None
   .expert_level = None
 """)
   input_string = """\
@@ -82,6 +83,7 @@ name = value
   .type = path
   .multiple = None
   .input_size = None
+  .gui_style = None
   .expert_level = None
 """)
   recycle(input_string=input_string, attributes_level=2, expected_out="""\
@@ -124,6 +126,7 @@ name
   .sequential_format = None
   .disable_add = None
   .disable_delete = None
+  .gui_style = None
   .expert_level = 3
 {
 }
