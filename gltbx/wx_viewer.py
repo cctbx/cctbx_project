@@ -141,7 +141,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       if (callback is None):
         print "Tab callback not available."
       else:
-        callback(shift_down=event.m_shiftDown)
+        kwargs = {"shift_down": event.m_shiftDown}
+        if (event.m_controlDown): kwargs["control_down"] = True
+        callback(**kwargs)
     self.autospin = False
 
   def OnMouseWheel(self, event):
