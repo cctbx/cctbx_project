@@ -79,7 +79,7 @@ def get_atom_names(code, alternate=False):
   cif = get_cif_dictionary(code)
   if not cif: return cif
   tmp = []
-  for item in cif["_chem_comp_atom"]:
+  for item in cif.get("_chem_comp_atom", []):
     if alternate:
       tmp.append(item.alt_atom_id)
     else:
