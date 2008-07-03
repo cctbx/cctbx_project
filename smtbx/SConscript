@@ -32,5 +32,8 @@ if (not env_etc.no_boost_python):
   env_smtbx_boost_python_ext.Prepend(LIBS=["cctbx"])
   Export("env_smtbx_boost_python_ext")
 
+  SConscript("stl/SConscript")
+  SConscript("array_family/SConscript")
   SConscript("refinement/SConscript")
+  SConscript("refinement/constraints/SConscript")
   SConscript("ab_initio/SConscript")
