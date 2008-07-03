@@ -3,12 +3,16 @@ boost_adaptbx/boost/command_line/divide_by_zero.py svneol=native#text/x-python
 boost_adaptbx/boost/command_line/segmentation_fault.py svneol=native#text/x-python
 boost_adaptbx/boost/command_line/show_environ_usage.py svneol=native#text/x-python
 boost_adaptbx/boost/std_pair.py -text
+boost_adaptbx/boost/tuple.py -text
 boost_adaptbx/optional_fwd.h -text
 boost_adaptbx/std_pair_conversion.h -text
 boost_adaptbx/std_pair_ext.cpp -text
 boost_adaptbx/std_pair_fwd.h -text
 boost_adaptbx/tst_libc_backtrace.py svneol=native#text/x-python
 boost_adaptbx/tst_std_pair.py -text
+boost_adaptbx/tst_tuple.py -text
+boost_adaptbx/tuple_conversion.h -text
+boost_adaptbx/tuple_ext.cpp -text
 cbflib_adaptbx/SConscript -text
 cbflib_adaptbx/detectors/boost_python/SConscript -text
 cbflib_adaptbx/detectors/boost_python/cbflib_ext.cpp -text
