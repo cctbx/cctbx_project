@@ -310,6 +310,9 @@ smtbx/ab_initio/examples/solve_shelx.py -text
 smtbx/ab_initio/tests/__init__.py -text
 smtbx/ab_initio/tests/tst_ab_initio_ext.py -text
 smtbx/ab_initio/tests/tst_charge_flipping.py -text
+smtbx/array_family/SConscript -text
+smtbx/array_family/__init__.py -text
+smtbx/array_family/af_ext.cpp -text
 smtbx/error.h -text
 smtbx/import_cctbx.h -text
 smtbx/import_scitbx_af.h -text
