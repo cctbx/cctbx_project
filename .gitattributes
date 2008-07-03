@@ -320,6 +320,16 @@ smtbx/libtbx_config -text
 smtbx/refinement/SConscript -text
 smtbx/refinement/__init__.py -text
 smtbx/refinement/barriers.py -text
+smtbx/refinement/constraints/SConscript -text
+smtbx/refinement/constraints/__init__.py -text
+smtbx/refinement/constraints/constraint_array.h -text
+smtbx/refinement/constraints/constraints_array_bp.h -text
+smtbx/refinement/constraints/constraints_ext.cpp -text
+smtbx/refinement/constraints/geometric_hydrogen.cpp -text
+smtbx/refinement/constraints/geometric_hydrogen.h -text
+smtbx/refinement/constraints/special_positions.cpp -text
+smtbx/refinement/constraints/special_positions.h -text
+smtbx/refinement/constraints/tests/tst_constraints.py -text
 smtbx/refinement/ext.py -text
 smtbx/refinement/import_cctbx_xray.h -text
 smtbx/refinement/minimization.cpp -text
