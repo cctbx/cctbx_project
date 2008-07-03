@@ -123,8 +123,7 @@ class special_position_test_case(test_case):
 class ch3_test_case(test_case):
 
   def __init__(self):
-    #self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
-    self.cs = crystal.symmetry((1, 1, 1, 90, 90, 90), "P1")
+    self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
     self.xs = xray.structure(self.cs.special_position_settings())
     pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
                                 u=(0.05, 0.04, 0.02,
