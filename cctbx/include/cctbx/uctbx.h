@@ -273,7 +273,7 @@ namespace cctbx {
         return result;
       }
 
-      //! Optimized v * fractionalization_matrix().transpose()
+      //! Optimized fractionalization_matrix().transpose() * v
       /*! Not available in Python.
        */
       template <class FloatType>
@@ -292,7 +292,7 @@ namespace cctbx {
       }
 
       // ! gradient wrt Cartesian coordinates from gradient wrt fractional ones
-      /*! The formula is \f$\nabla_{x_f} = F^T \nabla_{x_c}\f$ where \f$F\f$ is
+      /*! The formula is \f$\nabla_{x_c} = F^T \nabla_{x_f}\f$ where \f$F\f$ is
         the fractionalisation matrix
         This is syntactic sugar for the long winded and cryptic
           v_times_fractionalization_matrix_transpose.
