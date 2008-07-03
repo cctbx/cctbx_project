@@ -99,6 +99,9 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/std_pair_ext",
     source="std_pair_ext.cpp")
+  env.SharedLibrary(
+    target="#lib/boost_tuple_ext",
+    source="tuple_ext.cpp")
 
   import os, os.path
   env = env_base.Copy(
@@ -117,7 +120,7 @@ if (not env_etc.no_boost_python):
     env=env,
     paths=[env_etc.boost_include, env_etc.python_include])
 
-  darwin_shlinkcom(env_etc, env, 
+  darwin_shlinkcom(env_etc, env,
                    lo="boost/libs/python/src/libboost_python.lo",
                    dylib="lib/libboost_python.dylib")
 

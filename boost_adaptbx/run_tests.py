@@ -9,6 +9,7 @@ def run():
   "$D/tst_rational_truediv.py",
   "$D/tst_optional.py",
   "$D/tst_std_pair.py",
+  "$D/tst_tuple.py",
   )
 
   build_dir = libtbx.env.under_build("boost_adaptbx")
