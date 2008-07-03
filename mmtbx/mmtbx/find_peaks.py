@@ -17,6 +17,7 @@ master_params = iotbx.phil.parse("""\
   resolution_factor = 1./4.
     .type=float
   map_next_to_model
+    .expert_level=2
   {
     min_model_peak_dist = 1.8
       .type=float
@@ -29,6 +30,7 @@ master_params = iotbx.phil.parse("""\
   }
   max_number_of_peaks = None
     .type=int
+    .expert_level=1
   peak_search
     .expert_level=1
   {
@@ -36,14 +38,17 @@ master_params = iotbx.phil.parse("""\
       .type=int
     max_peaks = 0
       .type=int
+      .short_caption=Maximum peaks
     interpolate = True
       .type=bool
     min_distance_sym_equiv = None
       .type=float
+      .short_caption=Minimum distance between symmetry-equivalent atoms
     general_positions_only = False
       .type=bool
     min_cross_distance = 1.8
       .type=float
+      .short_caption=Minimum cross distance
   }
 """)
 

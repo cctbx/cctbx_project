@@ -83,6 +83,7 @@ master_params = iotbx.phil.parse("""\
     .expert_level=2
   fix_b_cart
     .expert_level=2
+    .gui_style = box
   {
     b11 = None
       .type = float
