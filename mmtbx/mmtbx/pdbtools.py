@@ -24,16 +24,23 @@ fmodel_from_xray_structure_params_str = """\
 k_sol = 0.0
   .type = float
   .help = Bulk solvent k_sol values
+  .short_caption=Bulk solvent K_sol value
+  .expert_level=2
 b_sol = 0.0
   .type = float
   .help = Bulk solvent b_sol values
+  .short_caption=Bulk solvent B_sol value
+  .expert_level=2
 b_cart = 0 0 0 0 0 0
   .type = strings
   # XXX FUTURE float(6)
   .help = Anisotropic scale matrix
+  .short_caption = Anisotropic scale matrix
+  .expert_level=2
 scale = 1.0
   .type = float
   .help = Overall scale factor
+  .expert_level=2
 structure_factors_accuracy {
   include scope mmtbx.f_model.sf_and_grads_accuracy_params
 }
@@ -43,6 +50,7 @@ mask {
 scattering_table = wk1995  it1992  *n_gaussian  neutron
   .type = choice
   .help = Choices of scattering table for structure factors calculations
+  .expert_level=2
 """
 fmodel_from_xray_structure_params = iotbx.phil.parse(
   fmodel_from_xray_structure_params_str, process_includes=True)
@@ -55,7 +63,9 @@ low_resolution = None
 r_free_flags_fraction = None
   .type = float
 %s
-output {
+output
+  .expert_level=2
+{
   format = *mtz cns
     .type = choice
   label = FMODEL
@@ -74,20 +84,27 @@ modify_params_str = """\
 selection = None
   .type = str
   .help = Selection for atoms to be modified
+  .short_caption=Atom selection
+  .input_size=400
 adp
   .help = Scope of options to modify ADP of selected atoms
   .multiple = True
+  .expert_level=2
+  .short_caption=Modify ADPs
 {
   selection = None
     .type = str
     .help = Selection for atoms to be modified. \\
             Overrides parent-level selection.
+    .input_size=400
   randomize = None
     .type = bool
     .help = Randomize ADP within a certain range
+    .short_caption=Randomize ADPs
   set_b_iso = None
     .type = float
     .help = Set ADP of atoms to set_b_iso
+    .short_caption=Set isotropic B to
   convert_to_isotropic = None
     .type = bool
     .help = Convert atoms to isotropic
@@ -97,18 +114,23 @@ adp
   shift_b_iso = None
     .type = float
     .help = Add shift_b_iso value to ADP
+    .short_caption=Increase B_iso by
   scale_adp = None
     .type = float
     .help = Multiply ADP by scale_adp
+    .short_caption=ADP scale factor
 }
 sites
   .help = Scope of options to modify coordinates of selected atoms
   .multiple = True
+  .short_caption=Modify coordinates
+  .expert_level=2
 {
   selection = None
     .type = str
     .help = Selection for atoms to be modified. \\
             Overrides parent-level selection.
+    .input_size=400
   shake = None
     .type = float
     .help = Randomize coordinates with mean error value equal to shake
@@ -127,6 +149,8 @@ sites
 }
 occupancies
   .help = Scope of options to modify occupancies of selected atoms
+  .short_caption=Modify occupancies
+  .expert_level=2
 {
   randomize = None
     .type = bool
@@ -134,6 +158,7 @@ occupancies
   set = None
     .type = float
     .help = Set all or selected occupancies to given value
+    .short_caption=Set occupancies to
 }
 output
   .help = Write out PDB file with modified model (file name is defined in \
@@ -145,6 +170,7 @@ output
 random_seed = None
   .type = int
   .help = Random seed
+  .expert_level=2
 """
 modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
@@ -153,9 +179,13 @@ master_params = iotbx.phil.parse("""\
 remove = None
   .type = str
   .help = Selection for the atoms to be removed
+  .short_caption=Remove selection
+  .input_size=400
 keep = None
   .type = str
   .help = Select atoms to keep
+  .short_caption=Keep selection
+  .input_size=400
 put_into_box_with_buffer = None
   .type = float
   .help = Move molecule into center of box.

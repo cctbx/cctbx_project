@@ -59,17 +59,22 @@ map_params_str ="""\
     .expert_level = 1
   map
     .multiple = True
+    .short_caption=Electron density map
   {
     mtz_label_amplitudes = None
       .type = str
+      .short_caption=Amplitude label
     mtz_label_phases = None
       .type = str
+      .short_caption=Phase label
     likelihood_weighted = None
       .type = bool
     obs_factor = None
       .type = float
+      .short_caption=Multiply Fobs by
     calc_factor = None
       .type = float
+      .short_caption=Multiply Fcalc by
   }
   map {
     mtz_label_amplitudes = 2FOFCWT
@@ -85,16 +90,22 @@ map_params_str ="""\
     obs_factor = 1
     calc_factor = 1
   }
-  anomalous_difference_map {
+  anomalous_difference_map
+    .short_caption=Anomalous difference map
+    .gui_style = box
+  {
     mtz_label_amplitudes = ANOM
       .type = str
+      .short_caption=Amplitude label
     mtz_label_phases = PHANOM
       .type = str
+      .short_caption=Phase label
   }
   grid_resolution_factor = 1/3
     .type = float
   region = *selection cell
     .type = choice
+    .short_caption=Map region
   atom_selection = None
     .type = str
   atom_selection_buffer = 3
@@ -104,7 +115,7 @@ map_params_str ="""\
     .expert_level = 1
   apply_volume_scaling = False
     .type = bool
-    .expert_level = 1
+    .expert_level = 2
 """
 
 map_params = iotbx.phil.parse(map_params_str, process_includes=True)

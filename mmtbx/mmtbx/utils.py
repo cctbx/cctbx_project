@@ -85,6 +85,7 @@ refinement.
 data_and_flags = iotbx.phil.parse("""\
   file_name = None
     .type=path
+    .short_caption=Reflections file
   labels = None
     .type=strings
   high_resolution = None
@@ -101,9 +102,12 @@ data_and_flags = iotbx.phil.parse("""\
     .type=bool
   force_anomalous_flag_to_be_equal_to = None
     .type=bool
-  r_free_flags {
+  r_free_flags
+    .expert_level=2
+  {
     file_name = None
       .type=path
+      .short_caption=File containing R(free) flags
     label = None
       .type=str
     test_flag_value = None
@@ -473,6 +477,7 @@ will become meaningful only after many cycles of refinement.
 experimental_phases_params = iotbx.phil.parse("""\
   file_name=None
     .type=path
+    .short_caption=Experimental phase file
   labels=None
     .type=strings
 """)
@@ -524,6 +529,7 @@ pdb_params = iotbx.phil.parse("""\
     .optional=True
     .type=path
     .help=Model file(s) name (PDB)
+    .short_caption=PDB file
     .multiple=True
 """)
 
