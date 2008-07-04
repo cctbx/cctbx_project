@@ -3,6 +3,7 @@ from cctbx import crystal
 from cctbx.development import debug_utils
 from cctbx.development import make_cns_input
 from iotbx.cns import reflection_reader
+from libtbx import easy_run
 import sys, os
 
 def verify(crystal_symmetry, anomalous_flag, reflection_file):
@@ -94,8 +95,10 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
     space_group_info=space_group_info)
   write_cns_input(crystal_symmetry, anomalous_flag, d_min)
   try: os.unlink("tmp.hkl")
+  except KeyboardInterrupt: raise
   except: pass
-  os.system("cns < tmp.cns > tmp.out")
+  easy_run.fully_buffered(command="cns < tmp.cns > tmp.out") \
+    .raise_if_errors_or_output()
   f = open("tmp.hkl", "r")
   reflection_file = reflection_reader.cns_reflection_file(f)
   f.close()

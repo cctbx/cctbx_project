@@ -8,6 +8,7 @@ from cctbx.regression.tst_miller import generate_random_hl
 from iotbx.cns import reflection_reader
 from libtbx.complex_math import abs_arg
 from libtbx.test_utils import approx_equal
+from libtbx import easy_run
 import random
 import sys, os
 
@@ -129,7 +130,8 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
   except OSError: pass
   try: os.unlink("tmp_p1.hkl")
   except OSError: pass
-  os.system("cns < tmp.cns > tmp.out")
+  easy_run.fully_buffered(command="cns < tmp.cns > tmp.out") \
+    .raise_if_errors_or_output()
   sg_cns = read_reflection_arrays("tmp_sg.hkl", anomalous_flag, verbose)
   p1_cns = read_reflection_arrays("tmp_p1.hkl", anomalous_flag, verbose)
   verify(sg_fcalc, sg_hl.data(), sg_cns, p1_cns)
@@ -139,7 +141,8 @@ def exercise(space_group_info, anomalous_flag=False, d_min=2., verbose=0):
     write_cns_input(sg_fcalc, sg_hl.data(), test_merge=True)
     try: os.unlink("tmp_merged.hkl")
     except OSError: pass
-    os.system("cns < tmp.cns > tmp.out")
+    easy_run.fully_buffered(command="cns < tmp.cns > tmp.out") \
+      .raise_if_errors_or_output()
     reflection_file = reflection_reader.cns_reflection_file(
       open("tmp_merged.hkl"))
     if (not sg_fcalc.space_group().is_centric()):
