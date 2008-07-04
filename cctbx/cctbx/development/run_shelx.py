@@ -6,17 +6,12 @@ from cctbx.development import debug_utils
 from cctbx.development.fmt_utils import *
 from iotbx.shelx.write_ins import LATT_SYMM
 from scitbx.python_utils import dicts
+from libtbx import easy_run
 from cStringIO import StringIO
 import sys, os
 
 def check_shelx_availability():
-  shelxl_out = []
-  try:
-    f = os.popen("shelxl", "r")
-    shelxl_out = f.readlines()
-    f.close()
-  except:
-    pass
+  shelxl_out = easy_run.fully_buffered(command="shelxl").stdout_lines
   if (len(shelxl_out) == 0):
     print "SHELX not available."
     sys.exit(1)
@@ -199,12 +194,13 @@ def run_shelx(shelx_titl, structure_factors, short_sfac=False, verbose=0):
   sys.stdout.flush()
   sys.stderr.flush()
   try: os.unlink("tmp.lst")
+  except KeyboardInterrupt: raise
   except: pass
-  f = os.popen("shelxl tmp", "r")
-  shelx_out = f.readlines()
-  f.close()
+  shelxl_out = easy_run.fully_buffered(command="shelxl tmp") \
+    .raise_if_errors() \
+    .stdout_lines
   if (0 or verbose):
-    for l in shelx_out: print l[:-1]
+    for l in shelxl_out: print l
   f = open("tmp.lst", "r")
   shelx_lst = f.readlines()
   f.close()
