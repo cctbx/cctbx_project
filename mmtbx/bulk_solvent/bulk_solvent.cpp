@@ -155,65 +155,69 @@ target_gradients_aniso::target_gradients_aniso(
     double* gxu = gtgx_u.begin();
     for(std::size_t i=0; i < fo.size(); i++) {
       double fmodel = fmodel_complex_abs[i];
-      scale_tgx += fo[i]*fo[i];
-      double delta = fo[i] - fmodel * sc;
-      tgx += delta*delta;
-//grads:
-      if(calc_grad_u) {
-        double coeff = -delta * 2 * fmodel * sc * (-0.25);
-        cctbx::miller::index<> const& mi = hkl[i];
-        double t1 = a[0]*mi[0] + a[3]*mi[1] + a[6]*mi[2];
-        double t2 = a[1]*mi[0] + a[4]*mi[1] + a[7]*mi[2];
-        double t3 = a[2]*mi[0] + a[5]*mi[1] + a[8]*mi[2];
-// Matamatica proven equivalent of gxu
-        //int h = mi[0];
-        //int k = mi[1];
-        //int l = mi[2];
-        //
-        //double p0 = a[0]*a[0]*h*h +   a[3]*a[3]*k*k + 2*a[3]*a[6]*k*l + a[6]*a[6]*l*l + 2*a[0]*h*(a[3]*k + a[6]*l);
-        //double p1 = a[1]*a[1]*h*h +   a[4]*a[4]*k*k + 2*a[4]*a[7]*k*l + a[7]*a[7]*l*l + 2*a[1]*h*(a[4]*k + a[7]*l);
-        //double p2 = a[2]*a[2]*h*h +    2*a[2]*a[5]*h*k + a[5]*a[5]*k*k + 2*(a[2]*a[8]*h + a[5]*a[8]*k)*l + a[8]*a[8]*l*l;
-        //double p3 = 2*a[3]*a[4]*k*k + 2*(a[4]*a[6] + a[3]*a[7])*k*l + 2*a[6]*a[7]*l*l + 2*a[1]*h*(a[3]*k + a[6]*l) + 2*a[0]*h*(a[1]*h + a[4]*k + a[7]*l);
-        //double p4 = 2*a[2]*a[3]*h*k + 2*a[3]*a[5]*k*k + 2*(a[2]*a[6]*h + (a[5]*a[6] + a[3]*a[8])*k)*l + 2*a[6]*a[8]*l*l + 2*a[0]*h*(a[2]*h + a[5]*k + a[8]*l);
-        //double p5 = 2*a[2]*a[4]*h*k + 2*a[4]*a[5]*k*k + 2*(a[2]*a[7]*h + (a[5]*a[7] + a[4]*a[8])*k)*l + 2*a[7]*a[8]*l*l + 2*a[1]*h*(a[2]*h + a[5]*k + a[8]*l);
+      if(fmodel != 0) {
+        scale_tgx += fo[i]*fo[i];
+        double delta = fo[i] - fmodel * sc;
+        tgx += delta*delta;
+        //grads:
+        if(calc_grad_u) {
+          double coeff = -delta * 2 * fmodel * sc * (-0.25);
+          cctbx::miller::index<> const& mi = hkl[i];
+          double t1 = a[0]*mi[0] + a[3]*mi[1] + a[6]*mi[2];
+          double t2 = a[1]*mi[0] + a[4]*mi[1] + a[7]*mi[2];
+          double t3 = a[2]*mi[0] + a[5]*mi[1] + a[8]*mi[2];
+          // Matamatica proven equivalent of gxu
+          //int h = mi[0];
+          //int k = mi[1];
+          //int l = mi[2];
+          //
+          //double p0 = a[0]*a[0]*h*h +   a[3]*a[3]*k*k + 2*a[3]*a[6]*k*l + a[6]*a[6]*l*l + 2*a[0]*h*(a[3]*k + a[6]*l);
+          //double p1 = a[1]*a[1]*h*h +   a[4]*a[4]*k*k + 2*a[4]*a[7]*k*l + a[7]*a[7]*l*l + 2*a[1]*h*(a[4]*k + a[7]*l);
+          //double p2 = a[2]*a[2]*h*h +    2*a[2]*a[5]*h*k + a[5]*a[5]*k*k + 2*(a[2]*a[8]*h + a[5]*a[8]*k)*l + a[8]*a[8]*l*l;
+          //double p3 = 2*a[3]*a[4]*k*k + 2*(a[4]*a[6] + a[3]*a[7])*k*l + 2*a[6]*a[7]*l*l + 2*a[1]*h*(a[3]*k + a[6]*l) + 2*a[0]*h*(a[1]*h + a[4]*k + a[7]*l);
+          //double p4 = 2*a[2]*a[3]*h*k + 2*a[3]*a[5]*k*k + 2*(a[2]*a[6]*h + (a[5]*a[6] + a[3]*a[8])*k)*l + 2*a[6]*a[8]*l*l + 2*a[0]*h*(a[2]*h + a[5]*k + a[8]*l);
+          //double p5 = 2*a[2]*a[4]*h*k + 2*a[4]*a[5]*k*k + 2*(a[2]*a[7]*h + (a[5]*a[7] + a[4]*a[8])*k)*l + 2*a[7]*a[8]*l*l + 2*a[1]*h*(a[2]*h + a[5]*k + a[8]*l);
 
-        //std::cout<< " " <<std::endl;
-        //std::cout<< p0<<" =0= "<<t1*t1     <<std::endl;
-        //std::cout<< p1<<" =1= "<<t2*t2     <<std::endl;
-        //std::cout<< p2<<" =2= "<<t3*t3     <<std::endl;
-        //std::cout<< p3<<" =3= "<<2.*t1*t2 <<std::endl;
-        //std::cout<< p4<<" =4= "<<2.*t1*t3 <<std::endl;
-        //std::cout<< p5<<" =5= "<<2.*t2*t3 <<std::endl;
+          //std::cout<< " " <<std::endl;
+          //std::cout<< p0<<" =0= "<<t1*t1     <<std::endl;
+          //std::cout<< p1<<" =1= "<<t2*t2     <<std::endl;
+          //std::cout<< p2<<" =2= "<<t3*t3     <<std::endl;
+          //std::cout<< p3<<" =3= "<<2.*t1*t2 <<std::endl;
+          //std::cout<< p4<<" =4= "<<2.*t1*t3 <<std::endl;
+          //std::cout<< p5<<" =5= "<<2.*t2*t3 <<std::endl;
 
-        //gxu[0] += coeff * p0;
-        //gxu[1] += coeff * p1;
-        //gxu[2] += coeff * p2;
-        //gxu[3] += coeff * p3;
-        //gxu[4] += coeff * p4;
-        //gxu[5] += coeff * p5;
+          //gxu[0] += coeff * p0;
+          //gxu[1] += coeff * p1;
+          //gxu[2] += coeff * p2;
+          //gxu[3] += coeff * p3;
+          //gxu[4] += coeff * p4;
+          //gxu[5] += coeff * p5;
 
-        gxu[0] += coeff * t1*t1;
-        gxu[1] += coeff * t2*t2;
-        gxu[2] += coeff * t3*t3;
-        gxu[3] += coeff * 2.*t1*t2;
-        gxu[4] += coeff * 2.*t1*t3;
-        gxu[5] += coeff * 2.*t2*t3;
-      }
-      if(calc_grad_ksol || calc_grad_bsol) {
-        double uvs_plus_usv = std::real(fc[i]*std::conj(fm[i])+fm[i]*std::conj(fc[i]));
-        double mod_v_sq = std::abs(fm[i]) * std::abs(fm[i]);
-        double coeff = (uvs_plus_usv + f_b[i]*ksol * mod_v_sq * 2) / (fmodel * 2);
-        if(calc_grad_ksol) { gtgx_ksol +=-delta * 2 * coeff * f_b[i]; }
-        if(calc_grad_bsol) { gtgx_bsol += delta * 2 * coeff * f_b[i]*ksol * s[i]; }
+          gxu[0] += coeff * t1*t1;
+          gxu[1] += coeff * t2*t2;
+          gxu[2] += coeff * t3*t3;
+          gxu[3] += coeff * 2.*t1*t2;
+          gxu[4] += coeff * 2.*t1*t3;
+          gxu[5] += coeff * 2.*t2*t3;
+        }
+        if(calc_grad_ksol || calc_grad_bsol) {
+          double uvs_plus_usv = std::real(fc[i]*std::conj(fm[i])+fm[i]*std::conj(fc[i]));
+          double mod_v_sq = std::abs(fm[i]) * std::abs(fm[i]);
+          double coeff = (uvs_plus_usv + f_b[i]*ksol * mod_v_sq * 2) / (fmodel * 2);
+          if(calc_grad_ksol) { gtgx_ksol +=-delta * 2 * coeff * f_b[i]; }
+          if(calc_grad_bsol) { gtgx_bsol += delta * 2 * coeff * f_b[i]*ksol * s[i]; }
+        }
       }
    }
-   tgx /= scale_tgx;
-   //tgx = tgx_manager.target();
-   //std::cout<<tgx_manager.target()<<" "<< tgx<<std::endl;
-   gtgx_ksol /= scale_tgx;
-   gtgx_bsol /= scale_tgx;
-   for(std::size_t j=0; j < 6; j++) {
-     gxu[j] /= scale_tgx;
+   if(scale_tgx != 0) {
+     tgx /= scale_tgx;
+     //tgx = tgx_manager.target();
+     //std::cout<<tgx_manager.target()<<" "<< tgx<<std::endl;
+     gtgx_ksol /= scale_tgx;
+     gtgx_bsol /= scale_tgx;
+     for(std::size_t j=0; j < 6; j++) {
+       gxu[j] /= scale_tgx;
+     }
    }
 }
 
