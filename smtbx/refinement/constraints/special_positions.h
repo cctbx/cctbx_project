@@ -112,32 +112,40 @@ class special_positions
       af::const_ref<float_type> const &crystallographic_shifts,
       af::const_ref<float_type> const &reparametrization_shifts)
     {
-      SMTBX_ASSERT(crystallographic_shifts.size()
-                   == crystallographic_parameter_map.n_parameters());
-      SMTBX_ASSERT(reparametrization_shifts.size() >= end_grad_idx);
+      SMTBX_ASSERT(reparametrization_shifts.size() >= end_grad_idx)
+                  (reparametrization_shifts.size())(end_grad_idx);
       for (int i=0; i < site_shift_map.size(); ++i) {
         shift_indices const &shift_ids = site_shift_map[i];
         sgtbx::site_symmetry_ops const &ops
           = site_symmetry_table.get(shift_ids.i_sc);
+        sgtbx::site_constraints<float_type> const &ct = ops.site_constraints();
         int p = begin_grad_idx + shift_ids.i_shift;
-        int q = p + ops.site_constraints().n_independent_params();
+        int q = p + ct.n_independent_params();
+        if (p == q) continue;
         af::small<float_type, 3> ind_delta(&reparametrization_shifts[p],
                                            &reparametrization_shifts[q]);
-        fractional<float_type> delta
-          = ops.site_constraints().all_params(ind_delta);
-        scatterers[i].site += delta;
+        af::small<float_type, 3> ind_site
+          = ct.independent_params(scatterers[shift_ids.i_sc].site);
+        ind_site += ind_delta;
+        fractional<float_type> new_site = ct.all_params(ind_site);
+        scatterers[shift_ids.i_sc].site = new_site;
       }
       for (int i=0; i < adp_shift_map.size(); ++i) {
         shift_indices const &shift_ids = adp_shift_map[i];
         sgtbx::site_symmetry_ops const &ops
           = site_symmetry_table.get(shift_ids.i_sc);
+        sgtbx::tensor_rank_2::constraints<float_type> const &ct
+          = ops.adp_constraints();
         int p = begin_grad_idx + shift_ids.i_shift;
-        int q = p + ops.adp_constraints().n_independent_params();
+        int q = p + ct.n_independent_params();
+        if (p == q) continue;
         af::small<float_type, 6> ind_delta(&reparametrization_shifts[p],
                                            &reparametrization_shifts[q]);
-        scitbx::sym_mat3<float_type> delta
-          = ops.adp_constraints().all_params(ind_delta);
-        scatterers[i].u_star += delta;
+        af::small<float_type, 6> ind_adp
+          = ct.independent_params(scatterers[shift_ids.i_sc].u_star);
+        ind_adp += ind_delta;
+        scitbx::sym_mat3<float_type> new_adp = ct.all_params(ind_adp);
+        scatterers[shift_ids.i_sc].u_star = new_adp;
       }
     }
 

@@ -43,29 +43,48 @@ class test_case(object):
 
 class special_position_test_case(test_case):
 
-  def structure(self, x, u1, u2, u3, u4):
-    result = xray.structure(self.cs.special_position_settings())
-    result.add_scatterer(xray.scatterer("C1", site=(x, 1/2, 1/2),
-                                              u=(u1, u2, u2, 0, 0, 0)))
-    result.add_scatterer(xray.scatterer("C2", site=(x, x, x),
-                                              u=(u1, u1, u1, u2, u2, u2)))
-    result.add_scatterer(xray.scatterer("C3", site=(1/2, 1/2, 1/2),
-                                              u=(u1, u1, u1, 0, 0, 0)))
-    result.add_scatterer(xray.scatterer("C4", site=(x, 1/2, 0),
-                                              u=(u1, u2, u3, 0, 0, u4)))
-    for i, sc in enumerate(result.scatterers()):
-      ops = result.site_symmetry_table().get(i)
-      assert ops.is_compatible_u_star(sc.u_star, tolerance=1e-6)
-      sc.flags.set_grad_site(True)
-      sc.flags.set_use_u_aniso(True)
-      sc.flags.set_grad_u_aniso(True)
+  def shifted_structure(self, dx, du1, du2, du3, du4):
+    result = self.xs.deep_copy_scatterers()
+    sc1, sc2, sc3, sc4 = result.scatterers()
+    f1, f2, f3, f4 = self.constraint_flags
+
+    def shift_site(sc, delta):
+      sc.site = (mat.col(sc.site) + mat.col(delta)).elems
+    def shift_adp(sc, delta):
+      sc.u_star = (mat.col(sc.u_star) + mat.col(delta)).elems
+
+    if f1.grad_site(): shift_site(sc1, (dx, 0, 0))
+    if f1.grad_u_aniso(): shift_adp(sc1, (du1, du2, du2, 0, 0, 0))
+
+    if f2.grad_site(): shift_site(sc2, (dx, dx, dx))
+    if f2.grad_u_aniso(): shift_adp(sc2, (du1, du1, du1, du2, du2, du2))
+
+    if f3.grad_u_aniso(): shift_adp(sc3, (du1, du1, du1, 0, 0, 0))
+
+    if f4.grad_site(): shift_site(sc4, (dx, 0, 0))
+    if f4.grad_u_aniso(): shift_adp(sc4, (du1, du2, du3, 0, 0, du4))
+
     return result
 
   def __init__(self):
     self.cs = crystal.symmetry((10, 10, 10, 90, 90, 90), "P432")
-    self.site_param = 0.1
-    self.adp_params = 0.04, -0.02, 0.03, -0.06
-    self.xs = self.structure(self.site_param, *self.adp_params)
+    x = 0.1
+    u1, u2, u3, u4 = 0.04, -0.02, 0.03, -0.06
+    self.xs = xray.structure(self.cs.special_position_settings())
+    self.xs.add_scatterer(xray.scatterer("C1", site=(x, 1/2, 1/2),
+                                               u=(u1, u2, u2, 0, 0, 0)))
+    self.xs.add_scatterer(xray.scatterer("C2", site=(x, x, x),
+                                               u=(u1, u1, u1, u2, u2, u2)))
+    self.xs.add_scatterer(xray.scatterer("C3", site=(1/2, 1/2, 1/2),
+                                               u=(u1, u1, u1, 0, 0, 0)))
+    self.xs.add_scatterer(xray.scatterer("C4", site=(x, 1/2, 0),
+                                               u=(u1, u2, u3, 0, 0, u4)))
+    for i, sc in enumerate(self.xs.scatterers()):
+      ops = self.xs.site_symmetry_table().get(i)
+      assert ops.is_compatible_u_star(sc.u_star, tolerance=1e-6)
+      sc.flags.set_grad_site(True)
+      sc.flags.set_use_u_aniso(True)
+      sc.flags.set_grad_u_aniso(True)
 
   def reset(self):
     self.constraint_flags = xray.scatterer_flags_array(
@@ -98,6 +117,29 @@ class special_position_test_case(test_case):
         g1 = ops.adp_constraints().independent_gradients(tuple(g))
         reparametrization_gradients_reference.extend(flex.double(g1))
 
+    crystallographic_shifts=flex.double()
+    dx = 1e-4
+    du1, du2, du3, du4 = -2e-4, -1e-4, 1e-4, 3e-4
+    reference_shifted_xs = self.shifted_structure(dx, du1, du2, du3, du4)
+
+    reparametrization_shifts = list(foo)
+    f1, f2, f3, f4 = self.constraint_flags
+    if f1.grad_site():
+      reparametrization_shifts.append(dx)
+    if f1.grad_u_aniso():
+      reparametrization_shifts.extend((du1, du2))
+    if f2.grad_site():
+      reparametrization_shifts.append(dx)
+    if f2.grad_u_aniso():
+      reparametrization_shifts.extend((du1, du2))
+    if f3.grad_u_aniso():
+      reparametrization_shifts.append(du1)
+    if f4.grad_site():
+      reparametrization_shifts.append(dx)
+    if f4.grad_u_aniso():
+      reparametrization_shifts.extend((du1, du2, du3, du4))
+    reparametrization_shifts = flex.double(reparametrization_shifts)
+
     self.cts = constraints.special_positions(self.cs.unit_cell(),
                                              self.xs.site_symmetry_table(),
                                              self.xs.scatterers(),
@@ -114,12 +156,21 @@ class special_position_test_case(test_case):
     assert approx_equal(reparametrization_gradients,
                         reparametrization_gradients_reference)
 
+    original_xs = self.xs.deep_copy_scatterers()
+    self.cts.apply_shifts(crystallographic_shifts,
+                          reparametrization_shifts)
+    assert approx_equal(self.xs.sites_frac(),
+                        reference_shifted_xs.sites_frac())
+    self.xs = original_xs
+
   def exercise_already_constrained(self):
     self.reset()
-    self.constraint_flags[3].set_grad_site(False)
+    self.constraint_flags[1].set_grad_site(False)
+    self.constraint_flags[2].set_grad_u_aniso(False)
     self.exercise(reset=False)
-    assert len(self.cts.already_constrained) == 1
-    assert not self.cts.already_constrained[3].grad_site()
+    assert len(self.cts.already_constrained) == 2
+    assert not self.cts.already_constrained[1].grad_site()
+    assert not self.cts.already_constrained[2].grad_u_aniso()
 
   def run(self):
     self.exercise()
