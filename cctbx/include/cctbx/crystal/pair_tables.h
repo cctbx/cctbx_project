@@ -95,6 +95,9 @@ namespace cctbx { namespace crystal {
               for(unsigned i_op=0;i_op<rt_mx_list.size();i_op++) {
                 double dist = (orthogonalization_matrix
                             * (site_i - rt_mx_list[i_op] * site_j)).length();
+                if(dist < 1.0) {
+                  dist = 0.5;
+                }
                 if (dist <= sphere_radius && dist > 0.0) {
                   double one_over_weight = std::pow(dist, distance_power);
                   CCTBX_ASSERT(one_over_weight != 0);
