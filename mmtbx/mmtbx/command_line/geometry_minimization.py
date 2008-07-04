@@ -32,7 +32,11 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
         geometry_restraints_flags,
         lbfgs_termination_params,
         sites_cart_selection=None,
-        lbfgs_exception_handling_params=None):
+        lbfgs_exception_handling_params=None,
+        rmsd_bonds_termination_cutoff=0,
+        rmsd_angles_termination_cutoff=0):
+    self.rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff
+    self.rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff
     geometry_restraints.lbfgs.lbfgs.__init__(self,
       sites_cart=sites_cart,
       geometry_restraints_manager=geometry_restraints_manager,
@@ -43,6 +47,10 @@ class lbfgs(geometry_restraints.lbfgs.lbfgs):
 
   def callback_after_step(self, minimizer):
     self.apply_shifts()
+    if([self.rmsd_angles, self.rmsd_bonds].count(None) == 0):
+      if(self.rmsd_angles < self.rmsd_angles_termination_cutoff and
+         self.rmsd_bonds < self.rmsd_bonds_termination_cutoff):
+        return True
 
 def run(processed_pdb_file, params = master_params.extract(), log =sys.stdout):
   co = params

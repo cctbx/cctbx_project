@@ -114,6 +114,26 @@ class manager(object):
           xray_structure = xray_structure).table
     return result
 
+  def reset_adp_for_hydrogens(self):
+    hd_sel = self.xray_structure.hd_selection()
+    if(hd_sel.count(True) > 0):
+      xh_conn_table = self.xh_connectivity_table()
+      bfi = self.xray_structure.extract_u_iso_or_u_equiv()
+      for t in self.xh_connectivity_table():
+        i_x, i_h = t[0], t[1]
+        bfi[i_h] = adptbx.u_as_b(bfi[i_x])*1.2
+      self.xray_structure.set_b_iso(values = bfi, selection = hd_sel)
+
+  def reset_occupancies_for_hydrogens(self):
+    hd_sel = self.xray_structure.hd_selection()
+    if(hd_sel.count(True) > 0):
+      xh_conn_table = self.xh_connectivity_table()
+      occ = self.xray_structure.scatterers().extract_occupancies()
+      for t in self.xh_connectivity_table():
+        i_x, i_h = t[0], t[1]
+        occ[i_h] = occ[i_x]
+      self.xray_structure.set_occupancies(value = occ, selection = hd_sel)
+
   def idealize_h(self, xh_bond_distance_deviation_limit=0, show=True): # XXX _limit is not used
     if(self.xray_structure.hd_selection().count(True) > 0):
       sol_hd = self.solvent_selection().set_selected(
@@ -322,15 +342,17 @@ class manager(object):
     self.idealize_h()
 
   def geometry_minimization(self,
-                            max_number_of_iterations = 500,
-                            number_of_macro_cycles   = 3,
-                            selection                = None,
-                            bond                     = False,
-                            nonbonded                = False,
-                            angle                    = False,
-                            dihedral                 = False,
-                            chirality                = False,
-                            planarity                = False):
+                            max_number_of_iterations       = 500,
+                            number_of_macro_cycles         = 3,
+                            selection                      = None,
+                            bond                           = False,
+                            nonbonded                      = False,
+                            angle                          = False,
+                            dihedral                       = False,
+                            chirality                      = False,
+                            planarity                      = False,
+                            rmsd_bonds_termination_cutoff  = 0,
+                            rmsd_angles_termination_cutoff = 0):
     assert max_number_of_iterations+number_of_macro_cycles > 0
     assert [bond,nonbonded,angle,dihedral,chirality,planarity].count(False) < 6
     from mmtbx.command_line import geometry_minimization
@@ -357,7 +379,9 @@ class manager(object):
         geometry_restraints_flags   = geometry_restraints_flags,
         lbfgs_termination_params    = lbfgs_termination_params,
         lbfgs_exception_handling_params = exception_handling_params,
-        sites_cart_selection        = selection)
+        sites_cart_selection        = selection,
+        rmsd_bonds_termination_cutoff = rmsd_bonds_termination_cutoff,
+        rmsd_angles_termination_cutoff = rmsd_angles_termination_cutoff)
       if(self.ias_selection is not None):
         for i_seq, ias_s in enumerate(self.ias_selection): # assumes that IAS appended to the back
           if(not ias_s):
