@@ -62,13 +62,14 @@ class lbfgs(object):
                            refine_occ     = False)
     self.monitor.collect()
     self.fmodels.create_target_functors()
-    if(self.h_params is not None and (refine_xyz or refine_adp)):
-      if(self.h_params.refine_sites == "riding" and self.hd_flag or
-         self.h_params.refine_adp not in ["individual", None]):
-        occupancies_cache = self.xray_structure.scatterers().extract_occupancies()
     self.neutron_refinement = (self.fmodels.fmodel_n is not None)
     self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
+    #
+    if 0:
+      self.xray_structure.show_scatterer_flags_summary()
+      model.refinement_flags.show()
+    #
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator          = self,
       termination_params        = lbfgs_termination_params,
@@ -79,10 +80,6 @@ class lbfgs(object):
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
     self.xray_structure.tidy_us()
-    if(self.h_params is not None and (refine_xyz or refine_adp)):
-      if(self.h_params.refine_sites == "riding" and self.hd_flag or
-         self.h_params.refine_adp not in ["individual", None]):
-        self.xray_structure.set_occupancies(occupancies_cache)
     self.regularize_h_and_update_xray_structure(xray_structure =
       self.xray_structure)
     self.monitor.collect(iter = self.minimizer.iter(),
@@ -148,7 +145,8 @@ class lbfgs(object):
        and self.weights.w > 0.0 and self.iso_restraints is not None):
       use_hd = False
       if(self.fmodels.fmodel_n is not None or
-         self.model.xray_structure.scattering_type_registry_params.table == "neutron"):
+         self.model.xray_structure.scattering_type_registry_params.table == "neutron" or
+         self.h_params.refine == "individual"):
         use_hd = True
       energies_adp = self.model.energies_adp(
         iso_restraints    = self.iso_restraints,
@@ -193,10 +191,18 @@ class lbfgs(object):
       xray_structure = xray_structure,
       update_f_calc  = True)
     if(self.h_params is not None and self.refine_xyz and self.hd_flag and
-       self.h_params.refine_sites != "individual" ):# and
+       self.h_params.refine != "individual" ):# and
        #self.fmodels.fmodel_neutron() is None): # XXX need systematic tests
       self.model.idealize_h(xh_bond_distance_deviation_limit =
         self.h_params.xh_bond_distance_deviation_limit)
+      self.fmodels.update_xray_structure(
+        xray_structure = xray_structure,
+        update_f_calc  = True)
+    if(self.h_params is not None and self.refine_xyz and self.hd_flag and
+       self.h_params.refine == "individual" and self.h_params.xh_bond_distance_deviation_limit > 0):
+       #self.fmodels.fmodel_neutron() is None): # XXX need systematic tests
+      self.model.idealize_h(xh_bond_distance_deviation_limit =
+        self.h_params.xh_bond_distance_deviation_limit) # do it anyway if distortion is too big
       self.fmodels.update_xray_structure(
         xray_structure = xray_structure,
         update_f_calc  = True)
