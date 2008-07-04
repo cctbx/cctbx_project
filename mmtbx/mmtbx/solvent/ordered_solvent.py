@@ -326,6 +326,8 @@ class manager(object):
     find_peaks_params_drifted.map_next_to_model.min_peak_peak_dist=0.01
     find_peaks_params_drifted.map_next_to_model.max_model_peak_dist=0.5
     find_peaks_params_drifted.peak_search.min_cross_distance=0.5
+    find_peaks_params_drifted.resolution_factor = \
+      self.find_peaks_params.resolution_factor
     peaks = find_peaks.manager(fmodel     = self.fmodel,
                                map_type   = "2mFobs-DFmodel",
                                map_cutoff = map_cutoff,
