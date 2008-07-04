@@ -45,24 +45,24 @@ class special_position_test_case(test_case):
 
   def shifted_structure(self, dx, du1, du2, du3, du4):
     result = self.xs.deep_copy_scatterers()
-    sc1, sc2, sc3, sc4 = result.scatterers()
-    f1, f2, f3, f4 = self.constraint_flags
+    sc0, sc1, sc2, sc3 = result.scatterers()
+    f0, f1, f2, f3 = self.constraint_flags
 
     def shift_site(sc, delta):
       sc.site = (mat.col(sc.site) + mat.col(delta)).elems
     def shift_adp(sc, delta):
       sc.u_star = (mat.col(sc.u_star) + mat.col(delta)).elems
 
-    if f1.grad_site(): shift_site(sc1, (dx, 0, 0))
-    if f1.grad_u_aniso(): shift_adp(sc1, (du1, du2, du2, 0, 0, 0))
+    if f0.grad_site(): shift_site(sc0, (dx, 0, 0))
+    if f0.grad_u_aniso(): shift_adp(sc0, (du1, du2, du2, 0, 0, 0))
 
-    if f2.grad_site(): shift_site(sc2, (dx, dx, dx))
-    if f2.grad_u_aniso(): shift_adp(sc2, (du1, du1, du1, du2, du2, du2))
+    if f1.grad_site(): shift_site(sc1, (dx, dx, dx))
+    if f1.grad_u_aniso(): shift_adp(sc1, (du1, du1, du1, du2, du2, du2))
 
-    if f3.grad_u_aniso(): shift_adp(sc3, (du1, du1, du1, 0, 0, 0))
+    if f2.grad_u_aniso(): shift_adp(sc2, (du1, du1, du1, 0, 0, 0))
 
-    if f4.grad_site(): shift_site(sc4, (dx, 0, 0))
-    if f4.grad_u_aniso(): shift_adp(sc4, (du1, du2, du3, 0, 0, du4))
+    if f3.grad_site(): shift_site(sc3, (dx, 0, 0))
+    if f3.grad_u_aniso(): shift_adp(sc3, (du1, du2, du3, 0, 0, du4))
 
     return result
 
@@ -123,20 +123,20 @@ class special_position_test_case(test_case):
     reference_shifted_xs = self.shifted_structure(dx, du1, du2, du3, du4)
 
     reparametrization_shifts = list(foo)
-    f1, f2, f3, f4 = self.constraint_flags
+    f0, f1, f2, f3 = self.constraint_flags
+    if f0.grad_site():
+      reparametrization_shifts.append(dx)
+    if f0.grad_u_aniso():
+      reparametrization_shifts.extend((du1, du2))
     if f1.grad_site():
       reparametrization_shifts.append(dx)
     if f1.grad_u_aniso():
       reparametrization_shifts.extend((du1, du2))
-    if f2.grad_site():
-      reparametrization_shifts.append(dx)
     if f2.grad_u_aniso():
-      reparametrization_shifts.extend((du1, du2))
-    if f3.grad_u_aniso():
       reparametrization_shifts.append(du1)
-    if f4.grad_site():
+    if f3.grad_site():
       reparametrization_shifts.append(dx)
-    if f4.grad_u_aniso():
+    if f3.grad_u_aniso():
       reparametrization_shifts.extend((du1, du2, du3, du4))
     reparametrization_shifts = flex.double(reparametrization_shifts)
 
