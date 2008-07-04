@@ -43,25 +43,29 @@ class test_case(object):
 
 class special_position_test_case(test_case):
 
-  def __init__(self):
-    self.cs = crystal.symmetry((10, 10, 10, 90, 90, 90), "P432")
-    self.xs = xray.structure(self.cs.special_position_settings())
-    x = 0.1
-    u1, u2, u3, u4 = 0.04, -0.02, 0.03, -0.06
-    self.xs.add_scatterer(xray.scatterer("C1", site=(x, 1/2, 1/2),
-                                               u=(u1, u2, u2, 0, 0, 0)))
-    self.xs.add_scatterer(xray.scatterer("C2", site=(x, x, x),
-                                               u=(u1, u1, u1, u2, u2, u2)))
-    self.xs.add_scatterer(xray.scatterer("C3", site=(1/2, 1/2, 1/2),
-                                               u=(u1, u1, u1, 0, 0, 0)))
-    self.xs.add_scatterer(xray.scatterer("C4", site=(x, 1/2, 0),
-                                               u=(u1, u2, u3, 0, 0, u4)))
-    for i, sc in enumerate(self.xs.scatterers()):
-      ops = self.xs.site_symmetry_table().get(i)
+  def structure(self, x, u1, u2, u3, u4):
+    result = xray.structure(self.cs.special_position_settings())
+    result.add_scatterer(xray.scatterer("C1", site=(x, 1/2, 1/2),
+                                              u=(u1, u2, u2, 0, 0, 0)))
+    result.add_scatterer(xray.scatterer("C2", site=(x, x, x),
+                                              u=(u1, u1, u1, u2, u2, u2)))
+    result.add_scatterer(xray.scatterer("C3", site=(1/2, 1/2, 1/2),
+                                              u=(u1, u1, u1, 0, 0, 0)))
+    result.add_scatterer(xray.scatterer("C4", site=(x, 1/2, 0),
+                                              u=(u1, u2, u3, 0, 0, u4)))
+    for i, sc in enumerate(result.scatterers()):
+      ops = result.site_symmetry_table().get(i)
       assert ops.is_compatible_u_star(sc.u_star, tolerance=1e-6)
       sc.flags.set_grad_site(True)
       sc.flags.set_use_u_aniso(True)
       sc.flags.set_grad_u_aniso(True)
+    return result
+
+  def __init__(self):
+    self.cs = crystal.symmetry((10, 10, 10, 90, 90, 90), "P432")
+    self.site_param = 0.1
+    self.adp_params = 0.04, -0.02, 0.03, -0.06
+    self.xs = self.structure(self.site_param, *self.adp_params)
 
   def reset(self):
     self.constraint_flags = xray.scatterer_flags_array(
@@ -76,7 +80,9 @@ class special_position_test_case(test_case):
     crystallographic_gradients = self.grad_f()
     parameter_map = self.xs.parameter_map()
 
-    reparametrization_gradients_reference = flex.double()
+    foo = (0,)*3
+
+    reparametrization_gradients_reference = flex.double(foo)
     for i,sc in enumerate(self.xs.scatterers()):
       ops = self.xs.site_symmetry_table().get(i)
       if self.constraint_flags[i].grad_site():
@@ -102,7 +108,7 @@ class special_position_test_case(test_case):
       assert not f.grad_site()
       assert not f.grad_u_aniso()
 
-    reparametrization_gradients = flex.double()
+    reparametrization_gradients = flex.double(foo)
     self.cts.compute_gradients(crystallographic_gradients,
                                reparametrization_gradients)
     assert approx_equal(reparametrization_gradients,
@@ -204,6 +210,8 @@ class ch3_test_case(test_case):
     self.cts.place_constrained_scatterers()
     self.check_geometry()
 
+    foo = (0,)*2
+
     e0, e1, e2 = [ mat.col(e) for e in self.cts[0].local_cartesian_frame ]
     for rotating, stretching in [(True,True), (True,False),
                                  (False,True), (False,False)]:
@@ -213,18 +221,18 @@ class ch3_test_case(test_case):
 
       crystallographic_gradients = self.grad_f()
 
-      reparametrization_gradients = flex.double()
+      reparametrization_gradients = flex.double(foo)
       self.cts.compute_gradients(crystallographic_gradients,
                                  reparametrization_gradients)
       assert (len(reparametrization_gradients)
-              == [rotating, stretching].count(True))
+              == len(foo) + [rotating, stretching].count(True))
       if rotating:
-        df_over_dphi = reparametrization_gradients[0]
+        df_over_dphi = reparametrization_gradients[len(foo) + 0]
         if stretching:
-          df_over_dl = reparametrization_gradients[1]
+          df_over_dl = reparametrization_gradients[len(foo) + 1]
       else:
         if stretching:
-          df_over_dl = reparametrization_gradients[0]
+          df_over_dl = reparametrization_gradients[len(foo) + 0]
 
       if rotating:
         dphi = 1e-6 # deg
