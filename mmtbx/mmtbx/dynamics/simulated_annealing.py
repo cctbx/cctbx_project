@@ -47,15 +47,14 @@ def manager(simulated_annealing_params,
     target_weights           = target_weights,
     h_params                 = h_params,
     verbose                  = 0)
-  fmodel = fmodels.fmodel_xray() # XXX use only xray data
   minimized.monitor.show(message = "LBFGS minimization", log  = out)
+  fmodel = fmodels.fmodel_xray() # XXX use only xray data
+  model.xray_structure = fmodel.xray_structure # XXX use only xray data
   fmodel.update_xray_structure(xray_structure           = model.xray_structure,
                                update_f_calc            = True,
                                update_f_mask            = True,
                                update_f_ordered_solvent = False,
                                out                      = out)
-
-
   print_statistics.make_header("simulated annealing", out = out)
   wx = target_weights.xyz_weights_result.wx * \
     target_weights.xyz_weights_result.wx_scale
