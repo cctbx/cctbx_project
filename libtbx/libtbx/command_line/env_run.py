@@ -1,4 +1,5 @@
 import libtbx.load_env
+from libtbx import subprocess_with_fixes
 import sys, os
 
 def run():
@@ -18,7 +19,7 @@ def run():
     raise RuntimeError("No such file: %s" % args[0])
   if (not os.access(args[0], os.X_OK)):
     raise RuntimeError("Permission denied: %s" % args[0])
-  sys.exit(os.spawnv(os.P_WAIT, args[0], args))
+  sys.exit(subprocess_with_fixes.call(args))
 
 if (__name__ == "__main__"):
   run()
