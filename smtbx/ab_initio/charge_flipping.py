@@ -462,7 +462,7 @@ class observable_evolution(object):
       if self.min_diff is None or smoothed_diff < self.min_diff:
         self.min_diff = smoothed_diff
         self.min_diff_index = len(self.differences)
-      
+
   def had_phase_transition(self):
     if (len(self.differences) - self.min_diff_index
         < self.phase_transition_tail_len): return False
