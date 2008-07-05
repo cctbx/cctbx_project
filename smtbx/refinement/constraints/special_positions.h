@@ -48,7 +48,7 @@ class special_positions
         if (sc.flags.grad_site()) {
           if (flags.grad_site()) {
             flags.set_grad_site(false);
-            site_shift_map.push_back(shift_indices(i_sc, j));
+            site_shift_map.push_back(scatterer_indices(i_sc, j));
             int p = ops.site_constraints().n_independent_params();
             j += p;
           }
@@ -57,7 +57,7 @@ class special_positions
         if (sc.flags.use_u_aniso() && sc.flags.grad_u_aniso()) {
           if (flags.grad_u_aniso()) {
             flags.set_grad_u_aniso(false);
-            adp_shift_map.push_back(shift_indices(i_sc, j));
+            adp_shift_map.push_back(scatterer_indices(i_sc, j));
             int p = ops.adp_constraints().n_independent_params();
             j += p;
           }
@@ -79,7 +79,7 @@ class special_positions
                    (crystallographic_parameter_map.n_parameters());
       begin_grad_idx = reparameterization_gradients.size();
       for (int i=0; i < site_shift_map.size(); ++i) {
-        shift_indices const &shift_ids = site_shift_map[i];
+        scatterer_indices const &shift_ids = site_shift_map[i];
         parameter_indices const &param_ids
           = crystallographic_parameter_map[shift_ids.i_sc];
         sgtbx::site_symmetry_ops const &ops
@@ -93,7 +93,7 @@ class special_positions
                                             site_ind_grad.end());
       }
       for (int i=0; i < adp_shift_map.size(); ++i) {
-        shift_indices const &shift_ids = adp_shift_map[i];
+        scatterer_indices const &shift_ids = adp_shift_map[i];
         parameter_indices const &param_ids
           = crystallographic_parameter_map[shift_ids.i_sc];
         sgtbx::site_symmetry_ops const &ops
@@ -115,7 +115,7 @@ class special_positions
       SMTBX_ASSERT(reparametrization_shifts.size() >= end_grad_idx)
                   (reparametrization_shifts.size())(end_grad_idx);
       for (int i=0; i < site_shift_map.size(); ++i) {
-        shift_indices const &shift_ids = site_shift_map[i];
+        scatterer_indices const &shift_ids = site_shift_map[i];
         sgtbx::site_symmetry_ops const &ops
           = site_symmetry_table.get(shift_ids.i_sc);
         sgtbx::site_constraints<float_type> const &ct = ops.site_constraints();
@@ -131,7 +131,7 @@ class special_positions
         scatterers[shift_ids.i_sc].site = new_site;
       }
       for (int i=0; i < adp_shift_map.size(); ++i) {
-        shift_indices const &shift_ids = adp_shift_map[i];
+        scatterer_indices const &shift_ids = adp_shift_map[i];
         sgtbx::site_symmetry_ops const &ops
           = site_symmetry_table.get(shift_ids.i_sc);
         sgtbx::tensor_rank_2::constraints<float_type> const &ct
@@ -150,9 +150,9 @@ class special_positions
     }
 
   private:
-    struct shift_indices {
+    struct scatterer_indices {
       int i_sc, i_shift;
-      shift_indices(int scatt_idx, int shift_idx)
+      scatterer_indices(int scatt_idx, int shift_idx)
         : i_sc(scatt_idx), i_shift(shift_idx)
       {}
     };
@@ -162,7 +162,7 @@ class special_positions
     af::shared<xray_scatterer_type> scatterers;
     parameter_map_type const &crystallographic_parameter_map;
 
-    af::shared<shift_indices> site_shift_map, adp_shift_map;
+    af::shared<scatterer_indices> site_shift_map, adp_shift_map;
     std::map<int, xray::scatterer_flags> already_constrained_;
     unsigned begin_grad_idx, end_grad_idx;
 };
