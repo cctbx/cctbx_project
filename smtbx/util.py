@@ -25,7 +25,7 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
   def process(self, args):
     command_line = libtbx.option_parser.option_parser.process(self, args)
     opts = command_line.options
-    sg_set_flags = [ opts.space_group_set == x 
+    sg_set_flags = [ opts.space_group_set == x
                      for x in self.space_group_sets ]
     if sg_set_flags.count(True) == 0 and command_line.args:
       sg_symbols = command_line.args
@@ -39,10 +39,9 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
         delattr(command_line.options, attr)
     command_line.args = ()
     return command_line
-  
+
   def exercise(self, exercise_type, args):
     command_line = self.process(args)
     for sgi in command_line.space_group_info_list:
       e = exercise_type(space_group_info=sgi, options=command_line.options)
       e.run()
-    
