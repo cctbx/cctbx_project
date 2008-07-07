@@ -50,15 +50,16 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
 class test_case(object):
 
   def run(cls, verbose=False):
-    exercises = []
+    dsu = []
     for name, attr in cls.__dict__.iteritems():
       if not callable(attr) or not name.startswith('exercise'): continue
-      o = cls()
-      exercises.append((name,lambda:attr(o)))
-    exercises.sort()
+      dsu.append((name, attr))
+    dsu.sort()
+    exercises = [ attr for foo, attr in dsu ]
     if verbose: print cls.__name__
-    for name, exercise in exercises:
-      if verbose: print "\t%s ... " % name,
-      exercise()
+    for exercise in exercises:
+      if verbose: print "\t%s ... " % exercise.__name__,
+      o = cls()
+      exercise(o)
       if verbose: print "OK"
   run = classmethod(run)
