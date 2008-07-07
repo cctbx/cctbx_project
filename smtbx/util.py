@@ -45,3 +45,20 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
     for sgi in command_line.space_group_info_list:
       e = exercise_type(space_group_info=sgi, options=command_line.options)
       e.run()
+
+
+class test_case(object):
+
+  def run(cls, verbose=False):
+    exercises = []
+    for name, attr in cls.__dict__.iteritems():
+      if not callable(attr) or not name.startswith('exercise'): continue
+      o = cls()
+      exercises.append((name,lambda:attr(o)))
+    exercises.sort()
+    if verbose: print cls.__name__
+    for name, exercise in exercises:
+      if verbose: print "\t%s ... " % name,
+      exercise()
+      if verbose: print "OK"
+  run = classmethod(run)
