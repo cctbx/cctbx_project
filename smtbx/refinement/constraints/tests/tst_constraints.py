@@ -41,17 +41,19 @@ class test_case(object):
     return result
 
 
+def shift_site(sc, delta):
+  sc.site = (mat.col(sc.site) + mat.col(delta)).elems
+
+def shift_adp(sc, delta):
+  sc.u_star = (mat.col(sc.u_star) + mat.col(delta)).elems
+
+
 class special_position_test_case(test_case):
 
   def shifted_structure(self, dx, du1, du2, du3, du4):
     result = self.xs.deep_copy_scatterers()
     sc0, sc1, sc2, sc3 = result.scatterers()
     f0, f1, f2, f3 = self.constraint_flags
-
-    def shift_site(sc, delta):
-      sc.site = (mat.col(sc.site) + mat.col(delta)).elems
-    def shift_adp(sc, delta):
-      sc.u_star = (mat.col(sc.u_star) + mat.col(delta)).elems
 
     if f0.grad_site(): shift_site(sc0, (dx, 0, 0))
     if f0.grad_u_aniso(): shift_adp(sc0, (du1, du2, du2, 0, 0, 0))
@@ -101,6 +103,7 @@ class special_position_test_case(test_case):
 
     foo = (0,)*3
 
+    # Reference gradients
     reparametrization_gradients_reference = flex.double(foo)
     for i,sc in enumerate(self.xs.scatterers()):
       ops = self.xs.site_symmetry_table().get(i)
@@ -117,7 +120,8 @@ class special_position_test_case(test_case):
         g1 = ops.adp_constraints().independent_gradients(tuple(g))
         reparametrization_gradients_reference.extend(flex.double(g1))
 
-    crystallographic_shifts=flex.double()
+    # Reference shifts
+    crystallographic_shifts = flex.double()
     dx = 1e-4
     du1, du2, du3, du4 = -2e-4, -1e-4, 1e-4, 3e-4
     reference_shifted_xs = self.shifted_structure(dx, du1, du2, du3, du4)
@@ -140,6 +144,7 @@ class special_position_test_case(test_case):
       reparametrization_shifts.extend((du1, du2, du3, du4))
     reparametrization_shifts = flex.double(reparametrization_shifts)
 
+    # Testing...
     self.cts = constraints.special_positions(self.cs.unit_cell(),
                                              self.xs.site_symmetry_table(),
                                              self.xs.scatterers(),
@@ -150,12 +155,14 @@ class special_position_test_case(test_case):
       assert not f.grad_site()
       assert not f.grad_u_aniso()
 
+    # gradients
     reparametrization_gradients = flex.double(foo)
     self.cts.compute_gradients(crystallographic_gradients,
                                reparametrization_gradients)
     assert approx_equal(reparametrization_gradients,
                         reparametrization_gradients_reference)
 
+    # apply_shifts
     original_xs = self.xs.deep_copy_scatterers()
     self.cts.apply_shifts(crystallographic_shifts,
                           reparametrization_shifts)
@@ -185,34 +192,52 @@ class ch3_test_case(test_case):
     pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
                                 u=(0.05, 0.04, 0.02,
                                    -0.01, -0.015, 0.005))
-    pivot.flags.set_grad_site(True)
-    pivot.flags.set_use_u_aniso(True)
-    pivot.flags.set_grad_u_aniso(True)
     self.xs.add_scatterer(pivot)
-    self.xs.add_scatterer(xray.scatterer("C'", site=(0.25, 0.28, 0.3),
+    self.i_pivot = 0
+    v_CC = 1.54*(mat.col((-1, 2, 1.5)).normalize())
+    v_CC = self.xs.unit_cell().fractionalize(v_CC)
+    neighbour_site = mat.col(pivot.site) + mat.col(v_CC)
+    self.xs.add_scatterer(xray.scatterer("C'", site=neighbour_site,
                                                u=(0,)*6))
+    self.i_neighbour = 1
     for i in xrange(1,4):
       h = xray.scatterer("H%i" % i, u=(0,)*6)
-      h.flags.set_grad_site(True)
       self.xs.add_scatterer(h)
+    self.i_hydrogens = (2,3,4)
+    for sc in self.xs.scatterers():
+      sc.flags.set_grad_site(True)
 
-  def pivot(self):
-    return self.xs.scatterers()[0]
-  pivot = property(pivot)
-
-  def neighbour(self):
-    return self.xs.scatterers()[1]
-  neighbour = property(neighbour)
-
-  def hydrogens(self):
-    return self.xs.scatterers()[2:]
-  hydrogens = property(hydrogens)
-
-  def reset(self):
     self.constraint_flags = xray.scatterer_flags_array(
       len(self.xs.scatterers()))
     for f in self.constraint_flags:
       f.set_grad_site(True)
+
+    self.parameter_map = self.xs.parameter_map()
+
+    self.cts = constraints.stretchable_rotatable_riding_terminal_X_Hn_array(
+      self.cs.unit_cell(),
+      self.xs.site_symmetry_table(),
+      self.xs.scatterers(),
+      self.parameter_map,
+      self.constraint_flags)
+    self.cts.append(constraints.stretchable_rotatable_riding_terminal_X_Hn(
+      pivot=0,
+      pivot_neighbour=1,
+      hydrogens=(2,3,4),
+      azimuth=50., # deg
+      bond_length=1.))
+
+  def pivot(self):
+    return self.xs.scatterers()[self.i_pivot]
+  pivot = property(pivot)
+
+  def neighbour(self):
+    return self.xs.scatterers()[self.i_neighbour]
+  neighbour = property(neighbour)
+
+  def hydrogens(self):
+    return self.xs.scatterers()[self.i_hydrogens[0]:]
+  hydrogens = property(hydrogens)
 
   def check_geometry(self, cartesian_frame=None):
     uc = self.cs.unit_cell()
@@ -237,31 +262,54 @@ class ch3_test_case(test_case):
     for i in xrange(1,4):
       assert approx_equal(abs(dx[i]), self.cts[0].bond_length)
 
-  def exercise(self, reset=True):
-    if reset: self.reset()
 
-    uc = self.xs.unit_cell()
+class ch3_riding_test_case(ch3_test_case):
 
-    parameter_map = self.xs.parameter_map()
-
-    self.cts = constraints.stretchable_rotatable_riding_terminal_X_Hn_array(
-      self.cs.unit_cell(),
-      self.xs.site_symmetry_table(),
-      self.xs.scatterers(),
-      parameter_map,
-      self.constraint_flags)
-    self.cts.append(constraints.stretchable_rotatable_riding_terminal_X_Hn(
-      pivot=0,
-      pivot_neighbour=1,
-      hydrogens=(2,3,4),
-      azimuth=50., # deg
-      bond_length=1.))
-    ct = self.cts[0]
-
+  def run(self):
     self.cts.place_constrained_scatterers()
     self.check_geometry()
 
     foo = (0,)*2
+
+    crystallographic_gradients = self.grad_f()
+    i_pivot_site = self.parameter_map[self.i_pivot].site
+    grad_pivot_site = mat.col(crystallographic_gradients[i_pivot_site
+                                                         :i_pivot_site+3])
+    reparametrization_gradients = flex.double()
+    self.cts.compute_gradients(crystallographic_gradients,
+                               reparametrization_gradients)
+    sum_grads_h = mat.col((0,0,0))
+    for i_h in self.i_hydrogens:
+      i_site = self.parameter_map[i_h].site
+      grad_site = mat.col(crystallographic_gradients[i_site:i_site+3])
+      sum_grads_h += grad_site
+    assert approx_equal(
+      crystallographic_gradients[i_pivot_site:i_pivot_site+3],
+      grad_pivot_site + sum_grads_h)
+
+    i_neigh_site = self.parameter_map[self.i_neighbour].site
+    sum_grads = (mat.col(crystallographic_gradients[i_neigh_site
+                                                    :i_neigh_site+3])
+                 + grad_pivot_site + sum_grads_h)
+    delta = mat.col((1e-3, -1.5e-3, 2e-3))
+    shift_site(self.pivot, delta)
+    shift_site(self.neighbour, delta)
+    self.cts.place_constrained_scatterers()
+    fp = self.f()
+    shift_site(self.pivot, -2*delta)
+    shift_site(self.neighbour, -2*delta)
+    self.cts.place_constrained_scatterers()
+    fm = self.f()
+    true_delta_f = fp - fm
+    riding_delta_f = sum_grads.dot(2*delta)
+    assert approx_equal(true_delta_f, riding_delta_f)
+
+
+class ch3_rotation_stretch_test_case(ch3_test_case):
+
+  def run(self):
+    foo = (0,)*3
+    ct = self.cts[0]
 
     e0, e1, e2 = [ mat.col(e) for e in self.cts[0].local_cartesian_frame ]
     for rotating, stretching in [(True,True), (True,False),
@@ -270,6 +318,7 @@ class ch3_test_case(test_case):
       assert self.cts[0].rotating == rotating
       assert self.cts[0].stretching == stretching
 
+      self.cts.place_constrained_scatterers()
       crystallographic_gradients = self.grad_f()
 
       reparametrization_gradients = flex.double(foo)
@@ -314,11 +363,9 @@ class ch3_test_case(test_case):
         assert approx_equal(df_over_dl, df_over_dl_approx)
         ct.bond_length = l
 
-  def run(self):
-    self.exercise()
-
 def run():
-  ch3_test_case().run()
+  ch3_riding_test_case().run()
+  ch3_rotation_stretch_test_case().run()
   special_position_test_case().run()
   print 'OK'
 
