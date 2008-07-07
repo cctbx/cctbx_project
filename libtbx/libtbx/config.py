@@ -1144,6 +1144,11 @@ class environment:
     return False
 
   def refresh(self):
+    is_completed_file_name = os.path.join(
+      self.build_path, "libtbx_refresh_is_completed")
+    if (os.path.exists(is_completed_file_name)):
+      os.remove(is_completed_file_name)
+    assert not os.path.exists(is_completed_file_name)
     self.assemble_pythonpath()
     self.show_build_options_and_module_listing()
     self.reset_dispatcher_bookkeeping()
@@ -1177,6 +1182,7 @@ class environment:
     self.process_exe()
     self.write_command_version_duplicates()
     self.pickle()
+    print >> open(is_completed_file_name, "w"), "libtbx_refresh_is_completed"
 
   def get_module(self, name, must_exist=True):
     result = self.module_dict.get(name, None)
