@@ -1,3 +1,5 @@
+#include <smtbx/boost_python/flex_fwd.h>
+
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>

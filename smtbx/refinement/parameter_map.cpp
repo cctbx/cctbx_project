@@ -1,3 +1,5 @@
+#include <smtbx/boost_python/flex_fwd.h>
+
 #include <boost/python/class.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
