@@ -3,6 +3,7 @@ from __future__ import division
 import math
 
 from cctbx import crystal, xray
+import smtbx.util
 from smtbx import refinement
 from smtbx.refinement import constraints
 
@@ -12,7 +13,7 @@ from libtbx.test_utils import approx_equal
 import random
 
 
-class test_case(object):
+class test_case(smtbx.util.test_case):
 
   def f(self):
     result = 0
@@ -40,7 +41,6 @@ class test_case(object):
                                    8*u[3], 10*u[4], 12*u[5])))
     return result
 
-
 def shift_site(sc, delta):
   sc.site = (mat.col(sc.site) + mat.col(delta)).elems
 
@@ -49,24 +49,6 @@ def shift_adp(sc, delta):
 
 
 class special_position_test_case(test_case):
-
-  def shifted_structure(self, dx, du1, du2, du3, du4):
-    result = self.xs.deep_copy_scatterers()
-    sc0, sc1, sc2, sc3 = result.scatterers()
-    f0, f1, f2, f3 = self.constraint_flags
-
-    if f0.grad_site(): shift_site(sc0, (dx, 0, 0))
-    if f0.grad_u_aniso(): shift_adp(sc0, (du1, du2, du2, 0, 0, 0))
-
-    if f1.grad_site(): shift_site(sc1, (dx, dx, dx))
-    if f1.grad_u_aniso(): shift_adp(sc1, (du1, du1, du1, du2, du2, du2))
-
-    if f2.grad_u_aniso(): shift_adp(sc2, (du1, du1, du1, 0, 0, 0))
-
-    if f3.grad_site(): shift_site(sc3, (dx, 0, 0))
-    if f3.grad_u_aniso(): shift_adp(sc3, (du1, du2, du3, 0, 0, du4))
-
-    return result
 
   def __init__(self):
     self.cs = crystal.symmetry((10, 10, 10, 90, 90, 90), "P432")
@@ -88,16 +70,31 @@ class special_position_test_case(test_case):
       sc.flags.set_use_u_aniso(True)
       sc.flags.set_grad_u_aniso(True)
 
-  def reset(self):
     self.constraint_flags = xray.scatterer_flags_array(
       len(self.xs.scatterers()))
     for f in self.constraint_flags:
       f.set_grad_site(True)
       f.set_grad_u_aniso(True)
 
-  def exercise(self, reset=True):
-    if reset: self.reset()
+  def shifted_structure(self, dx, du1, du2, du3, du4):
+    result = self.xs.deep_copy_scatterers()
+    sc0, sc1, sc2, sc3 = result.scatterers()
+    f0, f1, f2, f3 = self.constraint_flags
 
+    if f0.grad_site(): shift_site(sc0, (dx, 0, 0))
+    if f0.grad_u_aniso(): shift_adp(sc0, (du1, du2, du2, 0, 0, 0))
+
+    if f1.grad_site(): shift_site(sc1, (dx, dx, dx))
+    if f1.grad_u_aniso(): shift_adp(sc1, (du1, du1, du1, du2, du2, du2))
+
+    if f2.grad_u_aniso(): shift_adp(sc2, (du1, du1, du1, 0, 0, 0))
+
+    if f3.grad_site(): shift_site(sc3, (dx, 0, 0))
+    if f3.grad_u_aniso(): shift_adp(sc3, (du1, du2, du3, 0, 0, du4))
+
+    return result
+
+  def exercise(self):
     crystallographic_gradients = self.grad_f()
     parameter_map = self.xs.parameter_map()
 
@@ -171,17 +168,12 @@ class special_position_test_case(test_case):
     self.xs = original_xs
 
   def exercise_already_constrained(self):
-    self.reset()
     self.constraint_flags[1].set_grad_site(False)
     self.constraint_flags[2].set_grad_u_aniso(False)
-    self.exercise(reset=False)
+    self.exercise()
     assert len(self.cts.already_constrained) == 2
     assert not self.cts.already_constrained[1].grad_site()
     assert not self.cts.already_constrained[2].grad_u_aniso()
-
-  def run(self):
-    self.exercise()
-    self.exercise_already_constrained()
 
 
 class ch3_test_case(test_case):
@@ -262,10 +254,7 @@ class ch3_test_case(test_case):
     for i in xrange(1,4):
       assert approx_equal(abs(dx[i]), self.cts[0].bond_length)
 
-
-class ch3_riding_test_case(ch3_test_case):
-
-  def run(self):
+  def exercise_riding(self):
     self.cts.place_constrained_scatterers()
     self.check_geometry()
 
@@ -304,10 +293,7 @@ class ch3_riding_test_case(ch3_test_case):
     riding_delta_f = sum_grads.dot(2*delta)
     assert approx_equal(true_delta_f, riding_delta_f)
 
-
-class ch3_rotation_stretch_test_case(ch3_test_case):
-
-  def run(self):
+  def exercise_rotate_stretch(self):
     foo = (0,)*3
     ct = self.cts[0]
 
@@ -364,9 +350,10 @@ class ch3_rotation_stretch_test_case(ch3_test_case):
         ct.bond_length = l
 
 def run():
-  ch3_riding_test_case().run()
-  ch3_rotation_stretch_test_case().run()
-  special_position_test_case().run()
+  import sys
+  verbose = '--verbose' in sys.argv[1:]
+  ch3_test_case.run(verbose=verbose)
+  special_position_test_case.run(verbose=verbose)
   print 'OK'
 
 if __name__ == '__main__':
