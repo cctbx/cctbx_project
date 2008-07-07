@@ -317,6 +317,7 @@ smtbx/error.h -text
 smtbx/import_cctbx.h -text
 smtbx/import_scitbx_af.h -text
 smtbx/libtbx_config -text
+smtbx/libtbx_refresh.py -text
 smtbx/refinement/SConscript -text
 smtbx/refinement/__init__.py -text
 smtbx/refinement/barriers.py -text
@@ -342,6 +343,8 @@ smtbx/refinement/tests/__init__.py -text
 smtbx/refinement/tests/tst_minimization.py -text
 smtbx/refinement/tests/tst_minimization_at_random.py -text
 smtbx/run_tests.py -text
+smtbx/source_generators/__init__.py -text
+smtbx/source_generators/flex_fwd_h.py -text
 smtbx/stl/SConscript -text
 smtbx/stl/__init__.py -text
 smtbx/stl/map.py -text
