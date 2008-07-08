@@ -203,21 +203,8 @@ class model_content(object):
     self.atoms_count = model.xray_structure.scatterers().size()
     self.atoms_occupancy_sum = \
       flex.sum(model.xray_structure.scatterers().extract_occupancies())
-    self.element_types_and_counts = self._get_element_types_and_counts(
-      xray_structure = model.xray_structure)
-
-  def _get_element_types_and_counts(self, xray_structure):
-    reg = xray_structure.scattering_type_registry()
-    result = []
-    scattering_types = xray_structure.scatterers().extract_scattering_types()
-    occupancies = xray_structure.scatterers().extract_occupancies()
-    for scattering_type in reg.type_index_pairs_as_dict().keys():
-      selection = scattering_types == scattering_type
-      count = selection.count(True)
-      occupancy_sum = flex.sum(occupancies.select(selection))
-      result_ = (scattering_type, count, occupancy_sum)
-      result.append(result_)
-    return result
+    self.element_types_and_counts = \
+      model.xray_structure.element_types_and_counts()
 
   def show(self, out = None, prefix = "", pdb_deposition = False):
     if(out is None): out = sys.stdout
