@@ -44,7 +44,8 @@ class stretchable_rotatable_riding_terminal_X_Hn
       bool rotating=true,
       bool stretching=false
       )
-      : i_pivot(pivot), i_pivot_neighbour(pivot_neighbour),
+      : on_(true),
+        i_pivot(pivot), i_pivot_neighbour(pivot_neighbour),
         i_hydrogens(hydrogens_),
         rotating_(rotating),
         stretching_(stretching),
@@ -75,7 +76,8 @@ class stretchable_rotatable_riding_terminal_X_Hn
     void initialise_in_context(
       uctbx::unit_cell const &unit_cell,
       af::const_ref<xray_scatterer_type> const &scatterers,
-      af::ref<xray::scatterer_flags> const &constraint_flags)
+      af::ref<xray::scatterer_flags> const &constraint_flags,
+      std::map<int, xray::scatterer_flags> &already_constrained)
     {
       SMTBX_ASSERT(scatterers.size() == constraint_flags.size())
                   (scatterers.size())
@@ -86,6 +88,12 @@ class stretchable_rotatable_riding_terminal_X_Hn
       e1 = e2.ortho(true);
       e0 = e1.cross(e2);
       for(int i=0; i < i_hydrogens.size(); ++i) {
+        int i_h = i_hydrogens[i];
+        xray::scatterer_flags f = constraint_flags[i_h];
+        if (!f.grad_site()) {
+          already_constrained[i_h] = f;
+          on_ = false;
+        }
         constraint_flags[i_hydrogens[i]].set_grad_site(false);
       }
     }
@@ -98,6 +106,8 @@ class stretchable_rotatable_riding_terminal_X_Hn
       af::ref<float_type> const &crystallographic_gradients,
       SharedArray1D<float_type> reparametrization_gradients)
     {
+      if (!on_) return;
+
       using namespace constants;
       for(int i=0; i < i_hydrogens.size(); ++i) {
         int i_h = i_hydrogens[i];
@@ -154,6 +164,8 @@ class stretchable_rotatable_riding_terminal_X_Hn
       af::const_ref<float_type> const &crystallographic_shifts,
       af::const_ref<float_type> const &reparametrization_shifts)
     {
+      if (!on_) return;
+
       using namespace constants;
       if (rotating()) {
         float_type delta_phi = reparametrization_shifts[i_dF_over_dphi()];
@@ -186,6 +198,8 @@ class stretchable_rotatable_riding_terminal_X_Hn
     }
 
   private:
+    bool on_;
+
     int i_pivot, i_pivot_neighbour;
     af::small<int, 3> i_hydrogens;
     bool rotating_, stretching_;

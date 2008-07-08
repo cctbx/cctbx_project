@@ -369,6 +369,26 @@ class ch3_test_case(test_case):
         assert approx_equal(df_over_dl, df_over_dl_approx)
         ct.bond_length = l
 
+  def exercise_already_constrained(self):
+    self.constraint_flags[0].set_grad_site(False)
+    del self.cts[0]
+    self.cts.append(constraints.stretchable_rotatable_riding_terminal_X_Hn(
+      pivot=0,
+      pivot_neighbour=1,
+      hydrogens=(2,3,4),
+      azimuth=50., # deg
+      bond_length=1.))
+    self.cts.place_constrained_scatterers()
+    crystallographic_gradients = self.grad_f()
+    crystallographic_gradients_copy = flex.double(crystallographic_gradients)
+    reparametrization_gradients = flex.double()
+    self.cts.compute_gradients(crystallographic_gradients,
+                               reparametrization_gradients)
+    assert crystallographic_gradients == crystallographic_gradients_copy
+    assert not reparametrization_gradients
+    for i in (2,3,4):
+      assert not self.cts.already_constrained[i].grad_site()
+
 def run():
   import sys
   verbose = '--verbose' in sys.argv[1:]
