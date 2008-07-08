@@ -943,6 +943,9 @@ Number of scattering types: 4
   except Exception, e: pass
   assert str(e) == "Cannot concatenate: conflicting scatterers"
   sys.stdout = out
+  #
+  assert xs.element_types_and_counts() == \
+    [('C', 1, 1.0), ('X1', 1, 0.5), ('Z1', 1, 1.5), ('O', 1, 1.0)]
 
 def exercise_min_u_cart_eigenvalue():
   cs = crystal.symmetry((1, 1, 1, 90, 90, 90), "P 1")

@@ -316,6 +316,19 @@ class structure(crystal.special_position_settings):
                    .n_independent_params()] += 1
     return result
 
+  def element_types_and_counts(self):
+    reg = self.scattering_type_registry()
+    result = []
+    scattering_types = self._scatterers.extract_scattering_types()
+    occupancies = self._scatterers.extract_occupancies()
+    for scattering_type in reg.type_index_pairs_as_dict().keys():
+      selection = scattering_types == scattering_type
+      count = selection.count(True)
+      occupancy_sum = flex.sum(occupancies.select(selection))
+      result_ = (scattering_type, count, occupancy_sum)
+      result.append(result_)
+    return result
+
   def shake_sites_in_place(self,
         rms_difference=None,
         mean_distance=None,
