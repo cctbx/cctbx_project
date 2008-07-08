@@ -8,6 +8,7 @@ namespace cctbx {
   namespace xray {}
 }
 
+/// Small Molecule Toolbox namespace
 namespace smtbx {
   namespace adptbx = cctbx::adptbx;
   namespace uctbx = cctbx::uctbx;

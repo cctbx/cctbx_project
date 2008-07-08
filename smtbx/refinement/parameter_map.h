@@ -3,6 +3,7 @@
 
 namespace smtbx { namespace refinement {
 
+/// Position of the various derivatives or shifts in an array
 struct parameter_indices
 {
   static int const invariable = -1;
@@ -25,7 +26,11 @@ struct parameter_indices
   }
 };
 
-
+/// An array of parameter_indices
+/** It is associated to an array of scatterers: the i-th parameter_indices
+    provides the position of the derivatives or shifts of the crystallographic
+    parameters of the i-th scatterer.
+*/
 template <class XRayScattererType>
 class parameter_map
 {
