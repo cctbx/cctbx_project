@@ -70,3 +70,58 @@ if ("reversed" not in __builtins__):
       i -= 1
       yield seq[i]
   __builtins__["reversed"] = reversed
+
+class _advertise_subprocess(object):
+
+  def __init__(self, function_id, target):
+    self.function_id = function_id
+    self.target = target
+
+  def __call__(self, *args, **kwargs):
+    import libtbx.load_env
+    if (   libtbx.env.full_testing
+        or libtbx.env.is_development_environment()):
+      def is_exception():
+        from sys import _getframe
+        frames_back = 1
+        while True:
+          try: f = _getframe(frames_back)
+          except ValueError: break
+          else:
+            p = f.f_code.co_filename
+            while True:
+              d,b = os.path.split(p)
+              if (len(d) == 0 or len(b) == 0): break
+              b = b.lower()
+              if (   b.startswith("python")
+                  or b == "lib"):
+                for n in ["os","StringIO","UserDict","UserList","UserString"]:
+                  if (not os.path.isfile(os.path.join(p, n+".py"))):
+                    break
+                else:
+                  return True
+              elif (b == "scons"):
+                if (os.path.isfile(os.path.join(p, "SConsign.py"))):
+                  return True
+              p = d
+            frames_back += 1
+        return False
+      if (not is_exception()):
+        from warnings import warn
+        warn(
+          message="%s is not safe: please use the subprocess module"
+                  " or libtbx.easy_run instead." % self.function_id,
+          stacklevel=2)
+    return self.target(*args, **kwargs)
+
+def _install_advertise_subprocess():
+  for fn in ["system",
+             "popen", "popen2", "popen3", "popen4",
+             "spawnl", "spawnle", "spawnlp", "spawnlpe",
+             "spawnv", "spawnve", "spawnvp", "spawnvpe"]:
+    f = getattr(os, fn, None)
+    if (f is not None):
+      w = _advertise_subprocess(function_id="os."+fn+"()", target=f)
+      setattr(os, fn, w)
+
+_install_advertise_subprocess()
