@@ -39,6 +39,7 @@ struct special_positions_wrapper
       .add_property("already_constrained", &wt::already_constrained)
       .def("compute_gradients", &wt::compute_gradients)
       .def("apply_shifts", &wt::apply_shifts)
+      .def("place_constrained_scatterers", &wt::place_constrained_scatterers)
       ;
 
   }
