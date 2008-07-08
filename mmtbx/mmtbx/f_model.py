@@ -1987,25 +1987,27 @@ class info(object):
         i_bin=i_bin, show_bin_number=False, show_counts=False)
       s_fo_w_d = sel_fo_w.data()
       s_fc_w_d = sel_fc_w.data()
+      assert s_fo_w_d.size() == s_fc_w_d.size()
       s_fc_w_d_a = flex.abs(s_fc_w_d)
-      bin = resolution_bin(
-        i_bin        = i_bin,
-        d_range      = d_range,
-        completeness = completeness,
-        alpha_work   = flex.mean_default(alpha_w.select(sel_w).data(),None),
-        beta_work    = flex.mean_default(beta_w.select(sel_w).data(),None),
-        r_work       = bulk_solvent.r_factor(s_fo_w_d, s_fc_w_d),
-        r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data()),
-        target_work  = sel_tpr_w,
-        target_free  = sel_tpr_t,
-        n_work       = sel_fo_w.data().size(),
-        n_free       = sel_fo_t.data().size(),
-        scale_k1_work= _scale_helper(num=s_fo_w_d, den=s_fc_w_d_a),
-        mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
-        fom_work     = flex.mean_default(fom.select(sel_w),None),
-        pher_work    = flex.mean_default(pher_w.select(sel_w),None),
-        pher_free    = flex.mean_default(pher_t.select(sel_t),None))
-      result.append(bin)
+      if(s_fo_w_d.size() > 0):
+        bin = resolution_bin(
+          i_bin        = i_bin,
+          d_range      = d_range,
+          completeness = completeness,
+          alpha_work   = flex.mean_default(alpha_w.select(sel_w).data(),None),
+          beta_work    = flex.mean_default(beta_w.select(sel_w).data(),None),
+          r_work       = bulk_solvent.r_factor(s_fo_w_d, s_fc_w_d),
+          r_free       = bulk_solvent.r_factor(sel_fo_t.data(), sel_fc_t.data()),
+          target_work  = sel_tpr_w,
+          target_free  = sel_tpr_t,
+          n_work       = sel_fo_w.data().size(),
+          n_free       = sel_fo_t.data().size(),
+          scale_k1_work= _scale_helper(num=s_fo_w_d, den=s_fc_w_d_a),
+          mean_f_obs   = flex.mean_default(sel_fo_all.data(),None),
+          fom_work     = flex.mean_default(fom.select(sel_w),None),
+          pher_work    = flex.mean_default(pher_w.select(sel_w),None),
+          pher_free    = flex.mean_default(pher_t.select(sel_t),None))
+        result.append(bin)
     return result
 
   def show_remark_3(self, out = None):
