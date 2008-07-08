@@ -327,6 +327,7 @@ smtbx/refinement/constraints/constraints_array_bp.h -text
 smtbx/refinement/constraints/constraints_ext.cpp -text
 smtbx/refinement/constraints/geometric_hydrogen.cpp -text
 smtbx/refinement/constraints/geometric_hydrogen.h -text
+smtbx/refinement/constraints/interface.h -text
 smtbx/refinement/constraints/special_positions.cpp -text
 smtbx/refinement/constraints/special_positions.h -text
 smtbx/refinement/constraints/tests/tst_constraints.py -text
