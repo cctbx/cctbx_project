@@ -148,6 +148,26 @@ class special_positions
         scatterers[shift_ids.i_sc].u_star = new_adp;
       }
     }
+    
+    void place_constrained_scatterers()
+    {
+      for (int i=0; i < site_shift_map.size(); ++i) {
+        scatterer_indices const &shift_ids = site_shift_map[i];
+        sgtbx::site_symmetry_ops const &ops
+          = site_symmetry_table.get(shift_ids.i_sc);
+        sgtbx::rt_mx const &g = ops.special_op();
+        fractional<float_type> new_site = g*scatterers[shift_ids.i_sc].site;
+        scatterers[shift_ids.i_sc].site = new_site;
+      }
+      for (int i=0; i < adp_shift_map.size(); ++i) {
+        scatterer_indices const &shift_ids = adp_shift_map[i];
+        sgtbx::site_symmetry_ops const &ops
+          = site_symmetry_table.get(shift_ids.i_sc);
+        scitbx::sym_mat3<float_type> new_adp = ops.average_u_star(
+          scatterers[shift_ids.i_sc].u_star);
+        scatterers[shift_ids.i_sc].u_star = new_adp;
+      }
+    }
 
   private:
     struct scatterer_indices {

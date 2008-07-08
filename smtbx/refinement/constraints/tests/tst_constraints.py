@@ -167,6 +167,26 @@ class special_position_test_case(test_case):
                         reference_shifted_xs.sites_frac())
     self.xs = original_xs
 
+  def exercise_snap(self):
+    cts = constraints.special_positions(self.cs.unit_cell(),
+                                        self.xs.site_symmetry_table(),
+                                        self.xs.scatterers(),
+                                        self.xs.parameter_map(),
+                                        self.constraint_flags)
+    for sc in self.xs.scatterers():
+      shift_site(sc, (1e-3,)*3)
+      shift_adp(sc, (1e-3,)*6)
+    cts.place_constrained_scatterers()
+    xs = xray.structure(
+      crystal.special_position_settings(crystal_symmetry=self.cs,
+                                        min_distance_sym_equiv=0,
+                                        u_star_tolerance=0,
+                                        assert_min_distance_sym_equiv=True))
+    xs.add_scatterers(self.xs.scatterers())
+    assert (xs.site_symmetry_table().table()
+            == self.xs.site_symmetry_table().table())
+
+
   def exercise_already_constrained(self):
     self.constraint_flags[1].set_grad_site(False)
     self.constraint_flags[2].set_grad_u_aniso(False)
