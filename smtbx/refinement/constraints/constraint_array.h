@@ -43,7 +43,8 @@ class constraint_array
     void push_back(constraint_type &constraint) {
       constraint.initialise_in_context(unit_cell,
                                        scatterers.const_ref(),
-                                       constraint_flags.ref());
+                                       constraint_flags.ref(),
+                                       already_constrained_);
       elements.push_back(constraint);
     }
 
@@ -88,6 +89,9 @@ class constraint_array
       }
     }
 
+    std::map<int, xray::scatterer_flags>
+    already_constrained() { return already_constrained_; }
+
   private:
     af::shared<constraint_type> elements;
     uctbx::unit_cell const &unit_cell;
@@ -95,6 +99,7 @@ class constraint_array
     af::shared<xray_scatterer_type> scatterers;
     parameter_map_type const &crystallographic_parameter_map;
     af::shared<xray::scatterer_flags> constraint_flags;
+    std::map<int, xray::scatterer_flags> already_constrained_;
 };
 
 
