@@ -119,7 +119,9 @@ class few_scatterer_constraints
     /** This method is called when this object is added to a
         \code constraint_array \endcode. The meaning of the arguments
         is the same as for the constructor of \code many_scatterer_constraints
-        \endcode
+        \endcode. The only difference is the presence of
+        \code already_constrained \endcode where this object should record
+        which and how scatterers may have already been constrained.
     */
     void initialise_in_context(
       uctbx::unit_cell const &unit_cell,
