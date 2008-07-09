@@ -68,10 +68,10 @@ class stretchable_rotatable_riding_terminal_X_Hn
     }
 
     float_type azimuth() { return phi*180/constants::pi; }
-    float_type set_azimuth(float_type phi_) { phi = phi_*constants::pi/180; }
+    void set_azimuth(float_type phi_) { phi = phi_*constants::pi/180; }
 
     float_type bond_length() { return l; }
-    float_type set_bond_length(float_type l_) { l = l_; }
+    void set_bond_length(float_type l_) { l = l_; }
 
     void initialise_in_context(
       uctbx::unit_cell const &unit_cell,
