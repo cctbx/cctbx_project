@@ -4,7 +4,7 @@ import libtbx.load_env
 def run():
   tst_list = (
     "$D/ab_initio/tests/tst_ab_initio_ext.py",
-    ["$D/ab_initio/tests/tst_charge_flipping.py", "P21/a"],
+    ["$D/ab_initio/tests/tst_charge_flipping.py", "P21/n"],
     "$D/refinement/constraints/tests/tst_constraints.py",
     #"$D/refinement/tests/tst_minimization_at_random.py",
     )
