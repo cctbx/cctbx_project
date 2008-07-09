@@ -15,6 +15,11 @@ namespace boost_adaptbx { namespace tuple_conversion {
 
 namespace detail {
 
+/* I don't support get_pytype here because it leads to an infinite tower
+of recursive calls ending up in a crash. The reason is unknown but I don't have the courage to dig into the dark magic of Boost.Python to elucidate it.
+
+Luc Bourhis
+*/
 template <class T>
 struct to_python
 {
@@ -39,12 +44,6 @@ struct to_python
   convert(T const& x) {
       return boost::python::incref(tuple_to_python(x).ptr());
   }
-
-  static const PyTypeObject *
-  get_pytype() {
-    return boost::python::converter::registered<T>::converters
-            .to_python_target_type();
-  }
 };
 
 } // namespace detail
@@ -53,11 +52,7 @@ template<class T>
 struct to_python
 {
   to_python() {
-    boost::python::to_python_converter<T, detail::to_python<T>
-#ifdef BOOST_PYTHON_SUPPORTS_PY_SIGNATURES
-        , true
-#endif
-        >();
+    boost::python::to_python_converter<T, detail::to_python<T> >();
   }
 };
 
