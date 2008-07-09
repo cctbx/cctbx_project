@@ -30,7 +30,7 @@ in SUPERFLIP circa Sept 2007 to polish the electron density after the charge
 flipping method has converged.
 """
 
-from __future__ import division
+from __future__ import division, generators
 
 from libtbx import forward_compatibility
 from libtbx import object_oriented_patterns as oop
