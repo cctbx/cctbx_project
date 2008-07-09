@@ -200,7 +200,6 @@ def exercise_once(flipping_type,
     print "@@ Failure @@"
     return result
 
-
   # check Euclidean matching in the original space-group
   search_parameters = maptbx.peak_search_parameters(
     interpolate=True,
@@ -232,9 +231,6 @@ def exercise_once(flipping_type,
     if verbose:
       print "** no Euclidean matching in original spacegroup **"
 
-
-
-
   # return a bunch of Boolean flags telling where it failed
   # or whether it succeeded
   if result.succeeded:
@@ -260,15 +256,19 @@ def exercise(flags, space_group_info, flipping_type):
   #n_N = 0
   if flags.Verbose:
     print "C%i O%i N%i" % (n_C*n, n_O*n, n_N*n)
-  result = randomly_exercise(
-    flipping_type=flipping_type,
-    space_group_info=space_group_info,
-    elements=["C"]*n_C + ["O"]*n_O + ["N"]*n_N,
-    anomalous_flag=False,
-    d_min=0.8,
-    verbose=flags.Verbose
-  )
-  results.append(result)
+  loops = 1
+  while loops > 0:
+    result = randomly_exercise(
+      flipping_type=flipping_type,
+      space_group_info=space_group_info,
+      elements=["C"]*n_C + ["O"]*n_O + ["N"]*n_N,
+      anomalous_flag=False,
+      d_min=0.8,
+      verbose=flags.Verbose
+    )
+    results.append(result)
+    if result.succeeded: loops -= 1
+    else: loops += 2
   if flags.Verbose: print
   return True, results
 
@@ -344,8 +344,8 @@ def exercise_charge_flipping():
     debug_utils.parse_options_loop_space_groups(
       sys.argv[1:],
       exercise,
-      #flipping_type=charge_flipping.weak_reflection_improved_iterator,
-      flipping_type=charge_flipping.basic_iterator,
+      flipping_type=charge_flipping.weak_reflection_improved_iterator,
+      #flipping_type=charge_flipping.basic_iterator,
     ))
   results = flat_list([ x for x in results if x is not None ])
   n_tests = len(results)
