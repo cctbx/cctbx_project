@@ -17,6 +17,7 @@ import random
 from libtbx.utils import count_max
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
+from libtbx import group_args
 from cctbx.eltbx.neutron import neutron_news_1992_table
 from cctbx import eltbx
 
@@ -325,7 +326,8 @@ class structure(crystal.special_position_settings):
       selection = scattering_types == scattering_type
       count = selection.count(True)
       occupancy_sum = flex.sum(occupancies.select(selection))
-      result_ = (scattering_type, count, occupancy_sum)
+      result_ = group_args(scattering_type = scattering_type, count = count,
+        occupancy_sum = occupancy_sum)
       result.append(result_)
     return result
 
