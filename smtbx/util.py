@@ -51,7 +51,8 @@ class test_case(object):
 
   def run(cls, verbose=False):
     dsu = []
-    for name, attr in cls.__dict__.iteritems():
+    for name, attr in cls.__dict__.items():
+      # avoid iteritems for Python 2.2 compatibility
       if not callable(attr) or not name.startswith('exercise'): continue
       dsu.append((name, attr))
     dsu.sort()
