@@ -214,7 +214,8 @@ class model_content(object):
     print >> out, prefix+"MODEL CONTENT."
     print >> out, prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM"
     for item in self.element_types_and_counts:
-      print >> out, prefix+fmt % (item[0], item[1], item[2])
+      print >> out, prefix+fmt % (item.scattering_type, item.count,
+        item.occupancy_sum)
     print >> out,prefix+fmt%("TOTAL",self.atoms_count,self.atoms_occupancy_sum)
 
 class adp(object):
