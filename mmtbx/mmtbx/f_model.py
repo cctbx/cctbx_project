@@ -1412,8 +1412,11 @@ class manager(manager_mixin):
   def electron_density_map(self,
                            map_type,
                            resolution_factor = 1/3.,
-                           symmetry_flags = None):
-    return self.map_coefficients(map_type = map_type).fft_map(
+                           symmetry_flags = None,
+                           map_coefficients = None):
+    if(map_coefficients is None):
+      map_coefficients = self.map_coefficients(map_type = map_type)
+    return map_coefficients.fft_map(
       resolution_factor = resolution_factor,
       symmetry_flags    = symmetry_flags)
 
