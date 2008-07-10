@@ -6,8 +6,8 @@ def exercise():
   doc = re.sub("\s+", "", doc)
   assert re.match("exercise\(\(int\)arg1\)->object:"
                   "C\+\+signature:"
-                  "boost::tuples::tuple<int,double,"
-                  "(boost::tuples::null_type,)+ boost::tuples::null_type >"
+                  "(class)?boost::tuples::tuple<int,double,"
+                  "((struct)?boost::tuples::null_type,)+ (struct)?boost::tuples::null_type >"
                   "exercise\(int\)",
                   doc,
                   re.X)
