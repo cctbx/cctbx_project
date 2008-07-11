@@ -54,7 +54,11 @@ env_etc.disable_strict_aliasing = disable_strict_aliasing
 
 compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
-  env_etc.compiler = "win32_cl"
+  if (compiler == "default"):
+    env_etc.compiler = "win32_cl"
+  else: 
+    env_etc.compiler = "win32_"+compiler
+    compiler = None
 elif (sys.platform.startswith("sunos")):
   if (compiler == "default"):
     env_etc.compiler = "sunos_CC"
@@ -96,6 +100,7 @@ if (compiler not in ("default", None)):
   raise RuntimeError("Compiler not supported on this platform: %s" % compiler)
 supported_compilers = (
   "win32_cl",
+  "win32_icc",
   "sunos_CC",
   "unix_gcc",
   "unix_icc",
@@ -185,6 +190,53 @@ if (sys.platform == "win32"):
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll"]
+    env_etc.shlinkflags_bpl = env_etc.shlinkflags
+    env_etc.libm = []
+  elif (env_etc.compiler == "win32_icc"):
+    cl_exe = full_command_path("icl.exe")
+    if (cl_exe is None):
+      raise RuntimeError("cl.exe not on PATH")
+    cl_info = easy_run.fully_buffered(
+      command='"%s"' % cl_exe,
+      join_stdout_stderr=True,
+      stdout_splitlines=False).stdout_buffer
+    if (cl_info.find("Version 13.10") >= 0):
+      env_base = Environment(ENV=os.environ, MSVS_VERSION="7.1")
+    elif (cl_info.find("Version 14.00") >= 0):
+      env_base = Environment(ENV=os.environ, MSVS_VERSION="8.0")
+    else:
+      env_base = Environment(ENV=os.environ)
+    print "MSVS_VERSION:", env_base["MSVS_VERSION"]
+    env_etc.have_manifest_tool = os.path.isfile(
+      os.path.join(os.path.dirname(cl_exe), "mt.exe"))
+    env_base.Replace(
+      CC="icl",
+      CXX="icl",
+      SHCC="icl",
+      SHCXX="icl",
+      SHLINK="link",
+    )
+    env_etc.ccflags_base = """
+      /nologo
+      /D_SECURE_SCL=0
+      /D_CRT_SECURE_NO_DEPRECATE
+      /wd4996
+      /Zm800
+    """.split()
+    env_etc.cxxflags_base = env_etc.ccflags_base + """
+      /GR
+      /EHsc
+      /DBOOST_DISABLE_THREADS
+    """.split()
+    if (libtbx.env.build_options.optimization):
+      opts = ["/DNDEBUG", "/Ob2", "/Ox", "/Oi", "/Ot", "/GT", "/MD", "/EHsc", "/arch:SSE2", "/fp:fast"]
+    else:
+      opts = ["/Od"]
+    if (libtbx.env.build_options.debug_symbols):
+      raise RuntimeError("Debug build not supported.")
+    env_etc.cxxflags_base.extend(opts)
+    env_etc.ccflags_base.extend(opts)
+    env_etc.shlinkflags = "/nologo /incremental:no /dll"
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
   else:
