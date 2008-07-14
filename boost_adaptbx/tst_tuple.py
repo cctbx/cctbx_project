@@ -1,16 +1,8 @@
-import re
 import boost.tuple
 
 def exercise():
   doc = boost.tuple.exercise.__doc__
-  doc = re.sub("\s+", "", doc)
-  assert re.match("exercise\(\(int\)arg1\)->object:"
-                  "C\+\+signature:"
-                  "(class)?boost::tuples::tuple<int,double,"
-                  "((struct)?boost::tuples::null_type,)+ (struct)?boost::tuples::null_type >"
-                  "exercise\(int\)",
-                  doc,
-                  re.X)
+  assert doc.replace("\n","").startswith("exercise(")
   assert boost.tuple.exercise(1) == (2, 0.5)
   assert boost.tuple.exercise(2) == (4, 1)
 
