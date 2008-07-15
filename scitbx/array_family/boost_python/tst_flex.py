@@ -642,6 +642,19 @@ def exercise_select():
   a = flex.double(range(3,12))
   assert a.select(selection=stl.set.unsigned()).size() == 0
   assert approx_equal(a.select(selection=stl.set.unsigned([2,3,7])), [5,6,10])
+  #
+  a = flex.int(range(7, 22))
+  a.reshape(flex.grid((3,5)).set_focus((3,4)))
+  assert a.origin() == (0,0)
+  assert a.focus() == (3,4)
+  assert a.all() == (3,5)
+  b = flex.mersenne_twister(seed=84).random_bool(size=15, threshold=0.5)
+  assert list(a.select(b)) == [9, 11, 13, 14, 18, 19, 21]
+  i = b.iselection()
+  assert list(a.select(i)) == [9, 11, 13, 14, 18, 19, 21]
+  p = flex.mersenne_twister(seed=84).random_permutation(size=15)
+  assert list(a.select(p, reverse=True)) \
+      == [16, 14, 20, 13, 19, 21, 7, 10, 12, 11, 8, 9, 15, 18, 17]
 
 def exercise_from_stl_vector():
   from scitbx import stl

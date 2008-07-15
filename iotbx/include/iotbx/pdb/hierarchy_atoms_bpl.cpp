@@ -30,7 +30,8 @@ namespace {
            boost::noncopyable>("atom_data_tmp_sentinel", no_init);
     typedef scitbx::af::boost_python::shared_wrapper<atom> wat;
     class_<wat::w_t> wa = wat::wrap("af_shared_atom");
-    scitbx::af::boost_python::select_wrappers<atom>::wrap(wa);
+    scitbx::af::boost_python::select_wrappers<
+      atom, af::shared<atom> >::wrap(wa);
     wa.def("extract_serial", extract_serial)
       .def("extract_name", extract_name)
       .def("extract_xyz", extract_xyz)
