@@ -6,32 +6,32 @@
 
 namespace scitbx { namespace af { namespace boost_python {
 
-  template <typename ElementType>
+  template <typename ElementType, typename SelfType>
   struct select_wrappers
   {
     static shared<ElementType>
     with_flags(
-      const_ref<ElementType> const& self,
+      SelfType const& self,
       const_ref<bool> const& flags)
     {
-      return select(self, flags);
+      return select(self.const_ref().as_1d(), flags);
     }
 
     static shared<ElementType>
     with_indices(
-      const_ref<ElementType> const& self,
+      SelfType const& self,
       const_ref<std::size_t> const& indices)
     {
-      return select(self, indices, false);
+      return select(self.const_ref().as_1d(), indices, false);
     }
 
     static shared<ElementType>
     with_indices_reverse(
-      const_ref<ElementType> const& self,
+      SelfType const& self,
       const_ref<std::size_t> const& indices,
       bool reverse)
     {
-      return select(self, indices, reverse);
+      return select(self.const_ref().as_1d(), indices, reverse);
     }
 
     template <typename ArrayWrapper>

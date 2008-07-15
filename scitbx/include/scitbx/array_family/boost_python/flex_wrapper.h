@@ -718,7 +718,7 @@ namespace scitbx { namespace af { namespace boost_python {
         .def("concatenate", concatenate)
         .def("reversed", reversed)
       ;
-      select_wrappers<ElementType>::wrap(result);
+      select_wrappers<ElementType, f_t>::wrap(result);
       result
         .def("set_selected", set_selected_bool_a)
         .def("set_selected", set_selected_bool_s)
