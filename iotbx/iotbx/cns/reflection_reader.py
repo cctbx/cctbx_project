@@ -1,11 +1,12 @@
 "Transfer of CNS reflection files to flex arrays."
 
-import exceptions
+from iotbx.cns.pdb_remarks import crystal_symmetry_from_re_match
 from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
 from libtbx import complex_math
 from libtbx import easy_pickle
+import re
 import sys
 
 # <xray-reflection-statement> :==
@@ -25,7 +26,7 @@ import sys
 #     type=hl
 #     object=<word>
 
-class CNS_input_Error(exceptions.Exception):
+class CNS_input_Error(Exception):
   pass
 
 class CNS_input(object):
@@ -36,6 +37,7 @@ class CNS_input(object):
     self._LineNo = 0
     self._LastWord = ""
     self.level = 0
+    self.remarks = []
 
   def getNextWord(self, word_len = 0):
     while (len(self._buffer) == 0):
@@ -52,6 +54,7 @@ class CNS_input(object):
         while 1:
           j = line.find("}", i+1)
           if (j >= 0):
+            self.remarks.append(line[i:j+1])
             line = line[:i] + line[j + 1:]
             break
           next_line = self._readline()
@@ -303,6 +306,29 @@ class cns_reflection_file(object):
     reader = CNS_xray_reflection_Reader(file_handle)
     reader.load(self)
     self.optimize()
+    self.remarks = reader.remarks
+
+  def crystal_symmetry_from_remarks(self):
+    for remark in self.remarks:
+      m = re.match(
+          r'\{\s+sg=\s*(\S+)\s*a=\s*(\S+)\s*b=\s*(\S+)\s*c=\s*(\S+)'
+        + r'\s*alpha=\s*(\S+)\s*beta=\s*(\S+)\s*gamma=\s*(\S+)\s*\}', remark)
+      if (m is None): continue
+      result = crystal_symmetry_from_re_match(m=m)
+      if (result is not None): return result
+    return None
+
+  def crystal_symmetry(self,
+        crystal_symmetry=None,
+        force_symmetry=False):
+    self_symmetry = self.crystal_symmetry_from_remarks()
+    if (crystal_symmetry is None):
+      return self_symmetry
+    if (self_symmetry is None):
+      return crystal_symmetry
+    return self_symmetry.join_symmetry(
+      other_symmetry=crystal_symmetry,
+      force=force_symmetry)
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout
@@ -373,6 +399,9 @@ class cns_reflection_file(object):
         force_symmetry=False,
         merge_equivalents=True,
         base_array_info=None):
+    crystal_symmetry = self.crystal_symmetry(
+      crystal_symmetry=crystal_symmetry,
+      force_symmetry=force_symmetry)
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry(
         unit_cell=None,
