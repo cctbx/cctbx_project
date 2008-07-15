@@ -67,19 +67,19 @@ pd::dps_core::getSolutions() const {return hemisphere_solutions;}
 
 void pd::dps_core::setOrientation(const Orientation& input_o){
   orientation = input_o;
-  classify_spots();
+  this->classify_spots();
 }
 
 void pd::dps_core::set_orientation_direct_matrix(
   const scitbx::mat3<double>& dm){
   orientation = Orientation(dm,false);
-  classify_spots();
+  this->classify_spots();
 }
 
 void pd::dps_core::set_orientation_reciprocal_matrix(
   const scitbx::mat3<double>& rm){
   orientation = Orientation(rm, true);
-  classify_spots();
+  this->classify_spots();
 }
 
 void

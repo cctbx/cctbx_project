@@ -30,14 +30,14 @@ typedef af::shared<cctbx::miller::index<> >  hkllistmm;   //memory management
     Fourier Analysis.  J. Appl. Cryst. (1997) 30, 1036-1040.
  */
 class dps_core {
-
+ protected:
   double granularity; //! number of bins between lattice planes (n in Rossmann)
   double amax;        //! max cell in Angstroms
   pointlistmm xyzdata;//! original spots, reciprocal orthogonal coords xyz,
                       //!   expressed in inverse Angstroms
   af::shared<Direction> hemisphere_solutions;
   Orientation orientation;
- protected:
+ public:
   dps_statuslist status;  // scratch pad for spot status
   dps_statuslist Estatus; // scratch pad for spot status
   pointlistmm obsdata;// original spots, reciprocal skew coords expressed
@@ -45,9 +45,8 @@ class dps_core {
                       // simplifying assumption that image is a still
                       // photograph collected at center of oscillation range;
   pointlistmm hkldata;// the whole number portion of obsdata
-  void reset_spots();
+  void reset_spots(); // classify all as GOOD
 
- public:
   dps_core();
   void setMaxcell(const double &);
   void setXyzData(pointlistmm inputdata){ xyzdata = inputdata; }
@@ -62,7 +61,7 @@ class dps_core {
   void set_orientation_direct_matrix(const matrix&);
   void set_orientation_reciprocal_matrix(const matrix&);
   inline Orientation getOrientation() const {return orientation;}
-  void classify_spots(); // find good, bad & ugly
+  virtual void classify_spots(); // find good, bad & ugly
   double rmsdev() const; // rmsd (real minus nearest whole),
                          // based on skew coordinates of GOOD spots;
   pointlistmm observed() // original spots, reciprocal skew coords expressed
