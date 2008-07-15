@@ -169,7 +169,7 @@ def exercise_once(flipping_type,
   result.inverted_solution = refined_matches[0].rt.r == mat.inversion(3)
   reference_shift = -refined_matches[0].rt.t
 
-  if not result.succeeded:
+  if verbose and not result.succeeded:
     print "@@ Failure @@"
     return result
 
@@ -196,7 +196,7 @@ def exercise_once(flipping_type,
       print "** First correct correlation peak: #%i (%.3f) **"\
             % (result.first_correct_correlation_peak, cc_peak_height)
 
-  if not result.succeeded:
+  if verbose and not result.succeeded:
     print "@@ Failure @@"
     return result
 
@@ -233,13 +233,14 @@ def exercise_once(flipping_type,
 
   # return a bunch of Boolean flags telling where it failed
   # or whether it succeeded
-  if result.succeeded:
-    if result.first_correct_correlation_peak > 0:
-      print "@@ Success (but not first solution) @@"
+  if verbose:
+    if result.succeeded:
+      if result.first_correct_correlation_peak > 0:
+        print "@@ Success (but not first solution) @@"
+      else:
+        print "@@ Success @@"
     else:
-      print "@@ Success @@"
-  else:
-    print "@@ Failure @@"
+      print "@@ Failure @@"
   return result
 
 def exercise(flags, space_group_info, flipping_type):
@@ -370,9 +371,8 @@ def exercise_charge_flipping():
   assert n_success/n_tests > 2/3
 
 def run():
-  exercise_observable_evolution()
   exercise_charge_flipping()
-  print format_cpu_times()
+  exercise_observable_evolution()
 
 if __name__ == '__main__':
   run()
