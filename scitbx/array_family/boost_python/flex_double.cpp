@@ -251,16 +251,18 @@ namespace {
 
   shared<double>
   select_stl_set_unsigned(
-    const_ref<double> const& self,
+    versa<double, flex_grid<> > const& self,
     std::set<unsigned> const& selection)
   {
     shared<double> result(selection.size(), init_functor_null<double>());
     std::set<unsigned>::const_iterator sel_end = selection.end();
     double* r = result.begin();
+    const double* s = self.begin();
+    unsigned self_size = static_cast<unsigned>(self.size());
     for(std::set<unsigned>::const_iterator
           sel=selection.begin();sel!=sel_end;sel++) {
-      SCITBX_ASSERT(*sel < self.size());
-      *r++ = self[*sel];
+      SCITBX_ASSERT(*sel < self_size);
+      *r++ = s[*sel];
     }
     SCITBX_ASSERT(r == result.end());
     return result;
