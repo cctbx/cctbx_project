@@ -129,7 +129,6 @@ namespace {
         .def("miscellaneous_features_section",
           &w_t::miscellaneous_features_section, rbv())
         .def("crystallographic_section", &w_t::crystallographic_section, rbv())
-        .def("input_atom_labels_list", &w_t::input_atom_labels_list, rbv())
         .def("atoms", &w_t::atoms, rbv())
         .def("model_ids", &w_t::model_ids, rbv())
         .def("model_indices", &w_t::model_indices, rbv())
