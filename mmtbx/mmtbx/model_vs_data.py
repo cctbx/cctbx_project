@@ -170,7 +170,7 @@ def show_model(xray_structure, serial):
   o_mean = format_value("%-6.2f",flex.mean(occ)).strip()
   o_min = format_value("%-6.2f",flex.min(occ)).strip()
   o_max = format_value("%-6.2f",flex.max(occ)).strip()
-  atom_counts = xray_structure.element_types_and_counts()
+  atom_counts = xray_structure.scattering_types_counts_and_occupancy_sums()
   atom_counts_strs = []
   for ac in atom_counts:
     atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),

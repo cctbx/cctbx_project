@@ -317,18 +317,18 @@ class structure(crystal.special_position_settings):
                    .n_independent_params()] += 1
     return result
 
-  def element_types_and_counts(self):
-    reg = self.scattering_type_registry()
+  def scattering_types_counts_and_occupancy_sums(self):
     result = []
-    scattering_types = self._scatterers.extract_scattering_types()
-    occupancies = self._scatterers.extract_occupancies()
-    for scattering_type in reg.type_index_pairs_as_dict().keys():
-      selection = scattering_types == scattering_type
-      count = selection.count(True)
-      occupancy_sum = flex.sum(occupancies.select(selection))
-      result_ = group_args(scattering_type = scattering_type, count = count,
-        occupancy_sum = occupancy_sum)
-      result.append(result_)
+    reg = self.scattering_type_registry()
+    unique_counts = reg.unique_counts
+    if (flex.sum(unique_counts) != self._scatterers.size()):
+      raise RuntimeError("scattering_type_registry out of date.")
+    occupancy_sums = reg.occupancy_sums(scatterers=self._scatterers)
+    for scattering_type,unique_index in reg.type_index_pairs_as_dict().items():
+      result.append(group_args(
+        scattering_type=scattering_type,
+        count=unique_counts[unique_index],
+        occupancy_sum=occupancy_sums[unique_index]))
     return result
 
   def shake_sites_in_place(self,

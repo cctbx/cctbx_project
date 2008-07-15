@@ -119,6 +119,10 @@ namespace {
           (af::shared<std::size_t>(w_t::*)(
             af::const_ref<scatterer<> > const&) const) &w_t::unique_indices, (
               arg_("scatterers")))
+        .def("occupancy_sums",
+          (af::shared<double>(w_t::*)(
+            af::const_ref<scatterer<> > const&) const) &w_t::occupancy_sums, (
+              arg_("scatterers")))
         .def("form_factor",
              &w_t::form_factor,
              (arg_("scattering_type")),

@@ -110,6 +110,18 @@ namespace cctbx { namespace xray {
         return result;
       }
 
+      template <typename XrayScattererType>
+      af::shared<double>
+      occupancy_sums(af::const_ref<XrayScattererType> const& scatterers) const
+      {
+        af::shared<double> result(unique_counts.size(), 0);
+        for(std::size_t i=0;i<scatterers.size();i++) {
+          XrayScattererType const& sc = scatterers[i];
+          result[unique_index(sc.scattering_type)] += sc.occupancy;
+        }
+        return result;
+      }
+
       boost::optional<form_factor_t> const&
       form_factor(std::string const& scattering_type) const
       {
