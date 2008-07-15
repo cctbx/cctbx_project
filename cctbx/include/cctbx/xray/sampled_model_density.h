@@ -39,7 +39,7 @@ namespace cctbx { namespace xray {
         bool sampled_density_must_be_positive=false,
         FloatType const& tolerance_positive_definite=1.e-5,
         bool use_u_base_as_u_extra=false,
-        bool store_grid_indices_for_each_scatterer=false);
+        int store_grid_indices_for_each_scatterer=0);
 
       real_map_type
       real_map() { return real_map_; }
@@ -87,27 +87,31 @@ namespace cctbx { namespace xray {
     bool sampled_density_must_be_positive,
     FloatType const& tolerance_positive_definite,
     bool use_u_base_as_u_extra,
-    bool store_grid_indices_for_each_scatterer)
+    int store_grid_indices_for_each_scatterer)
   :
     base_t(unit_cell, scatterers, scattering_type_registry,
            u_base, wing_cutoff,
            exp_table_one_over_step_size, tolerance_positive_definite,
            use_u_base_as_u_extra)
   {
-    FloatType* map_begin;
+    FloatType* map_begin = 0;
     if (this->n_anomalous_scatterers_ == 0 && !force_complex) {
       this->map_accessor_ = accessor_type(fft_m_real, fft_n_real);
-      real_map_.resize(this->map_accessor_);
-      map_begin = real_map_.begin();
+      if (store_grid_indices_for_each_scatterer >= 0) {
+        real_map_.resize(this->map_accessor_);
+        map_begin = real_map_.begin();
+      }
     }
     else {
       this->anomalous_flag_ = true;
       this->map_accessor_ = accessor_type(fft_n_real, fft_n_real);
-      complex_map_.resize(this->map_accessor_);
-      map_begin = reinterpret_cast<FloatType*>(complex_map_.begin());
+      if (store_grid_indices_for_each_scatterer >= 0) {
+        complex_map_.resize(this->map_accessor_);
+        map_begin = reinterpret_cast<FloatType*>(complex_map_.begin());
+      }
     }
     std::vector<unsigned>* gifes = 0;
-    if (store_grid_indices_for_each_scatterer) {
+    if (store_grid_indices_for_each_scatterer != 0) {
       grid_indices_for_each_scatterer_.resize(scatterers.size());
       gifes = grid_indices_for_each_scatterer_.begin();
     }
@@ -169,6 +173,7 @@ namespace cctbx { namespace xray {
 #     include <cctbx/xray/sampling_loop.h>
         if (gifes != 0) {
           grid_indices_for_one_scatterer.push_back(i_map);
+          if (store_grid_indices_for_each_scatterer < 0) continue;
         }
         if (this->anomalous_flag_) i_map *= 2;
         if (!scatterer.flags.use_u_aniso()) {

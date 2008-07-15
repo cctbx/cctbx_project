@@ -8,6 +8,7 @@ import cctbx.crystal.direct_space_asu
 from cctbx import xray
 from cctbx import math_module
 from cctbx.array_family import flex
+from scitbx.array_family import shared
 from libtbx.test_utils import Exception_expected, approx_equal, \
   not_approx_equal, show_diff
 from cStringIO import StringIO
@@ -1044,25 +1045,41 @@ def exercise_sampled_model_density():
   assert approx_equal(f, f_orig)
   #
   scatterers[0].fdp = 0
-  d = xray.sampled_model_density(
-    unit_cell=uc,
-    scatterers=scatterers,
-    scattering_type_registry=scattering_type_registry,
-    fft_n_real=(20,20,22),
-    fft_m_real=(20,20,23),
-    store_grid_indices_for_each_scatterer=True)
-  assert d.real_map().size() == 20*20*23
-  assert d.complex_map().size() == 0
-  assert d.grid_indices_for_each_scatterer().size() == scatterers.size()
-  n_non_zero = 0
-  map = d.real_map()
-  for gi,expected_sizes in zip(d.grid_indices_for_each_scatterer(),
-                               [[88], [33,31]]):
-    assert gi.size() in expected_sizes
-    for i_map in gi:
-      assert map[i_map] > 0
-    n_non_zero += gi.size()
-  assert map.count(0) + n_non_zero == 20*20*23
+  for sgifes in [1, -1]:
+    d = xray.sampled_model_density(
+      unit_cell=uc,
+      scatterers=scatterers,
+      scattering_type_registry=scattering_type_registry,
+      fft_n_real=(20,20,22),
+      fft_m_real=(20,20,23),
+      store_grid_indices_for_each_scatterer=sgifes)
+    if (sgifes > 0):
+      assert d.real_map().size() == 20*20*23
+      assert d.real_map().focus() == (20,20,22)
+      assert d.real_map().all() == (20,20,23)
+    else:
+      assert d.real_map().size() == 0
+    assert d.complex_map().size() == 0
+    assert d.grid_indices_for_each_scatterer().size() == scatterers.size()
+    map = d.real_map()
+    n_non_zero = 0
+    for gi,expected_sizes in zip(d.grid_indices_for_each_scatterer(),
+                                 [[88], [33,31]]):
+      assert gi.size() in expected_sizes
+      if (sgifes < 0): continue
+      for i_map in gi:
+        assert map[i_map] > 0
+      n_non_zero += gi.size()
+    if (sgifes > 0):
+      assert map.count(0) + n_non_zero == 20*20*23
+    comb_sel = shared.stl_set_unsigned()
+    comb_sel.append_union_of_selected_arrays(
+      arrays=d.grid_indices_for_each_scatterer(),
+      selection=flex.size_t([0,1]))
+    assert comb_sel[0].size() == 121
+    if (sgifes > 0):
+      assert map.select(comb_sel[0]).all_gt(0)
+      assert comb_sel[0].size() == n_non_zero
 
 def exercise_minimization_apply_shifts():
   uc = uctbx.unit_cell((20, 20, 23))
