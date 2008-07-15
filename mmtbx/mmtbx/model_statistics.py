@@ -203,8 +203,8 @@ class model_content(object):
     self.atoms_count = model.xray_structure.scatterers().size()
     self.atoms_occupancy_sum = \
       flex.sum(model.xray_structure.scatterers().extract_occupancies())
-    self.element_types_and_counts = \
-      model.xray_structure.element_types_and_counts()
+    self.scattering_types_counts_and_occupancy_sums = \
+      model.xray_structure.scattering_types_counts_and_occupancy_sums()
 
   def show(self, out = None, prefix = "", pdb_deposition = False):
     if(out is None): out = sys.stdout
@@ -213,7 +213,7 @@ class model_content(object):
     fmt = "   %5s               %10d        %8.2f"
     print >> out, prefix+"MODEL CONTENT."
     print >> out, prefix+" ELEMENT        ATOM RECORD COUNT   OCCUPANCY SUM"
-    for item in self.element_types_and_counts:
+    for item in self.scattering_types_counts_and_occupancy_sums:
       print >> out, prefix+fmt % (item.scattering_type, item.count,
         item.occupancy_sum)
     print >> out,prefix+fmt%("TOTAL",self.atoms_count,self.atoms_occupancy_sum)

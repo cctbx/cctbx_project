@@ -643,6 +643,7 @@ def exercise_scattering_type_registry():
   unique_indices = reg.process(scatterers=scatterers)
   assert list(unique_indices) == [1,1,2,2,3,2,3,0,4]
   assert reg.unique_indices(scatterers=scatterers).all_eq(unique_indices)
+  assert approx_equal(reg.occupancy_sums(scatterers=scatterers), [1,2,3,2,1])
   assert reg.type_index_pairs_as_dict() \
       == {"const": 0, "Al": 3, "O": 2, "custom": 4, "Si": 1}
   assert reg.unique_gaussians_as_list().count(None) == 5
