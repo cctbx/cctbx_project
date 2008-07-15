@@ -9,7 +9,7 @@ namespace smtbx { namespace ab_initio { namespace density_modification {
   namespace af = scitbx::af;
 
   template<class FloatType, class AccessorType>
-  void flip_charges_in_place(af::ref<FloatType, AccessorType> rho,
+  void flip_charges_in_place(af::ref<FloatType, AccessorType> const &rho,
                              FloatType delta)
   {
     typedef typename AccessorType::index_type index_type;
@@ -22,7 +22,7 @@ namespace smtbx { namespace ab_initio { namespace density_modification {
 
   template<class FloatType, class AccessorType>
   void low_density_elimination_in_place_tanaka_et_al_2001(
-    af::ref<FloatType, AccessorType> rho,
+    af::ref<FloatType, AccessorType> const &rho,
     FloatType rho_s)
   {
       typedef typename AccessorType::index_type index_type;
