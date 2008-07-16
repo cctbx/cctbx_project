@@ -38,7 +38,7 @@ class CNS_input(object):
     self._LineNo = 0
     self._LastWord = ""
     self.level = 0
-    self.remarks = []
+    self.comments = []
 
   def getNextWord(self, word_len = 0):
     while (len(self._buffer) == 0):
@@ -55,7 +55,7 @@ class CNS_input(object):
         while 1:
           j = line.find("}", i+1)
           if (j >= 0):
-            self.remarks.append(line[i:j+1])
+            self.comments.append(line[i:j+1])
             line = line[:i] + line[j + 1:]
             break
           next_line = self._readline()
@@ -307,11 +307,11 @@ class cns_reflection_file(object):
     reader = CNS_xray_reflection_Reader(file_handle)
     reader.load(self)
     self.optimize()
-    self.remarks = reader.remarks
+    self.comments = reader.comments
 
-  def crystal_symmetry_from_remarks(self):
-    for remark in self.remarks:
-      m = re.match(r'\{\s+' + re_sg_uc, remark)
+  def crystal_symmetry_from_comments(self):
+    for comment in self.comments:
+      m = re.match(r'\{\s+' + re_sg_uc, comment)
       if (m is None): continue
       result = crystal_symmetry_from_re_match(m=m)
       if (result is not None): return result
@@ -320,7 +320,7 @@ class cns_reflection_file(object):
   def crystal_symmetry(self,
         crystal_symmetry=None,
         force_symmetry=False):
-    self_symmetry = self.crystal_symmetry_from_remarks()
+    self_symmetry = self.crystal_symmetry_from_comments()
     if (crystal_symmetry is None):
       return self_symmetry
     if (self_symmetry is None):
