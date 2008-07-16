@@ -1,15 +1,13 @@
+from iotbx.cns.crystal_symmetry_utils import crystal_symmetry_as_sg_uc
 from cctbx import miller
 from cctbx.array_family import flex
 from libtbx.str_utils import show_string
 
 def crystal_symmetry_as_cns_comments(crystal_symmetry, out):
-  uc = crystal_symmetry.unit_cell()
-  if (uc is not None):
-    print >> out, "{ Unit cell: %s }" % " ".join(["%.6g" % p
-      for p in uc.parameters()])
-  sg = crystal_symmetry.space_group_info()
-  if (sg is not None):
-    print >> out, "{ Space group: %s }" % show_string(str(sg))
+  if (   crystal_symmetry.unit_cell() is not None
+      or crystal_symmetry.space_group_info() is not None):
+    print >> out, "{ %s }" % crystal_symmetry_as_sg_uc(
+      crystal_symmetry=crystal_symmetry)
 
 def export_as_cns_hkl(self,
       file_object,

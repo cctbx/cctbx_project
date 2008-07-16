@@ -1,6 +1,7 @@
 "Transfer of CNS reflection files to flex arrays."
 
-from iotbx.cns.pdb_remarks import crystal_symmetry_from_re_match
+from iotbx.cns.crystal_symmetry_utils import \
+  re_sg_uc, crystal_symmetry_from_re_match
 from cctbx import crystal
 from cctbx import miller
 from cctbx.array_family import flex
@@ -310,9 +311,7 @@ class cns_reflection_file(object):
 
   def crystal_symmetry_from_remarks(self):
     for remark in self.remarks:
-      m = re.match(
-          r'\{\s+sg=\s*(\S+)\s*a=\s*(\S+)\s*b=\s*(\S+)\s*c=\s*(\S+)'
-        + r'\s*alpha=\s*(\S+)\s*beta=\s*(\S+)\s*gamma=\s*(\S+)\s*\}', remark)
+      m = re.match(r'\{\s+' + re_sg_uc, remark)
       if (m is None): continue
       result = crystal_symmetry_from_re_match(m=m)
       if (result is not None): return result

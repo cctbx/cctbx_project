@@ -1,6 +1,7 @@
 import iotbx.cns.xray_structure
 import iotbx.cns.miller_array
 import iotbx.cns.reflection_reader
+import iotbx.cns.crystal_symmetry_utils
 from iotbx.cns import sdb_reader
 from cctbx import miller
 from cctbx import crystal
@@ -9,7 +10,39 @@ from cctbx.development import random_structure
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from cStringIO import StringIO
+import re
 import sys
+
+def exercise_crystal_symmetry_utils():
+  sg_uc = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=None,
+      space_group_info=None))
+  assert sg_uc == "sg=None a=None b=None c=None alpha=None beta=None gamma=None"
+  #
+  sg_uc = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(3,4,5,89,87,93),
+      space_group_info=None))
+  assert sg_uc == "sg=None a=3 b=4 c=5 alpha=89 beta=87 gamma=93"
+  #
+  sg_uc = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=None,
+      space_group_symbol=19))
+  assert sg_uc == \
+    "sg=P2(1)2(1)2(1) a=None b=None c=None alpha=None beta=None gamma=None"
+  #
+  for symbols in sgtbx.space_group_symbol_iterator():
+    cs1 = sgtbx.space_group_info(
+      group=sgtbx.space_group(symbols)).any_compatible_crystal_symmetry(
+        volume=1000)
+    sg_uc = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_as_sg_uc(
+      crystal_symmetry=cs1)
+    m = re.match(iotbx.cns.crystal_symmetry_utils.re_sg_uc, sg_uc)
+    assert m is not None
+    cs2 = iotbx.cns.crystal_symmetry_utils.crystal_symmetry_from_re_match(m=m)
+    assert cs1.is_similar_symmetry(cs2)
 
 def exercise_sdb(verbose=0):
   structure = random_structure.xray_structure(
@@ -141,6 +174,7 @@ def exercise_reflection_file_as_miller_array():
                    TEST=  0 FOM=    -1.000
 """
   refl_2 = """\
+ { sg=C2 a=97.37 b=46.64 c=65.47 alpha=90 beta=115.4 gamma=90 }
  NREFlection=         3
  ANOMalous=FALSe { equiv. to HERMitian=TRUE}
  DECLare NAME=FOBS         DOMAin=RECIprocal   TYPE=COMP END
@@ -172,8 +206,8 @@ def exercise_reflection_file_as_miller_array():
     space_group_symbol="C 1 2 1")
   all_arrays = [iotbx.cns.reflection_reader.cns_reflection_file(
     file_handle=StringIO(refl)).as_miller_arrays(
-      crystal_symmetry=crystal_symmetry)
-        for refl in [refl_1, refl_2]]
+      crystal_symmetry=cs)
+        for refl,cs in [(refl_1,crystal_symmetry), (refl_2,None)]]
   for miller_arrays in all_arrays:
     for miller_array in miller_arrays:
       assert miller_array.crystal_symmetry().is_similar_symmetry(
@@ -208,6 +242,7 @@ def exercise_reflection_file_as_miller_array():
 
 def run():
   verbose = "--Verbose" in sys.argv[1:]
+  exercise_crystal_symmetry_utils()
   exercise_sdb(verbose)
   exercise_reflection_reader()
   exercise_reflection_file_as_miller_array()
