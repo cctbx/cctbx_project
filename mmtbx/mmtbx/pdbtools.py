@@ -3,6 +3,7 @@ import iotbx.phil
 from mmtbx.refinement import rigid_body
 from mmtbx import utils
 from cctbx.array_family import flex
+import iotbx.cns.miller_array
 from iotbx.option_parser import iotbx_option_parser
 from libtbx.str_utils import show_string
 import libtbx.phil.command_line
@@ -513,7 +514,9 @@ class fmodel_from_xray_structure(object):
     op = self.params.output
     if(self.params.output.format == "cns"):
       ofo = open(file_name, "w")
-      print >> ofo, "NREFlection=%d" % self.f_model.indices().size()
+      iotbx.cns.miller_array.crystal_symmetry_as_cns_comments(
+        crystal_symmetry=self.f_model, out=ofo)
+      print >> ofo, "NREFlections=%d" % self.f_model.indices().size()
       print >> ofo, "ANOMalous=%s" % {0: "FALSE"}.get(
         int(self.f_model.anomalous_flag()), "TRUE")
       for n_t in [("%s"%op.label, "%s"%op.type.upper())]:
