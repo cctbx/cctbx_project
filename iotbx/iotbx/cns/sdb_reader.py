@@ -1,3 +1,5 @@
+from iotbx.cns.crystal_symmetry_utils import \
+  re_sg_uc, crystal_symmetry_from_re_match
 from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
@@ -124,8 +126,7 @@ def multi_sdb_parser(lines, file_name=None, max_characters=1000000):
   # Sites must be sorted.
   sdb_files = []
   block_name = None
-  current_unit_cell = None
-  current_space_group_info = None
+  current_symmetry = None
   n_characters = 0
   p = 0
   for line in lines:
@@ -135,13 +136,9 @@ def multi_sdb_parser(lines, file_name=None, max_characters=1000000):
     m = re.search(r'\{\+\s+file:\s*(\S*)', line)
     if (m):
       block_name = m.group(1)
-    m = re.match(  r'sg=\s*(\S+)\s*a=\s*(\S+)\s*b=\s*(\S+)\s*c=\s*(\S+)'
-                 + r'\s*alpha=\s*(\S+)\s*beta=\s*(\S+)\s*gamma=\s*(\S+)',
-                 line)
+    m = re.match(re_sg_uc, line)
     if (m):
-      current_unit_cell = uctbx.unit_cell(
-        [float(m.group(i+2)) for i in xrange(6)])
-      current_space_group_info = sgtbx.space_group_info(m.group(1))
+      current_symmetry = crystal_symmetry_from_re_match(m=m)
     m = re.search(
       r'\{\-\s+begin\s+block\s+parameter\s+definition\s+\-\}', line)
     if (m):
@@ -154,11 +151,14 @@ def multi_sdb_parser(lines, file_name=None, max_characters=1000000):
           block_name = file_name + "_%d" % i
       if (p): sdb_files.append(p.as_sdb_sites())
       p = raw_parameters(block_name)
-      p.unit_cell = current_unit_cell
-      p.space_group_info = current_space_group_info
+      if (current_symmetry is None):
+        p.unit_cell = None
+        p.space_group_info = None
+      else:
+        p.unit_cell = current_symmetry.unit_cell()
+        p.space_group_info = current_symmetry.space_group_info()
+        current_symmetry = None
       block_name = None
-      current_unit_cell = None
-      current_space_group_info = None
     if (not p): continue
     m = re.match(r'\{===>\}\s*sg=\s*"(\S+)"\s*;', line)
     if (m):

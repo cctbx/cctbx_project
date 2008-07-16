@@ -97,6 +97,7 @@ iotbx/include/iotbx/pdb/utils.h svneol=native#text/plain
 iotbx/include/iotbx/pdb/write_utils.cpp svneol=native#text/plain
 iotbx/include/iotbx/pdb/write_utils.h svneol=native#text/plain
 iotbx/include/iotbx/pdb/write_utils_bpl.h svneol=native#text/plain
+iotbx/iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python
 iotbx/iotbx/command_line/pdb.b_factor_stats.py svneol=native#text/x-python
 iotbx/iotbx/command_line/pdb.join_fragment_files.py svneol=native#text/x-python
 iotbx/iotbx/command_line/pdb.print_sequence.py -text
