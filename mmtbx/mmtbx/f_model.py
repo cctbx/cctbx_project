@@ -1517,7 +1517,7 @@ class manager(manager_mixin):
       self.explain_members(out=out, prefix="{ ", suffix=" }")
       crystal_symmetry_as_cns_comments(
         crystal_symmetry=self.f_obs, out=out)
-      print >> out, "NREFlection=%d" % self.f_obs.indices().size()
+      print >> out, "NREFlections=%d" % self.f_obs.indices().size()
       print >> out, "ANOMalous=%s" % {0: "FALSE"}.get(
         int(self.f_obs.anomalous_flag()), "TRUE")
       have_sigmas = self.f_obs.sigmas() is not None
