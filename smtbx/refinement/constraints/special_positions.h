@@ -148,7 +148,7 @@ class special_positions
         scatterers[shift_ids.i_sc].u_star = new_adp;
       }
     }
-    
+
     void place_constrained_scatterers()
     {
       for (int i=0; i < site_shift_map.size(); ++i) {
