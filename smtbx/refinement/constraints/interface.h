@@ -37,7 +37,8 @@ class many_scatterer_constraints
 
         The argument  constraint_flags  is used as follow:
          constraint_flags[i]  must be a flag summarizing the
-        constraints on the i-th scatterer at the time of construction of this object. E.g.  constraint_flags[i].grad_site()  being true
+        constraints on the i-th scatterer at the time of construction of this object.
+                E.g.  constraint_flags[i].grad_site()  being true
         means that the site of the i-th scatterer is still free
         whereas its being false means it has already been constrained
     */
@@ -121,10 +122,10 @@ class few_scatterer_constraints
     /// Initialise the object in the given context
     /** This method is called when this object is added to a
          constraint_array . The meaning of the arguments
-        is the same as for the constructor of  many_scatterer_constraints
-        . The only difference is the presence of
-         already_constrained  where this object should record
-        which and how scatterers may have already been constrained.
+        is the same as for the constructor of  many_scatterer_constraints.
+        The only difference is the presence ofalready_constrained  where
+        this object should record which and how scatterers may have
+                already been constrained.
     */
     void initialise_in_context(
       uctbx::unit_cell const &unit_cell,
