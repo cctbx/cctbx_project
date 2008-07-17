@@ -221,6 +221,25 @@ class rec(object):
       a[2] * b[0] - b[2] * a[0],
       a[0] * b[1] - b[0] * a[1]))
 
+  def ortho(self):
+    assert self.n in ((3,1), (1,3))
+    x, y, z = self.elems
+    a, b, c = abs(x), abs(y), abs(z)
+    if c <= a and c <= b:
+      return col((-y, x, 0))
+    if b <= a and b <= c:
+      return col((-z, 0, x))
+    return col((0, -z, y))
+
+  def rotate(self, axis, angle, deg=False):
+    assert self.n in ((3,1), (1,3))
+    assert axis.n == self.n
+    if deg: angle *= math.pi/180
+    n = axis.normalize()
+    x = self
+    c, s = math.cos(angle), math.sin(angle)
+    return x*c + n*n.dot(x)*(1-c) + x.cross(n)*s
+
   def outer_product(self, other=None):
     if (other is None): other = self
     assert self.n[0] == 1 or self.n[1] == 1
@@ -692,5 +711,18 @@ if (__name__ == "__main__"):
   #
   x = col((3/2+0.01, 5/4-0.02, 11/8+0.001))
   assert (x*8).as_int()/8 == col((3/2, 5/4, 11/8))
+  #
+  for x in [(0, 0, 0), (1, -2, 5), (-2, 5, 1), (5, 1, -2) ]:
+    x = col(x)
+    assert approx_equal(x.dot(x.ortho()), 0)
+  #
+  x = col((1, -2, 3))
+  n = col((-2, 4, 5))
+  alpha = 2*math.pi/3
+  y = x.rotate(n, alpha)
+  n = n.normalize()
+  x_perp = x - n.dot(x)*n
+  y_perp = y - n.dot(y)*n
+  assert approx_equal(x_perp.angle(y_perp), alpha)
   #
   print "OK"
