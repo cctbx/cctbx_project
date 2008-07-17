@@ -129,6 +129,7 @@ class few_scatterer_constraints
     */
     void initialise_in_context(
       uctbx::unit_cell const &unit_cell,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
       af::ref<xray::scatterer_flags> const &constraint_flags,
       std::map<int, xray::scatterer_flags> &already_constrained);
