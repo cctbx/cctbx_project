@@ -34,7 +34,14 @@ class constraint_array
         crystallographic_parameter_map(crystallographic_parameter_map_),
         constraint_flags(constraint_flags_),
         elements()
-    {}
+    {
+      SMTBX_ASSERT(scatterers.size() == constraint_flags.size())
+                  (scatterers.size())
+                  (constraint_flags.size());
+      SMTBX_ASSERT(scatterers.size() == crystallographic_parameter_map.size())
+                  (scatterers.size())
+                  (crystallographic_parameter_map.size());
+    }
 
     constraint_type & operator[](unsigned i) { return elements[i]; }
 
@@ -42,6 +49,7 @@ class constraint_array
 
     void push_back(constraint_type &constraint) {
       constraint.initialise_in_context(unit_cell,
+                                       site_symmetry_table,
                                        scatterers.const_ref(),
                                        constraint_flags.ref(),
                                        already_constrained_);
