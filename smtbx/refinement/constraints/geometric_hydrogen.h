@@ -1,9 +1,16 @@
+#ifndef SMTBX_REFINEMENT_CONSTRAINTS_GEOMETRIC_HYDROGEN_H
+#define SMTBX_REFINEMENT_CONSTRAINTS_GEOMETRIC_HYDROGEN_H
+
 #include <scitbx/constants.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/simple_tiny_io.h>
 
 #include <cctbx/coordinates.h>
+
+#include <smtbx/refinement/parameter_map.h>
+#include <smtbx/import_scitbx_af.h>
+#include <smtbx/import_cctbx.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
 
@@ -324,7 +331,8 @@ class terminal_X_Hn
 /**
   C is referred to as the "pivot" and X and Y as pivot's neighbour 1 and 2.
 
-  All angles Hi-C-X and Hi-C-Y are equal. The angle H-C-H depends on XY^2 in a simple linear manner as ShelXL does it.
+  All angles Hi-C-X and Hi-C-Y are equal.
+  The angle H-C-H depends on XY^2 in a simple linear manner as ShelXL does it.
 */
 template<typename FloatType, class XrayScattererType,
          template<class> class SharedArray1D=af::shared>
@@ -559,3 +567,5 @@ class tertiary_CH
 };
 
 }}} // namespace smtbx::refinement::constraints
+
+#endif // GUARD 
