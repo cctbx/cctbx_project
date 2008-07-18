@@ -1,3 +1,6 @@
+#ifndef SMTBX_REFINEMENT_PARAMETER_MAP_H
+#define SMTBX_REFINEMENT_PARAMETER_MAP_H
+
 #include <scitbx/array_family/shared.h>
 #include <smtbx/import_scitbx_af.h>
 
@@ -72,3 +75,5 @@ class parameter_map
 };
 
 }} // smtbx::refinement
+
+#endif // GUARD 
