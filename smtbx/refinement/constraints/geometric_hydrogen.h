@@ -497,10 +497,10 @@ class tertiary_CH
 
     tertiary_CH(int pivot,
                 af::tiny<int, 3> pivot_neighbours,
-                af::tiny<int, 1> hydrogens,
+                int hydrogen,
                 float_type bond_length,
                 bool stretching=false)
-      : base_t(pivot, hydrogens, bond_length, stretching),
+      : base_t(pivot, af::tiny<int,1>(hydrogen), bond_length, stretching),
         i_pivot_neighbours(pivot_neighbours)
     {}
 
@@ -512,12 +512,17 @@ class tertiary_CH
 
       cart_t x_p = unit_cell.orthogonalize(scatterers[i_pivot].site);
       e0 = cart_t(0,0,0);
-      for(int i=0; i < 3; ++i) {
-        cart_t x_pn = unit_cell.orthogonalize(
-          scatterers[i_pivot_neighbours[i]].site);
-        e0 += (x_p - x_pn).normalize();
-      }
-      e0 = e0.normalize();
+      cart_t
+        x_X = unit_cell.orthogonalize(scatterers[i_pivot_neighbours[0]].site),
+        x_Y = unit_cell.orthogonalize(scatterers[i_pivot_neighbours[1]].site),
+        x_Z = unit_cell.orthogonalize(scatterers[i_pivot_neighbours[2]].site);
+      cart_t u_XC = (x_p - x_X).normalize(),
+             u_YC = (x_p - x_Y).normalize(),
+             u_ZC = (x_p - x_Z).normalize();
+      cart_t u = u_XC - u_YC;
+      cart_t v = u_YC - u_ZC;
+      e0 = u.cross(v).normalize();
+      if (e0*(u_XC + u_YC + u_ZC) < 0) e0 = -e0;
       cart_t x_h = x_p + l*e0;
       scatterers[i_hydrogens[0]].site = unit_cell.fractionalize(x_h);
     }
@@ -568,4 +573,4 @@ class tertiary_CH
 
 }}} // namespace smtbx::refinement::constraints
 
-#endif // GUARD 
+#endif // GUARD

@@ -458,6 +458,8 @@ class secondary_ch2_test_case(hydrogen_test_case):
     assert approx_equal(
       u_CH1.angle(u_CH2)/2,
       ct.theta0 - ct.dtheta_over_dXY_sq*(u_CX-u_CY).norm_sq())
+    assert u_CH1.dot(u_CX + u_CX) < 0
+    assert u_CH2.dot(u_CX + u_CX) < 0
 
   def exercise(self):
     foo = (0,)*3
@@ -483,11 +485,79 @@ class secondary_ch2_test_case(hydrogen_test_case):
     assert approx_equal(df_over_dl, df_over_dl_approx)
 
 
+class tertiary_ch_test_case(hydrogen_test_case):
+
+  def __init__(self):
+    self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
+    self.xs = xray.structure(self.cs.special_position_settings())
+    pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
+                                u=(0.05, 0.04, 0.02,
+                                   -0.01, -0.015, 0.005))
+    self.xs.add_scatterer(pivot)
+    self.i_pivot = 0
+
+    v_CX = 1.35*(mat.col((-1, 2, 1.5)).normalize())
+    n = v_CX.ortho()
+    v_CY = v_CX.rotate(axis=n, angle=115, deg=True)
+    v_CY = 1.65*v_CY.normalize()
+    n = n.ortho()
+    v_CZ = v_CY.rotate(axis=n, angle=105, deg=True)
+    v_CZ = 1.5*v_CZ.normalize()
+    v_CX, v_CY, v_CZ = [ self.xs.unit_cell().fractionalize(v)
+                         for v in (v_CX, v_CY, v_CZ) ]
+    site_X, site_Y, site_Z = [ mat.col(pivot.site) + mat.col(v)
+                               for v in (v_CX, v_CY, v_CZ) ]
+    for name, site in zip(("X", "Y", "Z"), (site_X, site_Y, site_Z)):
+      self.xs.add_scatterer(xray.scatterer(name, site=site, u=(0,)*6,
+                                           scattering_type='C'))
+    self.i_neighbours = (1,2,3)
+    h = xray.scatterer("H", u=(0,)*6)
+    self.xs.add_scatterer(h)
+    self.i_hydrogens = (4,)
+    for sc in self.xs.scatterers():
+      sc.flags.set_grad_site(True)
+
+    self.constraint_flags = xray.scatterer_flags_array(
+      len(self.xs.scatterers()))
+    for f in self.constraint_flags:
+      f.set_grad_site(True)
+
+    self.parameter_map = self.xs.parameter_map()
+
+    self.cts = constraints.tertiary_CH_array(
+      self.cs.unit_cell(),
+      self.xs.site_symmetry_table(),
+      self.xs.scatterers(),
+      self.parameter_map,
+      self.constraint_flags)
+    self.cts.append(constraints.tertiary_CH(
+      pivot=0,
+      pivot_neighbours=(1,2,3),
+      hydrogen=4,
+      bond_length=1.))
+
+  def check_geometry(self):
+    uc = self.cs.unit_cell()
+    x_pivot = mat.col(uc.orthogonalize(self.pivot.site))
+    u_CX, u_CY, u_CZ = [ mat.col(uc.orthogonalize(sc.site)) - x_pivot
+                         for sc in self.neighbours ]
+    u_CH = mat.col(uc.orthogonalize(self.hydrogens[0].site)) - x_pivot
+    assert approx_equal(u_CX.angle(u_CH), u_CY.angle(u_CH))
+    assert approx_equal(u_CY.angle(u_CH), u_CZ.angle(u_CH))
+    assert approx_equal(u_CZ.angle(u_CH), u_CX.angle(u_CH))
+    assert u_CH.dot(u_CX + u_CY + u_CZ) < 0
+
+  def exercise(self):
+    self.cts.place_constrained_scatterers()
+    self.check_geometry()
+
+
 def run():
   import sys
   verbose = '--verbose' in sys.argv[1:]
-  ch3_test_case.run(verbose=verbose)
+  tertiary_ch_test_case.run(verbose=verbose)
   secondary_ch2_test_case.run(verbose=verbose)
+  ch3_test_case.run(verbose=verbose)
   special_position_test_case.run(verbose=verbose)
   print 'OK'
 

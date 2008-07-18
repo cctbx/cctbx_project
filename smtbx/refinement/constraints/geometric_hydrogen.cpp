@@ -169,10 +169,38 @@ struct secondary_CH2_wrapper
   }
 };
 
+template<typename FloatType=double,
+         class XrayScattererType=xray::scatterer<> >
+struct tertiary_CH_wrapper
+  : hydrogen_constraint_wrapper<tertiary_CH,
+                                FloatType,
+                                XrayScattererType>
+{
+  typedef hydrogen_constraint_wrapper<tertiary_CH,
+                                      FloatType,
+                                      XrayScattererType> base_t;
+  typedef typename base_t::wt wt;
+  typedef typename wt::float_type float_type;
+  using base_t::wrapped;
+
+  tertiary_CH_wrapper(char const *name)
+    : base_t(name)
+  {
+    using namespace boost::python;
+    wrapped
+      .def(init<int, af::tiny<int, 3>, int, float_type, bool>
+          ((arg("pivot"), arg("pivot_neighbours"),
+            arg("hydrogen"),
+            arg("bond_length"),
+            arg("stretching")=false)))
+      ;
+  }
+};
+
 void wrap_geometric_hydrogen() {
   terminal_X_Hn_wrapper<>("terminal_X_Hn");
   secondary_CH2_wrapper<>("secondary_CH2");
-  common_hydrogen_constraint_wrapper<tertiary_CH, 3, 1>("tertiary_CH");
+  tertiary_CH_wrapper<>("tertiary_CH");
 }
 
 }}}} // smtbx::refinement::constraints::boost_python
