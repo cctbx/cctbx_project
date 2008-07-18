@@ -17,7 +17,7 @@ namespace smtbx { namespace ab_initio { namespace boost_python {
   template<class FloatType, class AccessorType>
   struct density_modification_wrapper
   {
-    typedef void (*f_t)(af::ref<FloatType, AccessorType>, FloatType);
+    typedef void (*f_t)(af::ref<FloatType, AccessorType> const&, FloatType);
     static void wrap() {
       using namespace boost::python;
       using namespace density_modification;
