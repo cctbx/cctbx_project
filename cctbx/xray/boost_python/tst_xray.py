@@ -1076,7 +1076,7 @@ def exercise_sampled_model_density():
     comb_sel.append_union_of_selected_arrays(
       arrays=d.grid_indices_for_each_scatterer(),
       selection=flex.size_t([0,1]))
-    assert comb_sel[0].size() == 121
+    assert comb_sel[0].size() in [121,119]
     if (sgifes > 0):
       assert map.select(comb_sel[0]).all_gt(0)
       assert comb_sel[0].size() == n_non_zero
