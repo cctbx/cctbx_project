@@ -1,7 +1,7 @@
 from cctbx.uctbx import unit_cell,fast_minimum_reduction
-from rstbx.dps_core import Orientation as orient3d
 from rstbx.dps_core.cell_assessment import unit_cell_too_small
 from scitbx import matrix
+from cctbx import crystal_orientation
 
 def rwgk_niggli(UC,epsilon=None,cutoff=100.):
 
@@ -14,7 +14,7 @@ def rwgk_niggli(UC,epsilon=None,cutoff=100.):
   if isinstance(UC,unit_cell):
     #return UC.niggli_cell(epsilon)
     return fast_minimum_reduction(UC).as_unit_cell()
-  elif isinstance(UC,orient3d):
+  elif isinstance(UC,crystal_orientation.crystal_orientation):
     uc = UC.unit_cell()
     unit_cell_too_small(uc,cutoff=cutoff)
     #R = uc.niggli_reduction(epsilon)
