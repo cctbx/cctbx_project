@@ -2,6 +2,7 @@
 #define SCITBX_MATH_PRINCIPAL_AXES_OF_INERTIA_H
 
 #include <scitbx/math/eigensystem.h>
+#include <scitbx/math/inertia_tensor.h>
 #include <cstdio>
 
 namespace scitbx { namespace math {
@@ -51,16 +52,8 @@ namespace scitbx { namespace math {
             center_of_mass_ += points[i_p];
           }
           center_of_mass_ /= static_cast<FloatType>(points.size());
-          for(std::size_t i_p=0;i_p<points.size();i_p++) {
-            vec3<FloatType> p = points[i_p] - center_of_mass_;
-            vec3<FloatType> pp(p[0]*p[0], p[1]*p[1], p[2]*p[2]);
-            inertia_tensor_(0,0) += pp[1] + pp[2];
-            inertia_tensor_(1,1) += pp[0] + pp[2];
-            inertia_tensor_(2,2) += pp[0] + pp[1];
-            inertia_tensor_(0,1) -= p[0] * p[1];
-            inertia_tensor_(0,2) -= p[0] * p[2];
-            inertia_tensor_(1,2) -= p[1] * p[2];
-          }
+          math::inertia_tensor(
+            points, center_of_mass_, inertia_tensor_);
         }
         eigensystem_ = math::eigensystem::real_symmetric<FloatType>(
           inertia_tensor_);
@@ -87,17 +80,8 @@ namespace scitbx { namespace math {
         }
         if (sum_weights != 0) {
           center_of_mass_ /= sum_weights;
-          for(std::size_t i_p=0;i_p<points.size();i_p++) {
-            vec3<FloatType> p = points[i_p] - center_of_mass_;
-            vec3<FloatType> pp(p[0]*p[0], p[1]*p[1], p[2]*p[2]);
-            FloatType w = weights[i_p];
-            inertia_tensor_(0,0) += w * (pp[1] + pp[2]);
-            inertia_tensor_(1,1) += w * (pp[0] + pp[2]);
-            inertia_tensor_(2,2) += w * (pp[0] + pp[1]);
-            inertia_tensor_(0,1) -= w * p[0] * p[1];
-            inertia_tensor_(0,2) -= w * p[0] * p[2];
-            inertia_tensor_(1,2) -= w * p[1] * p[2];
-          }
+          math::inertia_tensor(
+            points, weights, center_of_mass_, inertia_tensor_);
         }
         eigensystem_ = math::eigensystem::real_symmetric<FloatType>(
           inertia_tensor_);

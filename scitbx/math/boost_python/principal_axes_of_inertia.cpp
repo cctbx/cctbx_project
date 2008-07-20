@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <boost/python/class.hpp>
+#include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
@@ -54,6 +55,21 @@ namespace boost_python {
 
   void wrap_principal_axes_of_inertia()
   {
+    using namespace boost::python;
+
+    def("inertia_tensor",
+      (sym_mat3<double>(*)(
+        af::const_ref<vec3<double> > const&,
+        vec3<double> const&)) inertia_tensor, (
+          arg_("points"), arg_("pivot")));
+
+    def("inertia_tensor",
+      (sym_mat3<double>(*)(
+        af::const_ref<vec3<double> > const&,
+        af::const_ref<double> const&,
+        vec3<double> const&)) inertia_tensor, (
+          arg_("points"), arg_("weights"), arg_("pivot")));
+
     principal_axes_of_inertia_wrappers::wrap();
   }
 
