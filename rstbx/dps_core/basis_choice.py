@@ -1,8 +1,9 @@
-import exceptions,math
+import exceptions,math,types
 from scitbx import matrix
 from cctbx.uctbx.reduction_base import iteration_limit_exceeded as KGerror
 from rstbx.dps_core.cell_assessment import unit_cell_too_small,SmallUnitCellVolume
 from rstbx.dps_core import directional_show
+from rstbx_ext import Direction
 
 diagnostic = False
 
@@ -81,21 +82,39 @@ class SolutionTracker:
   def halts(self):
     return len(self.volume_filtered)>=20
 
+unphysical_cell_cutoff_small_molecule_regime = 25. # Angstrom^3
+
 class HandleCombo:
-  def __init__(self,ai,combo):
-    solns=[ai[combo[i]] for i in [0,1,2]]
-    ai.setA(solns)
-    unit_cell_too_small(ai.getOrientation().unit_cell(),cutoff=25.)  #backported from Fig 2
-    ai.niggli() # reduce cell
+  def __init__(self,ai,combo,cutoff=unphysical_cell_cutoff_small_molecule_regime):
     self.ai = ai
     self.combo = combo
+    self.cutoff = cutoff
+    solns=[ai[combo[i]] for i in [0,1,2]]
+    self.setA(solns)
+    unit_cell_too_small(ai.getOrientation().unit_cell(),cutoff=self.cutoff)
+    ai.niggli() # reduce cell
 
   def handle_absences(self):
       Abs = AbsenceHandler()
       if Abs.absence_detected(self.ai.hklobserved()):
         newmat = Abs.correct(self.ai.getOrientation())
         self.ai.setOrientation(newmat)
-        self.ai.niggli(cutoff=25.)
+        self.ai.niggli(cutoff=self.cutoff)
+
+  def setA(self,solns):
+    from scitbx import matrix as vector # to clarify role of column vector
+    # set the orientation matrix based on list of three rstbx basis Directions
+    assert type(solns) == types.ListType
+    assert not 0 in [isinstance(x,Direction) for x in solns]
+    self.ai.combo_state = solns # for derived feature in LABELIT
+    realaxis=[]
+    for i in xrange(3):
+      realaxis.append(  vector.col(solns[i].dvec) * solns[i].real )
+    matA = [  realaxis[0].elems[0],realaxis[0].elems[1],realaxis[0].elems[2],
+              realaxis[1].elems[0],realaxis[1].elems[1],realaxis[1].elems[2],
+              realaxis[2].elems[0],realaxis[2].elems[1],realaxis[2].elems[2]  ]
+    self.ai.set_orientation_direct_matrix(matA)
+
 
 def select_best_combo_of(ai,better_than=0.15,candidates=20,basis=15):
   """Take the first few candidates of ai.combos().  Search for all combos

@@ -58,20 +58,6 @@ class dps_core(ext.dps_core):
     comb.sort(combocmp)
     return comb
 
-  def setA(self,argument):
-         from scitbx import matrix as vector # to clarify role of column vector
-         assert type(argument) == types.ListType
-         assert not 0 in [isinstance(x,Direction) for x in argument]
-         self.combo_state = argument
-         #case of a list of dptbx.Directions.
-         realaxis=[]
-         for i in xrange(3):
-           realaxis.append(  vector.col(argument[i].dvec) * argument[i].real )
-         matA = [  realaxis[0].elems[0],realaxis[0].elems[1],realaxis[0].elems[2],
-                   realaxis[1].elems[0],realaxis[1].elems[1],realaxis[1].elems[2],
-                   realaxis[2].elems[0],realaxis[2].elems[1],realaxis[2].elems[2]  ]
-         ext.dps_core.set_orientation_direct_matrix(self,matA)
-
   def getOrientation(self):
     return Orientation(ext.dps_core.getOrientation(self))
 
