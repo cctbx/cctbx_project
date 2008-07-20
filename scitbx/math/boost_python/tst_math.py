@@ -9,7 +9,8 @@ from scitbx.math import gamma_complete, exponential_integral_e1z
 from scitbx.math import lambertw
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import golay_24_12_generator
-from scitbx.math import principal_axes_of_inertia,principal_axes_of_inertia_2d
+from scitbx.math import inertia_tensor
+from scitbx.math import principal_axes_of_inertia, principal_axes_of_inertia_2d
 from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.math import signed_phase_error, phase_error, nearest_phase
 from scitbx.math import icosahedron
@@ -546,6 +547,22 @@ def exercise_golay():
   for code in golay_24_12_generator():
     weights[list(code).count(1)] += 1
   assert weights == [1,0,0,0,0,0,0,0,759,0,0,0,2576,0,0,0,759,0,0,0,0,0,0,0,1]
+
+def exercise_inertia_tensor():
+  t = inertia_tensor(
+    points=flex.vec3_double(), pivot=(0,0,0))
+  assert t == (0,0,0,0,0,0)
+  t = inertia_tensor(
+    points=flex.vec3_double(), weights=flex.double(), pivot=(0,0,0))
+  assert t == (0,0,0,0,0,0)
+  t = inertia_tensor(
+    points=flex.vec3_double([(4,6,2),(2,6,4)]), pivot=(-1,8,4))
+  assert approx_equal(t, [12, 38, 42, 16, 10, -4])
+  t = inertia_tensor(
+    points=flex.vec3_double([(4,6,2),(2,6,4)]),
+    weights=flex.double([2,3]),
+    pivot=(-1,8,4))
+  assert approx_equal(t, [28, 85, 97, 38, 20, -8])
 
 def exercise_principal_axes_of_inertia():
   rnd = random.random
@@ -1463,6 +1480,7 @@ def run():
   exercise_lambertw()
   exercise_eigensystem()
   exercise_golay()
+  exercise_inertia_tensor()
   exercise_principal_axes_of_inertia()
   exercise_principal_axes_of_inertia_2d()
   explore_inertia_tensor_properties()
