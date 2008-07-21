@@ -131,7 +131,6 @@ class terminal_X_Hn
     using base_t::i_hydrogens;
     using base_t::l;
     using base_t::on_;
-    using base_t::stretching;
     using base_t::i_reparametrization_begin;
 
     typedef XrayScattererType xray_scatterer_type;
@@ -236,7 +235,7 @@ class terminal_X_Hn
           dx_over_dphi[i]
             = l*sin_tetrahedral_angle*(-sin_phi[i]*e0 + cos_phi[i]*e1);
         }
-        if (stretching()) {
+        if (base_t::stretching()) {
           dx_over_dl[i]
             = sin_tetrahedral_angle*(cos_phi[i]*e0 + sin_phi[i]*e1) + e2/3;
         }
@@ -259,7 +258,7 @@ class terminal_X_Hn
                    crystallographic_parameter_map,
                    crystallographic_gradients);
 
-      if (!rotating() && !stretching()) return;
+      if (!rotating() && !base_t::stretching()) return;
 
       using namespace constants;
       i_reparametrization_begin = reparametrization_gradients.size();
@@ -282,7 +281,7 @@ class terminal_X_Hn
       }
 
       // stretching
-      if (stretching()) {
+      if (base_t::stretching()) {
         float_type dF_over_dl = 0;
         for (int i=0; i < i_hydrogens.size(); ++i) {
           dF_over_dl += dF_over_dx[i] * dx_over_dl[i];
@@ -306,7 +305,7 @@ class terminal_X_Hn
         float_type delta_phi = reparametrization_shifts[i_dF_over_dphi()];
         phi += delta_phi;
       }
-      if (stretching()) {
+      if (base_t::stretching()) {
         float_type delta_l = reparametrization_shifts[i_dF_over_dl()];
         l += delta_l;
       }
@@ -350,7 +349,6 @@ class secondary_CH2
     using base_t::i_hydrogens;
     using base_t::l;
     using base_t::on_;
-    using base_t::stretching;
     using base_t::i_reparametrization_begin;
 
     typedef XrayScattererType xray_scatterer_type;
@@ -419,7 +417,7 @@ class secondary_CH2
                    crystallographic_parameter_map,
                    crystallographic_gradients);
 
-      if (!stretching()) return;
+      if (!base_t::stretching()) return;
 
       i_reparametrization_begin = reparametrization_gradients.size();
       float_type dF_over_dl = 0;
@@ -485,7 +483,6 @@ class tertiary_CH
     using base_t::i_hydrogens;
     using base_t::l;
     using base_t::on_;
-    using base_t::stretching;
     using base_t::i_reparametrization_begin;
 
     typedef XrayScattererType xray_scatterer_type;
@@ -543,7 +540,7 @@ class tertiary_CH
                    crystallographic_parameter_map,
                    crystallographic_gradients);
 
-      if (stretching()) {
+      if (base_t::stretching()) {
         i_reparametrization_begin = reparametrization_gradients.size();
         int i_grad_site_h = crystallographic_parameter_map[i_hydrogens[0]].site;
         frac_t dF_over_dx_frac(&crystallographic_gradients[i_grad_site_h]);
