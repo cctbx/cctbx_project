@@ -29,6 +29,7 @@ struct Direction {
   Direction(const double &, const double &);
   Direction(const point &);
   Direction();
+  void initialize();
   bool is_nearly_collinear(const Direction &)const;
   inline af::shared<double> getff() { return ff; }
 };

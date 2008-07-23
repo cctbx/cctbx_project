@@ -6,6 +6,7 @@ namespace constants = scitbx::constants;
 
 pd::Direction::Direction(const double & psi, const double & phi):
   psi(psi),phi(phi) {
+  initialize();
   dvec = point(std::sin(psi)*std::cos(phi),
                std::sin(psi)*std::sin(phi),
                std::cos(psi));
@@ -13,11 +14,25 @@ pd::Direction::Direction(const double & psi, const double & phi):
 
 pd::Direction::Direction(const point & dvec):
   dvec(dvec) {
+  initialize();
   phi = std::atan2(dvec[1],dvec[0]); //formulae only valid for unit vectors
   psi = std::acos(dvec[2]);          //formulae only valid for unit vectors
 }
 
-pd::Direction::Direction(){}
+pd::Direction::Direction():
+  dvec(scitbx::vec3<double>(0.0,0.0,0.0)),
+  psi(0.0),
+  phi(0.0){initialize();}
+
+void
+pd::Direction::initialize(){
+  kmax = 1000000;
+  kval = 1.0e300;
+  m = kmax;
+  delta_p = kval;
+  pmin = kval;
+  uc_length = kval;
+}
 
 bool
 pd::Direction::is_nearly_collinear(const Direction & other) const {
