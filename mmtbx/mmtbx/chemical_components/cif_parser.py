@@ -83,8 +83,10 @@ def run(filename):
   loop_list = []
   non_loop = {}
   code = ""
+  pdbx_reading = False
   for line in line_iter:
     if line.find("#")==0: continue
+    if line.find("_pdbx")==0: pdbx_reading = True
     line = "%s  " % line
     while line.find('"')>-1:
       start = line.find('"')
@@ -93,6 +95,14 @@ def run(filename):
       line = "%s%s%s" % (line[:start],
                          line[start+1:finish].replace(" ", "_space_"),
                          line[finish+1:])
+    if pdbx_reading:
+      while line.find("'")>-1:
+        start = line.find("'")
+        finish = line.find("'", start+1)
+        if finish==-1: break
+        line = "%s%s%s" % (line[:start],
+                           line[start+1:finish].replace(" ", "_space_"),
+                           line[finish+1:])
     if line.find("loop_")==0:
       loop_list = []
       continue
