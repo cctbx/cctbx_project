@@ -33,6 +33,10 @@ namespace {
           arg_("space_group"),
           arg_("miller_indices"),
           arg_("hendrickson_lattman_coefficients")))
+        .def("entropy", &w_t::entropy)
+ //( (arg_("space_group"))
+ //                                      (arg_("miller_indices"))
+ //                                      (arg_("hendrickson_lattman_coefficients")) )
       ;
     }
   };
