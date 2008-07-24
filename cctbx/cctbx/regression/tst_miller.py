@@ -1231,13 +1231,19 @@ def one_random_hl(f, min_coeff=1.e-3):
     if (result < min_coeff): return min_coeff
   return result
 
-def generate_random_hl(miller_set, coeff_range=5):
+def generate_random_hl(miller_set, coeff_range=5, max_centric_multiplier=None, set_a=None):
+  # added options to skew the phase distribution in one or the other way
   phase_restriction = miller_set.space_group().phase_restriction
   hl = flex.hendrickson_lattman()
   for h in miller_set.indices():
     phase_info = phase_restriction(h)
     if (phase_info.is_centric()):
-      fom = max(0.01, random.random()*0.95)
+      min_fom = 0.01
+      if set_a is not None:
+        min_fom = 1.0-1E-12
+      fom = max(min_fom, random.random()*0.95)
+      if  max_centric_multiplier is not None:
+        fom = fom*max_centric_multiplier
       if (random.random() < 0.5): fom *= -1
       angle = phase_info.ht_angle()
       f = fom * complex(math.cos(angle), math.sin(angle))
@@ -1248,7 +1254,10 @@ def generate_random_hl(miller_set, coeff_range=5):
         max_figure_of_merit=1-1.e-6))
     else:
       f = 2 * coeff_range * random.random()
-      hl.append([one_random_hl(f) for i in xrange(4)])
+      coefs = [one_random_hl(f) for i in xrange(4)]
+      if set_a is not None:
+        coefs[0] = set_a
+      hl.append(coefs)
   return miller.array(miller_set=miller_set, data=hl)
 
 def exercise_average_and_generate_bijvoet_mates_hl(hl):
@@ -1307,6 +1316,33 @@ def exercise_phase_integrals(space_group_info):
                       - abs(with_phases).data())) < 1.e-6
       assert with_phases.mean_weighted_phase_error(
         phase_source=sg_phase_integrals) < 1.e-6
+
+
+    # test the entropy calculations: maximum uncertainty
+    sg_hl = generate_random_hl(miller_set=miller_set, coeff_range=1E-12,max_centric_multiplier=1E-12)
+    mean_entropy = sg_hl.phase_entropy(False,False,True)
+    mean_phunc = sg_hl.phase_entropy(True,False,True)
+    assert mean_entropy > 0.98
+    if miller_set.space_group() == sgtbx.space_group_info( "P1" ).group():
+      assert mean_phunc > 359
+    if miller_set.space_group() == sgtbx.space_group_info( "P-1" ).group():
+      assert mean_phunc > 1.99
+
+
+    # test the entropy calculations: no uncertainty
+    sg_hl = generate_random_hl(miller_set=miller_set, coeff_range=1E-12,set_a=90000.0)
+    mean_entropy = sg_hl.phase_entropy(False,False,True)
+    mean_phunc = sg_hl.phase_entropy(True,False,True)
+    assert mean_entropy < 0.01
+    if miller_set.space_group() == sgtbx.space_group_info( "P1" ).group():
+      assert mean_phunc < 1.1
+    if miller_set.space_group() == sgtbx.space_group_info( "P-1" ).group():
+      assert mean_phunc < 1.1
+
+
+
+
+
 
 def exercise_map_correlation():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
