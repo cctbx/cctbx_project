@@ -4,6 +4,8 @@
 #include <cctbx/sgtbx/space_group.h>
 #include <cctbx/hendrickson_lattman.h>
 #include <boost/scoped_array.hpp>
+#include <scitbx/constants.h>
+
 
 namespace cctbx { namespace miller {
 
@@ -98,6 +100,104 @@ namespace cctbx { namespace miller {
         }
         return result;
       }
+
+
+     //! Computation of phase entropy
+     FloatType entropy_single(
+        sgtbx::phase_info const& phase_info,
+        cctbx::hendrickson_lattman<FloatType> const& hendrickson_lattman)
+     {
+        FloatType result=0;
+        typedef FloatType f_t;
+        f_t max_arg;
+        if (phase_info.is_centric()) {
+
+          f_t angle_a = phase_info.ht_angle();
+
+          f_t angle_b = angle_a + scitbx::constants::pi;
+
+          f_t exp_arg_a = hendrickson_lattman.a() * std::cos(angle_a)
+                        + hendrickson_lattman.b() * std::sin(angle_a)
+                        + hendrickson_lattman.c() * std::cos(2.0*angle_a)
+                        + hendrickson_lattman.d() * std::sin(2.0*angle_a);
+
+          f_t exp_arg_b = hendrickson_lattman.a() * std::cos(angle_b)
+                        + hendrickson_lattman.b() * std::sin(angle_b)
+                        + hendrickson_lattman.c() * std::cos(2.0*angle_b)
+                        + hendrickson_lattman.d() * std::sin(2.0*angle_b);
+
+          max_arg = exp_arg_a;
+          if (max_arg < exp_arg_b){
+            max_arg  = exp_arg_b;
+          }
+          exp_arg_a = exp_arg_a - max_arg;
+          exp_arg_b = exp_arg_b - max_arg;
+          f_t p_a,p_b,norma;
+          p_a = std::exp(exp_arg_a);
+          p_b = std::exp(exp_arg_b);
+          norma = p_a+p_b;
+          p_a = p_a / norma;
+          p_b = p_b / norma;
+          result = p_a*std::log(p_a+1e-12) + p_b*std::log(p_b+1e-12);
+          result = - result / std::log(2.0);
+
+          return (result);
+        }
+        else{ // system is not centric
+          scitbx::af::shared<f_t> tmp;
+          f_t angle=0, result=0, step=cos_sin_table_.angular_step;
+          f_t norma=0, tmp2;
+          for (int ii=0 ; ii<n_steps() ; ii++){
+            angle = ii*step;
+            result = hendrickson_lattman.a() * std::cos(angle)
+                   + hendrickson_lattman.b() * std::sin(angle)
+                   + hendrickson_lattman.c() * std::cos(2.0*angle)
+                   + hendrickson_lattman.d() * std::sin(2.0*angle);
+            tmp.push_back( result );
+            if (ii == 0){
+              max_arg = result;
+            } else {
+              if (max_arg < result ){
+                max_arg = result;
+              }
+            }
+          }
+          result = 0;
+          for (int ii=0 ; ii<n_steps() ; ii++){
+            tmp2 = std::exp(  (tmp[ii]-max_arg) );
+            tmp[ii] = tmp2;
+            norma+=tmp2;
+          }
+          for (int ii=0 ; ii<n_steps() ; ii++){
+             result += (tmp[ii]/norma)*std::log(tmp[ii]/norma+1e-12); // add small number to avoid very small number issues.
+          }
+          return ( -result/std::log(360.0) );
+        }
+
+
+     }
+
+
+     // Computation of phase entropy
+     af::shared<FloatType>
+     entropy(
+        sgtbx::space_group const& space_group,
+        af::const_ref<miller::index<> > const& miller_indices,
+        af::const_ref<hendrickson_lattman<FloatType> > const&
+          hendrickson_lattman_coefficients)
+     {
+       CCTBX_ASSERT(hendrickson_lattman_coefficients.size()
+                  == miller_indices.size());
+       af::shared<FloatType>
+          result( (af::reserve(miller_indices.size())) );
+       for(std::size_t i=0;i<miller_indices.size();i++) {
+          result.push_back( entropy_single(
+                                           space_group.phase_restriction(miller_indices[i]),
+                                           hendrickson_lattman_coefficients[i])
+                          );
+       }
+       return result;
+     }
 
     protected:
       typename hendrickson_lattman<FloatType>::phase_integration_cos_sin_table
