@@ -1744,6 +1744,48 @@ phases are determined on the fly using the given step size.
       results.append(self.select(sel).anomalous_signal())
     return binned_data(binner=self.binner(), data=results, data_fmt="%7.4f")
 
+  def phase_entropy(self,exponentiate=False, return_binned_data=False, return_mean=False):
+    """Phase entropy as measured in terms of an base-360 entropy (base-2 for centrics).\n
+An entropy of 0, indicates that the phase uncertainity is as low as possible.
+An entropy of 1 however, indicates that the uncertainty is maximal: all phases are equally likely!
+Options: return_binned_data -> Determines if you receive a binned object rather then a raw array
+         exponentiate       -> whether or not to exponentiate the entropy. This will return a phase uncertainty in degrees (or the 'alphabet size')
+   """
+    assert ([return_binned_data,return_mean]).count(True)!=2
+
+    if self.is_hendrickson_lattman_array():
+      integrator = phase_integrator(n_steps=360)
+      result = integrator.entropy(self.space_group(), self.indices(), self.data() )
+      if exponentiate:
+        centric_flags = self.centric_flags().data()
+        cen           = flex.exp( math.log(2.0)*result )
+        cen           = cen.set_selected( ~centric_flags, 0 )
+        acen          = flex.exp( math.log(360.0)*result )
+        acen          = acen.set_selected(  centric_flags, 0 )
+        result        = cen + acen
+      if not return_binned_data:
+        if return_mean:
+          return flex.mean( result )
+        else:
+          result  = self.array( data=result )
+          return result
+      else:
+        assert self.binner() is not None
+        binned_results = []
+        for i_bin in self.binner().range_all():
+          sel = self.binner().selection(i_bin)
+          sel_data = result.select(sel)
+          mean = 0
+          if sel_data.size() >0:
+            mean = flex.mean( sel_data )
+          binned_results.append( mean )
+        return binned_data(binner=self.binner(), data=binned_results, data_fmt="%7.4f")
+    else:
+     return None
+
+
+
+
   def measurability(self, use_binning=False, cutoff=3.0, return_fail=None):
     ## Peter Zwart 2005-Mar-04
     """\
