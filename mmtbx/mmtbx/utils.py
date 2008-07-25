@@ -371,7 +371,10 @@ class determine_data_and_flags(object):
         selection = selection_by_sigma
     return selection
 
-  def flags_as_r_free_flags(self, f_obs, r_free_flags):
+  def flags_as_r_free_flags(self,
+        f_obs,
+        r_free_flags,
+        missing_show_max_lines=10):
     test_flag_value = self.parameters.r_free_flags.test_flag_value
     r_free_flags.show_comprehensive_summary(f = self.log)
     print >> self.log
@@ -400,9 +403,34 @@ class determine_data_and_flags(object):
     n_missing_r_free_flags = f_obs.indices().size() \
       - r_free_flags.indices().size()
     if(n_missing_r_free_flags != 0):
-      raise Sorry("R-free flags not compatible with F-obs array:"
-        " missing flag for %d F-obs selected for refinement." %
-        n_missing_r_free_flags)
+      msg = [
+        "R-free flags not compatible with F-obs array:"
+        " missing flag for %d F-obs selected for refinement"
+          % n_missing_r_free_flags]
+      if (missing_show_max_lines is not None and missing_show_max_lines <= 0):
+        msg[0] += "."
+      else:
+        msg[0] += ":"
+        lone = f_obs.lone_set(other=r_free_flags)
+        if (missing_show_max_lines is None):
+          n_not_shown = 0
+        else:
+          n_not_shown = lone.indices().size() - missing_show_max_lines
+          if (n_not_shown > missing_show_max_lines * 0.5):
+            lone = lone[:missing_show_max_lines]
+          else:
+            n_not_shown = 0
+        if (lone.sigmas() is None):
+          msg.append("    h   k   l   data")
+          for hkl,f in zip(lone.indices(), lone.data()):
+            msg.append("  %3d %3d %3d" % hkl + "   %.6g" % f)
+        else:
+          msg.append("    h   k   l   data  sigmas")
+          for hkl,f,s in zip(lone.indices(), lone.data(), lone.sigmas()):
+            msg.append("  %3d %3d %3d" % hkl + "   %.6g  %.6g" % (f,s))
+        if (n_not_shown != 0):
+          msg.append("    ... (remaining %d not shown)" % n_not_shown)
+      raise Sorry("\n".join(msg))
     r_free_flags.show_r_free_flags_info(out = self.log, prefix="")
     return r_free_flags, test_flag_value, r_free_flags_md5_hexdigest
 
