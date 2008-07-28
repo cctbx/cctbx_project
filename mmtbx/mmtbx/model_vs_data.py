@@ -84,28 +84,46 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
     t = time.ctime().split() # to make it safe to remove files
     time_stamp = "_"+t[4]+"_"+t[1].upper()+"_"+t[2]+"_"+t[3][:-3].replace(":","h")
     prefix = os.path.basename(pdb_file_name)
-    from elbow.command_line import builder
+##     from elbow.command_line import builder
+##     from elbow.command_line import join_cif_files
+##     del sys.argv[1:]
+##     molecules = builder.run(pdb_file_name,
+##                             do_all=True,
+##                             output="%s" % (prefix+time_stamp),
+##                             no_output=True,
+##                             silent=True,
+##                             )
+##     cif_file = prefix+time_stamp+".cif"
+##     if molecules:
+##       if type(molecules)!=type([]): molecules = [molecules]
+##       cif_lines = []
+##       for molecule in molecules:
+##         #print molecule.DisplayBrief()
+##         lines = molecule.WriteCIF2String()
+##         cif_lines.append(lines)
+##       rc = join_cif_files.run(cif_lines, cif_file, no_file_access=True)
+##       if rc:
+##         f=file(cif_file, "wb")
+##         f.write(rc)
+##         f.close()
+    from elbow.scripts import elbow_on_pdb_file
     from elbow.command_line import join_cif_files
-    del sys.argv[1:]
-    molecules = builder.run(pdb_file_name,
-                            do_all=True,
-                            output="%s" % (prefix+time_stamp),
-                            no_output=True,
-                            silent=True,
-                            )
+    rc = elbow_on_pdb_file.run(pdb_file_name)
     cif_file = prefix+time_stamp+".cif"
-    if molecules:
-      if type(molecules)!=type([]): molecules = [molecules]
-      cif_lines = []
-      for molecule in molecules:
-        #print molecule.DisplayBrief()
-        lines = molecule.WriteCIF2String()
-        cif_lines.append(lines)
-      rc = join_cif_files.run(cif_lines, cif_file, no_file_access=True)
-      if rc:
-        f=file(cif_file, "wb")
-        f.write(rc)
-        f.close()
+    if rc is not None:
+      hierarchy, cifs = rc
+      if cifs:
+        cif_lines = []
+        for key in cifs:
+          lines = cifs[key]
+          if lines:
+            cif_lines.append(lines)
+        rc = join_cif_files.run(cif_lines, cif_file, no_file_access=True)
+        if rc:
+          f=file(cif_file, "wb")
+          f.write(rc)
+          f.close()
+
     cif_objects = None
     if(os.path.isfile(cif_file)):
       cif_objects = []
