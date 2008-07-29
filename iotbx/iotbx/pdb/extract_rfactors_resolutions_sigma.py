@@ -116,7 +116,6 @@ def extract_remark_2_and_3_records(file_name):
 def extract(file_name):
   remarks_2_and_3 = extract_remark_2_and_3_records(file_name)
   if(len(remarks_2_and_3) == 0):
-    print "No remarks 2 and 3:", file_name
     return None
   result = get_r_rfree_sigma(
     remark_2_and_3_records = remarks_2_and_3,
