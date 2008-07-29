@@ -128,7 +128,7 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
 ##         f.close()
     from elbow.scripts import elbow_on_pdb_file
     from elbow.command_line import join_cif_files
-    rc = elbow_on_pdb_file.run(pdb_file_name)
+    rc = elbow_on_pdb_file.run("\n".join(pdb_raw_records))
     cif_file = prefix+time_stamp+".cif"
     if rc is not None:
       hierarchy, cifs = rc
