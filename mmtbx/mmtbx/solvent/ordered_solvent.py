@@ -101,6 +101,10 @@ master_params = iotbx.phil.parse("""\
   correct_drifted_waters = True
     .type = bool
     .expert_level=2
+  use_kick_maps = False
+    .type = bool
+    .expert_level=2
+    .help = Use Dusan's Turk kick maps for peak picking
 """)
 
 class water_ids(object):
@@ -113,6 +117,7 @@ class manager(object):
   def __init__(self, fmodel,
                      fmodels,
                      model,
+                     all_params,
                      params = master_params.extract(),
                      find_peaks_params = None,
                      log    = None):
@@ -143,8 +148,9 @@ class manager(object):
     if(not self.filter_only):
       assert self.params.primary_map_type is not None
       peaks = self.find_peaks(
-        map_type   = self.params.primary_map_type,
-        map_cutoff = self.params.primary_map_cutoff).peaks_mapped()
+        map_type     = self.params.primary_map_type,
+        map_cutoff   = self.params.primary_map_cutoff,
+        use_kick_map = self.params.use_kick_maps).peaks_mapped()
       self.sites, self.heights = peaks.sites, peaks.heights
       self.add_new_solvent()
       self.show(message = "Just added new:")
@@ -307,15 +313,16 @@ class manager(object):
     print >>self.log,"  dist_sol_mol_min = %s (limit = %s)"%(d_min, dl_min)
     print >>self.log,"  dist_sol_mol_max = %s (limit = %s)"%(d_max, dl_max)
 
-  def find_peaks(self, map_type, map_cutoff):
+  def find_peaks(self, map_type, map_cutoff, use_kick_map=False):
     self.fmodel.update_xray_structure(
       xray_structure = self.model.xray_structure,
       update_f_calc  = True)
-    return find_peaks.manager(fmodel     = self.fmodel,
-                              map_type   = map_type,
-                              map_cutoff = map_cutoff,
-                              params     = self.find_peaks_params,
-                              log        = self.log)
+    return find_peaks.manager(fmodel       = self.fmodel,
+                              map_type     = map_type,
+                              map_cutoff   = map_cutoff,
+                              params       = self.find_peaks_params,
+                              use_kick_map = use_kick_map,
+                              log          = self.log)
 
   def correct_drifted_waters(self, map_cutoff):
     self.fmodel.update_xray_structure(
@@ -451,6 +458,7 @@ class manager(object):
         restraints_manager       = None,
         fmodels                  = self.fmodels,
         model                    = self.model,
+        all_params               = self.all_params,
         refine_adp               = True,
         lbfgs_termination_params = lbfgs_termination_params)
       print >> self.log,\
@@ -479,6 +487,7 @@ class manager(object):
         restraints_manager       = None,
         fmodels                  = self.fmodels,
         model                    = self.model,
+        all_params               = self.all_params,
         lbfgs_termination_params = lbfgs_termination_params)
       self.fmodels.fmodel_xray().xray_structure.adjust_occupancy(
         occ_max   = self.params.occupancy_max,

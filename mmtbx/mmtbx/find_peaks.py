@@ -59,23 +59,37 @@ class peaks_holder(object):
     self.iseqs_of_closest_atoms = iseqs_of_closest_atoms
 
 class manager(object):
-  def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None):
+  def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None,
+                     use_kick_map = False):
     adopt_init_args(self, locals())
     self.mapped = False
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
-    fft_map = self.fmodel.electron_density_map(
-      map_type          = self.map_type,
-      resolution_factor = self.params.resolution_factor,
-      symmetry_flags    = maptbx.use_space_group_symmetry)
-    gridding_n_real = fft_map.n_real()
-    if(self.params.use_sigma_scaled_maps):
-      fft_map.apply_sigma_scaling()
+    if(use_kick_map):
+      from mmtbx import maps
+      km = maps.kick_map(fmodel                        = self.fmodel,
+                         map_type                      = map_type,
+                         kick_size                     = 0.3,
+                         number_of_kicks               = 50,
+                         update_bulk_solvent_and_scale = False,
+                         resolution_factor = self.params.resolution_factor,
+                         symmetry_flags    = maptbx.use_space_group_symmetry)
+      fft_map = km.fft_map
+      fft_map_data = km.map_data # XXX map is already sigma scaled
       map_units = "sigma"
     else:
-      fft_map.apply_volume_scaling()
-      map_units = "e/A**3"
-    fft_map_data = fft_map.real_map_unpadded()
+      fft_map = self.fmodel.electron_density_map(
+        map_type          = self.map_type,
+        resolution_factor = self.params.resolution_factor,
+        symmetry_flags    = maptbx.use_space_group_symmetry)
+      if(self.params.use_sigma_scaled_maps):
+        fft_map.apply_sigma_scaling()
+        map_units = "sigma"
+      else:
+        fft_map.apply_volume_scaling()
+        map_units = "e/A**3"
+      fft_map_data = fft_map.real_map_unpadded()
+    gridding_n_real = fft_map.n_real()
     crystal_gridding_tags = fft_map.tags()
     max_number_of_peaks = self.params.max_number_of_peaks
     if(self.params.max_number_of_peaks is None):

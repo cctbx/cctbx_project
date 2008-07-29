@@ -422,3 +422,70 @@ class interpreter:
       force_symmetry=True,
       reflection_files=self.reflection_files,
       err=self.log)
+
+###############################################################################
+
+class kick_map(object):
+
+  def __init__(self, fmodel,
+                     map_type,
+                     kick_size,
+                     number_of_kicks,
+                     update_bulk_solvent_and_scale,
+                     resolution_factor,
+                     symmetry_flags,
+                     real_map_unpadded = True,
+                     real_map = False):
+    assert [real_map_unpadded, real_map].count(True) == 1
+    self.map_data = None
+    assert number_of_kicks > 0
+    for trial in xrange(number_of_kicks):
+      xray_structure = fmodel.xray_structure.deep_copy_scatterers()
+      xray_structure.shake_sites_in_place(mean_distance = kick_size)
+      self.fft_map = model_to_map(
+        xray_structure                = xray_structure,
+        fmodel                        = fmodel,
+        map_type                      = map_type,
+        update_bulk_solvent_and_scale = update_bulk_solvent_and_scale,
+        resolution_factor             = resolution_factor,
+        symmetry_flags                = symmetry_flags).fft_map
+      if(real_map):
+        tmp_result = self.fft_map.real_map()
+      elif(real_map_unpadded):
+        tmp_result = self.fft_map.real_map_unpadded()
+      if(self.map_data is None): self.map_data = tmp_result
+      else: self.map_data += tmp_result
+    self.map_data = self.map_data/number_of_kicks
+    # produce sigma scaled map: copied from miller.py
+    from cctbx import maptbx
+    statistics = maptbx.statistics(self.map_data)
+    self.map_data /= statistics.sigma()
+
+
+class model_to_map(object):
+
+  def __init__(self, xray_structure,
+                     fmodel,
+                     map_type,
+                     update_bulk_solvent_and_scale,
+                     resolution_factor,
+                     symmetry_flags):
+    fmodel_result = mmtbx.f_model.manager(
+      xray_structure = xray_structure,
+      r_free_flags   = fmodel.r_free_flags,
+      target_name    = fmodel.target_name,
+      f_obs          = fmodel.f_obs)
+    if(update_bulk_solvent_and_scale):
+      fmodel_result.update_solvent_and_scale()
+    else:
+      fmodel_result.update(
+        f_mask            = fmodel.f_mask(),
+        b_cart            = fmodel.b_cart(),
+        k_sol             = fmodel.k_sol(),
+        b_sol             = fmodel.b_sol(),
+        alpha_beta_params = fmodel.alpha_beta_params)
+    self.fft_map = fmodel_result.electron_density_map(
+      map_type          = map_type,
+      resolution_factor = resolution_factor,
+      symmetry_flags    = symmetry_flags)
+    self.fft_map.apply_sigma_scaling()
