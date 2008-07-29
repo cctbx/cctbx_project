@@ -472,6 +472,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
     xray.scatterer("C", (1./2, 1./2, 0.3)),
     xray.scatterer("C", (0.18700, -0.20700, 0.83333))))
   xs = xray.structure(sp, scatterers)
+  uc = xs.unit_cell()
   b_iso_value = 25.0
   xs.set_b_iso(value = b_iso_value)
   result = flex.double([25,25])
@@ -481,7 +482,7 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   assert approx_equal(xs.scatterers().extract_u_iso()/adptbx.b_as_u(1), b_iso_values)
   #
   xs.scatterers().set_u_iso(flex.double([0.1,0.2]),
-                            flex.bool(xs.scatterers().size(), True))
+                            flex.bool(xs.scatterers().size(), True), uc)
   assert xs.scatterers().count_anisotropic() == 0
   xs.convert_to_anisotropic()
   assert xs.scatterers().count_anisotropic() == 2
@@ -490,6 +491,22 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   xs.convert_to_isotropic()
   assert xs.scatterers().count_anisotropic() == 0
   assert approx_equal(xs.scatterers().extract_u_iso(), [0.1,0.2])
+  #
+  cs = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
+  sp = crystal.special_position_settings(cs)
+  uc = cs.unit_cell()
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("o", site=(0.5, 0, 0),u=1.0),
+    xray.scatterer("o", site=(0.5, 1.0, 0),u=0.1),
+    xray.scatterer("o", site=(0.5, 1.0, 10),u=0.7),
+    xray.scatterer("n", site=(0.5,-1.0, 0),u=adptbx.u_cart_as_u_star(uc,(1,2,3,-.3,-2,1))),
+    xray.scatterer("c", site=(0, 0, 0),u=adptbx.u_cart_as_u_star(uc,(6,7,9,2,3,-.7)))))
+  xs = xray.structure(sp, scatterers)
+  b_isos = [adptbx.u_as_b(i) for i in xs.extract_u_iso_or_u_equiv()]
+  assert not_approx_equal(b_isos, [20.0, 20.0, 20.0, 20.0, 20.0])
+  xs.set_b_iso(value=20)
+  b_isos = [adptbx.u_as_b(i) for i in xs.extract_u_iso_or_u_equiv()]
+  assert approx_equal(b_isos, [20.0, 20.0, 20.0, 20.0, 20.0])
 ### scale_adp:
   cs = crystal.symmetry((5.01, 6.01, 5.47, 60, 80, 120), "P1")
   sp = crystal.special_position_settings(cs)

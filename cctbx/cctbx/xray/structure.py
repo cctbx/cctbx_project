@@ -93,10 +93,10 @@ class structure(crystal.special_position_settings):
     if(selection is None): selection = flex.bool(s.size(), True)
     else:                  assert selection.size() == s.size()
     if(value is not None):
-      s.set_u_iso(flex.double(s.size(), value), selection)
+      s.set_u_iso(flex.double(s.size(), value), selection, self.unit_cell())
     else:
       assert values.size() == s.size()
-      s.set_u_iso(values, selection)
+      s.set_u_iso(values, selection, self.unit_cell())
     return self
 
   def set_b_iso(self, value = None, values = None, selection = None):
