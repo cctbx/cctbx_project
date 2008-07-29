@@ -37,6 +37,9 @@ mask_master_params = iotbx.phil.parse("""\
   ignore_zero_occupancy_atoms = True
     .type = bool
     .help = Include atoms with zero occupancy into mask calculation
+  ignore_hydrogens = True
+    .type = bool
+    .help = Ignore H or D atoms in mask calculation
 """)
 
 class bulk_solvent(around_atoms):
@@ -46,6 +49,7 @@ class bulk_solvent(around_atoms):
         ignore_zero_occupancy_atoms,
         solvent_radius,
         shrink_truncation_radius,
+        ignore_hydrogen_atoms=True,
         gridding_n_real=None,
         grid_step=None):
      global number_of_mask_calculations
@@ -72,6 +76,8 @@ class bulk_solvent(around_atoms):
      self.n_atoms_excluded = 0
      if(ignore_zero_occupancy_atoms):
        selection = xray_structure.scatterers().extract_occupancies() > 0
+       if(ignore_hydrogen_atoms):
+         selection &= (~xray_structure.hd_selection())
        sites_frac = sites_frac.select(selection)
        atom_radii = atom_radii.select(selection)
        self.n_atoms_excluded = selection.count(False)
@@ -222,5 +228,6 @@ class manager(object):
       xray_structure              = self.xray_structure,
       grid_step                   = self.grid_step,
       ignore_zero_occupancy_atoms = mp.ignore_zero_occupancy_atoms,
+      ignore_hydrogen_atoms       = mp.ignore_hydrogens,
       solvent_radius              = mp.solvent_radius,
       shrink_truncation_radius    = mp.shrink_truncation_radius)

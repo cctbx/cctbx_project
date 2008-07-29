@@ -343,7 +343,7 @@ class manager(object):
 
   def geometry_minimization(self,
                             max_number_of_iterations       = 500,
-                            number_of_macro_cycles         = 3,
+                            number_of_macro_cycles         = 5,
                             selection                      = None,
                             bond                           = False,
                             nonbonded                      = False,

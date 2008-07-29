@@ -129,7 +129,8 @@ class manager(object):
           raise Sorry("Same atoms selected for iso and aniso ADP refinement.")
       elif(self.adp_individual_iso is not None):
         if(not self._count_selected(self.adp_individual_iso)):
-          raise Sorry(prefix%"adp_individual_iso.")
+          if(not self._count_selected(self.adp_individual_aniso)):
+            raise Sorry(prefix%"adp_individual_iso.")
       elif(self.adp_individual_aniso is not None):
         if(not self._count_selected(self.adp_individual_aniso)):
           raise Sorry(prefix%"adp_individual_aniso.")
