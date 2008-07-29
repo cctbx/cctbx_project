@@ -21,7 +21,9 @@ from cStringIO import StringIO
 import sys
 
 def is_pdb_file(file_name):
-  for pdb_str in open(file_name):
+  pdb_raw_records = smart_open.for_reading(
+    file_name = file_name).read().splitlines()
+  for pdb_str in pdb_raw_records:
     if (pdb_str.startswith("CRYST1")):
       try: cryst1 = iotbx.pdb.records.cryst1(pdb_str=pdb_str)
       except iotbx.pdb.records.FormatError: continue
