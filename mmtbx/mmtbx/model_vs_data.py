@@ -22,7 +22,27 @@ from iotbx import pdb
 from libtbx import easy_run
 from cStringIO import StringIO
 from mmtbx import model_statistics
+from iotbx.pdb import extract_rfactors_resolutions_sigma
+import iotbx.pdb.remark_3_interpretation
 
+
+def get_program_name(file_lines):
+  result = None
+  for line in file_lines:
+    line = line.strip()
+    result = iotbx.pdb.remark_3_interpretation.get_program(st = line)
+    if(result is not None): return result
+  if(result is not None):
+    result = "_".join(result.split())
+  return result
+
+def get_year(file_lines):
+  result = None
+  for line in file_lines:
+    line = line.strip()
+    result = iotbx.pdb.header_year(record = line)
+    if(result is not None): return result
+  return result
 
 def get_fmodel_object(xray_structure, f_obs, r_free_flags):
   sel = f_obs.d_spacings().data() > 0.25
@@ -134,7 +154,7 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
     cif_objects, log = StringIO())
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(raw_records = pdb_raw_records)
-  return processed_pdb_file
+  return processed_pdb_file, pdb_raw_records
 
 def get_xray_structures(processed_pdb_file, scattering_table, d_min):
   if 0: # XXX remove later once tested
@@ -328,7 +348,7 @@ def run(args, command_name = "phenix.model_vs_data",
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=1
-  processed_pdb_file = get_processed_pdb_file(
+  processed_pdb_file, pdb_raw_records = get_processed_pdb_file(
     pdb_file_name = pdb_file_name,
     cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
     show_geometry_statistics = show_geometry_statistics)
@@ -387,3 +407,30 @@ def run(args, command_name = "phenix.model_vs_data",
       show_geometry(processed_pdb_file = processed_pdb_file,
                     scattering_table   = command_line.options.scattering_table)
     show_model_vs_data(fmodel_result)
+  # Extract information from PDB file header and output (if any)
+  published_results = extract_rfactors_resolutions_sigma.extract(
+    file_name = pdb_file_name)
+  if(published_results is not None):
+    published_results_r_work = published_results.r_work
+    published_results_r_free = published_results.r_free
+    published_results_high   = published_results.high
+    published_results_low    = published_results.low
+    published_results_sigma  = published_results.sigma
+    program_name             = get_program_name(file_lines = pdb_raw_records)
+    year                     = get_year(file_lines = pdb_raw_records)
+    published_results_result =  [published_results_r_work,
+                          published_results_r_free,
+                          published_results_high  ,
+                          published_results_low   ,
+                          published_results_sigma ,
+                          program_name            ,
+                          year]
+    if(len(published_results_result) != published_results_result.count(None)):
+      print "  Information extracted from PDB file header:"
+      print "    program_name    : ", program_name
+      print "    year            : ", year
+      print "    r_work          : ", published_results.r_work
+      print "    r_free          : ", published_results.r_free
+      print "    high_resolution : ", published_results.high
+      print "    low_resolution  : ", published_results.low
+      print "    sigma_cutoff    : ", published_results.sigma
