@@ -19,7 +19,7 @@ if (1): # fixed random seed to avoid rare failures
 
 def get_xray_structure_from_file():
   pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/2ERL.pdb", test=os.path.isfile)
+    relative_path="phenix_regression/pdb/2ERL_noH.pdb", test=os.path.isfile)
   xray_structure = pdb.input(file_name=pdb_file).xray_structure_simple()
   return xray_structure
 
@@ -50,7 +50,7 @@ def get_f_obs_freer(d_min, k_sol, b_sol, b_cart, xray_structure):
   f_obs = abs(fmodel.f_model())
   return f_obs, r_free_flags
 
-def exercise_01_general(d_mins = [2.0,],
+def exercise_01_general(d_mins = [1.6,],
              solvkb = [(0,0),(0.1,80.0),(0.6,10.0),(0.1,10.0),(0.6,80.0),
                        (0.1,6.),(0.12,89.),(0.57,17.),(0.14,14.),(0.54,87.)],
              target_names = ["ml","ls_wunit_k1"],
@@ -74,13 +74,10 @@ def exercise_01_general(d_mins = [2.0,],
             target_name    = target_name)
           fmodel.update_solvent_and_scale(verbose = -1)
           r_work = fmodel.r_work()*100.
-          if(abs(d_min-2.) < 0.001):
-            assert approx_equal(r_work,             0.0, eps = 0.001)
-            assert approx_equal(fmodel.k_sol(),   kb[0], eps = 0.001)
-            assert approx_equal(fmodel.b_sol(),   kb[1], eps = 0.1)
-            assert approx_equal(fmodel.b_cart(), b_cart, eps = 0.001)
-          else:
-            raise RuntimeError("No such d_min value.")
+          assert approx_equal(r_work,             0.0, eps = 0.001)
+          assert approx_equal(fmodel.k_sol(),   kb[0], eps = 0.001)
+          assert approx_equal(fmodel.b_sol(),   kb[1], eps = 0.1)
+          assert approx_equal(fmodel.b_cart(), b_cart, eps = 0.001)
           if(abs(kb[0])<0.0001 and abs(kb[1])<0.0001 and
             abs(flex.sum(flex.double(b_cart))) < 0.001):
             assert approx_equal(r_work,             0.0, eps = 1.e-6)

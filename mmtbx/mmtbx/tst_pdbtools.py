@@ -13,7 +13,7 @@ from iotbx import reflection_file_reader
 import iotbx.pdb
 from scitbx.array_family import flex
 import mmtbx.f_model
-
+from cctbx import adptbx
 
 class xray_structure_plus(object):
   def __init__(self, file_name):
@@ -167,12 +167,18 @@ def check_adp_set_b_iso(
   assert approx_equal(xrsp.u_cart_not_used,xrsp_init.u_cart_not_used,tolerance)
   if(selection_str is None):
     assert not_approx_equal(xrsp.u_iso_used,  xrsp_init.u_iso_used,tolerance)
-    assert approx_equal(xrsp.u_cart, xrsp_init.u_cart,tolerance)
+    for ucart in xrsp.u_cart:
+      b_iso = adptbx.u_as_b(adptbx.u_cart_as_u_iso(ucart))
+      if b_iso > 0: assert approx_equal(b_iso, 10, 0.005)
+      else: assert approx_equal(b_iso, -78.956, 0.005)
   else:
     arg1 = xrsp.u_iso_used.select(selection.select(xrsp.use_u_iso))
     arg2 = xrsp_init.u_iso_used.select(selection.select(xrsp_init.use_u_iso))
     if(arg1.size() > 0): assert not_approx_equal(arg1, arg2,tolerance)
-    assert approx_equal(xrsp.u_cart, xrsp_init.u_cart,tolerance)
+    for ucart in xrsp.u_cart:
+      b_iso = adptbx.u_as_b(adptbx.u_cart_as_u_iso(ucart))
+      if b_iso > 0: assert approx_equal(b_iso, 10, 0.005)
+      else: assert approx_equal(b_iso, -78.956, 0.005)
 
 def check_adp_to_iso(
       cmd, xrsp_init, output, selection, selection_str, verbose,

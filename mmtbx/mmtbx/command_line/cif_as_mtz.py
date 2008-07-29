@@ -799,6 +799,7 @@ class guess_observation_type(object):
         neutron_scattering_dict[scattering_type] = \
           eltbx.xray_scattering.gaussian(b.real)
       if(neutron_flag):
+        fmodel_dc.mask_params.ignore_hydrogens=False
         fmodel_dc.xray_structure.scattering_type_registry(
           custom_dict = neutron_scattering_dict)
         fmodel_dc.update_xray_structure(update_f_calc=True, update_f_mask=True)

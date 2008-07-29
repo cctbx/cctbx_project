@@ -19,6 +19,7 @@ class lbfgs(object):
   def __init__(self, restraints_manager,
                      fmodels,
                      model,
+                     all_params,
                      target_weights           = None,
                      tan_b_iso_max            = None,
                      refine_xyz               = False,
@@ -62,6 +63,15 @@ class lbfgs(object):
                            refine_occ     = False)
     self.monitor.collect()
     self.fmodels.create_target_functors()
+    ###
+    if(fmodels.fmodel_xray().f_obs.d_min() > 1.6 and
+       self.h_params is not None and (refine_xyz or refine_adp)):
+             if(self.h_params.refine == "riding" and self.hd_flag):
+               if(self.fmodels.fmodel_n is None and
+           self.all_params.main.scattering_table != "neutron"):
+                 occupancies_cache = self.xray_structure.scatterers().extract_occupancies()
+    ###
+
     self.neutron_refinement = (self.fmodels.fmodel_n is not None)
     self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
@@ -80,6 +90,14 @@ class lbfgs(object):
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
     self.xray_structure.tidy_us()
+    ###
+    if(fmodels.fmodel_xray().f_obs.d_min() > 1.6 and
+       self.h_params is not None and (refine_xyz or refine_adp)):
+             if(self.h_params.refine == "riding" and self.hd_flag):
+               if(self.fmodels.fmodel_n is None and
+           self.all_params.main.scattering_table != "neutron"):
+                 self.xray_structure.set_occupancies(occupancies_cache)
+    ###
     self.regularize_h_and_update_xray_structure(xray_structure =
       self.xray_structure)
     self.monitor.collect(iter = self.minimizer.iter(),
@@ -145,7 +163,7 @@ class lbfgs(object):
        and self.weights.w > 0.0 and self.iso_restraints is not None):
       use_hd = False
       if(self.fmodels.fmodel_n is not None or
-         self.model.xray_structure.scattering_type_registry_params.table == "neutron" or
+         self.all_params.main.scattering_table == "neutron" or
          self.h_params.refine == "individual"):
         use_hd = True
       energies_adp = self.model.energies_adp(

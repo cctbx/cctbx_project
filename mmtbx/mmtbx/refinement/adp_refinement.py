@@ -94,6 +94,7 @@ class manager(object):
             self,
             fmodels,
             model,
+            all_params,
             group_adp_selections   = None,
             group_adp_selections_h = None,
             group_adp_params       = group_adp_master_params.extract(),
@@ -172,7 +173,8 @@ class manager(object):
        model.xray_structure = fmodels.fmodel_xray().xray_structure
 
     if(refine_adp_individual):
-       refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log)
+       refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log,
+       all_params = all_params)
 
     if(refine_adp_group):
        print_statistics.make_sub_header(text= "group isotropic ADP refinement",
@@ -188,7 +190,8 @@ class manager(object):
           log                      = log)
     time_adp_refinement_py += timer.elapsed()
 
-def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log):
+def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restraints_params, h_params, log,
+              all_params):
   model.set_refine_individual_adp()
   print_statistics.make_sub_header(text="Individual ADP refinement", out = log)
   lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
@@ -215,6 +218,7 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
       fmodels                  = fmodels,
       model                    = model,
       refine_adp               = True,
+      all_params               = all_params,
       lbfgs_termination_params = lbfgs_termination_params,
       iso_restraints           = adp_restraints_params.iso,
       verbose                  = 0,
@@ -253,6 +257,7 @@ def refine_adp(model, fmodels, target_weights, individual_adp_params, adp_restra
         iso_restraints           = adp_restraints_params.iso,
         verbose                  = 0,
         target_weights           = target_weights,
+        all_params               = all_params,
         h_params                 = h_params)
       r_free_ = fmodels.fmodel_xray().r_free()
       if(target_weights.twp.optimize_wxu):
