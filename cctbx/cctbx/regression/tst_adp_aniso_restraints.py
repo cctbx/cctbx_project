@@ -68,7 +68,7 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
                #print "   fin.diff.= %10.5f anal.= %10.5f diff.= %10.5f"%(g1, g2, g1-g2)
                assert approx_equal(g1,g2,1.e-4)
         if(fl.use_u_iso()):
-           sel = flex.bool(xray_structure.scatterers().size(), True)
+           sel = xray_structure.use_u_iso()
            xrs1 = xray_structure.deep_copy_scatterers()
            xrs2 = xray_structure.deep_copy_scatterers()
            sc1  = xrs1.scatterers()
@@ -77,8 +77,8 @@ def fd(xray_structure, restraints_manager, eps=1.e-2):
            us2 = sc1.extract_u_iso()
            us1[i_seq] = us1[i_seq] - eps
            us2[i_seq] = us2[i_seq] + eps
-           sc1.set_u_iso(us1, sel)
-           sc2.set_u_iso(us2, sel)
+           sc1.set_u_iso(us1, sel, uc)
+           sc2.set_u_iso(us2, sel, uc)
            adp_ro1 = cctbx.adp_restraints.adp_aniso_restraints(
                                       xray_structure     = xrs1,
                                       restraints_manager = restraints_manager)

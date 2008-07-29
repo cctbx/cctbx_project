@@ -351,13 +351,18 @@ namespace cctbx { namespace xray { namespace {
   set_u_iso(
     af::ref<scatterer<> > const& self,
     af::const_ref<double> const& u_iso,
-    af::const_ref<bool> const& selection)
+    af::const_ref<bool> const& selection,
+    uctbx::unit_cell const& unit_cell)
   {
     CCTBX_ASSERT(self.size() == u_iso.size());
     CCTBX_ASSERT(self.size() == selection.size());
     for(std::size_t i=0;i<self.size();i++) {
       if(self[i].flags.use_u_iso() && selection[i]) {
          self[i].u_iso = u_iso[i];
+      }
+      if(self[i].flags.use_u_aniso() && selection[i]) {
+         self[i].u_star = adptbx::u_cart_as_u_star(unit_cell,
+           scitbx::sym_mat3<double>(u_iso[i],u_iso[i],u_iso[i],0,0,0));
       }
     }
   }
@@ -648,7 +653,7 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_u_total_as_u_cart", cctbx::xray::extract_u_total_as_u_cart,
         (arg_("unit_cell")))
       .def("set_u_iso", cctbx::xray::set_u_iso,
-        (arg_("u_iso"),arg_("selection")))
+        (arg_("u_iso"),arg_("selection"),arg_("unit_cell")))
       .def("extract_u_star", cctbx::xray::extract_u_star)
       .def("set_u_star", cctbx::xray::set_u_star,
         (arg_("u_star")))

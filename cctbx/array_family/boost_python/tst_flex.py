@@ -146,15 +146,15 @@ def exercise_flex_xray_scatterer():
   assert approx_equal(a.extract_u_iso(), (0.0, -1.0, -1.0))
   assert approx_equal(a.extract_u_iso_or_u_equiv(unit_cell=uc),
     (0.0, 258, 236+1/3.))
-  a.set_u_iso(u_iso=flex.double((3,4,5)), selection=flex.bool(a.size(), True))
+  a.set_u_iso(u_iso=flex.double((3,4,5)), selection=flex.bool(a.size(), True),
+    unit_cell = uc)
   assert approx_equal(a.extract_u_iso(), (3,-1,-1))
   assert approx_equal(a.extract_u_iso_or_u_equiv(unit_cell=uc),
-    (3, 258, 236+1/3.))
+    (3, 4, 5))
   assert approx_equal(a[1].u_iso, -1)
-  assert approx_equal(a.extract_u_star(),
-     [(-1,-1,-1,-1,-1,-1),
-      (1,2,3,-0.1,0.2,-0.3),
-      (3,1,2,-0.2,0.3,-0.1)])
+  u_cart_answer = [(-1.0, -1.0, -1.0, -1.0, -1.0, -1.0),
+                   (4, 4, 4, 0, 0, 0), (5, 5, 5, 0, 0, 0)]
+  assert approx_equal(a.extract_u_cart(uc), u_cart_answer)
   a.set_u_star(u_star=flex.sym_mat3_double(
      [(-1,-2,-1,-1,-1,-1),
       (1,2,3,-0.6,0.2,-0.3),
