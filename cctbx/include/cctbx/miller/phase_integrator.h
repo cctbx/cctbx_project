@@ -102,6 +102,27 @@ namespace cctbx { namespace miller {
       }
 
 
+    protected:
+      typename hendrickson_lattman<FloatType>::phase_integration_cos_sin_table
+        cos_sin_table_;
+  };
+
+ template <typename FloatType=double>
+  class phase_entropy
+  {
+    public:
+      //! Initialization of internal cos and sin lookup table.
+      phase_entropy(unsigned n_steps=360/5)
+      :
+        n_steps_(n_steps)
+      {
+        CCTBX_ASSERT(n_steps > 0);
+      }
+
+      //! Number of integration steps as passed to the constructor.
+      unsigned
+      n_steps() const { return n_steps_; }
+
      //! Computation of phase entropy
      FloatType entropy_single(
         sgtbx::phase_info const& phase_info,
@@ -140,12 +161,12 @@ namespace cctbx { namespace miller {
           p_b = p_b / norma;
           result = p_a*std::log(p_a+1e-12) + p_b*std::log(p_b+1e-12);
           result = - result / std::log(2.0);
-
+          result = 1.0 - result;
           return (result);
         }
         else{ // system is not centric
           scitbx::af::shared<f_t> tmp;
-          f_t angle=0, result=0, step=cos_sin_table_.angular_step;
+          f_t angle=0, result=0, step=360.0/n_steps_;
           f_t norma=0, tmp2;
           for (int ii=0 ; ii<n_steps() ; ii++){
             angle = ii*step;
@@ -163,15 +184,18 @@ namespace cctbx { namespace miller {
             }
           }
           result = 0;
-          for (int ii=0 ; ii<n_steps() ; ii++){
+          for (int ii=0 ; ii<n_steps_ ; ii++){
             tmp2 = std::exp(  (tmp[ii]-max_arg) );
             tmp[ii] = tmp2;
             norma+=tmp2;
           }
-          for (int ii=0 ; ii<n_steps() ; ii++){
+          for (int ii=0 ; ii<n_steps_ ; ii++){
              result += (tmp[ii]/norma)*std::log(tmp[ii]/norma+1e-12); // add small number to avoid very small number issues.
           }
-          return ( -result/std::log(360.0) );
+          result = -result/std::log(2.0);
+          result = std::log(360.0)/std::log(2.0) - result;
+
+          return ( result );
         }
 
 
@@ -180,7 +204,7 @@ namespace cctbx { namespace miller {
 
      // Computation of phase entropy
      af::shared<FloatType>
-     entropy(
+     relative_entropy(
         sgtbx::space_group const& space_group,
         af::const_ref<miller::index<> > const& miller_indices,
         af::const_ref<hendrickson_lattman<FloatType> > const&
@@ -200,8 +224,7 @@ namespace cctbx { namespace miller {
      }
 
     protected:
-      typename hendrickson_lattman<FloatType>::phase_integration_cos_sin_table
-        cos_sin_table_;
+      std::size_t n_steps_;
   };
 
 }} // namespace cctbx::miller
