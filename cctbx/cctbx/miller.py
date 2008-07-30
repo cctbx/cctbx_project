@@ -1754,13 +1754,13 @@ Options: return_binned_data -> Determines if you receive a binned object rather 
     assert ([return_binned_data,return_mean]).count(True)!=2
 
     if self.is_hendrickson_lattman_array():
-      integrator = phase_integrator(n_steps=360)
-      result = integrator.entropy(self.space_group(), self.indices(), self.data() )
+      integrator = phase_entropy(n_steps=360)
+      result = integrator.relative_entropy(self.space_group(), self.indices(), self.data() )
       if exponentiate:
         centric_flags = self.centric_flags().data()
         cen           = flex.exp( math.log(2.0)*result )
         cen           = cen.set_selected( ~centric_flags, 0 )
-        acen          = flex.exp( math.log(360.0)*result )
+        acen          = flex.exp( math.log(2.0)*result )
         acen          = acen.set_selected(  centric_flags, 0 )
         result        = cen + acen
       if not return_binned_data:
