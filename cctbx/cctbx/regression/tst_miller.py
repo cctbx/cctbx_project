@@ -1321,24 +1321,16 @@ def exercise_phase_integrals(space_group_info):
     # test the entropy calculations: maximum uncertainty
     sg_hl = generate_random_hl(miller_set=miller_set, coeff_range=1E-12,max_centric_multiplier=1E-12)
     mean_entropy = sg_hl.phase_entropy(False,False,True)
-    mean_phunc = sg_hl.phase_entropy(True,False,True)
-    assert mean_entropy > 0.98
-    if miller_set.space_group() == sgtbx.space_group_info( "P1" ).group():
-      assert mean_phunc > 359
-    if miller_set.space_group() == sgtbx.space_group_info( "P-1" ).group():
-      assert mean_phunc > 1.99
+    assert mean_entropy < 1e-3
 
 
     # test the entropy calculations: no uncertainty
     sg_hl = generate_random_hl(miller_set=miller_set, coeff_range=1E-12,set_a=90000.0)
     mean_entropy = sg_hl.phase_entropy(False,False,True)
-    mean_phunc = sg_hl.phase_entropy(True,False,True)
-    assert mean_entropy < 0.01
     if miller_set.space_group() == sgtbx.space_group_info( "P1" ).group():
-      assert mean_phunc < 1.1
+      assert mean_entropy > 8.2
     if miller_set.space_group() == sgtbx.space_group_info( "P-1" ).group():
-      assert mean_phunc < 1.1
-
+      assert mean_entropy > 0.99
 
 
 
