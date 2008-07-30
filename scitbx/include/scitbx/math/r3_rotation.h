@@ -14,9 +14,9 @@ namespace scitbx { namespace math {
   /*! http://skal.planet-d.net/demo/matrixfaq.htm
    */
   template <typename FloatType>
-  scitbx::mat3<FloatType>
+  mat3<FloatType>
   axis_and_angle_as_matrix(
-    scitbx::vec3<FloatType> const& axis,
+    vec3<FloatType> const& axis,
     FloatType angle,
     bool deg=false,
     FloatType const& min_axis_length=1.e-15)
@@ -34,7 +34,7 @@ namespace scitbx { namespace math {
     u /= l;
     v /= l;
     w /= l;
-    if (deg) angle *= scitbx::constants::pi_180;
+    if (deg) angle *= constants::pi_180;
     FloatType c = std::cos(angle);
     FloatType s = std::sin(angle);
     FloatType oc = 1-c;
@@ -44,7 +44,7 @@ namespace scitbx { namespace math {
     FloatType us = u*s;
     FloatType vs = v*s;
     FloatType ws = w*s;
-    return scitbx::mat3<FloatType>(
+    return mat3<FloatType>(
        c + u*uoc,
      -ws + u*voc,
       vs + u*woc,
@@ -98,7 +98,7 @@ namespace scitbx { namespace math {
   struct axis_and_angle_from_matrix
   {
     //! Normalized rotation axis.
-    scitbx::vec3<FloatType> axis;
+    vec3<FloatType> axis;
     //! Rotation angle in radians.
     FloatType angle_rad;
 
@@ -106,10 +106,10 @@ namespace scitbx { namespace math {
     axis_and_angle_from_matrix() {}
 
     //! Computation of rotation axis and angle.
-    axis_and_angle_from_matrix(scitbx::mat3<FloatType> const& r)
+    axis_and_angle_from_matrix(mat3<FloatType> const& r)
     {
       // obtain axis by solving the system r-i=0
-      scitbx::mat3<FloatType> m_work(
+      mat3<FloatType> m_work(
         r[0]-1, r[1],   r[2],
         r[3],   r[4]-1, r[5],
         r[6],   r[7],   r[8]-1);
@@ -133,7 +133,7 @@ namespace scitbx { namespace math {
       // determine basis vector b leading to maximum length of axis x b,
       // with b=(1,0,0), b=(0,1,0), b=(0,0,1). This leads to a vector
       // perpendicular to axis. This vector is normalized.
-      scitbx::vec3<FloatType> perp;
+      vec3<FloatType> perp;
       if (vv >= uu) {
         if (ww >= uu) {
           l = std::sqrt(v*v+w*w);
@@ -153,10 +153,10 @@ namespace scitbx { namespace math {
         perp[0] = v/l; perp[1] = -u/l; perp[2] = 0;
       }
       // apply rotation to the perpendicular vector
-      scitbx::vec3<FloatType> r_perp = r * perp;
+      vec3<FloatType> r_perp = r * perp;
       // determine the angle
       FloatType cos_angle = perp * r_perp;
-      if      (cos_angle <= -1) angle_rad = scitbx::constants::pi;
+      if      (cos_angle <= -1) angle_rad = constants::pi;
       else if (cos_angle >=  1) angle_rad = 0;
       else {
         angle_rad = std::acos(cos_angle);
@@ -171,11 +171,11 @@ namespace scitbx { namespace math {
     angle(bool deg=false) const
     {
       if (!deg) return angle_rad;
-      return angle_rad / scitbx::constants::pi_180;
+      return angle_rad / constants::pi_180;
     }
 
     //! Reconstructs the rotation matrix using axis_and_angle_as_matrix().
-    scitbx::mat3<FloatType>
+    mat3<FloatType>
     as_matrix() const
     {
       return axis_and_angle_as_matrix(axis, angle_rad);
@@ -189,15 +189,15 @@ namespace scitbx { namespace math {
       See also: axis_and_angle_as_matrix()
    */
   template <typename FloatType>
-  scitbx::mat3<FloatType>
+  mat3<FloatType>
   vector_to_vector(
-    scitbx::vec3<FloatType> const& given_unit_vector,
-    scitbx::vec3<FloatType> const& target_unit_vector,
+    vec3<FloatType> const& given_unit_vector,
+    vec3<FloatType> const& target_unit_vector,
     FloatType const& sin_angle_is_zero_threshold=1.e-10)
   {
     typedef FloatType ft;
-    typedef scitbx::mat3<ft> m3;
-    scitbx::vec3<ft> perp = given_unit_vector.cross(target_unit_vector);
+    typedef mat3<ft> m3;
+    vec3<ft> perp = given_unit_vector.cross(target_unit_vector);
     ft c = given_unit_vector * target_unit_vector;
     ft s = perp.length();
     if (s < sin_angle_is_zero_threshold) {
@@ -245,13 +245,13 @@ namespace scitbx { namespace math {
       The implementation is a simplification of vector_to_vector().
    */
   template <typename FloatType>
-  scitbx::mat3<FloatType>
+  mat3<FloatType>
   vector_to_001(
-    scitbx::vec3<FloatType> const& given_unit_vector,
+    vec3<FloatType> const& given_unit_vector,
     FloatType const& sin_angle_is_zero_threshold=1.e-10)
   {
     typedef FloatType ft;
-    typedef scitbx::mat3<ft> m3;
+    typedef mat3<ft> m3;
     ft x = given_unit_vector[0];
     ft y = given_unit_vector[1];
     ft c = given_unit_vector[2];
@@ -280,13 +280,13 @@ namespace scitbx { namespace math {
       The implementation is a simplification of vector_to_vector().
    */
   template <typename FloatType>
-  scitbx::mat3<FloatType>
+  mat3<FloatType>
   vector_to_010(
-    scitbx::vec3<FloatType> const& given_unit_vector,
+    vec3<FloatType> const& given_unit_vector,
     FloatType const& sin_angle_is_zero_threshold=1.e-10)
   {
     typedef FloatType ft;
-    typedef scitbx::mat3<ft> m3;
+    typedef mat3<ft> m3;
     ft x = given_unit_vector[0];
     ft c = given_unit_vector[1];
     ft z = given_unit_vector[2];
@@ -315,13 +315,13 @@ namespace scitbx { namespace math {
       The implementation is a simplification of vector_to_vector().
    */
   template <typename FloatType>
-  scitbx::mat3<FloatType>
+  mat3<FloatType>
   vector_to_100(
-    scitbx::vec3<FloatType> const& given_unit_vector,
+    vec3<FloatType> const& given_unit_vector,
     FloatType const& sin_angle_is_zero_threshold=1.e-10)
   {
     typedef FloatType ft;
-    typedef scitbx::mat3<ft> m3;
+    typedef mat3<ft> m3;
     ft c = given_unit_vector[0];
     ft y = given_unit_vector[1];
     ft z = given_unit_vector[2];

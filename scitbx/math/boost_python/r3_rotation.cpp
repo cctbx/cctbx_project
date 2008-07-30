@@ -22,7 +22,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("r3_rotation_axis_and_angle_from_matrix", no_init)
-        .def(init<scitbx::mat3<double> const&>((arg_("r"))))
+        .def(init<mat3<double> const&>((arg_("r"))))
         .add_property("axis", make_getter(&w_t::axis, rbv()))
         .def("angle", &w_t::angle, angle_overloads((arg_("deg")=false)))
         .def("as_matrix", &w_t::as_matrix)
@@ -58,8 +58,8 @@ namespace boost_python {
   {
     using namespace boost::python;
     def("r3_rotation_axis_and_angle_as_matrix",
-      (scitbx::mat3<double>(*)(
-        scitbx::vec3<double> const&, double, bool deg, double const&))
+      (mat3<double>(*)(
+        vec3<double> const&, double, bool deg, double const&))
       r3_rotation::axis_and_angle_as_matrix,
         r3_rotation_axis_and_angle_as_matrix_overloads((
           arg_("axis"),
@@ -70,9 +70,9 @@ namespace boost_python {
     r3_rotation::axis_and_angle_from_matrix_wrappers::wrap();
 
     def("r3_rotation_vector_to_vector",
-      (scitbx::mat3<double>(*)(
-        scitbx::vec3<double> const&,
-        scitbx::vec3<double> const&,
+      (mat3<double>(*)(
+        vec3<double> const&,
+        vec3<double> const&,
         double const&))
       r3_rotation::vector_to_vector,
         r3_rotation_vector_to_vector_overloads((
@@ -81,8 +81,8 @@ namespace boost_python {
           arg_("sin_angle_is_zero_threshold")=1.e-10)));
 
     def("r3_rotation_vector_to_001",
-      (scitbx::mat3<double>(*)(
-        scitbx::vec3<double> const&,
+      (mat3<double>(*)(
+        vec3<double> const&,
         double const&))
       r3_rotation::vector_to_001,
         r3_rotation_vector_to_001_overloads((
@@ -90,8 +90,8 @@ namespace boost_python {
           arg_("sin_angle_is_zero_threshold")=1.e-10)));
 
     def("r3_rotation_vector_to_010",
-      (scitbx::mat3<double>(*)(
-        scitbx::vec3<double> const&,
+      (mat3<double>(*)(
+        vec3<double> const&,
         double const&))
       r3_rotation::vector_to_010,
         r3_rotation_vector_to_010_overloads((
@@ -99,8 +99,8 @@ namespace boost_python {
           arg_("sin_angle_is_zero_threshold")=1.e-10)));
 
     def("r3_rotation_vector_to_100",
-      (scitbx::mat3<double>(*)(
-        scitbx::vec3<double> const&,
+      (mat3<double>(*)(
+        vec3<double> const&,
         double const&))
       r3_rotation::vector_to_100,
         r3_rotation_vector_to_100_overloads((
