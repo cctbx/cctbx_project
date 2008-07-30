@@ -125,7 +125,9 @@ int main(int /*argc*/, char* /*argv*/[])
   }
   {
     vec3<double> a(0.,0.,0.);
-    check_true(__LINE__, std::fabs(a * a.ortho()) == 0);
+    verify(__LINE__, a, a.ortho());
+    vec3<double> z(0.,0.,1.);
+    verify(__LINE__, a.ortho(true), z);
   }
   {
     vec3<double> a(1., -2., 5.);
