@@ -158,29 +158,11 @@ namespace scitbx {
         return eta * (*this) - (eta * dot + std::sqrt(k)) * n;
       }
 
-      //! Returns an orthogonal vector.
-      /*! Returns a vector that is orthogonal to this.
+      //! Returns a vector that is orthogonal to this.
+      /*! If normalize is true, given the null vector (within
+          floating-point precision) the result is (0,0,1).
        */
-      vec3 ortho(bool normalize=false) const
-      {
-        SCITBX_ASSERT(!normalize || !is_zero());
-        NumType x = abs_(this->elems[0]);
-        NumType y = abs_(this->elems[1]);
-        NumType z = abs_(this->elems[2]);
-        // Is z the smallest element? Then use x and y.
-        if (z <= x && z <= y) {
-          vec3 result(-this->elems[1], this->elems[0], 0);
-          return normalize ? result/std::sqrt(x*x + y*y) : result;
-        }
-        // Is y smallest element? Then use x and z.
-        if (y <= x && y <= z) {
-          vec3 result(-this->elems[2], 0, this->elems[0]);
-          return normalize ? result/std::sqrt(x*x + z*z) : result;
-        }
-        // x is smallest.
-        vec3 result(0, -this->elems[2], this->elems[1]);
-        return normalize ? result/std::sqrt(y*y + z*z) : result;
-      }
+      vec3 ortho(bool normalize=false) const;
 
       //! Copies the vector to a tiny instance.
       af::tiny<NumType, 3>
@@ -614,6 +596,45 @@ namespace scitbx {
     vec3<NumType> const& v)
   {
     return v.length();
+  }
+
+  template <typename NumType>
+  vec3<NumType>
+  vec3<NumType>::ortho(bool normalize) const
+  {
+    const NumType* e = this->elems;
+    NumType x = abs_(e[0]);
+    NumType y = abs_(e[1]);
+    NumType z = abs_(e[2]);
+    NumType u, v, w;
+    // Is z the smallest element? Then use x and y.
+    if (z <= x && z <= y) {
+      u = e[1]; v = -e[0]; w = 0;
+      if (normalize) {
+        NumType d = std::sqrt(x*x + y*y);
+        if (d != 0) { u /= d; v /= d; }
+        else { u = 0; v = 0; w = 1; }
+      }
+    }
+    // Is y smallest element? Then use x and z.
+    else if (y <= x && y <= z) {
+      u = -e[2]; v = 0; w = e[0];
+      if (normalize) {
+        NumType d = std::sqrt(x*x + z*z);
+        if (d != 0) { u /= d; w /= d; }
+        else { u = 0; v = 0; w = 1; }
+      }
+    }
+    // x is smallest.
+    else {
+      u = 0; v = e[2]; w = -e[1];
+      if (normalize) {
+        NumType d = std::sqrt(y*y + z*z);
+        if (d != 0) { v /= d; w /= d; }
+        else { u = 0; v = 0; w = 1; }
+      }
+    }
+    return vec3<NumType>(u,v,w);
   }
 
 } // namespace scitbx
