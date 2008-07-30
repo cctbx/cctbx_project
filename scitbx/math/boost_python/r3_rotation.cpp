@@ -38,6 +38,22 @@ namespace boost_python {
     r3_rotation_axis_and_angle_as_matrix_overloads,
     r3_rotation::axis_and_angle_as_matrix, 2, 4)
 
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    r3_rotation_vector_to_vector_overloads,
+    r3_rotation::vector_to_vector, 2, 3)
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    r3_rotation_vector_to_001_overloads,
+    r3_rotation::vector_to_001, 1, 2)
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    r3_rotation_vector_to_010_overloads,
+    r3_rotation::vector_to_010, 1, 2)
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
+    r3_rotation_vector_to_100_overloads,
+    r3_rotation::vector_to_100, 1, 2)
+
   void wrap_r3_rotation()
   {
     using namespace boost::python;
@@ -52,6 +68,44 @@ namespace boost_python {
           arg_("min_axis_length")=1.e-15)));
 
     r3_rotation::axis_and_angle_from_matrix_wrappers::wrap();
+
+    def("r3_rotation_vector_to_vector",
+      (scitbx::mat3<double>(*)(
+        scitbx::vec3<double> const&,
+        scitbx::vec3<double> const&,
+        double const&))
+      r3_rotation::vector_to_vector,
+        r3_rotation_vector_to_vector_overloads((
+          arg_("given_unit_vector"),
+          arg_("target_unit_vector"),
+          arg_("sin_angle_is_zero_threshold")=1.e-10)));
+
+    def("r3_rotation_vector_to_001",
+      (scitbx::mat3<double>(*)(
+        scitbx::vec3<double> const&,
+        double const&))
+      r3_rotation::vector_to_001,
+        r3_rotation_vector_to_001_overloads((
+          arg_("given_unit_vector"),
+          arg_("sin_angle_is_zero_threshold")=1.e-10)));
+
+    def("r3_rotation_vector_to_010",
+      (scitbx::mat3<double>(*)(
+        scitbx::vec3<double> const&,
+        double const&))
+      r3_rotation::vector_to_010,
+        r3_rotation_vector_to_010_overloads((
+          arg_("given_unit_vector"),
+          arg_("sin_angle_is_zero_threshold")=1.e-10)));
+
+    def("r3_rotation_vector_to_100",
+      (scitbx::mat3<double>(*)(
+        scitbx::vec3<double> const&,
+        double const&))
+      r3_rotation::vector_to_100,
+        r3_rotation_vector_to_100_overloads((
+          arg_("given_unit_vector"),
+          arg_("sin_angle_is_zero_threshold")=1.e-10)));
   }
 
 }}} // namespace scitbx::math::boost_python

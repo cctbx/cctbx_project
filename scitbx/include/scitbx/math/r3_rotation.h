@@ -182,6 +182,167 @@ namespace scitbx { namespace math {
     }
   };
 
+  //! Returns rotation matrix mapping given_unit_vector onto target_unit_vector.
+  /*! It is not checked if the input vectors are unit vectors.
+      The result is meaningless if this is not true.
+
+      See also: axis_and_angle_as_matrix()
+   */
+  template <typename FloatType>
+  scitbx::mat3<FloatType>
+  vector_to_vector(
+    scitbx::vec3<FloatType> const& given_unit_vector,
+    scitbx::vec3<FloatType> const& target_unit_vector,
+    FloatType const& sin_angle_is_zero_threshold=1.e-10)
+  {
+    typedef FloatType ft;
+    typedef scitbx::mat3<ft> m3;
+    scitbx::vec3<ft> perp = given_unit_vector.cross(target_unit_vector);
+    ft c = given_unit_vector * target_unit_vector;
+    ft s = perp.length();
+    if (s < sin_angle_is_zero_threshold) {
+      if (c > 0) {
+        return m3(1,0,0,0,1,0,0,0,1);
+      }
+      perp = target_unit_vector.ortho(/* normalize */ true);
+      // specialization of general code below, with s=0 and c=-1
+      ft u = perp[0];
+      ft v = perp[1];
+      ft w = perp[2];
+      ft tu = 2*u;
+      ft tv = 2*v;
+      return m3(tu*u-1, tu*v, tu*w, tu*v, tv*v-1, tv*w, tu*w, tv*w, 2*w*w-1);
+    }
+    ft us = perp[0];
+    ft vs = perp[1];
+    ft ws = perp[2];
+    ft u = us / s;
+    ft v = vs / s;
+    ft w = ws / s;
+    ft oc = 1-c;
+    ft uoc = u*oc;
+    ft voc = v*oc;
+    ft woc = w*oc;
+    ft uvoc = u*voc;
+    ft uwoc = u*woc;
+    ft vwoc = v*woc;
+    return m3(
+       c + u*uoc,
+     -ws + uvoc,
+      vs + uwoc,
+      ws + uvoc,
+       c + v*voc,
+     -us + vwoc,
+     -vs + uwoc,
+      us + vwoc,
+       c + w*woc);
+  }
+
+  //! Returns rotation matrix mapping given_unit_vector onto (0,0,1).
+  /*! It is not checked if the input vector is a unit vector.
+      The result is meaningless if this is not true.
+
+      The implementation is a simplification of vector_to_vector().
+   */
+  template <typename FloatType>
+  scitbx::mat3<FloatType>
+  vector_to_001(
+    scitbx::vec3<FloatType> const& given_unit_vector,
+    FloatType const& sin_angle_is_zero_threshold=1.e-10)
+  {
+    typedef FloatType ft;
+    typedef scitbx::mat3<ft> m3;
+    ft x = given_unit_vector[0];
+    ft y = given_unit_vector[1];
+    ft c = given_unit_vector[2];
+    ft s = std::sqrt(x*x + y*y);
+    if (s < sin_angle_is_zero_threshold) {
+      if (c > 0) {
+        return m3(1,0,0,0,1,0,0,0,1);
+      }
+      return m3(1,0,0,0,-1,0,0,0,-1);
+    }
+    ft us = y;
+    ft vs = -x;
+    ft u = us / s;
+    ft v = vs / s;
+    ft oc = 1-c;
+    ft uoc = u*oc;
+    ft voc = v*oc;
+    ft uvoc = u*voc;
+    return m3(c + u*uoc, uvoc, vs, uvoc, c + v*voc, -us, -vs, us, c);
+  }
+
+  //! Returns rotation matrix mapping given_unit_vector onto (0,1,0).
+  /*! It is not checked if the input vector is a unit vector.
+      The result is meaningless if this is not true.
+
+      The implementation is a simplification of vector_to_vector().
+   */
+  template <typename FloatType>
+  scitbx::mat3<FloatType>
+  vector_to_010(
+    scitbx::vec3<FloatType> const& given_unit_vector,
+    FloatType const& sin_angle_is_zero_threshold=1.e-10)
+  {
+    typedef FloatType ft;
+    typedef scitbx::mat3<ft> m3;
+    ft x = given_unit_vector[0];
+    ft c = given_unit_vector[1];
+    ft z = given_unit_vector[2];
+    ft s = std::sqrt(x*x + z*z);
+    if (s < sin_angle_is_zero_threshold) {
+      if (c > 0) {
+        return m3(1,0,0,0,1,0,0,0,1);
+      }
+      return m3(1,0,0,0,-1,0,0,0,-1);
+    }
+    ft us = -z;
+    ft ws = x;
+    ft u = us / s;
+    ft w = ws / s;
+    ft oc = 1-c;
+    ft uoc = u*oc;
+    ft woc = w*oc;
+    ft uwoc = u*woc;
+    return m3(c + u*uoc, -ws, uwoc, ws, c, -us, uwoc, us, c + w*woc);
+  }
+
+  //! Returns rotation matrix mapping given_unit_vector onto (1,0,0).
+  /*! It is not checked if the input vector is a unit vector.
+      The result is meaningless if this is not true.
+
+      The implementation is a simplification of vector_to_vector().
+   */
+  template <typename FloatType>
+  scitbx::mat3<FloatType>
+  vector_to_100(
+    scitbx::vec3<FloatType> const& given_unit_vector,
+    FloatType const& sin_angle_is_zero_threshold=1.e-10)
+  {
+    typedef FloatType ft;
+    typedef scitbx::mat3<ft> m3;
+    ft c = given_unit_vector[0];
+    ft y = given_unit_vector[1];
+    ft z = given_unit_vector[2];
+    ft s = std::sqrt(y*y + z*z);
+    if (s < sin_angle_is_zero_threshold) {
+      if (c > 0) {
+        return m3(1,0,0,0,1,0,0,0,1);
+      }
+      return m3(-1,0,0,0,1,0,0,0,-1);
+    }
+    ft vs = z;
+    ft ws = -y;
+    ft v = vs / s;
+    ft w = ws / s;
+    ft oc = 1-c;
+    ft voc = v*oc;
+    ft woc = w*oc;
+    ft vwoc = v*woc;
+    return m3(c, -ws, vs, ws, c + v*voc, vwoc, -vs, vwoc, c + w*woc);
+  }
+
   //! Matrix from quaternion
   template <typename FloatType>
   const mat3< FloatType >
