@@ -33,19 +33,39 @@ namespace {
           arg_("space_group"),
           arg_("miller_indices"),
           arg_("hendrickson_lattman_coefficients")))
-        .def("entropy", &w_t::entropy)
- //( (arg_("space_group"))
- //                                      (arg_("miller_indices"))
- //                                      (arg_("hendrickson_lattman_coefficients")) )
       ;
     }
   };
+
+
+
+
+  struct phase_entropy_wrappers
+  {
+    typedef phase_entropy<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("phase_entropy", no_init)
+        .def(init<optional<unsigned> >(arg_("n_steps")=360/5))
+        .def("n_steps", &w_t::n_steps)
+        .def("relative_entropy", &w_t::relative_entropy)
+      ;
+    }
+  };
+
+
+
+
 
 } // namespace <anoymous>
 
   void wrap_phase_integrator()
   {
     phase_integrator_wrappers::wrap();
+    phase_entropy_wrappers::wrap();
   }
 
 }}} // namespace cctbx::miller::boost_python
