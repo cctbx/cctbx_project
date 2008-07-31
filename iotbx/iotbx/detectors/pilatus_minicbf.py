@@ -1,4 +1,4 @@
-import copy
+import copy,re
 from iotbx.detectors.detectorbase import DetectorImageBase
 from iotbx.detectors import ImageException
 
@@ -31,7 +31,10 @@ class PilatusImage(DetectorImageBase):
   def readHeader(self,maxlength=12288): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
       rawdata = open(self.filename,"rb").read(maxlength)
-      assert rawdata.index('''_array_data.header_convention "SLS_1.0"''')>=0
+      # The tag _array_data.header_convention "SLS_1.0" could be with/without quotes "..."
+      pattern = re.compile(r'''_array_data.header_convention[ "]*SLS_1.0''')
+      match = pattern.findall(rawdata)
+      assert len(match)>=1
 
       # read SLS header
       headeropen = rawdata.index("_array_data.header_contents")
