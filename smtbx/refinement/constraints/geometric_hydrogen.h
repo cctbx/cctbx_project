@@ -20,8 +20,16 @@ namespace constants {
   static double const sin_tetrahedral_angle = std::sin(tetrahedral_angle);
 }
 
+/// Base class for all geometrically constrained hydrogen's -XHn
+/** It uses the curiously recurring template pattern (CRTP) to achieve
+    polymorphism resolved at compile time. It is also a lightweight pattern,
+    i.e. the information needed by its member functions which is shared by
+    many instances, such as unit cell, site symmetry, etc, is not part of the
+    state. Instead it is passed as arguments to those member functions.
 
-template<typename FloatType, class XrayScattererType,
+*/
+template<class DerivedType,
+         typename FloatType, class XrayScattererType,
          class HydrogenIndicesArray,
          template<class> class SharedArray1D=af::shared>
 class geometrical_hydrogens
@@ -31,6 +39,8 @@ class geometrical_hydrogens
     typedef FloatType float_type;
     typedef parameter_map<xray_scatterer_type> parameter_map_type;
 
+    /// Construct a constraint for the scatterers with the given indices
+    /// in the array to be passed to the other member functions.
     geometrical_hydrogens(int pivot,
                           HydrogenIndicesArray hydrogens,
                           float_type bond_length,
@@ -53,6 +63,7 @@ class geometrical_hydrogens
     float_type bond_length() { return l; }
     void set_bond_length(float_type l_) { l = l_; }
 
+    /// Initialise the constraint for the given context.
     void initialise_in_context(
       uctbx::unit_cell const &unit_cell,
       sgtbx::site_symmetry_table const &site_symmetry_table,
@@ -69,15 +80,49 @@ class geometrical_hydrogens
         }
         constraint_flags[i_hydrogens[i]].set_grad_site(false);
       }
+      if (!on_) return;
+      heir().do_initialise_in_context(unit_cell,
+                                      site_symmetry_table,
+                                      scatterers,
+                                      constraint_flags,
+                                      already_constrained);
     }
 
-    /// Riding
-    void ride(uctbx::unit_cell const &unit_cell,
-              sgtbx::site_symmetry_table const &site_symmetry_table,
-              af::const_ref<xray_scatterer_type> const &scatterers,
-              parameter_map_type const &crystallographic_parameter_map,
-              af::ref<float_type> const &crystallographic_gradients)
-  {
+    /// Called by initialise_in_context
+    /** Heirs may override it if extra computations are needed to initialise
+        the constraint
+    */
+    void do_initialise_in_context(
+      uctbx::unit_cell const &unit_cell,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::const_ref<xray_scatterer_type> const &scatterers,
+      af::ref<xray::scatterer_flags> const &constraint_flags,
+      std::map<int, xray::scatterer_flags> &already_constrained)
+    {}
+
+    /// Compute the derivatives of Fc wrt to all parameters.
+    /** It always does at least make the Hydrogen ride on the pivot atom.
+
+        \arg crystallographic_gradients On entry, it contains the
+        derivatives of Fc wrt the crystallographic parameters. If this
+        constraint requires some of those parameters to be function of others,
+        it may modify the relevant elements of this array.
+
+        \arg reparametrization_gradients This function must append to this
+        array the derivatives wrt to the non-crystallographic parameters that
+        this constraint is expressed with.
+    */
+    void compute_gradients(
+      uctbx::unit_cell const &uc,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::const_ref<xray_scatterer_type> const &scatterers,
+      parameter_map_type const &crystallographic_parameter_map,
+      af::ref<float_type> const &crystallographic_gradients,
+      SharedArray1D<float_type> reparametrization_gradients)
+    {
+      if (!on_) return;
+
+      // Riding
       for(int i=0; i < i_hydrogens.size(); ++i) {
         int i_h = i_hydrogens[i];
         SMTBX_ASSERT(scatterers[i_h].flags.grad_site())(i_h);
@@ -88,7 +133,55 @@ class geometrical_hydrogens
             += crystallographic_gradients[i_grad_site_h + j];
         }
       }
+
+      heir().do_compute_gradients(uc,
+                                  site_symmetry_table,
+                                  scatterers,
+                                  crystallographic_parameter_map,
+                                  crystallographic_gradients,
+                                  reparametrization_gradients);
     }
+
+    /// Called by compute_gradients.
+    /** Heirs shall override it if they do more than just riding.
+        The arguments have the same meaning as for compute_gradients.
+    */
+    void do_compute_gradients(
+      uctbx::unit_cell const &uc,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::const_ref<xray_scatterer_type> const &scatterers,
+      parameter_map_type const &crystallographic_parameter_map,
+      af::ref<float_type> const &crystallographic_gradients,
+      SharedArray1D<float_type> reparametrization_gradients)
+    {}
+
+    /// Apply the given shift to update the scatterers.
+    /** \arg crystallographic_shifts Shifts to the parameters of the scatterers
+        \arg reparametrization_shifts Shifts to the non-crystallographic
+        parameters.
+    */
+    void apply_shifts(
+      uctbx::unit_cell const &unit_cell,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::ref<xray_scatterer_type> const &scatterers,
+      parameter_map_type const &crystallographic_parameter_map,
+      af::const_ref<float_type> const &crystallographic_shifts,
+      af::const_ref<float_type> const &reparametrization_shifts)
+    {
+      if (!on_) return;
+      heir().do_apply_reparametrization_shifts(reparametrization_shifts);
+      heir().place_constrained_scatterers(unit_cell,
+                                          site_symmetry_table,
+                                          scatterers);
+    }
+
+    /// Called by apply_shifts
+    /** Heirs shall override it to apply the shifts to the non-crystallographic
+    parameters they hold, if there are any
+    */
+    void do_apply_reparametrization_shifts(
+      af::const_ref<float_type> const &reparametrization_shifts)
+    {}
 
   protected:
     bool on_;
@@ -100,8 +193,68 @@ class geometrical_hydrogens
     float_type l;
 
     int i_reparametrization_begin;
+
+  private:
+    DerivedType &heir() { return static_cast<DerivedType &> (*this); }
 };
 
+
+/// Base class for those configurations with only one hydrogen atom
+template<class DerivedType,
+         typename FloatType, class XrayScattererType,
+         template<class> class SharedArray1D=af::shared>
+class single_geometrical_hydrogen
+  : public geometrical_hydrogens<DerivedType,
+                                 FloatType, XrayScattererType,
+                                 af::tiny<int, 1>,
+                                 SharedArray1D>
+{
+  public:
+    typedef geometrical_hydrogens<DerivedType,
+                                  FloatType, XrayScattererType,
+                                  af::tiny<int, 1>,
+                                  SharedArray1D>
+            base_t;
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::i_reparametrization_begin;
+
+    typedef XrayScattererType xray_scatterer_type;
+    typedef FloatType float_type;
+    typedef parameter_map<xray_scatterer_type> parameter_map_type;
+    typedef cartesian<float_type> cart_t;
+    typedef fractional<float_type> frac_t;
+
+    single_geometrical_hydrogen(int pivot,
+                                int hydrogen,
+                                float_type bond_length,
+                                bool stretching=false)
+      : base_t(pivot, af::tiny<int,1>(hydrogen), bond_length, stretching)
+    {}
+
+    /// Derivative computations for bond stretching
+    void do_compute_gradients(
+      uctbx::unit_cell const &unit_cell,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::const_ref<xray_scatterer_type> const &scatterers,
+      parameter_map_type const &crystallographic_parameter_map,
+      af::ref<float_type> const &crystallographic_gradients,
+      SharedArray1D<float_type> reparametrization_gradients)
+    {
+      if (base_t::stretching()) {
+        i_reparametrization_begin = reparametrization_gradients.size();
+        int i_grad_site_h = crystallographic_parameter_map[i_hydrogens[0]].site;
+        frac_t dF_over_dx_frac(&crystallographic_gradients[i_grad_site_h]);
+        cart_t dF_over_dx = unit_cell.orthogonalize_gradient(dF_over_dx_frac);
+        float_type dF_over_dl = dF_over_dx * e0;
+        reparametrization_gradients.push_back(dF_over_dl);
+      }
+    }
+
+  protected:
+    cart_t e0;
+};
 
 
 /// Model of Y-XH3 with tetrahedral angles
@@ -118,19 +271,24 @@ class geometrical_hydrogens
 template<typename FloatType, class XrayScattererType,
          template<class> class SharedArray1D=af::shared>
 class terminal_X_Hn
-  : public geometrical_hydrogens<FloatType, XrayScattererType,
+  : public geometrical_hydrogens<terminal_X_Hn<FloatType,
+                                               XrayScattererType,
+                                               SharedArray1D>,
+                                 FloatType, XrayScattererType,
                                  af::small<int, 3>,
                                  SharedArray1D>
 {
   public:
-    typedef geometrical_hydrogens<FloatType, XrayScattererType,
-                                 af::small<int, 3>,
-                                 SharedArray1D>
+    typedef geometrical_hydrogens<terminal_X_Hn<FloatType,
+                                                XrayScattererType,
+                                                SharedArray1D>,
+                                  FloatType, XrayScattererType,
+                                  af::small<int, 3>,
+                                  SharedArray1D>
             base_t;
     using base_t::i_pivot;
     using base_t::i_hydrogens;
     using base_t::l;
-    using base_t::on_;
     using base_t::i_reparametrization_begin;
 
     typedef XrayScattererType xray_scatterer_type;
@@ -163,19 +321,13 @@ class terminal_X_Hn
     float_type azimuth() { return phi*180/constants::pi; }
     void set_azimuth(float_type phi_) { phi = phi_*constants::pi/180; }
 
-    void initialise_in_context(
+    void do_initialise_in_context(
       uctbx::unit_cell const &unit_cell,
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
       af::ref<xray::scatterer_flags> const &constraint_flags,
       std::map<int, xray::scatterer_flags> &already_constrained)
     {
-      base_t::initialise_in_context(unit_cell,
-                                    site_symmetry_table,
-                                    scatterers,
-                                    constraint_flags,
-                                    already_constrained);
-      if (!on_) return;
       cart_t x_pn = unit_cell.orthogonalize(scatterers[i_pivot_neighbour].site);
       cart_t x_p  = unit_cell.orthogonalize(scatterers[i_pivot].site);
       e2 = (x_p - x_pn).normalize();
@@ -242,7 +394,7 @@ class terminal_X_Hn
       }
     }
 
-    void compute_gradients(
+    void do_compute_gradients(
       uctbx::unit_cell const &unit_cell,
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
@@ -250,14 +402,6 @@ class terminal_X_Hn
       af::ref<float_type> const &crystallographic_gradients,
       SharedArray1D<float_type> reparametrization_gradients)
     {
-      if (!on_) return;
-
-      base_t::ride(unit_cell,
-                   site_symmetry_table,
-                   scatterers,
-                   crystallographic_parameter_map,
-                   crystallographic_gradients);
-
       if (!rotating() && !base_t::stretching()) return;
 
       using namespace constants;
@@ -290,16 +434,9 @@ class terminal_X_Hn
       }
     }
 
-    void apply_shifts(
-      uctbx::unit_cell const &unit_cell,
-      sgtbx::site_symmetry_table const &site_symmetry_table,
-      af::ref<xray_scatterer_type> const &scatterers,
-      parameter_map_type const &crystallographic_parameter_map,
-      af::const_ref<float_type> const &crystallographic_shifts,
+    void do_apply_reparametrization_shifts(
       af::const_ref<float_type> const &reparametrization_shifts)
     {
-      if (!on_) return;
-
       using namespace constants;
       if (rotating()) {
         float_type delta_phi = reparametrization_shifts[i_dF_over_dphi()];
@@ -309,7 +446,6 @@ class terminal_X_Hn
         float_type delta_l = reparametrization_shifts[i_dF_over_dl()];
         l += delta_l;
       }
-      place_constrained_scatterers(unit_cell, site_symmetry_table, scatterers);
     }
 
   private:
@@ -336,19 +472,24 @@ class terminal_X_Hn
 template<typename FloatType, class XrayScattererType,
          template<class> class SharedArray1D=af::shared>
 class secondary_CH2
-  : public geometrical_hydrogens<FloatType, XrayScattererType,
+  : public geometrical_hydrogens<secondary_CH2<FloatType,
+                                               XrayScattererType,
+                                               SharedArray1D>,
+                                 FloatType, XrayScattererType,
                                  af::tiny<int, 2>,
                                  SharedArray1D>
 {
   public:
-    typedef geometrical_hydrogens<FloatType, XrayScattererType,
-                                 af::tiny<int, 2>,
-                                 SharedArray1D>
+    typedef geometrical_hydrogens<secondary_CH2<FloatType,
+                                                XrayScattererType,
+                                                SharedArray1D>,
+                                  FloatType, XrayScattererType,
+                                  af::tiny<int, 2>,
+                                  SharedArray1D>
             base_t;
     using base_t::i_pivot;
     using base_t::i_hydrogens;
     using base_t::l;
-    using base_t::on_;
     using base_t::i_reparametrization_begin;
 
     typedef XrayScattererType xray_scatterer_type;
@@ -401,7 +542,7 @@ class secondary_CH2
       dx_over_dl[1] = c*e0 - s*e1;
     }
 
-    void compute_gradients(
+    void do_compute_gradients(
       uctbx::unit_cell const &uc,
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
@@ -409,16 +550,7 @@ class secondary_CH2
       af::ref<float_type> const &crystallographic_gradients,
       SharedArray1D<float_type> reparametrization_gradients)
     {
-      if (!on_) return;
-
-      base_t::ride(uc,
-                   site_symmetry_table,
-                   scatterers,
-                   crystallographic_parameter_map,
-                   crystallographic_gradients);
-
       if (!base_t::stretching()) return;
-
       i_reparametrization_begin = reparametrization_gradients.size();
       float_type dF_over_dl = 0;
       for (int i=0; i < 2; ++i) {
@@ -429,18 +561,6 @@ class secondary_CH2
         dF_over_dl += dF_over_dx * dx_over_dl[i];
       }
       reparametrization_gradients.push_back(dF_over_dl);
-    }
-
-    void apply_shifts(
-      uctbx::unit_cell const &unit_cell,
-      sgtbx::site_symmetry_table const &site_symmetry_table,
-      af::ref<xray_scatterer_type> const &scatterers,
-      parameter_map_type const &crystallographic_parameter_map,
-      af::const_ref<float_type> const &crystallographic_shifts,
-      af::const_ref<float_type> const &reparametrization_shifts)
-    {
-      if (!on_) return;
-      place_constrained_scatterers(unit_cell, site_symmetry_table, scatterers);
     }
 
   private:
@@ -470,20 +590,23 @@ dtheta_over_dXY_sq = -0.0349;
 template<typename FloatType, class XrayScattererType,
          template<class> class SharedArray1D=af::shared>
 class tertiary_CH
-  : public geometrical_hydrogens<FloatType, XrayScattererType,
-                                 af::tiny<int, 1>,
-                                 SharedArray1D>
+  : public single_geometrical_hydrogen<tertiary_CH<FloatType,
+                                                   XrayScattererType,
+                                                   SharedArray1D>,
+                                       FloatType, XrayScattererType,
+                                       SharedArray1D>
 {
   public:
-    typedef geometrical_hydrogens<FloatType, XrayScattererType,
-                                 af::tiny<int, 1>,
-                                 SharedArray1D>
+    typedef single_geometrical_hydrogen<tertiary_CH<FloatType,
+                                                    XrayScattererType,
+                                                    SharedArray1D>,
+                                        FloatType, XrayScattererType,
+                                        SharedArray1D>
             base_t;
     using base_t::i_pivot;
     using base_t::i_hydrogens;
     using base_t::l;
-    using base_t::on_;
-    using base_t::i_reparametrization_begin;
+    using base_t::e0;
 
     typedef XrayScattererType xray_scatterer_type;
     typedef FloatType float_type;
@@ -491,13 +614,12 @@ class tertiary_CH
     typedef cartesian<float_type> cart_t;
     typedef fractional<float_type> frac_t;
 
-
     tertiary_CH(int pivot,
                 af::tiny<int, 3> pivot_neighbours,
                 int hydrogen,
                 float_type bond_length,
                 bool stretching=false)
-      : base_t(pivot, af::tiny<int,1>(hydrogen), bond_length, stretching),
+      : base_t(pivot, hydrogen, bond_length, stretching),
         i_pivot_neighbours(pivot_neighbours)
     {}
 
@@ -524,49 +646,73 @@ class tertiary_CH
       scatterers[i_hydrogens[0]].site = unit_cell.fractionalize(x_h);
     }
 
-    void compute_gradients(
-      uctbx::unit_cell const &unit_cell,
-      sgtbx::site_symmetry_table const &site_symmetry_table,
-      af::const_ref<xray_scatterer_type> const &scatterers,
-      parameter_map_type const &crystallographic_parameter_map,
-      af::ref<float_type> const &crystallographic_gradients,
-      SharedArray1D<float_type> reparametrization_gradients)
-    {
-      if (!on_) return;
-
-      base_t::ride(unit_cell,
-                   site_symmetry_table,
-                   scatterers,
-                   crystallographic_parameter_map,
-                   crystallographic_gradients);
-
-      if (base_t::stretching()) {
-        i_reparametrization_begin = reparametrization_gradients.size();
-        int i_grad_site_h = crystallographic_parameter_map[i_hydrogens[0]].site;
-        frac_t dF_over_dx_frac(&crystallographic_gradients[i_grad_site_h]);
-        cart_t dF_over_dx = unit_cell.orthogonalize_gradient(dF_over_dx_frac);
-        float_type dF_over_dl = dF_over_dx * e0;
-        reparametrization_gradients.push_back(dF_over_dl);
-      }
-    }
-
-    void apply_shifts(
-      uctbx::unit_cell const &unit_cell,
-      sgtbx::site_symmetry_table const &site_symmetry_table,
-      af::ref<xray_scatterer_type> const &scatterers,
-      parameter_map_type const &crystallographic_parameter_map,
-      af::const_ref<float_type> const &crystallographic_shifts,
-      af::const_ref<float_type> const &reparametrization_shifts)
-    {
-      if (!on_) return;
-      place_constrained_scatterers(unit_cell, site_symmetry_table, scatterers);
-    }
-
   private:
-    cart_t e0;
     af::tiny<int, 3> i_pivot_neighbours;
 
 };
+
+
+/// Model of aromatic C-H or amide N-H
+/** The other 2 neighbours of C or N being X and Y, X-C-Y (resp. X-N-Y)
+    is bisected by C-H (resp. N-H).
+*/
+
+template<typename FloatType, class XrayScattererType,
+         template<class> class SharedArray1D=af::shared>
+class aromatic_CH_or_amide_NH
+  : public single_geometrical_hydrogen<aromatic_CH_or_amide_NH<FloatType,
+                                                               XrayScattererType,
+                                                               SharedArray1D>,
+                                       FloatType, XrayScattererType,
+                                       SharedArray1D>
+{
+  public:
+    typedef single_geometrical_hydrogen<aromatic_CH_or_amide_NH<FloatType,
+                                                                XrayScattererType,
+                                                                SharedArray1D>,
+                                        FloatType, XrayScattererType,
+                                        SharedArray1D>
+            base_t;
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::e0;
+
+    typedef XrayScattererType xray_scatterer_type;
+    typedef FloatType float_type;
+    typedef parameter_map<xray_scatterer_type> parameter_map_type;
+    typedef cartesian<float_type> cart_t;
+    typedef fractional<float_type> frac_t;
+
+    aromatic_CH_or_amide_NH(int pivot,
+                            af::tiny<int, 2> pivot_neighbours,
+                            int hydrogen,
+                            float_type bond_length,
+                            bool stretching=false)
+      : base_t(pivot, hydrogen, bond_length, stretching),
+        i_pivot_neighbours(pivot_neighbours)
+    {}
+
+    void place_constrained_scatterers(
+      uctbx::unit_cell const &unit_cell,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::ref<xray_scatterer_type> const &scatterers)
+    {
+      cart_t x_p = unit_cell.orthogonalize(scatterers[i_pivot].site);
+      cart_t
+        x_X = unit_cell.orthogonalize(scatterers[i_pivot_neighbours[0]].site),
+        x_Y = unit_cell.orthogonalize(scatterers[i_pivot_neighbours[1]].site);
+      cart_t u_XC = (x_p - x_X).normalize(),
+             u_YC = (x_p - x_Y).normalize();
+      e0 = (u_XC + u_YC).normalize();
+      cart_t x_h = x_p + l*e0;
+      scatterers[i_hydrogens[0]].site = unit_cell.fractionalize(x_h);
+    }
+
+  private:
+    af::tiny<int, 2> i_pivot_neighbours;
+};
+
 
 }}} // namespace smtbx::refinement::constraints
 
