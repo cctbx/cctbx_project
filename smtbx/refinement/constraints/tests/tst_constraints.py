@@ -551,10 +551,95 @@ class tertiary_ch_test_case(hydrogen_test_case):
     self.cts.place_constrained_scatterers()
     self.check_geometry()
 
+    foo = (0,)*3
+    ct = self.cts[0]
+    crystallographic_gradients = self.grad_f()
+    reparametrization_gradients = flex.double(foo)
+    ct.stretching = True
+    self.cts.compute_gradients(crystallographic_gradients,
+                               reparametrization_gradients)
+    assert len(reparametrization_gradients) == len(foo) + 1
+    df_over_dl = reparametrization_gradients[len(foo)]
+    h = 1e-6
+    l = ct.bond_length
+    ct.bond_length = l + h
+    self.cts.place_constrained_scatterers()
+    fp = self.f()
+    ct.bond_length = l -h
+    self.cts.place_constrained_scatterers()
+    fm = self.f()
+    df_over_dl_approx = (fp - fm)/(2*h)
+    assert approx_equal(df_over_dl, df_over_dl_approx)
+
+
+class aromatic_ch_test_case(hydrogen_test_case):
+
+  def __init__(self):
+    self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
+    self.xs = xray.structure(self.cs.special_position_settings())
+    pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
+                                u=(0.05, 0.04, 0.02,
+                                   -0.01, -0.015, 0.005))
+    self.xs.add_scatterer(pivot)
+    self.i_pivot = 0
+    # construct geometry X-C-Y with angle 120 degrees
+    # and bond lengths CX = 1.4 and CY = 1.6
+    v_CX = 1.4*(mat.col((-1, 2, 1.5)).normalize())
+    n = v_CX.ortho()
+    v_CY = v_CX.rotate(axis=n, angle=115, deg=True)
+    v_CY = 1.6*v_CY.normalize()
+    v_CX = self.xs.unit_cell().fractionalize(v_CX)
+    v_CY = self.xs.unit_cell().fractionalize(v_CY)
+    site_X = mat.col(pivot.site) + mat.col(v_CX)
+    site_Y = mat.col(pivot.site) + mat.col(v_CY)
+    self.xs.add_scatterer(xray.scatterer("X", site=site_X, u=(0,)*6,
+                                         scattering_type='C'))
+    self.xs.add_scatterer(xray.scatterer("Y", site=site_Y, u=(0,)*6,
+                                         scattering_type='C'))
+    self.i_neighbours = (1,2)
+    h = xray.scatterer("H", u=(0,)*6)
+    self.xs.add_scatterer(h)
+    self.i_hydrogens = (3,)
+    for sc in self.xs.scatterers():
+      sc.flags.set_grad_site(True)
+
+    self.constraint_flags = xray.scatterer_flags_array(
+      len(self.xs.scatterers()))
+    for f in self.constraint_flags:
+      f.set_grad_site(True)
+
+    self.parameter_map = self.xs.parameter_map()
+
+    self.cts = constraints.aromatic_CH_or_amide_NH_array(
+      self.cs.unit_cell(),
+      self.xs.site_symmetry_table(),
+      self.xs.scatterers(),
+      self.parameter_map,
+      self.constraint_flags)
+    self.cts.append(constraints.aromatic_CH_or_amide_NH(
+      pivot=0,
+      pivot_neighbours=(1,2),
+      hydrogen=3,
+      bond_length=1.))
+
+  def check_geometry(self):
+    uc = self.cs.unit_cell()
+    x_pivot = mat.col(uc.orthogonalize(self.pivot.site))
+    u_CX, u_CY = [ mat.col(uc.orthogonalize(sc.site)) - x_pivot
+                   for sc in self.neighbours ]
+    u_CH = mat.col(uc.orthogonalize(self.hydrogens[0].site)) - x_pivot
+    assert approx_equal(u_CX.angle(u_CH), u_CY.angle(u_CH))
+    assert approx_equal(u_CX.cross(u_CY).dot(u_CH), 0)
+
+  def exercise(self):
+    ct = self.cts[0]
+    self.cts.place_constrained_scatterers()
+    self.check_geometry()
 
 def run():
   import sys
   verbose = '--verbose' in sys.argv[1:]
+  aromatic_ch_test_case.run(verbose=verbose)
   tertiary_ch_test_case.run(verbose=verbose)
   secondary_ch2_test_case.run(verbose=verbose)
   ch3_test_case.run(verbose=verbose)

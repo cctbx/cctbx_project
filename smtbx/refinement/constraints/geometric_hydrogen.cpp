@@ -101,11 +101,33 @@ struct tertiary_CH_wrapper
   }
 };
 
+template<typename FloatType=double,
+         class XrayScattererType=xray::scatterer<> >
+struct aromatic_CH_or_amide_NH_wrapper
+{
+  typedef aromatic_CH_or_amide_NH<FloatType, XrayScattererType,
+                                  af::boost_python::flex_1d>
+          wt;
+  typedef typename wt::float_type float_type;
+
+  static void wrap(char const *name) {
+    using namespace boost::python;
+    class_<wt> wrapped(name, no_init);
+    common_wrapper::wrap(wrapped, name);
+    wrapped
+      .def(init<int, af::tiny<int,2>, int, float_type, bool>
+          ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogen"),
+            arg("bond_length"), arg("stretching")=false)))
+      ;
+  }
+};
+
 
 void wrap_geometric_hydrogen() {
   terminal_X_Hn_wrapper<>::wrap("terminal_X_Hn");
   secondary_CH2_wrapper<>::wrap("secondary_CH2");
   tertiary_CH_wrapper<>::wrap("tertiary_CH");
+  aromatic_CH_or_amide_NH_wrapper<>::wrap("aromatic_CH_or_amide_NH");
 }
 
 }}}} // smtbx::refinement::constraints::boost_python
