@@ -335,13 +335,13 @@ class ch3_test_case(hydrogen_test_case):
                                  reparametrization_gradients)
       assert (len(reparametrization_gradients)
               == len(foo) + [rotating, stretching].count(True))
-      if rotating:
-        df_over_dphi = reparametrization_gradients[len(foo) + 0]
-        if stretching:
-          df_over_dl = reparametrization_gradients[len(foo) + 1]
+      if stretching:
+        df_over_dl = reparametrization_gradients[len(foo) + 0]
+        if rotating:
+          df_over_dphi = reparametrization_gradients[len(foo) + 1]
       else:
-        if stretching:
-          df_over_dl = reparametrization_gradients[len(foo) + 0]
+        if rotating:
+          df_over_dphi = reparametrization_gradients[len(foo) + 0]
 
       if rotating:
         dphi = 1e-6 # deg
