@@ -452,6 +452,18 @@ class sym(rec):
                         m[3], m[1], m[5],
                         m[4], m[5], m[2]), (3,3))
 
+def cross_product_matrix((v0, v1, v2)):
+  """\
+Matrix associated with vector cross product:
+  a.cross(b) is equivalent to cross_product_matrix(a) * b
+Useful for simplification of equations. Used frequently in
+robotics and classical mechanics literature.
+"""
+  return sqr((
+      0, -v2,  v1,
+     v2,   0, -v0,
+    -v1,  v0,   0))
+
 class rt(object):
 
   def __init__(self, tuple_r_t):
@@ -724,5 +736,9 @@ if (__name__ == "__main__"):
   x_perp = x - n.dot(x)*n
   y_perp = y - n.dot(y)*n
   assert approx_equal(x_perp.angle(y_perp), alpha)
+  #
+  a = col((1.43416642866471794, -2.47841960952275497, -0.7632916804502845))
+  b = col((0.34428681113080323, -1.85983494542314587, 0.37702845822372399))
+  assert approx_equal(a.cross(b), cross_product_matrix(a) * b)
   #
   print "OK"
