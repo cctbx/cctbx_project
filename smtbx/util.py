@@ -49,16 +49,24 @@ class space_group_option_parser(libtbx.option_parser.option_parser):
 
 class test_case(object):
 
+  class __metaclass__(type):
+    def __init__(cls, classname, bases, classdict):
+      exercises = []
+      for base in bases:
+        try:
+          exercises.extend(base.exercises)
+        except AttributeError:
+          pass
+      for name, attr in classdict.items():
+        if callable(attr) and name.startswith('exercise'):
+          exercises.append(attr)
+      dsu = [ (ex.__name__, ex) for ex in exercises ]
+      dsu.sort()
+      cls.exercises = [ ex for foo, ex in dsu ]
+
   def run(cls, verbose=False):
-    dsu = []
-    for name, attr in cls.__dict__.items():
-      # avoid iteritems for Python 2.2 compatibility
-      if not callable(attr) or not name.startswith('exercise'): continue
-      dsu.append((name, attr))
-    dsu.sort()
-    exercises = [ attr for foo, attr in dsu ]
     if verbose: print cls.__name__
-    for exercise in exercises:
+    for exercise in cls.exercises:
       if verbose: print "\t%s ... " % exercise.__name__,
       o = cls()
       exercise(o)
