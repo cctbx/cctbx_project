@@ -198,6 +198,35 @@ class special_position_test_case(test_case):
 
 class hydrogen_test_case(test_case):
 
+  def __init__(self):
+    self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
+    self.xs = xray.structure(self.cs.special_position_settings())
+    pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
+                                u=(0.05, 0.04, 0.02,
+                                   -0.01, -0.015, 0.005))
+    self.xs.add_scatterer(pivot)
+    self.i_pivot = 0
+
+    self.init_other_atoms()
+
+    for sc in self.xs.scatterers():
+      sc.flags.set_grad_site(True)
+
+    self.constraint_flags = xray.scatterer_flags_array(
+      len(self.xs.scatterers()))
+    for f in self.constraint_flags:
+      f.set_grad_site(True)
+
+    self.parameter_map = self.xs.parameter_map()
+
+    self.cts = self.constraint_array_class(
+      self.cs.unit_cell(),
+      self.xs.site_symmetry_table(),
+      self.xs.scatterers(),
+      self.parameter_map,
+      self.constraint_flags)
+    self.init_constraint()
+
   def pivot(self):
     return self.xs.scatterers()[self.i_pivot]
   pivot = property(pivot)
@@ -210,20 +239,80 @@ class hydrogen_test_case(test_case):
     return [ self.xs.scatterers()[i] for i in self.i_hydrogens ]
   hydrogens = property(hydrogens)
 
+  def exercise_geometry(self):
+    self.cts.place_constrained_scatterers()
+    self.check_geometry()
+
+  def exercise_riding(self):
+    self.cts.place_constrained_scatterers()
+    foo = (0,)*2
+
+    # first let's test that riding works correctly
+    crystallographic_gradients = self.grad_f()
+    i_pivot_site = self.parameter_map[self.i_pivot].site
+    grad_pivot_site = mat.col(crystallographic_gradients[i_pivot_site
+                                                         :i_pivot_site+3])
+    reparametrization_gradients = flex.double()
+    self.cts.compute_gradients(crystallographic_gradients,
+                               reparametrization_gradients)
+    sum_grads_h = mat.col((0,0,0))
+    for i_h in self.i_hydrogens:
+      i_site = self.parameter_map[i_h].site
+      grad_site = mat.col(crystallographic_gradients[i_site:i_site+3])
+      sum_grads_h += grad_site
+    assert approx_equal(
+      crystallographic_gradients[i_pivot_site:i_pivot_site+3],
+      grad_pivot_site + sum_grads_h)
+
+    # then test whether riding is a good approximation
+    i_neigh_site = self.parameter_map[self.i_neighbours[0]].site
+    sum_grads = (mat.col(crystallographic_gradients[i_neigh_site
+                                                    :i_neigh_site+3])
+                 + grad_pivot_site + sum_grads_h)
+    delta = mat.col((1e-3, -1.5e-3, 2e-3))
+    shift_site(self.pivot, delta)
+    shift_site(self.neighbours[0], delta)
+    self.cts.place_constrained_scatterers()
+    fp = self.f()
+    shift_site(self.pivot, -2*delta)
+    shift_site(self.neighbours[0], -2*delta)
+    self.cts.place_constrained_scatterers()
+    fm = self.f()
+    true_delta_f = fp - fm
+    riding_delta_f = sum_grads.dot(2*delta)
+    assert approx_equal(true_delta_f, riding_delta_f, eps=1e-3)
+
+
+class stretching_only_hydrogen_test_case(hydrogen_test_case):
+
+  def exercise_stretching(self):
+    self.cts.place_constrained_scatterers()
+    foo = (0,)*3
+    ct = self.cts[0]
+    crystallographic_gradients = self.grad_f()
+    reparametrization_gradients = flex.double(foo)
+    ct.stretching = True
+    self.cts.compute_gradients(crystallographic_gradients,
+                               reparametrization_gradients)
+    assert len(reparametrization_gradients) == len(foo) + 1
+    df_over_dl = reparametrization_gradients[len(foo)]
+    h = 1e-6
+    l = ct.bond_length
+    ct.bond_length = l + h
+    self.cts.place_constrained_scatterers()
+    fp = self.f()
+    ct.bond_length = l -h
+    self.cts.place_constrained_scatterers()
+    fm = self.f()
+    df_over_dl_approx = (fp - fm)/(2*h)
+    assert approx_equal(df_over_dl, df_over_dl_approx)
 
 class ch3_test_case(hydrogen_test_case):
 
-  def __init__(self):
-    self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
-    self.xs = xray.structure(self.cs.special_position_settings())
-    pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
-                                u=(0.05, 0.04, 0.02,
-                                   -0.01, -0.015, 0.005))
-    self.xs.add_scatterer(pivot)
-    self.i_pivot = 0
+  def init_other_atoms(self):
     v_CC = 1.54*(mat.col((-1, 2, 1.5)).normalize())
     v_CC = self.xs.unit_cell().fractionalize(v_CC)
-    neighbour_site = mat.col(pivot.site) + mat.col(v_CC)
+    neighbour_site = mat.col(self.pivot.site) + mat.col(v_CC)
     self.xs.add_scatterer(xray.scatterer("C'", site=neighbour_site,
                                                u=(0,)*6))
     self.i_neighbours = (1,)
@@ -231,23 +320,10 @@ class ch3_test_case(hydrogen_test_case):
       h = xray.scatterer("H%i" % i, u=(0,)*6)
       self.xs.add_scatterer(h)
     self.i_hydrogens = (2,3,4)
-    for sc in self.xs.scatterers():
-      sc.flags.set_grad_site(True)
 
-    self.constraint_flags = xray.scatterer_flags_array(
-      len(self.xs.scatterers()))
-    for f in self.constraint_flags:
-      f.set_grad_site(True)
-
-    self.parameter_map = self.xs.parameter_map()
-
-    self.cts = constraints.terminal_X_Hn_array(
-      self.cs.unit_cell(),
-      self.xs.site_symmetry_table(),
-      self.xs.scatterers(),
-      self.parameter_map,
-      self.constraint_flags)
-    self.cts.append(constraints.terminal_X_Hn(
+  constraint_array_class = constraints.terminal_tetrahedral_XHn_array
+  def init_constraint(self):
+    self.cts.append(constraints.terminal_tetrahedral_XHn(
       pivot=0,
       pivot_neighbour=1,
       hydrogens=(2,3,4),
@@ -276,45 +352,6 @@ class ch3_test_case(hydrogen_test_case):
         assert approx_equal(dx[i].cos_angle(dx[j]), -1/3)
     for i in xrange(1,4):
       assert approx_equal(abs(dx[i]), self.cts[0].bond_length)
-
-  def exercise_riding(self):
-    self.cts.place_constrained_scatterers()
-    self.check_geometry()
-
-    foo = (0,)*2
-
-    crystallographic_gradients = self.grad_f()
-    i_pivot_site = self.parameter_map[self.i_pivot].site
-    grad_pivot_site = mat.col(crystallographic_gradients[i_pivot_site
-                                                         :i_pivot_site+3])
-    reparametrization_gradients = flex.double()
-    self.cts.compute_gradients(crystallographic_gradients,
-                               reparametrization_gradients)
-    sum_grads_h = mat.col((0,0,0))
-    for i_h in self.i_hydrogens:
-      i_site = self.parameter_map[i_h].site
-      grad_site = mat.col(crystallographic_gradients[i_site:i_site+3])
-      sum_grads_h += grad_site
-    assert approx_equal(
-      crystallographic_gradients[i_pivot_site:i_pivot_site+3],
-      grad_pivot_site + sum_grads_h)
-
-    i_neigh_site = self.parameter_map[self.i_neighbours[0]].site
-    sum_grads = (mat.col(crystallographic_gradients[i_neigh_site
-                                                    :i_neigh_site+3])
-                 + grad_pivot_site + sum_grads_h)
-    delta = mat.col((1e-3, -1.5e-3, 2e-3))
-    shift_site(self.pivot, delta)
-    shift_site(self.neighbours[0], delta)
-    self.cts.place_constrained_scatterers()
-    fp = self.f()
-    shift_site(self.pivot, -2*delta)
-    shift_site(self.neighbours[0], -2*delta)
-    self.cts.place_constrained_scatterers()
-    fm = self.f()
-    true_delta_f = fp - fm
-    riding_delta_f = sum_grads.dot(2*delta)
-    assert approx_equal(true_delta_f, riding_delta_f)
 
   def exercise_rotate_stretch(self):
     foo = (0,)*3
@@ -375,7 +412,7 @@ class ch3_test_case(hydrogen_test_case):
   def exercise_already_constrained(self):
     self.constraint_flags[0].set_grad_site(False)
     del self.cts[0]
-    self.cts.append(constraints.terminal_X_Hn(
+    self.cts.append(constraints.terminal_tetrahedral_XHn(
       pivot=0,
       pivot_neighbour=1,
       hydrogens=(2,3,4),
@@ -393,16 +430,9 @@ class ch3_test_case(hydrogen_test_case):
       assert not self.cts.already_constrained[i].grad_site()
 
 
-class secondary_ch2_test_case(hydrogen_test_case):
+class secondary_ch2_test_case(stretching_only_hydrogen_test_case):
 
-  def __init__(self):
-    self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
-    self.xs = xray.structure(self.cs.special_position_settings())
-    pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
-                                u=(0.05, 0.04, 0.02,
-                                   -0.01, -0.015, 0.005))
-    self.xs.add_scatterer(pivot)
-    self.i_pivot = 0
+  def init_other_atoms(self):
     # construct geometry X-C-Y with angle 115 degrees
     # and bond lengths CX = 1.35 and CY = 1.65
     v_CX = 1.35*(mat.col((-1, 2, 1.5)).normalize())
@@ -411,8 +441,8 @@ class secondary_ch2_test_case(hydrogen_test_case):
     v_CY = 1.65*v_CY.normalize()
     v_CX = self.xs.unit_cell().fractionalize(v_CX)
     v_CY = self.xs.unit_cell().fractionalize(v_CY)
-    site_X = mat.col(pivot.site) + mat.col(v_CX)
-    site_Y = mat.col(pivot.site) + mat.col(v_CY)
+    site_X = mat.col(self.pivot.site) + mat.col(v_CX)
+    site_Y = mat.col(self.pivot.site) + mat.col(v_CY)
     self.xs.add_scatterer(xray.scatterer("X", site=site_X, u=(0,)*6,
                                          scattering_type='C'))
     self.xs.add_scatterer(xray.scatterer("Y", site=site_Y, u=(0,)*6,
@@ -423,22 +453,9 @@ class secondary_ch2_test_case(hydrogen_test_case):
       h = xray.scatterer("H%i" % i, u=(0,)*6)
       self.xs.add_scatterer(h)
     self.i_hydrogens = (3,4)
-    for sc in self.xs.scatterers():
-      sc.flags.set_grad_site(True)
 
-    self.constraint_flags = xray.scatterer_flags_array(
-      len(self.xs.scatterers()))
-    for f in self.constraint_flags:
-      f.set_grad_site(True)
-
-    self.parameter_map = self.xs.parameter_map()
-
-    self.cts = constraints.secondary_CH2_array(
-      self.cs.unit_cell(),
-      self.xs.site_symmetry_table(),
-      self.xs.scatterers(),
-      self.parameter_map,
-      self.constraint_flags)
+  constraint_array_class = constraints.secondary_CH2_array
+  def init_constraint(self):
     self.cts.append(constraints.secondary_CH2(
       pivot=0,
       pivot_neighbours=(1,2),
@@ -460,42 +477,13 @@ class secondary_ch2_test_case(hydrogen_test_case):
       ct.theta0 - ct.dtheta_over_dXY_sq*(u_CX-u_CY).norm_sq())
     assert u_CH1.dot(u_CX + u_CX) < 0
     assert u_CH2.dot(u_CX + u_CX) < 0
-
-  def exercise(self):
-    foo = (0,)*3
-    ct = self.cts[0]
-    self.cts.place_constrained_scatterers()
-    self.check_geometry()
-    crystallographic_gradients = self.grad_f()
-    reparametrization_gradients = flex.double(foo)
-    ct.stretching = True
-    self.cts.compute_gradients(crystallographic_gradients,
-                               reparametrization_gradients)
-    assert len(reparametrization_gradients) == len(foo) + 1
-    df_over_dl = reparametrization_gradients[len(foo)]
-    h = 1e-6
-    l = ct.bond_length
-    ct.bond_length = l + h
-    self.cts.place_constrained_scatterers()
-    fp = self.f()
-    ct.bond_length = l -h
-    self.cts.place_constrained_scatterers()
-    fm = self.f()
-    df_over_dl_approx = (fp - fm)/(2*h)
-    assert approx_equal(df_over_dl, df_over_dl_approx)
+    assert approx_equal(abs(u_CH1), self.cts[0].bond_length)
+    assert approx_equal(abs(u_CH2), self.cts[0].bond_length)
 
 
-class tertiary_ch_test_case(hydrogen_test_case):
+class tertiary_ch_test_case(stretching_only_hydrogen_test_case):
 
-  def __init__(self):
-    self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
-    self.xs = xray.structure(self.cs.special_position_settings())
-    pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
-                                u=(0.05, 0.04, 0.02,
-                                   -0.01, -0.015, 0.005))
-    self.xs.add_scatterer(pivot)
-    self.i_pivot = 0
-
+  def init_other_atoms(self):
     v_CX = 1.35*(mat.col((-1, 2, 1.5)).normalize())
     n = v_CX.ortho()
     v_CY = v_CX.rotate(axis=n, angle=115, deg=True)
@@ -505,7 +493,7 @@ class tertiary_ch_test_case(hydrogen_test_case):
     v_CZ = 1.5*v_CZ.normalize()
     v_CX, v_CY, v_CZ = [ self.xs.unit_cell().fractionalize(v)
                          for v in (v_CX, v_CY, v_CZ) ]
-    site_X, site_Y, site_Z = [ mat.col(pivot.site) + mat.col(v)
+    site_X, site_Y, site_Z = [ mat.col(self.pivot.site) + mat.col(v)
                                for v in (v_CX, v_CY, v_CZ) ]
     for name, site in zip(("X", "Y", "Z"), (site_X, site_Y, site_Z)):
       self.xs.add_scatterer(xray.scatterer(name, site=site, u=(0,)*6,
@@ -514,22 +502,9 @@ class tertiary_ch_test_case(hydrogen_test_case):
     h = xray.scatterer("H", u=(0,)*6)
     self.xs.add_scatterer(h)
     self.i_hydrogens = (4,)
-    for sc in self.xs.scatterers():
-      sc.flags.set_grad_site(True)
 
-    self.constraint_flags = xray.scatterer_flags_array(
-      len(self.xs.scatterers()))
-    for f in self.constraint_flags:
-      f.set_grad_site(True)
-
-    self.parameter_map = self.xs.parameter_map()
-
-    self.cts = constraints.tertiary_CH_array(
-      self.cs.unit_cell(),
-      self.xs.site_symmetry_table(),
-      self.xs.scatterers(),
-      self.parameter_map,
-      self.constraint_flags)
+  constraint_array_class = constraints.tertiary_CH_array
+  def init_constraint(self):
     self.cts.append(constraints.tertiary_CH(
       pivot=0,
       pivot_neighbours=(1,2,3),
@@ -546,42 +521,12 @@ class tertiary_ch_test_case(hydrogen_test_case):
     assert approx_equal(u_CY.angle(u_CH), u_CZ.angle(u_CH))
     assert approx_equal(u_CZ.angle(u_CH), u_CX.angle(u_CH))
     assert u_CH.dot(u_CX + u_CY + u_CZ) < 0
-
-  def exercise(self):
-    self.cts.place_constrained_scatterers()
-    self.check_geometry()
-
-    foo = (0,)*3
-    ct = self.cts[0]
-    crystallographic_gradients = self.grad_f()
-    reparametrization_gradients = flex.double(foo)
-    ct.stretching = True
-    self.cts.compute_gradients(crystallographic_gradients,
-                               reparametrization_gradients)
-    assert len(reparametrization_gradients) == len(foo) + 1
-    df_over_dl = reparametrization_gradients[len(foo)]
-    h = 1e-6
-    l = ct.bond_length
-    ct.bond_length = l + h
-    self.cts.place_constrained_scatterers()
-    fp = self.f()
-    ct.bond_length = l -h
-    self.cts.place_constrained_scatterers()
-    fm = self.f()
-    df_over_dl_approx = (fp - fm)/(2*h)
-    assert approx_equal(df_over_dl, df_over_dl_approx)
+    assert approx_equal(abs(u_CH), self.cts[0].bond_length)
 
 
-class aromatic_ch_test_case(hydrogen_test_case):
+class aromatic_ch_test_case(stretching_only_hydrogen_test_case):
 
-  def __init__(self):
-    self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
-    self.xs = xray.structure(self.cs.special_position_settings())
-    pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
-                                u=(0.05, 0.04, 0.02,
-                                   -0.01, -0.015, 0.005))
-    self.xs.add_scatterer(pivot)
-    self.i_pivot = 0
+  def init_other_atoms(self):
     # construct geometry X-C-Y with angle 120 degrees
     # and bond lengths CX = 1.4 and CY = 1.6
     v_CX = 1.4*(mat.col((-1, 2, 1.5)).normalize())
@@ -590,8 +535,8 @@ class aromatic_ch_test_case(hydrogen_test_case):
     v_CY = 1.6*v_CY.normalize()
     v_CX = self.xs.unit_cell().fractionalize(v_CX)
     v_CY = self.xs.unit_cell().fractionalize(v_CY)
-    site_X = mat.col(pivot.site) + mat.col(v_CX)
-    site_Y = mat.col(pivot.site) + mat.col(v_CY)
+    site_X = mat.col(self.pivot.site) + mat.col(v_CX)
+    site_Y = mat.col(self.pivot.site) + mat.col(v_CY)
     self.xs.add_scatterer(xray.scatterer("X", site=site_X, u=(0,)*6,
                                          scattering_type='C'))
     self.xs.add_scatterer(xray.scatterer("Y", site=site_Y, u=(0,)*6,
@@ -600,22 +545,9 @@ class aromatic_ch_test_case(hydrogen_test_case):
     h = xray.scatterer("H", u=(0,)*6)
     self.xs.add_scatterer(h)
     self.i_hydrogens = (3,)
-    for sc in self.xs.scatterers():
-      sc.flags.set_grad_site(True)
 
-    self.constraint_flags = xray.scatterer_flags_array(
-      len(self.xs.scatterers()))
-    for f in self.constraint_flags:
-      f.set_grad_site(True)
-
-    self.parameter_map = self.xs.parameter_map()
-
-    self.cts = constraints.aromatic_CH_or_amide_NH_array(
-      self.cs.unit_cell(),
-      self.xs.site_symmetry_table(),
-      self.xs.scatterers(),
-      self.parameter_map,
-      self.constraint_flags)
+  constraint_array_class = constraints.aromatic_CH_or_amide_NH_array
+  def init_constraint(self):
     self.cts.append(constraints.aromatic_CH_or_amide_NH(
       pivot=0,
       pivot_neighbours=(1,2),
@@ -630,15 +562,87 @@ class aromatic_ch_test_case(hydrogen_test_case):
     u_CH = mat.col(uc.orthogonalize(self.hydrogens[0].site)) - x_pivot
     assert approx_equal(u_CX.angle(u_CH), u_CY.angle(u_CH))
     assert approx_equal(u_CX.cross(u_CY).dot(u_CH), 0)
+    assert approx_equal(abs(u_CH), self.cts[0].bond_length)
 
-  def exercise(self):
-    ct = self.cts[0]
-    self.cts.place_constrained_scatterers()
-    self.check_geometry()
+
+class terminal_trihedral_XH2(stretching_only_hydrogen_test_case):
+
+  def init_other_atoms(self):
+    v_CY = 1.35*(mat.col((1, -2, 3)).normalize())
+    n = v_CY.ortho()
+    v_CZ = v_CY.rotate(axis=n, angle=112, deg=True)
+    v_CZ = 1.4*v_CZ.normalize()
+    site_Y = self.xs.unit_cell().fractionalize(v_CY)
+    site_Z = self.xs.unit_cell().fractionalize(v_CZ)
+    self.xs.add_scatterer(xray.scatterer("Y", site=site_Y, u=(0,)*6,
+                                         scattering_type='C'))
+    self.xs.add_scatterer(xray.scatterer("Z", site=site_Z, u=(0,)*6,
+                                         scattering_type='C'))
+    self.i_neighbours = (1,2)
+    for i in (1,2):
+      h = xray.scatterer("H%i" % i, u=(0,)*6)
+      self.xs.add_scatterer(h)
+    self.i_hydrogens = (3,4)
+
+
+  constraint_array_class = constraints.terminal_trihedral_XH2_array
+  def init_constraint(self):
+    self.cts.append(constraints.terminal_trihedral_XH2(
+      pivot=0,
+      pivot_neighbour=1,
+      pivot_neighbour_substituent=2,
+      hydrogens=(3,4),
+      bond_length=1.))
+
+  def check_geometry(self):
+    uc = self.cs.unit_cell()
+    x_pivot = mat.col(uc.orthogonalize(self.pivot.site))
+    u_CY, u_CZ = [ mat.col(uc.orthogonalize(sc.site)) - x_pivot
+                   for sc in self.neighbours ]
+    u_CH1, u_CH2 = [ mat.col(uc.orthogonalize(sc.site)) - x_pivot
+                     for sc in self.hydrogens ]
+    assert approx_equal(u_CY.cross(u_CZ).dot(u_CH1), 0)
+    assert approx_equal(u_CY.cross(u_CZ).dot(u_CH2), 0)
+    assert approx_equal(u_CH1.angle(u_CY), u_CH2.angle(u_CY))
+    assert approx_equal(u_CH1.angle(u_CH2, deg=True), 120)
+    assert approx_equal(abs(u_CH1), self.cts[0].bond_length)
+    assert approx_equal(abs(u_CH2), self.cts[0].bond_length)
+
+
+class acetylenic_CH_test_case(stretching_only_hydrogen_test_case):
+
+  def init_other_atoms(self):
+    v_CX = 1.2*(mat.col((1,-1,-2)).normalize())
+    site_X = (mat.col(self.pivot.site)
+              + mat.col(self.xs.unit_cell().fractionalize(v_CX)))
+    self.xs.add_scatterer(xray.scatterer("X", site=site_X, u=(0,)*6,
+                                         scattering_type="C"))
+    self.i_neighbours = (1,)
+    h = xray.scatterer("H", u=(0,)*6)
+    self.xs.add_scatterer(h)
+    self.i_hydrogens = (2,)
+
+  constraint_array_class = constraints.acetylenic_CH_array
+  def init_constraint(self):
+    self.cts.append(constraints.acetylenic_CH(
+      pivot=0,
+      pivot_neighbour=1,
+      hydrogen=2,
+      bond_length=1.))
+
+  def check_geometry(self):
+    uc = self.cs.unit_cell()
+    x_pivot = mat.col(uc.orthogonalize(self.pivot.site))
+    u_CX = mat.col(uc.orthogonalize(self.neighbours[0].site)) - x_pivot
+    u_CH = mat.col(uc.orthogonalize(self.hydrogens[0].site)) - x_pivot
+    assert approx_equal(u_CH.angle(u_CX, deg=True), 180)
+    assert approx_equal(abs(u_CH), self.cts[0].bond_length)
 
 def run():
   import sys
   verbose = '--verbose' in sys.argv[1:]
+  acetylenic_CH_test_case.run(verbose=verbose)
+  terminal_trihedral_XH2.run(verbose=verbose)
   aromatic_ch_test_case.run(verbose=verbose)
   tertiary_ch_test_case.run(verbose=verbose)
   secondary_ch2_test_case.run(verbose=verbose)

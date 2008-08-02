@@ -18,6 +18,7 @@ namespace constants {
   using namespace scitbx::constants;
   static double const tetrahedral_angle = std::acos(-1./3.);
   static double const sin_tetrahedral_angle = std::sin(tetrahedral_angle);
+  static double const sin_pi_over_3 = std::sin(pi/3);
 }
 
 /// Base class for all geometrically constrained hydrogen's -XHn
@@ -255,28 +256,22 @@ class geometrical_hydrogens
 */
 template<typename FloatType, class XrayScattererType,
          template<class> class SharedArray1D=af::shared>
-class terminal_X_Hn
-  : public geometrical_hydrogens<terminal_X_Hn<FloatType,
-                                               XrayScattererType,
-                                               SharedArray1D>,
+class terminal_tetrahedral_XHn
+  : public geometrical_hydrogens<terminal_tetrahedral_XHn<FloatType,
+                                                          XrayScattererType,
+                                                          SharedArray1D>,
                                  FloatType, XrayScattererType,
                                  af::small, 3,
                                  SharedArray1D>
 {
   public:
-    typedef geometrical_hydrogens<terminal_X_Hn<FloatType,
-                                                XrayScattererType,
-                                                SharedArray1D>,
+    typedef geometrical_hydrogens<terminal_tetrahedral_XHn<FloatType,
+                                                           XrayScattererType,
+                                                           SharedArray1D>,
                                   FloatType, XrayScattererType,
                                   af::small, 3,
                                   SharedArray1D>
             base_t;
-    using base_t::i_pivot;
-    using base_t::i_hydrogens;
-    using base_t::l;
-    using base_t::i_reparametrization_begin;
-    using base_t::dx_over_dl;
-
     typedef XrayScattererType xray_scatterer_type;
     typedef FloatType float_type;
     typedef parameter_map<xray_scatterer_type> parameter_map_type;
@@ -284,7 +279,7 @@ class terminal_X_Hn
     typedef fractional<float_type> frac_t;
     typedef typename base_t::hydrogen_grad_array_type hydrogen_grad_array_type;
 
-    terminal_X_Hn(
+    terminal_tetrahedral_XHn(
       int pivot, int pivot_neighbour,
       af::small<int, 3> hydrogens,
       float_type azimuth_, //degrees
@@ -420,7 +415,13 @@ class terminal_X_Hn
       }
     }
 
-  private:
+  protected:
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::dx_over_dl;
+    using base_t::i_reparametrization_begin;
+
     int i_pivot_neighbour;
     bool rotating_;
 
@@ -456,10 +457,6 @@ class secondary_CH2
                                   af::tiny, 2,
                                   SharedArray1D>
             base_t;
-    using base_t::i_pivot;
-    using base_t::i_hydrogens;
-    using base_t::l;
-    using base_t::dx_over_dl;
 
     typedef XrayScattererType xray_scatterer_type;
     typedef FloatType float_type;
@@ -501,17 +498,24 @@ class secondary_CH2
       float_type c = std::cos(theta), s = std::sin(theta);
 
       // Place hydrogen's
-      cart_t site_h_1 = x_p + l*(c*e0 + s*e1);
-      cart_t site_h_2 = x_p + l*(c*e0 - s*e1);
-      scatterers[i_hydrogens[0]].site = uc.fractionalize(site_h_1);
-      scatterers[i_hydrogens[1]].site = uc.fractionalize(site_h_2);
+      cart_t u_h1 = c*e0 + s*e1,
+             u_h2 = c*e0 - s*e1;
+      cart_t site_h1 = x_p + l*u_h1,
+             site_h2 = x_p + l*u_h2;
+      scatterers[i_hydrogens[0]].site = uc.fractionalize(site_h1);
+      scatterers[i_hydrogens[1]].site = uc.fractionalize(site_h2);
 
       // Compute derivatives
-      dx_over_dl[0] = c*e0 + s*e1;
-      dx_over_dl[1] = c*e0 - s*e1;
+      dx_over_dl[0] = u_h1;
+      dx_over_dl[1] = u_h2;
     }
 
-  private:
+  protected:
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::dx_over_dl;
+
     af::tiny<int, 2> i_pivot_neighbours;
 };
 
@@ -551,10 +555,6 @@ class tertiary_CH
                                   af::tiny, 1,
                                   SharedArray1D>
             base_t;
-    using base_t::i_pivot;
-    using base_t::i_hydrogens;
-    using base_t::l;
-    using base_t::dx_over_dl;
 
     typedef XrayScattererType xray_scatterer_type;
     typedef FloatType float_type;
@@ -594,7 +594,12 @@ class tertiary_CH
       dx_over_dl[0] = e0;
     }
 
-  private:
+  protected:
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::dx_over_dl;
+
     af::tiny<int, 3> i_pivot_neighbours;
 
 };
@@ -623,10 +628,6 @@ class aromatic_CH_or_amide_NH
                                   af::tiny, 1,
                                   SharedArray1D>
             base_t;
-    using base_t::i_pivot;
-    using base_t::i_hydrogens;
-    using base_t::l;
-    using base_t::dx_over_dl;
 
     typedef XrayScattererType xray_scatterer_type;
     typedef FloatType float_type;
@@ -660,10 +661,149 @@ class aromatic_CH_or_amide_NH
       dx_over_dl[0] = e0;
     }
 
-  private:
+  protected:
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::dx_over_dl;
+
     af::tiny<int, 2> i_pivot_neighbours;
 };
 
+
+/// Model of terminal Z-Y=XH2 (ethylenic CH2 or amide NH2)
+/**
+    X is referred to as the "pivot" whereas Y is the pivot's neighbour
+    and Z is the pivot's neighbour's substituent.
+
+    The two hydrogen atoms are in the plane ZYX,
+    and XY bissects the 120-degree angle H1-X-H2.
+*/
+template<typename FloatType, class XrayScattererType,
+         template<class> class SharedArray1D=af::shared>
+class terminal_trihedral_XH2
+  : public geometrical_hydrogens<terminal_trihedral_XH2<FloatType,
+                                                        XrayScattererType,
+                                                        SharedArray1D>,
+                                 FloatType, XrayScattererType,
+                                 af::tiny, 2,
+                                 SharedArray1D>
+{
+  public:
+    typedef geometrical_hydrogens<terminal_trihedral_XH2<FloatType,
+                                                         XrayScattererType,
+                                                         SharedArray1D>,
+                                  FloatType, XrayScattererType,
+                                  af::tiny, 2,
+                                  SharedArray1D>
+            base_t;
+    typedef XrayScattererType xray_scatterer_type;
+    typedef FloatType float_type;
+    typedef parameter_map<xray_scatterer_type> parameter_map_type;
+    typedef cartesian<float_type> cart_t;
+    typedef fractional<float_type> frac_t;
+
+    terminal_trihedral_XH2(int pivot,
+                           int pivot_neighbour,
+                           int pivot_neighbour_substituent,
+                           af::tiny<int, 2> hydrogens,
+                           float_type bond_length,
+                           bool stretching=false)
+      : base_t(pivot, hydrogens, bond_length, stretching),
+        i_pivot_neighbour(pivot_neighbour),
+        i_pivot_neighbour_substituent(pivot_neighbour_substituent)
+    {}
+
+    void place_constrained_scatterers(
+      uctbx::unit_cell const &uc,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::ref<xray_scatterer_type> const &scatterers)
+    {
+      using namespace constants;
+      cart_t x_X = uc.orthogonalize(scatterers[i_pivot].site);
+      cart_t x_Y = uc.orthogonalize(scatterers[i_pivot_neighbour].site);
+      cart_t x_Z = uc.orthogonalize(scatterers[i_pivot_neighbour_substituent].site);
+      cart_t e0 = (x_X - x_Y).normalize();
+      cart_t u_ZY = x_Y - x_Z;
+      cart_t e1 = (e0 - 1/(e0*u_ZY) * u_ZY).normalize();
+      cart_t u_h1 = 0.5*e0 + sin_pi_over_3*e1,
+             u_h2 = 0.5*e0 - sin_pi_over_3*e1;
+      cart_t site_h1 = x_X + l*u_h1,
+             site_h2 = x_X + l*u_h2;
+      scatterers[i_hydrogens[0]].site = uc.fractionalize(site_h1);
+      scatterers[i_hydrogens[1]].site = uc.fractionalize(site_h2);
+      dx_over_dl[0] = u_h1;
+      dx_over_dl[1] = u_h2;
+    }
+
+  protected:
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::dx_over_dl;
+
+    int i_pivot_neighbour, i_pivot_neighbour_substituent;
+};
+
+/// Model of acetylenic X-CH
+/**
+    X-C-H is linear
+*/
+template<typename FloatType, class XrayScattererType,
+         template<class> class SharedArray1D=af::shared>
+class acetylenic_CH
+  : public geometrical_hydrogens<acetylenic_CH<FloatType,
+                                               XrayScattererType,
+                                               SharedArray1D>,
+                                 FloatType, XrayScattererType,
+                                 af::tiny, 1,
+                                 SharedArray1D>
+{
+  public:
+    typedef geometrical_hydrogens<acetylenic_CH<FloatType,
+                                                XrayScattererType,
+                                                SharedArray1D>,
+                                  FloatType, XrayScattererType,
+                                  af::tiny, 1,
+                                  SharedArray1D>
+            base_t;
+    typedef XrayScattererType xray_scatterer_type;
+    typedef FloatType float_type;
+    typedef parameter_map<xray_scatterer_type> parameter_map_type;
+    typedef cartesian<float_type> cart_t;
+    typedef fractional<float_type> frac_t;
+
+    acetylenic_CH(int pivot,
+                  int pivot_neighbour,
+                  int hydrogen,
+                  float_type bond_length,
+                  bool stretching=false)
+      : base_t(pivot, af::tiny<int,1>(hydrogen), bond_length, stretching),
+        i_pivot_neighbour(pivot_neighbour)
+    {}
+
+    void place_constrained_scatterers(
+      uctbx::unit_cell const &uc,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::ref<xray_scatterer_type> const &scatterers)
+    {
+      cart_t x_p = uc.orthogonalize(scatterers[i_pivot].site);
+      cart_t x_pn = uc.orthogonalize(scatterers[i_pivot_neighbour].site);
+      cart_t u_h = (x_p - x_pn).normalize();
+      cart_t x_h = x_p + l*u_h;
+      scatterers[i_hydrogens[0]].site = uc.fractionalize(x_h);
+      dx_over_dl[0] = u_h;
+    }
+
+  protected:
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::dx_over_dl;
+
+    int i_pivot_neighbour;
+
+};
 
 }}} // namespace smtbx::refinement::constraints
 
