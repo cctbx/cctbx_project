@@ -37,9 +37,10 @@ struct common_wrapper
 
 template<typename FloatType=double,
          class XrayScattererType=xray::scatterer<> >
-struct terminal_X_Hn_wrapper
+struct terminal_tetrahedral_XHn_wrapper
 {
-  typedef terminal_X_Hn<FloatType, XrayScattererType, af::boost_python::flex_1d>
+  typedef terminal_tetrahedral_XHn<FloatType, XrayScattererType,
+                                   af::boost_python::flex_1d>
           wt;
   typedef typename wt::float_type float_type;
 
@@ -122,12 +123,57 @@ struct aromatic_CH_or_amide_NH_wrapper
   }
 };
 
+template<typename FloatType=double,
+         class XrayScattererType=xray::scatterer<> >
+struct terminal_trihedral_XH2_wrapper
+{
+  typedef terminal_trihedral_XH2<FloatType, XrayScattererType,
+                                 af::boost_python::flex_1d>
+          wt;
+  typedef typename wt::float_type float_type;
+
+  static void wrap(char const *name) {
+    using namespace boost::python;
+    class_<wt> wrapped(name, no_init);
+    common_wrapper::wrap(wrapped, name);
+    wrapped
+      .def(init<int, int, int, af::tiny<int,2>, float_type, bool>
+          ((arg("pivot"),
+            arg("pivot_neighbour"),
+            arg("pivot_neighbour_substituent"),
+            arg("hydrogens"),
+            arg("bond_length"), arg("stretching")=false)))
+      ;
+  }
+};
+
+template<typename FloatType=double,
+         class XrayScattererType=xray::scatterer<> >
+struct acetylenic_CH_wrapper
+{
+  typedef acetylenic_CH<FloatType, XrayScattererType, af::boost_python::flex_1d>
+          wt;
+  typedef typename wt::float_type float_type;
+
+  static void wrap(char const *name) {
+    using namespace boost::python;
+    class_<wt> wrapped(name, no_init);
+    common_wrapper::wrap(wrapped, name);
+    wrapped
+      .def(init<int, int, int, float_type, bool>
+          ((arg("pivot"), arg("pivot_neighbour"), arg("hydrogen"),
+            arg("bond_length"), arg("stretching")=false)))
+      ;
+  }
+};
 
 void wrap_geometric_hydrogen() {
-  terminal_X_Hn_wrapper<>::wrap("terminal_X_Hn");
+  terminal_tetrahedral_XHn_wrapper<>::wrap("terminal_tetrahedral_XHn");
   secondary_CH2_wrapper<>::wrap("secondary_CH2");
   tertiary_CH_wrapper<>::wrap("tertiary_CH");
   aromatic_CH_or_amide_NH_wrapper<>::wrap("aromatic_CH_or_amide_NH");
+  terminal_trihedral_XH2_wrapper<>::wrap("terminal_trihedral_XH2");
+  acetylenic_CH_wrapper<>::wrap("acetylenic_CH");
 }
 
 }}}} // smtbx::refinement::constraints::boost_python
