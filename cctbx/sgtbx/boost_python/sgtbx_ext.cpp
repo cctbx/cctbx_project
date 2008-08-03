@@ -77,7 +77,6 @@ namespace {
     tuple_mapping_variable_capacity<af::shared<rt_mx> >();
     tuple_mapping_variable_capacity<af::shared<site_symmetry_ops> >();
     tuple_mapping_fixed_capacity<af::small<ss_vec_mod, 3> >();
-    tuple_mapping_fixed_capacity<af::small<int, 3> >();
   }
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
