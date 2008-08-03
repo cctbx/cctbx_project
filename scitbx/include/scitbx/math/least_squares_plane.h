@@ -7,10 +7,10 @@
 namespace scitbx { namespace math {
 
 template<typename FloatType=double>
-class least_square_plane
+class least_squares_plane
 {
   public:
-    least_square_plane(af::const_ref<vec3<FloatType> > const &points,
+    least_squares_plane(af::const_ref<vec3<FloatType> > const &points,
                        vec3<FloatType> const &origin)
     {
       FloatType xx=0, yy=0, zz=0, xy=0, xz=0, yz=0;
