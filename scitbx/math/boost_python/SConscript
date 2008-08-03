@@ -22,5 +22,6 @@ env.SharedLibrary(
     "quadrature.cpp",
     "unimodular_generator.cpp",
     "halton.cpp",
+    "least_square_plane.cpp",
     ]
 )
