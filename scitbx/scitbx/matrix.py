@@ -1,6 +1,11 @@
 from __future__ import division
 
 try:
+  from scitbx.array_family import flex
+except ImportError:
+  flex = None
+
+try:
   from stdlib import math
 except ImportError:
   import math
@@ -289,7 +294,10 @@ class rec(object):
       return   m[0] * (m[4] * m[8] - m[5] * m[7]) \
              - m[1] * (m[3] * m[8] - m[5] * m[6]) \
              + m[2] * (m[3] * m[7] - m[4] * m[6])
-    from scitbx.array_family import flex
+    if (flex is None):
+      raise RuntimeError(
+        "cannot compute determinant of %d x %d matrix:"
+        " scitbx.array_family.flex module not available." % self.n)
     m = flex.double(m)
     m.resize(flex.grid(self.n))
     return m.matrix_determinant_via_lu();
@@ -322,7 +330,10 @@ class rec(object):
       determinant = self.determinant()
       assert determinant != 0
       return self.co_factor_matrix_transposed() / determinant
-    from scitbx.array_family import flex
+    if (flex is None):
+      raise RuntimeError(
+        "cannot compute inverse of %d x %d matrix:"
+        " scitbx.array_family.flex module not available." % self.n)
     m = flex.double(self.elems)
     m.resize(flex.grid(n))
     m.matrix_inversion_in_place()
@@ -490,26 +501,28 @@ class rt(object):
       return rt((self.r, self.t - other))
 
   def __mul__(self, other):
-    try: return rt((self.r * other.r, self.r * other.t + self.t))
-    except KeyboardInterrupt: raise
-    except: pass
-    try: return self.r.elems * other + self.t.elems
-    except KeyboardInterrupt: raise
-    except: pass
-    try: return self.r * other + self.t
-    except KeyboardInterrupt: raise
-    except: pass
-    try: return self.r * col(other) + self.t
-    except KeyboardInterrupt: raise
-    except: pass
-    try: return rt((self.r * other, self.t))
-    except KeyboardInterrupt: raise
-    except: pass
-    if (len(other) == 9):
-      try: return rt((self.r * sqr(other), self.t))
-      except KeyboardInterrupt: raise
-      except: pass
-    raise TypeError("can't multiply %s by %s" % (repr(self), repr(other)))
+    if (isinstance(other, rt)):
+      return rt((self.r * other.r, self.r * other.t + self.t))
+    if (isinstance(other, rec)):
+      if (other.n == self.r.n):
+        return rt((self.r * other, self.t))
+      if (other.n == self.t.n):
+        return self.r * other + self.t
+      raise ValueError(
+        "cannot multiply %s by %s: incompatible number of rows or columns"
+          % (repr(self), repr(other)))
+    n = len(self.t.elems)
+    if (isinstance(other, (list, tuple))):
+      if (len(other) == n):
+        return self.r * col(other) + self.t
+      if (len(other) == n*n):
+        return rt((self.r * sqr(other), self.t))
+      raise ValueError(
+        "cannot multiply %s by %s: incompatible number of elements"
+          % (repr(self), repr(other)))
+    if (n == 3 and flex is not None and isinstance(other, flex.vec3_double)):
+      return self.r.elems * other + self.t.elems
+    raise TypeError("cannot multiply %s by %s" % (repr(self), repr(other)))
 
   def inverse(self):
     r_inv = self.r.inverse()
@@ -530,8 +543,15 @@ class rt(object):
     return rec(result, (n+1,n+1))
 
 if (__name__ == "__main__"):
-  from libtbx.test_utils import approx_equal
-  from boost import rational
+  try:
+    from libtbx import test_utils
+  except ImportError:
+    print "Warning: libtbx not available: some tests disabled."
+    def approx_equal(a, b): return True
+    Exception_expected = RuntimeError
+  else:
+    approx_equal = test_utils.approx_equal
+    Exception_expected = test_utils.Exception_expected
   a = rec((),(0,0))
   assert a.mathematica_form() == "{}"
   a = rec(range(1,7), (3,2))
@@ -561,9 +581,9 @@ if (__name__ == "__main__"):
   assert f.r.mathematica_form() \
       == "{{-9, -12, -15}, {-19, -26, -33}, {-29, -40, -51}}"
   assert f.t.mathematica_form() == "{{-4}, {-7}, {-9}}"
-  e = f.as_float()*.5
+  e = f.as_float()
   assert e.r.mathematica_form() \
-      == "{{-4.5, -6.0, -7.5}, {-9.5, -13.0, -16.5}, {-14.5, -20.0, -25.5}}"
+      == "{{-9.0, -12.0, -15.0}, {-19.0, -26.0, -33.0}, {-29.0, -40.0, -51.0}}"
   assert e.t.mathematica_form() == "{{-4.0}, {-7.0}, {-9.0}}"
   a = f.as_augmented_matrix()
   assert a.mathematica_form() == "{{-9, -12, -15, -4}, {-19, -26, -33, -7}," \
@@ -582,6 +602,7 @@ if (__name__ == "__main__"):
       == "{{-26, -7}, {0, 1}}"
   assert a.extract_block(start=(1,0),stop=(4,3),step=(2,1)).mathematica_form()\
       == "{{-19, -26, -33}, {0, 0, 0}}"
+  #
   ar = range(1,10)
   at = range(1,4)
   br = range(11,20)
@@ -629,7 +650,39 @@ if (__name__ == "__main__"):
       == "{{0.0}, {-3.0}, {-5.0}}"
   assert (s*si).t.mathematica_form() == "{{0.0}, {0.0}, {0.0}}"
   assert (si*s).t.mathematica_form() == "{{0.0}, {0.0}, {0.0}}"
-  assert approx_equal(col((rational.int(3,4),2,1.5)).as_float(),(0.75,2,1.5))
+  #
+  r = rec(elems=(8,-4,3,-2,7,9,-3,2,1), n=(3,3))
+  t = rec(elems=(7,-6,3), n=(3,1))
+  gr = g * r
+  assert gr.r == g.r * r
+  assert gr.t == g.t
+  gt = g * t
+  assert gt == g.r * t + g.t
+  gr = g * r.elems
+  assert gr.r == g.r * r
+  assert gr.t == g.t
+  gt = g * t.elems
+  assert gt == g.r * t + g.t
+  try: g * col([1])
+  except ValueError, e:
+    assert str(e).startswith("cannot multiply ")
+    assert str(e).endswith(": incompatible number of rows or columns")
+  else: raise Exception_expected
+  try: g * [1]
+  except ValueError, e:
+    assert str(e).startswith("cannot multiply ")
+    assert str(e).endswith(": incompatible number of elements")
+  else: raise Exception_expected
+  if (flex is not None):
+    gv = g * flex.vec3_double([(-1,2,3),(2,-3,4)])
+    assert isinstance(gv, flex.vec3_double)
+    assert approx_equal(gv, [(441, 1063, 1685), (333, 802, 1271)])
+  #
+  try: from boost import rational
+  except ImportError: pass
+  else:
+    assert approx_equal(col((rational.int(3,4),2,1.5)).as_float(),(0.75,2,1.5))
+  #
   assert approx_equal(col((-2,3,-6)).normalize().elems, (-2/7.,3/7.,-6/7.))
   assert col((-1,2,-3)).each_abs().elems == (1,2,3)
   assert col((5,3,4)).min() == 3
@@ -648,13 +701,27 @@ if (__name__ == "__main__"):
   assert approx_equal(col((1,0,0)).accute_angle(col((1,1,0)), deg=True), 45)
   assert approx_equal(col((-1,0,0)).accute_angle(col((1,1,0)), deg=True), 45)
   m = sqr([4, 4, -1, 0, -3, -3, -3, -2, -3, 2, -1, 1, -4, 1, 3, 2])
-  mi = m.inverse()
-  assert mi.n == (4,4)
-  assert approx_equal(mi, (
-    -2/15,-17/75,4/75,-19/75,
-    7/15,22/75,-14/75,29/75,
-    1/3,4/15,-8/15,8/15,
-    -1,-1,1,-1))
+  if (flex is not None):
+    md = m.determinant()
+    assert approx_equal(md, -75)
+    mi = m.inverse()
+    assert mi.n == (4,4)
+    assert approx_equal(mi, (
+      -2/15,-17/75,4/75,-19/75,
+      7/15,22/75,-14/75,29/75,
+      1/3,4/15,-8/15,8/15,
+      -1,-1,1,-1))
+  else:
+    try: m.determinant()
+    except RuntimeError, e:
+      assert str(e) == "cannot compute determinant of 4 x 4 matrix:" \
+        " scitbx.array_family.flex module not available."
+    else: raise Exception_expected
+    try: m.inverse()
+    except RuntimeError, e:
+      assert str(e) == "cannot compute inverse of 4 x 4 matrix:" \
+        " scitbx.array_family.flex module not available."
+    else: raise Exception_expected
   #
   r = sqr([-0.9533, 0.2413, -0.1815,
            0.2702, 0.414, -0.8692,
@@ -707,10 +774,10 @@ if (__name__ == "__main__"):
   a = rec(t, g)
   b = rec(t, g)
   assert a == b
-  from scitbx.array_family import flex
-  c = flex.double(t)
-  c.reshape(flex.grid(g))
-  assert a == c
+  if (flex is not None):
+    c = flex.double(t)
+    c.reshape(flex.grid(g))
+    assert a == c
   #
   a = identity(4)
   for ir in xrange(4):
