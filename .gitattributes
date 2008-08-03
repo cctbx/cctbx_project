@@ -270,6 +270,7 @@ scitbx/include/scitbx/error_utils.h -text
 scitbx/include/scitbx/iso_surface.h -text
 scitbx/include/scitbx/math/euler_angles.h -text
 scitbx/include/scitbx/math/inertia_tensor.h svneol=native#text/plain
+scitbx/include/scitbx/math/least_square_plane.h -text
 scitbx/include/scitbx/math/superpose.h -text
 scitbx/include/scitbx/matrix/delta_tensors.h -text
 scitbx/include/scitbx/misc/positive_getitem_index.h svneol=native#text/plain
@@ -279,6 +280,8 @@ scitbx/include/scitbx/sparse/lu_factorization.h -text
 scitbx/include/scitbx/sparse/matrix.h -text
 scitbx/include/scitbx/sparse/vector.h -text
 scitbx/include/scitbx/stl/vector_io.h -text
+scitbx/math/boost_python/least_square_plane.cpp -text
+scitbx/math/boost_python/tst_least_square_plane.py -text
 scitbx/scitbx/command_line/generate_error_h.py -text
 scitbx/scitbx/examples/principal_axes_of_inertia.py svneol=native#text/x-python
 scitbx/scitbx/graph/__init__.py -text
