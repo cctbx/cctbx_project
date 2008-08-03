@@ -1,5 +1,5 @@
 from scitbx.array_family import flex
-from scitbx.math import least_square_plane
+from scitbx.math import least_squares_plane
 from scitbx import matrix as mat
 from libtbx.utils import show_times_at_exit
 import random
@@ -13,7 +13,7 @@ def exercise():
     u = n/d
     return sum([ (u.dot(x) - 1)**2 for x in points ])
   flex_points = flex.vec3_double(points)
-  p = least_square_plane(flex_points, origin=(0,0,0))
+  p = least_squares_plane(flex_points, origin=(0,0,0))
   n = mat.col(p.normal)
   d = p.distance_to_origin
   assert approx_equal(abs(n), 1)

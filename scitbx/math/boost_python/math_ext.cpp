@@ -42,7 +42,7 @@ namespace boost_python {
   void wrap_quadrature();
   void wrap_unimodular_generator();
   void wrap_halton();
-  void wrap_least_square_plane();
+  void wrap_least_squares_plane();
 
 namespace {
 
@@ -243,7 +243,7 @@ namespace {
     wrap_quadrature();
     wrap_unimodular_generator();
     wrap_halton();
-    wrap_least_square_plane();
+    wrap_least_squares_plane();
 
     def("time_eigensystem_real_symmetric", time_eigensystem_real_symmetric);
 

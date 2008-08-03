@@ -4,19 +4,19 @@
 #include <boost/python/make_function.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/copy_const_reference.hpp>
-#include <scitbx/math/least_square_plane.h>
+#include <scitbx/math/least_squares_plane.h>
 
 namespace scitbx { namespace math { namespace boost_python {
 
 template<typename FloatType=double>
-struct least_square_plane_wrapper
+struct least_squares_plane_wrapper
 {
-  typedef least_square_plane<FloatType> wt;
+  typedef least_squares_plane<FloatType> wt;
 
   static void wrap() {
     using namespace boost::python;
     return_value_policy<return_by_value> rbv;
-    class_<wt>("least_square_plane", no_init)
+    class_<wt>("least_squares_plane", no_init)
       .add_property("normal", make_function(&wt::normal, rbv))
       .add_property("distance_to_origin", &wt::distance_to_origin)
       .def(init<af::const_ref<vec3<FloatType> > const &,
@@ -25,8 +25,8 @@ struct least_square_plane_wrapper
   }
 };
 
-void wrap_least_square_plane() {
-  least_square_plane_wrapper<>::wrap();
+void wrap_least_squares_plane() {
+  least_squares_plane_wrapper<>::wrap();
 }
 
 }}} // scitbx::math::boost_python
