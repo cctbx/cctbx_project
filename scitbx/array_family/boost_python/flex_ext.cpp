@@ -62,6 +62,7 @@ namespace {
     tuple_mapping_fixed_size<tiny<std::string, 3> >();
     tuple_mapping_fixed_size<tiny<std::string, 4> >();
 
+    tuple_mapping_fixed_capacity<small<int, 3> >();
     tuple_mapping_fixed_capacity<small<unsigned, 2> >();
     tuple_mapping_fixed_capacity<small<unsigned, 3> >();
     tuple_mapping_fixed_capacity<small<unsigned, 6> >();
