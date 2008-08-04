@@ -15,7 +15,7 @@ default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_enable_openmp_if_possible = (sys.platform != "osf1V5")
 
 def darwin_shlinkcom(env_etc, env, lo, dylib):
-  if (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc_4.2"]):
+  if (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc-4.2"]):
     if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
       dylib1 = "-ldylib1.o"
     else:
