@@ -18,7 +18,7 @@ from cStringIO import StringIO
 from scitbx.python_utils import easy_pickle
 from scitbx.math import matrix
 from cctbx import adptbx
-import sys, os
+import sys, os, math
 from mmtbx import monomer_library
 import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.monomer_library.server
@@ -90,18 +90,7 @@ map_params_str ="""\
     obs_factor = 1
     calc_factor = 1
   }
-  anomalous_difference_map
-    .short_caption=Anomalous difference map
-    .gui_style = box
-  {
-    mtz_label_amplitudes = ANOM
-      .type = str
-      .short_caption=Amplitude label
-    mtz_label_phases = PHANOM
-      .type = str
-      .short_caption=Phase label
-  }
-  grid_resolution_factor = 1/3
+  grid_resolution_factor = 1/4
     .type = float
   region = *selection cell
     .type = choice
@@ -116,6 +105,18 @@ map_params_str ="""\
   apply_volume_scaling = False
     .type = bool
     .expert_level = 2
+  apply_b_factor_sharpening = None
+    .type = float
+    .expert_level = 1
+    .help = Multiply all Fobs by exp(Bsharp * s**2)
+  kick_map
+    .help = parameters for kick maps
+  {
+     kick_size = 0.5
+       .type = float
+     number_of_kicks = 100
+       .type = int
+  }
 """
 
 map_params = iotbx.phil.parse(map_params_str, process_includes=True)
@@ -439,6 +440,7 @@ class kick_map(object):
     assert [real_map_unpadded, real_map].count(True) == 1
     self.map_data = None
     assert number_of_kicks > 0
+    b_sharp = 8 * math.pi**2 * kick_size**2
     for trial in xrange(number_of_kicks):
       xray_structure = fmodel.xray_structure.deep_copy_scatterers()
       xray_structure.shake_sites_in_place(mean_distance = kick_size)
@@ -448,7 +450,8 @@ class kick_map(object):
         map_type                      = map_type,
         update_bulk_solvent_and_scale = update_bulk_solvent_and_scale,
         resolution_factor             = resolution_factor,
-        symmetry_flags                = symmetry_flags).fft_map
+        symmetry_flags                = symmetry_flags,
+        b_sharp                       = b_sharp).fft_map
       if(real_map):
         tmp_result = self.fft_map.real_map()
       elif(real_map_unpadded):
@@ -469,7 +472,8 @@ class model_to_map(object):
                      map_type,
                      update_bulk_solvent_and_scale,
                      resolution_factor,
-                     symmetry_flags):
+                     symmetry_flags,
+                     b_sharp):
     fmodel_result = mmtbx.f_model.manager(
       xray_structure = xray_structure,
       r_free_flags   = fmodel.r_free_flags,
@@ -487,5 +491,6 @@ class model_to_map(object):
     self.fft_map = fmodel_result.electron_density_map(
       map_type          = map_type,
       resolution_factor = resolution_factor,
-      symmetry_flags    = symmetry_flags)
+      symmetry_flags    = symmetry_flags,
+      b_sharp           = b_sharp)
     self.fft_map.apply_sigma_scaling()

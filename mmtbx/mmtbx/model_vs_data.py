@@ -87,12 +87,12 @@ def show_geometry(processed_pdb_file, scattering_table):
     sites_cart         = xray_structure.sites_cart(),
     restraints_manager = restraints_manager)
   print "  Stereochemistry statistics (mean, max, count):"
-  print "    bonds            : %6.2f %6.2f %d" % (result.b_mean, result.b_max, result.b_number)
-  print "    angles           : %6.2f %6.2f %d" % (result.a_mean, result.a_max, result.a_number)
-  print "    dihedrals        : %6.2f %6.2f %d" % (result.d_mean, result.d_max, result.d_number)
-  print "    chirality        : %6.2f %6.2f %d" % (result.c_mean, result.c_max, result.c_number)
-  print "    planarity        : %6.2f %6.2f %d" % (result.p_mean, result.p_max, result.p_number)
-  print "    non-bonded (min) : %6.2f" % (result.n_min)
+  print "    bonds            : %8.4f %8.4f %d" % (result.b_mean, result.b_max, result.b_number)
+  print "    angles           : %8.4f %8.4f %d" % (result.a_mean, result.a_max, result.a_number)
+  print "    dihedrals        : %8.4f %8.4f %d" % (result.d_mean, result.d_max, result.d_number)
+  print "    chirality        : %8.4f %8.4f %d" % (result.c_mean, result.c_max, result.c_number)
+  print "    planarity        : %8.4f %8.4f %d" % (result.p_mean, result.p_max, result.p_number)
+  print "    non-bonded (min) : %8.4f" % (result.n_min)
 
 def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
   pdb_raw_records = smart_open.for_reading(
@@ -104,28 +104,6 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
     t = time.ctime().split() # to make it safe to remove files
     time_stamp = "_"+t[4]+"_"+t[1].upper()+"_"+t[2]+"_"+t[3][:-3].replace(":","h")
     prefix = os.path.basename(pdb_file_name)
-##     from elbow.command_line import builder
-##     from elbow.command_line import join_cif_files
-##     del sys.argv[1:]
-##     molecules = builder.run(pdb_file_name,
-##                             do_all=True,
-##                             output="%s" % (prefix+time_stamp),
-##                             no_output=True,
-##                             silent=True,
-##                             )
-##     cif_file = prefix+time_stamp+".cif"
-##     if molecules:
-##       if type(molecules)!=type([]): molecules = [molecules]
-##       cif_lines = []
-##       for molecule in molecules:
-##         #print molecule.DisplayBrief()
-##         lines = molecule.WriteCIF2String()
-##         cif_lines.append(lines)
-##       rc = join_cif_files.run(cif_lines, cif_file, no_file_access=True)
-##       if rc:
-##         f=file(cif_file, "wb")
-##         f.write(rc)
-##         f.close()
     from elbow.scripts import elbow_on_pdb_file
     from elbow.command_line import join_cif_files
     rc = elbow_on_pdb_file.run("\n".join(pdb_raw_records))
@@ -232,7 +210,7 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
   except ValueError: pass
   result = " \n    ".join([
     "data_label              : %s"%f_obs_labels,
-    "high_ressolution        : "+format_value("%-5.2f",info.d_min),
+    "high_resolution         : "+format_value("%-5.2f",info.d_min),
     "low_resolution          : "+format_value("%-6.2f",info.d_max),
     "completeness_in_range   : "+format_value("%-6.2f",info.completeness_in_range),
     "wilson_b                : "+format_value("%-6.1f",fmodel.wilson_b()),
