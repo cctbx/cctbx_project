@@ -426,6 +426,11 @@ class col(rec):
   def __init__(self, elems):
     rec.__init__(self, elems, (len(elems), 1))
 
+  def random(cls, n, a, b):
+    from random import uniform
+    return cls([ uniform(a,b) for i in xrange(n) ])
+  random = classmethod(random)
+
 class sqr(rec):
 
   def __init__(self, elems):
