@@ -39,9 +39,9 @@ class energies_iso(scitbx.restraints.energies):
     else:
        u_isos = xray_structure.extract_u_iso_or_u_equiv()
     if(use_hd):
-      selection = ~xray_structure.hd_selection()
-    else:
       selection = xray_structure.all_selection()
+    else:
+      selection = ~xray_structure.hd_selection()
     energies = crystal.adp_iso_local_sphere_restraints_energies(
       pair_sym_table=geometry_restraints_manager.plain_pair_sym_table,
       orthogonalization_matrix=unit_cell.orthogonalization_matrix(),
