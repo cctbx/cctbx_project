@@ -97,7 +97,7 @@ class constraint_array
       }
     }
 
-    std::map<int, xray::scatterer_flags>
+    std::map<std::size_t, xray::scatterer_flags>
     already_constrained() { return already_constrained_; }
 
   private:
@@ -107,7 +107,7 @@ class constraint_array
     af::shared<xray_scatterer_type> scatterers;
     parameter_map_type const &crystallographic_parameter_map;
     af::shared<xray::scatterer_flags> constraint_flags;
-    std::map<int, xray::scatterer_flags> already_constrained_;
+    std::map<std::size_t, xray::scatterer_flags> already_constrained_;
 };
 
 

@@ -49,7 +49,8 @@ struct terminal_tetrahedral_XHn_wrapper
     class_<wt> wrapped(name, no_init);
     common_wrapper::wrap(wrapped, name);
     wrapped
-      .def(init<int, int, af::small<int,3>, float_type, float_type, bool, bool>
+      .def(init<std::size_t, std::size_t, af::small<std::size_t,3>, float_type,
+                float_type, bool, bool>
           ((arg("pivot"), arg("pivot_neighbour"), arg("hydrogens"),
             arg("azimuth"), arg("bond_length"), arg("rotating")=true,
             arg("stretching")=false)))
@@ -73,7 +74,8 @@ struct secondary_CH2_wrapper
     class_<wt> wrapped(name, no_init);
     common_wrapper::wrap(wrapped, name);
     wrapped
-      .def(init<int, af::tiny<int,2>, af::tiny<int,2>, float_type, bool>
+      .def(init<std::size_t, af::tiny<std::size_t,2>, af::tiny<std::size_t,2>,
+                float_type, bool>
           ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogens"),
             arg("bond_length"), arg("stretching")=false)))
       .def_readonly("theta0", wt::theta0)
@@ -95,7 +97,8 @@ struct tertiary_CH_wrapper
     class_<wt> wrapped(name, no_init);
     common_wrapper::wrap(wrapped, name);
     wrapped
-      .def(init<int, af::tiny<int,3>, int, float_type, bool>
+      .def(init<std::size_t, af::tiny<std::size_t,3>, std::size_t,
+                float_type, bool>
           ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogen"),
             arg("bond_length"), arg("stretching")=false)))
       ;
@@ -116,7 +119,8 @@ struct aromatic_CH_or_amide_NH_wrapper
     class_<wt> wrapped(name, no_init);
     common_wrapper::wrap(wrapped, name);
     wrapped
-      .def(init<int, af::tiny<int,2>, int, float_type, bool>
+      .def(init<std::size_t, af::tiny<std::size_t,2>, std::size_t,
+                float_type, bool>
           ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogen"),
             arg("bond_length"), arg("stretching")=false)))
       ;
@@ -137,7 +141,8 @@ struct terminal_trihedral_XH2_wrapper
     class_<wt> wrapped(name, no_init);
     common_wrapper::wrap(wrapped, name);
     wrapped
-      .def(init<int, int, int, af::tiny<int,2>, float_type, bool>
+      .def(init<std::size_t, std::size_t, std::size_t, af::tiny<std::size_t,2>,
+                float_type, bool>
           ((arg("pivot"),
             arg("pivot_neighbour"),
             arg("pivot_neighbour_substituent"),
@@ -160,8 +165,34 @@ struct acetylenic_CH_wrapper
     class_<wt> wrapped(name, no_init);
     common_wrapper::wrap(wrapped, name);
     wrapped
-      .def(init<int, int, int, float_type, bool>
+      .def(init<std::size_t, std::size_t, std::size_t, float_type, bool>
           ((arg("pivot"), arg("pivot_neighbour"), arg("hydrogen"),
+            arg("bond_length"), arg("stretching")=false)))
+      ;
+  }
+};
+
+template<typename FloatType=double,
+         class XrayScattererType=xray::scatterer<> >
+struct polyhedral_BH_wrapper
+{
+  typedef polyhedral_BH<FloatType, XrayScattererType, af::boost_python::flex_1d>
+          wt;
+  typedef typename wt::float_type float_type;
+
+  static void wrap(char const *name) {
+    using namespace boost::python;
+    class_<wt> wrapped(name, no_init);
+    common_wrapper::wrap(wrapped, name);
+    wrapped
+      .def(init<std::size_t, af::small<std::size_t,5> const &, std::size_t, bool,
+                float_type, bool>
+          ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogen"),
+            arg("missing_fifth"),
+            arg("bond_length"), arg("stretching")=false)))
+      .def(init<std::size_t, af::small<std::size_t,5> const &, std::size_t,
+                float_type, bool>
+          ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogen"),
             arg("bond_length"), arg("stretching")=false)))
       ;
   }
@@ -174,6 +205,7 @@ void wrap_geometric_hydrogen() {
   aromatic_CH_or_amide_NH_wrapper<>::wrap("aromatic_CH_or_amide_NH");
   terminal_trihedral_XH2_wrapper<>::wrap("terminal_trihedral_XH2");
   acetylenic_CH_wrapper<>::wrap("acetylenic_CH");
+  polyhedral_BH_wrapper<>::wrap("polyhedral_BH");
 }
 
 }}}} // smtbx::refinement::constraints::boost_python

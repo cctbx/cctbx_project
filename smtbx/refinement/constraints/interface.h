@@ -53,7 +53,7 @@ class many_scatterer_constraints
     /** This map associates to each scatterer index the corresponding
         constraint flags are they were passed to the constructor.
     */
-    std::map<int, xray::scatterer_flags> already_constrained();
+    std::map<std::size_t, xray::scatterer_flags> already_constrained();
 
     /// Compute the gradients using the chain rule in the reverse mode
     /** \arg crystallographic_gradients the array of gradients
@@ -132,7 +132,7 @@ class few_scatterer_constraints
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
       af::ref<xray::scatterer_flags> const &constraint_flags,
-      std::map<int, xray::scatterer_flags> &already_constrained);
+      std::map<std::size_t, xray::scatterer_flags> &already_constrained);
 
     /// Called when the  constraint_array  it belong to
     /// runs its member function  compute_gradients .

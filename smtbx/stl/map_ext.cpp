@@ -9,9 +9,11 @@ namespace {
 
 void init_module() {
   typedef boost::python::return_internal_reference<> rir;
+  // used by smtbx.refinement.constraints
   scitbx::stl::boost_python::map_wrapper<
-    std::map<int,
-             cctbx::xray::scatterer_flags> >::wrap("int_xray_scatterer_flags");
+    std::map<std::size_t,
+             cctbx::xray::scatterer_flags> >::wrap(
+               "std_size_t_xray_scatterer_flags");
 }
 
 }}}}
