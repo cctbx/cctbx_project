@@ -72,8 +72,14 @@ namespace {
     tuple_mapping_fixed_capacity<small<double, 10> >();
 
     // smtbx.refinement.constraints.geometric_hydrogen
-    tuple_mapping_fixed_capacity<af::small<std::size_t, 3> >();
-    tuple_mapping_fixed_capacity<af::small<std::size_t, 5> >();
+//    if (boost::python::converter::registry::query(
+//          boost::python::type_id<af::small<std::size_t, 3> >()) == 0) {
+//      tuple_mapping_fixed_capacity<af::small<std::size_t, 3> >();
+//    }
+//    if (boost::python::converter::registry::query(
+//          boost::python::type_id<af::small<std::size_t, 5> >()) == 0) {
+//      tuple_mapping_fixed_capacity<af::small<std::size_t, 5> >();
+//    }
 
     tuple_mapping_fixed_size<tiny<int, 12> >();
     tuple_mapping_fixed_size<tiny<int, 24> >(); // scitbx/math/golay.h
