@@ -133,8 +133,7 @@ af::shared<std::size_t>
     }
     double dist_min = dist_min_mac;
     if(is_closest_index_water) dist_min = dist_min_sol;
-    if(dist_closest<=dist_max&&dist_closest>=dist_min&&(closest_element=="N"||
-       closest_element=="O")) {
+    if(dist_closest<=dist_max&&dist_closest>=dist_min && closest_element!="C") {
       result_selection.push_back(i_wat);
     }
   }
