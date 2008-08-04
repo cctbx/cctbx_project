@@ -110,8 +110,10 @@ supported_compilers = (
   "irix_CC",
   "darwin_c++",
   "darwin_gcc",
-  "darwin_gcc_4.2", # tested with the "GCC 4.2 Developer Preview 1"
+  "darwin_gcc-4.2", # tested with the "GCC 4.2 Developer Preview 1"
                     # distributed by Apple
+                    # and the GCC 4.2 shipping with XCode 3.1
+                    
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
@@ -522,26 +524,13 @@ else:
       static_exe = None
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc_4.2"]):
+  elif (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc-4.2"]):
     env_etc.gcc_version = libtbx.config.get_gcc_version(
       shall_be_named_gcc=False)
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     need_fcoalesce_templates = False
-    if (env_etc.compiler == "darwin_gcc"):
-      cc = "gcc"
-      cxx = "g++"
-    elif env_etc.compiler == "darwin_gcc_4.2":
-      cc = "gcc-4.2"
-      cxx = "g++-4.2"
-      if libtbx.env.build_options.enable_boost_threads:
-        build_nb = libtbx.config.get_darwin_gcc_build_number(gcc=cxx)
-        min_build_nb = 5564 # XCode 3.1 beta distributed as part of
-                            # the iPhone SDK
-        if build_nb < min_build_nb:
-          raise RuntimeError("Apple GCC 4.2 (build %i) incompatible with "
-                             "--enable_boost_threads" % build_nb)
-    else:
+    if env_etc.compiler == "darwin_c++":
       cc = "cc"
       cxx = "c++"
       cxx_version = easy_run.fully_buffered(command="c++ -dumpversion") \
@@ -554,6 +543,17 @@ else:
         else:
           if (cxx_major <= 3):
             need_fcoalesce_templates = True
+    else:
+      cc  = env_etc.compiler.replace('darwin_','')
+      cxx = cc.replace('gcc', 'g++')
+      if env_etc.compiler.endswith("4.2"):
+        if libtbx.env.build_options.enable_boost_threads:
+          build_nb = libtbx.config.get_darwin_gcc_build_number(gcc=cxx)
+          min_build_nb = 5564 # XCode 3.1 beta distributed as part of
+                              # the iPhone SDK and XCode 3.1
+          if build_nb < min_build_nb:
+            raise RuntimeError("Apple GCC 4.2 (build %i) incompatible with "
+                               "--enable_boost_threads" % build_nb)
     env_base.Replace(
       CC=cc,
       SHCC=cc,
