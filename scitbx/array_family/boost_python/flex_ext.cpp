@@ -71,6 +71,10 @@ namespace {
     // scitbx/math/gaussian/sum.h SCITBX_MATH_GAUSSIAN_SUM_MAX_N_TERMS
     tuple_mapping_fixed_capacity<small<double, 10> >();
 
+    // smtbx.refinement.constraints.geometric_hydrogen
+    tuple_mapping_fixed_capacity<af::small<std::size_t, 3> >();
+    tuple_mapping_fixed_capacity<af::small<std::size_t, 5> >();
+
     tuple_mapping_fixed_size<tiny<int, 12> >();
     tuple_mapping_fixed_size<tiny<int, 24> >(); // scitbx/math/golay.h
 
