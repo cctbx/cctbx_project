@@ -5,6 +5,7 @@
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/simple_tiny_io.h>
+#include <scitbx/math/least_squares_plane.h>
 
 #include <cctbx/coordinates.h>
 
@@ -31,7 +32,8 @@ namespace constants {
 */
 template<class DerivedType,
          typename FloatType, class XrayScattererType,
-         template<class, std::size_t> class HydrogenArrayTemplate, int NHydrogens,
+         template<class, std::size_t> class HydrogenArrayTemplate,
+         std::size_t NHydrogens,
          template<class> class SharedArray1D=af::shared>
 class geometrical_hydrogens
 {
@@ -41,12 +43,14 @@ class geometrical_hydrogens
     typedef parameter_map<xray_scatterer_type> parameter_map_type;
     typedef cartesian<float_type> cart_t;
     typedef fractional<float_type> frac_t;
-    typedef HydrogenArrayTemplate<int, NHydrogens> hydrogen_index_array_type;
-    typedef HydrogenArrayTemplate<cart_t, NHydrogens> hydrogen_grad_array_type;
+    typedef HydrogenArrayTemplate<std::size_t, NHydrogens>
+            hydrogen_index_array_type;
+    typedef HydrogenArrayTemplate<cart_t, NHydrogens>
+            hydrogen_grad_array_type;
 
     /// Construct a constraint for the scatterers with the given indices
     /// in the array to be passed to the other member functions.
-    geometrical_hydrogens(int pivot,
+    geometrical_hydrogens(std::size_t pivot,
                           hydrogen_index_array_type hydrogens,
                           float_type bond_length,
                           bool stretching=false
@@ -59,8 +63,8 @@ class geometrical_hydrogens
     {}
 
     /// Convenience constructor for the configuration with only 1 hydrogen
-    geometrical_hydrogens(int pivot,
-                          int hydrogen,
+    geometrical_hydrogens(std::size_t pivot,
+                          std::size_t hydrogen,
                           float_type bond_length,
                           bool stretching=false
                           )
@@ -71,7 +75,7 @@ class geometrical_hydrogens
         l(bond_length)
     {}
 
-    int pivot() { return i_pivot; }
+    std::size_t pivot() { return i_pivot; }
 
     hydrogen_index_array_type hydrogens() { return i_hydrogens; }
 
@@ -87,10 +91,10 @@ class geometrical_hydrogens
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
       af::ref<xray::scatterer_flags> const &constraint_flags,
-      std::map<int, xray::scatterer_flags> &already_constrained)
+      std::map<std::size_t, xray::scatterer_flags> &already_constrained)
     {
       for(int i=0; i < i_hydrogens.size(); ++i) {
-        int i_h = i_hydrogens[i];
+        std::size_t i_h = i_hydrogens[i];
         xray::scatterer_flags f = constraint_flags[i_h];
         if (!f.grad_site()) {
           already_constrained[i_h] = f;
@@ -115,7 +119,7 @@ class geometrical_hydrogens
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
       af::ref<xray::scatterer_flags> const &constraint_flags,
-      std::map<int, xray::scatterer_flags> &already_constrained)
+      std::map<std::size_t, xray::scatterer_flags> &already_constrained)
     {}
 
     /// Compute the derivatives of Fc wrt to all parameters.
@@ -142,10 +146,10 @@ class geometrical_hydrogens
 
       // Riding
       for(int i=0; i < i_hydrogens.size(); ++i) {
-        int i_h = i_hydrogens[i];
+        std::size_t i_h = i_hydrogens[i];
         SMTBX_ASSERT(scatterers[i_h].flags.grad_site())(i_h);
-        int i_grad_site_pivot = crystallographic_parameter_map[i_pivot].site;
-        int i_grad_site_h = crystallographic_parameter_map[i_h].site;
+        std::size_t i_grad_site_pivot = crystallographic_parameter_map[i_pivot].site;
+        std::size_t i_grad_site_h = crystallographic_parameter_map[i_h].site;
         for(int j=0; j < 3; ++j) {
           crystallographic_gradients[i_grad_site_pivot + j]
             += crystallographic_gradients[i_grad_site_h + j];
@@ -159,8 +163,8 @@ class geometrical_hydrogens
 
       hydrogen_grad_array_type dF_over_dx;
       for (int i=0; i < i_hydrogens.size(); ++i) {
-        int i_h = i_hydrogens[i];
-        int i_grad_site_h = crystallographic_parameter_map[i_h].site;
+        std::size_t i_h = i_hydrogens[i];
+        std::size_t i_grad_site_h = crystallographic_parameter_map[i_h].site;
         frac_t dF_over_dx_frac(&crystallographic_gradients[i_grad_site_h]);
         dF_over_dx[i] = uc.orthogonalize_gradient(dF_over_dx_frac);
       }
@@ -169,8 +173,8 @@ class geometrical_hydrogens
       if (stretching()) {
         float_type dF_over_dl = 0;
         for (int i=0; i < i_hydrogens.size(); ++i) {
-          int i_h = i_hydrogens[i];
-          int i_grad_site_h = crystallographic_parameter_map[i_h].site;
+          std::size_t i_h = i_hydrogens[i];
+          std::size_t i_grad_site_h = crystallographic_parameter_map[i_h].site;
           frac_t dF_over_dx_frac(&crystallographic_gradients[i_grad_site_h]);
           cart_t dF_over_dx = uc.orthogonalize_gradient(dF_over_dx_frac);
           dF_over_dl += dF_over_dx * dx_over_dl[i];
@@ -229,13 +233,13 @@ class geometrical_hydrogens
   protected:
     bool on_;
 
-    int i_pivot;
+    std::size_t i_pivot;
     hydrogen_index_array_type i_hydrogens;
 
     bool stretching_;
     float_type l;
 
-    int i_reparametrization_begin;
+    std::size_t i_reparametrization_begin;
     hydrogen_grad_array_type dF_over_dx, dx_over_dl;
 
   private:
@@ -280,8 +284,8 @@ class terminal_tetrahedral_XHn
     typedef typename base_t::hydrogen_grad_array_type hydrogen_grad_array_type;
 
     terminal_tetrahedral_XHn(
-      int pivot, int pivot_neighbour,
-      af::small<int, 3> hydrogens,
+      std::size_t pivot, std::size_t pivot_neighbour,
+      af::small<std::size_t, 3> hydrogens,
       float_type azimuth_, //degrees
       float_type bond_length,
       bool rotating=true,
@@ -308,7 +312,7 @@ class terminal_tetrahedral_XHn
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
       af::ref<xray::scatterer_flags> const &constraint_flags,
-      std::map<int, xray::scatterer_flags> &already_constrained)
+      std::map<std::size_t, xray::scatterer_flags> &already_constrained)
     {
       cart_t x_pn = unit_cell.orthogonalize(scatterers[i_pivot_neighbour].site);
       cart_t x_p  = unit_cell.orthogonalize(scatterers[i_pivot].site);
@@ -356,7 +360,7 @@ class terminal_tetrahedral_XHn
 
       // Place hydrogen's
       for (int i=0; i < i_hydrogens.size(); ++i) {
-        int i_h = i_hydrogens[i];
+        std::size_t i_h = i_hydrogens[i];
         cart_t x_h = x_p
                      + l*(sin_tetrahedral_angle*(cos_phi[i]*e0 + sin_phi[i]*e1)
                           + e2/3);
@@ -403,13 +407,13 @@ class terminal_tetrahedral_XHn
       using namespace constants;
 
       if (rotating()) {
-        int i = i_reparametrization_begin;
+        std::size_t i = i_reparametrization_begin;
         if (base_t::stretching()) i++;
         float_type delta_phi = reparametrization_shifts[i];
         phi += delta_phi;
       }
       if (base_t::stretching()) {
-        int i = i_reparametrization_begin;
+        std::size_t i = i_reparametrization_begin;
         float_type delta_l = reparametrization_shifts[i];
         l += delta_l;
       }
@@ -422,7 +426,7 @@ class terminal_tetrahedral_XHn
     using base_t::dx_over_dl;
     using base_t::i_reparametrization_begin;
 
-    int i_pivot_neighbour;
+    std::size_t i_pivot_neighbour;
     bool rotating_;
 
     cart_t e0, e1, e2;
@@ -466,9 +470,9 @@ class secondary_CH2
 
     static float_type theta0, dtheta_over_dXY_sq;
 
-    secondary_CH2(int pivot,
-                  af::tiny<int, 2> pivot_neighbours,
-                  af::tiny<int, 2> hydrogens,
+    secondary_CH2(std::size_t pivot,
+                  af::tiny<std::size_t, 2> pivot_neighbours,
+                  af::tiny<std::size_t, 2> hydrogens,
                   float_type bond_length,
                   bool stretching=false)
       : base_t(pivot, hydrogens, bond_length, stretching),
@@ -516,7 +520,7 @@ class secondary_CH2
     using base_t::l;
     using base_t::dx_over_dl;
 
-    af::tiny<int, 2> i_pivot_neighbours;
+    af::tiny<std::size_t, 2> i_pivot_neighbours;
 };
 
 
@@ -562,9 +566,9 @@ class tertiary_CH
     typedef cartesian<float_type> cart_t;
     typedef fractional<float_type> frac_t;
 
-    tertiary_CH(int pivot,
-                af::tiny<int, 3> pivot_neighbours,
-                int hydrogen,
+    tertiary_CH(std::size_t pivot,
+                af::tiny<std::size_t, 3> pivot_neighbours,
+                std::size_t hydrogen,
                 float_type bond_length,
                 bool stretching=false)
       : base_t(pivot, hydrogen, bond_length, stretching),
@@ -600,7 +604,7 @@ class tertiary_CH
     using base_t::l;
     using base_t::dx_over_dl;
 
-    af::tiny<int, 3> i_pivot_neighbours;
+    af::tiny<std::size_t, 3> i_pivot_neighbours;
 
 };
 
@@ -635,9 +639,9 @@ class aromatic_CH_or_amide_NH
     typedef cartesian<float_type> cart_t;
     typedef fractional<float_type> frac_t;
 
-    aromatic_CH_or_amide_NH(int pivot,
-                            af::tiny<int, 2> pivot_neighbours,
-                            int hydrogen,
+    aromatic_CH_or_amide_NH(std::size_t pivot,
+                            af::tiny<std::size_t, 2> pivot_neighbours,
+                            std::size_t hydrogen,
                             float_type bond_length,
                             bool stretching=false)
       : base_t(pivot, hydrogen, bond_length, stretching),
@@ -667,7 +671,7 @@ class aromatic_CH_or_amide_NH
     using base_t::l;
     using base_t::dx_over_dl;
 
-    af::tiny<int, 2> i_pivot_neighbours;
+    af::tiny<std::size_t, 2> i_pivot_neighbours;
 };
 
 
@@ -703,10 +707,10 @@ class terminal_trihedral_XH2
     typedef cartesian<float_type> cart_t;
     typedef fractional<float_type> frac_t;
 
-    terminal_trihedral_XH2(int pivot,
-                           int pivot_neighbour,
-                           int pivot_neighbour_substituent,
-                           af::tiny<int, 2> hydrogens,
+    terminal_trihedral_XH2(std::size_t pivot,
+                           std::size_t pivot_neighbour,
+                           std::size_t pivot_neighbour_substituent,
+                           af::tiny<std::size_t, 2> hydrogens,
                            float_type bond_length,
                            bool stretching=false)
       : base_t(pivot, hydrogens, bond_length, stretching),
@@ -742,7 +746,7 @@ class terminal_trihedral_XH2
     using base_t::l;
     using base_t::dx_over_dl;
 
-    int i_pivot_neighbour, i_pivot_neighbour_substituent;
+    std::size_t i_pivot_neighbour, i_pivot_neighbour_substituent;
 };
 
 /// Model of acetylenic X-CH
@@ -773,12 +777,12 @@ class acetylenic_CH
     typedef cartesian<float_type> cart_t;
     typedef fractional<float_type> frac_t;
 
-    acetylenic_CH(int pivot,
-                  int pivot_neighbour,
-                  int hydrogen,
+    acetylenic_CH(std::size_t pivot,
+                  std::size_t pivot_neighbour,
+                  std::size_t hydrogen,
                   float_type bond_length,
                   bool stretching=false)
-      : base_t(pivot, af::tiny<int,1>(hydrogen), bond_length, stretching),
+      : base_t(pivot, af::tiny<std::size_t,1>(hydrogen), bond_length, stretching),
         i_pivot_neighbour(pivot_neighbour)
     {}
 
@@ -801,9 +805,103 @@ class acetylenic_CH
     using base_t::l;
     using base_t::dx_over_dl;
 
-    int i_pivot_neighbour;
+    std::size_t i_pivot_neighbour;
 
 };
+
+/// Model of BH as part of a polyhedral fragment (Boron cages e.g.)
+/**
+    B may have 4 or 5 neighbours. Two cases are modelled:
+    (1) H is placed on the vector that represents the negative sum
+        of the unit vectors along the other bonds to B;
+    (2) a 4-bond configuration which is actually a 5-bond configuration with
+        a missing neighbour: this is treated like the latter with the missing
+        bond virtually inserted.
+*/
+template<typename FloatType, class XrayScattererType,
+         template<class> class SharedArray1D=af::shared>
+class polyhedral_BH
+  : public geometrical_hydrogens<polyhedral_BH<FloatType,
+                                               XrayScattererType,
+                                               SharedArray1D>,
+                                 FloatType, XrayScattererType,
+                                 af::tiny, 1,
+                                 SharedArray1D>
+{
+  public:
+    typedef geometrical_hydrogens<polyhedral_BH<FloatType,
+                                                XrayScattererType,
+                                                SharedArray1D>,
+                                  FloatType, XrayScattererType,
+                                  af::tiny, 1,
+                                  SharedArray1D>
+            base_t;
+    typedef XrayScattererType xray_scatterer_type;
+    typedef FloatType float_type;
+    typedef parameter_map<xray_scatterer_type> parameter_map_type;
+    typedef cartesian<float_type> cart_t;
+    typedef fractional<float_type> frac_t;
+
+    polyhedral_BH(std::size_t pivot,
+                  af::small<std::size_t,5> const &pivot_neighbours,
+                  std::size_t hydrogen,
+                  float_type bond_length,
+                  bool stretching=false)
+      : base_t(pivot, af::tiny<std::size_t,1>(hydrogen), bond_length, stretching),
+        i_pivot_neighbours(pivot_neighbours)
+    {}
+
+    polyhedral_BH(std::size_t pivot,
+                  af::small<std::size_t,5> const &pivot_neighbours,
+                  std::size_t hydrogen,
+                  bool missing_fifth_,
+                  float_type bond_length,
+                  bool stretching=false)
+      : base_t(pivot, af::tiny<std::size_t,1>(hydrogen), bond_length, stretching),
+        i_pivot_neighbours(pivot_neighbours),
+        missing_fifth(missing_fifth_)
+    {
+      SMTBX_ASSERT(pivot_neighbours.size() == 5);
+    }
+
+    void place_constrained_scatterers(
+      uctbx::unit_cell const &uc,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::ref<xray_scatterer_type> const &scatterers)
+    {
+      cart_t x_p = uc.orthogonalize(scatterers[i_pivot].site);
+      af::small<cart_t, 5> u_bond;
+      for (int i=0; i < i_pivot_neighbours.size(); ++i) {
+        cart_t x = uc.orthogonalize(scatterers[i_pivot_neighbours[i]].site);
+        cart_t u = (x - x_p).normalize();
+        u_bond.push_back(u);
+      }
+      cart_t u_BH(0,0,0);
+      if (missing_fifth) {
+        scitbx::math::least_squares_plane<cart_t> lsq_plane(u_bond.const_ref());
+        u_BH = -lsq_plane.normal(); // the normal is oriented from the origin,
+                                    // which is x_p here, to the plane:
+                                    // hence the minus sign
+      }
+      else {
+        for (int i=0; i < u_bond.size(); ++i) u_BH += u_bond[i];
+        u_BH = -u_BH.normalize();
+      }
+      cart_t x_h = x_p + l*u_BH;
+      scatterers[i_hydrogens[0]].site = uc.fractionalize(x_h);
+      dx_over_dl[0] = u_BH;
+    }
+
+  protected:
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::dx_over_dl;
+
+    af::small<std::size_t,5> i_pivot_neighbours;
+    bool missing_fifth;
+};
+
 
 }}} // namespace smtbx::refinement::constraints
 

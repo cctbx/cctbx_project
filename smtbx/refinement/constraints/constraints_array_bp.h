@@ -13,7 +13,7 @@ struct constraint_array_wrapper
 {
   typedef constraint_array<ConstraintType, af::boost_python::flex_1d> wt;
 
-  static void delitem(wt &self, int i) {
+  static void delitem(wt &self, std::size_t i) {
     self.erase(&self[i]);
   }
 

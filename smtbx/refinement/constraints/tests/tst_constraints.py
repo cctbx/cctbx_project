@@ -198,7 +198,7 @@ class special_position_test_case(test_case):
 
 class hydrogen_test_case(test_case):
 
-  def __init__(self):
+  def __init__(self, *args, **kwds):
     self.cs = crystal.symmetry((8, 9, 10, 85, 95, 105), "P1")
     self.xs = xray.structure(self.cs.special_position_settings())
     pivot = xray.scatterer("C", site=(0.5, 0.5, 0.5),
@@ -207,7 +207,7 @@ class hydrogen_test_case(test_case):
     self.xs.add_scatterer(pivot)
     self.i_pivot = 0
 
-    self.init_other_atoms()
+    self.init_other_atoms(*args, **kwds)
 
     for sc in self.xs.scatterers():
       sc.flags.set_grad_site(True)
@@ -638,9 +638,62 @@ class acetylenic_CH_test_case(stretching_only_hydrogen_test_case):
     assert approx_equal(u_CH.angle(u_CX, deg=True), 180)
     assert approx_equal(abs(u_CH), self.cts[0].bond_length)
 
+
+class polyhedral_BH_test_case(stretching_only_hydrogen_test_case):
+
+  def init_other_atoms(self, neighbours, missing_fifth):
+    from math import cos, sin, asin, sqrt, pi
+    assert neighbours in (4,5)
+    assert not missing_fifth or neighbours == 5
+    self.missing_fifth = missing_fifth
+    e3 = mat.col((-1, 0.5, 2)).normalize()
+    e1 = e3.ortho().normalize()
+    e2 = e3.cross(e1)
+    # construct a pyramid with a pentagonal base and the pivot at the vertex
+    # with all edges of length d
+    d = 1.2
+    sin_theta = 1/sqrt(2*(1 - cos(2*pi/5)))
+    cos_theta = sqrt(1-sin_theta**2)
+    bonds = []
+    for i in xrange(5):
+      phi = i*2*pi/5
+      u = sin_theta*(cos(phi)*e1 + sin(phi)*e2) + cos_theta*e3
+      bonds.append(d*u)
+    # place scatterers on slightly perturbated bond ends
+    x_p = mat.col(self.pivot.site)
+    h = 1e-4
+    for i in xrange(neighbours):
+      v_bond = bonds[i] + mat.col.random(3, -h, h)
+      site = x_p + mat.col(self.cs.unit_cell().fractionalize(v_bond))
+      self.xs.add_scatterer(xray.scatterer("B", site=site, u=(0,)*6))
+    self.i_neighbours = tuple(xrange(1,neighbours+1))
+    h = xray.scatterer("H", u=(0,)*6)
+    self.xs.add_scatterer(h)
+    self.i_hydrogens = (neighbours+1,)
+    self.u_BH = -e3
+
+  constraint_array_class = constraints.polyhedral_BH_array
+  def init_constraint(self):
+    ct = constraints.polyhedral_BH(
+      pivot=0,
+      pivot_neighbours=self.i_neighbours,
+      missing_fifth=self.missing_fifth,
+      hydrogen=self.i_hydrogens[0],
+      bond_length=1.)
+    self.cts.append(ct)
+
+  def check_geometry(self):
+    uc = self.cs.unit_cell()
+    x_p = mat.col(uc.orthogonalize(self.pivot.site))
+    x_h = mat.col(uc.orthogonalize(self.hydrogens[0].site))
+    u_BH = (x_h - x_p).normalize()
+    assert approx_equal(u_BH, self.u_BH, eps=5e-3)
+
 def run():
   import sys
   verbose = '--verbose' in sys.argv[1:]
+  polyhedral_BH_test_case.run(verbose=verbose,
+                              neighbours=5, missing_fifth=False)
   acetylenic_CH_test_case.run(verbose=verbose)
   terminal_trihedral_XH2.run(verbose=verbose)
   aromatic_ch_test_case.run(verbose=verbose)

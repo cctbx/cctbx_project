@@ -37,7 +37,7 @@ class special_positions
         scatterers(scatterers_),
         crystallographic_parameter_map(crystallographic_parameter_map_)
     {
-      int j = 0;
+      std::size_t j = 0;
       for(int i_sc=0; i_sc < crystallographic_parameter_map.size(); ++i_sc) {
         sgtbx::site_symmetry_ops const &ops = site_symmetry_table.get(i_sc);
         if (ops.is_point_group_1()) continue;
@@ -49,7 +49,7 @@ class special_positions
           if (flags.grad_site()) {
             flags.set_grad_site(false);
             site_shift_map.push_back(scatterer_indices(i_sc, j));
-            int p = ops.site_constraints().n_independent_params();
+            std::size_t p = ops.site_constraints().n_independent_params();
             j += p;
           }
           else already_constrained_[i_sc] = flags;
@@ -58,7 +58,7 @@ class special_positions
           if (flags.grad_u_aniso()) {
             flags.set_grad_u_aniso(false);
             adp_shift_map.push_back(scatterer_indices(i_sc, j));
-            int p = ops.adp_constraints().n_independent_params();
+            std::size_t p = ops.adp_constraints().n_independent_params();
             j += p;
           }
           else already_constrained_[i_sc] = flags;
@@ -66,7 +66,7 @@ class special_positions
       }
     }
 
-    std::map<int, xray::scatterer_flags>
+    std::map<std::size_t, xray::scatterer_flags>
     already_constrained() { return already_constrained_; }
 
     void compute_gradients(
@@ -119,8 +119,8 @@ class special_positions
         sgtbx::site_symmetry_ops const &ops
           = site_symmetry_table.get(shift_ids.i_sc);
         sgtbx::site_constraints<float_type> const &ct = ops.site_constraints();
-        int p = begin_grad_idx + shift_ids.i_shift;
-        int q = p + ct.n_independent_params();
+        std::size_t p = begin_grad_idx + shift_ids.i_shift;
+        std::size_t q = p + ct.n_independent_params();
         if (p == q) continue;
         af::small<float_type, 3> ind_delta(&reparametrization_shifts[p],
                                            &reparametrization_shifts[q]);
@@ -136,8 +136,8 @@ class special_positions
           = site_symmetry_table.get(shift_ids.i_sc);
         sgtbx::tensor_rank_2::constraints<float_type> const &ct
           = ops.adp_constraints();
-        int p = begin_grad_idx + shift_ids.i_shift;
-        int q = p + ct.n_independent_params();
+        std::size_t p = begin_grad_idx + shift_ids.i_shift;
+        std::size_t q = p + ct.n_independent_params();
         if (p == q) continue;
         af::small<float_type, 6> ind_delta(&reparametrization_shifts[p],
                                            &reparametrization_shifts[q]);
@@ -171,8 +171,8 @@ class special_positions
 
   private:
     struct scatterer_indices {
-      int i_sc, i_shift;
-      scatterer_indices(int scatt_idx, int shift_idx)
+      std::size_t i_sc, i_shift;
+      scatterer_indices(std::size_t scatt_idx, std::size_t shift_idx)
         : i_sc(scatt_idx), i_shift(shift_idx)
       {}
     };
@@ -183,7 +183,7 @@ class special_positions
     parameter_map_type const &crystallographic_parameter_map;
 
     af::shared<scatterer_indices> site_shift_map, adp_shift_map;
-    std::map<int, xray::scatterer_flags> already_constrained_;
+    std::map<std::size_t, xray::scatterer_flags> already_constrained_;
     unsigned begin_grad_idx, end_grad_idx;
 };
 
