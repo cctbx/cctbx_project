@@ -64,11 +64,11 @@ class test_case(object):
       dsu.sort()
       cls.exercises = [ ex for foo, ex in dsu ]
 
-  def run(cls, verbose=False):
+  def run(cls, verbose=False, *args, **kwds):
     if verbose: print cls.__name__
     for exercise in cls.exercises:
       if verbose: print "\t%s ... " % exercise.__name__,
-      o = cls()
+      o = cls(*args, **kwds)
       exercise(o)
       if verbose: print "OK"
   run = classmethod(run)
