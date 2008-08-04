@@ -8,10 +8,10 @@
 
 namespace scitbx { namespace math { namespace boost_python {
 
-template<typename FloatType=double>
+template<typename VectorType=vec3<double> >
 struct least_squares_plane_wrapper
 {
-  typedef least_squares_plane<FloatType> wt;
+  typedef least_squares_plane<VectorType> wt;
 
   static void wrap() {
     using namespace boost::python;
@@ -19,8 +19,7 @@ struct least_squares_plane_wrapper
     class_<wt>("least_squares_plane", no_init)
       .add_property("normal", make_function(&wt::normal, rbv))
       .add_property("distance_to_origin", &wt::distance_to_origin)
-      .def(init<af::const_ref<vec3<FloatType> > const &,
-                vec3<FloatType> const &>((arg("points"), arg("origin"))))
+      .def(init<af::const_ref<VectorType> const &>((arg("points"))))
       ;
   }
 };
