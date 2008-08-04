@@ -6,19 +6,21 @@
 
 namespace scitbx { namespace math {
 
-template<typename FloatType=double>
+template<typename VectorType=double>
 class least_squares_plane
 {
   public:
-    least_squares_plane(af::const_ref<vec3<FloatType> > const &points,
-                       vec3<FloatType> const &origin)
+    typedef VectorType vector_type;
+    typedef typename vector_type::value_type float_type;
+
+    least_squares_plane(af::const_ref<vector_type> const &points)
     {
-      FloatType xx=0, yy=0, zz=0, xy=0, xz=0, yz=0;
-      vec3<FloatType> b(0,0,0);
+      float_type xx=0, yy=0, zz=0, xy=0, xz=0, yz=0;
+      vector_type b(0,0,0);
       for(int i=0; i < points.size(); ++i) {
-        vec3<FloatType> p = points[i] - origin;
+        vector_type const &p = points[i];
         b += p;
-        FloatType x=p[0], y=p[1], z=p[2];
+        float_type x=p[0], y=p[1], z=p[2];
         xx += x*x;
         yy += y*y;
         zz += z*z;
@@ -26,19 +28,19 @@ class least_squares_plane
         xz += x*z;
         yz += y*z;
       }
-      sym_mat3<FloatType> m(xx, yy, zz, xy, xz, yz);
-      vec3<FloatType> u = m.inverse()*b;
+      sym_mat3<float_type> m(xx, yy, zz, xy, xz, yz);
+      vector_type u = m.inverse()*b;
       d = 1/u.length();
       n = d*u;
     }
 
-    vec3<FloatType> const &normal() { return n; }
+    vector_type const &normal() { return n; }
 
-    FloatType distance_to_origin() { return d; }
+    float_type distance_to_origin() { return d; }
 
   private:
-    vec3<FloatType> n;
-    FloatType d;
+    vector_type n;
+    float_type d;
 };
 
 }}
