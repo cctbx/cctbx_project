@@ -341,6 +341,32 @@ class manager(object):
     self.restraints_manager = new_restraints_manager
     self.idealize_h()
 
+  def hd_group_selections(self):
+    return utils.combine_hd_exchangable(hierarchy = self.pdb_hierarchy)
+
+  def reset_adp_of_hd_sites_to_be_equal(self):
+    scatterers = self.xray_structure.scatterers()
+    adp_fl = self.refinement_flags.adp_individual_iso
+    if(adp_fl is not None):
+      for gsel in self.hd_group_selections():
+        i,j = gsel[0][0], gsel[1][0]
+        element_symbols = \
+          [scatterers[i].element_symbol(), scatterers[j].element_symbol()]
+        assert element_symbols.count('H') > 0 and element_symbols.count('D')>0
+        i_seq_max_q = None
+        i_seq_min_q = None
+        if(scatterers[i].occupancy < scatterers[j].occupancy):
+          i_seq_max_q = j
+          i_seq_min_q = i
+        else:
+          i_seq_max_q = i
+          i_seq_min_q = j
+        if([adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0):
+          adp_fl[i_seq_max_q] = True
+          adp_fl[i_seq_min_q] = False
+          assert [adp_fl[i_seq_max_q], adp_fl[i_seq_min_q]].count(True) > 0
+          scatterers[i_seq_min_q].u_iso = scatterers[i_seq_max_q].u_iso
+
   def geometry_minimization(self,
                             max_number_of_iterations       = 500,
                             number_of_macro_cycles         = 5,

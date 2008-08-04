@@ -60,20 +60,21 @@ class peaks_holder(object):
 
 class manager(object):
   def __init__(self, fmodel, map_type, map_cutoff, params = None, log = None,
-                     use_kick_map = False):
+                     use_kick_map = False, kick_map_params = None):
     adopt_init_args(self, locals())
     self.mapped = False
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
     if(use_kick_map):
       from mmtbx import maps
-      km = maps.kick_map(fmodel                        = self.fmodel,
-                         map_type                      = map_type,
-                         kick_size                     = 0.3,
-                         number_of_kicks               = 50,
-                         update_bulk_solvent_and_scale = False,
-                         resolution_factor = self.params.resolution_factor,
-                         symmetry_flags    = maptbx.use_space_group_symmetry)
+      km = maps.kick_map(
+        fmodel                        = self.fmodel,
+        map_type                      = map_type,
+        kick_size                     = kick_map_params.kick_size,
+        number_of_kicks               = kick_map_params.number_of_kicks,
+        update_bulk_solvent_and_scale = False,
+        resolution_factor             = self.params.resolution_factor,
+        symmetry_flags                = maptbx.use_space_group_symmetry)
       fft_map = km.fft_map
       fft_map_data = km.map_data # XXX map is already sigma scaled
       map_units = "sigma"

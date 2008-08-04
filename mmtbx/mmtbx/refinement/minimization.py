@@ -64,8 +64,9 @@ class lbfgs(object):
     self.monitor.collect()
     self.fmodels.create_target_functors()
     ###
-    if(fmodels.fmodel_xray().f_obs.d_min() > 1.6 and
-       self.h_params is not None and (refine_xyz or refine_adp)):
+    if(self.h_params is not None and fmodels.fmodel_xray().f_obs.d_min() >
+       self.h_params.high_resolution_limit_to_include_scattering_from_h and
+       (refine_xyz or refine_adp)):
              if(self.h_params.refine == "riding" and self.hd_flag):
                if(self.fmodels.fmodel_n is None and
            self.all_params.main.scattering_table != "neutron"):
@@ -91,8 +92,9 @@ class lbfgs(object):
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
     self.xray_structure.tidy_us()
     ###
-    if(fmodels.fmodel_xray().f_obs.d_min() > 1.6 and
-       self.h_params is not None and (refine_xyz or refine_adp)):
+    if(self.h_params is not None and fmodels.fmodel_xray().f_obs.d_min() >
+       self.h_params.high_resolution_limit_to_include_scattering_from_h and
+      (refine_xyz or refine_adp)):
              if(self.h_params.refine == "riding" and self.hd_flag):
                if(self.fmodels.fmodel_n is None and
            self.all_params.main.scattering_table != "neutron"):

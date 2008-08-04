@@ -80,6 +80,30 @@ def show_times(out = None):
   print >> out, "    TOTAL for micro-tasks          = %-7.2f" % total
   return total
 
+class fbulk(object):
+
+  def __init__(self, f_mask, k_sol, b_sol):
+    adopt_init_args(self, locals())
+    d_spacings = self.f_mask.d_spacings().data()
+    self.ss = 1./flex.pow2(self.d_spacings)/4.
+
+  def f_bulk(self):
+    return f_mask.array(
+      data = self.f_mask.data()*self.k_sol*flex.exp(-self.b_sol*self.ss))
+
+  def update(self, k_sol = None, b_sol = None):
+    if(k_sol is not None): self.k_sol = k_sol
+    if(b_sol is not None): self.b_sol = b_sol
+
+def combine_fbulk(fbulks):
+  data = None
+  for fbulk in fbulks:
+    if(data is None):
+      data = fbulk.data()
+    else:
+      data += fbulk.data()
+  result = self.f_mask.array(data = data)
+
 class set_core(object):
   def __init__(self, f_calc,
                      f_mask,
@@ -446,9 +470,9 @@ class manager(manager_mixin):
     if(self.f_obs.d_min() < 9.0):
       result = mmtbx.scaling.twin_analyses.twin_analyses_brief(
         miller_array = self.f_obs, cut_off = cut_off)
-      if(result): result = "twinned"
+      if(result): result = "yes"
       elif(result is None): result = "unknown"
-      elif(not result): result = "not twinned"
+      elif(not result): result = "no"
       else: raise Sorry("Twin analysis failed.")
     return result
 
@@ -1360,9 +1384,9 @@ class manager(manager_mixin):
     return miller.array(miller_set = f_model,
                         data       = d_obs.data()-f_model.data()*f_model_scale)
 
-  def map_coefficients(self, map_type):
+  def map_coefficients(self, map_type, b_sharp):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
-    if(map_name_manager.anomalous and self.f_obs.anomalous_flag()):
+    if(0 and map_name_manager.anomalous and self.f_obs.anomalous_flag()): # XXX does not work.
       anom_diff = self.f_obs.anomalous_differences()
       fom = miller.array(miller_set = self.f_obs,
                          data       = self.figures_of_merit())
@@ -1381,6 +1405,9 @@ class manager(manager_mixin):
     scale_k2 = self.scale_k2()
     f_obs_scale   = 1.0 / fb_cart * scale_k2
     f_model_scale = 1.0 / fb_cart
+    if(b_sharp is not None):
+      f_obs_scale *= flex.exp(b_sharp*self.ss)
+      f_model_scale *= flex.exp(b_sharp*self.ss)
     if(not map_name_manager.ml_map):
        return self._map_coeff(
          f_obs         = self.f_obs,
@@ -1413,9 +1440,11 @@ class manager(manager_mixin):
                            map_type,
                            resolution_factor = 1/3.,
                            symmetry_flags = None,
-                           map_coefficients = None):
+                           map_coefficients = None,
+                           b_sharp = None):
     if(map_coefficients is None):
-      map_coefficients = self.map_coefficients(map_type = map_type)
+      map_coefficients = self.map_coefficients(map_type = map_type,
+        b_sharp = b_sharp)
     return map_coefficients.fft_map(
       resolution_factor = resolution_factor,
       symmetry_flags    = symmetry_flags)

@@ -2126,7 +2126,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        k        = None,
                        n        = None,
                        w1       = None,
-                       w2       = None
+                       w2       = None,
+                       b_sharp = None # XXX to make it not crashing: dummy parameter
                        ):
     assert map_type in ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
@@ -2231,7 +2232,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            w1                = None,
                            w2                = None,
                            resolution_factor = 1/3.,
-                           symmetry_flags = None):
+                           symmetry_flags = None,
+                           b_sharp = None): #  XXX to make it not crashing: dummy parameter
     assert map_type in ("Fo-Fc", "Fobs-Fmodel"
                         "2mFo-DFc", "2mFobs-DFmodel",
                         "mFo-DFc", "mFobs-DFmodel",

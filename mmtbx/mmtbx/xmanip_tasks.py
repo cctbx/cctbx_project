@@ -292,9 +292,9 @@ def sfcalc(names, miller_arrays, xray_structure, parameters, out):
       result = abs(result).f_as_f_sq()
   else:
     if parameters.output == "2mFo-DFc":
-      result = fmodel.map_coefficients(map_type="2m*Fobs-D*Fmodel")
+      result = fmodel.map_coefficients(map_type="2m*Fobs-D*Fmodel", b_sharp=None)
     if parameters.output == "mFo-DFc":
-      result = fmodel.map_coefficients(map_type="2m*Fobs-D*Fmodel")
+      result = fmodel.map_coefficients(map_type="2m*Fobs-D*Fmodel", b_sharp=None)
 
   assert result is not None
   return result

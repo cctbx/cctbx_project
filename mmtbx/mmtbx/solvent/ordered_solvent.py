@@ -105,6 +105,14 @@ master_params = iotbx.phil.parse("""\
     .type = bool
     .expert_level=2
     .help = Use Dusan's Turk kick maps for peak picking
+  kick_map
+    .help = parameters for kick maps
+  {
+     kick_size = 0.5
+       .type = float
+     number_of_kicks = 100
+       .type = int
+  }
 """)
 
 class water_ids(object):
@@ -317,12 +325,13 @@ class manager(object):
     self.fmodel.update_xray_structure(
       xray_structure = self.model.xray_structure,
       update_f_calc  = True)
-    return find_peaks.manager(fmodel       = self.fmodel,
-                              map_type     = map_type,
-                              map_cutoff   = map_cutoff,
-                              params       = self.find_peaks_params,
-                              use_kick_map = use_kick_map,
-                              log          = self.log)
+    return find_peaks.manager(fmodel          = self.fmodel,
+                              map_type        = map_type,
+                              map_cutoff      = map_cutoff,
+                              params          = self.find_peaks_params,
+                              use_kick_map    = use_kick_map,
+                              kick_map_params = self.params.kick_map,
+                              log             = self.log)
 
   def correct_drifted_waters(self, map_cutoff):
     self.fmodel.update_xray_structure(
