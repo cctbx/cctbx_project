@@ -49,11 +49,14 @@ master_params =  iotbx.phil.parse("""
   detwin{
     mode = algebraic proportional *auto
     .type= choice
+    .short_caption = Detwin mode
     map_types{
       twofofc = *two_m_dtfo_d_fc two_dtfo_fc
       .type = choice
+      .short_caption = 2Fo-Fc map type
       fofc = *m_dtfo_d_fc gradient m_gradient
       .type = choice
+      .short_caption = Fo-Fc map type
       aniso_correct = False
       .type=bool
 
