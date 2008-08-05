@@ -91,12 +91,26 @@ namespace {
         .def_readonly("bits", &w_t::bits)
         .def_readwrite("param", &w_t::param)
       ;
-      {
-        scitbx::af::boost_python::shared_wrapper<
-          w_t, return_internal_reference<> >::wrap("scatterer_flags_array");
-      }
     }
   };
+
+  struct scatterer_flags_array_wrappers
+  {
+    typedef af::shared<scatterer_flags> wt;
+
+    static void wrap() {
+      using namespace boost::python;
+      class_<wt> wrapper = scitbx::af::boost_python::shared_wrapper<
+        scatterer_flags,
+        return_internal_reference<> >::wrap("scatterer_flags_array");
+      wrapper.def("n_parameters", n_parameters);
+    }
+
+    static std::size_t n_parameters(wt const &self) {
+      return grad_flags_counts(self.const_ref()).n_parameters();
+    }
+  };
+
 
   struct scatterer_grad_flags_counts_wrappers
   {
@@ -131,6 +145,7 @@ namespace {
   {
     using namespace boost::python;
     scatterer_flags_wrappers::wrap();
+    scatterer_flags_array_wrappers::wrap();
     scatterer_grad_flags_counts_wrappers::wrap();
     def("set_scatterer_grad_flags",(void
       (*)(scitbx::af::ref<scatterer<> > const&,
