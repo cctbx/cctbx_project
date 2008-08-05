@@ -197,7 +197,8 @@ namespace cctbx { namespace xray {
     }
   };
 
-  class scatterer_grad_flags_counts {
+  class grad_flags_counts_core
+  {
     public:
       unsigned site;
       unsigned u_iso;
@@ -209,42 +210,63 @@ namespace cctbx { namespace xray {
       unsigned use_u_iso;
       unsigned use_u_aniso;
 
+      grad_flags_counts_core()
+        : site(0),
+          u_iso(0),
+          u_aniso(0),
+          occupancy(0),
+          fp(0),
+          fdp(0),
+          tan_u_iso(0),
+          use_u_iso(0),
+          use_u_aniso(0)
+      {}
+
+      void process(scatterer_flags const &f)
+      {
+        if(f.use()) {
+          if (f.grad_site()) site = site + 3;
+          if (f.grad_u_iso() && f.use_u_iso()) u_iso++;
+          if (f.grad_u_aniso() && f.use_u_aniso()) u_aniso = u_aniso+6;
+          if (f.grad_occupancy()) occupancy++;
+          if (f.grad_fp()) fp++;
+          if (f.grad_fdp()) fdp++;
+          if (f.tan_u_iso()) tan_u_iso++;
+          if (f.use_u_iso()) use_u_iso++;
+          if (f.use_u_aniso()) use_u_aniso++;
+        }
+      }
+
+      unsigned
+      n_parameters() const {
+        return site + u_iso + u_aniso + occupancy + fp + fdp;
+      }
+  };
+
+
+  class scatterer_grad_flags_counts : public grad_flags_counts_core
+  {
+    public:
       scatterer_grad_flags_counts() {}
 
       template <typename ScattererType>
       scatterer_grad_flags_counts(
                         af::const_ref<ScattererType> const& scatterers)
-      :
-        site(0),
-        u_iso(0),
-        u_aniso(0),
-        occupancy(0),
-        fp(0),
-        fdp(0),
-        tan_u_iso(0),
-        use_u_iso(0),
-        use_u_aniso(0)
+        : grad_flags_counts_core()
       {
-        for(std::size_t i=0;i<scatterers.size();i++) {
-            ScattererType const& sc = scatterers[i];
-            if(sc.flags.use()) {
-              if (sc.flags.grad_site()) site = site + 3;
-              if (sc.flags.grad_u_iso() && sc.flags.use_u_iso()) u_iso++;
-              if (sc.flags.grad_u_aniso() &&
-                  sc.flags.use_u_aniso()) u_aniso = u_aniso+6;
-              if (sc.flags.grad_occupancy()) occupancy++;
-              if (sc.flags.grad_fp()) fp++;
-              if (sc.flags.grad_fdp()) fdp++;
-              if (sc.flags.tan_u_iso()) tan_u_iso++;
-              if(sc.flags.use_u_iso()) use_u_iso++;
-              if(sc.flags.use_u_aniso()) use_u_aniso++;
-            }
-        }
+        for(std::size_t i=0;i<scatterers.size();i++) process(scatterers[i].flags);
       }
-
-      unsigned
-      n_parameters() const { return site+u_iso+u_aniso+occupancy+fp+fdp; }
   };
+
+
+  class grad_flags_counts : public grad_flags_counts_core
+  {
+    public:
+      grad_flags_counts(af::const_ref<scatterer_flags> const &flags) {
+        for (std::size_t i=0; i < flags.size(); ++i) process(flags[i]);
+      }
+  };
+
 
   template <typename ScattererType>
   void

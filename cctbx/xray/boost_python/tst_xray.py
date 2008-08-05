@@ -143,6 +143,7 @@ def exercise_scatterer_flags():
     f.set_grad_occupancy(True)
   assert flags[0].grad_occupancy()
   assert flags[1].grad_occupancy()
+  assert flags.n_parameters() == 7
 
 def exercise_set_scatterer_grad_flags():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))
