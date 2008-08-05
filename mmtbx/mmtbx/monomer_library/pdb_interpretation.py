@@ -73,6 +73,7 @@ master_params = iotbx.phil.parse("""\
   apply_cif_modification
     .optional = True
     .multiple = True
+    .short_caption = Modify CIF. . .
   {
     data_mod = None
       .type = str
@@ -82,6 +83,7 @@ master_params = iotbx.phil.parse("""\
   apply_cif_link
     .optional = True
     .multiple = True
+    .short_caption = Add link to CIF. . .
   {
     data_link = None
       .type = str
@@ -99,7 +101,9 @@ master_params = iotbx.phil.parse("""\
   chir_volume_esd = 0.2
     .type=float
     .optional=False
-  peptide_link {
+  peptide_link
+    .gui_style = box
+  {
     cis_threshold = 45
       .type = float
       .optional = False
@@ -155,6 +159,7 @@ geometry_restraints_edits = iotbx.phil.parse("""\
 bond
   .optional = True
   .multiple = True
+  .short_caption = Bond
 {
   action = *add delete change
     .type = choice
@@ -177,6 +182,7 @@ bond
 angle
   .optional = True
   .multiple = True
+  .short_caption = Angle
 {
   action = *add delete change
     .type = choice
