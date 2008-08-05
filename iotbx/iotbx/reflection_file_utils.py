@@ -529,6 +529,30 @@ class reflection_file_server(object):
         ="Multiple equally suitable arrays of observed xray data found.")
     return miller_arrays[i]
 
+  # most of the parameters here are placeholders. --nat
+  def get_valid_xray_data (self,
+        file_name=None,
+        labels="",
+        ignore_all_zeros=False,
+        parameter_scope="",
+        parameter_name="labels",
+        minimum_score=1) :
+    miller_arrays = self.get_miller_arrays(file_name=file_name)
+    data_scores = get_xray_data_scores(
+      miller_arrays=miller_arrays,
+      ignore_all_zeros=ignore_all_zeros)
+    i = 0
+    scored_arrays = []
+    for array in miller_arrays :
+      scored_arrays.append( (array, data_scores[i]) )
+      i += 1
+    scored_arrays.sort(lambda x, y: y[1] - x[1])
+    valid_arrays = []
+    for (array, score) in scored_arrays :
+      if score >= minimum_score :
+        valid_arrays.append(array)
+    return valid_arrays
+
   def get_r_free_flags(self,
         file_name,
         label,
