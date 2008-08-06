@@ -102,7 +102,7 @@ namespace {
       using namespace boost::python;
       class_<wt> wrapper = scitbx::af::boost_python::shared_wrapper<
         scatterer_flags,
-        return_internal_reference<> >::wrap("scatterer_flags_array");
+        return_internal_reference<> >::wrap("shared_scatterer_flags");
       wrapper.def("n_parameters", n_parameters);
     }
 

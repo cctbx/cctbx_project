@@ -70,7 +70,7 @@ class special_position_test_case(test_case):
       sc.flags.set_use_u_aniso(True)
       sc.flags.set_grad_u_aniso(True)
 
-    self.constraint_flags = xray.scatterer_flags_array(
+    self.constraint_flags = xray.shared_scatterer_flags(
       len(self.xs.scatterers()))
     for f in self.constraint_flags:
       f.set_grad_site(True)
@@ -212,7 +212,7 @@ class hydrogen_test_case(test_case):
     for sc in self.xs.scatterers():
       sc.flags.set_grad_site(True)
 
-    self.constraint_flags = xray.scatterer_flags_array(
+    self.constraint_flags = xray.shared_scatterer_flags(
       len(self.xs.scatterers()))
     for f in self.constraint_flags:
       f.set_grad_site(True)
