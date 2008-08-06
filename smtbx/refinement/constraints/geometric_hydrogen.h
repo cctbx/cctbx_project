@@ -103,7 +103,7 @@ class geometrical_hydrogens
         constraint_flags[i_hydrogens[i]].set_grad_site(false);
       }
       if (!on_) return;
-      heir().do_initialise_in_context(unit_cell,
+      heir().initialise_more_in_context(unit_cell,
                                       site_symmetry_table,
                                       scatterers,
                                       constraint_flags,
@@ -114,7 +114,7 @@ class geometrical_hydrogens
     /** Heirs may override it if extra computations are needed to initialise
         the constraint
     */
-    void do_initialise_in_context(
+    void initialise_more_in_context(
       uctbx::unit_cell const &unit_cell,
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
@@ -192,7 +192,8 @@ class geometrical_hydrogens
     bool has_active_reparametrizations() { return stretching(); }
 
     /// Called by compute_gradients.
-    /** Heirs shall override it if they do more than just riding.
+    /** Heirs shall override it if they do more than just riding and bond
+        stretching.
         The arguments have the same meaning as for compute_gradients.
     */
     void compute_reparametrisation_gradients(
@@ -216,7 +217,7 @@ class geometrical_hydrogens
       af::const_ref<float_type> const &reparametrization_shifts)
     {
       if (!on_) return;
-      heir().do_apply_reparametrization_shifts(reparametrization_shifts);
+      heir().apply_reparametrization_shifts(reparametrization_shifts);
       heir().place_constrained_scatterers(unit_cell,
                                           site_symmetry_table,
                                           scatterers);
@@ -226,9 +227,25 @@ class geometrical_hydrogens
     /** Heirs shall override it to apply the shifts to the non-crystallographic
     parameters they hold, if there are any
     */
-    void do_apply_reparametrization_shifts(
+    void apply_reparametrization_shifts(
       af::const_ref<float_type> const &reparametrization_shifts)
     {}
+
+    /// Number of reparametrization variables needed in the current state
+    std::size_t n_reparametrization_variables() {
+      std::size_t result = 0;
+      if (on_) {
+        if (stretching()) result += 1;
+        result += heir().n_more_reparametrization_variables();
+      }
+      return result;
+    }
+
+    /// Called by n_reparametrization_variables
+    /** Heirs shall override it to return the number of reparametrization
+        variables needed by anything beyond stretching
+    */
+    std::size_t n_more_reparametrization_variables() { return 0; }
 
   protected:
     bool on_;
@@ -307,7 +324,7 @@ class terminal_tetrahedral_XHn
     float_type azimuth() { return phi*180/constants::pi; }
     void set_azimuth(float_type phi_) { phi = phi_*constants::pi/180; }
 
-    void do_initialise_in_context(
+    void initialise_more_in_context(
       uctbx::unit_cell const &unit_cell,
       sgtbx::site_symmetry_table const &site_symmetry_table,
       af::const_ref<xray_scatterer_type> const &scatterers,
@@ -319,6 +336,10 @@ class terminal_tetrahedral_XHn
       e2 = (x_p - x_pn).normalize();
       e1 = e2.ortho(true);
       e0 = e1.cross(e2);
+    }
+
+    std::size_t n_more_reparametrization_variables() {
+      return rotating() ? 1 : 0;
     }
 
     void place_constrained_scatterers(
@@ -401,7 +422,7 @@ class terminal_tetrahedral_XHn
       reparametrization_gradients.push_back(dF_over_dphi);
     }
 
-    void do_apply_reparametrization_shifts(
+    void apply_reparametrization_shifts(
       af::const_ref<float_type> const &reparametrization_shifts)
     {
       using namespace constants;

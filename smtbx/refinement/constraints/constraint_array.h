@@ -56,8 +56,16 @@ class constraint_array
       elements.push_back(constraint);
     }
 
-    void erase(constraint_type const *e) {
-      elements.erase(const_cast<constraint_type *>(e));
+    void erase(constraint_type *e) {
+      elements.erase(e);
+    }
+
+    std::size_t n_reparametrization_variables() {
+      std::size_t result = 0;
+      for (int i=0; i < size(); ++i) {
+        result += (*this)[i].n_reparametrization_variables();
+      }
+      return result;
     }
 
     void compute_gradients(
