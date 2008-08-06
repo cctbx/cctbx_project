@@ -1000,6 +1000,9 @@ class structure(crystal.special_position_settings):
     print >> out, "n_anisotropic_flag = ", n_anisotropic_flag
     print >> out, "total number of scatterers = ", self.scatterers().size()
 
+  def scatterer_flags(self):
+    return ext.shared_scatterer_flags(self.scatterers())
+
   def n_parameters(self):
     #XXX move to C++ (after anisotropic_flag is gone)
     result_ = 0
