@@ -4,6 +4,7 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_arg.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <boost/python/make_constructor.hpp>
 #include <cctbx/xray/scatterer.h>
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 
@@ -103,7 +104,24 @@ namespace {
       class_<wt> wrapper = scitbx::af::boost_python::shared_wrapper<
         scatterer_flags,
         return_internal_reference<> >::wrap("shared_scatterer_flags");
-      wrapper.def("n_parameters", n_parameters);
+      wrapper
+        .def("__init__",
+             make_constructor(from_scatterers,
+                              default_call_policies(),
+                              arg("scatterers")))
+        .def("n_parameters", n_parameters)
+        ;
+    }
+
+    static wt*
+    from_scatterers(af::const_ref<scatterer<> > const & scatterers)
+    {
+      wt *result = new wt();
+      result->reserve(scatterers.size());
+      for(std::size_t i=0; i < scatterers.size(); ++i) {
+        result->push_back(scatterers[i].flags);
+      }
+      return result;
     }
 
     static std::size_t n_parameters(wt const &self) {
