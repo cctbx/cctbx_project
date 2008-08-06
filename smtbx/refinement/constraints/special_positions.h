@@ -64,10 +64,15 @@ class special_positions
           else already_constrained_[i_sc] = flags;
         }
       }
+      _n_reparametrization_variables = j;
     }
 
     std::map<std::size_t, xray::scatterer_flags>
     already_constrained() { return already_constrained_; }
+
+    std::size_t n_reparametrization_variables() {
+      return _n_reparametrization_variables;
+    }
 
     void compute_gradients(
       af::ref<float_type> const &crystallographic_gradients,
@@ -182,6 +187,7 @@ class special_positions
     af::shared<xray_scatterer_type> scatterers;
     parameter_map_type const &crystallographic_parameter_map;
 
+    std::size_t _n_reparametrization_variables;
     af::shared<scatterer_indices> site_shift_map, adp_shift_map;
     std::map<std::size_t, xray::scatterer_flags> already_constrained_;
     unsigned begin_grad_idx, end_grad_idx;

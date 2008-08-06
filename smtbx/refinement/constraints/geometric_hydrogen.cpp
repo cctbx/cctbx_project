@@ -26,11 +26,13 @@ struct common_wrapper
       .add_property("hydrogens", &wt::hydrogens)
       .add_property("stretching", &wt::stretching, &wt::set_stretching)
       .add_property("bond_length", &wt::bond_length, &wt::set_bond_length)
-      .add_property("initialise_in_context", &wt::initialise_in_context)
-      .add_property("place_constrained_scatterers",
-                    &wt::place_constrained_scatterers)
-      .add_property("compute_gradients", &wt::compute_gradients)
-      .add_property("apply_shifts", &wt::apply_shifts)
+      .def("n_reparametrization_variables",
+                    &wt::n_reparametrization_variables)
+      .def("initialise_in_context", &wt::initialise_in_context)
+      .def("place_constrained_scatterers",
+           &wt::place_constrained_scatterers)
+      .def("compute_gradients", &wt::compute_gradients)
+      .def("apply_shifts", &wt::apply_shifts)
       ;
   }
 };

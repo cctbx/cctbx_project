@@ -152,6 +152,10 @@ class special_position_test_case(test_case):
       assert not f.grad_site()
       assert not f.grad_u_aniso()
 
+    # number of reparametrization variables
+    assert (self.cts.n_reparametrization_variables()
+            == len(reparametrization_shifts) - len(foo))
+
     # gradients
     reparametrization_gradients = flex.double(foo)
     self.cts.compute_gradients(crystallographic_gradients,
@@ -291,7 +295,11 @@ class stretching_only_hydrogen_test_case(hydrogen_test_case):
     ct = self.cts[0]
     crystallographic_gradients = self.grad_f()
     reparametrization_gradients = flex.double(foo)
+    assert ct.n_reparametrization_variables() == 0
+    assert self.cts.n_reparametrization_variables() == 0
     ct.stretching = True
+    assert ct.n_reparametrization_variables() == 1
+    assert self.cts.n_reparametrization_variables() == 1
     self.cts.compute_gradients(crystallographic_gradients,
                                reparametrization_gradients)
     assert len(reparametrization_gradients) == len(foo) + 1
@@ -363,6 +371,10 @@ class ch3_test_case(hydrogen_test_case):
       ct.rotating, ct.stretching = rotating, stretching
       assert self.cts[0].rotating == rotating
       assert self.cts[0].stretching == stretching
+      assert (ct.n_reparametrization_variables()
+              == [rotating, stretching].count(True))
+      assert (self.cts.n_reparametrization_variables()
+              == [rotating, stretching].count(True))
 
       self.cts.place_constrained_scatterers()
       crystallographic_gradients = self.grad_f()
