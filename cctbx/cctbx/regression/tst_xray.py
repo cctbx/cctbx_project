@@ -620,6 +620,23 @@ C  pair count:   1       <<  0.0000,  0.0000,  0.1000>>
   assert str(bs.unit_cell()) == "(11, 19, 31, 90, 90, 90)"
   bs = xs.cubic_unit_cell_around_centered_scatterers(buffer_size=3.5)
   assert str(bs.unit_cell()) == "(31, 31, 31, 90, 90, 90)"
+  #
+  xs = xray.structure(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(3,4,5,90,90,90),
+      space_group_symbol="Pmmm"))
+  xs.add_scatterer(xray.scatterer("C1", site=(0.5, 0.5, 0.5)))
+  xs.add_scatterer(xray.scatterer("C2", site=(0.7, 0.7, 0.7)))
+  xs.add_scatterer(xray.scatterer("C3", site=(0.3, 0.3, 0.3)))
+  c1, c2, c3 = xs.scatterers()
+  c1.flags.set_grad_site(True)
+  c2.flags.set_use_u_iso(True)
+  c3.flags.set_grad_u_aniso(True)
+  grad_flags = xs.scatterer_flags()
+  assert ([ f.bits for f in grad_flags ]
+          ==
+          [ sc.flags.bits for sc in xs.scatterers() ])
+
 
 def exercise_closest_distances():
   xs = random_structure.xray_structure(
