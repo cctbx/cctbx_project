@@ -145,6 +145,15 @@ def exercise_scatterer_flags():
   assert flags[1].grad_occupancy()
   assert flags.n_parameters() == 7
 
+  x = xray.scatterer("C", site=(0.4, 0.5, 0.6))
+  scatterers = flex.xray_scatterer(10, x)
+  for sc in scatterers:
+    sc.flags.set_grad_site(True)
+    sc.flags.set_use_u_aniso(True)
+    sc.flags.set_grad_u_aniso(True)
+  grad_flags = xray.shared_scatterer_flags(scatterers)
+  assert [ f.bits for f in grad_flags ] == [ sc.flags.bits for sc in scatterers ]
+
 def exercise_set_scatterer_grad_flags():
   x = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=(0,0,0,0,0,0))
   y = xray.scatterer("c", site=(0.1,0.2,0.3), occupancy=0.0, u=1.0)
