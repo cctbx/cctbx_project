@@ -1377,29 +1377,37 @@ class manager(manager_mixin):
     else:
       return pher
 
+  def phase_transfer(self, miller_array, phase_source):
+    # XXX could be a method in miller.py under a better name in future
+    tmp = miller.array(miller_set = miller_array,
+      data = flex.double(miller_array.indices().size(), 1)
+      ).phase_transfer(phase_source = phase_source)
+    return miller.array(miller_set = miller_array,
+      data = miller_array.data() * tmp.data() )
+
   def _map_coeff(self, f_obs, f_model, f_obs_scale, f_model_scale):
-    d_obs = miller.array(miller_set = f_model,
-                         data       = f_obs.data()*f_obs_scale
-                        ).phase_transfer(phase_source = f_model)
-    return miller.array(miller_set = f_model,
-                        data       = d_obs.data()-f_model.data()*f_model_scale)
+    obs = miller.array(miller_set = f_model,
+                       data       = f_obs.data()*f_obs_scale)
+    obs_phi_calc = self.phase_transfer(miller_array = obs,
+      phase_source = f_model)
+    return miller.array(
+      miller_set = obs_phi_calc,
+      data       = obs_phi_calc.data()-f_model.data()*f_model_scale)
 
   def map_coefficients(self, map_type, b_sharp):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
-    if(0 and map_name_manager.anomalous and self.f_obs.anomalous_flag()): # XXX does not work.
+    if(map_name_manager.anomalous and self.f_obs.anomalous_flag()):
       anom_diff = self.f_obs.anomalous_differences()
-      fom = miller.array(miller_set = self.f_obs,
-                         data       = self.figures_of_merit())
-      fom = fom.as_non_anomalous_array().merge_equivalents().array()
-      fom_match_anom_diff = fom.common_set(other = anom_diff)
-      fmodel = self.f_model().as_non_anomalous_array().merge_equivalents().array()
-      fc_match_anom_diff = fmodel.common_set(other = anom_diff)
-      fc_match_anom_diff.indices().all_eq(anom_diff.indices())
-      tmp = miller.array(miller_set = anom_diff,
-                         data       = anom_diff.data()*fom_match_anom_diff.data()
-                         ).phase_transfer(phase_source = fc_match_anom_diff)
-      return miller.array(miller_set = tmp,
-                          data = tmp.data()/(2j))
+      fmodel = self.f_model().as_non_anomalous_array().\
+        merge_equivalents().array()
+      fmodel_match_anom_diff, anom_diff_common = \
+        fmodel.common_sets(other = anom_diff)
+      assert anom_diff_common.indices().size() == anom_diff.indices().size()
+      anom_diff = self.phase_transfer(miller_array = anom_diff_common,
+        phase_source = fmodel_match_anom_diff)
+      # Formula frpm page 141 in "The Bijvoet-Difference Fourier Synthesis",
+      # Jeffrey Roach, METHODS IN ENZYMOLOGY, VOL. 374
+      return miller.array(miller_set = anom_diff, data = anom_diff.data()/(2j))
     #
     fb_cart  = self.fb_cart()
     scale_k2 = self.scale_k2()

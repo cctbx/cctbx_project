@@ -90,6 +90,18 @@ map_params_str ="""\
     obs_factor = 1
     calc_factor = 1
   }
+  anomalous_difference_map
+    .short_caption=Anomalous difference map
+    .gui_style = box
+  {
+    mtz_label_amplitudes = ANOM
+      .type = str
+      .short_caption=Amplitude label
+    mtz_label_phases = PHANOM
+      .type = str
+      .short_caption=Phase label
+  }
+
   grid_resolution_factor = 1/4
     .type = float
   region = *selection cell
