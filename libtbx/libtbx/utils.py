@@ -4,6 +4,8 @@ from libtbx import sge_utils
 from libtbx.str_utils import show_string
 try: import gzip
 except ImportError: gzip = None
+try: import bz2
+except ImportError: bz2 = None
 try:
   import hashlib
   hashlib_md5 = hashlib.md5
@@ -35,6 +37,13 @@ def gzip_open(file_name, mode):
       "gzip module not available: cannot %scompress file %s"
         % (un, show_string(file_name)))
   return gzip.open(file_name, mode)
+
+def bz2_open(file_name, mode):
+  assert mode in ('r', 'w')
+  if bz2 is None:
+    raise RuntimeError('bz2 module not available: cannot %compress file %s'
+                       % ({'r':'un', 'w':''}[mode], file_name))
+  return bz2.BZ2File(file_name, mode)
 
 def warn_if_unexpected_md5_hexdigest(
       path,

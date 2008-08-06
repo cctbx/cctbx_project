@@ -1,4 +1,4 @@
-from libtbx.utils import escape_sh_double_quoted, gzip_open
+from libtbx.utils import escape_sh_double_quoted, gzip_open, bz2_open
 from libtbx import easy_run
 from libtbx.str_utils import show_string
 from cStringIO import StringIO
@@ -12,6 +12,8 @@ def for_reading(file_name, mode="r", gzip_mode="rb"):
     return StringIO(easy_run.fully_buffered(
       command='gunzip -c "%s"' % escape_sh_double_quoted(file_name),
       stdout_splitlines=False).raise_if_errors().stdout_buffer)
+  if file_name.endswith('.bz2'):
+    return bz2_open(file_name=file_name, mode=mode)
   try:
     return open(file_name, mode)
   except IOError, e:
