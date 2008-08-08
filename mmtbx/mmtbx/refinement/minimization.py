@@ -12,8 +12,6 @@ import cctbx.adp_restraints
 from cctbx import adptbx
 from libtbx.str_utils import format_value
 
-time_site_individual = 0.0
-
 class lbfgs(object):
 
   def __init__(self, restraints_manager,
@@ -31,7 +29,6 @@ class lbfgs(object):
                      h_params                 = None,
                      u_min                    = adptbx.b_as_u(-30.0),
                      u_max                    = adptbx.b_as_u(1000.0)):
-    global time_site_individual
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     self.xray_structure = self.fmodels.fmodel_xray().xray_structure
@@ -63,24 +60,14 @@ class lbfgs(object):
                            refine_occ     = False)
     self.monitor.collect()
     self.fmodels.create_target_functors()
-    ###
-    if(self.h_params is not None and fmodels.fmodel_xray().f_obs.d_min() >
-       self.h_params.high_resolution_limit_to_include_scattering_from_h and
-       (refine_xyz or refine_adp)):
-             if(self.h_params.refine == "riding" and self.hd_flag):
-               if(self.fmodels.fmodel_n is None and
-           self.all_params.main.scattering_table != "neutron"):
-                 occupancies_cache = self.xray_structure.scatterers().extract_occupancies()
-    ###
-
+    #
+    if(self.exclude_scattering_of_hydrogens()):
+      occupancies_cache= self.xray_structure.scatterers().extract_occupancies()
+      self.xray_structure.set_occupancies(value=0, selection=self.hd_selection)
+    #
     self.neutron_refinement = (self.fmodels.fmodel_n is not None)
     self.x = flex.double(self.xray_structure.n_parameters_XXX(), 0)
     self._scatterers_start = self.xray_structure.scatterers()
-    #
-    if 0:
-      self.xray_structure.show_scatterer_flags_summary()
-      model.refinement_flags.show()
-    #
     self.minimizer = scitbx.lbfgs.run(
       target_evaluator          = self,
       termination_params        = lbfgs_termination_params,
@@ -91,20 +78,29 @@ class lbfgs(object):
     del self._scatterers_start
     self.compute_target(compute_gradients = False,u_iso_refinable_params = None)
     self.xray_structure.tidy_us()
-    ###
-    if(self.h_params is not None and fmodels.fmodel_xray().f_obs.d_min() >
-       self.h_params.high_resolution_limit_to_include_scattering_from_h and
-      (refine_xyz or refine_adp)):
-             if(self.h_params.refine == "riding" and self.hd_flag):
-               if(self.fmodels.fmodel_n is None and
-           self.all_params.main.scattering_table != "neutron"):
-                 self.xray_structure.set_occupancies(occupancies_cache)
-    ###
+    #
+    if(self.exclude_scattering_of_hydrogens()):
+      self.xray_structure.set_occupancies(occupancies_cache)
+      self.xray_structure.set_occupancies(value = occupancies_cache,
+        selection = self.hd_selection)
+    #
     self.regularize_h_and_update_xray_structure(xray_structure =
       self.xray_structure)
     self.monitor.collect(iter = self.minimizer.iter(),
                          nfun = self.minimizer.nfun())
-    time_site_individual += timer.elapsed()
+
+  def exclude_scattering_of_hydrogens(self):
+    hrltisfh = False
+    if(self.h_params is not None):
+      hrltisfh = \
+        self.h_params.high_resolution_limit_to_include_scattering_from_h
+    return self.h_params is not None and \
+      self.fmodels.fmodel_xray().f_obs.d_min() > hrltisfh and \
+      (self.refine_xyz or self.refine_adp) and \
+      self.h_params.refine == "riding" and \
+      self.hd_flag and \
+      self.fmodels.fmodel_n is None and \
+      self.all_params.main.scattering_table != "neutron"
 
   def apply_shifts(self):
     # XXX inefficient

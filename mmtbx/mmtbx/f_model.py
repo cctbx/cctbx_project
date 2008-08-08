@@ -1405,7 +1405,7 @@ class manager(manager_mixin):
       assert anom_diff_common.indices().size() == anom_diff.indices().size()
       anom_diff = self.phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
-      # Formula frpm page 141 in "The Bijvoet-Difference Fourier Synthesis",
+      # Formula from page 141 in "The Bijvoet-Difference Fourier Synthesis",
       # Jeffrey Roach, METHODS IN ENZYMOLOGY, VOL. 374
       return miller.array(miller_set = anom_diff, data = anom_diff.data()/(2j))
     #

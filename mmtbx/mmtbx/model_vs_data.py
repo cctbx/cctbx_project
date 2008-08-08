@@ -97,6 +97,8 @@ def show_geometry(processed_pdb_file, scattering_table):
 def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
   pdb_raw_records = smart_open.for_reading(
     file_name=pdb_file_name).read().splitlines()
+  for rec in pdb_raw_records:
+    if(rec.startswith("CRYST1 ")): pdb_raw_records.remove(rec)
   pdb_raw_records.append(cryst1)
   #############################################################################
   cif_objects = None
@@ -295,8 +297,10 @@ def run(args, command_name = "phenix.model_vs_data",
     format_value("%5s",os.path.basename(pdb_file_name)),
     format_value("%5s",os.path.basename(hkl_file_name)))
   if([crystal_symmetry_model, crystal_symmetry_data].count(None)==0):
-    if(not crystal_symmetry_model.is_similar_symmetry(crystal_symmetry_data)):
-      raise Sorry("Crystal symmetry mismatch between data and PDB files.")
+    if([crystal_symmetry_model.space_group_info(),
+        crystal_symmetry_data.space_group_info()].count(None)==0):
+      if(not crystal_symmetry_model.is_similar_symmetry(crystal_symmetry_data)):
+        raise Sorry("Crystal symmetry mismatch between data and PDB files.")
   if(crystal_symmetry_model is not None):
     crystal_symmetry = crystal_symmetry_model
   if(crystal_symmetry_data is not None):
