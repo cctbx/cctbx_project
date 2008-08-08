@@ -108,6 +108,7 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
     prefix = os.path.basename(pdb_file_name)
     from elbow.scripts import elbow_on_pdb_file
     from elbow.command_line import join_cif_files
+    if len(sys.argv)>1: del sys.argv[1:]
     rc = elbow_on_pdb_file.run("\n".join(pdb_raw_records),
                                silent=True,
                                )
