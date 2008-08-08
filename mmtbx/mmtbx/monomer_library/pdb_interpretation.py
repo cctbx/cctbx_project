@@ -690,7 +690,8 @@ class monomer_mapping(object):
             nitrogen_hydrogens.append(name)
         nitrogen_hydrogen_translation = None
         if (len(nitrogen_hydrogens) == 3):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
+          if (self.monomer_atom_dict.get("H") is not None):
+            mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
         elif (len(nitrogen_hydrogens) == 2):
           if (self.monomer.chem_comp.id == "PRO"):
             mod_mod_id = self.mon_lib_srv.mod_mod_id_dict["NH2"]
@@ -719,7 +720,8 @@ Please contact cctbx@cci.lbl.gov for more information.""")
         if (      ("H1" in u or "1H" in u)
               and ("H2" in u or "2H" in u)
               and ("H3" in u or "3H" in u)):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
+          if (self.monomer_atom_dict.get("H") is not None):
+            mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
         elif (    ("HN1" in u or "1HN" in u)
               and ("HN2" in u or "2HN" in u)):
           mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH2"])
@@ -728,7 +730,8 @@ Please contact cctbx@cci.lbl.gov for more information.""")
         elif (    ("H1" in u or "1H" in u)
               or  ("H2" in u or "2H" in u)
               or  ("H3" in u or "3H" in u)):
-          mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
+          if (self.monomer_atom_dict.get("H") is not None):
+            mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH3"])
         elif (    ("HN1" in u or "1HN" in u)
               or  ("HN2" in u or "2HN" in u)):
           mod_mod_ids.append(self.mon_lib_srv.mod_mod_id_dict["NH2"])
