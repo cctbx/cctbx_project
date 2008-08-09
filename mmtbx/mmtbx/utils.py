@@ -297,12 +297,12 @@ class determine_data_and_flags(object):
     return r_free_flags
 
   def data_as_f_obs(self, f_obs):
-    f_obs.show_comprehensive_summary(f = self.log)
-    f_obs_data_size = f_obs.data().size()
-    print >> self.log
     d_min = f_obs.d_min()
     if(d_min < 0.25): # XXX what is the equivalent for neutrons ???
       raise Sorry("Resolution of data is too high: %-6.4f A"%d_min)
+    f_obs.show_comprehensive_summary(f = self.log)
+    f_obs_data_size = f_obs.data().size()
+    print >> self.log
     if(f_obs.is_complex_array()): f_obs = abs(f_obs)
     if(f_obs.is_xray_intensity_array()):
       selection_by_isigma = self._apply_sigma_cutoff(
@@ -777,6 +777,7 @@ class process_pdb_file_srv(object):
                      cif_parameters            = None,
                      mon_lib_srv               = None,
                      ener_lib                  = None):
+    self.raw_records               = None
     self.crystal_symmetry          = crystal_symmetry
     self.pdb_parameters            = pdb_parameters
     self.pdb_interpretation_params = pdb_interpretation_params
@@ -808,6 +809,7 @@ class process_pdb_file_srv(object):
         self.pdb_parameters.file_name = [os.path.abspath(file_name)
           for file_name in pdb_combined.unique_file_names]
       raw_records = pdb_combined.raw_records
+    self.raw_records = raw_records
     pdb_inp = iotbx.pdb.input(source_info = None,
                               lines       = flex.std_string(raw_records))
     if(pdb_inp.atoms().size() == 0):
@@ -839,6 +841,20 @@ class process_pdb_file_srv(object):
          "Also note that phenix.elbow is available to create restraint",
          "definitions for unknown ligands."])
        raise Sorry(msg)
+    # check for unknown scattering types and say sorry if there are any
+    scattering_types = processed_pdb_file.xray_structure().scatterers().\
+      extract_scattering_types()
+    unk_scat_type_atoms_sel = (scattering_types == '?').iselection()
+    if(len(unk_scat_type_atoms_sel) > 0):
+      bad_atoms = processed_pdb_file.all_chain_proxies.pdb_atoms.select(
+        unk_scat_type_atoms_sel)
+      msg = "\n  ".join([
+        "Bad input PDB file: there is a number of atoms with unknown scattering type.",
+        "To resolve the problem: make sure that all atoms in input PDB file have proper",
+        "element name in column 78. Problem lines in input PDB file:\n"
+        ]+[atom.format_atom_record() for atom in bad_atoms])
+      raise Sorry(msg)
+    #
     return processed_pdb_file, pdb_inp
 
   def _process_monomer_cif_files(self):
