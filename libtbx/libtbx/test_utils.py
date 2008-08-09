@@ -406,7 +406,8 @@ def run_command(
       stdout_file_name=None,
       result_file_names=[],
       show_diff_log_stdout=False,
-      sorry_expected=False):
+      sorry_expected=False,
+      join_stdout_stderr=False):
   """\
 This function starts another process to run command, with some
 pre-call and post-call processing.
@@ -451,7 +452,9 @@ directly from within the same Python process running the unit tests.
   if (buffered):
     sys.stdout.flush()
     sys.stderr.flush()
-    cmd_result = easy_run.fully_buffered(command=command)
+    cmd_result = easy_run.fully_buffered(
+      command=command,
+      join_stdout_stderr=join_stdout_stderr)
     if (len(cmd_result.stderr_lines) != 0):
       if (verbose == 0):
         print command
