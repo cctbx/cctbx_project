@@ -119,12 +119,6 @@ master_params = iotbx.phil.parse("""\
   }
 """)
 
-class water_ids(object):
-  residue_names = ["HOH","SOL","SOLV","WAT","DOD","TIP3"]
-  atom_names = ["O","OH2","H","H1","H2","D","D1","D2"]
-  element_types = ["O","H","D","", " "]
-
-
 class manager(object):
   def __init__(self, fmodel,
                      fmodels,

@@ -603,16 +603,11 @@ class manager(object):
       disable_asu_cache = disable_asu_cache)
 
   def solvent_selection(self):
-    water = ordered_solvent.water_ids()
     result = flex.bool()
     get_class = iotbx.pdb.common_residue_names_get_class
     for a in self.pdb_atoms:
-      element = (a.element).strip().upper()
       resname = (a.parent().resname).strip()
-      name    = (a.name).strip()
-      if((element in water.element_types) and
-         (name in water.atom_names) and \
-         (get_class(name = resname) == "common_water")):
+      if(get_class(name = resname) == "common_water"):
         result.append(True)
       else: result.append(False)
     return result
