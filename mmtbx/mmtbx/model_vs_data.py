@@ -133,8 +133,14 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
       cif_objects.append((cif_file,
         mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
   #############################################################################
-  processed_pdb_files_srv = utils.process_pdb_file_srv(cif_objects =
-    cif_objects, log = StringIO())
+  pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+  pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
+  pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
+  pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
+  processed_pdb_files_srv = utils.process_pdb_file_srv(
+    cif_objects               = cif_objects,
+    pdb_interpretation_params = pdb_ip,
+    log                       = StringIO())
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(raw_records = pdb_raw_records)
   return processed_pdb_file, pdb_raw_records
@@ -242,8 +248,12 @@ def show_model_vs_data(fmodel):
     "overall_anisotropic_scale_(b_cart) : "+format_value("%-s",b_cart)])
   print "   ", result
 
-def run(args, command_name = "phenix.model_vs_data",
-        show_geometry_statistics = True):
+def run(args,
+        command_name             = "mmtbx.model_vs_data",
+        show_geometry_statistics = True,
+        model_size_max_atoms     = 80000,
+        data_size_max_reflections= 1000000,
+        unit_cell_max_dimension  = 700.):
   if(len(args) == 0): args = ["--help"]
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
@@ -263,6 +273,9 @@ def run(args, command_name = "phenix.model_vs_data",
       default="n_gaussian",
       type="string",
       help="Choice for scattering table: n_gaussian (default) or wk1995 or it1992 or neutron.")
+    .option("--ignore_giant_models_and_datasets",
+      action="store_true",
+      help="Ignore too big models and data files to avoid potential memory problems.")
     ).process(args=args)
   if(command_line.options.scattering_table not in ["n_gaussian","wk1995",
      "it1992","neutron"]):
@@ -296,6 +309,8 @@ def run(args, command_name = "phenix.model_vs_data",
       if(not arg_is_processed):
         raise Sorry(
           "The command line argument %s is not a valid PDB or data file."%arg)
+  if(hkl_file_name is None): raise Sorry("No file with Fobs is given.")
+  if(pdb_file_name is None): raise Sorry("No PDB file is given.")
   print "Model and data files: %s %s"%(
     format_value("%5s",os.path.basename(pdb_file_name)),
     format_value("%5s",os.path.basename(hkl_file_name)))
@@ -328,6 +343,17 @@ def run(args, command_name = "phenix.model_vs_data",
     keep_going              = True,
     log                     = StringIO())
   f_obs = determine_data_and_flags_result.f_obs
+  number_of_reflections = f_obs.indices().size()
+  if(command_line.options.ignore_giant_models_and_datasets and
+     number_of_reflections > data_size_max_reflections):
+    raise Sorry("Too many reflections: %d"%number_of_reflections)
+  #
+  max_unit_cell_dimension = max(f_obs.unit_cell().parameters()[:3])
+  if(command_line.options.ignore_giant_models_and_datasets and
+     max_unit_cell_dimension > unit_cell_max_dimension):
+    raise Sorry("Too large unit cell (max dimension): %s"%
+      str(max_unit_cell_dimension))
+  #
   r_free_flags = determine_data_and_flags_result.r_free_flags
   test_flag_value = determine_data_and_flags_result.test_flag_value
   if(r_free_flags is None):

@@ -2922,7 +2922,8 @@ class process(object):
     n_below_hard_minimum_nonbonded_distance = (
       geo.nonbonded_model_distances() < hard_minimum_nonbonded_distance) \
         .count(True)
-    if (n_below_hard_minimum_nonbonded_distance != 0):
+    if (n_below_hard_minimum_nonbonded_distance != 0 and
+      params.nonbonded_distance_threshold >=0):
       raise Sorry("""Number of nonbonded interaction distances < %.6g: %d
   Please inspect the output above and correct the input PDB file.""" % (
         hard_minimum_nonbonded_distance,

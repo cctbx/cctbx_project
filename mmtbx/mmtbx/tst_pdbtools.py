@@ -535,6 +535,21 @@ def exercise_show_number_of_removed(pdb_dir, verbose):
       n_found += 1
   assert n_found == 1
 
+def exercise_01(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "t.pdb")
+  high_resolution = 3.0
+  cmd = " ".join(['phenix.pdbtools',
+                  '%s'%file_name,
+                  'high_resolution=%s'%str(high_resolution),
+                  '--f_model'])
+  result = run_command(command=cmd, verbose=verbose, sorry_expected = True,
+    join_stdout_stderr = True)
+  sorry_found = False
+  for line in result.stdout_lines:
+    if(line == "Sorry: Cannot compute structure factors: no crystall symmetry available."):
+      sorry_found = True
+  assert sorry_found == True
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -556,6 +571,7 @@ def exercise(args):
   exercise_f_model_option_default(**eargs)
   exercise_f_model_option_custom(**eargs)
   exercise_show_number_of_removed(**eargs)
+  exercise_01(**eargs)
   print "OK"
 
 if (__name__ == "__main__"):
