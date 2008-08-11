@@ -1,8 +1,9 @@
 import libtbx.load_env
+import os
 Import("env_base", "env_etc")
 
 env_etc.cctbx_dist = libtbx.env.dist_path("cctbx")
-env_etc.cctbx_include = libtbx.env.under_dist("cctbx", "include")
+env_etc.cctbx_include = os.path.dirname(os.path.join(env_etc.cctbx_dist))
 env_etc.cctbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.cctbx_include,
@@ -127,6 +128,6 @@ if (not env_etc.no_boost_python):
   SConscript("translation_search/boost_python/SConscript")
   SConscript("dmtbx/boost_python/SConscript")
   SConscript("boost_python/SConscript")
-  SConscript("include/cctbx/crystal/SConscript")
-  SConscript("include/cctbx/geometry_restraints/SConscript")
-  SConscript("include/cctbx/adp_restraints/SConscript")
+  SConscript("crystal/SConscript")
+  SConscript("geometry_restraints/SConscript")
+  SConscript("adp_restraints/SConscript")
