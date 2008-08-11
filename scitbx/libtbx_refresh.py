@@ -22,7 +22,7 @@ if (self.env.is_ready_for_build()):
     ],
     hints=[
       "  Files to review:",
-      "    scitbx/include/scitbx/random.h",
+      "    scitbx/random.h",
       "    scitbx/libtbx_refresh.py"])
 
   # flex_fwd.h
