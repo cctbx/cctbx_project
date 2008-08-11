@@ -33,11 +33,20 @@ if (not env_etc.no_boost_python):
     env=env_iotbx_boost_python_ext,
     paths=env_etc.iotbx_common_includes + [env_etc.python_include])
   Export("env_iotbx_boost_python_ext")
+  #
+  env = env_no_includes_boost_python_ext.Copy()
+  env_etc.include_registry.append(
+    env=env,
+    paths=[env_etc.libtbx_include,
+           env_etc.boost_include,
+           env_etc.python_include])
+  env.SharedLibrary(
+    target="#lib/iotbx_wildcard_ext",
+    source=["wildcard_ext.cpp"])
 
 SConscript("mtz/SConscript")
 
 if (not env_etc.no_boost_python):
-  SConscript("iotbx/SConscript")
   SConscript("detectors/SConscript")
   SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
