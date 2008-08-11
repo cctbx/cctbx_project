@@ -1,8 +1,9 @@
 import libtbx.load_env
+import os
 Import("env_base", "env_etc")
 
 env_etc.iotbx_dist = libtbx.env.dist_path("iotbx")
-env_etc.iotbx_include = libtbx.env.under_dist("iotbx", "include")
+env_etc.iotbx_include = os.path.dirname(os.path.join(env_etc.iotbx_dist))
 
 env_etc.iotbx_common_includes = [
   env_etc.libtbx_include,
@@ -33,11 +34,11 @@ if (not env_etc.no_boost_python):
     paths=env_etc.iotbx_common_includes + [env_etc.python_include])
   Export("env_iotbx_boost_python_ext")
 
-SConscript("include/iotbx/mtz/SConscript")
+SConscript("mtz/SConscript")
 
 if (not env_etc.no_boost_python):
   SConscript("iotbx/SConscript")
   SConscript("detectors/SConscript")
   SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
-  SConscript("include/iotbx/pdb/SConscript")
+  SConscript("pdb/SConscript")
