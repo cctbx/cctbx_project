@@ -11,7 +11,7 @@ def run(args):
   assert len(args) == 0
   tutorial_dir = libtbx.env.under_dist(
     module_name="iotbx",
-    path="iotbx/examples/pdb_truncate_to_ala",
+    path="examples/pdb_truncate_to_ala",
     test=os.path.isdir)
   if ("set" not in libtbx.forward_compatibility.__builtins__):
     libtbx.forward_compatibility.__builtins__["set"] = list
