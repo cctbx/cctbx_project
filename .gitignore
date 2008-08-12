@@ -18,6 +18,5 @@ cctbx/eltbx/sasaki_tables_49_60.cpp
 cctbx/eltbx/sasaki_tables_61_72.cpp
 cctbx/eltbx/sasaki_tables_73_82.cpp
 cctbx/eltbx/xray_scattering/n_gaussian_raw.cpp
-cctbx/global/tiny_bpl.cpp
 scitbx/array_family/detail/operator_functors.h
 scitbx/array_family/detail/std_imports.h

@@ -33,7 +33,6 @@ cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/examples/quartz_structure.py svneol=native#text/x-python
 cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
-cctbx/global/error.cpp -text
 cctbx/maptbx/fft.h -text
 cctbx/regression/random_generator_state.pickle -text
 cctbx/regression/structure_ideal.pickle -text
