@@ -1,7 +1,7 @@
 import libtbx.load_env
 from libtbx.str_utils import show_string
 from libtbx.utils import warn_if_unexpected_md5_hexdigest
-from libtbx.config import darwin_shlinkcom
+from libtbx.env_config import darwin_shlinkcom
 import string
 import sys, os
 Import("env_base", "env_etc")

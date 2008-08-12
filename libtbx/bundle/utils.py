@@ -1,5 +1,5 @@
 import libtbx.load_env
-import libtbx.config
+import libtbx.env_config
 import libtbx.path
 import libtbx.utils
 import sys, os
@@ -21,7 +21,7 @@ def write_bundle_info(target_root, write_build_options=False):
     dest = libtbx.path.norm_join(target_root, "bundle_info")
     f = open(dest, "w")
     print >> f, "date_and_time:", libtbx.utils.date_and_time()
-    print >> f, "hostname:", libtbx.config.get_hostname()
+    print >> f, "hostname:", libtbx.env_config.get_hostname()
     print >> f, "os.name:", os.name
     print >> f, "sys.platform:", sys.platform
     print >> f, "sys.executable:", sys.executable
