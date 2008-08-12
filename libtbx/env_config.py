@@ -14,6 +14,16 @@ import sys, os
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
 default_enable_openmp_if_possible = (sys.platform != "osf1V5")
 
+def unique_paths(paths):
+  hash = {}
+  result = []
+  for path in paths:
+    path_normcase = os.path.normcase(path)
+    if (path_normcase in hash): continue
+    hash[path_normcase] = None
+    result.append(path)
+  return result
+
 def darwin_shlinkcom(env_etc, env, lo, dylib):
   if (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc-4.2"]):
     if (env_etc.mac_cpu == "powerpc" or env_etc.compiler == "darwin_gcc"):
@@ -1123,13 +1133,7 @@ class environment:
     for module in self.module_list:
       pythonpath.extend(module.assemble_pythonpath())
     pythonpath.reverse()
-    hash = {}
-    self.pythonpath = []
-    for path in pythonpath:
-      path_normcase = os.path.normcase(path)
-      if (path_normcase in hash): continue
-      hash[path_normcase] = None
-      self.pythonpath.append(path)
+    self.pythonpath = unique_paths(paths=pythonpath)
 
   def is_development_environment(self):
     libtbx_cvs_root = self.under_dist("libtbx", "CVS/Root")
@@ -1521,6 +1525,7 @@ class include_registry:
 
   def append(self, env, paths):
     assert isinstance(paths, list)
+    paths = unique_paths(paths=paths)
     for path in paths:
       if (self.scan_flag(path)):
         env.Append(CPPPATH=[path])
@@ -1531,6 +1536,7 @@ class include_registry:
 
   def prepend(self, env, paths):
     assert isinstance(paths, list)
+    paths = unique_paths(paths=paths)
     paths.reverse()
     for path in paths:
       if (self.scan_flag(path)):
