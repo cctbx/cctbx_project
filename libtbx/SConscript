@@ -1,5 +1,5 @@
 import libtbx.load_env
-import libtbx.config
+import libtbx.env_config
 from libtbx import easy_run
 from libtbx.path import norm_join, full_command_path
 import sys, os
@@ -24,7 +24,7 @@ if (1):
 class empty: pass
 
 def set_python_include_and_libs(env_etc):
-  env_etc.python_include = libtbx.config.python_include_path()
+  env_etc.python_include = libtbx.env_config.python_include_path()
   if (sys.platform == "win32"):
     env_etc.libs_python = ["python" + sys.version[0] + sys.version[2]]
     env_etc.libpath_python = [sys.prefix + r"\libs"]
@@ -45,7 +45,7 @@ env_etc.no_boost_python = ARGUMENTS.get(
 env_etc.norm_join = norm_join
 env_etc.gcc_version = None
 
-env_etc.include_registry = libtbx.config.include_registry() \
+env_etc.include_registry = libtbx.env_config.include_registry() \
   .scan_boost(flag=libtbx.env.build_options.scan_boost)
 
 # XXX backward compatibility 2007-11-18
@@ -334,8 +334,8 @@ else:
         break
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "hp_ux11_aCC"):
-    hp_ux_acc_version = libtbx.config.get_hp_ux_acc_version() # not used
-    if (libtbx.config.get_ldd_output().find("hpux64/libc") >= 0):
+    hp_ux_acc_version = libtbx.env_config.get_hp_ux_acc_version() # not used
+    if (libtbx.env_config.get_ldd_output().find("hpux64/libc") >= 0):
       abi = " +DD64"
     else:
       abi = ""
@@ -409,7 +409,7 @@ else:
       "-expect_unresolved", "'_Py*'"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "unix_gcc"):
-    env_etc.gcc_version = libtbx.config.get_gcc_version()
+    env_etc.gcc_version = libtbx.env_config.get_gcc_version()
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     env_base.Replace(
@@ -481,7 +481,7 @@ else:
     env_etc.shlinkflags = ["-shared"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler == "irix_CC"):
-    env_etc.mipspro_version = libtbx.config.get_mipspro_version()
+    env_etc.mipspro_version = libtbx.env_config.get_mipspro_version()
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     cxx = "CC -n32 -mips4 -LANG:std"
@@ -525,7 +525,7 @@ else:
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc-4.2"]):
-    env_etc.gcc_version = libtbx.config.get_gcc_version(
+    env_etc.gcc_version = libtbx.env_config.get_gcc_version(
       shall_be_named_gcc=False)
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
@@ -548,7 +548,7 @@ else:
       cxx = cc.replace('gcc', 'g++')
       if env_etc.compiler.endswith("4.2"):
         if libtbx.env.build_options.enable_boost_threads:
-          build_nb = libtbx.config.get_darwin_gcc_build_number(gcc=cxx)
+          build_nb = libtbx.env_config.get_darwin_gcc_build_number(gcc=cxx)
           min_build_nb = 5564 # XCode 3.1 beta distributed as part of
                               # the iPhone SDK and XCode 3.1
           if build_nb < min_build_nb:
