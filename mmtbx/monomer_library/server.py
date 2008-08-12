@@ -272,7 +272,7 @@ class server(process_cif_mixin):
   def process_rna_sugar_pucker_modifications(self):
     dir_name = libtbx.env.under_dist(
       module_name="mmtbx",
-      path="mmtbx/monomer_library",
+      path="monomer_library",
       test=os.path.isdir)
     assert dir_name is not None
     for mod_id in ["rnaC2", "rnaC3", "rnaEsd"]:
