@@ -1,6 +1,8 @@
 import libtbx.forward_compatibility
 import sys, os
 
+manual_date_stamp = 20080811
+
 class AutoType(object):
 
   def __str__(self): return "Auto"
