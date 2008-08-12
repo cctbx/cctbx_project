@@ -3,7 +3,7 @@ import os
 Import("env_base", "env_etc")
 
 env_etc.omptbx_dist = libtbx.env.dist_path("omptbx")
-env_etc.omptbx_include = os.path.dirname(os.path.join(env_etc.omptbx_dist))
+env_etc.omptbx_include = os.path.dirname(env_etc.omptbx_dist)
 
 env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,

@@ -3,7 +3,7 @@ import os
 Import("env_base", "env_etc")
 
 env_etc.cctbx_dist = libtbx.env.dist_path("cctbx")
-env_etc.cctbx_include = os.path.dirname(os.path.join(env_etc.cctbx_dist))
+env_etc.cctbx_include = os.path.dirname(env_etc.cctbx_dist)
 env_etc.cctbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.cctbx_include,

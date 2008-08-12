@@ -3,7 +3,7 @@ import os
 Import("env_base", "env_etc")
 
 env_etc.rstbx_dist = libtbx.env.dist_path("rstbx")
-env_etc.rstbx_include = os.path.dirname(os.path.join(env_etc.rstbx_dist))
+env_etc.rstbx_include = os.path.dirname(env_etc.rstbx_dist)
 env_etc.rstbx_common_includes = [
   env_etc.rstbx_include,
   env_etc.libtbx_include,
