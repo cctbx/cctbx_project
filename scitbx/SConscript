@@ -3,7 +3,7 @@ import os
 Import("env_etc")
 
 env_etc.scitbx_dist = libtbx.env.dist_path("scitbx")
-env_etc.scitbx_include = os.path.dirname(os.path.join(env_etc.scitbx_dist))
+env_etc.scitbx_include = os.path.dirname(env_etc.scitbx_dist)
 env_etc.scitbx_common_includes = [
   env_etc.libtbx_include,
   env_etc.scitbx_include,
