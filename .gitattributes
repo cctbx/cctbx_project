@@ -59,6 +59,19 @@ crys3d/images.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_map_viewer.py -text
 dox/rst/python_cpp_mix.png -text
+dox/sbgrid2008_update_generated_files.csh -text
+dox/siena2005/cctbx_central_types.pdf -text svneol=unset#application/pdf
+dox/siena2005/cctbx_central_types.ppt -text svneol=unset#application/vnd.ms-powerpoint
+dox/siena2005/d_star_sq_alternative.py svneol=native#text/x-python
+dox/siena2005/index.html svneol=native#text/html
+dox/siena2005/sort_merge.py svneol=native#text/x-python
+dox/siena2005/sort_merge_initial.py svneol=native#text/x-python
+dox/siena2005/talk_concepts.ppt -text svneol=unset#application/vnd.ms-powerpoint
+dox/siena2005/talk_concepts_no_duplicate_slides.pdf -text svneol=unset#application/pdf
+dox/siena2005/talk_concepts_no_duplicate_slides.ppt -text svneol=unset#application/vnd.ms-powerpoint
+dox/siena2005/talk_spectrum.pdf -text svneol=unset#application/pdf
+dox/siena2005/talk_spectrum.ppt -text svneol=unset#application/vnd.ms-powerpoint
+dox/siena2005_update_generated_files.csh -text
 fftw3tbx/SConscript -text
 fftw3tbx/__init__.py svneol=native#text/x-python
 fftw3tbx/command_line/install_fftw_from_sources.py svneol=native#text/x-python

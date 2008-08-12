@@ -11,7 +11,7 @@ Learn about the Computational Crystallography Toolbox at the
 cctbx links
 -----------
 
-- `Introduction </current/>`_
+- `Introduction <current/>`_
 
 - `Web services <http://cci.lbl.gov/cctbx/>`_
 
@@ -64,17 +64,25 @@ cctbx links
 
 - Python interfaces:
 
-  - `libtbx <current/python/libtbx.html>`_
-
   - `boost_adaptbx <current/python/boost.html>`_
-
-  - `scitbx <current/python/scitbx.html>`_
 
   - `cctbx <current/python/cctbx.html>`_
 
+  - `gltbx <current/python/gltbx.html>`_
+
   - `iotbx <current/python/iotbx.html>`_
 
+  - `libtbx <current/python/libtbx.html>`_
+
   - `mmtbx <current/python/mmtbx.html>`_
+
+  - `omptbx <current/python/omptbx.html>`_
+
+  - `rstbx <current/python/rstbx.html>`_
+
+  - `scitbx <current/python/scitbx.html>`_
+
+  - `smtbx <current/python/smtbx.html>`_
 
 - `SVN repository <http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/>`_
 
