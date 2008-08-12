@@ -607,7 +607,7 @@ class environment:
         dependent_module=None, module_name=module_name, optional=False)
     self.scons_dist_path = self.find_dist_path("scons", optional=True)
     self.path_utility = self.under_dist(
-      "libtbx", "libtbx/command_line/path_utility.py")
+      "libtbx", "command_line/path_utility.py")
     assert os.path.isfile(self.path_utility)
 
   def dispatcher_precall_commands(self):
@@ -1098,7 +1098,7 @@ class environment:
     if (have_ipython): commands.append("ipython")
     for command in commands:
       source_file = self.under_dist(
-        "libtbx", "libtbx/command_line/"+command+".py")
+        "libtbx", "command_line/"+command+".py")
       for module_name in module_names:
         self._write_dispatcher_in_bin(
           source_file=source_file,
@@ -1305,6 +1305,9 @@ class module:
   def assemble_pythonpath(self):
     result = []
     for dist_path in self.dist_paths_active():
+      path = os.path.normpath(dist_path + "/pythonpath")
+      if (os.path.isdir(path)):
+        result.append(path)
       for sub_dir in ["", "/"+self.name]:
         sub_file = sub_dir + "/__init__.py"
         path = os.path.normpath(dist_path + sub_file)

@@ -3,22 +3,22 @@ import libtbx.load_env
 
 def run():
   tst_list = (
-  "$D/libtbx/test_utils.py",
-  "$D/libtbx/utils.py",
-  "$D/libtbx/sge_utils.py",
-  "$D/libtbx/introspection.py",
-  "$D/libtbx/easy_run.py",
-  "$D/libtbx/tst_utils.py",
-  "$D/libtbx/tst_math_utils.py",
-  "$D/libtbx/assert_utils.py",
-  "$D/libtbx/str_utils.py",
-  "$D/libtbx/table_utils.py",
-  "$D/libtbx/tst_dlite.py",
-  "$D/libtbx/phil/tst_tokenizer.py",
-  "$D/libtbx/phil/tst.py",
-  "$D/libtbx/tst_object_oriented_patterns.py",
-  "$D/libtbx/tst_itertbx.py",
-  "$D/libtbx/tst_symmetric_multi_processing.py",
+  "$D/test_utils.py",
+  "$D/utils.py",
+  "$D/sge_utils.py",
+  "$D/introspection.py",
+  "$D/easy_run.py",
+  "$D/tst_utils.py",
+  "$D/tst_math_utils.py",
+  "$D/assert_utils.py",
+  "$D/str_utils.py",
+  "$D/table_utils.py",
+  "$D/tst_dlite.py",
+  "$D/phil/tst_tokenizer.py",
+  "$D/phil/tst.py",
+  "$D/tst_object_oriented_patterns.py",
+  "$D/tst_itertbx.py",
+  "$D/tst_symmetric_multi_processing.py",
   )
 
   build_dir = None

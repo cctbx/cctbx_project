@@ -1,5 +1,5 @@
 # copy script to enable checkout even if libtbx sources are removed already
-source = self.env.under_dist("libtbx", "libtbx/sourceforge_checkout.py")
+source = self.env.under_dist("libtbx", "sourceforge_checkout.py")
 copy = self.env.under_build("sourceforge_checkout.py")
 open(copy, "w").write(open(source).read())
 #

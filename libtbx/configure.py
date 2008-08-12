@@ -13,6 +13,8 @@ def run():
     return
   if (os.name == "nt"):
     open("shortpath.bat", "w").write("@echo off\necho %~s1\n")
+  sys.path.insert(1, os.path.join(sys.path[0], "pythonpath"))
+  sys.path[0] = os.path.dirname(sys.path[0])
   import libtbx.config
   libtbx.config.cold_start(sys.argv)
 
