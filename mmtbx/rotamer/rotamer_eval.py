@@ -125,13 +125,10 @@ class RotamerID:
     return ""
 
   def find_source_dir(optional=False):
-    #result = libtbx.env.find_in_repositories("mmtbx")
-    #if result is None:
-    result = libtbx.env.find_in_repositories(
-      os.path.join("mmtbx", "mmtbx", "rotamer"))
+    result = libtbx.env.find_in_repositories(os.path.join("mmtbx", "rotamer"))
     if result is None and not optional:
       raise Sorry("""\
-Can't seem to find mmtbx/mmtbx/rotamer/ directory.
+Can't seem to find mmtbx/rotamer/ directory.
     """)
     return result
 

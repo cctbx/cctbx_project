@@ -17,8 +17,8 @@ $python ../sources/libtbx/configure.py mmtbx
 cd ..
 
 echo '#! /bin/sh -f' > cctbx_web.cgi
-echo "exec ./build/bin/libtbx.env_run CCTBX_DIST cctbx/web/dispatcher.py" >> cctbx_web.cgi
+echo "exec ./build/bin/libtbx.env_run CCTBX_DIST web/dispatcher.py" >> cctbx_web.cgi
 chmod 755 cctbx_web.cgi
 
-cp sources/cctbx/cctbx/web/*.html .
-libtbx.python sources/cctbx/cctbx/web/multiple_cell.py > multiple_cell.html
+cp sources/cctbx/web/*.html .
+libtbx.python sources/cctbx/web/multiple_cell.py > multiple_cell.html
