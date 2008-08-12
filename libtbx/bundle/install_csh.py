@@ -371,7 +371,7 @@ endif
 
 echo ""
 echo "Precompiling all .py files. This may take a minute or two."
-"$python_exe" "$sources/libtbx/libtbx/command_line/py_compile_all.py"
+"$python_exe" "$sources/libtbx/command_line/py_compile_all.py"
 
 echo ""
 if (! -d "$build") mkdir -p "$build"
