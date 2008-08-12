@@ -28,7 +28,6 @@ cctbx/boost_python/orientation_ext.cpp -text
 cctbx/command_line/version.py -text
 cctbx/crystal_orientation.h -text
 cctbx/crystal_orientation.py -text
-cctbx/dox/rst/python_cpp_mix.png -text
 cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/examples/quartz_structure.py svneol=native#text/x-python
 cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
@@ -59,6 +58,7 @@ crys3d/__init__.py -text
 crys3d/images.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_map_viewer.py -text
+dox/rst/python_cpp_mix.png -text
 fftw3tbx/SConscript -text
 fftw3tbx/__init__.py svneol=native#text/x-python
 fftw3tbx/command_line/install_fftw_from_sources.py svneol=native#text/x-python
