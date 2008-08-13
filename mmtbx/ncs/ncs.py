@@ -157,10 +157,15 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     text+= "} \n"
     return text
 
-  def format_for_resolve(self):
+  def format_for_resolve(self,crystal_id=None,skip_identity=False):
     text="new_ncs_group"
+    i=0
     for center,trans_orth,ncs_rota_matr in zip (
        self._centers, self._translations_orth,self._rota_matrices):
+      i+=1
+      if i==1 and skip_identity: continue
+      if crystal_id is not None:
+        text+="\ncrystal_id "+str(crystal_id)
       for j in xrange(3):
        text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
           ncs_rota_matr[j*3:j*3+3])
@@ -508,7 +513,8 @@ class ncs:
     all_text+="\n"
     return all_text
 
-  def format_all_for_resolve(self,log=None,quiet=False,out=None):
+  def format_all_for_resolve(self,log=None,quiet=False,out=None,
+      crystal_id=None,skip_identity=False):
     if out==None:
        out=sys.stdout
     if log==None:
@@ -517,7 +523,8 @@ class ncs:
       print >>log,"\n\nNCS operators written in format for resolve to:",out.name
     all_text=""
     for ncs_group in self._ncs_groups:
-      text=ncs_group.format_for_resolve()
+      text=ncs_group.format_for_resolve(crystal_id=crystal_id,
+         skip_identity=skip_identity)
       if not quiet: out.write("\n"+text+"\n\n")
       all_text+="\n"+text
     return all_text
