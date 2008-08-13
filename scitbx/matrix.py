@@ -59,7 +59,11 @@ class rec(object):
     ar = self.n_rows()
     ac = self.n_columns()
     b = other.elems
-    assert other.n_rows() == ac, "Incompatible matrices."
+    if (other.n_rows() != ac):
+      raise RuntimeError(
+        "Incompatible matrices:\n"
+        "  self.n:  %s\n"
+        "  other.n: %s" % (str(self.n), str(other.n)))
     bc = other.n_columns()
     result = []
     for i in xrange(ar):
