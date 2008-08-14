@@ -56,6 +56,7 @@ namespace {
     tuple_mapping_fixed_size<long3>();
     tuple_mapping_fixed_size<double2>();
     tuple_mapping_fixed_size<double3>();
+    tuple_mapping_fixed_size<double4>();
     tuple_mapping_fixed_size<double6>();
     tuple_mapping_fixed_size<double9>();
     tuple_mapping_fixed_size<tiny<std::string, 2> >();

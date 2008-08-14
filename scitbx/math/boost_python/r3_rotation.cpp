@@ -26,6 +26,7 @@ namespace {
         .add_property("axis", make_getter(&w_t::axis, rbv()))
         .def("angle", &w_t::angle, angle_overloads((arg_("deg")=false)))
         .def("as_matrix", &w_t::as_matrix)
+        .def("as_quaternion", &w_t::as_quaternion)
       ;
     }
   };
