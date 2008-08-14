@@ -50,6 +50,8 @@ def exercise_axis_and_angle(
                 r=r)
               rr = from_matrix.as_matrix()
               assert approx_equal(rr, r)
+              q = matrix.col(from_matrix.as_quaternion())
+              assert approx_equal(abs(q), 1)
               for deg in [False, True]:
                 rr = scitbx.math.r3_rotation_axis_and_angle_as_matrix(
                   axis=from_matrix.axis,
@@ -72,6 +74,8 @@ def exercise_axis_and_angle(
     rr = from_matrix.as_matrix()
     assert approx_equal(rr, r)
     assert approx_equal(math.cos(from_matrix.angle()), (r[0]+r[4]+r[8]-1)/2)
+    q = matrix.col(from_matrix.as_quaternion())
+    assert approx_equal(abs(q), 1)
 
 def check_vector_to_vector(g, t):
   assert approx_equal(abs(matrix.col(g)), 1)

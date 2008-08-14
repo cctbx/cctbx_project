@@ -10,6 +10,7 @@ namespace scitbx { namespace af {
   typedef tiny<long, 3> long3;
   typedef tiny<double, 2> double2;
   typedef tiny<double, 3> double3;
+  typedef tiny<double, 4> double4;
   typedef tiny<double, 6> double6;
   typedef tiny<double, 9> double9;
 

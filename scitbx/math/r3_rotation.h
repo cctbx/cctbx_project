@@ -180,6 +180,16 @@ namespace scitbx { namespace math {
     {
       return axis_and_angle_as_matrix(axis, angle_rad);
     }
+
+    //! Returns (q0,q1,q2,q3), where q0 is the scalar part of the quaternion.
+    af::tiny<FloatType, 4>
+    as_quaternion() const
+    {
+      FloatType h = angle_rad * 0.5;
+      FloatType ca = std::cos(h);
+      FloatType sa = std::sin(h);
+      return af::tiny<FloatType, 4>(ca, axis[0]*sa, axis[1]*sa, axis[2]*sa);
+    }
   };
 
   //! Returns rotation matrix mapping given_unit_vector onto target_unit_vector.
