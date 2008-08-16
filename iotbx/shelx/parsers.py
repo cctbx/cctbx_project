@@ -2,7 +2,6 @@
 
 from __future__ import generators
 
-from cctbx import crystal
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import xray
@@ -14,15 +13,21 @@ import scitbx.math
 from libtbx import forward_compatibility
 from libtbx import adopt_init_args
 
-from iotbx.shelx import errors
+from iotbx.shelx import errors, util
 
-class crystal_symmetry_parser(object):
-  """ A parser pulling out the crystal symmetry info from a command stream """
+
+class parser(object):
 
   def __init__(self, command_stream, builder=None):
-    if builder is None: builder = crystal_symmetry_builder()
     self.command_stream = command_stream
     self.builder = builder
+
+  def parse(self):
+    for command in self.filtered_commands(): pass
+
+
+class crystal_symmetry_parser(parser):
+  """ A parser pulling out the crystal symmetry info from a command stream """
 
   def filtered_commands(self):
     """ Yields those command in self.command_stream
@@ -60,7 +65,7 @@ class crystal_symmetry_parser(object):
       if command[0] == 'SFAC': break
 
 
-class atom_parser(object):
+class atom_parser(parser, util.behaviour_of_variable):
   """ A parser pulling out the scatterer info from a command stream """
 
   shelx_commands = dict([ (cmd, 1) for cmd in [
@@ -75,10 +80,6 @@ class atom_parser(object):
   ]])
 
   def __init__(self, command_stream, builder):
-    """ If set_grad_flags is True, the scatterer.flags.grad_xxx() will
-        be set to True if the corresponding variables are set to be refined
-        in the command stream.
-    """
     self.command_stream = command_stream
     self.builder = builder
 
@@ -96,7 +97,7 @@ class atom_parser(object):
         self.free_variable = args # (b) ShelXL indexes into the whole array
       elif cmd == 'PART' and len(args) == 2:
         raise NotImplementedError
-      elif len(cmd) < 4 or cmd not in atom_parser.shelx_commands:
+      elif len(cmd) < 4 or cmd not in self.shelx_commands:
         if self.label_for_sfac is None:
           raise errors.missing_sfac_error
         scatterer, behaviour_of_variable = self.lex_scatterer(
@@ -136,16 +137,12 @@ class atom_parser(object):
         occupancy       = occ,
         u               = u,
         scattering_type = scattering_type)
-      if not isotropic or behaviours[-1] != atom_parser.p_times_previous_u_eq:
+      if not isotropic or behaviours[-1] != self.p_times_previous_u_eq:
         self.scatterer_to_bind_u_eq_to = (scatterer, scatterer_index)
       return scatterer, behaviours
     except errors.illegal_scatterer_error, e:
       e.args = (name,) + e.args
       raise
-
-  (free, fixed,
-   p_times_fv_minus_1, p_times_fv,
-   p_times_previous_u_eq) = xrange(5)
 
   def decode_variables(self, coded_variables, u_iso_idx=None):
     values = []
@@ -159,72 +156,31 @@ class atom_parser(object):
         # p*(fv_{-m} - 1)
         m = -m-1 # indexing thanks to (b) above
         values.append( p*(self.free_variable[m] - 1) )
-        behaviours.append((atom_parser.p_times_fv_minus_1, p, m))
+        behaviours.append((self.p_times_fv_minus_1, p, m))
       elif m == 0:
         if i == u_iso_idx and p < -0.5:
           # p * (U_eq of the previous atom not constrained in this way)
           scatt, scatt_idx = self.scatterer_to_bind_u_eq_to
           u_iso = scatt.u_eq(self.builder.crystal_symmetry.unit_cell())
           values.append( -p*u_iso )
-          behaviours.append(atom_parser.p_times_previous_u_eq)
+          behaviours.append((self.p_times_previous_u_eq, scatt_idx))
         else:
           # p (free to refine)
           values.append(p)
-          behaviours.append(atom_parser.free)
+          behaviours.append(self.free)
       elif m == 1:
         # p (fixed variable)
         values.append(p)
-        behaviours.append(atom_parser.fixed)
+        behaviours.append(self.fixed)
       elif m >= 2:
         # p*fv_m
         m = m-1 # indexing thanks to (b) above
         values.append(p*self.free_variable[m])
-        behaviours.append((atom_parser.p_times_fv, p, m))
+        behaviours.append((self.p_times_fv, p, m))
       else:
         # m == -1
         # undocumented, rather pathological case
         # but I carefully checked that ShelXL does indeed behave so!
         values.append(0)
-        behaviours.append(atom_parser.fixed)
+        behaviours.append(self.fixed)
     return values, behaviours
-
-  def parse(self):
-    for command in self.filtered_commands(): pass
-
-
-class crystal_symmetry_builder(object):
-
-  def make_crystal_symmetry(self, unit_cell, space_group):
-    self.crystal_symmetry = crystal.symmetry(unit_cell=unit_cell,
-                                             space_group=space_group)
-
-
-class crystal_structure_builder(crystal_symmetry_builder):
-
-  def __init__(self,
-               set_grad_flags=True,
-               min_distance_sym_equiv=0.5):
-    super(crystal_structure_builder, self).__init__()
-    self.set_grad_flags = set_grad_flags
-    self.min_distance_sym_equiv = min_distance_sym_equiv
-
-  def make_structure(self):
-    self.structure = xray.structure(
-      special_position_settings=crystal.special_position_settings(
-        crystal_symmetry=self.crystal_symmetry,
-        min_distance_sym_equiv=self.min_distance_sym_equiv))
-
-  def add_scatterer(self, scatterer, behaviour_of_variable):
-    if self.set_grad_flags:
-      f = scatterer.flags
-      if behaviour_of_variable[0:3].count(atom_parser.fixed) != 3:
-        f.set_grad_site(True)
-      if behaviour_of_variable[3] != atom_parser.fixed:
-        f.set_grad_occupancy(True)
-      if f.use_u_iso():
-        if behaviour_of_variable[4] != atom_parser.fixed:
-          f.set_grad_u_iso(True)
-      else:
-        if behaviour_of_variable[-6:].count(atom_parser.fixed) != 3:
-          f.set_grad_u_aniso(True)
-    self.structure.add_scatterer(scatterer)

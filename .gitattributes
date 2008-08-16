@@ -138,11 +138,13 @@ iotbx/pdb/write_utils.cpp svneol=native#text/plain
 iotbx/pdb/write_utils.h svneol=native#text/plain
 iotbx/pdb/write_utils_bpl.h svneol=native#text/plain
 iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
+iotbx/shelx/builders.py -text
 iotbx/shelx/errors.py -text
 iotbx/shelx/fcf.py -text
 iotbx/shelx/lexer.py -text
 iotbx/shelx/parsers.py -text
-iotbx/shelx/tst_read_ins.py -text
+iotbx/shelx/tst_lex_parse_build.py -text
+iotbx/shelx/util.py -text
 libtbx/assert_utils.py -text
 libtbx/command_line/assert_line_count.py svneol=native#text/x-python
 libtbx/command_line/bash.sh -text

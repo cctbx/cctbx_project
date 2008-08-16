@@ -81,7 +81,8 @@ def exercise_lexing():
 
 def exercise_parsing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
-  l = shelx.crystal_symmetry_parser(stream)
+  l = shelx.crystal_symmetry_parser(stream,
+                                    builder=shelx.crystal_symmetry_builder())
   l.parse()
   assert l.builder.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
@@ -91,7 +92,8 @@ def exercise_parsing():
     absolute_angle_tolerance=1e-15)
 
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_P1))
-  l = shelx.crystal_symmetry_parser(stream)
+  l = shelx.crystal_symmetry_parser(stream,
+                                    builder=shelx.crystal_symmetry_builder())
   l.parse()
   assert l.builder.crystal_symmetry.is_similar_symmetry(
     crystal.symmetry(
