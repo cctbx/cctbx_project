@@ -20,6 +20,7 @@ namespace constants {
   static double const tetrahedral_angle = std::acos(-1./3.);
   static double const sin_tetrahedral_angle = std::sin(tetrahedral_angle);
   static double const sin_pi_over_3 = std::sin(pi/3);
+  static double const sin_2pi_over_3 = std::sin(2*pi/3);
 }
 
 /// Base class for all geometrically constrained hydrogen's -XHn
@@ -270,7 +271,110 @@ class geometrical_hydrogens
 };
 
 
-/// Model of Y-XH3 with tetrahedral angles
+/// Model of Z-Y-XHn with tetrahedral angles
+/**
+  X is referred to as the "pivot", Y as the "pivot neighbour" and Z as
+  the "pivot neighbour neighbour".
+
+  All angles Hi-X-Hj and Hi-X-Y are tetrahedral.
+  All distances X-Hi are equal. That unique distance may be a variable
+  parameter if stretching is allowed.
+
+  The first hydrogen is staggered with Y-Z.
+
+  The Hydrogen sites ride on the pivot site.
+*/
+template<typename FloatType, class XrayScattererType,
+         template<class> class SharedArray1D=af::shared>
+class staggered_terminal_tetrahedral_XHn
+  : public geometrical_hydrogens<staggered_terminal_tetrahedral_XHn
+                                   <FloatType,
+                                    XrayScattererType,
+                                    SharedArray1D>,
+                                 FloatType, XrayScattererType,
+                                 af::small, 3,
+                                 SharedArray1D>
+{
+  public:
+    typedef geometrical_hydrogens<staggered_terminal_tetrahedral_XHn
+                                   <FloatType,
+                                    XrayScattererType,
+                                    SharedArray1D>,
+                                 FloatType, XrayScattererType,
+                                 af::small, 3,
+                                 SharedArray1D>
+            base_t;
+    typedef XrayScattererType xray_scatterer_type;
+    typedef FloatType float_type;
+    typedef parameter_map<xray_scatterer_type> parameter_map_type;
+    typedef cartesian<float_type> cart_t;
+    typedef fractional<float_type> frac_t;
+    typedef typename base_t::hydrogen_grad_array_type hydrogen_grad_array_type;
+
+    staggered_terminal_tetrahedral_XHn(
+      std::size_t pivot,
+      std::size_t pivot_neighbour,
+      std::size_t pivot_neighbour_neighbour,
+      af::small<std::size_t, 3> hydrogens,
+      float_type bond_length,
+      bool stretching=false
+      )
+      : base_t(pivot, hydrogens, bond_length, stretching),
+        i_pivot_neighbour(pivot_neighbour),
+        i_pivot_neighbour_neighbour(pivot_neighbour_neighbour)
+    {}
+
+    boost::tuple<cart_t, cart_t, cart_t> local_cartesian_frame() {
+      return boost::make_tuple(e0, e1, e2);
+    }
+
+    void place_constrained_scatterers(
+      uctbx::unit_cell const &unit_cell,
+      sgtbx::site_symmetry_table const &site_symmetry_table,
+      af::ref<xray_scatterer_type> const &scatterers)
+    {
+      using namespace constants;
+      cart_t x_Z = unit_cell.orthogonalize(
+        scatterers[i_pivot_neighbour_neighbour].site);
+      cart_t x_Y = unit_cell.orthogonalize(scatterers[i_pivot_neighbour].site);
+      cart_t x_X = unit_cell.orthogonalize(scatterers[i_pivot].site);
+      e2 = (x_X - x_Y).normalize();
+      cart_t u_YZ = x_Z - x_Y;
+      e0 = (e2 - 1/(e2*u_YZ) * u_YZ).normalize();
+      e1 = e2.cross(e0);
+
+      // Place hydrogen's and compute derivatives
+      switch (i_hydrogens.size()) {
+        case 3:
+          dx_over_dl[2] = sin_tetrahedral_angle*(-0.5*e0 - sin_2pi_over_3*e1);
+        case 2:
+          dx_over_dl[1] = sin_tetrahedral_angle*(-0.5*e0 + sin_2pi_over_3*e1);
+        case 1:
+          dx_over_dl[0] = sin_tetrahedral_angle*e0;
+          break;
+      }
+      for (int i=0; i < i_hydrogens.size(); ++i) {
+        dx_over_dl[i] += e2/3;
+        cart_t x_h = x_X + l*dx_over_dl[i];
+        std::size_t i_h = i_hydrogens[i];
+        scatterers[i_h].site = unit_cell.fractionalize(x_h);
+      }
+    }
+
+  protected:
+    using base_t::i_pivot;
+    using base_t::i_hydrogens;
+    using base_t::l;
+    using base_t::dx_over_dl;
+
+    std::size_t i_pivot_neighbour;
+    std::size_t i_pivot_neighbour_neighbour;
+
+    cart_t e0, e1, e2;
+};
+
+
+/// Model of Y-XHn with tetrahedral angles
 /**
   X is referred to as the "pivot" and Y as the "pivot neighbour".
 
@@ -429,17 +533,12 @@ class terminal_tetrahedral_XHn
       af::const_ref<float_type> const &reparametrization_shifts)
     {
       using namespace constants;
-
+      base_t::apply_reparametrization_shifts(reparametrization_shifts);
       if (rotating()) {
         std::size_t i = i_reparametrization_begin;
         if (base_t::stretching()) i++;
         float_type delta_phi = reparametrization_shifts[i];
         phi += delta_phi;
-      }
-      if (base_t::stretching()) {
-        std::size_t i = i_reparametrization_begin;
-        float_type delta_l = reparametrization_shifts[i];
-        l += delta_l;
       }
     }
 

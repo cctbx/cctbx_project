@@ -65,6 +65,30 @@ struct terminal_tetrahedral_XHn_wrapper
 
 template<typename FloatType=double,
          class XrayScattererType=xray::scatterer<> >
+struct staggered_terminal_tetrahedral_XHn_wrapper
+{
+  typedef staggered_terminal_tetrahedral_XHn<FloatType, XrayScattererType,
+                                             af::boost_python::flex_1d>
+          wt;
+  typedef typename wt::float_type float_type;
+
+  static void wrap(char const *name) {
+    using namespace boost::python;
+    class_<wt> wrapped(name, no_init);
+    common_wrapper::wrap(wrapped, name);
+    wrapped
+      .def(init<std::size_t, std::size_t, std::size_t,
+                af::small<std::size_t,3>,
+                float_type, bool>
+          ((arg("pivot"), arg("pivot_neighbour"), arg("pivot_neighbour_neighbour"),
+            arg("hydrogens"), arg("bond_length"), arg("stretching")=false)))
+      .add_property("local_cartesian_frame", &wt::local_cartesian_frame)
+      ;
+    }
+};
+
+template<typename FloatType=double,
+         class XrayScattererType=xray::scatterer<> >
 struct secondary_CH2_wrapper
 {
   typedef secondary_CH2<FloatType, XrayScattererType, af::boost_python::flex_1d>
@@ -202,6 +226,8 @@ struct polyhedral_BH_wrapper
 
 void wrap_geometric_hydrogen() {
   terminal_tetrahedral_XHn_wrapper<>::wrap("terminal_tetrahedral_XHn");
+  staggered_terminal_tetrahedral_XHn_wrapper<>::wrap(
+    "staggered_terminal_tetrahedral_XHn");
   secondary_CH2_wrapper<>::wrap("secondary_CH2");
   tertiary_CH_wrapper<>::wrap("tertiary_CH");
   aromatic_CH_or_amide_NH_wrapper<>::wrap("aromatic_CH_or_amide_NH");
