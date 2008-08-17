@@ -309,11 +309,29 @@ class stretching_only_hydrogen_test_case(hydrogen_test_case):
     ct.bond_length = l + h
     self.cts.place_constrained_scatterers()
     fp = self.f()
-    ct.bond_length = l -h
+    ct.bond_length = l - h
     self.cts.place_constrained_scatterers()
     fm = self.f()
     df_over_dl_approx = (fp - fm)/(2*h)
     assert approx_equal(df_over_dl, df_over_dl_approx)
+    ct.bond_length = l
+
+    h = 1e-7
+    crystallographic_shifts = flex.double(self.xs.n_parameters(), 0)
+    reparametrization_shifts = flex.double(1, h)
+    l = ct.bond_length
+    self.cts.place_constrained_scatterers()
+    f0 = self.f()
+    crystallographic_gradients = self.grad_f()
+    reparametrization_gradients = flex.double()
+    self.cts.compute_gradients(crystallographic_gradients,
+                               reparametrization_gradients)
+    self.cts.apply_shifts(crystallographic_shifts, reparametrization_shifts)
+    assert approx_equal(ct.bond_length, l + h, eps=1e-15)
+    fh = self.f()
+    grad_ref = (fh - f0)/h
+    grad = reparametrization_gradients[0]
+    assert approx_equal(grad, grad_ref, eps=10*h)
 
 class ch3_test_case(hydrogen_test_case):
 
