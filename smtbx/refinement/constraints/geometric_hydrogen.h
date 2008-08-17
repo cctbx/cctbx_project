@@ -229,7 +229,13 @@ class geometrical_hydrogens
     */
     void apply_reparametrization_shifts(
       af::const_ref<float_type> const &reparametrization_shifts)
-    {}
+    {
+      if (stretching()) {
+        std::size_t i = i_reparametrization_begin;
+        float_type delta_l = reparametrization_shifts[i];
+        l += delta_l;
+      }
+    }
 
     /// Number of reparametrization variables needed in the current state
     std::size_t n_reparametrization_variables() {
@@ -374,9 +380,6 @@ class terminal_tetrahedral_XHn
           cos_phi[0] = std::cos(phi);
           sin_phi[0] = std::sin(phi);
           break;
-        default:
-          throw std::runtime_error("smtbx: number of geometric hydrogens "
-                                   "must be 1,2 or 3");
       }
 
       // Place hydrogen's
