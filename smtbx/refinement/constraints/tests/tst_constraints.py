@@ -333,28 +333,8 @@ class stretching_only_hydrogen_test_case(hydrogen_test_case):
     grad = reparametrization_gradients[0]
     assert approx_equal(grad, grad_ref, eps=10*h)
 
-class ch3_test_case(hydrogen_test_case):
 
-  def init_other_atoms(self):
-    v_CC = 1.54*(mat.col((-1, 2, 1.5)).normalize())
-    v_CC = self.xs.unit_cell().fractionalize(v_CC)
-    neighbour_site = mat.col(self.pivot.site) + mat.col(v_CC)
-    self.xs.add_scatterer(xray.scatterer("C'", site=neighbour_site,
-                                               u=(0,)*6))
-    self.i_neighbours = (1,)
-    for i in xrange(1,4):
-      h = xray.scatterer("H%i" % i, u=(0,)*6)
-      self.xs.add_scatterer(h)
-    self.i_hydrogens = (2,3,4)
-
-  constraint_array_class = constraints.terminal_tetrahedral_XHn_array
-  def init_constraint(self):
-    self.cts.append(constraints.terminal_tetrahedral_XHn(
-      pivot=0,
-      pivot_neighbour=1,
-      hydrogens=(2,3,4),
-      azimuth=50., # deg
-      bond_length=1.))
+class ch3_geometry_check(object):
 
   def check_geometry(self, cartesian_frame=None):
     uc = self.cs.unit_cell()
@@ -378,6 +358,71 @@ class ch3_test_case(hydrogen_test_case):
         assert approx_equal(dx[i].cos_angle(dx[j]), -1/3)
     for i in xrange(1,4):
       assert approx_equal(abs(dx[i]), self.cts[0].bond_length)
+
+
+class staggered_ch3_test_case(stretching_only_hydrogen_test_case,
+                              ch3_geometry_check):
+
+  def init_other_atoms(self):
+    x_X = mat.col(self.pivot.site)
+    v_XY = 1.54*(mat.col((1, 2, -1.5)).normalize())
+    v_XY = mat.col(self.xs.unit_cell().fractionalize(v_XY))
+    x_Y = x_X + v_XY
+    v_YZ = (-v_XY).rotate(axis=v_XY.ortho(), angle=109.4, deg=True)
+    x_Z = x_Y + v_YZ
+    self.xs.add_scatterer(xray.scatterer("C'", site=x_Y, u=(0,)*6))
+    self.xs.add_scatterer(xray.scatterer("C''", site=x_Z, u=(0,)*6))
+    self.i_neighbours = (1,)
+    self.i_neighbour_neighbour = 2
+    for i in xrange(1,4):
+      h = xray.scatterer("H%i" % i, u=(0,)*6)
+      self.xs.add_scatterer(h)
+    self.i_hydrogens = (3,4,5)
+
+  constraint_array_class = constraints.staggered_terminal_tetrahedral_XHn_array
+  def init_constraint(self):
+    self.cts.append(constraints.staggered_terminal_tetrahedral_XHn(
+      pivot=0,
+      pivot_neighbour=1,
+      pivot_neighbour_neighbour=2,
+      hydrogens=(3,4,5),
+      bond_length=1.))
+
+  def check_geometry(self):
+    ch3_geometry_check.check_geometry(self)
+    uc = self.cs.unit_cell()
+    x_X = mat.col(uc.orthogonalize(self.pivot.site))
+    x_Y = mat.col(uc.orthogonalize(self.neighbours[0].site))
+    Z = self.xs.scatterers()[self.i_neighbour_neighbour]
+    x_Z = mat.col(uc.orthogonalize(Z.site))
+    x_H1 = mat.col(uc.orthogonalize(self.hydrogens[0].site))
+    e0 = mat.col(self.cts[0].local_cartesian_frame[0])
+    assert approx_equal((x_H1 - x_X).cross(x_Z - x_Y).dot(x_X - x_Y), 0)
+    assert approx_equal(e0.cross(x_Z - x_Y).dot(x_X - x_Y), 0)
+
+
+class ch3_test_case(hydrogen_test_case, ch3_geometry_check):
+
+  def init_other_atoms(self):
+    v_CC = 1.54*(mat.col((-1, 2, 1.5)).normalize())
+    v_CC = self.xs.unit_cell().fractionalize(v_CC)
+    neighbour_site = mat.col(self.pivot.site) + mat.col(v_CC)
+    self.xs.add_scatterer(xray.scatterer("C'", site=neighbour_site,
+                                               u=(0,)*6))
+    self.i_neighbours = (1,)
+    for i in xrange(1,4):
+      h = xray.scatterer("H%i" % i, u=(0,)*6)
+      self.xs.add_scatterer(h)
+    self.i_hydrogens = (2,3,4)
+
+  constraint_array_class = constraints.terminal_tetrahedral_XHn_array
+  def init_constraint(self):
+    self.cts.append(constraints.terminal_tetrahedral_XHn(
+      pivot=0,
+      pivot_neighbour=1,
+      hydrogens=(2,3,4),
+      azimuth=50., # deg
+      bond_length=1.))
 
   def exercise_rotate_stretch(self):
     foo = (0,)*3
@@ -722,6 +767,7 @@ class polyhedral_BH_test_case(stretching_only_hydrogen_test_case):
 def run():
   import sys
   verbose = '--verbose' in sys.argv[1:]
+  staggered_ch3_test_case.run(verbose=verbose)
   polyhedral_BH_test_case.run(verbose=verbose,
                               neighbours=5, missing_fifth=False)
   acetylenic_CH_test_case.run(verbose=verbose)
