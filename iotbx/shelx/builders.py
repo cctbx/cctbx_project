@@ -45,3 +45,24 @@ class crystal_structure_builder(crystal_symmetry_builder,
         if behaviour_of_variable[-6:].count(self.fixed) != 3:
           f.set_grad_u_aniso(True)
     self.structure.add_scatterer(scatterer)
+
+
+class afixed_crystal_structure_builder(crystal_structure_builder):
+
+  def __init__(self, *args, **kwds):
+    super(afixed_crystal_structure_builder, self).__init__(*args, **kwds)
+    self.afixed = []
+    self.afix = None
+
+  def start_afix(self, constraint_type, kwds):
+    self.afix = (constraint_type, kwds,
+                 len(self.structure.scatterers()))
+
+  def end_afix(self):
+    last = len(self.structure.scatterers())
+    constraint_type, kwds, first = self.afix
+    kwds['constrained_scatterer_indices'] = tuple(xrange(first, last))
+    self.afixed.append((constraint_type, kwds))
+
+  def finish(self):
+    pass

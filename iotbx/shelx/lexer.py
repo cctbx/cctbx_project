@@ -2,14 +2,24 @@
 
 from __future__ import generators
 
-from iotbx.shelx import errors
-
 from libtbx import forward_compatibility
 import re
 
+from iotbx.shelx.errors import error as shelx_error
 
 class command_stream(object):
   """ An ins/res file parsed as a stream of commands """
+
+  shelx_commands = dict([ (cmd, 1) for cmd in [
+    'ACTA', 'AFIX', 'ANIS', 'BASF', 'BIND', 'BLOC', 'BOND', 'BUMP', 'CELL',
+    'CGLS', 'CHIV', 'CONF', 'CONN', 'DAMP', 'DANG', 'DEFS', 'DELU', 'DFIX',
+    'DISP', 'EADP', 'END ', 'EQIV', 'EXTI', 'EXYZ', 'FEND', 'FLAT', 'FMAP',
+    'FRAG', 'FREE', 'FVAR', 'GRID', 'HFIX', 'HKLF', 'HOPE', 'HTAB', 'ISOR',
+    'L.S.', 'LATT', 'LAUE', 'LIST', 'MERG', 'MOLE', 'MORE', 'MOVE', 'MPLA',
+    'MUST', 'NCSY', 'OMIT', 'PART', 'PLAN', 'REM ', 'RESI', 'RTAB', 'SADI',
+    'SAME', 'SFAC', 'SHEL', 'SIMU', 'SIZE', 'SPEC', 'STIR', 'SUMP', 'SWAT',
+    'SYMM', 'TEMP', 'TIME', 'TITL', 'TWIN', 'UNIT', 'WGHT', 'WPDB', 'ZERR'
+  ]])
 
   def __init__(self, file=None, filename=None):
     assert [file, filename].count(None) == 1
@@ -76,9 +86,7 @@ class command_stream(object):
         which can be suffixed by a residue, e.g.
         ('HFIX', (parser.residue_number_tok, 1), (23, ))
     Notes:
-      - All cmd are padded to be 4 characters, i.e. 'REM '.
-        That guaranties that any cmd of 1,2 or 3 characters is an atom
-        specification.
+      - For atoms, cmd is '__ATOM__' and the name is the first argument
       - In args, floating point items are reported as is whereas any
         string comes as (type, value) where type is one of the class
         constants defined just above this method (actually, for
@@ -91,14 +99,15 @@ class command_stream(object):
       if not li: continue
       if continued:
         m = self._continuation_pat.search(li)
-        if m is None: raise errors.illegal_continuation_line_error(i,li)
+        if m is None:
+          raise shelx_error("illegal continuation line error", i)
         cont_args, continued = m.groups()
         arguments.extend(cont_args.split())
       else:
         m = self._cmd_pat.search(li)
         if m is None:
           if li[0].isspace(): continue
-          raise errors.illegal_command_or_atom_name_error(i,li)
+          raise shelx_error("illegal command or atom name error", i)
         cmd = m.group(4)
         if cmd:
           cmd = cmd.upper()
@@ -118,24 +127,24 @@ class command_stream(object):
         result = self._parse_special_cases(cmd, args, i, li)
         if result is None:
           result = self._parse_general_case(cmd, cmd_residue, arguments, i, li)
-        yield result
+        yield result, i
         if cmd == 'HKLF': break
 
   def _parse_special_cases(self, cmd, args, i, li):
     if cmd in ('TITL', 'REM'):
-      return (cmd.ljust(4), (args.strip(),))
+      return (cmd, (args.strip(),))
     if cmd == 'SYMM':
       if args is None:
-        raise errors.illegal_argument_error(i,li,args)
+        raise shelx_error("illegal argument '%s'", i, args)
       return (cmd, (self.symm_space.sub('', args).upper(),))
     if cmd == 'EQIV':
       m = self._eqiv_pat.search(args)
       if m is None:
-        raise errors.illegal_argument_error(i,li,args)
+        raise shelx_error("illegal argument '%s'", i, args)
       try:
         idx = int(m.group(1))
       except ValueError:
-        raise errors.illegal_argument_error(i,li,m.group(1))
+        raise shelx_error("illegal argument '%s'", i, m.group(1))
       return (cmd, (idx, self.symm_space.sub('', m.group(2)).upper()))
     if cmd == 'SFAC':
       return (cmd, tuple([ e.upper() for e in args.split() ]))
@@ -152,7 +161,7 @@ class command_stream(object):
         else:
           m = self._atom_name_pat.match(arg)
           if m is None:
-            raise errors.illegal_argument_error(i,li,arg)
+            raise shelx_error("illegal argument '%s'", i, arg)
           name, symmetry = m.group(1,2)
           if name is not None:
             if symmetry is not None: symmetry = int(symmetry)
@@ -169,4 +178,9 @@ class command_stream(object):
     if cmd_residue:
       return (cmd, cmd_residue, tuple(tokens))
     else:
-      return (cmd, tuple(tokens))
+      if len(cmd) < 4 or cmd not in self.shelx_commands:
+        tokens = (cmd,) + tuple(tokens)
+        cmd = '__ATOM__'
+      else:
+        tokens = tuple(tokens)
+      return (cmd, tokens)
