@@ -3,6 +3,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import xray
+from smtbx.refinement import constraints
 from iotbx import shelx
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
@@ -13,73 +14,75 @@ def exercise_lexing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
   i = iter(stream)
   try:
-    cmd = i.next()
-    assert cmd == ('TITL', ('in Pbca',))
-    cmd =  i.next()
-    assert cmd == ('CELL', (0.71073, 7.35, 9.541, 12.842, 90, 90, 90))
-    cmd = i.next()
-    assert cmd == ('ZERR', (4, 0.002, 0.002, 0.003, 0, 0, 0))
-    cmd = i.next()
-    assert cmd == ('LATT', (1,))
-    cmd = i.next()
-    assert cmd == ('SYMM', ('0.5-X, -Y, 0.5+Z',))
-    cmd = i.next()
-    assert cmd == ('SYMM', ('-X, 0.5+Y, 0.5-Z',))
-    cmd = i.next()
-    assert cmd == ('SYMM', ('1/2+X, 0.5-Y, -Z',))
-    cmd =  i.next()
-    assert cmd == ('SFAC', ('C', 'H', 'O', 'N',))
-    cmd = i.next() # UNIT
-    cmd = i.next() # TEMP
-    cmd = i.next()
-    assert cmd == ('L.S.', (4,))
-    cmd = i.next()
-    assert cmd == ('BOND', ((stream.element_tok, 'H'),))
-    cmd = i.next() # FMAP
-    cmd = i.next() # PLAN
-    cmd = i.next() # WGHT
-    cmd = i.next() # EXTI
-    cmd = i.next() # FVAR
-    cmd = i.next()
-    assert cmd == ('REM ', ('Protracted example of residues on command',))
-    cmd = i.next()
-    assert cmd == ('HFIX', (stream.residue_number_tok, 1), (23,))
-    cmd =  i.next()
-    assert cmd == ('HFIX', (stream.residue_class_tok, 'N'), (43,))
-    cmd = i.next()
-    assert cmd == ('EQIV', (1, '1-X, -Y, -Z'))
-    cmd = i.next()
-    assert cmd == ('CONF', ( (stream.atom_tok, 'C4', None),
+    cmd, line = i.next()
+    assert cmd, line == ('TITL', ('in Pbca',))
+    cmd, line =  i.next()
+    assert cmd, line == ('CELL', (0.71073, 7.35, 9.541, 12.842, 90, 90, 90))
+    cmd, line = i.next()
+    assert cmd, line == ('ZERR', (4, 0.002, 0.002, 0.003, 0, 0, 0))
+    cmd, line = i.next()
+    assert cmd, line == ('LATT', (1,))
+    cmd, line = i.next()
+    assert cmd, line == ('SYMM', ('0.5-X, -Y, 0.5+Z',))
+    cmd, line = i.next()
+    assert cmd, line == ('SYMM', ('-X, 0.5+Y, 0.5-Z',))
+    cmd, line = i.next()
+    assert cmd, line == ('SYMM', ('1/2+X, 0.5-Y, -Z',))
+    cmd, line =  i.next()
+    assert cmd, line == ('SFAC', ('C', 'H', 'O', 'N',))
+    cmd, line = i.next() # UNIT
+    cmd, line = i.next() # TEMP
+    cmd, line = i.next()
+    assert cmd, line == ('L.S.', (4,))
+    cmd, line = i.next()
+    assert cmd, line == ('BOND', ((stream.element_tok, 'H'),))
+    cmd, line = i.next() # FMAP
+    cmd, line = i.next() # PLAN
+    cmd, line = i.next() # WGHT
+    cmd, line = i.next() # EXTI
+    cmd, line = i.next() # FVAR
+    cmd, line = i.next()
+    assert cmd, line == ('REM', ('Protracted example of residues on command',))
+    cmd, line = i.next()
+    assert cmd, line == ('HFIX', (stream.residue_number_tok, 1), (23,))
+    cmd, line =  i.next()
+    assert cmd, line == ('HFIX', (stream.residue_class_tok, 'N'), (43,))
+    cmd, line = i.next()
+    assert cmd, line == ('EQIV', (1, '1-X, -Y, -Z'))
+    cmd, line = i.next()
+    assert cmd, line == ('CONF', ( (stream.atom_tok, 'C4', None),
                              (stream.atom_tok, 'N', None),
                              (stream.atom_tok, 'H', None),
                              (stream.atom_tok, 'O2', 1) ) )
-    cmd = i.next()
-    assert cmd == ('O2', (3, 0.362893, 0.160589, -0.035913, 11,
+    cmd, line = i.next()
+    assert cmd, line == ('__ATOM__',
+                   ('O2', 3, 0.362893, 0.160589, -0.035913, 11,
                           0.03926, 0.02517, 0.02140,
                           -0.00415, -0.00810, 0.01009))
-    cmd = i.next()
-    assert cmd == ('O3', (3, 0.696722, 0.119176, 0.260657, 11,
+    cmd, line = i.next()
+    assert cmd, line == ('__ATOM__',
+                   ('O3', 3, 0.696722, 0.119176, 0.260657, 11,
                           0.02838, 0.02133, 0.02918,
                           0.00011, -0.01030, -0.00048))
-    cmd = i.next() # C1
-    cmd = i.next() # C4
-    cmd =  i.next()
-    assert cmd == ('RESI', (1,))
-    cmd = i.next() # C2
-    cmd = i.next() # C3
-    cmd =  i.next()
-    assert cmd == ('RESI', ('N',))
-    cmd = i.next() # N
-    cmd = i.next() # HKLF
+    cmd, line = i.next() # C1
+    cmd, line = i.next() # C4
+    cmd, line =  i.next()
+    assert cmd, line == ('RESI', (1,))
+    cmd, line = i.next() # C2
+    cmd, line = i.next() # C3
+    cmd, line =  i.next()
+    assert cmd, line == ('RESI', ('N',))
+    cmd, line = i.next() # N
+    cmd, line = i.next() # HKLF
     try:
-      cmd = i.next()
+      cmd, line = i.next()
       raise AssertionError
     except StopIteration:
       pass
   except StopIteration:
     raise AssertionError
 
-def exercise_parsing():
+def exercise_crystal_symmetry_parsing():
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_mundane_tiny))
   l = shelx.crystal_symmetry_parser(stream,
                                     builder=shelx.crystal_symmetry_builder())
@@ -102,6 +105,7 @@ def exercise_parsing():
     relative_length_tolerance=1e-15,
     absolute_angle_tolerance=1e-15)
 
+def exercise_xray_structure_parsing():
   for set_grad_flags in (False, True):
     builder=shelx.crystal_structure_builder(set_grad_flags=set_grad_flags)
     stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
@@ -195,8 +199,8 @@ def exercise_parsing():
   try:
     l.parse()
     raise Exception_expected
-  except shelx.illegal_argument_error, e:
-    assert e.args[0] == 3 and e.args[-1] == '0.3.'
+  except RuntimeError, e:
+    assert str(e) == "ShelX: illegal argument '0.3.' at line 3"
 
   builder=shelx.crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt_1))
@@ -205,8 +209,9 @@ def exercise_parsing():
   try:
     l.parse()
     raise Exception_expected
-  except shelx.illegal_scatterer_error, e:
-    assert e.args[0] == 'O'
+  except RuntimeError, e:
+    assert str(e) == ("ShelX: wrong number of parameters "
+                      "for scatterer at line 3")
 
   builder=shelx.crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_missing_sfac))
@@ -215,8 +220,32 @@ def exercise_parsing():
   try:
     l.parse()
     raise Exception_expected
-  except shelx.missing_sfac_error, e:
-    pass
+  except RuntimeError, e:
+    assert e.args[0].startswith('ShelX:')
+
+def exercise_afix_parsing():
+  builder = shelx.afixed_crystal_structure_builder()
+  stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
+  l_cs = shelx.crystal_symmetry_parser(stream, builder)
+  l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
+  l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
+  l_xs.parse()
+  expected_afixed = [
+    (constraints.staggered_terminal_tetrahedral_XHn,
+     {'constrained_scatterer_indices': (1,)}),
+    (constraints.aromatic_CH_or_amide_NH,
+     {'constrained_scatterer_indices': (6,)}),
+    (constraints.aromatic_CH_or_amide_NH,
+     {'constrained_scatterer_indices': (10,)}),
+    (constraints.aromatic_CH_or_amide_NH,
+     {'constrained_scatterer_indices': (13,)}),
+    (constraints.aromatic_CH_or_amide_NH,
+     {'constrained_scatterer_indices': (16,)}),
+    (constraints.terminal_tetrahedral_XHn,
+     {'rotating': True, 'constrained_scatterer_indices': (18,19,20)}),
+    ]
+  for result, expected in zip(builder.afixed, expected_afixed):
+    assert (result == expected)
 
 def shelx_u_cif(unit_cell, u_star):
   u_cif = adptbx.u_star_as_u_cif(unit_cell, u_star)
@@ -224,8 +253,10 @@ def shelx_u_cif(unit_cell, u_star):
   return (" "*3).join([ "%.5f" % x for x in  u_cif ])
 
 def run():
+  exercise_afix_parsing()
+  exercise_xray_structure_parsing()
+  exercise_crystal_symmetry_parsing()
   exercise_lexing()
-  exercise_parsing()
   print 'OK'
 
 ins_mundane_tiny = (
@@ -301,7 +332,7 @@ WGHT    0.068700    0.446300
 FVAR       0.91641
 O2    3    0.879181    0.140375    0.051044    11.00000    0.05893    0.05202 =
          0.05656    0.01670    0.01559    0.01156
-AFIX 147
+AFIX 87
 H2    2    0.925036    0.046729    0.065472    11.00000   -1.50000
 AFIX   0
 O3    3    0.714314    0.411976    0.087940    11.00000    0.04930    0.05061 =
