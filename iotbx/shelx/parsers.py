@@ -16,7 +16,12 @@ from libtbx import adopt_init_args
 from iotbx.shelx import util
 from iotbx.shelx.errors import error as shelx_error
 
-from smtbx.refinement import constraints
+try:
+  import smtbx
+except ImportError:
+  smtbx = None
+else:
+  import smtbx.refinement.constraints as smtbx_constraints
 
 
 class parser(object):
@@ -177,65 +182,67 @@ class atom_parser(parser, variable_decoder):
     return scatterer, behaviours
 
 
-class afix_parser(parser):
-  """ It must be before an atom parser """
+if smtbx is not None:
 
-  constraint = {
-    1:  (constraints.tertiary_CH, 1),
-    2:  (constraints.secondary_CH2, 2),
-    3:  (constraints.staggered_terminal_tetrahedral_XHn, 3),
-    4:  (constraints.aromatic_CH_or_amide_NH, 1),
-    8:  (constraints.staggered_terminal_tetrahedral_XHn, 1),
-    9:  (constraints.terminal_trihedral_XH2, 2),
-    13: (constraints.terminal_tetrahedral_XHn, 3),
-    14: (constraints.terminal_tetrahedral_XHn, 1),
-    15: (constraints.polyhedral_BH, 1),
-    16: (constraints.acetylenic_CH, 1),
-    }
+  class afix_parser(parser):
+    """ It must be before an atom parser """
 
-  def filtered_commands(self):
-    active_afix = False
-    for command, line in self.command_stream:
-      cmd, args = command[0], command[-1]
-      if cmd in ('AFIX', 'HKLF'):
-        if cmd == 'AFIX' and not args:
-          raise shelx_error("too few arguments", line)
-        if active_afix:
-          if n_afixed != n_expected_afixed:
-            raise shelx_error("wrong number of afixed atoms", line)
-          self.builder.end_afix()
-          active_afix = False
-          n_afixed = 0
-        if cmd == 'HKLF':
+    constraint = {
+      1:  (smtbx_constraints.tertiary_CH, 1),
+      2:  (smtbx_constraints.secondary_CH2, 2),
+      3:  (smtbx_constraints.staggered_terminal_tetrahedral_XHn, 3),
+      4:  (smtbx_constraints.aromatic_CH_or_amide_NH, 1),
+      8:  (smtbx_constraints.staggered_terminal_tetrahedral_XHn, 1),
+      9:  (smtbx_constraints.terminal_trihedral_XH2, 2),
+      13: (smtbx_constraints.terminal_tetrahedral_XHn, 3),
+      14: (smtbx_constraints.terminal_tetrahedral_XHn, 1),
+      15: (smtbx_constraints.polyhedral_BH, 1),
+      16: (smtbx_constraints.acetylenic_CH, 1),
+      }
+
+    def filtered_commands(self):
+      active_afix = False
+      for command, line in self.command_stream:
+        cmd, args = command[0], command[-1]
+        if cmd in ('AFIX', 'HKLF'):
+          if cmd == 'AFIX' and not args:
+            raise shelx_error("too few arguments", line)
+          if active_afix:
+            if n_afixed != n_expected_afixed:
+              raise shelx_error("wrong number of afixed atoms", line)
+            self.builder.end_afix()
+            active_afix = False
+            n_afixed = 0
+          if cmd == 'HKLF':
+            yield command, line
+            continue
+          mn = args[0]
+          if mn == 0: continue
+          m,n = divmod(mn, 10)
+          d, sof, u = (None,)*3
+          params = args[1:]
+          if not params: pass
+          elif len(params) == 1: d = params[0]
+          elif len(params) == 3: d, sof = params[0:]
+          elif len(params) == 4: d, sof, u = params[0:]
+          else: raise shelx_error("too many arguments", line)
+          info = self.constraint.get(m)
+          if info is not None:
+            constraint_type, n_expected_afixed = info
+            kwds = {}
+            if d is not None: kwds['bond_length'] = d
+            if (n in (7,8)
+                and not constraint_type.__name__.startswith('staggered')):
+              kwds['rotating'] = True
+            self.builder.start_afix(constraint_type, kwds)
+            active_afix = True
+            n_afixed = 0
+        elif cmd == '__ATOM__':
+          if active_afix:
+            if sof is not None: args[4] = sof
+            if u is not None and len(args) == 6: args[-1] = u
+            n_afixed += 1
           yield command, line
-          continue
-        mn = args[0]
-        if mn == 0: continue
-        m,n = divmod(mn, 10)
-        d, sof, u = (None,)*3
-        params = args[1:]
-        if not params: pass
-        elif len(params) == 1: d = params[0]
-        elif len(params) == 3: d, sof = params[0:]
-        elif len(params) == 4: d, sof, u = params[0:]
-        else: raise shelx_error("too many arguments", line)
-        info = self.constraint.get(m)
-        if info is not None:
-          constraint_type, n_expected_afixed = info
-          kwds = {}
-          if d is not None: kwds['bond_length'] = d
-          if (n in (7,8)
-              and not constraint_type.__name__.startswith('staggered')):
-            kwds['rotating'] = True
-          self.builder.start_afix(constraint_type, kwds)
-          active_afix = True
-          n_afixed = 0
-      elif cmd == '__ATOM__':
-        if active_afix:
-          if sof is not None: args[4] = sof
-          if u is not None and len(args) == 6: args[-1] = u
-          n_afixed += 1
-        yield command, line
-      else:
-        yield command, line
-    self.builder.finish()
+        else:
+          yield command, line
+      self.builder.finish()
