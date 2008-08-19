@@ -224,6 +224,8 @@ def exercise_xray_structure_parsing():
     assert e.args[0].startswith('ShelX:')
 
 def exercise_afix_parsing():
+  if 'afix_parser' not in shelx.__dict__:
+    print 'Skipped AFIX parsing test'
   builder = shelx.afixed_crystal_structure_builder()
   stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
   l_cs = shelx.crystal_symmetry_parser(stream, builder)
