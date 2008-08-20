@@ -16,6 +16,16 @@ class fmodels(object):
     self.xray_scattering_dict = xray_scattering_dict
     self.neutron_scattering_dict = neutron_scattering_dict
     self.log = log
+    # pre-scale
+    if(self.fmodel_n is not None):
+      scale_k1_x = self.fmodel_x.scale_k1()
+      scale_k1_n = self.fmodel_n.scale_k1()
+      xn_scale = scale_k1_x / scale_k1_n
+      f_obs_n_new = self.fmodel_n.f_obs.array(
+        data = self.fmodel_n.f_obs.data()*xn_scale)
+      f_obs_n_new.set_observation_type_xray_amplitude()
+      self.fmodel_n.update(f_obs = f_obs_n_new)
+    #
     self.create_target_functors()
 
   def pseudo_deep_copy(self):
