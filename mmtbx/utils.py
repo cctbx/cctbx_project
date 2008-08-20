@@ -851,7 +851,7 @@ class process_pdb_file_srv(object):
       msg = "\n  ".join([
         "Bad input PDB file: there is a number of atoms with unknown scattering type.",
         "To resolve the problem: make sure that all atoms in input PDB file have proper",
-        "element name in column 78. Problem lines in input PDB file:\n"
+        "element name in column 77-78. Problem lines in input PDB file:\n"
         ]+[atom.format_atom_record() for atom in bad_atoms])
       raise Sorry(msg)
     #
