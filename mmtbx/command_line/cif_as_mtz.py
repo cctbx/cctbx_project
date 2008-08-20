@@ -49,11 +49,13 @@ keys_indices = ["index_h", "index_k", "index_l"]
 
 keys_f_obs = ["F_meas_au",
               "F_meas",
+              "F_meas_neutron",
               "F_meas_uncorrected"]
 keys_sf_obs = ["F_meas_sigma_au",
                "F_meas_sigma",
                "F_sigma",
                "F_meas_siygma_au",
+               "F_meas_sigma_neutron",
                "F_meas_au_sigma",
                "F_meas_sigma_uncorrected"]
 
