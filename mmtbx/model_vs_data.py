@@ -75,6 +75,7 @@ def show_geometry(processed_pdb_file, scattering_table):
   restraints_manager = mmtbx.restraints.manager(
     geometry = geometry,
     normalization = True)
+  # exclude hydrogens
   if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
     xray_structure = xray_structure.select(~hd_sel)
     geometry = restraints_manager.geometry.select(selection = ~hd_sel)
