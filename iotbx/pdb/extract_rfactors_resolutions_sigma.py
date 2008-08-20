@@ -11,29 +11,43 @@ class get_r_rfree_sigma(object):
     start_FitToDataUsedInRefinement = False
     for line in remark_2_and_3_records:
       line = line.strip()
-      if(not start_DataUsedInRefinement):
-        start_DataUsedInRefinement = self.is_DataUsedInRefinement(line)
-      if(start_DataUsedInRefinement and self.is_ResolutionRangeHigh(line)):
-        try: self.high = float(line.split()[7])
-        except ValueError: pass
-      if(start_DataUsedInRefinement and self.is_ResolutionRangeLow(line)):
-         try: self.low = float(line.split()[7])
-         except ValueError: pass
-      if(start_DataUsedInRefinement and self.is_DataCutoffSigma(line)):
-         try: self.sigma = float(line.split()[6])
-         except ValueError: pass
-      if(not start_FitToDataUsedInRefinement):
-        start_FitToDataUsedInRefinement = \
-          self.is_FitToDataUsedInRefinement(line)
-      if(start_FitToDataUsedInRefinement and self.is_RValueWorkingSet(line)):
-        self.r_work = self.get_value(line)
-      if(start_FitToDataUsedInRefinement and self.is_FreeRValue(line)):
-        self.r_free = self.get_value(line)
-      if(self.is_Resolution(line)):
-        try: self.resolution = float(line.split()[3])
-        except ValueError:
-          try: self.resolution = float(line[22:28])
+      if(len(line.split()) > 0):
+        if(not start_DataUsedInRefinement):
+          start_DataUsedInRefinement = self.is_DataUsedInRefinement(line)
+        if(start_DataUsedInRefinement and self.is_ResolutionRangeHigh(line)):
+          try: self.high = line.split()[7]
+          except IndexError: pass
+          try: self.high = float(self.high)
           except ValueError: pass
+          except TypeError: pass
+        if(start_DataUsedInRefinement and self.is_ResolutionRangeLow(line)):
+           try: self.low = line.split()[7]
+           except IndexError: pass
+           try: self.low = float(self.low)
+           except ValueError: pass
+           except TypeError: pass
+        if(start_DataUsedInRefinement and self.is_DataCutoffSigma(line)):
+           try: self.sigma = line.split()[6]
+           except IndexError: pass
+           try: self.sigma = float(self.sigma)
+           except ValueError: pass
+           except TypeError: pass
+        if(not start_FitToDataUsedInRefinement):
+          start_FitToDataUsedInRefinement = \
+            self.is_FitToDataUsedInRefinement(line)
+        if(start_FitToDataUsedInRefinement and self.is_RValueWorkingSet(line)):
+          self.r_work = self.get_value(line)
+        if(start_FitToDataUsedInRefinement and self.is_FreeRValue(line)):
+          self.r_free = self.get_value(line)
+        if(self.is_Resolution(line)):
+          try: self.resolution = line.split()[3]
+          except IndexError: pass
+          try: self.resolution = float(self.resolution)
+          except TypeError: pass
+          except ValueError:
+            try: self.resolution = float(line[22:28])
+            except ValueError: pass
+            except TypeError: pass
 
   def get_value(self, line):
     line = line.split()
