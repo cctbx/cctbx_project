@@ -123,8 +123,8 @@ def exercise_01():
     if(r2.startswith("ATOM") or r2.startswith("HETATM")): result2.append(r2)
   assert len(result1) == len(result2)
   for r1, r2 in zip(result1, result2):
-    r1 = r1[:30] + r1[55:]
-    r2 = r2[:30] + r2[55:]
+    r1 = r1[:30] + r1[60:]
+    r2 = r2[:30] + r2[60:]
     assert not show_diff(r1, r2)
   ####
   cntr = 0
