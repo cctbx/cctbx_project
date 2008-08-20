@@ -235,22 +235,14 @@ def run_flip_hd(fmodel, model, log, params = None):
   scatterers = fmodel.xray_structure.scatterers()
   scattering_types = scatterers.extract_scattering_types()
   fmodel_dc = fmodel.deep_copy()
+  ed_values = flex.double()
   for h_in_residue in model.refinement_flags.group_h:
-    #print list(h_in_residue)
-    x_atoms = []
-    for i_seq_h in h_in_residue:
-      for xh_connectivity_table_i in xh_connectivity_table:
-        if(i_seq_h in xh_connectivity_table_i[:2]):
-          x_atoms.append(xh_connectivity_table_i[0])
-          break
-    #print x_atoms
     xray_structure_dc_dc = xray_structure_dc.deep_copy_scatterers()
     xray_structure_dc_dc.set_occupancies(value = 0, selection = h_in_residue)
     fmodel_dc.update_xray_structure(
       xray_structure = xray_structure_dc_dc,
       update_f_calc  = True,
       update_f_mask  = True)
-    #
     fft_map = fmodel_dc.electron_density_map(
       map_type          = "mFo-DFc",
       resolution_factor = 1/4.,
@@ -260,11 +252,29 @@ def run_flip_hd(fmodel, model, log, params = None):
     for i_seq_h in h_in_residue:
       ed_val = maptbx.eight_point_interpolation(fft_map_data,
           scatterers[i_seq_h].site)
+      ed_values.append(ed_val)
       assert fmodel_dc.xray_structure.scatterers()[i_seq_h].occupancy == 0
       if 1:#((ed_val < 0 and scattering_types[i_seq_h]=='D') or
          #(ed_val > 0 and scattering_types[i_seq_h]=='H')):
-        print >> log, "%3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
-          model.pdb_atoms[i_seq_h].quote()
+        #print >> log, "%3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
+        #  model.pdb_atoms[i_seq_h].quote()
+        pass
+  #
+  #hd_selection = model.xray_structure.hd_selection()
+  scattering_types = model.xray_structure.scatterers().extract_scattering_types()
+  hd_selection = flex.bool()
+  for sct in scattering_types:
+    if(sct.strip() in ['H','D']): hd_selection.append(True)
+    else: hd_selection.append(False)
+
+  total = int(flex.sum(model.xray_structure.scatterers().
+    extract_occupancies().select(hd_selection)))
+  ed_values_abs = flex.abs(ed_values)
+  for sigma in (1,2,3):
+    ns = (ed_values_abs > sigma).count(True)
+    print "sigma = %6.2f n_visible = %5d out of total %-5d" % (sigma, ns, total),ed_values.size()
+  #
+
       #if(abs(ed_val) < 1.0):
       #  print >> log, "*** %3d %6.2f %s" % (i_seq_h, ed_val, scattering_types[i_seq_h]), \
       #  model.pdb_atoms[i_seq_h].quote()

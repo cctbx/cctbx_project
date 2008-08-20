@@ -206,21 +206,27 @@ class lbfgs(object):
     self.fmodels.update_xray_structure(
       xray_structure = xray_structure,
       update_f_calc  = True)
+    self.model.xray_structure = self.fmodels.fmodel_xray().xray_structure
+    modified = False
     if(self.h_params is not None and self.refine_xyz and self.hd_flag and
-       self.h_params.refine != "individual" ):# and
-       #self.fmodels.fmodel_neutron() is None): # XXX need systematic tests
+       self.h_params.refine != "individual" ):
       self.model.idealize_h(xh_bond_distance_deviation_limit =
         self.h_params.xh_bond_distance_deviation_limit)
-      self.fmodels.update_xray_structure(
-        xray_structure = xray_structure,
-        update_f_calc  = True)
+      modified = True
     if(self.h_params is not None and self.refine_xyz and self.hd_flag and
-       self.h_params.refine == "individual" and self.h_params.xh_bond_distance_deviation_limit > 0):
-       #self.fmodels.fmodel_neutron() is None): # XXX need systematic tests
+       self.h_params.refine == "individual" and
+       self.h_params.xh_bond_distance_deviation_limit > 0 and
+       self.fmodels.fmodel_n is None and
+       self.all_params.main.scattering_table != "neutron"):
+      modified = True
       self.model.idealize_h(xh_bond_distance_deviation_limit =
         self.h_params.xh_bond_distance_deviation_limit) # do it anyway if distortion is too big
+    if(self.h_params is not None and self.refine_xyz and self.hd_flag):
+      self.model.reset_coordinates_for_exchangable_hd()
+      modified = True
+    if(modified):
       self.fmodels.update_xray_structure(
-        xray_structure = xray_structure,
+        xray_structure = self.model.xray_structure,
         update_f_calc  = True)
 
 class monitor(object):

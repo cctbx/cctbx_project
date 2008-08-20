@@ -101,6 +101,10 @@ class manager(object):
     self.ias_xray_structure = ias_xray_structure
     self.use_ias = False
     self.ias_selection = None
+    self.exchangable_hd_groups = []
+    if(self.xray_structure.hd_selection().count(True) > 0):
+      self.exchangable_hd_groups = utils.combine_hd_exchangable(
+        hierarchy = self.pdb_hierarchy)
 
   def xh_connectivity_table(self):
     result = None
@@ -133,6 +137,17 @@ class manager(object):
         i_x, i_h = t[0], t[1]
         occ[i_h] = occ[i_x]
       self.xray_structure.set_occupancies(value = occ, selection = hd_sel)
+
+  def reset_coordinates_for_exchangable_hd(self):
+    if(len(self.exchangable_hd_groups) > 0):
+      scatterers =  self.xray_structure.scatterers()
+      occ = scatterers.extract_occupancies()
+      for g in self.exchangable_hd_groups:
+        i, j = g[0][0], g[1][0]
+        if(occ[i] > occ[j]):
+          scatterers[j].site = scatterers[i].site
+        else:
+          scatterers[i].site = scatterers[j].site
 
   def idealize_h(self, xh_bond_distance_deviation_limit=0, show=True): # XXX _limit is not used
     if(self.xray_structure.hd_selection().count(True) > 0):
@@ -207,6 +222,13 @@ class manager(object):
                 + "  %s\n" % first_water.quote()
                 + "  %s" % first_other.quote())
             result.append(rg)
+    # check result
+    for r in result:
+      elements = r.atoms().extract_element()
+      o_found = 0
+      for e in elements:
+        if(e.strip().upper() == 'O'): o_found += 1
+      assert o_found == 1
     return result
 
   def renumber_water(self):
@@ -214,9 +236,10 @@ class manager(object):
       rg.resseq = pdb.resseq_encode(value=i+1)
       rg.icode = " "
 
-  def add_hydrogens(self, element = "H"):
+  def add_hydrogens(self, element = "H", neutron = False):
     result = []
     xs = self.xray_structure
+    if(neutron): element = "D"
     frac = xs.unit_cell().fractionalize
     sites_cart = xs.sites_cart()
     u_isos = xs.extract_u_iso_or_u_equiv()
@@ -238,7 +261,7 @@ class manager(object):
           h.xyz = [a+b for a,b in zip(xyz, (-1,0,0))]
           sign = True
         h.sigxyz = (0,0,0)
-        h.occ = 1.0
+        h.occ = 0.01
         h.sigocc = 0
         h.b = adptbx.u_as_b(u_isos[i_seq])
         h.sigb = 0
@@ -298,13 +321,15 @@ class manager(object):
           atom=atom,
           atom_names=[element+n for n in ["1","2"]],
           element=element)
-    #
+    if(neutron):
+      xs.switch_to_neutron_scattering_dictionary()
     print >> self.log, "Number of H added:", len(next_to_i_seqs)
     if (len(next_to_i_seqs) == 0): return
     if (self.refinement_flags is not None):
       self.refinement_flags.add(
         next_to_i_seqs=next_to_i_seqs,
-        sites_individual=True)
+        sites_individual = True,
+        s_occupancies    = neutron)
     # XXX very inefficient: re-process PDB from scratch and create restraints
     raw_records = [pdb.format_cryst1_record(
       crystal_symmetry=self.xray_structure)]
