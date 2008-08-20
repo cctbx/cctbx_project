@@ -252,7 +252,7 @@ class weak_reflection_improved_iterator(basic_iterator):
     p = self.f_obs.sort_permutation(by_value="data", reverse=True)
     self.f_obs = self.f_obs.select(p)
 
-  def transfer_phase_from_g_tof_obs(self):
+  def transfer_phase_to_f_obs(self):
     self.f_calc = self.f_obs.oszlanyi_suto_phase_transfer(
       self._g,
       self.delta_varphi,
