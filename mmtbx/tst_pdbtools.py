@@ -546,7 +546,7 @@ def exercise_01(pdb_dir, verbose):
     join_stdout_stderr = True)
   sorry_found = False
   for line in result.stdout_lines:
-    if(line == "Sorry: Cannot compute structure factors: no crystall symmetry available."):
+    if(line == "Sorry: Cannot compute structure factors: no crystal symmetry available."):
       sorry_found = True
   assert sorry_found == True
 

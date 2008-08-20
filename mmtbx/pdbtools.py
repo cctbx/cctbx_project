@@ -828,7 +828,7 @@ class interpreter:
       self.crystal_symmetry = crystal.symmetry((1, 1, 1, 90, 90, 90), "P 1")
       if(self.command_line.options.f_model):
         raise Sorry(
-          "Cannot compute structure factors: no crystall symmetry available.")
+          "Cannot compute structure factors: no crystal symmetry available.")
     print >> self.log, "Working crystal symmetry after inspecting all inputs:"
     self.crystal_symmetry.show_summary(f = self.log, prefix="  ")
     self.params.input.crystal_symmetry.unit_cell = \
