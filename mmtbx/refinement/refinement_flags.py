@@ -101,7 +101,7 @@ class manager(object):
         else:
           result = False
           break
-      if(len(as_1d) != len(dict(zip(as_1d, as_1d)))): # FUTURE: set
+      if(len(as_1d) == 0 or len(as_1d) != len(dict(zip(as_1d, as_1d)))): # FUTURE: set
         result = False
     else:
       as_1d = []
@@ -109,7 +109,7 @@ class manager(object):
         for j in i:
           for k in j:
             as_1d.append(k)
-      if(len(as_1d) != len(dict(zip(as_1d, as_1d)))): # FUTURE: set
+      if(len(as_1d) == 0 or len(as_1d) != len(dict(zip(as_1d, as_1d)))): # FUTURE: set
         result = False
     return result
 
