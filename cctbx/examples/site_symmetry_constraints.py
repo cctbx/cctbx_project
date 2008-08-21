@@ -88,7 +88,7 @@ def run():
   #
   # See also the comprehensive unit test exercising the
   # site_constraints class:
-  #   cctbx/cctbx/regression/tst_sgtbx_site_constraints.py
+  #   cctbx/regression/tst_sgtbx_site_constraints.py
   #
 
   print "OK"

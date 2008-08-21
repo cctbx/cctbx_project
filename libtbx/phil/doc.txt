@@ -713,7 +713,7 @@ is the ``choice_converters`` class in ``libtbx/phil/__init__.py``).
 Additional domain-specific converters are best defined in a separate
 module, along with a corresponding parse() function using the
 extended converter registry as the default. See, for example,
-``iotbx/iotbx/phil.py`` in the same ``cctbx`` project that also hosts
+``iotbx/phil.py`` in the same ``cctbx`` project that also hosts
 ``libtbx``.
 
 =======

@@ -347,7 +347,7 @@ As outlined at the beginning, the ``residual()`` and ``gradients()``
 are to be used in connection with the quasi-Newton `LBFGS`_
 minimizer as implemented in the ``scitbx.lbfgs`` module. A
 minimal recipe for using this module is shown in the
-`scitbx/scitbx/examples/lbfgs_recipe.py`_ script::
+`scitbx/examples/lbfgs_recipe.py`_ script::
 
   class refinery:
 
@@ -472,7 +472,7 @@ import ``iotbx.command_line.lattice_symmetry`` and instantiate
 the ``metric_subgroups`` class with the refined unit cell.
 
 Hint: Look for ``"P 1"`` in the ``run()`` function in
-``iotbx/iotbx/command_line/lattice_symmetry.py``.
+``iotbx/command_line/lattice_symmetry.py``.
 
 [`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
 [`cctbx front page`_] [`Python tutorial`_]
@@ -518,7 +518,7 @@ to reduce the number of unit cell parameters to be refined.
 [`cctbx front page`_] [`Python tutorial`_]
 
 
-.. _`Complete example script`: http://phenix-online.org/cctbx_sources/cctbx/cctbx/examples/unit_cell_refinement.py
+.. _`Complete example script`: http://phenix-online.org/cctbx_sources/cctbx/examples/unit_cell_refinement.py
 
 .. _`Example output`: http://cctbx.sourceforge.net/siena2005/unit_cell_refinement.out
 
@@ -544,13 +544,13 @@ to reduce the number of unit cell parameters to be refined.
 
 .. _`Finite Difference Method`: http://www.google.com/search?q=finite+difference+method
 
-.. _`scitbx/scitbx/examples/lbfgs_recipe.py`: http://phenix-online.org/cctbx_sources/scitbx/scitbx/examples/lbfgs_recipe.py
+.. _`scitbx/examples/lbfgs_recipe.py`: http://phenix-online.org/cctbx_sources/scitbx/examples/lbfgs_recipe.py
 
 .. _`Google's automatic translation`: http://translate.google.com/translate_t
 
 .. _`d_star_sq_alternative.py`: http://cctbx.sourceforge.net/siena2005/d_star_sq_alternative.py
 
-.. _`adp_symmetry_constraints.py`: http://phenix-online.org/cctbx_sources/cctbx/cctbx/examples/adp_symmetry_constraints.py
+.. _`adp_symmetry_constraints.py`: http://phenix-online.org/cctbx_sources/cctbx/examples/adp_symmetry_constraints.py
 
 .. _`libtbx.help str`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=str
 

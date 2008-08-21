@@ -30,7 +30,7 @@ namespace tensor_rank_2 {
 
   //! Handling of symmetry constraints for tensors of rank 2.
   /*! Example:
-        http://phenix-online.org/cctbx_sources/cctbx/cctbx/examples/adp_symmetry_constraints.py
+        http://phenix-online.org/cctbx_sources/cctbx/examples/adp_symmetry_constraints.py
    */
   template <typename FloatType=double>
   class constraints

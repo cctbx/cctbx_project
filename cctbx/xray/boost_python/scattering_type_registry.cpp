@@ -12,7 +12,7 @@
 #include <boost/python/return_by_value.hpp>
 
 #if defined(__sgi) && !defined(__GNUC__)
-// see comments in scitbx/scitbx/source_generators/flex_fwd_h.py
+// see comments in scitbx/source_generators/flex_fwd_h.py
 typedef boost::optional<scitbx::math::gaussian::sum<double> > b_o_g_s_d;
 #endif
 

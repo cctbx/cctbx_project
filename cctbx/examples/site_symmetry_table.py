@@ -57,8 +57,8 @@ def demo():
     adp_constraints = site_symmetry_table.get(i_seq=i_seq).adp_constraints()
   #
   # See also:
-  #   cctbx/cctbx/examples/site_symmetry_constraints.py
-  #   cctbx/cctbx/examples/adp_symmetry_constraints.py
+  #   cctbx/examples/site_symmetry_constraints.py
+  #   cctbx/examples/adp_symmetry_constraints.py
   #   C++ reference documentation for
   #     cctbx::sgtbx::site_symmetry_ops
   #     cctbx::sgtbx::site_symmetry
