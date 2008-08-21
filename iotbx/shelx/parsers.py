@@ -12,15 +12,15 @@ import scitbx.math
 
 from libtbx import forward_compatibility
 from libtbx import adopt_init_args
+import libtbx.load_env
 
 from iotbx.shelx import util
 from iotbx.shelx.errors import error as shelx_error
 
-try:
-  import smtbx
-except ImportError:
+if (libtbx.env.dist_path("smtbx", default=None) is None):
   smtbx = None
 else:
+  import smtbx
   import smtbx.refinement.constraints as smtbx_constraints
 
 
