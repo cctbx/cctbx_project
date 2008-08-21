@@ -25,7 +25,7 @@ namespace lattice_symmetry {
     sg_vec3 h;
   };
 
-  //! Reformatted output of cctbx/cctbx/examples/reduced_cell_two_folds.py
+  //! Reformatted output of cctbx/examples/reduced_cell_two_folds.py
   static const reduced_cell_two_fold_info reduced_cell_two_folds[] = {
     {sg_mat3(-1,-1,-1,0,0,1,0,1,0),sg_vec3(-1,1,1),sg_vec3(0,1,1)},
     {sg_mat3(-1,-1,0,0,1,0,0,-1,-1),sg_vec3(1,-2,1),sg_vec3(0,1,0)},

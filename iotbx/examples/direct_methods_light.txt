@@ -680,7 +680,7 @@ often mislead by the hydrogens in the CIF file. To solve this problem,
 modify the script to remove the hydrogens from the reference model.
 
 Hint: Find the implementation of ``cctbx.xray.structure.as_emma_model()``
-(``cctbx/cctbx/xray/__init__.py``). Note that ``scatterer`` has a
+(``cctbx/xray/__init__.py``). Note that ``scatterer`` has a
 ``scattering_type`` attribute.
 
 [`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
@@ -694,7 +694,7 @@ Compute the correlation between ``all_e_values`` and a
 ``cctbx.xray.structure`` constructed with the top 6 peaks, using
 ``"const"`` as the ``scattering_type``.
 
-Hint: Study ``iotbx/iotbx/acta_c.py`` to see how the ``xray_structure``
+Hint: Study ``iotbx/acta_c.py`` to see how the ``xray_structure``
 is constructed from the CIF file. However, use
 ``peak_structure = xray.structure(special_position_settings=xray_structure)``.
 Study ``cctbx.xray.structure.__init__()`` to see why this works.
@@ -718,7 +718,7 @@ the Emma reference model multiple times.
 
 .. _`unit_cell_refinement.py`: http://cctbx.sourceforge.net/siena2005/unit_cell_refinement.html
 
-.. _`Complete example script`: http://phenix-online.org/cctbx_sources/iotbx/iotbx/examples/direct_methods_light.py
+.. _`Complete example script`: http://phenix-online.org/cctbx_sources/iotbx/examples/direct_methods_light.py
 
 .. _`Example output`: http://cctbx.sourceforge.net/siena2005/direct_methods_light.out
 
@@ -744,7 +744,7 @@ the Emma reference model multiple times.
 
 .. _`vj1132sup1.cif`: http://scripts.iucr.org/cgi-bin/sendcif?vj1132sup1
 
-.. _`iotbx.acta_c`: http://phenix-online.org/cctbx_sources/iotbx/iotbx/acta_c.py
+.. _`iotbx.acta_c`: http://phenix-online.org/cctbx_sources/iotbx/acta_c.py
 
 .. _`cctbx::dmtbx::triplet_generator`: http://cctbx.sourceforge.net/current/c_plus_plus/classcctbx_1_1dmtbx_1_1triplet__generator.html
 

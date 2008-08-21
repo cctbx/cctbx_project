@@ -41,7 +41,7 @@ def exercise_interface():
 
 def exercise():
   exercise_interface()
-  # more comprehensive tests: scitbx/scitbx/examples/immoptibox_ports.py
+  # more comprehensive tests: scitbx/examples/immoptibox_ports.py
   print "OK"
 
 if (__name__ == "__main__"):
