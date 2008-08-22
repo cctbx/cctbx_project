@@ -156,6 +156,7 @@ libtbx/command_line/nequal.py -text
 libtbx/command_line/sge_qstat_counts.py svneol=native#text/x-python
 libtbx/command_line/sh.sh -text
 libtbx/command_line/show_environ_usage.py svneol=native#text/x-python
+libtbx/command_line/show_include_paths.py svneol=native#text/x-python
 libtbx/command_line/tcsh.sh -text
 libtbx/libtbx_refresh.py -text
 libtbx/object_oriented_patterns.py -text
