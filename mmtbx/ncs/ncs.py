@@ -164,14 +164,14 @@ class ncs_group:  # one group of NCS operators and center and where it applies
        self._centers, self._translations_orth,self._rota_matrices):
       i+=1
       if i==1 and skip_identity: continue
-      if crystal_number is not None:
-        text+="\ncrystal_number "+str(crystal_number)
       for j in xrange(3):
        text+="\nrota_matrix "+" %8.4f  %8.4f  %8.4f" %tuple(
           ncs_rota_matr[j*3:j*3+3])
       text+="\ntran_orth  "+" %8.4f  %8.4f  %8.4f" %tuple(trans_orth)
       text+="\n"
       text+="\ncenter_orth "+" %8.4f  %8.4f  %8.4f" %tuple(center)
+      if crystal_number is not None:
+        text+="\ncrystal_number "+str(crystal_number)
       text+="\n"
     return text
 
