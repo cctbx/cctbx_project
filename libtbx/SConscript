@@ -1,6 +1,7 @@
 import libtbx.load_env
 import libtbx.env_config
 from libtbx import easy_run
+from libtbx.str_utils import show_string
 from libtbx.path import norm_join, full_command_path
 import sys, os
 
@@ -29,8 +30,14 @@ class empty:
   def __setattr__(self, key, value):
     self.__dict__.__setitem__(key, value)
     if (key.endswith("_common_includes")):
+      include_paths = libtbx.env_config.unique_paths(paths=value)
+      for path in include_paths:
+        if (path.find(os.pathsep) >= 0):
+          raise RuntimeError(
+            'include path with embedded "%s" character: %s' % (
+              os.pathsep, show_string(path)))
       print >> open(libtbx.env.under_build("include_paths"), "a"), \
-        key, ":".join(value)
+        key, os.pathsep.join(include_paths)
 
 def set_python_include_and_libs(env_etc):
   env_etc.python_include = libtbx.env_config.python_include_path()
