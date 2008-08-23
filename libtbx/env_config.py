@@ -11,7 +11,13 @@ from cStringIO import StringIO
 import re
 import sys, os
 
+def bool_literal(b):
+  if (b): return "True"
+  return "False"
+
 default_write_full_flex_fwd_h = sys.platform.startswith("irix")
+default_build_boost_python_extensions = True
+default_enable_boost_threads = False
 default_enable_openmp_if_possible = (sys.platform != "osf1V5")
 
 def unique_paths(paths):
@@ -1465,9 +1471,9 @@ class build_options:
         static_exe,
         scan_boost,
         write_full_flex_fwd_h=default_write_full_flex_fwd_h,
-        build_boost_python_extensions=True,
+        build_boost_python_extensions=default_build_boost_python_extensions,
         boost_python_no_py_signatures=False,
-        enable_boost_threads=False,
+        enable_boost_threads=default_enable_boost_threads,
         enable_openmp_if_possible=default_enable_openmp_if_possible):
     adopt_init_args(self, locals())
     assert self.mode in build_options.supported_modes
@@ -1569,25 +1575,28 @@ class pre_process_args:
         action="callback",
         type="string",
         callback=self.option_repository,
-        help="path to source code repository",
+        help="path to source code repository"
+          " (may be specified multiple times;"
+          " paths are searched in the order given)",
         metavar="DIRECTORY")
       if (hasattr(os.path, "samefile")):
         parser.option(None, "--current_working_directory",
           action="store",
           type="string",
           default=None,
-          help="preferred spelling of current working directory",
+          help="preferred spelling of current working directory"
+            " (to resolve ambiguities due to soft links)",
           metavar="DIRECTORY")
       parser.option(None, "--build",
         choices=build_options.supported_modes,
         default="release",
-        help="build mode",
+        help="build mode (default: release)",
         metavar="|".join(build_options.supported_modes))
       parser.option(None, "--compiler",
         action="store",
         type="string",
         default="default",
-        help="select non-standard compiler",
+        help="select non-standard compiler (platform dependent)",
         metavar="STRING")
       parser.option(None, "--warning_level",
         action="store",
@@ -1620,8 +1629,9 @@ class pre_process_args:
     parser.option(None, "--build_boost_python_extensions",
       action="store",
       type="bool",
-      default=None,
-      help="build Boost.Python extension modules",
+      default=default_build_boost_python_extensions,
+      help="build Boost.Python extension modules (default: %s)"
+        % bool_literal(default_build_boost_python_extensions),
       metavar="True|False")
     parser.option(None, "--enable_boost_threads",
       action="store_true",
@@ -1631,7 +1641,8 @@ class pre_process_args:
       action="store",
       type="bool",
       default=default_enable_openmp_if_possible,
-      help="use OpenMP if available and known to work",
+      help="use OpenMP if available and known to work (default: %s)"
+        % bool_literal(default_enable_openmp_if_possible),
       metavar="True|False")
     if (not self.warm_start):
       parser.option(None, "--boost_python_no_py_signatures",
