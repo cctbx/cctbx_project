@@ -62,7 +62,6 @@ namespace cctbx { namespace xray { namespace twin_targets {
 
       }
 
-
       scitbx::af::shared< cctbx::miller::index<> > twin_complete()
       {
         scitbx::af::shared< cctbx::miller::index<> > tmp;
@@ -128,6 +127,23 @@ namespace cctbx { namespace xray { namespace twin_targets {
         return(result);
       }
 
+      scitbx::af::shared<FloatType> twin_sum(scitbx::af::const_ref< FloatType > data, FloatType const& alpha)
+      {
+        scitbx::af::shared<FloatType> result(hkl_.size(),0);
+        FloatType a,b;
+        int indx;
+        for (int ii=0;ii<hkl_.size();ii++){
+          a = data[ii];
+          indx = ori_lookup_table_.find_hkl( twin_hkl_[ii] );
+          if (indx>=0){
+            b = data[indx];
+          } else {
+            b = a;
+          }
+          result[ii] = (1-alpha)*a + alpha*b;
+        }
+          return(result);
+      }
 
 
 
@@ -482,7 +498,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           if (calc>eps_){
             dtda = -0.5*(ia-ib)/calc;
           }
-          result += -2.0*t1*dtda;
+          result += -2.0*t1*dtda*w_obs_[ii];
         }
         return result;
       }
