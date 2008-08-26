@@ -20,6 +20,7 @@ sources = [
   "targets.cpp",
   "f_model_bpl.cpp",
   "twin_targets.cpp",
+  "grouped_data.cpp",
 ]
 
 raw_multithreaded_sources = [
