@@ -635,10 +635,8 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     miller_array = miller_array.select(
       miller_array.indices() != (0,0,0))
 
-    miller_array = miller_array.enforce_positive_amplitudes()
-
     if (miller_array.is_xray_intensity_array()):
-      miller_array = miller_array.f_sq_as_f()
+      miller_array = miller_array.enforce_positive_amplitudes()
     elif (miller_array.is_complex_array()):
       miller_array = abs(miller_array)
 
