@@ -256,7 +256,8 @@ namespace cctbx { namespace xray { namespace grouped_data {
           tmp_result = combine_obs( ii );
           result += tmp_result[2];// - 0.5*std::log( tmp_result[4] );
         }
-        return (result-asu_hkl_.size()*std::log( i_obs_.size() )*0.5 );
+        return (result-asu_hkl_.size()
+          * std::log(static_cast<FloatType>(i_obs_.size()))*0.5 );
       }
 
       FloatType r_abs()
