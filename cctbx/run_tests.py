@@ -69,7 +69,7 @@ def run():
   "$D/maptbx/tst_real_space_refinement.py",
   ["$D/regression/tst_maptbx_structure_factors.py", "P31"],
   ["$D/regression/tst_miller_merge_equivalents.py", "P31"],
-  ["$D/regression/tst_grouped_data", "P31"],
+  ["$D/regression/tst_grouped_data.py", "P31"],
   ["$D/regression/tst_miller_fft_map.py", "P31"],
   ["$D/regression/tst_sampled_model_density.py", "P31"],
   ["$D/regression/tst_fast_nv1995.py", "F222"],
