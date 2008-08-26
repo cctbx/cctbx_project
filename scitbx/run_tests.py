@@ -50,6 +50,7 @@ def run():
   "$D/examples/lbfgs_linear_least_squares_fit.py",
   "$D/examples/chebyshev_lsq_example.py",
   "$D/examples/immoptibox_ports.py",
+  "$D/examples/rigid_body_refinement_core.py",
   "$D/graph/rigidity.py",
   "$D/graph/tst_rigidity.py",
   "$D/graph/rigidity_matrix_symbolic.py",
