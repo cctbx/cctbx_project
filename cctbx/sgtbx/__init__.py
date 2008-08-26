@@ -178,8 +178,11 @@ class space_group_info(object):
   def change_hand(self):
     return self.change_basis(self.change_of_basis_op_to_other_hand())
 
+  def change_of_basis_op_to_primitive_setting(self):
+    return self.group().z2p_op()
+
   def primitive_setting(self):
-    return self.change_basis(self.group().z2p_op())
+    return self.change_basis(self.change_of_basis_op_to_primitive_setting())
 
   def reflection_intensity_equivalent_groups(self, anomalous_flag=True):
     result = []
