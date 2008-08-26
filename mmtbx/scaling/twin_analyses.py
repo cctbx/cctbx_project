@@ -8,6 +8,7 @@ from cctbx import sgtbx
 from cctbx.sgtbx import pointgroup_tools
 from cctbx import maptbx
 from cctbx import crystal
+import cctbx.xray
 import cctbx.sgtbx.lattice_symmetry
 import cctbx.sgtbx.cosets
 import scitbx.math
@@ -22,9 +23,6 @@ import math
 import sys
 from iotbx import data_plots
 from libtbx import table_utils
-
-
-
 
 class obliquity(object):
   def __init__(self, reduced_cell, rot_mx, deg=True):
@@ -53,7 +51,7 @@ class twin_law_quality(object):
       symbol = self.twin_in_nig.r().as_xyz() )
 
     self.niggli_cell = self.xs_niggli.unit_cell()
-    self.new_niggli_cell = self.niggli_cell.change_basis(cb_op=self.cb_op)
+    self.new_niggli_cell = self.xs_niggli.change_basis( self.cb_op ).unit_cell()
 
   def delta_santoro(self):
     # santoros measure for quality of a twin law
@@ -2002,33 +2000,14 @@ class symmetry_issues(object):
   def score_all(self):
     # loop over all pg's
     for pg in self.pg_max_r_used_table:
-      score_used = 0
-      score_unused = 0
-      tmp_const=1e-250
-      if len( self.pg_r_used_split[pg] ) > 0 :
-        min_used = flex.min( flex.double(self.pg_r_used_split[pg]) )
-        max_used = flex.max( flex.double(self.pg_r_used_split[pg]) )
-        score_used += math.log( max( 0.5*( 1.0-math.tanh((
-          min_used -
-          self.scoring_function[0])*self.scoring_function[1] )),tmp_const))
-        score_used += math.log( max(0.5*( 1.0-math.tanh((
-          max_used -
-          self.scoring_function[0])*self.scoring_function[1] )),tmp_const))
-
-
-
-      if len( self.pg_r_unused_split[pg] ) > 0 :
-        min_unused = flex.min( flex.double(self.pg_r_unused_split[pg]) )
-        max_unused = flex.max( flex.double(self.pg_r_unused_split[pg]) )
-
-        score_unused += math.log( max(0.5*( 1.0-math.tanh((
-          -max_unused +
-          self.scoring_function[0])*self.scoring_function[1] )),tmp_const))
-        score_unused += math.log( max(0.5*( 1.0-math.tanh((
-          -min_unused +
-          self.scoring_function[0])*self.scoring_function[1] )),tmp_const))
-
-      final_score = -score_used -score_unused
+      tmp = self.miller_niggli.f_as_f_sq()
+      merger = cctbx.xray.merger( tmp.indices(),
+                                  tmp.data(),
+                                  tmp.sigmas(),
+                                  sgtbx.space_group_info(pg).group(),
+                                  tmp.anomalous_flag(),
+                                  tmp.unit_cell() )
+      final_score = -merger.bic()
       self.pg_scores.update( {pg:final_score} )
 
 
@@ -2038,70 +2017,59 @@ class symmetry_issues(object):
     end = str(sgtbx.space_group_info(group=self.explore_sg.pg_high))
 
     for pg in self.explore_sg.pg_graph.graph.node_objects:
-      r, max_r, min_r, all_r = self.get_r_value_total(start,pg)
-      self.pg_r_used_table.update( {pg:r} )
-      self.pg_max_r_used_table.update( {pg:max_r} )
-      self.pg_r_used_split.update( {pg:all_r} )
-
-      r, max_r, min_r, all_r = self.get_r_value_total(pg,end)
-      self.pg_r_unused_table.update( {pg:r} )
-      self.pg_min_r_unused_table.update( {pg:min_r} )
-      self.pg_r_unused_split.update( {pg:all_r} )
-
+      tot_in, max_in, tot_out, min_out, r_in, r_out = self.get_r_value_total(start,pg)
+      self.pg_r_used_table.update( {pg:tot_in} )
+      self.pg_max_r_used_table.update( {pg:max_in} )
+      self.pg_r_used_split.update( {pg:r_in} )
+      self.pg_r_unused_table.update( {pg:tot_out} )
+      self.pg_min_r_unused_table.update( {pg:min_out} )
+      self.pg_r_unused_split.update( {pg:r_out} )
 
   def get_r_value_total(self,
                         start_pg,
                         end_pg):
-    top = 0.0
-    bottom = 0.0
-    result=None
-    max_r=-100.0
-    min_r= 10000.0
-    # please find the shortest path from start to pg
-    path = self.explore_sg.pg_graph.graph.find_shortest_path(
-      start_pg,end_pg)
-    all_r = []
-    if len(path)>1:
-      for ii in xrange(len(path)-1):
-        start_point = path[ii]
-        end_point = path[ii+1]
-        # get the ops for this transformation please
-        tmp_edge = self.explore_sg.pg_graph.graph.edge_objects[start_point][end_point]
-        tmp_ops_used = tmp_edge.symops_used
-        tmp_ops_unused = tmp_edge.symops_unused
-        # for each used symop find the entry in the table
-        # in the same row, we have to find an entry that is in the r table
+    # do a coset decompostion on start and end
+    spg = sgtbx.space_group_info( start_pg ).group()
+    epg = sgtbx.space_group_info( end_pg ).group()
 
-        for this_s in tmp_ops_used:
-          for trial_coset in self.explore_sg.coset_table:
-            found_it = False
-            for trial_s in trial_coset:
-              if trial_s == str(this_s.r().as_hkl()):
-                found_it = True
-            if found_it:
-              for trial_s in trial_coset:
-                if self.ops_and_r_pairs.has_key( trial_s ):
-                  # key is there, update please
-                  top+=self.ops_and_r_pairs[ trial_s ][0]
-                  bottom+=self.ops_and_r_pairs[ trial_s ][1]
-                  current_r = 0
-                  if self.ops_and_r_pairs[ trial_s ][1]>0:
-                    current_r = self.ops_and_r_pairs[ trial_s ][0]/self.ops_and_r_pairs[ trial_s ][1]
-                    all_r.append(current_r)
-                  if (current_r> max_r):
-                    max_r = current_r
-                  if current_r <= min_r:
-                    min_r = current_r
+    cosets = cctbx.sgtbx.cosets.left_decomposition( epg, spg )
+    coset_ops = []
+    # get the coset operations in a nice list
+    for cs in cosets.partitions:
+      for op in cs:
+        coset_ops.append(  op.r().as_hkl() )
 
-      if bottom==0:
-        result = 0
-      else:
-        result = top/bottom
-    if max_r<0:
-      max_r = None
-    if min_r > 100.0:
-      min_r = None
-    return result, max_r, min_r, all_r
+    r_in = flex.double()
+    r_out = flex.double()
+    tot_r_in  = [0,0]
+    tot_r_out = [0,0]
+    tmp = self.ops_and_r_pairs.copy()
+    for op in coset_ops:
+      if tmp.has_key( op ):
+        a = tmp.pop(op)
+        r_in.append( a[0]/max(a[1],1e-8) )
+        tot_r_in[0]+=a[0]
+        tot_r_in[1]+=a[1]
+    for item in tmp:
+      a = tmp[item]
+      r_out.append( a[0]/max(a[1],1e-8) )
+      tot_r_out[0]+=a[0]
+      tot_r_out[1]+=a[1]
+
+    tot_in  = None
+    max_in  = None
+    tot_out = None
+    min_out = None
+
+    if r_in.size() > 0:
+      tot_in = tot_r_in[0]/max(1e-8,tot_r_in[1] )
+      max_in = flex.max( r_in )
+    if r_out.size() > 0:
+      tot_out = tot_r_out[0]/max( 1e-8,tot_r_out[1] )
+      min_out = flex.min(r_out)
+
+    return tot_in, max_in, tot_out, min_out, r_in, r_out
+
 
   def string_it(self, xin, format):
     if xin==None:
