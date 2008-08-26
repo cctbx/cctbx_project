@@ -41,6 +41,7 @@ namespace cctbx { namespace xray { namespace twin_targets { namespace boost_pyth
           .def("twin_complete", &w_t::twin_complete )
           .def("check_free_flags", &w_t::check_free_flags)
           .def("get_free_model_selection", &w_t::get_free_model_selection)
+          .def("twin_sum", &w_t::twin_sum)
           ;
       }
 
