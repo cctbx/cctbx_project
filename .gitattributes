@@ -31,6 +31,7 @@ cctbx/crystal_orientation.py -text
 cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/examples/quartz_structure.py svneol=native#text/x-python
 cctbx/examples/space_subgroups.py svneol=native#text/x-python
+cctbx/examples/sub_group_graph.py -text
 cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
