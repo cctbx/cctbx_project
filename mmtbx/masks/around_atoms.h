@@ -30,12 +30,16 @@ namespace mmtbx { namespace masks {
         af::shared<double> const& atom_radii,
         af::c_grid<3>::index_type const& gridding_n_real,
         f_t const& solvent_radius_,
-        f_t const& shrink_truncation_radius_)
+        f_t const& shrink_truncation_radius_,
+        bool explicit_distance_=false,
+        bool debug_=false)
       :
         solvent_radius(solvent_radius_),
         shrink_truncation_radius(shrink_truncation_radius_),
         accessible_surface_fraction(-1),
-        contact_surface_fraction(-1)
+        contact_surface_fraction(-1),
+        explicit_distance(explicit_distance_),
+        debug(debug_)
       {
         MMTBX_ASSERT(sites_frac.size() == atom_radii.size());
         MMTBX_ASSERT(solvent_radius >= 0);
@@ -47,6 +51,16 @@ namespace mmtbx { namespace masks {
           space_group_order_z,
           sites_frac.const_ref(),
           atom_radii.const_ref());
+        if( debug ) {
+          N0 = std::count(data.begin(), data.end(), 0);
+          N1bar = std::count(data.begin(), data.end(), -1);
+          N1 = std::count(data.begin(), data.end(), 1);
+          MMTBX_ASSERT( N1 == n_solvent );
+          MMTBX_ASSERT( n_solvent + N0 + N1bar == data.size() );
+        }
+        else {
+          N0 = N1 = N1bar = 0;
+        }
         compute_contact_surface(
           unit_cell,
           space_group_order_z,
@@ -75,7 +89,12 @@ namespace mmtbx { namespace masks {
        */
       double contact_surface_fraction;
 
+      size_t N0, N1, N1bar;  // for debugging purpose only
+
     protected:
+      const bool debug;
+      const bool explicit_distance; // for debugging purpose only
+
       static
       int
       ifloor(f_t const& x)
@@ -148,8 +167,10 @@ namespace mmtbx { namespace masks {
           f_t xfi=static_cast<f_t>(site[0]);
           f_t yfi=static_cast<f_t>(site[1]);
           f_t zfi=static_cast<f_t>(site[2]);
-          f_t cutoff=static_cast<f_t>(atom_radii[i_site]+solvent_radius);
-          f_t radsq=static_cast<f_t>(atom_radii[i_site]*atom_radii[i_site]);
+          const f_t atmrad = atom_radii[i_site];
+          MMTBX_ASSERT( atmrad >= 0.0 ); 
+          f_t cutoff=static_cast<f_t>(atmrad+solvent_radius);
+          f_t radsq=static_cast<f_t>(atmrad*atmrad);
           f_t cutoffsq=cutoff*cutoff;
           f_t coas = cutoff*rp[0];
           int x1box=ifloor(nx*(xfi-coas));
@@ -206,11 +227,26 @@ namespace mmtbx { namespace masks {
                      mzi=mzs.begin();
                      mzi!=mze;
                      mzi++) {
-                if (dist < cutoffsq) {
+                f_t dist_c  = dist;
+                if( explicit_distance ) {
+                  // neglect previous stepwise distance calculation
+                  // use formula instead
+                  const f_t dx = xfi-kx*sx;
+                  const f_t dy = yfi-(myi-mys.begin()+y1box)*sy;
+                  const f_t dz = zfi-(mzi-mzs.begin()+z1box)*sz;
+                  dist_c = mr1*dx*dx+mr5*dy*dy+mr9*dz*dz
+                        +tmr2*dx*dy+tmr3*dx*dz+tmr6*dy*dz;
+                  if( debug ) {
+                    MMTBX_ASSERT( dist_c>=0.0 );
+                    MMTBX_ASSERT( std::fabs(dist-dist_c)<0.001 );
+                  }
+                }
+
+                if (dist_c < cutoffsq) {
                   DataType& dr = data_mxnymynz[*mzi];
                   if (dr == 1) n_solvent--;
-                  if (dist < radsq) dr =  0;
-                  else              dr = -1;
+                  if (dist_c < radsq) dr =  0;
+                  else if(dr!=0)    dr = -1;
                 }
                 dist += s3_incr;
                 s3_incr += w6;
