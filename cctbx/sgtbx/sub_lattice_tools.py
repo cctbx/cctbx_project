@@ -173,6 +173,47 @@ def generate_matrix_up_to_order( end_order,start_order=1 ):
     all_matrices += generate_matrix( n )
   return all_matrices
 
+def generate_cb_op_up_to_order( end_order, start_order=1):
+  def string_it( row ):
+    result = ""
+    abc = ['a','b','c']
+    part = 0
+    for n,j in zip(row,abc):
+      nn=""
+      if n != 0:
+        part += 1
+        if n >0:
+          if part==1:
+            if n==1:
+              nn = j
+            else:
+              nn = str(n)+j
+          if part > 1:
+            if n==1:
+              nn = "+"+j
+            else:
+              nn = "+"+str(n)+j
+        if n < 0 :
+          if part==1:
+            if n==-1:
+              nn = "-"+j
+            else:
+              nn = str(n)+j
+          else:
+            nn = str(n)+j
+      result += nn
+    return result
+  mats = generate_matrix_up_to_order(end_order,start_order)
+  cb_ops = []
+  for mat in mats:
+    new_a = mat[0:3]
+    new_b = mat[3:6]
+    new_c = mat[6:]
+    tmp = string_it(new_a)+","+string_it(new_b)+","+string_it(new_c)
+    cb_ops.append( tmp )
+  return cb_ops
+
+
 def rt_mx_as_rational(rot_mat):
   # make sure one provides an integer matrix!
   tmp_mat = rot_mat.r().as_double()
