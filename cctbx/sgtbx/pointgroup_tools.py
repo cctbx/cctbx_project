@@ -100,6 +100,7 @@ class sub_super_point_group_relations(object):
                sg_low,
                sg_high,
                enforce_point_groups=True):
+    self.enforce_point_groups=enforce_point_groups
     if enforce_point_groups:
       assert ( sg_low == sg_low.build_derived_point_group() )
       assert ( sg_high == sg_high.build_derived_point_group() )
@@ -118,11 +119,16 @@ class sub_super_point_group_relations(object):
     self.assemble_symops()
     self.find_left_over_symops()
 
+
   def get_symops_from_supergroup_that_are_not_in_subgroup(self,sg_high):
     coset = cosets.left_decomposition(g=sg_high,
                                       h=self.sg_low)
+    coset.show()
     for set in coset.partitions[1:]:
-      if (set[0].r().determinant()>0):
+      if self.enforce_point_groups:
+        if set[0].r().determinant()>0:
+          self.symops.append( set[0] )
+      else:
         self.symops.append( set[0] )
 
   def assemble_symops(self):
@@ -132,7 +138,6 @@ class sub_super_point_group_relations(object):
     # loop over all symops
     for item in range(len(self.symops)):
       symop = self.symops[item]
-
       tmp_symop = []
       tmp_index = []
 
@@ -315,7 +320,6 @@ class point_group_graph(object):
     while len(self.queue) > 0 :
       this_sg = self.queue[ 0 ]
       self.queue.remove( this_sg )
-
       self.make_and_place_nodes_and_connections( this_sg )
 
   def make_and_place_nodes_and_connections(self, input_sg):
