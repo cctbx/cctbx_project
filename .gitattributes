@@ -29,6 +29,7 @@ cctbx/command_line/version.py -text
 cctbx/crystal_orientation.h -text
 cctbx/crystal_orientation.py -text
 cctbx/eltbx/xray_scattering/form_factor.h -text
+cctbx/examples/maximum_subgroups.py -text
 cctbx/examples/quartz_structure.py svneol=native#text/x-python
 cctbx/examples/space_subgroups.py svneol=native#text/x-python
 cctbx/examples/sub_group_graph.py -text
