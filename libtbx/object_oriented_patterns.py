@@ -53,9 +53,7 @@ class memoize(object):
     self.cached = {}
     self.func = func
 
-  def __call__(self, *args, **kwds):
-    if kwds:
-      return self.func(*args, **kwds)
+  def __call__(self, *args):
     try:
       return self.cached[args]
     except KeyError:

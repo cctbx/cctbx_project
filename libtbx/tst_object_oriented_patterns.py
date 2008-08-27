@@ -1,4 +1,5 @@
 from libtbx import object_oriented_patterns as oop
+from libtbx.test_utils import Exception_expected
 
 def exercise_injector():
   class a(object):
@@ -55,6 +56,14 @@ def exercise_memoize():
   assert diagnostic == ['+']*2
   assert mf(1) == 2
   assert diagnostic == ['+']*2
+  try:
+    mf(x=1)
+  except TypeError, e:
+    pass
+  else:
+    raise Exception_expected
+
+
 
   class foo(object):
     def __init__(self, a):
