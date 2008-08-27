@@ -69,3 +69,15 @@ if (1) then
   cp -r "$root/cctbx_project/dox/rst/default.css" .
   "$root/cctbx_project/dox/sbgrid2008_update_generated_files.csh"
 endif
+#
+if (1) then
+  cd "$root/htdocs"
+  rm -rf iucr2008
+  mkdir iucr2008
+  cd iucr2008
+  cp -r "$root/cctbx_project/dox/rst/default.css" .
+  cp -r "$root/cctbx_project/scitbx/examples/rigid_body_refinement_core.py" .
+  cp -r "$root/cctbx_project/scitbx/examples/rigid_body_refinement_core.txt" .
+  scitbx.python rigid_body_refinement_core.py > rigid_body_refinement_core.out
+  docutils.rst2html rigid_body_refinement_core.txt > rigid_body_refinement_core.html
+endif

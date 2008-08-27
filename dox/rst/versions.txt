@@ -19,6 +19,8 @@ cctbx links
 
 - `Mailing list <http://www.phenix-online.org/mailman/listinfo/cctbxbb>`_
 
+- `Tutorial IUCr 2008 (Software Fayre) <iucr2008/>`_ (rigid_body_refinement_core.py)
+
 - `Tutorial SBGrid 2008 (Quo Vadis) <sbgrid2008/>`_ (iotbx.pdb)
 
 - `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_

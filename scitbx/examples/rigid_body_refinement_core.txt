@@ -1,0 +1,400 @@
+``rigid_body_refinement_core.py``
+=================================
+
+Overview
+--------
+
+The ``rigid_body_refinement_core.py`` `Python`_ example implements
+the core algorithms used in rigid body refinement:
+
+  - Computation of moved sites given three Euler angles and
+    a three-dimensional linear translation vector (six degrees
+    of freedom total).
+
+  - Summation of gradients w.r.t. Cartesian coordinates, to obtain
+    gradients w.r.t. the Euler angles and the linear translation vector.
+
+The script consists of two parts of roughly equal size. The first part
+(just 80 lines) implements a ``rigid_body`` class with this interface::
+
+  class rigid_body(object):
+    def __init__(self, sites):
+    def rotation_matrix(self):
+    def center_of_mass_moved(self):
+    def sites_moved(self):
+    def ea_gradients(self, energy_cart_function):
+
+Here ``ea`` in ``ea_gradients`` is for "Euler angles".
+The rigid body parameters are stored as ``rigid_body.ea`` and
+``rigid_body.lt``.
+
+The second part of the script (less than 70 lines) is a unit test,
+to automatically check the analytical gradient calculations in the
+first part via finite differences.
+
+To keep the example concise, the target function is a simple
+least-squares function restraining the sites to the original
+positions. In a real application, e.g. refinement against x-ray
+data with other cctbx facilities, the computation of the gradients
+w.r.t. the Cartesian coordinates of the atomic sites is far more
+complex, in particular if space group symmetry is involved. However,
+the computation of the gradients w.r.t. the Euler angles and the
+linear translation of the rigid body as implemented in this script is
+completely general. I.e., any refinement program that already includes
+computation of the gradients w.r.t. the Cartesian coordinates can be
+easily extended to also support rigid body refinement.
+
+The `unit_cell_refinement.py`_ example shows how the target function
+results (``functional`` and ``gradients``) can be used in combination
+with the general purpose quasi-Newton `LBFGS`_ minimizer to iteratively
+update the Euler angle and linear translation parameters.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+Use print and help()!
+---------------------
+
+Before you study the example script, install the cctbx (`cctbx
+downloads`_). This will enable you to run the script. While analyzing
+the script, insert ``print`` statements and run the script to find out
+more about the objects. It may also be useful to insert ``help(obj)``
+to see the attributes and methods of ``obj``, where ``obj`` can be
+any of the objects created in the script.
+
+If you don't know what an object is: *thing* is a pretty good
+approximation.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+The ``rigid_body`` constructor
+------------------------------
+
+The "constructor" (called "__init__" method in Python_) of the
+``rigid_body`` class is::
+
+  def __init__(self, sites):
+    self.sites_orig = sites
+    self.center_of_mass_orig = matrix.col(sites.mean())
+    self.lt = matrix.col((0,0,0))
+    self.ea = matrix.col((0,0,0))
+
+The only argument is an array of ``sites``, i.e. the current coordinates
+of the points ("atoms") in the rigid body. To see the list of coordinates,
+insert this print statement::
+
+  print list(sites)
+
+This will show a list of Python_ tuples::
+
+  [(10.949, 12.815, 15.189),
+   (10.404999999999999, 13.954000000000001, 15.917),
+   (10.779, 15.262, 15.227)]
+
+The ``self.sites_orig = sites`` assignment keeps a reference to this
+array for use in other methods (also known as "member functions"
+in some other languages). In view of repeated use in other methods,
+the center of mass is computed via ``sites.mean()``. ``sites``
+is expected to be a one-dimensional C++ array of type
+``scitbx.array_family.flex.vec3_double``. This is not formalized in
+the interface, but implied by the use of certain methods, in this case
+``.mean()``. This approach is known colloquially as "duck typing". Any
+other type with compatible methods could be used instead. As far as
+Python is concerned: if it walks like a duck and quacks like a duck,
+it is a duck.
+
+The ``scitbx.matrix`` module implements many commonly used matrix
+algorithms, e.g. the matrix product, dot product, cross product,
+matrix inversion etc. The ``rigid_body`` constructor uses the
+``scitbx.matrix.col`` (column) type to store the center of mass,
+the Euler angles, and the linear translation vector. It is
+highly recommended to spend a few minutes reading the `matrix.py`_
+script. Since it is quite short and mostly implemented in pure Python_
+it is largely self-explanatory.
+
+Conversion from Euler angles to a rotation matrix
+-------------------------------------------------
+
+The ``rigid_body.rotation_matrix()`` method passes the Euler angles
+to the ``euler_xyz_matrix()`` function further up in the script::
+
+  def rotation_matrix(self):
+    return euler_xyz_matrix(ea=self.ea)
+
+The relevant code is::
+
+  angle_scale = math.pi / 2
+
+  def euler_xyz_matrix(ea):
+    """
+    Mathematica code:
+      rx = {{1, 0, 0}, {0, cx, -sx}, {0, sx, cx}}
+      ry = {{cy, 0, sy}, {0, 1, 0}, {-sy, 0, cy}}
+      rz = {{cz, -sz, 0}, {sz, cz, 0}, {0, 0, 1}}
+      rx.ry.rz
+    """
+    sin, cos = math.sin, math.cos
+    cx = cos(ea[0] * angle_scale)
+    sx = sin(ea[0] * angle_scale)
+    cy = cos(ea[1] * angle_scale)
+    sy = sin(ea[1] * angle_scale)
+    cz = cos(ea[2] * angle_scale)
+    sz = sin(ea[2] * angle_scale)
+    return (
+                cy*cz,         -cy*sz,     sy,
+       cz*sx*sy+cx*sz, cx*cz-sx*sy*sz, -cy*sx,
+      -cx*cz*sy+sx*sz, cz*sx+cx*sy*sz,  cx*cy)
+
+In general, there are 12 different conventions for `Euler
+angles`_. In addition to these, the rotation can be defined in two
+ways: a counterclockwise rotation of the basis system (equivalent
+to a clockwise rotation of vectors w.r.t. that basis system) or
+a counterclockwise rotation of vectors (equivalent to a clockwise
+rotation of the basis system). The function above implements the "xyz"
+convention with counterclockwise rotation of vectors. The Mathematica_
+code for generating the rotation matrix is included as a Python_
+"docstring". From this it is easy to see exactly how the rotations
+are defined, and how to reproduce the matrix.
+
+The ``angle_scale`` was introduced as a way to balance the scale of
+the angular parameters compared to the linear translation parameters.
+For the LBFGS_ minimizer to work optimally, it is helpful to balance
+the relative scale of all parameters. The exact ``angle_scale``
+value is not too critical, as long as it is in the right order
+of magnitude. The value used in the script is the result of a few
+empirical tests.
+
+For completeness it is noted that we could have used
+``scitbx.math.euler_angles.xyz_matrix`` instead, which is implemented
+in C++. However, for clarity, and to allow experimenting with the
+``angle_scale`` value, the function is re-implemented in the example
+script.
+
+Computation of moved sites
+--------------------------
+
+These two methods are concerned with the computation of the moved
+sites, given ``self.rotation_matrix()`` as introduced above and the
+linear translation ``self.lt``::
+
+  def center_of_mass_moved(self):
+    return self.center_of_mass_orig + self.lt
+
+  def sites_moved(self):
+    return \
+      self.rotation_matrix() \
+      * (self.sites_orig - self.center_of_mass_orig) \
+      + self.center_of_mass_moved()
+
+It will be helpful to insert print statements to inspect the
+objects involved. ``self.center_of_mass_orig + self.lt`` uses the
+``scitbx.matrix`` implementation for element-wise addition of the
+three vector components. ``self.sites_orig - self.center_of_mass_orig``
+uses the overloaded binary minus operator of the ``flex.vec3_double``
+C++ array type. The multiplication with ``self.rotation_matrix()``
+and the final addition of ``self.center_of_mass_moved()`` are again
+C++ operations. Therefore, the code will work efficiently even for
+a large number of sites. Since all operations involving large arrays
+are performed in C++, we can use Python's concise syntax without
+incurring a significant performance penalty, compared to a more arcane
+pure C++ implementation.
+
+Computation of gradients
+------------------------
+
+The gradient calculation code is the most complex part of the script
+(as usual)::
+
+  def ea_gradients(self, energy_cart_function):
+    sites_moved = self.sites_moved()
+    energy_cart = energy_cart_function(
+      nodes=sites_moved, homes=self.sites_orig)
+    ne_f = newton_euler_f(
+      sites=sites_moved,
+      pivot=self.center_of_mass_moved(),
+      d_potential_energy_d_site=energy_cart.gradients())
+    f = list(-ne_f)
+    c = matrix.sqr(euler_xyz_ea_d_as_omega_fixed_frame_matrix(
+      ea=self.ea)).transpose()
+    return list(angle_scale * c * matrix.col(f[:3])) + f[-3:]
+
+The first action in this method is to compute ``sites_moved`` as
+explained above. The next step is to call an external function object
+``energy_cart_function``. In the "duck typing" spirit (see above),
+the requirements for ``energy_cart_function`` are implied by the
+implementation. The implementation of the trivial least-squared
+restraints to the original sites serves as an example::
+
+  class energy_cart(object):
+
+    def __init__(self, nodes, homes):
+      assert nodes.size() == homes.size()
+      self.nodes = nodes
+      self.homes = homes
+
+    def functional(self):
+      return flex.sum((self.nodes-self.homes).dot())
+
+    def gradients(self):
+      return 2*(self.nodes-self.homes)
+
+Again, it will be helpful to insert print statement to inspect the
+types involved. ``nodes`` and ``homes`` are ``flex.vec3_double``
+arrays. Therefore the calculations in ``.functional()`` and
+``.gradients()`` are fast C++ array operations.
+
+Any function object with the same interface could be used instead.
+I.e. the ``rigid_body`` code could be used unmodified in refinement
+against x-ray data. All application-specific calculations will be
+concentrated in the (much more complex) ``energy_cart`` equivalent.
+
+The transformation of the gradients w.r.t. Cartesian coordinates
+to gradients w.r.t. the six rigid body parameters consists of two
+parts and follows the procedure described by Schwieters & Clore
+(2001). The first part is a subset of the "Newton-Euler" equations
+for the motion of a rigid body. The Cartesian gradients are summed
+to obtain the total translational gradients (linear force changing
+the linear velocity in the context of dynamics) and the total angular
+gradients (angular force changing the angular velocity)::
+
+  def newton_euler_f(sites, pivot, d_potential_energy_d_site):
+    "Schwieters & Clore (2001) equations 24"
+    sum_grads = matrix.col((0,0,0))
+    sum_moments = matrix.col((0,0,0))
+    for site,grad in zip(sites, d_potential_energy_d_site):
+      grad = -matrix.col(grad)
+      sum_grads += grad
+      sum_moments += (matrix.col(site) - pivot).cross(grad)
+    return matrix.col(sum_moments.elems + sum_grads.elems)
+
+In the case of a freely moving rigid body, the ``pivot`` is the center
+of mass. (In the context of dynamics, any other pivot implies external
+forces.)
+
+The implementation of the summations is rather inefficient since the
+loop over the (potentially large number of) sites is in Python. While
+``sum_grads`` for the translational gradients could be obtained as
+with the C++ array operation ``flex.sum(d_potential_energy_d_site)``,
+there is no existing C++ array version of the more complex steps for
+calculating the angular gradients. For clarity, to keep the function
+uniform, both results are computed in Python. For actual applications,
+the entire function should be re-implemented in C++.
+
+Given the total angular gradients from the solution of the Newton-Euler
+equations, it is just a matter of transforming these values into the
+frame of reference for the Euler angles. This step is described in
+Goldstein (2002), towards the end of section 4.9. The formula for
+the Euler angle xyz convention is given in the appendix of Goldstein
+(2002)::
+
+  def euler_xyz_ea_d_as_omega_fixed_frame_matrix(ea):
+    "Goldstein (A14.xyz) with sinus sign reversed"
+    sin, cos = math.sin, math.cos
+    cx = cos(ea[0] * angle_scale)
+    sx = sin(ea[0] * angle_scale)
+    cy = cos(ea[1] * angle_scale)
+    sy = sin(ea[1] * angle_scale)
+    return (
+      1,  0,     sy,
+      0, cx, -cy*sx,
+      0, sx,  cx*cy)
+
+Since Goldstein (2002) defines the Euler angles as a rotation of
+the basis system, the sign of the sinus terms is reversed in the
+function above.
+
+The transformation of the angular velocity to time derivatives of the
+Euler angles is, evidently, a simple linear transformation. Luckily,
+from this it follows that the transformation of the gradients is
+simply given by the transpose of the same matrix (Murshudov et
+al., 1999, very end of appendix B). This leads to the last three
+lines of the ``.ea_gradients()`` implementation. The preceding line
+simply reverses the sign of the Newton-Euler forces; this could be
+avoided by changing ``newton_euler_f()``, but we prefer to keep
+the implementation compatible with the Schwieters & Clore (2001)
+equations to avoid confusion.
+
+References:
+
+  Goldstein, H. (2002). Classical Mechanics, 3rd edition.
+
+  Murshudov, G.N., Vagin, A.A., Lebedev, A., Wilson, K.S., Dodson,
+  E.J. (1999). Acta Cryst. D55, 247-255.
+
+  Schwieters, C.D., Clore, G.M. (2001). J. Mag. Res., 152(2), 288-302.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+Unit tests
+----------
+
+The nested functions inside the ``exercise()`` function are unit
+tests to ensure the correctness of the gradient code discussed above.
+
+For the idea behind the finite difference tests, please refer back
+to the `unit_cell_refinement.py`_ tutorial. With this background,
+the test code should be easy to follow. The only slightly unobvious
+fragments are in ``incr_position()`` function, e.g.::
+
+  v = list(rb.ea)
+  v[i] += delta
+  rb.ea = matrix.col(v)
+
+The detour through a Python list is necessary because the
+``scitbx.matrix`` objects (in this case ``rb.ea``) are understood
+to be immutable. This is not actually fully enforced to keep the
+implementations simple, but is true for many objects in the cctbx. The
+motivation is to avoid surprises due to "side effects" caused by
+changing objects in place. Of course, the ``rb.ea = matrix.col(v)``
+assignment is doing just that, which tells us that it is sometimes
+impractical to be pure about the "no in-place operations" idea, taking
+runtime and memory consumption considerations into account. However,
+our practical experience strongly suggests it is important to apply
+the "no in-place operations" idea in most cases, and that it is a
+good excuse for the three lines of gymnastics above.
+
+Typical (good) unit tests should produce no output. However,
+in this special case we chose to simply print the analytical and
+finite-difference gradients for visual inspection. In most other cctbx
+unit tests, the following would be used instead (to be inserted in
+``show_gradients()``)::
+
+  from libtbx.test_utils import approx_equal
+  assert approx_equal(an, fd)
+
+This replaces the visual inspection with an automatic test. If included
+an routine testing script, it ensures that the results do not change
+as a side-effect of development work on the underlying libraries. This
+form of automatic testing is the only practical approach to quality
+assurance in an ever-growing and evolving library, in particular if
+there are many developers.
+
+[`Complete example script`_] [`Example output`_] [`cctbx downloads`_]
+[`cctbx front page`_] [`Python tutorial`_]
+
+
+.. _`Complete example script`: http://cctbx.sourceforge.net/iucr2008/rigid_body_refinement_core.py
+
+.. _`Example output`: http://cctbx.sourceforge.net/iucr2008/rigid_body_refinement_core.out
+
+.. _`cctbx downloads`: http://cci.lbl.gov/cctbx_build/
+
+.. _`cctbx front page`: http://cctbx.sourceforge.net/
+
+.. _`unit_cell_refinement.py`: http://cctbx.sourceforge.net/siena2005/unit_cell_refinement.html
+
+.. _`LBFGS`: http://cctbx.sourceforge.net/current/c_plus_plus/namespacescitbx_1_1lbfgs.html#_details
+
+.. _`matrix.py`: http://phenix-online.org/cctbx_sources/scitbx/matrix.py
+
+.. _`Euler angles`: http://en.wikipedia.org/wiki/Euler_angles
+
+.. _`Mathematica`: http://www.wolfram.com/products/mathematica/
+
+.. _`Python tutorial`: http://docs.python.org/tut/
+
+.. _`Python`: http://www.python.org/
+
+.. _`Finite Difference Method`: http://www.google.com/search?q=finite+difference+method
