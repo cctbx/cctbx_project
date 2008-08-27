@@ -29,16 +29,21 @@ namespace {
           af::shared<double> const&,
           af::c_grid<3>::index_type const&,
           FloatType const&,
-          FloatType const&>((
+          FloatType const&,
+          optional< bool, bool> >((
             arg_("unit_cell"),
             arg_("space_group_order_z"),
             arg_("sites_frac"),
             arg_("atom_radii"),
             arg_("gridding_n_real"),
             arg_("solvent_radius"),
-            arg_("shrink_truncation_radius"))))
+            arg_("shrink_truncation_radius"),
+            arg_("explicit_distance"),
+            arg_("debug")     )))
         .def_readonly("solvent_radius",
                  &w_t::solvent_radius)
+        .def_readonly("N0",
+                 &w_t::N0)
         .def_readonly("shrink_truncation_radius",
                  &w_t::shrink_truncation_radius)
         .add_property("data", make_getter(&w_t::data, rbv()))
@@ -52,7 +57,7 @@ namespace {
 
   void init_module()
   {
-    around_atoms_wrappers<int, float>::wrap();
+    around_atoms_wrappers<int, double>::wrap();
   }
 
 } // namespace <anonymous>

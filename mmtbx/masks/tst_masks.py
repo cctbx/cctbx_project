@@ -236,6 +236,110 @@ def exercise_centrics(space_group_info, n_sites=10):
           ideal = centrics.phase_transfer(centrics)
           assert flex.max(flex.abs(ideal.data() - centrics.data())) < 1.e-6
 
+def structure_init2(site,site2,sg,cell):
+  symmetry = crystal.symmetry(unit_cell=cell,
+                              space_group_symbol=sg)
+  structure = xray.structure(crystal_symmetry=symmetry)
+  scatterer = xray.scatterer(
+                 site = site,
+                 u = 0.1,
+                 occupancy = 1.0,
+                 scattering_type = "C")
+  scatterer2 = xray.scatterer(
+                 site = site2,
+                 u = 0.1,
+                 occupancy = 1.0,
+                 scattering_type = "C")
+  structure.add_scatterer(scatterer)
+  structure.add_scatterer(scatterer2)
+  xyzf = flex.vec3_double()
+  atmrad = flex.double()
+  for scatterer in structure.scatterers():
+    xyzf.append(list(scatterer.site))
+    atmrad.append(van_der_waals_radii.vdw.table[scatterer.element_symbol()])
+  assert xyzf.size() == atmrad.size()
+  return structure, xyzf, atmrad
+
+def tst2_run(angles, nspacing, af ):
+  rad = van_der_waals_radii.vdw.table["C"]
+  a = (2.0*rad)*2.0*af;
+  pos1=(0.25,0.25,0.25)
+  pos2=(0.25+0.9*2.0*rad/a,0.25,0.25)
+  solvent_radius1 = rad*0.5
+  solvent_radius2 = rad*3.1 
+  # shrink_truncation_radius = 1.3*solvent_radius2
+  shrink_truncation_radius = 0.0
+  cell = [a,a,a, angles[0], angles[1], angles[2] ]
+  structure1, xyzf1, atmrad1 = structure_init2(pos1,pos2, "P1", cell)
+  structure2, xyzf2, atmrad2 = structure_init2(pos1,pos2, "P1", cell)
+  step = (1.0/nspacing) * a
+  #
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell = structure1.unit_cell(),
+    step = step)
+  #
+  m1 = masks.around_atoms(
+    structure1.unit_cell(),
+    structure1.space_group().order_z(),
+    xyzf1,
+    atmrad1,
+    crystal_gridding.n_real(),
+    solvent_radius1,
+    shrink_truncation_radius, explicit_distance=False, debug=True )
+  #
+  m2 = masks.around_atoms(
+    structure2.unit_cell(),
+    structure2.space_group().order_z(),
+    xyzf2,
+    atmrad2,
+    crystal_gridding.n_real(),
+    solvent_radius2,
+    shrink_truncation_radius, explicit_distance=False, debug=True )
+  #
+  m3 = masks.around_atoms(
+    structure1.unit_cell(),
+    structure1.space_group().order_z(),
+    xyzf1,
+    atmrad1,
+    crystal_gridding.n_real(),
+    solvent_radius1,
+    shrink_truncation_radius, explicit_distance=True, debug=True)
+  #
+  m4 = masks.around_atoms(
+    structure2.unit_cell(),
+    structure2.space_group().order_z(),
+    xyzf2,
+    atmrad2,
+    crystal_gridding.n_real(),
+    solvent_radius2,
+    shrink_truncation_radius, explicit_distance=True, debug=True)
+  #
+  assert m3.N0 == m4.N0
+  mx1 = max(abs(m1.N0),abs(m2.N0))
+  mx2 = max(abs(m1.N0),abs(m3.N0))
+  mx3 =  max(abs(m2.N0),abs(m3.N0))
+  if mx1!=0:
+    assert float(abs(m1.N0 - m2.N0))/float(mx1) < 0.01
+  if mx2!=0:
+    assert float(abs(m1.N0 - m3.N0))/float(mx2) < 0.01
+  if mx3!=0:
+    assert float(abs(m2.N0 - m3.N0))/float(mx3) < 0.01
+
+def exercise_4():
+ if(1):
+  tst2_run( [10.0,90.0,90.0], 139.0, 4.0 )
+ if(1):
+  tst2_run( [ 90.0,90.0,10.0], 139.0, 4.0 )
+ if(1):
+  tst2_run( [90.0,10.0,90.0], 139.0, 4.0 )
+ if(1):
+  tst2_run( [90.0, 90.0,170.0], 139.0, 5.0 )
+ if(1):
+  tst2_run( [20.0,30.0,40.0], 139.0, 4.0 )
+ if(1):
+  tst2_run( [90.0,170.0,90.0], 139.0, 4.0 )
+  
+
 def run_call_back(flags, space_group_info):
   exercise_centrics(space_group_info)
 
@@ -243,6 +347,7 @@ def run():
   exercise_1()
   exercise_2()
   exercise_3()
+  exercise_4()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):
