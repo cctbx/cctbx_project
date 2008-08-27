@@ -2043,15 +2043,30 @@ class symmetry_issues(object):
     r_out = flex.double()
     tot_r_in  = [0,0]
     tot_r_out = [0,0]
+
+    tmp_keys = self.ops_and_r_pairs.keys()
+    tmp_values = self.ops_and_r_pairs.values()
     tmp = self.ops_and_r_pairs.copy()
+
     for op in coset_ops:
-      if tmp.has_key( op ):
-        a = tmp.pop(op)
+      if op in tmp_keys:  #tmp.has_key( op ):
+        # Work around for absence of pop in python 2.2
+        iii = tmp_keys.index( op )
+        a = tmp_values[ iii ]
+        # now we have to pop these guys from the array
+        tmp_tmp_keys = []
+        tmp_tmp_values = []
+        for ii in xrange( len(tmp_keys) ):
+          if ii != iii:
+            tmp_tmp_keys.append( tmp_keys[ii] )
+            tmp_tmp_values.append( tmp_values[ii] )
+        tmp_keys = list(tmp_tmp_keys)
+        tmp_values = list(tmp_tmp_values)
+
         r_in.append( a[0]/max(a[1],1e-8) )
         tot_r_in[0]+=a[0]
         tot_r_in[1]+=a[1]
-    for item in tmp:
-      a = tmp[item]
+    for a in tmp_values:
       r_out.append( a[0]/max(a[1],1e-8) )
       tot_r_out[0]+=a[0]
       tot_r_out[1]+=a[1]
@@ -2084,6 +2099,7 @@ class symmetry_issues(object):
                    'max R_used',
                    'mean R_unused',
                    'min R_unused',
+                   'BIC',
                    'choice')
 
     self.table_data = []
@@ -2095,6 +2111,7 @@ class symmetry_issues(object):
              self.string_it(self.pg_max_r_used_table[pg],"%4.3f"),
              self.string_it(self.pg_r_unused_table[pg],"%4.3f"),
              self.string_it(self.pg_min_r_unused_table[pg],"%4.3f"),
+             self.string_it(self.pg_scores[pg],"%6.3e"),
              "    " ]
       self.table_data.append( tmp )
       if self.pg_scores[ pg ] < min_score:
@@ -2103,7 +2120,7 @@ class symmetry_issues(object):
 
     for row in self.table_data:
       if self.pg_choice == row[0]:
-        row[ 5 ] = "<---"
+        row[ 6 ] = "<---"
 
     self.table = table_utils.format([self.legend]+self.table_data,
                                     comments=None,
@@ -2135,6 +2152,8 @@ class symmetry_issues(object):
     print >> out
     print >> out, "R_used: mean and maximum R value for symmetry operators *used* in this point group"
     print >> out, "R_unused: mean and minimum R value for symmetry operators *not used* in this point group"
+    print >> out, "An automated point group suggestion is made on the basis of the BIC (Bayesian information criterion)."
+    print >> out, "\n"
     print >> out, " The likely point group of the data is: ",self.pg_choice
     print >> out
     print >> out, "Possible space groups in this point groups are:"
