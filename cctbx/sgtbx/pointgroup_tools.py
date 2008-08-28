@@ -123,7 +123,6 @@ class sub_super_point_group_relations(object):
   def get_symops_from_supergroup_that_are_not_in_subgroup(self,sg_high):
     coset = cosets.left_decomposition(g=sg_high,
                                       h=self.sg_low)
-    coset.show()
     for set in coset.partitions[1:]:
       if self.enforce_point_groups:
         if set[0].r().determinant()>0:
@@ -145,32 +144,28 @@ class sub_super_point_group_relations(object):
       check_sg = sgtbx.space_group(self.sg_low)
 
       check_sg.expand_smx( symop.new_denominators(r_den, t_den) )
-
-      # make sure that the new spacegroup is different from the old one
-      # otherwise one might cycle in eternal loops in later applications
-      assert check_sg.order_z() > self.sg_low.order_z()
-
       # Check if this SG is allready in the list
-      if not ( check_sg in self.sg_groups):
-        # add sg to list
-        self.sg_groups.append( check_sg )
-        tmp_symop.append( symop )
-        tmp_index.append( item )
+      if check_sg != self.sg_low:
+        if not ( check_sg in self.sg_groups):
+          # add sg to list
+          self.sg_groups.append( check_sg )
+          tmp_symop.append( symop )
+          tmp_index.append( item )
 
-        # check if the other symops generate the same sg please
-        for check_ops,check_item in zip(self.symops,
-                                        range(len(self.symops))):
-          if (check_sg.contains(check_ops.new_denominators(r_den,t_den))):
-            # add symop to list if it is not in there yet
-            if not (check_ops in tmp_symop):
-              tmp_symop.append( check_ops )
-            # add index to list
-            if not (check_item in tmp_index):
-              tmp_index.append( check_item )
+          # check if the other symops generate the same sg please
+          for check_ops,check_item in zip(self.symops,
+                                          range(len(self.symops))):
+            if (check_sg.contains(check_ops.new_denominators(r_den,t_den))):
+              # add symop to list if it is not in there yet
+              if not (check_ops in tmp_symop):
+                tmp_symop.append( check_ops )
+              # add index to list
+              if not (check_item in tmp_index):
+                tmp_index.append( check_item )
 
 
-        self.grouped_symops.append( tmp_symop )
-        self.grouped_index.append( tmp_index )
+          self.grouped_symops.append( tmp_symop )
+          self.grouped_index.append( tmp_index )
 
   def find_left_over_symops(self):
     # this function gives the left over symops after
