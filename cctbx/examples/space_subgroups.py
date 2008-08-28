@@ -18,12 +18,13 @@ from libtbx import dict_with_default_0
 import sys
 
 def loop_over_super_cells(max_index, all_subgroups, subgroup):
+  assert subgroup.n_ltr() == 1
   for ia in xrange(1,max_index+1):
     for ib in xrange(1,max_index+1):
       for ic in xrange(1,max_index+1):
         cb_op = sgtbx.change_of_basis_op("x/%d,y/%d,z/%d" % (ia,ib,ic))
         try:
-          subsubgroup = subgroup.change_basis(cb_op=cb_op)
+          scsubgroup = subgroup.change_basis(cb_op=cb_op)
         except RuntimeError, e:
           if (str(e).endswith(
                 "Unsuitable value for rational rotation matrix.")):
@@ -34,6 +35,14 @@ def loop_over_super_cells(max_index, all_subgroups, subgroup):
           else:
             raise RuntimeError
         else:
+          def remove_lattice_translations(g):
+            result = sgtbx.space_group(
+              hall_symbol="P1", t_den=subgroup.t_den())
+            for i_inv in xrange(g.f_inv()):
+              for i_smx in xrange(g.n_smx()):
+                result.expand_smx(g(0, i_inv, i_smx))
+            return result
+          subsubgroup = remove_lattice_translations(scsubgroup)
           uhm = sgtbx.space_group_type(group=subsubgroup) \
             .universal_hermann_mauguin_symbol()
           all_subgroups[uhm] += 1
