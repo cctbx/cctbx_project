@@ -1373,7 +1373,7 @@ def exercise_map_correlation():
   a = miller.array(miller.set(xs, mi), data)
   ph = flex.double((10+45,20+45))
   y = a.phase_transfer(ph, deg=True)
-  assert approx_equal(x.map_correlation(y), 1./math.sqrt(2.0))
+  assert approx_equal(x.map_correlation(y), -1./math.sqrt(2.0))
 
 def exercise_concatenate():
   xs = crystal.symmetry((3,4,5), "P 2 2 2")
@@ -1410,7 +1410,28 @@ def run_call_back(flags, space_group_info):
   exercise_phase_integrals(space_group_info)
   exercise_generate_r_free_flag_on_lat_sym(space_group_info)
 
+def exercise_difference_map():
+  cs = crystal.symmetry((2,2,2), "P1")
+  mi = miller.set(cs, flex.miller_index(((1,-2,3), (0,0,-4))))
+  f_o = miller.array(mi, data=flex.double((1,2)))
+  f_c = miller.array(mi, data=flex.complex_double((2j, 3j)))
+  diff = f_o.f_obs_minus_f_calc(f_obs_factor=1, f_calc=f_c)
+  assert approx_equal(tuple(diff.data()), (-1j, -1j))
+  cs = crystal.symmetry((2,2,2), "P23")
+  mi = miller.set(cs, flex.miller_index(((1,-2,3), (0,0,-4))))
+  f_o = miller.array(mi, data=flex.double((1,2)))
+  f_c = miller.array(mi, data=flex.complex_double((2j, 3j)))
+  diff = f_o.f_obs_minus_f_calc(f_obs_factor=1, f_calc=f_c)
+  assert approx_equal(diff.amplitudes().data(), (1,1))
+  assert not cs.space_group().phase_restriction(mi.indices()[0]).is_centric()
+  assert approx_equal(diff.data()[0], -1j)
+  ph_restrict = cs.space_group().phase_restriction(mi.indices()[1])
+  assert ph_restrict.is_centric()
+  assert ph_restrict.nearest_valid_phase(90, deg=True) == 0
+  assert approx_equal(diff.data()[1], -1)
+
 def run(args):
+  exercise_difference_map()
   exercise_concatenate()
   exercise_phased_translation_coeff()
   exercise_set()
