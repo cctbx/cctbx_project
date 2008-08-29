@@ -314,16 +314,16 @@ def tst2_run(angles, nspacing, af ):
     solvent_radius2,
     shrink_truncation_radius, explicit_distance=True, debug=True)
   #
-  assert m3.N0 == m4.N0
-  mx1 = max(abs(m1.N0),abs(m2.N0))
-  mx2 = max(abs(m1.N0),abs(m3.N0))
-  mx3 =  max(abs(m2.N0),abs(m3.N0))
+  assert m3.n_atom_points == m4.n_atom_points
+  mx1 = max(abs(m1.n_atom_points),abs(m2.n_atom_points))
+  mx2 = max(abs(m1.n_atom_points),abs(m3.n_atom_points))
+  mx3 =  max(abs(m2.n_atom_points),abs(m3.n_atom_points))
   if mx1!=0:
-    assert float(abs(m1.N0 - m2.N0))/float(mx1) < 0.01
+    assert float(abs(m1.n_atom_points - m2.n_atom_points))/float(mx1) < 0.01
   if mx2!=0:
-    assert float(abs(m1.N0 - m3.N0))/float(mx2) < 0.01
+    assert float(abs(m1.n_atom_points - m3.n_atom_points))/float(mx2) < 0.01
   if mx3!=0:
-    assert float(abs(m2.N0 - m3.N0))/float(mx3) < 0.01
+    assert float(abs(m2.n_atom_points - m3.n_atom_points))/float(mx3) < 0.01
 
 def exercise_4():
  if(1):

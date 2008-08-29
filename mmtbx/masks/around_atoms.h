@@ -52,14 +52,14 @@ namespace mmtbx { namespace masks {
           sites_frac.const_ref(),
           atom_radii.const_ref());
         if( debug ) {
-          N0 = std::count(data.begin(), data.end(), 0);
-          N1bar = std::count(data.begin(), data.end(), -1);
-          N1 = std::count(data.begin(), data.end(), 1);
-          MMTBX_ASSERT( N1 == n_solvent );
-          MMTBX_ASSERT( n_solvent + N0 + N1bar == data.size() );
+          n_atom_points = std::count(data.begin(), data.end(), 0);
+          const size_t n1bar = std::count(data.begin(), data.end(), -1);
+          const size_t n1 = std::count(data.begin(), data.end(), 1);
+          MMTBX_ASSERT( n1 == n_solvent );
+          MMTBX_ASSERT( n1 + n_atom_points + n1bar == data.size() );
         }
         else {
-          N0 = N1 = N1bar = 0;
+          n_atom_points = 0;
         }
         compute_contact_surface(
           unit_cell,
@@ -89,7 +89,7 @@ namespace mmtbx { namespace masks {
        */
       double contact_surface_fraction;
 
-      size_t N0, N1, N1bar;  // for debugging purpose only
+      size_t n_atom_points;  // for debugging purpose only
 
     protected:
       const bool debug;
