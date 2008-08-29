@@ -60,6 +60,7 @@ map_params_str ="""\
   map
     .multiple = True
     .short_caption=Electron density map
+    .gui_style=noauto
   {
     mtz_label_amplitudes = None
       .type = str
@@ -69,6 +70,7 @@ map_params_str ="""\
       .short_caption=Phase label
     likelihood_weighted = None
       .type = bool
+      .expert_level=1
     obs_factor = None
       .type = float
       .short_caption=Multiply Fobs by
@@ -104,13 +106,18 @@ map_params_str ="""\
 
   grid_resolution_factor = 1/4
     .type = float
+    .expert_level=1
   region = *selection cell
     .type = choice
+    .expert_level=1
     .short_caption=Map region
   atom_selection = None
     .type = str
+    .expert_level=2
+    .gui_style = selection
   atom_selection_buffer = 3
     .type = float
+    .expert_level=2
   apply_sigma_scaling = True
     .type = bool
     .expert_level = 1

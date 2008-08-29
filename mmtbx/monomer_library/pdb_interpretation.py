@@ -160,6 +160,7 @@ bond
   .optional = True
   .multiple = True
   .short_caption = Bond
+  .gui_style = auto_align
 {
   action = *add delete change
     .type = choice
@@ -183,6 +184,7 @@ angle
   .optional = True
   .multiple = True
   .short_caption = Angle
+  .gui_style = auto_align
 {
   action = *add delete change
     .type = choice
