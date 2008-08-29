@@ -5,23 +5,19 @@
 
 namespace cctbx { namespace miller {
 
-#if defined(BOOST_MSVC) && BOOST_MSVC <= 1300 // VC++ 7.0
-  namespace {
-    inline double
-    abs_wrapper(double const& x) { return scitbx::fn::absolute(x); }
+  /// Transfer the phase of phase_source[i] onto amplitude_source[i]
+  /**
+    The sign of phase_source[i] is kept.
 
-    inline double
-    abs_wrapper(std::complex<double> const& x) { return std::abs(x); }
-  }
-#endif
-
-  template <typename AmplitudeType,
-            typename FloatType>
+    The phase is actually the nearest phase compatible with space-group
+    restriction for centric reflections.
+  */
+  template <typename FloatType>
   af::shared<std::complex<FloatType> >
   phase_transfer(
     sgtbx::space_group const& space_group,
     af::const_ref<index<> > const& miller_indices,
-    af::const_ref<AmplitudeType> const& amplitude_source,
+    af::const_ref<FloatType> const& amplitude_source,
     af::const_ref<std::complex<FloatType> > const& phase_source,
     FloatType const& epsilon=1.e-10)
   {
@@ -37,11 +33,7 @@ namespace cctbx { namespace miller {
       }
       else {
         result.push_back(std::polar(
-#if defined(BOOST_MSVC) && BOOST_MSVC <= 1300 // VC++ 7.0
-          FloatType(abs_wrapper(amplitude_source[i])),
-#else
-          FloatType(std::abs(amplitude_source[i])),
-#endif
+          amplitude_source[i],
           space_group.phase_restriction(miller_indices[i])
             .nearest_valid_phase(std::arg(p))));
       }
@@ -49,13 +41,13 @@ namespace cctbx { namespace miller {
     return result;
   }
 
-  template <typename AmplitudeType,
-            typename FloatType>
+  /// Another overload of phase_transfer passing the source phases directly
+  template <typename FloatType>
   af::shared<std::complex<FloatType> >
   phase_transfer(
     sgtbx::space_group const& space_group,
     af::const_ref<index<> > const& miller_indices,
-    af::const_ref<AmplitudeType> const& amplitude_source,
+    af::const_ref<FloatType> const& amplitude_source,
     af::const_ref<FloatType> const& phase_source,
     bool deg=false)
   {
@@ -67,11 +59,7 @@ namespace cctbx { namespace miller {
       FloatType p = phase_source[i];
       if (deg) p *= scitbx::constants::pi_180;
       result.push_back(std::polar(
-#if defined(BOOST_MSVC) && BOOST_MSVC <= 1300 // VC++ 7.0
-        FloatType(abs_wrapper(amplitude_source[i])),
-#else
-        FloatType(std::abs(amplitude_source[i])),
-#endif
+        amplitude_source[i],
         space_group.phase_restriction(miller_indices[i])
           .nearest_valid_phase(p)));
     }

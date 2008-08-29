@@ -13,27 +13,9 @@ namespace cctbx { namespace miller { namespace boost_python {
       (af::shared<std::complex<double> >(*)
         (sgtbx::space_group const&,
          af::const_ref<index<> > const&,
-         af::const_ref<std::complex<double> > const&,
-         af::const_ref<std::complex<double> > const&,
-         double const&))
-           phase_transfer);
-
-    def("phase_transfer",
-      (af::shared<std::complex<double> >(*)
-        (sgtbx::space_group const&,
-         af::const_ref<index<> > const&,
          af::const_ref<double> const&,
          af::const_ref<std::complex<double> > const&,
          double const&))
-           phase_transfer);
-
-    def("phase_transfer",
-      (af::shared<std::complex<double> >(*)
-        (sgtbx::space_group const&,
-         af::const_ref<index<> > const&,
-         af::const_ref<std::complex<double> > const&,
-         af::const_ref<double> const&,
-         bool))
            phase_transfer);
 
     def("phase_transfer",

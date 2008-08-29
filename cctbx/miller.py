@@ -1592,7 +1592,8 @@ class array(set):
   def phase_transfer(self, phase_source, epsilon=1.e-10, deg=False,
                            phase_integrator_n_steps=None):
     """\
-Combines amplitudes of self with phases of phase_source.
+Combines phases of phase_source with self's data if real (keeping the sign of  self's data) or with self's amplitudes if complex.
+
 Centric reflections are forced to be compatible with the phase
 restrictions.
 
@@ -1613,8 +1614,11 @@ phases are determined on the fly using the given step size.
     assert self.data() is not None
     if (hasattr(phase_source, "data")):
       phase_source = phase_source.data()
-    assert isinstance(self.data(), flex.complex_double) or isinstance(self.data(), flex.double)
-    assert isinstance(phase_source, flex.complex_double) or isinstance(phase_source, flex.double) or isinstance(phase_source, flex.hendrickson_lattman)
+    assert (   isinstance(self.data(), flex.complex_double)
+            or isinstance(self.data(), flex.double))
+    assert (   isinstance(phase_source, flex.complex_double)
+            or isinstance(phase_source, flex.double)
+            or isinstance(phase_source, flex.hendrickson_lattman))
     if (isinstance(phase_source, flex.hendrickson_lattman)):
       if (phase_integrator_n_steps is None):
         integrator = phase_integrator()
@@ -1624,13 +1628,17 @@ phases are determined on the fly using the given step size.
         space_group=self.space_group(),
         miller_indices=self.indices(),
         hendrickson_lattman_coefficients=phase_source)
+    if isinstance(self.data(), flex.double):
+      data = self.data()
+    else:
+      data = flex.abs(self.data())
     if (isinstance(phase_source, flex.complex_double)):
       return array(
         miller_set=self,
         data=phase_transfer(
           self.space_group(),
           self.indices(),
-          self.data(),
+          data,
           phase_source,
           epsilon))
     return array(
@@ -1638,7 +1646,7 @@ phases are determined on the fly using the given step size.
       data=phase_transfer(
         self.space_group(),
         self.indices(),
-        self.data(),
+        data,
         phase_source,
         deg))
 
