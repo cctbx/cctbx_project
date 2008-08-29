@@ -42,8 +42,8 @@ namespace {
             arg_("debug")     )))
         .def_readonly("solvent_radius",
                  &w_t::solvent_radius)
-        .def_readonly("N0",
-                 &w_t::N0)
+        .def_readonly("n_atom_points",
+                 &w_t::n_atom_points)
         .def_readonly("shrink_truncation_radius",
                  &w_t::shrink_truncation_radius)
         .add_property("data", make_getter(&w_t::data, rbv()))
