@@ -87,7 +87,7 @@ data_and_flags = iotbx.phil.parse("""\
     .type=path
     .short_caption=Reflections file
     .input_size=300
-    .gui_style = bold
+    .gui_style = bold file_type:hkl
   labels = None
     .type=strings
   high_resolution = None
@@ -96,30 +96,37 @@ data_and_flags = iotbx.phil.parse("""\
     .type=float
   outliers_rejection = True
     .type=bool
+    .short_caption = Reject outliers
+    .expert_level = 1
   sigma_fobs_rejection_criterion = 0.0
     .type=float
+    .expert_level = 1
   sigma_iobs_rejection_criterion = 0.0
     .type=float
+    .expert_level = 1
   ignore_all_zeros = True
     .type=bool
+    .expert_level = 1
   force_anomalous_flag_to_be_equal_to = None
     .type=bool
     .short_caption = Use anomalous data
     .gui_style = tribool
+    .expert_level = 1
   r_free_flags
-    .expert_level=2
+    .expert_level=1
     .gui_style = box
   {
     file_name = None
       .type=path
       .short_caption=File containing R(free) flags
-      .gui_style = narrow
+      .gui_style = narrow file_type:hkl,any
     label = None
       .type=str
     test_flag_value = None
       .type=int
     disable_suitability_test = False
       .type=bool
+      .expert_level = 2
     ignore_pdb_hexdigest = False
       .type=bool
       .help=If True, disables safety check based on MD5 hexdigests stored in \
@@ -128,6 +135,7 @@ data_and_flags = iotbx.phil.parse("""\
     ignore_r_free_flags = False
       .type=bool
       .help = Use all reflections in refinement (work and test)
+      .expert_level=2
     generate = False
       .type=bool
       .help = Generate R-free flags (if not available in input files)
@@ -135,10 +143,13 @@ data_and_flags = iotbx.phil.parse("""\
       .type=float
     max_free = 2000
       .type=int
+      .expert_level=2
     lattice_symmetry_max_delta = 5
       .type=float
+      .expert_level=1
     use_lattice_symmetry = True
       .type=bool
+      .expert_level=1
   }
 """)
 
@@ -512,6 +523,7 @@ experimental_phases_params = iotbx.phil.parse("""\
   file_name=None
     .type=path
     .short_caption=Experimental phase file
+    .gui_style = file_type:hkl,any
   labels=None
     .type=strings
 """)
@@ -566,7 +578,7 @@ pdb_params = iotbx.phil.parse("""\
     .short_caption=PDB file
     .multiple=True
     .input_size=300
-    .gui_style = pymol bold
+    .gui_style = pymol bold file_type:pdb
 """)
 
 def get_atom_selections(all_chain_proxies,
