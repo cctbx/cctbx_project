@@ -145,6 +145,7 @@ class sub_super_point_group_relations(object):
 
       check_sg.expand_smx( symop.new_denominators(r_den, t_den) )
       # Check if this SG is allready in the list
+      assert check_sg != self.sg_low
       if check_sg != self.sg_low:
         if not ( check_sg in self.sg_groups):
           # add sg to list
