@@ -380,6 +380,44 @@ class point_group_graph(object):
     self.graph.assert_is_clean()
 
 
+  def reverse_dict(self):
+      new_dict = {}
+      for item in self.graph.o:
+        for value in self.graph.o[item]:
+          if value is not None:
+            if new_dict.has_key( value ):
+              tmp = new_dict[ value ]
+              tmp.append( item )
+              new_dict.update( {value:tmp} )
+            else:
+              new_dict.update( {value:[item]} )
+      return new_dict
+
+  def get_maximal_subgroup(self, sg_name ):
+      subgroups = []
+      reverse_graph = self.reverse_dict()
+      if reverse_graph.has_key( sg_name ):
+        subgroups = reverse_graph[ sg_name ]
+      maximal = {}
+      for sg in subgroups:
+        maximal.update( {sg:True} )
+      result = []
+      for trial_sg in subgroups:
+        tmp = {}
+        if reverse_graph.has_key( trial_sg ):
+          tmp = reverse_graph[ trial_sg ]
+        is_trial_sg_a_subgroup_of_items_in_subgroups=False
+        for item in tmp:
+          if item in subgroups:
+            maximal.update( {item:False} )
+            is_trial_sg_a_subgroup_of_subgroups=True
+      for item in maximal:
+        if maximal[item]:
+          result.append( item )
+      return result
+
+
+
 
 class find_compatible_space_groups(object):
   def __init__(self,
