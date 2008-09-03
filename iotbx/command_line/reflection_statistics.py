@@ -94,7 +94,7 @@ class array_cache(object):
   def possible_twin_laws(self):
     result = []
     cb_op = self.change_of_basis_op_to_minimum_cell.inverse()
-    for partition in sgtbx.cosets.left_decomposition(
+    for partition in sgtbx.cosets.left_decomposition_point_groups_only(
       g=self.lattice_group,
       h=self.intensity_symmetry.space_group()
           .build_derived_acentric_group()
