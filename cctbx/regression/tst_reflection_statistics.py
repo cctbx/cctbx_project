@@ -65,7 +65,7 @@ def exercise(space_group_info, anomalous_flag, verbose):
       assert approx_equal(
         miller_array_sub_a.correlation(other=cb).coefficient(), 1)
     #
-    coset_decomposition = sgtbx.cosets.left_decomposition(
+    coset_decomposition = sgtbx.cosets.left_decomposition_point_groups_only(
       g=lattice_group,
       h=subgroup_info.group())
     coset_decompositions.append(coset_decomposition)
