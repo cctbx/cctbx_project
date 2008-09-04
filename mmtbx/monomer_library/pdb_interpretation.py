@@ -3013,6 +3013,7 @@ def run(
       args,
       params=None,
       strict_conflict_handling=True,
+      return_all_processed_pdb_files=False,
       max_atoms=None,
       log=None):
   if (log is None): log = sys.stdout
@@ -3035,6 +3036,7 @@ def run(
         print >> log, "Processing CIF file: %s" % show_string(arg)
         for srv in [mon_lib_srv, ener_lib]:
           srv.process_cif_object(cif_object=cif_object, file_name=arg)
+  all_processed_pdb_files = []
   for file_name in pdb_file_names:
     processed_pdb_file = process(
       mon_lib_srv=mon_lib_srv,
@@ -3046,7 +3048,11 @@ def run(
       log=log)
     processed_pdb_file.geometry_restraints_manager()
     processed_pdb_file.xray_structure()
-  if (len(args) > 0):
+    if (return_all_processed_pdb_files):
+      all_processed_pdb_files.append(processed_pdb_file)
+  if (return_all_processed_pdb_files):
+    return all_processed_pdb_files
+  if (len(pdb_file_names) > 0):
     return processed_pdb_file
   return None
 
