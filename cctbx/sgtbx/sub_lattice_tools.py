@@ -206,9 +206,9 @@ def generate_cb_op_up_to_order( end_order, start_order=1):
   mats = generate_matrix_up_to_order(end_order,start_order)
   cb_ops = []
   for mat in mats:
-    new_a = mat[0:3]
-    new_b = mat[3:6]
-    new_c = mat[6:]
+    new_a = [mat[0], mat[3], mat[6] ] # mat[0:3]
+    new_b = [mat[1], mat[4], mat[7] ] # mat[3:6]
+    new_c = [mat[2], mat[5], mat[8] ]
     tmp = string_it(new_a)+","+string_it(new_b)+","+string_it(new_c)
     cb_ops.append( tmp )
   return cb_ops
@@ -240,19 +240,25 @@ class make_list_of_target_xs_up_to_order(object):
     self.basic_xs_n = self.basic_xs.change_basis( self.basic_xs.change_of_basis_op_to_niggli_cell() )
     self.basic_to_niggli_cb_op = self.basic_xs.change_of_basis_op_to_niggli_cell()
 
+
     self.basis = matrix.sqr( self.basic_xs_n.unit_cell().orthogonalization_matrix() )
     self.order = order
     self.max_delta = max_delta
 
     self.matrices = generate_matrix_up_to_order( self.order )
+    self.cb_ops = generate_cb_op_up_to_order( self.order )
 
     self.xs_list = []
+    self.sg_list = []
+
     self.extra_cb_op = []
-    for mat in self.matrices:
-      self.make_new_xs( mat )
+    for mat, cb_op in zip(self.matrices, self.cb_ops):
+      self.make_new_xs( mat, cb_op )
 
   def make_new_xs(self,
-                  mat):
+                  mat,
+                  cb_op,
+                  to_reference=True):
     # make new lattice
     new_basis = self.basis*mat.as_float()
     new_uc = uctbx.unit_cell( orthogonalization_matrix = new_basis )
@@ -265,10 +271,19 @@ class make_list_of_target_xs_up_to_order(object):
     extra_cb_op = tmp_xs.change_of_basis_op_to_reference_setting()
     self.extra_cb_op.append( extra_cb_op )
     #
-    tmp_xs = tmp_xs.change_basis( extra_cb_op )
+    new_sg = None
+    try:
+      new_sg = sgtbx.space_group_info( group=self.basic_xs_n.space_group()).change_basis( cb_op )
+    except: pass
+
+    if to_reference:
+      tmp_xs = tmp_xs.change_basis( extra_cb_op )
+      try:
+        new_sg = new_sg.change_basis( extra_cb_op )
+      except: pass
+
     self.xs_list.append( tmp_xs )
-
-
+    self.sg_list.append( new_sg )
 
 class compare_lattice(object):
   def __init__(self,
@@ -510,6 +525,9 @@ def tst_make_bigger_cell():
     det = float(mat.determinant())
     det_ref= float(cb_op.c().r().determinant())
     assert approx_equal( ratio/(det/det_ref),1.0, eps=0.001 )
+
+
+
 
 
 def exercise():

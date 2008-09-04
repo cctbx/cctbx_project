@@ -47,6 +47,7 @@ cctbx/regression/tst_structure_factors_multithread.py -text
 cctbx/regression/tst_weighting_schemes.py -text
 cctbx/regression/tst_xray_minimization_failure.py -text
 cctbx/sgtbx/boost_python/select_generators.cpp -text
+cctbx/sgtbx/rational_matrices_point_groups.py -text
 cctbx/sgtbx/show_cosets.py -text
 cctbx/source_generators/flex_fwd_h.py -text
 cctbx/uctbx/boost_python/tst_crystal_orientation.py -text
