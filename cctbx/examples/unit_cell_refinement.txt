@@ -552,13 +552,13 @@ to reduce the number of unit cell parameters to be refined.
 
 .. _`adp_symmetry_constraints.py`: http://phenix-online.org/cctbx_sources/cctbx/examples/adp_symmetry_constraints.py
 
-.. _`libtbx.help str`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=str
+.. _`libtbx.help str`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=str
 
-.. _`libtbx.help zip`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=zip
+.. _`libtbx.help zip`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=zip
 
-.. _`libtbx.help cctbx.array_family.flex`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex
+.. _`libtbx.help cctbx.array_family.flex`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex
 
-.. _`libtbx.help cctbx.array_family.flex.double`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.double
-.. _`libtbx.help cctbx.eltbx.wavelengths.characteristic`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.eltbx.wavelengths.characteristic
+.. _`libtbx.help cctbx.array_family.flex.double`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.double
+.. _`libtbx.help cctbx.eltbx.wavelengths.characteristic`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.eltbx.wavelengths.characteristic
 
-.. _`libtbx.help cctbx.uctbx.unit_cell`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.uctbx.unit_cell
+.. _`libtbx.help cctbx.uctbx.unit_cell`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.uctbx.unit_cell
