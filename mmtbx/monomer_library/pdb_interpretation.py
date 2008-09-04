@@ -15,7 +15,7 @@ from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
 from libtbx.utils import format_exception
-from libtbx import group_args
+from libtbx import Auto, group_args
 from cStringIO import StringIO
 import string
 import sys, os
@@ -156,6 +156,8 @@ master_params = iotbx.phil.parse("""\
   process_includes=True)
 
 geometry_restraints_edits = iotbx.phil.parse("""\
+excessive_bond_distance_limit = 10
+  .type = float
 bond
   .optional = True
   .multiple = True
@@ -2452,13 +2454,21 @@ class build_all_chain_proxies(object):
     return result
 
   def process_geometry_restraints_edits_bond(self, sel_cache, edits, log):
-    result = []
-    if (len(edits.bond) == 0): return result
+    bond_sym_proxies = []
+    bond_distance_model_max = 0
+    if (len(edits.bond) == 0):
+      return group_args(
+        bond_sym_proxies=bond_sym_proxies,
+        bond_distance_model_max=bond_distance_model_max)
     print >> log, "  Custom bonds:"
     atoms = self.pdb_atoms
     unit_cell = self.special_position_settings.unit_cell()
     space_group = self.special_position_settings.space_group()
-    max_bond_length = unit_cell.shortest_vector_sq()**0.5
+    uc_shortest_vector = unit_cell.shortest_vector_sq()**0.5
+    max_bond_length = uc_shortest_vector
+    ebdl = edits.excessive_bond_distance_limit
+    if (ebdl not in [None, Auto] and ebdl > 0 and ebdl < max_bond_length):
+      max_bond_length = ebdl
     n_excessive = 0
     sel_attrs = ["atom_selection_"+n for n in ["1", "2"]]
     for bond in edits.bond:
@@ -2503,7 +2513,7 @@ class build_all_chain_proxies(object):
           weight=geometry_restraints.sigma_as_weight(sigma=bond.sigma),
           slack=slack,
           rt_mx_ji=rt_mx_ji)
-        result.append(p)
+        bond_sym_proxies.append(p)
         b = geometry_restraints.bond(
           unit_cell=unit_cell,
           sites_cart=self.sites_cart,
@@ -2526,15 +2536,28 @@ class build_all_chain_proxies(object):
         print >> log, "      delta_slack:    %7.3f" % b.delta_slack
         print >> log, "      sigma:          %8.4f" % \
           geometry_restraints.weight_as_sigma(weight=b.weight)
+        if (bond_distance_model_max < b.distance_model):
+          bond_distance_model_max = b.distance_model
         if (b.distance_model > max_bond_length):
           print >> log, "      *** WARNING: EXCESSIVE BOND LENGTH. ***"
           n_excessive += 1
     if (n_excessive != 0):
+      if (max_bond_length == uc_shortest_vector):
+        print >> log, "  Excessive bond length limit at hard upper bound:" \
+          " length of shortest vector between unit cell lattice points: %.6g" \
+            % uc_shortest_vector
+      else:
+        print >> log, "  %s.excessive_bond_distance_limit = %.6g" % (
+          edits.__phil_path__(), edits.excessive_bond_distance_limit)
+        print >> log, \
+          "    Please assign a larger value to this parameter if necessary."
       raise Sorry(
         "Custom bonds with excessive length: %d\n"
         "  Please check the log file for details." % n_excessive)
-    print >> log, "    Total number of custom bonds:", len(result)
-    return result
+    print >> log, "    Total number of custom bonds:", len(bond_sym_proxies)
+    return group_args(
+      bond_sym_proxies=bond_sym_proxies,
+      bond_distance_model_max=bond_distance_model_max)
 
   def process_geometry_restraints_edits_angle(self, sel_cache, edits, log):
     result = []
@@ -2598,12 +2621,13 @@ class build_all_chain_proxies(object):
     print >> log, "    Total number of custom angles:", len(result)
     return result
 
-  def process_geometry_restraints_edits(self, sel_cache, edits, log):
-    return group_args(
-      bond_sym_proxies=self.process_geometry_restraints_edits_bond(
-        sel_cache=sel_cache, edits=edits, log=log),
-      angle_proxies=self.process_geometry_restraints_edits_angle(
-        sel_cache=sel_cache, edits=edits, log=log))
+  def process_geometry_restraints_edits(self, edits, log):
+    sel_cache = self.pdb_hierarchy.atom_selection_cache()
+    result = self.process_geometry_restraints_edits_bond(
+        sel_cache=sel_cache, edits=edits, log=log)
+    result.angle_proxies=self.process_geometry_restraints_edits_angle(
+        sel_cache=sel_cache, edits=edits, log=log)
+    return result
 
   def construct_geometry_restraints_manager(self,
         ener_lib,
@@ -2646,8 +2670,16 @@ class build_all_chain_proxies(object):
     if (bond_distances_model.size() > 0):
       max_bond_distance = max(max_bond_distance,
         flex.max(bond_distances_model))
+    if (edits is None):
+      processed_edits = None
+    else:
+      processed_edits = self.process_geometry_restraints_edits(
+        edits=edits, log=log)
+      max_bond_distance = max(max_bond_distance,
+        processed_edits.bond_distance_model_max)
     asu_mappings = self.special_position_settings.asu_mappings(
       buffer_thickness=max_bond_distance*3)
+        # factor 3 is to reach 1-4 interactions
     asu_mappings.process_sites_cart(
       original_sites=self.sites_cart,
       site_symmetry_table=self.site_symmetry_table())
@@ -2675,10 +2707,7 @@ class build_all_chain_proxies(object):
         j_seq=j_seq,
         rt_mx_ji=sym_pair.rt_mx_ji)
     #
-    if (edits is not None):
-      sel_cache = self.pdb_hierarchy.atom_selection_cache()
-      processed_edits = self.process_geometry_restraints_edits(
-        sel_cache=sel_cache, edits=edits, log=log)
+    if (processed_edits is not None):
       for proxy in processed_edits.bond_sym_proxies:
         if (proxy.weight <= 0): continue
         i_seq, j_seq = proxy.i_seqs
