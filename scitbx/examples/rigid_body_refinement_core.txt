@@ -152,10 +152,16 @@ ways: a counterclockwise rotation of the basis system (equivalent
 to a clockwise rotation of vectors w.r.t. that basis system) or
 a counterclockwise rotation of vectors (equivalent to a clockwise
 rotation of the basis system). The function above implements the "xyz"
-convention with counterclockwise rotation of vectors. The Mathematica_
-code for generating the rotation matrix is included as a Python_
-"docstring". From this it is easy to see exactly how the rotations
-are defined, and how to reproduce the matrix.
+convention with counterclockwise rotation of vectors. The "xyz"
+convention is advantageous for rigid-body refinement since the
+`Gimbal lock`_ problem occurs only if the rotation around y is plus
+or minus 90 degrees, a situation that is very unlikely to be reached
+since the convergence radius of rigid body refinement is typically
+much smaller.
+
+The Mathematica_ code for generating the rotation matrix is included
+as a Python_ "docstring". From this it is easy to see exactly how
+the rotations are defined, and how to reproduce the matrix.
 
 The ``angle_scale`` was introduced as a way to balance the scale of
 the angular parameters compared to the linear translation parameters.
@@ -390,6 +396,8 @@ there are many developers.
 .. _`matrix.py`: http://phenix-online.org/cctbx_sources/scitbx/matrix.py
 
 .. _`Euler angles`: http://en.wikipedia.org/wiki/Euler_angles
+
+.. _`Gimbal lock`: http://en.wikipedia.org/wiki/Gimbal_lock
 
 .. _`Mathematica`: http://www.wolfram.com/products/mathematica/
 
