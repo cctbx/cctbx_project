@@ -63,7 +63,7 @@ It may be convenient (but is not required) to add the directory
   set path=(/your/choice/bin $path)
 
 The most recent, complete cctbx source code is available in the file
-`cctbx_bundle.tar.gz <http://cci.lbl.gov/cctbx_build/results/current/cctbx_bundle.tar.gz>`_
+`cctbx_bundle.tar.gz <http://cci.lbl.gov/cctbx_build/results/last_published/cctbx_bundle.tar.gz>`_
 published at the cctbx build page. To unpack this file in a new, empty directory::
 
   gunzip -c cctbx_bundle.tar.gz | tar xf -
@@ -120,7 +120,7 @@ The default choices presented by the installation wizard are usually fine.
 
 The most recent, complete cctbx source code is available in the
 self-extracting file
-`cctbx_bundle.exe <http://cci.lbl.gov/cctbx_build/results/current/cctbx_bundle.exe>`_
+`cctbx_bundle.exe <http://cci.lbl.gov/cctbx_build/results/last_published/cctbx_bundle.exe>`_
 published at the cctbx build page. To unpack this file in a new, empty
 directory simply enter::
 
