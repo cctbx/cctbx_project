@@ -266,7 +266,7 @@ def tst2_run(angles, nspacing, af ):
   pos1=(0.25,0.25,0.25)
   pos2=(0.25+0.9*2.0*rad/a,0.25,0.25)
   solvent_radius1 = rad*0.5
-  solvent_radius2 = rad*3.1 
+  solvent_radius2 = rad*3.1
   # shrink_truncation_radius = 1.3*solvent_radius2
   shrink_truncation_radius = 0.0
   cell = [a,a,a, angles[0], angles[1], angles[2] ]
@@ -338,7 +338,6 @@ def exercise_4():
   tst2_run( [20.0,30.0,40.0], 139.0, 4.0 )
  if(1):
   tst2_run( [90.0,170.0,90.0], 139.0, 4.0 )
-  
 
 def run_call_back(flags, space_group_info):
   exercise_centrics(space_group_info)

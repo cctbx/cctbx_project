@@ -168,7 +168,7 @@ namespace mmtbx { namespace masks {
           f_t yfi=static_cast<f_t>(site[1]);
           f_t zfi=static_cast<f_t>(site[2]);
           const f_t atmrad = atom_radii[i_site];
-          MMTBX_ASSERT( atmrad >= 0.0 ); 
+          MMTBX_ASSERT( atmrad >= 0.0 );
           f_t cutoff=static_cast<f_t>(atmrad+solvent_radius);
           f_t radsq=static_cast<f_t>(atmrad*atmrad);
           f_t cutoffsq=cutoff*cutoff;
