@@ -86,7 +86,7 @@ cctbx links
 
 - `Project metrics (Ohloh) <http://www.ohloh.net/projects/3878/analyses/latest>`_
 
-- `Most current source tree <http://phenix-online.org/cctbx_sources/>`_
+- `Current source tree <http://cci.lbl.gov/cctbx_sources/>`_
 
 Please direct questions to cctbx@cci.lbl.gov or cctbxbb@phenix-online.org .
 
