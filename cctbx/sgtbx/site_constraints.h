@@ -9,7 +9,7 @@ namespace cctbx { namespace sgtbx {
 
   //! Handling of site symmetry coordinate constraints.
   /*! Example:
-        http://phenix-online.org/cctbx_sources/cctbx/examples/site_symmetry_constraints.py
+        http://cci.lbl.gov/cctbx_sources/cctbx/examples/site_symmetry_constraints.py
    */
   template <typename FloatType=double>
   class site_constraints

@@ -393,7 +393,7 @@ there are many developers.
 
 .. _`LBFGS`: http://cctbx.sourceforge.net/current/c_plus_plus/namespacescitbx_1_1lbfgs.html#_details
 
-.. _`matrix.py`: http://phenix-online.org/cctbx_sources/scitbx/matrix.py
+.. _`matrix.py`: http://cci.lbl.gov/cctbx_sources/scitbx/matrix.py
 
 .. _`Euler angles`: http://en.wikipedia.org/wiki/Euler_angles
 
