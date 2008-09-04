@@ -227,6 +227,8 @@ def run(server_info, inp, status):
       print "Conventional Hermann-Mauguin symbol:", \
         sgtbx.space_group_symbols(sg_type.number()) \
         .universal_hermann_mauguin()
+      print "Universal    Hermann-Mauguin symbol:", \
+        sg_type.universal_hermann_mauguin_symbol()
       print "Hall symbol:", sg_type.hall_symbol()
       print "Change-of-basis matrix:", sg_type.cb_op().c()
       print "               Inverse:", sg_type.cb_op().c_inv()
