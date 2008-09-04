@@ -2,12 +2,6 @@
 Computational Crystallography Toolbox
 =====================================
 
-Learn about the Computational Crystallography Toolbox at the
-
-.. image:: http://cci.lbl.gov/~rwgk/kyoto_school.png
-
-`"Sharing our knowledge": 18th to 23rd August, 2008 <http://www.iucr.org/iucr-top/comm/ccom/kyoto2008/program.html>`_
-
 cctbx links
 -----------
 
