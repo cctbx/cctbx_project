@@ -269,8 +269,8 @@ rstbx/ext.cpp -text
 rstbx/indexing/__init__.py -text
 rstbx/indexing/do_index.py -text
 rstbx/indexing/results2.dat -text
-rstbx/indexing/si_brief.txt -text
-rstbx/indexing/si_synthetic.txt -text
+rstbx/indexing/si_brief.dat -text
+rstbx/indexing/si_synthetic.dat -text
 rstbx/indexing/tst_auto_monoscan.py -text
 rstbx/indexing/tst_dataset1.py -text
 rstbx/libtbx_config -text

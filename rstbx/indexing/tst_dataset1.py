@@ -52,12 +52,12 @@ def parse_synthetic(filename):
 
 def test_case_obs_data(verbose=True):
   datadir = norm_join(os.environ['RSTBX_DIST'],"indexing")
-  R = parse_input(norm_join(datadir,"si_brief.txt"))
+  R = parse_input(norm_join(datadir,"si_brief.dat"))
   return do_index(R,verbose)
 
 def test_case_synthetic_data(verbose=True):
   datadir = norm_join(os.environ['RSTBX_DIST'],"indexing")
-  R = parse_synthetic(norm_join(datadir,"si_synthetic.txt"))
+  R = parse_synthetic(norm_join(datadir,"si_synthetic.dat"))
   return do_index(R,verbose)
 
 if __name__=='__main__':
