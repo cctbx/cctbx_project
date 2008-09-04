@@ -753,17 +753,17 @@ the Emma reference model multiple times.
 .. _`central type in the cctbx source tree`: http://cctbx.sourceforge.net/siena2005/cctbx_central_types.pdf
 .. _`central types in the cctbx source tree`: http://cctbx.sourceforge.net/siena2005/cctbx_central_types.pdf
 
-.. _`libtbx.help cctbx.array_family.flex.double`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.double
+.. _`libtbx.help cctbx.array_family.flex.double`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.double
 
-.. _`libtbx.help cctbx.array_family.flex.linear_correlation`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.linear_correlation
+.. _`libtbx.help cctbx.array_family.flex.linear_correlation`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.array_family.flex.linear_correlation
 
-.. _`libtbx.help cctbx.maptbx.peak_search_parameters`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.maptbx.peak_search_parameters
+.. _`libtbx.help cctbx.maptbx.peak_search_parameters`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.maptbx.peak_search_parameters
 
-.. _`libtbx.help cctbx.miller.array`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.miller.array
+.. _`libtbx.help cctbx.miller.array`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=cctbx.miller.array
 
-.. _`libtbx.help enumerate`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=enumerate
+.. _`libtbx.help enumerate`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=enumerate
 
-.. _`libtbx.help sys`: http://www.phenix-online.org/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=sys
+.. _`libtbx.help sys`: http://cci.lbl.gov/cctbx/cctbx_web.cgi?target_module=libtbx_help&query=sys
 
 .. _`RANTAN`: http://www.ccp4.ac.uk/dist/html/rantan.html
 
