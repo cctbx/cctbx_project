@@ -1,4 +1,4 @@
-import cosets
+from cctbx.sgtbx import cosets
 import cctbx
 from cctbx import sgtbx
 import sys
