@@ -108,11 +108,17 @@ class left_decomposition(object):
 
 
 class left_decomposition_point_groups_only(object):
+
   def __init__(self, g, h):
-    self.h_name = str( sgtbx.space_group_info( group = h ) )
-    self.g_name = str( sgtbx.space_group_info( group = g ) )
-    g = [s for s in g] # for speed, convert to plain Python list
-    h = [s for s in h]
+    def convert_to_plain_list(group): # for speed
+      assert group.n_ltr() == 1
+      result = []
+      for s in group:
+        assert s.t().is_zero()
+        result.append(s)
+      return result
+    g = convert_to_plain_list(group=g)
+    h = convert_to_plain_list(group=h)
     assert len(g) % len(h) == 0
     assert h[0].is_unit_mx()
     self.partition_indices = [-1] * len(g)
@@ -137,30 +143,6 @@ class left_decomposition_point_groups_only(object):
       self.partitions.append(partition)
     if (len(self.partitions) * len(h) != len(g)):
       raise RuntimeError("h is not a subgroup of g")
-
-  def show(self,out=None):
-    if out is None:
-      out = sys.stdout
-    count=0
-    print >> out, "Left cosets of :"
-    print >> out, "  subgroup  H: %s "%( self.h_name )
-    print >> out, "  and group G: %s "%( self.g_name )
-    for part in self.partitions:
-      extra_txt=" (all operators from H)"
-      if count>0:
-        extra_txt = ""
-      print >> out
-      print >> out, "  Coset number : %5s  %s"%(count, extra_txt)
-      print >> out
-      count += 1
-      for item in part:
-        print "%20s     Rotation: %4s ; direction: %10s ; screw/glide: %10s "%(
-          item,
-          item.r().info().type() ,
-          item.r().info().ev(),
-          "("+item.t().as_string()+")" )
-
-
 
 def double_unique(g, h1, h2):
   """g is the supergroup
