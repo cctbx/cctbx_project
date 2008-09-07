@@ -1909,18 +1909,14 @@ class symmetry_issues(object):
                miller_array,
                max_delta=3.0,
                r_cut=0.05,
-               scoring_function=None,
+               sigma_inflation = 1.25,
                out=None):
 
     self.out = out
     if self.out == None:
       self.out = sys.stdout
 
-    self.scoring_function = scoring_function
-
-    if scoring_function == None:
-      self.scoring_function=[ 0.08, 75.0, 0.08, 75.0 ]
-
+    self.inflate_sigma = sigma_inflation
 
     self.miller_array = miller_array
     self.xs_input = crystal.symmetry(miller_array.unit_cell(),
@@ -2003,7 +1999,7 @@ class symmetry_issues(object):
       tmp = self.miller_niggli.f_as_f_sq()
       merger = cctbx.xray.merger( tmp.indices(),
                                   tmp.data(),
-                                  tmp.sigmas(),
+                                  tmp.sigmas()*self.inflate_sigma,
                                   sgtbx.space_group_info(pg).group(),
                                   tmp.anomalous_flag(),
                                   tmp.unit_cell() )
@@ -2134,6 +2130,13 @@ class symmetry_issues(object):
       self.pg_choice ].allowed_xtal_syms:
       self.sg_possibilities.append( xs )
 
+  def return_point_groups(self):
+    #please return
+    # miller_array of niggli stuff
+    # Preffered symmetry
+    # Highest symmetry
+    result = [self.miller_niggli.f_as_f_sq(), self.pg_low_prim_set_name, self.pg_choice,self.pg_lattice_name]
+    return result
 
 
   def show(self, out=None):
@@ -2368,11 +2371,9 @@ class twin_analyses(object):
     perform_ncs_analyses=False
     n_ncs_bins=7
 
+    sigma_inflation = 1.25
     if additional_parameters is not None:
-      symm_issue_table = [additional_parameters.missing_symmetry.tanh_location,
-                          additional_parameters.missing_symmetry.tanh_slope,
-                          additional_parameters.missing_symmetry.tanh_location,
-                          additional_parameters.missing_symmetry.tanh_slope ]
+      sigma_inflation = additional_parameters.missing_symmetry.sigma_inflation
       perform_ncs_analyses = additional_parameters.twinning_with_ncs.perform_analyses
       n_ncs_bins = additional_parameters.twinning_with_ncs.n_bins
 
@@ -2438,7 +2439,9 @@ class twin_analyses(object):
       if miller_array.sigmas() is not None:
         # Look at systematic absences please
         import absences
-        self.abs_sg_anal = absences.protein_space_group_choices(miller_array = self.normalised_intensities.all, threshold = 3.0, out=out)
+        self.abs_sg_anal = absences.protein_space_group_choices(
+           miller_array = self.normalised_intensities.all,
+           threshold = 3.0, out=out, sigma_inflation=sigma_inflation)
     except Sorry: pass
 
 
@@ -2587,12 +2590,26 @@ class twin_analyses(object):
             data_plots.plot_data_loggraph(ml_murray_rust_plot,out_plots)
         # now we can check for space group related issues
     self.check_sg = None
+    self.suggested_space_group=None
     if self.n_twin_laws > 0:
       self.check_sg = symmetry_issues(
         miller_array,
         self.max_delta,
         out=out,
-        scoring_function=symm_issue_table)
+        sigma_inflation=sigma_inflation)
+
+      nig_data, pg_this_one, pg_choice, pg_high = self.check_sg.return_point_groups()
+      xs_choice = crystal.symmetry( nig_data.unit_cell(), pg_choice )
+      xs_high   = crystal.symmetry( nig_data.unit_cell(), pg_high )
+
+      if pg_choice != pg_high:
+           merge_data_and_guess_space_groups(miller_array=nig_data, xs=xs_high,out=out,
+                                             txt="Merging in *highest possible* point group %s.\n ***** THIS MIGHT NOT BE THE BEST POINT GROUP SYMMETRY *****  "%pg_high  )
+
+
+      if pg_choice != pg_this_one:
+        self.suggested_space_group = merge_data_and_guess_space_groups(miller_array=nig_data, xs=xs_choice,out=out,
+                                                                       txt="Merging in *suggested* point group %s "%pg_choice  )
 
     ##--------------------------
     self.twin_summary = twin_results_interpretation(
@@ -2603,6 +2620,44 @@ class twin_analyses(object):
       self.twin_law_dependent_analyses,
       self.check_sg,
       out=out)
+
+
+
+def merge_data_and_guess_space_groups(miller_array, txt, xs=None,out=None, sigma_inflation=1.0):
+  tmp_ma = miller_array.deep_copy()
+  if xs is None:
+    xs = tmp_ma.crystal_symmetry()
+  tmp_ma = miller_array.customized_copy( crystal_symmetry=xs )
+  merge_obj = tmp_ma.change_basis( xs.space_group_info().change_of_basis_op_to_reference_setting() ).merge_equivalents()
+  tmp_ma = merge_obj.array()
+  r_lin = merge_obj.r_linear()
+  normalizer = absolute_scaling.kernel_normalisation(tmp_ma, auto_kernel=True)
+  work_array = normalizer.normalised_miller.deep_copy()
+  abs_sg_anal = None
+  if tmp_ma.sigmas() is not None:
+    print >> out
+    print >> out
+    print >> out, "-"*len(txt)
+    print >> out, txt
+    print >> out, "-"*len(txt)
+    print >> out
+    merge_obj.show_summary(out=out)
+    print >> out
+    print >> out, "Suggesting various space group choices on the basis of systematic absence analyses"
+    print >> out
+    print >> out
+    this_worked=False
+    try:
+      if miller_array.sigmas() is not None:
+          # Look at systematic absences please
+          import absences
+          abs_sg_anal = absences.protein_space_group_choices(miller_array = work_array,
+              threshold = 3.0, out=out, print_all=False, sigma_inflation=sigma_inflation)
+          this_worked=True
+    except Sorry: pass
+    if not this_worked:
+      print >> out, "Systematic absence analyses failed"
+
 
 
 

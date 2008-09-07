@@ -380,21 +380,20 @@ class absences(object):
       result = True
     return result
 
-def likelihood(z,sigz,absent_or_centric_or_acentric):
-  e = math.sqrt(z)
-  sige = sigz/(2*e)
+def likelihood(z,sigz,absent_or_centric_or_acentric,sigma_inflation=1.0):
   import absence_likelihood
   flag = absent_or_centric_or_acentric
-  result = absence_likelihood.log_p( z,sigz,flag )
+  result = absence_likelihood.log_p( z,sigz*sigma_inflation,flag )
   return result
 
 
 class analyze_absences(object):
-  def __init__(self, miller_array, isigi_cut=3, out=None):
+  def __init__(self, miller_array, isigi_cut=3, out=None, sigma_inflation=1.0):
     if out is None:
       out = sys.stdout
     self.out = out
     self.cut = isigi_cut
+    self.sigma_inflation=sigma_inflation
     self.miller_array = miller_array.deep_copy()
 
     self.n_abs        = []
@@ -545,7 +544,7 @@ of violations in the non-absent class.
               # should be present. flag if not significant
               if i/sigi < self.cut:
                 n_n_abs_viol += 1
-              score += likelihood(i,sigi,centric_flag[1])
+              score += likelihood(i,sigi,centric_flag[1],self.sigma_inflation)
             else: #absent
               n_abs += 1
               isi_abs += i/sigi
@@ -631,7 +630,7 @@ class sgi_iterator(object):
 
 
 class protein_space_group_choices(object):
-  def __init__(self, miller_array,threshold = 3, out=None,protein=True):
+  def __init__(self, miller_array,threshold = 3, out=None,protein=True,print_all=True, sigma_inflation=1.0):
     self.out = out
     if self.out is None:
       self.out = sys.stdout
@@ -639,8 +638,9 @@ class protein_space_group_choices(object):
     self.threshold = 3.0
     self.miller_array = miller_array.deep_copy().f_sq_as_f().average_bijvoet_mates().f_as_f_sq().map_to_asu()
 
-    self.absences_table = analyze_absences(self.miller_array,threshold,self.out)
-    self.absences_table.show()
+    self.absences_table = analyze_absences(self.miller_array,threshold,self.out,sigma_inflation)
+    if print_all:
+      self.absences_table.show()
 
 
     self.sg_iterator = sgi_iterator(chiral = True,
