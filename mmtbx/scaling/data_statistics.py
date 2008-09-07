@@ -527,8 +527,8 @@ class analyze_measurability(object):
     if tmp_high.size()>0:
       self.high_d_cut = flex.max(tmp_high)
       self.high_d_cut = self.high_d_cut**(-0.5)
-
     self.meas_table=None
+
     if miller_array is not None:
       work_array = miller_array.deep_copy()
       work_array.setup_binner(n_bins=10)
@@ -553,35 +553,44 @@ class analyze_measurability(object):
       print >> out, "  When the data are processed properly and the standard "
       print >> out, "  deviations have been estimated accurately, values larger"
       print >> out, "  than 0.05 are encouraging. "
+      print >> out, "  Note that this analyses relies on the correctness of the estimated"
+      print >> out, "  standard deviations of the intensities. "
       print >> out
       self.meas_table.show(f=out)
       print >> out
 
-    if self.low_d_cut ==  self.high_d_cut :
-      print >> out, " The full resolution range seems to contain a usefull"
-      print >> out, " ammount of anomalous signal. Depending on your "
-      print >> out, " specific substructure, you could use all the data available"
-      print >> out, " for the location of the heavy atoms, or cut the resolution"
-      print >> out, " to speed up the search."
-    if self.low_d_cut < self.high_d_cut:
-      print >> out," The anomalous signal seems to extend to about %3.1f A"%(self.high_d_cut)
-      print >> out," (or to %3.1f A, from a more optimistic point of view)"%(
-        self.low_d_cut)
-      print >> out, " The quoted resolution limits can be used as a guideline"
-      print >> out, " to decide where to cut the resolution for phenix.hyss"
-      if self.high_d_cut < 3.0:
-        print >> out, " Depending however on the size and nature of your substructure"
-        print >> out, " you could cut the data at an even lower resolution to speed up"
-        print >> out, " the search."
-      if self.high_d_cut > 4.5:
-        print >> out, " As the anomalous signal is not very strong in this dataset"
-        print >> out, " substructure solution via SAD might prove to be a challenge."
-        print >> out, " Especially if only low resolution reflections are used,"
-        print >> out, " the resulting substructures could contain a significant amount"
-        print >> out, " of false positives."
-      if self.high_d_cut is None:
-        print >> out, " There seems to be no real significant anomalous differences"
-        print >> out, " in this dataset."
+    if ([self.low_d_cut,self.high_d_cut]).count(None)==0:
+      if self.low_d_cut ==  self.high_d_cut :
+        print >> out, " The full resolution range seems to contain a usefull"
+        print >> out, " ammount of anomalous signal. Depending on your "
+        print >> out, " specific substructure, you could use all the data available"
+        print >> out, " for the location of the heavy atoms, or cut the resolution"
+        print >> out, " to speed up the search."
+      if self.low_d_cut < self.high_d_cut:
+        print >> out," The anomalous signal seems to extend to about %3.1f A"%(self.high_d_cut)
+        print >> out," (or to %3.1f A, from a more optimistic point of view)"%(
+          self.low_d_cut)
+        print >> out, " The quoted resolution limits can be used as a guideline"
+        print >> out, " to decide where to cut the resolution for phenix.hyss"
+        if self.high_d_cut < 3.0:
+          print >> out, " Depending however on the size and nature of your substructure"
+          print >> out, " you could cut the data at an even lower resolution to speed up"
+          print >> out, " the search."
+        if self.high_d_cut > 4.5:
+          print >> out, " As the anomalous signal is not very strong in this dataset"
+          print >> out, " substructure solution via SAD might prove to be a challenge."
+          print >> out, " Especially if only low resolution reflections are used,"
+          print >> out, " the resulting substructures could contain a significant amount"
+          print >> out, " of false positives."
+      if ([self.high_d_cut,self.low_d_cut]).count(None)==2:
+          print >> out, " There seems to be no real significant anomalous differences"
+          print >> out, " in this dataset."
+      if ([self.high_d_cut,self.low_d_cut]).count(None)==1:
+        print >> out, "This should not have happend: please contact software authors"
+      print >> out
+      print >> out
+    else:
+      print >> out, " It looks like there is little to no anomalous signal in this dataset."
       print >> out
       print >> out
 
