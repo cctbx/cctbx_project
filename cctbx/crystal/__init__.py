@@ -74,7 +74,9 @@ class symmetry(object):
     return self._space_group_info
 
   def space_group(self):
-    return self.space_group_info().group()
+    sgi = self._space_group_info
+    if (sgi is None): return None
+    return sgi.group()
 
   def show_summary(self, f=None, prefix=""):
     if (f is None): f = sys.stdout

@@ -244,16 +244,19 @@ namespace xray {
         return true;
       }
 
-      FloatType u_eq(uctbx::unit_cell const& unit_cell) const {
-        using adptbx::u_star_as_u_iso;
+      //! Extracts sum of u_iso and u_star_as_u_iso (considering flags).
+      FloatType
+      u_iso_or_equiv(const uctbx::unit_cell* unit_cell) const
+      {
         FloatType result = 0;
         if (flags.use_u_aniso()) {
-          result = u_star_as_u_iso(unit_cell, u_star);
-          if (flags.use_u_iso()) result += u_iso;
+          CCTBX_ASSERT(
+            u_star != scitbx::sym_mat3<FloatType>(-1,-1,-1,-1,-1,-1));
+          CCTBX_ASSERT(unit_cell != 0);
+          result += adptbx::u_star_as_u_iso(*unit_cell, u_star);
         }
-        else if (flags.use_u_iso()) {
-          result = u_iso;
-          if (flags.use_u_aniso()) result += u_star_as_u_iso(unit_cell, u_star);
+        if (flags.use_u_iso()) {
+          result += u_iso;
         }
         return result;
       }

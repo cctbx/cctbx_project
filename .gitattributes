@@ -90,6 +90,9 @@ fftw3tbx/tst_ext.py svneol=native#text/x-python
 gltbx/wx_controllers.py -text
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
+iotbx/cif/__init__.py svneol=native#text/x-python
+iotbx/cif/tst_xray_structure.py svneol=native#text/x-python
+iotbx/cif/xray_structure.py svneol=native#text/x-python
 iotbx/cns/crystal_symmetry_utils.py svneol=native#text/x-python
 iotbx/command_line/pdb.b_factor_stats.py svneol=native#text/x-python
 iotbx/command_line/pdb.join_fragment_files.py svneol=native#text/x-python
