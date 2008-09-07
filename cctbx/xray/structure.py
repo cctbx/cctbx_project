@@ -1175,6 +1175,10 @@ class structure(crystal.special_position_settings):
     result.set_sites_cart(sites_cart)
     return result
 
+  def as_cif_simple(self, out=None):
+    import iotbx.cif.xray_structure
+    iotbx.cif.xray_structure.as_cif_simple(self, out=out)
+
   def as_pdb_file(self,
         remark=None,
         remarks=[],

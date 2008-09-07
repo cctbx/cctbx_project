@@ -594,23 +594,30 @@ def exercise_xray_scatterer():
 =#f-prime: 0
 =#f-double-prime: 4""")
 
-  # xray.scatterer.u_eq
   uc = uctbx.unit_cell((1,2,3, 89, 96, 107))
   for u_iso, u in [(0, 0), (0.04, 0), (0, 0.04), (0.04, 0.04)]:
     xs = xray.scatterer(label="C")
     xs.flags.set_use_u_iso(False)
     xs.flags.set_use_u_aniso(False)
-    if u:
+    if (u != 0):
       u_aniso = adptbx.u_cart_as_u_star(uc, (u/2, u, 2*u, 0, 0, 0))
     else:
-      u_aniso = 0
-    if u_iso:
+      u_aniso = None
+    if (u_iso != 0):
       xs.u_iso = u_iso
       xs.flags.set_use_u_iso(True)
-    if u_aniso:
+    if (u_aniso is not None):
       xs.u_star = u_aniso
       xs.flags.set_use_u_aniso(True)
-    assert approx_equal(xs.u_eq(uc), u_iso + 3.5*u/3)
+    expected = u_iso + 3.5*u/3
+    assert approx_equal(xs.u_iso_or_equiv(unit_cell=uc), expected)
+    if (u_aniso is None):
+      assert approx_equal(xs.u_iso_or_equiv(unit_cell=None), expected)
+    else:
+      try: xs.u_iso_or_equiv(unit_cell=None)
+      except RuntimeError, e:
+        assert str(e).startswith("cctbx InternalError: ")
+      else: raise Exception_expected
 
 def exercise_rotate():
   uc = uctbx.unit_cell((10, 10, 13))

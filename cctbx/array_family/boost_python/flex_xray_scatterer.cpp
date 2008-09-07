@@ -277,24 +277,11 @@ namespace cctbx { namespace xray { namespace {
   af::shared<double>
   extract_u_iso_or_u_equiv(
     af::ref<scatterer<> > const& self,
-    uctbx::unit_cell const& unit_cell)
+    uctbx::unit_cell const* unit_cell)
   {
     af::shared<double> result(af::reserve(self.size()));
     for(std::size_t i=0;i<self.size();i++) {
-      double u_iso_= 0.0;
-      if (self[i].flags.use_u_aniso()) {
-        CCTBX_ASSERT(
-           self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
-        u_iso_ += adptbx::u_star_as_u_iso(unit_cell, self[i].u_star);
-      }
-      if (self[i].flags.use_u_iso()) {
-        //CCTBX_ASSERT(self[i].u_iso >= 0.);
-        u_iso_ += self[i].u_iso;
-      }
-      if (!self[i].flags.use_u_iso() && !self[i].flags.use_u_aniso()) {
-       u_iso_ = -1.0;
-      }
-      result.push_back(u_iso_);
+      result.push_back(self[i].u_iso_or_equiv(unit_cell));
     }
     return result;
   }

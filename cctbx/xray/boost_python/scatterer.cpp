@@ -83,7 +83,8 @@ namespace {
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
                                 make_setter(&w_t::u_star, dcp()))
         .def_readwrite("flags", &w_t::flags)
-        .def("set_use_u", (void(w_t::*)(bool, bool)) &w_t::set_use_u, (arg_("iso"),arg_("aniso")))
+        .def("set_use_u", (void(w_t::*)(bool, bool)) &w_t::set_use_u, (
+          arg_("iso"),arg_("aniso")))
         .def("set_use_u", (void(w_t::*)(bool)) &w_t::set_use_u, (arg_("iso")))
         .def("convert_to_isotropic", &w_t::convert_to_isotropic, (
           arg_("unit_cell")))
@@ -98,7 +99,7 @@ namespace {
             &w_t::is_positive_definite_u, (
           arg_("unit_cell"),
           arg_("u_cart_tolerance")))
-        .def("u_eq", &w_t::u_eq)
+        .def("u_iso_or_equiv", &w_t::u_iso_or_equiv, (arg_("unit_cell")))
         .def("tidy_u",
           (void(w_t::*)(
             uctbx::unit_cell const&,
