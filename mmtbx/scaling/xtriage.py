@@ -27,12 +27,9 @@ import sys, os
 
 master_params = iotbx.phil.parse("""\
 scaling.input {
-   parameters
-   .help = "Basic parameters"
+   asu_contents
+   .help = "Defines the ASU contents"
    {
-     asu_contents
-     .help = "Defines the ASU contents"
-     {
        n_residues=None
        .type=float
        .help="Number of residues in structural unit"
@@ -42,68 +39,6 @@ scaling.input {
        n_copies_per_asu=None
        .type=float
        .help="Number of copies per ASU. If not specified, Matthews analyses is performed"
-     }
-
-     misc_twin_parameters
-     .help="Various settings for twinning or symmetry tests"
-     {
-       missing_symmetry
-       .help = "Settings for missing symmetry tests"
-       {
-         tanh_location = 0.08
-         .type=float
-         .help="R values associated with sym. ops. below this value are considered 'true' symmetry operators."
-         tanh_slope = 50
-         .type=float
-         .help="Affects the slope of the decision function. Better not touch it."
-       }
-
-       twinning_with_ncs
-       .help="Analysing the possibility of an NCS operator parallel to a twin law."
-       {
-         perform_analyses = False
-         .type = bool
-         .help = "Determines whether or not this analyses is carried out."
-         n_bins = 7
-         .type = int
-         .help = "Number of bins used in NCS analyses."
-       }
-
-       twin_test_cuts
-       .help = "Various cuts used in determining resolution limit for data used in intensity statistics "
-       {
-         low_resolution=10.0
-         .type=float
-         .help="Low resolution"
-         high_resolution=None
-         .type=float
-         .help = "High resolution"
-         isigi_cut=3.0
-         .type=float
-         .help="I/sigI ratio used in completeness cut "
-         completeness_cut=0.85
-         .type=float
-         .help='''Data is cut at resolution where intensities with
-            I/sigI greater than isigi_cut are more than
-            completeness_cut complete'''
-       }
-
-     }
-
-     reporting
-     .help="Some output issues"
-     {
-       verbose=1
-       .type=int
-       .help="Verbosity"
-       log=logfile.log
-       .type=str
-       .help="Logfile"
-       ccp4_style_graphs=True
-       .type=bool
-       .help="SHall we include ccp4 style graphs?"
-     }
-
    }
 
    xray_data
@@ -158,6 +93,71 @@ scaling.input {
      }
    }
 
+
+   parameters
+   .help="Basic settings"
+   {
+
+     reporting
+     .help="Some output issues"
+     {
+       verbose=1
+       .type=int
+       .help="Verbosity"
+       log=logfile.log
+       .type=str
+       .help="Logfile"
+       ccp4_style_graphs=True
+       .type=bool
+       .help="SHall we include ccp4 style graphs?"
+     }
+
+
+
+      misc_twin_parameters
+     .help="Various settings for twinning or symmetry tests"
+     {
+       missing_symmetry
+       .help = "Settings for missing symmetry tests"
+       {
+         sigma_inflation = 1.25
+         .type=float
+         .help="Standard deviations of intensities can be increased to make point group determination more reliable."
+       }
+
+       twinning_with_ncs
+       .help="Analysing the possibility of an NCS operator parallel to a twin law."
+       {
+         perform_analyses = False
+         .type = bool
+         .help = "Determines whether or not this analyses is carried out."
+         n_bins = 7
+         .type = int
+         .help = "Number of bins used in NCS analyses."
+       }
+
+       twin_test_cuts
+       .help = "Various cuts used in determining resolution limit for data used in intensity statistics "
+       {
+         low_resolution=10.0
+         .type=float
+         .help="Low resolution"
+         high_resolution=None
+         .type=float
+         .help = "High resolution"
+         isigi_cut=3.0
+         .type=float
+         .help="I/sigI ratio used in completeness cut "
+         completeness_cut=0.85
+         .type=float
+         .help='''Data is cut at resolution where intensities with
+            I/sigI greater than isigi_cut are more than
+            completeness_cut complete'''
+       }
+
+     }
+   }
+
    optional
    .expert_level=10
    .help="Optional data massage possibilities"
@@ -201,7 +201,7 @@ x-ray data set. See CCP4 newletter number 42, July 2005 for more information.
 
 The program options are summarized below
 
-1. scope: parameters.asu_contents
+1. scope: asu_contents
    keys: * n_residues :: Number of residues per monomer/unit
          * n_bases :: Number of nucleotides per monomer/unit
          * n_copies_per_asu :: Number of copies in the ASU.
@@ -210,18 +210,34 @@ The program options are summarized below
    If the number of residues/bases is not specified, a solvent content of 50%% is assumed.
 
 
-2. scope: parameters.misc_twin_parameters.missing_symmetry
-   keys: * tanh_location :: tanh decision rule parameter
-         * tanh_slope :: tanh decision rule parameter
+2a.scope: xray_data
+   keys: * file_name :: file name with xray data.
+         * obs_labels :: labels for observed data is format is mtz of XPLOR/CNS
+         * calc_labels :: optional; labels for calculated data
+         * unit_cell :: overrides unit cell in reflection file (if present)
+         * space_group :: overrides space group in reflection file (if prersent)
+         * high_resolution :: High resolution limit of the data
+         * low_resolution :: Low resolution limit of the data
 
-   The tanh_location and tanh_slope parameter control what R-value is considered to be
-   low enough to be considered a 'proper' symmetry operator. the tanh_location parameter
-   corresponds to the inflection point of the approximate step function. Increasing
-   tanh_location will result in large R-value thresholds.
-   tanh_slope is set to 50 and should be okai.
+   Note that the matching of specified and present labels involves a sub-string matching
+   algorithm. See 'Example usage'.
 
 
-3. scope: parameters.misc_twin_parameters.twinning_with_ncs
+2b.scope: xray_data.reference : A reference data set or structure.
+   keys:  data.file_name :: file name for xray data
+          structure.file_name :: file name of a PDB.
+                                 Specification of a reference structure triggers RvsR cacluations.
+
+3. scope: parameters.misc_twin_parameters.missing_symmetry
+   keys: * sigma_inflation :: Sigma inflation value in scoring function.
+
+   sigma_intensity_in_scoring_function = sigma_intensity*sigma_inflation
+
+   Larger values of sigma inflation will tend to result in the point group selection
+   algorithm to favour higher symmetry. If data is processed reasonably, the default
+   should be fine.
+
+4. scope: parameters.misc_twin_parameters.twinning_with_ncs
    keys: * perform_test :: can be set to True or False
          * n_bins :: Number of bins in determination of D_ncs
 
@@ -230,7 +246,7 @@ The program options are summarized below
    the twin axis.
 
 
-4. scope: parameters.misc_twin_parameters.twin_test_cuts
+5. scope: parameters.misc_twin_parameters.twin_test_cuts
    keys: * high_resolution : high resolution for twin tests
          * low_resolution: low resolution for twin tests
          * isigi_cut: I/sig(I) threshold in automatic determination
@@ -245,14 +261,14 @@ The program options are summarized below
    of the high_resolution keyword. The low resolution is set to 10A by default.
 
 
-5. scope: parameters.reporting
+6. scope: parameters.reporting
    keys: * verbose :: verbosity level.
          * log :: log file name
          * ccp4_style_graphs :: Either True or False. Determines whether or not
                                 ccp4 style logfgra plots are written to the log file
 
 
-6. scope: xray_data
+7. scope: xray_data
    keys: * file_name :: file name with xray data.
          * obs_labels :: labels for observed data is format is mtz of XPLOR/CNS
          * calc_labels :: optional; labels for calculated data
@@ -265,7 +281,7 @@ The program options are summarized below
    algorithm. See 'Example usage'.
 
 
-7. scope: optional
+8. scope: optional
    keys: * hklout :: output mtz or sca file
          * hklout_type :: sca, mtz or mtz_or_sca.
                           mtz_or_sca auto detects the format on the basis of the extension of hklout.
@@ -425,7 +441,7 @@ def run(args, command_name="phenix.xtriage"):
       help="suppress output")
   ).process(args=args)
   co = command_line.options
-  if (len(command_line.args) == 0):
+  if (len(args) == 0):
     command_line.parser.show_help()
   elif (co.long_help):
     print_help(appl=command_name)
@@ -508,7 +524,7 @@ def run(args, command_name="phenix.xtriage"):
     reset_space_group = False
     reset_unit_cell = False
 
-    if params.scaling.input.parameters.asu_contents.n_residues is None:
+    if params.scaling.input.asu_contents.n_residues is None:
       print >> log, "##-------------------------------------------##"
       print >> log, "## WARNING:                                  ##"
       print >> log, "## Number of residues unspecified            ##"
