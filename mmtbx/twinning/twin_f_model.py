@@ -46,7 +46,7 @@ from libtbx import Auto
 master_params =  iotbx.phil.parse("""
   twin_law = None
   .type=str
-  twin_target=*twin_lsq_f 
+  twin_target=*twin_lsq_f
   .type=choice
   detwin{
     mode = algebraic proportional *auto
@@ -893,7 +893,7 @@ class target_attributes(mmtbx.f_model.target_attributes):
   def __init__(self):
     mmtbx.f_model.target_attributes.__init__(self, family="ls")
     self.twin = "amplitudes"
-    self.pseudo_ml = False 
+    self.pseudo_ml = False
 
 class twin_model_manager(mmtbx.f_model.manager_mixin):
   def __init__(self,
@@ -2065,7 +2065,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
   def alpha_beta(self, external_sigmaa_object=None):
     sigmaa_object = external_sigmaa_object
-    if sigmaa_object is None: 
+    if sigmaa_object is None:
       sigmaa_object = self.sigmaa_object()
     return sigmaa_object.alpha_beta()
 
@@ -2123,7 +2123,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
   def w_star(self):
     t_o, t_c, t_free = self.detwin_data(mode='proportional')
     t_sigmaa_object  = self.sigmaa_object(t_o,t_c,t_free)
-    a,b = self.alpha_beta( t_sigmaa_object ) 
+    a,b = self.alpha_beta( t_sigmaa_object )
     obj = max_lik.f_star_w_star_mu_nu(
                                  f_obs          = t_o.data(),
                                  f_model        = flex.abs(t_c.data()),
@@ -2143,8 +2143,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                        self.xs.space_group(),
                                        self.f_obs.anomalous_flag(),
                                        self.twin_law.as_double_array()[0:9] )
-    twinned_weights = completion.twin_sum(weights, self.twin_fraction_object.twin_fraction) 
-    self.target_evaluator.set_weights( twinned_weights ) 
+    twinned_weights = completion.twin_sum(weights, self.twin_fraction_object.twin_fraction)
+    self.target_evaluator.set_weights( twinned_weights )
     return None
 
 
