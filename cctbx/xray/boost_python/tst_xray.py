@@ -595,29 +595,41 @@ def exercise_xray_scatterer():
 =#f-double-prime: 4""")
 
   uc = uctbx.unit_cell((1,2,3, 89, 96, 107))
-  for u_iso, u in [(0, 0), (0.04, 0), (0, 0.04), (0.04, 0.04)]:
+  results_u_cart_plus_u_iso = []
+  for u_iso, u_aniso in [(0, 0), (0.04, 0), (0, 0.04), (0.04, 0.04)]:
     xs = xray.scatterer(label="C")
     xs.flags.set_use_u_iso(False)
     xs.flags.set_use_u_aniso(False)
-    if (u != 0):
-      u_aniso = adptbx.u_cart_as_u_star(uc, (u/2, u, 2*u, 0, 0, 0))
-    else:
-      u_aniso = None
     if (u_iso != 0):
       xs.u_iso = u_iso
       xs.flags.set_use_u_iso(True)
-    if (u_aniso is not None):
-      xs.u_star = u_aniso
+    if (u_aniso != 0):
+      xs.u_star = adptbx.u_cart_as_u_star(
+        uc, (u_aniso/2, u_aniso, 2*u_aniso, 0, 0, 0))
       xs.flags.set_use_u_aniso(True)
-    expected = u_iso + 3.5*u/3
+    expected = u_iso + 3.5*u_aniso/3
     assert approx_equal(xs.u_iso_or_equiv(unit_cell=uc), expected)
-    if (u_aniso is None):
+    if (not xs.flags.use_u_aniso()):
       assert approx_equal(xs.u_iso_or_equiv(unit_cell=None), expected)
     else:
       try: xs.u_iso_or_equiv(unit_cell=None)
       except RuntimeError, e:
         assert str(e).startswith("cctbx InternalError: ")
       else: raise Exception_expected
+    results_u_cart_plus_u_iso.append(xs.u_cart_plus_u_iso(unit_cell=uc))
+    if (not xs.flags.use_u_aniso()):
+      assert approx_equal(
+        xs.u_cart_plus_u_iso(unit_cell=None), (u_iso,u_iso,u_iso,0,0,0))
+    else:
+      try: xs.u_cart_plus_u_iso(unit_cell=None)
+      except RuntimeError, e:
+        assert str(e).startswith("cctbx InternalError: ")
+      else: raise Exception_expected
+  assert approx_equal(results_u_cart_plus_u_iso, [
+    (0,0,0,0,0,0),
+    (0.04,0.04,0.04,0,0,0),
+    (0.02,0.04,0.08,0,0,0),
+    (0.06,0.08,0.12,0,0,0)])
 
 def exercise_rotate():
   uc = uctbx.unit_cell((10, 10, 13))
@@ -1913,7 +1925,6 @@ def run():
   exercise_xray_scatterer()
   exercise_conversions()
   exercise_gradient_flags()
-  exercise_xray_scatterer()
   exercise_scattering_type_registry()
   exercise_rotate()
   exercise_structure_factors()

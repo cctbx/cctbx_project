@@ -684,7 +684,7 @@ def write_pdb_file(
     sites_cart = sites_cart.select(selection)
     u_isos = u_isos.select(selection)
   occupancies = scatterers.extract_occupancies()
-  u_carts = scatterers.extract_u_cart_or_u_cart_plus_u_iso(xrs.unit_cell())
+  u_carts = scatterers.extract_u_cart_plus_u_iso(xrs.unit_cell())
   scat_types = scatterers.extract_scattering_types()
   if (pdb_atoms is None):
     pdb_atoms = pdb_hierarchy.atoms()

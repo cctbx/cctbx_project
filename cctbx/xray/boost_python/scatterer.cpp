@@ -100,6 +100,7 @@ namespace {
           arg_("unit_cell"),
           arg_("u_cart_tolerance")))
         .def("u_iso_or_equiv", &w_t::u_iso_or_equiv, (arg_("unit_cell")))
+        .def("u_cart_plus_u_iso", &w_t::u_cart_plus_u_iso, (arg_("unit_cell")))
         .def("tidy_u",
           (void(w_t::*)(
             uctbx::unit_cell const&,
