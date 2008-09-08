@@ -2,6 +2,8 @@
 boost_adaptbx/boost/std_pair.py -text
 boost_adaptbx/boost/tuple.py -text
 boost_adaptbx/command_line/divide_by_zero.py svneol=native#text/x-python
+boost_adaptbx/command_line/gcd.py svneol=native#text/x-python
+boost_adaptbx/command_line/lcm.py svneol=native#text/x-python
 boost_adaptbx/command_line/segmentation_fault.py svneol=native#text/x-python
 boost_adaptbx/command_line/show_environ_usage.py svneol=native#text/x-python
 boost_adaptbx/optional_fwd.h -text
