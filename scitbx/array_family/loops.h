@@ -13,7 +13,7 @@ namespace scitbx { namespace af {
   class nested_loop
   {
     public:
-      nested_loop() : over_(1) {}
+      nested_loop() : over_(true) {}
 
       explicit
       nested_loop(typename ArrayType::value_type const& end)
@@ -43,7 +43,7 @@ namespace scitbx { namespace af {
         ArrayType const& end,
         bool open_range=true)
       :
-        begin_(end), end_(end), current_(end), over_(1)
+        begin_(end), end_(end), current_(end), over_(true)
       {
         std::fill(begin_.begin(), begin_.end(), 0);
         current_ = begin_;
@@ -55,7 +55,7 @@ namespace scitbx { namespace af {
         ArrayType const& end,
         bool open_range=true)
       :
-        begin_(begin), end_(end), current_(begin), over_(1)
+        begin_(begin), end_(end), current_(begin), over_(true)
       {
         SCITBX_ASSERT(begin_.size() == end_.size());
         adjust_end_and_over(open_range);
@@ -70,7 +70,7 @@ namespace scitbx { namespace af {
           if (current_[i] < end_[i]) return true;
           current_[i] = begin_[i];
         }
-        over_++;
+        over_ = true;
         return false;
       }
 
@@ -83,14 +83,14 @@ namespace scitbx { namespace af {
       ArrayType const&
       operator()() const { return current_; }
 
-      std::size_t over()
+      bool over()
       const { return over_; }
 
     protected:
       ArrayType begin_;
       ArrayType end_;
       ArrayType current_;
-      std::size_t over_;
+      bool over_;
 
       void
       adjust_end_and_over(bool open_range)
@@ -102,7 +102,7 @@ namespace scitbx { namespace af {
         }
         for(std::size_t i=0;i<end_.size();i++) {
           SCITBX_ASSERT(end_[i] >= begin_[i]);
-          if (end_[i] > begin_[i]) over_ = 0;
+          if (end_[i] > begin_[i]) over_ = false;
         }
       }
   };
