@@ -1328,7 +1328,6 @@ class correlation_analyses(object):
       self.out = sys.stdout
 
     self.twin_law=sgtbx.change_of_basis_op( twin_law )
-    print "RDEN TDEN", miller_calc.space_group().r_den(), miller_calc.space_group().t_den()
     self.twin_law= self.twin_law.new_denominators( r_den=miller_calc.space_group().r_den(),
                                                    t_den=miller_calc.space_group().t_den() )
 
@@ -2599,8 +2598,8 @@ class twin_analyses(object):
         sigma_inflation=sigma_inflation)
 
       nig_data, pg_this_one, pg_choice, pg_high = self.check_sg.return_point_groups()
-      xs_choice = crystal.symmetry( nig_data.unit_cell(), pg_choice )
-      xs_high   = crystal.symmetry( nig_data.unit_cell(), pg_high )
+      xs_choice = crystal.symmetry( nig_data.unit_cell(), pg_choice, assert_is_compatible_unit_cell=False )
+      xs_high   = crystal.symmetry( nig_data.unit_cell(), pg_high, assert_is_compatible_unit_cell=False )
 
       if pg_choice != pg_high:
            merge_data_and_guess_space_groups(miller_array=nig_data, xs=xs_high,out=out,
