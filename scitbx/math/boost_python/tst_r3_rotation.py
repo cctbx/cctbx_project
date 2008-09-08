@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal
 from stdlib import math
+import sys
 
 def exercise_axis_and_angle(
       axis_range=2,
@@ -109,11 +110,15 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
       for g in [g0, -g0]:
         for t in [t0, -t0]:
           check_vector_to_vector(g=g, t=t)
+  if (sys.platform.startswith("osf")):
+    max_exp = 300
+  else:
+    max_exp = 340
   for ig,g0 in enumerate(principal_vectors):
     for it,t0 in enumerate(principal_vectors):
       if (ig == it): continue
       axis = g0.cross(t0)
-      for e in xrange(0, 340, angle_exponent_step):
+      for e in xrange(0, max_exp, angle_exponent_step):
         angle = 10**(-e)
         for angle in [angle, -angle]:
           r = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -130,7 +135,7 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
     check_vector_to_vector(g, -g)
     t = matrix.col(flex.random_double_point_on_sphere())
     check_vector_to_vector(g, t)
-    for e in xrange(0, 340, angle_exponent_step):
+    for e in xrange(0, max_exp, angle_exponent_step):
       angle = 10**(-e)
       for angle in [angle, -angle]:
         rt = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -141,7 +146,7 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
   #
   check_vector_to_001((0,0,1))
   check_vector_to_001((0,0,-1))
-  for e in xrange(0, 340, angle_exponent_step):
+  for e in xrange(0, max_exp, angle_exponent_step):
     angle = 10**(-e)
     for angle in [angle, -angle]:
       rg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -155,7 +160,7 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
   #
   check_vector_to_010((0,1,0))
   check_vector_to_010((0,-1,0))
-  for e in xrange(0, 340, angle_exponent_step):
+  for e in xrange(0, max_exp, angle_exponent_step):
     angle = 10**(-e)
     for angle in [angle, -angle]:
       rg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -169,7 +174,7 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
   #
   check_vector_to_100((1,0,0))
   check_vector_to_100((-1,0,0))
-  for e in xrange(0, 340, angle_exponent_step):
+  for e in xrange(0, max_exp, angle_exponent_step):
     angle = 10**(-e)
     for angle in [angle, -angle]:
       rg = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
