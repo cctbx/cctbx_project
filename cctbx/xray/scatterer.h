@@ -250,13 +250,27 @@ namespace xray {
       {
         FloatType result = 0;
         if (flags.use_u_aniso()) {
-          CCTBX_ASSERT(
-            u_star != scitbx::sym_mat3<FloatType>(-1,-1,-1,-1,-1,-1));
           CCTBX_ASSERT(unit_cell != 0);
           result += adptbx::u_star_as_u_iso(*unit_cell, u_star);
         }
         if (flags.use_u_iso()) {
           result += u_iso;
+        }
+        return result;
+      }
+
+      //! Extracts sum of u_iso and u_star_as_u_cart (considering flags).
+      scitbx::sym_mat3<double>
+      u_cart_plus_u_iso(const uctbx::unit_cell* unit_cell) const
+      {
+        scitbx::sym_mat3<double>
+          result = scitbx::sym_mat3<double>(0,0,0,0,0,0);
+        if (flags.use_u_aniso()) {
+          CCTBX_ASSERT(unit_cell != 0);
+          result += adptbx::u_star_as_u_cart(*unit_cell, u_star);
+        }
+        if (flags.use_u_iso()) {
+          for(unsigned i=0;i<3;i++) result[i] += u_iso;
         }
         return result;
       }

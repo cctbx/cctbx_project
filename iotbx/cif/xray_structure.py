@@ -88,5 +88,5 @@ loop_
     print >> out, "   ", \
       quote_string(sc.label), \
       format_floats(
-        values=adptbx.u_star_as_u_cif(uc, sc.u_star), # XXX u_cart_plus_u_iso
+        values=sc.u_cart_plus_u_iso(unit_cell=uc),
         zero_threshold=1.e-12)

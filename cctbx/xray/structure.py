@@ -264,11 +264,11 @@ class structure(crystal.special_position_settings):
     return performed
 
   def min_u_cart_eigenvalue(self):
-    u_carts = self._scatterers.extract_u_total_as_u_cart(self.unit_cell())
+    u_carts = self._scatterers.extract_u_cart_plus_u_iso(
+      unit_cell=self.unit_cell())
     result = flex.double()
     for i_seq, sc in enumerate(self._scatterers):
       if(sc.flags.use_u_iso() or sc.flags.use_u_aniso()):
-        assert u_carts[i_seq] != (-1,-1,-1,-1,-1,-1)
         result.append(min(adptbx.eigenvalues(u_carts[i_seq])))
     return flex.min(result)
 
@@ -426,8 +426,8 @@ class structure(crystal.special_position_settings):
       result.append(sct.strip().upper())
     return result
 
-  def extract_u_cart_or_u_cart_plus_u_iso(self):
-    return self._scatterers.extract_u_cart_or_u_cart_plus_u_iso(
+  def extract_u_cart_plus_u_iso(self):
+    return self._scatterers.extract_u_cart_plus_u_iso(
       unit_cell=self.unit_cell())
 
   def extract_u_iso_or_u_equiv(self):

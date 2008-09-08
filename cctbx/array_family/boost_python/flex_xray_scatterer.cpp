@@ -215,68 +215,9 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
-  af::shared<scitbx::sym_mat3<double> >
-  extract_u_cart_or_u_cart_plus_u_iso(
-    af::ref<scatterer<> > const& self,
-    uctbx::unit_cell const& unit_cell)
-  {
-    af::shared<scitbx::sym_mat3<double> > result(af::reserve(self.size()));
-    for(std::size_t i=0;i<self.size();i++) {
-      scitbx::sym_mat3<double> u_cart_=scitbx::sym_mat3<double>(0,0,0,0,0,0);
-      if (self[i].flags.use_u_aniso()) {
-        CCTBX_ASSERT(
-           self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
-        u_cart_ += adptbx::u_star_as_u_cart(unit_cell, self[i].u_star);
-      }
-      if (self[i].flags.use_u_iso()) {
-        if(self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1)) {
-          CCTBX_ASSERT(self[i].u_iso >= 0.);
-          u_cart_[0] += self[i].u_iso;
-          u_cart_[1] += self[i].u_iso;
-          u_cart_[2] += self[i].u_iso;
-        }
-        else {
-          u_cart_ = scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1);
-        }
-      }
-      if (!self[i].flags.use_u_iso() && !self[i].flags.use_u_aniso()) {
-       u_cart_ = scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1);
-      }
-      result.push_back(u_cart_);
-    }
-    return result;
-  }
-
-  af::shared<scitbx::sym_mat3<double> >
-  extract_u_total_as_u_cart(
-    af::ref<scatterer<> > const& self,
-    uctbx::unit_cell const& unit_cell)
-  {
-    af::shared<scitbx::sym_mat3<double> > result(af::reserve(self.size()));
-    for(std::size_t i=0;i<self.size();i++) {
-      scitbx::sym_mat3<double> u_cart_=scitbx::sym_mat3<double>(0,0,0,0,0,0);
-      if (self[i].flags.use_u_aniso()) {
-        CCTBX_ASSERT(
-           self[i].u_star != scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1));
-        u_cart_ += adptbx::u_star_as_u_cart(unit_cell, self[i].u_star);
-      }
-      if (self[i].flags.use_u_iso()) {
-          CCTBX_ASSERT(self[i].u_iso != -1);
-          u_cart_[0] += self[i].u_iso;
-          u_cart_[1] += self[i].u_iso;
-          u_cart_[2] += self[i].u_iso;
-      }
-      if (!self[i].flags.use_u_iso() && !self[i].flags.use_u_aniso()) {
-       u_cart_ = scitbx::sym_mat3<double>(-1,-1,-1,-1,-1,-1);
-      }
-      result.push_back(u_cart_);
-    }
-    return result;
-  }
-
   af::shared<double>
   extract_u_iso_or_u_equiv(
-    af::ref<scatterer<> > const& self,
+    af::const_ref<scatterer<> > const& self,
     uctbx::unit_cell const* unit_cell)
   {
     af::shared<double> result(af::reserve(self.size()));
@@ -286,9 +227,21 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
+  af::shared<scitbx::sym_mat3<double> >
+  extract_u_cart_plus_u_iso(
+    af::const_ref<scatterer<> > const& self,
+    uctbx::unit_cell const* unit_cell)
+  {
+    af::shared<scitbx::sym_mat3<double> > result(af::reserve(self.size()));
+    for(std::size_t i=0;i<self.size();i++) {
+      result.push_back(self[i].u_cart_plus_u_iso(unit_cell));
+    }
+    return result;
+  }
+
   af::shared<scitbx::vec3<double> >
   u_cart_eigenvalues(
-    af::ref<scatterer<> > const& self,
+    af::const_ref<scatterer<> > const& self,
     uctbx::unit_cell const& unit_cell)
   {
     af::shared<scitbx::vec3<double> > result(af::reserve(self.size()));
@@ -308,7 +261,7 @@ namespace cctbx { namespace xray { namespace {
 
   af::shared<double>
   anisotropy(
-    af::ref<scatterer<> > const& self,
+    af::const_ref<scatterer<> > const& self,
     uctbx::unit_cell const& unit_cell)
   {
     af::shared<double> result(af::reserve(self.size()));
@@ -630,14 +583,11 @@ namespace scitbx { namespace af { namespace boost_python {
       .def("extract_use_u_aniso", cctbx::xray::extract_use_u_aniso)
       .def("extract_u_iso_or_u_equiv", cctbx::xray::extract_u_iso_or_u_equiv,
         (arg_("unit_cell")))
+      .def("extract_u_cart_plus_u_iso", cctbx::xray::extract_u_cart_plus_u_iso,
+        (arg_("unit_cell")))
       .def("u_cart_eigenvalues", cctbx::xray::u_cart_eigenvalues,
         (arg_("unit_cell")))
       .def("anisotropy", cctbx::xray::anisotropy,
-        (arg_("unit_cell")))
-      .def("extract_u_cart_or_u_cart_plus_u_iso",
-                              cctbx::xray::extract_u_cart_or_u_cart_plus_u_iso,
-        (arg_("unit_cell")))
-      .def("extract_u_total_as_u_cart", cctbx::xray::extract_u_total_as_u_cart,
         (arg_("unit_cell")))
       .def("set_u_iso", cctbx::xray::set_u_iso,
         (arg_("u_iso"),arg_("selection"),arg_("unit_cell")))
