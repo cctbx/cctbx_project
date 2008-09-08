@@ -565,7 +565,8 @@ def exercise_phase_transfer():
   try:
     miller.phase_transfer(sg, i, a, p)
   except Exception, e:
-    if not str(e.__class__) == "<class 'Boost.Python.ArgumentError'>": raise
+    if (str(e.__class__).find("Boost.Python.ArgumentError") < 0):
+      raise RuntimeError("Unexpected exception: %s" % str(e))
   else:
     raise Exception_expected
 
