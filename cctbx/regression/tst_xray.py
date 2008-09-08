@@ -813,7 +813,7 @@ def exercise_f_obs_minus_xray_structure_f_calc(
   density_at_sites = [real_map.eight_point_interpolation(scatterer.site)
                       for scatterer in structure.scatterers()]
   try:
-    assert min(density_at_sites[:-1]) > 7
+    assert min(density_at_sites[:-1]) > 6.9
     assert density_at_sites[-1] > 2.5
   except AssertionError:
     print "density_at_sites:", density_at_sites
