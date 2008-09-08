@@ -39,7 +39,7 @@ def run():
       "    mv scons-0.96.1 scons"])
     raise Sorry("\n".join(msg))
   show_times_at_exit()
-  if os.environ['LIBTBX_RUN_SCONS_WITHOUT_WARNINGS']:
+  if (os.environ.get("LIBTBX_RUN_SCONS_WITHOUT_WARNINGS") is not None):
     # motivation: old scons spew warnings about os.popen() being unsafe
     # which XCode thinks are errors and L.B. can't live without XCode!
     import warnings
