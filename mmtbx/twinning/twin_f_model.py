@@ -46,20 +46,18 @@ from libtbx import Auto
 master_params =  iotbx.phil.parse("""
   twin_law = None
   .type=str
+  twin_target=*twin_lsq_f 
+  .type=choice
   detwin{
     mode = algebraic proportional *auto
     .type= choice
-    .short_caption = Detwin mode
     map_types{
       twofofc = *two_m_dtfo_d_fc two_dtfo_fc
       .type = choice
-      .short_caption = 2Fo-Fc map type
       fofc = *m_dtfo_d_fc gradient m_gradient
       .type = choice
-      .short_caption = Fo-Fc map type
       aniso_correct = False
       .type=bool
-
     }
   }
   """)
@@ -895,7 +893,7 @@ class target_attributes(mmtbx.f_model.target_attributes):
   def __init__(self):
     mmtbx.f_model.target_attributes.__init__(self, family="ls")
     self.twin = "amplitudes"
-    self.pseudo_ml = False
+    self.pseudo_ml = False 
 
 class twin_model_manager(mmtbx.f_model.manager_mixin):
   def __init__(self,
@@ -913,13 +911,18 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                n_refl_bin         = 2000,
                max_bins           = 20,
                detwin_mode = "auto",
-               map_types = master_params.extract().detwin.map_types
+               map_types = master_params.extract().detwin.map_types,
+               twin_target = master_params.extract().twin_target
                 ):
     self.alpha_beta_params=None
     self.twin = True
     self.sfg_params = sf_and_grads_accuracy_params
-    self.target_name="twin_lsq_f"
+    self.target_name=twin_target
     self._target_attributes = target_attributes()
+    if self.target_name =="pseudo_ml_f":
+      self.target_name = "twin_lsq_f"
+      self._target_attributes.pseudo_ml=True
+
     self.out = out
     self.did_search = 0
 
@@ -1274,6 +1277,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
                                out=None,
                                verbose=None
                                ):
+    if self._target_attributes.pseudo_ml:
+      self.set_pseudo_ml_weights()
     if initialise:
       self.bss.initial_scale_and_twin_fraction()
       self.scaling_parameters = self.bss.best_scaling_parameters
@@ -1310,6 +1315,10 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.data_core.usol( self.scaling_parameters.u_sol )
     self.apply_back_b_iso()
     self.update_xray_structure(update_f_calc=True)
+
+    if self._target_attributes.pseudo_ml:
+      self.set_pseudo_ml_weights()
+
 
 
   def update_core(self,
@@ -2015,15 +2024,29 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         raise Sorry("This should never have happend. Please contact authors")
     return dt_f_obs, tmp_f_model, tmp_free
 
-  def sigmaa_object(self, detwinned_data=None, f_model_data=None, forced_update=False):
+  def sigmaa_object(self, detwinned_data=None, f_model_data=None, tmp_free=None, forced_update=False):
     if self.sigmaa_object_cache is None:
       forced_update = True
     assert ( [detwinned_data,f_model_data] ).count(None) != 1
-    tmp_free = self.free_array
+    if tmp_free is None:
+      tmp_free = self.free_array
     if (detwinned_data is None):
       if forced_update or self.update_sigmaa_object is True:
         self.update_sigmaa_object = True
         detwinned_data,f_model_data,tmp_free = self.detwin_data(mode=self.detwin_mode)
+    else:
+      tmp_sigmaa_object = sigmaa_estimation.sigmaa_estimator(
+        miller_obs   = detwinned_data,
+        miller_calc  = f_model_data,
+        r_free_flags = tmp_free,
+        kernel_width_free_reflections=200,
+      )
+      if not forced_update:
+        return tmp_sigmaa_object
+      else:
+        self.sigmaa_object_cache = tmp_sigmaa_object
+        return self.sigmaa_object_cache
+
     if forced_update:
       self.update_sigmaa_object = True
       detwinned_data,f_model_data,tmp_free = self.detwin_data(mode=self.detwin_mode)
@@ -2041,23 +2064,25 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     return None
 
   def alpha_beta(self, external_sigmaa_object=None):
-    sigmaa_object = self.sigmaa_object()
+    sigmaa_object = external_sigmaa_object
+    if sigmaa_object is None: 
+      sigmaa_object = self.sigmaa_object()
     return sigmaa_object.alpha_beta()
 
-  def alpha_beta_w(self, only_if_required_by_target=False):
-    a,b = self.alpha_beta()
-    tmp_sigmaa = self.sigmaa_object()
-    tmp_free = tmp_sigmaa.r_free_flags
-    a = a.select( tmp_free.data() )
-    b = b.select( tmp_free.data() )
-    return a,b
-
-  def alpha_beta_f(self,only_if_required_by_target=False):
-    a,b = self.alpha_beta()
+  def alpha_beta_w(self, external_sigmaa_object=None, only_if_required_by_target=False):
+    a,b = self.alpha_beta(external_sigmaa_object=external_sigmaa_object)
     tmp_sigmaa = self.sigmaa_object()
     tmp_free = tmp_sigmaa.r_free_flags
     a = a.select( ~tmp_free.data() )
     b = b.select( ~tmp_free.data() )
+    return a,b
+
+  def alpha_beta_f(self,external_sigmaa_object=None,only_if_required_by_target=False):
+    a,b = self.alpha_beta(external_sigmaa_object=external_sigmaa_object)
+    tmp_sigmaa = self.sigmaa_object()
+    tmp_free = tmp_sigmaa.r_free_flags
+    a = a.select( tmp_free.data() )
+    b = b.select( tmp_free.data() )
     return a,b
 
   def figures_of_merit(self):
@@ -2068,14 +2093,14 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     tmp_sigmaa = self.sigmaa_object()
     tmp_free = tmp_sigmaa.r_free_flags
     fom = self.figures_of_merit().select(
-      tmp_free.data())
+      ~tmp_free.data())
     return fom
 
   def figures_of_merit_t(self):
     tmp_sigmaa = self.sigmaa_object()
     tmp_free = tmp_sigmaa.r_free_flags
     fom = self.figures_of_merit().select(
-      ~tmp_free.data())
+      tmp_free.data())
     return fom
 
   def phase_errors(self):
@@ -2085,14 +2110,43 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
   def phase_errors_work(self):
     tmp_sigmaa = self.sigmaa_object()
     tmp_free = tmp_sigmaa.r_free_flags
-    pher = self.phase_errors().select(tmp_free.data())
+    pher = self.phase_errors().select(~tmp_free.data())
     return pher
 
   def phase_errors_test(self):
     tmp_sigmaa = self.sigmaa_object()
     tmp_free = tmp_sigmaa.r_free_flags
-    pher = self.phase_errors().select(~tmp_free.data())
+    pher = self.phase_errors().select(tmp_free.data())
     return pher
+
+
+  def w_star(self):
+    t_o, t_c, t_free = self.detwin_data(mode='proportional')
+    t_sigmaa_object  = self.sigmaa_object(t_o,t_c,t_free)
+    a,b = self.alpha_beta( t_sigmaa_object ) 
+    obj = max_lik.f_star_w_star_mu_nu(
+                                 f_obs          = t_o.data(),
+                                 f_model        = flex.abs(t_c.data()),
+                                 alpha          = a.data(),
+                                 beta           = b.data(),
+                                 space_group    = self.f_obs.space_group(),
+                                 miller_indices = t_o.indices())
+    w_star_o = miller.array(miller_set = t_o,
+                            data       = obj.w_star())
+    self.sigmaa_object(forced_update=True)
+    return w_star_o
+
+
+  def set_pseudo_ml_weights(self):
+    weights = self.w_star().data()
+    completion = xray.twin_completion( self.f_obs.indices(),
+                                       self.xs.space_group(),
+                                       self.f_obs.anomalous_flag(),
+                                       self.twin_law.as_double_array()[0:9] )
+    twinned_weights = completion.twin_sum(weights, self.twin_fraction_object.twin_fraction) 
+    self.target_evaluator.set_weights( twinned_weights ) 
+    return None
+
 
   def determine_n_bins(self,
         free_reflections_per_bin,
@@ -2130,7 +2184,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        n        = None,
                        w1       = None,
                        w2       = None,
-                       b_sharp = None # XXX to make it not crashing: dummy parameter
+                       b_sharp  = 0.0,
                        ):
     assert map_type in ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
@@ -2160,6 +2214,9 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     aniso_scale = self.f_atoms.customized_copy(
       data = aniso_scale ).common_set( dt_f_obs )
     aniso_scale = aniso_scale.data()
+    if b_sharp==None:
+      b_sharp=0.0
+    b_sharp_scale = flex.exp(b_sharp*dt_f_obs.d_star_sq().data()/4.0)
 
     if map_type not in ["gradient","m_gradient"]:
       result = None
@@ -2170,7 +2227,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                   f_model       = tmp_f_model,
                                   f_obs_scale   = k,
                                   f_model_scale = n )
-
         assert result is not None
       else:
         sigmaa_object = self.sigmaa_object()
@@ -2207,6 +2263,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
       if self.map_types.aniso_correct:
         result = result.customized_copy( data = result.data()*aniso_scale )
+      if b_sharp != 0:
+        result = result.customized_copy( data = result.data()*b_sharp_scale )
 
       return result
 
@@ -2224,6 +2282,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
       if self.map_types.aniso_correct:
         gradients = gradients.customized_copy( data = gradients.data()*aniso_scale )
+
       return gradients
 
 
@@ -2235,8 +2294,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            w1                = None,
                            w2                = None,
                            resolution_factor = 1/3.,
-                           symmetry_flags = None,
-                           b_sharp = None): #  XXX to make it not crashing: dummy parameter
+                           symmetry_flags = None):
     assert map_type in ("Fo-Fc", "Fobs-Fmodel"
                         "2mFo-DFc", "2mFobs-DFmodel",
                         "mFo-DFc", "mFobs-DFmodel",
