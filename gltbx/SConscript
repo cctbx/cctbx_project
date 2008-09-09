@@ -49,6 +49,9 @@ if (not env_etc.no_boost_python):
       target="#lib/gltbx_util_ext",
       source=["util_ext.cpp"])
     env.SharedLibrary(
+      target="#lib/gltbx_viewer_ext",
+      source=["viewer_ext.cpp"])
+    env.SharedLibrary(
       target="#lib/gltbx_fonts_ext",
       source=[
         "fonts_ext.cpp",

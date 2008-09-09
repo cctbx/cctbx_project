@@ -89,6 +89,8 @@ fftw3tbx/ext.cpp svneol=native#text/plain
 fftw3tbx/libtbx_config -text
 fftw3tbx/libtbx_refresh.py svneol=native#text/x-python
 fftw3tbx/tst_ext.py svneol=native#text/x-python
+gltbx/viewer.py svneol=native#text/x-python
+gltbx/viewer_ext.cpp svneol=native#text/plain
 gltbx/wx_controllers.py -text
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
