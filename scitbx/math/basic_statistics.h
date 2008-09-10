@@ -3,6 +3,7 @@
 
 #include <scitbx/array_family/misc_functions.h>
 #include <scitbx/array_family/ref.h>
+#include <scitbx/math/accumulators.h>
 #include <cmath>
 #include <cstddef>
 
@@ -30,6 +31,7 @@ namespace scitbx { namespace math {
        */
       basic_statistics(af::const_ref<FloatType> values)
       {
+        using namespace accumulator;
         n = values.size();
         if (n == 0) {
           min = -1;
@@ -45,59 +47,52 @@ namespace scitbx { namespace math {
           skew = -1;
           kurtosis = -1;
           kurtosis_excess = -1;
+          return;
         }
-        else {
-          min = max = sum = values[0];
-          for(std::size_t i=1;i<n;i++) {
-            FloatType const& v = values[i];
-            if (min > v) min = v;
-            if (max < v) max = v;
-            sum += v;
-          }
-          if (-min > max) max_absolute = -min;
-          else            max_absolute = max;
-          mean = sum / static_cast<FloatType>(n);
-          FloatType sum_a = 0;
-          FloatType sum_2 = 0;
-          FloatType sum_3 = 0;
-          FloatType sum_4 = 0;
-          for(std::size_t i=0;i<n;i++) {
-            FloatType const& v = values[i];
-            FloatType vm = v - mean;
-            FloatType vms = vm * vm;
-            sum_a += fn::absolute(vm);
-            sum_2 += vms;
-            sum_3 += vms * vm;
-            sum_4 += vms * vms;
-          }
-          FloatType nf = static_cast<FloatType>(n);
-          mean_absolute_deviation_from_mean = sum_a / nf;
-          biased_variance = sum_2 / nf;
-          biased_standard_deviation = std::sqrt(biased_variance);
-          if (n == 1) {
-            bias_corrected_variance = -1;
-            bias_corrected_standard_deviation = -1;
-            skew = -1;
-            kurtosis = -1;
-            kurtosis_excess = -1;
-          }
-          else {
-            bias_corrected_variance = sum_2 / static_cast<FloatType>(n-1);
-            bias_corrected_standard_deviation = std::sqrt(
-              bias_corrected_variance);
-            if (   bias_corrected_variance == 0
-                || bias_corrected_standard_deviation == 0) {
-              skew = -1;
-              kurtosis = -1;
-              kurtosis_excess = -1;
-            }
-            else {
-              skew = (sum_3 / nf) / fn::pow3(biased_standard_deviation);
-              kurtosis = (sum_4 / nf) / fn::pow2(biased_variance);
-              kurtosis_excess = kurtosis - 3;
-            }
-          }
+        min_max_accumulator<FloatType,
+          mean_variance_accumulator<FloatType,
+            enumerated_accumulator<FloatType> > >
+              acc_1st(values[0]);
+        for(std::size_t i=1; i<n; i++) acc_1st(values[i]);
+        min = acc_1st.min();
+        max = acc_1st.max();
+        max_absolute = acc_1st.max_absolute();
+        sum = acc_1st.sum();
+        mean = acc_1st.mean();
+        biased_variance = acc_1st.biased_variance();
+        biased_standard_deviation = acc_1st.biased_standard_deviation();
+        if (n == 1) {
+          mean_absolute_deviation_from_mean = 0;
+          bias_corrected_variance = -1;
+          bias_corrected_standard_deviation = -1;
+          skew = -1;
+          kurtosis = -1;
+          kurtosis_excess = -1;
+          return;
         }
+        bias_corrected_variance = acc_1st.unbiased_variance();
+        bias_corrected_standard_deviation =
+          acc_1st.unbiased_standard_deviation();
+        if (bias_corrected_variance == 0) {
+          mean_absolute_deviation_accumulator<FloatType,
+            deviation_accumulator<FloatType> >
+              acc_2nd(mean);
+          mean_absolute_deviation_from_mean = acc_2nd.mean_absolute_deviation();
+          skew = -1;
+          kurtosis = -1;
+          kurtosis_excess = -1;
+          return;
+        }
+        kurtosis_accumulator<FloatType,
+          skew_accumulator<FloatType,
+            mean_absolute_deviation_accumulator<FloatType,
+              normalised_deviation_accumulator<FloatType> > > >
+                acc_2nd(mean, biased_standard_deviation);
+        for(std::size_t i=0;i<n;i++) acc_2nd(values[i]);
+        mean_absolute_deviation_from_mean = acc_2nd.mean_absolute_deviation();
+        skew = acc_2nd.skew();
+        kurtosis = acc_2nd.kurtosis();
+        kurtosis_excess = acc_2nd.kurtosis_excess();
       }
 
       //! Number of values.
