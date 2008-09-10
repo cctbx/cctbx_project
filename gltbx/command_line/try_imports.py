@@ -1,7 +1,7 @@
 def run():
   available = []
   missing = []
-  for module in ["gl", "glu", "fonts", "util"]:
+  for module in ["gl", "glu", "fonts", "util", "viewer_utils"]:
     try: exec "import gltbx."+module
     except ImportError: missing.append(module)
     else: available.append(module)
