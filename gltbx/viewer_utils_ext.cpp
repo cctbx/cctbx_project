@@ -11,7 +11,7 @@
 
 #include <set>
 
-namespace gltbx { namespace viewer {
+namespace gltbx { namespace viewer_utils {
 
   namespace af = scitbx::af;
 
@@ -93,9 +93,9 @@ namespace gltbx { namespace viewer {
       arg_("bonds_visible")));
   }
 
-}} // namespace gltbx::viewer
+}} // namespace gltbx::viewer_utils
 
-BOOST_PYTHON_MODULE(gltbx_viewer_ext)
+BOOST_PYTHON_MODULE(gltbx_viewer_utils_ext)
 {
-  gltbx::viewer::init_module();
+  gltbx::viewer_utils::init_module();
 }
