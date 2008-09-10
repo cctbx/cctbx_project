@@ -1,10 +1,14 @@
+#include <scitbx/array_family/boost_python/flex_fwd.h>
+
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
 
-#include <gltbx/error.h>
 #include <scitbx/vec3.h>
+
+#include <gltbx/error.h>
+
 #include <set>
 
 namespace gltbx { namespace viewer {
