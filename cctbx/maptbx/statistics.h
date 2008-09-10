@@ -4,10 +4,23 @@
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/loops.h>
 #include <scitbx/math/utils.h>
+#include <scitbx/math/accumulators.h>
 #include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 
 namespace cctbx { namespace maptbx {
+
+  namespace details {
+    using namespace scitbx::math::accumulator;
+
+    template <typename FloatType = double>
+    struct statistics_traits {
+      typedef min_max_accumulator<FloatType,
+                mean_variance_accumulator<FloatType,
+                  enumerated_accumulator<FloatType> > >
+              accumulator_t;
+    };
+  }
 
   //! Determines simple map statistics.
   template <typename FloatType = double>
@@ -15,63 +28,46 @@ namespace cctbx { namespace maptbx {
   {
     public:
       //! Default constructor. Data members are not initialized!
-      statistics() {}
+      statistics() : stats(0) {}
 
       //! Computes the statistics.
       template <typename OtherFloatType>
       statistics(af::const_ref<OtherFloatType, af::flex_grid<> > const& map)
+        : stats(0)
       {
         CCTBX_ASSERT(map.accessor().focus_size_1d() > 0);
         if (!map.accessor().is_padded()) {
-          min_ = af::min(map);
-          max_ = af::max(map);
-          mean_ = af::mean(map);
-          mean_sq_ = af::mean_sq(map);
+          stats = accumulator_t(map[0]);
+          for(std::size_t i=1; i < map.size(); ++i) stats(map[i]);
         }
         else {
-          min_ = max_ = map[0];
-          mean_ = mean_sq_ = FloatType(0);
           typedef typename af::flex_grid<>::index_type index_type;
           af::flex_grid<> zero_based = map.accessor().shift_origin();
-          af::nested_loop<index_type> loop(zero_based.focus());
-          std::size_t n = 0;
-          for (index_type const& pt = loop(); !loop.over(); loop.incr()) {
-            FloatType v = map[zero_based(pt)];
-            scitbx::math::update_min(min_, v);
-            scitbx::math::update_max(max_, v);
-            mean_ += v;
-            mean_sq_ += v * v;
-            n++;
-          }
-          mean_ /= FloatType(n);
-          mean_sq_ /= FloatType(n);
+          af::nested_loop<index_type> iter(zero_based.focus());
+          stats = accumulator_t(map[zero_based(iter())]);
+          while (iter.incr()) stats(map[zero_based(iter())]);
         }
-        sigma_ = mean_sq_ - mean_ * mean_;
-        if (sigma_ < FloatType(0)) sigma_ = 0;
-        sigma_ = std::sqrt(sigma_);
       }
 
       FloatType
-      min() const { return min_; }
+      min() const { return stats.min(); }
 
       FloatType
-      max() const { return max_; }
+      max() const { return stats.max(); }
 
       FloatType
-      mean() const { return mean_; }
+      mean() const { return stats.mean(); }
 
       FloatType
-      mean_sq() const { return mean_sq_; }
+      mean_sq() const { return stats.mean_squares(); }
 
       FloatType
-      sigma() const { return sigma_; }
+      sigma() const { return stats.biased_standard_deviation(); }
 
     protected:
-      FloatType min_;
-      FloatType max_;
-      FloatType mean_;
-      FloatType mean_sq_;
-      FloatType sigma_;
+      typedef typename details::statistics_traits<FloatType>::accumulator_t
+              accumulator_t;
+      accumulator_t stats;
   };
 
 }} // namespace cctbx::maptbx
