@@ -2,7 +2,7 @@
 #define CCTBX_CRYSTAL_SITE_CLUSTER_ANALYSIS_H
 
 #include <cctbx/crystal/direct_space_asu.h>
-#include <cctbx/crystal/cubicles.h>
+#include <scitbx/cubicles.h>
 
 namespace cctbx { namespace crystal {
 
@@ -28,7 +28,7 @@ namespace cctbx { namespace crystal {
       asu_mappings_t* asu_mappings_;
       typedef std::vector<direct_space_asu::asu_mapping_index>
         cubicle_content_t;
-      neighbors::cubicles<cubicle_content_t, FloatType> cubicles_;
+      scitbx::cubicles<cubicle_content_t, FloatType> cubicles_;
       std::vector<std::size_t> registry_new_;
 
     public:

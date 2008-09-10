@@ -1,5 +1,5 @@
-#ifndef CCTBX_CRYSTAL_CUBICLES_H
-#define CCTBX_CRYSTAL_CUBICLES_H
+#ifndef SCITBX_CUBICLES_H
+#define SCITBX_CUBICLES_H
 
 #include <scitbx/math/utils.h>
 #include <scitbx/array_family/versa.h>
@@ -7,7 +7,7 @@
 #include <scitbx/array_family/misc_functions.h>
 #include <cstdio>
 
-namespace cctbx { namespace crystal { namespace neighbors {
+namespace scitbx {
 
   namespace detail {
 
@@ -38,7 +38,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
 
     inline
     unsigned long
-    max_memory_allocation(unsigned long number_of_bytes, bool set)
+    cubicles_max_memory_allocation(unsigned long number_of_bytes, bool set)
     {
       static unsigned long n_bytes = 0;
       if (set) n_bytes = number_of_bytes;
@@ -49,16 +49,16 @@ namespace cctbx { namespace crystal { namespace neighbors {
 
   inline
   void
-  max_memory_allocation_set(unsigned long number_of_bytes)
+  cubicles_max_memory_allocation_set(unsigned long number_of_bytes)
   {
-    detail::max_memory_allocation(number_of_bytes, true);
+    detail::cubicles_max_memory_allocation(number_of_bytes, true);
   }
 
   inline
   unsigned long
-  max_memory_allocation_get()
+  cubicles_max_memory_allocation_get()
   {
-    return detail::max_memory_allocation(0, false);
+    return detail::cubicles_max_memory_allocation(0, false);
   }
 
   template <typename CubicleContentType, typename FloatType=double>
@@ -78,15 +78,15 @@ namespace cctbx { namespace crystal { namespace neighbors {
       space_min(space_min_),
       cubicle_edge(cubicle_edge_*(1+epsilon))
     {
-      CCTBX_ASSERT(cubicle_edge > 0);
-      CCTBX_ASSERT(epsilon > 0);
-      CCTBX_ASSERT(epsilon < 0.01);
+      SCITBX_ASSERT(cubicle_edge > 0);
+      SCITBX_ASSERT(epsilon > 0);
+      SCITBX_ASSERT(epsilon < 0.01);
       af::c_grid<3, unsigned> n_cubicles;
       for(std::size_t i=0;i<3;i++) {
         n_cubicles[i] = static_cast<unsigned>(
           std::max(1, fic::iceil(space_span[i] / cubicle_edge)));
       }
-      unsigned long max_alloc = max_memory_allocation_get();
+      unsigned long max_alloc = cubicles_max_memory_allocation_get();
       if (scitbx::math::unsigned_product_leads_to_overflow(
             n_cubicles.begin(), 3)) {
         detail::throw_show_cubicle_dimensions(
@@ -157,6 +157,6 @@ namespace cctbx { namespace crystal { namespace neighbors {
     af::ref<CubicleContentType, af::c_grid<3, unsigned> > ref;
   };
 
-}}} // namespace cctbx::crystal::neighbors
+} // namespace scitbx
 
-#endif // CCTBX_CRYSTAL_CUBICLES_H
+#endif // SCITBX_CUBICLES_H

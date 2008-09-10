@@ -19,7 +19,7 @@ namespace cctbx { namespace crystal {
       asu_mappings_t* asu_mappings_;
       typedef std::vector<direct_space_asu::asu_mapping_index>
         cubicle_content_t;
-      neighbors::cubicles<cubicle_content_t, FloatType> cubicles_;
+      scitbx::cubicles<cubicle_content_t, FloatType> cubicles_;
       typedef crystal::pair_asu_table<FloatType, IntShiftType>
         pair_asu_table_t;
       boost::shared_ptr<pair_asu_table_t> pair_asu_table_owner_;

@@ -2,7 +2,7 @@
 #define CCTBX_CRYSTAL_NEIGHBORS_FAST_H
 
 #include <cctbx/crystal/neighbors_simple.h>
-#include <cctbx/crystal/cubicles.h>
+#include <scitbx/cubicles.h>
 
 namespace cctbx { namespace crystal { namespace neighbors {
 
@@ -164,7 +164,7 @@ namespace cctbx { namespace crystal { namespace neighbors {
     protected:
       FloatType epsilon_;
       typedef std::vector<direct_space_asu::asu_mapping_index> box_content_t;
-      cubicles<box_content_t, FloatType> cubicles_;
+      scitbx::cubicles<box_content_t, FloatType> cubicles_;
       // loop state
       scitbx::vec3<unsigned> n_boxes_;
       scitbx::vec3<unsigned> i_box_;

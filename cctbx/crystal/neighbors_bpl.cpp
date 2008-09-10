@@ -96,9 +96,9 @@ namespace boost_python {
   {
     using namespace boost::python;
     def("neighbors_max_memory_allocation_set",
-      neighbors::max_memory_allocation_set, (arg_("number_of_bytes")));
+      scitbx::cubicles_max_memory_allocation_set, (arg_("number_of_bytes")));
     def("neighbors_max_memory_allocation_get",
-      neighbors::max_memory_allocation_get);
+      scitbx::cubicles_max_memory_allocation_get);
     neighbors::simple_pair_generator_wrappers::wrap();
     neighbors::fast_pair_generator_wrappers::wrap();
   }
