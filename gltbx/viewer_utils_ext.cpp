@@ -4,6 +4,7 @@
 #include <boost/python/def.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/optional.hpp>
 
 #include <scitbx/vec3.h>
 
@@ -75,7 +76,70 @@ namespace gltbx { namespace viewer_utils {
     handle_error();
   }
 
+  double norm_sq (
+    scitbx::vec3<double> point)
+  {
+    return (point[0]*point[0])+(point[1]*point[1])+(point[2]*point[2]);
+  }
+
+  scitbx::vec3<double> cross (
+    scitbx::vec3<double> a,
+    scitbx::vec3<double> b)
+  {
+    scitbx::vec3<double> product;
+    product[0] = a[1] * b[1] - b[1] * a[2];
+    product[1] = a[2] * b[0] - b[2] * a[0];
+    product[2] = a[0] * b[1] - b[0] * a[1];
+    return product;
+  }
+
+  double distance_sq (
+    scitbx::vec3<double> point,
+    scitbx::vec3<double> reference_point,
+    scitbx::vec3<double> delta,
+    double delta_norm_sq)
+  {
+    if (delta_norm_sq == 0) {
+      return norm_sq(point - reference_point);
+    }
+    scitbx::vec3<double> cross_product = cross(delta, point - reference_point);
+    return norm_sq(cross_product) / delta_norm_sq;
+  }
+
+  boost::optional<unsigned> closest_visible_point (
+    af::const_ref< scitbx::vec3<double> > const& points,
+    af::const_ref< bool > const& atoms_visible,
+    af::const_ref< scitbx::vec3<double> > const& pick_points,
+    double min_dist_sq = 1)
+  {
+    GLTBX_ASSERT(atoms_visible.size() == points.size());
+    GLTBX_ASSERT(pick_points.size() == 2);
+    scitbx::vec3<double> reference_point = pick_points[0];
+    scitbx::vec3<double> delta = pick_points[1] - reference_point;
+    double delta_norm_sq = norm_sq(delta);
+    //double min_dist_sq = 1;
+    bool found_neighbor_point = false;
+    unsigned closest_i_seq = 0;
+    for (unsigned i_seq = 0; i_seq < points.size(); i_seq++) {
+      if (! atoms_visible[i_seq]) continue;
+      double dist_sq = distance_sq(points[i_seq], reference_point, delta,
+        delta_norm_sq);
+      if (min_dist_sq > dist_sq) {
+        min_dist_sq = dist_sq;
+        closest_i_seq = i_seq;
+        found_neighbor_point = true;
+      }
+    }
+    if (found_neighbor_point) {
+      return boost::optional<unsigned>(closest_i_seq);
+    } else {
+      return boost::optional<unsigned>();
+    }
+  }
+
   BOOST_PYTHON_FUNCTION_OVERLOADS(draw_points_overloads, draw_points, 3, 4)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(closest_visible_point_overloads,
+    closest_visible_point, 3, 4)
 
   void
   init_module()
@@ -91,6 +155,12 @@ namespace gltbx { namespace viewer_utils {
       arg_("bonds"),
       arg_("atom_colors"),
       arg_("bonds_visible")));
+    def("closest_visible_point", closest_visible_point,
+      closest_visible_point_overloads((
+        arg_("points"),
+        arg_("atoms_visible"),
+        arg_("pick_points"),
+        arg_("min_dist_sq")=1.0)));
   }
 
 }} // namespace gltbx::viewer_utils
