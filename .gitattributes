@@ -52,6 +52,7 @@ cctbx/sgtbx/boost_python/select_generators.cpp -text
 cctbx/sgtbx/rational_matrices_point_groups.py -text
 cctbx/sgtbx/show_cosets.py -text
 cctbx/source_generators/flex_fwd_h.py -text
+cctbx/translation_search/notes.tex -text
 cctbx/uctbx/boost_python/tst_crystal_orientation.py -text
 cctbx/uctbx/crystal_orientation.cpp -text
 cctbx/xray/boost_python/grouped_data.cpp -text
