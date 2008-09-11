@@ -76,54 +76,35 @@ namespace gltbx { namespace viewer_utils {
     handle_error();
   }
 
-  double norm_sq (
-    scitbx::vec3<double> point)
-  {
-    return (point[0]*point[0])+(point[1]*point[1])+(point[2]*point[2]);
-  }
-
-  scitbx::vec3<double> cross (
-    scitbx::vec3<double> a,
-    scitbx::vec3<double> b)
-  {
-    scitbx::vec3<double> product;
-    product[0] = a[1] * b[2] - b[1] * a[2];
-    product[1] = a[2] * b[0] - b[2] * a[0];
-    product[2] = a[0] * b[1] - b[0] * a[1];
-    return product;
-  }
-
-  double distance_sq (
+  double line_given_points_distance_sq (
     scitbx::vec3<double> point,
     scitbx::vec3<double> reference_point,
     scitbx::vec3<double> delta,
     double delta_norm_sq)
   {
     if (delta_norm_sq == 0) {
-      return norm_sq(point - reference_point);
+      return (point - reference_point).length_sq();
     }
-    scitbx::vec3<double> cross_product = cross(delta, point - reference_point);
-    return norm_sq(cross_product) / delta_norm_sq;
+    return delta.cross(point - reference_point).length_sq() / delta_norm_sq;
   }
 
-  boost::optional<unsigned> closest_visible_point (
+  boost::optional<unsigned>
+  closest_visible_point (
     af::const_ref< scitbx::vec3<double> > const& points,
     af::const_ref< bool > const& atoms_visible,
-    af::const_ref< scitbx::vec3<double> > const& pick_points,
+    scitbx::vec3<double> const& point0,
+    scitbx::vec3<double> const& point1,
     double min_dist_sq = 1)
   {
     GLTBX_ASSERT(atoms_visible.size() == points.size());
-    GLTBX_ASSERT(pick_points.size() == 2);
-    scitbx::vec3<double> reference_point = pick_points[0];
-    scitbx::vec3<double> delta = pick_points[1] - reference_point;
-    double delta_norm_sq = norm_sq(delta);
-    //double min_dist_sq = 1;
+    scitbx::vec3<double> delta = point1 - point0;
+    double delta_norm_sq = delta.length_sq();
     bool found_neighbor_point = false;
     unsigned closest_i_seq = 0;
     for (unsigned i_seq = 0; i_seq < points.size(); i_seq++) {
       if (! atoms_visible[i_seq]) continue;
-      double dist_sq = distance_sq(points[i_seq], reference_point, delta,
-        delta_norm_sq);
+      double dist_sq = line_given_points_distance_sq(points[i_seq],
+        point0, delta, delta_norm_sq);
       if (min_dist_sq > dist_sq) {
         min_dist_sq = dist_sq;
         closest_i_seq = i_seq;
@@ -132,14 +113,13 @@ namespace gltbx { namespace viewer_utils {
     }
     if (found_neighbor_point) {
       return boost::optional<unsigned>(closest_i_seq);
-    } else {
-      return boost::optional<unsigned>();
     }
+    return boost::optional<unsigned>();
   }
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(draw_points_overloads, draw_points, 3, 4)
   BOOST_PYTHON_FUNCTION_OVERLOADS(closest_visible_point_overloads,
-    closest_visible_point, 3, 4)
+    closest_visible_point, 4, 5)
 
   void
   init_module()
@@ -159,7 +139,8 @@ namespace gltbx { namespace viewer_utils {
       closest_visible_point_overloads((
         arg_("points"),
         arg_("atoms_visible"),
-        arg_("pick_points"),
+        arg_("point0"),
+        arg_("point1"),
         arg_("min_dist_sq")=1.0)));
   }
 
