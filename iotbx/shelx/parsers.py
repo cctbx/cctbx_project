@@ -17,7 +17,7 @@ import libtbx.load_env
 from iotbx.shelx import util
 from iotbx.shelx.errors import error as shelx_error
 
-if (libtbx.env.dist_path("smtbx", default=None) is None):
+if (not libtbx.env.has_module(name="smtbx")):
   smtbx = None
 else:
   import smtbx

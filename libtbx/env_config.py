@@ -400,6 +400,9 @@ class environment:
       return self.module_dist_paths[module_name]
     return self.module_dist_paths.get(module_name, default)
 
+  def has_module(self, name):
+    return self.module_dist_paths.has_key(name)
+
   def dist_paths(self):
     for module in self.module_list:
       for dist_path in module.dist_paths_active():
