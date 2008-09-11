@@ -93,7 +93,8 @@ class variable_decoder(util.behaviour_of_variable):
         if i == u_iso_idx and p < -0.5:
           # p * (U_eq of the previous atom not constrained in this way)
           scatt, scatt_idx = self.builder.scatterer_to_bind_u_eq_to
-          u_iso = scatt.u_eq(self.builder.crystal_symmetry.unit_cell())
+          u_iso = scatt.u_iso_or_equiv(
+            self.builder.crystal_symmetry.unit_cell())
           values.append( -p*u_iso )
           behaviours.append((self.p_times_previous_u_eq, scatt_idx))
         else:
