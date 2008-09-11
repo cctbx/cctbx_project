@@ -87,7 +87,7 @@ namespace gltbx { namespace viewer_utils {
     scitbx::vec3<double> b)
   {
     scitbx::vec3<double> product;
-    product[0] = a[1] * b[1] - b[1] * a[2];
+    product[0] = a[1] * b[2] - b[1] * a[2];
     product[1] = a[2] * b[0] - b[2] * a[0];
     product[2] = a[0] * b[1] - b[0] * a[1];
     return product;
