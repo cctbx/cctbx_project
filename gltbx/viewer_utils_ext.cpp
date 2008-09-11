@@ -1,9 +1,14 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
+#include <scitbx/array_family/shared.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/overloads.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
+#include <boost/python/return_arg.hpp>
 #include <boost/optional.hpp>
 
 #include <scitbx/vec3.h>
@@ -46,6 +51,62 @@ namespace gltbx { namespace viewer_utils {
     handle_error();
   }
 
+  class atom_visibility
+  {
+    public :
+      af::shared< bool > atoms_visible;
+      af::shared< bool > bonds_visible;
+      af::shared< bool > points_visible;
+      unsigned visible_atoms_count;
+      unsigned visible_bonds_count;
+      unsigned visible_points_count;
+
+      atom_visibility() {}
+
+      atom_visibility (
+        af::const_ref< std::set< unsigned > > const& bonds,
+        af::const_ref< bool > atom_is_h,
+        bool flag_show_hydrogens,
+        bool flag_show_points)
+      {
+        typedef std::set< unsigned >::const_iterator it;
+        unsigned atom_count = bonds.size();
+        visible_atoms_count = 0;
+        visible_bonds_count = 0;
+        visible_points_count = 0;
+        atoms_visible  = af::shared< bool >(atom_count);
+        bonds_visible  = af::shared< bool >(atom_count);
+        points_visible = af::shared< bool >(atom_count);
+        for (unsigned i_seq = 0; i_seq < atom_count; i_seq++) {
+          if (bonds[i_seq].size() > 0) {
+            if ((flag_show_hydrogens == true) || (! atom_is_h[i_seq])) {
+              atoms_visible[i_seq] = true;
+              visible_atoms_count++;
+            }
+          } else if (flag_show_points == true) {
+            atoms_visible[i_seq] = true;
+            visible_atoms_count++;
+          }
+        }
+        for (unsigned i_seq = 0; i_seq < atom_count; i_seq++) {
+          if (atoms_visible[i_seq]) {
+            it j_seqs_end = bonds[i_seq].end();
+            for (it j_seq = bonds[i_seq].begin(); j_seq != j_seqs_end; j_seq++){
+              if (atoms_visible[*j_seq]) {
+                bonds_visible[i_seq] = true;
+                visible_bonds_count++;
+              }
+            }
+            if (! bonds_visible[i_seq]) {
+              points_visible[i_seq] = true;
+              visible_points_count++;
+            }
+          }
+        }
+        return;
+      }
+  };
+
   void
   draw_bonds (
     af::const_ref< scitbx::vec3<double> > const& points,
@@ -56,10 +117,10 @@ namespace gltbx { namespace viewer_utils {
     GLTBX_ASSERT(bonds.size() == points.size());
     GLTBX_ASSERT(atom_colors.size() == points.size());
     GLTBX_ASSERT(bonds_visible.size() == points.size());
+    typedef std::set< unsigned >::const_iterator it;
     for (unsigned i_seq = 0; i_seq < points.size(); i_seq++) {
       if (! bonds_visible[i_seq]) continue;
       scitbx::vec3<double> const& pi = points[i_seq];
-      typedef std::set< unsigned >::const_iterator it;
       it j_seqs_end = bonds[i_seq].end();
       for (it j_seq = bonds[i_seq].begin(); j_seq != j_seqs_end; j_seq++) {
         if (! bonds_visible[*j_seq]) continue;
@@ -142,6 +203,24 @@ namespace gltbx { namespace viewer_utils {
         arg_("point0"),
         arg_("point1"),
         arg_("min_dist_sq")=1.0)));
+    typedef atom_visibility a_v;
+    typedef return_value_policy<return_by_value> rbv;
+    class_<a_v>("atom_visibility", no_init)
+      .def(init<af::const_ref< std::set<unsigned> > const&,
+                af::const_ref<bool> const&,
+                bool,
+                bool>((
+        arg_("bonds"),
+        arg_("atom_is_h"),
+        arg_("flag_show_hydrogens"),
+        arg_("flag_show_points"))))
+      .def_readonly("visible_atoms_count", &a_v::visible_atoms_count)
+      .def_readonly("visible_bonds_count", &a_v::visible_bonds_count)
+      .def_readonly("visible_points_count", &a_v::visible_points_count)
+      .add_property("atoms_visible", make_getter(&a_v::atoms_visible, rbv()))
+      .add_property("bonds_visible", make_getter(&a_v::bonds_visible, rbv()))
+      .add_property("points_visible", make_getter(&a_v::points_visible, rbv()))
+    ;
   }
 
 }} // namespace gltbx::viewer_utils
