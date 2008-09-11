@@ -1,0 +1,111 @@
+\documentclass[11pt]{article}
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{a4paper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{epstopdf}
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+
+\title{Notes on the Fast Translation Function}
+\author{Luc J. Bourhis}
+\date{\today}                                           % Activate to display a given date or no date
+
+\newcommand{\mean}[1]{\left\langle #1 \right\rangle}
+\newcommand{\modulus}[1]{\left| #1 \right|}
+\newcommand{\sym}[2]{\left( #1 \mid #2 \right)}
+\newcommand{\cov}[2]{\mathrm{Cov}\left(#1,#2\right)}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\bibliographystyle{plain}
+
+\begin{document}
+\maketitle
+%\section{}
+%\subsection{}
+
+These are an alternative, clearer derivation of the results in~\cite{J.Navaza:1995}.
+
+We start from $f(h)$, the structure factors of some structure. We will consider two contexts in these notes:
+\begin{itemize}
+\item the macro-molecular context, which is that of~\cite{J.Navaza:1995}, for which $f(h)$ models one protein in the unit cell, and
+\item an electron density map produced by any solution method working in P1, e.g. charge flipping (it should be noted that the method we are going to discuss will work better if that map has been polished by a few cycles of low density elimination~\cite{Shiono:1992}).
+\end{itemize}
+
+Then given a set of symmetry elements, we build the symmetrization $F_x$ of the translation of $f$ by a shift $x$ (slight abuse of language here since the Fourier transform of $f$ is what is actually translated by $x$). In the macro-molecular context, that would correspond to the unit-cell content obtained by placing the molecule at that position $x$ and then putting in all its symmetric mates. In the solution map context, $F$ is the solved structure averaged under the symmetry set after being shifted by $x$.
+
+\begin{equation}
+F_x(h) = \sum_{\sym{R}{t}} f(h^T R) e^{i2\pi h.t} e^{i2\pi h^T R x}
+\end{equation}
+
+Then we wish to find a criteria to decide which $x$ gives the best agreement between $F_x$ and the observed $F_o$. To do so we use a least-square approach with a bias $\mu$ and a scale $\lambda$ based on the intensities $I_o = \modulus{F_o}^2$ and $I_x = \modulus{F_x}^2$.
+\begin{equation}
+Q = \frac{1}{\sum_h m(h)} \sum_h m(h) \left(I_o(h) - \lambda I_x(h) - \mu\right)^2
+\end{equation}
+The weights are the multiplicity of the reflections.
+
+The minimisation of $Q$ is a standard procedure. First, we rewrite it first in terms of means
+
+\begin{equation*}
+Q = \mean{I_o^2} -2\lambda\mean{I_o I_x} -2\mu\mean{I_o} -2\lambda\mu\mean{I_x} + \lambda^2\mean{I_x^2} + \mu^2
+\end{equation*}
+
+and then in terms of variances and covariances
+\begin{equation*}
+\begin{split}
+Q = V(I_o) + \mean{I_o}^2 -2\lambda(\cov{I_o}{I_x} + \mean{I_o}\mean{I_x}) -2\mu\mean{I_o}
+\\
+-2\lambda\mu \mean{I_x} + \lambda^2(V(I_x) + \mean{I_x}^2) + \mu^2
+\end{split}
+\end{equation*}
+and we then factorize
+\begin{equation*}
+Q = [\mu - \lambda \mean{I_x} - \mean{I_o}]^2 + \underbrace{V(I_o) - 2\lambda\cov{I_o}{I_x} + \lambda^2V(I_x)}_{\displaystyle V(I_x)[\lambda - \cov{I_o}{I_x}]^2 + V(I_o) - \frac{\cov{I_o}{I_x}}{V(I_x)}}
+\end{equation*}
+Therefore the minimum of Q is
+\begin{align}
+Q_{min} &= V(I_o)(1-C(x)^2)\\
+\intertext{where}
+C(x) &= \frac{\cov{I_o}{I_x}}{\sqrt{V(I_o)V(I_x)}}
+\end{align}
+is the correlation between $I_o$ and $I_x$. This is eq.~(10) written with $F^2$ instead of $F$ in~\cite{J.Navaza:1995}, but in a more recognisable form! Note that it is obtained for
+\begin{align}
+\lambda &= \cov{I_o}{I_x}\\
+\mu &= \lambda\mean{I_x} + \mean{I_o}. 
+\end{align}
+
+Let us now show how to write $C(x)$ in terms of Fourier transforms. First we define
+\begin{equation}
+f^{\sym{R}{t}}(h) = f(h^T R) e^{i2\pi h.t}
+\end{equation}
+which is the Fourier transform of the electron density transformed by $\sym{R}{t}$.
+Then $C(x)$ can be expressed with the following 3 sums (those are equations (13), (14) and (15) in~\cite{J.Navaza:1995} without a model already placed in the unit cell\footnote{That case which typically occurs in the macro-molecular context could be useful in the solution map context if the solution method was seeded by a partial structure, e.g. heavy atoms from Patterson. Thus, todo: write up that case too!}, i.e. $F_H(\mathbf{x}) = 0$):
+
+\begin{equation}
+\mean{I_x} = \frac{1}{\sum_h m(h)}\sum_h m(h) \sum_{\sym{R_1}{t_1}} \sum_{\sym{R_2}{t_2}} f^{\sym{R_1}{t_1}}(h) {f^{\sym{R_2}{t_2}}(h)}^* e^{i2\pi h^T (R_1 - R_2)x} 
+\label{meanIx}
+\end{equation}
+
+\begin{equation}
+\begin{split}
+\mean{I_x^2} = \frac{1}{\sum_h m(h)}&\sum_h m(h) \sum_{\sym{R_1}{t_1}} \sum_{\sym{R_2}{t_2}} \sum_{\sym{R_3}{t_3}} \sum_{\sym{R_4}{t_4}} \\
+&f^{\sym{R_1}{t_1}}(h) {f^{\sym{R_2}{t_2}}(h)}^* f^{\sym{R_3}{t_3}}(h) {f^{\sym{R_4}{t_4}}(h)}^* e^{i2\pi h^T (R_1 - R_2 + R_3 - R_4)x}
+\end{split}
+\label{meanIxsq}
+\end{equation}
+
+\begin{equation}
+\mean{I_x I_o} = \frac{1}{\sum_h m(h)}\sum_h m(h)  I_o(h) \sum_{\sym{R_1}{t_1}} \sum_{\sym{R_2}{t_2}} f^{\sym{R_1}{t_1}}(h) {f^{\sym{R_2}{t_2}}(h)}^* e^{i2\pi h^T (R_1 - R_2)x}
+\label{meanIxIo}
+\end{equation}
+
+All those sums are over a discrete set of miller indices and they can therefore be computed by FFT. It should also be noted that~\ref{meanIx} and~\ref{meanIxIo} involve the same sums with different weights, a fact that is reflected in the cctbx code by handling those two cases with the same code (c.f. class \code{fast\_terms} in \code{cctbx/translation\_search/fast\_terms.h}). As noted by~\cite{J.Navaza:1995}, the fact those those quantities can be computed as FFT's result from choosing $F^2$ instead of $F$ in the least-squares target $Q$. Had we used the latter, we would have to deal with $\mean{|F_x|}$, which is is not a discrete trigonometric is sum, thus ending up with a correlation coefficient which cannot be computed by FFT.
+
+If we know the space group, the set of symmetries can be taken as the space-group. The procedure is then only used to find the origin shift $x$. If we do not know the space-group, we can compute $C(x)$ for a set reduced to the identity and a symmetry element we want to test, and do that for all symmetry operators we wish to test.
+
+\bibliography{../../dox/references}
+
+
+\end{document}  
