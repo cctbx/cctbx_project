@@ -41,16 +41,16 @@ def exercise_copy():
     #
     m = flex_type()
     for i in xrange(2):
-     for j in xrange(3):
-       for k in xrange(5):
-         m.append(i*100+j*10+k)
+      for j in xrange(3):
+        for k in xrange(5):
+          m.append(i*100+j*10+k)
     m.resize(flex.grid(2,3,5).set_focus((2,3,4)))
     for i in xrange(-5,5):
-     for j in xrange(-5,5):
-       for k in xrange(-5,5):
-         c = maptbx.copy(map_unit_cell=m, first=(i,j,k), last=(i,j,k))
-         assert c.size() == 1
-         assert c[(i,j,k)] == m[(i%2,j%3,k%4)]
+      for j in xrange(-5,5):
+        for k in xrange(-5,5):
+          c = maptbx.copy(map_unit_cell=m, first=(i,j,k), last=(i,j,k))
+          assert c.size() == 1
+          assert c[(i,j,k)] == m[(i%2,j%3,k%4)]
     c = maptbx.copy(map_unit_cell=m, first=(-1,1,-2), last=(1,2,0))
     assert list(c) == [112, 113, 110, 122, 123, 120,  12,  13,  10,
                         22,  23,  20, 112, 113, 110, 122, 123, 120]
@@ -86,6 +86,7 @@ def exercise_copy():
       26,27,28,29]
 
 def exercise_statistics():
+  import scitbx.math
   for flex_type in flex_types():
     a = flex_type(flex.grid((3,5)))
     s = maptbx.statistics(a)
@@ -120,6 +121,39 @@ def exercise_statistics():
     assert approx_equal(s.mean(), t.mean())
     assert approx_equal(s.mean_sq(), t.mean_sq())
     assert approx_equal(s.sigma(), t.sigma())
+  a = flex.double(flex.grid(5,3))
+  s = maptbx.more_statistics(a)
+  assert s.min() == 0
+  assert s.max() == 0
+  assert s.mean() == 0
+  assert s.mean_sq() == 0
+  assert s.sigma() == 0
+  assert s.skewness() == 0
+  assert s.kurtosis() == 0
+  a = flex.random_double(5*3)
+  reference = scitbx.math.basic_statistics(a)
+  a.resize(flex.grid(5,3))
+  s = maptbx.more_statistics(a)
+  assert approx_equal(s.min(), reference.min)
+  assert approx_equal(s.max(), reference.max)
+  assert approx_equal(s.mean(), reference.mean)
+  assert approx_equal(s.sigma(), reference.biased_standard_deviation)
+  assert approx_equal(s.skewness(), reference.skew)
+  assert approx_equal(s.kurtosis(), reference.kurtosis)
+  b = flex.double(flex.grid((6,4)).set_focus((5,3)))
+  for i in xrange(5):
+    for j in xrange(3):
+      b[(i,j)] = a[(i,j)]
+  b[(5,3)] = -1
+  b[(5,2)] = 2
+  b.resize(flex.grid((3,-2), (9,2)).set_focus((8,1)))
+  t = maptbx.statistics(b)
+  assert approx_equal(s.min(), reference.min)
+  assert approx_equal(s.max(), reference.max)
+  assert approx_equal(s.mean(), reference.mean)
+  assert approx_equal(s.sigma(), reference.biased_standard_deviation)
+  assert approx_equal(s.skewness(), reference.skew)
+  assert approx_equal(s.kurtosis(), reference.kurtosis)
 
 def exercise_grid_tags():
   t = maptbx.grid_tags((8,10,12))
