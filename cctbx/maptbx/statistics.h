@@ -11,14 +11,74 @@
 namespace cctbx { namespace maptbx {
 
   namespace details {
+    template <class AccumulatorType>
+    struct generic_statistics
+    {
+      generic_statistics() : accumulator(0) {}
+
+      template <typename FloatType>
+      generic_statistics(af::const_ref<FloatType, af::flex_grid<> > const& map)
+        : accumulator(0)
+      {
+        CCTBX_ASSERT(map.accessor().focus_size_1d() > 0);
+        if (!map.accessor().is_padded()) {
+          accumulator = AccumulatorType(map[0]);
+          for(std::size_t i=1; i < map.size(); ++i) accumulator(map[i]);
+        }
+        else {
+          typedef typename af::flex_grid<>::index_type index_type;
+          af::flex_grid<> zero_based = map.accessor().shift_origin();
+          af::nested_loop<index_type> iter(zero_based.focus());
+          accumulator = AccumulatorType(map[zero_based(iter())]);
+          while (iter.incr()) accumulator(map[zero_based(iter())]);
+        }
+      }
+
+      AccumulatorType accumulator;
+    };
+
+    template <class AccumulatorType>
+    struct generic_statistical_moments
+    {
+      generic_statistical_moments() : accumulator(0,1) {}
+
+      template <typename FloatType, typename OtherFloatType>
+      generic_statistical_moments(
+        af::const_ref<OtherFloatType, af::flex_grid<> > const& map,
+        FloatType about, FloatType width
+      )
+        : accumulator(about, width)
+      {
+        CCTBX_ASSERT(map.accessor().focus_size_1d() > 0);
+        if (width == 0) return;
+        if (!map.accessor().is_padded()) {
+          for(std::size_t i=0; i < map.size(); ++i) accumulator(map[i]);
+        }
+        else {
+          typedef typename af::flex_grid<>::index_type index_type;
+          af::flex_grid<> zero_based = map.accessor().shift_origin();
+          for(af::nested_loop<index_type> iter(zero_based.focus());
+              !iter.over(); iter.incr()) accumulator(map[zero_based(iter())]);
+        }
+      }
+
+      AccumulatorType accumulator;
+    };
+
     using namespace scitbx::math::accumulator;
 
     template <typename FloatType = double>
     struct statistics_traits {
-      typedef min_max_accumulator<FloatType,
-                mean_variance_accumulator<FloatType,
-                  enumerated_accumulator<FloatType> > >
-              accumulator_t;
+      typedef generic_statistics<
+                min_max_accumulator<FloatType,
+                  mean_variance_accumulator<FloatType,
+                    enumerated_accumulator<FloatType> > > >
+              basic_statistics_t;
+      typedef generic_statistical_moments<
+                skewness_accumulator<FloatType,
+                  kurtosis_accumulator<FloatType,
+                    normalised_deviation_accumulator<FloatType> > > >
+              extra_statistics_t;
     };
   }
 
@@ -28,46 +88,63 @@ namespace cctbx { namespace maptbx {
   {
     public:
       //! Default constructor. Data members are not initialized!
-      statistics() : stats(0) {}
+      statistics() : basic_stats() {}
 
       //! Computes the statistics.
       template <typename OtherFloatType>
       statistics(af::const_ref<OtherFloatType, af::flex_grid<> > const& map)
-        : stats(0)
-      {
-        CCTBX_ASSERT(map.accessor().focus_size_1d() > 0);
-        if (!map.accessor().is_padded()) {
-          stats = accumulator_t(map[0]);
-          for(std::size_t i=1; i < map.size(); ++i) stats(map[i]);
-        }
-        else {
-          typedef typename af::flex_grid<>::index_type index_type;
-          af::flex_grid<> zero_based = map.accessor().shift_origin();
-          af::nested_loop<index_type> iter(zero_based.focus());
-          stats = accumulator_t(map[zero_based(iter())]);
-          while (iter.incr()) stats(map[zero_based(iter())]);
-        }
+        : basic_stats(map)
+      {}
+
+      FloatType
+      min() const { return basic_stats.accumulator.min(); }
+
+      FloatType
+      max() const { return basic_stats.accumulator.max(); }
+
+      FloatType
+      mean() const { return basic_stats.accumulator.mean(); }
+
+      FloatType
+      mean_sq() const { return basic_stats.accumulator.mean_squares(); }
+
+      FloatType
+      sigma() const {
+        return basic_stats.accumulator.biased_standard_deviation();
       }
 
-      FloatType
-      min() const { return stats.min(); }
+    private:
+      typedef typename details::statistics_traits<FloatType>::basic_statistics_t
+              basic_statistics_t;
+      basic_statistics_t basic_stats;
+  };
+
+
+  //! Determines higher order statistical central moments.
+  template <typename FloatType = double>
+  class more_statistics : public statistics<FloatType>
+  {
+    public:
+      //! Default constructor. Data members are not initialized!
+      more_statistics() : statistics<FloatType>(), extra_stats() {}
+
+      //! Computes the statistics.
+      template <typename OtherFloatType>
+      more_statistics(af::const_ref<OtherFloatType, af::flex_grid<> > const& map)
+        : statistics<FloatType>(map),
+          extra_stats(map, this->mean(), this->sigma())
+      {}
 
       FloatType
-      max() const { return stats.max(); }
+      skewness() const { return extra_stats.accumulator.skewness(); }
 
       FloatType
-      mean() const { return stats.mean(); }
+      kurtosis() const { return extra_stats.accumulator.kurtosis(); }
 
-      FloatType
-      mean_sq() const { return stats.mean_squares(); }
-
-      FloatType
-      sigma() const { return stats.biased_standard_deviation(); }
-
-    protected:
-      typedef typename details::statistics_traits<FloatType>::accumulator_t
-              accumulator_t;
-      accumulator_t stats;
+    private:
+      typedef typename details::statistics_traits<FloatType>::extra_statistics_t
+              extra_statistics_t;
+      extra_statistics_t extra_stats;
   };
 
 }} // namespace cctbx::maptbx

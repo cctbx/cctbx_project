@@ -27,11 +27,29 @@ namespace {
     }
   };
 
+  struct more_statistics_wrappers
+  {
+    typedef more_statistics<> w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t, bases<statistics<> > >("more_statistics", no_init)
+        .def(init<af::const_ref<float, af::flex_grid<> > const&>())
+        .def(init<af::const_ref<double, af::flex_grid<> > const&>())
+        .def("skewness", &w_t::skewness)
+        .def("kurtosis", &w_t::kurtosis)
+      ;
+    }
+  };
+
 } // namespace <anoymous>
 
   void wrap_statistics()
   {
     statistics_wrappers::wrap();
+    more_statistics_wrappers::wrap();
   }
 
 }}} // namespace cctbx::maptbx::boost_python
