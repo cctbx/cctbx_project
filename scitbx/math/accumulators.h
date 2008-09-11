@@ -158,25 +158,25 @@ class normalised_deviation_accumulator : public deviation_accumulator<FloatType>
 
 
 template<typename FloatType, class Previous>
-class skew_accumulator : public Previous
+class skewness_accumulator : public Previous
 {
   public:
-    skew_accumulator(FloatType mean, FloatType standard_deviation)
+    skewness_accumulator(FloatType mean, FloatType standard_deviation)
       : Previous(mean, standard_deviation),
-        skew_(0)
+        skewness_(0)
     {}
 
     void operator()(FloatType x) {
       Previous::operator()(x);
       std::size_t n = this->count();
       FloatType u = this->normalised_deviation();
-      skew_ += (u*u*u - skew_)/n;
+      skewness_ += (u*u*u - skewness_)/n;
     }
 
-    FloatType skew() const { return skew_; }
+    FloatType skewness() const { return skewness_; }
 
   private:
-    FloatType skew_;
+    FloatType skewness_;
 };
 
 template<typename FloatType, class Previous>

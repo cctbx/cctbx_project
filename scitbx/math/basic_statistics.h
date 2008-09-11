@@ -84,13 +84,13 @@ namespace scitbx { namespace math {
           return;
         }
         kurtosis_accumulator<FloatType,
-          skew_accumulator<FloatType,
+          skewness_accumulator<FloatType,
             mean_absolute_deviation_accumulator<FloatType,
               normalised_deviation_accumulator<FloatType> > > >
                 acc_2nd(mean, biased_standard_deviation);
         for(std::size_t i=0;i<n;i++) acc_2nd(values[i]);
         mean_absolute_deviation_from_mean = acc_2nd.mean_absolute_deviation();
-        skew = acc_2nd.skew();
+        skew = acc_2nd.skewness();
         kurtosis = acc_2nd.kurtosis();
         kurtosis_excess = acc_2nd.kurtosis_excess();
       }
