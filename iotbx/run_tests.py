@@ -9,6 +9,7 @@ def run():
   "$D/tst_crystal_symmetry_from_any.py",
   "$D/kriber/tst_strudat.py",
   "$D/cif/tst_xray_structure.py",
+  "$D/shelx/tst_lex_parse_build.py",
   ["$D/pdb/hybrid_36.py", "exercise"],
   "$D/pdb/tst_hierarchy.py",
   "$D/pdb/tst_ext.py",

@@ -255,10 +255,13 @@ def shelx_u_cif(unit_cell, u_star):
   return (" "*3).join([ "%.5f" % x for x in  u_cif ])
 
 def run():
-  exercise_afix_parsing()
-  exercise_xray_structure_parsing()
-  exercise_crystal_symmetry_parsing()
-  exercise_lexing()
+  if (shelx.parsers.smtbx is None):
+    print "Skipping iotbx.shelx.tst_lex_parse_build (smtbx not available)."
+  else:
+    exercise_afix_parsing()
+    exercise_xray_structure_parsing()
+    exercise_crystal_symmetry_parsing()
+    exercise_lexing()
   print 'OK'
 
 ins_mundane_tiny = (
