@@ -214,10 +214,12 @@ mmtbx/maps.py -text
 mmtbx/model_statistics.py -text
 mmtbx/model_vs_data.py -text
 mmtbx/monomer_library/apply_mod_rna.py svneol=native#text/x-python
+mmtbx/monomer_library/conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/mod_rnaC2.cif -text
 mmtbx/monomer_library/mod_rnaC3.cif -text
 mmtbx/monomer_library/mod_rnaEsd.cif -text
 mmtbx/monomer_library/rna_sugar_pucker_analysis.py svneol=native#text/x-python
+mmtbx/monomer_library/tst_conformation_dependent_restraints.py svneol=native#text/x-python
 mmtbx/monomer_library/tst_protein_interpretation.py -text
 mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-python

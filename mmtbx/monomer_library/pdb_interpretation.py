@@ -5,6 +5,7 @@ import iotbx.phil
 from mmtbx.monomer_library import server
 from mmtbx.monomer_library import cif_types
 from mmtbx.monomer_library import rna_sugar_pucker_analysis
+from mmtbx.monomer_library import conformation_dependent_restraints
 from cctbx import geometry_restraints
 import cctbx.geometry_restraints.manager
 from cctbx import crystal
@@ -1422,7 +1423,10 @@ class build_chain_proxies(object):
         i_conformer,
         is_first_conformer_in_chain,
         conformer,
+        conformation_dependent_restraints_list,
         log):
+    self.conformation_dependent_restraints_list = \
+      conformation_dependent_restraints_list
     unknown_residues = dicts.with_default_value(0)
     ad_hoc_single_atom_residues = dicts.with_default_value(0)
     unusual_residues = dicts.with_default_value(0)
@@ -1456,6 +1460,7 @@ class build_chain_proxies(object):
     n_planarities_discarded_because_of_special_positions = 0
     mm = None
     prev_mm = None
+    prev_prev_mm = None
     for i_residue,residue in enumerate(conformer.residues()):
       for atom in residue.atoms():
         i_seq = atom.i_seq
@@ -1662,10 +1667,21 @@ class build_chain_proxies(object):
               and sulphur_atom.i_seq not in cystein_sulphur_i_seqs):
             cystein_sulphur_i_seqs.append(sulphur_atom.i_seq)
             cystein_monomer_mappings.append(mm)
+      if (conformation_dependent_restraints.is_available):
+        cdr = conformation_dependent_restraints \
+                .build_conformation_dependent_angle_proxies(
+          angle_proxy_registry=geometry_proxy_registries.angle,
+          dihedral_proxy_registry=geometry_proxy_registries.dihedral,
+          monomer_mappings=(prev_prev_mm, prev_mm, mm),
+          connectivity_i_j=True,
+          connectivity_j_k=True,
+          sites_cart=sites_cart)
+        self.conformation_dependent_restraints_list.append(cdr)
       if (keep_monomer_mappings):
         all_monomer_mappings.append(mm)
       else:
         all_monomer_mappings.append(mm.summary())
+      prev_prev_mm = prev_mm
       prev_mm = mm
       prev_mm.lib_link = None
     #
@@ -1891,6 +1907,7 @@ class build_all_chain_proxies(object):
         self.site_symmetry_table().special_position_indices()
     self.process_apply_cif_modification(mon_lib_srv=mon_lib_srv, log=log)
     self.process_apply_cif_link(mon_lib_srv=mon_lib_srv, log=log)
+    self.conformation_dependent_restraints_list = []
     models = self.pdb_hierarchy.models()
     if (log is not None):
       print >> log, "  Number of models:", len(models)
@@ -1981,7 +1998,11 @@ class build_all_chain_proxies(object):
             i_conformer=i_conformer,
             is_first_conformer_in_chain=(j_conformer == 0),
             conformer=conformer,
+            conformation_dependent_restraints_list=
+              self.conformation_dependent_restraints_list,
             log=log)
+          self.conformation_dependent_restraints_list = \
+            chain_proxies.conformation_dependent_restraints_list
           del chain_proxies
           flush_log(log)
       #
