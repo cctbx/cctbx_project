@@ -99,6 +99,7 @@ gltbx/wx_viewers_images.py -text
 iotbx/ccp4_map/SConscript -text
 iotbx/ccp4_map/__init__.py svneol=native#text/x-python
 iotbx/ccp4_map/ext.cpp svneol=native#text/plain
+iotbx/ccp4_map/tst.py svneol=native#text/x-python
 iotbx/cif/__init__.py svneol=native#text/x-python
 iotbx/cif/tst_xray_structure.py svneol=native#text/x-python
 iotbx/cif/xray_structure.py svneol=native#text/x-python
