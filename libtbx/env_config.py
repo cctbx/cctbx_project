@@ -522,6 +522,7 @@ class environment:
         relative_path,
         test=os.path.isdir,
         optional=True):
+    assert len(relative_path) != 0
     for path in self.repository_paths:
       result = self.abs_path_clean(
         libtbx.path.norm_join(path, relative_path))
@@ -578,6 +579,7 @@ class environment:
       self.add_repository(path=path)
     module_names = []
     for module_name in command_line.args:
+      if (len(module_name) == 0): continue # ignore arguments like ""
       if (module_name in self.command_line_redirections):
         del self.command_line_redirections[module_name]
       elif (module_name.count("=") == 1
