@@ -187,7 +187,7 @@ namespace gltbx { namespace viewer_utils {
           if (bonds_visible[i_seq]) {
             it j_seqs_end = bonds[i_seq].end();
             for (it j_seq = bonds[i_seq].begin(); j_seq!=j_seqs_end; j_seq++) {
-              if ((atoms_selected[*j_seq]) and (bonds_visible[*j_seq])) {
+              if (atoms_selected[*j_seq] && bonds_visible[*j_seq]) {
                 selected_bonds_visible[i_seq] = true;
               }
             }
