@@ -85,6 +85,33 @@ namespace gltbx { namespace viewer_utils {
     return atom_colors;
   }
 
+  af::shared< scitbx::vec3<double> >
+  color_by_property (
+    af::const_ref< double > const& atom_properties,
+    af::const_ref< bool > const& atoms_visible,
+    bool color_invisible_atoms=false,
+    bool use_rb_color_gradient=false)
+  {
+    GLTBX_ASSERT(atom_properties.size() > 0);
+    af::shared <scitbx::vec3<double> > atom_colors(atom_properties.size());
+    double vmax = atom_properties[0];
+    double vmin = atom_properties[0];
+    for (unsigned i_seq = 0; i_seq < atom_properties.size(); i_seq++) {
+      if ((! color_invisible_atoms) && (! atoms_visible[i_seq])) continue;
+      if (atom_properties[i_seq] > vmax) vmax = atom_properties[i_seq];
+      if (atom_properties[i_seq] < vmin) vmin = atom_properties[i_seq];
+    }
+    for (unsigned i_seq = 0; i_seq < atom_properties.size(); i_seq++) {
+      double gradient_ratio = (atom_properties[i_seq]-vmin) / (vmax-vmin);
+      if (use_rb_color_gradient) {
+        atom_colors[i_seq] = hsv2rgb(360.0 - (120 * gradient_ratio), 1., 1.);
+      } else {
+        atom_colors[i_seq] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
+      }
+    }
+    return atom_colors;
+  }
+
   void
   draw_points (
     af::const_ref< scitbx::vec3<double> > const& points,
@@ -273,6 +300,8 @@ namespace gltbx { namespace viewer_utils {
   }
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(color_rainbow_overloads, color_rainbow, 2, 3)
+  BOOST_PYTHON_FUNCTION_OVERLOADS(color_by_property_overloads,
+    color_by_property, 2, 4)
   BOOST_PYTHON_FUNCTION_OVERLOADS(draw_points_overloads, draw_points, 3, 4)
   BOOST_PYTHON_FUNCTION_OVERLOADS(closest_visible_point_overloads,
     closest_visible_point, 4, 5)
@@ -287,6 +316,11 @@ namespace gltbx { namespace viewer_utils {
       arg_("atoms_visible"),
       arg_("visible_atom_count"),
       arg_("color_invisible_atoms")=false)));
+    def("color_by_property", color_by_property, color_by_property_overloads((
+      arg_("atom_properties"),
+      arg_("atoms_visible"),
+      arg_("color_invisible_atoms")=true,
+      arg_("use_rb_color_gradient")=false)));
     def("draw_points", draw_points, draw_points_overloads((
       arg_("points"),
       arg_("atom_colors"),
