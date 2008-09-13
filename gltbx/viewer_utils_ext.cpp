@@ -14,7 +14,6 @@
 #include <boost/python/overloads.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
-#include <boost/python/return_arg.hpp>
 #include <boost/optional.hpp>
 
 #include <scitbx/vec3.h>
