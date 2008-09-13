@@ -22,7 +22,7 @@
 #include <gltbx/error.h>
 
 #include <set>
-#include <math.h>
+#include <cmath>
 
 namespace gltbx { namespace viewer_utils {
 
@@ -37,33 +37,28 @@ namespace gltbx { namespace viewer_utils {
     }
     h /= 60.0;
     v *= 255.0;
-    double f, p, q, t;
-    int i = floor(h);
-    f = h - i;
-    p = v * (1 - s);
-    q = v * (1 - (s * f));
-    t = v * (1 - (s * (1 - f)));
-
+    int i = std::floor(h);
+    double f = h - i;
+    double p = v * (1 - s);
+    double q = v * (1 - (s * f));
+    double t = v * (1 - (s * (1 - f)));
     switch (i) {
       case 0  : return scitbx::vec3<double>(v, t, p) / 255.0; break;
       case 1  : return scitbx::vec3<double>(q, v, p) / 255.0; break;
       case 2  : return scitbx::vec3<double>(p, v, t) / 255.0; break;
       case 3  : return scitbx::vec3<double>(p, q, v) / 255.0; break;
       case 4  : return scitbx::vec3<double>(t, p, v) / 255.0; break;
-      default : return scitbx::vec3<double>(v, p, q) / 255.0; break;
+      default : break;
     }
-
-    // just in case the compiler is dumb. . .
-    return scitbx::vec3<double>(1.0, 1.0, 1.0);
+    return scitbx::vec3<double>(v, p, q) / 255.0;
   }
 
   // this function may be superfluous here, but could be useful elsewhere
   af::shared< scitbx::vec3<double> >
   make_rainbow_gradient (unsigned nbins)
   {
-    af::shared< scitbx::vec3<double> > color_gradient;
-    color_gradient = af::shared< scitbx::vec3<double> >(nbins);
-    double f_nbins = (double) nbins;
+    af::shared< scitbx::vec3<double> > color_gradient(nbins);
+    double f_nbins(nbins);
     for (unsigned i = 0; i < nbins; i++) {
       double gradient_ratio = i / f_nbins;
       color_gradient[i] = hsv2rgb(240.0 - (240 * gradient_ratio), 1., 1.);
@@ -78,8 +73,7 @@ namespace gltbx { namespace viewer_utils {
     unsigned visible_atom_count,
     bool color_invisible_atoms=false)
   {
-    af::shared< scitbx::vec3<double> > atom_colors;
-    atom_colors = af::shared< scitbx::vec3<double> >(atoms_visible.size());
+    af::shared< scitbx::vec3<double> > atom_colors(atoms_visible.size());
     unsigned j = 0;
     double f_atom_count = (double) visible_atom_count;
     for (unsigned i_seq = 0; i_seq < atoms_visible.size(); i_seq++) {
@@ -329,7 +323,7 @@ namespace gltbx { namespace viewer_utils {
       .add_property("atoms_visible", make_getter(&a_v::atoms_visible, rbv()))
       .add_property("bonds_visible", make_getter(&a_v::bonds_visible, rbv()))
       .add_property("points_visible", make_getter(&a_v::points_visible, rbv()))
-      .add_property("selected_bonds_visible", 
+      .add_property("selected_bonds_visible",
         make_getter(&a_v::selected_bonds_visible, rbv()))
       .add_property("selected_points_visible",
         make_getter(&a_v::selected_points_visible, rbv()))
