@@ -9,6 +9,7 @@
 #include <scitbx/array_family/misc_functions.h>
 #include <cctbx/import_scitbx_af.h>
 #include <cctbx/error.h>
+#include <cstdio>
 
 namespace cctbx {
   //! Miller index namespace.
