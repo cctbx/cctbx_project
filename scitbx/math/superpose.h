@@ -163,15 +163,15 @@ superposition<FloatType>::kearsley_rotation(
   matrix( 3, 2 ) = matrix( 2, 3 );
 
   // Solve characteristic equation
-  math::eigensystem::real_symmetric< FloatType > eigenvalues( matrix );
+  math::eigensystem::real_symmetric< FloatType > eigensystem( matrix );
 
-  // The eigenvectors corresponding to the lowest four eignevalues form
+  // The eigenvectors corresponding to the lowest four eigenvalues form
   // a unit quaternion
-  return math::r3_rotation::quaternion_as_matrix(
-      eigenvalues.vectors()[12],
-      eigenvalues.vectors()[13],
-      eigenvalues.vectors()[14],
-      eigenvalues.vectors()[15] );
+  return math::r3_rotation::unit_quaternion_as_matrix(
+    -eigensystem.vectors()[12], // rotation in opposite direction
+     eigensystem.vectors()[13],
+     eigensystem.vectors()[14],
+     eigensystem.vectors()[15]);
 }
 
 

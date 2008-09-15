@@ -181,9 +181,11 @@ namespace scitbx { namespace math {
       return axis_and_angle_as_matrix(axis, angle_rad);
     }
 
-    //! Returns (q0,q1,q2,q3), where q0 is the scalar part of the quaternion.
+    /*! \brief Returns (q0,q1,q2,q3), where q0 is the scalar part
+        of the unit quaternion.
+     */
     af::tiny<FloatType, 4>
-    as_quaternion() const
+    as_unit_quaternion() const
     {
       FloatType h = angle_rad * 0.5;
       FloatType ca = std::cos(h);
@@ -353,7 +355,29 @@ namespace scitbx { namespace math {
     return m3(c, -ws, vs, ws, c + v*voc, vwoc, -vs, vwoc, c + w*woc);
   }
 
-  //! Matrix from quaternion
+  //! Unit quaternion (a.k.a. Euler parameters) as matrix.
+  template <typename FloatType>
+  mat3<FloatType>
+  unit_quaternion_as_matrix(
+    FloatType const& q0,
+    FloatType const& q1,
+    FloatType const& q2,
+    FloatType const& q3)
+  {
+    FloatType q0_q0 = q0*q0;
+    FloatType q0_q1 = q0*q1;
+    FloatType q0_q2 = q0*q2;
+    FloatType q0_q3 = q0*q3;
+    FloatType q1_q2 = q1*q2;
+    FloatType q1_q3 = q1*q3;
+    FloatType q2_q3 = q2*q3;
+    return mat3<FloatType>(
+      2*(q0_q0+q1*q1)-1, 2*(q1_q2-q0_q3),   2*(q1_q3+q0_q2),
+      2*(q1_q2+q0_q3),   2*(q0_q0+q2*q2)-1, 2*(q2_q3-q0_q1),
+      2*(q1_q3-q0_q2),   2*(q2_q3+q0_q1),   2*(q0_q0+q3*q3)-1);
+  }
+
+  //! XXX OBSOLETE
   template <typename FloatType>
   const mat3< FloatType >
   quaternion_as_matrix(
