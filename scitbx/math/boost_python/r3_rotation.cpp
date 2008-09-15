@@ -26,7 +26,7 @@ namespace {
         .add_property("axis", make_getter(&w_t::axis, rbv()))
         .def("angle", &w_t::angle, angle_overloads((arg_("deg")=false)))
         .def("as_matrix", &w_t::as_matrix)
-        .def("as_quaternion", &w_t::as_quaternion)
+        .def("as_unit_quaternion", &w_t::as_unit_quaternion)
       ;
     }
   };
@@ -107,6 +107,12 @@ namespace boost_python {
         r3_rotation_vector_to_100_overloads((
           arg_("given_unit_vector"),
           arg_("sin_angle_is_zero_threshold")=1.e-10)));
+
+    def("r3_rotation_unit_quaternion_as_matrix",
+      (mat3<double>(*)(
+        double const&, double const&, double const&, double const&))
+      r3_rotation::unit_quaternion_as_matrix, ((
+        arg_("q0"), arg_("q1"), arg_("q2"), arg_("q3"))));
   }
 
 }}} // namespace scitbx::math::boost_python
