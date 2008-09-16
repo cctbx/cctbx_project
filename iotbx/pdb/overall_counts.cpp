@@ -1,5 +1,6 @@
 #include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/common_residue_names.h>
+#include <iotbx/error.h>
 #include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace pdb { namespace hierarchy {
@@ -74,7 +75,7 @@ namespace detail {
       std::sort(groups.begin(), groups.end(), cmp_first_element_of_vectors);
       af::shared<atom> atoms_owner = model.atoms();
       af::const_ref<atom> atoms = atoms_owner.const_ref();
-      SCITBX_ASSERT(atoms.size() == model_atoms_size);
+      IOTBX_ASSERT(atoms.size() == model_atoms_size);
       unsigned n_groups = static_cast<unsigned>(groups.size());
       duplicate_atom_labels.reserve(duplicate_atom_labels.size() + n_groups);
       for(unsigned i_g=0;i_g<n_groups;i_g++) {
@@ -257,7 +258,7 @@ namespace detail {
           if (count != 1) n_duplicate_chain_ids += count;
         }
       }
-      SCITBX_ASSERT(i_model_atom == model_atoms_size);
+      IOTBX_ASSERT(i_model_atom == model_atoms_size);
       n_atoms += model_atoms_size;
       n_duplicate_atom_labels += detail::find_duplicate_atom_labels(
         duplicate_atom_labels,

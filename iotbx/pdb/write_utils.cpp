@@ -1,4 +1,5 @@
 #include <iotbx/pdb/write_utils.h>
+#include <iotbx/error.h>
 #include <ctype.h>
 
 namespace iotbx { namespace pdb { namespace write_utils {
@@ -24,7 +25,7 @@ namespace iotbx { namespace pdb { namespace write_utils {
   :
     file_name(file_name_ ? file_name_ : "")
   {
-    SCITBX_ASSERT(file_name.size() != 0);
+    IOTBX_ASSERT(file_name.size() != 0);
     std::ios::openmode mode = std::ios::out | std::ios::binary;
     if (open_append) mode |= std::ios::app;
     out.open(file_name.c_str(), mode);

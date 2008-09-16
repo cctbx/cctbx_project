@@ -1,5 +1,6 @@
 #include <iotbx/pdb/hierarchy_atoms.h>
 #include <iotbx/pdb/hybrid_36_c.h>
+#include <iotbx/error.h>
 #include <memory>
 
 namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
@@ -115,7 +116,7 @@ namespace iotbx { namespace pdb { namespace hierarchy { namespace atoms {
     af::ref<atom> const& atoms, \
     af::const_ref<attr_type > const& new_##attr) \
   { \
-    SCITBX_ASSERT(new_##attr.size() == atoms.size()); \
+    IOTBX_ASSERT(new_##attr.size() == atoms.size()); \
     unsigned n = static_cast<unsigned>(atoms.size()); \
     for(unsigned i=0;i<n;i++) { \
       atoms[i].data->attr = new_##attr[i]; \

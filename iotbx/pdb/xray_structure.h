@@ -2,6 +2,7 @@
 #define IOTBX_PDB_XRAY_STRUCTURE_H
 
 #include <iotbx/pdb/input.h>
+#include <iotbx/error.h>
 #include <cctbx/xray/scatterer.h>
 #include <cctbx/eltbx/xray_scattering.h>
 
@@ -55,7 +56,7 @@ namespace iotbx { namespace pdb {
         atom(atoms_with_labels_.begin()),
         scatterer("", cctbx::fractional<>(0,0,0), 0, 0, "", 0, 0)
       {
-        CCTBX_ASSERT(!use_scale_matrix || !fractional_coordinates);
+        IOTBX_ASSERT(!use_scale_matrix || !fractional_coordinates);
         if (!one_structure_for_each_model) model_range.skip_to_last();
       }
 

@@ -1,6 +1,7 @@
 #include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/common_residue_names.h>
 #include <iotbx/pdb/hybrid_36_cpp.h>
+#include <iotbx/error.h>
 #include <cctbx/eltbx/chemical_elements.h>
 #include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
@@ -354,7 +355,7 @@ namespace {
     if (add_model) {
       if (model_id != 0) {
         std::size_t l = std::strlen(model_id);
-        SCITBX_ASSERT(l <= 8);
+        IOTBX_ASSERT(l <= 8);
         unsigned n = static_cast<unsigned>(l);
         unsigned m = std::max(4U, n);
         std::memcpy(result, "model=\"", 7U);
@@ -1079,8 +1080,8 @@ namespace {
     atom_group& primary,
     atom_group& secondary)
   {
-    SCITBX_ASSERT(secondary.data->altloc == primary.data->altloc);
-    SCITBX_ASSERT(secondary.data->resname == primary.data->resname);
+    IOTBX_ASSERT(secondary.data->altloc == primary.data->altloc);
+    IOTBX_ASSERT(secondary.data->resname == primary.data->resname);
     if (primary.parent_ptr().get() != data.get()) {
       throw std::runtime_error(
         "\"primary\" atom_group has a different or no parent"
@@ -1102,7 +1103,7 @@ namespace {
     for(unsigned i=0;i<n_atoms;i++) { // ... and then append in original order.
       primary.append_atom(atom_buffer[i]);
     }
-    SCITBX_ASSERT(secondary.atoms_size() == 0);
+    IOTBX_ASSERT(secondary.atoms_size() == 0);
   }
 
   unsigned
@@ -1224,8 +1225,8 @@ namespace {
     residue_group& primary,
     residue_group& secondary)
   {
-    SCITBX_ASSERT(secondary.data->resseq == primary.data->resseq);
-    SCITBX_ASSERT(secondary.data->icode == primary.data->icode);
+    IOTBX_ASSERT(secondary.data->resseq == primary.data->resseq);
+    IOTBX_ASSERT(secondary.data->icode == primary.data->icode);
     const chain_data* data_get = data.get();
     if (primary.parent_ptr().get() != data_get) {
       throw std::runtime_error(
@@ -1274,7 +1275,7 @@ namespace {
       i--;
       primary.append_atom_group(append_buffer[i]);
     }
-    SCITBX_ASSERT(secondary.atom_groups_size() == 0);
+    IOTBX_ASSERT(secondary.atom_groups_size() == 0);
     remove_residue_group(secondary);
   }
 
@@ -1334,8 +1335,8 @@ namespace {
             residue_group& secondary = residue_groups_copy[i_rg];
             flags[i_rg] = 2U;
             merge_residue_groups(primary, secondary);
-            SCITBX_ASSERT(secondary.atom_groups_size() == 0);
-            SCITBX_ASSERT(secondary.parent_ptr().get() == 0);
+            IOTBX_ASSERT(secondary.atom_groups_size() == 0);
+            IOTBX_ASSERT(secondary.parent_ptr().get() == 0);
           }
           result_size++;
         }
@@ -1350,7 +1351,7 @@ namespace {
         if      (f == 0) j_rg++;
         else if (f == 1U) result.push_back(j_rg++);
       }
-      SCITBX_ASSERT(result.size() == result_size);
+      IOTBX_ASSERT(result.size() == result_size);
     }
     return result;
   }
@@ -1529,7 +1530,7 @@ namespace {
         for(unsigned i_rn=0;i_rn<n_rn;i_rn++) {
           str3 const& resname = resnames[i_rn];
           ms3va::const_iterator rai = resname_atoms.find(resname);
-          SCITBX_ASSERT(rai != resname_atoms.end());
+          IOTBX_ASSERT(rai != resname_atoms.end());
           result[i_cf].append_residue(
             resname.elems,
             rg.data->resseq.elems,

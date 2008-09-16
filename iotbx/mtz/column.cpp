@@ -1,4 +1,5 @@
 #include <iotbx/mtz/column.h>
+#include <iotbx/error.h>
 
 namespace iotbx { namespace mtz {
 
@@ -7,22 +8,22 @@ namespace iotbx { namespace mtz {
     mtz_dataset_(mtz_dataset),
     i_column_(i_column)
   {
-    CCTBX_ASSERT(i_column >= 0);
-    CCTBX_ASSERT(i_column < mtz_dataset.n_columns());
+    IOTBX_ASSERT(i_column >= 0);
+    IOTBX_ASSERT(i_column < mtz_dataset.n_columns());
   }
 
   CMtz::MTZCOL*
   column::ptr() const
   {
-    CCTBX_ASSERT(mtz_dataset_.n_columns() > i_column_);
+    IOTBX_ASSERT(mtz_dataset_.n_columns() > i_column_);
     return CMtz::MtzIcolInSet(mtz_dataset_.ptr(), i_column_);
   }
 
   column&
   column::set_label(const char* new_label)
   {
-    CCTBX_ASSERT(new_label != 0);
-    CCTBX_ASSERT(std::strlen(new_label) < sizeof(ptr()->label));
+    IOTBX_ASSERT(new_label != 0);
+    IOTBX_ASSERT(std::strlen(new_label) < sizeof(ptr()->label));
     if (std::strcmp(ptr()->label, new_label) == 0) return *this;
     if (std::strchr(new_label, ',') != 0) {
       throw std::runtime_error(
@@ -43,8 +44,8 @@ namespace iotbx { namespace mtz {
   column&
   column::set_type(const char* new_type)
   {
-    CCTBX_ASSERT(new_type != 0);
-    CCTBX_ASSERT(std::strlen(new_type) < sizeof(ptr()->type));
+    IOTBX_ASSERT(new_type != 0);
+    IOTBX_ASSERT(std::strlen(new_type) < sizeof(ptr()->type));
     std::strcpy(ptr()->type, new_type);
     return *this;
   }
@@ -113,9 +114,9 @@ namespace iotbx { namespace mtz {
     af::const_ref<bool> const& selection_valid) const
   {
     int n_refl = mtz_object().n_reflections();
-    CCTBX_ASSERT(values.size() == static_cast<std::size_t>(n_refl));
+    IOTBX_ASSERT(values.size() == static_cast<std::size_t>(n_refl));
     if (selection_valid.size() != 0) {
-      CCTBX_ASSERT(selection_valid.size() == static_cast<std::size_t>(n_refl));
+      IOTBX_ASSERT(selection_valid.size() == static_cast<std::size_t>(n_refl));
     }
     float const& not_a_number_value = mtz_object().not_a_number_value();
     float* ref = ptr()->ref;
@@ -135,7 +136,7 @@ namespace iotbx { namespace mtz {
     af::const_ref<double> const& data)
   {
     typedef std::map<cctbx::miller::index<>, int> miller_map_type;
-    CCTBX_ASSERT(data.size() == miller_indices.size());
+    IOTBX_ASSERT(data.size() == miller_indices.size());
     CMtz::MTZ* p = mtz_object().ptr();
     int nref_at_entry = p->nref;
     if (nref_at_entry == 0) {
@@ -148,7 +149,7 @@ namespace iotbx { namespace mtz {
     for(int i_refl=0;i_refl<p->nref;i_refl++) {
       cctbx::miller::index<> h = hkl.get_miller_index(i_refl);
       miller_map_type::iterator entry = miller_map.find(h);
-      CCTBX_ASSERT(entry == miller_map.end());
+      IOTBX_ASSERT(entry == miller_map.end());
       miller_map[h] = i_refl;
     }
     CMtz::MTZCOL* col_ptrs[4];
@@ -181,7 +182,7 @@ namespace iotbx { namespace mtz {
         }
         result.push_back(entry->second);
       }
-      CCTBX_ASSERT(p->nref == iref);
+      IOTBX_ASSERT(p->nref == iref);
     }
     return result;
   }
@@ -191,18 +192,18 @@ namespace iotbx { namespace mtz {
     af::const_ref<int> const& mtz_reflection_indices,
     af::const_ref<double> const& data)
   {
-    CCTBX_ASSERT(data.size() == mtz_reflection_indices.size());
+    IOTBX_ASSERT(data.size() == mtz_reflection_indices.size());
     CMtz::MTZ* p = mtz_object().ptr();
     int nref_at_entry = p->nref;
-    CCTBX_ASSERT(nref_at_entry > 0);
-    CCTBX_ASSERT(mtz_reflection_indices.size() <= nref_at_entry);
+    IOTBX_ASSERT(nref_at_entry > 0);
+    IOTBX_ASSERT(mtz_reflection_indices.size() <= nref_at_entry);
     hkl_columns hkl = mtz_object().get_hkl_columns();
     CMtz::MTZCOL* col_ptrs[4];
     for(int i=0;i<3;i++) col_ptrs[i] = hkl[i].ptr();
     col_ptrs[3] = ptr();
     for(std::size_t i_iref=0;i_iref<mtz_reflection_indices.size();i_iref++) {
       int iref = mtz_reflection_indices[i_iref];
-      CCTBX_ASSERT(iref < nref_at_entry);
+      IOTBX_ASSERT(iref < nref_at_entry);
       cctbx::miller::index<> h = hkl.get_miller_index(iref);
       af::tiny<float, 4> adata;
       for(int i=0;i<3;i++) adata[i] = h[i];
@@ -211,7 +212,7 @@ namespace iotbx { namespace mtz {
         throw cctbx::error(CCP4::ccp4_strerror(ccp4_errno));
       }
     }
-    CCTBX_ASSERT(p->nref == nref_at_entry);
+    IOTBX_ASSERT(p->nref == nref_at_entry);
   }
 
 }} // namespace iotbx::mtz

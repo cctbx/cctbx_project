@@ -1,4 +1,5 @@
 #include <iotbx/pdb/input.h>
+#include <iotbx/error.h>
 #include <scitbx/array_family/sort.h>
 #include <boost/scoped_array.hpp>
 
@@ -69,7 +70,7 @@ namespace iotbx { namespace pdb {
     unsigned next_break_index = static_cast<unsigned>(
       break_index == break_indices_end ?
         atoms_.size() : *break_index++);
-    SCITBX_ASSERT(chain_indices.size() == model_ids.size());
+    IOTBX_ASSERT(chain_indices.size() == model_ids.size());
     hierarchy::root result;
     result.pre_allocate_models(model_ids.size());
     const detail::input_atom_labels* iall = input_atom_labels_list_.begin();
@@ -167,7 +168,7 @@ namespace iotbx { namespace pdb {
       }
       next_chain_range_begin = ch_r.end;
     }
-    SCITBX_ASSERT(break_index == break_indices_end);
+    IOTBX_ASSERT(break_index == break_indices_end);
     return result;
   }
 
@@ -178,7 +179,7 @@ namespace iotbx { namespace pdb {
       model_ids = inp.model_ids_small().const_ref();
     af::const_ref<std::vector<unsigned> >
       chain_indices = inp.chain_indices().const_ref();
-    SCITBX_ASSERT(chain_indices.size() == model_ids.size());
+    IOTBX_ASSERT(chain_indices.size() == model_ids.size());
     const std::size_t* break_index = inp.break_indices().begin();
     const std::size_t* break_indices_end = inp.break_indices().end();
     unsigned next_break_index = static_cast<unsigned>(
@@ -221,7 +222,7 @@ namespace iotbx { namespace pdb {
       if (!process_endmdl(model_id)) return;
       next_chain_range_begin = ch_r.end;
     }
-    SCITBX_ASSERT(break_index == break_indices_end);
+    IOTBX_ASSERT(break_index == break_indices_end);
     process_end();
   }
 

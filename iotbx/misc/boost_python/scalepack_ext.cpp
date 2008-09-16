@@ -1,7 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
+#include <iotbx/error.h>
 #include <cctbx/miller.h>
-#include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 #include <scitbx/array_family/shared.h>
 #include <boost/python/module.hpp>
@@ -84,7 +84,7 @@ namespace iotbx { namespace boost_python { namespace scalepack_ext {
         std::string line;
         for (std::size_t i=0;i<n_lines_skip;i++) {
           std::getline(cin, line);
-          CCTBX_ASSERT(!cin.eof());
+          IOTBX_ASSERT(!cin.eof());
         }
         read_formatted rf;
         while (true) {

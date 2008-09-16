@@ -1,3 +1,4 @@
+#include <iotbx/error.h>
 #include <cctbx/boost_python/flex_fwd.h>
 #include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/uctbx.h>
@@ -65,8 +66,8 @@ namespace iotbx { namespace boost_python { namespace xplor_ext {
       :
         data(grid, 0)
       {
-        SCITBX_ASSERT(grid.nd() == 3);
-        SCITBX_ASSERT(grid.all().all_gt(0));
+        IOTBX_ASSERT(grid.nd() == 3);
+        IOTBX_ASSERT(grid.all().all_gt(0));
         std::ifstream cin(file_name.c_str());
         std::string line;
         for (std::size_t i=0;i<n_header_lines;i++) {
@@ -96,7 +97,7 @@ namespace iotbx { namespace boost_python { namespace xplor_ext {
         }
         else {
           int expected_9999 = std::atoi(line.substr(0,8).c_str());
-          SCITBX_ASSERT(expected_9999 == -9999);
+          IOTBX_ASSERT(expected_9999 == -9999);
           std::getline(cin, line);
           average = std::atof(line.substr(0,12).c_str());
           standard_deviation = std::atof(line.substr(12,12).c_str());
@@ -115,7 +116,7 @@ namespace iotbx { namespace boost_python { namespace xplor_ext {
     cctbx::uctbx::unit_cell const& unit_cell)
   {
     FILE* fh = fopen(file_name.c_str(), "ab");
-    SCITBX_ASSERT(fh != 0);
+    IOTBX_ASSERT(fh != 0);
     for(std::size_t i=0;i<6;i++) {
       fprintf(fh, "%s",
         format_e<12>("%12.5E", unit_cell.parameters()[i]).s);
@@ -146,9 +147,9 @@ namespace iotbx { namespace boost_python { namespace xplor_ext {
     double average,
     double standard_deviation)
   {
-    SCITBX_ASSERT(data.accessor().nd() == 3);
-    SCITBX_ASSERT(data.accessor().all().all_gt(0));
-    SCITBX_ASSERT(!data.accessor().is_padded());
+    IOTBX_ASSERT(data.accessor().nd() == 3);
+    IOTBX_ASSERT(data.accessor().all().all_gt(0));
+    IOTBX_ASSERT(!data.accessor().is_padded());
     FILE* fh = write_head(file_name, unit_cell);
     af::const_ref<double, af::c_grid<3> > data_ref(
       data.begin(),

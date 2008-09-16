@@ -1,4 +1,5 @@
 #include <iotbx/mtz/dataset.h>
+#include <iotbx/error.h>
 
 namespace iotbx { namespace mtz {
 
@@ -7,14 +8,14 @@ namespace iotbx { namespace mtz {
     mtz_object_(mtz_object),
     i_crystal_(i_crystal)
   {
-    CCTBX_ASSERT(i_crystal >= 0);
-    CCTBX_ASSERT(i_crystal < mtz_object.n_crystals());
+    IOTBX_ASSERT(i_crystal >= 0);
+    IOTBX_ASSERT(i_crystal < mtz_object.n_crystals());
   }
 
   CMtz::MTZXTAL*
   crystal::ptr() const
   {
-    CCTBX_ASSERT(mtz_object_.n_crystals() > i_crystal_);
+    IOTBX_ASSERT(mtz_object_.n_crystals() > i_crystal_);
     return CMtz::MtzIxtal(mtz_object_.ptr(), i_crystal_);
   }
 
@@ -23,9 +24,9 @@ namespace iotbx { namespace mtz {
   {
     if (ptr()->xtalid != id) {
       CMtz::MTZ* p = mtz_object().ptr();
-      CCTBX_ASSERT(p->refs_in_memory);
+      IOTBX_ASSERT(p->refs_in_memory);
       for(int i=0;i<p->nxtal;i++) {
-        CCTBX_ASSERT(p->xtal[i]->xtalid != id);
+        IOTBX_ASSERT(p->xtal[i]->xtalid != id);
       }
       ptr()->xtalid = id;
     }
@@ -35,8 +36,8 @@ namespace iotbx { namespace mtz {
   crystal&
   crystal::set_name(const char* new_name)
   {
-    CCTBX_ASSERT(new_name != 0);
-    CCTBX_ASSERT(std::strlen(new_name) < sizeof(ptr()->xname));
+    IOTBX_ASSERT(new_name != 0);
+    IOTBX_ASSERT(std::strlen(new_name) < sizeof(ptr()->xname));
     if (std::strcmp(ptr()->xname, new_name) == 0) return *this;
     if (mtz_object().has_crystal(new_name)) {
       throw std::runtime_error(
@@ -51,8 +52,8 @@ namespace iotbx { namespace mtz {
   crystal&
   crystal::set_project_name(const char* new_project_name)
   {
-    CCTBX_ASSERT(new_project_name != 0);
-    CCTBX_ASSERT(std::strlen(new_project_name) < sizeof(ptr()->pname));
+    IOTBX_ASSERT(new_project_name != 0);
+    IOTBX_ASSERT(std::strlen(new_project_name) < sizeof(ptr()->pname));
     std::strcpy(ptr()->pname, new_project_name);
     return *this;
   }
@@ -92,17 +93,17 @@ namespace iotbx { namespace mtz {
     int i_dataset = n_datasets();
     CMtz::MTZSET* dataset_ptr = CMtz::MtzAddDataset(
       mtz_object().ptr(), ptr(), name, static_cast<float>(wavelength));
-    CCTBX_ASSERT(dataset_ptr != 0);
-    CCTBX_ASSERT(n_datasets() == i_dataset+1);
+    IOTBX_ASSERT(dataset_ptr != 0);
+    IOTBX_ASSERT(n_datasets() == i_dataset+1);
     dataset result(*this, i_dataset);
-    CCTBX_ASSERT(result.ptr() == dataset_ptr);
+    IOTBX_ASSERT(result.ptr() == dataset_ptr);
     return result;
   }
 
   bool
   crystal::has_dataset(const char* name) const
   {
-    CCTBX_ASSERT(name != 0);
+    IOTBX_ASSERT(name != 0);
     for(int i_dataset=0;i_dataset<n_datasets();i_dataset++) {
       dataset s(*this, i_dataset);
       if (std::strcmp(s.name(), name) == 0) {

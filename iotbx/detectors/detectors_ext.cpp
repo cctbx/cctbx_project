@@ -1,4 +1,5 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
+#include <iotbx/error.h>
 #include <string>
 #include <vector>
 #include <cstdlib>
@@ -17,7 +18,7 @@ af::flex_int ReadADSC(const std::string& filename,
                       const long& size2,const int& big_endian ) {
   std::ifstream cin(filename.c_str(),std::ios::binary);
   long fileLength = ptr + 2 * size1 * size2;
-  SCITBX_ASSERT(fileLength > 0);
+  IOTBX_ASSERT(fileLength > 0);
   std::vector<char> chardata(fileLength);
   cin.read(&*chardata.begin(),fileLength);
   cin.close();

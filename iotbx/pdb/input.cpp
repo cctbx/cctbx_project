@@ -1,4 +1,5 @@
 #include <iotbx/pdb/input.h>
+#include <iotbx/error.h>
 #include <scitbx/misc/file_utils.h>
 
 namespace iotbx { namespace pdb {
@@ -1150,8 +1151,8 @@ namespace detail {
       model_ids_.push_back(str8());
       model_indices_.push_back(input_atom_labels_list_.size());
     }
-    SCITBX_ASSERT(model_indices_.size() == model_ids_.size());
-    SCITBX_ASSERT(model_indices_.size() == chain_indices_.size());
+    IOTBX_ASSERT(model_indices_.size() == model_ids_.size());
+    IOTBX_ASSERT(model_indices_.size() == chain_indices_.size());
     if (atom___counts != 0) record_type_counts_["ATOM  "] += atom___counts;
     if (hetatm_counts != 0) record_type_counts_["HETATM"] += hetatm_counts;
     if (sigatm_counts != 0) record_type_counts_["SIGATM"] += sigatm_counts;

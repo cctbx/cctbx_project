@@ -1,5 +1,6 @@
 #include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
+#include <iotbx/error.h>
 #include <boost/scoped_array.hpp>
 
 namespace iotbx { namespace mtz {
@@ -28,7 +29,7 @@ namespace iotbx { namespace mtz {
 
   object::object(const char* file_name)
   {
-    CCTBX_ASSERT(file_name != 0);
+    IOTBX_ASSERT(file_name != 0);
     ptr_ = boost::shared_ptr<CMtz::MTZ>(
       CMtz::MtzGetUserCellTolerance(file_name, true, 0), ptr_deleter);
     if (ptr_.get() == 0) {
@@ -60,9 +61,9 @@ namespace iotbx { namespace mtz {
   object&
   object::set_title(const char* title, bool append)
   {
-    CCTBX_ASSERT(title != 0);
+    IOTBX_ASSERT(title != 0);
     int set_title_success = CMtz::ccp4_lwtitl(ptr(), title, append);
-    CCTBX_ASSERT(set_title_success);
+    IOTBX_ASSERT(set_title_success);
     return *this;
   }
 
@@ -99,21 +100,21 @@ namespace iotbx { namespace mtz {
       ptr(),
       reinterpret_cast<char (*)[MTZRECORDLENGTH]>(buffer.get()),
       lines.size());
-    CCTBX_ASSERT(add_history_success);
+    IOTBX_ASSERT(add_history_success);
     return *this;
   }
 
   object&
   object::add_history(const char* line)
   {
-    CCTBX_ASSERT(line != 0);
+    IOTBX_ASSERT(line != 0);
     return add_history(af::tiny<std::string, 1>(line).const_ref());
   }
 
   object&
   object::set_space_group_name(const char* name)
   {
-    CCTBX_ASSERT(name != 0);
+    IOTBX_ASSERT(name != 0);
     char* target = ptr()->mtzsymm.spcgrpname;
     const unsigned target_size = sizeof(ptr()->mtzsymm.spcgrpname);
     strncpy(target, name, target_size-1);
@@ -124,7 +125,7 @@ namespace iotbx { namespace mtz {
   object&
   object::set_point_group_name(const char* name)
   {
-    CCTBX_ASSERT(name != 0);
+    IOTBX_ASSERT(name != 0);
     char* target = ptr()->mtzsymm.pgname;
     const unsigned target_size = sizeof(ptr()->mtzsymm.pgname);
     strncpy(target, name, target_size-1);
@@ -155,7 +156,7 @@ namespace iotbx { namespace mtz {
   object::set_space_group(cctbx::sgtbx::space_group const& space_group)
   {
     CMtz::MTZ* p = ptr();
-    CCTBX_ASSERT(sizeof(p->mtzsymm.sym) / sizeof(*p->mtzsymm.sym)
+    IOTBX_ASSERT(sizeof(p->mtzsymm.sym) / sizeof(*p->mtzsymm.sym)
               >= space_group.order_z());
     p->mtzsymm.nsymp = static_cast<int>(space_group.order_p());
     p->mtzsymm.nsym = static_cast<int>(space_group.order_z());
@@ -257,14 +258,14 @@ namespace iotbx { namespace mtz {
 #if defined(__DECCXX_VER)
     BOOST_STATIC_ASSERT(sizeof(float) == sizeof(int));
 #else
-    CCTBX_ASSERT(sizeof(float) == sizeof(int));
+    IOTBX_ASSERT(sizeof(float) == sizeof(int));
 #endif
-    CCTBX_ASSERT(CMtz::ccp4_lwbat(
+    IOTBX_ASSERT(CMtz::ccp4_lwbat(
       ptr(), 0, max_batch_number+1, buf.get(), "") == 1);
     p = (p_tail == 0 ? ptr()->batch : p_tail->next);
-    CCTBX_ASSERT(p != 0);
-    CCTBX_ASSERT(p->next == 0);
-    CCTBX_ASSERT(p->num == max_batch_number+1);
+    IOTBX_ASSERT(p != 0);
+    IOTBX_ASSERT(p->next == 0);
+    IOTBX_ASSERT(p->num == max_batch_number+1);
     return batch(*this, i_batch);
   }
 
@@ -284,17 +285,17 @@ namespace iotbx { namespace mtz {
     const char* project_name,
     af::double6 const& unit_cell_parameters)
   {
-    CCTBX_ASSERT(name != 0);
-    CCTBX_ASSERT(project_name != 0);
+    IOTBX_ASSERT(name != 0);
+    IOTBX_ASSERT(project_name != 0);
     float uc_params[6];
     for(int i=0;i<6;i++) uc_params[i] = unit_cell_parameters[i];
     int i_crystal = n_crystals();
     CMtz::MTZXTAL* crystal_ptr = CMtz::MtzAddXtal(
       ptr(), name, project_name, uc_params);
-    CCTBX_ASSERT(crystal_ptr != 0);
-    CCTBX_ASSERT(n_crystals() == i_crystal+1);
+    IOTBX_ASSERT(crystal_ptr != 0);
+    IOTBX_ASSERT(n_crystals() == i_crystal+1);
     crystal result(*this, i_crystal);
-    CCTBX_ASSERT(result.ptr() == crystal_ptr);
+    IOTBX_ASSERT(result.ptr() == crystal_ptr);
     return result;
   }
 
@@ -310,7 +311,7 @@ namespace iotbx { namespace mtz {
   bool
   object::has_crystal(const char* name) const
   {
-    CCTBX_ASSERT(name != 0);
+    IOTBX_ASSERT(name != 0);
     for(int i_crystal=0;i_crystal<n_crystals();i_crystal++) {
       crystal x(*this, i_crystal);
       if (std::strcmp(x.name(), name) == 0) {
@@ -323,7 +324,7 @@ namespace iotbx { namespace mtz {
   bool
   object::has_column(const char* label) const
   {
-    CCTBX_ASSERT(label != 0);
+    IOTBX_ASSERT(label != 0);
     for(int i_crystal=0;i_crystal<n_crystals();i_crystal++) {
       crystal x(*this, i_crystal);
       for(int i_dataset=0;i_dataset<x.n_datasets();i_dataset++) {
@@ -342,7 +343,7 @@ namespace iotbx { namespace mtz {
   column
   object::get_column(const char* label) const
   {
-    CCTBX_ASSERT(label != 0);
+    IOTBX_ASSERT(label != 0);
     for(int i_crystal=0;i_crystal<n_crystals();i_crystal++) {
       crystal x(*this, i_crystal);
       for(int i_dataset=0;i_dataset<x.n_datasets();i_dataset++) {
@@ -423,7 +424,7 @@ namespace iotbx { namespace mtz {
   object::replace_miller_indices(
     af::const_ref<cctbx::miller::index<> > const& miller_indices)
   {
-    CCTBX_ASSERT(miller_indices.size() == n_reflections());
+    IOTBX_ASSERT(miller_indices.size() == n_reflections());
     hkl_columns hkl = get_hkl_columns();
     for(int i_refl=0;i_refl<miller_indices.size();i_refl++) {
       hkl.replace_miller_index(i_refl, miller_indices[i_refl]);
@@ -458,8 +459,8 @@ namespace iotbx { namespace mtz {
     column data(get_column(column_label));
     for(int i=0;i<mtz_reflection_indices.size();i++) {
       int i_refl = mtz_reflection_indices[i];
-      CCTBX_ASSERT(i_refl >= 0 && i_refl < n_refl);
-      CCTBX_ASSERT(!data.is_ccp4_nan(i_refl));
+      IOTBX_ASSERT(i_refl >= 0 && i_refl < n_refl);
+      IOTBX_ASSERT(!data.is_ccp4_nan(i_refl));
       result.push_back(data.int_datum(i_refl));
     }
     return result;
@@ -518,8 +519,8 @@ namespace iotbx { namespace mtz {
     column data(get_column(column_label));
     for(int i=0;i<mtz_reflection_indices.size();i++) {
       int i_refl = mtz_reflection_indices[i];
-      CCTBX_ASSERT(i_refl >= 0 && i_refl < n_refl);
-      CCTBX_ASSERT(!data.is_ccp4_nan(i_refl));
+      IOTBX_ASSERT(i_refl >= 0 && i_refl < n_refl);
+      IOTBX_ASSERT(!data.is_ccp4_nan(i_refl));
       result.push_back(data.float_datum(i_refl));
     }
     return result;
@@ -985,7 +986,7 @@ namespace iotbx { namespace mtz {
   void
   object::write(const char* file_name)
   {
-    CCTBX_ASSERT(file_name != 0);
+    IOTBX_ASSERT(file_name != 0);
     if (!CMtz::MtzPut(ptr(), file_name)) {
       throw cctbx::error("MTZ write failed.");
     }
@@ -998,7 +999,7 @@ namespace iotbx { namespace mtz {
       if (ptr->batch != 0 && ptr->n_orig_bat == 0) {
         ptr->n_orig_bat = 1; // force MtzFreeBatch
       }
-      CCTBX_ASSERT(CMtz::MtzFree(ptr));
+      IOTBX_ASSERT(CMtz::MtzFree(ptr));
     }
   }
 
