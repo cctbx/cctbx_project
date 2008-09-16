@@ -2,6 +2,7 @@
 #define IOTBX_MTZ_BATCH_H
 
 #include <iotbx/mtz/dataset.h>
+#include <iotbx/error.h>
 
 namespace iotbx { namespace mtz {
 
@@ -75,8 +76,8 @@ namespace iotbx { namespace mtz {
         mtz_object_(mtz_object),
         i_batch_(i_batch)
       {
-        CCTBX_ASSERT(i_batch >= 0);
-        CCTBX_ASSERT(i_batch < mtz_object.n_batches());
+        IOTBX_ASSERT(i_batch >= 0);
+        IOTBX_ASSERT(i_batch < mtz_object.n_batches());
       }
 
       //! The contained iotbx::mtz::object instance.
@@ -95,13 +96,13 @@ namespace iotbx { namespace mtz {
       CMtz::MTZBAT*
       ptr() const
       {
-        CCTBX_ASSERT(mtz_object_.n_batches() > i_batch_);
+        IOTBX_ASSERT(mtz_object_.n_batches() > i_batch_);
         CMtz::MTZBAT* p = mtz_object_.ptr()->batch;
         for(int i=0;i<i_batch_;i++) {
           if (p == 0) break;
           p = p->next;
         }
-        CCTBX_ASSERT(p != 0);
+        IOTBX_ASSERT(p != 0);
         return p;
       }
 
@@ -111,7 +112,7 @@ namespace iotbx { namespace mtz {
       title() const
       {
         CMtz::MTZBAT* batch_ptr = ptr();
-        CCTBX_ASSERT(string_is_null_terminated(
+        IOTBX_ASSERT(string_is_null_terminated(
           batch_ptr->title, sizeof(batch_ptr->title)));
         return batch_ptr->title;
       }
@@ -119,7 +120,7 @@ namespace iotbx { namespace mtz {
       batch&
       set_title(const char* value)
       {
-        CCTBX_ASSERT(value != 0);
+        IOTBX_ASSERT(value != 0);
         CMtz::MTZBAT* batch_ptr = ptr();
         strncpy(batch_ptr->title, value, sizeof(batch_ptr->title));
         batch_ptr->title[sizeof(batch_ptr->title)-1] = '\0';
@@ -132,7 +133,7 @@ namespace iotbx { namespace mtz {
         CMtz::MTZBAT* batch_ptr = ptr();
         af::shared<std::string> result((af::reserve(3)));
         for(int i=0;i<3;i++) {
-          CCTBX_ASSERT(string_is_null_terminated(
+          IOTBX_ASSERT(string_is_null_terminated(
             batch_ptr->gonlab[i], sizeof(batch_ptr->gonlab)/3));
           result.push_back(batch_ptr->gonlab[i]);
         }
@@ -142,7 +143,7 @@ namespace iotbx { namespace mtz {
       batch&
       set_gonlab(af::const_ref<std::string> const& values)
       {
-        CCTBX_ASSERT(values.size() == 3);
+        IOTBX_ASSERT(values.size() == 3);
         CMtz::MTZBAT* batch_ptr = ptr();
         const std::size_t n = sizeof(batch_ptr->gonlab)/3;
         for(int i=0;i<3;i++) {
@@ -174,7 +175,7 @@ namespace iotbx { namespace mtz {
       batch&
       set_ndet(int const& value)
       {
-        CCTBX_ASSERT(value >= 0 && value <= 2);
+        IOTBX_ASSERT(value >= 0 && value <= 2);
         ptr()->ndet = value;
         return *this;
       }
@@ -198,7 +199,7 @@ namespace iotbx { namespace mtz {
       batch&
       set_phixyz(af::const_ref<float> const& values)
       {
-        CCTBX_ASSERT(values.size() == 6);
+        IOTBX_ASSERT(values.size() == 6);
         CMtz::MTZBAT* batch_ptr = ptr();
         int iv = 0;
         for(int i=0;i<2;i++)
@@ -249,7 +250,7 @@ namespace iotbx { namespace mtz {
       batch&
       set_detlm(af::const_ref<float> const& values)
       {
-        CCTBX_ASSERT(values.size() == 8);
+        IOTBX_ASSERT(values.size() == 8);
         CMtz::MTZBAT* batch_ptr = ptr();
         int iv = 0;
         for(int i=0;i<2;i++)

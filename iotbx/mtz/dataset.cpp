@@ -1,5 +1,6 @@
 #include <iotbx/mtz/batch.h>
 #include <iotbx/mtz/column.h>
+#include <iotbx/error.h>
 
 namespace iotbx { namespace mtz {
 
@@ -8,14 +9,14 @@ namespace iotbx { namespace mtz {
     mtz_crystal_(mtz_crystal),
     i_dataset_(i_dataset)
   {
-    CCTBX_ASSERT(i_dataset >= 0);
-    CCTBX_ASSERT(i_dataset < mtz_crystal.n_datasets());
+    IOTBX_ASSERT(i_dataset >= 0);
+    IOTBX_ASSERT(i_dataset < mtz_crystal.n_datasets());
   }
 
   CMtz::MTZSET*
   dataset::ptr() const
   {
-    CCTBX_ASSERT(mtz_crystal_.n_datasets() > i_dataset_);
+    IOTBX_ASSERT(mtz_crystal_.n_datasets() > i_dataset_);
     return CMtz::MtzIsetInXtal(mtz_crystal_.ptr(), i_dataset_);
   }
 
@@ -24,10 +25,10 @@ namespace iotbx { namespace mtz {
   {
     if (ptr()->setid != id) {
       CMtz::MTZ* p = mtz_crystal().mtz_object().ptr();
-      CCTBX_ASSERT(p->refs_in_memory);
+      IOTBX_ASSERT(p->refs_in_memory);
       for(int i=0;i<p->nxtal;i++) {
         for(int j=0;j<p->xtal[i]->nset;j++) {
-          CCTBX_ASSERT(p->xtal[i]->set[j]->setid != id);
+          IOTBX_ASSERT(p->xtal[i]->set[j]->setid != id);
         }
       }
       ptr()->setid = id;
@@ -38,8 +39,8 @@ namespace iotbx { namespace mtz {
   dataset&
   dataset::set_name(const char* new_name)
   {
-    CCTBX_ASSERT(new_name != 0);
-    CCTBX_ASSERT(std::strlen(new_name) < sizeof(ptr()->dname));
+    IOTBX_ASSERT(new_name != 0);
+    IOTBX_ASSERT(std::strlen(new_name) < sizeof(ptr()->dname));
     if (std::strcmp(ptr()->dname, new_name) == 0) return *this;
     if (mtz_crystal().has_dataset(new_name)) {
       throw std::runtime_error(
@@ -92,23 +93,23 @@ namespace iotbx { namespace mtz {
     const char *type)
   {
     CMtz::MTZCOL* column_ptr = 0;
-    CCTBX_ASSERT(label != 0);
-    CCTBX_ASSERT(strlen(label) < sizeof(column_ptr->label));
+    IOTBX_ASSERT(label != 0);
+    IOTBX_ASSERT(strlen(label) < sizeof(column_ptr->label));
     if (std::strchr(label, ',') != 0) {
       throw std::runtime_error(
           std::string("mtz::dataset::add_column(label=\"")
         + label
         + "\", ...): label must not include commas.");
     }
-    CCTBX_ASSERT(type != 0);
-    CCTBX_ASSERT(strlen(type) < sizeof(column_ptr->type));
-    CCTBX_ASSERT(!mtz_object().has_column(label));
+    IOTBX_ASSERT(type != 0);
+    IOTBX_ASSERT(strlen(type) < sizeof(column_ptr->type));
+    IOTBX_ASSERT(!mtz_object().has_column(label));
     int i_column = n_columns();
     column_ptr = CMtz::MtzAddColumn(mtz_object().ptr(), ptr(), label, type);
-    CCTBX_ASSERT(column_ptr != 0);
-    CCTBX_ASSERT(n_columns() == i_column+1);
+    IOTBX_ASSERT(column_ptr != 0);
+    IOTBX_ASSERT(n_columns() == i_column+1);
     column result(*this, i_column);
-    CCTBX_ASSERT(result.ptr() == column_ptr);
+    IOTBX_ASSERT(result.ptr() == column_ptr);
     return result;
   }
 

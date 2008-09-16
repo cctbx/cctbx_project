@@ -1,6 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
+#include <iotbx/error.h>
 #include <cctbx/sgtbx/space_group.h>
-#include <cctbx/error.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 
@@ -19,10 +19,10 @@ namespace iotbx { namespace boost_python { namespace dtrek_ext {
         af::const_ref<double> const& data_minus,
         af::const_ref<double> const& sigmas_minus)
       {
-        CCTBX_ASSERT(data_plus.size() == miller_indices.size());
-        CCTBX_ASSERT(sigmas_plus.size() == miller_indices.size());
-        CCTBX_ASSERT(data_minus.size() == miller_indices.size());
-        CCTBX_ASSERT(sigmas_minus.size() == miller_indices.size());
+        IOTBX_ASSERT(data_plus.size() == miller_indices.size());
+        IOTBX_ASSERT(sigmas_plus.size() == miller_indices.size());
+        IOTBX_ASSERT(data_minus.size() == miller_indices.size());
+        IOTBX_ASSERT(sigmas_minus.size() == miller_indices.size());
         for(std::size_t i=0;i<miller_indices.size();i++) {
           miller_indices_.push_back(miller_indices[i]);
           if (!space_group.is_centric(miller_indices[i])) {
