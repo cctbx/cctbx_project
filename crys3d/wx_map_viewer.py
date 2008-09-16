@@ -67,7 +67,7 @@ class map_view(wx_viewer.wxGLWindow):
     density_stats = maptbx.statistics(rho)
     self.min_density = density_stats.min()
     self.max_density = density_stats.max()
-    self.iso_level = density_stats.sigma()
+    self.set_initial_iso_level(density_stats)
     print "Statistics:"
     print "min: %.3g" % self.min_density
     print "max: %.3g" % self.max_density
@@ -79,6 +79,9 @@ class map_view(wx_viewer.wxGLWindow):
     s = unit_cell.orthogonalize((0,1,1))
     self.minimum_covering_sphere = minimum_covering_sphere(
       flex.vec3_double([p,q,r,s]))
+    
+  def set_initial_iso_level(self, density_stats):
+    self.iso_level = density_stats.mean() + 2*density_stats.sigma()
 
   def iso_level(self):
     return self._iso_level
@@ -191,9 +194,10 @@ class App(wx_viewer.App):
   def __init__(self,
                fft_map=None,
                unit_cell=None, raw_map=None,
+               map_view_type=map_view,
                wires=True,
                **kwds):
-    self._make_view_objects = lambda: map_view(
+    self._make_view_objects = lambda: map_view_type(
       fft_map=fft_map,
       unit_cell=unit_cell, raw_map=raw_map,
       wires=wires,
@@ -235,6 +239,7 @@ class App(wx_viewer.App):
       iso_level_pane)
     self.swap_colour_btn = wx.Button(iso_level_pane, label="< swap >")
     self.wires_btn = wx.CheckBox(iso_level_pane, label="Wires")
+    self.wires_btn.Set3StateValue(wx.CHK_CHECKED)
     self.wires_btn.Bind(wx.EVT_CHECKBOX,
                         self.on_wires_changed)
     lbl_fmt = "Iso-level %s %%s" % unicodedata.lookup('MULTIPLICATION SIGN')
@@ -380,11 +385,13 @@ class App(wx_viewer.App):
 
 def display(fft_map=None,
             unit_cell=None, raw_map=None,
+            map_view_type=map_view,
             wires=True,
             size=(600,600),
             title="Electron density iso-contour"):
   a = App(fft_map=fft_map,
           unit_cell=unit_cell, raw_map=raw_map,
+          map_view_type=map_view_type,
           wires=wires,
           title=title,
           default_size=size)
