@@ -110,6 +110,7 @@ iotbx/command_line/pdb.print_sequence.py -text
 iotbx/command_line/pdb_as_fasta.py svneol=native#text/x-python
 iotbx/detectors/cbf.py -text
 iotbx/detectors/pilatus_minicbf.py -text
+iotbx/error.h svneol=native#text/plain
 iotbx/examples/__init__.py svneol=native#text/x-python
 iotbx/examples/mtz_convert_free_to_work.py svneol=native#text/x-python
 iotbx/examples/mtz_free_flipper.py svneol=native#text/x-python
