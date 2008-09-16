@@ -539,20 +539,20 @@ get_edge_id(index_type n, int edge_no)
 {
   int c = 0;
   switch (edge_no) {
-  case 0:  c = 1;          ;          ;          ; break;
-  case 1:       ;          ; n[Y] += 1;          ; break;
-  case 2:  c = 1; n[X] += 1;          ;          ; break;
-  case 3:       ;          ;          ;          ; break;
-  case 4:  c = 1;          ;          ; n[Z] += 1; break;
-  case 5:       ;          ; n[Y] += 1; n[Z] += 1; break;
-  case 6:  c = 1; n[X] += 1;          ; n[Z] += 1; break;
-  case 7:       ;          ;          ; n[Z] += 1; break;
-  case 8:  c = 2;          ;          ;          ; break;
-  case 9:  c = 2;          ; n[Y] += 1;          ; break;
-  case 10: c = 2; n[X] += 1; n[Y] += 1;          ; break;
-  case 11: c = 2; n[X] += 1;          ;          ; break;
-  default:
-    throw SCITBX_ERROR("Internal Error: Invalid edge no.");
+    case 0:  c = 1;          ;          ;          ; break;
+    case 1:       ;          ; n[Y] += 1;          ; break;
+    case 2:  c = 1; n[X] += 1;          ;          ; break;
+    case 3:       ;          ;          ;          ; break;
+    case 4:  c = 1;          ;          ; n[Z] += 1; break;
+    case 5:       ;          ; n[Y] += 1; n[Z] += 1; break;
+    case 6:  c = 1; n[X] += 1;          ; n[Z] += 1; break;
+    case 7:       ;          ;          ; n[Z] += 1; break;
+    case 8:  c = 2;          ;          ;          ; break;
+    case 9:  c = 2;          ; n[Y] += 1;          ; break;
+    case 10: c = 2; n[X] += 1; n[Y] += 1;          ; break;
+    case 11: c = 2; n[X] += 1;          ;          ; break;
+    default:
+      throw SCITBX_ERROR("Internal Error: Invalid edge no.");
   }
   index_value_type vertex_id = 3*map_.accessor()(n);
   return vertex_id + c;
@@ -568,40 +568,40 @@ calculate_intersection(index_type n, int edge_no)
   index_type v1 = n, v2 = n;
   switch (edge_no)
   {
-  case 0:            ;           ;           ;
-           v2[Y] += 1;           ;           ; break;
+    case 0:            ;           ;           ;
+             v2[Y] += 1;           ;           ; break;
 
-  case 1:  v1[Y] += 1;           ;           ;
-           v2[X] += 1; v2[Y] += 1;           ; break;
+    case 1:  v1[Y] += 1;           ;           ;
+             v2[X] += 1; v2[Y] += 1;           ; break;
 
-  case 2:  v1[X] += 1; v1[Y] += 1;           ;
-           v2[X] += 1;           ;           ; break;
+    case 2:  v1[X] += 1; v1[Y] += 1;           ;
+             v2[X] += 1;           ;           ; break;
 
-  case 3:  v1[X] += 1;           ;           ;
-                     ;           ;           ; break;
+    case 3:  v1[X] += 1;           ;           ;
+                       ;           ;           ; break;
 
-  case 4:            ;           ; v1[Z] += 1;
-                     ; v2[Y] += 1; v2[Z] += 1; break;
+    case 4:            ;           ; v1[Z] += 1;
+                       ; v2[Y] += 1; v2[Z] += 1; break;
 
-  case 5:            ; v1[Y] += 1; v1[Z] += 1;
-           v2[X] += 1; v2[Y] += 1; v2[Z] += 1; break;
+    case 5:            ; v1[Y] += 1; v1[Z] += 1;
+             v2[X] += 1; v2[Y] += 1; v2[Z] += 1; break;
 
-  case 6:  v1[X] += 1; v1[Y] += 1; v1[Z] += 1;
-           v2[X] += 1;           ; v2[Z] += 1; break;
+    case 6:  v1[X] += 1; v1[Y] += 1; v1[Z] += 1;
+             v2[X] += 1;           ; v2[Z] += 1; break;
 
-  case 7:  v1[X] += 1;           ; v1[Z] += 1;
-                     ;           ; v2[Z] += 1; break;
+    case 7:  v1[X] += 1;           ; v1[Z] += 1;
+                       ;           ; v2[Z] += 1; break;
 
-  case 8:            ;           ;           ;
-                     ;           ; v2[Z] += 1; break;
+    case 8:            ;           ;           ;
+                       ;           ; v2[Z] += 1; break;
 
-  case 9:            ; v1[Y] += 1;           ;
-                     ; v2[Y] += 1; v2[Z] += 1; break;
+    case 9:            ; v1[Y] += 1;           ;
+                       ; v2[Y] += 1; v2[Z] += 1; break;
 
-  case 10: v1[X] += 1; v1[Y] += 1;           ;
-           v2[X] += 1; v2[Y] += 1; v2[Z] += 1; break;
-  case 11: v1[X] += 1;           ;           ;
-           v2[X] += 1;           ; v2[Z] += 1; break;
+    case 10: v1[X] += 1; v1[Y] += 1;           ;
+             v2[X] += 1; v2[Y] += 1; v2[Z] += 1; break;
+    case 11: v1[X] += 1;           ;           ;
+             v2[X] += 1;           ; v2[Z] += 1; break;
   }
 
   // Interpolate between v1 and v2 to find an approximation of the intersection
