@@ -79,7 +79,7 @@ class map_view(wx_viewer.wxGLWindow):
     s = unit_cell.orthogonalize((0,1,1))
     self.minimum_covering_sphere = minimum_covering_sphere(
       flex.vec3_double([p,q,r,s]))
-    
+
   def set_initial_iso_level(self, density_stats):
     self.iso_level = density_stats.mean() + 2*density_stats.sigma()
 
