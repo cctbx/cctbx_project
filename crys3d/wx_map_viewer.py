@@ -123,7 +123,7 @@ class map_view(wx_viewer.wxGLWindow):
     glEnable(GL_LIGHTING)
     glEnable(GL_LIGHT0)
     glShadeModel(GL_SMOOTH)
-    glLightfv(GL_LIGHT0, GL_POSITION, [1, 1, 1, 0])
+    glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
 
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
