@@ -42,11 +42,11 @@ namespace iotbx { namespace ccp4_map {
 
         data = af::versa<float, af::flex_grid<> >(
           af::flex_grid<>(map_dim[0], map_dim[1], map_dim[2]));
+#ifdef THIS_DOES_NOT_SEEM_TO_BE_CORRECT
         af::ref<float, af::c_grid<3> > data_ref(
           data.begin(),
           af::c_grid<3>(af::adapt(data.accessor().all())));
 
-#ifdef THIS_DOES_NOT_SEEM_TO_BE_CORRECT
         int num_cols = map_dim[0];
         int num_rows = map_dim[1];
         boost::scoped_array<float> row(new float [num_rows]);
