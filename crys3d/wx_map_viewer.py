@@ -341,9 +341,9 @@ class App(wx_viewer.App):
     box_sf = wx.BoxSizer(wx.VERTICAL)
     box_sf.Add(self.specular_focus_slider, 0, wx.EXPAND|wx.BOTTOM, border=5)
     box_sf_1 = wx.BoxSizer(wx.HORIZONTAL)
-    box_sf_1.Add(wx.StaticText(opengl_pane, label="sharp"), 0, 0)
-    box_sf_1.AddStretchSpacer(10)
     box_sf_1.Add(wx.StaticText(opengl_pane, label="diffuse"), 0, 0)
+    box_sf_1.AddStretchSpacer(10)
+    box_sf_1.Add(wx.StaticText(opengl_pane, label="sharp"), 0, 0)
     box_sf.Add(box_sf_1, 0, wx.EXPAND)
     cell_box.Add(box_sf, flag=wx.BOTTOM, border=5)
     cell_box.Add(wx.StaticText(opengl_pane, label='Specular focus'),
