@@ -69,6 +69,7 @@ crys3d/__init__.py -text
 crys3d/images.py -text
 crys3d/wx_extra.py -text
 crys3d/wx_map_viewer.py -text
+crys3d/wx_map_viewer_example.py -text
 dox/references.bib -text
 dox/rst/python_cpp_mix.png -text
 dox/sbgrid2008_update_generated_files.csh -text
