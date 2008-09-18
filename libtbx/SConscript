@@ -72,7 +72,7 @@ compiler = libtbx.env.build_options.compiler
 if (sys.platform == "win32"):
   if (compiler == "default"):
     env_etc.compiler = "win32_cl"
-  else: 
+  else:
     env_etc.compiler = "win32_"+compiler
     compiler = None
 elif (sys.platform.startswith("sunos")):
@@ -129,7 +129,6 @@ supported_compilers = (
   "darwin_gcc-4.2", # tested with the "GCC 4.2 Developer Preview 1"
                     # distributed by Apple
                     # and the GCC 4.2 shipping with XCode 3.1
-                    
 )
 if (not env_etc.compiler in supported_compilers):
   sys.tracebacklimit = 0
