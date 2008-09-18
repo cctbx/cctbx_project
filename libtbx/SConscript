@@ -191,22 +191,33 @@ if (sys.platform == "win32"):
       "/D_CRT_SECURE_NO_DEPRECATE",
       "/wd4996", # warning C4996: ... was declared deprecated
       "/wd4068", # warning C4068: unknown pragma
-      "/Zm800",
-      "/MD"]
+      "/Zm800"]
+    if (libtbx.env.build_options.debug_symbols):
+      if (not env_etc.no_boost_python):
+        print """\
+libtbx.scons: Warning: compiling with /MDd:
+                       Boost.Python extensions will work reliably
+                       only with a debug build of Python."""
+      env_etc.ccflags_base.extend([
+        "/MDd", "/Z7", "/D_HAS_ITERATOR_DEBUGGING=0"])
+    else:
+      env_etc.ccflags_base.append("/MD")
     env_etc.cxxflags_base = env_etc.ccflags_base + [
       "/GR",
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
-      opts = ["/DNDEBUG", "/Ox"]
+      opts = ["/DNDEBUG", "/O2", "/arch:SSE2"]
+      if (env_base["MSVS_VERSION"] != "7.1"):
+        opts.append("/fp:fast")
     else:
       opts = ["/Od"]
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('/DBOOST_DISABLE_THREADS')
-    if (libtbx.env.build_options.debug_symbols):
-      raise RuntimeError("Debug build not supported.")
     env_etc.cxxflags_base.extend(opts)
     env_etc.ccflags_base.extend(opts)
     env_etc.shlinkflags = ["/nologo", "/incremental:no", "/dll"]
+    if (libtbx.env.build_options.debug_symbols):
+      env_etc.shlinkflags.append("/DEBUG")
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
     env_etc.libm = []
   elif (env_etc.compiler == "win32_icc"):
