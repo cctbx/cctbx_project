@@ -118,7 +118,7 @@ class InspectorHeader(wx.PyControl, MouseClickButtonMixin):
       return self._best_size
 
   def OnPaint(self, event):
-    dc = wx.PaintDC(self)
+    dc = wx.BufferedPaintDC(self)
     dc.SetFont(self.Font)
     dc.FillWith3DGradient(self.Rect, self.colour,
                           direction=wx.SOUTH, step=0.6)
@@ -139,7 +139,7 @@ class InspectorHeader(wx.PyControl, MouseClickButtonMixin):
                      yoffset=(h-w_t)//2 + w_t)
     dc.DrawText(self.Label, w_t + 3*self.horizontal_margin,
                             self.vertical_margin)
-    del dc
+    dc.Destroy()
 
   def OnResize(self, event):
     event.Skip()
@@ -209,11 +209,16 @@ class InspectorToolFrame(wx.MiniFrame):
                pos=wx.DefaultPosition, size=wx.DefaultSize):
     if pos is wx.DefaultPosition and wx.Platform == '__WXMAC__':
       pos = (0, 26)
-    super(InspectorToolFrame, self).__init__(parent, id, title=" ",
-                                             pos=pos, size=size,
-                                             style=wx.CAPTION|wx.CLOSE_BOX)
+    super(InspectorToolFrame, self).__init__(
+      parent, id, title=" ",
+      pos=pos, size=size,
+      style=wx.CAPTION|wx.CLOSE_BOX)
     s = wx.BoxSizer(wx.VERTICAL)
     self.SetSizer(s)
+    self.Bind(wx.EVT_CLOSE, self.on_close)
+
+  def on_close(self, event):
+    self.Hide()
 
   def move_parent_out_of_the_way(self):
     x,y,w,h = self.GetRect()
