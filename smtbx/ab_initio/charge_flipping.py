@@ -37,7 +37,7 @@ from libtbx import object_oriented_patterns as oop
 from libtbx.math_utils import are_equivalent
 from libtbx.assert_utils import is_numeric
 from libtbx import itertbx
-from libtbx import adopt_init_args
+from libtbx import adopt_init_args, adopt_optional_init_args
 
 from scitbx import matrix as mat
 
@@ -48,6 +48,8 @@ from cctbx import maptbx
 from cctbx import translation_search
 
 from smtbx import ab_initio
+
+import scitbx.math
 
 import sys
 import math
@@ -97,6 +99,14 @@ class _fft_extension(oop.injector, miller.fft_map):
   def c_tot(self):
     return flex.sum(self.real_map())
   c_tot = oop.memoize_method(c_tot)
+
+  def skewness(self):
+    return maptbx.more_statistics(self.real_map()).skewness()
+  skewness = oop.memoize_method(skewness)
+
+  def sigma(self):
+    return maptbx.statistics(self.real_map()).sigma()
+  sigma = oop.memoize_method(sigma)
 
 
 class density_modification_iterator(object):
@@ -164,9 +174,6 @@ class density_modification_iterator(object):
   def r1_factor(self):
     return self.f_obs.r1_factor(self._g, assume_index_matching=True)
 
-  def c_tot_over_c_flip(self):
-    return self.rho_map.c_tot()/self.rho_map.c_flip(self.delta)
-
   def f_calc_symmetrisations(self):
     # The fast correlation map as per cctbx.translation_search.fast_nv1995
     # is computed and its peaks studied.
@@ -231,6 +238,9 @@ class basic_iterator(density_modification_iterator):
     super(basic_iterator, self).__init__(f_obs, **kwds)
     self.delta = delta
 
+  def c_tot_over_c_flip(self):
+    return self.rho_map.c_tot()/self.rho_map.c_flip(self.delta)
+
   def modify_electron_density(self):
     """ This shall modify rho in place """
     ab_initio.ext.flip_charges_in_place(self.rho_map.real_map(), self.delta)
@@ -265,37 +275,50 @@ class low_density_elimination_iterator(density_modification_iterator):
   C.f. Ref [4].
   """
 
-  def __init__(self, f_obs, rho_c=None, **kwds):
+  def __init__(self, f_obs, constant_rho_c=None, **kwds):
     super(low_density_elimination_iterator, self).__init__(f_obs, **kwds)
-    if rho_c is not None: self.rho_c = rho_c
+    self.constant_rho_c = constant_rho_c
 
   def modify_electron_density(self):
     ab_initio.ext.low_density_elimination_in_place_tanaka_et_al_2001(
       self.rho_map.real_map(), self.rho_c())
 
   def rho_c(self):
+    if self.constant_rho_c is not None:
+      return self.constant_rho_c
+    else:
+      return self.shiono_woolfson_rho_c()
+
+  def shiono_woolfson_rho_c(self):
     """ The rho_c suggested in Ref [4] """
-    rho = self.rho_map.real_map_unpadded()
+    rho = self.rho_map.real_map_unpadded().as_1d()
     return 0.2*flex.mean(rho.select(rho >0))
 
 
 class solving_iterator(object):
 
-  def __init__(self, flipping_iterator,
-               delta_guessing_sub_iterations=10,
-               initial_flipped_fraction=0.8,
-               yield_during_delta_guessing=False,
-               max_solving_iterations=500,
-               max_attempts_to_get_phase_transition=5,
-               max_attempts_to_get_sharp_correlation_map=5,
-               yield_solving_interval=10,
-               phase_transition_tail_len=12,
-               polishing_iterations=5):
-    adopt_init_args(self, locals())
+  delta_guessing_method = "sigma"
+  delta_over_sigma = 1.1
+  max_delta_guessing_iterations = 10
+  map_sigma_stability_threshold = 0.01
+  initial_flipped_fraction=0.8
+  yield_during_delta_guessing = False
+  max_solving_iterations = 500
+  max_attempts_to_get_phase_transition = 5
+  max_attempts_to_get_sharp_correlation_map = 5
+  yield_solving_interval = 10
+  polishing_iterations = 5
+
+  def __init__(self, flipping_iterator, **kwds):
+    self.flipping_iterator = flipping_iterator
+    adopt_optional_init_args(self, kwds)
     self.attempts = []
     self.f_calc_solutions = []
     self.max_attempts_exceeded = False
-    self.state = self.guessing_delta = self._guessing_delta()
+    self.state = self.guessing_delta = {
+      "sigma": self._guessing_delta_with_map_sigma,
+      "c_tot_over_c_flip": self._guessing_delta_with_c_tot_over_c_flip,
+      }[self.delta_guessing_method]()
     self.solving = self._solving()
     self.polishing = self._polishing()
     self.evaluating = self._evaluating()
@@ -308,10 +331,13 @@ class solving_iterator(object):
       yield self.flipping_iterator
       self.state = state
 
+  def had_phase_transition(self):
+    return self.state == self.finished and not self.max_attempts_exceeded
+
   def _finished(self):
     yield self.finished
 
-  def _guessing_delta(self):
+  def _guessing_delta_with_c_tot_over_c_flip(self):
     flipping = self.flipping_iterator
     delta_needs_initialisation = True
     while 1:
@@ -321,7 +347,7 @@ class solving_iterator(object):
                                                 self.initial_flipped_fraction)
         delta_needs_initialisation = False
       for foo in itertbx.islice(flipping,
-                                self.delta_guessing_sub_iterations):
+                                self.max_delta_guessing_iterations):
         pass
       r = flipping.c_tot_over_c_flip()
       # magic numbers from SUPERFLIP
@@ -338,6 +364,25 @@ class solving_iterator(object):
         elif r > high:
           flipping.delta *= 1.07
 
+  def _guessing_delta_with_map_sigma(self):
+    while 1:
+      self.f_calc_solutions = []
+      sigmas = flex.double()
+      for i in xrange(self.max_delta_guessing_iterations):
+        sigma = self.flipping_iterator.rho_map.sigma()
+        sigmas.append(sigma)
+        self.flipping_iterator.delta = self.delta_over_sigma * sigma
+        if len(sigmas) == 1:
+          self.flipping_iterator.next()
+          continue
+        sigma_tail_stats = scitbx.math.basic_statistics(sigmas[-5:])
+        if (abs(sigma_tail_stats.bias_corrected_standard_deviation
+                /sigma_tail_stats.mean) < self.map_sigma_stability_threshold):
+          break
+        if self.yield_during_delta_guessing: yield self.guessing_delta
+        self.flipping_iterator.next()
+      yield self.solving
+
   def _solving(self):
     while 1:
       i_attempt = 0
@@ -345,40 +390,35 @@ class solving_iterator(object):
         i_attempt += 1
         if i_attempt > 2:
           self.max_solving_iterations *= 1.5
-        r1 = observable_evolution(self.phase_transition_tail_len)
-        ctot_over_cflip = observable_evolution(self.phase_transition_tail_len)
+        observable = skewness_evolution()
         for n, flipping in enumerate(
           itertbx.islice(self.flipping_iterator,
                          0, self.max_solving_iterations)):
           self.iteration_index = n
           if n % self.yield_solving_interval == 0:
             yield self.solving
-          r1.append(flipping.r1_factor())
-          ctot_over_cflip.append(flipping.c_tot_over_c_flip())
-          if n < self.phase_transition_tail_len: continue
-          r1_transition = r1.had_phase_transition()
-          ctot_over_cflip_transition = ctot_over_cflip.had_phase_transition()
-          phase_transition = r1_transition and ctot_over_cflip_transition
-          if phase_transition:
+          observable.append(flipping.rho_map.skewness())
+          if flipping.rho_map.skewness() < 3: continue
+          if observable.had_phase_transition():
             self.attempts.append(n)
             yield self.polishing
             break
         else:
           if i_attempt != self.max_attempts_to_get_phase_transition:
+            self.flipping_iterator.restart()
             yield self.guessing_delta
       self.max_attempts_exceeded = True
       yield self.finished
 
   def _polishing(self):
     while 1:
-      flipping = self.flipping_iterator
-      polishing = low_density_elimination_iterator(
-        f_obs=flipping.f_obs,
-        f_calc=flipping.f_calc,
+      self.flipping_iterator.__class__ = low_density_elimination_iterator
+      self.flipping_iterator.constant_rho_c = self.flipping_iterator.delta
+      self.flipping_iterator.restart(
         f_000=0,
-        rho_c=lambda: flipping.delta)
-      for state in itertbx.islice(polishing, self.polishing_iterations):
-        pass
+        f_calc=self.flipping_iterator.f_calc)
+      for i in xrange(self.polishing_iterations):
+        self.flipping_iterator.next()
       yield self.evaluating
 
   def _evaluating(self):
@@ -410,16 +450,18 @@ def loop(solving, verbose=True, stdout=sys.stdout):
       if verbose == "highly":
         if previous_state is not solving.guessing_delta:
           print "Guessing delta..."
-          print "%10s | %10s | %10s | %10s | %10s"\
-                % ('delta', 'R', 'c_tot', 'c_flip', 'c_tot/c_flip')
-          print "-"*64
+          print ("%10s | %10s | %10s | %10s | %10s | %10s | %10s"
+                 % ('delta', 'delta/sig', 'R', 'F000',
+                    'c_tot', 'c_flip', 'c_tot/c_flip'))
+          print "-"*90
         rho = flipping.rho_map
         c_tot = rho.c_tot()
         c_flip = rho.c_flip(flipping.delta)
         # to compare with superflip output
         c_tot *= flipping.fft_scale; c_flip *= flipping.fft_scale
-        print "%10.4f | %10.3f | %10.1f | %10.1f | %10.2f"\
-              % (flipping.delta, flipping.r1_factor(),
+        print "%10.4f | %10.4f | %10.3f | %10.3f | %10.1f | %10.1f | %10.2f"\
+              % (flipping.delta, flipping.delta/rho.sigma(),
+                 flipping.r1_factor(), flipping.f_000,
                  c_tot, c_flip, c_tot/c_flip)
 
     elif solving.state is solving.solving:
@@ -430,12 +472,16 @@ def loop(solving, verbose=True, stdout=sys.stdout):
           print "Solving..."
           print "with delta=%.4f" % flipping.delta
           print
-          print "%5s | %10s | %10s" % ('#', 'R1', 'c_tot/c_flip')
+          print "%5s | %10s | %10s" % ('#', 'F000', 'skewness')
           print '-'*33
-        r1 = flipping.r1_factor()
-        r = flipping.c_tot_over_c_flip()
-        print "%5i | %10.3f | %10.3f" % (solving.iteration_index, r1, r)
+        print "%5i | %10.1f | %10.3f" % (solving.iteration_index,
+                                         flipping.f_000,
+                                         flipping.rho_map.skewness())
 
+    elif solving.state is solving.polishing:
+      if verbose == 'highly':
+        print
+        print "Polishing with rho_c=%.4f" % flipping.rho_c()
     elif solving.state is solving.finished:
       break
 
@@ -443,65 +489,46 @@ def loop(solving, verbose=True, stdout=sys.stdout):
 
 
 
-class observable_evolution(object):
+class skewness_evolution(object):
 
-  def __init__(self, phase_transition_tail_len):
-    adopt_init_args(self, locals())
+  smoothing_coefficient = 0.25
+  increasing = True
+  noise_level_before = 0.3
+  noise_level_after = 0.2
+
+  def __init__(self, **kwds):
+    adopt_optional_init_args(self, kwds)
     self.values = flex.double()
     self.differences = flex.double()
-    self.min_diff = None
-    self.min_diff_index = None
 
   def append(self, x):
-    self.values.append(x)
     if len(self.values) > 1:
-      diff = self.values[-1] - self.values[-2]
-      self.differences.append(diff)
-    if len(self.differences) > 5:
-      smoothed_diff = flex.mean(self.differences[-5:])
-      if self.min_diff is None or smoothed_diff < self.min_diff:
-        self.min_diff = smoothed_diff
-        self.min_diff_index = len(self.differences)
+      y0 = self.values[-1]
+      a = self.smoothing_coefficient
+      y1 = y0 + a*(x - y0)
+      self.values.append(y1)
+      delta = y1 - y0
+      if not self.increasing: delta = -delta
+      self.differences.append(delta)
+    else:
+      self.values.append(x)
 
   def had_phase_transition(self):
-    if (len(self.differences) - self.min_diff_index
-        < self.phase_transition_tail_len): return False
-    before = self.min_diff_index - 4
-    if before < 0: return False
-    after = self.min_diff_index + 4
-    indices = flex.double_range(len(self.values)-after)
-    tail = self.values[after:]
-    p = flex.sort_permutation(tail)
-    lc = flex.linear_correlation(indices, tail)
-    lr = flex.linear_regression(indices, tail)
-    lc_up    = flex.linear_correlation(indices.select(p[-5:]),
-                                        tail.select(p[-5:]))
-    lc_down = flex.linear_correlation(indices.select(p[:5]),
-                                        tail.select(p[:5]))
-    lr_up    = flex.linear_regression(indices.select(p[-5:]),
-                                       tail.select(p[-5:]))
-    lr_down = flex.linear_regression(indices.select(p[:5]),
-                                       tail.select(p[:5]))
-    max_slope = 0.05
-    if abs(lc.coefficient()) > 0.5:
-      if abs(lr.slope()) > max_slope:
-        return False
-    elif abs(lc_down.coefficient()) < 0.5 and abs(lc_up.coefficient()) < 0.5:
-      if abs(lr_down.slope()) > max_slope or abs(lr_up.slope()) > max_slope:
-        return False
-    value_after = lr.y_intercept()
-    tail_stats = flex.mean_and_variance(tail)
-    m_t = tail_stats.mean()
-    v_t = tail_stats.unweighted_sample_variance()
-    head = self.values[max(before - self.phase_transition_tail_len//2, 0)
-                       : before]
-    if head.size() > 1:
-      head_stats = flex.mean_and_variance(head)
-      m_h = head_stats.mean()
-      v_h = head_stats.unweighted_sample_variance()
-      fall_significance = abs(m_h - m_t)/math.sqrt(v_h + v_t)
-    elif head.size() > 0:
-      fall_significance = abs(head[0] - m_t)/math.sqrt(v_t)
-    else:
-      return False
-    return fall_significance > 3
+    if len(self.differences) < 5: return False
+    i_max = flex.max_index(self.differences)
+    noise_before = (self.differences
+                    < self.noise_level_before*self.differences[i_max])
+    before = flex.last_index(noise_before[:i_max], True)
+    if before is None: before = -1
+    before += 1
+    if i_max - before < 4: return False
+    negative_after = self.differences < 0
+    after = flex.first_index(negative_after[i_max:], True)
+    if after is None: return False
+    after += i_max
+    if after - before < 10: return False
+    if len(self.values) - after < 10: return False
+    tail_stats = scitbx.math.basic_statistics(self.differences[-5:])
+    if (tail_stats.max_absolute
+        > self.noise_level_after*self.differences[i_max]): return False
+    return True
