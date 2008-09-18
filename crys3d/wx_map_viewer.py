@@ -211,8 +211,8 @@ class App(wx_viewer.App):
     view = self.view_objects = self._make_view_objects()
     range = view.max_density - view.min_density
     if range != 0:
-      n = int(math.log10(range))-2
-      p = 5
+      n = int(math.log10(range))-3
+      p = 1
       self.amplitude = p*10**n
     else:
       p,n = 1,0
