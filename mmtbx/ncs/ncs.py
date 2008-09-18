@@ -14,6 +14,7 @@ from libtbx.utils import Sorry
 class ncs_group:  # one group of NCS operators and center and where it applies
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
       chain_residue_id=None,source_of_ncs_info=None,rmsd_list=None,
+      ncs_domain_pdb=None,
       residues_in_common_list=None,cc=None,exclude_h=None,exclude_d=None):
     self._chain_residue_id=chain_residue_id  # just one of these
     self._rmsd_list=rmsd_list
@@ -28,6 +29,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     else:
       self._n_ncs_oper=0
     self._source_of_ncs_info=source_of_ncs_info
+    self._ncs_domain_pdb=ncs_domain_pdb
     self._cc=cc
 
     self._exclude_h=exclude_h
@@ -50,6 +52,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
            str(self._residues_in_common_list)
     if self._source_of_ncs_info:
       text+="\nSource of NCS info: "+str(self._source_of_ncs_info)
+    if self._ncs_domain_pdb:
+      text+="\nNCS domains represented by: "+str(self._ncs_domain_pdb)
     if self._cc:
       text+="\nCorrelation of NCS: "+str(self._cc)
 
@@ -159,6 +163,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def format_for_resolve(self,crystal_number=None,skip_identity=False):
     text="new_ncs_group"
+    if self._ncs_domain_pdb is not None:
+        text+="\nncs_domain_pdb "+str(self._ncs_domain_pdb)+"\n"
     i=0
     for center,trans_orth,ncs_rota_matr in zip (
        self._centers, self._translations_orth,self._rota_matrices):
@@ -214,6 +220,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def source_of_ncs_info(self):
     return self._source_of_ncs_info
+
+  def ncs_domain_pdb(self):
+    return self._ncs_domain_pdb
 
   def print_list(self,list_of_real):
     text=""
@@ -425,6 +434,7 @@ class ncs:
        chain_residue_id=None,
        residues_in_common_list=None,
        rmsd_list=None,
+       ncs_domain_pdb=None,
        source_of_ncs_info=None):
      list_length=None
      for list in [trans_orth,ncs_rota_matr,center_orth]:
@@ -441,6 +451,7 @@ class ncs:
        residues_in_common_list=residues_in_common_list,
        rmsd_list=rmsd_list,
        source_of_ncs_info=source_of_ncs_info,
+       ncs_domain_pdb=ncs_domain_pdb,
        exclude_h=self._exclude_h,exclude_d=self._exclude_d)
      self._ncs_groups.append(ncs_group_object)
 
@@ -463,6 +474,7 @@ class ncs:
        center_orth=self._ncs_center_orth,
        trans_orth=self._ncs_trans_orth,
        source_of_ncs_info=self.source_info,
+       ncs_domain_pdb=self.source_info,
        rmsd_list=self._rmsd_list,
        residues_in_common_list=self._residues_in_common_list,
        chain_residue_id=self._chain_residue_id,
