@@ -394,7 +394,7 @@ else:
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
     # boost compilation fails under Sun compilers (M.D. Winn, 2005 Oct)
-    env_etc.no_boost_python = 1
+    env_etc.no_boost_python = True
     cxx = "CC"
     env_base.Replace(
       CC="cc",
