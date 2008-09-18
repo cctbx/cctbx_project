@@ -353,6 +353,7 @@ smtbx/ab_initio/__init__.py -text
 smtbx/ab_initio/ab_initio_ext.cpp -text
 smtbx/ab_initio/charge_flipping.py -text
 smtbx/ab_initio/density_modification.h -text
+smtbx/ab_initio/development/electron_density_distribution.py -text
 smtbx/ab_initio/tests/__init__.py -text
 smtbx/ab_initio/tests/tst_ab_initio_ext.py -text
 smtbx/ab_initio/tests/tst_charge_flipping.py -text
