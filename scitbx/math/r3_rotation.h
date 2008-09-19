@@ -10,6 +10,13 @@ namespace scitbx { namespace math {
   //! Algorithms for R3 (i.e. 3-dimensional space) rotation matrices.
   namespace r3_rotation {
 
+  namespace detail {
+
+    static const char* very_short_axis_message =
+      "Very short rotation axis vector may lead to numerical instabilities.";
+
+  } // namespace detail
+
   //! Conversion of axis and angle to a rotation matrix.
   /*! http://skal.planet-d.net/demo/matrixfaq.htm
    */
@@ -27,9 +34,7 @@ namespace scitbx { namespace math {
     FloatType w = axis[2];
     FloatType l = std::sqrt(u*u+v*v+w*w);
     if (l < min_axis_length) {
-      throw std::runtime_error(
-        "Very short rotation axis vector may lead to"
-        " numerical instabilities.");
+      throw std::runtime_error(detail::very_short_axis_message);
     }
     u /= l;
     v /= l;
@@ -54,6 +59,38 @@ namespace scitbx { namespace math {
      -vs + w*uoc,
       us + w*voc,
        c + w*woc);
+  }
+
+  //! Conversion without validation of inputs.
+  template <typename FloatType>
+  af::tiny<FloatType, 4>
+  normalized_axis_and_angle_rad_as_unit_quaternion(
+    const FloatType* axis,
+    FloatType const& angle)
+  {
+    FloatType h = angle * 0.5;
+    FloatType ca = std::cos(h);
+    FloatType sa = std::sin(h);
+    return af::tiny<FloatType, 4>(ca, axis[0]*sa, axis[1]*sa, axis[2]*sa);
+  }
+
+  //! Conversion with validation of inputs.
+  template <typename FloatType>
+  af::tiny<FloatType, 4>
+  axis_and_angle_as_unit_quaternion(
+    vec3<FloatType> const& axis,
+    FloatType angle,
+    bool deg=false,
+    FloatType const& min_axis_length=1.e-15)
+  {
+    SCITBX_ASSERT(min_axis_length > 0);
+    FloatType l = axis.length();
+    if (l < min_axis_length) {
+      throw std::runtime_error(detail::very_short_axis_message);
+    }
+    if (deg) angle *= constants::pi_180;
+    return normalized_axis_and_angle_rad_as_unit_quaternion(
+      (axis / l).begin(), angle);
   }
 
   //! Numerically robust computation of rotation axis and angle.
@@ -187,10 +224,8 @@ namespace scitbx { namespace math {
     af::tiny<FloatType, 4>
     as_unit_quaternion() const
     {
-      FloatType h = angle_rad * 0.5;
-      FloatType ca = std::cos(h);
-      FloatType sa = std::sin(h);
-      return af::tiny<FloatType, 4>(ca, axis[0]*sa, axis[1]*sa, axis[2]*sa);
+      return normalized_axis_and_angle_rad_as_unit_quaternion(
+        axis.begin(), angle_rad);
     }
   };
 

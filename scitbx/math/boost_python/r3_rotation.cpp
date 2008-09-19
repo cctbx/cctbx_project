@@ -40,6 +40,10 @@ namespace boost_python {
     r3_rotation::axis_and_angle_as_matrix, 2, 4)
 
   BOOST_PYTHON_FUNCTION_OVERLOADS(
+    r3_rotation_axis_and_angle_as_unit_quaternion_overloads,
+    r3_rotation::axis_and_angle_as_unit_quaternion, 2, 4)
+
+  BOOST_PYTHON_FUNCTION_OVERLOADS(
     r3_rotation_vector_to_vector_overloads,
     r3_rotation::vector_to_vector, 2, 3)
 
@@ -63,6 +67,16 @@ namespace boost_python {
         vec3<double> const&, double, bool deg, double const&))
       r3_rotation::axis_and_angle_as_matrix,
         r3_rotation_axis_and_angle_as_matrix_overloads((
+          arg_("axis"),
+          arg_("angle"),
+          arg_("deg")=false,
+          arg_("min_axis_length")=1.e-15)));
+
+    def("r3_rotation_axis_and_angle_as_unit_quaternion",
+      (af::tiny<double, 4>(*)(
+        vec3<double> const&, double, bool deg, double const&))
+      r3_rotation::axis_and_angle_as_unit_quaternion,
+        r3_rotation_axis_and_angle_as_unit_quaternion_overloads((
           arg_("axis"),
           arg_("angle"),
           arg_("deg")=false,
