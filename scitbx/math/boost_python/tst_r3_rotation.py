@@ -45,15 +45,24 @@ def exercise_axis_and_angle(
                 axis=axis, angle=angle, deg=True)
             except RuntimeError:
               assert axis == (0,0,0)
-              break
+              try:
+                scitbx.math.r3_rotation_axis_and_angle_as_unit_quaternion(
+                  axis=axis, angle=angle, deg=True)
+              except RuntimeError: pass
+              else: raise Exception_expected
             else:
+              q = scitbx.math.r3_rotation_axis_and_angle_as_unit_quaternion(
+                axis=axis, angle=angle, deg=True)
+              assert approx_equal(abs(matrix.col(q)), 1)
+              rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*q)
+              assert approx_equal(rq, r)
               from_matrix = scitbx.math.r3_rotation_axis_and_angle_from_matrix(
                 r=r)
               rr = from_matrix.as_matrix()
               assert approx_equal(rr, r)
-              q = matrix.col(from_matrix.as_unit_quaternion())
-              assert approx_equal(abs(q), 1)
-              rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*q)
+              qq = from_matrix.as_unit_quaternion()
+              assert approx_equal(abs(matrix.col(qq)), 1)
+              rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*qq)
               assert approx_equal(rq, r)
               for deg in [False, True]:
                 rr = scitbx.math.r3_rotation_axis_and_angle_as_matrix(
@@ -62,14 +71,26 @@ def exercise_axis_and_angle(
                   deg=deg,
                   min_axis_length=1-1.e-5)
                 assert approx_equal(rr, r)
-                try:
-                  scitbx.math.r3_rotation_axis_and_angle_as_matrix(
-                    axis=from_matrix.axis,
-                    angle=from_matrix.angle(deg=deg),
-                    deg=deg,
-                    min_axis_length=1+1.e-5)
-                except RuntimeError: pass
-                else: raise Exception_expected
+                qq = scitbx.math.r3_rotation_axis_and_angle_as_unit_quaternion(
+                  axis=from_matrix.axis,
+                  angle=from_matrix.angle(deg=deg),
+                  deg=deg,
+                  min_axis_length=1-1.e-5)
+                qq = from_matrix.as_unit_quaternion()
+                assert approx_equal(abs(matrix.col(qq)), 1)
+                rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*qq)
+                assert approx_equal(rq, r)
+                for conv in [
+                  scitbx.math.r3_rotation_axis_and_angle_as_matrix,
+                  scitbx.math.r3_rotation_axis_and_angle_as_unit_quaternion]:
+                  try:
+                    conv(
+                      axis=from_matrix.axis,
+                      angle=from_matrix.angle(deg=deg),
+                      deg=deg,
+                      min_axis_length=1+1.e-5)
+                  except RuntimeError: pass
+                  else: raise Exception_expected
   #
   for i_trial in xrange(100):
     r = flex.random_double_r3_rotation_matrix()

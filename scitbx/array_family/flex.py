@@ -50,6 +50,7 @@ def export_to(target_module_name):
     "random_bool",
     "random_permutation",
     "random_double_point_on_sphere",
+    "random_double_unit_quaternion",
     "random_double_r3_rotation_matrix",
     "py_object",
     "linear_regression",
@@ -168,6 +169,7 @@ random_double = random_generator.random_double
 random_bool = random_generator.random_bool
 random_permutation = random_generator.random_permutation
 random_double_point_on_sphere = random_generator.random_double_point_on_sphere
+random_double_unit_quaternion = random_generator.random_double_unit_quaternion
 random_double_r3_rotation_matrix \
   = random_generator.random_double_r3_rotation_matrix
 

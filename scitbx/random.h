@@ -350,8 +350,8 @@ namespace random {
         return result;
       }
 
-      scitbx::mat3<double>
-      random_double_r3_rotation_matrix()
+      af::tiny<double, 4>
+      random_double_unit_quaternion()
       {
         /* Results are not predictable if the calls of
            random_double_point_on_sphere() and random_double()
@@ -361,6 +361,16 @@ namespace random {
            this ambiguity, axis and angle are assigned to intermediate
            variables.
          */
+        scitbx::vec3<double> axis = random_double_point_on_sphere();
+        double angle = constants::two_pi * random_double();
+        return math::r3_rotation::axis_and_angle_as_unit_quaternion(
+          axis, angle, /* deg */ false);
+      }
+
+      scitbx::mat3<double>
+      random_double_r3_rotation_matrix()
+      {
+        // See comment inside random_double_unit_quaternion.
         scitbx::vec3<double> axis = random_double_point_on_sphere();
         double angle = constants::two_pi * random_double();
         return math::r3_rotation::axis_and_angle_as_matrix(
