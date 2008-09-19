@@ -42,6 +42,7 @@ from libtbx import adopt_init_args, adopt_optional_init_args
 from scitbx import matrix as mat
 
 from cctbx.array_family import flex
+from cctbx import crystal
 from cctbx import sgtbx
 from cctbx import miller
 from cctbx import maptbx
@@ -127,13 +128,10 @@ class density_modification_iterator(object):
     # We need a grid with the symmetry of the structure
     # so that we can effectively search the shift and that symmetry later.
     # We use the lattice symmetry...
-    cs = self.f_obs.crystal_symmetry()
-    cb_op_to_niggli = cs.change_of_basis_op_to_niggli_cell()
-    cs = cs.change_basis(cb_op_to_niggli)
+    cs = crystal.symmetry(unit_cell=self.f_obs.unit_cell().niggli_cell(),
+                          space_group_symbol="P1")
     lattice_group_info = sgtbx.space_group_info(
       group=sgtbx.lattice_symmetry.group(cs.unit_cell()))
-    lattice_group_info = lattice_group_info.change_basis(
-      cb_op_to_niggli.inverse())
     self.crystal_gridding = maptbx.crystal_gridding(
       unit_cell=self.f_obs.unit_cell(),
       space_group_info=lattice_group_info,
