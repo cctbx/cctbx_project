@@ -105,9 +105,23 @@ def exercise_memoize():
   assert efoo.g(2) == "xx"
   assert efoo._memoized_g.cached == {(2,):'xx', (3,): 'xxx'}
 
+def exercise_null():
+  n = oop.null("a", 1, [])
+  assert not n
+  assert isinstance(n.f, oop.null)
+  assert isinstance(n.g(1, b=2), oop.null)
+  h = n.h = 2
+  assert h == 2
+  assert isinstance(n.h, oop.null)
+  assert isinstance(n[23085], oop.null)
+  x = n[234] = 2
+  assert x == 2
+  assert isinstance(n[234], oop.null)
+
 def run():
   exercise_injector()
   exercise_memoize()
+  exercise_null()
   print 'OK'
 
 if __name__ == '__main__':

@@ -82,3 +82,22 @@ class memoize_method(object):
       memoized = memoize(func)
       setattr(obj, self.cache, memoized)
       return memoized
+
+
+class null(object):
+
+  def __init__(self, *args, **kwds): pass
+
+  def __getattr__(self, a): return self
+  def __setattr__(self, a, v): return self
+  def __delattr__(self, a): return self
+
+  def __call__(self, *args, **kwds): return self
+
+  def __getitem__(self, i): return self
+  def __setitem__(self, i, v): return self
+  def __delitem__(self, i): return self
+
+  def __repr__(self): return 'null()'
+
+  def __nonzero__(self): return False
