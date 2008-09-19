@@ -118,15 +118,32 @@ class density_modification_iterator(object):
     assert f_calc is None or (is_numeric(f_calc) and is_numeric(f_000))
 
     self.original_f_obs = f_obs
-    self.crystal_gridding = f_obs.crystal_gridding(
-      resolution_factor=1/2,
-      symmetry_flags=maptbx.use_space_group_symmetry)
-    self.crystal_gridding.change_space_group(sgtbx.space_group_info("P1"))
     self.f_obs = f_obs.eliminate_sys_absent() \
                       .expand_to_p1() \
                       .as_non_anomalous_array() \
                       .merge_equivalents().array() \
                       .discard_sigmas()
+
+    # We need a grid with the symmetry of the structure
+    # so that we can effectively search the shift and that symmetry later.
+    # We use the lattice symmetry...
+    cs = self.f_obs.crystal_symmetry()
+    cb_op_to_niggli = cs.change_of_basis_op_to_niggli_cell()
+    cs = cs.change_basis(cb_op_to_niggli)
+    lattice_group_info = sgtbx.space_group_info(
+      group=sgtbx.lattice_symmetry.group(cs.unit_cell()))
+    lattice_group_info = lattice_group_info.change_basis(
+      cb_op_to_niggli.inverse())
+    self.crystal_gridding = maptbx.crystal_gridding(
+      unit_cell=self.f_obs.unit_cell(),
+      space_group_info=lattice_group_info,
+      d_min=self.f_obs.d_min(),
+      resolution_factor=1/2,
+      symmetry_flags=maptbx.use_space_group_symmetry)
+    # ... but we only want the grid points to have that lattice symmetry
+    # whereas the FFT should not rely on it.
+    self.crystal_gridding.change_space_group(sgtbx.space_group_info("P1"))
+
     self.fft_scale = (self.f_obs.crystal_symmetry().unit_cell().volume()
                       / self.crystal_gridding.n_grid_points())
     self.starter = starter
