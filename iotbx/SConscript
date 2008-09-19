@@ -46,9 +46,9 @@ if (not env_etc.no_boost_python):
 
 SConscript("mtz/SConscript")
 SConscript("ccp4_map/SConscript")
+SConscript("pdb/SConscript")
 
 if (not env_etc.no_boost_python):
   SConscript("detectors/SConscript")
   SConscript("xplor/boost_python/SConscript")
   SConscript("misc/boost_python/SConscript")
-  SConscript("pdb/SConscript")
