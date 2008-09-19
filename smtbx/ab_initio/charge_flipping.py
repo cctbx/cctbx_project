@@ -201,7 +201,7 @@ class density_modification_iterator(object):
 
     if 0:
       from crys3d import wx_map_viewer
-      wx_map_viewer.display(title="Target",
+      wx_map_viewer.display(title="CC map",
                             raw_map=correlation_map,
                             unit_cell=self.f_calc.unit_cell())
 
