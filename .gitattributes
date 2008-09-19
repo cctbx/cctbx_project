@@ -127,6 +127,7 @@ iotbx/examples/pdb_truncate_to_ala/v2_simple.py svneol=native#text/x-python
 iotbx/examples/pdb_truncate_to_ala/v3_better.py svneol=native#text/x-python
 iotbx/examples/pdb_truncate_to_ala/v4_with_bells_and_whistles.py svneol=native#text/x-python
 iotbx/examples/tst_mtz_free_flipper.py svneol=native#text/x-python
+iotbx/file_reader.py svneol=native#text/x-python
 iotbx/pdb/Hy36.java svneol=native#text/plain
 iotbx/pdb/atom_selection.cpp svneol=native#text/plain
 iotbx/pdb/atom_selection.py svneol=native#text/x-python
