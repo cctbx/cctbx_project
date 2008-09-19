@@ -64,7 +64,9 @@ class memoize(object):
 
 
 class memoize_method(object):
-  """ Memoize the result returned by a bound method """
+  """ Memoize the result returned by a bound method.
+      This is to be used with immutable objects only.
+  """
 
   def __init__(self, meth):
     self.cache = '_memoized_%s' % meth.__name__
