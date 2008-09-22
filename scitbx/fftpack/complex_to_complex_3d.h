@@ -105,7 +105,8 @@ namespace scitbx { namespace fftpack {
     int nz = fft1d_[2].n();
     int seq_size = 2 * std::max(std::max(nx, ny), nz);
     scitbx::auto_array<real_type> seq_and_scratch;
-    omp_set_dynamic(0);
+    if (omp_in_parallel() == 0) 
+       omp_set_dynamic(0);// call not allowed if executed from within a parallel region
 #if !defined(SCITBX_FFTPACK_COMPLEX_TO_COMPLEX_3D_NO_PRAGMA_OMP)
     #pragma omp parallel
 #endif

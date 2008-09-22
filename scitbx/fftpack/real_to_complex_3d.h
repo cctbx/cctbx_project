@@ -169,7 +169,8 @@ namespace scitbx { namespace fftpack {
     int nzc = fft1d_z_.n_complex();
     int seq_size = 2 * std::max(std::max(nx, ny), nzc);
     scitbx::auto_array<real_type> seq_and_scratch;
-    omp_set_dynamic(0);
+    if (omp_in_parallel() == 0) 
+       omp_set_dynamic(0);// call not allowed if executed from within a parallel region
 #if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
     #pragma omp parallel
 #endif
@@ -246,7 +247,8 @@ namespace scitbx { namespace fftpack {
     int nzc = fft1d_z_.n_complex();
     int seq_size = 2 * std::max(std::max(nx, ny), nzc);
     scitbx::auto_array<real_type> seq_and_scratch;
-    omp_set_dynamic(0);
+    if (omp_in_parallel() == 0) 
+       omp_set_dynamic(0);// call not allowed if executed from within a parallel region
 #if !defined(SCITBX_FFTPACK_REAL_TO_COMPLEX_3D_NO_PRAGMA_OMP)
     #pragma omp parallel
 #endif
