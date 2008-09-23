@@ -695,3 +695,17 @@ class space_group_graph_from_cell_and_sg(object):
 
         print >> out, "\"",pg,"\" -> \"", next_pg, "\" ;"
     print >> out, "}"
+
+
+def compatible_symmetries(point_group):
+  """ Primitive setting assumed """
+  for op in point_group:
+    r = op.r()
+    if r.info().type() == 1: continue
+    yield op
+    if r.info().type() == -2:
+      basis = cctbx.matrix.basis_of_mirror_plane_with_normal(r.info().ev())
+    else:
+      basis = (r.info().ev(),)
+    for t in basis:
+      yield sgtbx.rt_mx(r, sgtbx.tr_vec(t, r.order()))
