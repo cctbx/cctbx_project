@@ -38,7 +38,8 @@ def tst_pgtools():
   assert len(atlas)==2
 
   # Now lets 'disqualify' point group 'P 2 2 2'
-  pgtree.remove_point_group_and_its_super_groups_from_graph( str(sgtbx.space_group_info(16)) )
+  pgtree.remove_point_group_and_its_super_groups_from_graph(
+    str(sgtbx.space_group_info(16)))
   assert len(pgtree.graph.node_objects)==1
   assert pgtree.graph.node_objects.has_key ( 'P 1 2 1' )
 
@@ -49,46 +50,51 @@ def tst_sg_tools():
   xs = crystal.symmetry(unit_cell, "P 1 1 21")
   ms = miller.set(xs, mi)
 
-  tmp_choice = pt.space_group_graph_from_cell_and_sg( unit_cell,
-                                                      xs.space_group() )
+  tmp_choice = pt.space_group_graph_from_cell_and_sg(unit_cell,
+                                                     xs.space_group())
 
-  xs1=crystal.symmetry( uctbx.unit_cell('40.00 60.00 50.00 90.00 90.00 90.00'),
-                        'P 1 21 1')
+  xs1=crystal.symmetry(uctbx.unit_cell('40.00 60.00 50.00 90.00 90.00 90.00'),
+                       'P 1 21 1')
 
-  xs2=crystal.symmetry( uctbx.unit_cell('40.00 50.00 60.00 90.00 90.00 90.00'),
-                        'P 2 2 21')
+  xs2=crystal.symmetry(uctbx.unit_cell('40.00 50.00 60.00 90.00 90.00 90.00'),
+                       'P 2 2 21')
 
-  xs3=crystal.symmetry( uctbx.unit_cell('40.00 60.00 50.00 90.00 90.00 90.00'),
-                        'P 21 21 2')
+  xs3=crystal.symmetry(uctbx.unit_cell('40.00 60.00 50.00 90.00 90.00 90.00'),
+                       'P 21 21 2')
 
-  xs4=crystal.symmetry( uctbx.unit_cell('50.00 60.00 40.00 90.00 90.00 90.00'),
-                        'P 21 21 2')
+  xs4=crystal.symmetry(uctbx.unit_cell('50.00 60.00 40.00 90.00 90.00 90.00'),
+                       'P 21 21 2')
 
-  xs5=crystal.symmetry( uctbx.unit_cell('40.00 50.00 60.00 90.00 90.00 90.00'),
-                        'P 21 21 21')
+  xs5=crystal.symmetry(uctbx.unit_cell('40.00 50.00 60.00 90.00 90.00 90.00'),
+                       'P 21 21 21')
 
-  p222_dict = { str( xs2.unit_cell().parameters()) +" "+ str( xs2.space_group_info() ):None,
-                str( xs3.unit_cell().parameters()) +" "+ str( xs3.space_group_info() ):None,
-                str( xs4.unit_cell().parameters()) +" "+ str( xs4.space_group_info() ):None,
-                str( xs5.unit_cell().parameters()) +" "+ str( xs5.space_group_info() ):None
-              }
+  p222_dict = { str( xs2.unit_cell().parameters())
+                + " " + str( xs2.space_group_info() ): None,
+                str( xs3.unit_cell().parameters())
+                + " " + str( xs3.space_group_info() ):None,
+                str( xs4.unit_cell().parameters())
+                + " " + str( xs4.space_group_info() ):None,
+                str( xs5.unit_cell().parameters())
+                + " " + str( xs5.space_group_info() ):None
+                }
 
 
   p112 = tmp_choice.pg_graph.graph.node_objects['P 1 1 2'].allowed_xtal_syms
   # check the cell parameters
-  assert approx_equal( p112[0][0].unit_cell().parameters(),
-                       xs1.unit_cell().parameters() )
+  assert approx_equal(p112[0][0].unit_cell().parameters(),
+                      xs1.unit_cell().parameters())
   # check the sg
-  assert ( p112[0][0].space_group() == xs1.space_group() )
+  assert p112[0][0].space_group() == xs1.space_group()
   # check the change of basis operator
-  assert approx_equal( xs.change_basis(p112[0][1]).unit_cell().parameters(),
-                       xs1.unit_cell().parameters() )
+  assert approx_equal(xs.change_basis(p112[0][1]).unit_cell().parameters(),
+                      xs1.unit_cell().parameters())
 
-  p222 =  tmp_choice.pg_graph.graph.node_objects['P 2 2 2'].allowed_xtal_syms
+  p222 = tmp_choice.pg_graph.graph.node_objects['P 2 2 2'].allowed_xtal_syms
 
   for xs in p222:
-    comp_string =str(xs[0].unit_cell().parameters())+" "+str(xs[0].space_group_info())
-    assert p222_dict.has_key( comp_string )
+    comp_string = (str(xs[0].unit_cell().parameters())
+                   + " " + str(xs[0].space_group_info()))
+    assert p222_dict.has_key(comp_string)
 
 
 
@@ -96,14 +102,14 @@ def test_extensively( this_chunk ):
   n_chunks = 1
   i_chunk = int(this_chunk)
 
-  assert (i_chunk <= n_chunks)
-  for i_sg, sg in enumerate( sgtbx.space_group_symbol_iterator() ):
-    if i_sg%n_chunks != i_chunk:
+  assert i_chunk <= n_chunks
+  for i_sg, sg in enumerate(sgtbx.space_group_symbol_iterator()):
+    if i_sg % n_chunks != i_chunk:
       continue
 
     buffer = StringIO()
 
-    group = sgtbx.space_group( sg.hall() )
+    group = sgtbx.space_group(sg.hall())
 
     #if group != sgtbx.space_group_info( symbol = 'I 21 21 21' ).group() :
     #  continue
@@ -111,7 +117,7 @@ def test_extensively( this_chunk ):
     unit_cell =sgtbx.space_group_info(group=group).any_compatible_unit_cell(
       volume=57*57*76)
 
-    xs_in = crystal.symmetry( unit_cell = unit_cell, space_group = group )
+    xs_in = crystal.symmetry(unit_cell=unit_cell, space_group=group)
     xs_in = xs_in.best_cell()
 
     # Just make sure we have the 'best cell' to start out with
@@ -119,19 +125,19 @@ def test_extensively( this_chunk ):
     xs_minimum = xs_in.change_basis(xs_in.change_of_basis_op_to_niggli_cell())
 
     sg_min = xs_minimum.space_group()
-    sg_min_info = sgtbx.space_group_info( group = sg_min )
+    sg_min_info = sgtbx.space_group_info(group = sg_min)
     sg_min_to_ref = sg_min_info.change_of_basis_op_to_reference_setting()
     sg_in_to_min = xs_in.change_of_basis_op_to_niggli_cell()
 
-    xs_ref = xs_minimum.change_basis( sg_min_to_ref )
-    best_cell_finder = fbc( xs_ref.unit_cell(),
-                            xs_ref.space_group() )
+    xs_ref = xs_minimum.change_basis(sg_min_to_ref)
+    best_cell_finder = fbc(xs_ref.unit_cell(),
+                           xs_ref.space_group())
     xs_ref = best_cell_finder.return_best_xs()
 
     xs_lattice_pg = sgtbx.lattice_symmetry.group(
       xs_minimum.unit_cell(),
       max_delta=5.0)
-    sg_in_ref_setting = sg_min.change_basis( sg_min_to_ref )
+    sg_in_ref_setting = sg_min.change_basis(sg_min_to_ref)
 
     # -----------
     queue = []
@@ -142,13 +148,13 @@ def test_extensively( this_chunk ):
             " in reference setting)"
       for s in sg_min:
         new_sg = sgtbx.space_group()
-        new_sg.expand_smx( s )
+        new_sg.expand_smx(s)
         if new_sg in queue:
           continue
         else:
-          queue.append( new_sg )
-        xs_cheat = crystal.symmetry( xs_minimum.unit_cell(),
-                                     space_group=new_sg )
+          queue.append(new_sg)
+        xs_cheat = crystal.symmetry(xs_minimum.unit_cell(),
+                                    space_group=new_sg)
         #print
         #print "Using symop", s
 
@@ -193,32 +199,82 @@ def test_reference_setting_choices():
     space_group = space_group_info.group()
 
     uc = space_group_info.any_compatible_unit_cell(volume=57*57*76)
-    xs = crystal.symmetry( uc, space_group=space_group)
+    xs = crystal.symmetry(uc, space_group=space_group)
 
-    cobs = pt.reference_setting_choices( space_group )
+    cobs = pt.reference_setting_choices(space_group)
 
     if len(cobs)>1:
       tmp_array = []
       for cob in cobs:
-        xs_new =crystal.symmetry(  xs.change_basis( cob ).unit_cell(),
-                                   space_group=xs.space_group() )
-        best_cell_finder = fbc(  xs_new.unit_cell(),
-                                 xs_new.space_group() )
+        xs_new =crystal.symmetry(xs.change_basis( cob ).unit_cell(),
+                                 space_group=xs.space_group() )
+        best_cell_finder = fbc(xs_new.unit_cell(),
+                               xs_new.space_group() )
 
         xs_new = best_cell_finder.return_best_xs()
-        tmp_array.append( xs_new )
+        tmp_array.append(xs_new)
       count = 0
       for tmp_xs1 in xrange(len(tmp_array)):
         for tmp_xs2 in xrange(len(tmp_array)):
 
           if (tmp_xs1 != tmp_xs2):
-            assert tmp_array[tmp_xs1].space_group() == tmp_array[tmp_xs2].space_group()
-            assert not approx_equal( tmp_array[tmp_xs1].unit_cell().parameters(),
-                                     tmp_array[tmp_xs2].unit_cell().parameters(),
-                                     eps=0.001,
-                                     out=buffer )
+            assert (tmp_array[tmp_xs1].space_group()
+                    == tmp_array[tmp_xs2].space_group())
+            assert not approx_equal(
+              tmp_array[tmp_xs1].unit_cell().parameters(),
+              tmp_array[tmp_xs2].unit_cell().parameters(),
+              eps=0.001,
+              out=buffer)
+
+def exercise_compatible_symmetries():
+  pg = sgtbx.space_group('P 2x')
+  assert ([ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
+          == [ 'x,-y,-z', 'x+1/2,-y,-z' ])
+
+  pg = sgtbx.space_group('P 2x 2y')
+  assert ([ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
+          == [ 'x,-y,-z', 'x+1/2,-y,-z',
+               '-x,y,-z', '-x,y+1/2,-z',
+               '-x,-y,z', '-x,-y,z+1/2' ])
+
+  pg = sgtbx.space_group('P 2x 3*')
+  ops = [ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
+  assert 'x,-y,-z' in ops
+  assert 'x+1/2,-y,-z' in ops
+
+  assert '-x,y,-z' in ops
+  assert '-x,y+1/2,-z' in ops
+
+  assert '-x,-y,z' in ops
+  assert '-x,-y,z+1/2' in ops
+
+  assert 'z,x,y' in ops
+  assert 'z+1/3,x+1/3,y+1/3' in ops
+
+  assert 'y,z,x' in ops
+  assert 'y+1/3,z+1/3,x+1/3' in ops
+
+  assert 'z,-x,-y' in ops
+  assert 'z+1/3,-x-1/3,-y+1/3' in ops
+
+  assert '-y,z,-x' in ops
+  assert '-y-1/3,z+1/3,-x+1/3' in ops
+
+  assert '-y,-z,x' in ops
+  assert '-y+1/3,-z-1/3,x+1/3' in ops
+
+  assert 'y,-z,-x' in ops
+  assert 'y-1/3,-z-1/3,-x+1/3' in ops
+
+  assert '-z,-x,y' in ops
+  assert '-z-1/3,-x+1/3,y+1/3' in ops
+
+  assert '-z,x,-y' in ops
+  assert '-z-1/3,x-1/3,-y+1/3' in ops
+
 
 def run():
+  exercise_compatible_symmetries()
   tst_pgtools()
   tst_sg_tools()
   test_reference_setting_choices()
@@ -229,7 +285,8 @@ if (__name__ == "__main__"):
   if len(sys.argv)>1:
     if sys.argv[1]=='insane':
       run()
-      test_extensively(0)# Should take not more then 45 minutes on a reasonable machine
+      test_extensively(0) # Should take not more then 45 minutes
+                          #on a reasonable machine
       print "OK"
   else:
     run()
