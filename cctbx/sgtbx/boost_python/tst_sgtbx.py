@@ -306,97 +306,121 @@ def exercise_rot_mx():
   i = rot_mx_info(rot_mx())
   assert i.type() == 1
   assert i.ev() == (0,0,0)
+  assert i.basis_of_invariant() == ((1,0,0), (0,1,0), (0,0,1))
   assert i.sense() == 0
   i = rot_mx().info()
   assert i.type() == 1
   assert i.ev() == (0,0,0)
+  assert i.basis_of_invariant() == ((1,0,0), (0,1,0), (0,0,1))
   assert i.sense() == 0
   i = rot_mx_info(rot_mx((-1,0,0,0,-1,0,0,0,1)))
   assert i.type() == 2
   assert i.ev() == (0,0,1), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == 0
   i = rot_mx_info(rot_mx((-1,0,0,0,1,0,0,0,-1)))
   assert i.type() == 2
   assert i.ev() == (0,1,0), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == 0
   i = rot_mx_info(rot_mx((1,0,0,0,-1,0,0,0,-1)))
   assert i.type() == 2
   assert i.ev() == (1,0,0), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   i = rot_mx_info(rot_mx((1,0,0,0,1,0,0,0,-1)))
   assert i.type() == -2
   assert i.ev() == (0,0,1), i.ev()
+  assert i.basis_of_invariant() == ((1,0,0), (0,1,0))
   assert i.sense() == 0
   i = rot_mx_info(rot_mx((1,0,0,0,-1,0,0,0,1)))
   assert i.type() == -2
   assert i.ev() == (0,1,0), i.ev()
+  assert i.basis_of_invariant() == ((1,0,0), (0,0,1))
   assert i.sense() == 0
   i = rot_mx_info(rot_mx((-1,0,0,0,1,0,0,0,1)))
   assert i.type() == -2
   assert i.ev() == (1,0,0), i.ev()
+  assert i.basis_of_invariant() == ((0,1,0), (0,0,1))
   assert i.sense() == 0
   i = rot_mx_info(rot_mx((0,-1,0,1,-1,0,0,0,1)))
   assert i.type() == 3
   assert i.ev() == (0,0,1), i.ev()
+  assert i.basis_of_invariant() == (i.ev(), )
   assert i.sense() == 1
   i = rot_mx_info(rot_mx((0,-1,0,1,-1,0,0,0,1)).inverse())
   assert i.type() == 3
   assert i.ev() == (0,0,1), i.ev()
+  assert i.basis_of_invariant() == (i.ev(), )
   assert i.sense() == -1
   i = rot_mx_info(rot_mx((0,1,0,-1,1,0,0,0,-1)))
   assert i.type() == -3
   assert i.ev() == (0,0,1), i.ev()
+  assert i.basis_of_invariant() == ()
   assert i.sense() == 1
   i = rot_mx_info(rot_mx((0,1,0,-1,1,0,0,0,-1)).inverse())
   assert i.type() == -3
   assert i.ev() == (0,0,1), i.ev()
+  assert i.basis_of_invariant() == ()
   assert i.sense() == -1
   i = rot_mx_info(rot_mx((0,0,1,0,1,0,-1,0,0)))
   assert i.type() == 4
   assert i.ev() == (0,1,0), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == 1
   i = rot_mx_info(rot_mx((0,0,1,0,1,0,-1,0,0)).inverse())
   assert i.type() == 4
   assert i.ev() == (0,1,0), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == -1
   i = rot_mx_info(rot_mx((0,0,-1,0,-1,0,1,0,0)))
   assert i.type() == -4
   assert i.ev() == (0,1,0), i.ev()
+  assert i.basis_of_invariant() == ()
   assert i.sense() == 1
   i = rot_mx_info(rot_mx((0,0,-1,0,-1,0,1,0,0)).inverse())
   assert i.type() == -4
   assert i.ev() == (0,1,0), i.ev()
+  assert i.basis_of_invariant() == ()
   assert i.sense() == -1
   i = rot_mx_info(rot_mx((1,0,0,0,1,-1,0,1,0)))
   assert i.type() == 6
   assert i.ev() == (1,0,0), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == 1
   i = rot_mx_info(rot_mx((1,0,0,0,1,-1,0,1,0)).inverse())
   assert i.type() == 6
   assert i.ev() == (1,0,0), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == -1
   i = rot_mx_info(rot_mx((-1,0,0,0,-1,1,0,-1,0)))
   assert i.type() == -6
   assert i.ev() == (1,0,0), i.ev()
+  assert i.basis_of_invariant() == ()
   assert i.sense() == 1
   i = rot_mx_info(rot_mx((-1,0,0,0,-1,1,0,-1,0)).inverse())
   assert i.type() == -6
   assert i.ev() == (1,0,0), i.ev()
+  assert i.basis_of_invariant() == ()
   assert i.sense() == -1
   i = rot_mx_info(rot_mx((0,0,1,1,0,0,0,1,0)))
   assert i.type() == 3
   assert i.ev() == (1,1,1), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == 1
   i = rot_mx_info(rot_mx((0,0,1,1,0,0,0,1,0)).inverse())
   assert i.type() == 3
   assert i.ev() == (1,1,1), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == -1
   i = rot_mx_info(rot_mx((0,-1,0,-1,0,0,0,0,-1)))
   assert i.type() == 2
   assert i.ev() == (-1,1,0), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   assert i.sense() == 0
   i = rot_mx_info(rot_mx((-1,1,0,0,1,0,0,0,-1)))
   assert i.type() == 2
   assert i.ev() == (1,2,0), i.ev()
+  assert i.basis_of_invariant() == (i.ev(),)
   r = rot_mx((-1,1,0,0,1,0,0,0,-1))
   assert r.as_xyz() == "-x+y,y,-z"
   assert r.as_hkl() == "-h,h+k,-l"
