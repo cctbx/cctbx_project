@@ -110,15 +110,12 @@ def randomly_exercise(flipping_type,
                             fft_map=flipping.rho_map)
     result.succeeded = False
     if verbose:
-      print "** no Euclidean matching in P1 **"
+      print "@@ no Euclidean matching in P1 @@"
     if verbose == "debug":
       print refined_matches[0].show()
+    return result
   result.inverted_solution = refined_matches[0].rt.r == mat.inversion(3)
   reference_shift = -refined_matches[0].rt.t
-
-  if verbose and not result.succeeded:
-    print "@@ Failure @@"
-    return result
 
   # Find the translation to bring back the structure to the same space-group
   # setting as the starting f_obs from correlation map analysis
@@ -135,17 +132,14 @@ def randomly_exercise(flipping_type,
         print "++ Incorrect peak: shift=(%.3f, %.3f, %.3f), height=%.2f"\
               % (tuple(shift)+(cc_peak_height,))
         print "   Reference shift=(%.3f, %.3f, %.3f)" % tuple(reference_shift)
-  if verbose:
-    if result.first_correct_correlation_peak is None:
-      result.succeeded = False
-      print "** No correct correlation peak **"
-    elif result.first_correct_correlation_peak != 0:
+  if result.first_correct_correlation_peak is None:
+    result.succeeded = False
+    if verbose:
+      print "@@ No correct correlation peak @@"
+    return result
+  if verbose and result.first_correct_correlation_peak != 0:
       print "** First correct correlation peak: #%i (%.3f) **"\
             % (result.first_correct_correlation_peak, cc_peak_height)
-
-  if verbose and not result.succeeded:
-    print "@@ Failure @@"
-    return result
 
   # check Euclidean matching in the original space-group
   search_parameters = maptbx.peak_search_parameters(
@@ -176,19 +170,14 @@ def randomly_exercise(flipping_type,
   if not result.emma_match:
     result.succeeded = False
     if verbose:
-      print "** no Euclidean matching in original spacegroup **"
+      print "@@ no Euclidean matching in original spacegroup @@"
+    return result
 
-  # return a bunch of Boolean flags telling where it failed
-  # or whether it succeeded
+  # success!
   if verbose:
-    if result.succeeded:
-      if result.first_correct_correlation_peak > 0:
-        print "@@ Success (but not first solution) @@"
-      else:
-        print "@@ Success @@"
-    else:
-      print "@@ Failure @@"
+    print "@@ Success @@"
   return result
+
 
 def exercise(flags, space_group_info, flipping_type):
   if not flags.repeats: flags.repeats = 1
