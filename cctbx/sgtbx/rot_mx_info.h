@@ -27,6 +27,7 @@ namespace cctbx { namespace sgtbx {
       /*! Only defined if abs(type()) > 1.<br>
           For type() > 0, the proper rotation is defined as r.<br>
           For type() < 0, the proper rotation is defined as -r.
+          So for type() == -2, this is the normal to the mirror plane.
        */
       sg_vec3 const& ev() const { return ev_; }
 
