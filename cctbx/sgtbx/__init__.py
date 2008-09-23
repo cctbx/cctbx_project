@@ -9,7 +9,7 @@ from cctbx_sgtbx_ext import *
 class empty: pass
 
 from cctbx.array_family import flex
-from scitbx import matrix
+from cctbx import matrix
 import scitbx.math
 from boost import rational
 import random
@@ -312,6 +312,23 @@ class _rot_mx(boost.python.injector, rot_mx):
     r = m.transpose() * s * m
     sirms = s.inverse() * (r-s)
     return ((sirms * sirms).trace() / 12)**0.5
+
+
+class _rot_mx_info(boost.python.injector, rot_mx_info):
+
+  def basis_of_invariant(self):
+    if not hasattr(self, '_basis_of_invariant'):
+      if self.type() == 1:
+        basis = ((1,0,0), (0,1,0), (0,0,1))
+      elif self.type() == -2:
+        basis = matrix.basis_of_mirror_plane_with_normal(self.ev())
+      elif self.type() < 0:
+        basis = ()
+      else:
+        basis = (self.ev(), )
+      self._basis_of_invariant = basis
+    return self._basis_of_invariant
+
 
 class _rt_mx(boost.python.injector, rt_mx):
 
