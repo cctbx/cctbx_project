@@ -327,8 +327,9 @@ scitbx/iso_surface/tst_iso_surface.m -text
 scitbx/iso_surface/tst_iso_surface.py -text
 scitbx/math/accumulators.h -text
 scitbx/math/besselk.py -text
+scitbx/math/boost_python/continued_fraction.cpp -text
 scitbx/math/boost_python/least_squares_plane.cpp -text
-scitbx/math/boost_python/tst_least_squares_plane.py -text
+scitbx/math/continued_fraction.h -text
 scitbx/math/euler_angles.h -text
 scitbx/math/inertia_tensor.h svneol=native#text/plain
 scitbx/math/least_squares_plane.h -text
