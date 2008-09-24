@@ -342,6 +342,15 @@ def exercise_rot_mx():
   assert i.ev() == (1,0,0), i.ev()
   assert i.basis_of_invariant() == ((0,1,0), (0,0,1))
   assert i.sense() == 0
+  i = rot_mx_info(rot_mx((0,-1,0,-1,0,0,0,0,1)))
+  assert i.type() == -2
+  assert i.ev() == (1,1,0), i.ev()
+  assert i.basis_of_invariant() == ((0,0,1), (-1,1,0))
+  i = rot_mx_info(rot_mx((1,0,0,0,0,1,0,1,0)))
+  assert i.type() == -2
+  assert i.ev() == (0,-1,1), i.ev()
+  assert i.basis_of_invariant() == ((1,0,0), (0,1,1))
+  assert i.sense() == 0
   i = rot_mx_info(rot_mx((0,-1,0,1,-1,0,0,0,1)))
   assert i.type() == 3
   assert i.ev() == (0,0,1), i.ev()
