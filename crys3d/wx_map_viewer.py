@@ -56,7 +56,6 @@ class map_view(wx_viewer.wxGLWindow):
     else:
       na, nb, nc = raw_map.accessor().all()
       rho = raw_map
-    print "Gridding: %i x %i x %i" % (na,nb,nc)
     def f(iso_level):
       return iso_surface.triangulation(rho, iso_level,
                                        map_extent=(1,1,1),
@@ -68,10 +67,6 @@ class map_view(wx_viewer.wxGLWindow):
     self.min_density = density_stats.min()
     self.max_density = density_stats.max()
     self.set_initial_iso_level(density_stats)
-    print "Statistics:"
-    print "min: %.3g" % self.min_density
-    print "max: %.3g" % self.max_density
-    print "sigma: %.3g" % self.iso_level
 
     p = (0,0,0)
     q = unit_cell.orthogonalize((1,1,1))
