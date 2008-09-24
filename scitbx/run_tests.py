@@ -35,7 +35,6 @@ def run():
   "$D/math/boost_python/tst_gaussian.py",
   "$D/math/boost_python/tst_quadrature.py",
   "$D/math/boost_python/tst_halton.py",
-  "$D/math/boost_python/tst_least_squares_plane.py",
   "$D/math/tst_euler_angles.py",
   "$D/math/tst_superpose.py",
   "$D/math/sieve_of_eratosthenes.py",

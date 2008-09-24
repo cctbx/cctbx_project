@@ -1,8 +1,10 @@
 import scitbx.math
+import boost.rational
 from scitbx.math import line_given_points
 from scitbx.math import euler_angles_as_matrix
 from scitbx.math import erf_verification, erf, erfc, erfcx
-from scitbx.math import bessel_i1_over_i0,bessel_i0,bessel_i1,bessel_ln_of_i0, ei1, ei0
+from scitbx.math import bessel_i1_over_i0, bessel_i0, bessel_i1,\
+     bessel_ln_of_i0, ei1, ei0
 from scitbx.math import bessel_inverse_i1_over_i0
 from scitbx.math import gamma_incomplete, gamma_incomplete_complement
 from scitbx.math import gamma_complete, exponential_integral_e1z
@@ -10,7 +12,8 @@ from scitbx.math import lambertw
 from scitbx.math import eigensystem, time_eigensystem_real_symmetric
 from scitbx.math import golay_24_12_generator
 from scitbx.math import inertia_tensor
-from scitbx.math import principal_axes_of_inertia, principal_axes_of_inertia_2d
+from scitbx.math import principal_axes_of_inertia, \
+     principal_axes_of_inertia_2d
 from scitbx.math import sphere_3d, minimum_covering_sphere
 from scitbx.math import signed_phase_error, phase_error, nearest_phase
 from scitbx.math import icosahedron
@@ -1465,7 +1468,45 @@ def exercise_unimodular_generator(forever):
     if (range == 4 and not forever):
       break
 
+def exercise_least_squares_plane():
+  points = [ matrix.col(x) for x in [(1, 2, 3), (-1, -2, -3), (1, 1, 1),
+                                     (1.2, 2.1, 2.9), (-0.9, -2.1, -3.1),
+                                     (1.1, 0.8, 1.2)] ]
+  def distance(n,d):
+    u = n/d
+    return sum([ (u.dot(x) - 1)**2 for x in points ])
+  flex_points = flex.vec3_double(points)
+  p = scitbx.math.least_squares_plane(flex_points)
+  n = matrix.col(p.normal)
+  d = p.distance_to_origin
+  assert approx_equal(abs(n), 1)
+  dist0 = distance(n,d)
+  for i in xrange(5000):
+    d1 = d + random.uniform(-0.1, 0.1)
+    n1 = matrix.rec(flex.random_double_r3_rotation_matrix(), (3,3))*n
+    dist = distance(n1, d1)
+    assert dist > dist0
+
+def exercise_continued_fraction():
+  continued_fraction = scitbx.math.continued_fraction
+  frac = boost.rational.int
+  cf = continued_fraction(1)
+  assert cf() == frac(1,1)
+  cf.append(1)
+  assert cf() == frac(2,1)
+  cf.append(1)
+  assert cf() == frac(3,2)
+  cf.append(1)
+  assert cf() == frac(5,3)
+  cf = continued_fraction.from_real(math.pi, eps=1e-2)
+  assert cf() == frac(22, 7)
+  cf = continued_fraction.from_real(math.pi, eps=1e-4)
+  assert cf() == frac(333, 106)
+
+
 def run():
+  exercise_continued_fraction()
+  exercise_least_squares_plane()
   exercise_div_mod()
   exercise_full_pivoting()
   exercise_eix()

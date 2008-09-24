@@ -23,5 +23,6 @@ env.SharedLibrary(
     "unimodular_generator.cpp",
     "halton.cpp",
     "least_squares_plane.cpp",
+    "continued_fraction.cpp"
     ]
 )
