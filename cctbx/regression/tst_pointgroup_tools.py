@@ -228,14 +228,14 @@ def test_reference_setting_choices():
 
 def exercise_compatible_symmetries():
   pg = sgtbx.space_group('P 2x')
-  assert ([ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
-          == [ 'x,-y,-z', 'x+1/2,-y,-z' ])
+  ops = [ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
+  assert ops == [ 'x,-y,-z', 'x+1/2,-y,-z' ]
 
   pg = sgtbx.space_group('P 2x 2y')
-  assert ([ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
-          == [ 'x,-y,-z', 'x+1/2,-y,-z',
-               '-x,y,-z', '-x,y+1/2,-z',
-               '-x,-y,z', '-x,-y,z+1/2' ])
+  ops = [ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
+  assert ops == [ 'x,-y,-z', 'x+1/2,-y,-z',
+                  '-x,y,-z', '-x,y+1/2,-z',
+                  '-x,-y,z', '-x,-y,z+1/2' ]
 
   pg = sgtbx.space_group('P 2x 3*')
   ops = [ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
@@ -272,6 +272,10 @@ def exercise_compatible_symmetries():
   assert '-z,x,-y' in ops
   assert '-z-1/3,x-1/3,-y+1/3' in ops
 
+  pg = sgtbx.space_group('-P -2y')
+  ops = [ op.as_xyz() for op in pt.compatible_symmetries(pg) ]
+  assert ops == ['x,-y,z', 'x+1/2,-y,z', 'x,-y,z+1/2', 'x+1/2,-y,z+1/2',
+                 '-x,-y,-z', '-x,y,-z', '-x,y+1/2,-z']
 
 def run():
   exercise_compatible_symmetries()
