@@ -7,7 +7,7 @@ def exercise_basis_of_mirror_plane_with_normal():
     v,w = [ mat.col(x) for x in mat.basis_of_mirror_plane_with_normal(u) ]
     assert u.dot(v) == 0
     assert u.dot(w) == 0
-    assert v.cross(w) != (0,0,0)
+    assert abs(v.cross(w)) != 0
   try:
     mat.basis_of_mirror_plane_with_normal((0,0,0))
   except AssertionError:
