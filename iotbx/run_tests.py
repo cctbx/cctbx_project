@@ -23,6 +23,7 @@ def run():
   "$D/cns/tst_cns.py",
   ["$D/scalepack/tst_merge.py", "P31"],
   "$D/scalepack/no_merge_original_index.py",
+  "$D/ccp4_map/tst.py",
   "$D/mtz/tst_ext.py",
   "$D/mtz/extract_from_symop_lib.py",
   ["$D/mtz/tst.py", "P31"],
