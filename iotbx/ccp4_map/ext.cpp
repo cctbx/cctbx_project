@@ -29,6 +29,9 @@ namespace iotbx { namespace ccp4_map {
         IOTBX_ASSERT(mfile != 0);
         IOTBX_ASSERT(CMap_io::ccp4_cmap_get_datamode(mfile) == FLOAT32);
 
+        CMap_io::ccp4_cmap_get_mapstats(
+          mfile, &header_min, &header_max, &header_mean, &header_rms);
+
         float cell_float[6];
         CMap_io::ccp4_cmap_get_cell(mfile, cell_float);
         std::copy(cell_float, cell_float+6, cell.begin());
@@ -37,46 +40,67 @@ namespace iotbx { namespace ccp4_map {
         CMap_io::ccp4_cmap_get_order(mfile, axes_order.begin());
         CMap_io::ccp4_cmap_get_dim(mfile, map_dim.begin());
         sg = CMap_io::ccp4_cmap_get_spacegroup(mfile);
-        CMap_io::ccp4_cmap_get_mapstats(
-          mfile, &min, &max, &average, &standard_deviation);
+
+        // based on clipper/ccp4/ccp4_map_io.cpp CCP4MAPfile::import_xmap
+        int orderfms[3], orderxyz[3], dim[3], gfms0[3], gfms1[3];
+        CMap_io::ccp4_cmap_get_order( mfile, orderfms );
+        CMap_io::ccp4_cmap_get_dim( mfile, dim );
+        CMap_io::ccp4_cmap_get_origin( mfile, gfms0 );
+        int dmode = CMap_io::ccp4_cmap_get_datamode( mfile );
+        if ( dmode != 0 && dmode != 2 ) {
+          throw std::runtime_error("CCP4CCP4MAPfile: unsupported data mode");
+        }
+
+        for ( int i = 0; i < 3; i++ ) gfms1[i] = gfms0[i] + dim[i] - 1;
+        for ( int i = 0; i < 3; i++ ) orderxyz[orderfms[i]-1] = i;
 
         data = af::versa<float, af::flex_grid<> >(
-          af::flex_grid<>(map_dim[0], map_dim[1], map_dim[2]));
-#ifdef THIS_DOES_NOT_SEEM_TO_BE_CORRECT
+          af::flex_grid<>(
+            map_dim[orderxyz[0]],
+            map_dim[orderxyz[1]],
+            map_dim[orderxyz[2]]));
         af::ref<float, af::c_grid<3> > data_ref(
           data.begin(),
           af::c_grid<3>(af::adapt(data.accessor().all())));
 
-        int num_cols = map_dim[0];
-        int num_rows = map_dim[1];
-        boost::scoped_array<float> row(new float [num_rows]);
-        int k = 0;
-        int sec = -1;
-        int nsec = num_rows * num_cols;
-        IOTBX_ASSERT(nsec != 0);
-        for (int i=0; i<num_rows; i++) {
-          if (k % nsec == 0) sec++;
-          IOTBX_ASSERT(CMap_io::ccp4_cmap_read_row(mfile, row.get()) == 1);
-          for (int j=0; j<num_cols; j++) {
-            data_ref(j,i,sec) = row[j];
-            k++;
+        int n0 = (gfms1[0]-gfms0[0]+1);
+        int n1 = n0 * (gfms1[1]-gfms0[1]+1);
+        IOTBX_ASSERT(dim[0] == n0);
+        IOTBX_ASSERT(dim[0]*dim[1] == n1);
+        boost::scoped_array<float> section(new float [n1]);
+        int g[3];
+        for (g[2]=gfms0[2];g[2]<=gfms1[2];g[2]++) {
+          CMap_io::ccp4_cmap_read_section(mfile, section.get());
+          if (dmode == 0) { // deal with byte maps
+            for (int i=n1-1; i>=0; i--) {
+              section[i] = static_cast<float>(
+                reinterpret_cast<unsigned char*>(&section[0])[i]);
+            }
+          }
+          int index = 0;
+          for (g[1]=gfms0[1];g[1]<=gfms1[1];g[1]++) {
+            for (g[0]=gfms0[0];g[0]<=gfms1[0];g[0]++) {
+              int i = g[orderxyz[0]]-gfms0[orderxyz[0]];
+              int j = g[orderxyz[1]]-gfms0[orderxyz[1]];
+              int k = g[orderxyz[2]]-gfms0[orderxyz[2]];
+              data_ref(i,j,k) = section[index++];
+            }
           }
         }
-#endif
         CMap_io::ccp4_cmap_close(mfile);
       }
 
       af::versa<float, af::flex_grid<> > data;
+      float header_min;
+      float header_max;
+      double header_mean;
+      double header_rms;
       int sg;
       af::tiny<double, 6> cell;
-      float min;
-      float max;
       af::tiny<int, 3> grid;
       af::tiny<int, 3> origin;
       af::tiny<int, 3> axes_order;
       af::tiny<int, 3> map_dim;
-      double average;
-      double standard_deviation;
   };
 
   void
@@ -87,16 +111,16 @@ namespace iotbx { namespace ccp4_map {
     class_<map_reader>("map_reader", no_init)
       .def(init<std::string const&>((arg_("file_name"))))
       .def_readonly("data", &map_reader::data)
+      .def_readonly("header_min", &map_reader::header_min)
+      .def_readonly("header_max", &map_reader::header_max)
+      .def_readonly("header_mean", &map_reader::header_mean)
+      .def_readonly("header_rms", &map_reader::header_rms)
       .def_readonly("space_group", &map_reader::sg)
       .add_property("unit_cell", make_getter(&map_reader::cell, rbv()))
-      .def_readonly("map_min", &map_reader::min)
-      .def_readonly("map_max", &map_reader::max)
       .add_property("map_grid", make_getter(&map_reader::grid, rbv()))
       .add_property("map_origin", make_getter(&map_reader::origin, rbv()))
       .add_property("axes_order", make_getter(&map_reader::axes_order, rbv()))
       .add_property("map_dim", make_getter(&map_reader::map_dim, rbv()))
-      .def_readonly("average", &map_reader::average)
-      .def_readonly("standard_deviation", &map_reader::standard_deviation)
     ;
   }
 
