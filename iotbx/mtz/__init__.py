@@ -394,10 +394,15 @@ class _object(boost.python.injector, ext.object):
         assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
       crystal.set_unit_cell_parameters(
         crystal_symmetry.unit_cell().parameters())
-    # transformation of per-batch unit cell added to support Scala 6.0 (NKS)
-    # other issues not handled: differing cells in each batch; U-matrix transformation
+    # transform & symmetrize per-batch unit cell to support Scala 6.0 (NKS)
+    # other issues not handled: U-matrix transformation
     for batch in self.batches():
-      batch.set_cell(flex.float(crystal_symmetry.unit_cell().parameters()))
+      batch_uc = uctbx.unit_cell(list(batch.cell()))
+      batch_crystal_symmetry = cctbx.crystal.symmetry(
+        unit_cell=batch_uc.change_basis(cb_op=cb_op),
+        space_group_info=new_space_group_info,
+        assert_is_compatible_unit_cell=assert_is_compatible_unit_cell)
+      batch.set_cell(flex.float(batch_crystal_symmetry.unit_cell().parameters()))
 
   def as_miller_arrays(self,
         crystal_symmetry=None,
