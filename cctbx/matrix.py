@@ -11,5 +11,5 @@ def basis_of_mirror_plane_with_normal(u):
             (-1,1,1), (1,-1,1), (1,1,-1)):
     if len(basis) == 2: break
     if u[0]*t[0] + u[1]*t[1] + u[2]*t[2] == 0:
-      basis += (t,)
+      basis += (col(t),)
   return basis
