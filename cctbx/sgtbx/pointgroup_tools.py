@@ -279,16 +279,12 @@ class point_group_graph(object):
     # hopefully.
     self.as_xyz = as_xyz
 
-    low_point_group_check = (
-      pg_low ==
-      pg_low.build_derived_point_group())
+    low_point_group_check = (pg_low == pg_low.build_derived_point_group())
     if enforce_point_group:
       if not low_point_group_check:
         raise Sorry("Input spacegroup not a point group")
 
-    high_point_group_check = (
-      pg_high ==
-      pg_high.build_derived_point_group())
+    high_point_group_check = (pg_high == pg_high.build_derived_point_group())
 
     if enforce_point_group:
       if not high_point_group_check:
@@ -701,11 +697,17 @@ def compatible_symmetries(point_group):
   """ Primitive setting assumed """
   for op in point_group:
     r = op.r()
+    order = r.order()
     if r.info().type() == 1: continue
     yield op
     if r.info().type() == -2:
-      basis = cctbx.matrix.basis_of_mirror_plane_with_normal(r.info().ev())
+      t1, t2 = cctbx.matrix.basis_of_mirror_plane_with_normal(r.info().ev())
+      translations = []
+      for t in (t1, t2, t1+t2, t1-t2):
+        t = sgtbx.tr_vec(t, order).mod_positive()
+        if t not in translations: translations.append(t)
     else:
-      basis = (r.info().ev(),)
-    for t in basis:
-      yield sgtbx.rt_mx(r, sgtbx.tr_vec(t, r.order()))
+      translations = ( sgtbx.tr_vec(r.info().ev(), order), )
+    for t in translations:
+      if t.is_zero(): continue
+      yield sgtbx.rt_mx(r, t)
