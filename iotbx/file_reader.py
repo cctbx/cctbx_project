@@ -60,11 +60,11 @@ class any_file (object) :
       elif file_ext in standard_file_extensions['seq'] :
         self.try_as_seq()
       elif file_ext in standard_file_extensions['cif'] :
-        self.try_as_cif() 
+        self.try_as_cif()
     except Exception :
-      pass 
+      pass
 
-    if not self.file_type : 
+    if not self.file_type :
       self.try_all_types()
 
   def try_as_pdb (self) :
@@ -103,7 +103,7 @@ class any_file (object) :
 
   def try_as_seq (self) :
     if self.file_type != None : return False
-    pass 
+    pass
 
   def try_as_map (self) :
     if self.file_type != None : return False
