@@ -8,6 +8,7 @@ from gltbx import gl_managed
 from gltbx.gl import *
 from gltbx.glu import *
 from gltbx import wx_controllers
+from gltbx import fonts
 
 from crys3d import wx_extra
 import crys3d.images
@@ -123,6 +124,10 @@ class map_view(wx_viewer.wxGLWindow):
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
 
+    self.unit_cell_label_fonts = fonts.ucs_bitmap("10x20")
+    self.unit_cell_label_shift_from_axes = -0.02
+    self.unit_cell_label_fonts.setup_call_lists()
+
     gltbx.util.handle_error()
     self._gl_has_been_initialised = True
 
@@ -135,15 +140,22 @@ class map_view(wx_viewer.wxGLWindow):
     glPopMatrix()
 
   def draw_unit_cell(self):
-    lw = [0.]
-    glGetFloatv(GL_LINE_WIDTH, lw)
-    glLineWidth(2)
-
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE,
-                 (0.7, 0.7, 0.7, 1.))
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0., 0., 0., 1.))
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0, 0, 0, 1))
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0)
 
+    r,g,b = 0.9, 0.4, 0.3
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (r, g, b, 1.))
+    e = self.unit_cell_label_shift_from_axes
+    for pos, label in zip([(1/2,e,e), (e,1/2,e),(e,e,1/2)], ['a','b','c']):
+      self.unit_cell_label_fonts.render_text(pos, label, use_3d_position=True)
+
+    lw = [0.]
+    glGetFloatv(GL_LINE_WIDTH, lw)
+    glLineWidth(3)
+
+    r,g,b = (0.6,)*3
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (r, g, b, 1.))
     glBegin(GL_LINE_LOOP)
     glVertex3f(0,0,0)
     glVertex3f(1,0,0)
