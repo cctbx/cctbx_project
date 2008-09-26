@@ -317,11 +317,12 @@ class _rot_mx(boost.python.injector, rot_mx):
 class _rot_mx_info(boost.python.injector, rot_mx_info):
 
   def basis_of_invariant(self):
+    from cctbx.math_module import basis_of_mirror_plane_with_normal
     if not hasattr(self, '_basis_of_invariant'):
       if self.type() == 1:
         basis = ((1,0,0), (0,1,0), (0,0,1))
       elif self.type() == -2:
-        basis = matrix.basis_of_mirror_plane_with_normal(self.ev())
+        basis = basis_of_mirror_plane_with_normal(self.ev())
       elif self.type() < 0:
         basis = ()
       else:
