@@ -468,7 +468,13 @@ def exercise_inversion_centring():
     else:
       assert str(icb) == "a,b,c"
 
+def exercise_continuous_change_of_origin():
+  cb = sgtbx.continuous_change_of_origin((0.123456, 0.08673, 0.754903),
+                                         den=10000)
+  assert cb.as_xyz() == 'x+247/2000,y+867/10000,z+7549/10000'
+
 def run(args):
+  exercise_continuous_change_of_origin()
   exercise_allowed_origin_shift()
   exercise_generator_set()
   exercise_space_group_info()

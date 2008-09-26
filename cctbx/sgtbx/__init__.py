@@ -441,3 +441,11 @@ class _wyckoff_table(boost.python.injector, wyckoff_table):
       if (site_symmetry.distance_moved() < tolerance):
         assert site_symmetry.multiplicity() == position.multiplicity()
         return site_symmetry
+
+def continuous_change_of_origin(shift, den):
+  """ A change-of-basis operators for a translation,
+      whose components are any real numbers.
+      'den' is used as the common denominator for all components.
+  """
+  num = tuple([ int(round(x*den)) for x in shift ])
+  return change_of_basis_op(rt_mx(tr_vec(num, den)))
