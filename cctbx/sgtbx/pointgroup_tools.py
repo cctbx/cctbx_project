@@ -1,6 +1,7 @@
 from __future__ import generators
 
 from cctbx.array_family import flex
+from cctbx import matrix
 from cctbx import uctbx
 from cctbx import adptbx
 from cctbx import sgtbx
@@ -700,14 +701,14 @@ def compatible_symmetries(point_group):
     order = r.order()
     if r.info().type() == 1: continue
     yield op
-    if r.info().type() == -2:
-      t1, t2 = cctbx.matrix.basis_of_mirror_plane_with_normal(r.info().ev())
-      translations = []
-      for t in (t1, t2, t1+t2, t1-t2):
-        t = sgtbx.tr_vec(t, order).mod_positive()
-        if t not in translations: translations.append(t)
-    else:
-      translations = ( sgtbx.tr_vec(r.info().ev(), order), )
+    invariants = [ matrix.col(u) for u in r.info().basis_of_invariant() ]
+    if len(invariants) == 2:
+      t1, t2 = invariants
+      invariants.extend((t1 + t2, t1 - t2))
+    translations = []
+    for t in invariants:
+      t = sgtbx.tr_vec(t, order).mod_short()
+      if not t.is_zero() and t not in translations:
+        translations.append(t)
     for t in translations:
-      if t.is_zero(): continue
-      yield sgtbx.rt_mx(r, t)
+      yield sgtbx.rt_mx(r, t.new_denominator(sgtbx.sg_t_den))
