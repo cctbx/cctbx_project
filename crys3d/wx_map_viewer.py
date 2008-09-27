@@ -140,6 +140,7 @@ class map_view(wx_viewer.wxGLWindow):
     glPopMatrix()
 
   def draw_unit_cell(self):
+    glLightfv(GL_LIGHT0, GL_AMBIENT, [0.5, 0.5, 0.5, 1.])
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0., 0., 0., 1.))
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0, 0, 0, 1))
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0)
@@ -181,6 +182,7 @@ class map_view(wx_viewer.wxGLWindow):
     glLineWidth(lw[0])
 
   def draw_triangulation(self):
+    glLightfv(GL_LIGHT0, GL_AMBIENT, [0., 0., 0., 1.])
     self.material.execute(specular=not self.wires)
     if self.wires:
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
@@ -246,7 +248,10 @@ class App(wx_viewer.App):
       iso_level_pane)
     self.swap_colour_btn = wx.Button(iso_level_pane, label="< swap >")
     self.wires_btn = wx.CheckBox(iso_level_pane, label="Wires")
-    self.wires_btn.Set3StateValue(wx.CHK_CHECKED)
+    if self.view_objects.wires:
+      self.wires_btn.Set3StateValue(wx.CHK_CHECKED)
+    else:
+      self.wires_btn.Set3StateValue(wx.CHK_UNCHECKED)
     self.wires_btn.Bind(wx.EVT_CHECKBOX,
                         self.on_wires_changed)
     lbl_fmt = "Iso-level %s %%s" % unicodedata.lookup('MULTIPLICATION SIGN')
