@@ -30,7 +30,7 @@ def run():
   "$D/geometry_restraints/tst_ext.py",
   "$D/geometry_restraints/tst_proxy_registry.py",
   "$D/adp_restraints/tst_ext.py",
-  "$D/regression/tst_matrix.py",
+  "$D/regression/tst_math_module.py",
   ["$D/regression/tst_krivy_gruber.py", "--Quick"],
   "$D/regression/tst_sgtbx.py",
   "$D/regression/tst_itvb_2001_table_a1427_hall_symbols.py",
