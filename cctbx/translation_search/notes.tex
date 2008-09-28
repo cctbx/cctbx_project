@@ -7,17 +7,13 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{epstopdf}
+\usepackage{cctbx_notations}
 \DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
 
 \title{Notes on the Fast Translation Function}
 \author{Luc J. Bourhis}
 \date{\today}                                           % Activate to display a given date or no date
 
-\newcommand{\mean}[1]{\left\langle #1 \right\rangle}
-\newcommand{\modulus}[1]{\left| #1 \right|}
-\newcommand{\sym}[2]{\left( #1 \mid #2 \right)}
-\newcommand{\cov}[2]{\mathrm{Cov}\left(#1,#2\right)}
-\newcommand{\code}[1]{\texttt{#1}}
 
 \bibliographystyle{plain}
 
@@ -105,7 +101,7 @@ All those sums are over a discrete set of miller indices and they can therefore 
 
 If we know the space group, the set of symmetries can be taken as the space-group. The procedure is then only used to find the origin shift $x$. If we do not know the space-group, we can compute $C(x)$ for a set reduced to the identity and a symmetry element we want to test, and do that for all symmetry operators we wish to test.
 
-\bibliography{../../dox/references}
+\bibliography{cctbx_references}
 
 
 \end{document}  
