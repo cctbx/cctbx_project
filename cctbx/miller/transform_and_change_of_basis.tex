@@ -1,0 +1,75 @@
+\documentclass[11pt]{article}
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{epstopdf}
+\usepackage{cctbx_notations}
+\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+
+\title{Transform / Change of Basis\\of\\Electron Density / Structure Factors}
+\author{\lucjbourhis}
+\date{\today}                                           % Activate to display a given date or no date
+
+\begin{document}
+\maketitle
+
+\section{Transform}
+
+Let us consider an electron density $\rho(x)$ and an affine operator $\sym{R}{t}$ transforming $x$. Then the transform of the former by the latter is $\rho(\sym{R}{t}^{-1}x)$. This is a classic if at first counter-intuitive result. The transform of $\rho$ must indeed take the value $\rho(x)$ at the point $\sym{R}{t}x$ (most easily visualised in 1 dimension on the special case of a translation $x \mapsto x+\tau$ by looking at the graph of $\rho$: that graph is moved along the $x$-axis by a amount $\tau$).
+
+Borrowing the notation from group theory, we will denote the transform of $\rho$ by
+\begin{equation}
+\rho^{\sym{R}{t}}(x) = \rho(\sym{R}{t}^{-1}x)
+\label{rho:transform}
+\end{equation}
+
+Let us now find the equivalent of eq.~(\ref{rho:transform}) for the Fourier transform $F$ of $\rho$. From now on, we will only consider the following case: $\sym{R}{t}$ leaves the unit cell $U$ invariant.
+
+Then\footnote{It is most natural in crystallography to represent any position $x$ by a column vector and any miller index $h$ by a row vector (mathematically speaking $h$ is in the reciprocal space of $x$ and therefore $h$ is really a linear form). Therefore the scalar product $h.x$ reads like the mere matrix product $hx$ and the operator relation $h.Rx = R^Th.x$ is the trivial matrix product $hRx$ interpreted in two ways using associativity.}
+\begin{align}
+F^{\sym{R}{t}}(h) &= \int_U \rho(\sym{R}{t}^{-1}x) e^{i2\pi hx} d^3x ; \nonumber \\
+&= \int_{\sym{R}{t}U} \rho(y) e^{i2\pi (hRx + ht)} d^3x ;\nonumber\\
+\intertext{with the change of variable $y = \sym{R}{t}^{-1}x$ and then}
+F^{\sym{R}{t}}(h) &= F(hR) e^{i2\pi ht}
+\end{align}
+with the invariance of $U$.
+
+The \cctbx\ does not implement such transforms of the structure factors. But it implements the other side of the coin: changes of basis.
+
+\section{Change of basis}
+
+Let us consider the change of basis transforming the old basis\footnote{We should actually be talking about a frame, i.e. an origin $\omega$ and a basis of vectors $(e_1, e_2, e_3)$ but the \cctbx\ calls it a basis.} of real space $(\omega, e_1, e_2, e_3)$ into the new basis $(\omega', e'_1, e'_2, e'_3)$ through the operator $\sym{R}{t}$. A well-known result is that if $x$ is the coordinate vector of a position w.r.t. $(e_1, e_2, e_3)$ and $x'$ the coordinate vector of the same position w.r.t. $(e'_1, e'_2, e'_3)$, then\footnote{Here, by an abuse of notation, we identify the operator on the vectors $e_i$ and the operator on the coordinate vector $x$.}
+\begin{equation}
+x = \sym{R}{t}x'.
+\label{change::of::basis::position}
+\end{equation}
+Reminder:
+\begin{align}
+\omega' + \sum_j x'_j e'_j = \omega + t + \sum_j x'_j \sum_i R_{ij} e_i = \omega + \sum_i (\underbrace{t_i + \sum_j R_{ij} x'_j}_{x_i \text{ by definition}})e_i. \nonumber
+\end{align}
+A corollary is the corresponding law for the miller indices,
+\begin{equation}
+h' = h\sym{R}{t}.
+\end{equation}
+Indeed, since scalar product should be independent of the basis, $h'$ must statisfy $h'\Delta x' = h\Delta x$ for any vector $\Delta x'$ (as opposed to the point $x$\footnote{Let's not forget the positions make an affine space whereas the miller indices are only the reciprocal of the associated vector space and of course eq.~(\ref{change::of::basis::position}) results in $\Delta x = R \Delta x'$}). The \cctbx\ implements this formula in C++ by operator overloading.
+
+In the previous section, we considered transforms where the old $x$ is moved onto the new $x'$ as $x' = \sym{R}{t} x$. Thus a change of basis $\sym{R}{t}$ corresponds to a transform $\sym{R}{t}^{-1}$. As a result, the \cctbx\ code handling a change of basis can trivially be used to generate a transform by simply passing as the change-of-basis operator the inverse of the transform we want.
+
+Let us now work out the formula relating the structure factors before and after the change of basis. If $F(h)$ is the structure factor in the old basis, we will denote the structure factor in the new basis as $F'(h)$. With the remark in the previous paragraph,
+\begin{align}
+F'(h) &= F^{\sym{R}{t}^{-1}}(h) = F(hR^{-1}) e^{i2\pi h(-R^{-1}t)}\nonumber\\
+\intertext{and therefore}
+F'(hR) &= F(h)e^{-i2\pi ht}.
+\end{align}
+That is the formula implemented in the \cctbx\ in \code{sym\_equiv.h}, c.f. \code{sym\_equiv\_index\linebreak[0]::phase\_eq} and it's use in \code{change\_basis.h}. It is particularly convenient since a \code{miller\linebreak[0].array} stores $h$ and $F(h)$ in two parallel arrays. By looping over the both of them at the same time, one can compute and immediately store the new miller index $hR$ and the value $F'$ for that new miller index.
+
+\section{Symmetry cross-correlation: an application}
+
+The following questions is recurrent after any method processing a structure in P1: is the structure invariant under an operator $\sym{R}{t}$ in some basis which is not necessarily the one we have done that processing in? That is true of the dual space solution method (Phenix.hyss, ShelXD) and also of charge flipping.
+
+To be continued.
+
+\end{document}  

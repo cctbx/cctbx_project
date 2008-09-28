@@ -39,6 +39,7 @@ cctbx/examples/trigonal_r_vs_tetragonal_i.py svneol=native#text/x-python
 cctbx/examples/tst_space_subgroups.py svneol=native#text/x-python
 cctbx/geometry_restraints/tst_proxy_registry.py svneol=native#text/x-python
 cctbx/maptbx/fft.h -text
+cctbx/miller/transform_and_change_of_basis.tex -text
 cctbx/regression/random_generator_state.pickle -text
 cctbx/regression/structure_ideal.pickle -text
 cctbx/regression/structure_start.pickle -text
