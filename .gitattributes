@@ -175,11 +175,14 @@ iotbx/shelx/util.py -text
 libtbx/assert_utils.py -text
 libtbx/command_line/assert_line_count.py svneol=native#text/x-python
 libtbx/command_line/bash.sh -text
+libtbx/command_line/bibtex.sh -text
 libtbx/command_line/csh.sh -text
 libtbx/command_line/extract_code_from_txt.py svneol=native#text/x-python
 libtbx/command_line/find_files.py -text
+libtbx/command_line/latex.sh -text
 libtbx/command_line/list_files.py -text
 libtbx/command_line/nequal.py -text
+libtbx/command_line/pdflatex.sh -text
 libtbx/command_line/sge_qstat_counts.py svneol=native#text/x-python
 libtbx/command_line/sh.sh -text
 libtbx/command_line/show_environ_usage.py svneol=native#text/x-python
