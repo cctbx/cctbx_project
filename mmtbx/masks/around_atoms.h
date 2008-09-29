@@ -75,8 +75,9 @@ namespace mmtbx { namespace masks {
 
       //! Volume accessible for centers of solvent molecules.
       /*! Fraction of volume bounded by accessible surface.
-          If roll the sphere of radius solvent_radius over protein surface,
-          the center of this sphere will be on the accessible surface.
+          If the sphere with solvent_radius is rolled over the protein
+          surface, the center of this sphere will be on the accessible
+          surface.
        */
       double accessible_surface_fraction;
 
