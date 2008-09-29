@@ -14,6 +14,7 @@ def exercise_with_tst_input_map():
   assert approx_equal(m.header_max, 0.335603952408)
   assert approx_equal(m.header_mean, 0)
   assert approx_equal(m.header_rms, 0.140116646886)
+  assert m.unit_cell_grid == (16, 8, 16)
   assert approx_equal(m.unit_cell_parameters, (
     82.095001220703125, 37.453998565673828, 69.636001586914062,
     90.0, 101.47599792480469, 90.0))
@@ -31,6 +32,7 @@ def run(args):
     print "header_max: ", m.header_max
     print "header_mean:", m.header_mean
     print "header_rms: ", m.header_rms
+    print "unit cell grid:", m.unit_cell_grid
     print "unit cell parameters:", m.unit_cell_parameters
     print "space group number:  ", m.space_group_number
     print "map origin:", m.data.origin()

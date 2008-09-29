@@ -47,6 +47,7 @@ namespace ccp4_map {
         }
         CMap_io::ccp4_cmap_get_mapstats(
           mfile.get(), &header_min, &header_max, &header_mean, &header_rms);
+        CMap_io::ccp4_cmap_get_grid(mfile.get(), unit_cell_grid.begin());
         float cell_float[6];
         CMap_io::ccp4_cmap_get_cell(mfile.get(), cell_float);
         std::copy(cell_float, cell_float+6, unit_cell_parameters.begin());
@@ -119,6 +120,7 @@ namespace ccp4_map {
       float header_max;
       double header_mean;
       double header_rms;
+      af::tiny<int, 3> unit_cell_grid;
       af::tiny<double, 6> unit_cell_parameters;
       int space_group_number;
       af::versa<float, af::flex_grid<> > data;
@@ -146,6 +148,8 @@ namespace ccp4_map {
       .def_readonly("header_max", &map_reader::header_max)
       .def_readonly("header_mean", &map_reader::header_mean)
       .def_readonly("header_rms", &map_reader::header_rms)
+      .add_property("unit_cell_grid",
+        make_getter(&map_reader::unit_cell_grid, rbv()))
       .add_property("unit_cell_parameters",
         make_getter(&map_reader::unit_cell_parameters, rbv()))
       .def_readonly("space_group_number", &map_reader::space_group_number)
