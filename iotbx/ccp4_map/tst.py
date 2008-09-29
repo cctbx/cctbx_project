@@ -20,7 +20,7 @@ def exercise_with_tst_input_map():
     90.0, 101.47599792480469, 90.0))
   assert m.space_group_number == 5
   assert m.data.origin() == (0, 0, 0)
-  assert m.data.all() == (8, 16, 16)
+  assert m.data.all() == (16, 8, 16)
   assert not m.data.is_padded()
 
 def run(args):
@@ -43,6 +43,7 @@ def run(args):
     assert approx_equal(map_stats.mean(), m.header_mean)
     if (m.header_rms != 0):
       assert approx_equal(map_stats.sigma(), m.header_rms)
+    print
   print format_cpu_times()
 
 if (__name__ == "__main__"):

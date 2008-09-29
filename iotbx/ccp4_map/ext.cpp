@@ -59,22 +59,25 @@ namespace ccp4_map {
         for(unsigned i=0;i<3;i++) {
           IOTBX_ASSERT(dim[i] >= 1);
         }
-        int order[3];
-        CMap_io::ccp4_cmap_get_order(mfile.get(), order);
-        for(unsigned i=0;i<3;i++) {
-          IOTBX_ASSERT(order[i] >= 1);
-          IOTBX_ASSERT(order[i] <= 3);
-          order[i]--;
+        int order_xyz[3];
+        {
+          int order_crs[3]; // column-row-section = fast-medium-slow
+          CMap_io::ccp4_cmap_get_order(mfile.get(), order_crs);
+          for(unsigned i=0;i<3;i++) {
+            IOTBX_ASSERT(order_crs[i] >= 1);
+            IOTBX_ASSERT(order_crs[i] <= 3);
+            order_xyz[order_crs[i]-1] = i;
+          }
         }
         af::flex_grid<>::index_type fg_origin;
         for(unsigned i=0;i<3;i++) {
-          fg_origin.push_back(origin[order[i]]);
+          fg_origin.push_back(origin[order_xyz[i]]);
         }
         af::flex_grid<>::index_type fg_last;
         for(unsigned i=0;i<3;i++) {
-          fg_last.push_back(origin[order[i]]+dim[order[i]]);
+          fg_last.push_back(origin[order_xyz[i]]+dim[order_xyz[i]]);
         }
-        unsigned n_crs[3]; // column-row-section = fast-medium-slow
+        unsigned n_crs[3];
         for(unsigned i=0;i<3;i++) {
           n_crs[i] = static_cast<unsigned>(dim[i]);
         }
@@ -83,9 +86,9 @@ namespace ccp4_map {
         af::ref<float, af::c_grid<3> > data_ref(
           data.begin(),
           af::c_grid<3>(
-            n_crs[order[0]],
-            n_crs[order[1]],
-            n_crs[order[2]]));
+            n_crs[order_xyz[0]],
+            n_crs[order_xyz[1]],
+            n_crs[order_xyz[2]]));
         unsigned section_size = n_crs[0] * n_crs[1];
         boost::scoped_array<float> section(new float [section_size]);
         unsigned char* section_char = 0;
@@ -102,9 +105,9 @@ namespace ccp4_map {
           unsigned index = 0;
           for(i_crs[1]=0;i_crs[1]<n_crs[1];i_crs[1]++) {
             for(i_crs[0]=0;i_crs[0]<n_crs[0];i_crs[0]++) {
-              unsigned i = i_crs[order[0]];
-              unsigned j = i_crs[order[1]];
-              unsigned k = i_crs[order[2]];
+              unsigned i = i_crs[order_xyz[0]];
+              unsigned j = i_crs[order_xyz[1]];
+              unsigned k = i_crs[order_xyz[2]];
               if (datamode == BYTE) {
                 data_ref(i,j,k) = static_cast<float>(section_char[index++]);
               }
