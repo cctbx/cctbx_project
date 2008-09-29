@@ -1,17 +1,10 @@
 \documentclass[11pt]{article}
-\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
-\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
-%\geometry{landscape}                % Activate for for rotated page geometry
-%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
-\usepackage{graphicx}
-\usepackage{amsmath}
-\usepackage{epstopdf}
-\usepackage{cctbx_notations}
-\DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
+\usepackage{cctbx_preamble}
+\usepackage{amscd}
 
 \title{Transform / Change of Basis\\of\\Electron Density / Structure Factors}
 \author{\lucjbourhis}
-\date{\today}                                           % Activate to display a given date or no date
+\date{\today}
 
 \begin{document}
 \maketitle
@@ -26,7 +19,7 @@ Borrowing the notation from group theory, we will denote the transform of $\rho$
 \label{rho:transform}
 \end{equation}
 
-Let us now find the equivalent of eq.~(\ref{rho:transform}) for the Fourier transform $F$ of $\rho$. From now on, we will only consider the following case: $\sym{R}{t}$ leaves the unit cell $U$ invariant.
+Let us now find the equivalent of \refeq{rho:transform} for the Fourier transform $F$ of $\rho$. From now on, we will only consider the following case: $\sym{R}{t}$ leaves the unit cell $U$ invariant.
 
 Then\footnote{It is most natural in crystallography to represent any position $x$ by a column vector and any miller index $h$ by a row vector (mathematically speaking $h$ is in the reciprocal space of $x$ and therefore $h$ is really a linear form). Therefore the scalar product $h.x$ reads like the mere matrix product $hx$ and the operator relation $h.Rx = R^Th.x$ is the trivial matrix product $hRx$ interpreted in two ways using associativity.}
 \begin{align}
@@ -54,7 +47,7 @@ A corollary is the corresponding law for the miller indices,
 \begin{equation}
 h' = h\sym{R}{t}.
 \end{equation}
-Indeed, since scalar product should be independent of the basis, $h'$ must statisfy $h'\Delta x' = h\Delta x$ for any vector $\Delta x'$ (as opposed to the point $x$\footnote{Let's not forget the positions make an affine space whereas the miller indices are only the reciprocal of the associated vector space and of course eq.~(\ref{change::of::basis::position}) results in $\Delta x = R \Delta x'$}). The \cctbx\ implements this formula in C++ by operator overloading.
+Indeed, since scalar product should be independent of the basis, $h'$ must statisfy $h'\Delta x' = h\Delta x$ for any vector $\Delta x'$ (as opposed to the point $x$\footnote{Let's not forget the positions make an affine space whereas the miller indices are only the reciprocal of the associated vector space and of course \refeq{change::of::basis::position} results in $\Delta x = R \Delta x'$}). The \cctbx\ implements this formula in C++ by operator overloading.
 
 In the previous section, we considered transforms where the old $x$ is moved onto the new $x'$ as $x' = \sym{R}{t} x$. Thus a change of basis $\sym{R}{t}$ corresponds to a transform $\sym{R}{t}^{-1}$. As a result, the \cctbx\ code handling a change of basis can trivially be used to generate a transform by simply passing as the change-of-basis operator the inverse of the transform we want.
 
@@ -68,8 +61,75 @@ That is the formula implemented in the \cctbx\ in \code{sym\_equiv.h}, c.f. \cod
 
 \section{Symmetry cross-correlation: an application}
 
-The following questions is recurrent after any method processing a structure in P1: is the structure invariant under an operator $\sym{R}{t}$ in some basis which is not necessarily the one we have done that processing in? That is true of the dual space solution method (Phenix.hyss, ShelXD) and also of charge flipping.
+The following questions is recurrent after any method processing a structure in P1: is the structure invariant under an operator $\sym{R}{t}$ in some ``new'' basis which is not necessarily the ``old'' one we have done that processing in? That is true of the dual space solution method (Phenix.hyss, ShelXD) and also of charge flipping. In practice, the change of basis to consider from the old to the new basis is just a change of origin.
 
-To be continued.
+We want to compare $\rho$ to its transform by $\sym{R}{t}$. One method is to work in the old basis. What is that transform in that basis? We need to do in this order
+\begin{enumerate}
+\item a change of origin $\sym{I}{s}$, i.e. shifting the old origin by $s$ to get the new origin,
+\item a transform by the operator $\sym{R}{t}$,
+\item the reverse change of basis to the first step to get back to the old origin.
+\end{enumerate}
+By using the results from the previous sections, the electron density transforms as
+\begin{equation*}
+\begin{CD}
+\rho(x)                                  @>{\text{c.b. } \sym{I}{s}}>>   \rho(x+s)                               \\
+@A{\text{compare to}}AA                                      @VV{\text{transform } \sym{R}{t}}V         \\
+\rho(\sym{R}{t}^{-1}(x-s) + s)   @<<{\text{c.b. } \sym{I}{-s}}< \rho(\sym{R}{t}^{-1}x + s)
+\end{CD}
+\end{equation*}
+whereas the structure factors transform as
+\begin{equation*}
+\begin{CD}
+F(h)                                  @>{\text{c.b. } \sym{I}{s}}>>   F(h)e^{-i2\pi hs}            \\
+@A{\text{compare to}}AA                                      @VV{\text{transform } \sym{R}{t}}V    \\
+F(hR)e^{-i2\pi hRs}e^{i2\pi ht}e^{i2\pi hs}   @<<{\text{c.b. } \sym{I}{-s}}< F(hR)e^{-i2\pi hRs}e^{i2\pi ht}
+\end{CD}
+\end{equation*}
+So the transformes read
+\begin{align}
+\rho^\#(x) &= \rho(\sym{R}{t}^{-1}x + (I-R)s)\\
+F^\#(h) &= F^{\sym{R}{t}}(h) e^{i2\pi h(I-R)s} \label{translation::search::F}
+\end{align}
+Let us therefore introduce
+\begin{equation}
+d = (I-R)s. \label{def::d}
+\end{equation}
+
+How to compare $\rho$ and $\rho^\#$ ? One possibility is to compute their overlap
+\begin{align}
+C(s) &= \int_U \rho(x) \rho^\#(x) d^3x  \label{cross::correlation::rho::s}\\
+&= \int_U \rho(x) \rho(\sym{R}{t}^{-1}x + d)d^3x = CC(d). \label{cross::correlation::rho::d}
+\end{align}
+$CC$ is therefore the cross-correlation%
+\footnote{The cross-correlation between any density $\rho_1$ and $\rho_2$ is defined as
+\begin{align}
+CC(d) &= \int \rho_1(x) \rho_2(x+d)d^3x \\
+\intertext{i.e.}
+CC &= \rho_1(x) * \rho_2(-x) = \rho_1(-x) * \rho_2(x)
+\end{align}
+where $*$ denotes the convolution.} 
+between $\rho$ and $\rho^{\sym{R}{t}}$.
+The goal is now to find the value of $d$ which maximises $CC(d)$, the idea being that the bigger the overlap, the more similar the density and its transform must be. There are two problems here:
+\begin{itemize}
+\item first, we want to compute $s$, not $d$ but in all practical cases $I-R$ is not invertible and therefore \refeq{def::d} does not have an unique solution; but at least we can determine all of them;
+\item then, in practice we only have a sample of $\rho$ on a grid; thus the computation of the overlap integral scales like the number of point on the grid and then we need to compute it for $d$ spanning the grid; thus this is an $O(n^2)$ algorithm.
+\end{itemize}
+But since $CC$ is a convolution, we can compute it using Fast Fourier Transform,
+\begin{equation}
+CC = \fourier{F(h)\overline{F^{\sym{R}{t}}(h)}}\label{CC:as::FFT}
+\end{equation}
+where the bar denotes complex conjugation. Now the computation of all the $F(h)\overline{F^{\sym{R}{t}}(h)}$ is $O(n)$ whereas the FFT is $O(n\log n)$ which results in a dramatic improvement.
+
+Remark: we could have arrived at \refeq{CC:as::FFT} in a different way,
+\begin{align}
+C(s) &= \sum_h F(h)\overline{F^\#(h)} \label{cross::correlation::F}\\
+\intertext{by rewriting \refeq{cross::correlation::rho::s} using Parseval theorem and then}
+&= \sum_h F(h) \overline{F^{\sym{R}{t}}(h)} e^{-i2\pi hd}
+\end{align}
+with \refeq{translation::search::F}. The \refeq{cross::correlation::F} cannot be used in practice either because that direct summation for each grid point $d$ is $O(n^2)$ too.
+
+$CC$ is the technique used in superflip. A related method used in macro-molecular crystallography and in \code{smtbx.ab\_initio.charge\_flipping} is the fast correlation function~\cite{J.Navaza:1995}: c.f. \code{cctbx.translation\_search} and the associated \href{file://../translation_search/notes.pdf}{notes}.
+
+\bibliography{cctbx_references}
 
 \end{document}  
