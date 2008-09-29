@@ -24,7 +24,7 @@ mask_master_params = iotbx.phil.parse("""\
   grid_step_factor = 4.0
     .type = float
     .help = The grid step for the mask calculation is determined as \
-            highest_resolution devided by grid_step_factor. This is considered \
+            highest_resolution divided by grid_step_factor. This is considered \
             as suggested value and may be adjusted internally based on the \
             resolution.
   verbose = 1
