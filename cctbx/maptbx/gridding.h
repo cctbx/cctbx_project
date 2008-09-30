@@ -22,6 +22,7 @@ namespace cctbx { namespace maptbx {
     bool assert_shannon_sampling=true)
   {
     CCTBX_ASSERT(d_min > 0);
+    CCTBX_ASSERT(resolution_factor > 0);
     if (assert_shannon_sampling) {
       CCTBX_ASSERT(resolution_factor <= 0.5);
     }
