@@ -368,6 +368,8 @@ namespace cctbx { namespace uctbx {
   miller::index<>
   unit_cell::max_miller_indices(double d_min, double tolerance) const
   {
+    CCTBX_ASSERT(d_min > 0);
+    CCTBX_ASSERT(tolerance >= 0);
     miller::index<> max_h;
     for(std::size_t i=0;i<3;i++) {
       uc_vec3 u(0,0,0);
@@ -377,7 +379,10 @@ namespace cctbx { namespace uctbx {
       // length of uxv is not used => sqrt(det(metr_mx)) is simply set to 1
       uc_vec3 uxv = cross_g(1., r_metr_mx_, u, v);
       double uxv2 = dot_g(uxv, r_metr_mx_, uxv);
-      max_h[i] = (int)(uxv[i] / std::sqrt(uxv2) / d_min + tolerance);
+      CCTBX_ASSERT(uxv2 != 0);
+      double uxv_abs = std::sqrt(uxv2);
+      CCTBX_ASSERT(uxv_abs != 0);
+      max_h[i] = static_cast<int>(uxv[i] / uxv_abs / d_min + tolerance);
     }
     return max_h;
   }
