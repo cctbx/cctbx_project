@@ -26,9 +26,14 @@ import unicodedata
 
 class map_view(wx_viewer.wxGLWindow):
 
+  def barycentre_of_min_max(cls, x=0.8):
+    return lambda stats: (1-x)*stats.min() + x*stats.max()
+  barycentre_of_min_max = classmethod(barycentre_of_min_max)
+
   def __init__(self,
                fft_map=None,
                unit_cell=None, raw_map=None,
+               iso_level=None,
                frame=None,
                wires=True,
                **kwds):
@@ -37,6 +42,7 @@ class map_view(wx_viewer.wxGLWindow):
     super(map_view, self).__init__(frame,
                                    animation_time=0.3,#second
                                    **kwds)
+    if iso_level is None: iso_level = self.barycentre_of_min_max()
     self._gl_has_been_initialised = False
     self.buffer_factor = 2.0
     self.background_colour = (0,)*4
@@ -67,7 +73,7 @@ class map_view(wx_viewer.wxGLWindow):
     density_stats = maptbx.statistics(rho)
     self.min_density = density_stats.min()
     self.max_density = density_stats.max()
-    self.set_initial_iso_level(density_stats)
+    self.iso_level = iso_level(density_stats)
 
     p = (0,0,0)
     q = unit_cell.orthogonalize((1,1,1))
@@ -75,9 +81,6 @@ class map_view(wx_viewer.wxGLWindow):
     s = unit_cell.orthogonalize((0,1,1))
     self.minimum_covering_sphere = minimum_covering_sphere(
       flex.vec3_double([p,q,r,s]))
-
-  def set_initial_iso_level(self, density_stats):
-    self.iso_level = density_stats.mean() + 2*density_stats.sigma()
 
   def iso_level(self):
     return self._iso_level
@@ -203,16 +206,18 @@ class App(wx_viewer.App):
   def __init__(self,
                fft_map=None,
                unit_cell=None, raw_map=None,
-               map_view_type=map_view,
+               iso_level=None,
                wires=True,
+               default_size=(600,600),
                **kwds):
-    self._make_view_objects = lambda: map_view_type(
+    self._make_view_objects = lambda: map_view(
       fft_map=fft_map,
       unit_cell=unit_cell, raw_map=raw_map,
       wires=wires,
+      iso_level=iso_level,
       frame=self.frame,
       size=self.default_size)
-    super(App, self).__init__(**kwds)
+    super(App, self).__init__(default_size=default_size, **kwds)
 
 
   def init_view_objects(self):
@@ -394,20 +399,9 @@ class App(wx_viewer.App):
   def on_wires_changed(self, e):
     self.view_objects.wires = self.wires_btn.IsChecked()
 
+def display(*args, **kwds):
+  App(*args, **kwds).MainLoop()
 
-def display(fft_map=None,
-            unit_cell=None, raw_map=None,
-            map_view_type=map_view,
-            wires=True,
-            size=(600,600),
-            title="Electron density iso-contour"):
-  a = App(fft_map=fft_map,
-          unit_cell=unit_cell, raw_map=raw_map,
-          map_view_type=map_view_type,
-          wires=wires,
-          title=title,
-          default_size=size)
-  a.MainLoop()
 
 def show_help(): print """\
 1. wx_map_viewer name.pickle
