@@ -972,6 +972,11 @@ min:   -7.00
 max:   14.00
 mean:   2.00
 """)
+  #
+  a = flex.complex_double([1+1j, 1-1j, 2+2j, 4+2j])
+  assert flex.mean(a) == 2+1j
+  assert approx_equal(flex.sum_sq(a), 32)
+  assert approx_equal(flex.mean_sq(a), 8)
 
 def exercise_complex_functions():
   c = 1+2j

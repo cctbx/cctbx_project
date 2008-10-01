@@ -792,6 +792,8 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::scope local_scope(flex_root_scope);
         boost::python::def("sum", sum_a);
         boost::python::def("sum_sq", sum_sq_a);
+        boost::python::def("mean", mean_a);
+        boost::python::def("mean_sq", mean_sq_a);
         boost::python::def("product", product_a);
       }
       return plain(python_name)
@@ -897,8 +899,6 @@ namespace scitbx { namespace af { namespace boost_python {
         boost::python::def("floor", floor_a);
         boost::python::def("log10", log10_a);
         boost::python::def("sqrt", sqrt_a);
-        boost::python::def("mean", mean_a);
-        boost::python::def("mean_sq", mean_sq_a);
         boost::python::def("mean_weighted", mean_weighted_a_a);
         boost::python::def("mean_sq_weighted", mean_sq_weighted_a_a);
       }

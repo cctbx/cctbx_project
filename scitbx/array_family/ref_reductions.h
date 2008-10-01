@@ -5,6 +5,7 @@
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/misc_functions.h>
 #include <boost/optional.hpp>
+#include <complex>
 
 namespace scitbx { namespace af {
 
@@ -149,6 +150,15 @@ namespace scitbx { namespace af {
 
   template <typename ElementType, typename AccessorType>
   ElementType
+  sum_sq(const_ref<std::complex<ElementType>, AccessorType> const& a)
+  {
+    ElementType result = 0;
+    for(std::size_t i=0;i<a.size();i++) result += std::norm(a[i]);
+    return result;
+  }
+
+  template <typename ElementType, typename AccessorType>
+  ElementType
   norm(const_ref<ElementType, AccessorType> const& a)
   {
     return std::sqrt(sum_sq(a));
@@ -174,7 +184,7 @@ namespace scitbx { namespace af {
     }
     ElementType result = a[0];
     for(std::size_t i=1;i<a.size();i++) result += a[i];
-    return result / a.size();
+    return result * (1./a.size());
   }
 
   template <typename ElementType, typename AccessorType>
@@ -186,6 +196,18 @@ namespace scitbx { namespace af {
     }
     ElementType result = a[0] * a[0];
     for(std::size_t i=1;i<a.size();i++) result += a[i] * a[i];
+    return result / a.size();
+  }
+
+  template <typename ElementType, typename AccessorType>
+  ElementType
+  mean_sq(const_ref<std::complex<ElementType>, AccessorType> const& a)
+  {
+    if (a.size() == 0) {
+      throw std::runtime_error("mean_sq() argument is an empty array");
+    }
+    ElementType result = std::norm(a[0]);
+    for(std::size_t i=1;i<a.size();i++) result += std::norm(a[i]);
     return result / a.size();
   }
 
