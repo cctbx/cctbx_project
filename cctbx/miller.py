@@ -1540,6 +1540,11 @@ class array(set):
       data=p1.data,
       sigmas=p1_sigmas).set_observation_type(self)
 
+  def original_and_transformed(self, op):
+    cb = sgtbx.change_of_basis_op(op.inverse())
+    op_times_self = self.change_basis(cb)
+    return self.common_sets(op_times_self)
+
   def change_basis(self, cb_op, deg=None):
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
     if (deg is False or deg is True):
@@ -2118,6 +2123,9 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       use_multiplicities=use_multiplicities,
       squared=True)
 
+  def sum_sq(self, use_binning=False, use_multiplicities=False):
+    return self.size()*self.mean_sq()
+
   def rms(self, use_binning=False, use_multiplicities=False):
     return self.mean(
       use_binning=use_binning,
@@ -2343,8 +2351,22 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return self
 
   def __mul__(self, other):
-    result = self.copy()
+    result = self.deep_copy()
     result *= other
+    return result
+
+  def __itruediv__(self, other):
+    assert self.indices() is not None
+    assert self.data() is not None
+    data = self.data()
+    data /= other
+    sigmas = self.sigmas()
+    if sigmas is not None: sigmas /= other
+    return self
+
+  def __truediv__(self, other):
+    result = self.deep_copy()
+    result /= other
     return result
 
   def generate_bijvoet_mates(self):
