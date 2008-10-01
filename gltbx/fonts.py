@@ -8,10 +8,13 @@ ucs_bitmap_10x20 = ucs_bitmap(short_name="10x20")
 
 class _ucs_bitmap(boost.python.injector, ucs_bitmap):
 
-  def render_text(self, position, text, relative_line_spacing=1.0):
-    from gltbx.gl import glRasterPos2f, glBitmap
+  def render_text(self, position, text, relative_line_spacing=1.0,
+                  use_3d_position=False):
+    from gltbx.gl import glRasterPos2f, glRasterPos3f, glBitmap
+    if use_3d_position: glRasterPos = glRasterPos3f
+    else: glRasterPos = glRasterPos2f
     line_spacing = round(self.height() * relative_line_spacing)
     for i,string in enumerate(text.splitlines()):
-      glRasterPos2f(*position)
+      glRasterPos(*position)
       glBitmap(0, 0, 0.0, 0.0, 0.0, -i*line_spacing, "")
       self.render_string(string=string.expandtabs())
