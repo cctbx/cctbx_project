@@ -1,9 +1,9 @@
-import iotbx.ccp4_map
+import iotbx
 from cctbx import maptbx
 from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times
 import libtbx.load_env
-import sys
+import sys, os
 
 def exercise_with_tst_input_map():
   file_name = libtbx.env.under_dist(
@@ -23,7 +23,7 @@ def exercise_with_tst_input_map():
   assert m.data.all() == (16, 8, 16)
   assert not m.data.is_padded()
 
-def run(args):
+def exercise(args):
   exercise_with_tst_input_map()
   for file_name in args:
     print file_name
@@ -44,6 +44,18 @@ def run(args):
     if (m.header_rms != 0):
       assert approx_equal(map_stats.sigma(), m.header_rms)
     print
+
+def run(args):
+  def have_ext():
+    for node in os.listdir(libtbx.env.under_build(path="lib")):
+      if (node.startswith("iotbx_ccp4_map_ext")):
+        return True
+    return False
+  if (not have_ext()): # XXX backward compatibility 2008-09-30
+    print "Skipping iotbx_ccp4_map tests: extension not available"
+  else:
+    import iotbx.ccp4_map
+    exercise(args=args)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
