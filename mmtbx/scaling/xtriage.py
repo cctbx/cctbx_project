@@ -43,22 +43,30 @@ scaling.input {
 
    xray_data
    .help="Defines xray data"
+    .gui_style = auto_align
    {
      file_name=None
-     .type=path
-     .help="File name with data"
+      .type=path
+      .help="File name with data"
+      .short_caption = Reflections
+      .gui_style = bold noauto
      obs_labels=None
      .type=strings
      .help="Labels for observed data"
+      .short_caption = Fobs labels
+      .gui_style = bold
      calc_labels=None
      .type=strings
      .help="Lables for calculated data"
+      .short_caption = Fcalc labels
      unit_cell=None
      .type=unit_cell
      .help="Unit cell parameters"
+      .gui_style = bold
      space_group=None
      .type=space_group
      .help="space group"
+      .gui_style = bold
      high_resolution=None
      .type=float
      .help="High resolution limit"
@@ -68,13 +76,18 @@ scaling.input {
 
      reference
      .help = "A reference data set. For the investigation of possible reindexing options"
+      .short_caption = Reference data
+      .gui_style = noauto
      {
        data
        .help="Defines an x-ray dataset"
+       .short_caption = X-ray data
+       .gui_style = box auto_align
        {
          file_name=None
          .type = path
          .help = "File name"
+          .short_caption = Reference x-ray file
          labels=None
          .type=strings
          .help="Labels"
@@ -89,6 +102,7 @@ scaling.input {
          file_name=None
          .type=path
          .help="Filename of reference PDB file"
+         .short_caption = Reference PDB file
        }
      }
    }
@@ -116,6 +130,8 @@ scaling.input {
 
       misc_twin_parameters
      .help="Various settings for twinning or symmetry tests"
+      .short_caption = Other settings
+      .gui_style = menu_item
      {
        missing_symmetry
        .help = "Settings for missing symmetry tests"
@@ -131,13 +147,16 @@ scaling.input {
          perform_analyses = False
          .type = bool
          .help = "Determines whether or not this analyses is carried out."
+         .short_caption = Analyze twinning with NCS
          n_bins = 7
          .type = int
          .help = "Number of bins used in NCS analyses."
+         .short_caption = Number of bins
        }
 
        twin_test_cuts
        .help = "Various cuts used in determining resolution limit for data used in intensity statistics "
+       .gui_style = box
        {
          low_resolution=10.0
          .type=float
@@ -161,6 +180,7 @@ scaling.input {
    optional
    .expert_level=10
    .help="Optional data massage possibilities"
+   .short_caption = Advanced options
    {
      include scope mmtbx.scaling.massage_twin_detwin_data.master_params
    }
