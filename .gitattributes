@@ -46,6 +46,7 @@ cctbx/regression/structure_start.pickle -text
 cctbx/regression/tst_adp_constraints_cartesian.py -text
 cctbx/regression/tst_grouped_data.py -text
 cctbx/regression/tst_math_module.py -text
+cctbx/regression/tst_miller_transform.py -text
 cctbx/regression/tst_show_cosets.py -text
 cctbx/regression/tst_structure_factors_multithread.py -text
 cctbx/regression/tst_weighting_schemes.py -text
