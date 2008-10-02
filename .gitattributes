@@ -32,6 +32,7 @@ cctbx/crystal_orientation.h -text
 cctbx/crystal_orientation.py -text
 cctbx/eltbx/xray_scattering/form_factor.h -text
 cctbx/examples/maximum_subgroups.py -text
+cctbx/examples/miller_transform.py -text
 cctbx/examples/quartz_structure.py svneol=native#text/x-python
 cctbx/examples/space_subgroups.py svneol=native#text/x-python
 cctbx/examples/sub_group_graph.py -text
@@ -46,7 +47,6 @@ cctbx/regression/structure_start.pickle -text
 cctbx/regression/tst_adp_constraints_cartesian.py -text
 cctbx/regression/tst_grouped_data.py -text
 cctbx/regression/tst_math_module.py -text
-cctbx/regression/tst_miller_transform.py -text
 cctbx/regression/tst_show_cosets.py -text
 cctbx/regression/tst_structure_factors_multithread.py -text
 cctbx/regression/tst_weighting_schemes.py -text
