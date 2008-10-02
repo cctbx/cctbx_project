@@ -131,7 +131,7 @@ scaling.input {
       misc_twin_parameters
      .help="Various settings for twinning or symmetry tests"
       .short_caption = Other settings
-      .gui_style = menu_item
+      .gui_style = menu_item auto_align
      {
        missing_symmetry
        .help = "Settings for missing symmetry tests"
@@ -156,7 +156,8 @@ scaling.input {
 
        twin_test_cuts
        .help = "Various cuts used in determining resolution limit for data used in intensity statistics "
-       .gui_style = box
+        .short_caption = Twin test cutoffs
+       .gui_style = box auto_align
        {
          low_resolution=10.0
          .type=float
@@ -181,7 +182,7 @@ scaling.input {
    .expert_level=1
    .help="Optional data massage possibilities"
    .short_caption = Advanced
-    .gui_style = menu_item
+    .gui_style = menu_item auto_align
    {
      include scope mmtbx.scaling.massage_twin_detwin_data.master_params
    }
