@@ -1540,11 +1540,6 @@ class array(set):
       data=p1.data,
       sigmas=p1_sigmas).set_observation_type(self)
 
-  def original_and_transformed(self, op):
-    cb = sgtbx.change_of_basis_op(op.inverse())
-    op_times_self = self.change_basis(cb)
-    return self.common_sets(op_times_self)
-
   def change_basis(self, cb_op, deg=None):
     if (isinstance(cb_op, str)): cb_op = sgtbx.change_of_basis_op(cb_op)
     if (deg is False or deg is True):
