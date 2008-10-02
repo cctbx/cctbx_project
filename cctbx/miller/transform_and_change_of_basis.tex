@@ -82,9 +82,9 @@ F(h_{i+1}) @= F^{\sym{R}{t}}(h_{i+1})\\
 \end{equation}
 One must therefore, after computing the array of $F'(hR^{-1})$, put it back to have the miller indexes $h$ in the same order as the original array of $F(h)$. Fortunately, this is a one-liner in the \cctbx\ and the whole code reduces to:
 \begin{verbatim}
-# op is (R|t) and original is a miller.array
-transformed = original.change_of_basis(
-  sgtbx.change_of_basis(op.inverse())).common_set(original)
+# op is (R|t) and f is a miller.array
+original, transform = f.common_set(
+  f.change_basis(sgtbx.change_of_basis_op(op.inverse()))
 \end{verbatim}
 
 
@@ -140,7 +140,7 @@ where $*$ denotes the convolution. It should be noted that the cross-correlation
 of $\rho^{\sym{R}{t}}$ with $\rho$.
 The goal is now to find the value of $d$ which maximises $CC(d)$, the idea being that the bigger the overlap, the more similar the density and its transform must be. There are two problems here:
 \begin{itemize}
-\item first, we want to compute $s$, not $d$ but in all practical cases $R-I$ is not invertible and therefore \refeq{def::d} does not have an unique solution; but at least we can determine all of them;
+\item first, we want to compute $s$, not $d$, but in all practical cases $R-I$ is not invertible and therefore \refeq{def::d} does not have an unique solution; but at least we can determine all of them;
 \item then, in practice we only have a sample of $\rho$ on a grid; thus the computation of the overlap integral scales like the number of point on the grid and then we need to compute it for $d$ spanning the grid; thus this is an $O(n^2)$ algorithm.
 \end{itemize}
 But since $CC$ is a convolution, we can compute it using Fast Fourier Transform,

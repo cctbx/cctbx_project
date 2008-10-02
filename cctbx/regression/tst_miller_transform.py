@@ -23,7 +23,8 @@ def exercise():
   f_at_h = dict(zip(ma.indices(), ma.data()))
   for op in ("-x, y+1/2, -z", "x+1/2, -y, z-1/2"):
     op = sgtbx.rt_mx(op)
-    original, transformed = ma.original_and_transformed(op)
+    original, transformed = ma.common_sets(
+      ma.change_basis(sgtbx.change_of_basis_op(op.inverse())))
     for h, f in original:
       assert f == f_at_h[h]
     for h, op_f in transformed:
