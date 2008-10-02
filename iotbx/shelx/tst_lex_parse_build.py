@@ -3,7 +3,6 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import adptbx
 from cctbx import xray
-from smtbx.refinement import constraints
 from iotbx import shelx
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
@@ -232,6 +231,7 @@ def exercise_afix_parsing():
   l_afix = shelx.afix_parser(l_cs.filtered_commands(), builder)
   l_xs = shelx.atom_parser(l_afix.filtered_commands(), builder)
   l_xs.parse()
+  from smtbx.refinement import constraints
   expected_afixed = [
     (constraints.staggered_terminal_tetrahedral_XHn,
      {'constrained_scatterer_indices': (1,)}),
