@@ -178,9 +178,10 @@ scaling.input {
    }
 
    optional
-   .expert_level=10
+   .expert_level=1
    .help="Optional data massage possibilities"
-   .short_caption = Advanced options
+   .short_caption = Advanced
+    .gui_style = menu_item
    {
      include scope mmtbx.scaling.massage_twin_detwin_data.master_params
    }
