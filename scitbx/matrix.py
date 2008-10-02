@@ -551,6 +551,9 @@ class rt(object):
     result.append(1)
     return rec(result, (n+1,n+1))
 
+def col_list(seq): return [col(elem) for elem in seq]
+def row_list(seq): return [row(elem) for elem in seq]
+
 if (__name__ == "__main__"):
   try:
     from libtbx import test_utils
@@ -816,5 +819,12 @@ if (__name__ == "__main__"):
   a = col((1.43416642866471794, -2.47841960952275497, -0.7632916804502845))
   b = col((0.34428681113080323, -1.85983494542314587, 0.37702845822372399))
   assert approx_equal(a.cross(b), cross_product_matrix(a) * b)
+  #
+  a = col_list(seq=[(1,2), (2,3)])
+  for e in a: assert isinstance(e, col)
+  assert approx_equal(a, [(1,2), (2,3)])
+  a = row_list(seq=[(1,2), (2,3)])
+  for e in a: assert isinstance(e, row)
+  assert approx_equal(a, [(1,2), (2,3)])
   #
   print "OK"
