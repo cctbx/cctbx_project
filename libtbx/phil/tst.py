@@ -1317,11 +1317,19 @@ include scope libtbx.phil.tst.include_scope_target_none
       ' (input line 1)'
   else: raise Exception_expected
   try: phil.parse(input_string="""\
-include scope libtbx.phil.tst.include_scope_target_0
+include scope libtbx.phil.tst.include_scope_target_0n
 """, process_includes=True)
   except RuntimeError, e:
     assert str(e) == 'include scope: python object' \
-      ' "include_scope_target_0" in module "libtbx.phil.tst"' \
+      ' "include_scope_target_0n" in module "libtbx.phil.tst"' \
+      ' is not a libtbx.phil.scope instance (input line 1)'
+  else: raise Exception_expected
+  try: phil.parse(input_string="""\
+include scope libtbx.phil.tst.include_scope_target_0s
+""", process_includes=True)
+  except RuntimeError, e:
+    assert str(e) == 'include scope: python object' \
+      ' "include_scope_target_0s" in module "libtbx.phil.tst"' \
       ' is not a libtbx.phil.scope instance (input line 1)'
   else: raise Exception_expected
   try: phil.parse(input_string="""\
@@ -1332,7 +1340,9 @@ include scope libtbx.phil.tst.include_scope_target_1 t
       ' "include_scope_target_1" in module "libtbx.phil.tst" (input line 1)'
   else: raise Exception_expected
 
-include_scope_target_0 = None
+include_scope_target_0n = None
+
+include_scope_target_0s = ""
 
 include_scope_target_1 = phil.parse("""\
 x=1
