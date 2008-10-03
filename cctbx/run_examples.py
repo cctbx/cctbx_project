@@ -30,6 +30,7 @@ def run():
   "$D/examples/adp_symmetry_constraints.py",
   "$D/examples/unit_cell_refinement.py",
   "$D/examples/miller_common_sets.py",
+  "$D/examples/miller_transform.py",
   "$D/examples/change_hand_p31.py",
   "$D/examples/steve_collins.py",
   "$D/examples/cr2o3_primitive_cell.py",
