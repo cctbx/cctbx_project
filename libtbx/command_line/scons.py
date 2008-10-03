@@ -19,6 +19,9 @@ def find_scons_engine_path():
     if (isdir(result)): return result
   return None
 
+def dummy_fetch_win32_parallel_msg():
+  pass
+
 def run():
   engine_path = find_scons_engine_path()
   if (engine_path is not None):
@@ -38,6 +41,9 @@ def run():
       "  It may be necessary to rename the unpacked distribution, e.g.:",
       "    mv scons-0.96.1 scons"])
     raise Sorry("\n".join(msg))
+  import SCons.Script.Main
+  if (hasattr(SCons.Script.Main, "fetch_win32_parallel_msg")):
+    SCons.Script.Main.fetch_win32_parallel_msg = dummy_fetch_win32_parallel_msg
   show_times_at_exit()
   SCons.Script.main()
 
