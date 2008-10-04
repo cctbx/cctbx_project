@@ -470,13 +470,4 @@ def run():
           **options)
 
 if __name__ == '__main__':
-  import sys
-  if '--profile' in sys.argv:
-    import profile
-    import pstats
-    sys.argv.remove('--profile')
-    profile.run('run()', 'wx_map_viewer.prof')
-    p = pstats.Stats('wx_map_viewer.prof')
-    p.strip_dirs().sort_stats('time').print_stats(10)
-  else:
-    run()
+  run()
