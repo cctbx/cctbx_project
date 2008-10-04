@@ -17,7 +17,7 @@ python$target:::function-entry
  && index(copyinstr(arg0), "/usr") == -1
 /
 {
-  self->ts=timestamp;
+  self->ts=vtimestamp;
   f = copyinstr(arg0);
   i = index(f, cctbx);
   self->file = i >= 0 ? substr(f, i + strlen(cctbx)) : f;
@@ -30,7 +30,7 @@ python$target:::function-return
 / self->traced /
 {
   @time[self->function, self->file, self->line]
-    = sum((timestamp - self->ts)/1000);
+    = sum((vtimestamp - self->ts)/1000);
   self->traced = 0;
 }
 
