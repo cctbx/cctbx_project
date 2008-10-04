@@ -13,8 +13,8 @@ BEGIN {
 }
 
 python$target:::function-entry
-/   stringof(copyin(arg0, 7)) != "/System" 
- && stringof(copyin(arg0, 4)) != "/usr"
+/   index(copyinstr(arg0), "/System") == -1
+ && index(copyinstr(arg0), "/usr") == -1
 /
 {
   self->ts=timestamp;
@@ -29,13 +29,17 @@ python$target:::function-entry
 python$target:::function-return
 / self->traced /
 {
-  @time[self->function, self->file, self->line] 
+  @time[self->function, self->file, self->line]
     = sum((timestamp - self->ts)/1000);
   self->traced = 0;
 }
 
+#ifndef SHOW_TOP
+#define SHOW_TOP 10
+#endif
+
 END {
   printf("Top function by time in micro-seconds\n");
-  trunc(@time, 10);
+  trunc(@time, SHOW_TOP);
   printa("%'@9i   %-35s%s (%i)\n", @time);
 }
