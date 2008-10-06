@@ -2295,7 +2295,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                            w2                = None,
                            resolution_factor = 1/3.,
                            symmetry_flags = None):
-    assert map_type in ("Fo-Fc", "Fobs-Fmodel"
+    assert map_type in ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
                         "mFo-DFc", "mFobs-DFmodel",
                         "gradient",
