@@ -38,6 +38,7 @@ namespace {
       .def("append_union_of_selected_arrays",
         append_union_of_selected_arrays, (
           arg_("arrays"), arg_("selection")))
+      .enable_pickling()
     ;
     shared_wrapper<mat3<int> >::wrap("mat3_int");
     shared_wrapper<tiny<c_grid_padded<3>::index_value_type, 3> >
