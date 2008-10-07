@@ -2,8 +2,11 @@
 This is best used as:
   libtbx.dtrace libtbx/dtrace/profile.d path/to/script.py
 
-It is useful as it is to profile Python function calls but it is also a good
-starting point for hacking to achieve more advanced needs (C++ functions profiling, statistics per thread, etc).
+It may be useful as it is but DTrace is to tracing what the shell is to file
+manipulation: best to write simple, short, focused scripts. So this script is 
+best used as a starting demo!
+
+Beware that recursive calls are not properly handled by the by.
 */
 
 #pragma D option quiet
@@ -13,25 +16,41 @@ BEGIN {
 }
 
 python$target:::function-entry
-/   index(copyinstr(arg0), "/System") == -1
- && index(copyinstr(arg0), "/usr") == -1
-/
 {
-  self->ts=vtimestamp;
-  f = copyinstr(arg0);
-  i = index(f, cctbx);
-  self->file = i >= 0 ? substr(f, i + strlen(cctbx)) : f;
-  self->function = copyinstr(arg1);
+  self->entry_time = vtimestamp;
   self->line = arg2;
-  self->traced=1;
+  self->traced = 1;
 }
 
 python$target:::function-return
 / self->traced /
 {
-  @time[self->function, self->file, self->line]
-    = sum((vtimestamp - self->ts)/1000);
+  this->file_path = copyinstr(arg0);
+  this->file = basename(this->file_path);
+  this->directory = dirname(this->file_path);
+  this->function = copyinstr(arg1);
+  @time[this->function, this->file, self->line, this->directory]
+    = sum(vtimestamp - self->entry_time);
   self->traced = 0;
+}
+
+pid$target::scitbx*:entry,
+pid$target::cctbx*:entry,
+pid$target::mmtbx*:entry,
+pid$target::smtbx*:entry
+{
+  self->cpp_entry_time = vtimestamp;
+  self->cpp_traced = 1;
+}
+
+pid$target::scitbx*:return,
+pid$target::cctbx*:return,
+pid$target::mmtbx*:return,
+pid$target::smtbx*:return
+/ self->cpp_traced /
+{
+  @time[probefunc, probemod, 0, "-"] = sum(vtimestamp - self->cpp_entry_time);
+  self->cpp_traced = 0;
 }
 
 #ifndef SHOW_TOP
@@ -41,5 +60,6 @@ python$target:::function-return
 END {
   printf("Top function by time in micro-seconds\n");
   trunc(@time, SHOW_TOP);
-  printa("%'@9i   %-35s%s (%i)\n", @time);
+  normalize(@time, 1000);
+  printa("%'@9i   %-35s%-35s (%i: %s)\n", @time);
 }
