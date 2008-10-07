@@ -1,6 +1,6 @@
 /*
 This is best used as:
-  libtbx.dtrace libtbx/dtrace/profile.d path/to/script.py
+  libtbx.dtrace profile path/to/script.py
 
 It may be useful as it is but DTrace is to tracing what the shell is to file
 manipulation: best to write simple, short, focused scripts. So this script is 
