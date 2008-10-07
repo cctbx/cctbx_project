@@ -781,6 +781,7 @@ template<typename FloatType> class least_squares_hemihedral_twinning_on_f{
           CCTBX_ASSERT( tmp_loc >= 0 );
           obs_to_twin_calc_.push_back( tmp_loc );
        }
+       CCTBX_ASSERT(hkl_obs.size() != 0);
        twin_completeness_/=FloatType(hkl_obs.size());
        // do similar stuff for calculated data
        for (std::size_t ii=0;ii<hkl_calc.size();ii++){
