@@ -44,21 +44,35 @@ def get_year(file_lines):
     if(result is not None): return result
   return result
 
-def get_fmodel_object(xray_structure, f_obs, r_free_flags):
+def get_fmodel_object(xray_structure, f_obs, r_free_flags, twin_law):
   sel = f_obs.d_spacings().data() > 0.25
   f_obs = f_obs.select(sel)
   r_free_flags = r_free_flags.select(sel)
   n_outl = sel.count(False)
-  fmodel = mmtbx.f_model.manager(
-    xray_structure = xray_structure,
-    r_free_flags   = r_free_flags,
-    target_name    = "ml",
-    f_obs          = f_obs)
+  if(twin_law is None):
+    fmodel = mmtbx.f_model.manager(
+      xray_structure = xray_structure,
+      r_free_flags   = r_free_flags,
+      target_name    = "ml",
+      f_obs          = f_obs)
+  else:
+    from mmtbx.twinning import twin_f_model
+    from cctbx import sgtbx
+    twin_law = sgtbx.rt_mx(twin_law)
+    fmodel = twin_f_model.twin_model_manager(
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      xray_structure = xray_structure,
+      twin_law       = twin_law
+     )
   sel = fmodel.outlier_selection()
   fmodel.update_xray_structure(update_f_calc = True, update_f_mask = True)
   fmodel.update_solvent_and_scale(verbose = -1)
   fmodel = fmodel.select(selection = sel)
-  n_outl += sel.count(False)
+  if(sel is not None):
+    n_outl += sel.count(False)
+  else:
+    n_outl = None
   return fmodel, n_outl
 
 def show_geometry(processed_pdb_file, scattering_table):
@@ -269,6 +283,11 @@ def run(args,
       default=None,
       type="string",
       help="Label for free R flags.")
+    .option(None, "--twin_law",
+      action="store",
+      default=None,
+      type="string",
+      help="Provide twin law operator if twinned data used (for example: h,-h-k,-l).")
     .option(None, "--scattering_table",
       action="store",
       default="n_gaussian",
@@ -376,9 +395,11 @@ def run(args,
   print "  space group:     ", f_obs.crystal_symmetry().space_group_info().\
     symbol_and_number()
   if(len(xray_structures) == 1):
-    fmodel, n_outl = get_fmodel_object(xray_structure = xray_structures[0],
-                                       f_obs          = f_obs,
-                                       r_free_flags   = r_free_flags)
+    fmodel, n_outl = get_fmodel_object(
+      xray_structure = xray_structures[0],
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      twin_law       = command_line.options.twin_law)
     show_data(fmodel          = fmodel,
               n_outl          = n_outl,
               test_flag_value = test_flag_value,
@@ -391,9 +412,11 @@ def run(args,
   else:
     f_model_data = None
     for i_seq, xray_structure in enumerate(xray_structures):
-      fmodel, n_outl = get_fmodel_object(xray_structure = xray_structure,
-                                         f_obs          = f_obs,
-                                         r_free_flags   = r_free_flags)
+      fmodel, n_outl = get_fmodel_object(
+        xray_structure = xray_structure,
+        f_obs          = f_obs,
+        r_free_flags   = r_free_flags,
+        twin_law       = command_line.options.twin_law)
       if(i_seq == 0):
         show_data(fmodel          = fmodel,
                   n_outl          = n_outl,
