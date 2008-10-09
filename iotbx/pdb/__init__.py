@@ -880,7 +880,9 @@ class read_scale_record:
     self.sn1, self.sn2, self.sn3, self.un = values
 
 def resseq_decode(s):
-  return hy36decode(width=4, s="%4s" % s)
+  try: return hy36decode(width=4, s="%4s" % s)
+  except ValueError:
+    raise ValueError('invalid residue sequence number: "%4s"' % s)
 
 def resseq_encode(value):
   return hy36encode(width=4, value=value)
