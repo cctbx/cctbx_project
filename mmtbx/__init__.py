@@ -98,7 +98,7 @@ class fmodels(object):
       self.fmodel_neutron().info().show_rfactors_targets_scales_overall(
         header = "neutron data", out = self.log)
 
-  def show_comprihensive(self, message = ""):
+  def show_comprehensive(self, message = ""):
     print_statistics.make_sub_header("X-ray data", out = self.log)
     if(self.fmodel_x is not None):
       self.fmodel_xray().info().show_all(header = message, out = self.log)
