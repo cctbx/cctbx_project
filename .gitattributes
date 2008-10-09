@@ -326,6 +326,7 @@ scitbx/error_utils.h -text
 scitbx/examples/principal_axes_of_inertia.py svneol=native#text/x-python
 scitbx/examples/rigid_body_refinement_core.py svneol=native#text/x-python
 scitbx/examples/rigid_body_refinement_core.txt svneol=native#text/plain
+scitbx/fftpack/boost_python/threads.d -text
 scitbx/graph/__init__.py -text
 scitbx/graph/rigidity.py -text
 scitbx/graph/rigidity_matrix_symbolic.py svneol=native#text/x-python
