@@ -35,6 +35,11 @@ def exercise_hybrid_36():
   pdb.resseq_encode(value=1) == "   1"
   pdb.resseq_encode(value=11371) == "A123"
   pdb.resseq_encode(value=1234) == "1234"
+  #
+  try: pdb.resseq_decode(s="18A")
+  except ValueError, e:
+    assert str(e) == 'invalid residue sequence number: " 18A"'
+  else: raise Exception_expected
 
 def exercise_base_256_ordinal():
   o = pdb.utils_base_256_ordinal
