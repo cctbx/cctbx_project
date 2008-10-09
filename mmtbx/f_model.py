@@ -290,7 +290,8 @@ class manager(manager_mixin):
          mask_manager                 = None,
          n_ordered_water              = 0,
          b_ordered_water              = 0.0,
-         max_number_of_bins           = 30):
+         max_number_of_bins           = 30,
+         _target_memory               = None):
     self.twin = False
     assert f_obs is not None
     assert f_obs.is_real_array()
@@ -366,6 +367,7 @@ class manager(manager_mixin):
     if(self.abcd is not None):
        assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
     self.set_target_name(target_name=target_name)
+    self._target_memory = _target_memory
     self._structure_factor_gradients_w = None
     self._wilson_b = None
 
@@ -510,7 +512,8 @@ class manager(manager_mixin):
       f_ordered_solvent_dist = self.f_ordered_solvent_dist.deep_copy(),
       n_ordered_water        = self.n_ordered_water,
       b_ordered_water        = self.b_ordered_water,
-      max_number_of_bins = self.max_number_of_bins)
+      max_number_of_bins = self.max_number_of_bins,
+      _target_memory = self._target_memory)
 
   def select(self, selection, update_xray_structure=False):
     if (self.abcd is not None):
@@ -1648,15 +1651,35 @@ class manager(manager_mixin):
 
 class phaser_sad_target_functor(object):
 
-  def __init__(self, f_obs, r_free_flags, xray_structure, f_calc):
-    adopt_init_args(self, locals())
+  def __init__(self,
+        f_obs,
+        r_free_flags,
+        xray_structure,
+        f_calc,
+        target_memory):
+    self.f_obs = f_obs
+    self.r_free_flags = r_free_flags
+    self.xray_structure = xray_structure
+    self.f_calc = f_calc
+    if (target_memory is None):
+      previous_variances = None
+    else:
+      assert target_memory[0] == "ml_sad"
+      previous_variances = target_memory[1]
     self.refine_sad_object = phaser.phenix_adaptors.sad_target.data_adaptor(
       f_obs=f_obs,
       r_free_flags=r_free_flags,
-      verbose=True).target(xray_structure=xray_structure)
+      verbose=True).target(
+        xray_structure=xray_structure,
+        previous_variances=previous_variances)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
     if (not f_obs.space_group().is_centric()):
       self.refine_sad_object.refine_variance_terms()
+
+  def target_memory(self):
+    return (
+      "ml_sad",
+      self.refine_sad_object.refine_sad_instance.get_variance_array())
 
   def __call__(self, f_calc, compute_gradients):
     rso = self.refine_sad_object
@@ -1686,7 +1709,9 @@ class target_functor(object):
         f_obs=manager.f_obs_scaled_with_k2(),
         r_free_flags=manager.r_free_flags,
         xray_structure=manager.xray_structure,
-        f_calc=manager.f_model())
+        f_calc=manager.f_model(),
+        target_memory=manager._target_memory)
+      manager._target_memory = self.core.target_memory()
     elif (attr.family == "ml"):
       if (attr.requires_experimental_phases()):
         experimental_phases = manager.abcd
@@ -1766,11 +1791,15 @@ class target_functor(object):
         scale_factor=scale_factor)
 
   def __call__(self, compute_gradients=False):
-    return target_result(
+    result = target_result(
       manager=self.manager,
       core_result=self.core(
         f_calc=self.manager.f_model(),
         compute_gradients=compute_gradients))
+    target_memory = getattr(self.core, "target_memory", None)
+    if (target_memory is not None):
+      self.manager._target_memory = target_memory()
+    return result
 
 class target_result_mixin(object):
 
