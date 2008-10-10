@@ -1,7 +1,11 @@
 from __future__ import division
-try: import phaser
-except ImportError: phaser = None
-else: import phaser.phenix_adaptors.sad_target
+
+import libtbx.load_env
+if (not libtbx.env.has_module(name="phaser")):
+  phaser = None
+else:
+  import phaser.phenix_adaptors.sad_target
+
 from cctbx.array_family import flex
 import math, time, sys, os, random
 from cctbx import miller
