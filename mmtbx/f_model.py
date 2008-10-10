@@ -1677,9 +1677,10 @@ class phaser_sad_target_functor(object):
       self.refine_sad_object.refine_variance_terms()
 
   def target_memory(self):
-    return (
-      "ml_sad",
-      self.refine_sad_object.refine_sad_instance.get_variance_array())
+    get = getattr( # XXX backward compatibility 2008-10-10
+      self.refine_sad_object.refine_sad_instance, "get_variance_array", None)
+    if (get is None): return None
+    return ("ml_sad", get())
 
   def __call__(self, f_calc, compute_gradients):
     rso = self.refine_sad_object
