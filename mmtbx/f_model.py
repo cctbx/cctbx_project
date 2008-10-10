@@ -1666,12 +1666,18 @@ class phaser_sad_target_functor(object):
     else:
       assert target_memory[0] == "ml_sad"
       previous_variances = target_memory[1]
-    self.refine_sad_object = phaser.phenix_adaptors.sad_target.data_adaptor(
+    adaptor = phaser.phenix_adaptors.sad_target.data_adaptor(
       f_obs=f_obs,
       r_free_flags=r_free_flags,
-      verbose=True).target(
+      verbose=True)
+    try:
+      self.refine_sad_object = adaptor.target(
         xray_structure=xray_structure,
         previous_variances=previous_variances)
+    except TypeError, e: # XXX backward compatibility 2008-10-10
+      if (str(e).find("previous_variances") < 0): raise
+      self.refine_sad_object = adaptor.target(
+        xray_structure=xray_structure)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
     if (not f_obs.space_group().is_centric()):
       self.refine_sad_object.refine_variance_terms()
