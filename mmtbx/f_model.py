@@ -1653,6 +1653,19 @@ class manager(manager_mixin):
       out.close()
       mtz_object.write(file_name=file_name)
 
+  def adopt_external_overall_scale_and_b_iso_adjustments(self,
+        overall_scale_multiplier,
+        overall_b_iso_shift):
+    b_cart = self.b_cart()
+    self.overall_scale *= overall_scale_multiplier
+    self.update_core(b_cart=[
+      b_cart[0]+overall_b_iso_shift,
+      b_cart[1]+overall_b_iso_shift,
+      b_cart[2]+overall_b_iso_shift,
+      b_cart[3],
+      b_cart[4],
+      b_cart[5]])
+
 class phaser_sad_target_functor(object):
 
   def __init__(self,
@@ -1683,8 +1696,12 @@ class phaser_sad_target_functor(object):
       self.refine_sad_object = adaptor.target(
         xray_structure=xray_structure)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
-    if (not f_obs.space_group().is_centric()):
-      self.refine_sad_object.refine_variance_terms()
+    self.refine_sad_object.refine_variance_terms()
+    rsi = self.refine_sad_object.refine_sad_instance
+    self.refined_overall_scale = rsi.get_refined_scaleK()
+    self.refined_overall_b_iso = adptbx.u_as_b(rsi.get_refined_scaleU())
+    assert self.refined_overall_scale > 0
+    assert self.refined_overall_b_iso > -1 # XXX
 
   def target_memory(self):
     get = getattr( # XXX backward compatibility 2008-10-10
@@ -1723,6 +1740,9 @@ class target_functor(object):
         f_calc=manager.f_model(),
         target_memory=manager._target_memory)
       manager._target_memory = self.core.target_memory()
+      manager.adopt_external_overall_scale_and_b_iso_adjustments(
+        overall_scale_multiplier=self.core.refined_overall_scale,
+        overall_b_iso_shift=self.core.refined_overall_b_iso)
     elif (attr.family == "ml"):
       if (attr.requires_experimental_phases()):
         experimental_phases = manager.abcd
