@@ -26,6 +26,7 @@ class minimizer(object):
         fmodel.xray_structure.scatterers().flags_set_grad_fdp(
           iselection=group.iselection)
     self.target_functor = fmodel.target_functor()
+    self.target_functor.prepare_for_minimization()
     for self.i_cycle in xrange(number_of_minimizer_cycles):
       self.lbfgs = lbfgs.run(
         target_evaluator=self,

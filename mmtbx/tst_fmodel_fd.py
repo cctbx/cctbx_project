@@ -132,6 +132,7 @@ def exercise(space_group_info,
             scatterers=fmodel.xray_structure.scatterers(),
             site=True)
           t_f = fmodel.target_functor()
+          t_f.prepare_for_minimization()
           gs = t_f(compute_gradients=True).d_target_d_site_cart().as_double()
           gfd = finite_differences_site(target_functor=t_f)
           cc = flex.linear_correlation(gs, gfd).coefficient()
