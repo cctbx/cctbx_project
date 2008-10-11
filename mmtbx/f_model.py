@@ -1696,6 +1696,10 @@ class phaser_sad_target_functor(object):
       self.refine_sad_object = adaptor.target(
         xray_structure=xray_structure)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
+    self.refined_overall_scale = None
+    self.refined_overall_b_iso = None
+
+  def prepare_for_minimization(self):
     self.refine_sad_object.refine_variance_terms()
     rsi = self.refine_sad_object.refine_sad_instance
     self.refined_overall_scale = rsi.get_refined_scaleK()
@@ -1740,9 +1744,6 @@ class target_functor(object):
         f_calc=manager.f_model(),
         target_memory=manager._target_memory)
       manager._target_memory = self.core.target_memory()
-      manager.adopt_external_overall_scale_and_b_iso_adjustments(
-        overall_scale_multiplier=self.core.refined_overall_scale,
-        overall_b_iso_shift=self.core.refined_overall_b_iso)
     elif (attr.family == "ml"):
       if (attr.requires_experimental_phases()):
         experimental_phases = manager.abcd
@@ -1820,6 +1821,13 @@ class target_functor(object):
         r_free_flags=manager.r_free_flags,
         weights=weights,
         scale_factor=scale_factor)
+
+  def prepare_for_minimization(self):
+    if (self.manager.target_name == "ml_sad"):
+      self.core.prepare_for_minimization()
+      self.manager.adopt_external_overall_scale_and_b_iso_adjustments(
+        overall_scale_multiplier=self.core.refined_overall_scale,
+        overall_b_iso_shift=self.core.refined_overall_b_iso)
 
   def __call__(self, compute_gradients=False):
     result = target_result(
