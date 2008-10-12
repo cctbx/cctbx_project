@@ -60,6 +60,7 @@ class lbfgs(object):
                            refine_occ     = False)
     self.monitor.collect()
     self.fmodels.create_target_functors()
+    self.fmodels.prepare_target_functors_for_minimization()
     #
     if(self.exclude_scattering_of_hydrogens()):
       occupancies_cache= self.xray_structure.scatterers().extract_occupancies()
