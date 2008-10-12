@@ -1926,7 +1926,9 @@ class target_result(target_result_mixin):
 
   def d_target_d_f_calc_work(self):
     return self.manager.f_obs_w.array(
-      data=self.core_result.gradients_work() * self.manager.core.fb_cart_w)
+      data=self.core_result.gradients_work()
+          *self.manager.core.fb_cart_w
+          *self.manager.core.overall_scale)
 
 
 def ls_ff_weights(f_obs, atom, B):
