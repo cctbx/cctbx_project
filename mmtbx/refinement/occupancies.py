@@ -119,6 +119,7 @@ class minimizer(object):
                max_number_of_iterations):
     adopt_init_args(self, locals())
     self.fmodels.create_target_functors()
+    self.fmodels.prepare_target_functors_for_minimization()
     self.weights = weight_xray_chem.weights(wx       = 1,
                                             wx_scale = 1,
                                             angle_x  = None,

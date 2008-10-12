@@ -2767,6 +2767,9 @@ class target_functor(object):
   def __init__(self, manager):
     self.manager = manager
 
+  def prepare_for_minimization(self):
+    pass
+
   def __call__(self, compute_gradients=False):
     return target_result(manager=self.manager)
 

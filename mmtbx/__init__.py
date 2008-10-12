@@ -154,6 +154,11 @@ class fmodels(object):
     if(self.fmodel_n is not None):
       self.target_functor_neutron = self.fmodel_neutron().target_functor()
 
+  def prepare_target_functors_for_minimization(self):
+    self.target_functor_xray.prepare_for_minimization()
+    if (self.target_functor_neutron is not None):
+      self.target_functor_neutron.prepare_for_minimization()
+
   def target_functor_result_xray(self, compute_gradients):
     fmx = self.fmodel_xray()
     return self.target_functor_xray(compute_gradients = compute_gradients)

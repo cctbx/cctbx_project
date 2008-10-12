@@ -627,6 +627,7 @@ class rigid_body_minimizer(object):
     adopt_init_args(self, locals())
     self.fmodel_copy = self.fmodel.deep_copy()
     self.target_functor = self.fmodel_copy.target_functor()
+    self.target_functor.prepare_for_minimization()
     self.atomic_weights = self.fmodel.xray_structure.atomic_weights()
     self.sites_cart = self.fmodel.xray_structure.sites_cart()
     self.sites_frac = self.fmodel.xray_structure.sites_frac()

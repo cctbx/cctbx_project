@@ -178,6 +178,7 @@ class group_minimizer(object):
                run_finite_differences_test = False):
     adopt_init_args(self, locals())
     self.target_functor = fmodel.target_functor()
+    self.target_functor.prepare_for_minimization()
     self.counter=0
     assert len(self.selections) == len(self.par_initial)
     self.par_min = copy.deepcopy(self.par_initial)
