@@ -131,6 +131,7 @@ def exercise(space_group_info,
           xray.set_scatterer_grad_flags(
             scatterers=fmodel.xray_structure.scatterers(),
             site=True)
+          fmodel.update(overall_scale=fmodel.overall_scale*0.5)
           t_f = fmodel.target_functor()
           t_f.prepare_for_minimization()
           gs = t_f(compute_gradients=True).d_target_d_site_cart().as_double()
@@ -139,11 +140,15 @@ def exercise(space_group_info,
           if (0 or verbose):
             print "ana:", list(gs)
             print "fin:", list(gfd)
+            print "rat:", [f/a for a,f in zip(gs,gfd)]
             print target, "corr:", cc, space_group_info
             print
           diff = gs - gfd
           diff /= max(1, flex.max(flex.abs(gfd)))
-          tolerance = 1.e-5
+          if (target == "ml_sad"):
+            tolerance = 1.e-4
+          else:
+            tolerance = 1.e-5
           assert approx_equal(abs(flex.min(diff) ), 0.0, tolerance)
           assert approx_equal(abs(flex.mean(diff)), 0.0, tolerance)
           assert approx_equal(abs(flex.max(diff) ), 0.0, tolerance)
