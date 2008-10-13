@@ -28,7 +28,7 @@ public:
   }
 
   /// Rational value
-  rational_type operator()() {
+  rational_type as_rational() {
     return rational_type(p_i, q_i);
   }
 
