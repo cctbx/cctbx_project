@@ -363,21 +363,22 @@ class rec(object):
       s += label + "="
       indent += " " * (len(label) + 1)
     s += "{"
-    for ir in xrange(nr):
-      s += "{"
-      for ic in xrange(nc):
-        if (format is None):
-          s += str(self(ir, ic))
-        else:
-          s += format % self(ir, ic)
-        if (ic+1 != nc): s += ", "
-        else: s += "}"
-      if (ir+1 != nr):
-        s += ","
-        if (one_row_per_line):
-          s += "\n"
-          s += indent
-        s += " "
+    if (nc != 0):
+      for ir in xrange(nr):
+        s += "{"
+        for ic in xrange(nc):
+          if (format is None):
+            s += str(self(ir, ic))
+          else:
+            s += format % self(ir, ic)
+          if (ic+1 != nc): s += ", "
+          else: s += "}"
+        if (ir+1 != nr):
+          s += ","
+          if (one_row_per_line):
+            s += "\n"
+            s += indent
+          s += " "
     return s + "}"
 
   def as_list_of_lists(self):
@@ -419,6 +420,44 @@ class rec(object):
       for ic in xrange(self.n_columns()):
         if self(ir,ic) != other[ir,ic]: return False
     return True
+
+  def resolve_partitions(self):
+    nr,nc = self.n
+    result_nr = 0
+    for ir in xrange(nr):
+      part_nr = 0
+      for ic in xrange(nc):
+        part = self(ir,ic)
+        assert isinstance(part, rec)
+        if (ic == 0): part_nr = part.n[0]
+        else: assert part.n[0] == part_nr
+      result_nr += part_nr
+    result_nc = 0
+    for ic in xrange(nc):
+      part_nc = 0
+      for ir in xrange(nr):
+        part = self(ir,ic)
+        if (ir == 0): part_nc = part.n[1]
+        else: assert part.n[1] == part_nc
+      result_nc += part_nc
+    result_elems = [0] * (result_nr * result_nc)
+    result_ir = 0
+    for ir in xrange(nr):
+      result_ic = 0
+      for ic in xrange(nc):
+        part = self(ir,ic)
+        part_nr,part_nc = part.n
+        i_part = 0
+        for part_ir in xrange(part_nr):
+          i_result = (result_ir + part_ir) * result_nc + result_ic
+          for part_ic in xrange(part_nc):
+            result_elems[i_result + part_ic] = part[i_part]
+            i_part += 1
+        result_ic += part_nc
+      assert result_ic == result_nc
+      result_ir += part_nr
+    assert result_ir == result_nr
+    return rec(elems=result_elems, n=(result_nr, result_nc))
 
 class row(rec):
 
@@ -554,7 +593,7 @@ class rt(object):
 def col_list(seq): return [col(elem) for elem in seq]
 def row_list(seq): return [row(elem) for elem in seq]
 
-if (__name__ == "__main__"):
+def exercise():
   try:
     from libtbx import test_utils
   except ImportError:
@@ -564,8 +603,9 @@ if (__name__ == "__main__"):
   else:
     approx_equal = test_utils.approx_equal
     Exception_expected = test_utils.Exception_expected
-  a = rec((),(0,0))
-  assert a.mathematica_form() == "{}"
+  for n in [(0,0), (1,0), (0,1)]:
+    a = rec((),n)
+    assert a.mathematica_form() == "{}"
   a = rec(range(1,7), (3,2))
   assert len(a) == 6
   assert a[1] == 2
@@ -827,4 +867,67 @@ if (__name__ == "__main__"):
   for e in a: assert isinstance(e, row)
   assert approx_equal(a, [(1,2), (2,3)])
   #
+  def f(a): return a.resolve_partitions().mathematica_form()
+  a = rec(elems=[], n=[0,0])
+  assert f(a) == "{}"
+  a = rec(elems=[], n=[0,1])
+  assert f(a) == "{}"
+  a = rec(elems=[], n=[1,0])
+  assert f(a) == "{}"
+  for e in [col([]), row([])]:
+    a = rec(elems=[e], n=[1,1])
+    assert f(a) == "{}"
+    a = rec(elems=[e, e], n=[1,2])
+    assert f(a) == "{}"
+    a = rec(elems=[e, e], n=[2,1])
+    assert f(a) == "{}"
+  for e in [col([1]), row([1])]:
+    a = rec(elems=[e], n=[1,1])
+    assert f(a) == "{{1}}"
+  a = rec(elems=[col([1,2]), col([3,4])], n=[1,2])
+  assert f(a) == "{{1, 3}, {2, 4}}"
+  a = rec(elems=[col([1,2]), col([3,4])], n=[2,1])
+  assert f(a) == "{{1}, {2}, {3}, {4}}"
+  a = rec(elems=[sqr([1,2,3,4]), sqr([5,6,7,8])], n=[1,2])
+  assert f(a) == "{{1, 2, 5, 6}, {3, 4, 7, 8}}"
+  a = rec(elems=[sqr([1,2,3,4]), sqr([5,6,7,8])], n=[2,1])
+  assert f(a) == "{{1, 2}, {3, 4}, {5, 6}, {7, 8}}"
+  a = rec(elems=[rec([1,2,3,4,5,6], n=(2,3)), rec([7,8], n=(2,1))], n=[1,2])
+  assert f(a) == "{{1, 2, 3, 7}, {4, 5, 6, 8}}"
+  a = rec(elems=[rec([1,2,3,4,5,6], n=(2,3)), rec([7,8,9], n=(1,3))], n=[2,1])
+  assert f(a) == "{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}"
+  a = rec(
+    elems=[
+      sqr([11,12,13,14,15,16,17,18,19]),
+      sqr([21,22,23,24,25,26,27,28,29]),
+      sqr([31,32,33,34,35,36,37,38,39]),
+      sqr([41,42,43,44,45,46,47,48,49])],
+    n=[2,2])
+  assert a.resolve_partitions().mathematica_form(one_row_per_line=True) == """\
+{{11, 12, 13, 21, 22, 23},
+ {14, 15, 16, 24, 25, 26},
+ {17, 18, 19, 27, 28, 29},
+ {31, 32, 33, 41, 42, 43},
+ {34, 35, 36, 44, 45, 46},
+ {37, 38, 39, 47, 48, 49}}"""
+  a = rec(
+    elems=[
+      rec([1,2,3,4,5,6], n=(2,3)),
+      rec([7,8,9,10,11,12,13,14], n=(2,4)),
+      rec([15,16,17,18,19,20,21,22,23], n=(3,3)),
+      rec([24,25,26,27,28,29,30,31,32,33,34,35], n=(3,4)),
+      rec([36,37,38], n=(1,3)),
+      rec([39,40,41,42], n=(1,4))],
+    n=[3,2])
+  assert a.resolve_partitions().mathematica_form(one_row_per_line=True) == """\
+{{1, 2, 3, 7, 8, 9, 10},
+ {4, 5, 6, 11, 12, 13, 14},
+ {15, 16, 17, 24, 25, 26, 27},
+ {18, 19, 20, 28, 29, 30, 31},
+ {21, 22, 23, 32, 33, 34, 35},
+ {36, 37, 38, 39, 40, 41, 42}}"""
+  #
   print "OK"
+
+if (__name__ == "__main__"):
+  exercise()
