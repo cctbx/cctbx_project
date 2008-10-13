@@ -18,7 +18,7 @@ struct continued_fraction_wrapper
     class_<wt>("continued_fraction", no_init)
       .def(init<int_t>())
       .def("append", &wt::append)
-      .def("__call__", &wt::operator())
+      .def("as_rational", &wt::as_rational)
       .def("from_real", from_real_1, arg("value"))
       .def("from_real", from_real_2, (arg("value"), arg("eps")))
       .staticmethod("from_real")
