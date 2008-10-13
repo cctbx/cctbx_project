@@ -6,6 +6,28 @@
 
 #if SECTION == 1
 
+pid$target::*real_to_complex_3d*forward?scitbx??af??ref?double*:entry
+{
+  profiling = 1;
+  start = timestamp;
+}
+
+pid$target::*real_to_complex_3d*forward?scitbx??af??ref?double*:return
+{
+  end = timestamp;
+  profiling = 0;
+}
+
+pid$target::GOMP_parallel_start:entry
+{
+  start_parallel = timestamp;
+}
+
+pid$target::GOMP_parallel_end:return
+{
+  end_parallel = timestamp;
+}
+
 pid$target::*real_to_complex*forward_compressed*:entry,
 pid$target::*complex_to_complex*transform*:entry
 {
@@ -15,6 +37,8 @@ pid$target::*complex_to_complex*transform*:entry
 }
 
 END {
+  printf("\nTotal runtime: %i ns, parallelizable runtime: %i ns\n", 
+         end - start, end_parallel - start_parallel);
   printf("\n ** Number of calls **\n");
   printf("\nPer thread\n");
   printa(@counts_per_thread);
@@ -23,15 +47,10 @@ END {
   printf("\n** How threads used the cpus **\n");
 }
 
-pid$target::*real_to_complex_3d*forward*:entry
-{
-  profiling = 1;
-}
-
 profile:::profile-500
 /pid == $target && profiling/
 {
-  @sample[HASH(tid)] = count();
+  @sample[cpu, HASH(tid)] = count();
 }
 
 #endif
