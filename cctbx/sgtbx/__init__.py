@@ -277,14 +277,6 @@ class _tr_vec(boost.python.injector, tr_vec):
   def as_rational(self):
     return matrix.col(rational.vector(self.num(), self.den()))
 
-  def from_double(cls, v, den):
-    """ from a translation whose components are any real numbers.
-      'den' is used as the common denominator for all components.
-    """
-    num = tuple([ int(round(x*den)) for x in v ])
-    return tr_vec(num, den)
-  from_double = classmethod(from_double)
-
 class le_page_1982_delta_details:
 
   def __init__(self, reduced_cell, rot_mx, deg=False):
