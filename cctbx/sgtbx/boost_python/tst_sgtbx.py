@@ -214,8 +214,6 @@ def exercise_tr_vec():
   assert a.as_string() == "-1/4,0,1/2"
   assert a.as_string(True) == "-.25,0,.5"
   assert a.as_string(False, ";") == "-1/4;0;1/2"
-  a = tr_vec.from_double((0.123456, 0.08673, 0.754903), den=10000)
-  assert a.as_string() == '247/2000,867/10000,7549/10000'
 
 def exercise_rot_mx():
   tr_vec = sgtbx.tr_vec
