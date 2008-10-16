@@ -203,11 +203,9 @@ libtbx/phil/example.params -text
 libtbx/smart_open.py svneol=native#text/x-python
 libtbx/sourceforge_checkout.py -text
 libtbx/subversion.py -text
-libtbx/symmetric_multi_processing.py -text
 libtbx/tst_itertbx.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
-libtbx/tst_symmetric_multi_processing.py -text
 libtbx/windows_dispatcher.exe -text
 mmtbx/alignment.h svneol=native#text/plain
 mmtbx/alignment_ext.cpp svneol=native#text/plain
