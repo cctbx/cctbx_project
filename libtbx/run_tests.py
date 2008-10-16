@@ -18,7 +18,6 @@ def run():
   "$D/phil/tst.py",
   "$D/tst_object_oriented_patterns.py",
   "$D/tst_itertbx.py",
-  "$D/tst_symmetric_multi_processing.py",
   )
 
   build_dir = None
