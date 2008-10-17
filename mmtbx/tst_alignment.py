@@ -46,7 +46,8 @@ def exercise():
                         ).extract_alignment().exact_match_selections()
   assert i_seqs == flex.size_t([0, 1, 2, 7, 8, 9]) and \
          j_seqs == flex.size_t([0, 1, 2, 8, 9, 10])
-
+  #
+  print "OK"
 
 if (__name__ == "__main__"):
   exercise()
