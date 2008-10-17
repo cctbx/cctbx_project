@@ -104,15 +104,11 @@ namespace cctbx { namespace sgtbx {
     if (ord == 1) return *this;
     CCTBX_ASSERT(ord != 0);
     sg_mat3 result(1);
-    sg_mat3 a(num_), b;
-    sg_mat3* rr = &a;
-    sg_mat3* rrr = &b;
-    for (int o = 1;;) {
-      result += (*rr);
-      if (++o == ord)
-        break;
-      *rrr = num_ * (*rr);
-      std::swap(rr, rrr);
+    sg_mat3 a(num_);
+    result += a;
+    for(int i=2; i < ord; ++i) {
+      a = a*num_;
+      result += a;
     }
     return rot_mx(result, 1);
   }
