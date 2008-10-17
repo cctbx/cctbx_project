@@ -304,7 +304,6 @@ class cache(object):
         elif (lword in ["resseq", "resid", "resi", "model"]):
           arg = word_iterator.pop_argument(word.value)
           i_colon_or_dash = arg.value.find(":")
-          if (i_colon_or_dash < 0): i_colon_or_dash = arg.value.find("-")
           if (i_colon_or_dash < 0):
             if (lword == "resseq"):
               result_stack.append(self.sel_resseq(pattern=arg))
