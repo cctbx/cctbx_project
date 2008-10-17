@@ -282,9 +282,9 @@ namespace cctbx { namespace sgtbx {
       order(int type=0) const;
 
       //! Sum of repeated products of this matrix with itself.
-      /*! this + this*this + this*this*this + ... + this**order()
+      /*! identity + this + this*this + ... + this**(order() - 1)
 
-          Restriction: the numerator must be one.
+          Restriction: the denominator must be one.
        */
       rot_mx
       accumulate(int type=0) const;
