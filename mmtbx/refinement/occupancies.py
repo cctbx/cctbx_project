@@ -14,7 +14,6 @@ class manager(object):
                      number_of_macro_cycles      = 3,
                      occupancy_max               = None,
                      occupancy_min               = None,
-                     r_increase_tolerance        = 0.001,
                      log                         = None):
     self.show(fmodels=fmodels, log= log, message="occupancy refinement: start")
     fmodels.update_xray_structure(xray_structure = model.xray_structure,
@@ -65,14 +64,7 @@ class manager(object):
         occ_max   = occupancy_max,
         occ_min   = occupancy_min,
         selection = i_selection)
-    if(fmodels.fmodel_neutron() is None):
-      r_work = fmodels.fmodel_xray().r_work()
-      delta = r_work_start - r_work
-      if(abs(delta) > abs(r_increase_tolerance) and delta < 0):
-        xray_structure_final = xray_structure_dc
-      else:
-        xray_structure_final = fmodels.fmodel_xray().xray_structure
-    else: xray_structure_final = fmodels.fmodel_xray().xray_structure
+    xray_structure_final = fmodels.fmodel_xray().xray_structure
     model.xray_structure = xray_structure_final
     fmodels.update_xray_structure(xray_structure = xray_structure_final,
                                   update_f_calc  = True)
