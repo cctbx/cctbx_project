@@ -459,25 +459,28 @@ class kick_map(object):
     assert [real_map_unpadded, real_map].count(True) == 1
     self.map_data = None
     assert number_of_kicks > 0
-    b_sharp = 8 * math.pi**2 * kick_size**2
-    for trial in xrange(number_of_kicks):
-      xray_structure = fmodel.xray_structure.deep_copy_scatterers()
-      xray_structure.shake_sites_in_place(mean_distance = kick_size)
-      self.fft_map = model_to_map(
-        xray_structure                = xray_structure,
-        fmodel                        = fmodel,
-        map_type                      = map_type,
-        update_bulk_solvent_and_scale = update_bulk_solvent_and_scale,
-        resolution_factor             = resolution_factor,
-        symmetry_flags                = symmetry_flags,
-        b_sharp                       = b_sharp).fft_map
-      if(real_map):
-        tmp_result = self.fft_map.real_map()
-      elif(real_map_unpadded):
-        tmp_result = self.fft_map.real_map_unpadded()
-      if(self.map_data is None): self.map_data = tmp_result
-      else: self.map_data += tmp_result
-    self.map_data = self.map_data/number_of_kicks
+    counter = 0
+    for kick_size in [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7]:
+      b_sharp = 8 * math.pi**2 * kick_size**2
+      for trial in xrange(number_of_kicks):
+        xray_structure = fmodel.xray_structure.deep_copy_scatterers()
+        xray_structure.shake_sites_in_place(mean_distance = kick_size)
+        self.fft_map = model_to_map(
+          xray_structure                = xray_structure,
+          fmodel                        = fmodel,
+          map_type                      = map_type,
+          update_bulk_solvent_and_scale = update_bulk_solvent_and_scale,
+          resolution_factor             = resolution_factor,
+          symmetry_flags                = symmetry_flags,
+          b_sharp                       = b_sharp).fft_map
+        if(real_map):
+          tmp_result = self.fft_map.real_map()
+        elif(real_map_unpadded):
+          tmp_result = self.fft_map.real_map_unpadded()
+        if(self.map_data is None): self.map_data = tmp_result
+        else: self.map_data += tmp_result
+        counter += 1
+    self.map_data = self.map_data/counter
     # produce sigma scaled map: copied from miller.py
     from cctbx import maptbx
     statistics = maptbx.statistics(self.map_data)
