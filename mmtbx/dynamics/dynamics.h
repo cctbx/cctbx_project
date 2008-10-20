@@ -21,10 +21,33 @@ private:
    double ekin, temp;
 };
 
+class center_of_mass_info {
+public:
+   center_of_mass_info(vec3<double> center_of_mass,
+                       af::shared<vec3<double> > sites_cart,
+                       af::shared<vec3<double> > velocities,
+                       af::shared<double> const& weights);
+   double ekcm() const { return ekcm_; }
+   vec3<double> vcm() const { return vcm_; }
+   vec3<double> acm() const { return acm_; }
+private:
+   double ekcm_;
+   vec3<double> vcm_;
+   vec3<double> acm_;
+};
+
 void vxyz_at_t_plus_dt_over_2(af::shared<vec3<double> > vxyz,
                             af::shared<double> const& weights,
                             af::shared<vec3<double> > const& grad,
                             double tstep);
+
+af::shared<vec3<double> > stop_center_of_mass_motion(
+                            vec3<double> center_of_mass,
+                            vec3<double> acm,
+                            vec3<double> vcm,
+                            af::shared<vec3<double> > sites_cart,
+                            af::shared<vec3<double> > velocities,
+                            af::shared<double> const& weights);
 
 }} // namespace mmtbx::dynamics
 

@@ -61,6 +61,7 @@ class cartesian_dynamics(object):
                xray_structure_last_updated = None,
                xray_gradient               = None,
                reset_velocities            = True,
+               stop_cm_motion              = False,
                log=None,
                verbose=-1):
     adopt_init_args(self, locals())
@@ -202,80 +203,26 @@ class cartesian_dynamics(object):
 
   def center_of_mass_info(self):
     self.rcm = self.structure.center_of_mass()
-    timfac = 0.04888821
-    vxcm = 0.0
-    vycm = 0.0
-    vzcm = 0.0
-    axcm = 0.0
-    aycm = 0.0
-    azcm = 0.0
-    xcm = 0.0
-    ycm = 0.0
-    zcm = 0.0
-    tmass = 0
-    sites = self.structure.sites_cart()
-    for site,velocity,weight in zip(sites,self.vxyz,self.weights):
-      tmass += weight
-      vxcm += velocity[0] * weight
-      vycm += velocity[1] * weight
-      vzcm += velocity[2] * weight
-      xcm += site[0] * weight
-      ycm += site[1] * weight
-      zcm += site[2] * weight
-      axcm += (site[1] * velocity[2] - site[2] * velocity[1]) * weight
-      aycm += (site[2] * velocity[0] - site[0] * velocity[2]) * weight
-      azcm += (site[0] * velocity[1] - site[1] * velocity[0]) * weight
-    axcm -= (ycm * vzcm - zcm * vycm) / tmass
-    aycm -= (zcm * vxcm - xcm * vzcm) / tmass
-    azcm -= (xcm * vycm - ycm * vxcm) / tmass
-    vxcm /= tmass
-    vycm /= tmass
-    vzcm /= tmass
+    result = dynamics.center_of_mass_info(
+      self.rcm,
+      self.structure.sites_cart(),
+      self.vxyz,
+      self.weights)
     self.vcm = flex.vec3_double()
     self.acm = flex.vec3_double()
-    self.vcm.append((vxcm,vycm,vzcm))
-    self.acm.append((axcm,aycm,azcm))
-    self.ekcm = (vxcm**2 + vycm**2 + vzcm**2) * tmass * 0.5
+    self.vcm.append(result.vcm())
+    self.acm.append(result.acm())
+    self.ekcm = result.ekcm()
 
   def stop_global_motion(self):
     self.rcm = self.structure.center_of_mass()
-    xx = 0.0
-    xy = 0.0
-    xz = 0.0
-    yy = 0.0
-    yz = 0.0
-    zz = 0.0
-    sites = self.structure.sites_cart()
-    for site, weight in zip(sites, self.weights):
-      ri = flex.double(site) - flex.double(self.rcm)
-      xx += ri[0]*ri[0] * weight
-      xy += ri[0]*ri[1] * weight
-      xz += ri[0]*ri[2] * weight
-      yy += ri[1]*ri[1] * weight
-      yz += ri[1]*ri[2] * weight
-      zz += ri[2]*ri[2] * weight
-    tcm_inv = flex.double([yy+zz,-xy,-xz,  -xy,xx+zz,-yz,  -xz,-yz,xx+yy])
-    tcm_inv.resize(flex.grid(3,3))
-    if(tcm_inv.matrix_determinant_via_lu() > 1.e-4):
-       tcm_inv.matrix_inversion_in_place()
-       # get angular velocity OXCM, OYCM, OZCM
-       acm = self.acm[0]
-       oxcm = acm[0]*tcm_inv[0] + acm[1]*tcm_inv[3] + acm[2]*tcm_inv[6]
-       oycm = acm[0]*tcm_inv[1] + acm[1]*tcm_inv[4] + acm[2]*tcm_inv[7]
-       ozcm = acm[0]*tcm_inv[2] + acm[1]*tcm_inv[5] + acm[2]*tcm_inv[8]
-       # remove CM translational and rotational motion from velocities
-       sites = self.structure.sites_cart()
-       i=0
-       for site in sites:
-         ri = flex.double(site) - flex.double(self.rcm)
-         vx = self.vxyz[i][0]
-         vx += -self.vcm[0][0] - oycm*ri[2] + ozcm*ri[1]
-         vy = self.vxyz[i][1]
-         vy += -self.vcm[0][1] - ozcm*ri[0] + oxcm*ri[2]
-         vz = self.vxyz[i][2]
-         vz += -self.vcm[0][2] - oxcm*ri[1] + oycm*ri[0]
-         self.vxyz[i] = (vx,vy,vz)
-         i += 1
+    self.vxyz = dynamics.stop_center_of_mass_motion(
+      self.rcm,
+      self.acm[0],
+      self.vcm[0],
+      self.structure.sites_cart(),
+      self.vxyz,
+      self.weights)
 
   def velocity_rescaling(self):
     if (self.current_temperature <= 1.e-10):
@@ -317,7 +264,7 @@ class cartesian_dynamics(object):
                             self.time_step,self.n_steps,self.rcm,self.vcm,
                             self.ekcm,self.acm,self.ekin,
                             text)
-      if(0):
+      if(self.stop_cm_motion):
         self.center_of_mass_info()
         self.stop_global_motion()
       # calculate velocities at t+dt/2

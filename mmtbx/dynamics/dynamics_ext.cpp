@@ -20,8 +20,20 @@ namespace {
       .def("kinetic_energy", &kinetic_energy_and_temperature::kinetic_energy)
       .def("temperature", &kinetic_energy_and_temperature::temperature)
     ;
+    class_<center_of_mass_info>("center_of_mass_info",
+                  init<vec3<double>,
+                       af::shared<vec3<double> >,
+                       af::shared<vec3<double> >,
+                       af::shared<double> const&>())
+
+      .def("ekcm", &center_of_mass_info::ekcm)
+      .def("acm",  &center_of_mass_info::acm)
+      .def("vcm",  &center_of_mass_info::vcm)
+    ;
     def("vxyz_at_t_plus_dt_over_2",vxyz_at_t_plus_dt_over_2)
-   ;
+    ;
+    def("stop_center_of_mass_motion",stop_center_of_mass_motion)
+    ;
   }
 
 } // namespace <anonymous>
