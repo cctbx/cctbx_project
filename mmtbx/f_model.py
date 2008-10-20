@@ -746,18 +746,19 @@ class manager(manager_mixin):
   def update_solvent_and_scale(self, params = None, out = None, verbose=None):
     global time_bulk_solvent_and_scale
     timer = user_plus_sys_time()
-    if(out is None): out = sys.stdout
-    if(params is None):
-       params = bss.master_params.extract()
-    if(verbose is not None): params.verbose=verbose
-    bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
-    overall_scale = self.scale_k1_w()
-    if(self.use_f_model_scaled):
-       self.overall_scale = overall_scale
-       self.update_core()
-    elif(overall_scale < 0.01 or overall_scale > 100.0):
-       self.overall_scale = overall_scale
-       self.update_core()
+    if(abs(flex.max(flex.abs(self.f_mask().data()))) > 0.001):
+      if(out is None): out = sys.stdout
+      if(params is None):
+         params = bss.master_params.extract()
+      if(verbose is not None): params.verbose=verbose
+      bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
+      overall_scale = self.scale_k1_w()
+      if(self.use_f_model_scaled):
+         self.overall_scale = overall_scale
+         self.update_core()
+      elif(overall_scale < 0.01 or overall_scale > 100.0):
+         self.overall_scale = overall_scale
+         self.update_core()
     time_bulk_solvent_and_scale += timer.elapsed()
 
   def _get_target_name(self): return self._target_name
