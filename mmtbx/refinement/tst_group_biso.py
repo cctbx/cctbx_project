@@ -91,6 +91,7 @@ def exercise_2(pdb = "enk_gbr_e.pdb", hkl = "enk_gbr.mtz"):
     "--overwrite",
     "refinement.input.xray_data.labels=FOBS",
     "main.bulk_solvent_and_scale=false",
+    "group_adp_refinement_mode=group_selection",
     'adp.group="chain A"',
     'adp.group="chain B"',
     'adp.group="chain C"',
