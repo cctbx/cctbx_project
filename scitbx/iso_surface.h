@@ -537,16 +537,16 @@ typename triangulation<CoordinatesType, ValueType>::index_value_type
 triangulation<CoordinatesType, ValueType>::
 get_edge_id(index_type n, int edge_no)
 {
-  int c = 0;
+  int c;
   switch (edge_no) {
     case 0:  c = 1;          ;          ;          ; break;
-    case 1:       ;          ; n[Y] += 1;          ; break;
+    case 1:  c = 0;          ; n[Y] += 1;          ; break;
     case 2:  c = 1; n[X] += 1;          ;          ; break;
-    case 3:       ;          ;          ;          ; break;
+    case 3:  c = 0;          ;          ;          ; break;
     case 4:  c = 1;          ;          ; n[Z] += 1; break;
-    case 5:       ;          ; n[Y] += 1; n[Z] += 1; break;
+    case 5:  c = 0;          ; n[Y] += 1; n[Z] += 1; break;
     case 6:  c = 1; n[X] += 1;          ; n[Z] += 1; break;
-    case 7:       ;          ;          ; n[Z] += 1; break;
+    case 7:  c = 0;          ;          ; n[Z] += 1; break;
     case 8:  c = 2;          ;          ;          ; break;
     case 9:  c = 2;          ; n[Y] += 1;          ; break;
     case 10: c = 2; n[X] += 1; n[Y] += 1;          ; break;
@@ -664,14 +664,12 @@ calculate_normals()
 
   // Calculate normals_.
   for (index_value_type i = 0; i < triangles_.size(); i++) {
-    vector_3d vec1, vec2, triangle_area_vec;
-    index_value_type id0, id1, id2;
-    id0 = triangles_[i][0];
-    id1 = triangles_[i][1];
-    id2 = triangles_[i][2];
-    vec1 = vertices_[id1] - vertices_[id0];
-    vec2 = vertices_[id2] - vertices_[id0];
-    triangle_area_vec = vec1.cross(vec2);
+    index_value_type id0 = triangles_[i][0];
+    index_value_type id1 = triangles_[i][1];
+    index_value_type id2 = triangles_[i][2];
+    vector_3d vec1 = vertices_[id1] - vertices_[id0];
+    vector_3d vec2 = vertices_[id2] - vertices_[id0];
+    vector_3d triangle_area_vec = vec1.cross(vec2);
     normals_[id0] += triangle_area_vec;
     normals_[id1] += triangle_area_vec;
     normals_[id2] += triangle_area_vec;
