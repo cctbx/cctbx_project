@@ -112,11 +112,15 @@ class _fft_extension(oop.injector, miller.fft_map):
 
 class density_modification_iterator(object):
 
+  min_cc_peak_height = 0.8
+
   def __init__(self, f_obs, f_calc=None, f_000=None,
-               starter=miller.array.randomize_phases):
+               starter=miller.array.randomize_phases,
+               **kwds):
     assert f_obs.data() is not None
     assert are_equivalent(f_calc is None, f_000 is None)
     assert f_calc is None or (is_numeric(f_calc) and is_numeric(f_000))
+    adopt_optional_init_args(self, kwds)
 
     self.original_f_obs = f_obs
     self.f_obs = f_obs.eliminate_sys_absent() \
@@ -218,7 +222,7 @@ class density_modification_iterator(object):
       parameters=search_parameters)
     # iterate over the strong peak; for each, shift and symmetrised f_calc
     for peak in correlation_map_peaks:
-      if peak.height < 0.8: break
+      if peak.height < self.min_cc_peak_height: break
       shift = mat.col(peak.site)
       multiplier = int(1e4)
       shift_1 = shift*multiplier
@@ -313,6 +317,7 @@ class solving_iterator(object):
   max_attempts_to_get_sharp_correlation_map = 5
   yield_solving_interval = 10
   polishing_iterations = 5
+  min_cc_peak_height = 0.9
 
   def __init__(self, flipping_iterator, **kwds):
     self.flipping_iterator = flipping_iterator
@@ -434,7 +439,8 @@ class solving_iterator(object):
         self.f_calc_solutions = []
         for f_calc, shift, cc_peak_height\
                            in self.flipping_iterator.f_calc_symmetrisations():
-          if not self.f_calc_solutions and cc_peak_height < 0.9:
+          if (not self.f_calc_solutions
+              and cc_peak_height < self.min_cc_peak_height):
             yield self.guessing_delta
             break
           self.f_calc_solutions.append((f_calc, shift, cc_peak_height))
