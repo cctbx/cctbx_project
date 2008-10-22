@@ -85,6 +85,33 @@ def exercise_copy():
       21,22,23,24,
       26,27,28,29]
 
+def exercise_copy_2():
+  m = flex.double(flex.grid(6, 8, 11))
+  loop = flex.nested_loop(end=m.accessor().all())
+  while not loop.over():
+    p = loop()
+    m[p] = 10000*p[0] + 100*p[1] + p[2]
+    loop.incr()
+  def random_index(m):
+    return tuple([
+      random.randint(a, b-1) for a,b in zip(m1.accessor().origin(),
+                                            m1.accessor().focus()) ])
+  m1 = maptbx.copy(m, centre=(0.3, 0.4, 0.5), extent=(0.2, 0.3, 0.4))
+  assert m1.accessor().all() == (2,3,6)
+  assert m1.accessor().focus() == (3, 5, 9)
+  assert m1.accessor().origin() == (1,2,3)
+  for i in xrange(10):
+    index = random_index(m1)
+    assert m1[index] == m[index]
+  m1 = maptbx.copy(m, centre=(0.1, 0.3, 0.1), extent=(0.2, 0.3, 0.4))
+  assert m1.accessor().all() == (2,4,5)
+  assert m1.accessor().focus() == (2,5,4)
+  assert m1.accessor().origin() == (0,1,-1)
+  for i in xrange(10):
+    index_m1 = random_index(m1)
+    index_m = tuple([ a % b for a,b in zip(index_m1, m.accessor().focus()) ])
+    assert m1[index_m1] == m[index_m]
+
 def exercise_statistics():
   import scitbx.math
   for flex_type in flex_types():
@@ -709,6 +736,7 @@ def exercise_average_density():
 
 def run():
   exercise_copy()
+  exercise_copy_2()
   exercise_statistics()
   exercise_grid_tags()
   exercise_gridding()

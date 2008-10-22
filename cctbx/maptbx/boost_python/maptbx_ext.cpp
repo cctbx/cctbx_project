@@ -112,6 +112,14 @@ namespace {
       arg_("map_unit_cell"),
       arg_("first"),
       arg_("last")));
+    def("copy",
+      (af::versa<double, af::flex_grid<> >(*)
+        (af::const_ref<double, af::c_grid_padded<3> > const&,
+         scitbx::vec3<double> const&,
+         scitbx::vec3<double> const&)) maptbx::copy, (
+      arg_("map_unit_cell"),
+      arg_("centre"),
+      arg_("extent")));
     def("unpad_in_place",
       (void(*)(af::versa<float, af::flex_grid<> >&))
         maptbx::unpad_in_place, (arg_("map")));

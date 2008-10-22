@@ -57,6 +57,58 @@ namespace cctbx { namespace maptbx {
     }
   }
 
+  /** @brief A copy of the parallelepiped between the opposite corners
+      centre - extent/2 and centre + extent/2 (fractional coordinates).
+
+  If those corners end up outside of the unit cell, i.e. one of their
+  coordinates is not between 0 and 1, then this function will still
+  correctly do the copy by seeking the grid points modulo the grid sizes.
+  */
+  template <typename FloatType>
+  af::versa<FloatType, af::flex_grid<> >
+  copy(
+    af::const_ref<FloatType, af::c_grid_padded<3> > const& map_unit_cell,
+    scitbx::vec3<FloatType> const& centre,
+    scitbx::vec3<FloatType> const& extent)
+  {
+    typedef af::c_grid_padded<3>::index_type input_index_t;
+    typedef af::flex_grid_default_index_type output_index_t;
+    typedef typename output_index_t::value_type output_index_value_t;
+    typedef scitbx::math::float_int_conversions<
+      FloatType, output_index_value_t> float_to_int_conversion;
+    scitbx::vec3<FloatType> first_pt = centre - extent/2,
+                            last_pt = centre + extent/2;
+    // conversion unsigned to signed here:
+    output_index_t grid_n(af::adapt(map_unit_cell.accessor().focus()));
+    af::tiny<output_index_value_t, 3> first_, last_;
+    for (int i=0; i<3; ++i) {
+      first_[i] = float_to_int_conversion::nearest_integer(first_pt[i]*grid_n[i]);
+      last_[i]  = float_to_int_conversion::nearest_integer(last_pt[i]*grid_n[i]);
+    }
+    output_index_t first(af::adapt(first_)), last(af::adapt(last_));
+    // range with last included
+    af::versa<FloatType, af::flex_grid<> > result(
+      af::flex_grid<>(af::adapt(first), af::adapt(last), false));
+    input_index_t first_input, last_input;
+    for (int i=0; i<3; ++i) {
+      first_input[i] = math::mod_positive(first[i], grid_n[i]);
+      last_input[i] = math::mod_positive(last[i], grid_n[i]) + 1;
+    }
+    FloatType* out_ptr = result.begin();
+    input_index_t input;
+    for (input[0] = first_input[0]; input[0] != last_input[0]; input[0]++) {
+      if (input[0] >= grid_n[0]) input[0] -= grid_n[0];
+      for (input[1] = first_input[1]; input[1] != last_input[1]; input[1]++) {
+        if (input[1] >= grid_n[1]) input[1] -= grid_n[1];
+        for (input[2] = first_input[2]; input[2] != last_input[2]; input[2]++) {
+          if (input[2] >= grid_n[2]) input[2] -= grid_n[2];
+          *out_ptr++ = map_unit_cell(input);
+        }
+      }
+    }
+    return result;
+  }
+
   template <typename FloatType>
   af::versa<FloatType, af::flex_grid<> >
   copy(
