@@ -5,9 +5,10 @@
 
 namespace scitbx { namespace af {
 
-  template <typename ElementType, std::size_t N>
+  template <template<typename, std::size_t> class TinyOrSmall,
+            typename  ElementType, std::size_t N>
   std::ostream&
-  operator<<(std::ostream& os, tiny_plain<ElementType, N> const& a) {
+  operator<<(std::ostream& os, TinyOrSmall<ElementType, N> const& a) {
     return os << a.const_ref();
   }
 
