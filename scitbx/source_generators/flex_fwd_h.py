@@ -2,7 +2,7 @@ from scitbx.source_generators.utils import join_open
 from scitbx.source_generators.utils import write_this_is_auto_generated
 import libtbx.load_env
 
-this = "cctbx.source_generators.flex_fwd_h"
+this = "scitbx.source_generators.flex_fwd_h"
 
 motivation = """\
 /* The declarations in this file facilitate cross-module functionality
