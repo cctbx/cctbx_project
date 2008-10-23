@@ -85,7 +85,7 @@ def exercise_copy():
       21,22,23,24,
       26,27,28,29]
 
-def exercise_copy_2():
+def exercise_copy_across_unit_cell_boundaries():
   m = flex.double(flex.grid(6, 8, 11))
   loop = flex.nested_loop(end=m.accessor().all())
   while not loop.over():
@@ -96,14 +96,16 @@ def exercise_copy_2():
     return tuple([
       random.randint(a, b-1) for a,b in zip(m1.accessor().origin(),
                                             m1.accessor().focus()) ])
-  m1 = maptbx.copy(m, centre=(0.3, 0.4, 0.5), extent=(0.2, 0.3, 0.4))
+  m1 = maptbx.copy_across_unit_cell_boundaries(
+    m, centre=(0.3, 0.4, 0.5), extent=(0.2, 0.3, 0.4))
   assert m1.accessor().all() == (2,3,6)
   assert m1.accessor().focus() == (3, 5, 9)
   assert m1.accessor().origin() == (1,2,3)
   for i in xrange(10):
     index = random_index(m1)
     assert m1[index] == m[index]
-  m1 = maptbx.copy(m, centre=(0.1, 0.3, 0.1), extent=(0.2, 0.3, 0.4))
+  m1 = maptbx.copy_across_unit_cell_boundaries(
+    m, centre=(0.1, 0.3, 0.1), extent=(0.2, 0.3, 0.4))
   assert m1.accessor().all() == (2,4,5)
   assert m1.accessor().focus() == (2,5,4)
   assert m1.accessor().origin() == (0,1,-1)
@@ -736,7 +738,7 @@ def exercise_average_density():
 
 def run():
   exercise_copy()
-  exercise_copy_2()
+  exercise_copy_across_unit_cell_boundaries()
   exercise_statistics()
   exercise_grid_tags()
   exercise_gridding()
