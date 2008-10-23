@@ -19,6 +19,7 @@ import mmtbx.model
 from mmtbx import model_statistics
 import random
 from libtbx import easy_run
+from iotbx.pdb import combine_unique_pdb_files
 
 
 fmodel_from_xray_structure_params_str = """\
@@ -621,6 +622,7 @@ def run(args, command_name="phenix.pdbtools"):
       processed_pdb_file = command_line_interpreter.processed_pdb_file,
       log = log)
     xray_structure = xray_structure.replace_sites_cart(new_sites = sites_cart)
+### do other model manipulations
   utils.print_header("Performing requested model manipulations", out = log)
   result = modify(xray_structure    = xray_structure,
                   params            = command_line_interpreter.params,
@@ -674,6 +676,26 @@ class interpreter:
     self.processed_pdb_file_reference = None
     self.process_args()
     self.pdb_file_names.extend(self.params.input.pdb.file_name)
+    if(self.fake_crystal_symmetry): # create cs for internal use
+      pdb_combined = combine_unique_pdb_files(file_names = self.pdb_file_names)
+      pdb_combined.report_non_unique(out = self.log)
+      if(len(pdb_combined.unique_file_names) == 0):
+        raise Sorry("No coordinate file given.")
+      pdb_inp = iotbx.pdb.input(
+        source_info = None,
+        lines       = flex.std_string(pdb_combined.raw_records))
+      self.crystal_symmetry = pdb_inp.xray_structure_simple().\
+        cubic_unit_cell_around_centered_scatterers(
+        buffer_size = 10).crystal_symmetry()
+    print >> self.log, "Working crystal symmetry after inspecting all inputs:"
+    self.crystal_symmetry.show_summary(f = self.log, prefix="  ")
+    self.params.input.crystal_symmetry.unit_cell = \
+      self.crystal_symmetry.unit_cell()
+    self.params.input.crystal_symmetry.space_group = \
+      self.crystal_symmetry.space_group_info()
+    self.point_group = self.crystal_symmetry.space_group() \
+      .build_derived_point_group()
+    print >> self.log
     processed_pdb_files_srv = utils.process_pdb_file_srv(
       crystal_symmetry          = self.crystal_symmetry,
       pdb_parameters            = self.params.input.pdb,
@@ -825,16 +847,6 @@ class interpreter:
       print >> self.log, "*** No input crystal symmetry found. ***"
       print >> self.log,"Functionality requiring crystal symmetry unavailable."
       print >> self.log
-      self.crystal_symmetry = crystal.symmetry((1, 1, 1, 90, 90, 90), "P 1")
       if(self.command_line.options.f_model):
         raise Sorry(
           "Cannot compute structure factors: no crystal symmetry available.")
-    print >> self.log, "Working crystal symmetry after inspecting all inputs:"
-    self.crystal_symmetry.show_summary(f = self.log, prefix="  ")
-    self.params.input.crystal_symmetry.unit_cell = \
-      self.crystal_symmetry.unit_cell()
-    self.params.input.crystal_symmetry.space_group = \
-      self.crystal_symmetry.space_group_info()
-    self.point_group = self.crystal_symmetry.space_group() \
-      .build_derived_point_group()
-    print >> self.log
