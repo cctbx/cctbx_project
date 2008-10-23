@@ -114,7 +114,6 @@ class set_core(object):
                      b_cart,
                      k_sol,
                      b_sol,
-                     overall_scale,
                      uc,
                      ss,
                      work,
@@ -128,7 +127,6 @@ class set_core(object):
                          b_cart        = self.b_cart,
                          k_sol         = self.k_sol,
                          b_sol         = self.b_sol,
-                         overall_scale = self.overall_scale,
                          hkl           = self.f_calc.indices(),
                          uc            = self.uc,
                          ss            = self.ss)
@@ -147,7 +145,6 @@ class set_core(object):
       self.b_cart,
       self.k_sol,
       self.b_sol,
-      self.overall_scale,
       self.uc,
       self.ss,
       self.work,
@@ -288,7 +285,6 @@ class manager(manager_mixin):
          trust_xray_structure         = False,
          update_xray_structure        = True,
          use_f_model_scaled           = False,
-         overall_scale                = 1.0,
          f_ordered_solvent            = None,
          f_ordered_solvent_dist       = None,
          mask_manager                 = None,
@@ -306,7 +302,6 @@ class manager(manager_mixin):
     self.alpha_beta_params = alpha_beta_params
     self.xray_structure    = xray_structure
     self.use_f_model_scaled= use_f_model_scaled
-    self.overall_scale     = overall_scale
     self.max_number_of_bins = max_number_of_bins
     self.mask_manager = mask_manager
     if (f_ordered_solvent is None):
@@ -355,18 +350,18 @@ class manager(manager_mixin):
        if(not trust_xray_structure):
           assert [f_calc, f_mask].count(None) == 2
        if(update_xray_structure):
-          self.update_xray_structure(xray_structure       = self.xray_structure,
-                                     update_f_calc        = True,
-                                     update_f_mask        = True,
-                                     k_sol                = k_sol,
-                                     b_sol                = b_sol,
-                                     b_cart               = b_cart)
+          self.update_xray_structure(xray_structure   = self.xray_structure,
+                                     update_f_calc    = True,
+                                     update_f_mask    = True,
+                                     k_sol            = k_sol,
+                                     b_sol            = b_sol,
+                                     b_cart           = b_cart)
        else:
-          self.update_core(f_calc       = f_calc,
-                           f_mask       = f_mask,
-                           b_cart       = b_cart,
-                           k_sol        = k_sol,
-                           b_sol        = b_sol)
+          self.update_core(f_calc      = f_calc,
+                           f_mask      = f_mask,
+                           b_cart      = b_cart,
+                           k_sol       = k_sol,
+                           b_sol       = b_sol)
     assert len(b_cart) == 6
     if(self.abcd is not None):
        assert self.abcd.indices().all_eq(self.f_obs.indices()) == 1
@@ -427,7 +422,6 @@ class manager(manager_mixin):
                          b_cart        = b_cart_,
                          k_sol         = k_sol_,
                          b_sol         = b_sol_,
-                         overall_scale = self.overall_scale,
                          uc            = self.uc,
                          ss            = self.ss,
                          work          = work,
@@ -511,7 +505,6 @@ class manager(manager_mixin):
               mask_params                  = self.mask_params,  # XXX deep_copy ?
               trust_xray_structure         = True,
               update_xray_structure        = False,
-      overall_scale         = self.overall_scale,
       f_ordered_solvent      = self.f_ordered_solvent.deep_copy(),
       f_ordered_solvent_dist = self.f_ordered_solvent_dist.deep_copy(),
       n_ordered_water        = self.n_ordered_water,
@@ -545,7 +538,6 @@ class manager(manager_mixin):
       mask_manager = new_mask_manager,
       trust_xray_structure=True,
       update_xray_structure=update_xray_structure,
-      overall_scale=self.overall_scale,
       f_ordered_solvent=self.f_ordered_solvent.select(
         selection=selection),
       f_ordered_solvent_dist=self.f_ordered_solvent_dist.select(
@@ -686,11 +678,11 @@ class manager(manager_mixin):
     if(f_calc is None): f_calc = self.f_calc()
     if(f_mask is None): f_mask = self.f_mask()
     if(set_core_flag):
-       self.update_core(f_calc = f_calc,
-                        f_mask = f_mask,
-                        b_cart = b_cart,
-                        k_sol  = k_sol,
-                        b_sol  = b_sol)
+       self.update_core(f_calc        = f_calc,
+                        f_mask        = f_mask,
+                        b_cart        = b_cart,
+                        k_sol         = k_sol,
+                        b_sol         = b_sol)
 
   def optimize_mask_and_update_solvent_and_scale(
                                 self, params = None, out = None, verbose=-1):
@@ -752,13 +744,7 @@ class manager(manager_mixin):
          params = bss.master_params.extract()
       if(verbose is not None): params.verbose=verbose
       bss.bulk_solvent_and_scales(fmodel = self, params = params, log = out)
-      overall_scale = self.scale_k1_w()
-      if(self.use_f_model_scaled):
-         self.overall_scale = overall_scale
-         self.update_core()
-      elif(overall_scale < 0.01 or overall_scale > 100.0):
-         self.overall_scale = overall_scale
-         self.update_core()
+      self.update_core()
     time_bulk_solvent_and_scale += timer.elapsed()
 
   def _get_target_name(self): return self._target_name
@@ -823,8 +809,7 @@ class manager(manager_mixin):
                    abcd                         = None,
                    alpha_beta_params            = None,
                    xray_structure               = None,
-                   mask_params                  = None,
-                   overall_scale                = None):
+                   mask_params                  = None):
     if(f_calc is not None):
        assert f_calc.indices().all_eq(self.core.f_calc.indices())
        self.update_core(f_calc = f_calc)
@@ -867,9 +852,6 @@ class manager(manager_mixin):
        self.update_xray_structure(xray_structure = xray_structure,
                                   update_f_mask  = True,
                                   update_f_calc  = True)
-    if(overall_scale is not None):
-       self.overall_scale = overall_scale
-       self.update_core()
     return self
 
   def f_ordered_solvent_w(self):
@@ -1157,8 +1139,6 @@ class manager(manager_mixin):
         + est_exceptions[0] + "\n"
         + "  " + "-"*77 + "\n"
         + est_exceptions[1])
-    save_self_overall_scale = fmodel.overall_scale
-    fmodel.overall_scale = fmodel.scale_k3_w()
     fmodel.update_core()
     alpha = fmodel.alpha_beta()[0].data()
     omega = flex.double()
@@ -1168,7 +1148,6 @@ class manager(manager_mixin):
       coeff = -4./(math.pi**3*ssi)
       omega.append( math.sqrt( math.log(ae) * coeff ) )
     #omega_ma  = miller.array(miller_set= self.f_obs,data= flex.double(omega))
-    fmodel.overall_scale = save_self_overall_scale
     fmodel.update_core()
     omega_mean = flex.mean(omega)
     #sel = (omega < omega_mean * 3.0) & (omega > omega_mean / 3.0)
@@ -1658,7 +1637,6 @@ class manager(manager_mixin):
         overall_scale_multiplier,
         overall_b_iso_shift):
     b_cart = self.b_cart()
-    self.overall_scale *= overall_scale_multiplier
     self.update_core(b_cart=[
       b_cart[0]+overall_b_iso_shift,
       b_cart[1]+overall_b_iso_shift,
@@ -1928,8 +1906,7 @@ class target_result(target_result_mixin):
   def d_target_d_f_calc_work(self):
     return self.manager.f_obs_w.array(
       data=self.core_result.gradients_work()
-          *self.manager.core.fb_cart_w
-          *self.manager.core.overall_scale)
+          *self.manager.core.fb_cart_w)
 
 
 def ls_ff_weights(f_obs, atom, B):
