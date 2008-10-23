@@ -25,7 +25,9 @@ kinetic_energy_and_temperature::kinetic_energy_and_temperature(
       ekin += weights[i] * (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
      }
     ekin *= 0.5;
-    temp = 2.0 * ekin / (ndegf * k_boltz);
+    double denom = ndegf * k_boltz;
+    MMTBX_ASSERT(denom != 0);
+    temp = 2.0 * ekin / denom;
 }
 
 center_of_mass_info::center_of_mass_info(
@@ -34,6 +36,8 @@ center_of_mass_info::center_of_mass_info(
                        af::shared<vec3<double> > velocities,
                        af::shared<double> const& weights)
 {
+    MMTBX_ASSERT(sites_cart.size() == velocities.size());
+    MMTBX_ASSERT(sites_cart.size() == weights.size());
     double timfac = 0.04888821;
     double vxcm = 0.0;
     double vycm = 0.0;
@@ -60,6 +64,7 @@ center_of_mass_info::center_of_mass_info(
       aycm += (site[2] * velocity[0] - site[0] * velocity[2]) * weight;
       azcm += (site[0] * velocity[1] - site[1] * velocity[0]) * weight;
     }
+    MMTBX_ASSERT(tmass != 0);
     axcm -= (ycm * vzcm - zcm * vycm) / tmass;
     aycm -= (zcm * vxcm - xcm * vzcm) / tmass;
     azcm -= (xcm * vycm - ycm * vxcm) / tmass;
@@ -77,6 +82,7 @@ void vxyz_at_t_plus_dt_over_2(af::shared<vec3<double> > vxyz,
                               double tstep)
 {
     for (std::size_t i=0; i < weights.size(); i++) {
+      MMTBX_ASSERT(weights[i] != 0);
       double factor = tstep / weights[i];
       vec3<double> v = vxyz[i];
       vec3<double> const& g = grad[i];
@@ -95,6 +101,8 @@ af::shared<vec3<double> > stop_center_of_mass_motion(
                             af::shared<vec3<double> > velocities,
                             af::shared<double> const& weights)
 {
+  MMTBX_ASSERT(sites_cart.size() == velocities.size());
+  MMTBX_ASSERT(sites_cart.size() == weights.size());
   double xx = 0.0;
   double xy = 0.0;
   double xz = 0.0;
