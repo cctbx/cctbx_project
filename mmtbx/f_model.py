@@ -1636,6 +1636,9 @@ class manager(manager_mixin):
   def adopt_external_overall_scale_and_b_iso_adjustments(self,
         overall_scale_multiplier,
         overall_b_iso_shift):
+    raise RuntimeError(
+      "Transition to alternative handling of overall_scale_multiplier"
+      " is currently incomplete.")
     b_cart = self.b_cart()
     self.update_core(b_cart=[
       b_cart[0]+overall_b_iso_shift,
