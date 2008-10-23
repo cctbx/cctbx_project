@@ -46,43 +46,47 @@ namespace {
     wrap_basic_map();
     wrap_real_space_refinement();
 
-    using namespace boost::python;
-    typedef boost::python::arg arg_;
-    class_<grid_points_in_sphere_around_atom_and_distances>("grid_points_in_sphere_around_atom_and_distances",
-                           init<cctbx::uctbx::unit_cell const&,
-                                af::const_ref<double, af::c_grid<3> > const&,
-                                double const&,
-                                double const&,
-                                scitbx::vec3<double> const& >(
-                                   (arg_("unit_cell"),
-                                                         arg_("data"),
-                                                         arg_("radius"),
-                                                         arg_("shell"),
-                                                         arg_("site_frac"))))
-      .def("data_at_grid_points", &grid_points_in_sphere_around_atom_and_distances::data_at_grid_points)
-      .def("data_at_grid_points_averaged",
-           &grid_points_in_sphere_around_atom_and_distances::data_at_grid_points_averaged)
-      .def("distances", &grid_points_in_sphere_around_atom_and_distances::distances)
-    ;
-    class_<one_gaussian_peak_approximation>("one_gaussian_peak_approximation",
-                           init<af::const_ref<double> const&,
-                                af::const_ref<double> const&,
-                                bool const&,
-                                bool const& >(
-                                       (arg_("data_at_grid_points"),
-                                        arg_("distances"),
-                                        arg_("use_weights"),
-                                        arg_("optimize_cutoff_radius"))))
-      .def("a_real_space", &one_gaussian_peak_approximation::a_real_space)
-      .def("b_real_space", &one_gaussian_peak_approximation::b_real_space)
-      .def("a_reciprocal_space", &one_gaussian_peak_approximation::a_reciprocal_space)
-      .def("b_reciprocal_space", &one_gaussian_peak_approximation::b_reciprocal_space)
-      .def("gof", &one_gaussian_peak_approximation::gof)
-      .def("cutoff_radius", &one_gaussian_peak_approximation::cutoff_radius)
-      .def("weight_power", &one_gaussian_peak_approximation::weight_power)
-      .def("first_zero_radius", &one_gaussian_peak_approximation::first_zero_radius)
-    ;
+    {
+      typedef grid_points_in_sphere_around_atom_and_distances w_t;
 
+      class_<w_t>("grid_points_in_sphere_around_atom_and_distances", no_init)
+        .def(init<cctbx::uctbx::unit_cell const&,
+                  af::const_ref<double, af::c_grid<3> > const&,
+                  double const&,
+                  double const&,
+                  scitbx::vec3<double> const& >(
+                    (arg_("unit_cell"),
+                     arg_("data"),
+                     arg_("radius"),
+                     arg_("shell"),
+                     arg_("site_frac"))))
+        .def("data_at_grid_points", &w_t::data_at_grid_points)
+        .def("data_at_grid_points_averaged", &w_t::data_at_grid_points_averaged)
+        .def("distances", &w_t::distances)
+      ;
+    }
+    {
+      typedef one_gaussian_peak_approximation w_t;
+
+      class_<w_t>("one_gaussian_peak_approximation", no_init)
+        .def(init<af::const_ref<double> const&,
+                  af::const_ref<double> const&,
+                  bool const&,
+                  bool const& >(
+                    (arg_("data_at_grid_points"),
+                     arg_("distances"),
+                     arg_("use_weights"),
+                     arg_("optimize_cutoff_radius"))))
+        .def("a_real_space", &w_t::a_real_space)
+        .def("b_real_space", &w_t::b_real_space)
+        .def("a_reciprocal_space", &w_t::a_reciprocal_space)
+        .def("b_reciprocal_space", &w_t::b_reciprocal_space)
+        .def("gof", &w_t::gof)
+        .def("cutoff_radius", &w_t::cutoff_radius)
+        .def("weight_power", &w_t::weight_power)
+        .def("first_zero_radius", &w_t::first_zero_radius)
+      ;
+    }
 
     def("copy",
       (af::versa<float, af::flex_grid<> >(*)
@@ -112,14 +116,14 @@ namespace {
       arg_("map_unit_cell"),
       arg_("first"),
       arg_("last")));
-    def("copy",
+    def("copy_across_unit_cell_boundaries",
       (af::versa<double, af::flex_grid<> >(*)
         (af::const_ref<double, af::c_grid_padded<3> > const&,
          scitbx::vec3<double> const&,
-         scitbx::vec3<double> const&)) maptbx::copy, (
-      arg_("map_unit_cell"),
-      arg_("centre"),
-      arg_("extent")));
+         scitbx::vec3<double> const&)) maptbx::copy_across_unit_cell_boundaries,
+         (arg_("map_unit_cell"),
+          arg_("centre"),
+          arg_("extent")));
     def("unpad_in_place",
       (void(*)(af::versa<float, af::flex_grid<> >&))
         maptbx::unpad_in_place, (arg_("map")));

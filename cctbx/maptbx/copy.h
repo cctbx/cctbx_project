@@ -66,7 +66,7 @@ namespace cctbx { namespace maptbx {
   */
   template <typename FloatType>
   af::versa<FloatType, af::flex_grid<> >
-  copy(
+  copy_across_unit_cell_boundaries(
     af::const_ref<FloatType, af::c_grid_padded<3> > const& map_unit_cell,
     scitbx::vec3<FloatType> const& centre,
     scitbx::vec3<FloatType> const& extent)
