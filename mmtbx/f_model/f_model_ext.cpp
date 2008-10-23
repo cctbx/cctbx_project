@@ -19,7 +19,6 @@ namespace {
                                      self.b_cart,
                                      self.k_sol,
                                      self.b_sol,
-                                     self.overall_scale,
                                      self.hkl,
                                      self.uc,
                                      self.f_model,
@@ -41,7 +40,6 @@ namespace {
            scitbx::sym_mat3<double>               const&,
            double                                 const&,
            double                                 const&,
-           double                                 const&,
            af::const_ref<cctbx::miller::index<> > const&,
            cctbx::uctbx::unit_cell                const&,
            af::shared<double>                     const& >(
@@ -50,7 +48,6 @@ namespace {
                                                          arg_("b_cart"),
                                                          arg_("k_sol"),
                                                          arg_("b_sol"),
-                                                         arg_("overall_scale"),
                                                          arg_("hkl"),
                                                          arg_("uc"),
                                                          arg_("ss"))))
@@ -59,7 +56,6 @@ namespace {
       .add_property("b_cart",        make_getter(&core<>::b_cart,       rbv()))
       .add_property("k_sol",         make_getter(&core<>::k_sol,        rbv()))
       .add_property("b_sol",         make_getter(&core<>::b_sol,        rbv()))
-      .add_property("overall_scale", make_getter(&core<>::overall_scale,rbv()))
       .add_property("hkl",           make_getter(&core<>::hkl,          rbv()))
       .add_property("uc",            make_getter(&core<>::uc,           rbv()))
       .add_property("f_model",       make_getter(&core<>::f_model,      rbv()))

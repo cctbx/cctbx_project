@@ -274,8 +274,7 @@ def sfcalc(names, miller_arrays, xray_structure, parameters, out):
                             f_obs            = f_obs,
                             b_cart           = b_cart,
                             k_sol            = parameters.bulk_and_scale_parameters.solvent.k_sol,
-                            b_sol            = parameters.bulk_and_scale_parameters.solvent.b_sol,
-                            overall_scale    = parameters.bulk_and_scale_parameters.overall.k_overall)
+                            b_sol            = parameters.bulk_and_scale_parameters.solvent.b_sol)
 
   if parameters.use_bulk_and_scale == "as_estimated":
     if parameters.fobs is not None:
