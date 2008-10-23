@@ -550,6 +550,15 @@ def exercise_01(pdb_dir, verbose):
       sorry_found = True
   assert sorry_found == True
 
+def exercise_02(pdb_dir, verbose):
+  file_name = os.path.join(pdb_dir, "polypro_Simon_noCRYST1.pdb")
+  log = "exercise_02.log"
+  cmd = 'phenix.pdbtools %s --geometry-regularization > %s' % (file_name, log)
+  remove_files(log)
+  run_command(command=cmd, verbose=verbose)
+  assert os.path.isfile(log)
+
+
 def exercise(args):
   if ("--show-everything" in args):
     verbose = 2
@@ -572,6 +581,7 @@ def exercise(args):
   exercise_f_model_option_custom(**eargs)
   exercise_show_number_of_removed(**eargs)
   exercise_01(**eargs)
+  exercise_02(**eargs)
   print "OK"
 
 if (__name__ == "__main__"):
