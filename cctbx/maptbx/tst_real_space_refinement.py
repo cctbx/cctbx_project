@@ -63,12 +63,13 @@ def exercise_real_space_refinement(verbose):
   real_map = fft_map.real_map_unpadded()
   #### unit_cell test
   delta_h = .005
-  basic_map = maptbx.basic_map(maptbx.basic_map_unit_cell_flag(),
-                               real_map,
-                               real_map.focus(),
-                               crystal_symmetry.unit_cell().orthogonalization_matrix(),
-                               out_of_bounds_clamp.as_handle(),
-                               crystal_symmetry.unit_cell())
+  basic_map = maptbx.basic_map(
+    maptbx.basic_map_unit_cell_flag(),
+    real_map,
+    real_map.focus(),
+    crystal_symmetry.unit_cell().orthogonalization_matrix(),
+    out_of_bounds_clamp.as_handle(),
+    crystal_symmetry.unit_cell())
   testing_function_for_rsfit(basic_map,delta_h,xray_structure,out)
   ### non_symmetric test
   #
@@ -78,12 +79,13 @@ def exercise_real_space_refinement(verbose):
   gridding_last = [iceil(n*b) for n,b in zip(fft_map.n_real(), maxfrac)]
   data=maptbx.copy(real_map, gridding_first, gridding_last)
   #
-  basic_map = maptbx.basic_map(maptbx.basic_map_non_symmetric_flag(),
-                               data,
-                               fft_map.n_real(),
-                               crystal_symmetry.unit_cell().orthogonalization_matrix(),
-                               out_of_bounds_clamp.as_handle(),
-                               crystal_symmetry.unit_cell())
+  basic_map = maptbx.basic_map(
+    maptbx.basic_map_non_symmetric_flag(),
+    data,
+    fft_map.n_real(),
+    crystal_symmetry.unit_cell().orthogonalization_matrix(),
+    out_of_bounds_clamp.as_handle(),
+    crystal_symmetry.unit_cell())
   testing_function_for_rsfit(basic_map,delta_h,xray_structure,out)
   ### asu test
   #
@@ -93,16 +95,17 @@ def exercise_real_space_refinement(verbose):
   gridding_last = [iceil(n*b) for n,b in zip(fft_map.n_real(), maxfrac)]
   data=maptbx.copy(real_map, gridding_first, gridding_last)
   #
-  basic_map = maptbx.basic_map(maptbx.basic_map_asu_flag(),
-                               data,
-                               crystal_symmetry.space_group(),
-                               crystal_symmetry.direct_space_asu().as_float_asu(),
-                               real_map.focus(),
-                               crystal_symmetry.unit_cell().orthogonalization_matrix(),
-                               out_of_bounds_clamp.as_handle(),
-                               crystal_symmetry.unit_cell(),
-                               0.5,
-                               True)
+  basic_map = maptbx.basic_map(
+    maptbx.basic_map_asu_flag(),
+    data,
+    crystal_symmetry.space_group(),
+    crystal_symmetry.direct_space_asu().as_float_asu(),
+    real_map.focus(),
+    crystal_symmetry.unit_cell().orthogonalization_matrix(),
+    out_of_bounds_clamp.as_handle(),
+    crystal_symmetry.unit_cell(),
+    0.5,
+    True)
   testing_function_for_rsfit(basic_map,delta_h,xray_structure,out)
 
 
