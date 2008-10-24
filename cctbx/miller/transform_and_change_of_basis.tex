@@ -16,10 +16,10 @@ Let us consider an electron density $\rho(x)$ and an affine operator $\sym{R}{t}
 Borrowing the notation from group theory, we will denote the transform of $\rho$ by
 \begin{equation}
 \rho^{\sym{R}{t}}(x) = \rho(\sym{R}{t}^{-1}x)
-\label{rho:transform}
+\label{eqn:rho:transform}
 \end{equation}
 
-Let us now find the equivalent of \refeq{rho:transform} for the Fourier transform $F$ of $\rho$. From now on, we will only consider the following case: $\sym{R}{t}$ leaves the unit cell $U$ invariant.
+Let us now find the equivalent of \eqnref{rho:transform} for the Fourier transform $F$ of $\rho$. From now on, we will only consider the following case: $\sym{R}{t}$ leaves the unit cell $U$ invariant.
 
 Then\footnote{It is most natural in crystallography to represent any position $x$ by a column vector and any miller index $h$ by a row vector (mathematically speaking $h$ is in the reciprocal space of $x$ and therefore $h$ is really a linear form). Therefore the scalar product $h.x$ reads like the mere matrix product $hx$ and the operator relation $h.Rx = R^Th.x$ is the trivial matrix product $hRx$ interpreted in two ways using associativity.}
 \begin{align}
@@ -37,7 +37,7 @@ The \cctbx\ does not implement such transforms of the structure factors. But it 
 Let us consider the change of basis transforming the old basis\footnote{We should actually be talking about a frame, i.e. an origin $\omega$ and a basis of vectors $(e_1, e_2, e_3)$ but the \cctbx\ calls it a basis.} of real space $(\omega, e_1, e_2, e_3)$ into the new basis $(\omega', e'_1, e'_2, e'_3)$ through the operator $\sym{R}{t}$. A well-known result is that if $x$ is the coordinate vector of a position w.r.t. $(e_1, e_2, e_3)$ and $x'$ the coordinate vector of the same position w.r.t. $(e'_1, e'_2, e'_3)$, then\footnote{Here, by an abuse of notation, we identify the operator on the vectors $e_i$ and the operator on the coordinate vector $x$.}
 \begin{equation}
 x = \sym{R}{t}x'.
-\label{change::of::basis::position}
+\label{eqn:change::of::basis::position}
 \end{equation}
 Reminder:
 \begin{align}
@@ -47,7 +47,7 @@ A corollary is the corresponding law for the miller indices,
 \begin{equation}
 h' = h\sym{R}{t}.
 \end{equation}
-Indeed, since scalar product should be independent of the basis, $h'$ must statisfy $h'\Delta x' = h\Delta x$ for any vector $\Delta x'$ (as opposed to the point $x$\footnote{Let's not forget the positions make an affine space whereas the miller indices are only the reciprocal of the associated vector space and of course \refeq{change::of::basis::position} results in $\Delta x = R \Delta x'$}). The \cctbx\ implements this formula in C++ by operator overloading.
+Indeed, since scalar product should be independent of the basis, $h'$ must statisfy $h'\Delta x' = h\Delta x$ for any vector $\Delta x'$ (as opposed to the point $x$\footnote{Let's not forget the positions make an affine space whereas the miller indices are only the reciprocal of the associated vector space and of course \eqnref{change::of::basis::position} results in $\Delta x = R \Delta x'$}). The \cctbx\ implements this formula in C++ by operator overloading.
 
 In the previous section, we considered transforms where the old $x$ is moved onto the new $x'$ as $x' = \sym{R}{t} x$. Thus a change of basis $\sym{R}{t}$ corresponds to a transform $\sym{R}{t}^{-1}$. As a result, it would seem that the \cctbx\ code handling a change of basis can trivially be used to generate a transform by simply passing as the change-of-basis operator the inverse of the transform we want. There is an implementation subtlety though discussed at the end of this section.
 
@@ -55,7 +55,7 @@ Let us now work out the formula relating the structure factors before and after 
 \begin{align}
 F'(h) &= F^{\sym{R}{t}^{-1}}(h) = F(hR^{-1}) e^{i2\pi h(-R^{-1}t)}\nonumber\\
 \intertext{and therefore}
-F'(hR) &= F(h)e^{-i2\pi ht}. \label{change::basis::F}
+F'(hR) &= F(h)e^{-i2\pi ht}. \label{eqn:change::basis::F}
 \end{align}
 That is the formula implemented in the \cctbx\ in \code{sym\_equiv.h}, c.f. \code{sym\_equiv\_index\linebreak[0]::phase\_eq} and it's use in \code{change\_basis.h}. It is particularly convenient since a \code{miller\linebreak[0].array} stores $h$ and $F(h)$ in two parallel arrays. By looping over the both of them at the same time, one can compute and immediately store the new miller index $hR$ and the value $F'$ for that new miller index. However it means that the ordering of the original and new data are related as follow
 \begin{equation}
@@ -66,7 +66,7 @@ F(h_i) @= F'(h_iR)\\
 F(h_{i+1}) @= F'(h_{i+1}R)\\
 \ldots @. \ldots
 \end{CD}
-\label{miller::array::change::basis}
+\label{eqn:miller::array::change::basis}
 \end{equation}
 
 That leads to a slight subtlety to implement a transform as discussed in section 1 with a change of basis. Indeed, most often we would like the memory layout
@@ -78,7 +78,7 @@ F(h_i) @= F^{\sym{R}{t}}(h_i)\\
 F(h_{i+1}) @= F^{\sym{R}{t}}(h_{i+1})\\
 \ldots @. \ldots
 \end{CD}
-\label{miller::array::transform}
+\label{eqn:miller::array::transform}
 \end{equation}
 One must therefore, after computing the array of $F'(hR^{-1})$, put it back to have the miller indexes $h$ in the same order as the original array of $F(h)$. Fortunately, this is a one-liner in the \cctbx\ and the whole code reduces to:
 \begin{verbatim}
@@ -117,17 +117,17 @@ F(hR)e^{-i2\pi hRs}e^{i2\pi ht}e^{i2\pi hs}   @<<{\text{c.b. } \sym{I}{-s}}< F(h
 So the transformes read
 \begin{align}
 \rho^\#(x) &= \rho(\sym{R}{t}^{-1}(x - (I-R)s))\\
-F^\#(h) &= F^{\sym{R}{t}}(h) e^{i2\pi h(I-R)s} \label{translation::search::F}
+F^\#(h) &= F^{\sym{R}{t}}(h) e^{i2\pi h(I-R)s} \label{eqn:translation::search::F}
 \end{align}
 Let us therefore introduce
 \begin{equation}
-d = (I-R)s. \label{def::d}
+d = (I-R)s. \label{eqn:def::d}
 \end{equation}
 
 How to compare $\rho$ and $\rho^\#$ ? One possibility is to compute their overlap
 \begin{align}
-C(s) &= \int_U \rho(x) \rho^\#(x) d^3x  \label{cross::correlation::rho::s}\\
-&= \int_U \rho(x) \rho(\sym{R}{t}^{-1}(x - d))d^3x = CC(d). \label{cross::correlation::rho::d}
+C(s) &= \int_U \rho(x) \rho^\#(x) d^3x  \label{eqn:cross::correlation::rho::s}\\
+&= \int_U \rho(x) \rho(\sym{R}{t}^{-1}(x - d))d^3x = CC(d). \label{eqn:cross::correlation::rho::d}
 \end{align}
 $CC$ is therefore the cross-correlation%
 \footnote{The cross-correlation of $\rho_1$ with $\rho_2$ is defined as
@@ -140,23 +140,23 @@ where $*$ denotes the convolution. It should be noted that the cross-correlation
 of $\rho^{\sym{R}{t}}$ with $\rho$.
 The goal is now to find the value of $d$ which maximises $CC(d)$, the idea being that the bigger the overlap, the more similar the density and its transform must be. There are two problems here:
 \begin{itemize}
-\item first, we want to compute $s$, not $d$, but in all practical cases $R-I$ is not invertible and therefore \refeq{def::d} does not have an unique solution; but at least we can determine all of them;
+\item first, we want to compute $s$, not $d$, but in all practical cases $R-I$ is not invertible and therefore \eqnref{def::d} does not have an unique solution; but at least we can determine all of them;
 \item then, in practice we only have a sample of $\rho$ on a grid; thus the computation of the overlap integral scales like the number of point on the grid and then we need to compute it for $d$ spanning the grid; thus this is an $O(n^2)$ algorithm.
 \end{itemize}
 But since $CC$ is a convolution, we can compute it using Fast Fourier Transform,
 \newcommand{\tmp}{F(h)\overline{F^{\sym{R}{t}}(h)}}
 \begin{equation}
-CC = \fourier{\tmp}\label{CC:as::FFT}
+CC = \fourier{\tmp}\label{eqn:CC:as::FFT}
 \end{equation}
 where the bar denotes complex conjugation. Now the computation of all the $\tmp$ is $O(n)$ whereas the FFT is $O(n\log n)$ which results in a dramatic improvement.
 
-Remark: we could have arrived at \refeq{CC:as::FFT} in a different way,
+Remark: we could have arrived at \eqnref{CC:as::FFT} in a different way,
 \begin{align}
-C(s) &= \sum_h F(h)\overline{F^\#(h)} \label{cross::correlation::F}\\
-\intertext{by rewriting \refeq{cross::correlation::rho::s} using Parseval theorem and then}
+C(s) &= \sum_h F(h)\overline{F^\#(h)} \label{eqn:cross::correlation::F}\\
+\intertext{by rewriting \eqnref{cross::correlation::rho::s} using Parseval theorem and then}
 &= \sum_h F(h) \overline{F^{\sym{R}{t}}(h)} e^{-i2\pi hd}
 \end{align}
-with \refeq{translation::search::F}. The \refeq{cross::correlation::F} cannot be used in practice either because that direct summation for each grid point $d$ is $O(n^2)$ too.
+with \eqnref{translation::search::F}. The \eqnref{cross::correlation::F} cannot be used in practice either because that direct summation for each grid point $d$ is $O(n^2)$ too.
 
 $CC$ is the technique used in superflip. A related method used in macro-molecular crystallography and in \code{smtbx.ab\_initio.charge\_flipping} is the fast correlation function~\cite{J.Navaza:1995}: c.f. \code{cctbx.translation\_search} and the associated \href{file://../translation_search/notes.pdf}{notes}.
 
