@@ -4,17 +4,16 @@ from cctbx import uctbx
 
 
 def exercise():
+  uc = uctbx.unit_cell((1,1,1,60,120,90))
+  #uc = uctbx.unit_cell((1,1,1,90,90,90))
   elliptic = tst_iso_surface.triangulation_test_case(
     func=tst_iso_surface.sinusoidal(),
     grid_size=(50, 40, 30),
     lazy_normals=False,
     descending_normals=True)
-  class my_map_view(wx_map_viewer.map_view):
-    def set_initial_iso_level(self, density_stats):
-      self.iso_level = 0.15
-  wx_map_viewer.display(unit_cell=uctbx.unit_cell((1,1,1,90,90,90)),
-                        map_view_type=my_map_view,
+  wx_map_viewer.display(unit_cell=uc,
                         raw_map=elliptic.map,
+                        iso_level=lambda map_stats: 0.15,
                         wires=False,
                         title="Ellipsoid")
 
