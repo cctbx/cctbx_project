@@ -1,9 +1,20 @@
 from __future__ import division
 
-try:
-  from scitbx.array_family import flex
+flex = None
+numpy = None
+Numeric = None
+LinearAlgebra = None
+try: from scitbx.array_family import flex
 except ImportError:
-  flex = None
+  try: import numpy.linalg
+  except ImportError:
+    try: import Numeric
+    except ImportError:
+      pass
+    else:
+      try: import LinearAlgebra
+      except ImportError:
+        pass
 
 try:
   from stdlib import math
@@ -334,13 +345,24 @@ class rec(object):
       determinant = self.determinant()
       assert determinant != 0
       return self.co_factor_matrix_transposed() / determinant
-    if (flex is None):
+    m = None
+    if (flex is not None):
+      m = flex.double(self.elems)
+      m.resize(flex.grid(n))
+      m.matrix_inversion_in_place()
+    elif (numpy is not None):
+      m = numpy.asarray(self.elems)
+      m.shape = n
+      m = numpy.linalg.inv(m)
+      m.shape = (n[0]*n[1],)
+    elif (Numeric is not None and LinearAlgebra is not None):
+      m = Numeric.asarray(self.elems)
+      m.shape = n
+      m = Numeric.ravel(LinearAlgebra.inverse(m))
+    if (m is None):
       raise RuntimeError(
         "cannot compute inverse of %d x %d matrix:"
-        " scitbx.array_family.flex module not available." % self.n)
-    m = flex.double(self.elems)
-    m.resize(flex.grid(n))
-    m.matrix_inversion_in_place()
+        " all known numeric packages are unavailable." % self.n)
     return rec(elems=m, n=n)
 
   def transpose(self):
@@ -756,6 +778,15 @@ def exercise():
   if (flex is not None):
     md = m.determinant()
     assert approx_equal(md, -75)
+  else:
+    try: m.determinant()
+    except RuntimeError, e:
+      assert str(e) == "cannot compute determinant of 4 x 4 matrix:" \
+        " scitbx.array_family.flex module not available."
+    else: raise Exception_expected
+  if (   flex is not None
+      or numpy is not None
+      or (Numeric is not None and LinearAlgebra is not None)):
     mi = m.inverse()
     assert mi.n == (4,4)
     assert approx_equal(mi, (
@@ -764,15 +795,10 @@ def exercise():
       1/3,4/15,-8/15,8/15,
       -1,-1,1,-1))
   else:
-    try: m.determinant()
-    except RuntimeError, e:
-      assert str(e) == "cannot compute determinant of 4 x 4 matrix:" \
-        " scitbx.array_family.flex module not available."
-    else: raise Exception_expected
     try: m.inverse()
     except RuntimeError, e:
       assert str(e) == "cannot compute inverse of 4 x 4 matrix:" \
-        " scitbx.array_family.flex module not available."
+        " all known numeric packages are unavailable."
     else: raise Exception_expected
   #
   r = sqr([-0.9533, 0.2413, -0.1815,
