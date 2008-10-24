@@ -90,7 +90,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.minimum_covering_sphere = self.selection_covering_sphere
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
-    
+
   def unzoom (self, event=None) :
     if self.atoms is not None :
       self.minimum_covering_sphere = minimum_covering_sphere(
@@ -262,7 +262,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.set_selection_sphere()
     except Exception, e :
       print e
-  
+
   def set_selection_sphere (self) :
     selected_points = []
     points = self.points
@@ -286,7 +286,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       raise Sorry("The string '%s' is not a valid selection."%selection_string)
     self.selection_i_seqs = self.atoms_selected.iselection()
     self.update_view()
-  
+
   def get_selected_atom_count (self) :
     return self.selection_i_seqs.size()
 
@@ -295,7 +295,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
   def set_bg_color (self) :
     (r,g,b) = self.bg_color
     glClearColor(r, g, b, 0.0)
-  
+
   def set_color_mode (self, color_mode, redraw=False) :
     self.color_mode = color_mode
     if color_mode == "rainbow" :
@@ -313,7 +313,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.set_sel_color(color_tuple=self.selection_color)
     if redraw :
       self.update_view(True, True)
-  
+
   def color_mono (self) :
     self.atom_colors = flex.vec3_double(
       [ self.base_atom_color for i in xrange(0, self.points.size()) ]
@@ -332,7 +332,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       color_invisible_atoms = not self.scale_b_to_visible,
       use_rb_color_gradient = False
     )
-  
+
   def color_by_chain (self) :
     c = 0
     for chain in self.pdb_hierarchy.chains() :
@@ -346,7 +346,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     for i_seq, atom_object in enumerate(self.atom_index) :
       py_atom_colors.append(chain_shades[atom_object.chain_id])
     self.atom_colors = flex.vec3_double(py_atom_colors)
-  
+
   def color_by_element (self) :
     py_atom_colors = []
     element_shades = {' C' : (0.8, 0.8, 0.8),
@@ -373,11 +373,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
         color = (0.0, 1.0, 1.0)
       py_atom_colors.append(color)
     self.atom_colors = flex.vec3_double(py_atom_colors)
-  
+
   def set_sel_color (self, color_string=None, color_tuple=None) :
     if color_tuple is None :
       color_tuple = utils.color_string_converter(color_string)
-    self.selection_color = color_tuple 
+    self.selection_color = color_tuple
     py_sele_color_list = [ color_tuple for i_seq in xrange(0,self.atom_count) ]
     self.selection_colors = flex.vec3_double(py_sele_color_list)
 
@@ -521,9 +521,6 @@ class App (wx.App) :
     box.SetSizeHints(self.frame)
     return True
 
-if __name__ == "__main__" :
-  run(sys.argv[1:])
-
 def run (args) :
   if len(args) == 0 :
     print "Please specify a PDB file (and optional CIFs) on the command line."
@@ -541,4 +538,6 @@ def run (args) :
   a.frame.Show()
   a.MainLoop()
 
-
+if __name__ == "__main__" :
+  import sys
+  run(sys.argv[1:])
