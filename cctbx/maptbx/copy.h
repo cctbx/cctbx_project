@@ -87,8 +87,8 @@ namespace cctbx { namespace maptbx {
     }
     output_index_t first(af::adapt(first_)), last(af::adapt(last_));
     // range with last included
-    af::versa<FloatType, af::flex_grid<> > result(
-      af::flex_grid<>(af::adapt(first), af::adapt(last), false));
+    af::versa<FloatType, af::flex_grid<> > result((
+      af::flex_grid<>(af::adapt(first), af::adapt(last), false)));
     input_index_t first_input, last_input;
     for (int i=0; i<3; ++i) {
       first_input[i] = math::mod_positive(first[i], grid_n[i]);
