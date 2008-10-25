@@ -179,7 +179,7 @@ class autoTree(object):
 % final one, two or three arguments can be omitted, in which case they
 % assume default values of taper=1, skew=0 and bf=1.
     """
-    self.NB = nb;
+    self.NB = nb
     self.pitch = [0] * nb
     self.parent = [None] * nb
     self.Xtree = []
