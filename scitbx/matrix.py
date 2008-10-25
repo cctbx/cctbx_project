@@ -353,8 +353,7 @@ class rec(object):
     elif (numpy is not None):
       m = numpy.asarray(self.elems)
       m.shape = n
-      m = numpy.linalg.inv(m)
-      m.shape = (n[0]*n[1],)
+      m = numpy.ravel(numpy.linalg.inv(m))
     elif (Numeric is not None and LinearAlgebra is not None):
       m = Numeric.asarray(self.elems)
       m.shape = n
