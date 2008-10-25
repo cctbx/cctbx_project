@@ -640,6 +640,20 @@ qdd2
     assert approx_equal(a2.elems, expected_a1)
     assert approx_equal([m.elems[0] for m in qdd2], qdd)
 
+def exercise_standalone(tmpdir="tst_featherstone_tmpdir"):
+  from libtbx.utils import copy_file
+  import libtbx.load_env
+  import os
+  if (not os.path.isdir(tmpdir)):
+    os.mkdir(tmpdir)
+  os.chdir(tmpdir)
+  scitbx_dist = libtbx.env.dist_path(module_name="scitbx")
+  def cp(file_name):
+    copy_file(os.path.join(scitbx_dist, file_name), ".")
+  cp("matrix.py")
+  cp("rigid_body_dynamics/featherstone.py")
+  cp("rigid_body_dynamics/tst_featherstone.py")
+
 def run(args):
   assert len(args) == 0
   exercise_basic()
@@ -647,6 +661,8 @@ def run(args):
   exercise_floatbase()
   exercise_ID_FDab()
   exercise_IDf_FDf()
+  if (scitbx is not None):
+    exercise_standalone()
   print "OK"
 
 if (__name__ == "__main__"):
