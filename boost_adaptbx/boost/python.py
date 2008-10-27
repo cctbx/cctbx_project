@@ -56,7 +56,17 @@ if ("BOOST_ADAPTBX_FPE_DEFAULT" not in os.environ):
 meta_class = ext.holder.__class__
 platform_info = ext.platform_info()
 assert len(platform_info) > 0 # please disable this assertion and send email to cctbx@cci.lbl.gov
-sizeof_void_ptr = ext.sizeof_void_ptr()
+
+def c_sizeof(typename):
+  pattern = "sizeof(%s) = " % typename
+  for line in platform_info.splitlines():
+    if (line.startswith(pattern)):
+      break
+  else:
+    raise RuntimeError('boost.python.platform_info: "%s" not found.' % pattern)
+  return int(line[len(pattern):])
+
+sizeof_void_ptr = c_sizeof("void*")
 
 class injector(object):
   "see boost/libs/python/doc/tutorial/doc/quickstart.txt"
