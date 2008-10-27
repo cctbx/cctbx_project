@@ -230,7 +230,7 @@ def compute_map_from_model(high_resolution, low_resolution, xray_structure,
 
 def cmd_run(args, command_name):
   msg = """\
-Description: Compute local map correlation coefficeint (default: residue-by-residue)
+Description: Compute local map correlation coefficient (default: residue-by-residue)
 
 How to use:
 
