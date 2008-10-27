@@ -433,9 +433,6 @@ namespace {
     return result;
   }
 
-  std::size_t
-  sizeof_void_ptr() { return sizeof(void*); }
-
   void
   enable_signals_backtrace_if_possible()
   {
@@ -493,6 +490,12 @@ namespace {
   double
   divide_doubles(double const& x, double const& y) { return x / y; }
 
+  double
+  multiply_doubles(double const& x, double const& y) { return x * y; }
+
+  int
+  add_ints(int i, int j) { return i + j; }
+
 } // namespace anonymous
 
 namespace boost_python_meta_ext { struct holder {}; }
@@ -504,7 +507,6 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   def("boost_adptbx_libc_backtrace", boost_adptbx_libc_backtrace);
   def("libtbx_introspection_show_stack", libtbx_introspection_show_stack);
   def("platform_info", platform_info);
-  def("sizeof_void_ptr", sizeof_void_ptr);
   def("enable_signals_backtrace_if_possible",
        enable_signals_backtrace_if_possible);
   def("enable_floating_point_exceptions_if_possible",
@@ -514,6 +516,8 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
     arg_("overflow")));
   def("dereference_char_pointer", dereference_char_pointer);
   def("divide_doubles", divide_doubles);
+  def("multiply_doubles", multiply_doubles);
+  def("add_ints", add_ints);
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
   class_<docstring_options, boost::noncopyable>("docstring_options", no_init)
     .def(init<bool, bool>((
