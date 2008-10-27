@@ -1436,13 +1436,19 @@ class manager(manager_mixin):
                            resolution_factor = 1/3.,
                            symmetry_flags = None,
                            map_coefficients = None,
-                           b_sharp = None):
+                           b_sharp = None,
+                           other_fft_map = None):
     if(map_coefficients is None):
       map_coefficients = self.map_coefficients(map_type = map_type,
         b_sharp = b_sharp)
-    return map_coefficients.fft_map(
-      resolution_factor = resolution_factor,
-      symmetry_flags    = symmetry_flags)
+    if(other_fft_map is None):
+      return map_coefficients.fft_map(
+        resolution_factor = resolution_factor,
+        symmetry_flags    = symmetry_flags)
+    else:
+      return miller.fft_map(
+        crystal_gridding     = other_fft_map,
+        fourier_coefficients = map_coefficients)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):

@@ -221,6 +221,7 @@ mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/command_line/pdbtools.py -text
 mmtbx/command_line/ramalyze.py -text
+mmtbx/command_line/real_space_correlation.py -text
 mmtbx/command_line/rotalyze.py -text
 mmtbx/command_line/xmanip.py -text
 mmtbx/find_peaks.py -text
@@ -242,6 +243,7 @@ mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-python
 mmtbx/pdb_header.py -text
 mmtbx/pdbtools.py -text
+mmtbx/real_space_correlation.py -text
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/refinement_flags.py -text
 mmtbx/refinement/tst_refinement_flags.py -text
