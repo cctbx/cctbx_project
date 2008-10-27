@@ -451,8 +451,6 @@ else:
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
-    if (env_etc.gcc_version >= 40102):
-      env_etc.ccflags_base.append("-ftrapv")
     env_etc.cxxflags_base = env_etc.ccflags_base + [
       "-ftemplate-depth-120"]
     if (libtbx.env.build_options.warning_level == 0):
@@ -602,7 +600,6 @@ else:
       warn_options = ["-Wall", "-Wno-sign-compare", "-Werror"]
     env_etc.ccflags_base = [
       "-fno-strict-aliasing",
-      "-ftrapv",
       "-fPIC"] + warn_options
     if (cxx == "c++"):
       env_etc.ccflags_base.extend(["-no-cpp-precomp", "-Wno-long-double"])
