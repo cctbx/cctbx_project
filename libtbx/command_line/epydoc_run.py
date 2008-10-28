@@ -1,10 +1,12 @@
-#!/usr/bin/env BOOST_ADAPTBX_DOCSTRING_OPTIONS=show_user_defined=True,show_signatures=False ../../../cctbx_build/bin/cctbx.python
-
 import os.path
+import epydoc
+import epydoc.docwriter
+import epydoc.docwriter.xlink
+import epydoc.cli
 
 help_text = """Synopsis
 
-epydoc_cmd [options]
+libtbx.epydoc [options]
 
 Description
 
@@ -36,7 +38,6 @@ def help():
   exit(1)
 
 # create our own custom external link classes
-import epydoc.docwriter.xlink
 class DoxygenUrlGenerator(epydoc.docwriter.xlink.UrlGenerator):
 
   def get_url(self, name):
@@ -51,17 +52,22 @@ class DoxygenClassUrlGenerator(DoxygenUrlGenerator):
 class DoxygenStructUrlGenerator(DoxygenUrlGenerator):
   what_is_documented = 'struct'
 
-# then register them
-epydoc.docwriter.xlink.register_api('doxyclass', DoxygenClassUrlGenerator())
-epydoc.docwriter.xlink.create_api_role('doxyclass', problematic=False)
-epydoc.docwriter.xlink.register_api('doxystruct', DoxygenClassUrlGenerator())
-epydoc.docwriter.xlink.create_api_role('doxystruct', problematic=False)
 
-# let epydoc handle the command-line arguments
-import epydoc.cli
-import sys
-if '--conf=' not in sys.argv[1:]:
-  sys.argv.append('--conf=epydoc.conf')
-options = epydoc.cli.parse_arguments()
-# run it
-epydoc.cli.main(options)
+def run():
+  # register our custom external link classes
+  epydoc.docwriter.xlink.register_api('doxyclass', DoxygenClassUrlGenerator())
+  epydoc.docwriter.xlink.create_api_role('doxyclass', problematic=False)
+  epydoc.docwriter.xlink.register_api('doxystruct', DoxygenClassUrlGenerator())
+  epydoc.docwriter.xlink.create_api_role('doxystruct', problematic=False)
+
+  # let epydoc handle the command-line arguments
+  import sys
+  if '--conf=' not in sys.argv[1:]:
+    sys.argv.append('--conf=epydoc.conf')
+  options = epydoc.cli.parse_arguments()
+
+  # run it
+  epydoc.cli.main(options)
+
+if __name__ == "__main__":
+  run()
