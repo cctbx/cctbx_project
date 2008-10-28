@@ -12,7 +12,6 @@ from cctbx import maptbx
 import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from cctbx import adptbx
-from iotbx.option_parser import iotbx_option_parser
 from libtbx.utils import Sorry
 import os
 from cctbx import miller
@@ -223,23 +222,22 @@ def compute_map_from_model(high_resolution, low_resolution, xray_structure,
 
 def cmd_run(args, command_name):
   msg = """\
-Description: Compute local map correlation coefficient (default: residue-by-residue)
+
+Description:
+Tool to compute local map correlation coefficient.
 
 How to use:
-
 1: Run this command: phenix.real_space_correlation;
-2: Copy, save into a file and edit the parameters shown between the lines *** above;
-3: Run the command with this parameters file.
+2: Copy, save into a file and edit the parameters shown between the lines *** below;
+3: Run the command with this parameters file:
+   phenix.real_space_correlation parameters.txt
 """
   if(len(args) == 0):
-    args = ["--help"]
+    print msg
     print "*"*79
     master_params.show()
     print "*"*79
-  command_line = (iotbx_option_parser(
-    usage="\n%s parameters.txt" % command_name,
-    description=msg)
-    ).process(args=args)
+    return
   if(len(args) != 1):
     raise Sorry("One command line argument expected: parameters file.")
   if(len(args) == 1):
