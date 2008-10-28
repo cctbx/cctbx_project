@@ -183,13 +183,13 @@ class fmodels(object):
         self.target_work_xray_weighted = self.target_work_xray * wx
         self.gradient_xray = None
         if(compute_gradients):
-           if(occupancy):
-             sf = tfx_r.gradients_wrt_atomic_parameters(occupancy = occupancy)
-           else:
-             sf = tfx_r.gradients_wrt_atomic_parameters(
-               u_iso_refinable_params = u_iso_refinable_params).packed()
-           self.gradient_xray = sf
-           self.gradient_xray_weighted = sf * wx
+          if(occupancy):
+            sf = tfx_r.gradients_wrt_atomic_parameters(occupancy = occupancy)
+          else:
+            sf = tfx_r.gradients_wrt_atomic_parameters(
+              u_iso_refinable_params = u_iso_refinable_params).packed()
+          self.gradient_xray = sf
+          self.gradient_xray_weighted = sf * wx
         if(fmodels.fmodel_neutron() is not None):
           wn = weights.wn * weights.wn_scale
           tfn_r = tfn(compute_gradients = compute_gradients)
