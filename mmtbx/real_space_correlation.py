@@ -41,13 +41,6 @@ map_1
   data_labels = None
     .type = str
     .help = Labels for experimental data.
-  flags_label = None
-    .type = str
-    .help = Free-R flags labels.
-  test_flag_value = None
-    .type = int
-    .help = Reflection flag value used to define cross-validation set (free-R \
-            flags).
   map_type = None
     .type = str
     .help = Electron density map type. Example xmFobs-yDFcalc (for \
@@ -74,13 +67,6 @@ map_2
   data_labels = None
     .type = str
     .help = Labels for experimental data.
-  flags_label = None
-    .type = str
-    .help = Free-R flags labels.
-  test_flag_value = None
-    .type = int
-    .help = Reflection flag value used to define cross-validation set (free-R \
-            flags).
   map_type = None
     .type = str
     .help = Electron density map type. Example xmFobs-yDFcalc (for \
@@ -99,6 +85,7 @@ master_params = iotbx.phil.parse(master_params_str, process_includes=False)
 
 def sampled_density_map_obj(xray_structure, fft_map, b_base):
   assert not fft_map.anomalous_flag()
+  if(b_base < 0): raise Sorry("map_smearing_b_factor must be >= 0.")
   xrs = xray_structure
   sampled_density = ext.sampled_model_density(
     unit_cell                             = xrs.unit_cell(),
@@ -118,10 +105,16 @@ def sampled_density_map_obj(xray_structure, fft_map, b_base):
   return sampled_density
 
 class model_to_map(object):
-  def __init__(self, xray_structure, r_free_flags, f_obs, map_type,
-                     resolution_factor, other_fft_map = None):
-    if(r_free_flags is None):
-      r_free_flags = f_obs.array(data = flex.bool(f_obs.size(), False))
+  def __init__(self, xray_structure, f_obs, map_type,
+                     resolution_factor, high_resolution, low_resolution,
+                     other_fft_map = None):
+    r_free_flags = f_obs.array(data = flex.bool(f_obs.size(), False))
+    if(high_resolution is not None):
+      f_obs = f_obs.resolution_filter(d_min = high_resolution)
+      r_free_flags = r_free_flags.resolution_filter(d_min = high_resolution)
+    if(low_resolution is not None):
+      f_obs = f_obs.resolution_filter(d_max = low_resolution)
+      r_free_flags = r_free_flags.resolution_filter(d_max = low_resolution)
     self.fmodel = mmtbx.f_model.manager(
       xray_structure = xray_structure,
       r_free_flags   = r_free_flags,
@@ -129,6 +122,8 @@ class model_to_map(object):
       f_obs          = f_obs)
     self.fmodel.remove_outliers()
     self.fmodel.update_solvent_and_scale()
+    print "R-work/R-free: %6.4f %6.4f" % (self.fmodel.r_work(),
+      self.fmodel.r_free())
     self.f_model_data = self.fmodel.f_model_scaled_with_k1().data()
     map_coeff = self.fmodel.map_coefficients(map_type = map_type, b_sharp=None)
     self.fft_map = self.fmodel.electron_density_map(
@@ -194,12 +189,9 @@ def extract_data_and_flags(params, crystal_symmetry):
       force_symmetry   = True,
       reflection_files = [reflection_file])
     parameters = utils.data_and_flags.extract()
+    parameters.force_anomalous_flag_to_be_equal_to = False
     if(params.data_labels is not None):
       parameters.labels = [params.data_labels]
-    if(params.flags_label is not None):
-      parameters.r_free_flags.label = params.flags_label
-    if(params.test_flag_value is not None):
-      parameters.r_free_flags.test_flag_value = params.test_flag_value
     if(params.high_resolution is not None):
       parameters.high_resolution = params.high_resolution
     if(params.low_resolution is not None):
@@ -208,6 +200,7 @@ def extract_data_and_flags(params, crystal_symmetry):
       reflection_file_server = reflection_file_server,
       parameters             = parameters,
       data_description       = "X-ray data",
+      extract_r_free_flags   = False,
       log                    = StringIO())
   return data_and_flags
 
@@ -308,17 +301,34 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
     crystal_symmetry = crystal_symmetry)
   if([data_and_flags_1, data_and_flags_2].count(None) != 2):
     # compute maps
+    if([params.map_1.map_type, params.map_2.map_type].count(None) == 2):
+      raise Sorry("map_type has to be defined; example: "\
+                   "map_type=2Fo-Fc or map_type=0Fo--1Fc (just Fc map).")
+    if(params.map_1.map_type is None):
+      params.map_1.map_type = params.map_2.map_type
+    if(params.map_2.map_type is None):
+      params.map_2.map_type = params.map_1.map_type
     ### first
     if(xray_structure_1 is not None): xrs = xray_structure_1
     else: xrs = xray_structure_2
     if(data_and_flags_1 is not None): data_and_flags = data_and_flags_1
     else: data_and_flags = data_and_flags_2
+    hr, lr = None, None
+    if(params.map_1.high_resolution is not None):
+      hr = params.map_1.high_resolution
+    elif(params.map_2.high_resolution is not None):
+      hr = params.map_2.high_resolution
+    if(params.map_1.low_resolution is not None):
+      lr = params.map_1.low_resolution
+    elif(params.map_2.low_resolution is not None):
+      lr = params.map_2.low_resolution
     model_to_map_obj_1 = model_to_map(
       xray_structure    = xrs,
-      r_free_flags      = data_and_flags.r_free_flags,
       f_obs             = data_and_flags.f_obs,
       map_type          = params.map_1.map_type,
-      resolution_factor = params.grid_resolution_factor)
+      resolution_factor = params.grid_resolution_factor,
+      high_resolution   = hr,
+      low_resolution    = lr)
     fft_map_1 = model_to_map_obj_1.fft_map
     map_1 = fft_map_1.real_map()
     ### second
@@ -326,13 +336,23 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
     else: xrs = xray_structure_1
     if(data_and_flags_2 is not None): data_and_flags = data_and_flags_2
     else: data_and_flags = data_and_flags_1
+    hr, lr = None, None
+    if(params.map_2.high_resolution is not None):
+      hr = params.map_2.high_resolution
+    elif(params.map_1.high_resolution is not None):
+      hr = params.map_1.high_resolution
+    if(params.map_2.low_resolution is not None):
+      lr = params.map_2.low_resolution
+    elif(params.map_1.low_resolution is not None):
+      lr = params.map_1.low_resolution
     model_to_map_obj_2 = model_to_map(
       xray_structure    = xrs,
-      r_free_flags      = data_and_flags.r_free_flags,
       f_obs             = data_and_flags.f_obs,
-      map_type          = params.map_1.map_type,
+      map_type          = params.map_2.map_type,
       resolution_factor = params.grid_resolution_factor,
-      other_fft_map     = fft_map_1)
+      other_fft_map     = fft_map_1,
+      high_resolution   = hr,
+      low_resolution    = lr)
     map_2 = model_to_map_obj_2.fft_map.real_map()
   # compute data if no reflection files provided for both maps
   if([data_and_flags_1, data_and_flags_2].count(None) == 2):
@@ -359,6 +379,18 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
     map_1 = fft_map_1.real_map()
     if(xray_structure_2 is not None): xrs = xray_structure_2
     else: xrs = xray_structure_1
+    if(params.map_2.high_resolution is not None):
+      hr = params.map_2.high_resolution
+    elif(params.map_1.high_resolution is not None):
+      hr = params.map_1.high_resolution
+    else:
+      hr = d_min_default
+    if(params.map_2.low_resolution is not None):
+      lr = params.map_2.low_resolution
+    elif(params.map_1.low_resolution is not None):
+      lr = params.map_1.low_resolution
+    else:
+      lr = d_max_default
     map_2 = compute_map_from_model(
       high_resolution        = hr,
       low_resolution         = lr,
