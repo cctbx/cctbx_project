@@ -22,11 +22,14 @@ grid_resolution_factor = 1./5
   .type = float
   .help = Map resolution factor: map grid step = d_min * resolution_factor, \
           d_min is highest resolution of the dataset.
-map_smearing_b_factor = 0.0
+b_extra = 0.0
   .type = float
   .expert_level = 2
   .help = Zero values requires very small grid step. Coarse grid will require \
-          some positive value for map_smearing_b_factor.
+          some positive value for b_extra.
+scattering_table = *xray neutron
+  .type = choice
+  .help = Scattering table for structure factors calculations
 map_1
   .help = First map to use in map CC calculation
 {
@@ -84,7 +87,7 @@ master_params = iotbx.phil.parse(master_params_str, process_includes=False)
 
 def sampled_density_map_obj(xray_structure, fft_map, b_base):
   assert not fft_map.anomalous_flag()
-  if(b_base < 0): raise Sorry("map_smearing_b_factor must be >= 0.")
+  if(b_base < 0): raise Sorry("b_extra must be >= 0.")
   xrs = xray_structure
   sampled_density = ext.sampled_model_density(
     unit_cell                             = xrs.unit_cell(),
@@ -134,7 +137,7 @@ class model_to_map(object):
     self.map_coeff_data = map_coeff.data()
 
 class pdb_to_xrs(object):
-  def __init__(self, pdb_files, crystal_symmetry):
+  def __init__(self, pdb_files, crystal_symmetry, scattering_table):
     processed_pdb_files_srv = utils.process_pdb_file_srv(
       crystal_symmetry = crystal_symmetry,
       log = StringIO())
@@ -146,6 +149,8 @@ class pdb_to_xrs(object):
       self.xray_structure = self.processed_pdb_file.xray_structure(
         show_summary = False)
       assert self.xray_structure is not None
+      if(scattering_table == "neutron"):
+        self.xray_structure.switch_to_neutron_scattering_dictionary()
 
 def extract_crystal_symmetry(params):
   crystal_symmetries = []
@@ -205,11 +210,6 @@ def extract_data_and_flags(params, crystal_symmetry):
 
 def compute_map_from_model(high_resolution, low_resolution, xray_structure,
                            grid_resolution_factor, crystal_gridding = None):
-  # XXX if(params.scattering_table == "neutron"):
-  # XXX   xray_structure.switch_to_neutron_scattering_dictionary()
-  # XXX else:
-  # XXX   xray_structure.scattering_type_registry(
-  # XXX     table = params.scattering_table, d_min = hr)
   f_calc = xray_structure.structure_factors(d_min = high_resolution).f_calc()
   f_calc = f_calc.resolution_filter(d_max = low_resolution)
   if(crystal_gridding is None):
@@ -273,10 +273,12 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
   if(params.map_1.pdb_file_name+params.map_2.pdb_file_name == []):
     raise Sorry("No coordinate file given.")
   pdb_to_xrs_1 = pdb_to_xrs(pdb_files        = params.map_1.pdb_file_name,
-                            crystal_symmetry = crystal_symmetry)
+                            crystal_symmetry = crystal_symmetry,
+                            scattering_table = params.scattering_table)
   xray_structure_1 = pdb_to_xrs_1.xray_structure
   pdb_to_xrs_2 = pdb_to_xrs(pdb_files        = params.map_2.pdb_file_name,
-                            crystal_symmetry = crystal_symmetry)
+                            crystal_symmetry = crystal_symmetry,
+                            scattering_table = params.scattering_table)
   xray_structure_2 = pdb_to_xrs_2.xray_structure
   # assert correct combination of options
   if([params.map_1.use, params.map_2.use].count(True) == 0):
@@ -405,7 +407,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
   sampled_density = sampled_density_map_obj(
     xray_structure = xrs,
     fft_map        = fft_map_1,
-    b_base         = params.map_smearing_b_factor)
+    b_base         = params.b_extra)
   # prepare selections
   pdb_to_xrs_ = None
   if(params.map_1.use): pdb_to_xrs_ = pdb_to_xrs_1
