@@ -496,6 +496,9 @@ namespace {
   int
   add_ints(int i, int j) { return i + j; }
 
+  long
+  add_longs(long i, long j) { return i + j; }
+
 } // namespace anonymous
 
 namespace boost_python_meta_ext { struct holder {}; }
@@ -518,6 +521,7 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   def("divide_doubles", divide_doubles);
   def("multiply_doubles", multiply_doubles);
   def("add_ints", add_ints);
+  def("add_longs", add_longs);
   class_<boost_python_meta_ext::holder>("holder").enable_pickling();
   class_<docstring_options, boost::noncopyable>("docstring_options", no_init)
     .def(init<bool, bool>((
