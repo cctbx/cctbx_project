@@ -1,5 +1,15 @@
 #! /bin/csh -f
+
 set verbose
+
+set epydoc=0
+foreach arg ($*)
+  switch ($arg)
+    case epydoc:
+      set epydoc=1
+      breaksw
+  endsw
+end
 cd "`libtbx.show_dist_paths libtbx`"
 cd ..
 cd ..
@@ -46,9 +56,14 @@ if (1) then
   cd "$root/htdocs/current"
   rm -rf python
   mkdir python
-  cd python
-  libtbx.help -w "$root/cctbx_project/boost_adaptbx"
-  libtbx.help -w "$root/cctbx_project"
+  if ($1 == "epydoc") then
+    cd "$root/cctbx_project/dox"
+    libtbx.epydoc_run --config=epydoc.conf -v
+  else
+    cd python
+    libtbx.help -w "$root/cctbx_project/boost_adaptbx"
+    libtbx.help -w "$root/cctbx_project"
+  endif
 endif
 #
 if (1) then
