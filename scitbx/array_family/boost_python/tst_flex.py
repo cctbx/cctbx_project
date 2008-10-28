@@ -2440,7 +2440,7 @@ def pickle_large_arrays(max_exp, verbose):
         elif (array_type == flex.int):
           val = -2147483647
         elif (array_type == flex.long):
-          val = -9223372036854775808
+          val = -9223372036854775807
           if (type(val) == type(1L)):
             val = -2147483647
         elif (array_type == flex.complex_double):
