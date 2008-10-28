@@ -344,19 +344,19 @@ public:
   and the map grid size.
 
   - The flag lazy_normals specifies whether the normals
-  shall be computed when the member function normals() is called for the first
-  time or whether to compute them upfront.
+    shall be computed when the member function normals() is called for the first
+    time or whether to compute them upfront.
 
   - The flag ascending_normal_direction specifies whether the normals
-  orientation shall be from lower to higher values of the field
-  (note that the normal direction induces the order of the associated
-  triangle vertices)
+    orientation shall be from lower to higher values of the field
+    (note that the normal direction induces the order of the associated
+    triangle vertices)
   */
   triangulation(map_const_ref_type map,
-              value_type iso_level,
-              af::tiny<coordinates_type, 3> const& map_extent,
-              bool lazy_normals=true,
-              bool ascending_normal_direction=true)
+                value_type iso_level,
+                af::tiny<coordinates_type, 3> const& map_extent,
+                bool lazy_normals=true,
+                bool ascending_normal_direction=true)
   : map_(map),
     iso_level_(iso_level),
     n_cells(map.accessor().all() - index_value_type(1)),
