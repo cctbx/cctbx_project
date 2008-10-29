@@ -4679,6 +4679,149 @@ a=1 v
 Error interpreting a="v" as a numeric expression:\
  NameError: name 'v' is not defined (input line 1)"""
   else: raise Exception_expected
+  #
+  master_phil = phil.parse(input_string="""\
+a=1 2
+  .type=floats(2)
+b=3
+  .type=floats(size=1)
+c=4 5
+  .type=floats(size_min=2)
+d=6
+  .type=floats(size_max=2)
+e=7 8 9
+  .type=floats(size_max=4, size_min=2)
+f=10 20
+  .type=floats(value_max=20, value_min=10)
+""")
+  work_params = master_phil.extract()
+  work_phil = master_phil.format(python_object=work_params)
+  assert not show_diff(work_phil.as_str(attributes_level=2), """\
+a = 1 2
+  .type = floats(size=2)
+b = 3
+  .type = floats(size=1)
+c = 4 5
+  .type = floats(size_min=2)
+d = 6
+  .type = floats(size_max=2)
+e = 7 8 9
+  .type = floats(size_min=2, size_max=4)
+f = 10 20
+  .type = floats(value_min=10, value_max=20)
+""")
+  #
+  user_phil = phil.parse(input_string="""\
+f=9
+""")
+  work_phil = master_phil.fetch(source=user_phil)
+  try: work_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "f element is less than the minimum allowed value:"
+      " 9 < 10 (input line 1)")
+  else: raise Exception_expected
+  user_phil = phil.parse(input_string="""\
+f=10
+""")
+  work_phil = master_phil.fetch(source=user_phil)
+  work_params = work_phil.extract()
+  work_params.f[0] = 9
+  try: master_phil.format(python_object=work_params)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "f element is less than the minimum allowed value: 9 < 10")
+  else: raise Exception_expected
+  #
+  user_phil = phil.parse(input_string="""\
+f=21
+""")
+  work_phil = master_phil.fetch(source=user_phil)
+  try: work_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "f element is greater than the maximum allowed value:"
+      " 21 > 20 (input line 1)")
+  else: raise Exception_expected
+  user_phil = phil.parse(input_string="""\
+f=20
+""")
+  work_phil = master_phil.fetch(source=user_phil)
+  work_params = work_phil.extract()
+  work_params.f[0] = 21
+  try: master_phil.format(python_object=work_params)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "f element is greater than the maximum allowed value: 21 > 20")
+  else: raise Exception_expected
+  #
+  user_phil = phil.parse(input_string="""\
+e=1
+""")
+  work_phil = master_phil.fetch(source=user_phil)
+  try: work_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "Not enough values for e: 1 given, at least 2 required (input line 1)")
+  else: raise Exception_expected
+  work_params = master_phil.extract()
+  work_params.e = [1]
+  try: master_phil.format(python_object=work_params)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "Not enough values for e: 1 given, at least 2 required")
+  else: raise Exception_expected
+  #
+  user_phil = phil.parse(input_string="""\
+a=1
+""")
+  work_phil = master_phil.fetch(source=user_phil)
+  try: work_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "Not enough values for a: 1 given, exactly 2 required (input line 1)")
+  else: raise Exception_expected
+  work_params = master_phil.extract()
+  work_params.a = [1]
+  try: master_phil.format(python_object=work_params)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "Not enough values for a: 1 given, exactly 2 required")
+  else: raise Exception_expected
+  #
+  user_phil = phil.parse(input_string="""\
+e=1 2 3 4 5
+""")
+  work_phil = master_phil.fetch(source=user_phil)
+  try: work_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "Too many values for e: 5 given, 4 allowed at most (input line 1)")
+  else: raise Exception_expected
+  work_params = master_phil.extract()
+  work_params.e = [1,2,3,4,5]
+  try: master_phil.format(python_object=work_params)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "Too many values for e: 5 given, 4 allowed at most")
+  else: raise Exception_expected
+  #
+  user_phil = phil.parse(input_string="""\
+a=1 2 3
+""")
+  work_phil = master_phil.fetch(source=user_phil)
+  try: work_phil.extract()
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "Too many values for a: 3 given, exactly 2 required (input line 1)")
+  else: raise Exception_expected
+  work_params = master_phil.extract()
+  work_params.a = [1,2,3]
+  try: master_phil.format(python_object=work_params)
+  except RuntimeError, e:
+    assert not show_diff(str(e),
+      "Too many values for a: 3 given, exactly 2 required")
+  else: raise Exception_expected
 
 def exercise_command_line():
   master_phil = phil.parse(input_string="""\

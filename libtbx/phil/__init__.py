@@ -257,15 +257,97 @@ class floats_converters(object):
 
   phil_type = "floats"
 
-  def __str__(self): return self.phil_type
+  def __init__(self,
+      size=None,
+      size_min=None,
+      size_max=None,
+      value_min=None,
+      value_max=None):
+    assert size is None or (size_min is None and size_max is None)
+    if (size is not None):
+      assert size > 0
+      size_min = size
+      size_max = size
+    else:
+      if (size_min is not None):
+        assert size_min > 0
+      if (size_max is not None):
+        assert size_max > 0
+        if (size_min is not None):
+          assert size_min <= size_max
+    if (value_min is not None and value_max is not None):
+      assert value_min <= value_max
+    self.size_min = size_min
+    self.size_max = size_max
+    self.value_min = value_min
+    self.value_max = value_max
+
+  def __str__(self):
+    kwds = []
+    if (self.size_min == self.size_max):
+      if (self.size_min is not None):
+        kwds.append("size=%d" % self.size_min)
+    else:
+      if (self.size_min is not None):
+        kwds.append("size_min=%d" % self.size_min)
+      if (self.size_max is not None):
+        kwds.append("size_max=%d" % self.size_max)
+    if (self.value_min is not None):
+      kwds.append("value_min=%.10g" % self.value_min)
+    if (self.value_max is not None):
+      kwds.append("value_max=%.10g" % self.value_max)
+    if (len(kwds) != 0):
+      return self.phil_type + "(" + ", ".join(kwds) + ")"
+    return self.phil_type
+
+  def _check_size(self, size, path_producer, words=None):
+    def where_str():
+      if (words is None): return ""
+      return words[0].where_str()
+    if (self.size_max is not None and size > self.size_max):
+      if (self.size_max == self.size_min):
+        precise = "exactly %d required"
+      else:
+        precise = "%d allowed at most"
+      raise RuntimeError(
+        "Too many values for %s: %d given, %s%s"
+          % (path_producer(), size, (precise%self.size_max), where_str()))
+    if (self.size_min is not None and size < self.size_min):
+      if (self.size_max == self.size_min):
+        precise = "exactly"
+      else:
+        precise = "at least"
+      raise RuntimeError(
+        "Not enough values for %s: %d given, %s %d required%s"
+          % (path_producer(), size, precise, self.size_min, where_str()))
+
+  def _check_value(self, value, path_producer, words=None):
+    def where_str():
+      if (words is None): return ""
+      return words[0].where_str()
+    if (self.value_min is not None and value < self.value_min):
+      raise RuntimeError(
+        "%s element is less than the minimum allowed value:"
+        " %.10g < %.10g%s"
+          % (path_producer(), value, self.value_min, where_str()))
+    if (self.value_max is not None and value > self.value_max):
+      raise RuntimeError(
+        "%s element is greater than the maximum allowed value:"
+        " %.10g > %.10g%s"
+          % (path_producer(), value, self.value_max, where_str()))
 
   def from_words(self, words, master):
     path = master.full_path()
     numbers = numbers_from_words(words=words, path=path)
     if (numbers is None or numbers is Auto): return numbers
+    self._check_size(
+      size=len(numbers), path_producer=master.full_path, words=words)
     result = []
     for number in numbers:
-      result.append(float_from_number(number=number, words=words, path=path))
+      value = float_from_number(number=number, words=words, path=path)
+      self._check_value(
+        value=value, path_producer=master.full_path, words=words)
+      result.append(value)
     return result
 
   def as_words(self, python_object, master):
@@ -273,7 +355,13 @@ class floats_converters(object):
       return [tokenizer.word(value="None")]
     if (python_object is Auto):
       return [tokenizer.word(value="Auto")]
-    return [tokenizer.word(value="%.10g" % value) for value in python_object]
+    self._check_size(
+      size=len(python_object), path_producer=master.full_path)
+    result = []
+    for value in python_object:
+      self._check_value(value=value, path_producer=master.full_path)
+      result.append(tokenizer.word(value="%.10g" % value))
+    return result
 
 class choice_converters(object):
 
