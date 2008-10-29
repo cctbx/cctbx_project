@@ -1,3 +1,4 @@
+from __future__ import division
 from libtbx import phil
 import libtbx.phil.command_line
 from libtbx.utils import Sorry
@@ -4631,6 +4632,54 @@ astrings = Auto
 awords = Auto
 """)
 
+def exercise_floats():
+  master_phil = phil.parse(input_string="""\
+a=None
+  .type=floats
+b=Auto
+  .type=floats
+c=1
+  .type=floats
+d=1 1/2
+  .type=floats
+e=2,3/4,4/5
+  .type=floats
+f="1;1/2"
+  .type=floats
+g=None
+  .type=floats
+""")
+  work_params = master_phil.extract()
+  work_params.g = [1/4]
+  work_phil = master_phil.format(python_object=work_params)
+  assert not show_diff(work_phil.as_str(attributes_level=2), """\
+a = None
+  .type = floats
+b = Auto
+  .type = floats
+c = 1
+  .type = floats
+d = 1 0.5
+  .type = floats
+e = 2 0.75 0.8
+  .type = floats
+f = 1 0.5
+  .type = floats
+g = 0.25
+  .type = floats
+""")
+  #
+  master_phil = phil.parse(input_string="""\
+a=1 v
+  .type=floats
+""")
+  try: master_phil.extract()
+  except RuntimeError, e:
+    assert str(e) == """\
+Error interpreting a="v" as a numeric expression:\
+ NameError: name 'v' is not defined (input line 1)"""
+  else: raise Exception_expected
+
 def exercise_command_line():
   master_phil = phil.parse(input_string="""\
 foo {
@@ -4944,6 +4993,7 @@ def exercise():
   exercise_choice()
   exercise_scope_call()
   exercise_auto()
+  exercise_floats()
   exercise_command_line()
   exercise_choice_multi_plus_support()
   print "OK"
