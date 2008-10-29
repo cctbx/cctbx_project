@@ -162,8 +162,7 @@ class bool_converters(object):
     else:
       return [tokenizer.word(value="False")]
 
-def number_from_words(words, path):
-  value_string = str_from_words(words)
+def number_from_value_string(value_string, words, path):
   if (value_string is None): return None
   if (value_string is Auto): return Auto
   if (value_string.lower() in ["true", "false"]):
@@ -179,6 +178,23 @@ def number_from_words(words, path):
     raise RuntimeError(
       'Error interpreting %s="%s" as a numeric expression: %s%s' % (
         path, value_string, format_exception(), words[0].where_str()))
+
+def number_from_words(words, path):
+  return number_from_value_string(
+    value_string=str_from_words(words), words=words, path=path)
+
+def numbers_from_words(words, path):
+  all_values_string = str_from_words(words)
+  if (all_values_string is None or all_values_string is Auto):
+    return all_values_string
+  result = []
+  for value_string in all_values_string \
+                        .replace(",", " ") \
+                        .replace(";", " ") \
+                        .split():
+    result.append(number_from_value_string(
+      value_string=value_string, words=words, path=path))
+  return result
 
 def int_from_words(words, path):
   result = number_from_words(words=words, path=path)
@@ -208,16 +224,18 @@ class int_converters(object):
       return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=str(python_object))]
 
+def float_from_number(number, words, path):
+  if (isinstance(number, float)): return number
+  if (isinstance(number, int)): return float(number)
+  raise RuntimeError(
+    'Error interpreting %s="%s" as a floating-point expression%s' % (
+      path, str_from_words(words), words[0].where_str()))
+
 def float_from_words(words, path):
   result = number_from_words(words=words, path=path)
-  if (result is not None and result is not Auto):
-    if (isinstance(result, int)):
-      result = float(result)
-    elif (not isinstance(result, float)):
-      raise RuntimeError(
-        'Error interpreting %s="%s" as a floating-point expression%s' % (
-          path, str_from_words(words), words[0].where_str()))
-  return result
+  if (result is None or result is Auto):
+    return result
+  return float_from_number(number=result, words=words, path=path)
 
 class float_converters(object):
 
@@ -234,6 +252,28 @@ class float_converters(object):
     if (python_object is Auto):
       return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value="%.10g" % python_object)]
+
+class floats_converters(object):
+
+  phil_type = "floats"
+
+  def __str__(self): return self.phil_type
+
+  def from_words(self, words, master):
+    path = master.full_path()
+    numbers = numbers_from_words(words=words, path=path)
+    if (numbers is None or numbers is Auto): return numbers
+    result = []
+    for number in numbers:
+      result.append(float_from_number(number=number, words=words, path=path))
+    return result
+
+  def as_words(self, python_object, master):
+    if (python_object is None):
+      return [tokenizer.word(value="None")]
+    if (python_object is Auto):
+      return [tokenizer.word(value="Auto")]
+    return [tokenizer.word(value="%.10g" % value) for value in python_object]
 
 class choice_converters(object):
 
@@ -416,6 +456,7 @@ default_converter_registry = extended_converter_registry(
     bool_converters,
     int_converters,
     float_converters,
+    floats_converters,
     choice_converters],
   base_registry={})
 
