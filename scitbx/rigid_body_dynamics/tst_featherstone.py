@@ -12,6 +12,10 @@ else:
   import matrix
   def approx_equal(a1, a2): return True
   print "libtbx.test_utils not available: approx_equal() disabled"
+  def sum(l):
+    result = 0
+    for e in l: result += e
+    return result
 
 import sys
 
