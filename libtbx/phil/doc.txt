@@ -631,7 +631,7 @@ Extending Phil
 ==============
 
 Phil comes with a number of predefined converters used by ``.extract()``
-and ``format()`` to convert to and from pure Python objects. These
+and ``.format()`` to convert to and from pure Python objects. These
 are::
 
   .type =
@@ -719,6 +719,83 @@ extended converter registry as the default. See, for example,
 =======
 Details
 =======
+
+.type = ints and .type = floats
+-------------------------------
+
+The built-in ``ints`` and ``floats`` converters handle lists of
+integer and floating point numbers, respectively. For example::
+
+  ## extract code begin: libtbx_phil_examples.py
+
+  master_phil = parse("""
+    random_integers = None
+      .type = ints
+    euler_angles = None
+      .type = floats(size=3)
+    unit_cell_parameters = None
+      .type = floats(size_min=1, size_max=6)
+    rotation_part = None
+      .type = ints(size=9, value_min=-1, value_max=1)
+    """)
+
+  user_phil = parse("""
+    random_integers = 3 18 5
+    euler_angles = 10 -20 30
+    unit_cell_parameters = 10,20,30
+    rotation_part = "1,0,0;0,-1,0;0,0,-1"
+    """)
+
+  working_phil = master_phil.fetch(source=user_phil)
+  working_phil.show()
+  print
+  working_params = working_phil.extract()
+  print working_params.random_integers
+  print working_params.euler_angles
+  print working_params.unit_cell_parameters
+  print working_params.rotation_part
+  print
+  working_phil = master_phil.format(python_object=working_params)
+  working_phil.show()
+
+  ## extract code end
+
+Output::
+
+  random_integers = 3 18 5
+  euler_angles = 10 -20 30
+  unit_cell_parameters = 10,20,30
+  rotation_part = "1,0,0;0,-1,0;0,0,-1"
+
+  [3, 18, 5]
+  [10.0, -20.0, 30.0]
+  [10.0, 20.0, 30.0]
+  [1, 0, 0, 0, -1, 0, 0, 0, -1]
+
+  random_integers = 3 18 5
+  euler_angles = 10 -20 30
+  unit_cell_parameters = 10 20 30
+  rotation_part = 1 0 0 0 -1 0 0 0 -1
+
+The list of ``random_integers`` can have arbitrary size and arbitrary
+values.
+
+For ``euler_angles``, exactly three values must be given.
+
+For ``unit_cell_parameters``, one to six values are acceptable.
+
+The list of values for ``rotation_part`` must have nine integer
+elements, with values {-1,0,1}.
+
+All keywords are optional and can be used in any combination, except if
+``size`` is given, ``size_min`` and ``size_max`` cannot also be given.
+
+Lists of values can optionally use commas or semicolons as separators
+between values. In this context, both characters are equivalent to
+a white-space. ``.format()`` always uses spaces as separators, i.e.
+commas and semicolons are not preserved in an ``.extract()``-``.format()``
+cycle. (Note that lists using semicolons as separators must be quoted;
+see the "Semicolon syntax" section below.)
 
 .type = choice
 --------------
