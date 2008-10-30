@@ -196,17 +196,33 @@ def numbers_from_words(words, path):
       value_string=value_string, words=words, path=path))
   return result
 
+def int_from_number(number, words, path):
+  if (isinstance(number, int)): return number
+  if (isinstance(number, float)
+      and round(number) == number):
+    return int(number)
+  raise RuntimeError(
+    'Error interpreting %s="%s" as an integer expression%s' % (
+      path, str_from_words(words), words[0].where_str()))
+
+def float_from_number(number, words, path):
+  if (isinstance(number, float)): return number
+  if (isinstance(number, int)): return float(number)
+  raise RuntimeError(
+    'Error interpreting %s="%s" as a floating-point expression%s' % (
+      path, str_from_words(words), words[0].where_str()))
+
 def int_from_words(words, path):
   result = number_from_words(words=words, path=path)
-  if (result is not None and result is not Auto):
-    if (isinstance(result, float)
-        and round(result) == result):
-      result = int(result)
-    elif (not isinstance(result, int)):
-      raise RuntimeError(
-        'Error interpreting %s="%s" as an integer expression%s' % (
-          path, str_from_words(words), words[0].where_str()))
-  return result
+  if (result is None or result is Auto):
+    return result
+  return int_from_number(number=result, words=words, path=path)
+
+def float_from_words(words, path):
+  result = number_from_words(words=words, path=path)
+  if (result is None or result is Auto):
+    return result
+  return float_from_number(number=result, words=words, path=path)
 
 class int_converters(object):
 
@@ -224,19 +240,6 @@ class int_converters(object):
       return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value=str(python_object))]
 
-def float_from_number(number, words, path):
-  if (isinstance(number, float)): return number
-  if (isinstance(number, int)): return float(number)
-  raise RuntimeError(
-    'Error interpreting %s="%s" as a floating-point expression%s' % (
-      path, str_from_words(words), words[0].where_str()))
-
-def float_from_words(words, path):
-  result = number_from_words(words=words, path=path)
-  if (result is None or result is Auto):
-    return result
-  return float_from_number(number=result, words=words, path=path)
-
 class float_converters(object):
 
   phil_type = "float"
@@ -253,9 +256,7 @@ class float_converters(object):
       return [tokenizer.word(value="Auto")]
     return [tokenizer.word(value="%.10g" % python_object)]
 
-class floats_converters(object):
-
-  phil_type = "floats"
+class numbers_converters_base(object):
 
   def __init__(self,
       size=None,
@@ -293,9 +294,9 @@ class floats_converters(object):
       if (self.size_max is not None):
         kwds.append("size_max=%d" % self.size_max)
     if (self.value_min is not None):
-      kwds.append("value_min=%.10g" % self.value_min)
+      kwds.append("value_min=" + self._value_as_str(value=self.value_min))
     if (self.value_max is not None):
-      kwds.append("value_max=%.10g" % self.value_max)
+      kwds.append("value_max=" + self._value_as_str(value=self.value_max))
     if (len(kwds) != 0):
       return self.phil_type + "(" + ", ".join(kwds) + ")"
     return self.phil_type
@@ -328,13 +329,15 @@ class floats_converters(object):
     if (self.value_min is not None and value < self.value_min):
       raise RuntimeError(
         "%s element is less than the minimum allowed value:"
-        " %.10g < %.10g%s"
-          % (path_producer(), value, self.value_min, where_str()))
+        " %s < %s%s"
+          % (path_producer(), self._value_as_str(value=value),
+             self._value_as_str(value=self.value_min), where_str()))
     if (self.value_max is not None and value > self.value_max):
       raise RuntimeError(
         "%s element is greater than the maximum allowed value:"
-        " %.10g > %.10g%s"
-          % (path_producer(), value, self.value_max, where_str()))
+        " %s > %s%s"
+          % (path_producer(), self._value_as_str(value=value),
+             self._value_as_str(value=self.value_max), where_str()))
 
   def from_words(self, words, master):
     path = master.full_path()
@@ -344,7 +347,7 @@ class floats_converters(object):
       size=len(numbers), path_producer=master.full_path, words=words)
     result = []
     for number in numbers:
-      value = float_from_number(number=number, words=words, path=path)
+      value = self._value_from_number(number=number, words=words, path=path)
       self._check_value(
         value=value, path_producer=master.full_path, words=words)
       result.append(value)
@@ -360,8 +363,28 @@ class floats_converters(object):
     result = []
     for value in python_object:
       self._check_value(value=value, path_producer=master.full_path)
-      result.append(tokenizer.word(value="%.10g" % value))
+      result.append(tokenizer.word(value=self._value_as_str(value=value)))
     return result
+
+class ints_converters(numbers_converters_base):
+
+  phil_type = "ints"
+
+  def _value_from_number(self, number, words, path):
+    return int_from_number(number=number, words=words, path=path)
+
+  def _value_as_str(self, value):
+    return "%d" % value
+
+class floats_converters(numbers_converters_base):
+
+  phil_type = "floats"
+
+  def _value_from_number(self, number, words, path):
+    return float_from_number(number=number, words=words, path=path)
+
+  def _value_as_str(self, value):
+    return "%.10g" % value
 
 class choice_converters(object):
 
@@ -544,6 +567,7 @@ default_converter_registry = extended_converter_registry(
     bool_converters,
     int_converters,
     float_converters,
+    ints_converters,
     floats_converters,
     choice_converters],
   base_registry={})

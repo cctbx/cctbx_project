@@ -4632,12 +4632,12 @@ astrings = Auto
 awords = Auto
 """)
 
-def exercise_floats():
+def exercise_ints_and_floats():
   master_phil = phil.parse(input_string="""\
 a=None
   .type=floats
 b=Auto
-  .type=floats
+  .type=ints
 c=1
   .type=floats
 d=1 1/2
@@ -4656,7 +4656,7 @@ g=None
 a = None
   .type = floats
 b = Auto
-  .type = floats
+  .type = ints
 c = 1
   .type = floats
 d = 1 0.5
@@ -4682,11 +4682,11 @@ Error interpreting a="v" as a numeric expression:\
   #
   master_phil = phil.parse(input_string="""\
 a=1 2
-  .type=floats(2)
+  .type=ints(2)
 b=3
   .type=floats(size=1)
 c=4 5
-  .type=floats(size_min=2)
+  .type=ints(size_min=2)
 d=6
   .type=floats(size_max=2)
 e=7 8 9
@@ -4698,11 +4698,11 @@ f=10 20
   work_phil = master_phil.format(python_object=work_params)
   assert not show_diff(work_phil.as_str(attributes_level=2), """\
 a = 1 2
-  .type = floats(size=2)
+  .type = ints(size=2)
 b = 3
   .type = floats(size=1)
 c = 4 5
-  .type = floats(size_min=2)
+  .type = ints(size_min=2)
 d = 6
   .type = floats(size_max=2)
 e = 7 8 9
@@ -5136,7 +5136,7 @@ def exercise():
   exercise_choice()
   exercise_scope_call()
   exercise_auto()
-  exercise_floats()
+  exercise_ints_and_floats()
   exercise_command_line()
   exercise_choice_multi_plus_support()
   print "OK"
