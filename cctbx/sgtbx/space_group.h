@@ -549,9 +549,6 @@ namespace cctbx { namespace sgtbx {
       }
 
       //! Tests if a unit cell is compatible with the symmetry operations.
-      /*! Shorthand for:
-          is_compatible_metrical_matrix(ucell.metrical_matrix(), tolerance);
-       */
       bool
       is_compatible_unit_cell(
         uctbx::unit_cell const& unit_cell,
