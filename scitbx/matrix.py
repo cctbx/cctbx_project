@@ -597,6 +597,10 @@ class rt(object):
     r_inv = self.r.inverse()
     return rt((r_inv, -(r_inv*self.t)))
 
+  def inverse_assuming_orthogonal_r(self):
+    r_inv = self.r.transpose()
+    return rt((r_inv, -(r_inv*self.t)))
+
   def as_float(self):
     return rt((self.r.as_float(), self.t.as_float()))
 
@@ -723,6 +727,17 @@ def exercise():
       == "{{0.0}, {-3.0}, {-5.0}}"
   assert (s*si).t.mathematica_form() == "{{0.0}, {0.0}, {0.0}}"
   assert (si*s).t.mathematica_form() == "{{0.0}, {0.0}, {0.0}}"
+  #
+  m = rt((sqr([
+    0.1226004505424059, 0.69470636260753704, -0.70876808568064376,
+    0.20921402107901119, -0.71619825067837384, -0.66579993925291725,
+    -0.97015391712385002, -0.066656848694206489, -0.23314853980114805]),
+    col((0.34, -0.78, 0.43))))
+  assert approx_equal(m.r*m.r.transpose(), (1,0,0,0,1,0,0,0,1))
+  mi = m.inverse()
+  mio = m.inverse_assuming_orthogonal_r()
+  assert approx_equal(mio.r, mi.r)
+  assert approx_equal(mio.t, mi.t)
   #
   r = rec(elems=(8,-4,3,-2,7,9,-3,2,1), n=(3,3))
   t = rec(elems=(7,-6,3), n=(3,1))
