@@ -4823,6 +4823,68 @@ a=1 2 3
       "Too many values for a: 3 given, exactly 2 required")
   else: raise Exception_expected
 
+def exercise_definition_validate_etc():
+  working_phil = phil.parse(input_string="""\
+a=None
+  .type=ints
+""")
+  a = working_phil.objects[0]
+  proxy = a.try_tokenize(input_string=" 3 ")
+  assert proxy.error_message is None
+  assert not show_diff(proxy.tokenized.as_str(), "a = 3\n")
+  proxy = a.try_tokenize(input_string="'", source_info="src")
+  assert not show_diff(
+    proxy.error_message, 'Syntax error: missing closing quote (src, line 1)')
+  assert proxy.tokenized is None
+  proxy = a.try_tokenize(input_string=" 3,  2")
+  assert proxy.error_message is None
+  assert not show_diff(proxy.tokenized.as_str(), "a = 3, 2\n")
+  proxy2 = proxy.tokenized.try_extract()
+  assert proxy2.error_message is None
+  assert proxy2.extracted == [3, 2]
+  proxy2 = proxy.tokenized.try_extract_format()
+  assert proxy2.error_message is None
+  assert not show_diff(proxy2.formatted.as_str(), "a = 3 2\n")
+  proxy = a.try_tokenize(input_string="'x y'", source_info="Src")
+  assert proxy.error_message is None
+  assert not show_diff(proxy.tokenized.as_str(), "a = 'x y'\n")
+  proxy2 = proxy.tokenized.try_extract()
+  assert not show_diff(proxy2.error_message, """\
+Error interpreting a="x" as a numeric expression:\
+ NameError: name 'x' is not defined (Src, line 1)""")
+  assert proxy2.extracted == None
+  proxy2f = proxy.tokenized.try_extract_format()
+  assert not show_diff(proxy2f.error_message, proxy2.error_message)
+  assert proxy2f.formatted is None
+  proxy = a.validate(input_string="1;2,3")
+  assert proxy.error_message is None
+  assert proxy.extracted == [1,2,3]
+  proxy = a.validate_and_format(input_string="1;2,3\n4")
+  assert proxy.error_message is None
+  assert not show_diff(proxy.formatted.as_str(), "a = 1 2 3 4\n")
+  for v,m in [(a.validate, "extracted"), (a.validate_and_format, "formatted")]:
+    proxy = v(input_string="*", source_info="si")
+    assert not show_diff(proxy.error_message, """\
+Error interpreting a="*" as a numeric expression:\
+ SyntaxError: unexpected EOF while parsing (line 1) (si, line 1)""")
+    assert getattr(proxy, m) is None
+  proxy = a.validate(input_string="1;2,3")
+  #
+  proxy = a.validate_and_format(input_string=" 5*2 3 7 ")
+  a.words = proxy.formatted.words
+  assert not show_diff(working_phil.as_str(), "a = 10 3 7\n")
+  #
+  working_phil = phil.parse(input_string="""\
+a=None
+  .type=None
+""")
+  a = working_phil.objects[0]
+  proxy = a.try_tokenize(input_string="")
+  assert proxy.error_message is None
+  proxy2 = proxy.tokenized.try_extract()
+  assert proxy2.error_message is None
+  assert proxy2.extracted is None
+
 def exercise_command_line():
   master_phil = phil.parse(input_string="""\
 foo {
@@ -5137,6 +5199,7 @@ def exercise():
   exercise_scope_call()
   exercise_auto()
   exercise_ints_and_floats()
+  exercise_definition_validate_etc()
   exercise_command_line()
   exercise_choice_multi_plus_support()
   print "OK"

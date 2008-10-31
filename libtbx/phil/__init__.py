@@ -719,6 +719,24 @@ class object_locator(object):
 
 _need_getstate = (getattr(sys, "hexversion", 0) < 33751280) # i.e. < Python 2.3
 
+class try_tokenize_proxy(object):
+
+  def __init__(self, error_message, tokenized):
+    self.error_message = error_message
+    self.tokenized = tokenized
+
+class try_extract_proxy(object):
+
+  def __init__(self, error_message, extracted):
+    self.error_message = error_message
+    self.extracted = extracted
+
+class try_format_proxy(object):
+
+  def __init__(self, error_message, formatted):
+    self.error_message = error_message
+    self.formatted = formatted
+
 class definition(object):
 
   is_definition = True
@@ -906,14 +924,29 @@ class definition(object):
     if (self.is_disabled or self.name != path): return []
     return [self]
 
-  def extract(self, parent=None):
-    if (self.type is None):
-      return strings_from_words(words=self.words)
-    try: type_from_words = self.type.from_words
+  def _type_from_words(self):
+    try: return self.type.from_words
     except AttributeError:
       raise RuntimeError('.type=%s does not have a from_words method%s: %s' %
         (str(self.type), self.where_str, format_exception()))
-    return type_from_words(self.words, master=self)
+
+  def try_extract(self):
+    if (self.type is None):
+      return try_extract_proxy(
+        error_message=None,
+        extracted=strings_from_words(words=self.words))
+    type_from_words = self._type_from_words()
+    try:
+      return try_extract_proxy(
+        error_message=None,
+        extracted=type_from_words(self.words, master=self))
+    except RuntimeError, e:
+      return try_extract_proxy(error_message=str(e), extracted=None)
+
+  def extract(self, parent=None):
+    if (self.type is None):
+      return strings_from_words(words=self.words)
+    return self._type_from_words()(self.words, master=self)
 
   def format(self, python_object):
     if (self.type is None):
@@ -928,7 +961,48 @@ class definition(object):
 
   def extract_format(self, source=None):
     if (source is None): source = self
-    return self.format(source.extract())
+    return self.format(python_object=source.extract())
+
+  def try_extract_format(self):
+    proxy = self.try_extract()
+    if (proxy.error_message is not None):
+      return try_format_proxy(
+        error_message=proxy.error_message, formatted=None)
+    return try_format_proxy(
+      error_message=None,
+      formatted=self.format(python_object=proxy.extracted))
+
+  def try_tokenize(self, input_string, source_info=None):
+    try:
+      words = list(tokenizer.word_iterator(
+        input_string=input_string,
+        source_info=source_info,
+        list_of_settings=[
+          tokenizer.settings(contiguous_word_characters="")]))
+    except RuntimeError, e:
+      return try_tokenize_proxy(
+        error_message=str(e),
+        tokenized=None)
+    if (len(words) == 0):
+      words = [tokenizer.word(value="None")]
+    return try_tokenize_proxy(
+      error_message=None,
+      tokenized=self.customized_copy(words=words))
+
+  def _validate(self, input_string, source_info, call):
+    proxy = self.try_tokenize(
+      input_string=input_string, source_info=source_info)
+    if (proxy.error_message is not None):
+      return proxy
+    return getattr(proxy.tokenized, call)()
+
+  def validate(self, input_string, source_info=None):
+    return self._validate(input_string=input_string, source_info=source_info,
+      call="try_extract")
+
+  def validate_and_format(self, input_string, source_info=None):
+    return self._validate(input_string=input_string, source_info=source_info,
+      call="try_extract_format")
 
   def unique(self):
     return self
