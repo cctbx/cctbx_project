@@ -59,6 +59,7 @@ def exercise_parse_and_show():
     attributes_level=3,
     expected_out="""\
 name = value
+  .style = None
   .help = None
   .caption = None
   .short_caption = None
@@ -66,7 +67,6 @@ name = value
   .type = None
   .multiple = None
   .input_size = None
-  .gui_style = None
   .expert_level = None
 """)
   input_string = """\
@@ -77,6 +77,7 @@ name=value
 """
   recycle(input_string=input_string, attributes_level=3, expected_out="""\
 name = value
+  .style = None
   .help = "help message with detailed information"
   .caption = None
   .short_caption = None
@@ -84,7 +85,6 @@ name = value
   .type = path
   .multiple = None
   .input_size = None
-  .gui_style = None
   .expert_level = None
 """)
   recycle(input_string=input_string, attributes_level=2, expected_out="""\
@@ -127,7 +127,6 @@ name
   .sequential_format = None
   .disable_add = None
   .disable_delete = None
-  .gui_style = None
   .expert_level = 3
 {
 }

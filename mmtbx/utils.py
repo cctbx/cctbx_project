@@ -87,7 +87,7 @@ data_and_flags = iotbx.phil.parse("""\
     .type=path
     .short_caption=Reflections file
     .input_size=300
-    .gui_style = bold file_type:hkl
+    .style = bold file_type:hkl
   labels = None
     .type=strings
   high_resolution = None
@@ -110,16 +110,16 @@ data_and_flags = iotbx.phil.parse("""\
   force_anomalous_flag_to_be_equal_to = None
     .type=bool
     .short_caption = Use anomalous data
-    .gui_style = tribool
+    .style = tribool
     .expert_level = 1
   r_free_flags
     .expert_level=1
-    .gui_style = box
+    .style = box
   {
     file_name = None
       .type=path
       .short_caption=File containing R(free) flags
-      .gui_style = narrow file_type:hkl,any
+      .style = narrow file_type:hkl,any
     label = None
       .type=str
     test_flag_value = None
@@ -523,7 +523,7 @@ experimental_phases_params = iotbx.phil.parse("""\
   file_name=None
     .type=path
     .short_caption=Experimental phase file
-    .gui_style = file_type:hkl,any
+    .style = file_type:hkl,any OnUpdate:extract_phi_from_hkl_file
   labels=None
     .type=strings
 """)
@@ -578,7 +578,7 @@ pdb_params = iotbx.phil.parse("""\
     .short_caption=PDB file
     .multiple=True
     .input_size=300
-    .gui_style = pymol bold file_type:pdb
+    .style = bold file_type:pdb
 """)
 
 def get_atom_selections(all_chain_proxies,
@@ -776,7 +776,7 @@ cif_params = iotbx.phil.parse("""\
     .multiple=True
     .short_caption=CIF File
     .input_size = 300
-    .gui_style = bold
+    .style = bold file_type:cif
 """)
 
 class process_pdb_file_srv(object):

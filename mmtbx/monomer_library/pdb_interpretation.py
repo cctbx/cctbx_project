@@ -103,7 +103,7 @@ master_params = iotbx.phil.parse("""\
     .type=float
     .optional=False
   peptide_link
-    .gui_style = box
+    .style = box
   {
     cis_threshold = 45
       .type = float
@@ -163,7 +163,7 @@ bond
   .optional = True
   .multiple = True
   .short_caption = Bond
-  .gui_style = auto_align
+  .style = auto_align
 {
   action = *add delete change
     .type = choice
@@ -187,7 +187,7 @@ angle
   .optional = True
   .multiple = True
   .short_caption = Angle
-  .gui_style = auto_align
+  .style = auto_align
 {
   action = *add delete change
     .type = choice

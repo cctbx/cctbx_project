@@ -43,18 +43,18 @@ scaling.input {
 
    xray_data
    .help="Defines xray data"
-    .gui_style = auto_align
+    .style = auto_align
    {
      file_name=None
       .type=path
       .help="File name with data"
       .short_caption = Reflections
-      .gui_style = bold noauto
+      .style = bold noauto
      obs_labels=None
      .type=strings
      .help="Labels for observed data"
       .short_caption = Fobs labels
-      .gui_style = bold
+      .style = bold
      calc_labels=None
      .type=strings
      .help="Lables for calculated data"
@@ -62,11 +62,11 @@ scaling.input {
      unit_cell=None
      .type=unit_cell
      .help="Unit cell parameters"
-      .gui_style = bold
+      .style = bold
      space_group=None
      .type=space_group
      .help="space group"
-      .gui_style = bold
+      .style = bold
      high_resolution=None
      .type=float
      .help="High resolution limit"
@@ -77,12 +77,12 @@ scaling.input {
      reference
      .help = "A reference data set. For the investigation of possible reindexing options"
       .short_caption = Reference data
-      .gui_style = noauto
+      .style = noauto
      {
        data
        .help="Defines an x-ray dataset"
        .short_caption = X-ray data
-       .gui_style = box auto_align
+       .style = box auto_align
        {
          file_name=None
          .type = path
@@ -131,7 +131,7 @@ scaling.input {
       misc_twin_parameters
      .help="Various settings for twinning or symmetry tests"
       .short_caption = Other settings
-      .gui_style = menu_item auto_align
+      .style = menu_item auto_align
      {
        missing_symmetry
        .help = "Settings for missing symmetry tests"
@@ -157,7 +157,7 @@ scaling.input {
        twin_test_cuts
        .help = "Various cuts used in determining resolution limit for data used in intensity statistics "
         .short_caption = Twin test cutoffs
-       .gui_style = box auto_align
+       .style = box auto_align
        {
          low_resolution=10.0
          .type=float
@@ -182,7 +182,7 @@ scaling.input {
    .expert_level=1
    .help="Optional data massage possibilities"
    .short_caption = Advanced
-    .gui_style = menu_item auto_align
+    .style = menu_item auto_align
    {
      include scope mmtbx.scaling.massage_twin_detwin_data.master_params
    }

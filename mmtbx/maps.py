@@ -60,7 +60,7 @@ map_params_str ="""\
   map
     .multiple = True
     .short_caption=Electron density map
-    .gui_style=noauto
+    .style=noauto
   {
     mtz_label_amplitudes = None
       .type = str
@@ -94,7 +94,7 @@ map_params_str ="""\
   }
   anomalous_difference_map
     .short_caption=Anomalous difference map
-    .gui_style = box
+    .style = box
   {
     mtz_label_amplitudes = ANOM
       .type = str
@@ -114,7 +114,7 @@ map_params_str ="""\
   atom_selection = None
     .type = str
     .expert_level=2
-    .gui_style = selection
+    .style = selection
   atom_selection_buffer = 3
     .type = float
     .expert_level=2
