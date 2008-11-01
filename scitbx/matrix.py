@@ -360,11 +360,13 @@ class rec(object):
         elems.append(self(i,j))
     return rec(elems, (self.n_columns(), self.n_rows()))
 
-  def mathematica_form(self,
-        label="",
-        one_row_per_line=False,
-        format=None,
-        prefix=""):
+  def _mathematica_or_matlab_form(self,
+        outer_open, outer_close,
+        inner_open, inner_close, inner_close_follow,
+        label,
+        one_row_per_line,
+        format,
+        prefix):
     nr = self.n_rows()
     nc = self.n_columns()
     s = prefix
@@ -372,24 +374,50 @@ class rec(object):
     if (label):
       s += label + "="
       indent += " " * (len(label) + 1)
-    s += "{"
+    s += outer_open
     if (nc != 0):
       for ir in xrange(nr):
-        s += "{"
+        s += inner_open
         for ic in xrange(nc):
           if (format is None):
             s += str(self(ir, ic))
           else:
             s += format % self(ir, ic)
           if (ic+1 != nc): s += ", "
-          else: s += "}"
+          elif (ir+1 != nr or len(inner_open) != 0): s += inner_close
         if (ir+1 != nr):
-          s += ","
+          s += inner_close_follow
           if (one_row_per_line):
             s += "\n"
             s += indent
           s += " "
-    return s + "}"
+    return s + outer_close
+
+  def mathematica_form(self,
+        label="",
+        one_row_per_line=False,
+        format=None,
+        prefix=""):
+    return self._mathematica_or_matlab_form(
+      outer_open="{", outer_close="}",
+      inner_open="{", inner_close="}", inner_close_follow=",",
+      label=label,
+      one_row_per_line=one_row_per_line,
+      format=format,
+      prefix=prefix)
+
+  def matlab_form(self,
+        label="",
+        one_row_per_line=False,
+        format=None,
+        prefix=""):
+    return self._mathematica_or_matlab_form(
+      outer_open="[", outer_close="]",
+      inner_open="", inner_close=";", inner_close_follow="",
+      label=label,
+      one_row_per_line=one_row_per_line,
+      format=format,
+      prefix=prefix)
 
   def __repr__(self):
     n0, n1 = self.n
@@ -632,6 +660,7 @@ def exercise():
   for n in [(0,0), (1,0), (0,1)]:
     a = rec((),n)
     assert a.mathematica_form() == "{}"
+    assert a.matlab_form() == "[]"
   a = rec(range(1,7), (3,2))
   assert len(a) == 6
   assert a[1] == 2
@@ -856,21 +885,34 @@ def exercise():
     x = rec([], n=(0,i))
     assert repr(x) == "matrix.rec(elems=(), n=(0,%d))" % i
     assert str(x) == "{}"
+    assert x.matlab_form() == "[]"
+    assert x.matlab_form(one_row_per_line=True) == "[]"
     x = rec([], n=(i,0))
     assert repr(x) == "matrix.rec(elems=(), n=(%d,0))" % i
     assert str(x) == "{}"
+    assert x.matlab_form() == "[]"
+    assert x.matlab_form(one_row_per_line=True) == "[]"
   x = rec([2], n=(1,1))
   assert repr(x) == "matrix.rec(elems=(2,), n=(1,1))"
   assert str(x) == "{{2}}"
+  assert x.matlab_form() == "[2]"
+  assert x.matlab_form(one_row_per_line=True) == "[2]"
   x = col((1,2,3))
   assert repr(x) == "matrix.rec(elems=(1, 2, 3), n=(3,1))"
   assert str(x) == """\
 {{1},
  {2},
  {3}}"""
+  assert x.matlab_form() == "[1; 2; 3]"
+  assert x.matlab_form(one_row_per_line=True) == """\
+[1;
+ 2;
+ 3]"""
   x = row((3,2,1))
   assert repr(x) == "matrix.rec(elems=(3, 2, 1), n=(1,3))"
   assert str(x) == "{{3, 2, 1}}"
+  assert x.matlab_form() == "[3, 2, 1]"
+  assert x.matlab_form(one_row_per_line=True) == "[3, 2, 1]"
   x = rec((1,2,3,
            4,5,6,
            7,8,9,
@@ -881,6 +923,12 @@ def exercise():
  {4, 5, 6},
  {7, 8, 9},
  {-1, -2, -3}}"""
+  assert x.matlab_form() == "[1, 2, 3; 4, 5, 6; 7, 8, 9; -1, -2, -3]"
+  assert x.matlab_form(label="m", one_row_per_line=True, prefix="@") == """\
+@m=[1, 2, 3;
+@   4, 5, 6;
+@   7, 8, 9;
+@   -1, -2, -3]"""
   #
   t = (1,2,3,4,5,6)
   g = (3,2)
