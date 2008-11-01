@@ -253,6 +253,8 @@ def jcalc(pitch, q):
 % (pitch==any other value) joint.  For revolute and helical joints, q is
 % the joint angle.  For prismatic joints, q is the linear displacement.
   """
+  if (not isinstance(pitch, (int, float, InfType))):
+    return pitch(q)
   if pitch == 0:                          # revolute joint
     Xj = Xrotz(q)
     S = matrix.col([0,0,1,0,0,0])
@@ -377,7 +379,7 @@ def FDab(model, q, qd, tau, f_ext=None, grav_accn=None):
       a[i] = Xup[i] * -a_grav + c[i]
     else:
       a[i] = Xup[i] * a[model.parent[i]] + c[i]
-    qdd[i] = mrdivide((u[i] - U[i].transpose()*a[i]),d[i])
+    qdd[i] = mldivide(d[i], u[i] - U[i].transpose()*a[i])
     a[i] = a[i] + S[i]*qdd[i]
 
   return qdd
