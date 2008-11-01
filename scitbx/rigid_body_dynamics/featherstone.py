@@ -254,7 +254,7 @@ def jcalc(pitch, q):
 % the joint angle.  For prismatic joints, q is the linear displacement.
   """
   if (not isinstance(pitch, (int, float, InfType))):
-    return pitch(q)
+    return pitch.Xj_and_S(q=q)
   if pitch == 0:                          # revolute joint
     Xj = Xrotz(q)
     S = matrix.col([0,0,1,0,0,0])
