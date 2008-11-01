@@ -12,6 +12,12 @@ The subset of converted files covers all dependencies of:
   FDf.m
 
 The original matlab comments are preserved as Python docstrings.
+
+See also:
+  Rigid Body Dynamics Algorithms.
+  R. Featherstone,
+  Springer, New York, 2007.
+  ISBN-10: 0387743146
 """
 
 try:
