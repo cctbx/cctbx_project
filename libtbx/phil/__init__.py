@@ -743,8 +743,8 @@ class definition(object):
   is_scope = False
 
   attribute_names = [
-    "style", "help", "caption", "short_caption", "optional",
-    "type", "multiple", "input_size", "expert_level"]
+    "help", "caption", "short_caption", "optional",
+    "type", "multiple", "input_size", "style", "expert_level"]
 
   __slots__ = ["name", "words", "primary_id", "primary_parent_scope",
                "is_disabled", "is_template", "where_str", "merge_names",
