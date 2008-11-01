@@ -37,17 +37,6 @@ class rec(object):
   def n_columns(self):
     return self.n[1]
 
-  def __repr__(self):
-    if self.n[0] == 1:
-      return "matrix.row(%s)" % (self.elems,)
-    elif self.n[1] == 1:
-      return "matrix.col(%s)" % (self.elems,)
-    else:
-      return "matrix.rec(%s)" % (
-        tuple([ self.elems[i:i+self.n[1]]
-                for i in xrange(0, len(self.elems), self.n[1]) ]),
-      )
-
   def __neg__(self):
     return rec([-e for e in self.elems], self.n)
 
@@ -401,6 +390,18 @@ class rec(object):
             s += indent
           s += " "
     return s + "}"
+
+  def __repr__(self):
+    n0, n1 = self.n
+    e = self.elems
+    if (len(e) <= 3):
+      e = str(e)
+    else:
+      e = "(%s, ..., %s)" % (str(e[0]), str(e[-1]))
+    return "matrix.rec(elems=%s, n=(%d,%d))" % (e, n0, n1)
+
+  def __str__(self):
+    return self.mathematica_form(one_row_per_line=True)
 
   def as_list_of_lists(self):
     result = []
@@ -851,15 +852,35 @@ def exercise():
   assert a.as_list_of_lists() == [[0, 3, 4], [3, 1, 5], [4, 5, 2]]
   assert approx_equal(a.as_sym_mat3(), range(6))
   #
+  for i in xrange(3):
+    x = rec([], n=(0,i))
+    assert repr(x) == "matrix.rec(elems=(), n=(0,%d))" % i
+    assert str(x) == "{}"
+    x = rec([], n=(i,0))
+    assert repr(x) == "matrix.rec(elems=(), n=(%d,0))" % i
+    assert str(x) == "{}"
+  x = rec([2], n=(1,1))
+  assert repr(x) == "matrix.rec(elems=(2,), n=(1,1))"
+  assert str(x) == "{{2}}"
   x = col((1,2,3))
-  assert repr(x) == "matrix.col((1, 2, 3))"
-  y = row((3,2,1))
-  assert repr(y) =="matrix.row((3, 2, 1))"
-  m = rec((1,2,3,
+  assert repr(x) == "matrix.rec(elems=(1, 2, 3), n=(3,1))"
+  assert str(x) == """\
+{{1},
+ {2},
+ {3}}"""
+  x = row((3,2,1))
+  assert repr(x) == "matrix.rec(elems=(3, 2, 1), n=(1,3))"
+  assert str(x) == "{{3, 2, 1}}"
+  x = rec((1,2,3,
            4,5,6,
            7,8,9,
-           4,2,9), (4,3))
-  assert repr(m) == "matrix.rec(((1, 2, 3), (4, 5, 6), (7, 8, 9), (4, 2, 9)))"
+           -1,-2,-3), (4,3))
+  assert repr(x) == "matrix.rec(elems=(1, ..., -3), n=(4,3))"
+  assert str(x) == """\
+{{1, 2, 3},
+ {4, 5, 6},
+ {7, 8, 9},
+ {-1, -2, -3}}"""
   #
   t = (1,2,3,4,5,6)
   g = (3,2)
