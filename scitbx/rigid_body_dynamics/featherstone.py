@@ -245,7 +245,7 @@ class floatbase(object):
     zeros3 = matrix.diag([0,0,0])
     self.I = [mcI(0, [0,0,0], zeros3) for i in xrange(5)] + model.I
 
-def jcalc(pitch, q):
+def jcalc(pitch, q, qd):
   """
 % jcalc  Calculate joint transform and motion subspace.
 % [Xj,S]=jcalc(pitch,q) calculates the joint transform and motion subspace
@@ -254,7 +254,7 @@ def jcalc(pitch, q):
 % the joint angle.  For prismatic joints, q is the linear displacement.
   """
   if (not isinstance(pitch, (int, float, InfType))):
-    return pitch.Xj_and_S(q=q)
+    return pitch.Xj_S_S_ring(q=q, qd=qd)
   if pitch == 0:                          # revolute joint
     Xj = Xrotz(q)
     S = matrix.col([0,0,1,0,0,0])
@@ -264,7 +264,7 @@ def jcalc(pitch, q):
   else:                                   # helical joint
     Xj = Xrotz(q) * Xtrans([0,0,q*pitch])
     S = matrix.col([0,0,1,0,0,pitch])
-  return Xj, S
+  return Xj, S, None
 
 def grav_accn_as_a_grav(grav_accn):
   if grav_accn is None:
@@ -297,7 +297,7 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
   a = [None] * model.NB
   f = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S[i] = jcalc( model.pitch[i], q[i] )
+    XJ, S[i], S_ring = jcalc( model.pitch[i], q[i], qd[i] )
     vJ = S[i]*qd[i]
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
@@ -306,6 +306,8 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
     else:
       v[i] = Xup[i]*v[model.parent[i]] + vJ
       a[i] = Xup[i]*a[model.parent[i]] + S[i]*qdd[i] + crm(v[i])*vJ
+    if (S_ring is not None):
+      a[i] += S_ring * qd[i]
     f[i] = model.I[i]*a[i] + crf(v[i])*model.I[i]*v[i]
     if (f_ext is not None and f_ext[i] is not None):
       f[i] = f[i] - f_ext[i]
@@ -343,7 +345,7 @@ def FDab(model, q, qd, tau, f_ext=None, grav_accn=None):
   IA = [None] * model.NB
   pA = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S[i] = jcalc( model.pitch[i], q[i] )
+    XJ, S[i], S_ring = jcalc( model.pitch[i], q[i], qd[i] )
     vJ = S[i]*qd[i]
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
@@ -352,6 +354,8 @@ def FDab(model, q, qd, tau, f_ext=None, grav_accn=None):
     else:
       v[i] = Xup[i]*v[model.parent[i]] + vJ
       c[i] = crm(v[i]) * vJ
+    if (S_ring is not None):
+      c[i] += S_ring * qd[i]
     IA[i] = model.I[i]
     pA[i] = crf(v[i]) * model.I[i] * v[i]
     if (f_ext is not None and f_ext[i] is not None):
@@ -425,7 +429,8 @@ def IDf(model, Xfb, vfb, q, qd, qdd, f_ext=None, grav_accn=None):
   IC = [None] * NBR
   pC = [None] * NBR
   for i in xrange(NBR):
-    XJ, S[i] = jcalc( model.pitch[i+6], q[i] )
+    XJ, S[i], S_ring = jcalc( model.pitch[i+6], q[i], qd[i] )
+    assert S_ring is None
     vJ = S[i]*qd[i]
     Xup[i] = XJ * model.Xtree[i+6]
     if parentR[i] == -1:
@@ -507,7 +512,8 @@ def FDf(model, Xfb, vfb, q, qd, tau, f_ext=None, grav_accn=None):
   IA = [None] * NBR
   pA = [None] * NBR
   for i in xrange(NBR):
-    XJ, S[i] = jcalc(model.pitch[i+6], q[i])
+    XJ, S[i], S_ring = jcalc(model.pitch[i+6], q[i], qd[i])
+    assert S_ring is None
     vJ = S[i]*qd[i]
     Xup[i] = XJ * model.Xtree[i+6]
     if parentR[i] == -1:
