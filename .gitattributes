@@ -326,6 +326,7 @@ scitbx/error/SConscript -text
 scitbx/error/tst_error.cpp -text
 scitbx/error/tst_error.py -text
 scitbx/error_utils.h -text
+scitbx/examples/flex_grid.py svneol=native#text/x-python
 scitbx/examples/principal_axes_of_inertia.py svneol=native#text/x-python
 scitbx/examples/rigid_body_refinement_core.py svneol=native#text/x-python
 scitbx/examples/rigid_body_refinement_core.txt svneol=native#text/plain
