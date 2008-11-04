@@ -361,10 +361,10 @@ class manager(object):
       update_f_calc  = True)
 
   def find_peaks_2fofc(self):
-    fft_map = self.fmodel.electron_density_map(
-      map_type          = self.params.secondary_map_type,
-      resolution_factor = self.find_peaks_params.resolution_factor,
-      symmetry_flags    = maptbx.use_space_group_symmetry)
+    fft_map = self.fmodel.electron_density_map(map_type =
+      self.params.secondary_map_type).fft_map(
+        resolution_factor = self.find_peaks_params.resolution_factor,
+        symmetry_flags    = maptbx.use_space_group_symmetry)
     fft_map.apply_sigma_scaling()
     fft_map_data = fft_map.real_map_unpadded()
     selection = self.model.solvent_selection()

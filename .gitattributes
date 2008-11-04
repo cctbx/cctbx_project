@@ -230,6 +230,7 @@ mmtbx/find_peaks.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
+mmtbx/map_tools.py -text
 mmtbx/maps.py -text
 mmtbx/model_statistics.py -text
 mmtbx/model_vs_data.py -text

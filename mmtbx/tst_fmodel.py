@@ -449,9 +449,22 @@ def exercise_3():
   assert r.format() == "-1.0Fobs-(-1.0)Fmodel"
   r = mmtbx.map_names(map_name_string = "0Fo --1Fc ")
   assert r.format() == "0.0Fobs-(-1.0)Fmodel"
-  #
   r = mmtbx.map_names(map_name_string = "*-2m* Fo * D  * Fc ")
   assert r.format() == "-2.0mFobs-1.0DFmodel"
+  #
+  r = mmtbx.map_names(map_name_string = "Fc")
+  assert r.format() == "0.0Fobs-(-1.0)Fmodel"
+  assert not r.ml_map
+  r = mmtbx.map_names(map_name_string = "Fo")
+  assert r.format() == "1.0Fobs-0.0Fmodel"
+  assert not r.ml_map
+  #
+  r = mmtbx.map_names(map_name_string = "dFc")
+  assert r.format() == "0.0mFobs-(-1.0)DFmodel"
+  assert r.ml_map
+  r = mmtbx.map_names(map_name_string = "MFo")
+  assert r.format() == "1.0mFobs-0.0DFmodel"
+  assert r.ml_map
 
 def run():
   exercise_1()

@@ -15,6 +15,7 @@ from cctbx import adptbx
 from libtbx.utils import Sorry
 import os
 from cctbx import miller
+from mmtbx import maps
 
 
 master_params_str = """\
@@ -55,6 +56,9 @@ map_1
     .type = float
   low_resolution = None
     .type = float
+  use_kick_map = False
+    .type = bool
+    .expert_level = 2
 }
 map_2
   .help = Second map to use in map CC calculation
@@ -81,6 +85,9 @@ map_2
     .type = float
   low_resolution = None
     .type = float
+  use_kick_map = False
+    .type = bool
+    .expert_level = 2
 }
 """
 master_params = iotbx.phil.parse(master_params_str, process_includes=False)
@@ -109,6 +116,7 @@ def sampled_density_map_obj(xray_structure, fft_map, b_base):
 class model_to_map(object):
   def __init__(self, xray_structure, f_obs, map_type,
                      resolution_factor, high_resolution, low_resolution,
+                     use_kick_map,
                      other_fft_map = None):
     r_free_flags = f_obs.array(data = flex.bool(f_obs.size(), False))
     if(high_resolution is not None):
@@ -122,19 +130,31 @@ class model_to_map(object):
       r_free_flags   = r_free_flags,
       target_name    = "ls_wunit_k1",
       f_obs          = f_obs)
-    self.fmodel.remove_outliers()
-    self.fmodel.update_solvent_and_scale()
-    print "R-work/R-free: %6.4f %6.4f" % (self.fmodel.r_work(),
-      self.fmodel.r_free())
-    self.f_model_data = self.fmodel.f_model_scaled_with_k1().data()
-    map_coeff = self.fmodel.map_coefficients(map_type = map_type, b_sharp=None)
-    self.fft_map = self.fmodel.electron_density_map(
-      resolution_factor = resolution_factor,
-      map_type          = map_type,
-      map_coefficients  = map_coeff,
-      other_fft_map     = other_fft_map)
-    self.fft_map.apply_sigma_scaling()
-    self.map_coeff_data = map_coeff.data()
+    self.fmodel = self.fmodel.remove_outliers()
+    if(not use_kick_map):
+      self.fmodel.update_solvent_and_scale()
+      map_obj = self.fmodel.electron_density_map(map_type = map_type)
+      map_coeff = map_obj.map_coefficients
+      self.fft_map = map_obj.fft_map(
+        resolution_factor = resolution_factor,
+        map_coefficients  = map_coeff,
+        other_fft_map     = other_fft_map)
+      self.fft_map.apply_sigma_scaling()
+      self.map_data =  self.fft_map.real_map()
+    else:
+      km = maps.kick_map(
+        fmodel                        = self.fmodel,
+        map_type                      = map_type,
+        kick_size                     = 0.5, # XXX not used, will be removed
+        number_of_kicks               = 50, # XXX
+        update_bulk_solvent_and_scale = True,
+        resolution_factor             = resolution_factor,
+        other_fft_map                 = other_fft_map,
+        real_map                      = True,
+        real_map_unpadded             = False,
+        symmetry_flags                = maptbx.use_space_group_symmetry)
+      self.fft_map = km.fft_map
+      self.map_data = km.map_data
 
 class pdb_to_xrs(object):
   def __init__(self, pdb_files, crystal_symmetry, scattering_table):
@@ -327,6 +347,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
       f_obs             = data_and_flags.f_obs,
       map_type          = params.map_1.map_type,
       resolution_factor = params.grid_resolution_factor,
+      use_kick_map      = params.map_1.use_kick_map,
       high_resolution   = hr,
       low_resolution    = lr)
     fft_map_1 = model_to_map_obj_1.fft_map
@@ -351,6 +372,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
       map_type          = params.map_2.map_type,
       resolution_factor = params.grid_resolution_factor,
       other_fft_map     = fft_map_1,
+      use_kick_map      = params.map_2.use_kick_map,
       high_resolution   = hr,
       low_resolution    = lr)
     map_2 = model_to_map_obj_2.fft_map.real_map()
@@ -445,6 +467,9 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
   print
   print "Count, residue number, name and map CC"
   for i_count, res_sel in enumerate(residue_selections):
+    #print list(map_1.select(res_sel))
+    #print
+    #print list(map_2.select(res_sel))
     corr = flex.linear_correlation(
       x = map_1.select(res_sel),
       y = map_2.select(res_sel)).coefficient()

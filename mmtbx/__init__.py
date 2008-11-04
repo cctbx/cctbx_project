@@ -229,12 +229,29 @@ class map_names(object):
     self.n = n
     self.ml_map = ml_map
     self.anomalous = False
+    s = s.replace(" ","")
+    s = s.replace("*","")
+    if(s.count('_')==1): self.error(map_name_string)
     if(s.count('anom')):
       self.anomalous = True
+    #
+    elif(s in ['fcalc','fcal','fc', 'fmodel','fmod','fm']):
+      self.k = float(0)
+      self.n = float(-1)
+      self.ml_map = False
+    elif(s in ['dfcalc','dfcal','dfc', 'dfmodel','dfmod','dfm']):
+      self.k = float(0)
+      self.n = float(-1)
+      self.ml_map = True
+    elif(s in ['fobs','fob','fo']):
+      self.k = float(1)
+      self.n = float(0)
+      self.ml_map = False
+    elif(s in ['mfobs','mfob','mfo']):
+      self.k = float(1)
+      self.n = float(0)
+      self.ml_map = True
     else:
-      s = s.replace(" ","")
-      s = s.replace("*","")
-      if(s.count('_')==1): self.error(map_name_string)
       found = False
       for item in ['fobs','fob','fo']:
         if(s.count(item)==1):

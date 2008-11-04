@@ -43,6 +43,7 @@ from mmtbx.scaling import outlier_rejection
 from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling.twin_analyses
 from cctbx import sgtbx
+from mmtbx import map_tools
 
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
@@ -1364,91 +1365,9 @@ class manager(manager_mixin):
     else:
       return pher
 
-  def phase_transfer(self, miller_array, phase_source):
-    # XXX could be a method in miller.py under a better name in future
-    tmp = miller.array(miller_set = miller_array,
-      data = flex.double(miller_array.indices().size(), 1)
-      ).phase_transfer(phase_source = phase_source)
-    return miller.array(miller_set = miller_array,
-      data = miller_array.data() * tmp.data() )
-
-  def _map_coeff(self, f_obs, f_model, f_obs_scale, f_model_scale):
-    obs = miller.array(miller_set = f_model,
-                       data       = f_obs.data()*f_obs_scale)
-    obs_phi_calc = self.phase_transfer(miller_array = obs,
-      phase_source = f_model)
-    return miller.array(
-      miller_set = obs_phi_calc,
-      data       = obs_phi_calc.data()-f_model.data()*f_model_scale)
-
-  def map_coefficients(self, map_type, b_sharp):
-    map_name_manager = mmtbx.map_names(map_name_string = map_type)
-    if(map_name_manager.anomalous and self.f_obs.anomalous_flag()):
-      anom_diff = self.f_obs.anomalous_differences()
-      fmodel = self.f_model().as_non_anomalous_array().\
-        merge_equivalents().array()
-      fmodel_match_anom_diff, anom_diff_common = \
-        fmodel.common_sets(other = anom_diff)
-      assert anom_diff_common.indices().size() == anom_diff.indices().size()
-      anom_diff = self.phase_transfer(miller_array = anom_diff_common,
-        phase_source = fmodel_match_anom_diff)
-      # Formula from page 141 in "The Bijvoet-Difference Fourier Synthesis",
-      # Jeffrey Roach, METHODS IN ENZYMOLOGY, VOL. 374
-      return miller.array(miller_set = anom_diff, data = anom_diff.data()/(2j))
-    #
-    fb_cart  = self.fb_cart()
-    scale_k2 = self.scale_k2()
-    f_obs_scale   = 1.0 / fb_cart * scale_k2
-    f_model_scale = 1.0 / fb_cart
-    if(b_sharp is not None):
-      f_obs_scale *= flex.exp(b_sharp*self.ss)
-      f_model_scale *= flex.exp(b_sharp*self.ss)
-    if(not map_name_manager.ml_map):
-       return self._map_coeff(
-         f_obs         = self.f_obs,
-         f_model       = self.f_model(),
-         f_obs_scale   = map_name_manager.k * f_obs_scale,
-         f_model_scale = map_name_manager.n * f_model_scale)
-    if(map_name_manager.ml_map):
-      alpha, beta = self.alpha_beta(
-        f_obs   = self.f_obs.array(data = self.f_obs.data() * f_obs_scale),
-        f_model = self.f_model().array(data = self.f_model().data()*f_model_scale))
-      return self._map_coeff(
-        f_obs         = self.f_obs,
-        f_model       = self.f_model(),
-        f_obs_scale   = map_name_manager.k*self.figures_of_merit()*f_obs_scale,
-        f_model_scale = map_name_manager.n*alpha.data() * f_model_scale)
-      ####
-      #result = miller.array(miller_set = self.f_calc,
-      #                      data       = d_obs.data() - d_model)
-      #centrics  = result.select_centric()
-      #acentrics = result.select_acentric()
-      #acentrics_data = acentrics.data() * 2.0
-      #centrics_data  = centrics.data()
-      #new = acentrics.customized_copy(
-      #          indices = acentrics.indices().concatenate(centrics.indices()),
-      #          data    = acentrics_data.concatenate(centrics_data) )
-      ####
-      #return new
-
-  def electron_density_map(self,
-                           map_type,
-                           resolution_factor = 1/3.,
-                           symmetry_flags = None,
-                           map_coefficients = None,
-                           b_sharp = None,
-                           other_fft_map = None):
-    if(map_coefficients is None):
-      map_coefficients = self.map_coefficients(map_type = map_type,
-        b_sharp = b_sharp)
-    if(other_fft_map is None):
-      return map_coefficients.fft_map(
-        resolution_factor = resolution_factor,
-        symmetry_flags    = symmetry_flags)
-    else:
-      return miller.fft_map(
-        crystal_gridding     = other_fft_map,
-        fourier_coefficients = map_coefficients)
+  def electron_density_map(self, map_type, b_sharp = None, kick_map = False):
+    return map_tools.electron_density_map(fmodel = self, map_type = map_type,
+      b_sharp = b_sharp, kick_map = kick_map)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):
