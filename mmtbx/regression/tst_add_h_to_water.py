@@ -220,15 +220,15 @@ Filter by distance & map next to the model:
    number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
    mapped sites are within: 0.980 - 1.009
 
-peak=   23.103 closest distance to pdb=" O   HOH     1 " =    0.990
-peak=   20.801 closest distance to pdb=" O   HOH     1 " =    0.981
-peak=   22.511 closest distance to pdb=" O   HOH     2 " =    0.999
-peak=   21.318 closest distance to pdb=" O   HOH     2 " =    0.997
-peak=   22.181 closest distance to pdb=" O   HOH     3 " =    0.989
-peak=   21.092 closest distance to pdb=" O   HOH     3 " =    0.980
-peak=   21.254 closest distance to pdb=" O   HOH     4 " =    0.998
-peak=   22.035 closest distance to pdb=" O   HOH     5 " =    0.987
-peak=   20.578 closest distance to pdb=" O   HOH     6 " =    1.009
+peak=   23.135 closest distance to pdb=" O   HOH     1 " =    0.990
+peak=   20.851 closest distance to pdb=" O   HOH     1 " =    0.981
+peak=   22.681 closest distance to pdb=" O   HOH     2 " =    0.999
+peak=   21.340 closest distance to pdb=" O   HOH     2 " =    0.997
+peak=   22.116 closest distance to pdb=" O   HOH     3 " =    0.990
+peak=   21.072 closest distance to pdb=" O   HOH     3 " =    0.980
+peak=   21.269 closest distance to pdb=" O   HOH     4 " =    0.999
+peak=   22.049 closest distance to pdb=" O   HOH     5 " =    0.988
+peak=   20.580 closest distance to pdb=" O   HOH     6 " =    1.009
 
                   ----------6D rigid body fit of HOH----------
 

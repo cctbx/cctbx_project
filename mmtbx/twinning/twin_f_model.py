@@ -2306,30 +2306,45 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
       return gradients
 
-
-
-  def electron_density_map(self,
-                           map_type          = "Fo-Fc",
-                           k                 = 1,
-                           n                 = 1,
-                           w1                = None,
-                           w2                = None,
-                           resolution_factor = 1/3.,
-                           symmetry_flags = None):
+  def electron_density_map(self, map_type          = "Fo-Fc",
+                                 k                 = 1,
+                                 n                 = 1,
+                                 w1                = None,
+                                 w2                = None,
+                                 b_sharp           = None,
+                                 resolution_factor = 1/3.,
+                                 symmetry_flags = None):
     assert map_type in ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
                         "mFo-DFc", "mFobs-DFmodel",
                         "gradient",
                         "m_gradient")
-
-    return self.map_coefficients(
+    map_coefficients = self.map_coefficients(
       map_type          = map_type,
       k                 = k,
       n                 = n,
       w1                = w1,
-      w2                = w2).fft_map(
-         resolution_factor = resolution_factor,
-         symmetry_flags    = symmetry_flags)
+      w2                = w2)
+    # XXX work-around to support new developments in non-twin fmodel. PA.
+    class result(object):
+      def __init__(self, map_coefficients, resolution_factor, symmetry_flags):
+        self.map_coefficients = map_coefficients
+        self.resolution_factor = resolution_factor
+        self.symmetry_flags = symmetry_flags
+      def fft_map(resolution_factor = None,
+                  symmetry_flags = None,
+                  map_coefficients = None,
+                  other_fft_map = None):
+        if(resolution_factor is None):
+          resolution_factor = self.resolution_factor
+        if(symmetry_flags is None):
+          symmetry_flags =  self.symmetry_flags
+        return map_coefficients.fft_map(
+          resolution_factor = resolution_factor,
+          symmetry_flags    = symmetry_flags)
+    return result(map_coefficients = map_coefficients,
+                  resolution_factor= resolution_factor,
+                  symmetry_flags   = symmetry_flags)
 
   def u_star(self):
     return self.data_core.ustar()

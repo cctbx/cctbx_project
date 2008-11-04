@@ -43,6 +43,9 @@ from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
 import libtbx.load_env
 from mmtbx import utils
+from mmtbx import max_lik
+from mmtbx.max_lik import maxlik
+
 
 map_params_str ="""\
   map_format = *xplor
@@ -454,6 +457,7 @@ class kick_map(object):
                      update_bulk_solvent_and_scale,
                      resolution_factor,
                      symmetry_flags,
+                     other_fft_map = None,
                      real_map_unpadded = True,
                      real_map = False):
     assert [real_map_unpadded, real_map].count(True) == 1
@@ -471,6 +475,7 @@ class kick_map(object):
           map_type                      = map_type,
           update_bulk_solvent_and_scale = update_bulk_solvent_and_scale,
           resolution_factor             = resolution_factor,
+          other_fft_map                 = other_fft_map,
           symmetry_flags                = symmetry_flags,
           b_sharp                       = b_sharp).fft_map
         if(real_map):
@@ -494,6 +499,7 @@ class model_to_map(object):
                      map_type,
                      update_bulk_solvent_and_scale,
                      resolution_factor,
+                     other_fft_map,
                      symmetry_flags,
                      b_sharp):
     fmodel_result = mmtbx.f_model.manager(
@@ -513,6 +519,100 @@ class model_to_map(object):
     self.fft_map = fmodel_result.electron_density_map(
       map_type          = map_type,
       resolution_factor = resolution_factor,
+      other_fft_map     = other_fft_map,
       symmetry_flags    = symmetry_flags,
       b_sharp           = b_sharp)
     self.fft_map.apply_sigma_scaling()
+
+###############################################################################
+
+class electron_density_map(object):
+
+  def __init__(self, fmodel, map_type, b_sharp = None, kick_map = False):
+    adopt_init_args(self, locals())
+    self.map_coefficients = None
+    map_name_manager = mmtbx.map_names(map_name_string = self.map_type)
+    if(map_name_manager.anomalous and self.fmodel.f_obs.anomalous_flag()):
+      anom_diff = self.fmodel.f_obs.anomalous_differences()
+      f_model = self.fmodel.f_model().as_non_anomalous_array().\
+        merge_equivalents().array()
+      fmodel_match_anom_diff, anom_diff_common = \
+        f_model.common_sets(other = anom_diff)
+      assert anom_diff_common.indices().size() == anom_diff.indices().size()
+      anom_diff = self.phase_transfer(miller_array = anom_diff_common,
+        phase_source = fmodel_match_anom_diff)
+      # Formula from page 141 in "The Bijvoet-Difference Fourier Synthesis",
+      # Jeffrey Roach, METHODS IN ENZYMOLOGY, VOL. 374
+      self.map_coefficients = miller.array(miller_set = anom_diff,
+                                           data       = anom_diff.data()/(2j))
+    else:
+      fb_cart  = self.fmodel.fb_cart()
+      scale_k1 = self.fmodel.scale_k1()
+      f_obs_scale   = 1.0 / (fb_cart * scale_k1)
+      f_model_scale = 1.0 / fb_cart
+      f_obs_data_scaled = self.fmodel.f_obs.data() * f_obs_scale
+      f_model_data_scaled = self.fmodel.f_model().data() * f_model_scale
+      if(b_sharp is not None): # XXX determine automatically as suggested by Axel.
+        f_obs_data_scaled *= flex.exp(b_sharp*self.ss)
+        f_model_data_scaled *= flex.exp(b_sharp*self.ss)
+      f_obs_scaled = self.fmodel.f_obs.array(data = f_obs_data_scaled)
+      f_model_scaled = self.fmodel.f_obs.array(data = f_model_data_scaled)
+      if(not map_name_manager.ml_map):
+         return self._map_coeff(
+           f_obs         = f_obs_scaled,
+           f_model       = f_model_scaled,
+           f_obs_scale   = map_name_manager.k,
+           f_model_scale = map_name_manager.n)
+      if(map_name_manager.ml_map):
+        alpha, beta = maxlik.alpha_beta_est_manager(
+          f_obs                    = f_obs_scaled,
+          f_calc                   = f_model_scaled,
+          free_reflections_per_bin = 50,
+          flags                    = self.fmodel.r_free_flags.data(),
+          interpolation            = True).alpha_beta()
+        fom = max_lik.fom_and_phase_error(
+          f_obs          = f_obs_data_scaled,
+          f_model        = flex.abs(f_model_scaled),
+          alpha          = alpha.data(),
+          beta           = beta.data(),
+          space_group    = self.fmodel.f_obs.space_group(),
+          miller_indices = self.fmodel.f_obs.indices()).fom()
+        self.map_coefficients = self._map_coeff(
+          f_obs         = f_obs_scaled,
+          f_model       = f_model_data_scaled,
+          f_obs_scale   = map_name_manager.k*fom,
+          f_model_scale = map_name_manager.n*alpha.data())
+
+  def _phase_transfer(self, miller_array, phase_source):
+    # XXX could be a method in miller.py under a better name in future
+    tmp = miller.array(miller_set = miller_array,
+      data = flex.double(miller_array.indices().size(), 1)
+      ).phase_transfer(phase_source = phase_source)
+    return miller.array(miller_set = miller_array,
+      data = miller_array.data() * tmp.data())
+
+  def _map_coeff(self, f_obs, f_model, f_obs_scale, f_model_scale):
+    obs = miller.array(miller_set = f_model,
+                       data       = f_obs.data()*f_obs_scale)
+    obs_phi_calc = self._phase_transfer(miller_array = obs,
+      phase_source = f_model)
+    return miller.array(
+      miller_set = obs_phi_calc,
+      data       = obs_phi_calc.data()-f_model.data()*f_model_scale)
+
+  def fourier_map(self,
+                  map_type,
+                  resolution_factor = 1/3.,
+                  symmetry_flags = None,
+                  map_coefficients = None,
+                  other_fft_map = None):
+    if(map_coefficients is None):
+      map_coefficients = self.map_coefficients
+    if(other_fft_map is None):
+      return map_coefficients.fft_map(
+        resolution_factor = resolution_factor,
+        symmetry_flags    = symmetry_flags)
+    else:
+      return miller.fft_map(
+        crystal_gridding     = other_fft_map,
+        fourier_coefficients = map_coefficients)

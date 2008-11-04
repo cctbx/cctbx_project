@@ -72,7 +72,7 @@ def run():
   import iotbx.xplor.map
 
   fft_map = f_model_manager.electron_density_map(
-    map_type = "mFobs - DFmodel")
+    map_type = "mFobs - DFmodel").fft_map()
   fft_map.as_xplor_map(
     file_name="mfo-dfm.xplor",
     title_lines=["mFobs - DFmodel"],
