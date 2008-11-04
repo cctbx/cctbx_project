@@ -43,6 +43,7 @@ def run():
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
   ["$D/fftpack/boost_python/tst_fftpack.py"],
+  "$D/examples/flex_grid.py",
   "$D/examples/flex_array_loops.py",
   "$D/examples/principal_axes_of_inertia.py",
   "$D/examples/lbfgs_recipe.py",
