@@ -15,7 +15,7 @@ from cctbx import adptbx
 from libtbx.utils import Sorry
 import os
 from cctbx import miller
-from mmtbx import maps
+from mmtbx import map_tools
 
 
 master_params_str = """\
@@ -142,7 +142,7 @@ class model_to_map(object):
       self.fft_map.apply_sigma_scaling()
       self.map_data =  self.fft_map.real_map()
     else:
-      km = maps.kick_map(
+      km = map_tools.kick_map(
         fmodel                        = self.fmodel,
         map_type                      = map_type,
         kick_size                     = 0.5, # XXX not used, will be removed

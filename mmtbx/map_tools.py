@@ -46,7 +46,6 @@ from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
 
 
-
 class kick_map(object):
 
   def __init__(self, fmodel,
