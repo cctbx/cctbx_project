@@ -66,8 +66,8 @@ class manager(object):
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
     if(use_kick_map):
-      from mmtbx import maps
-      km = maps.kick_map(
+      from mmtbx import map_tools
+      km = map_tools.kick_map(
         fmodel                        = self.fmodel,
         map_type                      = map_type,
         kick_size                     = kick_map_params.kick_size,
