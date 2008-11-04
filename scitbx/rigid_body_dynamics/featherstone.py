@@ -37,6 +37,22 @@ else:
       return int(x+.5)
     return iround(math.floor(x))
 
+tntbx = None
+if (scitbx is not None):
+  try:
+    import tntbx
+  except ImportError:
+    pass
+if (tntbx is None):
+  def generalized_inverse(m):
+    return m.inverse()
+else:
+  def generalized_inverse(m):
+    from scitbx.array_family import flex
+    fm = flex.double(m)
+    fm.reshape(flex.grid(m.n))
+    return matrix.sqr(tntbx.generalized_inverse(fm))
+
 import math
 
 class InfType(object): pass
@@ -44,11 +60,11 @@ Inf = InfType()
 
 def mldivide(A, B):
   "http://www.mathworks.com/access/helpdesk/help/techdoc/ref/mldivide.html"
-  return A.inverse() * B
+  return generalized_inverse(A) * B
 
 def mrdivide(B, A):
   "http://www.mathworks.com/access/helpdesk/help/techdoc/ref/mrdivide.html"
-  return (A.transpose().inverse() * B.transpose()).transpose()
+  return (generalized_inverse(A.transpose()) * B.transpose()).transpose()
 
 def Xrotx(theta):
   """
