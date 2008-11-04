@@ -60,7 +60,7 @@ map_params_str ="""\
   map
     .multiple = True
     .short_caption=Electron density map
-    .style=noauto
+    .style=noauto auto_align
   {
     mtz_label_amplitudes = None
       .type = str
@@ -94,7 +94,7 @@ map_params_str ="""\
   }
   anomalous_difference_map
     .short_caption=Anomalous difference map
-    .style = box
+    .style = box auto_align
   {
     mtz_label_amplitudes = ANOM
       .type = str
