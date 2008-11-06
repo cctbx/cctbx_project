@@ -145,9 +145,6 @@ class model_to_map(object):
       km = map_tools.kick_map(
         fmodel                        = self.fmodel,
         map_type                      = map_type,
-        kick_size                     = 0.5, # XXX not used, will be removed
-        number_of_kicks               = 50, # XXX
-        update_bulk_solvent_and_scale = True,
         resolution_factor             = resolution_factor,
         other_fft_map                 = other_fft_map,
         real_map                      = True,
