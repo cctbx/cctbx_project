@@ -14,6 +14,33 @@ import libtbx.phil.command_line
 from cStringIO import StringIO
 import sys, os
 
+
+class quick_rt_mx(object):
+  from scitbx import matrix
+  def __init__(self,
+               r = [1,0,0,0,1,0,0,0,1] ,
+               t = (0,0,0) ):
+    self.rm = matrix.sqr(r)
+    self.tv = flex.double(t)
+  def r(self):
+    return self.rm
+  def t(self):
+    return self.tv
+  def inverse(self):
+    tmp = quick_rt_mx(r=self.rm.inverse(), t=(-self.tv[0], -self.tv[1], -self.tv[2]) )
+    return tmp
+  def show(self,out=None):
+    if out is None:
+      out=sys.stdout
+    print >> out
+    print >> out, "R :"
+    print >> out,  self.r().mathematica_form( one_row_per_line=True, format="%6.3f")
+    print >> out, "T :"
+    for item in self.t():
+      print >> out, "%6.3f"%(item),
+    print >> out
+    print >> out
+
 def construct_output_labels(labels, label_appendix, out=None ):
   if out is None:
     out = sys.stdout
@@ -151,7 +178,7 @@ xmanip{
     reindex
     .help="Reindexing parameters. Acts on coordinates and miller arrays."
     {
-      standard_laws = niggli *reference_setting invert user_supplied
+      standard_laws = niggli *reference_setting primitive_setting invert user_supplied
       .type=choice
       .help="Choices of reindexing operators. Will be applied on structure and miller arrays."
       user_supplied_law='h,k,l'
@@ -175,12 +202,22 @@ xmanip{
         .help="new B value for all atoms"
       }
       apply_operator{
-        standard_operators = *user_supplied
+        standard_operators = *user_supplied_operator user_supplied_cartesian_rotation_matrix
         .type=choice
         .help="Possible operators"
         user_supplied_operator = "x,y,z"
         .type=str
         .help="Actualy operator in x,y,z notation"
+        user_supplied_cartesian_rotation_matrix
+        .help="Rotation,translation matrix in cartesian frame"
+        {
+          r = None
+          .type=str
+          .help="Rotational part of operator"
+          t = None
+          .type = str
+          .help="Translational part of operator"
+        }
         invert = False
         .type = bool
         .help = "Invert operator given above before applying on coordinates"
@@ -457,6 +494,8 @@ def run(args, command_name="phenix.xmanip"):
 
           write_it.append( xray_data.write_out)
 
+      print count
+      print names
       output_label_root = construct_output_labels( labels, label_appendix )
       for ii in range(len(labels)):
         test=0
@@ -521,9 +560,11 @@ def run(args, command_name="phenix.xmanip"):
       write_miller_array = True
       #----------------------------------------------------------------
       # step 3: get the reindex laws
+      phil_xs.show_summary()
       to_niggli    = phil_xs.change_of_basis_op_to_niggli_cell()
       to_reference = phil_xs.change_of_basis_op_to_reference_setting()
       to_inverse   = phil_xs.change_of_basis_op_to_inverse_hand()
+      to_primitive = phil_xs.change_of_basis_op_to_primitive_setting()
       cb_op = None
       if (params.xmanip.parameters.reindex.standard_laws == "niggli"):
         cb_op = to_niggli
@@ -533,6 +574,9 @@ def run(args, command_name="phenix.xmanip"):
         cb_op = to_inverse
       if (params.xmanip.parameters.reindex.standard_laws == "user_supplied"):
         cb_op = sgtbx.change_of_basis_op( params.xmanip.parameters.reindex.user_supplied_law )
+      if (params.xmanip.parameters.reindex.standard_laws == "primitive_setting"):
+        cb_op = to_primitive
+
 
       if cb_op is None:
         raise Sorry("No change of basis operation is supplied.")
@@ -612,13 +656,53 @@ def run(args, command_name="phenix.xmanip"):
 
     if params.xmanip.parameters.action=="manipulate_pdb":
       if params.xmanip.parameters.manipulate_pdb.task == "apply_operator":
-        rt_mx = sgtbx.rt_mx(
-          params.xmanip.parameters.manipulate_pdb.apply_operator.user_supplied_operator,t_den=12*8 )
+        rt_mx = None
+        if params.xmanip.parameters.manipulate_pdb.apply_operator.standard_operators == "user_supplied_operator":
+          rt_mx = sgtbx.rt_mx(
+            params.xmanip.parameters.manipulate_pdb.apply_operator.user_supplied_operator,t_den=12*8 )
+          print >> log, "Applied operator : ", rt_mx.as_xyz()
+        if params.xmanip.parameters.manipulate_pdb.apply_operator.standard_operators == \
+             "user_supplied_cartesian_rotation_matrix":
+          rt = params.xmanip.parameters.manipulate_pdb.apply_operator.user_supplied_cartesian_rotation_matrix
+          tmp_r=None
+          tmp_t=None
+          if "," in rt.r:
+            tmp_r = rt.r.split(',')
+          else:
+            tmp_r = rt.r.split(' ')
+          if "," in rt.r:
+            tmp_t = rt.t.split(',')
+          else:
+            tmp_t = rt.t.split(' ')
+          tmp_tmp_r=[]
+          tmp_tmp_t=[]
+          for item in tmp_r:
+            tmp_tmp_r.append( float(item) )
+          if len(tmp_tmp_r)!=9:
+            raise Sorry("Invalid rotation matrix. Please check input: %s"%(rt.r) )
+          for item in tmp_t:
+            tmp_tmp_t.append( float(item) )
+          if len(tmp_tmp_t)!=3:
+            raise Sorry("Invalid translational vector. Please check input: %s"%(rt.t) )
+          tmp_tmp_t = (tmp_tmp_t)
+          rt_mx = quick_rt_mx(tmp_tmp_r, tmp_tmp_t)
+          print >> log, "User supplied cartesian matrix and vector: "
+          rt_mx.show()
+          o = matrix.sqr(model.unit_cell().orthogonalization_matrix())
+          tmp_r = o.inverse()*rt_mx.r()*o
+          tmp_t = o.inverse()*matrix.col(list(rt_mx.t()))
+          print >> log
+          print >> log, "Operator in fractional coordinates: "
+          rt_mx = quick_rt_mx(r=tmp_r.as_float(), t=list(tmp_t))
+          rt_mx.show(out=log)
+          print >> log
+
+
         if params.xmanip.parameters.manipulate_pdb.apply_operator.invert:
           rt_mx = rt_mx.inverse()
-        print >> log
-        print >> log, "Applied operator : ", rt_mx.as_xyz()
-        print >> log
+          print >> log
+          print >> log, "Taking inverse of given operator"
+          print >> log
 
         sites = model.sites_frac()
         new_sites = flex.vec3_double()
