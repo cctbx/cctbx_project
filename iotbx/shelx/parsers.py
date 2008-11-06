@@ -78,7 +78,7 @@ class variable_decoder(util.behaviour_of_variable):
   def decode_variables(self, coded_variables, u_iso_idx=None):
     values = []
     behaviours = []
-    for i,coded_variable in enumerate(coded_variables):
+    for i, coded_variable in enumerate(coded_variables):
       try:
         m,p = scitbx.math.divmod(coded_variable, 10)
       except ArgumentError:
@@ -118,6 +118,10 @@ class variable_decoder(util.behaviour_of_variable):
         behaviours.append(self.fixed)
     return values, behaviours
 
+  def decode_one_variable(self, coded_variable, u_iso_idx=None):
+    values, behaviours = self.decode_variables((coded_variable,), u_iso_idx)
+    return values[0], behaviours[0]
+
 
 class atom_parser(parser, variable_decoder):
   """ A parser pulling out the scatterer info from a command stream """
@@ -125,6 +129,8 @@ class atom_parser(parser, variable_decoder):
   def filtered_commands(self):
     self.label_for_sfac = None
     scatterer_index = 0
+    part_number = 0
+    part_sof = None
     for command, line in self.command_stream:
       self.line = line
       cmd, args = command[0], command[-1]
@@ -135,13 +141,20 @@ class atom_parser(parser, variable_decoder):
       elif cmd == 'FVAR':
         self.overall_scale = args[0]
         self.free_variable = args # (b) ShelXL indexes into the whole array
-      elif cmd == 'PART' and len(args) == 2:
-        raise NotImplementedError
+      elif cmd == 'PART':
+        part_sof = None
+        part_number = 0
+        if args:
+          part_number = args[0]
+        if len(args) == 2:
+          part_sof = self.decode_one_variable(args[1])
       elif cmd == '__ATOM__':
         if self.label_for_sfac is None:
           raise shelx_error("missing sfac", self.line)
         scatterer, behaviour_of_variable = self.lex_scatterer(
           args, scatterer_index)
+        if part_number and part_sof:
+          scatterer.occupancy, behaviour_of_variable[3] = part_sof
         self.builder.add_scatterer(scatterer, behaviour_of_variable)
         scatterer_index += 1
       else:
