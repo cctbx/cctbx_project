@@ -430,6 +430,7 @@ class manager(manager_mixin):
 
   def outlier_selection(self, show = False, log = None):
     if(log is None): log = sys.stdout
+    n_free = self.r_free_flags.data().count(True)
     result = outlier_rejection.outlier_manager(
       miller_obs   = self.f_obs,
       r_free_flags = self.r_free_flags,
@@ -437,12 +438,17 @@ class manager(manager_mixin):
     s1 = result.basic_wilson_outliers().data()
     s2 = result.extreme_wilson_outliers().data()
     s3 = result.beamstop_shadow_outliers().data()
-    result = s1 & s2 & s3
+    if(n_free > 0):
+      s4 = result.model_based_outliers(fmodel_manager = self).data()
+      result = s1 & s2 & s3 & s4
+    else: result = s1 & s2 & s3
     if(show):
       print >> log
       print >> log, "basic_wilson_outliers    =", s1.count(False)
       print >> log, "extreme_wilson_outliers  =", s2.count(False)
       print >> log, "beamstop_shadow_outliers =", s3.count(False)
+      if(n_free > 0):
+        print >> log, "model_based_outliers     =", s4.count(False)
       print >> log, "total                    =", result.count(False)
     return result
 

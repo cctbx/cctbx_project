@@ -70,9 +70,6 @@ class manager(object):
       km = map_tools.kick_map(
         fmodel                        = self.fmodel,
         map_type                      = map_type,
-        kick_size                     = kick_map_params.kick_size,
-        number_of_kicks               = kick_map_params.number_of_kicks,
-        update_bulk_solvent_and_scale = False,
         resolution_factor             = self.params.resolution_factor,
         symmetry_flags                = maptbx.use_space_group_symmetry)
       fft_map = km.fft_map

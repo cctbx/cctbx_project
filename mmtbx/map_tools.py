@@ -57,24 +57,30 @@ class kick_map(object):
 
   def __init__(self, fmodel,
                      map_type,
-                     kick_size,
-                     number_of_kicks,
-                     update_bulk_solvent_and_scale,
-                     resolution_factor,
-                     symmetry_flags,
+                     number_of_kicks = 50,
+                     update_bulk_solvent_and_scale = False,
+                     resolution_factor = 1./3,
+                     symmetry_flags = None,
                      other_fft_map = None,
                      real_map_unpadded = True,
                      real_map = False):
     assert [real_map_unpadded, real_map].count(True) == 1
+    fmodel_tmp = mmtbx.f_model.manager(
+      xray_structure = fmodel.xray_structure.deep_copy_scatterers(),
+      r_free_flags   = fmodel.r_free_flags,
+      target_name    = fmodel.target_name,
+      f_obs          = fmodel.f_obs)
     self.map_data = None
     assert number_of_kicks > 0
     counter = 0
     for kick_size in [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7]:
+      print kick_size
       b_sharp = 8 * math.pi**2 * kick_size**2
       for trial in xrange(number_of_kicks):
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
         self.fft_map = model_to_map(
+          fmodel_tmp                    = fmodel_tmp,
           xray_structure                = xray_structure,
           fmodel                        = fmodel,
           map_type                      = map_type,
@@ -99,7 +105,8 @@ class kick_map(object):
 
 class model_to_map(object):
 
-  def __init__(self, xray_structure,
+  def __init__(self, fmodel_tmp,
+                     xray_structure,
                      fmodel,
                      map_type,
                      update_bulk_solvent_and_scale,
@@ -107,26 +114,23 @@ class model_to_map(object):
                      other_fft_map,
                      symmetry_flags,
                      b_sharp):
-    fmodel_result = mmtbx.f_model.manager(
-      xray_structure = xray_structure,
-      r_free_flags   = fmodel.r_free_flags,
-      target_name    = fmodel.target_name,
-      f_obs          = fmodel.f_obs)
+    fmodel_tmp.update_xray_structure(xray_structure = xray_structure,
+                                     update_f_calc  = True,
+                                     update_f_mask  = True)
     if(update_bulk_solvent_and_scale):
-      fmodel_result.update_solvent_and_scale()
+      fmodel_tmp.update_solvent_and_scale()
     else:
-      fmodel_result.update(
+      fmodel_tmp.update(
         f_mask            = fmodel.f_mask(),
         b_cart            = fmodel.b_cart(),
         k_sol             = fmodel.k_sol(),
         b_sol             = fmodel.b_sol(),
         alpha_beta_params = fmodel.alpha_beta_params)
-    self.fft_map = fmodel_result.electron_density_map(
-      map_type          = map_type,
-      resolution_factor = resolution_factor,
-      other_fft_map     = other_fft_map,
-      symmetry_flags    = symmetry_flags,
-      b_sharp           = b_sharp)
+    self.fft_map = fmodel_tmp.electron_density_map(b_sharp = b_sharp).\
+      fft_map(map_type          = map_type,
+              other_fft_map     = other_fft_map,
+              symmetry_flags    = symmetry_flags,
+              resolution_factor = resolution_factor)
     self.fft_map.apply_sigma_scaling()
 
 ###############################################################################
@@ -158,7 +162,7 @@ class electron_density_map(object):
     self.f_model_data_scaled = self.fmodel.f_model().data() * f_model_scale
     if(b_sharp is not None): # XXX determine automatically as suggested by Axel.
       self.f_obs_data_scaled *= flex.exp(b_sharp*ss)
-      self.f_model_data_scaled *= flex.exp(b_sharp*ss)
+      self.f_model_data_scaled = self.f_model_data_scaled * flex.exp(b_sharp*ss)
     self.f_obs_scaled = self.fmodel.f_obs.array(data = self.f_obs_data_scaled)
     self.f_model_scaled = self.fmodel.f_obs.array(data = self.f_model_data_scaled)
     self.r_free_flags = self.fmodel.r_free_flags

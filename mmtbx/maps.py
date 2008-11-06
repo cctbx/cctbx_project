@@ -131,14 +131,6 @@ map_params_str ="""\
     .type = float
     .expert_level = 1
     .help = Multiply all Fobs by exp(Bsharp * s**2)
-  kick_map
-    .help = parameters for kick maps
-  {
-     kick_size = 0.5
-       .type = float
-     number_of_kicks = 100
-       .type = int
-  }
 """
 
 map_params = iotbx.phil.parse(map_params_str, process_includes=True)
