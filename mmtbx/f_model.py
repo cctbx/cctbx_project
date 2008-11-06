@@ -1365,9 +1365,9 @@ class manager(manager_mixin):
     else:
       return pher
 
-  def electron_density_map(self, map_type, b_sharp = None, kick_map = False):
-    return map_tools.electron_density_map(fmodel = self, map_type = map_type,
-      b_sharp = b_sharp, kick_map = kick_map)
+  def electron_density_map(self, b_sharp = None, kick_map = False):
+    return map_tools.electron_density_map(fmodel = self, b_sharp = b_sharp,
+      kick_map = kick_map)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):

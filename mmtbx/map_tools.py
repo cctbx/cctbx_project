@@ -44,6 +44,13 @@ from mmtbx.refinement import print_statistics
 import libtbx.load_env
 from mmtbx import max_lik
 from mmtbx.max_lik import maxlik
+from scitbx import fftpack
+from scitbx import matrix
+from cctbx import maptbx
+from mmtbx import masks
+import boost.python
+
+ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 
 class kick_map(object):
@@ -126,60 +133,104 @@ class model_to_map(object):
 
 class electron_density_map(object):
 
-  def __init__(self, fmodel, map_type, b_sharp = None, kick_map = False):
-    adopt_init_args(self, locals())
-    self.map_coefficients = None
-    map_name_manager = mmtbx.map_names(map_name_string = self.map_type)
-    if(map_name_manager.anomalous and self.fmodel.f_obs.anomalous_flag()):
-      anom_diff = self.fmodel.f_obs.anomalous_differences()
+  def __init__(self, fmodel, b_sharp = None, kick_map = False,
+                     fill_missing_f_obs = False):
+    self.fmodel = fmodel.deep_copy()
+    self.b_sharp = b_sharp
+    self.fill_missing_f_obs = fill_missing_f_obs
+    self.anom_diff = None
+    if(self.fmodel.f_obs.anomalous_flag()):
+      self.anom_diff = self.fmodel.f_obs.anomalous_differences()
       f_model = self.fmodel.f_model().as_non_anomalous_array().\
         merge_equivalents().array()
       fmodel_match_anom_diff, anom_diff_common = \
-        f_model.common_sets(other = anom_diff)
-      assert anom_diff_common.indices().size() == anom_diff.indices().size()
-      anom_diff = self._phase_transfer(miller_array = anom_diff_common,
+        f_model.common_sets(other =  self.anom_diff)
+      assert anom_diff_common.indices().size()==self.anom_diff.indices().size()
+      self.anom_diff = self._phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
-      # Formula from page 141 in "The Bijvoet-Difference Fourier Synthesis",
-      # Jeffrey Roach, METHODS IN ENZYMOLOGY, VOL. 374
-      self.map_coefficients = miller.array(miller_set = anom_diff,
-                                           data       = anom_diff.data()/(2j))
-    else:
-      fb_cart  = self.fmodel.fb_cart()
-      scale_k1 = self.fmodel.scale_k1()
-      f_obs_scale   = 1.0 / (fb_cart * scale_k1)
-      f_model_scale = 1.0 / fb_cart
-      f_obs_data_scaled = self.fmodel.f_obs.data() * f_obs_scale
-      f_model_data_scaled = self.fmodel.f_model().data() * f_model_scale
-      if(b_sharp is not None): # XXX determine automatically as suggested by Axel.
-        f_obs_data_scaled *= flex.exp(b_sharp*self.ss)
-        f_model_data_scaled *= flex.exp(b_sharp*self.ss)
-      f_obs_scaled = self.fmodel.f_obs.array(data = f_obs_data_scaled)
-      f_model_scaled = self.fmodel.f_obs.array(data = f_model_data_scaled)
-      if(not map_name_manager.ml_map):
-         self.map_coefficients = self._map_coeff(
-           f_obs         = f_obs_scaled,
-           f_model       = f_model_scaled,
-           f_obs_scale   = map_name_manager.k,
-           f_model_scale = map_name_manager.n)
-      if(map_name_manager.ml_map):
-        alpha, beta = maxlik.alpha_beta_est_manager(
-          f_obs                    = f_obs_scaled,
-          f_calc                   = f_model_scaled,
-          free_reflections_per_bin = 100,
-          flags                    = self.fmodel.r_free_flags.data(),
-          interpolation            = True).alpha_beta()
-        fom = max_lik.fom_and_phase_error(
-          f_obs          = f_obs_data_scaled,
-          f_model        = flex.abs(f_model_data_scaled),
-          alpha          = alpha.data(),
-          beta           = beta.data(),
-          space_group    = self.fmodel.f_obs.space_group(),
-          miller_indices = self.fmodel.f_obs.indices()).fom()
-        self.map_coefficients = self._map_coeff(
-          f_obs         = f_obs_scaled,
-          f_model       = f_model_scaled,
-          f_obs_scale   = map_name_manager.k*fom,
-          f_model_scale = map_name_manager.n*alpha.data())
+    if(self.fill_missing_f_obs): self._fill_f_obs()
+    ss = 1./flex.pow2(self.fmodel.f_obs.d_spacings().data())/4.
+    fb_cart  = self.fmodel.fb_cart()
+    scale_k1 = self.fmodel.scale_k1()
+    f_obs_scale   = 1.0 / (fb_cart * scale_k1)
+    f_model_scale = 1.0 / fb_cart
+    self.f_obs_data_scaled = self.fmodel.f_obs.data() * f_obs_scale
+    self.f_model_data_scaled = self.fmodel.f_model().data() * f_model_scale
+    if(b_sharp is not None): # XXX determine automatically as suggested by Axel.
+      self.f_obs_data_scaled *= flex.exp(b_sharp*ss)
+      self.f_model_data_scaled *= flex.exp(b_sharp*ss)
+    self.f_obs_scaled = self.fmodel.f_obs.array(data = self.f_obs_data_scaled)
+    self.f_model_scaled = self.fmodel.f_obs.array(data = self.f_model_data_scaled)
+    self.r_free_flags = self.fmodel.r_free_flags
+    del self.fmodel
+
+  def map_coefficients(self, map_type):
+    map_name_manager = mmtbx.map_names(map_name_string = map_type)
+    if(map_name_manager.anomalous):
+      if(self.anom_diff is not None):
+        # Formula from page 141 in "The Bijvoet-Difference Fourier Synthesis",
+        # Jeffrey Roach, METHODS IN ENZYMOLOGY, VOL. 374
+        return miller.array(miller_set = self.anom_diff,
+                            data       = self.anom_diff.data()/(2j))
+      else: return None
+    if(not map_name_manager.ml_map):
+       return self._map_coeff(
+         f_obs         = self.f_obs_scaled,
+         f_model       = self.f_model_scaled,
+         f_obs_scale   = map_name_manager.k,
+         f_model_scale = map_name_manager.n)
+    if(map_name_manager.ml_map):
+      alpha, beta = maxlik.alpha_beta_est_manager(
+        f_obs                    = self.f_obs_scaled,
+        f_calc                   = self.f_model_scaled,
+        free_reflections_per_bin = 100,
+        flags                    = self.r_free_flags.data(),
+        interpolation            = True).alpha_beta()
+      fom = max_lik.fom_and_phase_error(
+        f_obs          = self.f_obs_data_scaled,
+        f_model        = flex.abs(self.f_model_data_scaled),
+        alpha          = alpha.data(),
+        beta           = beta.data(),
+        space_group    = self.r_free_flags.space_group(),
+        miller_indices = self.r_free_flags.indices()).fom()
+      return self._map_coeff(
+        f_obs         = self.f_obs_scaled,
+        f_model       = self.f_model_scaled,
+        f_obs_scale   = map_name_manager.k*fom,
+        f_model_scale = map_name_manager.n*alpha.data())
+
+  def _fill_f_obs(self):
+    f_model = self.fmodel.f_model()
+    complete_set = f_model.complete_set(d_min = f_model.d_min(), d_max=None)
+    f_calc_atoms = complete_set.structure_factors_from_scatterers(
+      xray_structure = self.fmodel.xray_structure).f_calc()
+    f_calc_atoms_lone = f_calc_atoms.lone_set(other = f_model)
+    f_mask_lone = masks.manager(
+      miller_array = f_calc_atoms_lone,
+      xray_structure = self.fmodel.xray_structure).f_mask()
+    ss = 1./flex.pow2(f_mask_lone.d_spacings().data())/4.
+    r_free_flags_lone = f_mask_lone.array(
+      data = flex.bool(f_mask_lone.size(), False))
+    f_model_core = ext.core(f_calc = f_calc_atoms_lone.data(),
+      f_mask = f_mask_lone.data(),
+      b_cart = self.fmodel.b_cart(),
+      k_sol  = self.fmodel.k_sol(),
+      b_sol  = self.fmodel.b_sol(),
+      hkl    = f_calc_atoms_lone.indices(),
+      uc     = f_mask_lone.unit_cell(),
+      ss     = ss)
+    f_model_lone = abs(miller.array(
+      miller_set = f_mask_lone,
+      data       = f_model_core.f_model * self.fmodel.scale_k1()))
+    new_f_obs = self.fmodel.f_obs.concatenate(other = f_model_lone)
+    new_r_free_flags = self.fmodel.r_free_flags.concatenate(
+      other = r_free_flags_lone)
+    self.fmodel = mmtbx.f_model.manager(
+      xray_structure = self.fmodel.xray_structure,
+      r_free_flags   = new_r_free_flags,
+      target_name    = "ml",
+      f_obs          = new_f_obs)
+    self.fmodel.update_solvent_and_scale()
 
   def _phase_transfer(self, miller_array, phase_source):
     # XXX could be a method in miller.py under a better name in future
@@ -212,9 +263,10 @@ class electron_density_map(object):
               resolution_factor = 1/3.,
               symmetry_flags = None,
               map_coefficients = None,
-              other_fft_map = None):
+              other_fft_map = None,
+              map_type = None):
     if(map_coefficients is None):
-      map_coefficients = self.map_coefficients
+      map_coefficients = self.map_coefficients(map_type = map_type)
     if(other_fft_map is None):
       return map_coefficients.fft_map(
         resolution_factor = resolution_factor,

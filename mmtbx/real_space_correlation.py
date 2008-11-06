@@ -133,8 +133,8 @@ class model_to_map(object):
     self.fmodel = self.fmodel.remove_outliers()
     if(not use_kick_map):
       self.fmodel.update_solvent_and_scale()
-      map_obj = self.fmodel.electron_density_map(map_type = map_type)
-      map_coeff = map_obj.map_coefficients
+      map_obj = self.fmodel.electron_density_map()
+      map_coeff = map_obj.map_coefficients(map_type = map_type)
       self.fft_map = map_obj.fft_map(
         resolution_factor = resolution_factor,
         map_coefficients  = map_coeff,

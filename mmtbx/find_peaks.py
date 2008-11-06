@@ -79,9 +79,10 @@ class manager(object):
       fft_map_data = km.map_data # XXX map is already sigma scaled
       map_units = "sigma"
     else:
-      fft_map = self.fmodel.electron_density_map(map_type = self.map_type).\
+      fft_map = self.fmodel.electron_density_map().\
         fft_map(resolution_factor = self.params.resolution_factor,
-                    symmetry_flags    = maptbx.use_space_group_symmetry)
+                symmetry_flags    = maptbx.use_space_group_symmetry,
+                map_type          = self.map_type)
       if(self.params.use_sigma_scaled_maps):
         fft_map.apply_sigma_scaling()
         map_units = "sigma"
