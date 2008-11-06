@@ -106,12 +106,9 @@ def exercise_crystal_symmetry_parsing():
 
 def exercise_xray_structure_parsing():
   for set_grad_flags in (False, True):
-    builder=shelx.crystal_structure_builder(set_grad_flags=set_grad_flags)
-    stream = shelx.command_stream(file=cStringIO.StringIO(ins_aspirin))
-    l_cs = shelx.crystal_symmetry_parser(stream, builder)
-    l = shelx.atom_parser(l_cs.filtered_commands(), builder)
-    l.parse()
-    structure = l.builder.structure
+    structure = xray.structure.from_shelx(
+      file=cStringIO.StringIO(ins_aspirin),
+      set_grad_flags=set_grad_flags)
     isinstance(structure, xray.structure)
     assert structure.crystal_symmetry().is_similar_symmetry(
       crystal.symmetry(
@@ -160,12 +157,9 @@ def exercise_xray_structure_parsing():
         assert not f.grad_fdp()
 
   for set_grad_flags in (False, True):
-    builder=shelx.crystal_structure_builder(set_grad_flags=set_grad_flags)
-    stream = shelx.command_stream(file=cStringIO.StringIO(ins_disordered))
-    l_cs = shelx.crystal_symmetry_parser(stream, builder)
-    l = shelx.atom_parser(l_cs.filtered_commands(), builder)
-    l.parse()
-    structure = l.builder.structure
+    structure = xray.structure.from_shelx(
+      file=cStringIO.StringIO(ins_disordered),
+      set_grad_flags=set_grad_flags)
     assert structure.crystal_symmetry().is_similar_symmetry(
       crystal.symmetry(
         unit_cell=uctbx.unit_cell((6.033, 6.830, 7.862,
@@ -191,36 +185,39 @@ def exercise_xray_structure_parsing():
       for a in (c12, h121, h122, h123):
         assert a.flags.grad_occupancy()
 
-  builder=shelx.crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt))
-  l_cs = shelx.crystal_symmetry_parser(stream, builder)
-  l = shelx.atom_parser(l_cs.filtered_commands(), builder)
   try:
-    l.parse()
+    structure = xray.structure.from_shelx(
+      file=cStringIO.StringIO(ins_invalid_scatt),
+      set_grad_flags=set_grad_flags)
     raise Exception_expected
   except RuntimeError, e:
     assert str(e) == "ShelX: illegal argument '0.3.' at line 3"
 
-  builder=shelx.crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_invalid_scatt_1))
-  l_cs = shelx.crystal_symmetry_parser(stream, builder)
-  l = shelx.atom_parser(l_cs.filtered_commands(), builder)
   try:
-    l.parse()
+    structure = xray.structure.from_shelx(
+      file=cStringIO.StringIO(ins_invalid_scatt_1),
+      set_grad_flags=set_grad_flags)
     raise Exception_expected
   except RuntimeError, e:
     assert str(e) == ("ShelX: wrong number of parameters "
                       "for scatterer at line 3")
 
-  builder=shelx.crystal_structure_builder()
-  stream = shelx.command_stream(file=cStringIO.StringIO(ins_missing_sfac))
-  l_cs = shelx.crystal_symmetry_parser(stream, builder)
-  l = shelx.atom_parser(l_cs.filtered_commands(), builder)
   try:
-    l.parse()
+    structure = xray.structure.from_shelx(
+      file=cStringIO.StringIO(ins_missing_sfac),
+      set_grad_flags=set_grad_flags)
     raise Exception_expected
   except RuntimeError, e:
     assert e.args[0].startswith('ShelX:')
+
+  structure = xray.structure.from_shelx(
+    file=cStringIO.StringIO(ins_disordered_with_part_sof))
+  occ = 0.89064
+  for sc in structure.scatterers():
+    if sc.label in ('CL2', 'C28', 'H28A', 'H28B'):
+      assert approx_equal(sc.occupancy, occ)
+    elif sc.label in ('CL2B', 'C28B'):
+      assert approx_equal(sc.occupancy, 1-occ)
 
 def exercise_afix_parsing():
   if 'afix_parser' not in shelx.__dict__:
@@ -437,6 +434,40 @@ AFIX   7
 H131  2    0.336393    0.828845    0.303383   -21.00000   -1.50000
 H132  2    0.194195    0.626606    0.130621   -21.00000   -1.50000
 H133  2    0.407982    0.771230    0.112116   -21.00000   -1.50000
+"""
+
+ins_disordered_with_part_sof = """
+TITL 02srv053 SADABS in P2(1)/n
+CELL 0.71073  12.823  13.422  18.550  90.000 103.91  90.000
+ZERR    4.00   0.003   0.003   0.004   0.000   0.01   0.000
+LATT  1
+SYMM 0.5-X, 0.5+Y, 0.5-Z
+SFAC C H S CL
+REM ................ skipping stuff I don't test here ..............
+FVAR       0.31540   0.05337   0.03075   0.89064
+S1    3    0.366783    0.363927    0.347492    11.00000    0.02050    0.01721 =
+         0.02652    0.00339    0.00979   -0.00170
+S2    3    0.151555    0.283625    0.288656    11.00000    0.02118    0.01442 =
+         0.01699   -0.00030    0.00306    0.00146
+S3    3    0.294777    0.579144    0.332456    11.00000    0.03635    0.01521 =
+         0.02250    0.00137    0.01462   -0.00354
+REM ............. skipping many atoms .........................
+CL1   4   -0.126497    0.262053    0.433117    11.00000    0.02755    0.03548 =
+         0.05670    0.00439    0.01834    0.00260
+PART 1 41
+CL2   4    0.096994    0.328954    0.480493    31.00000    0.03167    0.04296 =
+         0.03718    0.00702    0.00390   -0.00524
+C28   1    0.008586    0.236935    0.433750    31.00000    0.02306    0.02292 =
+         0.04054    0.00599    0.01598    0.00352
+AFIX   3
+H28A  2    0.029496    0.171785    0.457990    21.00000    0.03492
+H28B  2    0.015946    0.232245    0.381920    21.00000    0.03736
+AFIX   0
+PART 2 -41
+CL2B  4    0.068342    0.365253    0.494288   -31.00000    0.07647
+C28B  1    0.028119    0.260724    0.451358   -31.00000    0.08827
+PART 0
+HKLF 4
 """
 
 ins_missing_sfac = """
