@@ -229,7 +229,7 @@ class ins_record(object):
     for i in range(1,atom_rec_length,1):
        self.dict_sfac_content[i] = eltbx.xray_scattering.get_standard_label(
          atom_rec_items[i])
-       assert self.dict_sfac_content[i] == atom_rec_items[i]
+       assert self.dict_sfac_content[i].upper() == atom_rec_items[i].upper()
 
 def collect_records(raw_records):
   line_number = 0
