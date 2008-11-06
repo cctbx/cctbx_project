@@ -2250,14 +2250,14 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                   f_model_scale = n )
         assert result is not None
       else:
-        sigmaa_object = self.sigmaa_object()
+        sigmaa_object = self.sigmaa_object( detwinned_data=dt_f_obs,f_model_data=tmp_f_model, tmp_free=tmp_free,forced_update=True)
+        #def sigmaa_object(self, detwinned_data=None, f_model_data=None, tmp_free=None, forced_update=False):
         dt_f_obs, tmp_f_model = dt_f_obs.common_sets( tmp_f_model )
-        m, dt_f_obs = sigmaa_object.fom().common_sets( dt_f_obs)
+        m, dt_f_obs = sigmaa_object.fom().common_sets( dt_f_obs )
         d, dt_f_obs = sigmaa_object.alpha_beta()[0].common_sets( dt_f_obs )
         m = m.data()
         d = d.data()
         dt_f_obs, tmp_f_model = dt_f_obs.common_sets( tmp_f_model )
-
         if map_type == "m_dtfo_d_fc":
           result = self._map_coeff( f_obs   = dt_f_obs,
                                     f_model = tmp_f_model,
