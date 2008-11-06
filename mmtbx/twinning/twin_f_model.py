@@ -2328,9 +2328,11 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     # XXX work-around to support new developments in non-twin fmodel. PA.
     class result(object):
       def __init__(self, map_coefficients, resolution_factor, symmetry_flags):
-        self.map_coefficients = map_coefficients
+        self._map_coefficients = map_coefficients
         self.resolution_factor = resolution_factor
         self.symmetry_flags = symmetry_flags
+      def map_coefficients(self, map_type=None):
+        return self._map_coefficients
       def fft_map(resolution_factor = None,
                   symmetry_flags = None,
                   map_coefficients = None,

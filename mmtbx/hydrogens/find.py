@@ -285,9 +285,10 @@ def run_lrss_tyr_hh(fmodel, ref_model, log):
     # or
     fmodel_dc = fmodel
     #
-    fft_map = fmodel_dc.electron_density_map(map_type = "2mFo-DFc").fft_map(
-        resolution_factor = 1./4.,
-        symmetry_flags    = maptbx.use_space_group_symmetry)
+    fft_map = fmodel_dc.electron_density_map().fft_map(
+      resolution_factor = 1./4.,
+      map_type          = "2mFo-DFc",
+      symmetry_flags    = maptbx.use_space_group_symmetry)
     fft_map.apply_sigma_scaling()
     fft_map_data = fft_map.real_map_unpadded()
     sites_cart = ref_model.xray_structure.sites_cart()
