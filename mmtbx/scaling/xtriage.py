@@ -696,6 +696,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
 
     ## Check if Fcalc label is available
     f_calc_miller = None
+    f_calc_miller_complex = None
     if params.scaling.input.xray_data.calc_labels is not None:
       f_calc_miller = xray_data_server.get_xray_data(
         file_name = params.scaling.input.xray_data.file_name,
@@ -717,6 +718,7 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
         reference_structure = iotbx.pdb.input( file_name=params.scaling.input.xray_data.reference.structure.file_name).xray_structure_simple(
           crystal_symmetry = miller_array.crystal_symmetry() )
         tmp_obj = pdbtools.fmodel_from_xray_structure( xray_structure = reference_structure, f_obs = miller_array)
+        f_calc_miller_complex = tmp_obj.f_model
         f_calc_miller = abs( tmp_obj.f_model ).eliminate_sys_absent(integral_only=True, log=log).set_observation_type_xray_amplitude()
     twin_results = None
 
