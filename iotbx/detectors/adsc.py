@@ -37,7 +37,9 @@ class ADSCImage(DetectorImageBase):
           pattern = re.compile(search+'='+r'(.*);')
           matches = pattern.findall(self.header)
           if len(matches)>0:
-            self.parameters[tag] = datatype(matches[-1])
+            if matches[-1] not in [None,"None","unknown"]:
+              self.parameters[tag] = datatype(matches[-1])
+
 
   def dataoffset(self):
     return self.parameters['HEADER_BYTES']
