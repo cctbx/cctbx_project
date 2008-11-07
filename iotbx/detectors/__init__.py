@@ -27,12 +27,23 @@ all_image_types = [SaturnImage,DIPImage,ADSCImage,
                   MARImage,MARIPImage,RAXISImage,
                   NonSquareRAXISImage,PilatusImage,CBFImage,BrukerImage]
 
+names_and_types = { "ADSC"          : ADSCImage,
+                    "Saturn"        : SaturnImage,
+                    "DIP"           : DIPImage,
+                    "MAR"           : MARImage,
+                    "MARIP"         : MARIPImage,
+                    "RAXIS"         : RAXISImage,
+                    "NonSquareRAXIS": NonSquareRAXISImage,
+                    "Pilatus"       : PilatusImage,
+                    "CBF"           : CBFImage,
+                    "Bruker"        : BrukerImage
+                   }
+
 def ImageFactory(filename):
   for itype in all_image_types:
     try:
       I = itype(filename)
       I.readHeader()
-
       if itype==RAXISImage:
         assert I.head['sizeFast']==I.head['sizeSlow']
         assert 0.4 < I.head['wavelength'] < 10.0 #needed to disambiguate from Bruker
@@ -44,3 +55,7 @@ def ImageFactory(filename):
     except:
       pass
   raise ImageException(filename+" not recognized as any known detector image type")
+
+def TrySingleImageType(filename,image_type):
+  I = names_and_types[ image_type ](filename)
+  return I
