@@ -6,6 +6,7 @@ def run():
   "$D/tst_wildcard.py",
   "$D/tst_simple_parser.py",
   "$D/tst_phil.py",
+  "$D/ranges.py",
   "$D/tst_crystal_symmetry_from_any.py",
   "$D/kriber/tst_strudat.py",
   "$D/cif/tst_xray_structure.py",
