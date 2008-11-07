@@ -172,6 +172,7 @@ iotbx/pdb/utils.h svneol=native#text/plain
 iotbx/pdb/write_utils.cpp svneol=native#text/plain
 iotbx/pdb/write_utils.h svneol=native#text/plain
 iotbx/pdb/write_utils_bpl.h svneol=native#text/plain
+iotbx/ranges.py -text
 iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
 iotbx/shelx/builders.py -text
 iotbx/shelx/errors.py -text
