@@ -18,6 +18,7 @@ from libtbx.utils import count_max
 from libtbx.test_utils import approx_equal
 from libtbx.itertbx import count
 from libtbx import group_args
+from libtbx.assert_utils import is_string
 from cctbx.eltbx.neutron import neutron_news_1992_table
 from cctbx import eltbx
 
@@ -456,6 +457,20 @@ class structure(crystal.special_position_settings):
       if(sct.strip() in ['H','D']): result.append(True)
       else: result.append(False)
     return result
+
+  def element_selection(self, *elements):
+    return flex.bool([ sc.element_symbol().strip() in elements
+                       for sc in self.scatterers() ])
+
+  def label_selection(self, *labels):
+    return flex.bool([ sc.label in labels for sc in self.scatterers() ])
+
+  def label_regex_selection(self, label_regex):
+    if is_string(label_regex):
+      import re
+      label_regex = re.compile(label_regex)
+    return flex.bool([ label_regex.search(sc.label) is not None
+                       for sc in self.scatterers() ])
 
   def apply_rigid_body_shift(self, rot, trans, selection = None):
     if(selection is None):
