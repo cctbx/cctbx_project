@@ -2,19 +2,10 @@ from __future__ import division
 
 flex = None
 numpy = None
-Numeric = None
-LinearAlgebra = None
 try: from scitbx.array_family import flex
 except ImportError:
   try: import numpy.linalg
-  except ImportError:
-    try: import Numeric
-    except ImportError:
-      pass
-    else:
-      try: import LinearAlgebra
-      except ImportError:
-        pass
+  except ImportError: numpy = None
 
 try:
   from stdlib import math
@@ -298,13 +289,11 @@ class rec(object):
       return   m[0] * (m[4] * m[8] - m[5] * m[7]) \
              - m[1] * (m[3] * m[8] - m[5] * m[6]) \
              + m[2] * (m[3] * m[7] - m[4] * m[6])
-    if (flex is None):
-      raise RuntimeError(
-        "cannot compute determinant of %d x %d matrix:"
-        " scitbx.array_family.flex module not available." % self.n)
-    m = flex.double(m)
-    m.resize(flex.grid(self.n))
-    return m.matrix_determinant_via_lu();
+    if (flex is not None):
+      m = flex.double(m)
+      m.resize(flex.grid(self.n))
+      return m.matrix_determinant_via_lu()
+    return determinant_via_lu(m=self)
 
   def co_factor_matrix_transposed(self):
     n = self.n
@@ -334,24 +323,17 @@ class rec(object):
       determinant = self.determinant()
       assert determinant != 0
       return self.co_factor_matrix_transposed() / determinant
-    m = None
     if (flex is not None):
       m = flex.double(self.elems)
       m.resize(flex.grid(n))
       m.matrix_inversion_in_place()
-    elif (numpy is not None):
+      return rec(elems=m, n=n)
+    if (numpy is not None):
       m = numpy.asarray(self.elems)
       m.shape = n
       m = numpy.ravel(numpy.linalg.inv(m))
-    elif (Numeric is not None and LinearAlgebra is not None):
-      m = Numeric.asarray(self.elems)
-      m.shape = n
-      m = Numeric.ravel(LinearAlgebra.inverse(m))
-    if (m is None):
-      raise RuntimeError(
-        "cannot compute inverse of %d x %d matrix:"
-        " all known numeric packages are unavailable." % self.n)
-    return rec(elems=m, n=n)
+      return rec(elems=m, n=n)
+    return inverse_via_lu(m=self)
 
   def transpose(self):
     elems = []
@@ -647,6 +629,108 @@ class rt(object):
 def col_list(seq): return [col(elem) for elem in seq]
 def row_list(seq): return [row(elem) for elem in seq]
 
+def lu_decomposition_in_place(a, n, raise_if_singular=True):
+  is_singular_message = "lu_decomposition_in_place: singular matrix"
+  assert len(a) == n*n
+  vv = [0.] * n
+  pivot_indices = [0] * (n+1)
+  for i in xrange(n):
+    big = 0.
+    for j in xrange(n):
+      dum = a[i*n+j]
+      if (dum < 0.): dum = -dum
+      if (dum > big): big = dum
+    if (big == 0.):
+      if (raise_if_singular):
+        raise RuntimeError(is_singular_message)
+      return None
+    vv[i] = 1. / big
+  imax = 0
+  for j in xrange(n):
+    for i in xrange(j):
+      sum = a[i*n+j]
+      for k in xrange(i): sum -= a[i*n+k] * a[k*n+j]
+      a[i*n+j] = sum
+    big = 0.
+    for i in xrange(j,n):
+      sum = a[i*n+j]
+      for k in xrange(j): sum -= a[i*n+k] * a[k*n+j]
+      a[i*n+j] = sum
+      if (sum < 0.): sum = -sum
+      dum = vv[i] * sum
+      if (dum >= big):
+        big = dum
+        imax = i
+    if (j != imax):
+      for k in xrange(n):
+        ik, jk = imax*n+k, j*n+k
+        a[ik], a[jk] = a[jk], a[ik]
+      pivot_indices[n] += 1
+      vv[imax] = vv[j] # no swap, we don't need vv[j] any more
+    pivot_indices[j] = imax
+    if (a[j*n+j] == 0.):
+      if (raise_if_singular):
+        raise RuntimeError(is_singular_message)
+      return None
+    if (j+1 < n):
+      dum = 1 / a[j*n+j]
+      for i in xrange(j+1,n):
+        a[i*n+j] *= dum
+  return pivot_indices
+
+def lu_back_substitution(a, n, pivot_indices, b, raise_if_singular=True):
+  assert len(a) == n*n
+  ii = n
+  for i in xrange(n):
+    pivot_indices_i = pivot_indices[i]
+    if (pivot_indices_i >= n):
+      if (raise_if_singular):
+        raise RuntimeError(
+          "lu_back_substitution: pivot_indices[i] out of range")
+      return False
+    sum = b[pivot_indices_i]
+    b[pivot_indices_i] = b[i]
+    if (ii != n):
+      for j in xrange(ii,i): sum -= a[i*n+j] * b[j]
+    elif (sum):
+      ii = i
+    b[i] = sum
+  for i in xrange(n-1,-1,-1):
+    sum = b[i]
+    for j in xrange(i+1, n): sum -= a[i*n+j] * b[j]
+    b[i] = sum / a[i*n+i]
+  return True
+
+def inverse_via_lu(m):
+  assert m.is_square()
+  n = m.n[0]
+  if (n == 0): return sqr([])
+  a = list(m.elems)
+  pivot_indices = lu_decomposition_in_place(a=a, n=n)
+  r = [0] * (n*n)
+  for j in xrange(n):
+    b = [0.] * n
+    b[j] = 1.
+    lu_back_substitution(a=a, n=n, pivot_indices=pivot_indices, b=b)
+    for i in xrange(n):
+      r[i*n+j] = b[i]
+  return sqr(r)
+
+def determinant_via_lu(m):
+  assert m.is_square()
+  n = m.n[0]
+  if (n == 0): return 1 # to be consistent with other implemenations
+  a = list(m.elems)
+  pivot_indices = lu_decomposition_in_place(a=a, n=n, raise_if_singular=False)
+  if (pivot_indices is None):
+    return 0
+  result = 1
+  for i in xrange(n):
+    result *= a[i*n+i]
+  if (pivot_indices[-1] % 2):
+    result = -result
+  return result
+
 def exercise():
   try:
     from libtbx import test_utils
@@ -819,31 +903,8 @@ def exercise():
   assert approx_equal(col((1,0,0)).accute_angle(col((1,1,0)), deg=True), 45)
   assert approx_equal(col((-1,0,0)).accute_angle(col((1,1,0)), deg=True), 45)
   m = sqr([4, 4, -1, 0, -3, -3, -3, -2, -3, 2, -1, 1, -4, 1, 3, 2])
-  if (flex is not None):
-    md = m.determinant()
-    assert approx_equal(md, -75)
-  else:
-    try: m.determinant()
-    except RuntimeError, e:
-      assert str(e) == "cannot compute determinant of 4 x 4 matrix:" \
-        " scitbx.array_family.flex module not available."
-    else: raise Exception_expected
-  if (   flex is not None
-      or numpy is not None
-      or (Numeric is not None and LinearAlgebra is not None)):
-    mi = m.inverse()
-    assert mi.n == (4,4)
-    assert approx_equal(mi, (
-      -2/15,-17/75,4/75,-19/75,
-      7/15,22/75,-14/75,29/75,
-      1/3,4/15,-8/15,8/15,
-      -1,-1,1,-1))
-  else:
-    try: m.inverse()
-    except RuntimeError, e:
-      assert str(e) == "cannot compute inverse of 4 x 4 matrix:" \
-        " all known numeric packages are unavailable."
-    else: raise Exception_expected
+  md = m.determinant()
+  assert approx_equal(md, -75)
   #
   r = sqr([-0.9533, 0.2413, -0.1815,
            0.2702, 0.414, -0.8692,
@@ -1035,6 +1096,33 @@ def exercise():
  {18, 19, 20, 28, 29, 30, 31},
  {21, 22, 23, 32, 33, 34, 35},
  {36, 37, 38, 39, 40, 41, 42}}"""
+  #
+  def check(m, expected):
+    assert approx_equal(determinant_via_lu(m=m), expected)
+    assert approx_equal(m.determinant(), expected)
+    if (expected != 0):
+      mi = inverse_via_lu(m=m)
+      assert mi.n == m.n
+      assert approx_equal(mi*m, identity(n=m.n[0]))
+      assert approx_equal(m*mi, identity(n=m.n[0]))
+      mii = inverse_via_lu(m=mi)
+      assert approx_equal(mii, m)
+  check(sqr([]), 1)
+  check(sqr([0]), 0)
+  check(sqr([4]), 4)
+  check(sqr([0]*4), 0)
+  check(sqr([1,2,-3,4]), 10)
+  check(sqr([0]*9), 0)
+  check(sqr([
+    0.1226004505424059, 0.69470636260753704, -0.70876808568064376,
+    0.20921402107901119, -0.71619825067837384, -0.66579993925291725,
+    -0.97015391712385002, -0.066656848694206489, -0.23314853980114805]), 1)
+  check(sqr([0]*16), 0)
+  check(sqr([
+    -2/15,-17/75,4/75,-19/75,
+    7/15,22/75,-14/75,29/75,
+    1/3,4/15,-8/15,8/15,
+    -1,-1,1,-1]), -1/75)
   #
   print "OK"
 
