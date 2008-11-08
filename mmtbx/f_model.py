@@ -700,7 +700,7 @@ class manager(manager_mixin):
        self.show_mask_optimization_statistics(prefix="Mask optimization start",
                                               out   = out)
     for r_solv in [0.8, 1.0, 1.2, 1.4]:
-        for r_shrink in [0.8, 1.0, 1.2, 1.4]:
+        for r_shrink in [0.8, 0.9, 1.0, 1.2, 1.4]:
           self.mask_params.solvent_radius = r_solv
           self.mask_params.shrink_truncation_radius = r_shrink
           self.update_xray_structure(
@@ -711,7 +711,8 @@ class manager(manager_mixin):
                                 force_update_f_mask      = True,
                                 out                      = None)
           self.update_solvent_and_scale(params=params, out=None, verbose=-1)
-          rw_ = self.r_free()
+          rw_ = self.r_work()
+          print "r_solv=%6.2f r_shrink=%6.2f r_work=%6.4f" % (r_solv, r_shrink, rw_)
           if(rw_ is not None and (rw is None or rw_ < rw)):
              rw = rw_
              r_solv_ = r_solv
@@ -1098,6 +1099,19 @@ class manager(manager_mixin):
              beta.select(self.r_free_flags.data())
     else:
       return alpha, beta
+
+  def sigmaa(self, f_obs = None, f_model = None):
+    p = self.alpha_beta_params.sigmaa_estimator
+    sigmaa_obj = sigmaa_estimator(
+      miller_obs                    = self.f_obs,
+      miller_calc                   = self.f_model(),
+      r_free_flags                  = self.r_free_flags,
+      kernel_width_free_reflections = p.kernel_width_free_reflections,
+      kernel_on_chebyshev_nodes     = p.kernel_on_chebyshev_nodes,
+      n_sampling_points             = p.number_of_sampling_points,
+      n_chebyshev_terms             = p.number_of_chebyshev_terms,
+      use_sampling_sum_weights      = p.use_sampling_sum_weights)
+    return sigmaa_obj
 
   def model_error_ml(self):
     #XXX needs clean solution / one more unfinished project
