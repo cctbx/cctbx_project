@@ -74,11 +74,12 @@ class kick_map(object):
     assert number_of_kicks > 0
     counter = 0
     for kick_size in [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7]:
-      print kick_size
-      b_sharp = 8 * math.pi**2 * kick_size**2
       for trial in xrange(number_of_kicks):
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
+        max_kick = fmodel.xray_structure.max_distance(other = xray_structure)
+        b_sharp = None#8 * math.pi**2 * max_kick**2 # this does not do any good
+        print kick_size, max_kick, b_sharp
         self.fft_map = model_to_map(
           fmodel_tmp                    = fmodel_tmp,
           xray_structure                = xray_structure,

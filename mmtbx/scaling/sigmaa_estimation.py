@@ -281,3 +281,16 @@ class sigmaa_estimator(object):
         h,d,w,sa,saf,saf-sa)
     print >> out
     print >> out
+
+  def show_short(self, out=None):
+    if(out is None): out = sys.stdout
+    print >> out
+    print >> out, "SigmaA vs Resolution"
+    print >> out, "--------------------"
+    print >> out, "1/d^3      d    sum weights  sigmaA"
+    for h, sa in zip(self.h_array, self.sigmaa_array):
+      if(h == 0): d = " "*7
+      else: d = "%7.4f" % (1.0/h)**(1/3)
+      print >> out, "%s %7.4f" % (d, sa)
+    print >> out
+    print >> out

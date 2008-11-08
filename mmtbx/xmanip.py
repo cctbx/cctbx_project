@@ -494,8 +494,6 @@ def run(args, command_name="phenix.xmanip"):
 
           write_it.append( xray_data.write_out)
 
-      print count
-      print names
       output_label_root = construct_output_labels( labels, label_appendix )
       for ii in range(len(labels)):
         test=0
