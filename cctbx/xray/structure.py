@@ -201,10 +201,10 @@ class structure(crystal.special_position_settings):
       raise RuntimeError("Models must of equal size.")
     return flex.sqrt((s1 - s2).dot())
 
-  def max_distance(self, other):
+  def max_distance(self, other, selection = None):
     return flex.max( self.distances(other = other, selection = selection) )
 
-  def min_distance(self, other):
+  def min_distance(self, other, selection = None):
     return flex.min( self.distances(other = other, selection = selection) )
 
   def scale_adp(self, factor, selection=None):
