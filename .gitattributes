@@ -205,6 +205,7 @@ libtbx/object_oriented_patterns.py -text
 libtbx/phil/doc.txt svneol=native#text/plain
 libtbx/phil/example.params -text
 libtbx/smart_open.py svneol=native#text/x-python
+libtbx/smp_utils.py -text
 libtbx/sourceforge_checkout.py -text
 libtbx/subversion.py -text
 libtbx/tst_itertbx.py -text
