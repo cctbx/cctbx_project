@@ -140,6 +140,16 @@ def plural_s(n):
   if (n == 1): return n, ""
   return n, "s"
 
+def n_dim_index_from_one_dim(i1d, sizes):
+  assert len(sizes) > 0
+  result = []
+  for sz in reversed(sizes):
+    assert sz > 0
+    result.append(i1d % sz)
+    i1d //= sz
+  result.reverse()
+  return result
+
 def flat_list(nested_list):
   result = []
   if (hasattr(nested_list, "__len__")):
@@ -768,6 +778,23 @@ def exercise():
       == ["foxes"]
   assert search_for(pattern="ge", mode="re.match", lines=["geese", "angel"]) \
       == ["geese"]
+  #
+  for size in xrange(1,5):
+    for i1d in xrange(size):
+      assert n_dim_index_from_one_dim(i1d=i1d, sizes=(size,)) == [i1d]
+  for sizes in [(1,1), (1,3), (3,1), (2,3)]:
+    ni, nj = sizes
+    for i in xrange(ni):
+      for j in xrange(nj):
+        i1d = i*nj+j
+        assert n_dim_index_from_one_dim(i1d=i1d, sizes=sizes) == [i,j]
+  for sizes in [(1,1,1), (1,3,1), (3,2,1), (4,3,2)]:
+    ni, nj, nk = sizes
+    for i in xrange(ni):
+      for j in xrange(nj):
+        for k in xrange(nk):
+          i1d = (i*nj+j)*nk+k
+          assert n_dim_index_from_one_dim(i1d=i1d, sizes=sizes) == [i,j,k]
   #
   print "OK"
 
