@@ -27,7 +27,7 @@ if (scitbx is not None):
   from scitbx import matrix
   from libtbx.math_utils import ifloor
 else:
-  import matrix
+  import scitbx_matrix as matrix
 
   def ifloor(x):
     def iround(x):
