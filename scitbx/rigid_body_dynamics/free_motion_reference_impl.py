@@ -27,14 +27,14 @@ class simulation(object):
 
   def __init__(O):
 
-    pos_cart_F0 = create_triangle_with_center_of_mass_at_origin()
-    O.pos_cart_F01 = pos_cart_F0 # Xtree1 = identity
+    sites_cart_F0 = create_triangle_with_center_of_mass_at_origin()
+    O.sites_cart_F01 = sites_cart_F0 # Xtree1 = identity
     # F0, F01, Xtree1, J1: see RBDA Fig. 4.7
 
     # body inertia in F01, assuming unit masses, and total mass
     #
-    O.I_F01 = body_inertia(O.pos_cart_F01)
-    O.m = len(O.pos_cart_F01)
+    O.I_F01 = body_inertia(O.sites_cart_F01)
+    O.m = len(O.sites_cart_F01)
 
     # Euler parameters for some arbitrary rotation and translation
     #
@@ -53,7 +53,7 @@ class simulation(object):
     qE_p = matrix.col((0.99, -0.05, 0.04, -0.11)).normalize()
     qr_p = matrix.col((-0.15, 0.14, -0.37))
     Jp = six_dof_joint_euler_params(qE_p, qr_p)
-    O.pos_cart_wells_F01 = [Jp.T * xyz for xyz in O.pos_cart_F01]
+    O.sites_cart_wells_F01 = [Jp.T * xyz for xyz in O.sites_cart_F01]
 
     O.energies_and_accelerations_update()
 
@@ -61,26 +61,28 @@ class simulation(object):
 
     # positional coordinates of moved triangle in F01 (not actually used here)
     #
-    O.pos_cart_moved_F01 = [O.J1.T * xyz for xyz in O.pos_cart_F01]
+    O.sites_cart_moved_F01 = [O.J1.T * xyz for xyz in O.sites_cart_F01]
 
     # potential pulling triangle to wells (spring-like forces)
     #
-    pos_cart_wells_moved_F01 = [O.J1.T_inv * xyz
-      for xyz in O.pos_cart_wells_F01]
+    sites_cart_wells_moved_F01 = [O.J1.T_inv * xyz
+      for xyz in O.sites_cart_wells_F01]
     O.e_pot = 0
-    for xyz, xyz_wells_moved in zip(O.pos_cart_F01, pos_cart_wells_moved_F01):
+    for xyz, xyz_wells_moved in zip(O.sites_cart_F01,
+                                    sites_cart_wells_moved_F01):
       O.e_pot += (xyz - xyz_wells_moved).dot()
 
     # corresponding forces
     #
     f_cart_F01 = [2 * (xyz - xyz_wells_moved)
-      for xyz, xyz_wells_moved in zip(O.pos_cart_F01, pos_cart_wells_moved_F01)]
+      for xyz, xyz_wells_moved in zip(O.sites_cart_F01,
+                                      sites_cart_wells_moved_F01)]
 
     # f and nc in 3D, for RBDA Eq. 1.4
     #
     f_F01 = matrix.col((0,0,0))
     nc_F01 = matrix.col((0,0,0))
-    for xyz,force in zip(O.pos_cart_F01, f_cart_F01):
+    for xyz,force in zip(O.sites_cart_F01, f_cart_F01):
       f_F01 += force
       nc_F01 += xyz.cross(force)
 
@@ -151,9 +153,9 @@ def RBDA_Eq_4_13(q):
     p3, p0, -p1,
     -p2, p1, p0), n=(4,3)) * 0.5
 
-def body_inertia(pos_cart):
+def body_inertia(sites_cart):
   m = [0] * 9
-  for x,y,z in pos_cart:
+  for x,y,z in sites_cart:
     m[0] += y*y+z*z
     m[4] += x*x+z*z
     m[8] += x*x+y*y
@@ -166,18 +168,18 @@ def body_inertia(pos_cart):
   return matrix.sqr(m)
 
 def create_triangle_with_center_of_mass_at_origin():
-  pos_cart = matrix.col_list([
+  sites_cart = matrix.col_list([
     (0,0,0),
     (1,0,0),
     (0.5,0.5*3**0.5,0)])
   com = matrix.col((0,0,0))
-  for xyz in pos_cart:
+  for xyz in sites_cart:
     com += xyz
-  com /= len(pos_cart)
-  pos_cart = [xyz-com for xyz in pos_cart]
+  com /= len(sites_cart)
+  sites_cart = [xyz-com for xyz in sites_cart]
   E = RBDA_Eq_4_12(matrix.col((0.81, -0.32, -0.42, -0.26)).normalize())
-  pos_cart = [E*xyz for xyz in pos_cart]
-  return pos_cart
+  sites_cart = [E*xyz for xyz in sites_cart]
+  return sites_cart
 
 def run():
   O = simulation()

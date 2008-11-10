@@ -17,7 +17,7 @@ def run(args):
   #
   sites_cart = fmri.create_triangle_with_center_of_mass_at_origin()
   assert approx_equal(flex.vec3_double(sites_cart).mean(), (0,0,0))
-  inertia1 = fmri.body_inertia(pos_cart=sites_cart)
+  inertia1 = fmri.body_inertia(sites_cart=sites_cart)
   inertia2 = matrix.sym(sym_mat3=scitbx.math.inertia_tensor(
     points=flex.vec3_double(sites_cart), pivot=(0,0,0)))
   assert approx_equal(inertia1, inertia2)
