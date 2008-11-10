@@ -358,7 +358,9 @@ scitbx/matrix/delta_tensors.h -text
 scitbx/misc/positive_getitem_index.h svneol=native#text/plain
 scitbx/rigid_body_dynamics/__init__.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/featherstone.py svneol=native#text/x-python
+scitbx/rigid_body_dynamics/free_motion_reference_impl.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/tst_featherstone.py svneol=native#text/x-python
+scitbx/rigid_body_dynamics/wx_free_motion.py svneol=native#text/x-python
 scitbx/source_generators/flex_fwd_h.py -text
 scitbx/sparse/__init__.py -text
 scitbx/sparse/boost_python/SConscript -text

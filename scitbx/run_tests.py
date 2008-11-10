@@ -54,6 +54,7 @@ def run():
   "$D/graph/rigidity.py",
   "$D/graph/tst_rigidity.py",
   "$D/graph/rigidity_matrix_symbolic.py",
+  "$D/rigid_body_dynamics/free_motion_reference_impl.py",
   "$D/rigid_body_dynamics/tst_featherstone.py",
   "$D/sparse/tests/tst_sparse.py",
   "$D/iso_surface/tst_iso_surface.py",
