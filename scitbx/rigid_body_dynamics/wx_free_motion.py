@@ -13,15 +13,15 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
   def set_points_and_lines(self):
     self.sim_as = simulation()
     self.sim_ac = simulation()
-    self.points = flex.vec3_double(self.sim_as.pos_cart_moved_F01)
-    self.points.extend(flex.vec3_double(self.sim_ac.pos_cart_moved_F01))
-    self.points.extend(flex.vec3_double(self.sim_as.pos_cart_wells_F01))
+    self.points = flex.vec3_double(self.sim_as.sites_cart_moved_F01)
+    self.points.extend(flex.vec3_double(self.sim_ac.sites_cart_moved_F01))
+    self.points.extend(flex.vec3_double(self.sim_as.sites_cart_wells_F01))
     def add_line(i, j, color):
       line = (i,j)
       self.line_i_seqs.append(line)
       self.line_colors[line] = color
     self.labels = []
-    n = len(self.sim_as.pos_cart_F01)
+    n = len(self.sim_as.sites_cart_F01)
     offs = 0
     for prefix,color in [("S",(1,0,0)),("C",(0,0,1)),("W",(0,1,0))]:
       for i in xrange(n):
@@ -53,7 +53,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         sim.dynamics_step(
           delta_t=0.01,
           use_classical_accel=use_classical_accel)
-      for site in sim.pos_cart_moved_F01:
+      for site in sim.sites_cart_moved_F01:
         self.points[ip] = site
         ip += 1
     self.labels_display_list = None
