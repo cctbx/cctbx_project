@@ -113,16 +113,16 @@ master_params="""
       version = False
       .type = bool
       .help = '''Print version'''
-      
+
       verbose = True
       .type = bool
       .help = '''Verbose'''
 }
-""" 
+"""
 #}}}
-  
+
 class ramalyze(GeneralMethods):
-  
+
   #{{{ flag routines
   #flag routines-----------------------------------------------------------------------------------
   def changes(self):
@@ -145,7 +145,7 @@ class ramalyze(GeneralMethods):
 
   #------------------------------------------------------------------------------------------------
   #}}}
- 
+
   #{{{ special_cases
   def special_cases(self, args):
     # special cases for input files so user doesn't need to specify:
@@ -162,7 +162,7 @@ class ramalyze(GeneralMethods):
       new_args.append(arg_use)
     return new_args
   #}}}
- 
+
   #{{{ run
   def run(self, args, out=sys.stdout, quiet=False):
     args=self.special_cases(args)
@@ -173,13 +173,13 @@ class ramalyze(GeneralMethods):
     command_name = "ramalyze"
     summary,header=self.get_summary_and_header(command_name)
     if not quiet: print>>out, header
-  
+
     master_params,params,changed_params,help=self.get_params(
       command_name,master_params,args,out=out)
     if help or (params and params.ramalyze.verbose):
-      print "Values of all params:" 
+      print "Values of all params:"
       master_params.format(python_object=params).show(out=out)
-  
+
     if help or params is None: return None, None
 
     #print dir(params)
@@ -205,14 +205,14 @@ class ramalyze(GeneralMethods):
     else:
       print "Please enter a file name"
       return None, None
-    
+
     output_text, output_list = self.analyze_pdb(pdb_io, self.params.ramalyze.outliers_only)
     if self.params.ramalyze.verbose:
       print output_text
     todo_list = self.coot_todo(output_list)
     return output_list, todo_list
   #}}}
-  
+
   #{{{ analyze_pdb
   def analyze_pdb(self, pdb_io, outliers_only=None):
     hierarchy      = pdb_io.construct_hierarchy()
@@ -238,7 +238,7 @@ class ramalyze(GeneralMethods):
               resType = "prepro"
             else:
               resType = "general"
-  
+
             r = ramachandran_eval.RamachandranEval()
             value = 0
             if (phi is not None and psi is not None):
@@ -249,19 +249,19 @@ class ramalyze(GeneralMethods):
                 analysis += '%s%4s %s:%.2f:%.2f:%.2f:%s:%s\n' % (chain.id,residue.resseq,residue.resname,value*100,phi,psi,ramaType,resType.capitalize())
 
                 output_list.append([chain.id,residue.resseq,residue.resname,value*100,phi,psi,ramaType,resType.capitalize(),coords])
-                
+
 #print str(residue.seq).rjust(4,' ') + " " + residue.name + ":" + str(value) + ":" + str(phi) + ":" + str(psi) + ":OUTLIER:" + resType.capitalize()
                 #print type(residue.seq)
     #print self.analysis_list
     return analysis.rstrip(), output_list
   #}}}
-  
+
   def coot_todo(self, output_list):
     #print coot_script_header
     text=coot_script_header
     for chain_id,resnum,resname,rama_value,phi,psi,ramaType,resType,coords in output_list:
        button='       ["Ramachandran Outlier at %s%s %s (%.2f)", 0, 1, 0, %f, %f, %f],\n' %(chain_id, resnum, resname, rama_value, coords[0], coords[1], coords[2])
-       #print button 
+       #print button
        text+=button
     text+="      ]\n"
     text+="     ]\n"
@@ -296,7 +296,7 @@ class ramalyze(GeneralMethods):
           weight=1)
         return d.angle_model
   #}}}
-  
+
   #{{{ get_psi
   def get_psi(self, residues, i):
     resN, resCA, resC, nextN = None, None, None, None;
@@ -323,13 +323,13 @@ class ramalyze(GeneralMethods):
           weight=1)
         return d.angle_model
   #}}}
- 
+
   #{{{ get_center
   def get_center(self, residue):
     coords = None
-    
+
     for atom in residue.atoms():
-      if (atom.name == " CA "): 
+      if (atom.name == " CA "):
         coords = atom.xyz
     return coords
   #}}}
@@ -342,7 +342,7 @@ class ramalyze(GeneralMethods):
       if (next.resname[0:3] == "PRO"): return True
     return False
   #}}}
-  
+
   #{{{ isOutlier
   def isOutlier(self, resType, value):
     if (resType == "general"):
@@ -352,7 +352,7 @@ class ramalyze(GeneralMethods):
       if (value < 0.002): return True
       else: return False
   #}}}
-  
+
   #{{{ evaluateScore
   def evaluateScore(self, resType, value):
     if (value >= 0.02): return "Favored"
@@ -363,7 +363,7 @@ class ramalyze(GeneralMethods):
       if (value >= 0.0020): return "Allowed"
       else: return "OUTLIER"
   #}}}
-  
+
   if __name__ == "__main__":
     #params_old = {}
     #params_old["outliersonly"]=False

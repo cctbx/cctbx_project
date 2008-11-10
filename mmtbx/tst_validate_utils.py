@@ -19,7 +19,7 @@ def exercise_cbetadev():
     print "Skipping exercise_regression(): input pdb (pdb1jxt.ent) not available"
     return
   pdb_io = pdb.input(file_name=regression_pdb)
-  
+
   r = cbetadev()
   output, output_list = cbetadev.analyze_pdb(r,pdb_io,regression_pdb,True)
   assert not show_diff(output, """\
