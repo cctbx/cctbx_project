@@ -120,6 +120,20 @@ def Xrotz(theta):
      0,  0,  0, -s,  c,  0,
      0,  0,  0,  0,  0,  1))
 
+def Xrot(E):
+  """
+  Featherstone (2007) Tab. 2.2
+  Added in Python version.
+  """
+  a,b,c,d,e,f,g,h,i = E
+  return matrix.sqr((
+     a,  b,  c,  0,  0,  0,
+     d,  e,  f,  0,  0,  0,
+     g,  h,  i,  0,  0,  0,
+     0,  0,  0,  a,  b,  c,
+     0,  0,  0,  d,  e,  f,
+     0,  0,  0,  g,  h,  i))
+
 def Xtrans(r):
   """
 % Xtrans  spatial coordinate transform (translation of origin).

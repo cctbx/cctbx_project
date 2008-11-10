@@ -23,6 +23,7 @@ def exercise_basic():
   assert approx_equal(sum(fs.Xrotx(0.1)), 5.98001666111)
   assert approx_equal(sum(fs.Xroty(0.2)), 5.92026631136)
   assert approx_equal(sum(fs.Xrotz(0.3)), 5.8213459565)
+  assert approx_equal(sum(fs.Xrot((1,2,3,4,5,6,7,8,9))), 90)
   assert approx_equal(sum(fs.Xtrans((1,2,3))), 6)
   assert approx_equal(sum(fs.crm((1,2,3,4,5,6))), 0)
   assert approx_equal(sum(fs.crf((1,2,3,4,5,6))), 0)
