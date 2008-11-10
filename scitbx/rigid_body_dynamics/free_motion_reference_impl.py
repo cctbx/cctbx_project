@@ -80,17 +80,17 @@ class simulation(object):
 
     # f and nc in 3D, for RBDA Eq. 1.4
     #
-    f_F01 = matrix.col((0,0,0))
-    nc_F01 = matrix.col((0,0,0))
+    O.f_F01 = matrix.col((0,0,0))
+    O.nc_F01 = matrix.col((0,0,0))
     for xyz,force in zip(O.sites_cart_F01, f_cart_F01):
-      f_F01 += force
-      nc_F01 += xyz.cross(force)
+      O.f_F01 += force
+      O.nc_F01 += xyz.cross(force)
 
     # solution of RBDA Eq. 1.4 for ac and wd
     #
-    O.ac_F01 = f_F01 / O.m
+    O.ac_F01 = O.f_F01 / O.m
     w_F01, v_F01 = matrix.col(O.qd.elems[:3]), matrix.col(O.qd.elems[3:])
-    O.wd_F01 = O.I_F01.inverse() * (nc_F01 - w_F01.cross(O.I_F01 * w_F01))
+    O.wd_F01 = O.I_F01.inverse() * (O.nc_F01 - w_F01.cross(O.I_F01 * w_F01))
 
     # spatial acceleration
     O.as_F01 = O.ac_F01 - w_F01.cross(v_F01) # RBDA Eq. 2.47

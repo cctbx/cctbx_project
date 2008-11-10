@@ -1,4 +1,5 @@
 from scitbx.rigid_body_dynamics import free_motion_reference_impl as fmri
+from scitbx.rigid_body_dynamics import featherstone
 import scitbx.math
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -6,15 +7,7 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times, null_out
 import sys
 
-def run(args):
-  assert len(args) in [0,1]
-  if (len(args) == 0):
-    n_dynamics_steps = 1
-    out = null_out()
-  else:
-    n_dynamics_steps = max(1, int(args[0]))
-    out = sys.stdout
-  #
+def exercise_reference_impl_quick():
   sites_cart = fmri.create_triangle_with_center_of_mass_at_origin()
   assert approx_equal(flex.vec3_double(sites_cart).mean(), (0,0,0))
   inertia1 = fmri.body_inertia(sites_cart=sites_cart)
@@ -41,7 +34,8 @@ def run(args):
     assert approx_equal(
       [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot],
       expected)
-  #
+
+def exercise_reference_impl_long(n_dynamics_steps, out):
   sim = fmri.simulation()
   e_tots = flex.double([sim.e_tot])
   print >> out, "i_step, [e_pot, e_kin_ang, e_kin_lin, e_kin, e_tot]"
@@ -65,6 +59,71 @@ def run(args):
   print >> out, "    max-min:", flex.max(e_tots) - flex.min(e_tots)
   print >> out
   out.flush()
+
+class featherstone_system_model(object):
+
+  def __init__(model, m, I, J):
+    model.NB = 1
+    model.pitch = [J]
+    model.parent =[-1]
+    model.Xtree = [matrix.identity(n=6)]
+    model.I = [featherstone.mcI(m, (0,0,0), I)]
+
+class six_dof_joint_euler_params_featherstone(fmri.six_dof_joint_euler_params):
+
+  def Xj_S_S_ring(O, q, qd):
+    assert q is None
+    Xj = featherstone.Xrot(O.E) \
+       * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote
+    S = matrix.sqr(( # RBDA Tab. 4.1
+      1, 0, 0, 0, 0, 0,
+      0, 1, 0, 0, 0, 0,
+      0, 0, 1, 0, 0, 0,
+      0, 0, 0, 1, 0, 0,
+      0, 0, 0, 0, 1, 0,
+      0, 0, 0, 0, 0, 1))
+    S_ring = None
+    return Xj, S, S_ring
+
+def exercise_featherstone_FDab(out):
+  def check():
+    model = featherstone_system_model(
+      m=sim.m,
+      I=sim.I_F01,
+      J=six_dof_joint_euler_params_featherstone(qE=sim.J1.qE, qr=sim.J1.qr))
+    q = [None] # already stored in J1 as qE and qr
+    qd = [sim.qd]
+    tau = [matrix.col((0,0,0,0,0,0))]
+    f_ext = [matrix.col((sim.nc_F01, sim.f_F01)).resolve_partitions()]
+    grav_accn = [0,0,0]
+    qdd = featherstone.FDab(model, q, qd, tau, f_ext, grav_accn)
+    if (i_step % 10 == 0):
+      print >> out, "ang acc 3D:", sim.wd_F01.elems
+      print >> out, "        6D:", qdd[0].elems[:3]
+      print >> out
+      print >> out, "lin acc 3D:", sim.as_F01.elems
+      print >> out, "        6D:", qdd[0].elems[3:]
+      print >> out
+    assert approx_equal(qdd[0].elems[:3], sim.wd_F01)
+    assert approx_equal(qdd[0].elems[3:], sim.as_F01)
+  sim = fmri.simulation()
+  for i_step in xrange(100):
+    check()
+    sim.dynamics_step(delta_t=0.1) # large time step to sample
+  check()                          # diverse configurations
+
+def run(args):
+  assert len(args) in [0,1]
+  if (len(args) == 0):
+    n_dynamics_steps = 1
+    out = null_out()
+  else:
+    n_dynamics_steps = max(1, int(args[0]))
+    out = sys.stdout
+  #
+  exercise_reference_impl_quick()
+  exercise_featherstone_FDab(out=out)
+  exercise_reference_impl_long(n_dynamics_steps=n_dynamics_steps, out=out)
   #
   print format_cpu_times()
 
