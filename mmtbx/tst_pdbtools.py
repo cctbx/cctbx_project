@@ -48,7 +48,7 @@ def exercise_basic(pdb_dir, verbose):
   output = "modified.pdb"
   xrsp_init = xray_structure_plus(file_name = file_name)
   base = \
-      "phenix.pdbtools %s output.file_name=%s "%(file_name, output)
+      "phenix.pdbtools %s modify.output.file_name=%s "%(file_name, output)
   for selection_str in [None, "chain A or chain C"]:
     selection = xrsp_init.selection(selection_strings = selection_str)
     if(selection_str is None):
@@ -359,27 +359,29 @@ def check_keep_remove_conflict(cmd, output, verbose):
 
 def exercise_multiple(pdb_dir, verbose):
   params = """\
+modify{
 adp {
-  selection = chain A
+  atom_selection = chain A
   randomize = True
 }
 adp {
-  selection = chain B
+  atom_selection = chain B
   shift_b_iso = 10
 }
 sites {
-  selection = chain B
+  atom_selection = chain B
   shake = 1.5
 }
 sites {
-  selection = chain A or chain C
+  atom_selection = chain A or chain C
   translate = 1 2 3
   rotate = 4 5 6
+}
 }
 """
   open("params", "w").write(params)
   file_name = os.path.join(pdb_dir, "phe_e.pdb")
-  cmd = "phenix.pdbtools %s output.file_name=modified.pdb params" % (
+  cmd = "phenix.pdbtools %s modify.output.file_name=modified.pdb params" % (
     file_name)
   result = run_command(command=cmd, verbose=verbose)
   lines = result.stdout_lines
@@ -399,7 +401,7 @@ Rigid body shift: selected atoms: 24 of 36""")
 def exercise_no_cryst1(pdb_dir, verbose):
   file_name = os.path.join(pdb_dir, "t.pdb")
   output = "modified.pdb"
-  base = "phenix.pdbtools %s output.file_name=%s "%(file_name, output)
+  base = "phenix.pdbtools %s modify.output.file_name=%s "%(file_name, output)
   cmd = base+'sites.rotate="0 0 0" sites.translate="0 0 0"'
   run_command(command=cmd, verbose=verbose)
   lines1 = []

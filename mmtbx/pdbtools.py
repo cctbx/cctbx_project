@@ -43,10 +43,14 @@ scale = 1.0
   .type = float
   .help = Overall scale factor
   .expert_level=2
-structure_factors_accuracy {
+structure_factors_accuracy
+  .style = menu_item auto_align noauto parent_submenu:advanced
+{
   include scope mmtbx.f_model.sf_and_grads_accuracy_params
 }
-mask {
+mask
+  .style = menu_item auto_align noauto parent_submenu:advanced
+{
   include scope mmtbx.masks.mask_master_params
 }
 scattering_table = wk1995  it1992  *n_gaussian  neutron
@@ -65,17 +69,27 @@ low_resolution = None
 r_free_flags_fraction = None
   .type = float
 %s
-output
-  .expert_level=2
+hkl_output
+  .short_caption = Reflection output
+  .expert_level=0
+  .style = auto_align box
 {
   format = *mtz cns
     .type = choice
+    .short_caption = File format
   label = FMODEL
     .type = str
+    .short_caption = Data label
+    .expert_level=1
   type = real *complex
     .type = choice
+    .short_caption = Data type
+    .expert_level=2
   file_name = None
-    .type = str
+    .type = path
+    .short_caption = Output reflections file
+    .help = Default is the original PDB file name with the file extension \
+            replaced by ".pdbtools.mtz" or ".pdbtools.cns"
 }
 """%fmodel_from_xray_structure_params_str
 
@@ -93,8 +107,9 @@ adp
   .multiple = True
   .expert_level=2
   .short_caption=Modify ADPs
+  .style = auto_align
 {
-  selection = None
+  atom_selection = None
     .type = str
     .help = Selection for atoms to be modified. \\
             Overrides parent-level selection.
@@ -127,8 +142,9 @@ sites
   .multiple = True
   .short_caption=Modify coordinates
   .expert_level=2
+  .style = auto_align
 {
-  selection = None
+  atom_selection = None
     .type = str
     .help = Selection for atoms to be modified. \\
             Overrides parent-level selection.
@@ -153,6 +169,7 @@ occupancies
   .help = Scope of options to modify occupancies of selected atoms
   .short_caption=Modify occupancies
   .expert_level=2
+  .style  = menu_item noauto
 {
   randomize = None
     .type = bool
@@ -165,9 +182,14 @@ occupancies
 output
   .help = Write out PDB file with modified model (file name is defined in \
           write_modified)
+  .style = noauto
 {
   file_name=None
-    .type=str
+    .type=path
+    .input_size=300
+    .short_caption = Output PDB file
+    .help = Default is the original file name with the file extension \
+            replaced by "_modified.pdb".
 }
 random_seed = None
   .type = int
@@ -177,20 +199,26 @@ random_seed = None
 modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
 master_params = iotbx.phil.parse("""\
-%s
+modify 
+  .short_caption = Model modifications
+  .style = menu_item scrolled auto_align
+{
 remove = None
   .type = str
   .help = Selection for the atoms to be removed
-  .short_caption=Remove selection
+  .short_caption=Remove atoms
   .input_size=400
 keep = None
   .type = str
   .help = Select atoms to keep
-  .short_caption=Keep selection
+  .short_caption=Keep only atoms
   .input_size=400
 put_into_box_with_buffer = None
   .type = float
   .help = Move molecule into center of box.
+  .expert_level = 2
+%s
+}
 input {
   pdb
   {
@@ -198,6 +226,7 @@ input {
   }
   crystal_symmetry
     .help = Unit cell and space group parameters
+    .style = auto_align
   {
     unit_cell=None
       .type=unit_cell
@@ -205,13 +234,20 @@ input {
       .type=space_group
   }
 }
-f_model {
+f_model
+  .short_caption = F(model) calculation
+  .style = auto_align scrolled menu_item
+{
 %s
 }
-pdb_interpretation {
+pdb_interpretation
+  .style = auto_align scrolled menu_item
+{
   include scope mmtbx.monomer_library.pdb_interpretation.master_params
 }
-geometry_minimization {
+geometry_minimization
+  .style = auto_align menu_item
+{
   include scope mmtbx.command_line.geometry_minimization.master_params
 }
 """%(modify_params_str, fmodel_from_xray_structure_master_params_str),
@@ -288,14 +324,14 @@ class modify(object):
 
   def _process_adp(self):
     for adp in self.params.adp:
-      if (adp.selection is None):
+      if (adp.atom_selection is None):
         selection = self.top_selection
       else:
         selection = flex.smart_selection(
           flags=utils.get_atom_selections(
             iselection=False,
             all_chain_proxies=self.all_chain_proxies,
-            selection_strings=[adp.selection],
+            selection_strings=[adp.atom_selection],
             xray_structure=self.xray_structure,
             log = self.log)[0])
       if (adp.convert_to_isotropic):
@@ -349,14 +385,14 @@ class modify(object):
 
   def _process_sites(self):
     for sites in self.params.sites:
-      if (sites.selection is None):
+      if (sites.atom_selection is None):
         selection = self.top_selection
       else:
         selection = flex.smart_selection(
           flags=utils.get_atom_selections(
             iselection=False,
             all_chain_proxies=self.all_chain_proxies,
-            selection_strings=[sites.selection],
+            selection_strings=[sites.atom_selection],
             xray_structure=self.xray_structure,
             log = self.log)[0])
       self._shake_sites(selection=selection, rms_difference=sites.shake)
@@ -410,14 +446,16 @@ class modify(object):
       self.xray_structure.shake_occupancies(selection=selection.flags)
     if(self.params.occupancies.set is not None):
       self._print_action(
-        text = "Setting occupancies to: %8.3f"%self.params.occupancies.set,
+        text = "Setting occupancies to: %8.3f"% \
+                self.params.occupancies.set,
         selection = selection)
       if (self._occupancies_modified):
         raise Sorry("Can't modify occupancies (already modified).")
       else:
         self._occupancies_modified = True
-      self.xray_structure.set_occupancies(value = self.params.occupancies.set,
-                                          selection = selection.flags)
+      self.xray_structure.set_occupancies(
+          value = self.params.occupancies.set,
+          selection = selection.flags)
 
   def report_number_of_atoms_to_be_removed(self):
     if (    self.remove_selection is not None
@@ -493,7 +531,7 @@ class fmodel_from_xray_structure(object):
     f_model = fmodel.f_model()
     f_model = f_model.array(data = f_model.data()*params.scale)
     try:
-      if(params.output.type == "real"):
+      if(params.hkl_output.type == "real"):
         f_model = abs(f_model)
         f_model.set_observation_type_xray_amplitude()
     except AttributeError: pass
@@ -510,10 +548,10 @@ class fmodel_from_xray_structure(object):
       "Use 'high_resolution' keyword to define it.")
 
   def write_to_file(self, file_name):
-    assert self.params.output.format in ["mtz", "cns"]
+    assert self.params.hkl_output.format in ["mtz", "cns"]
     assert file_name is not None
-    op = self.params.output
-    if(self.params.output.format == "cns"):
+    op = self.params.hkl_output
+    if(self.params.hkl_output.format == "cns"):
       ofo = open(file_name, "w")
       iotbx.cns.miller_array.crystal_symmetry_as_cns_comments(
         crystal_symmetry=self.f_model, out=ofo)
@@ -574,7 +612,7 @@ def run(args, command_name="phenix.pdbtools"):
   if(xray_structure is None):
     raise Sorry("Cannot extract xray_structure.")
 ### get i/o file names
-  ofn = command_line_interpreter.params.output.file_name
+  ofn = command_line_interpreter.params.modify.output.file_name
   ifn = command_line_interpreter.params.input.pdb.file_name
   if(ofn is None):
     if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + "_modified.pdb"
@@ -625,7 +663,7 @@ def run(args, command_name="phenix.pdbtools"):
 ### do other model manipulations
   utils.print_header("Performing requested model manipulations", out = log)
   result = modify(xray_structure    = xray_structure,
-                  params            = command_line_interpreter.params,
+                  params            = command_line_interpreter.params.modify,
                   all_chain_proxies = all_chain_proxies,
                   log               = log)
   result.report_number_of_atoms_to_be_removed()
@@ -643,10 +681,10 @@ def run(args, command_name="phenix.pdbtools"):
   ofo.close()
   if(command_line_interpreter.command_line.options.f_model):
     par = command_line_interpreter.params.f_model
-    if(par.output.format == "cns"): extension = ".hkl"
-    elif(par.output.format == "mtz"): extension = ".mtz"
+    if(par.hkl_output.format == "cns"): extension = ".hkl"
+    elif(par.hkl_output.format == "mtz"): extension = ".mtz"
     else: extension = ".reflections"
-    ofn = par.output.file_name
+    ofn = par.hkl_output.file_name
     if(ofn is None):
       if(len(ifn)==1): ofn = os.path.basename(ifn[0]) + extension
       else: ofn = os.path.basename(ifn[0]) + "_et_al" + extension
