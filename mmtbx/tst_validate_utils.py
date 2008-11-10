@@ -1,7 +1,7 @@
 #(jEdit options) :folding=explicit:collapseFolds=1:
-from mmtbx.command_line import ramalyze
-from mmtbx.command_line import rotalyze
-from mmtbx.command_line import cbetadev
+from mmtbx.command_line.ramalyze import ramalyze
+from mmtbx.command_line.rotalyze import rotalyze
+from mmtbx.command_line.cbetadev import cbetadev
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx import pdb
 from cctbx.array_family import flex
@@ -19,8 +19,9 @@ def exercise_cbetadev():
     print "Skipping exercise_regression(): input pdb (pdb1jxt.ent) not available"
     return
   pdb_io = pdb.input(file_name=regression_pdb)
-
-  output = cbetadev.analyze_pdb(regression_pdb,pdb_io,True)
+  
+  r = cbetadev()
+  output, output_list = cbetadev.analyze_pdb(r,pdb_io,regression_pdb,True)
   assert not show_diff(output, """\
 pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
 pdb1jxt :a:ile: A:   7 :  0.260: -46.47:   0.45:a:
@@ -30,7 +31,7 @@ pdb1jxt :b:thr: A:  30 :  0.812: -76.98:   0.30:b:
 pdb1jxt :b:thr: A:  39 :  0.924:  56.41:   0.30:b:
 pdb1jxt :b:asp: A:  43 :  0.500:   7.56:   0.25:b:""")
 
-  output = cbetadev.analyze_pdb(regression_pdb,pdb_io, False)
+  output, output_list = cbetadev.analyze_pdb(r,pdb_io,regression_pdb,False)
   assert not show_diff(output, """\
 pdb:alt:res:chainID:resnum:dev:dihedralNABB:Occ:ALT:
 pdb1jxt : :thr: A:   1 :  0.102:  11.27:   1.00: :
@@ -84,6 +85,7 @@ pdb1jxt :b:asp: A:  43 :  0.500:   7.56:   0.25:b:
 pdb1jxt : :tyr: A:  44 :  0.085:-143.63:   1.00: :
 pdb1jxt : :ala: A:  45 :  0.055:  33.32:   1.00: :
 pdb1jxt : :asn: A:  46 :  0.066: -50.46:   1.00: :""")
+#}}}
 
 #{{{ exercise_ramalyze
 def exercise_ramalyze():
@@ -98,7 +100,8 @@ def exercise_ramalyze():
     return
   pdb_io = pdb.input(file_name=regression_pdb)
 
-  output = ramalyze.analyze_pdb(pdb_io, True)
+  r = ramalyze()
+  output, output_list = r.analyze_pdb(pdb_io, True)
   assert output.count("OUTLIER") == 75
   assert output.count("Favored") == 0
   assert output.count("Allowed") == 0
@@ -107,7 +110,7 @@ def exercise_ramalyze():
   assert output.count("Proline") == 1
   assert output.count("Prepro") == 4
 
-  output = ramalyze.analyze_pdb(pdb_io, False)
+  output, output_list = r.analyze_pdb(pdb_io, False)
   assert output.count("OUTLIER") == 75
   assert output.count("Favored") == 496
   assert output.count("Allowed") == 154
@@ -146,7 +149,8 @@ def exercise_rotalyze():
     return
   pdb_io = pdb.input(file_name=regression_pdb)
 
-  output = rotalyze.analyze_pdb(pdb_io, True)
+  r = rotalyze()
+  output, output_list = r.analyze_pdb(pdb_io, True)
   assert output.count("OUTLIER") == 113
   assert output.count(":") == 678
   output_lines = output.splitlines()
@@ -154,7 +158,7 @@ def exercise_rotalyze():
   for lines in output_lines:
     assert float(lines[10:13]) <= 1.0
 
-  output = rotalyze.analyze_pdb(pdb_io, False)
+  output, output_list = r.analyze_pdb(pdb_io, False)
   assert output.count("OUTLIER") == 113
   assert output.count(":") == 3858
   assert output.count("p") == 120
