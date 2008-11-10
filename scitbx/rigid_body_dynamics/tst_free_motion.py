@@ -22,19 +22,25 @@ def run(args):
     points=flex.vec3_double(sites_cart), pivot=(0,0,0)))
   assert approx_equal(inertia1, inertia2)
   #
-  sim = fmri.simulation()
-  assert approx_equal(
-    [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot],
-    [0.62637925394862359,
-     0.012310594130384761, 0.02835, 0.04066059413038476,
-     0.6670398480790084])
-  for i in xrange(100):
-    sim.dynamics_step(delta_t=0.01)
-  assert approx_equal(
-    [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot],
-    [0.018277821171901298,
-     0.093940194296481649, 0.55483639080176617, 0.64877658509824787,
-     0.66705440627014911])
+  for use_classical_accel in [False, True]:
+    sim = fmri.simulation()
+    assert approx_equal(
+      [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot],
+      [0.62637925394862359,
+       0.012310594130384761, 0.02835, 0.04066059413038476,
+       0.6670398480790084])
+    for i in xrange(100):
+      sim.dynamics_step(delta_t=0.01, use_classical_accel=use_classical_accel)
+    expected = [
+      [0.018277821171901298,
+       0.093940194296481649, 0.55483639080176617, 0.64877658509824787,
+       0.66705440627014911],
+      [0.027950865122364766,
+       0.093940194296481677, 0.54455371542742759, 0.63849390972390929,
+       0.66644477484627407]][int(use_classical_accel)]
+    assert approx_equal(
+      [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot],
+      expected)
   #
   sim = fmri.simulation()
   e_tots = flex.double([sim.e_tot])
