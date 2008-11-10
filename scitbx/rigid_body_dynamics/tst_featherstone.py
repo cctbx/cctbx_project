@@ -9,7 +9,7 @@ if (scitbx is not None):
   from libtbx.test_utils import approx_equal
 else:
   import featherstone as fs
-  import matrix
+  import scitbx_matrix as matrix
   def approx_equal(a1, a2): return True
   print "libtbx.test_utils not available: approx_equal() disabled"
   def sum(l):
@@ -336,9 +336,9 @@ def exercise_standalone(tmpdir="tst_featherstone_tmpdir"):
     os.mkdir(tmpdir)
   os.chdir(tmpdir)
   scitbx_dist = libtbx.env.dist_path(module_name="scitbx")
-  def cp(file_name):
-    copy_file(os.path.join(scitbx_dist, file_name), ".")
-  cp("matrix.py")
+  def cp(file_name, target="."):
+    copy_file(os.path.join(scitbx_dist, file_name), target)
+  cp("matrix.py", "scitbx_matrix.py")
   cp("rigid_body_dynamics/featherstone.py")
   cp("rigid_body_dynamics/tst_featherstone.py")
 

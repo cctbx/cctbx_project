@@ -21,7 +21,7 @@ Shabana (2005):
 try:
   from scitbx import matrix
 except ImportError:
-  import matrix
+  import scitbx_matrix as matrix
 
 class simulation(object):
 
