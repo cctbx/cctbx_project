@@ -6,46 +6,46 @@ try:
 except ImportError, e:
   print "iotbx not loaded"
   sys.exit()
-  
+
 from mmtbx.rotamer.n_dim_table import NDimTable
 from mmtbx.rotamer import rotamer_eval
 from mmtbx.rotamer import ramachandran_eval
 from cctbx import geometry_restraints
 import iotbx
 from phenix.autosol.UserMethods import GeneralMethods
-  
+
 master_params="""
       cbetadev {
         pdb = None
         .type = path
         .help = '''Enter a PDB file name'''
-  
+
         outliers_only = False
         .type = bool
         .help = '''Only print outliers'''
-  
+
         changes = False
         .type = bool
         .help = '''Print list of changes'''
-  
+
         version = False
         .type = bool
         .help = '''Print version'''
-        
+
         verbose = True
         .type = bool
         .help = '''Verbose'''
   }
-  
+
     """
-  
+
 class cbetadev(GeneralMethods):
   #{{{ local_help
   #flag routines-----------------------------------------------------------------------------------
   def local_help(self):
     version()
     print """USAGE:  mmtbx.cbetadev file.pdb
-  
+
   FLAGS:
     -h    Print this help message
     -v    Display version information
@@ -67,7 +67,7 @@ class cbetadev(GeneralMethods):
     return summary,header
   #------------------------------------------------------------------------------------------------
   #}}}
-  
+
   #{{{ parse_cmdline
   #parse the command line--------------------------------------------------------------------------
   def parse_cmdline(self, params):
@@ -98,7 +98,7 @@ class cbetadev(GeneralMethods):
       return args
   #------------------------------------------------------------------------------------------------
   #}}}
-  
+
   #{{{ special_cases
   def special_cases(self, args):
     # special cases for input files so user doesn't need to specify:
@@ -115,8 +115,8 @@ class cbetadev(GeneralMethods):
       new_args.append(arg_use)
     return new_args
   #}}}
-  
-  
+
+
   #{{{ run
   def run(self, args, out=sys.stdout, quiet=False):
     args=self.special_cases(args)
@@ -128,13 +128,13 @@ class cbetadev(GeneralMethods):
     command_name = "cbetadev"
     summary,header=self.get_summary_and_header(command_name)
     if not quiet: print>>out, header
-  
+
     master_params,params,changed_params,help=self.get_params(
       command_name,master_params,args,out=out)
     if help or (params and params.cbetadev.verbose):
-      print "Values of all params:" 
+      print "Values of all params:"
       master_params.format(python_object=params).show(out=out)
-  
+
     if help or params is None: return
 
     #print dir(params)
@@ -151,7 +151,7 @@ class cbetadev(GeneralMethods):
       self.version()
       return
 
-    log=out 
+    log=out
     if (log is None): log = sys.stdout
     filename = self.params.cbetadev.pdb
     print 'filename', filename
@@ -164,7 +164,7 @@ class cbetadev(GeneralMethods):
     print output_text
     return output_list
   #}}}
-  
+
   #{{{ analyze_pdb
   def analyze_pdb(self, pdb_io, filename, outliers_only=None):
     relevant_atom_names = {
@@ -203,11 +203,11 @@ class cbetadev(GeneralMethods):
                   if(dev >=0.25 or outliers_only==False):
                     d = geometry_restraints.dihedral(sites=[resN.xyz,resCA.xyz,betaxyz,resCB.xyz],angle_ideal=0,weight=1)
                     dihedralNABB = d.angle_model
-  
+
                     #internal version of dihedral calculation used to test difference
                     #dihedralTemp = dihedral4pt(resN.xyz,resCA.xyz,betaxyz,resCB.xyz)
                     #dihedralNABB = dihedralTemp
-  
+
                     PDBfileStr = os.path.basename(filename)[:-4]
                     if (is_alt_conf):
                       altchar = cf.altloc.lower()
@@ -224,7 +224,7 @@ class cbetadev(GeneralMethods):
                     output_list.append([PDBfileStr,altchar,res,sub,int(resnum),resins,dev,dihedralNABB,occ,altchar,resCB.xyz])
     return analysis.rstrip(), output_list
   #}}}
-  
+
   #{{{ idealized_calpha_angles
   def idealized_calpha_angles(self, residue):
     if(residue.resname == "ALA"):
@@ -264,7 +264,7 @@ class cbetadev(GeneralMethods):
       angleideal = 111.2
     return dist, angleCAB, dihedralNCAB, angleNAB, dihedralCNAB, angleideal
   #}}}
-  
+
   #{{{ construct_fourth
   def construct_fourth(self, resN,resCA,resC,dist,angle,dihedral,method="NCAB"):
     if (resN is not None and resCA is not None and resC is not None):
@@ -300,7 +300,7 @@ class cbetadev(GeneralMethods):
       b = c
       return self.doaxisrot(newD,angledhdrl,a,b)
   #}}}
-  
+
   #{{{ doaxisrot
   def doaxisrot(self, d,theta,res1,res2):
     LOK = True
@@ -335,7 +335,7 @@ class cbetadev(GeneralMethods):
       f2 = [(f1[0]*a1[0] + f1[1]*a2[0] + f1[2]*a3[0]),(f1[0]*a1[1] + f1[1]*a2[1] + f1[2]*a3[1]),(f1[0]*a1[2]+f1[1]*a2[2]+f1[2]*a3[2])]
       return [(f2[0]+res2[0]),(f2[1]+res2[1]),(f2[2]+res2[2])]
   #}}}
-  
+
   #{{{ dihedral4pt
   def dihedral4pt(self, p1,p2,p3,p4):
     a = [(p1[0]-p2[0]),(p1[1]-p2[1]),(p1[2]-p2[2])]
@@ -364,12 +364,12 @@ class cbetadev(GeneralMethods):
       anglehdrl = -anglehdrl
     return anglehdrl
   #}}}
-  
+
   #{{{ mag
   def mag(self, v):
     return (v[0]**2 + v[1]**2 + v[2]**2)**0.5
   #}}}
-  
+
   #{{{ cross
   def cross(self, v1,v2):
     newcoords = [0,0,0]
@@ -378,17 +378,17 @@ class cbetadev(GeneralMethods):
     newcoords[2] = v1[0]*v2[1]-v1[1]*v2[0]
     return newcoords
   #}}}
-  
+
   #{{{ dotProduct
   def dotProduct(self, v1,v2):
     return (v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2])
   #}}}
-  
+
   #{{{ distance
   def distance(self, a,b):
     return ((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2)**0.5
   #}}}
-  
+
   if __name__ == "__main__":
     #params_old = {}
     #params_old["outliersonly"]=False

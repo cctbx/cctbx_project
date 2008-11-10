@@ -35,20 +35,20 @@ master_params="""
       version = False
       .type = bool
       .help = '''Print version'''
-      
+
       verbose = True
       .type = bool
       .help = '''Verbose'''
-      
+
       show_errors = False
       .type = bool
       .help = '''Print out errors'''
 }
-""" 
+"""
 #}}}
 
 class rotalyze(GeneralMethods):
-  
+
   #{{{ flag routines
   #flag routines-----------------------------------------------------------------------------------
   def changes(self):
@@ -60,7 +60,7 @@ class rotalyze(GeneralMethods):
     print "\nversion 0.02 081022 - created 2007, Vincent Chen\n"
   #------------------------------------------------------------------------------------------------
   #}}}
-  
+
   #{{{ get_summary_and_header
   def get_summary_and_header(self,command_name):
     header="\n"
@@ -72,7 +72,7 @@ class rotalyze(GeneralMethods):
     summary= "usage: phenix.%s mypdb.pdb" % command_name
     return summary,header
   #}}}
-  
+
   #{{{ special_cases
   def special_cases(self, args):
     # special cases for input files so user doesn't need to specify:
@@ -89,7 +89,7 @@ class rotalyze(GeneralMethods):
       new_args.append(arg_use)
     return new_args
   #}}}
-    
+
   #{{{ run
   def run(self, args, out=sys.stdout, quiet=False):
     args=self.special_cases(args)
@@ -100,14 +100,14 @@ class rotalyze(GeneralMethods):
     command_name = "rotalyze"
     summary,header=self.get_summary_and_header(command_name)
     if not quiet: print>>out, header
-  
+
     master_params,params,changed_params,help=self.get_params(
       command_name,master_params,args,out=out)
-      
+
     if help or (params and params.rotalyze.verbose):
-      print "Values of all params:" 
+      print "Values of all params:"
       master_params.format(python_object=params).show(out=out)
-  
+
     if help or params is None: return None, None
 
     #print dir(params)
@@ -133,14 +133,14 @@ class rotalyze(GeneralMethods):
     else:
       print "Please enter a file name"
       return None, None
-      
+
     output_text, output_list = self.analyze_pdb(pdb_io, self.params.rotalyze.outliers_only, self.params.rotalyze.show_errors)
     if self.params.rotalyze.verbose:
       print output_text
     todo_list = self.coot_todo(output_list)
     return output_list, todo_list
   #}}}
-  
+
   #{{{ analyze_pdb
   def analyze_pdb(self, pdb_io, outliers_only=False, show_errors = False):
     sa = SidechainAngles()
@@ -181,37 +181,37 @@ class rotalyze(GeneralMethods):
                     s += "OUTLIER\n"
                     res_out_list.append("OUTLIER")
                     res_out_list.append(coords)
-                    if outliers_only: 
+                    if outliers_only:
                       analysis += s
                       output_list.append(res_out_list)
                   else:
                     s += rot_id.identify(residue.resname, wrap_chis) + "\n"
                     res_out_list.append(rot_id.identify(residue.resname, wrap_chis))
                     res_out_list.append(coords)
-                  if not outliers_only: 
+                  if not outliers_only:
                     analysis += s
                     output_list.append(res_out_list)
             except AttributeError:
               if show_errors: print '%s%4s %s is missing some sidechain atoms' % (chain.id, residue.resseq, residue.resname)
     return analysis.rstrip(), output_list
   #}}}
-  
+
   #{{{ get_center
   def get_center(self, residue):
     coords = None
-    
+
     for atom in residue.atoms():
-      if (atom.name == " CA "): 
+      if (atom.name == " CA "):
         coords = atom.xyz
     return coords
   #}}}
-  
+
   #{{{ coot_todo
   def coot_todo(self, output_list):
-    
+
     return ""
   #}}}
-  
+
   if __name__ == "__main__":
     from mmtbx.command_line.rotalyze import rotalyze
     r = rotalyze()
