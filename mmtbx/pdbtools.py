@@ -199,7 +199,7 @@ random_seed = None
 modify_params = iotbx.phil.parse(modify_params_str, process_includes=True)
 
 master_params = iotbx.phil.parse("""\
-modify 
+modify
   .short_caption = Model modifications
   .style = menu_item scrolled auto_align
 {

@@ -37,9 +37,9 @@ def benchmark_function (func, args, func_name) :
 # "The program we benchmarked computes the same 100-term polynomial 500,000
 # times, using exactly the same algorithm. In all programs the indices of the
 # polynomial are kept in a local float vector. In this, the program only tests
-# the quality of code which accesses local vectors and performs simple 
-# arithmetics in loops, and is free from differences in the standard library, 
-# operating system calls and, indeed, the presence of any advanced language 
+# the quality of code which accesses local vectors and performs simple
+# arithmetics in loops, and is free from differences in the standard library,
+# operating system calls and, indeed, the presence of any advanced language
 # features."
 # TODO: benchmark using a suitable cctbx function instead
 def t (args) :
@@ -57,4 +57,3 @@ def t (args) :
       su = x * su + pol[j]
     pu = pu + su
   return pu
-
