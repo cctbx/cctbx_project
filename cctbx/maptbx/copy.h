@@ -91,8 +91,8 @@ namespace cctbx { namespace maptbx {
       af::flex_grid<>(af::adapt(first), af::adapt(last), false)));
     input_index_t first_input, last_input;
     for (int i=0; i<3; ++i) {
-      first_input[i] = math::mod_positive(first[i], grid_n[i]);
-      last_input[i] = math::mod_positive(last[i], grid_n[i]) + 1;
+      first_input[i] = scitbx::math::mod_positive(first[i], grid_n[i]);
+      last_input[i] = scitbx::math::mod_positive(last[i], grid_n[i]) + 1;
     }
     FloatType* out_ptr = result.begin();
     input_index_t input;

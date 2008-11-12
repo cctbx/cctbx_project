@@ -1,43 +1,5 @@
-#ifndef CCTBX_MATH_MOD_H
-#define CCTBX_MATH_MOD_H
-
-#include <cmath>
-
-namespace cctbx { namespace math {
-
-  template <typename IntType>
-  inline
-  IntType
-  mod_positive(IntType ix, IntType const& iy)
-  {
-    if (iy > 0) {
-      ix %= iy;
-      if (ix < 0) ix += iy;
-    }
-    return ix;
-  }
-
-  template <typename IntType>
-  inline
-  IntType
-  mod_short(IntType ix, IntType const& iy)
-  {
-        ix = mod_positive(ix, iy);
-    if (ix > iy / 2)
-        ix -= iy;
-    return ix;
-  }
-
-  template <typename FloatType>
-  inline FloatType
-  fmod_short(FloatType const& x, FloatType const& y)
-  {
-    FloatType result = std::fmod(x, y);
-    if (result < 0) result += y;
-    if (result > y/2) result -= y;
-    return result;
-  }
-
-}} // namespace cctbx::math
-
-#endif // CCTBX_MATH_MOD_H
+#error This header has been deprecated: \
+       please #include <scitbx/math/modulo.h> instead \
+       and don't forget to replace math::mod_positive \
+       or cctbx::math::mod_positive to scitbx::math::mod_positive \
+       and so on for the other 2 functions defined in that header

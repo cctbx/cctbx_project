@@ -2,7 +2,7 @@
 #define CCTBX_MAPTBX_EIGHT_POINT_INTERPOLATION_H
 
 #include <cctbx/coordinates.h>
-#include <cctbx/math/mod.h>
+#include <scitbx/math/modulo.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
 #include <scitbx/math/utils.h>
 #include <scitbx/math/floating_point_epsilon.h>
@@ -28,7 +28,7 @@ namespace cctbx { namespace maptbx {
           FloatType xn = x_frac[i] * static_cast<FloatType>(grid_n[i]);
           SignedIntType ixn = scitbx::math::float_int_conversions<
             FloatType, SignedIntType>::ifloor(xn);
-          i_grid[i] = math::mod_positive(
+          i_grid[i] = scitbx::math::mod_positive(
             ixn, static_cast<SignedIntType>(grid_n[i]));
           weights_[i][1] = xn - static_cast<FloatType>(ixn);
           weights_[i][0] = 1 - weights_[i][1];

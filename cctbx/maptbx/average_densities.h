@@ -46,9 +46,9 @@ af::versa<double, af::c_grid<3> > box_map_averaging(
             for (kx = x1box; kx <= x2box; kx++) {
               for (ky = y1box; ky <= y2box; ky++) {
                 for (kz = z1box; kz <= z2box; kz++) {
-                    mx = cctbx::math::mod_positive(kx, NX);
-                    my = cctbx::math::mod_positive(ky, NY);
-                    mz = cctbx::math::mod_positive(kz, NZ);
+                    mx = scitbx::math::mod_positive(kx, NX);
+                    my = scitbx::math::mod_positive(ky, NY);
+                    mz = scitbx::math::mod_positive(kz, NZ);
                     r_ave_xyz += data(mx,my,mz);
                     counter += 1;
             }}}
@@ -126,9 +126,9 @@ public:
                    distsq=mr1*xn*xn+mr5*yn*yn+mr9*zn*zn+
                                               tmr2*xn*yn+tmr3*xn*zn+tmr6*yn*zn;
                    if(distsq <= radsq) {
-                      mx = cctbx::math::mod_positive(kx, nx);
-                      my = cctbx::math::mod_positive(ky, ny);
-                      mz = cctbx::math::mod_positive(kz, nz);
+                      mx = scitbx::math::mod_positive(kx, nx);
+                      my = scitbx::math::mod_positive(ky, ny);
+                      mz = scitbx::math::mod_positive(kz, nz);
                       //double rho = 2.0 * std::exp (- 3.0 * distsq );
                       data_at_grid_points_.push_back(data(mx,my,mz));
                       //data_at_grid_points_.push_back(rho);

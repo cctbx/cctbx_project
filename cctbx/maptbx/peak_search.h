@@ -10,7 +10,7 @@
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/sym_mat3.h>
 #include <cctbx/error.h>
-#include <cctbx/math/mod.h>
+#include <scitbx/math/modulo.h>
 #include <cctbx/import_scitbx_af.h>
 
 namespace cctbx { namespace maptbx {
@@ -363,14 +363,14 @@ namespace cctbx { namespace maptbx {
           af::tiny<ValueType, 3> site = gi[i_peak];
           ValueType height = gh[i_peak];
           long u0 = gi[i_peak][0];
-          long up = math::mod_positive(u0+1, gridding_[0]);
-          long um = math::mod_positive(u0-1, gridding_[0]);
+          long up = scitbx::math::mod_positive(u0+1, gridding_[0]);
+          long um = scitbx::math::mod_positive(u0-1, gridding_[0]);
           long v0 = gi[i_peak][1];
-          long vp = math::mod_positive(v0+1, gridding_[1]);
-          long vm = math::mod_positive(v0-1, gridding_[1]);
+          long vp = scitbx::math::mod_positive(v0+1, gridding_[1]);
+          long vm = scitbx::math::mod_positive(v0-1, gridding_[1]);
           long w0 = gi[i_peak][2];
-          long wp = math::mod_positive(w0+1, gridding_[2]);
-          long wm = math::mod_positive(w0-1, gridding_[2]);
+          long wp = scitbx::math::mod_positive(w0+1, gridding_[2]);
+          long wm = scitbx::math::mod_positive(w0-1, gridding_[2]);
           scitbx::vec3<ValueType> b(
             (data(um,v0,w0) - data(up,v0,w0)) / 2,
             (data(u0,vm,w0) - data(u0,vp,w0)) / 2,
