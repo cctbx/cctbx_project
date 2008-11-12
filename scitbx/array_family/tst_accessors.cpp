@@ -1,6 +1,8 @@
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
+#include <scitbx/array_family/accessors/c_grid_periodic.h>
+#include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 #include <scitbx/math/utils.h> // exercise unsigned_product_leads_to_overflow
 #include <iostream>
 
@@ -398,6 +400,16 @@ int main(int /*argc*/, char* /*argv*/[])
       math::unsigned_product_leads_to_overflow(u.begin(), 3));
     check_true(__LINE__,
       math::unsigned_product_leads_to_overflow(s.begin(), 3));
+  }
+  {
+    af::c_grid_periodic<3> a(2, 5, 3);
+    check_true(__LINE__, a(1, 4, 2) == 2 + 3*(4 + 5*1));
+    check_true(__LINE__, a(-1, 6, -2) == a(1, 1, 1));
+    af::c_grid_padded_periodic<3> b(5,7,4, // all
+                                    2,5,3  // focus
+                                );
+    check_true(__LINE__, b(1,3,2) == 2 + 4*(3 + 7*1));
+    check_true(__LINE__, b(-2, 7, 4) == b(0, 2, 1));
   }
 
   std::cout << "Total OK: " << ok_counter << std::endl;

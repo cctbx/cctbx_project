@@ -3,6 +3,8 @@
 
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
+#include <scitbx/array_family/accessors/c_grid_periodic.h>
+#include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/boost_python/utils.h>
 #include <boost/python/object.hpp>
@@ -104,6 +106,8 @@ namespace scitbx { namespace af { namespace boost_python {
       c_grid_flex_conversions<ElementType, c_grid<3> >();
       c_grid_flex_conversions<ElementType, c_grid_padded<2> >();
       c_grid_flex_conversions<ElementType, c_grid_padded<3> >();
+      c_grid_flex_conversions<ElementType, c_grid_periodic<3> >();
+      c_grid_flex_conversions<ElementType, c_grid_padded_periodic<3> >();
     }
   };
 

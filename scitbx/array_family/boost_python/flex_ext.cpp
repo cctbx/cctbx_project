@@ -409,6 +409,13 @@ namespace {
     }
   };
 
+  int tst_c_grid_flex_conversion(
+    const_ref<int, c_grid_periodic<3> > const &a,
+    int i, int j, int k)
+  {
+    return a(i,j,k);
+  }
+
 namespace {
 
   void init_module()
@@ -435,6 +442,7 @@ namespace {
     default_c_grid_flex_conversions<float>();
     default_c_grid_flex_conversions<double>();
     default_c_grid_flex_conversions<std::complex<double> >();
+    def("tst_c_grid_flex_conversion", tst_c_grid_flex_conversion);
 
     wrap_flex_random();
     wrap_flex_sort();

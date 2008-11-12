@@ -2538,9 +2538,15 @@ def exercise_first_index_etc():
   assert flex.last_index(a, "b") == 3
   assert flex.first_index(a, "z") is None
 
+def exercise_c_grid_flex_conversion():
+  a = flex.int(xrange(24))
+  a.resize(flex.grid((2,3,4)))
+  assert flex.tst_c_grid_flex_conversion(a, -1,4,-2) == a[1,1,2]
+
 def run(iterations):
   i = 0
   while (iterations == 0 or i < iterations):
+    exercise_c_grid_flex_conversion()
     exercise_first_index_etc()
     exercise_flex_grid()
     exercise_flex_constructors()
