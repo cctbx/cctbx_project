@@ -146,6 +146,7 @@ class shelx_weighting(object):
     p += self._p_obs
     den = p.deep_copy()
     den *= a * a
+    der = None
     if self.computing_derivatives_wrt_f_c: der = 2*den
     den += b
     if self.computing_derivatives_wrt_f_c: der += b
@@ -159,7 +160,5 @@ class shelx_weighting(object):
       der *= -flex.pow2(w)
       der *= 4./3
       der = der * f_c
-    else:
-      der = None
     self.weights = w
     self.derivatives_wrt_f_c = der
