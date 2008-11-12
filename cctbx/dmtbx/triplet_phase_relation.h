@@ -1,7 +1,7 @@
 #ifndef CCTBX_DMTBX_TRIPLET_PHASE_RELATION_H
 #define CCTBX_DMTBX_TRIPLET_PHASE_RELATION_H
 
-#include <cctbx/math/mod.h>
+#include <scitbx/math/modulo.h>
 #include <cctbx/error.h>
 #include <scitbx/constants.h>
 
@@ -40,7 +40,7 @@ namespace cctbx { namespace dmtbx {
         }
         if (!friedel_flag_k) ht_k *= -1;
         if (!friedel_flag_hmk) ht_hmk *= -1;
-        ht_sum_ = math::mod_positive(ht_k + ht_hmk, t_den);
+        ht_sum_ = scitbx::math::mod_positive(ht_k + ht_hmk, t_den);
       }
 
       //! Pointer to unique Miller index for k.

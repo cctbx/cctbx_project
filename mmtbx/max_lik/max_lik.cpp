@@ -301,9 +301,9 @@ void wat_dist::set_shells(cctbx::uctbx::unit_cell const& uc, int nshells)
                //MMTBX_ASSERT(std::abs(dist - dist_) < 1.e-3);
                if (dist>d1sq && dist<=d2sq) {
                  //point_counter += 1; // this works better
-                 mx = cctbx::math::mod_positive(kx, NX);
-                 my = cctbx::math::mod_positive(ky, NY);
-                 mz = cctbx::math::mod_positive(kz, NZ);
+                 mx = scitbx::math::mod_positive(kx, NX);
+                 my = scitbx::math::mod_positive(ky, NY);
+                 mz = scitbx::math::mod_positive(kz, NZ);
                  if (water_mask_ref(mx,my,mz) < 0.0 && sel_flag_[i] == 1) {
                    water_mask_ref(mx,my,mz) = prob;
                    point_counter += 1; // this makes regression test happy
@@ -455,9 +455,9 @@ void wat_dist::set_shells(cctbx::uctbx::unit_cell const& uc, int nshells)
                 double zn=zfi-double(kz)/NZ;
                 dist=mr1*xn*xn+mr5*yn*yn+mr9*zn*zn+tmr2*xn*yn+tmr3*xn*zn+tmr6*yn*zn;
                 if (dist <= R) {
-                  mx = cctbx::math::mod_positive(kx, NX);
-                  my = cctbx::math::mod_positive(ky, NY);
-                  mz = cctbx::math::mod_positive(kz, NZ);
+                  mx = scitbx::math::mod_positive(kx, NX);
+                  my = scitbx::math::mod_positive(ky, NY);
+                  mz = scitbx::math::mod_positive(kz, NZ);
                   if (water_mask_ref(mx,my,mz) < 0.0) {
                     water_mask_ref(mx,my,mz) = 1;
                     point_counter += 1;
@@ -624,9 +624,9 @@ void wat_dist::set_shells(cctbx::uctbx::unit_cell const& uc, int nshells)
            //     tmr2*xn*yn+tmr3*xn*zn+tmr6*yn*zn;
            //MMTBX_ASSERT(std::abs(dist - dist_) < 1.e-3);
            if (dist > dmin_sq && dist <= dmax_sq) {
-             mx = cctbx::math::mod_positive(kx, NX);
-             my = cctbx::math::mod_positive(ky, NY);
-             mz = cctbx::math::mod_positive(kz, NZ);
+             mx = scitbx::math::mod_positive(kx, NX);
+             my = scitbx::math::mod_positive(ky, NY);
+             mz = scitbx::math::mod_positive(kz, NZ);
              if (water_mask_ref(mx,my,mz) < 0.0 && sel_flag_[i] == 1) {
                water_mask_ref(mx,my,mz) = prob;
                point_counter += 1;

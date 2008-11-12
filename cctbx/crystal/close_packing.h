@@ -313,7 +313,7 @@ namespace close_packing {
             continue_after_return_1:;
           }
           else if (all_twelve_neighbors_) {
-            point_2_mod_2_ = math::mod_positive(point_[2], 2);
+            point_2_mod_2_ = scitbx::math::mod_positive(point_[2], 2);
             for(i12_=0;i12_<12;i12_++) {
               if (float_asu_.is_inside(
                       site_frac_sampling_

@@ -25,7 +25,7 @@
       o5f2_.reserve(n_gp2);
       o8f2_.reserve(n_gp2);
       for(gp[1] = g_min[1]; gp[1] <= g_max[1]; gp[1]++) {
-        gp1g.push_back(math::mod_positive(gp[1],grid_f[1]));
+        gp1g.push_back(scitbx::math::mod_positive(gp[1],grid_f[1]));
       }
       for(gp[1] = g_min[1]; gp[1] <= g_max[1]; gp[1]++) {
         FloatType f1 = FloatType(gp[1]) / grid_f[1] - coor_frac[1];
@@ -33,7 +33,7 @@
         o4f1_.push_back(orth_mx[4]*f1);
       }
       for(gp[2] = g_min[2]; gp[2] <= g_max[2]; gp[2]++) {
-        gp2g.push_back(math::mod_positive(gp[2],grid_f[2]));
+        gp2g.push_back(scitbx::math::mod_positive(gp[2],grid_f[2]));
       }
       for(gp[2] = g_min[2]; gp[2] <= g_max[2]; gp[2]++) {
         FloatType f2 = FloatType(gp[2]) / grid_f[2] - coor_frac[2];
@@ -44,7 +44,7 @@
       int g_min0 = g_min[0];
       int g_max0 = g_max[0];
       for(int gp0=g_min0;gp0<=g_max0;gp0++) {
-        int g01 = math::mod_positive(gp0, grid_f[0]) * grid_a[1];
+        int g01 = scitbx::math::mod_positive(gp0, grid_f[0]) * grid_a[1];
         FloatType f0 = FloatType(gp0) / grid_f[0] - coor_frac[0];
         FloatType c00 = orth_mx[0] * f0;
       for(int i_gp1=0;i_gp1<n_gp1;i_gp1++) {

@@ -26,7 +26,7 @@ namespace cctbx { namespace sgtbx {
   int
   ht_mod_1(miller::index<> const& h, tr_vec const& t)
   {
-    return math::mod_positive(h * t, t.den());
+    return scitbx::math::mod_positive(h * t, t.den());
   }
 
 }} // namespace cctbx::sgtbx

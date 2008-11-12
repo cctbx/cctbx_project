@@ -87,7 +87,7 @@ namespace cctbx { namespace sgtbx {
     if (!is_centric()) return phi;
     double pi_u = pi_unit(deg);
     double phi_restr = ht_angle(deg);
-    double delta = math::fmod_short(phi - phi_restr, 2*pi_u);
+    double delta = scitbx::math::fmod_short(phi - phi_restr, 2*pi_u);
     if (delta <= -pi_u/2 || delta > pi_u/2) return phi_restr + pi_u;
     return phi_restr;
   }

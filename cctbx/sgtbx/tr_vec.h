@@ -2,7 +2,7 @@
 #define CCTBX_SGTBX_TR_VEC_H
 
 #include <cctbx/sgtbx/basic.h>
-#include <cctbx/math/mod.h>
+#include <scitbx/math/modulo.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/type_holder.h>
 #include <cctbx/import_scitbx_af.h>
@@ -110,7 +110,7 @@ namespace cctbx { namespace sgtbx {
       {
         tr_vec result(num_, den_);
         for(std::size_t i=0;i<3;i++) {
-          result.num_[i] = math::mod_positive(result.num_[i], den_);
+          result.num_[i] = scitbx::math::mod_positive(result.num_[i], den_);
         }
         return result;
       }
@@ -121,7 +121,7 @@ namespace cctbx { namespace sgtbx {
       {
         tr_vec result(num_, den_);
         for(std::size_t i=0;i<3;i++) {
-          result.num_[i] = math::mod_short(result.num_[i], den_);
+          result.num_[i] = scitbx::math::mod_short(result.num_[i], den_);
         }
         return result;
       }

@@ -7,7 +7,7 @@
 
 #include <mmtbx/error.h>
 #include <cctbx/uctbx.h>
-#include <cctbx/math/mod.h>
+#include <scitbx/math/modulo.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <map>
@@ -295,16 +295,16 @@ namespace mmtbx { namespace masks {
                                           * shrink_truncation_radius;
           cctbx::fractional<f_t> frac;
           for(int p0=low[0];p0<=high[0];p0++) {
-            int m0 = cctbx::math::mod_positive(p0, n0);
+            int m0 = scitbx::math::mod_positive(p0, n0);
             frac[0] = static_cast<f_t>(p0) / n0;
           for(int p1=low[1];p1<=high[1];p1++) {
-            int m1 = cctbx::math::mod_positive(p1, n1);
+            int m1 = scitbx::math::mod_positive(p1, n1);
             frac[1] = static_cast<f_t>(p1) / n1;
           for(int p2=low[2];p2<=high[2];p2++) {
             frac[2] = static_cast<f_t>(p2) / n2;
             f_t dist_sq = unit_cell.length_sq(frac);
             if (dist_sq < shrink_truncation_radius_sq) {
-              int m2 = cctbx::math::mod_positive(p2, n2);
+              int m2 = scitbx::math::mod_positive(p2, n2);
               table[m0][m1].push_back(m2);
             }
           }}}

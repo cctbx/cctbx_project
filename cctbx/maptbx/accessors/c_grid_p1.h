@@ -3,7 +3,7 @@
 
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <cctbx/import_scitbx_af.h>
-#include <cctbx/math/mod.h>
+#include <scitbx/math/modulo.h>
 
 namespace cctbx { namespace maptbx {
 
@@ -63,9 +63,9 @@ namespace cctbx { namespace maptbx {
       operator()(index_type const& i) const
       {
         const index_value_type* n = this->elems;
-        return (math::mod_positive(i[0], n[0]) * n[1]
-              + math::mod_positive(i[1], n[1])) * n[2]
-              + math::mod_positive(i[2], n[2]);
+        return (scitbx::math::mod_positive(i[0], n[0]) * n[1]
+              + scitbx::math::mod_positive(i[1], n[1])) * n[2]
+              + scitbx::math::mod_positive(i[2], n[2]);
       }
 
       std::size_t
@@ -74,9 +74,9 @@ namespace cctbx { namespace maptbx {
                  index_value_type const& i2) const
       {
         const index_value_type* n = this->elems;
-        return (math::mod_positive(i0, n[0]) * n[1]
-              + math::mod_positive(i1, n[1])) * n[2]
-              + math::mod_positive(i2, n[2]);
+        return (scitbx::math::mod_positive(i0, n[0]) * n[1]
+              + scitbx::math::mod_positive(i1, n[1])) * n[2]
+              + scitbx::math::mod_positive(i2, n[2]);
       }
   };
 
