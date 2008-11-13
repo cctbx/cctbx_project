@@ -87,9 +87,11 @@ data_and_flags = iotbx.phil.parse("""\
     .type=path
     .short_caption=Reflections file
     .input_size=300
-    .style = bold file_type:hkl
+    .style = bold file_type:hkl OnUpdate:extract_xray_neutron_params
   labels = None
     .type=strings
+    .style = bold renderer:draw_hkl_label_widget \
+      OnChange:update_rfree_flag_value
   high_resolution = None
     .type=float
   low_resolution = None
@@ -113,17 +115,24 @@ data_and_flags = iotbx.phil.parse("""\
     .style = tribool
     .expert_level = 1
   r_free_flags
-    .expert_level=1
-    .style = box
+    .expert_level=0
+    .style = box auto_align
   {
     file_name = None
       .type=path
-      .short_caption=File containing R(free) flags
-      .style = narrow file_type:hkl,any
+      .short_caption=File with R(free) flags
+      .help = This is normally the same as the file containing Fobs and is \
+        usually selected automatically.
+      .input_size = 200
+      .style = file_type:hkl,any OnUpdate:extract_rfree_params
     label = None
       .type=str
+      .short_caption = Column label
+      .style = renderer:draw_hkl_label_widget
     test_flag_value = None
       .type=int
+      .help = This value is usually selected automatically - do not change \
+        unless you really know what you're doing!
     disable_suitability_test = False
       .type=bool
       .expert_level = 2
@@ -139,17 +148,19 @@ data_and_flags = iotbx.phil.parse("""\
     generate = False
       .type=bool
       .help = Generate R-free flags (if not available in input files)
+      .expert_level=1
     fraction = 0.1
       .type=float
+      .expert_level=1
     max_free = 2000
       .type=int
       .expert_level=2
     lattice_symmetry_max_delta = 5
       .type=float
-      .expert_level=1
+      .expert_level=2
     use_lattice_symmetry = True
       .type=bool
-      .expert_level=1
+      .expert_level=2
   }
 """)
 
@@ -526,6 +537,7 @@ experimental_phases_params = iotbx.phil.parse("""\
     .style = file_type:hkl,any OnUpdate:extract_phi_from_hkl_file
   labels=None
     .type=strings
+    .style = renderer:draw_hkl_label_widget
 """)
 
 def determine_experimental_phases(reflection_file_server,
@@ -578,7 +590,7 @@ pdb_params = iotbx.phil.parse("""\
     .short_caption=PDB file
     .multiple=True
     .input_size=300
-    .style = bold file_type:pdb
+    .style = bold file_type:pdb OnUpdate:extract_pdb_symmetry_params
 """)
 
 def get_atom_selections(all_chain_proxies,
