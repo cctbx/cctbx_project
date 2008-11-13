@@ -303,6 +303,20 @@ def get_experimental_phases_scores(miller_arrays, ignore_all_zeros):
       result.append(0)
   return result
 
+def sort_arrays_by_score (miller_arrays, array_scores, minimum_score) :
+  assert len(miller_arrays) == len(array_scores)
+  i = 0
+  scored_arrays = []
+  for array in miller_arrays :
+    scored_arrays.append( (array, array_scores[i]) )
+    i += 1
+  scored_arrays.sort(lambda x, y: y[1] - x[1])
+  valid_arrays = []
+  for (array, score) in scored_arrays :
+    if score >= minimum_score :
+      valid_arrays.append(array)
+  return valid_arrays
+
 def select_array(
       parameter_name,
       labels,
@@ -510,11 +524,15 @@ class reflection_file_server(object):
         labels,
         ignore_all_zeros,
         parameter_scope,
-        parameter_name="labels"):
+        parameter_name="labels",
+        return_all_valid_arrays=False,
+        minimum_score=1) :
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     data_scores = get_xray_data_scores(
       miller_arrays=miller_arrays,
       ignore_all_zeros=ignore_all_zeros)
+    if return_all_valid_arrays :
+      return sort_arrays_by_score(miller_arrays, data_scores, minimum_score)
     i = select_array(
       parameter_name=parameter_scope+"."+parameter_name,
       labels=labels,
@@ -529,36 +547,14 @@ class reflection_file_server(object):
         ="Multiple equally suitable arrays of observed xray data found.")
     return miller_arrays[i]
 
-  # most of the parameters here are placeholders. --nat
-  def get_valid_xray_data (self,
-        file_name=None,
-        labels="",
-        ignore_all_zeros=False,
-        parameter_scope="",
-        parameter_name="labels",
-        minimum_score=1) :
-    miller_arrays = self.get_miller_arrays(file_name=file_name)
-    data_scores = get_xray_data_scores(
-      miller_arrays=miller_arrays,
-      ignore_all_zeros=ignore_all_zeros)
-    i = 0
-    scored_arrays = []
-    for array in miller_arrays :
-      scored_arrays.append( (array, data_scores[i]) )
-      i += 1
-    scored_arrays.sort(lambda x, y: y[1] - x[1])
-    valid_arrays = []
-    for (array, score) in scored_arrays :
-      if score >= minimum_score :
-        valid_arrays.append(array)
-    return valid_arrays
-
   def get_r_free_flags(self,
         file_name,
         label,
         test_flag_value,
         disable_suitability_test,
-        parameter_scope):
+        parameter_scope,
+        return_all_valid_arrays=False,
+        minimum_score=1) :
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     if (disable_suitability_test):
       if (label is None or test_flag_value is None):
@@ -568,6 +564,9 @@ class reflection_file_server(object):
             parameter_scope+".disable_suitability_test",
             parameter_scope+".label",
             parameter_scope+".test_flag_value"))
+      elif return_all_valid_arrays :
+        raise Sorry("return_all_valid_arrays=True: Suitability test can not "+
+          "be disabled in this mode.")
       flag_scores = None
       data_scores = None
     else:
@@ -575,6 +574,17 @@ class reflection_file_server(object):
         miller_arrays=miller_arrays,
         test_flag_value=test_flag_value)
       data_scores = flag_scores.scores
+    if return_all_valid_arrays : # used in PHENIX GUI
+      test_flag_values = flag_scores.test_flag_values
+      scored_arrays = []
+      for i, array in enumerate(miller_arrays) :
+        scored_arrays.append( (array, test_flag_values[i], data_scores[i]) )
+      scored_arrays.sort(lambda x, y: y[2] - x[2])
+      valid_arrays_and_flags = []
+      for (array, flag_value, score) in scored_arrays :
+        if score >= minimum_score :
+          valid_arrays_and_flags.append((array, flag_value))
+      return valid_arrays_and_flags
     if (label is None): labels = None
     else: labels=[label]
     try:
@@ -607,11 +617,15 @@ class reflection_file_server(object):
         labels,
         ignore_all_zeros,
         parameter_scope,
-        parameter_name="labels"):
+        parameter_name="labels",
+        return_all_valid_arrays=False,
+        minimum_score=1) :
     miller_arrays = self.get_miller_arrays(file_name=file_name)
     data_scores = get_experimental_phases_scores(
       miller_arrays=miller_arrays,
       ignore_all_zeros=ignore_all_zeros)
+    if return_all_valid_arrays : # used in PHENIX GUI
+      return sort_arrays_by_score(miller_arrays, data_scores, minimum_score)
     i = select_array(
       parameter_name=parameter_scope+"."+parameter_name,
       labels=labels,

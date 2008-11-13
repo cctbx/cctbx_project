@@ -308,6 +308,14 @@ to specify an unambiguous substring of the target label.
     err = reflection_file_srv.err = StringIO()
   else:
     raise Exception_expected
+  f_obs_list = reflection_file_srv.get_xray_data(
+    file_name = None,
+    labels = None,
+    ignore_all_zeros=True,
+    parameter_scope="xray_data",
+    return_all_valid_arrays=True,
+    minimum_score=1)
+  assert len(f_obs_list) == 2
   f_obs = reflection_file_srv.get_xray_data(
     file_name=None,
     labels=["F1", "SIGF1"],
