@@ -49,9 +49,35 @@ from scitbx import matrix
 from cctbx import maptbx
 from mmtbx import masks
 import boost.python
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
+class map_helper(object):
+  def __init__(self, fmodel, free_reflections_per_bin = 100,
+               interpolation = True):
+    ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())/4.
+    fb_cart  = fmodel.fb_cart()
+    scale_k1 = fmodel.scale_k1()
+    f_obs_scale   = 1.0 / (fb_cart * scale_k1)
+    f_model_scale = 1.0 / fb_cart
+    f_obs_data_scaled = fmodel.f_obs.data() * f_obs_scale
+    f_model_data_scaled = fmodel.f_model().data() * f_model_scale
+    self.f_obs_scaled = fmodel.f_obs.array(data = f_obs_data_scaled)
+    self.f_model_scaled = fmodel.f_obs.array(data = f_model_data_scaled)
+    self.alpha, beta = maxlik.alpha_beta_est_manager(
+      f_obs                    = self.f_obs_scaled,
+      f_calc                   = self.f_model_scaled,
+      free_reflections_per_bin = free_reflections_per_bin,
+      flags                    = fmodel.r_free_flags.data(),
+      interpolation            = interpolation).alpha_beta()
+    self.fom = max_lik.fom_and_phase_error(
+      f_obs          = f_obs_data_scaled,
+      f_model        = flex.abs(f_model_data_scaled),
+      alpha          = self.alpha.data(),
+      beta           = beta.data(),
+      space_group    = fmodel.r_free_flags.space_group(),
+      miller_indices = fmodel.r_free_flags.indices()).fom()
 
 class kick_map(object):
 
@@ -70,6 +96,8 @@ class kick_map(object):
       r_free_flags   = fmodel.r_free_flags,
       target_name    = fmodel.target_name,
       f_obs          = fmodel.f_obs)
+    bss_params = bss.master_params.extract()
+    map_helper_obj = map_helper(fmodel = fmodel)
     self.map_data = None
     assert number_of_kicks > 0
     counter = 0
@@ -78,7 +106,7 @@ class kick_map(object):
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
         max_kick = fmodel.xray_structure.max_distance(other = xray_structure)
-        b_sharp = None#8 * math.pi**2 * max_kick**2 # this does not do any good
+        b_sharp = None #8 * math.pi**2 * max_kick**2 # this does not do any good
         print kick_size, max_kick, b_sharp
         self.fft_map = model_to_map(
           fmodel_tmp                    = fmodel_tmp,
@@ -89,7 +117,9 @@ class kick_map(object):
           resolution_factor             = resolution_factor,
           other_fft_map                 = other_fft_map,
           symmetry_flags                = symmetry_flags,
-          b_sharp                       = b_sharp).fft_map
+          b_sharp                       = b_sharp,
+          bss_params                    = bss_params,
+          map_helper_obj                = map_helper_obj).fft_map
         if(real_map):
           tmp_result = self.fft_map.real_map()
         elif(real_map_unpadded):
@@ -101,8 +131,9 @@ class kick_map(object):
     # produce sigma scaled map: copied from miller.py
     from cctbx import maptbx
     statistics = maptbx.statistics(self.map_data)
-    self.map_data /= statistics.sigma()
-
+    self.average = statistics.mean()
+    self.standard_deviation = statistics.sigma()
+    self.map_data /= self.standard_deviation
 
 class model_to_map(object):
 
@@ -114,7 +145,9 @@ class model_to_map(object):
                      resolution_factor,
                      other_fft_map,
                      symmetry_flags,
-                     b_sharp):
+                     b_sharp,
+                     bss_params,
+                     map_helper_obj):
     fmodel_tmp.update_xray_structure(xray_structure = xray_structure,
                                      update_f_calc  = True,
                                      update_f_mask  = True)
@@ -122,16 +155,20 @@ class model_to_map(object):
       fmodel_tmp.update_solvent_and_scale()
     else:
       fmodel_tmp.update(
-        f_mask            = fmodel.f_mask(),
         b_cart            = fmodel.b_cart(),
         k_sol             = fmodel.k_sol(),
         b_sol             = fmodel.b_sol(),
         alpha_beta_params = fmodel.alpha_beta_params)
+      bss_params.k_sol_b_sol_grid_search = False
+      bss_params.number_of_macro_cycles = 1
+      fmodel_tmp.update_solvent_and_scale(params = bss_params)
     self.fft_map = fmodel_tmp.electron_density_map(b_sharp = b_sharp).\
-      fft_map(map_type          = map_type,
-              other_fft_map     = other_fft_map,
-              symmetry_flags    = symmetry_flags,
-              resolution_factor = resolution_factor)
+      fft_map(map_type                   = map_type,
+              other_fft_map              = other_fft_map,
+              symmetry_flags             = symmetry_flags,
+              resolution_factor          = resolution_factor,
+              map_helper_obj             = map_helper_obj,
+              force_anomalous_flag_false = True)
     self.fft_map.apply_sigma_scaling()
 
 ###############################################################################
@@ -154,22 +191,10 @@ class electron_density_map(object):
       self.anom_diff = self._phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
     if(self.fill_missing_f_obs): self._fill_f_obs()
-    ss = 1./flex.pow2(self.fmodel.f_obs.d_spacings().data())/4.
-    fb_cart  = self.fmodel.fb_cart()
-    scale_k1 = self.fmodel.scale_k1()
-    f_obs_scale   = 1.0 / (fb_cart * scale_k1)
-    f_model_scale = 1.0 / fb_cart
-    self.f_obs_data_scaled = self.fmodel.f_obs.data() * f_obs_scale
-    self.f_model_data_scaled = self.fmodel.f_model().data() * f_model_scale
-    if(b_sharp is not None): # XXX determine automatically as suggested by Axel.
-      self.f_obs_data_scaled *= flex.exp(b_sharp*ss)
-      self.f_model_data_scaled = self.f_model_data_scaled * flex.exp(b_sharp*ss)
-    self.f_obs_scaled = self.fmodel.f_obs.array(data = self.f_obs_data_scaled)
-    self.f_model_scaled = self.fmodel.f_obs.array(data = self.f_model_data_scaled)
-    self.r_free_flags = self.fmodel.r_free_flags
+    self.map_helper_obj = map_helper(fmodel = self.fmodel)
     del self.fmodel
 
-  def map_coefficients(self, map_type):
+  def map_coefficients(self, map_type, map_helper_obj = None):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     if(map_name_manager.anomalous):
       if(self.anom_diff is not None):
@@ -180,29 +205,18 @@ class electron_density_map(object):
       else: return None
     if(not map_name_manager.ml_map):
        return self._map_coeff(
-         f_obs         = self.f_obs_scaled,
-         f_model       = self.f_model_scaled,
+         f_obs         = self.map_helper_obj.f_obs_scaled,
+         f_model       = self.map_helper_obj.f_model_scaled,
          f_obs_scale   = map_name_manager.k,
          f_model_scale = map_name_manager.n)
     if(map_name_manager.ml_map):
-      alpha, beta = maxlik.alpha_beta_est_manager(
-        f_obs                    = self.f_obs_scaled,
-        f_calc                   = self.f_model_scaled,
-        free_reflections_per_bin = 100,
-        flags                    = self.r_free_flags.data(),
-        interpolation            = True).alpha_beta()
-      fom = max_lik.fom_and_phase_error(
-        f_obs          = self.f_obs_data_scaled,
-        f_model        = flex.abs(self.f_model_data_scaled),
-        alpha          = alpha.data(),
-        beta           = beta.data(),
-        space_group    = self.r_free_flags.space_group(),
-        miller_indices = self.r_free_flags.indices()).fom()
+      if(map_helper_obj is None): map_helper_obj_ = self.map_helper_obj
+      else: map_helper_obj_ = map_helper_obj
       return self._map_coeff(
-        f_obs         = self.f_obs_scaled,
-        f_model       = self.f_model_scaled,
-        f_obs_scale   = map_name_manager.k*fom,
-        f_model_scale = map_name_manager.n*alpha.data())
+        f_obs         = map_helper_obj_.f_obs_scaled,
+        f_model       = map_helper_obj_.f_model_scaled,
+        f_obs_scale   = map_name_manager.k*map_helper_obj_.fom,
+        f_model_scale = map_name_manager.n*map_helper_obj_.alpha.data())
 
   def _fill_f_obs(self):
     f_model = self.fmodel.f_model()
@@ -269,9 +283,16 @@ class electron_density_map(object):
               symmetry_flags = None,
               map_coefficients = None,
               other_fft_map = None,
-              map_type = None):
+              map_type = None,
+              map_helper_obj = None,
+              force_anomalous_flag_false = None):
     if(map_coefficients is None):
-      map_coefficients = self.map_coefficients(map_type = map_type)
+      map_coefficients = self.map_coefficients(map_type       = map_type,
+                                               map_helper_obj = map_helper_obj)
+      if(force_anomalous_flag_false):
+        map_coefficients = map_coefficients.average_bijvoet_mates()
+    if(force_anomalous_flag_false):
+      map_coefficients = map_coefficients.average_bijvoet_mates()
     if(other_fft_map is None):
       return map_coefficients.fft_map(
         resolution_factor = resolution_factor,
