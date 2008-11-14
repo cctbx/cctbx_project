@@ -41,6 +41,13 @@ def v3distsq(a, b):
   for x,y in zip(a,b): result += (x-y)**2
   return result
 
+VIEWER_UPDATE_ID = wx.NewId()
+class ViewerUpdateEvent (wx.PyEvent) :
+  def __init__ (self, data) :
+    wx.PyEvent.__init__(self)
+    self.data = data
+    self.SetEventType(VIEWER_UPDATE_ID)
+
 class wxGLWindow(wx.glcanvas.GLCanvas):
 
   def InitGL(self):
@@ -75,6 +82,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.Bind(wx.EVT_MOTION, self.OnMouseMotion)
     self.Bind(wx.EVT_IDLE, self.OnIdle)
     self.Bind(wx.EVT_MOUSEWHEEL, self.OnMouseWheel)
+    self.Connect(-1, -1, VIEWER_UPDATE_ID, self.OnUpdate)
 
     self.w, self.h = self.GetClientSizeTuple()
 
@@ -449,6 +457,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glFlush()
     self.SwapBuffers()
     if (event is not None): event.Skip()
+
+  def OnUpdate (self, event=None) :
+    pass
 
 class show_points_and_lines_mixin(wxGLWindow):
 
