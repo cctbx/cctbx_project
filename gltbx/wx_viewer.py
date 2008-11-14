@@ -700,6 +700,8 @@ class App(wx.App):
     return True
 
   def OnExitApp(self, event):
+    f = getattr(self.view_objects, "CleanupBeforeFrameClose", None)
+    if (f is not None): f()
     self.frame.Close(True)
 
   def OnToolClick(self, event):
