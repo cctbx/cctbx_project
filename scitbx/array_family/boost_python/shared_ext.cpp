@@ -41,8 +41,7 @@ namespace {
       .enable_pickling()
     ;
     shared_wrapper<mat3<int> >::wrap("mat3_int");
-    shared_wrapper<tiny<c_grid_padded<3>::index_value_type, 3> >
-      ::wrap("array_of_triplets_of_c_grid_padded_indices");
+    shared_wrapper<tiny<std::ptrdiff_t, 3> >::wrap("ptrdiff_t_triplet");
       // used by scitbx.iso_surface
   }
 
