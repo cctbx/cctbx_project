@@ -19,17 +19,15 @@ class thread_with_callback_and_wait (threading.Thread) :
     self.f(*self.args, **self.kwds)
 
   def _callback (self, *args, **kwds) :
-    self.cb(*args, **kwds)
+    cb_status = self.cb(*args, **kwds)
+    if cb_status is not None :
+      return cb_status
     while True :
       go_ahead = self.q.get()
       if go_ahead :
-        break
+        return True
       else :
-        self._aborted = True
-        break
-    if self._aborted :
-      return False
-    return True
+        return False
 
   def resume (self) :
     self.q.put(True)
