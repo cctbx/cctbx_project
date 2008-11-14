@@ -4,30 +4,38 @@
 #include <boost/python/class.hpp>
 
 #include <scitbx/iso_surface.h>
+#include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 
 namespace scitbx { namespace iso_surface { namespace boost_python {
 
-  template <class CoordinatesType, class ValueType>
+  template <class CoordinatesType, class ValueType, class GridType>
   struct triangulation_wrapper
   {
-    typedef triangulation<CoordinatesType, ValueType> wt;
+    typedef triangulation<CoordinatesType, ValueType, GridType> wt;
 
     static void wrap(const char *name) {
       using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
 
       class_<wt>(name, no_init)
         .def(init<typename wt::map_const_ref_type,
                   ValueType,
                   af::tiny<CoordinatesType, 3> const&,
+                  af::tiny<CoordinatesType, 3> const&,
+                  af::tiny<CoordinatesType, 3> const&,
+                  bool,
                   bool,
                   bool
                   > ((
                   arg("map"),
                   arg("iso_level"),
-                  arg("map_extent"),
+                  arg("map_extent"), arg("from_here"), arg("to_there"),
+                  arg("periodic")=false,
                   arg("lazy_normals")=true,
                   arg("ascending_normal_direction")=true
         )))
+        .add_property("from_here", &wt::from_here)
+        .add_property("to_there", &wt::to_there)
         .add_property("vertices", &wt::vertices)
         .add_property("triangles", &wt::triangles)
         .add_property("normals", &wt::normals)
@@ -39,7 +47,9 @@ namespace scitbx { namespace iso_surface { namespace boost_python {
   };
 
   void init_module() {
-    triangulation_wrapper<double, double>::wrap("triangulation");
+    triangulation_wrapper<double, double,
+                          af::c_grid_padded_periodic<3> >::wrap(
+      "triangulation");
   }
 
 }}}
