@@ -208,6 +208,7 @@ libtbx/smart_open.py svneol=native#text/x-python
 libtbx/smp_utils.py -text
 libtbx/sourceforge_checkout.py -text
 libtbx/subversion.py -text
+libtbx/thread_utils.py -text
 libtbx/tst_itertbx.py -text
 libtbx/tst_math_utils.py svneol=native#text/x-python
 libtbx/tst_object_oriented_patterns.py -text
