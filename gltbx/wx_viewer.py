@@ -629,6 +629,7 @@ class App(wx.App):
       self.title,
       wx.DefaultPosition,
       self.default_size)
+    self.frame.Bind(wx.EVT_CLOSE, self.OnFrameClose)
 
     self.frame.CreateStatusBar()
 
@@ -700,9 +701,12 @@ class App(wx.App):
     return True
 
   def OnExitApp(self, event):
+    self.frame.Close(True)
+
+  def OnFrameClose(self, event):
     f = getattr(self.view_objects, "CleanupBeforeFrameClose", None)
     if (f is not None): f()
-    self.frame.Close(True)
+    self.frame.Destroy()
 
   def OnToolClick(self, event):
     id = event.GetId()
