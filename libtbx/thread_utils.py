@@ -5,14 +5,13 @@ import Queue
 
 class thread_with_callback_and_wait (threading.Thread) :
   def __init__ (self, run_function, callback_function, run_args=(),
-      run_kwds={}, time_wait=0.001) :
+      run_kwds={}) :
     self.f = run_function
     self.args = run_args
     self.kwds = run_kwds
     self.kwds['callback'] = self._callback
     self.cb = callback_function
     self.q = Queue.Queue(0)
-    self.time_wait = time_wait
     self._aborted = False
     threading.Thread.__init__(self)
 
@@ -21,7 +20,6 @@ class thread_with_callback_and_wait (threading.Thread) :
 
   def _callback (self, *args, **kwds) :
     self.cb(*args, **kwds)
-    t = self.time_wait
     while True :
       go_ahead = self.q.get()
       if go_ahead :
@@ -29,7 +27,6 @@ class thread_with_callback_and_wait (threading.Thread) :
       else :
         self._aborted = True
         break
-      time.sleep(t)
     if self._aborted :
       return False
     return True
