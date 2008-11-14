@@ -320,6 +320,7 @@ rstbx/symmetry/sgtbx_adaptor.py -text
 rstbx/symmetry/subgroup.py -text
 scitbx/array_family/accessors/c_grid_padded_periodic.h -text
 scitbx/array_family/accessors/c_grid_periodic.h -text
+scitbx/array_family/accessors/traits.h -text
 scitbx/array_family/boost_python/passing_flex_by_reference.h -text
 scitbx/array_family/boost_python/selections_wrapper.h svneol=native#text/plain
 scitbx/array_family/boost_python/tst_cost_of_m_handle_in_af_shared.py -text

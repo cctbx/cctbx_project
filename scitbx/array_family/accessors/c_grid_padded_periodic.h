@@ -13,7 +13,7 @@ namespace scitbx { namespace af {
   class c_grid_padded_periodic<3>
   {
     public:
-      typedef tiny<int, 3> index_type;
+      typedef tiny<std::ptrdiff_t, 3> index_type;
       typedef index_type::value_type index_value_type;
 
       c_grid_padded_periodic() : all_(0,0,0), focus_(0,0,0) {}
