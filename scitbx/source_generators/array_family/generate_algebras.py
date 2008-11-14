@@ -648,7 +648,8 @@ namespace scitbx { namespace af {
   generate_2arg_element_wise(f,
     array_type_name,
     misc_functions_a_a
-    + generate_std_imports.cmath_2arg)
+    + generate_std_imports.cmath_2arg
+    + generate_std_imports.algorithm_2arg)
   for special_def in generate_std_imports.complex_special:
     generate_element_wise_special(f, array_type_name, special_def)
   for args in misc_functions_x_x_s:
