@@ -20,6 +20,10 @@ cstdlib_1arg = (
   'abs',
 )
 
+algorithm_2arg = (
+  'each_min', 'each_max',
+)
+
 complex_1arg = (
 # "cos",
 # "cosh",
@@ -55,6 +59,11 @@ complex_special = (
 complex_special_addl_1arg = ("real", "imag", "arg", "norm")
 complex_special_addl_2arg = ("polar",)
 
+def filter_function_name(name):
+  if name in ('each_min', 'each_max'):
+    return name[-3:]
+  return name
+
 def generate_1arg(f):
   for function_name in (
     cmath_1arg + cstdlib_1arg + complex_1arg + complex_special_addl_1arg):
@@ -62,9 +71,9 @@ def generate_1arg(f):
       function_name, function_name + "(x)")
 
 def generate_2arg(f):
-  for function_name in cmath_2arg + complex_special_addl_2arg:
+  for function_name in cmath_2arg + algorithm_2arg + complex_special_addl_2arg:
     generate_operator_functors.generate_binary(f,
-      function_name, function_name + "(x, y)")
+      function_name, filter_function_name(function_name) + "(x, y)")
 
 def run(target_dir):
   f = utils.join_open(target_dir, "detail/std_imports.h", "w")
@@ -83,7 +92,8 @@ namespace scitbx { namespace fn {
 """
 
   all_function_names = []
-  for function_name in cmath_1arg + cmath_2arg + cstdlib_1arg + complex_1arg:
+  for function_name in (cmath_1arg + cmath_2arg + cstdlib_1arg
+                        + algorithm_2arg + complex_1arg):
     if (not function_name in all_function_names):
       all_function_names.append(function_name)
   for entry in complex_special:
@@ -92,7 +102,7 @@ namespace scitbx { namespace fn {
       all_function_names.append(function_name)
 
   for function_name in all_function_names:
-    print >> f, "  using std::" + function_name + ";"
+    print >> f, "  using std::" + filter_function_name(function_name) + ";"
 
   generate_1arg(f)
   generate_2arg(f)
