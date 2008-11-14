@@ -13,14 +13,15 @@
 
 #include <cmath>
 #include <map>
-#include <scitbx/array_family/accessors/c_grid_padded.h>
-#include <scitbx/array_family/loops.h>
+#include <boost/static_assert.hpp>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/array_family/shared.h>
+#include <scitbx/array_family/accessors/traits.h>
 #include <scitbx/error.h>
+
 
 namespace scitbx { namespace iso_surface {
 
@@ -325,23 +326,44 @@ namespace triangulation_detail {
 } // namespace triangulation_detail
 
 /// Triangulation of an isosurface of a scalar field
-template <class CoordinatesType, class ValueType>
+template <class CoordinatesType, class ValueType, class GridType>
 class triangulation
 {
 public:
+  BOOST_STATIC_ASSERT((af::may_be_padded<GridType>::value));
+
   typedef CoordinatesType coordinates_type;
   typedef ValueType value_type;
-  typedef af::c_grid_padded<3> grid_type;
+  typedef GridType grid_type;
   typedef typename grid_type::index_type index_type;
   typedef typename grid_type::index_value_type index_value_type;
   typedef af::const_ref<value_type, grid_type> map_const_ref_type;
 
-  typedef scitbx::vec3<CoordinatesType> point_3d;
-  typedef scitbx::vec3<CoordinatesType> vector_3d;
-  typedef af::tiny<index_value_type,3> triangle;
+  // geometrical types
+  typedef scitbx::vec3<coordinates_type> point_3d;
+  typedef point_3d vector_3d;
+
+  // element-wise
+  typedef af::tiny<coordinates_type, 3> extent_3d;
+  typedef extent_3d position_3d;
+
+  typedef af::tiny<index_value_type, 3> triangle;
 
   /** Construct the triangulation from a map of the scalar field, the iso level
   and the map grid size.
+
+  - map_extent is the entire parallelepiped in which the map is gridded
+
+  - from_here and to_there are the diagonally opposite points defining the
+    parallelepiped in which the iso-surface is computed, i.e. anything outside
+    of that volume is ignored
+
+  - the flag periodic tells how to deal with a volume (from_here, to_there)
+    part of which lies outside of the volume defined by map_extent: if not
+    periodic, then the former volume is clipped to the intersection with the
+    latter; otherwise, the former volume is accepted as it is. The latter case
+    is only valid if the map is periodic of course, i.e. its accessor is one
+    of c_grid_periodic or c_grid_padded_periodic.
 
   - The flag lazy_normals specifies whether the normals
     shall be computed when the member function normals() is called for the first
@@ -354,16 +376,27 @@ public:
   */
   triangulation(map_const_ref_type map,
                 value_type iso_level,
-                af::tiny<coordinates_type, 3> const& map_extent,
+                extent_3d const& map_extent,
+                position_3d const& from_here,
+                position_3d const& to_there,
+                bool periodic=false,
                 bool lazy_normals=true,
                 bool ascending_normal_direction=true)
   : map_(map),
     iso_level_(iso_level),
-    n_cells(map.accessor().all() - index_value_type(1)),
-    cell_lengths(map_extent/n_cells),
     lazy_normals_(lazy_normals),
     ascending_normal_direction_(ascending_normal_direction)
   {
+    SCITBX_ASSERT((from_here < to_there).all_eq(true));
+    SCITBX_ASSERT(!periodic || af::may_be_periodic<GridType>::value);
+    if (!periodic) {
+      from_here_ = af::each_max(from_here, 0.);
+      to_there_ = af::each_min(to_there, map_extent);
+    }
+    index_type n_cells = map.accessor().focus() - index_type(1,1,1);
+    cell_lengths = map_extent/n_cells;
+    first_grid_point = from_here_/cell_lengths + 0.5;
+    last_grid_point = to_there_/cell_lengths + 0.5;
     init();
   }
 
@@ -386,6 +419,11 @@ public:
     }
     return normals_;
   }
+
+  /// The two diagonally opposite points of the parallelepiped within which
+  /// The triangulation is built.
+  point_3d from_here() { return from_here_; }
+  point_3d to_there() { return to_there_; }
 
   /// The flag of same name passed to the constructor
   bool ascending_normal_direction() { return ascending_normal_direction_; }
@@ -413,11 +451,14 @@ protected:
   // The iso level
   value_type iso_level_;
 
-  // No. of cells in x, y, and z directions
-  index_type n_cells;
+  // Bounding points of the region where the iso-surface is considered
+  extent_3d from_here_, to_there_;
+
+  // First and last grid point (closed range)
+  index_type first_grid_point, last_grid_point;
 
   // Cell length in x, y, and z directions.
-  af::tiny<coordinates_type, 3> cell_lengths;
+  extent_3d cell_lengths;
 
   // The vertices_ which make up the isosurface.
   af::shared<point_3d> vertices_;
@@ -455,17 +496,21 @@ protected:
   void calculate_normals();
 };
 
-template <class CoordinatesType, class ValueType>
+template <class CoordinatesType, class ValueType, class GridType>
 void
-triangulation<CoordinatesType, ValueType>::
+triangulation<CoordinatesType, ValueType, GridType>::
 init()
 {
   using namespace triangulation_detail;
+
   // Generate isosurface.
-  for (af::nested_loop<index_type> index(n_cells); !index.over(); index.incr())
+  index_type index;
+  for (index[0]=first_grid_point[0]; index[0] < last_grid_point[0]; index[0]++)
+  for (index[1]=first_grid_point[1]; index[1] < last_grid_point[1]; index[1]++)
+  for (index[2]=first_grid_point[2]; index[2] < last_grid_point[2]; index[2]++)
   {
     // Calculate table lookup index from those vertices below the isolevel.
-    index_value_type x = index()[0], y = index()[1], z = index()[2];
+    index_value_type x = index[0], y = index[1], z = index[2];
     index_value_type table_index = 0;
     if (map_(x, y, z)       < iso_level_) table_index |=   1;
     if (map_(x, y+1, z)     < iso_level_) table_index |=   2;
@@ -481,36 +526,36 @@ init()
 
     if ( edge_flag == 0) continue;
 
-    if (edge_flag &   8) process_edge(index(), 3);
-    if (edge_flag &   1) process_edge(index(), 0);
-    if (edge_flag & 256) process_edge(index(), 8);
-    if (x == n_cells[X] - 1) {
-      if (edge_flag &    4) process_edge(index(), 2);
-      if (edge_flag & 2048) process_edge(index(), 11);
+    if (edge_flag &   8) process_edge(index, 3);
+    if (edge_flag &   1) process_edge(index, 0);
+    if (edge_flag & 256) process_edge(index, 8);
+    if (x == last_grid_point[X] - 1) {
+      if (edge_flag &    4) process_edge(index, 2);
+      if (edge_flag & 2048) process_edge(index, 11);
     }
-    if (y == n_cells[Y] - 1) {
-      if (edge_flag &   2) process_edge(index(), 1);
-      if (edge_flag & 512) process_edge(index(), 9);
+    if (y == last_grid_point[Y] - 1) {
+      if (edge_flag &   2) process_edge(index, 1);
+      if (edge_flag & 512) process_edge(index, 9);
     }
-    if (z == n_cells[Z] - 1) {
-      if (edge_flag &  16) process_edge(index(), 4);
-      if (edge_flag & 128) process_edge(index(), 7);
+    if (z == last_grid_point[Z] - 1) {
+      if (edge_flag &  16) process_edge(index, 4);
+      if (edge_flag & 128) process_edge(index, 7);
     }
-    if (x == n_cells[X] - 1 && y == n_cells[Y] - 1) {
-      if (edge_flag & 1024) process_edge(index(), 10);
+    if (x == last_grid_point[X] - 1 && y == last_grid_point[Y] - 1) {
+      if (edge_flag & 1024) process_edge(index, 10);
     }
-    if (x == n_cells[X] - 1 && z == n_cells[Z] - 1) {
-      if (edge_flag & 64) process_edge(index(), 6);
+    if (x == last_grid_point[X] - 1 && z == last_grid_point[Z] - 1) {
+      if (edge_flag & 64) process_edge(index, 6);
     }
-    if (y == n_cells[Y] - 1 && z == n_cells[Z] - 1) {
-      if (edge_flag & 32) process_edge(index(), 5);
+    if (y == last_grid_point[Y] - 1 && z == last_grid_point[Z] - 1) {
+      if (edge_flag & 32) process_edge(index, 5);
     }
 
     for (index_value_type i = 0; tri_table[table_index][i] != -1; i += 3) {
       index_value_type point_id0, point_id1, point_id2;
-      point_id0 = get_edge_id(index(), tri_table[table_index][i]);
-      point_id1 = get_edge_id(index(), tri_table[table_index][i+1]);
-      point_id2 = get_edge_id(index(), tri_table[table_index][i+2]);
+      point_id0 = get_edge_id(index, tri_table[table_index][i]);
+      point_id1 = get_edge_id(index, tri_table[table_index][i+1]);
+      point_id2 = get_edge_id(index, tri_table[table_index][i+2]);
       triangles_.push_back(triangle(point_id0, point_id1, point_id2));
     }
   }
@@ -519,10 +564,10 @@ init()
   if (!lazy_normals_) calculate_normals();
 }
 
-template <class CoordinatesType, class ValueType>
+template <class CoordinatesType, class ValueType, class GridType>
 inline
 void
-triangulation<CoordinatesType, ValueType>::
+triangulation<CoordinatesType, ValueType, GridType>::
 process_edge(index_type n, int edge_no)
 {
   index_value_type idx = get_edge_id(n, edge_no);
@@ -531,10 +576,10 @@ process_edge(index_type n, int edge_no)
 }
 
 
-template <class CoordinatesType, class ValueType>
+template <class CoordinatesType, class ValueType, class GridType>
 inline
-typename triangulation<CoordinatesType, ValueType>::index_value_type
-triangulation<CoordinatesType, ValueType>::
+typename triangulation<CoordinatesType, ValueType, GridType>::index_value_type
+triangulation<CoordinatesType, ValueType, GridType>::
 get_edge_id(index_type n, int edge_no)
 {
   int c;
@@ -558,10 +603,10 @@ get_edge_id(index_type n, int edge_no)
   return vertex_id + c;
 }
 
-template <class CoordinatesType, class ValueType>
+template <class CoordinatesType, class ValueType, class GridType>
 inline
-typename triangulation<CoordinatesType, ValueType>::point_3d
-triangulation<CoordinatesType, ValueType>::
+typename triangulation<CoordinatesType, ValueType, GridType>::point_3d
+triangulation<CoordinatesType, ValueType, GridType>::
 calculate_intersection(index_type n, int edge_no)
 {
   // Find one point below and one point above the iso-surface
@@ -615,9 +660,9 @@ calculate_intersection(index_type n, int edge_no)
   return p1 + mu*(p2 - p1);
 }
 
-template <class CoordinatesType, class ValueType>
+template <class CoordinatesType, class ValueType, class GridType>
 void
-triangulation<CoordinatesType, ValueType>::
+triangulation<CoordinatesType, ValueType, GridType>::
 rename_vertices_and_triangles()
 {
   // Rename vertices.
@@ -652,9 +697,9 @@ rename_vertices_and_triangles()
   id_to_vertex.clear();
 }
 
-template <class CoordinatesType, class ValueType>
+template <class CoordinatesType, class ValueType, class GridType>
 void
-triangulation<CoordinatesType, ValueType>::
+triangulation<CoordinatesType, ValueType, GridType>::
 calculate_normals()
 {
   normals_ = af::shared<vector_3d>(vertices_.size());

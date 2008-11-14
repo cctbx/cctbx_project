@@ -29,7 +29,8 @@ class triangulation_test_case(object):
     self.lazy_normals = lazy_normals
     self.descending_normals = descending_normals
 
-  def run(self, iso_level, verbose):
+  def run(self, iso_level, from_here=None, to_there=None, periodic=False,
+          verbose=0):
     """ Test triangulation of the iso-surface at the given iso-level """
     f = self.func
 
@@ -38,14 +39,21 @@ class triangulation_test_case(object):
     s = iso_surface.triangulation(
       self.map, iso_level,
       map_extent=(1,1,1),
+      from_here=from_here, to_there=to_there,
+      periodic=periodic,
       lazy_normals=self.lazy_normals,
       ascending_normal_direction = not self.descending_normals)
+    self.triangulation = s
     t1 = time.time()
     if verbose:
       print "iso-surface triangulation per se: %f s" % (t1-t0)
 
     # make sure there is something to test!!
     assert s.vertices.size() > 0
+
+    outside = [ v for v in s.vertices
+                if not(s.from_here <= v <=  s.to_there) ]
+    assert not outside
 
     # the value of f on the vertices v shall not differ from iso_level by more
     # than ||1/2 f''(v).h|| where h=(dx,dy,dz)
@@ -110,9 +118,10 @@ class triangulation_test_case(object):
 
   def is_near_boundary(self, v1, v2):
     delta = matrix.col(self.grid_cell)/2
-    for c1, c2, m, eps in zip(v1, v2, self.grid_size, delta):
+    lower, higher = self.triangulation.bounds
+    for c1, c2, l, h, eps in zip(v1, v2, lower, higher, delta):
       if c1 != c2: continue
-      if abs(c1) < eps or abs(c1 - 1) < eps: return True
+      if abs(c1 - l) < eps or abs(c1 - h) < eps: return True
     return False
 
   def bad_vertices_err(self, bad_vertices, iso_level):
@@ -126,10 +135,11 @@ class elliptic(object):
 
   def __call__(self, p):
     x,y,z = p
-    return x*x + 2*y*y + 3*z*z
+    return x*(1-x) + 2*y*(1-y) + 3*z*(1-z)
 
   def second_order_error(self, p, h):
-    return 0.5*abs(self(h))
+    x,y,z = h
+    return 0.5*(x*x + 2*y*y + 3*z*z)
 
 class hyperbolic(object):
 
@@ -168,13 +178,21 @@ def run(args):
   test = triangulation_test_case(elliptic(), grid_size,
                                  lazy_normals=False,
                                  descending_normals=False)
-  test.run(iso_level=3, verbose=verbose)
-  assert test.degenerate_edges == [(2973, 2912)]
+  test.run(iso_level=1, verbose=verbose)
+  assert test.degenerate_edges == []
+  test.run(iso_level=1.3,
+           from_here=(0.3, 0.2, 0.4), to_there=(0.7, 0.8, 0.6),
+           verbose=verbose)
+  assert test.degenerate_edges == []
+  test.run(iso_level=1.4,
+           from_here=(-0.3, 0.2, 0.4), to_there=(0.7, 0.8, 1.6),
+           verbose=verbose)
+  assert test.degenerate_edges == []
 
   test = triangulation_test_case(elliptic(), grid_size,
                                  lazy_normals=True,
                                  descending_normals=False)
-  test.run(iso_level=2.9, verbose=verbose)
+  test.run(iso_level=0.8, verbose=verbose)
   assert test.degenerate_edges == []
 
   test = triangulation_test_case(hyperbolic(), grid_size,
