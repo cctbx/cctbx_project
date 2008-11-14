@@ -288,13 +288,12 @@ namespace gltbx { namespace util {
   it means it is foolish to construct two such objects and interwin calls to
   draw_xxx
   */
-  template<typename T>
+  template<typename IndexType, typename CoordinatesType>
   class vertex_array
   {
     public:
-      typedef af::const_ref< scitbx::vec3<T> > input_type;
-      typedef typename input_type::size_type input_type_size;
-      typedef af::tiny<input_type_size,3> triangle;
+      typedef af::const_ref< scitbx::vec3<CoordinatesType> > input_type;
+      typedef af::tiny<IndexType, 3> triangle;
 
       /// Construct an array from the given vertices and normals
       vertex_array(input_type const& vertices,
@@ -303,8 +302,10 @@ namespace gltbx { namespace util {
       {
         SCITBX_ASSERT(vertices.size() == normals.size())
                      (vertices.size())(normals.size());
-        glVertexPointer(3, gl_enum_type_of<T>::type, 0, vertices.begin());
-        glNormalPointer(gl_enum_type_of<T>::type, 0, normals.begin());
+        glVertexPointer(
+          3, gl_enum_type_of<CoordinatesType>::type, 0, vertices.begin());
+        glNormalPointer(
+          gl_enum_type_of<CoordinatesType>::type, 0, normals.begin());
       }
 
       /** Draw the triangles: triangles[i] is a triplet of indices to look
@@ -446,10 +447,10 @@ namespace gltbx { namespace util {
     }
   }
 
-  template<typename T>
+  template<typename IndexType, typename CoordinatesType>
   struct vertex_array_wrapper
   {
-    typedef vertex_array<T> wt;
+    typedef vertex_array<IndexType, CoordinatesType> wt;
     typedef typename wt::input_type const& inp_t;
 
     static void wrap(char* name) {
@@ -538,7 +539,7 @@ namespace gltbx { namespace util {
       arg_("radius"),
       arg_("slices"),
       arg_("stacks")));
-    vertex_array_wrapper<GLdouble>::wrap("vertex_array");
+    vertex_array_wrapper<std::ptrdiff_t, GLdouble>::wrap("vertex_array");
   }
 
 }} // namespace gltbx::util

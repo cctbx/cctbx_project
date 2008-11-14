@@ -33,6 +33,9 @@ class map_view(wx_viewer.wxGLWindow):
   def __init__(self,
                fft_map=None,
                unit_cell=None, raw_map=None,
+               from_here=None,
+               to_there=None,
+               periodic=False,
                iso_level=None,
                frame=None,
                wires=True,
@@ -66,6 +69,9 @@ class map_view(wx_viewer.wxGLWindow):
     def f(iso_level):
       return iso_surface.triangulation(rho, iso_level,
                                        map_extent=(1,1,1),
+                                       from_here=from_here,
+                                       to_there=to_there,
+                                       periodic=periodic,
                                        ascending_normal_direction=False
                                      )
     self._compute_triangulation = f
@@ -206,6 +212,9 @@ class App(wx_viewer.App):
   def __init__(self,
                fft_map=None,
                unit_cell=None, raw_map=None,
+               from_here=None,
+               to_there=None,
+               periodic=False,
                iso_level=None,
                wires=True,
                default_size=(600,600),
@@ -213,6 +222,9 @@ class App(wx_viewer.App):
     self._make_view_objects = lambda: map_view(
       fft_map=fft_map,
       unit_cell=unit_cell, raw_map=raw_map,
+      from_here=from_here,
+      to_there=to_there,
+      periodic=periodic,
       wires=wires,
       iso_level=iso_level,
       frame=self.frame,
