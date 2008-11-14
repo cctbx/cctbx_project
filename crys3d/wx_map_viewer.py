@@ -81,10 +81,10 @@ class map_view(wx_viewer.wxGLWindow):
     self.max_density = density_stats.max()
     self.iso_level = iso_level(density_stats)
 
-    p = (0,0,0)
-    q = unit_cell.orthogonalize((1,1,1))
-    r = unit_cell.orthogonalize((1,0,0))
-    s = unit_cell.orthogonalize((0,1,1))
+    p = unit_cell.orthogonalize(from_here)
+    q = unit_cell.orthogonalize(to_there)
+    r = unit_cell.orthogonalize((to_there[0], from_here[1], from_here[2]))
+    s = unit_cell.orthogonalize((from_here[0], to_there[1], to_there[2]))
     self.minimum_covering_sphere = minimum_covering_sphere(
       flex.vec3_double([p,q,r,s]))
 
@@ -154,10 +154,15 @@ class map_view(wx_viewer.wxGLWindow):
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (0, 0, 0, 1))
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 0)
 
+    (x0, y0, z0), (x1, y1, z1) = self.triangulation.bounds
+
     r,g,b = 0.9, 0.4, 0.3
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (r, g, b, 1.))
     e = self.unit_cell_label_shift_from_axes
-    for pos, label in zip([(1/2,e,e), (e,1/2,e),(e,e,1/2)], ['a','b','c']):
+    for pos, label in zip([((x0 + x1)/2, y0 + e, z0 + e),
+                           (x0 + e, (y0 + y1)/2, z0 + e),
+                           (x0 + e, y0 + e, (z0 + z1)/2)],
+                          ['a','b','c']):
       self.unit_cell_label_fonts.render_text(pos, label, use_3d_position=True)
 
     lw = [0.]
@@ -167,26 +172,26 @@ class map_view(wx_viewer.wxGLWindow):
     r,g,b = (0.6,)*3
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, (r, g, b, 1.))
     glBegin(GL_LINE_LOOP)
-    glVertex3f(0,0,0)
-    glVertex3f(1,0,0)
-    glVertex3f(1,1,0)
-    glVertex3f(0,1,0)
+    glVertex3f(x0,y0,z0)
+    glVertex3f(x1,y0,z0)
+    glVertex3f(x1,y1,z0)
+    glVertex3f(x0,y1,z0)
     glEnd()
     glBegin(GL_LINE_LOOP)
-    glVertex3f(0,0,1)
-    glVertex3f(1,0,1)
-    glVertex3f(1,1,1)
-    glVertex3f(0,1,1)
+    glVertex3f(x0,y0,z1)
+    glVertex3f(x1,y0,z1)
+    glVertex3f(x1,y1,z1)
+    glVertex3f(x0,y1,z1)
     glEnd()
     glBegin(GL_LINES)
-    glVertex3f(0,0,0)
-    glVertex3f(0,0,1)
-    glVertex3f(1,0,0)
-    glVertex3f(1,0,1)
-    glVertex3f(1,1,0)
-    glVertex3f(1,1,1)
-    glVertex3f(0,1,0)
-    glVertex3f(0,1,1)
+    glVertex3f(x0,y0,z0)
+    glVertex3f(x0,y0,z1)
+    glVertex3f(x1,y0,z0)
+    glVertex3f(x1,y0,z1)
+    glVertex3f(x1,y1,z0)
+    glVertex3f(x1,y1,z1)
+    glVertex3f(x0,y1,z0)
+    glVertex3f(x0,y1,z1)
     glEnd()
     glLineWidth(lw[0])
 
