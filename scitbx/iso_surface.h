@@ -384,14 +384,15 @@ public:
                 bool ascending_normal_direction=true)
   : map_(map),
     iso_level_(iso_level),
+    from_here_(from_here), to_there_(to_there),
     lazy_normals_(lazy_normals),
     ascending_normal_direction_(ascending_normal_direction)
   {
     SCITBX_ASSERT((from_here < to_there).all_eq(true));
     SCITBX_ASSERT(!periodic || af::may_be_periodic<GridType>::value);
     if (!periodic) {
-      from_here_ = af::each_max(from_here, 0.);
-      to_there_ = af::each_min(to_there, map_extent);
+      from_here_ = af::each_max(from_here_, 0.);
+      to_there_ = af::each_min(to_there_, map_extent);
     }
     index_type n_cells = map.accessor().focus() - index_type(1,1,1);
     cell_lengths = map_extent/n_cells;
