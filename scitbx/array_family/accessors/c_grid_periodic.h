@@ -10,10 +10,10 @@ namespace scitbx { namespace af {
   class c_grid_periodic;
 
   template <>
-  class c_grid_periodic<3> : public tiny<int, 3>
+  class c_grid_periodic<3> : public tiny<std::ptrdiff_t, 3>
   {
     public:
-      typedef tiny<int, 3> index_type;
+      typedef tiny<std::ptrdiff_t, 3> index_type;
       typedef index_type::value_type index_value_type;
       typedef index_value_type value_type;
 
