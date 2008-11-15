@@ -105,6 +105,7 @@ gltbx/tst_viewer_utils.py svneol=native#text/x-python
 gltbx/viewer_utils.py svneol=native#text/x-python
 gltbx/viewer_utils_ext.cpp svneol=native#text/plain
 gltbx/wx_controllers.py -text
+gltbx/wx_motion_on_tab.py svneol=native#text/x-python
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
 iotbx/ccp4_map/SConscript -text

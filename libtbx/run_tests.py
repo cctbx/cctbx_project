@@ -7,6 +7,7 @@ def run():
   "$D/utils.py",
   "$D/sge_utils.py",
   "$D/introspection.py",
+  "$D/thread_utils.py",
   "$D/easy_run.py",
   "$D/tst_utils.py",
   "$D/tst_math_utils.py",
