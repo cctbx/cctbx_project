@@ -7,7 +7,17 @@ from scitbx.rigid_body_dynamics.free_motion_reference_impl import \
   create_triangle_with_center_of_mass_at_origin
 from scitbx.array_family import flex
 from scitbx import matrix
+from libtbx.test_utils import approx_equal
 import sys
+
+def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
+  for i_trial in xrange(30):
+    qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
+    qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
+    J = joint_lib.six_dof_joint_euler_params(qE=qE, qr=qr)
+    Jxyz = joint_lib.six_dof_joint_euler_angles_xyz(qE=qE, qr=qr)
+    assert approx_equal(Jxyz.E, J.E)
+    assert approx_equal(Jxyz.r, J.r)
 
 def create_wells(sites, mersenne_twister):
   "overall random rotation and translation + noise"
@@ -55,6 +65,7 @@ class simulation(object):
     qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
     O.J = joint_lib.six_dof_joint_euler_params(qE=qE, qr=qr)
+    O.Jxyz = joint_lib.six_dof_joint_euler_angles_xyz(qE=qE, qr=qr)
     O.v_spatial = matrix.col(mersenne_twister.random_double(size=6)*2-1)
     #
     O.energies_and_accelerations_update()
@@ -72,11 +83,20 @@ class simulation(object):
     grav_accn = [0,0,0]
     qdd = featherstone.FDab(model, q, qd, tau, [O.f_ext], grav_accn)
     O.a_spatial = qdd[0]
+    #
+    model = featherstone_system_model(m=O.m, I=O.I, J=O.Jxyz)
+    qdd = featherstone.FDab(model, q, qd, tau, [O.f_ext], grav_accn)
+    assert approx_equal(qdd[0], O.a_spatial)
 
   def dynamics_step(O, delta_t):
+    v_spatial_xyz = O.Jxyz.time_step_velocity(
+      v_spatial=O.v_spatial, a_spatial=O.a_spatial, delta_t=delta_t)
     O.v_spatial = O.J.time_step_velocity(
       v_spatial=O.v_spatial, a_spatial=O.a_spatial, delta_t=delta_t)
+    assert approx_equal(v_spatial_xyz, O.v_spatial)
+    O.Jxyz = O.Jxyz.time_step_position(v_spatial=O.v_spatial, delta_t=delta_t)
     O.J = O.J.time_step_position(v_spatial=O.v_spatial, delta_t=delta_t)
+    assert approx_equal(O.Jxyz.E, O.J.E, eps=1.e-2)
     O.energies_and_accelerations_update()
 
 def run_simulation(mersenne_twister, n_time_steps, delta_t):
@@ -103,6 +123,8 @@ def run_simulation(mersenne_twister, n_time_steps, delta_t):
 
 def exercise(n_trials=10, n_time_steps=1000, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
+  exercise_euler_params_qE_as_euler_angles_xyz_qE(
+    mersenne_twister=mersenne_twister)
   relative_ranges = flex.double()
   for i in xrange(n_trials):
     relative_ranges.append(run_simulation(
