@@ -284,23 +284,32 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
   f = [None] * model.NB
   for i in xrange(model.NB):
     XJ, S[i], S_ring = jcalc( model.pitch[i], q[i], qd[i] )
-    vJ = S[i]*qd[i]
+    if (S[i] is None):
+      vJ = qd[i]
+      aJ = qdd[i]
+      assert S_ring is None
+    else:
+      vJ = S[i]*qd[i]
+      aJ = S[i]*qdd[i]
+      if (S_ring is not None):
+        aJ += S_ring * qd[i]
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
       v[i] = vJ
-      a[i] = Xup[i] * -a_grav + S[i]*qdd[i]
+      a[i] = Xup[i] * -a_grav + aJ
     else:
       v[i] = Xup[i]*v[model.parent[i]] + vJ
-      a[i] = Xup[i]*a[model.parent[i]] + S[i]*qdd[i] + crm(v[i])*vJ
-    if (S_ring is not None):
-      a[i] += S_ring * qd[i]
+      a[i] = Xup[i]*a[model.parent[i]] + aJ + crm(v[i])*vJ
     f[i] = model.I[i]*a[i] + crf(v[i])*model.I[i]*v[i]
     if (f_ext is not None and f_ext[i] is not None):
       f[i] = f[i] - f_ext[i]
 
   tau = [None] * model.NB
   for i in xrange(model.NB-1,-1,-1):
-    tau[i] = S[i].transpose() * f[i]
+    if (S[i] is None):
+      tau[i] = f[i]
+    else:
+      tau[i] = S[i].transpose() * f[i]
     if model.parent[i] != -1:
       f[model.parent[i]] = f[model.parent[i]] + Xup[i].transpose()*f[i]
 
@@ -332,7 +341,10 @@ def FDab(model, q, qd, tau, f_ext=None, grav_accn=None):
   pA = [None] * model.NB
   for i in xrange(model.NB):
     XJ, S[i], S_ring = jcalc( model.pitch[i], q[i], qd[i] )
-    vJ = S[i]*qd[i]
+    if (S[i] is None):
+      vJ = qd[i]
+    else:
+      vJ = S[i]*qd[i]
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
       v[i] = vJ
@@ -351,9 +363,14 @@ def FDab(model, q, qd, tau, f_ext=None, grav_accn=None):
   d = [None] * model.NB
   u = [None] * model.NB
   for i in xrange(model.NB-1,-1,-1):
-    U[i] = IA[i] * S[i]
-    d[i] = S[i].transpose() * U[i]
-    u[i] = tau[i] - S[i].transpose()*pA[i]
+    if (S[i] is None):
+      U[i] = IA[i]
+      d[i] = U[i]
+      u[i] = tau[i] - pA[i]
+    else:
+      U[i] = IA[i] * S[i]
+      d[i] = S[i].transpose() * U[i]
+      u[i] = tau[i] - S[i].transpose()*pA[i]
     if model.parent[i] != -1:
       Ia = IA[i] - mrdivide(U[i],d[i])*U[i].transpose()
       pa = pA[i] + Ia*c[i] + mrdivide(U[i] * u[i],d[i])
@@ -370,6 +387,9 @@ def FDab(model, q, qd, tau, f_ext=None, grav_accn=None):
     else:
       a[i] = Xup[i] * a[model.parent[i]] + c[i]
     qdd[i] = mldivide(d[i], u[i] - U[i].transpose()*a[i])
-    a[i] = a[i] + S[i]*qdd[i]
+    if (S[i] is None):
+      a[i] = a[i] + qdd[i]
+    else:
+      a[i] = a[i] + S[i]*qdd[i]
 
   return qdd
