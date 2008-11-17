@@ -55,7 +55,7 @@ class kinetic_energy(object):
 
 class simulation(object):
 
-  def __init__(O, mersenne_twister):
+  def __init__(O, six_dof_joint, mersenne_twister):
     O.sites = create_triangle_with_center_of_mass_at_origin()
     O.m = len(O.sites) # unit masses
     O.I = body_inertia(sites_cart=O.sites)
@@ -64,11 +64,13 @@ class simulation(object):
     #
     qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
-    O.J = joint_lib.six_dof_joint_euler_params(qE=qE, qr=qr)
-    O.Jxyz = joint_lib.six_dof_joint_euler_angles_xyz(qE=qE, qr=qr)
+    O.J = six_dof_joint(qE=qE, qr=qr)
     O.v_spatial = matrix.col(mersenne_twister.random_double(size=6)*2-1)
     #
     O.energies_and_accelerations_update()
+
+  def sites_moved(O):
+    return [O.J.T * site for site in O.sites]
 
   def energies_and_accelerations_update(O):
     O.e_kin = kinetic_energy(m=O.m, I=O.I, v_spatial=O.v_spatial)
@@ -83,56 +85,85 @@ class simulation(object):
     grav_accn = [0,0,0]
     qdd = featherstone.FDab(model, q, qd, tau, [O.f_ext], grav_accn)
     O.a_spatial = qdd[0]
-    #
-    model = featherstone_system_model(m=O.m, I=O.I, J=O.Jxyz)
-    qdd = featherstone.FDab(model, q, qd, tau, [O.f_ext], grav_accn)
-    assert approx_equal(qdd[0], O.a_spatial)
 
   def dynamics_step(O, delta_t):
-    v_spatial_xyz = O.Jxyz.time_step_velocity(
-      v_spatial=O.v_spatial, a_spatial=O.a_spatial, delta_t=delta_t)
     O.v_spatial = O.J.time_step_velocity(
       v_spatial=O.v_spatial, a_spatial=O.a_spatial, delta_t=delta_t)
-    assert approx_equal(v_spatial_xyz, O.v_spatial)
-    O.Jxyz = O.Jxyz.time_step_position(v_spatial=O.v_spatial, delta_t=delta_t)
     O.J = O.J.time_step_position(v_spatial=O.v_spatial, delta_t=delta_t)
-    assert approx_equal(O.Jxyz.E, O.J.E, eps=1.e-2)
     O.energies_and_accelerations_update()
 
-def run_simulation(mersenne_twister, n_time_steps, delta_t):
-  sim = simulation(mersenne_twister=mersenne_twister)
-  e_pots = flex.double()
-  e_kins = flex.double()
+def run_simulation(six_dof_joint, mersenne_twister, n_time_steps, delta_t):
+  sim = simulation(
+    six_dof_joint=six_dof_joint,
+    mersenne_twister=mersenne_twister)
+  sites_moved = [sim.sites_moved()]
+  e_pots = flex.double([sim.e_pot])
+  e_kins = flex.double([sim.e_kin.tot])
   for i_step in xrange(n_time_steps):
     sim.dynamics_step(delta_t=delta_t)
+    sites_moved.append(sim.sites_moved())
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin.tot)
   e_tots = e_pots + e_kins
-  print "start e_tot:", e_tots[0]
-  print "final e_tot:", e_tots[-1]
-  print "min:", min(e_tots)
-  print "max:", max(e_tots)
-  print "ave:", sum(e_tots)/len(e_tots)
-  print "range, max, min:", max(e_tots)-min(e_tots), max(e_tots), min(e_tots)
-  rr = (max(e_tots)-min(e_tots))/(sum(e_tots)/len(e_tots))
-  print "relative range:", rr
+  print six_dof_joint
   print "e_pot min, max:", min(e_pots), max(e_pots)
   print "e_kin min, max:", min(e_kins), max(e_kins)
+  print "e_tot min, max:", min(e_tots), max(e_tots)
+  print "start e_tot:", e_tots[0]
+  print "final e_tot:", e_tots[-1]
+  ave = flex.sum(e_tots) / e_tots.size()
+  range = flex.max(e_tots) - flex.min(e_tots)
+  relative_range = range / ave
+  print "ave:", ave
+  print "range:", range
+  print "relative range:", relative_range
   print
-  return rr
+  return sites_moved, relative_range
+
+def run_simulations(mersenne_twister, n_time_steps, delta_t):
+  mt_state = mersenne_twister.getstate()
+  relative_ranges = []
+  sites_moved_accu = []
+  for six_dof_joint in [
+        joint_lib.six_dof_joint_euler_params,
+        joint_lib.six_dof_joint_euler_angles_xyz]:
+    mersenne_twister.setstate(mt_state)
+    sites_moved, relative_range = run_simulation(
+      six_dof_joint=six_dof_joint,
+      mersenne_twister=mersenne_twister,
+      n_time_steps=n_time_steps,
+      delta_t=delta_t)
+    sites_moved_accu.append(sites_moved)
+    relative_ranges.append(relative_range)
+  print "rms joints:"
+  rms = flex.double()
+  for sites_ep,sites_ea in zip(*sites_moved_accu):
+    rms.append(
+      flex.vec3_double(sites_ep).rms_difference(flex.vec3_double(sites_ea)))
+  rms.min_max_mean().show(prefix="  ")
+  print
+  return relative_ranges, flex.max(rms)
 
 def exercise(n_trials=10, n_time_steps=1000, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
   exercise_euler_params_qE_as_euler_angles_xyz_qE(
     mersenne_twister=mersenne_twister)
-  relative_ranges = flex.double()
+  relative_ranges_accu = [flex.double(), flex.double()]
+  rms_max_accu = flex.double()
   for i in xrange(n_trials):
-    relative_ranges.append(run_simulation(
+    relative_ranges, rms_max = run_simulations(
       mersenne_twister=mersenne_twister,
       n_time_steps=n_time_steps,
-      delta_t=delta_t))
-  print "relative ranges:"
-  relative_ranges.min_max_mean().show(prefix="  ")
+      delta_t=delta_t)
+    for r,a in zip(relative_ranges, relative_ranges_accu):
+      a.append(r)
+    rms_max_accu.append(rms_max)
+  for accu in relative_ranges_accu:
+    print "relative ranges:"
+    accu.min_max_mean().show(prefix="  ")
+    print
+  print "rms max:"
+  rms_max_accu.min_max_mean().show(prefix="  ")
   print
 
 def run(args):
