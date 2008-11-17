@@ -1,5 +1,5 @@
-#ifndef SCITBX_ARRAY_FAMILY_ACCESSORS_TAGS_H
-#define SCITBX_ARRAY_FAMILY_ACCESSORS_TAGS_H
+#ifndef SCITBX_ARRAY_FAMILY_ACCESSORS_TRAITS_H
+#define SCITBX_ARRAY_FAMILY_ACCESSORS_TRAITS_H
 
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/array_family/accessors/c_grid_padded.h>
@@ -21,7 +21,7 @@ struct may_be_periodic
   static bool const value = false;
 };
 
-#define TRAITS(klass, periodic, padded) \
+#define SCITBX_LOC(klass, periodic, padded) \
 template <>                             \
 struct may_be_padded<klass>             \
 {                                       \
@@ -33,12 +33,12 @@ struct may_be_periodic<klass>           \
   static bool const value = padded;     \
 };
 
-TRAITS(c_grid_padded<3>, true, false)
-TRAITS(c_grid_periodic<3>, false, true);
-TRAITS(c_grid_padded_periodic<3>, true, true)
-TRAITS(flex_grid<>, true, false)
+SCITBX_LOC(c_grid_padded<3>, true, false)
+SCITBX_LOC(c_grid_periodic<3>, false, true)
+SCITBX_LOC(c_grid_padded_periodic<3>, true, true)
+SCITBX_LOC(flex_grid<>, true, false)
 
-#undef TRAITS
+#undef SCITBX_LOC
 
 }} // scitbx::af
 
