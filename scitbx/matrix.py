@@ -262,6 +262,26 @@ class rec(object):
     c, s = math.cos(angle), math.sin(angle)
     return x*c + n*n.dot(x)*(1-c) + x.cross(n)*s
 
+  def vector_to_001_rotation(self,
+        sin_angle_is_zero_threshold=1.e-10,
+        is_normal_vector_threshold=1.e-10):
+    assert self.n in ((3,1), (1,3))
+    x,y,c = self.elems
+    xxyy = x*x + y*y
+    if (abs(xxyy + c*c - 1) > is_normal_vector_threshold):
+      raise RuntimeError("self is not a normal vector.")
+    s = (xxyy)**0.5
+    if (s < sin_angle_is_zero_threshold):
+      if (c > 0):
+        return sqr((1,0,0,0,1,0,0,0,1))
+      return sqr((1,0,0,0,-1,0,0,0,-1))
+    us = y
+    vs = -x
+    u = us / s
+    v = vs / s
+    oc = 1-c
+    return sqr((c + u*u*oc, u*v*oc, vs, u*v*oc, c + v*v*oc, -us, -vs, us, c))
+
   def outer_product(self, other=None):
     if (other is None): other = self
     assert self.n[0] == 1 or self.n[1] == 1
@@ -1047,6 +1067,14 @@ def exercise():
   x_perp = x - n.dot(x)*n
   y_perp = y - n.dot(y)*n
   assert approx_equal(x_perp.angle(y_perp), alpha)
+  #
+  assert col((0,0,1)).vector_to_001_rotation().elems == (1,0,0,0,1,0,0,0,1)
+  assert col((0,0,-1)).vector_to_001_rotation().elems == (1,0,0,0,-1,0,0,0,-1)
+  assert approx_equal(
+    col((5,3,-7)).normalize().vector_to_001_rotation(),
+    (-0.3002572205351709, -0.78015433232110254, -0.54882129994845175,
+     -0.78015433232110254, 0.53190740060733865, -0.32929277996907103,
+     0.54882129994845175, 0.32929277996907103, -0.76834981992783236))
   #
   a = col((1.43416642866471794, -2.47841960952275497, -0.7632916804502845))
   b = col((0.34428681113080323, -1.85983494542314587, 0.37702845822372399))
