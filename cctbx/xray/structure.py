@@ -1212,6 +1212,18 @@ class structure(crystal.special_position_settings):
       resname=resname,
       connect=connect)
 
+  def from_shelx(cls, file=None, filename=None,
+                 set_grad_flags=True):
+    from iotbx import shelx
+    builder = shelx.crystal_structure_builder(set_grad_flags=set_grad_flags)
+    stream = shelx.command_stream(file=file, filename=filename)
+    cs_parser = shelx.crystal_symmetry_parser(stream, builder)
+    xs_parser = shelx.atom_parser(cs_parser.filtered_commands(), builder)
+    xs_parser.parse()
+    return builder.structure
+  from_shelx = classmethod(from_shelx)
+
+
 class conservative_pair_proxies(object):
 
   def __init__(self, structure, bond_sym_table, conserve_angles):
