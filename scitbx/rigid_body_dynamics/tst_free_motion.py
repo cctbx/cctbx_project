@@ -87,7 +87,7 @@ def exercise_featherstone_FDab(out):
       J=six_dof_joint_euler_params_featherstone(qE=sim.J1.qE, qr=sim.J1.qr))
     q = [None] # already stored in J1 as qE and qr
     qd = [sim.qd]
-    tau = [matrix.col((0,0,0,0,0,0))]
+    tau = None
     f_ext = [matrix.col((sim.nc_F01, sim.f_F01)).resolve_partitions()]
     grav_accn = [0,0,0]
     qdd = featherstone.FDab(model, q, qd, tau, f_ext, grav_accn)

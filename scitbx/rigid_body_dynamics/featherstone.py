@@ -315,7 +315,7 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
 
   return tau
 
-def FDab(model, q, qd, tau, f_ext=None, grav_accn=None):
+def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None):
   """
 % FDab  Forward Dynamics via Articulated-Body Algorithm
 % FDab(model,q,qd,tau,f_ext,grav_accn) calculates the forward dynamics of a
@@ -366,11 +366,17 @@ def FDab(model, q, qd, tau, f_ext=None, grav_accn=None):
     if (S[i] is None):
       U[i] = IA[i]
       d[i] = U[i]
-      u[i] = tau[i] - pA[i]
+      if (tau is None or tau[i] is None):
+        u[i] =        - pA[i]
+      else:
+        u[i] = tau[i] - pA[i]
     else:
       U[i] = IA[i] * S[i]
       d[i] = S[i].transpose() * U[i]
-      u[i] = tau[i] - S[i].transpose()*pA[i]
+      if (tau is None or tau[i] is None):
+        u[i] =        - S[i].transpose()*pA[i]
+      else:
+        u[i] = tau[i] - S[i].transpose()*pA[i]
     if model.parent[i] != -1:
       Ia = IA[i] - mrdivide(U[i],d[i])*U[i].transpose()
       pa = pA[i] + Ia*c[i] + mrdivide(U[i] * u[i],d[i])

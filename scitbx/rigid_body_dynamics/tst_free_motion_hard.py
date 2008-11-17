@@ -85,7 +85,7 @@ class simulation(object):
     model = featherstone_system_model(m=O.m, I=O.I, J=O.J)
     q = [None] # already stored in joint as qE and qr
     qd = [O.v_spatial]
-    tau = [matrix.col((0,0,0,0,0,0))]
+    tau = None
     grav_accn = [0,0,0]
     qdd = featherstone.FDab(model, q, qd, tau, [O.f_ext], grav_accn)
     O.a_spatial = qdd[0]
