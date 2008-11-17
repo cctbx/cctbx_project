@@ -349,21 +349,41 @@ public:
 
   typedef af::tiny<index_value_type, 3> triangle;
 
-  /** Construct the triangulation from a map of the scalar field, the iso level
-  and the map grid size.
+  /** Construct the triangulation from a map of the scalar field and iso level.
 
-  - map_extent is the entire parallelepiped in which the map is gridded
+  - the map must be filled differently depending on whether the argument
+    periodic is true or false. Specifically, for each dimension, the
+    coordinate corresponding to the last index stored in the map, i.e.
+    index n-1 where n is the focus() component, differs depending on periodic.
+    In both cases, the first index 0 correspond to the coordinate 0.
+
+    + if not periodic, then index n-1 corresponds to the right bound
+      of map_extent, i.e. there are n-1 voxels in that dimension;
+
+    + if periodic, then map_extent is the unit_cell dimensions
+      and index n-1 corresponds to the very last point before the right wall
+      of the unit cell, i.e. there are n voxels in that dimension.
+
+    That conventions is to be aware of mostly for the non-periodic case since
+    in the periodic one, the map is most likely going to be produced by
+    other layers of the scitbx which abide to that convention.
+
+  - map_extent is the entire parallelepiped in which the scalar field is
+    sampled on a grid
 
   - from_here and to_there are the diagonally opposite points defining the
     parallelepiped in which the iso-surface is computed, i.e. anything outside
     of that volume is ignored
 
   - the flag periodic tells how to deal with a volume (from_here, to_there)
-    part of which lies outside of the volume defined by map_extent: if not
-    periodic, then the former volume is clipped to the intersection with the
-    latter; otherwise, the former volume is accepted as it is. The latter case
-    is only valid if the map is periodic of course, i.e. its accessor is one
-    of c_grid_periodic or c_grid_padded_periodic.
+    part of which lies outside of the volume defined by map_extent:
+
+    + if not periodic, then the former volume is clipped to the intersection
+      with the latter;
+
+    + otherwise, the former volume is accepted as it is. The latter case
+      is only valid if the map is periodic of course, i.e. its accessor is one
+      of c_grid_periodic or c_grid_padded_periodic.
 
   - The flag lazy_normals specifies whether the normals
     shall be computed when the member function normals() is called for the first
@@ -390,14 +410,16 @@ public:
   {
     SCITBX_ASSERT((from_here < to_there).all_eq(true));
     SCITBX_ASSERT(!periodic || af::may_be_periodic<GridType>::value);
+    index_type voxel_numbers = map.accessor().focus();
     if (!periodic) {
       from_here_ = af::each_max(from_here_, 0.);
       to_there_ = af::each_min(to_there_, map_extent);
+      voxel_numbers -= index_type(1,1,1);
     }
-    index_type n_cells = map.accessor().focus() - index_type(1,1,1);
-    cell_lengths = map_extent/n_cells;
-    first_grid_point = from_here_/cell_lengths + 0.5;
-    last_grid_point = to_there_/cell_lengths + 0.5;
+    voxel_lengths = map_extent/voxel_numbers;
+    first_grid_point = af::ceil(from_here_/voxel_lengths);
+    last_grid_point = af::floor(to_there_/voxel_lengths);
+    n_grid_points = last_grid_point - first_grid_point + index_type(1,1,1);
     init();
   }
 
@@ -455,11 +477,14 @@ protected:
   // Bounding points of the region where the iso-surface is considered
   extent_3d from_here_, to_there_;
 
-  // First and last grid point (closed range)
+  // First and last grid point (close range)
   index_type first_grid_point, last_grid_point;
 
+  // Number of points in that range
+  index_type n_grid_points;
+
   // Cell length in x, y, and z directions.
-  extent_3d cell_lengths;
+  extent_3d voxel_lengths;
 
   // The vertices_ which make up the isosurface.
   af::shared<point_3d> vertices_;
@@ -467,7 +492,7 @@ protected:
   // The normals_.
   af::shared<vector_3d> normals_;
 
-  // List of point_3ds which form the isosurface.
+  // List of point_3d's which form the isosurface.
   id_to_point_3d_id id_to_vertex;
 
   // List of triangles which form the triangulation of the isosurface.
@@ -495,6 +520,17 @@ protected:
 
   // Calculates the normals.
   void calculate_normals();
+
+  // Vertex ID maker
+  index_value_type get_vertex_id(index_type n) {
+    index_value_type result = n[0] - first_grid_point[0];
+    result *= n_grid_points[1];
+    result += n[1] - first_grid_point[1];
+    result *= n_grid_points[2];
+    result += n[2] - first_grid_point[2];
+    return 3*result;
+  }
+
 };
 
 template <class CoordinatesType, class ValueType, class GridType>
@@ -522,7 +558,7 @@ init()
     if (map_(x+1, y+1, z+1) < iso_level_) table_index |=  64;
     if (map_(x+1, y, z+1)   < iso_level_) table_index |= 128;
 
-    // Now create a triangulation of the isosurface in this cell.
+    // Now create a triangulation of the isosurface in this voxel.
     int edge_flag = edge_table[table_index];
 
     if ( edge_flag == 0) continue;
@@ -600,7 +636,7 @@ get_edge_id(index_type n, int edge_no)
     default:
       throw SCITBX_ERROR("Internal Error: Invalid edge no.");
   }
-  index_value_type vertex_id = 3*map_.accessor()(n);
+  index_value_type vertex_id = get_vertex_id(n);
   return vertex_id + c;
 }
 
@@ -652,8 +688,8 @@ calculate_intersection(index_type n, int edge_no)
 
   // Interpolate between v1 and v2 to find an approximation of the intersection
   // with the iso-surface
-  point_3d p1 = v1 * cell_lengths;
-  point_3d p2 = v2 * cell_lengths;
+  point_3d p1 = v1 * voxel_lengths;
+  point_3d p2 = v2 * voxel_lengths;
   value_type val1 = map_(v1);
   value_type val2 = map_(v2);
 
