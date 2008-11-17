@@ -14,12 +14,12 @@
 #include <cmath>
 #include <map>
 #include <boost/static_assert.hpp>
-#include <scitbx/array_family/ref.h>
 #include <scitbx/vec3.h>
 #include <scitbx/array_family/tiny.h>
 #include <scitbx/array_family/tiny_algebra.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/array_family/accessors/traits.h>
+#include <scitbx/math/utils.h>
 #include <scitbx/error.h>
 
 
@@ -417,8 +417,13 @@ public:
       voxel_numbers -= index_type(1,1,1);
     }
     voxel_lengths = map_extent/voxel_numbers;
-    first_grid_point = af::ceil(from_here_/voxel_lengths);
-    last_grid_point = af::floor(to_there_/voxel_lengths);
+    for(unsigned i=0;i<3;i++) {
+      typedef math::float_int_conversions<
+        coordinates_type,
+        index_value_type> fic;
+      first_grid_point[i] = fic::iceil(from_here_[i]/voxel_lengths[i]);
+      last_grid_point[i] = fic::ifloor(to_there_[i]/voxel_lengths[i]);
+    }
     n_grid_points = last_grid_point - first_grid_point + index_type(1,1,1);
     init();
   }
