@@ -75,13 +75,7 @@ class six_dof_joint_euler_params_featherstone(fmri.six_dof_joint_euler_params):
     assert q is None
     Xj = featherstone.Xrot(O.E) \
        * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote
-    S = matrix.sqr(( # RBDA Tab. 4.1
-      1, 0, 0, 0, 0, 0,
-      0, 1, 0, 0, 0, 0,
-      0, 0, 1, 0, 0, 0,
-      0, 0, 0, 1, 0, 0,
-      0, 0, 0, 0, 1, 0,
-      0, 0, 0, 0, 0, 1))
+    S = None
     S_ring = None
     return Xj, S, S_ring
 

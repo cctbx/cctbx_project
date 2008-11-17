@@ -16,13 +16,7 @@ class six_dof_euler_params(object):
     #
     O.Xj = featherstone.Xrot(O.E) \
          * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote
-    O.S = matrix.sqr(( # RBDA Tab. 4.1
-      1, 0, 0, 0, 0, 0,
-      0, 1, 0, 0, 0, 0,
-      0, 0, 1, 0, 0, 0,
-      0, 0, 0, 1, 0, 0,
-      0, 0, 0, 0, 1, 0,
-      0, 0, 0, 0, 0, 1))
+    O.S = None
     O.S_ring = None
 
   def Xj_S_S_ring(O, q, qd):
@@ -56,13 +50,7 @@ class six_dof_euler_angles_xyz(object):
     #
     O.Xj = featherstone.Xrot(O.E) \
          * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote
-    O.S = matrix.sqr((
-      1, 0, 0, 0, 0, 0,
-      0, 1, 0, 0, 0, 0,
-      0, 0, 1, 0, 0, 0,
-      0, 0, 0, 1, 0, 0,
-      0, 0, 0, 0, 1, 0,
-      0, 0, 0, 0, 0, 1))
+    O.S = None
     O.S_ring = None
 
   def Xj_S_S_ring(O, q, qd):
