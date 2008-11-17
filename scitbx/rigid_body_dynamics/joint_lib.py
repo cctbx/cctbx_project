@@ -70,43 +70,6 @@ class six_dof_euler_angles_xyz(object):
   def time_step_velocity(O, v_spatial, a_spatial, delta_t):
     return v_spatial + a_spatial * delta_t
 
-class six_dof_euler_hybrid(object):
-
-  def __init__(O, qE, qr):
-    if (len(qE.elems) == 3):
-      qE = euler_angles_xyz_qE_as_euler_params_qE(qE=qE)
-    O.qE = qE
-    O.qr = qr
-    #
-    O.E = RBDA_Eq_4_12(qE)
-    O.r = O.E.transpose() * qr # RBDA Tab. 4.1
-    #
-    O.T = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
-    O.T_inv = matrix.rt((O.E.transpose(), O.r))
-    #
-    O.Xj = featherstone.Xrot(O.E) \
-         * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote
-    O.S = None
-    O.S_ring = None
-
-  def Xj_S_S_ring(O, q, qd):
-    return O.Xj, O.S, O.S_ring
-
-  def time_step_position(O, v_spatial, delta_t):
-    w_body_frame, v_body_frame = matrix.col_list([
-      v_spatial.elems[:3], v_spatial.elems[3:]])
-    qEd = RBDA_Eq_4_8_inv(q=(0,0,0)) * (O.E * w_body_frame)
-    qrd = O.E * v_body_frame
-    new_qE =        qEd * delta_t
-    new_qr = O.qr + qrd * delta_t
-    return six_dof_euler_hybrid(
-      qE=O.qE.unit_quaternion_product(
-           euler_angles_xyz_qE_as_euler_params_qE(new_qE)).normalize(),
-      qr=new_qr)
-
-  def time_step_velocity(O, v_spatial, a_spatial, delta_t):
-    return v_spatial + a_spatial * delta_t
-
 def RBDA_Eq_4_7(q):
   q1,q2,q3 = q
   def cs(a): return math.cos(a), math.sin(a)
