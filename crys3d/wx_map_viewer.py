@@ -81,6 +81,8 @@ class map_view(wx_viewer.wxGLWindow):
     self.max_density = density_stats.max()
     self.iso_level = iso_level(density_stats)
 
+    if from_here is None: from_here = (0,0,0)
+    if to_there is None: to_there = (1,1,1)
     p = unit_cell.orthogonalize(from_here)
     q = unit_cell.orthogonalize(to_there)
     r = unit_cell.orthogonalize((to_there[0], from_here[1], from_here[2]))
