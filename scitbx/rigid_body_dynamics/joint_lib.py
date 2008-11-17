@@ -5,6 +5,8 @@ import math
 class six_dof_euler_params(object):
 
   def __init__(O, qE, qr):
+    if (len(qE.elems) == 3):
+      qE = euler_angles_xyz_qE_as_euler_params_qE(qE=qE)
     O.qE = qE
     O.qr = qr
     #
@@ -170,3 +172,12 @@ def euler_params_qE_as_euler_angles_xyz_qE(qE):
   c2s3 = p2*p3+p0*p1
   q3 = safe_atan2(c2s3, c2c3)
   return matrix.col((q1,q2,q3))
+
+def euler_angles_xyz_qE_as_euler_params_qE(qE):
+  s1,s2,s3 = [math.sin(q/2) for q in qE]
+  c1,c2,c3 = [math.cos(q/2) for q in qE]
+  return matrix.col((
+    c1*c2*c3+s1*s2*s3,
+    c1*c2*s3-s1*s2*c3,
+    c1*s2*c3+s1*c2*s3,
+    s1*c2*c3-c1*s2*s3))
