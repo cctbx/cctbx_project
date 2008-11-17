@@ -1056,7 +1056,26 @@ def exercise_add_scatterer_insert():
     assert ssw == [str(xsw.site_symmetry_table().get(i_seq).special_op())
       for i_seq in xrange(n_sites+1)]
 
+def exercise_select_on_name_or_chemical_element():
+  cs = crystal.symmetry((5,7,9, 90, 120, 90), 'P2')
+  xs = xray.structure(crystal.special_position_settings(cs),
+                      scatterers=flex.xray_scatterer((
+    xray.scatterer("C1", site=(0,0,0)),
+    xray.scatterer("C2", site=(0.5,0,0)),
+    xray.scatterer("C3", site=(0,0.5,0)),
+    xray.scatterer("O1", site=(0,0,0.5)),
+    xray.scatterer("C4", site=(0.2,0,0)),
+    xray.scatterer("N1", site=(0,0.2,0)),
+    )))
+  sel = xs.element_selection('O', 'N')
+  assert tuple(sel) == (0, 0, 0, 1, 0, 1)
+  sel = xs.label_selection('C4')
+  assert tuple(sel) == (0, 0, 0, 0, 1, 0)
+  sel = xs.label_regex_selection("^(O|C)(1|2)$")
+  assert tuple(sel) == (1, 1, 0, 1, 0, 0)
+
 def run():
+  exercise_select_on_name_or_chemical_element()
   exercise_add_scatterer_insert()
   exercise_replace_sites()
   exercise_min_u_cart_eigenvalue()
