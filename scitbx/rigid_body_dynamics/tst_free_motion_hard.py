@@ -14,8 +14,8 @@ def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
   for i_trial in xrange(30):
     qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
-    J = joint_lib.six_dof_joint_euler_params(qE=qE, qr=qr)
-    Jxyz = joint_lib.six_dof_joint_euler_angles_xyz(qE=qE, qr=qr)
+    J = joint_lib.six_dof_euler_params(qE=qE, qr=qr)
+    Jxyz = joint_lib.six_dof_euler_angles_xyz(qE=qE, qr=qr)
     assert approx_equal(Jxyz.E, J.E)
     assert approx_equal(Jxyz.r, J.r)
 
@@ -125,8 +125,8 @@ def run_simulations(mersenne_twister, n_time_steps, delta_t):
   relative_ranges = []
   sites_moved_accu = []
   for six_dof_joint in [
-        joint_lib.six_dof_joint_euler_params,
-        joint_lib.six_dof_joint_euler_angles_xyz]:
+        joint_lib.six_dof_euler_params,
+        joint_lib.six_dof_euler_angles_xyz]:
     mersenne_twister.setstate(mt_state)
     sites_moved, relative_range = run_simulation(
       six_dof_joint=six_dof_joint,
