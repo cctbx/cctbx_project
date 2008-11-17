@@ -115,6 +115,9 @@ class rec(object):
   def __floordiv__(self, other):
     return rec([e//other for e in self.elems], self.n)
 
+  def __mod__(self, other):
+    return rec([ e % other for e in self.elems], self.n)
+
   def __call__(self, ir, ic):
     return self.elems[ir * self.n_columns() + ic]
 
@@ -1154,6 +1157,9 @@ def exercise():
     uqp = uq2.unit_quaternion_product(uq1)
     rp = uqp.unit_quaternion_as_r3_rotation_matrix()
     assert approx_equal(rp, r2*r1)
+  #
+  v = col((1.1, -2.2, 2.3))
+  assert approx_equal(v % 2, col((1.1, 1.8, 0.3)))
   #
   print "OK"
 
