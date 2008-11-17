@@ -117,6 +117,10 @@ def check_vector_to_001(g):
   r = matrix.sqr(vector_to_001(given_unit_vector=g))
   assert approx_equal(r * matrix.col(g), (0,0,1))
   assert approx_equal(r.determinant(), 1)
+  p = matrix.col(g).vector_to_001_rotation()
+  assert approx_equal(p * matrix.col(g), (0,0,1))
+  assert approx_equal(p.determinant(), 1)
+  assert approx_equal(p, r)
 
 def check_vector_to_010(g):
   assert approx_equal(abs(matrix.col(g)), 1)
