@@ -8,6 +8,7 @@ from scitbx.rigid_body_dynamics.free_motion_reference_impl import \
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out
 import sys
 
 def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
@@ -95,36 +96,37 @@ class simulation(object):
     O.J = O.J.time_step_position(v_spatial=O.v_spatial, delta_t=delta_t)
     O.energies_and_accelerations_update()
 
-def run_simulation(six_dof_joint, mersenne_twister, n_time_steps, delta_t):
+def run_simulation(
+      out, six_dof_joint, mersenne_twister, n_dynamics_steps, delta_t):
   sim = simulation(
     six_dof_joint=six_dof_joint,
     mersenne_twister=mersenne_twister)
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin.tot])
-  for i_step in xrange(n_time_steps):
+  for i_step in xrange(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
     sites_moved.append(sim.sites_moved())
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin.tot)
   e_tots = e_pots + e_kins
-  print six_dof_joint
-  print "e_pot min, max:", min(e_pots), max(e_pots)
-  print "e_kin min, max:", min(e_kins), max(e_kins)
-  print "e_tot min, max:", min(e_tots), max(e_tots)
-  print "start e_tot:", e_tots[0]
-  print "final e_tot:", e_tots[-1]
+  print >> out, six_dof_joint
+  print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
+  print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
+  print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
+  print >> out, "start e_tot:", e_tots[0]
+  print >> out, "final e_tot:", e_tots[-1]
   ave = flex.sum(e_tots) / e_tots.size()
   range = flex.max(e_tots) - flex.min(e_tots)
   relative_range = range / ave
-  print "ave:", ave
-  print "range:", range
-  print "relative range:", relative_range
-  print
-  sys.stdout.flush()
+  print >> out, "ave:", ave
+  print >> out, "range:", range
+  print >> out, "relative range:", relative_range
+  print >> out
+  out.flush()
   return sites_moved, relative_range
 
-def run_simulations(mersenne_twister, n_time_steps, delta_t):
+def run_simulations(out, mersenne_twister, n_dynamics_steps, delta_t):
   mt_state = mersenne_twister.getstate()
   relative_ranges = []
   sites_moved_accu = []
@@ -133,47 +135,61 @@ def run_simulations(mersenne_twister, n_time_steps, delta_t):
         joint_lib.six_dof_euler_angles_xyz]:
     mersenne_twister.setstate(mt_state)
     sites_moved, relative_range = run_simulation(
+      out=out,
       six_dof_joint=six_dof_joint,
       mersenne_twister=mersenne_twister,
-      n_time_steps=n_time_steps,
+      n_dynamics_steps=n_dynamics_steps,
       delta_t=delta_t)
     sites_moved_accu.append(sites_moved)
     relative_ranges.append(relative_range)
-  print "rms joints:"
+  print >> out, "rms joints:"
   rms = flex.double()
   for sites_ep,sites_ea in zip(*sites_moved_accu):
     sites_ep = flex.vec3_double(sites_ep)
     rms.append(sites_ep.rms_difference(flex.vec3_double(sites_ea)))
-  rms.min_max_mean().show(prefix="  ")
-  print
+  rms.min_max_mean().show(out=out, prefix="  ")
+  print >> out
   sys.stdout.flush()
   return relative_ranges, flex.max(rms)
 
-def exercise(n_trials=10, n_time_steps=1000, delta_t=0.001):
+def exercise(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
   exercise_euler_params_qE_as_euler_angles_xyz_qE(
     mersenne_twister=mersenne_twister)
-  relative_ranges_accu = [flex.double(), flex.double(), flex.double()]
+  relative_ranges_accu = [flex.double(), flex.double()]
   rms_max_accu = flex.double()
   for i in xrange(n_trials):
     relative_ranges, rms_max = run_simulations(
+      out=out,
       mersenne_twister=mersenne_twister,
-      n_time_steps=n_time_steps,
+      n_dynamics_steps=n_dynamics_steps,
       delta_t=delta_t)
     for r,a in zip(relative_ranges, relative_ranges_accu):
       a.append(r)
     rms_max_accu.append(rms_max)
   for accu in relative_ranges_accu:
-    print "relative ranges:"
-    accu.min_max_mean().show(prefix="  ")
-    print
-  print "rms max:"
-  rms_max_accu.min_max_mean().show(prefix="  ")
-  print
+    print >> out, "relative ranges:"
+    accu.min_max_mean().show(out=out, prefix="  ")
+    print >> out
+  print >> out, "rms max:"
+  rms_max_accu.min_max_mean().show(out=out, prefix="  ")
+  print >> out
+  if (out is not sys.stdout):
+    for accu in relative_ranges_accu:
+      assert flex.max(accu) < 1.e-4
+    assert flex.max(rms_max_accu) < 1.e-5
 
 def run(args):
-  assert len(args) == 0
-  exercise()
+  assert len(args) in [0,2]
+  if (len(args) == 0):
+    n_trials = 3
+    n_dynamics_steps = 30
+    out = null_out()
+  else:
+    n_trials = max(1, int(args[0]))
+    n_dynamics_steps = max(1, int(args[1]))
+    out = sys.stdout
+  exercise(out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
   print "OK"
 
 if (__name__ == "__main__"):
