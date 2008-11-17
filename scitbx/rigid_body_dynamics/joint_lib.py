@@ -2,7 +2,7 @@ from scitbx.rigid_body_dynamics import featherstone
 from scitbx import matrix
 import math
 
-class six_dof_joint_euler_params(object):
+class six_dof_euler_params(object):
 
   def __init__(O, qE, qr):
     O.qE = qE
@@ -35,12 +35,12 @@ class six_dof_joint_euler_params(object):
     qrd = O.E * v_body_frame
     new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
     new_qr = O.qr + qrd * delta_t
-    return six_dof_joint_euler_params(new_qE, new_qr)
+    return six_dof_euler_params(new_qE, new_qr)
 
   def time_step_velocity(O, v_spatial, a_spatial, delta_t):
     return v_spatial + a_spatial * delta_t
 
-class six_dof_joint_euler_angles_xyz(object):
+class six_dof_euler_angles_xyz(object):
 
   def __init__(O, qE, qr):
     if (len(qE.elems) == 4):
@@ -75,7 +75,7 @@ class six_dof_joint_euler_angles_xyz(object):
     qrd = O.E * v_body_frame
     new_qE = O.qE + qEd * delta_t
     new_qr = O.qr + qrd * delta_t
-    return six_dof_joint_euler_angles_xyz(new_qE, new_qr)
+    return six_dof_euler_angles_xyz(new_qE, new_qr)
 
   def time_step_velocity(O, v_spatial, a_spatial, delta_t):
     return v_spatial + a_spatial * delta_t
