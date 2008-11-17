@@ -6,17 +6,19 @@ from cctbx import uctbx
 def exercise():
   uc = uctbx.unit_cell((1,1,1,60,120,90))
   #uc = uctbx.unit_cell((1,1,1,90,90,90))
-  elliptic = tst_iso_surface.triangulation_test_case(
-    func=tst_iso_surface.elliptic(),
+  case = tst_iso_surface.triangulation_test_case(
+    #func=tst_iso_surface.elliptic(),
+    func=tst_iso_surface.periodic(),
     grid_size=(50, 40, 30),
+    periodic=True,
     lazy_normals=False,
     descending_normals=True)
   a = wx_map_viewer.App(unit_cell=uc,
-                        raw_map=elliptic.map,
-                        iso_level=lambda map_stats: 1.4,
-                        from_here=(-0.3, 0.2, 0.4),
-                        to_there=(0.7, 0.8, 1.6),
-                        periodic=True,
+                        raw_map=case.map,
+                        #iso_level=lambda map_stats: 3,
+                        iso_level=lambda map_stats: 0.3,
+                        #from_here=None, to_there=None,
+                        from_here=(-0.5, -0.5, -0.5), to_there=(1.5, 1.5, 1.5),
                         wires=False,
                         title="Ellipsoid")
   #a.view_objects.orthographic = True
