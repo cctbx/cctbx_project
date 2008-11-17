@@ -23,12 +23,12 @@ struct may_be_periodic
 
 #define SCITBX_LOC(klass, periodic, padded) \
 template <>                             \
-struct may_be_padded<klass>             \
+struct may_be_padded<klass >            \
 {                                       \
   static bool const value = periodic;   \
 };                                      \
 template <>                             \
-struct may_be_periodic<klass>           \
+struct may_be_periodic<klass >          \
 {                                       \
   static bool const value = padded;     \
 };
