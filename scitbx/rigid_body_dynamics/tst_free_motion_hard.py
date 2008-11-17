@@ -15,9 +15,12 @@ def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
     qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
     J = joint_lib.six_dof_euler_params(qE=qE, qr=qr)
-    Jxyz = joint_lib.six_dof_euler_angles_xyz(qE=qE, qr=qr)
-    assert approx_equal(Jxyz.E, J.E)
-    assert approx_equal(Jxyz.r, J.r)
+    Jea = joint_lib.six_dof_euler_angles_xyz(qE=qE, qr=qr)
+    assert approx_equal(Jea.E, J.E)
+    assert approx_equal(Jea.r, J.r)
+    Jep = joint_lib.six_dof_euler_params(qE=Jea.qE, qr=qr)
+    assert approx_equal(Jep.E, J.E)
+    assert approx_equal(Jep.r, J.r)
 
 def create_wells(sites, mersenne_twister):
   "overall random rotation and translation + noise"
