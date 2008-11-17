@@ -72,16 +72,13 @@ class six_dof_euler_angles_xyz(object):
 
 class six_dof_euler_hybrid(object):
 
-  def __init__(O, qE, qr, E=None):
-    O.qE = None
+  def __init__(O, qE, qr):
+    if (len(qE.elems) == 3):
+      qE = euler_angles_xyz_qE_as_euler_params_qE(qE=qE)
+    O.qE = qE
     O.qr = qr
     #
-    if (qE is None):
-      O.E = E
-    elif (len(qE.elems) == 4):
-      O.E = RBDA_Eq_4_12(qE)
-    else:
-      O.E = RBDA_Eq_4_7(qE)
+    O.E = RBDA_Eq_4_12(qE)
     O.r = O.E.transpose() * qr # RBDA Tab. 4.1
     #
     O.T = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
@@ -102,7 +99,10 @@ class six_dof_euler_hybrid(object):
     qrd = O.E * v_body_frame
     new_qE =        qEd * delta_t
     new_qr = O.qr + qrd * delta_t
-    return six_dof_euler_hybrid(None, new_qr, E=RBDA_Eq_4_7(new_qE)*O.E)
+    return six_dof_euler_hybrid(
+      qE=O.qE.unit_quaternion_product(
+           euler_angles_xyz_qE_as_euler_params_qE(new_qE)).normalize(),
+      qr=new_qr)
 
   def time_step_velocity(O, v_spatial, a_spatial, delta_t):
     return v_spatial + a_spatial * delta_t
