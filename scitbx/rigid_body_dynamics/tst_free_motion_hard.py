@@ -126,7 +126,8 @@ def run_simulations(mersenne_twister, n_time_steps, delta_t):
   sites_moved_accu = []
   for six_dof_joint in [
         joint_lib.six_dof_euler_params,
-        joint_lib.six_dof_euler_angles_xyz]:
+        joint_lib.six_dof_euler_angles_xyz,
+        joint_lib.six_dof_euler_hybrid]:
     mersenne_twister.setstate(mt_state)
     sites_moved, relative_range = run_simulation(
       six_dof_joint=six_dof_joint,
@@ -136,35 +137,39 @@ def run_simulations(mersenne_twister, n_time_steps, delta_t):
     sites_moved_accu.append(sites_moved)
     relative_ranges.append(relative_range)
   print "rms joints:"
-  rms = flex.double()
-  for sites_ep,sites_ea in zip(*sites_moved_accu):
-    rms.append(
-      flex.vec3_double(sites_ep).rms_difference(flex.vec3_double(sites_ea)))
-  rms.min_max_mean().show(prefix="  ")
-  print
-  return relative_ranges, flex.max(rms)
+  rmss = [flex.double(), flex.double()]
+  for sites_ep,sites_ea,sites_eh in zip(*sites_moved_accu):
+    sites_ep = flex.vec3_double(sites_ep)
+    rmss[0].append(sites_ep.rms_difference(flex.vec3_double(sites_ea)))
+    rmss[1].append(sites_ep.rms_difference(flex.vec3_double(sites_eh)))
+  for rms in rmss:
+    rms.min_max_mean().show(prefix="  ")
+    print
+  return relative_ranges, flex.max(rmss[0]), flex.max(rmss[1])
 
 def exercise(n_trials=10, n_time_steps=1000, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
   exercise_euler_params_qE_as_euler_angles_xyz_qE(
     mersenne_twister=mersenne_twister)
-  relative_ranges_accu = [flex.double(), flex.double()]
-  rms_max_accu = flex.double()
+  relative_ranges_accu = [flex.double(), flex.double(), flex.double()]
+  rms_max_accu = [flex.double(), flex.double()]
   for i in xrange(n_trials):
-    relative_ranges, rms_max = run_simulations(
+    relative_ranges, rms_max_ea, rms_max_eh = run_simulations(
       mersenne_twister=mersenne_twister,
       n_time_steps=n_time_steps,
       delta_t=delta_t)
     for r,a in zip(relative_ranges, relative_ranges_accu):
       a.append(r)
-    rms_max_accu.append(rms_max)
+    rms_max_accu[0].append(rms_max_ea)
+    rms_max_accu[1].append(rms_max_eh)
   for accu in relative_ranges_accu:
     print "relative ranges:"
     accu.min_max_mean().show(prefix="  ")
     print
-  print "rms max:"
-  rms_max_accu.min_max_mean().show(prefix="  ")
-  print
+  for accu in rms_max_accu:
+    print "rms max:"
+    accu.min_max_mean().show(prefix="  ")
+    print
 
 def run(args):
   assert len(args) == 0
