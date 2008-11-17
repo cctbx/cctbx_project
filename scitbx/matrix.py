@@ -221,6 +221,25 @@ class rec(object):
       a[2] * b[0] - b[2] * a[0],
       a[0] * b[1] - b[0] * a[1]))
 
+  def unit_quaternion_as_r3_rotation_matrix(self):
+    assert self.n in [(1,4), (4,1)]
+    q0,q1,q2,q3 = self.elems
+    return sqr((
+      2*(q0*q0+q1*q1)-1, 2*(q1*q2-q0*q3),   2*(q1*q3+q0*q2),
+      2*(q1*q2+q0*q3),   2*(q0*q0+q2*q2)-1, 2*(q2*q3-q0*q1),
+      2*(q1*q3-q0*q2),   2*(q2*q3+q0*q1),   2*(q0*q0+q3*q3)-1))
+
+  def unit_quaternion_product(self, other):
+    assert self.n in [(1,4), (4,1)]
+    assert other.n in [(1,4), (4,1)]
+    q0,q1,q2,q3 = self.elems
+    o0,o1,o2,o3 = other.elems
+    return col((
+      q0*o0 - q1*o1 - q2*o2 - q3*o3,
+      q0*o1 + q1*o0 + q2*o3 - q3*o2,
+      q0*o2 - q1*o3 + q2*o0 + q3*o1,
+      q0*o3 + q1*o2 - q2*o1 + q3*o0))
+
   def ortho(self):
     assert self.n in ((3,1), (1,3))
     x, y, z = self.elems
@@ -1123,6 +1142,18 @@ def exercise():
     7/15,22/75,-14/75,29/75,
     1/3,4/15,-8/15,8/15,
     -1,-1,1,-1]), -1/75)
+  #
+  for i_trial in xrange(10):
+    uq1 = col.random(n=4, a=-1, b=1).normalize()
+    uq2 = col.random(n=4, a=-1, b=1).normalize()
+    r1 = uq1.unit_quaternion_as_r3_rotation_matrix()
+    r2 = uq2.unit_quaternion_as_r3_rotation_matrix()
+    uqp = uq1.unit_quaternion_product(uq2)
+    rp = uqp.unit_quaternion_as_r3_rotation_matrix()
+    assert approx_equal(rp, r1*r2)
+    uqp = uq2.unit_quaternion_product(uq1)
+    rp = uqp.unit_quaternion_as_r3_rotation_matrix()
+    assert approx_equal(rp, r2*r1)
   #
   print "OK"
 
