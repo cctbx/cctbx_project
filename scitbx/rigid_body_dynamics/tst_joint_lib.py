@@ -1,37 +1,24 @@
 from scitbx.rigid_body_dynamics import featherstone
 from scitbx.rigid_body_dynamics import joint_lib
+from scitbx.rigid_body_dynamics.utils import \
+  spatial_inertia_from_sites, \
+  kinetic_energy
 from scitbx.rigid_body_dynamics.tst_free_motion_hard import \
   potential_energy, \
-  potential_f_ext_pivot_at_origin, \
-  kinetic_energy
+  potential_f_ext_pivot_at_origin
 from scitbx.array_family import flex
 from scitbx import matrix
 import math
 import sys
 
-def body_inertia(sites_cart, pivot):
-  m = [0] * 9
-  for site in sites_cart:
-    x,y,z = site - pivot
-    m[0] += y*y+z*z
-    m[4] += x*x+z*z
-    m[8] += x*x+y*y
-    m[1] -= x*y
-    m[2] -= x*z
-    m[5] -= y*z
-  m[3] = m[1]
-  m[6] = m[2]
-  m[7] = m[5]
-  return matrix.sqr(m)
-
 class featherstone_system_model(object):
 
-  def __init__(model, A, m, c, I, J):
+  def __init__(model, A, I, J):
     model.NB = 1
     model.pitch = [J]
     model.parent =[-1]
     model.Xtree = [A.Xtree]
-    model.I = [featherstone.mcI(m, c, I)]
+    model.I = [I]
 
 class revolute_simulation(object):
 
@@ -42,16 +29,10 @@ class revolute_simulation(object):
       return (mersenne_twister.random_double()*2-1)*math.pi
     #
     O.sites = [random_vector()]
-    O.m = 1
-    O.pivot = random_vector()
     O.A = joint_lib.revolute_alignment(
-      pivot=O.pivot,
+      pivot=random_vector(),
       normal=random_vector().normalize())
-    #
-    O.I = O.A.T.r \
-        * body_inertia(sites_cart=O.sites, pivot=O.sites[0]) \
-        * O.A.T.r.transpose()
-    O.c = O.A.T * O.sites[0]
+    O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T)
     #
     O.wells = [random_vector()]
     #
@@ -65,14 +46,14 @@ class revolute_simulation(object):
     return [T * site for site in O.sites]
 
   def energies_and_accelerations_update(O):
-    O.e_kin = kinetic_energy(m=O.m, c=O.c, I=O.I, v_spatial=O.J.S*O.qd)
+    O.e_kin = kinetic_energy(I_spatial=O.I, v_spatial=O.J.S*O.qd)
     O.e_pot = potential_energy(
       sites=O.sites, wells=O.wells, A_T=O.A.T, J_T_inv=O.J.T_inv)
     O.f_ext = potential_f_ext_pivot_at_origin(
       sites=O.sites, wells=O.wells, A_T=O.A.T, J_T_inv=O.J.T_inv)
     O.e_tot = O.e_kin + O.e_pot
     #
-    model = featherstone_system_model(A=O.A, m=O.m, c=O.c, I=O.I, J=O.J)
+    model = featherstone_system_model(A=O.A, I=O.I, J=O.J)
     q = [None]
     tau = None
     grav_accn = [0,0,0]
