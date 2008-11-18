@@ -80,6 +80,10 @@ map_params_str ="""\
     calc_factor = None
       .type = float
       .short_caption=Multiply Fcalc by
+    kicked = False
+      .type = bool
+    fill_missing_f_obs_with_weighted_f_model = True
+      .type = bool
   }
   map {
     mtz_label_amplitudes = 2FOFCWT
@@ -87,6 +91,8 @@ map_params_str ="""\
     likelihood_weighted = True
     obs_factor = 2
     calc_factor = 1
+    kicked = False
+    fill_missing_f_obs_with_weighted_f_model = True
   }
   map {
     mtz_label_amplitudes = FOFCWT
@@ -94,6 +100,26 @@ map_params_str ="""\
     likelihood_weighted = True
     obs_factor = 1
     calc_factor = 1
+    kicked = False
+    fill_missing_f_obs_with_weighted_f_model = True
+  }
+  map {
+    mtz_label_amplitudes = 2FOFCWT_no_fill
+    mtz_label_phases = PH2FOFCWT_no_fill
+    likelihood_weighted = True
+    obs_factor = 2
+    calc_factor = 1
+    kicked = False
+    fill_missing_f_obs_with_weighted_f_model = False
+  }
+  map {
+    mtz_label_amplitudes = FOFCWT_no_fill
+    mtz_label_phases = PHFOFCWT_no_fill
+    likelihood_weighted = True
+    obs_factor = 1
+    calc_factor = 1
+    kicked = False
+    fill_missing_f_obs_with_weighted_f_model = False
   }
   anomalous_difference_map
     .short_caption=Anomalous difference map
@@ -127,10 +153,6 @@ map_params_str ="""\
   apply_volume_scaling = False
     .type = bool
     .expert_level = 2
-  apply_b_factor_sharpening = None
-    .type = float
-    .expert_level = 1
-    .help = Multiply all Fobs by exp(Bsharp * s**2)
 """
 
 map_params = iotbx.phil.parse(map_params_str, process_includes=True)

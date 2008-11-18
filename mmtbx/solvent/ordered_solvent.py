@@ -157,24 +157,26 @@ class manager(object):
         map_type     = self.params.primary_map_type,
         map_cutoff   = self.params.primary_map_cutoff,
         use_kick_map = self.params.use_kick_maps).peaks_mapped()
-      self.sites, self.heights = peaks.sites, peaks.heights
-      self.add_new_solvent()
-      self.show(message = "Just added new:")
-      if(self.params.filter_at_start):
-        self.filter_solvent()
-        self.show(message = "Filtered:")
+      if(peaks is not None):
+        self.sites, self.heights = peaks.sites, peaks.heights
+        self.add_new_solvent()
+        self.show(message = "Just added new:")
+        if(self.params.filter_at_start):
+          self.filter_solvent()
+          self.show(message = "Filtered:")
     #
-    if(not self.filter_only and self.params.correct_drifted_waters):
-      self.correct_drifted_waters(map_cutoff = self.params.secondary_map_cutoff)
-    #
-    for i in xrange(self.params.n_cycles):
-      self.refine_adp()
-      self.refine_occupancies()
-    #
-    if(not self.filter_only):
-      if(self.params.secondary_map_type is not None):
-        self.find_peaks_2fofc()
-        self.show(message = "2Fo-Fc map selection:")
+    if([self.sites, self.heights].count(None)==0):
+      if(not self.filter_only and self.params.correct_drifted_waters):
+        self.correct_drifted_waters(map_cutoff = self.params.secondary_map_cutoff)
+      #
+      for i in xrange(self.params.n_cycles):
+        self.refine_adp()
+        self.refine_occupancies()
+      #
+      if(not self.filter_only):
+        if(self.params.secondary_map_type is not None):
+          self.find_peaks_2fofc()
+          self.show(message = "2Fo-Fc map selection:")
     self.show(message = "Before filtering:")
     self.filter_solvent()
     self.show(message = "Final:")

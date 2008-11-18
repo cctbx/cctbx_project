@@ -1385,10 +1385,9 @@ class manager(manager_mixin):
     else:
       return pher
 
-  def electron_density_map(self, b_sharp = None, kick_map = False,
-                           fill_missing_f_obs = False):
-    return map_tools.electron_density_map(fmodel = self, b_sharp = b_sharp,
-      kick_map = kick_map, fill_missing_f_obs = fill_missing_f_obs)
+  def electron_density_map(self, fill_missing_f_obs = False):
+    return map_tools.electron_density_map(fmodel = self,
+      fill_missing_f_obs = fill_missing_f_obs)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):

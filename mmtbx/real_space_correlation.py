@@ -149,7 +149,8 @@ class model_to_map(object):
         other_fft_map                 = other_fft_map,
         real_map                      = True,
         real_map_unpadded             = False,
-        symmetry_flags                = maptbx.use_space_group_symmetry)
+        symmetry_flags                = maptbx.use_space_group_symmetry,
+        average_maps                  = True) # XXX use map coefficients averaging
       self.fft_map = km.fft_map
       self.map_data = km.map_data
 
