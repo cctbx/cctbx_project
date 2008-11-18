@@ -2,6 +2,9 @@ from scitbx.rigid_body_dynamics import featherstone
 from scitbx.rigid_body_dynamics import joint_lib
 from scitbx.rigid_body_dynamics.utils import \
   kinetic_energy
+from scitbx.rigid_body_dynamics.test_utils import \
+  potential_energy_no_align, \
+  potential_f_ext_no_align_pivot_at_origin
 from scitbx.rigid_body_dynamics.tst_free_motion import \
   featherstone_system_model
 from scitbx.rigid_body_dynamics.free_motion_reference_impl import \
@@ -34,36 +37,6 @@ def create_wells(sites, mersenne_twister):
     t_noise = t + matrix.col(mersenne_twister.random_double(size=3)-0.5)*0.2
     wells.append(r * site + t_noise)
   return wells
-
-def potential_energy(sites, wells, A_T, J_T_inv):
-  result = 0
-  for s, w in zip(sites, wells):
-    result += (A_T * s - J_T_inv * A_T * w).dot()
-  return result
-
-def potential_f_ext_pivot_at_origin(sites, wells, A_T, J_T_inv):
-  f_cart = [2 * (A_T * s - J_T_inv * A_T * w) for s, w in zip(sites, wells)]
-  f = matrix.col((0,0,0))
-  nc = matrix.col((0,0,0))
-  for s,force in zip(sites, f_cart):
-    f += force
-    nc += (A_T * s).cross(force)
-  return matrix.col((nc, f)).resolve_partitions()
-
-def potential_energy_no_align(sites, wells, J_T_inv):
-  result = 0
-  for s, w in zip(sites, wells):
-    result += (s - J_T_inv * w).dot()
-  return result
-
-def potential_f_ext_no_align_pivot_at_origin(sites, wells, J_T_inv):
-  f_cart = [2 * (s - J_T_inv * w) for s, w in zip(sites, wells)]
-  f = matrix.col((0,0,0))
-  nc = matrix.col((0,0,0))
-  for s,force in zip(sites, f_cart):
-    f += force
-    nc += s.cross(force)
-  return matrix.col((nc, f)).resolve_partitions()
 
 class simulation(object):
 

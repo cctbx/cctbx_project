@@ -3,7 +3,7 @@ from scitbx.rigid_body_dynamics import joint_lib
 from scitbx.rigid_body_dynamics.utils import \
   spatial_inertia_from_sites, \
   kinetic_energy
-from scitbx.rigid_body_dynamics.tst_free_motion_hard import \
+from scitbx.rigid_body_dynamics.test_utils import \
   potential_energy, \
   potential_f_ext_pivot_at_origin
 from scitbx.array_family import flex
