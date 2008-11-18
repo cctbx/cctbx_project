@@ -1,5 +1,7 @@
 from scitbx.rigid_body_dynamics import featherstone
 from scitbx.rigid_body_dynamics import joint_lib
+from scitbx.rigid_body_dynamics.utils import \
+  kinetic_energy
 from scitbx.rigid_body_dynamics.tst_free_motion import \
   featherstone_system_model
 from scitbx.rigid_body_dynamics.free_motion_reference_impl import \
@@ -63,11 +65,6 @@ def potential_f_ext_no_align_pivot_at_origin(sites, wells, J_T_inv):
     nc += s.cross(force)
   return matrix.col((nc, f)).resolve_partitions()
 
-def kinetic_energy(m, c, I, v_spatial):
-  "RBDA Eq. 2.67"
-  I_spatial = featherstone.mcI(m, c, I)
-  return 0.5 * v_spatial.dot(I_spatial * v_spatial)
-
 class simulation(object):
 
   def __init__(O, six_dof_joint, mersenne_twister):
@@ -89,7 +86,8 @@ class simulation(object):
 
   def energies_and_accelerations_update(O):
     O.e_kin = kinetic_energy(
-      m=O.m, c=matrix.col((0,0,0)), I=O.I, v_spatial=O.v_spatial)
+      I_spatial=featherstone.mcI(m=O.m, c=matrix.col((0,0,0)), I=O.I),
+      v_spatial=O.v_spatial)
     O.e_pot = potential_energy_no_align(
       sites=O.sites, wells=O.wells, J_T_inv=O.J.T_inv)
     O.f_ext = potential_f_ext_no_align_pivot_at_origin(
