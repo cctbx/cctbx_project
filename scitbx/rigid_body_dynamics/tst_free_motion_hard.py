@@ -33,19 +33,34 @@ def create_wells(sites, mersenne_twister):
     wells.append(r * site + t_noise)
   return wells
 
-def potential_energy(sites, wells, T_inv):
+def potential_energy(sites, wells, A_T, J_T_inv):
   result = 0
-  for xyz_s, xyz_w in zip(sites, wells):
-    result += (xyz_s - T_inv * xyz_w).dot()
+  for s, w in zip(sites, wells):
+    result += (A_T * s - J_T_inv * A_T * w).dot()
   return result
 
-def potential_f_ext(sites, wells, T_inv):
-  f_cart = [2 * (xyz_s - T_inv * xyz_w) for xyz_s, xyz_w in zip(sites, wells)]
+def potential_f_ext_pivot_at_origin(sites, wells, A_T, J_T_inv):
+  f_cart = [2 * (A_T * s - J_T_inv * A_T * w) for s, w in zip(sites, wells)]
   f = matrix.col((0,0,0))
   nc = matrix.col((0,0,0))
-  for xyz,force in zip(sites, f_cart):
+  for s,force in zip(sites, f_cart):
     f += force
-    nc += xyz.cross(force)
+    nc += (A_T * s).cross(force)
+  return matrix.col((nc, f)).resolve_partitions()
+
+def potential_energy_no_align(sites, wells, J_T_inv):
+  result = 0
+  for s, w in zip(sites, wells):
+    result += (s - J_T_inv * w).dot()
+  return result
+
+def potential_f_ext_no_align_pivot_at_origin(sites, wells, J_T_inv):
+  f_cart = [2 * (s - J_T_inv * w) for s, w in zip(sites, wells)]
+  f = matrix.col((0,0,0))
+  nc = matrix.col((0,0,0))
+  for s,force in zip(sites, f_cart):
+    f += force
+    nc += s.cross(force)
   return matrix.col((nc, f)).resolve_partitions()
 
 class kinetic_energy(object):
@@ -78,8 +93,10 @@ class simulation(object):
 
   def energies_and_accelerations_update(O):
     O.e_kin = kinetic_energy(m=O.m, I=O.I, v_spatial=O.v_spatial)
-    O.e_pot = potential_energy(sites=O.sites, wells=O.wells, T_inv=O.J.T_inv)
-    O.f_ext = potential_f_ext(sites=O.sites, wells=O.wells, T_inv=O.J.T_inv)
+    O.e_pot = potential_energy_no_align(
+      sites=O.sites, wells=O.wells, J_T_inv=O.J.T_inv)
+    O.f_ext = potential_f_ext_no_align_pivot_at_origin(
+      sites=O.sites, wells=O.wells, J_T_inv=O.J.T_inv)
     O.e_tot = O.e_kin.tot + O.e_pot
     #
     model = featherstone_system_model(m=O.m, I=O.I, J=O.J)
