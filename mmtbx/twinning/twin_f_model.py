@@ -2205,7 +2205,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                        n        = None,
                        w1       = None,
                        w2       = None,
-                       b_sharp  = 0.0,
                        ):
     assert map_type in ("Fo-Fc", "Fobs-Fmodel",
                         "2mFo-DFc", "2mFobs-DFmodel",
@@ -2235,9 +2234,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
     aniso_scale = self.f_atoms.customized_copy(
       data = aniso_scale ).common_set( dt_f_obs )
     aniso_scale = aniso_scale.data()
-    if b_sharp==None:
-      b_sharp=0.0
-    b_sharp_scale = flex.exp(b_sharp*dt_f_obs.d_star_sq().data()/4.0)
 
     if map_type not in ["gradient","m_gradient"]:
       result = None
@@ -2284,8 +2280,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
       if self.map_types.aniso_correct:
         result = result.customized_copy( data = result.data()*aniso_scale )
-      if b_sharp != 0:
-        result = result.customized_copy( data = result.data()*b_sharp_scale )
 
       return result
 
@@ -2311,7 +2305,6 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                  n                 = 1,
                                  w1                = None,
                                  w2                = None,
-                                 b_sharp           = None,
                                  resolution_factor = 1/3.,
                                  fill_missing_f_obs = True, # XXX not used since not available for twin case.
                                  symmetry_flags = None):

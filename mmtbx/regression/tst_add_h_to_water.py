@@ -214,31 +214,31 @@ expected_result2 = """\
 
                     ----------find peak-candidates----------
 
-Number of peaks found at mFobs-DFmodel map (map cutoff=5.00 sigma)= 9
+Number of peaks found at mFobs-DFmodel map (map cutoff=6.50 sigma)= 9
 Filter by distance & map next to the model:
-   mapped sites are within: 0.980 - 1.009
+   mapped sites are within: 0.966 - 0.992
    number of sites selected in [dist_min= 0.70, dist_max= 1.05]: 9 from: 9
-   mapped sites are within: 0.980 - 1.009
+   mapped sites are within: 0.966 - 0.992
 
-peak=   23.135 closest distance to pdb=" O   HOH     1 " =    0.990
-peak=   20.851 closest distance to pdb=" O   HOH     1 " =    0.981
-peak=   22.681 closest distance to pdb=" O   HOH     2 " =    0.999
-peak=   21.340 closest distance to pdb=" O   HOH     2 " =    0.997
-peak=   22.116 closest distance to pdb=" O   HOH     3 " =    0.990
-peak=   21.072 closest distance to pdb=" O   HOH     3 " =    0.980
-peak=   21.269 closest distance to pdb=" O   HOH     4 " =    0.999
-peak=   22.049 closest distance to pdb=" O   HOH     5 " =    0.988
-peak=   20.580 closest distance to pdb=" O   HOH     6 " =    1.009
+peak=   23.062 closest distance to pdb=" O   HOH     1 " =    0.975
+peak=   20.824 closest distance to pdb=" O   HOH     1 " =    0.968
+peak=   22.513 closest distance to pdb=" O   HOH     2 " =    0.982
+peak=   21.113 closest distance to pdb=" O   HOH     2 " =    0.982
+peak=   22.054 closest distance to pdb=" O   HOH     3 " =    0.977
+peak=   21.160 closest distance to pdb=" O   HOH     3 " =    0.966
+peak=   21.209 closest distance to pdb=" O   HOH     4 " =    0.984
+peak=   21.996 closest distance to pdb=" O   HOH     5 " =    0.975
+peak=   20.476 closest distance to pdb=" O   HOH     6 " =    0.992
 
                   ----------6D rigid body fit of HOH----------
 
 Fit quality:
- 0.028
- 0.039
- 0.021
- 0.018
- 0.008
- 0.028
+ 0.029
+ 0.032
+ 0.024
+ 0.006
+ 0.005
+ 0.011
 """
 
 def exercise_02():
@@ -280,7 +280,7 @@ def exercise_02():
   #
   out = StringIO()
   params = find_hydrogens.all_master_params().extract()
-  params.map_cutoff=5
+  params.map_cutoff=6.5
   find_hydrogens.run(fmodel=fmodel, model=model, log=out, params=params)
   for a,b in zip(out.getvalue().splitlines(), expected_result2.splitlines()):
     a = a.strip()

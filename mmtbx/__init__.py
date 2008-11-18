@@ -229,12 +229,24 @@ class map_names(object):
     self.n = n
     self.ml_map = ml_map
     self.anomalous = False
+    self.kicked = False
+    self.f_obs_filled = False
     s = s.replace(" ","")
     s = s.replace("*","")
-    if(s.count('_')==1): self.error(map_name_string)
+    if(s.count('kicked')==1 or s.count('kick')==1):
+      self.kicked = True
+      for tmp in ["kicked", "kick"]:
+        s = s.replace(tmp,"")
+    if(s.count('filled')==1 or
+       s.count('filed')==1 or
+       s.count('fill')==1 or
+       s.count('fil')==1):
+      self.f_obs_filled = True
+      for tmp in ['filled', 'filed', 'fill', 'fil']:
+        s = s.replace(tmp,"")
+    while s.count("_") > 0: s = s.replace("_","")
     if(s.count('anom')):
       self.anomalous = True
-    #
     elif(s in ['fcalc','fcal','fc', 'fmodel','fmod','fm']):
       self.k = float(0)
       self.n = float(-1)

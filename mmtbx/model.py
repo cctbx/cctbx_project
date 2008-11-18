@@ -906,12 +906,17 @@ class manager(object):
 
   def energies_adp(self, iso_restraints, compute_gradients, use_hd):
     assert self.refinement_flags is not None
+    xrs = self.xray_structure
+    sel_ = xrs.use_u_iso() | xrs.use_u_aniso()
+    selection = sel_
+    if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
+      selection = sel_.set_selected(self.ias_selection, False)
     n_aniso = 0
     if(self.refinement_flags.adp_individual_aniso is not None):
       n_aniso = self.refinement_flags.adp_individual_aniso.count(True)
     if(n_aniso == 0):
       energies_adp_iso = self.restraints_manager.energies_adp_iso(
-        xray_structure    = self.xray_structure,
+        xray_structure    = xrs,
         parameters        = iso_restraints,
         use_u_local_only  = iso_restraints.use_u_local_only,
         use_hd            = use_hd,
@@ -919,8 +924,9 @@ class manager(object):
       target = energies_adp_iso.target
     else:
       energies_adp_aniso = self.restraints_manager.energies_adp_aniso(
-        xray_structure    = self.xray_structure,
-        compute_gradients = compute_gradients)
+        xray_structure    = xrs,
+        compute_gradients = compute_gradients,
+        selection         = selection)
       target = energies_adp_aniso.target
     u_iso_gradients = None
     u_aniso_gradients = None

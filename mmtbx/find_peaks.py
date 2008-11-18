@@ -63,15 +63,17 @@ class manager(object):
                      use_kick_map = False, kick_map_params = None):
     adopt_init_args(self, locals())
     self.mapped = False
+    self.peaks_ = None
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
     if(use_kick_map):
       from mmtbx import map_tools
       km = map_tools.kick_map(
-        fmodel                        = self.fmodel,
-        map_type                      = map_type,
-        resolution_factor             = self.params.resolution_factor,
-        symmetry_flags                = maptbx.use_space_group_symmetry)
+        fmodel            = self.fmodel,
+        map_type          = map_type,
+        resolution_factor = self.params.resolution_factor,
+        symmetry_flags    = maptbx.use_space_group_symmetry,
+        average_maps      = True)
       fft_map = km.fft_map
       fft_map_data = km.map_data # XXX map is already sigma scaled
       map_units = "sigma"
@@ -109,22 +111,24 @@ class manager(object):
       min_distance_sym_equiv = min_distance_sym_equiv,
       general_positions_only = self.params.peak_search.general_positions_only,
       min_cross_distance     = self.params.peak_search.min_cross_distance)
-    cluster_analysis = crystal_gridding_tags.peak_search(
-      parameters = peak_search_parameters,
-      map = fft_map_data).all(max_clusters = max_number_of_peaks)
-    heights = cluster_analysis.heights()
-    if(negative):
-      heights *= -1.
-    self.peaks_ = peaks_holder(heights = heights,
-                               sites   = cluster_analysis.sites())
-    print >>self.log,"Number of peaks found at %s map (map cutoff=%s %s)= %s"%(
-      self.map_type, format_value("%-5.2f", self.map_cutoff).strip(),
-      map_units, format_value("%-12d", self.peaks_.sites.size()))
+    if(self.fmodel.r_work() > 0.00001 and self.fmodel.r_free() > 0.00001):
+      cluster_analysis = crystal_gridding_tags.peak_search(
+        parameters = peak_search_parameters,
+        map = fft_map_data).all(max_clusters = max_number_of_peaks)
+      heights = cluster_analysis.heights()
+      if(negative):
+        heights *= -1.
+      self.peaks_ = peaks_holder(heights = heights,
+                                 sites   = cluster_analysis.sites())
+      print >>self.log,"Number of peaks found at %s map (map cutoff=%s %s)= %s"%(
+        self.map_type, format_value("%-5.2f", self.map_cutoff).strip(),
+        map_units, format_value("%-12d", self.peaks_.sites.size()))
 
   def peaks(self):
     return self.peaks_
 
   def peaks_mapped(self):
+    if(self.peaks_ is None): return None
     assert self.mapped == False
     max_dist = self.params.map_next_to_model.max_model_peak_dist
     min_dist = self.params.map_next_to_model.min_model_peak_dist
@@ -163,6 +167,7 @@ class manager(object):
     return peaks
 
   def show_mapped(self, pdb_atoms):
+    if(self.peaks_ is None): return None
     peaks = self.peaks()
     if(peaks.iseqs_of_closest_atoms is None):
       raise RuntimeError("iseqs_of_closest_atoms is None")

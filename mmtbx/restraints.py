@@ -118,11 +118,13 @@ class manager(object):
 
   def energies_adp_aniso(self,
         xray_structure,
+        selection = None,
         compute_gradients=False,
         gradients=None):
     result = cctbx.adp_restraints.adp_aniso_restraints(
         restraints_manager = self.geometry,
         xray_structure = xray_structure,
+        selection = selection
         #compute_gradients=compute_gradients,
         #gradients=result.gradients
         )

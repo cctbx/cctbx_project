@@ -85,30 +85,30 @@ class kick_map(object):
                      map_type,
                      number_of_kicks = 50,
                      update_bulk_solvent_and_scale = False,
-                     resolution_factor = 1./3,
+                     resolution_factor = 1./4,
                      symmetry_flags = None,
                      other_fft_map = None,
                      real_map_unpadded = True,
-                     real_map = False):
+                     real_map = False,
+                     average_maps = False):
     assert [real_map_unpadded, real_map].count(True) == 1
-    fmodel_tmp = mmtbx.f_model.manager(
-      xray_structure = fmodel.xray_structure.deep_copy_scatterers(),
-      r_free_flags   = fmodel.r_free_flags,
-      target_name    = fmodel.target_name,
-      f_obs          = fmodel.f_obs)
+    fmodel_tmp = fmodel.deep_copy()
     bss_params = bss.master_params.extract()
     map_helper_obj = map_helper(fmodel = fmodel)
+    ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())/4.
     self.map_data = None
+    self.map_coeffs = None
+    map_coeff_data = None
     assert number_of_kicks > 0
     counter = 0
-    for kick_size in [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7]:
+    for kick_size in [0,0.1,0.3,0.5,0.7]:
+      b_sharp = None # 8 * math.pi**2 * kick_size**2 #XXX needs testing
       for trial in xrange(number_of_kicks):
         xray_structure = fmodel.xray_structure.deep_copy_scatterers()
         xray_structure.shake_sites_in_place(mean_distance = kick_size)
         max_kick = fmodel.xray_structure.max_distance(other = xray_structure)
-        b_sharp = None #8 * math.pi**2 * max_kick**2 # this does not do any good
-        print kick_size, max_kick, b_sharp
-        self.fft_map = model_to_map(
+        print kick_size, max_kick
+        model_to_map_obj = model_to_map(
           fmodel_tmp                    = fmodel_tmp,
           xray_structure                = xray_structure,
           fmodel                        = fmodel,
@@ -117,23 +117,37 @@ class kick_map(object):
           resolution_factor             = resolution_factor,
           other_fft_map                 = other_fft_map,
           symmetry_flags                = symmetry_flags,
-          b_sharp                       = b_sharp,
           bss_params                    = bss_params,
-          map_helper_obj                = map_helper_obj).fft_map
-        if(real_map):
-          tmp_result = self.fft_map.real_map()
-        elif(real_map_unpadded):
-          tmp_result = self.fft_map.real_map_unpadded()
-        if(self.map_data is None): self.map_data = tmp_result
-        else: self.map_data += tmp_result
+          alpha_fom_source              = map_helper_obj)
+        if(average_maps):
+          self.fft_map = model_to_map_obj.fft_map()
+          if(real_map):
+            tmp_result = self.fft_map.real_map()
+          elif(real_map_unpadded):
+            tmp_result = self.fft_map.real_map_unpadded()
+          if(self.map_data is None): self.map_data = tmp_result
+          else: self.map_data += tmp_result
+        else:
+          map_coeff_ = model_to_map_obj.map_coefficients()
+          map_coeff_data_ = map_coeff_.data()
+          if(b_sharp is not None):
+            map_coeff_data_ = map_coeff_data_ * flex.exp(b_sharp*ss)
+          if(map_coeff_data is None):
+            map_coeff_data = map_coeff_data_
+          else:
+            map_coeff_data = map_coeff_data + map_coeff_data_
         counter += 1
-    self.map_data = self.map_data/counter
-    # produce sigma scaled map: copied from miller.py
-    from cctbx import maptbx
-    statistics = maptbx.statistics(self.map_data)
-    self.average = statistics.mean()
-    self.standard_deviation = statistics.sigma()
-    self.map_data /= self.standard_deviation
+    if(self.map_data is not None):
+      self.map_data = self.map_data/counter
+      # produce sigma scaled map: copied from miller.py
+      from cctbx import maptbx
+      statistics = maptbx.statistics(self.map_data)
+      self.average = statistics.mean()
+      self.standard_deviation = statistics.sigma()
+      self.map_data /= self.standard_deviation
+    if(map_coeff_data is not None):
+      self.map_coeffs = map_coeff_.customized_copy(
+        data = map_coeff_data/counter)
 
 class model_to_map(object):
 
@@ -145,15 +159,17 @@ class model_to_map(object):
                      resolution_factor,
                      other_fft_map,
                      symmetry_flags,
-                     b_sharp,
                      bss_params,
-                     map_helper_obj):
+                     alpha_fom_source):
+    self.map_type = map_type
+    self.resolution_factor = resolution_factor
+    self.other_fft_map = other_fft_map
+    self.alpha_fom_source = alpha_fom_source
+    self.symmetry_flags = symmetry_flags
     fmodel_tmp.update_xray_structure(xray_structure = xray_structure,
                                      update_f_calc  = True,
                                      update_f_mask  = True)
     if(update_bulk_solvent_and_scale):
-      fmodel_tmp.update_solvent_and_scale()
-    else:
       fmodel_tmp.update(
         b_cart            = fmodel.b_cart(),
         k_sol             = fmodel.k_sol(),
@@ -162,23 +178,27 @@ class model_to_map(object):
       bss_params.k_sol_b_sol_grid_search = False
       bss_params.number_of_macro_cycles = 1
       fmodel_tmp.update_solvent_and_scale(params = bss_params)
-    self.fft_map = fmodel_tmp.electron_density_map(b_sharp = b_sharp).\
-      fft_map(map_type                   = map_type,
-              other_fft_map              = other_fft_map,
-              symmetry_flags             = symmetry_flags,
-              resolution_factor          = resolution_factor,
-              map_helper_obj             = map_helper_obj,
-              force_anomalous_flag_false = True)
-    self.fft_map.apply_sigma_scaling()
+    self.electron_density_map_manager = fmodel_tmp.electron_density_map()
 
-###############################################################################
+  def fft_map(self):
+    result = self.electron_density_map_manager.\
+      fft_map(map_type                   = self.map_type,
+              other_fft_map              = self.other_fft_map,
+              symmetry_flags             = self.symmetry_flags,
+              resolution_factor          = self.resolution_factor,
+              alpha_fom_source           = self.alpha_fom_source,
+              force_anomalous_flag_false = True)
+    result.apply_sigma_scaling()
+    return result
+
+  def map_coefficients(self):
+    return self.electron_density_map_manager.map_coefficients(
+      map_type = self.map_type, alpha_fom_source = self.alpha_fom_source)
 
 class electron_density_map(object):
 
-  def __init__(self, fmodel, b_sharp = None, kick_map = False,
-                     fill_missing_f_obs = False):
+  def __init__(self, fmodel, fill_missing_f_obs = False):
     self.fmodel = fmodel.deep_copy()
-    self.b_sharp = b_sharp
     self.fill_missing_f_obs = fill_missing_f_obs
     self.anom_diff = None
     if(self.fmodel.f_obs.anomalous_flag()):
@@ -190,11 +210,11 @@ class electron_density_map(object):
       assert anom_diff_common.indices().size()==self.anom_diff.indices().size()
       self.anom_diff = self._phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
-    if(self.fill_missing_f_obs): self._fill_f_obs()
-    self.map_helper_obj = map_helper(fmodel = self.fmodel)
-    del self.fmodel
+    if(self.fill_missing_f_obs): self.fmodel = self._fill_f_obs()
+    self.map_helper_obj = map_helper(fmodel  = self.fmodel)
+    #del self.fmodel # XXX
 
-  def map_coefficients(self, map_type, map_helper_obj = None):
+  def map_coefficients(self, map_type, alpha_fom_source = None):
     map_name_manager = mmtbx.map_names(map_name_string = map_type)
     if(map_name_manager.anomalous):
       if(self.anom_diff is not None):
@@ -210,20 +230,26 @@ class electron_density_map(object):
          f_obs_scale   = map_name_manager.k,
          f_model_scale = map_name_manager.n)
     if(map_name_manager.ml_map):
-      if(map_helper_obj is None): map_helper_obj_ = self.map_helper_obj
-      else: map_helper_obj_ = map_helper_obj
+      if(alpha_fom_source is not None):
+        alpha = alpha_fom_source.alpha.data()
+        fom = alpha_fom_source.alpha.data()
+      else:
+        alpha = self.map_helper_obj.alpha.data()
+        fom = self.map_helper_obj.alpha.data()
       return self._map_coeff(
-        f_obs         = map_helper_obj_.f_obs_scaled,
-        f_model       = map_helper_obj_.f_model_scaled,
-        f_obs_scale   = map_name_manager.k*map_helper_obj_.fom,
-        f_model_scale = map_name_manager.n*map_helper_obj_.alpha.data())
+        f_obs         = self.map_helper_obj.f_obs_scaled,
+        f_model       = self.map_helper_obj.f_model_scaled,
+        f_obs_scale   = map_name_manager.k*fom,
+        f_model_scale = map_name_manager.n*alpha)
 
   def _fill_f_obs(self):
     f_model = self.fmodel.f_model()
+    n_refl_orig = f_model.data().size()
     complete_set = f_model.complete_set(d_min = f_model.d_min(), d_max=None)
     f_calc_atoms = complete_set.structure_factors_from_scatterers(
       xray_structure = self.fmodel.xray_structure).f_calc()
     f_calc_atoms_lone = f_calc_atoms.lone_set(other = f_model)
+    n_refl_lone = f_calc_atoms_lone.data().size()
     f_mask_lone = masks.manager(
       miller_array = f_calc_atoms_lone,
       xray_structure = self.fmodel.xray_structure).f_mask()
@@ -238,6 +264,9 @@ class electron_density_map(object):
       hkl    = f_calc_atoms_lone.indices(),
       uc     = f_mask_lone.unit_cell(),
       ss     = ss)
+    f_obs_orig = self.fmodel.f_obs.deep_copy()
+    r_free_flags_orig = self.fmodel.r_free_flags
+    # compose new fileld fmodel
     f_model_lone = abs(miller.array(
       miller_set = f_mask_lone,
       data       = f_model_core.f_model * self.fmodel.scale_k1()))
@@ -247,9 +276,35 @@ class electron_density_map(object):
     self.fmodel = mmtbx.f_model.manager(
       xray_structure = self.fmodel.xray_structure,
       r_free_flags   = new_r_free_flags,
-      target_name    = "ml",
+      target_name    = "ls_wunit_k1",
       f_obs          = new_f_obs)
     self.fmodel.update_solvent_and_scale()
+    # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
+    alpha, beta = maxlik.alpha_beta_est_manager(
+      f_obs                    = self.fmodel.f_obs,
+      f_calc                   = self.fmodel.f_model_scaled_with_k1(),
+      free_reflections_per_bin = 100,
+      flags                    = self.fmodel.r_free_flags.data(),
+      interpolation            = True).alpha_beta()
+    apply_alpha_sel = flex.bool(n_refl_orig, False).concatenate(
+      flex.bool(n_refl_lone, True)) # assume order did not change
+    assert apply_alpha_sel.size() == self.fmodel.f_obs.data().size()
+    alpha = alpha.select(apply_alpha_sel)
+    # compose new fileld fmodel
+    f_model_lone = abs(miller.array(
+      miller_set = f_mask_lone,
+      data       = f_model_core.f_model * self.fmodel.scale_k1()*alpha.data()))
+    new_f_obs = f_obs_orig.concatenate(other = f_model_lone)
+    new_r_free_flags = r_free_flags_orig.concatenate(
+      other = r_free_flags_lone)
+    self.fmodel = mmtbx.f_model.manager(
+      xray_structure = self.fmodel.xray_structure,
+      r_free_flags   = new_r_free_flags,
+      target_name    = "ls_wunit_k1",
+      f_obs          = new_f_obs)
+    self.fmodel.update_solvent_and_scale()
+    #
+    return self.fmodel
 
   def _phase_transfer(self, miller_array, phase_source):
     # XXX could be a method in miller.py under a better name in future
@@ -284,11 +339,12 @@ class electron_density_map(object):
               map_coefficients = None,
               other_fft_map = None,
               map_type = None,
-              map_helper_obj = None,
+              alpha_fom_source = None,
               force_anomalous_flag_false = None):
     if(map_coefficients is None):
-      map_coefficients = self.map_coefficients(map_type       = map_type,
-                                               map_helper_obj = map_helper_obj)
+      map_coefficients = self.map_coefficients(
+        map_type         = map_type,
+        alpha_fom_source = alpha_fom_source)
       if(force_anomalous_flag_false):
         map_coefficients = map_coefficients.average_bijvoet_mates()
     if(force_anomalous_flag_false):
