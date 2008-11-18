@@ -369,6 +369,7 @@ scitbx/rigid_body_dynamics/joint_lib.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/tst_featherstone.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/tst_free_motion.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/tst_free_motion_hard.py svneol=native#text/x-python
+scitbx/rigid_body_dynamics/tst_joint_lib.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/wx_free_motion.py svneol=native#text/x-python
 scitbx/source_generators/flex_fwd_h.py -text
 scitbx/sparse/__init__.py -text

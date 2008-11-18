@@ -70,6 +70,42 @@ class six_dof_euler_angles_xyz(object):
   def time_step_velocity(O, v_spatial, a_spatial, delta_t):
     return v_spatial + a_spatial * delta_t
 
+class revolute_alignment(object):
+
+  def __init__(O, pivot, normal):
+    O.pivot = pivot
+    O.normal = normal
+    O.E = normal.vector_to_001_rotation()
+    O.T = matrix.rt((O.E, -O.E * pivot))
+    O.T_inv = matrix.rt((O.E.transpose(), pivot))
+    O.Xtree = featherstone.Xrot(E=O.E) * featherstone.Xtrans(r=O.pivot)
+
+class revolute(object):
+
+  def __init__(O, qE):
+    O.qE = qE
+    #
+    c, s = math.cos(qE[0]), math.sin(qE[0])
+    O.E = matrix.sqr((c, s, 0, -s, c, 0, 0, 0, 1)) # RBDA Tab. 2.2
+    O.r = matrix.col((0,0,0))
+    #
+    O.T = matrix.rt((O.E, (0,0,0)))
+    O.T_inv = matrix.rt((O.E.transpose(), (0,0,0)))
+    #
+    O.Xj = featherstone.Xrot(O.E)
+    O.S = matrix.col((0,0,1,0,0,0))
+    O.S_ring = None
+
+  def Xj_S_S_ring(O, q, qd):
+    return O.Xj, O.S, O.S_ring
+
+  def time_step_position(O, qd, delta_t):
+    new_qE = O.qE + qd * delta_t
+    return revolute(qE=new_qE)
+
+  def time_step_velocity(O, qd, qdd, delta_t):
+    return qd + qdd * delta_t
+
 def RBDA_Eq_4_7(q):
   q1,q2,q3 = q
   def cs(a): return math.cos(a), math.sin(a)
