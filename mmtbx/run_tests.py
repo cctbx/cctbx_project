@@ -6,7 +6,6 @@ def run():
   "$D/chemical_components/tst.py",
   "$D/regression/tst_add_h_to_water.py",
   "$D/rotamer/rotamer_eval.py",
-  "$D/tst_validate_utils.py",
   "$D/wwpdb/tst_standard_geometry_cif.py",
   "$D/tst_pdbtools.py",
   "$D/real_space/tst.py",
