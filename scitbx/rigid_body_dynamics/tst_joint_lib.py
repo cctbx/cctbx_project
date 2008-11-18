@@ -26,12 +26,12 @@ def body_inertia(sites_cart, pivot):
 
 class featherstone_system_model(object):
 
-  def __init__(model, A, m, I, J):
+  def __init__(model, A, m, c, I, J):
     model.NB = 1
     model.pitch = [J]
     model.parent =[-1]
     model.Xtree = [A.Xtree]
-    model.I = [featherstone.mcI(m, matrix.col((0,0,0)), I)]
+    model.I = [featherstone.mcI(m, c, I)]
 
 class revolute_simulation(object):
 
@@ -49,8 +49,9 @@ class revolute_simulation(object):
       normal=random_vector().normalize())
     #
     O.I = O.A.T.r \
-        * body_inertia(sites_cart=O.sites, pivot=O.pivot) \
+        * body_inertia(sites_cart=O.sites, pivot=O.sites[0]) \
         * O.A.T.r.transpose()
+    O.c = O.A.T * O.sites[0]
     #
     O.wells = [random_vector()]
     #
@@ -64,14 +65,14 @@ class revolute_simulation(object):
     return [T * site for site in O.sites]
 
   def energies_and_accelerations_update(O):
-    O.e_kin = kinetic_energy(m=O.m, I=O.I, v_spatial=O.J.S*O.qd)
+    O.e_kin = kinetic_energy(m=O.m, c=O.c, I=O.I, v_spatial=O.J.S*O.qd)
     O.e_pot = potential_energy(
       sites=O.sites, wells=O.wells, A_T=O.A.T, J_T_inv=O.J.T_inv)
     O.f_ext = potential_f_ext_pivot_at_origin(
       sites=O.sites, wells=O.wells, A_T=O.A.T, J_T_inv=O.J.T_inv)
-    O.e_tot = O.e_kin.tot + O.e_pot
+    O.e_tot = O.e_kin + O.e_pot
     #
-    model = featherstone_system_model(A=O.A, m=O.m, I=O.I, J=O.J)
+    model = featherstone_system_model(A=O.A, m=O.m, c=O.c, I=O.I, J=O.J)
     q = [None]
     tau = None
     grav_accn = [0,0,0]
@@ -85,11 +86,11 @@ class revolute_simulation(object):
 def exercise_revolute_sim(out, mersenne_twister, n_dynamics_steps, delta_t):
   sim = revolute_simulation(mersenne_twister=mersenne_twister)
   e_pots = flex.double([sim.e_pot])
-  e_kins = flex.double([sim.e_kin.tot])
+  e_kins = flex.double([sim.e_kin])
   for i_step in xrange(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
     e_pots.append(sim.e_pot)
-    e_kins.append(sim.e_kin.tot)
+    e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
   out = sys.stdout
   print >> out, "energy samples:", e_tots.size()

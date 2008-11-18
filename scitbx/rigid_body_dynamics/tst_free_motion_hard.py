@@ -63,14 +63,10 @@ def potential_f_ext_no_align_pivot_at_origin(sites, wells, J_T_inv):
     nc += s.cross(force)
   return matrix.col((nc, f)).resolve_partitions()
 
-class kinetic_energy(object):
-
-  def __init__(O, m, I, v_spatial):
-    "Shabana (2005) p. 148 eqs. 3.125, 3.126"
-    w, v = matrix.col_list([v_spatial.elems[:3], v_spatial.elems[3:]])
-    O.ang = 0.5 * w.dot(I * w)
-    O.lin = 0.5 * m * v.dot()
-    O.tot = O.ang + O.lin
+def kinetic_energy(m, c, I, v_spatial):
+  "RBDA Eq. 2.67"
+  I_spatial = featherstone.mcI(m, c, I)
+  return 0.5 * v_spatial.dot(I_spatial * v_spatial)
 
 class simulation(object):
 
@@ -92,12 +88,13 @@ class simulation(object):
     return [O.J.T * site for site in O.sites]
 
   def energies_and_accelerations_update(O):
-    O.e_kin = kinetic_energy(m=O.m, I=O.I, v_spatial=O.v_spatial)
+    O.e_kin = kinetic_energy(
+      m=O.m, c=matrix.col((0,0,0)), I=O.I, v_spatial=O.v_spatial)
     O.e_pot = potential_energy_no_align(
       sites=O.sites, wells=O.wells, J_T_inv=O.J.T_inv)
     O.f_ext = potential_f_ext_no_align_pivot_at_origin(
       sites=O.sites, wells=O.wells, J_T_inv=O.J.T_inv)
-    O.e_tot = O.e_kin.tot + O.e_pot
+    O.e_tot = O.e_kin + O.e_pot
     #
     model = featherstone_system_model(m=O.m, I=O.I, J=O.J)
     q = [None] # already stored in joint as qE and qr
@@ -120,12 +117,12 @@ def run_simulation(
     mersenne_twister=mersenne_twister)
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
-  e_kins = flex.double([sim.e_kin.tot])
+  e_kins = flex.double([sim.e_kin])
   for i_step in xrange(n_dynamics_steps):
     sim.dynamics_step(delta_t=delta_t)
     sites_moved.append(sim.sites_moved())
     e_pots.append(sim.e_pot)
-    e_kins.append(sim.e_kin.tot)
+    e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
   print >> out, six_dof_joint
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
