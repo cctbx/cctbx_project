@@ -220,15 +220,12 @@ mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
-mmtbx/command_line/cbetadev.py -text
 mmtbx/command_line/cif_as_mtz.py -text
 mmtbx/command_line/maps.py -text
 mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/command_line/pdbtools.py -text
-mmtbx/command_line/ramalyze.py -text
 mmtbx/command_line/real_space_correlation.py -text
-mmtbx/command_line/rotalyze.py -text
 mmtbx/command_line/xmanip.py -text
 mmtbx/find_peaks.py -text
 mmtbx/hydrogens/find.py -text
@@ -264,7 +261,6 @@ mmtbx/scaling/absences.py -text
 mmtbx/tst_alignment.py -text
 mmtbx/tst_pdbtools.py -text
 mmtbx/tst_utils.py -text
-mmtbx/tst_validate_utils.py -text
 mmtbx/utils.py -text
 mmtbx/utils/LICENSE.txt -text
 mmtbx/utils/SConscript -text
