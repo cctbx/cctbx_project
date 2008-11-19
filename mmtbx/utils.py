@@ -91,11 +91,13 @@ data_and_flags = iotbx.phil.parse("""\
   labels = None
     .type=strings
     .style = bold renderer:draw_hkl_label_widget \
-      OnChange:update_rfree_flag_value
+      OnChange:update_resolution_limits
   high_resolution = None
     .type=float
+    .style = bold renderer:draw_resolution_widget
   low_resolution = None
     .type=float
+    .style = bold renderer:draw_resolution_widget
   outliers_rejection = True
     .type=bool
     .short_caption = Reject outliers
