@@ -402,8 +402,11 @@ class set(crystal.symmetry):
     return self.unit_cell().min_max_d_star_sq(self.indices())
 
   def d_max_min(self):
-    return [uctbx.d_star_sq_as_d(d_star_sq)
-      for d_star_sq in self.min_max_d_star_sq()]
+    return tuple([uctbx.d_star_sq_as_d(d_star_sq)
+      for d_star_sq in self.min_max_d_star_sq()])
+
+  def resolution_range(self):
+    return self.d_max_min()
 
   def n_bijvoet_pairs(self):
     asu, matches = self.match_bijvoet_mates()
@@ -565,10 +568,6 @@ class set(crystal.symmetry):
       asu = self
       matches = match_bijvoet_mates(asu.indices())
     return asu, matches
-
-  def resolution_range(self):
-    r = self.unit_cell().min_max_d_star_sq(self.indices())
-    return tuple([uctbx.d_star_sq_as_d(x) for x in r])
 
   def sort_permutation(self, by_value="resolution", reverse=False):
     assert by_value in ["resolution", "packed_indices"]
