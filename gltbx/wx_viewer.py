@@ -94,6 +94,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.field_of_view_y = 10.0
     self.min_near = 1
     self.min_viewport_use_fraction = 0.01
+    self.clip_near = 0
+    self.clip_far = 0
+    self.flag_show_fog = False # leave off by default
 
     self.rotation_center = (0,0,0)
     self.marked_rotation = None
@@ -209,6 +212,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     aspect = self.w / max(1,self.h)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
+    near, far = self.get_clipping_distances()
     if self.orthographic:
       s = self.minimum_covering_sphere
       c = s.center()
@@ -224,9 +228,32 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       else:
         left *= aspect
         right *= aspect
-      glOrtho(left, right, bottom, top, self.near, self.far)
+      glOrtho(left, right, bottom, top, near, far)
     else:
-      gluPerspective(self.field_of_view_y, aspect, self.near, self.far)
+      gluPerspective(self.field_of_view_y, aspect, near, far)
+    self.setup_fog()
+
+  def get_clipping_distances (self) :
+    near = self.near + self.clip_near
+    far = self.far + self.clip_far
+    if near > far :
+      near = far - 1
+    if near < self.min_near :
+      near = self.min_near
+    return (near, far)
+
+  def setup_fog (self) :
+    if self.flag_show_fog :
+      near, far = self.get_clipping_distances()
+      # TODO: this needs work.
+      fog_start = 0.25*(far - near) + near
+      fog_end = far
+      glMatrixMode(GL_MODELVIEW)
+      glEnable(GL_FOG)
+      glFogi(GL_FOG_MODE, GL_LINEAR)
+      glFogf(GL_FOG_START, fog_start)
+      glFogf(GL_FOG_END, fog_end)
+      glFogfv(GL_FOG_COLOR, [self.r_back, self.g_back, self.b_back, 1.0])
 
   def set_minimum_covering_sphere(self, atoms=[]):
     points = flex.vec3_double()

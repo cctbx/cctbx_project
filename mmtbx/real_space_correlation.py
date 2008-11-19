@@ -256,10 +256,14 @@ How to use:
     master_params.show()
     print "*"*79
     return
-  if(len(args) != 1):
-    raise Sorry("One command line argument expected: parameters file.")
-  if(len(args) == 1):
-    arg = args[0]
+  else :
+    show_graphs = False
+    if len(args) > 1 :
+      if args[0] == "--graph" or args[0] == "--gui" or args[0] == "-g" :
+        show_graphs = True 
+      else :
+        raise Sorry("Usage: phenix.real_space_correlation [-g] parameters.txt")
+    arg = args[-1]
     if(not os.path.isfile(arg)):
       raise Sorry("%s is not a file."%arg)
     parsed_params = None
@@ -279,9 +283,10 @@ How to use:
       print "*"*79
       raise Sorry("Fix parameters file and run again.")
       print
-    run(params = params.extract())
+    run(params = params.extract(), graph_results=show_graphs)
 
-def run(params, d_min_default=1.5, d_max_default=999.9):
+def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
+    return_residue_listing=False):
   # check resolution factor
   if(params.grid_resolution_factor >= 0.5):
     raise Sorry("grid_resolution_factor must be < 0.5.")
@@ -438,6 +443,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
   res_group_selections = []
   res_names = []
   res_ids = []
+  res_chains = []
+  res_meanb = []
   for model in models:
     for chain in model.chains():
       for rg in chain.residue_groups():
@@ -451,6 +458,9 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
           res_group_selections.append(flex.size_t(rg_i_seqs))
           res_names.append(r_name)
           res_ids.append(rg.resid())
+          res_chains.append(chain.id)
+          b = rg.atoms().extract_b()
+          res_meanb.append(b.min_max_mean().mean)
   assert len(res_group_selections) == len(res_names)
   assert len(res_group_selections) == len(res_ids)
   # combine selections
@@ -463,7 +473,7 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
   # compute and output map CC
   result = flex.double()
   print
-  print "Count, residue number, name and map CC"
+  print "Count, residue chain and number, name and map CC"
   for i_count, res_sel in enumerate(residue_selections):
     #print list(map_1.select(res_sel))
     #print
@@ -472,6 +482,19 @@ def run(params, d_min_default=1.5, d_max_default=999.9):
       x = map_1.select(res_sel),
       y = map_2.select(res_sel)).coefficient()
     result.append(corr)
-    print "%-5d %s %s %6.3f"%(i_count,res_ids[i_count],res_names[i_count],corr)
+    print "%-5d %s %s %6.3f" % \
+      (i_count,res_ids[i_count],res_names[i_count],corr)
   print
-  return result
+  if graph_results :
+    try :
+      from wxGUI2.Plot import show_residue_properties_chart
+      residue_stats = []
+      for i, corr in enumerate(result) :
+        residue_stats.append([(res_chains[i], res_ids[i]), corr])
+      show_residue_properties_chart(residue_stats, ["Real-space CC"])
+    except ImportError :
+      raise Sorry("Graphical interface not enabled.")
+  elif return_residue_listing :
+    return (res_chains, res_ids, res_names, results, res_meanb)
+  else :
+    return result

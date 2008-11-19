@@ -103,6 +103,111 @@ def wrap_always(text, width):
     return '\n'.join([ text[width*i:width*(i+1)] \
                        for i in xrange(int(math.ceil(1.*len(text)/width))) ])
 
+# Nat's utilities for plottable data
+class table_data (object) :
+  def __init__ (self, title, series_names=[], series_types=[],
+      series_labels=[], graph_names=[], graph_series=[], data=[]) :
+    self.title = title
+    self._is_complete = False
+    self.series_names = series_names
+    self.series_types = series_types
+    self.series_labels = series_labels
+    self.graph_names = graph_names
+    self.graph_columns = graph_series
+    self.data = data
+    self._graphs = {}
+
+  def formatted_simple (self) :
+    pass
+
+  def formatted (self) :
+    pass
+
+  def formatted_html (self) :
+    pass
+
+  def formatted_loggraph (self) :
+    pass
+
+  def get_graph (self, graph_name=None, series_list=[]) :
+    if graph_name is not None :
+      if not graph_name in self._graphs :
+        if not graph_name in self.graph_names :
+          return None
+        n = self.graph_names.index(graph_name)
+        x = self.data
+        data = [ [ x[i][j] for i in xrange(len(x)) ] \
+                    for j in self.graph_seriess[n] ]
+        if len(self.series_names) == len(self.data) :
+          labels = [self.series_names[i] for i in self.graph_columns[n]]
+        else :
+          labels = []
+        self._graphs[graph_name] = graph_data(graph_name, data, "plot", labels)
+      return self._graphs[graph_name]
+    elif len(series_list) > 1 :
+      if not series_list in self._graphs :
+        data = None
+        if isinstance(series_list[0], int) :
+          data = self._extract_data_series(series_list)
+          labels = [ self.series_labels[i] for i in column_list ]
+        elif isinstance(series_list[0], str) :
+          n_list = []
+          for col in series_list :
+            n_list.append(self.series_names.index(col))
+          data = self._extract_data_series(n_list)
+          labels = [ self.series_labels[i] for i in n_list ]
+        if data is None :
+          return None
+        self._graphs[series_list] = graph_data(None, data, "plot", labels)
+      return self._graphs[series_list]
+
+  def _extract_data_series (self, series_list) :
+    assert len(self.data) > 0
+    assert len(series_list) <= len(self.data[0])
+    data = self.data
+    new_data = [ [ data[i][j] for j in xrange(len(x)) ] for i in series_list ]
+    return new_data
+
+  def __str__ (self) :
+    return str(self.data)
+
+class graph_data (object) :
+  def __init__ (self, name, data, type="plot", data_labels=[]) :
+    self.name = name
+    self.data = data
+    self.type = type
+    if len(data_labels) == 0 :
+      self.x_label = "X"
+      self.y_label = [ "Y" for i in xrange(1, len(data)) ]
+    else :
+      self.x_label = data_labels[0]
+      self.y_labels = [ data_labels[i] for i in xrange(1, len(data)) ]
+
+  def get_plots (self, fill_in_missing_y=None) :
+    plots = []
+    for i in xrange(1, len(data)) :
+      plot_x = []
+      plot_y = []
+      for j in xrange(0, len(data[i])) :
+        if data[0][j] is not None :
+          if data[i][j] is not None :
+            plot_x.append(data[0][j])
+            plot_y.append(data[i][j])
+          elif fill_in_missing_y is not None :
+            plot_x.append(data[0][j])
+            plot_y.append(fill_in_missing_y)
+      plots.append((plot_x, plot_y))
+    return plots
+
+  def as_loggraph (self) :
+    pass
+
+class histogram_data (object) :
+  pass
+
+#---
+#--- tests
+#---
 def exercise():
   formatted_table = format(
     rows=[
