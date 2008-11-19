@@ -42,6 +42,21 @@ namespace scitbx { namespace af { namespace boost_python {
 namespace {
 
   flex<cctbx::hendrickson_lattman<> >::type*
+  from_a_b(
+    af::const_ref<double> const& a,
+    af::const_ref<double> const& b)
+  {
+    CCTBX_ASSERT(a.size() == b.size());
+    af::shared<cctbx::hendrickson_lattman<> > result;
+    result.reserve(a.size());
+    for(std::size_t i=0;i<a.size();i++) {
+      result.push_back(cctbx::hendrickson_lattman<>(a[i], b[i], 0, 0));
+    }
+    return new flex<cctbx::hendrickson_lattman<> >::type(
+      result, result.size());
+  }
+
+  flex<cctbx::hendrickson_lattman<> >::type*
   from_phase_integrals(
     af::const_ref<bool> const& centric_flags,
     af::const_ref<std::complex<double> > const& phase_integrals,
@@ -101,6 +116,11 @@ namespace {
       .def_pickle(flex_pickle_single_buffered<cctbx::hendrickson_lattman<>,
         4*pickle_size_per_element<
           cctbx::hendrickson_lattman<>::base_type::value_type>::value>())
+      .def("__init__", make_constructor(
+        from_a_b,
+        default_call_policies(),
+        (arg_("a"),
+         arg_("b"))))
       .def("__init__", make_constructor(
         from_phase_integrals,
         default_call_policies(),
