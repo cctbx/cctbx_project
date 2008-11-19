@@ -29,9 +29,14 @@ class revolute_simulation(object):
       return (mersenne_twister.random_double()*2-1)*math.pi
     #
     O.sites = [random_vector()]
-    O.A = joint_lib.revolute_alignment(
-      pivot=random_vector(),
-      normal=random_vector().normalize())
+    for i_trial in xrange(100): # guard against unlikely singularity
+      O.A = joint_lib.revolute_alignment(
+        pivot=random_vector(),
+        normal=random_vector().normalize())
+      if (abs(O.A.normal.cos_angle(O.sites[0] - O.A.pivot)) > 1.e-3):
+        break
+    else:
+      raise RuntimeError
     O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T)
     #
     O.wells = [random_vector()]
