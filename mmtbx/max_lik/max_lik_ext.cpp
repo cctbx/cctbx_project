@@ -25,6 +25,21 @@ namespace {
       .def("as_xplor_map", &wat_dist::as_xplor_map,
         (arg_("outputfile")))
     ;
+    def("fo_fc_alpha_over_eps_beta",
+         (af::shared<double>(*)
+               (af::shared<double> const&,
+                af::shared<double> const&,
+                af::shared<double> const&,
+                af::shared<double> const&,
+                cctbx::sgtbx::space_group const&,
+                af::const_ref<cctbx::miller::index<> >)) fo_fc_alpha_over_eps_beta,
+                                                          (arg_("f_obs"),
+                                                           arg_("f_model"),
+                                                           arg_("alpha"),
+                                                           arg_("beta"),
+                                                           arg_("space_group"),
+                                                           arg_("miller_indices")))
+    ;
     class_<alpha_beta_est>("alpha_beta_est",
                  init<boost::python::list const&,
                       boost::python::list const&,

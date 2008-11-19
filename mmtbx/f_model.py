@@ -1385,6 +1385,34 @@ class manager(manager_mixin):
     else:
       return pher
 
+  def f_model_phases_as_hl_coefficients(self):
+    f_model_phases = self.f_model().phases().data()
+    sin_f_model_phases = flex.sin(f_model_phases)
+    cos_f_model_phases = flex.cos(f_model_phases)
+    alpha, beta = self.alpha_beta()
+    t = maxlik.fo_fc_alpha_over_eps_beta(
+      f_obs   = self.f_obs,
+      f_model = self.f_model(),
+      alpha   = alpha,
+      beta    = beta)
+    hl_a_model = t * cos_f_model_phases
+    hl_b_model = t * sin_f_model_phases
+    return flex.hendrickson_lattman(a = hl_a_model, b = hl_b_model)
+
+  def combined_hl_coefficients(self):
+    result = None
+    if(self.abcd is not None):
+      result = self.abcd.data() + self.f_model_phases_as_hl_coefficients()
+      #if 0: # XXX development
+      #  from cctbx_miller_ext import *
+      #  integrator = phase_integrator()
+      #  phase_source = integrator(
+      #    space_group= self.f_obs.space_group(),
+      #    miller_indices = self.f_obs.indices(),
+      #    hendrickson_lattman_coefficients = result)
+      #
+    return result
+
   def electron_density_map(self, fill_missing_f_obs = False):
     return map_tools.electron_density_map(fmodel = self,
       fill_missing_f_obs = fill_missing_f_obs)

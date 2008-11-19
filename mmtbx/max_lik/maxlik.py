@@ -44,6 +44,17 @@ alpha_beta_params = iotbx.phil.parse("""\
     .type = float
 """)
 
+def fo_fc_alpha_over_eps_beta(f_obs, f_model, alpha, beta):
+  # Parameter "t". The coefficient 2 is already included, so for example
+  # fom = th(t) or I1(t)/I0(t) depending on cf.
+  return max_lik.fo_fc_alpha_over_eps_beta(
+    f_obs          = f_obs.data(),
+    f_model        = flex.abs(f_model.data()),
+    alpha          = alpha.data(),
+    beta           = beta.data(),
+    space_group    = f_obs.space_group(),
+    miller_indices = f_obs.indices())
+
 def figures_of_merit_(f_obs,
                       f_calc,
                       alpha,
