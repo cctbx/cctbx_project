@@ -13,6 +13,30 @@
 using namespace std;
 namespace mmtbx { namespace max_lik {
 
+af::shared<double> fo_fc_alpha_over_eps_beta(
+                     af::shared<double> const& fo,
+                     af::shared<double> const& fm,
+                     af::shared<double> const& alpha,
+                     af::shared<double> const& beta,
+                     cctbx::sgtbx::space_group const& sg,
+                     af::const_ref<cctbx::miller::index<> > hkl)
+{
+  af::shared<double> result = af::shared<double> (fo.size());
+  af::shared<int> eps = sg.epsilon(hkl);
+  af::shared<bool> cf = sg.is_centric(hkl);
+  for(std::size_t i=0; i < fo.size(); i++) {
+    if(alpha[i] == 0.0 || beta[i] == 0.0) {
+      result[i] = 0.0;
+    }
+    else {
+      double denom = eps[i] * beta[i];
+      MMTBX_ASSERT(denom != 0.0);
+      if(cf[i] == 0) result[i] = alpha[i] * fo[i] * fm[i] / denom * 2;
+      else           result[i] = alpha[i] * fo[i] * fm[i] / denom;
+    }
+  }
+  return result;
+}
 
 void wat_dist::preparator(cctbx::uctbx::unit_cell const& uc)
 {

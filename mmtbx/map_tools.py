@@ -223,12 +223,19 @@ class electron_density_map(object):
         return miller.array(miller_set = self.anom_diff,
                             data       = self.anom_diff.data()/(2j))
       else: return None
+    cf_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
+    acf_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
+    if(map_name_manager.k != map_name_manager.n and
+       abs(map_name_manager.k*map_name_manager.n) > 1.e-6):
+      cf_scale = (~self.fmodel.f_obs.centric_flags().data()).as_double()
+    else:
+      acf_scale.set_selected(~self.fmodel.f_obs.centric_flags().data(), 2.0)
     if(not map_name_manager.ml_map):
        return self._map_coeff(
          f_obs         = self.map_helper_obj.f_obs_scaled,
          f_model       = self.map_helper_obj.f_model_scaled,
-         f_obs_scale   = map_name_manager.k,
-         f_model_scale = map_name_manager.n)
+         f_obs_scale   = map_name_manager.k*acf_scale,
+         f_model_scale = map_name_manager.n*cf_scale*acf_scale)
     if(map_name_manager.ml_map):
       if(alpha_fom_source is not None):
         alpha = alpha_fom_source.alpha.data()
@@ -239,8 +246,8 @@ class electron_density_map(object):
       return self._map_coeff(
         f_obs         = self.map_helper_obj.f_obs_scaled,
         f_model       = self.map_helper_obj.f_model_scaled,
-        f_obs_scale   = map_name_manager.k*fom,
-        f_model_scale = map_name_manager.n*alpha)
+        f_obs_scale   = map_name_manager.k*fom*acf_scale,
+        f_model_scale = map_name_manager.n*alpha*cf_scale*acf_scale)
 
   def _fill_f_obs(self):
     f_model = self.fmodel.f_model()
@@ -322,15 +329,6 @@ class electron_density_map(object):
     result = miller.array(
       miller_set = obs_phi_calc,
       data       = obs_phi_calc.data()-f_model.data()*f_model_scale)
-    # I don't understand why, but this really improves the maps.
-    # CNS does the same.
-    centrics  = result.select_centric()
-    acentrics = result.select_acentric()
-    acentrics_data = acentrics.data() * 2.0
-    centrics_data  = centrics.data()
-    result = acentrics.customized_copy(
-      indices = acentrics.indices().concatenate(centrics.indices()),
-      data    = acentrics_data.concatenate(centrics_data))
     return result
 
   def fft_map(self,

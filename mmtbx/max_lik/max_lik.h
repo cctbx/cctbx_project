@@ -888,5 +888,13 @@ protected:
 
 ///////////////////////////////////////////////////////////
 
+af::shared<double> fo_fc_alpha_over_eps_beta(
+                     af::shared<double> const& fo,
+                     af::shared<double> const& fm,
+                     af::shared<double> const& alpha,
+                     af::shared<double> const& beta,
+                     cctbx::sgtbx::space_group const& sg,
+                     af::const_ref<cctbx::miller::index<> > hkl);
+
 }} // namespace max_lik
 #endif
