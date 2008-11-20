@@ -2,20 +2,19 @@ from scitbx import matrix
 
 def potential_energy(sites, wells, A, J):
   result = 0
+  AJA = A.T_inv * J.T * A.T
   for s, w in zip(sites, wells):
-    result += (A.T_inv * J.T * A.T * s - w).dot()
+    result += (AJA * s - w).dot()
   return result
 
 def potential_f_ext_pivot_at_origin(sites, wells, A, J):
-  AJ = A.T_inv * J.T
-  AJA = AJ * A.T
+  AJA = A.T_inv * J.T * A.T
   f_cart_ff = [2 * (AJA * s - w) for s, w in zip(sites, wells)]
   f = matrix.col((0,0,0))
   nc = matrix.col((0,0,0))
   for s,force_ff in zip(sites, f_cart_ff):
-    force_bf = (AJ.r).transpose() * force_ff
-    f += force_bf
-    nc += (A.T * s).cross(force_bf)
+    f += force_ff
+    nc += (AJA * s).cross(force_ff)
   return matrix.col((nc, f)).resolve_partitions()
 
 def potential_energy_no_align(sites, wells, J):
@@ -29,7 +28,6 @@ def potential_f_ext_no_align_pivot_at_origin(sites, wells, J):
   f = matrix.col((0,0,0))
   nc = matrix.col((0,0,0))
   for s,force_ff in zip(sites, f_cart_ff):
-    force_bf = J.T.r.transpose() * force_ff
-    f += force_bf
-    nc += s.cross(force_bf)
+    f += force_ff
+    nc += (J.T * s).cross(force_ff)
   return matrix.col((nc, f)).resolve_partitions()

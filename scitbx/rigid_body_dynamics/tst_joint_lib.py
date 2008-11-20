@@ -74,7 +74,8 @@ class revolute_simulation(object):
     qd = [B.qd for B in O.bodies]
     tau = None
     grav_accn = [0,0,0]
-    O.qdd = featherstone.FDab(model, q, qd, tau, f_ext, grav_accn)
+    O.qdd = featherstone.FDab(
+      model, q, qd, tau, f_ext, grav_accn, f_ext_in_ff=True)
 
   def dynamics_step(O, delta_t):
     for B,qdd in zip(O.bodies, O.qdd):
