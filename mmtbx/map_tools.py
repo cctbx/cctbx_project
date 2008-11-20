@@ -223,18 +223,22 @@ class electron_density_map(object):
         return miller.array(miller_set = self.anom_diff,
                             data       = self.anom_diff.data()/(2j))
       else: return None
+    centric_flags = self.fmodel.f_obs.centric_flags().data()
     cf_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
     acf_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
+    fo_scale = flex.double(self.fmodel.f_obs.size(), 1.0)
     if(map_name_manager.k != map_name_manager.n and
        abs(map_name_manager.k*map_name_manager.n) > 1.e-6):
-      cf_scale = (~self.fmodel.f_obs.centric_flags().data()).as_double()
+      cf_scale = (~centric_flags).as_double()
+      fo_scale.set_selected(~centric_flags, map_name_manager.k)
+      fo_scale.set_selected(centric_flags, max(map_name_manager.k-1.,0.))
     else:
-      acf_scale.set_selected(~self.fmodel.f_obs.centric_flags().data(), 2.0)
+      acf_scale.set_selected(~centric_flags, 2.0)
     if(not map_name_manager.ml_map):
        return self._map_coeff(
          f_obs         = self.map_helper_obj.f_obs_scaled,
          f_model       = self.map_helper_obj.f_model_scaled,
-         f_obs_scale   = map_name_manager.k*acf_scale,
+         f_obs_scale   = fo_scale*acf_scale,
          f_model_scale = map_name_manager.n*cf_scale*acf_scale)
     if(map_name_manager.ml_map):
       if(alpha_fom_source is not None):
@@ -243,11 +247,21 @@ class electron_density_map(object):
       else:
         alpha = self.map_helper_obj.alpha.data()
         fom = self.map_helper_obj.alpha.data()
-      return self._map_coeff(
-        f_obs         = self.map_helper_obj.f_obs_scaled,
-        f_model       = self.map_helper_obj.f_model_scaled,
-        f_obs_scale   = map_name_manager.k*fom*acf_scale,
-        f_model_scale = map_name_manager.n*alpha*cf_scale*acf_scale)
+      if(self.fmodel.abcd is None):
+        return self._map_coeff(
+          f_obs         = self.map_helper_obj.f_obs_scaled,
+          f_model       = self.map_helper_obj.f_model_scaled,
+          f_obs_scale   = fo_scale*fom*acf_scale,
+          f_model_scale = map_name_manager.n*alpha*cf_scale*acf_scale)
+      else:
+        comb_p = self.fmodel.combine_phases()
+        fo_all_scales = self.map_helper_obj.f_obs_scaled.data()*fo_scale*\
+          acf_scale*comb_p.f_obs_phase_and_fom_source()
+        fc_all_scales = self.map_helper_obj.f_model_scaled.data()*\
+          map_name_manager.n*alpha*cf_scale*acf_scale
+        return miller.array(
+          miller_set = self.fmodel.f_calc(),
+          data       = fo_all_scales - fc_all_scales)
 
   def _fill_f_obs(self):
     f_model = self.fmodel.f_model()
@@ -280,11 +294,18 @@ class electron_density_map(object):
     new_f_obs = self.fmodel.f_obs.concatenate(other = f_model_lone)
     new_r_free_flags = self.fmodel.r_free_flags.concatenate(
       other = r_free_flags_lone)
+    new_abcd = None
+    if(self.fmodel.abcd is not None):
+      new_abcd = self.fmodel.abcd.customized_copy(
+        indices = new_f_obs.indices(),
+        data = self.fmodel.abcd.data().concatenate(
+          flex.hendrickson_lattman(n_refl_lone, [0,0,0,0])))
     self.fmodel = mmtbx.f_model.manager(
       xray_structure = self.fmodel.xray_structure,
       r_free_flags   = new_r_free_flags,
       target_name    = "ls_wunit_k1",
-      f_obs          = new_f_obs)
+      f_obs          = new_f_obs,
+      abcd           = new_abcd)
     self.fmodel.update_solvent_and_scale()
     # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
     alpha, beta = maxlik.alpha_beta_est_manager(
@@ -308,7 +329,8 @@ class electron_density_map(object):
       xray_structure = self.fmodel.xray_structure,
       r_free_flags   = new_r_free_flags,
       target_name    = "ls_wunit_k1",
-      f_obs          = new_f_obs)
+      f_obs          = new_f_obs,
+      abcd           = new_abcd)
     self.fmodel.update_solvent_and_scale()
     #
     return self.fmodel

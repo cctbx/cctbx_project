@@ -45,7 +45,6 @@ import mmtbx.scaling.twin_analyses
 from cctbx import sgtbx
 from mmtbx import map_tools
 
-
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
 time_bulk_solvent_and_scale         = 0.0
@@ -1389,7 +1388,24 @@ class manager(manager_mixin):
     f_model_phases = self.f_model().phases().data()
     sin_f_model_phases = flex.sin(f_model_phases)
     cos_f_model_phases = flex.cos(f_model_phases)
-    alpha, beta = self.alpha_beta()
+    # XXX alpha, beta = self.alpha_beta()
+    # XXX DUPLICATION
+    ss = 1./flex.pow2(self.f_obs.d_spacings().data())/4.
+    fb_cart  = self.fb_cart()
+    scale_k1 = self.scale_k1()
+    f_obs_scale   = 1.0 / (fb_cart * scale_k1)
+    f_model_scale = 1.0 / fb_cart
+    f_obs_data_scaled = self.f_obs.data() * f_obs_scale
+    f_model_data_scaled = self.f_model().data() * f_model_scale
+    f_obs_scaled = self.f_obs.array(data = f_obs_data_scaled)
+    f_model_scaled = self.f_obs.array(data = f_model_data_scaled)
+    alpha, beta = maxlik.alpha_beta_est_manager(
+      f_obs                    = f_obs_scaled,
+      f_calc                   = f_model_scaled,
+      free_reflections_per_bin = 100,
+      flags                    = self.r_free_flags.data(),
+      interpolation            = True).alpha_beta()
+    # XXX
     t = maxlik.fo_fc_alpha_over_eps_beta(
       f_obs   = self.f_obs,
       f_model = self.f_model(),
@@ -1403,14 +1419,26 @@ class manager(manager_mixin):
     result = None
     if(self.abcd is not None):
       result = self.abcd.data() + self.f_model_phases_as_hl_coefficients()
-      #if 0: # XXX development
-      #  from cctbx_miller_ext import *
-      #  integrator = phase_integrator()
-      #  phase_source = integrator(
-      #    space_group= self.f_obs.space_group(),
-      #    miller_indices = self.f_obs.indices(),
-      #    hendrickson_lattman_coefficients = result)
-      #
+    return result
+
+  def combine_phases(self):
+    result = None
+    if(self.abcd is not None):
+      integrator = miller.phase_integrator()
+      phase_source = integrator(
+        space_group= self.f_obs.space_group(),
+        miller_indices = self.f_obs.indices(),
+        hendrickson_lattman_coefficients = self.combined_hl_coefficients())
+      class tmp:
+        def __init__(self, phase_source):
+          self.phase_source = phase_source
+        def phases(self):
+          return flex.arg(self.phase_source)
+        def fom(self):
+          return flex.abs(self.phase_source)
+        def f_obs_phase_and_fom_source(self):
+          return self.phase_source
+      result = tmp(phase_source = phase_source)
     return result
 
   def electron_density_map(self, fill_missing_f_obs = False):
