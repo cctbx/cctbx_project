@@ -62,9 +62,9 @@ class simulation(object):
       I_spatial=featherstone.mcI(m=O.m, c=matrix.col((0,0,0)), I=O.I),
       v_spatial=O.v_spatial)
     O.e_pot = potential_energy_no_align(
-      sites=O.sites, wells=O.wells, J_T_inv=O.J.T_inv)
+      sites=O.sites, wells=O.wells, J=O.J)
     O.f_ext = potential_f_ext_no_align_pivot_at_origin(
-      sites=O.sites, wells=O.wells, J_T_inv=O.J.T_inv)
+      sites=O.sites, wells=O.wells, J=O.J)
     O.e_tot = O.e_kin + O.e_pot
     #
     model = featherstone_system_model(m=O.m, I=O.I, J=O.J)
