@@ -63,7 +63,7 @@ map_params_str ="""\
   map
     .multiple = True
     .short_caption=Electron density map
-    .style=noauto auto_align
+    .style=noauto auto_align scrolled
   {
     mtz_label_amplitudes = None
       .type = str
