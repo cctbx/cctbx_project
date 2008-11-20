@@ -315,7 +315,7 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
 
   return tau
 
-def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None):
+def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
   """
 % FDab  Forward Dynamics via Articulated-Body Algorithm
 % FDab(model,q,qd,tau,f_ext,grav_accn) calculates the forward dynamics of a
@@ -335,6 +335,7 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None):
 
   S = [None] * model.NB
   Xup = [None] * model.NB
+  X0 = [None] * model.NB
   v = [None] * model.NB
   c = [None] * model.NB
   IA = [None] * model.NB
@@ -347,17 +348,23 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None):
       vJ = S[i]*qd[i]
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
+      X0[i] = Xup[i]
       v[i] = vJ
       c[i] = matrix.col([0,0,0,0,0,0])
     else:
+      X0[i] = Xup[i] * X0[model.parent[i]]
       v[i] = Xup[i]*v[model.parent[i]] + vJ
       c[i] = crm(v[i]) * vJ
     if (S_ring is not None):
       c[i] += S_ring * qd[i]
     IA[i] = model.I[i]
     pA[i] = crf(v[i]) * model.I[i] * v[i]
+    if (0): print "X0s fea:", X0[i].inverse().transpose().elems
     if (f_ext is not None and f_ext[i] is not None):
-      pA[i] = pA[i] - f_ext[i]
+      if (not f_ext_in_ff):
+        pA[i] = pA[i] - f_ext[i]
+      else:
+        pA[i] = pA[i] - X0[i].inverse().transpose() * f_ext[i]
 
   U = [None] * model.NB
   d = [None] * model.NB

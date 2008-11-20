@@ -15,9 +15,7 @@ class six_dof_euler_params(object):
     #
     O.T = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
     O.T_inv = matrix.rt((O.E.transpose(), O.r))
-    #
-    O.Xj = featherstone.Xrot(O.E) \
-         * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote
+    O.Xj = T_as_X(O.T)
     O.S = None
     O.S_ring = None
 
@@ -49,9 +47,7 @@ class six_dof_euler_angles_xyz(object):
     #
     O.T = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
     O.T_inv = matrix.rt((O.E.transpose(), O.r))
-    #
-    O.Xj = featherstone.Xrot(O.E) \
-         * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote
+    O.Xj = T_as_X(O.T)
     O.S = None
     O.S_ring = None
 
@@ -78,7 +74,7 @@ class revolute_alignment(object):
     O.E = normal.vector_to_001_rotation()
     O.T = matrix.rt((O.E, -O.E * pivot))
     O.T_inv = matrix.rt((O.E.transpose(), pivot))
-    O.Xtree = featherstone.Xrot(E=O.E) * featherstone.Xtrans(r=O.pivot)
+    O.Xtree = T_as_X(O.T_inv)
 
 class revolute(object):
 
@@ -91,8 +87,7 @@ class revolute(object):
     #
     O.T = matrix.rt((O.E, (0,0,0)))
     O.T_inv = matrix.rt((O.E.transpose(), (0,0,0)))
-    #
-    O.Xj = featherstone.Xrot(O.E)
+    O.Xj = T_as_X(O.T)
     O.S = matrix.col((0,0,1,0,0,0))
     O.S_ring = None
 
@@ -180,3 +175,7 @@ def euler_angles_xyz_qE_as_euler_params_qE(qE):
     c1*c2*s3-s1*s2*c3,
     c1*s2*c3+s1*c2*s3,
     s1*c2*c3-c1*s2*s3))
+
+def T_as_X(T):
+  return featherstone.Xrot(T.r.transpose()) \
+       * featherstone.Xtrans(T.t)

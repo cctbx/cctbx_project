@@ -28,6 +28,29 @@ def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
     assert approx_equal(Jep.E, J.E)
     assert approx_equal(Jep.r, J.r)
 
+def exercise_T_as_X(mersenne_twister):
+  for i_trial in xrange(10):
+    T1 = matrix.rt((
+      mersenne_twister.random_double_r3_rotation_matrix(),
+      mersenne_twister.random_double(size=3)-0.5))
+    T2 = matrix.rt((
+      mersenne_twister.random_double_r3_rotation_matrix(),
+      mersenne_twister.random_double(size=3)-0.5))
+    T12 = T1 * T2
+    T21 = T2 * T1
+    T1i = T1.inverse_assuming_orthogonal_r()
+    T2i = T2.inverse_assuming_orthogonal_r()
+    X1 = joint_lib.T_as_X(T1)
+    X2 = joint_lib.T_as_X(T2)
+    X12 = joint_lib.T_as_X(T12)
+    X21 = joint_lib.T_as_X(T21)
+    X1i = joint_lib.T_as_X(T1i)
+    X2i = joint_lib.T_as_X(T2i)
+    assert approx_equal(X1*X2, X21)
+    assert approx_equal(X2*X1, X12)
+    assert approx_equal(X1.inverse(), X1i)
+    assert approx_equal(X2.inverse(), X2i)
+
 def create_wells(sites, mersenne_twister):
   "overall random rotation and translation + noise"
   r = matrix.sqr(mersenne_twister.random_double_r3_rotation_matrix())
@@ -72,7 +95,8 @@ class simulation(object):
     qd = [O.v_spatial]
     tau = None
     grav_accn = [0,0,0]
-    qdd = featherstone.FDab(model, q, qd, tau, [O.f_ext], grav_accn)
+    qdd = featherstone.FDab(
+      model, q, qd, tau, [O.f_ext], grav_accn, f_ext_in_ff=True)
     O.a_spatial = qdd[0]
 
   def dynamics_step(O, delta_t):
@@ -140,6 +164,8 @@ def run_simulations(out, mersenne_twister, n_dynamics_steps, delta_t):
 def exercise(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
   exercise_euler_params_qE_as_euler_angles_xyz_qE(
+    mersenne_twister=mersenne_twister)
+  exercise_T_as_X(
     mersenne_twister=mersenne_twister)
   relative_ranges_accu = [flex.double(), flex.double()]
   rms_max_accu = flex.double()
