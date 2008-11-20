@@ -11,6 +11,25 @@ from scitbx import matrix
 import math
 import sys
 
+def accumulate_AJA(bodies):
+  result = []
+  for B in bodies:
+    AJA_tree = B.A.T_inv * B.J.T * B.A.T
+    if (B.parent != -1):
+      AJA_tree = AJA_tree * result[B.parent]
+    result.append(AJA_tree)
+  return result
+
+def accumulate_Ttree(bodies):
+  result = []
+  for B in bodies:
+    if (B.parent == -1):
+      Ttree = B.A.T_inv
+    else:
+      Ttree = bodies[B.parent].A.T * B.A.T_inv
+    result.append(Ttree)
+  return result
+
 class featherstone_system_model(object):
 
   def __init__(model, bodies):
@@ -19,10 +38,10 @@ class featherstone_system_model(object):
     model.parent =[]
     model.Xtree = []
     model.I = []
-    for B in bodies:
+    for B,Ttree in zip(bodies, accumulate_Ttree(bodies)):
       model.pitch.append(B.J)
-      model.parent.append(-1)
-      model.Xtree.append(B.A.Xtree)
+      model.parent.append(B.parent)
+      model.Xtree.append(joint_lib.T_as_X(Ttree))
       model.I.append(B.I)
 
 class random_revolute(object):
@@ -54,19 +73,24 @@ class revolute_simulation(object):
   def __init__(O, mersenne_twister, NB):
     O.bodies = []
     for ib in xrange(NB):
-      O.bodies.append(random_revolute(mersenne_twister=mersenne_twister))
+      B = random_revolute(mersenne_twister=mersenne_twister)
+      B.parent = -1
+      O.bodies.append(B)
     O.energies_and_accelerations_update()
 
   def energies_and_accelerations_update(O):
     O.e_kin = 0
     O.e_pot = 0
     f_ext = []
+    AJA_tree_list = accumulate_AJA(bodies=O.bodies)
     for B in O.bodies:
       O.e_kin += kinetic_energy(I_spatial=B.I, v_spatial=B.J.S*B.qd)
+      if (B.parent == -1): AJA_tree = None
+      else:                AJA_tree = AJA_tree_list[B.parent]
       O.e_pot += potential_energy(
-        sites=B.sites, wells=B.wells, A=B.A, J=B.J)
+        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
       f_ext.append(potential_f_ext_pivot_at_origin(
-        sites=B.sites, wells=B.wells, A=B.A, J=B.J))
+        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree))
     O.e_tot = O.e_kin + O.e_pot
     #
     model = featherstone_system_model(bodies=O.bodies)

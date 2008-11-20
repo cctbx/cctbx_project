@@ -74,7 +74,6 @@ class revolute_alignment(object):
     O.E = normal.vector_to_001_rotation()
     O.T = matrix.rt((O.E, -O.E * pivot))
     O.T_inv = matrix.rt((O.E.transpose(), pivot))
-    O.Xtree = T_as_X(O.T_inv)
 
 class revolute(object):
 
