@@ -1424,7 +1424,7 @@ class manager(manager_mixin):
   def combine_phases(self):
     result = None
     if(self.abcd is not None):
-      integrator = miller.phase_integrator()
+      integrator = miller.phase_integrator() # XXX use n_steps
       phase_source = integrator(
         space_group= self.f_obs.space_group(),
         miller_indices = self.f_obs.indices(),
