@@ -13,14 +13,19 @@ import sys
 
 class featherstone_system_model(object):
 
-  def __init__(model, A, I, J):
-    model.NB = 1
-    model.pitch = [J]
-    model.parent =[-1]
-    model.Xtree = [A.Xtree]
-    model.I = [I]
+  def __init__(model, bodies):
+    model.NB = len(bodies)
+    model.pitch = []
+    model.parent =[]
+    model.Xtree = []
+    model.I = []
+    for B in bodies:
+      model.pitch.append(B.J)
+      model.parent.append(-1)
+      model.Xtree.append(B.A.Xtree)
+      model.I.append(B.I)
 
-class revolute_simulation(object):
+class random_revolute(object):
 
   def __init__(O, mersenne_twister):
     def random_vector():
@@ -43,34 +48,42 @@ class revolute_simulation(object):
     #
     O.J = joint_lib.revolute(qE=matrix.col([random_angle()]))
     O.qd = matrix.col([random_angle()])
-    #
+
+class revolute_simulation(object):
+
+  def __init__(O, mersenne_twister, NB):
+    O.bodies = []
+    for ib in xrange(NB):
+      O.bodies.append(random_revolute(mersenne_twister=mersenne_twister))
     O.energies_and_accelerations_update()
 
-  def sites_moved(O):
-    T = O.A.T_inv * O.J.T * O.A.T
-    return [T * site for site in O.sites]
-
   def energies_and_accelerations_update(O):
-    O.e_kin = kinetic_energy(I_spatial=O.I, v_spatial=O.J.S*O.qd)
-    O.e_pot = potential_energy(
-      sites=O.sites, wells=O.wells, A_T=O.A.T, J_T_inv=O.J.T_inv)
-    O.f_ext = potential_f_ext_pivot_at_origin(
-      sites=O.sites, wells=O.wells, A_T=O.A.T, J_T_inv=O.J.T_inv)
+    O.e_kin = 0
+    O.e_pot = 0
+    f_ext = []
+    for B in O.bodies:
+      O.e_kin += kinetic_energy(I_spatial=B.I, v_spatial=B.J.S*B.qd)
+      O.e_pot += potential_energy(
+        sites=B.sites, wells=B.wells, A_T=B.A.T, J_T_inv=B.J.T_inv)
+      f_ext.append(potential_f_ext_pivot_at_origin(
+        sites=B.sites, wells=B.wells, A_T=B.A.T, J_T_inv=B.J.T_inv))
     O.e_tot = O.e_kin + O.e_pot
     #
-    model = featherstone_system_model(A=O.A, I=O.I, J=O.J)
-    q = [None]
+    model = featherstone_system_model(bodies=O.bodies)
+    q = [None]*len(O.bodies)
+    qd = [B.qd for B in O.bodies]
     tau = None
     grav_accn = [0,0,0]
-    O.qdd = featherstone.FDab(model, q, [O.qd], tau, [O.f_ext], grav_accn)[0]
+    O.qdd = featherstone.FDab(model, q, qd, tau, f_ext, grav_accn)
 
   def dynamics_step(O, delta_t):
-    O.qd = O.J.time_step_velocity(qd=O.qd, qdd=O.qdd, delta_t=delta_t)
-    O.J = O.J.time_step_position(qd=O.qd, delta_t=delta_t)
+    for B,qdd in zip(O.bodies, O.qdd):
+      B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
+      B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
 
 def exercise_revolute_sim(out, mersenne_twister, n_dynamics_steps, delta_t):
-  sim = revolute_simulation(mersenne_twister=mersenne_twister)
+  sim = revolute_simulation(mersenne_twister=mersenne_twister, NB=2)
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
   for i_step in xrange(n_dynamics_steps):
