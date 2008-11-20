@@ -64,9 +64,9 @@ class revolute_simulation(object):
     for B in O.bodies:
       O.e_kin += kinetic_energy(I_spatial=B.I, v_spatial=B.J.S*B.qd)
       O.e_pot += potential_energy(
-        sites=B.sites, wells=B.wells, A_T=B.A.T, J_T_inv=B.J.T_inv)
+        sites=B.sites, wells=B.wells, A=B.A, J=B.J)
       f_ext.append(potential_f_ext_pivot_at_origin(
-        sites=B.sites, wells=B.wells, A_T=B.A.T, J_T_inv=B.J.T_inv))
+        sites=B.sites, wells=B.wells, A=B.A, J=B.J))
     O.e_tot = O.e_kin + O.e_pot
     #
     model = featherstone_system_model(bodies=O.bodies)
