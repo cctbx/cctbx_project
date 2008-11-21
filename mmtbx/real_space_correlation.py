@@ -260,7 +260,7 @@ How to use:
     show_graphs = False
     if len(args) > 1 :
       if args[0] == "--graph" or args[0] == "--gui" or args[0] == "-g" :
-        show_graphs = True 
+        show_graphs = True
       else :
         raise Sorry("Usage: phenix.real_space_correlation [-g] parameters.txt")
     arg = args[-1]
