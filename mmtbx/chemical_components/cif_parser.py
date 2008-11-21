@@ -24,6 +24,8 @@ cif_keyword_dictionary = {
                   "pdbx_ideal_coordinates_missing_flag" : str,
                   "pdbx_model_coordinates_db_code" : str,
                   "pdbx_processing_site" : str,
+                  # added 11/2008
+                  #"pdbx_subcomponent_list" : str,
                   },
   "_chem_comp_atom" : {"comp_id": str,
                        "atom_id": str,
@@ -41,6 +43,9 @@ cif_keyword_dictionary = {
                        "pdbx_model_Cartn_y_ideal": float,
                        "pdbx_model_Cartn_z_ideal": float,
                        "pdbx_ordinal" : int,
+                       # added 11/2008
+                       #"pdbx_component_atom_id" : str,
+                       #"pdbx_component_comp_id" : str,
                        },
   "_chem_comp_bond" : {"comp_id": str,
                        "atom_id_1": str,
@@ -84,6 +89,8 @@ def run(filename):
   non_loop = {}
   code = ""
   pdbx_reading = False
+  remove_loop_fields = {}
+  loop_index = 0
   for line in line_iter:
     if line.find("#")==0: continue
     if line.find("_pdbx")==0: pdbx_reading = True
@@ -105,6 +112,7 @@ def run(filename):
                            line[finish+1:])
     if line.find("loop_")==0:
       loop_list = []
+      loop_index = 0
       continue
     if line.find(";")==0: continue
     if line.find("_")==0:
@@ -118,11 +126,23 @@ def run(filename):
               non_loop[test] = line.split()[1:]
             break
         if line.find(test)>-1: break
+      else:
+        tmp = line.split()[0]
+        cif_key, attr = tmp.split(".")
+        remove_loop_fields.setdefault(cif_key, [])
+        remove_loop_fields[cif_key].append(loop_index)
+      loop_index+=1
     else:
       if loop_list:
         if code and line.find(code)!=0: continue
         obj = empty()
-        for i, item in enumerate(line.split()):
+        i=0
+        for ptr, item in enumerate(line.split()):
+          if ptr in remove_loop_fields.get(cif_key, []): continue
+          if len(loop_list)<=i:
+            print 'Problem with CIF line parsing'
+            print line
+            continue
           if loop_list[i]=="comp_id": code = item
           if item not in ["?", "."]:
             item = cif_keyword_dictionary[cif_key][loop_list[i]](item)
@@ -131,6 +151,7 @@ def run(filename):
               item = item[1:-1]
             item = item.replace("_space_", " ")
           setattr(obj, loop_list[i], item)
+          i+=1
         complete_cif_data.setdefault(cif_key, [])
         complete_cif_data[cif_key].append(obj)
   # non loop parsing
