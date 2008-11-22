@@ -95,6 +95,7 @@ class triangulation_test_case(object):
     missing = [ i for i in xrange(len(s.vertices)) if i not in vertices ]
     assert not missing, missing
     d = abs(matrix.col(self.grid_cell))
+    bad_edge_multiplicities = []
     for e,p in edges.iteritems():
       v0, v1 = s.vertices[e[0]], s.vertices[e[1]]
       # conservative bound: edges shall be inscribed on voxel faces
@@ -104,7 +105,9 @@ class triangulation_test_case(object):
       assert d1 <= d or approx_equal(d1, d, eps=1e-3)
       assert p in (1,2)
       if not self.is_near_boundary(v0, v1):
-        assert p == 2
+        if p == 1:
+          bad_edge_multiplicities.append((e[0], e[1]))
+    assert not bad_edge_multiplicities
 
     # consistency check on the normals
     assert len(s.normals) == len(s.vertices)
@@ -130,6 +133,7 @@ class triangulation_test_case(object):
     lower, higher = self.triangulation.bounds
     for c1, c2, l, h, eps in zip(v1, v2, lower, higher, delta):
       if c1 != c2: continue
+      eps += 1e-15
       if abs(c1 - l) < eps or abs(c1 - h) < eps: return True
     return False
 
