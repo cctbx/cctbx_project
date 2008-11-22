@@ -721,11 +721,11 @@ class App(wx.App):
     menuBar.Append(file_menu, "&File")
 
     self.frame.SetMenuBar(menuBar)
-    self.frame.Show(True)
     self.init_view_objects()
     self.update_status_bar()
     self.view_objects.SetFocus()
     self.SetTopWindow(self.frame)
+    self.frame.Show(True)
     return True
 
   def OnExitApp(self, event):
