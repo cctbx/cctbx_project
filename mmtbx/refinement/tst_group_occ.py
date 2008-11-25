@@ -11,7 +11,7 @@ import sys, os
 def calculate_fobs(resolution   = 1.0,
                    algorithm = "direct"):
   pdb_file = libtbx.env.find_in_repositories(
-                              relative_path="phenix_regression/pdb/enk_gor.pdb", test=os.path.isfile)
+    relative_path="phenix_regression/pdb/enk_gor.pdb", test=os.path.isfile)
   xray_structure = pdb.input(file_name=pdb_file).xray_structure_simple()
   xray_structure.scattering_type_registry(table = "wk1995")
   f_calc = xray_structure.structure_factors(
@@ -24,59 +24,94 @@ def calculate_fobs(resolution   = 1.0,
   r_free_flags = f_calc.generate_r_free_flags(fraction = 0.01,
                                               max_free = 200000)
 
-  mtz_dataset = f_calc.as_mtz_dataset(column_root_label = "FOBS")
+  mtz_dataset = f_calc.as_mtz_dataset(column_root_label = "f_obs")
 
   mtz_dataset.add_miller_array(miller_array      = r_free_flags,
                                column_root_label = "TEST")
-
-  sigmas = r_free_flags.array(data = flex.double(r_free_flags.data().size(),1))
-  mtz_dataset.add_miller_array(miller_array      = sigmas,
-                               column_root_label = "SIGMA")
-
   mtz_object = mtz_dataset.mtz_object()
   mtz_object.write(file_name = "enk_gor.mtz")
 
 def exercise_1(hkl = "enk_gor.mtz"):
+  par_str = """
+refinement {
+  refine {
+    strategy = individual_sites rigid_body individual_adp group_adp tls \
+               *occupancies group_anomalous
+    occupancies {
+      constrained_group {
+        selection = resseq 1
+      }
+      constrained_group {
+        selection = resseq 2
+      }
+      constrained_group {
+        selection = resseq 3
+      }
+      constrained_group {
+        selection = resseq 4
+      }
+      constrained_group {
+        selection = resseq 5
+      }
+    }
+  }
+  main {
+    bulk_solvent_and_scale = False
+    target = *ml mlhl ml_sad ls
+    scattering_table = *wk1995 it1992 n_gaussian neutron
+    occupancy_max = 100
+    occupancy_min = -100
+    fake_f_obs = true
+  }
+  fake_f_obs {
+    scattering_table = *wk1995 it1992 n_gaussian neutron
+    structure_factors_accuracy {
+      algorithm = fft *direct
+      cos_sin_table = false
+    }
+  }
+  modify_start_model {
+    occupancies {
+      randomize = true
+    }
+  }
+  group_occupancy {
+    run_finite_differences_test = True
+  }
+  ls_target_names {
+    target_name = ls_wunit_k1 ls_wunit_k2 *ls_wunit_kunit ls_wunit_k1_fixed \
+                  ls_wunit_k1ask3_fixed ls_wexp_k1 ls_wexp_k2 ls_wexp_kunit \
+                  ls_wff_k1 ls_wff_k2 ls_wff_kunit ls_wff_k1_fixed \
+                  ls_wff_k1ask3_fixed lsm_kunit lsm_k1 lsm_k2 lsm_k1_fixed \
+                  lsm_k1ask3_fixed
+  }
+  structure_factors_and_gradients_accuracy {
+    algorithm = fft *direct
+    cos_sin_table = false
+  }
+}
+"""
   pdb = libtbx.env.find_in_repositories(
-                              relative_path="phenix_regression/pdb/enk_gor_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=3 strategy=occupancies structure_factors_and_gradients_accuracy.cos_sin_table=false"
-  opt1= "main.target=ls ls_target_names.target_name=ls_wunit_kunit group_occupancy.run_finite_differences_test=true"
-  opt2= "output.write_maps=false output.write_map_coefficients=false" \
-        " output.write_geo_file=true output.write_def_file=false "
-  opt3= "output.write_eff_file=false fake_f_obs.scattering_table=wk1995 "
-  opt4= "one_occupancy_group_per_residue=true main.occupancy_max=100 main.occupancy_min=-100"
-  opt5= "structure_factors_and_gradients_accuracy.algorithm=direct main.scattering_table=wk1995 --overwrite"
-  opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false  output.prefix=occ_ref1"
-  cmd = " ".join(["phenix.refine", pdb, hkl, opt0, opt1, opt2, opt3, opt4, opt5, opt6])
+    relative_path="phenix_regression/pdb/enk_gor.pdb", test=os.path.isfile)
+  par_file = open("tst_group_occ_exercise_1.params", "w").write(par_str)
+  cmd = " ".join(["phenix.refine", pdb, hkl, "tst_group_occ_exercise_1.params",
+                  "--overwrite", "output.prefix=tst_group_occ_exercise_1",
+                  "wu=0"])
   easy_run.call(cmd)
-
-def exercise_2(hkl = "enk_gor.mtz"):
-  pdb = libtbx.env.find_in_repositories(
-                              relative_path="phenix_regression/pdb/enk_gor_e.pdb", test=os.path.isfile)
-  opt0= "main.number_of_macro_cycles=10 strategy=occupancies structure_factors_and_gradients_accuracy.cos_sin_table=false"
-  opt1= "main.target=ls ls_target_names.target_name=ls_wunit_kunit group_occupancy.run_finite_differences_test=true"
-  opt2= "output.write_maps=false output.write_map_coefficients=false" \
-        " output.write_geo_file=true output.write_def_file=false fake_f_obs.scattering_table=wk1995  "
-  opt3= "output.write_eff_file=false main.occupancy_max=100 main.occupancy_min=-100"
-  opt5= "structure_factors_and_gradients_accuracy.algorithm=direct main.scattering_table=wk1995 --overwrite"
-  opt6= "refinement.input.xray_data.labels=FOBS main.bulk_solvent_and_scale=false"
-  opt7= "occupancies.group="+""""chain A" """+" occupancies.group="+""""chain B" """
-  opt8= "occupancies.group="+""""chain C" """+" occupancies.group="+""""chain D" """+" output.prefix=occ_ref2"
-  cmd = " ".join(["phenix.refine", pdb, hkl, opt0, opt1, opt2, opt3, opt5, opt6, opt7, opt8])
-  easy_run.call(cmd)
-
-def check_result():
-  for st in open("occ_ref1_001.pdb","r").read().splitlines():
-    if(st.count("REMARK Final: r_work =")==1):
-       st = st.split()
-       r1 = float(st[4])
-  for st in open("occ_ref2_001.pdb","r").read().splitlines():
-    if(st.count("REMARK Final: r_work =")==1):
-       st = st.split()
-       r2 = float(st[4])
-  print r1, r2
-  assert approx_equal(r1,r2, 0.001)
-  assert r1 < 0.005 and r2 < 0.005
+  r_work_final, r_free_final, r_work_start, r_free_start = [None,]*4
+  for line in open("tst_group_occ_exercise_1_001.pdb","r").readlines():
+    if(line.startswith("REMARK Start: r_work =")):
+      line = line.split()
+      r_work_start = float(line[4])
+      r_free_start = float(line[7])
+    elif(line.startswith("REMARK Final: r_work =")):
+      line = line.split()
+      r_work_final = float(line[4])
+      r_free_final = float(line[7])
+  assert approx_equal(r_work_final, 0.0)
+  assert approx_equal(r_free_final, 0.0)
+  assert r_work_start > 0.5
+  assert r_free_start > 0.5
 
 def run(args):
   random_seed = None
@@ -96,14 +131,11 @@ def run(args):
      random.seed(random_seed)
      flex.set_random_seed(value=random_seed)
      calculate_fobs()
-     #exercise_1()
-     exercise_2()
-     check_result()
+     exercise_1()
      sys.stdout.flush()
      if(not forever):
        print "random_seed last used:", random_seed
        break
 
 if (__name__ == "__main__"):
-  pass
-  #run(sys.argv[1:])
+  run(sys.argv[1:])
