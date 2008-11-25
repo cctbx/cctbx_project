@@ -56,6 +56,9 @@ class rec(object):
         "  self.n:  %s\n"
         "  other.n: %s" % (str(self.n), str(other.n)))
     bc = other.n_columns()
+    if (ac == 0):
+      # Roy Featherstone, Springer, New York, 2007, p. 53 footnote
+      return rec((0,)*(ar*bc), (ar,bc))
     result = []
     for i in xrange(ar):
       for k in xrange(bc):
@@ -835,6 +838,14 @@ def exercise():
       == "{{-26, -7}, {0, 1}}"
   assert a.extract_block(start=(1,0),stop=(4,3),step=(2,1)).mathematica_form()\
       == "{{-19, -26, -33}, {0, 0, 0}}"
+  #
+  for ar in xrange(3):
+    for bc in xrange(3):
+      a = rec([], (ar,0))
+      b = rec([], (0,bc))
+      c = a * b
+      assert c.elems == tuple([0] * (ar*bc))
+      assert c.n == (ar,bc)
   #
   ar = range(1,10)
   at = range(1,4)
