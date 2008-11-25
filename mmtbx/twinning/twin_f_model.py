@@ -2300,40 +2300,30 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
       return gradients
 
-  def electron_density_map(self, map_type          = "Fo-Fc",
-                                 k                 = 1,
+  def electron_density_map(self, k                 = 1,
                                  n                 = 1,
                                  w1                = None,
                                  w2                = None,
                                  resolution_factor = 1/3.,
                                  fill_missing_f_obs = True, # XXX not used since not available for twin case.
                                  symmetry_flags = None):
-    assert map_type in ("Fo-Fc", "Fobs-Fmodel",
-                        "2mFo-DFc", "2mFobs-DFmodel",
-                        "mFo-DFc", "mFobs-DFmodel",
-                        "gradient",
-                        "m_gradient")
-    if map_type in ("Fo-Fc", "Fobs-Fmodel",
-                    "2mFo-DFc", "2mFobs-DFmodel",
-                    "mFo-DFc", "mFobs-DFmodel"):
-      map_name_manager = mmtbx.map_names(map_name_string = map_type)
-      k = map_name_manager.k
-      n = map_name_manager.n
-    map_coefficients = self.map_coefficients(
-      map_type          = map_type,
-      k                 = k,
-      n                 = n,
-      w1                = w1,
-      w2                = w2)
     # XXX work-around to support new developments in non-twin fmodel. PA.
     class result(object):
-      def __init__(self, map_coefficients, resolution_factor, symmetry_flags, fmodel):
-        self._map_coefficients = map_coefficients
+      def __init__(self, resolution_factor, symmetry_flags, fmodel):
         self.resolution_factor = resolution_factor
         self.symmetry_flags = symmetry_flags
         self.fmodel = fmodel
       def map_coefficients(self, map_type=None):
-        return self._map_coefficients
+        map_name_manager = mmtbx.map_names(map_name_string = map_type)
+        k = map_name_manager.k
+        n = map_name_manager.n
+        map_coefficients = self.fmodel.map_coefficients(
+          map_type          = map_type,
+          k                 = k,
+          n                 = n,
+          w1                = w1,
+          w2                = w2)
+        return map_coefficients
       def fft_map(self, resolution_factor = None,
                   symmetry_flags = None,
                   map_coefficients = None,
@@ -2355,8 +2345,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
         return map_coefficients.fft_map(
           resolution_factor = resolution_factor,
           symmetry_flags    = symmetry_flags)
-    return result(map_coefficients = map_coefficients,
-                  resolution_factor= resolution_factor,
+    return result(resolution_factor= resolution_factor,
                   symmetry_flags   = symmetry_flags,
                   fmodel           = self)
 

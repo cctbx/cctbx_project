@@ -939,6 +939,29 @@ def add_occupancy_selection(result, size, selection, hd_special=None):
     result.extend(sel_checked)
   return result
 
+def remove_selections(selection, other):
+  other_as_1d = []
+  if(("%s"%other.__class__).count("array_family_flex_ext.size_t") > 0):
+    other_as_1d = list(other)
+  else:
+    for o_ in other:
+      for o__ in o_:
+        other_as_1d.append(o__)
+  if(len(other_as_1d) == 0): return selection
+  result = []
+  for s_ in selection:
+    new_group = []
+    for s__ in s_:
+      new_group_member = []
+      for s___ in s__:
+        if(s___ not in other_as_1d):
+          new_group_member.append(s___)
+      if(len(new_group_member) > 0):
+        new_group.append(new_group_member)
+    if(len(new_group) > 0):
+      result.append(new_group)
+  return result
+
 def combine_hd_exchangable(hierarchy):
   result = []
   for model in hierarchy.models():
@@ -964,15 +987,19 @@ def occupancy_selections(
       ignore_hydrogens                   = True,
       add_water                          = False,
       other_individual_selection_strings = None,
-      other_group_selection_strings      = None,
+      other_constrained_groups           = None,
       expect_exangable_hd                = False,
+      remove_selection                   = None,
       as_flex_arrays                     = True):
+  # set up defaults
   if(other_individual_selection_strings is not None and
      len(other_individual_selection_strings) == 0):
     other_individual_selection_strings = None
-  if(other_group_selection_strings is not None and
-     len(other_group_selection_strings) == 0):
-    other_group_selection_strings = None
+  if(other_constrained_groups is not None and
+     len(other_constrained_groups) == 0):
+    other_constrained_groups = None
+  if(remove_selection is not None and len(remove_selection) == 0):
+    remove_selection = None
   if(not expect_exangable_hd):
     result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
       common_residue_name_class_only="common_amino_acid",
@@ -984,6 +1011,69 @@ def occupancy_selections(
     tmp = combine_hd_exchangable(hierarchy = all_chain_proxies.pdb_hierarchy)
     result.extend(tmp)
     del tmp
+  # add partial occupancies
+  if(ignore_hydrogens and not expect_exangable_hd):
+    hd_selection = xray_structure.hd_selection()
+  else:
+    hd_selection = None
+  occupancies = xray_structure.scatterers().extract_occupancies()
+  sel = (occupancies != 1.) & (occupancies != 0.)
+  result = add_occupancy_selection(
+    result     = result,
+    size       = xray_structure.scatterers().size(),
+    selection  = sel,
+    hd_special = hd_selection)
+  # check user's input
+  if([other_individual_selection_strings,
+      other_constrained_groups].count(None) == 0):
+    sel1 = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = other_individual_selection_strings,
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = True)
+    for other_constrained_group in other_constrained_groups:
+      for other_constrained_group in other_constrained_groups:
+        for cg_sel_strs in other_constrained_group.selection:
+          sel2 = get_atom_selections(
+            all_chain_proxies   = all_chain_proxies,
+            selection_strings   = cg_sel_strs,
+            iselection          = True,
+            xray_structure      = xray_structure,
+            one_selection_array = True)
+          if(sel1.intersection(sel2).size() > 0):
+            raise Sorry("Duplicate selection: same atoms selected for individual and group occupancy refinement.")
+  # check user's input and apply remove_selection to default selection
+  if(remove_selection is not None):
+    sel1 = get_atom_selections(
+      all_chain_proxies   = all_chain_proxies,
+      selection_strings   = remove_selection,
+      iselection          = True,
+      xray_structure      = xray_structure,
+      one_selection_array = True)
+    if(sel1.size() == 0): # XXX check all and not total.
+      raise Sorry("Empty selection: remove_selection.")
+    if(other_individual_selection_strings is not None):
+      sel2 = get_atom_selections(
+        all_chain_proxies   = all_chain_proxies,
+        selection_strings   = other_individual_selection_strings,
+        iselection          = True,
+        xray_structure      = xray_structure,
+        one_selection_array = True)
+      if(sel1.intersection(sel2).size() > 0):
+        raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
+    if(other_constrained_groups is not None):
+      for other_constrained_group in other_constrained_groups:
+        for cg_sel_strs in other_constrained_group.selection:
+          sel2 = get_atom_selections(
+            all_chain_proxies   = all_chain_proxies,
+            selection_strings   = cg_sel_strs,
+            iselection          = True,
+            xray_structure      = xray_structure,
+            one_selection_array = True)
+          if(sel1.intersection(sel2).size() > 0):
+            raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
+    result = remove_selections(selection = result, other = sel1)
   #
   if(other_individual_selection_strings is not None):
     sel = get_atom_selections(
@@ -992,19 +1082,28 @@ def occupancy_selections(
       iselection          = True,
       xray_structure      = xray_structure,
       one_selection_array = True)
+    result = remove_selections(selection = result, other = sel)
     result = add_occupancy_selection(
       result     = result,
       size       = xray_structure.scatterers().size(),
       selection  = sel,
       hd_special = None)
-  if(other_group_selection_strings is not None):
-    sel = get_atom_selections(
-      all_chain_proxies   = all_chain_proxies,
-      selection_strings   = other_group_selection_strings,
-      iselection          = True,
-      xray_structure      = xray_structure,
-      one_selection_array = False)
-    result.extend( [[list(i)] for i in sel] ) # XXX no check here?
+  if(other_constrained_groups is not None):
+    for other_constrained_group in other_constrained_groups:
+      ocg_selections = []
+      for cg_sel_strs in other_constrained_group.selection:
+        cg_sel = []
+        sel = get_atom_selections(
+          all_chain_proxies   = all_chain_proxies,
+          selection_strings   = cg_sel_strs,
+          iselection          = True,
+          xray_structure      = xray_structure,
+          one_selection_array = True)
+        result = remove_selections(selection = result, other = sel)
+        if(len(sel) > 0):
+          cg_sel.append([list(sel)])
+      if(len(cg_sel) > 0):
+        result.extend(cg_sel)
   if(add_water):
     water_selection = get_atom_selections(
       all_chain_proxies   = all_chain_proxies,
@@ -1017,17 +1116,7 @@ def occupancy_selections(
       size       = xray_structure.scatterers().size(),
       selection  = water_selection,
       hd_special = None)
-  if(ignore_hydrogens and not expect_exangable_hd):
-    hd_selection = xray_structure.hd_selection()
-  else:
-    hd_selection = None
-  occupancies = xray_structure.scatterers().extract_occupancies()
-  sel = (occupancies != 1.) & (occupancies != 0.)
-  result = add_occupancy_selection(
-      result     = result,
-      size       = xray_structure.scatterers().size(),
-      selection  = sel,
-      hd_special = hd_selection)
+
   list_3d_as_bool_selection(
     list_3d=result, size=xray_structure.scatterers().size())
   if(as_flex_arrays):
