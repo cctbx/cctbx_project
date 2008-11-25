@@ -585,6 +585,8 @@ def exercise_principal_axes_of_inertia():
     es = pai.eigensystem()
     assert approx_equal(es.values(), [0,0,0])
     assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
+    assert approx_equal(
+      pai.change_of_basis_mx_to_principal(), [1,0,0,0,1,0,0,0,1])
     assert pai.distance_to_inertia_ellipsoid_surface(
       unit_direction=(1,0,0)) == 0
   for i_trial in xrange(10):
@@ -600,8 +602,14 @@ def exercise_principal_axes_of_inertia():
     assert approx_equal(pai.inertia_tensor(), [36,36,36,0,0,0])
     es = pai.eigensystem()
     assert approx_equal(es.values(), [36,36,36])
+    cp = pai.change_of_basis_mx_to_principal()
+    assert approx_equal(matrix.sqr(cp).determinant(), 1)
     if (i_trial == 0):
       assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
+      assert approx_equal(cp, [1,0,0,0,1,0,0,0,1])
+    else:
+      paip = principal_axes_of_inertia(points=cp*points)
+      assert approx_equal(paip.inertia_tensor(), [36,36,36,0,0,0])
     assert approx_equal(pai.distance_to_inertia_ellipsoid_surface(
       unit_direction=(1,0,0)), 36)
     assert pai.distance_to_inertia_ellipsoid_surface(
@@ -622,6 +630,11 @@ def exercise_principal_axes_of_inertia():
     assert approx_equal(es.values(), [234,180,90])
     if (i_trial == 0):
       assert approx_equal(es.vectors(), [1,0,0,0,1,0,0,0,1])
+    else:
+      cp = pai.change_of_basis_mx_to_principal()
+      assert approx_equal(matrix.sqr(cp).determinant(), 1)
+      paip = principal_axes_of_inertia(points=cp*points)
+      assert approx_equal(paip.inertia_tensor(), [234,180,90,0,0,0])
   for i_trial in xrange(10):
     if (i_trial == 0):
       center_of_mass = [0,0,0]
@@ -650,6 +663,11 @@ def exercise_principal_axes_of_inertia():
     assert approx_equal(es.values(), [16,14,10])
     if (i_trial < 2):
       assert approx_equal(es.vectors(), [0,1,0,0,0,1,1,0,0])
+    else:
+      cp = pai.change_of_basis_mx_to_principal()
+      assert approx_equal(matrix.sqr(cp).determinant(), 1)
+      paip = principal_axes_of_inertia(points=cp*points)
+      assert approx_equal(paip.inertia_tensor(), [16,14,10,0,0,0])
     assert abs(abs(matrix.col(es.vectors()[0:3]).dot(
                    rot*matrix.col([0,1,0])))-1) < 1.e-3
     assert abs(abs(matrix.col(es.vectors()[3:6]).dot(
