@@ -571,12 +571,12 @@ class diag(rec):
 class identity(diag):
 
   def __init__(self, n):
-    super(identity, self).__init__((1.,)*n)
+    super(identity, self).__init__((1,)*n)
 
 class inversion(diag):
 
   def __init__(self, n):
-    super(inversion, self).__init__((-1.,)*n)
+    super(inversion, self).__init__((-1,)*n)
 
 class sym(rec):
 
