@@ -106,6 +106,20 @@ namespace scitbx { namespace math {
       math::eigensystem::real_symmetric<FloatType> const&
       eigensystem() const { return eigensystem_; }
 
+      //! Change-of-basis matrix to system of principal of axes.
+      /*! If applied to points as passed to the constructor, the
+          resulting coordinates are with respect to the principal
+          axes (i.e. the inertia tensor of result * points will
+          be diagonal).
+       */
+      mat3<FloatType>
+      change_of_basis_mx_to_principal() const
+      {
+        mat3<FloatType> result(eigensystem_.vectors().begin());
+        if (result.determinant() < 0) result *= FloatType(-1);
+        return result;
+      }
+
       //! Distance from center of inertia tensor ellipsoid to its surface.
       /*! unit_direction must be a vector of length 1. This is not checked
           to minimize the runtime overhead.

@@ -30,6 +30,8 @@ namespace {
         .def("center_of_mass", &w_t::center_of_mass, ccr())
         .def("inertia_tensor", &w_t::inertia_tensor, ccr())
         .def("eigensystem", &w_t::eigensystem, rir())
+        .def("change_of_basis_mx_to_principal",
+          &w_t::change_of_basis_mx_to_principal)
         .def("distance_to_inertia_ellipsoid_surface",
           &w_t::distance_to_inertia_ellipsoid_surface, (
             arg_("unit_direction")))
