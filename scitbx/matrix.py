@@ -588,6 +588,12 @@ class sym(rec):
                         m[3], m[1], m[5],
                         m[4], m[5], m[2]), (3,3))
 
+def zeros(n):
+  if (isinstance(n, int)):
+    return col(elems=(0,)*n)
+  nr,nc = n
+  return rec(elems=(0,)*(nr*nc), n=(nr,nc))
+
 def cross_product_matrix((v0, v1, v2)):
   """\
 Matrix associated with vector cross product:
@@ -786,6 +792,25 @@ def exercise():
   else:
     approx_equal = test_utils.approx_equal
     Exception_expected = test_utils.Exception_expected
+  #
+  a = zeros(n=0)
+  assert a.n == (0,1)
+  assert a.elems == ()
+  a = zeros(n=1)
+  assert a.n == (1,1)
+  assert a.elems == (0,)
+  a = zeros(n=2)
+  assert a.n == (2,1)
+  assert a.elems == (0,0)
+  a = zeros(n=(0,0))
+  assert a.n == (0,0)
+  assert a.elems == ()
+  a = zeros(n=(1,0))
+  assert a.n == (1,0)
+  assert a.elems == ()
+  a = zeros(n=(2,3))
+  assert a.elems == (0,0,0,0,0,0)
+  #
   for n in [(0,0), (1,0), (0,1)]:
     a = rec((),n)
     assert a.mathematica_form() == "{}"
