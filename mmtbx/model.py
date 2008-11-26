@@ -523,18 +523,22 @@ class manager(object):
            adp_individual_iso   = sadp,
            adp_individual_aniso = sadp)
          # adjust flags
-         self.refinement_flags.sites_individual.set_selected(self.ias_selection, False)
-         self.refinement_flags.sites_individual.set_selected(~self.ias_selection, True)
-         self.refinement_flags.adp_individual_aniso.set_selected(self.ias_selection, False)
-         self.refinement_flags.adp_individual_iso.set_selected(self.ias_selection, True)
-
+         if(self.refinement_flags.sites_individual is not None):
+           self.refinement_flags.sites_individual.set_selected(self.ias_selection, False)
+           self.refinement_flags.sites_individual.set_selected(~self.ias_selection, True)
+         if(self.refinement_flags.adp_individual_aniso is not None):
+           self.refinement_flags.adp_individual_aniso.set_selected(self.ias_selection, False)
+         if(self.refinement_flags.adp_individual_iso is not None):
+           self.refinement_flags.adp_individual_iso.set_selected(self.ias_selection, True)
          #occs = flex.double(self.xray_structure.scatterers().size(), 0.9)
          #self.xray_structure.scatterers().set_occupancies(occs, ~self.ias_selection)
          # D9
          sel = self.xray_structure.scatterers().extract_scattering_types() == "D9"
          self.xray_structure.convert_to_anisotropic(selection = sel)
-         self.refinement_flags.adp_individual_aniso.set_selected(sel, True)
-         self.refinement_flags.adp_individual_iso.set_selected(sel, False)
+         if(self.refinement_flags.adp_individual_aniso is not None):
+           self.refinement_flags.adp_individual_aniso.set_selected(sel, True)
+         if(self.refinement_flags.adp_individual_iso is not None):
+           self.refinement_flags.adp_individual_iso.set_selected(sel, False)
     # add to pdb_hierarchy:
     # XXX XXX CONSOLIDATE WITH add_solvent
     pdb_model = self.pdb_hierarchy.only_model()

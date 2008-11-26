@@ -939,22 +939,23 @@ def add_occupancy_selection(result, size, selection, hd_special=None):
     result.extend(sel_checked)
   return result
 
-def remove_selections(selection, other):
-  other_as_1d = []
-  if(("%s"%other.__class__).count("array_family_flex_ext.size_t") > 0):
-    other_as_1d = list(other)
+def remove_selections(selection, other, size):
+  other_as_1d = flex.size_t()
+  if(isinstance(other, flex.size_t)):
+    other_as_1d = other
   else:
     for o_ in other:
       for o__ in o_:
         other_as_1d.append(o__)
   if(len(other_as_1d) == 0): return selection
+  other_as_1d_as_bool = flex.bool(size, flex.size_t(other_as_1d))
   result = []
   for s_ in selection:
     new_group = []
     for s__ in s_:
       new_group_member = []
       for s___ in s__:
-        if(s___ not in other_as_1d):
+        if(not other_as_1d_as_bool[s___]):
           new_group_member.append(s___)
       if(len(new_group_member) > 0):
         new_group.append(new_group_member)
@@ -1073,7 +1074,8 @@ def occupancy_selections(
             one_selection_array = True)
           if(sel1.intersection(sel2).size() > 0):
             raise Sorry("Duplicate selection: occupancies of same atoms selected to be fixed and to be refined.")
-    result = remove_selections(selection = result, other = sel1)
+    result = remove_selections(selection = result, other = sel1,
+      size = xray_structure.scatterers().size())
   #
   if(other_individual_selection_strings is not None):
     sel = get_atom_selections(
@@ -1082,7 +1084,8 @@ def occupancy_selections(
       iselection          = True,
       xray_structure      = xray_structure,
       one_selection_array = True)
-    result = remove_selections(selection = result, other = sel)
+    result = remove_selections(selection = result, other = sel,
+      size = xray_structure.scatterers().size())
     result = add_occupancy_selection(
       result     = result,
       size       = xray_structure.scatterers().size(),
@@ -1099,7 +1102,8 @@ def occupancy_selections(
           iselection          = True,
           xray_structure      = xray_structure,
           one_selection_array = True)
-        result = remove_selections(selection = result, other = sel)
+        result = remove_selections(selection = result, other = sel,
+          size = xray_structure.scatterers().size())
         if(len(sel) > 0):
           cg_sel.append([list(sel)])
       if(len(cg_sel) > 0):
