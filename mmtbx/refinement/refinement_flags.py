@@ -247,13 +247,13 @@ class manager(object):
                     s_occupancies          = None,
                     occupancies_group      = None):
                     # XXX group_anomalous selection should be added
-    if(sites_individual is not None):
+    if(sites_individual is not None and self.sites_individual is not None):
       assert self.is_bool(sites_individual)
       self.sites_individual.extend(sites_individual)
-    if(adp_individual_iso is not None):
+    if(adp_individual_iso is not None and self.adp_individual_iso is not None):
       assert self.is_bool(adp_individual_iso)
       self.adp_individual_iso.extend(adp_individual_iso)
-    if(adp_individual_aniso is not None):
+    if(adp_individual_aniso is not None and self.adp_individual_aniso is not None):
       assert self.is_bool(adp_individual_aniso)
       self.adp_individual_aniso.extend(adp_individual_aniso)
     if(sites_rigid_body is not None):
