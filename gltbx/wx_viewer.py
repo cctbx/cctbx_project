@@ -284,7 +284,12 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glLoadIdentity()
     gluLookAt(0,0,0, 0,0,-1, 0,1,0)
     glTranslated(*self.compute_home_translation())
-    self.rotation_center = self.minimum_covering_sphere.center()
+    rc = self.minimum_covering_sphere.center()
+    self.rotation_center = rc
+    gltbx.util.rotate_object_about_eye_vector(
+      xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
+      xvector=1, yvector=1, zvector=1,
+      angle=-120)
 
   def rotation_move_factor(self, rotation_angle):
     return abs(rotation_angle)/180
@@ -543,7 +548,7 @@ class show_points_and_lines_mixin(wxGLWindow):
         a = i * math.pi / 180
         rs = r * math.sin(a)
         rc = r * math.cos(a)
-        glVertex3f(c[0]+rs,c[1]+rc,c[2])
+        glVertex3f(c[0],c[1]+rs,c[2]+rc)
       glEnd()
       self.draw_cross_at(c, color=(1,0,0))
       self.minimum_covering_sphere_display_list.end()
