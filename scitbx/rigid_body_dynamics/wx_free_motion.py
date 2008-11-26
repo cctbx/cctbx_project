@@ -21,7 +21,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       self.line_i_seqs.append(line)
       self.line_colors[line] = color
     self.labels = []
-    n = len(self.sim_as.sites_cart_F01)
+    n = len(self.sim_as.sites_cart_F1)
     offs = 0
     for prefix,color in [("S",(1,0,0)),("C",(0,0,1)),("W",(0,1,0))]:
       for i in xrange(n):

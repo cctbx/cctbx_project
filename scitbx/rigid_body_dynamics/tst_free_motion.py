@@ -19,18 +19,18 @@ def exercise_reference_impl_quick():
     sim = fmri.simulation()
     assert approx_equal(
       [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot],
-      [0.62637925394862359,
+      [0.64030878777041611,
        0.012310594130384761, 0.02835, 0.04066059413038476,
-       0.6670398480790084])
+       0.68096938190080092])
     for i in xrange(100):
       sim.dynamics_step(delta_t=0.01, use_classical_accel=use_classical_accel)
     expected = [
-      [0.018277821171901298,
-       0.093940194296481649, 0.55483639080176617, 0.64877658509824787,
-       0.66705440627014911],
-      [0.027950865122364766,
-       0.093940194296481677, 0.54455371542742759, 0.63849390972390929,
-       0.66644477484627407]][int(use_classical_accel)]
+      [0.028505221929112364,
+       0.091503230553568404, 0.56329655444242244, 0.65479978499599079,
+       0.6833050069251031],
+      [0.053276067541032097,
+       0.091503230553568404, 0.53805622991666513, 0.62955946047023348,
+       0.68283552801126557]][int(use_classical_accel)]
     assert approx_equal(
       [sim.e_pot, sim.e_kin_ang, sim.e_kin_lin, sim.e_kin, sim.e_tot],
       expected)
@@ -83,23 +83,23 @@ def exercise_featherstone_FDab(out):
   def check():
     model = featherstone_system_model(
       m=sim.m,
-      I=sim.I_F01,
+      I=sim.I_F1,
       J=six_dof_joint_euler_params_featherstone(qE=sim.J1.qE, qr=sim.J1.qr))
     q = [None] # already stored in J1 as qE and qr
     qd = [sim.qd]
     tau = None
-    f_ext = [matrix.col((sim.nc_F01, sim.f_F01)).resolve_partitions()]
+    f_ext = [matrix.col((sim.nc_F1, sim.f_F1)).resolve_partitions()]
     grav_accn = [0,0,0]
     qdd = featherstone.FDab(model, q, qd, tau, f_ext, grav_accn)
     if (i_step % 10 == 0):
-      print >> out, "ang acc 3D:", sim.wd_F01.elems
+      print >> out, "ang acc 3D:", sim.wd_F1.elems
       print >> out, "        6D:", qdd[0].elems[:3]
       print >> out
-      print >> out, "lin acc 3D:", sim.as_F01.elems
+      print >> out, "lin acc 3D:", sim.as_F1.elems
       print >> out, "        6D:", qdd[0].elems[3:]
       print >> out
-    assert approx_equal(qdd[0].elems[:3], sim.wd_F01)
-    assert approx_equal(qdd[0].elems[3:], sim.as_F01)
+    assert approx_equal(qdd[0].elems[:3], sim.wd_F1)
+    assert approx_equal(qdd[0].elems[3:], sim.as_F1)
   sim = fmri.simulation()
   for i_step in xrange(100):
     check()
