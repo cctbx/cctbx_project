@@ -28,13 +28,13 @@ class simulation(object):
   def __init__(O):
 
     sites_cart_F0 = create_triangle_with_center_of_mass_at_origin()
-    O.sites_cart_F01 = sites_cart_F0 # Xtree1 = identity
+    O.sites_cart_F1 = sites_cart_F0 # Xtree1, XJ1 = identity
     # F0, F01, Xtree1, J1: see RBDA Fig. 4.7
 
     # body inertia in F01, assuming unit masses, and total mass
     #
-    O.I_F01 = body_inertia(O.sites_cart_F01)
-    O.m = len(O.sites_cart_F01)
+    O.I_F1 = body_inertia(O.sites_cart_F1)
+    O.m = len(O.sites_cart_F1)
 
     # Euler parameters for some arbitrary rotation and translation
     #
@@ -44,16 +44,16 @@ class simulation(object):
 
     # arbitrary spatial velocity in F01
     #
-    w_F01 = matrix.col((0.04, -0.15, 0.10))
-    v_F01 = matrix.col((0.1, 0.08, -0.05))
-    O.qd = matrix.col((w_F01, v_F01)).resolve_partitions() # RBDA Eq. 2.4
+    w_F1 = matrix.col((0.04, -0.15, 0.10))
+    v_F1 = matrix.col((0.1, 0.08, -0.05))
+    O.qd = matrix.col((w_F1, v_F1)).resolve_partitions() # RBDA Eq. 2.4
 
     # arbitrary rotation and translation of potential wells
     #
-    qE_p = matrix.col((0.99, -0.05, 0.04, -0.11)).normalize()
-    qr_p = matrix.col((-0.15, 0.14, -0.37))
-    Jp = six_dof_joint_euler_params(qE_p, qr_p)
-    O.sites_cart_wells_F01 = [Jp.T * xyz for xyz in O.sites_cart_F01]
+    qE_Jp = matrix.col((0.99, -0.05, 0.04, -0.11)).normalize()
+    qr_Jp = matrix.col((-0.15, 0.14, -0.37))
+    Jp = six_dof_joint_euler_params(qE_Jp, qr_Jp)
+    O.sites_cart_wells_F01 = [Jp.Tsp * xyz for xyz in O.sites_cart_F1]
 
     O.energies_and_accelerations_update()
 
@@ -61,56 +61,56 @@ class simulation(object):
 
     # positional coordinates of moved triangle in F01 (not actually used here)
     #
-    O.sites_cart_moved_F01 = [O.J1.T * xyz for xyz in O.sites_cart_F01]
+    O.sites_cart_moved_F01 = [O.J1.Tsp * xyz for xyz in O.sites_cart_F1]
 
     # potential pulling triangle to wells (spring-like forces)
     #
-    sites_cart_wells_moved_F01 = [O.J1.T_inv * xyz
+    sites_cart_wells_moved_F1 = [O.J1.Tps * xyz
       for xyz in O.sites_cart_wells_F01]
     O.e_pot = 0
-    for xyz, xyz_wells_moved in zip(O.sites_cart_F01,
-                                    sites_cart_wells_moved_F01):
+    for xyz, xyz_wells_moved in zip(O.sites_cart_F1,
+                                    sites_cart_wells_moved_F1):
       O.e_pot += (xyz - xyz_wells_moved).dot()
 
     # corresponding forces
     #
-    f_cart_F01 = [2 * (xyz - xyz_wells_moved)
-      for xyz, xyz_wells_moved in zip(O.sites_cart_F01,
-                                      sites_cart_wells_moved_F01)]
+    f_cart_F1 = [-2 * (xyz - xyz_wells_moved)
+      for xyz, xyz_wells_moved in zip(O.sites_cart_F1,
+                                      sites_cart_wells_moved_F1)]
 
     # f and nc in 3D, for RBDA Eq. 1.4
     #
-    O.f_F01 = matrix.col((0,0,0))
-    O.nc_F01 = matrix.col((0,0,0))
-    for xyz,force in zip(O.sites_cart_F01, f_cart_F01):
-      O.f_F01 += force
-      O.nc_F01 += xyz.cross(force)
+    O.f_F1 = matrix.col((0,0,0))
+    O.nc_F1 = matrix.col((0,0,0))
+    for xyz,force in zip(O.sites_cart_F1, f_cart_F1):
+      O.f_F1 += force
+      O.nc_F1 += xyz.cross(force)
 
     # solution of RBDA Eq. 1.4 for ac and wd
     #
-    O.ac_F01 = O.f_F01 / O.m
-    w_F01, v_F01 = matrix.col(O.qd.elems[:3]), matrix.col(O.qd.elems[3:])
-    O.wd_F01 = O.I_F01.inverse() * (O.nc_F01 - w_F01.cross(O.I_F01 * w_F01))
+    O.ac_F1 = O.f_F1 / O.m
+    w_F1, v_F1 = matrix.col(O.qd.elems[:3]), matrix.col(O.qd.elems[3:])
+    O.wd_F1 = O.I_F1.inverse() * (O.nc_F1 - w_F1.cross(O.I_F1 * w_F1))
 
     # spatial acceleration
-    O.as_F01 = O.ac_F01 - w_F01.cross(v_F01) # RBDA Eq. 2.47
+    O.as_F1 = O.ac_F1 - w_F1.cross(v_F1) # RBDA Eq. 2.47
 
     # Kinetic energy, angular velocity (Shabana (2005) p. 148 eq. 3.126)
     #
-    O.e_kin_ang = 0.5 * w_F01.dot(O.I_F01 * w_F01)
+    O.e_kin_ang = 0.5 * w_F1.dot(O.I_F1 * w_F1)
 
     # Kinetic energy, linear velocity (Shabana (2005) p. 148 eq. 3.125)
     #
-    O.e_kin_lin = 0.5 * O.m * v_F01.dot()
+    O.e_kin_lin = 0.5 * O.m * v_F1.dot()
 
     O.e_kin = O.e_kin_ang + O.e_kin_lin
     O.e_tot = O.e_pot + O.e_kin
 
   def dynamics_step(O, delta_t, use_classical_accel=False):
     if (use_classical_accel):
-      qdd = matrix.col((O.wd_F01, O.ac_F01)).resolve_partitions()
+      qdd = matrix.col((O.wd_F1, O.ac_F1)).resolve_partitions()
     else:
-      qdd = matrix.col((O.wd_F01, O.as_F01)).resolve_partitions()
+      qdd = matrix.col((O.wd_F1, O.as_F1)).resolve_partitions()
     O.qd = O.J1.time_step_velocity(O.qd, qdd, delta_t)
     O.J1 = O.J1.time_step_position(O.qd, delta_t)
     O.energies_and_accelerations_update()
@@ -124,13 +124,16 @@ class six_dof_joint_euler_params(object):
     O.E = RBDA_Eq_4_12(qE)
     O.r = O.E.transpose() * qr # RBDA Tab. 4.1
     #
-    O.T = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
-    O.T_inv = matrix.rt((O.E.transpose(), O.r))
+    O.Tps = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
+    O.Tsp = matrix.rt((O.E.transpose(), O.r))
+    # RBDA p. 69, Sec. 4.1.3:
+    #   s = frame fixed in successor
+    #   p = frame fixed in predecessor
 
   def time_step_position(O, qd, delta_t):
-    w_F01, v_F01 = matrix.col_list([qd.elems[:3], qd.elems[3:]])
-    qEd = RBDA_Eq_4_13(O.qE.elems) * (O.E * w_F01)
-    qrd = O.E * v_F01
+    w_F1, v_F1 = matrix.col_list([qd.elems[:3], qd.elems[3:]])
+    qEd = RBDA_Eq_4_13(O.qE.elems) * w_F1
+    qrd = v_F1 - w_F1.cross(O.qr) # RBDA Eq. 2.38 p. 27
     new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
     new_qr = O.qr + qrd * delta_t
     return six_dof_joint_euler_params(new_qE, new_qr)
@@ -187,8 +190,8 @@ def run():
     print "e_kin tot ang lin:", O.e_kin, O.e_kin_ang, O.e_kin_lin
     print "            e_pot:", O.e_pot
     print "            e_tot:", O.e_tot
-    print "ang acc 3D:", O.wd_F01.elems
-    print "lin acc 3D:", O.as_F01.elems
+    print "ang acc 3D:", O.wd_F1.elems
+    print "lin acc 3D:", O.as_F1.elems
     print
     O.dynamics_step(delta_t=0.01)
   print "OK"
