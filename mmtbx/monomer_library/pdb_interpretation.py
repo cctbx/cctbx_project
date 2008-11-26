@@ -947,7 +947,6 @@ def get_lib_link(mon_lib_srv, m_i, m_j):
   comp_2 = mon_lib_srv.get_comp_comp_id_direct(comp_id_2)
   group_1 = comp_1.chem_comp.group
   group_2 = comp_2.chem_comp.group
-  atom_dicts = [None, m_i.monomer_atom_dict, m_j.monomer_atom_dict]
   matches = []
   for link_link_id in mon_lib_srv.link_link_id_list:
     chem_link = link_link_id.chem_link
@@ -960,19 +959,36 @@ def get_lib_link(mon_lib_srv, m_i, m_j):
         and chem_link.group_comp_2 == ""): continue
     match = link_match(link_link_id, comp_id_1, group_1, comp_id_2, group_2)
     if (match.link_link_id is not None):
+      def get_atom(restr, comp_id, atom_id):
+        ad = None
+        if (comp_id == 1): ad = m_i.monomer_atom_dict
+        if (comp_id == 2): ad = m_j.monomer_atom_dict
+        if (ad is None):
+          raise Sorry("""\
+Corrupt CIF link definition:
+  source info: %s
+  link id: %s
+  link name: %s
+  %s atom atom_id: %s
+  %s atom comp_id: %d (must be 1 or 2)""" % (
+            str(match.link_link_id.source_info),
+            chem_link.id,
+            chem_link.name,
+            restr, atom_id,
+            restr, comp_id))
       match.n_unresolved_bonds = 0
       for bond in match.link_link_id.bond_list:
         atoms = [
-          atom_dicts[bond.atom_1_comp_id].get(bond.atom_id_1, None),
-          atom_dicts[bond.atom_2_comp_id].get(bond.atom_id_2, None)]
+          get_atom("bond", bond.atom_1_comp_id, bond.atom_id_1),
+          get_atom("bond", bond.atom_2_comp_id, bond.atom_id_2)]
         if (None in atoms):
           match.n_unresolved_bonds += 1
       match.n_unresolved_angles = 0
       for angle in match.link_link_id.angle_list:
         atoms = [
-          atom_dicts[angle.atom_1_comp_id].get(angle.atom_id_1, None),
-          atom_dicts[angle.atom_2_comp_id].get(angle.atom_id_2, None),
-          atom_dicts[angle.atom_3_comp_id].get(angle.atom_id_3, None)]
+          get_atom("angle", angle.atom_1_comp_id, angle.atom_id_1),
+          get_atom("angle", angle.atom_2_comp_id, angle.atom_id_2),
+          get_atom("angle", angle.atom_3_comp_id, angle.atom_id_3)]
         if (None in atoms):
           match.n_unresolved_angles += 1
       matches.append(match)

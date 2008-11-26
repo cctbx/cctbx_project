@@ -1,8 +1,8 @@
 from mmtbx import monomer_library
 import mmtbx.monomer_library.server
 import mmtbx.monomer_library.pdb_interpretation
-from libtbx.utils import search_for, format_cpu_times
-from libtbx.test_utils import block_show_diff
+from libtbx.utils import Sorry, search_for, format_cpu_times
+from libtbx.test_utils import Exception_expected, block_show_diff
 import libtbx.load_env
 from cStringIO import StringIO
 import os
@@ -347,6 +347,24 @@ def exercise_hydrogen_deuterium_aliases():
   Bond restraints sorted by residual:
 """)
 
+def exercise_corrupt_cif_link():
+  file_paths = []
+  for file_name in ["hem_no.pdb", "hem_no.cif"]:
+    file_path = libtbx.env.find_in_repositories(
+      relative_path="phenix_regression/misc/"+file_name,
+      test=os.path.isfile)
+    if (file_path is None):
+      print "Skipping exercise_corrupt_cif_link():", \
+        " input file not available:", file_name
+      return
+    file_paths.append(file_path)
+  log = StringIO()
+  try:
+    monomer_library.pdb_interpretation.run(args=file_paths, log=log)
+  except Sorry, e:
+    assert str(e).startswith("Corrupt CIF link definition:")
+  else: raise Exception_expected
+
 def exercise():
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
@@ -354,6 +372,7 @@ def exercise():
   exercise_cns_rna(mon_lib_srv, ener_lib)
   exercise_rna_3p_2p(mon_lib_srv, ener_lib)
   exercise_hydrogen_deuterium_aliases()
+  exercise_corrupt_cif_link()
   print format_cpu_times()
 
 if (__name__ == "__main__"):
