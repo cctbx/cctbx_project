@@ -284,7 +284,6 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     glLoadIdentity()
     gluLookAt(0,0,0, 0,0,-1, 0,1,0)
     glTranslated(*self.compute_home_translation())
-    glRotated(-120, 1,1,1) # x perp to screen, y across, z up
     self.rotation_center = self.minimum_covering_sphere.center()
 
   def rotation_move_factor(self, rotation_angle):
