@@ -6,7 +6,6 @@ from scitbx.rigid_body_dynamics.utils import \
   kinetic_energy
 from scitbx.rigid_body_dynamics import test_utils
 from free_motion_reference_impl import \
-  body_inertia, \
   create_triangle_with_center_of_mass_at_origin
 from scitbx.array_family import flex
 from scitbx import matrix
