@@ -184,29 +184,28 @@ plot_number = [0]
 
 def run_simulation(
       out,
+      dof,
       six_dof_type,
       r_is_qr,
-      sim5,
       mersenne_twister,
       n_dynamics_steps,
       delta_t):
-  if (sim5 is not None):
-    sim = five_six_dof_simulation(
-      six_dof_type=six_dof_type,
-      sim5=sim5)
-    sim_label = "five_six_dof(r_is_qr=%s)"
-  elif (six_dof_type is not None):
+  assert dof in [5,6]
+  if (dof == 5):
+    sim = five_dof_simulation(
+      r_is_qr=r_is_qr,
+      mersenne_twister=mersenne_twister)
+    if (six_dof_type is None):
+      sim_label = "five_dof(r_is_qr=%s)"
+    else:
+      sim = five_six_dof_simulation(six_dof_type=six_dof_type, sim5=sim)
+      sim_label = "five_six_dof(r_is_qr=%s)"
+  else:
     sim = six_dof_simulation(
       six_dof_type=six_dof_type,
       r_is_qr=r_is_qr,
       mersenne_twister=mersenne_twister)
     sim_label = 'six_dof(type="%s", r_is_qr=%%s)' % six_dof_type
-  else:
-    assert six_dof_type is None
-    sim = five_dof_simulation(
-      r_is_qr=r_is_qr,
-      mersenne_twister=mersenne_twister)
-    sim_label = "five_dof(r_is_qr=%s)"
   sim_label %= str(sim.J.r_is_qr)
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
@@ -258,23 +257,20 @@ def run_simulations(
   sites_moved_accu = []
   relative_ranges = []
   for r_is_qr in [True, False]:
-    sim5 = None
     for six_dof_type in [None, "euler_params", "euler_angles_xyz"]:
       if (dof == 6 and six_dof_type is None): continue
-      if (sim5 is None): mersenne_twister.setstate(mt_state)
+      mersenne_twister.setstate(mt_state)
       sim, sim_label, sites_moved, relative_range = run_simulation(
         out=out,
+        dof=dof,
         six_dof_type=six_dof_type,
         r_is_qr=r_is_qr,
-        sim5=sim5,
         mersenne_twister=mersenne_twister,
         n_dynamics_steps=n_dynamics_steps,
         delta_t=delta_t)
       sim_labels.append(sim_label)
       sites_moved_accu.append(sites_moved)
       relative_ranges.append(relative_range)
-      if (dof == 5 and six_dof_type is None):
-        sim5 = sim
   rms_max_list = flex.double()
   for sim_label,other in zip(sim_labels[1:], sites_moved_accu[1:]):
     print >> out, "rms joints %s" % sim_labels[0]
@@ -332,7 +328,7 @@ def exercise_simulation(out, dof, n_trials, n_dynamics_steps, delta_t=0.001):
     for accu in relative_ranges_accu:
       assert flex.max(accu) < {6:1.e-4, 5:1.e-3}[dof]
     for i,accu in enumerate(rms_max_list_accu):
-      assert flex.max(accu) < {6:1.e-4, 5:[1.e-1,1.e-2][int(i==2)]}[dof]
+      assert flex.max(accu) < {6:1.e-4, 5:1.e-2}[dof]
 
 def run(args):
   assert len(args) in [0,2]
