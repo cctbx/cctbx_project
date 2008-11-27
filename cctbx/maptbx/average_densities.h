@@ -196,12 +196,17 @@ public:
            t=t+1.0/pow_distance_i;
         }
     }
-    double alpha_opt = (p-s*q/r) / (t-q*q/r);
+    CCTBX_ASSERT(r != 0.0);
+    double den = t-q*q/r;
+    CCTBX_ASSERT(den != 0.0);
+    double alpha_opt = (p-s*q/r) / den;
     a_real_space_ = std::exp( alpha_opt );
     b_real_space_ = 1./r*(alpha_opt*q - s);
     double tmp = b_real_space_/scitbx::constants::pi;
     double pi_sq = scitbx::constants::pi*scitbx::constants::pi;
+    CCTBX_ASSERT(tmp != 0.0);
     a_reciprocal_space_ = a_real_space_/std::sqrt(tmp*tmp*tmp);
+    CCTBX_ASSERT(b_real_space_ != 0.0);
     b_reciprocal_space_ = pi_sq/b_real_space_*4; // not deja divise par 4 !!!
     double num = 0.0;
     double denum = 0.0;
@@ -216,6 +221,7 @@ public:
             denum=denum+data_i;
         }
     }
+    CCTBX_ASSERT(denum != 0.0);
     gof_ = num/denum*100.;
   }
   double a_real_space() { return a_real_space_; }
