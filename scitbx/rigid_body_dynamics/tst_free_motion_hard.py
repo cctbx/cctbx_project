@@ -199,7 +199,7 @@ def run_simulation(
       sim_label = "five_dof(r_is_qr=%s)"
     else:
       sim = five_six_dof_simulation(six_dof_type=six_dof_type, sim5=sim)
-      sim_label = "five_six_dof(r_is_qr=%s)"
+      sim_label = 'five_six_dof(type="%s", r_is_qr=%%s)' % six_dof_type
   else:
     sim = six_dof_simulation(
       six_dof_type=six_dof_type,
