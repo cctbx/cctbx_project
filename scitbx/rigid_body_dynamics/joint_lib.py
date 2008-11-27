@@ -43,9 +43,8 @@ class six_dof(object):
   def Xj_S(O, q, qd):
     return O.Xj, O.S
 
-  def time_step_position(O, v_spatial, delta_t):
-    w_body_frame, v_body_frame = matrix.col_list([
-      v_spatial.elems[:3], v_spatial.elems[3:]])
+  def time_step_position(O, qd, delta_t):
+    w_body_frame, v_body_frame = matrix.col_list([qd.elems[:3], qd.elems[3:]])
     if (O.type == "euler_params"):
       qEd = RBDA_Eq_4_13(q=O.qE.elems) * w_body_frame
     else:
@@ -61,8 +60,8 @@ class six_dof(object):
     new_qr = O.qr + qrd * delta_t
     return six_dof(O.type, new_qE, new_qr, O.r_is_qr)
 
-  def time_step_velocity(O, v_spatial, a_spatial, delta_t):
-    return v_spatial + a_spatial * delta_t
+  def time_step_velocity(O, qd, qdd, delta_t):
+    return qd + qdd * delta_t
 
 class revolute_alignment(object):
 
