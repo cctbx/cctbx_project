@@ -7,6 +7,7 @@ from scitbx.rigid_body_dynamics import test_utils
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out, show_times_at_exit
 import math
 import sys
 
@@ -235,7 +236,6 @@ def exercise_revolute_sim(
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
-  out = sys.stdout
   print >> out, "energy samples:", e_tots.size()
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
@@ -250,7 +250,7 @@ def exercise_revolute_sim(
   print >> out, "relative range:", relative_range
   print >> out
   out.flush()
-  if (1):
+  if (out is sys.stdout):
     f = open("tmp%02d.xy" % plot_number[0], "w")
     for es in [e_pots, e_kins, e_tots]:
       for e in es:
@@ -260,12 +260,7 @@ def exercise_revolute_sim(
     plot_number[0] += 1
   return relative_range
 
-def exercise_revolute(
-      out=sys.stdout,
-      n_trials=3,
-      n_dynamics_steps=100,
-      delta_t=0.001,
-      NB=3):
+def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001, NB=3):
   mersenne_twister = flex.mersenne_twister(seed=0)
   relative_ranges = flex.double()
   for i in xrange(n_trials):
@@ -278,11 +273,23 @@ def exercise_revolute(
       zickzack=(n_trials == 0)))
   print >> out, "relative ranges:"
   relative_ranges.min_max_mean().show(out=out, prefix="  ")
+  if (out is not sys.stdout):
+    assert flex.max(relative_ranges) < 0.0006
   print >> out
 
 def run(args):
-  assert len(args) == 0
-  exercise_revolute()
+  assert len(args) in [0,2]
+  if (len(args) == 0):
+    n_trials = 3
+    n_dynamics_steps = 30
+    out = null_out()
+  else:
+    n_trials = max(1, int(args[0]))
+    n_dynamics_steps = max(1, int(args[1]))
+    out = sys.stdout
+  show_times_at_exit()
+  exercise_revolute(
+    out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
   print "OK"
 
 if (__name__ == "__main__"):

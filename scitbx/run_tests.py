@@ -58,6 +58,7 @@ def run():
   "$D/rigid_body_dynamics/tst_featherstone.py",
   "$D/rigid_body_dynamics/tst_free_motion.py",
   "$D/rigid_body_dynamics/tst_free_motion_hard.py",
+  "$D/rigid_body_dynamics/tst_joint_lib.py",
   "$D/sparse/tests/tst_sparse.py",
   "$D/iso_surface/tst_iso_surface.py",
   )
