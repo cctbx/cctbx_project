@@ -155,22 +155,59 @@ class five_dof_simulation(simulation_mixin):
     #
     O.energies_and_accelerations_update()
 
+class five_six_dof_simulation(simulation_mixin):
+
+  def __init__(O, six_dof_type, sim5):
+    O.sites_F0 = sim5.sites_F0
+    O.A = sim5.A
+    O.I_spatial = sim5.I_spatial
+    #
+    O.wells = sim5.wells
+    #
+    qE = matrix.col((0,)+sim5.J.qE.elems)
+    qr = sim5.J.qr
+    r_is_qr = sim5.J.r_is_qr
+    O.J = joint_lib.six_dof(type=six_dof_type, qE=qE, qr=qr, r_is_qr=r_is_qr)
+    #
+    O.qd = sim5.J.S * sim5.qd
+    #
+    O.energies_and_accelerations_update()
+    #
+    assert approx_equal(O.sites_moved(), sim5.sites_moved())
+    assert approx_equal(O.e_pot, sim5.e_pot)
+    assert approx_equal(O.e_kin, sim5.e_kin)
+    assert abs(O.qdd[2]) < 1.e-10
+    assert approx_equal(O.qdd.elems[:2], sim5.qdd.elems[:2])
+    assert approx_equal(O.qdd.elems[3:], sim5.qdd.elems[2:])
+
+plot_number = [0]
+
 def run_simulation(
       out,
       six_dof_type,
       r_is_qr,
+      sim5,
       mersenne_twister,
       n_dynamics_steps,
       delta_t):
-  if (six_dof_type is not None):
+  if (sim5 is not None):
+    sim = five_six_dof_simulation(
+      six_dof_type=six_dof_type,
+      sim5=sim5)
+    sim_label = "five_six_dof(r_is_qr=%s)"
+  elif (six_dof_type is not None):
     sim = six_dof_simulation(
       six_dof_type=six_dof_type,
       r_is_qr=r_is_qr,
       mersenne_twister=mersenne_twister)
+    sim_label = 'six_dof(type="%s", r_is_qr=%%s)' % six_dof_type
   else:
+    assert six_dof_type is None
     sim = five_dof_simulation(
       r_is_qr=r_is_qr,
       mersenne_twister=mersenne_twister)
+    sim_label = "five_dof(r_is_qr=%s)"
+  sim_label %= str(sim.J.r_is_qr)
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
@@ -180,10 +217,7 @@ def run_simulation(
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
-  if (six_dof_type is not None):
-    print >> out, 'six_dof(type="%s", r_is_qr=%s)' %(six_dof_type,str(r_is_qr))
-  else:
-    print >> out, "five_dof(r_is_qr=%s)" % str(r_is_qr)
+  print >> out, sim_label
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
   print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
@@ -197,32 +231,54 @@ def run_simulation(
   print >> out, "relative range:", relative_range
   print >> out
   out.flush()
-  return sites_moved, relative_range
+  if (out is sys.stdout):
+    l = sim_label \
+      .replace(' ', "") \
+      .replace('"', "") \
+      .replace("(", "_") \
+      .replace(")", "_") \
+      .replace(",", "_")
+    f = open("tmp%02d_%s.xy" % (plot_number[0], l), "w")
+    for es in [e_pots, e_kins, e_tots]:
+      for e in es:
+        print >> f, e
+      print >> f, "&"
+    f.close()
+    plot_number[0] += 1
+  return sim, sim_label, sites_moved, relative_range
 
 def run_simulations(
       out,
-      six_dof_types,
+      dof,
       mersenne_twister,
       n_dynamics_steps,
       delta_t):
   mt_state = mersenne_twister.getstate()
-  relative_ranges = []
+  sim_labels = []
   sites_moved_accu = []
-  for six_dof_type in six_dof_types:
-    for r_is_qr in [False, True]:
-      mersenne_twister.setstate(mt_state)
-      sites_moved, relative_range = run_simulation(
+  relative_ranges = []
+  for r_is_qr in [True, False]:
+    sim5 = None
+    for six_dof_type in [None, "euler_params", "euler_angles_xyz"]:
+      if (dof == 6 and six_dof_type is None): continue
+      if (sim5 is None): mersenne_twister.setstate(mt_state)
+      sim, sim_label, sites_moved, relative_range = run_simulation(
         out=out,
         six_dof_type=six_dof_type,
         r_is_qr=r_is_qr,
+        sim5=sim5,
         mersenne_twister=mersenne_twister,
         n_dynamics_steps=n_dynamics_steps,
         delta_t=delta_t)
+      sim_labels.append(sim_label)
       sites_moved_accu.append(sites_moved)
       relative_ranges.append(relative_range)
-  print >> out, "rms joints:"
+      if (dof == 5 and six_dof_type is None):
+        sim5 = sim
   rms_max_list = flex.double()
-  for other in sites_moved_accu[1:]:
+  for sim_label,other in zip(sim_labels[1:], sites_moved_accu[1:]):
+    print >> out, "rms joints %s" % sim_labels[0]
+    print >> out, "       vs. %s:" % sim_label
     rms = flex.double()
     for sites_ref,sites_other in zip(sites_moved_accu[0], other):
       sites_ref = flex.vec3_double(sites_ref)
@@ -231,38 +287,52 @@ def run_simulations(
     rms_max_list.append(flex.max(rms))
     print >> out
   sys.stdout.flush()
-  return relative_ranges, rms_max_list
+  return sim_labels, relative_ranges, rms_max_list
 
 def exercise_simulation(out, dof, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
-  relative_ranges_accu = [flex.double() for i in xrange({6:4, 5:2}[dof])]
-  rms_max_list_accu = [flex.double() for i in xrange({6:3, 5:1}[dof])]
+  sim_labels = None
+  relative_ranges_accu = None
+  rms_max_list_accu = None
   for i in xrange(n_trials):
-    relative_ranges, rms_max_list = run_simulations(
+    sim_labels_new, relative_ranges, rms_max_list = run_simulations(
       out=out,
-      six_dof_types={6:["euler_params", "euler_angles_xyz"], 5:[None]}[dof],
+      dof=dof,
       mersenne_twister=mersenne_twister,
       n_dynamics_steps=n_dynamics_steps,
       delta_t=delta_t)
+    if (sim_labels is None):
+      sim_labels = sim_labels_new
+    else:
+      assert sim_labels == sim_labels_new
+    if (relative_ranges_accu is None):
+      relative_ranges_accu=[flex.double() for i in xrange(len(relative_ranges))]
+    else:
+      assert len(relative_ranges) == len(relative_ranges_accu)
     for r,a in zip(relative_ranges, relative_ranges_accu):
       a.append(r)
+    if (rms_max_list_accu is None):
+      rms_max_list_accu = [flex.double() for i in xrange(len(rms_max_list))]
+    else:
+      assert len(rms_max_list) == len(rms_max_list_accu)
     for r,a in zip(rms_max_list, rms_max_list_accu):
       a.append(r)
   print >> out, "Accumulated results:"
   print >> out
-  for i,accu in enumerate(relative_ranges_accu):
-    print >> out, "relative ranges (%d):" % i
+  for sim_label,accu in zip(sim_labels, relative_ranges_accu):
+    print >> out, "relative ranges %s:" % sim_label
     accu.min_max_mean().show(out=out, prefix="  ")
     print >> out
-  for i,accu in enumerate(rms_max_list_accu):
-    print >> out, "rms max (0-%d):" % (i+1)
+  for sim_label,accu in zip(sim_labels[1:], rms_max_list_accu):
+    print >> out, "rms max %s" % sim_labels[0]
+    print >> out, "    vs. %s:" % sim_label
     accu.min_max_mean().show(out=out, prefix="  ")
     print >> out
   if (out is not sys.stdout):
     for accu in relative_ranges_accu:
       assert flex.max(accu) < {6:1.e-4, 5:1.e-3}[dof]
-    for accu in rms_max_list_accu:
-      assert flex.max(accu) < {6:1.e-4, 5:1.e-2}[dof]
+    for i,accu in enumerate(rms_max_list_accu):
+      assert flex.max(accu) < {6:1.e-4, 5:[1.e-1,1.e-2][int(i==2)]}[dof]
 
 def run(args):
   assert len(args) in [0,2]
