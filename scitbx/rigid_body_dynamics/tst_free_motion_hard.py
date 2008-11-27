@@ -1,7 +1,6 @@
 from scitbx.rigid_body_dynamics import featherstone
 from scitbx.rigid_body_dynamics import joint_lib
 from scitbx.rigid_body_dynamics.utils import \
-  center_of_mass_from_sites, \
   spatial_inertia_from_sites, \
   kinetic_energy
 from scitbx.rigid_body_dynamics import test_utils
@@ -63,14 +62,6 @@ def create_wells(sites, mersenne_twister):
     wells.append(r * site + t_noise)
   return wells
 
-class six_dof_alignment(object):
-
-  def __init__(O, sites):
-    c = center_of_mass_from_sites(sites=sites)
-    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -c))
-    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), c))
-    O.Xtree = featherstone.Xtrans(c)
-
 class featherstone_system_model(object):
 
   def __init__(model, I, A, J):
@@ -85,7 +76,7 @@ class simulation(object):
   def __init__(O, six_dof_joint, six_dof_r_is_qr, mersenne_twister):
     O.sites_F0 = create_triangle_with_random_center_of_mass(
       mersenne_twister=mersenne_twister)
-    O.A = six_dof_alignment(sites=O.sites_F0)
+    O.A = joint_lib.six_dof_alignment(sites=O.sites_F0)
     O.I_spatial = spatial_inertia_from_sites(
       sites=O.sites_F0, alignment_T=O.A.T0b)
     #
