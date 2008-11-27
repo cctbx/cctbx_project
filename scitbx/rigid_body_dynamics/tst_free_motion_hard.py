@@ -10,6 +10,7 @@ from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out, show_times_at_exit
+import math
 import sys
 
 def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
@@ -68,36 +69,21 @@ class featherstone_system_model(object):
     model.NB = 1
     model.pitch = [J]
     model.parent =[-1]
-    model.Xtree = [A.Xtree]
+    model.Xtree = [joint_lib.T_as_X(A.T0b)]
     model.I = [I]
 
-class simulation(object):
-
-  def __init__(O, six_dof_type, six_dof_r_is_qr, mersenne_twister):
-    O.sites_F0 = create_triangle_with_random_center_of_mass(
-      mersenne_twister=mersenne_twister)
-    O.A = joint_lib.six_dof_alignment(sites=O.sites_F0)
-    O.I_spatial = spatial_inertia_from_sites(
-      sites=O.sites_F0, alignment_T=O.A.T0b)
-    #
-    O.wells = create_wells(sites=O.sites_F0, mersenne_twister=mersenne_twister)
-    #
-    qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
-    qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
-    if (six_dof_r_is_qr):
-      qr = joint_lib.RBDA_Eq_4_12(qE).transpose() * qr
-    O.J = joint_lib.six_dof(
-      type=six_dof_type, qE=qE, qr=qr, r_is_qr=six_dof_r_is_qr)
-    O.v_spatial = matrix.col(mersenne_twister.random_double(size=6)*2-1)
-    #
-    O.energies_and_accelerations_update()
+class simulation_mixin(object):
 
   def sites_moved(O):
     AJA = O.A.Tb0 * O.J.Tsp * O.A.T0b
     return [AJA * site for site in O.sites_F0]
 
   def energies_and_accelerations_update(O):
-    O.e_kin = kinetic_energy(I_spatial=O.I_spatial, v_spatial=O.v_spatial)
+    if (O.J.S is None):
+      v_spatial = O.qd
+    else:
+      v_spatial = O.J.S * O.qd
+    O.e_kin = kinetic_energy(I_spatial=O.I_spatial, v_spatial=v_spatial)
     O.e_pot = test_utils.potential_energy(
       sites=O.sites_F0, wells=O.wells, A=O.A, J=O.J)
     f_ext_ff = test_utils.potential_f_ext_ff(
@@ -113,7 +99,7 @@ class simulation(object):
     model = featherstone_system_model(I=O.I_spatial, A=O.A, J=O.J)
     #
     q = [None] # already stored in joint as qE and qr
-    qd = [O.v_spatial]
+    qd = [O.qd]
     tau = None
     grav_accn = [0,0,0]
     qdd_using_f_ext_ff = featherstone.FDab(
@@ -121,25 +107,70 @@ class simulation(object):
     qdd_using_f_ext_bf = featherstone.FDab(
       model, q, qd, tau, [f_ext_bf], grav_accn, f_ext_in_ff=False)
     assert approx_equal(qdd_using_f_ext_bf, qdd_using_f_ext_ff)
-    O.a_spatial = qdd_using_f_ext_bf[0]
+    O.qdd = qdd_using_f_ext_bf[0]
 
   def dynamics_step(O, delta_t):
-    O.v_spatial = O.J.time_step_velocity(
-      qd=O.v_spatial, qdd=O.a_spatial, delta_t=delta_t)
-    O.J = O.J.time_step_position(qd=O.v_spatial, delta_t=delta_t)
+    O.qd = O.J.time_step_velocity(qd=O.qd, qdd=O.qdd, delta_t=delta_t)
+    O.J = O.J.time_step_position(qd=O.qd, delta_t=delta_t)
+    O.energies_and_accelerations_update()
+
+class six_dof_simulation(simulation_mixin):
+
+  def __init__(O, six_dof_type, r_is_qr, mersenne_twister):
+    O.sites_F0 = create_triangle_with_random_center_of_mass(
+      mersenne_twister=mersenne_twister)
+    O.A = joint_lib.six_dof_alignment(sites=O.sites_F0)
+    O.I_spatial = spatial_inertia_from_sites(
+      sites=O.sites_F0, alignment_T=O.A.T0b)
+    #
+    O.wells = create_wells(sites=O.sites_F0, mersenne_twister=mersenne_twister)
+    #
+    qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
+    qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
+    if (r_is_qr):
+      qr = joint_lib.RBDA_Eq_4_12(qE).transpose() * qr
+    O.J = joint_lib.six_dof(type=six_dof_type, qE=qE, qr=qr, r_is_qr=r_is_qr)
+    O.qd = matrix.col(mersenne_twister.random_double(size=6)*2-1)
+    #
+    O.energies_and_accelerations_update()
+
+class five_dof_simulation(simulation_mixin):
+
+  def __init__(O, r_is_qr, mersenne_twister):
+    O.sites_F0 = [matrix.col(mersenne_twister.random_double_point_on_sphere())]
+    O.sites_F0.append(O.sites_F0[0]
+      + matrix.col(mersenne_twister.random_double_point_on_sphere()))
+    O.A = joint_lib.five_dof_alignment(sites=O.sites_F0)
+    O.I_spatial = spatial_inertia_from_sites(
+      sites=O.sites_F0, alignment_T=O.A.T0b)
+    #
+    O.wells = create_wells(sites=O.sites_F0, mersenne_twister=mersenne_twister)
+    #
+    qE = matrix.col((mersenne_twister.random_double(size=2)*2-1)*math.pi/4)
+    qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
+    if (r_is_qr):
+      qr = joint_lib.RBDA_Eq_4_7(q=(0, qE[0], qE[1])).transpose() * qr
+    O.J = joint_lib.five_dof(qE=qE, qr=qr, r_is_qr=r_is_qr)
+    O.qd = matrix.col(mersenne_twister.random_double(size=5)*2-1)
+    #
     O.energies_and_accelerations_update()
 
 def run_simulation(
       out,
       six_dof_type,
-      six_dof_r_is_qr,
+      r_is_qr,
       mersenne_twister,
       n_dynamics_steps,
       delta_t):
-  sim = simulation(
-    six_dof_type=six_dof_type,
-    six_dof_r_is_qr=six_dof_r_is_qr,
-    mersenne_twister=mersenne_twister)
+  if (six_dof_type is not None):
+    sim = six_dof_simulation(
+      six_dof_type=six_dof_type,
+      r_is_qr=r_is_qr,
+      mersenne_twister=mersenne_twister)
+  else:
+    sim = five_dof_simulation(
+      r_is_qr=r_is_qr,
+      mersenne_twister=mersenne_twister)
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
@@ -149,8 +180,10 @@ def run_simulation(
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
-  print >> out, 'six_dof(type="%s", r_is_qr=%s)' % (
-    six_dof_type, str(six_dof_r_is_qr))
+  if (six_dof_type is not None):
+    print >> out, 'six_dof(type="%s", r_is_qr=%s)' %(six_dof_type,str(r_is_qr))
+  else:
+    print >> out, "five_dof(r_is_qr=%s)" % str(r_is_qr)
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
   print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
@@ -166,17 +199,22 @@ def run_simulation(
   out.flush()
   return sites_moved, relative_range
 
-def run_simulations(out, mersenne_twister, n_dynamics_steps, delta_t):
+def run_simulations(
+      out,
+      six_dof_types,
+      mersenne_twister,
+      n_dynamics_steps,
+      delta_t):
   mt_state = mersenne_twister.getstate()
   relative_ranges = []
   sites_moved_accu = []
-  for six_dof_type in ["euler_params", "euler_angles_xyz"]:
-    for six_dof_r_is_qr in [False, True]:
+  for six_dof_type in six_dof_types:
+    for r_is_qr in [False, True]:
       mersenne_twister.setstate(mt_state)
       sites_moved, relative_range = run_simulation(
         out=out,
         six_dof_type=six_dof_type,
-        six_dof_r_is_qr=six_dof_r_is_qr,
+        r_is_qr=r_is_qr,
         mersenne_twister=mersenne_twister,
         n_dynamics_steps=n_dynamics_steps,
         delta_t=delta_t)
@@ -195,17 +233,14 @@ def run_simulations(out, mersenne_twister, n_dynamics_steps, delta_t):
   sys.stdout.flush()
   return relative_ranges, rms_max_list
 
-def exercise(out, n_trials, n_dynamics_steps, delta_t=0.001):
+def exercise_simulation(out, dof, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
-  exercise_euler_params_qE_as_euler_angles_xyz_qE(
-    mersenne_twister=mersenne_twister)
-  exercise_T_as_X(
-    mersenne_twister=mersenne_twister)
-  relative_ranges_accu = [flex.double() for i in xrange(4)]
-  rms_max_list_accu = [flex.double() for i in xrange(3)]
+  relative_ranges_accu = [flex.double() for i in xrange({6:4, 5:2}[dof])]
+  rms_max_list_accu = [flex.double() for i in xrange({6:3, 5:1}[dof])]
   for i in xrange(n_trials):
     relative_ranges, rms_max_list = run_simulations(
       out=out,
+      six_dof_types={6:["euler_params", "euler_angles_xyz"], 5:[None]}[dof],
       mersenne_twister=mersenne_twister,
       n_dynamics_steps=n_dynamics_steps,
       delta_t=delta_t)
@@ -225,9 +260,9 @@ def exercise(out, n_trials, n_dynamics_steps, delta_t=0.001):
     print >> out
   if (out is not sys.stdout):
     for accu in relative_ranges_accu:
-      assert flex.max(accu) < 1.e-4
+      assert flex.max(accu) < {6:1.e-4, 5:1.e-3}[dof]
     for accu in rms_max_list_accu:
-      assert flex.max(accu) < 1.e-4
+      assert flex.max(accu) < {6:1.e-4, 5:1.e-2}[dof]
 
 def run(args):
   assert len(args) in [0,2]
@@ -240,7 +275,13 @@ def run(args):
     n_dynamics_steps = max(1, int(args[1]))
     out = sys.stdout
   show_times_at_exit()
-  exercise(out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
+  mersenne_twister = flex.mersenne_twister(seed=0)
+  exercise_euler_params_qE_as_euler_angles_xyz_qE(
+    mersenne_twister=mersenne_twister)
+  exercise_T_as_X(mersenne_twister=mersenne_twister)
+  for dof in [6, 5]:
+    exercise_simulation(
+      out=out, dof=dof, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
   print "OK"
 
 if (__name__ == "__main__"):
