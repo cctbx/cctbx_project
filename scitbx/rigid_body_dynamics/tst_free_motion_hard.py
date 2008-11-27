@@ -125,8 +125,8 @@ class simulation(object):
 
   def dynamics_step(O, delta_t):
     O.v_spatial = O.J.time_step_velocity(
-      v_spatial=O.v_spatial, a_spatial=O.a_spatial, delta_t=delta_t)
-    O.J = O.J.time_step_position(v_spatial=O.v_spatial, delta_t=delta_t)
+      qd=O.v_spatial, qdd=O.a_spatial, delta_t=delta_t)
+    O.J = O.J.time_step_position(qd=O.v_spatial, delta_t=delta_t)
     O.energies_and_accelerations_update()
 
 def run_simulation(
