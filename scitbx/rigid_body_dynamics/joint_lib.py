@@ -11,16 +11,25 @@ class six_dof_alignment(object):
     O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), c))
     O.Xtree = featherstone.Xtrans(c)
 
-class six_dof_euler_params(object):
+class six_dof(object):
 
-  def __init__(O, qE, qr, r_is_qr=False):
-    if (len(qE.elems) == 3):
-      qE = euler_angles_xyz_qE_as_euler_params_qE(qE=qE)
+  def __init__(O, type, qE, qr, r_is_qr=False):
+    assert type in ["euler_params", "euler_angles_xyz"]
+    if (type == "euler_params"):
+      if (len(qE.elems) == 3):
+        qE = euler_angles_xyz_qE_as_euler_params_qE(qE=qE)
+    else:
+      if (len(qE.elems) == 4):
+        qE = euler_params_qE_as_euler_angles_xyz_qE(qE=qE)
+    O.type = type
     O.qE = qE
     O.qr = qr
     O.r_is_qr = r_is_qr
     #
-    O.E = RBDA_Eq_4_12(qE)
+    if (type == "euler_params"):
+      O.E = RBDA_Eq_4_12(q=qE)
+    else:
+      O.E = RBDA_Eq_4_7(q=qE)
     if (r_is_qr):
       O.r = qr
     else:
@@ -38,53 +47,20 @@ class six_dof_euler_params(object):
   def time_step_position(O, v_spatial, delta_t):
     w_body_frame, v_body_frame = matrix.col_list([
       v_spatial.elems[:3], v_spatial.elems[3:]])
-    qEd = RBDA_Eq_4_13(O.qE.elems) * w_body_frame
+    if (O.type == "euler_params"):
+      qEd = RBDA_Eq_4_13(q=O.qE.elems) * w_body_frame
+    else:
+      qEd = RBDA_Eq_4_8_inv(q=O.qE.elems) * w_body_frame
     if (O.r_is_qr):
       qrd = O.E.transpose() * v_body_frame
     else:
       qrd = v_body_frame - w_body_frame.cross(O.qr) # RBDA Eq. 2.38 p. 27
-    new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
-    new_qr = O.qr + qrd * delta_t
-    return six_dof_euler_params(new_qE, new_qr, O.r_is_qr)
-
-  def time_step_velocity(O, v_spatial, a_spatial, delta_t):
-    return v_spatial + a_spatial * delta_t
-
-class six_dof_euler_angles_xyz(object):
-
-  def __init__(O, qE, qr, r_is_qr=False):
-    if (len(qE.elems) == 4):
-      qE = euler_params_qE_as_euler_angles_xyz_qE(qE=qE)
-    O.qE = qE
-    O.qr = qr
-    O.r_is_qr = r_is_qr
-    #
-    O.E = RBDA_Eq_4_7(qE)
-    if (r_is_qr):
-      O.r = qr
+    if (O.type == "euler_params"):
+      new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
     else:
-      O.r = O.E.transpose() * qr # RBDA Tab. 4.1
-    #
-    O.Tps = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
-    O.Tsp = matrix.rt((O.E.transpose(), O.r))
-    O.Xj = T_as_X(O.Tps)
-    O.S = None
-    O.S_ring = None
-
-  def Xj_S_S_ring(O, q, qd):
-    return O.Xj, O.S, O.S_ring
-
-  def time_step_position(O, v_spatial, delta_t):
-    w_body_frame, v_body_frame = matrix.col_list([
-      v_spatial.elems[:3], v_spatial.elems[3:]])
-    qEd = RBDA_Eq_4_8_inv(q=O.qE.elems) * w_body_frame
-    if (O.r_is_qr):
-      qrd = O.E.transpose() * v_body_frame
-    else:
-      qrd = v_body_frame - w_body_frame.cross(O.qr) # RBDA Eq. 2.38 p. 27
-    new_qE = O.qE + qEd * delta_t
+      new_qE = O.qE + qEd * delta_t
     new_qr = O.qr + qrd * delta_t
-    return six_dof_euler_angles_xyz(new_qE, new_qr, O.r_is_qr)
+    return six_dof(O.type, new_qE, new_qr, O.r_is_qr)
 
   def time_step_velocity(O, v_spatial, a_spatial, delta_t):
     return v_spatial + a_spatial * delta_t

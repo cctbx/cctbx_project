@@ -16,11 +16,11 @@ def exercise_euler_params_qE_as_euler_angles_xyz_qE(mersenne_twister):
   for i_trial in xrange(30):
     qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
-    J = joint_lib.six_dof_euler_params(qE=qE, qr=qr)
-    Jea = joint_lib.six_dof_euler_angles_xyz(qE=qE, qr=qr)
+    J = joint_lib.six_dof(type="euler_params", qE=qE, qr=qr)
+    Jea = joint_lib.six_dof(type="euler_angles_xyz", qE=qE, qr=qr)
     assert approx_equal(Jea.E, J.E)
     assert approx_equal(Jea.r, J.r)
-    Jep = joint_lib.six_dof_euler_params(qE=Jea.qE, qr=qr)
+    Jep = joint_lib.six_dof(type="euler_params", qE=Jea.qE, qr=qr)
     assert approx_equal(Jep.E, J.E)
     assert approx_equal(Jep.r, J.r)
 
@@ -73,7 +73,7 @@ class featherstone_system_model(object):
 
 class simulation(object):
 
-  def __init__(O, six_dof_joint, six_dof_r_is_qr, mersenne_twister):
+  def __init__(O, six_dof_type, six_dof_r_is_qr, mersenne_twister):
     O.sites_F0 = create_triangle_with_random_center_of_mass(
       mersenne_twister=mersenne_twister)
     O.A = joint_lib.six_dof_alignment(sites=O.sites_F0)
@@ -86,7 +86,8 @@ class simulation(object):
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
     if (six_dof_r_is_qr):
       qr = joint_lib.RBDA_Eq_4_12(qE).transpose() * qr
-    O.J = six_dof_joint(qE=qE, qr=qr, r_is_qr=six_dof_r_is_qr)
+    O.J = joint_lib.six_dof(
+      type=six_dof_type, qE=qE, qr=qr, r_is_qr=six_dof_r_is_qr)
     O.v_spatial = matrix.col(mersenne_twister.random_double(size=6)*2-1)
     #
     O.energies_and_accelerations_update()
@@ -130,13 +131,13 @@ class simulation(object):
 
 def run_simulation(
       out,
-      six_dof_joint,
+      six_dof_type,
       six_dof_r_is_qr,
       mersenne_twister,
       n_dynamics_steps,
       delta_t):
   sim = simulation(
-    six_dof_joint=six_dof_joint,
+    six_dof_type=six_dof_type,
     six_dof_r_is_qr=six_dof_r_is_qr,
     mersenne_twister=mersenne_twister)
   sites_moved = [sim.sites_moved()]
@@ -148,7 +149,8 @@ def run_simulation(
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
-  print >> out, six_dof_joint.__name__, "r_is_qr=%s" % str(six_dof_r_is_qr)
+  print >> out, 'six_dof(type="%s", r_is_qr=%s)' % (
+    six_dof_type, str(six_dof_r_is_qr))
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
   print >> out, "e_tot min, max:", min(e_tots), max(e_tots)
@@ -168,14 +170,12 @@ def run_simulations(out, mersenne_twister, n_dynamics_steps, delta_t):
   mt_state = mersenne_twister.getstate()
   relative_ranges = []
   sites_moved_accu = []
-  for six_dof_joint in [
-        joint_lib.six_dof_euler_params,
-        joint_lib.six_dof_euler_angles_xyz]:
+  for six_dof_type in ["euler_params", "euler_angles_xyz"]:
     for six_dof_r_is_qr in [False, True]:
       mersenne_twister.setstate(mt_state)
       sites_moved, relative_range = run_simulation(
         out=out,
-        six_dof_joint=six_dof_joint,
+        six_dof_type=six_dof_type,
         six_dof_r_is_qr=six_dof_r_is_qr,
         mersenne_twister=mersenne_twister,
         n_dynamics_steps=n_dynamics_steps,
