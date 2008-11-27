@@ -71,13 +71,12 @@ class featherstone_system_model(object):
 
 class six_dof_joint_euler_params_featherstone(fmri.six_dof_joint_euler_params):
 
-  def Xj_S_S_ring(O, q, qd):
+  def Xj_S(O, q, qd):
     assert q is None
     Xj = featherstone.Xrot(O.E) \
        * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote
     S = None
-    S_ring = None
-    return Xj, S, S_ring
+    return Xj, S
 
 def exercise_featherstone_FDab(out):
   def check():
