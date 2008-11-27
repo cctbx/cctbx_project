@@ -1,6 +1,15 @@
 from scitbx.rigid_body_dynamics import featherstone
+from scitbx.rigid_body_dynamics.utils import center_of_mass_from_sites
 from scitbx import matrix
 import math
+
+class six_dof_alignment(object):
+
+  def __init__(O, sites):
+    c = center_of_mass_from_sites(sites=sites)
+    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -c))
+    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), c))
+    O.Xtree = featherstone.Xtrans(c)
 
 class six_dof_euler_params(object):
 
