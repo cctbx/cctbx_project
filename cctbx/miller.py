@@ -2270,7 +2270,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
     return array(
       miller_set=self.as_non_anomalous_set(),
       data=self.data(),
-      sigmas=self.sigmas())
+      sigmas=self.sigmas()).set_observation_type(self)
 
   def average_bijvoet_mates(self):
     assert self.observation_type() is None or self.is_xray_amplitude_array()
