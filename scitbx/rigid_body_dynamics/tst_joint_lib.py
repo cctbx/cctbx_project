@@ -3,32 +3,12 @@ from scitbx.rigid_body_dynamics import joint_lib
 from scitbx.rigid_body_dynamics.utils import \
   spatial_inertia_from_sites, \
   kinetic_energy
-from scitbx.rigid_body_dynamics.test_utils import \
-  potential_energy, \
-  potential_f_ext_pivot_at_origin
+from scitbx.rigid_body_dynamics import test_utils
 from scitbx.array_family import flex
 from scitbx import matrix
+from libtbx.test_utils import approx_equal
 import math
 import sys
-
-def accumulate_AJA(bodies):
-  result = []
-  for B in bodies:
-    AJA_tree = B.A.T_inv * B.J.T * B.A.T
-    if (B.parent != -1):
-      AJA_tree = AJA_tree * result[B.parent]
-    result.append(AJA_tree)
-  return result
-
-def accumulate_Ttree(bodies):
-  result = []
-  for B in bodies:
-    if (B.parent == -1):
-      Ttree = B.A.T_inv
-    else:
-      Ttree = bodies[B.parent].A.T * B.A.T_inv
-    result.append(Ttree)
-  return result
 
 class featherstone_system_model(object):
 
@@ -36,11 +16,17 @@ class featherstone_system_model(object):
     model.NB = len(bodies)
     model.pitch = []
     model.parent =[]
+    model.Ttree = []
     model.Xtree = []
     model.I = []
-    for B,Ttree in zip(bodies, accumulate_Ttree(bodies)):
+    for B in bodies:
       model.pitch.append(B.J)
       model.parent.append(B.parent)
+      if (B.parent == -1):
+        Ttree = B.A.T0b
+      else:
+        Ttree = B.A.T0b * bodies[B.parent].A.Tb0
+      model.Ttree.append(Ttree)
       model.Xtree.append(joint_lib.T_as_X(Ttree))
       model.I.append(B.I)
 
@@ -61,45 +47,109 @@ class random_revolute(object):
         break
     else:
       raise RuntimeError
-    O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T)
+    O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
     #
     O.wells = [random_vector()]
     #
     O.J = joint_lib.revolute(qE=matrix.col([random_angle()]))
     O.qd = matrix.col([random_angle()])
 
+class revolute_z(object):
+
+  def __init__(O, pivot):
+    O.sites = [matrix.col((1/3.,0,2/3.))+pivot]
+    O.A = joint_lib.revolute_alignment(
+      pivot=pivot,
+      normal=matrix.col((0,0,1)))
+    O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
+    O.wells = O.sites
+    O.J = joint_lib.revolute(qE=matrix.col([math.pi/8.]))
+    O.qd = matrix.col([0])
+
+class revolute_x(object):
+
+  def __init__(O, pivot):
+    O.sites = [matrix.col((2/3.,0,1/3.))+pivot]
+    O.A = joint_lib.revolute_alignment(
+      pivot=pivot,
+      normal=matrix.col((1,0,0)))
+    O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
+    O.wells = O.sites
+    O.J = joint_lib.revolute(qE=matrix.col([math.pi/6.]))
+    O.qd = matrix.col([0])
+
 class revolute_simulation(object):
 
-  def __init__(O, mersenne_twister, NB):
+  def __init__(O, mersenne_twister, NB, zickzack=False):
     O.bodies = []
-    for ib in xrange(NB):
-      B = random_revolute(mersenne_twister=mersenne_twister)
+    if (not zickzack):
+      for ib in xrange(NB):
+        B = random_revolute(mersenne_twister=mersenne_twister)
+        B.parent = -1+ib
+        O.bodies.append(B)
+    else:
+      assert NB <= 3
+      B = revolute_z(pivot=matrix.col((0,0,0)))
       B.parent = -1
       O.bodies.append(B)
+      if (NB > 1):
+        B = revolute_x(pivot=matrix.col((0,0,1)))
+        B.parent = 0
+        O.bodies.append(B)
+      if (NB > 2):
+        B = revolute_z(pivot=matrix.col((1,0,1)))
+        B.parent = 1
+        O.bodies.append(B)
     O.energies_and_accelerations_update()
 
   def energies_and_accelerations_update(O):
-    O.e_kin = 0
-    O.e_pot = 0
-    f_ext = []
-    AJA_tree_list = accumulate_AJA(bodies=O.bodies)
-    for B in O.bodies:
-      O.e_kin += kinetic_energy(I_spatial=B.I, v_spatial=B.J.S*B.qd)
-      if (B.parent == -1): AJA_tree = None
-      else:                AJA_tree = AJA_tree_list[B.parent]
-      O.e_pot += potential_energy(
-        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
-      f_ext.append(potential_f_ext_pivot_at_origin(
-        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree))
-    O.e_tot = O.e_kin + O.e_pot
-    #
     model = featherstone_system_model(bodies=O.bodies)
     q = [None]*len(O.bodies)
     qd = [B.qd for B in O.bodies]
+    #
+    O.e_kin = 0
+    vs = FDab_v(model, q, qd)
+    for B,v_spatial in zip(O.bodies, vs):
+      O.e_kin += kinetic_energy(I_spatial=B.I, v_spatial=v_spatial)
+    #
+    O.AJA_accu = []
+    O.e_pot = 0
+    f_ext_ff = []
+    f_ext_bf = []
+    for B in O.bodies:
+      AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
+      if (B.parent == -1):
+        AJA_tree = None
+      else:
+        AJA_tree = O.AJA_accu[B.parent]
+        AJA = AJA_tree * AJA
+      O.AJA_accu.append(AJA)
+      e_pot_ff = test_utils.potential_energy(
+        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
+      e_pot_bf = test_utils.potential_energy_bf(
+        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
+      assert approx_equal(e_pot_bf, e_pot_ff)
+      f_ext_using_ff = test_utils.potential_f_ext_ff(
+        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
+      f_ext_using_bf = test_utils.potential_f_ext_bf(
+        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
+      f_ext_ff.append(f_ext_using_ff)
+      f_ext_bf.append(f_ext_using_bf)
+      O.e_pot += e_pot_ff
+    O.e_tot = O.e_kin + O.e_pot
+    #
     tau = None
     grav_accn = [0,0,0]
-    O.qdd = featherstone.FDab(
-      model, q, qd, tau, f_ext, grav_accn, f_ext_in_ff=True)
+    qdd_using_f_ext_ff = featherstone.FDab(
+      model, q, qd, tau, f_ext_ff, grav_accn, f_ext_in_ff=True)
+    qdd_using_f_ext_bf = featherstone.FDab(
+      model, q, qd, tau, f_ext_bf, grav_accn, f_ext_in_ff=False)
+    assert approx_equal(qdd_using_f_ext_bf, qdd_using_f_ext_ff)
+    O.qdd = qdd_using_f_ext_ff
+    #
+    X0s = FDab_X0(model, q, qd)
+    e_pot_vfy = check_transformations(O.bodies, model.Ttree, X0s)
+    assert approx_equal(e_pot_vfy, O.e_pot)
 
   def dynamics_step(O, delta_t):
     for B,qdd in zip(O.bodies, O.qdd):
@@ -107,8 +157,77 @@ class revolute_simulation(object):
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
 
-def exercise_revolute_sim(out, mersenne_twister, n_dynamics_steps, delta_t):
-  sim = revolute_simulation(mersenne_twister=mersenne_twister, NB=2)
+def FDab_X0(model, q, qd):
+  Xup = [None] * model.NB
+  X0 = [None] * model.NB
+  for i in xrange(model.NB):
+    XJ, S, S_ring = featherstone.jcalc( model.pitch[i], q[i], qd[i] )
+    Xup[i] = XJ * model.Xtree[i]
+    if model.parent[i] == -1:
+      X0[i] = Xup[i]
+    else:
+      X0[i] = Xup[i] * X0[model.parent[i]]
+  return X0
+
+def FDab_v(model, q, qd):
+  Xup = [None] * model.NB
+  v = [None] * model.NB
+  for i in xrange(model.NB):
+    XJ, S, S_ring = featherstone.jcalc( model.pitch[i], q[i], qd[i] )
+    if (S is None):
+      vJ = qd[i]
+    else:
+      vJ = S*qd[i]
+    Xup[i] = XJ * model.Xtree[i]
+    if model.parent[i] == -1:
+      v[i] = vJ
+    else:
+      v[i] = Xup[i]*v[model.parent[i]] + vJ
+  return v
+
+def check_transformations(bodies, Ttree, X0s):
+  T0s = []
+  for B,Tt,X0 in zip(bodies, Ttree, X0s):
+    Tj = B.J.Tps
+    Tup = Tj * Tt
+    if (B.parent == -1):
+      T0s.append(Tup)
+    else:
+      T0s.append(Tup * T0s[B.parent])
+    X0_from_T0 = joint_lib.T_as_X(T0s[-1])
+    assert approx_equal(X0_from_T0, X0)
+  e_pot = 0
+  AJA_accu = []
+  for B,T0 in zip(bodies, T0s):
+    AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
+    if (B.parent == -1):
+      AJA_tree = None
+      AJA_accu.append(AJA)
+    else:
+      AJA_tree = AJA_accu[B.parent]
+      AJA = AJA_tree * AJA
+      AJA_accu.append(AJA)
+    for s,w in zip(B.sites, B.wells):
+      s_bf = B.A.T0b * s
+      s_mv1 = T0.inverse_assuming_orthogonal_r() * s_bf
+      s_mv2 = AJA * s
+      assert approx_equal(s_mv1, s_mv2)
+      e_pot += (s_mv1 - w).dot()
+  return e_pot
+
+plot_number = [0]
+
+def exercise_revolute_sim(
+      out,
+      mersenne_twister,
+      n_dynamics_steps,
+      delta_t,
+      NB,
+      zickzack):
+  sim = revolute_simulation(
+    mersenne_twister=mersenne_twister,
+    NB=NB,
+    zickzack=zickzack)
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
   for i_step in xrange(n_dynamics_steps):
@@ -131,13 +250,22 @@ def exercise_revolute_sim(out, mersenne_twister, n_dynamics_steps, delta_t):
   print >> out, "relative range:", relative_range
   print >> out
   out.flush()
+  if (1):
+    f = open("tmp%02d.xy" % plot_number[0], "w")
+    for es in [e_pots, e_kins, e_tots]:
+      for e in es:
+        print >> f, e
+      print >> f, "&"
+    f.close()
+    plot_number[0] += 1
   return relative_range
 
 def exercise_revolute(
       out=sys.stdout,
-      n_trials=10,
+      n_trials=3,
       n_dynamics_steps=100,
-      delta_t=0.01):
+      delta_t=0.001,
+      NB=3):
   mersenne_twister = flex.mersenne_twister(seed=0)
   relative_ranges = flex.double()
   for i in xrange(n_trials):
@@ -145,7 +273,9 @@ def exercise_revolute(
       out=out,
       mersenne_twister=mersenne_twister,
       n_dynamics_steps=n_dynamics_steps,
-      delta_t=delta_t))
+      delta_t=delta_t,
+      NB=NB,
+      zickzack=(n_trials == 0)))
   print >> out, "relative ranges:"
   relative_ranges.min_max_mean().show(out=out, prefix="  ")
   print >> out
