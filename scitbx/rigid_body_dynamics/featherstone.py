@@ -240,7 +240,7 @@ def jcalc(pitch, q, qd):
 % the joint angle.  For prismatic joints, q is the linear displacement.
   """
   if (not isinstance(pitch, (int, float, InfType))):
-    return pitch.Xj_S_S_ring(q=q, qd=qd)
+    return pitch.Xj_S(q=q, qd=qd)
   if pitch == 0:                          # revolute joint
     Xj = Xrotz(q)
     S = matrix.col([0,0,1,0,0,0])
@@ -250,7 +250,7 @@ def jcalc(pitch, q, qd):
   else:                                   # helical joint
     Xj = Xrotz(q) * Xtrans([0,0,q*pitch])
     S = matrix.col([0,0,1,0,0,pitch])
-  return Xj, S, None
+  return Xj, S
 
 def grav_accn_as_a_grav(grav_accn):
   if grav_accn is None:
@@ -283,16 +283,13 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
   a = [None] * model.NB
   f = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S[i], S_ring = jcalc( model.pitch[i], q[i], qd[i] )
+    XJ, S[i] = jcalc( model.pitch[i], q[i], qd[i] )
     if (S[i] is None):
       vJ = qd[i]
       aJ = qdd[i]
-      assert S_ring is None
     else:
       vJ = S[i]*qd[i]
       aJ = S[i]*qdd[i]
-      if (S_ring is not None):
-        aJ += S_ring * qd[i]
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
       v[i] = vJ
@@ -341,7 +338,7 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
   IA = [None] * model.NB
   pA = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S[i], S_ring = jcalc( model.pitch[i], q[i], qd[i] )
+    XJ, S[i] = jcalc( model.pitch[i], q[i], qd[i] )
     if (S[i] is None):
       vJ = qd[i]
     else:
@@ -355,8 +352,6 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
       X0[i] = Xup[i] * X0[model.parent[i]]
       v[i] = Xup[i]*v[model.parent[i]] + vJ
       c[i] = crm(v[i]) * vJ
-    if (S_ring is not None):
-      c[i] += S_ring * qd[i]
     IA[i] = model.I[i]
     pA[i] = crf(v[i]) * model.I[i] * v[i]
     if (0): print "X0s fea:", X0[i].inverse().transpose().elems

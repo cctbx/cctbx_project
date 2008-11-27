@@ -162,7 +162,7 @@ def FDab_X0(model, q, qd):
   Xup = [None] * model.NB
   X0 = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S, S_ring = featherstone.jcalc( model.pitch[i], q[i], qd[i] )
+    XJ, S = featherstone.jcalc( model.pitch[i], q[i], qd[i] )
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
       X0[i] = Xup[i]
@@ -174,7 +174,7 @@ def FDab_v(model, q, qd):
   Xup = [None] * model.NB
   v = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S, S_ring = featherstone.jcalc( model.pitch[i], q[i], qd[i] )
+    XJ, S = featherstone.jcalc( model.pitch[i], q[i], qd[i] )
     if (S is None):
       vJ = qd[i]
     else:

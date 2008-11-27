@@ -39,10 +39,9 @@ class six_dof(object):
     O.Tsp = matrix.rt((O.E.transpose(), O.r))
     O.Xj = T_as_X(O.Tps)
     O.S = None
-    O.S_ring = None
 
-  def Xj_S_S_ring(O, q, qd):
-    return O.Xj, O.S, O.S_ring
+  def Xj_S(O, q, qd):
+    return O.Xj, O.S
 
   def time_step_position(O, v_spatial, delta_t):
     w_body_frame, v_body_frame = matrix.col_list([
@@ -87,10 +86,9 @@ class revolute(object):
     O.Tsp = matrix.rt((O.E.transpose(), (0,0,0)))
     O.Xj = T_as_X(O.Tps)
     O.S = matrix.col((0,0,1,0,0,0))
-    O.S_ring = None
 
-  def Xj_S_S_ring(O, q, qd):
-    return O.Xj, O.S, O.S_ring
+  def Xj_S(O, q, qd):
+    return O.Xj, O.S
 
   def time_step_position(O, qd, delta_t):
     new_qE = O.qE + qd * delta_t
