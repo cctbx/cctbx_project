@@ -57,8 +57,8 @@ class random_revolute(object):
 
 class revolute_z(object):
 
-  def __init__(O, pivot):
-    O.sites = [matrix.col((1/3.,0,2/3.))+pivot]
+  def __init__(O, pivot, x=1/3.):
+    O.sites = [matrix.col((x,0,2/3.))+pivot]
     O.A = joint_lib.revolute_alignment(
       pivot=pivot,
       normal=matrix.col((0,0,1)))
@@ -81,14 +81,14 @@ class revolute_x(object):
 
 class revolute_simulation(object):
 
-  def __init__(O, mersenne_twister, NB, zickzack=False):
+  def __init__(O, mersenne_twister, NB, config):
     O.bodies = []
-    if (not zickzack):
+    if (config == "random"):
       for ib in xrange(NB):
         B = random_revolute(mersenne_twister=mersenne_twister)
         B.parent = -1+ib
         O.bodies.append(B)
-    else:
+    elif (config == "zickzack"):
       assert NB <= 3
       B = revolute_z(pivot=matrix.col((0,0,0)))
       B.parent = -1
@@ -101,6 +101,13 @@ class revolute_simulation(object):
         B = revolute_z(pivot=matrix.col((1,0,1)))
         B.parent = 1
         O.bodies.append(B)
+    elif (config == "singular"):
+      assert NB == 1
+      B = revolute_z(pivot=matrix.col((0,0,0)), x=0)
+      B.parent = -1
+      O.bodies.append(B)
+    else:
+      raise RuntimeError
     O.energies_and_accelerations_update()
 
   def energies_and_accelerations_update(O):
@@ -224,11 +231,11 @@ def exercise_revolute_sim(
       n_dynamics_steps,
       delta_t,
       NB,
-      zickzack):
+      config):
   sim = revolute_simulation(
     mersenne_twister=mersenne_twister,
     NB=NB,
-    zickzack=zickzack)
+    config=config)
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
   for i_step in xrange(n_dynamics_steps):
@@ -236,6 +243,7 @@ def exercise_revolute_sim(
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
+  print >> out, "config:", config
   print >> out, "energy samples:", e_tots.size()
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
@@ -244,7 +252,8 @@ def exercise_revolute_sim(
   print >> out, "final e_tot:", e_tots[-1]
   ave = flex.sum(e_tots) / e_tots.size()
   range = flex.max(e_tots) - flex.min(e_tots)
-  relative_range = range / ave
+  if (ave == 0): relative_range = 0
+  else:          relative_range = range / ave
   print >> out, "ave:", ave
   print >> out, "range:", range
   print >> out, "relative range:", relative_range
@@ -263,14 +272,14 @@ def exercise_revolute_sim(
 def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001, NB=3):
   mersenne_twister = flex.mersenne_twister(seed=0)
   relative_ranges = flex.double()
-  for i in xrange(n_trials):
+  for i_trial in xrange(n_trials):
     relative_ranges.append(exercise_revolute_sim(
       out=out,
       mersenne_twister=mersenne_twister,
       n_dynamics_steps=n_dynamics_steps,
       delta_t=delta_t,
-      NB=NB,
-      zickzack=(n_trials == 0)))
+      NB=[1, NB][min(i_trial, 1)],
+      config=["singular", "zickzack", "random"][min(i_trial, 2)]))
   print >> out, "relative ranges:"
   relative_ranges.min_max_mean().show(out=out, prefix="  ")
   if (out is not sys.stdout):
