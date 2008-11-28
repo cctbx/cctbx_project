@@ -25,10 +25,6 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.sim56 = tst_free_motion_hard.five_six_dof_simulation(
       six_dof_type="euler_angles_xyz",
       sim5=self.sim5)
-    self.sim5.qd = matrix.zeros(n=5)
-    self.sim5.energies_and_accelerations_update()
-    self.sim56.qd = matrix.zeros(n=6)
-    self.sim56.energies_and_accelerations_update()
     self.points = flex.vec3_double()
     self.set_points()
     assert self.points.size() == 6

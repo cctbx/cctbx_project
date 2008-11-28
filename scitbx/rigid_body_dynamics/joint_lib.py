@@ -76,12 +76,11 @@ class five_dof_alignment(object):
 class five_dof(object):
 
   def __init__(O, qE, qr, r_is_qr=False):
-    assert len(qE) == 2
     O.qE = qE
     O.qr = qr
     O.r_is_qr = r_is_qr
     #
-    O.E = RBDA_Eq_4_7(q=(0, qE[0], qE[1]))
+    O.E = RBDA_Eq_4_7(q=qE)
     if (r_is_qr):
       O.r = qr
     else:
@@ -104,8 +103,7 @@ class five_dof(object):
   def time_step_position(O, qd, delta_t):
     w_body_frame, v_body_frame = matrix.col_list([
       qd.elems[:2]+(0,), qd.elems[2:]])
-    qEd = matrix.col(
-      (RBDA_Eq_4_8_inv(q=(0, O.qE[0], O.qE[1])) * w_body_frame).elems[1:])
+    qEd = RBDA_Eq_4_8_inv(q=O.qE) * w_body_frame
     if (O.r_is_qr):
       qrd = O.E.transpose() * v_body_frame
     else:
