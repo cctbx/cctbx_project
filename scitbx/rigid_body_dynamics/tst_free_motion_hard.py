@@ -146,10 +146,10 @@ class five_dof_simulation(simulation_mixin):
     #
     O.wells = create_wells(sites=O.sites_F0, mersenne_twister=mersenne_twister)
     #
-    qE = matrix.col((mersenne_twister.random_double(size=2)*2-1)*math.pi/4)
+    qE = matrix.col((mersenne_twister.random_double(size=3)*2-1)*math.pi/4)
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
     if (r_is_qr):
-      qr = joint_lib.RBDA_Eq_4_7(q=(0, qE[0], qE[1])).transpose() * qr
+      qr = joint_lib.RBDA_Eq_4_7(q=qE).transpose() * qr
     O.J = joint_lib.five_dof(qE=qE, qr=qr, r_is_qr=r_is_qr)
     O.qd = matrix.col(mersenne_twister.random_double(size=5)*2-1)
     #
@@ -164,10 +164,8 @@ class five_six_dof_simulation(simulation_mixin):
     #
     O.wells = sim5.wells
     #
-    qE = matrix.col((0,)+sim5.J.qE.elems)
-    qr = sim5.J.qr
-    r_is_qr = sim5.J.r_is_qr
-    O.J = joint_lib.six_dof(type=six_dof_type, qE=qE, qr=qr, r_is_qr=r_is_qr)
+    O.J = joint_lib.six_dof(
+      type=six_dof_type, qE=sim5.J.qE, qr=sim5.J.qr, r_is_qr=sim5.J.r_is_qr)
     #
     O.qd = sim5.J.S * sim5.qd
     #
@@ -326,9 +324,9 @@ def exercise_simulation(out, dof, n_trials, n_dynamics_steps, delta_t=0.001):
     print >> out
   if (out is not sys.stdout):
     for accu in relative_ranges_accu:
-      assert flex.max(accu) < {6:1.e-4, 5:1.e-3}[dof]
+      assert flex.max(accu) < 1.e-4
     for i,accu in enumerate(rms_max_list_accu):
-      assert flex.max(accu) < {6:1.e-4, 5:1.e-2}[dof]
+      assert flex.max(accu) < 1.e-4
 
 def run(args):
   assert len(args) in [0,2]
