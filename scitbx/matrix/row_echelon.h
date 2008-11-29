@@ -1,7 +1,7 @@
-#ifndef SCITBX_SCITBX_MATRIX_ROW_ECHELON_H
-#define SCITBX_SCITBX_MATRIX_ROW_ECHELON_H
+#ifndef SCITBX_MATRIX_ROW_ECHELON_H
+#define SCITBX_MATRIX_ROW_ECHELON_H
 
-#include <algorithm>
+#include <scitbx/matrix/row_echelon_full_pivoting_impl.h>
 #include <scitbx/mat_ref.h>
 #include <scitbx/array_family/small.h>
 #include <scitbx/array_family/tiny.h>
@@ -216,77 +216,46 @@ namespace scitbx { namespace matrix { namespace row_echelon {
                                                      (MaxNRows);
       SCITBX_ASSERT(m_work.accessor()[1] == NCols);
       unsigned n_rows = m_work.accessor()[0];
-      for(unsigned i=0;i<n_rows;i++) row_perm.push_back(i);
-      for(unsigned i=0;i<NCols;i++) col_perm[i] = i;
-      unsigned pr = 0;
-      for(unsigned pc=0;pc<std::min(NCols,n_rows);pc++) {
-        // search for the next pivot value; here "m" is for "max"
-        unsigned mr = pr;
-        unsigned mc = pc;
-        unsigned ir_nc = pr * NCols;
-        NumType mv = m_work[ir_nc+pc];
-        for(unsigned ir=pr;ir<n_rows;ir++,ir_nc+=NCols) {
-          unsigned ir_ic = ir_nc + pc;
-          for(unsigned ic=pc;ic<NCols;ic++) {
-            NumType v = scitbx::fn::absolute(m_work[ir_ic++]);
-            if (mv < v) {
-              mv = v;
-              mr = ir;
-              mc = ic;
-            }
-          }
-        }
-        if (mv > min_abs_pivot && pr < max_rank) {
-          if (mr != pr) swap_rows(m_work.begin(), pr, mr);
-          if (mc != pc) swap_cols(m_work.begin(), pc, mc);
-          // subtract multiple of pivot row from all rows below
-          unsigned ir_nc = pr * NCols;
-          unsigned pr_pc = ir_nc + pc;
-          NumType v = m_work[pr_pc++];
-          ir_nc += NCols;
-          for(unsigned ir=pr+1;ir<n_rows;ir++,ir_nc+=NCols) {
-            unsigned ir_ic = ir_nc + pc;
-            NumType f = m_work[ir_ic] / v;
-            m_work[ir_ic] = 0;
-            ir_ic++;
-            unsigned pr_ic = pr_pc;
-            for(unsigned ic=pc+1;ic<NCols;ic++) {
-              m_work[ir_ic++] -= f*m_work[pr_ic++];
-            }
-          }
-          pr++;
-          pivot_cols.push_back(pc);
-        }
-        else {
-          free_cols.push_back(pc);
-        }
-      }
+      row_perm.resize(n_rows);
+      pivot_cols.resize(NCols);
+      free_cols.resize(NCols);
+      unsigned pivot_cols_size = full_pivoting_impl::reduction(
+        m_work.begin(),
+        n_rows,
+        NCols,
+        min_abs_pivot,
+        max_rank,
+        row_perm.begin(),
+        col_perm.begin(),
+        pivot_cols.begin(),
+        free_cols.begin());
+      pivot_cols.resize(pivot_cols_size);
+      free_cols.resize(NCols - pivot_cols_size);
       // copy result to local memory
       echelon_form.assign(m_work.begin(),
-                          m_work.begin() + row_rank()*NCols);
+                          m_work.begin() + pivot_cols_size*NCols);
     }
 
-    unsigned row_rank() {
-      return pivot_cols.size();
+    unsigned
+    row_rank() const
+    {
+      return static_cast<unsigned>(pivot_cols.size());
     }
 
-    bool is_in_row_span(af::small<NumType, NCols> const& vector,
-                        NumType epsilon) const {
-      af::small<NumType, NCols> v = vector;
-      unsigned pr_pc = 0;
-      for (unsigned i=0; i < pivot_cols.size(); i++) {
-        NumType a = v[col_perm[i]]/echelon_form[pr_pc];
-        if (a != 0) {
-          for (int k=i; k < v.size(); k++) {
-            v[col_perm[k]] -= a*echelon_form[pr_pc++];
-          }
-        }
-        pr_pc += i+1;
-      }
-      for (unsigned i=0; i < v.size(); i++) {
-        if (scitbx::fn::absolute(v[i]) > epsilon) return false;
-      }
-      return true;
+    bool
+    is_in_row_span(
+      af::small<NumType, NCols> vector, // copy
+      NumType const& epsilon) const
+    {
+      SCITBX_ASSERT(vector.size() == NCols);
+      return full_pivoting_impl::is_in_row_span(
+        NCols,
+        echelon_form.begin(),
+        col_perm.begin(),
+        pivot_cols.begin(),
+        static_cast<unsigned>(pivot_cols.size()),
+        vector.begin(),
+        epsilon);
     }
 
     af::tiny<NumType, NCols>
@@ -294,55 +263,22 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     {
       SCITBX_ASSERT(free_values.size() == free_cols.size());
       af::tiny<NumType, NCols> perm_result;
-      for(unsigned i=0;i<free_cols.size();i++) {
-        perm_result[free_cols[i]] = free_values[i];
-      }
-      unsigned rank = pivot_cols.size();
-      for(unsigned ip=0;ip<rank;ip++) {
-        unsigned pr = rank-ip-1;
-        unsigned pc = pivot_cols[pr];
-        unsigned pr_pc = pr * NCols + pc;
-        unsigned pr_ic = pr_pc + 1;
-        NumType s = 0;
-        for(unsigned ic=pc+1;ic<NCols;) {
-          s -= perm_result[ic++] * echelon_form[pr_ic++];
-        }
-        perm_result[pc] = s / echelon_form[pr_pc];
-      }
       af::tiny<NumType, NCols> result;
-      for(unsigned i=0;i<NCols;i++) {
-        result[col_perm[i]] = perm_result[i];
-      }
+      full_pivoting_impl::back_substitution(
+        NCols,
+        echelon_form.begin(),
+        col_perm.begin(),
+        pivot_cols.begin(),
+        static_cast<unsigned>(pivot_cols.size()),
+        free_cols.begin(),
+        static_cast<unsigned>(free_cols.size()),
+        free_values.begin(),
+        perm_result.begin(),
+        result.begin());
       return result;
     }
-
-    protected:
-
-      void
-      swap_rows(NumType* m_work, unsigned i, unsigned j)
-      {
-        unsigned ic = i*NCols;
-        unsigned jc = j*NCols;
-        for(unsigned c=0;c<NCols;c++) {
-          std::swap(m_work[ic++], m_work[jc++]);
-        }
-        std::swap(row_perm[i], row_perm[j]);
-      }
-
-      void
-      swap_cols(NumType* m_work, unsigned i, unsigned j)
-      {
-        unsigned ri = i;
-        unsigned rj = j;
-        for(unsigned r=0;r<row_perm.size();r++) {
-          std::swap(m_work[ri], m_work[rj]);
-          ri += NCols;
-          rj += NCols;
-        }
-        std::swap(col_perm[i], col_perm[j]);
-      }
   };
 
 }}} // namespace scitbx::matrix::row_echelon
 
-#endif // SCITBX_SCITBX_MATRIX_ROW_ECHELON_H
+#endif // include guard
