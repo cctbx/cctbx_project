@@ -45,7 +45,9 @@ class rec(object):
 
   def __mul__(self, other):
     if (not hasattr(other, "elems")):
-      return rec([x * other for x in self.elems], self.n)
+      if (not isinstance(other, (list, tuple))):
+        return rec([x * other for x in self.elems], self.n)
+      other = col(other)
     a = self.elems
     ar = self.n_rows()
     ac = self.n_columns()
@@ -820,6 +822,8 @@ def exercise():
   assert a[1] == 2
   assert (a*3).mathematica_form() == "{{3, 6}, {9, 12}, {15, 18}}"
   assert (-2*a).mathematica_form() == "{{-2, -4}, {-6, -8}, {-10, -12}}"
+  for seq in [(2,-3), [2,-3]]:
+    assert (a*seq).elems == (a*col((2,-3))).elems
   b = rec(range(1,7), (2,3))
   assert a.dot(b) == 91
   assert col((3,4)).dot() == 25
