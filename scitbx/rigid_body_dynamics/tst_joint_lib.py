@@ -120,10 +120,26 @@ class revolute_simulation(object):
     for B,v_spatial in zip(O.bodies, vs):
       O.e_kin += kinetic_energy(I_spatial=B.I, v_spatial=v_spatial)
     #
+    O.e_pot_and_f_ext_update()
+    #
+    tau = None
+    grav_accn = [0,0,0]
+    qdd_using_f_ext_ff = featherstone.FDab(
+      model, q, qd, tau, O.f_ext_ff, grav_accn, f_ext_in_ff=True)
+    qdd_using_f_ext_bf = featherstone.FDab(
+      model, q, qd, tau, O.f_ext_bf, grav_accn, f_ext_in_ff=False)
+    assert approx_equal(qdd_using_f_ext_bf, qdd_using_f_ext_ff)
+    O.qdd = qdd_using_f_ext_ff
+    #
+    X0s = FDab_X0(model, q, qd)
+    e_pot_vfy = check_transformations(O.bodies, model.Ttree, X0s)
+    assert approx_equal(e_pot_vfy, O.e_pot)
+
+  def e_pot_and_f_ext_update(O):
     O.AJA_accu = []
     O.e_pot = 0
-    f_ext_ff = []
-    f_ext_bf = []
+    O.f_ext_ff = []
+    O.f_ext_bf = []
     for B in O.bodies:
       AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
       if (B.parent == -1):
@@ -141,29 +157,45 @@ class revolute_simulation(object):
         sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
       f_ext_using_bf = test_utils.potential_f_ext_bf(
         sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
-      f_ext_ff.append(f_ext_using_ff)
-      f_ext_bf.append(f_ext_using_bf)
+      O.f_ext_ff.append(f_ext_using_ff)
+      O.f_ext_bf.append(f_ext_using_bf)
       O.e_pot += e_pot_ff
     O.e_tot = O.e_kin + O.e_pot
-    #
-    tau = None
-    grav_accn = [0,0,0]
-    qdd_using_f_ext_ff = featherstone.FDab(
-      model, q, qd, tau, f_ext_ff, grav_accn, f_ext_in_ff=True)
-    qdd_using_f_ext_bf = featherstone.FDab(
-      model, q, qd, tau, f_ext_bf, grav_accn, f_ext_in_ff=False)
-    assert approx_equal(qdd_using_f_ext_bf, qdd_using_f_ext_ff)
-    O.qdd = qdd_using_f_ext_ff
-    #
-    X0s = FDab_X0(model, q, qd)
-    e_pot_vfy = check_transformations(O.bodies, model.Ttree, X0s)
-    assert approx_equal(e_pot_vfy, O.e_pot)
 
   def dynamics_step(O, delta_t):
     for B,qdd in zip(O.bodies, O.qdd):
       B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
+
+  def d_pot_d_q(O):
+    model = featherstone_system_model(bodies=O.bodies)
+    q = [None]*len(O.bodies)
+    qd = [matrix.col((0,)) for B in O.bodies]
+    qdd = [matrix.col((0,)) for B in O.bodies]
+    grav_accn = [0,0,0]
+    return featherstone.ID(model, q, qd, qdd, O.f_ext_bf, grav_accn)
+
+  def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
+    result = []
+    for B in O.bodies:
+      fs = []
+      J_orig = B.J
+      for signed_eps in [eps, -eps]:
+        B.J = joint_lib.revolute(qE=matrix.col((J_orig.qE[0]+signed_eps,)))
+        O.e_pot_and_f_ext_update()
+        fs.append(O.e_pot)
+      B.J = J_orig
+      result.append(matrix.col(((fs[0]-fs[1])/(2*eps),)))
+    O.energies_and_accelerations_update()
+    return result
+
+  def check_d_pot_d_q(O):
+    qdd_orig = O.qdd
+    ana = O.d_pot_d_q()
+    fin = O.d_pot_d_q_via_finite_differences()
+    assert approx_equal(ana, fin)
+    assert approx_equal(O.qdd, qdd_orig)
 
 def FDab_X0(model, q, qd):
   Xup = [None] * model.NB
@@ -236,6 +268,7 @@ def exercise_revolute_sim(
     mersenne_twister=mersenne_twister,
     NB=NB,
     config=config)
+  sim.check_d_pot_d_q()
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
   for i_step in xrange(n_dynamics_steps):
@@ -243,6 +276,7 @@ def exercise_revolute_sim(
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
+  sim.check_d_pot_d_q()
   print >> out, "config:", config
   print >> out, "energy samples:", e_tots.size()
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
