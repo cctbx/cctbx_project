@@ -63,6 +63,16 @@ class six_dof(object):
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
 
+  def tau_as_d_pot_d_q(O, tau):
+    if (O.type == "euler_params"):
+      raise RuntimeError("Not implemented.")
+    else:
+      c = RBDA_Eq_4_8(q=O.qE).transpose()
+    n, f = matrix.col_list([tau.elems[:3], tau.elems[3:]])
+    if (O.r_is_qr): result = (c * n, O.E.transpose() * f)
+    else:           result = (c * (n + O.qr.cross(f)), f)
+    return matrix.col(result).resolve_partitions()
+
 class five_dof_alignment(object):
 
   def __init__(O, sites):
@@ -158,6 +168,16 @@ def RBDA_Eq_4_7(q):
               c1*c2,          s1*c2,   -s2,
      c1*s2*s3-s1*c3, s1*s2*s3+c1*c3, c2*s3,
      c1*s2*c3+s1*s3, s1*s2*c3-c1*s3, c2*c3))
+
+def RBDA_Eq_4_8(q):
+  q1,q2,q3 = q
+  def cs(a): return math.cos(a), math.sin(a)
+  c2,s2 = cs(q2)
+  c3,s3 = cs(q3)
+  return matrix.sqr((
+      -s2,   0, 1,
+    c2*s3,  c3, 0,
+    c2*c3, -s3, 0))
 
 def RBDA_Eq_4_8_inv(q):
   """

@@ -107,12 +107,47 @@ class simulation_mixin(object):
     qdd_using_f_ext_bf = featherstone.FDab(
       model, q, qd, tau, [f_ext_bf], grav_accn, f_ext_in_ff=False)
     assert approx_equal(qdd_using_f_ext_bf, qdd_using_f_ext_ff)
+    O.f_ext_bf = f_ext_bf
     O.qdd = qdd_using_f_ext_bf[0]
 
   def dynamics_step(O, delta_t):
     O.qd = O.J.time_step_velocity(qd=O.qd, qdd=O.qdd, delta_t=delta_t)
     O.J = O.J.time_step_position(qd=O.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
+
+  def d_pot_d_q(O):
+    model = featherstone_system_model(I=O.I_spatial, A=O.A, J=O.J)
+    q = [None] # already stored in joint as qE and qr
+    qd = [matrix.zeros(n=6)]
+    qdd = [matrix.zeros(n=6)]
+    grav_accn = [0,0,0]
+    tau = featherstone.ID(model, q, qd, qdd, [O.f_ext_bf], grav_accn)[0]
+    assert approx_equal(tau, -O.f_ext_bf)
+    return O.J.tau_as_d_pot_d_q(tau=tau)
+
+  def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
+    result = []
+    for q in [O.J.qE, O.J.qr]:
+      for i in xrange(len(q)):
+        fs = []
+        for signed_eps in [eps, -eps]:
+          q_eps = list(q)
+          q_eps[i] += signed_eps
+          q_eps = matrix.col(q_eps)
+          if (q is O.J.qE): qE = q_eps; qr=O.J.qr
+          else:             qE = O.J.qE; qr=q_eps
+          J = joint_lib.six_dof(
+            type=O.J.type, qE=qE, qr=qr, r_is_qr=O.J.r_is_qr)
+          e_pot = test_utils.potential_energy(
+            sites=O.sites_F0, wells=O.wells, A=O.A, J=J)
+          fs.append(e_pot)
+        result.append((fs[0]-fs[1])/(2*eps))
+    return matrix.col(result)
+
+  def check_d_pot_d_q(O):
+    ana = O.d_pot_d_q()
+    fin = O.d_pot_d_q_via_finite_differences()
+    assert approx_equal(ana, fin)
 
 class six_dof_simulation(simulation_mixin):
 
@@ -205,6 +240,8 @@ def run_simulation(
       mersenne_twister=mersenne_twister)
     sim_label = 'six_dof(type="%s", r_is_qr=%%s)' % six_dof_type
   sim_label %= str(sim.J.r_is_qr)
+  if (six_dof_type == "euler_angles_xyz"):
+    sim.check_d_pot_d_q()
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
@@ -214,6 +251,8 @@ def run_simulation(
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
+  if (six_dof_type == "euler_angles_xyz"):
+    sim.check_d_pot_d_q()
   print >> out, sim_label
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
