@@ -1,7 +1,7 @@
 #ifndef SCITBX_MATH_R3_ROTATION_H
 #define SCITBX_MATH_R3_ROTATION_H
 
-#include <scitbx/matrix/row_echelon.h>
+#include <scitbx/matrix/row_echelon_full_pivoting_small.h>
 #include <scitbx/mat3.h>
 #include <scitbx/constants.h>
 

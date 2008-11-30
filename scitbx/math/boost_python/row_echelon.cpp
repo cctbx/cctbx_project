@@ -1,6 +1,7 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/matrix/row_echelon.h>
+#include <scitbx/matrix/row_echelon_full_pivoting_small.h>
 #include <scitbx/matrix/row_echelon_full_pivoting.h>
 #include <scitbx/array_family/versa.h>
 #include <boost/python/class.hpp>
