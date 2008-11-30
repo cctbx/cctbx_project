@@ -20,19 +20,19 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     full_pivoting_small() {}
 
     full_pivoting_small(
-      af::ref<NumType, af::c_grid<2> > const& m_work,
+      af::ref<NumType, af::c_grid<2> > const& matrix,
       NumType const& min_abs_pivot=0,
       unsigned max_rank=NCols)
     {
-      SCITBX_ASSERT(m_work.accessor()[0] <= MaxNRows)(m_work.accessor()[0])
+      SCITBX_ASSERT(matrix.accessor()[0] <= MaxNRows)(matrix.accessor()[0])
                                                      (MaxNRows);
-      SCITBX_ASSERT(m_work.accessor()[1] == NCols);
-      unsigned n_rows = m_work.accessor()[0];
+      SCITBX_ASSERT(matrix.accessor()[1] == NCols);
+      unsigned n_rows = matrix.accessor()[0];
       row_perm.resize(n_rows);
       pivot_cols.resize(NCols);
       free_cols.resize(NCols);
       unsigned pivot_cols_size = full_pivoting_impl::reduction(
-        m_work.begin(),
+        matrix.begin(),
         n_rows,
         NCols,
         min_abs_pivot,
@@ -44,8 +44,8 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       pivot_cols.resize(pivot_cols_size);
       free_cols.resize(NCols - pivot_cols_size);
       // copy result to local memory
-      echelon_form.assign(m_work.begin(),
-                          m_work.begin() + pivot_cols_size*NCols);
+      echelon_form.assign(matrix.begin(),
+                          matrix.begin() + pivot_cols_size*NCols);
     }
 
     unsigned

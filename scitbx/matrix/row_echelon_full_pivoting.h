@@ -20,11 +20,11 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     full_pivoting() {}
 
     full_pivoting(
-      af::versa<NumType, af::flex_grid<> >& m_work,
+      af::versa<NumType, af::flex_grid<> >& matrix,
       NumType const& min_abs_pivot=0,
       int max_rank=-1)
     {
-      af::c_grid<2> c_grid(m_work.accessor());
+      af::c_grid<2> c_grid(matrix.accessor());
       unsigned n_rows = static_cast<unsigned>(c_grid[0]);
       unsigned n_cols = static_cast<unsigned>(c_grid[1]);
       row_perm.resize(n_rows);
@@ -32,7 +32,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       pivot_cols.resize(n_cols);
       free_cols.resize(n_cols);
       unsigned pivot_cols_size = full_pivoting_impl::reduction(
-        m_work.begin(),
+        matrix.begin(),
         n_rows,
         n_cols,
         min_abs_pivot,
@@ -44,9 +44,9 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       pivot_cols.resize(pivot_cols_size);
       free_cols.resize(n_cols - pivot_cols_size);
       c_grid = af::c_grid<2>(pivot_cols_size, n_cols);
-      m_work.resize(c_grid.as_flex_grid());
+      matrix.resize(c_grid.as_flex_grid());
       echelon_form = af::versa<double, af::c_grid<2> >(
-        m_work.handle(), c_grid);
+        matrix.handle(), c_grid);
     }
 
     unsigned
