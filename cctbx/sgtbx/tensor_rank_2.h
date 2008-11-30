@@ -4,6 +4,7 @@
 #include <cctbx/sgtbx/space_group.h>
 #include <scitbx/matrix/delta_tensors.h>
 #include <scitbx/matrix/row_echelon.h>
+#include <scitbx/matrix/row_echelon_full_pivoting_small.h>
 #include <boost/shared_array.hpp>
 
 namespace cctbx { namespace sgtbx {
