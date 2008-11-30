@@ -928,36 +928,60 @@ def exercise_row_echelon():
         zeros = mm * matrix.col(sol)
         assert approx_equal(zeros, [0]*rank)
 
-def exercise_full_pivoting():
+def exercise_full_pivoting_core(full_pivoting_type, check_m_size, v_type):
   m = flex.double(( 1,  2,  3,  4,  5,  6,
                    -1, -3,  1,  2, -1,  3,
                     2,  1, -1,  3,  4,  2))
   m.resize(flex.grid(3,6))
+  m_inp = matrix.rec(m, m.all())
   v = [0]*6
   for j in xrange(6):
     for i in xrange(3):
       v[j] += m[i,j]
-  echelon = scitbx.math.full_pivoting_6_x_6(m)
+  echelon = full_pivoting_type(matrix=m)
   assert echelon.row_rank() == 3
+  if (check_m_size): assert m.all() == (3,6)
   # Is v in the vector space spanned by the rows of m?
-  assert echelon.is_in_row_span(tuple(v), epsilon=1e-15)
+  assert echelon.is_in_row_span(v_type(v), epsilon=1e-15)
   # After that modification, v should not be in that span anymore
   v[2] += 1e-8
-  assert not echelon.is_in_row_span(tuple(v), epsilon=1e-15)
+  assert not echelon.is_in_row_span(vector=v_type(v), epsilon=1e-15)
+  assert list(echelon.free_cols) == [3,4,5]
+  s = echelon.back_substitution(free_values=v_type([1,2,3]))
+  assert approx_equal(s, [
+    3.0, -0.42857142857142849, 2.0,
+    1.0, -1.0816326530612246, -1.1224489795918366])
+  assert approx_equal(m_inp * matrix.col(s), [0,0,0])
   # Let's test with a row rank deficient matrix m now
   m = flex.double(( 1,  2,  3,  4,  5,  6,
                    -1, -3,  1,  2, -1,  3,
-                    0,  0, 0,  0,  0,  0))
+                    2,  1,  7, 10,  9, 15))
   m.resize(flex.grid(3,6))
+  m_inp = matrix.rec(m, m.all())
   v = [0]*6
   for j in xrange(6):
     m[2,j] =   m[1,j] + 2*m[0,j]
     v[j]   = 2*m[1,j] +   m[0,j]
-  echelon = scitbx.math.full_pivoting_6_x_6(m, 1e-15)
+  echelon = full_pivoting_type(matrix=m, min_abs_pivot=1e-15)
   assert echelon.row_rank() == 2
-  assert echelon.is_in_row_span(tuple(v), epsilon=1e-15)
+  if (check_m_size): assert m.all() == (2,6)
+  assert echelon.is_in_row_span(vector=v_type(v), epsilon=1e-15)
   v[4] += 1e-9
-  assert not echelon.is_in_row_span(tuple(v), epsilon=1e-15)
+  assert not echelon.is_in_row_span(vector=v_type(v), epsilon=1e-15)
+  assert list(echelon.free_cols) == [2,3,4,5]
+  s = echelon.back_substitution(free_values=v_type([-3,1,4,-2]))
+  assert approx_equal(s, [-2.0, -2.3749999999999991, -3.0, 1.0, 4.0, -1.375])
+  assert approx_equal(m_inp * matrix.col(s), [0,0,-2])
+
+def exercise_full_pivoting():
+  exercise_full_pivoting_core(
+    full_pivoting_type=scitbx.math.full_pivoting_6_x_6,
+    check_m_size=False,
+    v_type=tuple)
+  exercise_full_pivoting_core(
+    full_pivoting_type=scitbx.math.full_pivoting,
+    check_m_size=True,
+    v_type=flex.double)
 
 def exercise_tensor_rank_2():
   g = (2,3,5,0.2,0.3,0.5)
