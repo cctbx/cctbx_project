@@ -14,8 +14,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     af::versa<NumType, af::c_grid<2> > echelon_form;
     af::shared<unsigned> row_perm;
     af::shared<unsigned> col_perm;
-    af::shared<unsigned> pivot_cols;
-    af::shared<unsigned> free_cols;
+    unsigned n_pivots;
 
     full_pivoting() {}
 
@@ -29,28 +28,28 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       unsigned n_cols = static_cast<unsigned>(c_grid[1]);
       row_perm.resize(n_rows);
       col_perm.resize(n_cols);
-      pivot_cols.resize(n_cols);
-      free_cols.resize(n_cols);
-      unsigned pivot_cols_size = full_pivoting_impl::reduction(
+      n_pivots = full_pivoting_impl::reduction(
         matrix.begin(),
         n_rows,
         n_cols,
         min_abs_pivot,
         (max_rank < 0 ? n_cols : static_cast<unsigned>(max_rank)),
         row_perm.begin(),
-        col_perm.begin(),
-        pivot_cols.begin(),
-        free_cols.begin());
-      pivot_cols.resize(pivot_cols_size);
-      free_cols.resize(n_cols - pivot_cols_size);
-      c_grid = af::c_grid<2>(pivot_cols_size, n_cols);
+        col_perm.begin());
+      c_grid = af::c_grid<2>(n_pivots, n_cols);
       matrix.resize(c_grid.as_flex_grid());
       echelon_form = af::versa<double, af::c_grid<2> >(
         matrix.handle(), c_grid);
     }
 
     unsigned
-    row_rank() const { return static_cast<unsigned>(pivot_cols.size()); }
+    rank() const { return n_pivots; }
+
+    unsigned
+    nullity() const
+    {
+      return static_cast<unsigned>(col_perm.size()) - n_pivots;
+    }
 
     bool
     is_in_row_span(
@@ -63,8 +62,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
         static_cast<unsigned>(col_perm.size()),
         echelon_form.begin(),
         col_perm.begin(),
-        pivot_cols.begin(),
-        static_cast<unsigned>(pivot_cols.size()),
+        n_pivots,
         vector_copy.begin(),
         epsilon);
     }
@@ -72,17 +70,14 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     af::shared<NumType>
     back_substitution(af::const_ref<NumType> const& free_values) const
     {
-      SCITBX_ASSERT(free_values.size() == free_cols.size());
+      SCITBX_ASSERT(free_values.size() == nullity());
       af::shared<NumType> perm_result(col_perm.size());
       af::shared<NumType> result(col_perm.size());
       full_pivoting_impl::back_substitution(
         static_cast<unsigned>(col_perm.size()),
         echelon_form.begin(),
         col_perm.begin(),
-        pivot_cols.begin(),
-        static_cast<unsigned>(pivot_cols.size()),
-        free_cols.begin(),
-        static_cast<unsigned>(free_cols.size()),
+        n_pivots,
         free_values.begin(),
         perm_result.begin(),
         result.begin());

@@ -126,11 +126,11 @@ namespace {
         )))
         .def("back_substitution", &wt::back_substitution,
              arg_("free_values"))
-        .def("row_rank", &wt::row_rank)
+        .def("rank", &wt::rank)
+        .def("nullity", &wt::nullity)
         .def("is_in_row_span", &wt::is_in_row_span, (
              arg_("vector"),
              arg_("epsilon")))
-        .add_property("free_cols", make_getter(&wt::free_cols, rbv()))
       ;
     }
   };
@@ -153,11 +153,11 @@ namespace {
         )))
         .def("back_substitution", &wt::back_substitution,
              arg_("free_values"))
-        .def("row_rank", &wt::row_rank)
+        .def("rank", &wt::rank)
+        .def("nullity", &wt::nullity)
         .def("is_in_row_span", &wt::is_in_row_span, (
              arg_("vector"),
              arg_("epsilon")))
-        .add_property("free_cols", make_getter(&wt::free_cols, rbv()))
       ;
     }
   };

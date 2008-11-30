@@ -52,15 +52,14 @@ namespace full_pivoting_impl
     NumType const& min_abs_pivot,
     unsigned max_rank,
     unsigned* row_perm, // n_rows
-    unsigned* col_perm, // n_cols
-    unsigned* pivot_cols, // n_cols
-    unsigned* free_cols) // n_cols
+    unsigned* col_perm) // n_cols
   {
     for(unsigned i=0;i<n_rows;i++) row_perm[i] = i;
     for(unsigned i=0;i<n_cols;i++) col_perm[i] = i;
     unsigned min_n_cols_n_rows = std::min(n_cols, n_rows);
     unsigned pr = 0;
-    for(unsigned pc=0;pc<min_n_cols_n_rows;pc++) {
+    unsigned pc = 0;
+    for(;pc<min_n_cols_n_rows;pc++) {
       // search for the next pivot value; here "m" is for "max"
       unsigned mr = pr;
       unsigned mc = pc;
@@ -96,15 +95,11 @@ namespace full_pivoting_impl
             matrix[ir_ic++] -= f*matrix[pr_ic++];
           }
         }
-        pivot_cols[pr] = pc;
         pr++;
       }
       else {
-        free_cols[pc-pr] = pc;
+        break;
       }
-    }
-    for(unsigned pc=min_n_cols_n_rows;pc<n_cols;pc++) {
-      free_cols[pc-pr] = pc;
     }
     return pr;
   }
@@ -115,13 +110,12 @@ namespace full_pivoting_impl
     unsigned n_cols,
     const NumType* echelon_form,
     const unsigned* col_perm, // n_cols
-    const unsigned* pivot_cols,
-    unsigned pivot_cols_size,
+    unsigned n_pivots,
     NumType* vector,
     NumType const& epsilon)
   {
     unsigned pr_pc = 0;
-    for (unsigned i=0; i < pivot_cols_size; i++) {
+    for (unsigned i=0; i < n_pivots; i++) {
       NumType a = vector[col_perm[i]] / echelon_form[pr_pc];
       if (a != 0) {
         for (int k=i; k < n_cols; k++) {
@@ -143,20 +137,17 @@ namespace full_pivoting_impl
     unsigned n_cols,
     const NumType* echelon_form,
     const unsigned* col_perm, // n_cols
-    const unsigned* pivot_cols,
-    unsigned pivot_cols_size,
-    const unsigned* free_cols,
-    unsigned free_cols_size,
+    unsigned n_pivots,
     const NumType* free_values,
     NumType* perm_result, // n_cols, scratch space
     NumType* result) // n_cols
   {
-    for(unsigned i=0;i<free_cols_size;i++) {
-      perm_result[free_cols[i]] = free_values[i];
+    for(unsigned i=0;i<n_cols-n_pivots;i++) {
+      perm_result[n_pivots+i] = free_values[i];
     }
-    for(unsigned ip=0;ip<pivot_cols_size;ip++) {
-      unsigned pr = pivot_cols_size-ip-1;
-      unsigned pc = pivot_cols[pr];
+    for(unsigned ip=0;ip<n_pivots;ip++) {
+      unsigned pr = n_pivots-ip-1;
+      unsigned pc = pr;
       unsigned pr_pc = pr * n_cols + pc;
       unsigned pr_ic = pr_pc + 1;
       NumType s = 0;
