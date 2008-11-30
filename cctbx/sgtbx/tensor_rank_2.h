@@ -316,7 +316,7 @@ namespace tensor_rank_2 {
         scitbx::matrix::row_echelon::
           full_pivoting_small<T, max_n_a_rows, n_all_params>
           r_e(a_, pivot_zero_attractor);
-        n_independent_params = r_e.free_cols.size();
+        n_independent_params = r_e.nullity();
         af::small<T, n_all_params> x_N(n_independent_params, 0);
         z_ = boost::shared_array<T>(new T[n_all_params * n_independent_params]);
         z = scitbx::mat_ref<T>(z_.get(), n_all_params, n_independent_params);

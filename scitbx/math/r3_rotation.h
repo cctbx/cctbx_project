@@ -157,7 +157,7 @@ namespace scitbx { namespace math {
           /*min_abs_pivot*/ 0,
           /*max_rank*/ 2);
       axis = row_echelon_form.back_substitution(
-        af::small<double, 3>(row_echelon_form.free_cols.size(), 1));
+        af::small<double, 3>(row_echelon_form.nullity(), 1));
       FloatType& u = axis[0];
       FloatType& v = axis[1];
       FloatType& w = axis[2];

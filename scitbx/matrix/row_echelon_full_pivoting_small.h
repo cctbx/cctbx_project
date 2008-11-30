@@ -14,8 +14,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     af::small<NumType, NCols*NCols> echelon_form;
     af::small<unsigned, MaxNRows> row_perm;
     af::tiny<unsigned, NCols> col_perm;
-    af::small<unsigned, NCols> pivot_cols;
-    af::small<unsigned, NCols> free_cols;
+    unsigned n_pivots;
 
     full_pivoting_small() {}
 
@@ -29,30 +28,24 @@ namespace scitbx { namespace matrix { namespace row_echelon {
       SCITBX_ASSERT(matrix.accessor()[1] == NCols);
       unsigned n_rows = matrix.accessor()[0];
       row_perm.resize(n_rows);
-      pivot_cols.resize(NCols);
-      free_cols.resize(NCols);
-      unsigned pivot_cols_size = full_pivoting_impl::reduction(
+      n_pivots = full_pivoting_impl::reduction(
         matrix.begin(),
         n_rows,
         NCols,
         min_abs_pivot,
         max_rank,
         row_perm.begin(),
-        col_perm.begin(),
-        pivot_cols.begin(),
-        free_cols.begin());
-      pivot_cols.resize(pivot_cols_size);
-      free_cols.resize(NCols - pivot_cols_size);
+        col_perm.begin());
       // copy result to local memory
       echelon_form.assign(matrix.begin(),
-                          matrix.begin() + pivot_cols_size*NCols);
+                          matrix.begin() + n_pivots*NCols);
     }
 
     unsigned
-    row_rank() const
-    {
-      return static_cast<unsigned>(pivot_cols.size());
-    }
+    rank() const { return n_pivots; }
+
+    unsigned
+    nullity() const { return NCols - n_pivots; }
 
     bool
     is_in_row_span(
@@ -64,8 +57,7 @@ namespace scitbx { namespace matrix { namespace row_echelon {
         NCols,
         echelon_form.begin(),
         col_perm.begin(),
-        pivot_cols.begin(),
-        static_cast<unsigned>(pivot_cols.size()),
+        n_pivots,
         vector.begin(),
         epsilon);
     }
@@ -73,17 +65,14 @@ namespace scitbx { namespace matrix { namespace row_echelon {
     af::tiny<NumType, NCols>
     back_substitution(af::small<NumType, NCols> const& free_values) const
     {
-      SCITBX_ASSERT(free_values.size() == free_cols.size());
+      SCITBX_ASSERT(free_values.size() == nullity());
       af::tiny<NumType, NCols> perm_result;
       af::tiny<NumType, NCols> result;
       full_pivoting_impl::back_substitution(
         NCols,
         echelon_form.begin(),
         col_perm.begin(),
-        pivot_cols.begin(),
-        static_cast<unsigned>(pivot_cols.size()),
-        free_cols.begin(),
-        static_cast<unsigned>(free_cols.size()),
+        n_pivots,
         free_values.begin(),
         perm_result.begin(),
         result.begin());

@@ -939,14 +939,14 @@ def exercise_full_pivoting_core(full_pivoting_type, check_m_size, v_type):
     for i in xrange(3):
       v[j] += m[i,j]
   echelon = full_pivoting_type(matrix=m)
-  assert echelon.row_rank() == 3
+  assert echelon.rank() == 3
+  assert echelon.nullity() == 3
   if (check_m_size): assert m.all() == (3,6)
   # Is v in the vector space spanned by the rows of m?
   assert echelon.is_in_row_span(v_type(v), epsilon=1e-15)
   # After that modification, v should not be in that span anymore
   v[2] += 1e-8
   assert not echelon.is_in_row_span(vector=v_type(v), epsilon=1e-15)
-  assert list(echelon.free_cols) == [3,4,5]
   s = echelon.back_substitution(free_values=v_type([1,2,3]))
   assert approx_equal(s, [
     3.0, -0.42857142857142849, 2.0,
@@ -963,12 +963,12 @@ def exercise_full_pivoting_core(full_pivoting_type, check_m_size, v_type):
     m[2,j] =   m[1,j] + 2*m[0,j]
     v[j]   = 2*m[1,j] +   m[0,j]
   echelon = full_pivoting_type(matrix=m, min_abs_pivot=1e-15)
-  assert echelon.row_rank() == 2
+  assert echelon.rank() == 2
+  assert echelon.nullity() == 4
   if (check_m_size): assert m.all() == (2,6)
   assert echelon.is_in_row_span(vector=v_type(v), epsilon=1e-15)
   v[4] += 1e-9
   assert not echelon.is_in_row_span(vector=v_type(v), epsilon=1e-15)
-  assert list(echelon.free_cols) == [2,3,4,5]
   s = echelon.back_substitution(free_values=v_type([-3,1,4,-2]))
   assert approx_equal(s, [-2.0, -2.3749999999999991, -3.0, 1.0, 4.0, -1.375])
   assert approx_equal(m_inp * matrix.col(s), [0,0,-2])
