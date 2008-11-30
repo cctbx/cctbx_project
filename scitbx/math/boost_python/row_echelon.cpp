@@ -1,7 +1,6 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/matrix/row_echelon.h>
-#include <scitbx/matrix/row_echelon_full_pivoting_small.h>
 #include <scitbx/matrix/row_echelon_full_pivoting.h>
 #include <scitbx/array_family/versa.h>
 #include <boost/python/class.hpp>
@@ -107,34 +106,6 @@ namespace {
       row_echelon_back_substitution_float);
   }
 
-  template <unsigned NCols>
-  struct full_pivoting_small_wrapper
-  {
-    typedef row_echelon::full_pivoting_small<double, NCols, NCols> wt;
-
-    static void wrap(char *name)
-    {
-      using namespace boost::python;
-      typedef return_value_policy<return_by_value> rbv;
-      class_<wt>(name, no_init)
-        .def(init<af::ref<double, af::c_grid<2> > const&,
-                  double const&,
-                  unsigned>((
-            arg_("matrix"),
-            arg_("min_abs_pivot")=0,
-            arg_("max_rank")=NCols
-        )))
-        .def("back_substitution", &wt::back_substitution,
-             arg_("free_values"))
-        .def("rank", &wt::rank)
-        .def("nullity", &wt::nullity)
-        .def("is_in_row_span", &wt::is_in_row_span, (
-             arg_("vector"),
-             arg_("epsilon")))
-      ;
-    }
-  };
-
   struct full_pivoting_wrapper
   {
     typedef row_echelon::full_pivoting<double> wt;
@@ -143,7 +114,7 @@ namespace {
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
-      class_<wt>("full_pivoting", no_init)
+      class_<wt>("row_echelon_full_pivoting", no_init)
         .def(init<af::versa<double, af::flex_grid<> >&,
                   double const&,
                   int>((
@@ -169,10 +140,6 @@ namespace math { namespace boost_python {
   void wrap_row_echelon()
   {
     matrix::boost_python::wrap_row_echelon();
-    matrix::boost_python::full_pivoting_small_wrapper<3>
-      ::wrap("full_pivoting_3_x_3");
-    matrix::boost_python::full_pivoting_small_wrapper<6>
-      ::wrap("full_pivoting_6_x_6");
     matrix::boost_python::full_pivoting_wrapper::wrap();
   }
 
