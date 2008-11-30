@@ -1,7 +1,7 @@
 from cctbx import adptbx
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
-from scitbx.math import full_pivoting_6_x_6
+from scitbx.math import full_pivoting
 from scitbx.array_family import flex
 import random
 import sys
@@ -43,11 +43,12 @@ def exercise_through_space_group(flags, space_group_info):
   u_cart_basis_bis = [ adptbx.u_star_as_u_cart(unit_cell, u)
                        for u in u_star_basis ]
   work = flex.double(u_cart_basis)
-  u_cart_basis_echelon = full_pivoting_6_x_6(work, 1e-9)
+  u_cart_basis_echelon = full_pivoting(matrix=work, min_abs_pivot=1e-9)
   # the vector subspaces spanned respectively by u_cart_basis and
   # by u_cart_basis_bis should be equal
   for u in u_cart_basis_bis:
-    assert u_cart_basis_echelon.is_in_row_span(u, 1e-9)
+    assert u_cart_basis_echelon.is_in_row_span(
+      vector=flex.double(u), epsilon=1e-9)
 
   """ Test the independent gradient computation """
   eps = 1e-4
@@ -96,7 +97,6 @@ def run():
   exercise_through_site_symmetry()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:],
                                               exercise_through_space_group)
-  print 'OK'
 
 if (__name__ == "__main__"):
   run()
