@@ -103,6 +103,9 @@ namespace full_pivoting_impl
         free_cols[pc-pr] = pc;
       }
     }
+    for(unsigned pc=min_n_cols_n_rows;pc<n_cols;pc++) {
+      free_cols[pc-pr] = pc;
+    }
     return pr;
   }
 
