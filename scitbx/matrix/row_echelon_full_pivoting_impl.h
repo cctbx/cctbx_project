@@ -118,11 +118,14 @@ namespace full_pivoting_impl
     for (unsigned i=0; i < n_pivots; i++) {
       NumType a = vector[col_perm[i]] / echelon_form[pr_pc];
       if (a != 0) {
-        for (int k=i; k < n_cols; k++) {
+        for (unsigned k=i; k < n_cols; k++) {
           vector[col_perm[k]] -= a * echelon_form[pr_pc++];
         }
+        pr_pc += i+1;
       }
-      pr_pc += i+1;
+      else {
+        pr_pc += n_cols+1;
+      }
     }
     for (unsigned i=0; i < n_cols; i++) {
       if (vector[i] > epsilon) return false;
