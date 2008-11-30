@@ -32,6 +32,10 @@ namespace {
   {
     using namespace boost::python;
     typedef return_internal_reference<> rir;
+    if (   boost::python::type_id<unsigned>()
+        != boost::python::type_id<std::size_t>()) {
+      shared_wrapper<unsigned>::wrap("unsigned");
+    }
     shared_wrapper<std::vector<unsigned>, rir>::wrap("stl_vector_unsigned");
     shared_wrapper<std::vector<double>, rir>::wrap("stl_vector_double");
     shared_wrapper<std::set<unsigned>, rir>::wrap("stl_set_unsigned")

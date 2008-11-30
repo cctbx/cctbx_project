@@ -1,9 +1,12 @@
 #include <scitbx/array_family/boost_python/flex_fwd.h>
 
 #include <scitbx/matrix/row_echelon.h>
+#include <scitbx/matrix/row_echelon_full_pivoting.h>
 #include <scitbx/array_family/versa.h>
 #include <boost/python/class.hpp>
 #include <boost/python/def.hpp>
+#include <boost/python/return_value_policy.hpp>
+#include <boost/python/return_by_value.hpp>
 
 namespace scitbx { namespace matrix { namespace boost_python {
 
@@ -111,6 +114,7 @@ namespace {
     static void wrap(char *name)
     {
       using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
       class_<wt>(name, no_init)
         .def(init<af::ref<double, af::c_grid<2> > const&,
                   double const&,
@@ -125,10 +129,37 @@ namespace {
         .def("is_in_row_span", &wt::is_in_row_span, (
              arg_("vector"),
              arg_("epsilon")))
+        .add_property("free_cols", make_getter(&wt::free_cols, rbv()))
       ;
     }
   };
 
+  struct full_pivoting_wrapper
+  {
+    typedef row_echelon::full_pivoting<double> wt;
+
+    static void wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<wt>("full_pivoting", no_init)
+        .def(init<af::versa<double, af::flex_grid<> >&,
+                  double const&,
+                  int>((
+            arg_("matrix"),
+            arg_("min_abs_pivot")=0,
+            arg_("max_rank")=-1
+        )))
+        .def("back_substitution", &wt::back_substitution,
+             arg_("free_values"))
+        .def("row_rank", &wt::row_rank)
+        .def("is_in_row_span", &wt::is_in_row_span, (
+             arg_("vector"),
+             arg_("epsilon")))
+        .add_property("free_cols", make_getter(&wt::free_cols, rbv()))
+      ;
+    }
+  };
 
 }}} // namespace matrix::boost_python::<anonymous>
 
@@ -141,6 +172,7 @@ namespace math { namespace boost_python {
       ::wrap("full_pivoting_3_x_3");
     matrix::boost_python::full_pivoting_small_wrapper<6>
       ::wrap("full_pivoting_6_x_6");
+    matrix::boost_python::full_pivoting_wrapper::wrap();
   }
 
 }}} // namespace scitbx::math::boost_python
