@@ -929,50 +929,144 @@ def exercise_row_echelon():
         assert approx_equal(zeros, [0]*rank)
 
 def exercise_row_echelon_full_pivoting():
-  m = flex.double(( 1,  2,  3,  4,  5,  6,
-                   -1, -3,  1,  2, -1,  3,
-                    2,  1, -1,  3,  4,  2))
-  m.resize(flex.grid(3,6))
+  refp = scitbx.math.row_echelon_full_pivoting
+  #
+  m = flex.double([
+    [ 1,  2,  3,  4,  5,  6],
+    [-1, -3,  1,  2, -1,  3],
+    [ 2,  1, -1,  3,  4,  2]])
   m_inp = matrix.rec(m, m.all())
   v = [0]*6
   for j in xrange(6):
     for i in xrange(3):
       v[j] += m[i,j]
-  echelon = scitbx.math.row_echelon_full_pivoting(matrix=m)
-  assert echelon.rank() == 3
-  assert echelon.nullity() == 3
+  e = refp(a_work=m)
+  assert list(e.col_perm) == [5, 1, 4, 3, 2, 0]
+  assert e.rank == 3
+  assert e.nullity == 3
   assert m.all() == (3,6)
   # Is v in the vector space spanned by the rows of m?
-  assert echelon.is_in_row_span(flex.double(v), epsilon=1e-15)
+  assert e.is_in_row_space(x=flex.double(v), epsilon=1e-15)
   # After that modification, v should not be in that span anymore
   v[2] += 1e-8
-  assert not echelon.is_in_row_span(vector=flex.double(v), epsilon=1e-15)
-  s = echelon.back_substitution(free_values=flex.double([1,2,3]))
+  assert not e.is_in_row_space(x=flex.double(v), epsilon=1e-15)
+  s = e.back_substitution(free_values=flex.double([1,2,3]))
   assert approx_equal(s, [
     3.0, -0.42857142857142849, 2.0,
     1.0, -1.0816326530612246, -1.1224489795918366])
   assert approx_equal(m_inp * matrix.col(s), [0,0,0])
+  #
   # Let's test with a row rank deficient matrix m now
-  m = flex.double(( 1,  2,  3,  4,  5,  6,
-                   -1, -3,  1,  2, -1,  3,
-                    2,  1,  7, 10,  9, 15))
-  m.resize(flex.grid(3,6))
+  m = flex.double([
+    [ 1,  2,  3,  4,  5,  6],
+    [-1, -3,  1,  2, -1,  3],
+    [ 2,  1,  7, 10,  9, 15]])
   m_inp = matrix.rec(m, m.all())
   v = [0]*6
   for j in xrange(6):
     m[2,j] =   m[1,j] + 2*m[0,j]
     v[j]   = 2*m[1,j] +   m[0,j]
-  echelon = scitbx.math.row_echelon_full_pivoting(
-    matrix=m, min_abs_pivot=1e-15)
-  assert echelon.rank() == 2
-  assert echelon.nullity() == 4
-  assert m.all() == (2,6)
-  assert echelon.is_in_row_span(vector=flex.double(v), epsilon=1e-15)
+  e = refp(a_work=m, min_abs_pivot=1e-15)
+  assert list(e.col_perm) == [5, 1, 2, 3, 4, 0]
+  assert e.rank == 2
+  assert e.nullity == 4
+  assert e.is_in_row_space(x=flex.double(v), epsilon=1e-15)
   v[4] += 1e-9
-  assert not echelon.is_in_row_span(vector=flex.double(v), epsilon=1e-15)
-  s = echelon.back_substitution(free_values=flex.double([-3,1,4,-2]))
+  assert not e.is_in_row_space(x=flex.double(v), epsilon=1e-15)
+  s = e.back_substitution(free_values=flex.double([-3,1,4,-2]))
   assert approx_equal(s, [-2.0, -2.3749999999999991, -3.0, 1.0, 4.0, -1.375])
   assert approx_equal(m_inp * matrix.col(s), [0,0,-2])
+  #
+  try: refp(a_work=flex.double())
+  except RuntimeError, e:
+    assert str(e) == "a_work matrix must be two-dimensional."
+  else: raise Exception_expected
+  for v in [0,1,-1]:
+    for nr in xrange(5):
+      for nc in xrange(5):
+        a = flex.double(flex.grid(nr, nc), v)
+        e = refp(a_work=a)
+        assert e.rank == min(abs(v), nr, nc)
+        assert e.nullity == nc - e.rank
+        a = flex.double(flex.grid(nr, nc), v)
+        b = flex.double(nr)
+        e = refp(a_work=a, b_work=b)
+        assert e.rank == min(abs(v), nr, nc)
+        assert e.nullity == nc - e.rank
+  #
+  mt = flex.mersenne_twister(seed=0)
+  for i_trial in xrange(10):
+    for nr in xrange(1,5):
+      for nc in xrange(1,5):
+        a = mt.random_double(size=nr*nc)*2-1
+        a.reshape(flex.grid(nr, nc))
+        x = mt.random_double(size=nc)*2-1
+        b = a.matrix_multiply(x)
+        aw = a.deep_copy()
+        bw = b.deep_copy()
+        e = refp(a_work=aw, b_work=bw)
+        assert e.rank == min(nr, nc) # assumes (random) linear indepence
+        assert e.nullity == nc - e.rank
+        for v in [0,1,-1]:
+          ex = e.back_substitution(
+            free_values=flex.double(e.nullity, v),
+            epsilon=1e-10)
+          assert ex is not None
+          assert ex.size() == nc
+          eb = a.matrix_multiply(ex)
+          assert approx_equal(eb, b)
+        ex = e.back_substitution(
+          free_values=x.select(flex.size_t(iter(e.col_perm[e.rank:]))),
+          epsilon=1e-10)
+        assert approx_equal(ex, x)
+  #
+  a = flex.double([
+    [1, 2,  ],
+    [1, 1.99],
+    [1, 1.98 ]])
+  aw = a.deep_copy()
+  e = refp(a_work=aw)
+  assert approx_equal(aw, [2, 1, 0, 0.01, 0, 0])
+  assert e.rank == 2
+  aw = a.deep_copy()
+  e = refp(a_work=aw, min_abs_pivot=0.1)
+  assert e.rank == 1
+  assert approx_equal(aw, [2, 1, 0, 0.005, 0, 0.01])
+  aw_rank_1 = aw
+  aw = a.deep_copy()
+  e = refp(a_work=aw, max_rank=1)
+  assert e.rank == 1
+  assert approx_equal(aw, aw_rank_1)
+  aw = a.deep_copy()
+  e = refp(a_work=aw, max_rank=0)
+  assert e.rank == 0
+  assert approx_equal(aw, a)
+  #
+  n_no_solution_with_epsilon_zero = 0
+  for singular_a,rank in [
+        ((3,0,0,0,-2,0,0,0,0), 2),
+        ((0,0,3,0,0,0,0,0,0), 1),
+        ((0,0,0,1e-15,0,0,0,0,0), 0)]:
+    for i_trial in xrange(10):
+      r = matrix.sqr(flex.random_double_r3_rotation_matrix())
+      a = flex.double(r * matrix.sqr(singular_a) * r.transpose())
+      a.reshape(flex.grid(3,3))
+      assert approx_equal(a.matrix_determinant_via_lu(), 0, eps=1e-12)
+      x = flex.double([4.3,-2.1,8.2])
+      b = a.matrix_multiply(x)
+      aw = a.deep_copy()
+      bw = b.deep_copy()
+      e = refp(a_work=aw, b_work=bw, min_abs_pivot=1e-12)
+      assert e.rank == rank
+      ex = e.back_substitution(
+        free_values=flex.double(e.nullity, 9.3),
+        epsilon=1e-12)
+      assert ex is not None
+      eb = a.matrix_multiply(ex)
+      assert approx_equal(eb, b)
+      ex = e.back_substitution(free_values=flex.double(e.nullity, 0))
+      if (ex is None): n_no_solution_with_epsilon_zero += 1
+  assert n_no_solution_with_epsilon_zero > 20
 
 def exercise_tensor_rank_2():
   g = (2,3,5,0.2,0.3,0.5)

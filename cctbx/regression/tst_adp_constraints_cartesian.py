@@ -42,14 +42,14 @@ def exercise_through_space_group(flags, space_group_info):
   u_star_basis = [ u_star_constraints.all_params(v) for v in basis ]
   u_cart_basis_bis = [ adptbx.u_star_as_u_cart(unit_cell, u)
                        for u in u_star_basis ]
-  work = flex.double(u_cart_basis)
+  a_work = flex.double(u_cart_basis)
   u_cart_basis_echelon = row_echelon_full_pivoting(
-    matrix=work, min_abs_pivot=1e-9)
+    a_work=a_work, min_abs_pivot=1e-9)
   # the vector subspaces spanned respectively by u_cart_basis and
   # by u_cart_basis_bis should be equal
   for u in u_cart_basis_bis:
-    assert u_cart_basis_echelon.is_in_row_span(
-      vector=flex.double(u), epsilon=1e-9)
+    assert u_cart_basis_echelon.is_in_row_space(
+      x=flex.double(u), epsilon=1e-9)
 
   """ Test the independent gradient computation """
   eps = 1e-4

@@ -11,77 +11,99 @@ namespace scitbx { namespace matrix { namespace row_echelon {
   template <typename NumType>
   struct full_pivoting
   {
-    af::versa<NumType, af::c_grid<2> > echelon_form;
-    af::shared<unsigned> row_perm;
+    af::versa<NumType, af::flex_grid<> > a_work;
+    af::shared<NumType> b_work;
+    unsigned n_rows;
     af::shared<unsigned> col_perm;
-    unsigned n_pivots;
+    unsigned rank;
+    unsigned nullity;
 
     full_pivoting() {}
 
     full_pivoting(
-      af::versa<NumType, af::flex_grid<> >& matrix,
+      af::versa<NumType, af::flex_grid<> > a_work_,
       NumType const& min_abs_pivot=0,
       int max_rank=-1)
+    :
+      a_work(a_work_)
     {
-      af::c_grid<2> c_grid(matrix.accessor());
-      unsigned n_rows = static_cast<unsigned>(c_grid[0]);
+      reduction_(min_abs_pivot, max_rank);
+    }
+
+    full_pivoting(
+      af::versa<NumType, af::flex_grid<> > a_work_,
+      af::shared<NumType> b_work_,
+      NumType const& min_abs_pivot=0,
+      int max_rank=-1)
+    :
+      a_work(a_work_),
+      b_work(b_work_)
+    {
+      reduction_(min_abs_pivot, max_rank);
+    }
+
+    protected:
+    void
+    reduction_(
+      NumType const& min_abs_pivot,
+      int max_rank)
+    {
+      if (a_work.accessor().nd() != 2) {
+        throw std::runtime_error("a_work matrix must be two-dimensional.");
+      }
+      af::c_grid<2> c_grid(a_work.accessor());
+      n_rows = static_cast<unsigned>(c_grid[0]);
       unsigned n_cols = static_cast<unsigned>(c_grid[1]);
-      row_perm.resize(n_rows);
       col_perm.resize(n_cols);
-      n_pivots = full_pivoting_impl::reduction(
-        matrix.begin(),
+      rank = full_pivoting_impl::reduction(
         n_rows,
         n_cols,
+        a_work.begin(),
+        (b_work.size() == 0 ? static_cast<NumType*>(0) : b_work.begin()),
         min_abs_pivot,
         (max_rank < 0 ? n_cols : static_cast<unsigned>(max_rank)),
-        row_perm.begin(),
         col_perm.begin());
-      c_grid = af::c_grid<2>(n_pivots, n_cols);
-      matrix.resize(c_grid.as_flex_grid());
-      echelon_form = af::versa<double, af::c_grid<2> >(
-        matrix.handle(), c_grid);
+      nullity = n_cols - rank;
     }
-
-    unsigned
-    rank() const { return n_pivots; }
-
-    unsigned
-    nullity() const
-    {
-      return static_cast<unsigned>(col_perm.size()) - n_pivots;
-    }
+    public:
 
     bool
-    is_in_row_span(
-      af::const_ref<NumType> const& vector,
+    is_in_row_space(
+      af::const_ref<NumType> const& x,
       NumType const& epsilon) const
     {
-      SCITBX_ASSERT(vector.size() == col_perm.size());
-      af::shared<NumType> vector_copy(vector.begin(), vector.end());
-      return full_pivoting_impl::is_in_row_span(
+      SCITBX_ASSERT(x.size() == col_perm.size());
+      af::shared<NumType> x_copy(x.begin(), x.end());
+      return full_pivoting_impl::is_in_row_space(
         static_cast<unsigned>(col_perm.size()),
-        echelon_form.begin(),
+        a_work.begin(),
         col_perm.begin(),
-        n_pivots,
-        vector_copy.begin(),
+        rank,
+        x_copy.begin(),
         epsilon);
     }
 
-    af::shared<NumType>
-    back_substitution(af::const_ref<NumType> const& free_values) const
+    boost::optional<af::shared<NumType> >
+    back_substitution(
+      af::const_ref<NumType> const& free_values,
+      NumType const& epsilon=0) const
     {
-      SCITBX_ASSERT(free_values.size() == nullity());
+      SCITBX_ASSERT(free_values.size() == nullity);
       af::shared<NumType> perm_result(col_perm.size());
       af::shared<NumType> result(col_perm.size());
-      full_pivoting_impl::back_substitution(
+      bool have_solution = full_pivoting_impl::back_substitution(
+        n_rows,
         static_cast<unsigned>(col_perm.size()),
-        echelon_form.begin(),
+        a_work.begin(),
+        (b_work.size() == 0 ? static_cast<const NumType*>(0) : b_work.begin()),
         col_perm.begin(),
-        n_pivots,
+        rank,
         free_values.begin(),
+        epsilon,
         perm_result.begin(),
         result.begin());
-      return result;
+      if (!have_solution) return boost::optional<af::shared<NumType> >();
+      return boost::optional<af::shared<NumType> >(result);
     }
   };
 
