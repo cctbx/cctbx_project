@@ -37,6 +37,8 @@ else:
 
 tntbx = None
 if (scitbx is not None):
+  from scitbx.math import row_echelon_full_pivoting
+  from scitbx.array_family import flex
   try:
     import tntbx
   except ImportError:
@@ -58,6 +60,15 @@ Inf = InfType()
 
 def mldivide(A, B):
   "http://www.mathworks.com/access/helpdesk/help/techdoc/ref/mldivide.html"
+  if (scitbx is not None):
+    assert B.n_columns() == 1
+    aw = flex.double(A)
+    aw.reshape(flex.grid(A.n))
+    bw = flex.double(B)
+    epsilon = flex.max(flex.abs(aw)) * 1.e-12
+    e = row_echelon_full_pivoting(a_work=aw, b_work=bw, min_abs_pivot=epsilon)
+    x = e.back_substitution(free_values=flex.double(e.nullity), epsilon=epsilon)
+    return matrix.col(x)
   return generalized_inverse(A) * B
 
 def mrdivide(B, A):
