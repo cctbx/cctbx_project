@@ -35,5 +35,5 @@ if (not env_etc.no_boost_python):
   SConscript("stl/SConscript")
   SConscript("array_family/SConscript")
   SConscript("refinement/SConscript")
-  SConscript("refinement/constraints/SConscript")
+  SConscript("refinement/constraints/boost_python/SConscript")
   SConscript("ab_initio/SConscript")
