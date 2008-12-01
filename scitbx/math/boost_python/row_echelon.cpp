@@ -115,20 +115,31 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<wt>("row_echelon_full_pivoting", no_init)
-        .def(init<af::versa<double, af::flex_grid<> >&,
-                  double const&,
-                  int>((
-            arg_("matrix"),
+        .def(init<
+          af::versa<double, af::flex_grid<> >,
+          double const&,
+          int>((
+            arg_("a_work"),
             arg_("min_abs_pivot")=0,
-            arg_("max_rank")=-1
-        )))
-        .def("back_substitution", &wt::back_substitution,
-             arg_("free_values"))
-        .def("rank", &wt::rank)
-        .def("nullity", &wt::nullity)
-        .def("is_in_row_span", &wt::is_in_row_span, (
-             arg_("vector"),
-             arg_("epsilon")))
+            arg_("max_rank")=-1)))
+        .def(init<
+          af::versa<double, af::flex_grid<> >,
+          af::shared<double>,
+          double const&,
+          int>((
+            arg_("a_work"),
+            arg_("b_work"),
+            arg_("min_abs_pivot")=0,
+            arg_("max_rank")=-1)))
+        .add_property("col_perm", make_getter(&wt::col_perm, rbv()))
+        .def_readonly("rank", &wt::rank)
+        .def_readonly("nullity", &wt::nullity)
+        .def("is_in_row_space", &wt::is_in_row_space, (
+          arg_("x"),
+          arg_("epsilon")))
+        .def("back_substitution", &wt::back_substitution, (
+          arg_("free_values"),
+          arg_("epsilon")=0))
       ;
     }
   };

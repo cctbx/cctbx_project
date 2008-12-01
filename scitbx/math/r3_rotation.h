@@ -146,18 +146,19 @@ namespace scitbx { namespace math {
     axis_and_angle_from_matrix(mat3<FloatType> const& r)
     {
       // obtain axis by solving the system r-i=0
-      mat3<FloatType> m_work(
+      mat3<FloatType> a_work(
         r[0]-1, r[1],   r[2],
         r[3],   r[4]-1, r[5],
         r[6],   r[7],   r[8]-1);
       matrix::row_echelon::full_pivoting_small<double, 3, 3>
         row_echelon_form(
           af::ref<FloatType, af::c_grid<2> >(
-            m_work.begin(), af::c_grid<2>(3,3)),
+            a_work.begin(), af::c_grid<2>(3,3)),
           /*min_abs_pivot*/ 0,
           /*max_rank*/ 2);
       axis = row_echelon_form.back_substitution(
-        af::small<double, 3>(row_echelon_form.nullity(), 1));
+        a_work.begin(),
+        af::small<double, 3>(row_echelon_form.nullity, 1));
       FloatType& u = axis[0];
       FloatType& v = axis[1];
       FloatType& w = axis[2];
