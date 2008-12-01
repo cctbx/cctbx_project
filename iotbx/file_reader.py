@@ -3,6 +3,7 @@ import sys, os, re
 from mmtbx.monomer_library import server
 from iotbx.pdb import is_pdb_file
 from iotbx.reflection_file_reader import any_reflection_file
+from iotbx.reflection_file_utils import reflection_file_server
 from libtbx.utils import Sorry
 
 standard_file_extensions = {
@@ -46,6 +47,7 @@ class any_file (object) :
     self.file_name = file_name
     self.file_object = None
     self.file_type = None
+    self.file_server = None
     self.file_size = os.path.getsize(file_name)
     self.get_processed_file = get_processed_file
 
@@ -80,6 +82,11 @@ class any_file (object) :
       hkl_file = any_reflection_file(self.file_name)
       self.file_type = "hkl"
       self.file_object = hkl_file
+      self.file_server = reflection_file_server(
+        crystal_symmetry=None,
+        force_symmetry=True,
+        reflection_files=[hkl_file],
+        err=sys.stderr)
     except Exception :
       pass
 
