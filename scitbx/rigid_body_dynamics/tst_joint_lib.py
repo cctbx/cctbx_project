@@ -4,7 +4,8 @@ from scitbx.rigid_body_dynamics.utils import \
   spatial_inertia_from_sites, \
   kinetic_energy, \
   T_as_X, \
-  featherstone_system_model
+  featherstone_system_model, \
+  e_kin_from_model
 from scitbx.rigid_body_dynamics import test_utils
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -97,11 +98,7 @@ class revolute_simulation(object):
     q = [None]*len(O.bodies)
     qd = [B.qd for B in O.bodies]
     #
-    O.e_kin = 0
-    vs = FDab_v(model, q, qd)
-    for B,v_spatial in zip(O.bodies, vs):
-      O.e_kin += kinetic_energy(I_spatial=B.I, v_spatial=v_spatial)
-    #
+    O.e_kin = e_kin_from_model(model, q, qd)
     O.e_pot_and_f_ext_update()
     #
     tau = None
@@ -190,22 +187,6 @@ def FDab_X0(model, q, qd):
     else:
       X0[i] = Xup[i] * X0[model.parent[i]]
   return X0
-
-def FDab_v(model, q, qd):
-  Xup = [None] * model.NB
-  v = [None] * model.NB
-  for i in xrange(model.NB):
-    XJ, S = featherstone.jcalc( model.pitch[i], q[i], qd[i] )
-    if (S is None):
-      vJ = qd[i]
-    else:
-      vJ = S*qd[i]
-    Xup[i] = XJ * model.Xtree[i]
-    if model.parent[i] == -1:
-      v[i] = vJ
-    else:
-      v[i] = Xup[i]*v[model.parent[i]] + vJ
-  return v
 
 def check_transformations(bodies, Ttree, X0s):
   T0s = []
