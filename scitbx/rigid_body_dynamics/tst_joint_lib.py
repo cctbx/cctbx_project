@@ -2,7 +2,9 @@ from scitbx.rigid_body_dynamics import featherstone
 from scitbx.rigid_body_dynamics import joint_lib
 from scitbx.rigid_body_dynamics.utils import \
   spatial_inertia_from_sites, \
-  kinetic_energy
+  kinetic_energy, \
+  T_as_X, \
+  featherstone_system_model
 from scitbx.rigid_body_dynamics import test_utils
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -10,26 +12,6 @@ from libtbx.test_utils import approx_equal
 from libtbx.utils import null_out, show_times_at_exit
 import math
 import sys
-
-class featherstone_system_model(object):
-
-  def __init__(model, bodies):
-    model.NB = len(bodies)
-    model.pitch = []
-    model.parent =[]
-    model.Ttree = []
-    model.Xtree = []
-    model.I = []
-    for B in bodies:
-      model.pitch.append(B.J)
-      model.parent.append(B.parent)
-      if (B.parent == -1):
-        Ttree = B.A.T0b
-      else:
-        Ttree = B.A.T0b * bodies[B.parent].A.Tb0
-      model.Ttree.append(Ttree)
-      model.Xtree.append(joint_lib.T_as_X(Ttree))
-      model.I.append(B.I)
 
 class random_revolute(object):
 
@@ -234,7 +216,7 @@ def check_transformations(bodies, Ttree, X0s):
       T0s.append(Tup)
     else:
       T0s.append(Tup * T0s[B.parent])
-    X0_from_T0 = joint_lib.T_as_X(T0s[-1])
+    X0_from_T0 = T_as_X(T0s[-1])
     assert approx_equal(X0_from_T0, X0)
   e_pot = 0
   AJA_accu = []

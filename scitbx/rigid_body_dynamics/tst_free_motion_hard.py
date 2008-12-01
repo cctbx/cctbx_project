@@ -2,7 +2,8 @@ from scitbx.rigid_body_dynamics import featherstone
 from scitbx.rigid_body_dynamics import joint_lib
 from scitbx.rigid_body_dynamics.utils import \
   spatial_inertia_from_sites, \
-  kinetic_energy
+  kinetic_energy, \
+  T_as_X
 from scitbx.rigid_body_dynamics import test_utils
 from free_motion_reference_impl import \
   create_triangle_with_center_of_mass_at_origin
@@ -37,12 +38,12 @@ def exercise_T_as_X(mersenne_twister):
     T21 = T2 * T1
     T1i = T1.inverse_assuming_orthogonal_r()
     T2i = T2.inverse_assuming_orthogonal_r()
-    X1 = joint_lib.T_as_X(T1)
-    X2 = joint_lib.T_as_X(T2)
-    X12 = joint_lib.T_as_X(T12)
-    X21 = joint_lib.T_as_X(T21)
-    X1i = joint_lib.T_as_X(T1i)
-    X2i = joint_lib.T_as_X(T2i)
+    X1 = T_as_X(T1)
+    X2 = T_as_X(T2)
+    X12 = T_as_X(T12)
+    X21 = T_as_X(T21)
+    X1i = T_as_X(T1i)
+    X2i = T_as_X(T2i)
     assert approx_equal(X1*X2, X12)
     assert approx_equal(X2*X1, X21)
     assert approx_equal(X1.inverse(), X1i)
@@ -69,7 +70,7 @@ class featherstone_system_model(object):
     model.NB = 1
     model.pitch = [J]
     model.parent =[-1]
-    model.Xtree = [joint_lib.T_as_X(A.T0b)]
+    model.Xtree = [T_as_X(A.T0b)]
     model.I = [I]
 
 class simulation_mixin(object):

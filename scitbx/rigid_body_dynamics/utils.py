@@ -42,3 +42,27 @@ def spatial_inertia_from_sites(
 def kinetic_energy(I_spatial, v_spatial):
   "RBDA Eq. 2.67"
   return 0.5 * v_spatial.dot(I_spatial * v_spatial)
+
+def T_as_X(Tps):
+  return featherstone.Xrot(Tps.r) \
+       * featherstone.Xtrans(-Tps.r.transpose() * Tps.t)
+
+class featherstone_system_model(object):
+
+  def __init__(model, bodies):
+    model.NB = len(bodies)
+    model.pitch = []
+    model.parent =[]
+    model.Ttree = []
+    model.Xtree = []
+    model.I = []
+    for B in bodies:
+      model.pitch.append(B.J)
+      model.parent.append(B.parent)
+      if (B.parent == -1):
+        Ttree = B.A.T0b
+      else:
+        Ttree = B.A.T0b * bodies[B.parent].A.Tb0
+      model.Ttree.append(Ttree)
+      model.Xtree.append(T_as_X(Ttree))
+      model.I.append(B.I)
