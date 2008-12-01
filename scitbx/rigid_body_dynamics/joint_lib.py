@@ -1,5 +1,6 @@
-from scitbx.rigid_body_dynamics import featherstone
-from scitbx.rigid_body_dynamics.utils import center_of_mass_from_sites
+from scitbx.rigid_body_dynamics.utils import \
+  center_of_mass_from_sites, \
+  T_as_X
 from scitbx import matrix
 import math
 
@@ -242,7 +243,3 @@ def euler_angles_xyz_qE_as_euler_params_qE(qE):
     c1*c2*s3-s1*s2*c3,
     c1*s2*c3+s1*c2*s3,
     s1*c2*c3-c1*s2*s3))
-
-def T_as_X(Tps):
-  return featherstone.Xrot(Tps.r) \
-       * featherstone.Xtrans(-Tps.r.transpose() * Tps.t)
