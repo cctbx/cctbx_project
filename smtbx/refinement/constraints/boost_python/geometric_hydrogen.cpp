@@ -1,27 +1,22 @@
-#include <smtbx/boost_python/flex_fwd.h>
-
-#include <boost/python/class.hpp>
-#include <boost/python/slice.hpp>
-#include <boost/python/return_value_policy.hpp>
-
-#include <scitbx/array_family/boost_python/passing_flex_by_reference.h>
+#include <smtbx/refinement/constraints/boost_python/wrappers.h>
 
 #include <cctbx/xray/scatterer.h>
-
-#include <smtbx/refinement/constraints/constraints_array_bp.h>
 #include <smtbx/refinement/constraints/geometric_hydrogen.h>
 
 namespace smtbx { namespace refinement { namespace constraints {
 namespace boost_python {
 
+template<class WrappedType>
 struct common_wrapper
 {
-  template<class wt>
-  static void wrap(boost::python::class_<wt> &wrapped, char const *name) {
+  typedef WrappedType wt;
+
+  static boost::python::class_<wt> wrap(char const *name) {
+    using namespace boost::python;
     std::string array_name = std::string(name) + std::string("_array");
     constraint_array_wrapper<wt>::wrap(array_name.c_str());
 
-    wrapped
+    return boost::python::class_<wt>(name, no_init)
       .add_property("pivot", &wt::pivot)
       .add_property("hydrogens", &wt::hydrogens)
       .add_property("stretching", &wt::stretching, &wt::set_stretching)
@@ -48,9 +43,7 @@ struct terminal_tetrahedral_XHn_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    class_<wt> wrapped(name, no_init);
-    common_wrapper::wrap(wrapped, name);
-    wrapped
+    common_wrapper<wt>::wrap(name)
       .def(init<std::size_t, std::size_t, af::small<std::size_t,3>, float_type,
                 float_type, bool, bool>
           ((arg("pivot"), arg("pivot_neighbour"), arg("hydrogens"),
@@ -74,9 +67,7 @@ struct staggered_terminal_tetrahedral_XHn_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    class_<wt> wrapped(name, no_init);
-    common_wrapper::wrap(wrapped, name);
-    wrapped
+    common_wrapper<wt>::wrap(name)
       .def(init<std::size_t, std::size_t, std::size_t,
                 af::small<std::size_t,3>,
                 float_type, bool>
@@ -97,9 +88,7 @@ struct secondary_CH2_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    class_<wt> wrapped(name, no_init);
-    common_wrapper::wrap(wrapped, name);
-    wrapped
+    common_wrapper<wt>::wrap(name)
       .def(init<std::size_t, af::tiny<std::size_t,2>, af::tiny<std::size_t,2>,
                 float_type, bool>
           ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogens"),
@@ -120,9 +109,7 @@ struct tertiary_CH_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    class_<wt> wrapped(name, no_init);
-    common_wrapper::wrap(wrapped, name);
-    wrapped
+    common_wrapper<wt>::wrap(name)
       .def(init<std::size_t, af::tiny<std::size_t,3>, std::size_t,
                 float_type, bool>
           ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogen"),
@@ -142,9 +129,7 @@ struct aromatic_CH_or_amide_NH_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    class_<wt> wrapped(name, no_init);
-    common_wrapper::wrap(wrapped, name);
-    wrapped
+    common_wrapper<wt>::wrap(name)
       .def(init<std::size_t, af::tiny<std::size_t,2>, std::size_t,
                 float_type, bool>
           ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogen"),
@@ -164,9 +149,7 @@ struct terminal_trihedral_XH2_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    class_<wt> wrapped(name, no_init);
-    common_wrapper::wrap(wrapped, name);
-    wrapped
+    common_wrapper<wt>::wrap(name)
       .def(init<std::size_t, std::size_t, std::size_t, af::tiny<std::size_t,2>,
                 float_type, bool>
           ((arg("pivot"),
@@ -188,9 +171,7 @@ struct acetylenic_CH_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    class_<wt> wrapped(name, no_init);
-    common_wrapper::wrap(wrapped, name);
-    wrapped
+    common_wrapper<wt>::wrap(name)
       .def(init<std::size_t, std::size_t, std::size_t, float_type, bool>
           ((arg("pivot"), arg("pivot_neighbour"), arg("hydrogen"),
             arg("bond_length"), arg("stretching")=false)))
@@ -208,10 +189,10 @@ struct polyhedral_BH_wrapper
 
   static void wrap(char const *name) {
     using namespace boost::python;
-    class_<wt> wrapped(name, no_init);
-    common_wrapper::wrap(wrapped, name);
-    wrapped
-      .def(init<std::size_t, af::small<std::size_t,5> const &, std::size_t, bool,
+    common_wrapper<wt>::wrap(name)
+      .def(init<std::size_t,
+                af::small<std::size_t,5> const &,
+                std::size_t, bool,
                 float_type, bool>
           ((arg("pivot"), arg("pivot_neighbours"), arg("hydrogen"),
             arg("missing_fifth"),

@@ -31,7 +31,7 @@ class special_positions
                       sgtbx::site_symmetry_table const &site_symmetry_table_,
                       af::shared<xray_scatterer_type> scatterers_,
                       parameter_map_type const &crystallographic_parameter_map_,
-                      af::ref<xray::scatterer_flags> constraint_flags)
+                      af::shared<xray::scatterer_flags> constraint_flags)
       : unit_cell(unit_cell_),
         site_symmetry_table(site_symmetry_table_),
         scatterers(scatterers_),
