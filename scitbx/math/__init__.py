@@ -147,9 +147,9 @@ def row_echelon_back_substitution_float(
     row_echelon_form, v, solution)
 
 def solve_a_x_eq_b_min_norm_given_a_sym_b_col(
-      a,
-      b,
+      a, b,
       relative_min_abs_pivot=1e-12,
+      absolute_min_abs_pivot=None,
       back_substitution_epsilon_factor=10):
   """\
 Assumes a is symmetric, without checking to avoid overhead.
@@ -173,7 +173,15 @@ Returns None if a*x=b has no solution.
   if (isinstance(b, matrix.rec)):
     assert b.n_columns() == 1
     b = flex.double(b)
-  min_abs_pivot = max(a.all()) * flex.max(flex.abs(a)) * relative_min_abs_pivot
+  if (relative_min_abs_pivot is None):
+    min_abs_pivot = 0
+  else:
+    min_abs_pivot = \
+       max(a.all()) \
+     * flex.max(flex.abs(a)) \
+     * relative_min_abs_pivot
+  if (absolute_min_abs_pivot is not None):
+    min_abs_pivot = max(min_abs_pivot, absolute_min_abs_pivot)
   epsilon = min_abs_pivot * back_substitution_epsilon_factor
   aw = a.deep_copy()
   bw = b.deep_copy()
