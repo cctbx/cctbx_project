@@ -37,8 +37,7 @@ else:
 
 tntbx = None
 if (scitbx is not None):
-  from scitbx.math import row_echelon_full_pivoting
-  from scitbx.array_family import flex
+  import scitbx.math
   try:
     import tntbx
   except ImportError:
@@ -48,10 +47,7 @@ if (tntbx is None):
     return m.inverse()
 else:
   def generalized_inverse(m):
-    from scitbx.array_family import flex
-    fm = flex.double(m)
-    fm.reshape(flex.grid(m.n))
-    return matrix.sqr(tntbx.generalized_inverse(fm))
+    return matrix.sqr(tntbx.generalized_inverse(m.as_flex_double_matrix()))
 
 import math
 
@@ -61,14 +57,8 @@ Inf = InfType()
 def mldivide(A, B):
   "http://www.mathworks.com/access/helpdesk/help/techdoc/ref/mldivide.html"
   if (scitbx is not None):
-    assert B.n_columns() == 1
-    aw = flex.double(A)
-    aw.reshape(flex.grid(A.n))
-    bw = flex.double(B)
-    epsilon = flex.max(flex.abs(aw)) * 1.e-12
-    e = row_echelon_full_pivoting(a_work=aw, b_work=bw, min_abs_pivot=epsilon)
-    x = e.back_substitution(free_values=flex.double(e.nullity), epsilon=epsilon)
-    return matrix.col(x)
+    return matrix.col(
+      scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=A, b=B))
   return generalized_inverse(A) * B
 
 def mrdivide(B, A):
