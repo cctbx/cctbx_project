@@ -193,13 +193,13 @@ class rec(object):
     return result
 
   def norm_sq(self):
-    assert self.n_rows() == 1 or self.n_columns() == 1
     result = 0
     for e in self.elems:
       result += e*e
     return result
 
   def __abs__(self):
+    assert self.n_rows() == 1 or self.n_columns() == 1
     return math.sqrt(self.norm_sq())
 
   def normalize(self):
