@@ -41,7 +41,8 @@ def get_year(file_lines):
   for line in file_lines:
     line = line.strip()
     result = iotbx.pdb.header_year(record = line)
-    if(result is not None): return result
+    if(result is not None):
+      return result
   return result
 
 def get_fmodel_object(xray_structure, f_obs, r_free_flags, twin_law):
@@ -75,39 +76,114 @@ def get_fmodel_object(xray_structure, f_obs, r_free_flags, twin_law):
     n_outl = None
   return fmodel, n_outl
 
-def show_geometry(processed_pdb_file, scattering_table):
-  xray_structure = processed_pdb_file.xray_structure()
-  sctr_keys = \
-    xray_structure.scattering_type_registry().type_count_dict().keys()
-  has_hd = "H" in sctr_keys or "D" in sctr_keys
-  hd_sel = xray_structure.hd_selection()
-  geometry = processed_pdb_file.geometry_restraints_manager(
-    show_energies = False,
-    plain_pairs_radius = 5.0,
-    edits = None,
-    assume_hydrogens_all_missing = not has_hd)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry = geometry,
-    normalization = True)
-  # exclude hydrogens
-  if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
-    xray_structure = xray_structure.select(~hd_sel)
-    geometry = restraints_manager.geometry.select(selection = ~hd_sel)
-    restraints_manager = mmtbx.restraints.manager(
+def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
+                  model_selections, show_geometry_statistics):
+  xray_structures = processed_pdb_file.xray_structure()
+  if(show_geometry_statistics):
+    from phenix.command_line.ramalyze import ramalyze
+    from phenix.command_line.rotalyze import rotalyze
+    from phenix.command_line.cbetadev import cbetadev
+    sctr_keys = \
+      xray_structures.scattering_type_registry().type_count_dict().keys()
+    has_hd = "H" in sctr_keys or "D" in sctr_keys
+    geometry = processed_pdb_file.geometry_restraints_manager(
+      show_energies                = False,
+      plain_pairs_radius           = 5.0,
+      edits                        = None,
+      assume_hydrogens_all_missing = not has_hd)
+    restraints_manager_all = mmtbx.restraints.manager(
       geometry      = geometry,
       normalization = True)
-    restraints_manager.geometry.pair_proxies(sites_cart =
-      xray_structure.sites_cart())
-  result = model_statistics.geometry(
-    sites_cart         = xray_structure.sites_cart(),
-    restraints_manager = restraints_manager)
-  print "  Stereochemistry statistics (mean, max, count):"
-  print "    bonds            : %8.4f %8.4f %d" % (result.b_mean, result.b_max, result.b_number)
-  print "    angles           : %8.4f %8.4f %d" % (result.a_mean, result.a_max, result.a_number)
-  print "    dihedrals        : %8.4f %8.4f %d" % (result.d_mean, result.d_max, result.d_number)
-  print "    chirality        : %8.4f %8.4f %d" % (result.c_mean, result.c_max, result.c_number)
-  print "    planarity        : %8.4f %8.4f %d" % (result.p_mean, result.p_max, result.p_number)
-  print "    non-bonded (min) : %8.4f" % (result.n_min)
+  hierarchy = pdb_inp.construct_hierarchy()
+  models = hierarchy.models()
+  print "  Number of models:", len(models)
+  for i_seq, model_selection in enumerate(model_selections):
+    print "  Model #%s:"%str("%d"%(i_seq+1)).strip()
+    hierarchy_i_seq = pdb.hierarchy.root()
+    hierarchy_i_seq.append_model(models[i_seq].detached_copy())
+    #
+    overall_counts_i_seq = hierarchy_i_seq.overall_counts()
+    #
+    print "    Number of residues in alternative conformations:", \
+      overall_counts_i_seq.n_alt_conf_pure + \
+      overall_counts_i_seq.n_alt_conf_proper + \
+      overall_counts_i_seq.n_alt_conf_improper
+    #
+    rc = overall_counts_i_seq.resname_classes
+    print "    Residue content:"
+    len_max = 0
+    for k in rc.keys():
+      k=k.replace("common_","")
+      if(len(k)>len_max): len_max = len(k)
+    fmt = "      %-"+str(len_max)+"s : %d"
+    for k,v in zip(rc.keys(), rc.values()):
+      print fmt%(k.replace("common_",""), v)
+    #
+    xray_structure = xray_structures.select(model_selection)
+    hd_sel = xray_structure.hd_selection()
+    if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
+      show_xray_structure_statistics(xray_structure =
+        xray_structure.select(~hd_sel))
+    else:
+      show_xray_structure_statistics(xray_structure = xray_structure)
+    if(show_geometry_statistics):
+      # exclude hydrogens
+      if(hd_sel.count(True) > 0 and scattering_table != "neutron"):
+        xray_structure = xray_structure.select(~hd_sel)
+        model_selection = model_selection.select(~hd_sel)
+        geometry = restraints_manager_all.geometry.select(selection = ~hd_sel)
+      model_selection_as_bool = flex.bool(xray_structures.scatterers().size(),
+        model_selection)
+      geometry = restraints_manager_all.geometry.select(selection =
+        model_selection_as_bool)
+      restraints_manager = mmtbx.restraints.manager(
+        geometry      = geometry,
+        normalization = True)
+      restraints_manager.geometry.pair_proxies(sites_cart =
+        xray_structure.sites_cart())
+      result = model_statistics.geometry(
+        sites_cart         = xray_structure.sites_cart(),
+        restraints_manager = restraints_manager)
+      print "    Stereochemistry statistics (mean, max, count):"
+      print "      bonds            : %8.4f %8.4f %d" % (result.b_mean, result.b_max, result.b_number)
+      print "      angles           : %8.4f %8.4f %d" % (result.a_mean, result.a_max, result.a_number)
+      print "      dihedrals        : %8.4f %8.4f %d" % (result.d_mean, result.d_max, result.d_number)
+      print "      chirality        : %8.4f %8.4f %d" % (result.c_mean, result.c_max, result.c_number)
+      print "      planarity        : %8.4f %8.4f %d" % (result.p_mean, result.p_max, result.p_number)
+      print "      non-bonded (min) : %8.4f" % (result.n_min)
+      output, output_list = ramalyze().analyze_pdb(hierarchy = hierarchy_i_seq,
+        outliers_only = False)
+      print "      Ramachandran plot, number of:"
+      print "        outliers :", output.count("OUTLIER")
+      print "        general  :", output.count("General")
+      print "        allowed  :", output.count("Allowed")
+      print "        favored  :", output.count("Favored")
+
+def show_xray_structure_statistics(xray_structure):
+  b_isos = xray_structure.extract_u_iso_or_u_equiv()
+  n_aniso = xray_structure.use_u_aniso().count(True)
+  n_not_positive_definite = xray_structure.is_positive_definite_u().count(False)
+  b_mean = format_value("%-6.1f",adptbx.u_as_b(flex.mean(b_isos))).strip()
+  b_min = format_value("%-6.1f",adptbx.u_as_b(flex.min(b_isos))).strip()
+  b_max = format_value("%-6.1f",adptbx.u_as_b(flex.max(b_isos))).strip()
+  n_atoms = format_value("%-8d",xray_structure.scatterers().size()).strip()
+  n_npd = format_value("%-8s",n_not_positive_definite).strip()
+  occ = xray_structure.scatterers().extract_occupancies()
+  o_mean = format_value("%-6.2f",flex.mean(occ)).strip()
+  o_min = format_value("%-6.2f",flex.min(occ)).strip()
+  o_max = format_value("%-6.2f",flex.max(occ)).strip()
+  atom_counts = xray_structure.scattering_types_counts_and_occupancy_sums()
+  atom_counts_strs = []
+  for ac in atom_counts:
+    atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),
+      str("%10.2f"%ac.occupancy_sum).strip()))
+  atom_counts_str = " ".join(atom_counts_strs)
+  print "    Atoms:"
+  print "      atom_number_(type:count:occ_sum) : %s (%s)"%(n_atoms,atom_counts_str)
+  print "      ADP_(min,max,mean)               : %s %s %s"%(b_min,b_max,b_mean)
+  print "      occupancies_(min,max,mean)       : %s %s %s"%(o_min,o_max,o_mean)
+  print "      number_of_anisotropic            : "+format_value("%-7s",n_aniso)
+  print "      number_of_non_positive_definite  : %s"%n_npd
 
 def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
   pdb_raw_records = smart_open.for_reading(
@@ -158,12 +234,9 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
     log                       = StringIO())
   processed_pdb_file, pdb_inp = \
     processed_pdb_files_srv.process_pdb_files(raw_records = pdb_raw_records)
-  return processed_pdb_file, pdb_raw_records
+  return processed_pdb_file, pdb_raw_records, pdb_inp
 
 def get_xray_structures(processed_pdb_file, scattering_table, d_min):
-  if 0: # XXX remove later once tested
-    print list(processed_pdb_file.all_chain_proxies.pdb_inp.model_ids())
-    print list(processed_pdb_file.all_chain_proxies.pdb_inp.model_indices())
   xray_structure = processed_pdb_file.xray_structure()
   if(xray_structure is None or xray_structure.scatterers().size()==0):
     raise Sorry("Cannot extract xray_structure.")
@@ -177,6 +250,7 @@ def get_xray_structures(processed_pdb_file, scattering_table, d_min):
       types_without_a_scattering_contribution=["?"])
     xray_structure.switch_to_neutron_scattering_dictionary()
   model_indices = processed_pdb_file.all_chain_proxies.pdb_inp.model_indices()
+  model_selections = []
   if(len(model_indices)>1):
      result = []
      model_indices_padded = flex.size_t([0])
@@ -187,10 +261,12 @@ def get_xray_structures(processed_pdb_file, scattering_table, d_min):
        except IndexError: pass
      for ran in ranges:
        sel = flex.size_t(range(ran[0],ran[1]))
+       model_selections.append(sel)
        result.append(xray_structure.select(sel))
-     return result
+     return result, model_selections
   else:
-    return [xray_structure]
+    model_selections.append( flex.size_t(xrange(xray_structure.scatterers().size())) )
+    return [xray_structure], model_selections
 
 def reflection_file_server(crystal_symmetry, reflection_files):
   return reflection_file_utils.reflection_file_server(
@@ -199,38 +275,10 @@ def reflection_file_server(crystal_symmetry, reflection_files):
     reflection_files=reflection_files,
     err=StringIO())
 
-def show_model(xray_structure, serial):
-  b_isos = xray_structure.extract_u_iso_or_u_equiv()
-  n_aniso = xray_structure.use_u_aniso().count(True)
-  n_not_positive_definite = xray_structure.is_positive_definite_u().count(False)
-  b_mean = format_value("%-6.1f",adptbx.u_as_b(flex.mean(b_isos))).strip()
-  b_min = format_value("%-6.1f",adptbx.u_as_b(flex.min(b_isos))).strip()
-  b_max = format_value("%-6.1f",adptbx.u_as_b(flex.max(b_isos))).strip()
-  n_atoms = format_value("%-8d",xray_structure.scatterers().size()).strip()
-  n_npd = format_value("%-8s",n_not_positive_definite).strip()
-  occ = xray_structure.scatterers().extract_occupancies()
-  o_mean = format_value("%-6.2f",flex.mean(occ)).strip()
-  o_min = format_value("%-6.2f",flex.min(occ)).strip()
-  o_max = format_value("%-6.2f",flex.max(occ)).strip()
-  atom_counts = xray_structure.scattering_types_counts_and_occupancy_sums()
-  atom_counts_strs = []
-  for ac in atom_counts:
-    atom_counts_strs.append("%s:%s:%s"%(ac.scattering_type,str(ac.count),
-      str("%10.2f"%ac.occupancy_sum).strip()))
-  atom_counts_str = " ".join(atom_counts_strs)
-  print "  Model #%s:"%str("%d"%serial).strip()
-  result = " \n    ".join([
-    "atom_number_(type:count:occ_sum) : %s (%s)"%(n_atoms,atom_counts_str),
-    "ADP_(min,max,mean)               : %s %s %s"%(b_min,b_max,b_mean),
-    "occupancies_(min,max,mean)       : %s %s %s"%(o_min,o_max,o_mean),
-    "number_of_anisotropic            : "+format_value("%-7s",n_aniso),
-    "number_of_non_positive_definite  : %s"%n_npd])
-  print "   ", result
-
 def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
   info = fmodel.info()
   flags_pc = \
-   fmodel.r_free_flags.data().count(True)*100./fmodel.r_free_flags.data().size()
+   fmodel.r_free_flags.data().count(True)*1./fmodel.r_free_flags.data().size()
   print "  Data:"
   try: f_obs_labels = f_obs_labels[:f_obs_labels.index(",")]
   except ValueError: pass
@@ -241,7 +289,7 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
     "completeness_in_range   : "+format_value("%-6.2f",info.completeness_in_range),
     "wilson_b                : "+format_value("%-6.1f",fmodel.wilson_b()),
     "number_of_reflections   : "+format_value("%-8d",  info.number_of_reflections),
-    "test_set_size(%)        : "+format_value("%-8.1f",flags_pc),
+    "test_set_size(%)        : "+format_value("%-8.4f",flags_pc),
     "test_flag_value         : "+format_value("%-d",   test_flag_value),
     "is_twinned              : "+format_value("%-5s",  fmodel.twin_test()),
     "number_of_Fobs_outliers : "+format_value("%-8d",  n_outl),
@@ -257,8 +305,8 @@ def show_model_vs_data(fmodel):
   b_cart = " ".join([("%8.2f"%v).strip() for v in fmodel.b_cart()])
   print "  Model_vs_Data:"
   result = " \n    ".join([
-    "r_work                             : "+format_value("%-6.4f",fmodel.r_work()),
-    "r_free                             : "+format_value("%-6.4f",fmodel.r_free()),
+    "r_work(re-computed)                : "+format_value("%-6.4f",fmodel.r_work()),
+    "r_free(re-computed)                : "+format_value("%-6.4f",fmodel.r_free()),
     "bulk_solvent_(k_sol,b_sol)         : %s %s"%(k_sol,b_sol),
     "overall_anisotropic_scale_(b_cart) : "+format_value("%-s",b_cart)])
   print "   ", result
@@ -379,11 +427,11 @@ def run(args,
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=1
-  processed_pdb_file, pdb_raw_records = get_processed_pdb_file(
+  processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
     pdb_file_name = pdb_file_name,
     cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
     show_geometry_statistics = show_geometry_statistics)
-  xray_structures = get_xray_structures(
+  xray_structures, model_selections = get_xray_structures(
     processed_pdb_file       = processed_pdb_file,
     scattering_table         = command_line.options.scattering_table,
     d_min                    = f_obs.d_min())
@@ -391,9 +439,19 @@ def run(args,
      f_obs.crystal_symmetry())):
     raise Sorry("Inconsistent crystal symmetry.")
   #
-  print "  unit cell:       ", f_obs.unit_cell()
-  print "  space group:     ", f_obs.crystal_symmetry().space_group_info().\
-    symbol_and_number()
+  print "  Unit cell:       ", f_obs.unit_cell()
+  print "  Space group:     ", f_obs.crystal_symmetry().space_group_info().\
+    symbol_and_number(), "number of symmetry operators:",\
+    f_obs.crystal_symmetry().space_group_info().type().group().order_z()
+  print "  Unit cell volume: %-15.4f" % f_obs.unit_cell().volume()
+  #
+  show_geometry(
+    processed_pdb_file       = processed_pdb_file,
+    scattering_table         = command_line.options.scattering_table,
+    pdb_inp                  = pdb_inp,
+    model_selections         = model_selections,
+    show_geometry_statistics = show_geometry_statistics)
+  #
   if(len(xray_structures) == 1):
     fmodel, n_outl = get_fmodel_object(
       xray_structure = xray_structures[0],
@@ -404,10 +462,6 @@ def run(args,
               n_outl          = n_outl,
               test_flag_value = test_flag_value,
               f_obs_labels    = f_obs.info().label_string())
-    show_model(xray_structure = fmodel.xray_structure, serial = 0)
-    if(show_geometry_statistics):
-      show_geometry(processed_pdb_file = processed_pdb_file,
-                    scattering_table   = command_line.options.scattering_table)
     show_model_vs_data(fmodel)
   else:
     f_model_data = None
@@ -425,7 +479,6 @@ def run(args,
         f_model_data = fmodel.f_model_scaled_with_k1().data()
       else:
         f_model_data += fmodel.f_model_scaled_with_k1().data()
-      show_model(xray_structure = fmodel.xray_structure, serial = i_seq)
     fmodel_average = fmodel.f_obs.array(data = f_model_data)
     fmodel_result = mmtbx.f_model.manager(
      r_free_flags = fmodel.r_free_flags,
@@ -433,14 +486,10 @@ def run(args,
      f_obs        = fmodel.f_obs,
      f_mask       = fmodel.f_mask(),
      f_calc       = fmodel_average)
-    print
     import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
     params = bss.master_params.extract()
     params.bulk_solvent=False
     fmodel_result.update_solvent_and_scale(params = params, verbose = -1)
-    if(show_geometry_statistics):
-      show_geometry(processed_pdb_file = processed_pdb_file,
-                    scattering_table   = command_line.options.scattering_table)
     show_model_vs_data(fmodel_result)
   # Extract information from PDB file header and output (if any)
   published_results = extract_rfactors_resolutions_sigma.extract(

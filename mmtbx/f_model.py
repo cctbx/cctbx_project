@@ -480,6 +480,7 @@ class manager(manager_mixin):
       elif(result is None): result = "unknown"
       elif(not result): result = "no"
       else: raise Sorry("Twin analysis failed.")
+    if(result is None): result = "unknown"
     return result
 
   def deep_copy(self):
