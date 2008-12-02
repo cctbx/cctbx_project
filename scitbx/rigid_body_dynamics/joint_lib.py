@@ -74,58 +74,6 @@ class six_dof(object):
     else:           result = (c * (n + O.qr.cross(f)), f)
     return matrix.col(result).resolve_partitions()
 
-class five_dof_alignment(object):
-
-  def __init__(O, sites):
-    assert len(sites) == 2
-    O.pivot = center_of_mass_from_sites(sites=sites)
-    O.normal = (sites[1] - sites[0]).normalize()
-    r = O.normal.vector_to_001_rotation()
-    O.T0b = matrix.rt((r, -r * O.pivot))
-    O.Tb0 = matrix.rt((r.transpose(), O.pivot))
-
-class five_dof(object):
-
-  def __init__(O, qE, qr, r_is_qr=False):
-    O.qE = qE
-    O.qr = qr
-    O.r_is_qr = r_is_qr
-    #
-    O.E = RBDA_Eq_4_7(q=qE)
-    if (r_is_qr):
-      O.r = qr
-    else:
-      O.r = O.E.transpose() * qr # RBDA Tab. 4.1
-    #
-    O.Tps = matrix.rt((O.E, -O.E * O.r)) # RBDA Eq. 2.28
-    O.Tsp = matrix.rt((O.E.transpose(), O.r))
-    O.Xj = T_as_X(O.Tps)
-    O.S = matrix.rec((
-      1, 0, 0, 0, 0,
-      0, 1, 0, 0, 0,
-      0, 0, 0, 0, 0,
-      0, 0, 1, 0, 0,
-      0, 0, 0, 1, 0,
-      0, 0, 0, 0, 1), n=(6,5))
-
-  def Xj_S(O, q, qd):
-    return O.Xj, O.S
-
-  def time_step_position(O, qd, delta_t):
-    w_body_frame, v_body_frame = matrix.col_list([
-      qd.elems[:2]+(0,), qd.elems[2:]])
-    qEd = RBDA_Eq_4_8_inv(q=O.qE) * w_body_frame
-    if (O.r_is_qr):
-      qrd = O.E.transpose() * v_body_frame
-    else:
-      qrd = v_body_frame - w_body_frame.cross(O.qr) # RBDA Eq. 2.38 p. 27
-    new_qE = O.qE + qEd * delta_t
-    new_qr = O.qr + qrd * delta_t
-    return five_dof(new_qE, new_qr, O.r_is_qr)
-
-  def time_step_velocity(O, qd, qdd, delta_t):
-    return qd + qdd * delta_t
-
 class revolute_alignment(object):
 
   def __init__(O, pivot, normal):

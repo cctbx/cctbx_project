@@ -161,78 +161,21 @@ class six_dof_simulation(simulation_mixin):
     #
     O.energies_and_accelerations_update()
 
-class five_dof_simulation(simulation_mixin):
-
-  def __init__(O, r_is_qr, mersenne_twister):
-    O.sites_F0 = [matrix.col(mersenne_twister.random_double_point_on_sphere())]
-    O.sites_F0.append(O.sites_F0[0]
-      + matrix.col(mersenne_twister.random_double_point_on_sphere()))
-    O.A = joint_lib.five_dof_alignment(sites=O.sites_F0)
-    O.I_spatial = spatial_inertia_from_sites(
-      sites=O.sites_F0, alignment_T=O.A.T0b)
-    #
-    O.wells = test_utils.create_wells(
-      sites=O.sites_F0, mersenne_twister=mersenne_twister)
-    #
-    qE = matrix.col((mersenne_twister.random_double(size=3)*2-1)*math.pi/4)
-    qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
-    if (r_is_qr):
-      qr = joint_lib.RBDA_Eq_4_7(q=qE).transpose() * qr
-    O.J = joint_lib.five_dof(qE=qE, qr=qr, r_is_qr=r_is_qr)
-    O.qd = matrix.col(mersenne_twister.random_double(size=5)*2-1)
-    #
-    O.energies_and_accelerations_update()
-
-class five_six_dof_simulation(simulation_mixin):
-
-  def __init__(O, six_dof_type, sim5):
-    O.sites_F0 = sim5.sites_F0
-    O.A = sim5.A
-    O.I_spatial = sim5.I_spatial
-    #
-    O.wells = sim5.wells
-    #
-    O.J = joint_lib.six_dof(
-      type=six_dof_type, qE=sim5.J.qE, qr=sim5.J.qr, r_is_qr=sim5.J.r_is_qr)
-    #
-    O.qd = sim5.J.S * sim5.qd
-    #
-    O.energies_and_accelerations_update()
-    #
-    assert approx_equal(O.sites_moved(), sim5.sites_moved())
-    assert approx_equal(O.e_pot, sim5.e_pot)
-    assert approx_equal(O.e_kin, sim5.e_kin)
-    assert abs(O.qdd[2]) < 1.e-10
-    assert approx_equal(O.qdd.elems[:2], sim5.qdd.elems[:2])
-    assert approx_equal(O.qdd.elems[3:], sim5.qdd.elems[2:])
-
 plot_number = [0]
 
 def run_simulation(
       out,
-      dof,
       six_dof_type,
       r_is_qr,
       mersenne_twister,
       n_dynamics_steps,
       delta_t):
-  assert dof in [5,6]
-  if (dof == 5):
-    sim = five_dof_simulation(
-      r_is_qr=r_is_qr,
-      mersenne_twister=mersenne_twister)
-    if (six_dof_type is None):
-      sim_label = "five_dof(r_is_qr=%s)"
-    else:
-      sim = five_six_dof_simulation(six_dof_type=six_dof_type, sim5=sim)
-      sim_label = 'five_six_dof(type="%s", r_is_qr=%%s)' % six_dof_type
-  else:
-    sim = six_dof_simulation(
-      six_dof_type=six_dof_type,
-      r_is_qr=r_is_qr,
-      mersenne_twister=mersenne_twister)
-    sim_label = 'six_dof(type="%s", r_is_qr=%%s)' % six_dof_type
-  sim_label %= str(sim.J.r_is_qr)
+  sim = six_dof_simulation(
+    six_dof_type=six_dof_type,
+    r_is_qr=r_is_qr,
+    mersenne_twister=mersenne_twister)
+  sim_label = 'six_dof(type="%s", r_is_qr=%s)' % (
+    six_dof_type, str(sim.J.r_is_qr))
   if (six_dof_type == "euler_angles_xyz"):
     sim.check_d_pot_d_q()
   sites_moved = [sim.sites_moved()]
@@ -287,12 +230,10 @@ def run_simulations(
   sites_moved_accu = []
   relative_ranges = []
   for r_is_qr in [True, False]:
-    for six_dof_type in [None, "euler_params", "euler_angles_xyz"]:
-      if (dof == 6 and six_dof_type is None): continue
+    for six_dof_type in ["euler_params", "euler_angles_xyz"]:
       mersenne_twister.setstate(mt_state)
       sim, sim_label, sites_moved, relative_range = run_simulation(
         out=out,
-        dof=dof,
         six_dof_type=six_dof_type,
         r_is_qr=r_is_qr,
         mersenne_twister=mersenne_twister,
