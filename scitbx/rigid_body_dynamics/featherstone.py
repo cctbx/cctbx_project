@@ -24,8 +24,18 @@ except ImportError:
   scitbx = None
 
 if (scitbx is not None):
+  import scitbx.math
   from scitbx import matrix
   from libtbx.math_utils import ifloor
+
+  def generalized_inverse(m):
+    # assumption to achieve stability: order of magnitude of masses is around 1
+    return matrix.sqr(
+      scitbx.math.generalized_inverse_real_symmetric(
+        a=m,
+        relative_min_abs_pivot=1e-12,
+        absolute_min_abs_pivot=1e-12))
+
 else:
   import scitbx_matrix as matrix
 
@@ -35,35 +45,13 @@ else:
       return int(x+.5)
     return iround(math.floor(x))
 
-tntbx = None
-if (scitbx is not None):
-  import scitbx.math
-  try:
-    import tntbx
-  except ImportError:
-    pass
-if (tntbx is None):
   def generalized_inverse(m):
     return m.inverse()
-else:
-  def generalized_inverse(m):
-    return matrix.sqr(tntbx.generalized_inverse(m.as_flex_double_matrix()))
 
 import math
 
 class InfType(object): pass
 Inf = InfType()
-
-def mldivide(A, B):
-  "http://www.mathworks.com/access/helpdesk/help/techdoc/ref/mldivide.html"
-  if (scitbx is not None):
-    # assumption to achieve stability: order of magnitude of masses is around 1
-    return matrix.col(
-      scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(
-        a=A, b=B,
-        relative_min_abs_pivot=1e-12,
-        absolute_min_abs_pivot=1e-12))
-  return generalized_inverse(A) * B
 
 def Xrotx(theta):
   """
@@ -363,27 +351,27 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
         pA[i] = pA[i] - X0[i].inverse().transpose() * f_ext[i]
 
   U = [None] * model.NB
-  d = [None] * model.NB
+  d_inv = [None] * model.NB
   u = [None] * model.NB
   for i in xrange(model.NB-1,-1,-1):
     if (S[i] is None):
       U[i] = IA[i]
-      d[i] = U[i]
+      d = U[i]
       if (tau is None or tau[i] is None):
         u[i] =        - pA[i]
       else:
         u[i] = tau[i] - pA[i]
     else:
       U[i] = IA[i] * S[i]
-      d[i] = S[i].transpose() * U[i]
+      d = S[i].transpose() * U[i]
       if (tau is None or tau[i] is None):
         u[i] =        - S[i].transpose()*pA[i]
       else:
         u[i] = tau[i] - S[i].transpose()*pA[i]
+    d_inv[i] = generalized_inverse(d)
     if model.parent[i] != -1:
-      d_inv = generalized_inverse(d[i])
-      Ia = IA[i] - U[i] * d_inv * U[i].transpose()
-      pa = pA[i] + Ia*c[i] + U[i] * d_inv * u[i]
+      Ia = IA[i] - U[i] * d_inv[i] * U[i].transpose()
+      pa = pA[i] + Ia*c[i] + U[i] * d_inv[i] * u[i]
       IA[model.parent[i]] = IA[model.parent[i]] \
                           + Xup[i].transpose() * Ia * Xup[i]
       pA[model.parent[i]] = pA[model.parent[i]] \
@@ -396,7 +384,7 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
       a[i] = Xup[i] * -a_grav + c[i]
     else:
       a[i] = Xup[i] * a[model.parent[i]] + c[i]
-    qdd[i] = mldivide(d[i], u[i] - U[i].transpose()*a[i])
+    qdd[i] = d_inv[i] * (u[i] - U[i].transpose()*a[i])
     if (S[i] is None):
       a[i] = a[i] + qdd[i]
     else:
