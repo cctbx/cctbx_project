@@ -475,9 +475,6 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
   print
   print "Count, residue chain and number, name and map CC"
   for i_count, res_sel in enumerate(residue_selections):
-    #print list(map_1.select(res_sel))
-    #print
-    #print list(map_2.select(res_sel))
     corr = flex.linear_correlation(
       x = map_1.select(res_sel),
       y = map_2.select(res_sel)).coefficient()
