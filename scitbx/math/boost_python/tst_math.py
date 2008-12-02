@@ -1121,6 +1121,20 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
         a_ginv = tntbx.generalized_inverse(ar.as_flex_double_matrix())
         xs = matrix.sqr(a_ginv) * br
         assert approx_equal(xs, xr)
+  #
+  a = flex.double([[1e-15]])
+  b = flex.double([1e-14])
+  x = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b)
+  assert approx_equal(x, [10])
+  assert a[0] == 1e-15
+  assert b[0] == 1e-14
+  x = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b,
+    absolute_min_abs_pivot=1e-12)
+  assert x[0] == 0
+  b[0] = 1e-10
+  x = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b,
+    absolute_min_abs_pivot=1e-12)
+  assert x is None
 
 def exercise_tensor_rank_2():
   g = (2,3,5,0.2,0.3,0.5)

@@ -57,8 +57,12 @@ Inf = InfType()
 def mldivide(A, B):
   "http://www.mathworks.com/access/helpdesk/help/techdoc/ref/mldivide.html"
   if (scitbx is not None):
+    # assumption to achieve stability: order of magnitude of masses is around 1
     return matrix.col(
-      scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=A, b=B))
+      scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(
+        a=A, b=B,
+        relative_min_abs_pivot=1e-12,
+        absolute_min_abs_pivot=1e-12))
   return generalized_inverse(A) * B
 
 def mrdivide(B, A):
