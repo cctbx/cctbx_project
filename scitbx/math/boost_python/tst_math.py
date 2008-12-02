@@ -26,12 +26,18 @@ from scitbx import matrix
 from libtbx.utils import user_plus_sys_time
 from libtbx.itertbx import count
 from libtbx.test_utils import Exception_expected, approx_equal, eps_eq
+import libtbx.load_env
 import pickle
 from cStringIO import StringIO
 import random
 import math
 import time
 import sys
+
+if (libtbx.env.has_module("tntbx")):
+  import tntbx
+else:
+  tntbx = None
 
 def exercise_div_mod():
   from scitbx.math import divmod
@@ -1067,6 +1073,54 @@ def exercise_row_echelon_full_pivoting():
       ex = e.back_substitution(free_values=flex.double(e.nullity, 0))
       if (ex is None): n_no_solution_with_epsilon_zero += 1
   assert n_no_solution_with_epsilon_zero > 20
+  #
+  # http://www.mathworks.com/access/helpdesk/help/techdoc/ref/pinv.html
+  #   2008-12-01
+  a = flex.double([float(v) for v in """
+    64     2     3    61    60     6
+     9    55    54    12    13    51
+    17    47    46    20    21    43
+    40    26    27    37    36    30
+    32    34    35    29    28    38
+    41    23    22    44    45    19
+    49    15    14    52    53    11
+     8    58    59     5     4    62""".split()])
+  a.reshape(flex.grid(8,6))
+  b = flex.double(8, 260)
+  aw = a.deep_copy()
+  bw = b.deep_copy()
+  e = scitbx.math.row_echelon_full_pivoting(
+    a_work=aw, b_work=bw, min_abs_pivot=1e-12)
+  assert e.rank == 3
+  x = e.back_substitution(free_values=flex.double(e.nullity), epsilon=1e-12)
+  assert approx_equal(x, [4,5,0,0,0,-1])
+
+def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
+  mt = flex.mersenne_twister(seed=0)
+  for bits in xrange(8):
+    d = [1.23, 2.34, 0.58]
+    x = [-0.19, -0.44, 0.83]
+    if (bits    % 2): d[0] = x[0] = 0
+    if (bits//2 % 2): d[1] = x[1] = 0
+    if (bits//4 % 2): d[2] = x[2] = 0
+    a = matrix.diag(d)
+    x = matrix.col(x)
+    b = a * x
+    xs = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b)
+    assert approx_equal(xs, x)
+    for i_trial in xrange(3):
+      r = matrix.sqr(mt.random_double_r3_rotation_matrix())
+      ar = r * a * r.transpose()
+      xr = r * x
+      br = r * b
+      assert approx_equal(ar * xr, br)
+      xs = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=ar, b=br)
+      assert approx_equal(xs, xr)
+      #
+      if (tntbx is not None):
+        a_ginv = tntbx.generalized_inverse(ar.as_flex_double_matrix())
+        xs = matrix.sqr(a_ginv) * br
+        assert approx_equal(xs, xr)
 
 def exercise_tensor_rank_2():
   g = (2,3,5,0.2,0.3,0.5)
@@ -1646,6 +1700,7 @@ def run():
   exercise_least_squares_plane()
   exercise_div_mod()
   exercise_row_echelon_full_pivoting()
+  exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col()
   exercise_eix()
   exercise_floating_point_epsilon()
   exercise_line_given_points()

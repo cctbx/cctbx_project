@@ -145,3 +145,56 @@ def row_echelon_back_substitution_float(
     assert v.nd() == 1
   return ext.row_echelon_back_substitution_float(
     row_echelon_form, v, solution)
+
+def solve_a_x_eq_b_min_norm_given_a_sym_b_col(
+      a,
+      b,
+      relative_min_abs_pivot=1e-12,
+      back_substitution_epsilon_factor=10):
+  """\
+Assumes a is symmetric, without checking to avoid overhead.
+
+Special case of
+  generalized_inverse(a) * b
+taking advantage of the fact that a is real and symmetric.
+
+Opportunistic algorithm: first assumes that a has full rank. If this
+is true, solves a*x=b for x using simple back-substitution.
+
+Only if a is rank-deficient:
+  To obtain the x with minimum norm, transforms a to a basis formed
+  by its eigenvectors, solves a*x=b in this basis, then transforms
+  x back to the original basis system.
+
+Returns None if a*x=b has no solution.
+"""
+  if (isinstance(a, matrix.rec)):
+    a = a.as_flex_double_matrix()
+  if (isinstance(b, matrix.rec)):
+    assert b.n_columns() == 1
+    b = flex.double(b)
+  min_abs_pivot = max(a.all()) * flex.max(flex.abs(a)) * relative_min_abs_pivot
+  epsilon = min_abs_pivot * back_substitution_epsilon_factor
+  aw = a.deep_copy()
+  bw = b.deep_copy()
+  ef = row_echelon_full_pivoting(
+    a_work=aw, b_work=bw, min_abs_pivot=min_abs_pivot)
+  if (ef.nullity == 0):
+    x = ef.back_substitution(
+      free_values=flex.double(ef.nullity), epsilon=epsilon)
+  else:
+    assert a.is_square_matrix()
+    aw = a.deep_copy()
+    es = scitbx.math.eigensystem.real_symmetric(aw)
+    c = es.vectors() # may be left-handed, but that's OK here
+    ct = c.matrix_transpose()
+    aw = c.matrix_multiply(aw).matrix_multiply(ct)
+    bw = c.matrix_multiply(b)
+    max_rank = ef.rank
+    ef = row_echelon_full_pivoting(a_work=aw, b_work=bw, max_rank=max_rank)
+    assert ef.rank == max_rank
+    x = ef.back_substitution(
+      free_values=flex.double(ef.nullity, 0), epsilon=epsilon)
+    if (x is not None):
+      x = ct.matrix_multiply(x)
+  return x
