@@ -23,7 +23,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.sim = revolute_simulation(
       mersenne_twister=None,
       NB=NB,
-      zickzack=True)
+      config="zickzack")
     self.points = flex.vec3_double()
     self.set_points()
     assert self.points.size() == NB*3
