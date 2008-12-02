@@ -2,7 +2,6 @@ from scitbx.rigid_body_dynamics import featherstone
 from scitbx.rigid_body_dynamics import joint_lib
 from scitbx.rigid_body_dynamics.utils import \
   spatial_inertia_from_sites, \
-  kinetic_energy, \
   T_as_X, \
   featherstone_system_model, \
   e_kin_from_model
@@ -220,17 +219,7 @@ def check_transformations(bodies, Ttree, X0s):
 
 plot_number = [0]
 
-def exercise_revolute_sim(
-      out,
-      mersenne_twister,
-      n_dynamics_steps,
-      delta_t,
-      NB,
-      config):
-  sim = revolute_simulation(
-    mersenne_twister=mersenne_twister,
-    NB=NB,
-    config=config)
+def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
@@ -240,7 +229,6 @@ def exercise_revolute_sim(
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
   sim.check_d_pot_d_q()
-  print >> out, "config:", config
   print >> out, "energy samples:", e_tots.size()
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
@@ -265,6 +253,21 @@ def exercise_revolute_sim(
     f.close()
     plot_number[0] += 1
   return relative_range
+
+def exercise_revolute_sim(
+      out,
+      mersenne_twister,
+      n_dynamics_steps,
+      delta_t,
+      NB,
+      config):
+  print >> out, "config:", config
+  sim = revolute_simulation(
+    mersenne_twister=mersenne_twister,
+    NB=NB,
+    config=config)
+  return exercise_sim(
+    out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
 
 def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001, NB=3):
   mersenne_twister = flex.mersenne_twister(seed=0)

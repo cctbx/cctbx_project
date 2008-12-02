@@ -5,7 +5,7 @@ from scitbx.rigid_body_dynamics.utils import \
   kinetic_energy, \
   T_as_X
 from scitbx.rigid_body_dynamics import test_utils
-from free_motion_reference_impl import \
+from scitbx.rigid_body_dynamics.free_motion_reference_impl import \
   create_triangle_with_center_of_mass_at_origin
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -53,16 +53,6 @@ def create_triangle_with_random_center_of_mass(mersenne_twister):
   sites = create_triangle_with_center_of_mass_at_origin()
   t = matrix.col(mersenne_twister.random_double(size=3)*2-1)
   return [site+t for site in sites]
-
-def create_wells(sites, mersenne_twister):
-  "overall random rotation and translation + noise"
-  r = matrix.sqr(mersenne_twister.random_double_r3_rotation_matrix())
-  t = matrix.col(mersenne_twister.random_double(size=3)-0.5)
-  wells = []
-  for site in sites:
-    t_noise = t + matrix.col(mersenne_twister.random_double(size=3)-0.5)*0.2
-    wells.append(r * site + t_noise)
-  return wells
 
 class featherstone_system_model(object):
 
@@ -159,7 +149,8 @@ class six_dof_simulation(simulation_mixin):
     O.I_spatial = spatial_inertia_from_sites(
       sites=O.sites_F0, alignment_T=O.A.T0b)
     #
-    O.wells = create_wells(sites=O.sites_F0, mersenne_twister=mersenne_twister)
+    O.wells = test_utils.create_wells(
+      sites=O.sites_F0, mersenne_twister=mersenne_twister)
     #
     qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
@@ -180,7 +171,8 @@ class five_dof_simulation(simulation_mixin):
     O.I_spatial = spatial_inertia_from_sites(
       sites=O.sites_F0, alignment_T=O.A.T0b)
     #
-    O.wells = create_wells(sites=O.sites_F0, mersenne_twister=mersenne_twister)
+    O.wells = test_utils.create_wells(
+      sites=O.sites_F0, mersenne_twister=mersenne_twister)
     #
     qE = matrix.col((mersenne_twister.random_double(size=3)*2-1)*math.pi/4)
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
