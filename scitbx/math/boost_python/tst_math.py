@@ -1108,8 +1108,11 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
     b = a * x
     xs = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b)
     assert approx_equal(xs, x)
-    for i_trial in xrange(3):
-      r = matrix.sqr(mt.random_double_r3_rotation_matrix())
+    for i_trial in xrange(10):
+      if (i_trial == 0):
+        r = matrix.identity(n=3)
+      else:
+        r = matrix.sqr(mt.random_double_r3_rotation_matrix())
       ar = r * a * r.transpose()
       xr = r * x
       br = r * b
@@ -1117,24 +1120,62 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
       xs = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=ar, b=br)
       assert approx_equal(xs, xr)
       #
+      ari = matrix.sqr(scitbx.math.generalized_inverse_real_symmetric(a=ar))
+      assert approx_equal(ari * br, xr)
+      #
       if (tntbx is not None):
-        a_ginv = tntbx.generalized_inverse(ar.as_flex_double_matrix())
-        xs = matrix.sqr(a_ginv) * br
+        arit = tntbx.generalized_inverse(ar.as_flex_double_matrix())
+        xs = matrix.sqr(arit) * br
         assert approx_equal(xs, xr)
+        assert approx_equal(ari, arit)
   #
   a = flex.double([[1e-15]])
   b = flex.double([1e-14])
   x = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b)
+  assert approx_equal(x, [10])
+  ai = matrix.sqr(scitbx.math.generalized_inverse_real_symmetric(a=a))
+  x = ai * matrix.col(b)
   assert approx_equal(x, [10])
   assert a[0] == 1e-15
   assert b[0] == 1e-14
   x = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b,
     absolute_min_abs_pivot=1e-12)
   assert x[0] == 0
+  ai = matrix.sqr(scitbx.math.generalized_inverse_real_symmetric(a=a,
+    absolute_min_abs_pivot=1e-12))
+  x = ai * matrix.col(b)
+  assert x[0] == 0
   b[0] = 1e-10
   x = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b,
     absolute_min_abs_pivot=1e-12)
   assert x is None
+  #
+  def compare(a, n_trials):
+    for i_trial in xrange(n_trials):
+      if (i_trial == 0):
+        ar = a
+      else:
+        r = matrix.sqr(mt.random_double_r3_rotation_matrix())
+        ar = r * a * r.transpose()
+      ari = matrix.sqr(
+        scitbx.math.generalized_inverse_real_symmetric(
+          a=ar, absolute_min_abs_pivot=1.e-12))
+      if (tntbx is not None):
+        arit = matrix.sqr(
+          tntbx.generalized_inverse(ar.as_flex_double_matrix()))
+        mismatch = (ari-arit).norm_sq() / max(1, max([abs(e) for e in ari]))
+        if (mismatch > 1e-10):
+          print ar.elems
+          print ari.elems
+          print arit.elems
+          raise AssertionError, mismatch
+  for i_trial in xrange(10):
+    x,y,z = flex.random_double(size=3)*2-1
+    a = matrix.sqr([
+      x,y,x,
+      y,z,y,
+      x,y,x])
+    compare(a, n_trials=10)
 
 def exercise_tensor_rank_2():
   g = (2,3,5,0.2,0.3,0.5)

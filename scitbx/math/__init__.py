@@ -206,3 +206,31 @@ Returns None if a*x=b has no solution.
     if (x is not None):
       x = ct.matrix_multiply(x)
   return x
+
+def generalized_inverse_real_symmetric(
+      a,
+      relative_min_abs_pivot=1e-12,
+      absolute_min_abs_pivot=None):
+  if (isinstance(a, matrix.rec)):
+    a = a.as_flex_double_matrix()
+  assert a.is_square_matrix()
+  if (relative_min_abs_pivot is None):
+    min_abs_pivot = 0
+  else:
+    min_abs_pivot = \
+       max(a.all()) \
+     * flex.max(flex.abs(a)) \
+     * relative_min_abs_pivot
+  if (absolute_min_abs_pivot is not None):
+    min_abs_pivot = max(min_abs_pivot, absolute_min_abs_pivot)
+  es = scitbx.math.eigensystem.real_symmetric(a)
+  d = flex.double()
+  for v in es.values():
+    if (abs(v) < min_abs_pivot): v = 0
+    elif (v != 0):               v = 1/v
+    d.append(v)
+  # XXX optimize code below
+  c = es.vectors()
+  ct = c.matrix_transpose()
+  ae = matrix.diag(d).as_flex_double_matrix()
+  return ct.matrix_multiply(ae).matrix_multiply(c)
