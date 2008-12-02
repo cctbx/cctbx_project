@@ -37,3 +37,13 @@ def potential_f_ext_bf(sites, wells, A, J, AJA_tree=None):
     f += force
     nc += (A.T0b * s).cross(force)
   return matrix.col((nc, f)).resolve_partitions()
+
+def create_wells(sites, mersenne_twister):
+  "overall random rotation and translation + noise"
+  r = matrix.sqr(mersenne_twister.random_double_r3_rotation_matrix())
+  t = matrix.col(mersenne_twister.random_double(size=3)-0.5)
+  wells = []
+  for site in sites:
+    t_noise = t + matrix.col(mersenne_twister.random_double(size=3)-0.5)*0.2
+    wells.append(r * site + t_noise)
+  return wells
