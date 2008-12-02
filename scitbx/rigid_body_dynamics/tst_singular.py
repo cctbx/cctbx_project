@@ -80,9 +80,13 @@ class six_dof_body(object):
 
 class revolute_body(object):
 
-  def __init__(O, mersenne_twister):
-    pivot = matrix.col(mersenne_twister.random_double_point_on_sphere()) * 0.6
-    normal = matrix.col(mersenne_twister.random_double_point_on_sphere())
+  def __init__(O, mersenne_twister, prev=None):
+    if (prev is None):
+      normal = matrix.col(mersenne_twister.random_double_point_on_sphere())
+      pivot = matrix.col(mersenne_twister.random_double_point_on_sphere()) * 0.6
+    else:
+      normal = prev.A.normal
+      pivot = prev.A.pivot + normal * 0.3
     O.sites = [pivot + normal * (-0.8)]
     O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
     O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
@@ -106,6 +110,21 @@ def exercise_six_dof(out, n_trials, n_dynamics_steps, delta_t=0.001):
       if (out is not sys.stdout):
         assert relative_range < 1.e-4
 
+def exercise_six_dof2(out, n_trials, n_dynamics_steps, delta_t=0.001):
+  mersenne_twister = flex.mersenne_twister(seed=0)
+  for n_sites in xrange(1,4):
+    for i_trial in xrange(n_trials):
+      body1 = six_dof_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
+      body1.parent = -1
+      body2 = six_dof_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
+      body2.parent = 0
+      sim = simulation(bodies=[body1, body2])
+      print >> out, "six_dof2 number of sites:", n_sites
+      relative_range = exercise_sim(
+        out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
+      if (out is not sys.stdout):
+        assert relative_range < 1.e-4
+
 def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
   for i_trial in xrange(n_trials):
@@ -113,6 +132,20 @@ def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001):
     body.parent = -1
     sim = simulation(bodies=[body])
     print >> out, "revolute:"
+    relative_range = exercise_sim(
+      out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
+    if (out is not sys.stdout):
+      assert relative_range < 1.e-4
+
+def exercise_revolute2(out, n_trials, n_dynamics_steps, delta_t=0.001):
+  mersenne_twister = flex.mersenne_twister(seed=0)
+  for i_trial in xrange(n_trials):
+    body1 = revolute_body(mersenne_twister=mersenne_twister)
+    body1.parent = -1
+    body2 = revolute_body(mersenne_twister=mersenne_twister, prev=body1)
+    body2.parent = 0
+    sim = simulation(bodies=[body1, body2])
+    print >> out, "revolute2:"
     relative_range = exercise_sim(
       out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
     if (out is not sys.stdout):
@@ -129,10 +162,18 @@ def run(args):
     n_dynamics_steps = max(1, int(args[1]))
     out = sys.stdout
   show_times_at_exit()
-  exercise_six_dof(
-    out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
-  exercise_revolute(
-    out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
+  if (1):
+    exercise_six_dof(
+      out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
+  if (1):
+    exercise_six_dof2(
+      out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
+  if (1):
+    exercise_revolute(
+      out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
+  if (1):
+    exercise_revolute2(
+      out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
   print "OK"
 
 if (__name__ == "__main__"):
