@@ -65,10 +65,6 @@ def mldivide(A, B):
         absolute_min_abs_pivot=1e-12))
   return generalized_inverse(A) * B
 
-def mrdivide(B, A):
-  "http://www.mathworks.com/access/helpdesk/help/techdoc/ref/mrdivide.html"
-  return (generalized_inverse(A.transpose()) * B.transpose()).transpose()
-
 def Xrotx(theta):
   """
 % Xrotx  spatial coordinate transform (X-axis rotation).
@@ -385,8 +381,9 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
       else:
         u[i] = tau[i] - S[i].transpose()*pA[i]
     if model.parent[i] != -1:
-      Ia = IA[i] - mrdivide(U[i],d[i])*U[i].transpose()
-      pa = pA[i] + Ia*c[i] + mrdivide(U[i] * u[i],d[i])
+      d_inv = generalized_inverse(d[i])
+      Ia = IA[i] - U[i] * d_inv * U[i].transpose()
+      pa = pA[i] + Ia*c[i] + U[i] * d_inv * u[i]
       IA[model.parent[i]] = IA[model.parent[i]] \
                           + Xup[i].transpose() * Ia * Xup[i]
       pA[model.parent[i]] = pA[model.parent[i]] \
