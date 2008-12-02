@@ -479,6 +479,12 @@ class rec(object):
     assert self.n == (3,3)
     return self.elems
 
+  def as_flex_double_matrix(self):
+    assert flex is not None
+    result = flex.double(self.elems)
+    result.reshape(flex.grid(self.n))
+    return result
+
   def extract_block(self, stop, start=(0,0), step=(1,1)):
     assert 0 <= stop[0] <= self.n[0]
     assert 0 <= stop[1] <= self.n[1]
@@ -1023,6 +1029,11 @@ def exercise():
   a = sym(sym_mat3=range(6))
   assert a.as_list_of_lists() == [[0, 3, 4], [3, 1, 5], [4, 5, 2]]
   assert approx_equal(a.as_sym_mat3(), range(6))
+  assert a.as_mat3() == (0,3,4,3,1,5,4,5,2)
+  if (flex is not None):
+    f = a.as_flex_double_matrix()
+    assert f.all() == a.n
+    assert approx_equal(f, a, eps=1.e-12)
   #
   for i in xrange(3):
     x = rec([], n=(0,i))
