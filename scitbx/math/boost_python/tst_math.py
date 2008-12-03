@@ -1105,7 +1105,8 @@ def exercise_row_echelon_full_pivoting():
     a_work=aw, b_work=bw, min_abs_pivot=1e-12)
   assert e.rank == 3
   x = e.back_substitution(free_values=flex.double(e.nullity), epsilon=1e-12)
-  assert approx_equal(x, [4,5,0,0,0,-1])
+  assert approx_equal(a.matrix_multiply(x), b)
+  assert approx_equal(sorted(x), [-1,0,0,0,4,5])
 
 def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
   mt = flex.mersenne_twister(seed=0)
