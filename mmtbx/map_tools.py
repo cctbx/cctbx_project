@@ -53,32 +53,6 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
-class map_helper(object):
-  def __init__(self, fmodel, free_reflections_per_bin = 100,
-               interpolation = True):
-    ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())/4.
-    fb_cart  = fmodel.fb_cart()
-    scale_k1 = fmodel.scale_k1()
-    f_obs_scale   = 1.0 / (fb_cart * scale_k1)
-    f_model_scale = 1.0 / fb_cart
-    f_obs_data_scaled = fmodel.f_obs.data() * f_obs_scale
-    f_model_data_scaled = fmodel.f_model().data() * f_model_scale
-    self.f_obs_scaled = fmodel.f_obs.array(data = f_obs_data_scaled)
-    self.f_model_scaled = fmodel.f_obs.array(data = f_model_data_scaled)
-    self.alpha, beta = maxlik.alpha_beta_est_manager(
-      f_obs                    = self.f_obs_scaled,
-      f_calc                   = self.f_model_scaled,
-      free_reflections_per_bin = free_reflections_per_bin,
-      flags                    = fmodel.r_free_flags.data(),
-      interpolation            = interpolation).alpha_beta()
-    self.fom = max_lik.fom_and_phase_error(
-      f_obs          = f_obs_data_scaled,
-      f_model        = flex.abs(f_model_data_scaled),
-      alpha          = self.alpha.data(),
-      beta           = beta.data(),
-      space_group    = fmodel.r_free_flags.space_group(),
-      miller_indices = fmodel.r_free_flags.indices()).fom()
-
 class kick_map(object):
 
   def __init__(self, fmodel,
@@ -94,8 +68,8 @@ class kick_map(object):
     assert [real_map_unpadded, real_map].count(True) == 1
     fmodel_tmp = fmodel.deep_copy()
     bss_params = bss.master_params.extract()
-    map_helper_obj = map_helper(fmodel = fmodel)
-    ss = 1./flex.pow2(fmodel.f_obs.d_spacings().data())/4.
+    map_helper_obj = fmodel.map_calculation_helper()
+    ss = fmodel.ss
     self.map_data = None
     self.map_coeffs = None
     map_coeff_data = None
@@ -210,8 +184,8 @@ class electron_density_map(object):
       assert anom_diff_common.indices().size()==self.anom_diff.indices().size()
       self.anom_diff = self._phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
-    if(self.fill_missing_f_obs): self.fmodel = self._fill_f_obs()
-    self.map_helper_obj = map_helper(fmodel  = self.fmodel)
+    if(self.fill_missing_f_obs): self.fmodel = self.fmodel.fill_missing_f_obs()
+    self.map_helper_obj = self.fmodel.map_calculation_helper()
     #del self.fmodel # XXX
 
   def map_coefficients(self, map_type, alpha_fom_source = None):
@@ -262,78 +236,6 @@ class electron_density_map(object):
         return miller.array(
           miller_set = self.fmodel.f_calc(),
           data       = fo_all_scales - fc_all_scales)
-
-  def _fill_f_obs(self):
-    f_model = self.fmodel.f_model()
-    n_refl_orig = f_model.data().size()
-    complete_set = f_model.complete_set(d_min = f_model.d_min(), d_max=None)
-    f_calc_atoms = complete_set.structure_factors_from_scatterers(
-      xray_structure = self.fmodel.xray_structure).f_calc()
-    f_calc_atoms_lone = f_calc_atoms.lone_set(other = f_model)
-    n_refl_lone = f_calc_atoms_lone.data().size()
-    f_mask_lone = masks.manager(
-      miller_array = f_calc_atoms_lone,
-      xray_structure = self.fmodel.xray_structure).f_mask()
-    ss = 1./flex.pow2(f_mask_lone.d_spacings().data())/4.
-    r_free_flags_lone = f_mask_lone.array(
-      data = flex.bool(f_mask_lone.size(), False))
-    f_model_core = ext.core(f_calc = f_calc_atoms_lone.data(),
-      f_mask = f_mask_lone.data(),
-      b_cart = self.fmodel.b_cart(),
-      k_sol  = self.fmodel.k_sol(),
-      b_sol  = self.fmodel.b_sol(),
-      hkl    = f_calc_atoms_lone.indices(),
-      uc     = f_mask_lone.unit_cell(),
-      ss     = ss)
-    f_obs_orig = self.fmodel.f_obs.deep_copy()
-    r_free_flags_orig = self.fmodel.r_free_flags
-    # compose new fileld fmodel
-    f_model_lone = abs(miller.array(
-      miller_set = f_mask_lone,
-      data       = f_model_core.f_model * self.fmodel.scale_k1()))
-    new_f_obs = self.fmodel.f_obs.concatenate(other = f_model_lone)
-    new_r_free_flags = self.fmodel.r_free_flags.concatenate(
-      other = r_free_flags_lone)
-    new_abcd = None
-    if(self.fmodel.abcd is not None):
-      new_abcd = self.fmodel.abcd.customized_copy(
-        indices = new_f_obs.indices(),
-        data = self.fmodel.abcd.data().concatenate(
-          flex.hendrickson_lattman(n_refl_lone, [0,0,0,0])))
-    self.fmodel = mmtbx.f_model.manager(
-      xray_structure = self.fmodel.xray_structure,
-      r_free_flags   = new_r_free_flags,
-      target_name    = "ls_wunit_k1",
-      f_obs          = new_f_obs,
-      abcd           = new_abcd)
-    self.fmodel.update_solvent_and_scale()
-    # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
-    alpha, beta = maxlik.alpha_beta_est_manager(
-      f_obs                    = self.fmodel.f_obs,
-      f_calc                   = self.fmodel.f_model_scaled_with_k1(),
-      free_reflections_per_bin = 100,
-      flags                    = self.fmodel.r_free_flags.data(),
-      interpolation            = True).alpha_beta()
-    apply_alpha_sel = flex.bool(n_refl_orig, False).concatenate(
-      flex.bool(n_refl_lone, True)) # assume order did not change
-    assert apply_alpha_sel.size() == self.fmodel.f_obs.data().size()
-    alpha = alpha.select(apply_alpha_sel)
-    # compose new fileld fmodel
-    f_model_lone = abs(miller.array(
-      miller_set = f_mask_lone,
-      data       = f_model_core.f_model * self.fmodel.scale_k1()*alpha.data()))
-    new_f_obs = f_obs_orig.concatenate(other = f_model_lone)
-    new_r_free_flags = r_free_flags_orig.concatenate(
-      other = r_free_flags_lone)
-    self.fmodel = mmtbx.f_model.manager(
-      xray_structure = self.fmodel.xray_structure,
-      r_free_flags   = new_r_free_flags,
-      target_name    = "ls_wunit_k1",
-      f_obs          = new_f_obs,
-      abcd           = new_abcd)
-    self.fmodel.update_solvent_and_scale()
-    #
-    return self.fmodel
 
   def _phase_transfer(self, miller_array, phase_source):
     # XXX could be a method in miller.py under a better name in future
