@@ -56,10 +56,16 @@ namespace {
     {
       using namespace boost::python;
       class_<w_t>("eigensystem_real_symmetric", no_init)
-        .def(init<af::const_ref<double, af::c_grid<2> > const&,
-                  optional<double> >())
-        .def(init<scitbx::sym_mat3<double> const&,
-                  optional<double> >())
+        .def(init<
+          af::const_ref<double, af::c_grid<2> > const&, double, double>((
+            arg_("m"),
+            arg_("relative_epsilon")=1.e-10,
+            arg_("absolute_epsilon")=0)))
+        .def(init<
+          scitbx::sym_mat3<double> const&, double, double>((
+            arg_("m"),
+            arg_("relative_epsilon")=1.e-10,
+            arg_("absolute_epsilon")=0)))
         .def("vectors", &w_t::vectors)
         .def("values", &w_t::values)
       ;

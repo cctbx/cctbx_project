@@ -20,8 +20,11 @@ namespace scitbx { namespace math { namespace eigensystem {
       std::size_t n,
       FloatType* eigenvectors,
       FloatType* eigenvalues,
-      FloatType epsilon)
+      FloatType relative_epsilon,
+      FloatType absolute_epsilon)
     {
+      SCITBX_ASSERT(relative_epsilon >= 0);
+      SCITBX_ASSERT(absolute_epsilon >= 0);
       // The matrix that will hold the results is initially = I.
       std::size_t i;
       for (i=0; i< (n*n); i++) {
@@ -43,7 +46,8 @@ namespace scitbx { namespace math { namespace eigensystem {
       }
       if (anorm>0.0) {
         anorm=std::sqrt(2.0*anorm);
-        anrmx=epsilon*anorm/n;
+        anrmx=relative_epsilon*anorm/n;
+        if (anrmx < absolute_epsilon) anrmx = absolute_epsilon;
         // Compute threshold and initialise flag.
         thr=anorm;
         while (thr>anrmx) { // Compare threshold with final norm
@@ -179,7 +183,8 @@ namespace scitbx { namespace math { namespace eigensystem {
       std::size_t n,
       FloatType* eigenvectors,
       FloatType* eigenvalues,
-      FloatType epsilon)
+      FloatType relative_epsilon,
+      FloatType absolute_epsilon)
     {
       boost::scoped_array<FloatType> a(new FloatType[n * (n+1) / 2]);
       FloatType* trng = a.get();
@@ -192,7 +197,8 @@ namespace scitbx { namespace math { namespace eigensystem {
         }
       }
       real_symmetric_given_lower_triangle(
-        a.get(), n, eigenvectors, eigenvalues, epsilon);
+        a.get(), n, eigenvectors, eigenvalues,
+        relative_epsilon, absolute_epsilon);
     }
 
   } // namespace detail
@@ -224,25 +230,29 @@ namespace scitbx { namespace math { namespace eigensystem {
        */
       real_symmetric(
         mat_const_ref<FloatType> const& m,
-        FloatType epsilon=1.e-10);
+        FloatType relative_epsilon=1.e-10,
+        FloatType absolute_epsilon=0);
 
       /*! \brief Determines the eigenvectors and eigenvalues of the
           real-symmetric square matrix.
        */
       real_symmetric(
         af::const_ref<FloatType, af::c_grid<2> > const& m,
-        FloatType epsilon=1.e-10);
+        FloatType relative_epsilon=1.e-10,
+        FloatType absolute_epsilon=0);
 
       /*! \brief Determines the eigenvectors and eigenvalues of the
           real-symmetric square matrix.
        */
       real_symmetric(
         scitbx::sym_mat3<FloatType> const& m,
-        FloatType epsilon=1.e-10);
+        FloatType relative_epsilon=1.e-10,
+        FloatType absolute_epsilon=0);
 
       real_symmetric(
         scitbx::sym_mat2<FloatType> const& m,
-        FloatType epsilon=1.e-10);
+        FloatType relative_epsilon=1.e-10,
+        FloatType absolute_epsilon=0);
 
       //! The list of eigenvectors.
       af::versa<FloatType, af::c_grid<2> >
@@ -257,34 +267,41 @@ namespace scitbx { namespace math { namespace eigensystem {
       af::shared<FloatType> values_;
 
       void
-      initialize(mat_const_ref<FloatType> const& m, FloatType epsilon);
+      initialize(
+        mat_const_ref<FloatType> const& m,
+        FloatType relative_epsilon,
+        FloatType absolute_epsilon);
   };
 
   template <typename FloatType>
   real_symmetric<FloatType>::real_symmetric(
     mat_const_ref<FloatType> const& m,
-    FloatType epsilon)
+    FloatType relative_epsilon,
+    FloatType absolute_epsilon)
   {
-    initialize(m, epsilon);
+    initialize(m, relative_epsilon, absolute_epsilon);
   }
 
   template <typename FloatType>
   real_symmetric<FloatType>::real_symmetric(
     af::const_ref<FloatType, af::c_grid<2> > const& m,
-    FloatType epsilon)
+    FloatType relative_epsilon,
+    FloatType absolute_epsilon)
   {
     initialize(mat_const_ref<FloatType>(
       m.begin(),
       m.accessor()[0],
       m.accessor()[1]),
-      epsilon);
+      relative_epsilon,
+      absolute_epsilon);
   }
 
   template <typename FloatType>
   void
   real_symmetric<FloatType>::initialize(
     mat_const_ref<FloatType> const& m,
-    FloatType epsilon)
+    FloatType relative_epsilon,
+    FloatType absolute_epsilon)
   {
     SCITBX_ASSERT(m.is_square());
     vectors_.resize(af::c_grid<2>(m.n_rows(), m.n_rows()));
@@ -295,13 +312,15 @@ namespace scitbx { namespace math { namespace eigensystem {
       m.n_rows(),
       vectors_.begin(),
       values_.begin(),
-      epsilon);
+      relative_epsilon,
+      absolute_epsilon);
   }
 
   template <typename FloatType>
   real_symmetric<FloatType>::real_symmetric(
     scitbx::sym_mat3<FloatType> const& m,
-    FloatType epsilon)
+    FloatType relative_epsilon,
+    FloatType absolute_epsilon)
   {
     FloatType a[6];
     a[0] = m(0,0);
@@ -317,13 +336,15 @@ namespace scitbx { namespace math { namespace eigensystem {
       std::size_t(3),
       vectors_.begin(),
       values_.begin(),
-      epsilon);
+      relative_epsilon,
+      absolute_epsilon);
   }
 
   template <typename FloatType>
   real_symmetric<FloatType>::real_symmetric(
     scitbx::sym_mat2<FloatType> const& m,
-    FloatType epsilon)
+    FloatType relative_epsilon,
+    FloatType absolute_epsilon)
   {
     FloatType a[3];
     a[0] = m(0,0);
@@ -336,8 +357,10 @@ namespace scitbx { namespace math { namespace eigensystem {
       std::size_t(2),
       vectors_.begin(),
       values_.begin(),
-      epsilon);
+      relative_epsilon,
+      absolute_epsilon);
   }
+
 }}} // namespace scitbx::math::eigensystem
 
 #endif // SCITBX_MATH_EIGENSYSTEM_H
