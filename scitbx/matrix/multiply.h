@@ -132,6 +132,39 @@ namespace scitbx { namespace matrix {
     }
   }
 
+  //! Generic matrix multiplication function: a.transpose() * d * a
+  /*! a = n x n square matrix
+      d = n diagonal elements of diagonal matrix
+   */
+  template <typename NumTypeA,
+            typename NumTypeD,
+            typename NumTypeAD>
+  void
+  transpose_multiply_diagonal_multiply_as_packed_u(
+    const NumTypeA *a,
+    const NumTypeD *diagonal_elements,
+    unsigned n,
+    NumTypeAD *atda)
+  {
+    std::size_t ik = 0;
+    for(unsigned i=0;i<n;i++) {
+      NumTypeAD ad = a[i] * diagonal_elements[0];
+      for(unsigned k=i;k<n;k++) {
+        atda[ik++] = ad * a[k];
+      }
+    }
+    unsigned jac = n;
+    for(unsigned j=1;j<n;j++,jac+=n) {
+      ik = 0;
+      for(unsigned i=0;i<n;i++) {
+        NumTypeAD ad = a[jac + i] * diagonal_elements[j];
+        for(unsigned k=i;k<n;k++) {
+          atda[ik++] += ad * a[jac + k];
+        }
+      }
+    }
+  }
+
 }} // namespace scitbx::matrix
 
 #endif // SCITBX_MATRIX_MULTIPLY_H
