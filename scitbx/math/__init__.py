@@ -205,23 +205,3 @@ Returns None if a*x=b has no solution.
     if (x is not None):
       x = ct.matrix_multiply(x)
   return x
-
-def generalized_inverse_real_symmetric(
-      a,
-      relative_min_abs_pivot=1e-12,
-      absolute_min_abs_pivot=0):
-  if (isinstance(a, matrix.rec)):
-    a = a.as_flex_double_matrix()
-  assert a.is_square_matrix()
-  es = scitbx.math.eigensystem.real_symmetric(
-    m=a,
-    relative_epsilon=relative_min_abs_pivot,
-    absolute_epsilon=absolute_min_abs_pivot)
-  min_abs_pivot = es.min_abs_pivot()
-  d = flex.double()
-  for v in es.values():
-    if (abs(v) < min_abs_pivot): v = 0
-    elif (v != 0):               v = 1/v
-    d.append(v)
-  return es.vectors().matrix_transpose_multiply_diagonal_multiply_as_packed_u(
-    diagonal_elements=d).matrix_packed_u_as_symmetric()

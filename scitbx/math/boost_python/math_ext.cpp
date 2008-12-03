@@ -69,6 +69,8 @@ namespace {
         .def("min_abs_pivot", &w_t::min_abs_pivot)
         .def("vectors", &w_t::vectors)
         .def("values", &w_t::values)
+        .def("generalized_inverse_as_packed_u",
+          &w_t::generalized_inverse_as_packed_u)
       ;
     }
   };
