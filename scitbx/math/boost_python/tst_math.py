@@ -543,6 +543,9 @@ def exercise_eigensystem():
   s = eigensystem.real_symmetric(m=m)
   assert s.min_abs_pivot() > 0
   assert s.min_abs_pivot() < 1.e-10
+  assert approx_equal(s.generalized_inverse_as_packed_u(), [
+    0.77839538602575065, 0.25063185439711611, -0.03509803174624003,
+    0.68162798233326816, -0.10755998636596431, 0.37330996497431423])
   s = eigensystem.real_symmetric(m=m, absolute_epsilon=10)
   assert s.min_abs_pivot() == 10
   assert approx_equal(s.vectors(), [0, 0, 1, 0, 1, 0, 1, 0, 0])
@@ -1066,7 +1069,7 @@ def exercise_row_echelon_full_pivoting():
         ((0,0,3,0,0,0,0,0,0), 1),
         ((0,0,0,1e-15,0,0,0,0,0), 0)]:
     for i_trial in xrange(10):
-      r = matrix.sqr(flex.random_double_r3_rotation_matrix())
+      r = matrix.sqr(mt.random_double_r3_rotation_matrix())
       a = flex.double(r * matrix.sqr(singular_a) * r.transpose())
       a.reshape(flex.grid(3,3))
       assert approx_equal(a.matrix_determinant_via_lu(), 0, eps=1e-12)
@@ -1109,6 +1112,12 @@ def exercise_row_echelon_full_pivoting():
   assert approx_equal(sorted(x), [-1,0,0,0,4,5])
 
 def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
+  def girs(a, relative_min_abs_pivot=1e-12, absolute_min_abs_pivot=0):
+    es = scitbx.math.eigensystem.real_symmetric(
+      m=a,
+      relative_epsilon=relative_min_abs_pivot,
+      absolute_epsilon=absolute_min_abs_pivot)
+    return es.generalized_inverse_as_packed_u().matrix_packed_u_as_symmetric()
   mt = flex.mersenne_twister(seed=0)
   for bits in xrange(8):
     d = [1.23, 2.34, 0.58]
@@ -1133,7 +1142,7 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
       xs = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=ar, b=br)
       assert approx_equal(xs, xr)
       #
-      ari = matrix.sqr(scitbx.math.generalized_inverse_real_symmetric(a=ar))
+      ari = matrix.sqr(girs(a=ar.as_flex_double_matrix()))
       assert approx_equal(ari * br, xr)
       #
       if (tntbx is not None):
@@ -1146,7 +1155,7 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
   b = flex.double([1e-14])
   x = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b)
   assert approx_equal(x, [10])
-  ai = matrix.sqr(scitbx.math.generalized_inverse_real_symmetric(a=a))
+  ai = matrix.sqr(girs(a=a))
   x = ai * matrix.col(b)
   assert approx_equal(x, [10])
   assert a[0] == 1e-15
@@ -1154,8 +1163,7 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
   x = scitbx.math.solve_a_x_eq_b_min_norm_given_a_sym_b_col(a=a, b=b,
     absolute_min_abs_pivot=1e-12)
   assert x[0] == 0
-  ai = matrix.sqr(scitbx.math.generalized_inverse_real_symmetric(a=a,
-    absolute_min_abs_pivot=1e-12))
+  ai = matrix.sqr(girs(a=a, absolute_min_abs_pivot=1e-12))
   x = ai * matrix.col(b)
   assert x[0] == 0
   b[0] = 1e-10
@@ -1170,9 +1178,8 @@ def exercise_solve_a_x_eq_b_min_norm_given_a_sym_b_col():
       else:
         r = matrix.sqr(mt.random_double_r3_rotation_matrix())
         ar = r * a * r.transpose()
-      ari = matrix.sqr(
-        scitbx.math.generalized_inverse_real_symmetric(
-          a=ar, absolute_min_abs_pivot=1.e-12))
+      ari = matrix.sqr(girs(
+        a=ar.as_flex_double_matrix(), absolute_min_abs_pivot=1.e-12))
       if (tntbx is not None):
         arit = matrix.sqr(
           tntbx.generalized_inverse(ar.as_flex_double_matrix()))
@@ -1761,7 +1768,6 @@ def exercise_continued_fraction():
   assert cf.as_rational() == frac(-355, 113)
   cf = continued_fraction.from_real(0.125)
   assert cf.as_rational() == frac(1,8)
-
 
 def run():
   exercise_continued_fraction()

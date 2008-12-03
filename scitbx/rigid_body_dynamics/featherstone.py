@@ -31,10 +31,12 @@ if (scitbx is not None):
   def generalized_inverse(m):
     # assumption to achieve stability: order of magnitude of masses is around 1
     return matrix.sqr(
-      scitbx.math.generalized_inverse_real_symmetric(
-        a=m,
-        relative_min_abs_pivot=1e-12,
-        absolute_min_abs_pivot=1e-12))
+      scitbx.math.eigensystem.real_symmetric(
+        m=m.as_flex_double_matrix(),
+        relative_epsilon=1e-12,
+        absolute_epsilon=1e-12)
+          .generalized_inverse_as_packed_u()
+          .matrix_packed_u_as_symmetric())
 
 else:
   import scitbx_matrix as matrix

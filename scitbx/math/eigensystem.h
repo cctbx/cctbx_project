@@ -267,6 +267,10 @@ namespace scitbx { namespace math { namespace eigensystem {
       af::shared<FloatType>
       values() const { return values_; }
 
+      //! Generalized inverse, using min_abs_pivot() in eigenvalue filtering.
+      af::shared<FloatType>
+      generalized_inverse_as_packed_u() const;
+
     private:
       FloatType min_abs_pivot_;
       af::versa<FloatType, af::c_grid<2> > vectors_;
@@ -365,6 +369,29 @@ namespace scitbx { namespace math { namespace eigensystem {
       values_.begin(),
       relative_epsilon,
       absolute_epsilon);
+  }
+
+  template <typename FloatType>
+  af::shared<FloatType>
+  real_symmetric<FloatType>::generalized_inverse_as_packed_u() const
+  {
+    unsigned n = values_.size();
+    af::shared<FloatType>
+      result(n*(n+1)/2, af::init_functor_null<FloatType>());
+    boost::scoped_array<FloatType> diagonal_elements(new FloatType[n]);
+    const FloatType* v = values_.begin();
+    for(unsigned i=0;i<n;i++) {
+      FloatType const& vi = v[i];
+      if ((-min_abs_pivot_ < vi && vi < min_abs_pivot_) || vi == 0) {
+        diagonal_elements[i] = 0;
+      }
+      else {
+        diagonal_elements[i] = 1 / vi;
+      }
+    }
+    matrix::transpose_multiply_diagonal_multiply_as_packed_u(
+      vectors_.begin(), diagonal_elements.get(), n, result.begin());
+    return result;
   }
 
 }}} // namespace scitbx::math::eigensystem
