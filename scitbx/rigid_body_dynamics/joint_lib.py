@@ -41,7 +41,7 @@ class six_dof(object):
     O.Xj = T_as_X(O.Tps)
     O.S = None
 
-  def Xj_S(O, q, qd):
+  def Xj_S(O, q):
     return O.Xj, O.S
 
   def time_step_position(O, qd, delta_t):
@@ -109,7 +109,7 @@ class spherical(object):
       0,0,0,
       0,0,0), n=(6,3))
 
-  def Xj_S(O, q, qd):
+  def Xj_S(O, q):
     return O.Xj, O.S
 
   def time_step_position(O, qd, delta_t):
@@ -156,7 +156,7 @@ class revolute(object):
     O.Xj = T_as_X(O.Tps)
     O.S = matrix.col((0,0,1,0,0,0))
 
-  def Xj_S(O, q, qd):
+  def Xj_S(O, q):
     return O.Xj, O.S
 
   def time_step_position(O, qd, delta_t):
