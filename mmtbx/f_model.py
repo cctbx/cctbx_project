@@ -291,9 +291,13 @@ class manager(manager_mixin):
          n_ordered_water              = 0,
          b_ordered_water              = 0.0,
          max_number_of_bins           = 30,
+         fake_f_obs_selection         = None,
          _target_memory               = None):
     self.twin = False
     assert f_obs is not None
+    self.fake_f_obs_selection = fake_f_obs_selection
+    if(self.fake_f_obs_selection is not None):
+      self.fake_f_obs_selection.size() == self.f_obs.data().size()
     assert f_obs.is_real_array()
     self.f_obs             = f_obs
     self.r_free_flags      = None
@@ -484,40 +488,8 @@ class manager(manager_mixin):
     return result
 
   def deep_copy(self):
-    if(self.abcd is not None):
-       abcd = self.abcd.deep_copy()
-    else:
-       abcd = None
-    if(self.xray_structure is None):
-       xrs = None
-    else:
-       xrs = self.xray_structure.deep_copy_scatterers()
-    if(self.mask_manager is not None):
-      new_mask_manager = self.mask_manager.deep_copy()
-    else: new_mask_manager = None
-    return manager(
-              f_obs                        = self.f_obs.deep_copy(),
-              r_free_flags                 = self.r_free_flags.deep_copy(),
-              b_cart                       = self.b_cart(),
-              f_mask                       = self.f_mask().deep_copy(),
-              k_sol                        = self.k_sol(),
-              b_sol                        = self.b_sol(),
-              sf_and_grads_accuracy_params = self.sfg_params,  # XXX deep_copy ?
-              target_name                  = self.target_name,
-              abcd                         = abcd,
-              alpha_beta_params            = self.alpha_beta_params,
-              xray_structure               = xrs,
-              mask_manager                 = new_mask_manager,
-              f_calc                       = self.f_calc().deep_copy(),
-              mask_params                  = self.mask_params,  # XXX deep_copy ?
-              trust_xray_structure         = True,
-              update_xray_structure        = False,
-      f_ordered_solvent      = self.f_ordered_solvent.deep_copy(),
-      f_ordered_solvent_dist = self.f_ordered_solvent_dist.deep_copy(),
-      n_ordered_water        = self.n_ordered_water,
-      b_ordered_water        = self.b_ordered_water,
-      max_number_of_bins = self.max_number_of_bins,
-      _target_memory = self._target_memory)
+    selection = flex.bool(self.f_obs.data().size(), True)
+    return self.select(selection = selection)
 
   def select(self, selection, update_xray_structure=False):
     if (self.abcd is not None):
@@ -528,30 +500,39 @@ class manager(manager_mixin):
       new_mask_manager = self.mask_manager.select(selection = selection)
     else:
       new_mask_manager = None
+    if(self.fake_f_obs_selection is None):
+      new_fake_f_obs_selection = self.fake_f_obs_selection
+    else:
+      new_fake_f_obs_selection = \
+        self.fake_f_obs_selection.select(selection=selection)
+    if(self.xray_structure is None):
+      xrs = None
+    else:
+      xrs = self.xray_structure.deep_copy_scatterers()
     result = manager(
-      f_obs=self.f_obs.select(selection=selection),
-      r_free_flags=self.r_free_flags.select(selection=selection),
-      b_cart=tuple(self.b_cart()),
-      k_sol=self.k_sol(),
-      b_sol=self.b_sol(),
-      sf_and_grads_accuracy_params = self.sfg_params,
-      target_name=self.target_name,
-      abcd=abcd,
-      alpha_beta_params=self.alpha_beta_params,
-      xray_structure=self.xray_structure,
-      f_calc=self.f_calc().select(selection=selection),
-      f_mask=self.f_mask().select(selection=selection),
-      mask_params=self.mask_params,
-      mask_manager = new_mask_manager,
-      trust_xray_structure=True,
-      update_xray_structure=update_xray_structure,
-      f_ordered_solvent=self.f_ordered_solvent.select(
-        selection=selection),
-      f_ordered_solvent_dist=self.f_ordered_solvent_dist.select(
-        selection=selection),
-      n_ordered_water=self.n_ordered_water,
-      b_ordered_water=self.b_ordered_water,
-      max_number_of_bins=self.max_number_of_bins)
+      f_obs                        = self.f_obs.select(selection=selection),
+      r_free_flags                 = self.r_free_flags.select(selection=selection),
+      b_cart                       = tuple(self.b_cart()),
+      k_sol                        = self.k_sol(),
+      b_sol                        = self.b_sol(),
+      sf_and_grads_accuracy_params = self.sfg_params, # XXX not a deep_copy
+      target_name                  = self.target_name,
+      abcd                         = abcd,
+      alpha_beta_params            = self.alpha_beta_params, # XXX not a deep_copy
+      xray_structure               = xrs,
+      f_calc                       = self.f_calc().select(selection=selection),
+      f_mask                       = self.f_mask().select(selection=selection),
+      mask_params                  = self.mask_params, # XXX not a deep_copy
+      mask_manager                 = new_mask_manager,
+      trust_xray_structure         = True,
+      update_xray_structure        = update_xray_structure,
+      f_ordered_solvent            = self.f_ordered_solvent.select(selection=selection),
+      f_ordered_solvent_dist       = self.f_ordered_solvent_dist.select(selection=selection),
+      n_ordered_water              = self.n_ordered_water,
+      b_ordered_water              = self.b_ordered_water,
+      max_number_of_bins           = self.max_number_of_bins,
+      fake_f_obs_selection         = new_fake_f_obs_selection,
+      _target_memory               = self._target_memory)
     return result
 
   def resolution_filter(self,
@@ -1303,6 +1284,82 @@ class manager(manager_mixin):
        r_work_h = 0.0
     return r_work, r_work_l, r_work_h, n_low, n_high
 
+  def fill_missing_f_obs(self):
+    f_model = self.f_model()
+    n_refl_orig = f_model.data().size()
+    complete_set = f_model.complete_set(d_min = f_model.d_min(), d_max=None)
+    f_calc_atoms = complete_set.structure_factors_from_scatterers(
+      xray_structure = self.xray_structure).f_calc()
+    f_calc_atoms_lone = f_calc_atoms.lone_set(other = f_model)
+    n_refl_lone = f_calc_atoms_lone.data().size()
+    f_mask = masks.manager(
+      miller_array = f_calc_atoms,
+      xray_structure = self.xray_structure).f_mask()
+    f_mask_lone = f_mask.lone_set(other = f_model)
+    ss = 1./flex.pow2(f_mask_lone.d_spacings().data())/4.
+    r_free_flags_lone = f_mask_lone.array(
+      data = flex.bool(f_mask_lone.size(), False))
+    f_model_core = ext.core(
+      f_calc = f_calc_atoms_lone.data(),
+      f_mask = f_mask_lone.data(),
+      b_cart = self.b_cart(),
+      k_sol  = self.k_sol(),
+      b_sol  = self.b_sol(),
+      hkl    = f_calc_atoms_lone.indices(),
+      uc     = f_mask_lone.unit_cell(),
+      ss     = ss)
+    f_obs_orig = self.f_obs.deep_copy()
+    r_free_flags_orig = self.r_free_flags
+    # compose new fileld fmodel
+    fake_f_obs_selection = flex.bool(n_refl_orig, False)
+    f_model_lone = abs(miller.array(
+      miller_set = f_mask_lone,
+      data       = f_model_core.f_model * self.scale_k1()))
+    new_f_obs = self.f_obs.concatenate(other = f_model_lone)
+    new_r_free_flags = self.r_free_flags.concatenate(
+      other = r_free_flags_lone)
+    fake_f_obs_selection.concatenate(flex.bool(n_refl_lone, True))
+    new_abcd = None
+    if(self.abcd is not None):
+      new_abcd = self.abcd.customized_copy(
+        indices = new_f_obs.indices(),
+        data = self.abcd.data().concatenate(
+          flex.hendrickson_lattman(n_refl_lone, [0,0,0,0])))
+    fmodel = mmtbx.f_model.manager(
+      xray_structure = self.xray_structure,
+      r_free_flags   = new_r_free_flags,
+      target_name    = "ls_wunit_k1",
+      f_obs          = new_f_obs,
+      abcd           = new_abcd)
+    fmodel.update_solvent_and_scale()
+    # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
+    alpha, beta = maxlik.alpha_beta_est_manager(
+      f_obs                    = fmodel.f_obs,
+      f_calc                   = fmodel.f_model_scaled_with_k1(),
+      free_reflections_per_bin = 100,
+      flags                    = fmodel.r_free_flags.data(),
+      interpolation            = True).alpha_beta()
+    apply_alpha_sel = flex.bool(n_refl_orig, False).concatenate(
+      flex.bool(n_refl_lone, True)) # assume order did not change
+    assert apply_alpha_sel.size() == fmodel.f_obs.data().size()
+    alpha = alpha.select(apply_alpha_sel)
+    # compose new fileld fmodel
+    f_model_lone = abs(miller.array(
+      miller_set = f_mask_lone,
+      data       = f_model_core.f_model * fmodel.scale_k1()*alpha.data()))
+    new_f_obs = f_obs_orig.concatenate(other = f_model_lone)
+    new_r_free_flags = r_free_flags_orig.concatenate(
+      other = r_free_flags_lone)
+    # XXX implement and use fmodel.customized_copy() instead of creating a new one
+    fmodel_result = mmtbx.f_model.manager(
+      xray_structure = self.xray_structure,
+      r_free_flags   = new_r_free_flags,
+      target_name    = self.target_name,
+      f_obs          = new_f_obs,
+      abcd           = new_abcd)
+    fmodel_result.update_solvent_and_scale()
+    return fmodel_result
+
   def scale_ml_wrapper(self):
     if (self.alpha_beta_params is None): return 1.0
     if (self.alpha_beta_params.method != "calc"): return 1.0
@@ -1385,33 +1442,51 @@ class manager(manager_mixin):
     else:
       return pher
 
+  def map_calculation_helper(self, free_reflections_per_bin = 100,
+                             interpolation = True, need_alpha_and_fom = True):
+    class result(object):
+      def __init__(self, fmodel, free_reflections_per_bin, interpolation,
+                   need_alpha_and_fom):
+        ss = fmodel.ss
+        fb_cart  = fmodel.fb_cart()
+        scale_k1 = fmodel.scale_k1()
+        f_obs_scale   = 1.0 / (fb_cart * scale_k1)
+        f_model_scale = 1.0 / fb_cart
+        f_obs_data_scaled = fmodel.f_obs.data() * f_obs_scale
+        f_model_data_scaled = fmodel.f_model().data() * f_model_scale
+        self.f_obs_scaled = fmodel.f_obs.array(data = f_obs_data_scaled)
+        self.f_model_scaled = fmodel.f_obs.array(data = f_model_data_scaled)
+        self.alpha, self.beta, self.fom = None, None, None
+        if(need_alpha_and_fom):
+          self.alpha, self.beta = maxlik.alpha_beta_est_manager(
+            f_obs                    = self.f_obs_scaled,
+            f_calc                   = self.f_model_scaled,
+            free_reflections_per_bin = free_reflections_per_bin,
+            flags                    = fmodel.r_free_flags.data(),
+            interpolation            = interpolation).alpha_beta()
+          self.fom = max_lik.fom_and_phase_error(
+            f_obs          = f_obs_data_scaled,
+            f_model        = flex.abs(f_model_data_scaled),
+            alpha          = self.alpha.data(),
+            beta           = self.beta.data(),
+            space_group    = fmodel.r_free_flags.space_group(),
+            miller_indices = fmodel.r_free_flags.indices()).fom()
+    return result(
+      fmodel                   = self,
+      free_reflections_per_bin = free_reflections_per_bin,
+      interpolation            = interpolation,
+      need_alpha_and_fom       = need_alpha_and_fom)
+
   def f_model_phases_as_hl_coefficients(self):
     f_model_phases = self.f_model().phases().data()
     sin_f_model_phases = flex.sin(f_model_phases)
     cos_f_model_phases = flex.cos(f_model_phases)
-    # XXX alpha, beta = self.alpha_beta()
-    # XXX DUPLICATION
-    ss = 1./flex.pow2(self.f_obs.d_spacings().data())/4.
-    fb_cart  = self.fb_cart()
-    scale_k1 = self.scale_k1()
-    f_obs_scale   = 1.0 / (fb_cart * scale_k1)
-    f_model_scale = 1.0 / fb_cart
-    f_obs_data_scaled = self.f_obs.data() * f_obs_scale
-    f_model_data_scaled = self.f_model().data() * f_model_scale
-    f_obs_scaled = self.f_obs.array(data = f_obs_data_scaled)
-    f_model_scaled = self.f_obs.array(data = f_model_data_scaled)
-    alpha, beta = maxlik.alpha_beta_est_manager(
-      f_obs                    = f_obs_scaled,
-      f_calc                   = f_model_scaled,
-      free_reflections_per_bin = 100,
-      flags                    = self.r_free_flags.data(),
-      interpolation            = True).alpha_beta()
-    # XXX
+    mch = self.map_calculation_helper()
     t = maxlik.fo_fc_alpha_over_eps_beta(
       f_obs   = self.f_obs,
       f_model = self.f_model(),
-      alpha   = alpha,
-      beta    = beta)
+      alpha   = mch.alpha,
+      beta    = mch.beta)
     hl_a_model = t * cos_f_model_phases
     hl_b_model = t * sin_f_model_phases
     return flex.hendrickson_lattman(a = hl_a_model, b = hl_b_model)
@@ -1422,10 +1497,10 @@ class manager(manager_mixin):
       result = self.abcd.data() + self.f_model_phases_as_hl_coefficients()
     return result
 
-  def combine_phases(self):
+  def combine_phases(self, n_steps = 360):
     result = None
     if(self.abcd is not None):
-      integrator = miller.phase_integrator() # XXX use n_steps
+      integrator = miller.phase_integrator(n_steps = n_steps)
       phase_source = integrator(
         space_group= self.f_obs.space_group(),
         miller_indices = self.f_obs.indices(),
