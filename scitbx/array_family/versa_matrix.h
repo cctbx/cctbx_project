@@ -203,6 +203,20 @@ namespace scitbx { namespace af {
   }
 
   template <typename NumType>
+  shared<NumType>
+  matrix_transpose_multiply_diagonal_multiply_as_packed_u(
+    const_ref<NumType, c_grid<2> > const& a,
+    const_ref<NumType> const& diagonal_elements)
+  {
+    SCITBX_ASSERT(a.accessor().is_square());
+    unsigned n = a.accessor()[0];
+    shared<NumType> atda(n*(n+1)/2, init_functor_null<NumType>());
+    matrix::transpose_multiply_diagonal_multiply_as_packed_u(
+      a.begin(), diagonal_elements.begin(), n, atda.begin());
+    return atda;
+  }
+
+  template <typename NumType>
   versa<NumType, c_grid<2> >
   matrix_transpose(const_ref<NumType, c_grid<2> > const& a)
   {

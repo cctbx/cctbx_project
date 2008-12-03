@@ -1928,6 +1928,18 @@ def exercise_matrix():
         "SCITBX_ASSERT(n*(n+1)/2 == packed_size) failure.")
     else: raise Exception_expected
   #
+  for n in xrange(10):
+    a = mersenne_twister.random_double(size=n*n)*2-1
+    a.reshape(flex.grid(n,n))
+    d = mersenne_twister.random_double(size=n)*2-1
+    atda_u = a.matrix_transpose_multiply_diagonal_multiply_as_packed_u(
+      diagonal_elements=d)
+    dsq = flex.double(flex.grid(n,n), 0)
+    for i in xrange(n):
+      dsq[i*(n+1)] = d[i]
+    atda_sym = a.matrix_transpose().matrix_multiply(dsq).matrix_multiply(a)
+    assert approx_equal(atda_u.matrix_packed_u_as_symmetric(), atda_sym)
+  #
   from scitbx.examples import immoptibox_ports
   immoptibox_ports.py_cholesky_decomposition \
     = immoptibox_ports.cholesky_decomposition

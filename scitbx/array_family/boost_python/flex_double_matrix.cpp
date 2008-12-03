@@ -201,6 +201,12 @@ namespace boost_python {
         (shared<double>(*)(
           const_ref<double, c_grid<2> > const&))
             matrix_transpose_multiply_as_packed_u)
+      .def("matrix_transpose_multiply_diagonal_multiply_as_packed_u",
+        (shared<double>(*)(
+          const_ref<double, c_grid<2> > const&,
+          const_ref<double> const&))
+            matrix_transpose_multiply_diagonal_multiply_as_packed_u, (
+              arg_("diagonal_elements")))
       .def("matrix_transpose",
         (versa<double, c_grid<2> >(*)(
            const_ref<double, c_grid<2> > const&)) matrix_transpose)
