@@ -78,6 +78,24 @@ class six_dof_body(object):
     O.J = joint_lib.six_dof(type="euler_params", qE=qE, qr=qr, r_is_qr=True)
     O.qd = matrix.col(mersenne_twister.random_double(size=6)*2-1)
 
+class spherical_body(object):
+
+  def __init__(O, mersenne_twister, n_sites):
+    if (n_sites > 0):
+      O.sites = [matrix.col(mersenne_twister.random_double_point_on_sphere())]
+    while (len(O.sites) != n_sites):
+      O.sites.append(O.sites[0]
+        + matrix.col(mersenne_twister.random_double_point_on_sphere()))
+    O.A = joint_lib.spherical_alignment(sites=O.sites)
+    O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
+    #
+    O.wells = test_utils.create_wells(
+      sites=O.sites, mersenne_twister=mersenne_twister)
+    #
+    qE = matrix.col(mersenne_twister.random_double(size=4)).normalize()
+    O.J = joint_lib.spherical(type="euler_params", qE=qE)
+    O.qd = matrix.col(mersenne_twister.random_double(size=3)*2-1)
+
 class revolute_body(object):
 
   def __init__(O, mersenne_twister, prev=None):
@@ -151,6 +169,19 @@ def exercise_revolute2(out, n_trials, n_dynamics_steps, delta_t=0.001):
     if (out is not sys.stdout):
       assert relative_range < 1.e-4
 
+def exercise_spherical(out, n_trials, n_dynamics_steps, delta_t=0.001):
+  mersenne_twister = flex.mersenne_twister(seed=0)
+  for n_sites in xrange(1,3):
+    for i_trial in xrange(n_trials):
+      body = spherical_body(mersenne_twister=mersenne_twister, n_sites=n_sites)
+      body.parent = -1
+      sim = simulation(bodies=[body])
+      print >> out, "spherical number of sites:", n_sites
+      relative_range = exercise_sim(
+        out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
+      if (out is not sys.stdout):
+        assert relative_range < 1.e-4
+
 def run(args):
   assert len(args) in [0,2]
   if (len(args) == 0):
@@ -167,6 +198,9 @@ def run(args):
       out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
   if (1):
     exercise_six_dof2(
+      out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
+  if (1):
+    exercise_spherical(
       out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
   if (1):
     exercise_revolute(
