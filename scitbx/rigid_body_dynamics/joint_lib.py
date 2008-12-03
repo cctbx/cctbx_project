@@ -48,16 +48,14 @@ class six_dof(object):
     w_body_frame, v_body_frame = matrix.col_list([qd.elems[:3], qd.elems[3:]])
     if (O.type == "euler_params"):
       qEd = RBDA_Eq_4_13(q=O.qE.elems) * w_body_frame
+      new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
     else:
       qEd = RBDA_Eq_4_8_inv(q=O.qE.elems) * w_body_frame
+      new_qE = O.qE + qEd * delta_t
     if (O.r_is_qr):
       qrd = O.E.transpose() * v_body_frame
     else:
       qrd = v_body_frame - w_body_frame.cross(O.qr) # RBDA Eq. 2.38 p. 27
-    if (O.type == "euler_params"):
-      new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
-    else:
-      new_qE = O.qE + qEd * delta_t
     new_qr = O.qr + qrd * delta_t
     return six_dof(O.type, new_qE, new_qr, O.r_is_qr)
 
@@ -73,6 +71,67 @@ class six_dof(object):
     if (O.r_is_qr): result = (c * n, O.E.transpose() * f)
     else:           result = (c * (n + O.qr.cross(f)), f)
     return matrix.col(result).resolve_partitions()
+
+class spherical_alignment(object):
+
+  def __init__(O, sites):
+    O.pivot = center_of_mass_from_sites(sites=sites)
+    O.normal = None
+    O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.pivot))
+    O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), O.pivot))
+
+class spherical(object):
+
+  def __init__(O, type, qE):
+    assert type in ["euler_params", "euler_angles_xyz"]
+    if (type == "euler_params"):
+      if (len(qE.elems) == 3):
+        qE = euler_angles_xyz_qE_as_euler_params_qE(qE=qE)
+    else:
+      if (len(qE.elems) == 4):
+        qE = euler_params_qE_as_euler_angles_xyz_qE(qE=qE)
+    O.type = type
+    O.qE = qE
+    #
+    if (type == "euler_params"):
+      O.E = RBDA_Eq_4_12(q=qE)
+    else:
+      O.E = RBDA_Eq_4_7(q=qE)
+    #
+    O.Tps = matrix.rt((O.E, (0,0,0)))
+    O.Tsp = matrix.rt((O.E.transpose(), (0,0,0)))
+    O.Xj = T_as_X(O.Tps)
+    O.S = matrix.rec((
+      1,0,0,
+      0,1,0,
+      0,0,1,
+      0,0,0,
+      0,0,0,
+      0,0,0), n=(6,3))
+
+  def Xj_S(O, q, qd):
+    return O.Xj, O.S
+
+  def time_step_position(O, qd, delta_t):
+    w_body_frame = qd
+    if (O.type == "euler_params"):
+      qEd = RBDA_Eq_4_13(q=O.qE.elems) * w_body_frame
+      new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
+    else:
+      qEd = RBDA_Eq_4_8_inv(q=O.qE.elems) * w_body_frame
+      new_qE = O.qE + qEd * delta_t
+    return spherical(O.type, new_qE)
+
+  def time_step_velocity(O, qd, qdd, delta_t):
+    return qd + qdd * delta_t
+
+  def tau_as_d_pot_d_q(O, tau):
+    if (O.type == "euler_params"):
+      raise RuntimeError("Not implemented.")
+    else:
+      c = RBDA_Eq_4_8(q=O.qE).transpose()
+    n = tau
+    return c * n
 
 class revolute_alignment(object):
 
