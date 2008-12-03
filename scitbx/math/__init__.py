@@ -149,7 +149,7 @@ def row_echelon_back_substitution_float(
 def solve_a_x_eq_b_min_norm_given_a_sym_b_col(
       a, b,
       relative_min_abs_pivot=1e-12,
-      absolute_min_abs_pivot=None,
+      absolute_min_abs_pivot=0,
       back_substitution_epsilon_factor=10):
   """\
 Assumes a is symmetric, without checking to avoid overhead.
@@ -180,8 +180,7 @@ Returns None if a*x=b has no solution.
        max(a.all()) \
      * flex.max(flex.abs(a)) \
      * relative_min_abs_pivot
-  if (absolute_min_abs_pivot is not None):
-    min_abs_pivot = max(min_abs_pivot, absolute_min_abs_pivot)
+  min_abs_pivot = max(min_abs_pivot, absolute_min_abs_pivot)
   epsilon = min_abs_pivot * back_substitution_epsilon_factor
   aw = a.deep_copy()
   bw = b.deep_copy()
@@ -210,7 +209,7 @@ Returns None if a*x=b has no solution.
 def generalized_inverse_real_symmetric(
       a,
       relative_min_abs_pivot=1e-12,
-      absolute_min_abs_pivot=None):
+      absolute_min_abs_pivot=0):
   if (isinstance(a, matrix.rec)):
     a = a.as_flex_double_matrix()
   assert a.is_square_matrix()
@@ -221,9 +220,11 @@ def generalized_inverse_real_symmetric(
        max(a.all()) \
      * flex.max(flex.abs(a)) \
      * relative_min_abs_pivot
-  if (absolute_min_abs_pivot is not None):
-    min_abs_pivot = max(min_abs_pivot, absolute_min_abs_pivot)
-  es = scitbx.math.eigensystem.real_symmetric(a)
+  min_abs_pivot = max(min_abs_pivot, absolute_min_abs_pivot)
+  es = scitbx.math.eigensystem.real_symmetric(
+    m=a,
+    relative_epsilon=relative_min_abs_pivot,
+    absolute_epsilon=absolute_min_abs_pivot)
   d = flex.double()
   for v in es.values():
     if (abs(v) < min_abs_pivot): v = 0
