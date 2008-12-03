@@ -540,11 +540,16 @@ def exercise_eigensystem():
   print "time_eigensystem_real_symmetric: %.3f micro seconds" % (
     (time.time() - t0)/n_repetitions*1.e6)
   #
+  s = eigensystem.real_symmetric(m=m)
+  assert s.min_abs_pivot() > 0
+  assert s.min_abs_pivot() < 1.e-10
   s = eigensystem.real_symmetric(m=m, absolute_epsilon=10)
+  assert s.min_abs_pivot() == 10
   assert approx_equal(s.vectors(), [0, 0, 1, 0, 1, 0, 1, 0, 0])
   assert approx_equal(s.values(),
     [2.8065584999742659, 1.7361052947659894, 1.4573362052597449])
   s = eigensystem.real_symmetric(m=m, relative_epsilon=0)
+  assert s.min_abs_pivot() == 0
   assert approx_equal(s.values(), [3,2,1])
 
 def exercise_golay():

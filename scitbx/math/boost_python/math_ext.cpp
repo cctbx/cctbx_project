@@ -66,6 +66,7 @@ namespace {
             arg_("m"),
             arg_("relative_epsilon")=1.e-10,
             arg_("absolute_epsilon")=0)))
+        .def("min_abs_pivot", &w_t::min_abs_pivot)
         .def("vectors", &w_t::vectors)
         .def("values", &w_t::values)
       ;

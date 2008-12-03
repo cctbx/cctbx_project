@@ -14,7 +14,7 @@ namespace scitbx { namespace math { namespace eigensystem {
   namespace detail {
 
     template<typename FloatType>
-    void
+    FloatType
     real_symmetric_given_lower_triangle(
       FloatType* a, // size of memory pointed to by a must be n*(n+1)/2
       std::size_t n,
@@ -44,10 +44,10 @@ namespace scitbx { namespace math { namespace eigensystem {
         if (j!=i) anorm+=a[iq]*a[iq];
         ++iq;
       }
+      anorm=std::sqrt(2.0*anorm);
+      anrmx=relative_epsilon*anorm/n;
+      if (anrmx < absolute_epsilon) anrmx = absolute_epsilon;
       if (anorm>0.0) {
-        anorm=std::sqrt(2.0*anorm);
-        anrmx=relative_epsilon*anorm/n;
-        if (anrmx < absolute_epsilon) anrmx = absolute_epsilon;
         // Compute threshold and initialise flag.
         thr=anorm;
         while (thr>anrmx) { // Compare threshold with final norm
@@ -146,6 +146,7 @@ namespace scitbx { namespace math { namespace eigensystem {
         eigenvalues[j]=a[k];
         k+=j+2;
       }
+      return anrmx;
     }
 
     /* Based on code from BTL3: btl/btl_matrix_algorithms.h
@@ -176,7 +177,7 @@ namespace scitbx { namespace math { namespace eigensystem {
            order as eigenvalues, initially set equal to identity matrix.
     */
     template<typename FloatType>
-    void
+    FloatType
     real_symmetric_given_full_matrix(
       const FloatType* first,
       const FloatType* /*last*/,
@@ -196,7 +197,7 @@ namespace scitbx { namespace math { namespace eigensystem {
           *trng = *in;
         }
       }
-      real_symmetric_given_lower_triangle(
+      return real_symmetric_given_lower_triangle(
         a.get(), n, eigenvectors, eigenvalues,
         relative_epsilon, absolute_epsilon);
     }
@@ -254,6 +255,10 @@ namespace scitbx { namespace math { namespace eigensystem {
         FloatType relative_epsilon=1.e-10,
         FloatType absolute_epsilon=0);
 
+      //! Threshold used in the cyclic Jacobi algorithm.
+      FloatType
+      min_abs_pivot() const { return min_abs_pivot_; }
+
       //! The list of eigenvectors.
       af::versa<FloatType, af::c_grid<2> >
       vectors() const { return vectors_; }
@@ -263,6 +268,7 @@ namespace scitbx { namespace math { namespace eigensystem {
       values() const { return values_; }
 
     private:
+      FloatType min_abs_pivot_;
       af::versa<FloatType, af::c_grid<2> > vectors_;
       af::shared<FloatType> values_;
 
@@ -306,7 +312,7 @@ namespace scitbx { namespace math { namespace eigensystem {
     SCITBX_ASSERT(m.is_square());
     vectors_.resize(af::c_grid<2>(m.n_rows(), m.n_rows()));
     values_.resize(m.n_rows());
-    detail::real_symmetric_given_full_matrix(
+    min_abs_pivot_ = detail::real_symmetric_given_full_matrix(
       m.begin(),
       m.end(),
       m.n_rows(),
@@ -331,7 +337,7 @@ namespace scitbx { namespace math { namespace eigensystem {
     a[5] = m(2,2);
     vectors_.resize(af::c_grid<2>(3, 3));
     values_.resize(3);
-    detail::real_symmetric_given_lower_triangle(
+    min_abs_pivot_ = detail::real_symmetric_given_lower_triangle(
       a,
       std::size_t(3),
       vectors_.begin(),
@@ -352,7 +358,7 @@ namespace scitbx { namespace math { namespace eigensystem {
     a[2] = m(1,1);
     vectors_.resize(af::c_grid<2>(2, 2));
     values_.resize(2);
-    detail::real_symmetric_given_lower_triangle(
+    min_abs_pivot_ = detail::real_symmetric_given_lower_triangle(
       a,
       std::size_t(2),
       vectors_.begin(),
