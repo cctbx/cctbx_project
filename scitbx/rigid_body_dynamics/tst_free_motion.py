@@ -71,7 +71,7 @@ class featherstone_system_model(object):
 
 class six_dof_joint_euler_params_featherstone(fmri.six_dof_joint_euler_params):
 
-  def Xj_S(O, q, qd):
+  def Xj_S(O, q):
     assert q is None
     Xj = featherstone.Xrot(O.E) \
        * featherstone.Xtrans(O.r) # RBDA Tab. 4.1 footnote

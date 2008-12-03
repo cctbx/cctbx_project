@@ -222,7 +222,7 @@ class autoTree(object):
       Icm = mass * len_[i]**2 * matrix.diag([0.0025,1.015/12,1.015/12])
       self.I.append(mcI(mass, CoM, Icm))
 
-def jcalc(pitch, q, qd):
+def jcalc(pitch, q):
   """
 % jcalc  Calculate joint transform and motion subspace.
 % [Xj,S]=jcalc(pitch,q) calculates the joint transform and motion subspace
@@ -231,7 +231,7 @@ def jcalc(pitch, q, qd):
 % the joint angle.  For prismatic joints, q is the linear displacement.
   """
   if (not isinstance(pitch, (int, float, InfType))):
-    return pitch.Xj_S(q=q, qd=qd)
+    return pitch.Xj_S(q=q)
   if pitch == 0:                          # revolute joint
     Xj = Xrotz(q)
     S = matrix.col([0,0,1,0,0,0])
@@ -274,7 +274,7 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
   a = [None] * model.NB
   f = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S[i] = jcalc( model.pitch[i], q[i], qd[i] )
+    XJ, S[i] = jcalc( model.pitch[i], q[i] )
     if (S[i] is None):
       vJ = qd[i]
       aJ = qdd[i]
@@ -329,7 +329,7 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
   IA = [None] * model.NB
   pA = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S[i] = jcalc( model.pitch[i], q[i], qd[i] )
+    XJ, S[i] = jcalc( model.pitch[i], q[i] )
     if (S[i] is None):
       vJ = qd[i]
     else:
