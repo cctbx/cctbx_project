@@ -1,0 +1,6 @@
+Import("env_iotbx_boost_python_ext")
+env = env_iotbx_boost_python_ext.Copy()
+
+env.SharedLibrary(target="#lib/iotbx_shelx_ext", source=[
+  "shelx_ext.cpp",
+])
