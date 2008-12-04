@@ -1,6 +1,7 @@
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
+import iotbx_shelx_ext
 import sys
 
 def miller_export_as_shelx_hklf(self, file_object=None):
@@ -17,9 +18,53 @@ def miller_export_as_shelx_hklf(self, file_object=None):
 
 miller.array.export_as_shelx_hklf = miller_export_as_shelx_hklf
 
-class reader(object):
+def reader(file_object=None, filename=None, strict=True):
+  assert [file_object, filename].count(None) == 1
+  if filename is None:
+    if not type(file_object) == file:
+      return python_reader(file_object)
+    filename = str(file_object.name)
+  return fast_reader(filename, strict)
 
-  def __init__(self, file_object):
+
+class reader_base(object):
+
+  def as_miller_arrays(self,
+        crystal_symmetry=None,
+        force_symmetry=False,
+        merge_equivalents=True,
+        base_array_info=None):
+    if (crystal_symmetry is None):
+      crystal_symmetry = crystal.symmetry()
+    if (base_array_info is None):
+      base_array_info = miller.array_info(source_type="shelx_hklf")
+    miller_set = miller.set(
+      crystal_symmetry=crystal_symmetry,
+      indices=self.indices()).auto_anomalous()
+    miller_arrays = []
+    obs = (miller.array(
+      miller_set=miller_set,
+      data=self.data(),
+      sigmas=self.sigmas())
+      .set_info(base_array_info.customized_copy(labels=["obs", "sigmas"])))
+    miller_arrays.append(obs)
+    if (self.alphas() is not None):
+      miller_arrays.append(miller.array(
+        miller_set=miller_set,
+        data=self.alphas())
+        .set_info(base_array_info.customized_copy(labels=["alphas"])))
+    return miller_arrays
+
+
+class fast_reader(reader_base, iotbx_shelx_ext.fast_hklf_reader):
+  pass
+
+class python_reader(reader_base):
+
+  def __init__(self, file_object=None, filename=None):
+    assert [file_object, filename].count(None) == 1
+    if file_object is None:
+      file_object = open(filename)
     self._indices = flex.miller_index()
     self._data = flex.double()
     self._sigmas = flex.double()
@@ -55,28 +100,5 @@ class reader(object):
   def alphas(self):
     return self._alphas
 
-  def as_miller_arrays(self,
-        crystal_symmetry=None,
-        force_symmetry=False,
-        merge_equivalents=True,
-        base_array_info=None):
-    if (crystal_symmetry is None):
-      crystal_symmetry = crystal.symmetry()
-    if (base_array_info is None):
-      base_array_info = miller.array_info(source_type="shelx_hklf")
-    miller_set = miller.set(
-      crystal_symmetry=crystal_symmetry,
-      indices=self.indices()).auto_anomalous()
-    miller_arrays = []
-    obs = (miller.array(
-      miller_set=miller_set,
-      data=self.data(),
-      sigmas=self.sigmas())
-      .set_info(base_array_info.customized_copy(labels=["obs", "sigmas"])))
-    miller_arrays.append(obs)
-    if (self.alphas() is not None):
-      miller_arrays.append(miller.array(
-        miller_set=miller_set,
-        data=self.alphas())
-        .set_info(base_array_info.customized_copy(labels=["alphas"])))
-    return miller_arrays
+  def batch_numbers(self):
+    return self._alphas
