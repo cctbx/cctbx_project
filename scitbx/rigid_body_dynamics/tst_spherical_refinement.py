@@ -27,10 +27,10 @@ class euler_params(setT_mixin):
     O.setT()
 
   def tau_as_d_pot_d_q(O, tau):
-    d = d_unit_quaternion_d_qE_matrix(q=O.qE)
-    c = 4 * joint_lib.RBDA_Eq_4_13(q=O.unit_quaternion)
+    d = joint_lib.d_unit_quaternion_d_qE_matrix(q=O.qE)
+    c = d * 4 * joint_lib.RBDA_Eq_4_13(q=O.unit_quaternion)
     n = tau
-    return d * c * n
+    return c * n
 
 class euler_angles_xyz(setT_mixin):
 
@@ -103,54 +103,6 @@ class inf_axis_angle(setT_mixin):
       O.E = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
         axis=axis, angle=angle, deg=False))
     O.setT()
-
-def d_unit_quaternion_d_qE_matrix(q):
-  """
-  Coefficent matrix for converting gradients w.r.t. normalized Euler
-  parameters to gradients w.r.t. non-normalized parameters, as produced
-  e.g. by a minimizer in the line search.
-  Mathematica code:
-    nsq = p0^2+p1^2+p2^2+p3^2
-    p0p = p0 / Sqrt[nsq]
-    p1p = p1 / Sqrt[nsq]
-    p2p = p2 / Sqrt[nsq]
-    p3p = p3 / Sqrt[nsq]
-    n3 = (p0^2+p1^2+p2^2+p3^2)^(3/2)
-    FortranForm[FullSimplify[D[p0p,p0]*n3]]
-    FortranForm[FullSimplify[D[p1p,p0]*n3]]
-    FortranForm[FullSimplify[D[p2p,p0]*n3]]
-    FortranForm[FullSimplify[D[p3p,p0]*n3]]
-    FortranForm[FullSimplify[D[p0p,p1]*n3]]
-    FortranForm[FullSimplify[D[p1p,p1]*n3]]
-    FortranForm[FullSimplify[D[p2p,p1]*n3]]
-    FortranForm[FullSimplify[D[p3p,p1]*n3]]
-    FortranForm[FullSimplify[D[p0p,p2]*n3]]
-    FortranForm[FullSimplify[D[p1p,p2]*n3]]
-    FortranForm[FullSimplify[D[p2p,p2]*n3]]
-    FortranForm[FullSimplify[D[p3p,p2]*n3]]
-    FortranForm[FullSimplify[D[p0p,p3]*n3]]
-    FortranForm[FullSimplify[D[p1p,p3]*n3]]
-    FortranForm[FullSimplify[D[p2p,p3]*n3]]
-    FortranForm[FullSimplify[D[p3p,p3]*n3]]
-  """
-  p0,p1,p2,p3 = q
-  p0s,p1s,p2s,p3s = p0**2, p1**2, p2**2, p3**2
-  n3 = (p0s+p1s+p2s+p3s)**(3/2.)
-  c00 = p1s+p2s+p3s
-  c11 = p0s+p2s+p3s
-  c22 = p0s+p1s+p3s
-  c33 = p0s+p1s+p2s
-  c01 = -p0*p1
-  c02 = -p0*p2
-  c03 = -p0*p3
-  c12 = -p1*p2
-  c13 = -p1*p3
-  c23 = -p2*p3
-  return matrix.sqr((
-    c00, c01, c02, c03,
-    c01, c11, c12, c13,
-    c02, c12, c22, c23,
-    c03, c13, c23, c33)) / n3
 
 def euler_angles_zxz_matrix(q):
   q1,q2,q3 = q

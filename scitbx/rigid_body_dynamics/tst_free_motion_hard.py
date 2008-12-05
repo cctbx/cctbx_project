@@ -176,8 +176,7 @@ def run_simulation(
     mersenne_twister=mersenne_twister)
   sim_label = 'six_dof(type="%s", r_is_qr=%s)' % (
     six_dof_type, str(sim.J.r_is_qr))
-  if (six_dof_type == "euler_angles_xyz"):
-    sim.check_d_pot_d_q()
+  sim.check_d_pot_d_q()
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
   e_kins = flex.double([sim.e_kin])
@@ -187,8 +186,7 @@ def run_simulation(
     e_pots.append(sim.e_pot)
     e_kins.append(sim.e_kin)
   e_tots = e_pots + e_kins
-  if (six_dof_type == "euler_angles_xyz"):
-    sim.check_d_pot_d_q()
+  sim.check_d_pot_d_q()
   print >> out, sim_label
   print >> out, "e_pot min, max:", min(e_pots), max(e_pots)
   print >> out, "e_kin min, max:", min(e_kins), max(e_kins)
