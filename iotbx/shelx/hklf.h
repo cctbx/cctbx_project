@@ -43,14 +43,7 @@ namespace iotbx { namespace shelx {
           indices_.push_back(hkl);
           data_.push_back(datum);
           sigmas_.push_back(sigma);
-          if (indices_.size() == 1) {
-            try {
-              int extra = std::atoi(line.substr(28, 4).c_str());
-              extras_.push_back(extra);
-            }
-            catch(std::out_of_range) {}
-          }
-          else if (extras_.size()) {
+          if (line.size() > 28) {
             int extra = std::atoi(line.substr(28, 4).c_str());
             extras_.push_back(extra);
           }

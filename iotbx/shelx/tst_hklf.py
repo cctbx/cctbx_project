@@ -37,6 +37,8 @@ def exercise_fast_hkl_reading():
   f.close()
   r = hklf.reader(filename=filename)
   assert approx_equal(r.sigmas(), [4.56, 6.12, 99999.99, -9999.99, ])
+  assert r.alphas() is None
+  assert r.batch_numbers() is None
 
   f = open(filename, 'w')
   f.close()

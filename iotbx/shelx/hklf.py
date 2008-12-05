@@ -57,7 +57,18 @@ class reader_base(object):
 
 
 class fast_reader(reader_base, iotbx_shelx_ext.fast_hklf_reader):
-  pass
+
+  def __getter(overriden_method):
+    def f(self):
+      result = overriden_method(self)
+      if result.size() == 0:
+        return None
+      return result
+    return f
+
+  alphas = __getter(iotbx_shelx_ext.fast_hklf_reader.alphas)
+  batch_numbers = __getter(iotbx_shelx_ext.fast_hklf_reader.batch_numbers)
+
 
 class python_reader(reader_base):
 
