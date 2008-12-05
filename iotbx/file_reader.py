@@ -99,7 +99,7 @@ class any_file (object) :
         read_method()
       except Exception, e :
         pass
-      
+
   def file_info (self, show_file_size=True) :
     file_size_str = ""
     if show_file_size :

@@ -1,4 +1,3 @@
-
 import sys
 import Queue
 import threading
@@ -378,7 +377,7 @@ def exercise_process () :
         out = sys.stdout
       for i in xrange(1000) :
         out.write("%s\n" % i)
-      return None  
+      return None
 
     def _target_function04 (args, kwds, connection) :
       return _tst_print(*args, **kwds)
@@ -435,7 +434,7 @@ def exercise_process () :
       for i in xrange(1000) :
         print i
         time.sleep(1)
-    
+
     ch = _callback_handler()
     p = process_with_callbacks(
       target = _target_function06,
