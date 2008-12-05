@@ -28,7 +28,8 @@ class six_dof(object):
     O.r_is_qr = r_is_qr
     #
     if (type == "euler_params"):
-      O.E = RBDA_Eq_4_12(q=qE)
+      O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
+      O.E = RBDA_Eq_4_12(q=O.unit_quaternion)
     else:
       O.E = RBDA_Eq_4_7(q=qE)
     if (r_is_qr):
@@ -47,15 +48,14 @@ class six_dof(object):
   def time_step_position(O, qd, delta_t):
     w_body_frame, v_body_frame = matrix.col_list([qd.elems[:3], qd.elems[3:]])
     if (O.type == "euler_params"):
-      qEd = RBDA_Eq_4_13(q=O.qE.elems) * w_body_frame
-      new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
+      qEd = RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
     else:
-      qEd = RBDA_Eq_4_8_inv(q=O.qE.elems) * w_body_frame
-      new_qE = O.qE + qEd * delta_t
+      qEd = RBDA_Eq_4_8_inv(q=O.qE) * w_body_frame
     if (O.r_is_qr):
       qrd = O.E.transpose() * v_body_frame
     else:
       qrd = v_body_frame - w_body_frame.cross(O.qr) # RBDA Eq. 2.38 p. 27
+    new_qE = O.qE + qEd * delta_t
     new_qr = O.qr + qrd * delta_t
     return six_dof(O.type, new_qE, new_qr, O.r_is_qr)
 
@@ -64,7 +64,8 @@ class six_dof(object):
 
   def tau_as_d_pot_d_q(O, tau):
     if (O.type == "euler_params"):
-      raise RuntimeError("Not implemented.")
+      d = d_unit_quaternion_d_qE_matrix(q=O.qE)
+      c = d * 4 * RBDA_Eq_4_13(q=O.unit_quaternion)
     else:
       c = RBDA_Eq_4_8(q=O.qE).transpose()
     n, f = matrix.col_list([tau.elems[:3], tau.elems[3:]])
@@ -94,7 +95,8 @@ class spherical(object):
     O.qE = qE
     #
     if (type == "euler_params"):
-      O.E = RBDA_Eq_4_12(q=qE)
+      O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
+      O.E = RBDA_Eq_4_12(q=O.unit_quaternion)
     else:
       O.E = RBDA_Eq_4_7(q=qE)
     #
@@ -115,11 +117,10 @@ class spherical(object):
   def time_step_position(O, qd, delta_t):
     w_body_frame = qd
     if (O.type == "euler_params"):
-      qEd = RBDA_Eq_4_13(q=O.qE.elems) * w_body_frame
-      new_qE = (O.qE + qEd * delta_t).normalize() # RBDA, bottom of p. 86
+      qEd = RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
     else:
       qEd = RBDA_Eq_4_8_inv(q=O.qE.elems) * w_body_frame
-      new_qE = O.qE + qEd * delta_t
+    new_qE = O.qE + qEd * delta_t
     return spherical(O.type, new_qE)
 
   def time_step_velocity(O, qd, qdd, delta_t):
@@ -127,7 +128,8 @@ class spherical(object):
 
   def tau_as_d_pot_d_q(O, tau):
     if (O.type == "euler_params"):
-      raise RuntimeError("Not implemented.")
+      d = d_unit_quaternion_d_qE_matrix(q=O.qE)
+      c = d * 4 * RBDA_Eq_4_13(q=O.unit_quaternion)
     else:
       c = RBDA_Eq_4_8(q=O.qE).transpose()
     n = tau
@@ -220,6 +222,54 @@ def RBDA_Eq_4_13(q):
     p0, -p3, p2,
     p3, p0, -p1,
     -p2, p1, p0), n=(4,3)) * 0.5
+
+def d_unit_quaternion_d_qE_matrix(q):
+  """
+  Coefficent matrix for converting gradients w.r.t. normalized Euler
+  parameters to gradients w.r.t. non-normalized parameters, as produced
+  e.g. by a minimizer in the line search.
+  Mathematica code:
+    nsq = p0^2+p1^2+p2^2+p3^2
+    p0p = p0 / Sqrt[nsq]
+    p1p = p1 / Sqrt[nsq]
+    p2p = p2 / Sqrt[nsq]
+    p3p = p3 / Sqrt[nsq]
+    n3 = (p0^2+p1^2+p2^2+p3^2)^(3/2)
+    FortranForm[FullSimplify[D[p0p,p0]*n3]]
+    FortranForm[FullSimplify[D[p1p,p0]*n3]]
+    FortranForm[FullSimplify[D[p2p,p0]*n3]]
+    FortranForm[FullSimplify[D[p3p,p0]*n3]]
+    FortranForm[FullSimplify[D[p0p,p1]*n3]]
+    FortranForm[FullSimplify[D[p1p,p1]*n3]]
+    FortranForm[FullSimplify[D[p2p,p1]*n3]]
+    FortranForm[FullSimplify[D[p3p,p1]*n3]]
+    FortranForm[FullSimplify[D[p0p,p2]*n3]]
+    FortranForm[FullSimplify[D[p1p,p2]*n3]]
+    FortranForm[FullSimplify[D[p2p,p2]*n3]]
+    FortranForm[FullSimplify[D[p3p,p2]*n3]]
+    FortranForm[FullSimplify[D[p0p,p3]*n3]]
+    FortranForm[FullSimplify[D[p1p,p3]*n3]]
+    FortranForm[FullSimplify[D[p2p,p3]*n3]]
+    FortranForm[FullSimplify[D[p3p,p3]*n3]]
+  """
+  p0,p1,p2,p3 = q
+  p0s,p1s,p2s,p3s = p0**2, p1**2, p2**2, p3**2
+  n3 = (p0s+p1s+p2s+p3s)**(3/2.)
+  c00 = p1s+p2s+p3s
+  c11 = p0s+p2s+p3s
+  c22 = p0s+p1s+p3s
+  c33 = p0s+p1s+p2s
+  c01 = -p0*p1
+  c02 = -p0*p2
+  c03 = -p0*p3
+  c12 = -p1*p2
+  c13 = -p1*p3
+  c23 = -p2*p3
+  return matrix.sqr((
+    c00, c01, c02, c03,
+    c01, c11, c12, c13,
+    c02, c12, c22, c23,
+    c03, c13, c23, c33)) / n3
 
 def safe_acos(a):
   return math.acos(max(-1, min(1, a)))
