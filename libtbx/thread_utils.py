@@ -1,5 +1,9 @@
+
+import sys
 import Queue
 import threading
+import time
+from libtbx.utils import Sorry
 
 class thread_with_callback_and_wait(threading.Thread):
 
@@ -45,7 +49,172 @@ class thread_with_callback_and_wait(threading.Thread):
       self._queue.put(last_iteration)
     return self
 
-def exercise() :
+# fake filehandle, sends data up pipe to parent process
+class _stdout_pipe (object) :
+  def __init__ (self, connection) :
+    self._c = connection
+    self._data = ""
+
+  def write (self, data) :
+    self._data += data
+
+  def flush (self) :
+    self._flush()
+
+  def _flush (self) :
+    try :
+      if self._data != "" :
+        self._c.send([self._data, True, False])
+        self._data = ""
+    except Exception, e :
+      sys.__stderr__.write("Exception in _stdout_pipe: %s\n" % str(e))
+
+wait_before_flush = 0.01 # minimum time between send() calls
+
+# this slows down the output so it won't stall a GUI
+class _stdout_buffered_pipe (_stdout_pipe) :
+  def __init__ (self, *args, **kwds) :
+    _stdout_pipe.__init__(self, *args, **kwds)
+    self._last_t = time.time()
+
+  def flush (self) :
+    t = time.time()
+    if t >= (self._last_t + wait_before_flush) :
+      self._flush()
+      self._last_t = t
+
+  def __del__ (self) :
+    if self._data != "" :
+      self._flush()
+
+if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
+  import multiprocessing
+
+  class _sorry_exception (Exception) :
+    pass
+
+  class _process_with_stdout_redirect (multiprocessing.Process) :
+    def __init__ (self, group=None, target=None, name=None, args=(), kwargs={},
+        connection=None, buffer_stdout=True) :
+      multiprocessing.Process.__init__(self, group, target, name, args, kwargs)
+      self._c = connection
+      if buffer_stdout :
+        self._stdout = _stdout_buffered_pipe(connection)
+      else :
+        self._stdout = _stdout_pipe(connection)
+
+    def run (self) :
+      old_stdout = sys.stdout
+      sys.stdout = self._stdout
+      try :
+        if self._target :
+          return_value = self._target(self._args, self._kwargs, self._c)
+          self._stdout._flush()
+          self._c.send([return_value, False, True])
+      except Sorry, s :
+        #sys.stderr.write("Caught Sorry in child process: %s" % str(s))
+        self._stdout._flush()
+        e = _sorry_exception(str(s))
+        self._c.send([e, False, False])
+      except Exception, e :
+        #sys.stderr.write("Caught exception in child process: %s" % str(e))
+        self._c.send([e, False, False])
+      self._stdout._flush()
+      sys.stdout = old_stdout
+
+  #XXX: target functions must use this call signature!!!
+  # I normally just write a very short wrapper function that invokes the
+  # command I actually care about with args/kwds.
+  def _process_target_function (args, kwds, connection) :
+    connection.send([True])
+
+  # not really a process, but a wrapper for one.
+  class process_with_callbacks (threading.Thread) :
+    def __init__ (self,
+        target,
+        args=(),
+        kwargs={},
+        callback_stdout=None,
+        callback_final=None,
+        callback_err=None,
+        callback_abort=None,
+        callback_other=None,
+        buffer_stdout=True) :
+      threading.Thread.__init__(self)
+      self._target = target
+      self._args = args
+      self._kwargs = dict(kwargs)
+      self._cb_stdout = callback_stdout
+      self._cb_final  = callback_final
+      self._cb_err    = callback_err
+      self._cb_abort  = callback_abort
+      self._cb_other  = callback_other
+      self._buffer_stdout = buffer_stdout
+      self._abort = False
+      self._completed = False
+      self._error = False
+
+    def abort (self) :
+      self._abort = True
+
+    def run (self) :
+      child_process = None
+      parent_conn, child_conn = multiprocessing.Pipe()
+      try :
+        child_process = _process_with_stdout_redirect(
+          target        = self._target,
+          args          = self._args,
+          kwargs        = self._kwargs,
+          connection    = child_conn,
+          buffer_stdout = self._buffer_stdout)
+        child_process.start()
+      except Exception, e :
+        sys.__stderr__.write("Error starting child process: %s\n" % str(e))
+        child_process = None
+      while child_process is not None :
+        if self._abort :
+          child_process.terminate()
+          if self._cb_abort is not None :
+            self._cb_abort()
+          break
+        pipe_output = list(parent_conn.recv())
+        if len(pipe_output) == 3 :
+          (child_object, is_stdout, is_return) = pipe_output
+          if is_stdout :
+            if self._cb_stdout is not None :
+              self._cb_stdout(child_object)
+            else :
+              sys.stdout.write(child_object)
+          elif is_return :
+            if self._cb_final is not None :
+              self._cb_final(child_object)
+            self._completed = True
+            break
+          elif not is_stdout and not is_return :
+            if isinstance(child_object, _sorry_exception) :
+              e = Sorry(str(child_object))
+            else :
+              e = child_object
+            if self._cb_err is not None :
+              self._cb_err(e)
+              self._error = True
+              child_process.terminate()
+              break
+            else :
+              self._error = True
+              child_process.terminate()
+              raise e
+        elif len(pipe_output) == 1 and self._cb_other is not None :
+          self._cb_other(pipe_output[0])
+
+else :
+  class process_with_callbacks (object) :
+    def __init__ (self, *args, **kwds) :
+      raise ImportError("This feature requires at least Python 2.6")
+
+#--- tests!
+
+def exercise_threading() :
 
   def first_callback(i):
     collected.append(-i*10)
@@ -88,7 +257,207 @@ def exercise() :
       if (n_resume < 4):
         expected.extend([n_resume+2, (n_resume+2)*10])
 
-  print "OK"
+def exercise_process () :
+  import cStringIO
+
+  class _callback_handler (object) :
+    def __init__ (self) :
+      self._err = None
+      self._result = None
+      self._abort = None
+      self._stdout = None
+      self._other = None
+
+    def cb_err (self, error) :
+      self._err = error
+
+    def cb_abort (self) :
+      self._abort = True
+
+    def cb_result (self, result) :
+      self._result = result
+
+    def cb_stdout (self, stdout) :
+      if self._stdout is not None : self._stdout += str(stdout)
+      else                        : self._stdout = str(stdout)
+
+    def cb_other (self, data) :
+      if self._other is not None :
+        self._other.append(data)
+      else :
+        self._other = [data]
+
+    def tst_error_raised (self) :
+      assert self._err is not None
+      assert self._result is None
+
+    def tst_run_success (self, expected_result=None, expected_stdout=None,
+        expected_other=None) :
+      assert self._err is None
+      assert self._abort is None
+      assert self._result == expected_result
+      assert self._stdout == expected_stdout
+      assert self._other == expected_other
+
+  #--- test 01 : propagate args and kwds to target
+  def tst_01 () :
+    def _inner_target_with_args_and_kwds (a, b, c=-1, d=-1) :
+      assert a < 0 and b < 0
+      assert c > 0 and d > 0
+      return True
+
+    def _target_function01 (args, kwds, connection) :
+      return _inner_target_with_args_and_kwds(*args, **kwds)
+
+    ch = _callback_handler()
+    p = process_with_callbacks(
+      target = _target_function01,
+      args   = (-2, -2),
+      kwargs = {"c": 2, "d" : 2},
+      callback_stdout = ch.cb_stdout,
+      callback_final  = ch.cb_result,
+      callback_err    = ch.cb_err,
+      callback_other  = ch.cb_other)
+    p.start()
+    while p.isAlive() :
+      pass
+    ch.tst_run_success(expected_result=True, expected_stdout=None,
+      expected_other=None)
+
+  #--- test 02 : target function does not return a value
+  def tst_02 () :
+    def _inner_target_no_return () :
+      n = 1
+
+    def _target_function02 (args, kwds, connection) :
+      return _inner_target_no_return(*args, **kwds)
+
+    ch = _callback_handler()
+    p = process_with_callbacks(
+      target = _target_function02,
+      callback_stdout = ch.cb_stdout,
+      callback_final  = ch.cb_result,
+      callback_err    = ch.cb_err,
+      callback_other  = ch.cb_other)
+    p.start()
+    while p.isAlive() :
+      pass
+    ch.tst_run_success(expected_result=None)
+
+  #--- test 03 : callbacks for stdout, runtime, result
+  def tst_03 () :
+    def _target_function03 (args, kwds, connection) :
+      for i in xrange(4) :
+        print i
+        connection.send([i])
+      return 4
+
+    ch = _callback_handler()
+    p = process_with_callbacks(
+      target = _target_function03,
+      callback_stdout = ch.cb_stdout,
+      callback_final  = ch.cb_result,
+      callback_err    = ch.cb_err,
+      callback_other  = ch.cb_other)
+    p.start()
+    while p.isAlive() :
+      pass
+    tstout = \
+"""0
+1
+2
+3
+"""
+    ch.tst_run_success(expected_result=4, expected_stdout=tstout,
+      expected_other=[0,1,2,3])
+
+  #--- test 04 : stdout consistency
+  def tst_04 () :
+    def _tst_print (out=None) :
+      if out is None :
+        out = sys.stdout
+      for i in xrange(1000) :
+        out.write("%s\n" % i)
+      return None  
+
+    def _target_function04 (args, kwds, connection) :
+      return _tst_print(*args, **kwds)
+
+    tmpout = cStringIO.StringIO()
+    _tst_print(tmpout)
+
+    for buffer_stdout in [True, False] :
+      ch = _callback_handler()
+      p = process_with_callbacks(
+        target = _target_function04,
+        callback_stdout = ch.cb_stdout,
+        buffer_stdout = buffer_stdout)
+      p.start()
+      while p.isAlive() :
+        pass
+      assert tmpout.getvalue() == ch._stdout
+
+    # without a stdout callback, 'p' will write stdout to sys.stdout
+    sys.stdout = cStringIO.StringIO()
+    ch = _callback_handler()
+    p = process_with_callbacks(
+      target = _target_function04)
+    p.start()
+    while p.isAlive() :
+      pass
+    assert tmpout.getvalue() == sys.stdout.getvalue()
+    sys.stdout = sys.__stdout__
+
+  #--- test 05 : propagating standard Exceptions and Sorry
+  def tst_05 () :
+    def _target_function05a (args, kwds, connection) :
+      raise Exception("_target_function05a")
+
+    def _target_function05b (args, kwds, connection) :
+      raise Sorry("_target_function05b")
+
+    for f in [_target_function05a, _target_function05b] :
+      ch = _callback_handler()
+      p = process_with_callbacks(
+        target = f,
+        callback_err = ch.cb_err,
+        callback_final = ch.cb_result)
+      p.start()
+      while p.isAlive() :
+        pass
+      ch.tst_error_raised()
+      if f is _target_function05b :
+        assert isinstance(ch._err, Sorry)
+
+  #--- test 06 : aborting
+  def tst_06 () :
+    def _target_function06 (args, kwds, connection) :
+      for i in xrange(1000) :
+        print i
+        time.sleep(1)
+    
+    ch = _callback_handler()
+    p = process_with_callbacks(
+      target = _target_function06,
+      callback_abort = ch.cb_abort)
+    p.start()
+    p.abort()
+    while p.isAlive() :
+      pass
+    assert ch._abort == True
+
+  #--- run all tests
+  try :
+    tst_01()
+    tst_02()
+    tst_03()
+    tst_04()
+    tst_05()
+    tst_06()
+  except ImportError :
+    print "multiprocessing requires Python >= 2.6 - skipping these tests."
 
 if (__name__ == "__main__"):
-  exercise()
+  exercise_threading()
+  exercise_process()
+  print "OK"
