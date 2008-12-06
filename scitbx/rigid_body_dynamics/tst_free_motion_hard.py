@@ -128,11 +128,7 @@ class simulation_mixin(object):
           if (q is O.J.qE): qE = q_eps; qr=O.J.qr
           else:             qE = O.J.qE; qr=q_eps
           J = joint_lib.six_dof(
-            type=O.J.type,
-            qE=qE,
-            qr=qr,
-            r_is_qr=O.J.r_is_qr,
-            normalize_qE=O.J.normalize_qE)
+            type=O.J.type, qE=qE, qr=qr, r_is_qr=O.J.r_is_qr)
           e_pot = test_utils.potential_energy(
             sites=O.sites_F0, wells=O.wells, A=O.A, J=J)
           fs.append(e_pot)
@@ -146,7 +142,7 @@ class simulation_mixin(object):
 
 class six_dof_simulation(simulation_mixin):
 
-  def __init__(O, six_dof_type, r_is_qr, normalize_qE, mersenne_twister):
+  def __init__(O, six_dof_type, r_is_qr, mersenne_twister):
     O.sites_F0 = create_triangle_with_random_center_of_mass(
       mersenne_twister=mersenne_twister)
     O.A = joint_lib.six_dof_alignment(sites=O.sites_F0)
@@ -160,12 +156,7 @@ class six_dof_simulation(simulation_mixin):
     qr = matrix.col(mersenne_twister.random_double(size=3)-0.5)
     if (r_is_qr):
       qr = joint_lib.RBDA_Eq_4_12(qE).transpose() * qr
-    O.J = joint_lib.six_dof(
-      type=six_dof_type,
-      qE=qE,
-      qr=qr,
-      r_is_qr=r_is_qr,
-      normalize_qE=normalize_qE)
+    O.J = joint_lib.six_dof(type=six_dof_type, qE=qE, qr=qr, r_is_qr=r_is_qr)
     O.qd = matrix.col(mersenne_twister.random_double(size=6)*2-1)
     #
     O.energies_and_accelerations_update()
@@ -176,17 +167,15 @@ def run_simulation(
       out,
       six_dof_type,
       r_is_qr,
-      normalize_qE,
       mersenne_twister,
       n_dynamics_steps,
       delta_t):
   sim = six_dof_simulation(
     six_dof_type=six_dof_type,
     r_is_qr=r_is_qr,
-    normalize_qE=normalize_qE,
     mersenne_twister=mersenne_twister)
-  sim_label = 'six_dof(type="%s", r_is_qr=%s, normalize_qE=%s)' % (
-    six_dof_type, str(sim.J.r_is_qr), str(sim.J.normalize_qE))
+  sim_label = 'six_dof(type="%s", r_is_qr=%s)' % (
+    six_dof_type, str(sim.J.r_is_qr))
   sim.check_d_pot_d_q()
   sites_moved = [sim.sites_moved()]
   e_pots = flex.double([sim.e_pot])
@@ -231,7 +220,6 @@ def run_simulation(
 def run_simulations(
       out,
       mersenne_twister,
-      normalize_qE,
       n_dynamics_steps,
       delta_t):
   mt_state = mersenne_twister.getstate()
@@ -245,7 +233,6 @@ def run_simulations(
         out=out,
         six_dof_type=six_dof_type,
         r_is_qr=r_is_qr,
-        normalize_qE=normalize_qE,
         mersenne_twister=mersenne_twister,
         n_dynamics_steps=n_dynamics_steps,
         delta_t=delta_t)
@@ -266,12 +253,7 @@ def run_simulations(
   out.flush()
   return sim_labels, relative_ranges, rms_max_list
 
-def exercise_simulation(
-      out,
-      normalize_qE,
-      n_trials,
-      n_dynamics_steps,
-      delta_t=0.001):
+def exercise_simulation(out, n_trials, n_dynamics_steps, delta_t=0.001):
   mersenne_twister = flex.mersenne_twister(seed=0)
   sim_labels = None
   relative_ranges_accu = None
@@ -280,7 +262,6 @@ def exercise_simulation(
     sim_labels_new, relative_ranges, rms_max_list = run_simulations(
       out=out,
       mersenne_twister=mersenne_twister,
-      normalize_qE=normalize_qE,
       n_dynamics_steps=n_dynamics_steps,
       delta_t=delta_t)
     if (sim_labels is None):
@@ -317,16 +298,14 @@ def exercise_simulation(
       assert flex.max(accu) < 1.e-4
 
 def run(args):
-  assert len(args) in [0,3]
+  assert len(args) in [0,2]
   if (len(args) == 0):
-    normalize_qE = False
     n_trials = 3
     n_dynamics_steps = 30
     out = null_out()
   else:
-    normalize_qE = eval(args[0])
-    n_trials = max(1, int(args[1]))
-    n_dynamics_steps = max(1, int(args[2]))
+    n_trials = max(1, int(args[0]))
+    n_dynamics_steps = max(1, int(args[1]))
     out = sys.stdout
   show_times_at_exit()
   mersenne_twister = flex.mersenne_twister(seed=0)
@@ -334,10 +313,7 @@ def run(args):
     mersenne_twister=mersenne_twister)
   exercise_T_as_X(mersenne_twister=mersenne_twister)
   exercise_simulation(
-    out=out,
-    normalize_qE=normalize_qE,
-    n_trials=n_trials,
-    n_dynamics_steps=n_dynamics_steps)
+    out=out, n_trials=n_trials, n_dynamics_steps=n_dynamics_steps)
   print "OK"
 
 if (__name__ == "__main__"):
