@@ -18,6 +18,7 @@ namespace iotbx { namespace shelx {
       fast_hklf_reader(std::string const &filename, bool strict=true)
       {
         std::ifstream hkl_file(filename.c_str());
+        if (!hkl_file) throw std::runtime_error("Can't open Shelx HKLF file");
         std::string line;
         const miller_t end_hkl(0, 0, 0);
         typedef std::string::size_type index_t;
