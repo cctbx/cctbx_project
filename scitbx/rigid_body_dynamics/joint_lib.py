@@ -14,7 +14,7 @@ class six_dof_alignment(object):
 
 class six_dof(object):
 
-  def __init__(O, type, qE, qr, r_is_qr=False):
+  def __init__(O, type, qE, qr, r_is_qr=False, normalize_qE=False):
     assert type in ["euler_params", "euler_angles_xyz"]
     if (type == "euler_params"):
       if (len(qE.elems) == 3):
@@ -26,6 +26,7 @@ class six_dof(object):
     O.qE = qE
     O.qr = qr
     O.r_is_qr = r_is_qr
+    O.normalize_qE = normalize_qE
     #
     if (type == "euler_params"):
       O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
@@ -48,7 +49,8 @@ class six_dof(object):
   def time_step_position(O, qd, delta_t):
     w_body_frame, v_body_frame = matrix.col_list([qd.elems[:3], qd.elems[3:]])
     if (O.type == "euler_params"):
-      qEd = RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
+      d = d_unit_quaternion_d_qE_matrix(q=O.qE)
+      qEd = d * RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
     else:
       qEd = RBDA_Eq_4_8_inv(q=O.qE) * w_body_frame
     if (O.r_is_qr):
@@ -57,7 +59,9 @@ class six_dof(object):
       qrd = v_body_frame - w_body_frame.cross(O.qr) # RBDA Eq. 2.38 p. 27
     new_qE = O.qE + qEd * delta_t
     new_qr = O.qr + qrd * delta_t
-    return six_dof(O.type, new_qE, new_qr, O.r_is_qr)
+    if (O.type == "euler_params" and O.normalize_qE):
+      new_qE = new_qE.normalize()
+    return six_dof(O.type, new_qE, new_qr, O.r_is_qr, O.normalize_qE)
 
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
@@ -117,7 +121,8 @@ class spherical(object):
   def time_step_position(O, qd, delta_t):
     w_body_frame = qd
     if (O.type == "euler_params"):
-      qEd = RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
+      d = d_unit_quaternion_d_qE_matrix(q=O.qE)
+      qEd = d * RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
     else:
       qEd = RBDA_Eq_4_8_inv(q=O.qE.elems) * w_body_frame
     new_qE = O.qE + qEd * delta_t
