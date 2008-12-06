@@ -19,6 +19,7 @@ else:
 diff_function = getattr(difflib, "unified_diff", difflib.ndiff)
 
 Exception_expected = RuntimeError("Exception expected.")
+Exception_not_expected = RuntimeError("Exception not expected.")
 
 class Default: pass
 
