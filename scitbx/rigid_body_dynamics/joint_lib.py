@@ -14,6 +14,9 @@ class six_dof_alignment(object):
 
 class six_dof(object):
 
+  qd_zero = matrix.zeros(n=6)
+  qdd_zero = matrix.zeros(n=6)
+
   def __init__(O, type, qE, qr, r_is_qr=False):
     assert type in ["euler_params", "euler_angles_xyz"]
     if (type == "euler_params"):
@@ -26,6 +29,7 @@ class six_dof(object):
     O.qE = qE
     O.qr = qr
     O.r_is_qr = r_is_qr
+    O.q_size = len(qE) + len(qr)
     #
     if (type == "euler_params"):
       O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
@@ -74,6 +78,15 @@ class six_dof(object):
     else:           result = (c * (n + O.qr.cross(f)), f)
     return matrix.col(result).resolve_partitions()
 
+  def add_finite_difference(O, iq, signed_eps):
+    if (iq < len(O.qE)):
+      new_qE = list(O.qE)
+      new_qE[iq] += signed_eps
+      return six_dof(O.type, matrix.col(new_qE), O.qr, O.r_is_qr)
+    new_qr = list(O.qr)
+    new_qr[iq-len(O.qE)] += signed_eps
+    return six_dof(O.type, O.qE, matrix.col(new_qr), O.r_is_qr)
+
 class spherical_alignment(object):
 
   def __init__(O, sites):
@@ -83,6 +96,9 @@ class spherical_alignment(object):
     O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), O.pivot))
 
 class spherical(object):
+
+  qd_zero = matrix.zeros(n=3)
+  qdd_zero = matrix.zeros(n=3)
 
   def __init__(O, type, qE):
     assert type in ["euler_params", "euler_angles_xyz"]
@@ -94,6 +110,7 @@ class spherical(object):
         qE = euler_params_qE_as_euler_angles_xyz_qE(qE=qE)
     O.type = type
     O.qE = qE
+    O.q_size = len(qE)
     #
     if (type == "euler_params"):
       O.unit_quaternion = qE.normalize() # RBDA, bottom of p. 86
@@ -137,6 +154,11 @@ class spherical(object):
     n = tau
     return c * n
 
+  def add_finite_difference(O, iq, signed_eps):
+    new_qE = list(O.qE)
+    new_qE[iq] += signed_eps
+    return spherical(O.type, matrix.col(new_qE))
+
 class revolute_alignment(object):
 
   def __init__(O, pivot, normal):
@@ -148,8 +170,12 @@ class revolute_alignment(object):
 
 class revolute(object):
 
+  qd_zero = matrix.zeros(n=1)
+  qdd_zero = matrix.zeros(n=1)
+
   def __init__(O, qE):
     O.qE = qE
+    O.q_size = len(qE)
     #
     c, s = math.cos(qE[0]), math.sin(qE[0])
     O.E = matrix.sqr((c, s, 0, -s, c, 0, 0, 0, 1)) # RBDA Tab. 2.2
@@ -169,6 +195,9 @@ class revolute(object):
 
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
+
+  def add_finite_difference(O, iq, signed_eps):
+    return revolute(O.qE + matrix.col((signed_eps,)))
 
 def RBDA_Eq_4_7(q):
   q1,q2,q3 = q
