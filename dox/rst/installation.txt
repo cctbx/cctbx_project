@@ -91,8 +91,8 @@ On a machine with multiple CPUs enter::
 
   libtbx.scons -j N
 
-where N is the number of CPUs available. The time required for the
-compilations scales linearly with the number of CPUs available.
+where N is the number of CPUs available. The the speedup scales
+almost linearly with the number of CPUs available.
 
 ``libtbx.scons`` is similar to the more familar ``make`` command,
 only much more versatile. ``libtbx.scons`` is a thin wrapper around
@@ -147,8 +147,8 @@ On a machine with multiple CPUs enter::
 
   libtbx.scons -j N
 
-where N is the number of CPUs available. The time required for the
-compilations scales linearly with the number of CPUs available.
+where N is the number of CPUs available. The the speedup scales
+almost linearly with the number of CPUs available.
 
 ``libtbx.scons`` is similar to the more familar ``make`` command,
 only much more versatile. ``libtbx.scons`` is a thin wrapper around
