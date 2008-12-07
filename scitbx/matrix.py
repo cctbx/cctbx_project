@@ -237,6 +237,58 @@ class rec(object):
       2*(q1*q2+q0*q3),   2*(q0*q0+q2*q2)-1, 2*(q2*q3-q0*q1),
       2*(q1*q3-q0*q2),   2*(q2*q3+q0*q1),   2*(q0*q0+q3*q3)-1))
 
+  def r3_rotation_matrix_as_unit_quaternion(self):
+    # Based on work by:
+    #   Shepperd (1978), J. Guidance and Control, 1, 223-224.
+    #   Sam Buss, http://math.ucsd.edu/~sbuss/MathCG
+    #   Robert Hanson, jmol/Jmol/src/org/jmol/util/Quaternion.java
+    if (self.n != (3,3)): raise RuntimeError("Not a 3x3 matrix.")
+    m00,m01,m02,m10,m11,m12,m20,m21,m22 = self.elems
+    trace = m00 + m11 + m22
+    if (trace >= 0.5):
+      w = (1 + trace)**0.5
+      d = w + w
+      w *= 0.5
+      x = (m21 - m12) / d
+      y = (m02 - m20) / d
+      z = (m10 - m01) / d
+    else:
+      if (m00 > m11):
+        if (m00 > m22): mx = 0
+        else:           mx = 2
+      elif (m11 > m22): mx = 1
+      else:             mx = 2
+      invalid_cutoff = 0.8 # not critical; true value is closer to 0.83
+      invalid_message = "Not a r3_rotation matrix."
+      if (mx == 0):
+        x_sq = 1 + m00 - m11 - m22
+        if (x_sq < invalid_cutoff): raise RuntimeError(invalid_message)
+        x = x_sq**0.5
+        d = x + x
+        x *= 0.5
+        w = (m21 - m12) / d
+        y = (m10 + m01) / d
+        z = (m20 + m02) / d
+      elif (mx == 1):
+        y_sq = 1 + m11 - m00 - m22
+        if (y_sq < invalid_cutoff): raise RuntimeError(invalid_message)
+        y = y_sq**0.5
+        d = y + y
+        y *= 0.5
+        w = (m02 - m20) / d
+        x = (m10 + m01) / d
+        z = (m21 + m12) / d
+      else:
+        z_sq = 1 + m22 - m00 - m11
+        if (z_sq < invalid_cutoff): raise RuntimeError(invalid_message)
+        z = z_sq**0.5
+        d = z + z
+        z *= 0.5
+        w = (m10 - m01) / d
+        x = (m20 + m02) / d
+        y = (m21 + m12) / d
+    return col((w, x, y, z))
+
   def unit_quaternion_product(self, other):
     assert self.n in [(1,4), (4,1)]
     assert other.n in [(1,4), (4,1)]
@@ -1225,6 +1277,19 @@ def exercise():
     1/3,4/15,-8/15,8/15,
     -1,-1,1,-1]), -1/75)
   #
+  uqr = identity(n=3).r3_rotation_matrix_as_unit_quaternion()
+  assert approx_equal(uqr, (1,0,0,0))
+  # axis = (1/2**0.5, 1/2**0.5, 0)
+  # angle = 2 * math.asin((2/3.)**0.5)
+  uq = col((1/3**0.5,1/3**0.5,1/3**0.5,0))
+  r = sqr((
+     1/3.,2/3., 2/3.,
+     2/3.,1/3.,-2/3.,
+    -2/3.,2/3.,-1/3.))
+  assert approx_equal(uq.unit_quaternion_as_r3_rotation_matrix(), r)
+  uqr = r.r3_rotation_matrix_as_unit_quaternion()
+  assert approx_equal(uqr, uq)
+  #
   for i_trial in xrange(10):
     uq1 = col.random(n=4, a=-1, b=1).normalize()
     uq2 = col.random(n=4, a=-1, b=1).normalize()
@@ -1236,6 +1301,9 @@ def exercise():
     uqp21 = uq2.unit_quaternion_product(uq1)
     rp21 = uqp21.unit_quaternion_as_r3_rotation_matrix()
     assert approx_equal(rp21, r2*r1)
+    for uq,r in [(uq1,r1), (uq2,r2), (uqp12,rp12), (uqp21,rp21)]:
+      uqr = r.r3_rotation_matrix_as_unit_quaternion()
+      assert approx_equal(uqr.unit_quaternion_as_r3_rotation_matrix(), r)
   #
   v = col((1.1, -2.2, 2.3))
   assert approx_equal(v % 2, col((1.1, 1.8, 0.3)))
