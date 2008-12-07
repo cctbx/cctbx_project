@@ -1148,8 +1148,9 @@ def exercise_random():
      0.19015198986882362, 0.3185310997188201, -0.92864425872389156,
      0.58186757548724155, -0.7984304845450465, -0.15472196335931598])
   for i_trial in xrange(100):
-    assert approx_equal(
-      matrix.sqr(flex.random_double_r3_rotation_matrix()).determinant(), 1)
+    r = matrix.sqr(flex.random_double_r3_rotation_matrix())
+    assert approx_equal(r.determinant(), 1)
+    assert r.is_r3_rotation_matrix()
   #
   assert approx_equal(flex.random_double_unit_quaternion(), (
     0.28487732137889482,

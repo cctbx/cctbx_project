@@ -64,7 +64,9 @@ def exercise_axis_and_angle(
               assert approx_equal(abs(matrix.col(qq)), 1)
               rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*qq)
               assert approx_equal(rq, r)
-              qm = matrix.sqr(r).r3_rotation_matrix_as_unit_quaternion()
+              rm = matrix.sqr(r)
+              assert rm.is_r3_rotation_matrix()
+              qm = rm.r3_rotation_matrix_as_unit_quaternion()
               assert approx_equal(abs(qm), 1)
               rqm = scitbx.math.r3_rotation_unit_quaternion_as_matrix(
                 *qm.elems)

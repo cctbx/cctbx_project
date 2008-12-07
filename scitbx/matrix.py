@@ -229,6 +229,14 @@ class rec(object):
       a[2] * b[0] - b[2] * a[0],
       a[0] * b[1] - b[0] * a[1]))
 
+  def is_r3_rotation_matrix_rms(self):
+    if (self.n != (3,3)): raise RuntimeError("Not a 3x3 matrix.")
+    rtr = self.transpose_multiply()
+    return (rtr - identity(n=3)).norm_sq()**0.5
+
+  def is_r3_rotation_matrix(self, rms_tolerance=1e-8):
+    return self.is_r3_rotation_matrix_rms() < rms_tolerance
+
   def unit_quaternion_as_r3_rotation_matrix(self):
     assert self.n in [(1,4), (4,1)]
     q0,q1,q2,q3 = self.elems
@@ -1277,7 +1285,9 @@ def exercise():
     1/3,4/15,-8/15,8/15,
     -1,-1,1,-1]), -1/75)
   #
-  uqr = identity(n=3).r3_rotation_matrix_as_unit_quaternion()
+  r = identity(n=3)
+  assert r.is_r3_rotation_matrix()
+  uqr = r.r3_rotation_matrix_as_unit_quaternion()
   assert approx_equal(uqr, (1,0,0,0))
   # axis = (1/2**0.5, 1/2**0.5, 0)
   # angle = 2 * math.asin((2/3.)**0.5)
@@ -1302,8 +1312,16 @@ def exercise():
     rp21 = uqp21.unit_quaternion_as_r3_rotation_matrix()
     assert approx_equal(rp21, r2*r1)
     for uq,r in [(uq1,r1), (uq2,r2), (uqp12,rp12), (uqp21,rp21)]:
+      assert r.is_r3_rotation_matrix()
       uqr = r.r3_rotation_matrix_as_unit_quaternion()
       assert approx_equal(uqr.unit_quaternion_as_r3_rotation_matrix(), r)
+  #
+  r = sqr((
+    0.12, 0.69, -0.70,
+    0.20, -0.71, -0.66,
+    -0.97, -0.06, -0.23))
+  assert approx_equal(r.is_r3_rotation_matrix_rms(), 0.0291602469125)
+  assert not r.is_r3_rotation_matrix()
   #
   v = col((1.1, -2.2, 2.3))
   assert approx_equal(v % 2, col((1.1, 1.8, 0.3)))
