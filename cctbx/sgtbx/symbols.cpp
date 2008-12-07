@@ -940,7 +940,7 @@ namespace cctbx { namespace sgtbx {
 
   bool
   space_group_symbols::set_all(
-    const tables::main_symbol_dict_entry* entry,
+    const symbols::tables::main_symbol_dict_entry* entry,
     char work_extension,
     string const& std_table_id)
   {
@@ -950,7 +950,7 @@ namespace cctbx { namespace sgtbx {
                  || work_extension == '1' || work_extension == '2'
                  || work_extension == 'H' || work_extension == 'R');
     number_ = entry->sg_number;
-    schoenflies_ = tables::schoenflies_list[entry->sg_number];
+    schoenflies_ = symbols::tables::schoenflies_list[entry->sg_number];
     qualifier_ = string(entry->qualifier ? entry->qualifier : "");
     hermann_mauguin_ = entry->hermann_mauguin;
     extension_ = work_extension;
@@ -1039,7 +1039,7 @@ namespace cctbx { namespace sgtbx {
       cb_op = change_of_basis_op(cb_mx_symbol);
     }
     char work_extension = strip_extension(work_symbol);
-    const tables::main_symbol_dict_entry* entry = 0;
+    const symbols::tables::main_symbol_dict_entry* entry = 0;
     int sg_no;
     char xtrac;
     int n = sscanf(work_symbol.c_str(), "%d%c", &sg_no, &xtrac);
@@ -1114,7 +1114,7 @@ namespace cctbx { namespace sgtbx {
       throw error(
         not_recognized + to_str(space_group_number) + inp_work_symbol);
     }
-    const tables::main_symbol_dict_entry* entry = 0;
+    const symbols::tables::main_symbol_dict_entry* entry = 0;
     entry = sg_number_to_main_symbol_dict_entry(
       space_group_number, std_table_id);
     if (!set_all(entry, work_extension, std_table_id)) {
