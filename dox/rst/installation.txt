@@ -91,7 +91,7 @@ On a machine with multiple CPUs enter::
 
   libtbx.scons -j N
 
-where N is the number of CPUs available. The the speedup scales
+where N is the number of CPUs available. The speedup scales
 almost linearly with the number of CPUs available.
 
 ``libtbx.scons`` is similar to the more familar ``make`` command,
@@ -147,7 +147,7 @@ On a machine with multiple CPUs enter::
 
   libtbx.scons -j N
 
-where N is the number of CPUs available. The the speedup scales
+where N is the number of CPUs available. The speedup scales
 almost linearly with the number of CPUs available.
 
 ``libtbx.scons`` is similar to the more familar ``make`` command,
