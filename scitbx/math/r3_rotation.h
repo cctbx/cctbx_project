@@ -392,6 +392,12 @@ namespace scitbx { namespace math {
   }
 
   //! Unit quaternion (a.k.a. Euler parameters) as matrix.
+  /*! The unit quaternion elements must satisfy the normalization condition
+        q0**2+q1**2+q2**2+q3**3 = 1
+      but this is not checked.
+
+      Also implemented in Python: scitbx/matrix.py
+   */
   template <typename FloatType>
   mat3<FloatType>
   unit_quaternion_as_matrix(
@@ -411,6 +417,84 @@ namespace scitbx { namespace math {
       2*(q0_q0+q1*q1)-1, 2*(q1_q2-q0_q3),   2*(q1_q3+q0_q2),
       2*(q1_q2+q0_q3),   2*(q0_q0+q2*q2)-1, 2*(q2_q3-q0_q1),
       2*(q1_q3-q0_q2),   2*(q2_q3+q0_q1),   2*(q0_q0+q3*q3)-1);
+  }
+
+  template <typename FloatType>
+  mat3<FloatType>
+  unit_quaternion_as_matrix(
+    af::tiny<FloatType, 4> const& q)
+  {
+    return unit_quaternion_as_matrix(q[0], q[1], q[2], q[3]);
+  }
+
+  //! Matrix as unit quaternion (a.k.a. Euler parameters).
+  /*! The matrix elements must satisfy the orthogonality condition
+        r.transpose()*r = identity
+      but this is not thoroughly checked.
+
+      Based on work by:
+        Shepperd (1978), J. Guidance and Control, 1, 223-224.
+        Sam Buss, http://math.ucsd.edu/~sbuss/MathCG
+        Robert Hanson, jmol/Jmol/src/org/jmol/util/Quaternion.java
+
+      Also implemented in Python: scitbx/matrix.py
+   */
+  template <typename FloatType>
+  af::tiny<FloatType, 4>
+  matrix_as_unit_quaternion(
+    mat3<FloatType> const& r)
+  {
+    typedef FloatType ft;
+    ft w, x, y, z;
+    ft trace = r[0] + r[4] + r[8];
+    if (trace >= 0.5) {
+      w = std::sqrt(1 + trace);
+      ft d = w + w;
+      w *= 0.5;
+      x = (r[7] - r[5]) / d;
+      y = (r[2] - r[6]) / d;
+      z = (r[3] - r[1]) / d;
+    }
+    else {
+      unsigned mx = 2;
+      if (r[0] > r[4]) {
+        if (r[0] > r[8]) mx = 0;
+      }
+      else if (r[4] > r[8]) mx = 1;
+      ft invalid_cutoff = 0.8; // not critical; true value is closer to 0.83
+      const char* invalid_message = "Not a r3_rotation matrix.";
+      if (mx == 0) {
+        ft x_sq = 1 + r[0] - r[4] - r[8];
+        if (x_sq < invalid_cutoff) throw std::runtime_error(invalid_message);
+        x = std::sqrt(x_sq);
+        ft d = x + x;
+        x *= 0.5;
+        w = (r[7] - r[5]) / d;
+        y = (r[3] + r[1]) / d;
+        z = (r[6] + r[2]) / d;
+      }
+      else if (mx == 1) {
+        ft y_sq = 1 + r[4] - r[0] - r[8];
+        if (y_sq < invalid_cutoff) throw std::runtime_error(invalid_message);
+        y = std::sqrt(y_sq);
+        ft d = y + y;
+        y *= 0.5;
+        w = (r[2] - r[6]) / d;
+        x = (r[3] + r[1]) / d;
+        z = (r[7] + r[5]) / d;
+      }
+      else {
+        ft z_sq = 1 + r[8] - r[0] - r[4];
+        if (z_sq < invalid_cutoff) throw std::runtime_error(invalid_message);
+        z = std::sqrt(z_sq);
+        ft d = z + z;
+        z *= 0.5;
+        w = (r[3] - r[1]) / d;
+        x = (r[6] + r[2]) / d;
+        y = (r[7] + r[5]) / d;
+      }
+    }
+    return af::tiny<FloatType, 4>(w, x, y, z);
   }
 
 }}} // namespace scitbx::math::r3_rotation

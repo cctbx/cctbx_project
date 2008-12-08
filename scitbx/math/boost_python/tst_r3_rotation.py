@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 from libtbx.utils import format_cpu_times
 from libtbx.test_utils import Exception_expected, approx_equal
 from stdlib import math
+import time
 import sys
 
 def exercise_axis_and_angle(
@@ -54,7 +55,7 @@ def exercise_axis_and_angle(
               q = scitbx.math.r3_rotation_axis_and_angle_as_unit_quaternion(
                 axis=axis, angle=angle, deg=True)
               assert approx_equal(abs(matrix.col(q)), 1)
-              rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*q)
+              rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(q=q)
               assert approx_equal(rq, r)
               from_matrix = scitbx.math.r3_rotation_axis_and_angle_from_matrix(
                 r=r)
@@ -62,15 +63,17 @@ def exercise_axis_and_angle(
               assert approx_equal(rr, r)
               qq = from_matrix.as_unit_quaternion()
               assert approx_equal(abs(matrix.col(qq)), 1)
-              rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*qq)
+              rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(q=qq)
+              assert approx_equal(rq, r)
+              qq = scitbx.math.r3_rotation_matrix_as_unit_quaternion(r=r)
+              assert approx_equal(abs(matrix.col(qq)), 1)
+              rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(q=qq)
               assert approx_equal(rq, r)
               rm = matrix.sqr(r)
               assert rm.is_r3_rotation_matrix()
               qm = rm.r3_rotation_matrix_as_unit_quaternion()
               assert approx_equal(abs(qm), 1)
-              rqm = scitbx.math.r3_rotation_unit_quaternion_as_matrix(
-                *qm.elems)
-              assert approx_equal(rqm, r)
+              assert approx_equal(qm, qq)
               rqmm = qm.unit_quaternion_as_r3_rotation_matrix()
               assert approx_equal(rqmm, r)
               for deg in [False, True]:
@@ -87,7 +90,7 @@ def exercise_axis_and_angle(
                   min_axis_length=1-1.e-5)
                 qq = from_matrix.as_unit_quaternion()
                 assert approx_equal(abs(matrix.col(qq)), 1)
-                rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*qq)
+                rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(q=qq)
                 assert approx_equal(rq, r)
                 for conv in [
                   scitbx.math.r3_rotation_axis_and_angle_as_matrix,
@@ -109,10 +112,42 @@ def exercise_axis_and_angle(
     assert approx_equal(math.cos(from_matrix.angle()), (r[0]+r[4]+r[8]-1)/2)
     q = matrix.col(from_matrix.as_unit_quaternion())
     assert approx_equal(abs(q), 1)
-    rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(*q)
+    rq = scitbx.math.r3_rotation_unit_quaternion_as_matrix(q=q)
     assert approx_equal(rq, r)
     rq = matrix.col(q).unit_quaternion_as_r3_rotation_matrix()
     assert approx_equal(rq, r)
+
+def unit_quaternion_matrix_timings(n_trials=50, n_repeats=500):
+  cpp_um = scitbx.math.r3_rotation_unit_quaternion_as_matrix
+  cpp_mu = scitbx.math.r3_rotation_matrix_as_unit_quaternion
+  times = [0,0,0,0]
+  for i_trial in xrange(n_trials):
+    qm = matrix.col.random(n=4, a=-1, b=1).normalize()
+    rm = qm.unit_quaternion_as_r3_rotation_matrix()
+    q = qm.elems
+    r = cpp_um(q=q)
+    t0 = time.time()
+    for i_repeat in xrange(n_repeats):
+      qm.unit_quaternion_as_r3_rotation_matrix()
+    times[0] += time.time()-t0
+    t0 = time.time()
+    for i_repeat in xrange(n_repeats):
+      rm.r3_rotation_matrix_as_unit_quaternion()
+    times[1] += time.time()-t0
+    t0 = time.time()
+    for i_repeat in xrange(n_repeats):
+      cpp_um(q=q)
+    times[2] += time.time()-t0
+    t0 = time.time()
+    for i_repeat in xrange(n_repeats):
+      cpp_mu(r=r)
+    times[3] += time.time()-t0
+  print "times unit quaternion <-> matrix"
+  print "     py: %.2f %.2f s" % (times[0], times[1])
+  print "    c++: %.2f %.2f s" % (times[2], times[3])
+  if (times[2] != 0 and times[3] != 0):
+    print "  ratio: %.2f %.2f" % (times[0]/times[2], times[1]/times[3])
+  sys.stdout.flush()
 
 def check_vector_to_vector(g, t):
   assert approx_equal(abs(matrix.col(g)), 1)
@@ -238,6 +273,7 @@ def exercise_vector_to_vector(angle_exponent_step=10, n_trials=10):
 
 def exercise():
   exercise_axis_and_angle()
+  unit_quaternion_matrix_timings()
   exercise_vector_to_vector()
   print format_cpu_times()
 

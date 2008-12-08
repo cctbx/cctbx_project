@@ -123,10 +123,11 @@ namespace boost_python {
           arg_("sin_angle_is_zero_threshold")=1.e-10)));
 
     def("r3_rotation_unit_quaternion_as_matrix",
-      (mat3<double>(*)(
-        double const&, double const&, double const&, double const&))
-      r3_rotation::unit_quaternion_as_matrix, ((
-        arg_("q0"), arg_("q1"), arg_("q2"), arg_("q3"))));
+      (mat3<double>(*)(af::tiny<double, 4> const&))
+        r3_rotation::unit_quaternion_as_matrix, (arg_("q")));
+    def("r3_rotation_matrix_as_unit_quaternion",
+      (af::tiny<double, 4>(*)(mat3<double> const&))
+        r3_rotation::matrix_as_unit_quaternion, (arg_("r")));
   }
 
 }}} // namespace scitbx::math::boost_python
