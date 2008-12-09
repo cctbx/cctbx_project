@@ -87,6 +87,14 @@ class six_dof(object):
     new_qr[iq-len(O.qE)] += signed_eps
     return six_dof(O.type, O.qE, matrix.col(new_qr), O.r_is_qr)
 
+  def get_q(O):
+    return O.qE.elems + O.qr.elems
+
+  def new_q(O, q):
+    i = len(O.qE.elems)
+    new_qE, new_qr = matrix.col_list((q[:i], q[i:]))
+    return six_dof(O.type, new_qE, new_qr, O.r_is_qr)
+
 class spherical_alignment(object):
 
   def __init__(O, sites):
@@ -159,6 +167,12 @@ class spherical(object):
     new_qE[iq] += signed_eps
     return spherical(O.type, matrix.col(new_qE))
 
+  def get_q(O):
+    return O.qE.elems
+
+  def new_q(O, q):
+    return spherical(O.type, matrix.col(q))
+
 class revolute_alignment(object):
 
   def __init__(O, pivot, normal):
@@ -198,6 +212,12 @@ class revolute(object):
 
   def add_finite_difference(O, iq, signed_eps):
     return revolute(O.qE + matrix.col((signed_eps,)))
+
+  def get_q(O):
+    return O.qE.elems
+
+  def new_q(O, q):
+    return revolute(matrix.col(q))
 
 def RBDA_Eq_4_7(q):
   q1,q2,q3 = q

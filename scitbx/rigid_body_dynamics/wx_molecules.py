@@ -16,6 +16,9 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     for B,AJA in zip(self.sim.bodies, self.sim.AJA_accu):
       for s in B.sites:
         self.points.append(AJA * s)
+    self.labels_display_list = None
+    self.lines_display_list = None
+    self.points_display_list = None
 
   def set_points_and_lines(self, simulation_factory_index):
     self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
@@ -45,6 +48,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     print "Press and hold Tab key to run the simulation."
     print "Press Shift-Tab to increase speed."
     print "Press Ctrl-Tab  to decrease speed."
+    print "Press M for minimization."
 
   def tab_callback(self, shift_down=False, control_down=False):
     if (shift_down or control_down):
@@ -56,9 +60,23 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       return
     self.sim.dynamics_step(delta_t=0.05)
     self.set_points()
-    self.labels_display_list = None
-    self.lines_display_list = None
-    self.points_display_list = None
+    self.OnRedraw()
+
+  def process_key_stroke(self, key):
+    if (key != ord("M")):
+      print "No action for this key stroke."
+      print "Press M for minimization."
+      return True
+    print "Minimization:"
+    print "  start e_pot:", self.sim.e_pot
+    self.sim.minimization(
+      max_iterations=10,
+      callback_after_step=self.minimization_callback)
+    print "  final e_pot:", self.sim.e_pot
+
+  def minimization_callback(self, minimizer):
+    print "        e_pot:", self.sim.e_pot
+    self.set_points()
     self.OnRedraw()
 
 class App(wx_viewer.App):

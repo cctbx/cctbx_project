@@ -3,6 +3,8 @@ from scitbx.rigid_body_dynamics import test_utils
 from scitbx.rigid_body_dynamics.utils import \
   e_kin_from_model, \
   featherstone_system_model
+import scitbx.lbfgs
+from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal
 
@@ -94,3 +96,41 @@ class simulation(object):
       print
     assert approx_equal(ana, fin)
     assert approx_equal(O.qdd, qdd_orig)
+
+  def minimization(O, max_iterations=None, callback_after_step=None):
+    refinery(
+      sim=O,
+      max_iterations=max_iterations,
+      callback_after_step=callback_after_step)
+
+class refinery(object):
+
+  def __init__(O, sim, max_iterations=None, callback_after_step=None):
+    O.sim = sim
+    O.callback_after_step = callback_after_step
+    O.x = flex.double()
+    for B in sim.bodies:
+      O.x.extend(flex.double(B.J.get_q()))
+    scitbx.lbfgs.run(
+      target_evaluator=O,
+      termination_params=scitbx.lbfgs.termination_parameters(
+       max_iterations=max_iterations))
+    O.sim.energies_and_accelerations_update()
+
+  def unpack_x(O):
+    x = O.x
+    i = 0
+    for B in O.sim.bodies:
+      n = B.J.q_size
+      B.J = B.J.new_q(q=x[i:i+n])
+      i += n
+    assert i == x.size()
+    O.sim.e_pot_and_f_ext_update()
+
+  def compute_functional_and_gradients(O):
+    O.unpack_x()
+    f = O.sim.e_pot
+    g = flex.double()
+    for d in O.sim.d_pot_d_q():
+      g.extend(flex.double(d))
+    return f, g

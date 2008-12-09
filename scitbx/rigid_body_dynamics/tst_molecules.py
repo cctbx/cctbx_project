@@ -271,6 +271,17 @@ def exercise_dynamics_quick(out, sim, n_dynamics_steps, delta_t=0.001):
   if (out is not sys.stdout):
     assert relative_range < 1.e-4
 
+def exercise_minimization_quick(out, sim, max_iterations=3):
+  print >> out, "Minimization:"
+  print >> out, "  start e_pot:", sim.e_pot
+  e_pot_start = sim.e_pot
+  sim.minimization(max_iterations=max_iterations)
+  print >> out, "  final e_pot:", sim.e_pot
+  e_pot_final = sim.e_pot
+  if (out is not sys.stdout):
+    assert e_pot_final < e_pot_start * 0.9
+  print >> out
+
 def run(args):
   assert len(args) in [0,1]
   if (len(args) == 0):
@@ -284,6 +295,7 @@ def run(args):
     sim = sim_factory()
     exercise_dynamics_quick(
       out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
+    exercise_minimization_quick(out=out, sim=sim)
   print "OK"
 
 if (__name__ == "__main__"):
