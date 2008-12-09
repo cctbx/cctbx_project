@@ -13,22 +13,19 @@ import iotbx.phil
 from iotbx import crystal_symmetry_from_any
 from cctbx import adptbx
 from libtbx.utils import Sorry
-import os
+import os, math, time
 from cctbx import miller
 from mmtbx import map_tools
-
+from libtbx import adopt_init_args
+from libtbx import Auto, group_args
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 master_params_str = """\
-grid_resolution_factor = 1./5
+grid_step = 0.25
   .type = float
-  .help = Map resolution factor: map grid step = d_min * resolution_factor, \
-          d_min is highest resolution of the dataset.
-b_extra = 0.0
-  .type = float
+  .help = Defines finess of the grid at which the map is computed.
   .expert_level = 2
-  .help = Zero values requires very small grid step. Coarse grid will require \
-          some positive value for b_extra.
-scattering_table = *xray neutron
+scattering_table = *n_gaussian wk1995 it1992 neutron
   .type = choice
   .help = Scattering table for structure factors calculations
 map_1
@@ -92,29 +89,8 @@ map_2
 """
 master_params = iotbx.phil.parse(master_params_str, process_includes=False)
 
-def sampled_density_map_obj(xray_structure, fft_map, b_base):
-  assert not fft_map.anomalous_flag()
-  if(b_base < 0): raise Sorry("b_extra must be >= 0.")
-  xrs = xray_structure
-  sampled_density = ext.sampled_model_density(
-    unit_cell                             = xrs.unit_cell(),
-    scatterers                            = xrs.scatterers(),
-    scattering_type_registry              = xrs.scattering_type_registry(),
-    fft_n_real                            = fft_map.real_map().focus(),
-    fft_m_real                            = fft_map.real_map().all(),
-    u_base                                = adptbx.b_as_u(b_base),
-    wing_cutoff                           = 0.001,
-    exp_table_one_over_step_size          = -100,
-    force_complex                         = False,
-    sampled_density_must_be_positive      = False,
-    tolerance_positive_definite           = 1.e-5,
-    use_u_base_as_u_extra                 = True,
-    store_grid_indices_for_each_scatterer = -1)
-  # model_map = sampled_density.real_map() # It is in P1 !!!
-  return sampled_density
-
 class model_to_map(object):
-  def __init__(self, xray_structure, f_obs, map_type,
+  def __init__(self, xray_structures, f_obs, map_type,
                      resolution_factor, high_resolution, low_resolution,
                      use_kick_map,
                      other_fft_map = None):
@@ -125,14 +101,26 @@ class model_to_map(object):
     if(low_resolution is not None):
       f_obs = f_obs.resolution_filter(d_max = low_resolution)
       r_free_flags = r_free_flags.resolution_filter(d_max = low_resolution)
-    self.fmodel = mmtbx.f_model.manager(
-      xray_structure = xray_structure,
-      r_free_flags   = r_free_flags,
-      target_name    = "ls_wunit_k1",
-      f_obs          = f_obs)
-    self.fmodel = self.fmodel.remove_outliers()
+    #
+    bss_params = bss.master_params.extract()
+    bss_params.k_sol_max = 0.6
+    bss_params.k_sol_min = 0.0
+    bss_params.b_sol_max = 500.0
+    bss_params.b_sol_min = 0.0
+    bss_params.k_sol_grid_search_max = 0.6
+    bss_params.k_sol_grid_search_min = 0.0
+    bss_params.b_sol_grid_search_max = 80.0
+    bss_params.b_sol_grid_search_min = 0.0
+    bss_params.k_sol_step = 0.2
+    bss_params.b_sol_step = 20.0
+    #
+    self.fmodel = utils.fmodel_simple(
+      xray_structures = xray_structures,
+      f_obs           = f_obs,
+      r_free_flags    = r_free_flags,
+      bss_params      = bss_params,
+      twin_law        = None) # XXX support twin_law in future
     if(not use_kick_map):
-      self.fmodel.update_solvent_and_scale()
       map_obj = self.fmodel.electron_density_map()
       map_coeff = map_obj.map_coefficients(map_type = map_type)
       self.fft_map = map_obj.fft_map(
@@ -140,7 +128,7 @@ class model_to_map(object):
         map_coefficients  = map_coeff,
         other_fft_map     = other_fft_map)
       self.fft_map.apply_sigma_scaling()
-      self.map_data =  self.fft_map.real_map()
+      self.map_data =  self.fft_map.real_map_unpadded()
     else:
       km = map_tools.kick_map(
         fmodel                        = self.fmodel,
@@ -159,16 +147,16 @@ class pdb_to_xrs(object):
     processed_pdb_files_srv = utils.process_pdb_file_srv(
       crystal_symmetry = crystal_symmetry,
       log = StringIO())
-    self.xray_structure = None
+    self.xray_structures = None
     self.processed_pdb_file = None
     if(pdb_files != []):
       self.processed_pdb_file, pdb_inp = \
         processed_pdb_files_srv.process_pdb_files(pdb_file_names = pdb_files)
-      self.xray_structure = self.processed_pdb_file.xray_structure(
-        show_summary = False)
-      assert self.xray_structure is not None
-      if(scattering_table == "neutron"):
-        self.xray_structure.switch_to_neutron_scattering_dictionary()
+      xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
+        processed_pdb_file = self.processed_pdb_file,
+        scattering_table   = scattering_table,
+        d_min              = None)
+      self.xray_structures = xsfppf.xray_structures
 
 def extract_crystal_symmetry(params):
   crystal_symmetries = []
@@ -226,8 +214,11 @@ def extract_data_and_flags(params, crystal_symmetry):
       log                    = StringIO())
   return data_and_flags
 
-def compute_map_from_model(high_resolution, low_resolution, xray_structure,
+def compute_map_from_model(high_resolution, low_resolution, xray_structures,
                            grid_resolution_factor, crystal_gridding = None):
+  if(len(xray_structures) > 1):
+    raise Sorry("Multiple models cannot be used with this option.")
+  xray_structure = xray_structures[0]
   f_calc = xray_structure.structure_factors(d_min = high_resolution).f_calc()
   f_calc = f_calc.resolution_filter(d_max = low_resolution)
   if(crystal_gridding is None):
@@ -287,9 +278,6 @@ How to use:
 
 def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
     return_residue_listing=False):
-  # check resolution factor
-  if(params.grid_resolution_factor >= 0.5):
-    raise Sorry("grid_resolution_factor must be < 0.5.")
   # check for crystal_symmetry
   crystal_symmetry = extract_crystal_symmetry(params = params)
   # read in the PDB files
@@ -298,11 +286,11 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
   pdb_to_xrs_1 = pdb_to_xrs(pdb_files        = params.map_1.pdb_file_name,
                             crystal_symmetry = crystal_symmetry,
                             scattering_table = params.scattering_table)
-  xray_structure_1 = pdb_to_xrs_1.xray_structure
+  xray_structures_1 = pdb_to_xrs_1.xray_structures
   pdb_to_xrs_2 = pdb_to_xrs(pdb_files        = params.map_2.pdb_file_name,
                             crystal_symmetry = crystal_symmetry,
                             scattering_table = params.scattering_table)
-  xray_structure_2 = pdb_to_xrs_2.xray_structure
+  xray_structures_2 = pdb_to_xrs_2.xray_structures
   # assert correct combination of options
   if([params.map_1.use, params.map_2.use].count(True) == 0):
     raise Sorry("No model selected to compute local density correlation.")
@@ -310,11 +298,19 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
     raise Sorry(
       "Select one model to compute local density correlation (two selected).")
   if(params.map_1.use):
-    if(xray_structure_1 is None):
+    if(xray_structures_1 is None):
       raise Sorry("PDB file for map_1 is not provided.")
+    if(len(xray_structures_1) > 1):
+      raise Sorry("use=true option cannot be used for a PDB file with multiple models.")
+      if(params.map_1.use_kick_map):
+        raise Sorry("kick map cannot be used for a PDB file with multiple models.")
   if(params.map_2.use):
-    if(xray_structure_2 is None):
+    if(xray_structures_2 is None):
       raise Sorry("PDB file for map_2 is not provided.")
+    if(len(xray_structures_2) > 1):
+      raise Sorry("use=true option cannot be used for a PDB file with multiple models.")
+      if(params.map_2.use_kick_map):
+        raise Sorry("kick map cannot be used for a PDB file with multiple models.")
   # read in F-obs and free-r flags for map_1
   data_and_flags_1 = extract_data_and_flags(
     params           = params.map_1,
@@ -332,8 +328,8 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
     if(params.map_2.map_type is None):
       params.map_2.map_type = params.map_1.map_type
     ### first
-    if(xray_structure_1 is not None): xrs = xray_structure_1
-    else: xrs = xray_structure_2
+    if(xray_structures_1 is not None): xrs = xray_structures_1
+    else: xrs = xray_structures_2
     if(data_and_flags_1 is not None): data_and_flags = data_and_flags_1
     else: data_and_flags = data_and_flags_2
     hr, lr = None, None
@@ -346,18 +342,18 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
     elif(params.map_2.low_resolution is not None):
       lr = params.map_2.low_resolution
     model_to_map_obj_1 = model_to_map(
-      xray_structure    = xrs,
+      xray_structures   = xrs,
       f_obs             = data_and_flags.f_obs,
       map_type          = params.map_1.map_type,
-      resolution_factor = params.grid_resolution_factor,
+      resolution_factor = params.grid_step/data_and_flags.f_obs.d_min(),
       use_kick_map      = params.map_1.use_kick_map,
       high_resolution   = hr,
       low_resolution    = lr)
     fft_map_1 = model_to_map_obj_1.fft_map
-    map_1 = fft_map_1.real_map()
+    map_1 = fft_map_1.real_map_unpadded()
     ### second
-    if(xray_structure_2 is not None): xrs = xray_structure_2
-    else: xrs = xray_structure_1
+    if(xray_structures_2 is not None): xrs = xray_structures_2
+    else: xrs = xray_structures_1
     if(data_and_flags_2 is not None): data_and_flags = data_and_flags_2
     else: data_and_flags = data_and_flags_1
     hr, lr = None, None
@@ -370,19 +366,19 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
     elif(params.map_1.low_resolution is not None):
       lr = params.map_1.low_resolution
     model_to_map_obj_2 = model_to_map(
-      xray_structure    = xrs,
+      xray_structures   = xrs,
       f_obs             = data_and_flags.f_obs,
       map_type          = params.map_2.map_type,
-      resolution_factor = params.grid_resolution_factor,
+      resolution_factor = params.grid_step/data_and_flags.f_obs.d_min(),
       other_fft_map     = fft_map_1,
       use_kick_map      = params.map_2.use_kick_map,
       high_resolution   = hr,
       low_resolution    = lr)
-    map_2 = model_to_map_obj_2.fft_map.real_map()
+    map_2 = model_to_map_obj_2.fft_map.real_map_unpadded()
   # compute data if no reflection files provided for both maps
   if([data_and_flags_1, data_and_flags_2].count(None) == 2):
-    if(xray_structure_1 is not None): xrs = xray_structure_1
-    else: xrs = xray_structure_2
+    if(xray_structures_1 is not None): xrs = xray_structures_1
+    else: xrs = xray_structures_2
     if(params.map_1.high_resolution is not None):
       hr = params.map_1.high_resolution
     elif(params.map_2.high_resolution is not None):
@@ -398,12 +394,13 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
     fft_map_1 = compute_map_from_model(
       high_resolution        = hr,
       low_resolution         = lr,
-      xray_structure         = xrs,
-      grid_resolution_factor = params.grid_resolution_factor,
+      xray_structures        = xrs,
+      grid_resolution_factor = params.grid_step/hr,
       crystal_gridding = None)
-    map_1 = fft_map_1.real_map()
-    if(xray_structure_2 is not None): xrs = xray_structure_2
-    else: xrs = xray_structure_1
+    fft_map_1.apply_sigma_scaling()
+    map_1 = fft_map_1.real_map_unpadded()
+    if(xray_structures_2 is not None): xrs = xray_structures_2
+    else: xrs = xray_structures_1
     if(params.map_2.high_resolution is not None):
       hr = params.map_2.high_resolution
     elif(params.map_1.high_resolution is not None):
@@ -416,82 +413,148 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
       lr = params.map_1.low_resolution
     else:
       lr = d_max_default
-    map_2 = compute_map_from_model(
+    fft_map_2 = compute_map_from_model(
       high_resolution        = hr,
       low_resolution         = lr,
-      xray_structure         = xrs,
-      grid_resolution_factor = params.grid_resolution_factor,
-      crystal_gridding       = fft_map_1).real_map()
+      xray_structures        = xrs,
+      grid_resolution_factor = params.grid_step/hr,
+      crystal_gridding       = fft_map_1)
+    fft_map_2.apply_sigma_scaling()
+    map_2 = fft_map_2.real_map_unpadded()
   #
   assert map_1.focus() == map_2.focus()
   assert map_1.all() == map_2.all()
   # get sampled points
-  if(params.map_1.use): xrs = xray_structure_1
-  elif(params.map_2.use): xrs = xray_structure_2
+  if(params.map_1.use): xrs = xray_structures_1
+  elif(params.map_2.use): xrs = xray_structures_2
   else: RuntimeError
-  sampled_density = sampled_density_map_obj(
-    xray_structure = xrs,
-    fft_map        = fft_map_1,
-    b_base         = params.b_extra)
-  # prepare selections
+  if(len(xrs) > 1):
+    raise Sorry("Multiple models cannot be used with this option.")
+  # get map cc
   pdb_to_xrs_ = None
   if(params.map_1.use): pdb_to_xrs_ = pdb_to_xrs_1
   elif(params.map_2.use): pdb_to_xrs_ = pdb_to_xrs_2
   else: RuntimeError
-  models = pdb_to_xrs_.processed_pdb_file.all_chain_proxies.\
-    pdb_hierarchy.models()
-  res_group_selections = []
-  res_names = []
-  res_ids = []
-  res_chains = []
-  res_meanb = []
-  for model in models:
-    for chain in model.chains():
-      for rg in chain.residue_groups():
-        rg_i_seqs = []
-        r_name = None
-        for ag in rg.atom_groups():
-          if(r_name is None): r_name = ag.resname
-          for atom in ag.atoms():
-            rg_i_seqs.append(atom.i_seq)
-        if(len(rg_i_seqs) != 0):
-          res_group_selections.append(flex.size_t(rg_i_seqs))
-          res_names.append(r_name)
-          res_ids.append(rg.resid())
-          res_chains.append(chain.id)
-          b = rg.atoms().extract_b()
-          res_meanb.append(b.min_max_mean().mean)
-  assert len(res_group_selections) == len(res_names)
-  assert len(res_group_selections) == len(res_ids)
-  # combine selections
-  gifes = sampled_density.grid_indices_for_each_scatterer()
-  residue_selections = shared.stl_set_unsigned()
-  for i_seqs in res_group_selections:
-    residue_selections.append_union_of_selected_arrays(
-      arrays    = gifes,
-      selection = i_seqs)
-  # compute and output map CC
-  result = flex.double()
-  print
-  print "Count, residue chain and number, name and map CC"
-  for i_count, res_sel in enumerate(residue_selections):
-    corr = flex.linear_correlation(
-      x = map_1.select(res_sel),
-      y = map_2.select(res_sel)).coefficient()
-    result.append(corr)
-    print "%-5d %s %s %6.3f" % \
-      (i_count,res_ids[i_count],res_names[i_count],corr)
-  print
+  compute_map_cc_result = compute_map_cc(map_1 = map_1, map_2 = map_2,
+    xray_structure = xrs[0], fft_map = fft_map_1)
+  per_atom_result = compute_map_cc_result.atoms(
+    pdb_hierarchy = pdb_to_xrs_.processed_pdb_file.all_chain_proxies.\
+      pdb_hierarchy, show = True)
+  compute_map_cc_result.overall_correlation_min_max_standard_deviation(
+    show = True)
   if graph_results :
     try :
       from wxGUI2.Plot import show_residue_properties_chart
       residue_stats = []
-      for i, corr in enumerate(result) :
-        residue_stats.append([(res_chains[i], res_ids[i]), corr])
+      for i, res_ in enumerate(result) :
+        residue_stats.append([(res_.chain, res_.residue_id), res_.cc])
       show_residue_properties_chart(residue_stats, ["Real-space CC"])
     except ImportError :
       raise Sorry("Graphical interface not enabled.")
   elif return_residue_listing :
-    return (res_chains, res_ids, res_names, results, res_meanb)
-  else :
+    return result
+
+class compute_map_cc(object):
+
+  def __init__(self, map_1, map_2, xray_structure, fft_map):
+    self.map_1 = map_1
+    self.map_2 = map_2
+    assert self.map_1.size() == self.map_1.size()
+    self.xray_structure = xray_structure
+    self.fft_map = fft_map
+    self.sampled_density = self.sampled_density_map()
+
+  def overall_correlation_min_max_standard_deviation(self, show = False):
+    corr = flex.linear_correlation(
+      x = self.map_1.as_1d(),
+      y = self.map_2.as_1d()).coefficient()
+    st1 = maptbx.statistics(self.map_1)
+    st2 = maptbx.statistics(self.map_2)
+    if(show):
+      print "Overall map correlation: %5.2f"%corr
+      print "Map 1: min, max, mean, standard deviation: %6.3f %6.3f %6.3f %6.3f" % (
+        st1.min(), st1.max(), st1.mean(), st1.sigma())
+      print "Map 2: min, max, mean, standard deviation: %6.3f %6.3f %6.3f %6.3f" % (
+        st2.min(), st2.max(), st2.mean(), st2.sigma())
+    return group_args(correlation = corr, map_stat_1 = st1, map_stat_2 = st2)
+
+  def sampled_density_map(self):
+    # Very specific code to get the sampling points only.
+    # Do not use the actual map.
+    assert not self.fft_map.anomalous_flag()
+    xrs = self.xray_structure.deep_copy_scatterers()
+    xrs.convert_to_isotropic()
+    u_iso_all = adptbx.b_as_u(10.0)
+    xrs.set_u_iso(value = u_iso_all)
+    real_map_unpadded = self.fft_map.real_map_unpadded()
+    sampled_density = ext.sampled_model_density(
+      unit_cell                             = xrs.unit_cell(),
+      scatterers                            = xrs.scatterers(),
+      scattering_type_registry              = xrs.scattering_type_registry(),
+      fft_n_real                            = real_map_unpadded.focus(),
+      fft_m_real                            = real_map_unpadded.all(),
+      u_base                                = adptbx.b_as_u(0),
+      wing_cutoff                           = 1.e-1,
+      exp_table_one_over_step_size          = -100,
+      force_complex                         = False,
+      sampled_density_must_be_positive      = False,
+      tolerance_positive_definite           = 1.e-5,
+      use_u_base_as_u_extra                 = True,
+      store_grid_indices_for_each_scatterer = -1)
+    return sampled_density
+
+  def atoms(self, pdb_hierarchy,
+                  show = False,
+                  poor_cc_threshold = 0.7,
+                  poor_map_value_threshold = 1.0,
+                  ignore_points_with_map_values_less_than = 0.5,
+                  set_cc_to_zero_if_n_grid_points_less_than = 50,
+                  show_hydrogens = True):
+    result = []
+    atoms = pdb_hierarchy.atoms_with_labels()
+    gifes = self.sampled_density.grid_indices_for_each_scatterer()
+    scatterers = self.xray_structure.scatterers()
+    for i_seq, a in enumerate(atoms):
+       sel = list(gifes[i_seq])
+       m1 = self.map_1.select(sel)
+       m2 = self.map_2.select(sel)
+       sel_flat  = m1 > ignore_points_with_map_values_less_than
+       sel_flat &= m2 > ignore_points_with_map_values_less_than
+       m1 = m1.select(sel_flat)
+       m2 = m2.select(sel_flat)
+       if(m1.size() < set_cc_to_zero_if_n_grid_points_less_than): corr = 0.
+       else:
+         corr = flex.linear_correlation(
+           x = m1,
+           y = m2).coefficient()
+       ed1 = self.map_1.eight_point_interpolation(scatterers[i_seq].site)
+       ed2 = self.map_2.eight_point_interpolation(scatterers[i_seq].site)
+       poor_flag = False
+       if(corr < poor_cc_threshold or
+          ((ed2 < poor_map_value_threshold or ed1 < poor_map_value_threshold)
+          and corr < poor_cc_threshold) or
+          ed2 < ignore_points_with_map_values_less_than or
+          ed1 < ignore_points_with_map_values_less_than):
+         poor_flag = True
+       result.append(group_args(
+         atom      = a,
+         cc        = corr,
+         map_1_val = ed1,
+         map_2_val = ed2,
+         poor_flag = poor_flag))
+    if(show):
+      print "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  FLAG"
+      fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f %s"
+      for i_seq, r in enumerate(result):
+        assert scatterers[i_seq].element_symbol().strip().upper() == \
+          r.atom.element.strip().upper()
+        w_msg = ""
+        if(r.poor_flag): w_msg = " <<< WEAK DENSITY"
+        print_line = True
+        if(not show_hydrogens and r.atom.element.strip().upper() in ["H","D"]):
+          print_line = False
+        if(print_line):
+          print fmt % (i_seq, r.atom.chain_id, r.atom.resseq, r.atom.resname,
+            r.atom.altloc, r.atom.name, r.atom.element, r.atom.occ, r.atom.b,
+            r.cc, r.map_1_val, r.map_2_val, w_msg)
     return result

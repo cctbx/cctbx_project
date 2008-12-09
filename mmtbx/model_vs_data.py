@@ -16,7 +16,6 @@ from iotbx import reflection_file_utils
 from iotbx import reflection_file_reader
 from libtbx.str_utils import format_value
 import iotbx
-from cStringIO import StringIO
 from mmtbx import utils
 from iotbx import pdb
 from libtbx import easy_run
@@ -24,6 +23,7 @@ from cStringIO import StringIO
 from mmtbx import model_statistics
 from iotbx.pdb import extract_rfactors_resolutions_sigma
 import iotbx.pdb.remark_3_interpretation
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 
 def get_program_name(file_lines):
@@ -44,37 +44,6 @@ def get_year(file_lines):
     if(result is not None):
       return result
   return result
-
-def get_fmodel_object(xray_structure, f_obs, r_free_flags, twin_law):
-  sel = f_obs.d_spacings().data() > 0.25
-  f_obs = f_obs.select(sel)
-  r_free_flags = r_free_flags.select(sel)
-  n_outl = sel.count(False)
-  if(twin_law is None):
-    fmodel = mmtbx.f_model.manager(
-      xray_structure = xray_structure,
-      r_free_flags   = r_free_flags,
-      target_name    = "ml",
-      f_obs          = f_obs)
-  else:
-    from mmtbx.twinning import twin_f_model
-    from cctbx import sgtbx
-    twin_law = sgtbx.rt_mx(twin_law)
-    fmodel = twin_f_model.twin_model_manager(
-      f_obs          = f_obs,
-      r_free_flags   = r_free_flags,
-      xray_structure = xray_structure,
-      twin_law       = twin_law
-     )
-  sel = fmodel.outlier_selection()
-  fmodel.update_xray_structure(update_f_calc = True, update_f_mask = True)
-  fmodel.update_solvent_and_scale(verbose = -1)
-  fmodel = fmodel.select(selection = sel)
-  if(sel is not None):
-    n_outl += sel.count(False)
-  else:
-    n_outl = None
-  return fmodel, n_outl
 
 def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
                   model_selections, show_geometry_statistics):
@@ -151,13 +120,32 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
       print "      chirality        : %8.4f %8.4f %d" % (result.c_mean, result.c_max, result.c_number)
       print "      planarity        : %8.4f %8.4f %d" % (result.p_mean, result.p_max, result.p_number)
       print "      non-bonded (min) : %8.4f" % (result.n_min)
-      output, output_list = ramalyze().analyze_pdb(hierarchy = hierarchy_i_seq,
-        outliers_only = False)
-      print "      Ramachandran plot, number of:"
-      print "        outliers :", output.count("OUTLIER")
-      print "        general  :", output.count("General")
-      print "        allowed  :", output.count("Allowed")
-      print "        favored  :", output.count("Favored")
+      need_ramachandran = False
+      rc = overall_counts_i_seq.resname_classes
+      for k in rc.keys():
+        if(k.count('amino_acid')):
+          need_ramachandran = True
+          n_residues = int(rc[k])
+          break
+      if(need_ramachandran):
+        output, output_list = ramalyze().analyze_pdb(hierarchy = hierarchy_i_seq,
+          outliers_only = False)
+        outl = output.count("OUTLIER")
+        gene = output.count("General")
+        allo = output.count("Allowed")
+        favo = output.count("Favored")
+        glyc = output.count("Glycine")
+        prol = output.count("Proline")
+        prep = output.count("Prepro")
+        assert n_residues != 0
+        print "      Ramachandran plot, number of:"
+        print "        outliers : %-5d (%-5.2f %s)" % (outl, outl*100./n_residues, "%")
+        print "        general  : %-5d (%-5.2f %s)" % (gene, gene*100./n_residues, "%")
+        print "        allowed  : %-5d (%-5.2f %s)" % (allo, allo*100./n_residues, "%")
+        print "        favored  : %-5d (%-5.2f %s)" % (favo, favo*100./n_residues, "%")
+        print "        glycine  : %-5d (%-5.2f %s)" % (glyc, glyc*100./n_residues, "%")
+        print "        proline  : %-5d (%-5.2f %s)" % (prol, prol*100./n_residues, "%")
+        print "        prepro   : %-5d (%-5.2f %s)" % (prep, prep*100./n_residues, "%")
 
 def show_xray_structure_statistics(xray_structure):
   b_isos = xray_structure.extract_u_iso_or_u_equiv()
@@ -236,38 +224,6 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
     processed_pdb_files_srv.process_pdb_files(raw_records = pdb_raw_records)
   return processed_pdb_file, pdb_raw_records, pdb_inp
 
-def get_xray_structures(processed_pdb_file, scattering_table, d_min):
-  xray_structure = processed_pdb_file.xray_structure()
-  if(xray_structure is None or xray_structure.scatterers().size()==0):
-    raise Sorry("Cannot extract xray_structure.")
-  if(scattering_table != "neutron"):
-    xray_structure.scattering_type_registry(
-      table = scattering_table,
-      d_min = d_min,
-      types_without_a_scattering_contribution=["?"])
-  else:
-    xray_structure.scattering_type_registry(
-      types_without_a_scattering_contribution=["?"])
-    xray_structure.switch_to_neutron_scattering_dictionary()
-  model_indices = processed_pdb_file.all_chain_proxies.pdb_inp.model_indices()
-  model_selections = []
-  if(len(model_indices)>1):
-     result = []
-     model_indices_padded = flex.size_t([0])
-     model_indices_padded.extend(model_indices)
-     ranges = []
-     for i, v in enumerate(model_indices_padded):
-       try: ranges.append([model_indices_padded[i], model_indices_padded[i+1]])
-       except IndexError: pass
-     for ran in ranges:
-       sel = flex.size_t(range(ran[0],ran[1]))
-       model_selections.append(sel)
-       result.append(xray_structure.select(sel))
-     return result, model_selections
-  else:
-    model_selections.append( flex.size_t(xrange(xray_structure.scatterers().size())) )
-    return [xray_structure], model_selections
-
 def reflection_file_server(crystal_symmetry, reflection_files):
   return reflection_file_utils.reflection_file_server(
     crystal_symmetry=crystal_symmetry,
@@ -291,22 +247,23 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
     "number_of_reflections   : "+format_value("%-8d",  info.number_of_reflections),
     "test_set_size(%)        : "+format_value("%-8.4f",flags_pc),
     "test_flag_value         : "+format_value("%-d",   test_flag_value),
-    "is_twinned              : "+format_value("%-5s",  fmodel.twin_test()),
     "number_of_Fobs_outliers : "+format_value("%-8d",  n_outl),
     "anomalous_flag          : "+format_value("%-6s",  fmodel.f_obs.anomalous_flag())])
   print "   ", result
 
 def show_model_vs_data(fmodel):
   d_max, d_min = fmodel.f_obs.d_max_min()
-  flags_pc = \
-   fmodel.r_free_flags.data().count(True)*100./fmodel.r_free_flags.data().size()
+  flags_pc = fmodel.r_free_flags.data().count(True)*100./\
+    fmodel.r_free_flags.data().size()
+  if(flags_pc == 0): r_free = None
+  else: r_free = fmodel.r_free()
   k_sol = format_value("%-5.2f",fmodel.k_sol())
   b_sol = format_value("%-7.2f",fmodel.b_sol())
   b_cart = " ".join([("%8.2f"%v).strip() for v in fmodel.b_cart()])
   print "  Model_vs_Data:"
   result = " \n    ".join([
     "r_work(re-computed)                : "+format_value("%-6.4f",fmodel.r_work()),
-    "r_free(re-computed)                : "+format_value("%-6.4f",fmodel.r_free()),
+    "r_free(re-computed)                : "+format_value("%-6.4f",r_free),
     "bulk_solvent_(k_sol,b_sol)         : %s %s"%(k_sol,b_sol),
     "overall_anisotropic_scale_(b_cart) : "+format_value("%-s",b_cart)])
   print "   ", result
@@ -426,15 +383,19 @@ def run(args,
   test_flag_value = determine_data_and_flags_result.test_flag_value
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
-    test_flag_value=1
+    test_flag_value=None
   processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
     pdb_file_name = pdb_file_name,
     cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
     show_geometry_statistics = show_geometry_statistics)
-  xray_structures, model_selections = get_xray_structures(
-    processed_pdb_file       = processed_pdb_file,
-    scattering_table         = command_line.options.scattering_table,
-    d_min                    = f_obs.d_min())
+  #
+  xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
+    processed_pdb_file = processed_pdb_file,
+    scattering_table   = command_line.options.scattering_table,
+    d_min              = f_obs.d_min())
+  xray_structures = xsfppf.xray_structures
+  model_selections = xsfppf.model_selections
+  #
   if(not xray_structures[0].crystal_symmetry().is_similar_symmetry(
      f_obs.crystal_symmetry())):
     raise Sorry("Inconsistent crystal symmetry.")
@@ -452,45 +413,28 @@ def run(args,
     model_selections         = model_selections,
     show_geometry_statistics = show_geometry_statistics)
   #
-  if(len(xray_structures) == 1):
-    fmodel, n_outl = get_fmodel_object(
-      xray_structure = xray_structures[0],
-      f_obs          = f_obs,
-      r_free_flags   = r_free_flags,
-      twin_law       = command_line.options.twin_law)
-    show_data(fmodel          = fmodel,
-              n_outl          = n_outl,
-              test_flag_value = test_flag_value,
-              f_obs_labels    = f_obs.info().label_string())
-    show_model_vs_data(fmodel)
-  else:
-    f_model_data = None
-    for i_seq, xray_structure in enumerate(xray_structures):
-      fmodel, n_outl = get_fmodel_object(
-        xray_structure = xray_structure,
-        f_obs          = f_obs,
-        r_free_flags   = r_free_flags,
-        twin_law       = command_line.options.twin_law)
-      if(i_seq == 0):
-        show_data(fmodel          = fmodel,
-                  n_outl          = n_outl,
-                  test_flag_value = test_flag_value,
-                  f_obs_labels    = f_obs.info().label_string())
-        f_model_data = fmodel.f_model_scaled_with_k1().data()
-      else:
-        f_model_data += fmodel.f_model_scaled_with_k1().data()
-    fmodel_average = fmodel.f_obs.array(data = f_model_data)
-    fmodel_result = mmtbx.f_model.manager(
-     r_free_flags = fmodel.r_free_flags,
-     target_name  = "ml",
-     f_obs        = fmodel.f_obs,
-     f_mask       = fmodel.f_mask(),
-     f_calc       = fmodel_average)
-    import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-    params = bss.master_params.extract()
-    params.bulk_solvent=False
-    fmodel_result.update_solvent_and_scale(params = params, verbose = -1)
-    show_model_vs_data(fmodel_result)
+  bss_params = bss.master_params.extract()
+  bss_params.k_sol_max = 0.8
+  bss_params.k_sol_min = 0.0
+  bss_params.b_sol_max = 500.0
+  bss_params.b_sol_min = 0.0
+  bss_params.k_sol_grid_search_max = 0.6
+  bss_params.k_sol_grid_search_min = bss_params.k_sol_min
+  bss_params.b_sol_grid_search_max = 80.0
+  bss_params.b_sol_grid_search_min = bss_params.b_sol_min
+  bss_params.k_sol_step = 0.1
+  bss_params.b_sol_step = 10.0
+  fmodel = utils.fmodel_simple(xray_structures = xray_structures,
+                               f_obs           = f_obs,
+                               r_free_flags    = r_free_flags,
+                               twin_law        = command_line.options.twin_law,
+                               bss_params      = bss_params)
+  n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
+  show_data(fmodel          = fmodel,
+            n_outl          = n_outl,
+            test_flag_value = test_flag_value,
+            f_obs_labels    = f_obs.info().label_string())
+  show_model_vs_data(fmodel)
   # Extract information from PDB file header and output (if any)
   published_results = extract_rfactors_resolutions_sigma.extract(
     file_name = pdb_file_name)
