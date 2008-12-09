@@ -78,17 +78,6 @@ class six_dof(object):
     else:           result = (c * (n + O.qr.cross(f)), f)
     return matrix.col(result).resolve_partitions()
 
-  def add_finite_difference(O, iq, signed_eps):
-    if (iq < len(O.qE)):
-      new_qE = list(O.qE)
-      new_qE[iq] += signed_eps
-      return six_dof(
-        type=O.type, qE=matrix.col(new_qE), qr=O.qr, r_is_qr=O.r_is_qr)
-    new_qr = list(O.qr)
-    new_qr[iq-len(O.qE)] += signed_eps
-    return six_dof(
-      type=O.type, qE=O.qE, qr=matrix.col(new_qr), r_is_qr=O.r_is_qr)
-
   def get_q(O):
     return O.qE.elems + O.qr.elems
 
@@ -164,11 +153,6 @@ class spherical(object):
     n = tau
     return c * n
 
-  def add_finite_difference(O, iq, signed_eps):
-    new_qE = list(O.qE)
-    new_qE[iq] += signed_eps
-    return spherical(type=O.type, qE=matrix.col(new_qE))
-
   def get_q(O):
     return O.qE.elems
 
@@ -211,9 +195,6 @@ class revolute(object):
 
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
-
-  def add_finite_difference(O, iq, signed_eps):
-    return revolute(qE=O.qE+matrix.col((signed_eps,)))
 
   def get_q(O):
     return O.qE.elems

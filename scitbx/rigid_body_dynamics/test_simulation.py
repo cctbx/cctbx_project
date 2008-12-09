@@ -73,10 +73,13 @@ class simulation(object):
     for B in O.bodies:
       gs = []
       J_orig = B.J
+      q_orig = list(J_orig.get_q())
       for iq in xrange(J_orig.q_size):
         fs = []
         for signed_eps in [eps, -eps]:
-          B.J = J_orig.add_finite_difference(iq=iq, signed_eps=signed_eps)
+          q_eps = list(q_orig)
+          q_eps[iq] += signed_eps
+          B.J = J_orig.new_q(q=q_eps)
           O.e_pot_and_f_ext_update()
           fs.append(O.e_pot)
         gs.append((fs[0]-fs[1])/(2*eps))
