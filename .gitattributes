@@ -365,6 +365,7 @@ scitbx/rigid_body_dynamics/__init__.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/featherstone.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/free_motion_reference_impl.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/joint_lib.py svneol=native#text/x-python
+scitbx/rigid_body_dynamics/test_simulation.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/test_utils.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/tst_featherstone.py svneol=native#text/x-python
 scitbx/rigid_body_dynamics/tst_free_motion.py svneol=native#text/x-python
