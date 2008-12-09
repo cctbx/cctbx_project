@@ -25,7 +25,7 @@ class simulation(object):
     O.qdd = featherstone.FDab(model, q, qd, tau, O.f_ext_bf, grav_accn)
 
   def e_pot_and_f_ext_update(O):
-    AJA_accu = []
+    O.AJA_accu = []
     O.e_pot = 0
     O.f_ext_bf = []
     for B in O.bodies:
@@ -33,9 +33,9 @@ class simulation(object):
       if (B.parent == -1):
         AJA_tree = None
       else:
-        AJA_tree = AJA_accu[B.parent]
+        AJA_tree = O.AJA_accu[B.parent]
         AJA = AJA_tree * AJA
-      AJA_accu.append(AJA)
+      O.AJA_accu.append(AJA)
       e_pot_bf = test_utils.potential_energy_bf(
         sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
       f_ext_using_bf = test_utils.potential_f_ext_bf(
