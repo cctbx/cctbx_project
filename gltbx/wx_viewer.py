@@ -155,6 +155,13 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
         kwargs = {"shift_down": event.m_shiftDown}
         if (event.m_controlDown): kwargs["control_down"] = True
         callback(**kwargs)
+    else:
+      callback = getattr(self, "process_key_stroke", None)
+      if (callback is None):
+        print "No action for this key stroke."
+      else:
+        if (callback(key=key) == False):
+          print "No action for this key stroke."
     self.autospin = False
 
   def OnMouseWheel(self, event):
