@@ -2,6 +2,7 @@ from scitbx.rigid_body_dynamics import tst_molecules
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
 from gltbx import wx_viewer
+from libtbx.utils import Usage
 import wx
 import sys
 
@@ -16,8 +17,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
       for s in B.sites:
         self.points.append(AJA * s)
 
-  def set_points_and_lines(self):
-    self.sim = tst_molecules.simulation_gly_no_h()
+  def set_points_and_lines(self, simulation_factory_index):
+    self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
     self.points = flex.vec3_double()
     self.set_points()
     def add_line(i, j, color):
@@ -63,13 +64,18 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
 class App(wx_viewer.App):
 
   def __init__(self, args):
-    assert len(args) == 0
+    n = len(tst_molecules.simulation_factories)
+    if (len(args) != 1):
+      raise Usage("Please supply an integer argument (0 through %d)." % (n-1))
+    self.simulation_factory_index = int(args[0])
+    assert 0 <= self.simulation_factory_index < n
     super(App, self).__init__(title="wx_molecules")
 
   def init_view_objects(self):
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
-    self.view_objects.set_points_and_lines()
+    self.view_objects.set_points_and_lines(
+      simulation_factory_index=self.simulation_factory_index)
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)

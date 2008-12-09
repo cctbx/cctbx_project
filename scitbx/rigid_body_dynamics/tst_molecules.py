@@ -77,6 +77,44 @@ ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
   body1.parent = 0
   return simulation(bodies=[body0, body1])
 
+def simulation_gly_with_nh():
+  pdb = """\
+ATOM      0  N   GLY A   1      10.949  12.815  15.189  0.00  0.00           N
+ATOM      1  CA  GLY A   1      10.405  13.954  15.917  0.00  0.00           C
+ATOM      2  C   GLY A   1      10.779  15.262  15.227  0.00  0.00           C
+ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
+ATOM      4  H   GLY A   1      11.792  12.691  15.311  0.00  0.00           H
+"""
+  labels, sites = pdb_extract(pdb=pdb)
+  mersenne_twister = flex.mersenne_twister(seed=0)
+  body0 = six_dof_body(
+    labels=labels[:3],
+    sites=sites[:3],
+    bonds=[(0,1),(1,2)],
+    mersenne_twister=mersenne_twister)
+  body0.parent = -1
+  body1 = revolute_body(
+    labels=labels[3:4],
+    sites=sites[3:4],
+    bonds=[(-1,0)],
+    pivot=sites[3],
+    normal=(sites[3]-sites[2]).normalize(),
+    mersenne_twister=mersenne_twister)
+  body1.parent = 0
+  body2 = revolute_body(
+    labels=labels[4:],
+    sites=sites[4:],
+    bonds=[(-3,0)],
+    pivot=sites[4],
+    normal=(sites[4]-sites[0]).normalize(),
+    mersenne_twister=mersenne_twister)
+  body2.parent = 0
+  return simulation(bodies=[body0, body1, body2])
+
+simulation_factories = [
+  simulation_gly_no_h,
+  simulation_gly_with_nh]
+
 def exercise_dynamics_quick(out, sim, n_dynamics_steps, delta_t=0.001):
   relative_range = exercise_sim(
     out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
@@ -92,7 +130,7 @@ def run(args):
     n_dynamics_steps = max(1, int(args[0]))
     out = sys.stdout
   show_times_at_exit()
-  for sim_factory in [simulation_gly_no_h]:
+  for sim_factory in simulation_factories:
     sim = sim_factory()
     exercise_dynamics_quick(
       out=out, sim=sim, n_dynamics_steps=n_dynamics_steps)
