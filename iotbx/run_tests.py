@@ -3,6 +3,7 @@ import libtbx.load_env
 
 def run():
   tst_list = (
+  "$B/boost_spirit/tst_parsers",
   "$D/tst_wildcard.py",
   "$D/tst_simple_parser.py",
   "$D/tst_phil.py",
