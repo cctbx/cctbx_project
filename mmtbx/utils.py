@@ -33,6 +33,9 @@ from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
 import libtbx.load_env
 from mmtbx.solvent import ordered_solvent
+from mmtbx.twinning import twin_f_model
+from cctbx import sgtbx
+import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 import boost.python
 utils_ext = boost.python.import_ext("mmtbx_utils_ext")
@@ -1150,3 +1153,146 @@ def assert_xray_structures_equal(x1, x2, selection = None, sites = True,
   if(occupancies):
     assert approx_equal(x1.scatterers().extract_occupancies(),
                         x2.scatterers().extract_occupancies())
+
+class xray_structures_from_processed_pdb_file(object):
+
+  def __init__(self, processed_pdb_file, scattering_table, d_min, log = None):
+    self.xray_structures = []
+    self.model_selections = []
+    self.neutron_scattering_dict = None
+    self.xray_scattering_dict = None
+    xray_structure = processed_pdb_file.xray_structure(show_summary = False)
+    if(xray_structure is None):
+      raise Sorry("Cannot extract xray_structure.")
+    if(xray_structure.scatterers().size()==0):
+      raise Sorry("Empty xray_structure.")
+    all_chain_proxies = processed_pdb_file.all_chain_proxies
+    self.setup_scattering_dictionaries(
+      scattering_table  = scattering_table,
+      all_chain_proxies = all_chain_proxies,
+      xray_structure    = xray_structure,
+      d_min             = d_min,
+      log               = log)
+    model_indices = all_chain_proxies.pdb_inp.model_indices()
+    if(len(model_indices)>1):
+       model_indices_padded = flex.size_t([0])
+       model_indices_padded.extend(model_indices)
+       ranges = []
+       for i, v in enumerate(model_indices_padded):
+         try: ranges.append([model_indices_padded[i],
+                             model_indices_padded[i+1]])
+         except IndexError: pass
+       for ran in ranges:
+         sel = flex.size_t(range(ran[0],ran[1]))
+         self.model_selections.append(sel)
+         self.xray_structures.append(xray_structure.select(sel))
+    else:
+      self.model_selections.append(
+        flex.size_t(xrange(xray_structure.scatterers().size())) )
+      self.xray_structures.append(xray_structure)
+
+  def setup_scattering_dictionaries(self, scattering_table,
+                                          all_chain_proxies,
+                                          xray_structure,
+                                          d_min,
+                                          log):
+    if(log is not None):
+      print_statistics.make_header("Scattering factors", out = log)
+    known_scattering_tables = ["n_gaussian","wk1995","it1992","neutron"]
+    if(not (scattering_table in known_scattering_tables)):
+      raise Sorry("Unknown scattering_table: %s\n%s"%
+        (show_string(scattering_table),
+        "Possible choices are: %s"%" ".join(known_scattering_tables)))
+    if(scattering_table in ["n_gaussian", "wk1995", "it1992"]):
+      xray_structure.scattering_type_registry(
+        table = scattering_table,
+        d_min = d_min,
+        types_without_a_scattering_contribution=["?"])
+      self.xray_scattering_dict = \
+        xray_structure.scattering_type_registry().as_type_gaussian_dict()
+      if(log is not None):
+        print_statistics.make_sub_header("X-ray scattering dictionary",out=log)
+        xray_structure.scattering_type_registry().show(out = log)
+    if(scattering_table == "neutron"):
+      self.neutron_scattering_dict = \
+        xray_structure.switch_to_neutron_scattering_dictionary()
+      if(log is not None):
+        print_statistics.make_sub_header(
+          "Neutron scattering dictionary", out = log)
+        xray_structure.scattering_type_registry().show(out = log)
+      xray_structure.scattering_type_registry_params.table = "neutron"
+    scattering_type_registry = all_chain_proxies.scattering_type_registry
+    if(scattering_type_registry.n_unknown_type_symbols() > 0):
+      scattering_type_registry.report(
+        pdb_atoms = all_chain_proxies.pdb_atoms,
+        log = log,
+        prefix = "",
+        max_lines = None)
+      raise Sorry("Unknown scattering type symbols.\n"
+        "  Possible ways of resolving this error:\n"
+        "    - Edit columns 77-78 in the PDB file to define"
+          " the scattering type.\n"
+        "    - Provide custom monomer definitions for the affected residues.")
+    if(log is not None):
+      print >> log
+
+def fmodel_simple(xray_structures, f_obs, r_free_flags, target_name = "ml",
+                  twin_law = None, no_bss = False, bss_params = None):
+  def get_fmodel_object(xray_structure, f_obs, r_free_flags, twin_law):
+    if(twin_law is None):
+      fmodel = mmtbx.f_model.manager(
+        xray_structure = xray_structure,
+        r_free_flags   = r_free_flags,
+        target_name    = target_name,
+        f_obs          = f_obs)
+    else:
+      twin_law = sgtbx.rt_mx(twin_law)
+      fmodel = twin_f_model.twin_model_manager(
+        f_obs          = f_obs,
+        r_free_flags   = r_free_flags,
+        xray_structure = xray_structure,
+        twin_law       = twin_law)
+    fmodel.update_xray_structure(update_f_calc = True, update_f_mask = True)
+    if(not no_bss):
+      fmodel.update_solvent_and_scale(params = bss_params, verbose = -1)
+    return fmodel
+  if(len(xray_structures) == 1):
+    fmodel = get_fmodel_object(
+      xray_structure = xray_structures[0],
+      f_obs          = f_obs,
+      r_free_flags   = r_free_flags,
+      twin_law       = twin_law)
+    if(not no_bss):
+      sel = fmodel.outlier_selection()
+      fmodel = fmodel.select(selection = sel)
+      if(sel is not None and sel.count(False) > 0):
+        fmodel.update_solvent_and_scale(params = bss_params, verbose = -1)
+  else:
+    f_model_data = None
+    for i_seq, xray_structure in enumerate(xray_structures):
+      fmodel = get_fmodel_object(
+        xray_structure = xray_structure,
+        f_obs          = f_obs,
+        r_free_flags   = r_free_flags,
+        twin_law       = twin_law)
+      if(i_seq == 0):
+        f_model_data = fmodel.f_model_scaled_with_k1().data()
+      else:
+        f_model_data += fmodel.f_model_scaled_with_k1().data()
+    fmodel_average = fmodel.f_obs.array(data = f_model_data)
+    fmodel_result = mmtbx.f_model.manager(
+      r_free_flags = fmodel.r_free_flags,
+      target_name  = target_name,
+      f_obs        = fmodel.f_obs,
+      f_mask       = fmodel.f_mask(),
+      f_calc       = fmodel_average)
+    if(not no_bss):
+      params = bss.master_params.extract()
+      params.bulk_solvent=False
+      fmodel_result.update_solvent_and_scale(params = params, verbose = -1)
+      sel = fmodel_result.outlier_selection()
+      fmodel_result = fmodel_result.select(selection = sel)
+      if(sel is not None and sel.count(False) > 0):
+        fmodel_result.update_solvent_and_scale(params = bss_params, verbose = -1)
+    fmodel = fmodel_result
+  return fmodel

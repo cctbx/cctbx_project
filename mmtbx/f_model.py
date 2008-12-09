@@ -291,13 +291,13 @@ class manager(manager_mixin):
          n_ordered_water              = 0,
          b_ordered_water              = 0.0,
          max_number_of_bins           = 30,
-         fake_f_obs_selection         = None,
+         filled_f_obs_selection         = None,
          _target_memory               = None):
     self.twin = False
     assert f_obs is not None
-    self.fake_f_obs_selection = fake_f_obs_selection
-    if(self.fake_f_obs_selection is not None):
-      self.fake_f_obs_selection.size() == self.f_obs.data().size()
+    self.filled_f_obs_selection = filled_f_obs_selection
+    if(self.filled_f_obs_selection is not None):
+      self.filled_f_obs_selection.size() == self.f_obs.data().size()
     assert f_obs.is_real_array()
     self.f_obs             = f_obs
     self.r_free_flags      = None
@@ -467,7 +467,8 @@ class manager(manager_mixin):
     return result
 
   def wilson_b(self, force_update = False):
-    if(self._wilson_b is None or force_update):
+    if(self.xray_structure is not None and (self._wilson_b is None or
+       force_update)):
       result = absolute_scaling.ml_iso_absolute_scaling(
         miller_array = self.f_obs,
         n_residues   = self.xray_structure.scatterers().size()/8).b_wilson
@@ -500,11 +501,11 @@ class manager(manager_mixin):
       new_mask_manager = self.mask_manager.select(selection = selection)
     else:
       new_mask_manager = None
-    if(self.fake_f_obs_selection is None):
-      new_fake_f_obs_selection = self.fake_f_obs_selection
+    if(self.filled_f_obs_selection is None):
+      new_filled_f_obs_selection = self.filled_f_obs_selection
     else:
-      new_fake_f_obs_selection = \
-        self.fake_f_obs_selection.select(selection=selection)
+      new_filled_f_obs_selection = \
+        self.filled_f_obs_selection.select(selection=selection)
     if(self.xray_structure is None):
       xrs = None
     else:
@@ -531,7 +532,7 @@ class manager(manager_mixin):
       n_ordered_water              = self.n_ordered_water,
       b_ordered_water              = self.b_ordered_water,
       max_number_of_bins           = self.max_number_of_bins,
-      fake_f_obs_selection         = new_fake_f_obs_selection,
+      filled_f_obs_selection         = new_filled_f_obs_selection,
       _target_memory               = self._target_memory)
     return result
 
@@ -1311,14 +1312,14 @@ class manager(manager_mixin):
     f_obs_orig = self.f_obs.deep_copy()
     r_free_flags_orig = self.r_free_flags
     # compose new fileld fmodel
-    fake_f_obs_selection = flex.bool(n_refl_orig, False)
+    filled_f_obs_selection = flex.bool(n_refl_orig, False)
     f_model_lone = abs(miller.array(
       miller_set = f_mask_lone,
       data       = f_model_core.f_model * self.scale_k1()))
     new_f_obs = self.f_obs.concatenate(other = f_model_lone)
     new_r_free_flags = self.r_free_flags.concatenate(
       other = r_free_flags_lone)
-    fake_f_obs_selection.concatenate(flex.bool(n_refl_lone, True))
+    filled_f_obs_selection.concatenate(flex.bool(n_refl_lone, True))
     new_abcd = None
     if(self.abcd is not None):
       new_abcd = self.abcd.customized_copy(
