@@ -37,7 +37,8 @@ def run():
   "$D/xplor/tst_xplormap.py",
   ["$D/tst_phases.py", "P31"],
   "$D/regression/tst_lattice_symmetry.py",
-  ["$D/regression/tst_reflection_statistics.py", "Fdd2 P31m"]
+  ["$D/regression/tst_reflection_statistics.py", "Fdd2 P31m"],
+  "$D/tst_data_plots.py"
   )
 
   build_dir = libtbx.env.under_build("iotbx")
