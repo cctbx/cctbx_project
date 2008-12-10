@@ -70,7 +70,7 @@ class revolute_simulation(object):
         B = random_revolute(mersenne_twister=mersenne_twister)
         B.parent = -1+ib
         O.bodies.append(B)
-    elif (config == "zickzack"):
+    elif (config == "zigzag"):
       assert NB <= 3
       B = revolute_z(pivot=matrix.col((0,0,0)))
       B.parent = -1
@@ -279,7 +279,7 @@ def exercise_revolute(out, n_trials, n_dynamics_steps, delta_t=0.001, NB=3):
       n_dynamics_steps=n_dynamics_steps,
       delta_t=delta_t,
       NB=[1, NB][min(i_trial, 1)],
-      config=["singular", "zickzack", "random"][min(i_trial, 2)]))
+      config=["singular", "zigzag", "random"][min(i_trial, 2)]))
   print >> out, "relative ranges:"
   relative_ranges.min_max_mean().show(out=out, prefix="  ")
   if (out is not sys.stdout):
