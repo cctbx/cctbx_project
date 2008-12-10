@@ -308,6 +308,18 @@ class rec(object):
       q0*o2 - q1*o3 + q2*o0 + q3*o1,
       q0*o3 + q1*o2 - q2*o1 + q3*o0))
 
+  def axis_and_angle_as_unit_quaternion(self, angle, deg=False):
+    assert self.n in ((3,1), (1,3))
+    if (deg): angle *= math.pi/180
+    h = angle * 0.5
+    c, s = math.cos(h), math.sin(h)
+    u,v,w = self.normalize().elems
+    return col((c, u*s, v*s, w*s))
+
+  def axis_and_angle_as_r3_rotation_matrix(self, angle, deg=False):
+    uq = self.axis_and_angle_as_unit_quaternion(angle=angle, deg=deg)
+    return uq.unit_quaternion_as_r3_rotation_matrix()
+
   def ortho(self):
     assert self.n in ((3,1), (1,3))
     x, y, z = self.elems
@@ -325,7 +337,7 @@ class rec(object):
     n = axis.normalize()
     x = self
     c, s = math.cos(angle), math.sin(angle)
-    return x*c + n*n.dot(x)*(1-c) + x.cross(n)*s
+    return x*c + n*n.dot(x)*(1-c) + n.cross(x)*s
 
   def vector_to_001_rotation(self,
         sin_angle_is_zero_threshold=1.e-10,
@@ -1178,6 +1190,23 @@ def exercise():
   x_perp = x - n.dot(x)*n
   y_perp = y - n.dot(y)*n
   assert approx_equal(x_perp.angle(y_perp), alpha)
+  x = col((0,1,0))
+  y = x.rotate(axis=col((1,0,0)), angle=75, deg=True)
+  assert approx_equal(y, (0.0, 0.25881904510252074, 0.96592582628906831))
+  assert approx_equal(x.angle(y, deg=True), 75)
+  a = col((0.33985998937421624, 0.097042540321188753, -0.60916214763712317))
+  x = col((0.61837962293383231, -0.46724958233858915, -0.48367879178081852))
+  y = x.rotate(axis=a, angle=37, deg=True)
+  assert approx_equal(abs(x), 0.913597670681)
+  assert approx_equal(abs(y), 0.913597670681)
+  assert approx_equal(x.angle(y, deg=True), 25.6685689758)
+  assert approx_equal(y, (0.2739222799, -0.5364841936, -0.6868857244))
+  uq = a.axis_and_angle_as_unit_quaternion(angle=37, deg=True)
+  assert approx_equal(uq, (0.94832366, 0.15312122, 0.04372175, -0.27445317))
+  r = uq.unit_quaternion_as_r3_rotation_matrix()
+  assert approx_equal(r*x, y)
+  assert approx_equal(
+    a.axis_and_angle_as_r3_rotation_matrix(angle=37, deg=True), r)
   #
   assert col((0,0,1)).vector_to_001_rotation().elems == (1,0,0,0,1,0,0,0,1)
   assert col((0,0,-1)).vector_to_001_rotation().elems == (1,0,0,0,-1,0,0,0,-1)
