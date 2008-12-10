@@ -12,10 +12,11 @@ standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
   'hkl'  : ["mtz", "hkl", "sca", "cns", "xplor"],
   'cif'  : ["cif"],
-  'seq'  : ["fa", "seq", "pir", "dat"],
+  'seq'  : ["fa", "faa", "seq", "pir", "dat"],
   'map'  : ["map", "ccp4"],
   'phil' : ["params", "eff", "def", "phil"]
 }
+compression_extensions = ["gz", "Z", "bz2", "zip"]
 
 standard_file_descriptions = {
   'pdb'  : "Model",
