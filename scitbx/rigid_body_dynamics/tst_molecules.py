@@ -45,6 +45,37 @@ class revolute_body(object):
     O.J = joint_lib.revolute(qE=matrix.col([0]))
     O.qd = O.J.qd_zero
 
+def simulation_zigzag(NB=5):
+  mersenne_twister = flex.mersenne_twister(seed=0)
+  body = six_dof_body(
+    labels=["00", "01", "02"],
+    sites=matrix.col_list([
+      (0.3,-0.5,0),
+      (0.4,0.5,0),
+      (0,0,0)]),
+    bonds=[(0,2),(1,2)],
+    mersenne_twister=mersenne_twister)
+  body.parent = -1
+  bodies = [body]
+  vu = matrix.col((0,1,0)).rotate(axis=matrix.col((1,0,0)), angle=75, deg=True)
+  vr = matrix.col((0,1,0))
+  v = vu
+  pivot = matrix.col((0,0,0))
+  for ib in xrange(1,NB):
+    body = revolute_body(
+      labels=[str(ib)],
+      sites=[pivot + v*0.5],
+      bonds=[(-1,0)],
+      pivot=pivot,
+      normal=matrix.col((1,0,0)),
+      mersenne_twister=mersenne_twister)
+    body.parent = ib-1
+    bodies.append(body)
+    pivot += v
+    if (v is vu): v = vr
+    else:         v = vu
+  return simulation(bodies=bodies)
+
 def pdb_extract(pdb):
   labels, sites = [], []
   for line in pdb.splitlines():
@@ -259,17 +290,29 @@ ATOM     20  H   TYR A   1      10.948  12.701   9.122  1.00  0.88           H
   return simulation(bodies=[body0, body1, body2, body3, body4, body5])
 
 simulation_factories = [
+  simulation_zigzag,
   simulation_gly_no_h,
   simulation_gly_with_nh,
   simulation_ala_no_h,
   simulation_ala_with_h,
   simulation_tyr_with_h]
 
-def exercise_dynamics_quick(out, sim, n_dynamics_steps, delta_t=0.001):
+def exercise_dynamics_quick(
+      out,
+      sim,
+      n_dynamics_steps,
+      delta_t=0.001,
+      sensitivity_n_significant_digits=3):
   relative_range = exercise_sim(
     out=out, n_dynamics_steps=n_dynamics_steps, delta_t=delta_t, sim=sim)
   if (out is not sys.stdout):
     assert relative_range < 1.e-4
+  print >> out, "Sensitivity test (%d significant digits):" \
+    % sensitivity_n_significant_digits
+  qdd = sim.sensitivity_test(
+    n_significant_digits=sensitivity_n_significant_digits)
+  flex.double(qdd).min_max_mean().show(out=out, prefix=" ")
+  print >> out
 
 def exercise_minimization_quick(out, sim, max_iterations=3):
   print >> out, "Minimization:"

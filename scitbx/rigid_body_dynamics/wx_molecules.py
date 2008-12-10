@@ -45,10 +45,22 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.flag_show_minimum_covering_sphere = False
     self.flag_show_rotation_center = False
     self.steps_per_tab = 1
+    self.show_key_stroke_help()
+
+  def show_key_stroke_help(self):
     print "Press and hold Tab key to run the simulation."
     print "Press Shift-Tab to increase speed."
     print "Press Ctrl-Tab  to decrease speed."
+    print "Press S for sensitivity test."
     print "Press M for minimization."
+
+  def process_key_stroke(self, key):
+    if (key == ord("M")):
+      return self.minimization()
+    if (key == ord("S")):
+      return self.sensitivity_test()
+    print "No action for this key stroke."
+    self.show_key_stroke_help()
 
   def tab_callback(self, shift_down=False, control_down=False):
     if (shift_down or control_down):
@@ -62,11 +74,12 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.set_points()
     self.OnRedraw()
 
-  def process_key_stroke(self, key):
-    if (key != ord("M")):
-      print "No action for this key stroke."
-      print "Press M for minimization."
-      return True
+  def sensitivity_test(self, n_significant_digits=3):
+    print "Sensitivity test (%d significant digits):" % n_significant_digits
+    qdd = self.sim.sensitivity_test(n_significant_digits=n_significant_digits)
+    flex.double(qdd).min_max_mean().show(prefix=" ")
+
+  def minimization(self):
     print "Minimization:"
     print "  start e_pot:", self.sim.e_pot
     self.sim.minimization(
