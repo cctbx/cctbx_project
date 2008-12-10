@@ -52,6 +52,26 @@ class simulation(object):
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
 
+  def sensitivity_test(O, n_significant_digits):
+    "RBDA section 10.2, p. 199-201"
+    model = featherstone_system_model(bodies=O.bodies)
+    q = [None]*len(O.bodies)
+    qd = [B.qd for B in O.bodies]
+    qdd = [matrix.col([1]*len(B.qd)) for B in O.bodies]
+    grav_accn = [0,0,0]
+    tau = featherstone.ID(model, q, qd, qdd, O.f_ext_bf, grav_accn)
+    if (n_significant_digits is not None):
+      assert n_significant_digits > 0
+      fmt = "%%.%dg" % n_significant_digits
+      tau_trunc = []
+      for v in tau:
+        tau_trunc.append(matrix.col([float(fmt%e) for e in v]))
+      tau = tau_trunc
+    qdd = featherstone.FDab(model, q, qd, tau, O.f_ext_bf, grav_accn)
+    result = []
+    for v in qdd: result.extend(v.elems)
+    return result
+
   def d_pot_d_q(O):
     model = featherstone_system_model(bodies=O.bodies)
     q = [None]*len(O.bodies)
