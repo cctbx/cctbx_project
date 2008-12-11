@@ -226,7 +226,7 @@ class body_with_spherical_joint(object):
     fin = O.d_pot_d_q_via_finite_differences(J=J)
     if (use_analytical_gradients):
       ana = O.d_pot_d_q(J=J)
-      assert approx_equal(ana, fin)
+      assert approx_equal(ana, fin, eps=1.e-4)
       g = ana
     else:
       g = fin
