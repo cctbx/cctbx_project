@@ -1088,10 +1088,10 @@ def exercise_random():
           == (2983900864L, 1547366158, 1775641839)
       assert approx_equal(mt.random_double(size=3),
         (0.10064729869939604, 0.89184217257908471, 0.20721445761797463))
-  assert flex.random_size_t(size=3).size() == 3
-  assert flex.random_double(size=3).size() == 3
+  assert mt.random_size_t(size=3).size() == 3
+  assert mt.random_double(size=3).size() == 3
   for i_trial in xrange(10):
-    a = flex.random_size_t(size=100000, modulus=10)
+    a = mt.random_size_t(size=100000, modulus=10)
     assert a.size() == 100000
     assert flex.min(a) == 0
     assert flex.max(a) == 9
@@ -1100,7 +1100,7 @@ def exercise_random():
     assert approx_equal(
       flex.mean(a*a) - flex.mean(a)*flex.mean(a), 8.25, eps=1.e-1)
   for i_trial in xrange(10):
-    a = flex.random_double(size=100000, factor=10)
+    a = mt.random_double(size=100000, factor=10)
     assert a.size() == 100000
     assert flex.min(a) >= 0
     assert flex.max(a) < 10
