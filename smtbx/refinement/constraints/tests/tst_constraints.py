@@ -366,9 +366,10 @@ class staggered_ch3_test_case(stretching_only_hydrogen_test_case,
   def init_other_atoms(self):
     x_X = mat.col(self.pivot.site)
     v_XY = 1.54*(mat.col((1, 2, -1.5)).normalize())
-    v_XY = mat.col(self.xs.unit_cell().fractionalize(v_XY))
-    x_Y = x_X + v_XY
     v_YZ = (-v_XY).rotate(axis=v_XY.ortho(), angle=109.4, deg=True)
+    v_XY = mat.col(self.xs.unit_cell().fractionalize(v_XY))
+    v_YZ = mat.col(self.xs.unit_cell().fractionalize(v_YZ))
+    x_Y = x_X + v_XY
     x_Z = x_Y + v_YZ
     self.xs.add_scatterer(xray.scatterer("C'", site=x_Y, u=(0,)*6))
     self.xs.add_scatterer(xray.scatterer("C''", site=x_Z, u=(0,)*6))
