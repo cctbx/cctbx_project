@@ -273,7 +273,8 @@ def run(args):
       O.type = type
       O.use_analytical_gradients = use_analytical_gradients
     def __str__(O):
-      return "%s(%s)" % (O.type.__name__, str(O.use_analytical_gradients))
+      return "%s(use_analytical_gradients=%s)" % (
+        O.type.__name__, str(O.use_analytical_gradients))
   spherical_types = [
     type_info(euler_params, False),
     type_info(euler_params, True),
