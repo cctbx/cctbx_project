@@ -20,8 +20,11 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.lines_display_list = None
     self.points_display_list = None
 
-  def set_points_and_lines(self, simulation_factory_index):
-    self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
+  def set_points_and_lines(self, simulation_factory_index, n_zigzag):
+    if (simulation_factory_index == 0):
+      self.sim = tst_molecules.simulation_zigzag(NB=n_zigzag)
+    else:
+      self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
     self.points = flex.vec3_double()
     self.set_points()
     def add_line(i, j, color):
@@ -51,14 +54,16 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     print "Press and hold Tab key to run the simulation."
     print "Press Shift-Tab to increase speed."
     print "Press Ctrl-Tab  to decrease speed."
-    print "Press S for sensitivity test."
+    print "Press [0-9A-F] for sensitivity test with this many significant" \
+          " digits."
     print "Press M for minimization."
 
   def process_key_stroke(self, key):
     if (key == ord("M")):
       return self.minimization()
-    if (key == ord("S")):
-      return self.sensitivity_test()
+    for n,digit in enumerate("0123456789ABCDEF"):
+      if (key == ord(digit)):
+        return self.sensitivity_test(n_significant_digits=n)
     print "No action for this key stroke."
     self.show_key_stroke_help()
 
@@ -74,8 +79,12 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.set_points()
     self.OnRedraw()
 
-  def sensitivity_test(self, n_significant_digits=3):
-    print "Sensitivity test (%d significant digits):" % n_significant_digits
+  def sensitivity_test(self, n_significant_digits):
+    if (n_significant_digits == 0):
+      print "Sensitivity test (full precision):"
+      n_significant_digits = None
+    else:
+      print "Sensitivity test (%d significant digits):" % n_significant_digits
     qdd = self.sim.sensitivity_test(n_significant_digits=n_significant_digits)
     flex.double(qdd).min_max_mean().show(prefix=" ")
 
@@ -96,9 +105,13 @@ class App(wx_viewer.App):
 
   def __init__(self, args):
     n = len(tst_molecules.simulation_factories)
-    if (len(args) != 1):
-      raise Usage("Please supply an integer argument (0 through %d)." % (n-1))
+    if (len(args) not in [1,2]):
+      raise Usage("scitbx.python wx_molecules.py sim_index [n_zigzag]")
     self.simulation_factory_index = int(args[0])
+    if (len(args) > 1):
+      self.n_zigzag = int(args[1])
+    else:
+      self.n_zigzag = 10
     assert 0 <= self.simulation_factory_index < n
     super(App, self).__init__(title="wx_molecules")
 
@@ -106,7 +119,8 @@ class App(wx_viewer.App):
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
     self.view_objects.set_points_and_lines(
-      simulation_factory_index=self.simulation_factory_index)
+      simulation_factory_index=self.simulation_factory_index,
+      n_zigzag=self.n_zigzag)
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
