@@ -47,9 +47,9 @@ struct fortran_real_fixed : parser<fortran_real_fixed<Width, FracDigits> >
     if (!frac_part_result) return frac_part_result;
     double frac_part = double(frac_part_result.value())
                         * std::pow(10., -FracDigits);
-    double result = whole_part >= 0 ? whole_part + frac_part
-                                    : whole_part - frac_part;
-    return scan.create_match(Width, result, first, first + Width);
+    double res = whole_part >= 0 ? whole_part + frac_part
+                                 : whole_part - frac_part;
+    return scan.create_match(Width, res, first, first + Width);
   }
 };
 
