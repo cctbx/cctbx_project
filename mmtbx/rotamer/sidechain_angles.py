@@ -39,7 +39,8 @@ class SidechainAngles:
   atomsForAngle = {}
   #rotamersForAA = {}
 
-  def __init__(self):
+  def __init__(self, show_errs):
+    self.show_errors = show_errs
     source_dir = find_source_dir()
     #print source_dir
     f = PropertyFile()
@@ -56,20 +57,33 @@ class SidechainAngles:
           key = aa+"."+angle
           self.atomsForAngle[key] = f.properties[key].split(",") #aaName.angle -> atoms
 
-  def measureChiAngles(self, res):
+  def measureChiAngles(self, res, atom_dict = None):
     resName = res.resname.lower().strip()
     try:
       numChis = int(self.chisPerAA[resName])
       values = []
       for i in range(numChis):
-        values.append(self.measureAngle("chi"+str(i+1), res))
+        values.append(self.measureAngle("chi"+str(i+1), res, atom_dict))
       return values
     except KeyError:
-      resName + " is unknown"
+      if self.show_errors: print resName + " is an unknown residue type"
 
+#  def measureChiAnglesDict(self, atom_dict, resName):
+#    try:
+#      numChis = int(self.chisPerAA[resName])
+#      values = []
+#      for i in range(numChis):
+#        values.append(self.measureAngle("chi"+str(i+1), res))
+#      return values
+#    except KeyError:
+#      resName + " is unknown"
 
-  def measureAngle(self, angleName, res):
-    atomNamesMap = makeAtomDict(res)
+  def measureAngle(self, angleName, res, atom_dict = None):
+    atomNamesMap = None
+    if (atom_dict is None):
+      atomNamesMap = makeAtomDict(res)
+    else:
+      atomNamesMap = atom_dict
     atomNames = self.atomsForAngle[res.resname.lower().strip()+"."+angleName]
     angleAtoms = []
     for at in atomNames:
