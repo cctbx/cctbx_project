@@ -7,7 +7,7 @@ else:
   import phaser.phenix_adaptors.sad_target
 
 from cctbx.array_family import flex
-import math, time, sys, os, random
+import math, time, sys, os, random, re, string
 from cctbx import miller
 from cctbx import crystal
 from cctbx import adptbx
@@ -44,6 +44,7 @@ from mmtbx.scaling import absolute_scaling
 import mmtbx.scaling.twin_analyses
 from cctbx import sgtbx
 from mmtbx import map_tools
+from iotbx import data_plots
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -2407,6 +2408,33 @@ class info(object):
     self.show_rfactors_targets_in_bins(out = out)
     print >> out
     self.show_fom_pher_alpha_beta_in_bins(out = out)
+
+  # re-arrange binned statistics for phenix GUI (or logfile)
+  def export_bins_table_data (self, title="Statistics by resolution bin") :
+    table_stats = ["r_work", "r_free", "completeness", "fom_work",
+                   "pher_free", "scale_k1_work"]
+    data_rows = []
+    for bin in self.bins :
+      bin_stats = []
+      (min_res_str, max_res_str) = re.sub("\s*", "", bin.d_range).split("-")
+      (min_res, max_res) = (string.atof(min_res_str), string.atof(max_res_str))
+      bin_stats.append(1 / (max_res ** 2))
+      for stat_attr_name in table_stats :
+        bin_stats.append(getattr(bin, stat_attr_name))
+      data_rows.append(bin_stats)
+    data = [[row[i] for row in data_rows] for i in xrange(len(data_rows[0]))]
+    t = data_plots.table_data(
+      title = title,
+      column_labels = ["Resolution", "R-work", "R-free", "Completeness", "FOM",
+                     "Phase error", "Scale factor"],
+      graph_names = ["R-work/R-free vs. resolution",
+                   "Completeness vs. resolution",
+                   "Figure of merit vs. resolution",
+                   "Phase error vs. resolution",
+                   "Scale factor vs. resolution"],
+      graph_columns = [[0,1,2], [0,3], [0,4], [0,5], [0,6]],
+      data = data)
+    return t
 
 def show_histogram(data, n_slots, log):
   hm = flex.histogram(data = data, n_slots = n_slots)

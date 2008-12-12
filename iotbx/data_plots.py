@@ -157,14 +157,15 @@ class table_data (object) :
             i += 4
         elif sections_passed == 4 :
           break
-    for i, column in enumerate(self.data) :
-      column_is_ints = [ x is None or x.is_integer() for x in column ]
-      if not False in column_is_ints :
-        newcol = []
-        for x in column :
-          if x is None : newcol.append(x)
-          else :         newcol.append(int(x))
-        self.data[i] = newcol
+    if sys.version_info[1] > 2 :
+      for i, column in enumerate(self.data) :
+        column_is_ints = [ x is None or x.is_integer() for x in column ]
+        if not False in column_is_ints :
+          newcol = []
+          for x in column :
+            if x is None : newcol.append(x)
+            else :         newcol.append(int(x))
+          self.data[i] = newcol
 
   def add_row (self, row) :
     if self.data is None or len(self.data) == 0 :
@@ -334,8 +335,7 @@ class table_data (object) :
       return _graphs[column_list]
 
   def _extract_data_column (self, column_list) :
-    assert len(self.data) > 0
-    assert len(column_list) <= len(self.data[0])
+    assert len(column_list) <= len(self.data)
     data = self.data
     new_data = [ [ x for x in data[i] ] for i in column_list ]
     return new_data
