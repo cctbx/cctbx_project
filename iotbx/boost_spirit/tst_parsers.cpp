@@ -1,8 +1,8 @@
 #include <iotbx/boost_spirit/fortran_int.h>
 #include <iotbx/boost_spirit/fortran_real_fixed.h>
-#include <boost/spirit/core.hpp>
-#include <boost/spirit/actor/assign_actor.hpp>
-#include <boost/spirit/actor/push_back_actor.hpp>
+#include <boost/spirit/include/classic_core.hpp>
+#include <boost/spirit/include/classic_assign_actor.hpp>
+#include <boost/spirit/include/classic_push_back_actor.hpp>
 #include <iotbx/error.h>
 #include <boost/optional.hpp>
 #include <string>
