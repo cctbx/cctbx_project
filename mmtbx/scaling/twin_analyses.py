@@ -1910,7 +1910,7 @@ class symmetry_issues(object):
                r_cut=0.05,
                sigma_inflation = 1.25,
                out=None):
-
+    self.sigma_warning = None
     self.out = out
     if self.out == None:
       self.out = sys.stdout
@@ -1996,9 +1996,21 @@ class symmetry_issues(object):
     # loop over all pg's
     for pg in self.pg_max_r_used_table:
       tmp = self.miller_niggli.f_as_f_sq()
+      sigmas = tmp.sigmas()
+      if tmp.sigmas() is None:
+         sigmas = tmp.d_star_sq().data()
+         # lets assume a sigma of 5% at 0 and a sigma of 20% at the high resolution
+         Berror = -math.log(0.20/0.05)/flex.max(sigmas)
+         sigmas = 0.05*flex.exp( -sigmas*Berror )
+         sigmas = tmp.data()*sigmas
+         self.sigma_warning = """  ----> WARNING: NO SIGMAS FOUND  <----
+          Sigmas now modeled as 0.05*|F|*exp( -Berror/d^2 )
+          with Berror=%6.3f"""%(Berror)
+
+
       merger = cctbx.xray.merger( tmp.indices(),
                                   tmp.data(),
-                                  tmp.sigmas()*self.inflate_sigma,
+                                  sigmas*self.inflate_sigma ,
                                   sgtbx.space_group_info(pg).group(),
                                   tmp.anomalous_flag(),
                                   tmp.unit_cell() )
@@ -2144,6 +2156,10 @@ class symmetry_issues(object):
     print >> out
     print >> out
     print >> out, "Exploring higher metric symmetry"
+    if self.sigma_warning is not None:
+      print >> out
+      print >> out, self.sigma_warning
+
     print >> out
     print >> out, "The point group of data as dictated by the space group is", self.pg_input_name
     print >> out, "  the point group in the niggli setting is", sgtbx.space_group_info( group=self.pg_low_prim_set )
