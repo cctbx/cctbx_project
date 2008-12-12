@@ -40,14 +40,14 @@ struct fortran_int_parser : parser<fortran_int_parser<Width> >
         ++scan;
         if (scan.at_end()) return scan.no_match();
     }
-    int result = 0;
+    int res = 0;
     for (; n < Width; ++n, ++scan) {
       char ch = *scan;
       if (ch < '0' || ch > '9') return scan.no_match();
-      result = 10*result + int(ch - '0');
+      res = 10*res + int(ch - '0');
     }
-    if (sign == -1) result = -result;
-    return scan.create_match(Width, result, first, first + Width);
+    if (sign == -1) res = -res;
+    return scan.create_match(Width, res, first, first + Width);
   }
 };
 
