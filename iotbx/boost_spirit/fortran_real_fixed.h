@@ -2,7 +2,7 @@
 #define IOTBX_BOOST_SPIRIT_FORTRAN_REAL_FIXED_H
 
 #include <iotbx/boost_spirit/fortran_int.h>
-#include <boost/spirit/core/primitives/numerics.hpp>
+#include <boost/spirit/include/classic_numerics.hpp>
 
 namespace iotbx { namespace boost_spirit {
 

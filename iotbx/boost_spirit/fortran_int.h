@@ -1,13 +1,13 @@
 #ifndef IOTBX_BOOST_SPIRIT_FORTRAN_INT_H
 #define IOTBX_BOOST_SPIRIT_FORTRAN_INT_H
 
-#include <boost/spirit/core/parser.hpp>
-#include <boost/spirit/core/scanner/scanner.hpp>
-#include <boost/spirit/core/composite/actions.hpp>
+#include <boost/spirit/include/classic_parser.hpp>
+#include <boost/spirit/include/classic_scanner.hpp>
+#include <boost/spirit/include/classic_actions.hpp>
 
 namespace iotbx { namespace boost_spirit {
 
-using namespace boost::spirit;
+using namespace boost::spirit::classic;
 
 template <int Width>
 struct fortran_int_parser : parser<fortran_int_parser<Width> >
