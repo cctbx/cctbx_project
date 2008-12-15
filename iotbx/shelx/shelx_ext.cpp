@@ -14,7 +14,7 @@ namespace iotbx { namespace shelx { namespace boost_python {
     static void wrap() {
       using namespace boost::python;
       class_<wt>("fast_hklf_reader", no_init)
-        .def(init<std::string const &, bool>((arg("filename"),
+		  .def(init<scitbx::af::shared<std::string>, bool>((arg("lines"),
                                               arg("strict")=true)))
         .def("indices", &wt::indices)
         .def("data", &wt::data)
