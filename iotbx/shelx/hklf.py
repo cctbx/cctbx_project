@@ -1,6 +1,7 @@
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
+from libtbx import smart_open
 import iotbx_shelx_ext
 import sys
 
@@ -20,11 +21,9 @@ miller.array.export_as_shelx_hklf = miller_export_as_shelx_hklf
 
 def reader(file_object=None, filename=None, strict=True):
   assert [file_object, filename].count(None) == 1
-  if filename is None:
-    if not type(file_object) == file:
-      return python_reader(file_object)
-    filename = str(file_object.name)
-  return fast_reader(filename, strict)
+  if file_object is None:
+    file_object = smart_open.for_reading(filename)
+  return fast_reader(file_object.readlines(), strict)
 
 
 class reader_base(object):
