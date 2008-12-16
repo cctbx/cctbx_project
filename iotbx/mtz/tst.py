@@ -280,8 +280,34 @@ def exercise_extract_delta_anomalous():
   sm = sp
   assert approx_equal([sp,sm], miller_array.sigmas())
 
+def exercise_repair_ccp4i_import_merged_data():
+  miller_array_start = miller.set(
+    crystal_symmetry=crystal.symmetry(
+      unit_cell=(10,10,10,90,90,90),
+      space_group_symbol="P1"),
+    indices=flex.miller_index([(1,2,3),(-1,-2,-3),(1,2,4),(-1,-2,-4)]),
+    anomalous_flag=True).array(
+      data=flex.double([3,5,6,7]),
+      sigmas=flex.double([0.3,0.5,0.6,0.7]))
+  mtz_dataset = miller_array_start.as_mtz_dataset(column_root_label="F")
+  mtz_object = mtz_dataset.mtz_object()
+  selection_valid = flex.bool([False,True])
+  for sign in ["+", "-"]:
+    for label in ["F(%s)"%sign, "SIGF(%s)"%sign]:
+      column = mtz_object.get_column(label=label)
+      values = column.extract_values()
+      column.set_values(values=values, selection_valid=selection_valid)
+    selection_valid = ~selection_valid
+  miller_arrays = mtz_object.as_miller_arrays()
+  assert len(miller_arrays) == 1
+  assert not miller_arrays[0].anomalous_flag()
+  assert list(miller_arrays[0].indices()) == [(-1,-2,-3),(1,2,4)]
+  assert approx_equal(miller_arrays[0].data(), [5,6])
+  assert approx_equal(miller_arrays[0].sigmas(), [0.5,0.6])
+
 def run():
   exercise_extract_delta_anomalous()
+  exercise_repair_ccp4i_import_merged_data()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 if (__name__ == "__main__"):

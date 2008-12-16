@@ -582,6 +582,13 @@ def column_group(
       crystal_symmetry=crystal_symmetry,
       indices=group.indices,
       anomalous_flag=True)
+    if (miller_set.n_bijvoet_pairs() == 0):
+      # account for non-sensical files generated via
+      # ccp4i "import merged data" tab with default parameters
+      miller_set = miller.set(
+        crystal_symmetry=crystal_symmetry,
+        indices=group.indices,
+        anomalous_flag=False)
   else:
     miller_set = miller.set(
       crystal_symmetry=crystal_symmetry,
