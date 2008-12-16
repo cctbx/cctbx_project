@@ -38,7 +38,8 @@ def run():
   ["$D/tst_phases.py", "P31"],
   "$D/regression/tst_lattice_symmetry.py",
   ["$D/regression/tst_reflection_statistics.py", "Fdd2 P31m"],
-  "$D/tst_data_plots.py"
+  "$D/tst_data_plots.py",
+  "$D/tst_csv_utils.py",
   )
 
   build_dir = libtbx.env.under_build("iotbx")
