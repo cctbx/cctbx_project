@@ -119,6 +119,7 @@ supported_compilers = (
   "win32_icc",
   "sunos_CC",
   "unix_gcc",
+  "unix_gcc4",
   "unix_icc",
   "unix_icpc",
   "tru64_cxx",
@@ -434,20 +435,22 @@ else:
       "-expect_unresolved", "'Py*'",
       "-expect_unresolved", "'_Py*'"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
-  elif (env_etc.compiler == "unix_gcc"):
-    env_etc.gcc_version = libtbx.env_config.get_gcc_version()
+  elif (env_etc.compiler in ["unix_gcc", "unix_gcc4"]):
     env_etc.static_libraries = 0
     env_etc.static_bpl = 0
+    cc = env_etc.compiler.replace("unix_", "")
+    cxx = cc.replace("gcc", "g++")
+    env_etc.gcc_version = libtbx.env_config.get_gcc_version(command_name=cc)
     env_base.Replace(
-      CC="gcc",
-      SHCC="gcc",
-      CXX="g++",
-      LINK="g++",
-      SHCXX="g++",
-      SHLINK="g++",
+      CC=cc,
+      SHCC=cc,
+      CXX=cxx,
+      LINK=cxx,
+      SHCXX=cxx,
+      SHLINK=cxx,
       SHLIBSUFFIX=env_etc.shlibsuffix,
     )
-    env_etc.c_link = "gcc"
+    env_etc.c_link = cc
     env_etc.ccflags_base = [
       "-fPIC",
       "-fno-strict-aliasing"]
@@ -553,8 +556,7 @@ else:
     env_etc.shlinkflags = ["-shared", "-LD_MSG:off=15,84"]
     env_etc.shlinkflags_bpl = env_etc.shlinkflags
   elif (env_etc.compiler in ["darwin_c++", "darwin_gcc", "darwin_gcc-4.2"]):
-    env_etc.gcc_version = libtbx.env_config.get_gcc_version(
-      shall_be_named_gcc=False)
+    env_etc.gcc_version = libtbx.env_config.get_gcc_version()
     env_etc.static_libraries = 1
     env_etc.static_bpl = 0
     need_fcoalesce_templates = False
