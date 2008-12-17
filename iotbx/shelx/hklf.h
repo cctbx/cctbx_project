@@ -15,14 +15,14 @@ namespace iotbx { namespace shelx {
     public:
       typedef cctbx::miller::index<> miller_t;
 
-	  fast_hklf_reader(scitbx::af::shared<std::string> lines, bool strict=true)
+          fast_hklf_reader(scitbx::af::shared<std::string> lines, bool strict=true)
       {
-		const miller_t end_hkl(0, 0, 0);
+                const miller_t end_hkl(0, 0, 0);
         typedef std::string::size_type index_t;
         std::runtime_error not_hklf_error("Not a SHELX hklf file.");
         for (std::size_t i = 0; i != lines.size(); i++) {
           std::string &line = lines[i];
-		  miller_t hkl;
+                  miller_t hkl;
           boost::trim_right(line);
           if (line.size() == 0) break;
           if (line.size() < 28) throw not_hklf_error;
