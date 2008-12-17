@@ -278,7 +278,7 @@ slatec_dgamma(double x)
   }
   y = fabs(x);
   if (y > 10.) goto lbl_50;
-  n = (int) x;
+  n = (long) x;
   if (x < 0.) n = n - 1;
   y = x - n;
   n = n - 1;
@@ -298,7 +298,7 @@ slatec_dgamma(double x)
       "x is a negative integer", 4, 2);
     return 1.0;
   }
-  if (x < (-0.5) && fabs((x-(int)(x-0.5))/x) < dxrel) {
+  if (x < (-0.5) && fabs((x-(long)(x-0.5))/x) < dxrel) {
     xermsg("slatec", "dgamma",
       "answer lt half precision because x too near negative integer", 1, 1);
   }
@@ -325,7 +325,7 @@ slatec_dgamma(double x)
   if (x < xmin) return result;
   result = exp((y-0.5)*log(y) - y + sq2pil + d9lgmc(y));
   if (x > 0.) return result;
-  if (fabs((x-(int)(x-0.5))/x) < dxrel) {
+  if (fabs((x-(long)(x-0.5))/x) < dxrel) {
     xermsg("slatec", "dgamma",
       "answer lt half precision, x too near negative int", 1, 1);
   }
@@ -372,7 +372,7 @@ slatec_dlngam(double x)
       "x is a negative integer", 3, 2);
     return 1.0;
   }
-  if (fabs((x-(int)(x-0.5))/x) < dxrel) {
+  if (fabs((x-(long)(x-0.5))/x) < dxrel) {
     xermsg("slatec", "dlngam",
       "answer lt half precision because x too near negative int", 1, 1);
   }
