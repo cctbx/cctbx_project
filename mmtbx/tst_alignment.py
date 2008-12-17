@@ -1,6 +1,10 @@
 from mmtbx.alignment import align
+from mmtbx.alignment import amino_acid_codes, blosum62
 import sys
 from scitbx.array_family import flex
+
+import operator
+import unittest
 
 def exercise():
   #
@@ -49,5 +53,49 @@ def exercise():
   #
   print "OK"
 
+
+class test_blosum62(unittest.TestCase):
+
+  def testSymmetric(self):
+
+    tests = reduce(
+      operator.add,
+      [
+        [ ( amino_acid_codes[ l ], amino_acid_codes[ r ] )
+          for r in range( l + 1 ) ]
+        for l in range( len( amino_acid_codes ) )
+        ]
+      )
+
+    for ( left, right ) in tests:
+      self.assertEqual(
+        blosum62( left, right ),
+        blosum62( right, left )
+        )
+
+
+  def testSelected(self):
+
+      for ( left, right, value ) in [
+        ( "A", "C", 0 ), ( "E", "H", 0 ), ( "W", "W", 11 ), ( "F", "P", -4 )
+        ]:
+        self.assertEqual( blosum62( left, right ), value )
+
+
+  def testError(self):
+
+    self.assertRaises( ValueError, blosum62, "Q", "B" )
+
+suite_blosum62 = unittest.TestLoader().loadTestsFromTestCase(
+  test_blosum62
+  )
+
+alltests = unittest.TestSuite(
+  [
+    suite_blosum62,
+    ]
+  )
+
 if (__name__ == "__main__"):
   exercise()
+  unittest.TextTestRunner( verbosity = 2 ).run( alltests )
