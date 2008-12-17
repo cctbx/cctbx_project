@@ -221,6 +221,7 @@ libtbx/tst_object_oriented_patterns.py -text
 libtbx/windows_dispatcher.exe -text
 mmtbx/alignment.h svneol=native#text/plain
 mmtbx/alignment_ext.cpp svneol=native#text/plain
+mmtbx/bioinformatics.py -text
 mmtbx/bulk_solvent/tst_bulk_solvent_and_scaling.py -text
 mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
@@ -264,6 +265,7 @@ mmtbx/rotamer/sidechain_angles.py -text
 mmtbx/scaling/absence_likelihood.py -text
 mmtbx/scaling/absences.py -text
 mmtbx/tst_alignment.py -text
+mmtbx/tst_bioinformatics.py -text
 mmtbx/tst_pdbtools.py -text
 mmtbx/tst_utils.py -text
 mmtbx/utils.py -text
