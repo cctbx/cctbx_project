@@ -1,13 +1,19 @@
-import csv_utils
-import tempfile
 from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected
+import tempfile
+import sys
 
 def exercise():
+  v = sys.version_info
+  if (v[0] == 2 and v[1] <= 2):
+    print "Skipping iotbx.csv_utils tests: csv extension not available"
+    return
   exercise_writer()
   exercise_reader()
 
 def exercise_writer():
+  from iotbx import csv_utils
+
   x = (1,2,3,4,5)
   y = (6,7,8,9,10)
   filename = tempfile.mktemp()
@@ -55,6 +61,8 @@ def exercise_writer():
 
 
 def exercise_reader():
+  from iotbx import csv_utils
+
   x = (1,2,3,4,5)
   y = (6,7,8,9,10)
   filename = tempfile.mktemp()
