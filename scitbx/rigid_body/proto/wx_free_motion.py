@@ -1,7 +1,7 @@
-from scitbx.rigid_body.tst_joint_lib import revolute_simulation
+from scitbx.rigid_body.proto.free_motion_reference_impl import simulation
+from gltbx import wx_viewer
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
-from gltbx import wx_viewer
 import wx
 import sys
 
@@ -10,35 +10,24 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
   def __init__(self, *args, **kwds):
     super(viewer, self).__init__(*args, **kwds)
 
-  def set_points(self):
-    self.points.clear()
-    for B,AJA in zip(self.sim.bodies, self.sim.AJA_accu):
-      self.points.append(AJA * B.A.pivot)
-      self.points.append(AJA * B.A.pivot + AJA.r * B.A.normal)
-      for s in B.sites:
-        self.points.append(AJA * s)
-
   def set_points_and_lines(self):
-    NB = 3
-    self.sim = revolute_simulation(
-      mersenne_twister=None,
-      NB=NB,
-      config="zigzag")
-    self.points = flex.vec3_double()
-    self.set_points()
-    assert self.points.size() == NB*3
+    self.sim_as = simulation()
+    self.sim_ac = simulation()
+    self.points = flex.vec3_double(self.sim_as.sites_cart_moved_F01)
+    self.points.extend(flex.vec3_double(self.sim_ac.sites_cart_moved_F01))
+    self.points.extend(flex.vec3_double(self.sim_as.sites_cart_wells_F01))
     def add_line(i, j, color):
       line = (i,j)
       self.line_i_seqs.append(line)
       self.line_colors[line] = color
     self.labels = []
-    p,n,s = 0,1,2
-    for ib in xrange(NB):
-      self.labels.extend(["p%d"%ib, "n%d"%ib, "s%d"%ib])
-      add_line(p, n, (1,0,0))
-      add_line(p, s, (0,1,0))
-      add_line(n, s, (0,0,1))
-      p,n,s = p+3,n+3,s+3
+    n = len(self.sim_as.sites_cart_F1)
+    offs = 0
+    for prefix,color in [("S",(1,0,0)),("C",(0,0,1)),("W",(0,1,0))]:
+      for i in xrange(n):
+        add_line(offs+i, offs+(i+1)%n, color)
+        self.labels.append(prefix+str(i))
+      offs += n
     mcs = minimum_covering_sphere(self.points, epsilon=1.e-2)
     self.minimum_covering_sphere = sphere_3d(
       center=mcs.center(), radius=mcs.radius()*1.3)
@@ -57,8 +46,16 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         self.steps_per_tab = max(1, self.steps_per_tab // 2)
       print "Steps per Tab:", self.steps_per_tab
       return
-    self.sim.dynamics_step(delta_t=0.1)
-    self.set_points()
+    ip = 0
+    for sim in [self.sim_as, self.sim_ac]:
+      use_classical_accel = (sim is self.sim_ac)
+      for ids in xrange(self.steps_per_tab):
+        sim.dynamics_step(
+          delta_t=0.01,
+          use_classical_accel=use_classical_accel)
+      for site in sim.sites_cart_moved_F01:
+        self.points[ip] = site
+        ip += 1
     self.labels_display_list = None
     self.lines_display_list = None
     self.points_display_list = None
@@ -68,7 +65,7 @@ class App(wx_viewer.App):
 
   def __init__(self, args):
     assert len(args) == 0
-    super(App, self).__init__(title="joint_lib")
+    super(App, self).__init__(title="Free Motion Viewer")
 
   def init_view_objects(self):
     box = wx.BoxSizer(wx.VERTICAL)

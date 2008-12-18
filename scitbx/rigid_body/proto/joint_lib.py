@@ -1,4 +1,4 @@
-from scitbx.rigid_body.utils import \
+from scitbx.rigid_body.proto.utils import \
   center_of_mass_from_sites, \
   T_as_X
 from scitbx import matrix

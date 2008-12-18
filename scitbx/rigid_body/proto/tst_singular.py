@@ -1,8 +1,8 @@
-from scitbx.rigid_body.tst_joint_lib import exercise_sim
-from scitbx.rigid_body import joint_lib
-from scitbx.rigid_body.test_simulation import simulation
-from scitbx.rigid_body.test_utils import create_wells
-from scitbx.rigid_body.utils import spatial_inertia_from_sites
+from scitbx.rigid_body.proto.tst_joint_lib import exercise_sim
+from scitbx.rigid_body.proto import joint_lib
+from scitbx.rigid_body.proto.test_simulation import simulation
+from scitbx.rigid_body.proto.test_utils import create_wells
+from scitbx.rigid_body.proto.utils import spatial_inertia_from_sites
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import null_out, show_times_at_exit

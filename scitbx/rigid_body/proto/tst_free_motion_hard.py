@@ -1,11 +1,11 @@
-from scitbx.rigid_body import featherstone
-from scitbx.rigid_body import joint_lib
-from scitbx.rigid_body.utils import \
+from scitbx.rigid_body.proto import featherstone
+from scitbx.rigid_body.proto import joint_lib
+from scitbx.rigid_body.proto.utils import \
   spatial_inertia_from_sites, \
   kinetic_energy, \
   T_as_X
-from scitbx.rigid_body import test_utils
-from scitbx.rigid_body.free_motion_reference_impl import \
+from scitbx.rigid_body.proto import test_utils
+from scitbx.rigid_body.proto.free_motion_reference_impl import \
   create_triangle_with_center_of_mass_at_origin
 from scitbx.array_family import flex
 from scitbx import matrix

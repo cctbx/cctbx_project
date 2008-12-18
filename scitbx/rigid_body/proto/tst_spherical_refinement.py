@@ -1,6 +1,6 @@
-from scitbx.rigid_body import joint_lib
-from scitbx.rigid_body import test_utils
-from scitbx.rigid_body.utils import center_of_mass_from_sites
+from scitbx.rigid_body.proto import joint_lib
+from scitbx.rigid_body.proto import test_utils
+from scitbx.rigid_body.proto.utils import center_of_mass_from_sites
 import scitbx.lbfgs
 import scitbx.math
 from scitbx.array_family import flex
