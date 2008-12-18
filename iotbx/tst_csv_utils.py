@@ -26,6 +26,7 @@ def exercise_writer():
   text = ['x,y\r\n']
   text += ['%s,%s\r\n' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
+  f.close()
 
   x = (1,2,3,4,5)
   y = (6,7,8,9,10)
@@ -48,6 +49,7 @@ def exercise_writer():
   text = ['x,y\r\n']
   text += ['%s,%s\r\n' %(row[0],row[1]) for row in zip(x,y)]
   assert content == text
+  f.close()
 
   y.append(11)
   f = open(filename, 'w')
@@ -72,6 +74,7 @@ def exercise_reader():
   f.close()
   f = open(filename, 'r')
   a = csv_utils.reader(f, data_type=int, field_names=True,delimiter=';')
+  f.close()
   assert tuple(a.data[0]) == x
   assert tuple(a.data[1]) == y
 
@@ -79,14 +82,32 @@ def exercise_reader():
   y = (1.1,2.2,3.3,4.4,5.5)
   filename = tempfile.mktemp()
   f = open(filename, 'w')
-  field_names = ('x','y')
-  csv_utils.writer(f, (x,y), field_names=field_names,delimiter=';')
+  csv_utils.writer(f, (x,y))
   f.close()
   f = open(filename, 'r')
-  data_type = (int, float)
-  a = csv_utils.reader(f, data_type=data_type, field_names=True,delimiter=';')
+  data_type_list = (int, float)
+  a = csv_utils.reader(f, data_type_list=data_type_list)
+  f.close()
   assert tuple(a.data[0]) == x
   assert tuple(a.data[1]) == y
+
+  f = open(filename, 'r')
+  data_type_list = (int, float)
+  try:
+    a = csv_utils.reader(f, data_type=int,
+                         data_type_list=data_type_list)
+    # Can't pass data_type AND data_type_list
+  except AssertionError:
+    pass
+  else:
+    raise Exception_expected
+  f.close()
+
+  f = open(filename, 'r')
+  a = csv_utils.reader(f)
+  f.close()
+  assert list(a.data[0]) == [str(i) for i in x]
+  assert list(a.data[1]) == [str(i) for i in y]
 
 def run():
   exercise()
