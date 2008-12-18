@@ -21,21 +21,26 @@ class writer(object):
 class reader(object):
   def __init__(self,
                file_object,
-               data_type=str,
+               data_type=None,
+               data_type_list=None,
                field_names=False,
                delimiter=','):
-    """data_type can be a single type which is then applied to all fields,
-    or a list of types which apply to each field.
+    """Supply a single data_type which is to be applied to all fields,
+    or supply a data_type_list containing the type of each field.
+    String is the default type if none is supplied.
     """
+    assert data_type is None or data_type_list is None
+    if data_type is None and data_type_list is None:
+      data_type = str
+
     reader = csv.reader(file_object, delimiter=delimiter)
     data = []
 
     for row in reader:
       if reader.line_num == 1:
         n_data = len(row)
-        if type(data_type) in (list,tuple):
-          assert len(data_type) == n_data
-          data_type_list = data_type
+        if data_type_list is not None:
+          assert len(data_type_list) == n_data
         else:
           data_type_list = [data_type] * n_data
         for i in range(n_data):
