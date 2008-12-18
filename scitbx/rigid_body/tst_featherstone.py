@@ -4,7 +4,7 @@ except ImportError:
   scitbx = None
 
 if (scitbx is not None):
-  from scitbx.rigid_body_dynamics import featherstone as fs
+  from scitbx.rigid_body import featherstone as fs
   from scitbx import matrix
   from libtbx.test_utils import approx_equal
 else:
@@ -339,8 +339,8 @@ def exercise_standalone(tmpdir="tst_featherstone_tmpdir"):
   def cp(file_name, target="."):
     copy_file(os.path.join(scitbx_dist, file_name), target)
   cp("matrix.py", "scitbx_matrix.py")
-  cp("rigid_body_dynamics/featherstone.py")
-  cp("rigid_body_dynamics/tst_featherstone.py")
+  cp("rigid_body/featherstone.py")
+  cp("rigid_body/tst_featherstone.py")
 
 def run(args):
   assert len(args) == 0
