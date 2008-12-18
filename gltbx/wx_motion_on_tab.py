@@ -6,7 +6,7 @@ Example:
 
 from gltbx import wx_viewer
 from libtbx.thread_utils import thread_with_callback_and_wait
-from scitbx.rigid_body_dynamics.free_motion_reference_impl import \
+from scitbx.rigid_body.free_motion_reference_impl import \
   create_triangle_with_center_of_mass_at_origin
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex

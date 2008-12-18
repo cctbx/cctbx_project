@@ -1,4 +1,4 @@
-from scitbx.rigid_body_dynamics import featherstone
+from scitbx.rigid_body import featherstone
 from scitbx import matrix
 
 def center_of_mass_from_sites(sites):

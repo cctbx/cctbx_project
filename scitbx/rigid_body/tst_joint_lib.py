@@ -1,11 +1,11 @@
-from scitbx.rigid_body_dynamics import featherstone
-from scitbx.rigid_body_dynamics import joint_lib
-from scitbx.rigid_body_dynamics.utils import \
+from scitbx.rigid_body import featherstone
+from scitbx.rigid_body import joint_lib
+from scitbx.rigid_body.utils import \
   spatial_inertia_from_sites, \
   T_as_X, \
   featherstone_system_model, \
   e_kin_from_model
-from scitbx.rigid_body_dynamics import test_utils
+from scitbx.rigid_body import test_utils
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import approx_equal

@@ -1,4 +1,4 @@
-from scitbx.rigid_body_dynamics.tst_joint_lib import revolute_simulation
+from scitbx.rigid_body.tst_joint_lib import revolute_simulation
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
 from gltbx import wx_viewer

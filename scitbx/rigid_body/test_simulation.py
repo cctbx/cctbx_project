@@ -1,6 +1,6 @@
-from scitbx.rigid_body_dynamics import featherstone
-from scitbx.rigid_body_dynamics import test_utils
-from scitbx.rigid_body_dynamics.utils import \
+from scitbx.rigid_body import featherstone
+from scitbx.rigid_body import test_utils
+from scitbx.rigid_body.utils import \
   e_kin_from_model, \
   featherstone_system_model
 import scitbx.lbfgs

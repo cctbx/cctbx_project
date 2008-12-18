@@ -1,4 +1,4 @@
-from scitbx.rigid_body_dynamics.free_motion_reference_impl import simulation
+from scitbx.rigid_body.free_motion_reference_impl import simulation
 from gltbx import wx_viewer
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
