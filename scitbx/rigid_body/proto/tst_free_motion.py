@@ -1,5 +1,5 @@
-from scitbx.rigid_body import free_motion_reference_impl as fmri
-from scitbx.rigid_body import featherstone
+from scitbx.rigid_body.proto import free_motion_reference_impl as fmri
+from scitbx.rigid_body.proto import featherstone
 import scitbx.math
 from scitbx.array_family import flex
 from scitbx import matrix
