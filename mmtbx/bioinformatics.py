@@ -94,18 +94,20 @@ class midline(object):
 
   def compare(self, alignments, gap = "-"):
 
-    return "".join(
-      [ self.conservation_code( equi ) if gap not in equi else self.differ
-        for equi in zip( *alignments ) ]
-      )
+    result = []
+    for equi in zip( *alignments ):
+      if gap not in equi:
+        result.append(self.conservation_code( equi ))
+      else:
+        result.append(self.differ)
+    return "".join(result)
 
 
   def conservation_code(self, residues):
 
-    return (
-      self.identical if all( [ residues[0] == r for r in residues ] )
-      else self.differ
-      )
+    for r in residues:
+      if (residues[0] != r): return self.differ
+    return self.identical
 
 
 # Alignment formats
@@ -185,7 +187,8 @@ class clustal_alignment(alignment):
   def __init__(self, alignments, names, program, version, gap = "-"):
 
     super( clustal_alignment, self ).__init__( alignments, names, gap )
-    self.program = program if program else ""
+    if program: self.program = program
+    else:       self.program = ""
     self.version = version
 
 
@@ -219,15 +222,20 @@ class clustal_alignment(alignment):
         for line in wrap( self.midline(), aln_width ) ]
       )
 
+    if (self.program): program = self.program + " "
+    else:              program = ""
+    def fmt_num(num):
+      if num: return " %s" % num
+      return ""
     return (
       "CLUSTAL %(program)s%(version)s multiple sequence alignment\n\n" % {
-        "program": self.program + " " if self.program else "",
+        "program": program,
         "version": self.version,
         }
       + "\n\n".join(
         [
           "\n".join(
-            [ "%s %s%s" % ( cap, ali, " %s" % num if num else "" )
+            [ "%s %s%s" % ( cap, ali, fmt_num(num) )
               for ( cap, ali, num ) in zipped_infos ] )
           for zipped_infos in zip( *aln_infos )
           ]
@@ -409,11 +417,13 @@ class clustal_alignment_parser(generic_alignment_parser):
     # Create alignment object
     header = header_match.groupdict()
 
+    if header[ "program" ]: program = header[ "program" ]
+    else:                   program = ""
     return (
       clustal_alignment(
         names = data_for.keys(),
         alignments = alignments,
-        program = header[ "program" ] if header[ "program" ] else "",
+        program = program,
         version = header[ "version" ]
         ),
       ""
