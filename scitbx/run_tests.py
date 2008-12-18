@@ -61,6 +61,8 @@ def run():
   "$D/rigid_body/proto/tst_joint_lib.py",
   "$D/rigid_body/proto/tst_singular.py",
   "$D/rigid_body/proto/tst_spherical_refinement.py",
+  "$D/rigid_body/proto/tst_molecules.py",
+  "$D/rigid_body/essence/tst_molecules.py",
   "$D/sparse/tests/tst_sparse.py",
   "$D/iso_surface/tst_iso_surface.py",
   )
