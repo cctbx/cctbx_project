@@ -111,6 +111,7 @@ gltbx/wx_viewers_images.py -text
 iotbx/boost_spirit/SConscript -text
 iotbx/boost_spirit/fortran_int.h -text
 iotbx/boost_spirit/fortran_real_fixed.h -text
+iotbx/boost_spirit/fortran_util.h -text
 iotbx/boost_spirit/tst_parsers.cpp -text
 iotbx/ccp4_map/SConscript -text
 iotbx/ccp4_map/__init__.py svneol=native#text/x-python

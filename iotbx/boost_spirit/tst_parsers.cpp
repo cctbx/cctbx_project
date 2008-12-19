@@ -11,7 +11,7 @@
 
 void exercise_fortran_int() {
   using namespace iotbx::boost_spirit;
-  fortran_int_parser<4> i4_p;
+  fortran_int_parser<int, 4> i4_p;
   std::vector<std::string> input;
   typedef boost::optional<int> opt_t;
   std::vector<opt_t> output;
@@ -72,15 +72,16 @@ void exercise_fortran_int() {
 
 void exercise_fortran_real_fixed() {
   using namespace iotbx::boost_spirit;
-  fortran_real_fixed</*Width=*/6, /*FracDigits=*/3> f63_p;
+  fortran_real_fixed_parser<double, /*Width=*/6, /*FracDigits=*/3> f63_p;
   std::vector<std::string> input;
-  typedef boost::optional<int> opt_t;
+  typedef boost::optional<double> opt_t;
   std::vector<opt_t> output;
   input.push_back(" 1.024");  output.push_back(1.024);
   input.push_back("21.024");  output.push_back(21.024);
   input.push_back("-1.024");  output.push_back(-1.024);
   input.push_back(" 1.0245");  output.push_back(1.024);
   input.push_back(" 1.024a");  output.push_back(1.024);
+  input.push_back("-0.256");  output.push_back(-0.256);
   input.push_back("  1.024");  output.push_back(opt_t());
   input.push_back("123.024");  output.push_back(opt_t());
   input.push_back("123.24");  output.push_back(opt_t());
@@ -92,7 +93,7 @@ void exercise_fortran_real_fixed() {
     if (output[i]) {
       IOTBX_ASSERT(info.hit)(i)(input[i]);
       IOTBX_ASSERT(info.length == 6)(i)(input[i])(info.length);
-      IOTBX_ASSERT(res == output[i])(i)(input[i])(res);
+      IOTBX_ASSERT(res == output[i])(i)(input[i])(*res);
     }
     else {
       IOTBX_ASSERT(!info.hit)(i)(input[i]);
