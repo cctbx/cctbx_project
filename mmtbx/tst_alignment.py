@@ -6,7 +6,7 @@ from scitbx.array_family import flex
 import operator
 import unittest
 
-def exercise():
+def exercise_align():
   #
   i_seqs, j_seqs = align("EASYA",
                          "AETSYT").extract_alignment().exact_match_selections()
@@ -50,8 +50,6 @@ def exercise():
                         ).extract_alignment().exact_match_selections()
   assert i_seqs == flex.size_t([0, 1, 2, 7, 8, 9]) and \
          j_seqs == flex.size_t([0, 1, 2, 8, 9, 10])
-  #
-  print "OK"
 
 
 class test_blosum62(unittest.TestCase):
@@ -96,6 +94,10 @@ alltests = unittest.TestSuite(
     ]
   )
 
+def exercise():
+  exercise_align()
+  sys.stdout.flush()
+  unittest.TextTestRunner( verbosity = 2 ).run( alltests )
+
 if (__name__ == "__main__"):
   exercise()
-  unittest.TextTestRunner( verbosity = 2 ).run( alltests )
