@@ -1,5 +1,6 @@
 import re
 import operator
+import string
 
 # Wrap lines that are longer than 'width'
 def wrap(text, width):
@@ -23,6 +24,11 @@ class sequence(object):
   def __eq__(self, other):
 
     return isinstance( other, sequence ) and self.sequence == other.sequence
+
+
+  def __ne__(self, other): # for Python 2.2 compatibility
+
+    return not self.__eq__(other)
 
 
 class fasta_sequence(sequence):
@@ -95,11 +101,12 @@ class midline(object):
   def compare(self, alignments, gap = "-"):
 
     result = []
-    for equi in zip( *alignments ):
-      if gap not in equi:
-        result.append(self.conservation_code( equi ))
-      else:
-        result.append(self.differ)
+    if (len(alignments) != 0):
+      for equi in zip( *alignments ):
+        if gap not in equi:
+          result.append(self.conservation_code( equi ))
+        else:
+          result.append(self.differ)
     return "".join(result)
 
 
@@ -125,8 +132,9 @@ class alignment(object):
       )
 
     # All alignments should have the same length
-    if any( [ len( alignments[0] ) != len( o ) for o in alignments[1:] ] ):
-      raise ValueError, "'alignments' do not have the same length"
+    for o in alignments[1:]:
+      if (len( alignments[0] ) != len( o )):
+        raise ValueError, "'alignments' do not have the same length"
 
     self.names = names
     self.alignments = alignments
@@ -135,10 +143,15 @@ class alignment(object):
 
   def identity_count(self):
 
-    identical = [ equi for equi in zip( *self.alignments )
-      if all( [ p == equi[0] for p in equi[1:] ] ) ]
-
-    return len( [ id for id in identical if self.gap not in id ] )
+    result = 0
+    if (len(self.alignments) != 0):
+      for equi in zip( *self.alignments ):
+        if (self.gap in equi): continue
+        for p in equi[1:]:
+          if (p != equi[0]): break
+        else:
+          result += 1
+    return result
 
 
   def midline(self):
@@ -269,7 +282,9 @@ class generic_sequence_parser(object):
       match = self.regex.search( text )
 
       if match:
-        ( unknown, consumed, text ) = text.partition( match.group( 0 ) )
+        i = text.find(match.group(0))
+        assert i >= 0
+        unknown, text = text[:i], text[i+len(match.group(0)):]
 
         if unknown and not unknown.isspace():
           non_compliant.append( unknown )
@@ -341,11 +356,10 @@ class generic_alignment_parser(object):
 
   def valid_alignments(self, alignments):
 
-    return all(
-      [ len( line1 ) == len( line2 )
-        for line1 in alignments
-        for line2 in alignments[1:] ]
-      )
+    for line2 in alignments[1:]:
+      if (len( alignments[0] ) != len( line2 )):
+        return False
+    return True
 
 
   def fail(self, text):
@@ -368,16 +382,6 @@ class clustal_alignment_parser(generic_alignment_parser):
   Specific for Clustal alignments
   """
 
-  header = re.compile(
-    r"""
-    ^ CLUSTAL
-    (?: \s (?P<program> [A-Z] ) )? \s
-    ( \( )? (?P<version> [\d.]* ) (?(2) \) ) \s
-    multiple \s sequence \s alignment \s* \n
-    """,
-    re.VERBOSE
-    )
-
   data = re.compile(
     r"""
     ^
@@ -390,11 +394,20 @@ class clustal_alignment_parser(generic_alignment_parser):
 
   def parse(self, text):
 
-    # Header must match
-    header_match = self.header.search( text )
-
-    if not header_match:
+    if (not text.startswith("CLUSTAL")):
       return self.fail( text )
+    header = text.split("\n", 1)[0]
+    flds = header.split()
+    if (   len(flds) not in [5,6]
+        or flds[-3:] != "multiple sequence alignment".split()):
+      return self.fail( text )
+    if (len(flds) == 5):
+      program = ""
+      version = flds[1]
+    else:
+      program = flds[1]
+      version = flds[2]
+    if (version[0] == "("): version = version[1:-1]
 
     # Get names and data
     data = self.extract( text )
@@ -415,16 +428,12 @@ class clustal_alignment_parser(generic_alignment_parser):
       return self.fail( text )
 
     # Create alignment object
-    header = header_match.groupdict()
-
-    if header[ "program" ]: program = header[ "program" ]
-    else:                   program = ""
     return (
       clustal_alignment(
         names = data_for.keys(),
         alignments = alignments,
         program = program,
-        version = header[ "version" ]
+        version = version
         ),
       ""
       )
