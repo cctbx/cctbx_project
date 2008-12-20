@@ -410,6 +410,7 @@ namespace {
           make_function(get_resname), make_function(set_resname))
         .def_readwrite("is_first_in_chain", &w_t::is_first_in_chain)
         .def_readwrite("is_first_after_break", &w_t::is_first_after_break)
+        .def("serial_as_int", &w_t::serial_as_int)
         .def("resseq_as_int", &w_t::resseq_as_int)
         .def("resid", &w_t::resid)
         .def("id_str", &w_t::id_str, id_str_overloads((

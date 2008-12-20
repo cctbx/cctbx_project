@@ -1,6 +1,6 @@
 #include <iotbx/pdb/hierarchy.h>
 #include <iotbx/pdb/common_residue_names.h>
-#include <iotbx/pdb/hybrid_36_cpp.h>
+#include <iotbx/pdb/hybrid_36_c.h>
 #include <iotbx/error.h>
 #include <cctbx/eltbx/chemical_elements.h>
 #include <boost/format.hpp>
@@ -761,6 +761,7 @@ namespace {
   }
 
 } // namespace <anonymous>
+
   unsigned
   atom::format_anisou_record(
     char* result,
@@ -1960,28 +1961,73 @@ namespace {
   atom::serial_as_int() const
   {
     str5 const& s = data->serial;
-    return hybrid_36::decode(5U, s.elems, s.size());
+    int result = -1;
+    const char* errmsg = hy36decode(5U, s.elems, s.size(), &result);
+    if (errmsg) {
+      throw std::invalid_argument(
+        "invalid atom serial number: \""
+        + std::string(s.elems, s.size()) + "\"");
+    }
+    return result;
   }
 
   int
-  residue_group::resseq_as_int() const
+  atom_with_labels::serial_as_int() const
   {
-    str4 const& s = data->resseq;
-    return hybrid_36::decode(4U, s.elems, s.size());
-  }
-
-  int
-  residue::resseq_as_int() const
-  {
-    str4 const& s = data->resseq;
-    return hybrid_36::decode(4U, s.elems, s.size());
+    str5 const& s = data->serial;
+    int result = -1;
+    const char* errmsg = hy36decode(5U, s.elems, s.size(), &result);
+    if (errmsg) {
+      throw std::invalid_argument(
+        "invalid atom serial number:\n"
+        "  " + format_atom_record() + "\n"
+        "        ^^^^^");
+    }
+    return result;
   }
 
   int
   atom_with_labels::resseq_as_int() const
   {
     str4 const& s = resseq;
-    return hybrid_36::decode(4U, s.elems, s.size());
+    int result = -1;
+    const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
+    if (errmsg) {
+      throw std::invalid_argument(
+        "invalid residue sequence number:\n"
+        "  " + format_atom_record() + "\n"
+        "                        ^^^^");
+    }
+    return result;
+  }
+
+namespace {
+
+  int
+  resseq_as_int_impl(str4 const& s)
+  {
+    int result = -1;
+    const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
+    if (errmsg) {
+      throw std::invalid_argument(
+        "invalid residue sequence number: \""
+        + std::string(s.elems, s.size()) + "\"");
+    }
+    return result;
+  }
+
+} // namespace <anonymous>
+
+  int
+  residue_group::resseq_as_int() const
+  {
+    return resseq_as_int_impl(data->resseq);
+  }
+
+  int
+  residue::resseq_as_int() const
+  {
+    return resseq_as_int_impl(data->resseq);
   }
 
 }}} // namespace iotbx::pdb::hierarchy

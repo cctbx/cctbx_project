@@ -1569,6 +1569,9 @@ namespace hierarchy {
       detached_copy() const;
 
       int
+      serial_as_int() const;
+
+      int
       resseq_as_int() const;
 
       std::string
