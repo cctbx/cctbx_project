@@ -532,7 +532,7 @@ def exercise_residue_group():
   rg.resseq = "x"
   try: rg.resseq_as_int()
   except (ValueError, RuntimeError), e:
-    assert str(e) == "invalid number literal."
+    assert not show_diff(str(e), 'invalid residue sequence number: "x"')
   else: raise Exception_expected
 
 def exercise_chain():
@@ -4840,6 +4840,40 @@ ATOM  12345 NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00""")
     'pdb="NaMelrNmChABCDI"')
   assert not show_diff(awl.id_str(pdbres=True),
     'pdbres="rNmChABCDI"')
+  #
+  a = pdb.hierarchy.atom()
+  a.serial = "   1A"
+  try: a.serial_as_int()
+  except (RuntimeError, ValueError), e:
+    assert not show_diff(str(e), 'invalid atom serial number: "   1A"')
+  else: raise Exception_expected
+  #
+  awl.serial = "   1A"
+  try: awl.serial_as_int()
+  except (RuntimeError, ValueError), e:
+    assert not show_diff(str(e), """\
+invalid atom serial number:
+  ATOM     1A NaMelrNmChABCDI      0.000   0.000   0.000  0.00  0.00
+        ^^^^^""")
+  else: raise Exception_expected
+  #
+  awl.resseq = " 18A"
+  try: awl.resseq_as_int()
+  except (RuntimeError, ValueError), e:
+    assert not show_diff(str(e), """\
+invalid residue sequence number:
+  ATOM     1A NaMelrNmCh 18AI      0.000   0.000   0.000  0.00  0.00
+                        ^^^^""")
+  else: raise Exception_expected
+  #
+  rd = pdb.input(source_info=None, lines=flex.split_lines("""\
+ATOM                    1B
+""")).construct_hierarchy().only_conformer().only_residue()
+  try: rd.resseq_as_int()
+  except (RuntimeError, ValueError), e:
+    assert not show_diff(str(e),
+      'invalid residue sequence number: "  1B"')
+  else: raise Exception_expected
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 MODEL        0
