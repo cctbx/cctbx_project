@@ -1712,12 +1712,7 @@ class manager(manager_mixin):
       out.close()
       mtz_object.write(file_name=file_name)
 
-  def adopt_external_overall_scale_and_b_iso_adjustments(self,
-        overall_scale_multiplier,
-        overall_b_iso_shift):
-    raise RuntimeError(
-      "Transition to alternative handling of overall_scale_multiplier"
-      " is currently incomplete.")
+  def adopt_external_b_iso_adjustments(self, overall_b_iso_shift):
     b_cart = self.b_cart()
     self.update_core(b_cart=[
       b_cart[0]+overall_b_iso_shift,
@@ -1740,10 +1735,13 @@ class phaser_sad_target_functor(object):
     self.xray_structure = xray_structure
     self.f_calc = f_calc
     if (target_memory is None):
+      previous_overall_scale = None
       previous_variances = None
     else:
+      assert len(target_memory) == 3
       assert target_memory[0] == "ml_sad"
-      previous_variances = target_memory[1]
+      previous_overall_scale = target_memory[1]
+      previous_variances = target_memory[2]
     adaptor = phaser.phenix_adaptors.sad_target.data_adaptor(
       f_obs=f_obs,
       r_free_flags=r_free_flags,
@@ -1751,28 +1749,28 @@ class phaser_sad_target_functor(object):
     try:
       self.refine_sad_object = adaptor.target(
         xray_structure=xray_structure,
+        previous_overall_scale=previous_overall_scale,
         previous_variances=previous_variances)
     except TypeError, e: # XXX backward compatibility 2008-10-10
       if (str(e).find("previous_variances") < 0): raise
       self.refine_sad_object = adaptor.target(
         xray_structure=xray_structure)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
-    self.refined_overall_scale = None
     self.refined_overall_b_iso = None
 
   def prepare_for_minimization(self):
-    self.refine_sad_object.refine_variance_terms()
-    rsi = self.refine_sad_object.refine_sad_instance
-    self.refined_overall_scale = rsi.get_refined_scaleK()
-    self.refined_overall_b_iso = adptbx.u_as_b(rsi.get_refined_scaleU())
-    assert self.refined_overall_scale > 0
-    assert self.refined_overall_b_iso > -1 # XXX
+    rso = self.refine_sad_object
+    rso.refine_variance_terms()
+    self.refined_overall_b_iso = adptbx.u_as_b(
+      rso.refine_sad_instance.get_refined_scaleU())
+    assert self.refined_overall_b_iso > -1
 
   def target_memory(self):
+    rsi = self.refine_sad_object.refine_sad_instance
     get = getattr( # XXX backward compatibility 2008-10-10
-      self.refine_sad_object.refine_sad_instance, "get_variance_array", None)
+      rsi, "get_variance_array", None)
     if (get is None): return None
-    return ("ml_sad", get())
+    return ("ml_sad", rsi.get_refined_scaleK(), get())
 
   def __call__(self, f_calc, compute_gradients):
     rso = self.refine_sad_object
@@ -1886,8 +1884,7 @@ class target_functor(object):
   def prepare_for_minimization(self):
     if (self.manager.target_name == "ml_sad"):
       self.core.prepare_for_minimization()
-      self.manager.adopt_external_overall_scale_and_b_iso_adjustments(
-        overall_scale_multiplier=self.core.refined_overall_scale,
+      self.manager.adopt_external_b_iso_adjustments(
         overall_b_iso_shift=self.core.refined_overall_b_iso)
 
   def __call__(self, compute_gradients=False):
