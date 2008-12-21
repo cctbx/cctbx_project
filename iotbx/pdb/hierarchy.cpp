@@ -1988,36 +1988,32 @@ namespace {
 
 namespace {
 
-  void
-  throw_invalid_resseq(atom_with_labels const& awl)
+  std::string
+  invalid_resseq_message(atom_with_labels const& awl)
   {
-    throw std::invalid_argument(
+    return
       "invalid residue sequence number:\n"
       "  " + awl.format_atom_record() + "\n"
-      "                        ^^^^");
+      "                        ^^^^";
   }
 
-  void
-  throw_invalid_resseq(
+  std::string
+  invalid_resseq_message(
     str4 const& resseq,
     std::size_t atoms_size,
     const atom* atoms)
   {
     if (atoms_size != 0) {
-      bool have_better_message = false;
       try {
         atom_with_labels awl = atoms[0].fetch_labels();
         awl.resseq = resseq;
-        have_better_message = true;
-        throw_invalid_resseq(awl);
+        return invalid_resseq_message(awl);
       }
-      catch (...) {
-        if (have_better_message) throw;
-      }
+      catch (std::exception const&) {}
     }
-    throw std::invalid_argument(
+    return
       "invalid residue sequence number: \""
-      + std::string(resseq.elems, resseq.size()) + "\"");
+      + std::string(resseq.elems, resseq.size()) + "\"";
   }
 
 } // namespace <anonymous>
@@ -2029,7 +2025,7 @@ namespace {
     int result = -1;
     const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
     if (errmsg) {
-      throw_invalid_resseq(*this);
+      throw std::invalid_argument(invalid_resseq_message(*this));
     }
     return result;
   }
@@ -2042,7 +2038,8 @@ namespace {
     const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
     if (errmsg) {
       af::shared<atom> ats = atoms_sequential_conf();
-      throw_invalid_resseq(s, ats.size(), ats.begin());
+      throw std::invalid_argument(
+        invalid_resseq_message(s, ats.size(), ats.begin()));
     }
     return result;
   }
@@ -2055,7 +2052,8 @@ namespace {
     const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
     if (errmsg) {
       std::size_t n = data->atoms.size();
-      throw_invalid_resseq(s, n, (n == 0 ? 0 : &*data->atoms.begin()));
+      throw std::invalid_argument(
+        invalid_resseq_message(s, n, (n == 0 ? 0 : &*data->atoms.begin())));
     }
     return result;
   }
