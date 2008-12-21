@@ -1986,6 +1986,42 @@ namespace {
     return result;
   }
 
+namespace {
+
+  void
+  throw_invalid_resseq(atom_with_labels const& awl)
+  {
+    throw std::invalid_argument(
+      "invalid residue sequence number:\n"
+      "  " + awl.format_atom_record() + "\n"
+      "                        ^^^^");
+  }
+
+  void
+  throw_invalid_resseq(
+    str4 const& resseq,
+    std::size_t atoms_size,
+    const atom* atoms)
+  {
+    if (atoms_size != 0) {
+      bool have_better_message = false;
+      try {
+        atom_with_labels awl = atoms[0].fetch_labels();
+        awl.resseq = resseq;
+        have_better_message = true;
+        throw_invalid_resseq(awl);
+      }
+      catch (...) {
+        if (have_better_message) throw;
+      }
+    }
+    throw std::invalid_argument(
+      "invalid residue sequence number: \""
+      + std::string(resseq.elems, resseq.size()) + "\"");
+  }
+
+} // namespace <anonymous>
+
   int
   atom_with_labels::resseq_as_int() const
   {
@@ -1993,41 +2029,35 @@ namespace {
     int result = -1;
     const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
     if (errmsg) {
-      throw std::invalid_argument(
-        "invalid residue sequence number:\n"
-        "  " + format_atom_record() + "\n"
-        "                        ^^^^");
+      throw_invalid_resseq(*this);
     }
     return result;
   }
-
-namespace {
-
-  int
-  resseq_as_int_impl(str4 const& s)
-  {
-    int result = -1;
-    const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
-    if (errmsg) {
-      throw std::invalid_argument(
-        "invalid residue sequence number: \""
-        + std::string(s.elems, s.size()) + "\"");
-    }
-    return result;
-  }
-
-} // namespace <anonymous>
 
   int
   residue_group::resseq_as_int() const
   {
-    return resseq_as_int_impl(data->resseq);
+    str4 const& s = data->resseq;
+    int result = -1;
+    const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
+    if (errmsg) {
+      af::shared<atom> ats = atoms_sequential_conf();
+      throw_invalid_resseq(s, ats.size(), ats.begin());
+    }
+    return result;
   }
 
   int
   residue::resseq_as_int() const
   {
-    return resseq_as_int_impl(data->resseq);
+    str4 const& s = data->resseq;
+    int result = -1;
+    const char* errmsg = hy36decode(4U, s.elems, s.size(), &result);
+    if (errmsg) {
+      std::size_t n = data->atoms.size();
+      throw_invalid_resseq(s, n, (n == 0 ? 0 : &*data->atoms.begin()));
+    }
+    return result;
   }
 
 }}} // namespace iotbx::pdb::hierarchy

@@ -4866,14 +4866,26 @@ invalid residue sequence number:
                         ^^^^""")
   else: raise Exception_expected
   #
-  rd = pdb.input(source_info=None, lines=flex.split_lines("""\
+  h = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM                    1B
-""")).construct_hierarchy().only_conformer().only_residue()
-  try: rd.resseq_as_int()
-  except (RuntimeError, ValueError), e:
-    assert not show_diff(str(e),
-      'invalid residue sequence number: "  1B"')
-  else: raise Exception_expected
+""")).construct_hierarchy()
+  for r in [h.only_residue_group(), h.only_residue()]:
+    try: r.resseq_as_int()
+    except (RuntimeError, ValueError), e:
+      assert not show_diff(str(e), """\
+invalid residue sequence number:
+  ATOM                    1B       0.000   0.000   0.000  0.00  0.00
+                        ^^^^""")
+    else: raise Exception_expected
+  #
+  ch = pdb.hierarchy.chain(id="C")
+  ch.append_residue_group(pdb.hierarchy.residue_group(resseq="  1C"))
+  ch.residue_groups()[0].append_atom_group(pdb.hierarchy.atom_group())
+  for r in[ch.only_residue_group(), ch.only_conformer().only_residue()]:
+    try: r.resseq_as_int()
+    except (RuntimeError, ValueError), e:
+      assert not show_diff(str(e), 'invalid residue sequence number: "  1C"')
+    else: raise Exception_expected
   #
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 MODEL        0
