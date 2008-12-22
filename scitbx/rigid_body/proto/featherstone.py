@@ -345,7 +345,6 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
       c[i] = crm(v[i]) * vJ
     IA[i] = model.I[i]
     pA[i] = crf(v[i]) * model.I[i] * v[i]
-    if (0): print "X0s fea:", X0[i].inverse().transpose().elems
     if (f_ext is not None and f_ext[i] is not None):
       if (not f_ext_in_ff):
         pA[i] = pA[i] - f_ext[i]

@@ -48,8 +48,7 @@ class simulation(object):
     O.e_pot_and_f_ext_update()
     #
     tau = None
-    grav_accn = [0,0,0]
-    O.qdd = featherstone.FDab(model, q, qd, tau, O.f_ext_bf, grav_accn)
+    O.qdd = featherstone.FDab(model, q, qd, tau, O.f_ext_bf)
 
   def e_pot_and_f_ext_update(O):
     O.AJA_accu = []
@@ -82,8 +81,7 @@ class simulation(object):
     q = [None]*len(O.bodies)
     qd = [B.J.qd_zero for B in O.bodies]
     qdd = [B.J.qdd_zero for B in O.bodies]
-    grav_accn = [0,0,0]
-    taus = featherstone.ID(model, q, qd, qdd, O.f_ext_bf, grav_accn)
+    taus = featherstone.ID(model, q, qd, qdd, O.f_ext_bf)
     result = []
     for B,tau in zip(O.bodies, taus):
       tau_as_d_pot_d_q = getattr(B.J, "tau_as_d_pot_d_q", None)
