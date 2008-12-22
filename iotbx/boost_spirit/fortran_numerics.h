@@ -10,7 +10,7 @@ using namespace boost::spirit::classic;
 
 namespace details {
 
-  template <typename NumericType, int FieldWidth, class Heir>
+  template <typename NumericType, int FieldWidth, bool StrictWidth, class Heir>
   struct fortran_number_extractor
   {
     int n;
@@ -19,11 +19,18 @@ namespace details {
     fortran_number_extractor(int position_in_field=0)
       : n(position_in_field), negative(false) {}
 
+    bool shall_fail_at_end() {
+      return StrictWidth && n-1 < FieldWidth - 1;
+    }
+
     template <typename ScannerType>
     bool operator()(ScannerType const &scan) {
       Heir &heir = static_cast<Heir &>(*this);
       for (; n < FieldWidth; ++n, ++scan) {
-        if (scan.at_end()) break;
+        if (scan.at_end()) {
+          if (shall_fail_at_end()) return scan.no_match();
+          else break;
+        }
         char ch = *scan;
         if (ch == ' ') continue;
         if (ch != '-' && ch != '+') break;
@@ -33,7 +40,10 @@ namespace details {
       }
       bool hit = true;
       for (; n < FieldWidth; ++n, ++scan) {
-        if (scan.at_end()) break;
+        if (scan.at_end()) {
+          if (shall_fail_at_end()) return scan.no_match();
+          else break;
+        }
         char ch = *scan;
         if (ch == ' ') continue;
         if ('0' <= ch && ch <= '9') {
@@ -49,15 +59,15 @@ namespace details {
     }
   };
 
-  template <typename IntegralType, int FieldWidth>
+  template <typename IntegralType, int FieldWidth, bool StrictWidth>
   struct fortran_int_extractor
     : fortran_number_extractor<
-        IntegralType, FieldWidth,
-        fortran_int_extractor<IntegralType, FieldWidth> >
+        IntegralType, FieldWidth, StrictWidth,
+        fortran_int_extractor<IntegralType, FieldWidth, StrictWidth> >
   {
     typedef fortran_number_extractor<
-              IntegralType, FieldWidth,
-              fortran_int_extractor<IntegralType, FieldWidth> >
+              IntegralType, FieldWidth, StrictWidth,
+              fortran_int_extractor<IntegralType, FieldWidth, StrictWidth> >
             base_t;
 
     IntegralType value;
@@ -73,11 +83,13 @@ namespace details {
     void finish() { if (this->negative) value = -value; }
   };
 
-  template <typename FloatType, int FieldWidth, int FracDigits>
+  template <
+    typename FloatType, int FieldWidth, int FracDigits, bool StrictWidth>
   struct fortran_decimal_extractor
     : fortran_number_extractor<
-        FloatType, FieldWidth,
-        fortran_decimal_extractor<FloatType, FieldWidth, FracDigits> >
+        FloatType, FieldWidth, StrictWidth,
+        fortran_decimal_extractor<
+          FloatType, FieldWidth, FracDigits, StrictWidth> >
   {
     long mantissa;
     int exponent;
@@ -113,13 +125,13 @@ namespace details {
 /** Reference: FORTRAN standard, section 13.5.9.1
     http://www.fortran.com/fortran/F77_std/rjcnf0001.html
 */
-template <typename IntegralType, int FieldWidth>
+template <typename IntegralType, int FieldWidth, bool StrictWidth>
 struct fortran_int_parser
-  : parser<fortran_int_parser<IntegralType, FieldWidth> >
+  : parser<fortran_int_parser<IntegralType, FieldWidth, StrictWidth> >
 {
   BOOST_STATIC_ASSERT(FieldWidth > 0);
 
-  typedef fortran_int_parser<IntegralType, FieldWidth>
+  typedef fortran_int_parser<IntegralType, FieldWidth, StrictWidth>
           self_t;
 
   template <typename ScannerType>
@@ -132,7 +144,8 @@ struct fortran_int_parser
   typename parser_result<self_t, ScannerType>::type
   parse(ScannerType const &scan) const {
     typename ScannerType::iterator_t start = scan.first;
-    details::fortran_int_extractor<IntegralType, FieldWidth> extract;
+    details::fortran_int_extractor<
+      IntegralType, FieldWidth, StrictWidth> extract;
     if (!extract(scan)) return scan.no_match();
     return scan.create_match(scan.first - start, extract.value,
                              start, scan.first);
@@ -144,15 +157,16 @@ struct fortran_int_parser
 /** Reference: FORTRAN standard, section 13.5.9.2.1
     http://www.fortran.com/fortran/F77_std/rjcnf0001.html
 */
-template <typename FloatType, int FieldWidth, int FracDigits>
+template <
+  typename FloatType, int FieldWidth, int FracDigits, bool StrictWidth>
 struct fortran_real_parser
-  : parser<fortran_real_parser<FloatType, FieldWidth, FracDigits> >
+  : parser<fortran_real_parser<FloatType, FieldWidth, FracDigits, StrictWidth> >
 {
   BOOST_STATIC_ASSERT(FieldWidth > 0);
   static const int MaxWholeDigits = FieldWidth - FracDigits - 1;
   BOOST_STATIC_ASSERT(MaxWholeDigits > 0);
 
-  typedef fortran_real_parser<FloatType, FieldWidth, FracDigits>
+  typedef fortran_real_parser<FloatType, FieldWidth, FracDigits, StrictWidth>
           self_t;
 
   template <typename ScannerType>
@@ -166,7 +180,7 @@ struct fortran_real_parser
   parse(ScannerType const &scan) const {
     typename ScannerType::iterator_t start = scan.first;
     details::fortran_decimal_extractor<
-      FloatType, FieldWidth, FracDigits> extract;
+      FloatType, FieldWidth, FracDigits, StrictWidth> extract;
     int exponent;
     if (!extract(scan)) {
       int n = extract.n;
@@ -176,7 +190,7 @@ struct fortran_real_parser
         if (n == FieldWidth || scan.at_end()) return scan.no_match();
       }
       details::fortran_int_extractor<
-        int, FieldWidth> extract_exponent(extract.n);
+        int, FieldWidth, StrictWidth> extract_exponent(extract.n);
       if (!extract_exponent(scan)) return scan.no_match();
       exponent = extract_exponent.value + extract.exponent;
     }
