@@ -181,6 +181,7 @@ iotbx/regression/tst_lattice_symmetry.py svneol=native#text/x-python
 iotbx/shelx/builders.py -text
 iotbx/shelx/errors.py -text
 iotbx/shelx/fcf.py -text
+iotbx/shelx/hklf_simple.h -text
 iotbx/shelx/lexer.py -text
 iotbx/shelx/parsers.py -text
 iotbx/shelx/tst_lex_parse_build.py -text

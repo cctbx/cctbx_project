@@ -1,21 +1,21 @@
-from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.test_utils import approx_equal
+from libtbx.test_utils import Exception_expected, Exception_not_expected
 from iotbx.shelx import hklf
-import tempfile
+from cStringIO import StringIO
 
 def exercise_fast_hkl_reading():
-  filename = tempfile.mktemp()
-  f = open(filename, 'w')
-  f.write('   1   2  -1   23.34    4.56   1\n'
-          '   2  -3   9   12.45    6.12   2\n'
-          '99999999999999999.9999999.999999\n'
-          '-999-999-999-9999.99-9999.99-999\n'
-          '   0   0   0    0.00    0.00   0\n')
-  f.close()
-  fast = hklf.reader(filename=filename)
-  slow = hklf.python_reader(filename=filename)
-  for r in (fast, slow):
-    assert list(r.indices()) == [ (1, 2, -1), (2, -3, 9), (9999, 9999, 9999), (-999, -999, -999), ]
-    assert approx_equal(r.data(), [23.34, 12.45, 99999.99, -9999.99, ])
+  s = ('   1   2  -1  -23.34    4.56   1\n'
+       '   2  -3   9   12.45    6.12   2\r\n'
+       '99999999999999999.9999999.999999\n'
+       '-999-999-999-9999.99-9999.99-999\r\n'
+       '   0   0   0    0.00    0.00   0\n')
+  fast = hklf.fast_reader(file_object=StringIO(s))
+  slow = hklf.python_reader(file_object=StringIO(s))
+  simple = hklf.simple_reader(file_object=StringIO(s))
+  for r in (fast, slow, simple):
+    assert list(r.indices()) == [
+      (1, 2, -1), (2, -3, 9), (9999, 9999, 9999), (-999, -999, -999), ]
+    assert approx_equal(r.data(), [-23.34, 12.45, 99999.99, -9999.99, ])
     assert approx_equal(r.sigmas(), [4.56, 6.12, 99999.99, -9999.99, ])
     assert approx_equal(r.batch_numbers(), [1, 2, 9999, -999, ])
     assert approx_equal(r.alphas(), [1, 2, 9999, -999, ])
@@ -28,56 +28,93 @@ def exercise_fast_hkl_reading():
     assert ma.data().all_eq(r.alphas())
     assert ma.sigmas() is None
 
-  f = open(filename, 'w')
-  f.write('   1   2  -1   23.34    4.56\n'
-          '   2  -3   9   12.45    6.12\n'
-          '99999999999999999.9999999.99\n'
-          '-999-999-999-9999.99-9999.99\n'
-          '   0   0   0    0.00    0.00\n')
-  f.close()
-  r = hklf.reader(filename=filename)
-  assert approx_equal(r.sigmas(), [4.56, 6.12, 99999.99, -9999.99, ])
-  assert r.alphas() is None
-  assert r.batch_numbers() is None
+  s = ('   0   2   3 1816.00   20.00\n'
+       '   0   2   415508.00  138.00\n'
+       '   0   2   5 4776.00   40.00\n')
+  fast = hklf.fast_reader(file_object=StringIO(s))
+  slow = hklf.python_reader(file_object=StringIO(s))
+  simple = hklf.simple_reader(file_object=StringIO(s))
+  for r in (fast, slow, simple):
+    assert list(r.indices()) == [ (0,2,3), (0,2,4), (0,2,5) ]
 
-  f = open(filename, 'w')
-  f.close()
-  try: fast = hklf.reader(filename=filename)
-  except RuntimeError: pass
-  else: raise Exception_expected
 
-  f = open(filename, 'w')
-  f.write('   1   2  -1   23.34    4.56   1     45.36\n'
-          '   2  -3   9   12.45    6.12   2     45.36\n'
-          '   0   0   0    0.00    0.00   0         0\n')
-  f.close()
-  try: fast = hklf.reader(filename=filename)
-  except RuntimeError: pass
-  else: raise Exception_expected
+  for end_line in (True, False):
+    s = ('   1   2  -1   23.34    4.56\n'
+         '   2  -3   9   12.45    6.12\r\n'
+         '99999999999999999.9999999.99\n'
+         '-999-999-999-9999.99-9999.99\n')
+    if end_line:
+      s += '   0   0   0    0.00    0.00\n'
+    s = (s)
+    fast = hklf.fast_reader(file_object=StringIO(s))
+    slow = hklf.python_reader(file_object=StringIO(s))
+    simple = hklf.simple_reader(file_object=StringIO(s))
+    for r in (fast, slow, simple):
+      assert approx_equal(r.sigmas(), [4.56, 6.12, 99999.99, -9999.99, ])
+      assert r.alphas() is None
+      assert r.batch_numbers() is None
 
-  r = hklf.reader(filename=filename, strict=False)
-  assert list(r.indices()) == [ (1, 2, -1), (2, -3, 9), ]
-  assert approx_equal(r.data(), [23.34, 12.45, ])
-  assert approx_equal(r.sigmas(), [4.56, 6.12, ])
-  assert approx_equal(r.batch_numbers(), [1, 2, ])
+  s = ''
+  for rt in (hklf.fast_reader, hklf.simple_reader, hklf.python_reader):
+    try: r = rt(file_object=StringIO(s))
+    except RuntimeError: pass
+    else: raise Exception_expected
 
-  f = open(filename, 'w')
-  f.write("""King Arthur: [after Arthur's cut off both of the Black Knight's arms]
+  s = ('   1   2  -1   23.34    4.56   1\n'
+       '   2  -3  a9   12.45    6.12   2\n'
+       '   0   0   0    0.00    0.00   0\n')
+  for rt in (hklf.fast_reader, hklf.python_reader):
+    try: r = rt(file_object=StringIO(s))
+    except Exception: pass
+    else: raise Exception_expected
+
+  try: r = hklf.simple_reader(file_object=StringIO(s))
+  except Exception: raise Exception_not_expected
+
+  s = ('   1   2  -1   23.34    4.56   1     45.36\n'
+       '   2  -3   9  -12.45   -6.12   2     45.36\n'
+       '   0   0   0    0.00    0.00   0         0\n')
+  for rt in (hklf.fast_reader, hklf.simple_reader, hklf.python_reader):
+    try: r = rt(file_object=StringIO(s))
+    except RuntimeError: pass
+    else: raise Exception_expected
+
+  fast = hklf.fast_reader(file_object=StringIO(s), strict=False)
+  simple = hklf.simple_reader(file_object=StringIO(s), strict=False)
+  for r in (fast, simple):
+    assert list(r.indices()) == [ (1, 2, -1), (2, -3, 9), ]
+    assert approx_equal(r.data(), [23.34, -12.45, ])
+    assert approx_equal(r.sigmas(), [4.56, -6.12, ])
+    assert approx_equal(r.batch_numbers(), [1, 2, ])
+
+  s = ('   1   2  -1     23.      4.   1\n'
+       '  -2   1   3     -1.      3.   1\n'
+       '   0   0   0      0.      0.   0\n')
+  for rt in (hklf.fast_reader, hklf.simple_reader, hklf.python_reader):
+    r = rt(file_object=StringIO(s))
+    assert list(r.indices()) == [(1, 2, -1), (-2, 1, 3)]
+    assert approx_equal(r.data(), [23, -1])
+    assert approx_equal(r.sigmas(), [4, 3])
+
+  s = (
+"""King Arthur: [after Arthur's cut off both of the Black Knight's arms]
   Look, you stupid Bastard. You've got no arms left.
 Black Knight: Yes I have.
 King Arthur: *Look*!
 Black Knight: It's just a flesh wound.""")
-  f.close()
-  try: fast = hklf.reader(filename=filename)
-  except RuntimeError: pass
-  else: raise Exception_expected
+  for rt in (hklf.fast_reader, hklf.simple_reader, hklf.python_reader):
+    try: r = rt(file_object=StringIO(s))
+    except RuntimeError: pass
+    else: raise Exception_expected
 
-  try: fast = hklf.reader(filename=filename, strict=False)
-  except RuntimeError: pass
-  else: raise Exception_expected
+  for rt in (hklf.fast_reader, hklf.simple_reader):
+    try: r = rt(file_object=StringIO(s), strict=False)
+    except RuntimeError: pass
+    else: raise Exception_expected
 
 def run():
   exercise_fast_hkl_reading()
+  assert hklf.reader is hklf.fast_reader
   print "OK"
 
 if __name__ == '__main__':
