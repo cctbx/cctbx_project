@@ -49,43 +49,37 @@ def T_as_X(Tps):
 
 class featherstone_system_model(object):
 
-  def __init__(model, bodies):
-    model.NB = len(bodies)
-    model.pitch = []
-    model.parent =[]
-    model.Ttree = []
-    model.Xtree = []
-    model.I = []
+  def __init__(O, bodies):
+    O.bodies = bodies
     for B in bodies:
-      model.pitch.append(B.J)
-      model.parent.append(B.parent)
       if (B.parent == -1):
         Ttree = B.A.T0b
       else:
         Ttree = B.A.T0b * bodies[B.parent].A.Tb0
-      model.Ttree.append(Ttree)
-      model.Xtree.append(T_as_X(Ttree))
-      model.I.append(B.I)
+      B.Xtree = T_as_X(Ttree)
 
-def spatial_velocities_from_model(model, q, qd):
-  result = [None] * model.NB
-  Xup = [None] * model.NB
-  for i in xrange(model.NB):
-    XJ, S = model.pitch[i].Xj_S(q=q[i])
-    if (S is None):
-      vJ = qd[i]
-    else:
-      vJ = S*qd[i]
-    Xup[i] = XJ * model.Xtree[i]
-    if model.parent[i] == -1:
-      result[i] = vJ
-    else:
-      result[i] = Xup[i]*result[model.parent[i]] + vJ
-  return result
+  def Xup(O):
+    result = []
+    for B in O.bodies:
+      result.append(B.J.Xj * B.Xtree)
+    return result
 
-def e_kin_from_model(model, q, qd):
-  result = 0
-  for I_spatial,v_spatial in zip(
-        model.I, spatial_velocities_from_model(model, q, qd)):
-    result += kinetic_energy(I_spatial=I_spatial, v_spatial=v_spatial)
-  return result
+  def spatial_velocities(O, Xup, qd):
+    result = []
+    if (Xup is None): Xup = O.Xup()
+    for B,Xup_i,qd_i in zip(O.bodies, O.Xup(), qd):
+      if (B.J.S is None):
+        vJ = qd_i
+      else:
+        vJ = B.J.S * qd_i
+      if B.parent == -1:
+        result.append(vJ)
+      else:
+        result.append(Xup_i * result[B.parent] + vJ)
+    return result
+
+  def e_kin(O, qd, Xup=None):
+    result = 0
+    for B,v in zip(O.bodies, O.spatial_velocities(Xup=Xup, qd=qd)):
+      result += kinetic_energy(I_spatial=B.I, v_spatial=v)
+    return result

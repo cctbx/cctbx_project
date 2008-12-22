@@ -22,7 +22,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
 
   def set_points_and_lines(self, simulation_factory_index, n_zigzag):
     if (simulation_factory_index == 0):
-      self.sim = tst_molecules.simulation_zigzag(NB=n_zigzag)
+      self.sim = tst_molecules.simulation_zigzag(n_bodies=n_zigzag)
     else:
       self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
     self.points = flex.vec3_double()

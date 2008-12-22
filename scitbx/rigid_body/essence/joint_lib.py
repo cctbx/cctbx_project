@@ -29,9 +29,6 @@ class six_dof(object):
     O.Xj = T_as_X(O.Tps)
     O.S = None
 
-  def Xj_S(O, q):
-    return O.Xj, O.S
-
   def time_step_position(O, qd, delta_t):
     w_body_frame, v_body_frame = matrix.col_list([qd.elems[:3], qd.elems[3:]])
     qEd = RBDA_Eq_4_13(q=O.unit_quaternion) * w_body_frame
@@ -85,9 +82,6 @@ class spherical(object):
       0,0,0,
       0,0,0), n=(6,3))
 
-  def Xj_S(O, q):
-    return O.Xj, O.S
-
   def time_step_position(O, qd, delta_t):
     w_body_frame = qd
     d = d_unit_quaternion_d_qE_matrix(q=O.qE)
@@ -136,9 +130,6 @@ class revolute(object):
     O.Tsp = matrix.rt((O.E.transpose(), (0,0,0)))
     O.Xj = T_as_X(O.Tps)
     O.S = matrix.col((0,0,1,0,0,0))
-
-  def Xj_S(O, q):
-    return O.Xj, O.S
 
   def time_step_position(O, qd, delta_t):
     new_qE = O.qE + qd * delta_t
