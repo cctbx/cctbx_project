@@ -12,7 +12,7 @@
 
 void exercise_fortran_int() {
   using namespace iotbx::boost_spirit;
-  fortran_int_parser<int, /*Width=*/4> i4_p;
+  fortran_int_parser<int, /*Width=*/4, /*StrictWidth=*/false> i4_p;
   std::vector<std::string> input;
   typedef boost::optional<int> opt_t;
   std::vector<opt_t> output;
@@ -64,11 +64,23 @@ void exercise_fortran_int() {
     IOTBX_ASSERT(results[0] == 1234)(results[0]);
     IOTBX_ASSERT(results[1] == -567)(results[1]);
   }
+
+  fortran_int_parser<int, /*Width=*/5, /*StrictWidth=*/true> i5_p;
+  int i;
+  parse_info<> info;
+  info = parse("1", i5_p[assign_a(i)]);
+  IOTBX_ASSERT(!info.hit);
+  info = parse("   1", i5_p[assign_a(i)]);
+  IOTBX_ASSERT(!info.hit);
+  info = parse("    1", i5_p[assign_a(i)]);
+  IOTBX_ASSERT(info.hit);
+  IOTBX_ASSERT(i == 1);
 }
 
 void exercise_fortran_real_fixed() {
   using namespace iotbx::boost_spirit;
-  fortran_real_parser<double, /*Width=*/6, /*FracDigits=*/3> f63_p;
+  fortran_real_parser<
+    double, /*Width=*/6, /*FracDigits=*/3, /*StrictWidth=*/false> f63_p;
   std::vector<std::string> input;
   typedef boost::optional<double> opt_t;
   std::vector<opt_t> output;
@@ -90,6 +102,7 @@ void exercise_fortran_real_fixed() {
   input.push_back("16e-2"); output.push_back(16.e-5);
   input.push_back("16.-2"); output.push_back(0.16);
   input.push_back("16.e-2"); output.push_back(0.16);
+  input.push_back("   1.e"); output.push_back(opt_t());
   for (int i=0; i < input.size(); ++i) {
     opt_t res;
     parse_info<std::string::iterator> info = parse(
@@ -141,6 +154,18 @@ void exercise_fortran_real_fixed() {
     IOTBX_ASSERT(results[0] == -0.16)(results[0]);
     IOTBX_ASSERT(results[1] == 0.002)(results[1]);
   }
+
+  fortran_real_parser<
+    double, /*Width=*/5, /*FracDigits=*/1,/*StrictWidth=*/true> f5_1_p;
+  double x;
+  parse_info<> info;
+  info = parse("1.", f5_1_p[assign_a(x)]);
+  IOTBX_ASSERT(!info.hit);
+  info = parse("  1.", f5_1_p[assign_a(x)]);
+  IOTBX_ASSERT(!info.hit);
+  info = parse("   1.", f5_1_p[assign_a(x)]);
+  IOTBX_ASSERT(info.hit);
+  IOTBX_ASSERT(x == 1);
 }
 
 int main() {
