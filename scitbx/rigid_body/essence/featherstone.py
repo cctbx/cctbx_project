@@ -185,12 +185,12 @@ with all qd, qdd zero, but non-zero external forces.
       f[B.parent] += Xup[i].transpose() * f[i]
   return tau
 
-def FDab(model, qd, tau=None, f_ext=None, grav_accn=None):
+def FDab(model, tau=None, f_ext=None, grav_accn=None):
   """
 % FDab  Forward Dynamics via Articulated-Body Algorithm
-% FDab(model,qd,tau,f_ext,grav_accn) calculates the forward dynamics of a
-% kinematic tree via the articulated-body algorithm.  qd and tau are
-% vectors of joint velocity and force variables; and the return
+% FDab(model,tau,f_ext,grav_accn) calculates the forward dynamics of a
+% kinematic tree via the articulated-body algorithm.  tau is a
+% vector of force variables; and the return
 % value is a vector of joint acceleration variables.  f_ext is a cell array
 % specifying external forces acting on the bodies.  If f_ext == {} then
 % there are no external forces; otherwise, f_ext{i} is a spatial force
@@ -202,15 +202,15 @@ def FDab(model, qd, tau=None, f_ext=None, grav_accn=None):
   """
 
   Xup = model.Xup()
-  v = model.spatial_velocities(Xup=Xup, qd=qd)
+  v = model.spatial_velocities(Xup=Xup)
   c = [None] * len(Xup)
   IA = [None] * len(Xup)
   pA = [None] * len(Xup)
   for i,B in enumerate(model.bodies):
     if (B.J.S is None):
-      vJ = qd[i]
+      vJ = B.qd
     else:
-      vJ = B.J.S * qd[i]
+      vJ = B.J.S * B.qd
     if B.parent == -1:
       c[i] = matrix.col([0,0,0,0,0,0])
     else:

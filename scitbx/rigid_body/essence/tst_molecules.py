@@ -40,12 +40,9 @@ class simulation(object):
 
   def energies_and_accelerations_update(O):
     model = featherstone_system_model(bodies=O.bodies)
-    qd = [B.qd for B in O.bodies]
-    #
-    O.e_kin = model.e_kin(qd=qd)
+    O.e_kin = model.e_kin()
     O.e_pot_and_f_ext_update()
-    #
-    O.qdd = featherstone.FDab(model=model, qd=qd, tau=None, f_ext=O.f_ext_bf)
+    O.qdd = featherstone.FDab(model=model, tau=None, f_ext=O.f_ext_bf)
 
   def e_pot_and_f_ext_update(O):
     O.AJA_accu = []

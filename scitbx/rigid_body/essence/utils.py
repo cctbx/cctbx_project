@@ -64,22 +64,22 @@ class featherstone_system_model(object):
       result.append(B.J.Xj * B.Xtree)
     return result
 
-  def spatial_velocities(O, Xup, qd):
+  def spatial_velocities(O, Xup):
     result = []
     if (Xup is None): Xup = O.Xup()
-    for B,Xup_i,qd_i in zip(O.bodies, O.Xup(), qd):
+    for B,Xup_i in zip(O.bodies, O.Xup()):
       if (B.J.S is None):
-        vJ = qd_i
+        vJ = B.qd
       else:
-        vJ = B.J.S * qd_i
+        vJ = B.J.S * B.qd
       if B.parent == -1:
         result.append(vJ)
       else:
         result.append(Xup_i * result[B.parent] + vJ)
     return result
 
-  def e_kin(O, qd, Xup=None):
+  def e_kin(O, Xup=None):
     result = 0
-    for B,v in zip(O.bodies, O.spatial_velocities(Xup=Xup, qd=qd)):
+    for B,v in zip(O.bodies, O.spatial_velocities(Xup=Xup)):
       result += kinetic_energy(I_spatial=B.I, v_spatial=v)
     return result
