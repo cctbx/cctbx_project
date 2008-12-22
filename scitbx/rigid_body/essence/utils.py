@@ -71,7 +71,7 @@ def spatial_velocities_from_model(model, q, qd):
   result = [None] * model.NB
   Xup = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S = featherstone.jcalc( model.pitch[i], q[i] )
+    XJ, S = model.pitch[i].Xj_S(q=q[i])
     if (S is None):
       vJ = qd[i]
     else:

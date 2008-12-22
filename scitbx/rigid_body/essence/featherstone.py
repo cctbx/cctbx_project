@@ -118,34 +118,6 @@ def mcI(m, c, I):
     I + m*C*C.transpose(), m*C,
     m*C.transpose(), m*matrix.identity(3))).resolve_partitions()
 
-def jcalc(pitch, q):
-  """
-% jcalc  Calculate joint transform and motion subspace.
-% [Xj,S]=jcalc(pitch,q) calculates the joint transform and motion subspace
-% matrices for a revolute (pitch==0), prismatic (pitch==inf) or helical
-% (pitch==any other value) joint.  For revolute and helical joints, q is
-% the joint angle.  For prismatic joints, q is the linear displacement.
-  """
-  if (not isinstance(pitch, (int, float, InfType))):
-    return pitch.Xj_S(q=q)
-  if pitch == 0:                          # revolute joint
-    Xj = Xrotz(q)
-    S = matrix.col([0,0,1,0,0,0])
-  elif pitch == Inf:                      # prismatic joint
-    Xj = Xtrans([0,0,q])
-    S = matrix.col([0,0,0,0,0,1])
-  else:                                   # helical joint
-    Xj = Xrotz(q) * Xtrans([0,0,q*pitch])
-    S = matrix.col([0,0,1,0,0,pitch])
-  return Xj, S
-
-def grav_accn_as_a_grav(grav_accn):
-  if grav_accn is None:
-    return matrix.col([0,0,0,0,0,-9.81])
-  grav_accn = list(grav_accn)
-  assert len(grav_accn) == 3
-  return matrix.col([0,0,0]+grav_accn)
-
 def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
   """
 % ID  Inverse Dynamics via Recursive Newton-Euler Algorithm
@@ -159,10 +131,8 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
 % coordinates.  Empty cells in f_ext are interpreted as zero forces.
 % grav_accn is a 3D vector expressing the linear acceleration due to
 % gravity.  The arguments f_ext and grav_accn are optional, and default to
-% the values {} and [0,0,-9.81], respectively, if omitted.
+% the values {} and [0,0,0], respectively, if omitted.
   """
-
-  a_grav = grav_accn_as_a_grav(grav_accn)
 
   S = [None] * model.NB
   Xup = [None] * model.NB
@@ -170,7 +140,7 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
   a = [None] * model.NB
   f = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S[i] = jcalc( model.pitch[i], q[i] )
+    XJ, S[i] = model.pitch[i].Xj_S(q=q[i])
     if (S[i] is None):
       vJ = qd[i]
       aJ = qdd[i]
@@ -180,7 +150,9 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
       v[i] = vJ
-      a[i] = Xup[i] * -a_grav + aJ
+      a[i] = aJ
+      if (grav_accn is not None):
+        a[i] += Xup[i] * -grav_accn
     else:
       v[i] = Xup[i]*v[model.parent[i]] + vJ
       a[i] = Xup[i]*a[model.parent[i]] + aJ + crm(v[i])*vJ
@@ -199,7 +171,7 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
 
   return tau
 
-def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
+def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None):
   """
 % FDab  Forward Dynamics via Articulated-Body Algorithm
 % FDab(model,q,qd,tau,f_ext,grav_accn) calculates the forward dynamics of a
@@ -212,41 +184,32 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
 % coordinates.  Empty cells in f_ext are interpreted as zero forces.
 % grav_accn is a 3D vector expressing the linear acceleration due to
 % gravity.  The arguments f_ext and grav_accn are optional, and default to
-% the values {} and [0,0,-9.81], respectively, if omitted.
+% the values {} and [0,0,0], respectively, if omitted.
   """
-
-  a_grav = grav_accn_as_a_grav(grav_accn)
 
   S = [None] * model.NB
   Xup = [None] * model.NB
-  X0 = [None] * model.NB
   v = [None] * model.NB
   c = [None] * model.NB
   IA = [None] * model.NB
   pA = [None] * model.NB
   for i in xrange(model.NB):
-    XJ, S[i] = jcalc( model.pitch[i], q[i] )
+    XJ, S[i] = model.pitch[i].Xj_S(q=q[i])
     if (S[i] is None):
       vJ = qd[i]
     else:
       vJ = S[i]*qd[i]
     Xup[i] = XJ * model.Xtree[i]
     if model.parent[i] == -1:
-      X0[i] = Xup[i]
       v[i] = vJ
       c[i] = matrix.col([0,0,0,0,0,0])
     else:
-      X0[i] = Xup[i] * X0[model.parent[i]]
       v[i] = Xup[i]*v[model.parent[i]] + vJ
       c[i] = crm(v[i]) * vJ
     IA[i] = model.I[i]
     pA[i] = crf(v[i]) * model.I[i] * v[i]
-    if (0): print "X0s fea:", X0[i].inverse().transpose().elems
     if (f_ext is not None and f_ext[i] is not None):
-      if (not f_ext_in_ff):
-        pA[i] = pA[i] - f_ext[i]
-      else:
-        pA[i] = pA[i] - X0[i].inverse().transpose() * f_ext[i]
+      pA[i] = pA[i] - f_ext[i]
 
   U = [None] * model.NB
   d_inv = [None] * model.NB
@@ -279,7 +242,9 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None, f_ext_in_ff=False):
   qdd = [None] * model.NB
   for i in xrange(model.NB):
     if model.parent[i] == -1:
-      a[i] = Xup[i] * -a_grav + c[i]
+      a[i] = c[i]
+      if (grav_accn is not None):
+        a[i] += Xup[i] * -grav_accn
     else:
       a[i] = Xup[i] * a[model.parent[i]] + c[i]
     qdd[i] = d_inv[i] * (u[i] - U[i].transpose()*a[i])
