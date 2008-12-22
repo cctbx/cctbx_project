@@ -1,68 +1,109 @@
-#ifndef IOTBX_SHELX_HKLF_H
-#define IOTBX_SHELX_HKLF_H
+#ifndef IOTBX_SHELX_HKLF_SPIRIT_H
+#define IOTBX_SHELX_HKLF_SPIRIT_H
 
-#include <cctbx/miller.h>
 #include <scitbx/array_family/shared.h>
-#include <boost/algorithm/string.hpp>
-#include <string>
-#include <fstream>
-#include <cstdlib>
+#include <cctbx/miller.h>
+#ifdef IOTBX_SHELX_HKLF_SPIRIT_DEBUG
+  #define BOOST_SPIRIT_DEBUG
+#endif
+#include <iotbx/boost_spirit/fortran_numerics.h>
+#include <boost/spirit/include/classic_core.hpp>
+#include <boost/spirit/include/classic_if.hpp>
+#include <boost/spirit/include/classic_assign_actor.hpp>
+#include <boost/spirit/include/classic_push_back_actor.hpp>
 
 namespace iotbx { namespace shelx {
 
-  class fast_hklf_reader
-  {
-    public:
-      typedef cctbx::miller::index<> miller_t;
+class hklf_reader
+{
+  public:
+    typedef char char_t;
+    typedef cctbx::miller::index<> miller_t;
 
-          fast_hklf_reader(scitbx::af::shared<std::string> lines, bool strict=true)
-      {
-                const miller_t end_hkl(0, 0, 0);
-        typedef std::string::size_type index_t;
-        std::runtime_error not_hklf_error("Not a SHELX hklf file.");
-        for (std::size_t i = 0; i != lines.size(); i++) {
-          std::string &line = lines[i];
-                  miller_t hkl;
-          boost::trim_right(line);
-          if (line.size() == 0) break;
-          if (line.size() < 28) throw not_hklf_error;
-          if (strict && line.size() > 32) throw not_hklf_error;
-          /*if (!boost::all(line, boost::is_any_of("+-.")
-               || boost::is_digit()
-               || boost::is_space()))
-          {
-            throw not_hklf_error;
-          }*/
-          for (index_t i = 0; i != 3; i++) {
-            hkl[i] = std::atoi(line.substr(i*4, 4).c_str());
-          }
-          double datum = std::atof(line.substr(12, 8).c_str());
-          double sigma = std::atof(line.substr(20, 8).c_str());
-          if (hkl == end_hkl) break;
-          indices_.push_back(hkl);
-          data_.push_back(datum);
-          sigmas_.push_back(sigma);
-          if (line.size() > 28) {
-            int extra = std::atoi(line.substr(28, 4).c_str());
-            extras_.push_back(extra);
-          }
-        }
-        if (indices_.size() == 0) throw std::runtime_error(
-          "No data in SHELX hklf file.");
+    template <class IteratorType>
+    hklf_reader(IteratorType const &first, IteratorType const &last,
+                bool strict=true) {
+      init(first, last, strict);
+    }
+
+    hklf_reader(std::string const &content, bool strict) {
+      init(content.begin(), content.end(), strict);
+    }
+
+    template <class IteratorType>
+    void init(IteratorType const &first, IteratorType const &last, bool strict)
+    {
+      using namespace iotbx::boost_spirit;
+      typedef scanner<IteratorType> scanner_t;
+      typedef rule<scanner_t> rule_t;
+      typedef typename miller_t::value_type index_t;
+
+      fortran_int_parser<int, /*Width=*/4, /*StrictWidth=*/true> i4_p;
+      fortran_real_parser<
+        double, /*Width=*/8, /*FracDigits=*/2, /*StrictWidth=*/true> f8_2_p;
+
+      miller_t h;
+      subrule<0> hkl;
+      subrule<1> datum;
+      subrule<2> sigma;
+      subrule<3> extra;
+      subrule<4> perhaps_more;
+      subrule<5> strict_line;
+      subrule<6> line;
+      subrule<7> content;
+      loose_t loose(!strict);
+      rule_t start = (
+        content = +line,
+        line = strict_line >> perhaps_more,
+        strict_line = hkl >> datum >> sigma >> !extra,
+        hkl = (    i4_p[ assign_a(h[0]) ]
+                >> i4_p[ assign_a(h[1]) ]
+                >> i4_p[ assign_a(h[2]) ]
+              )[ push_back_a(indices_, h) ],
+        datum  = f8_2_p[ push_back_a(data_) ],
+        sigma  = f8_2_p[ push_back_a(sigmas_) ],
+        extra  = i4_p[ push_back_a(extra_) ],
+        perhaps_more = if_p(loose)[*(anychar_p - eol_p) >> eol_p].else_p[eol_p]
+      );
+      #ifdef IOTBX_SHELX_HKLF_SPIRIT_DEBUG
+        BOOST_SPIRIT_DEBUG_RULE(start);
+      #endif
+
+      parse_info<IteratorType> info = parse(first, last, start);
+      std::runtime_error not_hklf("Not a SHELX hklf file.");
+      std::runtime_error empty_hklf("No data in SHELX hklf file.");
+      if (!info.full) throw not_hklf;
+      std::size_t n = indices_.size();
+      if (n > 0 && indices_[n-1].is_zero()) {
+        indices_.pop_back();
+        if (data_.size()  == n) data_.pop_back();
+        if (sigmas_.size() == n) sigmas_.pop_back();
+        if (extra_.size() == n) extra_.pop_back();
       }
+      if (indices_.size() == 0) throw empty_hklf;
+    }
 
-      scitbx::af::shared<miller_t> indices() { return indices_; }
-      scitbx::af::shared<double> data() { return data_; }
-      scitbx::af::shared<double> sigmas() { return sigmas_; }
-      scitbx::af::shared<int> alphas() { return extras_; }
-      scitbx::af::shared<int> batch_numbers() { return extras_; }
+    scitbx::af::shared<miller_t> indices() { return indices_; };
 
-    private:
-      scitbx::af::shared<miller_t> indices_;
-      scitbx::af::shared<double> data_, sigmas_;
-      scitbx::af::shared<int> extras_;
-  };
+    scitbx::af::shared<double> data() { return data_; }
 
-}} //iotbx::shelx
+    scitbx::af::shared<double> sigmas() { return sigmas_; }
 
-#endif
+    scitbx::af::shared<int> alphas() { return extra_; }
+
+    scitbx::af::shared<int> batch_numbers() { return extra_; }
+
+  private:
+    struct loose_t {
+      loose_t(bool b) : flag(b) {}
+      bool operator()() const { return flag; }
+      bool flag;
+    };
+    scitbx::af::shared<miller_t> indices_;
+    scitbx::af::shared<double> data_, sigmas_;
+    scitbx::af::shared<int> extra_; // batch numbers or phases
+};
+
+}} // iotbx::shelx
+
+#endif // GUARD
