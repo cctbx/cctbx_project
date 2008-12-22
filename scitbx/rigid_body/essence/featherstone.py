@@ -167,6 +167,24 @@ def ID(model, qd, qdd, f_ext=None, grav_accn=None):
 
   return tau
 
+def ID0(model, f_ext):
+  """
+Simplified Inverse Dynamics via Recursive Newton-Euler Algorithm,
+with all qd, qdd zero, but non-zero external forces.
+  """
+  Xup = model.Xup()
+  f = [-e for e in f_ext]
+  tau = [None] * len(f)
+  for i in xrange(len(f)-1,-1,-1):
+    B = model.bodies[i]
+    if (B.J.S is None):
+      tau[i] = f[i]
+    else:
+      tau[i] = B.J.S.transpose() * f[i]
+    if B.parent != -1:
+      f[B.parent] += Xup[i].transpose() * f[i]
+  return tau
+
 def FDab(model, qd, tau=None, f_ext=None, grav_accn=None):
   """
 % FDab  Forward Dynamics via Articulated-Body Algorithm
