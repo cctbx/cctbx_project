@@ -75,9 +75,7 @@ class simulation(object):
 
   def d_pot_d_q(O):
     model = featherstone_system_model(bodies=O.bodies)
-    qd = [B.J.qd_zero for B in O.bodies]
-    qdd = [B.J.qdd_zero for B in O.bodies]
-    taus = featherstone.ID(model=model, qd=qd, qdd=qdd, f_ext=O.f_ext_bf)
+    taus = featherstone.ID0(model=model, f_ext=O.f_ext_bf)
     result = []
     for B,tau in zip(O.bodies, taus):
       tau_as_d_pot_d_q = getattr(B.J, "tau_as_d_pot_d_q", None)
