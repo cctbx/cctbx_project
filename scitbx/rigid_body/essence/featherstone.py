@@ -118,12 +118,12 @@ def mcI(m, c, I):
     I + m*C*C.transpose(), m*C,
     m*C.transpose(), m*matrix.identity(3))).resolve_partitions()
 
-def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
+def ID(model, qd, qdd, f_ext=None, grav_accn=None):
   """
 % ID  Inverse Dynamics via Recursive Newton-Euler Algorithm
-% ID(model,q,qd,qdd,f_ext,grav_accn) calculates the inverse dynamics of a
-% kinematic tree via the recursive Newton-Euler algorithm.  q, qd and qdd
-% are vectors of joint position, velocity and acceleration variables; and
+% ID(model,qd,qdd,f_ext,grav_accn) calculates the inverse dynamics of a
+% kinematic tree via the recursive Newton-Euler algorithm.  qd and qdd
+% are vectors of joint velocity and acceleration variables; and
 % the return value is a vector of joint force variables.  f_ext is a cell
 % array specifying external forces acting on the bodies.  If f_ext == {}
 % then there are no external forces; otherwise, f_ext{i} is a spatial force
@@ -134,49 +134,45 @@ def ID(model, q, qd, qdd, f_ext=None, grav_accn=None):
 % the values {} and [0,0,0], respectively, if omitted.
   """
 
-  S = [None] * model.NB
-  Xup = [None] * model.NB
-  v = [None] * model.NB
-  a = [None] * model.NB
-  f = [None] * model.NB
-  for i in xrange(model.NB):
-    XJ, S[i] = model.pitch[i].Xj_S(q=q[i])
-    if (S[i] is None):
+  Xup = model.Xup()
+  v = model.spatial_velocities(Xup=Xup, qd=qd)
+  a = [None] * len(Xup)
+  f = [None] * len(Xup)
+  for i,B in enumerate(model.bodies):
+    if (B.J.S is None):
       vJ = qd[i]
       aJ = qdd[i]
     else:
-      vJ = S[i]*qd[i]
-      aJ = S[i]*qdd[i]
-    Xup[i] = XJ * model.Xtree[i]
-    if model.parent[i] == -1:
-      v[i] = vJ
+      vJ = B.J.S * qd[i]
+      aJ = B.J.S * qdd[i]
+    if B.parent == -1:
       a[i] = aJ
       if (grav_accn is not None):
         a[i] += Xup[i] * -grav_accn
     else:
-      v[i] = Xup[i]*v[model.parent[i]] + vJ
-      a[i] = Xup[i]*a[model.parent[i]] + aJ + crm(v[i])*vJ
-    f[i] = model.I[i]*a[i] + crf(v[i])*model.I[i]*v[i]
+      a[i] = Xup[i] * a[B.parent] + aJ + crm(v[i]) * vJ
+    f[i] = B.I * a[i] + crf(v[i]) * B.I * v[i]
     if (f_ext is not None and f_ext[i] is not None):
       f[i] = f[i] - f_ext[i]
 
-  tau = [None] * model.NB
-  for i in xrange(model.NB-1,-1,-1):
-    if (S[i] is None):
+  tau = [None] * len(Xup)
+  for i in xrange(len(Xup)-1,-1,-1):
+    B = model.bodies[i]
+    if (B.J.S is None):
       tau[i] = f[i]
     else:
-      tau[i] = S[i].transpose() * f[i]
-    if model.parent[i] != -1:
-      f[model.parent[i]] = f[model.parent[i]] + Xup[i].transpose()*f[i]
+      tau[i] = B.J.S.transpose() * f[i]
+    if B.parent != -1:
+      f[B.parent] = f[B.parent] + Xup[i].transpose() * f[i]
 
   return tau
 
-def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None):
+def FDab(model, qd, tau=None, f_ext=None, grav_accn=None):
   """
 % FDab  Forward Dynamics via Articulated-Body Algorithm
-% FDab(model,q,qd,tau,f_ext,grav_accn) calculates the forward dynamics of a
-% kinematic tree via the articulated-body algorithm.  q, qd and tau are
-% vectors of joint position, velocity and force variables; and the return
+% FDab(model,qd,tau,f_ext,grav_accn) calculates the forward dynamics of a
+% kinematic tree via the articulated-body algorithm.  qd and tau are
+% vectors of joint velocity and force variables; and the return
 % value is a vector of joint acceleration variables.  f_ext is a cell array
 % specifying external forces acting on the bodies.  If f_ext == {} then
 % there are no external forces; otherwise, f_ext{i} is a spatial force
@@ -187,35 +183,31 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None):
 % the values {} and [0,0,0], respectively, if omitted.
   """
 
-  S = [None] * model.NB
-  Xup = [None] * model.NB
-  v = [None] * model.NB
-  c = [None] * model.NB
-  IA = [None] * model.NB
-  pA = [None] * model.NB
-  for i in xrange(model.NB):
-    XJ, S[i] = model.pitch[i].Xj_S(q=q[i])
-    if (S[i] is None):
+  Xup = model.Xup()
+  v = model.spatial_velocities(Xup=Xup, qd=qd)
+  c = [None] * len(Xup)
+  IA = [None] * len(Xup)
+  pA = [None] * len(Xup)
+  for i,B in enumerate(model.bodies):
+    if (B.J.S is None):
       vJ = qd[i]
     else:
-      vJ = S[i]*qd[i]
-    Xup[i] = XJ * model.Xtree[i]
-    if model.parent[i] == -1:
-      v[i] = vJ
+      vJ = B.J.S * qd[i]
+    if B.parent == -1:
       c[i] = matrix.col([0,0,0,0,0,0])
     else:
-      v[i] = Xup[i]*v[model.parent[i]] + vJ
       c[i] = crm(v[i]) * vJ
-    IA[i] = model.I[i]
-    pA[i] = crf(v[i]) * model.I[i] * v[i]
+    IA[i] = B.I
+    pA[i] = crf(v[i]) * B.I * v[i]
     if (f_ext is not None and f_ext[i] is not None):
       pA[i] = pA[i] - f_ext[i]
 
-  U = [None] * model.NB
-  d_inv = [None] * model.NB
-  u = [None] * model.NB
-  for i in xrange(model.NB-1,-1,-1):
-    if (S[i] is None):
+  U = [None] * len(Xup)
+  d_inv = [None] * len(Xup)
+  u = [None] * len(Xup)
+  for i in xrange(len(Xup)-1,-1,-1):
+    B = model.bodies[i]
+    if (B.J.S is None):
       U[i] = IA[i]
       d = U[i]
       if (tau is None or tau[i] is None):
@@ -223,34 +215,32 @@ def FDab(model, q, qd, tau=None, f_ext=None, grav_accn=None):
       else:
         u[i] = tau[i] - pA[i]
     else:
-      U[i] = IA[i] * S[i]
-      d = S[i].transpose() * U[i]
+      U[i] = IA[i] * B.J.S
+      d = B.J.S.transpose() * U[i]
       if (tau is None or tau[i] is None):
-        u[i] =        - S[i].transpose()*pA[i]
+        u[i] =        - B.J.S.transpose() * pA[i]
       else:
-        u[i] = tau[i] - S[i].transpose()*pA[i]
+        u[i] = tau[i] - B.J.S.transpose() * pA[i]
     d_inv[i] = generalized_inverse(d)
-    if model.parent[i] != -1:
+    if B.parent != -1:
       Ia = IA[i] - U[i] * d_inv[i] * U[i].transpose()
       pa = pA[i] + Ia*c[i] + U[i] * d_inv[i] * u[i]
-      IA[model.parent[i]] = IA[model.parent[i]] \
-                          + Xup[i].transpose() * Ia * Xup[i]
-      pA[model.parent[i]] = pA[model.parent[i]] \
-                          + Xup[i].transpose() * pa
+      IA[B.parent] = IA[B.parent] + Xup[i].transpose() * Ia * Xup[i]
+      pA[B.parent] = pA[B.parent] + Xup[i].transpose() * pa
 
-  a = [None] * model.NB
-  qdd = [None] * model.NB
-  for i in xrange(model.NB):
-    if model.parent[i] == -1:
+  a = [None] * len(Xup)
+  qdd = [None] * len(Xup)
+  for i,B in enumerate(model.bodies):
+    if B.parent == -1:
       a[i] = c[i]
       if (grav_accn is not None):
         a[i] += Xup[i] * -grav_accn
     else:
-      a[i] = Xup[i] * a[model.parent[i]] + c[i]
+      a[i] = Xup[i] * a[B.parent] + c[i]
     qdd[i] = d_inv[i] * (u[i] - U[i].transpose()*a[i])
-    if (S[i] is None):
+    if (B.J.S is None):
       a[i] = a[i] + qdd[i]
     else:
-      a[i] = a[i] + S[i]*qdd[i]
+      a[i] = a[i] + B.J.S * qdd[i]
 
   return qdd

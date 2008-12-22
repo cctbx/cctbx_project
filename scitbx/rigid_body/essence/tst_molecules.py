@@ -2,7 +2,6 @@ from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import joint_lib
 from scitbx.rigid_body.essence.utils import \
   spatial_inertia_from_sites, \
-  e_kin_from_model, \
   featherstone_system_model
 import scitbx.math
 from scitbx.array_family import flex
@@ -41,14 +40,12 @@ class simulation(object):
 
   def energies_and_accelerations_update(O):
     model = featherstone_system_model(bodies=O.bodies)
-    q = [None]*len(O.bodies)
     qd = [B.qd for B in O.bodies]
     #
-    O.e_kin = e_kin_from_model(model, q, qd)
+    O.e_kin = model.e_kin(qd=qd)
     O.e_pot_and_f_ext_update()
     #
-    tau = None
-    O.qdd = featherstone.FDab(model, q, qd, tau, O.f_ext_bf)
+    O.qdd = featherstone.FDab(model=model, qd=qd, tau=None, f_ext=O.f_ext_bf)
 
   def e_pot_and_f_ext_update(O):
     O.AJA_accu = []
@@ -78,10 +75,9 @@ class simulation(object):
 
   def d_pot_d_q(O):
     model = featherstone_system_model(bodies=O.bodies)
-    q = [None]*len(O.bodies)
     qd = [B.J.qd_zero for B in O.bodies]
     qdd = [B.J.qdd_zero for B in O.bodies]
-    taus = featherstone.ID(model, q, qd, qdd, O.f_ext_bf)
+    taus = featherstone.ID(model=model, qd=qd, qdd=qdd, f_ext=O.f_ext_bf)
     result = []
     for B,tau in zip(O.bodies, taus):
       tau_as_d_pot_d_q = getattr(B.J, "tau_as_d_pot_d_q", None)
@@ -209,7 +205,7 @@ class revolute_body(object):
     O.J = joint_lib.revolute(qE=matrix.col([0]))
     O.qd = O.J.qd_zero
 
-def simulation_zigzag(NB=5):
+def simulation_zigzag(n_bodies=5):
   mersenne_twister = flex.mersenne_twister(seed=0)
   body = six_dof_body(
     labels=["00", "01", "02"],
@@ -225,7 +221,7 @@ def simulation_zigzag(NB=5):
   vr = matrix.col((0,1,0))
   v = vu
   pivot = matrix.col((0,0,0))
-  for ib in xrange(1,NB):
+  for ib in xrange(1,n_bodies):
     body = revolute_body(
       labels=[str(ib)],
       sites=[pivot + v*0.5],
