@@ -1,5 +1,5 @@
-from scitbx.rigid_body.essence import featherstone
-from scitbx import matrix
+import featherstone
+matrix = featherstone.matrix
 
 def center_of_mass_from_sites(sites):
   assert len(sites) != 0
