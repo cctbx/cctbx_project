@@ -1,6 +1,5 @@
-from scitbx.rigid_body.essence.featherstone import T_as_X
-from scitbx.rigid_body.essence.utils import center_of_mass_from_sites
-from scitbx import matrix
+from featherstone import matrix, T_as_X
+from utils import center_of_mass_from_sites
 import math
 
 class six_dof_alignment(object):

@@ -372,6 +372,7 @@ scitbx/rigid_body/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/essence/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/essence/featherstone.py svneol=native#text/x-python
 scitbx/rigid_body/essence/joint_lib.py svneol=native#text/x-python
+scitbx/rigid_body/essence/tst_basic.py svneol=native#text/x-python
 scitbx/rigid_body/essence/tst_molecules.py svneol=native#text/x-python
 scitbx/rigid_body/essence/utils.py svneol=native#text/x-python
 scitbx/rigid_body/essence/wx_molecules.py svneol=native#text/x-python

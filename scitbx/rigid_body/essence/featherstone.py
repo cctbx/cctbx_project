@@ -126,10 +126,7 @@ class system_model(object):
       B.Xtree = T_as_X(Ttree)
 
   def Xup(O):
-    result = []
-    for B in O.bodies:
-      result.append(B.J.Xj * B.Xtree)
-    return result
+    return [B.J.Xj * B.Xtree for B in O.bodies]
 
   def spatial_velocities(O, Xup):
     result = []
@@ -151,37 +148,37 @@ class system_model(object):
       result += kinetic_energy(I_spatial=B.I, v_spatial=v)
     return result
 
-  def ID(O, qd, qdd, f_ext=None, grav_accn=None):
+  def ID(O, qdd, f_ext=None, grav_accn=None):
     """
 % ID  Inverse Dynamics via Recursive Newton-Euler Algorithm
-% ID(qd,qdd,f_ext,grav_accn) calculates the inverse dynamics of a
-% kinematic tree via the recursive Newton-Euler algorithm.  qd and qdd
-% are vectors of joint velocity and acceleration variables; and
+% ID(qdd,f_ext,grav_accn) calculates the inverse dynamics of a
+% kinematic tree via the recursive Newton-Euler algorithm.  qdd
+% is a vector of joint acceleration variables; and
 % the return value is a vector of joint force variables.  f_ext is a cell
 % array specifying external forces acting on the bodies.  If f_ext == {}
 % then there are no external forces; otherwise, f_ext{i} is a spatial force
 % vector giving the force acting on body i, expressed in body i
 % coordinates.  Empty cells in f_ext are interpreted as zero forces.
-% grav_accn is a 3D vector expressing the linear acceleration due to
+% grav_accn is a 6D vector expressing the linear acceleration due to
 % gravity.  The arguments f_ext and grav_accn are optional, and default to
-% the values {} and [0,0,0], respectively, if omitted.
+% the values {} and [0,0,0,0,0,0], respectively, if omitted.
     """
 
     Xup = O.Xup()
-    v = O.spatial_velocities(Xup=Xup, qd=qd)
+    v = O.spatial_velocities(Xup=Xup)
     a = [None] * len(Xup)
     f = [None] * len(Xup)
     for i,B in enumerate(O.bodies):
       if (B.J.S is None):
-        vJ = qd[i]
+        vJ = B.qd
         aJ = qdd[i]
       else:
-        vJ = B.J.S * qd[i]
+        vJ = B.J.S * B.qd
         aJ = B.J.S * qdd[i]
       if B.parent == -1:
         a[i] = aJ
         if (grav_accn is not None):
-          a[i] += Xup[i] * -grav_accn
+          a[i] += Xup[i] * (-grav_accn)
       else:
         a[i] = Xup[i] * a[B.parent] + aJ + crm(v[i]) * vJ
       f[i] = B.I * a[i] + crf(v[i]) * B.I * v[i]
@@ -233,9 +230,9 @@ class system_model(object):
 % there are no external forces; otherwise, f_ext{i} is a spatial force
 % vector giving the force acting on body i, expressed in body i
 % coordinates.  Empty cells in f_ext are interpreted as zero forces.
-% grav_accn is a 3D vector expressing the linear acceleration due to
+% grav_accn is a 6D vector expressing the linear acceleration due to
 % gravity.  The arguments f_ext and grav_accn are optional, and default to
-% the values {} and [0,0,0], respectively, if omitted.
+% the values {} and [0,0,0,0,0,0], respectively, if omitted.
     """
 
     Xup = O.Xup()
@@ -289,7 +286,7 @@ class system_model(object):
       if B.parent == -1:
         a[i] = c[i]
         if (grav_accn is not None):
-          a[i] += Xup[i] * -grav_accn
+          a[i] += Xup[i] * (-grav_accn)
       else:
         a[i] = Xup[i] * a[B.parent] + c[i]
       qdd[i] = d_inv[i] * (u[i] - U[i].transpose()*a[i])
