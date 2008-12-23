@@ -69,16 +69,8 @@ class simulation(object):
     O.energies_and_accelerations_update()
 
   def d_pot_d_q(O):
-    model = featherstone.system_model(bodies=O.bodies)
-    taus = model.ID0(f_ext=O.f_ext_bf)
-    result = []
-    for B,tau in zip(O.bodies, taus):
-      tau_as_d_pot_d_q = getattr(B.J, "tau_as_d_pot_d_q", None)
-      if (tau_as_d_pot_d_q is None):
-        result.append(tau)
-      else:
-        result.append(tau_as_d_pot_d_q(tau=tau))
-    return result
+    return featherstone.system_model(bodies=O.bodies).d_pot_d_q(
+      f_ext=O.f_ext_bf)
 
   def d_pot_d_q_via_finite_differences(O, eps=1.e-6):
     result = []

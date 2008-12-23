@@ -137,6 +137,9 @@ class revolute(object):
   def time_step_velocity(O, qd, qdd, delta_t):
     return qd + qdd * delta_t
 
+  def tau_as_d_pot_d_q(O, tau):
+    return tau
+
   def get_q(O):
     return O.qE.elems
 

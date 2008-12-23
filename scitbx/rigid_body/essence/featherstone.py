@@ -218,6 +218,10 @@ class system_model(object):
         f[B.parent] += Xup[i].transpose() * f[i]
     return tau
 
+  def d_pot_d_q(O, f_ext):
+    return [B.J.tau_as_d_pot_d_q(tau=tau)
+      for B,tau in zip(O.bodies, O.ID0(f_ext=f_ext))]
+
   def FDab(O, tau=None, f_ext=None, grav_accn=None):
     """
 % FDab  Forward Dynamics via Articulated-Body Algorithm
