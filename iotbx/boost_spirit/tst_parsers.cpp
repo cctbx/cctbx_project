@@ -64,17 +64,18 @@ void exercise_fortran_int() {
     IOTBX_ASSERT(results[0] == 1234)(results[0]);
     IOTBX_ASSERT(results[1] == -567)(results[1]);
   }
-
-  fortran_int_parser<int, /*Width=*/5, /*StrictWidth=*/true> i5_p;
-  int i;
-  parse_info<> info;
-  info = parse("1", i5_p[assign_a(i)]);
-  IOTBX_ASSERT(!info.hit);
-  info = parse("   1", i5_p[assign_a(i)]);
-  IOTBX_ASSERT(!info.hit);
-  info = parse("    1", i5_p[assign_a(i)]);
-  IOTBX_ASSERT(info.hit);
-  IOTBX_ASSERT(i == 1);
+  {
+    fortran_int_parser<int, /*Width=*/5, /*StrictWidth=*/true> i5_p;
+    int i;
+    parse_info<> info;
+    info = parse("1", i5_p[assign_a(i)]);
+    IOTBX_ASSERT(!info.hit);
+    info = parse("   1", i5_p[assign_a(i)]);
+    IOTBX_ASSERT(!info.hit);
+    info = parse("    1", i5_p[assign_a(i)]);
+    IOTBX_ASSERT(info.hit);
+    IOTBX_ASSERT(i == 1);
+  }
 }
 
 void exercise_fortran_real_fixed() {
