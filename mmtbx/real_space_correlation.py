@@ -248,12 +248,6 @@ How to use:
     print "*"*79
     return
   else :
-    show_graphs = False
-    if len(args) > 1 :
-      if args[0] == "--graph" or args[0] == "--gui" or args[0] == "-g" :
-        show_graphs = True
-      else :
-        raise Sorry("Usage: phenix.real_space_correlation [-g] parameters.txt")
     arg = args[-1]
     if(not os.path.isfile(arg)):
       raise Sorry("%s is not a file."%arg)
@@ -274,10 +268,9 @@ How to use:
       print "*"*79
       raise Sorry("Fix parameters file and run again.")
       print
-    run(params = params.extract(), graph_results=show_graphs)
+    run(params = params.extract())
 
-def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
-    return_residue_listing=False):
+def run(params, d_min_default=1.5, d_max_default=999.9) :
   # check for crystal_symmetry
   crystal_symmetry = extract_crystal_symmetry(params = params)
   # read in the PDB files
@@ -442,17 +435,6 @@ def run(params, d_min_default=1.5, d_max_default=999.9, graph_results=False,
       pdb_hierarchy, show = True)
   compute_map_cc_result.overall_correlation_min_max_standard_deviation(
     show = True)
-  if graph_results :
-    try :
-      from wxGUI2.Plot import show_residue_properties_chart
-      residue_stats = []
-      for i, res_ in enumerate(result) :
-        residue_stats.append([(res_.chain, res_.residue_id), res_.cc])
-      show_residue_properties_chart(residue_stats, ["Real-space CC"])
-    except ImportError :
-      raise Sorry("Graphical interface not enabled.")
-  elif return_residue_listing :
-    return result
 
 class compute_map_cc(object):
 

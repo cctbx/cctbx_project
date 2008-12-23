@@ -56,6 +56,7 @@ class _stdout_pipe (object) :
 
   def write (self, data) :
     self._data += data
+    self.flush() # this needs to be done immediately for some reason
 
   def flush (self) :
     self._flush()
@@ -75,6 +76,9 @@ class _stdout_buffered_pipe (_stdout_pipe) :
   def __init__ (self, *args, **kwds) :
     _stdout_pipe.__init__(self, *args, **kwds)
     self._last_t = time.time()
+
+  def write (self, data) :
+    self._data += data
 
   def flush (self) :
     t = time.time()

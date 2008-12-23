@@ -1,4 +1,5 @@
 from __future__ import generators
+import cStringIO
 import sys
 
 def format_none(format, null_value=0):
@@ -128,9 +129,24 @@ class line_feeder(object):
       if (self.eof or len(result.strip()) != 0):
         return result
 
+# cStringIO with pickling support
+class StringIO (object) :
+  def __init__ (self, *args, **kwds) :
+    self._buffer = cStringIO.StringIO(*args, **kwds)
+
+  def __getattr__ (self, *args, **kwds) :
+    return getattr(self._buffer, *args, **kwds)
+
+  def __getstate__ (self) :
+    return self._buffer.getvalue()
+
+  def __setstate__ (self, state) :
+    self.__init__()
+    self._buffer.write(state)
+
 def exercise():
   from libtbx.test_utils import show_diff
-  from cStringIO import StringIO
+  import cPickle
   assert size_as_string_with_commas(0) == "0"
   assert size_as_string_with_commas(1) == "1"
   assert size_as_string_with_commas(-1) == "-1"
@@ -159,7 +175,7 @@ hello
 world""", suffix=" ", rstrip=False) == """\
 ^hello%s
 ^world """ % " "
-  out = StringIO()
+  out = cStringIO.StringIO()
   assert show_sorted_by_counts(
     label_count_pairs=[("b", 3), ("a", 3), ("c", -2)],
     out=out, prefix="%")
@@ -168,7 +184,7 @@ world""", suffix=" ", rstrip=False) == """\
 %"b"  3
 %"c" -2
 """)
-  out = StringIO()
+  out = cStringIO.StringIO()
   assert show_sorted_by_counts(
     label_count_pairs=[("b", -3), ("a", -3), ("c", 2)], reverse=False,
      out=out, prefix="%", annotations=[None, "", "x"])
@@ -186,6 +202,12 @@ world""", suffix=" ", rstrip=False) == """\
     ("this is a very long sentence indeed",
       ["this is", "a very", "long", "sentence", "indeed"])]:
     assert [block for block in line_breaker(string, width=7)]==expected_result
+  out1 = cStringIO.StringIO()
+  out2 = StringIO()
+  print >> out1, "Hello world!"
+  print >> out2, "Hello world!"
+  out3 = cPickle.loads(cPickle.dumps(out2))
+  assert out3.getvalue() == out1.getvalue() == out2.getvalue()
   print "OK"
 
 if (__name__ == "__main__"):
