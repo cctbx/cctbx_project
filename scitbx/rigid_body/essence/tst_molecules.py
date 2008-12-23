@@ -1,6 +1,6 @@
 from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import joint_lib
-from scitbx.rigid_body.essence.utils import spatial_inertia_from_sites
+from scitbx.rigid_body.essence import utils
 import scitbx.math
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -166,8 +166,9 @@ class six_dof_body(object):
     O.labels = labels
     O.sites = sites
     O.bonds = bonds
-    O.A = joint_lib.six_dof_alignment(sites=O.sites)
-    O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
+    O.A = joint_lib.six_dof_alignment(
+      center_of_mass=utils.center_of_mass_from_sites(sites=sites))
+    O.I = utils.spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
     #
     O.wells = shift_gently(sites=O.sites, mersenne_twister=mersenne_twister)
     #
@@ -183,7 +184,7 @@ class revolute_body(object):
     O.sites = sites
     O.bonds = bonds
     O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.I = spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
+    O.I = utils.spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
     #
     O.wells = shift_gently(sites=O.sites, mersenne_twister=mersenne_twister)
     #

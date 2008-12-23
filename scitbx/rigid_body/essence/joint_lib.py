@@ -1,11 +1,10 @@
 from featherstone import matrix, T_as_X
-from utils import center_of_mass_from_sites
 import math
 
 class six_dof_alignment(object):
 
-  def __init__(O, sites):
-    O.pivot = center_of_mass_from_sites(sites=sites)
+  def __init__(O, center_of_mass):
+    O.pivot = center_of_mass
     O.normal = None
     O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.pivot))
     O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), O.pivot))
@@ -53,8 +52,8 @@ class six_dof(object):
 
 class spherical_alignment(object):
 
-  def __init__(O, sites):
-    O.pivot = center_of_mass_from_sites(sites=sites)
+  def __init__(O, center_of_mass):
+    O.pivot = center_of_mass
     O.normal = None
     O.T0b = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.pivot))
     O.Tb0 = matrix.rt(((1,0,0,0,1,0,0,0,1), O.pivot))
