@@ -5,7 +5,7 @@ Based in part on Roy Featherstone's spatial_v1 matlab code:
 
   Version 1: January 2008 (latest bug fix: 7 October 2008)
 
-See also:
+See also: RBDA:
   Rigid Body Dynamics Algorithms.
   Roy Featherstone,
   Springer, New York, 2007.
@@ -38,9 +38,11 @@ else:
     return m.inverse()
 
 def Xrot(E):
-  """
-  Featherstone (2007) Tab. 2.2
-  Added in Python version.
+  """RBDA Tab. 2.2, p. 23:
+Spatial coordinate transform (rotation around origin).
+Calculates the coordinate transform matrix from A to B coordinates
+for spatial motion vectors, in which frame B is rotated relative to
+frame A.
   """
   a,b,c,d,e,f,g,h,i = E
   return matrix.sqr((
@@ -52,11 +54,11 @@ def Xrot(E):
      0,  0,  0,  g,  h,  i))
 
 def Xtrans(r):
-  """
-% Xtrans  spatial coordinate transform (translation of origin).
-% Xtrans(r) calculates the coordinate transform matrix from A to B
-% coordinates for spatial motion vectors, in which frame B is translated by
-% an amount r (3D vector) relative to frame A.
+  """RBDA Tab. 2.2, p. 23:
+Spatial coordinate transform (translation of origin).
+Calculates the coordinate transform matrix from A to B coordinates
+for spatial motion vectors, in which frame B is translated by an
+amount r (3D vector) relative to frame A.
   """
   r1,r2,r3 = r
   return matrix.sqr((
@@ -68,13 +70,16 @@ def Xtrans(r):
      r2, -r1,   0, 0, 0, 1))
 
 def T_as_X(T):
+  """RBDA Eq. 2.28, p. 22:
+Conversion of matrix.rt object T to spatial transform X.
+"""
   return Xrot(T.r) * Xtrans(-T.r.transpose() * T.t)
 
 def crm(v):
-  """
-% crm  spatial cross-product operator (motion).
-% crm(v) calculates the 6x6 matrix such that the expression crm(v)*m is the
-% cross product of the spatial motion vectors v and m.
+  """RBDA Eq. 2.31, p. 25:
+Spatial cross-product operator (motion).
+Calculates the 6x6 matrix such that the expression crm(v)*m is the
+cross product of the spatial motion vectors v and m.
   """
   v1,v2,v3,v4,v5,v6 = v
   return matrix.sqr((
@@ -86,20 +91,20 @@ def crm(v):
     -v5,  v4,   0, -v2,  v1,   0))
 
 def crf(v):
-  """
-% crf  spatial cross-product operator (force).
-% crf(v) calculates the 6x6 matrix such that the expression crf(v)*f is the
-% cross product of the spatial motion vector v with the spatial force
-% vector f.
+  """RBDA Eq. 2.32, p. 25:
+Spatial cross-product operator (force).
+Calculates the 6x6 matrix such that the expression crf(v)*f is the
+cross product of the spatial motion vector v with the spatial force
+vector f.
   """
   return -crm(v).transpose()
 
 def mcI(m, c, I):
-  """
-% mcI  spatial rigid-body inertia from mass, CoM and rotational inertia.
-% mcI(m,c,I) calculates the spatial inertia matrix of a rigid body from its
-% mass, centre of mass (3D vector) and rotational inertia (3x3 matrix)
-% about its centre of mass.
+  """RBDA Eq. 2.63, p. 33:
+Spatial rigid-body inertia from mass, CoM and rotational inertia.
+Calculates the spatial inertia matrix of a rigid body from its
+mass, centre of mass (3D vector) and rotational inertia (3x3 matrix)
+about its centre of mass.
   """
   c1,c2,c3 = c
   C = matrix.sqr((
@@ -111,12 +116,14 @@ def mcI(m, c, I):
     m*C.transpose(), m*matrix.identity(3))).resolve_partitions()
 
 def kinetic_energy(I_spatial, v_spatial):
-  "RBDA Eq. 2.67"
+  "RBDA Eq. 2.67, p. 35"
   return 0.5 * v_spatial.dot(I_spatial * v_spatial)
 
 class system_model(object):
+  "RBDA Tab. 4.3, p. 87"
 
   def __init__(O, bodies):
+    "Stores bodies and computes Xtree (RBDA Fig. 4.7, p. 74)"
     O.bodies = bodies
     for B in bodies:
       if (B.parent == -1):
@@ -126,42 +133,36 @@ class system_model(object):
       B.Xtree = T_as_X(Ttree)
 
   def Xup(O):
+    "RBDA Example 4.4, p. 80"
     return [B.J.Xj * B.Xtree for B in O.bodies]
 
   def spatial_velocities(O, Xup):
+    "RBDA Example 4.4, p. 80"
     result = []
     if (Xup is None): Xup = O.Xup()
     for B,Xup_i in zip(O.bodies, O.Xup()):
-      if (B.J.S is None):
-        vJ = B.qd
-      else:
-        vJ = B.J.S * B.qd
-      if B.parent == -1:
-        result.append(vJ)
-      else:
-        result.append(Xup_i * result[B.parent] + vJ)
+      if (B.J.S is None): vJ = B.qd
+      else:               vJ = B.J.S * B.qd
+      if (B.parent == -1): result.append(vJ)
+      else:                result.append(Xup_i * result[B.parent] + vJ)
     return result
 
   def e_kin(O, Xup=None):
+    "RBDA Eq. 2.67, p. 35"
     result = 0
     for B,v in zip(O.bodies, O.spatial_velocities(Xup=Xup)):
       result += kinetic_energy(I_spatial=B.I, v_spatial=v)
     return result
 
   def ID(O, qdd, f_ext=None, grav_accn=None):
-    """
-% ID  Inverse Dynamics via Recursive Newton-Euler Algorithm
-% ID(qdd,f_ext,grav_accn) calculates the inverse dynamics of a
-% kinematic tree via the recursive Newton-Euler algorithm.  qdd
-% is a vector of joint acceleration variables; and
-% the return value is a vector of joint force variables.  f_ext is a cell
-% array specifying external forces acting on the bodies.  If f_ext == {}
-% then there are no external forces; otherwise, f_ext{i} is a spatial force
-% vector giving the force acting on body i, expressed in body i
-% coordinates.  Empty cells in f_ext are interpreted as zero forces.
-% grav_accn is a 6D vector expressing the linear acceleration due to
-% gravity.  The arguments f_ext and grav_accn are optional, and default to
-% the values {} and [0,0,0,0,0,0], respectively, if omitted.
+    """RBDA Tab. 5.1, p. 96:
+Inverse Dynamics of a kinematic tree via Recursive Newton-Euler Algorithm.
+qdd is a vector of joint acceleration variables.
+The return value (tau) is a vector of joint force variables.
+f_ext specifies external forces acting on the bodies. If f_ext is None
+then there are no external forces; otherwise, f_ext[i] is a spatial force
+vector giving the force acting on body i, expressed in body i coordinates.
+grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     """
 
     Xup = O.Xup()
@@ -175,7 +176,7 @@ class system_model(object):
       else:
         vJ = B.J.S * B.qd
         aJ = B.J.S * qdd[i]
-      if B.parent == -1:
+      if (B.parent == -1):
         a[i] = aJ
         if (grav_accn is not None):
           a[i] += Xup[i] * (-grav_accn)
@@ -183,56 +184,51 @@ class system_model(object):
         a[i] = Xup[i] * a[B.parent] + aJ + crm(v[i]) * vJ
       f[i] = B.I * a[i] + crf(v[i]) * B.I * v[i]
       if (f_ext is not None and f_ext[i] is not None):
-        f[i] = f[i] - f_ext[i]
+        f[i] -= f_ext[i]
 
     tau = [None] * len(Xup)
     for i in xrange(len(Xup)-1,-1,-1):
       B = O.bodies[i]
-      if (B.J.S is None):
-        tau[i] = f[i]
-      else:
-        tau[i] = B.J.S.transpose() * f[i]
-      if B.parent != -1:
-        f[B.parent] = f[B.parent] + Xup[i].transpose() * f[i]
+      if (B.J.S is None): tau[i] = f[i]
+      else:               tau[i] = B.J.S.transpose() * f[i]
+      if (B.parent != -1):
+        f[B.parent] += Xup[i].transpose() * f[i]
 
     return tau
 
   def ID0(O, f_ext):
     """
-  Simplified Inverse Dynamics via Recursive Newton-Euler Algorithm,
-  with all qd, qdd zero, but non-zero external forces.
+Simplified version of Inverse Dynamics via Recursive Newton-Euler Algorithm,
+with all qd, qdd zero, but non-zero external forces.
     """
     Xup = O.Xup()
     f = [-e for e in f_ext]
     tau = [None] * len(f)
     for i in xrange(len(f)-1,-1,-1):
       B = O.bodies[i]
-      if (B.J.S is None):
-        tau[i] = f[i]
-      else:
-        tau[i] = B.J.S.transpose() * f[i]
-      if B.parent != -1:
+      if (B.J.S is None): tau[i] = f[i]
+      else:               tau[i] = B.J.S.transpose() * f[i]
+      if (B.parent != -1):
         f[B.parent] += Xup[i].transpose() * f[i]
     return tau
 
   def d_pot_d_q(O, f_ext):
+    """
+Gradients of potential energy (defined via f_ext) w.r.t. positional
+coordinates q. Uses ID0().
+    """
     return [B.J.tau_as_d_pot_d_q(tau=tau)
       for B,tau in zip(O.bodies, O.ID0(f_ext=f_ext))]
 
   def FDab(O, tau=None, f_ext=None, grav_accn=None):
-    """
-% FDab  Forward Dynamics via Articulated-Body Algorithm
-% FDab(tau,f_ext,grav_accn) calculates the forward dynamics of a
-% kinematic tree via the articulated-body algorithm.  tau is a
-% vector of force variables; and the return
-% value is a vector of joint acceleration variables.  f_ext is a cell array
-% specifying external forces acting on the bodies.  If f_ext == {} then
-% there are no external forces; otherwise, f_ext{i} is a spatial force
-% vector giving the force acting on body i, expressed in body i
-% coordinates.  Empty cells in f_ext are interpreted as zero forces.
-% grav_accn is a 6D vector expressing the linear acceleration due to
-% gravity.  The arguments f_ext and grav_accn are optional, and default to
-% the values {} and [0,0,0,0,0,0], respectively, if omitted.
+    """RBDA Tab. 7.1, p. 132:
+Forward Dynamics of a kinematic tree via the Articulated-Body Algorithm.
+tau is a vector of force variables.
+The return value (qdd) is a vector of joint acceleration variables.
+f_ext specifies external forces acting on the bodies. If f_ext is None
+then there are no external forces; otherwise, f_ext[i] is a spatial force
+vector giving the force acting on body i, expressed in body i coordinates.
+grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     """
 
     Xup = O.Xup()
@@ -241,18 +237,14 @@ class system_model(object):
     IA = [None] * len(Xup)
     pA = [None] * len(Xup)
     for i,B in enumerate(O.bodies):
-      if (B.J.S is None):
-        vJ = B.qd
-      else:
-        vJ = B.J.S * B.qd
-      if B.parent == -1:
-        c[i] = matrix.col([0,0,0,0,0,0])
-      else:
-        c[i] = crm(v[i]) * vJ
+      if (B.J.S is None): vJ = B.qd
+      else:               vJ = B.J.S * B.qd
+      if (B.parent == -1): c[i] = matrix.col([0,0,0,0,0,0])
+      else:                c[i] = crm(v[i]) * vJ
       IA[i] = B.I
       pA[i] = crf(v[i]) * B.I * v[i]
       if (f_ext is not None and f_ext[i] is not None):
-        pA[i] = pA[i] - f_ext[i]
+        pA[i] -= f_ext[i]
 
     U = [None] * len(Xup)
     d_inv = [None] * len(Xup)
@@ -274,16 +266,16 @@ class system_model(object):
         else:
           u[i] = tau[i] - B.J.S.transpose() * pA[i]
       d_inv[i] = generalized_inverse(d)
-      if B.parent != -1:
+      if (B.parent != -1):
         Ia = IA[i] - U[i] * d_inv[i] * U[i].transpose()
         pa = pA[i] + Ia*c[i] + U[i] * d_inv[i] * u[i]
-        IA[B.parent] = IA[B.parent] + Xup[i].transpose() * Ia * Xup[i]
-        pA[B.parent] = pA[B.parent] + Xup[i].transpose() * pa
+        IA[B.parent] += Xup[i].transpose() * Ia * Xup[i]
+        pA[B.parent] += Xup[i].transpose() * pa
 
     a = [None] * len(Xup)
     qdd = [None] * len(Xup)
     for i,B in enumerate(O.bodies):
-      if B.parent == -1:
+      if (B.parent == -1):
         a[i] = c[i]
         if (grav_accn is not None):
           a[i] += Xup[i] * (-grav_accn)
@@ -291,8 +283,8 @@ class system_model(object):
         a[i] = Xup[i] * a[B.parent] + c[i]
       qdd[i] = d_inv[i] * (u[i] - U[i].transpose()*a[i])
       if (B.J.S is None):
-        a[i] = a[i] + qdd[i]
+        a[i] += qdd[i]
       else:
-        a[i] = a[i] + B.J.S * qdd[i]
+        a[i] += B.J.S * qdd[i]
 
     return qdd
