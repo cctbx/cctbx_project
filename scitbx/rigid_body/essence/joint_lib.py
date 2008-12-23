@@ -1,6 +1,5 @@
-from scitbx.rigid_body.essence.utils import \
-  center_of_mass_from_sites, \
-  T_as_X
+from scitbx.rigid_body.essence.featherstone import T_as_X
+from scitbx.rigid_body.essence.utils import center_of_mass_from_sites
 from scitbx import matrix
 import math
 
