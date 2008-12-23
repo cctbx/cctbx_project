@@ -54,6 +54,8 @@ def run():
   "$D/graph/rigidity.py",
   "$D/graph/tst_rigidity.py",
   "$D/graph/rigidity_matrix_symbolic.py",
+  "$D/rigid_body/essence/tst_basic.py",
+  "$D/rigid_body/essence/tst_molecules.py",
   "$D/rigid_body/proto/free_motion_reference_impl.py",
   "$D/rigid_body/proto/tst_featherstone.py",
   "$D/rigid_body/proto/tst_free_motion.py",
@@ -62,7 +64,6 @@ def run():
   "$D/rigid_body/proto/tst_singular.py",
   "$D/rigid_body/proto/tst_spherical_refinement.py",
   "$D/rigid_body/proto/tst_molecules.py",
-  "$D/rigid_body/essence/tst_molecules.py",
   "$D/sparse/tests/tst_sparse.py",
   "$D/iso_surface/tst_iso_surface.py",
   )
