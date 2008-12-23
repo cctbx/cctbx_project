@@ -1,8 +1,6 @@
 from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import joint_lib
-from scitbx.rigid_body.essence.utils import \
-  spatial_inertia_from_sites, \
-  featherstone_system_model
+from scitbx.rigid_body.essence.utils import spatial_inertia_from_sites
 import scitbx.math
 from scitbx.array_family import flex
 from scitbx import matrix
@@ -39,10 +37,10 @@ class simulation(object):
     O.energies_and_accelerations_update()
 
   def energies_and_accelerations_update(O):
-    model = featherstone_system_model(bodies=O.bodies)
+    model = featherstone.system_model(bodies=O.bodies)
     O.e_kin = model.e_kin()
     O.e_pot_and_f_ext_update()
-    O.qdd = featherstone.FDab(model=model, tau=None, f_ext=O.f_ext_bf)
+    O.qdd = model.FDab(tau=None, f_ext=O.f_ext_bf)
 
   def e_pot_and_f_ext_update(O):
     O.AJA_accu = []
@@ -71,8 +69,8 @@ class simulation(object):
     O.energies_and_accelerations_update()
 
   def d_pot_d_q(O):
-    model = featherstone_system_model(bodies=O.bodies)
-    taus = featherstone.ID0(model=model, f_ext=O.f_ext_bf)
+    model = featherstone.system_model(bodies=O.bodies)
+    taus = model.ID0(f_ext=O.f_ext_bf)
     result = []
     for B,tau in zip(O.bodies, taus):
       tau_as_d_pot_d_q = getattr(B.J, "tau_as_d_pot_d_q", None)
