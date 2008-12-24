@@ -32,6 +32,12 @@ endif
 #
 if (1) then
   cd "$root/htdocs"
+  rm -rf scitbx_rigid_body_essence
+  libtbx.python "$root/cctbx_project/scitbx/rigid_body/essence/make_bundles.py"
+endif
+#
+if (1) then
+  cd "$root/htdocs"
   rm -rf current/c_plus_plus
   mkdir -p current
   cd "$root/cctbx_project"

@@ -19,6 +19,8 @@ cctbx links
 
 - `Tutorials Siena 2005 IUCr Crystallographic Computing School <siena2005/>`_
 
+- `scitbx/rigid_body/essence subset (self-contained) <scitbx_rigid_body_essence/>`_
+
 - Newsletter articles
 
   - **Important notice**: use ``cctbx.python`` to run the scripts shown
