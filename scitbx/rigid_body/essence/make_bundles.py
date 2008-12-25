@@ -86,6 +86,8 @@ def run(args):
   cp("rigid_body/essence/tst_basic.py")
   open("README.txt", "w").write(__doc__)
   os.chdir("..")
+  if (os.name == "nt"):
+    return
   remove_files("scitbx_rigid_body_essence.tgz")
   remove_files("scitbx_rigid_body_essence.zip")
   easy_run.fully_buffered(
