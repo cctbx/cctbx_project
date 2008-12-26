@@ -169,7 +169,8 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     v = O.spatial_velocities(Xup=Xup)
     a = [None] * len(Xup)
     f = [None] * len(Xup)
-    for i,B in enumerate(O.bodies):
+    for i in xrange(len(O.bodies)):
+      B = O.bodies[i]
       if (B.J.S is None):
         vJ = B.qd
         aJ = qdd[i]
@@ -236,7 +237,8 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
     c = [None] * len(Xup)
     IA = [None] * len(Xup)
     pA = [None] * len(Xup)
-    for i,B in enumerate(O.bodies):
+    for i in xrange(len(O.bodies)):
+      B = O.bodies[i]
       if (B.J.S is None): vJ = B.qd
       else:               vJ = B.J.S * B.qd
       if (B.parent == -1): c[i] = matrix.col([0,0,0,0,0,0])
@@ -274,7 +276,8 @@ grav_accn is a 6D vector expressing the linear acceleration due to gravity.
 
     a = [None] * len(Xup)
     qdd = [None] * len(Xup)
-    for i,B in enumerate(O.bodies):
+    for i in xrange(len(O.bodies)):
+      B = O.bodies[i]
       if (B.parent == -1):
         a[i] = c[i]
         if (grav_accn is not None):
