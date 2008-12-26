@@ -86,7 +86,8 @@ def run(args):
   cp("rigid_body/essence/tst_basic.py")
   open("README.txt", "w").write(__doc__)
   os.chdir("..")
-  if (os.name == "nt"):
+  if (   os.name == "nt"
+      or not libtbx.env.has_module(name="docutils")):
     return
   remove_files("scitbx_rigid_body_essence.tgz")
   remove_files("scitbx_rigid_body_essence.zip")
