@@ -2,7 +2,7 @@
 scitbx_rigid_body_essence
 =========================
 
-- A subset of scitbx/rigid_body/essence.
+- A subset of ``scitbx/rigid_body/essence`` that can be used in isolation.
 
 - Plain Python code for rigid body dynamics and gradient-driven minimization.
 
@@ -14,6 +14,31 @@ scitbx_rigid_body_essence
     ISBN-10: 0387743146
 
 - `Open Source License <http://cctbx.svn.sourceforge.net/viewvc/cctbx/trunk/cctbx/LICENSE_2_0.txt?view=markup>`_
+
+Context
+-------
+
+``scitbx/rigid_body/essence`` grew out of the development of the
+dynamics engine for the ``phenix.refine`` **torsion angle dynamics**
+module, which is used as a complementary method to gradient-driven
+minimization, as a way to escape from local minima. See also:
+
+  - Rice & Brunger (1994). Proteins: Structure, Function, and Genetics 19, 277-290.
+
+  - http://phenix-online.org/
+
+Nomenclature
+------------
+
+The variable names in the ``scitbx/rigid_body/essence`` source code
+follow the nomenclature used in Featherstone's *Rigid Body Dynamics
+Algorithms* as much as possible. Numerous ``RBDA`` comments point to
+equations, tables, and figures in the book. **When using the source
+code, it will be essential to have the book available as an introduction
+and reference.**
+
+Details
+-------
 
 Files::
 
