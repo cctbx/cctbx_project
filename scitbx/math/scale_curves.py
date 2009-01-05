@@ -5,7 +5,7 @@ from libtbx.test_utils import approx_equal
 
 class linear_scaler(object):
   """This class scales together varios curves. means and varainces should be lists of flex arrays"""
-  def __init__(self, means, variances, reference_id=0,factor=50,f=0.7,eps=1e-12,out=None,show_progress=False):
+  def __init__(self, means, variances, reference_id=0,spread=2.0, factor=50,f=0.7,eps=1e-12,out=None,show_progress=False):
     self.out = None
     if self.out is None:
       self.out = sys.stdout
@@ -18,7 +18,7 @@ class linear_scaler(object):
 
     self.n = (len(self.means)-1)*2
     self.x = None
-    self.domain = [ ( -10,10 ) ]*self.n
+    self.domain = [ ( -spread,spread ) ]*self.n
     self.optimizer =  de.differential_evolution_optimizer(self,population_size=self.n*factor,show_progress=show_progress,eps=eps, f=f,n_cross=2,cr=0.8)
 
   def setup_coeff_map(self):
@@ -60,10 +60,27 @@ class linear_scaler(object):
     print >> self.out
 
 
-  def retreive_results(self):
+  def retrieve_results(self):
     scales,offsets = self.get_scales_offsets( self.x )
-    return scales,offsets
+    return scales,offsets,self.map
 
+
+def scale_it(m,v,ref_id=0):
+  n = len(m)
+  scales = []
+  ofsets = []
+  for ii in xrange(n):
+    if ii != ref_id:
+      ms = [ m[ref_id],m[ii] ]
+      vs = [ m[ref_id],m[ii] ]
+      scaler_object = linear_scaler( ms,vs,0,factor=10,show_progress=False)
+      s,o,map = scaler_object.retrieve_results()
+      scales.append( s[0] )
+      ofsets.append( o[0] )
+    else:
+      scales.append( 1.0 )
+      ofsets.append( 0.0 )
+  return scales, ofsets
 
 def test_curve_scaler():
    x = flex.double( range(100) )/10.0
@@ -76,11 +93,20 @@ def test_curve_scaler():
    v2 = v1
 
    scaler_object = linear_scaler( [y0,y1,y2], [v0,v1,v2], 0 , factor=10,show_progress=False)
-   s,o = scaler_object.retreive_results()
+   s,o,m = scaler_object.retrieve_results()
    assert approx_equal(s[0],0.01,eps=1e-3)
    assert approx_equal(s[1],0.001,eps=1e-3)
    assert approx_equal(o[0],-50,eps=1e-2)
    assert approx_equal(o[1],-500,eps=1e-2)
+
+   s,o = scale_it([y0,y1,y2],[v0,v1,v2],0)
+   print s,o
+   assert approx_equal(s[1],0.01,eps=1e-3)
+   assert approx_equal(s[2],0.001,eps=1e-3)
+   assert approx_equal(o[1],-50,eps=1e-2)
+   assert approx_equal(o[2],-500,eps=1e-2)
+
+
 
 if __name__ == "__main__":
   test_curve_scaler()
