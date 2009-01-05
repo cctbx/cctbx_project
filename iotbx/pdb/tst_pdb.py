@@ -302,6 +302,16 @@ def exercise_format_and_interpret_cryst1():
     pdb_str = iotbx.pdb.format_cryst1_record(crystal_symmetry=cs)
     cs2 = pdb.cryst1_interpretation.crystal_symmetry(cryst1_record=pdb_str)
     assert cs2.is_similar_symmetry(other=cs)
+  #
+  for pdb_str in """]
+CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1
+CRYST1    1.000    1.000    1.000   0.00   0.00   0.00 P 1
+CRYST1    0.000    0.000    0.000  90.00  90.00  90.00 P 1
+CRYST1    1.000    0.000    0.000   0.00  90.00  90.00 P 1
+""".splitlines():
+    cs = pdb.cryst1_interpretation.crystal_symmetry(cryst1_record=pdb_str)
+    assert cs.unit_cell() is None
+    assert cs.space_group_info() is None
 
 def exercise_remark_290_interpretation():
   symmetry_operators=pdb.remark_290_interpretation.extract_symmetry_operators(

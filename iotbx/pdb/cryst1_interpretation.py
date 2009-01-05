@@ -106,14 +106,24 @@ class categorize(object):
 def crystal_symmetry(cryst1_record):
   if (isinstance(cryst1_record, str)):
     cryst1_record = iotbx.pdb.records.cryst1(pdb_str=cryst1_record)
-  if (    cryst1_record.ucparams in ([0]*6, [1,1,1,90,90,90])
-      and (   cryst1_record.sgroup is None
-           or cryst1_record.sgroup.replace(" ","") == "P1")):
+  u = cryst1_record.ucparams
+  s = cryst1_record.sgroup
+  def are_dummy_lengths(abc):
+    for v in abc:
+      if (v not in [0, 1]): return False
+    return True
+  def are_dummy_angles(abg):
+    for v in abg:
+      if (v not in [0, 90]): return False
+    return True
+  if (    u is not None
+      and len(u) == 6
+      and (s is None or s.replace(" ","") == "P1")
+      and are_dummy_lengths(u[:3])
+      and are_dummy_angles(u[3:])):
     return crystal.symmetry(
       unit_cell=None,
       space_group_info=None)
   space_group_info = categorize(cryst1_record.sgroup).space_group_info(
-    unit_cell=cryst1_record.ucparams)
-  return crystal.symmetry(
-    unit_cell=cryst1_record.ucparams,
-    space_group_info=space_group_info)
+    unit_cell=u)
+  return crystal.symmetry(unit_cell=u, space_group_info=space_group_info)
