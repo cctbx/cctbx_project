@@ -171,7 +171,7 @@ class model_to_map(object):
 
 class electron_density_map(object):
 
-  def __init__(self, fmodel, fill_missing_f_obs = False):
+  def __init__(self, fmodel, fill_missing_f_obs = False, filled_f_obs_file_name = None, fill_mode = None):
     self.fmodel = fmodel.deep_copy()
     self.fill_missing_f_obs = fill_missing_f_obs
     self.anom_diff = None
@@ -184,7 +184,11 @@ class electron_density_map(object):
       assert anom_diff_common.indices().size()==self.anom_diff.indices().size()
       self.anom_diff = self._phase_transfer(miller_array = anom_diff_common,
         phase_source = fmodel_match_anom_diff)
-    if(self.fill_missing_f_obs): self.fmodel = self.fmodel.fill_missing_f_obs()
+    if(self.fill_missing_f_obs):
+      self.fmodel = self.fmodel.fill_missing_f_obs(fill_mode = fill_mode)
+      assert filled_f_obs_file_name is not None
+      if 0: # XXX make it an option
+        self.fmodel.export_filled_f_obs(file_name = filled_f_obs_file_name)
     self.map_helper_obj = self.fmodel.map_calculation_helper()
     #del self.fmodel # XXX
 

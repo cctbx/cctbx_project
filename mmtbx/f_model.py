@@ -45,6 +45,7 @@ import mmtbx.scaling.twin_analyses
 from cctbx import sgtbx
 from mmtbx import map_tools
 from iotbx import data_plots
+import random
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
@@ -292,13 +293,13 @@ class manager(manager_mixin):
          n_ordered_water              = 0,
          b_ordered_water              = 0.0,
          max_number_of_bins           = 30,
-         filled_f_obs_selection         = None,
+         filled_f_obs_selection       = None,
          _target_memory               = None):
     self.twin = False
     assert f_obs is not None
     self.filled_f_obs_selection = filled_f_obs_selection
     if(self.filled_f_obs_selection is not None):
-      self.filled_f_obs_selection.size() == self.f_obs.data().size()
+      self.filled_f_obs_selection.size() == f_obs.data().size()
     assert f_obs.is_real_array()
     self.f_obs             = f_obs
     self.r_free_flags      = None
@@ -506,7 +507,7 @@ class manager(manager_mixin):
       new_filled_f_obs_selection = self.filled_f_obs_selection
     else:
       new_filled_f_obs_selection = \
-        self.filled_f_obs_selection.select(selection=selection)
+        self.filled_f_obs_selection.select(selection)
     if(self.xray_structure is None):
       xrs = None
     else:
@@ -533,7 +534,7 @@ class manager(manager_mixin):
       n_ordered_water              = self.n_ordered_water,
       b_ordered_water              = self.b_ordered_water,
       max_number_of_bins           = self.max_number_of_bins,
-      filled_f_obs_selection         = new_filled_f_obs_selection,
+      filled_f_obs_selection       = new_filled_f_obs_selection,
       _target_memory               = self._target_memory)
     return result
 
@@ -1286,7 +1287,35 @@ class manager(manager_mixin):
        r_work_h = 0.0
     return r_work, r_work_l, r_work_h, n_low, n_high
 
-  def fill_missing_f_obs(self):
+  def export_filled_f_obs(self, file_name):
+    assert self.filled_f_obs_selection is not None
+    warning = [
+      "THESE ARE MANIPULATED F-OBS.",
+      "Missing F-obs are replaced with D*Fmodel."]
+    width = max([len(line) for line in warning])
+    warning.insert(0, "*" * width)
+    warning.append(warning[0])
+    mtz_dataset = self.f_obs.as_mtz_dataset(column_root_label="F-obs")
+    mtz_dataset.add_miller_array(
+      miller_array=self.r_free_flags, column_root_label="R-free-flags")
+    mtz_history_buffer = flex.std_string(warning)
+    ha = mtz_history_buffer.append
+    ha(date_and_time())
+    ha("file name: %s" % os.path.basename(file_name))
+    ha("directory: %s" % os.path.dirname(file_name))
+    mtz_object = mtz_dataset.mtz_object()
+    mtz_object.add_history(lines=mtz_history_buffer)
+    mtz_object.write(file_name = file_name)
+
+  def fill_missing_f_obs(self, fill_mode):
+    assert fill_mode in ["fobs_mean_mixed_with_dfmodel",
+                         "random",
+                         "fobs_mean",
+                         "dfmodel"]
+    bss_params = bss.master_params.extract()
+    bss_params.k_sol_b_sol_grid_search = False
+    bss_params.b_sol_max = 150.0
+    bss_params.number_of_macro_cycles = 1
     f_model = self.f_model()
     n_refl_orig = f_model.data().size()
     complete_set = f_model.complete_set(d_min = f_model.d_min(), d_max=None)
@@ -1320,7 +1349,8 @@ class manager(manager_mixin):
     new_f_obs = self.f_obs.concatenate(other = f_model_lone)
     new_r_free_flags = self.r_free_flags.concatenate(
       other = r_free_flags_lone)
-    filled_f_obs_selection.concatenate(flex.bool(n_refl_lone, True))
+    filled_f_obs_selection = filled_f_obs_selection.concatenate(
+      flex.bool(n_refl_lone, True))
     new_abcd = None
     if(self.abcd is not None):
       new_abcd = self.abcd.customized_copy(
@@ -1332,8 +1362,11 @@ class manager(manager_mixin):
       r_free_flags   = new_r_free_flags,
       target_name    = "ls_wunit_k1",
       f_obs          = new_f_obs,
-      abcd           = new_abcd)
-    fmodel.update_solvent_and_scale()
+      abcd           = new_abcd,
+      k_sol          = self.k_sol(),
+      b_sol          = self.b_sol(),
+      b_cart         = self.b_cart())
+    fmodel.update_solvent_and_scale(params = bss_params)
     # replace 'F_obs' -> alpha * 'F_obs' for filled F_obs
     alpha, beta = maxlik.alpha_beta_est_manager(
       f_obs                    = fmodel.f_obs,
@@ -1353,14 +1386,145 @@ class manager(manager_mixin):
     new_r_free_flags = r_free_flags_orig.concatenate(
       other = r_free_flags_lone)
     # XXX implement and use fmodel.customized_copy() instead of creating a new one
+    new_f_obs.set_observation_type_xray_amplitude()
+    assert new_f_obs.data().size() == filled_f_obs_selection.size()
+    #
+    if(fill_mode == "fobs_mean"):
+      sel = new_f_obs.sort_permutation(by_value = "resolution")
+      new_f_obs = new_f_obs.select(selection = sel)
+      new_r_free_flags = new_r_free_flags.select(selection = sel)
+      new_data = flex.double()
+      i_max = new_f_obs.data().size()
+      d_spacings = new_f_obs.d_spacings().data()
+      new_f_obs_data = new_f_obs.data()
+      for i_seq, fo in enumerate(new_f_obs_data):
+        if(filled_f_obs_selection[i_seq]):
+          #
+          x = flex.double()
+          y = flex.double()
+          i = i_seq
+          counter = 0
+          while True:
+            i +=1
+            if i > i_max-1: break
+            if(not filled_f_obs_selection[i]):
+              x.append(d_spacings[i])
+              y.append(new_f_obs_data[i])
+              counter += 1
+            if(counter == 5): break
+          #
+          i = i_seq
+          counter = 0
+          while True:
+            i -=1
+            if i < 0: break
+            if(not filled_f_obs_selection[i]):
+              x.append(d_spacings[i])
+              y.append(new_f_obs_data[i])
+              counter += 1
+            if(counter == 5): break
+          #
+          assert y.size() > 0 and x.size() == y.size()
+          assert x.size() <= 10, x.size()
+          new_data.append( flex.mean(y) )
+        else:
+          new_data.append(fo)
+      new_f_obs._data = new_data
+    if(fill_mode == "random"):
+      new_data = flex.double()
+      for i_seq, fo in enumerate(new_f_obs.data()):
+        if(filled_f_obs_selection[i_seq]):
+          if(fo > 1.):
+            new_data.append( random.randrange(int(fo-fo/2),int(fo+fo/2)) )
+          else: new_data.append( abs(random.random()) )
+        else:
+          new_data.append(fo)
+      new_f_obs._data = new_data
+    if(fill_mode in ["fobs_interpolated_mixed_with_dfmodel",
+                     "fobs_mean_mixed_with_dfmodel"]):
+      sel = new_f_obs.sort_permutation(by_value = "resolution")
+      new_f_obs = new_f_obs.select(selection = sel)
+      new_r_free_flags = new_r_free_flags.select(selection = sel)
+      new_data = flex.double()
+      i_max = new_f_obs.data().size()
+      d_spacings = new_f_obs.d_spacings().data()
+      new_f_obs_data = new_f_obs.data()
+      for i_seq, fo in enumerate(new_f_obs_data):
+        if(filled_f_obs_selection[i_seq]):
+          #
+          x = flex.double()
+          y = flex.double()
+          i = i_seq
+          counter = 0
+          d_i_seq = d_spacings[i_seq]
+          while True:
+            i +=1
+            if i > i_max-1: break
+            if(not filled_f_obs_selection[i]):
+              x.append(d_spacings[i])
+              y.append(new_f_obs_data[i])
+              counter += 1
+            if(counter == 5): break
+            if(abs(d_i_seq-d_spacings[i]) > 0.1): break
+          #
+          i = i_seq
+          counter = 0
+          while True:
+            i -=1
+            if i < 0: break
+            if(not filled_f_obs_selection[i]):
+              x.append(d_spacings[i])
+              y.append(new_f_obs_data[i])
+              counter += 1
+            if(counter == 5): break
+            if(abs(d_i_seq-d_spacings[i]) > 0.1): break
+          #
+          assert x.size() <= 10, x.size()
+          #
+          if(x.size() < 10):
+            i = i_seq
+            j = i_seq
+            while True:
+              i +=1
+              j -=1
+              if(x.size() >= 10): break
+              if((i <= i_max-1 and i >= 0) and filled_f_obs_selection[i] and
+                 abs(d_i_seq-d_spacings[i]) < 0.1):
+                x.append(d_spacings[i])
+                y.append(new_f_obs_data[i])
+              if(x.size() >= 10): break
+              if((j <= i_max-1 and j >= 0) and filled_f_obs_selection[j] and
+                 abs(d_i_seq-d_spacings[j]) < 0.1):
+                x.append(d_spacings[j])
+                y.append(new_f_obs_data[j])
+          #
+          assert y.size() > 0 and x.size() == y.size()
+          assert x.size() == 10, x.size()
+          new_data.append( flex.mean(y) )
+        else:
+          new_data.append(fo)
+      new_f_obs._data = new_data
+    #
     fmodel_result = mmtbx.f_model.manager(
-      xray_structure = self.xray_structure,
-      r_free_flags   = new_r_free_flags,
-      target_name    = self.target_name,
-      f_obs          = new_f_obs,
-      abcd           = new_abcd)
-    fmodel_result.update_solvent_and_scale()
+      xray_structure         = self.xray_structure,
+      r_free_flags           = new_r_free_flags,
+      target_name            = self.target_name,
+      f_obs                  = new_f_obs,
+      abcd                   = new_abcd,
+      k_sol                  = self.k_sol(),
+      b_sol                  = self.b_sol(),
+      b_cart                 = self.b_cart(),
+      filled_f_obs_selection = filled_f_obs_selection)
+    fmodel_result.update_solvent_and_scale(params = bss_params)
     return fmodel_result
+
+  def remove_filled_f_obs(self):
+    if(self.filled_f_obs_selection is not None):
+      new_fmodel = self.select(selection = ~self.filled_f_obs_selection)
+      new_fmodel.filled_f_obs_selection = None
+      return new_fmodel
+    else:
+      return self
 
   def scale_ml_wrapper(self):
     if (self.alpha_beta_params is None): return 1.0
@@ -1519,9 +1683,13 @@ class manager(manager_mixin):
       result = tmp(phase_source = phase_source)
     return result
 
-  def electron_density_map(self, fill_missing_f_obs = False):
+  def electron_density_map(self, fill_missing_f_obs = False,
+                                 filled_f_obs_file_name = None,
+                                 fill_mode = None):
     return map_tools.electron_density_map(fmodel = self,
-      fill_missing_f_obs = fill_missing_f_obs)
+      fill_missing_f_obs = fill_missing_f_obs,
+      filled_f_obs_file_name = filled_f_obs_file_name,
+      fill_mode = fill_mode)
 
   def info(self, free_reflections_per_bin = None, max_number_of_bins = None):
     if(free_reflections_per_bin is None):
@@ -2075,6 +2243,9 @@ class info(object):
     self.ml_coordinate_error = fmodel.model_error_ml()
     self.d_max, self.d_min = fmodel.f_obs.resolution_range()
     self.completeness_in_range = fmodel.f_obs.completeness(d_max = self.d_max)
+    self.completeness_d_min_inf = fmodel.f_obs.completeness()
+    f_obs_6 = fmodel.f_obs.resolution_filter(d_min = 6)
+    self.completeness_6_inf = f_obs_6.completeness()
     self.min_f_obs_over_sigma = fmodel.f_obs.min_f_over_sigma()
     self.sf_algorithm = fmodel.sfg_params.algorithm
     alpha_w, beta_w = fmodel.alpha_beta_w()

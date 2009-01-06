@@ -2306,7 +2306,9 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
                                  w2                = None,
                                  resolution_factor = 1/3.,
                                  fill_missing_f_obs = True, # XXX not used since not available for twin case.
-                                 symmetry_flags = None):
+                                 symmetry_flags = None,
+                                 filled_f_obs_file_name = None,
+                                 fill_mode = None):
     # XXX work-around to support new developments in non-twin fmodel. PA.
     class result(object):
       def __init__(self, resolution_factor, symmetry_flags, fmodel):
