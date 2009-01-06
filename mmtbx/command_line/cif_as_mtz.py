@@ -381,6 +381,28 @@ def get_array_of_r_free_flags(flags, crystal_symmetry, indices, file_name):
       return flex.int(), None
   return result, cif_selection
 
+def prepocess_line(line):
+  l0 = line.split()
+  new_elements = []
+  for l_ in l0:
+    if(l_.isalpha() or l_.isdigit()): new_elements.append(l_)
+    else:
+      try:
+        val = float(l_)
+        new_elements.append(l_)
+      except:
+        tmp = ""
+        for i, c in enumerate(l_):
+          if(i == 0): tmp+=c
+          elif(c in ["+","-"]):
+            if(not l_[i-1].isalpha()):
+              new_elements.append(tmp)
+              tmp = c
+            else: tmp+=c
+          else: tmp+=c
+        new_elements.append(tmp)
+  return " ".join(new_elements)
+
 class extract_data(object):
   def __init__(self, key_counter,
                      file_name,
@@ -388,6 +410,10 @@ class extract_data(object):
                      wavelength_id,
                      crystal_id,
                      crystal_symmetry):
+    file_lines_ = []
+    for file_line in file_lines:
+      if(len(file_line.strip()) > 0): file_lines_.append(file_line)
+    file_lines = file_lines_
     self.indices = flex.miller_index()
     self.data = flex.double()
     self.sigmas = flex.double()
@@ -395,21 +421,30 @@ class extract_data(object):
     self.file_name = file_name
     start_counter = 0
     start_flag = False
+    cntr1 = 0
     for i_line, line in enumerate(file_lines):
+      if(len(line.strip())==0): continue
+      line = prepocess_line(line = line)
       line_orig = line
       h_,k_,l_,data_,sigma_,flag_ = [None]*6
       line = line.strip()
       line = line.split()
-      if len(line) == 0: continue
       if(len(key_counter.keys) != start_counter or not start_flag):
         if(len(line) == 1):
           if(line[0] == "loop_"): start_flag = True
           if(start_flag and (line[0].replace("_refln.","") in key_counter.keys)
              and line[0] != "loop_"):
             start_counter += 1
+            if(len(key_counter.keys) == start_counter and start_flag): continue
       if(len(key_counter.keys) == start_counter and start_flag):
-        result_hkl = list(self.access_hkl(line=line, key_counter=key_counter))
-        if(result_hkl.count(None) == 0):
+        if(not self.assert_no_second_dataset(line = line)):
+          self.reset(message ="Multiple data sets found.",line=line)
+          break
+      if(len(key_counter.keys) == start_counter and start_flag and
+         len(line) == len(key_counter.keys)):
+        result_hkld = list(self.access_data(line=line, key_counter=key_counter))
+        cntr1 += 1
+        if(result_hkld.count(None) == 0):
           wavelength_id_and_crystal_id_ok = True
           if(wavelength_id is not None):
             if(int(line[key_counter.i_wavelength_id]) != wavelength_id):
@@ -418,53 +453,35 @@ class extract_data(object):
             if(int(line[key_counter.i_crystal_id]) != crystal_id):
               wavelength_id_and_crystal_id_ok = False
           if(wavelength_id_and_crystal_id_ok):
-            if(len(line) != len(key_counter.keys)):
-              if(self.is_break(file_lines=file_lines, i_line=i_line,
-                 key_counter=key_counter, line=line)): break
             if(len(line) == len(key_counter.keys)):
               try:
                 if(key_counter.i_fobs is not None):
-                  data_ = line[key_counter.i_fobs]
                   if(key_counter.i_sfobs is not None):
                     sigma_ = line[key_counter.i_sfobs]
                 else:
                   if(key_counter.i_siobs is not None):
                     sigma_ = line[key_counter.i_siobs]
-                  data_ = line[key_counter.i_iobs]
-                if(key_counter.i_flag is not None):
-                  flag_ = line[key_counter.i_flag]
-                if(data_.count("*")>0 or data_.count("?")>0 or data_=="."):
-                  continue
                 if(sigma_ is not None):
                   if(sigma_.count("*")>0 or sigma_.count("?")>0 or sigma_=="."):
                     sigma_ = 1.0
+                  else: sigma_ = float(sigma_)
+              except:
+                sigma_ = 1.0
+              try:
+                if(key_counter.i_flag is not None):
+                  flag_ = line[key_counter.i_flag]
               except:
                 self.reset(message ="Cannot extract column data,#1.",line=line)
                 break
-              try:
-                data_ = float(data_)
-                if(data_ == 0.0): continue
-                if(sigma_ is not None):
-                  sigma_ = float(sigma_)
-                  if(sigma_ < 0.0):
-                    if(data_ == sigma_): continue
-              except:
-                if(self.is_break(file_lines=file_lines, i_line=i_line,
-                   key_counter=key_counter, line=line)): break
-              assert result_hkl.count(None) == 0
-              assert data_ is not None
-              if(result_hkl.count(0) != 3 and data_ != 0):
-                if(max(max(result_hkl), abs(min(result_hkl))) > 10000):
+              assert result_hkld.count(None) == 0
+              if(result_hkld[:3].count(0) != 3 and result_hkld[3] != 0):
+                if(max(max(result_hkld[:3]), abs(min(result_hkld[:3]))) > 10000):
                   self.reset(message ="Too big Miller index (> 10000).",line=line)
                   break
-                self.indices.append(result_hkl)
-                self.data.append(data_)
+                self.indices.append(result_hkld[:3])
+                self.data.append(result_hkld[3])
                 if(flag_ is not None): self.flags.append(flag_)
                 if(sigma_ is not None): self.sigmas.append(sigma_)
-        else:
-          if(self.data.size() > 0 and len(line) != len(key_counter.keys)):
-            if(self.is_break(file_lines=file_lines, i_line=i_line,
-               key_counter=key_counter, line=line)): break
     if(self.indices.size() != self.data.size()):
       self.reset(message = "self.indices.size() != self.data.size()")
     if(len(self.sigmas) > 0):
@@ -488,24 +505,36 @@ class extract_data(object):
           self.flags = self.flags.select(cif_selection)
     if(self.indices.size() == 0):
       print "No data extracted from input cif file."
+    if(cntr1 != self.data.size()):
+      print "Warning: lines:", cntr1, " data :", self.data.size()
 
+  def assert_no_second_dataset(self, line):
+    result = False
+    for l in line:
+      result = l.lower().count("refln")==0 and l.lower().count("loop")==0
+      if not result: return result
+    return result
 
-  def access_hkl(self, line, key_counter):
-    h, k, l = [None]*3
+  def access_data(self, line, key_counter):
+    h, k, l, d = [None]*4
     try:
       h_ = line[key_counter.i_h]
       k_ = line[key_counter.i_k]
       l_ = line[key_counter.i_l]
-      try_h = h_.replace("-","").strip().isdigit()
-      try_k = k_.replace("-","").strip().isdigit()
-      try_l = l_.replace("-","").strip().isdigit()
+      try_h = h_.replace("-","").replace("+","").strip().isdigit()
+      try_k = k_.replace("-","").replace("+","").strip().isdigit()
+      try_l = l_.replace("-","").replace("+","").strip().isdigit()
       if(not (try_h and try_k and try_l)): return h, k, l
       h = int(h_)
       k = int(k_)
       l = int(l_)
+      if(key_counter.i_fobs is not None):
+        d = float(line[key_counter.i_fobs])
+      else:
+        d = float(line[key_counter.i_iobs])
     except:
-      return h, k, l
-    return h, k, l
+      return h, k, l, d
+    return h, k, l, d
 
   def get_next_line(self, file_lines, i_line):
     next_line = None
@@ -520,19 +549,6 @@ class extract_data(object):
       next_line = next_line.strip()
       next_line = next_line.split()
     return next_line
-
-  def is_break(self, file_lines, i_line, key_counter, line):
-    next_line = self.get_next_line(file_lines=file_lines,i_line=i_line)
-    if(next_line is not None):
-      next_line_hkl = list(self.access_hkl(line=next_line,
-        key_counter=key_counter))
-      if(next_line_hkl.count(None) == 0):
-        self.reset(message="Cannot extract column data,#2.",line=line)
-        return True
-      else:
-        return True
-    else: return True
-    return False
 
   def reset(self, message, line=None):
     self.indices = flex.miller_index()
