@@ -122,30 +122,32 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
       print "      non-bonded (min) : %8.4f" % (result.n_min)
       need_ramachandran = False
       rc = overall_counts_i_seq.resname_classes
+      n_residues = 0
       for k in rc.keys():
         if(k.count('amino_acid')):
           need_ramachandran = True
           n_residues = int(rc[k])
           break
       if(need_ramachandran):
-        output, output_list = ramalyze().analyze_pdb(hierarchy = hierarchy_i_seq,
-          outliers_only = False)
-        outl = output.count("OUTLIER")
-        gene = output.count("General")
-        allo = output.count("Allowed")
-        favo = output.count("Favored")
-        glyc = output.count("Glycine")
-        prol = output.count("Proline")
-        prep = output.count("Prepro")
+        ramalyze_obj = ramalyze()
+        output, output_list = ramalyze_obj.analyze_pdb(hierarchy =
+          hierarchy_i_seq, outliers_only = False)
+        outl = ramalyze_obj.get_outliers_count_and_fraction()
+        allo = ramalyze_obj.get_allowed_count_and_fraction()
+        favo = ramalyze_obj.get_favored_count_and_fraction()
+        gene = ramalyze_obj.get_general_count_and_fraction()
+        glyc = ramalyze_obj.get_gly_count_and_fraction()
+        prol = ramalyze_obj.get_pro_count_and_fraction()
+        prep = ramalyze_obj.get_prepro_count_and_fraction()
         assert n_residues != 0
         print "      Ramachandran plot, number of:"
-        print "        outliers : %-5d (%-5.2f %s)" % (outl, outl*100./n_residues, "%")
-        print "        general  : %-5d (%-5.2f %s)" % (gene, gene*100./n_residues, "%")
-        print "        allowed  : %-5d (%-5.2f %s)" % (allo, allo*100./n_residues, "%")
-        print "        favored  : %-5d (%-5.2f %s)" % (favo, favo*100./n_residues, "%")
-        print "        glycine  : %-5d (%-5.2f %s)" % (glyc, glyc*100./n_residues, "%")
-        print "        proline  : %-5d (%-5.2f %s)" % (prol, prol*100./n_residues, "%")
-        print "        prepro   : %-5d (%-5.2f %s)" % (prep, prep*100./n_residues, "%")
+        print "        outliers : %-5d (%-5.2f %s)"%(outl[0],outl[1]*100.,"%")
+        print "        general  : %-5d (%-5.2f %s)"%(gene[0],gene[1]*100.,"%")
+        print "        allowed  : %-5d (%-5.2f %s)"%(allo[0],allo[1]*100.,"%")
+        print "        favored  : %-5d (%-5.2f %s)"%(favo[0],favo[1]*100.,"%")
+        print "        glycine  : %-5d (%-5.2f %s)"%(glyc[0],glyc[1]*100.,"%")
+        print "        proline  : %-5d (%-5.2f %s)"%(prol[0],prol[1]*100.,"%")
+        print "        prepro   : %-5d (%-5.2f %s)"%(prep[0],prep[1]*100.,"%")
 
 def show_xray_structure_statistics(xray_structure):
   b_isos = xray_structure.extract_u_iso_or_u_equiv()
@@ -243,9 +245,11 @@ def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
     "high_resolution         : "+format_value("%-5.2f",info.d_min),
     "low_resolution          : "+format_value("%-6.2f",info.d_max),
     "completeness_in_range   : "+format_value("%-6.2f",info.completeness_in_range),
+    "completeness(d_min-inf) : "+format_value("%-6.2f",info.completeness_d_min_inf),
+    "completeness(6A-inf)    : "+format_value("%-6.2f",info.completeness_6_inf),
     "wilson_b                : "+format_value("%-6.1f",fmodel.wilson_b()),
     "number_of_reflections   : "+format_value("%-8d",  info.number_of_reflections),
-    "test_set_size(%)        : "+format_value("%-8.4f",flags_pc),
+    "test_set_size           : "+format_value("%-8.4f",flags_pc),
     "test_flag_value         : "+format_value("%-d",   test_flag_value),
     "number_of_Fobs_outliers : "+format_value("%-8d",  n_outl),
     "anomalous_flag          : "+format_value("%-6s",  fmodel.f_obs.anomalous_flag())])
@@ -273,7 +277,7 @@ def run(args,
         show_geometry_statistics = True,
         model_size_max_atoms     = 80000,
         data_size_max_reflections= 1000000,
-        unit_cell_max_dimension  = 700.):
+        unit_cell_max_dimension  = 800.):
   if(len(args) == 0): args = ["--help"]
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
@@ -419,11 +423,11 @@ def run(args,
   bss_params.b_sol_max = 500.0
   bss_params.b_sol_min = 0.0
   bss_params.k_sol_grid_search_max = 0.6
-  bss_params.k_sol_grid_search_min = bss_params.k_sol_min
+  bss_params.k_sol_grid_search_min = 0.0
   bss_params.b_sol_grid_search_max = 80.0
-  bss_params.b_sol_grid_search_min = bss_params.b_sol_min
-  bss_params.k_sol_step = 0.1
-  bss_params.b_sol_step = 10.0
+  bss_params.b_sol_grid_search_min = 20.0
+  bss_params.k_sol_step = 0.3
+  bss_params.b_sol_step = 30.0
   fmodel = utils.fmodel_simple(xray_structures = xray_structures,
                                f_obs           = f_obs,
                                r_free_flags    = r_free_flags,
