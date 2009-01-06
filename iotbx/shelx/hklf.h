@@ -11,6 +11,9 @@
 #include <boost/spirit/include/classic_if.hpp>
 #include <boost/spirit/include/classic_assign_actor.hpp>
 #include <boost/spirit/include/classic_push_back_actor.hpp>
+#include <boost/spirit/include/phoenix1_primitives.hpp>
+#include <boost/spirit/include/phoenix1_binders.hpp>
+#include <boost/spirit/include/phoenix1_operators.hpp>
 
 namespace iotbx { namespace shelx {
 
@@ -51,7 +54,6 @@ class hklf_reader
       subrule<5> strict_line;
       subrule<6> line;
       subrule<7> content;
-      loose_t loose(!strict);
       rule_t start = (
         content = +line,
         line = strict_line >> perhaps_more,
@@ -59,11 +61,13 @@ class hklf_reader
         hkl = (    i4_p[ assign_a(h[0]) ]
                 >> i4_p[ assign_a(h[1]) ]
                 >> i4_p[ assign_a(h[2]) ]
+                >> eps_p(!phoenix::bind(&miller_t::is_zero)(phoenix::var(h)))
               )[ push_back_a(indices_, h) ],
         datum  = f8_2_p[ push_back_a(data_) ],
         sigma  = f8_2_p[ push_back_a(sigmas_) ],
         extra  = i4_p[ push_back_a(extra_) ],
-        perhaps_more = if_p(loose)[*(anychar_p - eol_p) >> eol_p].else_p[eol_p]
+        perhaps_more = if_p (phoenix::val(strict)) [ eol_p ]
+                      .else_p [ *(anychar_p - eol_p) >> eol_p ]
       );
       #ifdef IOTBX_SHELX_HKLF_SPIRIT_DEBUG
         BOOST_SPIRIT_DEBUG_RULE(start);
@@ -72,14 +76,7 @@ class hklf_reader
       parse_info<IteratorType> info = parse(first, last, start);
       std::runtime_error not_hklf("Not a SHELX hklf file.");
       std::runtime_error empty_hklf("No data in SHELX hklf file.");
-      if (!info.full) throw not_hklf;
-      std::size_t n = indices_.size();
-      if (n > 0 && indices_[n-1].is_zero()) {
-        indices_.pop_back();
-        if (data_.size()  == n) data_.pop_back();
-        if (sigmas_.size() == n) sigmas_.pop_back();
-        if (extra_.size() == n) extra_.pop_back();
-      }
+      if (!info.full && !h.is_zero()) throw not_hklf;
       if (indices_.size() == 0) throw empty_hklf;
     }
 
@@ -94,11 +91,6 @@ class hklf_reader
     scitbx::af::shared<int> batch_numbers() { return extra_; }
 
   private:
-    struct loose_t {
-      loose_t(bool b) : flag(b) {}
-      bool operator()() const { return flag; }
-      bool flag;
-    };
     scitbx::af::shared<miller_t> indices_;
     scitbx::af::shared<double> data_, sigmas_;
     scitbx::af::shared<int> extra_; // batch numbers or phases
