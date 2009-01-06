@@ -421,6 +421,9 @@ class manager(object):
     if(params is None):
       self.params = fmodel_from_xray_structure_master_params.extract()
     save_original_target_name = fmodel.target_name
+    save_bss_anisotropic_scaling = None
+    if(bss is not None):
+      save_bss_anisotropic_scaling = bss.anisotropic_scaling
     timer_rigid_body_total = user_plus_sys_time()
     save_r_work = fmodel.r_work()
     save_r_free = fmodel.r_free()
@@ -499,13 +502,14 @@ class manager(object):
         for i_macro_cycle in xrange(n_rigid_body_minimizer_cycles):
             if(bss is not None and params.bulk_solvent_and_scale):
                if(fmodel_copy.f_obs.d_min() > 3.0):
-                  save_bss_anisotropic_scaling = bss.anisotropic_scaling
                   bss.anisotropic_scaling=False
                fmodel_copy.update_solvent_and_scale(params  = bss,
                                                     out     = log,
                                                     verbose = -1)
                if(fmodel_copy.f_obs.d_min() > 3.0):
-                  bss.anisotropic_scaling=save_bss_anisotropic_scaling
+                  assert save_bss_anisotropic_scaling is not None
+                  bss.anisotropic_scaling = save_bss_anisotropic_scaling
+                  bss.minimization_b_cart = save_bss_anisotropic_scaling
             minimized = rigid_body_minimizer(
               fmodel                 = fmodel_copy,
               selections             = selections,
