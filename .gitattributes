@@ -256,6 +256,7 @@ mmtbx/pdbtools.py -text
 mmtbx/real_space_correlation.py -text
 mmtbx/refinement/occupancies.py -text
 mmtbx/refinement/refinement_flags.py -text
+mmtbx/refinement/time_averaging.py -text
 mmtbx/refinement/tst_refinement_flags.py -text
 mmtbx/regression/tst_add_h_to_water.py -text
 mmtbx/regression/tst_altloc_chain_break.py -text
