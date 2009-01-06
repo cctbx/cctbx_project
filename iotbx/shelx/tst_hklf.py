@@ -39,20 +39,23 @@ def exercise_fast_hkl_reading():
 
 
   for end_line in (True, False):
-    s = ('   1   2  -1   23.34    4.56\n'
-         '   2  -3   9   12.45    6.12\r\n'
-         '99999999999999999.9999999.99\n'
-         '-999-999-999-9999.99-9999.99\n')
-    if end_line:
-      s += '   0   0   0    0.00    0.00\n'
-    s = (s)
-    fast = hklf.fast_reader(file_object=StringIO(s))
-    slow = hklf.python_reader(file_object=StringIO(s))
-    simple = hklf.simple_reader(file_object=StringIO(s))
-    for r in (fast, slow, simple):
-      assert approx_equal(r.sigmas(), [4.56, 6.12, 99999.99, -9999.99, ])
-      assert r.alphas() is None
-      assert r.batch_numbers() is None
+    for something_after_end_line in (True, False):
+      s = ('   1   2  -1   23.34    4.56\n'
+           '   2  -3   9   12.45    6.12\r\n'
+           '99999999999999999.9999999.99\n'
+           '-999-999-999-9999.99-9999.99\n')
+      if end_line:
+        s += '   0   0   0    0.00    0.00\n'
+        if something_after_end_line:
+          s += '  -5   1   0  123.45   66.12\n'
+      s = (s)
+      fast = hklf.fast_reader(file_object=StringIO(s))
+      slow = hklf.python_reader(file_object=StringIO(s))
+      simple = hklf.simple_reader(file_object=StringIO(s))
+      for r in (fast, slow, simple):
+        assert approx_equal(r.sigmas(), [4.56, 6.12, 99999.99, -9999.99, ])
+        assert r.alphas() is None
+        assert r.batch_numbers() is None
 
   s = ''
   for rt in (hklf.fast_reader, hklf.simple_reader, hklf.python_reader):
