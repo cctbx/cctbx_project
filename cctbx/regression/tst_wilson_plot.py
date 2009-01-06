@@ -35,14 +35,25 @@ def exercise(space_group_info, anomalous_flag,
   for k_given in [1,0.1,0.01,10,100]:
     f_obs = miller.array(
       miller_set=f_calc,
-      data=f_calc.data()*k_given)
+      data=f_calc.data()*k_given).set_observation_type_xray_amplitude()
     f_obs.use_binner_of(f_calc)
-    wp = statistics.wilson_plot(f_obs, asu_contents)
+    wp = statistics.wilson_plot(f_obs, asu_contents, e_statistics=True)
     if (0 or verbose):
       print "wilson_k, wilson_b:", wp.wilson_k, wp.wilson_b
+      print "space group:", space_group_info.group().type().hall_symbol()
+      print "<E^2-1>:", wp.mean_e_sq_minus_1
+
     assert 0.8 < wp.wilson_k/k_given < 1.2
+    assert 0.64 < wp.wilson_intensity_scale_factor/(k_given*k_given) < 1.44
     assert 9 < wp.wilson_b < 11
     assert wp.xy_plot_info().fit_correlation == wp.fit_correlation
+    if space_group_info.group().is_centric():
+      assert 0.90 < wp.mean_e_sq_minus_1 < 1.16
+      assert 3.15 < wp.percent_e_sq_gt_2 < 6.5
+    else:
+      assert 0.65 < wp.mean_e_sq_minus_1 < 0.90
+      assert 1.0 < wp.percent_e_sq_gt_2 < 3.15
+    assert wp.normalised_f_obs.size() == f_obs.size()
   f_obs = f_calc.array(data=flex.double(f_calc.indices().size(), 0))
   f_obs.use_binner_of(f_calc)
   n_bins = f_obs.binner().n_bins_used()

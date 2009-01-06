@@ -2536,6 +2536,12 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       phases_deg=phases_deg,
       figures_of_merit=figures_of_merit)
 
+  def normalised_amplitudes(self,
+                            asu_contents,
+                            wilson_plot=None):
+    assert self.is_xray_intensity_array()
+    return normalised_amplitudes(self, asu_contents, wilson_plot)
+
 class crystal_symmetry_is_compatible_with_symmetry_from_file:
 
   def __init__(self, miller_array,
@@ -2589,6 +2595,57 @@ class crystal_symmetry_is_compatible_with_symmetry_from_file:
         "Working %s is not compatible with %s" % (what[0], what[0])
         + " from reflection file:"] + msg)
     return None
+
+class normalised_amplitudes(object):
+  def __init__(self,
+               miller_array,
+               asu_contents,
+               wilson_plot=None):
+    assert miller_array.is_xray_intensity_array()
+
+    import statistics
+    import eltbx
+    if not wilson_plot:
+      binner = miller_array.binner
+      miller_array.setup_binner(n_bins=20)
+      wilson_plot = statistics.wilson_plot(miller_array, asu_contents)
+      miller_array.binner = binner
+
+    # cache scattering factor info
+    multiplicities = flex.double()
+    gaussians = shared_gaussian_form_factors()
+    for chemical_type, multiplicy in asu_contents.items():
+      gaussians.append(eltbx.xray_scattering.wk1995(
+        chemical_type).fetch())
+      multiplicities.append(multiplicy)
+
+    normalised = normalised_array(
+      form_factors=gaussians,
+      multiplicities=multiplicities,
+      wilson_intensity_scale_factor=wilson_plot.wilson_intensity_scale_factor,
+      wilson_b=wilson_plot.wilson_b,
+      indices=miller_array.indices(),
+      data=miller_array.data(),
+      unit_cell=miller_array.unit_cell(),
+      space_group=miller_array.space_group(),
+    )
+
+    self._array = array(
+      miller_set=set(
+        crystal_symmetry=miller_array.crystal_symmetry(),
+        indices=miller_array.indices()).auto_anomalous(),
+      data=normalised.data()).set_observation_type_xray_amplitude()
+    self._sum_e_sq_minus_1 = normalised.sum_e_sq_minus_1()
+    self._n_e_greater_than_2 = normalised.n_e_greater_than_2()
+
+  def array(self):
+    return self._array
+
+  def mean_e_sq_minus_1(self):
+    return self._sum_e_sq_minus_1/self._array.size()
+
+  def percent_e_sq_gt_2(self):
+    return (100.0 * self._n_e_greater_than_2)/self._array.size()
 
 class merge_equivalents(object):
 

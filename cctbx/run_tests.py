@@ -87,6 +87,7 @@ def run():
    "$D/sgtbx/rational_matrices_point_groups.py",
    "$D/sgtbx/cosets.py",
    "$D/regression/tst_find_best_cell.py",
+   "$D/regression/tst_normalised_amplitudes.py",
   )
 
   build_dir = libtbx.env.under_build("cctbx")
