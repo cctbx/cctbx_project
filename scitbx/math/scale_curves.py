@@ -3,6 +3,7 @@ from scitbx.array_family import flex
 import math, sys
 from libtbx.test_utils import approx_equal
 
+
 class linear_scaler(object):
   """This class scales together varios curves. means and varainces should be lists of flex arrays"""
   def __init__(self, means, variances, reference_id=0,spread=3.0, factor=50,f=0.7,eps=1e-12,out=None,show_progress=False,insert_solution_vector=None):
@@ -89,6 +90,10 @@ class linear_scaler(object):
     scales,offsets = self.get_scales_offsets( self.x )
     return scales,offsets,self.map
 
+def scale_it_global(m,v,ref_id=0,factor=10,show_progress=False):
+  scaler_object = linear_scaler( m,v,ref_id,factor=factor,show_progress=show_progress)
+  s,o,m = scaler_object.retrieve_results()
+  return s,o
 
 def scale_it_pairwise(m,v,ref_id=0,factor=10,show_progress=False):
   n = len(m)
@@ -108,6 +113,7 @@ def scale_it_pairwise(m,v,ref_id=0,factor=10,show_progress=False):
   return scales, ofsets
 
 def test_curve_scaler():
+   flex.set_random_seed( 12345 )
    x = flex.double( range(10) )/10.0
    y = flex.exp( -x )
    y0 = y
