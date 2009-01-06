@@ -21,7 +21,7 @@ from libtbx import Auto, group_args
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 master_params_str = """\
-grid_step = 0.25
+grid_step = 0.5
   .type = float
   .help = Defines finess of the grid at which the map is computed.
   .expert_level = 2
@@ -94,53 +94,74 @@ class model_to_map(object):
                      resolution_factor, high_resolution, low_resolution,
                      use_kick_map,
                      other_fft_map = None):
-    r_free_flags = f_obs.array(data = flex.bool(f_obs.size(), False))
-    if(high_resolution is not None):
-      f_obs = f_obs.resolution_filter(d_min = high_resolution)
-      r_free_flags = r_free_flags.resolution_filter(d_min = high_resolution)
-    if(low_resolution is not None):
-      f_obs = f_obs.resolution_filter(d_max = low_resolution)
-      r_free_flags = r_free_flags.resolution_filter(d_max = low_resolution)
-    #
-    bss_params = bss.master_params.extract()
-    bss_params.k_sol_max = 0.6
-    bss_params.k_sol_min = 0.0
-    bss_params.b_sol_max = 500.0
-    bss_params.b_sol_min = 0.0
-    bss_params.k_sol_grid_search_max = 0.6
-    bss_params.k_sol_grid_search_min = 0.0
-    bss_params.b_sol_grid_search_max = 80.0
-    bss_params.b_sol_grid_search_min = 0.0
-    bss_params.k_sol_step = 0.2
-    bss_params.b_sol_step = 20.0
-    #
-    self.fmodel = utils.fmodel_simple(
-      xray_structures = xray_structures,
-      f_obs           = f_obs,
-      r_free_flags    = r_free_flags,
-      bss_params      = bss_params,
-      twin_law        = None) # XXX support twin_law in future
-    if(not use_kick_map):
-      map_obj = self.fmodel.electron_density_map()
-      map_coeff = map_obj.map_coefficients(map_type = map_type)
-      self.fft_map = map_obj.fft_map(
-        resolution_factor = resolution_factor,
-        map_coefficients  = map_coeff,
-        other_fft_map     = other_fft_map)
+    # XXX
+    map_name_obj = mmtbx.map_names(map_name_string = map_type)
+    if(map_name_obj.k == 0 and map_name_obj.n == -1 and not map_name_obj.ml_map):
+      complete_set = f_obs.complete_set(d_min = f_obs.d_min(), d_max=None)
+      assert len(xray_structures) == 1
+      assert not use_kick_map
+      f_calc = complete_set.structure_factors_from_scatterers(
+        xray_structure = xray_structures[0],
+        grid_resolution_factor = resolution_factor).f_calc()
+      if(other_fft_map is not None):
+        self.fft_map = miller.fft_map(
+          crystal_gridding     = other_fft_map,
+          fourier_coefficients = f_calc)
+      else:
+        self.fft_map = f_calc.fft_map(
+          resolution_factor = resolution_factor,
+          symmetry_flags    = None)
       self.fft_map.apply_sigma_scaling()
       self.map_data =  self.fft_map.real_map_unpadded()
+    # XXX
     else:
-      km = map_tools.kick_map(
-        fmodel                        = self.fmodel,
-        map_type                      = map_type,
-        resolution_factor             = resolution_factor,
-        other_fft_map                 = other_fft_map,
-        real_map                      = True,
-        real_map_unpadded             = False,
-        symmetry_flags                = maptbx.use_space_group_symmetry,
-        average_maps                  = True) # XXX use map coefficients averaging
-      self.fft_map = km.fft_map
-      self.map_data = km.map_data
+      r_free_flags = f_obs.array(data = flex.bool(f_obs.size(), False))
+      if(high_resolution is not None):
+        f_obs = f_obs.resolution_filter(d_min = high_resolution)
+        r_free_flags = r_free_flags.resolution_filter(d_min = high_resolution)
+      if(low_resolution is not None):
+        f_obs = f_obs.resolution_filter(d_max = low_resolution)
+        r_free_flags = r_free_flags.resolution_filter(d_max = low_resolution)
+      #
+      bss_params = bss.master_params.extract()
+      bss_params.k_sol_max = 0.6
+      bss_params.k_sol_min = 0.0
+      bss_params.b_sol_max = 500.0
+      bss_params.b_sol_min = 0.0
+      bss_params.k_sol_grid_search_max = 0.6
+      bss_params.k_sol_grid_search_min = 0.0
+      bss_params.b_sol_grid_search_max = 80.0
+      bss_params.b_sol_grid_search_min = 20.0
+      bss_params.k_sol_step = 0.3
+      bss_params.b_sol_step = 20.0
+      #
+      self.fmodel = utils.fmodel_simple(
+        xray_structures = xray_structures,
+        f_obs           = f_obs,
+        r_free_flags    = r_free_flags,
+        bss_params      = bss_params,
+        twin_law        = None) # XXX support twin_law in future
+      if(not use_kick_map):
+        map_obj = self.fmodel.electron_density_map()
+        map_coeff = map_obj.map_coefficients(map_type = map_type)
+        self.fft_map = map_obj.fft_map(
+          resolution_factor = resolution_factor,
+          map_coefficients  = map_coeff,
+          other_fft_map     = other_fft_map)
+        self.fft_map.apply_sigma_scaling()
+        self.map_data =  self.fft_map.real_map_unpadded()
+      else:
+        km = map_tools.kick_map(
+          fmodel                        = self.fmodel,
+          map_type                      = map_type,
+          resolution_factor             = resolution_factor,
+          other_fft_map                 = other_fft_map,
+          real_map                      = True,
+          real_map_unpadded             = False,
+          symmetry_flags                = maptbx.use_space_group_symmetry,
+          average_maps                  = True) # XXX use map coefficients averaging
+        self.fft_map = km.fft_map
+        self.map_data = km.map_data
 
 class pdb_to_xrs(object):
   def __init__(self, pdb_files, crystal_symmetry, scattering_table):
@@ -466,7 +487,7 @@ class compute_map_cc(object):
     assert not self.fft_map.anomalous_flag()
     xrs = self.xray_structure.deep_copy_scatterers()
     xrs.convert_to_isotropic()
-    u_iso_all = adptbx.b_as_u(10.0)
+    u_iso_all = adptbx.b_as_u(30.0)
     xrs.set_u_iso(value = u_iso_all)
     real_map_unpadded = self.fft_map.real_map_unpadded()
     sampled_density = ext.sampled_model_density(
@@ -485,11 +506,20 @@ class compute_map_cc(object):
       store_grid_indices_for_each_scatterer = -1)
     return sampled_density
 
+  def show(self, histogram):
+    h_1 = histogram
+    lc_1 = histogram.data_min()
+    s_1 = enumerate(histogram.slots())
+    for (i_1,n_1) in s_1:
+      hc_1 = h_1.data_min() + h_1.slot_width() * (i_1+1)
+      print "%8.3f - %8.3f: %5d" % (lc_1,hc_1,n_1)
+      lc_1 = hc_1
+
   def atoms(self, pdb_hierarchy,
                   show = False,
                   poor_cc_threshold = 0.7,
                   poor_map_value_threshold = 1.0,
-                  ignore_points_with_map_values_less_than = 0.5,
+                  ignore_points_with_map_values_less_than = 0.1,
                   set_cc_to_zero_if_n_grid_points_less_than = 50,
                   show_hydrogens = True):
     result = []
@@ -527,6 +557,8 @@ class compute_map_cc(object):
     if(show):
       print "i_seq : chain resseq resname altloc name element   occ      b      CC   map1   map2  FLAG"
       fmt = "%5d : %5s %6s %7s %6s %4s %7s %5.2f %6.2f %7.4f %6.2f %6.2f %s"
+      cc_values = flex.double()
+      map_values = flex.double()
       for i_seq, r in enumerate(result):
         assert scatterers[i_seq].element_symbol().strip().upper() == \
           r.atom.element.strip().upper()
@@ -536,6 +568,8 @@ class compute_map_cc(object):
         if(not show_hydrogens and r.atom.element.strip().upper() in ["H","D"]):
           print_line = False
         if(print_line):
+          cc_values.append(r.cc)
+          map_values.append(r.map_2_val)
           print fmt % (i_seq, r.atom.chain_id, r.atom.resseq, r.atom.resname,
             r.atom.altloc, r.atom.name, r.atom.element, r.atom.occ, r.atom.b,
             r.cc, r.map_1_val, r.map_2_val, w_msg)
