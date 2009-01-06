@@ -1,8 +1,12 @@
+from __future__ import division
+
 import cctbx.eltbx.xray_scattering
 from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.utils import plural_s
 import math
+from cctbx import miller
+from libtbx import itertbx
 
 mean_number_of_atoms_per_amino_acid = {'C': 5, 'N': 3, 'O': 1}
 
@@ -10,7 +14,7 @@ class empty: pass
 
 class wilson_plot(object):
 
-  def __init__(self, f_obs, asu_contents):
+  def __init__(self, f_obs, asu_contents, e_statistics=False):
     assert f_obs.is_real_array()
     self.info = f_obs.info()
     f_obs_selected = f_obs.select(f_obs.data() > 0)
@@ -59,9 +63,18 @@ class wilson_plot(object):
     assert fit.is_well_defined()
     self.fit_y_intercept = fit.y_intercept()
     self.fit_slope = fit.slope()
-    self.wilson_k = math.sqrt(math.exp(self.fit_y_intercept))
+    self.wilson_intensity_scale_factor = math.exp(self.fit_y_intercept) # intensity scale factor
+    self.wilson_k = math.sqrt(self.wilson_intensity_scale_factor) # conversion to amplitude scale factor
     self.wilson_b = -self.fit_slope / 2
     self.fit_correlation = flex.linear_correlation(self.x,self.y).coefficient()
+
+    f_obs_sq = f_obs_selected.f_as_f_sq()
+
+    if e_statistics:
+      normalised = f_obs_sq.normalised_amplitudes(asu_contents, self)
+      self.normalised_f_obs = normalised.array()
+      self.mean_e_sq_minus_1 = normalised.mean_e_sq_minus_1()
+      self.percent_e_sq_gt_2 = normalised.percent_e_sq_gt_2()
 
   def xy_plot_info(self):
     r = empty()
