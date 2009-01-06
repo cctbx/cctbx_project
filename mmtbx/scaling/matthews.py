@@ -57,11 +57,12 @@ class p_vm_calculator(object):
     self.best_guess = self.guesstimate()
 
   def vm(self,copies):
-    vm = self.unit_cell_volume/(
-      (self.n_residues*self.mw_residue +
-       self.n_bases*self.mw_base)
-      *self.z*copies)
-    return(vm)
+    result = None
+    den = ((self.n_residues*self.mw_residue+self.n_bases*self.mw_base)*\
+      self.z*copies)
+    if(den != 0.0):
+      result = self.unit_cell_volume/den
+    return(result)
 
   def solc(self,vm):
     return (1.0-self.rho_spec/(0.602*vm))
