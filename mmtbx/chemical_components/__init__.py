@@ -122,6 +122,18 @@ def get_bond_pairs(code, alternate=False):
       tmp.append([item.atom_id_1, item.atom_id_2])
   return tmp
 
+def generate_chemical_components_codes():
+  data_dir = find_data_dir()
+  dirs = os.listdir(data_dir)
+  dirs.sort()
+  for d in dirs:
+    if not os.path.isdir(os.path.join(data_dir, d)): continue
+    filenames = os.listdir(os.path.join(data_dir, d))
+    filenames.sort()
+    for filename in filenames:
+      if filename.find("data_")!=0: continue
+      yield filename[5:-4]
+
 if __name__=="__main__":
   print '\nSMILES'
   print get_smiles(sys.argv[1])
