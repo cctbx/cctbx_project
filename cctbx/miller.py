@@ -2058,6 +2058,7 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       if(flex.min(sigmas) == 0.0):
         result = 0.0
       else:
+        assert sigmas.all_ne(0)
         result = flex.min(self.data() / sigmas)
     return result
 
