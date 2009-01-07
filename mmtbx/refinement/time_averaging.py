@@ -12,15 +12,15 @@ from mmtbx import utils
 class run(object):
 
   def __init__(self, fmodels, model, target_weights, log, time_step = 0.0005,
-                     n_cycles = 5, temperature = 300., n_steps = 200,
-                     eq_cycles = None):
+                     number_of_macro_cycles = 150, temperature = 300.,
+                     n_steps = 200, eq_cycles = None):
     tx = 1.
     f_calc_average = None
     if 0: fmodels.fmodel_xray().xray_structure.set_b_iso(value=1.0)
     self.xray_structures = []
     self.pdb_hierarchy = model.pdb_hierarchy
     twr = target_weights.xyz_weights_result
-    for macro_cycle in xrange(n_cycles):
+    for macro_cycle in xrange(number_of_macro_cycles):
       print >> log, "Cycle number: ", macro_cycle
       print >> log, "start R=%6.4f" % fmodels.fmodel_xray().r_work()
       xrs_start = fmodels.fmodel_xray().xray_structure.deep_copy_scatterers()
@@ -36,8 +36,11 @@ class run(object):
         chem_target_weight          = 1,
         xray_structure_last_updated = model.xray_structure,
         log = log)
-      xrs_final = cd_manager.xray_structure_last_updated
-      if(eq_cycles is not None and macro_cycle > eq_cycles):
+      xrs_final = cd_manager.xray_structure_last_updated.deep_copy_scatterers()
+      if(eq_cycles is not None):
+        if(macro_cycle > eq_cycles):
+          self.xray_structures.append(xrs_final)
+      else:
         self.xray_structures.append(xrs_final)
       result = xrs_start.distances(other = xrs_final)
       fmodels.update_xray_structure(
@@ -77,9 +80,9 @@ class run(object):
     print >> out, pdb.format_scale_records(
       unit_cell = crystal_symmetry.unit_cell())
     atoms_reset_serial = True
-    np = min(len(self.xray_structures)/100, 100)
-    if(num_models < len(self.xray_structures)):
+    if(num_models > len(self.xray_structures)):
       num_models = len(self.xray_structures)
+    np = min(len(self.xray_structures)/num_models, max_models)
     for i_model, xrs in enumerate(self.xray_structures):
       if(i_model%np == 0):
         print >> out, "MODEL %8d"%(i_model+1)
