@@ -276,11 +276,14 @@ namespace iotbx { namespace pdb {
       onhold, // non-standard
       obslte,
       title_,
+      split_, // added in PDB V3.2
       caveat,
       compnd,
       source,
       keywds,
       expdta,
+      nummdl, // added in PDB V3.2
+      mdltyp, // added in PDB V3.2
       author,
       revdat,
       sprsde,
@@ -289,6 +292,8 @@ namespace iotbx { namespace pdb {
       ftnote, // non-standard
       // Primary Structure Section
       dbref_,
+      dbref1, // added in PDB V3.2
+      dbref2, // added in PDB V3.2
       seqadv,
       seqres,
       modres,
@@ -450,6 +455,9 @@ namespace iotbx { namespace pdb {
             if (is_name("SLTBRG", line_data, line_size)) {
               set(connectivity_annotation, sltbrg); return;
             }
+            if (is_name("SPLIT ", line_data, line_size)) {
+              set(title, split_); return;
+            }
             if (is_name("SOURCE", line_data, line_size)) {
               set(title, source); return;
             }
@@ -468,6 +476,7 @@ namespace iotbx { namespace pdb {
             if (is_name("SITE  ", line_data, line_size)) {
               set(miscellaneous_features, site__); return;
             }
+            break;
           case 'C':
             if (is_name("CONECT", line_data, line_size)) {
               set(connectivity, conect); return;
@@ -527,8 +536,16 @@ namespace iotbx { namespace pdb {
             if (is_name("MTRIX ", line_data, line_size, "123")) {
               set(crystallographic, mtrix_); return;
             }
+            if (is_name("MDLTYP", line_data, line_size)) {
+              set(title, mdltyp); return;
+            }
             if (is_name("MASTER", line_data, line_size)) {
               set(bookkeeping, master); return;
+            }
+            break;
+          case 'N':
+            if (is_name("NUMMDL", line_data, line_size)) {
+              set(title, nummdl); return;
             }
             break;
           case 'E':
@@ -549,6 +566,7 @@ namespace iotbx { namespace pdb {
             if (is_name("FTNOTE", line_data, line_size)) {
               set(title, ftnote); return;
             }
+            break;
           case 'O':
             if (is_name("ORIGX ", line_data, line_size, "123")) {
               set(crystallographic, origx_); return;
@@ -559,18 +577,28 @@ namespace iotbx { namespace pdb {
             if (is_name("OBSLTE", line_data, line_size)) {
               set(title, obslte); return;
             }
+            break;
           case 'K':
             if (is_name("KEYWDS", line_data, line_size)) {
               set(title, keywds); return;
             }
+            break;
           case 'J':
             if (is_name("JRNL  ", line_data, line_size)) {
               set(title, jrnl__); return;
             }
+            break;
           case 'D':
             if (is_name("DBREF ", line_data, line_size)) {
               set(primary_structure, dbref_); return;
             }
+            if (is_name("DBREF1", line_data, line_size)) {
+              set(primary_structure, dbref1); return;
+            }
+            if (is_name("DBREF2", line_data, line_size)) {
+              set(primary_structure, dbref2); return;
+            }
+            break;
           default:
             break;
         }
