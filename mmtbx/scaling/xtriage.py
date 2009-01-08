@@ -27,79 +27,81 @@ import sys, os
 
 master_params = iotbx.phil.parse("""\
 scaling.input {
-   asu_contents
-   .help = "Defines the ASU contents"
-   {
-       n_residues=None
-       .type=float
-       .help="Number of residues in structural unit"
-       n_bases=None
-       .type=float
-       .help="Number of nucleotides in structural unit"
-       n_copies_per_asu=None
-       .type=float
-       .help="Number of copies per ASU. If not specified, Matthews analyses is performed"
-   }
+  asu_contents
+    .help = "Defines the ASU contents"
+  {
+    n_residues=None
+      .type=float
+      .help="Number of residues in structural unit"
+    n_bases=None
+      .type=float
+      .help="Number of nucleotides in structural unit"
+    n_copies_per_asu=None
+      .type=float
+      .help="Number of copies per ASU. If not specified, Matthews analyses is performed"
+  }
 
-   xray_data
+  xray_data
    .help="Defines xray data"
     .style = auto_align
-   {
-     file_name=None
+  {
+    file_name=None
       .type=path
       .help="File name with data"
       .short_caption = Reflections
       .style = bold noauto OnUpdate:extract_xtriage_xray_params file_type:hkl
-     obs_labels=None
-     .type=strings
-     .help="Labels for observed data"
+    obs_labels=None
+      .type=strings
+      .help="Labels for observed data"
       .short_caption = Fobs labels
-      .style = bold renderer:draw_hkl_label_widget
-     calc_labels=None
-     .type=strings
-     .help="Lables for calculated data"
+      .style = bold renderer:draw_hkl_label_widget \
+        OnChange:update_resolution_limits
+    calc_labels=None
+      .type=strings
+      .help="Lables for calculated data"
       .short_caption = Fcalc labels
       .style = renderer:draw_hkl_label_widget
-     unit_cell=None
-     .type=unit_cell
-     .help="Unit cell parameters"
+    unit_cell=None
+      .type=unit_cell
+      .help="Unit cell parameters"
       .style = bold
-     space_group=None
-     .type=space_group
-     .help="space group"
+    space_group=None
+      .type=space_group
+      .help="space group"
       .style = bold
-     high_resolution=None
-     .type=float
-     .help="High resolution limit"
-     low_resolution=None
-     .type=float
-     .help="Low resolution limit"
-
-     reference
-     .help = "A reference data set. For the investigation of possible reindexing options"
+    high_resolution=None
+      .type=float
+      .help="High resolution limit"
+      .style = bold renderer:draw_resolution_widget
+    low_resolution=None
+      .type=float
+      .help="Low resolution limit"
+      .style = bold renderer:draw_resolution_widget
+    reference
+      .help = "A reference data set. For the investigation of possible reindexing options"
       .short_caption = Reference data
       .style = noauto
-     {
-       data
-       .help="Defines an x-ray dataset"
-       .short_caption = X-ray data
-       .style = box auto_align
-       {
-         file_name=None
-         .type = path
-         .help = "File name"
+    {
+      data
+        .help="Defines an x-ray dataset"
+        .short_caption = X-ray data
+        .style = box auto_align
+      {
+        file_name=None
+          .type = path
+          .help = "File name"
           .short_caption = Reference x-ray file
-         labels=None
-         .type=strings
-         .help="Labels"
-         unit_cell=None
-         .type=unit_cell
-         .help=""Unit cell parameters"
-         space_group=None
-         .type=space_group
-         .help="Space group"
-       }
-       structure{
+        labels=None
+          .type=strings
+          .help="Labels"
+        unit_cell=None
+          .type=unit_cell
+          .help=""Unit cell parameters"
+        space_group=None
+          .type=space_group
+          .help="Space group"
+      }
+      structure{
          file_name=None
          .type=path
          .help="Filename of reference PDB file"

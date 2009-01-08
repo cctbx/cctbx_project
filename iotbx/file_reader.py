@@ -1,6 +1,7 @@
 
 import sys, os, re
 from mmtbx.monomer_library import server
+from iotbx.phil import parse as parse_phil
 from iotbx.pdb import is_pdb_file
 from iotbx.reflection_file_reader import any_reflection_file
 from iotbx.reflection_file_utils import reflection_file_server
@@ -45,14 +46,14 @@ class any_file (object) :
     self.get_processed_file = get_processed_file
 
     (file_base, file_ext) = os.path.splitext(file_name)
-    try :
-      for file_type in standard_file_types :
-        if file_ext[1:] in standard_file_extensions[file_type] :
+    for file_type in standard_file_types :
+      if file_ext[1:] in standard_file_extensions[file_type] :
+        try :
           read_method = getattr(self, "try_as_%s" % file_type)
           read_method()
           break
-    except Exception, e :
-      self.file_type = None
+        except Exception, e :
+          self.file_type = None
 
     if self.file_type is None :
       self.try_all_types()
@@ -81,7 +82,7 @@ class any_file (object) :
 
   def try_as_phil (self) :
     if self.file_type is not None : return False
-    phil_object = iotbx.phil.parse(file_name=self.file_name)
+    phil_object = parse_phil(file_name=self.file_name)
     self.file_type = "phil"
     self.file_object = phil_object
 
