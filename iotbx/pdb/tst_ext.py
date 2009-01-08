@@ -219,10 +219,14 @@ HEADER    ISOMERASE                               02-JUL-92   1FKB
 ONHOLD    26-JUN-99
 OBSLTE     07-DEC-04 1A0Y      1Y4P
 TITLE     ATOMIC STRUCTURE OF THE RAPAMYCIN HUMAN IMMUNOPHILIN FKBP-
+SPLIT      2QNH 1VSP
 COMPND    FK506 BINDING PROTEIN (FKBP) COMPLEX WITH IMMUNOSUPPRESSANT
 SOURCE    HUMAN (HOMO SAPIENS) RECOMBINANT FORM EXPRESSED IN
 KEYWDS    ISOMERASE
 EXPDTA    X-RAY DIFFRACTION
+NUMMDL    8
+MDLTYP    CA ATOMS ONLY, CHAIN B, C, D, E, F, G, H, I, J, K, L, M, N,
+MDLTYP   2 O, P, Q, R, S, T, U
 AUTHOR    G.D.VAN DUYNE,R.F.STANDAERT,S.L.SCHREIBER,J.C.CLARDY
 REVDAT   1   31-OCT-93 1FKB    0
 JRNL        AUTH   G.D.VAN DUYNE,R.F.STANDAERT,S.L.SCHREIBER,J.CLARDY
@@ -233,6 +237,8 @@ REMARK   2 RESOLUTION. 1.7  ANGSTROMS.
 FTNOTE   1 CIS PEPTIDE: GLY     190  - PHE     191
 
 DBREF  1HTQ A  601   468  SWS    Q10377   GLN1_MYCTU       2    478
+DBREF1 1JZX A    1  2880  GB                   15805042
+DBREF2 1JZX A     NC_001263                     2587937     2590817
 SEQRES   1 A  477  THR GLU LYS THR PRO ASP ASP VAL PHE LYS LEU ALA LYS
 SEQADV 1KEH ALA A  170  SWS  Q9L5D6    SER   199 ENGINEERED
 MODRES 6NSE CYS A  384  CYS  MODIFIED BY CAD
@@ -336,17 +342,22 @@ def exercise_pdb_input():
       "SPRSDE": 1, "      ":11, "FOOBAR": 1, "HETNAM": 1, "HEADER": 1,
       "ORIGX3": 1, "BREAK ": 1, "ONHOLD": 1, "SHEET ": 1, "TVECT ": 1,
       "HYDBND": 1, "TER   ": 2, "DBREF ": 1, "EXPDTA": 1, "SCALE3": 1,
-      "HETATM": 2, "SEQADV": 1}
+      "HETATM": 2, "SEQADV": 1, "SPLIT ": 1, "NUMMDL": 1, "MDLTYP": 2,
+      "DBREF1": 1, "DBREF2": 1}
     assert list(pdb_inp.unknown_section()) == ["FOOBAR BAR FOO"]
     assert not show_diff("\n".join(pdb_inp.title_section()), """\
 HEADER    ISOMERASE                               02-JUL-92   1FKB
 ONHOLD    26-JUN-99
 OBSLTE     07-DEC-04 1A0Y      1Y4P
 TITLE     ATOMIC STRUCTURE OF THE RAPAMYCIN HUMAN IMMUNOPHILIN FKBP-
+SPLIT      2QNH 1VSP
 COMPND    FK506 BINDING PROTEIN (FKBP) COMPLEX WITH IMMUNOSUPPRESSANT
 SOURCE    HUMAN (HOMO SAPIENS) RECOMBINANT FORM EXPRESSED IN
 KEYWDS    ISOMERASE
 EXPDTA    X-RAY DIFFRACTION
+NUMMDL    8
+MDLTYP    CA ATOMS ONLY, CHAIN B, C, D, E, F, G, H, I, J, K, L, M, N,
+MDLTYP   2 O, P, Q, R, S, T, U
 AUTHOR    G.D.VAN DUYNE,R.F.STANDAERT,S.L.SCHREIBER,J.C.CLARDY
 REVDAT   1   31-OCT-93 1FKB    0
 JRNL        AUTH   G.D.VAN DUYNE,R.F.STANDAERT,S.L.SCHREIBER,J.CLARDY
@@ -357,6 +368,8 @@ REMARK   2 RESOLUTION. 1.7  ANGSTROMS.
 FTNOTE   1 CIS PEPTIDE: GLY     190  - PHE     191""")
     assert not show_diff("\n".join(pdb_inp.primary_structure_section()), """\
 DBREF  1HTQ A  601   468  SWS    Q10377   GLN1_MYCTU       2    478
+DBREF1 1JZX A    1  2880  GB                   15805042
+DBREF2 1JZX A     NC_001263                     2587937     2590817
 SEQRES   1 A  477  THR GLU LYS THR PRO ASP ASP VAL PHE LYS LEU ALA LYS
 SEQADV 1KEH ALA A  170  SWS  Q9L5D6    SER   199 ENGINEERED
 MODRES 6NSE CYS A  384  CYS  MODIFIED BY CAD""")
@@ -717,9 +730,9 @@ def exercise_input_pickling():
     s = "\n".join(l.__getinitargs__()[1])
     d = hashlib_md5(s).hexdigest()
     if (pdb.hierarchy.atom.has_siguij()):
-      assert d == "680349fe2a399908338405337361c5cf"
+      assert d == "bf987c40cc8672e2f2324d91d6de3e2b"
     else:
-      assert d == "b2c84ceb3fc2a5636b219a27b4449c31"
+      assert d == "7375e96fd52794a785284580730de20c"
 
 def exercise_xray_structure_simple():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
