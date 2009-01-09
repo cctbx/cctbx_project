@@ -11,43 +11,78 @@ from mmtbx import utils
 
 class run(object):
 
-  def __init__(self, fmodels, model, target_weights, log, time_step = 0.0005,
-                     number_of_macro_cycles = 150, temperature = 300.,
-                     n_steps = 200, eq_cycles = None):
-    tx = 1.
+  def __init__(self, fmodels,
+                     model,
+                     target_weights,
+                     log,
+                     time_step = 0.0005,
+                     number_of_macro_cycles = 500,
+                     temperature = 300.,
+                     n_steps = 10,
+                     eq_cycles = None,
+                     b_target = 1.0,
+                     b_target_cycles = 5,
+                     tx = 0.1):
+    fmodel = fmodels.fmodel_xray()
+    assert fmodel.xray_structure is model.xray_structure
+    xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()
+    xrs_start = fmodels.fmodel_xray().xray_structure.deep_copy_scatterers()
+    xray_gradient = None
+    reset_velocities = True
     f_calc_average = None
-    if 0: fmodels.fmodel_xray().xray_structure.set_b_iso(value=1.0)
+    wx = target_weights.xyz_weights_result.wx * \
+      target_weights.xyz_weights_result.wx_scale
+    #
+    if 0:
+      b_isos = fmodel.xray_structure.scatterers().extract_u_iso()/adptbx.b_as_u(1)
+      assert b_target_cycles != 0
+      b_dec = (b_isos - b_target)/b_target_cycles
+    #
     self.xray_structures = []
     self.pdb_hierarchy = model.pdb_hierarchy
-    twr = target_weights.xyz_weights_result
     for macro_cycle in xrange(number_of_macro_cycles):
-      print >> log, "Cycle number: ", macro_cycle
-      print >> log, "start R=%6.4f" % fmodels.fmodel_xray().r_work()
-      xrs_start = fmodels.fmodel_xray().xray_structure.deep_copy_scatterers()
+      print >> log
+      if(macro_cycle == 0):
+        print >> log, "mc: %d r_work=%6.4f r_free=%6.4f"%(
+          macro_cycle, fmodel.r_work(), fmodel.r_free())
+      assert fmodel.xray_structure is model.xray_structure
       cd_manager = cartesian_dynamics.cartesian_dynamics(
-        structure                   = fmodels.fmodel_xray().xray_structure,
+        structure                   = model.xray_structure,
         restraints_manager          = model.restraints_manager,
         temperature                 = temperature,
         n_steps                     = n_steps,
         time_step                   = time_step,
-        fmodel                      = fmodels.fmodel_xray(),
-        shift_update                = None,
-        xray_target_weight          = twr.wx * twr.wx_scale,
-        chem_target_weight          = 1,
-        xray_structure_last_updated = model.xray_structure,
-        log = log)
-      xrs_final = cd_manager.xray_structure_last_updated.deep_copy_scatterers()
+        initial_velocities_zero_fraction = 0,
+        fmodel                      = fmodel,
+        xray_target_weight          = wx,
+        chem_target_weight          = target_weights.xyz_weights_result.w,
+        xray_structure_last_updated = xray_structure_last_updated,
+        shift_update                = 0.0,
+        xray_gradient               = xray_gradient,
+        reset_velocities            = reset_velocities,
+        update_f_calc               = False,
+        log                         = log)
+      reset_velocities = False
+      xray_structure_last_updated = \
+        cd_manager.xray_structure_last_updated.deep_copy_scatterers()
+      result = xrs_start.distances(other =
+        model.xray_structure).min_max_mean().as_tuple()
+      xray_gradient = cd_manager.xray_gradient
+      assert model.xray_structure is cd_manager.structure
+      fmodel.update_xray_structure(
+        xray_structure = model.xray_structure,
+        update_f_calc  = True,
+        update_f_mask  = True)
+      if(macro_cycle > 0):
+        print >> log, "mc: %d r_work=%6.4f r_free=%6.4f deviation (max,mean)=%5.3f %5.3f"%(
+          macro_cycle, fmodel.r_work(), fmodel.r_free(),result[1], result[2])
+      #
       if(eq_cycles is not None):
         if(macro_cycle > eq_cycles):
-          self.xray_structures.append(xrs_final)
+          self.xray_structures.append(model.xray_structure.deep_copy_scatterers())
       else:
-        self.xray_structures.append(xrs_final)
-      result = xrs_start.distances(other = xrs_final)
-      fmodels.update_xray_structure(
-        xray_structure = cd_manager.xray_structure_last_updated,
-        update_f_calc  = True)
-      print >> log, "final R=%6.4f" % fmodels.fmodel_xray().r_work(), \
-        xrs_start.distances(other = xrs_final).min_max_mean().as_tuple()
+        self.xray_structures.append(model.xray_structure.deep_copy_scatterers())
+      #
       f_calc = fmodels.fmodel_xray().f_calc()
       if(f_calc_average is None):
         f_calc_average = f_calc
@@ -57,8 +92,18 @@ class run(object):
         f_calc_average_data = f_calc_average.data()
         f_calc_average_data = a_prime * f_calc_average_data + (1.-a_prime) * f_calc_data
         f_calc_average = f_calc_average.array(data = f_calc_average_data)
-      fmodels.fmodel_xray().update(f_calc = f_calc_average)
-      print >> log, "final R=%6.4f" % fmodels.fmodel_xray().r_work()
+      fmodel.update(f_calc = f_calc_average)
+      #
+      if 0:
+        b_isos = fmodel.xray_structure.scatterers().extract_u_iso()/adptbx.b_as_u(1)
+        b_isos -= b_dec
+        sel = b_isos <= 0.
+        b_isos = b_isos.set_selected(sel, b_target)
+        fmodels.fmodel_xray().xray_structure.set_b_iso(values = b_isos)
+      #
+      if(macro_cycle > 0):
+        print >> log, "mc: %d r_work=%6.4f r_free=%6.4f deviation (max,mean)=%5.3f %5.3f"%(
+          macro_cycle, fmodel.r_work(), fmodel.r_free(),result[1], result[2])
     # Modify occupancies in-place
     for i_model in xrange(len(self.xray_structures)):
       self.xray_structures[i_model].set_occupancies(
@@ -66,12 +111,14 @@ class run(object):
     #
     self.write_pdb(out = open("ta_multi_model.pdb", "w"))
     #
-    fmodel = utils.fmodel_simple(
-      xray_structures = self.xray_structures,
-      f_obs = fmodels.fmodel_xray().f_obs,
-      r_free_flags = fmodels.fmodel_xray().r_free_flags)
-    print >> log, "FINAL Rwork=%6.4f Rfree=%6.4f" % (
-      fmodel.r_work(), fmodel.r_free())
+    if 0:
+      fmodel_ = utils.fmodel_simple(
+        xray_structures = self.xray_structures,
+        f_obs = fmodel.f_obs,
+        r_free_flags = fmodel.r_free_flags)
+      print >> log, "FINAL Rwork=%6.4f Rfree=%6.4f" % (
+        fmodel_.r_work(), fmodel_.r_free())
+
 
   def write_pdb(self, out, max_models = 100, num_models = 10):
     assert num_models <= 100
@@ -83,9 +130,11 @@ class run(object):
     if(num_models > len(self.xray_structures)):
       num_models = len(self.xray_structures)
     np = min(len(self.xray_structures)/num_models, max_models)
+    cntr = 0
     for i_model, xrs in enumerate(self.xray_structures):
       if(i_model%np == 0):
-        print >> out, "MODEL %8d"%(i_model+1)
+        cntr += 1
+        print >> out, "MODEL %8d"%cntr
         # XXX Copy from utils.py
         scatterers = xrs.scatterers()
         sites_cart = xrs.sites_cart()
@@ -120,5 +169,5 @@ class run(object):
           append_end=False,
           atoms_reset_serial_first_value=atoms_reset_serial_first_value))
         #
-      print >> out, "ENDMDL"
+        print >> out, "ENDMDL"
     print >> out, "END"

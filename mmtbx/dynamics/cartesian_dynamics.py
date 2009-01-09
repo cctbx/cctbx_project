@@ -48,22 +48,23 @@ class cartesian_dynamics(object):
   def __init__(self,
                structure,
                restraints_manager,
-               temperature                 = 300,
-               n_steps                     = 200,
-               time_step                   = 0.0005,
+               temperature                      = 300,
+               n_steps                          = 200,
+               time_step                        = 0.0005,
                initial_velocities_zero_fraction = 0,
-               interleaved_minimization_params = None,
-               n_print                     = 20,
-               fmodel                      = None,
-               xray_target_weight          = None,
-               chem_target_weight          = None,
-               shift_update                = None,
-               xray_structure_last_updated = None,
-               xray_gradient               = None,
-               reset_velocities            = True,
-               stop_cm_motion              = False,
-               log=None,
-               verbose=-1):
+               interleaved_minimization_params  = None,
+               n_print                          = 20,
+               fmodel                           = None,
+               xray_target_weight               = None,
+               chem_target_weight               = None,
+               shift_update                     = None,
+               xray_structure_last_updated      = None,
+               xray_gradient                    = None,
+               reset_velocities                 = True,
+               stop_cm_motion                   = False,
+               update_f_calc                    = True,
+               log                              = None,
+               verbose                          = -1):
     adopt_init_args(self, locals())
     assert self.n_print > 0
     assert self.temperature >= 0.0
@@ -193,10 +194,11 @@ class cartesian_dynamics(object):
     return gradient * obj.number_of_restraints # XXX BIGGEST MYSTERY !!!
 
   def xray_grads(self):
-    self.fmodel_copy.update_xray_structure(xray_structure = self.structure,
-                                           update_f_calc            = True,
-                                           update_f_mask            = False,
-                                           update_f_ordered_solvent = False)
+    self.fmodel_copy.update_xray_structure(
+      xray_structure           = self.structure,
+      update_f_calc            = self.update_f_calc,
+      update_f_mask            = False,
+      update_f_ordered_solvent = False)
     sf = self.target_functor(
       compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
     return flex.vec3_double(sf.packed())

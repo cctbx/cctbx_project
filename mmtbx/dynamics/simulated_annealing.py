@@ -80,7 +80,6 @@ def run_simulated_annealing(simulated_annealing_params,
                             alpha_beta_parameters,
                             mask_parameters,
                             out):
-  xray_structure_start        = model.xray_structure.deep_copy_scatterers()
   xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()
   sa_temp = simulated_annealing_params.start_temperature
   xray_gradient = None
