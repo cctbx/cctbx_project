@@ -22,7 +22,7 @@ class run(object):
                      eq_cycles = None,
                      b_target = 1.0,
                      b_target_cycles = 5,
-                     tx = 0.1):
+                     tx = 1.0):
     fmodel = fmodels.fmodel_xray()
     assert fmodel.xray_structure is model.xray_structure
     xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()
@@ -33,10 +33,10 @@ class run(object):
     wx = target_weights.xyz_weights_result.wx * \
       target_weights.xyz_weights_result.wx_scale
     #
-    if 0:
+    if 1:
       b_isos = fmodel.xray_structure.scatterers().extract_u_iso()/adptbx.b_as_u(1)
       assert b_target_cycles != 0
-      b_dec = (b_isos - b_target)/b_target_cycles
+      b_dec = (flex.min(b_isos) - b_target)/number_of_macro_cycles
     #
     self.xray_structures = []
     self.pdb_hierarchy = model.pdb_hierarchy
@@ -94,7 +94,7 @@ class run(object):
         f_calc_average = f_calc_average.array(data = f_calc_average_data)
       fmodel.update(f_calc = f_calc_average)
       #
-      if 0:
+      if 1:
         b_isos = fmodel.xray_structure.scatterers().extract_u_iso()/adptbx.b_as_u(1)
         b_isos -= b_dec
         sel = b_isos <= 0.
