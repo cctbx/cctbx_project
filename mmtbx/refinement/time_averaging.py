@@ -16,13 +16,13 @@ class run(object):
                      target_weights,
                      log,
                      time_step = 0.0005,
-                     number_of_macro_cycles = 500,
+                     number_of_macro_cycles = 100,
                      temperature = 300.,
                      n_steps = 10,
-                     eq_cycles = None,
+                     eq_cycles = 25,
                      b_target = 1.0,
                      b_target_cycles = 5,
-                     tx = 1.0):
+                     tx = 2.0):
     fmodel = fmodels.fmodel_xray()
     assert fmodel.xray_structure is model.xray_structure
     xray_structure_last_updated = model.xray_structure.deep_copy_scatterers()
@@ -36,7 +36,7 @@ class run(object):
     if 1:
       b_isos = fmodel.xray_structure.scatterers().extract_u_iso()/adptbx.b_as_u(1)
       assert b_target_cycles != 0
-      b_dec = (flex.min(b_isos) - b_target)/number_of_macro_cycles
+      b_decs = (b_isos - b_target)/b_target_cycles
     #
     self.xray_structures = []
     self.pdb_hierarchy = model.pdb_hierarchy
@@ -96,22 +96,22 @@ class run(object):
       #
       if 1:
         b_isos = fmodel.xray_structure.scatterers().extract_u_iso()/adptbx.b_as_u(1)
-        b_isos -= b_dec
-        sel = b_isos <= 0.
+        b_isos -= b_decs
+        sel = b_isos <= b_target
         b_isos = b_isos.set_selected(sel, b_target)
         fmodels.fmodel_xray().xray_structure.set_b_iso(values = b_isos)
       #
       if(macro_cycle > 0):
         print >> log, "mc: %d r_work=%6.4f r_free=%6.4f deviation (max,mean)=%5.3f %5.3f"%(
           macro_cycle, fmodel.r_work(), fmodel.r_free(),result[1], result[2])
-    # Modify occupancies in-place
+    # Modify occupancies in-place or reset to zero
     for i_model in xrange(len(self.xray_structures)):
       self.xray_structures[i_model].set_occupancies(
         value = (100./len(self.xray_structures))/100)
     #
-    self.write_pdb(out = open("ta_multi_model.pdb", "w"))
+    self.write_pdb(out = open("ta_multi_model.pdb", "w"), log = log)
     #
-    if 0:
+    if 1:
       fmodel_ = utils.fmodel_simple(
         xray_structures = self.xray_structures,
         f_obs = fmodel.f_obs,
@@ -120,13 +120,14 @@ class run(object):
         fmodel_.r_work(), fmodel_.r_free())
 
 
-  def write_pdb(self, out, max_models = 100, num_models = 10):
+  def write_pdb(self, log, out, max_models = 100, num_models = 10):
     assert num_models <= 100
     crystal_symmetry = self.xray_structures[0].crystal_symmetry()
     print >> out, pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
     print >> out, pdb.format_scale_records(
       unit_cell = crystal_symmetry.unit_cell())
     atoms_reset_serial = True
+    #
     if(num_models > len(self.xray_structures)):
       num_models = len(self.xray_structures)
     np = min(len(self.xray_structures)/num_models, max_models)
