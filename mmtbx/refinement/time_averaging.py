@@ -16,12 +16,12 @@ class run(object):
                      target_weights,
                      log,
                      time_step = 0.0005,
-                     number_of_macro_cycles = 100,
+                     number_of_macro_cycles = 11,
                      temperature = 300.,
                      n_steps = 10,
-                     eq_cycles = 25,
+                     eq_cycles = 0,
                      b_target = 1.0,
-                     b_target_cycles = 5,
+                     b_target_cycles = 10,
                      tx = 2.0):
     fmodel = fmodels.fmodel_xray()
     assert fmodel.xray_structure is model.xray_structure
@@ -96,7 +96,7 @@ class run(object):
       #
       if 1:
         b_isos = fmodel.xray_structure.scatterers().extract_u_iso()/adptbx.b_as_u(1)
-        b_isos -= b_decs
+        b_isos = b_isos - b_decs
         sel = b_isos <= b_target
         b_isos = b_isos.set_selected(sel, b_target)
         fmodels.fmodel_xray().xray_structure.set_b_iso(values = b_isos)
