@@ -7,7 +7,7 @@ from libtbx.test_utils import Exception_expected, approx_equal
 from libtbx import group_args
 import math
 
-class Empty():
+class Empty(object):
   pass
 
 def as_normalised_array(miller_array,
