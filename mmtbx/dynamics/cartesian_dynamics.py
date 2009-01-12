@@ -11,6 +11,7 @@ import random
 import time
 import math
 import sys
+import iotbx.phil
 
 class interleaved_lbfgs_minimization(object):
 
@@ -43,6 +44,21 @@ class interleaved_lbfgs_minimization(object):
         sorted_asu_proxies=sorted_asu_proxies,
         gradient_array=g)
     return f, g.as_double()
+
+master_params = iotbx.phil.parse("""\
+  temperature = 300
+    .type = int
+  number_of_steps = 200
+    .type = int
+  time_step = 0.0005
+    .type = float
+  initial_velocities_zero_fraction = 0
+    .type = float
+  n_print = 100
+    .type = int
+  verbose = -1
+    .type = int
+""")
 
 class cartesian_dynamics(object):
   def __init__(self,
