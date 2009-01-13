@@ -1920,7 +1920,7 @@ class phaser_sad_target_functor(object):
         previous_overall_scale=previous_overall_scale,
         previous_variances=previous_variances)
     except TypeError, e: # XXX backward compatibility 2008-10-10
-      if (str(e).find("previous_variances") < 0): raise
+      if (str(e).find("previous_") < 0): raise
       self.refine_sad_object = adaptor.target(
         xray_structure=xray_structure)
     self.refine_sad_object.set_f_calc(f_calc=f_calc)
@@ -1929,9 +1929,13 @@ class phaser_sad_target_functor(object):
   def prepare_for_minimization(self):
     rso = self.refine_sad_object
     rso.refine_variance_terms()
-    self.refined_overall_b_iso = adptbx.u_as_b(
-      rso.refine_sad_instance.get_refined_scaleU())
-    assert self.refined_overall_b_iso > -1
+    get = getattr( # XXX backward compatibility 2008-10-10
+      rso.refine_sad_instance, "get_refined_scaleU", None)
+    if (get is None):
+      self.refined_overall_b_iso = 0
+    else:
+      self.refined_overall_b_iso = adptbx.u_as_b(get())
+      assert self.refined_overall_b_iso > -1
 
   def target_memory(self):
     rsi = self.refine_sad_object.refine_sad_instance
