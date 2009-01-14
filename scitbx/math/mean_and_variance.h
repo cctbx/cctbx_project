@@ -60,7 +60,7 @@ namespace scitbx { namespace math {
       }
 
       //! Emulation of gsl_stats_wvariance of the GNU Scientific Library.
-      /*! http://www.gnu.org/software/gsl/manual/gsl-ref_20.html#SEC339
+      /*! http://www.gnu.org/software/gsl/manual/html_node/Weighted-Samples.html
        */
       FloatType
       gsl_stats_wvariance() const
@@ -71,7 +71,7 @@ namespace scitbx { namespace math {
       }
 
       //! Emulation of gsl_stats_wsd of the GNU Scientific Library.
-      /*! http://www.gnu.org/software/gsl/manual/gsl-ref_20.html#SEC339
+      /*! http://www.gnu.org/software/gsl/manual/html_node/Weighted-Samples.html
        */
       FloatType
       gsl_stats_wsd() const { return std::sqrt(gsl_stats_wvariance()); }
