@@ -542,6 +542,8 @@ class manager(manager_mixin):
         d_max=0,
         d_min=0,
         update_xray_structure=False):
+    if(d_min is None): d_min = 0
+    if(d_max is None): d_max = 0
     return self.select(
       selection=self.f_obs.resolution_filter_selection(
         d_max=d_max, d_min=d_min),
