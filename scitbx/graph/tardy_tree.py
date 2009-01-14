@@ -157,10 +157,9 @@ def construct_edge_sets(n_vertices, edges):
     result[j].add(i)
   return result
 
-def find_loops(edge_sets, depth, loop_set, path, iv, traversing, traversed):
+def find_loops(edge_sets, depth, loop_set, path, iv, traversing):
   path = path + [iv]
   traversing[iv] = True
-  traversed.append(iv)
   at_limit = (len(path) == depth)
   for jv in edge_sets[iv]:
     if (jv < path[0]): continue
@@ -168,7 +167,8 @@ def find_loops(edge_sets, depth, loop_set, path, iv, traversing, traversed):
       loop_set.update(path)
     if (at_limit): continue
     if (traversing[jv]): continue
-    find_loops(edge_sets, depth, loop_set, path, jv, traversing, traversed)
+    find_loops(edge_sets, depth, loop_set, path, jv, traversing)
+  traversing[iv] = False
 
 class construct(object):
 
@@ -180,17 +180,13 @@ class construct(object):
     traversing = [False] * n_vertices
     for iv in xrange(n_vertices):
       loop_set = set()
-      traversed = []
       find_loops(
         edge_sets=O.edge_sets,
         depth=size_max,
         loop_set=loop_set,
         path=[],
         iv=iv,
-        traversing=traversing,
-        traversed=traversed)
-      for jv in traversed:
-        traversing[jv] = False
+        traversing=traversing)
       for jv in loop_set:
         O.cluster_manager.connect(i=iv, j=jv)
     O.cluster_manager.tidy()
