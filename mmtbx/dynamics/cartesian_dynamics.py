@@ -79,6 +79,7 @@ class cartesian_dynamics(object):
                reset_velocities                 = True,
                stop_cm_motion                   = False,
                update_f_calc                    = True,
+               time_averaging_data              = None,
                log                              = None,
                verbose                          = -1):
     adopt_init_args(self, locals())
@@ -97,6 +98,9 @@ class cartesian_dynamics(object):
     self.timfac = 0.04888821
     self.weights = self.structure.atomic_weights()
     self.vxyz = flex.vec3_double(self.weights.size(),(0,0,0))
+    if(self.time_averaging_data is not None and
+       self.time_averaging_data.velocities is not None):
+      self.vxyz = self.time_averaging_data.velocities
     if(self.fmodel is not None):
       self.fmodel_copy = self.fmodel.deep_copy()
       self.target_functor = self.fmodel_copy.target_functor()
@@ -129,10 +133,7 @@ class cartesian_dynamics(object):
     self.current_temperature = kt.temperature()
     self.ekin = kt.kinetic_energy()
     if(self.verbose >= 1):
-      print_dynamics_stat(self.log,self.temperature,self.current_temperature,
-                          self.time_step,self.n_steps,self.rcm,self.vcm,
-                          self.ekcm,self.acm,self.ekin,
-                          "restrained dynamics start")
+      self.print_dynamics_stat(text="restrained dynamics start")
     if(self.reset_velocities):
        self.set_velocities()
        self.center_of_mass_info()
@@ -140,20 +141,14 @@ class cartesian_dynamics(object):
        self.current_temperature = kt.temperature()
        self.ekin = kt.kinetic_energy()
        if(self.verbose >= 1):
-         print_dynamics_stat(self.log,self.temperature,self.current_temperature,
-                             self.time_step,self.n_steps,self.rcm,self.vcm,
-                             self.ekcm,self.acm,self.ekin,
-                             "set velocities")
+         self.print_dynamics_stat(text="set velocities")
     self.stop_global_motion()
     self.center_of_mass_info()
     kt = dynamics.kinetic_energy_and_temperature(self.vxyz,self.weights)
     self.current_temperature = kt.temperature()
     self.ekin = kt.kinetic_energy()
     if(self.verbose >= 1):
-      print_dynamics_stat(self.log,self.temperature,self.current_temperature,
-                          self.time_step,self.n_steps,self.rcm,self.vcm,
-                          self.ekcm,self.acm,self.ekin,
-                          "center of mass motion removed")
+      self.print_dynamics_stat(text="center of mass motion removed")
 
     self.velocity_rescaling()
     self.center_of_mass_info()
@@ -161,10 +156,7 @@ class cartesian_dynamics(object):
     self.current_temperature = kt.temperature()
     self.ekin = kt.kinetic_energy()
     if(self.verbose >= 1):
-      print_dynamics_stat(self.log,self.temperature,self.current_temperature,
-                          self.time_step,self.n_steps,self.rcm,self.vcm,
-                          self.ekcm,self.acm,self.ekin,
-                          "velocities rescaled")
+      self.print_dynamics_stat(text="velocities rescaled")
     if(self.verbose >= 1):
       print >> self.log, "integration starts"
     self.verlet_leapfrog_integration()
@@ -174,10 +166,7 @@ class cartesian_dynamics(object):
     self.current_temperature = kt.temperature()
     self.ekin = kt.kinetic_energy()
     if(self.verbose >= 1):
-      print_dynamics_stat(self.log,self.temperature,self.current_temperature,
-                          self.time_step,self.n_steps,self.rcm,self.vcm,
-                          self.ekcm,self.acm,self.ekin,
-                          "after final integration step")
+      self.print_dynamics_stat(text="after final integration step")
 
   def set_velocities(self):
     ivzf = self.initial_velocities_zero_fraction
@@ -200,7 +189,8 @@ class cartesian_dynamics(object):
     gradient = chem_grads
     if(self.fmodel is not None):
       array_of_distances_between_each_atom = \
-        flex.sqrt(self.structure.difference_vectors_cart(self.xray_structure_last_updated).dot())
+        flex.sqrt(self.structure.difference_vectors_cart(
+           self.xray_structure_last_updated).dot())
       d_max = flex.max(array_of_distances_between_each_atom)
       if(d_max > self.shift_update):
         self.xray_structure_last_updated = self.structure.deep_copy_scatterers()
@@ -212,11 +202,40 @@ class cartesian_dynamics(object):
   def xray_grads(self):
     self.fmodel_copy.update_xray_structure(
       xray_structure           = self.structure,
-      update_f_calc            = self.update_f_calc,
+      update_f_calc            = True,
       update_f_mask            = False,
       update_f_ordered_solvent = False)
+    if(self.time_averaging_data is not None):
+      self.time_averaging_data.xray_structures.append(
+        self.structure.deep_copy_scatterers())
+      fcra = self.time_averaging_data.f_calc_running_average
+      fmda = self.time_averaging_data.f_model_data_average
+      self.time_averaging_data.f_model_data_current = \
+        self.fmodel_copy.f_model().data()
+      if(fmda is None):
+        fmda = self.time_averaging_data.f_model_data_current
+      else:
+        fmda += self.time_averaging_data.f_model_data_current
+      self.time_averaging_data.f_model_data_average = fmda
+    if(not self.update_f_calc):
+      f_calc = self.fmodel_copy.f_calc()
+      if(fcra is None):
+        fcra = f_calc
+      else:
+        a_prime = math.exp(
+          -self.time_step/self.time_averaging_data.params.tx)
+        f_calc_average_data = fcra.data()
+        f_calc_average_data = a_prime * f_calc_average_data + \
+                         (1.-a_prime) * f_calc.data()
+        fcra = fcra.array(data = f_calc_average_data)
+      self.fmodel_copy.update(f_calc = fcra)
+      self.time_averaging_data.f_calc_running_average = fcra
+      self.time_averaging_data.r_work_running_average = \
+        self.fmodel_copy.r_work()
     sf = self.target_functor(
       compute_gradients=True).gradients_wrt_atomic_parameters(site=True)
+    if(self.time_averaging_data is not None):
+      self.time_averaging_data.velocities = self.vxyz
     return flex.vec3_double(sf.packed())
 
   def center_of_mass_info(self):
@@ -278,10 +297,7 @@ class cartesian_dynamics(object):
         kt = dynamics.kinetic_energy_and_temperature(self.vxyz, self.weights)
         self.current_temperature = kt.temperature()
         self.ekin = kt.kinetic_energy()
-        print_dynamics_stat(self.log,self.temperature,self.current_temperature,
-                            self.time_step,self.n_steps,self.rcm,self.vcm,
-                            self.ekcm,self.acm,self.ekin,
-                            text)
+        self.print_dynamics_stat(text)
       if(self.stop_cm_motion):
         self.center_of_mass_info()
         self.stop_global_motion()
@@ -295,10 +311,7 @@ class cartesian_dynamics(object):
       self.velocity_rescaling()
       if(print_flag == 1 and 0):
         self.center_of_mass_info()
-        print_dynamics_stat(self.log,self.temperature,self.current_temperature,
-                            self.time_step,self.n_steps,self.rcm,self.vcm,
-                            self.ekcm,self.acm,self.ekin,
-                            text)
+        self.print_dynamics_stat(text)
       # do the verlet_leapfrog_integration to get coordinates at t+dt
       self.structure.set_sites_cart(
         sites_cart=self.structure.sites_cart() + self.vxyz * self.tstep)
@@ -310,26 +323,25 @@ class cartesian_dynamics(object):
       self.ekin = kt.kinetic_energy()
       if(print_flag == 1 and 0):
         self.center_of_mass_info()
-        print_dynamics_stat(self.log,self.temperature,self.current_temperature,
-                            self.time_step,self.n_steps,self.rcm,self.vcm,
-                            self.ekcm,self.acm,self.ekin,
-                            text)
+        self.print_dynamics_stat(text)
     self.residuals()
 
-def print_dynamics_stat(log,temp,ctemp,time_step,nsteps,r,v,ekcm,am,ek,text):
-  timfac = 0.04888821
-  line_len = len("| "+text+"|")
-  fill_len = 80 - line_len-1
-  print >> log, "| "+text+"-"*(fill_len)+"|"
-  print >> log, "| kin.energy = %10.3f            " \
-                "| information about center of free masses|"%(ek)
-  print >> log, "| start temperature = %7.3f        " \
-                "| position=%8.3f%8.3f%8.3f      |"% (temp,r[0],r[1],r[2])
-  print >> log, "| curr. temperature = %7.3f        " \
-                "| velocity=%8.4f%8.4f%8.4f      |"% (
-    ctemp,v[0][0]/timfac,v[0][1]/timfac,v[0][2]/timfac)
-  print >> log, "| number of integration steps = %4d " \
-                "| ang.mom.=%10.2f%10.2f%10.2f|"% (
-      nsteps,am[0][0]/timfac,am[0][1]/timfac,am[0][2]/timfac)
-  print >> log, "| time step = %6.4f                 | kin.ener.=%8.3f                     |"% (time_step,ekcm)
-  print >> log, "|"+"-"*77+"|"
+  def print_dynamics_stat(self, text):
+    timfac = 0.04888821
+    line_len = len("| "+text+"|")
+    fill_len = 80 - line_len-1
+    print >> self.log, "| "+text+"-"*(fill_len)+"|"
+    print >> self.log, "| kin.energy = %10.3f            " \
+      "| information about center of free masses|"%(self.ekin)
+    print >> self.log, "| start temperature = %7.3f        " \
+      "| position=%8.3f%8.3f%8.3f      |"% (
+      self.temperature,self.rcm[0],self.rcm[1],self.rcm[2])
+    print >> self.log, "| curr. temperature = %7.3f        " \
+      "| velocity=%8.4f%8.4f%8.4f      |"% (self.current_temperature,
+      self.vcm[0][0]/timfac,self.vcm[0][1]/timfac,self.vcm[0][2]/timfac)
+    print >> self.log, "| number of integration steps = %4d " \
+      "| ang.mom.=%10.2f%10.2f%10.2f|"% (self.n_steps,
+      self.acm[0][0]/timfac,self.acm[0][1]/timfac,self.acm[0][2]/timfac)
+    print >> self.log, "| time step = %6.4f                 | kin.ener.=%8.3f                     |"% (
+      self.time_step,self.ekcm)
+    print >> self.log, "|"+"-"*77+"|"
