@@ -2848,6 +2848,7 @@ class process(object):
         special_position_settings=None,
         crystal_symmetry=None,
         force_symmetry=False,
+        substitute_non_crystallographic_unit_cell_if_necessary=False,
         keep_monomer_mappings=False,
         max_atoms=None,
         log=None):
@@ -2863,6 +2864,8 @@ class process(object):
       special_position_settings=special_position_settings,
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
+      substitute_non_crystallographic_unit_cell_if_necessary
+        =substitute_non_crystallographic_unit_cell_if_necessary,
       strict_conflict_handling=strict_conflict_handling,
       keep_monomer_mappings=keep_monomer_mappings,
       max_atoms=max_atoms,
