@@ -227,6 +227,7 @@ mmtbx/chemical_components/__init__.py -text
 mmtbx/chemical_components/cif_parser.py -text
 mmtbx/chemical_components/tst.py -text
 mmtbx/command_line/cif_as_mtz.py -text
+mmtbx/command_line/grow_density.py -text
 mmtbx/command_line/maps.py -text
 mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
@@ -234,6 +235,7 @@ mmtbx/command_line/pdbtools.py -text
 mmtbx/command_line/real_space_correlation.py -text
 mmtbx/command_line/xmanip.py -text
 mmtbx/find_peaks.py -text
+mmtbx/grow_density.py -text
 mmtbx/hydrogens/find.py -text
 mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
