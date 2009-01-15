@@ -136,6 +136,26 @@ class cluster_manager(object):
       if (ip != -1): ip = i_new_given_i_old[ip]
       O.parents[i_new_given_i_old[i]] = ip
 
+  def roots(O):
+    assert O.parents is not None
+    result = []
+    for i,ip in enumerate(O.parents):
+      if (ip == -1):
+        result.append(i)
+    return result
+
+  def tree_ids(O):
+    assert O.parents is not None
+    result = [-1] * len(O.clusters)
+    tid = 0
+    for i,ip in enumerate(O.parents):
+      if (ip == -1):
+        result[i] = tid
+        tid += 1
+      else:
+        result[i] = result[ip]
+    return result
+
   def find_loop_edges(O, edges):
     assert O.parents is not None
     result = []
