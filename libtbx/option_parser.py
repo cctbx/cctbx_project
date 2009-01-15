@@ -119,6 +119,15 @@ class processed_options(object):
     self.attributes_level = show_defaults_callback.attributes_level
     self.chunk_n = chunk_callback.n
     self.chunk_i = chunk_callback.i
+    self.sge_info = None
+
+  def sge_overrides_chunk(self):
+    from libtbx import sge_utils
+    self.sge_info = sge_utils.info()
+    if (self.sge_info.id is not None):
+      self.chunk_n = max(self.chunk_n, self.sge_info.last)
+      self.chunk_i = self.sge_info.id - 1
+    return self
 
 class show_defaults_callback(object):
 
