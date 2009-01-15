@@ -392,6 +392,23 @@ test_cases = [
     parents2=[-1, 0, -1]),
   ]
 
+def exercise_tyr_with_h():
+  # matching PDB file:
+  #  scitbx/rigid_body/proto/tst_molecules.py (svn rev. 8373):
+  #    simulation_tyr_with_h()
+  tt = construct(
+    n_vertices=21,
+    edges=[
+      (0, 1), (0, 2), (0, 12), (1, 3), (1, 6), (2, 4), (2, 7), (3, 5),
+      (3, 8), (4, 5), (4, 9), (5, 10), (10, 11), (12, 13), (12, 14),
+      (12, 16), (15, 16), (15, 20), (16, 17), (16, 18), (17, 19)])
+  tt.cluster_manager.merge_lones(edges=tt.edges)
+  tt.cluster_manager.construct_spanning_trees(edges=tt.edges)
+  assert tt.cluster_manager.clusters == [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    [12, 13, 14], [10, 11], [16, 18], [15, 20], [17, 19]]
+  assert tt.cluster_manager.parents == [-1, 0, 0, 1, 3, 3]
+
 def run(args):
   assert args in [[], ["--verbose"]]
   verbose = "--verbose" in args
@@ -436,6 +453,7 @@ def run(args):
       assert_same("p2:", lc.cluster_manager.parents, tc_p2)
       le = lc.cluster_manager.find_loop_edges(edges=tc.edges)
       assert_same("le2:", le, tc_le2)
+  exercise_tyr_with_h()
   print "OK"
 
 if (__name__ == "__main__"):
