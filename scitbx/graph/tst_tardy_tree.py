@@ -481,25 +481,25 @@ def run(args):
           if (have != expected):
             print >> out, "expected:", expected
           assert have == expected, "Note: --verbose for details"
-      lc = construct(
+      tt = construct(
         n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
-      assert_same("c1:", lc.cluster_manager.clusters, tc_c1)
-      lc.cluster_manager.construct_spanning_trees(edges=tc.edges)
-      print >> out, "c1p:", lc.cluster_manager.clusters
-      assert_same("p1:", lc.cluster_manager.parents, tc_p1)
-      tid = lc.cluster_manager.tree_ids()
+      assert_same("c1:", tt.cluster_manager.clusters, tc_c1)
+      tt.cluster_manager.construct_spanning_trees(edges=tc.edges)
+      print >> out, "c1p:", tt.cluster_manager.clusters
+      assert_same("p1:", tt.cluster_manager.parents, tc_p1)
+      tid = tt.cluster_manager.tree_ids()
       assert_same("tid1:", tid, tc_tid1)
-      le = lc.cluster_manager.find_loop_edges(edges=tc.edges)
+      le = tt.cluster_manager.find_loop_edges(edges=tc.edges)
       assert_same("le1:", le, tc_le1)
       #
-      lc = construct(
+      tt = construct(
         n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
-      lc.cluster_manager.merge_lones(edges=tc.edges)
-      assert_same("c2:", lc.cluster_manager.clusters, tc_c2)
-      lc.cluster_manager.construct_spanning_trees(edges=tc.edges)
-      print >> out, "c2p:", lc.cluster_manager.clusters
-      assert_same("p2:", lc.cluster_manager.parents, tc_p2)
-      le = lc.cluster_manager.find_loop_edges(edges=tc.edges)
+      tt.cluster_manager.merge_lones(edges=tc.edges)
+      assert_same("c2:", tt.cluster_manager.clusters, tc_c2)
+      tt.cluster_manager.construct_spanning_trees(edges=tc.edges)
+      print >> out, "c2p:", tt.cluster_manager.clusters
+      assert_same("p2:", tt.cluster_manager.parents, tc_p2)
+      le = tt.cluster_manager.find_loop_edges(edges=tc.edges)
       assert_same("le2:", le, tc_le2)
   exercise_tyr_with_h()
   print "OK"
