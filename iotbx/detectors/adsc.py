@@ -6,7 +6,7 @@ class ADSCImage(DetectorImageBase):
     DetectorImageBase.__init__(self,filename)
     self.vendortype = "ADSC"
 
-  def readHeader(self,maxlength=12288): # usually 1024 is OK; require 12288 for ID19
+  def readHeader(self,maxlength=12288, external_keys=None): # usually 1024 is OK; require 12288 for ID19
     if not self.parameters:
       rawdata = open(self.filename,"rb").read(maxlength)
       headeropen = rawdata.index("{")
@@ -14,7 +14,8 @@ class ADSCImage(DetectorImageBase):
       self.header = rawdata[headeropen+1:headerclose-headeropen]
 
       self.parameters={'CCD_IMAGE_SATURATION':65535}
-      for tag,search,datatype in [
+
+      library = [
           ('HEADER_BYTES','HEADER_BYTES',int),
           ('SIZE1','SIZE1',int),
           ('SIZE2','SIZE2',int),
@@ -33,7 +34,12 @@ class ADSCImage(DetectorImageBase):
           ('PHI','PHI',float),
           ('OMEGA','OMEGA',float),
           ('DATE','DATE',str),
-          ]:
+          ]
+      if external_keys is not None:
+          assert len(external_keys[0]) == 3
+          library = library + external_keys
+
+      for tag,search,datatype in library:
           pattern = re.compile(search+'='+r'(.*);')
           matches = pattern.findall(self.header)
           if len(matches)>0:
