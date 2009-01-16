@@ -1,5 +1,6 @@
 from cctbx import xray
 from cctbx import sgtbx
+from cctbx import maptbx
 from cctbx.array_family import flex
 import scitbx.lbfgs
 from smtbx.refinement.minimization import lbfgs
@@ -14,6 +15,7 @@ class manager(object):
                xray_structure = None,
                lambda_= None,
                max_cycles=50,
+               max_peaks=30,
                verbose=1,
                log=None):
     assert [f_obs,f_sq_obs].count(None) == 1
@@ -31,7 +33,9 @@ class manager(object):
       self.f_obs = f_sq_obs.f_sq_as_f()
     assert self.f_sq_obs.is_real_array()
     self.xray_structure = xray_structure
+    self.xs_0 = xray_structure
     self.max_cycles = max_cycles
+    self.max_peaks = max_peaks
     self.verbose = verbose
     self.log = log
 
@@ -101,6 +105,18 @@ class manager(object):
     )
     self.minimisation = minimisation
 
+  def peak_search(self):
+    fft_map = self.f_obs_minus_f_calc_map(0.4)
+    fft_map.apply_volume_scaling()
+    return fft_map.peak_search(
+      parameters=maptbx.peak_search_parameters(
+        peak_cutoff=0.1,
+        min_distance_sym_equiv=1.0,
+        max_clusters=self.max_peaks,
+        ),
+      verify_symmetry=False
+      ).all()
+
   def on_cycle_finished(self, xs, minimiser):
     """ called after each iteration of the given minimiser, xs being
     the refined structure. """
@@ -109,16 +125,17 @@ class manager(object):
   def show_cycle_summary(self, minimizer):
     if self.verbose:
       print "Refinement Cycle: %i" %(minimizer.iter())
-      print "wR2: %.4f" %self.wR2()
-      print "GooF = %.4f for %i parameters" %self.GooF(minimizer)
+      print "wR2 = %.4f\nGooF = %.4f for" %self.wR2_and_GooF(minimizer),
+      print "%i parameters" %minimizer.n()
 
   def show_final_summary(self):
     """ only to be called after minimisation has finished. """
     if self.verbose:
       print "R1 = %.4f for %i Fo > 4sig(Fo)" %self.R1(),
       print "and %.4f for all %i data" %(self.R1(all_data=True))
-      print "wR2 = %.4f" %self.wR2()
-      print "GooF = %.4f for %i parameters" %self.GooF(self.minimisation.minimizer)
+      print "wR2 = %.4f" \
+            "GooF = %.4f for" %self.wR2_and_GooF(self.minimisation.minimizer),
+      print "%i parameters" %self.minimisation.minimizer.n()
 
   def f_obs_minus_f_calc_map(self, resolution):
     f_obs=self.f_obs
@@ -179,7 +196,7 @@ class manager(object):
     R1 = self.calculate_R1(f_obs)
     return R1, f_obs.size()
 
-  def wR2(self):
+  def wR2_and_GooF(self, minimizer):
     f_sq_obs = self.f_sq_obs
     sf = xray.structure_factors.from_scatterers(
       miller_set=f_sq_obs,
@@ -196,27 +213,11 @@ class manager(object):
     f_sq_calc = f_calc.norm()
     fc_sq = f_sq_calc.data()
     fo_sq = f_sq_obs.data()
-    return math.sqrt(flex.sum(weights * flex.pow2(fo_sq - k * fc_sq)) /
-                     flex.sum(weights * flex.pow2(fo_sq)))
-
-  def GooF(self, minimizer):
-    f_sq_obs = self.f_sq_obs
-    sf = xray.structure_factors.from_scatterers(
-      miller_set=f_sq_obs,
-      cos_sin_table=True
-    )
-    f_calc = sf(self.xray_structure, f_sq_obs).f_calc()
-    ls_function = xray.unified_least_squares_residual(
-      f_sq_obs,
-      weighting=xray.weighting_schemes.shelx_weighting()
-    )
-    ls = ls_function(f_calc, compute_derivatives=False)
-    weights = ls_function.weighting().weights
-    k = ls.scale_factor()
-    f_sq_calc = f_calc.norm()
-    fc_sq = f_sq_calc.data()
-    fo_sq = f_sq_obs.data()
-    return math.sqrt(flex.sum(weights * flex.pow2(fo_sq - k * fc_sq)) / (fo_sq.size() - minimizer.n())), minimizer.n()
+    wR2 = math.sqrt(flex.sum(weights * flex.pow2(fo_sq - k * fc_sq)) /
+                    flex.sum(weights * flex.pow2(fo_sq)))
+    GooF = math.sqrt(flex.sum(weights * flex.pow2(fo_sq - k * fc_sq)) /
+                     (fo_sq.size() - minimizer.n()))
+    return wR2, GooF
 
 class my_lbfgs(lbfgs):
   def __init__(self, delegate, **kwds):
