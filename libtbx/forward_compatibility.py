@@ -71,17 +71,6 @@ if ("reversed" not in __builtins__):
       yield seq[i]
   __builtins__["reversed"] = reversed
 
-if ("set" not in __builtins__):
-  class set(list):
-    "Minimal and inefficient set emulation."
-    def add(O, elem):
-      if (elem not in O):
-        O.append(elem)
-    def update(O, elems):
-      for elem in elems:
-        O.add(elem)
-  __builtins__["set"] = set
-
 class _advertise_subprocess(object):
 
   def __init__(self, function_id, target):
