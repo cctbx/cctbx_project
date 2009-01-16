@@ -6,10 +6,12 @@ from libtbx.test_utils import approx_equal
 
 class linear_scaler(object):
   """This class scales together varios curves. means and varainces should be lists of flex arrays"""
-  def __init__(self, means, variances, reference_id=0,spread=3.0, factor=50,f=0.7,eps=1e-12,out=None,show_progress=False,insert_solution_vector=None):
+  def __init__(self, means, variances, reference_id=0,spread=3.0, factor=50,f=0.7,eps=1e-12,out=None,show_progress=False,insert_solution_vector=None,add=True):
     self.out = None
     if self.out is None:
       self.out = sys.stdout
+
+    self.add=add
 
     self.means = means
     self.vars  = variances
@@ -57,6 +59,8 @@ class linear_scaler(object):
       if scale != self.ref:
         tmp_scale = abs(vector[self.map[scale]])
         tmp_offset= vector[self.map[scale]+self.n_sets-1]
+        if not self.add:
+          tmp_offset=0.0
       scales.append( tmp_scale )
       offsets.append( tmp_offset )
     return scales , offsets
@@ -90,12 +94,12 @@ class linear_scaler(object):
     scales,offsets = self.get_scales_offsets( self.x )
     return scales,offsets,self.map
 
-def scale_it_global(m,v,ref_id=0,factor=10,show_progress=False):
-  scaler_object = linear_scaler( m,v,ref_id,factor=factor,show_progress=show_progress)
+def scale_it_global(m,v,ref_id=0,factor=10,show_progress=False,add=True):
+  scaler_object = linear_scaler( m,v,ref_id,factor=factor,show_progress=show_progress,add=add)
   s,o,m = scaler_object.retrieve_results()
   return s,o
 
-def scale_it_pairwise(m,v,ref_id=0,factor=10,show_progress=False):
+def scale_it_pairwise(m,v,ref_id=0,factor=10,show_progress=False,add=True):
   n = len(m)
   scales = []
   ofsets = []
@@ -103,7 +107,7 @@ def scale_it_pairwise(m,v,ref_id=0,factor=10,show_progress=False):
     if ii != ref_id:
       ms = [ m[ref_id],m[ii] ]
       vs = [ m[ref_id],m[ii] ]
-      scaler_object = linear_scaler( ms,vs,0,factor=factor,show_progress=show_progress)
+      scaler_object = linear_scaler( ms,vs,0,factor=factor,show_progress=show_progress,add=add)
       s,o,map = scaler_object.retrieve_results()
       scales.append( s[1] )
       ofsets.append( o[1] )
