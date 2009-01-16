@@ -11,6 +11,43 @@
 
 namespace scitbx { namespace sparse {
 
+template<class MatrixType, class VectorType>
+struct matrix_x_vector
+{
+  typedef typename MatrixType::value_type value_type;
+  typedef typename MatrixType::const_row_iterator const_row_iterator;
+  typedef typename MatrixType::row_index row_index;
+  typedef typename MatrixType::column_index column_index;
+
+  std::vector<value_type> w;
+
+  matrix_x_vector(row_index n_rows) : w(n_rows, 0) {}
+
+  void operator()(MatrixType const &m,
+                  VectorType const &v,
+                  VectorType &u)
+  {
+    std::vector<row_index> nz;
+    typedef typename std::vector<row_index>::const_iterator
+            const_row_idx_iter;
+    for (const_row_iterator pv=v.begin(); pv != v.end(); pv++) {
+      column_index j = pv.index();
+      value_type v_j = *pv;
+      for (const_row_iterator pm=m.col(j).begin(); pm != m.col(j).end(); pm++) {
+        row_index i = pm.index();
+        value_type m_ij = *pm;
+        if (w[i] == 0) nz.push_back(i);
+        w[i] += m_ij * v_j;
+      }
+    }
+    for (const_row_idx_iter p = nz.begin(); p != nz.end(); p++) {
+      u[*p] = w[*p];
+      w[*p] = 0; // ready to perform another product
+    }
+  }
+};
+
+
 /// A sparse matrix, represented by a sequence of sparse columns
 /** All linear operations are therefore performed using column version of the
 relevant algorithms, taking great care of never touching structurally zero
@@ -141,25 +178,9 @@ class matrix
     vector<T> operator*(vector<T> const& v) const {
       SCITBX_ASSERT(n_cols() == v.size())
                    ( n_cols() )( v.size() );
-      // a dense vector to hold the result: structural zeroes won't be touched
-      std::vector<value_type> w(n_rows(), 0);
-      // figure out sparsity of the result
-      std::vector<row_index> nz;
-      for (const_row_iterator pv=v.begin(); pv != v.end(); pv++) {
-        column_index j = pv.index();
-        value_type v_j = *pv;
-        for (const_row_iterator pm=col(j).begin(); pm != col(j).end(); pm++) {
-          row_index i = pm.index();
-          value_type m_ij = *pm;
-          if (w[i] == 0) nz.push_back(i);
-          w[i] += m_ij * v_j;
-        }
-      }
-      // actual product
-      vector<T> result(w.size());
-      for (const_row_idx_iter p = nz.begin(); p != nz.end(); p++) {
-        result[*p] = w[*p];
-      }
+      vector<T> result(n_rows());
+      matrix_x_vector<matrix, vector<T> > multiply(v.size());
+      multiply(*this, v, result);
       return result;
     }
 
@@ -169,12 +190,12 @@ class matrix
       SCITBX_ASSERT(a.n_cols() == b.n_rows())
                    ( a.n_cols() )( b.n_rows() );
       matrix result(a.n_rows(), b.n_cols());
+      matrix_x_vector<matrix, vector<T> > multiply(a.n_rows());
       for (column_index j=0; j < b.n_cols(); j++) {
-        result.col(j) = a*b.col(j);
+        multiply(a, b.col(j), result.col(j));
       }
       return result;
     }
-
 
   private:
     typedef typename std::vector<row_index>::const_iterator const_row_idx_iter;

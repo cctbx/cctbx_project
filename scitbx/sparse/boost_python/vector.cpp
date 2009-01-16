@@ -4,8 +4,11 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_arg.hpp>
 #include <boost/python/tuple.hpp>
+#include <boost/python/str.hpp>
 
 #include <scitbx/sparse/vector.h>
+#include <scitbx/sparse/io.h>
+#include <strstream>
 
 namespace scitbx { namespace sparse { namespace boost_python {
 
@@ -23,6 +26,12 @@ struct vector_wrapper
 
   static value_type getitem(wt& self, index_type i) {
     return self[i];
+  }
+
+  static boost::python::str as_mathematica(wt const &v) {
+    std::stringstream o(std::ios_base::out);
+    o << dense_display(v);
+    return boost::python::str(o.str().c_str());
   }
 
   struct element_iterator
@@ -79,6 +88,7 @@ struct vector_wrapper
            return_self<>())
       .def("as_dense_vector", &wt::as_dense_vector)
       .def("is_structurally_zero", &wt::is_structurally_zero)
+      .def("as_mathematica", as_mathematica)
     ;
   }
 };
