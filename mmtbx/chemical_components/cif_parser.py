@@ -79,6 +79,31 @@ class empty(object):
   def __len__(self):
     return len(self.__dict__.keys())
 
+def smart_split_cif_line(line):
+  line = " %s " % line
+  tmp = []
+  delimiters = [" ", "'", '"']
+  while line:
+    delimiter=" "
+    if line[0] in delimiters:
+      delimiter=line[0]
+    start = line.find(delimiter)
+    finish = line.find(delimiter, start+1)
+    item = line.split(delimiter)
+    item = filter(None, item)
+    if not item: break
+    item=item[0]
+    #print ">",item
+    tmp.append(item)
+    if finish==-1: break
+    #print start, finish
+    if delimiter==" ":
+      line = line[len(item)+1:].strip()
+    else:
+      line = line[len(item)+3:].strip()
+    #print line
+  return tmp
+
 def run(filename):
   if not os.path.exists(filename): return None
   lines = open(filename).read().splitlines()
@@ -95,21 +120,22 @@ def run(filename):
     if line.find("#")==0: continue
     if line.find("_pdbx")==0: pdbx_reading = True
     line = "%s  " % line
-    while line.find('"')>-1:
-      start = line.find('"')
-      finish = line.find('"', start+1)
-      if finish==-1: break
-      line = "%s%s%s" % (line[:start],
-                         line[start+1:finish].replace(" ", "_space_"),
-                         line[finish+1:])
-    if pdbx_reading:
-      while line.find("'")>-1:
-        start = line.find("'")
-        finish = line.find("'", start+1)
+    if False:
+      while line.find('"')>-1:
+        start = line.find('"')
+        finish = line.find('"', start+1)
         if finish==-1: break
         line = "%s%s%s" % (line[:start],
                            line[start+1:finish].replace(" ", "_space_"),
                            line[finish+1:])
+      if pdbx_reading:
+        while line.find("'")>-1:
+          start = line.find("'")
+          finish = line.find("'", start+1)
+          if finish==-1: break
+          line = "%s%s%s" % (line[:start],
+                             line[start+1:finish].replace(" ", "_space_"),
+                             line[finish+1:])
     if line.find("loop_")==0:
       loop_list = []
       loop_index = 0
@@ -137,11 +163,13 @@ def run(filename):
         if code and line.find(code)!=0: continue
         obj = empty()
         i=0
-        for ptr, item in enumerate(line.split()):
+        #for ptr, item in enumerate(line.split()):
+        for ptr, item in enumerate(smart_split_cif_line(line)):
           if ptr in remove_loop_fields.get(cif_key, []): continue
           if len(loop_list)<=i:
             print 'Problem with CIF line parsing'
             print line
+            print loop_list
             continue
           if loop_list[i]=="comp_id": code = item
           if item not in ["?", "."]:
@@ -153,6 +181,8 @@ def run(filename):
           setattr(obj, loop_list[i], item)
           i+=1
         complete_cif_data.setdefault(cif_key, [])
+        if hasattr(obj, "alt_atom_id"):
+          if len(obj.alt_atom_id)>5: assert 0
         complete_cif_data[cif_key].append(obj)
   # non loop parsing
   for cif_key in cif_keyword_dictionary:
