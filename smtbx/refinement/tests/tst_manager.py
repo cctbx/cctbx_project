@@ -56,6 +56,7 @@ def run(args):
 
   refinement.start()
   refinement.show_final_summary()
+  peaks = refinement.peak_search()
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
