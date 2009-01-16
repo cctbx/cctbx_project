@@ -27,7 +27,7 @@ class many_scatterer_constraints
     /** The constraint is on the structure defined by the given unit cell,
         site symmetry table and array of scatterers. The client code must also
         have constructed a parameter map for that structure and pass it to
-        this constructor. Although the information is the latter is already
+        this constructor. Although the information in the latter is already
         in the array of scatterers, the parameter map is best constructed only
         once for efficiency reason.
 
@@ -74,7 +74,7 @@ class many_scatterer_constraints
     /// Apply the shifts of crystallographic and extra parameters to the
     /// scatterers in the structure.
     /** The shifts of the extra parameters must be in the exact same order
-        as the derivates were filed in by  compute_gradients .
+        as the derivates were filed in by compute_gradients .
         This is essential so that this object knows where to look for those
         shifts it is concerned with (as opposed to those shifts which other
         constraints object are concerned with).
@@ -123,7 +123,7 @@ class few_scatterer_constraints
     /** This method is called when this object is added to a
          constraint_array . The meaning of the arguments
         is the same as for the constructor of  many_scatterer_constraints.
-        The only difference is the presence ofalready_constrained  where
+        The only difference is the presence of already_constrained  where
         this object should record which and how scatterers may have
                 already been constrained.
     */
@@ -134,7 +134,7 @@ class few_scatterer_constraints
       af::ref<xray::scatterer_flags> const &constraint_flags,
       std::map<std::size_t, xray::scatterer_flags> &already_constrained);
 
-    /// Called when the  constraint_array  it belong to
+    /// Called when the  constraint_array  it belongs to
     /// runs its member function  compute_gradients .
     void compute_gradients(
       uctbx::unit_cell const &unit_cell,
@@ -144,7 +144,7 @@ class few_scatterer_constraints
       af::ref<float_type> const &crystallographic_gradients,
       SharedArray1D<float_type> reparametrization_gradients);
 
-    /// Called when the  constraint_array  it belong to
+    /// Called when the  constraint_array  it belongs to
     /// runs its member function  apply_shifts .
     void apply_shifts(
       uctbx::unit_cell const &unit_cell,
@@ -154,7 +154,7 @@ class few_scatterer_constraints
       af::const_ref<float_type> const &crystallographic_shifts,
       af::const_ref<float_type> const &reparametrization_shifts);
 
-    /// Called when the  constraint_array  it belong to
+    /// Called when the  constraint_array  it belongs to
     /// runs its member function  place_constrained_scatterers .
     void place_constrained_scatterers(
       uctbx::unit_cell const &unit_cell,
