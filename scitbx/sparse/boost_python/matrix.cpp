@@ -3,10 +3,12 @@
 #include <boost/python/return_arg.hpp>
 #include <boost/python/operators.hpp>
 #include <boost/python/tuple.hpp>
-#include <boost/python/list.hpp>
+#include <boost/python/str.hpp>
 #include <boost/python/extract.hpp>
 
 #include <scitbx/sparse/matrix.h>
+#include <scitbx/sparse/io.h>
+#include <strstream>
 
 namespace scitbx { namespace sparse { namespace boost_python {
 
@@ -30,6 +32,12 @@ struct matrix_wrapper
     return self(i,j);
   }
 
+  static boost::python::str as_mathematica(wt const &m) {
+    std::stringstream o(std::ios_base::out);
+    o << dense_display(m);
+    return boost::python::str(o.str().c_str());
+  }
+
   static void wrap() {
     using namespace boost::python;
     class_<wt>("matrix", no_init)
@@ -46,6 +54,8 @@ struct matrix_wrapper
       .def("deep_copy", &wt::deep_copy)
       .def("transpose", &wt::transpose)
       .def(self*vector<T>())
+      .def(self*self)
+      .def("as_mathematica", as_mathematica)
     ;
   }
 

@@ -1,10 +1,10 @@
 from scitbx.array_family import flex
-from scitbx.sparse import vector, matrix
+from scitbx import sparse
 from libtbx.test_utils import approx_equal
-from random import uniform, randint
+import random
 
 def exercise_vector():
-  v = vector(5)
+  v = sparse.vector(5)
   assert v.size == 5
   assert v.is_structurally_zero()
   v[1] = 2
@@ -14,7 +14,7 @@ def exercise_vector():
   assert list(v) == [(1,2.), (2,0.), (3,6.)]
   p = flex.size_t([1,2,3,4,0])
   assert list(v.sort_indices().permute(p)) == [(2,2.), (3,0.), (4,6.)]
-  v = vector(10)
+  v = sparse.vector(10)
   v[7] = -5
   v[1] = -1
   v[4] = 0
@@ -27,7 +27,7 @@ def exercise_vector():
   assert list(v.sort_indices()) == [(1,3.), (4,0.), (7,6.), (9,9.)]
 
 def exercise_matrix():
-  a = matrix(10,7)
+  a = sparse.matrix(10,7)
   assert a.n_rows == 10 and a.n_cols == 7
   for c in a.cols():
     assert c.is_structurally_zero()
@@ -39,28 +39,36 @@ def exercise_matrix():
       elif (i,j) == (9,5): assert a[i,j] == 2.
       else: assert a[i,j] == 0
 
+def random_sparse_vector(n):
+  x = sparse.vector(n)
+  seen = {}
+  for k in xrange(random.randint(1,2*n//3)):
+    while True:
+      i = random.randint(0,n-1)
+      if i not in seen: break
+    seen[i] = True
+    val = random.uniform(-2., 2.)
+    x[i] = val
+  return x
+
+def random_sparse_matrix(m,n):
+  a = sparse.matrix(m,n)
+  seen = {}
+  for k in xrange(random.randint(3,2*m*n//3)):
+    while True:
+      i = random.randint(0,m-1)
+      j = random.randint(0,n-1)
+      if (i,j) not in seen: break
+    seen[(i,j)] = True
+    val = random.uniform(-3., 3.)
+    a[i,j] = val
+  return a
+
 def exercise_matrix_x_vector():
   for m,n in [(5,5), (3,5), (5,3)]:
     for n_test in xrange(50):
-      a = matrix(m,n)
-      x = vector(n)
-      seen = {}
-      for k in xrange(randint(3,2*m*n//3)):
-        while True:
-          i = randint(0,m-1)
-          j = randint(0,n-1)
-          if (i,j) not in seen: break
-        seen[(i,j)] = True
-        val = uniform(-3., 3.)
-        a[i,j] = val
-      seen = {}
-      for k in xrange(randint(1,2*n//3)):
-        while True:
-          i = randint(0,n-1)
-          if i not in seen: break
-        seen[i] = True
-        val = uniform(-2., 2.)
-        x[i] = val
+      a = random_sparse_matrix(m,n)
+      x = random_sparse_vector(n)
       y = a*x
       aa = a.as_dense_matrix()
       xx = x.as_dense_vector()
@@ -68,10 +76,18 @@ def exercise_matrix_x_vector():
       yy2 = aa.matrix_multiply(xx)
       assert approx_equal(yy1,yy2)
 
+def exercise_matrix_x_matrix():
+  a,b = random_sparse_matrix(3,4), random_sparse_matrix(4,2)
+  c = a*b
+  aa, bb, cc = [ m.as_dense_matrix() for m in (a,b,c) ]
+  cc1 = aa.matrix_multiply(bb)
+  assert approx_equal(cc, cc1)
+
 def run():
   exercise_vector()
   exercise_matrix()
   exercise_matrix_x_vector()
+  exercise_matrix_x_matrix()
   print 'OK'
 
 if __name__ == '__main__':
