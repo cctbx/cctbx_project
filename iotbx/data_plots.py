@@ -157,15 +157,14 @@ class table_data (object) :
             i += 4
         elif sections_passed == 4 :
           break
-    if sys.version_info[1] > 2 :
-      for i, column in enumerate(self.data) :
-        column_is_ints = [ x is None or x.is_integer() for x in column ]
-        if not False in column_is_ints :
-          newcol = []
-          for x in column :
-            if x is None : newcol.append(x)
-            else :         newcol.append(int(x))
-          self.data[i] = newcol
+    for i, column in enumerate(self.data) :
+      column_is_ints = [ x is None or int(x)==x for x in column ]
+      if not False in column_is_ints :
+        newcol = []
+        for x in column :
+          if x is None : newcol.append(x)
+          else :         newcol.append(int(x))
+        self.data[i] = newcol
 
   def add_row (self, row) :
     if self.data is None or len(self.data) == 0 :
