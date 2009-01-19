@@ -179,7 +179,7 @@ class matrix
       SCITBX_ASSERT(n_cols() == v.size())
                    ( n_cols() )( v.size() );
       vector<T> result(n_rows());
-      matrix_x_vector<matrix, vector<T> > multiply(v.size());
+      matrix_x_vector<matrix, vector<T> > multiply(n_rows());
       multiply(*this, v, result);
       return result;
     }
