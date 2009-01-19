@@ -14,5 +14,7 @@ refcmd=(\ref{#1})
 \usepackage{graphicx}
 \DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
 \usepackage[colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=blue, urlcolor=blue, plainpages=false]{hyperref}
-\bibliographystyle{plain}
+\usepackage{url}
+\usepackage[numbers]{natbib}
+\bibliographystyle{plainnat}
 \usepackage{cctbx_notations}
