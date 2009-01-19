@@ -9,7 +9,7 @@ class writer(object):
     for field in fields:
       assert len(field) == len(fields[0])
     iter_object = self._iter_rows(fields)
-    writer = csv.writer(file_object, iter_object, delimiter=delimiter)
+    writer = csv.writer(file_object, delimiter=delimiter)
     if field_names:
       writer.writerow(field_names)
     writer.writerows(iter_object)
@@ -36,8 +36,8 @@ class reader(object):
     reader = csv.reader(file_object, delimiter=delimiter)
     data = []
 
-    for row in reader:
-      if reader.line_num == 1:
+    for i_row,row in enumerate(reader):
+      if i_row == 0:
         n_data = len(row)
         if data_type_list is not None:
           assert len(data_type_list) == n_data

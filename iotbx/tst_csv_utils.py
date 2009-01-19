@@ -1,13 +1,8 @@
 from scitbx.array_family import flex
 from libtbx.test_utils import Exception_expected
 import tempfile
-import sys
 
 def exercise():
-  v = sys.version_info
-  if (v[0] == 2 and v[1] <= 2):
-    print "Skipping iotbx.csv_utils tests: csv extension not available"
-    return
   exercise_writer()
   exercise_reader()
 
