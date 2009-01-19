@@ -60,7 +60,7 @@ def exercise_reflection_statistics(
     sys.stdout = sys.__stdout__
     if (0 or verbose):
       sys.stdout.write(out.getvalue())
-  done = {}
+  done = set()
   for line in out.getvalue().splitlines():
     if (line.startswith("CC ")):
       type,i,j,cc,cb_op = line.split()[1:6]
@@ -69,7 +69,7 @@ def exercise_reflection_statistics(
       if (key not in done):
         if (cc != 1.000):
           raise AssertionError(line.strip())
-        done[key] = None
+        done.add(key)
       # check reindexing matrices
       assert type in ["Obs", "Ano"]
       if (type == "Obs"):

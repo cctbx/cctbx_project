@@ -436,9 +436,9 @@ class _root(boost.python.injector, ext.root):
             print >> out, prefix+"    ### chain break ###"
           suppress_chain_break = False
           ags = rg.atom_groups()
-          resnames = {} # FUTURE: set
+          resnames = set()
           for ag in rg.atom_groups():
-            resnames[ag.resname] = None
+            resnames.add(ag.resname)
           infos = []
           if (len(resnames) > 1): infos.append("with mixed residue names")
           resid = rg.resid()

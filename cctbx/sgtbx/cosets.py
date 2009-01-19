@@ -154,8 +154,8 @@ def double_unique(g, h1, h2):
   h2 = [s for s in h2]
   # this is our final result
   result = []
-  # This dictionary keeps track of equivalent symops
-  done = {}
+  # This set keeps track of equivalent symops
+  done = set()
   #
   for a in g:
     if (str( a ) in done): continue
@@ -163,7 +163,7 @@ def double_unique(g, h1, h2):
     for hi in h1:
       for hj in h2:
         b = hi.multiply(a).multiply(hj)
-        done[str( b )] = None
+        done.add(str( b ))
   return result
 
 def compare_cb_op_as_hkl(a, b):

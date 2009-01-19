@@ -228,7 +228,7 @@ INFO: PDB files with identical content:
 """)
 
 def exercise_pdb_codes_fragment_files():
-  all_codes = {} # FUTURE: set
+  all_codes = set()
   first_codes = []
   lines = pdb.pdb_codes_fragment_files.splitlines()
   for line in lines:
@@ -236,7 +236,7 @@ def exercise_pdb_codes_fragment_files():
     for code in codes:
       assert len(code) == 4
       assert not code in all_codes
-      all_codes[code] = None
+      all_codes.add(code)
     assert len(codes) >= 2
     assert sorted(codes) == codes
     first_codes.append(codes[0])

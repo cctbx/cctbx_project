@@ -20,16 +20,16 @@ class interpreter(object):
         expected_patterns,
         synonym_patterns,
         mutually_exclusive_pairs=[]):
-    expected_patterns_dict = {}
+    expected_patterns_set = set()
     for expected_pattern in expected_patterns:
-      expected_patterns_dict[expected_pattern] = None
-    assert len(expected_patterns_dict) == len(expected_patterns)
+      expected_patterns_set.add(expected_pattern)
+    assert len(expected_patterns_set) == len(expected_patterns)
     for synonym_pattern,expected_pattern in synonym_patterns.items():
-      assert expected_pattern in expected_patterns_dict
+      assert expected_pattern in expected_patterns_set
     for mep in mutually_exclusive_pairs:
       assert len(mep) == 3
       for expected_pattern in mep:
-        if (expected_pattern not in expected_patterns_dict):
+        if (expected_pattern not in expected_patterns_set):
           raise RuntimeError(
             "Inconsistent mutually_exclusive_pairs:\n"
             + "  given: %s\n" % str(mep)

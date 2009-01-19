@@ -4,7 +4,7 @@ def create_script(
       bundle,
       top_modules,
       test_py="`libtbx.show_dist_paths boost_adaptbx`/tst_rational.py",
-      minimum_python_version="2.2"):
+      minimum_python_version="2.3"):
   return """\
 #! /bin/csh -f
 

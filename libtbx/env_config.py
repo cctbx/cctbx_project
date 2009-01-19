@@ -21,12 +21,12 @@ default_enable_boost_threads = False
 default_enable_openmp_if_possible = (sys.platform != "osf1V5")
 
 def unique_paths(paths):
-  hash = {}
+  hash = set()
   result = []
   for path in paths:
     path_normcase = os.path.normcase(path)
     if (path_normcase in hash): continue
-    hash[path_normcase] = None
+    hash.add(path_normcase)
     result.append(path)
   return result
 
@@ -338,9 +338,9 @@ class environment:
     self.module_list = []
     self.module_dict = {}
     self.module_dist_paths = {}
-    self.missing_for_build = {}
-    self.missing_for_use = {}
-    self.missing_optional = {}
+    self.missing_for_build = set()
+    self.missing_for_use = set()
+    self.missing_optional = set()
 
   def is_ready_for_build(self):
     return (len(self.missing_for_build) == 0)
@@ -1055,12 +1055,12 @@ class environment:
     self.show_module_listing()
     if (len(self.missing_for_use) > 0):
       raise Sorry("Missing modules: "
-        + " ".join(self.missing_for_use.keys()))
+        + " ".join(sorted(self.missing_for_use)))
     if (not self.is_ready_for_build()):
       if (self.scons_dist_path is not None):
         print "***********************************"
         print "Warning: modules missing for build:"
-        for module_name in self.missing_for_build.keys():
+        for module_name in sorted(self.missing_for_build):
           print " ", module_name
         print "***********************************"
       remove_or_rename(self.under_build("SConstruct"))
@@ -1089,7 +1089,7 @@ class environment:
             target_file=target_file)
 
   def write_python_and_show_path_duplicates(self):
-    module_names = {}
+    module_names = set()
     have_ipython = False
     for file_name in os.listdir(self.bin_path):
       if (file_name.startswith(".")): continue
@@ -1101,8 +1101,7 @@ class environment:
         continue
       if (   file_name_lower == "python"
           or file_name_lower.startswith("python.")): continue
-      module_names[file_name.split(".")[0]] = None
-    module_names = module_names.keys()
+      module_names.add(file_name.split(".")[0])
     for module_name in module_names:
       self._write_dispatcher_in_bin(
         source_file=self.python_exe,
@@ -1306,15 +1305,15 @@ class module:
     for module_name in self.required_for_build:
       if (not self.env.process_module(
            dependent_module=self, module_name=module_name, optional=True)):
-        self.env.missing_for_build[module_name] = None
+        self.env.missing_for_build.add(module_name)
     for module_name in self.required_for_use:
       if (not self.env.process_module(
            dependent_module=self, module_name=module_name, optional=True)):
-        self.env.missing_for_use[module_name] = None
+        self.env.missing_for_use.add(module_name)
     for module_name in self.optional:
       if (not self.env.process_module(
            dependent_module=self, module_name=module_name, optional=True)):
-        self.env.missing_optional[module_name] = None
+        self.env.missing_optional.add(module_name)
 
   def assemble_pythonpath(self):
     result = []

@@ -19,13 +19,13 @@ def is_reserved_identifier(string):
   if (len(string) < 5): return False
   return (string.startswith("__") and string.endswith("__"))
 
-standard_identifier_start_characters = {}
+standard_identifier_start_characters = set()
 for c in "_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz":
-  standard_identifier_start_characters[c] = None
-standard_identifier_continuation_characters = dict(
+  standard_identifier_start_characters.add(c)
+standard_identifier_continuation_characters = set(
   standard_identifier_start_characters)
 for c in ".0123456789":
-  standard_identifier_continuation_characters[c] = None
+  standard_identifier_continuation_characters.add(c)
 
 def is_standard_identifier(string):
   if (len(string) == 0): return False

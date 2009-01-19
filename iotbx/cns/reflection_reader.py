@@ -408,14 +408,14 @@ class cns_reflection_file(object):
     if (base_array_info is None):
       base_array_info = miller.array_info(source_type="cns_reflection_file")
     result = []
-    done = {}
+    done = set()
     for group_index in xrange(len(self.groups)):
       names, miller_indices, hl = self.join_hl_group(group_index)
       result.append(self._as_miller_array(
         crystal_symmetry, miller_indices, hl).set_info(
           base_array_info.customized_copy(labels=names)))
       for name in names:
-        done[name] = None
+        done.add(name)
     real_arrays = {}
     for rso in self.reciprocal_space_objects.values():
       if (rso.name in done): continue
@@ -426,27 +426,27 @@ class cns_reflection_file(object):
         crystal_symmetry, obs.indices,
         obs.real_data(), sigma.real_data(), obs_type).set_info(
           base_array_info.customized_copy(labels=[obs.name, sigma.name])))
-      done[obs.name] = None
-      done[sigma.name] = None
+      done.add(obs.name)
+      done.add(sigma.name)
     for rso in self.reciprocal_space_objects.values():
       if (rso.name in done): continue
       result.append(self._as_miller_array(
         crystal_symmetry, rso.indices, rso.data).set_info(
           base_array_info.customized_copy(labels=[rso.name])))
-      done[rso.name] = None
+      done.add(rso.name)
     return result
 
 def group_obs_sigma(real_arrays):
   result = []
-  done = {}
+  done = set()
   i = real_arrays.get("iobs")
   if (i is not None):
     for name in ["sigi", "sigmai", "sigiobs"]:
       s = real_arrays.get(name)
       if (s is not None and i.indices.all_eq(s.indices)):
         result.append((i,s,"i"))
-        done[i.name] = None
-        done[s.name] = None
+        done.add(i.name)
+        done.add(s.name)
         break
   for name,f in real_arrays.items():
     if (f.name in done): continue
@@ -468,8 +468,8 @@ def group_obs_sigma(real_arrays):
           break
     if (s is not None and f.indices.all_eq(s.indices)):
       result.append((f,s,"f"))
-      done[f.name] = None
-      done[s.name] = None
+      done.add(f.name)
+      done.add(s.name)
   return result
 
 def run(args):

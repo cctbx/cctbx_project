@@ -1,11 +1,11 @@
 import sys, os
 
 def run():
-  done = {}
+  done = set()
   for directory in os.environ["PATH"].split(os.pathsep):
     directory = os.path.normcase(os.path.abspath(directory))
     if (directory in done): continue
-    done[directory] = None
+    done.add(directory)
     if (not os.path.isdir(directory)): continue
     if (not os.access(directory, os.X_OK)): continue
     for file_name in os.listdir(directory):

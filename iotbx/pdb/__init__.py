@@ -452,19 +452,17 @@ class _input(boost.python.injector, ext.input):
       source_info = self.source_info()
       if (len(source_info) > 0): source_info = " (%s)" % source_info
       self._scale_matrix = [[None]*9,[None]*3]
-      done = {}
+      done = set()
       for line in self.crystallographic_section():
         if (line.startswith("SCALE") and line[5:6] in ["1", "2", "3"]):
           r = read_scale_record(line=line, source_info=source_info)
           for i_col,v in enumerate([r.sn1, r.sn2, r.sn3]):
             self._scale_matrix[0][(r.n-1)*3+i_col] = v
           self._scale_matrix[1][r.n-1] = r.un
-          done[r.n] = None
-      done = done.keys()
-      done.sort()
+          done.add(r.n)
       if (len(done) == 0):
         self._scale_matrix = None
-      elif (done != [1,2,3]):
+      elif (sorted(done) != [1,2,3]):
         raise RuntimeError(
           "Incomplete set of PDB SCALE records%s" % source_info)
     return self._scale_matrix
