@@ -51,7 +51,7 @@ from smtbx import ab_initio
 
 import scitbx.math
 
-from itertools
+import itertools
 import sys
 import math
 
