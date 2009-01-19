@@ -71,6 +71,12 @@ if ("reversed" not in __builtins__):
       yield seq[i]
   __builtins__["reversed"] = reversed
 
+if ("set" not in __builtins__):
+   # Python 2.3 compatibility
+   import sets
+   __builtins__["set"] = sets.Set
+   __builtins__["frozenset"] = sets.ImmutableSet
+
 class _advertise_subprocess(object):
 
   def __init__(self, function_id, target):
