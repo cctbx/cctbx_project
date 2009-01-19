@@ -471,11 +471,11 @@ class determine_data_and_flags(object):
         ignore_pdb_hexdigest,
         current,
         records):
-    from_file = {}
+    from_file = set()
     for record in records:
       flds = record.split()
       if (len(flds) == 3):
-        from_file[flds[2]] = None
+        from_file.add(flds[2])
     if (len(from_file) > 1):
       raise Sorry(
         "Multiple conflicting REMARK r_free_flags.md5.hexdigest records"
@@ -501,7 +501,7 @@ the values for R-free could be biased and misleading.
 However, there is no problem if the R-free flags were just extended to
 a higher resolution, or if some reflections with no data or that are
 not part of the R-free set have been added or removed.""" % (
-  current, from_file.keys()[0]),
+  current, sorted(from_file)[0]),
       if (not ignore_pdb_hexdigest):
         print >> log, """\
 In this case,
@@ -510,7 +510,7 @@ simply remove the
   REMARK r_free_flags.md5.hexdigest %s
 
 record from the input PDB file to proceed with the refinement.""" % (
-  from_file.keys()[0]),
+  sorted(from_file)[0]),
       print >> log, """
 
 Otherwise it is best to recover the previously used R-free flags

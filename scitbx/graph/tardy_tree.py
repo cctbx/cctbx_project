@@ -1,13 +1,3 @@
-try:
-  set()
-except NameError:
-  class set(list):
-    "Minimal (and inefficient) set emulation."
-    def add(O, elem):
-      if (elem not in O): O.append(elem)
-    def update(O, elems):
-      for elem in elems: O.add(elem)
-
 class cluster_manager(object):
 
   __slots__ = ["cluster_indices", "clusters", "parents"]

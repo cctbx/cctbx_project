@@ -35,7 +35,7 @@ def extract_defines(html_string, all_defines):
             keep = False
             break
       if (not keep): continue
-      all_defines[define] = None
+      all_defines.add(define)
 
 def extract_signatures(html_string, all_signatures):
   signature_block = []
@@ -73,12 +73,10 @@ def extract_signatures(html_string, all_signatures):
         current_line = line
 
 def run(args):
-  all_defines = {}
+  all_defines = set()
   for arg in args:
     extract_defines(html_string=open(arg).read(), all_defines=all_defines)
-  all_defines = all_defines.keys()
-  all_defines.sort()
-  for define in all_defines:
+  for define in sorted(all_defines):
     print define
   #
   all_signatures = []

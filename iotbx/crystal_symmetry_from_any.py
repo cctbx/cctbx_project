@@ -70,13 +70,13 @@ def extract_from(file_name):
   return from_string(file_name)
 
 def extract_and_append(file_names, target_list, extract_function=extract_from):
-  file_names_done = {}
+  file_names_done = set()
   for file_name in file_names:
     if (file_name is None): continue
     if (not os.path.isfile(file_name)): continue
     file_name = canonical_path(file_name)
     if (file_name in file_names_done): continue
-    file_names_done[file_name] = None
+    file_names_done.add(file_name)
     try:
       crystal_symmetry = extract_function(file_name=file_name)
     except KeyboardInterrupt: raise

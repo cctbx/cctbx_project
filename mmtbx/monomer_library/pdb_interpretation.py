@@ -510,9 +510,9 @@ class monomer_mapping(object):
     self.ignored_atoms = {}
     self.active_atoms = []
     self.atom_names_given = []
-    atom_id_str_pdbres_set = {}
+    atom_id_str_pdbres_set = set()
     for atom in self.pdb_residue.atoms():
-      atom_id_str_pdbres_set[atom.id_str(pdbres=True)] = None
+      atom_id_str_pdbres_set.add(atom.id_str(pdbres=True))
       if (atom.element.strip() == "Q"):
         self.ignored_atoms.setdefault(atom.name, []).append(atom)
       else:
@@ -1038,7 +1038,7 @@ class add_bond_proxies(object):
     if (m_i.i_conformer != 0 and m_j.i_conformer != 0):
       assert m_i.i_conformer == m_j.i_conformer
     self.counters = counters
-    self.broken_bond_i_seq_pairs = {} # XXX future: set
+    self.broken_bond_i_seq_pairs = set()
     for bond in bond_list:
       if (   not m_i.monomer_atom_dict.has_key(bond.atom_id_1)
           or not m_j.monomer_atom_dict.has_key(bond.atom_id_2)):
@@ -1067,7 +1067,7 @@ class add_bond_proxies(object):
           r = geometry_restraints.bond(sites_cart=sites_cart, proxy=proxy)
           if (r.distance_model > distance_cutoff):
             is_large_distance = True
-            self.broken_bond_i_seq_pairs[tuple(sorted(i_seqs))] = None
+            self.broken_bond_i_seq_pairs.add(tuple(sorted(i_seqs)))
         if (not is_large_distance):
           if (    not m_i.is_first_conformer_in_chain
               and all_atoms_are_in_main_conf(atoms=atoms)):
@@ -2317,9 +2317,9 @@ class build_all_chain_proxies(object):
         cache=sel_cache,
         scope_extract=apply,
         attr="residue_selection").iselection()
-      pdbres_set = {}
+      pdbres_set = set()
       for i_seq in iselection:
-        pdbres_set[atoms[i_seq].id_str(pdbres=True)] = None
+        pdbres_set.add(atoms[i_seq].id_str(pdbres=True))
       for pdbres in pdbres_set:
         self.apply_cif_modifications.setdefault(pdbres, []).append(
           apply.data_mod)
@@ -2364,21 +2364,19 @@ class build_all_chain_proxies(object):
           cache=sel_cache,
           scope_extract=apply,
           attr=attr).iselection()
-        pdbres_set = {}
-        pdbres_set_no_segid = {}
+        pdbres_set = set()
+        pdbres_set_no_segid = set()
         for i_seq in iselection:
           atom = atoms[i_seq]
-          pdbres_set[
-            atom.id_str(pdbres=True)] = None
-          pdbres_set_no_segid[
-            atom.id_str(pdbres=True, suppress_segid=True)] = None
+          pdbres_set.add(atom.id_str(pdbres=True))
+          pdbres_set_no_segid.add(atom.id_str(pdbres=True,suppress_segid=True))
         if (len(pdbres_set) != 1):
           # XXX models?
           if (len(pdbres_set_no_segid) != 1):
             raise Sorry("Not exactly one residue selected.")
           raise Sorry(
             "Selected residue has multiple segid. This is not supported.")
-        pdbres_pair.append(pdbres_set.keys()[0])
+        pdbres_pair.append(list(pdbres_set)[0])
       for pdbres,mod_id in zip(pdbres_pair, mod_ids):
         if (mod_id is not None):
           self.apply_cif_modifications.setdefault(pdbres, []).append(mod_id)
