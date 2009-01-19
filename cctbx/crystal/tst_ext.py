@@ -7,8 +7,8 @@ from cctbx.array_family import flex
 from scitbx import matrix
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 from libtbx.utils import hashlib_md5
-from libtbx.itertbx import count
 from libtbx import adopt_init_args
+from itertools import count
 from cStringIO import StringIO
 import sys
 

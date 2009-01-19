@@ -24,11 +24,11 @@ from scitbx.math import slatec_dgamma, slatec_dlngam
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import user_plus_sys_time
-from libtbx.itertbx import count
 from libtbx.test_utils import Exception_expected, approx_equal, eps_eq
 import libtbx.load_env
 import pickle
 from cStringIO import StringIO
+from itertools import count
 import random
 import math
 import time

@@ -4,7 +4,7 @@ from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.web import io_utils
 from cctbx.web import cgi_utils
-from libtbx.itertbx import count
+from itertools import count
 
 def interpret_form_data(form):
   inp = cgi_utils.inp_from_form(form,

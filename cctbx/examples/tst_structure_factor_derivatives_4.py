@@ -8,10 +8,10 @@ from cctbx.array_family import flex
 from cctbx.development import random_structure
 from cctbx.development import debug_utils
 from iotbx.kriber import strudat
-from libtbx.itertbx import count
 from libtbx.test_utils import approx_equal
 import libtbx.load_env
 import random
+from itertools import count
 from cStringIO import StringIO
 import sys, os
 

@@ -4,7 +4,7 @@ from __future__ import division
 from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
 from libtbx.utils import Sorry, format_exception, import_python_object
-from libtbx.itertbx import count
+from itertools import count
 from libtbx import Auto
 from cStringIO import StringIO
 import tokenize as python_tokenize

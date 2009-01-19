@@ -1,4 +1,4 @@
-from libtbx.itertbx import count
+from itertools import count
 import sys, os
 
 def run(args, command_name="libtbx.extract_code_from_txt"):

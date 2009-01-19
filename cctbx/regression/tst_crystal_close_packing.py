@@ -9,7 +9,6 @@ from cctbx.development import debug_utils
 from scitbx import matrix
 from libtbx.math_utils import ifloor, iceil
 from libtbx.test_utils import approx_equal
-from libtbx.itertbx import count
 import time
 import math
 import sys

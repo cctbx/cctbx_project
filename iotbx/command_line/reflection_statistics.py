@@ -11,7 +11,7 @@ import cctbx.sgtbx.cosets
 from cctbx.crystal import reindex
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
-from libtbx.itertbx import count
+from itertools import count
 import math
 import sys
 

@@ -14,7 +14,7 @@ import random
 import pickle
 from cStringIO import StringIO
 import sys, random, math
-from libtbx.itertbx import count
+from itertools import count
 
 if (1):
   random.seed(0)

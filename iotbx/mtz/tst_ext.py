@@ -3,9 +3,9 @@ from iotbx.option_parser import option_parser
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
-from libtbx.itertbx import count
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
 import libtbx.load_env
+from itertools import count
 from cStringIO import StringIO
 import sys, os
 
