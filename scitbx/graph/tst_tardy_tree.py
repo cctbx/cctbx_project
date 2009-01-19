@@ -50,7 +50,9 @@ def exercise_cluster_manager():
   assert cm.parents == [-1,0]
   assert cm.roots() == [0]
   assert cm.tree_ids() == [0,0]
-  assert cm.find_loop_edges(edges=edges) == []
+  cm.find_parent_and_loop_edges(edges=edges)
+  assert cm.parent_edges == [None, (4, 3)]
+  assert cm.loop_edges == []
 
 class test_case_data(object):
 
@@ -452,6 +454,10 @@ def exercise_tyr_with_h():
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     [12, 13, 14], [10, 11], [16, 18], [15, 20], [17, 19]]
   assert tt.cluster_manager.parents == [-1, 0, 0, 1, 3, 3]
+  tt.cluster_manager.find_parent_and_loop_edges(edges=tt.edges)
+  assert tt.cluster_manager.parent_edges == [
+    None, (0, 12), (5, 10), (12, 16), (16, 15), (16, 17)]
+  assert tt.cluster_manager.loop_edges == []
 
 def run(args):
   assert args in [[], ["--verbose"]]
@@ -489,8 +495,8 @@ def run(args):
       assert_same("p1:", tt.cluster_manager.parents, tc_p1)
       tid = tt.cluster_manager.tree_ids()
       assert_same("tid1:", tid, tc_tid1)
-      le = tt.cluster_manager.find_loop_edges(edges=tc.edges)
-      assert_same("le1:", le, tc_le1)
+      tt.cluster_manager.find_parent_and_loop_edges(edges=tc.edges)
+      assert_same("le1:", tt.cluster_manager.loop_edges, tc_le1)
       #
       tt = construct(
         n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
@@ -499,8 +505,8 @@ def run(args):
       tt.cluster_manager.construct_spanning_trees(edges=tc.edges)
       print >> out, "c2p:", tt.cluster_manager.clusters
       assert_same("p2:", tt.cluster_manager.parents, tc_p2)
-      le = tt.cluster_manager.find_loop_edges(edges=tc.edges)
-      assert_same("le2:", le, tc_le2)
+      tt.cluster_manager.find_parent_and_loop_edges(edges=tc.edges)
+      assert_same("le2:", tt.cluster_manager.loop_edges, tc_le2)
   exercise_tyr_with_h()
   print "OK"
 
