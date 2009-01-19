@@ -1,4 +1,3 @@
-from __future__ import generators
 import cmath
 
 class parameters:

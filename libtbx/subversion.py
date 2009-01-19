@@ -1,4 +1,3 @@
-from __future__ import generators
 from libtbx import easy_run
 
 def marked_for_commit():

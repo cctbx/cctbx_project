@@ -1,4 +1,3 @@
-from __future__ import generators
 from mmtbx.monomer_library import cif_types
 from mmtbx.monomer_library import mmCIF
 from iotbx.pdb import residue_name_plus_atom_names_interpreter

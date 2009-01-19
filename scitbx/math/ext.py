@@ -1,4 +1,3 @@
-from __future__ import generators
 import scitbx.array_family.flex
 import scitbx.array_family.shared
 

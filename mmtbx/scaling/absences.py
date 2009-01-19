@@ -1,4 +1,3 @@
-from __future__ import generators
 from cctbx import sgtbx, uctbx
 from cctbx import miller
 from cctbx.array_family import flex

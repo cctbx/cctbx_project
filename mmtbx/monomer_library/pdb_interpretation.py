@@ -1,4 +1,3 @@
-from __future__ import generators
 from __future__ import division
 from iotbx import pdb
 import iotbx.phil

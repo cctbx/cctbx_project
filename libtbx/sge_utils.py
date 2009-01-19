@@ -1,6 +1,5 @@
 "Sun Grid Engine utilities"
 
-from __future__ import generators
 import sys, os
 
 def int_or_none(v):

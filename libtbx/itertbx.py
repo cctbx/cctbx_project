@@ -1,5 +1,3 @@
-from __future__ import generators
-
 try:
   if 0: raise
   from itertools import count, islice, izip

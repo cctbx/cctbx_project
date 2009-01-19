@@ -1,4 +1,3 @@
-from __future__ import generators
 from libtbx.option_parser import option_parser
 from libtbx.utils import Sorry
 from libtbx.str_utils import show_string

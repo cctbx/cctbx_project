@@ -1,4 +1,3 @@
-from __future__ import generators
 from cctbx.array_family import flex
 
 import boost.python

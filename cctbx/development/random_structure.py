@@ -1,4 +1,3 @@
-from __future__ import generators
 from cctbx import sgtbx
 from cctbx import crystal
 from cctbx import adptbx
