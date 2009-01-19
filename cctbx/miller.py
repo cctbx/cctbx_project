@@ -2273,7 +2273,6 @@ Fraction of reflections for which (|delta I|/sigma_dI) > cutoff
       sigmas=self.sigmas()).set_observation_type(self)
 
   def average_bijvoet_mates(self):
-    assert self.observation_type() is None or self.is_xray_amplitude_array()
     if (self.is_complex_array() or self.is_hendrickson_lattman_array()):
       # centrics need special attention
       # very inefficient but simple implementation
