@@ -36,7 +36,6 @@ from libtbx import forward_compatibility
 from libtbx import object_oriented_patterns as oop
 from libtbx.math_utils import are_equivalent
 from libtbx.assert_utils import is_numeric
-from libtbx import itertbx
 from libtbx import adopt_init_args, adopt_optional_init_args
 
 from scitbx import matrix as mat
@@ -52,6 +51,7 @@ from smtbx import ab_initio
 
 import scitbx.math
 
+from itertools
 import sys
 import math
 
@@ -356,8 +356,8 @@ class solving_iterator(object):
         flipping.delta = flipping.rho_map.flipped_fraction_as_delta(
                                                 self.initial_flipped_fraction)
         delta_needs_initialisation = False
-      for foo in itertbx.islice(flipping,
-                                self.max_delta_guessing_iterations):
+      for foo in itertools.islice(flipping,
+                                  self.max_delta_guessing_iterations):
         pass
       r = flipping.c_tot_over_c_flip()
       # magic numbers from SUPERFLIP
@@ -402,8 +402,8 @@ class solving_iterator(object):
           self.max_solving_iterations *= 1.5
         observable = skewness_evolution()
         for n, flipping in enumerate(
-          itertbx.islice(self.flipping_iterator,
-                         0, self.max_solving_iterations)):
+          itertools.islice(self.flipping_iterator,
+                           0, self.max_solving_iterations)):
           self.iteration_index = n
           if n % self.yield_solving_interval == 0:
             yield self.solving

@@ -2,9 +2,9 @@ from iotbx import reflection_file_reader
 from cctbx import miller
 from cctbx.array_family import flex
 import libtbx.path
-from libtbx.itertbx import count
 from libtbx.str_utils import show_string
 from libtbx.utils import Sorry
+from itertools import count
 import math
 import sys, os
 

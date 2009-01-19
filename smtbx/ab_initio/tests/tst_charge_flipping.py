@@ -16,7 +16,6 @@ from cctbx import euclidean_model_matching as emma
 from iotbx import mtz
 
 from libtbx.test_utils import approx_equal
-from libtbx import itertbx
 from libtbx.utils import flat_list
 from libtbx import group_args
 from libtbx.utils import format_cpu_times

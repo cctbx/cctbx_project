@@ -4,7 +4,7 @@ import mmtbx.monomer_library.server
 from iotbx import pdb
 from cctbx.array_family import flex
 from libtbx.test_utils import show_diff
-from libtbx.itertbx import count
+from itertools import count
 from cStringIO import StringIO
 import sys
 

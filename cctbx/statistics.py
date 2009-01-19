@@ -6,7 +6,6 @@ from cctbx.array_family import flex
 from libtbx.utils import plural_s
 import math
 from cctbx import miller
-from libtbx import itertbx
 
 mean_number_of_atoms_per_amino_acid = {'C': 5, 'N': 3, 'O': 1}
 

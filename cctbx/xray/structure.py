@@ -11,12 +11,12 @@ from cctbx.array_family import flex
 import scitbx.math
 from scitbx import matrix
 from stdlib import math
+from itertools import count
 import types
 import sys
 import random
 from libtbx.utils import count_max
 from libtbx.test_utils import approx_equal
-from libtbx.itertbx import count
 from libtbx import group_args
 from libtbx.assert_utils import is_string
 from cctbx.eltbx.neutron import neutron_news_1992_table

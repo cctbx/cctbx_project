@@ -2790,7 +2790,7 @@ class build_all_chain_proxies(object):
     from cctbx import adptbx
     from cctbx import eltbx
     import cctbx.eltbx.xray_scattering
-    from libtbx.itertbx import count
+    from itertools import count
     assert self.special_position_settings is not None
     result = xray.structure(
       special_position_settings=self.special_position_settings)

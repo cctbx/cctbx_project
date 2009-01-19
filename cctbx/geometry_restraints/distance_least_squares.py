@@ -10,7 +10,7 @@ from cctbx.array_family import flex
 from scitbx import matrix as mx
 import scitbx.lbfgs
 from libtbx.str_utils import format_value
-from libtbx.itertbx import count
+from itertools import count
 import sys
 
 if (1):

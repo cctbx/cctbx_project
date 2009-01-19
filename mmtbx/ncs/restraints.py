@@ -11,9 +11,9 @@ from scitbx.math import superpose
 from scitbx import matrix
 import scitbx.stl
 from libtbx.str_utils import show_string
-from libtbx.itertbx import count
 from libtbx.utils import Sorry
 from libtbx import adopt_init_args
+from itertools import count
 import sys
 
 class selection_properties(object):
