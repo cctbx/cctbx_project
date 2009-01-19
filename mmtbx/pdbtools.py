@@ -1,4 +1,3 @@
-from __future__ import generators
 import iotbx.phil
 from mmtbx.refinement import rigid_body
 from mmtbx import utils

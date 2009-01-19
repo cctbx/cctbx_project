@@ -1,5 +1,3 @@
-from __future__ import generators
-
 from cctbx.array_family import flex
 from cctbx import matrix
 from cctbx import uctbx

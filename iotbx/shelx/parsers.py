@@ -1,7 +1,5 @@
 """ Lexing of ins/res files """
 
-from __future__ import generators
-
 from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import xray

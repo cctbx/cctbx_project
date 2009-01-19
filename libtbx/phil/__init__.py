@@ -1,7 +1,6 @@
 "Documentation: http://cctbx.sourceforge.net/libtbx_phil.html"
 
 from __future__ import division
-from __future__ import generators
 from libtbx.phil import tokenizer
 from libtbx.str_utils import line_breaker
 from libtbx.utils import Sorry, format_exception, import_python_object

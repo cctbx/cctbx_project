@@ -1,4 +1,3 @@
-from __future__ import generators
 import os, sys
 
 import libtbx.load_env

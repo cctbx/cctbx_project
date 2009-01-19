@@ -14,7 +14,6 @@ data structures can also be constructed and written back out as mmCIF.
 A CIF dictionary parser is also included as a specialized version of the
 mmCIF parser.
 """
-from __future__ import generators
 import string
 import re
 import copy

@@ -1,5 +1,4 @@
 from __future__ import division
-from __future__ import generators
 from libtbx import sge_utils
 from libtbx.str_utils import show_string
 try: import gzip

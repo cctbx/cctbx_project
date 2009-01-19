@@ -1,5 +1,4 @@
 from __future__ import division
-from __future__ import generators
 import cctbx.sgtbx
 
 import boost.python
