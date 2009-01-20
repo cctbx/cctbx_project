@@ -229,8 +229,7 @@ def construct_bodies(sites, cluster_manager):
     result.append(body)
   return result
 
-def construct_simulation(pdb, bonds):
-  labels, sites = pdb_extract(pdb=pdb)
+def construct_simulation(labels, sites, bonds):
   tt = tardy_tree.construct(n_vertices=len(sites), edges=bonds, size_max=8)
   cm = tt.cluster_manager
   cm.merge_lones(edges=bonds)
@@ -244,6 +243,10 @@ def construct_simulation(pdb, bonds):
     potential_obj=potential_object(wells=random_wells(sites)),
     bodies=construct_bodies(sites=sites, cluster_manager=cm))
 
+def construct_sim(pdb, bonds):
+  labels, sites = pdb_extract(pdb=pdb)
+  return construct_simulation(labels=labels, sites=sites, bonds=bonds)
+
 def simulation_gly_no_h():
   pdb = """\
 ATOM      0  N   GLY A   1      10.949  12.815  15.189  0.00  0.00           N
@@ -252,7 +255,7 @@ ATOM      2  C   GLY A   1      10.779  15.262  15.227  0.00  0.00           C
 ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
 """
   bonds = [(0,1),(1,2),(2,3)]
-  return construct_simulation(pdb=pdb, bonds=bonds)
+  return construct_sim(pdb=pdb, bonds=bonds)
 
 def simulation_gly_with_nh():
   pdb = """\
@@ -263,7 +266,7 @@ ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
 ATOM      4  H   GLY A   1      11.792  12.691  15.311  0.00  0.00           H
 """
   bonds = [(0,1),(0,4),(1,2),(2,3)]
-  return construct_simulation(pdb=pdb, bonds=bonds)
+  return construct_sim(pdb=pdb, bonds=bonds)
 
 def simulation_ala_no_h():
   pdb = """\
@@ -274,7 +277,7 @@ ATOM      3  CB  ALA A   1      10.908  13.950  17.351  0.00  0.00           C
 ATOM      4  O   ALA A   1       9.916  16.090  14.936  0.00  0.00           O
 """
   bonds = [(0,1),(1,2),(1,3),(2,4)]
-  return construct_simulation(pdb=pdb, bonds=bonds)
+  return construct_sim(pdb=pdb, bonds=bonds)
 
 def simulation_ala_with_h():
   pdb = """\
@@ -290,7 +293,7 @@ ATOM      8  HB2 ALA A   1      10.540  14.707  17.813  0.00  0.00           H
 ATOM      9  HB3 ALA A   1      11.867  14.004  17.346  0.00  0.00           H
 """
   bonds = [(0,1),(0,5),(1,2),(1,3),(1,6),(2,4),(6,7),(6,8),(6,9)]
-  return construct_simulation(pdb=pdb, bonds=bonds)
+  return construct_sim(pdb=pdb, bonds=bonds)
 
 def simulation_tyr_with_h():
   pdb = """\
@@ -320,7 +323,7 @@ ATOM     20  H   TYR A   1      10.948  12.701   9.122  1.00  0.88           H
     (0, 1), (0, 2), (0, 12), (1, 3), (1, 6), (2, 4), (2, 7), (3, 5),
     (3, 8), (4, 5), (4, 9), (5, 10), (10, 11), (12, 13), (12, 14),
     (12, 16), (15, 16), (15, 20), (16, 17), (16, 18), (17, 19)]
-  return construct_simulation(pdb=pdb, bonds=bonds)
+  return construct_sim(pdb=pdb, bonds=bonds)
 
 simulation_factories = [
   simulation_gly_no_h,
