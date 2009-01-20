@@ -25,7 +25,7 @@ cif_keyword_dictionary = {
                   "pdbx_model_coordinates_db_code" : str,
                   "pdbx_processing_site" : str,
                   # added 11/2008
-                  #"pdbx_subcomponent_list" : str,
+                  "pdbx_subcomponent_list" : str,
                   },
   "_chem_comp_atom" : {"comp_id": str,
                        "atom_id": str,
@@ -44,8 +44,8 @@ cif_keyword_dictionary = {
                        "pdbx_model_Cartn_z_ideal": float,
                        "pdbx_ordinal" : int,
                        # added 11/2008
-                       #"pdbx_component_atom_id" : str,
-                       #"pdbx_component_comp_id" : str,
+                       "pdbx_component_atom_id" : str,
+                       "pdbx_component_comp_id" : str,
                        },
   "_chem_comp_bond" : {"comp_id": str,
                        "atom_id_1": str,
@@ -89,19 +89,19 @@ def smart_split_cif_line(line):
       delimiter=line[0]
     start = line.find(delimiter)
     finish = line.find(delimiter, start+1)
-    item = line.split(delimiter)
-    item = filter(None, item)
-    if not item: break
-    item=item[0]
-    #print ">",item
+    items = line.split(delimiter)
+    items = filter(None, items)
+    if not items: break
+    item=items[0]
     tmp.append(item)
-    if finish==-1: break
-    #print start, finish
+    if finish==-1:
+      if len(items)==2:
+        tmp.append(items[1])
+      break
     if delimiter==" ":
       line = line[len(item)+1:].strip()
     else:
       line = line[len(item)+3:].strip()
-    #print line
   return tmp
 
 def run(filename):
