@@ -161,9 +161,10 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     text+= "} \n"
     return text
 
-  def format_for_resolve(self,crystal_number=None,skip_identity=False):
+  def format_for_resolve(self,crystal_number=None,skip_identity=False,
+       ncs_domain_pdb=True):
     text="new_ncs_group"
-    if self._ncs_domain_pdb is not None:
+    if ncs_domain_pdb and self._ncs_domain_pdb is not None:
         text+="\nncs_domain_pdb "+str(self._ncs_domain_pdb)+"\n"
     i=0
     for center,trans_orth,ncs_rota_matr in zip (
@@ -526,7 +527,7 @@ class ncs:
     return all_text
 
   def format_all_for_resolve(self,log=None,quiet=False,out=None,
-      crystal_number=None,skip_identity=False):
+      crystal_number=None,skip_identity=False,ncs_domain_pdb=True):
     if out==None:
        out=sys.stdout
     if log==None:
@@ -536,7 +537,7 @@ class ncs:
     all_text=""
     for ncs_group in self._ncs_groups:
       text=ncs_group.format_for_resolve(crystal_number=crystal_number,
-         skip_identity=skip_identity)
+         skip_identity=skip_identity,ncs_domain_pdb=ncs_domain_pdb)
       if not quiet: out.write("\n"+text+"\n\n")
       all_text+="\n"+text
     return all_text
