@@ -17,19 +17,43 @@ def random_wells(sites):
 
 class potential_object(object):
 
-  def __init__(O, wells):
+  def __init__(O,
+        sites,
+        wells,
+        loop_edges,
+        loop_edge_weight=1/0.1**2,
+        epsilon=1.e-100):
     O.wells = wells
+    O.restraints = []
+    for edge in loop_edges:
+      s = [sites[i] for i in edge]
+      O.restraints.append((edge, abs(s[0]-s[1]), loop_edge_weight))
+    O.epsilon = epsilon
 
   def e_pot(O, sites_moved):
     result = 0
     for s, w in zip(sites_moved, O.wells):
       result += (s - w).dot()
+    for edge,d_ideal,w in O.restraints:
+      s = [sites_moved[i] for i in edge]
+      d_model = abs(s[0]-s[1])
+      if (d_model < O.epsilon): continue
+      delta = d_ideal - d_model
+      result += w * delta**2
     return result
 
   def d_e_pot_d_sites(O, sites_moved):
     result = []
     for s, w in zip(sites_moved, O.wells):
       result.append(2 * (s - w))
+    for edge,d_ideal,w in O.restraints:
+      s = [sites_moved[i] for i in edge]
+      d_model = abs(s[0]-s[1])
+      if (d_model < O.epsilon): continue
+      delta = d_ideal - d_model
+      g0 = -w * 2 * delta / d_model * (s[0] - s[1])
+      result[edge[0]] += g0
+      result[edge[1]] -= g0
     return result
 
 class simulation(object):
@@ -240,7 +264,10 @@ def construct_simulation(labels, sites, bonds):
     sites=sites,
     bonds=bonds,
     cluster_manager=cm,
-    potential_obj=potential_object(wells=random_wells(sites)),
+    potential_obj=potential_object(
+      sites=sites,
+      wells=random_wells(sites),
+      loop_edges=cm.loop_edges),
     bodies=construct_bodies(sites=sites, cluster_manager=cm))
 
 def construct_sim(pdb, bonds):
@@ -325,12 +352,51 @@ ATOM     20  H   TYR A   1      10.948  12.701   9.122  1.00  0.88           H
     (12, 16), (15, 16), (15, 20), (16, 17), (16, 18), (17, 19)]
   return construct_sim(pdb=pdb, bonds=bonds)
 
+def simulation_van_fragment():
+  # PDB code 1qd8
+  pdb = """\
+HETATM   47  C44 VAN     1       0.718   5.411   2.269  1.00  3.66           C
+HETATM   48  C47 VAN     1       0.913   3.899   2.010  1.00  3.90           C
+HETATM   49  C48 VAN     1       1.937   3.222   2.700  1.00  3.87           C
+HETATM   50  C50 VAN     1       2.013   1.800   2.726  1.00  4.31           C
+HETATM   51  C52 VAN     1       1.044   1.071   2.004  1.00  4.71           C
+HETATM   52  O53 VAN     1       1.077  -0.297   2.083  1.00  6.04           O
+HETATM   53  C51 VAN     1       0.066   1.767   1.246  1.00  5.04           C
+HETATM   54  C49 VAN     1       0.006   3.153   1.237  1.00  4.22           C
+HETATM   55  C45 VAN     1      -0.704   5.507   2.917  1.00  3.80           C
+HETATM   56  O46 VAN     1      -1.666   5.899   2.216  1.00  4.55           O
+HETATM   57  N54 VAN     1      -0.869   5.098   4.194  1.00  4.02           N
+HETATM   58  C55 VAN     1       0.141   4.679   5.156  1.00  4.23           C
+HETATM   69  C56 VAN     1       0.045   3.151   5.360  1.00  4.51           C
+HETATM   70  O57 VAN     1      -1.022   2.542   5.259  1.00  5.51           O
+HETATM   71  N68 VAN     1       1.226   2.525   5.641  1.00  4.67           N
+HETATM   72  C69 VAN     1       1.340   1.069   5.484  1.00  5.14           C
+HETATM   73  C72 VAN     1       2.754   0.737   4.924  1.00  4.58           C
+HETATM   74  C73 VAN     1       3.049   1.131   3.577  1.00  4.34           C
+HETATM   75  C75 VAN     1       4.354   0.899   3.099  1.00  4.29           C
+HETATM   76  O79 VAN     1       4.736   1.286   1.834  1.00  4.73           O
+HETATM   77  C76 VAN     1       5.342   0.269   3.883  1.00  4.57           C
+HETATM   78  C77 VAN     1       5.023  -0.107   5.195  1.00  4.56           C
+HETATM   79  O78 VAN     1       5.912  -0.707   6.053  1.00  5.51           O
+HETATM   80  C74 VAN     1       3.724   0.123   5.713  1.00  4.95           C
+HETATM   81  C70 VAN     1       1.069   0.287   6.838  1.00  5.82           C
+HETATM   82  O71 VAN     1       1.149   0.912   7.924  1.00  7.21           O
+HETATM   83  O80 VAN     1       0.816  -0.957   6.693  1.00  8.10           O
+"""
+  bonds=[
+    (0, 1), (0, 8), (1, 2), (1, 7), (2, 3), (3, 4), (3, 17), (4, 5), (4, 6),
+    (6, 7), (8, 9), (8, 10), (10, 11), (11, 12), (12, 13), (12, 14), (14, 15),
+    (15, 16), (15, 24), (16, 17), (16, 23), (17, 18), (18, 19), (18, 20),
+    (20, 21), (21, 22), (21, 23), (24, 25), (24, 26)]
+  return construct_sim(pdb=pdb, bonds=bonds)
+
 simulation_factories = [
   simulation_gly_no_h,
   simulation_gly_with_nh,
   simulation_ala_no_h,
   simulation_ala_with_h,
-  simulation_tyr_with_h]
+  simulation_tyr_with_h,
+  simulation_van_fragment]
 
 def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
