@@ -1,0 +1,145 @@
+\documentclass[11pt]{article}
+\usepackage{cctbx_preamble}
+\usepackage{amscd}
+\usepackage[title]{appendix}
+
+\title{Merging of equivalent reflections}
+\author{\lucjbourhis}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+Two steps are required to merge equivalent reflections with the \cctbx . Given a \code{miller.array} \code{m},
+\begin{enumerate}
+\item \code{m1 = m.map\_to\_asu()} projects each Miller index into the asymmetric unit, i.e. for each group of equivalent reflection, each index of that group is replaced by the same Miller index;
+\item \code{merging = m1.merge\_equivalents()} finds the group of identical Miller indices, gathers the data and sigma's for each group in turn, computes an average datum and an associated sigma; \code{merging.array()} is then the \code{miller.array} containing those unique indices associated to those averaged data and sigma.
+\end{enumerate}
+The first step is only about space-group algebra whereas the second step is only about statistics and this division is therefore optimally orthogonal in a sense. We will now expound each step, starting from the second one.
+
+\section{Averaging of equivalent reflections}
+
+Given $n$ data $y_1, \ldots, y_n$ and the associated estimated standard deviations $\sigma_1, \ldots, \sigma_n$, either the amplitudes or the intensities for a group of symmetry equivalent reflections, we sought to combine those data and sigma's into a single datum and an associated standard deviation.
+
+That merged amplitude or intensity $\bar{y}$ is computed as a weighted average of the $\{y_i\}_{i=1,\ldots,n}$,
+\begin{equation}
+\bar{y} = \frac{\sum_{i=1}^n w_i y_i}{\sum_{i=1}^n w_i} .
+\label{eqn:average}
+\end{equation}
+There are two ways to handle this from a statistical point of view. 
+
+\subsection{External variance}
+
+The first one gives a mathematical meaning to the loose assertion that all $y_i$ should be equal within the uncertainties quantified by the $\sigma_i$ (the exact equality is required by those being equivalent reflections but this is spoiled by all sources of errors in measurement and data processing up to this point). Each $y_i$ is then seen as an outcome of a random variable $\hat{y}_i$ which is an unbiased estimator for the value $y_{\text{eq}}$ that all equivalent reflections should ideally share, i.e. mathematically
+\begin{align}
+E(\hat{y}_i) &= y_{\text{eq}}, \ \forall i=1,\ldots,n\\
+V(\hat{y}_i) &= \sigma_i^2 \nonumber.
+\end{align}
+Then the average $\bar{y}$ is the outcome of the random variable 
+\begin{equation}
+\hat{y} = \frac{\sum_{i=1}^n w_i \hat{y}_i}{\sum_{i=1}^n w_i} .
+\end{equation}
+which is obviously an unbiased estimator of $y_{\text{eq}}$ (i.e. $E(\hat{y}) = y_{\text{eq}}$). If we postulates that the measurement and data reduction lead to uncorrelated $\hat{y}_i$, then
+\begin{align}
+V(\hat{y}) &=  \sum_{i=1}^n \omega_i^2 V(\hat{y}_i)\\
+\intertext{where}
+\omega_i = \frac{w_i}{\sum_{i=1}^n w_i}.
+\label{eqn:externalvariance}
+\end{align}
+This is often called the ``external'' variance. Its lowest possible value is obtained for the weights
+\begin{equation}
+\tilde{w}_i = \frac{1}{V(\hat{y}_i)} = \frac{1}{\sigma_i^2},
+\label{eqn:minimalvarianceweights}
+\end{equation}
+as well as for any weights differing from those by a common proportionality factor, as demonstrated in appendix~\ref{apendixa} and this minimum is equal to
+\begin{equation}
+V(\hat{y}) = \frac{1}{\sum_{i=1}^n \tilde{w}_i} = \frac{1}{n\mean{\tilde{w}_i}}.
+\end{equation}
+Those are the weights and the external variance used by the \code{cctbx}.
+
+This is not the only popular choice. Indeed ShelXL \cite{SHELX:man97} uses instead
+\begin{equation}
+w_i = \begin{cases} 
+\frac{y_i}{\sigma_i^2} & \text{if}\ \frac{y_i}{\sigma_i} > 3,\\
+\frac{3}{\sigma_i} & \text{otherwise}.
+\end{cases}
+\end{equation}
+
+\subsection{Internal variance}
+
+The second way to handle the \eqnref[name=average~]{average} is to consider it at a mere sample mean, but a weighted one, ignoring the special property of the $y_i$. Those data are considered as the outcome of a sample $(Y_1, \ldots, Y_n)$ of a random variable $Y$, and $\bar{y}$ is then the outcome of the unbiased estimator of $E(Y)$,
+\begin{equation}
+\bar{Y} = \frac{\sum_{i=1}^n w_i Y_i}{\sum_{i=1}^n w_i}.
+\end{equation}
+It is then natural to also compute a weighted sample variance
+\begin{align}
+S^2 &= \frac{\sum_{i=1}^n w_i (Y_i - \bar{Y})^2}{\sum_{i=1}^n w_i}.
+\label{eqn:biasedsamplevariance}
+\intertext{However, it is a biased estimator of $V(Y)$, as it is well-known in the unweighted case, i.e. all weights $w_i$ equal. The unbiased estimator}
+S^2_{n-1} &= \frac{S^2}{1-\sum_{i=1}^n \omega_i^2}\\
+& = \frac{\sum_{i=1}^n w_i}{\left(\sum_{i=1}^n w_i\right)^2 - \sum_{i=1}^n w_i^2} \sum_{i=1}^n w_i (Y_i - \bar{Y})^2
+\label{eqn:unbiasedsamplevariance}
+\end{align}
+is therefore preferred. Those variances are called ``internal'' by opposition to the variance we have previously discussed. The \code{cctbx} computes it by using an instance of \code{scitbx::mean\_and\_variance} and calling its member function \code{gsl\_stats\_wvariance} whose implementation and naming follows the function with the same name in the GNU Scientific Library~\cite{GSL}. Since this formula is not that easily found in textbooks, we demonstrate it in appendix~\ref{appendixb}.
+
+Finally, it is customary to estimate the variance associated with $\bar{y}$ by taking the greatest of the internal and external variance. That is what the \code{cctbx} does as well as ShelXL.
+
+\begin{appendices}
+\section{Minimum variance weights}
+\label{apendixa}
+
+We will demonstrate \eqnref{minimalvarianceweights}. We seek the solution of the constrained minimisation problem
+\begin{align}
+&\min V(\hat{y}),\\
+&V(\hat{y}) = \sum_{i=1}^n \omega_i^2 V(\hat{y}_i),\\
+&\sum_{i=1}^n \omega_i = 1.
+\label{eqn:omegaconstraint}
+\end{align}
+We can solve it by minimising the Lagrangian
+\begin{align}
+L &= V(\hat{y}) - \lambda \sum_{i=1}^n \omega_i,\\
+  &= \sum_{i=1}^n \left[V(\hat{y}_i)\left(\omega_i - \frac{\lambda}{2V(\hat{y}_i)} \right)^2 - \frac{\lambda^2}{4V(\hat{y}_i)} \right]
+\end{align}
+Thus $L$ reaches its minimum at
+\begin{align}
+\omega_i &= \frac{\lambda}{2V(\hat{y}_i)}\\
+\intertext{and using \eqnref{omegaconstraint}, it comes}
+\frac{\lambda}{2} &= \frac{1}{\sum_{i=1}^n \frac{1}{V(\hat{y}_i)}}\\
+\intertext{and therefore the minimum is reached at}
+\omega_i &= \frac{\frac{1}{V(\hat{y}_i)}}{\sum_{j=1}^n \frac{1}{V(\hat{y}_i)}}.
+\end{align}
+That demonstrates \eqnref{minimalvarianceweights} and since weights differing by a common proportionality factor yields the same $\omega_i$, QED.
+
+\section{Weighted sample variance}
+\label{appendixb}
+First let us remember that, by definition of a sample,
+\begin{align}
+E(Y_i) &= E(Y),\ \forall i=1,\ldots, n\\
+V(Y_i) &= V(Y)
+\end{align}
+Therefore,
+\begin{align*}
+V(Y) &= \sum_{i=1}^n \omega_i V(Y_i)\\
+      &= E\left[ \sum_{i=1}^n \omega_i(Y_i - E(Y))^2 \right]\\
+      &= E\left[ \sum_{i=1}^n \omega_i(Y_i - \bar{Y})^2 \right] 
+      + 2 E\left[ \sum_{i=1}^n \omega_i(Y_i - \bar{Y})(\bar{Y} - E(Y)) \right]
+      +  \sum_{i=1}^n \omega_i E\left[ (\bar{Y} - E(Y))^2 \right]
+\end{align*}
+Then,
+\begin{itemize}
+\item since $E(\bar{Y}) = E(Y)$, the last term is $V(\bar{Y})$;
+\item by definition of $\bar{Y}$, $\sum_{i=1}^n \omega_i(Y_i - \bar{Y})=0$ and the second term is therefore 0.
+\end{itemize}
+Thus
+\begin{align}
+V(Y) &= E(S^2) + V(\bar{Y}).\\
+\intertext{But} 
+V(\bar{Y}) &= \sum_{i=1}^n \omega_i^2 V(Y)\\
+\intertext{and therefore}
+V(Y) &= \frac{E(S^2)}{1-\sum_{i=1}^n \omega_i^2}
+\end{align}
+\end{appendices}
+
+\bibliography{cctbx_references}
+
+\end{document}  
