@@ -1774,7 +1774,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
         rows.append( tmp )
         bin = resolution_bin(i_bin=i_bin,
                              d_range=d_range,
-                             completeness=0.98,
+                             completeness=0.98, # XXX VERY BAD BUG
                              alpha_work=alpha_w,
                              beta_work=beta_w,
                              r_work=tmp_work,
