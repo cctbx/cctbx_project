@@ -1,6 +1,7 @@
 from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import joint_lib
 from scitbx.rigid_body.essence import utils
+from scitbx.graph import tardy_tree
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import null_out, show_times_at_exit
@@ -14,33 +15,73 @@ def random_wells(sites):
     result.append(site+matrix.col.random(n=3, a=-1, b=1))
   return result
 
-def potential_energy(sites, wells, A, J, AJA_tree=None):
-  result = 0
-  AJA = A.Tb0 * J.Tsp * A.T0b
-  if (AJA_tree is not None): AJA = AJA_tree * AJA
-  for s, w in zip(sites, wells):
-    result += (AJA * s - w).dot()
-  return result
+class potential_object(object):
 
-def potential_f_ext_bf(sites, wells, A, J, AJA_tree=None):
-  AJA = A.Tb0 * J.Tsp * A.T0b
-  if (AJA_tree is not None): AJA = AJA_tree * AJA
-  f_cart_ff = [-2 * (AJA * s - w) for s, w in zip(sites, wells)]
-  JAr = J.Tps.r * A.T0b.r
-  if (AJA_tree is not None): JAr *= AJA_tree.r.transpose()
-  f = matrix.col((0,0,0))
-  nc = matrix.col((0,0,0))
-  for s,force_ff in zip(sites, f_cart_ff):
-    force_bf = JAr * force_ff
-    f += force_bf
-    nc += (A.T0b * s).cross(force_bf)
-  return matrix.col((nc, f)).resolve_partitions()
+  def __init__(O, wells):
+    O.wells = wells
+
+  def e_pot(O, sites_moved):
+    result = 0
+    for s, w in zip(sites_moved, O.wells):
+      result += (s - w).dot()
+    return result
+
+  def d_e_pot_d_sites(O, sites_moved):
+    result = []
+    for s, w in zip(sites_moved, O.wells):
+      result.append(2 * (s - w))
+    return result
 
 class simulation(object):
 
-  def __init__(O, bodies):
+  def __init__(O,
+        labels, sites, bonds, cluster_manager, potential_obj, bodies):
+    O.labels = labels
+    O.sites = sites
+    O.bonds = bonds
+    O.cluster_manager = cluster_manager
+    O.potential_obj = potential_obj
     O.bodies = bodies
     O.energies_and_accelerations_update()
+
+  def AJA_update(O):
+    O.AJA = []
+    for B in O.bodies:
+      AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
+      if (B.parent != -1):
+        AJA = O.AJA[B.parent] * AJA
+      O.AJA.append(AJA)
+
+  def JAr_update(O):
+    O.JAr = []
+    for B in O.bodies:
+      JAr = B.J.Tps.r * B.A.T0b.r
+      if (B.parent != -1):
+        JAr *= O.AJA[B.parent].r.transpose()
+      O.JAr.append(JAr)
+
+  def sites_moved_update(O):
+    O.sites_moved = [None] * len(O.sites)
+    n_done = 0
+    for iB,B in enumerate(O.bodies):
+      AJA = O.AJA[iB]
+      for i_seq in O.cluster_manager.clusters[iB]:
+        assert O.sites_moved[i_seq] is None
+        O.sites_moved[i_seq] = AJA * O.sites[i_seq]
+        n_done += 1
+    assert n_done == len(O.sites)
+
+  def f_ext_bf_update(O, d_e_pot_d_sites):
+    O.f_ext_bf = []
+    for iB,B in enumerate(O.bodies):
+      f = matrix.col((0,0,0))
+      nc = matrix.col((0,0,0))
+      for i_seq in O.cluster_manager.clusters[iB]:
+        s = O.sites[i_seq]
+        force_bf = -(O.JAr[iB] * d_e_pot_d_sites[i_seq])
+        f += force_bf
+        nc += (B.A.T0b * s).cross(force_bf)
+      O.f_ext_bf.append(matrix.col((nc, f)).resolve_partitions())
 
   def energies_and_accelerations_update(O):
     model = featherstone.system_model(bodies=O.bodies)
@@ -49,23 +90,13 @@ class simulation(object):
     O.qdd = model.FDab(tau=None, f_ext=O.f_ext_bf)
 
   def e_pot_and_f_ext_update(O):
-    O.AJA_accu = []
-    O.e_pot = 0
-    O.f_ext_bf = []
-    for B in O.bodies:
-      AJA = B.A.Tb0 * B.J.Tsp * B.A.T0b
-      if (B.parent == -1):
-        AJA_tree = None
-      else:
-        AJA_tree = O.AJA_accu[B.parent]
-        AJA = AJA_tree * AJA
-      O.AJA_accu.append(AJA)
-      e_pot_bf = potential_energy(
-        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
-      f_ext_using_bf = potential_f_ext_bf(
-        sites=B.sites, wells=B.wells, A=B.A, J=B.J, AJA_tree=AJA_tree)
-      O.f_ext_bf.append(f_ext_using_bf)
-      O.e_pot += e_pot_bf
+    O.AJA_update()
+    O.JAr_update()
+    O.sites_moved_update()
+    O.e_pot = O.potential_obj.e_pot(sites_moved=O.sites_moved)
+    O.f_ext_bf_update(
+      d_e_pot_d_sites=O.potential_obj.d_e_pot_d_sites(
+        sites_moved=O.sites_moved))
     O.e_tot = O.e_kin + O.e_pot
 
   def dynamics_step(O, delta_t):
@@ -151,15 +182,10 @@ class refinery(object):
 
 class six_dof_body(object):
 
-  def __init__(O, labels, sites, wells, bonds):
-    O.labels = labels
-    O.sites = sites
-    O.bonds = bonds
+  def __init__(O, sites):
     O.A = joint_lib.six_dof_alignment(
       center_of_mass=utils.center_of_mass_from_sites(sites=sites))
-    O.I = utils.spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
-    #
-    O.wells = wells
+    O.I = utils.spatial_inertia_from_sites(sites=sites, alignment_T=O.A.T0b)
     #
     qE = matrix.col((1,0,0,0))
     qr = matrix.col((0,0,0))
@@ -168,14 +194,9 @@ class six_dof_body(object):
 
 class revolute_body(object):
 
-  def __init__(O, labels, sites, wells, bonds, pivot, normal):
-    O.labels = labels
-    O.sites = sites
-    O.bonds = bonds
+  def __init__(O, sites, pivot, normal):
     O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.I = utils.spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
-    #
-    O.wells = wells
+    O.I = utils.spatial_inertia_from_sites(sites=sites, alignment_T=O.A.T0b)
     #
     O.J = joint_lib.revolute(qE=matrix.col([0]))
     O.qd = O.J.qd_zero
@@ -187,6 +208,42 @@ def pdb_extract(pdb):
     sites.append(matrix.col([float(line[30+i*8:38+i*8]) for i in [0,1,2]]))
   return labels, sites
 
+def construct_bodies(sites, cluster_manager):
+  result = []
+  cm = cluster_manager
+  for ic,cluster in enumerate(cm.clusters):
+    pe = cm.parent_edges[ic]
+    if (pe is None):
+      assert cm.parents[ic] == -1
+      body = six_dof_body(
+        sites=[matrix.col(sites[i]) for i in cluster])
+    else:
+      assert cm.parents[ic] != -1
+      normal_sites = [matrix.col(sites[i]) for i in pe]
+      body = revolute_body(
+        sites=[matrix.col(sites[i]) for i in cluster],
+        pivot=normal_sites[1],
+        normal=(normal_sites[1]-normal_sites[0]).normalize())
+    body.i_seqs = cluster
+    body.parent = cm.parents[ic]
+    result.append(body)
+  return result
+
+def construct_simulation(pdb, bonds):
+  labels, sites = pdb_extract(pdb=pdb)
+  tt = tardy_tree.construct(n_vertices=len(sites), edges=bonds, size_max=8)
+  cm = tt.cluster_manager
+  cm.merge_lones(edges=bonds)
+  cm.construct_spanning_trees(edges=bonds)
+  cm.find_parent_and_loop_edges(edges=bonds)
+  return simulation(
+    labels=labels,
+    sites=sites,
+    bonds=bonds,
+    cluster_manager=cm,
+    potential_obj=potential_object(wells=random_wells(sites)),
+    bodies=construct_bodies(sites=sites, cluster_manager=cm))
+
 def simulation_gly_no_h():
   pdb = """\
 ATOM      0  N   GLY A   1      10.949  12.815  15.189  0.00  0.00           N
@@ -194,25 +251,8 @@ ATOM      1  CA  GLY A   1      10.405  13.954  15.917  0.00  0.00           C
 ATOM      2  C   GLY A   1      10.779  15.262  15.227  0.00  0.00           C
 ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
 """
-  labels, sites = pdb_extract(pdb=pdb)
-  wells = random_wells(sites)
-  # clusters: [[0, 1], [2, 3]]
-  # parent_edges: [None, (1, 2)]
-  body0 = six_dof_body(
-    labels=labels[:2],
-    sites=sites[:2],
-    wells=wells[:2],
-    bonds=[(0,1)])
-  body0.parent = -1
-  body1 = revolute_body(
-    labels=labels[2:],
-    sites=sites[2:],
-    wells=wells[2:],
-    bonds=[(-1,0),(0,1)],
-    pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize())
-  body1.parent = 0
-  return simulation(bodies=[body0, body1])
+  bonds = [(0,1),(1,2),(2,3)]
+  return construct_simulation(pdb=pdb, bonds=bonds)
 
 def simulation_gly_with_nh():
   pdb = """\
@@ -222,33 +262,8 @@ ATOM      2  C   GLY A   1      10.779  15.262  15.227  0.00  0.00           C
 ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
 ATOM      4  H   GLY A   1      11.792  12.691  15.311  0.00  0.00           H
 """
-  labels, sites = pdb_extract(pdb=pdb)
-  wells = random_wells(sites)
-  # clusters: [[0, 4], [1], [2, 3]]
-  # parent_edges: [None, (0, 1), (1, 2)]
-  body0 = six_dof_body(
-    labels=labels[0:1]+labels[4:5],
-    sites=sites[0:1]+sites[4:5],
-    wells=wells[0:1]+wells[4:5],
-    bonds=[(0,1)])
-  body0.parent = -1
-  body1 = revolute_body(
-    labels=labels[1:2],
-    sites=sites[1:2],
-    wells=wells[1:2],
-    bonds=[(-2,0)],
-    pivot=sites[1],
-    normal=(sites[1]-sites[0]).normalize())
-  body1.parent = 0
-  body2 = revolute_body(
-    labels=labels[2:4],
-    sites=sites[2:4],
-    wells=wells[2:4],
-    bonds=[(-1,0),(0,1)],
-    pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize())
-  body2.parent = 1
-  return simulation(bodies=[body0, body1, body2])
+  bonds = [(0,1),(0,4),(1,2),(2,3)]
+  return construct_simulation(pdb=pdb, bonds=bonds)
 
 def simulation_ala_no_h():
   pdb = """\
@@ -258,25 +273,8 @@ ATOM      2  C   ALA A   1      10.779  15.262  15.227  0.00  0.00           C
 ATOM      3  CB  ALA A   1      10.908  13.950  17.351  0.00  0.00           C
 ATOM      4  O   ALA A   1       9.916  16.090  14.936  0.00  0.00           O
 """
-  labels, sites = pdb_extract(pdb=pdb)
-  wells = random_wells(sites)
-  # clusters: [[0, 1, 3], [2, 4]]
-  # parent_edges: [None, (1, 2)]
-  body0 = six_dof_body(
-    labels=labels[:2]+labels[3:4],
-    sites=sites[:2]+sites[3:4],
-    wells=wells[:2]+wells[3:4],
-    bonds=[(0,1),(1,2),(1,3)])
-  body0.parent = -1
-  body1 = revolute_body(
-    labels=labels[2:3]+labels[4:5],
-    sites=sites[2:3]+sites[4:5],
-    wells=wells[2:3]+wells[4:5],
-    bonds=[(-2,0),(0,1)],
-    pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize())
-  body1.parent = 0
-  return simulation(bodies=[body0, body1])
+  bonds = [(0,1),(1,2),(1,3),(2,4)]
+  return construct_simulation(pdb=pdb, bonds=bonds)
 
 def simulation_ala_with_h():
   pdb = """\
@@ -291,41 +289,8 @@ ATOM      7  HB1 ALA A   1      10.627  13.138  17.778  0.00  0.00           H
 ATOM      8  HB2 ALA A   1      10.540  14.707  17.813  0.00  0.00           H
 ATOM      9  HB3 ALA A   1      11.867  14.004  17.346  0.00  0.00           H
 """
-  labels, sites = pdb_extract(pdb=pdb)
-  wells = random_wells(sites)
-  # clusters: [[6, 7, 8, 9], [1, 3], [0, 5], [2, 4]]
-  # parent_edges: [None, (6, 1), (1, 0), (1, 2)]
-  body0 = six_dof_body(
-    labels=labels[6:],
-    sites=sites[6:],
-    wells=wells[6:],
-    bonds=[(0,1),(0,2),(0,3)])
-  body0.parent = -1
-  body1 = revolute_body(
-    labels=labels[1:2]+labels[3:4],
-    sites=sites[1:2]+sites[3:4],
-    wells=wells[1:2]+wells[3:4],
-    bonds=[(-4,0),(0,1)],
-    pivot=sites[1],
-    normal=(sites[1]-sites[6]).normalize())
-  body1.parent = 0
-  body2 = revolute_body(
-    labels=labels[0:1]+labels[5:6],
-    sites=sites[0:1]+sites[5:6],
-    wells=wells[0:1]+wells[5:6],
-    bonds=[(-2,0),(0,1)],
-    pivot=sites[0],
-    normal=(sites[0]-sites[1]).normalize())
-  body2.parent = 1
-  body3 = revolute_body(
-    labels=labels[2:3]+labels[4:5],
-    sites=sites[2:3]+sites[4:5],
-    wells=wells[2:3]+wells[4:5],
-    bonds=[(-2,0),(0,1)],
-    pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize())
-  body3.parent = 1
-  return simulation(bodies=[body0, body1, body2, body3])
+  bonds = [(0,1),(0,5),(1,2),(1,3),(1,6),(2,4),(6,7),(6,8),(6,9)]
+  return construct_simulation(pdb=pdb, bonds=bonds)
 
 def simulation_tyr_with_h():
   pdb = """\
@@ -351,58 +316,11 @@ ATOM     18  HA  TYR A   1      13.536  11.638   8.870  1.00  0.85           H
 ATOM     19  O   TYR A   1      12.298  12.462   6.643  1.00  0.83           O
 ATOM     20  H   TYR A   1      10.948  12.701   9.122  1.00  0.88           H
 """
-  labels, sites = pdb_extract(pdb=pdb)
-  wells = random_wells(sites)
-  # clusters: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  #            [12, 13, 14], [10, 11], [16, 18], [15, 20], [17, 19]]
-  # parent_edges: [None, (0, 12), (5, 10), (12, 16), (16, 15), (16, 17)]
-  body0 = six_dof_body(
-    labels=labels[:10],
-    sites=sites[:10],
-    wells=wells[:10],
-    bonds=[(0,1),(0,2),(1,3),(2,4),(3,5),(4,5),(1,6),(2,7),(3,8),(4,9)])
-  body0.parent = -1
-  body1 = revolute_body(
-    labels=labels[12:15],
-    sites=sites[12:15],
-    wells=wells[12:15],
-    bonds=[(-10,0),(0,1),(0,2)],
-    pivot=sites[12],
-    normal=(sites[12]-sites[0]).normalize())
-  body1.parent = 0
-  body2 = revolute_body(
-    labels=labels[10:12],
-    sites=sites[10:12],
-    wells=wells[10:12],
-    bonds=[(-5,0),(0,1)],
-    pivot=sites[10],
-    normal=(sites[10]-sites[5]).normalize())
-  body2.parent = 0
-  body3 = revolute_body(
-    labels=labels[16:17]+labels[18:19],
-    sites=sites[16:17]+sites[18:19],
-    wells=wells[16:17]+wells[18:19],
-    bonds=[(-3,0),(0,1)],
-    pivot=sites[16],
-    normal=(sites[16]-sites[12]).normalize())
-  body3.parent = 1
-  body4 = revolute_body(
-    labels=labels[15:16]+labels[20:],
-    sites=sites[15:16]+sites[20:],
-    wells=wells[15:16]+wells[20:],
-    bonds=[(-2,0),(0,1)],
-    pivot=sites[15],
-    normal=(sites[15]-sites[16]).normalize())
-  body4.parent = 3
-  body5 = revolute_body(
-    labels=labels[17:18]+labels[19:20],
-    sites=sites[17:18]+sites[19:20],
-    wells=wells[17:18]+wells[19:20],
-    bonds=[(-2,0),(0,1)],
-    pivot=sites[17],
-    normal=(sites[17]-sites[16]).normalize())
-  body5.parent = 3
-  return simulation(bodies=[body0, body1, body2, body3, body4, body5])
+  bonds=[
+    (0, 1), (0, 2), (0, 12), (1, 3), (1, 6), (2, 4), (2, 7), (3, 5),
+    (3, 8), (4, 5), (4, 9), (5, 10), (10, 11), (12, 13), (12, 14),
+    (12, 16), (15, 16), (15, 20), (16, 17), (16, 18), (17, 19)]
+  return construct_simulation(pdb=pdb, bonds=bonds)
 
 simulation_factories = [
   simulation_gly_no_h,

@@ -12,33 +12,18 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     super(viewer, self).__init__(*args, **kwds)
 
   def set_points(self):
-    self.points.clear()
-    for B,AJA in zip(self.sim.bodies, self.sim.AJA_accu):
-      for s in B.sites:
-        self.points.append(AJA * s)
+    self.points = flex.vec3_double(self.sim.sites_moved)
     self.labels_display_list = None
     self.lines_display_list = None
     self.points_display_list = None
 
   def set_points_and_lines(self, simulation_factory_index):
     self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
-    self.points = flex.vec3_double()
+    self.labels = self.sim.labels
     self.set_points()
-    def add_line(i, j, color):
-      line = (i,j)
+    for line in self.sim.bonds:
       self.line_i_seqs.append(line)
-      self.line_colors[line] = color
-    self.labels = []
-    B_off = []
-    for B in self.sim.bodies:
-      B_off.append(len(self.labels))
-      self.labels.extend(B.labels)
-      def add_off(i):
-        if (i < 0): return B_off[B.parent+1] + i
-        else:       return B_off[-1] + i
-      for bond in B.bonds:
-        i,j = [add_off(b) for b in bond]
-        add_line(i, j, (1,0,0))
+      self.line_colors[line] = (1,0,0)
     mcs = minimum_covering_sphere(self.points, epsilon=1.e-2)
     self.minimum_covering_sphere = sphere_3d(
       center=mcs.center(), radius=mcs.radius()*1.3)
