@@ -20,14 +20,14 @@ class potential_object(object):
   def __init__(O,
         sites,
         wells,
-        loop_edges,
-        loop_edge_weight=1/0.1**2,
+        restraint_edges,
+        restraint_edge_weight=1/0.1**2,
         epsilon=1.e-100):
     O.wells = wells
     O.restraints = []
-    for edge in loop_edges:
+    for edge in restraint_edges:
       s = [sites[i] for i in edge]
-      O.restraints.append((edge, abs(s[0]-s[1]), loop_edge_weight))
+      O.restraints.append((edge, abs(s[0]-s[1]), restraint_edge_weight))
     O.epsilon = epsilon
 
   def e_pot(O, sites_moved):
@@ -259,6 +259,7 @@ def construct_simulation(labels, sites, bonds):
   cm.merge_lones(edges=bonds)
   cm.construct_spanning_trees(edges=bonds)
   cm.find_parent_and_loop_edges(edges=bonds)
+  cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
   return simulation(
     labels=labels,
     sites=sites,
@@ -267,7 +268,7 @@ def construct_simulation(labels, sites, bonds):
     potential_obj=potential_object(
       sites=sites,
       wells=random_wells(sites),
-      loop_edges=cm.loop_edges),
+      restraint_edges=cm.loop_edges+cm.loop_edge_bendings),
     bodies=construct_bodies(sites=sites, cluster_manager=cm))
 
 def construct_sim(pdb, bonds):
@@ -440,7 +441,7 @@ def exercise_minimization_quick(out, sim, max_iterations=3):
   print >> out, "  final e_pot:", sim.e_pot
   e_pot_final = sim.e_pot
   if (out is not sys.stdout):
-    assert e_pot_final < e_pot_start * 0.95
+    assert e_pot_final < e_pot_start * 0.98
   print >> out
 
 def run(args):

@@ -21,12 +21,15 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.sim = sim
     self.labels = self.sim.labels
     self.set_points()
-    le = self.sim.cluster_manager.loop_edges
+    le = set(self.sim.cluster_manager.loop_edges)
     for line in self.sim.bonds:
       self.line_i_seqs.append(line)
       if (line in le): color = (1,0,0)
       else:            color = (0,1,0)
       self.line_colors[line] = color
+    for line in self.sim.cluster_manager.loop_edge_bendings:
+      self.line_i_seqs.append(line)
+      self.line_colors[line] = (0,0,0.5)
     mcs = minimum_covering_sphere(self.points, epsilon=1.e-2)
     self.minimum_covering_sphere = sphere_3d(
       center=mcs.center(), radius=mcs.radius()*1.3)
