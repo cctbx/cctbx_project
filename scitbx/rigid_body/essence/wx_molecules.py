@@ -17,8 +17,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.lines_display_list = None
     self.points_display_list = None
 
-  def set_points_and_lines(self, simulation_factory_index):
-    self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
+  def set_points_and_lines(self, sim):
+    self.sim = sim
     self.labels = self.sim.labels
     self.set_points()
     for line in self.sim.bonds:
@@ -86,7 +86,7 @@ scitbx.python wx_molecules.py sim_index
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
     self.view_objects.set_points_and_lines(
-      simulation_factory_index=self.simulation_factory_index)
+      sim=tst_molecules.simulation_factories[self.simulation_factory_index]())
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
