@@ -14,6 +14,7 @@ def exercise_core(angles_in):
     assert approx_equal(m2, m)
 
 def exercise():
+  random.seed(0)
   for a1_in in xrange(0, 400, 15):
     for a2_in in xrange(0, 400, 15):
       for a3_in in xrange(0, 400, 15):
