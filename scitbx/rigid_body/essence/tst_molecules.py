@@ -196,17 +196,19 @@ ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
 """
   labels, sites = pdb_extract(pdb=pdb)
   wells = random_wells(sites)
+  # clusters: [[0, 1], [2, 3]]
+  # parent_edges: [None, (1, 2)]
   body0 = six_dof_body(
-    labels=labels[:3],
-    sites=sites[:3],
-    wells=wells[:3],
-    bonds=[(0,1),(1,2)])
+    labels=labels[:2],
+    sites=sites[:2],
+    wells=wells[:2],
+    bonds=[(0,1)])
   body0.parent = -1
   body1 = revolute_body(
-    labels=labels[3:],
-    sites=sites[3:],
-    wells=wells[3:],
-    bonds=[(-1,0)],
+    labels=labels[2:],
+    sites=sites[2:],
+    wells=wells[2:],
+    bonds=[(-1,0),(0,1)],
     pivot=sites[2],
     normal=(sites[2]-sites[1]).normalize())
   body1.parent = 0
@@ -222,28 +224,30 @@ ATOM      4  H   GLY A   1      11.792  12.691  15.311  0.00  0.00           H
 """
   labels, sites = pdb_extract(pdb=pdb)
   wells = random_wells(sites)
+  # clusters: [[0, 4], [1], [2, 3]]
+  # parent_edges: [None, (0, 1), (1, 2)]
   body0 = six_dof_body(
-    labels=labels[:3],
-    sites=sites[:3],
-    wells=wells[:3],
-    bonds=[(0,1),(1,2)])
+    labels=labels[0:1]+labels[4:5],
+    sites=sites[0:1]+sites[4:5],
+    wells=wells[0:1]+wells[4:5],
+    bonds=[(0,1)])
   body0.parent = -1
   body1 = revolute_body(
-    labels=labels[3:4],
-    sites=sites[3:4],
-    wells=wells[3:4],
-    bonds=[(-1,0)],
-    pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize())
+    labels=labels[1:2],
+    sites=sites[1:2],
+    wells=wells[1:2],
+    bonds=[(-2,0)],
+    pivot=sites[1],
+    normal=(sites[1]-sites[0]).normalize())
   body1.parent = 0
   body2 = revolute_body(
-    labels=labels[4:],
-    sites=sites[4:],
-    wells=wells[4:],
-    bonds=[(-3,0)],
-    pivot=sites[0],
-    normal=(sites[0]-sites[1]).normalize())
-  body2.parent = 0
+    labels=labels[2:4],
+    sites=sites[2:4],
+    wells=wells[2:4],
+    bonds=[(-1,0),(0,1)],
+    pivot=sites[2],
+    normal=(sites[2]-sites[1]).normalize())
+  body2.parent = 1
   return simulation(bodies=[body0, body1, body2])
 
 def simulation_ala_no_h():
@@ -256,17 +260,19 @@ ATOM      4  O   ALA A   1       9.916  16.090  14.936  0.00  0.00           O
 """
   labels, sites = pdb_extract(pdb=pdb)
   wells = random_wells(sites)
+  # clusters: [[0, 1, 3], [2, 4]]
+  # parent_edges: [None, (1, 2)]
   body0 = six_dof_body(
-    labels=labels[:4],
-    sites=sites[:4],
-    wells=wells[:4],
+    labels=labels[:2]+labels[3:4],
+    sites=sites[:2]+sites[3:4],
+    wells=wells[:2]+wells[3:4],
     bonds=[(0,1),(1,2),(1,3)])
   body0.parent = -1
   body1 = revolute_body(
-    labels=labels[4:],
-    sites=sites[4:],
-    wells=wells[4:],
-    bonds=[(-2,0)],
+    labels=labels[2:3]+labels[4:5],
+    sites=sites[2:3]+sites[4:5],
+    wells=wells[2:3]+wells[4:5],
+    bonds=[(-2,0),(0,1)],
     pivot=sites[2],
     normal=(sites[2]-sites[1]).normalize())
   body1.parent = 0
@@ -287,36 +293,38 @@ ATOM      9  HB3 ALA A   1      11.867  14.004  17.346  0.00  0.00           H
 """
   labels, sites = pdb_extract(pdb=pdb)
   wells = random_wells(sites)
+  # clusters: [[6, 7, 8, 9], [1, 3], [0, 5], [2, 4]]
+  # parent_edges: [None, (6, 1), (1, 0), (1, 2)]
   body0 = six_dof_body(
-    labels=labels[:4],
-    sites=sites[:4],
-    wells=wells[:4],
-    bonds=[(0,1),(1,2),(1,3)])
-  body0.parent = -1
-  body1 = revolute_body(
-    labels=labels[4:5],
-    sites=sites[4:5],
-    wells=wells[4:5],
-    bonds=[(-2,0)],
-    pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize())
-  body1.parent = 0
-  body2 = revolute_body(
-    labels=labels[5:6],
-    sites=sites[5:6],
-    wells=wells[5:6],
-    bonds=[(-4,0)],
-    pivot=sites[0],
-    normal=(sites[0]-sites[1]).normalize())
-  body2.parent = 0
-  body3 = revolute_body(
     labels=labels[6:],
     sites=sites[6:],
     wells=wells[6:],
-    bonds=[(-3,0),(0,1),(0,2),(0,3)],
-    pivot=sites[6],
-    normal=(sites[6]-sites[1]).normalize())
-  body3.parent = 0
+    bonds=[(0,1),(0,2),(0,3)])
+  body0.parent = -1
+  body1 = revolute_body(
+    labels=labels[1:2]+labels[3:4],
+    sites=sites[1:2]+sites[3:4],
+    wells=wells[1:2]+wells[3:4],
+    bonds=[(-4,0),(0,1)],
+    pivot=sites[1],
+    normal=(sites[1]-sites[6]).normalize())
+  body1.parent = 0
+  body2 = revolute_body(
+    labels=labels[0:1]+labels[5:6],
+    sites=sites[0:1]+sites[5:6],
+    wells=wells[0:1]+wells[5:6],
+    bonds=[(-2,0),(0,1)],
+    pivot=sites[0],
+    normal=(sites[0]-sites[1]).normalize())
+  body2.parent = 1
+  body3 = revolute_body(
+    labels=labels[2:3]+labels[4:5],
+    sites=sites[2:3]+sites[4:5],
+    wells=wells[2:3]+wells[4:5],
+    bonds=[(-2,0),(0,1)],
+    pivot=sites[2],
+    normal=(sites[2]-sites[1]).normalize())
+  body3.parent = 1
   return simulation(bodies=[body0, body1, body2, body3])
 
 def simulation_tyr_with_h():
@@ -345,51 +353,54 @@ ATOM     20  H   TYR A   1      10.948  12.701   9.122  1.00  0.88           H
 """
   labels, sites = pdb_extract(pdb=pdb)
   wells = random_wells(sites)
+  # clusters: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  #            [12, 13, 14], [10, 11], [16, 18], [15, 20], [17, 19]]
+  # parent_edges: [None, (0, 12), (5, 10), (12, 16), (16, 15), (16, 17)]
   body0 = six_dof_body(
-    labels=labels[:11],
-    sites=sites[:11],
-    wells=wells[:11],
-    bonds=[(0,1),(0,2),(1,3),(2,4),(3,5),(4,5),(5,10),(1,6),(2,7),(3,8),(4,9)])
+    labels=labels[:10],
+    sites=sites[:10],
+    wells=wells[:10],
+    bonds=[(0,1),(0,2),(1,3),(2,4),(3,5),(4,5),(1,6),(2,7),(3,8),(4,9)])
   body0.parent = -1
   body1 = revolute_body(
-    labels=labels[11:12],
-    sites=sites[11:12],
-    wells=wells[11:12],
-    bonds=[(-1,0)],
-    pivot=sites[10],
-    normal=(sites[10]-sites[5]).normalize())
-  body1.parent = 0
-  body2 = revolute_body(
     labels=labels[12:15],
     sites=sites[12:15],
     wells=wells[12:15],
-    bonds=[(-11,0),(0,1),(0,2)],
+    bonds=[(-10,0),(0,1),(0,2)],
     pivot=sites[12],
     normal=(sites[12]-sites[0]).normalize())
+  body1.parent = 0
+  body2 = revolute_body(
+    labels=labels[10:12],
+    sites=sites[10:12],
+    wells=wells[10:12],
+    bonds=[(-5,0),(0,1)],
+    pivot=sites[10],
+    normal=(sites[10]-sites[5]).normalize())
   body2.parent = 0
   body3 = revolute_body(
-    labels=labels[15:19],
-    sites=sites[15:19],
-    wells=wells[15:19],
-    bonds=[(-3,1),(0,1),(1,2),(1,3)],
+    labels=labels[16:17]+labels[18:19],
+    sites=sites[16:17]+sites[18:19],
+    wells=wells[16:17]+wells[18:19],
+    bonds=[(-3,0),(0,1)],
     pivot=sites[16],
     normal=(sites[16]-sites[12]).normalize())
-  body3.parent = 2
+  body3.parent = 1
   body4 = revolute_body(
-    labels=labels[19:20],
-    sites=sites[19:20],
-    wells=wells[19:20],
-    bonds=[(-2,0)],
-    pivot=sites[17],
-    normal=(sites[17]-sites[16]).normalize())
-  body4.parent = 3
-  body5 = revolute_body(
-    labels=labels[20:21],
-    sites=sites[20:21],
-    wells=wells[20:21],
-    bonds=[(-4,0)],
+    labels=labels[15:16]+labels[20:],
+    sites=sites[15:16]+sites[20:],
+    wells=wells[15:16]+wells[20:],
+    bonds=[(-2,0),(0,1)],
     pivot=sites[15],
     normal=(sites[15]-sites[16]).normalize())
+  body4.parent = 3
+  body5 = revolute_body(
+    labels=labels[17:18]+labels[19:20],
+    sites=sites[17:18]+sites[19:20],
+    wells=wells[17:18]+wells[19:20],
+    bonds=[(-2,0),(0,1)],
+    pivot=sites[17],
+    normal=(sites[17]-sites[16]).normalize())
   body5.parent = 3
   return simulation(bodies=[body0, body1, body2, body3, body4, body5])
 
