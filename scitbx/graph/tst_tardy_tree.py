@@ -53,6 +53,8 @@ def exercise_cluster_manager():
   cm.find_parent_and_loop_edges(edges=edges)
   assert cm.parent_edges == [None, (4, 3)]
   assert cm.loop_edges == []
+  cm.find_loop_edge_bendings(edge_sets=ces)
+  assert cm.loop_edge_bendings == []
 
 class test_case_data(object):
 
@@ -71,9 +73,11 @@ class test_case_data(object):
         roots1_5=None,
         tree_ids1_5=None,
         loop_edges1_5=[],
+        loop_edge_bendings1_5=[],
         clusters2_5=None,
         parents2_5=None,
-        loop_edges2_5=[]):
+        loop_edges2_5=[],
+        loop_edge_bendings2_5=[]):
     assert art[0] == "\n"
     assert (tree_ids1_5 is None) == (parents1_5 is None)
     assert (roots1_5 is None) == (parents1_5 is None)
@@ -91,9 +95,11 @@ class test_case_data(object):
     O.roots1_5 = roots1_5
     O.tree_ids1_5 = tree_ids1_5
     O.loop_edges1_5 = loop_edges1_5
+    O.loop_edge_bendings1_5 = loop_edge_bendings1_5
     O.clusters2_5 = clusters2_5
     O.parents2_5 = parents2_5
     O.loop_edges2_5 = loop_edges2_5
+    O.loop_edge_bendings2_5 = loop_edge_bendings2_5
 
 test_cases = [
   test_case_data(
@@ -251,9 +257,11 @@ test_cases = [
     roots1_5=[0],
     tree_ids1_5=[0] * 10,
     loop_edges1_5=[(2,8)],
+    loop_edge_bendings1_5=[(2, 7), (3, 8)],
     clusters2_5=[[4, 5, 6], [3, 9], [0], [1], [2], [7], [8]],
     parents2_5=[-1, 0, 1, 1, 2, 3, 5],
-    loop_edges2_5=[(2,8)]),
+    loop_edges2_5=[(2,8)],
+    loop_edge_bendings2_5=[(2, 7), (3, 8)]),
   test_case_data(
     art=r"""
            7
@@ -472,15 +480,19 @@ def run(args):
     for loop_size_max in [8, 5]:
       print >> out, "loop_size_max:", loop_size_max
       if (loop_size_max == 5 and tc.clusters1_5 is not None):
-       tc_c1, tc_p1, tc_r1, tc_tid1, tc_le1, tc_c2, tc_p2, tc_le2 = \
+       tc_c1, tc_p1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
+       tc_c2, tc_p2, tc_le2, tc_leb2 = \
          tc.clusters1_5, tc.parents1_5, \
-         tc.roots1_5, tc.tree_ids1_5, tc.loop_edges1_5, \
-         tc.clusters2_5, tc.parents2_5, tc.loop_edges2_5
+         tc.roots1_5, tc.tree_ids1_5, \
+         tc.loop_edges1_5, tc.loop_edge_bendings1_5, \
+         tc.clusters2_5, tc.parents2_5, \
+         tc.loop_edges2_5, tc.loop_edge_bendings2_5
       else:
-       tc_c1, tc_p1, tc_r1, tc_tid1, tc_le1, tc_c2, tc_p2, tc_le2 = \
+       tc_c1, tc_p1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
+       tc_c2, tc_p2, tc_le2, tc_leb2 = \
          tc.clusters1, tc.parents1, \
-         tc.roots1, tc.tree_ids1, [], \
-         tc.clusters2, tc.parents2, []
+         tc.roots1, tc.tree_ids1, [], [], \
+         tc.clusters2, tc.parents2, [], []
       def assert_same(label, have, expected):
         print >> out, label, have
         if (expected is not None):
@@ -497,6 +509,8 @@ def run(args):
       assert_same("tid1:", tid, tc_tid1)
       tt.cluster_manager.find_parent_and_loop_edges(edges=tc.edges)
       assert_same("le1:", tt.cluster_manager.loop_edges, tc_le1)
+      tt.cluster_manager.find_loop_edge_bendings(edge_sets=tt.edge_sets)
+      assert_same("leb1:", tt.cluster_manager.loop_edge_bendings, tc_leb1)
       #
       tt = construct(
         n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
@@ -507,6 +521,8 @@ def run(args):
       assert_same("p2:", tt.cluster_manager.parents, tc_p2)
       tt.cluster_manager.find_parent_and_loop_edges(edges=tc.edges)
       assert_same("le2:", tt.cluster_manager.loop_edges, tc_le2)
+      tt.cluster_manager.find_loop_edge_bendings(edge_sets=tt.edge_sets)
+      assert_same("leb2:", tt.cluster_manager.loop_edge_bendings, tc_leb2)
   exercise_tyr_with_h()
   print "OK"
 

@@ -1,7 +1,10 @@
 class cluster_manager(object):
 
   __slots__ = [
-    "cluster_indices", "clusters", "parents", "parent_edges", "loop_edges"]
+    "cluster_indices", "clusters",
+    "parents",
+    "parent_edges", "loop_edges",
+    "loop_edge_bendings"]
 
   def __init__(O, n_vertices):
     O.cluster_indices = range(n_vertices)
@@ -11,6 +14,7 @@ class cluster_manager(object):
     O.parents = None
     O.parent_edges = None
     O.loop_edges = None
+    O.loop_edge_bendings = None
 
   def connect(O, i, j):
     assert O.parents is None
@@ -175,6 +179,21 @@ class cluster_manager(object):
         O.parent_edges[cij] = e
       else:
         O.loop_edges.append(e)
+
+  def find_loop_edge_bendings(O, edge_sets):
+    assert O.loop_edges is not None
+    assert O.loop_edge_bendings is None
+    leb = set()
+    for i,j in O.loop_edges:
+      for k in edge_sets[i]:
+        if (k == j): continue
+        assert k not in edge_sets[j]
+        leb.add(tuple(sorted((j,k))))
+      for k in edge_sets[j]:
+        if (k == i): continue
+        assert k not in edge_sets[i]
+        leb.add(tuple(sorted((i,k))))
+    O.loop_edge_bendings = sorted(leb)
 
 def construct_edge_sets(n_vertices, edges):
   result = [set() for i in xrange(n_vertices)]
