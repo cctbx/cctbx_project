@@ -20,11 +20,8 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.lines_display_list = None
     self.points_display_list = None
 
-  def set_points_and_lines(self, simulation_factory_index, n_zigzag):
-    if (simulation_factory_index == 0):
-      self.sim = tst_molecules.simulation_zigzag(n_bodies=n_zigzag)
-    else:
-      self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
+  def set_points_and_lines(self, simulation_factory_index):
+    self.sim = tst_molecules.simulation_factories[simulation_factory_index]()
     self.points = flex.vec3_double()
     self.set_points()
     def add_line(i, j, color):
@@ -91,13 +88,12 @@ class App(wx_viewer.App):
 
   def __init__(self, args):
     n = len(tst_molecules.simulation_factories)
-    if (len(args) not in [1,2]):
-      raise Usage("scitbx.python wx_molecules.py sim_index [n_zigzag]")
+    if (len(args) != 1):
+      raise Usage("""\
+scitbx.python wx_molecules.py sim_index
+  sim_index range: 0 ... %d
+""" % (n-1))
     self.simulation_factory_index = int(args[0])
-    if (len(args) > 1):
-      self.n_zigzag = int(args[1])
-    else:
-      self.n_zigzag = 10
     assert 0 <= self.simulation_factory_index < n
     super(App, self).__init__(title="wx_molecules")
 
@@ -105,8 +101,7 @@ class App(wx_viewer.App):
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
     self.view_objects.set_points_and_lines(
-      simulation_factory_index=self.simulation_factory_index,
-      n_zigzag=self.n_zigzag)
+      simulation_factory_index=self.simulation_factory_index)
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
