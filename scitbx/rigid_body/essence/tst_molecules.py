@@ -1,12 +1,18 @@
 from scitbx.rigid_body.essence import featherstone
 from scitbx.rigid_body.essence import joint_lib
 from scitbx.rigid_body.essence import utils
-import scitbx.math
 from scitbx.array_family import flex
 from scitbx import matrix
 from libtbx.utils import null_out, show_times_at_exit
 from libtbx.test_utils import approx_equal
+import random
 import sys
+
+def random_wells(sites):
+  result = []
+  for site in sites:
+    result.append(site+matrix.col.random(n=3, a=-1, b=1))
+  return result
 
 def potential_energy(sites, wells, A, J, AJA_tree=None):
   result = 0
@@ -143,26 +149,9 @@ class refinery(object):
       g.extend(flex.double(d))
     return f, g
 
-def create_wells(sites, mersenne_twister, r=None):
-  "overall random rotation and translation + noise"
-  if (r is None):
-    r = matrix.sqr(mersenne_twister.random_double_r3_rotation_matrix())
-  t = matrix.col(mersenne_twister.random_double(size=3)-0.5)
-  wells = []
-  for site in sites:
-    t_noise = t + matrix.col(mersenne_twister.random_double(size=3)-0.5)*0.2
-    wells.append(r * site + t_noise)
-  return wells
-
-def shift_gently(sites, mersenne_twister, angle=5):
-  axis = mersenne_twister.random_double_point_on_sphere()
-  r = matrix.sqr(scitbx.math.r3_rotation_axis_and_angle_as_matrix(
-    axis=axis, angle=angle, deg=True))
-  return create_wells(sites=sites, mersenne_twister=mersenne_twister, r=r)
-
 class six_dof_body(object):
 
-  def __init__(O, labels, sites, bonds, mersenne_twister):
+  def __init__(O, labels, sites, wells, bonds):
     O.labels = labels
     O.sites = sites
     O.bonds = bonds
@@ -170,7 +159,7 @@ class six_dof_body(object):
       center_of_mass=utils.center_of_mass_from_sites(sites=sites))
     O.I = utils.spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
     #
-    O.wells = shift_gently(sites=O.sites, mersenne_twister=mersenne_twister)
+    O.wells = wells
     #
     qE = matrix.col((1,0,0,0))
     qr = matrix.col((0,0,0))
@@ -179,48 +168,17 @@ class six_dof_body(object):
 
 class revolute_body(object):
 
-  def __init__(O, labels, sites, bonds, pivot, normal, mersenne_twister):
+  def __init__(O, labels, sites, wells, bonds, pivot, normal):
     O.labels = labels
     O.sites = sites
     O.bonds = bonds
     O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
     O.I = utils.spatial_inertia_from_sites(sites=O.sites, alignment_T=O.A.T0b)
     #
-    O.wells = shift_gently(sites=O.sites, mersenne_twister=mersenne_twister)
+    O.wells = wells
     #
     O.J = joint_lib.revolute(qE=matrix.col([0]))
     O.qd = O.J.qd_zero
-
-def simulation_zigzag(n_bodies=5):
-  mersenne_twister = flex.mersenne_twister(seed=0)
-  body = six_dof_body(
-    labels=["00", "01", "02"],
-    sites=matrix.col_list([
-      (0.3,-0.5,0),
-      (0.4,0.5,0),
-      (0,0,0)]),
-    bonds=[(0,2),(1,2)],
-    mersenne_twister=mersenne_twister)
-  body.parent = -1
-  bodies = [body]
-  vu = matrix.col((0,1,0)).rotate(axis=matrix.col((1,0,0)), angle=75, deg=True)
-  vr = matrix.col((0,1,0))
-  v = vu
-  pivot = matrix.col((0,0,0))
-  for ib in xrange(1,n_bodies):
-    body = revolute_body(
-      labels=[str(ib)],
-      sites=[pivot + v*0.5],
-      bonds=[(-1,0)],
-      pivot=pivot,
-      normal=matrix.col((1,0,0)),
-      mersenne_twister=mersenne_twister)
-    body.parent = ib-1
-    bodies.append(body)
-    pivot += v
-    if (v is vu): v = vr
-    else:         v = vu
-  return simulation(bodies=bodies)
 
 def pdb_extract(pdb):
   labels, sites = [], []
@@ -237,20 +195,20 @@ ATOM      2  C   GLY A   1      10.779  15.262  15.227  0.00  0.00           C
 ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
 """
   labels, sites = pdb_extract(pdb=pdb)
-  mersenne_twister = flex.mersenne_twister(seed=0)
+  wells = random_wells(sites)
   body0 = six_dof_body(
     labels=labels[:3],
     sites=sites[:3],
-    bonds=[(0,1),(1,2)],
-    mersenne_twister=mersenne_twister)
+    wells=wells[:3],
+    bonds=[(0,1),(1,2)])
   body0.parent = -1
   body1 = revolute_body(
     labels=labels[3:],
     sites=sites[3:],
+    wells=wells[3:],
     bonds=[(-1,0)],
     pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[2]-sites[1]).normalize())
   body1.parent = 0
   return simulation(bodies=[body0, body1])
 
@@ -263,28 +221,28 @@ ATOM      3  O   GLY A   1       9.916  16.090  14.936  0.00  0.00           O
 ATOM      4  H   GLY A   1      11.792  12.691  15.311  0.00  0.00           H
 """
   labels, sites = pdb_extract(pdb=pdb)
-  mersenne_twister = flex.mersenne_twister(seed=0)
+  wells = random_wells(sites)
   body0 = six_dof_body(
     labels=labels[:3],
     sites=sites[:3],
-    bonds=[(0,1),(1,2)],
-    mersenne_twister=mersenne_twister)
+    wells=wells[:3],
+    bonds=[(0,1),(1,2)])
   body0.parent = -1
   body1 = revolute_body(
     labels=labels[3:4],
     sites=sites[3:4],
+    wells=wells[3:4],
     bonds=[(-1,0)],
     pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[2]-sites[1]).normalize())
   body1.parent = 0
   body2 = revolute_body(
     labels=labels[4:],
     sites=sites[4:],
+    wells=wells[4:],
     bonds=[(-3,0)],
     pivot=sites[0],
-    normal=(sites[0]-sites[1]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[0]-sites[1]).normalize())
   body2.parent = 0
   return simulation(bodies=[body0, body1, body2])
 
@@ -297,20 +255,20 @@ ATOM      3  CB  ALA A   1      10.908  13.950  17.351  0.00  0.00           C
 ATOM      4  O   ALA A   1       9.916  16.090  14.936  0.00  0.00           O
 """
   labels, sites = pdb_extract(pdb=pdb)
-  mersenne_twister = flex.mersenne_twister(seed=0)
+  wells = random_wells(sites)
   body0 = six_dof_body(
     labels=labels[:4],
     sites=sites[:4],
-    bonds=[(0,1),(1,2),(1,3)],
-    mersenne_twister=mersenne_twister)
+    wells=wells[:4],
+    bonds=[(0,1),(1,2),(1,3)])
   body0.parent = -1
   body1 = revolute_body(
     labels=labels[4:],
     sites=sites[4:],
+    wells=wells[4:],
     bonds=[(-2,0)],
     pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[2]-sites[1]).normalize())
   body1.parent = 0
   return simulation(bodies=[body0, body1])
 
@@ -328,36 +286,36 @@ ATOM      8  HB2 ALA A   1      10.540  14.707  17.813  0.00  0.00           H
 ATOM      9  HB3 ALA A   1      11.867  14.004  17.346  0.00  0.00           H
 """
   labels, sites = pdb_extract(pdb=pdb)
-  mersenne_twister = flex.mersenne_twister(seed=0)
+  wells = random_wells(sites)
   body0 = six_dof_body(
     labels=labels[:4],
     sites=sites[:4],
-    bonds=[(0,1),(1,2),(1,3)],
-    mersenne_twister=mersenne_twister)
+    wells=wells[:4],
+    bonds=[(0,1),(1,2),(1,3)])
   body0.parent = -1
   body1 = revolute_body(
     labels=labels[4:5],
     sites=sites[4:5],
+    wells=wells[4:5],
     bonds=[(-2,0)],
     pivot=sites[2],
-    normal=(sites[2]-sites[1]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[2]-sites[1]).normalize())
   body1.parent = 0
   body2 = revolute_body(
     labels=labels[5:6],
     sites=sites[5:6],
+    wells=wells[5:6],
     bonds=[(-4,0)],
     pivot=sites[0],
-    normal=(sites[0]-sites[1]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[0]-sites[1]).normalize())
   body2.parent = 0
   body3 = revolute_body(
     labels=labels[6:],
     sites=sites[6:],
+    wells=wells[6:],
     bonds=[(-3,0),(0,1),(0,2),(0,3)],
     pivot=sites[6],
-    normal=(sites[6]-sites[1]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[6]-sites[1]).normalize())
   body3.parent = 0
   return simulation(bodies=[body0, body1, body2, body3])
 
@@ -386,57 +344,56 @@ ATOM     19  O   TYR A   1      12.298  12.462   6.643  1.00  0.83           O
 ATOM     20  H   TYR A   1      10.948  12.701   9.122  1.00  0.88           H
 """
   labels, sites = pdb_extract(pdb=pdb)
-  mersenne_twister = flex.mersenne_twister(seed=0)
+  wells = random_wells(sites)
   body0 = six_dof_body(
     labels=labels[:11],
     sites=sites[:11],
-    bonds=[(0,1),(0,2),(1,3),(2,4),(3,5),(4,5),(5,10),(1,6),(2,7),(3,8),(4,9)],
-    mersenne_twister=mersenne_twister)
+    wells=wells[:11],
+    bonds=[(0,1),(0,2),(1,3),(2,4),(3,5),(4,5),(5,10),(1,6),(2,7),(3,8),(4,9)])
   body0.parent = -1
   body1 = revolute_body(
     labels=labels[11:12],
     sites=sites[11:12],
+    wells=wells[11:12],
     bonds=[(-1,0)],
     pivot=sites[10],
-    normal=(sites[10]-sites[5]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[10]-sites[5]).normalize())
   body1.parent = 0
   body2 = revolute_body(
     labels=labels[12:15],
     sites=sites[12:15],
+    wells=wells[12:15],
     bonds=[(-11,0),(0,1),(0,2)],
     pivot=sites[12],
-    normal=(sites[12]-sites[0]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[12]-sites[0]).normalize())
   body2.parent = 0
   body3 = revolute_body(
     labels=labels[15:19],
     sites=sites[15:19],
+    wells=wells[15:19],
     bonds=[(-3,1),(0,1),(1,2),(1,3)],
     pivot=sites[16],
-    normal=(sites[16]-sites[12]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[16]-sites[12]).normalize())
   body3.parent = 2
   body4 = revolute_body(
     labels=labels[19:20],
     sites=sites[19:20],
+    wells=wells[19:20],
     bonds=[(-2,0)],
     pivot=sites[17],
-    normal=(sites[17]-sites[16]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[17]-sites[16]).normalize())
   body4.parent = 3
   body5 = revolute_body(
     labels=labels[20:21],
     sites=sites[20:21],
+    wells=wells[20:21],
     bonds=[(-4,0)],
     pivot=sites[15],
-    normal=(sites[15]-sites[16]).normalize(),
-    mersenne_twister=mersenne_twister)
+    normal=(sites[15]-sites[16]).normalize())
   body5.parent = 3
   return simulation(bodies=[body0, body1, body2, body3, body4, body5])
 
 simulation_factories = [
-  simulation_zigzag,
   simulation_gly_no_h,
   simulation_gly_with_nh,
   simulation_ala_no_h,
@@ -485,7 +442,7 @@ def exercise_minimization_quick(out, sim, max_iterations=3):
   print >> out, "  final e_pot:", sim.e_pot
   e_pot_final = sim.e_pot
   if (out is not sys.stdout):
-    assert e_pot_final < e_pot_start * 0.9
+    assert e_pot_final < e_pot_start * 0.95
   print >> out
 
 def run(args):
@@ -497,6 +454,7 @@ def run(args):
     n_dynamics_steps = max(1, int(args[0]))
     out = sys.stdout
   show_times_at_exit()
+  random.seed(0)
   for sim_factory in simulation_factories:
     sim = sim_factory()
     exercise_dynamics_quick(
