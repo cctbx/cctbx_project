@@ -149,7 +149,8 @@ class geometrical_hydrogens
       for(int i=0; i < i_hydrogens.size(); ++i) {
         std::size_t i_h = i_hydrogens[i];
         SMTBX_ASSERT(scatterers[i_h].flags.grad_site())(i_h);
-        std::size_t i_grad_site_pivot = crystallographic_parameter_map[i_pivot].site;
+        std::size_t i_grad_site_pivot
+          = crystallographic_parameter_map[i_pivot].site;
         std::size_t i_grad_site_h = crystallographic_parameter_map[i_h].site;
         for(int j=0; j < 3; ++j) {
           crystallographic_gradients[i_grad_site_pivot + j]
