@@ -41,7 +41,8 @@ struct matrix_wrapper
   static void wrap() {
     using namespace boost::python;
     class_<wt>("matrix", no_init)
-      .def(init<typename wt::row_index, typename wt::column_index>())
+      .def(init<boost::optional<typename wt::row_index>,
+                typename wt::column_index>())
       .add_property("n_cols", &wt::n_cols)
       .add_property("n_rows", &wt::n_rows)
       .def("col",
