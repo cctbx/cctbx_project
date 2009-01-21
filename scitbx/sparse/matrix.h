@@ -5,6 +5,7 @@
 #include <functional>
 #include <vector>
 #include <limits>
+#include <boost/lambda/bind.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
 #include <scitbx/sparse/vector.h>
@@ -55,6 +56,17 @@ elements.
 
 Also, those columns are kept unsorted (c.f. class sparse::vector) and the
 precondition about duplicate applies here too.
+
+When constructed with a definite number of rows, this number is retained and
+immutable. However it is up to the user to make sure that no element is assigned
+with an 1st index greater or equal to that number because it would be too costly
+to enforce it inside this class.
+
+When constructed with an undefinite number of rows, that number stays so until
+the first time the member function n_rows() is called, after which it is set to
+the greatest size of all columns and it is immutable from then on.
+This is to make it easy to fill a sparse matrix in a context
+where std::vector::push_back or the like would normally be used to fill columns.
 */
 template<class T>
 class matrix
@@ -75,7 +87,8 @@ class matrix
 
   public:
     /// Construct a matrix with the given number of rows and columns
-    matrix(row_index rows, column_index cols) : column(cols)
+    matrix(boost::optional<row_index> rows, column_index cols)
+      : n_rows_(rows), column(cols)
     {
       for (column_index j=0; j < cols; j++) column[j] = column_type(rows);
     }
@@ -115,7 +128,13 @@ class matrix
 
     /// Number of rows
     row_index n_rows() const {
-      return column[0].size();
+      using namespace boost::lambda;
+      if (!n_rows_) {
+        n_rows_ = std::max_element(
+          column.begin(), column.end(),
+          bind(&vector<T>::size, _1) < bind(&vector<T>::size, _2))->size();
+      }
+      return *n_rows_;
     }
 
     /// Whether all elements below the diagonal are zero
@@ -200,6 +219,7 @@ class matrix
   private:
     typedef typename std::vector<row_index>::const_iterator const_row_idx_iter;
     container_type column;
+    mutable boost::optional<row_index> n_rows_;
 };
 
 /// Element-wise comparison, with the absolute tolerance tol

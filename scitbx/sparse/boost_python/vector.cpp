@@ -75,7 +75,7 @@ struct vector_wrapper
   static void wrap() {
     using namespace boost::python;
     class_<wt>("vector", no_init)
-      .def(init<index_type>())
+      .def(init<boost::optional<index_type> >())
       .add_property("size", &wt::size)
       .def("__setitem__", setitem)
       .def("__getitem__", getitem)

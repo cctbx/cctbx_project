@@ -12,8 +12,10 @@ def exercise_vector():
   v[3] = 6
   assert [ v[i] for i in xrange(5) ] == [0, 2, 0, 6, 0]
   assert list(v) == [(1,2.), (2,0.), (3,6.)]
+  assert list(v.sort_indices()) == [(1,2.), (2,0.), (3,6.)]
   p = flex.size_t([1,2,3,4,0])
-  assert list(v.sort_indices().permute(p)) == [(2,2.), (3,0.), (4,6.)]
+  assert list(v.permute(p)) == [(2,2.), (3,0.), (4,6.)]
+
   v = sparse.vector(10)
   v[7] = -5
   v[1] = -1
@@ -25,6 +27,15 @@ def exercise_vector():
   v[1] = 3
   v[4] = 0
   assert list(v.sort_indices()) == [(1,3.), (4,0.), (7,6.), (9,9.)]
+
+  v = sparse.vector(None)
+  v[3] = 1
+  v[2] = 1
+  v[5] = 1
+  assert v.size == 6
+  v[7] = 1
+  assert v.size == 6
+  assert v[7] == 0
 
 def exercise_matrix():
   a = sparse.matrix(10,7)
@@ -38,6 +49,16 @@ def exercise_matrix():
       if (i,j) == (0,1): assert a[i,j] == 1.
       elif (i,j) == (9,5): assert a[i,j] == 2.
       else: assert a[i,j] == 0
+
+  a = sparse.matrix(None, 3)
+  a[1,1] = 1.
+  a[3,2] = 2.
+  a[5,1] = 2.
+  a[4,5] = 1.
+  assert a.n_rows == 6
+  a[7,0] = 1.
+  assert a.n_rows == 6
+  assert a[7,0] == 0
 
 def random_sparse_vector(n):
   x = sparse.vector(n)

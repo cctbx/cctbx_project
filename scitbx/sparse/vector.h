@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <limits>
 #include <boost/operators.hpp>
+#include <boost/optional.hpp>
+#include <boost/lambda/lambda.hpp>
 #include <scitbx/error.h>
 #include <scitbx/array_family/shared.h>
 
@@ -35,6 +37,16 @@ this is too expensive to enforce in general, we leave it to user code
 Any method requiring the abscence of duplicate will be annotated with:
 precondition: no duplicate.
 
+(4) When constructed with a definite size, this size is retained and immutable.
+However it is up to the user to make sure that no element is assigned with an
+index greater or equal to that size because it would be too costly to enforce
+it inside this class.
+
+When constructed with an undefinite size, the size stays so until the first time
+the member function size() is called, after which it is set to the greatest
+index in the vector plus one and it is immutable from then on. This is to make
+it easy to fill a sparse vector in a context where std::vector::push_back or the like would normally be used.
+
 Implementation note:
 The C++ standard rules that the private types and members of a class are not
 accessible to its nested classes. A defect report (issue 45, [1]) has however
@@ -54,41 +66,23 @@ class vector
     typedef std::ptrdiff_t index_difference_type;
 
   private:
-    struct element {
+    struct element : boost::totally_ordered<element>
+    {
       index_type index;
       value_type value;
       element(index_type i, value_type x) : index(i), value(x) {}
 
-    };
+      bool
+      operator == (element const &other) const { return index == other.index; }
 
-    struct indexes_greater_than {
-      bool operator()(const element& e, const element& f) {
-        return e.index > f.index;
-      }
+      bool
+      operator < (element const &other) const { return index < other.index; }
     };
-    friend struct indexes_greater_than;
-
-    struct indexes_equal {
-      bool operator()(const element& e, const element& f) {
-        return e.index == f.index;
-      }
-    };
-    friend struct indexes_equal;
-
-    struct index_equal {
-      index_type i;
-      index_equal(index_type j) : i(j)
-      {}
-      bool operator()(const element& e) {
-        return e.index == i;
-      }
-    };
-    friend struct index_equal;
 
     typedef af::shared<element> container_type;
 
     container_type elements;
-    index_type _size;
+    mutable boost::optional<index_type> _size;
 
   public:
     /// Const iterator over the records
@@ -179,9 +173,9 @@ class vector
         /// Triggered by using the value of v[i]
         operator value_type() {
           vector const &cv = v;
-          typename container_type::const_reverse_iterator p = std::find_if(
-            cv.elements.rbegin(), cv.elements.rend(), index_equal(i));
-          return p != cv.elements.rend() ? p->value : 0;
+          typename container_type::const_reverse_iterator p = std::find(
+            cv.elements.rbegin(), cv.elements.rend(), element(i,0));
+          return p != cv.elements.rend() && p->index < cv.size() ? p->value : 0;
         }
 
         /// Triggered by an assignment v[i] = ...
@@ -196,7 +190,7 @@ class vector
     vector() {}
 
     /// Construct a zero vector of size n
-    vector(index_type n) : _size(n) {}
+    vector(boost::optional<index_type> n) : _size(n) {}
 
     /// An iterator pointing to the first record
     const_iterator begin() const {
@@ -220,7 +214,10 @@ class vector
 
     /// Dimension of the vector, i.e. number of zero or non-zero elements
     index_type size() const {
-      return _size;
+      if (!_size) {
+        _size = std::max_element(elements.begin(), elements.end())->index + 1;
+      }
+      return *_size;
     }
 
     /// Whether there is no potential non-zero elements
@@ -282,11 +279,12 @@ class vector
     /** The record which was input last is kept in case of duplicates.
     Return this object, for convenient chaining of operations. */
     vector const& sort_indices() const {
+      using namespace boost::lambda;
       container_type &elts = const_cast<container_type&>(elements);
-      std::stable_sort(elts.begin(), elts.end(), indexes_greater_than());
+      std::stable_sort(elts.begin(), elts.end(), _1 > _2);
       container_type new_elements(af::reserve(elts.size()));
       std::unique_copy(elts.rbegin(), elts.rend(),
-                       std::back_inserter(new_elements), indexes_equal());
+                       std::back_inserter(new_elements));
       const_cast<vector*>(this)->elements = new_elements;
       return *this;
     }
