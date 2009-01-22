@@ -1,6 +1,6 @@
 from scitbx.array_family import flex
 from scitbx import sparse
-from libtbx.test_utils import approx_equal
+from libtbx.test_utils import approx_equal, Exception_expected
 import random
 
 def exercise_vector():
@@ -32,9 +32,17 @@ def exercise_vector():
   v[3] = 1
   v[2] = 1
   v[5] = 1
+  try: v.size
+  except RuntimeError, e:
+    assert str(e).find("SCITBX_ASSERT(size_) failure") != -1
+  else:
+    raise Exception_expected
+  v.sort_indices()
   assert v.size == 6
   v[7] = 1
   assert v.size == 6
+  assert v[7] == 1
+  v.sort_indices()
   assert v[7] == 0
 
 def exercise_matrix():
@@ -54,10 +62,18 @@ def exercise_matrix():
   a[1,1] = 1.
   a[3,2] = 2.
   a[5,1] = 2.
-  a[4,5] = 1.
+  a[4,0] = 1.
+  try: a.n_rows
+  except RuntimeError, e:
+    assert str(e).find("SCITBX_ASSERT(n_rows_) failure") != -1
+  else:
+    raise Exception_expected
+  a.sort_indices()
   assert a.n_rows == 6
   a[7,0] = 1.
   assert a.n_rows == 6
+  assert a[7,0] == 1
+  a.sort_indices()
   assert a[7,0] == 0
 
 def random_sparse_vector(n):

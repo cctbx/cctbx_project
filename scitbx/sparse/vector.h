@@ -38,14 +38,14 @@ Any method requiring the abscence of duplicate will be annotated with:
 precondition: no duplicate.
 
 (4) When constructed with a definite size, this size is retained and immutable.
-However it is up to the user to make sure that no element is assigned with an
-index greater or equal to that size because it would be too costly to enforce
-it inside this class.
+However the pre-condition that v[i] = ... is only possible if i is less than
+that size is not enforced for efficiency reasons. Calling sort_indices will
+however prune those illegal elements.
 
 When constructed with an undefinite size, the size stays so until the first time
-the member function size() is called, after which it is set to the greatest
-index in the vector plus one and it is immutable from then on. This is to make
-it easy to fill a sparse vector in a context where std::vector::push_back or the like would normally be used.
+the member function sort_indices is called, which sets it to the greatest
+index in the vector plus one. This is to make it easy to fill a sparse vector
+in a context where std::vector::push_back or the like would normally be used.
 
 Implementation note:
 The C++ standard rules that the private types and members of a class are not
@@ -82,7 +82,7 @@ class vector
     typedef af::shared<element> container_type;
 
     container_type elements;
-    mutable boost::optional<index_type> _size;
+    mutable boost::optional<index_type> size_;
 
   public:
     /// Const iterator over the records
@@ -175,7 +175,7 @@ class vector
           vector const &cv = v;
           typename container_type::const_reverse_iterator p = std::find(
             cv.elements.rbegin(), cv.elements.rend(), element(i,0));
-          return p != cv.elements.rend() && p->index < cv.size() ? p->value : 0;
+          return p != cv.elements.rend() ? p->value : 0;
         }
 
         /// Triggered by an assignment v[i] = ...
@@ -190,7 +190,7 @@ class vector
     vector() {}
 
     /// Construct a zero vector of size n
-    vector(boost::optional<index_type> n) : _size(n) {}
+    vector(boost::optional<index_type> n) : size_(n) {}
 
     /// An iterator pointing to the first record
     const_iterator begin() const {
@@ -214,10 +214,8 @@ class vector
 
     /// Dimension of the vector, i.e. number of zero or non-zero elements
     index_type size() const {
-      if (!_size) {
-        _size = std::max_element(elements.begin(), elements.end())->index + 1;
-      }
-      return *_size;
+      SCITBX_ASSERT(size_);
+      return *size_;
     }
 
     /// Whether there is no potential non-zero elements
@@ -285,7 +283,16 @@ class vector
       container_type new_elements(af::reserve(elts.size()));
       std::unique_copy(elts.rbegin(), elts.rend(),
                        std::back_inserter(new_elements));
-      const_cast<vector*>(this)->elements = new_elements;
+      vector<T> &self = const_cast<vector &>(*this);
+      if (size_) {
+        typename container_type::iterator end = std::upper_bound(
+          new_elements.begin(), new_elements.end(), element(*size_ - 1, 0));
+        new_elements.erase(end, new_elements.end());
+      }
+      else {
+        self.size_ = new_elements[new_elements.size()-1].index + 1;
+      }
+      self.elements = new_elements;
       return *this;
     }
 
