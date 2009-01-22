@@ -25,7 +25,10 @@ def find_mon_lib_file(env_vars=mon_lib_env_vars, relative_path_components=[]):
     mon_lib_path=os.environ.get(env_vars[0], None),
     relative_path_components=relative_path_components)
   if (result is not None): return result
-  for relative_path in ["mon_lib", "ext_ref_files/mon_lib"]:
+  for relative_path in [
+        "chem_data/mon_lib",
+        "mon_lib",
+        "ext_ref_files/mon_lib"]:
     result = load_mon_lib_file(
       mon_lib_path=libtbx.env.find_in_repositories(
         relative_path=relative_path),

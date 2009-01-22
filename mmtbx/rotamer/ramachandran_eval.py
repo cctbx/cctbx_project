@@ -40,7 +40,7 @@ class RamachandranEval:
                   path_prefix=rama_data_dir)
                 if pair_info.needs_update:
                     raise Sorry(
-                        "ext_ref_files/rotarama_data/*.pickle files are missing or out of date.\n"
+                        "chem_data/rotarama_data/*.pickle files are missing or out of date.\n"
                         "  Please run\n"
                         "    mmtbx.rebuild_rotarama_cache\n"
                         "  to resolve this problem.\n")

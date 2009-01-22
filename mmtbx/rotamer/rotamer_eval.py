@@ -8,13 +8,16 @@ import weakref
 import sys, os
 
 def find_rotarama_data_dir(optional=False):
-  result = libtbx.env.find_in_repositories("rotarama_data")
+  result = libtbx.env.find_in_repositories(
+    os.path.join("chem_data", "rotarama_data"))
   if result is None:
-    result = libtbx.env.find_in_repositories(
-      os.path.join("ext_ref_files", "rotarama_data"))
-    if result is None and not optional:
-      raise Sorry("""\
-Can't find ext_ref_files/rotarama_data/ directory:
+    result = libtbx.env.find_in_repositories("rotarama_data")
+    if result is None:
+      result = libtbx.env.find_in_repositories(
+        os.path.join("ext_ref_files", "rotarama_data"))
+      if result is None and not optional:
+        raise Sorry("""\
+Can't find chem_data/rotarama_data/ directory:
   Please run
     svn co svn://quiddity.biochem.duke.edu:21/phenix/rotarama_data
   to resolve this problem.""")
@@ -71,7 +74,7 @@ class RotamerEval:
                   path_prefix=rotamer_data_dir)
                 if pair_info.needs_update:
                     raise Sorry(
-                        "ext_ref_files/rotarama_data/*.pickle files are missing or out of date.\n"
+                        "chem_data/rotarama_data/*.pickle files are missing or out of date.\n"
                         "  Please run\n"
                         "    mmtbx.rebuild_rotarama_cache\n"
                         "  to resolve this problem.\n")
