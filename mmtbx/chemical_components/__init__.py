@@ -7,8 +7,10 @@ from mmtbx.chemical_components import cif_parser
 loaded_cifs = {}
 
 def find_data_dir():
-  for relative_path in ["chemical_components",
-                        "ext_ref_files/chemical_components"]:
+  for relative_path in [
+        "chem_data/chemical_components",
+        "chemical_components",
+        "ext_ref_files/chemical_components"]:
     result = libtbx.env.find_in_repositories(relative_path=relative_path)
     if (result is not None): return result
   return None
