@@ -59,12 +59,12 @@ precondition about duplicate applies here too.
 
 When constructed with a definite number of rows, this number is retained and
 immutable. However it is up to the user to make sure that no element is assigned
-with an 1st index greater or equal to that number because it would be too costly
-to enforce it inside this class.
+with an 1st index greater or equal to that number. Calling sort_indices will
+however prune those illegal elements.
 
 When constructed with an undefinite number of rows, that number stays so until
-the first time the member function n_rows() is called, after which it is set to
-the greatest size of all columns and it is immutable from then on.
+the first time the member function sort_indices is called, after which it is set
+to the greatest size of all columns and it is immutable from then on.
 This is to make it easy to fill a sparse matrix in a context
 where std::vector::push_back or the like would normally be used to fill columns.
 */
@@ -128,12 +128,7 @@ class matrix
 
     /// Number of rows
     row_index n_rows() const {
-      using namespace boost::lambda;
-      if (!n_rows_) {
-        n_rows_ = std::max_element(
-          column.begin(), column.end(),
-          bind(&vector<T>::size, _1) < bind(&vector<T>::size, _2))->size();
-      }
+      SCITBX_ASSERT(n_rows_);
       return *n_rows_;
     }
 
@@ -181,7 +176,13 @@ class matrix
     /// Sort and remove duplicate indices in all column
     /** C.f. the member function of same name in class scitbx::sparse::vector */
     void sort_indices() {
+      using namespace boost::lambda;
       for (column_index j=0; j < n_cols(); j++) col(j).sort_indices();
+      if (!n_rows_) {
+        n_rows_ = std::max_element(
+          column.begin(), column.end(),
+          bind(&vector<T>::size, _1) < bind(&vector<T>::size, _2))->size();
+      }
     }
 
     /// Permute the rows, in place
