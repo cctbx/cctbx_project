@@ -107,6 +107,16 @@ def smart_split_cif_line(line):
 def run(filename):
   if not os.path.exists(filename): return None
   lines = open(filename).read().splitlines()
+  merge = []
+  for i, line in enumerate(lines):
+    if line.find(";")==0:
+      merge.append(i)
+  if merge:
+    merge.reverse()
+    for i in merge:
+      if lines[i][1:].strip():
+        lines[i-1] += '"%s"' % lines[i][1:].strip()
+      del lines[i]
   line_iter = iter(lines)
 
   complete_cif_data = {}
