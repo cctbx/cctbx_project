@@ -53,12 +53,12 @@ def get_smiles(code):
   desc = cif.get("_pdbx_chem_comp_descriptor", {})
   for item in desc:
     try:
-      if item.program=="CATVS" and item.type=="SMILES_CANONICAL":
+      if item.program.strip()=="CACTVS" and item.type.strip()=="SMILES_CANONICAL":
         return item.descriptor
     except: pass
   for item in desc:
     try:
-      if item.program=="CATVS" and item.type=="SMILES":
+      if item.program=="CACTVS" and item.type=="SMILES":
         return item.descriptor
     except: pass
   try: return item.descriptor
