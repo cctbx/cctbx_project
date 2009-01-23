@@ -204,6 +204,17 @@ class matrix
       return result;
     }
 
+    /// Dense row vector times matrix
+    typedef typename vector<T>::dense_vector_const_ref dense_vector_const_ref;
+    typedef af::shared<T> dense_vector;
+
+    friend
+    dense_vector operator*(dense_vector_const_ref const &u, matrix const &a) {
+      dense_vector result(a.n_cols(), af::init_functor_null<value_type>());
+      for(column_index j=0; j < a.n_cols(); ++j) result[j] = u*a.col(j);
+      return result;
+    }
+
     /// Matrix times matrix
     friend
     matrix operator*(matrix const& a, matrix const& b) {

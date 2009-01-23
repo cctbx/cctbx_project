@@ -64,6 +64,7 @@ class vector
     typedef T value_type;
     typedef std::size_t index_type;
     typedef std::ptrdiff_t index_difference_type;
+    typedef af::const_ref<value_type> dense_vector_const_ref;
 
   private:
     struct element : boost::totally_ordered<element>
@@ -230,6 +231,20 @@ class vector
     */
     element_reference operator[](index_type i) {
       return element_reference(*this, i);
+    }
+
+    /// Dense row vector times sparse vector
+    friend value_type operator*(dense_vector_const_ref const &u,
+                                vector const &v)
+    {
+      value_type result = 0;
+      for (const_iterator pv=v.begin(); pv != v.end(); ++pv) {
+        index_type i = pv.index();
+        value_type u_i = u[i];
+        value_type v_i = *pv;
+        result += u_i * v_i;
+      }
+      return result;
     }
 
     /// Fill the given dense vector.

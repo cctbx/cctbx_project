@@ -45,6 +45,13 @@ def exercise_vector():
   v.sort_indices()
   assert v[7] == 0
 
+  u = flex.double((1, -1, 2, 0, -2))
+  v = sparse.vector(5)
+  v[0] = 10
+  v[3] = 4
+  v[4] = 5
+  assert u*v == 0
+
 def exercise_matrix():
   a = sparse.matrix(10,7)
   assert a.n_rows == 10 and a.n_cols == 7
@@ -119,6 +126,17 @@ def exercise_matrix_x_matrix():
   aa, bb, cc = [ m.as_dense_matrix() for m in (a,b,c) ]
   cc1 = aa.matrix_multiply(bb)
   assert approx_equal(cc, cc1)
+
+def exercise_row_vector_x_matrix():
+  u = flex.double((1,2,3))
+  a = sparse.matrix(3,5)
+  a[1,0] = 1
+  a[2,1] = 1
+  a[0,2] = 1
+  a[-1,3] = 1
+  a[-2,4] = 1
+  v = u*a
+  assert list(v) == [ 2, 3, 1, -2, -6 ]
 
 def run():
   exercise_vector()
