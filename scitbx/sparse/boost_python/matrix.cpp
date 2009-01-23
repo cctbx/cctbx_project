@@ -57,6 +57,7 @@ struct matrix_wrapper
       .def("transpose", &wt::transpose)
       .def(self*vector<T>())
       .def(self*self)
+      .def(typename wt::dense_vector_const_ref() * self)
       .def("as_mathematica", as_mathematica)
     ;
   }

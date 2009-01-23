@@ -5,6 +5,7 @@
 #include <boost/python/return_arg.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python/str.hpp>
+#include <boost/python/operators.hpp>
 
 #include <scitbx/sparse/vector.h>
 #include <scitbx/sparse/io.h>
@@ -89,6 +90,7 @@ struct vector_wrapper
       .def("as_dense_vector", &wt::as_dense_vector)
       .def("is_structurally_zero", &wt::is_structurally_zero)
       .def("as_mathematica", as_mathematica)
+      .def(typename wt::dense_vector_const_ref() * self)
     ;
   }
 };
