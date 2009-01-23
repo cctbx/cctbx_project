@@ -1,6 +1,6 @@
 class cluster_manager(object):
 
-  __slots__ = [
+  XXX__slots__ = [
     "cluster_indices", "clusters",
     "parents",
     "parent_edges", "loop_edges",
@@ -14,6 +14,8 @@ class cluster_manager(object):
     O.parents = None
     O.parent_edges = None
     O.loop_edges = None
+    O.parent_edges2 = None
+    O.loop_edges2 = None
     O.loop_edge_bendings = None
 
   def connect(O, i, j):
@@ -142,6 +144,72 @@ class cluster_manager(object):
     for i,ip in enumerate(parents):
       if (ip != -1): ip = i_new_given_i_old[ip]
       O.parents[i_new_given_i_old[i]] = ip
+
+  def construct_spanning_trees2(O, edge_sets):
+    assert O.parent_edges2 is None
+    O.parent_edges2 = [None]
+    O.loop_edges2 = []
+    n_clusters = len(O.clusters)
+    if (n_clusters == 1):
+      return
+    w_max = len(O.clusters[0])
+    candi = []
+    for i in xrange(w_max+1):
+      candi.append([])
+    O.parent_edges2 *= n_clusters
+    done = [0] * n_clusters
+    new_clusters = []
+    for ip in xrange(n_clusters):
+      if (O.parent_edges2[ip] is not None): continue
+      done[ip] = 1
+      new_clusters.append(O.clusters[ip])
+      w_max = 0
+      for i in O.clusters[ip]:
+        for j in edge_sets[i]:
+          cij = O.cluster_indices[j]
+          if (cij == ip): continue
+          if (done[cij] != 0):
+            O.loop_edges2.append(tuple(sorted((i,j))))
+          else:
+            done[cij] = -1
+            w = len(O.clusters[cij])
+            candi[w].append(cij)
+            O.parent_edges2[cij] = tuple(sorted((i,j)))
+            if (w_max < w): w_max = w
+      while True:
+        kp = None
+        ip = n_clusters
+        cw = candi[w_max]
+        for k in xrange(len(cw)):
+          if (ip > cw[k]):
+            kp = k
+            ip = cw[k]
+        if (kp is None):
+          break
+        del cw[kp]
+        for i in O.clusters[ip]:
+          for j in edge_sets[i]:
+            cij = O.cluster_indices[j]
+            if (cij == ip): continue
+            if (done[cij] == 0):
+              done[cij] = -1
+              w = len(O.clusters[cij])
+              candi[w].append(cij)
+              O.parent_edges2[cij] = tuple(sorted((i,j)))
+              if (w_max < w): w_max = w
+        assert done[ip] == -1
+        done[ip] = 1
+        new_clusters.append(O.clusters[ip])
+        for w_max in xrange(w_max,-1,-1):
+          if (len(candi[w_max]) != 0):
+            break
+        else:
+          break
+    assert len(new_clusters) == len(O.clusters)
+    assert done.count(1) == len(done)
+    del O.clusters[:]
+    O.clusters.extend(new_clusters)
+    O.refresh_indices()
 
   def roots(O):
     assert O.parents is not None
