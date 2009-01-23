@@ -502,8 +502,16 @@ def run(args):
       tt = construct(
         n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
       assert_same("c1:", tt.cluster_manager.clusters, tc_c1)
+      #
+      tt.cluster_manager.construct_spanning_trees2(edge_sets=tt.edge_sets)
+      c1X = list(tt.cluster_manager.clusters)
+      print >> out, "c1X:", c1X
+      tt.cluster_manager.tidy()
+      assert_same("c1:", tt.cluster_manager.clusters, tc_c1)
+      #
       tt.cluster_manager.construct_spanning_trees(edges=tc.edges)
       print >> out, "c1p:", tt.cluster_manager.clusters
+      assert c1X == tt.cluster_manager.clusters
       assert_same("p1:", tt.cluster_manager.parents, tc_p1)
       tid = tt.cluster_manager.tree_ids()
       assert_same("tid1:", tid, tc_tid1)
