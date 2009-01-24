@@ -30,8 +30,11 @@ class task_info(object):
       print >> out, prefix+"SGE_TASK_ID =", self.id
     return self
 
+  def have_array(self):
+    return self.first is not None
+
   def as_n_i_pair(self):
-    if (self.first is None): return 1, 0
+    if (not self.have_array()): return 1, 0
     assert self.first == 1
     return self.last, self.id-1
 
