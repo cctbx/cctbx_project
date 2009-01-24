@@ -253,8 +253,9 @@ def construct_bodies(sites, cluster_manager):
     result.append(body)
   return result
 
-def construct_simulation(labels, sites, bonds):
-  tt = tardy_tree.construct(n_vertices=len(sites), edges=bonds, size_max=8)
+def construct_simulation(labels, sites, bonds, size_max=8):
+  tt = tardy_tree.construct(
+    n_vertices=len(sites), edges=bonds, size_max=size_max)
   cm = tt.cluster_manager
   cm.merge_lones(edges=bonds)
   cm.construct_spanning_trees(edges=bonds)
