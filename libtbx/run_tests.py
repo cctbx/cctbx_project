@@ -5,6 +5,7 @@ def run():
   tst_list = (
   "$D/test_utils.py",
   "$D/utils.py",
+  "$D/pbs_utils.py",
   "$D/sge_utils.py",
   "$D/introspection.py",
   "$D/thread_utils.py",

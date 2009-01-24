@@ -119,12 +119,20 @@ class processed_options(object):
     self.attributes_level = show_defaults_callback.attributes_level
     self.chunk_n = chunk_callback.n
     self.chunk_i = chunk_callback.i
-    self.sge_info = None
+    self.queuing_system_info = None
 
-  def sge_overrides_chunk(self):
-    from libtbx import sge_utils
-    self.sge_info = sge_utils.info()
-    if (self.sge_info.id is not None):
+  def queuing_system_overrides_chunk(self):
+    from libtbx import pbs_utils, sge_utils
+    pbs_info = pbs_utils.chunk_info()
+    sge_info = sge_utils.info()
+    assert [pbs_info, sge_info].count(None) <= 1
+    if (pbs_info.have_array()):
+      self.queuing_system_info = pbs_info
+      n, i = self.pbs_info.as_n_i_pair()
+      self.chunk_n = max(self.chunk_n, n)
+      self.chunk_i = i
+    elif (sge_info.have_array()):
+      self.queuing_system_info = sge_info
       self.chunk_n = max(self.chunk_n, self.sge_info.last)
       self.chunk_i = self.sge_info.id - 1
     return self

@@ -209,6 +209,7 @@ libtbx/command_line/tcsh.sh -text
 libtbx/dtrace/profile.d -text
 libtbx/libtbx_refresh.py -text
 libtbx/object_oriented_patterns.py -text
+libtbx/pbs_utils.py svneol=native#text/x-python
 libtbx/phil/doc.txt svneol=native#text/plain
 libtbx/phil/example.params -text
 libtbx/smart_open.py svneol=native#text/x-python
