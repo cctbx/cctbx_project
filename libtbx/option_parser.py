@@ -128,13 +128,13 @@ class processed_options(object):
     assert [pbs_info, sge_info].count(None) <= 1
     if (pbs_info.have_array()):
       self.queuing_system_info = pbs_info
-      n, i = self.pbs_info.as_n_i_pair()
+      n, i = pbs_info.as_n_i_pair()
       self.chunk_n = max(self.chunk_n, n)
       self.chunk_i = i
     elif (sge_info.have_array()):
       self.queuing_system_info = sge_info
-      self.chunk_n = max(self.chunk_n, self.sge_info.last)
-      self.chunk_i = self.sge_info.id - 1
+      self.chunk_n = max(self.chunk_n, sge_info.last)
+      self.chunk_i = sge_info.id - 1
     return self
 
 class show_defaults_callback(object):
