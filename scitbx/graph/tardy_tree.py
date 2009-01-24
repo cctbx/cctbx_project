@@ -289,6 +289,7 @@ class construct(object):
   def __init__(O, n_vertices, edges, size_max=8):
     O.n_vertices = n_vertices
     O.edges = edges
+    O.size_max = size_max
     O.edge_sets = construct_edge_sets(n_vertices=n_vertices, edges=edges)
     O.cluster_manager = cluster_manager(n_vertices=n_vertices)
     traversing = [False] * n_vertices
