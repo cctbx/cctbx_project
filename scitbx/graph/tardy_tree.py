@@ -14,8 +14,8 @@ class cluster_manager(object):
     O.parents = None
     O.parent_edges = None
     O.loop_edges = None
-    O.parent_edges2 = None
-    O.loop_edges2 = None
+    O.parent_edgesX = None
+    O.loop_edgesX = None
     O.loop_edge_bendings = None
 
   def connect(O, i, j):
@@ -145,10 +145,10 @@ class cluster_manager(object):
       if (ip != -1): ip = i_new_given_i_old[ip]
       O.parents[i_new_given_i_old[i]] = ip
 
-  def construct_spanning_trees2(O, edge_sets):
-    assert O.parent_edges2 is None
-    O.parent_edges2 = [None]
-    O.loop_edges2 = []
+  def construct_spanning_treesX(O, edge_sets):
+    assert O.parent_edgesX is None
+    O.parent_edgesX = [None]
+    O.loop_edgesX = []
     n_clusters = len(O.clusters)
     if (n_clusters == 1):
       return
@@ -156,11 +156,11 @@ class cluster_manager(object):
     candi = []
     for i in xrange(w_max+1):
       candi.append([])
-    O.parent_edges2 *= n_clusters
+    O.parent_edgesX *= n_clusters
     done = [0] * n_clusters
     new_clusters = []
     for ip in xrange(n_clusters):
-      if (O.parent_edges2[ip] is not None): continue
+      if (O.parent_edgesX[ip] is not None): continue
       done[ip] = 1
       new_clusters.append(O.clusters[ip])
       w_max = 0
@@ -169,12 +169,12 @@ class cluster_manager(object):
           cij = O.cluster_indices[j]
           if (cij == ip): continue
           if (done[cij] != 0):
-            O.loop_edges2.append(tuple(sorted((i,j))))
+            O.loop_edgesX.append(tuple(sorted((i,j))))
           else:
             done[cij] = -1
             w = len(O.clusters[cij])
             candi[w].append(cij)
-            O.parent_edges2[cij] = tuple(sorted((i,j)))
+            O.parent_edgesX[cij] = tuple(sorted((i,j)))
             if (w_max < w): w_max = w
       while True:
         kp = None
@@ -195,7 +195,7 @@ class cluster_manager(object):
               done[cij] = -1
               w = len(O.clusters[cij])
               candi[w].append(cij)
-              O.parent_edges2[cij] = tuple(sorted((i,j)))
+              O.parent_edgesX[cij] = tuple(sorted((i,j)))
               if (w_max < w): w_max = w
         assert done[ip] == -1
         done[ip] = 1
