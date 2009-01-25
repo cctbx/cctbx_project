@@ -5,6 +5,8 @@
 #include <vector>
 #include <set>
 
+#include <cmath>
+
 #include <boost/rational.hpp>
 #include <scitbx/mat3.h>
 #include <cctbx/sgtbx/space_group.h>
@@ -147,7 +149,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     cut operator/ (int_type x) const
     {
       CCTBX_ASSERT( x!=0 && c!=0 );
-      return cut(n*x, c, inclusive);
+      return cut(n*std::abs(x), c*x/std::abs(x), inclusive);
     }
 
     cut one() const
