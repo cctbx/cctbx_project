@@ -181,6 +181,14 @@ class vector
           return p != cv.elements.rend() ? p->value : 0;
         }
 
+        /// Whether this is a structural zero
+        bool is_structural_zero() {
+          vector const &cv = v;
+          typename container_type::const_reverse_iterator p = std::find(
+            cv.elements.rbegin(), cv.elements.rend(), element(i,0));
+          return p == cv.elements.rend();
+        }
+
         /// Triggered by an assignment v[i] = ...
         value_type operator=(value_type x) {
           v.elements.push_back(element(i,x));
