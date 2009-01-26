@@ -52,6 +52,20 @@ def exercise_vector():
   v[4] = 5
   assert u*v == 0
 
+  approx_equal = sparse.approx_equal(tolerance=0.1)
+
+  u = sparse.vector(4)
+  u[0] = 1.01
+  v = sparse.vector(4)
+  v[0] = 1.02
+  v[3] = 0.001
+  assert approx_equal(u,v)
+
+  u = sparse.vector(4)
+  v = sparse.vector(4)
+  v[3] = 0.001
+  assert approx_equal(u,v)
+
 def exercise_matrix():
   a = sparse.matrix(10,7)
   assert a.n_rows == 10 and a.n_cols == 7
@@ -82,6 +96,15 @@ def exercise_matrix():
   assert a[7,0] == 1
   a.sort_indices()
   assert a[7,0] == 0
+
+  a = sparse.matrix(4,3)
+  a[0,1] = 1.01
+  b = sparse.matrix(4,3)
+  b[0,1] = 1.02
+  b[3,2] = 0.001
+  approx_equal = sparse.approx_equal(tolerance=0.1)
+  assert approx_equal(a,b)
+
 
 def random_sparse_vector(n):
   x = sparse.vector(n)
