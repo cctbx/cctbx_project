@@ -5,6 +5,7 @@ env_scitbx_boost_python_ext.SharedLibrary(
     "vector.cpp",
     "matrix.cpp",
     "approx_equal.cpp",
+    "random.cpp",
     "lu_factorization.cpp",
     "sparse_ext.cpp",
 ])

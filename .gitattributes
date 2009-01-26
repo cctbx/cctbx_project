@@ -422,12 +422,14 @@ scitbx/sparse/boost_python/SConscript -text
 scitbx/sparse/boost_python/approx_equal.cpp -text
 scitbx/sparse/boost_python/lu_factorization.cpp -text
 scitbx/sparse/boost_python/matrix.cpp -text
+scitbx/sparse/boost_python/random.cpp -text
 scitbx/sparse/boost_python/sparse_ext.cpp -text
 scitbx/sparse/boost_python/vector.cpp -text
 scitbx/sparse/dfs.h -text
 scitbx/sparse/io.h -text
 scitbx/sparse/lu_factorization.h -text
 scitbx/sparse/matrix.h -text
+scitbx/sparse/random.h -text
 scitbx/sparse/tests/tst_lu_factorization.py -text
 scitbx/sparse/tests/tst_sparse.py -text
 scitbx/sparse/vector.h -text
