@@ -418,6 +418,7 @@ scitbx/rigid_body/proto/wx_molecules.py svneol=native#text/x-python
 scitbx/source_generators/flex_fwd_h.py -text
 scitbx/sparse/__init__.py -text
 scitbx/sparse/boost_python/SConscript -text
+scitbx/sparse/boost_python/lu_factorization.cpp -text
 scitbx/sparse/boost_python/matrix.cpp -text
 scitbx/sparse/boost_python/sparse_ext.cpp -text
 scitbx/sparse/boost_python/vector.cpp -text
@@ -425,6 +426,7 @@ scitbx/sparse/dfs.h -text
 scitbx/sparse/io.h -text
 scitbx/sparse/lu_factorization.h -text
 scitbx/sparse/matrix.h -text
+scitbx/sparse/tests/tst_lu_factorization.py -text
 scitbx/sparse/tests/tst_sparse.py -text
 scitbx/sparse/vector.h -text
 scitbx/stl/vector_io.h -text

@@ -55,8 +55,8 @@ class gilbert_peierls_lu_factorization
       return U;
     }
 
-    af::const_ref<row_index> rows_permutation() {
-      return p.const_ref();
+    af::shared<row_index> rows_permutation() {
+      return p;
     }
 
   private:
@@ -197,7 +197,7 @@ struct gilbert_peierls_lu_factorization<Matrix>::w_sparsity
   }
 
   /* A nonzero v(k) results from a nonzero z(l) through a nonzero L(k,l)
-  for k >= j
+  for k >= j (the edge is l --> k, i.e. from column to row)
   */
   void dfs_found_tree_edge(column_index l, row_index k) {
     if (k >= j) v_nz.push_back(k);
