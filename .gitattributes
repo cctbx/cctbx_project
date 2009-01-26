@@ -416,7 +416,6 @@ scitbx/rigid_body/proto/wx_free_motion.py svneol=native#text/x-python
 scitbx/rigid_body/proto/wx_joint_lib.py svneol=native#text/x-python
 scitbx/rigid_body/proto/wx_molecules.py svneol=native#text/x-python
 scitbx/source_generators/flex_fwd_h.py -text
-scitbx/sparse/SConscript -text
 scitbx/sparse/__init__.py -text
 scitbx/sparse/boost_python/SConscript -text
 scitbx/sparse/boost_python/matrix.cpp -text
@@ -426,8 +425,6 @@ scitbx/sparse/dfs.h -text
 scitbx/sparse/io.h -text
 scitbx/sparse/lu_factorization.h -text
 scitbx/sparse/matrix.h -text
-scitbx/sparse/tests/SConscript -text
-scitbx/sparse/tests/tst_lu_factorization.cpp -text
 scitbx/sparse/tests/tst_sparse.py -text
 scitbx/sparse/vector.h -text
 scitbx/stl/vector_io.h -text
