@@ -1689,6 +1689,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       n_work = []
       rows = []
       bins = []
+      completeness = self.f_obs_w.completeness(use_binning=True).data
       for i_bin in self.f_obs_f.binner().range_used():
         selection = flex.bool( self.f_obs_w.binner().bin_indices() == i_bin )
         #combine selection
@@ -1774,7 +1775,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
         rows.append( tmp )
         bin = resolution_bin(i_bin=i_bin,
                              d_range=d_range,
-                             completeness=0.98, # XXX VERY BAD BUG
+                             completeness=completeness[i_bin],
                              alpha_work=alpha_w,
                              beta_work=beta_w,
                              r_work=tmp_work,
