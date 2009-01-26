@@ -1,8 +1,7 @@
 class cluster_manager(object):
 
-  XXX__slots__ = [
+  __slots__ = [
     "cluster_indices", "clusters",
-    "parents",
     "parent_edges", "loop_edges",
     "loop_edge_bendings"]
 
@@ -11,15 +10,12 @@ class cluster_manager(object):
     O.clusters = []
     for i in xrange(n_vertices):
       O.clusters.append([i])
-    O.parents = None
     O.parent_edges = None
     O.loop_edges = None
-    O.parent_edgesX = None
-    O.loop_edgesX = None
     O.loop_edge_bendings = None
 
   def connect(O, i, j):
-    assert O.parents is None
+    assert O.parent_edges is None
     ci = O.cluster_indices
     cii = ci[i]
     cij = ci[j]
@@ -36,14 +32,14 @@ class cluster_manager(object):
       del ccii[:]
 
   def refresh_indices(O):
-    assert O.parents is None
+    assert O.parent_edges is None
     ci = O.cluster_indices
     for ic,c in enumerate(O.clusters):
       for i in c:
         ci[i] = ic
 
   def tidy(O):
-    assert O.parents is None
+    assert O.parent_edges is None
     for c in O.clusters: c.sort()
     def cmp_clusters(a, b):
       if (len(a) > len(b)): return -1
@@ -71,7 +67,7 @@ class cluster_manager(object):
     return result
 
   def merge_lones(O, edges):
-    assert O.parents is None
+    assert O.parent_edges is None
     for cii,es in enumerate(O.cluster_edge_sets(edges=edges)):
       if (len(es) != 1): continue
       ccii = O.clusters[cii]
@@ -81,86 +77,23 @@ class cluster_manager(object):
       del ccii[:]
     O.tidy()
 
-  def construct_spanning_trees(O, edges):
-    assert O.parents is None
-    cluster_edge_sets = O.cluster_edge_sets(edges=edges)
+  def construct_spanning_trees(O, edge_sets):
+    assert O.parent_edges is None
+    parent_edges = [(-1,c[0]) for c in O.clusters]
+    O.loop_edges = []
     n_clusters = len(O.clusters)
-    if (n_clusters == 1):
-      assert len(cluster_edge_sets[0]) == 0
-      O.parents = [-1]
+    if (n_clusters < 2):
+      O.parent_edges = parent_edges
       return
     w_max = len(O.clusters[0])
     candi = []
     for i in xrange(w_max+1):
       candi.append([])
-    parents = [-1] * n_clusters
-    i_new_given_i_old = [-1] * n_clusters
-    i_old_given_i_new = []
-    for ip in xrange(n_clusters):
-      if (parents[ip] != -1): continue
-      i_new_given_i_old[ip] = len(i_old_given_i_new)
-      i_old_given_i_new.append(ip)
-      w_max = 0
-      for j in cluster_edge_sets[ip]:
-        assert j != ip
-        w = len(O.clusters[j])
-        candi[w].append(j)
-        parents[j] = ip
-        if (w_max < w): w_max = w
-      while True:
-        kp = None
-        ip = n_clusters
-        cw = candi[w_max]
-        for k in xrange(len(cw)):
-          if (ip > cw[k]):
-            kp = k
-            ip = cw[k]
-        if (kp is None):
-          break
-        del cw[kp]
-        for j in cluster_edge_sets[ip]:
-          assert j != ip
-          if (i_new_given_i_old[j] == -1):
-            w = len(O.clusters[j])
-            candi[w].append(j)
-            parents[j] = ip
-            if (w_max < w): w_max = w
-        if (i_new_given_i_old[ip] == -1):
-          i_new_given_i_old[ip] = len(i_old_given_i_new)
-          i_old_given_i_new.append(ip)
-        for w_max in xrange(w_max,-1,-1):
-          if (len(candi[w_max]) != 0):
-            break
-        else:
-          break
-    assert len(i_old_given_i_new) == len(i_new_given_i_old)
-    new_clusters = []
-    for i in i_old_given_i_new:
-      new_clusters.append(O.clusters[i])
-    del O.clusters[:]
-    O.clusters.extend(new_clusters)
-    O.refresh_indices()
-    O.parents = [None] * len(parents)
-    for i,ip in enumerate(parents):
-      if (ip != -1): ip = i_new_given_i_old[ip]
-      O.parents[i_new_given_i_old[i]] = ip
-
-  def construct_spanning_treesX(O, edge_sets):
-    assert O.parent_edgesX is None
-    O.parent_edgesX = [None]
-    O.loop_edgesX = []
-    n_clusters = len(O.clusters)
-    if (n_clusters == 1):
-      return
-    w_max = len(O.clusters[0])
-    candi = []
-    for i in xrange(w_max+1):
-      candi.append([])
-    O.parent_edgesX *= n_clusters
     done = [0] * n_clusters
     new_clusters = []
     for ip in xrange(n_clusters):
-      if (O.parent_edgesX[ip] is not None): continue
+      pe = parent_edges[ip]
+      if (pe[0] != -1): continue
       done[ip] = 1
       new_clusters.append(O.clusters[ip])
       w_max = 0
@@ -169,12 +102,12 @@ class cluster_manager(object):
           cij = O.cluster_indices[j]
           if (cij == ip): continue
           if (done[cij] != 0):
-            O.loop_edgesX.append(tuple(sorted((i,j))))
+            O.loop_edges.append((i,j))
           else:
             done[cij] = -1
             w = len(O.clusters[cij])
             candi[w].append(cij)
-            O.parent_edgesX[cij] = tuple(sorted((i,j)))
+            parent_edges[cij] = (i,j)
             if (w_max < w): w_max = w
       while True:
         kp = None
@@ -193,12 +126,12 @@ class cluster_manager(object):
             if (cij == ip): continue
             if (done[cij] == 1): continue
             if (done[cij] == -1):
-              O.loop_edgesX.append(tuple(sorted((i,j))))
+              O.loop_edges.append((i,j))
             else:
               done[cij] = -1
               w = len(O.clusters[cij])
               candi[w].append(cij)
-              O.parent_edgesX[cij] = tuple(sorted((i,j)))
+              parent_edges[cij] = (i,j)
               if (w_max < w): w_max = w
         assert done[ip] == -1
         done[ip] = 1
@@ -213,43 +146,32 @@ class cluster_manager(object):
     del O.clusters[:]
     O.clusters.extend(new_clusters)
     O.refresh_indices()
+    O.parent_edges = [None] * n_clusters
+    for pe in parent_edges:
+      cij = O.cluster_indices[pe[1]]
+      assert O.parent_edges[cij] is None
+      O.parent_edges[cij] = pe
+    O.loop_edges.sort()
 
   def roots(O):
-    assert O.parents is not None
+    assert O.parent_edges is not None
     result = []
-    for i,ip in enumerate(O.parents):
-      if (ip == -1):
+    for i,pe in enumerate(O.parent_edges):
+      if (pe[0] == -1):
         result.append(i)
     return result
 
   def tree_ids(O):
-    assert O.parents is not None
-    result = [-1] * len(O.clusters)
+    assert O.parent_edges is not None
+    result = []
     tid = 0
-    for i,ip in enumerate(O.parents):
-      if (ip == -1):
-        result[i] = tid
+    for i,pe in enumerate(O.parent_edges):
+      if (pe[0] == -1):
+        result.append(tid)
         tid += 1
       else:
-        result[i] = result[ip]
+        result.append(result[O.cluster_indices[pe[0]]])
     return result
-
-  def find_parent_and_loop_edges(O, edges):
-    assert O.parents is not None
-    assert O.parent_edges is None
-    ci = O.cluster_indices
-    p = O.parents
-    O.parent_edges = [None] * len(p)
-    O.loop_edges = []
-    for e in edges:
-      cii, cij = [ci[i] for i in e]
-      if (cii == cij): continue
-      if (p[cii] == cij):
-        O.parent_edges[cii] = (e[1],e[0])
-      elif (p[cij] == cii):
-        O.parent_edges[cij] = e
-      else:
-        O.loop_edges.append(e)
 
   def find_loop_edge_bendings(O, edge_sets):
     assert O.loop_edges is not None

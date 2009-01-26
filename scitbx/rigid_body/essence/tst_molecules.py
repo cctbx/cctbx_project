@@ -237,19 +237,18 @@ def construct_bodies(sites, cluster_manager):
   cm = cluster_manager
   for ic,cluster in enumerate(cm.clusters):
     pe = cm.parent_edges[ic]
-    if (pe is None):
-      assert cm.parents[ic] == -1
+    if (pe[0] == -1):
       body = six_dof_body(
         sites=[matrix.col(sites[i]) for i in cluster])
+      body.parent = -1
     else:
-      assert cm.parents[ic] != -1
       normal_sites = [matrix.col(sites[i]) for i in pe]
       body = revolute_body(
         sites=[matrix.col(sites[i]) for i in cluster],
         pivot=normal_sites[1],
         normal=(normal_sites[1]-normal_sites[0]).normalize())
+      body.parent = cm.cluster_indices[pe[0]]
     body.i_seqs = cluster
-    body.parent = cm.parents[ic]
     result.append(body)
   return result
 
@@ -258,8 +257,7 @@ def construct_simulation(labels, sites, bonds, size_max=8):
     n_vertices=len(sites), edges=bonds, size_max=size_max)
   cm = tt.cluster_manager
   cm.merge_lones(edges=bonds)
-  cm.construct_spanning_trees(edges=bonds)
-  cm.find_parent_and_loop_edges(edges=bonds)
+  cm.construct_spanning_trees(edge_sets=tt.edge_sets)
   cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
   return simulation(
     labels=labels,
