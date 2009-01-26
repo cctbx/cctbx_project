@@ -21,21 +21,42 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.sim = sim
     self.labels = self.sim.labels
     self.set_points()
-    le = set([tuple(sorted(e)) for e in self.sim.cluster_manager.loop_edges])
+    cm = self.sim.cluster_manager
+    pe = set()
+    for e in cm.parent_edges:
+      if (e[0] == -1): continue
+      pe.add(tuple(sorted(e)))
+    le = set([tuple(sorted(e)) for e in cm.loop_edges])
+    assert len(pe.intersection(le)) == 0
     for line in self.sim.bonds:
       self.line_i_seqs.append(line)
-      if (line in le): color = (1,0,0)
-      else:            color = (0,1,0)
+      if (line in pe):
+        color = (0,1,0)
+      elif (line in le):
+        color = (1,0,0)
+      else:
+        cii, cij = [cm.cluster_indices[i] for i in line]
+        assert cii == cij
+        if (cm.parent_edges[cii][0] == -1):
+          color = (0,1,1)
+        else:
+          color = (0,0,1)
       self.line_colors[line] = color
-    for line in self.sim.cluster_manager.loop_edge_bendings:
+    for line in cm.loop_edge_bendings:
       self.line_i_seqs.append(line)
-      self.line_colors[line] = (0,0,0.5)
+      self.line_colors[line] = (0.5,0,0.5)
     mcs = minimum_covering_sphere(self.points, epsilon=1.e-2)
     self.minimum_covering_sphere = sphere_3d(
       center=mcs.center(), radius=mcs.radius()*1.3)
     self.flag_show_minimum_covering_sphere = False
     self.flag_show_rotation_center = False
     self.steps_per_tab = 1
+    print "Edge colors:"
+    print "  turquoise: intra-base-cluster, six degrees of freedom"
+    print "  green:     rotatable bond, one degree of freedom"
+    print "  blue:      intra-cluster"
+    print "  red:       loop edge (restrained only)"
+    print "  purple:    loop bending edge (restrained only)"
     self.show_key_stroke_help()
 
   def show_key_stroke_help(self):
