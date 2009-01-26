@@ -85,7 +85,7 @@ class matrix
     typedef typename vector<T>::const_iterator const_row_iterator;
 
   public:
-    /// Construct a matrix with the given number of rows and columns
+    /// Construct a zero matrix with the given number of rows and columns
     matrix(boost::optional<row_index> rows, column_index cols)
       : n_rows_(rows), column(cols)
     {
@@ -232,7 +232,6 @@ class matrix
     container_type column;
     mutable boost::optional<row_index> n_rows_;
 };
-
 
 }} // namespace scitbx::sparse
 
