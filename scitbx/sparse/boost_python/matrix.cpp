@@ -1,4 +1,5 @@
 #include <boost/python/class.hpp>
+#include <boost/python/return_internal_reference.hpp>
 #include <boost/python/args.hpp>
 #include <boost/python/return_arg.hpp>
 #include <boost/python/operators.hpp>
@@ -38,8 +39,13 @@ struct matrix_wrapper
     return boost::python::str(o.str().c_str());
   }
 
+  static wt & permute_rows(wt &m, af::const_ref<row_index> const &p) {
+    return m.permute_rows(p);
+  }
+
   static void wrap() {
     using namespace boost::python;
+    return_internal_reference<> rir;
     class_<wt>("matrix", no_init)
       .def(init<boost::optional<typename wt::row_index>,
                 typename wt::column_index>())
@@ -55,6 +61,7 @@ struct matrix_wrapper
       .def("is_unit_lower_triangular", &wt::is_unit_lower_triangular)
       .def("deep_copy", &wt::deep_copy)
       .def("transpose", &wt::transpose)
+      .def("permute_rows", permute_rows, arg("permutation"), rir)
       .def(self*vector<T>())
       .def(self*self)
       .def(typename wt::dense_vector_const_ref() * self)
