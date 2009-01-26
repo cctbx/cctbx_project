@@ -3,7 +3,6 @@
 
 #include <memory>
 #include <algorithm>
-#include <limits>
 #include <boost/operators.hpp>
 #include <boost/optional.hpp>
 #include <boost/lambda/lambda.hpp>
@@ -328,33 +327,6 @@ class vector
       return *this;
     }
 };
-
-/// Element-wise comparison of a and b with the given absolute tolerance
-template<class T>
-bool approx_equal(vector<T> const& a, vector<T> const& b,
-                  T tol=std::numeric_limits<T>::epsilon())
-{
-    SCITBX_ASSERT(a.size() == b.size())
-                ( a.size() )( b.size() );
-    a.sort_indices();
-    b.sort_indices();
-    typename vector<T>::const_iterator p = a.begin(),
-                                       q = b.begin();
-    for(;;) {
-      if (p == a.end() && q == b.end()) break;
-      if (*p != 0 && *q != 0) {
-        if (std::abs(*p - *q) > tol) return false;
-        if (p != a.end()) p++;
-        if (q != b.end()) q++;
-      }
-      else {
-        if (*p == 0) p++;
-        if (*q == 0) q++;
-      }
-    }
-    return p == a.end() && q == b.end();
-}
-
 
 }}
 
