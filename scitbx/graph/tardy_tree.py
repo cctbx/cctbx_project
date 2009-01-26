@@ -191,7 +191,10 @@ class cluster_manager(object):
           for j in edge_sets[i]:
             cij = O.cluster_indices[j]
             if (cij == ip): continue
-            if (done[cij] == 0):
+            if (done[cij] == 1): continue
+            if (done[cij] == -1):
+              O.loop_edgesX.append(tuple(sorted((i,j))))
+            else:
               done[cij] = -1
               w = len(O.clusters[cij])
               candi[w].append(cij)
