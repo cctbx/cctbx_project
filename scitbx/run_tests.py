@@ -67,7 +67,7 @@ def run():
   "$D/rigid_body/proto/tst_spherical_refinement.py",
   "$D/rigid_body/proto/tst_molecules.py",
   "$D/sparse/tests/tst_sparse.py",
-  "$B/sparse/tests/tst_lu_factorization",
+  "$D/sparse/tests/tst_lu_factorization.py",
   "$D/iso_surface/tst_iso_surface.py",
   )
 
