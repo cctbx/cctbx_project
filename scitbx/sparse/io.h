@@ -125,7 +125,7 @@ std::ostream& operator << (std::ostream& o,
   o << "A = \n" << std::setw(width) << dense_display(lu.factored());
   o << "\nL = \n" << std::setw(width) << dense_display(lu.l());
   o << "\nU = \n" << std::setw(width) << dense_display(lu.u());
-  o << "\nrows permutation = " << lu.rows_permutation();
+  o << "\nrows permutation = " << lu.rows_permutation().const_ref();
   return o;
 }
 
