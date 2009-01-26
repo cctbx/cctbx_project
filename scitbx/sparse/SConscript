@@ -1,2 +1,0 @@
-SConscript("boost_python/SConscript")
-SConscript("tests/SConscript")
