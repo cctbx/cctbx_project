@@ -17,6 +17,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
       obj.change_basis(o);
     }
 
+    void write(std::ostream &os) const
+    {
+      obj.print(os, true);
+    }
+
     bool is_inside(const rvector3_t &p) const
     {
       return obj.is_inside(p);

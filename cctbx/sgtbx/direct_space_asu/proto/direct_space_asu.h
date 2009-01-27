@@ -23,6 +23,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
     void show_comprehensive_summary(std::ostream &os) const;
 
+    void write(std::ostream &os) const
+    {
+      faces->write(os);
+    }
+
     //! Removes subexpressions from every face
     void volume_only()
     {
@@ -57,9 +62,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     {
       std::string new_hall;
       if( !hall_symbol.empty() )
-      {
-        new_hall = cctbx::sgtbx::space_group("Hall: " + hall_symbol).change_basis(op).type().hall_symbol();
-      }
+        new_hall = space_group(hall_symbol).change_basis(op).type().hall_symbol();
+      std::cout << "new hall: " << new_hall << std::endl;
       hall_symbol = new_hall;
       faces->change_basis(op);
     }
@@ -73,27 +77,28 @@ namespace cctbx { namespace sgtbx { namespace asu {
     direct_space_asu(const direct_space_asu &a) : faces(a.faces->new_copy()), hall_symbol(a.hall_symbol) {}
     direct_space_asu() : faces(NULL), hall_symbol() {}
 
-    explicit direct_space_asu(unsigned short spgr)
+    explicit direct_space_asu(const space_group_type &grp) 
+      : hall_symbol(grp.hall_symbol()),
+        faces(asu_table[grp.number()-1]()) // build reference spacegroup asu
     {
-      CCTBX_ASSERT( spgr>0 && spgr < 231 );
-      hall_symbol = space_group_symbols(spgr).hall();
-      faces = asu_table[spgr-1]();
+      change_of_basis_op  op(  grp.cb_op().inverse() );
+      CCTBX_ASSERT( faces.get() != NULL );
+      if( !op.is_identity_op() )
+        faces->change_basis(op); // change to the real space group
     }
 
+    //! Convenience constructor
     explicit direct_space_asu(const std::string &spgr) : faces(NULL), hall_symbol()
     {
-      // is this right?
-      space_group_symbols s(spgr);
-      new(this) direct_space_asu(s.number());
-      std::string cbs = s.change_of_basis_symbol();
-      if( !cbs.empty() )
-        this->change_basis(change_of_basis_op(cbs));
+      // new(this) direct_space_asu( space_group_type(spgr) );  this fails
+      *this =  direct_space_asu( space_group_type(spgr) );
     }
 
-    direct_space_asu operator= (const direct_space_asu &a) 
+    direct_space_asu& operator= (const direct_space_asu &a) 
     {
-      faces= abstract::ptr(a.faces->new_copy()); return *this; 
+      faces = abstract::ptr(a.faces->new_copy());
       hall_symbol = a.hall_symbol;
+      return *this; 
     }
 
   }; // class direct_space_asu

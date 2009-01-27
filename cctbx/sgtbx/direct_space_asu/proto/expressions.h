@@ -17,6 +17,14 @@ namespace cctbx { namespace sgtbx { namespace asu {
       rhs.change_basis(o);
     }
 
+    void print(std::ostream &os, bool x=false) const
+    {
+      lhs.print(os);
+      os << "[";
+      rhs.print(os); 
+      os << "]";
+    }
+
     bool is_inside(const rvector3_t &p) const
     {
       return lhs.is_inside(p, rhs);
@@ -78,6 +86,24 @@ namespace cctbx { namespace sgtbx { namespace asu {
     {
       lhs.change_basis(o);
       rhs.change_basis(o);
+    }
+
+    void print(std::ostream &os, bool brk=false) const
+    {
+      if( brk )
+      {
+        lhs.print(os, true);
+        os << "\n & ";
+        rhs.print(os);
+      }
+      else
+      {
+        os << "(";
+        lhs.print(os);
+        os << " & ";
+        rhs.print(os); 
+        os << ")";
+      }
     }
 
     bool is_inside(const rvector3_t &p) const
@@ -187,6 +213,15 @@ namespace cctbx { namespace sgtbx { namespace asu {
     {
       lhs.change_basis(o);
       rhs.change_basis(o);
+    }
+
+    void print(std::ostream &os, bool x=false) const
+    {
+      os << "(";
+      lhs.print(os);
+      os << " | ";
+      rhs.print(os); 
+      os << ")";
     }
 
     bool is_inside(const rvector3_t &p) const
