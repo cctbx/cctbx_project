@@ -18,6 +18,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     virtual size_type size() const = 0;
     virtual void change_basis(const change_of_basis_op &) =0;
     virtual void get_nth_plane(size_type i, cut &plane) const = 0;
+    virtual void write(std::ostream &os) const = 0;
 
     virtual ~abstract() {};
   }; // class abstract

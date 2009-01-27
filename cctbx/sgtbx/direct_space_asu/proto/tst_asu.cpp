@@ -24,7 +24,8 @@ std::size_t loop_over_grid_points(const direct_space_asu &a, unsigned n_)
   register std::size_t result = 0;
   register const int n = n_;
 
-  a.show_comprehensive_summary(std::cout);
+  // a.show_comprehensive_summary(std::cout);
+  a.write(std::cout);
   std::cout <<"\n";
 
   rvector3_t p, mn, mx;
@@ -32,6 +33,7 @@ std::size_t loop_over_grid_points(const direct_space_asu &a, unsigned n_)
   std::cout << "low corner = " << mn << "   high corner = " << mx << std::endl;
   rvector3_t box = mx - mn;
   rvector3_t step = box/rational_t(n);
+  std::cout << "step = " << step << std::endl;
 
   for(register rational_t i=mn[0]; i<=mx[0]; i += step[0]) {
     p[0] = i;
@@ -59,14 +61,18 @@ int main(int argc, const char* argv[])
     if (argc > 1) {
       n = std::atoi(argv[1]);
     }
-    unsigned short spgrn = 19;
+    std::string spgr;
     if( argc>2 )
-      spgrn = std::atoi(argv[2]);
+      spgr = argv[2];
 
-    if( spgrn==0 || spgrn >230 )
-      spgrn = 19;
+    if( spgr.empty()  )
+      spgr = "P 21 21 21";
 
-    direct_space_asu asu( spgrn );
+    cctbx::sgtbx::space_group_type grp( spgr );
+    std::cout << "Space group: " << spgr << "  number: "<< grp.number() << "  hall: " << grp.hall_symbol() << std::endl;
+
+    // direct_space_asu asu( grp );
+    direct_space_asu asu( spgr );
 
     size_t ins = 0;
 
@@ -78,12 +84,6 @@ int main(int argc, const char* argv[])
     std::cout << "\nAfter volume_only\n";
 
     ins = loop_over_grid_points(asu, n);
-    
-    // change_of_basis_op op;
-    // asu.change_basis(op);
-    direct_space_asu p21(std::string("P 1 1 21"));
-    direct_space_asu p21_(std::string("P 1 21 1")); // is asu different
-
   }
   catch( const std::exception &err )
   {

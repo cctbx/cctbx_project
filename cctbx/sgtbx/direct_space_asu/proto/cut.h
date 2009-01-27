@@ -81,14 +81,14 @@ namespace cctbx { namespace sgtbx { namespace asu {
     int_type c;
     bool inclusive;
 
-    void print(std::ostream &os) const;
+    void print(std::ostream &os, bool x=false ) const;
 
     //! Returns an arbitrary point, which belongs to the plane
     void get_point_in_plane(rvector3_t &r) const;
 
     void change_basis(const change_of_basis_op &cb_op);
 
-    //! Evluates plane equation
+    //! Evaluates plane equation
     rational_t evaluate(const rvector3_t &p) const
     {
       return  n[0]*p[0] + n[1]*p[1] + n[2]*p[2] + c;
@@ -104,7 +104,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return expr.is_inside(p);
     }
 
-    //! Tests if point is on the inside side of the space
+    //! Tests if point is on the inside part of the space
     bool is_inside(const rvector3_t &p) const
     {
       rational_t v = evaluate(p);

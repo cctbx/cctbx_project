@@ -49,7 +49,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     typedef return_value_policy<return_by_value> rbv;
 
     class_<w_t>("direct_space_asu", no_init)
-      .def(init< unsigned short >(( arg_("spgr") )))
+      .def(init< std::string& >(( arg_("spgr") )))
       .def_readonly("hall_symbol", &w_t::hall_symbol)
       .def("is_inside", &w_t::is_inside)
       .def("change_basis", &w_t::change_basis)
