@@ -102,6 +102,9 @@ if (not env_etc.no_boost_python):
   env.SharedLibrary(
     target="#lib/boost_tuple_ext",
     source="tuple_ext.cpp")
+  env.SharedLibrary(
+    target="#lib/tst_fp_interrupts_ext",
+    source="tst_fp_interrupts.cpp")
 
   import os, os.path
   env = env_base.Copy(

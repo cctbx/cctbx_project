@@ -49,6 +49,10 @@
 #define BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC-VERSION_H
 #endif
 
+#if defined(__APPLE_CC__)
+#include <xmmintrin.h>
+#endif
+
 namespace {
 
   long
@@ -477,6 +481,7 @@ namespace {
 #endif
     )
   {
+#if defined(__linux)
     int flags = 0;
 #if defined(FE_DIVBYZERO)
     if (divbyzero) flags |= FE_DIVBYZERO;
@@ -487,11 +492,19 @@ namespace {
 #if defined(FE_OVERFLOW)
     if (overflow) flags |= FE_OVERFLOW;
 #endif
-    if (flags != 0) {
-#if defined(__linux)
-      feenableexcept(flags);
+    if (flags != 0) feenableexcept(flags);
+#elif defined(__APPLE_CC__)
+    /** All FP math is done by SSE units om MacOS X. C.f.
+        http://developer.apple.com/documentation/performance/Conceptual/Accelerate_sse_migration/migration_sse_translation/chapter_4_section_2.html
+        So we need to use the macros defined in xmmintrin.h to unmask those FP
+        exceptions we wish to catch.
+    **/
+    unsigned int mask = _MM_MASK_INEXACT | _MM_MASK_UNDERFLOW | _MM_MASK_DENORM;
+    if (!divbyzero) mask |= _MM_MASK_DIV_ZERO;
+    if (!invalid) mask |= _MM_MASK_INVALID;
+    if (!overflow) mask |= _MM_MASK_OVERFLOW;
+    _MM_SET_EXCEPTION_MASK(mask);
 #endif
-    }
   }
 
   char
