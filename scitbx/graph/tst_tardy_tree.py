@@ -57,6 +57,15 @@ def exercise_cluster_manager():
   assert cm.tree_ids() == [0,0]
   cm.find_loop_edge_bendings(edge_sets=es)
   assert cm.loop_edge_bendings == [(1,2), (3,5)]
+  #
+  cm.parent_edges = None
+  cm.loop_edges = None
+  cm.loop_edge_bendings = None
+  assert cm.clusters == [[1,2,4,5],[0,3]]
+  assert cm.cluster_indices == [1,0,0,1,0,0]
+  cm.merge_clusters_with_multiple_connections(edge_sets=es)
+  assert cm.clusters == [[0,1,2,3,4,5]]
+  assert cm.cluster_indices == [0,0,0,0,0,0]
 
 class test_case_data(object):
 
@@ -78,8 +87,8 @@ class test_case_data(object):
         loop_edge_bendings1_5=[],
         clusters2_5=None,
         parent_edges2_5=None,
-        loop_edges2_5=[],
-        loop_edge_bendings2_5=[]):
+        loop_edges2_5=None,
+        loop_edge_bendings2_5=None):
     assert art[0] == "\n"
     assert (parent_edges1_5 is None) == (clusters1_5 is None)
     assert (roots1_5 is None) == (parent_edges1_5 is None)
@@ -88,8 +97,10 @@ class test_case_data(object):
     assert (len(loop_edge_bendings1_5) == 0) == (len(loop_edges1_5) == 0)
     assert (clusters2_5 is None) == (clusters1_5 is None)
     assert (parent_edges2_5 is None) == (clusters2_5 is None)
-    assert (len(loop_edges2_5) == 0) == (parent_edges2_5 is None)
-    assert (len(loop_edge_bendings2_5) == 0) == (len(loop_edges2_5) == 0)
+    assert (loop_edges2_5 is None) == (parent_edges2_5 is None)
+    assert (loop_edge_bendings2_5 is None) == (loop_edges2_5 is None)
+    if (loop_edges2_5 is None): loop_edges2_5 = []
+    if (loop_edge_bendings2_5 is None): loop_edge_bendings2_5 = []
     O.art = art[1:]
     O.n_vertices = n_vertices
     O.edges = edges
@@ -499,6 +510,39 @@ test_cases = [
     tree_ids1=[0, 0, 0, 1],
     clusters2=[[0, 3, 4, 6, 9], [1, 2, 7, 8], [5]],
     parent_edges2=[(-1,0), (3,2), (-1,5)]),
+  test_case_data(
+    art=r"""
+    3 - 6 ----- 4 - 0
+   /     \     /     \
+  8       1   5       9
+    \   /       \   /
+      2 --------  7
+""",
+    n_vertices=10,
+    edges=[
+      (0,4), (0,9),
+      (1,2), (1,6),
+      (2,7), (2,8),
+      (3,6), (3,8),
+      (4,5), (4,6),
+      (5,7),
+      (7,9)],
+    clusters1=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
+    parent_edges1=[(-1,0)],
+    roots1=[0],
+    tree_ids1=[0],
+    clusters2=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
+    parent_edges2=[(-1,0)],
+    clusters1_5=[[0, 4, 5, 7, 9], [1, 2, 3, 6, 8]],
+    parent_edges1_5=[(-1,0), (4,6)],
+    roots1_5=[0],
+    tree_ids1_5=[0, 0],
+    loop_edges1_5=[(7,2)],
+    loop_edge_bendings1_5=[(1,7), (2,5), (2,9), (7,8)],
+    clusters2_5=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
+    parent_edges2_5=[(-1,0)],
+    loop_edges2_5=[],
+    loop_edge_bendings2_5=[]),
   ]
 
 def exercise_tyr_with_h():
@@ -511,14 +555,16 @@ def exercise_tyr_with_h():
       (0, 1), (0, 2), (0, 12), (1, 3), (1, 6), (2, 4), (2, 7), (3, 5),
       (3, 8), (4, 5), (4, 9), (5, 10), (10, 11), (12, 13), (12, 14),
       (12, 16), (15, 16), (15, 20), (16, 17), (16, 18), (17, 19)])
-  tt.cluster_manager.merge_lones(edges=tt.edges)
-  tt.cluster_manager.construct_spanning_trees(edge_sets=tt.edge_sets)
-  assert tt.cluster_manager.clusters == [
+  cm = tt.cluster_manager
+  cm.merge_lones(edges=tt.edges)
+  cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
+  cm.construct_spanning_trees(edge_sets=tt.edge_sets)
+  assert cm.clusters == [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     [12, 13, 14], [10, 11], [16, 18], [15, 20], [17, 19]]
-  assert tt.cluster_manager.parent_edges == [
+  assert cm.parent_edges == [
     (-1, 0), (0, 12), (5, 10), (12, 16), (16, 15), (16, 17)]
-  assert tt.cluster_manager.loop_edges == []
+  assert cm.loop_edges == []
 
 def run(args):
   assert args in [[], ["--verbose"]]
@@ -555,26 +601,29 @@ def run(args):
       #
       tt = construct(
         n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
-      assert_same("c1:", tt.cluster_manager.clusters, tc_c1)
-      tt.cluster_manager.construct_spanning_trees(edge_sets=tt.edge_sets)
-      print >> out, "c1p:", tt.cluster_manager.clusters
-      assert_same("p1:", tt.cluster_manager.parent_edges, tc_pe1)
-      assert_same("le1:", tt.cluster_manager.loop_edges, tc_le1)
-      tid = tt.cluster_manager.tree_ids()
+      cm = tt.cluster_manager
+      assert_same("c1:", cm.clusters, tc_c1)
+      cm.construct_spanning_trees(edge_sets=tt.edge_sets)
+      print >> out, "c1p:", cm.clusters
+      assert_same("p1:", cm.parent_edges, tc_pe1)
+      assert_same("le1:", cm.loop_edges, tc_le1)
+      tid = cm.tree_ids()
       assert_same("tid1:", tid, tc_tid1)
-      tt.cluster_manager.find_loop_edge_bendings(edge_sets=tt.edge_sets)
-      assert_same("leb1:", tt.cluster_manager.loop_edge_bendings, tc_leb1)
+      cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
+      assert_same("leb1:", cm.loop_edge_bendings, tc_leb1)
       #
       tt = construct(
         n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
-      tt.cluster_manager.merge_lones(edges=tc.edges)
-      assert_same("c2:", tt.cluster_manager.clusters, tc_c2)
-      tt.cluster_manager.construct_spanning_trees(edge_sets=tt.edge_sets)
-      print >> out, "c2p:", tt.cluster_manager.clusters
-      assert_same("p2:", tt.cluster_manager.parent_edges, tc_pe2)
-      assert_same("le2:", tt.cluster_manager.loop_edges, tc_le2)
-      tt.cluster_manager.find_loop_edge_bendings(edge_sets=tt.edge_sets)
-      assert_same("leb2:", tt.cluster_manager.loop_edge_bendings, tc_leb2)
+      cm = tt.cluster_manager
+      cm.merge_lones(edges=tc.edges)
+      cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
+      assert_same("c2:", cm.clusters, tc_c2)
+      cm.construct_spanning_trees(edge_sets=tt.edge_sets)
+      print >> out, "c2p:", cm.clusters
+      assert_same("p2:", cm.parent_edges, tc_pe2)
+      assert_same("le2:", cm.loop_edges, tc_le2)
+      cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
+      assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
   exercise_tyr_with_h()
   print "OK"
 

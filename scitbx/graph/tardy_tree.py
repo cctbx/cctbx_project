@@ -77,6 +77,32 @@ class cluster_manager(object):
       del ccii[:]
     O.tidy()
 
+  def merge_clusters_with_multiple_connections(O, edge_sets):
+    while True:
+      repeat = False
+      for cii in xrange(len(O.clusters)):
+        while True:
+          connected = set()
+          multiple = set()
+          for i in O.clusters[cii]:
+            for j in edge_sets[i]:
+              cij = O.cluster_indices[j]
+              if (cij == cii): continue
+              if (cij in connected): multiple.add(cij)
+              else:                  connected.add(cij)
+          if (len(multiple) == 0):
+            break
+          for cij in multiple:
+            ccij = O.clusters[cij]
+            for j in ccij:
+              O.cluster_indices[j] = cii
+            O.clusters[cii].extend(ccij)
+            del ccij[:]
+            repeat = True
+      if (not repeat):
+        break
+    O.tidy()
+
   def construct_spanning_trees(O, edge_sets):
     assert O.parent_edges is None
     parent_edges = [(-1,c[0]) for c in O.clusters]
