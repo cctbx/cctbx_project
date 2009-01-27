@@ -120,6 +120,11 @@ class matrix
       return column[j][i];
     }
 
+    /// Whether the element (i,j) is a structural zero
+    bool is_structural_zero(row_index i, column_index j) {
+      return column[j].is_structural_zero(i);
+    }
+
     /// Number of columns
     column_index n_cols() const {
       return column.size();

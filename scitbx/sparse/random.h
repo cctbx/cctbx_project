@@ -34,7 +34,7 @@ class random_matrix_generator
       while (nz) {
         typename matrix<T>::row_index i = gen.random_size_t() % rows;
         typename matrix<T>::column_index j = gen.random_size_t() % cols;
-        if (result(i,j).is_structural_zero()) {
+        if (result.is_structural_zero(i,j)) {
           result(i,j) = lower_bound
                         + gen.random_double()*(upper_bound - lower_bound);
           --nz;

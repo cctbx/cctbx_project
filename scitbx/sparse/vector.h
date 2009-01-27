@@ -87,6 +87,16 @@ class vector
     container_type elements;
     mutable boost::optional<index_type> size_;
 
+    value_type get(index_type i) const {
+      typename container_type::const_reverse_iterator p = std::find(
+        elements.rbegin(), elements.rend(), element(i,0));
+      return p != elements.rend() ? p->value : 0;
+    }
+
+     void set(index_type i, value_type x) {
+      elements.push_back(element(i, x));
+    }
+
   public:
     /// Const iterator over the records
     class const_iterator
@@ -154,18 +164,46 @@ class vector
     };
     friend class iterator;
 
+    /// A const reference to an element of given index
+    /** This the type of object returned by v[i] for a const vector v
+        and an index i
+    */
+    class element_const_reference
+    {
+      private:
+        vector const &v;
+        index_type i;
+
+      public:
+        /// Construct the reference to the element of index j in u
+        element_const_reference(vector const &u, index_type j) : v(u), i(j)
+        {}
+
+        /* Without the destructor, the constructor would not be inlined
+        by g++ 4.0 */
+        ~element_const_reference()
+        {}
+
+        /// Triggered by using v[i] in an expression
+        operator value_type() {
+          return v.get(i);
+        }
+    };
+    friend class element_const_reference;
+
+
     /// A reference to an element of given index
     /** This the type of object returned by v[i] for a vector v and an index i
     */
     class element_reference
     {
-      protected:
-        vector& v;
+      private:
+        vector &v;
         index_type i;
 
       public:
         /// Construct the reference to the element of index j in u
-        element_reference(vector& u, index_type j) : v(u), i(j)
+        element_reference(vector &u, index_type j) : v(u), i(j)
         {}
 
         /* Without the destructor, the constructor would not be inlined
@@ -173,31 +211,21 @@ class vector
         ~element_reference()
         {}
 
-        /// Triggered by using the value of v[i]
+        /// Triggered by using v[i] in an expression
         operator value_type() {
-          vector const &cv = v;
-          typename container_type::const_reverse_iterator p = std::find(
-            cv.elements.rbegin(), cv.elements.rend(), element(i,0));
-          return p != cv.elements.rend() ? p->value : 0;
-        }
-
-        /// Whether this is a structural zero
-        bool is_structural_zero() {
-          vector const &cv = v;
-          typename container_type::const_reverse_iterator p = std::find(
-            cv.elements.rbegin(), cv.elements.rend(), element(i,0));
-          return p == cv.elements.rend();
+          return v.get(i);
         }
 
         /// Triggered by an assignment v[i] = ...
         value_type operator=(value_type x) {
-          v.elements.push_back(element(i,x));
+          v.set(i, x);
           return x;
         }
     };
     friend class element_reference;
 
-    /// Construct a vector of size 0
+
+     /// Construct a vector of size 0
     vector() {}
 
     /// Construct a zero vector of size n
@@ -234,11 +262,22 @@ class vector
       return elements.size() == 0;
     }
 
+    /// Whether the element of index i is a structural zero
+    bool is_structural_zero(index_type i) const {
+      typename container_type::const_reverse_iterator p = std::find(
+        elements.rbegin(), elements.rend(), element(i,0));
+      return p == elements.rend();
+    }
+
     /// Subscripting
     /** Assignment v[i] = ... may introduce a duplicate index, a problem
     solved for the getter v[i] by returning the last record with the
     desired index.
     */
+    element_const_reference operator[](index_type i) const {
+      return element_const_reference(*this, i);
+    }
+
     element_reference operator[](index_type i) {
       return element_reference(*this, i);
     }
