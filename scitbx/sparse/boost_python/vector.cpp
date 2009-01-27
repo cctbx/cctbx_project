@@ -25,12 +25,8 @@ struct vector_wrapper
     self[i] = x;
   }
 
-  static value_type getitem(wt &self, index_type i) {
+  static value_type getitem(wt const &self, index_type i) {
     return self[i];
-  }
-
-  static bool is_structural_zero(wt &self, index_type i) {
-    return self[i].is_structural_zero();
   }
 
   static boost::python::str as_mathematica(wt const &v) {
@@ -84,7 +80,6 @@ struct vector_wrapper
       .add_property("size", &wt::size)
       .def("__setitem__", setitem)
       .def("__getitem__", getitem)
-      .def("is_structural_zero", is_structural_zero)
       .def("__iter__", iter)
       .def("deep_copy", &wt::deep_copy)
       .def("sort_indices", &wt::sort_indices, return_self<>())
@@ -94,6 +89,7 @@ struct vector_wrapper
            return_self<>())
       .def("as_dense_vector", &wt::as_dense_vector)
       .def("is_structurally_zero", &wt::is_structurally_zero)
+      .def("is_structural_zero", &wt::is_structural_zero)
       .def("as_mathematica", as_mathematica)
       .def(typename wt::dense_vector_const_ref() * self)
     ;

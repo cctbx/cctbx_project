@@ -56,6 +56,7 @@ struct matrix_wrapper
            return_internal_reference<1>())
       .def("__getitem__", getitem)
       .def("__setitem__", setitem)
+      .def("is_structural_zero", &wt::is_structural_zero)
       .def("sort_indices", &wt::sort_indices)
       .def("is_upper_triangular", &wt::is_upper_triangular)
       .def("is_unit_lower_triangular", &wt::is_unit_lower_triangular)
