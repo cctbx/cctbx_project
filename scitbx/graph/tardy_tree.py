@@ -1,3 +1,5 @@
+from scitbx.graph.utils import construct_edge_sets
+
 class cluster_manager(object):
 
   __slots__ = [
@@ -204,14 +206,6 @@ class cluster_manager(object):
         leb.add(tuple(sorted((i,k))))
     O.loop_edge_bendings = sorted(leb)
 
-def construct_edge_sets(n_vertices, edges):
-  result = [set() for i in xrange(n_vertices)]
-  for i,j in edges:
-    assert i < j
-    result[i].add(j)
-    result[j].add(i)
-  return result
-
 def find_loops(edge_sets, depth, loop_set, path, iv, traversing):
   path = path + [iv]
   traversing[iv] = True
@@ -227,11 +221,12 @@ def find_loops(edge_sets, depth, loop_set, path, iv, traversing):
 
 class construct(object):
 
-  def __init__(O, n_vertices, edges, size_max=8):
+  def __init__(O, n_vertices, edge_list, size_max=8):
     O.n_vertices = n_vertices
-    O.edges = edges
+    O.edge_list = edge_list
     O.size_max = size_max
-    O.edge_sets = construct_edge_sets(n_vertices=n_vertices, edges=edges)
+    O.edge_sets = construct_edge_sets(
+      n_vertices=n_vertices, edge_list=edge_list)
     O.cluster_manager = cluster_manager(n_vertices=n_vertices)
     traversing = [False] * n_vertices
     for iv in xrange(n_vertices):

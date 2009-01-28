@@ -40,7 +40,7 @@ def exercise_cluster_manager():
   assert cm.clusters == [[1,2,4],[0,3],[5]]
   assert cm.cluster_indices == [1,0,0,1,0,2]
   edges = [(0,1), (0,2), (3,4), (4,5)]
-  es = construct_edge_sets(n_vertices=6, edges=edges)
+  es = construct_edge_sets(n_vertices=6, edge_list=edges)
   cm.merge_lones(edge_sets=es)
   assert cm.clusters == [[1,2,4,5],[0,3]]
   assert cm.cluster_indices == [1,0,0,1,0,0]
@@ -68,7 +68,7 @@ class test_case_data(object):
   def __init__(O,
         art,
         n_vertices,
-        edges,
+        edge_list,
         clusters1,
         parent_edges1,
         roots1,
@@ -99,7 +99,7 @@ class test_case_data(object):
     if (loop_edge_bendings2_5 is None): loop_edge_bendings2_5 = []
     O.art = art[1:]
     O.n_vertices = n_vertices
-    O.edges = edges
+    O.edge_list = edge_list
     O.clusters1 = clusters1
     O.parent_edges1 = parent_edges1
     O.roots1 = roots1
@@ -123,7 +123,7 @@ test_cases = [
 0
 """,
     n_vertices=1,
-    edges=[],
+    edge_list=[],
     clusters1=[[0]],
     parent_edges1=[(-1,0)],
     roots1=[0],
@@ -135,7 +135,7 @@ test_cases = [
 0 - 1
 """,
     n_vertices=2,
-    edges=[(0,1)],
+    edge_list=[(0,1)],
     clusters1=[[0], [1]],
     parent_edges1=[(-1,0), (0,1)],
     roots1=[0],
@@ -147,7 +147,7 @@ test_cases = [
 6-membered loop
 """,
     n_vertices=6,
-    edges=[(0,1), (0,5), (1,2), (2,3), (3,4), (4,5)],
+    edge_list=[(0,1), (0,5), (1,2), (2,3), (3,4), (4,5)],
     clusters1=[[0, 1, 2, 3, 4, 5]],
     parent_edges1=[(-1,0)],
     roots1=[0],
@@ -169,7 +169,7 @@ test_cases = [
 8-membered loop
 """,
     n_vertices=8,
-    edges=[(0,1), (0,7), (1,2), (2,3), (3,4), (4,5), (5,6), (6,7)],
+    edge_list=[(0,1), (0,7), (1,2), (2,3), (3,4), (4,5), (5,6), (6,7)],
     clusters1=[[0, 1, 2, 3, 4, 5, 6, 7]],
     parent_edges1=[(-1,0)],
     roots1=[0],
@@ -199,7 +199,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,4),
       (1,2), (1,7),
       (2,3), (2,8),
@@ -225,7 +225,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,4),
       (1,2), (1,7),
       (2,3), (2,8), (2,9),
@@ -250,7 +250,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,3), (0,4),
       (1,2), (1,7),
       (2,3), (2,8),
@@ -275,7 +275,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,3), (0,4),
       (1,7), (1,8),
       (2,3), (2,8),
@@ -300,7 +300,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,3), (0,4),
       (1,7),
       (2,3), (2,8),
@@ -337,7 +337,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,3), (0,4),
       (1,2), (1,7),
       (2,3), (2,8),
@@ -363,7 +363,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,3), (0,4),
       (1,2), (1,7),
       (2,3), (2,8),
@@ -389,7 +389,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,3), (0,4),
       (1,2), (1,7),
       (2,3), (2,8),
@@ -416,7 +416,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,1), (0,3), (0,4),
       (1,2), (1,7),
       (2,3), (2,8),
@@ -434,7 +434,7 @@ test_cases = [
 0   1
 """,
     n_vertices=2,
-    edges=[],
+    edge_list=[],
     clusters1=[[0], [1]],
     parent_edges1=[(-1,0), (-1,1)],
     roots1=[0, 1],
@@ -446,7 +446,7 @@ test_cases = [
 0 - 2   1
 """,
     n_vertices=3,
-    edges=[(0,2)],
+    edge_list=[(0,2)],
     clusters1=[[0], [1], [2]],
     parent_edges1=[(-1,0), (0,2), (-1,1)],
     roots1=[0, 2],
@@ -466,7 +466,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,4),
       (1,2), (1,7),
       (2,3), (2,8),
@@ -493,7 +493,7 @@ test_cases = [
            9
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,3), (0,4),
       (1,2), (1,7),
       (2,3), (2,8),
@@ -515,7 +515,7 @@ test_cases = [
       2 --------  7
 """,
     n_vertices=10,
-    edges=[
+    edge_list=[
       (0,4), (0,9),
       (1,2), (1,6),
       (2,7), (2,8),
@@ -547,7 +547,7 @@ def exercise_tyr_with_h():
   #    simulation_tyr_with_h()
   tt = construct(
     n_vertices=21,
-    edges=[
+    edge_list=[
       (0, 1), (0, 2), (0, 12), (1, 3), (1, 6), (2, 4), (2, 7), (3, 5),
       (3, 8), (4, 5), (4, 9), (5, 10), (10, 11), (12, 13), (12, 14),
       (12, 16), (15, 16), (15, 20), (16, 17), (16, 18), (17, 19)])
@@ -596,7 +596,9 @@ def run(args):
           assert have == expected, "Note: --verbose for details"
       #
       tt = construct(
-        n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
+        n_vertices=tc.n_vertices,
+        edge_list=tc.edge_list,
+        size_max=loop_size_max)
       cm = tt.cluster_manager
       assert_same("c1:", cm.clusters, tc_c1)
       cm.construct_spanning_trees(edge_sets=tt.edge_sets)
@@ -609,7 +611,9 @@ def run(args):
       assert_same("leb1:", cm.loop_edge_bendings, tc_leb1)
       #
       tt = construct(
-        n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
+        n_vertices=tc.n_vertices,
+        edge_list=tc.edge_list,
+        size_max=loop_size_max)
       cm = tt.cluster_manager
       cm.merge_lones(edge_sets=tt.edge_sets)
       cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
