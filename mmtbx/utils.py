@@ -28,7 +28,7 @@ from iotbx import mtz
 from scitbx.python_utils.misc import user_plus_sys_time, show_total_time
 from libtbx.str_utils import show_string
 from libtbx import adopt_init_args
-import random, sys, os
+import random, sys, os, time
 from libtbx.test_utils import approx_equal
 from mmtbx.refinement import print_statistics
 import libtbx.load_env
@@ -1296,3 +1296,154 @@ def fmodel_simple(xray_structures, f_obs, r_free_flags, target_name = "ml",
         fmodel_result.update_solvent_and_scale(params = bss_params, verbose = -1)
     fmodel = fmodel_result
   return fmodel
+
+class process_command_line_args(object):
+  def __init__(self, args, master_params=None, log=None, home_scope=None):
+    self.log = log
+    self.pdb_file_names   = []
+    self.cif_objects      = []
+    self.reflection_files = []
+    self.params           = None
+    self.crystal_symmetry = None
+    crystal_symmetries = []
+    if(master_params is not None):
+      assert home_scope is None
+      parameter_interpreter = libtbx.phil.command_line.argument_interpreter(
+        master_phil = master_params,
+        home_scope  = home_scope)
+    parsed_params = []
+    command_line_params = []
+    for arg in args:
+      arg_is_processed = False
+      if(os.path.isfile(arg)):
+        params = None
+        try: params = iotbx.phil.parse(file_name=arg)
+        except KeyboardInterrupt: raise
+        except RuntimeError: pass
+        else:
+          if(len(params.objects) == 0):
+            params = None
+        if(params is not None):
+          parsed_params.append(params)
+          arg_is_processed = True
+        elif(pdb.is_pdb_file(file_name=arg)):
+          self.pdb_file_names.append(arg)
+          arg_is_processed = True
+          try:
+            crystal_symmetries.append(
+              crystal_symmetry_from_any.extract_from(arg))
+          except KeyboardInterrupt: raise
+          except RuntimeError: pass
+        else:
+          try:
+            cif_object = mmtbx.monomer_library.server.read_cif(file_name = arg)
+          except KeyboardInterrupt: raise
+          except: pass
+          else:
+            if(len(cif_object) > 0):
+              self.cif_objects.append((arg, cif_object))
+              arg_is_processed = True
+      if(not arg_is_processed):
+        reflection_file = reflection_file_reader.any_reflection_file(
+          file_name = arg, ensure_read_access = False)
+        if(reflection_file.file_type() is not None):
+          self.reflection_files.append(reflection_file)
+          arg_is_processed = True
+          try:
+            crystal_symmetries.append(
+              crystal_symmetry_from_any.extract_from(arg))
+          except KeyboardInterrupt: raise
+          except RuntimeError: pass
+      if(not arg_is_processed and master_params is not None):
+        try:
+          params = parameter_interpreter.process(arg = arg)
+        except Sorry, e:
+          if(not os.path.isfile(arg)):
+            if("=" in arg): raise
+            e.reset_tracebacklimit()
+            raise Sorry("File not found: %s" % show_string(arg))
+          e.reset_tracebacklimit()
+          raise Sorry("Unknown file format: %s" % arg)
+        else:
+          command_line_params.append(params)
+    if(master_params is not None):
+      self.params, unused_definitions = master_params.fetch(
+        sources=parsed_params+command_line_params,
+        track_unused_definitions=True)
+      if(len(unused_definitions)):
+        print >> self.log, "Unused parameter definitions:"
+        for obj_loc in unused_definitions:
+          print >> self.log, " ", str(obj_loc)
+        print >> self.log, "*"*79
+        print >> self.log
+        raise Sorry("Unused parameter definitions.")
+    else:
+      assert len(command_line_params) == 0
+    if(len(crystal_symmetries)>1):
+      cs0 = None
+      for cs in crystal_symmetries:
+        if(cs is not None):
+          cs0 = cs
+          break
+      if(cs0 is not None):
+        for cs in crystal_symmetries:
+         if(cs is not None):
+           if(not cs0.is_similar_symmetry(cs)):
+             raise Sorry("Crystal symmetry mismatch between different files.")
+        self.crystal_symmetry = cs0
+    elif(len(crystal_symmetries) == 1):
+      self.crystal_symmetry = crystal_symmetries[0]
+
+class pdb_file(object):
+  def __init__(self, pdb_file_names, cryst1=None, cif_objects=[], log=None,
+                     use_elbow = False):
+    if(log is None): log = sys.stdout
+    pdb_combined = combine_unique_pdb_files(file_names = pdb_file_names)
+    pdb_combined.report_non_unique(out = log)
+    if(len(pdb_combined.unique_file_names) == 0):
+      raise Sorry("No coordinate file given.")
+    self.pdb_raw_records = pdb_combined.raw_records
+    if(cryst1 is not None):
+      for rec in self.pdb_raw_records:
+        if(rec.startswith("CRYST1 ")): self.pdb_raw_records.remove(rec)
+      self.pdb_raw_records.append(cryst1)
+    # XXX do not write a file
+    if(len(cif_objects) == 0 and use_elbow):
+      t = time.ctime().split() # to make it safe to remove files
+      time_stamp = "_"+t[4]+"_"+t[1].upper()+"_"+t[2]+"_"+t[3][:-3].replace(":","h")
+      prefix = os.path.basename(pdb_file_names[0])
+      from elbow.scripts import elbow_on_pdb_file
+      from elbow.command_line import join_cif_files
+      if len(sys.argv)>1: del sys.argv[1:]
+      rc = elbow_on_pdb_file.run("\n".join(self.pdb_raw_records),
+                                 silent=True,
+                                 )
+      cif_file = prefix+time_stamp+".cif"
+      if rc is not None:
+        hierarchy, cifs = rc
+        if cifs:
+          cif_lines = []
+          for key in cifs:
+            lines = cifs[key]
+            if lines:
+              cif_lines.append(lines)
+          rc = join_cif_files.run(cif_lines, cif_file, no_file_access=True)
+          if rc:
+            f=file(cif_file, "wb")
+            f.write(rc)
+            f.close()
+      if(os.path.isfile(cif_file)):
+        cif_objects.append((cif_file,
+          mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
+    # XXX
+    pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
+    pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
+    pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
+    pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
+    self.processed_pdb_files_srv = process_pdb_file_srv(
+      cif_objects               = cif_objects,
+      pdb_interpretation_params = pdb_ip,
+      log                       = StringIO())
+    self.processed_pdb_file, self.pdb_inp = \
+      self.processed_pdb_files_srv.process_pdb_files(raw_records =
+        self.pdb_raw_records)

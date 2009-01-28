@@ -49,8 +49,8 @@ def exercise():
   assert mol.number_of_ordered_solvent_molecules() == 0
   mol.write_pdb_file(out = open("test_model_out_nosolvent.pdb","w"))
   mol.write_pdb_file(out = open("test_model_out_noO.pdb","w"))
-  mol.show_geometry_statistics()
-  mol.show_geometry_statistics()
+  mol.show_geometry_statistics(ignore_hd = True)
+  mol.show_geometry_statistics(ignore_hd = True)
 
 ################
   geometry = processed_pdb_file.geometry_restraints_manager(
@@ -67,9 +67,9 @@ def exercise():
   mol_other.xray_structure.scattering_type_registry(table = "wk1995")
 ################
 
-  mol_other.show_geometry_statistics()
+  mol_other.show_geometry_statistics(ignore_hd = True)
   print
-  mol.show_geometry_statistics()
+  mol.show_geometry_statistics(ignore_hd = True)
 
 #####
   class iso: pass
@@ -178,10 +178,36 @@ def exercise_3():
   assert out.getvalue().splitlines()[1] == \
   "X-H deviation from ideal after  regularization (bond): mean= 0.000 max= 0.002"
 
+def exercise_4():
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/lysozyme_noH.pdb",
+    test=os.path.isfile)
+  processed_pdb_files_srv = utils.process_pdb_file_srv()
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  #
+  geometry = processed_pdb_file.geometry_restraints_manager(
+                                                    show_energies      = False,
+                                                    plain_pairs_radius = 5.0)
+  restraints_manager = mmtbx.restraints.manager(geometry      = geometry,
+                                                normalization = False)
+  xray_structure = processed_pdb_file.xray_structure()
+  out = StringIO()
+  mol = mmtbx.model.manager(
+    restraints_manager = restraints_manager,
+    xray_structure = xray_structure,
+    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy,
+    log = out)
+  #
+  result = mol.isolated_atoms_selection()
+  solvent_sel = mol.solvent_selection()
+  assert solvent_sel.count(True)+1 == result.count(True)
+
 def run():
   exercise()
   exercise_2()
   exercise_3()
+  exercise_4()
   print format_cpu_times()
 
 if (__name__ == "__main__"):

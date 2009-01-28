@@ -14,6 +14,8 @@ class geometry(object):
   def __init__(self,
                sites_cart,
                restraints_manager,
+               hd_selection,
+               ignore_hd = True,
                n_histogram_slots = 10):
     zero = [0, 0, 0, 0, 0]
     self.a_target, self.a_mean, self.a_max, self.a_min, self.a_number = zero
@@ -24,6 +26,9 @@ class geometry(object):
     self.n_target, self.n_mean, self.n_max, self.n_min, self.n_number = zero
     self.target = 0.0
     self.number_of_restraints = 0.0
+    if(ignore_hd and hd_selection.count(True) > 0):
+      restraints_manager = restraints_manager.select(selection = ~hd_selection)
+      sites_cart = sites_cart.select(~hd_selection)
     energies_sites = \
       restraints_manager.energies_sites(sites_cart        = sites_cart,
                                         compute_gradients = True)
@@ -387,11 +392,15 @@ class adp(object):
     out.flush()
 
 class model(object):
-  def __init__(self, model):
+  def __init__(self, model, ignore_hd):
     sites_cart = model.xray_structure.sites_cart()
+    hd_selection = model.xray_structure.hd_selection()
     if(model.use_ias):
       sites_cart = sites_cart.select(~model.ias_selection)
+      hd_selection = hd_selection.select(~model.ias_selection)
     self.geometry = geometry(sites_cart         = sites_cart,
+                             ignore_hd          = ignore_hd,
+                             hd_selection       = hd_selection,
                              restraints_manager = model.restraints_manager)
     self.content = model_content(model)
     self.adp = adp(model)
@@ -472,9 +481,11 @@ class info(object):
   def __init__(self, model,
                      fmodel_x          = None,
                      fmodel_n          = None,
-                     refinement_params = None):
+                     refinement_params = None,
+                     ignore_hd         = True):
     ref_par = refinement_params
-    self.model = mmtbx.model_statistics.model(model = model)
+    self.model = mmtbx.model_statistics.model(model = model,
+      ignore_hd = ignore_hd)
     self.data_x, self.data_n = None, None
     if(fmodel_x is not None):
       self.data_x = fmodel_x.info(
