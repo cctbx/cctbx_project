@@ -53,26 +53,16 @@ class cluster_manager(object):
         break
     O.refresh_indices()
 
-  def cluster_edge_sets(O, edges):
-    result = []
-    for i in xrange(len(O.clusters)):
-      result.append(set())
-    ci = O.cluster_indices
-    for i,j in edges:
-      cii = ci[i]
-      cij = ci[j]
-      if (cii == cij): continue
-      result[cii].add(cij)
-      result[cij].add(cii)
-    return result
-
-  def merge_lones(O, edges):
+  def merge_lones(O, edge_sets):
     assert O.parent_edges is None
-    for cii,es in enumerate(O.cluster_edge_sets(edges=edges)):
-      if (len(es) != 1): continue
+    for cii in xrange(len(O.clusters)):
       ccii = O.clusters[cii]
       if (len(ccii) != 1): continue
-      cij = iter(es).next()
+      i = ccii[0]
+      es = edge_sets[i]
+      if (len(es) != 1): continue
+      j = iter(es).next()
+      cij = O.cluster_indices[j]
       O.clusters[cij].extend(ccii)
       del ccii[:]
     O.tidy()
