@@ -1,11 +1,13 @@
 import re
 import operator
 import string
+import os.path
 
 # Wrap lines that are longer than 'width'
 def wrap(text, width):
 
   return re.findall( "[^\n]{1,%d}" % width, text )
+
 
 # Sequence formats
 class sequence(object):
@@ -29,6 +31,11 @@ class sequence(object):
   def __ne__(self, other): # for Python 2.2 compatibility
 
     return not self.__eq__(other)
+
+
+  def __len__(self):
+
+    return len( self.sequence )
 
 
 class fasta_sequence(sequence):
@@ -159,6 +166,37 @@ class alignment(object):
     return midline().compare( self.alignments, self.gap )
 
 
+class fasta_alignment(alignment):
+  """
+  Fasta alignment
+  """
+
+  def __init__(self, alignments, names, descriptions, gap = "-"):
+
+    # The number of names, types and description should be equal
+    if len( names ) != len( descriptions ):
+      raise ValueError, (
+        "Inconsistent 'alignments' and 'descriptions' attributes"
+        )
+
+    super( fasta_alignment, self ).__init__( alignments, names, gap )
+    self.descriptions = descriptions
+
+
+  def format(self, width):
+
+    return "\n\n".join( [
+      fasta_sequence( sequence, name, description ).format( width )
+      for ( sequence, name, description )
+      in zip( self.alignments, self.names, self.descriptions )
+      ] )
+
+  
+  def __str__(self):
+
+    return self.format( 70 )
+
+
 class pir_alignment(alignment):
   """
   Pir alignment
@@ -186,7 +224,7 @@ class pir_alignment(alignment):
       in zip( self.alignments, self.names, self.types, self.descriptions )
       ] )
 
-
+  
   def __str__(self):
 
     return self.format( 70 )
@@ -304,7 +342,7 @@ class generic_sequence_parser(object):
 
     return self.parse( text )
 
-
+# Sequence parser instances that can be used as functions
 seq_sequence_parse = generic_sequence_parser(
   regex = re.compile(
     r"""
@@ -320,32 +358,50 @@ seq_sequence_parse = generic_sequence_parser(
 
 fasta_sequence_parse = generic_sequence_parser(
   regex = re.compile(
-      r"""
-      ^ >
-      (?P<name> \S+ ) \s+
-      (?P<description> [^\n]* ) \n
-      (?P<sequence> [^>]* )
-      \s*
-      """,
-      re.MULTILINE | re.VERBOSE
-      ),
+    r"""
+    ^ >
+    (?P<name> \S+ ) \s+
+    (?P<description> [^\n]* ) \n
+    (?P<sequence> [^>]* )
+    \s*
+    """,
+    re.MULTILINE | re.VERBOSE
+    ),
   type = fasta_sequence
   )
 
 pir_sequence_parse = generic_sequence_parser(
   regex = re.compile(
-      r"""
-      ^ >
-      (?P<type> [PFDRN][13LC] ) ;
-      (?P<name> \S+ ) \n
-      (?P<description> [^\n]* ) \n
-      (?P<sequence> [^>]* )
-      \* \s*
-      """,
-      re.MULTILINE | re.VERBOSE
-      ),
+    r"""
+    ^ >
+    (?P<type> [PFDRN][13LC] ) ;
+    (?P<name> \S+ ) \n
+    (?P<description> [^\n]* ) \n
+    (?P<sequence> [^>]* )
+    \* \s*
+    """,
+    re.MULTILINE | re.VERBOSE
+    ),
   type = pir_sequence
   )
+
+
+_implemented_sequence_parsers = {
+  ".fasta": fasta_sequence_parse,
+  ".pir": pir_sequence_parse,
+  ".seq": seq_sequence_parse,
+  }
+
+def sequence_parser_for(file_name):
+  
+  ( name, extension ) = os.path.splitext( file_name )
+  
+  return _implemented_sequence_parsers.get( extension )
+  
+
+def known_sequence_formats():
+
+  return _implemented_sequence_parsers.keys()
 
 
 # Alignment file parsers
@@ -354,6 +410,11 @@ class generic_alignment_parser(object):
   General purpose alignment parser
   """
 
+  def fail(self, text):
+    
+    return ( None, text )
+
+  
   def valid_alignments(self, alignments):
 
     for line2 in alignments[1:]:
@@ -362,14 +423,28 @@ class generic_alignment_parser(object):
     return True
 
 
-  def fail(self, text):
-
-    return ( None, text )
-
-
   def extract(self, text):
 
-    return [ match.groupdict() for match in self.data.finditer( text ) ]
+    return [ match.groupdict() for match in self.regex.finditer( text ) ]
+
+
+  def assess_parsing_results(self, data_dict, text):
+
+    assert "alignments" in data_dict and "names" in data_dict
+
+    # Remove whitespace from alignments
+    alignments = [
+      "".join( [ char for char in ali_str if not char.isspace() ] )
+      for ali_str in data_dict[ "alignments" ]
+      ]
+
+    if not self.valid_alignments( alignments ):
+      return ( None, text )
+
+    data_dict[ "alignments" ] = alignments
+
+    # Create alignment object
+    return ( self.type( **data_dict ), "" )
 
 
   def __call__(self, text):
@@ -377,15 +452,42 @@ class generic_alignment_parser(object):
     return self.parse( text )
 
 
+class sequential_alignment_parser(generic_alignment_parser):
+  """
+  Specific for sequential format alignments
+  """
+  
+  def __init__(self, regex, type):
+
+    self.regex = regex
+    self.type = type
+  
+
+  def parse(self, text):
+
+    data = self.extract( text )
+    
+    if text and not data:
+      return self.fail( text )
+
+    preprocessed_data = dict( [ ( name, [ info[ name ] for info in data ] )
+      for name in self.regex.groupindex.keys() ] )
+    
+    return self.assess_parsing_results(
+      data_dict = preprocessed_data,
+      text = text
+      )
+
+
 class clustal_alignment_parser(generic_alignment_parser):
   """
   Specific for Clustal alignments
   """
 
-  data = re.compile(
+  regex = re.compile(
     r"""
     ^
-    (?P<name> \w+ ) \s+
+    (?P<name> [\w\|]+ ) \s+
     (?P<alignment> [A-Z\-]* )
     (?P<number> \s+ \d+ )? \s* \n
     """,
@@ -438,51 +540,64 @@ class clustal_alignment_parser(generic_alignment_parser):
       ""
       )
 
+
+# Alignment parser instances that can be used as functions 
 clustal_alignment_parse = clustal_alignment_parser()
-
-
-class pir_alignment_parser(generic_alignment_parser):
-  """
-  Specific for pir-format alignments
-  """
-
-  data = re.compile(
+pir_alignment_parse = sequential_alignment_parser(
+  regex = re.compile(
     r"""
     ^ >
-    (?P<type> [PFDRN][13LC] ) ;
-    (?P<name> \S+ ) \n
-    (?P<description> [^\n]* ) \n
-    (?P<alignment> [^>]* )
+    (?P<types> [PFDRN][13LC] ) ;
+    (?P<names> \S+ ) \n
+    (?P<descriptions> [^\n]* ) \n
+    (?P<alignments> [^>]* )
     \* \s*
     """,
     re.MULTILINE | re.VERBOSE
-    )
+    ),
+  type = pir_alignment
+  )
+fasta_alignment_parse = sequential_alignment_parser(
+  regex = re.compile(
+    r"""
+    ^ >
+    (?P<names> \S+ ) \s+
+    (?P<descriptions> [^\n]* ) \n
+    (?P<alignments> [^>]* )
+    \s*
+    """,
+    re.MULTILINE | re.VERBOSE
+    ),
+  type = fasta_alignment
+  )
+ali_alignment_parse = sequential_alignment_parser(
+  regex = re.compile(
+    r"""
+    ^ > \s*
+    (?P<names> [^\n]* ) \n
+    (?P<alignments> [^>^*]* )
+    \*?\s*
+    """,
+    re.MULTILINE | re.VERBOSE
+    ),
+  type = alignment
+  )
 
-  def parse(self, text):
+_implemented_alignment_parsers = {
+  ".pir": pir_alignment_parse,
+  ".aln": clustal_alignment_parse,
+  ".clustal": clustal_alignment_parse,
+  ".fasta": fasta_alignment_parse,
+  ".ali": ali_alignment_parse,
+  }
 
-    data = self.extract( text )
+def alignment_parser_for(file_name):
+  
+  ( name, extension ) = os.path.splitext( file_name )
+  
+  return _implemented_alignment_parsers.get( extension )
 
-    if text and not data:
-      return self.fail( text )
 
-    # Check that alignments match
-    alignments = [
-      "".join( [ char for char in info[ "alignment" ] if not char.isspace() ] )
-      for info in data
-      ]
+def known_alignment_formats():
 
-    if not self.valid_alignments( alignments ):
-      return self.fail( text )
-
-    # Create alignment object
-    return (
-      pir_alignment(
-        names = [ info[ "name" ] for info in data ],
-        alignments = alignments,
-        types = [ info[ "type" ] for info in data ],
-        descriptions = [ info[ "description" ] for info in data ]
-        ),
-      ""
-      )
-
-pir_alignment_parse = pir_alignment_parser()
+  return _implemented_alignment_parsers.keys()
