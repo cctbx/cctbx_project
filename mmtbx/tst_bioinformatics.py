@@ -271,18 +271,80 @@ class test_alignment(unittest.TestCase):
       )
     self.assertEqual( alignment3.identity_count(), 0 )
 
+  
+class test_fasta_alignment(unittest.TestCase):
+
+  def setUp(self):
+
+    self.alignment = bioinformatics.fasta_alignment(
+      alignments = [ ali_1hml, ali_1hfy, ali_1ghl, ali_1lz3 ],
+      names = [ "1hml", "1hfya", "1ghla", "1lz3" ],
+      descriptions = [
+        "alpha lactalbumin:Homo sapiens",
+        "alpha-lactalbumin:Capra hircus",
+        "lysozyme:Phasianus colchicus",
+        "lysozyme:Meleagris gallopavo",
+        ]
+      )
+
+  def testError(self):
+
+    self.assertRaises(
+      ValueError,
+      bioinformatics.fasta_alignment,
+      [ ali_1hml, ali_1hml ],
+      [ "1hml", "1hfy" ],
+      [
+        "alpha lactalbumin:Homo sapiens",
+        "alpha-lactalbumin:Capra hircus",
+        "lysozyme:Phasianus colchicus",
+        ]
+      )
+
+
+  def testFormat(self):
+
+    self.assertEqual(
+      self.alignment.format( 40 ),
+      ">1hml alpha lactalbumin:Homo sapiens\n"
+      + "-KQFTKCELSQLLK--DIDGYGGIALPELICTMFHTSGYD\n"
+      + "TQAIVENN--ESTEYGLFQISNKLWCKSSQVPQSR\n\n"
+      + ">1hfya alpha-lactalbumin:Capra hircus\n"
+      + "-EQLTKCEVFQKLK--DLKDYGGVSLPEWVCTAFHTSGYD\n"
+      + "TQAIVQNN--DSTEYGLFQINNKIWCKDDQNPHSR\n\n"
+      + ">1ghla lysozyme:Phasianus colchicus\n"
+      + "GKVYGRCELAAAMKRMGLDNYRGYSLGNWVCAAKFESNFN\n"
+      + "TGATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK\n\n"
+      + ">1lz3 lysozyme:Meleagris gallopavo\n"
+      + "-KVYGRCELAAAMKRLGLDNYRGYSLGNWVCAAKFESNFD\n"
+      + "THATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK"
+      )
+
+  
+  def testStr(self):
+    self.assertEqual(
+      str( self.alignment ),
+      ">1hml alpha lactalbumin:Homo sapiens\n"
+      + "-KQFTKCELSQLLK--DIDGYGGIALPELICTMFHTSGYDTQAIVENN--ESTEYGLFQISNKLWCKSSQ\n"
+      + "VPQSR\n\n"
+      + ">1hfya alpha-lactalbumin:Capra hircus\n"
+      + "-EQLTKCEVFQKLK--DLKDYGGVSLPEWVCTAFHTSGYDTQAIVQNN--DSTEYGLFQINNKIWCKDDQ\n"
+      + "NPHSR\n\n"
+      + ">1ghla lysozyme:Phasianus colchicus\n"
+      + "GKVYGRCELAAAMKRMGLDNYRGYSLGNWVCAAKFESNFNTGATNRNT-DGSTDYGILQINSRWWCNDGR\n"
+      + "TPGSK\n\n"
+      + ">1lz3 lysozyme:Meleagris gallopavo\n"
+      + "-KVYGRCELAAAMKRLGLDNYRGYSLGNWVCAAKFESNFDTHATNRNT-DGSTDYGILQINSRWWCNDGR\n"
+      + "TPGSK"
+      )
+
 
 class test_pir_alignment(unittest.TestCase):
 
   def setUp(self):
 
     self.alignment = bioinformatics.pir_alignment(
-      alignments = [
-        "-KQFTKCELSQLLK--DIDGYGGIALPELICTMFHTSGYDTQAIVENN--ESTEYGLFQISNKLWCKSSQVPQSR",
-        "-EQLTKCEVFQKLK--DLKDYGGVSLPEWVCTAFHTSGYDTQAIVQNN--DSTEYGLFQINNKIWCKDDQNPHSR",
-        "GKVYGRCELAAAMKRMGLDNYRGYSLGNWVCAAKFESNFNTGATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK",
-        "-KVYGRCELAAAMKRLGLDNYRGYSLGNWVCAAKFESNFDTHATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK",
-        ],
+      alignments = [ ali_1hml, ali_1hfy, ali_1ghl, ali_1lz3 ],
       names = [ "1hml", "1hfya", "1ghla", "1lz3" ],
       types = [ "P1" ] * 4,
       descriptions = [
@@ -338,7 +400,7 @@ class test_pir_alignment(unittest.TestCase):
       + "  FDTHATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK*"
       )
 
-
+  
   def testStr(self):
     self.assertEqual(
       str( self.alignment ),
@@ -362,12 +424,7 @@ class test_clustal_alignment(unittest.TestCase):
   def setUp(self):
 
     self.alignment = bioinformatics.clustal_alignment(
-      alignments = [
-        "-KQFTKCELSQLLK--DIDGYGGIALPELICTMFHTSGYDTQAIVENN--ESTEYGLFQISNKLWCKSSQVPQSR",
-        "-EQLTKCEVFQKLK--DLKDYGGVSLPEWVCTAFHTSGYDTQAIVQNN--DSTEYGLFQINNKIWCKDDQNPHSR",
-        "GKVYGRCELAAAMKRMGLDNYRGYSLGNWVCAAKFESNFNTGATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK",
-        "-KVYGRCELAAAMKRLGLDNYRGYSLGNWVCAAKFESNFDTHATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK",
-        ],
+      alignments = [ ali_1hml, ali_1hfy, ali_1ghl, ali_1lz3 ],
       names = [ "1hml", "1hfya", "1ghla", "1lz3" ],
       program = "X",
       version = "1.35"
@@ -549,6 +606,68 @@ LKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHP
 GDFGADAQGAMNKALELFRKDIAAKYKELGYQG*
 """
 
+fasta_ali1 = """
+>2QZU:A Putative sulfatase from B. fragilis
+QPTPNLVFIXADQYRGDAIGCIGKEPVKTPHLDKLASEGINFTNAISSYP
+VSSPARGXLXTGXYPIGSKVT-GNCNSETAPYGVELSQNARCWSDVLKDQ
+GYNXGYIGKWHLDAPYKPYVDTYNNRGKVAWNEWCP---PERRHGFDHWI
+AYGTYDY-----------------------------H-LKPXYWNTTAPR
+DSFYYVNQ-----------WGPEYEASKAIEYINGQKDQKQPFALVVSXN
+PPHTGYE--------------LVPDRYKEIYKDLDVEALCKGRPDIP---
+-------------------AKG----------------------TEXGDY
+FRNNIRNYYACITGVDENVGRIIEALKQNNLFDNTIVVFTSDHGICXG--
+---------------AHENAGKD-IFYEESXRIPXILSWPDQIKPRKSDP
+--LXIAFA-DLYPTLLSXXGFSKEIPETVQTFDLSNEVLTGKNKKD-LVQ
+PYYFVKF--------DNHA------------------TGYRGLRTDRYTY
+AVHAT-DGK------------------------IDNVILFDRTNDPHEXN
+NIASQ--QLKLTHTFNRQLKTWLEKTNDPF
+>3B5Q:B Putative sulfatase from B. thetaiotaomicron
+-EKPNFLIIQCDHLTQRVVGAYGQTQGCTLPIDEVASRGVIFSNAYVGCP
+LSQPSRAALWSGXXPHQTNVR-SNSS---EPVNTRLPENVPTLGSLFSES
+GYEAVHFGKTHDX---------------------------GSLRGFKHKE
+P-------------------------------------------------
+---VAKPFTDPEFPVNNDSFLDVGTCEDAVAYLSNP--PKEPFICIADFQ
+NPHNICGFIGENAGVHTDRPI----------SGPLPEL----PDNFDVED
+WSNIPTPVQYICCSHRRXT---QAA-------------------HWNEEN
+YRHYIAAFQHYTKXVSKQVDSVLKALYSTPAGRNTIVVIXADHGDGXA--
+---------------SHRXVTKHISFYDEXTNVPFIFAG-PGIKQQKKPV
+DHLLTQPTLDLLPTLCDLAGIA--VPAEKAGISLAPTLRGEKQKKSHPYV
+VSEWHSEYEYVT-------------------------TPGRXVRGPRYKY
+THYLE----------------------------GNGEELYDXKKDPGERK
+NLAKDPKYSKILAEHRALLDDYITRSKDDY
+"""
+
+ali_ali1 = """
+>2QZU:A
+QPTPNLVFIXADQYRGDAIGCIGKEPVKTPHLDKLASEGINFTNAISSYP
+VSSPARGXLXTGXYPIGSKVT-GNCNSETAPYGVELSQNARCWSDVLKDQ
+GYNXGYIGKWHLDAPYKPYVDTYNNRGKVAWNEWCP---PERRHGFDHWI
+AYGTYDY-----------------------------H-LKPXYWNTTAPR
+DSFYYVNQ-----------WGPEYEASKAIEYINGQKDQKQPFALVVSXN
+PPHTGYE--------------LVPDRYKEIYKDLDVEALCKGRPDIP---
+-------------------AKG----------------------TEXGDY
+FRNNIRNYYACITGVDENVGRIIEALKQNNLFDNTIVVFTSDHGICXG--
+---------------AHENAGKD-IFYEESXRIPXILSWPDQIKPRKSDP
+--LXIAFA-DLYPTLLSXXGFSKEIPETVQTFDLSNEVLTGKNKKD-LVQ
+PYYFVKF--------DNHA------------------TGYRGLRTDRYTY
+AVHAT-DGK------------------------IDNVILFDRTNDPHEXN
+NIASQ--QLKLTHTFNRQLKTWLEKTNDPF
+>3B5Q:B
+-EKPNFLIIQCDHLTQRVVGAYGQTQGCTLPIDEVASRGVIFSNAYVGCP
+LSQPSRAALWSGXXPHQTNVR-SNSS---EPVNTRLPENVPTLGSLFSES
+GYEAVHFGKTHDX---------------------------GSLRGFKHKE
+P-------------------------------------------------
+---VAKPFTDPEFPVNNDSFLDVGTCEDAVAYLSNP--PKEPFICIADFQ
+NPHNICGFIGENAGVHTDRPI----------SGPLPEL----PDNFDVED
+WSNIPTPVQYICCSHRRXT---QAA-------------------HWNEEN
+YRHYIAAFQHYTKXVSKQVDSVLKALYSTPAGRNTIVVIXADHGDGXA--
+---------------SHRXVTKHISFYDEXTNVPFIFAG-PGIKQQKKPV
+DHLLTQPTLDLLPTLCDLAGIA--VPAEKAGISLAPTLRGEKQKKSHPYV
+VSEWHSEYEYVT-------------------------TPGRXVRGPRYKY
+THYLE----------------------------GNGEELYDXKKDPGERK
+NLAKDPKYSKILAEHRALLDDYITRSKDDY
+"""
+
 class test_sequence_parse(unittest.TestCase):
 
   def testSequence(self):
@@ -681,6 +800,23 @@ class test_sequence_parse(unittest.TestCase):
       pirs[1].sequence,
       pir_sequence
       )
+    
+    
+  def test_filename_selection(self):
+    
+    self.assertEqual(
+      bioinformatics.sequence_parser_for( "dummy.pir" ),
+      bioinformatics.pir_sequence_parse
+      )
+    self.assertEqual( bioinformatics.sequence_parser_for( "seq" ), None )
+  
+  
+  def test_known_formats(self):
+    
+    self.assertEqual(
+      sorted( bioinformatics.known_sequence_formats() ),
+      [ ".fasta", ".pir", ".seq" ]
+      )
 
 
 class test_alignment_parse(unittest.TestCase):
@@ -779,6 +915,109 @@ class test_alignment_parse(unittest.TestCase):
     self.assertEqual( ali.types, [] )
     self.assertEqual( ali.descriptions, [] )
     self.assertEqual( ali.alignments, [] )
+    
+  
+  def testFasta(self):
+
+    ( ali, unknowns ) = bioinformatics.fasta_alignment_parse( fasta_ali1 )
+
+    self.assertEqual( unknowns, "" )
+
+    self.assertEqual( ali.names, [ "2QZU:A", "3B5Q:B" ] )
+    self.assertEqual(
+      ali.descriptions,
+      [
+        "Putative sulfatase from B. fragilis",
+        "Putative sulfatase from B. thetaiotaomicron",
+        ]
+      )
+    self.assertEqual(
+      ali.alignments,
+      [
+        "QPTPNLVFIXADQYRGDAIGCIGKEPVKTPHLDKLASEGINFTNAISSYP"
+        + "VSSPARGXLXTGXYPIGSKVT-GNCNSETAPYGVELSQNARCWSDVLKDQ"
+        + "GYNXGYIGKWHLDAPYKPYVDTYNNRGKVAWNEWCP---PERRHGFDHWI"
+        + "AYGTYDY-----------------------------H-LKPXYWNTTAPR"
+        + "DSFYYVNQ-----------WGPEYEASKAIEYINGQKDQKQPFALVVSXN"
+        + "PPHTGYE--------------LVPDRYKEIYKDLDVEALCKGRPDIP---"
+        + "-------------------AKG----------------------TEXGDY"
+        + "FRNNIRNYYACITGVDENVGRIIEALKQNNLFDNTIVVFTSDHGICXG--"
+        + "---------------AHENAGKD-IFYEESXRIPXILSWPDQIKPRKSDP"
+        + "--LXIAFA-DLYPTLLSXXGFSKEIPETVQTFDLSNEVLTGKNKKD-LVQ"
+        + "PYYFVKF--------DNHA------------------TGYRGLRTDRYTY"
+        + "AVHAT-DGK------------------------IDNVILFDRTNDPHEXN"
+        + "NIASQ--QLKLTHTFNRQLKTWLEKTNDPF",
+        "-EKPNFLIIQCDHLTQRVVGAYGQTQGCTLPIDEVASRGVIFSNAYVGCP"
+        + "LSQPSRAALWSGXXPHQTNVR-SNSS---EPVNTRLPENVPTLGSLFSES"
+        + "GYEAVHFGKTHDX---------------------------GSLRGFKHKE"
+        + "P-------------------------------------------------"
+        + "---VAKPFTDPEFPVNNDSFLDVGTCEDAVAYLSNP--PKEPFICIADFQ"
+        + "NPHNICGFIGENAGVHTDRPI----------SGPLPEL----PDNFDVED"
+        + "WSNIPTPVQYICCSHRRXT---QAA-------------------HWNEEN"
+        + "YRHYIAAFQHYTKXVSKQVDSVLKALYSTPAGRNTIVVIXADHGDGXA--"
+        + "---------------SHRXVTKHISFYDEXTNVPFIFAG-PGIKQQKKPV"
+        + "DHLLTQPTLDLLPTLCDLAGIA--VPAEKAGISLAPTLRGEKQKKSHPYV"
+        + "VSEWHSEYEYVT-------------------------TPGRXVRGPRYKY"
+        + "THYLE----------------------------GNGEELYDXKKDPGERK"
+        + "NLAKDPKYSKILAEHRALLDDYITRSKDDY",
+        ]
+      )
+
+  
+  def testAli(self):
+
+    ( ali, unknowns ) = bioinformatics.ali_alignment_parse( ali_ali1 )
+
+    self.assertEqual( unknowns, "" )
+
+    self.assertEqual( ali.names, [ "2QZU:A", "3B5Q:B" ] )
+    self.assertEqual(
+      ali.alignments,
+      [
+        "QPTPNLVFIXADQYRGDAIGCIGKEPVKTPHLDKLASEGINFTNAISSYP"
+        + "VSSPARGXLXTGXYPIGSKVT-GNCNSETAPYGVELSQNARCWSDVLKDQ"
+        + "GYNXGYIGKWHLDAPYKPYVDTYNNRGKVAWNEWCP---PERRHGFDHWI"
+        + "AYGTYDY-----------------------------H-LKPXYWNTTAPR"
+        + "DSFYYVNQ-----------WGPEYEASKAIEYINGQKDQKQPFALVVSXN"
+        + "PPHTGYE--------------LVPDRYKEIYKDLDVEALCKGRPDIP---"
+        + "-------------------AKG----------------------TEXGDY"
+        + "FRNNIRNYYACITGVDENVGRIIEALKQNNLFDNTIVVFTSDHGICXG--"
+        + "---------------AHENAGKD-IFYEESXRIPXILSWPDQIKPRKSDP"
+        + "--LXIAFA-DLYPTLLSXXGFSKEIPETVQTFDLSNEVLTGKNKKD-LVQ"
+        + "PYYFVKF--------DNHA------------------TGYRGLRTDRYTY"
+        + "AVHAT-DGK------------------------IDNVILFDRTNDPHEXN"
+        + "NIASQ--QLKLTHTFNRQLKTWLEKTNDPF",
+        "-EKPNFLIIQCDHLTQRVVGAYGQTQGCTLPIDEVASRGVIFSNAYVGCP"
+        + "LSQPSRAALWSGXXPHQTNVR-SNSS---EPVNTRLPENVPTLGSLFSES"
+        + "GYEAVHFGKTHDX---------------------------GSLRGFKHKE"
+        + "P-------------------------------------------------"
+        + "---VAKPFTDPEFPVNNDSFLDVGTCEDAVAYLSNP--PKEPFICIADFQ"
+        + "NPHNICGFIGENAGVHTDRPI----------SGPLPEL----PDNFDVED"
+        + "WSNIPTPVQYICCSHRRXT---QAA-------------------HWNEEN"
+        + "YRHYIAAFQHYTKXVSKQVDSVLKALYSTPAGRNTIVVIXADHGDGXA--"
+        + "---------------SHRXVTKHISFYDEXTNVPFIFAG-PGIKQQKKPV"
+        + "DHLLTQPTLDLLPTLCDLAGIA--VPAEKAGISLAPTLRGEKQKKSHPYV"
+        + "VSEWHSEYEYVT-------------------------TPGRXVRGPRYKY"
+        + "THYLE----------------------------GNGEELYDXKKDPGERK"
+        + "NLAKDPKYSKILAEHRALLDDYITRSKDDY",
+        ]
+      )
+
+  def test_filename_selection(self):
+    
+    self.assertEqual(
+      bioinformatics.alignment_parser_for( "dummy.pir" ),
+      bioinformatics.pir_alignment_parse
+      )
+    self.assertEqual( bioinformatics.alignment_parser_for( "clustal" ), None )
+  
+  
+  def test_known_formats(self):
+    
+    self.assertEqual(
+      sorted( bioinformatics.known_alignment_formats() ),
+      [ ".ali", ".aln", ".clustal", ".fasta", ".pir" ]
+      )
 
 
 suite_sequence = unittest.TestLoader().loadTestsFromTestCase(
@@ -790,11 +1029,14 @@ suite_fasta_sequence = unittest.TestLoader().loadTestsFromTestCase(
 suite_pir_sequence = unittest.TestLoader().loadTestsFromTestCase(
   test_pir_sequence
   )
+suite_midline = unittest.TestLoader().loadTestsFromTestCase(
+  test_midline
+  )
 suite_alignment = unittest.TestLoader().loadTestsFromTestCase(
   test_alignment
   )
-suite_midline = unittest.TestLoader().loadTestsFromTestCase(
-  test_midline
+suite_fasta_alignment = unittest.TestLoader().loadTestsFromTestCase(
+  test_fasta_alignment
   )
 suite_pir_alignment = unittest.TestLoader().loadTestsFromTestCase(
   test_pir_alignment
@@ -816,6 +1058,7 @@ alltests = unittest.TestSuite(
     suite_pir_sequence,
     suite_midline,
     suite_alignment,
+    suite_fasta_alignment,
     suite_pir_alignment,
     suite_clustal_alignment,
     suite_sequence_parse,
