@@ -1,5 +1,7 @@
 from cctbx import crystal
 from cctbx import xray
+from cctbx import geometry_restraints
+import cctbx.geometry_restraints.manager
 
 from iotbx.shelx import util
 
@@ -65,4 +67,42 @@ class afixed_crystal_structure_builder(crystal_structure_builder):
     self.afixed.append((constraint_type, kwds))
 
   def finish(self):
-    pass
+    asu_mappings = self.structure.asu_mappings(buffer_thickness=2)
+    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
+    pair_asu_table.add_all_pairs(distance_cutoff=1.7)
+    pair_sym_table = pair_asu_table.extract_pair_sym_table()
+
+  
+class restrained_crystal_structure_builder(afixed_crystal_structure_builder):
+  def __init__(self, *args, **kwds):
+    super(restrained_crystal_structure_builder, self).__init__(*args, **kwds)
+    self.bond_sym_proxies = []
+    self.angle_proxies = geometry_restraints.shared_angle_proxy()
+    self.planarity_proxies = geometry_restraints.shared_planarity_proxy()
+    self.dihedral_proxies = geometry_restraints.shared_dihedral_proxy()
+
+  def add_restraint(self, restraint_type, kwds):
+    restraint=restraint_type(**kwds)
+    if 'bond_sym' in restraint_type.__name__:
+      self.bond_sym_proxies.append(restraint)
+    elif 'planarity' in restraint_type.__name__:
+      self.planarity_proxies.append(restraint)
+    elif 'angle' in restraint_type.__name__:
+      self.angle_proxies.append(restraint)
+    elif 'dihedral' in restraint_type.__name__:
+      self.shared_proxies[restraint_type].append(restraint)
+
+  def finish_restraints(self):
+    bond_params_table = geometry_restraints.bond_params_table(
+      self.structure.scatterers().size())
+    for proxy in self.bond_sym_proxies:
+      i_seq, j_seq = proxy.i_seqs
+      bond_params_table.update(
+        i_seq=i_seq,
+        j_seq=j_seq,
+        params=proxy)
+    self.geometry_restraints_manager = geometry_restraints.manager.manager(
+      bond_params_table=bond_params_table,
+      angle_proxies=self.angle_proxies,
+      planarity_proxies= self.planarity_proxies,
+      dihedral_proxies=self.dihedral_proxies)

@@ -6,6 +6,8 @@ from cctbx import xray
 from cctbx import eltbx
 from cctbx import adptbx
 
+from cctbx import geometry_restraints
+
 import scitbx.math
 
 from libtbx import forward_compatibility
@@ -124,6 +126,8 @@ class variable_decoder(util.behaviour_of_variable):
 class atom_parser(parser, variable_decoder):
   """ A parser pulling out the scatterer info from a command stream """
 
+  scatterer_label_to_index = {}
+  
   def filtered_commands(self):
     self.label_for_sfac = None
     scatterer_index = 0
@@ -160,6 +164,7 @@ class atom_parser(parser, variable_decoder):
 
   def lex_scatterer(self, args, scatterer_index):
     name = args[0]
+    self.scatterer_label_to_index.setdefault(name, scatterer_index)
     n = int(args[1])
     n_vars = len(args) - 2
     if n_vars == 5:
@@ -258,3 +263,84 @@ if smtbx is not None:
         else:
           yield command, line
       self.builder.finish()
+
+  class restraint_parser(atom_parser):
+    """ It must be after an atom parser """
+
+    shelx_restraints = {
+      'DFIX': {'class': geometry_restraints.bond_sym_proxy,
+               'kwds': ('i_seqs','distance_ideal','weight','rt_mx_ji')},
+      'DANG': {'class': geometry_restraints.bond_sym_proxy,
+               'kwds': ('i_seqs','distance_ideal','weight','rt_mx_ji')},
+      'FLAT': {'class': geometry_restraints.planarity_proxy,
+               'kwds': ('i_seqs','weights')},
+    }
+
+    cached_restraints = {}
+    symmetry_operations = {}
+
+    def filtered_commands(self):
+      for command, line in self.command_stream:
+        cmd, args = command[0], command[-1]
+        if cmd in self.shelx_restraints.keys():
+          self.cache_restraint(cmd, args)
+        elif cmd == 'EQIV':
+          self.symmetry_operations.setdefault(args[0], args[1])
+        else:
+          yield command, line
+      self.parse_restraints()
+      self.builder.finish_restraints()
+
+    def cache_restraint(self, cmd, args):
+      if cmd not in self.cached_restraints.keys():
+        self.cached_restraints.setdefault(cmd, [args])
+      else:
+        self.cached_restraints[cmd].append(args)
+
+    def parse_restraints(self):
+      for cmd, restraints in self.cached_restraints.items():
+        restraint_dict = self.shelx_restraints.get(cmd)
+        restraint_class = restraint_dict['class']
+        keys = restraint_dict['kwds']
+        for args in restraints:
+          if cmd in ('DFIX','DANG'):
+            div, mod = divmod(len(args), 2)
+            value = args[0]
+            if mod == 0:
+              esd = args[1]
+              atom_pairs = args[2:]
+            else:
+              esd = 0.02
+              atom_pairs = args[1:]
+            for i in range(div-1):
+              kwds = {}
+              atom_pair = atom_pairs[i*2:(i+1)*2]
+              atom_pair_indices = [self.scatterer_label_to_index[i[1]] for i in atom_pair]
+              kwds['i_seqs'] = tuple(atom_pair_indices)
+              sym_ops = [self.symmetry_operations.get(i[2]) for i in atom_pair]
+              if sym_ops.count(None) == 2:
+                rt_mx_ji = sgtbx.rt_mx() # unit matrix
+              elif sym_ops.count(None) == 1:
+                sym_op = sym_ops[0]
+                if sym_op is None:
+                  sym_op = sym_ops[1]
+                rt_mx_ji = sgtbx.rt_mx(sym_op)
+              else:
+                rt_mx_ji_1 = sgtbx.rt_mx(sym_ops[0])
+                rt_mx_ji_2 = sgtbx.rt_mx(sym_ops[1])
+                rt_mx_ji_inv = rt_mx_ji_1.inverse()
+                rt_mx_ji = rt_mx_ji_2.multiply(rt_mx_ji_inv)
+              kwds['rt_mx_ji'] = rt_mx_ji
+              kwds['distance_ideal'] = value
+              kwds['weight'] = 1/(esd*esd)
+              self.builder.add_restraint(restraint_class, kwds)
+          elif cmd == 'FLAT':
+            kwds = {}
+            assert len(args) > 4
+            esd = args[0]
+            atoms = args[1:]
+            kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atoms]
+            kwds['weights'] = [1/(esd*esd)]*len(atoms)
+            self.builder.add_restraint(restraint_class, kwds)
+          else:
+            pass
