@@ -484,6 +484,23 @@ namespace {
 #endif
     )
   {
+  /* Background information:
+      gcc on x86-64 (all platforms) [2],
+      Apple gcc on Intel macs [1]:
+        floating-point math is done on vector unit (SSE2) by default
+
+      gcc on i386 (all platform except Apple) [2]:
+        floating-point math is done on scalar unit (i387)
+
+      Linux:
+        feenableexcept enables/disables FP exception trapping for i387 and SSE2
+      All Intel platform:
+        _MM_SET_EXCEPTION_MASK from xmmintrin.h enables/disables exception
+        trapping for SSE2
+
+      [1] http://developer.apple.com/documentation/performance/Conceptual/Accelerate_sse_migration/migration_sse_translation/chapter_4_section_2.html
+      [2] GCC documentation
+  */
 #if defined(__linux)
     int flags = 0;
 #if defined(FE_DIVBYZERO)
@@ -497,11 +514,6 @@ namespace {
 #endif
     if (flags != 0) feenableexcept(flags);
 #elif defined(__APPLE_CC__) && defined(__SSE2__)
-    /** All FP math is done by SSE units om MacOS X. C.f.
-        http://developer.apple.com/documentation/performance/Conceptual/Accelerate_sse_migration/migration_sse_translation/chapter_4_section_2.html
-        So we need to use the macros defined in xmmintrin.h to unmask those FP
-        exceptions we wish to catch.
-    **/
     unsigned int mask = _MM_MASK_INEXACT | _MM_MASK_UNDERFLOW | _MM_MASK_DENORM;
     if (!divbyzero) mask |= _MM_MASK_DIV_ZERO;
     if (!invalid) mask |= _MM_MASK_INVALID;
