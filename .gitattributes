@@ -252,6 +252,7 @@ mmtbx/command_line/model_vs_data.py -text
 mmtbx/command_line/pdb_atom_selection.py svneol=native#text/x-python
 mmtbx/command_line/pdbtools.py -text
 mmtbx/command_line/real_space_correlation.py -text
+mmtbx/command_line/tls.py -text
 mmtbx/command_line/xmanip.py -text
 mmtbx/find_peaks.py -text
 mmtbx/grow_density.py -text
@@ -285,6 +286,7 @@ mmtbx/rotamer/sidechain_angles.props -text
 mmtbx/rotamer/sidechain_angles.py -text
 mmtbx/scaling/absence_likelihood.py -text
 mmtbx/scaling/absences.py -text
+mmtbx/tls/command_line.py -text
 mmtbx/tst_alignment.py -text
 mmtbx/tst_bioinformatics.py -text
 mmtbx/tst_pdbtools.py -text

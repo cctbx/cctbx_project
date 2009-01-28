@@ -27,21 +27,22 @@ def uaniso_from_tls_and_back():
                                                               string = string))
   input_tls_data = iotbx.pdb.remark_3_interpretation.extract_tls_parameters(
     remark_3_records=processed_pdb_file.all_chain_proxies.pdb_inp
-      .extract_remark_iii_records(iii=3))
+      .extract_remark_iii_records(iii=3),
+    chain_ids=[])
   tls_params = []
   for item in input_tls_data:
-      tls_params.append(tools.tlso(t      = item.T,
-                                   l      = item.L,
-                                   s      = item.S,
+      tls_params.append(tools.tlso(t      = item.t,
+                                   l      = item.l,
+                                   s      = item.s,
                                    origin = item.origin))
   tools.show_tls(tlsos = tls_params)
-  uanisos_from_tls = tools.uanisos_from_tls(
+  u_cart_from_tls = tools.u_cart_from_tls(
                         sites_cart = xray_structure.sites_cart(),
                         selections = selections,
                         tlsos      = tls_params)
 
   i = 0
-  for utls,atom in zip(uanisos_from_tls,
+  for utls,atom in zip(u_cart_from_tls,
                        processed_pdb_file.all_chain_proxies.pdb_atoms):
     updb = atom.uij
     #i += 1

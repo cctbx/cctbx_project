@@ -92,7 +92,7 @@ def exercise_2(eps = 1.e-6):
                   eps                                         = eps,
                   number_of_macro_cycles_for_tls_from_uanisos = 30)
 
-  u_cart_answer = tools.uanisos_from_tls(sites_cart = xray_structure.sites_cart(),
+  u_cart_answer = tools.u_cart_from_tls(sites_cart = xray_structure.sites_cart(),
                                          selections = selections,
                                          tlsos      = tlsos)
   xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(),
