@@ -49,7 +49,7 @@
 #define BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC-VERSION_H
 #endif
 
-#if defined(__APPLE_CC__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(__APPLE_CC__) && defined(__SSE2__)
 #include <xmmintrin.h>
 #endif
 
@@ -493,7 +493,7 @@ namespace {
     if (overflow) flags |= FE_OVERFLOW;
 #endif
     if (flags != 0) feenableexcept(flags);
-#elif defined(__APPLE_CC__) && (defined(__i386__) || defined(__x86_64__))
+#elif defined(__APPLE_CC__) && defined(__SSE2__)
     /** All FP math is done by SSE units om MacOS X. C.f.
         http://developer.apple.com/documentation/performance/Conceptual/Accelerate_sse_migration/migration_sse_translation/chapter_4_section_2.html
         So we need to use the macros defined in xmmintrin.h to unmask those FP
