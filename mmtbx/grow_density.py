@@ -233,7 +233,7 @@ def run(args,
   processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
     pdb_file_name = pdb_file_name,
     cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
-    show_geometry_statistics = show_geometry_statistics)
+    show_geometry_statistics = False)
   #
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
