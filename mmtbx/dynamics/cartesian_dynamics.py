@@ -73,7 +73,7 @@ class cartesian_dynamics(object):
                fmodel                           = None,
                xray_target_weight               = None,
                chem_target_weight               = None,
-               shift_update                     = None,
+               shift_update                     = 0.0,
                xray_structure_last_updated      = None,
                xray_gradient                    = None,
                reset_velocities                 = True,
@@ -187,13 +187,18 @@ class cartesian_dynamics(object):
                                compute_gradients = True)
     chem_grads = obj.gradients
     gradient = chem_grads
-    if(self.fmodel is not None):
+    d_max = None
+    if(self.xray_structure_last_updated is not None and self.shift_update > 0):
       array_of_distances_between_each_atom = \
         flex.sqrt(self.structure.difference_vectors_cart(
            self.xray_structure_last_updated).dot())
       d_max = flex.max(array_of_distances_between_each_atom)
-      if(d_max > self.shift_update):
-        self.xray_structure_last_updated = self.structure.deep_copy_scatterers()
+    if(self.fmodel is not None):
+      if(d_max is not None):
+        if(d_max > self.shift_update):
+          self.xray_structure_last_updated = self.structure.deep_copy_scatterers()
+          self.xray_gradient = self.xray_grads()
+      else:
         self.xray_gradient = self.xray_grads()
       gradient = self.xray_gradient * self.xray_target_weight + \
                  chem_grads * self.chem_target_weight
