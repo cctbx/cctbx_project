@@ -10,8 +10,15 @@ from cctbx import adptbx
 from cctbx import xray
 from libtbx.utils import user_plus_sys_time
 from libtbx.str_utils import line_breaker
+from iotbx.option_parser import iotbx_option_parser
 
-time_uanisos_from_tls                              = 0.0
+class tls_group(object):
+  def __init__(self, tlso, selection_string = None, selection_array = None):
+    self.tlso = tlso
+    self.selection_string = selection_string
+    self.selection_array = selection_array
+
+time_u_cart_from_tls                              = 0.0
 time_tls_from_uanisos                              = 0.0
 time_update_xray_structure_with_tls                = 0.0
 time_split_u                                       = 0.0
@@ -22,7 +29,7 @@ time_tls_total                                     = 0.0
 
 def show_times(out = None):
   if(out is None): out = sys.stdout
-  total = time_uanisos_from_tls                            +\
+  total = time_u_cart_from_tls                            +\
         time_tls_from_uanisos                              +\
         time_update_xray_structure_with_tls                +\
         time_split_u                                       +\
@@ -31,7 +38,7 @@ def show_times(out = None):
         time_generate_tlsos
   if(total > 0.01):
     print >> out, "TLS refinement:"
-    print >> out, "  time_uanisos_from_tls                              = %-7.2f" % time_uanisos_from_tls
+    print >> out, "  time_u_cart_from_tls                              = %-7.2f" % time_u_cart_from_tls
     print >> out, "  time_tls_from_uanisos                              = %-7.2f" % time_tls_from_uanisos
     print >> out, "  time_update_xray_structure_with_tls                = %-7.2f" % time_update_xray_structure_with_tls
     print >> out, "  time_split_u                                       = %-7.2f" % time_split_u
@@ -66,7 +73,6 @@ def remark_3_tls(tlsos, selection_strings, out = None):
     l = tlso.l
     s = tlso.s
     o = tlso.origin
-    #print >>out,r3
     print >>out,r3+"TLS GROUP : %-6d"%(counter)
     lines = line_breaker(selection_string, width=45)
     for i_line, line in enumerate(lines):
@@ -130,21 +136,20 @@ class show_tls_one_group(object):
     part2 = "-|"
     n = 79 - len(part1+part2)
     print >> out,part1 + "-"*n + part2
-    for item in tlso:
-      counter += 1
-      T = item.t
-      L = item.l
-      S = item.s
-      origin = item.origin
-      print >> out, "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
-            (origin[0],origin[1],origin[2])+" "*16+"|"
-      print >> out, formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
-      print >> out, formatL % (L[0],L[1],L[2],L[3],L[4],L[5])
-      print >> out, formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7])
+    counter += 1
+    T = tlso.t
+    L = tlso.l
+    S = tlso.s
+    origin = tlso.origin
+    print >> out, "|"+" "*15+"Origin (x,y,z) = %9.4f %9.4f %9.4f"%\
+          (origin[0],origin[1],origin[2])+" "*16+"|"
+    print >> out, formatT % (T[0],T[1],T[2],T[3],T[4],T[5])
+    print >> out, formatL % (L[0],L[1],L[2],L[3],L[4],L[5])
+    print >> out, formatS % (S[0],S[4],S[8],S[1],S[2],S[3],S[5],S[6],S[7])
     print >> out, "|" +"-"*77+"|"
 
-def uanisos_from_tls(sites_cart, selections, tlsos):
-  global time_uanisos_from_tls
+def u_cart_from_tls(sites_cart, selections, tlsos):
+  global time_u_cart_from_tls
   t1 = time.time()
   uanisos = flex.sym_mat3_double(sites_cart.size(), [0,0,0,0,0,0])
   for selection, tlso in zip(selections, tlsos):
@@ -152,19 +157,20 @@ def uanisos_from_tls(sites_cart, selections, tlsos):
                                   sites_cart = sites_cart.select(selection))
     uanisos.set_selected(selection, u)
   t2 = time.time()
-  time_uanisos_from_tls += (t2 - t1)
+  time_u_cart_from_tls += (t2 - t1)
   return uanisos
 
 def tls_from_uanisos(xray_structure,
                      selections,
                      tlsos_initial,
-                     number_of_macro_cycles = 3000,
-                     max_iterations         = 1000,
-                     refine_T               = True,
-                     refine_L               = True,
-                     refine_S               = True,
-                     verbose                = -1,
-                     out                    = None):
+                     number_of_macro_cycles       = 3000,
+                     max_iterations               = 1000,
+                     refine_T                     = True,
+                     refine_L                     = True,
+                     refine_S                     = True,
+                     verbose                      = -1,
+                     enforce_positive_definite_TL = True,
+                     out                          = None):
   global time_tls_from_uanisos
   t1 = time.time()
   if(out is None): out = sys.stdout
@@ -181,12 +187,13 @@ def tls_from_uanisos(xray_structure,
     T_initial = tlso_initial.t
     L_initial = tlso_initial.l
     S_initial = tlso_initial.s
+    if(enforce_positive_definite_TL):
+      T_initial = adptbx.eigenvalue_filtering(T_initial)
+      L_initial = adptbx.eigenvalue_filtering(L_initial)
     stop_flag = 0
     target_stop = -1.0
     sites_cart_selected = xray_structure.sites_cart().select(selection)
     u_cart_selected = u_cart.select(selection)
-    #assert adptbx.is_positive_definite(
-    #                                u_cart_selected, 1.e-6).count(False) == 0
     for i in range(1, number_of_macro_cycles+1):
       target_start = target_stop
       minimized = tls_from_uaniso_minimizer(uaniso    = u_cart_selected,
@@ -199,23 +206,25 @@ def tls_from_uanisos(xray_structure,
                                             max_iterations = max_iterations,
                                             origin    = tlso_initial.origin,
                                             sites     = sites_cart_selected)
-      if(T_initial): T_initial = minimized.T_min
+      if(refine_T):  T_initial = minimized.T_min
       else:          assert approx_equal(T_initial, minimized.T_min)
-      if(L_initial): L_initial = minimized.L_min
+      if(refine_L):  L_initial = minimized.L_min
       else:          assert approx_equal(L_initial, minimized.L_min)
-      if(S_initial): S_initial = minimized.S_min
+      if(refine_S):  S_initial = minimized.S_min
       else:          assert approx_equal(S_initial, minimized.S_min)
-      target_stop = minimized.f
-      if(abs(target_stop - target_start) < 1.e-30): stop_flag += 1
-      if(stop_flag == 3):
-        if(verbose > 0): print >> out, "convergence at step ", i
-        break
-      if(i%250 == 0 and verbose > 0):
-        print >> out, "done %4d"%i, " cycles out of %4d"%\
-              number_of_macro_cycles, " cycles"
-    T_min.append(minimized.T_min)
-    L_min.append(minimized.L_min)
+    if(verbose > 0):
+      print >> out, "TLS group %d: minimized target = " %(group_counter),minimized.f
+    T_min_ = minimized.T_min
+    L_min_ = minimized.L_min
+    if(enforce_positive_definite_TL):
+      T_min_ = adptbx.eigenvalue_filtering(T_min_)
+      L_min_ = adptbx.eigenvalue_filtering(L_min_)
+    T_min.append(T_min_)
+    L_min.append(L_min_)
     S_min.append(minimized.S_min)
+    if(enforce_positive_definite_TL):
+      assert adptbx.is_positive_definite(T_min_, 1.e-6)
+      assert adptbx.is_positive_definite(L_min_, 1.e-6)
   tlsos_result = generate_tlsos(selections     = selections,
                                 xray_structure = xray_structure,
                                 T              = T_min,
@@ -241,6 +250,7 @@ class tls_from_uaniso_minimizer(object):
                sites,
                max_iterations):
     adopt_init_args(self, locals())
+    assert uaniso.size() == sites.size()
     self.dim_T = len(self.T_initial)
     self.dim_L = len(self.L_initial)
     self.dim_S = len(self.S_initial)
@@ -456,11 +466,11 @@ def update_xray_structure_with_tls(xray_structure,
                                    correct_adp = True):
   global time_update_xray_structure_with_tls
   timer = user_plus_sys_time()
-  u_cart_from_tls = uanisos_from_tls(sites_cart = xray_structure.sites_cart(),
+  u_cart_from_tls_ = u_cart_from_tls(sites_cart = xray_structure.sites_cart(),
                                      selections = selections,
                                      tlsos      = tlsos)
   xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(),
-                                         u_cart_from_tls)
+                                         u_cart_from_tls_)
   if(correct_adp): xray_structure.tidy_us(u_min = 1.e-6)
   time_update_xray_structure_with_tls += timer.elapsed()
 
