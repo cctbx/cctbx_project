@@ -65,6 +65,7 @@ def manager(simulated_annealing_params,
     model                      = model,
     fmodel                     = fmodel,
     wx                         = wx, # XXX
+    neutron_refinement         = fmodels.neutron_refinement,
     bulk_solvent_parameters    = bulk_solvent_parameters,
     alpha_beta_parameters      = alpha_beta_parameters,
     mask_parameters            = mask_parameters,
@@ -76,6 +77,7 @@ def run_simulated_annealing(simulated_annealing_params,
                             fmodel,
                             wx,
                             wc,
+                            neutron_refinement,
                             bulk_solvent_parameters,
                             alpha_beta_parameters,
                             mask_parameters,
@@ -120,5 +122,6 @@ def run_simulated_annealing(simulated_annealing_params,
       header = "2:SA temperature = "+str(sa_temp), out = out)
 
     geom_stat = model.show_geometry_statistics(
+      ignore_hd = not neutron_refinement,
       message = "SA temperature = "+str(sa_temp))
     sa_temp -= simulated_annealing_params.cool_rate
