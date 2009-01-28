@@ -10,11 +10,13 @@ class fmodels(object):
                      fmodel_neutron = None,
                      xray_scattering_dict = None,
                      neutron_scattering_dict = None,
+                     neutron_refinement = None,
                      log = None):
     self.fmodel_x = fmodel_xray
     self.fmodel_n = fmodel_neutron
     self.xray_scattering_dict = xray_scattering_dict
     self.neutron_scattering_dict = neutron_scattering_dict
+    self.neutron_refinement = neutron_refinement
     self.log = log
     # pre-scale
     if(self.fmodel_n is not None):
@@ -36,6 +38,7 @@ class fmodels(object):
                      fmodel_neutron          = fmodel_n_dc,
                      xray_scattering_dict    = self.xray_scattering_dict,
                      neutron_scattering_dict = self.neutron_scattering_dict,
+                     neutron_refinement      = self.neutron_refinement,
                      log                     = self.log)
     result.update_xray_structure(xray_structure =
       self.fmodel_x.xray_structure.deep_copy_scatterers())
@@ -50,6 +53,7 @@ class fmodels(object):
       fmodel_neutron          = fmodel_n_dc,
       xray_scattering_dict    = self.xray_scattering_dict,
       neutron_scattering_dict = self.neutron_scattering_dict,
+      neutron_refinement      = self.neutron_refinement,
       log                     = self.log)
     return result
 

@@ -9,11 +9,13 @@ class monitors(object):
                      fmodels,
                      model_ref = None,
                      log       = None,
+                     neutron_refinement = None,
                      call_back_after_collect = None):
     adopt_init_args(self, locals())
     self.monitor_xray = print_statistics.refinement_monitor(
       params    = params,
       model_ref = model_ref,
+      neutron_refinement = self.neutron_refinement,
       out       = log,
       call_back_after_collect = call_back_after_collect)
     self.monitor_neutron = None
@@ -21,6 +23,7 @@ class monitors(object):
       self.monitor_neutron = print_statistics.refinement_monitor(
         params    = params,
         model_ref = model_ref,
+        neutron_refinement = self.neutron_refinement,
         out       = log,
         call_back_after_collect = call_back_after_collect)
     self.target_weights = None

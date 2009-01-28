@@ -174,6 +174,7 @@ class refinement_monitor(object):
                      model_ref = None,
                      out=None,
                      short=False,
+                     neutron_refinement = None,
                      call_back_after_collect=None):
     adopt_init_args(self, locals())
     if (self.out is None): self.out = sys.stdout
@@ -284,7 +285,7 @@ class refinement_monitor(object):
     self.betas           .append(flex.mean_default(beta.data(),0)           )
     self.foms            .append(flex.mean_default(fmodel.figures_of_merit(),0))
     self.phers           .append(flex.mean_default(fmodel.phase_errors(),0) )
-    geom = model.geometry_statistics()
+    geom = model.geometry_statistics(ignore_hd = not self.neutron_refinement)
     self.as_ave          .append(geom.a_mean                      )
     self.as_max          .append(geom.a_max                       )
     self.bs_ave          .append(geom.b_mean                      )

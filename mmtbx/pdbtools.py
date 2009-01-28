@@ -67,6 +67,8 @@ low_resolution = None
   .type = float
 r_free_flags_fraction = None
   .type = float
+add_sigmas = False
+  .type = bool
 %s
 hkl_output
   .short_caption = Reflection output
@@ -465,7 +467,9 @@ class modify(object):
 
 class fmodel_from_xray_structure(object):
   def __init__(self, xray_structure, f_obs = None, params = None,
-                     target_name = "ml", r_free_flags_fraction = None):
+                     target_name = "ml", r_free_flags_fraction = None,
+                     add_sigmas = False):
+    self.add_sigmas = add_sigmas
     if(params is None):
       params = fmodel_from_xray_structure_master_params.extract()
     if(r_free_flags_fraction is None):
@@ -593,6 +597,11 @@ class fmodel_from_xray_structure(object):
         mtz_dataset.add_miller_array(
           miller_array      = self.r_free_flags,
           column_root_label = "R-free-flags")
+      if(self.add_sigmas):
+        sigmas = abs(self.f_model).array(data = flex.double(self.f_model.data().size(),1))
+        mtz_dataset.add_miller_array(
+          miller_array      = sigmas,
+          column_root_label = "SIG%s"%op.label)
       mtz_object = mtz_dataset.mtz_object()
       mtz_object.write(file_name = file_name)
 
@@ -627,6 +636,8 @@ def run(args, command_name="phenix.pdbtools"):
       normalization = True)
     model_statistics.geometry(
       sites_cart         = xray_structure.sites_cart(),
+      hd_selection       = xray_structure.hd_selection(),
+      ignore_hd          = command_line_interpreter.command_line.options.ignore_hydrogens,
       restraints_manager = restraints_manager).show(out = log)
     return
 ### show_adp_statistics and exit
@@ -691,6 +702,7 @@ def run(args, command_name="phenix.pdbtools"):
     print >> log, "Output reflections file name: ", ofn
     fmodel_from_xray_structure(
       xray_structure = xray_structure,
+      add_sigmas     = command_line_interpreter.params.f_model.add_sigmas,
       params         = command_line_interpreter.params.f_model).write_to_file(
         file_name = ofn)
   utils.print_header("Done", out = log)
@@ -780,6 +792,9 @@ class interpreter:
       .option("--f_model",
           action="store_true",
           help="Compute total model structure factors (F_model) and output into a file.")
+      .option("--ignore_hydrogens",
+          action="store_true",
+          help="Do not account for H and D atoms in geometry statistics.")
     ).process(args=args)
     if(self.command_line.expert_level is not None):
       master_params.show(

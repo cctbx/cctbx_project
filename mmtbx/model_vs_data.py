@@ -24,6 +24,7 @@ from mmtbx import model_statistics
 from iotbx.pdb import extract_rfactors_resolutions_sigma
 import iotbx.pdb.remark_3_interpretation
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+from iotbx.pdb import combine_unique_pdb_files
 
 
 def get_program_name(file_lines):
@@ -34,15 +35,6 @@ def get_program_name(file_lines):
     if(result is not None): return result
   if(result is not None):
     result = "_".join(result.split())
-  return result
-
-def get_year(file_lines):
-  result = None
-  for line in file_lines:
-    line = line.strip()
-    result = iotbx.pdb.header_year(record = line)
-    if(result is not None):
-      return result
   return result
 
 def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
@@ -112,6 +104,8 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         xray_structure.sites_cart())
       result = model_statistics.geometry(
         sites_cart         = xray_structure.sites_cart(),
+        hd_selection       = hd_sel,
+        ignore_hd          = False,
         restraints_manager = restraints_manager)
       print "    Stereochemistry statistics (mean, max, count):"
       print "      bonds            : %8.4f %8.4f %d" % (result.b_mean, result.b_max, result.b_number)
@@ -174,57 +168,6 @@ def show_xray_structure_statistics(xray_structure):
   print "      occupancies_(min,max,mean)       : %s %s %s"%(o_min,o_max,o_mean)
   print "      number_of_anisotropic            : "+format_value("%-7s",n_aniso)
   print "      number_of_non_positive_definite  : %s"%n_npd
-
-def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
-  pdb_raw_records = smart_open.for_reading(
-    file_name=pdb_file_name).read().splitlines()
-  for rec in pdb_raw_records:
-    if(rec.startswith("CRYST1 ")): pdb_raw_records.remove(rec)
-  pdb_raw_records.append(cryst1)
-  #############################################################################
-  cif_objects = None
-  if(show_geometry_statistics):
-    t = time.ctime().split() # to make it safe to remove files
-    time_stamp = "_"+t[4]+"_"+t[1].upper()+"_"+t[2]+"_"+t[3][:-3].replace(":","h")
-    prefix = os.path.basename(pdb_file_name)
-    from elbow.scripts import elbow_on_pdb_file
-    from elbow.command_line import join_cif_files
-    if len(sys.argv)>1: del sys.argv[1:]
-    rc = elbow_on_pdb_file.run("\n".join(pdb_raw_records),
-                               silent=True,
-                               )
-    cif_file = prefix+time_stamp+".cif"
-    if rc is not None:
-      hierarchy, cifs = rc
-      if cifs:
-        cif_lines = []
-        for key in cifs:
-          lines = cifs[key]
-          if lines:
-            cif_lines.append(lines)
-        rc = join_cif_files.run(cif_lines, cif_file, no_file_access=True)
-        if rc:
-          f=file(cif_file, "wb")
-          f.write(rc)
-          f.close()
-
-    cif_objects = None
-    if(os.path.isfile(cif_file)):
-      cif_objects = []
-      cif_objects.append((cif_file,
-        mmtbx.monomer_library.server.read_cif(file_name = cif_file)))
-  #############################################################################
-  pdb_ip = mmtbx.monomer_library.pdb_interpretation.master_params.extract()
-  pdb_ip.clash_guard.nonbonded_distance_threshold = -1.0
-  pdb_ip.clash_guard.max_number_of_distances_below_threshold = 100000000
-  pdb_ip.clash_guard.max_fraction_of_distances_below_threshold = 1.0
-  processed_pdb_files_srv = utils.process_pdb_file_srv(
-    cif_objects               = cif_objects,
-    pdb_interpretation_params = pdb_ip,
-    log                       = StringIO())
-  processed_pdb_file, pdb_inp = \
-    processed_pdb_files_srv.process_pdb_files(raw_records = pdb_raw_records)
-  return processed_pdb_file, pdb_raw_records, pdb_inp
 
 def reflection_file_server(crystal_symmetry, reflection_files):
   return reflection_file_utils.reflection_file_server(
@@ -309,55 +252,22 @@ def run(args,
   if(command_line.options.scattering_table not in ["n_gaussian","wk1995",
      "it1992","neutron"]):
     raise Sorry("Incorrect scattering_table.")
-  crystal_symmetry = None
-  crystal_symmetry_data = None
-  crystal_symmetry_model = None
-  hkl_file_name = None
-  pdb_file_name = None
-  reflection_file = None
-  for arg in command_line.args:
-    arg_is_processed = False
-    if(not os.path.isfile(arg)):
-      raise Sorry("The command line argument %s is not a file."%arg)
-    else:
-      if(pdb.is_pdb_file(file_name=arg)):
-        pdb_file_name = arg
-        arg_is_processed = True
-        try:
-          crystal_symmetry_model = crystal_symmetry_from_pdb.extract_from(
-            file_name=arg)
-        except RuntimeError, e:
-          if(str(e) == "No CRYST1 record."): pass
-      if(not arg_is_processed):
-        reflection_file = reflection_file_reader.any_reflection_file(
-          file_name=arg, ensure_read_access=False)
-        if(reflection_file.file_type() is not None):
-          hkl_file_name = arg
-          arg_is_processed = True
-          crystal_symmetry_data = crystal_symmetry_from_any.extract_from(arg)
-      if(not arg_is_processed):
-        raise Sorry(
-          "The command line argument %s is not a valid PDB or data file."%arg)
-  if(hkl_file_name is None): raise Sorry("No file with Fobs is given.")
-  if(pdb_file_name is None): raise Sorry("No PDB file is given.")
-  print "Model and data files: %s %s"%(
-    format_value("%5s",os.path.basename(pdb_file_name)),
-    format_value("%5s",os.path.basename(hkl_file_name)))
-  if([crystal_symmetry_model, crystal_symmetry_data].count(None)==0):
-    if([crystal_symmetry_model.space_group_info(),
-        crystal_symmetry_data.space_group_info()].count(None)==0):
-      if(not crystal_symmetry_model.is_similar_symmetry(crystal_symmetry_data)):
-        raise Sorry("Crystal symmetry mismatch between data and PDB files.")
-  if(crystal_symmetry_model is not None):
-    crystal_symmetry = crystal_symmetry_model
-  if(crystal_symmetry_data is not None):
-    crystal_symmetry = crystal_symmetry_data
-  if(crystal_symmetry is None): raise Sorry("Crystal symmetry is not defined.")
-  if(pdb_file_name is None): raise Sorry("No PDB file given.")
-  if(reflection_file is None): raise Sorry("No reflection file given.")
+  #
+  processed_args = utils.process_command_line_args(args = args,
+    log = sys.stdout)
+  reflection_files = processed_args.reflection_files
+  if(len(reflection_files) == 0):
+    raise Sorry("No reflection file found.")
+  crystal_symmetry = processed_args.crystal_symmetry
+  if(crystal_symmetry is None):
+    raise Sorry("No crystal symmetry found.")
+  if(len(processed_args.pdb_file_names) == 0):
+    raise Sorry("No PDB file found.")
+  pdb_file_names = processed_args.pdb_file_names
+  #
   rfs = reflection_file_server(
     crystal_symmetry = crystal_symmetry,
-    reflection_files = [reflection_file])
+    reflection_files = reflection_files)
   parameters = utils.data_and_flags.extract()
   if(command_line.options.f_obs_label is not None):
     parameters.labels = command_line.options.f_obs_label
@@ -388,10 +298,16 @@ def run(args,
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
-  processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
-    pdb_file_name = pdb_file_name,
-    cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
-    show_geometry_statistics = show_geometry_statistics)
+  #
+  mmtbx_pdb_file = mmtbx.utils.pdb_file(
+    pdb_file_names = pdb_file_names,
+    cif_objects    = processed_args.cif_objects,
+    cryst1         = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
+    use_elbow      = show_geometry_statistics,
+    log            = sys.stdout)
+  processed_pdb_file = mmtbx_pdb_file.processed_pdb_file
+  pdb_raw_records = mmtbx_pdb_file.pdb_raw_records
+  pdb_inp = mmtbx_pdb_file.pdb_inp
   #
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
@@ -399,10 +315,6 @@ def run(args,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
   model_selections = xsfppf.model_selections
-  #
-  if(not xray_structures[0].crystal_symmetry().is_similar_symmetry(
-     f_obs.crystal_symmetry())):
-    raise Sorry("Inconsistent crystal symmetry.")
   #
   print "  Unit cell:       ", f_obs.unit_cell()
   print "  Space group:     ", f_obs.crystal_symmetry().space_group_info().\
@@ -441,7 +353,7 @@ def run(args,
   show_model_vs_data(fmodel)
   # Extract information from PDB file header and output (if any)
   published_results = extract_rfactors_resolutions_sigma.extract(
-    file_name = pdb_file_name)
+    file_name = pdb_file_names[0])
   if(published_results is not None):
     published_results_r_work = published_results.r_work
     published_results_r_free = published_results.r_free
@@ -449,18 +361,17 @@ def run(args,
     published_results_low    = published_results.low
     published_results_sigma  = published_results.sigma
     program_name             = get_program_name(file_lines = pdb_raw_records)
-    year                     = get_year(file_lines = pdb_raw_records)
     published_results_result =  [published_results_r_work,
                           published_results_r_free,
                           published_results_high  ,
                           published_results_low   ,
                           published_results_sigma ,
                           program_name            ,
-                          year]
+                          pdb_inp.extract_header_year()]
     if(len(published_results_result) != published_results_result.count(None)):
       print "  Information extracted from PDB file header:"
       print "    program_name    : ", program_name
-      print "    year            : ", year
+      print "    year            : ", published_results_result[6]
       print "    r_work          : ", published_results.r_work
       print "    r_free          : ", published_results.r_free
       print "    high_resolution : ", published_results.high

@@ -118,6 +118,18 @@ class manager(object):
           xray_structure = xray_structure).table
     return result
 
+  def isolated_atoms_selection(self):
+    if(self.restraints_manager is None):
+      raise Sorry("Geometry restraints manager must be defined.")
+    selection = flex.bool(self.xray_structure.scatterers().size(), True)
+    bond_proxies_simple = self.restraints_manager.geometry.pair_proxies(
+      sites_cart = self.xray_structure.sites_cart()).bond_proxies.simple
+    for proxy in bond_proxies_simple:
+      i_seq, j_seq = proxy.i_seqs
+      selection[i_seq] = False
+      selection[j_seq] = False
+    return selection
+
   def reset_adp_for_hydrogens(self):
     hd_sel = self.xray_structure.hd_selection()
     if(hd_sel.count(True) > 0):
@@ -875,18 +887,23 @@ class manager(object):
     b_isos.set_selected(sel_outliers_min, min_b_iso)
     self.xray_structure.set_b_iso(values = b_isos)
 
-  def geometry_statistics(self):
+  def geometry_statistics(self, ignore_hd):
     sites_cart = self.xray_structure.sites_cart()
-    if(self.use_ias): sites_cart = sites_cart.select(~self.ias_selection)
+    hd_selection = self.xray_structure.hd_selection()
+    if(self.use_ias):
+      sites_cart = sites_cart.select(~self.ias_selection)
+      hd_selection = hd_selection.select(~self.ias_selection)
     return model_statistics.geometry(
       sites_cart         = sites_cart,
+      hd_selection       = hd_selection,
+      ignore_hd          = ignore_hd,
       restraints_manager = self.restraints_manager)
 
-  def show_geometry_statistics(self, message = "", out = None):
+  def show_geometry_statistics(self, ignore_hd, message = "", out = None):
     global time_model_show
     if(out is None): out = self.log
     timer = user_plus_sys_time()
-    result = self.geometry_statistics()
+    result = self.geometry_statistics(ignore_hd = ignore_hd)
     result.show(message = message, out = out)
     time_model_show += timer.elapsed()
     return result
