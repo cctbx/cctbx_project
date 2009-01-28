@@ -408,6 +408,9 @@ namespace {
 #if defined(FE_ALL_EXCEPT)
     result += "FE_ALL_EXCEPT = " + to_str(FE_ALL_EXCEPT) + nl;
 #endif
+#if defined(__SSE2__)
+    result += "__SSE2__ = " + to_str(__SSE2__) + nl;
+#endif
 #if defined(PY_VERSION)
     result += "PY_VERSION = " PY_VERSION "\n";
 #endif
