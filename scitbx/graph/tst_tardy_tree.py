@@ -40,14 +40,10 @@ def exercise_cluster_manager():
   assert cm.clusters == [[1,2,4],[0,3],[5]]
   assert cm.cluster_indices == [1,0,0,1,0,2]
   edges = [(0,1), (0,2), (3,4), (4,5)]
-  ces = cm.cluster_edge_sets(edges=edges)
-  assert [sorted(e) for e in ces] == [[1, 2], [0], [0]]
-  cm.merge_lones(edges=edges)
+  es = construct_edge_sets(n_vertices=6, edges=edges)
+  cm.merge_lones(edge_sets=es)
   assert cm.clusters == [[1,2,4,5],[0,3]]
   assert cm.cluster_indices == [1,0,0,1,0,0]
-  ces = cm.cluster_edge_sets(edges=edges)
-  assert [sorted(e) for e in ces] == [[1], [0]]
-  es = construct_edge_sets(n_vertices=6, edges=edges)
   cm.construct_spanning_trees(edge_sets=es)
   assert cm.clusters == [[1,2,4,5],[0,3]]
   assert cm.cluster_indices == [1,0,0,1,0,0]
@@ -556,7 +552,7 @@ def exercise_tyr_with_h():
       (3, 8), (4, 5), (4, 9), (5, 10), (10, 11), (12, 13), (12, 14),
       (12, 16), (15, 16), (15, 20), (16, 17), (16, 18), (17, 19)])
   cm = tt.cluster_manager
-  cm.merge_lones(edges=tt.edges)
+  cm.merge_lones(edge_sets=tt.edge_sets)
   cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
   cm.construct_spanning_trees(edge_sets=tt.edge_sets)
   assert cm.clusters == [
@@ -615,7 +611,7 @@ def run(args):
       tt = construct(
         n_vertices=tc.n_vertices, edges=tc.edges, size_max=loop_size_max)
       cm = tt.cluster_manager
-      cm.merge_lones(edges=tc.edges)
+      cm.merge_lones(edge_sets=tt.edge_sets)
       cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
       assert_same("c2:", cm.clusters, tc_c2)
       cm.construct_spanning_trees(edge_sets=tt.edge_sets)
