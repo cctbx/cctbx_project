@@ -1892,6 +1892,23 @@ class manager(manager_mixin):
       b_cart[4],
       b_cart[5]])
 
+  def show_rwork_in_bins(self, reflections_per_bin, title, log):
+    print >> log, title
+    fo_w = self.f_obs_w
+    fc_w = self.f_model_scaled_with_k1_w()
+    fo_w.setup_binner(reflections_per_bin = reflections_per_bin)
+    fc_w.use_binning_of(fo_w)
+    for i_bin in fo_w.binner().range_used():
+      sel_w = fo_w.binner().selection(i_bin)
+      sel_fo_w = fo_w.select(sel_w)
+      sel_fc_w = fc_w.select(sel_w)
+      d_range = fo_w.binner().bin_legend(
+        i_bin=i_bin, show_bin_number=False, show_counts=False)
+      s_fo_w_d = flex.abs(sel_fo_w.data())
+      s_fc_w_d = flex.abs(sel_fc_w.data())
+      r_work = flex.sum(flex.abs(s_fo_w_d - s_fc_w_d)) / flex.sum(s_fo_w_d)
+      print >>log,"%3d: %-17s %3d %6.4f"%(i_bin,d_range,s_fo_w_d.size(),r_work)
+
 class phaser_sad_target_functor(object):
 
   def __init__(self,
@@ -2325,8 +2342,7 @@ class info(object):
         else:
            sel_tpr_t = flex.sum(tpr_t.select(sel_t))
       d_max_,d_min_ = sel_fo_all.d_max_min()
-      completeness = fmodel.f_obs.resolution_filter(
-        d_min= d_min_,d_max= d_max_).completeness(d_max = d_max_)
+      completeness = sel_fo_all.completeness(d_max = d_max_)
       d_range = fo_t.binner().bin_legend(
         i_bin=i_bin, show_bin_number=False, show_counts=False)
       s_fo_w_d = sel_fo_w.data()
@@ -2354,6 +2370,23 @@ class info(object):
         result.append(bin)
     return result
 
+  def show_rwork_rfree_number_completeness(self, prefix="", title=None, out = None):
+    if(out is None): out = sys.stdout
+    if(title is not None):
+      print >> out, prefix+title
+    print >> out,\
+      prefix+" BIN  RESOLUTION RANGE  COMPL.    NWORK NFREE   RWORK  RFREE"
+    fmt = " %s %s    %s %s %s  %s %s"
+    for bin in self.bins:
+      print >> out,prefix+fmt%(
+        format_value("%3d", bin.i_bin),
+        format_value("%-17s", bin.d_range),
+        format_value("%4.2f", bin.completeness),
+        format_value("%8d", bin.n_work),
+        format_value("%5d", bin.n_free),
+        format_value("%6.4f", bin.r_work),
+        format_value("%6.4f", bin.r_free))
+
   def show_remark_3(self, out = None):
     if(out is None): out = sys.stdout
     pr = "REMARK   3  "
@@ -2375,18 +2408,8 @@ class info(object):
       float(self.number_of_test_reflections)/self.number_of_reflections*100.)
     print >> out,pr+" FREE R VALUE TEST SET COUNT      : %-10d"%self.number_of_test_reflections
     print >> out,pr
-    print >> out,pr+"FIT TO DATA USED IN REFINEMENT (IN BINS)."
-    print >> out,pr+" BIN  RESOLUTION RANGE  COMPL.    NWORK NFREE   RWORK  RFREE"
-    fmt = " %s %s    %s %s %s  %s %s"
-    for bin in self.bins:
-      print >> out,pr+fmt%(
-        format_value("%3d", bin.i_bin),
-        format_value("%-17s", bin.d_range),
-        format_value("%4.2f", bin.completeness),
-        format_value("%8d", bin.n_work),
-        format_value("%5d", bin.n_free),
-        format_value("%6.4f", bin.r_work),
-        format_value("%6.4f", bin.r_free))
+    self.show_rwork_rfree_number_completeness(prefix = pr,
+      title = "FIT TO DATA USED IN REFINEMENT (IN BINS).", out = out)
     print >> out,pr
     print >> out,pr+"BULK SOLVENT MODELLING."
     print >> out,pr+" METHOD USED        : FLAT BULK SOLVENT MODEL"
