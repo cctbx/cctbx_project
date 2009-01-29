@@ -79,9 +79,13 @@ namespace {
   libtbx_introspection_show_stack()
   {
     using namespace boost::python;
+    static bool active = false;
+    if (active) return false;
+    active = true;
     handle<> hdl(allow_null(PyImport_ImportModule("libtbx.introspection")));
     if (!hdl.get()) {
       PyErr_Clear();
+      active = false;
       return false;
     }
 #if PY_MAJOR_VERSION > 2 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION > 4)
@@ -90,24 +94,31 @@ namespace {
     char* attr_name = "show_stack_true_stderr";
     // test first, just to be maximally fault tolerant
     if (!PyObject_HasAttrString(hdl.get(), attr_name)) {
+      active = false;
       return false;
     }
     hdl = handle<>(allow_null(PyObject_GetAttrString(hdl.get(), attr_name)));
     if (!hdl.get()) { // should never be true
       PyErr_Clear();
+      active = false;
       return false;
     }
     hdl = handle<>(allow_null(PyObject_CallFunction(hdl.get(), 0)));
     if (!hdl.get()) {
       PyErr_Clear();
+      active = false;
       return false;
     }
+    active = false;
     return true;
   }
 
   bool
   boost_adptbx_libc_backtrace(int n_frames_skip=0)
   {
+    static bool active = false;
+    if (active) return false;
+    active = true;
     bool result = false;
 #if defined(BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
     static const int max_frames = 1024;
@@ -171,6 +182,7 @@ namespace {
     }
     free(strings);
 #endif // defined(BOOST_ADAPTBX_META_EXT_HAVE_EXECINFO_H)
+    active = false;
     return result;
   }
 
