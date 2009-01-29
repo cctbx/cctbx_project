@@ -30,7 +30,6 @@
 #endif
 
 #if defined(__GNUC__)
-#include <fenv.h>
 #if defined(__linux) \
  || (defined(__APPLE_CC__) && __APPLE_CC__ >= 5465)
 #include <execinfo.h>
@@ -49,9 +48,7 @@
 #define BOOST_ADAPTBX_META_EXT_HAVE_GNU_LIBC-VERSION_H
 #endif
 
-#if defined(__APPLE_CC__) && defined(__SSE2__)
-#include <xmmintrin.h>
-#endif
+#include <boost_adaptbx/floating_point_exceptions.h>
 
 namespace {
 
@@ -478,62 +475,6 @@ namespace {
 #endif
   }
 
-  void
-  enable_floating_point_exceptions_if_possible(
-    bool
-#if defined(FE_DIVBYZERO)
-    divbyzero
-#endif
-    ,
-    bool
-#if defined(FE_INVALID)
-    invalid
-#endif
-    ,
-    bool
-#if defined(FE_OVERFLOW)
-    overflow
-#endif
-    )
-  {
-  /* Background information:
-      gcc on x86-64 (all platforms) [2],
-      Apple gcc on Intel macs [1]:
-        floating-point math is done on vector unit (SSE2) by default
-
-      gcc on i386 (all platform except Apple) [2]:
-        floating-point math is done on scalar unit (i387)
-
-      Linux:
-        feenableexcept enables/disables FP exception trapping for i387 and SSE2
-      All Intel platform:
-        _MM_SET_EXCEPTION_MASK from xmmintrin.h enables/disables exception
-        trapping for SSE2
-
-      [1] http://developer.apple.com/documentation/performance/Conceptual/Accelerate_sse_migration/migration_sse_translation/chapter_4_section_2.html
-      [2] GCC documentation
-  */
-#if defined(__linux)
-    int flags = 0;
-#if defined(FE_DIVBYZERO)
-    if (divbyzero) flags |= FE_DIVBYZERO;
-#endif
-#if defined(FE_INVALID)
-    if (invalid) flags |= FE_INVALID;
-#endif
-#if defined(FE_OVERFLOW)
-    if (overflow) flags |= FE_OVERFLOW;
-#endif
-    if (flags != 0) feenableexcept(flags);
-#elif defined(__APPLE_CC__) && defined(__SSE2__)
-    unsigned int mask = _MM_MASK_INEXACT | _MM_MASK_UNDERFLOW | _MM_MASK_DENORM;
-    if (!divbyzero) mask |= _MM_MASK_DIV_ZERO;
-    if (!invalid) mask |= _MM_MASK_INVALID;
-    if (!overflow) mask |= _MM_MASK_OVERFLOW;
-    _MM_SET_EXCEPTION_MASK(mask);
-#endif
-  }
-
   char
   dereference_char_pointer(const char* pointer) { return *pointer; }
 
@@ -562,11 +503,15 @@ BOOST_PYTHON_MODULE(boost_python_meta_ext)
   def("platform_info", platform_info);
   def("enable_signals_backtrace_if_possible",
        enable_signals_backtrace_if_possible);
-  def("enable_floating_point_exceptions_if_possible",
-       enable_floating_point_exceptions_if_possible, (
-    arg_("divbyzero"),
-    arg_("invalid"),
-    arg_("overflow")));
+  def("trap_exceptions",
+      boost_adaptbx::floating_point::trap_exceptions,
+      (arg("division_by_zero"), arg("invalid"), arg("overflow")));
+  def("is_division_by_zero_trapped",
+      boost_adaptbx::floating_point::is_division_by_zero_trapped);
+  def("is_invalid_trapped",
+      boost_adaptbx::floating_point::is_invalid_trapped);
+  def("is_overflow_trapped",
+      boost_adaptbx::floating_point::is_overflow_trapped);
   def("dereference_char_pointer", dereference_char_pointer);
   def("divide_doubles", divide_doubles);
   def("multiply_doubles", multiply_doubles);

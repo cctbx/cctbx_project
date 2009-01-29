@@ -1,0 +1,100 @@
+#ifndef FLOATING_POINT_EXCEPTIONS_H
+#define FLOATING_POINT_EXCEPTIONS_H
+
+#ifdef __GNUC__
+#include <fenv.h>
+#ifdef __SSE2__
+#include <xmmintrin.h>
+#endif
+#endif
+
+
+namespace boost_adaptbx { namespace floating_point {
+
+  /** Floating point exception trapping
+
+      Background information:
+      gcc on x86-64 (all platforms) [2],
+      Apple gcc on Intel macs [1]:
+        floating-point math is done on vector unit (SSE2) by default
+
+      gcc on i386 (all platform except Apple) [2]:
+        floating-point math is done on scalar unit (i387)
+
+      Linux:
+        feenableexcept enables/disables FP exception trapping for i387 and SSE2
+      All Intel platform:
+        _MM_SET_EXCEPTION_MASK from xmmintrin.h enables/disables exception
+        trapping for SSE2
+
+      [1] http://developer.apple.com/documentation/performance/Conceptual/Accelerate_sse_migration/migration_sse_translation/chapter_4_section_2.html
+      [2] GCC documentation
+  */
+
+  void trap_exceptions(bool division_by_zero, bool invalid, bool overflow) {
+    #ifdef __linux
+      int enabled = 0;
+      int disabled = 0;
+      #ifdef FE_DIVBYZERO
+        if (division_by_zero) enabled |= FE_DIVBYZERO;
+        else disabled |= FE_DIVBYZERO;
+      #endif
+      #ifdef FE_INVALID
+        if (invalid) enabled |= FE_INVALID;
+        else disabled |= FE_INVALID;
+      #endif
+      #ifdef FE_OVERFLOW
+        if(overflow) enabled |= FE_OVERFLOW;
+        else disabled |= FE_OVERFLOW;
+      #endif
+      fedisableexcept(disabled);
+      feenableexcept(enabled);
+    #elif defined(__APPLE_CC__) && defined(__SSE2__)
+      unsigned int mask
+        = _MM_MASK_INEXACT | _MM_MASK_UNDERFLOW | _MM_MASK_DENORM;
+      if (!division_by_zero) mask |= _MM_MASK_DIV_ZERO;
+      if (!invalid) mask |= _MM_MASK_INVALID;
+      if (!overflow) mask |= _MM_MASK_OVERFLOW;
+      _MM_SET_EXCEPTION_MASK(mask);
+    #endif
+  }
+
+  bool is_division_by_zero_trapped() {
+    #ifdef __linux
+      #ifdef FE_DIVBYZERO
+        return fegetexcept() & FE_DIVBYZERO;
+      #else
+        return false;
+      #endif
+    #elif defined(__APPLE_CC__) && defined(__SSE2__)
+      return !(_MM_GET_EXCEPTION_MASK() & _MM_MASK_DIV_ZERO);
+    #endif
+  }
+
+  bool is_invalid_trapped() {
+    #ifdef __linux
+      #ifdef FE_INVALID
+        return fegetexcept() & FE_INVALID;
+      #else
+        return false;
+      #endif
+    #elif defined(__APPLE_CC__) && defined(__SSE2__)
+      return !(_MM_GET_EXCEPTION_MASK() & _MM_MASK_INVALID);
+    #endif
+  }
+
+  bool is_overflow_trapped() {
+    #ifdef __linux
+      #ifdef FE_OVERFLOW
+        return fegetexcept() & FE_OVERFLOW;
+      #else
+        return false;
+      #endif
+    #elif defined(__APPLE_CC__) && defined(__SSE2__)
+      return !(_MM_GET_EXCEPTION_MASK() & _MM_MASK_OVERFLOW);
+    #endif
+  }
+
+}} // boost_adaptbx::floating_point
+
+#endif // GUARD
