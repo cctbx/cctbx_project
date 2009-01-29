@@ -78,10 +78,6 @@ if (not env_etc.no_boost_python):
   Export("env_boost_python_ext")
 
   env_pure_boost_python_ext.SharedLibrary(
-    target="#lib/boost_python_meta_ext",
-    source="meta_ext.cpp")
-
-  env_pure_boost_python_ext.SharedLibrary(
     target="#lib/boost_python_hybrid_times_ext",
     source="hybrid_times_ext.cpp")
 
@@ -93,6 +89,9 @@ if (not env_etc.no_boost_python):
   env_etc.include_registry.prepend(
     env=env,
     paths=[os.path.dirname(libtbx.env.dist_path("boost_adaptbx"))])
+  env.SharedLibrary(
+    target="#lib/boost_python_meta_ext",
+    source="meta_ext.cpp")
   env.SharedLibrary(
     target="#lib/boost_optional_ext",
     source="optional_ext.cpp")

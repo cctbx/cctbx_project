@@ -47,11 +47,62 @@ ext = import_ext("boost_python_meta_ext")
 if ("BOOST_ADAPTBX_SIGNALS_DEFAULT" not in os.environ):
   ext.enable_signals_backtrace_if_possible()
 
-if ("BOOST_ADAPTBX_FPE_DEFAULT" not in os.environ):
-  ext.enable_floating_point_exceptions_if_possible(
-    divbyzero="BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT" not in os.environ,
-    invalid="BOOST_ADAPTBX_FE_INVALID_DEFAULT" not in os.environ,
-    overflow="BOOST_ADAPTBX_FE_OVERFLOW_DEFAULT" not in os.environ)
+
+class floating_point_exceptions_type(object):
+
+  __shared_state = {'initialised': False}
+
+  def __init__(self, division_by_zero, invalid, overflow):
+    self.__dict__ = self.__shared_state
+    if not self.initialised:
+      if "BOOST_ADAPTBX_FPE_DEFAULT" in os.environ:
+        division_by_zero = self.division_by_zero_trapped
+        invalid = self.invalid_trapped
+        overflow = self.overflow_trapped
+      elif "BOOST_ADAPTBX_FE_DIVBYZERO_DEFAULT" in os.environ:
+        division_by_zero = self.division_by_zero_trapped
+      elif "BOOST_ADAPTBX_FE_INVALID_DEFAULT" in os.environ:
+        invalid = self.invalid_trapped
+      elif "BOOST_ADAPTBX_FE_OVERFLOW_DEFAULT" in os.environ:
+        overflow = self.overflow_trapped
+      ext.trap_exceptions(division_by_zero, invalid, overflow)
+      self.initialised = True
+
+  def division_by_zero_trapped():
+    def fget(self):
+      return ext.is_division_by_zero_trapped()
+    def fset(self, flag):
+      if flag == self.division_by_zero_trapped: return
+      ext.trap_exceptions(division_by_zero=flag,
+                          invalid=self.invalid_trapped,
+                          overflow=self.overflow_trapped)
+    return locals()
+  division_by_zero_trapped = property(**division_by_zero_trapped())
+
+  def invalid_trapped():
+    def fget(self):
+      return ext.is_invalid_trapped()
+    def fset(self, flag):
+      if flag == self.fget(): return
+      ext.trap_exceptions(division_by_zero=self.invalid_trapped,
+                          invalid=flag,
+                          overflow=self.overflow_trapped)
+    return locals()
+  invalid_trapped = property(**invalid_trapped())
+
+  def overflow_trapped():
+    def fget(self):
+      return ext.is_overflow_trapped()
+    def fset(self, flag):
+      if flag == self.fget(): return
+      ext.trap_exceptions(division_by_zero=self.overflow_trapped,
+                          invalid=self.invalid_trapped,
+                          overflow=flag)
+    return locals()
+  overflow_trapped = property(**overflow_trapped())
+
+floating_point_exceptions = floating_point_exceptions_type(
+  division_by_zero=True, invalid=True, overflow=True)
 
 meta_class = ext.holder.__class__
 platform_info = ext.platform_info()
