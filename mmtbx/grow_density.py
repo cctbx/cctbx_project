@@ -24,6 +24,9 @@ from mmtbx import model_statistics
 from iotbx.pdb import extract_rfactors_resolutions_sigma
 import iotbx.pdb.remark_3_interpretation
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
+import iotbx.pdb
+import iotbx.pdb.amino_acid_codes
+import random
 
 
 def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
@@ -123,13 +126,97 @@ def show_model_vs_data(fmodel):
     "overall_anisotropic_scale_(b_cart) : "+format_value("%-s",b_cart)])
   print "   ", result
 
+def detect_dummy_atom (file_name):
+  """ TODO: method to look for a dummy atom placed in density, most likeley with Coot"""
+  pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
+  for model in pdb_obj.hierarchy.models():
+    for chain in model.chains():
+      for rg in chain.residue_groups():
+        for ag in rg.atom_groups():
+          for atom in ag.atoms():
+              atom_names = set([" DM  ", " X  "])
+              if (atom.name in atom_names):
+                  print "Dummy found:"
+                  print "        atom.name:  ", atom.name
+                  print "        atom.xyz:  ", atom.xyz
+                  print "        atom.occ:  ", atom.occ
+                  print "        atom.b:    ", atom.b
+
+  return "done"
+
+def grow_density(fmodel, file_name, x_center, y_center, z_center, radius ):
+  """ method to improve local density using dummy atoms """
+  pdb_inp = iotbx.pdb.input(file_name=file_name)
+  hierarchy = pdb_inp.construct_hierarchy()
+  # Add an atom to the atom_group
+  pdb_atoms = hierarchy.atoms()
+  #pdb_chains = hierarchy.chains()
+  #last_chain = pdb_chains[len(pdb_chains)-1]
+  atom = pdb_atoms[len(pdb_atoms)-1]
+  atom_group = atom.parent()
+  atom = iotbx.pdb.hierarchy.atom()
+  atom.name = " DM"
+  atom.xyz = [2.0,2.0,2.0]
+  atom.occ = 15
+  atom.b = 3
+  atom.resid = "HOH"
+
+  awl = pdb.make_atom_with_labels(
+    xyz=(1,2,3),
+    segid="JKLM",
+    model_id="DM",
+    chain_id="DM",
+    occ=7,
+    b=9,
+    serial="97",
+    hetero=False,
+    name=" N",
+    element="N",
+    resname="HOH" )
+
+  awl.format_atom_record_group(siguij=False)
+  atom_group.append_atom(atom=awl)
+  hierarchy.write_pdb_file(file_name="junk2.pdb")
+  """TODO: trying to work out how to add atom correctly to pdb, so can create models /
+  need to make new atom group?  Currently adds atoms to last residue (as shown in junk.pdb) /
+  which is obviously not correct.  Code below will be able to produce atom grids
+  """
+
+  x_start = float(x_center) - (float(radius)/2)
+  x_end = float(x_center) + (float(radius)/2)
+
+  y_start = float(y_center) - (float(radius)/2)
+  y_end = float(y_center) + (float(radius)/2)
+
+  z_start = float(z_center) - (float(radius)/2)
+  z_end = float(z_center )+ (float(radius)/2)
+
+  step_size = 1
+  for overlap_start in [0.0, 0.2, 0.4, 0.6, 0.8]:
+      x_coord = x_start + overlap_start
+      y_coord = y_start + overlap_start
+      y_coord = y_start  + overlap_start
+      while x_coord < x_end:
+          y_coord = y_start
+          while y_coord < y_end:
+              z_coord = z_start
+              while z_coord < z_end:
+                  #print x_coord, y_coord, z_coord
+
+                  z_coord = z_coord + step_size
+              y_coord = y_coord + step_size
+          x_coord = x_coord + step_size
+  print "   "
+
+
+
 def run(args,
-        command_name             = "mmtbx.model_vs_data",
+        command_name             = "mmtbx.grow_density",
         show_geometry_statistics = True):
   if(len(args) == 0): args = ["--help"]
   command_line = (iotbx_option_parser(
     usage="%s reflection_file pdb_file [options]" % command_name,
-    description='Example: %s data.mtz model.pdb'%command_name)
+    description='Example: %s data.mtz model.pdb --x_center=-2.76 --y_center=0.89 --z_center=9.71 --radius=10'%command_name)
     .option(None, "--f_obs_label",
       action="store",
       default=None,
@@ -150,6 +237,26 @@ def run(args,
       default="n_gaussian",
       type="string",
       help="Choice for scattering table: n_gaussian (default) or wk1995 or it1992 or neutron.")
+     .option(None, "--x_center",
+      action="store",
+      default=None,
+      type="string",
+      help="X coordinate of poor density.")
+     .option(None, "--y_center",
+      action="store",
+      default=None,
+      type="string",
+      help="Y coordinate of poor density.")
+     .option(None, "--z_center",
+      action="store",
+      default=None,
+      type="string",
+      help="Z coordinate of poor density.")
+     .option(None, "--radius",
+      action="store",
+      default=None,
+      type="string",
+      help="Radius of required box.")
     .option("--ignore_giant_models_and_datasets",
       action="store_true",
       help="Ignore too big models and data files to avoid potential memory problems.")
@@ -157,6 +264,14 @@ def run(args,
   if(command_line.options.scattering_table not in ["n_gaussian","wk1995",
      "it1992","neutron"]):
     raise Sorry("Incorrect scattering_table.")
+  if(command_line.options.x_center is None):
+    raise Sorry("Need to specify x center.")
+  if(command_line.options.y_center is None):
+    raise Sorry("Need to specify y center.")
+  if(command_line.options.y_center is None):
+    raise Sorry("Need to specify y center.")
+  if(command_line.options.radius is None):
+    raise Sorry("Need to specify radius.")
   crystal_symmetry = None
   crystal_symmetry_data = None
   crystal_symmetry_model = None
@@ -230,6 +345,7 @@ def run(args,
   if(r_free_flags is None):
     r_free_flags=f_obs.array(data=flex.bool(f_obs.data().size(), False))
     test_flag_value=None
+  #
   processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
     pdb_file_name = pdb_file_name,
     cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
@@ -240,8 +356,7 @@ def run(args,
     scattering_table   = command_line.options.scattering_table,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
-  model_selections = xsfppf.model_selections
-  #
+  #select_atoms = cctbx_project.mmtbx.utils.get_atom_selection(pdb_file_name, "C")
   if(not xray_structures[0].crystal_symmetry().is_similar_symmetry(
      f_obs.crystal_symmetry())):
     raise Sorry("Inconsistent crystal symmetry.")
@@ -263,3 +378,7 @@ def run(args,
             test_flag_value = test_flag_value,
             f_obs_labels    = f_obs.info().label_string())
   show_model_vs_data(fmodel)
+  #
+  grow_density(fmodel, pdb_file_name,x_center=command_line.options.x_center,\
+  y_center=command_line.options.x_center, z_center=command_line.options.x_center,\
+  radius=command_line.options.radius )
