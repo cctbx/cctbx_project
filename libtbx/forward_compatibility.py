@@ -36,6 +36,20 @@ if ("set" not in __builtins__):
   import sets
   __builtins__["set"] = sets.Set
   __builtins__["frozenset"] = sets.ImmutableSet
+if (not hasattr(frozenset, "isdisjoint")):
+  # Python 2.3, 2.4, 2.5 compatibility
+  class forward_compatibility_set_mixin(object):
+    def isdisjoint(self, other):
+      for value in other:
+        if value in self:
+          return False
+      return True
+  class forward_compatibility_frozenset(
+        forward_compatibility_set_mixin, frozenset): pass
+  class forward_compatibility_set(
+        forward_compatibility_set_mixin, set): pass
+  __builtins__["frozenset"] = forward_compatibility_frozenset
+  __builtins__["set"] = forward_compatibility_set
 
 class _advertise_subprocess(object):
 
