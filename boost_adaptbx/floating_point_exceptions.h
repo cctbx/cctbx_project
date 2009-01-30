@@ -68,6 +68,8 @@ namespace boost_adaptbx { namespace floating_point {
       #endif
     #elif defined(__APPLE_CC__) && defined(__SSE2__)
       return !(_MM_GET_EXCEPTION_MASK() & _MM_MASK_DIV_ZERO);
+    #else
+      return false;
     #endif
   }
 
@@ -80,6 +82,8 @@ namespace boost_adaptbx { namespace floating_point {
       #endif
     #elif defined(__APPLE_CC__) && defined(__SSE2__)
       return !(_MM_GET_EXCEPTION_MASK() & _MM_MASK_INVALID);
+    #else
+      return false;
     #endif
   }
 
@@ -92,6 +96,8 @@ namespace boost_adaptbx { namespace floating_point {
       #endif
     #elif defined(__APPLE_CC__) && defined(__SSE2__)
       return !(_MM_GET_EXCEPTION_MASK() & _MM_MASK_OVERFLOW);
+    #else
+      return false;
     #endif
   }
 
