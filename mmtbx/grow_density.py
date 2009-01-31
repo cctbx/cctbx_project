@@ -219,6 +219,9 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
 
 
   for overlap_start in [0.0, 0.2, 0.4, 0.6, 0.8]:
+      """TODO: needs to be in x y and z for overlap to fill box?"""
+      """TODO: Perhaps pull out into a different method so I can alternative atom fillers"""
+       """TODO: e.g. random, aster, etc..."""
       f = open("tmp"+str(overlap_start)+".pdb","w")
       xray_structure = "" # trying to blank scatterers
       xray_structure = xray_structures[0]
@@ -239,11 +242,11 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
       y_coord = y_start + overlap_start
       z_coord = z_start + overlap_start
 
-      while x_coord < x_end:
+      while x_coord <= x_end:
           y_coord = y_start + overlap_start
-          while y_coord < y_end:
+          while y_coord <= y_end:
               z_coord = z_start + overlap_start
-              while z_coord < z_end:
+              while z_coord <= z_end:
                   print x_coord, y_coord, z_coord
                   scatterer = xray.scatterer(
                   site = (x_coord, y_coord, z_coord),
