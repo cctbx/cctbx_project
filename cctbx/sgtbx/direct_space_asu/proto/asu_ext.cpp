@@ -1,4 +1,5 @@
 #include <cctbx/boost_python/flex_fwd.h>
+#include <scitbx/boost_python/container_conversions.h>
 
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
@@ -18,6 +19,8 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     using namespace boost::python;
     typedef return_value_policy<return_by_value> rbv;
 
+    bool (w_t::*const cut_is_inside1)( const rvector3_t &) const = &w_t::is_inside;
+
     class_<w_t>("cut", no_init)
       .def(init<
         ivector3_t const&,
@@ -34,7 +37,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("__inv__", &w_t::operator~)
       .def("__mul__", &w_t::operator*)
       .def("__div__", &w_t::operator/)
-      // .def("is_inside", &w_t::is_inside)
+      .def("is_inside",cut_is_inside1)
       .def("get_point_in_plane", &w_t::get_point_in_plane)
       .def("change_basis", &w_t::change_basis)
       .def("evaluate", &w_t::evaluate)
@@ -49,7 +52,7 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     typedef return_value_policy<return_by_value> rbv;
 
     class_<w_t>("direct_space_asu", no_init)
-      .def(init< std::string& >(( arg_("spgr") )))
+      .def(init< const std::string& >(( arg_("spgr") )))
       .def_readonly("hall_symbol", &w_t::hall_symbol)
       .def("is_inside", &w_t::is_inside)
       .def("change_basis", &w_t::change_basis)
@@ -59,14 +62,15 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("n_faces", &w_t::n_faces)
       .def("volume_vertices", &w_t::volume_vertices)
       .def("box_corners", &w_t::box_corners)
+      .def("as_string", &w_t::as_string)
     ;
   }
-
 
   void init_module()
   {
     wrap_cut();
     wrap_direct_space_asu();
+    scitbx::boost_python::container_conversions::tuple_mapping_fixed_size< rvector3_t >();
   }
 
 }}}} // namespace cctbx::sgtbx::asu

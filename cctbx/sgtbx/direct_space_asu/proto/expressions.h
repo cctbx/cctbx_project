@@ -1,6 +1,9 @@
 #ifndef CCTBX_SGTBX_ASU_EXPRESSIONS_H
 #define CCTBX_SGTBX_ASU_EXPRESSIONS_H
 
+// \cond
+
+#include <boost/static_assert.hpp>
 #include "cut.h"
 
 namespace cctbx { namespace sgtbx { namespace asu {
@@ -60,16 +63,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
   };
 
   template< typename TR> struct is_facet< cut_expression< TR>  >
-  {
-    static const bool value = true;
-  };
-
-  template<typename T> struct is_cut
-  {
-    static const bool value = false;
-  };
-
-  template<> struct is_cut<cut>
   {
     static const bool value = true;
   };
@@ -248,17 +241,17 @@ namespace cctbx { namespace sgtbx { namespace asu {
   }
 
 
-  template<typename T> struct is_proper_t
+  template<typename T> struct is_facet_expression
   {
     static const bool value = false;
   };
 
-  template<typename TL, typename TR> struct is_proper_t< and_expression< TL, cut_expression<TR> > >
+  template<typename TL, typename TR> struct is_facet_expression< and_expression< TL, cut_expression<TR> > >
   {
     static const bool value = true;
   };
 
-  template< typename TL > struct is_proper_t< and_expression< TL, cut > >
+  template< typename TL > struct is_facet_expression< and_expression< TL, cut > >
   {
     static const bool value = true;
   };
@@ -266,5 +259,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
 
 }}}
+// \endcond
 #endif
 

@@ -15,15 +15,15 @@
 #include <cctbx/sgtbx/space_group_type.h>
 
 
-namespace cctbx { namespace sgtbx { namespace asu {
+namespace cctbx { namespace sgtbx { 
+  
+//! Direct space asymmetric unit classes
+namespace asu {
 
   typedef unsigned short size_type;
   // typedef short int_type;
   typedef int int_type;
   typedef boost::rational<int_type> rational_t;
-
-  // increase this to raise number of points on the facet
-  // const rational_t zero = 0; // 1.0/( 1000.0*100.0 );
 
   typedef scitbx::mat3<int_type> imatrix3_t;
   typedef scitbx::vec3<int_type> ivector3_t;
@@ -33,16 +33,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
   typedef std::set< rvector3_t > set_rvector3_t;
 
   using cctbx::sgtbx::change_of_basis_op;
-
-  inline int_type get_int(rational_t r)
-  {
-    return r.numerator()/r.denominator();
-  }
-
-  inline ivector3_t get_int(rvector3_t r)
-  {
-    return ivector3_t(get_int(r[0]), get_int(r[1]), get_int(r[2]));
-  }
 
   inline std::ostream &operator<< (std::ostream &s, const ivector3_t &v)
   {
@@ -56,8 +46,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     return s;
   }
 
+}}} // namespace cctbx::sgtbx::asu
 
-}}} // namespace 
 
 namespace boost {
 
@@ -74,11 +64,16 @@ namespace cctbx { namespace sgtbx { namespace asu {
   template<typename T> class cut_expression;
 
   //! Plane in 3D for representation of faces of the asymmetric unit polyhedron
+  /*! \class cut cut.h cctbx/sgtbx/direct_space_asu/proto/cut.h
+   */
   class cut
   {
   public:
+    //! Plane normal
     ivector3_t n;
+    //! Plane constant
     int_type c;
+    //! Flag indicating if plane points belong to the asymmetric unit
     bool inclusive;
 
     void print(std::ostream &os, bool x=false ) const;
@@ -86,6 +81,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Returns an arbitrary point, which belongs to the plane
     void get_point_in_plane(rvector3_t &r) const;
 
+    //! Applies basis change to the plane
     void change_basis(const change_of_basis_op &cb_op);
 
     //! Evaluates plane equation
@@ -121,6 +117,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return cut_expression<TR>(*this, o );
     }
 
+    //! Unsets inclusive flag
     cut operator+ () const
     {
       CCTBX_ASSERT( inclusive );
@@ -129,11 +126,13 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return r;
     }
 
+    //! Returns -n, -c plane
     cut operator- () const
     {
       return cut(-n, -c, inclusive);
     }
 
+    //!  Returns -n plane
     cut operator~ () const
     {
       cut r(*this);
@@ -141,17 +140,20 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return r;
     }
 
+    //! Return c*x plane
     cut operator* (int_type x) const
     {
       return cut(n, c*x, inclusive);
     }
 
+    //! Returns c/x plane
     cut operator/ (int_type x) const
     {
       CCTBX_ASSERT( x!=0 && c!=0 );
       return cut(n*std::abs(x), c*x/std::abs(x), inclusive);
     }
 
+    //! Returns c=1  plane
     cut one() const
     {
       return cut(n, 1, inclusive);
@@ -170,6 +172,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
       c /= g;
     }
 
+    //! Constructs a from normal coordinates and a rational constant
     cut(int_type x, int_type y, int_type z, rational_t c_)
     { 
       new(this) cut(ivector3_t(x,y,z), c_);

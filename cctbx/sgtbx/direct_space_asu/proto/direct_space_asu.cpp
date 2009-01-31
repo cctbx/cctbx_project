@@ -1,4 +1,5 @@
-#include <iostream>
+#include <ostream>
+#include <sstream>
 
 #include "direct_space_asu.h"
 
@@ -23,6 +24,13 @@ namespace cctbx { namespace sgtbx { namespace asu {
       plane.print(os);
       os << '\n';
     }
+  }
+
+  std::string direct_space_asu::as_string() const
+  {
+    std::stringstream str;
+    this->show_comprehensive_summary(str);
+    return str.str();
   }
 
   void direct_space_asu::in_which_planes(const rvector3_t &p, std::vector<cut> &result) const
