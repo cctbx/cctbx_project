@@ -27,7 +27,7 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 import iotbx.pdb
 import iotbx.pdb.amino_acid_codes
 import random
-
+from cctbx import xray
 
 def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
   pdb_raw_records = smart_open.for_reading(
@@ -144,39 +144,63 @@ def detect_dummy_atom (file_name):
 
   return "done"
 
-def grow_density(fmodel, file_name, x_center, y_center, z_center, radius ):
+def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_center, radius ):
   """ method to improve local density using dummy atoms """
-  pdb_inp = iotbx.pdb.input(file_name=file_name)
-  hierarchy = pdb_inp.construct_hierarchy()
-  # Add an atom to the atom_group
-  pdb_atoms = hierarchy.atoms()
-  #pdb_chains = hierarchy.chains()
-  #last_chain = pdb_chains[len(pdb_chains)-1]
-  atom = pdb_atoms[len(pdb_atoms)-1]
-  atom_group = atom.parent()
-  atom = iotbx.pdb.hierarchy.atom()
-  atom.name = " DM"
-  atom.xyz = [2.0,2.0,2.0]
-  atom.occ = 15
-  atom.b = 3
-  atom.resid = "HOH"
+  print "grow density method"
+#  xray_structure = xray_structures[0]
+#  orth = xray_structure.unit_cell().orthogonalize
+#  pdb_inp = iotbx.pdb.input(file_name=file_name)
+#  hierarchy = pdb_inp.construct_hierarchy()
+#  #
+#  f = open("tmp2.pdb","w")
+#  cs = xray_structure.crystal_symmetry()
+#  print >> f, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
+#  print >> f, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
+#
+#  for atom in hierarchy.atoms():
+#     print '     ', atom.format_atom_record()
+#     print >> f, atom.format_atom_record()
 
-  awl = pdb.make_atom_with_labels(
-    xyz=(1,2,3),
-    segid="JKLM",
-    model_id="DM",
-    chain_id="DM",
-    occ=7,
-    b=9,
-    serial="97",
-    hetero=False,
-    name=" N",
-    element="N",
-    resname="HOH" )
+#  f.close()
+#  below code left just now - sort of works but can work out how to get chain, res etc
+#  for i, sc in enumerate(xray_structure.scatterers()):
+#    print i, sc.site
+#    a = iotbx.pdb.hierarchy.atom_with_labels()
+#    label = sc.label.upper()
+#    a.name = sc.scattering_type
+#    a.resname = label[:3]
+#    a.serial = i+1
+#    a.resseq = i+1
+#    a.xyz = orth(sc.site)
+#    a.occ = sc.occupancy
+#    a.b = adptbx.u_as_b(sc.u_iso)
+#    a.element = sc.scattering_type
+#    print >> f, a.format_atom_record_group()
 
-  awl.format_atom_record_group(siguij=False)
-  atom_group.append_atom(atom=awl)
-  hierarchy.write_pdb_file(file_name="junk2.pdb")
+
+#  rr = random.randrange
+#  for k in range(1,100):
+#    scatterer = xray.scatterer(
+#      site = (rr(-k,k)/100., rr(-k,k)/100., rr(-k,k)/100.),
+#      scattering_type = "C",
+#      u = 0.2)
+#    xray_structure.add_scatterer(scatterer)
+#
+#
+#  for i, sc in enumerate(xray_structure.scatterers()):
+#    a = iotbx.pdb.hierarchy.atom_with_labels()
+#    a.serial = i+1
+#    a.name = " C  "
+#    a.resname = "DUM"
+#    a.resseq = i+1
+#    a.xyz = orth(sc.site)
+#    a.occ = sc.occupancy
+#    a.b = adptbx.u_as_b(sc.u_iso)
+#    a.element = sc.scattering_type
+#    print >> f, a.format_atom_record_group()
+
+
+
   """TODO: trying to work out how to add atom correctly to pdb, so can create models /
   need to make new atom group?  Currently adds atoms to last residue (as shown in junk.pdb) /
   which is obviously not correct.  Code below will be able to produce atom grids
@@ -191,21 +215,66 @@ def grow_density(fmodel, file_name, x_center, y_center, z_center, radius ):
   z_start = float(z_center) - (float(radius)/2)
   z_end = float(z_center )+ (float(radius)/2)
 
-  step_size = 1
+  step_size = 2
+
+
   for overlap_start in [0.0, 0.2, 0.4, 0.6, 0.8]:
+      f = open("tmp"+str(overlap_start)+".pdb","w")
+      xray_structure = "" # trying to blank scatterers
+      xray_structure = xray_structures[0]
+      orth = xray_structure.unit_cell().orthogonalize
+      pdb_inp = iotbx.pdb.input(file_name=file_name)
+      hierarchy = pdb_inp.construct_hierarchy()
+
+      cs = xray_structure.crystal_symmetry()
+      print >> f, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
+      print >> f, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
+      for atom in hierarchy.atoms(): print >> f, atom.format_atom_record()
+      # a test for the right coord
+      scatterer = xray.scatterer(
+      site = (float(x_center), float(y_center), float(z_center)),
+      scattering_type = "C",
+      u = 0.2)
+      xray_structure.add_scatterer(scatterer)
+
+      #
       x_coord = x_start + overlap_start
+      """ TODO: need to think about which way overlap moves """
       y_coord = y_start + overlap_start
-      y_coord = y_start  + overlap_start
+      z_coord = z_start + overlap_start
+
       while x_coord < x_end:
-          y_coord = y_start
+          y_coord = y_start + overlap_start
           while y_coord < y_end:
-              z_coord = z_start
+              z_coord = z_start + overlap_start
               while z_coord < z_end:
-                  #print x_coord, y_coord, z_coord
+                  print x_coord, y_coord, z_coord
+                  scatterer = xray.scatterer(
+                  site = (x_coord, y_coord, z_coord),
+                  scattering_type = "N",
+                  u = 0.2)
+                  xray_structure.add_scatterer(scatterer)
+                  #print scatterer.site
+
+
 
                   z_coord = z_coord + step_size
               y_coord = y_coord + step_size
           x_coord = x_coord + step_size
+
+      for i, sc in enumerate(xray_structure.scatterers()):
+         a = iotbx.pdb.hierarchy.atom_with_labels()
+         a.serial = i+1
+         a.name = sc.scattering_type
+         a.resname = "DUM"
+         a.resseq = i+1
+         a.xyz = sc.site
+         #print sc.site, a.xyz
+         a.occ = sc.occupancy
+         a.b = adptbx.u_as_b(sc.u_iso)
+         a.element = sc.scattering_type
+         print >> f, a.format_atom_record_group()
+      f.close()
   print "   "
 
 
@@ -268,8 +337,8 @@ def run(args,
     raise Sorry("Need to specify x center.")
   if(command_line.options.y_center is None):
     raise Sorry("Need to specify y center.")
-  if(command_line.options.y_center is None):
-    raise Sorry("Need to specify y center.")
+  if(command_line.options.z_center is None):
+    raise Sorry("Need to specify z center.")
   if(command_line.options.radius is None):
     raise Sorry("Need to specify radius.")
   crystal_symmetry = None
@@ -356,7 +425,6 @@ def run(args,
     scattering_table   = command_line.options.scattering_table,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
-  #select_atoms = cctbx_project.mmtbx.utils.get_atom_selection(pdb_file_name, "C")
   if(not xray_structures[0].crystal_symmetry().is_similar_symmetry(
      f_obs.crystal_symmetry())):
     raise Sorry("Inconsistent crystal symmetry.")
@@ -379,6 +447,6 @@ def run(args,
             f_obs_labels    = f_obs.info().label_string())
   show_model_vs_data(fmodel)
   #
-  grow_density(fmodel, pdb_file_name,x_center=command_line.options.x_center,\
-  y_center=command_line.options.x_center, z_center=command_line.options.x_center,\
+  grow_density(fmodel, pdb_file_name, xray_structures,x_center=command_line.options.x_center,\
+  y_center=command_line.options.y_center, z_center=command_line.options.z_center,\
   radius=command_line.options.radius )
