@@ -11,6 +11,7 @@ class fmodels(object):
                      xray_scattering_dict = None,
                      neutron_scattering_dict = None,
                      neutron_refinement = None,
+                     twin_law = None, # XXX used below in ONE plase to avoid running into a BUG in twin_f_model
                      log = None):
     self.fmodel_x = fmodel_xray
     self.fmodel_n = fmodel_neutron
@@ -19,7 +20,7 @@ class fmodels(object):
     self.neutron_refinement = neutron_refinement
     self.log = log
     # pre-scale
-    if(self.fmodel_n is not None):
+    if(self.fmodel_n is not None and twin_law is None): # XXX This is broken if twin_f_model is used
       scale_k1_x = self.fmodel_x.scale_k1()
       scale_k1_n = self.fmodel_n.scale_k1()
       xn_scale = scale_k1_x / scale_k1_n

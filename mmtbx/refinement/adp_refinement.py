@@ -112,6 +112,7 @@ class manager(object):
             log                    = None,
             h_params               = None):
     global time_adp_refinement_py
+    scatterers = fmodels.fmodel_xray().xray_structure.scatterers()
     timer = user_plus_sys_time()
     if(log is None): log = sys.stdout
     tan_u_iso = False
@@ -127,15 +128,29 @@ class manager(object):
     if(refine_tls):
        print_statistics.make_sub_header(text = "TLS refinement",
                                         out  = log)
+       tls_sel_st = flex.size_t()
+       for ts in tls_selections:
+         tls_sel_st.extend(ts)
+       tls_sel_bool = flex.bool(scatterers.size(), flex.size_t(tls_sel_st))
        if(macro_cycle == 1):
           gbr_selections = []
           for s in tls_selections:
-              gbr_selections.append(s)
+            gbr_selections.append(s)
        else:
-          gbr_selections = group_adp_selections
-       xray.set_scatterer_grad_flags(
-                            scatterers = fmodels.fmodel_xray().xray_structure.scatterers(),
-                            u_iso      = True)
+          gbr_selections = []
+          for gs in group_adp_selections:
+            gbr_selection = flex.size_t()
+            for gs_ in gs:
+              if(tls_sel_bool[gs_]):
+                gbr_selection.append(gs_)
+            if(gbr_selection.size() > 0):
+              gbr_selections.append(gbr_selection)
+       gbr_selections_one_arr = flex.size_t()
+       for gbs in gbr_selections:
+         gbr_selections_one_arr.extend(gbs)
+       scatterers = fmodels.fmodel_xray().xray_structure.scatterers()
+       for gbr_selection in gbr_selections_one_arr:
+         scatterers[gbr_selection].flags.set_use_u_iso(True)
        group_b_manager = mmtbx.refinement.group.manager(
           fmodel                   = fmodels.fmodel_xray(),
           selections               = gbr_selections,
@@ -144,10 +159,10 @@ class manager(object):
           number_of_macro_cycles   = 1,
           refine_adp               = True,
           log                      = log)
-       # XXX u_aniso = True ONLY for TLS groups, and not all
-       xray.set_scatterer_grad_flags(
-                               scatterers = fmodels.fmodel_xray().xray_structure.scatterers(),
-                               u_aniso    = True)
+       scatterers = fmodels.fmodel_xray().xray_structure.scatterers()
+       for tls_selection_ in tls_selections:
+         for tls_selection__ in tls_selection_:
+           scatterers[tls_selection__].flags.set_use_u_aniso(True)
        model.show_groups(tls = True, out = log)
        current_target_name = fmodels.fmodel_xray().target_name
        fmodels.fmodel_xray().update(target_name = "ls_wunit_k1")
