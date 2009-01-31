@@ -6,6 +6,7 @@
 #include <cctbx/sgtbx/site_symmetry_table.h>
 #include <scitbx/array_family/versa.h>
 #include <scitbx/array_family/accessors/flex_grid.h>
+#include <cctbx/adptbx.h>
 #include <cstdio>
 
 namespace cctbx { namespace xray {
@@ -102,18 +103,33 @@ namespace cctbx { namespace xray {
     af::const_ref<std::size_t> const& selection)
   {
     typedef typename ScattererType::float_type float_type;
-    scitbx::sym_mat3<float_type>
-      u_star_shift = adptbx::u_iso_as_u_star(unit_cell, u_shift);
-
     for(std::size_t j=0;j<selection.size();j++) {
       std::size_t i_seq=selection[j];
       ScattererType& sc = scatterers[i_seq];
-      if (sc.flags.use_u_iso()) {
+      if (sc.flags.use_u_iso() & sc.flags.use_u_aniso()) {
+        scitbx::sym_mat3<float_type>
+          u_star_shift = adptbx::u_iso_as_u_star(unit_cell, u_shift);
+        scitbx::sym_mat3<float_type>
+          u_cart_total = adptbx::u_star_as_u_cart(unit_cell,
+                                                  sc.u_star+u_star_shift);
+        u_cart_total[0] += sc.u_iso;
+        u_cart_total[1] += sc.u_iso;
+        u_cart_total[2] += sc.u_iso;
+        if(adptbx::is_positive_definite(u_cart_total)) {
+          sc.u_iso += u_shift;
+        }
+      }
+      else if (sc.flags.use_u_iso()) {
         double new_u_iso = sc.u_iso + u_shift;
         if(new_u_iso >= 0.0) sc.u_iso = new_u_iso;
       }
       else if (sc.flags.use_u_aniso()) {
-        sc.u_star += u_star_shift;
+        scitbx::sym_mat3<float_type>
+          u_star_shift = adptbx::u_iso_as_u_star(unit_cell, u_shift);
+        scitbx::sym_mat3<float_type> new_u_star = sc.u_star + u_star_shift;
+        if(adptbx::is_positive_definite(new_u_star)) {
+          sc.u_star = new_u_star;
+        }
       }
     }
   }
