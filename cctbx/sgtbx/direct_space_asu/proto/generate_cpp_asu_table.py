@@ -1,10 +1,27 @@
+from scitbx.source_generators.utils import join_open
 import cctbx
-from cctbx.sgtbx import direct_space_asu
 from cctbx.sgtbx.direct_space_asu import reference_table
-from boost import rational
 from cctbx.sgtbx.direct_space_asu.cut_plane import cut
 
 
+head = """\
+///
+/// Generated code. DO NOT EDIT
+///
+/// Generator: cctbx/sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py
+///
+/// Dependencies: cctbx/sgtbx/direct_space_asu/reference_table.py
+///
+
+
+#include "reference_table.h"
+
+namespace cctbx { namespace sgtbx { namespace asu {
+
+namespace {
+
+typedef ivector3_t vvv;
+"""
 
 # replacement for cut.base_symbol
 def base_symbol_cpp(thecut):
@@ -57,55 +74,45 @@ def base_symbol_cpp(thecut):
 
 
 cctbx.sgtbx.direct_space_asu.cut_plane.cut.base_symbol = base_symbol_cpp
+# direct_space_asu.cut_plane.cut.base_symbol = base_symbol_cpp
+# cut_plane.cut.base_symbol = base_symbol_cpp
 
-def out_cpp(asu):
+def out_cpp(asu, f):
   i=0
   for facet in asu.facets:
     if( i!=0 ):
-      print "    &", facet
+      print >>f, "    &", facet
     else:
-      print "     ", facet
+      print >>f, "     ", facet
     i = i + 1
 
 
-
-def show_cpp(sg):
+def show_cpp(sg, f):
   asu = reference_table.get_asu(sg)
-  print "/////   Hall: ", asu.hall_symbol
   func = "asu_%03d"%sg
-  print "abstract::ptr ", func, "()"
-  print "{"
-  print "  return abstract_asu("
-  out_cpp(asu)
-  print "  );"
-  print "}"
-  print
+  print >>f, "facet_collection::pointer ", func, "()   //  Hall: ", asu.hall_symbol
+  print >>f, "{\n  return facet_collection_asu("
+  out_cpp(asu, f)
+  print >>f, "  );\n}\n"
   return func
 
 
-def run():
-  print
-  print "namespace cctbx { namespace sgtbx { namespace asu {"
-  print
-  print "typedef ivector3_t vvv;"
-  print
-  str = "asu_func asu_table[230] = {"
+def run(dr):
+  f = join_open(dr, "reference_table.cpp", "w")
+  print >>f, head
+  table = "asu_func asu_table[230] = {"
   i = 0
   for sg in xrange(1,231):
     if( i%8 == 0 ):
-      str += "\n  "
-    func = show_cpp(sg)
-    str += func + ", "
+      table += "\n  "
+    func = show_cpp(sg, f)
+    table += func
+    if i<229 :
+      table += ", "
     i += 1
-  print 
-  print ""
-  print str
-  print "};"
-  print
-  print "}}}"
-  print
+  print >>f, "} // end of unnamed namespace\n\n", table, "\n};\n\n}}}\n"
 
 
 if (__name__ == "__main__"):
-  run()
+  run(".")
 

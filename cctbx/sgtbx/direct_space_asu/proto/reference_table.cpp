@@ -1,68 +1,23 @@
+///
+/// Generated code. DO NOT EDIT
+///
+/// Generator: cctbx/sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py
+///
+/// Dependencies: cctbx/sgtbx/direct_space_asu/reference_table.py
+///
 
-#include "abstract.h"
-#include "expressions.h"
-#include "shortcuts.h"
+
+#include "reference_table.h"
 
 namespace cctbx { namespace sgtbx { namespace asu {
 
-  typedef ivector3_t vvv;
+namespace {
 
-  template< typename T> class wrapper : public abstract
-  {
-    public:
-      T obj;
+typedef ivector3_t vvv;
 
-    void change_basis(const change_of_basis_op &o)
-    {
-      obj.change_basis(o);
-    }
-
-    void write(std::ostream &os) const
-    {
-      obj.print(os, true);
-    }
-
-    bool is_inside(const rvector3_t &p) const
-    {
-      return obj.is_inside(p);
-    }
-    
-    size_type size() const 
-    {
-      return n_faces<T>::value;
-    }
-
-    void get_nth_plane(size_type i, cut &plane) const
-    {
-      cctbx::sgtbx::asu::get_nth_plane(obj, i, plane);  // obj must be and_expression
-    }
-
-    wrapper(const T &o) : obj(o) { if( ! is_proper_t<T>::value ) throw "improper type"; }
-
-    abstract::ptr new_volume_only() const
-    {
-      typedef typename strip<T>::return_type return_type;
-      return abstract::ptr( new wrapper< return_type >( strip<T>::execute(obj) ) );
-    }
-
-    abstract::ptr new_copy() const { return abstract::ptr( new wrapper<T>(*this) );}
-  };
-
-  template<typename TL, typename TR> 
-    abstract::ptr abstract_asu(const and_expression<TL,TR> &expr)
-  {
-      return wrapper< and_expression<TL,TR> > ( expr ).new_copy();
-  }
-
-
-  //
-  // the rest of the file was generated
-  //
-
-/////   Hall:  P 1
-abstract::ptr  asu_001 ()
+facet_collection::pointer  asu_001 ()   //  Hall:  P 1
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -72,10 +27,9 @@ abstract::ptr  asu_001 ()
   );
 }
 
-/////   Hall:  -P 1
-abstract::ptr  asu_002 ()
+facet_collection::pointer  asu_002 ()   //  Hall:  -P 1
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y0(z2) & y2(z2))
     & x2(y0(z2) & y2(z2))
     & y0
@@ -85,10 +39,9 @@ abstract::ptr  asu_002 ()
   );
 }
 
-/////   Hall:  P 2y
-abstract::ptr  asu_003 ()
+facet_collection::pointer  asu_003 ()   //  Hall:  P 2y
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -98,10 +51,9 @@ abstract::ptr  asu_003 ()
   );
 }
 
-/////   Hall:  P 2yb
-abstract::ptr  asu_004 ()
+facet_collection::pointer  asu_004 ()   //  Hall:  P 2yb
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -111,10 +63,9 @@ abstract::ptr  asu_004 ()
   );
 }
 
-/////   Hall:  C 2y
-abstract::ptr  asu_005 ()
+facet_collection::pointer  asu_005 ()   //  Hall:  C 2y
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z2)
     & x2(z2)
     & y0
@@ -124,10 +75,9 @@ abstract::ptr  asu_005 ()
   );
 }
 
-/////   Hall:  P -2y
-abstract::ptr  asu_006 ()
+facet_collection::pointer  asu_006 ()   //  Hall:  P -2y
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -137,10 +87,9 @@ abstract::ptr  asu_006 ()
   );
 }
 
-/////   Hall:  P -2yc
-abstract::ptr  asu_007 ()
+facet_collection::pointer  asu_007 ()   //  Hall:  P -2yc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0(+z2)
@@ -150,10 +99,9 @@ abstract::ptr  asu_007 ()
   );
 }
 
-/////   Hall:  C -2y
-abstract::ptr  asu_008 ()
+facet_collection::pointer  asu_008 ()   //  Hall:  C -2y
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -163,10 +111,9 @@ abstract::ptr  asu_008 ()
   );
 }
 
-/////   Hall:  C -2yc
-abstract::ptr  asu_009 ()
+facet_collection::pointer  asu_009 ()   //  Hall:  C -2yc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0(+z2)
@@ -176,10 +123,9 @@ abstract::ptr  asu_009 ()
   );
 }
 
-/////   Hall:  -P 2y
-abstract::ptr  asu_010 ()
+facet_collection::pointer  asu_010 ()   //  Hall:  -P 2y
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z2)
     & x2(z2)
     & y0
@@ -189,10 +135,9 @@ abstract::ptr  asu_010 ()
   );
 }
 
-/////   Hall:  -P 2yb
-abstract::ptr  asu_011 ()
+facet_collection::pointer  asu_011 ()   //  Hall:  -P 2yb
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0(z0(x2) & z2(x2))
@@ -202,10 +147,9 @@ abstract::ptr  asu_011 ()
   );
 }
 
-/////   Hall:  -C 2y
-abstract::ptr  asu_012 ()
+facet_collection::pointer  asu_012 ()   //  Hall:  -C 2y
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z2)
     & x2(z2)
     & y0
@@ -215,10 +159,9 @@ abstract::ptr  asu_012 ()
   );
 }
 
-/////   Hall:  -P 2yc
-abstract::ptr  asu_013 ()
+facet_collection::pointer  asu_013 ()   //  Hall:  -P 2yc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z0(y2) & z4)
     & x2(z0(y2) & z4)
     & y0
@@ -228,10 +171,9 @@ abstract::ptr  asu_013 ()
   );
 }
 
-/////   Hall:  -P 2ybc
-abstract::ptr  asu_014 ()
+facet_collection::pointer  asu_014 ()   //  Hall:  -P 2ybc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y0(z2))
     & +x1
     & y0(x2(z2))
@@ -241,10 +183,9 @@ abstract::ptr  asu_014 ()
   );
 }
 
-/////   Hall:  -C 2yc
-abstract::ptr  asu_015 ()
+facet_collection::pointer  asu_015 ()   //  Hall:  -C 2yc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & x2(z4)
     & y0
@@ -254,10 +195,9 @@ abstract::ptr  asu_015 ()
   );
 }
 
-/////   Hall:  P 2 2
-abstract::ptr  asu_016 ()
+facet_collection::pointer  asu_016 ()   //  Hall:  P 2 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z2)
     & x2(z2)
     & y0(z2)
@@ -267,10 +207,9 @@ abstract::ptr  asu_016 ()
   );
 }
 
-/////   Hall:  P 2c 2
-abstract::ptr  asu_017 ()
+facet_collection::pointer  asu_017 ()   //  Hall:  P 2c 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-z4 & z1*3/4)
     & x2(-z4 & z1*3/4)
     & y0(z2)
@@ -280,10 +219,9 @@ abstract::ptr  asu_017 ()
   );
 }
 
-/////   Hall:  P 2 2ab
-abstract::ptr  asu_018 ()
+facet_collection::pointer  asu_018 ()   //  Hall:  P 2 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -293,10 +231,9 @@ abstract::ptr  asu_018 ()
   );
 }
 
-/////   Hall:  P 2ac 2ab
-abstract::ptr  asu_019 ()
+facet_collection::pointer  asu_019 ()   //  Hall:  P 2ac 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x2
     & y0(-z2)
@@ -306,10 +243,9 @@ abstract::ptr  asu_019 ()
   );
 }
 
-/////   Hall:  C 2c 2
-abstract::ptr  asu_020 ()
+facet_collection::pointer  asu_020 ()   //  Hall:  C 2c 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & x2(-z4)
     & y0
@@ -319,10 +255,9 @@ abstract::ptr  asu_020 ()
   );
 }
 
-/////   Hall:  C 2 2
-abstract::ptr  asu_021 ()
+facet_collection::pointer  asu_021 ()   //  Hall:  C 2 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z2)
     & x4(y4)
     & y0(z2)
@@ -332,10 +267,9 @@ abstract::ptr  asu_021 ()
   );
 }
 
-/////   Hall:  F 2 2
-abstract::ptr  asu_022 ()
+facet_collection::pointer  asu_022 ()   //  Hall:  F 2 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z2)
     & x4(-z4 & z1*3/4)
     & y0(z2)
@@ -345,10 +279,9 @@ abstract::ptr  asu_022 ()
   );
 }
 
-/////   Hall:  I 2 2
-abstract::ptr  asu_023 ()
+facet_collection::pointer  asu_023 ()   //  Hall:  I 2 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -358,10 +291,9 @@ abstract::ptr  asu_023 ()
   );
 }
 
-/////   Hall:  I 2b 2c
-abstract::ptr  asu_024 ()
+facet_collection::pointer  asu_024 ()   //  Hall:  I 2b 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y4)
     & x2(y4)
     & y0(z4)
@@ -371,10 +303,9 @@ abstract::ptr  asu_024 ()
   );
 }
 
-/////   Hall:  P 2 -2
-abstract::ptr  asu_025 ()
+facet_collection::pointer  asu_025 ()   //  Hall:  P 2 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -384,10 +315,9 @@ abstract::ptr  asu_025 ()
   );
 }
 
-/////   Hall:  P 2c -2
-abstract::ptr  asu_026 ()
+facet_collection::pointer  asu_026 ()   //  Hall:  P 2c -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0(+z2)
@@ -397,10 +327,9 @@ abstract::ptr  asu_026 ()
   );
 }
 
-/////   Hall:  P 2 -2c
-abstract::ptr  asu_027 ()
+facet_collection::pointer  asu_027 ()   //  Hall:  P 2 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z2)
     & x2(+z2)
     & y0(+z2)
@@ -410,10 +339,9 @@ abstract::ptr  asu_027 ()
   );
 }
 
-/////   Hall:  P 2 -2a
-abstract::ptr  asu_028 ()
+facet_collection::pointer  asu_028 ()   //  Hall:  P 2 -2a
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2)
     & x4
     & y0
@@ -423,10 +351,9 @@ abstract::ptr  asu_028 ()
   );
 }
 
-/////   Hall:  P 2c -2ac
-abstract::ptr  asu_029 ()
+facet_collection::pointer  asu_029 ()   //  Hall:  P 2c -2ac
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z2)
     & x4(+z2)
     & y0
@@ -436,10 +363,9 @@ abstract::ptr  asu_029 ()
   );
 }
 
-/////   Hall:  P 2 -2bc
-abstract::ptr  asu_030 ()
+facet_collection::pointer  asu_030 ()   //  Hall:  P 2 -2bc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2)
     & x2(y2)
     & y0
@@ -449,10 +375,9 @@ abstract::ptr  asu_030 ()
   );
 }
 
-/////   Hall:  P 2ac -2
-abstract::ptr  asu_031 ()
+facet_collection::pointer  asu_031 ()   //  Hall:  P 2ac -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0(+z2)
@@ -462,10 +387,9 @@ abstract::ptr  asu_031 ()
   );
 }
 
-/////   Hall:  P 2 -2ab
-abstract::ptr  asu_032 ()
+facet_collection::pointer  asu_032 ()   //  Hall:  P 2 -2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -475,10 +399,9 @@ abstract::ptr  asu_032 ()
   );
 }
 
-/////   Hall:  P 2c -2n
-abstract::ptr  asu_033 ()
+facet_collection::pointer  asu_033 ()   //  Hall:  P 2c -2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x2
     & y0(+z2)
@@ -488,10 +411,9 @@ abstract::ptr  asu_033 ()
   );
 }
 
-/////   Hall:  P 2 -2n
-abstract::ptr  asu_034 ()
+facet_collection::pointer  asu_034 ()   //  Hall:  P 2 -2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -501,10 +423,9 @@ abstract::ptr  asu_034 ()
   );
 }
 
-/////   Hall:  C 2 -2
-abstract::ptr  asu_035 ()
+facet_collection::pointer  asu_035 ()   //  Hall:  C 2 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4(y4)
     & y0
@@ -514,10 +435,9 @@ abstract::ptr  asu_035 ()
   );
 }
 
-/////   Hall:  C 2c -2
-abstract::ptr  asu_036 ()
+facet_collection::pointer  asu_036 ()   //  Hall:  C 2c -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -527,10 +447,9 @@ abstract::ptr  asu_036 ()
   );
 }
 
-/////   Hall:  C 2 -2c
-abstract::ptr  asu_037 ()
+facet_collection::pointer  asu_037 ()   //  Hall:  C 2 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z2)
     & x4(y4)
     & y0(+z2)
@@ -540,10 +459,9 @@ abstract::ptr  asu_037 ()
   );
 }
 
-/////   Hall:  A 2 -2
-abstract::ptr  asu_038 ()
+facet_collection::pointer  asu_038 ()   //  Hall:  A 2 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -553,10 +471,9 @@ abstract::ptr  asu_038 ()
   );
 }
 
-/////   Hall:  A 2 -2b
-abstract::ptr  asu_039 ()
+facet_collection::pointer  asu_039 ()   //  Hall:  A 2 -2b
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z2)
     & x2(+z2)
     & y0(+z2)
@@ -566,10 +483,9 @@ abstract::ptr  asu_039 ()
   );
 }
 
-/////   Hall:  A 2 -2a
-abstract::ptr  asu_040 ()
+facet_collection::pointer  asu_040 ()   //  Hall:  A 2 -2a
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z2)
     & x4
     & y0(+z2)
@@ -579,10 +495,9 @@ abstract::ptr  asu_040 ()
   );
 }
 
-/////   Hall:  A 2 -2ab
-abstract::ptr  asu_041 ()
+facet_collection::pointer  asu_041 ()   //  Hall:  A 2 -2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -592,10 +507,9 @@ abstract::ptr  asu_041 ()
   );
 }
 
-/////   Hall:  F 2 -2
-abstract::ptr  asu_042 ()
+facet_collection::pointer  asu_042 ()   //  Hall:  F 2 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4(+z2)
     & y0
@@ -605,10 +519,9 @@ abstract::ptr  asu_042 ()
   );
 }
 
-/////   Hall:  F 2 -2d
-abstract::ptr  asu_043 ()
+facet_collection::pointer  asu_043 ()   //  Hall:  F 2 -2d
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4(-y0(+z2))
     & y0
@@ -618,10 +531,9 @@ abstract::ptr  asu_043 ()
   );
 }
 
-/////   Hall:  I 2 -2
-abstract::ptr  asu_044 ()
+facet_collection::pointer  asu_044 ()   //  Hall:  I 2 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -631,10 +543,9 @@ abstract::ptr  asu_044 ()
   );
 }
 
-/////   Hall:  I 2 -2c
-abstract::ptr  asu_045 ()
+facet_collection::pointer  asu_045 ()   //  Hall:  I 2 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -644,10 +555,9 @@ abstract::ptr  asu_045 ()
   );
 }
 
-/////   Hall:  I 2 -2a
-abstract::ptr  asu_046 ()
+facet_collection::pointer  asu_046 ()   //  Hall:  I 2 -2a
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2)
     & x4
     & y0
@@ -657,10 +567,9 @@ abstract::ptr  asu_046 ()
   );
 }
 
-/////   Hall:  -P 2 2
-abstract::ptr  asu_047 ()
+facet_collection::pointer  asu_047 ()   //  Hall:  -P 2 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -670,10 +579,9 @@ abstract::ptr  asu_047 ()
   );
 }
 
-/////   Hall:  -P 2ab 2bc
-abstract::ptr  asu_048 ()
+facet_collection::pointer  asu_048 ()   //  Hall:  -P 2ab 2bc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0(z2))
     & x4(-z4 & z1*3/4)
     & ~y4(-z4 & z1*3/4)
@@ -683,10 +591,9 @@ abstract::ptr  asu_048 ()
   );
 }
 
-/////   Hall:  -P 2 2c
-abstract::ptr  asu_049 ()
+facet_collection::pointer  asu_049 ()   //  Hall:  -P 2 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & x2(z4)
     & y0(z4)
@@ -696,10 +603,9 @@ abstract::ptr  asu_049 ()
   );
 }
 
-/////   Hall:  -P 2ab 2b
-abstract::ptr  asu_050 ()
+facet_collection::pointer  asu_050 ()   //  Hall:  -P 2ab 2b
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y2)
     & x4(-y4 & y1*3/4)
     & y0
@@ -709,10 +615,9 @@ abstract::ptr  asu_050 ()
   );
 }
 
-/////   Hall:  -P 2a 2a
-abstract::ptr  asu_051 ()
+facet_collection::pointer  asu_051 ()   //  Hall:  -P 2a 2a
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z2)
     & x4
     & y0
@@ -722,10 +627,9 @@ abstract::ptr  asu_051 ()
   );
 }
 
-/////   Hall:  -P 2a 2bc
-abstract::ptr  asu_052 ()
+facet_collection::pointer  asu_052 ()   //  Hall:  -P 2a 2bc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0(-x4 & x1*3/4)
@@ -735,10 +639,9 @@ abstract::ptr  asu_052 ()
   );
 }
 
-/////   Hall:  -P 2ac 2
-abstract::ptr  asu_053 ()
+facet_collection::pointer  asu_053 ()   //  Hall:  -P 2ac 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -748,10 +651,9 @@ abstract::ptr  asu_053 ()
   );
 }
 
-/////   Hall:  -P 2a 2ac
-abstract::ptr  asu_054 ()
+facet_collection::pointer  asu_054 ()   //  Hall:  -P 2a 2ac
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-z4)
     & x2(z4)
     & y0(-x4)
@@ -761,10 +663,9 @@ abstract::ptr  asu_054 ()
   );
 }
 
-/////   Hall:  -P 2 2ab
-abstract::ptr  asu_055 ()
+facet_collection::pointer  asu_055 ()   //  Hall:  -P 2 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -774,10 +675,9 @@ abstract::ptr  asu_055 ()
   );
 }
 
-/////   Hall:  -P 2ab 2ac
-abstract::ptr  asu_056 ()
+facet_collection::pointer  asu_056 ()   //  Hall:  -P 2ab 2ac
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2(-z0))
     & x4(-y4 & y1*3/4)
     & y0
@@ -787,10 +687,9 @@ abstract::ptr  asu_056 ()
   );
 }
 
-/////   Hall:  -P 2c 2b
-abstract::ptr  asu_057 ()
+facet_collection::pointer  asu_057 ()   //  Hall:  -P 2c 2b
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y2)
     & x2(-y2)
     & y0
@@ -800,10 +699,9 @@ abstract::ptr  asu_057 ()
   );
 }
 
-/////   Hall:  -P 2 2n
-abstract::ptr  asu_058 ()
+facet_collection::pointer  asu_058 ()   //  Hall:  -P 2 2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -813,10 +711,9 @@ abstract::ptr  asu_058 ()
   );
 }
 
-/////   Hall:  -P 2ab 2a
-abstract::ptr  asu_059 ()
+facet_collection::pointer  asu_059 ()   //  Hall:  -P 2ab 2a
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0(z2))
     & x4
     & ~y4
@@ -826,10 +723,9 @@ abstract::ptr  asu_059 ()
   );
 }
 
-/////   Hall:  -P 2n 2ab
-abstract::ptr  asu_060 ()
+facet_collection::pointer  asu_060 ()   //  Hall:  -P 2n 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & x2(-z4)
     & y0
@@ -839,10 +735,9 @@ abstract::ptr  asu_060 ()
   );
 }
 
-/////   Hall:  -P 2ac 2ab
-abstract::ptr  asu_061 ()
+facet_collection::pointer  asu_061 ()   //  Hall:  -P 2ac 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0(-z0))
     & y0
@@ -852,10 +747,9 @@ abstract::ptr  asu_061 ()
   );
 }
 
-/////   Hall:  -P 2ac 2n
-abstract::ptr  asu_062 ()
+facet_collection::pointer  asu_062 ()   //  Hall:  -P 2ac 2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0(-z0))
     & y0(+z2)
@@ -865,10 +759,9 @@ abstract::ptr  asu_062 ()
   );
 }
 
-/////   Hall:  -C 2c 2
-abstract::ptr  asu_063 ()
+facet_collection::pointer  asu_063 ()   //  Hall:  -C 2c 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -878,10 +771,9 @@ abstract::ptr  asu_063 ()
   );
 }
 
-/////   Hall:  -C 2ac 2
-abstract::ptr  asu_064 ()
+facet_collection::pointer  asu_064 ()   //  Hall:  -C 2ac 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4(z4)
     & y0
@@ -891,10 +783,9 @@ abstract::ptr  asu_064 ()
   );
 }
 
-/////   Hall:  -C 2 2
-abstract::ptr  asu_065 ()
+facet_collection::pointer  asu_065 ()   //  Hall:  -C 2 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4(y4)
     & y0
@@ -904,10 +795,9 @@ abstract::ptr  asu_065 ()
   );
 }
 
-/////   Hall:  -C 2 2c
-abstract::ptr  asu_066 ()
+facet_collection::pointer  asu_066 ()   //  Hall:  -C 2 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & x4(y4)
     & y0(z4)
@@ -917,10 +807,9 @@ abstract::ptr  asu_066 ()
   );
 }
 
-/////   Hall:  -C 2a 2
-abstract::ptr  asu_067 ()
+facet_collection::pointer  asu_067 ()   //  Hall:  -C 2a 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0(x4)
@@ -930,10 +819,9 @@ abstract::ptr  asu_067 ()
   );
 }
 
-/////   Hall:  -C 2a 2ac
-abstract::ptr  asu_068 ()
+facet_collection::pointer  asu_068 ()   //  Hall:  -C 2a 2ac
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & x2(z4)
     & y0(x4)
@@ -943,10 +831,9 @@ abstract::ptr  asu_068 ()
   );
 }
 
-/////   Hall:  -F 2 2
-abstract::ptr  asu_069 ()
+facet_collection::pointer  asu_069 ()   //  Hall:  -F 2 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4(z4)
     & y0
@@ -956,10 +843,9 @@ abstract::ptr  asu_069 ()
   );
 }
 
-/////   Hall:  -F 2uv 2vw
-abstract::ptr  asu_070 ()
+facet_collection::pointer  asu_070 ()   //  Hall:  -F 2uv 2vw
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0(z2))
     & x8(-z8 & z1*5/8)
     & ~y8(-z1*3/8 & z1*7/8)
@@ -969,10 +855,9 @@ abstract::ptr  asu_070 ()
   );
 }
 
-/////   Hall:  -I 2 2
-abstract::ptr  asu_071 ()
+facet_collection::pointer  asu_071 ()   //  Hall:  -I 2 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4(y4(z4))
     & y0
@@ -982,10 +867,9 @@ abstract::ptr  asu_071 ()
   );
 }
 
-/////   Hall:  -I 2 2c
-abstract::ptr  asu_072 ()
+facet_collection::pointer  asu_072 ()   //  Hall:  -I 2 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & x4(y4(z4))
     & y0(z4)
@@ -995,10 +879,9 @@ abstract::ptr  asu_072 ()
   );
 }
 
-/////   Hall:  -I 2b 2c
-abstract::ptr  asu_073 ()
+facet_collection::pointer  asu_073 ()   //  Hall:  -I 2b 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y4)
     & x4(z4(y4))
     & y0(z4)
@@ -1008,10 +891,9 @@ abstract::ptr  asu_073 ()
   );
 }
 
-/////   Hall:  -I 2b 2
-abstract::ptr  asu_074 ()
+facet_collection::pointer  asu_074 ()   //  Hall:  -I 2b 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4(-z4 & z1*3/4)
     & y0(z2)
@@ -1021,10 +903,9 @@ abstract::ptr  asu_074 ()
   );
 }
 
-/////   Hall:  P 4
-abstract::ptr  asu_075 ()
+facet_collection::pointer  asu_075 ()   //  Hall:  P 4
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1034,10 +915,9 @@ abstract::ptr  asu_075 ()
   );
 }
 
-/////   Hall:  P 4w
-abstract::ptr  asu_076 ()
+facet_collection::pointer  asu_076 ()   //  Hall:  P 4w
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z4)
     & x2(+z4)
     & y0(+z1*3/4)
@@ -1047,10 +927,9 @@ abstract::ptr  asu_076 ()
   );
 }
 
-/////   Hall:  P 4c
-abstract::ptr  asu_077 ()
+facet_collection::pointer  asu_077 ()   //  Hall:  P 4c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z2)
     & x2(+z2)
     & y0(+z2)
@@ -1060,10 +939,9 @@ abstract::ptr  asu_077 ()
   );
 }
 
-/////   Hall:   P 4cw
-abstract::ptr  asu_078 ()
+facet_collection::pointer  asu_078 ()   //  Hall:   P 4cw
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+-z1*3/4)
     & x2(+-z1*3/4)
     & y0(+-z4)
@@ -1073,10 +951,9 @@ abstract::ptr  asu_078 ()
   );
 }
 
-/////   Hall:  I 4
-abstract::ptr  asu_079 ()
+facet_collection::pointer  asu_079 ()   //  Hall:  I 4
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1086,10 +963,9 @@ abstract::ptr  asu_079 ()
   );
 }
 
-/////   Hall:  I 4bw
-abstract::ptr  asu_080 ()
+facet_collection::pointer  asu_080 ()   //  Hall:  I 4bw
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2)
     & x2(y2)
     & y0
@@ -1099,10 +975,9 @@ abstract::ptr  asu_080 ()
   );
 }
 
-/////   Hall:  P -4
-abstract::ptr  asu_081 ()
+facet_collection::pointer  asu_081 ()   //  Hall:  P -4
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0(z2))
     & x2
     & y0
@@ -1112,10 +987,9 @@ abstract::ptr  asu_081 ()
   );
 }
 
-/////   Hall:  I -4
-abstract::ptr  asu_082 ()
+facet_collection::pointer  asu_082 ()   //  Hall:  I -4
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z0(-y0))
     & x2(-y0(z4))
     & y0
@@ -1125,10 +999,9 @@ abstract::ptr  asu_082 ()
   );
 }
 
-/////   Hall:  -P 4
-abstract::ptr  asu_083 ()
+facet_collection::pointer  asu_083 ()   //  Hall:  -P 4
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1138,10 +1011,9 @@ abstract::ptr  asu_083 ()
   );
 }
 
-/////   Hall:  -P 4c
-abstract::ptr  asu_084 ()
+facet_collection::pointer  asu_084 ()   //  Hall:  -P 4c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0(z4))
     & x2
     & y0
@@ -1151,10 +1023,9 @@ abstract::ptr  asu_084 ()
   );
 }
 
-/////   Hall:  -P 4a
-abstract::ptr  asu_085 ()
+facet_collection::pointer  asu_085 ()   //  Hall:  -P 4a
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4(-~y4)
     & x4(z0(-~y4) & z2(-~y4))
     & ~y4
@@ -1164,10 +1035,9 @@ abstract::ptr  asu_085 ()
   );
 }
 
-/////   Hall:  -P 4bc
-abstract::ptr  asu_086 ()
+facet_collection::pointer  asu_086 ()   //  Hall:  -P 4bc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4(-~y4(z4))
     & x4(z0(-~y4) & z2(+-~y4))
     & ~y4
@@ -1177,10 +1047,9 @@ abstract::ptr  asu_086 ()
   );
 }
 
-/////   Hall:  -I 4
-abstract::ptr  asu_087 ()
+facet_collection::pointer  asu_087 ()   //  Hall:  -I 4
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1190,10 +1059,9 @@ abstract::ptr  asu_087 ()
   );
 }
 
-/////   Hall:  -I 4ad
-abstract::ptr  asu_088 ()
+facet_collection::pointer  asu_088 ()   //  Hall:  -I 4ad
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x4
     & y0(-x0(z2) | -x4(+z4))
@@ -1203,10 +1071,9 @@ abstract::ptr  asu_088 ()
   );
 }
 
-/////   Hall:  P 4 2
-abstract::ptr  asu_089 ()
+facet_collection::pointer  asu_089 ()   //  Hall:  P 4 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(p0)
     & x2
     & y0
@@ -1216,10 +1083,9 @@ abstract::ptr  asu_089 ()
   );
 }
 
-/////   Hall:  P 4ab 2ab
-abstract::ptr  asu_090 ()
+facet_collection::pointer  asu_090 ()   //  Hall:  P 4ab 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2(-y0)
     & y0
@@ -1229,10 +1095,9 @@ abstract::ptr  asu_090 ()
   );
 }
 
-/////   Hall:  P 4w 2c
-abstract::ptr  asu_091 ()
+facet_collection::pointer  asu_091 ()   //  Hall:  P 4w 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z8(-y0))
     & +x1
     & y0
@@ -1242,10 +1107,9 @@ abstract::ptr  asu_091 ()
   );
 }
 
-/////   Hall:  P 4abw 2nw
-abstract::ptr  asu_092 ()
+facet_collection::pointer  asu_092 ()   //  Hall:  P 4abw 2nw
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -1255,10 +1119,9 @@ abstract::ptr  asu_092 ()
   );
 }
 
-/////   Hall:  P 4c 2
-abstract::ptr  asu_093 ()
+facet_collection::pointer  asu_093 ()   //  Hall:  P 4c 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2)
     & x2(y2)
     & y0
@@ -1268,10 +1131,9 @@ abstract::ptr  asu_093 ()
   );
 }
 
-/////   Hall:  P 4n 2n
-abstract::ptr  asu_094 ()
+facet_collection::pointer  asu_094 ()   //  Hall:  P 4n 2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2(z2(-y2))
     & y0(z2(-x0))
@@ -1281,10 +1143,9 @@ abstract::ptr  asu_094 ()
   );
 }
 
-/////   Hall:   P 4cw 2c
-abstract::ptr  asu_095 ()
+facet_collection::pointer  asu_095 ()   //  Hall:   P 4cw 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x1(z8(-y0))
     & +x0
     & y0
@@ -1294,10 +1155,9 @@ abstract::ptr  asu_095 ()
   );
 }
 
-/////   Hall:  P 4nw 2abw
-abstract::ptr  asu_096 ()
+facet_collection::pointer  asu_096 ()   //  Hall:  P 4nw 2abw
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -1307,10 +1167,9 @@ abstract::ptr  asu_096 ()
   );
 }
 
-/////   Hall:  I 4 2
-abstract::ptr  asu_097 ()
+facet_collection::pointer  asu_097 ()   //  Hall:  I 4 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1320,10 +1179,9 @@ abstract::ptr  asu_097 ()
   );
 }
 
-/////   Hall:  I 4bw 2bw
-abstract::ptr  asu_098 ()
+facet_collection::pointer  asu_098 ()   //  Hall:  I 4bw 2bw
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2)
     & x2(y2)
     & y0
@@ -1333,10 +1191,9 @@ abstract::ptr  asu_098 ()
   );
 }
 
-/////   Hall:  P 4 -2
-abstract::ptr  asu_099 ()
+facet_collection::pointer  asu_099 ()   //  Hall:  P 4 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & y2
     & z0
@@ -1345,10 +1202,9 @@ abstract::ptr  asu_099 ()
   );
 }
 
-/////   Hall:  P 4 -2ab
-abstract::ptr  asu_100 ()
+facet_collection::pointer  asu_100 ()   //  Hall:  P 4 -2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -1357,10 +1213,9 @@ abstract::ptr  asu_100 ()
   );
 }
 
-/////   Hall:  P 4c -2c
-abstract::ptr  asu_101 ()
+facet_collection::pointer  asu_101 ()   //  Hall:  P 4c -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z2)
     & y2(+z2)
     & z0
@@ -1369,10 +1224,9 @@ abstract::ptr  asu_101 ()
   );
 }
 
-/////   Hall:  P 4n -2n
-abstract::ptr  asu_102 ()
+facet_collection::pointer  asu_102 ()   //  Hall:  P 4n -2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(+z2)
     & y2(+z2)
     & z0
@@ -1381,10 +1235,9 @@ abstract::ptr  asu_102 ()
   );
 }
 
-/////   Hall:  P 4 -2c
-abstract::ptr  asu_103 ()
+facet_collection::pointer  asu_103 ()   //  Hall:  P 4 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1394,10 +1247,9 @@ abstract::ptr  asu_103 ()
   );
 }
 
-/////   Hall:  P 4 -2n
-abstract::ptr  asu_104 ()
+facet_collection::pointer  asu_104 ()   //  Hall:  P 4 -2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1407,10 +1259,9 @@ abstract::ptr  asu_104 ()
   );
 }
 
-/////   Hall:  P 4c -2
-abstract::ptr  asu_105 ()
+facet_collection::pointer  asu_105 ()   //  Hall:  P 4c -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -1420,10 +1271,9 @@ abstract::ptr  asu_105 ()
   );
 }
 
-/////   Hall:  P 4c -2ab
-abstract::ptr  asu_106 ()
+facet_collection::pointer  asu_106 ()   //  Hall:  P 4c -2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1433,10 +1283,9 @@ abstract::ptr  asu_106 ()
   );
 }
 
-/////   Hall:  I 4 -2
-abstract::ptr  asu_107 ()
+facet_collection::pointer  asu_107 ()   //  Hall:  I 4 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & y2
     & z0
@@ -1445,10 +1294,9 @@ abstract::ptr  asu_107 ()
   );
 }
 
-/////   Hall:  I 4 -2c
-abstract::ptr  asu_108 ()
+facet_collection::pointer  asu_108 ()   //  Hall:  I 4 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -1457,10 +1305,9 @@ abstract::ptr  asu_108 ()
   );
 }
 
-/////   Hall:  I 4bw -2
-abstract::ptr  asu_109 ()
+facet_collection::pointer  asu_109 ()   //  Hall:  I 4bw -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -1470,10 +1317,9 @@ abstract::ptr  asu_109 ()
   );
 }
 
-/////   Hall:  I 4bw -2c
-abstract::ptr  asu_110 ()
+facet_collection::pointer  asu_110 ()   //  Hall:  I 4bw -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1483,10 +1329,9 @@ abstract::ptr  asu_110 ()
   );
 }
 
-/////   Hall:  P -4 2
-abstract::ptr  asu_111 ()
+facet_collection::pointer  asu_111 ()   //  Hall:  P -4 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z2)
     & y2(z2)
     & z0
@@ -1495,10 +1340,9 @@ abstract::ptr  asu_111 ()
   );
 }
 
-/////   Hall:  P -4 2c
-abstract::ptr  asu_112 ()
+facet_collection::pointer  asu_112 ()   //  Hall:  P -4 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4 & z0(-y0))
     & x2(z4)
     & y0(z4)
@@ -1508,10 +1352,9 @@ abstract::ptr  asu_112 ()
   );
 }
 
-/////   Hall:  P -4 2ab
-abstract::ptr  asu_113 ()
+facet_collection::pointer  asu_113 ()   //  Hall:  P -4 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0(z2))
     & y0
     & z0
@@ -1520,10 +1363,9 @@ abstract::ptr  asu_113 ()
   );
 }
 
-/////   Hall:  P -4 2n
-abstract::ptr  asu_114 ()
+facet_collection::pointer  asu_114 ()   //  Hall:  P -4 2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1533,10 +1375,9 @@ abstract::ptr  asu_114 ()
   );
 }
 
-/////   Hall:  P -4 -2
-abstract::ptr  asu_115 ()
+facet_collection::pointer  asu_115 ()   //  Hall:  P -4 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -1546,10 +1387,9 @@ abstract::ptr  asu_115 ()
   );
 }
 
-/////   Hall:  P -4 -2c
-abstract::ptr  asu_116 ()
+facet_collection::pointer  asu_116 ()   //  Hall:  P -4 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2)
     & x2(y2 & z0(-y2))
     & y0
@@ -1559,10 +1399,9 @@ abstract::ptr  asu_116 ()
   );
 }
 
-/////   Hall:  P -4 -2ab
-abstract::ptr  asu_117 ()
+facet_collection::pointer  asu_117 ()   //  Hall:  P -4 -2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z0(-y0) & z2(-y0))
     & x2(-y0)
     & y0
@@ -1572,10 +1411,9 @@ abstract::ptr  asu_117 ()
   );
 }
 
-/////   Hall:  P -4 -2n
-abstract::ptr  asu_118 ()
+facet_collection::pointer  asu_118 ()   //  Hall:  P -4 -2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2)
     & x2(y2)
     & y0
@@ -1585,10 +1423,9 @@ abstract::ptr  asu_118 ()
   );
 }
 
-/////   Hall:  I -4 -2
-abstract::ptr  asu_119 ()
+facet_collection::pointer  asu_119 ()   //  Hall:  I -4 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -1598,10 +1435,9 @@ abstract::ptr  asu_119 ()
   );
 }
 
-/////   Hall:  I -4 -2c
-abstract::ptr  asu_120 ()
+facet_collection::pointer  asu_120 ()   //  Hall:  I -4 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z0(-y0))
     & x2(-y0)
     & y0
@@ -1611,10 +1447,9 @@ abstract::ptr  asu_120 ()
   );
 }
 
-/////   Hall:  I -4 2
-abstract::ptr  asu_121 ()
+facet_collection::pointer  asu_121 ()   //  Hall:  I -4 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & y2(-x0(z4))
     & z0
@@ -1623,10 +1458,9 @@ abstract::ptr  asu_121 ()
   );
 }
 
-/////   Hall:  I -4 2bw
-abstract::ptr  asu_122 ()
+facet_collection::pointer  asu_122 ()   //  Hall:  I -4 2bw
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(y2 & z0(-y0))
     & x2(y2)
     & y0
@@ -1636,10 +1470,9 @@ abstract::ptr  asu_122 ()
   );
 }
 
-/////   Hall:  -P 4 2
-abstract::ptr  asu_123 ()
+facet_collection::pointer  asu_123 ()   //  Hall:  -P 4 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & y2
     & z0
@@ -1648,10 +1481,9 @@ abstract::ptr  asu_123 ()
   );
 }
 
-/////   Hall:  -P 4 2c
-abstract::ptr  asu_124 ()
+facet_collection::pointer  asu_124 ()   //  Hall:  -P 4 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1661,10 +1493,9 @@ abstract::ptr  asu_124 ()
   );
 }
 
-/////   Hall:  -P 4a 2b
-abstract::ptr  asu_125 ()
+facet_collection::pointer  asu_125 ()   //  Hall:  -P 4a 2b
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4(-~y4)
     & ~y4
     & z0(p0)
@@ -1673,10 +1504,9 @@ abstract::ptr  asu_125 ()
   );
 }
 
-/////   Hall:  -P 4a 2bc
-abstract::ptr  asu_126 ()
+facet_collection::pointer  asu_126 ()   //  Hall:  -P 4a 2bc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4(-~y4)
     & x4
     & ~y4
@@ -1686,10 +1516,9 @@ abstract::ptr  asu_126 ()
   );
 }
 
-/////   Hall:  -P 4 2ab
-abstract::ptr  asu_127 ()
+facet_collection::pointer  asu_127 ()   //  Hall:  -P 4 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -1698,10 +1527,9 @@ abstract::ptr  asu_127 ()
   );
 }
 
-/////   Hall:  -P 4 2n
-abstract::ptr  asu_128 ()
+facet_collection::pointer  asu_128 ()   //  Hall:  -P 4 2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y0
@@ -1711,10 +1539,9 @@ abstract::ptr  asu_128 ()
   );
 }
 
-/////   Hall:  -P 4a 2a
-abstract::ptr  asu_129 ()
+facet_collection::pointer  asu_129 ()   //  Hall:  -P 4a 2a
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4
     & y4
     & z0(-m0)
@@ -1723,10 +1550,9 @@ abstract::ptr  asu_129 ()
   );
 }
 
-/////   Hall:  -P 4a 2ac
-abstract::ptr  asu_130 ()
+facet_collection::pointer  asu_130 ()   //  Hall:  -P 4a 2ac
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4(-~y4)
     & x4(z0(-~y4))
     & ~y4
@@ -1736,10 +1562,9 @@ abstract::ptr  asu_130 ()
   );
 }
 
-/////   Hall:  -P 4c 2
-abstract::ptr  asu_131 ()
+facet_collection::pointer  asu_131 ()   //  Hall:  -P 4c 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & y0
@@ -1749,10 +1574,9 @@ abstract::ptr  asu_131 ()
   );
 }
 
-/////   Hall:  -P 4c 2c
-abstract::ptr  asu_132 ()
+facet_collection::pointer  asu_132 ()   //  Hall:  -P 4c 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & y2(z4)
     & z0
@@ -1761,10 +1585,9 @@ abstract::ptr  asu_132 ()
   );
 }
 
-/////   Hall:  -P 4ac 2b
-abstract::ptr  asu_133 ()
+facet_collection::pointer  asu_133 ()   //  Hall:  -P 4ac 2b
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4
     & x4(-z0 | -~y4)
     & ~y4
@@ -1774,10 +1597,9 @@ abstract::ptr  asu_133 ()
   );
 }
 
-/////   Hall:  -P 4ac 2bc
-abstract::ptr  asu_134 ()
+facet_collection::pointer  asu_134 ()   //  Hall:  -P 4ac 2bc
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4(z4)
     & ~y4(z4)
     & z0(p0)
@@ -1786,10 +1608,9 @@ abstract::ptr  asu_134 ()
   );
 }
 
-/////   Hall:  -P 4c 2ab
-abstract::ptr  asu_135 ()
+facet_collection::pointer  asu_135 ()   //  Hall:  -P 4c 2ab
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4(-y0))
     & x2(-y0)
     & y0
@@ -1799,10 +1620,9 @@ abstract::ptr  asu_135 ()
   );
 }
 
-/////   Hall:  -P 4n 2n
-abstract::ptr  asu_136 ()
+facet_collection::pointer  asu_136 ()   //  Hall:  -P 4n 2n
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z4)
     & y2(z4(-x0))
     & z0
@@ -1811,10 +1631,9 @@ abstract::ptr  asu_136 ()
   );
 }
 
-/////   Hall:  -P 4ac 2a
-abstract::ptr  asu_137 ()
+facet_collection::pointer  asu_137 ()   //  Hall:  -P 4ac 2a
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4
     & x4
     & ~y4
@@ -1824,10 +1643,9 @@ abstract::ptr  asu_137 ()
   );
 }
 
-/////   Hall:  -P 4ac 2ac
-abstract::ptr  asu_138 ()
+facet_collection::pointer  asu_138 ()   //  Hall:  -P 4ac 2ac
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~x4
     & y4(-~x4(z4))
     & z0(-m0)
@@ -1836,10 +1654,9 @@ abstract::ptr  asu_138 ()
   );
 }
 
-/////   Hall:  -I 4 2
-abstract::ptr  asu_139 ()
+facet_collection::pointer  asu_139 ()   //  Hall:  -I 4 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & y2
     & z0
@@ -1848,10 +1665,9 @@ abstract::ptr  asu_139 ()
   );
 }
 
-/////   Hall:  -I 4 2c
-abstract::ptr  asu_140 ()
+facet_collection::pointer  asu_140 ()   //  Hall:  -I 4 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -1860,10 +1676,9 @@ abstract::ptr  asu_140 ()
   );
 }
 
-/////   Hall:  -I 4bd 2
-abstract::ptr  asu_141 ()
+facet_collection::pointer  asu_141 ()   //  Hall:  -I 4bd 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & x2
     & ~y4
@@ -1873,10 +1688,9 @@ abstract::ptr  asu_141 ()
   );
 }
 
-/////   Hall:  -I 4bd 2c
-abstract::ptr  asu_142 ()
+facet_collection::pointer  asu_142 ()   //  Hall:  -I 4bd 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(z8(-~y4) & z0(-y0))
     & x2(-~y4)
     & ~y4
@@ -1886,10 +1700,9 @@ abstract::ptr  asu_142 ()
   );
 }
 
-/////   Hall:  P 3
-abstract::ptr  asu_143 ()
+facet_collection::pointer  asu_143 ()   //  Hall:  P 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -1900,10 +1713,9 @@ abstract::ptr  asu_143 ()
   );
 }
 
-/////   Hall:  P 31
-abstract::ptr  asu_144 ()
+facet_collection::pointer  asu_144 ()   //  Hall:  P 31
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -1913,10 +1725,9 @@ abstract::ptr  asu_144 ()
   );
 }
 
-/////   Hall:   P 32
-abstract::ptr  asu_145 ()
+facet_collection::pointer  asu_145 ()   //  Hall:   P 32
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & +y1
     & x0
@@ -1926,10 +1737,9 @@ abstract::ptr  asu_145 ()
   );
 }
 
-/////   Hall:  R 3
-abstract::ptr  asu_146 ()
+facet_collection::pointer  asu_146 ()   //  Hall:  R 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -1940,10 +1750,9 @@ abstract::ptr  asu_146 ()
   );
 }
 
-/////   Hall:  -P 3
-abstract::ptr  asu_147 ()
+facet_collection::pointer  asu_147 ()   //  Hall:  -P 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0(-y0))
@@ -1954,10 +1763,9 @@ abstract::ptr  asu_147 ()
   );
 }
 
-/////   Hall:  -R 3
-abstract::ptr  asu_148 ()
+facet_collection::pointer  asu_148 ()   //  Hall:  -R 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0(-y0))
@@ -1968,10 +1776,9 @@ abstract::ptr  asu_148 ()
   );
 }
 
-/////   Hall:  P 3 2
-abstract::ptr  asu_149 ()
+facet_collection::pointer  asu_149 ()   //  Hall:  P 3 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(-h0 | -k0)
@@ -1982,10 +1789,9 @@ abstract::ptr  asu_149 ()
   );
 }
 
-/////   Hall:  P 3 2"
-abstract::ptr  asu_150 ()
+facet_collection::pointer  asu_150 ()   //  Hall:  P 3 2"
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0)
@@ -1996,10 +1802,9 @@ abstract::ptr  asu_150 ()
   );
 }
 
-/////   Hall:  P 31 2 (x,y,z+1/3)
-abstract::ptr  asu_151 ()
+facet_collection::pointer  asu_151 ()   //  Hall:  P 31 2 (x,y,z+1/3)
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -2009,10 +1814,9 @@ abstract::ptr  asu_151 ()
   );
 }
 
-/////   Hall:  P 31 2"
-abstract::ptr  asu_152 ()
+facet_collection::pointer  asu_152 ()   //  Hall:  P 31 2"
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -2022,10 +1826,9 @@ abstract::ptr  asu_152 ()
   );
 }
 
-/////   Hall:  P 32 2 (x,y,z+1/6)
-abstract::ptr  asu_153 ()
+facet_collection::pointer  asu_153 ()   //  Hall:  P 32 2 (x,y,z+1/6)
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -2035,10 +1838,9 @@ abstract::ptr  asu_153 ()
   );
 }
 
-/////   Hall:   P 32 2"
-abstract::ptr  asu_154 ()
+facet_collection::pointer  asu_154 ()   //  Hall:   P 32 2"
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & +y1
     & x0
@@ -2048,10 +1850,9 @@ abstract::ptr  asu_154 ()
   );
 }
 
-/////   Hall:  R 3 2"
-abstract::ptr  asu_155 ()
+facet_collection::pointer  asu_155 ()   //  Hall:  R 3 2"
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0)
@@ -2062,10 +1863,9 @@ abstract::ptr  asu_155 ()
   );
 }
 
-/////   Hall:  P 3 -2"
-abstract::ptr  asu_156 ()
+facet_collection::pointer  asu_156 ()   //  Hall:  P 3 -2"
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0
     & +z1
     & h0
@@ -2074,10 +1874,9 @@ abstract::ptr  asu_156 ()
   );
 }
 
-/////   Hall:  P 3 -2
-abstract::ptr  asu_157 ()
+facet_collection::pointer  asu_157 ()   //  Hall:  P 3 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & +z1
@@ -2087,10 +1886,9 @@ abstract::ptr  asu_157 ()
   );
 }
 
-/////   Hall:  P 3 -2"c
-abstract::ptr  asu_158 ()
+facet_collection::pointer  asu_158 ()   //  Hall:  P 3 -2"c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -2101,10 +1899,9 @@ abstract::ptr  asu_158 ()
   );
 }
 
-/////   Hall:  P 3 -2c
-abstract::ptr  asu_159 ()
+facet_collection::pointer  asu_159 ()   //  Hall:  P 3 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -2115,10 +1912,9 @@ abstract::ptr  asu_159 ()
   );
 }
 
-/////   Hall:  R 3 -2"
-abstract::ptr  asu_160 ()
+facet_collection::pointer  asu_160 ()   //  Hall:  R 3 -2"
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0
     & +z3
     & h0
@@ -2127,10 +1923,9 @@ abstract::ptr  asu_160 ()
   );
 }
 
-/////   Hall:  R 3 -2"c
-abstract::ptr  asu_161 ()
+facet_collection::pointer  asu_161 ()   //  Hall:  R 3 -2"c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -2141,10 +1936,9 @@ abstract::ptr  asu_161 ()
   );
 }
 
-/////   Hall:  -P 3 2
-abstract::ptr  asu_162 ()
+facet_collection::pointer  asu_162 ()   //  Hall:  -P 3 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0(-h0)
     & z2(-h0)
@@ -2154,10 +1948,9 @@ abstract::ptr  asu_162 ()
   );
 }
 
-/////   Hall:  -P 3 2c
-abstract::ptr  asu_163 ()
+facet_collection::pointer  asu_163 ()   //  Hall:  -P 3 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0(-y0))
@@ -2168,10 +1961,9 @@ abstract::ptr  asu_163 ()
   );
 }
 
-/////   Hall:  -P 3 2"
-abstract::ptr  asu_164 ()
+facet_collection::pointer  asu_164 ()   //  Hall:  -P 3 2"
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0(z2)
     & z0
     & +z1
@@ -2180,10 +1972,9 @@ abstract::ptr  asu_164 ()
   );
 }
 
-/////   Hall:  -P 3 2"c
-abstract::ptr  asu_165 ()
+facet_collection::pointer  asu_165 ()   //  Hall:  -P 3 2"c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0(-y0))
@@ -2194,10 +1985,9 @@ abstract::ptr  asu_165 ()
   );
 }
 
-/////   Hall:  -R 3 2"
-abstract::ptr  asu_166 ()
+facet_collection::pointer  asu_166 ()   //  Hall:  -R 3 2"
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0(p0)
     & z6(x3)
     & h0
@@ -2206,10 +1996,9 @@ abstract::ptr  asu_166 ()
   );
 }
 
-/////   Hall:  -R 3 2"c
-abstract::ptr  asu_167 ()
+facet_collection::pointer  asu_167 ()   //  Hall:  -R 3 2"c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0(-y0))
@@ -2220,10 +2009,9 @@ abstract::ptr  asu_167 ()
   );
 }
 
-/////   Hall:  P 6
-abstract::ptr  asu_168 ()
+facet_collection::pointer  asu_168 ()   //  Hall:  P 6
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & +z1
@@ -2233,10 +2021,9 @@ abstract::ptr  asu_168 ()
   );
 }
 
-/////   Hall:  P 61
-abstract::ptr  asu_169 ()
+facet_collection::pointer  asu_169 ()   //  Hall:  P 61
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -2246,10 +2033,9 @@ abstract::ptr  asu_169 ()
   );
 }
 
-/////   Hall:   P 65
-abstract::ptr  asu_170 ()
+facet_collection::pointer  asu_170 ()   //  Hall:   P 65
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & +y1
     & x0
@@ -2259,10 +2045,9 @@ abstract::ptr  asu_170 ()
   );
 }
 
-/////   Hall:  P 62
-abstract::ptr  asu_171 ()
+facet_collection::pointer  asu_171 ()   //  Hall:  P 62
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x1(y2)
     & y0(x2)
     & z0
@@ -2271,10 +2056,9 @@ abstract::ptr  asu_171 ()
   );
 }
 
-/////   Hall:   P 64
-abstract::ptr  asu_172 ()
+facet_collection::pointer  asu_172 ()   //  Hall:   P 64
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0(-x2)
     & x1(-y2)
     & z0
@@ -2283,10 +2067,9 @@ abstract::ptr  asu_172 ()
   );
 }
 
-/////   Hall:  P 6c
-abstract::ptr  asu_173 ()
+facet_collection::pointer  asu_173 ()   //  Hall:  P 6c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -2297,10 +2080,9 @@ abstract::ptr  asu_173 ()
   );
 }
 
-/////   Hall:  P -6
-abstract::ptr  asu_174 ()
+facet_collection::pointer  asu_174 ()   //  Hall:  P -6
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0
@@ -2311,10 +2093,9 @@ abstract::ptr  asu_174 ()
   );
 }
 
-/////   Hall:  -P 6
-abstract::ptr  asu_175 ()
+facet_collection::pointer  asu_175 ()   //  Hall:  -P 6
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & z2
@@ -2324,10 +2105,9 @@ abstract::ptr  asu_175 ()
   );
 }
 
-/////   Hall:  -P 6c
-abstract::ptr  asu_176 ()
+facet_collection::pointer  asu_176 ()   //  Hall:  -P 6c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0(-y0))
@@ -2338,10 +2118,9 @@ abstract::ptr  asu_176 ()
   );
 }
 
-/////   Hall:  P 6 2
-abstract::ptr  asu_177 ()
+facet_collection::pointer  asu_177 ()   //  Hall:  P 6 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0(-h0)
     & z2(-h0)
@@ -2351,10 +2130,9 @@ abstract::ptr  asu_177 ()
   );
 }
 
-/////   Hall:  P 61 2 (x,y,z+5/12)
-abstract::ptr  asu_178 ()
+facet_collection::pointer  asu_178 ()   //  Hall:  P 61 2 (x,y,z+5/12)
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -2364,10 +2142,9 @@ abstract::ptr  asu_178 ()
   );
 }
 
-/////   Hall:  P 65 2 (x,y,z+1/12)
-abstract::ptr  asu_179 ()
+facet_collection::pointer  asu_179 ()   //  Hall:  P 65 2 (x,y,z+1/12)
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0
     & +x1
     & y0
@@ -2377,10 +2154,9 @@ abstract::ptr  asu_179 ()
   );
 }
 
-/////   Hall:  P 62 2 (x,y,z+1/3)
-abstract::ptr  asu_180 ()
+facet_collection::pointer  asu_180 ()   //  Hall:  P 62 2 (x,y,z+1/3)
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x1(y2)
     & y0(x2)
     & z0(k1)
@@ -2389,10 +2165,9 @@ abstract::ptr  asu_180 ()
   );
 }
 
-/////   Hall:   P 64 2 (x,y,z+1/6)
-abstract::ptr  asu_181 ()
+facet_collection::pointer  asu_181 ()   //  Hall:   P 64 2 (x,y,z+1/6)
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0(p2)
     & p0(-y2)
     & z6(-m1)
@@ -2401,10 +2176,9 @@ abstract::ptr  asu_181 ()
   );
 }
 
-/////   Hall:  P 6c 2c
-abstract::ptr  asu_182 ()
+facet_collection::pointer  asu_182 ()   //  Hall:  P 6c 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0)
@@ -2415,10 +2189,9 @@ abstract::ptr  asu_182 ()
   );
 }
 
-/////   Hall:  P 6 -2
-abstract::ptr  asu_183 ()
+facet_collection::pointer  asu_183 ()   //  Hall:  P 6 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & +z1
@@ -2427,10 +2200,9 @@ abstract::ptr  asu_183 ()
   );
 }
 
-/////   Hall:  P 6 -2c
-abstract::ptr  asu_184 ()
+facet_collection::pointer  asu_184 ()   //  Hall:  P 6 -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & +z2
@@ -2440,10 +2212,9 @@ abstract::ptr  asu_184 ()
   );
 }
 
-/////   Hall:  P 6c -2
-abstract::ptr  asu_185 ()
+facet_collection::pointer  asu_185 ()   //  Hall:  P 6c -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & +z2
@@ -2453,10 +2224,9 @@ abstract::ptr  asu_185 ()
   );
 }
 
-/////   Hall:  P 6c -2c
-abstract::ptr  asu_186 ()
+facet_collection::pointer  asu_186 ()   //  Hall:  P 6c -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0(+z2)
     & z0
     & +z1
@@ -2465,10 +2235,9 @@ abstract::ptr  asu_186 ()
   );
 }
 
-/////   Hall:  P -6 2
-abstract::ptr  asu_187 ()
+facet_collection::pointer  asu_187 ()   //  Hall:  P -6 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0
     & z2
     & h0
@@ -2477,10 +2246,9 @@ abstract::ptr  asu_187 ()
   );
 }
 
-/////   Hall:  P -6c 2
-abstract::ptr  asu_188 ()
+facet_collection::pointer  asu_188 ()   //  Hall:  P -6c 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(-h0 | -k0)
@@ -2491,10 +2259,9 @@ abstract::ptr  asu_188 ()
   );
 }
 
-/////   Hall:  P -6 -2
-abstract::ptr  asu_189 ()
+facet_collection::pointer  asu_189 ()   //  Hall:  P -6 -2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & z2
@@ -2504,10 +2271,9 @@ abstract::ptr  asu_189 ()
   );
 }
 
-/////   Hall:  P -6c -2c
-abstract::ptr  asu_190 ()
+facet_collection::pointer  asu_190 ()   //  Hall:  P -6c -2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & y0
     & z0(p0)
@@ -2518,10 +2284,9 @@ abstract::ptr  asu_190 ()
   );
 }
 
-/////   Hall:  -P 6 2
-abstract::ptr  asu_191 ()
+facet_collection::pointer  asu_191 ()   //  Hall:  -P 6 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & z2
@@ -2530,10 +2295,9 @@ abstract::ptr  asu_191 ()
   );
 }
 
-/////   Hall:  -P 6 2c
-abstract::ptr  asu_192 ()
+facet_collection::pointer  asu_192 ()   //  Hall:  -P 6 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0
     & z4(-h0)
@@ -2543,10 +2307,9 @@ abstract::ptr  asu_192 ()
   );
 }
 
-/////   Hall:  -P 6c 2
-abstract::ptr  asu_193 ()
+facet_collection::pointer  asu_193 ()   //  Hall:  -P 6c 2
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y0
     & z0(-h0)
     & z4
@@ -2556,10 +2319,9 @@ abstract::ptr  asu_193 ()
   );
 }
 
-/////   Hall:  -P 6c 2c
-abstract::ptr  asu_194 ()
+facet_collection::pointer  asu_194 ()   //  Hall:  -P 6c 2c
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0(p0)
     & z4
     & h0
@@ -2568,10 +2330,9 @@ abstract::ptr  asu_194 ()
   );
 }
 
-/////   Hall:  P 2 2 3
-abstract::ptr  asu_195 ()
+facet_collection::pointer  asu_195 ()   //  Hall:  P 2 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0(y2 & x2)
     & m1(-y2)
     & cut(vvv(0,1,-1),0)(cut(vvv(-1,0,1),0))
@@ -2579,10 +2340,9 @@ abstract::ptr  asu_195 ()
   );
 }
 
-/////   Hall:  F 2 2 3
-abstract::ptr  asu_196 ()
+facet_collection::pointer  asu_196 ()   //  Hall:  F 2 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       p0(m2)
     & cut(vvv(-1,0,-1),r1/2)(cut(vvv(0,-1,1),0))
     & cut(vvv(-1,0,1),r1/2)(cut(vvv(0,-1,-1),0))
@@ -2591,10 +2351,9 @@ abstract::ptr  asu_196 ()
   );
 }
 
-/////   Hall:  I 2 2 3
-abstract::ptr  asu_197 ()
+facet_collection::pointer  asu_197 ()   //  Hall:  I 2 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0(x2)
     & p0(cut(vvv(0,-1,1),0))
     & +m1
@@ -2602,10 +2361,9 @@ abstract::ptr  asu_197 ()
   );
 }
 
-/////   Hall:  P 2ac 2ab 3
-abstract::ptr  asu_198 ()
+facet_collection::pointer  asu_198 ()   //  Hall:  P 2ac 2ab 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x0(-y0)
     & x2
     & y2(+z0 & x2(+z2))
@@ -2616,10 +2374,9 @@ abstract::ptr  asu_198 ()
   );
 }
 
-/////   Hall:  I 2b 2c 3
-abstract::ptr  asu_199 ()
+facet_collection::pointer  asu_199 ()   //  Hall:  I 2b 2c 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x2(-y4)
     & y2(-z4)
     & z0(x4)
@@ -2628,10 +2385,9 @@ abstract::ptr  asu_199 ()
   );
 }
 
-/////   Hall:  -P 2 2 3
-abstract::ptr  asu_200 ()
+facet_collection::pointer  asu_200 ()   //  Hall:  -P 2 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x2
     & y2
     & z0
@@ -2640,10 +2396,9 @@ abstract::ptr  asu_200 ()
   );
 }
 
-/////   Hall:  -P 2ab 2bc 3
-abstract::ptr  asu_201 ()
+facet_collection::pointer  asu_201 ()   //  Hall:  -P 2ab 2bc 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       ~z4(x4)
     & p0(cut(vvv(0,-1,1),0)(-x0))
     & m2(cut(vvv(0,-1,1),0)(x2))
@@ -2651,10 +2406,9 @@ abstract::ptr  asu_201 ()
   );
 }
 
-/////   Hall:  -F 2 2 3
-abstract::ptr  asu_202 ()
+facet_collection::pointer  asu_202 ()   //  Hall:  -F 2 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0
     & p0(x4)
     & cut(vvv(-1,0,-1),r1/2)(cut(vvv(0,-1,1),0))
@@ -2662,10 +2416,9 @@ abstract::ptr  asu_202 ()
   );
 }
 
-/////   Hall:  -F 2uv 2vw 3
-abstract::ptr  asu_203 ()
+facet_collection::pointer  asu_203 ()   //  Hall:  -F 2uv 2vw 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       p0(cut(vvv(0,-1,1),0)(-x0))
     & (m1/4)(cut(vvv(0,-1,1),0) | cut(vvv(0,-1,-1),-r1/4)(~z4))
     & cut(vvv(0,1,-1),0)
@@ -2673,10 +2426,9 @@ abstract::ptr  asu_203 ()
   );
 }
 
-/////   Hall:  -I 2 2 3
-abstract::ptr  asu_204 ()
+facet_collection::pointer  asu_204 ()   //  Hall:  -I 2 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x2
     & z0
     & p0(cut(vvv(0,-1,1),0)(x4))
@@ -2684,10 +2436,9 @@ abstract::ptr  asu_204 ()
   );
 }
 
-/////   Hall:  -P 2ac 2ab 3
-abstract::ptr  asu_205 ()
+facet_collection::pointer  asu_205 ()   //  Hall:  -P 2ac 2ab 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x2(-z0(cut(vvv(0,-1,1),0)))
     & y2(cut(vvv(0,-1,1),0))
     & z0
@@ -2696,10 +2447,9 @@ abstract::ptr  asu_205 ()
   );
 }
 
-/////   Hall:  -I 2b 2c 3
-abstract::ptr  asu_206 ()
+facet_collection::pointer  asu_206 ()   //  Hall:  -I 2b 2c 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0(x4)
     & cut(vvv(1,0,-1),0)(cut(vvv(0,-1,1),0))
     & cut(vvv(-1,0,-1),r1/2)
@@ -2708,10 +2458,9 @@ abstract::ptr  asu_206 ()
   );
 }
 
-/////   Hall:  P 4 2 3
-abstract::ptr  asu_207 ()
+facet_collection::pointer  asu_207 ()   //  Hall:  P 4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0(x2)
     & p0
     & m1(-p0)
@@ -2719,10 +2468,9 @@ abstract::ptr  asu_207 ()
   );
 }
 
-/////   Hall:  P 4n 2 3
-abstract::ptr  asu_208 ()
+facet_collection::pointer  asu_208 ()   //  Hall:  P 4n 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       cut(vvv(1,0,-1),0)(cut(vvv(0,-1,1),0))
     & cut(vvv(1,0,1),0)(cut(vvv(0,-1,-1),0))
     & cut(vvv(-1,0,1),r1/2)(y4)
@@ -2734,10 +2482,9 @@ abstract::ptr  asu_208 ()
   );
 }
 
-/////   Hall:  F 4 2 3
-abstract::ptr  asu_209 ()
+facet_collection::pointer  asu_209 ()   //  Hall:  F 4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       p0(z0)
     & m2(z0)
     & cut(vvv(0,1,-1),0)
@@ -2745,10 +2492,9 @@ abstract::ptr  asu_209 ()
   );
 }
 
-/////   Hall:  F 4d 2 3
-abstract::ptr  asu_210 ()
+facet_collection::pointer  asu_210 ()   //  Hall:  F 4d 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       y8(cut(vvv(1,0,1),-r1/4))
     & z8(m1/4)
     & p0(cut(vvv(-1,0,1),0))
@@ -2759,10 +2505,9 @@ abstract::ptr  asu_210 ()
   );
 }
 
-/////   Hall:  I 4 2 3
-abstract::ptr  asu_211 ()
+facet_collection::pointer  asu_211 ()   //  Hall:  I 4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0(p0)
     & cut(vvv(1,0,-1),0)(cut(vvv(0,-1,1),0))
     & cut(vvv(-1,0,-1),r1/2)(y4)
@@ -2771,10 +2516,9 @@ abstract::ptr  asu_211 ()
   );
 }
 
-/////   Hall:  P 4acd 2ab 3
-abstract::ptr  asu_212 ()
+facet_collection::pointer  asu_212 ()   //  Hall:  P 4acd 2ab 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       cut(vvv(-1,0,1),r1/2)
     & cut(vvv(0,1,1),0)(cut(vvv(1,0,-1),-r1/2))
     & cut(vvv(0,-1,-1),r1/2)(cut(vvv(-2,1,1),0))
@@ -2784,10 +2528,9 @@ abstract::ptr  asu_212 ()
   );
 }
 
-/////   Hall:   P 4bd 2ab 3
-abstract::ptr  asu_213 ()
+facet_collection::pointer  asu_213 ()   //  Hall:   P 4bd 2ab 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       cut(vvv(0,1,-1),0)
     & -p0(cut(vvv(0,-1,1),0))
     & ~p2(cut(vvv(-1,1,-2),0))
@@ -2797,10 +2540,9 @@ abstract::ptr  asu_213 ()
   );
 }
 
-/////   Hall:  I 4bd 2c 3
-abstract::ptr  asu_214 ()
+facet_collection::pointer  asu_214 ()   //  Hall:  I 4bd 2c 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x8(cut(vvv(0,-1,-1),r1/4))
     & y8(cut(vvv(-1,0,-1),r1/4))
     & ~y8(cut(vvv(-1,0,1),-r1/4))
@@ -2811,10 +2553,9 @@ abstract::ptr  asu_214 ()
   );
 }
 
-/////   Hall:  P -4 2 3
-abstract::ptr  asu_215 ()
+facet_collection::pointer  asu_215 ()   //  Hall:  P -4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0(x2)
     & p0
     & m1
@@ -2822,10 +2563,9 @@ abstract::ptr  asu_215 ()
   );
 }
 
-/////   Hall:  F -4 2 3
-abstract::ptr  asu_216 ()
+facet_collection::pointer  asu_216 ()   //  Hall:  F -4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       p0
     & m2
     & cut(vvv(0,1,-1),0)
@@ -2833,10 +2573,9 @@ abstract::ptr  asu_216 ()
   );
 }
 
-/////   Hall:  I -4 2 3
-abstract::ptr  asu_217 ()
+facet_collection::pointer  asu_217 ()   //  Hall:  I -4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x2(-z0(y4))
     & z0
     & p0
@@ -2844,10 +2583,9 @@ abstract::ptr  asu_217 ()
   );
 }
 
-/////   Hall:  P -4n 2 3
-abstract::ptr  asu_218 ()
+facet_collection::pointer  asu_218 ()   //  Hall:  P -4n 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x2(-z0(y4))
     & y2(-z0(x4))
     & z0
@@ -2856,10 +2594,9 @@ abstract::ptr  asu_218 ()
   );
 }
 
-/////   Hall:  F -4a 2 3
-abstract::ptr  asu_219 ()
+facet_collection::pointer  asu_219 ()   //  Hall:  F -4a 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       p0
     & m2(-p0(z0))
     & cut(vvv(0,1,-1),0)
@@ -2867,10 +2604,9 @@ abstract::ptr  asu_219 ()
   );
 }
 
-/////   Hall:  I -4bd 2c 3
-abstract::ptr  asu_220 ()
+facet_collection::pointer  asu_220 ()   //  Hall:  I -4bd 2c 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       -x4(-z0(-y1*3/8))
     & x2
     & -y4(-x2(-z8))
@@ -2881,10 +2617,9 @@ abstract::ptr  asu_220 ()
   );
 }
 
-/////   Hall:  -P 4 2 3
-abstract::ptr  asu_221 ()
+facet_collection::pointer  asu_221 ()   //  Hall:  -P 4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x2
     & z0
     & p0
@@ -2892,10 +2627,9 @@ abstract::ptr  asu_221 ()
   );
 }
 
-/////   Hall:  -P 4a 2bc 3
-abstract::ptr  asu_222 ()
+facet_collection::pointer  asu_222 ()   //  Hall:  -P 4a 2bc 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       (x1*3/4)(z4(y2) | cut(vvv(0,-1,1),0))
     & -z4
     & p0(cut(vvv(0,-1,1),0)(z2))
@@ -2903,10 +2637,9 @@ abstract::ptr  asu_222 ()
   );
 }
 
-/////   Hall:  -P 4n 2 3
-abstract::ptr  asu_223 ()
+facet_collection::pointer  asu_223 ()   //  Hall:  -P 4n 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0
     & cut(vvv(1,0,-1),0)(cut(vvv(0,-1,1),0))
     & cut(vvv(-1,0,-1),r1/2)(y4)
@@ -2915,10 +2648,9 @@ abstract::ptr  asu_223 ()
   );
 }
 
-/////   Hall:  -P 4bc 2bc 3
-abstract::ptr  asu_224 ()
+facet_collection::pointer  asu_224 ()   //  Hall:  -P 4bc 2bc 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       p0
     & cut(vvv(-1,0,-1),r1)(y2)
     & cut(vvv(-1,0,1),r1/2)(y2)
@@ -2927,10 +2659,9 @@ abstract::ptr  asu_224 ()
   );
 }
 
-/////   Hall:  -F 4 2 3
-abstract::ptr  asu_225 ()
+facet_collection::pointer  asu_225 ()   //  Hall:  -F 4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0
     & p0
     & m2
@@ -2938,10 +2669,9 @@ abstract::ptr  asu_225 ()
   );
 }
 
-/////   Hall:  -F 4a 2 3
-abstract::ptr  asu_226 ()
+facet_collection::pointer  asu_226 ()   //  Hall:  -F 4a 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0
     & p0
     & m2(-p0)
@@ -2949,10 +2679,9 @@ abstract::ptr  asu_226 ()
   );
 }
 
-/////   Hall:  -F 4vw 2vw 3
-abstract::ptr  asu_227 ()
+facet_collection::pointer  asu_227 ()   //  Hall:  -F 4vw 2vw 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       -y0(cut(vvv(1,0,1),0))
     & p0
     & m1/4
@@ -2961,10 +2690,9 @@ abstract::ptr  asu_227 ()
   );
 }
 
-/////   Hall:  -F 4ud 2vw 3
-abstract::ptr  asu_228 ()
+facet_collection::pointer  asu_228 ()   //  Hall:  -F 4ud 2vw 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       -y0(cut(vvv(-1,0,1),r1/4))
     & p0(cut(vvv(0,-1,1),0))
     & m1/4
@@ -2973,10 +2701,9 @@ abstract::ptr  asu_228 ()
   );
 }
 
-/////   Hall:  -I 4 2 3
-abstract::ptr  asu_229 ()
+facet_collection::pointer  asu_229 ()   //  Hall:  -I 4 2 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       z0
     & p0
     & cut(vvv(-1,0,-1),r1/2)(y4)
@@ -2984,10 +2711,9 @@ abstract::ptr  asu_229 ()
   );
 }
 
-/////   Hall:  -I 4bd 2c 3
-abstract::ptr  asu_230 ()
+facet_collection::pointer  asu_230 ()   //  Hall:  -I 4bd 2c 3
 {
-  return abstract_asu(
+  return facet_collection_asu(
       x8(cut(vvv(0,1,-1),r1/4) & cut(vvv(0,-1,-1),r1/4))
     & ~x8(y0(-z4))
     & y8(cut(vvv(1,0,1),-r1/4))
@@ -3000,7 +2726,7 @@ abstract::ptr  asu_230 ()
   );
 }
 
-
+} // end of unnamed namespace
 
 asu_func asu_table[230] = {
   asu_001, asu_002, asu_003, asu_004, asu_005, asu_006, asu_007, asu_008, 
@@ -3031,7 +2757,7 @@ asu_func asu_table[230] = {
   asu_201, asu_202, asu_203, asu_204, asu_205, asu_206, asu_207, asu_208, 
   asu_209, asu_210, asu_211, asu_212, asu_213, asu_214, asu_215, asu_216, 
   asu_217, asu_218, asu_219, asu_220, asu_221, asu_222, asu_223, asu_224, 
-  asu_225, asu_226, asu_227, asu_228, asu_229, asu_230, 
+  asu_225, asu_226, asu_227, asu_228, asu_229, asu_230 
 };
 
 }}}
