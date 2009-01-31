@@ -956,7 +956,10 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     assert self.f_obs.indices().all_eq( self.r_free_flags.indices() )
 
     self.f_obs_w = self.f_obs.select( ~self.r_free_flags.data() )
-    self.f_obs_f = self.f_obs.select( self.r_free_flags.data() )
+    if(self.r_free_flags.data().count(True)>0):
+      self.f_obs_f = self.f_obs.select( self.r_free_flags.data() )
+    else:
+      self.f_obs_f = self.f_obs_w.deep_copy()
 
     #setup the binners if this has not been done yet
     self.max_bins = max_bins
@@ -1129,7 +1132,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
   def twin_test(self):
     return "yes"
 
-  def info(self, free_reflections_per_bin = 140, max_number_of_bins = 30):
+  def info(self, free_reflections_per_bin = 140, max_number_of_bins = 20):
     return mmtbx.f_model.info(
       fmodel                   = self,
       free_reflections_per_bin = free_reflections_per_bin,
@@ -1601,7 +1604,7 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
        timer = user_plus_sys_time()
        assert self.xray_structure is not None
        f_calc = self.miller_set.structure_factors_from_scatterers(
-         xray_structure = self.xray_structure,
+         xray_structure               = self.xray_structure,
          algorithm                    = self.sfg_params.algorithm,
          cos_sin_table                = self.sfg_params.cos_sin_table,
          grid_resolution_factor       = self.sfg_params.grid_resolution_factor,
@@ -1643,7 +1646,8 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
     self.f_mask_array = mask.structure_factors( self.miller_set )
 
 
-  def r_values(self, table=True, rows=False, d_min=None, d_max=None, again=False):
+  def r_values(self, table=True, rows=False, d_min=None, d_max=None, again=False,
+    free_reflections_per_bin = 140, max_number_of_bins = 20):
     if rows:
       table=True
 
@@ -1689,6 +1693,11 @@ class twin_model_manager(mmtbx.f_model.manager_mixin):
       n_work = []
       rows = []
       bins = []
+      n_bins = self.determine_n_bins(
+        free_reflections_per_bin = free_reflections_per_bin,
+        max_n_bins = max_number_of_bins)
+      self.f_obs_f.setup_binner(n_bins = n_bins)
+      self.f_obs_w.use_binning_of(self.f_obs_f)
       completeness = self.f_obs_w.completeness(use_binning=True).data
       for i_bin in self.f_obs_f.binner().range_used():
         selection = flex.bool( self.f_obs_w.binner().bin_indices() == i_bin )
@@ -2549,7 +2558,7 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
   def show_comprehensive(self,
                          header = "",
                          free_reflections_per_bin = 140,
-                         max_number_of_bins  = 30,
+                         max_number_of_bins  = 20,
                          out=None):
     self.r_values(table=True)
     self.twin_fraction_scan(n=15)
@@ -2559,18 +2568,20 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
 
   def statistics_in_resolution_bins(self,
-                                    free_reflections_per_bin = 200,
-                                    max_number_of_bins  = 30,
+                                    free_reflections_per_bin = 140,
+                                    max_number_of_bins  = 20,
                                     out=None):
-    results = self.r_values(table=True, rows=True)
+    results = self.r_values(table=True, rows=True,
+      free_reflections_per_bin = free_reflections_per_bin, max_number_of_bins =
+      max_number_of_bins)
     return results
     # first detemine number of bins please
     # self.twin_fraction_scan(n=15)
     # self.sigmaa_object().show(out=self.out)
 
   def r_factors_in_resolution_bins(self,
-                                   free_reflections_per_bin = 200,
-                                   max_number_of_bins  = 30,
+                                   free_reflections_per_bin = 140,
+                                   max_number_of_bins  = 20,
                                    out=None):
     results = self.r_values(table=True, rows=True)
     return results
@@ -2587,8 +2598,8 @@ tf is the twin fraction and Fo is an observed amplitude."""%(r_abs_work_f_overal
 
 
   def show_fom_phase_error_alpha_beta_in_bins(self,
-                                              free_reflections_per_bin = 200,
-                                              max_number_of_bins  = 30,
+                                              free_reflections_per_bin = 140,
+                                              max_number_of_bins  = 20,
                                               out=None):
     self.sigmaa_object().show(out=self.out)
 
