@@ -215,7 +215,7 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
   z_start = float(z_center) - (float(radius)/2)
   z_end = float(z_center )+ (float(radius)/2)
 
-  step_size = 2
+  step_size = 1
 
 
   for overlap_start in [0.0, 0.2, 0.4, 0.6, 0.8]:
@@ -230,12 +230,8 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
       print >> f, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
       print >> f, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
       for atom in hierarchy.atoms(): print >> f, atom.format_atom_record()
-      # a test for the right coord
-      scatterer = xray.scatterer(
-      site = (float(x_center), float(y_center), float(z_center)),
-      scattering_type = "C",
-      u = 0.2)
-      xray_structure.add_scatterer(scatterer)
+
+      xray_structure_dummy_atoms = xray.structure(crystal_symmetry=cs)
 
       #
       x_coord = x_start + overlap_start
@@ -253,7 +249,7 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
                   site = (x_coord, y_coord, z_coord),
                   scattering_type = "N",
                   u = 0.2)
-                  xray_structure.add_scatterer(scatterer)
+                  xray_structure_dummy_atoms.add_scatterer(scatterer)
                   #print scatterer.site
 
 
@@ -262,7 +258,7 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
               y_coord = y_coord + step_size
           x_coord = x_coord + step_size
 
-      for i, sc in enumerate(xray_structure.scatterers()):
+      for i, sc in enumerate(xray_structure_dummy_atoms.scatterers()):
          a = iotbx.pdb.hierarchy.atom_with_labels()
          a.serial = i+1
          a.name = sc.scattering_type
