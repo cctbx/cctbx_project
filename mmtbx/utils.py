@@ -1028,6 +1028,25 @@ def occupancy_selections(
     selection  = sel,
     hd_special = hd_selection)
   # check user's input
+  all_sel_strgs = []
+  if(other_individual_selection_strings is not None):
+    all_sel_strgs = all_sel_strgs + other_individual_selection_strings
+  if(other_constrained_groups is not None):
+    for other_constrained_group in other_constrained_groups:
+      for other_constrained_group in other_constrained_groups:
+        if(len(other_constrained_group.selection)>0):
+          all_sel_strgs = all_sel_strgs + other_constrained_group.selection
+  if(len(all_sel_strgs) > 0):
+    for sel_str in all_sel_strgs:
+      sel_str_sel = get_atom_selections(
+        all_chain_proxies   = all_chain_proxies,
+        selection_strings   = [sel_str],
+        iselection          = True,
+        xray_structure      = xray_structure,
+        one_selection_array = True)
+      if(sel_str_sel.size() == 0):
+        raise Sorry("Empty selection: %s"%sel_str)
+  #
   if([other_individual_selection_strings,
       other_constrained_groups].count(None) == 0):
     sel1 = get_atom_selections(
@@ -1096,9 +1115,8 @@ def occupancy_selections(
       hd_special = None)
   if(other_constrained_groups is not None):
     for other_constrained_group in other_constrained_groups:
-      ocg_selections = []
+      cg_sel = []
       for cg_sel_strs in other_constrained_group.selection:
-        cg_sel = []
         sel = get_atom_selections(
           all_chain_proxies   = all_chain_proxies,
           selection_strings   = cg_sel_strs,
@@ -1107,10 +1125,10 @@ def occupancy_selections(
           one_selection_array = True)
         result = remove_selections(selection = result, other = sel,
           size = xray_structure.scatterers().size())
-        if(len(sel) > 0):
-          cg_sel.append([list(sel)])
+        if(sel.size() > 0):
+          cg_sel.append(list(sel))
       if(len(cg_sel) > 0):
-        result.extend(cg_sel)
+        result.append(cg_sel)
   if(add_water):
     water_selection = get_atom_selections(
       all_chain_proxies   = all_chain_proxies,
