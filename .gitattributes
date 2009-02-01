@@ -274,7 +274,6 @@ mmtbx/monomer_library/tst_conformation_dependent_restraints.py svneol=native#tex
 mmtbx/monomer_library/tst_protein_interpretation.py -text
 mmtbx/monomer_library/tst_rna_dna_interpretation.py -text
 mmtbx/monomer_library/tst_rna_sugar_pucker_analysis.py svneol=native#text/x-python
-mmtbx/pdb_header.py -text
 mmtbx/pdbtools.py -text
 mmtbx/real_space_correlation.py -text
 mmtbx/refinement/occupancies.py -text
