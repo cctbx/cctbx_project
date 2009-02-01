@@ -86,7 +86,7 @@ def exercise_00(verbose):
   assert approx_equal(res, target)
   # 2
   other_constrained_groups = make_up_other_constrained_groups_obj(
-    selections = [[['resseq 0 and (name S or name O1)']], [['resseq 0 and (name O3 or name O4)']]])
+    selections = [ ['resseq 0 and (name S or name O1)'], ['resseq 0 and (name O3 or name O4)'] ])
   res = utils.occupancy_selections(
     all_chain_proxies = processed_pdb_file.all_chain_proxies,
     xray_structure    = xray_structure,
@@ -97,7 +97,7 @@ def exercise_00(verbose):
   target.extend([[[0, 1]], [[4, 5]]])
   assert approx_equal(res, target)
   other_constrained_groups = make_up_other_constrained_groups_obj(
-    selections = [[['resseq 0 and (name S or name O1)']], [['resseq 0 and (name O3 or name O4)']]])
+    selections = [ ['resseq 0 and (name S or name O1)'], ['resseq 0 and (name O3 or name O4)'] ])
   res = utils.occupancy_selections(
     all_chain_proxies = processed_pdb_file.all_chain_proxies,
     xray_structure    = xray_structure,
@@ -109,7 +109,7 @@ def exercise_00(verbose):
   assert approx_equal(res, target)
   # 3
   other_constrained_groups = make_up_other_constrained_groups_obj(
-    selections = [[['resseq 0 and (name O3 or name O4)']]])
+    selections = [ ['resseq 0 and (name O3 or name O4)'] ])
   res = utils.occupancy_selections(
     all_chain_proxies = processed_pdb_file.all_chain_proxies,
     xray_structure    = xray_structure,
@@ -255,7 +255,7 @@ def exercise_07(verbose):
   xray_structure = processed_pdb_file.xray_structure()
   answer = [ [[0, 1, 2, 3, 4]] ]
   other_constrained_groups = make_up_other_constrained_groups_obj(
-    selections = [[['resseq 0']]])
+    selections = [ ['resseq 0'] ])
   result = utils.occupancy_selections(
     all_chain_proxies = processed_pdb_file.all_chain_proxies,
     xray_structure    = xray_structure,
@@ -281,8 +281,7 @@ def exercise_08(verbose):
     [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[23]], [[24,25,26,27],[28,29,30,31]], [[21]] ],
     [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]], [[22]] ],
     [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23,24,25,26,27,28,29,30,31]] ],
-    [ [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]] ],
-    [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]] ]
+    [ [[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]] ]
   ]
   group_selections = ['resseq 0',
                       'resseq 1',
@@ -291,11 +290,10 @@ def exercise_08(verbose):
                       'resseq 4',
                       'resseq 5',
                       'resseq 6',
-                      'resseq 0:6',
-                      'not all']
+                      'resseq 0:6']
   for group_selection, answer in zip(group_selections, answers):
     other_constrained_groups = make_up_other_constrained_groups_obj(
-      selections = [[[group_selection]]])
+      selections = [ [group_selection] ])
     result = utils.occupancy_selections(
       all_chain_proxies = processed_pdb_file.all_chain_proxies,
       xray_structure    = xray_structure,
@@ -320,9 +318,7 @@ def exercise_09(verbose):
     [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]], [[18]], [[19]], [[20]] ],
     [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[23]], [[24,25,26,27],[28,29,30,31]], [[21]] ],
     [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]], [[22]] ],
-    [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24]], [[25]], [[26]], [[27]], [[28]], [[29]], [[30]], [[31]] ],
-    [ [[0]],[[1]],[[2]],[[3]],[[4]],[[5]],[[6]],[[7]],[[8]],[[9]],[[10]],[[11]],[[12]],[[13]],[[14]],[[15]],[[16]],[[17]],[[18]],[[19]],[[20]],[[21]],[[22]],[[23]],[[24]],[[25]],[[26]],[[27]],[[28]],[[29]],[[30]],[[31]] ],
-    [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24,25,26,27],[28,29,30,31]] ]
+    [ [[4],[5]], [[6,7,8,9,10],[11,12,13,14,15]], [[16],[17]], [[21]], [[23]], [[24]], [[25]], [[26]], [[27]], [[28]], [[29]], [[30]], [[31]] ]
   ]
   individual_selections = ['resseq 0',
                            'resseq 1',
@@ -331,8 +327,7 @@ def exercise_09(verbose):
                            'resseq 4',
                            'resseq 5',
                            'resseq 6',
-                           'resseq 0:6',
-                           'not all']
+                           'resseq 0:6']
   for individual_selection, answer in zip(individual_selections, answers):
     result = utils.occupancy_selections(
       all_chain_proxies = processed_pdb_file.all_chain_proxies,
@@ -354,7 +349,7 @@ def exercise_10(verbose):
   e = None
   try:
     other_constrained_groups = make_up_other_constrained_groups_obj(
-      selections = [[['resseq 0']]])
+      selections = [ ['resseq 0'] ])
     result = utils.occupancy_selections(
       all_chain_proxies = processed_pdb_file.all_chain_proxies,
       xray_structure    = xray_structure,
@@ -387,7 +382,7 @@ def exercise_11(verbose):
   e = None
   try:
     other_constrained_groups = make_up_other_constrained_groups_obj(
-      selections = [[['resseq 0']]])
+      selections = [ ['resseq 0'] ])
     result = utils.occupancy_selections(
       all_chain_proxies = processed_pdb_file.all_chain_proxies,
       xray_structure    = xray_structure,
@@ -409,7 +404,7 @@ def exercise_12(verbose):
   xray_structure = processed_pdb_file.xray_structure()
   answer = [ [[4],[5]], [[16],[17]], [[21]], [[23,24,25,26,27,28,29,30,31]] ]
   other_constrained_groups = make_up_other_constrained_groups_obj(
-    selections = [[['resseq 6']]])
+    selections = [ ['resseq 6'] ])
   result = utils.occupancy_selections(
     all_chain_proxies = processed_pdb_file.all_chain_proxies,
     xray_structure    = xray_structure,
@@ -427,6 +422,166 @@ def exercise_12(verbose):
     as_flex_arrays    = False)
   assert approx_equal(result, answer)
 
+def exercise_13(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/lys_1.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  xray_structure = processed_pdb_file.xray_structure()
+  answer = [ [[8],[9]], [[10]], [[0],[1]], [[2],[3]] ]
+  other_constrained_groups = make_up_other_constrained_groups_obj(
+    selections = [ ['chain A and resseq 1 and name N','chain A and resseq 1 and name CA'],
+                   ['chain A and resseq 1 and name C','chain A and resseq 1 and name O'] ]
+    )
+  result = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    other_constrained_groups = other_constrained_groups,
+    as_flex_arrays    = False)
+  assert approx_equal(result, answer)
+
+def exercise_14(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/lys_1.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  xray_structure = processed_pdb_file.xray_structure()
+  answer = [ [[8],[9]], [[10]], [[0,1,2],[3,4]], [[5],[6]], [[7]] ]
+
+  other_constrained_groups = make_up_other_constrained_groups_obj(
+    selections = [ ['chain A and resseq 1 and (name N or name CA or name C)', 'chain A and resseq 1 and (name O or name CB)'],
+                   ['chain A and resseq 1 and name CG','chain A and resseq 1 and name CD'],
+                   ['chain A and resseq 1 and name CE'] ]
+    )
+  result = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    other_constrained_groups = other_constrained_groups,
+    as_flex_arrays    = False)
+  assert approx_equal(result, answer)
+
+def exercise_15(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/lys_1.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  xray_structure = processed_pdb_file.xray_structure()
+  answer = [ [[8],[9]], [[0,1,2],[10]], [[5,7]] ]
+
+  other_constrained_groups = make_up_other_constrained_groups_obj(
+    selections = [ ['chain A and resseq 1 and (name N or name CA or name C)', 'chain S and resseq 1'],
+                   ['chain A and resseq 1 and name CG or chain A and resseq 1 and name CE'] ]
+    )
+  result = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    other_constrained_groups = other_constrained_groups,
+    as_flex_arrays    = False)
+  assert approx_equal(result, answer)
+
+def exercise_16(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/lys_1.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  xray_structure = processed_pdb_file.xray_structure()
+  answer = [ [[8],[9],[10]] ]
+  other_constrained_groups = make_up_other_constrained_groups_obj(
+    selections = [
+      ['chain A and resseq 1 and name NZ and altloc A', 'chain A and resseq 1 and name NZ and altloc B', 'chain S and resseq 1'] ]
+    )
+  result = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    other_constrained_groups = other_constrained_groups,
+    as_flex_arrays    = False)
+  assert approx_equal(result, answer)
+
+def exercise_17(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/lys_1.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  xray_structure = processed_pdb_file.xray_structure()
+  answer = [ [[8,9,10]] ]
+  other_constrained_groups = make_up_other_constrained_groups_obj(
+    selections = [
+      ['chain A and resseq 1 and name NZ and altloc A or chain A and resseq 1 and name NZ and altloc B or chain S and resseq 1'] ]
+    )
+  result = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    other_constrained_groups = other_constrained_groups,
+    as_flex_arrays    = False)
+  assert approx_equal(result, answer)
+
+def exercise_18(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/lys_2.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  xray_structure = processed_pdb_file.xray_structure()
+  answer = [ [[8],[9],[10]] ]
+  other_constrained_groups = make_up_other_constrained_groups_obj(
+   selections = [
+    ['chain A and resseq 1 and name NZ and altloc A','chain A and resseq 1 and name NZ and altloc B','chain S and resseq 1 and altloc C']]
+  )
+  result = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    other_constrained_groups = other_constrained_groups,
+    as_flex_arrays    = False)
+  assert approx_equal(result, answer)
+
+def exercise_19(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/lys_1.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  xray_structure = processed_pdb_file.xray_structure()
+  answer = [ [[8],[9],[10]] ]
+  other_constrained_groups = make_up_other_constrained_groups_obj(
+    selections = [
+      ['chain A and resseq 1 and name XX and altloc A', 'chain A and resseq 1 and name NZ and altloc B', 'chain S and resseq 1'] ]
+    )
+  try:
+    result = utils.occupancy_selections(
+      all_chain_proxies = processed_pdb_file.all_chain_proxies,
+      xray_structure    = xray_structure,
+      other_constrained_groups = other_constrained_groups,
+      as_flex_arrays    = False)
+  except Exception, e: pass
+  assert str(e) == "Empty selection: chain A and resseq 1 and name XX and altloc A"
+
+
 def run():
   verbose = "--verbose" in sys.argv[1:]
   exercise_00(verbose=verbose)
@@ -442,6 +597,13 @@ def run():
   exercise_10(verbose=verbose)
   exercise_11(verbose=verbose)
   exercise_12(verbose=verbose)
+  exercise_13(verbose=verbose)
+  exercise_14(verbose=verbose)
+  exercise_15(verbose=verbose)
+  exercise_16(verbose=verbose)
+  exercise_17(verbose=verbose)
+  exercise_18(verbose=verbose)
+  exercise_19(verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
