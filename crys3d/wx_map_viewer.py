@@ -24,6 +24,12 @@ import itertools
 import math
 import unicodedata
 
+# this class isn't very well suited to being a mix-in like the classes in
+# wx_model_viewer; however, it's a nicely contained stand-alone program,
+# so I added the class map_viewer_mixin further down for use in combination
+# with the model/selection viewer mixins.  when this file is run directly
+# it will still use the map_view class as before. --nat 2009-02-01
+
 class map_view(wx_viewer.wxGLWindow):
 
   def barycentre_of_min_max(cls, x=0.8):
@@ -213,7 +219,134 @@ class map_view(wx_viewer.wxGLWindow):
   def process_pick_points(self):
     pass
 
+########################################################################
+# MIXIN FOR MAPS
+#
+# this is combined with a subclass of wx_model_viewer.selection_viewer_mixin
+# to display the refinement status in phenix.refine
+# TODO: replace map list and associated lists with dict
+class map_viewer_mixin (wx_viewer.wxGLWindow) :
+  initialize_map_viewer_super = True
+  def __init__ (self, *args, **kwds) :
+    if self.initialize_map_viewer_super :
+      wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
+    # various data objects
+    self.unit_cell = None
+    self.orthogonaliser = None
+    self.maps       = []
+    self.iso_levels = []
+    self.map_colors = []
+    self.materials  = []
+    self.triangles  = []
+    self._triangle_tmp = []
+    # user settings
+    self.mesh_line_width = 0.25 # very buggy on OS X + NVidia (and ???)
+    self.map_radius      = 10.0
+    # flags
+    self.flag_show_maps = True
+    self.flag_use_materials = False
+    # maps look much better when OpenGL materials are used, but this screws
+    # up the model rendering so it's off by default
 
+  def InitGL (self) :
+    gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
+    glEnable(GL_DEPTH_TEST)
+    if self.flag_use_materials :
+      glEnable(GL_LIGHTING)
+      glEnable(GL_LIGHT0)
+      glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
+    glShadeModel(GL_SMOOTH)
+    glEnableClientState(GL_VERTEX_ARRAY)
+    glEnableClientState(GL_NORMAL_ARRAY)
+
+  def DrawGL (self) :
+    if self.unit_cell is not None and self.triangles is not None :
+      glMatrixMode(GL_MODELVIEW)
+      glPushMatrix()
+      glMultTransposeMatrixd(self.orthogonaliser)
+      self.draw_maps()
+      glPopMatrix()
+
+  def initialize_unit_cell (self, map) :
+    self.unit_cell = map.unit_cell()
+    o = self.unit_cell.orthogonalization_matrix()
+    self.orthogonaliser = (  o[0:3] + (0,)
+                           + o[3:6] + (0,)
+                           + o[6:9] + (0,)
+                           + (0,0,0,1) )
+
+  def update_map_objects (self) :
+    self.compute_triangulation()
+    # this is done to prevent thread clashes (+ ensuing crashes)
+    self.triangles = self._triangle_tmp
+
+  def set_iso_levels (self, levels) :
+    assert len(levels) == len(self.maps)
+    for i, map_contour_level in enumerate(levels) :
+      self.iso_levels[i] = map_contour_level
+
+  def set_map_colors (self, colors) :
+    assert len(colors) == len(self.maps)
+    for i, map_color in enumerate(colors) :
+      self.map_colors[i] = map_color
+      self.materials[i] = gltbx.gl_managed.material_model(
+        front_colour=map_color,
+        back_colour=map_color)
+
+  def set_maps (self, maps) :
+    assert len(maps) != 0
+    self.maps = maps
+    if (len(self.iso_levels) != len(maps) or
+        len(self.map_colors) != len(maps)) :
+      self.iso_levels = [ 1.0 for m in maps ]
+      self.map_colors = [ (1., 1., 1.) for m in maps ]
+      self.materials = [ None for m in maps ]
+    if self.unit_cell is None :
+      self.initialize_unit_cell(self.maps[0])
+
+  def compute_triangulation (self) :
+    if len(self.maps) == 0 :
+      return
+    self._triangle_tmp = []
+    r = self.map_radius
+    c = self.rotation_center # set in wxGLWindow (default is origin)
+    min = [ c[x] - float(r) for x in [0, 1, 2] ]
+    max = [ c[x] + float(r) for x in [0, 1, 2] ]
+    map_boundaries_cart = flex.vec3_double([min,max])
+    bounds = self.unit_cell.fractionalize(sites_cart=map_boundaries_cart)
+    for i, raw_map in enumerate(self.maps) :
+      rho = raw_map.real_map()
+      iso_level = self.iso_levels[i]
+      triangulation = iso_surface.triangulation(rho,
+                                iso_level,
+                                map_extent=(1,1,1),
+                                from_here=bounds[0],
+                                to_there=bounds[1],
+                                periodic=True,
+                                ascending_normal_direction=False
+                              )
+      self._triangle_tmp.append(triangulation)
+
+  def draw_maps (self) :
+    if not self.flag_show_maps :
+      return
+    if self.flag_use_materials :
+      glLightfv(GL_LIGHT0, GL_AMBIENT, [0., 0., 0., 1.])
+    for i, triangulation in enumerate(self.triangles) :
+      glLineWidth(0.2)
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+      if self.flag_use_materials :
+        self.materials[i].execute(specular=False)
+        glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
+      else :
+        glColor3f(*self.map_colors[i])
+      va = gltbx.util.vertex_array(triangulation.vertices,
+                                   triangulation.normals)
+      va.draw_triangles(triangulation.triangles)
+
+########################################################################
+# CLASSES AND METHODS FOR RUNNING map_view
+#
 class App(wx_viewer.App):
 
   def __init__(self,
@@ -286,7 +419,7 @@ class App(wx_viewer.App):
     lbl = lbl_fmt % multiplier
     self.multiplier = wx.StaticText(iso_level_pane,
                                     style=wx.ALIGN_CENTER_HORIZONTAL,
-                                    label=lbl)
+                                    label="label")#lbl)
     self.iso_level_slider.Bind(wx.EVT_SCROLL, self.on_iso_level_changed)
 
     opengl_inspector = wx_extra.Inspector(self.tools,

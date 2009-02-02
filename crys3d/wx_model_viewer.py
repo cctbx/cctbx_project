@@ -1,4 +1,5 @@
 
+from string import strip
 from libtbx.utils import Sorry
 import gltbx.util
 from gltbx import wx_viewer, viewer_utils
@@ -10,118 +11,115 @@ from mmtbx.monomer_library import pdb_interpretation
 from cctbx import crystal, sgtbx
 import wx
 
+########################################################################
+# BASE CLASS FOR DISPLAYING STRUCTURES
+#
 class model_viewer_mixin (wx_viewer.wxGLWindow) :
+  initialize_model_viewer_super = True
   def __init__ (self, *args, **kwds) :
-    wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
-    self.active_widget           = None
-    self.line_width              = 1
-    self.buffer_factor           = 2.0
-    self.nonbonded_line_width    = 1
-    self.processed_pdb_file      = None
-    self.points                  = None
-    self.spheres_visible         = None
-    self.atom_index              = []
+    if self.initialize_model_viewer_super :
+      wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
+    self.pdb_hierarchy           = None
+    self.atomic_bonds            = None # from geometry restraints manager
+    self.selection_cache         = None # this is used by extract_trace
+    self.atoms                   = None
+    self.atom_count              = 0
+    self.points                  = None # basic 3d data - atoms.extract_xyz()
+    self.b_cache                 = None # atoms.extract_b()
+    self.atom_index              = []   # stores atoms_with_labels data
     self.current_atom_i_seq      = None
-    self.current_widget          = None
+    self.closest_point_i_seq     = None # usually set by mouse clicks
     self.minimum_covering_sphere = None
-    self.draw_mode               = "all_atoms"
-    self.draw_selection_mode     = "bonds_and_atoms"
-    self.color_mode              = "rainbow"
-    self.recolor                 = self.color_rainbow
-    self.base_atom_color         = (0.6, 0.6, 0.6)
-    self.labels_display_list     = None
+    # display lists - resetting these to None will force a redraw
     self.points_display_list     = None
     self.lines_display_list      = None
     self.spheres_display_list    = None
-    self.selection_cache         = None
-    self.selection_string        = ""
-    self.selection_i_seqs        = None
-    self.selected_points         = []
-    self.selection_color         = (1.0, 1.0, 1.0)
+    # various settings; override these in subclasses and/or provide
+    # a mechanism for changing their values
+    self.line_width              = 1
+    self.buffer_factor           = 2.0
+    self.nonbonded_line_width    = 1
+    self._fog_start              = 50
+    self._fog_end                = 200
+    self.draw_mode               = "all_atoms"
+    self.color_mode              = "rainbow"
+    self.recolor                 = self.color_rainbow
+    self.base_atom_color         = (0.6, 0.6, 0.6) # grey
+    self.carbon_atom_color       = (1.0, 1.0, 0.0) # yellow
+    self.orthographic            = False
+    # toggles for viewable objects
     self.flag_show_fog                     = True
     self.flag_show_lines                   = True
     self.flag_show_points                  = True
     self.flag_show_labels                  = True
     self.flag_show_spheres                 = False
-    self.flag_show_backbone                = False
+    self.flag_show_trace                   = False
     self.flag_show_hydrogens               = True
-    self.flag_show_selection               = True
     self.flag_show_minimum_covering_sphere = False
     self.flag_show_rotation_center         = False
-    self.flag_scale_b_to_visible           = True
-    self.flag_color_selection_separately   = True
-    self._structure_was_updated            = False
-    glEnable(GL_LINE_SMOOTH)
-    glDepthFunc(GL_LESS)
-    glEnable(GL_ALPHA_TEST)
-    glEnable(GL_DEPTH_TEST)
-    glEnable(GL_BLEND)
-    glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
 
   def InitGL(self):
     gltbx.util.handle_error()
     glClearColor(self.r_back, self.g_back, self.b_back, 0.0)
     self.minimum_covering_sphere_display_list = None
-    if self.minimum_covering_sphere is not None :
-      self.initialize_modelview()
+    glEnable(GL_LINE_SMOOTH)
+    glDepthFunc(GL_LESS)
+    glEnable(GL_ALPHA_TEST)
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_BLEND)
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+    self.initialize_modelview()
     gltbx.util.handle_error()
+
+  def initialize_modelview (self) :
+    if self.minimum_covering_sphere is not None :
+      wx_viewer.wxGLWindow.initialize_modelview(self)
 
   def DrawGL(self):
     if (self.flag_show_points):
       self.draw_points()
     if (self.flag_show_lines):
       self.draw_lines()
+    if (self.flag_show_labels):
+      self.draw_labels()
     if (self.flag_show_spheres):
       self.draw_spheres()
-    if (self.flag_show_selection) :
-      self.draw_selection()
 
   def OnRedrawGL (self, event=None) :
     if self.minimum_covering_sphere is None :
+      gltbx.util.handle_error()
       glClear(GL_COLOR_BUFFER_BIT)
       glClear(GL_DEPTH_BUFFER_BIT)
       glFlush()
       self.SwapBuffers()
+      gltbx.util.handle_error()
     else :
       wx_viewer.wxGLWindow.OnRedrawGL(self, event)
-
-  def zoom_selection (self, event=None) :
-    if self.selection_covering_sphere is not None :
-      self.minimum_covering_sphere = self.selection_covering_sphere
-      self.move_rotation_center_to_mcs_center()
-      self.fit_into_viewport()
 
   def unzoom (self, event=None) :
     if self.atoms is not None :
       self.minimum_covering_sphere = minimum_covering_sphere(
-                                       points=self.atoms.extract_xyz())
+                                       points=self.atoms.extract_xyz(),
+                                       epsilon=0.1)
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
 
-  def OnChar (self, event) :
-    wx_viewer.wxGLWindow.OnChar(self, event)
-    key = event.GetKeyCode()
-    if key == ord('z') :
-      self.zoom_selection()
-    elif key == ord('u') :
+  def recenter_on_atom (self, i_seq) :
+    if self.points is not None and i_seq < self.points.size() :
+      self.rotation_center = self.points[i_seq]
+
+  def process_key_stroke (self, key) :
+    if key == ord('u') :
       self.unzoom()
 
-  def OnLeftClick (self, event) :
-    wx_viewer.wxGLWindow.OnLeftClick(self, event)
-    if event.ControlDown() and not self.was_dragged :
-      self.get_pick_points((event.GetX(), event.GetY()))
-      closest_point_i_seq = self.process_pick_points()
-      if closest_point_i_seq :
-        self.set_selected_atom(closest_point_i_seq)
-
   def process_pick_points(self):
-    closest_point_i_seq = viewer_utils.closest_visible_point(
-      points = self.points,
-      atoms_visible = self.atoms_visible,
-      point0 = self.pick_points[0],
-      point1 = self.pick_points[1]
-    )
-    return closest_point_i_seq
+    if self.pick_points is not None :
+      self.closest_point_i_seq = viewer_utils.closest_visible_point(
+        points = self.points,
+        atoms_visible = self.atoms_visible,
+        point0 = self.pick_points[0],
+        point1 = self.pick_points[1]
+      )
 
   def update_view (self, redraw_points=True, redraw_lines=False) :
     self.get_drawn_atom_count()
@@ -130,7 +128,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.lines_display_list = None
     if redraw_points :
       self.points_display_list = None
-    self.selection_display_list = None
     self.OnRedraw()
 
   def OnUpdate (self, event=None, recenter=False) :
@@ -173,6 +170,23 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       if atom.element == ' H' :
         atom_radii[i_seq] = 0.75
     self.atom_radii = atom_radii
+
+  # when calculations are being done in the background in another thread,
+  # calling this directly can cause a crash.  it's best to bind this to
+  # an event instead, either a keystroke/button click or a wx.PostEvent
+  # from a child thread (this is how phenix.refine does it).
+  def OnUpdate (self, event=None, recenter=False) :
+    if self._structure_was_updated :
+      self.extract_atom_data()
+      self.extract_trace()
+    else :
+      self.update_coords()
+    self._structure_was_updated = False
+    self.update_view(True, True)
+    if (recenter or 
+        (event is not None and getattr(event, "recenter", None) == True)) :
+      self.move_rotation_center_to_mcs_center()
+      self.fit_into_viewport()
 
   def update_coords (self) :
     self.points = self.atoms.extract_xyz()
@@ -245,52 +259,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.visible_atom_count = self.visibility.visible_atoms_count
 
   #---------------------------------------------------------------------
-  # atom selections
-  #
-  def update_selection (self, selection_string=None) :
-    self.selection_string = selection_string
-    if selection_string is None :
-      self.selection_string = self.convert_selections_to_string()
-    if self.active_widget is not None :
-      try : # TODO: make sure the widget isn't a menu item???
-        self.active_widget.update_value(self.selection_string)
-      except Exception, e :
-        print e
-    self.apply_selection(self.selection_string)
-    self.frame.update_selection(self.selection_string)
-    try :
-      self.set_selection_sphere()
-    except Exception, e :
-      print e
-
-  def set_selection_sphere (self) :
-    selected_points = []
-    points = self.points
-    for i_seq in self.selection_i_seqs :
-      selected_points.append(points[i_seq])
-    if len(selected_points) == 0 :
-      self.selection_covering_sphere = minimum_covering_sphere(
-                                         points=self.atoms.extract_xyz())
-    else :
-      s_p = flex.vec3_double(selected_points)
-      self.selection_covering_sphere = minimum_covering_sphere(
-                                         points=s_p)
-
-  def apply_selection (self, selection_string) :
-    sel = self.selection_cache.selection
-    #sel = self.pdb_hierarchy.atom_selection_cache()
-    try :
-      self.atoms_selected = sel(selection_string)
-    except :
-      self.atoms_selected = sel("none")
-      raise Sorry("The string '%s' is not a valid selection."%selection_string)
-    self.selection_i_seqs = self.atoms_selected.iselection()
-    self.update_view()
-
-  def get_selected_atom_count (self) :
-    return self.selection_i_seqs.size()
-
-  #---------------------------------------------------------------------
   # coloring
   def set_bg_color (self) :
     (r,g,b) = self.bg_color
@@ -310,7 +278,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.recolor = self.color_mono
     else :
       pass
-    self.set_sel_color(color_tuple=self.selection_color)
     if redraw :
       self.update_view(True, True)
 
@@ -334,10 +301,11 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     )
 
   def color_by_chain (self) :
+    # TODO: all of this using flex array only
     c = 0
     for chain in self.pdb_hierarchy.chains() :
       c += 1
-    rainbow = utils.rainbow_gradient_as_decimals(c)
+    rainbow = viewer_utils.make_rainbow_gradient(c)
     j = 0
     chain_shades = {}
     for chain in self.pdb_hierarchy.chains() :
@@ -349,23 +317,26 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
 
   def color_by_element (self) :
     py_atom_colors = []
-    element_shades = {' C' : (0.8, 0.8, 0.8),
-                      ' H' : (0.95, 0.95, 0.95),
-                      ' N' : (0.0, 0.0, 1.0),
-                      ' O' : (1.0, 0.0, 0.0),
-                      ' S' : (1.0, 0.5, 0.0),
-                      ' P' : (1.0, 1.0, 0.0),
-                      'Se' : (0.0, 1.0, 0.0),
-                      'Mg' : (0.7, 0.7, 0.9),
-                      'Fe' : (0.8, 0.2, 0.0),
-                      'Cl' : (0.8, 1.0, 0.2),
-                      'Na' : (0.95, 0.95, 0.95),
-                      'Ca' : (1.0, 1.0, 1.0),
-                      'Mn' : (0.8, 0.6, 1.0),
-                      'Zn' : (0.8, 0.9, 1.0),
-                      'Ni' : (0.0, 1.0, 0.8),
-                      'Cu' : (0.0, 1.0, 0.5),
-                      'Co' : (0.0, 0.5, 0.6) }
+    # these are approximations based on my (probably faulty) memory.
+    # feel free to change to something more reasonable.
+    element_shades = {' C' : self.carbon_atom_color, # usually yellow or grey
+                      ' H' : (0.95, 0.95, 0.95), # very light grey
+                      ' N' : (0.0, 0.0, 1.0),    # blue
+                      ' O' : (1.0, 0.0, 0.0),    # red
+                      ' S' : (1.0, 0.5, 0.0),    # orange
+                      ' P' : (1.0, 1.0, 0.0),    # yellow
+                      'Se' : (0.0, 1.0, 0.0),    # green
+                      'Mg' : (0.7, 0.7, 0.9),    # very pale blue
+                      'Fe' : (0.8, 0.2, 0.0),    # rust
+                      'Cl' : (0.8, 1.0, 0.2),    # yellow-green
+                      'Na' : (0.7, 0.7, 0.7),    # light grey
+                      'Ca' : (1.0, 1.0, 1.0),    # white
+                      'Mn' : (1.0, 0.6, 0.8),    # lavender
+                      'Zn' : (0.8, 0.9, 1.0),    # very pale cyan
+                      'Ni' : (0.0, 0.8, 0.4),    # teal
+                      'Cu' : (0.0, 0.8, 0.7),    # blue-green
+                      'Co' : (0.0, 0.5, 0.6) }   # marine
+    # TODO: all of this using flex array only
     for i_seq, atom_object in enumerate(self.atom_index) :
       element = atom_object.element
       color = element_shades.get(element)
@@ -373,13 +344,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
         color = (0.0, 1.0, 1.0)
       py_atom_colors.append(color)
     self.atom_colors = flex.vec3_double(py_atom_colors)
-
-  def set_sel_color (self, color_string=None, color_tuple=None) :
-    if color_tuple is None :
-      color_tuple = utils.color_string_converter(color_string)
-    self.selection_color = color_tuple
-    py_sele_color_list = [ color_tuple for i_seq in xrange(0,self.atom_count) ]
-    self.selection_colors = flex.vec3_double(py_sele_color_list)
 
   #---------------------------------------------------------------------
   # drawing functions
@@ -408,7 +372,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       )
       self.points_display_list.end()
     self.points_display_list.call()
-
 
   def draw_spheres (self) :
     pass
@@ -443,17 +406,123 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       glDisable(GL_LIGHT0)
       glDisable(GL_BLEND)
 
+########################################################################
+# ATOM SELECTION VIEWER
+# this will handle any valid atom selection recognized by cctbx.
+#
+class selection_viewer_mixin (model_viewer_mixin) :
+  initialize_model_viewer_super = True
+  def __init__ (self, *args, **kwds) :
+    model_viewer_mixin.__init__(self, *args, **kwds)
+    # objects used internally
+    self.selection_covering_sphere = None
+    self.selection_i_seqs = None
+    self.selection_cache = None
+    self.selected_points = []
+    self.selection_display_list = None
+    self.selection_colors = None
+    self.atoms_selected = None
+    # various settings
+    self.selection_string = "None"
+    self.selection_color = (1.0, 1.0, 1.0)
+    self.selection_draw_mode = "bonds_and_atoms"
+    # flags
+    self.flag_show_selection = True
+    self.flag_recolor_selection = True
+
+  def DrawGL (self) :
+    model_viewer_mixin.DrawGL(self)
+    if self.flag_show_selection :
+      self.draw_selection()
+
+  def process_key_stroke (self, key) :
+    model_viewer_mixin.process_key_stroke(self, key)
+    if key == ord('z') :
+      self.zoom_selection()
+
+  def update_view (self, redraw_points=True, redraw_lines=False) :
+    self.selection_display_list = None
+    model_viewer_mixin.update_view(self, redraw_points, redraw_lines)
+
+  def zoom_selection (self, event=None) :
+    self.set_selection_sphere()
+    if self.selection_covering_sphere is not None :
+      self.minimum_covering_sphere = self.selection_covering_sphere
+      self.move_rotation_center_to_mcs_center()
+      self.fit_into_viewport()
+    else :
+      self.unzoom()
+
+  def update_selection (self, selection_string=None) :
+    self.selection_string = str(selection_string)
+    if self.active_widget is not None :
+      try : # TODO: make sure the widget isn't a menu item???
+        self.active_widget.update_value(self.selection_string)
+      except Exception, e :
+        print e
+    self.apply_selection(self.selection_string)
+
+  def apply_selection (self, selection_string) :
+    if self.selection_cache is None :
+      return
+    sel = self.selection_cache.selection
+    try :
+      self.atoms_selected = sel(selection_string)
+    except :
+      self.atoms_selected = sel("none")
+      raise Sorry("The string '%s' is not a valid selection."%selection_string)
+    self.selection_i_seqs = self.atoms_selected.iselection()
+    self.update_view()
+
+  def get_selected_atom_count (self) :
+    return self.selection_i_seqs.size()
+
+  def set_selection_sphere (self) :
+    if self.selection_i_seqs is None or self.selection_i_seqs.size() == 0 :
+      self.selection_covering_sphere = None
+      return
+    selected_points = []
+    points = self.points
+    for i_seq in self.selection_i_seqs :
+      selected_points.append(points[i_seq])
+    if len(selected_points) == 0 :
+      self.selection_covering_sphere = minimum_covering_sphere(
+                                         points=self.atoms.extract_xyz(),
+                                         epsilon=0.1)
+    else :
+      s_p = flex.vec3_double(selected_points)
+      self.selection_covering_sphere = minimum_covering_sphere(
+                                         points=s_p,
+                                         epsilon=0.1)
+
+  def set_color_mode (self, color_mode, redraw=False) :
+    self.set_sel_color(color_tuple=self.selection_color)
+    model_viewer_mixin.set_color_mode(self, color_mode, redraw)
+
+  def set_sel_color (self, color_tuple=(1.0,1.0,1.0)) :
+    self.selection_color = color_tuple
+    py_sele_color_list = [ color_tuple for i_seq in xrange(0,self.atom_count) ]
+    self.selection_colors = flex.vec3_double(py_sele_color_list)
+
+  def set_selected_atom (self, closest_point_i_seq) :
+    self.current_atom_i_seq = closest_point_i_seq
+
+  #---------------------------------------------------------------------
+  # DRAWING
   def draw_selection (self) :
     selection_i_seqs = self.selection_i_seqs
     if selection_i_seqs is None or selection_i_seqs.size() == 0 :
       return
     selection_colors = self.atom_colors
-    if self.flag_color_selection_separately :
+    if self.flag_recolor_selection and self.selection_colors is not None :
       selection_colors = self.selection_colors
     if self.selection_display_list is None :
       self.selection_display_list = gltbx.gl_managed.display_list()
       self.selection_display_list.compile()
-      if self.draw_selection_mode == "bonds_and_atoms" :
+      draw_mode = self.selection_draw_mode
+      if draw_mode is None :
+        draw_mode = "bonds_and_atoms"
+      if draw_mode == "bonds_and_atoms" :
         self.visibility.get_selection_visibility(
           bonds          = self.bonds,
           atoms_selected = self.atoms_selected
@@ -472,7 +541,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
           atom_colors   = selection_colors,
           bonds_visible = self.visibility.selected_bonds_visible
         )
-      elif self.draw_selection_mode == "points" :
+      elif draw_mode == "points" :
         glLineWidth(self.line_width + 2)
         viewer_utils.draw_points(
           points         = self.points,
@@ -480,7 +549,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
           points_visible = self.atoms_selected,
           cross_radius   = 0.4
         )
-      elif self.draw_selection_mode == "spheres" :
+      elif draw_mode == "spheres" :
         self._draw_spheres(
           spheres_visible = self.atoms_selected,
           atom_colors     = selection_colors,
@@ -490,10 +559,59 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.selection_display_list.end()
     self.selection_display_list.call()
 
+########################################################################
+# MIXIN FOR DRAWING ATOM LABELS
+#
+# This is meant to be combined with other viewer mixins, and is much
+# simpler as a result.
+class atom_label_mixin (wx_viewer.wxGLWindow) :
+  initialize_atom_label_super = False
+  def __init__ (self, *args, **kwds) :
+    if self.initialize_atom_label_super :
+      wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
+    self.label_xyz = []
+    self.label_text = []
+    self.label_color = (1.0, 1.0, 1.0)
+    self.labels_display_list = None
+    self.flag_show_labels = True
+
+  # No InitGL method here.
+
+  def DrawGL (self) :
+    if self.flag_show_labels :
+      self.draw_labels()
+
+  def clear_labels (self, event=None) :
+    self.label_xyz = []
+    self.label_text = []
+    self.labels_display_list = None
+
   def draw_labels (self) :
-    pass
+    if (self.labels_display_list is None) :
+      font = gltbx.fonts.ucs_bitmap_8x13
+      font.setup_call_lists()
+      self.labels_display_list = gltbx.gl_managed.display_list()
+      self.labels_display_list.compile()
+      glColor3f(*self.label_color)
+      for label,point in zip(self.label_text, self.label_xyz):
+        glRasterPos3f(*point)
+        font.render_string(label)
+      self.labels_display_list.end()
+    self.labels_display_list.call()
 
+  def show_atom_label (self, i_seq) :
+    if self.points is None or i_seq >= self.points.size() :
+      return
+    self.label_xyz.append(self.points[i_seq])
+    a = self.atom_index[i_seq]
+    atom_str = "%s %s%s %s" % (strip(a.name), a.chain_id, strip(a.resseq),
+      strip(a.resname))
+    self.label_text.append(atom_str)
+    self.OnRedrawGL()
 
+########################################################################
+# UTILITY FUNCTIONS
+#
 def compare_conformers (altloc1, altloc2) :
   if altloc1 == altloc2 :
     return True
@@ -504,6 +622,9 @@ def compare_conformers (altloc1, altloc2) :
   else :
     return False
 
+########################################################################
+# CLASSES AND METHODS FOR STANDALONE VIEWER
+#
 class App (wx.App) :
   def __init__ (self, title="crys3d.wx_model_viewer", default_size=(800,600)) :
     self.title = title
