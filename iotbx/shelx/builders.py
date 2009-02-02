@@ -67,12 +67,9 @@ class afixed_crystal_structure_builder(crystal_structure_builder):
     self.afixed.append((constraint_type, kwds))
 
   def finish(self):
-    asu_mappings = self.structure.asu_mappings(buffer_thickness=2)
-    pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
-    pair_asu_table.add_all_pairs(distance_cutoff=1.7)
-    pair_sym_table = pair_asu_table.extract_pair_sym_table()
+    pass
 
-  
+
 class restrained_crystal_structure_builder(afixed_crystal_structure_builder):
   def __init__(self, *args, **kwds):
     super(restrained_crystal_structure_builder, self).__init__(*args, **kwds)
@@ -93,16 +90,26 @@ class restrained_crystal_structure_builder(afixed_crystal_structure_builder):
       self.shared_proxies[restraint_type].append(restraint)
 
   def finish_restraints(self):
+    max_bond_distance = 2
     bond_params_table = geometry_restraints.bond_params_table(
       self.structure.scatterers().size())
+    asu_mappings = self.structure.asu_mappings(buffer_thickness=max_bond_distance*3)
+    bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
     for proxy in self.bond_sym_proxies:
       i_seq, j_seq = proxy.i_seqs
       bond_params_table.update(
         i_seq=i_seq,
         j_seq=j_seq,
         params=proxy)
+      bond_asu_table.add_pair(
+          i_seq=i_seq,
+          j_seq=j_seq,
+          rt_mx_ji=proxy.rt_mx_ji)
     self.geometry_restraints_manager = geometry_restraints.manager.manager(
+      crystal_symmetry=self.crystal_symmetry,
+      site_symmetry_table=self.structure.site_symmetry_table(),
       bond_params_table=bond_params_table,
+      shell_sym_tables=[bond_asu_table.extract_pair_sym_table()],
       angle_proxies=self.angle_proxies,
       planarity_proxies= self.planarity_proxies,
       dihedral_proxies=self.dihedral_proxies)
