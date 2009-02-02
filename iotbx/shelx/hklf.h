@@ -6,7 +6,7 @@
 #ifdef IOTBX_SHELX_HKLF_SPIRIT_DEBUG
   #define BOOST_SPIRIT_DEBUG
 #endif
-#include <iotbx/boost_spirit/fortran_numerics.h>
+#include <scitbx/misc/fortran_numeric_formats.h>
 #include <boost/spirit/include/classic_core.hpp>
 #include <boost/spirit/include/classic_if.hpp>
 #include <boost/spirit/include/classic_assign_actor.hpp>
@@ -36,7 +36,7 @@ class hklf_reader
     template <class IteratorType>
     void init(IteratorType const &first, IteratorType const &last, bool strict)
     {
-      using namespace iotbx::boost_spirit;
+      using namespace scitbx::boost_spirit_classic;
       typedef scanner<IteratorType> scanner_t;
       typedef rule<scanner_t> rule_t;
       typedef typename miller_t::value_type index_t;
