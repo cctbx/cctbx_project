@@ -218,8 +218,48 @@ class manager(object):
         bonded_distance_cutoff_epsilon=None):
     if (bonded_distance_cutoff_epsilon is None):
       bonded_distance_cutoff_epsilon = 1.e-6
+    bonded_distance_cutoff = -1      
+    def check_bonded_distance_cutoff():
+        if (    self.max_reasonable_bond_distance is not None
+            and bonded_distance_cutoff > self.max_reasonable_bond_distance):
+          raise RuntimeError(
+            "Bond distance > max_reasonable_bond_distance: %.6g > %.6g" % (
+              bonded_distance_cutoff, self.max_reasonable_bond_distance))
     if (self.nonbonded_types is None):
-      if (self._pair_proxies is None):
+      if (    self._pair_proxies is None
+          and self.shell_sym_tables is not None
+          and self.crystal_symmetry is not None
+          and self.site_symmetry_table is not None):
+        unit_cell = self.crystal_symmetry.unit_cell()
+        sites_frac = unit_cell.fractionalize(sites_cart=sites_cart)
+        for shell_sym_table in self.shell_sym_tables:
+          bonded_distance_cutoff = max(bonded_distance_cutoff,
+            flex.max_default(
+              values=crystal.get_distances(
+                pair_sym_table=shell_sym_table,
+                orthogonalization_matrix=
+                self.crystal_symmetry.unit_cell().orthogonalization_matrix(),
+                sites_frac=sites_frac),
+              default=0))
+        check_bonded_distance_cutoff()
+        bonded_distance_cutoff *= (1 + bonded_distance_cutoff_epsilon)
+        asu_mappings = crystal.symmetry.asu_mappings(self.crystal_symmetry,
+          buffer_thickness=bonded_distance_cutoff,
+          asu_is_inside_epsilon=asu_is_inside_epsilon)
+        asu_mappings.process_sites_frac(
+          original_sites=sites_frac,
+          site_symmetry_table=self.site_symmetry_table)
+        shell_asu_tables = None
+        shell_asu_tables = [
+          crystal.pair_asu_table(asu_mappings=asu_mappings)
+          .add_pair_sym_table(sym_table=shell_sym_table)
+          for shell_sym_table in self.shell_sym_tables]
+        self.n_updates_pair_proxies += 1
+        self._pair_proxies = geometry_restraints.pair_proxies(
+          flags=flags,
+          bond_params_table=self.bond_params_table,
+          shell_asu_tables=shell_asu_tables)
+      elif (self._pair_proxies is None):
         self.n_updates_pair_proxies += 1
         self._pair_proxies = geometry_restraints.pair_proxies(
           flags=flags,
@@ -256,12 +296,6 @@ class manager(object):
         self.nonbonded_distance_cutoff_was_determined_automatically = True
         self.nonbonded_distance_cutoff = max_vdw_dist
         self.adjusted_nonbonded_distance_cutoff = max_vdw_dist
-      def check_bonded_distance_cutoff():
-        if (    self.max_reasonable_bond_distance is not None
-            and bonded_distance_cutoff > self.max_reasonable_bond_distance):
-          raise RuntimeError(
-            "Bond distance > max_reasonable_bond_distance: %.6g > %.6g" % (
-              bonded_distance_cutoff, self.max_reasonable_bond_distance))
       asu_mappings = None
       shell_asu_tables = None
       while True:
