@@ -23,7 +23,7 @@ namespace boost_adaptbx { namespace floating_point {
 
       Linux:
         feenableexcept enables/disables FP exception trapping for i387 and SSE2
-      All Intel platform:
+      gcc on all Intel platform:
         _MM_SET_EXCEPTION_MASK from xmmintrin.h enables/disables exception
         trapping for SSE2
 
