@@ -95,7 +95,10 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.min_viewport_use_fraction = 0.01
     self.clip_near = 0
     self.clip_far = 0
+    self.fog_start_offset = 0
+    self.fog_end_offset = 0
     self.flag_show_fog = False # leave off by default
+    self._settings_widget = None
 
     self.rotation_center = (0,0,0)
     self.marked_rotation = None
@@ -146,6 +149,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       self.autospin_allowed = not self.autospin_allowed
     elif (key == ord('V')):
       gltbx.util.show_versions()
+    elif (key == ord('O')):
+      self.edit_opengl_settings()
     elif (key == ord('\t')):
       callback = getattr(self, "tab_callback", None)
       if (callback is None):
@@ -252,14 +257,16 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     if self.flag_show_fog :
       near, far = self.get_clipping_distances()
       # TODO: this needs work.
-      fog_start = 0.25*(far - near) + near
-      fog_end = far
+      fog_start = 0.25*(far - near) + near + self.fog_start_offset
+      fog_end = far - self.fog_end_offset
       glMatrixMode(GL_MODELVIEW)
       glEnable(GL_FOG)
       glFogi(GL_FOG_MODE, GL_LINEAR)
       glFogf(GL_FOG_START, fog_start)
       glFogf(GL_FOG_END, fog_end)
       glFogfv(GL_FOG_COLOR, [self.r_back, self.g_back, self.b_back, 1.0])
+    else :
+      glDisable(GL_FOG)
 
   def set_minimum_covering_sphere(self, atoms=[]):
     points = flex.vec3_double()
@@ -499,6 +506,11 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnUpdate (self, event=None) :
     pass
 
+  def edit_opengl_settings (self, event=None) :
+    if self._fog_settings_widget is None :
+      self._fog_settings_widget = OpenGLSettingsToolbox(self)
+      self._fog_settings_widget.Show()
+
 class show_points_and_lines_mixin(wxGLWindow):
 
   def __init__(self, *args, **keyword_args):
@@ -653,6 +665,55 @@ class show_points_and_lines_mixin(wxGLWindow):
         closest_point = point
     if (closest_point is not None):
       self.rotation_center = closest_point
+
+class OpenGLSettingsToolbox (wx.MiniFrame) :
+  def __init__ (self, parent) :
+    wx.MiniFrame.__init__(self, parent, -1, title="OpenGL settings",
+      pos=(100,100), style=wx.CAPTION|wx.CLOSE_BOX|wx.RAISED_BORDER)
+    self.parent = parent
+    self.widgets = {}
+    panel = wx.Panel(self, -1)
+    main_sizer = wx.BoxSizer(wx.VERTICAL)
+    fog_box = wx.CheckBox(panel, -1, "Use fog")
+    fog_box.SetValue(parent.flag_show_fog)
+    main_sizer.Add(fog_box, 0, wx.ALL, 5)
+    szr = wx.FlexGridSizer(rows=0, cols=2, vgap=5, hgap=5)
+    main_sizer.Add(szr, 0, 0, 0)
+    clip_label = wx.StaticText(panel, -1, "Front clipping:")
+    clip_slider = wx.Slider(panel, -1, parent.clip_near, minValue=0,
+      maxValue=50)
+    szr.Add(clip_label, 0, wx.ALL, 5)
+    szr.Add(clip_slider, 0, wx.ALL, 5)
+    fog1_label = wx.StaticText(panel, -1, "Fog start:")
+    fog1_slider = wx.Slider(panel, -1, parent.fog_start_offset, minValue=0,
+      maxValue=20)
+    szr.Add(fog1_label, 0, wx.ALL, 5)
+    szr.Add(fog1_slider, 0, wx.ALL, 5)
+    fog2_label = wx.StaticText(panel, -1, "Fog end:")
+    fog2_slider = wx.Slider(panel, -1, parent.fog_end_offset, minValue=0,
+      maxValue=40)
+    szr.Add(fog2_label, 0, wx.ALL, 5)
+    szr.Add(fog2_slider, 0, wx.ALL, 5)
+    self.widgets['clip_near'] = clip_slider
+    self.widgets['fog_start_offset'] = fog1_slider
+    self.widgets['fog_end_offset'] = fog2_slider
+    self.widgets['flag_show_fog'] = fog_box
+    self.SetSizer(main_sizer)
+    main_sizer.Fit(panel)
+    self.Fit()
+    self.Bind(wx.EVT_SLIDER, self.OnUpdate)
+    self.Bind(wx.EVT_CHECKBOX, self.OnUpdate)
+    self.Bind(wx.EVT_CLOSE, self.OnClose)
+
+  def OnUpdate (self, event=None) :
+    for setting_name, widget in self.widgets.iteritems() :
+      new_value = widget.GetValue()
+      setattr(self.parent, setting_name, new_value)
+    self.parent.OnRedrawGL()
+
+  def OnClose (self, event=None) :
+    self.Destroy()
+    self.parent._fog_settings_widget = None
 
 class App(wx.App):
 
