@@ -127,7 +127,7 @@ class atom_parser(parser, variable_decoder):
   """ A parser pulling out the scatterer info from a command stream """
 
   scatterer_label_to_index = {}
-  
+
   def filtered_commands(self):
     self.label_for_sfac = None
     scatterer_index = 0
@@ -315,21 +315,21 @@ if smtbx is not None:
             for i in range(div-1):
               kwds = {}
               atom_pair = atom_pairs[i*2:(i+1)*2]
-              atom_pair_indices = [self.scatterer_label_to_index[i[1]] for i in atom_pair]
-              kwds['i_seqs'] = tuple(atom_pair_indices)
+              kwds['i_seqs'] = [self.scatterer_label_to_index[i[1]] for i in atom_pair]
               sym_ops = [self.symmetry_operations.get(i[2]) for i in atom_pair]
               if sym_ops.count(None) == 2:
                 rt_mx_ji = sgtbx.rt_mx() # unit matrix
               elif sym_ops.count(None) == 1:
-                sym_op = sym_ops[0]
+                sym_op = sym_ops[1]
                 if sym_op is None:
-                  sym_op = sym_ops[1]
+                  sym_op = sym_ops[0]
+                  kwds['i_seqs'].reverse()
                 rt_mx_ji = sgtbx.rt_mx(sym_op)
               else:
                 rt_mx_ji_1 = sgtbx.rt_mx(sym_ops[0])
                 rt_mx_ji_2 = sgtbx.rt_mx(sym_ops[1])
                 rt_mx_ji_inv = rt_mx_ji_1.inverse()
-                rt_mx_ji = rt_mx_ji_2.multiply(rt_mx_ji_inv)
+                rt_mx_ji = rt_mx_ji_inv.multiply(rt_mx_ji_2)
               kwds['rt_mx_ji'] = rt_mx_ji
               kwds['distance_ideal'] = value
               kwds['weight'] = 1/(esd*esd)
