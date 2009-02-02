@@ -11,7 +11,6 @@ import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.f_model
 from iotbx.pdb import crystal_symmetry_from_pdb
 from iotbx import crystal_symmetry_from_any
-from libtbx import smart_open
 from iotbx import reflection_file_utils
 from iotbx import reflection_file_reader
 from libtbx.str_utils import format_value
