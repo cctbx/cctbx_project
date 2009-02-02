@@ -5,10 +5,9 @@ import gltbx.util
 from gltbx import wx_viewer, viewer_utils
 from gltbx.gl import *
 from gltbx.glu import *
-from scitbx.array_family import flex
+from scitbx.array_family import flex, shared
 from scitbx.math import minimum_covering_sphere
 from mmtbx.monomer_library import pdb_interpretation
-from cctbx import crystal, sgtbx
 import wx
 
 ########################################################################
@@ -51,7 +50,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     self.flag_show_fog                     = True
     self.flag_show_lines                   = True
     self.flag_show_points                  = True
-    self.flag_show_labels                  = True
     self.flag_show_spheres                 = False
     self.flag_show_trace                   = False
     self.flag_show_hydrogens               = True
@@ -80,8 +78,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.draw_points()
     if (self.flag_show_lines):
       self.draw_lines()
-    if (self.flag_show_labels):
-      self.draw_labels()
     if (self.flag_show_spheres):
       self.draw_spheres()
 
@@ -171,10 +167,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
         atom_radii[i_seq] = 0.75
     self.atom_radii = atom_radii
 
-  # when calculations are being done in the background in another thread,
-  # calling this directly can cause a crash.  it's best to bind this to
-  # an event instead, either a keystroke/button click or a wx.PostEvent
-  # from a child thread (this is how phenix.refine does it).
   def OnUpdate (self, event=None, recenter=False) :
     if self._structure_was_updated :
       self.extract_atom_data()
@@ -208,22 +200,19 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     selection_i_seqs = list(
       isel("(name ' CA ' or name ' P  ') and (altloc 'A' or altloc ' ')"))
     last_atom = None
-    t = crystal.pair_sym_table()
-    unit_mx = sgtbx.rt_mx()
+    bonds = shared.stl_set_unsigned(self.atoms.size())
     atoms = self.pdb_hierarchy.atoms_with_labels()
     for atom in atoms :
-      d = crystal.pair_sym_dict()
       if atom.i_seq in selection_i_seqs :
         if last_atom is not None :
           if atom.chain_id        == last_atom.chain_id and \
              atom.model_id        == last_atom.model_id and \
              atom.resseq_as_int() == (last_atom.resseq_as_int() + 1) and \
              compare_conformers(atom.altloc, last_atom.altloc) == True :
-            d[last_atom.i_seq] = crystal.pair_sym_ops([unit_mx])
-            t[last_atom.i_seq][atom.i_seq] = crystal.pair_sym_ops([unit_mx])
+            bonds[last_atom.i_seq].append(atom.i_seq)
+            bonds[atom.i_seq].append(last_atom.i_seq)
         last_atom = atom
-      t.append(d)
-    self.trace_bonds = t.full_simple_connectivity()
+    self.trace_bonds = bonds
 
   def set_draw_mode (self, draw_mode, redraw=False) :
     if not self.minimum_covering_sphere :
@@ -301,7 +290,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     )
 
   def color_by_chain (self) :
-    # TODO: all of this using flex array only
     c = 0
     for chain in self.pdb_hierarchy.chains() :
       c += 1
@@ -310,13 +298,12 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     chain_shades = {}
     for chain in self.pdb_hierarchy.chains() :
       chain_shades[chain.id] = rainbow[j]
-    py_atom_colors = []
+    atom_colors = flex.vec3_double()
     for i_seq, atom_object in enumerate(self.atom_index) :
-      py_atom_colors.append(chain_shades[atom_object.chain_id])
-    self.atom_colors = flex.vec3_double(py_atom_colors)
+      atom_colors.append(chain_shades[atom_object.chain_id])
+    self.atom_colors = atom_colors
 
   def color_by_element (self) :
-    py_atom_colors = []
     # these are approximations based on my (probably faulty) memory.
     # feel free to change to something more reasonable.
     element_shades = {' C' : self.carbon_atom_color, # usually yellow or grey
@@ -336,14 +323,14 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
                       'Ni' : (0.0, 0.8, 0.4),    # teal
                       'Cu' : (0.0, 0.8, 0.7),    # blue-green
                       'Co' : (0.0, 0.5, 0.6) }   # marine
-    # TODO: all of this using flex array only
+    atom_colors = flex.vec3_double()
     for i_seq, atom_object in enumerate(self.atom_index) :
       element = atom_object.element
       color = element_shades.get(element)
       if color is None :
         color = (0.0, 1.0, 1.0)
-      py_atom_colors.append(color)
-    self.atom_colors = flex.vec3_double(py_atom_colors)
+      atom_colors.append(color)
+    self.atom_colors = atom_colors
 
   #---------------------------------------------------------------------
   # drawing functions
@@ -455,11 +442,6 @@ class selection_viewer_mixin (model_viewer_mixin) :
 
   def update_selection (self, selection_string=None) :
     self.selection_string = str(selection_string)
-    if self.active_widget is not None :
-      try : # TODO: make sure the widget isn't a menu item???
-        self.active_widget.update_value(self.selection_string)
-      except Exception, e :
-        print e
     self.apply_selection(self.selection_string)
 
   def apply_selection (self, selection_string) :
@@ -481,18 +463,17 @@ class selection_viewer_mixin (model_viewer_mixin) :
     if self.selection_i_seqs is None or self.selection_i_seqs.size() == 0 :
       self.selection_covering_sphere = None
       return
-    selected_points = []
-    points = self.points
-    for i_seq in self.selection_i_seqs :
-      selected_points.append(points[i_seq])
-    if len(selected_points) == 0 :
+    if self.selection_i_seqs.size() == 0 :
       self.selection_covering_sphere = minimum_covering_sphere(
                                          points=self.atoms.extract_xyz(),
                                          epsilon=0.1)
     else :
-      s_p = flex.vec3_double(selected_points)
+      selected_points = flex.vec3_double()
+      points = self.points
+      for i_seq in self.selection_i_seqs :
+        selected_points.append(points[i_seq])
       self.selection_covering_sphere = minimum_covering_sphere(
-                                         points=s_p,
+                                         points=selected_points,
                                          epsilon=0.1)
 
   def set_color_mode (self, color_mode, redraw=False) :
@@ -501,8 +482,11 @@ class selection_viewer_mixin (model_viewer_mixin) :
 
   def set_sel_color (self, color_tuple=(1.0,1.0,1.0)) :
     self.selection_color = color_tuple
-    py_sele_color_list = [ color_tuple for i_seq in xrange(0,self.atom_count) ]
-    self.selection_colors = flex.vec3_double(py_sele_color_list)
+    sele_color_list = flex.vec3_double()
+    # does this need to be done in c++?
+    for i_seq in xrange(0, self.atom_count) :
+      sele_color_list.append(color_tuple)
+    self.selection_colors = sele_color_list
 
   def set_selected_atom (self, closest_point_i_seq) :
     self.current_atom_i_seq = closest_point_i_seq
