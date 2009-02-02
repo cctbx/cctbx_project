@@ -507,9 +507,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     pass
 
   def edit_opengl_settings (self, event=None) :
-    if self._fog_settings_widget is None :
-      self._fog_settings_widget = OpenGLSettingsToolbox(self)
-      self._fog_settings_widget.Show()
+    if self._settings_widget is None :
+      self._settings_widget = OpenGLSettingsToolbox(self)
+      self._settings_widget.Show()
 
 class show_points_and_lines_mixin(wxGLWindow):
 
@@ -713,7 +713,7 @@ class OpenGLSettingsToolbox (wx.MiniFrame) :
 
   def OnClose (self, event=None) :
     self.Destroy()
-    self.parent._fog_settings_widget = None
+    self.parent._settings_widget = None
 
 class App(wx.App):
 
