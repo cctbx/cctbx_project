@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <istream>
 
 #if defined(__ALPHA) && defined(__DECCXX)
 extern "C" { extern int fileno __((FILE *)); }
@@ -68,6 +69,45 @@ namespace scitbx { namespace misc {
       keep_ends,
       count_lines_first);
   }
+
+  /// End-of-line
+  struct end_of_line
+  {
+    enum eol_type { no_eol, windows, unix };
+
+    eol_type kind;
+
+    /// Whether an eol was read or not
+    operator bool() { return kind != no_eol; }
+
+    /// Consume the eol if there is one to read, and then set the member kind
+    /// Otherwise, leave the stream as it was
+    end_of_line(std::istream &input)
+      : kind(no_eol)
+    {
+      char c1 = 0;
+      c1 = input.get();
+      if (c1 == '\n') {
+        kind = unix;
+        return;
+      }
+      else if (c1 == '\r') {
+        char c2 = 0;
+        c2 = input.get();
+        if (c2 == '\n') {
+          kind = windows;
+          return;
+        }
+        else {
+          kind = no_eol;
+          input.putback(c2).putback(c1);
+          return;
+        }
+      }
+      else input.putback(c1);
+    }
+  };
+
 
 }} // namespace scitbx::misc
 
