@@ -9,5 +9,7 @@ env_etc.include_registry.append(
 envlm = env.Copy(
   LIBS=env_etc.libm
 )
-envlm.Program(target="tst_fortran_numeric_formats",
-              source="tst_fortran_numeric_formats.cpp")
+envlm.Program(target="tst_numeric_parsers",
+              source="tst_numeric_parsers.cpp")
+envlm.Program(target="tst_numeric_manipulators",
+              source="tst_numeric_manipulators.cpp")

@@ -363,6 +363,13 @@ scitbx/examples/principal_axes_of_inertia.py svneol=native#text/x-python
 scitbx/examples/rigid_body_refinement_core.py svneol=native#text/x-python
 scitbx/examples/rigid_body_refinement_core.txt svneol=native#text/plain
 scitbx/fftpack/boost_python/threads.d -text
+scitbx/fortran_io/details/istream_scanner.h -text
+scitbx/fortran_io/details/numeric_extractors.h -text
+scitbx/fortran_io/numeric_manipulators.h -text
+scitbx/fortran_io/numeric_parsers.h -text
+scitbx/fortran_io/tests/SConscript -text
+scitbx/fortran_io/tests/tst_numeric_manipulators.cpp -text
+scitbx/fortran_io/tests/tst_numeric_parsers.cpp -text
 scitbx/graph/__init__.py -text
 scitbx/graph/rigidity.py -text
 scitbx/graph/rigidity_matrix_symbolic.py svneol=native#text/x-python
@@ -393,10 +400,7 @@ scitbx/matrix/delta_tensors.h -text
 scitbx/matrix/row_echelon_full_pivoting.h svneol=native#text/plain
 scitbx/matrix/row_echelon_full_pivoting_impl.h svneol=native#text/plain
 scitbx/matrix/row_echelon_full_pivoting_small.h svneol=native#text/plain
-scitbx/misc/fortran_numeric_formats.h -text
 scitbx/misc/positive_getitem_index.h svneol=native#text/plain
-scitbx/misc/tests/SConscript -text
-scitbx/misc/tests/tst_fortran_numeric_formats.cpp -text
 scitbx/rigid_body/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/essence/__init__.py svneol=native#text/x-python
 scitbx/rigid_body/essence/featherstone.py svneol=native#text/x-python

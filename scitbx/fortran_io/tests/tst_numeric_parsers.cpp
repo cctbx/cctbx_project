@@ -1,4 +1,4 @@
-#include <scitbx/misc/fortran_numeric_formats.h>
+#include <scitbx/fortran_io/numeric_parsers.h>
 
 #include <boost/spirit/include/classic_core.hpp>
 #include <boost/spirit/include/classic_assign_actor.hpp>
@@ -12,7 +12,7 @@
 
 template <class parser_type>
 void exercise_fortran_int(parser_type const &i4_p) {
-  using namespace scitbx::boost_spirit_classic;
+  using namespace scitbx::fortran_io::parsers;
   std::vector<std::string> input;
   typedef boost::optional<int> opt_t;
   std::vector<opt_t> output;
@@ -67,7 +67,7 @@ void exercise_fortran_int(parser_type const &i4_p) {
 }
 
 void exercise_fortran_int_2() {
-  using namespace scitbx::boost_spirit_classic;
+  using namespace scitbx::fortran_io::parsers;
   fortran_int_parser<int, /*Width=*/5, /*StrictWidth=*/true> i5_p;
   int i;
   parse_info<> info;
@@ -82,7 +82,7 @@ void exercise_fortran_int_2() {
 
 template <class parser_type>
 void exercise_fortran_real_fixed(parser_type const &f63_p) {
-  using namespace scitbx::boost_spirit_classic;
+  using namespace scitbx::fortran_io::parsers;
   std::vector<std::string> input;
   typedef boost::optional<double> opt_t;
   std::vector<opt_t> output;
@@ -159,7 +159,7 @@ void exercise_fortran_real_fixed(parser_type const &f63_p) {
 }
 
 void exercise_fortran_real_fixed_2() {
-  using namespace scitbx::boost_spirit_classic;
+  using namespace scitbx::fortran_io::parsers;
   fortran_real_parser<
     double, /*Width=*/5, /*FracDigits=*/1,/*StrictWidth=*/true> f5_1_p;
   double x;
@@ -175,24 +175,24 @@ void exercise_fortran_real_fixed_2() {
 
 int main() {
   {
-    using namespace scitbx::boost_spirit_classic;
+    using namespace scitbx::fortran_io::parsers;
     fortran_int_parser<int, /*Width=*/4, /*StrictWidth=*/false> i4_p;
     exercise_fortran_int(i4_p);
   }
   {
-    using namespace scitbx::boost_spirit_classic::dynamic;
+    using namespace scitbx::fortran_io::parsers::dynamic;
     fortran_int_parser<int> i4_p(/*Width=*/4, /*StrictWidth=*/false);
     exercise_fortran_int(i4_p);
   }
   exercise_fortran_int_2();
   {
-    using namespace scitbx::boost_spirit_classic;
+    using namespace scitbx::fortran_io::parsers;
     fortran_real_parser<
       double, /*Width=*/6, /*FracDigits=*/3, /*StrictWidth=*/false> f63_p;
     exercise_fortran_real_fixed(f63_p);
   }
   {
-    using namespace scitbx::boost_spirit_classic::dynamic;
+    using namespace scitbx::fortran_io::parsers::dynamic;
     fortran_real_parser<double> f63_p(
       /*Width=*/6, /*FracDigits=*/3, /*StrictWidth=*/false);
     exercise_fortran_real_fixed(f63_p);
