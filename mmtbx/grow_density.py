@@ -1,33 +1,236 @@
-import sys, os, time
 from cctbx.array_family import flex
-from iotbx import pdb
-from cctbx import adptbx
-from iotbx.option_parser import iotbx_option_parser
-from libtbx.utils import Sorry
-from iotbx import reflection_file_utils
-from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.f_model
-from iotbx.pdb import crystal_symmetry_from_pdb
-from iotbx import crystal_symmetry_from_any
-from libtbx import smart_open
-from iotbx import reflection_file_utils
-from iotbx import reflection_file_reader
-from libtbx.str_utils import format_value
-import iotbx
 from mmtbx import utils
-from iotbx import pdb
-from libtbx import easy_run
+from iotbx import reflection_file_reader
+from iotbx import reflection_file_utils
+from iotbx.pdb import crystal_symmetry_from_pdb
 from cStringIO import StringIO
-from mmtbx import model_statistics
-from iotbx.pdb import extract_rfactors_resolutions_sigma
-import iotbx.pdb.remark_3_interpretation
+from cctbx.xray import ext
+from mmtbx import utils
+from scitbx.array_family import shared
+from cctbx import maptbx
+import iotbx.phil
+from iotbx import crystal_symmetry_from_any
+from cctbx import adptbx
+from libtbx.utils import Sorry
+import os, math, time
+from cctbx import miller
+from mmtbx import map_tools
+from libtbx import adopt_init_args
+from libtbx import Auto, group_args
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
-import iotbx.pdb
-import iotbx.pdb.amino_acid_codes
-import random
+from iotbx import pdb
+from libtbx.str_utils import format_value
+from libtbx import smart_open
 from cctbx import xray
+
+master_params_str = """\
+pdb_file_name = None
+  .type = str
+  .multiple = False
+  .help = PDB file name.
+reflection_file_name = None
+  .type = str
+  .help = File with experimental data (most of formats: CNS, SHELX, MTZ, etc).
+data_labels = None
+  .type = str
+  .help = Labels for experimental data.
+high_resolution = None
+  .type = float
+low_resolution = None
+  .type = float
+
+x_center = 0.5
+  .type = float
+  .help = X coordinate center of problem density. Determine in Coot by placing a temporary atom in area.
+  .expert_level = 2
+
+y_center = 0.5
+  .type = float
+  .help = X coordinate center of problem density. Determine in Coot by placing a temporary atom in area.
+  .expert_level = 2
+
+z_center = 0.5
+  .type = float
+  .help = X coordinate center of problem density. Determine in Coot by placing a temporary atom in area.
+  .expert_level = 2
+
+radius = 10
+  .type = float
+  .help = X coordinate center of problem density. Determine in Coot by placing a temporary atom in area.
+  .expert_level = 2
+
+step_size = 1
+  .type = float
+  .help = Grid step size.
+  .expert_level = 2
+
+overlap_interval = 0.2
+  .type = float
+  .help = Grid interval size.
+  .expert_level = 2
+
+scattering_table = *n_gaussian wk1995 it1992 neutron
+  .type = choice
+  .help = Scattering table for structure factors calculations
+"""
+master_params = iotbx.phil.parse(master_params_str, process_includes=False)
+
+def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_center, radius, step_size=1, overlap_interval=0.2 ):
+  """ method to improve local density using dummy atoms """
+
+  """TODO: trying to work out how to add atom correctly to pdb, so can create models /
+  need to make new atom group?  Currently adds atoms to last residue (as shown in junk.pdb) /
+  which is obviously not correct.  Code below will be able to produce atom grids /
+  """
+
+  x_start = float(x_center) - (float(radius)/2)
+  x_end = float(x_center) + (float(radius)/2)
+
+  y_start = float(y_center) - (float(radius)/2)
+  y_end = float(y_center) + (float(radius)/2)
+
+  z_start = float(z_center) - (float(radius)/2)
+  z_end = float(z_center )+ (float(radius)/2)
+
+  step_size = step_size
+  overlap_interval = overlap_interval
+  overlap_list = [0.0]
+
+  while (overlap_list[len(overlap_list)-1] < step_size - overlap_interval ):
+      overlap_list.append(overlap_list[len(overlap_list)-1]+ overlap_interval)
+
+  for overlap_start in overlap_list:
+      """TODO: needs to be in x y and z for overlap to fill box?"""
+      """TODO: Perhaps pull out into a different method so I can alternative atom fillers"""
+      """TODO: e.g. random, asteroid, etc..."""
+      """TODO: A lot of repeated code to write the pdb files - if I'm keeping this then /
+      should refactor"""
+      x = open("tmp_x"+str(overlap_start)+".pdb","w")
+      y = open("tmp_y"+str(overlap_start)+".pdb","w")
+      z = open("tmp_z"+str(overlap_start)+".pdb","w")
+      xray_structure = "" # trying to blank scatterers
+      xray_structure = xray_structures[0]
+      orth = xray_structure.unit_cell().orthogonalize
+      pdb_inp = iotbx.pdb.input(file_name=file_name)
+      hierarchy = pdb_inp.construct_hierarchy()
+      cs = xray_structure.crystal_symmetry()
+      print >> x, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
+      print >> y, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
+      print >> z, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
+      print >> x, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
+      print >> y, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
+      print >> z, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
+      for atom in hierarchy.atoms():
+          print >> x, atom.format_atom_record()
+          print >> y, atom.format_atom_record()
+          print >> z, atom.format_atom_record()
+      xray_structure_dummy_atoms_x = xray.structure(crystal_symmetry=cs)
+      xray_structure_dummy_atoms_y = xray.structure(crystal_symmetry=cs)
+      xray_structure_dummy_atoms_z = xray.structure(crystal_symmetry=cs)
+      #
+      x_coord = x_start + overlap_start
+      y_coord = y_start #+ overlap_start
+      z_coord = z_start #+ overlap_start
+      """TODO:  Adding very simpe check to make a sphere - there is probably a lot better \
+       and more efficient way of doing this, for instance look here:
+       http://en.literateprograms.org/Special:Downloadcode/Generating_all_integer_lattice_points_(Python)
+       This should be all be refactored - unnecessary loops.  Not time limiting step.
+       """
+      while x_coord <= x_end:
+          y_coord = y_start + overlap_start
+          while y_coord <= y_end:
+              z_coord = z_start + overlap_start
+              while z_coord <= z_end:
+                  distance = ((float(x_center) - float(x_coord))**2 + (float(y_center) - float(y_coord))**2 + (float(z_center) - float(z_coord))**2 )**1/2
+                  if(distance <= float(radius)): xray_structure_dummy_atoms_x.add_scatterer(xray.scatterer( site = (x_coord, y_coord, z_coord), scattering_type = "N",u = 0.2))
+                  z_coord = z_coord + step_size
+              y_coord = y_coord + step_size
+          x_coord = x_coord + step_size
+      #
+      x_coord = x_start #+ overlap_start
+      y_coord = y_start + overlap_start
+      z_coord = z_start #+ overlap_start
+      while y_coord <= y_end:
+          z_coord = z_start + overlap_start
+          while z_coord <= z_end:
+              x_coord = x_start + overlap_start
+              while x_coord <= x_end:
+                  distance = ((float(x_center) - float(x_coord))**2 + (float(y_center) - float(y_coord))**2 + (float(z_center) - float(z_coord))**2 )**1/2
+                  if(distance <= float(radius)): xray_structure_dummy_atoms_y.add_scatterer(xray.scatterer( site = (x_coord, y_coord, z_coord), scattering_type = "N",u = 0.2))
+                  x_coord = x_coord + step_size
+              z_coord = z_coord + step_size
+          y_coord = y_coord + step_size
+      #
+      x_coord = x_start #+ overlap_start
+      y_coord = y_start #+ overlap_start
+      z_coord = z_start + overlap_start
+      while z_coord <= z_end:
+          x_coord = x_start + overlap_start
+          while x_coord <= x_end:
+              y_coord = y_start + overlap_start
+              while y_coord <= y_end:
+                  distance = ((float(x_center) - float(x_coord))**2 + (float(y_center) - float(y_coord))**2 + (float(z_center) - float(z_coord))**2 )**1/2
+                  if(distance <= float(radius)): xray_structure_dummy_atoms_z.add_scatterer(xray.scatterer( site = (x_coord, y_coord, z_coord), scattering_type = "N",u = 0.2))
+                  y_coord = y_coord + step_size
+              x_coord = x_coord + step_size
+          z_coord = z_coord + step_size
+#
+      for i, sc in enumerate(xray_structure_dummy_atoms_x.scatterers()):
+         a = iotbx.pdb.hierarchy.atom_with_labels()
+         a.serial = i+1
+         a.name = sc.scattering_type
+         a.resname = "DUM"
+         a.resseq = i+1
+         a.xyz = sc.site
+         #print sc.site, a.xyz
+         a.occ = sc.occupancy
+         a.b = adptbx.u_as_b(sc.u_iso)
+         a.element = sc.scattering_type
+         print "x:", a.xyz
+         print >> x, a.format_atom_record_group()
+#
+      for i, sc in enumerate(xray_structure_dummy_atoms_y.scatterers()):
+         a = iotbx.pdb.hierarchy.atom_with_labels()
+         a.serial = i+1
+         a.name = sc.scattering_type
+         a.resname = "DUM"
+         a.resseq = i+1
+         a.xyz = sc.site
+         #print sc.site, a.xyz
+         a.occ = sc.occupancy
+         a.b = adptbx.u_as_b(sc.u_iso)
+         a.element = sc.scattering_type
+         print "y:", a.xyz
+         print >> y, a.format_atom_record_group()
+#
+      for i, sc in enumerate(xray_structure_dummy_atoms_z.scatterers()):
+         a = iotbx.pdb.hierarchy.atom_with_labels()
+         a.serial = i+1
+         a.name = sc.scattering_type
+         a.resname = "DUM"
+         a.resseq = i+1
+         a.xyz = sc.site
+         #print sc.site, a.xyz
+         a.occ = sc.occupancy
+         a.b = adptbx.u_as_b(sc.u_iso)
+         a.element = sc.scattering_type
+         print "z:", a.xyz
+         print >> z, a.format_atom_record_group()
+
+
+      x.close()
+      y.close()
+      z.close()
+  print "   "
+
+
+def reflection_file_server(crystal_symmetry, reflection_files):
+  return reflection_file_utils.reflection_file_server(
+    crystal_symmetry=crystal_symmetry,
+    force_symmetry=True,
+    reflection_files=reflection_files,
+    err=StringIO())
 
 def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
   pdb_raw_records = smart_open.for_reading(
@@ -80,265 +283,58 @@ def get_processed_pdb_file(pdb_file_name, cryst1, show_geometry_statistics):
     processed_pdb_files_srv.process_pdb_files(raw_records = pdb_raw_records)
   return processed_pdb_file, pdb_raw_records, pdb_inp
 
-def reflection_file_server(crystal_symmetry, reflection_files):
-  return reflection_file_utils.reflection_file_server(
-    crystal_symmetry=crystal_symmetry,
-    force_symmetry=True,
-    reflection_files=reflection_files,
-    err=StringIO())
+def cmd_run(args, command_name):
+  msg = """\
 
-def show_data(fmodel, n_outl, test_flag_value, f_obs_labels):
-  info = fmodel.info()
-  flags_pc = \
-   fmodel.r_free_flags.data().count(True)*1./fmodel.r_free_flags.data().size()
-  print "  Data:"
-  try: f_obs_labels = f_obs_labels[:f_obs_labels.index(",")]
-  except ValueError: pass
-  result = " \n    ".join([
-    "data_label              : %s"%f_obs_labels,
-    "high_resolution         : "+format_value("%-5.2f",info.d_min),
-    "low_resolution          : "+format_value("%-6.2f",info.d_max),
-    "completeness_in_range   : "+format_value("%-6.2f",info.completeness_in_range),
-    "completeness(d_min-inf) : "+format_value("%-6.2f",info.completeness_d_min_inf),
-    "completeness(6A-inf)    : "+format_value("%-6.2f",info.completeness_6_inf),
-    "wilson_b                : "+format_value("%-6.1f",fmodel.wilson_b()),
-    "number_of_reflections   : "+format_value("%-8d",  info.number_of_reflections),
-    "test_set_size           : "+format_value("%-8.4f",flags_pc),
-    "test_flag_value         : "+format_value("%-d",   test_flag_value),
-    "number_of_Fobs_outliers : "+format_value("%-8d",  n_outl),
-    "anomalous_flag          : "+format_value("%-6s",  fmodel.f_obs.anomalous_flag())])
-  print "   ", result
+Description:
+Tool to compute local map correlation coefficient.
 
-def show_model_vs_data(fmodel):
-  d_max, d_min = fmodel.f_obs.d_max_min()
-  flags_pc = fmodel.r_free_flags.data().count(True)*100./\
-    fmodel.r_free_flags.data().size()
-  if(flags_pc == 0): r_free = None
-  else: r_free = fmodel.r_free()
-  k_sol = format_value("%-5.2f",fmodel.k_sol())
-  b_sol = format_value("%-7.2f",fmodel.b_sol())
-  b_cart = " ".join([("%8.2f"%v).strip() for v in fmodel.b_cart()])
-  print "  Model_vs_Data:"
-  result = " \n    ".join([
-    "r_work(re-computed)                : "+format_value("%-6.4f",fmodel.r_work()),
-    "r_free(re-computed)                : "+format_value("%-6.4f",r_free),
-    "bulk_solvent_(k_sol,b_sol)         : %s %s"%(k_sol,b_sol),
-    "overall_anisotropic_scale_(b_cart) : "+format_value("%-s",b_cart)])
-  print "   ", result
+How to use:
+1: Run this command: phenix.real_space_correlation;
+2: Copy, save into a file and edit the parameters shown between the lines *** below;
+3: Run the command with this parameters file:
+   phenix.real_space_correlation parameters.txt
+"""
+  if(len(args) == 0):
+    print msg
+    print "*"*79
+    master_params.show()
+    print "*"*79
+    return
+  else :
+    arg = args[-1]
+    if(not os.path.isfile(arg)):
+      raise Sorry("%s is not a file."%arg)
+    parsed_params = None
+    try: parsed_params = iotbx.phil.parse(file_name=arg)
+    except KeyboardInterrupt: raise
+    except RuntimeError, e:
+      print e
+    params, unused_definitions = master_params.fetch(
+        sources = [parsed_params],
+        track_unused_definitions = True)
+    if(len(unused_definitions)):
+      print "*"*79
+      print "ERROR:",
+      print "Unused parameter definitions:"
+      for obj_loc in unused_definitions:
+        print " ", str(obj_loc)
+      print "*"*79
+      raise Sorry("Fix parameters file and run again.")
+      print
+    run(params = params.extract())
 
-def detect_dummy_atom (file_name):
-  """ TODO: method to look for a dummy atom placed in density, most likeley with Coot"""
-  pdb_obj = iotbx.pdb.hierarchy.input(file_name=file_name)
-  for model in pdb_obj.hierarchy.models():
-    for chain in model.chains():
-      for rg in chain.residue_groups():
-        for ag in rg.atom_groups():
-          for atom in ag.atoms():
-              atom_names = set([" DM  ", " X  "])
-              if (atom.name in atom_names):
-                  print "Dummy found:"
-                  print "        atom.name:  ", atom.name
-                  print "        atom.xyz:  ", atom.xyz
-                  print "        atom.occ:  ", atom.occ
-                  print "        atom.b:    ", atom.b
-
-  return "done"
-
-def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_center, radius ):
-  """ method to improve local density using dummy atoms """
-  print "grow density method"
-#  xray_structure = xray_structures[0]
-#  orth = xray_structure.unit_cell().orthogonalize
-#  pdb_inp = iotbx.pdb.input(file_name=file_name)
-#  hierarchy = pdb_inp.construct_hierarchy()
-#  #
-#  f = open("tmp2.pdb","w")
-#  cs = xray_structure.crystal_symmetry()
-#  print >> f, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
-#  print >> f, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
-#
-#  for atom in hierarchy.atoms():
-#     print '     ', atom.format_atom_record()
-#     print >> f, atom.format_atom_record()
-
-#  f.close()
-#  below code left just now - sort of works but can work out how to get chain, res etc
-#  for i, sc in enumerate(xray_structure.scatterers()):
-#    print i, sc.site
-#    a = iotbx.pdb.hierarchy.atom_with_labels()
-#    label = sc.label.upper()
-#    a.name = sc.scattering_type
-#    a.resname = label[:3]
-#    a.serial = i+1
-#    a.resseq = i+1
-#    a.xyz = orth(sc.site)
-#    a.occ = sc.occupancy
-#    a.b = adptbx.u_as_b(sc.u_iso)
-#    a.element = sc.scattering_type
-#    print >> f, a.format_atom_record_group()
-
-
-#  rr = random.randrange
-#  for k in range(1,100):
-#    scatterer = xray.scatterer(
-#      site = (rr(-k,k)/100., rr(-k,k)/100., rr(-k,k)/100.),
-#      scattering_type = "C",
-#      u = 0.2)
-#    xray_structure.add_scatterer(scatterer)
-#
-#
-#  for i, sc in enumerate(xray_structure.scatterers()):
-#    a = iotbx.pdb.hierarchy.atom_with_labels()
-#    a.serial = i+1
-#    a.name = " C  "
-#    a.resname = "DUM"
-#    a.resseq = i+1
-#    a.xyz = orth(sc.site)
-#    a.occ = sc.occupancy
-#    a.b = adptbx.u_as_b(sc.u_iso)
-#    a.element = sc.scattering_type
-#    print >> f, a.format_atom_record_group()
-
-
-
-  """TODO: trying to work out how to add atom correctly to pdb, so can create models /
-  need to make new atom group?  Currently adds atoms to last residue (as shown in junk.pdb) /
-  which is obviously not correct.  Code below will be able to produce atom grids
-  """
-
-  x_start = float(x_center) - (float(radius)/2)
-  x_end = float(x_center) + (float(radius)/2)
-
-  y_start = float(y_center) - (float(radius)/2)
-  y_end = float(y_center) + (float(radius)/2)
-
-  z_start = float(z_center) - (float(radius)/2)
-  z_end = float(z_center )+ (float(radius)/2)
-
-  step_size = 1
-
-
-  for overlap_start in [0.0, 0.2, 0.4, 0.6, 0.8]:
-      """TODO: needs to be in x y and z for overlap to fill box?"""
-      """TODO: Perhaps pull out into a different method so I can alternative atom fillers"""
-       """TODO: e.g. random, aster, etc..."""
-      f = open("tmp"+str(overlap_start)+".pdb","w")
-      xray_structure = "" # trying to blank scatterers
-      xray_structure = xray_structures[0]
-      orth = xray_structure.unit_cell().orthogonalize
-      pdb_inp = iotbx.pdb.input(file_name=file_name)
-      hierarchy = pdb_inp.construct_hierarchy()
-
-      cs = xray_structure.crystal_symmetry()
-      print >> f, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
-      print >> f, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
-      for atom in hierarchy.atoms(): print >> f, atom.format_atom_record()
-
-      xray_structure_dummy_atoms = xray.structure(crystal_symmetry=cs)
-
-      #
-      x_coord = x_start + overlap_start
-      """ TODO: need to think about which way overlap moves """
-      y_coord = y_start + overlap_start
-      z_coord = z_start + overlap_start
-
-      while x_coord <= x_end:
-          y_coord = y_start + overlap_start
-          while y_coord <= y_end:
-              z_coord = z_start + overlap_start
-              while z_coord <= z_end:
-                  print x_coord, y_coord, z_coord
-                  scatterer = xray.scatterer(
-                  site = (x_coord, y_coord, z_coord),
-                  scattering_type = "N",
-                  u = 0.2)
-                  xray_structure_dummy_atoms.add_scatterer(scatterer)
-                  #print scatterer.site
-
-
-
-                  z_coord = z_coord + step_size
-              y_coord = y_coord + step_size
-          x_coord = x_coord + step_size
-
-      for i, sc in enumerate(xray_structure_dummy_atoms.scatterers()):
-         a = iotbx.pdb.hierarchy.atom_with_labels()
-         a.serial = i+1
-         a.name = sc.scattering_type
-         a.resname = "DUM"
-         a.resseq = i+1
-         a.xyz = sc.site
-         #print sc.site, a.xyz
-         a.occ = sc.occupancy
-         a.b = adptbx.u_as_b(sc.u_iso)
-         a.element = sc.scattering_type
-         print >> f, a.format_atom_record_group()
-      f.close()
-  print "   "
-
-
-
-def run(args,
-        command_name             = "mmtbx.grow_density",
-        show_geometry_statistics = True):
-  if(len(args) == 0): args = ["--help"]
-  command_line = (iotbx_option_parser(
-    usage="%s reflection_file pdb_file [options]" % command_name,
-    description='Example: %s data.mtz model.pdb --x_center=-2.76 --y_center=0.89 --z_center=9.71 --radius=10'%command_name)
-    .option(None, "--f_obs_label",
-      action="store",
-      default=None,
-      type="string",
-      help="Label for F-obs (or I-obs).")
-    .option(None, "--r_free_flags_label",
-      action="store",
-      default=None,
-      type="string",
-      help="Label for free R flags.")
-    .option(None, "--twin_law",
-      action="store",
-      default=None,
-      type="string",
-      help="Provide twin law operator if twinned data used (for example: h,-h-k,-l).")
-    .option(None, "--scattering_table",
-      action="store",
-      default="n_gaussian",
-      type="string",
-      help="Choice for scattering table: n_gaussian (default) or wk1995 or it1992 or neutron.")
-     .option(None, "--x_center",
-      action="store",
-      default=None,
-      type="string",
-      help="X coordinate of poor density.")
-     .option(None, "--y_center",
-      action="store",
-      default=None,
-      type="string",
-      help="Y coordinate of poor density.")
-     .option(None, "--z_center",
-      action="store",
-      default=None,
-      type="string",
-      help="Z coordinate of poor density.")
-     .option(None, "--radius",
-      action="store",
-      default=None,
-      type="string",
-      help="Radius of required box.")
-    .option("--ignore_giant_models_and_datasets",
-      action="store_true",
-      help="Ignore too big models and data files to avoid potential memory problems.")
-    ).process(args=args)
-  if(command_line.options.scattering_table not in ["n_gaussian","wk1995",
+def run(params, d_min_default=1.5, d_max_default=999.9) :
+  if(params.scattering_table not in ["n_gaussian","wk1995",
      "it1992","neutron"]):
     raise Sorry("Incorrect scattering_table.")
-  if(command_line.options.x_center is None):
+  if(params.x_center is None):
     raise Sorry("Need to specify x center.")
-  if(command_line.options.y_center is None):
+  if(params.y_center is None):
     raise Sorry("Need to specify y center.")
-  if(command_line.options.z_center is None):
+  if(params.z_center is None):
     raise Sorry("Need to specify z center.")
-  if(command_line.options.radius is None):
+  if(params.radius is None):
     raise Sorry("Need to specify radius.")
   crystal_symmetry = None
   crystal_symmetry_data = None
@@ -346,10 +342,13 @@ def run(args,
   hkl_file_name = None
   pdb_file_name = None
   reflection_file = None
-  for arg in command_line.args:
+  files = [str(params.pdb_file_name), str(params.reflection_file_name)]
+
+  print params.pdb_file_name, params.reflection_file_name
+  for arg in files:
     arg_is_processed = False
     if(not os.path.isfile(arg)):
-      raise Sorry("The command line argument %s is not a file."%arg)
+      raise Sorry(" %s is not a file."%arg)
     else:
       if(pdb.is_pdb_file(file_name=arg)):
         pdb_file_name = arg
@@ -390,10 +389,6 @@ def run(args,
     crystal_symmetry = crystal_symmetry,
     reflection_files = [reflection_file])
   parameters = utils.data_and_flags.extract()
-  if(command_line.options.f_obs_label is not None):
-    parameters.labels = command_line.options.f_obs_label
-  if(command_line.options.r_free_flags_label is not None):
-    parameters.r_free_flags.label = command_line.options.r_free_flags_label
   determine_data_and_flags_result = utils.determine_data_and_flags(
     reflection_file_server  = rfs,
     parameters              = parameters,
@@ -404,9 +399,6 @@ def run(args,
     log                     = StringIO())
   f_obs = determine_data_and_flags_result.f_obs
   number_of_reflections = f_obs.indices().size()
-  if(command_line.options.ignore_giant_models_and_datasets and
-     number_of_reflections > data_size_max_reflections):
-    raise Sorry("Too many reflections: %d"%number_of_reflections)
   #
   r_free_flags = determine_data_and_flags_result.r_free_flags
   test_flag_value = determine_data_and_flags_result.test_flag_value
@@ -421,7 +413,7 @@ def run(args,
   #
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
-    scattering_table   = command_line.options.scattering_table,
+    scattering_table   = params.scattering_table,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
   if(not xray_structures[0].crystal_symmetry().is_similar_symmetry(
@@ -435,17 +427,12 @@ def run(args,
   print "  Unit cell volume: %-15.4f" % f_obs.unit_cell().volume()
   #
   #
+  twin_law = None
   fmodel = utils.fmodel_simple(xray_structures = xray_structures,
                                f_obs           = f_obs,
                                r_free_flags    = r_free_flags,
-                               twin_law        = command_line.options.twin_law)
+                               twin_law        = twin_law)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
-  show_data(fmodel          = fmodel,
-            n_outl          = n_outl,
-            test_flag_value = test_flag_value,
-            f_obs_labels    = f_obs.info().label_string())
-  show_model_vs_data(fmodel)
   #
-  grow_density(fmodel, pdb_file_name, xray_structures,x_center=command_line.options.x_center,\
-  y_center=command_line.options.y_center, z_center=command_line.options.z_center,\
-  radius=command_line.options.radius )
+  grow_density(fmodel, pdb_file_name, xray_structures,x_center=params.x_center,\
+  y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.radius, overlap_interval=params.overlap_interval )

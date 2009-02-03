@@ -4,4 +4,6 @@ from mmtbx import grow_density
 import sys
 
 if(__name__ == "__main__"):
-  grow_density.run(sys.argv[1:], show_geometry_statistics = False)
+  grow_density.cmd_run(
+    args         = sys.argv[1:],
+    command_name = "phenix.grow_density")
