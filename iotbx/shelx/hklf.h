@@ -1,12 +1,12 @@
-#ifndef IOTBX_SHELX_HKLF_SPIRIT_H
-#define IOTBX_SHELX_HKLF_SPIRIT_H
+#ifndef IOTBX_SHELX_HKLF_H
+#define IOTBX_SHELX_HKLF_H
 
 #include <scitbx/array_family/shared.h>
 #include <cctbx/miller.h>
 #ifdef IOTBX_SHELX_HKLF_SPIRIT_DEBUG
   #define BOOST_SPIRIT_DEBUG
 #endif
-#include <scitbx/misc/fortran_numeric_formats.h>
+#include <scitbx/fortran_io/numeric_parsers.h>
 #include <boost/spirit/include/classic_core.hpp>
 #include <boost/spirit/include/classic_if.hpp>
 #include <boost/spirit/include/classic_assign_actor.hpp>
@@ -36,7 +36,7 @@ class hklf_reader
     template <class IteratorType>
     void init(IteratorType const &first, IteratorType const &last, bool strict)
     {
-      using namespace scitbx::boost_spirit_classic;
+      using namespace scitbx::fortran_io::parsers;
       typedef scanner<IteratorType> scanner_t;
       typedef rule<scanner_t> rule_t;
       typedef typename miller_t::value_type index_t;
