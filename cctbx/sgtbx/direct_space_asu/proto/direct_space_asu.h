@@ -6,7 +6,8 @@
 namespace cctbx { namespace sgtbx { namespace asu {
 
   //! Direct space asymmetric unit
-  //! \class direct_space_asu direct_space_asu.h cctbx/sgtbx/direct_space_asu/proto/direct_space_asu.h
+  /*! \class direct_space_asu direct_space_asu.h cctbx/sgtbx/direct_space_asu/proto/direct_space_asu.h
+   */
   class direct_space_asu
   {
   public:
@@ -76,8 +77,24 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Returns a set of all asu vertices
     void volume_vertices(set_rvector3_t &result) const;
 
-    //! Returns bounding box for the asu
-    bool box_corners(rvector3_t &mn, rvector3_t &mx) const;
+    //! Returns bounding box for the asu. Not in python
+    void box_corners(rvector3_t &mn, rvector3_t &mx) const;
+
+    //! As box_corners for python
+    rvector3_t box_max() const
+    {
+      rvector3_t mn, mx;
+      this->box_corners(mn,mx);
+      return mx;
+    }
+
+    //! As box_corners for python
+    rvector3_t box_min() const
+    {
+      rvector3_t mn, mx;
+      this->box_corners(mn,mx);
+      return mn;
+    }
 
     direct_space_asu(const direct_space_asu &a) : faces(a.faces->new_copy()), hall_symbol(a.hall_symbol) {}
     direct_space_asu() : faces(NULL), hall_symbol() {}

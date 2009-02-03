@@ -61,7 +61,8 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("in_which_planes", &w_t::in_which_planes)
       .def("n_faces", &w_t::n_faces)
       .def("volume_vertices", &w_t::volume_vertices)
-      .def("box_corners", &w_t::box_corners)
+      .def("box_max", &w_t::box_max)
+      .def("box_min", &w_t::box_min)
       .def("as_string", &w_t::as_string)
     ;
   }

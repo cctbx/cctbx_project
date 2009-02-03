@@ -6,6 +6,10 @@
 /// Dependencies: cctbx/sgtbx/direct_space_asu/reference_table.py
 ///
 
+////////////////
+// sgtbx/direct_space_asu/reference_table.py 5e11890e01d068e93a1273a8a8bea2a4 
+// sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py 9836c499d7ff12db779647f312596812 
+////////////////
 
 #include "reference_table.h"
 
