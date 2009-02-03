@@ -47,14 +47,14 @@ def exercise_cluster_manager():
   cm.construct_spanning_trees(edge_sets=es)
   assert cm.clusters == [[1,2,4,5],[0,3]]
   assert cm.cluster_indices == [1,0,0,1,0,0]
-  assert cm.parent_edges == [(-1,1), (1,0)]
+  assert cm.hinge_edges == [(-1,1), (1,0)]
   assert cm.loop_edges == [(2,0), (4,3)]
   assert cm.roots() == [0]
   assert cm.tree_ids() == [0,0]
   cm.find_loop_edge_bendings(edge_sets=es)
   assert cm.loop_edge_bendings == [(1,2), (3,5)]
   #
-  cm.parent_edges = None
+  cm.hinge_edges = None
   cm.loop_edges = None
   cm.loop_edge_bendings = None
   assert cm.clusters == [[1,2,4,5],[0,3]]
@@ -70,30 +70,30 @@ class test_case_data(object):
         n_vertices,
         edge_list,
         clusters1,
-        parent_edges1,
+        hinge_edges1,
         roots1,
         tree_ids1,
         clusters2,
-        parent_edges2,
+        hinge_edges2,
         clusters1_5=None,
-        parent_edges1_5=None,
+        hinge_edges1_5=None,
         roots1_5=None,
         tree_ids1_5=None,
         loop_edges1_5=[],
         loop_edge_bendings1_5=[],
         clusters2_5=None,
-        parent_edges2_5=None,
+        hinge_edges2_5=None,
         loop_edges2_5=None,
         loop_edge_bendings2_5=None):
     assert art[0] == "\n"
-    assert (parent_edges1_5 is None) == (clusters1_5 is None)
-    assert (roots1_5 is None) == (parent_edges1_5 is None)
-    assert (tree_ids1_5 is None) == (parent_edges1_5 is None)
-    assert (len(loop_edges1_5) == 0) == (parent_edges1_5 is None)
+    assert (hinge_edges1_5 is None) == (clusters1_5 is None)
+    assert (roots1_5 is None) == (hinge_edges1_5 is None)
+    assert (tree_ids1_5 is None) == (hinge_edges1_5 is None)
+    assert (len(loop_edges1_5) == 0) == (hinge_edges1_5 is None)
     assert (len(loop_edge_bendings1_5) == 0) == (len(loop_edges1_5) == 0)
     assert (clusters2_5 is None) == (clusters1_5 is None)
-    assert (parent_edges2_5 is None) == (clusters2_5 is None)
-    assert (loop_edges2_5 is None) == (parent_edges2_5 is None)
+    assert (hinge_edges2_5 is None) == (clusters2_5 is None)
+    assert (loop_edges2_5 is None) == (hinge_edges2_5 is None)
     assert (loop_edge_bendings2_5 is None) == (loop_edges2_5 is None)
     if (loop_edges2_5 is None): loop_edges2_5 = []
     if (loop_edge_bendings2_5 is None): loop_edge_bendings2_5 = []
@@ -101,19 +101,19 @@ class test_case_data(object):
     O.n_vertices = n_vertices
     O.edge_list = edge_list
     O.clusters1 = clusters1
-    O.parent_edges1 = parent_edges1
+    O.hinge_edges1 = hinge_edges1
     O.roots1 = roots1
     O.tree_ids1 = tree_ids1
     O.clusters2 = clusters2
-    O.parent_edges2 = parent_edges2
+    O.hinge_edges2 = hinge_edges2
     O.clusters1_5 = clusters1_5
-    O.parent_edges1_5 = parent_edges1_5
+    O.hinge_edges1_5 = hinge_edges1_5
     O.roots1_5 = roots1_5
     O.tree_ids1_5 = tree_ids1_5
     O.loop_edges1_5 = loop_edges1_5
     O.loop_edge_bendings1_5 = loop_edge_bendings1_5
     O.clusters2_5 = clusters2_5
-    O.parent_edges2_5 = parent_edges2_5
+    O.hinge_edges2_5 = hinge_edges2_5
     O.loop_edges2_5 = loop_edges2_5
     O.loop_edge_bendings2_5 = loop_edge_bendings2_5
 
@@ -125,11 +125,11 @@ test_cases = [
     n_vertices=1,
     edge_list=[],
     clusters1=[[0]],
-    parent_edges1=[(-1,0)],
+    hinge_edges1=[(-1,0)],
     roots1=[0],
     tree_ids1=[0],
     clusters2=[[0]],
-    parent_edges2=[(-1,0)]),
+    hinge_edges2=[(-1,0)]),
   test_case_data(
     art=r"""
 0 - 1
@@ -137,11 +137,11 @@ test_cases = [
     n_vertices=2,
     edge_list=[(0,1)],
     clusters1=[[0], [1]],
-    parent_edges1=[(-1,0), (0,1)],
+    hinge_edges1=[(-1,0), (0,1)],
     roots1=[0],
     tree_ids1=[0, 0],
     clusters2=[[0, 1]],
-    parent_edges2=[(-1,0)]),
+    hinge_edges2=[(-1,0)]),
   test_case_data(
     art=r"""
 6-membered loop
@@ -149,19 +149,19 @@ test_cases = [
     n_vertices=6,
     edge_list=[(0,1), (0,5), (1,2), (2,3), (3,4), (4,5)],
     clusters1=[[0, 1, 2, 3, 4, 5]],
-    parent_edges1=[(-1,0)],
+    hinge_edges1=[(-1,0)],
     roots1=[0],
     tree_ids1=[0],
     clusters2=[[0, 1, 2, 3, 4, 5]],
-    parent_edges2=[(-1,0)],
+    hinge_edges2=[(-1,0)],
     clusters1_5=[[0], [1], [2], [3], [4], [5]],
-    parent_edges1_5=[(-1, 0), (0, 1), (1, 2), (2, 3), (3, 4), (0, 5)],
+    hinge_edges1_5=[(-1, 0), (0, 1), (1, 2), (2, 3), (3, 4), (0, 5)],
     roots1_5=[0],
     tree_ids1_5=[0, 0, 0, 0, 0, 0],
     loop_edges1_5=[(4,5)],
     loop_edge_bendings1_5=[(0,4), (3,5)],
     clusters2_5=[[0], [1], [2], [3], [4], [5]],
-    parent_edges2_5=[(-1,0), (0,1), (1,2), (2,3), (3,4), (0,5)],
+    hinge_edges2_5=[(-1,0), (0,1), (1,2), (2,3), (3,4), (0,5)],
     loop_edges2_5=[(4,5)],
     loop_edge_bendings2_5=[(0,4), (3,5)]),
   test_case_data(
@@ -171,19 +171,19 @@ test_cases = [
     n_vertices=8,
     edge_list=[(0,1), (0,7), (1,2), (2,3), (3,4), (4,5), (5,6), (6,7)],
     clusters1=[[0, 1, 2, 3, 4, 5, 6, 7]],
-    parent_edges1=[(-1,0)],
+    hinge_edges1=[(-1,0)],
     roots1=[0],
     tree_ids1=[0],
     clusters2=[[0, 1, 2, 3, 4, 5, 6, 7]],
-    parent_edges2=[(-1,0)],
+    hinge_edges2=[(-1,0)],
     clusters1_5=[[0], [1], [2], [3], [4], [5], [6], [7]],
-    parent_edges1_5=[(-1,0), (0,1), (1,2), (2,3), (3,4), (4,5), (5,6), (0,7)],
+    hinge_edges1_5=[(-1,0), (0,1), (1,2), (2,3), (3,4), (4,5), (5,6), (0,7)],
     roots1_5=[0],
     tree_ids1_5=[0, 0, 0, 0, 0, 0, 0, 0],
     loop_edges1_5=[(6,7)],
     loop_edge_bendings1_5=[(0,6), (5,7)],
     clusters2_5=[[0], [1], [2], [3], [4], [5], [6], [7]],
-    parent_edges2_5=[(-1,0), (0,1), (1,2), (2,3), (3,4), (4,5), (5,6), (0,7)],
+    hinge_edges2_5=[(-1,0), (0,1), (1,2), (2,3), (3,4), (4,5), (5,6), (0,7)],
     loop_edges2_5=[(6,7)],
     loop_edge_bendings2_5=[(0,6), (5,7)]),
   test_case_data(
@@ -206,12 +206,12 @@ test_cases = [
       (3,9),
       (4,5), (4,6)],
     clusters1=[[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]],
-    parent_edges1=[
+    hinge_edges1=[
       (-1,0), (0,1), (1,2), (2,3), (0,4), (4,5), (4,6), (1,7), (2,8), (3,9)],
     roots1=[0],
     tree_ids1=[0] * 10,
     clusters2=[[4, 5, 6], [1, 7], [2, 8], [3, 9], [0]],
-    parent_edges2=[(-1,4), (4,0), (0,1), (1,2), (2,3)]),
+    hinge_edges2=[(-1,4), (4,0), (0,1), (1,2), (2,3)]),
   test_case_data(
     art=r"""
            7
@@ -232,11 +232,11 @@ test_cases = [
       (3,9),
       (4,5), (4,6)],
     clusters1=[[2,3,9], [0], [1], [4], [5], [6], [7], [8]],
-    parent_edges1=[(-1,2), (2,1), (1,0), (0,4), (4,5), (4,6), (1,7), (2,8)],
+    hinge_edges1=[(-1,2), (2,1), (1,0), (0,4), (4,5), (4,6), (1,7), (2,8)],
     roots1=[0],
     tree_ids1=[0] * 8,
     clusters2=[[2, 3, 8, 9], [4, 5, 6], [1, 7], [0]],
-    parent_edges2=[(-1,2), (2,1), (1,0), (0,4)]),
+    hinge_edges2=[(-1,2), (2,1), (1,0), (0,4)]),
   test_case_data(
     art=r"""
            7
@@ -257,11 +257,11 @@ test_cases = [
       (3,9),
       (4,5), (4,6)],
     clusters1=[[0,1,2,3], [4], [5], [6], [7], [8], [9]],
-    parent_edges1=[(-1,0), (0,4), (4,5), (4,6), (1,7), (2,8), (3,9)],
+    hinge_edges1=[(-1,0), (0,4), (4,5), (4,6), (1,7), (2,8), (3,9)],
     roots1=[0],
     tree_ids1=[0] * 7,
     clusters2=[[0, 1, 2, 3, 7, 8, 9], [4, 5, 6]],
-    parent_edges2=[(-1,0), (0,4)]),
+    hinge_edges2=[(-1,0), (0,4)]),
   test_case_data(
     art=r"""
            7
@@ -282,11 +282,11 @@ test_cases = [
       (3,9),
       (4,5), (4,6)],
     clusters1=[[0, 1, 2, 3, 8], [4], [5], [6], [7], [9]],
-    parent_edges1=[(-1,0), (0,4), (4,5), (4,6), (1,7), (3,9)],
+    hinge_edges1=[(-1,0), (0,4), (4,5), (4,6), (1,7), (3,9)],
     roots1=[0],
     tree_ids1=[0] * 6,
     clusters2=[[0, 1, 2, 3, 7, 8, 9], [4, 5, 6]],
-    parent_edges2=[(-1,0), (0,4)]),
+    hinge_edges2=[(-1,0), (0,4)]),
   test_case_data(
     art=r"""
            7
@@ -308,20 +308,20 @@ test_cases = [
       (4,5), (4,6),
       (7,8)],
     clusters1=[[0, 1, 2, 3, 7, 8], [4], [5], [6], [9]],
-    parent_edges1=[(-1,0), (0,4), (4,5), (4,6), (3,9)],
+    hinge_edges1=[(-1,0), (0,4), (4,5), (4,6), (3,9)],
     roots1=[0],
     tree_ids1=[0] * 5,
     clusters2=[[0, 1, 2, 3, 7, 8, 9], [4, 5, 6]],
-    parent_edges2=[(-1,0), (0,4)],
+    hinge_edges2=[(-1,0), (0,4)],
     clusters1_5=[[0], [1], [2], [3], [4], [5], [6], [7], [8], [9]],
-    parent_edges1_5=[
+    hinge_edges1_5=[
       (-1,0), (0,1), (0,3), (3,2), (0,4), (4,5), (4,6), (1,7), (2,8), (3,9)],
     roots1_5=[0],
     tree_ids1_5=[0] * 10,
     loop_edges1_5=[(7,8)],
     loop_edge_bendings1_5=[(1,8), (2,7)],
     clusters2_5=[[4, 5, 6], [3, 9], [0], [1], [2], [7], [8]],
-    parent_edges2_5=[(-1,4), (4,0), (0,3), (0,1), (3,2), (1,7), (2,8)],
+    hinge_edges2_5=[(-1,4), (4,0), (0,3), (0,1), (3,2), (1,7), (2,8)],
     loop_edges2_5=[(7,8)],
     loop_edge_bendings2_5=[(1,8), (2,7)]),
   test_case_data(
@@ -345,11 +345,11 @@ test_cases = [
       (4,5), (4,6),
       (7,8)],
     clusters1=[[0, 1, 2, 3, 7, 8], [4], [5], [6], [9]],
-    parent_edges1=[(-1,0), (0,4), (4,5), (4,6), (3,9)],
+    hinge_edges1=[(-1,0), (0,4), (4,5), (4,6), (3,9)],
     roots1=[0],
     tree_ids1=[0] * 5,
     clusters2=[[0, 1, 2, 3, 7, 8, 9], [4, 5, 6]],
-    parent_edges2=[(-1,0), (0,4)]),
+    hinge_edges2=[(-1,0), (0,4)]),
   test_case_data(
     art=r"""
            7
@@ -371,11 +371,11 @@ test_cases = [
       (4,5), (4,6),
       (8,9)],
     clusters1=[[0, 1, 2, 3, 8, 9], [4], [5], [6], [7]],
-    parent_edges1=[(-1,0), (0,4), (4,5), (4,6), (1,7)],
+    hinge_edges1=[(-1,0), (0,4), (4,5), (4,6), (1,7)],
     roots1=[0],
     tree_ids1=[0] * 5,
     clusters2=[[0, 1, 2, 3, 7, 8, 9], [4, 5, 6]],
-    parent_edges2=[(-1,0), (0,4)]),
+    hinge_edges2=[(-1,0), (0,4)]),
   test_case_data(
     art=r"""
            7
@@ -398,11 +398,11 @@ test_cases = [
       (7,8),
       (8,9)],
     clusters1=[[0, 1, 2, 3, 7, 8, 9], [4], [5], [6]],
-    parent_edges1=[(-1,0), (0,4), (4,5), (4,6)],
+    hinge_edges1=[(-1,0), (0,4), (4,5), (4,6)],
     roots1=[0],
     tree_ids1=[0] * 4,
     clusters2=[[0, 1, 2, 3, 7, 8, 9], [4, 5, 6]],
-    parent_edges2=[(-1,0), (0,4)]),
+    hinge_edges2=[(-1,0), (0,4)]),
   test_case_data(
     art=r"""
            7
@@ -424,11 +424,11 @@ test_cases = [
       (4,5), (4,6),
       (5,6)],
     clusters1=[[0, 1, 2, 3], [4, 5, 6], [7], [8], [9]],
-    parent_edges1=[(-1,0), (0,4), (1,7), (2,8), (3,9)],
+    hinge_edges1=[(-1,0), (0,4), (1,7), (2,8), (3,9)],
     roots1=[0],
     tree_ids1=[0] * 5,
     clusters2=[[0, 1, 2, 3, 7, 8, 9], [4, 5, 6]],
-    parent_edges2=[(-1,0), (0,4)]),
+    hinge_edges2=[(-1,0), (0,4)]),
   test_case_data(
     art=r"""
 0   1
@@ -436,11 +436,11 @@ test_cases = [
     n_vertices=2,
     edge_list=[],
     clusters1=[[0], [1]],
-    parent_edges1=[(-1,0), (-1,1)],
+    hinge_edges1=[(-1,0), (-1,1)],
     roots1=[0, 1],
     tree_ids1=[0, 1],
     clusters2=[[0], [1]],
-    parent_edges2=[(-1,0), (-1,1)]),
+    hinge_edges2=[(-1,0), (-1,1)]),
   test_case_data(
     art=r"""
 0 - 2   1
@@ -448,11 +448,11 @@ test_cases = [
     n_vertices=3,
     edge_list=[(0,2)],
     clusters1=[[0], [1], [2]],
-    parent_edges1=[(-1,0), (0,2), (-1,1)],
+    hinge_edges1=[(-1,0), (0,2), (-1,1)],
     roots1=[0, 2],
     tree_ids1=[0, 0, 1],
     clusters2=[[0, 2], [1]],
-    parent_edges2=[(-1,0), (-1,1)]),
+    hinge_edges2=[(-1,0), (-1,1)]),
   test_case_data(
     art=r"""
            7
@@ -475,11 +475,11 @@ test_cases = [
       (5,6),
       (7,8)],
     clusters1=[[1, 2, 7, 8], [4, 5, 6], [0], [3], [9]],
-    parent_edges1=[(-1,1), (2,3), (3,9), (-1,4), (4,0)],
+    hinge_edges1=[(-1,1), (2,3), (3,9), (-1,4), (4,0)],
     roots1=[0, 3],
     tree_ids1=[0, 0, 0, 1, 1],
     clusters2=[[0, 4, 5, 6], [1, 2, 7, 8], [3, 9]],
-    parent_edges2=[(-1,0), (-1,1), (2,3)]),
+    hinge_edges2=[(-1,0), (-1,1), (2,3)]),
   test_case_data(
     art=r"""
            7
@@ -501,11 +501,11 @@ test_cases = [
       (4,6),
       (7,8)],
     clusters1=[[0, 3, 4, 6], [1, 2, 7, 8], [5], [9]],
-    parent_edges1=[(-1,0), (3,2), (3,9), (-1,5)],
+    hinge_edges1=[(-1,0), (3,2), (3,9), (-1,5)],
     roots1=[0, 3],
     tree_ids1=[0, 0, 0, 1],
     clusters2=[[0, 3, 4, 6, 9], [1, 2, 7, 8], [5]],
-    parent_edges2=[(-1,0), (3,2), (-1,5)]),
+    hinge_edges2=[(-1,0), (3,2), (-1,5)]),
   test_case_data(
     art=r"""
     3 - 6 ----- 4 - 0
@@ -524,19 +524,19 @@ test_cases = [
       (5,7),
       (7,9)],
     clusters1=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
-    parent_edges1=[(-1,0)],
+    hinge_edges1=[(-1,0)],
     roots1=[0],
     tree_ids1=[0],
     clusters2=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
-    parent_edges2=[(-1,0)],
+    hinge_edges2=[(-1,0)],
     clusters1_5=[[0, 4, 5, 7, 9], [1, 2, 3, 6, 8]],
-    parent_edges1_5=[(-1,0), (4,6)],
+    hinge_edges1_5=[(-1,0), (4,6)],
     roots1_5=[0],
     tree_ids1_5=[0, 0],
     loop_edges1_5=[(7,2)],
     loop_edge_bendings1_5=[(1,7), (2,5), (2,9), (7,8)],
     clusters2_5=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]],
-    parent_edges2_5=[(-1,0)],
+    hinge_edges2_5=[(-1,0)],
     loop_edges2_5=[],
     loop_edge_bendings2_5=[]),
   ]
@@ -558,7 +558,7 @@ def exercise_tyr_with_h():
   assert cm.clusters == [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
     [12, 13, 14], [10, 11], [16, 18], [15, 20], [17, 19]]
-  assert cm.parent_edges == [
+  assert cm.hinge_edges == [
     (-1, 0), (0, 12), (5, 10), (12, 16), (16, 15), (16, 17)]
   assert cm.loop_edges == []
 
@@ -575,19 +575,19 @@ def run(args):
     for loop_size_max in [8, 5]:
       print >> out, "loop_size_max:", loop_size_max
       if (loop_size_max == 5 and tc.clusters1_5 is not None):
-       tc_c1, tc_pe1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
-       tc_c2, tc_pe2, tc_le2, tc_leb2 = \
-         tc.clusters1_5, tc.parent_edges1_5, \
+       tc_c1, tc_he1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
+       tc_c2, tc_he2, tc_le2, tc_leb2 = \
+         tc.clusters1_5, tc.hinge_edges1_5, \
          tc.roots1_5, tc.tree_ids1_5, \
          tc.loop_edges1_5, tc.loop_edge_bendings1_5, \
-         tc.clusters2_5, tc.parent_edges2_5, \
+         tc.clusters2_5, tc.hinge_edges2_5, \
          tc.loop_edges2_5, tc.loop_edge_bendings2_5
       else:
-       tc_c1, tc_pe1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
-       tc_c2, tc_pe2, tc_le2, tc_leb2 = \
-         tc.clusters1, tc.parent_edges1, \
+       tc_c1, tc_he1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
+       tc_c2, tc_he2, tc_le2, tc_leb2 = \
+         tc.clusters1, tc.hinge_edges1, \
          tc.roots1, tc.tree_ids1, [], [], \
-         tc.clusters2, tc.parent_edges2, [], []
+         tc.clusters2, tc.hinge_edges2, [], []
       def assert_same(label, have, expected):
         print >> out, label, have
         if (expected is not None):
@@ -603,7 +603,7 @@ def run(args):
       assert_same("c1:", cm.clusters, tc_c1)
       cm.construct_spanning_trees(edge_sets=tt.edge_sets)
       print >> out, "c1p:", cm.clusters
-      assert_same("p1:", cm.parent_edges, tc_pe1)
+      assert_same("he1:", cm.hinge_edges, tc_he1)
       assert_same("le1:", cm.loop_edges, tc_le1)
       tid = cm.tree_ids()
       assert_same("tid1:", tid, tc_tid1)
@@ -620,7 +620,7 @@ def run(args):
       assert_same("c2:", cm.clusters, tc_c2)
       cm.construct_spanning_trees(edge_sets=tt.edge_sets)
       print >> out, "c2p:", cm.clusters
-      assert_same("p2:", cm.parent_edges, tc_pe2)
+      assert_same("he2:", cm.hinge_edges, tc_he2)
       assert_same("le2:", cm.loop_edges, tc_le2)
       cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
       assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)

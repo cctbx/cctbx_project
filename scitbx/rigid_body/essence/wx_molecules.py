@@ -22,22 +22,22 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.labels = self.sim.labels
     self.set_points()
     cm = self.sim.cluster_manager
-    pe = set()
-    for e in cm.parent_edges:
+    he = set()
+    for e in cm.hinge_edges:
       if (e[0] == -1): continue
-      pe.add(tuple(sorted(e)))
+      he.add(tuple(sorted(e)))
     le = set([tuple(sorted(e)) for e in cm.loop_edges])
-    assert len(pe.intersection(le)) == 0
+    assert len(he.intersection(le)) == 0
     for line in self.sim.bonds:
       self.line_i_seqs.append(line)
-      if (line in pe):
+      if (line in he):
         color = (0,1,0)
       elif (line in le):
         color = (1,0,0)
       else:
         cii, cij = [cm.cluster_indices[i] for i in line]
         assert cii == cij
-        if (cm.parent_edges[cii][0] == -1):
+        if (cm.hinge_edges[cii][0] == -1):
           color = (0,1,1)
         else:
           color = (0,0,1)
