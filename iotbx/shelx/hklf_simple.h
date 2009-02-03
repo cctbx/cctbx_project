@@ -1,5 +1,5 @@
-#ifndef IOTBX_SHELX_HKLF_H
-#define IOTBX_SHELX_HKLF_H
+#ifndef IOTBX_SHELX_HKLF_SIMPLE_H
+#define IOTBX_SHELX_HKLF_SIMPLE_H
 
 #include <cctbx/miller.h>
 #include <scitbx/array_family/shared.h>
