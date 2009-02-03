@@ -3,7 +3,7 @@
 #include <scitbx/error.h>
 #include <iostream>
 
-int main() {
+void exercise_int() {
   using namespace scitbx::fortran_io::manipulators;
   fortran_int i3(3);
   int val, val1, val2;
@@ -32,5 +32,23 @@ int main() {
     SCITBX_ASSERT(val1 == 1)(val1);
     SCITBX_ASSERT(val2 == 2)(val1);
   }
+}
+
+void exercise_real() {
+  using namespace scitbx::fortran_io::manipulators;
+  fortran_real f4_2(4,2);
+  double val, val1, val2;
+  std::string s("1.169.48");
+  {
+    std::stringstream input(s);
+    input >> sticky(f4_2) >> val1 >> val2;
+    SCITBX_ASSERT(val1 == 1.16)(val1);
+    SCITBX_ASSERT(val2 == 9.48)(val2);
+  }
+}
+
+int main() {
+  exercise_int();
+  exercise_real();
   std::cout << "OK" << std::endl;
 }
