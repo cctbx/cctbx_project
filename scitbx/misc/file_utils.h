@@ -73,7 +73,7 @@ namespace scitbx { namespace misc {
   /// End-of-line
   struct end_of_line
   {
-    enum eol_type { no_eol, windows, unix };
+    enum eol_type { no_eol, windows_eol, unix_eol };
 
     eol_type kind;
 
@@ -88,14 +88,14 @@ namespace scitbx { namespace misc {
       char c1 = 0;
       c1 = input.get();
       if (c1 == '\n') {
-        kind = unix;
+        kind = unix_eol;
         return;
       }
       else if (c1 == '\r') {
         char c2 = 0;
         c2 = input.get();
         if (c2 == '\n') {
-          kind = windows;
+          kind = windows_eol;
           return;
         }
         else {
