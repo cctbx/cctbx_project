@@ -236,18 +236,18 @@ def construct_bodies(sites, cluster_manager):
   result = []
   cm = cluster_manager
   for ic,cluster in enumerate(cm.clusters):
-    pe = cm.parent_edges[ic]
-    if (pe[0] == -1):
+    he = cm.hinge_edges[ic]
+    if (he[0] == -1):
       body = six_dof_body(
         sites=[matrix.col(sites[i]) for i in cluster])
       body.parent = -1
     else:
-      normal_sites = [matrix.col(sites[i]) for i in pe]
+      normal_sites = [matrix.col(sites[i]) for i in he]
       body = revolute_body(
         sites=[matrix.col(sites[i]) for i in cluster],
         pivot=normal_sites[1],
         normal=(normal_sites[1]-normal_sites[0]).normalize())
-      body.parent = cm.cluster_indices[pe[0]]
+      body.parent = cm.cluster_indices[he[0]]
     body.i_seqs = cluster
     result.append(body)
   return result
