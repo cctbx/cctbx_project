@@ -83,7 +83,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
       throw cctbx::error("Fewer than 4 vertices in asu ?");
   }
 
-  bool direct_space_asu::box_corners(rvector3_t &mn, rvector3_t &mx) const
+  void direct_space_asu::box_corners(rvector3_t &mn, rvector3_t &mx) const
   {
     set_rvector3_t vertices;
     volume_vertices(vertices);
@@ -99,7 +99,6 @@ namespace cctbx { namespace sgtbx { namespace asu {
         mx[i] = std::max(mx[i],(*v)[i]);
       }
     }
-    return true;
   }
 
 }}}

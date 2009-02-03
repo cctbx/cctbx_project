@@ -4,7 +4,7 @@ from cctbx.sgtbx.direct_space_asu import reference_table
 from cctbx.sgtbx.direct_space_asu.cut_plane import cut
 
 
-head = """\
+head1 = """\
 ///
 /// Generated code. DO NOT EDIT
 ///
@@ -12,8 +12,9 @@ head = """\
 ///
 /// Dependencies: cctbx/sgtbx/direct_space_asu/reference_table.py
 ///
+"""
 
-
+head2 = """\
 #include "reference_table.h"
 
 namespace cctbx { namespace sgtbx { namespace asu {
@@ -97,9 +98,23 @@ def show_cpp(sg, f):
   return func
 
 
+def make_md5(path):
+  import md5
+  import libtbx
+  import libtbx.load_env
+  real_path = libtbx.env.under_dist( "cctbx", path )
+  m = md5.new()
+  m.update("\n".join(open(real_path).read().splitlines()))
+  return "// " + path + ' ' + m.hexdigest()
+
 def run(dr):
   f = join_open(dr, "reference_table.cpp", "w")
-  print >>f, head
+  s1md5 = make_md5("sgtbx/direct_space_asu/reference_table.py")
+  s2md5 = make_md5("sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py")
+  print s1md5, '\n', s2md5
+  print >>f, head1
+  print >>f, "////////////////\n", s1md5, "\n", s2md5, "\n////////////////\n"
+  print >>f, head2
   table = "asu_func asu_table[230] = {"
   i = 0
   for sg in xrange(1,231):

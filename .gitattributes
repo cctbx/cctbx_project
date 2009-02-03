@@ -72,7 +72,6 @@ cctbx/sgtbx/direct_space_asu/proto/reference_table.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/shortcuts.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/tst_asu.cpp svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/tst_asu.py svneol=native#text/x-python
-cctbx/sgtbx/direct_space_asu/proto/tst_orig_asu.py svneol=native#text/x-python
 cctbx/sgtbx/rational_matrices_point_groups.py -text
 cctbx/sgtbx/show_cosets.py -text
 cctbx/source_generators/flex_fwd_h.py -text
