@@ -3,17 +3,10 @@
 
 #include <scitbx/array_family/shared.h>
 #include <cctbx/miller.h>
-#ifdef IOTBX_SHELX_HKLF_SPIRIT_DEBUG
-  #define BOOST_SPIRIT_DEBUG
-#endif
-#include <scitbx/fortran_io/numeric_parsers.h>
-#include <boost/spirit/include/classic_core.hpp>
-#include <boost/spirit/include/classic_if.hpp>
-#include <boost/spirit/include/classic_assign_actor.hpp>
-#include <boost/spirit/include/classic_push_back_actor.hpp>
-#include <boost/spirit/include/phoenix1_primitives.hpp>
-#include <boost/spirit/include/phoenix1_binders.hpp>
-#include <boost/spirit/include/phoenix1_operators.hpp>
+#include <scitbx/fortran_io/numeric_manipulators.h>
+#include <scitbx/misc/file_utils.h>
+#include <istream>
+#include <iostream>
 
 namespace iotbx { namespace shelx {
 
@@ -23,60 +16,34 @@ class hklf_reader
     typedef char char_t;
     typedef cctbx::miller::index<> miller_t;
 
-    template <class IteratorType>
-    hklf_reader(IteratorType const &first, IteratorType const &last,
-                bool strict=true) {
-      init(first, last, strict);
-    }
-
-    hklf_reader(std::string const &content, bool strict) {
-      init(content.begin(), content.end(), strict);
-    }
-
-    template <class IteratorType>
-    void init(IteratorType const &first, IteratorType const &last, bool strict)
+    hklf_reader(std::istream &input, bool strict=true)
     {
-      using namespace scitbx::fortran_io::parsers;
-      typedef scanner<IteratorType> scanner_t;
-      typedef rule<scanner_t> rule_t;
-      typedef typename miller_t::value_type index_t;
+      using namespace scitbx::fortran_io::manipulators;
+      fortran_int i4(4, /*strict=*/true);
+      fortran_real f8_2(8, 2, /*strict=*/true);
 
-      fortran_int_parser<int, /*Width=*/4, /*StrictWidth=*/true> i4_p;
-      fortran_real_parser<
-        double, /*Width=*/8, /*FracDigits=*/2, /*StrictWidth=*/true> f8_2_p;
-
-      miller_t h;
-      subrule<0> hkl;
-      subrule<1> datum;
-      subrule<2> sigma;
-      subrule<3> extra;
-      subrule<4> perhaps_more;
-      subrule<5> strict_line;
-      subrule<6> line;
-      subrule<7> content;
-      rule_t start = (
-        content = +line,
-        line = strict_line >> perhaps_more,
-        strict_line = hkl >> datum >> sigma >> !extra,
-        hkl = (    i4_p[ assign_a(h[0]) ]
-                >> i4_p[ assign_a(h[1]) ]
-                >> i4_p[ assign_a(h[2]) ]
-                >> eps_p(!phoenix::bind(&miller_t::is_zero)(phoenix::var(h)))
-              )[ push_back_a(indices_, h) ],
-        datum  = f8_2_p[ push_back_a(data_) ],
-        sigma  = f8_2_p[ push_back_a(sigmas_) ],
-        extra  = i4_p[ push_back_a(extra_) ],
-        perhaps_more = if_p (phoenix::val(strict)) [ eol_p ]
-                      .else_p [ *(anychar_p - eol_p) >> eol_p ]
-      );
-      #ifdef IOTBX_SHELX_HKLF_SPIRIT_DEBUG
-        BOOST_SPIRIT_DEBUG_RULE(start);
-      #endif
-
-      parse_info<IteratorType> info = parse(first, last, start);
       std::runtime_error not_hklf("Not a SHELX hklf file.");
+      while(!input.eof()) {
+        miller_t h;
+        double datum, sigma;
+        int extra;
+        std::string trailing;
+        input >> sticky(i4) >> h[0] >> h[1] >> h[2];
+        if (h.is_zero()) break;
+        input >> sticky(f8_2) >> datum >> sigma;
+        if (!input.good()) throw not_hklf;
+        indices_.push_back(h);
+        data_.push_back(datum);
+        sigmas_.push_back(sigma);
+        scitbx::misc::end_of_line eol(input);
+        if (eol) continue;
+        input >> i4 >> extra;
+        std::getline(input, trailing);
+        if (!input.good()) throw not_hklf;
+        if (strict && trailing.size() && trailing != "\r") throw not_hklf;
+        extra_.push_back(extra);
+      }
       std::runtime_error empty_hklf("No data in SHELX hklf file.");
-      if (!info.full && !h.is_zero()) throw not_hklf;
       if (indices_.size() == 0) throw empty_hklf;
     }
 
