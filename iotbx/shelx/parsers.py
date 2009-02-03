@@ -276,10 +276,9 @@ if smtbx is not None:
                'kwds': ('i_seqs','weights')},
     }
 
-    cached_restraints = {}
-    symmetry_operations = {}
-
     def filtered_commands(self):
+      self.cached_restraints = {}
+      self.symmetry_operations = {}
       for command, line in self.command_stream:
         cmd, args = command[0], command[-1]
         if cmd in self.shelx_restraints.keys():
