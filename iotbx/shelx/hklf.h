@@ -18,7 +18,6 @@ class hklf_reader
 
     hklf_reader(std::istream &input, bool strict=true)
     {
-#ifdef XXX_FIXME_FIXME_FIXME
       using namespace scitbx::fortran_io::manipulators;
       fortran_int i4(4, /*strict=*/true);
       fortran_real f8_2(8, 2, /*strict=*/true);
@@ -46,7 +45,6 @@ class hklf_reader
       }
       std::runtime_error empty_hklf("No data in SHELX hklf file.");
       if (indices_.size() == 0) throw empty_hklf;
-#endif
     }
 
     scitbx::af::shared<miller_t> indices() { return indices_; };
