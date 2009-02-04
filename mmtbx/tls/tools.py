@@ -313,6 +313,7 @@ class tls_xray_target_minimizer(object):
                refine_L,
                refine_S,
                selections,
+               selections_1d,
                max_iterations,
                run_finite_differences_test = False,
                correct_adp = True):
@@ -396,6 +397,7 @@ class tls_xray_target_minimizer(object):
     update_xray_structure_with_tls(
       xray_structure = self.fmodel_copy.xray_structure,
       selections     = self.selections,
+      selections_1d  = self.selections_1d,
       tlsos          = tlsos,
       correct_adp    = self.correct_adp)
     self.fmodel_copy.update_xray_structure(update_f_calc=True)
@@ -463,14 +465,14 @@ class tls_xray_grads(object):
 def update_xray_structure_with_tls(xray_structure,
                                    selections,
                                    tlsos,
+                                   selections_1d = None,
                                    correct_adp = True):
   global time_update_xray_structure_with_tls
   timer = user_plus_sys_time()
   u_cart_from_tls_ = u_cart_from_tls(sites_cart = xray_structure.sites_cart(),
                                      selections = selections,
                                      tlsos      = tlsos)
-  xray_structure.scatterers().set_u_cart(xray_structure.unit_cell(),
-                                         u_cart_from_tls_)
+  xray_structure.set_u_cart(u_cart=u_cart_from_tls_, selection = selections_1d)
   if(correct_adp): xray_structure.tidy_us(u_min = 1.e-6)
   time_update_xray_structure_with_tls += timer.elapsed()
 
@@ -595,9 +597,11 @@ def tls_from_u_cart(xray_structure,
   return tlsos
 
 class tls_refinement(object):
-  def __init__(self, fmodel,
+  def __init__(self,
+               fmodel,
                model,
                selections,
+               selections_1d,
                refine_T,
                refine_L,
                refine_S,
@@ -642,6 +646,7 @@ class tls_refinement(object):
         refine_L                    = refine_L,
         refine_S                    = refine_S,
         selections                  = selections,
+        selections_1d               = selections_1d,
         max_iterations              = max_number_of_iterations,
         run_finite_differences_test = run_finite_differences_test)
       xrs = minimized.fmodel_copy.xray_structure
