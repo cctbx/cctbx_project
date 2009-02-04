@@ -1321,6 +1321,7 @@ class process_command_line_args(object):
     self.pdb_file_names   = []
     self.cif_objects      = []
     self.reflection_files = []
+    self.reflection_file_names = []
     self.params           = None
     self.crystal_symmetry = None
     crystal_symmetries = []
@@ -1366,6 +1367,7 @@ class process_command_line_args(object):
           file_name = arg, ensure_read_access = False)
         if(reflection_file.file_type() is not None):
           self.reflection_files.append(reflection_file)
+          self.reflection_file_names.append(arg)
           arg_is_processed = True
           try:
             crystal_symmetries.append(
@@ -1465,3 +1467,58 @@ class pdb_file(object):
     self.processed_pdb_file, self.pdb_inp = \
       self.processed_pdb_files_srv.process_pdb_files(raw_records =
         self.pdb_raw_records)
+
+def model_simple(pdb_file_names,
+                 log = None,
+                 normalization = True,
+                 cif_objects = [],
+                 crystal_symmetry = None,
+                 plain_pairs_radius = 5,
+                 refinement_flags = None,
+                 use_elbow = True,
+                 scattering_table = None,
+                 d_min = None):
+  #
+  cryst1 = None
+  if(crystal_symmetry is not None):
+    cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry)
+  mmtbx_pdb_file = pdb_file(
+    pdb_file_names = pdb_file_names,
+    cif_objects    = cif_objects,
+    cryst1         = cryst1,
+    use_elbow      = True,
+    log            = log)
+  xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
+    processed_pdb_file = mmtbx_pdb_file.processed_pdb_file,
+    scattering_table   = scattering_table,
+    d_min              = d_min)
+  if(len(xsfppf.xray_structures) > 1):
+    raise Sorry("Multiple models not supported.")
+  xray_structure = xsfppf.xray_structures[0]
+  # XXX dirty
+  class rf:
+    def __init__(self, size):
+      self.individual_sites=True
+      self.individual_adp = False
+      self.sites_individual = flex.bool(size, True)
+  refinement_flags = rf(size = xray_structure.scatterers().size())
+  #
+  sctr_keys=xray_structure.scattering_type_registry().type_count_dict().keys()
+  has_hd = "H" in sctr_keys or "D" in sctr_keys
+  geometry = mmtbx_pdb_file.processed_pdb_file.geometry_restraints_manager(
+    show_energies                = False,
+    plain_pairs_radius           = plain_pairs_radius,
+    assume_hydrogens_all_missing = not has_hd)
+  restraints_manager = mmtbx.restraints.manager(
+    geometry      = geometry,
+    normalization = normalization)
+  pdb_hierarchy = \
+    mmtbx_pdb_file.processed_pdb_file.all_chain_proxies.pdb_hierarchy
+  result = mmtbx.model.manager(
+    processed_pdb_files_srv = mmtbx_pdb_file.processed_pdb_files_srv,
+    restraints_manager      = restraints_manager,
+    xray_structure          = xray_structure,
+    refinement_flags        = refinement_flags,
+    pdb_hierarchy           = pdb_hierarchy,
+    log                     = log)
+  return result

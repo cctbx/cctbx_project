@@ -152,6 +152,7 @@ def exercise_2(eps = 1.e-6):
                      fmodel                      = fmodel_cp,
                      model                       = model,
                      selections                  = selections,
+                     selections_1d               = None,
                      refine_T                    = 1,
                      refine_L                    = 1,
                      refine_S                    = 1,

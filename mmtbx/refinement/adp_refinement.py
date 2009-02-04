@@ -171,6 +171,7 @@ class manager(object):
           fmodel                      = fmodels.fmodel_xray(),
           model                       = model,
           selections                  = tls_selections,
+          selections_1d               = tls_sel_st,
           refine_T                    = tls_params.refine_T,
           refine_L                    = tls_params.refine_L,
           refine_S                    = tls_params.refine_S,
