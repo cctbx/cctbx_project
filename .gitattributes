@@ -375,6 +375,7 @@ scitbx/graph/rigidity.py -text
 scitbx/graph/rigidity_matrix_symbolic.py svneol=native#text/x-python
 scitbx/graph/tardy_tree.py svneol=native#text/x-python
 scitbx/graph/tst_rigidity.py -text
+scitbx/graph/tst_tardy_pdb.py svneol=native#text/x-python
 scitbx/graph/tst_tardy_tree.py svneol=native#text/x-python
 scitbx/graph/tst_utils.py svneol=native#text/x-python
 scitbx/graph/utils.py svneol=native#text/x-python
