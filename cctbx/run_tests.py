@@ -88,6 +88,7 @@ def run():
    "$D/sgtbx/cosets.py",
    "$D/regression/tst_find_best_cell.py",
    "$D/regression/tst_normalised_amplitudes.py",
+   "$D/sgtbx/direct_space_asu/proto/tst_asu.py"
   )
 
   build_dir = libtbx.env.under_build("cctbx")

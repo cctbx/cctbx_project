@@ -21,7 +21,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
 namespace {
 
-typedef ivector3_t vvv;
+typedef sg_vec3 vvv;
 """
 
 # replacement for cut.base_symbol
@@ -111,21 +111,26 @@ def run(dr):
   f = join_open(dr, "reference_table.cpp", "w")
   s1md5 = make_md5("sgtbx/direct_space_asu/reference_table.py")
   s2md5 = make_md5("sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py")
-  print s1md5, '\n', s2md5
+  s3md5 = make_md5("sgtbx/direct_space_asu/short_cuts.py")
+  print s1md5, '\n', s2md5, '\n', s3md5
   print >>f, head1
-  print >>f, "////////////////\n", s1md5, "\n", s2md5, "\n////////////////\n"
+  # comma in print adds one whitespace between parameters
+  # so it is better to use + to concatanete strings
+  # to avoid trailing white spaces
+  print >>f, "////////////////\n" + s1md5 + "\n" + s2md5 + "\n" + s3md5 + "\n////////////////\n"
   print >>f, head2
   table = "asu_func asu_table[230] = {"
   i = 0
   for sg in xrange(1,231):
     if( i%8 == 0 ):
-      table += "\n  "
+      table += "\n "
     func = show_cpp(sg, f)
+    table += " "
     table += func
     if i<229 :
-      table += ", "
+      table += ","
     i += 1
-  print >>f, "} // end of unnamed namespace\n\n", table, "\n};\n\n}}}\n"
+  print >>f, "} // end of unnamed namespace\n\n" + table + "\n};\n\n}}}\n"
 
 
 if (__name__ == "__main__"):

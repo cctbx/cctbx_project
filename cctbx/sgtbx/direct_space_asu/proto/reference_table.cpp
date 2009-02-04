@@ -7,8 +7,9 @@
 ///
 
 ////////////////
-// sgtbx/direct_space_asu/reference_table.py 5e11890e01d068e93a1273a8a8bea2a4 
-// sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py 9836c499d7ff12db779647f312596812 
+// sgtbx/direct_space_asu/reference_table.py 5e11890e01d068e93a1273a8a8bea2a4
+// sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py c67cc76278e002b08b66746710aedcb9
+// sgtbx/direct_space_asu/short_cuts.py bf76fe6d609a622908e94403d24b40d7
 ////////////////
 
 #include "reference_table.h"
@@ -17,7 +18,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
 namespace {
 
-typedef ivector3_t vvv;
+typedef sg_vec3 vvv;
 
 facet_collection::pointer  asu_001 ()   //  Hall:  P 1
 {
@@ -2733,35 +2734,35 @@ facet_collection::pointer  asu_230 ()   //  Hall:  -I 4bd 2c 3
 } // end of unnamed namespace
 
 asu_func asu_table[230] = {
-  asu_001, asu_002, asu_003, asu_004, asu_005, asu_006, asu_007, asu_008, 
-  asu_009, asu_010, asu_011, asu_012, asu_013, asu_014, asu_015, asu_016, 
-  asu_017, asu_018, asu_019, asu_020, asu_021, asu_022, asu_023, asu_024, 
-  asu_025, asu_026, asu_027, asu_028, asu_029, asu_030, asu_031, asu_032, 
-  asu_033, asu_034, asu_035, asu_036, asu_037, asu_038, asu_039, asu_040, 
-  asu_041, asu_042, asu_043, asu_044, asu_045, asu_046, asu_047, asu_048, 
-  asu_049, asu_050, asu_051, asu_052, asu_053, asu_054, asu_055, asu_056, 
-  asu_057, asu_058, asu_059, asu_060, asu_061, asu_062, asu_063, asu_064, 
-  asu_065, asu_066, asu_067, asu_068, asu_069, asu_070, asu_071, asu_072, 
-  asu_073, asu_074, asu_075, asu_076, asu_077, asu_078, asu_079, asu_080, 
-  asu_081, asu_082, asu_083, asu_084, asu_085, asu_086, asu_087, asu_088, 
-  asu_089, asu_090, asu_091, asu_092, asu_093, asu_094, asu_095, asu_096, 
-  asu_097, asu_098, asu_099, asu_100, asu_101, asu_102, asu_103, asu_104, 
-  asu_105, asu_106, asu_107, asu_108, asu_109, asu_110, asu_111, asu_112, 
-  asu_113, asu_114, asu_115, asu_116, asu_117, asu_118, asu_119, asu_120, 
-  asu_121, asu_122, asu_123, asu_124, asu_125, asu_126, asu_127, asu_128, 
-  asu_129, asu_130, asu_131, asu_132, asu_133, asu_134, asu_135, asu_136, 
-  asu_137, asu_138, asu_139, asu_140, asu_141, asu_142, asu_143, asu_144, 
-  asu_145, asu_146, asu_147, asu_148, asu_149, asu_150, asu_151, asu_152, 
-  asu_153, asu_154, asu_155, asu_156, asu_157, asu_158, asu_159, asu_160, 
-  asu_161, asu_162, asu_163, asu_164, asu_165, asu_166, asu_167, asu_168, 
-  asu_169, asu_170, asu_171, asu_172, asu_173, asu_174, asu_175, asu_176, 
-  asu_177, asu_178, asu_179, asu_180, asu_181, asu_182, asu_183, asu_184, 
-  asu_185, asu_186, asu_187, asu_188, asu_189, asu_190, asu_191, asu_192, 
-  asu_193, asu_194, asu_195, asu_196, asu_197, asu_198, asu_199, asu_200, 
-  asu_201, asu_202, asu_203, asu_204, asu_205, asu_206, asu_207, asu_208, 
-  asu_209, asu_210, asu_211, asu_212, asu_213, asu_214, asu_215, asu_216, 
-  asu_217, asu_218, asu_219, asu_220, asu_221, asu_222, asu_223, asu_224, 
-  asu_225, asu_226, asu_227, asu_228, asu_229, asu_230 
+  asu_001, asu_002, asu_003, asu_004, asu_005, asu_006, asu_007, asu_008,
+  asu_009, asu_010, asu_011, asu_012, asu_013, asu_014, asu_015, asu_016,
+  asu_017, asu_018, asu_019, asu_020, asu_021, asu_022, asu_023, asu_024,
+  asu_025, asu_026, asu_027, asu_028, asu_029, asu_030, asu_031, asu_032,
+  asu_033, asu_034, asu_035, asu_036, asu_037, asu_038, asu_039, asu_040,
+  asu_041, asu_042, asu_043, asu_044, asu_045, asu_046, asu_047, asu_048,
+  asu_049, asu_050, asu_051, asu_052, asu_053, asu_054, asu_055, asu_056,
+  asu_057, asu_058, asu_059, asu_060, asu_061, asu_062, asu_063, asu_064,
+  asu_065, asu_066, asu_067, asu_068, asu_069, asu_070, asu_071, asu_072,
+  asu_073, asu_074, asu_075, asu_076, asu_077, asu_078, asu_079, asu_080,
+  asu_081, asu_082, asu_083, asu_084, asu_085, asu_086, asu_087, asu_088,
+  asu_089, asu_090, asu_091, asu_092, asu_093, asu_094, asu_095, asu_096,
+  asu_097, asu_098, asu_099, asu_100, asu_101, asu_102, asu_103, asu_104,
+  asu_105, asu_106, asu_107, asu_108, asu_109, asu_110, asu_111, asu_112,
+  asu_113, asu_114, asu_115, asu_116, asu_117, asu_118, asu_119, asu_120,
+  asu_121, asu_122, asu_123, asu_124, asu_125, asu_126, asu_127, asu_128,
+  asu_129, asu_130, asu_131, asu_132, asu_133, asu_134, asu_135, asu_136,
+  asu_137, asu_138, asu_139, asu_140, asu_141, asu_142, asu_143, asu_144,
+  asu_145, asu_146, asu_147, asu_148, asu_149, asu_150, asu_151, asu_152,
+  asu_153, asu_154, asu_155, asu_156, asu_157, asu_158, asu_159, asu_160,
+  asu_161, asu_162, asu_163, asu_164, asu_165, asu_166, asu_167, asu_168,
+  asu_169, asu_170, asu_171, asu_172, asu_173, asu_174, asu_175, asu_176,
+  asu_177, asu_178, asu_179, asu_180, asu_181, asu_182, asu_183, asu_184,
+  asu_185, asu_186, asu_187, asu_188, asu_189, asu_190, asu_191, asu_192,
+  asu_193, asu_194, asu_195, asu_196, asu_197, asu_198, asu_199, asu_200,
+  asu_201, asu_202, asu_203, asu_204, asu_205, asu_206, asu_207, asu_208,
+  asu_209, asu_210, asu_211, asu_212, asu_213, asu_214, asu_215, asu_216,
+  asu_217, asu_218, asu_219, asu_220, asu_221, asu_222, asu_223, asu_224,
+  asu_225, asu_226, asu_227, asu_228, asu_229, asu_230
 };
 
 }}}

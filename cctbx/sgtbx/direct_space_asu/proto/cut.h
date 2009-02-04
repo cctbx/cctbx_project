@@ -4,6 +4,7 @@
 #include <iosfwd>
 #include <vector>
 #include <set>
+#include <limits>
 
 #include <cmath>
 
@@ -15,26 +16,31 @@
 #include <cctbx/sgtbx/space_group_type.h>
 
 
-namespace cctbx { namespace sgtbx { 
-  
+namespace cctbx { namespace sgtbx {
+
 //! Direct space asymmetric unit classes
 namespace asu {
 
+  typedef sg_vec3::value_type int_type;
+
+  namespace {
+    // sanity checks
+    BOOST_STATIC_ASSERT( std::numeric_limits< int_type >::is_integer );
+    BOOST_STATIC_ASSERT( std::numeric_limits< int_type >::digits >= 31 );
+    BOOST_STATIC_ASSERT( std::numeric_limits< sg_mat3::value_type >::is_integer );
+    BOOST_STATIC_ASSERT( sizeof(sg_mat3::value_type) == sizeof(int_type) );
+  }
+
   typedef unsigned short size_type;
-  // typedef short int_type;
-  typedef int int_type;
   typedef boost::rational<int_type> rational_t;
 
-  typedef scitbx::mat3<int_type> imatrix3_t;
-  typedef scitbx::vec3<int_type> ivector3_t;
-  typedef scitbx::vec3<double> dvector3_t;
+  // typedef scitbx::vec3<double> dvector3_t;
   typedef scitbx::vec3< rational_t > rvector3_t;
-  typedef scitbx::mat3< rational_t > rmatrix3_t;
   typedef std::set< rvector3_t > set_rvector3_t;
 
   using cctbx::sgtbx::change_of_basis_op;
 
-  inline std::ostream &operator<< (std::ostream &s, const ivector3_t &v)
+  inline std::ostream &operator<< (std::ostream &s, const sg_vec3 &v)
   {
     s << "("<< v[0] <<", "<< v[1] << ", " << v[2] << ")";
     return s;
@@ -70,13 +76,19 @@ namespace cctbx { namespace sgtbx { namespace asu {
   {
   public:
     //! Plane normal
-    ivector3_t n;
+    sg_vec3 n;
     //! Plane constant
     int_type c;
     //! Flag indicating if plane points belong to the asymmetric unit
     bool inclusive;
 
-    void print(std::ostream &os, bool x=false ) const;
+    void print(std::ostream &os ) const;
+    std::string as_string() const
+    {
+      std::stringstream buf;
+      this->print(buf);
+      return buf.str();
+    }
 
     //! Returns an arbitrary point, which belongs to the plane
     void get_point_in_plane(rvector3_t &r) const;
@@ -111,7 +123,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return inclusive;
     }
 
-    template<typename TR> 
+    template<typename TR>
     cut_expression<TR> operator() (const TR &o) const // better:  operator[]
     {
       return cut_expression<TR>(*this, o );
@@ -160,8 +172,8 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
 
     //! Constructs a plane from a normal vector and a rational constant
-    cut(const ivector3_t &n_, rational_t c_, bool inc_=true) : inclusive(inc_)
-    { 
+    cut(const sg_vec3 &n_, rational_t c_, bool inc_=true) : inclusive(inc_)
+    {
       CCTBX_ASSERT( c_.denominator() > 0 );
       n = n_ * c_.denominator();
       c = c_.numerator();
@@ -172,10 +184,10 @@ namespace cctbx { namespace sgtbx { namespace asu {
       c /= g;
     }
 
-    //! Constructs a from normal coordinates and a rational constant
-    cut(int_type x, int_type y, int_type z, rational_t c_)
-    { 
-      new(this) cut(ivector3_t(x,y,z), c_);
+    //! Constructs a plane from normal coordinates and a rational constant
+    cut(int_type x, int_type y, int_type z, rational_t c_, bool inc_ = true)
+    {
+      new(this) cut(sg_vec3(x,y,z), c_, inc_);
     }
 
     cut() {}

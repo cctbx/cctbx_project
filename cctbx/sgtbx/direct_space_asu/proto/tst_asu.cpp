@@ -24,8 +24,7 @@ std::size_t loop_over_grid_points(const direct_space_asu &a, unsigned n_)
   register std::size_t result = 0;
   register const int n = n_;
 
-  // a.show_comprehensive_summary(std::cout);
-  a.write(std::cout);
+  a.show_comprehensive_summary(std::cout);
   std::cout <<"\n";
 
   rvector3_t p, mn, mx;
@@ -35,11 +34,11 @@ std::size_t loop_over_grid_points(const direct_space_asu &a, unsigned n_)
   rvector3_t step = box/rational_t(n);
   std::cout << "step = " << step << std::endl;
 
-  for(register rational_t i=mn[0]; i<=mx[0]; i += step[0]) {
+  for(rational_t i=mn[0]; i<=mx[0]; i += step[0]) {
     p[0] = i;
-  for(register rational_t j=mn[1]; j<=mx[1]; j += step[1]) {
+  for(rational_t j=mn[1]; j<=mx[1]; j += step[1]) {
     p[1] = j;
-  for(register rational_t k=mn[2]; k<=mx[2]; k += step[2] ) {
+  for(rational_t k=mn[2]; k<=mx[2]; k += step[2]) {
     p[2] = k;
     if (a.is_inside(p)) result += 1;
   }}}
@@ -47,7 +46,7 @@ std::size_t loop_over_grid_points(const direct_space_asu &a, unsigned n_)
   const char *asun = "n asu points:  ";
   const char *vol = "   volume: ";
   space_group grp(a.hall_symbol);
-  std::cout << asun << result << vol << get_double(box[0]*box[1]*box[2]) * result/(double(n)*n*n) 
+  std::cout << asun << result << vol << get_double(box[0]*box[1]*box[2]) * result/(double(n)*n*n)
     <<"   expected volume= "<< 1.0/grp.order_z() << std::endl;
   return result;
 }
@@ -91,5 +90,4 @@ int main(int argc, const char* argv[])
   }
   return 0;
 }
-
 
