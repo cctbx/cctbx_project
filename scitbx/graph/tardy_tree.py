@@ -227,10 +227,10 @@ def find_loops(edge_sets, depth, loop_set, path, iv, traversing):
 
 class construct(object):
 
-  def __init__(O, n_vertices, edge_list, size_max=8):
+  def __init__(O, n_vertices, edge_list, rigid_loop_size_max=8):
     O.n_vertices = n_vertices
     O.edge_list = edge_list
-    O.size_max = size_max
+    O.rigid_loop_size_max = rigid_loop_size_max
     O.edge_sets = construct_edge_sets(
       n_vertices=n_vertices, edge_list=edge_list)
     O.cluster_manager = cluster_manager(n_vertices=n_vertices)
@@ -239,7 +239,7 @@ class construct(object):
       loop_set = set()
       find_loops(
         edge_sets=O.edge_sets,
-        depth=size_max,
+        depth=rigid_loop_size_max,
         loop_set=loop_set,
         path=[],
         iv=iv,
@@ -247,3 +247,10 @@ class construct(object):
       for jv in loop_set:
         O.cluster_manager.connect(i=iv, j=jv)
     O.cluster_manager.tidy()
+
+  def finalize(O):
+    cm = O.cluster_manager
+    cm.merge_clusters_with_multiple_connections(edge_sets=O.edge_sets)
+    cm.construct_spanning_trees(edge_sets=O.edge_sets)
+    cm.find_loop_edge_bendings(edge_sets=O.edge_sets)
+    return O

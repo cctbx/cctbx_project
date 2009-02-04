@@ -290,22 +290,26 @@ def exercise_minimization_quick(out, sim, max_iterations=3):
     assert e_pot_final < e_pot_start * 0.98
   print >> out
 
+def construct_simulation(labels, sites, bonds, tardy_tree):
+  cm = tardy_tree.cluster_manager
+  return simulation(
+    labels=labels,
+    sites=sites,
+    bonds=bonds,
+    cluster_manager=cm,
+    potential_obj=potential_object(
+      sites=sites,
+      wells=random_wells(sites),
+      restraint_edges=cm.loop_edges+cm.loop_edge_bendings),
+    bodies=construct_bodies(sites=sites, cluster_manager=cm))
+
 n_test_simulations = len(tst_tardy_pdb.test_cases)
 
 def get_test_simulation_by_index(i):
   tc = tst_tardy_pdb.test_cases[i]
   tt = tc.tardy_tree_construct()
-  cm = tt.cluster_manager
-  return simulation(
-    labels=tc.labels,
-    sites=tc.sites,
-    bonds=tc.bonds,
-    cluster_manager=cm,
-    potential_obj=potential_object(
-      sites=tc.sites,
-      wells=random_wells(tc.sites),
-      restraint_edges=cm.loop_edges+cm.loop_edge_bendings),
-    bodies=construct_bodies(sites=tc.sites, cluster_manager=cm))
+  return construct_simulation(
+    labels=tc.labels, sites=tc.sites, bonds=tc.bonds, tardy_tree=tt)
 
 def run(args):
   assert len(args) in [0,1]

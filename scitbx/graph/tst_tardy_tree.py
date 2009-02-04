@@ -510,9 +510,9 @@ def run(args):
   exercise_cluster_manager()
   for tc in test_cases:
     print >> out, tc.art
-    for loop_size_max in [8, 5]:
-      print >> out, "loop_size_max:", loop_size_max
-      if (loop_size_max == 5 and tc.clusters1_5 is not None):
+    for rigid_loop_size_max in [8, 5]:
+      print >> out, "rigid_loop_size_max:", rigid_loop_size_max
+      if (rigid_loop_size_max == 5 and tc.clusters1_5 is not None):
        tc_c1, tc_he1, tc_r1, tc_tid1, tc_le1, tc_leb1, \
        tc_c2, tc_he2, tc_le2, tc_leb2 = \
          tc.clusters1_5, tc.hinge_edges1_5, \
@@ -536,7 +536,7 @@ def run(args):
       tt = construct(
         n_vertices=tc.n_vertices,
         edge_list=tc.edge_list,
-        size_max=loop_size_max)
+        rigid_loop_size_max=rigid_loop_size_max)
       cm = tt.cluster_manager
       assert_same("c1:", cm.clusters, tc_c1)
       cm.construct_spanning_trees(edge_sets=tt.edge_sets)
@@ -551,7 +551,7 @@ def run(args):
       tt = construct(
         n_vertices=tc.n_vertices,
         edge_list=tc.edge_list,
-        size_max=loop_size_max)
+        rigid_loop_size_max=rigid_loop_size_max)
       cm = tt.cluster_manager
       cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
       assert_same("c2:", cm.clusters, tc_c2)
