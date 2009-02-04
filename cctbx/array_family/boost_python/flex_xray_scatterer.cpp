@@ -397,20 +397,6 @@ namespace cctbx { namespace xray { namespace {
     return result;
   }
 
-  void
-  set_u_cart(
-    af::ref<scatterer<> > const& self,
-    uctbx::unit_cell const& unit_cell,
-    af::const_ref<scitbx::sym_mat3<double> > const& u_cart)
-  {
-    CCTBX_ASSERT(self.size() == u_cart.size());
-    for(std::size_t i=0;i<self.size();i++) {
-      if (self[i].flags.use_u_aniso()) {
-        self[i].u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart[i]);
-      }
-    }
-  }
-
   af::shared<bool>
   extract_use_u_iso(
     af::const_ref<scatterer<> > const& self)
@@ -431,6 +417,36 @@ namespace cctbx { namespace xray { namespace {
       result.push_back(self[i].flags.use_u_aniso());
     }
     return result;
+  }
+
+  void
+  set_u_cart(
+    af::ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart)
+  {
+    CCTBX_ASSERT(self.size() == u_cart.size());
+    for(std::size_t i=0;i<self.size();i++) {
+      if (self[i].flags.use_u_aniso()) {
+        self[i].u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart[i]);
+      }
+    }
+  }
+
+  void
+  set_u_cart(
+    af::ref<scatterer<> > const& self,
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::sym_mat3<double> > const& u_cart,
+    af::const_ref<std::size_t> const& selection)
+  {
+    CCTBX_ASSERT(self.size() == u_cart.size());
+    for(std::size_t j=0;j<selection.size();j++) {
+      std::size_t i=selection[j];
+      CCTBX_ASSERT(i<self.size());
+      CCTBX_ASSERT(self[i].flags.use_u_aniso());
+      self[i].u_star = adptbx::u_cart_as_u_star(unit_cell, u_cart[i]);
+    }
   }
 
   void
@@ -596,8 +612,17 @@ namespace scitbx { namespace af { namespace boost_python {
         (arg_("u_star")))
       .def("extract_u_cart", cctbx::xray::extract_u_cart,
         (arg_("unit_cell")))
-      .def("set_u_cart", cctbx::xray::set_u_cart,
-        (arg_("unit_cell"), arg_("u_cart")))
+      .def("set_u_cart", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              uctbx::unit_cell const&,
+              af::const_ref<scitbx::sym_mat3<double> > const&)) cctbx::xray::set_u_cart,
+              (arg_("unit_cell"),arg_("u_cart")))
+      .def("set_u_cart", (void(*)(
+              af::ref<cctbx::xray::scatterer<> > const&,
+              uctbx::unit_cell const&,
+              af::const_ref<scitbx::sym_mat3<double> > const&,
+              af::const_ref<std::size_t> const&)) cctbx::xray::set_u_cart,
+              (arg_("unit_cell"),arg_("u_cart"),arg_("selection")))
       .def("convert_to_isotropic", (void(*)(
               af::ref<cctbx::xray::scatterer<> > const&,
               uctbx::unit_cell const&)) cctbx::xray::convert_to_isotropic,
