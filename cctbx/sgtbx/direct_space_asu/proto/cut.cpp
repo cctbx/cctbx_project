@@ -4,7 +4,7 @@
 
 namespace cctbx { namespace sgtbx { namespace asu {
 
-  void cut::print(std::ostream &os, bool x) const
+  void cut::print(std::ostream &os ) const
   {
     int_type g = boost::gcd(n[0], boost::gcd(n[1],n[2]));
     CCTBX_ASSERT( g>0 );
@@ -25,7 +25,7 @@ namespace cctbx { namespace sgtbx { namespace asu {
         return;
       }
     }
-    throw "cut_plane normal vector is null vector";
+    throw cctbx::error("cut_plane normal vector is null vector");
   }
 
   namespace {

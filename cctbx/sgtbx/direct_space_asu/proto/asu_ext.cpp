@@ -23,10 +23,17 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
 
     class_<w_t>("cut", no_init)
       .def(init<
-        ivector3_t const&,
+        sg_vec3 const&,
         rational_t ,
         optional< bool > >((
           arg_("n"),
+          arg_("c"),
+          arg_("inclusive") )))
+      .def(init<
+        int_type, int_type, int_type,
+        rational_t ,
+        optional< bool > >((
+          arg_("x"),arg_("y"),arg_("z"),
           arg_("c"),
           arg_("inclusive") )))
       .def_readonly("n", &w_t::n)
@@ -37,6 +44,8 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
       .def("__inv__", &w_t::operator~)
       .def("__mul__", &w_t::operator*)
       .def("__div__", &w_t::operator/)
+      .def("__repr__", &w_t::as_string)
+      .def("one", &w_t::one)
       .def("is_inside",cut_is_inside1)
       .def("get_point_in_plane", &w_t::get_point_in_plane)
       .def("change_basis", &w_t::change_basis)
@@ -52,9 +61,11 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     typedef return_value_policy<return_by_value> rbv;
 
     class_<w_t>("direct_space_asu", no_init)
-      .def(init< const std::string& >(( arg_("spgr") )))
+      .def(init< const std::string& >(( arg_("group_symbol") )))
+      .def(init< const space_group_type& >(( arg_("group_type") )))
       .def_readonly("hall_symbol", &w_t::hall_symbol)
       .def("is_inside", &w_t::is_inside)
+      .def("is_inside_volume_only", &w_t::is_inside_volume_only)
       .def("change_basis", &w_t::change_basis)
       .def("get_nth_plane", &w_t::get_nth_plane)
       .def("volume_only", &w_t::volume_only)

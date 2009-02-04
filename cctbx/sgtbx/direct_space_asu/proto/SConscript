@@ -1,3 +1,4 @@
+import os
 import libtbx
 Import("env_base", "env_etc")
 env = env_base.Copy(
@@ -5,6 +6,14 @@ env = env_base.Copy(
   LIBS=["cctbx"]+env_etc.libm,
   LIBPATH=["#lib"]
 )
+
+# With recent gcc:
+#    -std=c++98 -Wall -Wextra -Wshorten-64-to-32 -Wconversion -Wcast-align -Wwrite-strings -Wcast-qual -pedantic 
+
+flg = os.environ.get("CXXFLAGS")
+if flg  is not None:
+  flg = flg.split(" ")
+  env.Append( CXXFLAGS=flg )
 
 env_etc.include_registry.append(
   env=env,
@@ -28,15 +37,8 @@ builder(
   source=lib_asu_sources)
 
 
-source = "tst_asu"
-target = "cctbx." + source
 env.Prepend(LIBS=["cctbx_sgtbx_asu"])
-exe = env.Program(
-  target="#exe_dev/"+env["PROGPREFIX"]+target+env["PROGSUFFIX"],
-  source=source+".cpp")
-libtbx.env.write_dispatcher_in_bin(
-  source_file=exe[0].get_abspath(),
-  target_file=target)
+env.Program( target = "tst_asu",  source="tst_asu.cpp")
 
 
 if (not env_etc.no_boost_python):

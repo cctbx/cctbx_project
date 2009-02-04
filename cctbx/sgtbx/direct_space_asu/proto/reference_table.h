@@ -15,8 +15,6 @@
 
 namespace cctbx { namespace sgtbx { namespace asu {
 
-  typedef ivector3_t vvv;
-
   template< typename T> class expression_adaptor : public facet_collection
   {
       BOOST_STATIC_ASSERT( is_facet_expression<T>::value );
@@ -29,17 +27,17 @@ namespace cctbx { namespace sgtbx { namespace asu {
       obj.change_basis(o);
     }
 
-    void write(std::ostream &os) const
+    void print(std::ostream &os) const
     {
-      obj.print(os, true);
+      print_lines<T,true>::execute(obj,os);
     }
 
     bool is_inside(const rvector3_t &p) const
     {
       return obj.is_inside(p);
     }
-    
-    size_type size() const 
+
+    size_type size() const
     {
       return n_faces<T>::value;
     }
@@ -57,14 +55,14 @@ namespace cctbx { namespace sgtbx { namespace asu {
       return facet_collection::pointer( new expression_adaptor< return_type >( strip<T>::execute(obj) ) );
     }
 
-    facet_collection::pointer new_copy() const 
-    { 
+    facet_collection::pointer new_copy() const
+    {
       return facet_collection::pointer( new expression_adaptor<T>(*this) );
     }
 
   };
 
-  template<typename TL, typename TR> 
+  template<typename TL, typename TR>
     facet_collection::pointer facet_collection_asu(const and_expression<TL,TR> &expr)
   {
       // BOOST_STATIC_ASSERT( is_facet_expression< and_expression<TL,TR> >::value );
