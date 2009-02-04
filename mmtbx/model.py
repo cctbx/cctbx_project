@@ -19,7 +19,7 @@ from mmtbx import utils
 from mmtbx import model_statistics
 from mmtbx.solvent import ordered_solvent
 import iotbx.pdb
-
+from cctbx import sgtbx
 
 time_model_show = 0.0
 
@@ -301,38 +301,53 @@ class manager(object):
           "Not implemented: cannot handle water with alt. conf.")
       ag = rg.only_atom_group()
       atoms = ag.atoms()
-      if (atoms.size() == 2):
-        o_atom = None
-        h_atom = None
-        for atom in atoms:
-          if (atom.element.strip() == "O"): o_atom = atom
-          else:                             h_atom = atom
-        assert [o_atom, h_atom].count(None) == 0
-        h_name = h_atom.name.strip()
-        if(len(h_name) == 1):
-          atom_name = h_name+"1"
-        elif(len(h_name) == 2):
-          if(h_name[0].isdigit()):
-            if(int(h_name[0]) == 1): atom_name = h_name[1]+"2"
-            elif(int(h_name[0]) == 2): atom_name = h_name[1]+"1"
-            else: raise RuntimeError
-          elif(h_name[1].isdigit()):
-            if(int(h_name[1]) == 1): atom_name = h_name[0]+"2"
-            elif(int(h_name[1]) == 2): atom_name = h_name[0]+"1"
+      # do not add H or D to O at or close to special position
+      skip = False
+      for atom in atoms:
+        if (atom.element.strip() == "O"):
+          site_symmetry = sgtbx.site_symmetry(
+            self.xray_structure.unit_cell(),
+            self.xray_structure.space_group(),
+            self.xray_structure.unit_cell().fractionalize(atom.xyz),
+            3.0,
+            True)
+          if(site_symmetry.n_matrices() != 1):
+            skip = True
+            break
+      #
+      if(not skip):
+        if (atoms.size() == 2):
+          o_atom = None
+          h_atom = None
+          for atom in atoms:
+            if (atom.element.strip() == "O"): o_atom = atom
+            else:                             h_atom = atom
+          assert [o_atom, h_atom].count(None) == 0
+          h_name = h_atom.name.strip()
+          if(len(h_name) == 1):
+            atom_name = h_name+"1"
+          elif(len(h_name) == 2):
+            if(h_name[0].isdigit()):
+              if(int(h_name[0]) == 1): atom_name = h_name[1]+"2"
+              elif(int(h_name[0]) == 2): atom_name = h_name[1]+"1"
+              else: raise RuntimeError
+            elif(h_name[1].isdigit()):
+              if(int(h_name[1]) == 1): atom_name = h_name[0]+"2"
+              elif(int(h_name[1]) == 2): atom_name = h_name[0]+"1"
+              else: raise RuntimeError
             else: raise RuntimeError
           else: raise RuntimeError
-        else: raise RuntimeError
-        insert_atoms(
-          atom=o_atom,
-          atom_names=[atom_name],
-          element=h_atom.element)
-      elif (atoms.size() == 1):
-        atom = atoms[0]
-        assert atom.element.strip() == "O"
-        insert_atoms(
-          atom=atom,
-          atom_names=[element+n for n in ["1","2"]],
-          element=element)
+          insert_atoms(
+            atom=o_atom,
+            atom_names=[atom_name],
+            element=h_atom.element)
+        elif (atoms.size() == 1):
+          atom = atoms[0]
+          assert atom.element.strip() == "O"
+          insert_atoms(
+            atom=atom,
+            atom_names=[element+n for n in ["1","2"]],
+            element=element)
     if(neutron):
       xs.switch_to_neutron_scattering_dictionary()
     print >> self.log, "Number of H added:", len(next_to_i_seqs)
