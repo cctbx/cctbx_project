@@ -10,6 +10,7 @@ import mmtbx.utils
 from cctbx import maptbx
 from libtbx.utils import Sorry
 from libtbx.test_utils import approx_equal
+from cctbx import sgtbx
 
 master_params_part1 = iotbx.phil.parse("""\
 map_type = mFobs-DFmodel
@@ -191,9 +192,26 @@ def fit_water(water_and_peaks, xray_structure, params, log):
         h1 = uc.fractionalize(result.site_cart_h1_fitted)
         h2 = uc.fractionalize(result.site_cart_h2_fitted)
   if(d_best < 1.0):
-    scatterers[water_and_peaks.i_seq_o ].site = o
-    scatterers[water_and_peaks.i_seq_h1].site = h1
-    scatterers[water_and_peaks.i_seq_h2].site = h2
+    # do not move HOH located on special position
+    skip = False
+    sites = [scatterers[water_and_peaks.i_seq_o ].site,
+             scatterers[water_and_peaks.i_seq_h1].site,
+             scatterers[water_and_peaks.i_seq_h2].site]
+    for site in sites:
+      site_symmetry = sgtbx.site_symmetry(
+        xray_structure.unit_cell(),
+        xray_structure.space_group(),
+        site,
+        0.5,
+        True)
+      if(site_symmetry.n_matrices() != 1):
+        skip = True
+        break
+    #
+    if(not skip):
+      scatterers[water_and_peaks.i_seq_o ].site = o
+      scatterers[water_and_peaks.i_seq_h1].site = h1
+      scatterers[water_and_peaks.i_seq_h2].site = h2
   print >> log, "%6.3f"%d_best
 
 def run(fmodel, model, log, params = None):
