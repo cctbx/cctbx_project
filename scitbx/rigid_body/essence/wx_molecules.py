@@ -98,21 +98,21 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
 class App(wx_viewer.App):
 
   def __init__(self, args):
-    n = len(tst_molecules.simulation_factories)
+    n = tst_molecules.n_test_simulations
     if (len(args) != 1):
       raise Usage("""\
 scitbx.python wx_molecules.py sim_index
   sim_index range: 0 ... %d
 """ % (n-1))
-    self.simulation_factory_index = int(args[0])
-    assert 0 <= self.simulation_factory_index < n
+    self.simulation_index = int(args[0])
+    assert 0 <= self.simulation_index < n
     super(App, self).__init__(title="wx_molecules")
 
   def init_view_objects(self):
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
     self.view_objects.set_points_and_lines(
-      sim=tst_molecules.simulation_factories[self.simulation_factory_index]())
+      sim=tst_molecules.get_test_simulation_by_index(self.simulation_index))
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)

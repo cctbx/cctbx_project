@@ -500,26 +500,6 @@ test_cases = [
     loop_edge_bendings2_5=[]),
   ]
 
-def exercise_tyr_with_h():
-  # matching PDB file:
-  #  scitbx/rigid_body/proto/tst_molecules.py (svn rev. 8373):
-  #    simulation_tyr_with_h()
-  tt = construct(
-    n_vertices=21,
-    edge_list=[
-      (0, 1), (0, 2), (0, 12), (1, 3), (1, 6), (2, 4), (2, 7), (3, 5),
-      (3, 8), (4, 5), (4, 9), (5, 10), (10, 11), (12, 13), (12, 14),
-      (12, 16), (15, 16), (15, 20), (16, 17), (16, 18), (17, 19)])
-  cm = tt.cluster_manager
-  cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
-  cm.construct_spanning_trees(edge_sets=tt.edge_sets)
-  assert cm.clusters == [
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12],
-    [13, 14, 16], [15, 17, 18], [11], [20], [19]]
-  assert cm.hinge_edges == [
-    (-1, 0), (0, 12), (12, 16), (5, 10), (16, 15), (16, 17)]
-  assert cm.loop_edges == []
-
 def run(args):
   assert args in [[], ["--verbose"]]
   verbose = "--verbose" in args
@@ -583,7 +563,11 @@ def run(args):
       assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
       #
       print >> out
-  exercise_tyr_with_h()
+  #
+  from scitbx.graph import tst_tardy_pdb
+  for tc in tst_tardy_pdb.test_cases:
+    tc.tardy_tree_construct()
+  #
   print "OK"
 
 if (__name__ == "__main__"):
