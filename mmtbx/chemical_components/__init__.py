@@ -33,8 +33,12 @@ def is_residue_specified(code, alternate=False):
     return get_atom_names(code, alternate=alternate)
   return False
 
-def get_cif_dictionary(code):
-  if code in loaded_cifs:
+def get_cif_dictionary(code,
+                       filename=None,
+                       ):
+  if filename is not None:
+    cif = cif_parser.run(filename)
+  elif code in loaded_cifs:
     cif = loaded_cifs[code]
   else:
     filename = get_cif_filename(code)
