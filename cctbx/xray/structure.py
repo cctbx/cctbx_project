@@ -979,6 +979,15 @@ class structure(crystal.special_position_settings):
       points=self.sites_cart(),
       weights=atomic_weights)
 
+  def set_u_cart(self, u_cart, selection = None):
+    if(selection is not None):
+      self._scatterers.set_u_cart(unit_cell = self.unit_cell(),
+                                  u_cart    = u_cart,
+                                  selection = selection)
+    else:
+      self._scatterers.set_u_cart(unit_cell = self.unit_cell(),
+                                  u_cart    = u_cart)
+
   def show_scatterer_flags_summary(self, out=None):
     #XXX move to C++ (after anisotropic_flag is gone)
     if (out is None): out = sys.stdout

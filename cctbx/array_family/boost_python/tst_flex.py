@@ -183,6 +183,17 @@ def exercise_flex_xray_scatterer():
      [(-1,-1,-1,-1,-1,-1),
       (1,2,3,-0.6,0.2,-0.3),
       (3,1,2,-0.2,0.5,-0.1)])
+  #
+  a.set_u_cart(unit_cell = unit_cell,
+               u_cart    = flex.sym_mat3_double([(1,2,3,4,5,6),
+                                                 (0,0,0,1,2,3),
+                                                 (1,2,3,0,0,0)]),
+               selection = flex.size_t([1,2]))
+  assert approx_equal(a.extract_u_cart(unit_cell=unit_cell),
+     [(-1,-1,-1,-1,-1,-1),
+      (0,0,0,1,2,3),
+      (1,2,3,0,0,0)])
+  #
   unit_cell = uctbx.unit_cell((10,10,10,90,90,90))
   a.set_u_cart(
     unit_cell=unit_cell,
