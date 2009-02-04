@@ -21,14 +21,13 @@ class pdb_extract(object):
     O.loop_edges = loop_edges
     O.loop_edge_bendings = loop_edge_bendings
 
-  def tardy_tree_construct(O, loop_size_max=8):
+  def tardy_tree_construct(O, rigid_loop_size_max=8):
     from scitbx.graph import tardy_tree
     tt = tardy_tree.construct(
-      n_vertices=len(O.sites), edge_list=O.bonds, size_max=loop_size_max)
+      n_vertices=len(O.sites),
+      edge_list=O.bonds,
+      rigid_loop_size_max=rigid_loop_size_max).finalize()
     cm = tt.cluster_manager
-    cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
-    cm.construct_spanning_trees(edge_sets=tt.edge_sets)
-    cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
     if (O.clusters is None):
       print "tag:", O.tag
       print "clusters:", cm.clusters
