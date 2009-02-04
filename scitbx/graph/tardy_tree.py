@@ -54,20 +54,6 @@ class cluster_manager(object):
         break
     O.refresh_indices()
 
-  def merge_lones(O, edge_sets):
-    assert O.hinge_edges is None
-    for cii in xrange(len(O.clusters)):
-      ccii = O.clusters[cii]
-      if (len(ccii) != 1): continue
-      i = ccii[0]
-      es = edge_sets[i]
-      if (len(es) != 1): continue
-      j = iter(es).next()
-      cij = O.cluster_indices[j]
-      O.clusters[cij].extend(ccii)
-      del ccii[:]
-    O.tidy()
-
   def merge_clusters_with_multiple_connections(O, edge_sets):
     while True:
       repeat = False
@@ -94,38 +80,60 @@ class cluster_manager(object):
         break
     O.tidy()
 
+  def sort_by_overlapping_rigid_cluster_sizes(O, edge_sets):
+    cii_orcs = []
+    for cii,cluster in enumerate(O.clusters):
+      c = set(cluster)
+      for i in cluster:
+        c.update(edge_sets[i])
+      cii_orcs.append((cii, len(c)))
+    def cmp_elems(a, b):
+      if (a[1] > b[1]): return -1
+      if (a[1] < b[1]): return 1
+      return cmp(a[0], b[0])
+    cii_orcs.sort(cmp_elems)
+    new_clusters = []
+    for cii,orcs in cii_orcs:
+      new_clusters.append(O.clusters[cii])
+    del O.clusters[:]
+    O.clusters.extend(new_clusters)
+    O.refresh_indices()
+    return [orcs for cii,orcs in cii_orcs]
+
   def construct_spanning_trees(O, edge_sets):
     assert O.hinge_edges is None
+    orcs = O.sort_by_overlapping_rigid_cluster_sizes(edge_sets=edge_sets)
+    n_clusters = len(O.clusters)
     hinge_edges = [(-1,c[0]) for c in O.clusters]
     O.loop_edges = []
-    n_clusters = len(O.clusters)
-    if (n_clusters < 2):
-      O.hinge_edges = hinge_edges
-      return
-    w_max = len(O.clusters[0])
+    if (n_clusters == 0): w_max = -1
+    else:                 w_max = orcs[0]
     candi = []
     for i in xrange(w_max+1):
       candi.append([])
     done = [0] * n_clusters
-    new_clusters = []
-    for ip in xrange(n_clusters):
-      pe = hinge_edges[ip]
-      if (pe[0] != -1): continue
+    cluster_perm = []
+    for ip in xrange(len(O.clusters)):
+      he = hinge_edges[ip]
+      if (he[0] != -1): continue
       done[ip] = 1
-      new_clusters.append(O.clusters[ip])
+      cluster_perm.append(ip)
+      def set_loop_or_hinge_edge(w_max):
+        if (done[cij] != 0):
+          O.loop_edges.append((i,j))
+        else:
+          done[cij] = -1
+          w = orcs[cij]
+          candi[w].append(cij)
+          hinge_edges[cij] = (i,j)
+          if (w_max < w): w_max = w
+        return w_max
       w_max = 0
       for i in O.clusters[ip]:
         for j in edge_sets[i]:
           cij = O.cluster_indices[j]
           if (cij == ip): continue
-          if (done[cij] != 0):
-            O.loop_edges.append((i,j))
-          else:
-            done[cij] = -1
-            w = len(O.clusters[cij])
-            candi[w].append(cij)
-            hinge_edges[cij] = (i,j)
-            if (w_max < w): w_max = w
+          w_max = set_loop_or_hinge_edge(w_max=w_max)
       while True:
         kp = None
         ip = n_clusters
@@ -142,39 +150,38 @@ class cluster_manager(object):
             cij = O.cluster_indices[j]
             if (cij == ip): continue
             if (done[cij] == 1): continue
-            if (done[cij] == -1):
-              O.loop_edges.append((i,j))
-            else:
-              done[cij] = -1
-              w = len(O.clusters[cij])
-              candi[w].append(cij)
-              hinge_edges[cij] = (i,j)
-              if (w_max < w): w_max = w
+            w_max = set_loop_or_hinge_edge(w_max=w_max)
         assert done[ip] == -1
         done[ip] = 1
-        new_clusters.append(O.clusters[ip])
+        cluster_perm.append(ip)
+        he = hinge_edges[ip]
+        if (he[0] != -1):
+          O.clusters[O.cluster_indices[he[0]]].append(he[1])
+          O.clusters[ip].remove(he[1])
         for w_max in xrange(w_max,-1,-1):
           if (len(candi[w_max]) != 0):
             break
         else:
           break
-    assert len(new_clusters) == len(O.clusters)
+    assert len(cluster_perm) == n_clusters
     assert done.count(1) == len(done)
+    new_clusters = []
+    O.hinge_edges = []
+    for cii in cluster_perm:
+      c = O.clusters[cii]
+      if (len(c) != 0):
+        new_clusters.append(sorted(c))
+        O.hinge_edges.append(hinge_edges[cii])
     del O.clusters[:]
     O.clusters.extend(new_clusters)
     O.refresh_indices()
-    O.hinge_edges = [None] * n_clusters
-    for pe in hinge_edges:
-      cij = O.cluster_indices[pe[1]]
-      assert O.hinge_edges[cij] is None
-      O.hinge_edges[cij] = pe
     O.loop_edges.sort()
 
   def roots(O):
     assert O.hinge_edges is not None
     result = []
-    for i,pe in enumerate(O.hinge_edges):
-      if (pe[0] == -1):
+    for i,he in enumerate(O.hinge_edges):
+      if (he[0] == -1):
         result.append(i)
     return result
 
@@ -182,12 +189,12 @@ class cluster_manager(object):
     assert O.hinge_edges is not None
     result = []
     tid = 0
-    for i,pe in enumerate(O.hinge_edges):
-      if (pe[0] == -1):
+    for he in O.hinge_edges:
+      if (he[0] == -1):
         result.append(tid)
         tid += 1
       else:
-        result.append(result[O.cluster_indices[pe[0]]])
+        result.append(result[O.cluster_indices[he[0]]])
     return result
 
   def find_loop_edge_bendings(O, edge_sets):

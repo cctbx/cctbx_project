@@ -256,7 +256,6 @@ def construct_simulation(labels, sites, bonds, size_max=8):
   tt = tardy_tree.construct(
     n_vertices=len(sites), edge_list=bonds, size_max=size_max)
   cm = tt.cluster_manager
-  cm.merge_lones(edge_sets=tt.edge_sets)
   cm.merge_clusters_with_multiple_connections(edge_sets=tt.edge_sets)
   cm.construct_spanning_trees(edge_sets=tt.edge_sets)
   cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
