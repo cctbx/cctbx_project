@@ -390,13 +390,37 @@ HETATM   83  O80 VAN     1       0.816  -0.957   6.693  1.00  8.10           O
     (20, 21), (21, 22), (21, 23), (24, 25), (24, 26)]
   return construct_sim(pdb=pdb, bonds=bonds)
 
+def simulation_zinc00000015():
+  # ZINC00000015 C[C@@H](C(=O)[O-])[NH+](CCCl)CCCl
+  pdb = """\
+ATOM      1  C00 LIG A   1       2.209   1.054   0.461  1.00 20.00      A    C
+ATOM      2  C01 LIG A   1       0.708   1.054   0.461  1.00 20.00      A    C
+ATOM      3  C02 LIG A   1       0.094   1.054   1.832  1.00 20.00      A    C
+ATOM      4  O03 LIG A   1      -0.670   1.994   2.178  1.00 20.00      A    O
+ATOM      5  O04 LIG A   1       0.433   0.179   2.672  1.00 20.00      A    O-1
+ATOM      6  N05 LIG A   1       0.121   0.117  -0.463  1.00 20.00      A    N+1
+ATOM      7  C06 LIG A   1       0.808  -1.157  -0.363  1.00 20.00      A    C
+ATOM      8  C07 LIG A   1       1.154  -1.925  -1.637  1.00 20.00      A    C
+ATOM      9 CL08 LIG A   1       1.969  -3.508  -1.515  1.00 20.00      A   CL
+ATOM     10  C09 LIG A   1      -1.281  -0.063  -0.144  1.00 20.00      A    C
+ATOM     11  C10 LIG A   1      -2.233  -0.595  -1.214  1.00 20.00      A    C
+ATOM     12 CL11 LIG A   1      -3.974  -0.726  -0.854  1.00 20.00      A   CL
+ATOM     13  H12 LIG A   1       0.449   2.022   0.057  1.00 20.00      A    H
+ATOM     14  H13 LIG A   1       0.214   0.498  -1.470  1.00 20.00      A    H
+"""
+  bonds=[
+    (0, 1), (1, 2), (1, 5), (1, 12), (2, 3), (2, 4), (5, 6), (5, 9), (5, 13),
+    (6, 7), (7, 8), (9, 10), (10, 11)]
+  return construct_sim(pdb=pdb, bonds=bonds)
+
 simulation_factories = [
   simulation_gly_no_h,
   simulation_gly_with_nh,
   simulation_ala_no_h,
   simulation_ala_with_h,
   simulation_tyr_with_h,
-  simulation_van_fragment]
+  simulation_van_fragment,
+  simulation_zinc00000015]
 
 def exercise_sim(out, n_dynamics_steps, delta_t, sim):
   sim.check_d_pot_d_q()
