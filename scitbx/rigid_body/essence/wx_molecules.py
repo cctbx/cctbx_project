@@ -36,8 +36,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         color = (1,0,0)
       else:
         cii, cij = [cm.cluster_indices[i] for i in line]
-        assert cii == cij
-        if (cm.hinge_edges[cii][0] == -1):
+        if (cii == cij and cm.hinge_edges[cii][0] == -1):
           color = (0,1,1)
         else:
           color = (0,0,1)
