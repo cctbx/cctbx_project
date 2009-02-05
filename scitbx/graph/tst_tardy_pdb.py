@@ -6,6 +6,7 @@ class pdb_extract(object):
         tag,
         pdb,
         bonds,
+        rigid_loop_size_max=8,
         clusters=None,
         hinge_edges=None,
         loop_edges=None,
@@ -16,13 +17,16 @@ class pdb_extract(object):
       O.labels.append(line[22:26].strip()+"."+line[12:16].strip())
       O.sites.append(matrix.col([float(line[30+i*8:38+i*8]) for i in [0,1,2]]))
     O.bonds = bonds
+    O.rigid_loop_size_max = rigid_loop_size_max
     O.clusters = clusters
     O.hinge_edges = hinge_edges
     O.loop_edges = loop_edges
     O.loop_edge_bendings = loop_edge_bendings
 
-  def tardy_tree_construct(O, rigid_loop_size_max=8):
+  def tardy_tree_construct(O, rigid_loop_size_max=None):
     from scitbx.graph import tardy_tree
+    if (rigid_loop_size_max is None):
+      rigid_loop_size_max = O.rigid_loop_size_max
     tt = tardy_tree.construct(
       n_vertices=len(O.sites),
       edge_list=O.bonds,
@@ -223,5 +227,48 @@ ATOM     14  H13 LIG A   1       0.214   0.498  -1.470  1.00 20.00      A    H
   hinge_edges=[(-1, 1), (1, 5), (1, 2), (5, 6), (6, 7), (5, 9), (9, 10)],
   loop_edges=[],
   loop_edge_bendings=[]),
+
+pdb_extract(
+  tag="C1CCCCCCC1",
+  pdb="""\
+ATOM      1  C01 LIG A   1      -0.602   0.044  -1.758  1.00 20.00      A    C
+ATOM      2  C02 LIG A   1       0.946   0.044  -1.758  1.00 20.00      A    C
+ATOM      3  C03 LIG A   1       1.549   0.044  -0.333  1.00 20.00      A    C
+ATOM      4  C04 LIG A   1       0.985   1.155   0.557  1.00 20.00      A    C
+ATOM      5  C05 LIG A   1       0.430   0.619   1.870  1.00 20.00      A    C
+ATOM      6  C06 LIG A   1      -0.536  -0.585   1.672  1.00 20.00      A    C
+ATOM      7  C07 LIG A   1      -1.590  -0.345   0.547  1.00 20.00      A    C
+ATOM      8  C08 LIG A   1      -1.184  -0.969  -0.799  1.00 20.00      A    C
+ATOM      9 H011 LIG A   1      -0.949  -0.183  -2.755  1.00 20.00      A    H
+ATOM     10 H012 LIG A   1      -0.952   1.028  -1.483  1.00 20.00      A    H
+ATOM     11 H021 LIG A   1       1.293  -0.834  -2.283  1.00 20.00      A    H
+ATOM     12 H022 LIG A   1       1.293   0.921  -2.283  1.00 20.00      A    H
+ATOM     13 H031 LIG A   1       2.618   0.172  -0.411  1.00 20.00      A    H
+ATOM     14 H032 LIG A   1       1.349  -0.911   0.130  1.00 20.00      A    H
+ATOM     15 H041 LIG A   1       1.773   1.861   0.775  1.00 20.00      A    H
+ATOM     16 H042 LIG A   1       0.196   1.666   0.025  1.00 20.00      A    H
+ATOM     17 H051 LIG A   1       1.254   0.304   2.494  1.00 20.00      A    H
+ATOM     18 H052 LIG A   1      -0.102   1.413   2.373  1.00 20.00      A    H
+ATOM     19 H061 LIG A   1      -1.057  -0.766   2.600  1.00 20.00      A    H
+ATOM     20 H062 LIG A   1       0.045  -1.461   1.425  1.00 20.00      A    H
+ATOM     21 H071 LIG A   1      -2.531  -0.775   0.857  1.00 20.00      A    H
+ATOM     22 H072 LIG A   1      -1.722   0.718   0.413  1.00 20.00      A    H
+ATOM     23 H081 LIG A   1      -0.452  -1.743  -0.620  1.00 20.00      A    H
+ATOM     24 H082 LIG A   1      -2.056  -1.415  -1.253  1.00 20.00      A    H
+""",
+  bonds=[
+    (0, 1), (0, 7), (0, 8), (0, 9), (1, 2), (1, 10), (1, 11),
+    (2, 3), (2, 12), (2, 13), (3, 4), (3, 14), (3, 15),
+    (4, 5), (4, 16), (4, 17), (5, 6), (5, 18), (5, 19),
+    (6, 7), (6, 20), (6, 21), (7, 22), (7, 23)],
+  rigid_loop_size_max=6,
+  clusters=[
+    [0, 1, 7, 8, 9],
+    [2, 10, 11], [3, 12, 13], [4, 14, 15], [5, 16, 17], [6, 18, 19],
+    [20, 21], [22, 23]],
+  hinge_edges=[
+    (-1, 0), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (0, 7)],
+  loop_edges=[(6, 7)],
+  loop_edge_bendings=[(0, 6), (5, 7), (6, 22), (6, 23), (7, 20), (7, 21)]),
 
 ]
