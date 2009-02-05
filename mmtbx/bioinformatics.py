@@ -191,7 +191,7 @@ class fasta_alignment(alignment):
       in zip( self.alignments, self.names, self.descriptions )
       ] )
 
-  
+
   def __str__(self):
 
     return self.format( 70 )
@@ -224,7 +224,7 @@ class pir_alignment(alignment):
       in zip( self.alignments, self.names, self.types, self.descriptions )
       ] )
 
-  
+
   def __str__(self):
 
     return self.format( 70 )
@@ -393,11 +393,11 @@ _implemented_sequence_parsers = {
   }
 
 def sequence_parser_for(file_name):
-  
+
   ( name, extension ) = os.path.splitext( file_name )
-  
+
   return _implemented_sequence_parsers.get( extension )
-  
+
 
 def known_sequence_formats():
 
@@ -411,10 +411,10 @@ class generic_alignment_parser(object):
   """
 
   def fail(self, text):
-    
+
     return ( None, text )
 
-  
+
   def valid_alignments(self, alignments):
 
     for line2 in alignments[1:]:
@@ -456,23 +456,23 @@ class sequential_alignment_parser(generic_alignment_parser):
   """
   Specific for sequential format alignments
   """
-  
+
   def __init__(self, regex, type):
 
     self.regex = regex
     self.type = type
-  
+
 
   def parse(self, text):
 
     data = self.extract( text )
-    
+
     if text and not data:
       return self.fail( text )
 
     preprocessed_data = dict( [ ( name, [ info[ name ] for info in data ] )
       for name in self.regex.groupindex.keys() ] )
-    
+
     return self.assess_parsing_results(
       data_dict = preprocessed_data,
       text = text
@@ -541,7 +541,7 @@ class clustal_alignment_parser(generic_alignment_parser):
       )
 
 
-# Alignment parser instances that can be used as functions 
+# Alignment parser instances that can be used as functions
 clustal_alignment_parse = clustal_alignment_parser()
 pir_alignment_parse = sequential_alignment_parser(
   regex = re.compile(
@@ -592,9 +592,9 @@ _implemented_alignment_parsers = {
   }
 
 def alignment_parser_for(file_name):
-  
+
   ( name, extension ) = os.path.splitext( file_name )
-  
+
   return _implemented_alignment_parsers.get( extension )
 
 

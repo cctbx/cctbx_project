@@ -218,7 +218,7 @@ class manager(object):
         bonded_distance_cutoff_epsilon=None):
     if (bonded_distance_cutoff_epsilon is None):
       bonded_distance_cutoff_epsilon = 1.e-6
-    bonded_distance_cutoff = -1      
+    bonded_distance_cutoff = -1
     def check_bonded_distance_cutoff():
         if (    self.max_reasonable_bond_distance is not None
             and bonded_distance_cutoff > self.max_reasonable_bond_distance):
