@@ -367,7 +367,10 @@ class special_position_settings(symmetry):
       u_star_tolerance=self.u_star_tolerance(),
       assert_min_distance_sym_equiv=self.assert_min_distance_sym_equiv())
 
-  def site_symmetry(self, site):
+  def site_symmetry(self, site=None, site_cart=None):
+    assert [site, site_cart].count(None) == 1
+    if (site_cart is not None):
+      site = self.unit_cell().fractionalize(site_cart)
     return sgtbx.site_symmetry(
       self.unit_cell(),
       self.space_group(),
