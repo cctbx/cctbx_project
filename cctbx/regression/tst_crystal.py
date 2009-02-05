@@ -198,6 +198,8 @@ def exercise_special_position_settings():
   assert sp.u_star_tolerance() == 2
   assert sp.assert_min_distance_sym_equiv() == False
   assert sp.site_symmetry((0,0,0)).multiplicity() == 1
+  assert sp.site_symmetry(site=(0,0,0)).multiplicity() == 1
+  assert sp.site_symmetry(site_cart=(0,0,0)).multiplicity() == 1
   assert str(sp.sym_equiv_sites((0,0,0)).special_op()) == "0,0,0"
   sites_cart = flex.vec3_double([(2,1,3), (0,0,0)])
   t = sp.site_symmetry_table(sites_cart=sites_cart)
