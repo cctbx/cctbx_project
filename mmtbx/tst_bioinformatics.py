@@ -271,7 +271,7 @@ class test_alignment(unittest.TestCase):
       )
     self.assertEqual( alignment3.identity_count(), 0 )
 
-  
+
 class test_fasta_alignment(unittest.TestCase):
 
   def setUp(self):
@@ -320,7 +320,7 @@ class test_fasta_alignment(unittest.TestCase):
       + "THATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK"
       )
 
-  
+
   def testStr(self):
     self.assertEqual(
       str( self.alignment ),
@@ -400,7 +400,7 @@ class test_pir_alignment(unittest.TestCase):
       + "  FDTHATNRNT-DGSTDYGILQINSRWWCNDGRTPGSK*"
       )
 
-  
+
   def testStr(self):
     self.assertEqual(
       str( self.alignment ),
@@ -800,19 +800,19 @@ class test_sequence_parse(unittest.TestCase):
       pirs[1].sequence,
       pir_sequence
       )
-    
-    
+
+
   def test_filename_selection(self):
-    
+
     self.assertEqual(
       bioinformatics.sequence_parser_for( "dummy.pir" ),
       bioinformatics.pir_sequence_parse
       )
     self.assertEqual( bioinformatics.sequence_parser_for( "seq" ), None )
-  
-  
+
+
   def test_known_formats(self):
-    
+
     self.assertEqual(
       sorted( bioinformatics.known_sequence_formats() ),
       [ ".fasta", ".pir", ".seq" ]
@@ -915,8 +915,8 @@ class test_alignment_parse(unittest.TestCase):
     self.assertEqual( ali.types, [] )
     self.assertEqual( ali.descriptions, [] )
     self.assertEqual( ali.alignments, [] )
-    
-  
+
+
   def testFasta(self):
 
     ( ali, unknowns ) = bioinformatics.fasta_alignment_parse( fasta_ali1 )
@@ -963,7 +963,7 @@ class test_alignment_parse(unittest.TestCase):
         ]
       )
 
-  
+
   def testAli(self):
 
     ( ali, unknowns ) = bioinformatics.ali_alignment_parse( ali_ali1 )
@@ -1004,16 +1004,16 @@ class test_alignment_parse(unittest.TestCase):
       )
 
   def test_filename_selection(self):
-    
+
     self.assertEqual(
       bioinformatics.alignment_parser_for( "dummy.pir" ),
       bioinformatics.pir_alignment_parse
       )
     self.assertEqual( bioinformatics.alignment_parser_for( "clustal" ), None )
-  
-  
+
+
   def test_known_formats(self):
-    
+
     self.assertEqual(
       sorted( bioinformatics.known_alignment_formats() ),
       [ ".ali", ".aln", ".clustal", ".fasta", ".pir" ]

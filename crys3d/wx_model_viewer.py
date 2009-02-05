@@ -175,7 +175,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       self.update_coords()
     self._structure_was_updated = False
     self.update_view(True, True)
-    if (recenter or 
+    if (recenter or
         (event is not None and getattr(event, "recenter", None) == True)) :
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
