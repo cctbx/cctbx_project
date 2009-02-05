@@ -202,7 +202,7 @@ def run(filename):
         if len(non_loop[key])==1:
           item = non_loop[key][0]
         else:
-          item = "".join(non_loop[key])
+          item = " ".join(non_loop[key])
         sk = key.split(".")[1].strip()
         if item not in ["?", "."]:
           try: item = cif_keyword_dictionary[cif_key][sk](item)
