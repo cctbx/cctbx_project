@@ -45,7 +45,7 @@ namespace {
       .enable_pickling()
     ;
     shared_wrapper<mat3<int> >::wrap("mat3_int");
-    shared_wrapper<tiny<std::ptrdiff_t, 3> >::wrap("ptrdiff_t_triplet");
+    shared_wrapper<tiny<int, 3> >::wrap("tiny_int_3");
       // used by scitbx.iso_surface
   }
 

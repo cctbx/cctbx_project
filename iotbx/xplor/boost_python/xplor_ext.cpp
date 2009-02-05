@@ -1,9 +1,9 @@
 #include <iotbx/error.h>
 #include <cctbx/boost_python/flex_fwd.h>
-#include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
 #include <cctbx/uctbx.h>
 #include <scitbx/array_family/flex_types.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 #include <boost/python/module.hpp>
 #include <boost/python/class.hpp>
 #include <boost/python/args.hpp>
@@ -180,7 +180,7 @@ namespace iotbx { namespace boost_python { namespace xplor_ext {
     cctbx::uctbx::unit_cell const& unit_cell,
     af::int3 const& gridding_first,
     af::int3 const& gridding_last,
-    af::const_ref<double, cctbx::maptbx::c_grid_padded_p1<3> > const& data,
+    af::const_ref<double, af::c_grid_padded_periodic<3> > const& data,
     double average,
     double standard_deviation)
   {
