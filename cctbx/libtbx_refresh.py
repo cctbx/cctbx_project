@@ -29,9 +29,7 @@ if (self.env.is_ready_for_build()):
     os.makedirs(target_dir)
   flex_fwd_h.run(target_dir)
 
-  # asu_table
-  target_dir = self.env.under_build("cctbx/sgtbx/direct_space_asu/proto")
-  print message_template % target_dir
+  # reference_table.cpp : checking that it is up-to-date
   for f,sig in [
       ("reference_table.py", "5e11890e01d068e93a1273a8a8bea2a4"),
       ("short_cuts.py", "bf76fe6d609a622908e94403d24b40d7"),
