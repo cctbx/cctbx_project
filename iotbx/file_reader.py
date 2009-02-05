@@ -1,4 +1,6 @@
 
+# TODO: map files
+
 import sys, os, re
 from mmtbx.monomer_library import server
 from iotbx.phil import parse as parse_phil
@@ -7,15 +9,19 @@ from iotbx.reflection_file_reader import any_reflection_file
 from iotbx.reflection_file_utils import reflection_file_server
 from libtbx.utils import Sorry
 
-standard_file_types = ["hkl", "map", "pdb", "cif", "phil", "seq"]
+standard_file_types = ["hkl", "map", "pdb", "cif", "phil", "seq", "xml", "pkl",
+                       "txt"]
 
 standard_file_extensions = {
   'pdb'  : ["pdb", "ent"],
-  'hkl'  : ["mtz", "hkl", "sca", "cns", "xplor"],
+  'hkl'  : ["mtz", "hkl", "sca", "cns", "xplor", "cv", "ref"],
   'cif'  : ["cif"],
   'seq'  : ["fa", "faa", "seq", "pir", "dat"],
   'map'  : ["map", "ccp4"],
-  'phil' : ["params", "eff", "def", "phil"]
+  'phil' : ["params", "eff", "def", "phil"],
+  'xml'  : ["xml"],
+  'pkl'  : ["pickle"],
+  'txt'  : ["txt", "log", "html"],
 }
 compression_extensions = ["gz", "Z", "bz2", "zip"]
 
@@ -25,7 +31,10 @@ standard_file_descriptions = {
   'cif'  : "Restraints",
   'seq'  : "Sequence",
   'map'  : "Map",
-  'phil' : "Parameters"
+  'phil' : "Parameters",
+  'xml'  : "XML",
+  'pkl'  : "Python pickle",
+  'txt'  : "Text"
 }
 
 class any_file (object) :
@@ -33,7 +42,7 @@ class any_file (object) :
       self,
       file_name,
       get_processed_file=False,
-      valid_types=["pdb","hkl","cif","seq","map","phil"]) :
+      valid_types=["pdb","hkl","cif","seq","phil", "txt"]) :
 
     if not os.path.isfile(file_name) :
       raise Sorry("%s is not a valid file.")
@@ -51,20 +60,19 @@ class any_file (object) :
         try :
           read_method = getattr(self, "try_as_%s" % file_type)
           read_method()
-          break
         except Exception, e :
           self.file_type = None
-
+          self.file_object = None
+        else :
+          break
     if self.file_type is None :
       self.try_all_types()
 
   def try_as_pdb (self) :
-    if self.file_type is not None : return False
     if is_pdb_file(self.file_name) :
       self.file_type = "pdb"
 
   def try_as_hkl (self) :
-    if self.file_type is not None : return False
     hkl_file = any_reflection_file(self.file_name)
     self.file_server = reflection_file_server(
       crystal_symmetry=None,
@@ -75,24 +83,30 @@ class any_file (object) :
     self.file_object = hkl_file
 
   def try_as_cif (self) :
-    if self.file_type is not None : return False
     cif_object = server.read_cif(file_name=self.file_name)
     self.file_type = "cif"
     self.file_object = cif_object
 
   def try_as_phil (self) :
-    if self.file_type is not None : return False
     phil_object = parse_phil(file_name=self.file_name)
     self.file_type = "phil"
     self.file_object = phil_object
 
   def try_as_seq (self) :
-    if self.file_type is not None : return False
+    self.try_as_txt()
     self.file_type = "seq"
 
   def try_as_map (self) :
-    if self.file_type is not None : return False
-    pass
+    raise Sorry("Map input not currently supported.")
+
+  def try_as_pickle (self) :
+    raise Sorry("Pickle input not currently supported.")
+
+  def try_as_txt (self) :
+    file_as_string = open(self.file_name).read()
+    file_as_ascii = file_as_string.decode("ascii")
+    self.file_type = "txt"
+    self.file_object = file_as_string
 
   def try_all_types (self) :
     for filetype in standard_file_types :
@@ -100,7 +114,10 @@ class any_file (object) :
       try :
         read_method()
       except Exception, e :
-        pass
+        continue
+      else :
+        if self.file_type is not None :
+          break
 
   def file_info (self, show_file_size=True) :
     file_size_str = ""
