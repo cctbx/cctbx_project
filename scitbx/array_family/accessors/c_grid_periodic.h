@@ -43,7 +43,9 @@ namespace scitbx { namespace af {
       std::size_t
       size_1d() const
       {
-        return this->elems[0] * this->elems[1] * this->elems[2];
+        return static_cast<std::size_t>(this->elems[0])
+             * static_cast<std::size_t>(this->elems[1])
+             * static_cast<std::size_t>(this->elems[2]);
       }
 
       index_type
