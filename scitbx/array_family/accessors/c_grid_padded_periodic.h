@@ -73,7 +73,9 @@ namespace scitbx { namespace af {
       std::size_t
       size_1d() const
       {
-        return all_[0] * all_[1] * all_[2];
+        return static_cast<std::size_t>(all_[0])
+             * static_cast<std::size_t>(all_[1])
+             * static_cast<std::size_t>(all_[2]);
       }
 
       index_type const&
@@ -85,7 +87,9 @@ namespace scitbx { namespace af {
       std::size_t
       focus_size_1d() const
       {
-        return focus_[0] * focus_[1] * focus_[2];
+        return static_cast<std::size_t>(focus_[0])
+             * static_cast<std::size_t>(focus_[1])
+             * static_cast<std::size_t>(focus_[2]);
       }
 
       bool is_padded() const
