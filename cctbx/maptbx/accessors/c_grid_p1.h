@@ -1,3 +1,6 @@
+// DEPRECATED FILE!
+// replaced by scitbx/array_family/accessors/c_grid_periodic.h
+
 #ifndef CCTBX_MAPTBX_ACCESSORS_C_GRID_P1_H
 #define CCTBX_MAPTBX_ACCESSORS_C_GRID_P1_H
 

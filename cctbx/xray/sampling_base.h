@@ -2,7 +2,7 @@
 #define CCTBX_XRAY_SAMPLING_BASE_H
 
 #include <cctbx/xray/scattering_type_registry.h>
-#include <cctbx/maptbx/accessors/c_grid_padded_p1.h>
+#include <scitbx/array_family/accessors/c_grid_padded_periodic.h>
 
 namespace cctbx { namespace xray {
 
@@ -526,7 +526,7 @@ namespace cctbx { namespace xray {
   class sampling_base
   {
     public:
-      typedef typename maptbx::c_grid_padded_p1<3> accessor_type;
+      typedef typename af::c_grid_padded_periodic<3> accessor_type;
       typedef typename accessor_type::index_type grid_point_type;
       typedef typename grid_point_type::value_type grid_point_element_type;
       typedef std::vector<FloatType> u_radius_cache_t;
