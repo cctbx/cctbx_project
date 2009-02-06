@@ -1,4 +1,4 @@
-from scitbx.graph.utils import construct_edge_sets
+from scitbx.graph.utils import construct_edge_sets, extract_edge_list
 
 class cluster_manager(object):
 
@@ -16,22 +16,26 @@ class cluster_manager(object):
     O.loop_edges = None
     O.loop_edge_bendings = None
 
-  def connect(O, i, j):
+  def connect_clusters(O, cii, cij, optimize):
     assert O.hinge_edges is None
-    ci = O.cluster_indices
-    cii = ci[i]
-    cij = ci[j]
     if (cii == cij): return
+    ci = O.cluster_indices
     ccij = O.clusters[cij]
     ccii = O.clusters[cii]
-    if (len(ccij) <= len(ccii)):
+    if (not optimize or len(ccij) <= len(ccii)):
       for k in ccij: ci[k] = cii
       ccii.extend(ccij)
       del ccij[:]
-    else:
-      for k in ccii: ci[k] = cij
-      ccij.extend(ccii)
-      del ccii[:]
+      return cii
+    for k in ccii: ci[k] = cij
+    ccij.extend(ccii)
+    del ccii[:]
+    return cij
+
+  def connect_vertices(O, i, j, optimize):
+    assert O.hinge_edges is None
+    ci = O.cluster_indices
+    return O.connect_clusters(cii=ci[i], cij=ci[j], optimize=optimize)
 
   def refresh_indices(O):
     ci = O.cluster_indices
@@ -70,15 +74,24 @@ class cluster_manager(object):
           if (len(multiple) == 0):
             break
           for cij in multiple:
-            ccij = O.clusters[cij]
-            for j in ccij:
-              O.cluster_indices[j] = cii
-            O.clusters[cii].extend(ccij)
-            del ccij[:]
+            assert O.connect_clusters(cii=cii, cij=cij, optimize=False) == cii
             repeat = True
       if (not repeat):
         break
     O.tidy()
+
+  def cluster_edge_sets(O, edge_list):
+    result = []
+    for i in xrange(len(O.clusters)):
+      result.append(set())
+    ci = O.cluster_indices
+    for i,j in edge_list:
+      cii = ci[i]
+      cij = ci[j]
+      if (cii == cij): continue
+      result[cii].add(cij)
+      result[cij].add(cii)
+    return result
 
   def sort_by_overlapping_rigid_cluster_sizes(O, edge_sets):
     cii_orcs = []
@@ -245,8 +258,27 @@ class construct(object):
         iv=iv,
         traversing=traversing)
       for jv in loop_set:
-        O.cluster_manager.connect(i=iv, j=jv)
+        O.cluster_manager.connect_vertices(i=iv, j=jv, optimize=True)
     O.cluster_manager.tidy()
+
+  def find_cluster_loops(O):
+    cm = O.cluster_manager
+    while True:
+      cm.merge_clusters_with_multiple_connections(edge_sets=O.edge_sets)
+      ces = cm.cluster_edge_sets(edge_list=O.edge_list)
+      cel = extract_edge_list(edge_sets=ces)
+      ctt = construct(
+        n_vertices=len(cm.clusters), edge_list=cel, rigid_loop_size_max=6)
+      ccm = ctt.cluster_manager
+      ccm.merge_clusters_with_multiple_connections(edge_sets=ctt.edge_sets)
+      if (len(ccm.clusters) == len(cm.clusters)):
+        break
+      for cc in ccm.clusters:
+        cii = cc[0]
+        for cij in cc[1:]:
+          cii = cm.connect_clusters(cii=cii, cij=cij, optimize=True)
+      cm.tidy()
+    return O
 
   def finalize(O):
     cm = O.cluster_manager
