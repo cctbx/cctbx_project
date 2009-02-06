@@ -240,7 +240,7 @@ def construct_bodies(sites, cluster_manager):
         sites=[matrix.col(sites[i]) for i in cluster],
         pivot=normal_sites[1],
         normal=(normal_sites[1]-normal_sites[0]).normalize())
-      body.parent = cm.cluster_indices[he[0]]
+      body.parent = cm.cluster_indices[he[1]]
     body.i_seqs = cluster
     result.append(body)
   return result
