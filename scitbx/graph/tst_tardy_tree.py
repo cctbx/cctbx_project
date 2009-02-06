@@ -11,21 +11,21 @@ def exercise_cluster_manager():
   for p in xrange(2):
     assert cm.cluster_indices == [0,1,2,3,4]
     assert cm.clusters == [[0],[1],[2],[3],[4]]
-    cm.connect(i=0, j=0)
+    cm.connect_vertices(i=0, j=0, optimize=True)
   for p in xrange(2):
-    cm.connect(i=1, j=3)
+    cm.connect_vertices(i=1, j=3, optimize=True)
     assert cm.cluster_indices == [0,1,2,1,4]
     assert cm.clusters == [[0],[1,3],[2],[],[4]]
   for p in xrange(2):
-    cm.connect(i=0, j=3)
+    cm.connect_vertices(i=0, j=3, optimize=True)
     assert cm.cluster_indices == [1,1,2,1,4]
     for q in xrange(2):
       assert cm.clusters == [[],[1,3,0],[2],[],[4]]
       cm.refresh_indices()
-  cm.connect(i=2, j=4)
+  cm.connect_vertices(i=2, j=4, optimize=True)
   assert cm.clusters == [[],[1,3,0],[2,4],[],[]]
   assert cm.cluster_indices == [1,1,2,1,2]
-  cm.connect(i=2, j=3)
+  cm.connect_vertices(i=2, j=3, optimize=True)
   assert cm.clusters == [[],[1,3,0,2,4],[],[],[]]
   assert cm.cluster_indices == [1,1,1,1,1]
   cm.tidy()
@@ -33,14 +33,14 @@ def exercise_cluster_manager():
   assert cm.cluster_indices == [0,0,0,0,0]
   #
   cm = cluster_manager(n_vertices=6)
-  cm.connect(i=3, j=0)
-  cm.connect(i=2, j=4)
-  cm.connect(i=1, j=2)
+  cm.connect_vertices(i=3, j=0, optimize=True)
+  cm.connect_vertices(i=2, j=4, optimize=True)
+  cm.connect_vertices(i=1, j=2, optimize=True)
   cm.tidy()
   assert cm.clusters == [[1,2,4],[0,3],[5]]
   assert cm.cluster_indices == [1,0,0,1,0,2]
   edges = [(0,1), (0,2), (3,4), (4,5)]
-  cm.connect(i=4, j=5)
+  cm.connect_vertices(i=4, j=5, optimize=True)
   cm.tidy()
   assert cm.clusters == [[1,2,4,5],[0,3]]
   assert cm.cluster_indices == [1,0,0,1,0,0]
@@ -566,7 +566,13 @@ def run(args):
   #
   from scitbx.graph import tst_tardy_pdb
   for tc in tst_tardy_pdb.test_cases:
-    tc.tardy_tree_construct()
+    tt = tc.tardy_tree_construct()
+    tx = construct(
+      n_vertices=tt.n_vertices,
+      edge_list=tt.edge_list,
+      rigid_loop_size_max=6)
+    tx.find_cluster_loops()
+    tx.finalize()
   #
   print "OK"
 
