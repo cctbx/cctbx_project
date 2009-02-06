@@ -140,6 +140,20 @@ def generate_chemical_components_codes():
       if filename.find("data_")!=0: continue
       yield filename[5:-4]
 
+def get_header(code):
+  filename=get_cif_filename(code)
+  if not filename: return ""
+  f=file(filename)
+  lines=f.readlines()
+  f.close()
+  outl=""
+  for i, line in enumerate(lines):
+    outl+="  %s" % line
+    if i<3: continue
+    if line.find("_chem_comp.")==-1:
+      break
+  return outl
+
 if __name__=="__main__":
   print '\nSMILES'
   print get_smiles(sys.argv[1])
