@@ -1961,9 +1961,10 @@ class symmetry_issues(object):
     self.score_all()
     self.wind_up()
     self.show(self.out)
-
     self.xs_with_pg_choice_in_standard_setting = crystal.symmetry( unit_cell   = self.miller_niggli.unit_cell(),
-                                                                   space_group = self.pg_choice ).as_reference_setting()
+                                                                   space_group = self.pg_choice,
+                                                                   assert_is_compatible_unit_cell=False,
+                                                                   ).as_reference_setting()
 
 
   def make_r_table(self):
