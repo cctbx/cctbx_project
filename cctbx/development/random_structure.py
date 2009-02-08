@@ -229,7 +229,9 @@ class xray_structure(xray.structure):
         "space_group_info",
         "unit_cell",
         "min_distance_sym_equiv",
-        "sites_frac"))
+        "sites_frac",
+        "use_u_iso"))
+    self.use_u_iso_ = use_u_iso
     if (sites_frac is not None):
       assert self.elements is not None
       assert self.n_scatterers is None
@@ -310,7 +312,7 @@ class xray_structure(xray.structure):
         fdp = f0 * random.random() * self.random_f_double_prime_scale
       scatterer.fp = fp
       scatterer.fdp = fdp
-      if (self.use_u_iso):
+      if (self.use_u_iso_):
         #scatterer.flags.set_use_u_iso(True) # XXX this will come to replace two lines below
         scatterer.anisotropic_flag = False
         scatterer.flags.set_use_u(iso=True)
