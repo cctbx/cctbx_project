@@ -14,10 +14,10 @@ from libtbx.str_utils import format_value
 
 class lbfgs(object):
 
-  def __init__(self, restraints_manager,
-                     fmodels,
-                     model,
-                     all_params,
+  def __init__(self, fmodels,
+                     restraints_manager       = None,
+                     model                    = None,
+                     all_params               = None,
                      target_weights           = None,
                      tan_b_iso_max            = None,
                      refine_xyz               = False,
@@ -28,7 +28,8 @@ class lbfgs(object):
                      iso_restraints           = None,
                      h_params                 = None,
                      u_min                    = adptbx.b_as_u(-30.0),
-                     u_max                    = adptbx.b_as_u(1000.0)):
+                     u_max                    = adptbx.b_as_u(1000.0),
+                     collect_monitor          = True):
     timer = user_plus_sys_time()
     adopt_init_args(self, locals())
     self.xray_structure = self.fmodels.fmodel_xray().xray_structure
@@ -51,14 +52,16 @@ class lbfgs(object):
                                               angle_n  = None,
                                               w        = 0,
                                               wxn      = 1)
-    self.monitor = monitor(weights        = self.weights,
+    if(self.collect_monitor):
+      self.monitor = monitor(
+                           weights        = self.weights,
                            fmodels        = fmodels,
                            model          = model,
                            iso_restraints = iso_restraints,
                            refine_xyz     = refine_xyz,
                            refine_adp     = refine_adp,
                            refine_occ     = False)
-    self.monitor.collect()
+    if(self.collect_monitor): self.monitor.collect()
     self.fmodels.create_target_functors()
     self.fmodels.prepare_target_functors_for_minimization()
     #
@@ -87,8 +90,9 @@ class lbfgs(object):
     #
     self.regularize_h_and_update_xray_structure(xray_structure =
       self.xray_structure)
-    self.monitor.collect(iter = self.minimizer.iter(),
-                         nfun = self.minimizer.nfun())
+    if(self.collect_monitor):
+      self.monitor.collect(iter = self.minimizer.iter(),
+                           nfun = self.minimizer.nfun())
 
   def exclude_scattering_of_hydrogens(self):
     hrltisfh = False
@@ -101,7 +105,8 @@ class lbfgs(object):
       self.h_params.refine == "riding" and \
       self.hd_flag and \
       self.fmodels.fmodel_n is None and \
-      self.all_params.main.scattering_table != "neutron"
+      (self.all_params is not None and
+       self.all_params.main.scattering_table != "neutron")
 
   def apply_shifts(self):
     # XXX inefficient
@@ -149,7 +154,7 @@ class lbfgs(object):
       if(compute_gradients):
         sgc = self.stereochemistry_residuals.gradients
         # ias do not participate in geometry restraints
-        if(self.model.ias_selection is not None and
+        if(self.model is not None and self.model.ias_selection is not None and
            self.model.ias_selection.count(True) > 0):
           sgc.extend(flex.vec3_double(
             self.model.ias_selection.count(True),[0,0,0]))
@@ -162,7 +167,7 @@ class lbfgs(object):
        and self.weights.w > 0.0 and self.iso_restraints is not None):
       use_hd = False
       if(self.fmodels.fmodel_n is not None or
-         self.all_params.main.scattering_table == "neutron" or
+         (self.all_params is not None and self.all_params.main.scattering_table == "neutron") or
          self.h_params.refine == "individual"):
         use_hd = True
       energies_adp = self.model.energies_adp(
@@ -203,7 +208,9 @@ class lbfgs(object):
     return self.f, self.g
 
   def regularize_h_and_update_xray_structure(self, xray_structure = None):
-    if(xray_structure is None): xray_structure = self.model.xray_structure
+    if(self.model is None): return
+    if(xray_structure is None):
+      xray_structure = self.model.xray_structure
     self.fmodels.update_xray_structure(
       xray_structure = xray_structure,
       update_f_calc  = True)
@@ -218,7 +225,7 @@ class lbfgs(object):
        self.h_params.refine == "individual" and
        self.h_params.xh_bond_distance_deviation_limit > 0 and
        self.fmodels.fmodel_n is None and
-       self.all_params.main.scattering_table != "neutron"):
+       (self.all_params is not None and self.all_params.main.scattering_table != "neutron")):
       modified = True
       self.model.idealize_h(xh_bond_distance_deviation_limit =
         self.h_params.xh_bond_distance_deviation_limit) # do it anyway if distortion is too big
