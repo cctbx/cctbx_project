@@ -26,8 +26,8 @@ if (scitbx is not None):
     return matrix.sqr(
       scitbx.math.eigensystem.real_symmetric(
         m=m.as_flex_double_matrix(),
-        relative_epsilon=1e-12,
-        absolute_epsilon=1e-12)
+        relative_epsilon=1e-6,
+        absolute_epsilon=1e-6)
           .generalized_inverse_as_packed_u()
           .matrix_packed_u_as_symmetric())
 
