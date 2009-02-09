@@ -59,10 +59,10 @@ if (__name__ == "__main__"):
       test = os.path.isfile)
   if(file_name is None):
     print "Skip POLYGON test: database file is not available."
-    return
-  print "\nEXAMPLE 1:"
-  example_1()
-  print "\nEXAMPLE 2:"
-  example_2()
-  print "\nEXAMPLE 3:"
-  example_3()
+  else:
+    print "\nEXAMPLE 1:"
+    example_1()
+    print "\nEXAMPLE 2:"
+    example_2()
+    print "\nEXAMPLE 3:"
+    example_3()
