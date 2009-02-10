@@ -4,6 +4,7 @@ class cluster_manager(object):
 
   __slots__ = [
     "cluster_indices", "clusters",
+    "overlapping_rigid_clusters",
     "hinge_edges", "loop_edges",
     "loop_edge_bendings"]
 
@@ -12,6 +13,7 @@ class cluster_manager(object):
     O.clusters = []
     for i in xrange(n_vertices):
       O.clusters.append([i])
+    O.overlapping_rigid_clusters = None
     O.hinge_edges = None
     O.loop_edges = None
     O.loop_edge_bendings = None
@@ -94,12 +96,16 @@ class cluster_manager(object):
     return result
 
   def sort_by_overlapping_rigid_cluster_sizes(O, edge_sets):
+    assert O.overlapping_rigid_clusters is None
+    O.overlapping_rigid_clusters = []
     cii_orcs = []
     for cii,cluster in enumerate(O.clusters):
       c = set(cluster)
       for i in cluster:
         c.update(edge_sets[i])
       cii_orcs.append((cii, len(c)))
+      O.overlapping_rigid_clusters.append(tuple(sorted(c)))
+    O.overlapping_rigid_clusters.sort()
     def cmp_elems(a, b):
       if (a[1] > b[1]): return -1
       if (a[1] < b[1]): return 1
