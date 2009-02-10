@@ -500,6 +500,28 @@ test_cases = [
     loop_edge_bendings2_5=[]),
   ]
 
+def special_case_ZINC03847121():
+  # Only case out of 69587 cases with a RIGID_MINUS_TARDY_6 cluster of
+  # size different from 3:
+  # RIGID_MINUS_TARDY_6: 3 NILE=0 LE=2 NV=13 ZINC03847121
+  #   [(0, 10, 11), (3, 10, 12), (9, 10, 11, 12)]
+  # ZINC03847121 c1ccc2ccc(=O)ccc(c1)C2
+  # simplified (oxygen removed): c1ccc2cccccc(c1)C2
+  n_vertices = 12
+  edge_list = [
+    (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9),
+    (9, 10), (9, 11), (0, 10), (3, 11)]
+  tt = construct(
+    n_vertices=n_vertices,
+    edge_list=edge_list,
+    rigid_loop_size_max=6)
+  cm = tt.cluster_manager
+  cm.sort_by_overlapping_rigid_cluster_sizes(edge_sets=tt.edge_sets)
+  assert cm.overlapping_rigid_clusters == [
+    (0, 1, 2), (0, 1, 10), (0, 9, 10), (1, 2, 3), (2, 3, 4, 11),
+    (3, 4, 5), (3, 9, 11), (4, 5, 6), (5, 6, 7), (6, 7, 8), (7, 8, 9),
+    (8, 9, 10, 11)]
+
 def run(args):
   assert args in [[], ["--verbose"]]
   verbose = "--verbose" in args
@@ -573,6 +595,8 @@ def run(args):
       rigid_loop_size_max=6)
     tx.find_cluster_loops()
     tx.finalize()
+  #
+  special_case_ZINC03847121()
   #
   print "OK"
 
