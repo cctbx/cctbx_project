@@ -173,6 +173,11 @@ def show_histogram(data, n_slots):
     print "%8.4f %8.4f %d" % (l, r, s)
     l = r
 
+def convert_to_histogram (data, n_slots) :
+  normalization_scale = data.size() / n_slots
+  histogram = flex.histogram(data=data, n_slots=n_slots)
+  return histogram
+
 def apply_default_filter(database_dict, d_min, max_models_for_default_filter,
                          key = "dhigh"):
   database_dict = order_by_value(database_dict = database_dict, key = key)
@@ -230,4 +235,9 @@ def polygon(params = master_params.extract(), d_min = None,
       print selected_key
       show_histogram(data    = convert_to_numeric(values=result[selected_key]),
                      n_slots = params.polygon.number_of_histogram_slots)
-  return result
+  histograms = {}
+  for selected_key in params.polygon.keys_to_show :
+    histograms[selected_key] = convert_to_histogram(
+      data = convert_to_numeric(values=result[selected_key]),
+      n_slots = params.polygon.number_of_histogram_slots)
+  return histograms
