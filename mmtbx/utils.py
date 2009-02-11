@@ -949,7 +949,9 @@ def remove_selections(selection, other, size):
   else:
     for o_ in other:
       for o__ in o_:
-        other_as_1d.append(o__)
+        if(not isinstance(o__,flex.size_t)):
+          o__ = flex.size_t(o__)
+        other_as_1d.extend(o__)
   if(len(other_as_1d) == 0): return selection
   other_as_1d_as_bool = flex.bool(size, flex.size_t(other_as_1d))
   result = []
@@ -988,11 +990,9 @@ def combine_hd_exchangable(hierarchy):
 def occupancy_selections(
       all_chain_proxies,
       xray_structure,
-      ignore_hydrogens                   = True,
       add_water                          = False,
       other_individual_selection_strings = None,
       other_constrained_groups           = None,
-      expect_exangable_hd                = False,
       remove_selection                   = None,
       as_flex_arrays                     = True):
   # set up defaults
@@ -1004,29 +1004,23 @@ def occupancy_selections(
     other_constrained_groups = None
   if(remove_selection is not None and len(remove_selection) == 0):
     remove_selection = None
-  if(not expect_exangable_hd):
-    result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
-      common_residue_name_class_only="common_amino_acid",
-      ignore_hydrogens = ignore_hydrogens)
-  else:
-    result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
-      common_residue_name_class_only="common_amino_acid",
-      ignore_hydrogens = True)
-    tmp = combine_hd_exchangable(hierarchy = all_chain_proxies.pdb_hierarchy)
-    result.extend(tmp)
-    del tmp
+
+  result = all_chain_proxies.pdb_hierarchy.occupancy_groups_simple(
+    common_residue_name_class_only = "common_amino_acid",
+    ignore_hydrogens = False)
+  exchangable_hd_pairs = combine_hd_exchangable(hierarchy =
+    all_chain_proxies.pdb_hierarchy)
+  result = remove_selections(selection = result, other = exchangable_hd_pairs,
+    size = xray_structure.scatterers().size())
+  result.extend(exchangable_hd_pairs)
   # add partial occupancies
-  if(ignore_hydrogens and not expect_exangable_hd):
-    hd_selection = xray_structure.hd_selection()
-  else:
-    hd_selection = None
   occupancies = xray_structure.scatterers().extract_occupancies()
   sel = (occupancies != 1.) & (occupancies != 0.)
   result = add_occupancy_selection(
     result     = result,
     size       = xray_structure.scatterers().size(),
     selection  = sel,
-    hd_special = hd_selection)
+    hd_special = None)
   # check user's input
   all_sel_strgs = []
   if(other_individual_selection_strings is not None):
