@@ -131,7 +131,7 @@ def exercise_01(verbose):
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
-  base = [ [[0,1,2,3,4],[5,6,7,8,9]] ]
+  base = [ [[0,1,2,3,4,10,12,14,16,18,20,22], [5,6,7,8,9,11,13,15,17,19,21,23]] ]
   res = utils.occupancy_selections(
     all_chain_proxies = processed_pdb_file.all_chain_proxies,
     xray_structure    = processed_pdb_file.xray_structure(),
@@ -141,7 +141,7 @@ def exercise_01(verbose):
 
 def exercise_02(verbose):
   pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/ala_h.pdb",
+    relative_path="phenix_regression/pdb/occ_mix1.pdb",
     test=os.path.isfile)
   if (verbose): log = sys.stdout
   else: log = StringIO()
@@ -149,11 +149,10 @@ def exercise_02(verbose):
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
-  base = [ [[0,1,2,3,4,10,12,14,16,18,20,22], [5,6,7,8,9,11,13,15,17,19,21,23]] ]
+  base = [ [[0,1,2,3,4,5,6,7,8,9,10,11,12], [14,15,16,17,18,19,20,21,22,23,24,25,26]], [[13],[27]] ]
   res = utils.occupancy_selections(
     all_chain_proxies = processed_pdb_file.all_chain_proxies,
     xray_structure    = processed_pdb_file.xray_structure(),
-    ignore_hydrogens  = False,
     as_flex_arrays    = False)
   res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
   assert approx_equal(res, base)
@@ -168,32 +167,11 @@ def exercise_03(verbose):
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
-  base = [ [[7]], [[8,9,10,11], [12,13,14]] ]
+  base = [ [[7]], [[8]], [[9],[12]], [[10],[13]], [[11],[14]] ]
   res = utils.occupancy_selections(
     all_chain_proxies = processed_pdb_file.all_chain_proxies,
     xray_structure    = processed_pdb_file.xray_structure(),
-    ignore_hydrogens  = False,
     as_flex_arrays    = False)
-  res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
-  assert approx_equal(res, base)
-
-def exercise_04(verbose):
-  pdb_file = libtbx.env.find_in_repositories(
-    relative_path="phenix_regression/pdb/ala_hd.pdb",
-    test=os.path.isfile)
-  if (verbose): log = sys.stdout
-  else: log = StringIO()
-  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
-  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
-    pdb_file_names = [pdb_file])
-  #
-  base = [ [[8]], [[9],[12]], [[10],[13]], [[11],[14]], [[7]] ]
-  res = utils.occupancy_selections(
-    all_chain_proxies   = processed_pdb_file.all_chain_proxies,
-    xray_structure      = processed_pdb_file.xray_structure(),
-    ignore_hydrogens    = True,
-    expect_exangable_hd = True,
-    as_flex_arrays      = False)
   res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
   assert approx_equal(res, base)
 
@@ -214,8 +192,6 @@ def exercise_05(verbose):
   res = utils.occupancy_selections(
     all_chain_proxies   = processed_pdb_file.all_chain_proxies,
     xray_structure      = processed_pdb_file.xray_structure(),
-    ignore_hydrogens    = True,
-    expect_exangable_hd = True,
     as_flex_arrays      = False)
   res = extract_serials(processed_pdb_file.all_chain_proxies.pdb_atoms, res)
   assert approx_equal(res, base)
@@ -230,16 +206,13 @@ def exercise_06(verbose):
   processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
     pdb_file_names = [pdb_file])
   #
-  base = [ [[65],[77]], [[66],[78]], [[67],[79]], [[68],[80]], [[69],[81]],
-           [[70],[82]], [[71],[83]], [[72],[84]], [[73],[85]], [[74],[86]],
-           [[75],[87]], [[76],[88]],
-           [[124],[127]], [[125],[128]], [[126],[129]],
-           [[62]], [[113]] ]
+  base = [ [[62]], [[113]], [[65],[77]],  [[66],[78]],  [[67],[79]], [[68],[80]],
+                            [[69],[81]],  [[70],[82]],  [[71],[83]], [[72],[84]],
+                            [[73],[85]],  [[74],[86]],  [[75],[87]], [[76],[88]],
+                            [[124],[127]],[[125],[128]],[[126],[129]]]
   res = utils.occupancy_selections(
     all_chain_proxies   = processed_pdb_file.all_chain_proxies,
     xray_structure      = processed_pdb_file.xray_structure(),
-    ignore_hydrogens    = True,
-    expect_exangable_hd = True,
     as_flex_arrays      = False)
   assert approx_equal(res, base)
 
@@ -588,7 +561,6 @@ def run():
   exercise_01(verbose=verbose)
   exercise_02(verbose=verbose)
   exercise_03(verbose=verbose)
-  exercise_04(verbose=verbose)
   exercise_05(verbose=verbose)
   exercise_06(verbose=verbose)
   exercise_07(verbose=verbose)
