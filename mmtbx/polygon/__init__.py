@@ -173,8 +173,7 @@ def show_histogram(data, n_slots):
     print "%8.4f %8.4f %d" % (l, r, s)
     l = r
 
-def convert_to_histogram (data, n_slots) :
-  normalization_scale = data.size() / n_slots
+def convert_to_histogram(data, n_slots) :
   histogram = flex.histogram(data=data, n_slots=n_slots)
   return histogram
 
