@@ -487,7 +487,7 @@ class clustal_alignment_parser(generic_alignment_parser):
   regex = re.compile(
     r"""
     ^
-    (?P<name> [\w\|]+ ) \s+
+    (?P<name> [\w\|:]+ ) \s+
     (?P<alignment> [A-Z\-]* )
     (?P<number> \s+ \d+ )? \s* \n
     """,
@@ -514,7 +514,7 @@ class clustal_alignment_parser(generic_alignment_parser):
     # Get names and data
     data = self.extract( text )
 
-    # Sort data on names
+    # Merge data on names
     data_for = dict( [ ( info[ "name" ], [] ) for info in data ] )
 
     for info in data:
@@ -529,11 +529,19 @@ class clustal_alignment_parser(generic_alignment_parser):
     if not self.valid_alignments( alignments ):
       return self.fail( text )
 
+    # Original order need to be maintained
+    alignment_for = dict( zip( data_for.keys(), alignments ) )
+    unique_names = []
+
+    for info in data:
+      if info[ "name" ] not in unique_names:
+        unique_names.append( info[ "name" ] )
+
     # Create alignment object
     return (
       clustal_alignment(
-        names = data_for.keys(),
-        alignments = alignments,
+        names = unique_names,
+        alignments = [ alignment_for[ name ] for name in unique_names ],
         program = program,
         version = version
         ),
