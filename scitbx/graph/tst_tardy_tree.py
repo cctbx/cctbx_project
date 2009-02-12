@@ -1,5 +1,6 @@
 from scitbx.graph.tardy_tree import \
-  cluster_manager, construct_edge_sets, construct
+  cluster_manager, find_paths, construct
+from scitbx.graph.utils import construct_edge_sets
 from StringIO import StringIO
 import sys
 
@@ -584,6 +585,8 @@ def run(args):
       cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
       assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
       #
+      find_paths(edge_sets=tt.edge_sets)
+      #
       print >> out
   #
   from scitbx.graph import tst_tardy_pdb
@@ -595,6 +598,8 @@ def run(args):
       rigid_loop_size_max=6)
     tx.find_cluster_loops()
     tx.finalize()
+    #
+    find_paths(edge_sets=tt.edge_sets)
   #
   special_case_ZINC03847121()
   #

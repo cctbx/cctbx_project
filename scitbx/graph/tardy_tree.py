@@ -244,6 +244,44 @@ def find_loops(edge_sets, depth, loop_set, path, iv, traversing):
     find_loops(edge_sets, depth, loop_set, path, jv, traversing)
   traversing[iv] = False
 
+def find_paths(edge_sets):
+  for i, es in enumerate(edge_sets):
+    print "conn:", i, sorted(es)
+  result = None
+  n_vertices = len(edge_sets)
+  depths = [-1] * n_vertices
+  jv_paths = [dict() for jv in xrange(n_vertices)]
+  for iv in xrange(len(edge_sets)):
+    print "START", iv
+    connected = set()
+    path = []
+    def depth_first_search(jv, kv):
+      depths[kv] = len(path)
+      path.append(kv)
+      for lv in edge_sets[kv]:
+        jps = jv_paths[lv]
+        if (depths[lv] == -1):
+          if (len(path) > 1):
+            jps[kv] = [path[1:-1]]
+            connected.add(kv)
+          if (len(path) != 6):
+            depth_first_search(jv=kv, kv=lv)
+        elif (lv != jv and len(path) > 1):
+          jps.setdefault(kv, []).append(path[1:-1])
+          connected.add(kv)
+      depths[kv] = -1
+      path.pop()
+    depth_first_search(jv=-1, kv=iv)
+    for d in depths: assert d == -1 # XXX expensive
+    for jps in jv_paths:
+      for paths in jps.values(): paths.sort()
+    if (result is None): result = [sorted(jps.items()) for jps in jv_paths]
+    for kv in connected: jv_paths[kv].clear()
+  for iv,jps in enumerate(result):
+    print iv, jps
+  print
+  return result
+
 class construct(object):
 
   def __init__(O, n_vertices, edge_list, rigid_loop_size_max=8):
