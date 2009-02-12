@@ -4,12 +4,18 @@ from scitbx.graph import utils
 import sys
 
 def exercise_simple_loops(loop_size_max=8):
-  for n_vertices in xrange(2, loop_size_max+1):
+  for n_vertices in xrange(3, loop_size_max+1):
     edge_list = [tuple(sorted((i,(i+1)%n_vertices)))
       for i in xrange(n_vertices)]
     edge_sets = utils.construct_edge_sets(
       n_vertices=n_vertices, edge_list=edge_list)
-    find_paths(edge_sets=edge_sets)
+    jps = find_paths(edge_sets=edge_sets)
+    if (n_vertices <= 6):
+      assert len(jps[0]) == 2
+      for jp in jps[0]:
+        assert len(jp[1][0]) == n_vertices-2
+    else:
+      assert len(jps[0]) == 0
 
 def three_archs_grow_edge_list(edge_list, offs, size):
   result = list(edge_list)
@@ -58,6 +64,9 @@ def exericse_three_archs(arch_size_max=8):
           + (arch_size_3 < 6)
         jps = find_paths(edge_sets=es)
         assert len(jps[1]) == s
+        if (len(jps[1]) == 3):
+          inferred_is_rigid = sum([len(jp[1][0]) for jp in jps[1]]) < 7
+          assert inferred_is_rigid == is_rigid
 
 def run(args):
   assert len(args) == 0
