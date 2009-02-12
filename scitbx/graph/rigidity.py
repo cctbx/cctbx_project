@@ -57,8 +57,8 @@ def integer_row_echelon_form(m):
 
 def float_row_echelon_form(
       m,
-      zero_pivot_tolerance=1.e-6,
-      min_non_zero_pivot=1.e-3):
+      zero_pivot_tolerance=1.e-8,
+      min_non_zero_pivot=1.e-2):
   free_vars = []
   n_rows = len(m)
   n_cols = len(m[0])
