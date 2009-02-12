@@ -4,6 +4,7 @@ class cluster_manager(object):
 
   __slots__ = [
     "cluster_indices", "clusters",
+    "merge_clusters_with_multiple_connections_passes",
     "overlapping_rigid_clusters",
     "hinge_edges", "loop_edges",
     "loop_edge_bendings"]
@@ -13,6 +14,7 @@ class cluster_manager(object):
     O.clusters = []
     for i in xrange(n_vertices):
       O.clusters.append([i])
+    O.merge_clusters_with_multiple_connections_passes = 0
     O.overlapping_rigid_clusters = None
     O.hinge_edges = None
     O.loop_edges = None
@@ -62,6 +64,7 @@ class cluster_manager(object):
 
   def merge_clusters_with_multiple_connections(O, edge_sets):
     while True:
+      O.merge_clusters_with_multiple_connections_passes += 1
       repeat = False
       for cii in xrange(len(O.clusters)):
         while True:
@@ -304,10 +307,14 @@ class construct(object):
       for jv in loop_set:
         O.cluster_manager.connect_vertices(i=iv, j=jv, optimize=True)
     O.cluster_manager.tidy()
+    O.find_cluster_loop_repeats = None
 
   def find_cluster_loops(O):
+    assert O.find_cluster_loop_repeats is None
+    O.find_cluster_loop_repeats = -1
     cm = O.cluster_manager
     while True:
+      O.find_cluster_loop_repeats += 1
       cm.merge_clusters_with_multiple_connections(edge_sets=O.edge_sets)
       ces = cm.cluster_edge_sets(edge_list=O.edge_list)
       cel = extract_edge_list(edge_sets=ces)
