@@ -377,6 +377,7 @@ scitbx/graph/tardy_tree.py svneol=native#text/x-python
 scitbx/graph/tst_rigidity.py -text
 scitbx/graph/tst_tardy_pdb.py svneol=native#text/x-python
 scitbx/graph/tst_tardy_tree.py svneol=native#text/x-python
+scitbx/graph/tst_tardy_tree_find_paths.py svneol=native#text/x-python
 scitbx/graph/tst_utils.py svneol=native#text/x-python
 scitbx/graph/utils.py svneol=native#text/x-python
 scitbx/iso_surface.h -text
