@@ -20,6 +20,7 @@ def run():
   "$D/phil/tst.py",
   "$D/tst_object_oriented_patterns.py",
   "$D/tst_itertbx.py",
+  "$D/find_reference_cycles.py",
   )
 
   build_dir = None
