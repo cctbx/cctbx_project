@@ -300,4 +300,89 @@ ATOM     16  C15 LIG A   1       2.734  -0.755  -0.050  1.00 20.00      A    C
   loop_edges=[(14, 15)],
   loop_edge_bendings=[(2, 14), (11, 15)]),
 
+pdb_extract(
+  tag="ZINC04656480", # C[NH+]1CC2C[NH+](CC(C1)NC2=O)C
+  pdb="""\
+ATOM      1  C01 LIG A   1       3.508  -0.708  -0.412  1.00 20.00      A    C
+ATOM      2  N02 LIG A   1       2.081  -0.708  -0.412  1.00 20.00      A    N+1
+ATOM      3  C03 LIG A   1       1.365  -0.708   0.929  1.00 20.00      A    C
+ATOM      4  C04 LIG A   1       0.082   0.043   1.236  1.00 20.00      A    C
+ATOM      5  C05 LIG A   1      -1.306  -0.550   0.994  1.00 20.00      A    C
+ATOM      6  N06 LIG A   1      -2.192  -0.518  -0.222  1.00 20.00      A    N+1
+ATOM      7  C07 LIG A   1      -1.365   0.265  -1.189  1.00 20.00      A    C
+ATOM      8  C08 LIG A   1       0.016   0.896  -1.052  1.00 20.00      A    C
+ATOM      9  C09 LIG A   1       1.306   0.176  -1.376  1.00 20.00      A    C
+ATOM     10  N10 LIG A   1       0.128   1.826  -0.060  1.00 20.00      A    N
+ATOM     11  C11 LIG A   1       0.183   1.401   1.073  1.00 20.00      A    C
+ATOM     12  O12 LIG A   1       0.029   2.140   1.997  1.00 20.00      A    O
+ATOM     13  C13 LIG A   1      -3.570  -0.330  -0.116  1.00 20.00      A    C
+ATOM     14 H021 LIG A   1       1.870  -1.698  -0.789  1.00 20.00      A    H
+ATOM     15 H061 LIG A   1      -2.133  -1.527  -0.603  1.00 20.00      A    H
+""",
+  bonds=[
+    (0, 1), (1, 2), (1, 8), (1, 13), (2, 3), (3, 4), (3, 10), (4, 5),
+    (5, 6), (5, 12), (5, 14), (6, 7), (7, 8), (7, 9), (9, 10), (10, 11)],
+  rigid_loop_size_max=6,
+  clusters=None,
+  hinge_edges=None,
+  loop_edges=None,
+  loop_edge_bendings=None),
+
+pdb_extract(
+  tag="ZINC00196949", # C1C[NH+]2C[NH+]3CC[NH+](C2)C[NH+]1C3
+  pdb="""\
+ATOM      1  C01 LIG A   1      -0.794  -0.210  -2.068  1.00 20.00      A    C
+ATOM      2  C02 LIG A   1       0.777  -0.210  -2.068  1.00 20.00      A    C
+ATOM      3  N03 LIG A   1       1.469  -0.210  -0.777  1.00 20.00      A    N+1
+ATOM      4  C04 LIG A   1       1.272   1.121   0.048  1.00 20.00      A    C
+ATOM      5  N05 LIG A   1      -0.055   1.295   0.938  1.00 20.00      A    N+1
+ATOM      6  C06 LIG A   1      -0.049   0.433   2.224  1.00 20.00      A    C
+ATOM      7  C07 LIG A   1      -0.000  -0.931   1.970  1.00 20.00      A    C
+ATOM      8  N08 LIG A   1       0.028  -1.145   0.699  1.00 20.00      A    N+1
+ATOM      9  C09 LIG A   1       1.169  -1.328   0.066  1.00 20.00      A    C
+ATOM     10  C10 LIG A   1      -1.086  -1.335   0.014  1.00 20.00      A    C
+ATOM     11  N11 LIG A   1      -1.435  -0.222  -0.800  1.00 20.00      A    N+1
+ATOM     12  C12 LIG A   1      -1.284   1.103   0.012  1.00 20.00      A    C
+ATOM     13 H031 LIG A   1       2.523  -0.274  -1.003  1.00 20.00      A    H
+ATOM     14 H051 LIG A   1      -0.075   2.324   1.264  1.00 20.00      A    H
+ATOM     15 H081 LIG A   1       0.030  -0.086   0.488  1.00 20.00      A    H
+ATOM     16 H111 LIG A   1      -2.490  -0.325  -1.006  1.00 20.00      A    H
+""",
+  bonds=[
+    (0, 1), (0, 10), (1, 2), (2, 3), (2, 8), (2, 12), (3, 4),
+    (4, 5), (4, 11), (4, 13), (5, 6), (6, 7), (7, 8), (7, 9), (7, 14),
+    (9, 10), (10, 11), (10, 15)],
+  rigid_loop_size_max=6,
+  clusters=None,
+  hinge_edges=None,
+  loop_edges=None,
+  loop_edge_bendings=None),
+
+pdb_extract(
+  tag="ZINC03847120", # c1ccc2ccccc(c1)C2(C#N)Br
+  pdb="""\
+ATOM      1  C01 LIG A   1      -0.432   0.012  -2.178  1.00 20.00      A    C
+ATOM      2  C02 LIG A   1       0.935   0.041  -2.063  1.00 20.00      A    C
+ATOM      3  C03 LIG A   1       1.687   0.100  -0.911  1.00 20.00      A    C
+ATOM      4  C04 LIG A   1       1.243   0.139   0.405  1.00 20.00      A    C
+ATOM      5  C05 LIG A   1       1.591  -1.206   0.440  1.00 20.00      A    C
+ATOM      6  C06 LIG A   1       0.763  -2.304   0.362  1.00 20.00      A    C
+ATOM      7  C07 LIG A   1      -0.604  -2.323   0.236  1.00 20.00      A    C
+ATOM      8  C08 LIG A   1      -1.462  -1.249   0.162  1.00 20.00      A    C
+ATOM      9  C09 LIG A   1      -1.152   0.105   0.202  1.00 20.00      A    C
+ATOM     10  C10 LIG A   1      -1.368   0.038  -1.168  1.00 20.00      A    C
+ATOM     11  C11 LIG A   1       0.001   0.809   0.965  1.00 20.00      A    C
+ATOM     12  C12 LIG A   1      -0.253   2.219   0.533  1.00 20.00      A    C
+ATOM     13  N13 LIG A   1      -0.445   3.287   0.205  1.00 20.00      A    N
+ATOM     14 BR14 LIG A   1      -0.504   0.332   2.810  1.00 20.00      A   BR
+""",
+  bonds=[
+    (0, 1), (0, 9), (1, 2), (2, 3), (3, 4), (3, 10), (4, 5), (5, 6),
+    (6, 7), (7, 8), (8, 9), (8, 10), (10, 11), (10, 13), (11, 12)],
+  rigid_loop_size_max=6,
+  clusters=None,
+  hinge_edges=None,
+  loop_edges=None,
+  loop_edge_bendings=None),
+
 ]
