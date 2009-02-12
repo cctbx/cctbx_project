@@ -221,6 +221,7 @@ libtbx/command_line/show_include_paths.py svneol=native#text/x-python
 libtbx/command_line/show_number_of_processors.py svneol=native#text/x-python
 libtbx/command_line/tcsh.sh -text
 libtbx/dtrace/profile.d -text
+libtbx/find_reference_cycles.py -text
 libtbx/libtbx_refresh.py -text
 libtbx/object_oriented_patterns.py -text
 libtbx/pbs_utils.py svneol=native#text/x-python
