@@ -1,5 +1,7 @@
-import sys, gc
 from types import FrameType
+from StringIO import StringIO
+import gc
+import sys
 
 # =============================================================================
 # This method is written by Michael Droettboom and is found at
@@ -71,7 +73,7 @@ def print_cycles(objects, outstream=sys.stdout, show_progress=False):
 # -----------------------------------------------------------------------------
 def exercise():
 
-  class bad_class():
+  class bad_class(object):
 
     def __init__(self):
       self.a = self.b
@@ -79,22 +81,21 @@ def exercise():
     def b():
       return 1+2
 
-  filename = "/tmp/find_reference_cycles.out"
-  output = file(filename,"w")
   t = bad_class()
-  print_cycles([t],outstream=output)
-  output.close()
-  output = file(filename,"r")
-  lines = output.readlines()
+  sio = StringIO()
+  print_cycles([t],outstream=sio)
+  lines = sio.getvalue().splitlines()
 
-  line0 = "Examining: <__main__.bad_class instance at 0x2aaaaab9eb00>"
-  line1 = "   <type 'instance'> -- <__main__.bad_class instance at 0x2aaaaab9eb00> ->"
-  line2 = "   <type 'dict'> --  ->"
+  # 'Examining: <__main__.bad_class object at 0xb7eb5d2c>'
+  # "   <class '__main__.bad_class'> -- <__main__.bad_class object at 0xb7eb5d2c> ->"
+  # "   <type 'dict'> --  ->"
+  # ''
+  assert len(lines) == 4
+  assert lines[0].startswith("Examining: <")
+  assert lines[0].count("bad_class") == 1
+  assert lines[1].count("bad_class") == 2
+  assert lines[2].count("dict") == 1
 
-  # ignore memory address
-  assert (lines[0][0:42] == line0[0:42])
-  assert (lines[1][0:55] == line1[0:55])
-  assert (lines[2][0:22] == line2[0:22])
   print "OK"
 
 # =============================================================================
