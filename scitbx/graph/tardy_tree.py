@@ -275,9 +275,9 @@ def find_paths(edge_sets, out):
       depths[kv] = -1
       path.pop()
     depth_first_search(jv=-1, kv=iv)
-    for d in depths: assert d == -1 # XXX expensive
-    for jps in jv_paths:
-      for paths in jps.values(): paths.sort()
+    for kv in connected:
+      for paths in jv_paths[kv].values():
+        paths.sort()
     if (result is None): result = [sorted(jps.items()) for jps in jv_paths]
     for kv in connected: jv_paths[kv].clear()
   for iv,jps in enumerate(result):
