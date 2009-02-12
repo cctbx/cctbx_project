@@ -244,15 +244,15 @@ def find_loops(edge_sets, depth, loop_set, path, iv, traversing):
     find_loops(edge_sets, depth, loop_set, path, jv, traversing)
   traversing[iv] = False
 
-def find_paths(edge_sets):
+def find_paths(edge_sets, out):
   for i, es in enumerate(edge_sets):
-    print "conn:", i, sorted(es)
+    print >> out, "conn:", i, sorted(es)
   result = None
   n_vertices = len(edge_sets)
   depths = [-1] * n_vertices
   jv_paths = [dict() for jv in xrange(n_vertices)]
   for iv in xrange(len(edge_sets)):
-    print "START", iv
+    print >> out, "START", iv
     connected = set()
     path = []
     def depth_first_search(jv, kv):
@@ -278,8 +278,8 @@ def find_paths(edge_sets):
     if (result is None): result = [sorted(jps.items()) for jps in jv_paths]
     for kv in connected: jv_paths[kv].clear()
   for iv,jps in enumerate(result):
-    print iv, jps
-  print
+    print >> out, iv, jps
+  print >> out
   return result
 
 class construct(object):
