@@ -101,3 +101,12 @@ class null(object):
   def __repr__(self): return 'null()'
 
   def __nonzero__(self): return False
+
+
+class proxy(object):
+
+  def __init__(self, subject):
+    self.subject = subject
+
+  def __getattr__(self, attr):
+    return getattr(self.subject, attr)
