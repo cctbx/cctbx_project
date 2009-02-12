@@ -290,8 +290,6 @@ class peak_cluster_analysis(object):
     if (   effective_resolution is not None
         or debug_peak_cluster_analysis == "use_old"):
       self._site_cluster_analysis = None
-      self.next = self.next_with_effective_resolution
-      self.all = self.all_with_effective_resolution
     else:
       self._site_cluster_analysis = \
         self._special_position_settings.site_cluster_analysis(
@@ -299,13 +297,23 @@ class peak_cluster_analysis(object):
           min_self_distance
             =self._special_position_settings.min_distance_sym_equiv(),
           general_positions_only=self._general_positions_only)
-      self.next = self.next_site_cluster_analysis
-      self.all = self.all_site_cluster_analysis
     self._peak_list_indices = flex.size_t()
     self._peak_list_index = 0
     self._sites = flex.vec3_double()
     self._heights = flex.double()
     self._fixed_site_indices = flex.size_t()
+
+  def next(self):
+    if (self._effective_resolution is not None):
+      return self.next_with_effective_resolution()
+    else:
+      return self.next_site_cluster_analysis()
+
+  def all(self,max_clusters=None):
+    if (self._effective_resolution is not None):
+      return self.all_with_effective_resolution(max_clusters=max_clusters)
+    else:
+      return self.all_site_cluster_analysis(max_clusters=max_clusters)
 
   def __iter__(self):
     while 1:
