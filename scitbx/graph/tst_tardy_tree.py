@@ -585,7 +585,7 @@ def run(args):
       cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
       assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
       #
-      find_paths(edge_sets=tt.edge_sets)
+      find_paths(edge_sets=tt.edge_sets, out=out)
       #
       print >> out
   #
@@ -599,7 +599,7 @@ def run(args):
     tx.find_cluster_loops()
     tx.finalize()
     #
-    find_paths(edge_sets=tt.edge_sets)
+    find_paths(edge_sets=tt.edge_sets, out=out)
   #
   special_case_ZINC03847121()
   #
