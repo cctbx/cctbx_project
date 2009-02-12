@@ -234,9 +234,4 @@ def polygon(params = master_params.extract(), d_min = None,
       print selected_key
       show_histogram(data    = convert_to_numeric(values=result[selected_key]),
                      n_slots = params.polygon.number_of_histogram_slots)
-  histograms = {}
-  for selected_key in params.polygon.keys_to_show :
-    histograms[selected_key] = convert_to_histogram(
-      data = convert_to_numeric(values=result[selected_key]),
-      n_slots = params.polygon.number_of_histogram_slots)
-  return histograms
+  return result
