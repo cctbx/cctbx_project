@@ -8,13 +8,29 @@ env_etc.include_registry.append(
   env=env,
   paths=env_etc.mmtbx_common_includes)
 
+lib_sources = [
+  "atom_mask.cpp"
+]
+
+if (env_etc.static_libraries): builder = env.StaticLibrary
+else:                          builder = env.SharedLibrary
+
+builder(
+  target="#lib/mmtbx_masks",
+  source=lib_sources)
+
+
+env.Prepend(LIBS=["mmtbx_masks", "cctbx_sgtbx_asu", "iotbx_pdb", "omptbx"])
+env.Program( target = "tst_mask",  source="tst_mask.cpp")
+
+
 if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")
   env_bpl = env_cctbx_boost_python_ext.Copy()
   env_etc.include_registry.append(
     env=env_bpl,
     paths=env_etc.mmtbx_common_includes)
-  env_bpl.Prepend(LIBS=["cctbx"])
+  env_bpl.Prepend(LIBS=["mmtbx_masks", "cctbx", "cctbx_sgtbx_asu"])
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_masks_ext",
     source=["masks_ext.cpp"])

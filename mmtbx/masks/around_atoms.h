@@ -38,8 +38,8 @@ namespace mmtbx { namespace masks {
         shrink_truncation_radius(shrink_truncation_radius_),
         accessible_surface_fraction(-1),
         contact_surface_fraction(-1),
-        explicit_distance(explicit_distance_),
-        debug(debug_)
+        debug(debug_),
+        explicit_distance(explicit_distance_)
       {
         MMTBX_ASSERT(sites_frac.size() == atom_radii.size());
         MMTBX_ASSERT(solvent_radius >= 0);

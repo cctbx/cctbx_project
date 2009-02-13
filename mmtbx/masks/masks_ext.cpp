@@ -6,6 +6,7 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <mmtbx/masks/around_atoms.h>
+#include "atom_mask.h"
 
 namespace mmtbx { namespace masks {
 namespace {
@@ -55,9 +56,65 @@ namespace {
     }
   };
 
+  void wrap_atom_mask()
+  {
+    typedef atom_mask w_t;
+    using namespace boost::python;
+    typedef return_value_policy<return_by_value> rbv;
+
+    class_<w_t>("atom_mask", no_init)
+      .def(init<
+          const cctbx::uctbx::unit_cell &,
+          const cctbx::sgtbx::space_group &,
+          double,
+          optional<
+            int,
+            double,
+            double,
+            double >
+          > ((
+              arg_("unit_cell"),
+              arg_("group"),
+              arg_("resolution"),
+              arg_("grid_method"),
+              arg_("grid_step_factor"),
+              arg_("solvent_radius"),
+              arg_("shrink_truncation_radius")
+              )))
+      .def(init<
+          const cctbx::uctbx::unit_cell &,
+          const cctbx::sgtbx::space_group &,
+          const grid_t::index_type &,
+          double,
+          double
+          > ((
+              arg_("unit_cell"),
+              arg_("space_group"),
+              arg_("gridding_n_real"),
+              arg_("solvent_radius"),
+              arg_("shrink_truncation_radius")
+              )))
+      .add_property("data",  make_getter(&w_t::data, rbv()) )
+      // .def("get_mask", &w_t::get_mask)
+      .def("compute", &w_t::compute)
+      .def("structure_factors", &w_t::structure_factors)
+      .def_readonly("solvent_radius",
+               &w_t::solvent_radius)
+      // .def_readonly("n_atom_points",
+      //         &w_t::n_atom_points)
+      .def_readonly("shrink_truncation_radius",
+               &w_t::shrink_truncation_radius)
+      .def_readonly("contact_surface_fraction",
+               &w_t::contact_surface_fraction)
+      .def_readonly("accessible_surface_fraction",
+               &w_t::accessible_surface_fraction)
+     ;
+  }
+
   void init_module()
   {
     around_atoms_wrappers<int, double>::wrap();
+    wrap_atom_mask();
   }
 
 } // namespace <anonymous>
