@@ -87,5 +87,67 @@ namespace cctbx { namespace sgtbx { namespace asu {
     }
   }
 
-}}}
 
+  intersection_kind direct_space_asu::does_intersect(const scitbx::double3 &center, const scitbx::double3 &box) const
+  {
+    rvector3_t mn, mx;
+    this->box_corners(mn, mx);
+    // MMTBX_ASSERT( radius >= 0.0 );
+    const signed char n_corners = 2;
+    scitbx::double3 corners[n_corners] = { center - box, center + box };
+
+    if( ge_all(corners[0], mn) && le_all(corners[0], mx) &&
+        ge_all(corners[1], mn) && le_all(corners[1], mx) )
+      return fully;
+    for(signed char i=0; i<n_corners; ++i)
+      for(signed char j=0; j<n_corners; ++j)
+        for(signed char k=0; k<n_corners; ++k)
+        {
+          scitbx::double3 vertex( corners[i][0], corners[j][1], corners[k][2] );
+          if( ge_all(vertex, mn) && le_all(vertex, mx) )
+            return partially;
+        }
+    return none;
+  }
+
+  void direct_space_asu::get_adjacent_cells(std::vector<scitbx::tiny3> &cells) const
+  {
+    cells.clear();
+    BOOST_STATIC_ASSERT( sizeof(scitbx::tiny3::value_type) == sizeof(signed char) );
+    for( signed char i=-1; i<=1; ++i)
+      for( signed char j=-1; j<=1; ++j)
+        for( signed char k=-1; k<=1; ++k)
+          cells.push_back( scitbx::tiny3(i,j,k) );
+  }
+
+  void direct_space_asu::get_cells(std::vector<scitbx::tiny3> &cells) const
+  {
+    CCTBX_ASSERT( 0 ); // this function is not implemented yet
+    cells.clear();
+    cells.push_back( scitbx::tiny3(0,0,0) ); // TEMPORARY
+    // this->get_adjacent_cells(cells);
+  }
+
+
+  rvector3_t direct_space_asu::move_inside(const cctbx::sgtbx::space_group &group, const rvector3_t &v) const
+  {
+    std::vector<scitbx::tiny3> cells;
+    this->get_cells(cells);
+
+    for(size_t i=0; i<group.order_z(); ++i)
+    {
+      const cctbx::sgtbx::rt_mx op = group(i);
+      rvector3_t sv = op * v;
+      sv -= scitbx::floor(sv);
+      for(size_t icell=0; icell<cells.size(); ++icell)
+      {
+        rvector3_t sv_cell = sv + cells[icell];
+        if( this->is_inside( sv_cell ) )
+          return sv;
+      }
+    }
+    CCTBX_ASSERT( 0 );
+    return v;
+  }
+
+}}}
