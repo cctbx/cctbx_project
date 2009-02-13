@@ -257,6 +257,7 @@ def find_paths(edge_sets, iv):
     path.append(kv)
     def new_path_list():
       if (len(path) < 3): return []
+      if (kv in path[1:-1]): return [] # XXX avoid need for this
       return [path[1:-1]]
     for lv in edge_sets[kv]:
       if (lv == jv): continue
@@ -271,7 +272,8 @@ def find_paths(edge_sets, iv):
           result_lv[kv] = new_path_list()
           if (len(path) != 6):
             depth_first_search(jv=kv, kv=lv)
-        elif (len(path) > 2):
+        elif (    len(path) > 2
+              and kv not in path[1:-1]): # XXX avoid need for this
           result_lv_kv.append(path[1:-1])
     path.pop()
   depth_first_search(jv=-1, kv=iv)
@@ -279,27 +281,28 @@ def find_paths(edge_sets, iv):
 
 class construct(object):
 
-  def __init__(O, n_vertices, edge_list, rigid_loop_size_max=8):
+  def __init__(O, n_vertices, edge_list):
     O.n_vertices = n_vertices
     O.edge_list = edge_list
-    O.rigid_loop_size_max = rigid_loop_size_max
     O.edge_sets = construct_edge_sets(
       n_vertices=n_vertices, edge_list=edge_list)
     O.cluster_manager = cluster_manager(n_vertices=n_vertices)
-    traversing = [False] * n_vertices
-    for iv in xrange(n_vertices):
-      loop_set = set()
-      find_loops(
-        edge_sets=O.edge_sets,
-        depth=rigid_loop_size_max,
-        loop_set=loop_set,
-        path=[],
-        iv=iv,
-        traversing=traversing)
-      for jv in loop_set:
-        O.cluster_manager.connect_vertices(i=iv, j=jv, optimize=True)
+    O._find_paths()
     O.cluster_manager.tidy()
     O.find_cluster_loop_repeats = None
+
+  def _find_paths(O):
+    for iv in xrange(O.n_vertices):
+      jv_kv_paths = find_paths(edge_sets=O.edge_sets, iv=iv)
+      kv_paths = jv_kv_paths.get(iv)
+      if (kv_paths is not None):
+        for kv,paths in kv_paths.items():
+          if (len(paths) == 0): continue
+          O.cluster_manager.connect_vertices(i=iv, j=kv, optimize=True)
+          for path in paths:
+            assert len(path) != 0
+            for lv in path:
+              O.cluster_manager.connect_vertices(i=iv, j=lv, optimize=True)
 
   def find_cluster_loops(O):
     assert O.find_cluster_loop_repeats is None
@@ -310,8 +313,7 @@ class construct(object):
       cm.merge_clusters_with_multiple_connections(edge_sets=O.edge_sets)
       ces = cm.cluster_edge_sets(edge_list=O.edge_list)
       cel = extract_edge_list(edge_sets=ces)
-      ctt = construct(
-        n_vertices=len(cm.clusters), edge_list=cel, rigid_loop_size_max=6)
+      ctt = construct(n_vertices=len(cm.clusters), edge_list=cel)
       ccm = ctt.cluster_manager
       ccm.merge_clusters_with_multiple_connections(edge_sets=ctt.edge_sets)
       if (len(ccm.clusters) == len(cm.clusters)):

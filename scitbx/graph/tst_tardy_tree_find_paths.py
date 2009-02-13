@@ -36,6 +36,31 @@ def exercise_simple_loops(loop_size_max=8):
         2: {1: [], 3: []},
         3: {0: [], 2: [[1]]}}
 
+def exercise_knot():
+  edge_sets = utils.construct_edge_sets(
+    n_vertices=4,
+    edge_list=[(0,1), (1,2), (2,3), (1,3)])
+  expected_jv_kb_paths = [
+    {0: {1: []},
+     1: {0: [], 2: [[1, 3]], 3: [[1, 2]]},
+     2: {1: [], 3: [[1]]},
+     3: {1: [], 2: [[1]]}},
+    {0: {1: []},
+     1: {0: [], 2: [[3]], 3: [[2]]},
+     2: {1: [], 3: []},
+     3: {1: [], 2: []}},
+    {0: {1: [[3]]},
+     1: {2: [], 3: []},
+     2: {1: [[3]], 3: [[1]]},
+     3: {1: [], 2: []}},
+    {0: {1: [[2]]},
+     1: {2: [], 3: []},
+     2: {1: [], 3: []},
+     3: {1: [[2]], 2: [[1]]}}]
+  for iv in xrange(4):
+    jv_kv_paths = find_paths(edge_sets=edge_sets, iv=iv)
+    assert jv_kv_paths == expected_jv_kb_paths[iv]
+
 def three_archs_grow_edge_list(edge_list, offs, size):
   result = list(edge_list)
   i = 0
@@ -98,6 +123,7 @@ def run(args):
   assert len(args) == 0
   exercise_minimal()
   exercise_simple_loops()
+  exercise_knot()
   exericse_three_archs()
   print "OK"
 
