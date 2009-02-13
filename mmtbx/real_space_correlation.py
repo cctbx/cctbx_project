@@ -21,13 +21,18 @@ from libtbx import Auto, group_args
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 master_params_str = """\
-grid_step = 0.5
+grid_step = 0.3
   .type = float
   .help = Defines finess of the grid at which the map is computed.
   .expert_level = 2
 scattering_table = *n_gaussian wk1995 it1992 neutron
   .type = choice
   .help = Scattering table for structure factors calculations
+details_level = *atoms residues
+  .type = choice(multi=False)
+  .help = Level of details to show CC for
+use_hydrogens = False
+    .type = bool
 map_1
   .help = First map to use in map CC calculation
 {
@@ -451,9 +456,16 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   else: RuntimeError
   compute_map_cc_result = compute_map_cc(map_1 = map_1, map_2 = map_2,
     xray_structure = xrs[0], fft_map = fft_map_1)
-  per_atom_result = compute_map_cc_result.atoms(
-    pdb_hierarchy = pdb_to_xrs_.processed_pdb_file.all_chain_proxies.\
-      pdb_hierarchy, show = True)
+  pdb_hierarchy = pdb_to_xrs_.processed_pdb_file.all_chain_proxies.\
+    pdb_hierarchy
+  if(params.details_level == "atoms"):
+    result = compute_map_cc_result.atoms(pdb_hierarchy = pdb_hierarchy,
+      show = True, show_hydrogens = params.use_hydrogens)
+  elif(params.details_level == "residues"):
+    result = compute_map_cc_result.residues(pdb_hierarchy = pdb_hierarchy, show = True)
+  else:
+    raise RuntimeError(
+      "Wrong parameter: details_level = %s"%str(params.details_level))
   compute_map_cc_result.overall_correlation_min_max_standard_deviation(
     show = True)
 
@@ -574,3 +586,47 @@ class compute_map_cc(object):
             r.atom.altloc, r.atom.name, r.atom.element, r.atom.occ, r.atom.b,
             r.cc, r.map_1_val, r.map_2_val, w_msg)
     return result
+
+  def residues(self, pdb_hierarchy, show = False):
+    res_group_selections = []
+    res_names = []
+    res_ids = []
+    res_chains = []
+    res_meanb = []
+    for model in pdb_hierarchy.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          rg_i_seqs = []
+          r_name = None
+          for ag in rg.atom_groups():
+            if(r_name is None): r_name = ag.resname
+            for atom in ag.atoms():
+              rg_i_seqs.append(atom.i_seq)
+          if(len(rg_i_seqs) != 0):
+            res_group_selections.append(flex.size_t(rg_i_seqs))
+            res_names.append(r_name)
+            res_ids.append(rg.resid())
+            res_chains.append(chain.id)
+            b = rg.atoms().extract_b()
+            res_meanb.append(b.min_max_mean().mean)
+    assert len(res_group_selections) == len(res_names)
+    assert len(res_group_selections) == len(res_ids)
+    # combine selections
+    gifes = self.sampled_density.grid_indices_for_each_scatterer()
+    residue_selections = shared.stl_set_unsigned()
+    for i_seqs in res_group_selections:
+      residue_selections.append_union_of_selected_arrays(
+        arrays    = gifes,
+        selection = i_seqs)
+    # compute and output map CC
+    result = flex.double()
+    print
+    print "Count, residue chain and number, name and map CC"
+    for i_count, res_sel in enumerate(residue_selections):
+      corr = flex.linear_correlation(
+        x = self.map_1.select(res_sel),
+        y = self.map_2.select(res_sel)).coefficient()
+      result.append(corr)
+      print "%-5d %s %s %6.3f" % \
+        (i_count,res_ids[i_count],res_names[i_count],corr)
+    print
