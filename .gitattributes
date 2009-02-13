@@ -260,6 +260,9 @@ mmtbx/ias/__init__.py -text
 mmtbx/ias/tst_ias.py -text
 mmtbx/map_tools.py -text
 mmtbx/maps.py -text
+mmtbx/masks/atom_mask.cpp svneol=native#text/plain
+mmtbx/masks/atom_mask.h svneol=native#text/plain
+mmtbx/masks/tst_mask.cpp svneol=native#text/plain
 mmtbx/model_statistics.py -text
 mmtbx/model_vs_data.py -text
 mmtbx/monomer_library/apply_mod_rna.py svneol=native#text/x-python
