@@ -1,7 +1,6 @@
 from scitbx.graph.tardy_tree import find_paths
 from scitbx.graph import rigidity
 from scitbx.graph import utils
-from libtbx.utils import null_out
 import sys
 
 def exercise_minimal():
@@ -46,7 +45,7 @@ def three_archs_grow_edge_list(edge_list, offs, size):
   result.append((1,i))
   return result
 
-def exericse_three_archs(out, arch_size_max=8):
+def exericse_three_archs(arch_size_max=8):
   for arch_size_1 in xrange(1, arch_size_max):
     edge_list_1 = three_archs_grow_edge_list(
       [], 2, arch_size_1)
@@ -65,8 +64,6 @@ def exericse_three_archs(out, arch_size_max=8):
           n_dim=3, n_vertices=n_vertices, edge_list=bbel, method=method)
             for method in ["float", "integer"]]
         assert dofs[0] == dofs[1]
-        print >> out, " ", arch_size_1, arch_size_2, arch_size_3, dofs[0]-6
-        print >> out, "edge_list:", edge_list_123
         expected = max(
           6,
           max(arch_size_1, arch_size_2, arch_size_3) + 1,
@@ -98,14 +95,10 @@ def exericse_three_archs(out, arch_size_max=8):
             assert not is_rigid
 
 def run(args):
-  assert args in [[], ["--verbose"]]
-  if (len(args) == 0):
-    out = null_out()
-  else:
-    out = sys.stdout
+  assert len(args) == 0
   exercise_minimal()
   exercise_simple_loops()
-  exericse_three_archs(out=out)
+  exericse_three_archs()
   print "OK"
 
 if (__name__ == "__main__"):
