@@ -247,42 +247,34 @@ def find_loops(edge_sets, depth, loop_set, path, iv, traversing):
     find_loops(edge_sets, depth, loop_set, path, jv, traversing)
   traversing[iv] = False
 
-def find_paths(edge_sets, out):
-  for i, es in enumerate(edge_sets):
-    print >> out, "conn:", i, sorted(es)
-  result = None
-  n_vertices = len(edge_sets)
-  depths = [-1] * n_vertices
-  jv_paths = [dict() for jv in xrange(n_vertices)]
-  for iv in xrange(len(edge_sets)):
-    print >> out, "START", iv
-    connected = set()
-    path = []
-    def depth_first_search(jv, kv):
-      depths[kv] = len(path)
-      path.append(kv)
-      for lv in edge_sets[kv]:
-        jps = jv_paths[lv]
-        if (depths[lv] == -1):
-          if (len(path) > 1):
-            jps[kv] = [path[1:-1]]
-            connected.add(kv)
+def find_paths(edge_sets, iv):
+  result = {}
+  for jv in edge_sets[iv]:
+    result[jv] = []
+  result = {iv: result}
+  path = []
+  def depth_first_search(jv, kv):
+    path.append(kv)
+    def new_path_list():
+      if (len(path) < 3): return []
+      return [path[1:-1]]
+    for lv in edge_sets[kv]:
+      if (lv == jv): continue
+      result_lv = result.get(lv)
+      if (result_lv is None):
+        result[lv] = {kv: new_path_list()}
+        if (len(path) != 6):
+          depth_first_search(jv=kv, kv=lv)
+      else:
+        result_lv_kv = result_lv.get(kv)
+        if (result_lv_kv is None):
+          result_lv[kv] = new_path_list()
           if (len(path) != 6):
             depth_first_search(jv=kv, kv=lv)
-        elif (lv != jv and len(path) > 1):
-          jps.setdefault(kv, []).append(path[1:-1])
-          connected.add(kv)
-      depths[kv] = -1
-      path.pop()
-    depth_first_search(jv=-1, kv=iv)
-    for kv in connected:
-      for paths in jv_paths[kv].values():
-        paths.sort()
-    if (result is None): result = [sorted(jps.items()) for jps in jv_paths]
-    for kv in connected: jv_paths[kv].clear()
-  for iv,jps in enumerate(result):
-    print >> out, iv, jps
-  print >> out
+        elif (len(path) > 2):
+          result_lv_kv.append(path[1:-1])
+    path.pop()
+  depth_first_search(jv=-1, kv=iv)
   return result
 
 class construct(object):
