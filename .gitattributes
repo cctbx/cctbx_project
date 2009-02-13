@@ -70,6 +70,7 @@ cctbx/sgtbx/direct_space_asu/proto/generate_cpp_asu_table.py svneol=native#text/
 cctbx/sgtbx/direct_space_asu/proto/reference_table.cpp svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/reference_table.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/shortcuts.h svneol=native#text/plain
+cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/tst_asu.cpp svneol=native#text/plain
 cctbx/sgtbx/direct_space_asu/proto/tst_asu.py svneol=native#text/x-python
 cctbx/sgtbx/rational_matrices_point_groups.py -text

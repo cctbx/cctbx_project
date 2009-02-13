@@ -1,9 +1,15 @@
 #ifndef CCTBX_SGTBX_DIRECT_SPACE_ASU_H
 #define CCTBX_SGTBX_DIRECT_SPACE_ASU_H
 
+#include <scitbx/array_family/shared.h>
+
+#include "small_vec_math.h"
+
 #include "facet_collection.h"
 
 namespace cctbx { namespace sgtbx { namespace asu {
+
+  enum intersection_kind { none, fully, partially };
 
   //! Direct space asymmetric unit
   /*! \class direct_space_asu direct_space_asu.h cctbx/sgtbx/direct_space_asu/proto/direct_space_asu.h
@@ -41,6 +47,14 @@ namespace cctbx { namespace sgtbx { namespace asu {
     //! Return set of planes which contain point
     void in_which_planes(const rvector3_t &point, std::vector<cut> &planes) const;
 
+    scitbx::af::shared<cut> in_which_facets(const rvector3_t &point) const
+    {
+      // scitbx::af::shared<cut> planes;
+      std::vector<cut> planes;
+      this->in_which_planes(point,  planes);
+      return scitbx::af::shared<cut> ( &*planes.begin(), &*planes.end() );
+    }
+
     //! Tests if rational 3D point belongs to the asymmetric unit
     bool is_inside(const rvector3_t &p) const
     {
@@ -59,6 +73,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
           return false;
       }
       return true;
+    }
+
+    bool is_inside(const rvector3_t &point, bool vol_only) const
+    {
+      return vol_only ? is_inside_volume_only(point) : is_inside(point);
     }
 
     //! Returns number of the faces in the asu
@@ -95,6 +114,11 @@ namespace cctbx { namespace sgtbx { namespace asu {
       this->box_corners(mn,mx);
       return mn;
     }
+
+    intersection_kind does_intersect(const scitbx::double3 &center, const scitbx::double3 &box) const;
+    void get_adjacent_cells(std::vector<scitbx::tiny3> &cells) const;
+    void get_cells(std::vector<scitbx::tiny3> &cells) const;
+    rvector3_t move_inside(const cctbx::sgtbx::space_group &group, const rvector3_t &v) const;
 
     direct_space_asu(const direct_space_asu &a) : hall_symbol(a.hall_symbol), faces(a.faces->new_copy()) {}
     direct_space_asu() : hall_symbol(), faces(NULL) {}
@@ -134,4 +158,3 @@ namespace cctbx { namespace sgtbx { namespace asu {
 
 }}}
 #endif
-
