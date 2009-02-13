@@ -93,7 +93,7 @@ class kick_map(object):
           symmetry_flags                = symmetry_flags,
           bss_params                    = bss_params,
           alpha_fom_source              = map_helper_obj)
-        if(average_maps):
+        if 0:#(average_maps): # XXX disabled till further investigation (does not work)
           self.fft_map = model_to_map_obj.fft_map()
           if(real_map):
             tmp_result = self.fft_map.real_map()
@@ -111,17 +111,23 @@ class kick_map(object):
           else:
             map_coeff_data = map_coeff_data + map_coeff_data_
         counter += 1
+    if(map_coeff_data is not None):
+      self.map_coeffs = map_coeff_.customized_copy(
+        data = map_coeff_data/counter)
+    ###
+    self.fft_map = self.map_coeffs.fft_map(resolution_factor= resolution_factor)
+    if(real_map):
+      self.map_data = self.fft_map.real_map()
+    else:
+      self.map_data = self.fft_map.real_map_unpadded()
     if(self.map_data is not None):
-      self.map_data = self.map_data/counter
       # produce sigma scaled map: copied from miller.py
       from cctbx import maptbx
       statistics = maptbx.statistics(self.map_data)
       self.average = statistics.mean()
       self.standard_deviation = statistics.sigma()
       self.map_data /= self.standard_deviation
-    if(map_coeff_data is not None):
-      self.map_coeffs = map_coeff_.customized_copy(
-        data = map_coeff_data/counter)
+
 
 class model_to_map(object):
 
