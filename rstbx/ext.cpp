@@ -9,9 +9,67 @@
 #include <rstbx/dps_core/dps_core.h>
 #include <rstbx/dps_core/direction.h>
 
+#include <scitbx/array_family/flex_types.h>
+
 using namespace boost::python;
 
-namespace rstbx { namespace boost_python { namespace {
+namespace rstbx {
+
+/* SimpleSamplerTool samples the unit sphere; outputting a list of surface
+   points that are spaced apart a specified number of radians.
+*/
+
+class SimpleSamplerTool {
+ typedef scitbx::af::shared<Direction > flex_Direction;
+
+ public:
+  double incr;  //initial directional spacing in radians
+  flex_Direction angles;
+
+  SimpleSamplerTool(const double& characteristic_grid):
+    // The maximum allowable characteristic grid should be about 0.029 radians,
+    // corresponding to the grid sampling used in the Rossman DPS paper;
+    // approx 7900 directions; 0.03 seconds in C++ code.
+    // But the characteristic grid sampling should be reflective of the problem at hand =
+    // approximately: the observed resolution limit /
+    //                most conservative (largest) cell estimate
+
+    incr(characteristic_grid) {
+    construct_hemisphere_grid(incr);
+  }
+
+  flex_Direction construct_hemisphere_grid(const double& sampling){
+    // psi is the equivalent of latitude, measured as an angle from the North pole
+    // rounding:
+    int psi_index_range = int (0.5 + scitbx::constants::pi_2/sampling);
+    // adjust for integral number
+    double adjusted_psi_incr = scitbx::constants::pi_2/psi_index_range;
+    angles.reserve(4*psi_index_range*psi_index_range);
+
+    for (int x = 0; x <= psi_index_range; ++x){
+      double psi = x * adjusted_psi_incr;
+      if (psi > scitbx::constants::pi){
+        double eps = 1E-4; psi=scitbx::constants::pi-eps;
+      }
+
+      // phi is the equivalent of longitude
+      if (psi==0){
+        double phi=0.;
+        angles.push_back(Direction(psi,phi));
+      } else {
+        int phi_index_range = int (0.5 + 2.*scitbx::constants::pi*std::sin(psi)/sampling);
+        double adjusted_phi_incr = 2.*scitbx::constants::pi/phi_index_range;
+        for (int y =0; y < phi_index_range; ++y) {
+          double phi = y * adjusted_phi_incr;
+          angles.push_back(Direction(psi,phi));
+        }
+      }
+    }
+    return angles;
+  }
+};
+
+namespace boost_python { namespace {
 
   boost::python::tuple
   foo()
@@ -74,6 +132,13 @@ namespace rstbx { namespace boost_python { namespace {
       .def("is_nearly_collinear",&Direction::is_nearly_collinear)
    ;
 
+    class_<SimpleSamplerTool >("SimpleSamplerTool", init<const double &>())
+      .add_property("incr",make_getter(&SimpleSamplerTool::incr, rbv()),
+                           make_setter(&SimpleSamplerTool::incr, dcp()))
+      .add_property("angles",make_getter(&SimpleSamplerTool::angles, rbv()),
+                             make_setter(&SimpleSamplerTool::angles, dcp()))
+      .def("construct_hemisphere_grid",&SimpleSamplerTool::construct_hemisphere_grid)
+   ;
   }
 
 }}} // namespace omptbx::boost_python::<anonymous>
