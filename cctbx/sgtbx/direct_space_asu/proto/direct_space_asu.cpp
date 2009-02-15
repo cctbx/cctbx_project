@@ -88,25 +88,30 @@ namespace cctbx { namespace sgtbx { namespace asu {
   }
 
 
-  intersection_kind direct_space_asu::does_intersect(const scitbx::double3 &center, const scitbx::double3 &box) const
+  inline scitbx::double3 conv_(const rvector3_t r)
   {
-    rvector3_t mn, mx;
-    this->box_corners(mn, mx);
-    // MMTBX_ASSERT( radius >= 0.0 );
-    const signed char n_corners = 2;
-    scitbx::double3 corners[n_corners] = { center - box, center + box };
+    return scitbx::double3( boost::rational_cast<double,int>(r[0]),
+      boost::rational_cast<double,int>(r[1]), boost::rational_cast<double,int>(r[2]));
+  }
 
-    if( ge_all(corners[0], mn) && le_all(corners[0], mx) &&
-        ge_all(corners[1], mn) && le_all(corners[1], mx) )
-      return fully;
-    for(signed char i=0; i<n_corners; ++i)
-      for(signed char j=0; j<n_corners; ++j)
-        for(signed char k=0; k<n_corners; ++k)
-        {
-          scitbx::double3 vertex( corners[i][0], corners[j][1], corners[k][2] );
-          if( ge_all(vertex, mn) && le_all(vertex, mx) )
-            return partially;
-        }
+  intersection_kind direct_space_asu::does_intersect(const scitbx::double3 &center,
+    const scitbx::double3 &box) const
+  {
+    const signed char n_corners = 2;
+    rvector3_t asu_box_r[n_corners];
+    this->box_corners(asu_box_r[0], asu_box_r[1]);
+    const scitbx::double3 asu_box[n_corners] = { conv_(asu_box_r[0]), conv_(asu_box_r[1])};
+    CCTBX_ASSERT( scitbx::ge_all(asu_box[1], asu_box[0]) );
+    const scitbx::double3 atom_box[n_corners] = { center - box, center + box };
+    CCTBX_ASSERT( scitbx::ge_all(atom_box[1], atom_box[0]) );
+
+    // need to test against enclosed_box for the 'fully' to work
+    // if( scitbx::ge_all(atom_box[0], asu_enclosed_box[0]) &&
+    // scitbx::le_all(atom_box[1], asu_enclosed_box[1]) )
+    //  return fully;
+    if( scitbx::ge_all(atom_box[1], asu_box[0]) && scitbx::le_all(atom_box[0], asu_box[1]) )
+      return partially;
+
     return none;
   }
 
@@ -151,3 +156,4 @@ namespace cctbx { namespace sgtbx { namespace asu {
   }
 
 }}}
+
