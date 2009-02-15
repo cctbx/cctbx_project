@@ -2,6 +2,7 @@ from scitbx.rigid_body.essence import tst_molecules
 from scitbx.math import minimum_covering_sphere, sphere_3d
 from scitbx.array_family import flex
 from gltbx import wx_viewer
+from libtbx.option_parser import libtbx_option_parser
 from libtbx.utils import Usage
 import wx
 import sys
@@ -99,20 +100,27 @@ class App(wx_viewer.App):
 
   def __init__(self, args):
     n = tst_molecules.n_test_simulations
-    if (len(args) != 1):
-      raise Usage("""\
-scitbx.python wx_molecules.py sim_index
-  sim_index range: 0 ... %d
+    command_line = (libtbx_option_parser(
+      usage="""\
+scitbx.python wx_molecules.py [options] sim_index
+  sim_index range: 0 ... %d\
 """ % (n-1))
-    self.simulation_index = int(args[0])
+      .option(None, "--i_seq_labels",
+        action="store_true",
+        default=False)
+    ).process(args=args, nargs=1)
+    self.i_seq_labels = command_line.options.i_seq_labels
+    self.simulation_index = int(command_line.args[0])
     assert 0 <= self.simulation_index < n
     super(App, self).__init__(title="wx_molecules")
 
   def init_view_objects(self):
     box = wx.BoxSizer(wx.VERTICAL)
     self.view_objects = viewer(self.frame, size=(600,600))
-    self.view_objects.set_points_and_lines(
-      sim=tst_molecules.get_test_simulation_by_index(self.simulation_index))
+    sim = tst_molecules.get_test_simulation_by_index(self.simulation_index)
+    if (self.i_seq_labels):
+      sim.labels = [str(i) for i in xrange(len(sim.labels))]
+    self.view_objects.set_points_and_lines(sim=sim)
     box.Add(self.view_objects, wx.EXPAND, wx.EXPAND)
     self.frame.SetSizer(box)
     box.SetSizeHints(self.frame)
