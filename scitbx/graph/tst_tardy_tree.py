@@ -374,7 +374,7 @@ test_cases = [
     edge_list=[(0,2)],
     clusters1=[[0], [1], [2]],
     hinge_edges1=[(-1,0), (-1,1)],
-    roots1=[0, 2],
+    roots1=[0, 1],
     tree_ids1=[0, 1]),
   test_case_data(
     art=r"""
@@ -399,7 +399,7 @@ test_cases = [
       (7,8)],
     clusters1=[[1, 2, 7, 8], [4, 5, 6], [0], [3], [9]],
     hinge_edges1=[(-1,1), (2,3), (-1,4)],
-    roots1=[0, 3],
+    roots1=[0, 2],
     tree_ids1=[0, 0, 1]),
   test_case_data(
     art=r"""
@@ -423,7 +423,7 @@ test_cases = [
       (7,8)],
     clusters1=[[0, 3, 4, 6], [1, 2, 7, 8], [5], [9]],
     hinge_edges1=[(-1,0), (3,2), (-1,5)],
-    roots1=[0, 3],
+    roots1=[0, 2],
     tree_ids1=[0, 0, 1]),
   test_case_data(
     art=r"""
@@ -446,6 +446,25 @@ test_cases = [
     hinge_edges1=[(-1,0)],
     roots1=[0],
     tree_ids1=[0]),
+  test_case_data(
+    art=r"""
+  1        5
+  |\     / |
+  | 0 - 3  |
+  |/     \ |
+  2        4
+""",
+    n_vertices=6,
+    edge_list=[
+      (0,1), (0,2), (0,3),
+      (1,2),
+      (3,4), (3,5),
+      (4,5)],
+    clusters1=[[0, 1, 2], [3, 4, 5]],
+    hinge_edges1=[(-1, 0), (0, 3)],
+    roots1=[0],
+    tree_ids1=[0, 0]),
+
   ]
 
 def special_case_ZINC03847121():
@@ -497,6 +516,8 @@ def run(args):
     print >> out, "c1t:", cm.clusters
     assert_same("he1:", cm.hinge_edges, tc_he1)
     assert_same("le1:", cm.loop_edges, tc_le1)
+    r = cm.roots()
+    assert_same("r1:", r, tc_r1)
     tid = cm.tree_ids()
     assert_same("tid1:", tid, tc_tid1)
     cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
