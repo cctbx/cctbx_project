@@ -289,10 +289,10 @@ ATOM     16  C15 LIG A   1       2.734  -0.755  -0.050  1.00 20.00      A    C
     (0, 1), (0, 5), (1, 2), (2, 3), (2, 15), (3, 4), (4, 5), (5, 6),
     (6, 7), (7, 8), (8, 9), (8, 13), (9, 10), (10, 11),
     (11, 12), (11, 14), (12, 13), (14, 15)],
-  clusters=[[0, 1, 2, 3, 4, 5, 6, 15], [7], [8], [9, 10, 11, 12, 13, 14]],
-  hinge_edges=[(-1, 0), (5, 6), (6, 7), (7, 8)],
-  loop_edges=[(14, 15)],
-  loop_edge_bendings=[(2, 14), (11, 15)]),
+  clusters=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
+  hinge_edges=[(-1, 0)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
 
 pdb_extract(
   tag="ZINC04656480", # C[NH+]1CC2C[NH+](CC(C1)NC2=O)C
@@ -316,10 +316,10 @@ ATOM     15 H061 LIG A   1      -2.133  -1.527  -0.603  1.00 20.00      A    H
   bonds=[
     (0, 1), (1, 2), (1, 8), (1, 13), (2, 3), (3, 4), (3, 10), (4, 5),
     (5, 6), (5, 12), (5, 14), (6, 7), (7, 8), (7, 9), (9, 10), (10, 11)],
-  clusters=None,
-  hinge_edges=None,
-  loop_edges=None,
-  loop_edge_bendings=None),
+  clusters=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]],
+  hinge_edges=[(-1, 1)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
 
 pdb_extract(
   tag="ZINC00196949", # C1C[NH+]2C[NH+]3CC[NH+](C2)C[NH+]1C3
@@ -345,10 +345,10 @@ ATOM     16 H111 LIG A   1      -2.490  -0.325  -1.006  1.00 20.00      A    H
     (0, 1), (0, 10), (1, 2), (2, 3), (2, 8), (2, 12), (3, 4),
     (4, 5), (4, 11), (4, 13), (5, 6), (6, 7), (7, 8), (7, 9), (7, 14),
     (9, 10), (10, 11), (10, 15)],
-  clusters=None,
-  hinge_edges=None,
-  loop_edges=None,
-  loop_edge_bendings=None),
+  clusters=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
+  hinge_edges=[(-1, 0)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
 
 pdb_extract(
   tag="ZINC03847120", # c1ccc2ccccc(c1)C2(C#N)Br
@@ -371,9 +371,9 @@ ATOM     14 BR14 LIG A   1      -0.504   0.332   2.810  1.00 20.00      A   BR
   bonds=[
     (0, 1), (0, 9), (1, 2), (2, 3), (3, 4), (3, 10), (4, 5), (5, 6),
     (6, 7), (7, 8), (8, 9), (8, 10), (10, 11), (10, 13), (11, 12)],
-  clusters=None,
-  hinge_edges=None,
-  loop_edges=None,
-  loop_edge_bendings=None),
+  clusters=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13], [12]],
+  hinge_edges=[(-1, 0), (10, 11)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
 
 ]

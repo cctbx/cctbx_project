@@ -519,14 +519,9 @@ def run(args):
     print >> out
   #
   from scitbx.graph import tst_tardy_pdb
-  for tc in tst_tardy_pdb.test_cases:
-    tt = tc.tardy_tree_construct()
-    tx = construct(n_vertices=tt.n_vertices, edge_list=tt.edge_list)
-    tx.find_cluster_loops()
-    tx.finalize()
-    #
-    for iv in xrange(len(tt.edge_sets)):
-      find_paths(edge_sets=tt.edge_sets, iv=iv)
+  for i_tc,tc in enumerate(tst_tardy_pdb.test_cases):
+    print >> out, "tst_tardy_pdb index:", i_tc
+    tc.tardy_tree_construct()
   #
   special_case_ZINC03847121()
   #
