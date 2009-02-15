@@ -58,8 +58,6 @@ struct Directional_FFT {
   sztype p_kmax;
   double p_kval;
 
-  double amax;        // max cell in Angstroms
-  double granularity; // number of bins between lattice planes (n in Rossmann)
   sztype F0_specific_cutoff; // smallest channel for direct-space maximum
   Direction& angle;   // a reference to the Direction instance used to
                       // construct the Directional_FFT
