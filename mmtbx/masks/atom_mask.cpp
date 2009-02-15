@@ -41,22 +41,14 @@ namespace mmtbx { namespace masks {
   }
 
 
-  cctbx::sgtbx::asu::intersection_kind does_intersect(const cctbx::uctbx::unit_cell &cell, const direct_space_asu &asu, const scitbx::double3 &center, double radius)
-  {
-    MMTBX_ASSERT( radius >= 0.0 );
-    scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
-    scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
-    scitbx::double3 box = rp * radius;
-    return asu.does_intersect(center, box);
-  }
-
   unsigned short site_symmetry_order(const cctbx::sgtbx::space_group &group, const rvector3_t &v, scitbx::double3 &delta)
   {
     unsigned short nops = 0;
     for(size_t i=0; i<group.order_z(); ++i)
     {
       const cctbx::sgtbx::rt_mx op = group(i);
-      scitbx::double3 dv(boost::rational_cast<double,int>(v[0]), boost::rational_cast<double,int>(v[1]), boost::rational_cast<double,int>(v[2]));
+      scitbx::double3 dv(boost::rational_cast<double,int>(v[0]),
+        boost::rational_cast<double,int>(v[1]), boost::rational_cast<double,int>(v[2]));
       scitbx::double3 sv = op * dv;
       dv -= floor(dv);
       sv -= floor(sv);
@@ -76,8 +68,8 @@ namespace mmtbx { namespace masks {
     const scitbx::vec3<int> n(n_[0], n_[1], n_[2]);
     cctbx::sgtbx::asu::rvector3_t mn, mx;
     MMTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
-    // scitbx::af::double3 tolerance( 0.05/n[0], 0.05/n[1], 0.05/n[2]);
-    scitbx::double3 tolerance( 0.35/n[0], 0.35/n[1], 0.35/n[2]);
+    // scitbx::double3 tolerance( 0.05/n[0], 0.05/n[1], 0.05/n[2]);
+    scitbx::double3 tolerance( 0.15/n[0], 0.15/n[1], 0.15/n[2]);
     asu.box_corners(mn,mx);
     mul(mn, n);
     mul(mx, n);
@@ -130,13 +122,14 @@ namespace mmtbx { namespace masks {
     size_t nn = 0;
     nn = std::accumulate( this->get_mask().begin(), this->get_mask().end(), nn );
     MMTBX_ASSERT( nn > 0 );
+    MMTBX_ASSERT( nn == this->get_mask().size() ); // P43 (78), P4322 (95) and a few others fail here
     size_t n_solvent = this->compute_accessible_surface(asu_atoms, asu_radii);
     size_t tmp=0;
     tmp = std::count( get_mask().begin(), get_mask().end(), 0);
     tmp = std::count_if( get_mask().begin(), get_mask().end(), std::bind2nd(std::less<data_type>(),0) );
-
-    this->compute_contact_surface(n_solvent);
     size_t nn_solv = 0;
+    nn_solv = std::accumulate( this->get_mask().begin(), this->get_mask().end(), nn_solv );
+    this->compute_contact_surface(n_solvent);
     nn_solv = 0U;
     nn_solv = std::accumulate( this->get_mask().begin(), this->get_mask().end(), nn_solv );
     contact_surface_fraction = accessible_surface_fraction = double(nn_solv)/nn;
@@ -153,6 +146,8 @@ namespace mmtbx { namespace masks {
     asu_atoms.clear();
     asu_radii.clear();
     const cctbx::sgtbx::space_group &grp = group;
+    const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
+    const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
 
     std::vector< scitbx::tiny3 > cells;
     this->asu.get_adjacent_cells(cells);
@@ -160,29 +155,33 @@ namespace mmtbx { namespace masks {
     for(size_t iat=0; iat<sites_frac.size(); ++iat)
     {
       scitbx::double3 at = sites_frac[iat];
-      double at_r = atom_radii[iat];
+      const double at_r =  atom_radii[iat];
+      const double radius = at_r + solvent_radius;
+      MMTBX_ASSERT( radius >= 0.0 );
+      scitbx::double3 box = rp * radius;
+      box *= 1.05;
 
       for(size_t isym=0; isym<grp.order_z(); ++isym)
       {
         const cctbx::sgtbx::rt_mx symop = grp(isym);
         scitbx::double3 sym_at = symop*at;
-        sym_at -= floor(sym_at);
+        sym_at -= scitbx::floor(sym_at);
         for(size_t icell=0; icell<cells.size(); ++icell)
         {
           const scitbx::double3 sym_at_cell = sym_at + cells[icell];
-          const cctbx::sgtbx::asu::intersection_kind  intersection = does_intersect(cell, asu, sym_at_cell, at_r + solvent_radius);
-          if( intersection != none )
+          const cctbx::sgtbx::asu::intersection_kind  intersection = asu.does_intersect(sym_at_cell, box);
+          if( intersection != cctbx::sgtbx::asu::none )
           {
-            this->asu_atoms.push_back(sym_at); // _cell);
+            this->asu_atoms.push_back(sym_at);
             this->asu_radii.push_back(at_r);
-            if( intersection == fully )
+            if( intersection == cctbx::sgtbx::asu::fully )
               goto end_sym_loop; // need to break out of the symmetry loop here
             break;
           }
         }
       }
       end_sym_loop:
-        continue;
+        ;
     }
   }
 
