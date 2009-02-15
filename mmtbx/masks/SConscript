@@ -5,7 +5,7 @@ env = env_base.Copy(
   CXXFLAGS=env_etc.cxxflags_base,
   SHCXXFLAGS=env_etc.cxxflags_base,
   SHLINKFLAGS=env_etc.shlinkflags,
-  LIBS=["cctbx"]+env_etc.libm,
+  LIBS=["cctbx", "omptbx"]+env_etc.libm,
   LIBPATH=["#lib"]
 )
 env_etc.include_registry.append(
@@ -24,7 +24,7 @@ builder(
   source=lib_sources)
 
 env = env.Copy()
-env.Prepend(LIBS=["mmtbx_masks", "cctbx_sgtbx_asu", "iotbx_pdb", "omptbx"])
+env.Prepend(LIBS=["mmtbx_masks", "iotbx_pdb", "cctbx_sgtbx_asu"])
 env.Program( target = "tst_mask",  source="tst_mask.cpp")
 
 if (not env_etc.no_boost_python):
@@ -33,7 +33,7 @@ if (not env_etc.no_boost_python):
   env_etc.include_registry.append(
     env=env_bpl,
     paths=env_etc.mmtbx_common_includes)
-  env_bpl.Prepend(LIBS=["mmtbx_masks", "cctbx", "cctbx_sgtbx_asu"])
+  env_bpl.Prepend(LIBS=["mmtbx_masks", "cctbx_sgtbx_asu", "cctbx", "omptbx"])
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_masks_ext",
     source=["masks_ext.cpp"])
