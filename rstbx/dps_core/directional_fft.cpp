@@ -9,8 +9,6 @@ rstbx::Directional_FFT::Directional_FFT (
     xy(xyzdata.ref()),
     has_power_spectrum(false),
     has_kval(false),
-    amax(amax),
-    granularity(granularity),
     angle(angle),
     F0_specific_cutoff(F0_specific_cutoff){
 
