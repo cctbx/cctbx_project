@@ -1,6 +1,10 @@
 Import("env_base", "env_etc")
 env = env_base.Copy(
+  CCFLAGS=env_etc.ccflags_base,
+  SHCCFLAGS=env_etc.ccflags_base,
   CXXFLAGS=env_etc.cxxflags_base,
+  SHCXXFLAGS=env_etc.cxxflags_base,
+  SHLINKFLAGS=env_etc.shlinkflags,
   LIBS=["cctbx"]+env_etc.libm,
   LIBPATH=["#lib"]
 )
@@ -19,10 +23,9 @@ builder(
   target="#lib/mmtbx_masks",
   source=lib_sources)
 
-
+env = env.Copy()
 env.Prepend(LIBS=["mmtbx_masks", "cctbx_sgtbx_asu", "iotbx_pdb", "omptbx"])
 env.Program( target = "tst_mask",  source="tst_mask.cpp")
-
 
 if (not env_etc.no_boost_python):
   Import("env_cctbx_boost_python_ext")
