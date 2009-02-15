@@ -3,13 +3,12 @@
 #include <rstbx/dps_core/directional_fft.h>
 
 rstbx::Directional_FFT::Directional_FFT (
-  Direction& angle, veclist_t& xyzdata,
+  const Direction& angle, const veclist_t& xyzdata,
   const double& granularity, const double& amax,
   const sztype& F0_specific_cutoff):
-    xy(xyzdata.ref()),
+    xy(xyzdata.const_ref()),
     has_power_spectrum(false),
     has_kval(false),
-    angle(angle),
     F0_specific_cutoff(F0_specific_cutoff){
 
       shareddouble_t   projections(xy.size());
@@ -101,22 +100,6 @@ rstbx::Directional_FFT::kval3() {
       scitbx::af::ref<double> ps(pspectrum.begin(),pspectrum.size());
       if (p_kmax * 3 < ps.size()) { return ps[p_kmax * 3]; }
       return 0.0;
-}
-
-void
-rstbx::Directional_FFT::extract_directional_properties(const bool PS){
-  angle.kmax = kmax();
-  angle.kval = kval();
-  angle.kval0 = kval0();
-  angle.kval2 = kval2();
-  angle.kval3 = kval3();
-  angle.m = m;
-  angle.delta_p = delta_p;
-  angle.pmin = pmin;
-  angle.uc_length = kmax()/ (m*delta_p);
-  if (PS) {
-    angle.ff = power_spectrum();
-  }
 }
 
 rstbx::sztype
