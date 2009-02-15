@@ -376,4 +376,79 @@ ATOM     14 BR14 LIG A   1      -0.504   0.332   2.810  1.00 20.00      A   BR
   loop_edges=[],
   loop_edge_bendings=[]),
 
+pdb_extract(
+  tag="-ZINC12362269", # C/C(=N\NC(=O)[C@H]1CC1(C2CC2)C3CC3)/c4cccc(c4)Br
+                       # atoms 16-23 removed
+  pdb="""\
+ATOM      1  C01 LIG A   1      -1.077  -0.498  -3.089  1.00 20.00      A    C
+ATOM      2  C02 LIG A   1      -1.796  -0.766  -1.768  1.00 20.00      A    C
+ATOM      3  N03 LIG A   1      -1.180  -0.649  -0.687  1.00 20.00      A    N
+ATOM      4  N04 LIG A   1       0.179  -0.269  -0.687  1.00 20.00      A    N
+ATOM      5  C05 LIG A   1       0.896  -0.141   0.569  1.00 20.00      A    C
+ATOM      6  O06 LIG A   1       0.341  -0.355   1.593  1.00 20.00      A    O
+ATOM      7  C07 LIG A   1       2.307   0.249   0.569  1.00 20.00      A    C
+ATOM      8  C08 LIG A   1       2.760  -0.479   1.787  1.00 20.00      A    C
+ATOM      9  C09 LIG A   1       3.212   0.911   1.550  1.00 20.00      A    C
+ATOM     10  C10 LIG A   1       3.211   2.174   2.408  1.00 20.00      A    C
+ATOM     11  C11 LIG A   1       3.039   3.693   2.491  1.00 20.00      A    C
+ATOM     12  C12 LIG A   1       2.935   2.841   3.758  1.00 20.00      A    C
+ATOM     13  C13 LIG A   1       4.738   0.961   1.496  1.00 20.00      A    C
+ATOM     14  C14 LIG A   1       6.113   0.494   1.979  1.00 20.00      A    C
+ATOM     15  C15 LIG A   1       6.006   1.517   0.846  1.00 20.00      A    C
+""",
+  bonds=[
+    (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (4, 6), (6, 7), (6, 8),
+    (7, 8), (8, 9), (8, 12), (9, 10), (9, 11), (10, 11),
+    (12, 13), (12, 14), (13, 14)],
+  clusters=None,
+  hinge_edges=None,
+  loop_edges=None,
+  loop_edge_bendings=None),
+
+pdb_extract(
+  tag="ZINC01638508", # C1CC1C(C2CC2)(C3CC3)O
+  pdb="""\
+ATOM      1  C01 LIG A   1      -0.942   1.244  -2.155  1.00 20.00      A    C
+ATOM      2  C02 LIG A   1       0.586   1.277  -2.221  1.00 20.00      A    C
+ATOM      3  C03 LIG A   1      -0.120   1.216  -0.865  1.00 20.00      A    C
+ATOM      4  C04 LIG A   1      -0.056  -0.069  -0.042  1.00 20.00      A    C
+ATOM      5  C05 LIG A   1      -0.281   0.259   1.432  1.00 20.00      A    C
+ATOM      6  C06 LIG A   1      -1.658   0.020   2.055  1.00 20.00      A    C
+ATOM      7  C07 LIG A   1      -1.166   1.448   1.812  1.00 20.00      A    C
+ATOM      8  C08 LIG A   1       1.316  -0.717  -0.216  1.00 20.00      A    C
+ATOM      9  C09 LIG A   1       1.940  -1.483   0.953  1.00 20.00      A    C
+ATOM     10  C10 LIG A   1       1.427  -2.242  -0.273  1.00 20.00      A    C
+ATOM     11  O11 LIG A   1      -1.048  -0.953  -0.480  1.00 20.00      A    O
+""",
+  bonds=[
+    (0, 1), (0, 2), (1, 2), (2, 3), (3, 4), (3, 7), (3, 10),
+    (4, 5), (4, 6), (5, 6), (7, 8), (7, 9), (8, 9)],
+  clusters=None,
+  hinge_edges=None,
+  loop_edges=None,
+  loop_edge_bendings=None),
+
+pdb_extract(
+  tag="ZINC01638509", # C1CC(OC1)(C2CC2)C3CC3
+  pdb="""\
+ATOM      1  C01 LIG A   1      -1.976   0.015  -1.638  1.00 20.00      A    C
+ATOM      2  C02 LIG A   1      -0.474   0.091  -1.532  1.00 20.00      A    C
+ATOM      3  C03 LIG A   1      -0.172   0.077  -0.038  1.00 20.00      A    C
+ATOM      4  O04 LIG A   1      -1.402   0.464   0.622  1.00 20.00      A    O
+ATOM      5  C05 LIG A   1      -2.482  -0.041  -0.201  1.00 20.00      A    C
+ATOM      6  C06 LIG A   1       0.849   1.194   0.167  1.00 20.00      A    C
+ATOM      7  C07 LIG A   1       2.063   2.028  -0.248  1.00 20.00      A    C
+ATOM      8  C08 LIG A   1       1.374   2.295   1.091  1.00 20.00      A    C
+ATOM      9  C09 LIG A   1       0.546  -1.212   0.356  1.00 20.00      A    C
+ATOM     10  C10 LIG A   1       1.137  -2.583   0.018  1.00 20.00      A    C
+ATOM     11  C11 LIG A   1       0.535  -2.329   1.402  1.00 20.00      A    C
+""",
+  bonds=[
+    (0, 1), (0, 4), (1, 2), (2, 3), (2, 5), (2, 8), (3, 4),
+    (5, 6), (5, 7), (6, 7), (8, 9), (8, 10), (9, 10)],
+  clusters=None,
+  hinge_edges=None,
+  loop_edges=None,
+  loop_edge_bendings=None),
+
 ]
