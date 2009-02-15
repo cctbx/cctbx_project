@@ -51,7 +51,7 @@ class dps_core {
   void setMaxcell(const double &);
   void setXyzData(pointlistmm inputdata){ xyzdata = inputdata; }
   int getXyzSize() const {return xyzdata.size();}
-  fftptr fft_factory(Direction&);  //more work needed to enforce const correct
+  fftptr fft_factory(const Direction&) const;
   void setSolutions(af::shared<Direction>);
   af::shared<Direction> getSolutions() const;
   inline int n_candidates() const { return hemisphere_solutions.size(); }

@@ -29,7 +29,7 @@ pd::dps_core::setMaxcell(const double& a){
 }
 
 pd::fftptr
-pd::dps_core::fft_factory(pd::Direction& angle) {
+pd::dps_core::fft_factory(const pd::Direction& angle) const {
   fftptr rv(new Directional_FFT(angle, xyzdata, granularity, amax));
   return rv;
 }

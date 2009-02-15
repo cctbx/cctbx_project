@@ -16,7 +16,7 @@ namespace rstbx {
 
 typedef std::size_t                          sztype;
 typedef af::shared<scitbx::vec3<double> >    veclist_t;
-typedef af::ref<scitbx::vec3<double> >       veclist_ref;
+typedef af::const_ref<scitbx::vec3<double> > veclist_ref;
 typedef af::shared<double>                   shareddouble_t;
 typedef af::ref<double>                      shareddouble_ref;
 typedef af::flex_double                      flexdouble;
@@ -29,7 +29,7 @@ sztype
 primecheck(const sztype& input_m);
 
 struct Directional_FFT {
-  Directional_FFT (Direction& angle, veclist_t& xyzdata,
+  Directional_FFT (const Direction& angle, const veclist_t& xyzdata,
                    const double& granularity, const double& amax,
                    const sztype& = F0_cutoff);
   flexdouble
@@ -45,10 +45,6 @@ struct Directional_FFT {
   double kval0();      // the power spectrum's maximum value
   double kval2();      // the power spectrum's maximum value
   double kval3();      // the power spectrum's maximum value
-  void extract_directional_properties(const bool PS = true);
-  // fill the original angle with kmax,kval,power spectrum,m,delta_p,pmin,
-  // and unit cell length
-
 
  private:
   veclist_ref xy; //reference to the data; invalid after constructor call
@@ -59,8 +55,6 @@ struct Directional_FFT {
   double p_kval;
 
   sztype F0_specific_cutoff; // smallest channel for direct-space maximum
-  Direction& angle;   // a reference to the Direction instance used to
-                      // construct the Directional_FFT
 
 };
 

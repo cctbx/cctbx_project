@@ -1,5 +1,6 @@
 #include <scitbx/constants.h>
 #include <rstbx/dps_core/direction.h>
+#include <rstbx/dps_core/directional_fft.h>
 
 namespace pd = rstbx;
 namespace constants = scitbx::constants;
@@ -46,4 +47,20 @@ pd::Direction::is_nearly_collinear(const Direction & other) const {
 bool pd::kvalcmp::operator() (const pd::Direction& a, const pd::Direction& b){
   if (a.kval==b.kval) {return false;}
   return (a.kval > b.kval);
+}
+
+void
+pd::Direction::extract_directional_properties(fftptr dfft,const bool PS){
+  kmax = dfft->kmax();
+  kval = dfft->kval();
+  kval0 = dfft->kval0();
+  kval2 = dfft->kval2();
+  kval3 = dfft->kval3();
+  m = dfft->m;
+  delta_p = dfft->delta_p;
+  pmin = dfft->pmin;
+  uc_length = dfft->kmax()/ (m*delta_p);
+  if (PS) {
+    ff = dfft->power_spectrum();
+  }
 }
