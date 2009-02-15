@@ -162,11 +162,18 @@ namespace scitbx {
 
 
   template<typename NumType>
-  inline std::ostream & out (std::ostream &os, const vec3<NumType> &v)
+  inline std::ostream & out (std::ostream &os, const scitbx::vec3<NumType> &v)
   {
-    os << "(" << v[0] << ", " << v[1] << ", " << v[2];
+    os << "(" << v[0] << ", " << v[1] << ", " << v[2] << ")";
     return os;
   }
+
+  template<typename NumType>
+  inline std::ostream & operator<< (std::ostream &os, const scitbx::vec3<NumType> &v)
+  {
+    return scitbx::out(os, v);
+  }
+
 
   typedef boost::rational<int> rational_int;
   typedef scitbx::vec3< signed char > tiny3;
