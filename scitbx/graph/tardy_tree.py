@@ -318,15 +318,15 @@ class construct(object):
         jv_paths.setdefault(jv, []).append(path[:-1]) # XXX make set here
       for jv,paths_to_jv in jv_paths.items():
         if (len(paths_to_jv) < 3): continue
-        paths_by_length = [[], [], [], [], [], []]
+        paths_by_length = [None, [], [], [], [], []]
         for path_to_jv in paths_to_jv:
           assert len(path_to_jv) < 6
           assert jv not in path_to_jv # XXX remove later
           paths_by_length[len(path_to_jv)].append(path_to_jv)
         n_l1_l2_l3_lt_10 = 0
-        for l1 in xrange(6):
-          for l2 in xrange(min(6,10-l1)):
-            for l3 in xrange(min(6,10-l1-l2)):
+        for l1 in xrange(1,6):
+          for l2 in xrange(1,min(6,10-l1)):
+            for l3 in xrange(1,min(6,10-l1-l2)):
               assert l1+l2+l3 < 10
               n_l1_l2_l3_lt_10 += 1
               for path1 in paths_by_length[l1]:
@@ -344,7 +344,7 @@ class construct(object):
                       for kv in path:
                         O.cluster_manager.connect_vertices(
                           i=iv, j=kv, optimize=True)
-        assert n_l1_l2_l3_lt_10 == 160
+        assert n_l1_l2_l3_lt_10 == 72
 
   def find_cluster_loops(O):
     assert O.find_cluster_loop_repeats is None
