@@ -35,7 +35,7 @@ class SimpleSamplerTool {
     //                most conservative (largest) cell estimate
 
     incr(characteristic_grid) {
-    construct_hemisphere_grid(incr);
+    //construct_hemisphere_grid(incr);
   }
 
   flex_Direction construct_hemisphere_grid(const double& sampling){
@@ -44,6 +44,7 @@ class SimpleSamplerTool {
     int psi_index_range = int (0.5 + scitbx::constants::pi_2/sampling);
     // adjust for integral number
     double adjusted_psi_incr = scitbx::constants::pi_2/psi_index_range;
+    angles = flex_Direction();
     angles.reserve(4*psi_index_range*psi_index_range);
 
     for (int x = 0; x <= psi_index_range; ++x){
