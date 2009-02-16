@@ -87,7 +87,7 @@ def exercise_hexagon_wheel():
   p = find_paths_v3(edge_sets=edge_sets, iv=1)
   print "wheel", 1, p
 
-def three_archs_grow_edge_list(edge_list, offs, size):
+def archs_grow_edge_list(edge_list, offs, size):
   result = list(edge_list)
   i = 0
   for j in xrange(offs, offs+size):
@@ -96,31 +96,50 @@ def three_archs_grow_edge_list(edge_list, offs, size):
   result.append((1,i))
   return result
 
-def exercise_three_archs(arch_size_max=8):
-  for arch_size_1 in xrange(1, arch_size_max):
-    edge_list_1 = three_archs_grow_edge_list(
-      [], 2, arch_size_1)
-    for arch_size_2 in xrange(1, arch_size_max):
-      edge_list_12 = three_archs_grow_edge_list(
+def arch_dof(n_vertices, edge_list):
+  es = utils.construct_edge_sets(n_vertices=n_vertices, edge_list=edge_list)
+  bbes = utils.bond_bending_edge_sets(edge_sets=es)
+  bbel = utils.extract_edge_list(edge_sets=bbes)
+  dofs = [rigidity.determine_degrees_of_freedom(
+    n_dim=3, n_vertices=n_vertices, edge_list=bbel, method=method)
+      for method in ["float", "integer"]]
+  assert dofs[0] == dofs[1]
+  return es, dofs[0]
+
+def exercise_fused_loops(arch_size_max=8):
+  for arch_size_1 in xrange(1, arch_size_max+1):
+    edge_list_1 = archs_grow_edge_list(
+      [(0,1)], 2, arch_size_1)
+    for arch_size_2 in xrange(1, arch_size_max+1):
+      n_vertices = 2 + arch_size_1 + arch_size_2
+      edge_list_12 = archs_grow_edge_list(
         edge_list_1, 2+arch_size_1, arch_size_2)
-      for arch_size_3 in xrange(1, arch_size_max):
+      es, dof = arch_dof(n_vertices=n_vertices, edge_list=edge_list_12)
+      is_rigid = (dof == 6)
+      inferred_is_rigid = (
+            arch_size_1 < 6
+        and arch_size_2 < 6
+        and arch_size_1 + arch_size_2 < 10)
+      assert inferred_is_rigid == is_rigid
+
+def exercise_three_archs(arch_size_max=8):
+  for arch_size_1 in xrange(1, arch_size_max+1):
+    edge_list_1 = archs_grow_edge_list(
+      [], 2, arch_size_1)
+    for arch_size_2 in xrange(1, arch_size_max+1):
+      edge_list_12 = archs_grow_edge_list(
+        edge_list_1, 2+arch_size_1, arch_size_2)
+      for arch_size_3 in xrange(1, arch_size_max+1):
         n_vertices = 2 + arch_size_1 + arch_size_2 + arch_size_3
-        edge_list_123 = three_archs_grow_edge_list(
+        edge_list_123 = archs_grow_edge_list(
           edge_list_12, 2+arch_size_1+arch_size_2, arch_size_3)
-        es = utils.construct_edge_sets(
-          n_vertices=n_vertices, edge_list=edge_list_123)
-        bbes = utils.bond_bending_edge_sets(edge_sets=es)
-        bbel = utils.extract_edge_list(edge_sets=bbes)
-        dofs = [rigidity.determine_degrees_of_freedom(
-          n_dim=3, n_vertices=n_vertices, edge_list=bbel, method=method)
-            for method in ["float", "integer"]]
-        assert dofs[0] == dofs[1]
+        es, dof = arch_dof(n_vertices=n_vertices, edge_list=edge_list_123)
         expected = max(
           6,
           max(arch_size_1, arch_size_2, arch_size_3) + 1,
           arch_size_1 + arch_size_2 + arch_size_3 - 3)
-        assert expected == dofs[0]
-        is_rigid = dofs[0] == 6
+        assert expected == dof
+        is_rigid = (dof == 6)
         inferred_is_rigid = (
               arch_size_1 < 6
           and arch_size_2 < 6
@@ -168,6 +187,7 @@ def run(args):
   exercise_simple_loops()
   exercise_knot()
   exercise_hexagon_wheel()
+  exercise_fused_loops()
   exercise_three_archs()
   print "OK"
 
