@@ -267,20 +267,17 @@ def find_paths(edge_sets, iv):
   return result
 
 def find_paths_v3(edge_sets, iv):
-  in_loops = set()
-  in_branches = []
+  loops = []
+  dendrites = []
   path = []
   def depth_first_search(jv, kv):
     path.append(kv)
-    in_branches.append(list(path))
+    dendrites.append(list(path))
     closing = False
     for lv in edge_sets[kv]:
       if (lv == jv): continue
       if (lv == iv):
-        if (len(path) != 6):
-          in_loops.update(path)
-        else:
-          in_branches.append(list(path))
+        loops.append(list(path))
         closing = True
       elif (lv in path): # XXX replace with in_path[lv] array lookup
         closing = True
@@ -291,7 +288,7 @@ def find_paths_v3(edge_sets, iv):
     path.pop()
   for jv in edge_sets[iv]:
     depth_first_search(jv=iv, kv=jv)
-  return in_loops, in_branches
+  return loops, dendrites
 
 class construct(object):
 
@@ -307,11 +304,34 @@ class construct(object):
 
   def _find_paths(O):
     for iv in xrange(O.n_vertices):
-      in_loops, in_branches = find_paths_v3(edge_sets=O.edge_sets, iv=iv)
-      for jv in in_loops:
-        O.cluster_manager.connect_vertices(i=iv, j=jv, optimize=True)
+      loops, dendrites = find_paths_v3(edge_sets=O.edge_sets, iv=iv)
+      #
       jv_paths = {}
-      for path in in_branches:
+      for path in loops:
+        assert iv not in path # XXX remove later
+        assert len(path) > 1
+        if (len(path) < 6):
+          for jv in path:
+            O.cluster_manager.connect_vertices(i=iv, j=jv, optimize=True)
+        jv_paths.setdefault(path[0], []).append(path[1:])
+      for jv,loops_through_jv in jv_paths.items():
+        if (len(loops_through_jv) < 2): continue
+        l5s = []
+        have_small = False
+        for loop_through_jv in loops_through_jv:
+          assert len(loop_through_jv) < 6
+          assert jv not in loop_through_jv # XXX remove later
+          if (len(loop_through_jv) == 5):
+            l5s.append(loop_through_jv)
+          else:
+            have_small = True
+        if (have_small):
+          for loop_through_jv in l5s:
+            for kv in loop_through_jv:
+              O.cluster_manager.connect_vertices(i=iv, j=kv, optimize=True)
+      #
+      jv_paths = {}
+      for path in dendrites:
         assert iv not in path # XXX remove later
         if (len(path) < 2): continue
         jv = path[-1]

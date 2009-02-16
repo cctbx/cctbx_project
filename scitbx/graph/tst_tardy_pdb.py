@@ -9,7 +9,9 @@ class pdb_extract(object):
         clusters=None,
         hinge_edges=None,
         loop_edges=None,
-        loop_edge_bendings=None):
+        loop_edge_bendings=None,
+        find_cluster_loop_repeats=0,
+        merge_clusters_with_multiple_connections_passes=1):
     O.tag = tag
     O.labels, O.sites = [], []
     for line in pdb.splitlines():
@@ -20,6 +22,9 @@ class pdb_extract(object):
     O.hinge_edges = hinge_edges
     O.loop_edges = loop_edges
     O.loop_edge_bendings = loop_edge_bendings
+    O.find_cluster_loop_repeats = find_cluster_loop_repeats
+    O.merge_clusters_with_multiple_connections_passes = \
+      merge_clusters_with_multiple_connections_passes
 
   def tardy_tree_construct(O):
     from scitbx.graph import tardy_tree
@@ -44,6 +49,9 @@ class pdb_extract(object):
       print "loop_edge_bendings:", cm.loop_edge_bendings
     else:
       assert cm.loop_edge_bendings == O.loop_edge_bendings
+    assert tt.find_cluster_loop_repeats == O.find_cluster_loop_repeats
+    assert cm.merge_clusters_with_multiple_connections_passes \
+        ==  O.merge_clusters_with_multiple_connections_passes
     if (O.clusters is None):
       print
     return tt
@@ -292,7 +300,9 @@ ATOM     16  C15 LIG A   1       2.734  -0.755  -0.050  1.00 20.00      A    C
   clusters=[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]],
   hinge_edges=[(-1, 0)],
   loop_edges=[],
-  loop_edge_bendings=[]),
+  loop_edge_bendings=[],
+  find_cluster_loop_repeats=1,
+  merge_clusters_with_multiple_connections_passes=2),
 
 pdb_extract(
   tag="ZINC04656480", # C[NH+]1CC2C[NH+](CC(C1)NC2=O)C
@@ -450,5 +460,49 @@ ATOM     11  C11 LIG A   1       0.535  -2.329   1.402  1.00 20.00      A    C
   hinge_edges=[(-1, 0), (2, 5), (2, 8)],
   loop_edges=[],
   loop_edge_bendings=[]),
+
+pdb_extract(
+  tag="ZINC00057527", # COc1cc2c(c(c1OC)OC)-c3ccc(c(=O)cc3[C@H](CC2)[NH3+])O
+  pdb="""\
+ATOM      1  C01 LIG A   1      -3.707  -1.073  -3.995  1.00 20.00      A    C
+ATOM      2  O02 LIG A   1      -2.733  -0.091  -3.791  1.00 20.00      A    O
+ATOM      3  C03 LIG A   1      -1.979  -0.103  -2.612  1.00 20.00      A    C
+ATOM      4  C04 LIG A   1      -2.587  -0.442  -1.394  1.00 20.00      A    C
+ATOM      5  C05 LIG A   1      -1.817  -0.515  -0.228  1.00 20.00      A    C
+ATOM      6  C06 LIG A   1      -0.427  -0.384  -0.301  1.00 20.00      A    C
+ATOM      7  C07 LIG A   1       0.172   0.035  -1.496  1.00 20.00      A    C
+ATOM      8  C08 LIG A   1      -0.601   0.164  -2.656  1.00 20.00      A    C
+ATOM      9  O09 LIG A   1      -0.012   0.608  -3.845  1.00 20.00      A    O
+ATOM     10  C10 LIG A   1      -0.529   1.736  -4.489  1.00 20.00      A    C
+ATOM     11  O11 LIG A   1       1.495   0.490  -1.488  1.00 20.00      A    O
+ATOM     12  C12 LIG A   1       2.426  -0.085  -2.359  1.00 20.00      A    C
+ATOM     13  C13 LIG A   1       0.459   0.004   0.693  1.00 20.00      A    C
+ATOM     14  C14 LIG A   1       1.662  -0.498   0.151  1.00 20.00      A    C
+ATOM     15  C15 LIG A   1       2.869  -0.758   0.803  1.00 20.00      A    C
+ATOM     16  C16 LIG A   1       3.180  -0.590   2.138  1.00 20.00      A    C
+ATOM     17  C17 LIG A   1       2.375  -0.122   3.157  1.00 20.00      A    C
+ATOM     18  O18 LIG A   1       2.907   0.021   4.205  1.00 20.00      A    O
+ATOM     19  C19 LIG A   1       1.045   0.298   3.092  1.00 20.00      A    C
+ATOM     20  C20 LIG A   1       0.191   0.348   1.967  1.00 20.00      A    C
+ATOM     21  C21 LIG A   1      -1.251   0.702   2.179  1.00 20.00      A    C
+ATOM     22  C22 LIG A   1      -2.144  -0.498   2.330  1.00 20.00      A    C
+ATOM     23  C23 LIG A   1      -2.468  -1.194   0.991  1.00 20.00      A    C
+ATOM     24  N24 LIG A   1      -1.457   1.705   3.192  1.00 20.00      A    N+1
+ATOM     25  O25 LIG A   1       4.488  -0.926   2.503  1.00 20.00      A    O
+ATOM     26 H211 LIG A   1      -1.563   1.168   1.254  1.00 20.00      A    H
+""",
+  bonds=[
+    (0, 1), (1, 2), (2, 3), (2, 7), (3, 4), (4, 5), (4, 22), (5, 6), (5, 12),
+    (6, 7), (6, 10), (7, 8), (8, 9), (10, 11), (12, 13), (12, 19), (13, 14),
+    (14, 15), (15, 16), (15, 24), (16, 17), (16, 18), (18, 19), (19, 20),
+    (20, 21), (20, 23), (20, 25), (21, 22)],
+  clusters=[
+    [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 13, 14, 15, 16, 17, 18, 19,
+     20, 21, 22, 23, 24, 25], [0], [9], [11]],
+  hinge_edges=[(-1, 2), (2, 1), (7, 8), (6, 10)],
+  loop_edges=[],
+  loop_edge_bendings=[],
+  find_cluster_loop_repeats=1,
+  merge_clusters_with_multiple_connections_passes=2),
 
 ]

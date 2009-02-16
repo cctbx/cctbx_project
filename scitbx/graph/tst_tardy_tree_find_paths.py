@@ -166,17 +166,20 @@ def exercise_three_archs(arch_size_max=8):
         #
         arch_sizes = sorted([arch_size_1, arch_size_2, arch_size_3])
         for iv in [0,1]:
-          in_loops, in_branches = find_paths_v3(edge_sets=es, iv=iv)
-          if (len(in_loops) != 0):
-            assert 1-iv in in_loops
-            assert arch_sizes[0] + arch_sizes[1] < 5
-            inferred_is_rigid = arch_sizes[2] < 6
-            assert inferred_is_rigid == is_rigid
+          loops, dendrites = find_paths_v3(edge_sets=es, iv=iv)
+          # XXX crude tests only
+          if (len(loops) != 0):
+            for loop in loops:
+              assert 1-iv in loop
+              if (len(loop) != 6):
+                assert arch_sizes[0] + arch_sizes[1] < 5
+                inferred_is_rigid = arch_sizes[2] < 6
+                assert inferred_is_rigid == is_rigid
           else:
             assert arch_sizes[0] + arch_sizes[1] > 3
             inferred_is_rigid = sum(arch_sizes) < 10
             assert inferred_is_rigid == is_rigid
-            for path in in_branches:
+            for path in dendrites:
               sp = set(path)
               assert iv not in sp
               assert len(sp) == len(path)
