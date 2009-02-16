@@ -400,10 +400,10 @@ ATOM     15  C15 LIG A   1       6.006   1.517   0.846  1.00 20.00      A    C
     (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (4, 6), (6, 7), (6, 8),
     (7, 8), (8, 9), (8, 12), (9, 10), (9, 11), (10, 11),
     (12, 13), (12, 14), (13, 14)],
-  clusters=None,
-  hinge_edges=None,
-  loop_edges=None,
-  loop_edge_bendings=None),
+  clusters=[[4, 6, 7, 8, 9, 12], [10, 11], [13, 14], [3, 5], [2], [1], [0]],
+  hinge_edges=[(-1, 6), (8, 9), (8, 12), (6, 4), (4, 3), (3, 2), (2, 1)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
 
 pdb_extract(
   tag="ZINC01638508", # C1CC1C(C2CC2)(C3CC3)O
@@ -423,10 +423,10 @@ ATOM     11  O11 LIG A   1      -1.048  -0.953  -0.480  1.00 20.00      A    O
   bonds=[
     (0, 1), (0, 2), (1, 2), (2, 3), (3, 4), (3, 7), (3, 10),
     (4, 5), (4, 6), (5, 6), (7, 8), (7, 9), (8, 9)],
-  clusters=None,
-  hinge_edges=None,
-  loop_edges=None,
-  loop_edge_bendings=None),
+  clusters=[[2, 3, 4, 7, 10], [0, 1], [5, 6], [8, 9]],
+  hinge_edges=[(-1, 3), (3, 2), (3, 4), (3, 7)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
 
 pdb_extract(
   tag="ZINC01638509", # C1CC(OC1)(C2CC2)C3CC3
@@ -446,9 +446,9 @@ ATOM     11  C11 LIG A   1       0.535  -2.329   1.402  1.00 20.00      A    C
   bonds=[
     (0, 1), (0, 4), (1, 2), (2, 3), (2, 5), (2, 8), (3, 4),
     (5, 6), (5, 7), (6, 7), (8, 9), (8, 10), (9, 10)],
-  clusters=None,
-  hinge_edges=None,
-  loop_edges=None,
-  loop_edge_bendings=None),
+  clusters=[[0, 1, 2, 3, 4, 5, 8], [6, 7], [9, 10]],
+  hinge_edges=[(-1, 0), (2, 5), (2, 8)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
 
 ]

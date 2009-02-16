@@ -266,6 +266,33 @@ def find_paths(edge_sets, iv):
   depth_first_search(jv=-1, kv=iv)
   return result
 
+def find_paths_v3(edge_sets, iv):
+  in_loops = set()
+  in_branches = []
+  path = []
+  def depth_first_search(jv, kv):
+    path.append(kv)
+    in_branches.append(list(path))
+    closing = False
+    for lv in edge_sets[kv]:
+      if (lv == jv): continue
+      if (lv == iv):
+        if (len(path) != 6):
+          in_loops.update(path)
+        else:
+          in_branches.append(list(path))
+        closing = True
+      elif (lv in path): # XXX replace with in_path[lv] array lookup
+        closing = True
+    if (not closing and len(path) != 6):
+      for lv in edge_sets[kv]:
+        if (lv == jv): continue
+        depth_first_search(jv=kv, kv=lv)
+    path.pop()
+  for jv in edge_sets[iv]:
+    depth_first_search(jv=iv, kv=jv)
+  return in_loops, in_branches
+
 class construct(object):
 
   def __init__(O, n_vertices, edge_list):
@@ -280,62 +307,44 @@ class construct(object):
 
   def _find_paths(O):
     for iv in xrange(O.n_vertices):
-      jv_kv_paths = find_paths(edge_sets=O.edge_sets, iv=iv)
-      for jv,kv_paths in jv_kv_paths.items():
-        if (jv == iv):
-          for kv,paths in kv_paths.items():
-            if (len(paths) == 0): continue
-            O.cluster_manager.connect_vertices(i=iv, j=kv, optimize=True)
-            for path in paths:
-              assert len(path) != 0
-              for lv in path:
-                O.cluster_manager.connect_vertices(i=iv, j=lv, optimize=True)
-        elif (len(kv_paths) > 2):
-          paths_by_length = [[], [], [], [], []]
-          for kv,paths in kv_paths.items():
-            if (len(paths) == 0): # XXX adjust find_paths to include []?
-              if (kv != iv):
-                paths_by_length[0].append((kv, []))
-            else:
-              for path in paths:
-                assert len(path) < 5
-                paths_by_length[len(path)].append((kv, path))
-          n_l1_l2_l3_lt_7 = 0
-          for l1 in xrange(5):
-            for l2 in xrange(min(5,7-l1)):
-              for l3 in xrange(min(5,7-l1-l2)):
-                assert l1+l2+l3 < 7
-                n_l1_l2_l3_lt_7 += 1
-                for kv1,path1 in paths_by_length[l1]:
-                  if (iv in path1): continue
-                  if (jv in path1): continue
-                  for kv2,path2 in paths_by_length[l2]:
-                    if (kv2 == kv1): continue
-                    if (iv in path2): continue
-                    if (jv in path2): continue
-                    for kv3,path3 in paths_by_length[l3]:
-                      if (kv3 == kv1): continue
-                      if (kv3 == kv2): continue
-                      if (iv in path3): continue
-                      if (jv in path3): continue
-                      sp1 = set(path1)
-                      sp2 = set(path2)
-                      sp3 = set(path3)
-                      if (not sp1.isdisjoint(sp2)): continue
-                      if (not sp1.isdisjoint(sp3)): continue
-                      if (not sp2.isdisjoint(sp3)): continue
-                      # XXX next six conditions needed?
-                      if (kv1 in sp2): continue
-                      if (kv1 in sp3): continue
-                      if (kv2 in sp1): continue
-                      if (kv2 in sp3): continue
-                      if (kv3 in sp1): continue
-                      if (kv3 in sp2): continue
-                      for lvs in [[jv, kv1, kv2, kv3], path1, path2, path3]:
-                        for lv in lvs:
-                          O.cluster_manager.connect_vertices(
-                            i=iv, j=lv, optimize=True)
-          assert n_l1_l2_l3_lt_7 == 72
+      in_loops, in_branches = find_paths_v3(edge_sets=O.edge_sets, iv=iv)
+      for jv in in_loops:
+        O.cluster_manager.connect_vertices(i=iv, j=jv, optimize=True)
+      jv_paths = {}
+      for path in in_branches:
+        assert iv not in path # XXX remove later
+        if (len(path) < 2): continue
+        jv = path[-1]
+        jv_paths.setdefault(jv, []).append(path[:-1]) # XXX make set here
+      for jv,paths_to_jv in jv_paths.items():
+        if (len(paths_to_jv) < 3): continue
+        paths_by_length = [[], [], [], [], [], []]
+        for path_to_jv in paths_to_jv:
+          assert len(path_to_jv) < 6
+          assert jv not in path_to_jv # XXX remove later
+          paths_by_length[len(path_to_jv)].append(path_to_jv)
+        n_l1_l2_l3_lt_10 = 0
+        for l1 in xrange(6):
+          for l2 in xrange(min(6,10-l1)):
+            for l3 in xrange(min(6,10-l1-l2)):
+              assert l1+l2+l3 < 10
+              n_l1_l2_l3_lt_10 += 1
+              for path1 in paths_by_length[l1]:
+                sp1 = set(path1)
+                for path2 in paths_by_length[l2]:
+                  sp2 = set(path2)
+                  if (not sp1.isdisjoint(sp2)): continue
+                  for path3 in paths_by_length[l3]:
+                    sp3 = set(path3)
+                    if (not sp1.isdisjoint(sp3)): continue
+                    if (not sp2.isdisjoint(sp3)): continue
+                    O.cluster_manager.connect_vertices(
+                      i=iv, j=jv, optimize=True)
+                    for path in [path1, path2, path3]:
+                      for kv in path:
+                        O.cluster_manager.connect_vertices(
+                          i=iv, j=kv, optimize=True)
+        assert n_l1_l2_l3_lt_10 == 160
 
   def find_cluster_loops(O):
     assert O.find_cluster_loop_repeats is None

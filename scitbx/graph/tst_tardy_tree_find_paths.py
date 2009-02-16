@@ -1,4 +1,4 @@
-from scitbx.graph.tardy_tree import find_paths
+from scitbx.graph.tardy_tree import find_paths, find_paths_v3
 from scitbx.graph import rigidity
 from scitbx.graph import utils
 import sys
@@ -35,6 +35,10 @@ def exercise_simple_loops(loop_size_max=8):
         1: {0: [], 2: [[3]]},
         2: {1: [], 3: []},
         3: {0: [], 2: [[1]]}}
+    #
+    print "n_vertices:", n_vertices
+    p = find_paths_v3(edge_sets=edge_sets, iv=0)
+    print p
 
 def exercise_knot():
   edge_sets = utils.construct_edge_sets(
@@ -60,6 +64,28 @@ def exercise_knot():
   for iv in xrange(4):
     jv_kv_paths = find_paths(edge_sets=edge_sets, iv=iv)
     assert jv_kv_paths == expected_jv_kb_paths[iv]
+    p = find_paths_v3(edge_sets=edge_sets, iv=iv)
+    print "knot", iv, p
+
+def exercise_hexagon_wheel():
+  edge_sets = utils.construct_edge_sets(
+    n_vertices=7,
+    edge_list=[
+      (0,1), (0,2), (0,3), (0,4), (0,5), (0,6),
+      (1,2), (1,6), (2,3), (3,4), (4,5), (5,6)])
+  for iv in xrange(7):
+    jv_kv_paths = find_paths(edge_sets=edge_sets, iv=iv)
+    if (0):
+        print "iv:", iv
+        for jv,kv_paths in jv_kv_paths.items():
+          print "  jv:", jv
+          for kv,paths in kv_paths.items():
+            print "    kv:", kv, paths
+        print
+  p = find_paths_v3(edge_sets=edge_sets, iv=0)
+  print "wheel", 0, p
+  p = find_paths_v3(edge_sets=edge_sets, iv=1)
+  print "wheel", 1, p
 
 def three_archs_grow_edge_list(edge_list, offs, size):
   result = list(edge_list)
@@ -70,7 +96,7 @@ def three_archs_grow_edge_list(edge_list, offs, size):
   result.append((1,i))
   return result
 
-def exericse_three_archs(arch_size_max=8):
+def exercise_three_archs(arch_size_max=8):
   for arch_size_1 in xrange(1, arch_size_max):
     edge_list_1 = three_archs_grow_edge_list(
       [], 2, arch_size_1)
@@ -118,13 +144,31 @@ def exericse_three_archs(arch_size_max=8):
             assert inferred_is_rigid == is_rigid
           else:
             assert not is_rigid
+        #
+        arch_sizes = sorted([arch_size_1, arch_size_2, arch_size_3])
+        for iv in [0,1]:
+          in_loops, in_branches = find_paths_v3(edge_sets=es, iv=iv)
+          if (len(in_loops) != 0):
+            assert 1-iv in in_loops
+            assert arch_sizes[0] + arch_sizes[1] < 5
+            inferred_is_rigid = arch_sizes[2] < 6
+            assert inferred_is_rigid == is_rigid
+          else:
+            assert arch_sizes[0] + arch_sizes[1] > 3
+            inferred_is_rigid = sum(arch_sizes) < 10
+            assert inferred_is_rigid == is_rigid
+            for path in in_branches:
+              sp = set(path)
+              assert iv not in sp
+              assert len(sp) == len(path)
 
 def run(args):
   assert len(args) == 0
   exercise_minimal()
   exercise_simple_loops()
   exercise_knot()
-  exericse_three_archs()
+  exercise_hexagon_wheel()
+  exercise_three_archs()
   print "OK"
 
 if (__name__ == "__main__"):
