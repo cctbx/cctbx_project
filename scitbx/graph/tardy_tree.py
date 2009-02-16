@@ -234,19 +234,6 @@ class cluster_manager(object):
         leb.add(tuple(sorted((i,k))))
     O.loop_edge_bendings = sorted(leb)
 
-def find_loops(edge_sets, depth, loop_set, path, iv, traversing):
-  path = path + [iv]
-  traversing[iv] = True
-  at_limit = (len(path) == depth)
-  for jv in edge_sets[iv]:
-    if (jv < path[0]): continue
-    if (jv == path[0] and len(path) > 2):
-      loop_set.update(path)
-    if (at_limit): continue
-    if (traversing[jv]): continue
-    find_loops(edge_sets, depth, loop_set, path, jv, traversing)
-  traversing[iv] = False
-
 def find_paths(edge_sets, iv):
   result = {}
   for jv in edge_sets[iv]:
