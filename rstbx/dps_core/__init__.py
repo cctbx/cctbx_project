@@ -11,6 +11,13 @@ from rstbx.dps_core.constrainment import s_minimizer
 from cctbx.crystal_orientation import basis_type
 from cctbx.crystal_orientation import ext as coext
 
+class _crystal_orientation(boost.python.injector, coext.crystal_orientation):
+
+  def constrain(self,crystal_system):
+    S = s_minimizer(self,constraint=crystal_system)
+    newOrient = S.newOrientation()
+    return newOrient
+
 class Orientation(coext.crystal_orientation):
 
   def __init__(self,either_matrix, basis_type_flag=basis_type.reciprocal):
@@ -19,11 +26,6 @@ class Orientation(coext.crystal_orientation):
       coext.crystal_orientation.__init__(self,either_matrix)
     else:
       coext.crystal_orientation.__init__(self,either_matrix,basis_type_flag)
-
-  def constrain(self,crystal_system):
-    S = s_minimizer(self,constraint=crystal_system)
-    newOrient = S.newOrientation()
-    return newOrient
 
 def combocmp(a,b):
   #gives -1,0,1 depending on closeness of combo to (0,0,0)
@@ -65,4 +67,3 @@ class dps_core(ext.dps_core):
     from rstbx.dps_core.zuoreduction import rwgk_niggli as support_niggli
     ni = support_niggli(self.getOrientation(),cutoff=cutoff) # orientation of reduced cell
     self.setOrientation(ni)
-

@@ -47,10 +47,10 @@ class AbsenceHandler:
   def correct(self,orientation):
     print "before", orientation.unit_cell(),orientation.unit_cell().volume()
     print [float(i) for i in self.cb_op.elems]
-    orientation.change_basis([float(i) for i in self.cb_op.elems])
-    print "after", orientation.unit_cell(),orientation.unit_cell().volume()
-    unit_cell_too_small(orientation.unit_cell(),cutoff=25.)
-    return orientation
+    corrected = orientation.change_basis([float(i) for i in self.cb_op.elems])
+    print "after", corrected.unit_cell(),orientation.unit_cell().volume()
+    unit_cell_too_small(corrected.unit_cell(),cutoff=25.)
+    return corrected
 
 class FewSpots(exceptions.Exception): pass
 

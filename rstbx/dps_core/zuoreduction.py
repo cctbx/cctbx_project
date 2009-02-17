@@ -23,10 +23,18 @@ def rwgk_niggli(UC,epsilon=None,cutoff=100.):
     rinverse = matrix.sqr( R.r_inv() )
     #NIG = R.as_unit_cell().parameters()
     #MIN = fast_minimum_reduction(uc).as_unit_cell().parameters()
-    UC.change_basis(rinverse.transpose().inverse().elems)
-    return UC
+    return UC.change_basis(rinverse.transpose().inverse().elems)
+
+def test_reduction():
+  from libtbx.test_utils import approx_equal
+  uc = unit_cell((10,20,30,90,90,90))
+  reference = uc.parameters()
+  assert approx_equal (rwgk_niggli(uc).parameters(), reference)
+  CO = crystal_orientation.crystal_orientation(uc.fractionalization_matrix(),True)
+  assert approx_equal ( CO.unit_cell().parameters(), reference)
+  assert approx_equal ( rwgk_niggli(CO).unit_cell().parameters(), reference)
+  return True
 
 if __name__=='__main__':
-  uc = unit_cell((10,20,30,90,90,90))
-  print uc.parameters()
-  print rwgk_niggli(uc).parameters()
+  test_reduction()
+  print "OK"

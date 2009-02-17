@@ -90,8 +90,7 @@ class metric_subgroups(base_subgroups):
         # back gives the lepage module, class character.  It's the only way to
         # pull out the current triclinic orientation.
       current_orientation = inspect.currentframe().f_back.f_back.f_back.f_back.f_locals['orientation']
-      guess1_orient = current_orientation.__copy__()
-      guess1_orient.change_basis(matrix.sqr(
+      guess1_orient = current_orientation.change_basis(matrix.sqr(
         guess1_cb_op_inp_best.c().as_double_array()[0:9]).transpose().elems)
 
       for j,refitem in enumerate(self.reference_subgroups):
@@ -105,8 +104,7 @@ class metric_subgroups(base_subgroups):
         #second guess.  use the cb_op_best_cell from the reference indexing solution
         guess2_cb_op_inp_best = refitem['cb_op_best_cell'] * current_cb_op_minimum_ref *\
                               self.cb_op_inp_minimum
-        guess2_orient = current_orientation.__copy__()
-        guess2_orient.change_basis(matrix.sqr(
+        guess2_orient = current_orientation.change_basis(matrix.sqr(
           guess2_cb_op_inp_best.c().as_double_array()[0:9]).transpose().elems)
         dmsd = guess2_orient.direct_mean_square_difference(refitem['orient'])
         if dmsd < self.reasonable_cutoff:
