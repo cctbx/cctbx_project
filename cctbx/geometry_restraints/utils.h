@@ -1,6 +1,7 @@
 #ifndef CCTBX_GEOMETRY_RESTRAINTS_UTILS_H
 #define CCTBX_GEOMETRY_RESTRAINTS_UTILS_H
 
+#include <cctbx/uctbx.h>
 #include <cctbx/error.h>
 #include <cctbx/import_scitbx_af.h>
 #include <scitbx/vec3.h>
@@ -41,6 +42,22 @@ namespace cctbx { namespace geometry_restraints {
         }
         return result;
       }
+
+      static
+      af::shared<double>
+      get(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        af::const_ref<ProxyType> const& proxies)
+      {
+        af::shared<double> result((af::reserve(proxies.size())));
+        for(std::size_t i=0;i<proxies.size();i++) {
+          ProxyType const& proxy = proxies[i];
+          RestraintType restraint(unit_cell, sites_cart, proxy);
+          result.push_back(restraint.delta);
+        }
+        return result;
+      }
     };
 
     template <typename ProxyType, typename RestraintType>
@@ -56,6 +73,22 @@ namespace cctbx { namespace geometry_restraints {
         for(std::size_t i=0;i<proxies.size();i++) {
           ProxyType const& proxy = proxies[i];
           RestraintType restraint(sites_cart, proxy);
+          result.push_back(restraint.residual());
+        }
+        return result;
+      }
+
+      static
+      af::shared<double>
+      get(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        af::const_ref<ProxyType> const& proxies)
+      {
+        af::shared<double> result((af::reserve(proxies.size())));
+        for(std::size_t i=0;i<proxies.size();i++) {
+          ProxyType const& proxy = proxies[i];
+          RestraintType restraint(unit_cell, sites_cart, proxy);
           result.push_back(restraint.residual());
         }
         return result;
@@ -78,6 +111,28 @@ namespace cctbx { namespace geometry_restraints {
         for(std::size_t i=0;i<proxies.size();i++) {
           ProxyType const& proxy = proxies[i];
           RestraintType restraint(sites_cart, proxy);
+          result += restraint.residual();
+          if (gradient_array.size() != 0) {
+            restraint.add_gradients(gradient_array, proxy.i_seqs);
+          }
+        }
+        return result;
+      }
+
+      static
+      double
+      get(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        af::const_ref<ProxyType> const& proxies,
+        af::ref<scitbx::vec3<double> > const& gradient_array)
+      {
+        CCTBX_ASSERT(   gradient_array.size() == 0
+                     || gradient_array.size() == sites_cart.size());
+        double result = 0;
+        for(std::size_t i=0;i<proxies.size();i++) {
+          ProxyType const& proxy = proxies[i];
+          RestraintType restraint(unit_cell, sites_cart, proxy);
           result += restraint.residual();
           if (gradient_array.size() != 0) {
             restraint.add_gradients(gradient_array, proxy.i_seqs);
