@@ -11,7 +11,6 @@ class s_minimizer:
   def __init__(self, orient, constraint='triclinic',
                min_iterations=25, max_calls=1000):
     self.constraint=constraint
-    self.o_engine = orient.__class__
     adopt_init_args(self, locals())
     self.n = 9
     self.x = flex.double(orient.direct_matrix())
@@ -91,6 +90,6 @@ class s_minimizer:
 
   def newOrientation(self):
     #trick to instantiate Orientation given self.x, the direct space matrix
-    Oinv = self.o_engine(tuple(self.x))
-    O    = self.o_engine(Oinv.direct_matrix())
-    return O
+    from dps_core import Orientation
+    from cctbx.crystal_orientation import basis_type
+    return Orientation(tuple(self.x),basis_type.direct)

@@ -35,8 +35,8 @@ def do_index(reciprocal_space_vectors, verbose=True):
 
   cb_op = supergroup['cb_op_inp_best'].c().as_double_array()[0:9]
   orient = D.getOrientation()
-  orient.change_basis(matrix.sqr(cb_op).transpose())
-  constrain_orient = orient.constrain(supergroup['system'])
+  orient_best = orient.change_basis(matrix.sqr(cb_op).transpose())
+  constrain_orient = orient_best.constrain(supergroup['system'])
   D.setOrientation(constrain_orient)
 
   if verbose:
