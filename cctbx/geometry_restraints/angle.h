@@ -1,13 +1,35 @@
 #ifndef CCTBX_GEOMETRY_RESTRAINTS_ANGLE_H
 #define CCTBX_GEOMETRY_RESTRAINTS_ANGLE_H
 
+#include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
 #include <scitbx/constants.h>
 
 namespace cctbx { namespace geometry_restraints {
 
-  //! Grouping of indices into array of sites (i_seqs) and parameters.
-  struct angle_proxy
+  //! Grouping of angle parameters angle_ideal and weight.
+  struct angle_params
+  {
+    //! Default constructor. Some data members are not initialized!
+    angle_params() {}
+
+    //! Constructor.
+    angle_params(
+      double angle_ideal_,
+      double weight_)
+    :
+      angle_ideal(angle_ideal_),
+      weight(weight_)
+    {}
+
+    //! Parameter.
+    double angle_ideal;
+    //! Parameter.
+    double weight;
+  };
+
+  //! Grouping of indices into array of sites (i_seqs) and angle_params.
+  struct angle_proxy : angle_params
   {
     //! Support for shared_proxy_select.
     typedef af::tiny<unsigned, 3> i_seqs_type;
@@ -21,19 +43,19 @@ namespace cctbx { namespace geometry_restraints {
       double angle_ideal_,
       double weight_)
     :
-      i_seqs(i_seqs_),
-      angle_ideal(angle_ideal_),
-      weight(weight_)
+      angle_params(angle_ideal_, weight_),
+      i_seqs(i_seqs_)
     {}
 
     //! Constructor.
+    /*! Not available in Python.
+     */
     angle_proxy(
       i_seqs_type const& i_seqs_,
-      angle_proxy const& other)
+      angle_params const& params)
     :
-      i_seqs(i_seqs_),
-      angle_ideal(other.angle_ideal),
-      weight(other.weight)
+      angle_params(params),
+      i_seqs(i_seqs_)
     {}
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[2].
@@ -49,10 +71,61 @@ namespace cctbx { namespace geometry_restraints {
 
     //! Indices into array of sites.
     i_seqs_type i_seqs;
+  };
+
+  //! Grouping of angle_proxy and symmetry operations (rt_mx_ji).
+  struct angle_sym_proxy : angle_params
+  {
+    //! Support for shared_proxy_select.
+    typedef af::tiny<unsigned, 3> i_seqs_type;
+
+    //! Default constructor. Some data members are not initialized!
+    angle_sym_proxy() {}
+
+    //! Constructor.
+    angle_sym_proxy(
+      i_seqs_type const& i_seqs_,
+      sgtbx::rt_mx const& rt_mx_ji_,
+      sgtbx::rt_mx const& rt_mx_ki_,
+      double angle_ideal_,
+      double weight_)
+    :
+      angle_params(angle_ideal_, weight_),
+      rt_mx_ji(rt_mx_ji_),
+      rt_mx_ki(rt_mx_ki_),
+      i_seqs(i_seqs_)
+    {}
+
+    //! Constructor.
+    angle_sym_proxy(
+      i_seqs_type const& i_seqs_,
+      sgtbx::rt_mx const& rt_mx_ji_,
+      sgtbx::rt_mx const& rt_mx_ki_,
+      angle_params const& params)
+    :
+      angle_params(params),
+      rt_mx_ji(rt_mx_ji_),
+      rt_mx_ki(rt_mx_ki_),
+      i_seqs(i_seqs_)
+    {}
+
+    //! Sorts i_seqs such that i_seq[0] < i_seq[2].
+    angle_sym_proxy
+    sort_i_seqs() const
+    {
+      angle_sym_proxy result(*this);
+      if (result.i_seqs[0] > result.i_seqs[2]) {
+        std::swap(result.i_seqs[0], result.i_seqs[2]);
+      }
+      return result;
+    }
+
+    //! Indices into array of sites.
+    i_seqs_type i_seqs;
     //! Parameter.
-    double angle_ideal;
+    sgtbx::rt_mx rt_mx_ji;
     //! Parameter.
-    double weight;
+    sgtbx::rt_mx rt_mx_ki;
   };
 
   //! Residual and gradient calculations for angle restraint.
@@ -89,6 +162,32 @@ namespace cctbx { namespace geometry_restraints {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
           sites[i] = sites_cart[i_seq];
+        }
+        init_angle_model();
+      }
+
+       /*! \brief Coordinates are copied from sites_cart according to
+          proxy.i_seqs, parameters are copied from proxy.
+       */
+      angle(
+        uctbx::unit_cell const& unit_cell,
+                                af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        angle_sym_proxy const& proxy)
+      :
+        angle_ideal(proxy.angle_ideal),
+        weight(proxy.weight)
+      {
+        for(int i=0;i<3;i++) {
+          std::size_t i_seq = proxy.i_seqs[i];
+          CCTBX_ASSERT(i_seq < sites_cart.size());
+          if (i == 0) sites[i] = sites_cart[i_seq];
+          else {
+            sgtbx::rt_mx rt_mx;
+            if (i == 1) rt_mx = proxy.rt_mx_ji;
+            else rt_mx = proxy.rt_mx_ki;
+            sites[i] = unit_cell.orthogonalize(
+            rt_mx * unit_cell.fractionalize(sites_cart[i_seq]));
+          }
         }
         init_angle_model();
       }
@@ -215,6 +314,18 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies);
   }
 
+  //! Fast computation of angle::delta given an array of angle sym proxies.
+  inline
+  af::shared<double>
+  angle_deltas(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<angle_sym_proxy> const& proxies)
+  {
+    return detail::generic_deltas<angle_sym_proxy, angle>::get(
+      unit_cell, sites_cart, proxies);
+  }
+
   //! Fast computation of angle::residual() given an array of angle proxies.
   inline
   af::shared<double>
@@ -224,6 +335,18 @@ namespace cctbx { namespace geometry_restraints {
   {
     return detail::generic_residuals<angle_proxy, angle>::get(
       sites_cart, proxies);
+  }
+
+  //! Fast computation of angle::residual() given an array of angle sym proxies.
+  inline
+  af::shared<double>
+  angle_residuals(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<angle_sym_proxy> const& proxies)
+  {
+    return detail::generic_residuals<angle_sym_proxy, angle>::get(
+      unit_cell, sites_cart, proxies);
   }
 
   /*! Fast computation of sum of angle::residual() and gradients
@@ -244,6 +367,27 @@ namespace cctbx { namespace geometry_restraints {
   {
     return detail::generic_residual_sum<angle_proxy, angle>::get(
       sites_cart, proxies, gradient_array);
+  }
+
+  /*! Fast computation of sum of angle::residual() and gradients
+      given an array of angle sym proxies.
+   */
+  /*! The angle::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
+  inline
+  double
+  angle_residual_sum(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<angle_sym_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array)
+  {
+    return detail::generic_residual_sum<angle_sym_proxy, angle>::get(
+      unit_cell, sites_cart, proxies, gradient_array);
   }
 
 }} // namespace cctbx::geometry_restraints
