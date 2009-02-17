@@ -1,6 +1,8 @@
-from scitbx.graph.tardy_tree import find_paths, find_paths_v3
+from scitbx.graph.tardy_tree import find_paths, find_paths_v3, construct
 from scitbx.graph import rigidity
 from scitbx.graph import utils
+from libtbx.option_parser import libtbx_option_parser
+from libtbx.utils import host_and_user, show_times_at_exit
 import sys
 
 def exercise_minimal():
@@ -87,13 +89,13 @@ def exercise_hexagon_wheel():
   p = find_paths_v3(edge_sets=edge_sets, iv=1)
   print "wheel", 1, p
 
-def archs_grow_edge_list(edge_list, offs, size):
+def archs_grow_edge_list(edge_list, offs, size, av=0, bv=1):
   result = list(edge_list)
-  i = 0
+  i = av
   for j in xrange(offs, offs+size):
     result.append((i,j))
     i = j
-  result.append((1,i))
+  result.append((bv,i))
   return result
 
 def arch_dof(n_vertices, edge_list):
@@ -122,13 +124,48 @@ def exercise_fused_loops(arch_size_max=8):
         and arch_size_1 + arch_size_2 < 10)
       assert inferred_is_rigid == is_rigid
 
-def exercise_three_archs(arch_size_max=8):
+def fourth_arch(edge_list_123, es_123, arch_size_max=8):
+  def analyze():
+    n_vertices = len(es_123) + arch_size_4
+    edge_list_1234 = archs_grow_edge_list(
+      edge_list_123, len(es_123), arch_size_4, av, bv)
+    tt = construct(n_vertices=n_vertices, edge_list=edge_list_1234)
+    tt.finalize()
+    cm = tt.cluster_manager
+    es, dof = arch_dof(n_vertices=n_vertices, edge_list=edge_list_1234)
+    print av, bv, arch_size_4,
+    r_rm = (dof == 6)
+    r_tt = (len(cm.clusters) == 1)
+    if (r_rm):
+      print "rigid",
+    else:
+      assert dof > 6
+      print "flex",
+    if (r_tt):
+      print "rigid",
+    else:
+      print "flex",
+    if (r_rm and not r_tt): print "FAILURE",
+    print
+    if (not r_rm): assert not r_tt
+  av = 0
+  for bv in xrange(2,len(es_123)):
+    for arch_size_4 in xrange(1, arch_size_max+1):
+      analyze()
+  for av in xrange(2,len(es_123)-1):
+    for bv in xrange(av+1,len(es_123)):
+      if (bv in es_123[av]): continue
+      analyze()
+
+def exercise_three_archs(arch_size_max=8, chunk_i=None):
   for arch_size_1 in xrange(1, arch_size_max+1):
     edge_list_1 = archs_grow_edge_list(
       [], 2, arch_size_1)
     for arch_size_2 in xrange(1, arch_size_max+1):
       edge_list_12 = archs_grow_edge_list(
         edge_list_1, 2+arch_size_1, arch_size_2)
+      i_12 = (arch_size_1-1)*arch_size_max+(arch_size_2-1)
+      if (chunk_i is not None and i_12 != chunk_i): continue
       for arch_size_3 in xrange(1, arch_size_max+1):
         n_vertices = 2 + arch_size_1 + arch_size_2 + arch_size_3
         edge_list_123 = archs_grow_edge_list(
@@ -139,6 +176,9 @@ def exercise_three_archs(arch_size_max=8):
           max(arch_size_1, arch_size_2, arch_size_3) + 1,
           arch_size_1 + arch_size_2 + arch_size_3 - 3)
         assert expected == dof
+        if (chunk_i is not None):
+          print "dof:", dof, "archs:", arch_size_1, arch_size_2, arch_size_3
+          fourth_arch(edge_list_123=edge_list_123, es_123=es)
         is_rigid = (dof == 6)
         inferred_is_rigid = (
               arch_size_1 < 6
@@ -185,13 +225,36 @@ def exercise_three_archs(arch_size_max=8):
               assert len(sp) == len(path)
 
 def run(args):
-  assert len(args) == 0
+  command_line = (libtbx_option_parser(
+    usage="scitbx.python tst_tardy_tree_find_paths.py [options]")
+    .enable_chunk()
+  ).process(args=args, nargs=0).queuing_system_overrides_chunk()
+  #
+  chunk_n = command_line.chunk_n
+  chunk_i = command_line.chunk_i
+  if (chunk_n != 1):
+    assert chunk_n == 256
+    i = command_line.queuing_system_info
+    if (i is not None and i.have_array()):
+      log = open("log%03d" % chunk_i, "w")
+      sys.stdout = log
+      sys.stderr = log
+    host_and_user().show()
+    if (i is not None): i.show()
+    print "chunk_n:", chunk_n
+    print "chunk_i: %03d" % chunk_i
+    print
+  else:
+    chunk_i = None
+  #
+  show_times_at_exit()
+  #
   exercise_minimal()
   exercise_simple_loops()
   exercise_knot()
   exercise_hexagon_wheel()
   exercise_fused_loops()
-  exercise_three_archs()
+  exercise_three_archs(chunk_i=chunk_i)
   print "OK"
 
 if (__name__ == "__main__"):
