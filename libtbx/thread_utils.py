@@ -1,7 +1,6 @@
-import sys
+import sys, traceback, time
 import Queue
 import threading
-import time
 from libtbx.utils import Sorry
 
 class thread_with_callback_and_wait(threading.Thread):
@@ -115,13 +114,12 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
           self._stdout._flush()
           self._c.send([return_value, False, True])
       except Sorry, s :
-        #sys.stderr.write("Caught Sorry in child process: %s" % str(s))
         self._stdout._flush()
         e = _sorry_exception(str(s))
         self._c.send([e, False, False])
       except Exception, e :
-        #sys.stderr.write("Caught exception in child process: %s" % str(e))
-        self._c.send([e, False, False])
+        traceback_str = "\n".join(traceback.format_tb(sys.exc_info()[2]))
+        self._c.send([(e, traceback_str), False, False])
       self._stdout._flush()
       sys.stdout = old_stdout
 
@@ -196,10 +194,11 @@ if sys.version_info[0] > 2 or sys.version_info[1] >= 6 :
           elif not is_stdout and not is_return :
             if isinstance(child_object, _sorry_exception) :
               e = Sorry(str(child_object))
+              tb_info = None
             else :
-              e = child_object
+              (e, tb_info) = child_object
             if self._cb_err is not None :
-              self._cb_err(e)
+              self._cb_err(e, tb_info)
               self._error = True
               child_process.terminate()
               break
@@ -271,8 +270,9 @@ class _callback_handler (object) :
     self._stdout = None
     self._other = None
 
-  def cb_err (self, error) :
+  def cb_err (self, error, traceback_info) :
     self._err = error
+    self._tb = traceback_info
 
   def cb_abort (self) :
     self._abort = True

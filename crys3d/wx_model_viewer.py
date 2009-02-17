@@ -9,6 +9,7 @@ from scitbx.array_family import flex, shared
 from scitbx.math import minimum_covering_sphere
 from mmtbx.monomer_library import pdb_interpretation
 import wx
+import sys
 
 ########################################################################
 # BASE CLASS FOR DISPLAYING STRUCTURES
@@ -60,12 +61,16 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     gltbx.util.handle_error()
     glClearColor(self.r_back, self.g_back, self.b_back, 0.0)
     self.minimum_covering_sphere_display_list = None
-    glEnable(GL_LINE_SMOOTH)
     glDepthFunc(GL_LESS)
     glEnable(GL_ALPHA_TEST)
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_BLEND)
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
+    vendor = glGetString(GL_VENDOR)
+    if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
+      glDisable(GL_LINE_SMOOTH)
+    else :
+      glEnable(GL_LINE_SMOOTH)
+      glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     self.initialize_modelview()
     gltbx.util.handle_error()
 
