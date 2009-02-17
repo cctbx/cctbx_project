@@ -1,4 +1,5 @@
 * text=auto !eol
+boost_adaptbx/boost/python_file.py -text
 boost_adaptbx/boost/std_pair.py -text
 boost_adaptbx/boost/tuple.py -text
 boost_adaptbx/command_line/divide_by_zero.py svneol=native#text/x-python
@@ -9,11 +10,15 @@ boost_adaptbx/command_line/int_overflow.py svneol=native#text/x-python
 boost_adaptbx/command_line/lcm.py svneol=native#text/x-python
 boost_adaptbx/command_line/segmentation_fault.py svneol=native#text/x-python
 boost_adaptbx/command_line/show_environ_usage.py svneol=native#text/x-python
+boost_adaptbx/file_ext.cpp -text
+boost_adaptbx/file_test_ext.cpp -text
 boost_adaptbx/floating_point_exceptions.h -text
 boost_adaptbx/optional_fwd.h -text
+boost_adaptbx/python_file_stream.h -text
 boost_adaptbx/std_pair_conversion.h -text
 boost_adaptbx/std_pair_ext.cpp -text
 boost_adaptbx/std_pair_fwd.h -text
+boost_adaptbx/tst_file.py -text
 boost_adaptbx/tst_libc_backtrace.py svneol=native#text/x-python
 boost_adaptbx/tst_std_pair.py -text
 boost_adaptbx/tst_tuple.py -text
