@@ -33,15 +33,16 @@ cctbx::crystal_orientation::reciprocal_matrix() const{
   return Astar_;
 }
 
-void
+crystal_orientation
 cctbx::crystal_orientation::change_basis(
-  cctbx::sgtbx::change_of_basis_op const& cb_op){
-  Astar_ = Astar_ * (cb_op.c().r().as_double());
+  cctbx::sgtbx::change_of_basis_op const& cb_op) const {
+  return crystal_orientation(
+    Astar_ * (cb_op.c().r().as_double()), reciprocal );
 }
 
-void
-cctbx::crystal_orientation::change_basis(oc_mat3 const& rot){
-  Astar_ = Astar_ * rot;
+crystal_orientation
+cctbx::crystal_orientation::change_basis(oc_mat3 const& rot) const {
+  return crystal_orientation( Astar_ * rot, reciprocal );
 }
 
 cctbx::oc_mat3
@@ -55,9 +56,8 @@ cctbx::crystal_orientation::best_similarity_transformation(
       unimodular_generator(unimodular_generator_range);
   while (!unimodular_generator.at_end()) {
       oc_mat3 c_inv_r = unimodular_generator.next();
-      crystal_orientation ref_copy = other;
-      ref_copy.change_basis(c_inv_r.inverse());
-      double R = direct_mean_square_difference(ref_copy);
+      crystal_orientation mod_copy = other.change_basis(c_inv_r.inverse());
+      double R = direct_mean_square_difference(mod_copy);
       if (R < minimum_orientation_bases_msd){
         minimum_orientation_bases_msd = R;
         orientation_similarity = c_inv_r;
