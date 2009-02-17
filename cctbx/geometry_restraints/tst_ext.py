@@ -781,6 +781,58 @@ def exercise_nonbonded():
   assert sorted_asu_proxies.asu.size() == 0
 
 def exercise_angle():
+  p = geometry_restraints.angle_params(
+    angle_ideal=95,
+    weight=1)
+  assert approx_equal(p.angle_ideal, 95)
+  assert approx_equal(p.weight, 1)
+  p.angle_ideal = 110
+  assert approx_equal(p.angle_ideal, 110)
+  p.weight = 10
+  assert approx_equal(p.weight, 10)
+  #
+  p = geometry_restraints.angle_sym_proxy(
+    i_seqs=[2,1,0],
+    rt_mx_ji = sgtbx.rt_mx(),
+    rt_mx_ki = sgtbx.rt_mx('-1+x,+y,+z'),
+    angle_ideal=95,
+    weight=1)
+  assert p.i_seqs == (2,1,0)
+  p = p.sort_i_seqs()
+  assert p.i_seqs == (0,1,2)
+  assert approx_equal(p.angle_ideal, 95)
+  assert approx_equal(p.weight, 1)
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_cart = flex.vec3_double([(1,0,0),(0,1,0),(14,0,0)])
+  a = geometry_restraints.angle(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p)
+  assert approx_equal(a.sites, [(1,0,0),(0,1,0),(-1,0,0)])
+  assert approx_equal(a.angle_ideal, 95)
+  assert approx_equal(a.weight, 1)
+  assert a.have_angle_model
+  assert approx_equal(a.angle_model, 90)
+  assert approx_equal(a.delta, 5)
+  assert approx_equal(a.residual(), a.weight*a.delta**2)
+  proxies = geometry_restraints.shared_angle_sym_proxy()
+  for i in range(10): proxies.append(p)
+  assert approx_equal(geometry_restraints.angle_deltas(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [5]*10)
+  assert approx_equal(geometry_restraints.angle_residuals(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [25]*10)
+  gradient_array = flex.double([0]*10)
+  residual_sum = geometry_restraints.angle_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None)
+  assert approx_equal(residual_sum, 10*25)
+  #
   p = geometry_restraints.angle_proxy(
     i_seqs=[2,1,0],
     angle_ideal=95,
