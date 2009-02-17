@@ -124,7 +124,14 @@ def exercise_fused_loops(arch_size_max=8):
         and arch_size_1 + arch_size_2 < 10)
       assert inferred_is_rigid == is_rigid
 
-def fourth_arch(edge_list_123, es_123, arch_size_max=8):
+def fourth_arch(arch_sizes, edge_list_123, es_123, arch_size_max):
+  def vertex_info(i):
+    off = 2
+    if (i < off): return str(i)
+    for ia,s in enumerate(arch_sizes):
+      poff = off
+      off += s
+      if (i < off): return "%d%s" % (i-poff+1, "abc"[ia])
   def analyze():
     n_vertices = len(es_123) + arch_size_4
     edge_list_1234 = archs_grow_edge_list(
@@ -133,22 +140,30 @@ def fourth_arch(edge_list_123, es_123, arch_size_max=8):
     tt.finalize()
     cm = tt.cluster_manager
     es, dof = arch_dof(n_vertices=n_vertices, edge_list=edge_list_1234)
-    print av, bv, arch_size_4,
+    print vertex_info(av), vertex_info(bv), arch_size_4,
+    have_failure = False
     r_rm = (dof == 6)
     r_tt = (len(cm.clusters) == 1)
     if (r_rm):
-      print "rigid",
+      print "r",
     else:
       assert dof > 6
-      print "flex",
+      print "f",
     if (r_tt):
-      print "rigid",
+      print "r",
     else:
-      print "flex",
-    if (r_rm and not r_tt): print "FAILURE",
-    print
+      print "f",
+    if (r_rm and not r_tt):
+      print "FAILURE",
+      have_failure = True
+    print arch_sizes
     if (not r_rm): assert not r_tt
+    if (have_failure):
+      print "n_vertices, edge_list:", n_vertices, edge_list_1234
   av = 0
+  bv = 1
+  for arch_size_4 in xrange(1, arch_size_max+1):
+    analyze()
   for bv in xrange(2,len(es_123)):
     for arch_size_4 in xrange(1, arch_size_max+1):
       analyze()
@@ -157,7 +172,9 @@ def fourth_arch(edge_list_123, es_123, arch_size_max=8):
       if (bv in es_123[av]): continue
       analyze()
 
-def exercise_three_archs(arch_size_max=8, chunk_i=None):
+def exercise_three_archs(arch_size_max, chunk_i):
+  if (chunk_i is not None):
+    assert 0 <= chunk_i < arch_size_max**2
   for arch_size_1 in xrange(1, arch_size_max+1):
     edge_list_1 = archs_grow_edge_list(
       [], 2, arch_size_1)
@@ -178,7 +195,11 @@ def exercise_three_archs(arch_size_max=8, chunk_i=None):
         assert expected == dof
         if (chunk_i is not None):
           print "dof:", dof, "archs:", arch_size_1, arch_size_2, arch_size_3
-          fourth_arch(edge_list_123=edge_list_123, es_123=es)
+          fourth_arch(
+            arch_sizes=(arch_size_1, arch_size_2, arch_size_3),
+            edge_list_123=edge_list_123,
+            es_123=es,
+            arch_size_max=arch_size_max)
         is_rigid = (dof == 6)
         inferred_is_rigid = (
               arch_size_1 < 6
@@ -228,12 +249,17 @@ def run(args):
   command_line = (libtbx_option_parser(
     usage="scitbx.python tst_tardy_tree_find_paths.py [options]")
     .enable_chunk()
+    .option(None, "--arch_size_max",
+      type="int",
+      default=8,
+      metavar="INT")
   ).process(args=args, nargs=0).queuing_system_overrides_chunk()
+  co = command_line.options
   #
   chunk_n = command_line.chunk_n
   chunk_i = command_line.chunk_i
   if (chunk_n != 1):
-    assert chunk_n == 256
+    assert chunk_n == co.arch_size_max**2
     i = command_line.queuing_system_info
     if (i is not None and i.have_array()):
       log = open("log%03d" % chunk_i, "w")
@@ -254,7 +280,7 @@ def run(args):
   exercise_knot()
   exercise_hexagon_wheel()
   exercise_fused_loops()
-  exercise_three_archs(chunk_i=chunk_i)
+  exercise_three_archs(arch_size_max=co.arch_size_max, chunk_i=chunk_i)
   print "OK"
 
 if (__name__ == "__main__"):
