@@ -28,8 +28,7 @@ def exercise_basic():
   assert R.reciprocal_matrix() == orthorhombic
   inverse = (-1,0,0,0,-1,0,0,0,-1)
   negative = crystal_orientation(inverse,False)
-  negative.make_positive()
-  assert I == negative
+  assert I == negative.make_positive()
   assert R.unit_cell().parameters() == (1.0,2.0,4.0,90.,90.,90.)
   assert approx_equal( R.unit_cell_inverse().parameters(), (1.0,0.5,0.25,90.,90.,90.) )
 
@@ -40,8 +39,8 @@ def exercise_change_basis():
   assert approx_equal(O1.unit_cell().parameters(),
                       (47.659, 47.6861, 49.6444, 62.9615, 73.8222, 73.5269),1E-3)
   reindex = (0.0, -1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, -1.0) # swap a & b and take inverse
-  O1.change_basis(reindex)
-  assert approx_equal(O1.unit_cell().parameters(),
+  O2 = O1.change_basis(reindex)
+  assert approx_equal(O2.unit_cell().parameters(),
                       (47.6861, 47.659, 49.6444, 73.8222, 62.9615, 73.5269),1E-3)
 
   rhombohedral_test = crystal_orientation((
@@ -59,8 +58,23 @@ def exercise_change_basis():
   assert c_inv_r_int == (-1, 0, 0, 1, -1, 0, 0, 0, 1)
   c_inv = sgtbx.rt_mx(sgtbx.rot_mx(c_inv_r_int))
   cb_op = sgtbx.change_of_basis_op(c_inv)
-  rhombohedral_test.change_basis(cb_op)
-  assert rhombohedral_test.direct_mean_square_difference(rhombohedral_reference) < 0.1
+  rhombohedral_reindex = rhombohedral_test.change_basis(cb_op)
+  assert rhombohedral_reindex.direct_mean_square_difference(rhombohedral_reference) < 0.1
+
+  u = uctbx.unit_cell((10., 10., 10., 90., 90., 90.))
+  CO = crystal_orientation(u.fractionalization_matrix(),True)
+  assert approx_equal(
+    CO.unit_cell().parameters(),
+    CO.change_basis((1,0,0, 0,1,0, 0,0,1)).unit_cell().parameters())
+  u = uctbx.unit_cell((2,3,5))
+  CO = crystal_orientation(u.fractionalization_matrix(),True)
+  assert approx_equal(
+    CO.change_basis((0,1,0, 0,0,1, 1,0,0)).unit_cell().parameters(),
+    (5,2,3,90,90,90))
+  cb_op = sgtbx.change_of_basis_op("y,z,x")
+  assert approx_equal(
+    CO.change_basis(cb_op).unit_cell().parameters(),
+    (5,2,3,90,90,90))
 
 def exercise_compare():
   pass

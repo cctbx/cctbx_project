@@ -29,10 +29,10 @@ namespace cctbx { namespace boost_python { namespace {
         .def("direct_matrix",&crystal_orientation::direct_matrix)
         .def("reciprocal_matrix",&crystal_orientation::reciprocal_matrix)
         .def("change_basis",
-          (void (crystal_orientation::*)(cctbx::sgtbx::change_of_basis_op const&))
+          (crystal_orientation (crystal_orientation::*)(cctbx::sgtbx::change_of_basis_op const&)const)
           &crystal_orientation::change_basis)
         .def("change_basis",
-          (void (crystal_orientation::*)(cctbx::oc_mat3 const&))
+          (crystal_orientation (crystal_orientation::*)(cctbx::oc_mat3 const&)const)
           &crystal_orientation::change_basis)
         .def("rotate_thru",
           (cctbx::crystal_orientation

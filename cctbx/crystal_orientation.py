@@ -44,9 +44,8 @@ class _crystal_orientation(boost.python.injector,ext.crystal_orientation):
     from scitbx import matrix
     signed_volume = matrix.sqr(self.direct_matrix()).determinant()
     if signed_volume<0:
-      self.change_basis((-1.,0.,0.,0.,-1.,0.,0.,0.,-1.))
-      return True
-    return False
+      return self.change_basis((-1.,0.,0.,0.,-1.,0.,0.,0.,-1.))
+    return self
 
   def __copy__(self):
     return crystal_orientation(self.reciprocal_matrix(),basis_type.reciprocal)
@@ -55,7 +54,8 @@ class _crystal_orientation(boost.python.injector,ext.crystal_orientation):
     return (self.reciprocal_matrix(),basis_type.reciprocal)
 
   def __str__(self):
-    return "A-star:%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f"%self.reciprocal_matrix()
+    return "A-star:%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f%10.6f\ncell:"%self.reciprocal_matrix()+\
+       str(self.unit_cell())+"%.0f"%self.unit_cell().volume()
 
   def __eq__(self,other):
     S = self.reciprocal_matrix()

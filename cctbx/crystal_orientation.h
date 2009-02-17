@@ -83,23 +83,23 @@ namespace cctbx {
       oc_mat3
       reciprocal_matrix() const;
 
-      //! Change of basis mutator
+      //! Change of basis.  Return value gives mutated orientation.
       /*!
           Input is the change of basis operator
           for transforming direct space vectors from the current
           setting to a reference setting.
        */
-      void
-      change_basis(cctbx::sgtbx::change_of_basis_op const&);
+      crystal_orientation
+      change_basis(cctbx::sgtbx::change_of_basis_op const&) const;
 
-      //! Change of basis mutator
+      //! Change of basis.  Return value gives mutated orientation.
       /*!
           Input is a rotation matrix, assumed to be the matrix
           for transforming direct space vectors from the current
           setting to a reference setting.
        */
-      void
-      change_basis(oc_mat3 const&);
+      crystal_orientation
+      change_basis(oc_mat3 const&) const;
 
       //! Rotation mutator
       /*!
