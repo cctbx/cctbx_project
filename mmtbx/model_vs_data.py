@@ -57,6 +57,7 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
   hierarchy = pdb_inp.construct_hierarchy()
   models = hierarchy.models()
   print "  Number of models:", len(models)
+  geometry_statistics = []
   for i_seq, model_selection in enumerate(model_selections):
     print "  Model #%s:"%str("%d"%(i_seq+1)).strip()
     hierarchy_i_seq = pdb.hierarchy.root()
@@ -106,6 +107,7 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         hd_selection       = hd_sel,
         ignore_hd          = False,
         restraints_manager = restraints_manager)
+      geometry_statistics.append(result)
       print "    Stereochemistry statistics (mean, max, count):"
       print "      bonds            : %8.4f %8.4f %d" % (result.b_mean, result.b_max, result.b_number)
       print "      angles           : %8.4f %8.4f %d" % (result.a_mean, result.a_max, result.a_number)
@@ -141,6 +143,7 @@ def show_geometry(processed_pdb_file, scattering_table, pdb_inp,
         print "        glycine  : %-5d (%-5.2f %s)"%(glyc[0],glyc[1]*100.,"%")
         print "        proline  : %-5d (%-5.2f %s)"%(prol[0],prol[1]*100.,"%")
         print "        prepro   : %-5d (%-5.2f %s)"%(prep[0],prep[1]*100.,"%")
+  return geometry_statistics
 
 def show_xray_structure_statistics(xray_structure):
   b_isos = xray_structure.extract_u_iso_or_u_equiv()
@@ -321,7 +324,7 @@ def run(args,
     f_obs.crystal_symmetry().space_group_info().type().group().order_z()
   print "  Unit cell volume: %-15.4f" % f_obs.unit_cell().volume()
   #
-  show_geometry(
+  geometry_statistics = show_geometry(
     processed_pdb_file       = processed_pdb_file,
     scattering_table         = command_line.options.scattering_table,
     pdb_inp                  = pdb_inp,
@@ -376,3 +379,4 @@ def run(args,
       print "    high_resolution : ", published_results.high
       print "    low_resolution  : ", published_results.low
       print "    sigma_cutoff    : ", published_results.sigma
+  return (processed_pdb_file, geometry_statistics, fmodel)

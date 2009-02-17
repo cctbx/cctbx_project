@@ -23,6 +23,7 @@ from libtbx import object_oriented_patterns as oop
 import itertools
 import math
 import unicodedata
+import sys
 
 # this class isn't very well suited to being a mix-in like the classes in
 # wx_model_viewer; however, it's a nicely contained stand-alone program,
@@ -256,6 +257,12 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       glEnable(GL_LIGHT0)
       glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
     glShadeModel(GL_SMOOTH)
+    vendor = glGetString(GL_VENDOR)
+    if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
+      glDisable(GL_LINE_SMOOTH)
+    else :
+      glEnable(GL_LINE_SMOOTH)
+      glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
 
