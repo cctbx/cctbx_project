@@ -144,6 +144,44 @@ class revolute(object):
   def new_q(O, q):
     return revolute(qE=matrix.col(q))
 
+class translational_alignment(six_dof_alignment): pass
+
+class translational(object):
+
+  qd_zero = matrix.zeros(n=3)
+  qdd_zero = matrix.zeros(n=3)
+
+  def __init__(O, qr):
+    O.qr = qr
+    O.q_size = 3
+    O.r = qr
+    O.Tps = matrix.rt(((1,0,0,0,1,0,0,0,1), -O.r))
+    O.Tsp = matrix.rt(((1,0,0,0,1,0,0,0,1), O.r))
+    O.Xj = T_as_X(O.Tps)
+    O.S = matrix.rec((
+      0,0,0,
+      0,0,0,
+      0,0,0,
+      1,0,0,
+      0,1,0,
+      0,0,1), n=(6,3))
+
+  def time_step_position(O, qd, delta_t):
+    new_qr = O.qr + qd * delta_t
+    return translational(qr=new_qr)
+
+  def time_step_velocity(O, qd, qdd, delta_t):
+    return qd + qdd * delta_t
+
+  def tau_as_d_pot_d_q(O, tau):
+    return tau
+
+  def get_q(O):
+    return O.qr.elems
+
+  def new_q(O, q):
+    return translational(qr=matrix.col(q))
+
 def RBDA_Eq_4_12(q):
   p0, p1, p2, p3 = q
   return matrix.sqr((

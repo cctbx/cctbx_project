@@ -59,6 +59,17 @@ class pdb_extract(object):
 test_cases = [
 
 pdb_extract(
+  tag="point",
+  pdb="""\
+ATOM      0  FE  FE  A   1      10.949  12.815  15.189  0.00  0.00          FE
+""",
+  bonds=[],
+  clusters=[[0]],
+  hinge_edges=[(-1, 0)],
+  loop_edges=[],
+  loop_edge_bendings=[]),
+
+pdb_extract(
   tag="gly_no_h",
   pdb="""\
 ATOM      0  N   GLY A   1      10.949  12.815  15.189  0.00  0.00           N
