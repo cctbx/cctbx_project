@@ -140,16 +140,6 @@ class manager(object):
         bfi[i_h] = adptbx.u_as_b(bfi[i_x])*1.2
       self.xray_structure.set_b_iso(values = bfi, selection = hd_sel)
 
-  def reset_occupancies_for_hydrogens(self):
-    hd_sel = self.xray_structure.hd_selection()
-    if(hd_sel.count(True) > 0):
-      xh_conn_table = self.xh_connectivity_table()
-      occ = self.xray_structure.scatterers().extract_occupancies()
-      for t in self.xh_connectivity_table():
-        i_x, i_h = t[0], t[1]
-        occ[i_h] = occ[i_x]
-      self.xray_structure.set_occupancies(value = occ, selection = hd_sel)
-
   def reset_coordinates_for_exchangable_hd(self):
     if(len(self.exchangable_hd_groups) > 0):
       scatterers =  self.xray_structure.scatterers()

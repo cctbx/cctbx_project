@@ -4,6 +4,7 @@ from cctbx import uctbx
 from cctbx import sgtbx
 from cctbx import xray
 from cctbx import eltbx
+from cctbx import maptbx
 import cctbx.xray.structure_factors
 from cctbx.array_family import flex
 from libtbx.utils import Sorry, date_and_time, host_and_user, multi_out
@@ -52,6 +53,23 @@ import boost.python
 import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
+
+def structure_factors(data, miller_set):
+  fft_manager = fftpack.real_to_complex_3d(data.focus())
+  padded_data = maptbx.copy(
+    data.as_double(),
+    flex.grid(fft_manager.m_real()).set_focus(fft_manager.n_real()))
+  map_of_coeff = fft_manager.forward(padded_data)
+  scale = miller_set.unit_cell().volume() \
+        / matrix.col(fft_manager.n_real()).product()
+  map_of_coeff *= scale # XXX scale from_map.data() instead
+  from_map = maptbx.structure_factors.from_map(
+    space_group=miller_set.space_group(),
+    anomalous_flag=False,
+    miller_indices=miller_set.indices(),
+    complex_map=map_of_coeff,
+    conjugate_flag=True)
+  return miller_set.array(data=from_map.data())
 
 class kick_map(object):
 
@@ -115,19 +133,47 @@ class kick_map(object):
       self.map_coeffs = map_coeff_.customized_copy(
         data = map_coeff_data/counter)
     ###
-    self.fft_map = self.map_coeffs.fft_map(resolution_factor= resolution_factor)
+    self.fft_map = self.map_coeffs.fft_map(resolution_factor = resolution_factor)
     if(real_map):
       self.map_data = self.fft_map.real_map()
     else:
       self.map_data = self.fft_map.real_map_unpadded()
-    if(self.map_data is not None):
-      # produce sigma scaled map: copied from miller.py
-      from cctbx import maptbx
+
+    statistics = maptbx.statistics(self.map_data)
+    self.average = statistics.mean()
+    self.standard_deviation = statistics.sigma()
+    self.map_data /= self.standard_deviation
+
+    if 0: # XXX works but no much impact... Find out WHY?
+      for i in xrange(500):
+        print i
+        sel = flex.random_bool(size = self.map_coeffs.data().size(), threshold = 0.5)
+        map_coeffs = self.map_coeffs.select(sel)
+
+        self.fft_map = miller.fft_map(crystal_gridding = self.fft_map,
+          fourier_coefficients = map_coeffs)
+
+        #
+        if(real_map):
+          map_data = self.fft_map.real_map()
+        else:
+          map_data = self.fft_map.real_map_unpadded()
+        if(map_data is not None):
+          # produce sigma scaled map: copied from miller.py
+          statistics = maptbx.statistics(map_data)
+          self.average = statistics.mean()
+          self.standard_deviation = statistics.sigma()
+          map_data /= self.standard_deviation
+        self.map_data += map_data
+      self.map_data = self.map_data / (i+1)
+
       statistics = maptbx.statistics(self.map_data)
       self.average = statistics.mean()
       self.standard_deviation = statistics.sigma()
       self.map_data /= self.standard_deviation
-
+      #
+      self.map_coeffs = structure_factors(data = self.map_data, miller_set = self.map_coeffs)
+      ###
 
 class model_to_map(object):
 

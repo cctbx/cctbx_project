@@ -554,6 +554,23 @@ def exercise_19(verbose):
   except Exception, e: pass
   assert str(e) == "Empty selection: chain A and resseq 1 and name XX and altloc A"
 
+def exercise_20(verbose):
+  pdb_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/ile_2conf_h.pdb",
+    test=os.path.isfile)
+  if (verbose): log = sys.stdout
+  else: log = StringIO()
+  processed_pdb_files_srv = utils.process_pdb_file_srv(log=log)
+  processed_pdb_file, pdb_inp = processed_pdb_files_srv.process_pdb_files(
+    pdb_file_names = [pdb_file])
+  xray_structure = processed_pdb_file.xray_structure()
+  answer = [ [[3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18], [19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34]] ]
+  result = utils.occupancy_selections(
+    all_chain_proxies = processed_pdb_file.all_chain_proxies,
+    xray_structure    = xray_structure,
+    as_flex_arrays    = False)
+  assert approx_equal(result, answer)
+
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
@@ -576,6 +593,7 @@ def run():
   exercise_17(verbose=verbose)
   exercise_18(verbose=verbose)
   exercise_19(verbose=verbose)
+  exercise_20(verbose=verbose)
   print format_cpu_times()
 
 if (__name__ == "__main__"):
