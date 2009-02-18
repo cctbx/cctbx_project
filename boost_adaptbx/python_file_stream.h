@@ -11,6 +11,8 @@
 #include <streambuf>
 #include <iostream>
 
+#include <boost_adaptbx/forward_compatibility.h>
+
 namespace boost_adaptbx { namespace file_conversion {
 
 using namespace boost::python;
