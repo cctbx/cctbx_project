@@ -225,19 +225,33 @@ class revolute_body(object):
     O.J = joint_lib.revolute(qE=matrix.col([0]))
     O.qd = O.J.qd_zero
 
+class translational_body(object):
+
+  def __init__(O, sites):
+    O.A = joint_lib.translational_alignment(
+      center_of_mass=utils.center_of_mass_from_sites(sites=sites))
+    O.I = utils.spatial_inertia_from_sites(sites=sites, alignment_T=O.A.T0b)
+    #
+    qr = matrix.col((0,0,0))
+    O.J = joint_lib.translational(qr=qr)
+    O.qd = O.J.qd_zero
+
 def construct_bodies(sites, cluster_manager):
   result = []
   cm = cluster_manager
   for ic,cluster in enumerate(cm.clusters):
+    body_sites = [matrix.col(sites[i]) for i in cluster]
     he = cm.hinge_edges[ic]
     if (he[0] == -1):
-      body = six_dof_body(
-        sites=[matrix.col(sites[i]) for i in cluster])
+      if (len(sites) == 1):
+        body = translational_body(sites=body_sites)
+      else:
+        body = six_dof_body(sites=body_sites)
       body.parent = -1
     else:
       normal_sites = [matrix.col(sites[i]) for i in he]
       body = revolute_body(
-        sites=[matrix.col(sites[i]) for i in cluster],
+        sites=body_sites,
         pivot=normal_sites[1],
         normal=(normal_sites[1]-normal_sites[0]).normalize())
       body.parent = cm.cluster_indices[he[1]]
