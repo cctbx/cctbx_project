@@ -90,6 +90,6 @@ class s_minimizer:
 
   def newOrientation(self):
     #trick to instantiate Orientation given self.x, the direct space matrix
-    from dps_core import Orientation
+    from rstbx.dps_core import Orientation
     from cctbx.crystal_orientation import basis_type
     return Orientation(tuple(self.x),basis_type.direct)
