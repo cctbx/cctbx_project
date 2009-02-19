@@ -138,7 +138,7 @@ namespace cctbx { namespace geometry_restraints {
 
     //! Indices into array of sites.
     i_seqs_type i_seqs;
-    //! Parameter.
+    //! Array of symmetry operations.
     af::shared<sgtbx::rt_mx> sym_ops;
   };
 
@@ -196,8 +196,9 @@ namespace cctbx { namespace geometry_restraints {
         init_angle_model();
       }
 
-      /*! \brief Coordinates are copied from sites_cart according to
-          proxy.i_seqs, parameters are copied from proxy.
+      /*! \brief Coordinates are copied from sites_cart according
+          to proxy.i_seqs, proxy.sym_ops and unit_cell, parameters
+          are copied from proxy.
        */
       dihedral(
         uctbx::unit_cell const& unit_cell,
@@ -215,7 +216,7 @@ namespace cctbx { namespace geometry_restraints {
           sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
           if ( !rt_mx.is_unit_mx() ) {
             sites[i] = unit_cell.orthogonalize(
-            rt_mx * unit_cell.fractionalize(sites[i]));
+              rt_mx * unit_cell.fractionalize(sites[i]));
           }
         }
         init_angle_model();
