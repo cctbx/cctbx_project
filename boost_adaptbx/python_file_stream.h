@@ -11,11 +11,9 @@
 #include <streambuf>
 #include <iostream>
 
-#include <boost_adaptbx/forward_compatibility.h>
-
 namespace boost_adaptbx { namespace file_conversion {
 
-using namespace boost::python;
+namespace python = boost::python;
 
 
 /// A stream buffer getting data from and putting data into a Python file object
@@ -142,17 +140,17 @@ class python_file_buffer : public std::basic_streambuf<char>
     static std::size_t buffer_size;
 
     /// Construct from a Python file object
-    python_file_buffer(object& python_file)
-      : py_read (getattr(python_file, "read",  object())),
-        py_write(getattr(python_file, "write", object())),
-        py_seek (getattr(python_file, "seek",  object())),
-        py_tell (getattr(python_file, "tell",  object())),
+    python_file_buffer(python::object& python_file)
+      : py_read (getattr(python_file, "read",  python::object())),
+        py_write(getattr(python_file, "write", python::object())),
+        py_seek (getattr(python_file, "seek",  python::object())),
+        py_tell (getattr(python_file, "tell",  python::object())),
         write_buffer(0),
         pos_of_read_buffer_end_in_py_file(0),
         pos_of_write_buffer_end_in_py_file(buffer_size),
         farthest_pptr(0)
     {
-      if (py_write != object()) {
+      if (py_write != python::object()) {
         // C-like string to make debugging easier
         write_buffer = new char[buffer_size + 1];
         write_buffer[buffer_size] = '\0';
@@ -163,8 +161,8 @@ class python_file_buffer : public std::basic_streambuf<char>
         // The first attempt at output will result in a call to overflow
         setp(0, 0);
       }
-      if (py_tell != object()) {
-        off_type py_pos = extract<off_type>(py_tell());
+      if (py_tell != python::object()) {
+        off_type py_pos = python::extract<off_type>(py_tell());
         pos_of_read_buffer_end_in_py_file = py_pos;
         pos_of_write_buffer_end_in_py_file = py_pos;
       }
@@ -178,23 +176,22 @@ class python_file_buffer : public std::basic_streambuf<char>
 
     /// C.f. C++ standard section 27.5.2.4.3
     virtual int_type underflow() {
-      using namespace boost::python;
       int_type const failure = traits_type::eof();
-      if (py_read == object()) {
+      if (py_read == python::object()) {
         PyErr_SetString(PyExc_AttributeError,
                         "That Python file object has no 'read' attribute");
-        throw_error_already_set();
+        python::throw_error_already_set();
       }
       read_buffer = py_read(buffer_size);
       char *read_buffer_data;
-      Py_ssize_t py_n_read;
+      python::ssize_t py_n_read;
       if (PyString_AsStringAndSize(read_buffer.ptr(),
                                    &read_buffer_data, &py_n_read) == -1) {
         setg(0, 0, 0);
         PyErr_SetString(PyErr_Occurred(),
                         "The method 'read' of the Python file object "
                         "did not return a string.");
-        throw_error_already_set();
+        python::throw_error_already_set();
       }
       off_type n_read = (off_type)py_n_read;
       pos_of_read_buffer_end_in_py_file += n_read;
@@ -206,15 +203,14 @@ class python_file_buffer : public std::basic_streambuf<char>
 
     /// C.f. C++ standard section 27.5.2.4.5
     virtual int_type overflow(int_type c=traits_type::eof()) {
-      using namespace boost::python;
-      if (py_write == object()) {
+      if (py_write == python::object()) {
         PyErr_SetString(PyExc_AttributeError,
                         "That Python file object has no 'write' attribute");
-        throw_error_already_set();
+        python::throw_error_already_set();
       }
       farthest_pptr = std::max(farthest_pptr, pptr());
       off_type n_written = (off_type)(farthest_pptr - pbase());
-      str chunk(pbase(), farthest_pptr);
+      python::str chunk(pbase(), farthest_pptr);
       py_write(chunk);
       if (!traits_type::eq_int_type(c, traits_type::eof())) {
         py_write(traits_type::to_char_type(c));
@@ -244,10 +240,10 @@ class python_file_buffer : public std::basic_streambuf<char>
         off_type delta = pptr() - farthest_pptr;
         int_type status = overflow();
         if (traits_type::eq_int_type(status, traits_type::eof())) result = -1;
-        if (py_seek != object()) py_seek(delta, 1);
+        if (py_seek != python::object()) py_seek(delta, 1);
       }
       else if (gptr() && gptr() < egptr()) {
-        if (py_seek != object()) py_seek(gptr() - egptr(), 1);
+        if (py_seek != python::object()) py_seek(gptr() - egptr(), 1);
       }
       return result;
     }
@@ -271,10 +267,10 @@ class python_file_buffer : public std::basic_streambuf<char>
       */
       int const failure = off_type(-1);
 
-      if (py_seek == object()) {
+      if (py_seek == python::object()) {
         PyErr_SetString(PyExc_AttributeError,
                         "That Python file object has no 'seek' attribute");
-        throw_error_already_set();
+        python::throw_error_already_set();
       }
 
       // we need the read buffer to contain something!
@@ -311,7 +307,7 @@ class python_file_buffer : public std::basic_streambuf<char>
           else if (which == std::ios_base::out) off += pptr() - pbase();
         }
         py_seek(off, whence);
-        result = off_type(extract<off_type>(py_tell()));
+        result = off_type(python::extract<off_type>(py_tell()));
         if (which == std::ios_base::in) underflow();
       }
       return *result;
@@ -327,14 +323,14 @@ class python_file_buffer : public std::basic_streambuf<char>
     }
 
   private:
-    object py_read, py_write, py_seek, py_tell;
+    python::object py_read, py_write, py_seek, py_tell;
 
     /* This is actually a Python string and the actual read buffer is
        its internal data, i.e. an array of characters. We use a Boost.Python
        object so as to hold on it: as a result, the actual buffer can't
        go away.
     */
-    object read_buffer;
+    python::object read_buffer;
 
     /* A mere array of char's allocated on the heap at construction time and
        de-allocated only at destruction time.
