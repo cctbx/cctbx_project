@@ -258,35 +258,7 @@ def exercise_eigen(n_trials=100):
         diag = [random.random()] * 3
       exercise_eigen_core(diag)
 
-def exercise_ellipsoid(n_trials=100, n_sub_trials=10):
-  rnd = random.Random(0)
-  for i in xrange(n_trials):
-    half_lengths = matrix.col([ 0.1 + rnd.random() for k in xrange(3) ])
-    r = scitbx.math.euler_angles_as_matrix(
-      [ rnd.uniform(0, 360) for i in xrange(3) ], deg=True)
-    u_cart = r.transpose() * matrix.diag([ x**2 for x in half_lengths ]) * r
-    es = adptbx.eigensystem(u_cart.as_sym_mat3())
-    t = adptbx.sphere_to_ellipsoid_transform(es)
-    m = matrix.sqr(t.matrix())
-    for j in xrange(n_sub_trials):
-      x = matrix.col([ rnd.random() for k in xrange(3) ]).normalize()
-      y = m*x
-      c = y.transpose() * u_cart.inverse() * y
-      assert approx_equal(c[0], 1)
-  r = scitbx.math.euler_angles_as_matrix((30, 115, 260), deg=True)
-  u_cart = r.transpose() * matrix.diag((-1, 0.1, 1)) * r
-  es = adptbx.eigensystem(u_cart.as_sym_mat3())
-  t = adptbx.sphere_to_ellipsoid_transform(es)
-  assert t.ill_defined()
-  try:
-    t.matrix()
-  except RuntimeError:
-    pass
-  else:
-    raise Exception_expected
-
 def run():
-  exercise_ellipsoid()
   exercise_interface()
   exercise_factor_u_star_u_iso()
   exercise_debye_waller()

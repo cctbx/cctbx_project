@@ -46,21 +46,6 @@ namespace {
     }
   };
 
-  struct sphere_to_ellipsoid_transform_wrapper
-  {
-    typedef sphere_to_ellipsoid_transform<double> w_t;
-
-    static void wrap() {
-      using namespace boost::python;
-      typedef return_value_policy<copy_const_reference> ccr;
-      class_<w_t>("sphere_to_ellipsoid_transform", no_init)
-        .def(init<eigensystem<double> const&>())
-        .def("matrix", &w_t::matrix, ccr())
-        .def("ill_defined", &w_t::ill_defined)
-      ;
-    }
-  };
-
   BOOST_PYTHON_FUNCTION_OVERLOADS(
     eigenvalue_filtering_overloads, eigenvalue_filtering, 1, 3)
 
@@ -222,7 +207,6 @@ namespace {
             arg_("u_max")=0)));
 
     eigensystem_wrappers::wrap();
-    sphere_to_ellipsoid_transform_wrapper::wrap();
 
     def("c_u_c_transpose",
       (sym_mat3<double>(*)(mat3<double> const&, sym_mat3<double> const&))

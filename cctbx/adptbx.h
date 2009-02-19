@@ -698,68 +698,6 @@ namespace cctbx {
       vec3<FloatType> values_;
   };
 
-  /// Compute the transform that \link sphere_to_ellipsoid_transform \endlink
-  /// is concerned with.
-  /** It fills the memory range [p, p+9) with the coefficient of the matrix
-  in row-major order.
-
-  \return false if the ADP is not positive definite,
-     i.e. the operation failed and what has been filled
-     into that memory range cannot be relied upon.
-  */
-  template<typename FloatType>
-  inline
-  bool compute_sphere_to_ellipsoid_transform(eigensystem<FloatType> const& es,
-                                             FloatType* first)
-  {
-    scitbx::mat_ref<FloatType> m(first, 3, 3);
-    for(int i=0; i<3; i++)
-      for(int j=0; j<3; j++) {
-        if (es.values()[j] < 0) return false;
-        m(i,j) = es.vectors(j)[i]*std::sqrt(es.values()[j]);
-    }
-    return true;
-  }
-
-  /// The matrix transforming an unit sphere into the electron density
-  /// iso-surface
-  /** The electron density associated to the ADP at the point x is:
-   \f$ p(x) \propto e^{x_c^T U_c^{-1} x_c / 2} \f$. Thus the iso-surface
-   is the ellipsoid \f$x_c^T U_c^{-1} x_c = cst \f$. Since
-   \f$ U_c = R \Delta_c R^{-1} \f$ where R is the rotation matrix whose
-   columns are the eigenvectors {es.vectors(i), i=0,1,2}, the desired transform
-   is \f$ M = R \Delta_c^{1/2} \f$ where \f$ \Delta_c \f$ is the diagonal
-   matrix {es.values(i), i=0,1,2}, es being the argument passed to the
-   constructor
-  */
-  template<typename FloatType>
-  class sphere_to_ellipsoid_transform
-  {
-    public:
-      /// Construct the transform from the eigensystem es of the ADP tensor
-      sphere_to_ellipsoid_transform(eigensystem<FloatType> const& es) {
-        ill_defined_ = !compute_sphere_to_ellipsoid_transform(es,
-                                                              matrix_.begin());
-      }
-
-      /// The matrix \f$M\f$
-      /**
-      \throws scitbx::error if the ADP was non-positive definite
-      */
-      mat3<FloatType> const& matrix() {
-        SCITBX_ASSERT(!ill_defined());
-        return matrix_;
-      }
-
-      /// Whether the transform is ill-defined because the ADP tensor was
-      /// non-positive definite
-      bool ill_defined() { return ill_defined_; }
-
-    private:
-      mat3<FloatType> matrix_;
-      bool ill_defined_;
-  };
-
   //! Determines the eigenvalues of the anisotropic displacement tensor.
   /*! Equivalent to eigensystem<>().values().
    */
