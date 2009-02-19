@@ -292,17 +292,19 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     z -= h / math.tan(self.field_of_view_y*math.pi/180/2)
     return x,y,z
 
-  def initialize_modelview(self):
+  def initialize_modelview(self, eye_vector=None, angle=None):
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     gluLookAt(0,0,0, 0,0,-1, 0,1,0)
     glTranslated(*self.compute_home_translation())
     rc = self.minimum_covering_sphere.center()
     self.rotation_center = rc
+    if eye_vector is None: eye_vector = (1,1,1)
+    if angle is None: angle = -120
     gltbx.util.rotate_object_about_eye_vector(
       xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
-      xvector=1, yvector=1, zvector=1,
-      angle=-120)
+      xvector=eye_vector[0], yvector=eye_vector[1], zvector=eye_vector[2],
+      angle=angle)
 
   def rotation_move_factor(self, rotation_angle):
     return abs(rotation_angle)/180
