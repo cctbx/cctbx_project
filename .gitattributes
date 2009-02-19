@@ -129,6 +129,7 @@ gltbx/error_utils.h -text
 gltbx/quadrics.h -text
 gltbx/quadrics.py -text
 gltbx/quadrics_ext.cpp -text
+gltbx/run_tests.py -text
 gltbx/tst_ellipsoids.py -text
 gltbx/tst_viewer_utils.py svneol=native#text/x-python
 gltbx/util.h -text
