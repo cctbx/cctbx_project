@@ -269,6 +269,8 @@ def exercise_bond_sorted_asu_proxies(
   for i,j in el:
     assert j in es[i]
     assert i in es[j]
+  npis = bond_sym_table.number_of_pairs_involving_symmetry()
+  assert len(list(bond_sym_table.iterator())) == len(el) + npis
   bond_params_table = geometry_restraints.bond_params_table(
     structure.scatterers().size())
   for i_seq,bond_sym_dict in enumerate(bond_sym_table):
