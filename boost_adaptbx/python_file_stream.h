@@ -142,7 +142,7 @@ class python_file_buffer : public std::basic_streambuf<char>
     static std::size_t buffer_size;
 
     /// Construct from a Python file object
-    python_file_buffer(object python_file)
+    python_file_buffer(object& python_file)
       : py_read (getattr(python_file, "read",  object())),
         py_write(getattr(python_file, "write", object())),
         py_seek (getattr(python_file, "seek",  object())),

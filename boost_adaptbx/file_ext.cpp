@@ -35,7 +35,7 @@ namespace boost_adaptbx { namespace file_conversion {
       using namespace boost::python;
       typedef converter::rvalue_from_python_storage<python_file_buffer> rvalue_t;
       void *storage = ((rvalue_t *) data)->storage.bytes;
-      object python_file(handle<>(borrowed(obj_ptr)));
+      object python_file((handle<>(borrowed(obj_ptr))));
       new (storage) python_file_buffer(python_file);
       data->convertible = storage;
     }
