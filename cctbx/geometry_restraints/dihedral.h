@@ -101,7 +101,9 @@ namespace cctbx { namespace geometry_restraints {
       dihedral_params(angle_ideal_, weight_, periodicity_),
       sym_ops(sym_ops_),
       i_seqs(i_seqs_)
-    {}
+    {
+      CCTBX_ASSERT(sym_ops.size() == i_seqs.size());
+    }
 
     //! Constructor.
     dihedral_sym_proxy(
@@ -112,7 +114,9 @@ namespace cctbx { namespace geometry_restraints {
       dihedral_params(params),
       sym_ops(sym_ops_),
       i_seqs(i_seqs_)
-    {}
+    {
+      CCTBX_ASSERT(sym_ops.size() == i_seqs.size());
+    }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[3] and i_seq[1] < i_seq[2].
     dihedral_sym_proxy
