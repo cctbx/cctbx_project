@@ -85,29 +85,29 @@ namespace cctbx { namespace geometry_restraints {
     //! Constructor.
     angle_sym_proxy(
       i_seqs_type const& i_seqs_,
-      sgtbx::rt_mx const& rt_mx_ji_,
-      sgtbx::rt_mx const& rt_mx_ki_,
+      af::shared<sgtbx::rt_mx> const& sym_ops_,
       double angle_ideal_,
       double weight_)
     :
       angle_params(angle_ideal_, weight_),
-      rt_mx_ji(rt_mx_ji_),
-      rt_mx_ki(rt_mx_ki_),
+      sym_ops(sym_ops_),
       i_seqs(i_seqs_)
-    {}
+    {
+      CCTBX_ASSERT(sym_ops.size() == i_seqs.size());
+    }
 
     //! Constructor.
     angle_sym_proxy(
       i_seqs_type const& i_seqs_,
-      sgtbx::rt_mx const& rt_mx_ji_,
-      sgtbx::rt_mx const& rt_mx_ki_,
+      af::shared<sgtbx::rt_mx> const& sym_ops_,
       angle_params const& params)
     :
       angle_params(params),
-      rt_mx_ji(rt_mx_ji_),
-      rt_mx_ki(rt_mx_ki_),
+      sym_ops(sym_ops_),
       i_seqs(i_seqs_)
-    {}
+    {
+      CCTBX_ASSERT(sym_ops.size() == i_seqs.size());
+    }
 
     //! Sorts i_seqs such that i_seq[0] < i_seq[2].
     angle_sym_proxy
@@ -116,6 +116,7 @@ namespace cctbx { namespace geometry_restraints {
       angle_sym_proxy result(*this);
       if (result.i_seqs[0] > result.i_seqs[2]) {
         std::swap(result.i_seqs[0], result.i_seqs[2]);
+        std::swap(result.sym_ops[0], result.sym_ops[2]);
       }
       return result;
     }
@@ -123,9 +124,7 @@ namespace cctbx { namespace geometry_restraints {
     //! Indices into array of sites.
     i_seqs_type i_seqs;
     //! Parameter.
-    sgtbx::rt_mx rt_mx_ji;
-    //! Parameter.
-    sgtbx::rt_mx rt_mx_ki;
+    af::shared<sgtbx::rt_mx> sym_ops;
   };
 
   //! Residual and gradient calculations for angle restraint.
@@ -171,7 +170,7 @@ namespace cctbx { namespace geometry_restraints {
        */
       angle(
         uctbx::unit_cell const& unit_cell,
-                                af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
         angle_sym_proxy const& proxy)
       :
         angle_ideal(proxy.angle_ideal),
@@ -180,13 +179,11 @@ namespace cctbx { namespace geometry_restraints {
         for(int i=0;i<3;i++) {
           std::size_t i_seq = proxy.i_seqs[i];
           CCTBX_ASSERT(i_seq < sites_cart.size());
-          if (i == 0) sites[i] = sites_cart[i_seq];
-          else {
-            sgtbx::rt_mx rt_mx;
-            if (i == 1) rt_mx = proxy.rt_mx_ji;
-            else rt_mx = proxy.rt_mx_ki;
+          sites[i] = sites_cart[i_seq];
+          sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
+          if ( !rt_mx.is_unit_mx() ) {
             sites[i] = unit_cell.orthogonalize(
-            rt_mx * unit_cell.fractionalize(sites_cart[i_seq]));
+            rt_mx * unit_cell.fractionalize(sites[i]));
           }
         }
         init_angle_model();

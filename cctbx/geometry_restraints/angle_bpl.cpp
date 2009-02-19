@@ -85,21 +85,18 @@ namespace {
       class_<w_t>("angle_sym_proxy", no_init)
         .def(init<
           af::tiny<unsigned, 3> const&,
-          sgtbx::rt_mx const&,
-          sgtbx::rt_mx const&,
+          af::shared<sgtbx::rt_mx> const&,
           double,
           double>((
             arg_("i_seqs"),
-            arg_("rt_mx_ji"),
-            arg_("rt_mx_ki"),
+            arg_("sym_ops"),
             arg_("angle_ideal"),
             arg_("weight"))))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
-        .def_readonly("rt_mx_ji", &w_t::rt_mx_ji)
-        .def_readonly("rt_mx_ki", &w_t::rt_mx_ki)
+        .def_readonly("sym_ops", &w_t::sym_ops)
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
