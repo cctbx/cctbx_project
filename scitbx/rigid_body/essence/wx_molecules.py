@@ -18,7 +18,7 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
     self.lines_display_list = None
     self.points_display_list = None
 
-  def set_points_and_lines(self, sim):
+  def set_points_and_lines(self, sim, show_loop_edge_bendings=True):
     self.sim = sim
     self.labels = self.sim.labels
     self.set_points()
@@ -42,9 +42,10 @@ class viewer(wx_viewer.show_points_and_lines_mixin):
         else:
           color = (0,0,1)
       self.line_colors[line] = color
-    for line in cm.loop_edge_bendings:
-      self.line_i_seqs.append(line)
-      self.line_colors[line] = (0.5,0,0.5)
+    if (show_loop_edge_bendings):
+      for line in cm.loop_edge_bendings:
+        self.line_i_seqs.append(line)
+        self.line_colors[line] = (0.5,0,0.5)
     mcs = minimum_covering_sphere(self.points, epsilon=1.e-2)
     self.minimum_covering_sphere = sphere_3d(
       center=mcs.center(), radius=mcs.radius()*1.3)
