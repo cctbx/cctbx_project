@@ -691,12 +691,25 @@ class _pair_sym_table(boost.python.injector, pair_sym_table):
           for sym_op in sym_ops:
             print >> f, "   ", sym_op
 
+  def simple_edge_list(self):
+    result = []
+    for i_seq,pair_sym_dict in enumerate(self):
+      for j_seq,sym_ops in pair_sym_dict.items():
+        for sym_op in sym_ops:
+          if (sym_op.is_unit_mx()):
+            result.append((i_seq, j_seq))
+            break
+    return result
+
   def full_simple_connectivity(self):
     result = shared.stl_set_unsigned(self.size())
     for i_seq,pair_sym_dict in enumerate(self):
-      for j_seq in pair_sym_dict:
-        result[i_seq].insert(j_seq)
-        result[j_seq].insert(i_seq)
+      for j_seq,sym_ops in pair_sym_dict.items():
+        for sym_op in sym_ops:
+          if (sym_op.is_unit_mx()):
+            result[i_seq].insert(j_seq)
+            result[j_seq].insert(i_seq)
+            break
     return result
 
   def is_paired(self, i_seq):

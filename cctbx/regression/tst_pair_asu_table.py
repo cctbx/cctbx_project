@@ -263,8 +263,12 @@ def exercise_bond_sorted_asu_proxies(
   bond_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
   bond_asu_table.add_all_pairs(distance_cutoff=distance_cutoff)
   bond_sym_table = bond_asu_table.extract_pair_sym_table()
-  assert bond_sym_table.full_simple_connectivity().size() \
-      == bond_sym_table.size()
+  el = bond_sym_table.simple_edge_list()
+  es = bond_sym_table.full_simple_connectivity()
+  assert es.size() == bond_sym_table.size()
+  for i,j in el:
+    assert j in es[i]
+    assert i in es[j]
   bond_params_table = geometry_restraints.bond_params_table(
     structure.scatterers().size())
   for i_seq,bond_sym_dict in enumerate(bond_sym_table):
