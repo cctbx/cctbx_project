@@ -9,6 +9,7 @@
 
 namespace scitbx {
 
+  /// Row-major accessor
   class mat_grid : public af::tiny<std::size_t, 2>
   {
     public:
@@ -29,6 +30,31 @@ namespace scitbx {
       operator()(index_value_type const& r, index_value_type const& c) const
       {
         return r * elems[1] + c;
+      }
+  };
+
+  /// Column-major accessor
+  class column_major_mat_grid : public af::tiny<std::size_t, 2>
+  {
+    public:
+      typedef af::tiny<std::size_t, 2> index_type;
+      typedef index_type::value_type index_value_type;
+
+      column_major_mat_grid() : index_type(0,0) {}
+
+      column_major_mat_grid(index_type const& n) : index_type(n) {}
+
+      column_major_mat_grid(index_value_type const& n0,
+                            index_value_type const& n1)
+      : index_type(n0, n1)
+      {}
+
+      std::size_t size_1d() const { return elems[0] * elems[1]; }
+
+      std::size_t
+      operator()(index_value_type const& r, index_value_type const& c) const
+      {
+        return r + c*elems[0];
       }
   };
 
