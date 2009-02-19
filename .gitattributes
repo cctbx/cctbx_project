@@ -126,11 +126,16 @@ fftw3tbx/libtbx_config -text
 fftw3tbx/libtbx_refresh.py svneol=native#text/x-python
 fftw3tbx/tst_ext.py svneol=native#text/x-python
 gltbx/error_utils.h -text
+gltbx/quadrics.h -text
+gltbx/quadrics.py -text
+gltbx/quadrics_ext.cpp -text
+gltbx/tst_ellipsoids.py -text
 gltbx/tst_viewer_utils.py svneol=native#text/x-python
 gltbx/util.h -text
 gltbx/viewer_utils.py svneol=native#text/x-python
 gltbx/viewer_utils_ext.cpp svneol=native#text/plain
 gltbx/wx_controllers.py -text
+gltbx/wx_ellipsoids_test.py -text
 gltbx/wx_motion_on_tab.py svneol=native#text/x-python
 gltbx/wx_viewer_example.py -text
 gltbx/wx_viewers_images.py -text
