@@ -14,6 +14,23 @@
 
 namespace cctbx { namespace geometry_restraints {
 namespace {
+  struct dihedral_params_wrappers
+  {
+    typedef dihedral_params w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      class_<w_t>("dihedral_params", no_init)
+        .def(init<double, double, optional<int> >((
+          arg_("angle_ideal"), arg_("weight"), arg_("periodicity")=0)))
+        .def_readwrite("angle_ideal", &w_t::angle_ideal)
+        .def_readwrite("weight", &w_t::weight)
+        .def_readwrite("periodicity", &w_t::periodicity)
+      ;
+    }
+  };
 
   struct dihedral_proxy_wrappers
   {
@@ -25,10 +42,12 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       class_<w_t>("dihedral_proxy", no_init)
-        .def(init<af::tiny<unsigned, 4> const&, double, double,
-                  optional<int> >(
-          (arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"),
-           arg_("periodicity")=0)))
+        .def(init<af::tiny<unsigned, 4> const&,
+                  double,
+                  double,
+                  optional<int> >((
+            arg_("i_seqs"), arg_("angle_ideal"), arg_("weight"),
+            arg_("periodicity")=0)))
         .def("sort_i_seqs", &w_t::sort_i_seqs)
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readwrite("angle_ideal", &w_t::angle_ideal)
@@ -44,7 +63,7 @@ namespace {
               af::const_ref<w_t> const&,
               std::size_t,
               af::const_ref<std::size_t> const&))
-                shared_proxy_select, (
+              shared_proxy_select, (
             arg_("n_seq"), arg_("iselection")))
           .def("proxy_remove",
             (af::shared<w_t>(*)(
@@ -52,6 +71,39 @@ namespace {
               af::const_ref<bool> const&))
                 shared_proxy_remove, (
             arg_("selection")))
+        ;
+      }
+    }
+  };
+
+  struct dihedral_sym_proxy_wrappers
+  {
+    typedef dihedral_sym_proxy w_t;
+
+    static void
+    wrap()
+    {
+      using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      class_<w_t>("dihedral_sym_proxy", no_init)
+        .def(init<af::tiny<unsigned, 4> const&,
+                  af::shared<sgtbx::rt_mx> const&,
+                  double,
+                  double,
+                  optional<int> >(
+          (arg_("i_seqs"), arg_("sym_ops"), arg_("angle_ideal"),
+           arg_("weight"), arg_("periodicity")=0)))
+        .def("sort_i_seqs", &w_t::sort_i_seqs)
+        .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
+        .def_readwrite("angle_ideal", &w_t::angle_ideal)
+        .def_readwrite("weight", &w_t::weight)
+        .def_readwrite("periodicity", &w_t::periodicity)
+        .def_readonly("sym_ops", &w_t::sym_ops)
+      ;
+      {
+        typedef return_internal_reference<> rir;
+        scitbx::af::boost_python::shared_wrapper<w_t, rir>::wrap(
+          "shared_dihedral_sym_proxy")
         ;
       }
     }
@@ -77,6 +129,10 @@ namespace {
         .def(init<af::const_ref<scitbx::vec3<double> > const&,
                   dihedral_proxy const&>(
           (arg_("sites_cart"), arg_("proxy"))))
+        .def(init<uctbx::unit_cell const&,
+                  af::const_ref<scitbx::vec3<double> > const&,
+                  dihedral_sym_proxy const&>(
+          (arg_("unit_cell"), arg_("sites_cart"), arg_("proxy"))))
         .add_property("sites", make_getter(&w_t::sites, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
@@ -95,14 +151,51 @@ namespace {
   wrap_all()
   {
     using namespace boost::python;
+    dihedral_params_wrappers::wrap();
     dihedral_proxy_wrappers::wrap();
+    dihedral_sym_proxy_wrappers::wrap();
     dihedral_wrappers::wrap();
-    def("dihedral_deltas", dihedral_deltas,
+    def("dihedral_deltas",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<dihedral_proxy> const&))
+        dihedral_deltas,
       (arg_("sites_cart"), arg_("proxies")));
-    def("dihedral_residuals", dihedral_residuals,
+    def("dihedral_residuals",
+      (af::shared<double>(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<dihedral_proxy> const&))
+        dihedral_residuals,
       (arg_("sites_cart"), arg_("proxies")));
-    def("dihedral_residual_sum", dihedral_residual_sum,
+    def("dihedral_residual_sum",
+      (double(*)(
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<dihedral_proxy> const&,
+        af::ref<scitbx::vec3<double> > const&))
+        dihedral_residual_sum,
       (arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
+    def("dihedral_deltas",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<dihedral_sym_proxy> const&))
+        dihedral_deltas,
+      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
+    def("dihedral_residuals",
+      (af::shared<double>(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<dihedral_sym_proxy> const&))
+        dihedral_residuals,
+      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies")));
+    def("dihedral_residual_sum",
+      (double(*)(
+        uctbx::unit_cell const&,
+        af::const_ref<scitbx::vec3<double> > const&,
+        af::const_ref<dihedral_sym_proxy> const&,
+        af::ref<scitbx::vec3<double> > const&))
+        dihedral_residual_sum,
+      (arg_("unit_cell"), arg_("sites_cart"), arg_("proxies"), arg_("gradient_array")));
   }
 
 } // namespace <anonymous>
