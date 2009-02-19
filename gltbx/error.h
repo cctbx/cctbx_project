@@ -1,4 +1,5 @@
 #include <gltbx/include_opengl.h>
+#include <gltbx/error_utils.h>
 #include <string>
 #include <stdexcept>
 #include <cstdio>
@@ -52,9 +53,5 @@ namespace gltbx {
     }
 
   }
-
-#define GLTBX_ASSERT(bool) \
-  if (!(bool)) throw std::runtime_error(detail::compose_error_message( \
-    __FILE__, __LINE__, "GLTBX_ASSERT(" # bool ") failure."))
 
 } // namespace gltbx
