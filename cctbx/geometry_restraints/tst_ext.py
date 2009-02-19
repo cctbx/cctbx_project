@@ -791,15 +791,16 @@ def exercise_angle():
   p.weight = 10
   assert approx_equal(p.weight, 10)
   #
+  sym_ops = (sgtbx.rt_mx('-1+x,+y,+z'),sgtbx.rt_mx(),sgtbx.rt_mx())
   p = geometry_restraints.angle_sym_proxy(
     i_seqs=[2,1,0],
-    rt_mx_ji = sgtbx.rt_mx(),
-    rt_mx_ki = sgtbx.rt_mx('-1+x,+y,+z'),
+    sym_ops=sym_ops,
     angle_ideal=95,
     weight=1)
   assert p.i_seqs == (2,1,0)
   p = p.sort_i_seqs()
   assert p.i_seqs == (0,1,2)
+  assert tuple(p.sym_ops) == (sgtbx.rt_mx(),sgtbx.rt_mx(),sgtbx.rt_mx('-1+x,+y,+z'))
   assert approx_equal(p.angle_ideal, 95)
   assert approx_equal(p.weight, 1)
   unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
@@ -915,6 +916,95 @@ def exercise_angle():
   assert rest.size() == 3
 
 def exercise_dihedral():
+  p = geometry_restraints.dihedral_params(
+    angle_ideal=-40,
+    weight=1)
+  assert approx_equal(p.angle_ideal, -40)
+  assert approx_equal(p.weight, 1)
+  p.angle_ideal = 40
+  assert approx_equal(p.angle_ideal, 40)
+  p.weight = 10
+  assert approx_equal(p.weight, 10)
+  #
+  p = geometry_restraints.dihedral_params(
+    angle_ideal=-40,
+    weight=1,
+    periodicity=2)
+  assert approx_equal(p.angle_ideal, -40)
+  assert approx_equal(p.weight, 1)
+  assert approx_equal(p.periodicity, 2)
+  #
+  u_mx = sgtbx.rt_mx() # unit matrix
+  sym_ops = (u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx, sgtbx.rt_mx('+X,-1+Y,2+Z'))
+  p = geometry_restraints.dihedral_sym_proxy(
+    i_seqs=[3,2,1,0],
+    sym_ops=sym_ops,
+    angle_ideal=-40,
+    weight=1,
+    periodicity=2)
+  assert p.i_seqs == (3,2,1,0)
+  assert tuple(p.sym_ops) == sym_ops
+  p = p.sort_i_seqs()
+  assert p.i_seqs == (0,1,2,3)
+  assert tuple(p.sym_ops) == (sgtbx.rt_mx('+X,-1+Y,2+Z'), u_mx, sgtbx.rt_mx('1+X,+Y,+Z'), u_mx)
+  assert approx_equal(p.angle_ideal, -40)
+  assert approx_equal(p.weight, 1)
+  assert p.periodicity == 2
+  p.angle_ideal = 50
+  p.weight = 2
+  p.periodicity = 3
+  assert approx_equal(p.angle_ideal, 50)
+  assert approx_equal(p.weight, 2)
+  assert p.periodicity == 3
+  p.angle_ideal = -40
+  p.weight = 1
+  p.periodicity = 2
+  assert approx_equal(p.angle_ideal, -40)
+  assert approx_equal(p.weight, 1)
+  assert p.periodicity == 2
+  #
+  u_mx = sgtbx.rt_mx() # unit matrix
+  sym_ops = (u_mx, u_mx, sgtbx.rt_mx('+X,1+Y,+Z'), sgtbx.rt_mx('+X,1+Y,+Z'))
+  p = geometry_restraints.dihedral_sym_proxy(
+    i_seqs=[0,1,2,3],
+    sym_ops=sym_ops,
+    angle_ideal=175,
+    weight=1)
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_cart = flex.vec3_double([(2,24,0),(1,24,0),(1,1,0),(0,1,0)])
+  d = geometry_restraints.dihedral(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p)
+  assert approx_equal(d.sites, [(2,24,0),(1,24,0),(1,26,0),(0,26,0)])
+  assert approx_equal(d.angle_ideal, 175)
+  assert approx_equal(d.weight, 1)
+  assert d.have_angle_model
+  assert approx_equal(d.angle_model, 180)
+  assert approx_equal(d.delta, -5)
+  assert approx_equal(d.residual(), 25)
+  assert approx_equal(d.gradients(epsilon=1.e-100),
+    ((0, 0, 572.95779513082323),
+     (0, 0, -572.95779513082323),
+     (0, 0, -572.95779513082323),
+     (0, 0, 572.95779513082323)))
+  #
+  proxies = geometry_restraints.shared_dihedral_sym_proxy([p,p])
+  assert approx_equal(geometry_restraints.dihedral_deltas(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [-5]*2)
+  assert approx_equal(geometry_restraints.dihedral_residuals(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [25]*2)
+  residual_sum = geometry_restraints.dihedral_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None)
+  assert approx_equal(residual_sum, 2*25)
+  #
   p = geometry_restraints.dihedral_proxy(
     i_seqs=[3,2,1,0],
     angle_ideal=-40,
