@@ -133,6 +133,9 @@ class python_file_buffer : public std::basic_streambuf<char>
     typedef base_t::off_type    off_type;
     typedef base_t::traits_type traits_type;
 
+    // work around Visual C++ 7.1 problem
+    static const int traits_type_eof = traits_type::eof();
+
     /// The size of the read and write buffer.
     /** They are respectively used to buffer data read from and data written to
         the Python file object. It can be modified from Python.
@@ -202,7 +205,7 @@ class python_file_buffer : public std::basic_streambuf<char>
     }
 
     /// C.f. C++ standard section 27.5.2.4.5
-    virtual int_type overflow(int_type c=traits_type::eof()) {
+    virtual int_type overflow(int_type c=traits_type_eof) {
       if (py_write == python::object()) {
         PyErr_SetString(PyExc_AttributeError,
                         "That Python file object has no 'write' attribute");
