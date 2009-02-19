@@ -691,6 +691,15 @@ class _pair_sym_table(boost.python.injector, pair_sym_table):
           for sym_op in sym_ops:
             print >> f, "   ", sym_op
 
+  def number_of_pairs_involving_symmetry(self):
+    result = 0
+    for i_seq,pair_sym_dict in enumerate(self):
+      for j_seq,sym_ops in pair_sym_dict.items():
+        for sym_op in sym_ops:
+          if (not sym_op.is_unit_mx()):
+            result += 1
+    return result
+
   def simple_edge_list(self):
     result = []
     for i_seq,pair_sym_dict in enumerate(self):
