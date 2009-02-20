@@ -183,7 +183,9 @@ class refinery(object):
     scitbx.lbfgs.run(
       target_evaluator=O,
       termination_params=scitbx.lbfgs.termination_parameters(
-       max_iterations=max_iterations))
+        max_iterations=max_iterations),
+      exception_handling_params=scitbx.lbfgs.exception_handling_parameters(
+        ignore_line_search_failed_step_at_lower_bound=True))
     O.sim.energies_and_accelerations_update()
 
   def unpack_x(O):
