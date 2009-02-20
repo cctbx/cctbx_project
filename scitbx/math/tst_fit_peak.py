@@ -114,5 +114,5 @@ if (__name__ == "__main__"):
   test_pick_map_neighbors()
   test_fit_3d_parabola()
   test_fit_3d_quadratic()
-  test_fit_3d_gaussian()
+  #test_fit_3d_gaussian()
   print "OK"
