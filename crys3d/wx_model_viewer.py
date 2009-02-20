@@ -8,24 +8,20 @@ from gltbx.glu import *
 from scitbx.array_family import flex, shared
 from scitbx.math import minimum_covering_sphere
 from mmtbx.monomer_library import pdb_interpretation
+from cctbx import uctbx
 import wx
 import sys
 
 ########################################################################
 # BASE CLASS FOR DISPLAYING STRUCTURES
 #
-class model_viewer_mixin (wx_viewer.wxGLWindow) :
+class model_viewer_base (wx_viewer.wxGLWindow) :
   initialize_model_viewer_super = True
   def __init__ (self, *args, **kwds) :
     if self.initialize_model_viewer_super :
       wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
-    self.pdb_hierarchy           = None
     self.atomic_bonds            = None # from geometry restraints manager
-    self.selection_cache         = None # this is used by extract_trace
-    self.atoms                   = None
-    self.atom_count              = 0
     self.points                  = None # basic 3d data - atoms.extract_xyz()
-    self.b_cache                 = None # atoms.extract_b()
     self.atom_index              = []   # stores atoms_with_labels data
     self.current_atom_i_seq      = None
     self.closest_point_i_seq     = None # usually set by mouse clicks
@@ -37,23 +33,17 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     # various settings; override these in subclasses and/or provide
     # a mechanism for changing their values
     self.line_width              = 1
-    self.buffer_factor           = 2.0
     self.nonbonded_line_width    = 1
     self._fog_start              = 50
     self._fog_end                = 200
-    self.draw_mode               = "all_atoms"
-    self.color_mode              = "rainbow"
-    self.recolor                 = self.color_rainbow
     self.base_atom_color         = (0.6, 0.6, 0.6) # grey
-    self.carbon_atom_color       = (1.0, 1.0, 0.0) # yellow
+    self.atom_colors             = flex.vec3_double()
     self.orthographic            = False
     # toggles for viewable objects
     self.flag_show_fog                     = True
     self.flag_show_lines                   = True
     self.flag_show_points                  = True
     self.flag_show_spheres                 = False
-    self.flag_show_trace                   = False
-    self.flag_show_hydrogens               = True
     self.flag_show_minimum_covering_sphere = False
     self.flag_show_rotation_center         = False
 
@@ -98,9 +88,9 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       wx_viewer.wxGLWindow.OnRedrawGL(self, event)
 
   def unzoom (self, event=None) :
-    if self.atoms is not None :
+    if self.points is not None :
       self.minimum_covering_sphere = minimum_covering_sphere(
-                                       points=self.atoms.extract_xyz(),
+                                       points=self.points,
                                        epsilon=0.1)
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
@@ -123,13 +113,70 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
       )
 
   def update_view (self, redraw_points=True, redraw_lines=False) :
-    self.get_drawn_atom_count()
-    self.recolor()
     if redraw_lines :
       self.lines_display_list = None
     if redraw_points :
       self.points_display_list = None
     self.OnRedraw()
+
+  def OnUpdate (self, event=None, recenter=False) :
+    self.update_view(True, True)
+    if (event is not None and event.recenter == True) or recenter == True :
+      self.move_rotation_center_to_mcs_center()
+      self.fit_into_viewport()
+
+  def draw_lines (self):
+    if self.lines_display_list is None :
+      self.lines_display_list = gltbx.gl_managed.display_list()
+      self.lines_display_list.compile()
+      glLineWidth(self.line_width)
+      viewer_utils.draw_bonds(
+        points = self.points,
+        bonds  = self.bonds,
+        atom_colors = self.atom_colors,
+        bonds_visible = self.bonds_visible)
+      self.lines_display_list.end()
+    self.lines_display_list.call()
+
+  def draw_points (self) :
+    if self.points_display_list is None :
+      self.points_display_list = gltbx.gl_managed.display_list()
+      self.points_display_list.compile()
+      glLineWidth(self.nonbonded_line_width)
+      viewer_utils.draw_points(
+        points = self.points,
+        atom_colors = self.atom_colors,
+        points_visible = self.points_visible
+      )
+      self.points_display_list.end()
+    self.points_display_list.call()
+
+  def draw_spheres (self) :
+    pass
+
+class model_viewer_mixin (model_viewer_base) :
+  def __init__ (self, *args, **kwds) :
+    model_viewer_base.__init__(self, *args, **kwds)
+    self.pdb_hierarchy           = None
+    self.selection_cache         = None # this is used by extract_trace
+    self.atoms                   = None
+    self.atom_count              = 0
+    self.b_cache                 = None # atoms.extract_b()
+    # various settings; override these in subclasses and/or provide
+    # a mechanism for changing their values
+    self.buffer_factor           = 2.0
+    self.draw_mode               = "all_atoms"
+    self.color_mode              = "rainbow"
+    self.recolor                 = self.color_rainbow
+    self.carbon_atom_color       = (1.0, 1.0, 0.0) # yellow
+    # toggles for viewable objects
+    self.flag_show_trace                   = False
+    self.flag_show_hydrogens               = True
+
+  def update_view (self, redraw_points=True, redraw_lines=False) :
+    self.get_drawn_atom_count()
+    self.recolor()
+    model_viewer_base.update_view(self, redraw_points, redraw_lines)
 
   def OnUpdate (self, event=None, recenter=False) :
     if self._structure_was_updated :
@@ -138,10 +185,7 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
     else :
       self.update_coords()
     self._structure_was_updated = False
-    self.update_view(True, True)
-    if (event is not None and event.recenter == True) or recenter == True :
-      self.move_rotation_center_to_mcs_center()
-      self.fit_into_viewport()
+    model_viewer_base.OnUpdate(self, event, recenter)
 
   # Hopefully none of the remaining functions need to be overridden...
 
@@ -339,32 +383,6 @@ class model_viewer_mixin (wx_viewer.wxGLWindow) :
 
   #---------------------------------------------------------------------
   # drawing functions
-  def draw_lines (self):
-    if self.lines_display_list is None :
-      self.lines_display_list = gltbx.gl_managed.display_list()
-      self.lines_display_list.compile()
-      glLineWidth(self.line_width)
-      viewer_utils.draw_bonds(
-        points = self.points,
-        bonds  = self.bonds,
-        atom_colors = self.atom_colors,
-        bonds_visible = self.bonds_visible)
-      self.lines_display_list.end()
-    self.lines_display_list.call()
-
-  def draw_points (self) :
-    if self.points_display_list is None :
-      self.points_display_list = gltbx.gl_managed.display_list()
-      self.points_display_list.compile()
-      glLineWidth(self.nonbonded_line_width)
-      viewer_utils.draw_points(
-        points = self.points,
-        atom_colors = self.atom_colors,
-        points_visible = self.points_visible
-      )
-      self.points_display_list.end()
-    self.points_display_list.call()
-
   def draw_spheres (self) :
     pass
 
@@ -418,6 +436,7 @@ class selection_viewer_mixin (model_viewer_mixin) :
     self.selection_string = "None"
     self.selection_color = (1.0, 1.0, 1.0)
     self.selection_draw_mode = "bonds_and_atoms"
+    self.animation_time = 0.00001
     # flags
     self.flag_show_selection = True
     self.flag_recolor_selection = True
@@ -597,6 +616,27 @@ class atom_label_mixin (wx_viewer.wxGLWindow) :
       strip(a.resname))
     self.label_text.append(atom_str)
     self.OnRedrawGL()
+
+class sites_viewer_mixin (model_viewer_base) :
+  initialize_model_viewer_super = True
+  def __init__ (self, *args, **kwds) :
+    model_viewer_base.__init__(self, *args, **kwds)
+    self.points = flex.vec3_double()
+    self._new_points = None
+    self.flag_show_lines = False
+    self.flag_show_points = True
+    self.flag_show_spheres = False
+    self.unit_cell = uctbx.unit_cell((100,100,100,90,90,90))
+
+  def set_sites (self, new_sites) :
+    sites_frac = flex.vec3_double(new_sites)
+    self._new_sites = self.unit_cell.orgothonalization_matrix() * sites_frac
+    self._new_colors = flex.vec3_double(len(new_sites), self.base_atom_color)
+
+  def OnUpdate (self, event=None, recenter=False) :
+    self.points = self._new_points
+    self.atom_colors = self._new_colors
+    model_viewer_base.OnUpdate(self, event, recenter)
 
 ########################################################################
 # UTILITY FUNCTIONS
