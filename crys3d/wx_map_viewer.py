@@ -300,7 +300,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
         front_colour=map_color,
         back_colour=map_color)
 
-  def set_maps (self, maps) :
+  def set_maps (self, maps, reset_unit_cell=False) :
     assert len(maps) != 0
     self.maps = maps
     if (len(self.iso_levels) != len(maps) or
@@ -308,7 +308,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       self.iso_levels = [ 1.0 for m in maps ]
       self.map_colors = [ (1., 1., 1.) for m in maps ]
       self.materials = [ None for m in maps ]
-    if self.unit_cell is None :
+    if self.unit_cell is None or reset_unit_cell :
       self.initialize_unit_cell(self.maps[0])
 
   def compute_triangulation (self) :
