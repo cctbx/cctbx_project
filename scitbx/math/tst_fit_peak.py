@@ -1,6 +1,7 @@
 import math
 from cctbx.array_family import flex
 from scitbx.math import fit_peak
+from libtbx.test_utils import approx_equal
 
 # =============================================================================
 def test_pick_map_neighbors():
@@ -60,10 +61,8 @@ def test_fit_3d_parabola():
   height_list,xyz_list = neighbors.get_26_nearest_neighbors()
   fp = fit_peak.fit_peak(height_list=height_list,xyz_list=xyz_list,
                          shape="parabola")
-  for i in xrange(len(fp.x)):
-    assert(round(fp.x[i],5) == round(parameters[i]),5)
-  for i in xrange(3):
-    assert(round(fp.vertex[i],5) == round(p.vertex[i],5))
+  assert approx_equal(fp.x, parameters)
+  assert approx_equal(fp.vertex, p.vertex)
 
 # =============================================================================
 def test_fit_3d_quadratic():
@@ -84,10 +83,8 @@ def test_fit_3d_quadratic():
   height_list,xyz_list = neighbors.get_26_nearest_neighbors()
   fp = fit_peak.fit_peak(height_list=height_list,xyz_list=xyz_list,
                          shape="quadratic")
-  for i in xrange(len(fp.x)):
-    assert(round(fp.x[i],5) == round(parameters[i]),5)
-  for i in xrange(3):
-    assert(round(fp.vertex[i],5) == round(p.vertex[i],5))
+  assert approx_equal(fp.x, parameters)
+  assert approx_equal(fp.vertex, p.vertex)
 
 # =============================================================================
 def test_fit_3d_gaussian():
@@ -109,10 +106,8 @@ def test_fit_3d_gaussian():
   height_list,xyz_list = neighbors.get_26_nearest_neighbors()
   fp = fit_peak.fit_peak(height_list=height_list,xyz_list=xyz_list,
                          shape="gaussian")
-  for i in xrange(len(fp.x)):
-    assert(round(fp.x[i],5) == round(parameters[i]),5)
-  for i in xrange(3):
-    assert(round(fp.vertex[i],3) == round(p.vertex[i],3))
+  assert approx_equal(fp.x, parameters)
+  assert approx_equal(fp.vertex, p.vertex)
 
 # =============================================================================
 if (__name__ == "__main__"):
