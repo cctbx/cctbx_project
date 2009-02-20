@@ -1,6 +1,7 @@
 #ifndef CCTBX_GEOMETRY_RESTRAINTS_PLANARITY_H
 #define CCTBX_GEOMETRY_RESTRAINTS_PLANARITY_H
 
+#include <cctbx/sgtbx/rt_mx.h>
 #include <cctbx/geometry_restraints/utils.h>
 #include <scitbx/math/eigensystem.h>
 #include <scitbx/array_family/sort.h>
@@ -66,6 +67,77 @@ namespace cctbx { namespace geometry_restraints {
     af::shared<double> weights;
   };
 
+  //! Grouping of indices into array of sites (i_seqs), symmetry operations and weights.
+  struct planarity_sym_proxy
+  {
+    //! Support for shared_proxy_select.
+    typedef af::shared<std::size_t> i_seqs_type;
+
+    //! Default constructor. Some data members are not initialized!
+    planarity_sym_proxy() {}
+
+    //! Constructor.
+    planarity_sym_proxy(
+      i_seqs_type const& i_seqs_,
+      af::shared<sgtbx::rt_mx> const& sym_ops_,
+      af::shared<double> const& weights_)
+    :
+      i_seqs(i_seqs_),
+      sym_ops(sym_ops_),
+      weights(weights_)
+    {
+      CCTBX_ASSERT(sym_ops.size() == i_seqs.size());
+      CCTBX_ASSERT(weights.size() == i_seqs.size());
+    }
+
+    //! Constructor.
+    planarity_sym_proxy(
+      i_seqs_type const& i_seqs_,
+      af::shared<sgtbx::rt_mx> const& sym_ops_,
+      planarity_proxy const& other)
+    :
+      i_seqs(i_seqs_),
+      sym_ops(sym_ops_),
+      weights(other.weights.begin(), other.weights.end())
+    {
+      CCTBX_ASSERT(sym_ops.size() == i_seqs.size());
+      CCTBX_ASSERT(weights.size() == i_seqs.size());
+    }
+
+    //! Sorts i_seqs such that i_seq[0] < i_seq[2].
+    planarity_sym_proxy
+    sort_i_seqs() const
+    {
+      af::const_ref<std::size_t> i_seqs_cr = i_seqs.const_ref();
+      af::const_ref<sgtbx::rt_mx> sym_ops_cr = sym_ops.const_ref();
+      af::const_ref<double> weights_cr = weights.const_ref();
+      CCTBX_ASSERT(i_seqs_cr.size() == weights_cr.size());
+      planarity_sym_proxy result;
+      result.i_seqs.reserve(i_seqs_cr.size());
+      result.sym_ops.reserve(sym_ops_cr.size());
+      result.weights.reserve(i_seqs_cr.size());
+      i_seqs_type perm = af::sort_permutation(i_seqs_cr);
+      af::const_ref<std::size_t> perm_cr = perm.const_ref();
+      for(std::size_t i=0;i<perm_cr.size();i++) {
+        result.i_seqs.push_back(i_seqs_cr[perm_cr[i]]);
+      }
+      for(std::size_t i=0;i<perm_cr.size();i++) {
+        result.sym_ops.push_back(sym_ops_cr[perm_cr[i]]);
+      }
+      for(std::size_t i=0;i<perm_cr.size();i++) {
+        result.weights.push_back(weights_cr[perm_cr[i]]);
+      }
+      return result;
+    }
+
+    //! Indices into array of sites.
+    i_seqs_type i_seqs;
+    //! Array of weights.
+    af::shared<double> weights;
+    //! Array of symmetry operations.
+    af::shared<sgtbx::rt_mx> sym_ops;
+  };
+
   //! Residual and gradient calculations for planarity restraint.
   /*! See also:
 
@@ -115,6 +187,31 @@ namespace cctbx { namespace geometry_restraints {
         init_deltas();
       }
 
+      /*! \brief Coordinates are copied from sites_cart according
+          to proxy.i_seqs, proxy.sym_ops and unit_cell.
+          Weights are copied from proxy.
+       */
+      planarity(
+        uctbx::unit_cell const& unit_cell,
+        af::const_ref<scitbx::vec3<double> > const& sites_cart,
+        planarity_sym_proxy const& proxy)
+      :
+        weights(proxy.weights)
+      {
+        af::const_ref<std::size_t> i_seqs_ref = proxy.i_seqs.const_ref();
+        sites.reserve(i_seqs_ref.size());
+        for(std::size_t i=0;i<i_seqs_ref.size();i++) {
+          std::size_t i_seq = i_seqs_ref[i];
+          CCTBX_ASSERT(i_seq < sites_cart.size());
+          sites.push_back(sites_cart[i_seq]);
+          sgtbx::rt_mx rt_mx = proxy.sym_ops[i];
+          if ( !rt_mx.is_unit_mx() ) {
+            sites[i] = unit_cell.orthogonalize(
+              rt_mx * unit_cell.fractionalize(sites[i]));
+          }
+        }
+        init_deltas();
+      }
       //! Cartesian coordinates of the sites defining the plane.
       af::shared<scitbx::vec3<double> > sites;
       //! Array of weights for each site.
@@ -296,6 +393,57 @@ namespace cctbx { namespace geometry_restraints {
       sites_cart, proxies, gradient_array);
   }
 
+  /*! \brief Fast computation of planarity::rms_deltas() given an array
+      of planarity sym proxies.
+   */
+  inline
+  af::shared<double>
+  planarity_deltas_rms(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<planarity_sym_proxy> const& proxies)
+  {
+    af::shared<double> result((af::reserve(proxies.size())));
+    for(std::size_t i=0;i<proxies.size();i++) {
+      result.push_back(planarity(unit_cell, sites_cart, proxies[i]).rms_deltas());
+    }
+    return result;
+  }
+
+  /*! \brief Fast computation of planarity::residual() given an array
+      of planarity sym proxies.
+   */
+  inline
+  af::shared<double>
+  planarity_residuals(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<planarity_sym_proxy> const& proxies)
+  {
+    return detail::generic_residuals<planarity_sym_proxy, planarity>::get(
+      unit_cell, sites_cart, proxies);
+  }
+
+  /*! Fast computation of sum of planarity::residual() and gradients
+      given an array of planarity sym proxies.
+   */
+  /*! The planarity::gradients() are added to the gradient_array if
+      gradient_array.size() == sites_cart.size().
+      gradient_array must be initialized before this function
+      is called.
+      No gradient calculations are performed if gradient_array.size() == 0.
+   */
+  inline
+  double
+  planarity_residual_sum(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<planarity_sym_proxy> const& proxies,
+    af::ref<scitbx::vec3<double> > const& gradient_array)
+  {
+    return detail::generic_residual_sum<planarity_sym_proxy, planarity>::get(
+      unit_cell, sites_cart, proxies, gradient_array);
+  }
 }} // namespace cctbx::geometry_restraints
 
 #endif // CCTBX_GEOMETRY_RESTRAINTS_PLANARITY_H
