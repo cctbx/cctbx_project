@@ -96,7 +96,7 @@ namespace {
         .add_property("i_seqs", make_getter(&w_t::i_seqs, rbv()))
         .def_readonly("angle_ideal", &w_t::angle_ideal)
         .def_readonly("weight", &w_t::weight)
-        .def_readonly("sym_ops", &w_t::sym_ops)
+        .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
       ;
       {
         scitbx::af::boost_python::shared_wrapper<w_t>::wrap(
