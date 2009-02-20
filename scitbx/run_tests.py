@@ -40,6 +40,7 @@ def run():
   "$D/math/sieve_of_eratosthenes.py",
   "$D/math/besselk.py",
   "$D/math/scale_curves.py",
+  "$D/math/tst_fit_peak.py",
   "$D/minpack/tst.py",
   ["$D/lbfgs/boost_python/tst_lbfgs.py"],
   "$D/lbfgsb/boost_python/tst_lbfgsb.py",
