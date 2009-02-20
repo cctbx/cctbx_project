@@ -110,7 +110,8 @@ class proto_cylinder : public prototype<proto_cylinder>
 
 /// The change of coordinates frame from the frame where an ellipsoid is
 /// represented by a given symmetric matrix to the frame where it is a sphere.
-/* That change of frame is decomposed into:
+/* Those two frames shall be orthonormal.
+   That change of frame is decomposed into:
 
     - first a translation of the coordinates frame to the centre of
       the ellipsoid,
