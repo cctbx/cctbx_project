@@ -98,7 +98,7 @@ namespace {
         .def_readwrite("angle_ideal", &w_t::angle_ideal)
         .def_readwrite("weight", &w_t::weight)
         .def_readwrite("periodicity", &w_t::periodicity)
-        .def_readonly("sym_ops", &w_t::sym_ops)
+        .add_property("sym_ops", make_getter(&w_t::sym_ops, rbv()))
       ;
       {
         typedef return_internal_reference<> rir;
