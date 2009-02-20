@@ -508,6 +508,9 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnUpdate (self, event=None) :
     pass
 
+  def force_update (self) :
+    wx.PostEvent(self, ViewerUpdateEvent(None))
+
   def edit_opengl_settings (self, event=None) :
     if self._settings_widget is None :
       self._settings_widget = OpenGLSettingsToolbox(self)
