@@ -102,7 +102,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
   need to make new atom group?  Currently adds atoms to last residue (as shown in junk.pdb) /
   which is obviously not correct.  Code below will be able to produce atom grids /
   """
-  
+
   kept_atoms = []
   x_start = float(x_center) - (float(radius))
   x_end = float(x_center) + (float(radius))
@@ -219,7 +219,7 @@ def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structur
           kept_atoms.append(a.format_atom_record_group())
   new_pdb = open("new_pdb.pdb","w")
   print >> new_pdb, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
-  print >> new_pdb, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell()) 
+  print >> new_pdb, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
   #for atom in hierarchy.atoms(): print >> new_pdb, atom.format_atom_record()
   for records in kept_atoms:print >> new_pdb, records
   new_pdb.close()
@@ -493,4 +493,3 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
   #
   grow_density(f_obs, r_free_flags, scattering_table, pdb_file_name, xray_structures,x_center=params.x_center,\
   y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.step_size, overlap_interval=params.overlap_interval )
- 
