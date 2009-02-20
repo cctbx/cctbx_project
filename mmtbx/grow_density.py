@@ -23,6 +23,15 @@ from iotbx import pdb
 from libtbx.str_utils import format_value
 from libtbx import smart_open
 from cctbx import xray
+from cctbx.array_family import flex
+import time
+from cctbx import adptbx
+import mmtbx.tls.tools
+from cctbx.development import random_structure
+from cctbx import sgtbx
+import mmtbx.refinement
+import scitbx.lbfgs
+
 
 master_params_str = """\
 pdb_file_name = None
@@ -76,29 +85,53 @@ scattering_table = *n_gaussian wk1995 it1992 neutron
 """
 master_params = iotbx.phil.parse(master_params_str, process_includes=False)
 
-def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_center, radius, step_size=1, overlap_interval=0.2 ):
+def grow_density(f_obs, r_free_flags, scattering_table, file_name, xray_structures, x_center, y_center, z_center, radius,
+                 step_size=1,
+                 overlap_interval=0.2,
+                 space_group          = "",
+                 d_min                = 2.0,
+                 sf_algorithm         = "fft", # XXX use "fft" in prectice
+                 free_r_fraction      = 0.05,
+                 b_iso_start          = 25.,
+                 target_name          = "ls_wunit_kunit",
+                 number_of_iterations = 25,
+                 number_of_cycles     = 10
+                 ):
   """ method to improve local density using dummy atoms """
-
   """TODO: trying to work out how to add atom correctly to pdb, so can create models /
   need to make new atom group?  Currently adds atoms to last residue (as shown in junk.pdb) /
   which is obviously not correct.  Code below will be able to produce atom grids /
   """
-
-  x_start = float(x_center) - (float(radius)/2)
-  x_end = float(x_center) + (float(radius)/2)
-
-  y_start = float(y_center) - (float(radius)/2)
-  y_end = float(y_center) + (float(radius)/2)
-
-  z_start = float(z_center) - (float(radius)/2)
-  z_end = float(z_center )+ (float(radius)/2)
-
+  
+  kept_atoms = []
+  x_start = float(x_center) - (float(radius))
+  x_end = float(x_center) + (float(radius))
+  y_start = float(y_center) - (float(radius))
+  y_end = float(y_center) + (float(radius))
+  z_start = float(z_center) - (float(radius))
+  z_end = float(z_center )+ (float(radius))
   step_size = step_size
   overlap_interval = overlap_interval
   overlap_list = [0.0]
 
+  print "Starting now"
+  print "x_center", x_center
+  print "y_center", y_center
+  print "z_center", z_center
+  print "radius", radius
+
+  print "x_start", x_start
+  print "x_end", x_end
+
+  print "y_start", y_start
+  print "y_end", y_end
+
+  print "z_start", z_start
+  print "z_end", z_end
+
   while (overlap_list[len(overlap_list)-1] < step_size - overlap_interval ):
       overlap_list.append(overlap_list[len(overlap_list)-1]+ overlap_interval)
+
 
   for overlap_start in overlap_list:
       """TODO: needs to be in x y and z for overlap to fill box?"""
@@ -106,9 +139,8 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
       """TODO: e.g. random, asteroid, etc..."""
       """TODO: A lot of repeated code to write the pdb files - if I'm keeping this then /
       should refactor"""
-      x = open("tmp_x"+str(overlap_start)+".pdb","w")
-      y = open("tmp_y"+str(overlap_start)+".pdb","w")
-      z = open("tmp_z"+str(overlap_start)+".pdb","w")
+      print "starting new model"
+      x = open("tmp.pdb","w")
       xray_structure = "" # trying to blank scatterers
       xray_structure = xray_structures[0]
       orth = xray_structure.unit_cell().orthogonalize
@@ -116,18 +148,10 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
       hierarchy = pdb_inp.construct_hierarchy()
       cs = xray_structure.crystal_symmetry()
       print >> x, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
-      print >> y, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
-      print >> z, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
       print >> x, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
-      print >> y, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
-      print >> z, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell())
       for atom in hierarchy.atoms():
           print >> x, atom.format_atom_record()
-          print >> y, atom.format_atom_record()
-          print >> z, atom.format_atom_record()
       xray_structure_dummy_atoms_x = xray.structure(crystal_symmetry=cs)
-      xray_structure_dummy_atoms_y = xray.structure(crystal_symmetry=cs)
-      xray_structure_dummy_atoms_z = xray.structure(crystal_symmetry=cs)
       #
       x_coord = x_start + overlap_start
       y_coord = y_start #+ overlap_start
@@ -135,47 +159,20 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
       """TODO:  Adding very simpe check to make a sphere - there is probably a lot better \
        and more efficient way of doing this, for instance look here:
        http://en.literateprograms.org/Special:Downloadcode/Generating_all_integer_lattice_points_(Python)
-       This should be all be refactored - unnecessary loops.  Not time limiting step.
+       This should be all be refactored - unnecessary loops.  Not time limiting step.  I hope
        """
       while x_coord <= x_end:
           y_coord = y_start + overlap_start
           while y_coord <= y_end:
               z_coord = z_start + overlap_start
               while z_coord <= z_end:
-                  distance = ((float(x_center) - float(x_coord))**2 + (float(y_center) - float(y_coord))**2 + (float(z_center) - float(z_coord))**2 )**1/2
+                  distance = ((float(x_center) - float(x_coord))**2 + (float(y_center) - float(y_coord))**2 + (float(z_center) - float(z_coord))**2 )**0.5
+                  #print "distance", distance, "radius", float(radius), (x_coord, y_coord, z_coord)
                   if(distance <= float(radius)): xray_structure_dummy_atoms_x.add_scatterer(xray.scatterer( site = (x_coord, y_coord, z_coord), scattering_type = "N",u = 0.2))
                   z_coord = z_coord + step_size
               y_coord = y_coord + step_size
           x_coord = x_coord + step_size
       #
-      x_coord = x_start #+ overlap_start
-      y_coord = y_start + overlap_start
-      z_coord = z_start #+ overlap_start
-      while y_coord <= y_end:
-          z_coord = z_start + overlap_start
-          while z_coord <= z_end:
-              x_coord = x_start + overlap_start
-              while x_coord <= x_end:
-                  distance = ((float(x_center) - float(x_coord))**2 + (float(y_center) - float(y_coord))**2 + (float(z_center) - float(z_coord))**2 )**1/2
-                  if(distance <= float(radius)): xray_structure_dummy_atoms_y.add_scatterer(xray.scatterer( site = (x_coord, y_coord, z_coord), scattering_type = "N",u = 0.2))
-                  x_coord = x_coord + step_size
-              z_coord = z_coord + step_size
-          y_coord = y_coord + step_size
-      #
-      x_coord = x_start #+ overlap_start
-      y_coord = y_start #+ overlap_start
-      z_coord = z_start + overlap_start
-      while z_coord <= z_end:
-          x_coord = x_start + overlap_start
-          while x_coord <= x_end:
-              y_coord = y_start + overlap_start
-              while y_coord <= y_end:
-                  distance = ((float(x_center) - float(x_coord))**2 + (float(y_center) - float(y_coord))**2 + (float(z_center) - float(z_coord))**2 )**1/2
-                  if(distance <= float(radius)): xray_structure_dummy_atoms_z.add_scatterer(xray.scatterer( site = (x_coord, y_coord, z_coord), scattering_type = "N",u = 0.2))
-                  y_coord = y_coord + step_size
-              x_coord = x_coord + step_size
-          z_coord = z_coord + step_size
-#
       for i, sc in enumerate(xray_structure_dummy_atoms_x.scatterers()):
          a = iotbx.pdb.hierarchy.atom_with_labels()
          a.serial = i+1
@@ -187,42 +184,101 @@ def grow_density(fmodel, file_name, xray_structures, x_center, y_center, z_cente
          a.occ = sc.occupancy
          a.b = adptbx.u_as_b(sc.u_iso)
          a.element = sc.scattering_type
-         print "x:", a.xyz
+         #print "x:", a.xyz
          print >> x, a.format_atom_record_group()
-#
-      for i, sc in enumerate(xray_structure_dummy_atoms_y.scatterers()):
-         a = iotbx.pdb.hierarchy.atom_with_labels()
-         a.serial = i+1
-         a.name = sc.scattering_type
-         a.resname = "DUM"
-         a.resseq = i+1
-         a.xyz = sc.site
-         #print sc.site, a.xyz
-         a.occ = sc.occupancy
-         a.b = adptbx.u_as_b(sc.u_iso)
-         a.element = sc.scattering_type
-         print "y:", a.xyz
-         print >> y, a.format_atom_record_group()
-#
-      for i, sc in enumerate(xray_structure_dummy_atoms_z.scatterers()):
-         a = iotbx.pdb.hierarchy.atom_with_labels()
-         a.serial = i+1
-         a.name = sc.scattering_type
-         a.resname = "DUM"
-         a.resseq = i+1
-         a.xyz = sc.site
-         #print sc.site, a.xyz
-         a.occ = sc.occupancy
-         a.b = adptbx.u_as_b(sc.u_iso)
-         a.element = sc.scattering_type
-         print "z:", a.xyz
-         print >> z, a.format_atom_record_group()
-
-
       x.close()
-      y.close()
-      z.close()
+
+      processed_pdb_file, pdb_raw_records, pdb_inp = get_processed_pdb_file(
+      pdb_file_name = "tmp.pdb",
+      cryst1 = pdb.format_cryst1_record(crystal_symmetry = cs),
+      show_geometry_statistics = False)
+
+      twin_law = None
+      xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
+      processed_pdb_file = processed_pdb_file,
+      scattering_table   = scattering_table,
+      d_min              = f_obs.d_min())
+      xray_structures = xsfppf.xray_structures
+      fmodel = utils.fmodel_simple(xray_structures = xray_structures,
+                               f_obs           = f_obs,
+                               r_free_flags    = r_free_flags,
+                               twin_law        = twin_law)
+      new_model = refine_atoms(fmodel, number_of_iterations, number_of_cycles )
+      orth = new_model.unit_cell().orthogonalize
+      for i, sc in enumerate(new_model.scatterers()):
+        if sc.occupancy > 1.0:
+          a = iotbx.pdb.hierarchy.atom_with_labels()
+          a.serial = i+1
+          a.name = sc.scattering_type
+          a.resseq = i+1
+          a.xyz = orth(sc.site)
+          #print sc.site, a.xyz
+          a.occ = sc.occupancy
+          a.b = adptbx.u_as_b(sc.u_iso)
+          a.element = sc.scattering_type
+          kept_atoms.append(a.format_atom_record_group())
+  new_pdb = open("new_pdb.pdb","w")
+  print >> new_pdb, iotbx.pdb.format_cryst1_record(crystal_symmetry = cs)
+  print >> new_pdb, iotbx.pdb.format_scale_records(unit_cell = cs.unit_cell()) 
+  #for atom in hierarchy.atoms(): print >> new_pdb, atom.format_atom_record()
+  for records in kept_atoms:print >> new_pdb, records
+  new_pdb.close()
   print "   "
+
+
+def refine_atoms(fmodel, number_of_iterations, number_of_cycles):
+  fmodels = mmtbx.fmodels(fmodel_xray = fmodel)
+  size = fmodel.xray_structure.scatterers().size()
+  selection = flex.size_t(xrange(size))
+  lbfgs_termination_params = scitbx.lbfgs.termination_parameters(
+    max_iterations = number_of_iterations)
+  # XXX Can we refine occupancy and B-factor sumultaneously ?
+  for i in xrange(number_of_cycles):
+    if 1: # XXX refine q and B separately
+      fmodel.xray_structure.scatterers().flags_set_grad_u_iso(
+        iselection = selection)
+      minimized = mmtbx.refinement.minimization.lbfgs(
+        fmodels                  = fmodels,
+        lbfgs_termination_params = lbfgs_termination_params,
+        collect_monitor          = False)
+      print "Refined B-factors     Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
+        fmodel.r_free())
+      fmodel.xray_structure.scatterers().flags_set_grad_occupancy(
+        iselection = selection)
+      minimized = mmtbx.refinement.minimization.lbfgs(
+        fmodels                  = fmodels,
+        lbfgs_termination_params = lbfgs_termination_params,
+        collect_monitor          = False)
+      print "Refined occupancies   Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
+        fmodel.r_free())
+    if 0: # XXX refine q and B sumultaneously... This might be unstable....
+      for sc in fmodel.xray_structure.scatterers():
+        fl = sc.flags
+        fl.set_grad_u_iso(True)
+        fl.set_grad_occupancy(True)
+      minimized = mmtbx.refinement.minimization.lbfgs(
+        fmodels                  = fmodels,
+        lbfgs_termination_params = lbfgs_termination_params,
+        collect_monitor          = False)
+      print "Refined q and B       Rwork = %8.6f Rfree = %8.6f"%(fmodel.r_work(),
+        fmodel.r_free())
+  assert minimized.xray_structure is fmodels.fmodel_xray().xray_structure
+  assert minimized.xray_structure is fmodel.xray_structure
+  structure = minimized.xray_structure
+  orth = structure.unit_cell().orthogonalize
+  return structure
+#  mol = mmtbx.model.manager(
+#    restraints_manager = restraints_manager,
+#    xray_structure = xray_structure,
+#    pdb_hierarchy = processed_pdb_file.all_chain_proxies.pdb_hierarchy)
+
+################
+
+
+  mmtbx.model.write_pdb_file("new.pdb", minimized.xray_structures)
+  mol_copy = mol.deep_copy()
+  assert mol.number_of_ordered_solvent_molecules() == 9
+  mol.write_pdb_file(out = open("test_model_out.pdb","w"))
 
 
 def reflection_file_server(crystal_symmetry, reflection_files):
@@ -293,7 +349,7 @@ How to use:
 1: Run this command: phenix.real_space_correlation;
 2: Copy, save into a file and edit the parameters shown between the lines *** below;
 3: Run the command with this parameters file:
-   phenix.real_space_correlation parameters.txt
+   phenix.grow_density parameters.txt
 """
   if(len(args) == 0):
     print msg
@@ -411,9 +467,10 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
     cryst1 = pdb.format_cryst1_record(crystal_symmetry = crystal_symmetry),
     show_geometry_statistics = False)
   #
+  scattering_table   = params.scattering_table
   xsfppf = mmtbx.utils.xray_structures_from_processed_pdb_file(
     processed_pdb_file = processed_pdb_file,
-    scattering_table   = params.scattering_table,
+    scattering_table   = scattering_table,
     d_min              = f_obs.d_min())
   xray_structures = xsfppf.xray_structures
   if(not xray_structures[0].crystal_symmetry().is_similar_symmetry(
@@ -434,5 +491,6 @@ def run(params, d_min_default=1.5, d_max_default=999.9) :
                                twin_law        = twin_law)
   n_outl = f_obs.data().size() - fmodel.f_obs.data().size()
   #
-  grow_density(fmodel, pdb_file_name, xray_structures,x_center=params.x_center,\
-  y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.radius, overlap_interval=params.overlap_interval )
+  grow_density(f_obs, r_free_flags, scattering_table, pdb_file_name, xray_structures,x_center=params.x_center,\
+  y_center=params.y_center, z_center=params.z_center, radius=params.radius, step_size=params.step_size, overlap_interval=params.overlap_interval )
+ 
