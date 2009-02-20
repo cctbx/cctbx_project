@@ -1234,6 +1234,64 @@ def exercise_chirality():
   assert rest.size() == 3
 
 def exercise_planarity():
+  weights = flex.double([1, 2, 3, 4])
+  u_mx = sgtbx.rt_mx()
+  sym_ops = (u_mx, sgtbx.rt_mx('1+x,y,z'), u_mx, sgtbx.rt_mx('1+x,1+y,z'))
+  p = geometry_restraints.planarity_sym_proxy(
+    i_seqs=flex.size_t([3,1,0,2]),
+    sym_ops=sym_ops,
+    weights=weights)
+  assert tuple(p.i_seqs) == (3,1,0,2)
+  assert tuple(p.sym_ops) == sym_ops
+  assert approx_equal(p.weights, weights)
+  p = p.sort_i_seqs()
+  assert tuple(p.i_seqs) == (0,1,2,3)
+  assert tuple(p.weights) == (3,2,4,1)
+  assert tuple(p.sym_ops) == (u_mx, sgtbx.rt_mx('1+x,y,z'), sgtbx.rt_mx('1+x,1+y,z'), u_mx)
+  #
+  unit_cell = uctbx.unit_cell([15,25,30,90,90,90])
+  sites_cart = flex.vec3_double([(1,24,1.1),(1,1,1),(14,1,1),(14,24,0.9)])
+  expected_residual = 0.04
+  expected_gradients = [(0,0,0.4), (0,0,0), (0,0,0), (0,0,-0.4)]
+  p = geometry_restraints.planarity_sym_proxy(
+    i_seqs=(0,1,2,3),
+    sym_ops=[u_mx, sgtbx.rt_mx('x,y,z'), sgtbx.rt_mx('x,1+y,z'), sgtbx.rt_mx('1-x,y,z')],
+    weights=(2,2,2,2))
+  planarity = geometry_restraints.planarity(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxy=p)
+  assert approx_equal(planarity.deltas(), (0.1, 0, 0, -0.1))
+  assert approx_equal(planarity.residual(), 0.04)
+  assert approx_equal(planarity.gradients(), expected_gradients)
+  #
+  proxies = geometry_restraints.shared_planarity_sym_proxy([p,p])
+  for proxy in proxies:
+    assert tuple(proxy.i_seqs) == (0,1,2,3)
+  assert eps_eq(geometry_restraints.planarity_deltas_rms(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [0.070710678118654821]*2)
+  assert eps_eq(geometry_restraints.planarity_residuals(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies), [expected_residual]*2)
+  residual_sum = geometry_restraints.planarity_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=None)
+  assert eps_eq(residual_sum, 2*expected_residual)
+  gradient_array = flex.vec3_double(proxy.i_seqs.size(), (0,0,0))
+  residual_sum = geometry_restraints.planarity_residual_sum(
+    unit_cell=unit_cell,
+    sites_cart=sites_cart,
+    proxies=proxies,
+    gradient_array=gradient_array)
+  assert eps_eq(residual_sum, 2*0.04)
+  for g,e in zip(gradient_array, expected_gradients):
+    assert eps_eq(g, matrix.col(e)*2)
+  #
   sites_cart = flex.vec3_double([
     (-6.9010753374697966, 1.3017288659588333, -1.4469233441387523),
     (-4.947324488687852, -1.0193474269570115, 0.16296067326855093),
