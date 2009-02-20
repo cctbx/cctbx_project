@@ -1,15 +1,16 @@
 #ifndef GLTBX_QUADRICS_H
 #define GLTBX_QUADRICS_H
 
-#include <gltbx/include_opengl.h>
-#include <gltbx/util.h>
-#include <gltbx/error.h>
 #include <scitbx/constants.h>
 #include <scitbx/vec3.h>
 #include <scitbx/sym_mat3.h>
 #include <scitbx/mat_ref.h>
 #include <scitbx/array_family/ref.h>
 #include <scitbx/math/eigensystem.h>
+
+// these includes last to avoid Visual C++ 7.1, 8.0 failures
+#include <gltbx/util.h>
+#include <gltbx/error.h>
 
 namespace gltbx { namespace quadrics {
 
