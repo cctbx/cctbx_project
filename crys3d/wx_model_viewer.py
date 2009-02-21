@@ -21,8 +21,11 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     if self.initialize_model_viewer_super :
       wx_viewer.wxGLWindow.__init__(self, *args, **kwds)
     self.atomic_bonds            = None # from geometry restraints manager
-    self.points                  = None # basic 3d data - atoms.extract_xyz()
+    self.points                  = flex.vec3_double() # basic 3d data
     self.atom_index              = []   # stores atoms_with_labels data
+    self.atoms_visible           = flex.bool()
+    self.points_visible          = flex.bool()
+    self.bonds_visible           = flex.bool()
     self.current_atom_i_seq      = None
     self.closest_point_i_seq     = None # usually set by mouse clicks
     self.minimum_covering_sphere = None
@@ -32,6 +35,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     self.spheres_display_list    = None
     # various settings; override these in subclasses and/or provide
     # a mechanism for changing their values
+    self.buffer_factor           = 2
     self.line_width              = 1
     self.nonbonded_line_width    = 1
     self._fog_start              = 50
@@ -99,6 +103,9 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     if self.points is not None and i_seq < self.points.size() :
       self.rotation_center = self.points[i_seq]
 
+  def set_selected_atom (self, closest_point_i_seq) :
+    self.current_atom_i_seq = closest_point_i_seq
+
   def process_key_stroke (self, key) :
     if key == ord('u') :
       self.unzoom()
@@ -117,15 +124,19 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
       self.lines_display_list = None
     if redraw_points :
       self.points_display_list = None
+    self.spheres_display_list = None
     self.OnRedraw()
 
   def OnUpdate (self, event=None, recenter=False) :
     self.update_view(True, True)
-    if (event is not None and event.recenter == True) or recenter == True :
+    if (event is not None and hasattr(event, "recenter") and
+        event.recenter == True) or recenter == True :
       self.move_rotation_center_to_mcs_center()
       self.fit_into_viewport()
 
-  def draw_lines (self):
+  def draw_lines (self) :
+    assert self.bonds_visible.size() == self.points.size()
+    assert self.atom_colors.size() == self.points.size()
     if self.lines_display_list is None :
       self.lines_display_list = gltbx.gl_managed.display_list()
       self.lines_display_list.compile()
@@ -139,6 +150,8 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     self.lines_display_list.call()
 
   def draw_points (self) :
+    assert self.points_visible.size() == self.points.size()
+    assert self.atom_colors.size() == self.points.size()
     if self.points_display_list is None :
       self.points_display_list = gltbx.gl_managed.display_list()
       self.points_display_list.compile()
@@ -154,6 +167,42 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
   def draw_spheres (self) :
     pass
 
+  def _draw_spheres(self, spheres_visible, atom_colors, atom_radii) :
+    glMatrixMode(GL_MODELVIEW)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
+    glEnable(GL_LIGHT1)
+    glLightfv(GL_LIGHT0, GL_AMBIENT, [0, 0, 0, 1.0])
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, [1, 1, 1, 1])
+    glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
+    glLightfv(GL_LIGHT1, GL_AMBIENT, [0, 0, 0, 1])
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, [1, 1, 1, 1])
+    glLightfv(GL_LIGHT1, GL_POSITION, [0, 0, -1, 0])
+    glEnable(GL_BLEND)
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
+    #glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1,1,1,1.0])
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
+    if self.spheres_display_list is None :
+      self.spheres_display_list = gltbx.gl_managed.display_list()
+      self.spheres_display_list.compile()
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+      for i_seq, point in enumerate(self.points) :
+        if spheres_visible[i_seq] :
+          glColor3f(*atom_colors[i_seq])
+          glPushMatrix()
+          glTranslated(*point)
+          gltbx.util.SolidSphere(radius=atom_radii[i_seq], slices=50, stacks=50)
+          glPopMatrix()
+      self.spheres_display_list.end()
+    self.spheres_display_list.call()
+    glDisable(GL_LIGHTING)
+    glDisable(GL_LIGHT0)
+    glDisable(GL_LIGHT1)
+    glDisable(GL_BLEND)
+
 class model_viewer_mixin (model_viewer_base) :
   def __init__ (self, *args, **kwds) :
     model_viewer_base.__init__(self, *args, **kwds)
@@ -164,7 +213,6 @@ class model_viewer_mixin (model_viewer_base) :
     self.b_cache                 = None # atoms.extract_b()
     # various settings; override these in subclasses and/or provide
     # a mechanism for changing their values
-    self.buffer_factor           = 2.0
     self.draw_mode               = "all_atoms"
     self.color_mode              = "rainbow"
     self.recolor                 = self.color_rainbow
@@ -381,41 +429,6 @@ class model_viewer_mixin (model_viewer_base) :
       atom_colors.append(color)
     self.atom_colors = atom_colors
 
-  #---------------------------------------------------------------------
-  # drawing functions
-  def draw_spheres (self) :
-    pass
-
-  def _draw_spheres(self, spheres_visible, atom_colors, atom_radii,
-      solid=False):
-    glMatrixMode(GL_MODELVIEW)
-    if (solid):
-      glEnable(GL_LIGHTING)
-      glEnable(GL_LIGHT0)
-      glLightfv(GL_LIGHT0, GL_AMBIENT, [1, 1, 1, 1])
-      glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
-      glEnable(GL_BLEND)
-      #glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
-      #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-      glMaterialfv(GL_FRONT, GL_DIFFUSE, [1,1,1,1.0])
-      glMaterialfv(GL_FRONT, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-      sphere = gltbx.util.SolidSphere
-      grid = 50
-    else:
-      sphere = gltbx.util.WireSphere
-      grid = 20
-    for i_seq, point in enumerate(self.points) :
-      if spheres_visible[i_seq] :
-        glColor3f(*atom_colors[i_seq])
-        glPushMatrix()
-        glTranslated(*point)
-        sphere(radius=atom_radii[i_seq], slices=grid, stacks=grid)
-        glPopMatrix()
-    if (solid):
-      glDisable(GL_LIGHTING)
-      glDisable(GL_LIGHT0)
-      glDisable(GL_BLEND)
-
 ########################################################################
 # ATOM SELECTION VIEWER
 # this will handle any valid atom selection recognized by cctbx.
@@ -561,8 +574,7 @@ class selection_viewer_mixin (model_viewer_mixin) :
         self._draw_spheres(
           spheres_visible = self.atoms_selected,
           atom_colors     = selection_colors,
-          atom_radii      = self.atom_radii,
-          solid           = True
+          atom_radii      = self.atom_radii
         )
       self.selection_display_list.end()
     self.selection_display_list.call()
@@ -612,8 +624,11 @@ class atom_label_mixin (wx_viewer.wxGLWindow) :
       return
     self.label_xyz.append(self.points[i_seq])
     a = self.atom_index[i_seq]
-    atom_str = "%s %s%s %s" % (strip(a.name), a.chain_id, strip(a.resseq),
+    if not isinstance(a, str) :
+      atom_str = "%s %s%s %s" % (strip(a.name), a.chain_id, strip(a.resseq),
       strip(a.resname))
+    else :
+      atom_str = a
     self.label_text.append(atom_str)
     self.OnRedrawGL()
 
@@ -622,20 +637,39 @@ class sites_viewer_mixin (model_viewer_base) :
   def __init__ (self, *args, **kwds) :
     model_viewer_base.__init__(self, *args, **kwds)
     self.points = flex.vec3_double()
-    self._new_points = None
+    self._new_sites = flex.vec3_double()
+    self.base_atom_color = (1.0, 1.0, 1.0)
     self.flag_show_lines = False
-    self.flag_show_points = True
+    self.flag_show_points = False
     self.flag_show_spheres = False
-    self.unit_cell = uctbx.unit_cell((100,100,100,90,90,90))
+    self.unit_cell = None #uctbx.unit_cell((100,100,100,90,90,90))
+
+  def draw_spheres (self) :
+    self._draw_spheres(self.spheres_visible, self.atom_colors, self.atom_radii)
+
+  def set_unit_cell (self, unit_cell) :
+    if isinstance(unit_cell, tuple) or isinstance(unit_cell, list) :
+      self.unit_cell = uctbx.unit_cell(unit_cell)
+    else :
+      self.unit_cell = unit_cell
 
   def set_sites (self, new_sites) :
+    if self.unit_cell is None :
+      raise Sorry("The unit cell must be set before setting site positions.")
     sites_frac = flex.vec3_double(new_sites)
-    self._new_sites = self.unit_cell.orgothonalization_matrix() * sites_frac
-    self._new_colors = flex.vec3_double(len(new_sites), self.base_atom_color)
+    self._new_sites = self.unit_cell.orthogonalization_matrix() * sites_frac
 
   def OnUpdate (self, event=None, recenter=False) :
-    self.points = self._new_points
-    self.atom_colors = self._new_colors
+    self.points = self._new_sites
+    site_count = self.points.size()
+    self.atom_colors = flex.vec3_double(site_count, self.base_atom_color)
+    self.atoms_visible = flex.bool(site_count, True)
+    self.points_visible = flex.bool(site_count, True)
+    self.spheres_visible = flex.bool(site_count, True)
+    self.atom_radii = flex.double(site_count, 0.5)
+    self.atom_index = [ "Atom %d" % (i+1) for i in xrange(site_count) ]
+    self.minimum_covering_sphere = minimum_covering_sphere(self.points,
+                                                           epsilon=0.1)
     model_viewer_base.OnUpdate(self, event, recenter)
 
 ########################################################################

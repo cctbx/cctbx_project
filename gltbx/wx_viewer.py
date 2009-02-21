@@ -42,9 +42,10 @@ def v3distsq(a, b):
 
 VIEWER_UPDATE_ID = wx.NewId()
 class ViewerUpdateEvent (wx.PyEvent) :
-  def __init__ (self, data) :
+  def __init__ (self, data, recenter=False) :
     wx.PyEvent.__init__(self)
     self.data = data
+    self.recenter = recenter
     self.SetEventType(VIEWER_UPDATE_ID)
 
 class wxGLWindow(wx.glcanvas.GLCanvas):
@@ -508,8 +509,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def OnUpdate (self, event=None) :
     pass
 
-  def force_update (self) :
-    wx.PostEvent(self, ViewerUpdateEvent(None))
+  def force_update (self, recenter=False) :
+    wx.PostEvent(self, ViewerUpdateEvent(data=None, recenter=recenter))
 
   def edit_opengl_settings (self, event=None) :
     if self._settings_widget is None :
