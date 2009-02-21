@@ -1,8 +1,6 @@
 from scitbx.graph.tardy_tree import find_paths, find_paths_v3, construct
 from scitbx.graph import rigidity
 from scitbx.graph import utils
-from libtbx.option_parser import libtbx_option_parser
-from libtbx.utils import host_and_user, show_times_at_exit
 import sys
 
 def exercise_minimal():
@@ -124,65 +122,13 @@ def exercise_fused_loops(arch_size_max=8):
         and arch_size_1 + arch_size_2 < 10)
       assert inferred_is_rigid == is_rigid
 
-def fourth_arch(arch_sizes, edge_list_123, es_123, arch_size_max):
-  def vertex_info(i):
-    off = 2
-    if (i < off): return str(i)
-    for ia,s in enumerate(arch_sizes):
-      poff = off
-      off += s
-      if (i < off): return "%d%s" % (i-poff+1, "abc"[ia])
-  def analyze():
-    n_vertices = len(es_123) + arch_size_4
-    edge_list_1234 = archs_grow_edge_list(
-      edge_list_123, len(es_123), arch_size_4, av, bv)
-    tt = construct(n_vertices=n_vertices, edge_list=edge_list_1234)
-    tt.finalize()
-    cm = tt.cluster_manager
-    es, dof = arch_dof(n_vertices=n_vertices, edge_list=edge_list_1234)
-    print vertex_info(av), vertex_info(bv), arch_size_4,
-    have_failure = False
-    r_rm = (dof == 6)
-    r_tt = (len(cm.clusters) == 1)
-    if (r_rm):
-      print "r",
-    else:
-      assert dof > 6
-      print "f",
-    if (r_tt):
-      print "r",
-    else:
-      print "f",
-    if (r_rm and not r_tt):
-      print "FAILURE",
-      have_failure = True
-    print arch_sizes
-    if (not r_rm): assert not r_tt
-    if (have_failure):
-      print "n_vertices, edge_list:", n_vertices, edge_list_1234
-  av = 0
-  bv = 1
-  for arch_size_4 in xrange(1, arch_size_max+1):
-    analyze()
-  for bv in xrange(2,len(es_123)):
-    for arch_size_4 in xrange(1, arch_size_max+1):
-      analyze()
-  for av in xrange(2,len(es_123)-1):
-    for bv in xrange(av+1,len(es_123)):
-      if (bv in es_123[av]): continue
-      analyze()
-
-def exercise_three_archs(arch_size_max, chunk_i):
-  if (chunk_i is not None):
-    assert 0 <= chunk_i < arch_size_max**2
+def exercise_three_archs(arch_size_max=8):
   for arch_size_1 in xrange(1, arch_size_max+1):
     edge_list_1 = archs_grow_edge_list(
       [], 2, arch_size_1)
     for arch_size_2 in xrange(1, arch_size_max+1):
       edge_list_12 = archs_grow_edge_list(
         edge_list_1, 2+arch_size_1, arch_size_2)
-      i_12 = (arch_size_1-1)*arch_size_max+(arch_size_2-1)
-      if (chunk_i is not None and i_12 != chunk_i): continue
       for arch_size_3 in xrange(1, arch_size_max+1):
         n_vertices = 2 + arch_size_1 + arch_size_2 + arch_size_3
         edge_list_123 = archs_grow_edge_list(
@@ -193,13 +139,6 @@ def exercise_three_archs(arch_size_max, chunk_i):
           max(arch_size_1, arch_size_2, arch_size_3) + 1,
           arch_size_1 + arch_size_2 + arch_size_3 - 3)
         assert expected == dof
-        if (chunk_i is not None):
-          print "dof:", dof, "archs:", arch_size_1, arch_size_2, arch_size_3
-          fourth_arch(
-            arch_sizes=(arch_size_1, arch_size_2, arch_size_3),
-            edge_list_123=edge_list_123,
-            es_123=es,
-            arch_size_max=arch_size_max)
         is_rigid = (dof == 6)
         inferred_is_rigid = (
               arch_size_1 < 6
@@ -246,41 +185,13 @@ def exercise_three_archs(arch_size_max, chunk_i):
               assert len(sp) == len(path)
 
 def run(args):
-  command_line = (libtbx_option_parser(
-    usage="scitbx.python tst_tardy_tree_find_paths.py [options]")
-    .enable_chunk()
-    .option(None, "--arch_size_max",
-      type="int",
-      default=8,
-      metavar="INT")
-  ).process(args=args, nargs=0).queuing_system_overrides_chunk()
-  co = command_line.options
-  #
-  chunk_n = command_line.chunk_n
-  chunk_i = command_line.chunk_i
-  if (chunk_n != 1):
-    assert chunk_n == co.arch_size_max**2
-    i = command_line.queuing_system_info
-    if (i is not None and i.have_array()):
-      log = open("log%03d" % chunk_i, "w")
-      sys.stdout = log
-      sys.stderr = log
-    host_and_user().show()
-    if (i is not None): i.show()
-    print "chunk_n:", chunk_n
-    print "chunk_i: %03d" % chunk_i
-    print
-  else:
-    chunk_i = None
-  #
-  show_times_at_exit()
-  #
+  assert len(args) == 0
   exercise_minimal()
   exercise_simple_loops()
   exercise_knot()
   exercise_hexagon_wheel()
   exercise_fused_loops()
-  exercise_three_archs(arch_size_max=co.arch_size_max, chunk_i=chunk_i)
+  exercise_three_archs()
   print "OK"
 
 if (__name__ == "__main__"):
