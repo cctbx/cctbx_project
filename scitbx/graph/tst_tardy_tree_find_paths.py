@@ -5,10 +5,10 @@ import sys
 
 def exercise_minimal():
   edge_sets = utils.construct_edge_sets(n_vertices=1, edge_list=[])
-  assert find_paths(edge_sets=edge_sets, iv=0) == ({}, {})
+  assert find_paths(edge_sets=edge_sets).search_from(iv=0) == ({}, {})
   edge_sets = utils.construct_edge_sets(n_vertices=2, edge_list=[(0,1)])
   for iv in [0,1]:
-    assert find_paths(edge_sets=edge_sets, iv=iv) == ({}, {})
+    assert find_paths(edge_sets=edge_sets).search_from(iv=iv) == ({}, {})
 
 def exercise_simple_loops(loop_size_max=10):
   for n_vertices in xrange(3, loop_size_max+1):
@@ -16,7 +16,7 @@ def exercise_simple_loops(loop_size_max=10):
       for i in xrange(n_vertices)]
     edge_sets = utils.construct_edge_sets(
       n_vertices=n_vertices, edge_list=edge_list)
-    loops, dendrites = find_paths(edge_sets=edge_sets, iv=0)
+    loops, dendrites = find_paths(edge_sets=edge_sets).search_from(iv=0)
     if (n_vertices <= 7):
       assert len(loops) == 2
       assert sorted(dendrites.keys()) == range(1,n_vertices)
@@ -41,7 +41,7 @@ def exercise_knot():
     ({1: [[3]], 3: [[1]]}, {0: [set([1])], 1: [set([3])], 3: [set([1])]}),
     ({1: [[2]], 2: [[1]]}, {0: [set([1])], 1: [set([2])], 2: [set([1])]})]
   for iv in xrange(4):
-    loop_dendrites = find_paths(edge_sets=edge_sets, iv=iv)
+    loop_dendrites = find_paths(edge_sets=edge_sets).search_from(iv=iv)
     assert loop_dendrites == expected_loops_dendrites[iv]
 
 def archs_grow_edge_list(edge_list, offs, size, av=0, bv=1):
