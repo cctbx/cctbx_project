@@ -235,55 +235,23 @@ class cluster_manager(object):
     O.loop_edge_bendings = sorted(leb)
 
 def find_paths(edge_sets, iv):
-  result = {}
-  for jv in edge_sets[iv]:
-    result[jv] = []
-  result = {iv: result}
+  loops = {}
+  dendrites = {}
   path = []
   def depth_first_search(jv, kv):
     path.append(kv)
-    def new_path_list():
-      if (len(path) < 3): return []
-      if (kv in path[1:-1]): return [] # XXX avoid need for this
-      return [path[1:-1]]
-    for lv in edge_sets[kv]:
-      if (lv == jv): continue
-      result_lv = result.get(lv)
-      if (result_lv is None):
-        result[lv] = {kv: new_path_list()}
-        if (len(path) != 6):
-          depth_first_search(jv=kv, kv=lv)
-      else:
-        result_lv_kv = result_lv.get(kv)
-        if (result_lv_kv is None):
-          result_lv[kv] = new_path_list()
-          if (len(path) != 6):
-            depth_first_search(jv=kv, kv=lv)
-        elif (    len(path) > 2
-              and kv not in path[1:-1]): # XXX avoid need for this
-          result_lv_kv.append(path[1:-1])
-    path.pop()
-  depth_first_search(jv=-1, kv=iv)
-  return result
-
-def find_paths_v3(edge_sets, iv):
-  loops = []
-  dendrites = []
-  path = []
-  def depth_first_search(jv, kv):
-    path.append(kv)
-    dendrites.append(list(path))
     closing = False
     for lv in edge_sets[kv]:
       if (lv == jv): continue
       if (lv == iv):
-        loops.append(list(path))
+        loops.setdefault(path[0], []).append(path[1:])
         closing = True
       elif (lv in path): # XXX replace with in_path[lv] array lookup
         closing = True
     if (not closing and len(path) != 6):
       for lv in edge_sets[kv]:
         if (lv == jv): continue
+        dendrites.setdefault(lv, []).append(set(path))
         depth_first_search(jv=kv, kv=lv)
     path.pop()
   for jv in edge_sets[iv]:
@@ -304,66 +272,45 @@ class construct(object):
 
   def _find_paths(O):
     for iv in xrange(O.n_vertices):
-      loops, dendrites = find_paths_v3(edge_sets=O.edge_sets, iv=iv)
+      loops, dendrites = find_paths(edge_sets=O.edge_sets, iv=iv)
       #
-      jv_paths = {}
-      for path in loops:
-        assert iv not in path # XXX remove later
-        assert len(path) > 1
-        if (len(path) < 6):
-          for jv in path:
-            O.cluster_manager.connect_vertices(i=iv, j=jv, optimize=True)
-        jv_paths.setdefault(path[0], []).append(path[1:])
-      for jv,loops_through_jv in jv_paths.items():
-        if (len(loops_through_jv) < 2): continue
-        l5s = []
+      for jv,loops_through_jv in loops.items():
         have_small = False
+        l5s = []
         for loop_through_jv in loops_through_jv:
-          assert len(loop_through_jv) < 6
-          assert jv not in loop_through_jv # XXX remove later
-          if (len(loop_through_jv) == 5):
-            l5s.append(loop_through_jv)
-          else:
+          if (len(loop_through_jv) < 5):
+            for kv in loop_through_jv:
+              O.cluster_manager.connect_vertices(i=iv, j=kv, optimize=True)
             have_small = True
+          else:
+            l5s.append(loop_through_jv)
         if (have_small):
           for loop_through_jv in l5s:
             for kv in loop_through_jv:
               O.cluster_manager.connect_vertices(i=iv, j=kv, optimize=True)
       #
-      jv_paths = {}
-      for path in dendrites:
-        assert iv not in path # XXX remove later
-        if (len(path) < 2): continue
-        jv = path[-1]
-        jv_paths.setdefault(jv, []).append(path[:-1]) # XXX make set here
-      for jv,paths_to_jv in jv_paths.items():
-        if (len(paths_to_jv) < 3): continue
-        paths_by_length = [None, [], [], [], [], []]
-        for path_to_jv in paths_to_jv:
-          assert len(path_to_jv) < 6
-          assert jv not in path_to_jv # XXX remove later
-          paths_by_length[len(path_to_jv)].append(path_to_jv)
+      for jv,sps_to_jv in dendrites.items():
+        if (len(sps_to_jv) < 3): continue
+        sps_by_length = [None, [], [], [], [], []]
+        for sp_to_jv in sps_to_jv:
+          sps_by_length[len(sp_to_jv)].append(sp_to_jv)
         n_l1_l2_l3_lt_10 = 0
         for l1 in xrange(1,6):
           for l2 in xrange(1,min(6,10-l1)):
             for l3 in xrange(1,min(6,10-l1-l2)):
-              assert l1+l2+l3 < 10
               n_l1_l2_l3_lt_10 += 1
-              for path1 in paths_by_length[l1]:
-                sp1 = set(path1)
-                for path2 in paths_by_length[l2]:
-                  sp2 = set(path2)
-                  if (not sp1.isdisjoint(sp2)): continue
-                  for path3 in paths_by_length[l3]:
-                    sp3 = set(path3)
-                    if (not sp1.isdisjoint(sp3)): continue
-                    if (not sp2.isdisjoint(sp3)): continue
+              for sp1 in sps_by_length[l1]:
+                for sp2 in sps_by_length[l2]:
+                  sp12 = sp1.union(sp2)
+                  if (len(sp12) != len(sp1) + len(sp2)): continue
+                  for sp3 in sps_by_length[l3]:
+                    sp123 = sp12.union(sp3)
+                    if (len(sp123) != len(sp12) + len(sp3)): continue
                     O.cluster_manager.connect_vertices(
                       i=iv, j=jv, optimize=True)
-                    for path in [path1, path2, path3]:
-                      for kv in path:
-                        O.cluster_manager.connect_vertices(
-                          i=iv, j=kv, optimize=True)
+                    for kv in sp123:
+                      O.cluster_manager.connect_vertices(
+                        i=iv, j=kv, optimize=True)
         assert n_l1_l2_l3_lt_10 == 72
 
   def find_cluster_loops(O):
