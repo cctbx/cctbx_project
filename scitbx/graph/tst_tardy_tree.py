@@ -533,8 +533,9 @@ def run(args):
     cm.find_loop_edge_bendings(edge_sets=tt.edge_sets)
     assert_same("leb2:", cm.loop_edge_bendings, tc_leb2)
     #
+    fp = find_paths(edge_sets=tt.edge_sets)
     for iv in xrange(len(tt.edge_sets)):
-      find_paths(edge_sets=tt.edge_sets, iv=iv)
+      fp.search_from(iv=iv)
     #
     print >> out
   #

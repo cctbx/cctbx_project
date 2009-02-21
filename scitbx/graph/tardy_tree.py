@@ -234,29 +234,39 @@ class cluster_manager(object):
         leb.add(tuple(sorted((i,k))))
     O.loop_edge_bendings = sorted(leb)
 
-def find_paths(edge_sets, iv):
-  loops = {}
-  dendrites = {}
-  path = []
-  def depth_first_search(jv, kv):
-    path.append(kv)
-    closing = False
-    for lv in edge_sets[kv]:
-      if (lv == jv): continue
-      if (lv == iv):
-        loops.setdefault(path[0], []).append(path[1:])
-        closing = True
-      elif (lv in path): # XXX replace with in_path[lv] array lookup
-        closing = True
-    if (not closing and len(path) != 6):
+class find_paths(object):
+
+  def __init__(O, edge_sets):
+    O.edge_sets = edge_sets
+    O.in_path = [False] * len(O.edge_sets)
+
+  def search_from(O, iv):
+    edge_sets = O.edge_sets
+    in_path = O.in_path
+    loops = {}
+    dendrites = {}
+    path = []
+    def depth_first_search(jv, kv):
+      path.append(kv)
+      in_path[kv] = True
+      closing = False
       for lv in edge_sets[kv]:
         if (lv == jv): continue
-        dendrites.setdefault(lv, []).append(set(path))
-        depth_first_search(jv=kv, kv=lv)
-    path.pop()
-  for jv in edge_sets[iv]:
-    depth_first_search(jv=iv, kv=jv)
-  return loops, dendrites
+        if (lv == iv):
+          loops.setdefault(path[0], []).append(path[1:])
+          closing = True
+        elif (in_path[lv]):
+          closing = True
+      if (not closing and len(path) != 6):
+        for lv in edge_sets[kv]:
+          if (lv == jv): continue
+          dendrites.setdefault(lv, []).append(set(path))
+          depth_first_search(jv=kv, kv=lv)
+      path.pop()
+      in_path[kv] = False
+    for jv in edge_sets[iv]:
+      depth_first_search(jv=iv, kv=jv)
+    return loops, dendrites
 
 class construct(object):
 
@@ -271,8 +281,9 @@ class construct(object):
     O.find_cluster_loop_repeats = None
 
   def _find_paths(O):
+    fp = find_paths(edge_sets=O.edge_sets)
     for iv in xrange(O.n_vertices):
-      loops, dendrites = find_paths(edge_sets=O.edge_sets, iv=iv)
+      loops, dendrites = fp.search_from(iv=iv)
       #
       for jv,loops_through_jv in loops.items():
         have_small = False
