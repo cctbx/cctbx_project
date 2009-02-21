@@ -516,34 +516,4 @@ ATOM     26 H211 LIG A   1      -1.563   1.168   1.254  1.00 20.00      A    H
   find_cluster_loop_repeats=1,
   merge_clusters_with_multiple_connections_passes=2),
 
-pdb_extract(
-  tag="four-arches", # from tst_tardy_tree_find_paths
-  pdb="""\
-ATOM      1  C01 LIG A   1       0.595   0.567  -0.540  1.00 20.00      A    C
-ATOM      2  C02 LIG A   1      -1.210  -1.614  -1.080  1.00 20.00      A    C
-ATOM      3  C03 LIG A   1       2.122   0.567  -0.540  1.00 20.00      A    C
-ATOM      4  C04 LIG A   1       3.121   0.567   0.615  1.00 20.00      A    C
-ATOM      5  C05 LIG A   1       2.782   0.567   2.104  1.00 20.00      A    C
-ATOM      6  C06 LIG A   1       1.405   0.567   2.763  1.00 20.00      A    C
-ATOM      7  C07 LIG A   1      -0.045   0.567   2.282  1.00 20.00      A    C
-ATOM      8  C08 LIG A   1      -1.107  -0.511   2.487  1.00 20.00      A    C
-ATOM      9  C09 LIG A   1      -1.862  -1.523   1.628  1.00 20.00      A    C
-ATOM     10  C10 LIG A   1      -1.854  -1.878   0.143  1.00 20.00      A    C
-ATOM     11  C11 LIG A   1       0.086   1.565  -1.578  1.00 20.00      A    C
-ATOM     12  C12 LIG A   1      -0.926   1.521  -2.720  1.00 20.00      A    C
-ATOM     13  C13 LIG A   1      -1.753   0.299  -3.116  1.00 20.00      A    C
-ATOM     14  C14 LIG A   1      -1.579  -0.998  -2.328  1.00 20.00      A    C
-ATOM     15  C15 LIG A   1       0.086  -0.831  -0.886  1.00 20.00      A    C
-ATOM     16  C16 LIG A   1       0.137   0.567   0.766  1.00 20.00      A    C
-""",
-  bonds=[
-    (0, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (1, 9),
-    (0, 10), (10, 11), (11 , 12), (12, 13), (1, 13),
-    (0, 14), (1, 14),
-    (0, 15), (6, 15)],
-  clusters=None,
-  hinge_edges=None,
-  loop_edges=None,
-  loop_edge_bendings=None),
-
 ]
