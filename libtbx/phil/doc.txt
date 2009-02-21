@@ -577,10 +577,11 @@ blocks is based on Python's import mechanism. For example::
   }
 
 When encountering the ``include scope``, the Phil parser automatically
-imports ``app.module`` (equivalent to ``import app.module`` in a
-Python script). The ``master_phil`` object in the imported module
-must be a pre-parsed Phil scope. The content of the ``master_phil``
-scope is inserted into the scope of the ``include scope`` statement.
+imports ``app.module`` (equivalent to ``import app.module`` in a Python
+script). The ``master_phil`` object in the imported module must be
+a pre-parsed Phil scope or a plain Phil string. The content of the
+``master_phil`` scope is inserted into the scope of the ``include
+scope`` statement.
 
 ``include`` directives enable hierarchical building of
 master files without the need to copy-and-paste large fragments

@@ -1776,10 +1776,12 @@ def process_include_scope(
   imported = import_python_object(
     import_path=import_path,
     error_prefix="include scope: ",
-    target_must_be="; target must be a phil scope",
+    target_must_be="; target must be a phil scope object or phil string",
     where_str=object.where_str)
   source_scope = imported.object
-  if (source_scope is None or not isinstance(source_scope, scope)):
+  if (isinstance(source_scope, str)):
+    source_scope = parse(input_string=source_scope)
+  elif (source_scope is None or not isinstance(source_scope, scope)):
     raise RuntimeError(
       'include scope: python object "%s" in module "%s" is not a'
       ' libtbx.phil.scope instance%s' % (

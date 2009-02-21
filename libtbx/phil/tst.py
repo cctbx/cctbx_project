@@ -1256,14 +1256,15 @@ c {
 }
 b = None
 """)
-  params = phil.parse(input_string="""\
+  for incl_postfix in ["", "s"]:
+    params = phil.parse(input_string="""\
 a = None
 c {
-  include scope libtbx.phil.tst.include_scope_target_2
+  include scope libtbx.phil.tst.include_scope_target_2%s
 }
 b = None
-""", process_includes=True)
-  assert not show_diff(params.as_str(attributes_level=1), """\
+""" % incl_postfix, process_includes=True)
+    assert not show_diff(params.as_str(attributes_level=1), """\
 a = None
 c {
   p = 1
@@ -1284,65 +1285,66 @@ c {
 }
 b = None
 """)
-  extracted = params.extract()
-  assert extracted.c.s.__phil_path__() == "c.s"
-  try: phil.parse(input_string="""\
+    extracted = params.extract()
+    assert extracted.c.s.__phil_path__() == "c.s"
+    try: phil.parse(input_string="""\
 include scope foo foo foo
 """, process_includes=True)
-  except RuntimeError, e:
-    assert str(e) \
-      == '"include scope" must be followed one or two arguments,' \
-         ' i.e. an import path and optionally a phil path (input line 1)'
-  else: raise Exception_expected
-  try: phil.parse(input_string="""\
+    except RuntimeError, e:
+      assert str(e) \
+        == '"include scope" must be followed one or two arguments,' \
+           ' i.e. an import path and optionally a phil path (input line 1)'
+    else: raise Exception_expected
+    try: phil.parse(input_string="""\
 include scope libtbx
 """, process_includes=True)
-  except ValueError, e:
-    assert str(e) == 'include scope: import path "libtbx" is too short;' \
-      ' target must be a phil scope (input line 1)'
-  else: raise Exception_expected
-  try: phil.parse(input_string="""\
+    except ValueError, e:
+      assert str(e) == 'include scope: import path "libtbx" is too short;' \
+        ' target must be a phil scope object or phil string (input line 1)'
+    else: raise Exception_expected
+    try: phil.parse(input_string="""\
 include scope libtbx.phil.t_s_t.include_scope_target_1
 """, process_includes=True)
-  except ImportError, e:
-    assert str(e) \
-      == "include scope: no module libtbx.phil.t_s_t (input line 1)"
-  else: raise Exception_expected
-  try: phil.parse(input_string="""\
+    except ImportError, e:
+      assert str(e) \
+        == "include scope: no module libtbx.phil.t_s_t (input line 1)"
+    else: raise Exception_expected
+    try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_none
 """, process_includes=True)
-  except AttributeError, e:
-    assert str(e) == 'include scope: object' \
-      ' "include_scope_target_none" not found in module "libtbx.phil.tst"' \
-      ' (input line 1)'
-  else: raise Exception_expected
-  try: phil.parse(input_string="""\
+    except AttributeError, e:
+      assert str(e) == 'include scope: object' \
+        ' "include_scope_target_none" not found in module "libtbx.phil.tst"' \
+        ' (input line 1)'
+    else: raise Exception_expected
+    try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_0n
 """, process_includes=True)
-  except RuntimeError, e:
-    assert str(e) == 'include scope: python object' \
-      ' "include_scope_target_0n" in module "libtbx.phil.tst"' \
-      ' is not a libtbx.phil.scope instance (input line 1)'
-  else: raise Exception_expected
-  try: phil.parse(input_string="""\
-include scope libtbx.phil.tst.include_scope_target_0s
+    except RuntimeError, e:
+      assert str(e) == 'include scope: python object' \
+        ' "include_scope_target_0n" in module "libtbx.phil.tst"' \
+        ' is not a libtbx.phil.scope instance (input line 1)'
+    else: raise Exception_expected
+    try: phil.parse(input_string="""\
+include scope libtbx.phil.tst.include_scope_target_0f
 """, process_includes=True)
-  except RuntimeError, e:
-    assert str(e) == 'include scope: python object' \
-      ' "include_scope_target_0s" in module "libtbx.phil.tst"' \
-      ' is not a libtbx.phil.scope instance (input line 1)'
-  else: raise Exception_expected
-  try: phil.parse(input_string="""\
+    except RuntimeError, e:
+      assert str(e) == 'include scope: python object' \
+        ' "include_scope_target_0f" in module "libtbx.phil.tst"' \
+        ' is not a libtbx.phil.scope instance (input line 1)'
+    else: raise Exception_expected
+    try: phil.parse(input_string="""\
 include scope libtbx.phil.tst.include_scope_target_1 t
 """, process_includes=True)
-  except RuntimeError, e:
-    assert str(e) == 'include scope: path "t" not found in phil scope object' \
-      ' "include_scope_target_1" in module "libtbx.phil.tst" (input line 1)'
-  else: raise Exception_expected
+    except RuntimeError, e:
+      assert str(e) == \
+        'include scope: path "t" not found in phil scope object' \
+        ' "include_scope_target_1" in module "libtbx.phil.tst" (input line 1)'
+    else: raise Exception_expected
 
 include_scope_target_0n = None
 
-include_scope_target_0s = ""
+include_scope_target_0f = 1.0
 
 include_scope_target_1 = phil.parse("""\
 x=1
@@ -1355,7 +1357,7 @@ s
 }
 """)
 
-include_scope_target_2 = phil.parse("""\
+include_scope_target_2s = """\
 p=1
 include scope libtbx.phil.tst.include_scope_target_1
 q=2
@@ -1363,7 +1365,9 @@ r {
   include scope libtbx.phil.tst.include_scope_target_1 s.y
 }
 x=3
-""")
+"""
+
+include_scope_target_2 = phil.parse(include_scope_target_2s)
 
 def exercise_fetch():
   master = phil.parse(input_string="""\
