@@ -101,6 +101,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     self.flag_show_fog = False # leave off by default
     self._settings_widget = None
 
+    self.flag_use_lights = False
+
     self.rotation_center = (0,0,0)
     self.marked_rotation = None
 
@@ -296,6 +298,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
   def initialize_modelview(self, eye_vector=None, angle=None):
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
+    self.setup_lighting()
     gluLookAt(0,0,0, 0,0,-1, 0,1,0)
     glTranslated(*self.compute_home_translation())
     rc = self.minimum_covering_sphere.center()
@@ -306,6 +309,20 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       xcenter=rc[0], ycenter=rc[1], zcenter=rc[2],
       xvector=eye_vector[0], yvector=eye_vector[1], zvector=eye_vector[2],
       angle=angle)
+
+  def setup_lighting (self) :
+    if self.flag_use_lights :
+      glMatrixMode(GL_MODELVIEW)
+      glLoadIdentity()
+      glEnable(GL_LIGHTING)
+      glEnable(GL_LIGHT0)
+      glLightfv(GL_LIGHT0, GL_AMBIENT, [0.0, 0.0, 0.0, 1.0])
+      glLightfv(GL_LIGHT0, GL_DIFFUSE, [1, 1, 1, 1])
+      glLightfv(GL_LIGHT0, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
+      glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
+      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+      glEnable(GL_BLEND)
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
   def rotation_move_factor(self, rotation_angle):
     return abs(rotation_angle)/180

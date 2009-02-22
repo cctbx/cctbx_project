@@ -252,10 +252,6 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
   def InitGL (self) :
     gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
     glEnable(GL_DEPTH_TEST)
-    if self.flag_use_materials :
-      glEnable(GL_LIGHTING)
-      glEnable(GL_LIGHT0)
-      glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
     glShadeModel(GL_SMOOTH)
     vendor = glGetString(GL_VENDOR)
     if sys.platform == "darwin" and vendor.startswith("NVIDIA") :
@@ -347,6 +343,10 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
         glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_FALSE)
       else :
         glColor3f(*self.map_colors[i])
+        if self.flag_use_lights :
+          glDisable(GL_LIGHTING)
+          glDisable(GL_LIGHT0)
+          glDisable(GL_BLEND)
       va = gltbx.util.vertex_array(triangulation.vertices,
                                    triangulation.normals)
       va.draw_triangles(triangulation.triangles)
