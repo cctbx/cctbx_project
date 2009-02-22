@@ -26,10 +26,11 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     self.atoms_visible           = flex.bool()
     self.points_visible          = flex.bool()
     self.bonds_visible           = flex.bool()
+    self.spheres_visible         = flex.bool()
+    self.atom_radii              = flex.double()
     self.current_atom_i_seq      = None
     self.closest_point_i_seq     = None # usually set by mouse clicks
     self.minimum_covering_sphere = None
-    # display lists - resetting these to None will force a redraw
     self.points_display_list     = None
     self.lines_display_list      = None
     self.spheres_display_list    = None
@@ -48,6 +49,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     self.flag_show_lines                   = True
     self.flag_show_points                  = True
     self.flag_show_spheres                 = False
+    self.flag_use_lights                   = True
     self.flag_show_minimum_covering_sphere = False
     self.flag_show_rotation_center         = False
 
@@ -169,39 +171,26 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
 
   def _draw_spheres(self, spheres_visible, atom_colors, atom_radii) :
     glMatrixMode(GL_MODELVIEW)
-    glEnable(GL_LIGHTING)
-    glEnable(GL_LIGHT0)
-    glEnable(GL_LIGHT1)
-    glLightfv(GL_LIGHT0, GL_AMBIENT, [0, 0, 0, 1.0])
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, [1, 1, 1, 1])
-    glLightfv(GL_LIGHT0, GL_POSITION, [0, 0, 1, 0])
-    glLightfv(GL_LIGHT1, GL_AMBIENT, [0, 0, 0, 1])
-    glLightfv(GL_LIGHT1, GL_DIFFUSE, [1, 1, 1, 1])
-    glLightfv(GL_LIGHT1, GL_POSITION, [0, 0, -1, 0])
-    glEnable(GL_BLEND)
-    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
-    #glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1,1,1,1.0])
-    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.5, 0.5, 0.5, 1.0])
+    if self.flag_use_lights :
+      glEnable(GL_LIGHTING)
+      glEnable(GL_LIGHT0)
+      glEnable(GL_LIGHT1)
+    glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1.0,1.0,1.0,1.0])
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.1, 0.1, 0.1, 1.0])
     if self.spheres_display_list is None :
       self.spheres_display_list = gltbx.gl_managed.display_list()
       self.spheres_display_list.compile()
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
       for i_seq, point in enumerate(self.points) :
         if spheres_visible[i_seq] :
-          glColor3f(*atom_colors[i_seq])
+          #glColor3f(*atom_colors[i_seq])
           glPushMatrix()
           glTranslated(*point)
           gltbx.util.SolidSphere(radius=atom_radii[i_seq], slices=50, stacks=50)
           glPopMatrix()
       self.spheres_display_list.end()
     self.spheres_display_list.call()
-    glDisable(GL_LIGHTING)
-    glDisable(GL_LIGHT0)
-    glDisable(GL_LIGHT1)
-    glDisable(GL_BLEND)
 
 class model_viewer_mixin (model_viewer_base) :
   def __init__ (self, *args, **kwds) :
@@ -602,11 +591,12 @@ class atom_label_mixin (wx_viewer.wxGLWindow) :
       self.draw_labels()
 
   def clear_labels (self, event=None) :
-    self.label_xyz = []
+    self.label_xyz = flex.vec3_double()
     self.label_text = []
     self.labels_display_list = None
 
   def draw_labels (self) :
+    glDisable(GL_LIGHTING)
     if (self.labels_display_list is None) :
       font = gltbx.fonts.ucs_bitmap_8x13
       font.setup_call_lists()
@@ -622,7 +612,8 @@ class atom_label_mixin (wx_viewer.wxGLWindow) :
   def show_atom_label (self, i_seq) :
     if self.points is None or i_seq >= self.points.size() :
       return
-    self.label_xyz.append(self.points[i_seq])
+    point = self.points[i_seq]
+    self.label_xyz.append((point[0] + 1, point[1] + 1, point[2]))
     a = self.atom_index[i_seq]
     if not isinstance(a, str) :
       atom_str = "%s %s%s %s" % (strip(a.name), a.chain_id, strip(a.resseq),
@@ -638,7 +629,7 @@ class sites_viewer_mixin (model_viewer_base) :
     model_viewer_base.__init__(self, *args, **kwds)
     self.points = flex.vec3_double()
     self._new_sites = flex.vec3_double()
-    self.base_atom_color = (1.0, 1.0, 1.0)
+    self.base_atom_color = (0.8, 0.8, 0.8)
     self.flag_show_lines = False
     self.flag_show_points = False
     self.flag_show_spheres = False
