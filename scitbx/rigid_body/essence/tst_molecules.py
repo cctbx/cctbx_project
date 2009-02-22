@@ -208,10 +208,11 @@ class refinery(object):
 
 class six_dof_body(object):
 
-  def __init__(O, sites):
+  def __init__(O, sites, masses):
+    mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.six_dof_alignment(
-      center_of_mass=utils.center_of_mass_from_sites(sites=sites))
-    O.I = utils.spatial_inertia_from_sites(sites=sites, alignment_T=O.A.T0b)
+      center_of_mass=mass_points.center_of_mass())
+    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
     #
     qE = matrix.col((1,0,0,0))
     qr = matrix.col((0,0,0))
@@ -220,40 +221,45 @@ class six_dof_body(object):
 
 class revolute_body(object):
 
-  def __init__(O, sites, pivot, normal):
+  def __init__(O, sites, masses, pivot, normal):
+    mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.I = utils.spatial_inertia_from_sites(sites=sites, alignment_T=O.A.T0b)
+    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
     #
     O.J = joint_lib.revolute(qE=matrix.col([0]))
     O.qd = O.J.qd_zero
 
 class translational_body(object):
 
-  def __init__(O, sites):
+  def __init__(O, sites, masses):
+    mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.translational_alignment(
-      center_of_mass=utils.center_of_mass_from_sites(sites=sites))
-    O.I = utils.spatial_inertia_from_sites(sites=sites, alignment_T=O.A.T0b)
+      center_of_mass=mass_points.center_of_mass())
+    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
     #
     qr = matrix.col((0,0,0))
     O.J = joint_lib.translational(qr=qr)
     O.qd = O.J.qd_zero
 
-def construct_bodies(sites, cluster_manager):
+def construct_bodies(sites, masses, cluster_manager):
+  assert len(sites) == len(masses)
   result = []
   cm = cluster_manager
   for ic,cluster in enumerate(cm.clusters):
     body_sites = [matrix.col(sites[i]) for i in cluster]
+    body_masses = [masses[i] for i in cluster]
     he = cm.hinge_edges[ic]
     if (he[0] == -1):
       if (len(sites) == 1):
-        body = translational_body(sites=body_sites)
+        body = translational_body(sites=body_sites, masses=body_masses)
       else:
-        body = six_dof_body(sites=body_sites)
+        body = six_dof_body(sites=body_sites, masses=body_masses)
       body.parent = -1
     else:
       normal_sites = [matrix.col(sites[i]) for i in he]
       body = revolute_body(
         sites=body_sites,
+        masses=body_masses,
         pivot=normal_sites[1],
         normal=(normal_sites[1]-normal_sites[0]).normalize())
       body.parent = cm.cluster_indices[he[1]]
@@ -306,7 +312,7 @@ def exercise_minimization_quick(out, sim, max_iterations=3):
     assert e_pot_final < e_pot_start * 0.98
   print >> out
 
-def construct_simulation(labels, sites, tardy_tree):
+def construct_simulation(labels, sites, masses, tardy_tree):
   cm = tardy_tree.cluster_manager
   return simulation(
     labels=labels,
@@ -317,14 +323,18 @@ def construct_simulation(labels, sites, tardy_tree):
       sites=sites,
       wells=random_wells(sites),
       restraint_edges=cm.loop_edges+cm.loop_edge_bendings),
-    bodies=construct_bodies(sites=sites, cluster_manager=cm))
+    bodies=construct_bodies(sites=sites, masses=masses, cluster_manager=cm))
 
 n_test_simulations = len(tst_tardy_pdb.test_cases)
 
 def get_test_simulation_by_index(i):
   tc = tst_tardy_pdb.test_cases[i]
   tt = tc.tardy_tree_construct()
-  return construct_simulation(labels=tc.labels, sites=tc.sites, tardy_tree=tt)
+  return construct_simulation(
+    labels=tc.labels,
+    sites=tc.sites,
+    masses=[1.0]*len(tc.sites),
+    tardy_tree=tt)
 
 def run(args):
   assert len(args) in [0,1]

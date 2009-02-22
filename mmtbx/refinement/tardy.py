@@ -72,7 +72,9 @@ def run(fmodels, model, target_weights, params):
     cluster_manager=tt.cluster_manager,
     potential_obj=potential_obj,
     bodies=tst_molecules.construct_bodies(
-      sites=sites, cluster_manager=tt.cluster_manager))
+      sites=sites,
+      masses=xs.atomic_weights(),
+      cluster_manager=tt.cluster_manager))
   del sites
   def show_rms(minimizer=None):
     print xs.sites_cart().rms_difference(sites_cart_start)
