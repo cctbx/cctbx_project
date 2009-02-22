@@ -4,6 +4,15 @@ from scitbx.rigid_body.essence import tst_molecules
 from scitbx.graph import tardy_tree
 from scitbx import matrix
 
+master_phil_str = """\
+  number_of_time_steps = 10
+    .type = int
+  time_step = 1.0
+    .type = float
+  minimization_max_iterations = 10
+    .type = int
+"""
+
 class potential_object(object):
 
   def __init__(O, fmodels, model, target_weights):
@@ -45,7 +54,7 @@ class potential_object(object):
     O.e_pot(sites_moved=sites_moved)
     return matrix.col_list(flex.vec3_double(O.g))
 
-def run(fmodels, model, target_weights):
+def run(fmodels, model, target_weights, params):
   assert fmodels.fmodel_neutron() is None # not implemented
   assert model.ias_selection is None # tardy+ias is not a useful combination
   sst = model.restraints_manager.geometry.shell_sym_tables[0]
@@ -67,10 +76,13 @@ def run(fmodels, model, target_weights):
   del sites
   def show_rms(minimizer=None):
     print xs.sites_cart().rms_difference(sites_cart_start)
-  for i_time_step in xrange(10):
+  for i_time_step in xrange(params.number_of_time_steps):
     print "tardy time step:", i_time_step
-    sim.dynamics_step(delta_t=1.0)
+    sim.dynamics_step(delta_t=params.time_step)
     show_rms()
-  sim.minimization(callback_after_step=show_rms)
+  if (params.minimization_max_iterations > 0):
+    sim.minimization(
+      max_iterations=params.minimization_max_iterations,
+      callback_after_step=show_rms)
   print "After minimization:"
   show_rms()
