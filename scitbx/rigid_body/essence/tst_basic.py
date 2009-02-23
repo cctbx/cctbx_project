@@ -37,8 +37,10 @@ def exercise_basic():
       (0.949, 2.815, 5.189),
       (0.405, 3.954, 5.917),
       (0.779, 5.262, 5.227)]))
+  assert approx_equal(mass_points.sum_masses(), 7.48)
   assert approx_equal(mass_points.center_of_mass(),
     [0.654181818182, 3.87397058824, 5.54350802139])
+  assert approx_equal(mass_points._sum_masses, 7.48)
   assert approx_equal(
     mass_points.inertia(pivot=matrix.col((0.9,-1.3,0.4))),
     [404.7677928, 10.04129606, 10.09577652,
