@@ -30,6 +30,20 @@ def exercise_basic():
   assert approx_equal(sum(I_spatial), 21.306)
   assert approx_equal(fs.kinetic_energy(
     I_spatial=I_spatial, v_spatial=matrix.col((1,2,3,4,5,6))), 75.109)
+  #
+  mass_points = utils.mass_points(
+    masses=[2.34, 3.56, 1.58],
+    sites=matrix.col_list([
+      (0.949, 2.815, 5.189),
+      (0.405, 3.954, 5.917),
+      (0.779, 5.262, 5.227)]))
+  assert approx_equal(mass_points.center_of_mass(),
+    [0.654181818182, 3.87397058824, 5.54350802139])
+  assert approx_equal(
+    mass_points.inertia_from_sites(pivot=matrix.col((0.9,-1.3,0.4))),
+    [404.7677928, 10.04129606, 10.09577652,
+     10.04129606, 199.7384559, -199.3511949,
+     10.09577652, -199.3511949, 206.8314171])
 
 class six_dof_body(object):
 

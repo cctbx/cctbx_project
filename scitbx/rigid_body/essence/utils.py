@@ -27,9 +27,9 @@ class mass_points(object):
     m = [0] * 9
     for mass,site in zip(O.masses, O.sites):
       x,y,z = site - pivot
-      m[0] += mass * y*y+z*z
-      m[4] += mass * x*x+z*z
-      m[8] += mass * x*x+y*y
+      m[0] += mass * (y*y+z*z)
+      m[4] += mass * (x*x+z*z)
+      m[8] += mass * (x*x+y*y)
       m[1] -= mass * x*y
       m[2] -= mass * x*z
       m[5] -= mass * y*z
