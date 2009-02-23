@@ -5,8 +5,9 @@ from cctbx import sgtbx
 from scitbx import matrix
 from scitbx.python_utils import dicts
 from scitbx.python_utils import command_line
+from libtbx import easy_run
 from boost import rational
-import sys, os
+import sys
 
 class colored_grid_point(object):
 
@@ -286,7 +287,7 @@ def test_all(n):
         + " %d,%d,%d " % n +str(space_group_number)
     print cmd
     sys.stdout.flush()
-    os.system(cmd)
+    easy_run.call(cmd)
     print
     sys.stdout.flush()
 
