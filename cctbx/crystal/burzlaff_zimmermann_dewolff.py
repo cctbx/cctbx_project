@@ -16,7 +16,7 @@ Author: N.K. Sauter
 from cctbx import crystal
 from cctbx.uctbx import unit_cell
 from scitbx import matrix
-from iotbx.command_line.lattice_symmetry import metric_subgroups
+from cctbx.sgtbx.lattice_symmetry import metric_subgroups
 import math
 import sys
 
