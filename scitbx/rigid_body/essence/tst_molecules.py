@@ -30,7 +30,7 @@ class potential_object(object):
       O.restraints.append((edge, abs(s[0]-s[1]), restraint_edge_weight))
     O.epsilon = epsilon
 
-  def e_pot(O, sites_moved):
+  def e_pot_and_normalization_factor(O, sites_moved):
     result = 0
     for s, w in zip(sites_moved, O.wells):
       result += (s - w).dot()
@@ -40,7 +40,7 @@ class potential_object(object):
       if (d_model < O.epsilon): continue
       delta = d_ideal - d_model
       result += w * delta**2
-    return result
+    return result, 1.0
 
   def d_e_pot_d_sites(O, sites_moved):
     result = []
@@ -117,15 +117,18 @@ class simulation(object):
     O.AJA_update()
     O.JAr_update()
     O.sites_moved_update()
-    O.e_pot = O.potential_obj.e_pot(sites_moved=O.sites_moved)
+    O.e_pot, O.e_pot_normalization_factor = \
+      O.potential_obj.e_pot_and_normalization_factor(
+        sites_moved=O.sites_moved)
     O.f_ext_bf_update(
       d_e_pot_d_sites=O.potential_obj.d_e_pot_d_sites(
         sites_moved=O.sites_moved))
     O.e_tot = O.e_kin + O.e_pot
 
   def dynamics_step(O, delta_t):
+    delta_t_norm = delta_t / O.e_pot_normalization_factor
     for B,qdd in zip(O.bodies, O.qdd):
-      B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t)
+      B.qd = B.J.time_step_velocity(qd=B.qd, qdd=qdd, delta_t=delta_t_norm)
       B.J = B.J.time_step_position(qd=B.qd, delta_t=delta_t)
     O.energies_and_accelerations_update()
 

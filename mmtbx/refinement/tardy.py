@@ -7,7 +7,7 @@ from scitbx import matrix
 master_phil_str = """\
   number_of_time_steps = 10
     .type = int
-  time_step = 1.0
+  time_step = 0.001
     .type = float
   minimization_max_iterations = 10
     .type = int
@@ -24,8 +24,9 @@ class potential_object(object):
     O.last_sites_moved = None
     O.f = None
     O.g = None
+    O.e_pot_factor = None
 
-  def e_pot(O, sites_moved):
+  def e_pot_and_normalization_factor(O, sites_moved):
     if (O.last_sites_moved is not sites_moved):
       O.last_sites_moved = sites_moved
       xs = O.fmodels.fmodel_xray().xray_structure
@@ -48,10 +49,13 @@ class potential_object(object):
         scatterers=xs.scatterers(),
         xray_gradients=O.g,
         site_gradients=stereochemistry_residuals.gradients*O.weights.w)
-    return O.f
+      O.e_pot_normalization_factor = \
+          stereochemistry_residuals.normalization_factor \
+        * O.weights.w
+    return O.f, O.e_pot_normalization_factor
 
   def d_e_pot_d_sites(O, sites_moved):
-    O.e_pot(sites_moved=sites_moved)
+    O.e_pot_and_normalization_factor(sites_moved=sites_moved)
     return matrix.col_list(flex.vec3_double(O.g))
 
 def run(fmodels, model, target_weights, params):
@@ -77,7 +81,7 @@ def run(fmodels, model, target_weights, params):
       cluster_manager=tt.cluster_manager))
   del sites
   def show_rms(minimizer=None):
-    print xs.sites_cart().rms_difference(sites_cart_start)
+    print "rms:", xs.sites_cart().rms_difference(sites_cart_start)
   for i_time_step in xrange(params.number_of_time_steps):
     print "tardy time step:", i_time_step
     sim.dynamics_step(delta_t=params.time_step)
