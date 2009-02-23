@@ -10,6 +10,14 @@ class mass_points(object):
     O._sum_masses = None
     O._center_of_mass = None
 
+  def sum_masses(O):
+    if (O._sum_masses is None):
+      sm = 0
+      for mass in O.masses:
+        sm += mass
+      O._sum_masses = sm
+    return O._sum_masses
+
   def center_of_mass(O):
     if (O._center_of_mass is None):
       assert len(O.masses) != 0
