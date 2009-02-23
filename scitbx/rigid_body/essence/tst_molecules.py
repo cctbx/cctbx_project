@@ -212,7 +212,7 @@ class six_dof_body(object):
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
+    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     #
     qE = matrix.col((1,0,0,0))
     qr = matrix.col((0,0,0))
@@ -224,7 +224,7 @@ class revolute_body(object):
   def __init__(O, sites, masses, pivot, normal):
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
+    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     #
     O.J = joint_lib.revolute(qE=matrix.col([0]))
     O.qd = O.J.qd_zero
@@ -235,7 +235,7 @@ class translational_body(object):
     mass_points = utils.mass_points(sites=sites, masses=masses)
     O.A = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
+    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     #
     qr = matrix.col((0,0,0))
     O.J = joint_lib.translational(qr=qr)

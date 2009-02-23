@@ -40,7 +40,7 @@ def exercise_basic():
   assert approx_equal(mass_points.center_of_mass(),
     [0.654181818182, 3.87397058824, 5.54350802139])
   assert approx_equal(
-    mass_points.inertia_from_sites(pivot=matrix.col((0.9,-1.3,0.4))),
+    mass_points.inertia(pivot=matrix.col((0.9,-1.3,0.4))),
     [404.7677928, 10.04129606, 10.09577652,
      10.04129606, 199.7384559, -199.3511949,
      10.09577652, -199.3511949, 206.8314171])
@@ -55,7 +55,7 @@ class six_dof_body(object):
     mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0, 1.0])
     O.A = joint_lib.six_dof_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
+    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     qE = matrix.col((0.18, 0.36, 0.54, -0.73)).normalize()
     qr = matrix.col((-0.1,0.3,0.2))
     O.J = joint_lib.six_dof(qE=qE, qr=qr)
@@ -71,7 +71,7 @@ class spherical_body(object):
     mass_points = utils.mass_points(sites=sites, masses=[1.0, 1.0])
     O.A = joint_lib.spherical_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
+    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     qE = matrix.col((-0.50, -0.33, 0.67, -0.42)).normalize()
     O.J = joint_lib.spherical(qE=qE)
     O.qd = matrix.col((0.12, -0.08, 0.11))
@@ -85,7 +85,7 @@ class revolute_body(object):
     sites = matrix.col_list([(-0.084, 6.09, 4.936)])
     mass_points = utils.mass_points(sites=sites, masses=[1.0])
     O.A = joint_lib.revolute_alignment(pivot=pivot, normal=normal)
-    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
+    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     O.J = joint_lib.revolute(qE=matrix.col([0.26]))
     O.qd = matrix.col([-0.19])
     O.parent = 1
@@ -97,7 +97,7 @@ class translational_body(object):
     mass_points = utils.mass_points(sites=sites, masses=[1.0])
     O.A = joint_lib.translational_alignment(
       center_of_mass=mass_points.center_of_mass())
-    O.I = mass_points.spatial_inertia_from_sites(alignment_T=O.A.T0b)
+    O.I = mass_points.spatial_inertia(alignment_T=O.A.T0b)
     qr = matrix.col((-0.1,0.3,0.2))
     O.J = joint_lib.translational(qr=qr)
     O.qd = matrix.col((-0.05,-0.19,0.29))
