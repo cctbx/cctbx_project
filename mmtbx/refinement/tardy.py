@@ -58,7 +58,7 @@ class potential_object(object):
     O.e_pot_and_normalization_factor(sites_moved=sites_moved)
     return matrix.col_list(flex.vec3_double(O.g))
 
-def run(fmodels, model, target_weights, params):
+def run(fmodels, model, target_weights, params, log):
   assert fmodels.fmodel_neutron() is None # not implemented
   assert model.ias_selection is None # tardy+ias is not a useful combination
   sst = model.restraints_manager.geometry.shell_sym_tables[0]
@@ -81,14 +81,14 @@ def run(fmodels, model, target_weights, params):
       cluster_manager=tt.cluster_manager))
   del sites
   def show_rms(minimizer=None):
-    print "rms:", xs.sites_cart().rms_difference(sites_cart_start)
+    print >> log, "rms:", xs.sites_cart().rms_difference(sites_cart_start)
   for i_time_step in xrange(params.number_of_time_steps):
-    print "tardy time step:", i_time_step
+    print >> log, "tardy time step:", i_time_step
     sim.dynamics_step(delta_t=params.time_step)
     show_rms()
   if (params.minimization_max_iterations > 0):
     sim.minimization(
       max_iterations=params.minimization_max_iterations,
       callback_after_step=show_rms)
-  print "After minimization:"
+  print >> log, "After tardy minimization:"
   show_rms()
