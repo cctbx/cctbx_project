@@ -4,7 +4,7 @@ from scitbx import matrix
 from cctbx import sgtbx
 #only need this for legacy table lookup; deprecate later:
 from rstbx.symmetry.sgtbx_adaptor import get_patterson_group
-from rstbx.command_line.lattice_symmetry import metric_subgroups as base_subgroups
+from cctbx.sgtbx.lattice_symmetry import metric_subgroups as base_subgroups
 
 group_classification = {
   1:{'system': 'triclinic','bravais': 'aP'},
