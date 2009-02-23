@@ -1,38 +1,39 @@
 class energies(object):
 
-  def __init__(self,
+  def __init__(O,
         compute_gradients,
         gradients,
         gradients_size,
         gradients_factory,
         normalization):
-    self.number_of_restraints = 0
-    self.residual_sum = 0
+    O.number_of_restraints = 0
+    O.residual_sum = 0
     if (not compute_gradients):
-      self.gradients = None
+      O.gradients = None
     else:
       if (gradients is None):
         assert gradients_size is not None
-        self.gradients = gradients_factory(gradients_size)
+        O.gradients = gradients_factory(gradients_size)
       else:
         if (gradients_size is not None):
           assert gradients.size() == gradients_size
-        self.gradients = gradients
-    self.normalization = normalization
+        O.gradients = gradients
+    O.normalization = normalization
+    O.normalization_factor = None
 
-  def __iadd__(self, rhs):
-    self.number_of_restraints += rhs.number_of_restraints
-    self.residual_sum += rhs.residual_sum
-    if (self.gradients is not None):
+  def __iadd__(O, rhs):
+    O.number_of_restraints += rhs.number_of_restraints
+    O.residual_sum += rhs.residual_sum
+    if (O.gradients is not None):
       assert rhs.gradients is not None
-      if (self.gradients.id() != rhs.gradients.id()):
-        self.gradients += rhs.gradients
-    return self
+      if (O.gradients.id() != rhs.gradients.id()):
+        O.gradients += rhs.gradients
+    return O
 
-  def finalize_target_and_gradients(self):
-    self.target = self.residual_sum
-    if (self.normalization):
-      normalization_factor = 1.0 / max(1, self.number_of_restraints)
-      self.target *= normalization_factor
-      if (self.gradients is not None):
-        self.gradients *= normalization_factor
+  def finalize_target_and_gradients(O):
+    O.target = O.residual_sum
+    if (O.normalization):
+      O.normalization_factor = 1.0 / max(1, O.number_of_restraints)
+      O.target *= O.normalization_factor
+      if (O.gradients is not None):
+        O.gradients *= O.normalization_factor
