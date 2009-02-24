@@ -68,7 +68,7 @@ class metric_subgroups(base_subgroups):
     #  in the minimum (reduced) form.  Determine the best cell for conventional
     #  monoclinic and orthorhombic crystal systems.
     subgroup_cb_op_best_cell = ref_subsym.change_of_basis_op_to_best_cell(
-      best_monoclinic_beta=True)
+      best_monoclinic_beta=self.best_monoclinic_beta)
 
     #fancy algorithm for reindexing work.  Triclinic symmetry is aligned
     #  with a reference orientation, but is not necessarily in reduced
