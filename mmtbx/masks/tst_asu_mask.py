@@ -113,7 +113,7 @@ def exercize_1(sg, atoms, molvol):
       unit_cell = struc.unit_cell(),
       group = struc.space_group(),
       resolution = fc.d_min(),
-      grid_method = 1,
+      grid_method = 2,
       grid_step_factor = params.grid_step_factor,
       solvent_radius = params.solvent_radius,
       shrink_truncation_radius = params.shrink_truncation_radius )
@@ -142,7 +142,7 @@ def exercize_1(sg, atoms, molvol):
   print "Asu-P1 Scaled R-factor = ", r1_asu_k
   print len(asu_mask.data)
   print asu_mask.data.size()
-  # assert r1_asu_k < 1.0E-6
+  assert r1_asu_k < 1.0E-6
 
 
 def run():
@@ -164,8 +164,7 @@ def run():
     exercize_0()
   if sg == "all" :
     for isg in xrange(1,231):
-      if isg not in (78, 95,171, 172, 180, 181, 201):
-        exercize_1(str(isg), atoms, molvol)
+      exercize_1(str(isg), atoms, molvol)
   else:
     exercize_1(sg, atoms, molvol)
 
