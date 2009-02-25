@@ -7,7 +7,7 @@ from scitbx.python_utils import dicts
 from scitbx.python_utils import command_line
 from libtbx import easy_run
 from boost import rational
-import sys
+import sys, os
 
 class colored_grid_point(object):
 
@@ -319,6 +319,8 @@ if (__name__=="__main__"):
   assert len(gridding) in (1,3)
   gridding = tuple([int(n) for n in gridding])
   if (len(gridding) == 1): gridding *= 3
+  if (not os.path.isdir("asu_gallery")):
+    os.mkdir("asu_gallery")
   if (len(flags.regular_args) == 1):
     if (not flags.enantiomorphic):
       test_all(gridding)
