@@ -1,4 +1,8 @@
 
+# this will try to guess file type based on extensions.  since this will
+# frequently break, it will also try every other file type if necessary,
+# stopping when it finds an appropriate format.
+
 # TODO: map files
 
 import sys, os, re
@@ -74,6 +78,7 @@ class any_file (object) :
 
   def try_as_hkl (self) :
     hkl_file = any_reflection_file(self.file_name)
+    assert hkl_file.file_type() is not None
     self.file_server = reflection_file_server(
       crystal_symmetry=None,
       force_symmetry=True,
@@ -84,6 +89,7 @@ class any_file (object) :
 
   def try_as_cif (self) :
     cif_object = server.read_cif(file_name=self.file_name)
+    assert len(cif) != 0
     self.file_type = "cif"
     self.file_object = cif_object
 
