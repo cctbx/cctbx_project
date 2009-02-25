@@ -44,15 +44,24 @@ namespace mmtbx { namespace masks {
   unsigned short site_symmetry_order(const cctbx::sgtbx::space_group &group, const rvector3_t &v, scitbx::double3 &delta)
   {
     unsigned short nops = 0;
+    scitbx::double3 dv(boost::rational_cast<double,int>(v[0]),
+      boost::rational_cast<double,int>(v[1]), boost::rational_cast<double,int>(v[2]));
+    dv -= floor(dv);
     for(size_t i=0; i<group.order_z(); ++i)
     {
       const cctbx::sgtbx::rt_mx op = group(i);
-      scitbx::double3 dv(boost::rational_cast<double,int>(v[0]),
-        boost::rational_cast<double,int>(v[1]), boost::rational_cast<double,int>(v[2]));
-      scitbx::double3 sv = op * dv;
-      dv -= floor(dv);
-      sv -= floor(sv);
-      sv = abs(dv - sv);
+      scitbx::double3 sv0 = op * dv;
+      scitbx::double3 sv1 = sv0 - scitbx::floor(sv0);
+      // scitbx::double3 sv = scitbx::abs(dv - sv1);
+      scitbx::double3 sv( std::fabs(dv[0]-sv1[0]), std::fabs(dv[1]-sv1[1]), std::fabs(dv[2]-sv1[2]) );
+      for(unsigned char j=0; j<3; ++j)
+      {
+        MMTBX_ASSERT( sv[j]<=1.0 );
+        MMTBX_ASSERT( sv[j]>=0.0 );
+        MMTBX_ASSERT( delta[j]>=0.0 );
+        if( sv[j] > 1.0-delta[j] )
+          sv[j] = std::fabs( sv[j]-1.0 );
+      }
       if( scitbx::le_all(sv , delta) )
         ++nops;
     }
@@ -63,49 +72,52 @@ namespace mmtbx { namespace masks {
   void atom_mask::mask_asu()
   {
     unsigned short order = group.order_z();
+    MMTBX_ASSERT( order>0 );
     const af::ref<data_type, grid_t > data_ref = data.ref();
     const scitbx::vec3<size_t> n_ = data_ref.accessor();
     const scitbx::vec3<int> n(n_[0], n_[1], n_[2]);
     cctbx::sgtbx::asu::rvector3_t mn, mx;
     MMTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
-    // scitbx::double3 tolerance( 0.05/n[0], 0.05/n[1], 0.05/n[2]);
-    scitbx::double3 tolerance( 0.15/n[0], 0.15/n[1], 0.15/n[2]);
+    scitbx::double3 tolerance( 0.05/n[0], 0.05/n[1], 0.05/n[2]);
     asu.box_corners(mn,mx);
     mul(mn, n);
     mul(mx, n);
     cctbx::sg_vec3 imx = ceil(mx), imn = floor(mn);
     MMTBX_ASSERT( imx[0]>imn[0] && imx[1] > imn[1] && imx[2] > imn[2] );
-    MMTBX_ASSERT( imx[0] <= n[0]+1 && imx[1] <= n[1] + 1 && imx[2] <= n[2] + 1 );
-    for(long i=imn[0]; i<=imx[0] && i<n[0]; ++i)
+    MMTBX_ASSERT( imx[0] <= n[0]+1 && imx[1] <= n[1] + 1 && imx[2] <= n[2] + 1 ); // this should go away
+
+    for(long i=imn[0]-1; i<=imx[0]+1 && i<=n[0]+1; ++i)
     {
       const rational_t x(i,n[0]);
       long i_c = i % n[0];
       if( i_c<0 )
         i_c += n[0];
-      for(long j=imn[1]; j<=imx[1] && j<n[1]; ++j)
+      for(long j=imn[1]-1; j<=imx[1]+1 && j<=n[1]+1; ++j)
       {
         const rational_t y(j,n[1]);
         long  j_c = j % n[1];
         if( j_c<0 )
           j_c += n[1];
-        for(long k=imn[2]; k<=imx[2] && k<n[2]; ++k)
+        for(long k=imn[2]-1; k<=imx[2]+1 && k<=n[2]+1; ++k)
         {
           const rational_t z(k,n[2]);
           long  k_c = k % n[2];
           if( k_c<0 )
             k_c += n[2];
           MMTBX_ASSERT( i_c<n[0] && j_c<n[1] && k_c<n[2] );
-          MMTBX_ASSERT( i<=n[0] && j<=n[1] && k<=n[2] );
           const rvector3_t pos(x,y,z);
-          if( asu.is_inside( pos ) )
+
+          if( asu.is_inside(pos) )
           {
             unsigned short nops = site_symmetry_order(group, pos, tolerance);
             MMTBX_ASSERT( nops>0 );
             MMTBX_ASSERT( order%nops == 0);
-            data_ref(i_c,j_c,k_c) = order/nops;
+            nops = order / nops;
+            MMTBX_ASSERT( data_ref(i_c,j_c,k_c)==0 || nops == data_ref(i_c,j_c,k_c) );
+            data_ref(i_c,j_c,k_c) = nops;
           }
-          else
-            data_ref(i_c,j_c,k_c ) = 0;
+          //else
+            //data_ref(i_c,j_c,k_c ) = 0;
         }
       }
     }
@@ -122,7 +134,7 @@ namespace mmtbx { namespace masks {
     size_t nn = 0;
     nn = std::accumulate( this->get_mask().begin(), this->get_mask().end(), nn );
     MMTBX_ASSERT( nn > 0 );
-    MMTBX_ASSERT( nn == this->get_mask().size() ); // P43 (78), P4322 (95) and a few others fail here
+    MMTBX_ASSERT( nn == this->get_mask().size() );
     size_t n_solvent = this->compute_accessible_surface(asu_atoms, asu_radii);
     size_t tmp=0;
     tmp = std::count( get_mask().begin(), get_mask().end(), 0);
