@@ -64,7 +64,7 @@ def sample_asu(asu, n=(12,12,12), volume=False, is_stripped_asu=False):
     r_grid.append(b)
   return u_grid, r_grid, colored_grid_points, n_redundancies
 
-def check_asu(space_group_number, asu, n=(12,12,12), is_stripped_asu=False):
+def check_asu(space_group_number, asu, n, is_stripped_asu, soft_mode):
   sg_info = sgtbx.space_group_info("Hall: " + asu.hall_symbol)
   sg_info.show_summary()
   assert sg_info.type().number() == space_group_number
@@ -73,16 +73,18 @@ def check_asu(space_group_number, asu, n=(12,12,12), is_stripped_asu=False):
   sys.stdout.flush()
   u_grid, r_grid, colored_grid_points, sampling_n_redundancies = sample_asu(
     asu, n, is_stripped_asu=is_stripped_asu)
-  n_redundancies = [0]
+  n_redundancies = 0
   redundancies = {}
   for i in xrange(n[0]):
     for j in xrange(n[1]):
       for k in xrange(n[2]):
-        grid_asu(ops, n, u_grid, r_grid, i,j,k,
-                 sampling_n_redundancies, n_redundancies,
-                 redundancies)
+        n_redundancies += grid_asu(
+          ops=ops, n=n, u_grid=u_grid, r_grid=r_grid, i=i,j=j,k=k,
+          sampling_n_redundancies=sampling_n_redundancies,
+          redundancies=redundancies,
+          soft_mode=soft_mode)
   print "number of redundancies: %d+%d," % (
-    sampling_n_redundancies, n_redundancies[0]),
+    sampling_n_redundancies, n_redundancies),
   sg_info.show_summary()
   sys.stdout.flush()
   redundancies = sort_redundancies(redundancies)
@@ -92,6 +94,9 @@ def check_asu(space_group_number, asu, n=(12,12,12), is_stripped_asu=False):
     space_group_number, asu, colored_grid_points=colored_grid_points)
   if (not is_stripped_asu):
     analyze_redundancies(asu, n, redundancies)
+    if (not soft_mode):
+      assert sampling_n_redundancies == 0
+      assert n_redundancies == 0
   sys.stdout.flush()
 
 class color_server(object):
@@ -172,9 +177,16 @@ def u_index_as_r_index(n, u_index, r_grid, allow_ambiguity):
   assert r_index is not None
   return r_index, unit_shifts
 
-def grid_asu(ops, n, u_grid, r_grid, i, j, k,
-             sampling_n_redundancies, n_redundancies,
-             redundancies):
+def grid_asu(
+      ops,
+      n,
+      u_grid,
+      r_grid,
+      i,j,k,
+      sampling_n_redundancies,
+      redundancies,
+      soft_mode):
+  result = 0
   marker = 0
   for rt in ops:
     eq_gpt, rtu = rt_times_grid_point(rt, (i,j,k), n)
@@ -192,7 +204,7 @@ def grid_asu(ops, n, u_grid, r_grid, i, j, k,
           s = str(rtuu)
           v = r_pivot, r_eq
           #print "Redundancy at", v, s
-          n_redundancies[0] += 1
+          result += 1
           try: redundancies[s].append(v)
           except KeyboardInterrupt: raise
           except: redundancies[s] = [v]
@@ -202,6 +214,8 @@ def grid_asu(ops, n, u_grid, r_grid, i, j, k,
         break
   if (marker != 1):
     print "Orbit does not intersect with asymmetric unit", (i,j,k)
+    assert soft_mode
+  return result
 
 def compare_redundancies(a, b):
   return cmp(len(b[1]), len(a[1]))
@@ -298,6 +312,7 @@ if (__name__=="__main__"):
     "strip_grid",
     "strip_polygons",
     "enantiomorphic",
+    "soft",
   ])
   assert len(flags.regular_args) > 0
   gridding = flags.regular_args[0].split(",")
@@ -331,5 +346,9 @@ if (__name__=="__main__"):
           asu = asu_original.volume_only()
         if (flags.show_asu):
           asu.show_comprehensive_summary()
-        check_asu(int(space_group_number), asu, gridding,
-          flags.strip or flags.strip_grid)
+        check_asu(
+          space_group_number=int(space_group_number),
+          asu=asu,
+          n=gridding,
+          is_stripped_asu=(flags.strip or flags.strip_grid),
+          soft_mode=flags.soft)
