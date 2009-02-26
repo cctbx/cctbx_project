@@ -3,13 +3,8 @@ import scitbx.math
 from scitbx import matrix
 from scitbx.array_family import flex
 from cctbx import sgtbx, crystal
-from rstbx.symmetry.subgroup import metric_subgroups, MetricSubgroup, group_classification as group_classif
-
-def group_classif_bravais():
-  bravais_only_keys = [1,3,5,16,21,22,23,89,97,155,177,207,211,209]
-  rd = {}
-  for key in bravais_only_keys: rd[key]=group_classif[key]
-  return rd
+from rstbx.symmetry.subgroup import metric_subgroups, MetricSubgroup
+from cctbx.sgtbx.bravais_types import bravais_lattice
 
 def echelon_constraints(group,reciprocal_space = 1):
   #    direct space : XT G X  = G
@@ -65,7 +60,7 @@ def bestcmp(a,b):
   return 1
 
 def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
-    space_group_symbol="P 1",force_minimum=False):
+    space_group_symbol="P 1",force_minimum=False,best_monoclinic_beta=True):
     # with regard to "force_minimum": when autoindexing, the orientation
     # matrix may be derived from comparison to a previously indexed case;
     # the setting may be non-standard; therefore we do not want to
@@ -76,7 +71,8 @@ def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
   M = metric_subgroups(input_symmetry,max_delta,
                        enforce_max_delta_for_generated_two_folds=True,
                        bravais_types_only=bravais_types_only,
-                       force_minimum=force_minimum)
+                       force_minimum=force_minimum,
+                       best_monoclinic_beta=best_monoclinic_beta)
   M.labelit_style = []
   for subgroup in M.result_groups:
     # required keys for subgroup:
@@ -95,9 +91,19 @@ def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
     #   reduced_group: the acentric group, expressed in input_cell basis
     #   supersym: acentric metric supergroup, input_cell basis
 
-    subgroup.update (  # Get 'bravais' and 'system' keys
-      group_classif[sgtbx.space_group_info(
-          group=subgroup['supersym'].space_group()).type().number()])
+    group_classification = bravais_lattice(sgtbx.space_group_info(
+          group=subgroup['supersym'].space_group()).type().number())
+    subgroup['bravais'] = str(group_classification)
+    subgroup['system'] = group_classification.crystal_system.lower()
+
+    # ad-hoc fix to support the s_minimizer; remove this when
+    # Orientation.constrain() is re-implemented.
+    if subgroup['bravais']=="hR" and subgroup['system']=="trigonal":
+      subgroup['system']="rhombohedral"
+    if subgroup['bravais']=="hP" and subgroup['system']=="trigonal":
+      subgroup['system']="hexagonal"
+    #end of ad-hoc section
+
     subgroup['best_group']=subgroup['best_subsym'].space_group()
     #special procedure to get non-centrosymmetric group
     subgroup['reduced_group']=\
