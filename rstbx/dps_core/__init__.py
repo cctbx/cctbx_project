@@ -6,17 +6,50 @@ from rstbx_ext import *
 import rstbx_ext as ext
 
 import types,math
-from rstbx.dps_core.constrainment import s_minimizer
 
 from cctbx.crystal_orientation import basis_type
 from cctbx.crystal_orientation import ext as coext
 
 class _crystal_orientation(boost.python.injector, coext.crystal_orientation):
 
-  def constrain(self,crystal_system):
-    S = s_minimizer(self,constraint=crystal_system)
-    newOrient = S.newOrientation()
-    return newOrient
+  def constrain(self,constraints):
+
+    #algorithm 1.  Use pre-defined crystal_systems to give hard-coded restraints.
+    # dps_core.constrainment.s_minimizer uses LBFGS minimizer to adapt
+    # all 9 components of the orientation matrix.   This gives the best-fit
+    # to the starting matrix (better than algorithm #2), but the disadvantage
+    # is that it is keyed to the crystal_system descriptors.  It is therefore
+    # not adapted to all small-molecule space groups (monoclinics),
+    # and will not take into account non-standard settings.
+
+    if constraints in ["triclinic","monoclinic",'orthorhombic','tetragonal',
+                       "cubic","rhombohedral",'hexagonal']:
+
+      from rstbx.dps_core.constrainment import s_minimizer
+      S = s_minimizer(self,constraint=constraints)
+      return S.newOrientation()
+
+    #algorithm 2:  Tensor_rank_2 symmetrization
+    # Advantages:  constraints are calculated directly from the space
+    # group, so will account for non-standard settings.
+    # Disadvantages:  drift away from starting orientation is greater than
+    # for algorithm #1.
+
+    from cctbx.sgtbx import space_group
+    if isinstance(constraints,space_group):
+
+      from labelit.symmetry.metricsym import a_g_conversion
+      converter = a_g_conversion.AG()
+      converter.forward(self)
+      average_cell = constraints.average_unit_cell(self.unit_cell())
+      converter.validate_and_setG( average_cell.reciprocal().metrical_matrix() )
+      return Orientation(converter.back(),basis_type.reciprocal)
+
+    #Future plans:  a hybrid approach.  Use algorithm 2 to do the
+    # symmetrization, as it is clearly the best approach for 1) conciseness of
+    # code, 2) supporting non-standard settings.  Then use an LBFGS
+    # minimizer to minimize the psi, phi and theta offsets to the
+    # original orientation.
 
 class Orientation(coext.crystal_orientation):
 
