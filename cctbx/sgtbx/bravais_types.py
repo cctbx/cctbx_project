@@ -58,7 +58,7 @@ class bravais_lattice(object):
     return "%s%s"%(self.crystal_family_symbols[self.crystal_system],
                    self.centring_symbol)
 
-def tst_bravais_types():
+def tst_bravais_types(verbose):
   from cctbx import sgtbx
   from cctbx.sgtbx.subgroups import subgroups
 
@@ -78,6 +78,9 @@ def tst_bravais_types():
     GC = bravais_lattice(space_group_number)
     bravais_types_tally[str(GC)]+=1
     crystal_systems_tally[GC.crystal_system]+=1
+    if verbose:
+      GC.space_group_info.show_summary()
+      print str(GC), GC.crystal_system
 
     # idea, not fully implemented--more extensive testing by generating all subgroups
     if False:
@@ -101,7 +104,7 @@ def exercise():
     for symbol in centric:
       print "/* %s */ %d," % (
         symbol, sgtbx.space_group_info(symbol=symbol).type().number())
-  assert tst_bravais_types()
+  assert tst_bravais_types(verbose=("--Verbose" in sys.argv[1:]))
   print "OK"
 
 if (__name__ == "__main__"):
