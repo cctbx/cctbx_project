@@ -17,7 +17,8 @@ class monitors(object):
       model_ref = model_ref,
       neutron_refinement = self.neutron_refinement,
       out       = log,
-      call_back_after_collect = call_back_after_collect)
+      call_back_after_collect = call_back_after_collect,
+      is_neutron_monitor = False)
     self.monitor_neutron = None
     if(fmodels.fmodel_n is not None):
       self.monitor_neutron = print_statistics.refinement_monitor(
@@ -25,7 +26,8 @@ class monitors(object):
         model_ref = model_ref,
         neutron_refinement = self.neutron_refinement,
         out       = log,
-        call_back_after_collect = call_back_after_collect)
+        call_back_after_collect = call_back_after_collect,
+        is_neutron_monitor = True)
     self.target_weights = None
 
   def collect(self, step,

@@ -175,7 +175,8 @@ class refinement_monitor(object):
                      out=None,
                      short=False,
                      neutron_refinement = None,
-                     call_back_after_collect=None):
+                     call_back_after_collect=None,
+                     is_neutron_monitor=False):
     adopt_init_args(self, locals())
     if (self.out is None): self.out = sys.stdout
     self.model_ini = None
