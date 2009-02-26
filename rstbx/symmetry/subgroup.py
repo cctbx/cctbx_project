@@ -6,33 +6,6 @@ from cctbx import sgtbx
 from rstbx.symmetry.sgtbx_adaptor import get_patterson_group
 from cctbx.sgtbx.lattice_symmetry import metric_subgroups as base_subgroups
 
-group_classification = {
-  1:{'system': 'triclinic','bravais': 'aP'},
-  3:{'system': 'monoclinic','bravais': 'mP'},
-  5:{'system': 'monoclinic','bravais': 'mC'},
-  16:{'system': 'orthorhombic','bravais': 'oP'},
-  21:{'system': 'orthorhombic','bravais': 'oC'},
-  22:{'system': 'orthorhombic','bravais': 'oF'},
-  23:{'system': 'orthorhombic','bravais': 'oI'},
-  75:{'system': 'tetragonal','bravais': 'tP'}, # P4
-  89:{'system': 'tetragonal','bravais': 'tP'},
-  79:{'system': 'tetragonal','bravais': 'tI'}, # I4
-  97:{'system': 'tetragonal','bravais': 'tI'},
-  146:{'system': 'rhombohedral','bravais': 'hR'}, # R3
-  155:{'system': 'rhombohedral','bravais': 'hR'},
-  143:{'system': 'hexagonal','bravais': 'hP'}, # P3
-  149:{'system': 'hexagonal','bravais': 'hP'}, # P312
-  150:{'system': 'hexagonal','bravais': 'hP'}, # P321
-  168:{'system': 'hexagonal','bravais': 'hP'}, # P6
-  177:{'system': 'hexagonal','bravais': 'hP'},
-  195:{'system': 'cubic','bravais': 'cP'}, # P23
-  207:{'system': 'cubic','bravais': 'cP'},
-  197:{'system': 'cubic','bravais': 'cI'}, # I23
-  211:{'system': 'cubic','bravais': 'cI'},
-  196:{'system': 'cubic','bravais': 'cF'}, # F23
-  209:{'system': 'cubic','bravais': 'cF'},
-}
-
 #For LABELIT, the derive from the iotbx subgroup list such that the
 #  input cell is NOT reduced to "minimum symmetry".  This allows alignment
 #  of the basis with a previous data wedge.
