@@ -173,13 +173,21 @@ if (sys.platform == "win32"):
       stdout_splitlines=False).stdout_buffer
     if (cl_info.find("Version 13.10") >= 0):
       env_base = Environment(ENV=os.environ, MSVS_VERSION="7.1")
+      env_etc.have_manifest_tool = False
     elif (cl_info.find("Version 14.00") >= 0):
       env_base = Environment(ENV=os.environ, MSVS_VERSION="8.0")
+      env_etc.have_manifest_tool = True
+    elif (cl_info.find("Version 15.00") >= 0):
+      env_base = Environment(ENV=os.environ, MSVS_VERSION="9.0")
+      env_etc.have_manifest_tool = True
     else:
-      env_base = Environment(ENV=os.environ)
+      raise RuntimeError("""\
+Unknown or unsupported cl.exe version.
+
+Minimum version is 7.1 (Visual Studio 2003).
+For newer versions, please adjust this SConscript.
+""")
     print "MSVS_VERSION:", env_base["MSVS_VERSION"]
-    env_etc.have_manifest_tool = os.path.isfile(
-      os.path.join(os.path.dirname(cl_exe), "mt.exe"))
     env_base.Replace(
       SHCC="cl",
       SHCXX="cl",
