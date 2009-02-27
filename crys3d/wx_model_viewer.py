@@ -121,7 +121,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
         point1 = self.pick_points[1]
       )
 
-  def update_view (self, redraw_points=True, redraw_lines=False) :
+  def update_view (self, redraw_points=True, redraw_lines=True) :
     if redraw_lines :
       self.lines_display_list = None
     if redraw_points :
@@ -175,6 +175,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
       glEnable(GL_LIGHTING)
       glEnable(GL_LIGHT0)
       glEnable(GL_LIGHT1)
+      glEnable(GL_NORMALIZE)
     glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, [1.0,1.0,1.0,1.0])
     glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.1, 0.1, 0.1, 1.0])
@@ -210,7 +211,7 @@ class model_viewer_mixin (model_viewer_base) :
     self.flag_show_trace                   = False
     self.flag_show_hydrogens               = True
 
-  def update_view (self, redraw_points=True, redraw_lines=False) :
+  def update_view (self, redraw_points=True, redraw_lines=True) :
     self.get_drawn_atom_count()
     self.recolor()
     model_viewer_base.update_view(self, redraw_points, redraw_lines)
@@ -453,7 +454,7 @@ class selection_viewer_mixin (model_viewer_mixin) :
     if key == ord('z') :
       self.zoom_selection()
 
-  def update_view (self, redraw_points=True, redraw_lines=False) :
+  def update_view (self, redraw_points=True, redraw_lines=True) :
     self.selection_display_list = None
     model_viewer_mixin.update_view(self, redraw_points, redraw_lines)
 
