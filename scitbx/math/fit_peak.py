@@ -290,9 +290,9 @@ class gaussian(object):
              self.p[9]
 
   def get_gradient(self,r=None):
-    h = math.exp(self.get_height(r=r))
-    return ( r[0]*r[0]/h, r[1]*r[1]/h, r[2]*r[2]/h, r[0]/h, r[1]/h, r[2]/h,
-             r[0]*r[1]/h, r[0]*r[2]/h, r[1]*r[2]/h, 1.0/h )
+    h = 1.0/math.exp(self.get_height(r=r))
+    return ( r[0]*r[0]*h, r[1]*r[1]*h, r[2]*r[2]*h, r[0]*h, r[1]*h, r[2]*h,
+             r[0]*r[1]*h, r[0]*r[2]*h, r[1]*r[2]*h, 1.0*h )
 
 class pick_map_neighbors(object):
   """
