@@ -39,6 +39,7 @@ def run():
   ["$D/regression/tst_reflection_statistics.py", "Fdd2 P31m"],
   "$D/tst_data_plots.py",
   "$D/tst_csv_utils.py",
+  "$D/tst_file_reader.py",
   )
 
   build_dir = libtbx.env.under_build("iotbx")
