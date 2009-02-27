@@ -206,8 +206,9 @@ def verify_miller_arrays(a1, a2, eps=1.e-5):
   if (v.sigmas() is not None):
     assert flex.max(flex.abs(a1.sigmas() - v.sigmas())) < eps
 
-def exercise(space_group_info, anomalous_flag,
-             n_scatterers=8, d_min=2.5, verbose=0):
+def exercise_recycle(
+      space_group_info, anomalous_flag,
+      n_scatterers=8, d_min=2.5, verbose=0):
   f_calc = random_f_calc(
     space_group_info=space_group_info,
     n_scatterers=n_scatterers,
@@ -228,7 +229,7 @@ def exercise(space_group_info, anomalous_flag,
 
 def run_call_back(flags, space_group_info):
   for anomalous_flag in [False, True]:
-    exercise(
+    exercise_recycle(
       space_group_info=space_group_info,
       anomalous_flag=anomalous_flag,
       verbose=flags.Verbose)
