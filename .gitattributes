@@ -302,6 +302,11 @@ mmtbx/regression/tst_altloc_chain_break.py -text
 mmtbx/rotamer/rotamer_names.props -text
 mmtbx/rotamer/sidechain_angles.props -text
 mmtbx/rotamer/sidechain_angles.py -text
+mmtbx/rsr/SConscript -text
+mmtbx/rsr/__init__.py -text
+mmtbx/rsr/rsr.h -text
+mmtbx/rsr/rsr_ext.cpp -text
+mmtbx/rsr/tst.py -text
 mmtbx/scaling/absence_likelihood.py -text
 mmtbx/scaling/absences.py -text
 mmtbx/tls/command_line.py -text
