@@ -1,6 +1,7 @@
 #include <cctbx/sgtbx/lattice_symmetry.h>
 #include <cctbx/sgtbx/rot_mx_info.h>
 #include <scitbx/array_family/sort.h>
+#include <limits>
 
 namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
 
@@ -26,7 +27,13 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
       double cos_delta = numerator / denominator;
       scitbx::math::update_min(min_cos_delta, cos_delta);
     }
-    return std::acos(min_cos_delta)/scitbx::constants::pi_180;
+    if ((min_cos_delta) > 1.0-std::numeric_limits<double>::epsilon()) {
+      //take care of case where numeric precision isn't able to correctly
+      //  identify the equality of numerator and denominator
+      return 0.0;
+    } else {
+      return std::acos(min_cos_delta)/scitbx::constants::pi_180;
+    }
   }
 
   space_group
@@ -37,7 +44,11 @@ namespace cctbx { namespace sgtbx { namespace lattice_symmetry {
   {
     uc_mat3 const& frac = reduced_cell.fractionalization_matrix();
     uc_mat3 const& orth = reduced_cell.orthogonalization_matrix();
-    double min_cos_delta = std::cos(max_delta * scitbx::constants::pi_180);
+      //take care of case where numeric precision isn't able to correctly
+      //  identify the equality of numerator and denominator
+    double min_cos_delta = std::min(
+      std::cos(max_delta * scitbx::constants::pi_180),
+      1.0-std::numeric_limits<double>::epsilon());
     unsigned n_two_folds = sizeof(reduced_cell_two_folds)
                          / sizeof(reduced_cell_two_fold_info);
     std::vector<unsigned> i_two_folds;
