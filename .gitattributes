@@ -216,6 +216,7 @@ iotbx/shelx/parsers.py -text
 iotbx/shelx/tst_lex_parse_build.py -text
 iotbx/shelx/util.py -text
 iotbx/tst_data_plots.py -text
+iotbx/tst_file_reader.py -text
 libtbx/assert_utils.py -text
 libtbx/command_line/assert_line_count.py svneol=native#text/x-python
 libtbx/command_line/bash.sh -text

@@ -5,13 +5,14 @@
 
 # TODO: map files
 
-import sys, os, re
+import sys, os, re, string
 from mmtbx.monomer_library import server
 from iotbx.phil import parse as parse_phil
 from iotbx.pdb import is_pdb_file
 from iotbx.reflection_file_reader import any_reflection_file
 from iotbx.reflection_file_utils import reflection_file_server
 from libtbx.utils import Sorry
+import cPickle
 
 standard_file_types = ["hkl", "map", "pdb", "cif", "phil", "seq", "xml", "pkl",
                        "txt"]
@@ -24,7 +25,7 @@ standard_file_extensions = {
   'map'  : ["map", "ccp4"],
   'phil' : ["params", "eff", "def", "phil"],
   'xml'  : ["xml"],
-  'pkl'  : ["pickle"],
+  'pkl'  : ["pickle", "pkl"],
   'txt'  : ["txt", "log", "html"],
 }
 compression_extensions = ["gz", "Z", "bz2", "zip"]
@@ -46,8 +47,9 @@ class any_file (object) :
       self,
       file_name,
       get_processed_file=False,
-      valid_types=["pdb","hkl","cif","seq","phil", "txt"]) :
+      valid_types=["pdb","hkl","cif","pkl","seq","phil", "txt"]) :
 
+    self.valid_types = valid_types
     if not os.path.isfile(file_name) :
       raise Sorry("%s is not a valid file.")
 
@@ -59,12 +61,13 @@ class any_file (object) :
     self.get_processed_file = get_processed_file
 
     (file_base, file_ext) = os.path.splitext(file_name)
-    for file_type in standard_file_types :
+    for file_type in valid_types :
       if file_ext[1:] in standard_file_extensions[file_type] :
         try :
           read_method = getattr(self, "try_as_%s" % file_type)
           read_method()
         except Exception, e :
+          print e
           self.file_type = None
           self.file_object = None
         else :
@@ -89,24 +92,33 @@ class any_file (object) :
 
   def try_as_cif (self) :
     cif_object = server.read_cif(file_name=self.file_name)
-    assert len(cif) != 0
+    assert len(cif_object) != 0
     self.file_type = "cif"
     self.file_object = cif_object
 
   def try_as_phil (self) :
-    phil_object = parse_phil(file_name=self.file_name)
+    phil_object = parse_phil(file_name=self.file_name, process_includes=True)
     self.file_type = "phil"
     self.file_object = phil_object
 
   def try_as_seq (self) :
     self.try_as_txt()
+    assert len(self.file_object) != 0
+    for _line in self.file_object.splitlines() :
+      line = _line.rstrip()
+      assert (len(line) == 0 or
+              line[0] == ">" or
+              (line[-1] == '*' and line[:-1].isalpha()) or
+              line.isalpha())
     self.file_type = "seq"
 
   def try_as_map (self) :
     raise Sorry("Map input not currently supported.")
 
-  def try_as_pickle (self) :
-    raise Sorry("Pickle input not currently supported.")
+  def try_as_pkl (self) :
+    pkl_object = cPickle.load(open(self.file_name, "rb"))
+    self.file_type = "pkl"
+    self.file_object = pkl_object
 
   def try_as_txt (self) :
     file_as_string = open(self.file_name).read()
@@ -115,11 +127,13 @@ class any_file (object) :
     self.file_object = file_as_string
 
   def try_all_types (self) :
-    for filetype in standard_file_types :
+    for filetype in self.valid_types :
       read_method = getattr(self, "try_as_%s" % filetype)
       try :
         read_method()
       except Exception, e :
+        self.file_type = None
+        self.file_object = None
         continue
       else :
         if self.file_type is not None :
