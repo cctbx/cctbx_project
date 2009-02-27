@@ -99,7 +99,6 @@ def test_fit_3d_gaussian():
     for j in xrange(d):
       for k in xrange(d):
         test_map[(i,j,k)] = p.get_height(r=(float(i)/d,float(j)/d,float(k)/d))
-        test_map[(i,j,k)] = math.log(test_map[(i,j,k)])
 
   # check fitting
   neighbors = fit_peak.pick_map_neighbors(site=(4,4,4),map_in=test_map)
@@ -114,5 +113,5 @@ if (__name__ == "__main__"):
   test_pick_map_neighbors()
   test_fit_3d_parabola()
   test_fit_3d_quadratic()
-  #test_fit_3d_gaussian()
+  test_fit_3d_gaussian()
   print "OK"
