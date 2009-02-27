@@ -431,7 +431,46 @@ Symmetry in minimum-lengths cell: P -1 (No. 2)
       Maximal angular difference: 0.000 degrees
 
 """)
+  assert tst_instability_on_the_lepage_tolerance()
   print "OK"
+
+def tst_instability_on_the_lepage_tolerance():
+  """Basic idea:  we introduced the Lepage tolerance to solve the problem
+     that numerically-determined or experimentally-determined twofolds do
+     not fall at exact positions.  However, when the input is exact, we
+     expect to be able to reduce the tolerance to zero."""
+
+  def give_cases():
+    from cctbx import crystal
+    from cctbx.uctbx import unit_cell
+    from cctbx.sgtbx import space_group_info
+    pdb =["1vjg/P 32 2 1/(56.192, 56.192, 129.318, 90, 90, 120)/16",
+          "1vjz/P 43 21 2/(64.684, 64.684, 202.189, 90, 90, 90)/10",
+          "1vl6/P 65/(143.963, 143.963, 163.428, 90, 90, 120)/16",
+          "1vlc/P 3 2 1/(118.78, 118.78, 56.699, 90, 90, 120)/16",
+          "2ash/C 1 2 1/(169.467, 99.422, 124.163, 90, 123.8, 90)/2",
+          "2etj/P 31/(51.821, 51.821, 76.293, 90, 90, 120)/16",
+          "2qyv/P 21 21 2/(173.922, 84.293, 123.204, 90, 90, 90)/5"]
+    for header in pdb:
+      tokens=header.split("/")
+      case = {"pdb_code":tokens[0],"centring_type":tokens[1][0],
+              "unit_cell":unit_cell(eval(tokens[2])),
+              "expected_centrosymmetric_subgroups_of_metric":int(tokens[3])}
+      case["symmetry"]=crystal.symmetry(space_group_info=
+                         space_group_info(tokens[1]),
+                         unit_cell=case["unit_cell"])
+      yield case
+
+  from cctbx.sgtbx.lattice_symmetry import metric_subgroups
+  for small_max_delta in [1.E-6, 0.0]:
+    for case in give_cases():
+      G = metric_subgroups(case["symmetry"],
+                         max_delta=small_max_delta,bravais_types_only=False)
+    assert len(G.result_groups)==case["expected_centrosymmetric_subgroups_of_metric"]
+
+  return True
+
+
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])
