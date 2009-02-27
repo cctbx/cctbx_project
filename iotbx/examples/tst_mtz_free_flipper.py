@@ -1,13 +1,20 @@
-from iotbx.examples import mtz_free_flipper
-from iotbx.examples import mtz_convert_free_to_work
-import iotbx.mtz
+import libtbx.load_env
+if (libtbx.env.has_module("ccp4io")):
+  from iotbx.examples import mtz_free_flipper
+  from iotbx.examples import mtz_convert_free_to_work
+  import iotbx.mtz as iotbx_mtz
+else:
+  iotbx_mtz = None
 from libtbx.test_utils import show_diff
 from libtbx.utils import format_cpu_times
-import libtbx.load_env
 from cStringIO import StringIO
 import os
 
 def exercise():
+  if (iotbx_mtz is None):
+    print \
+      "Skipping iotbx/examples/tst_mtz_free_flipper.py: ccp4io not available"
+    return
   input_file_name = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/l.mtz",
     test=os.path.isfile)
@@ -25,7 +32,7 @@ def exercise():
         ("free_flipped_free_flipped_l.mtz", (13469,1065,2323)),
         ("less_free_l.mtz", (14002,532,2323))]:
     s = StringIO()
-    mtz_obj = iotbx.mtz.object(file_name=file_name)
+    mtz_obj = iotbx_mtz.object(file_name=file_name)
     mtz_obj.show_column_data(out=s, format="spreadsheet")
     s = s.getvalue()
     spreadsheets.append(s)

@@ -1,6 +1,6 @@
-Import("mtz_env", "env_etc")
+Import("iotbx_mtz_env", "env_etc")
 
-env = mtz_env.Copy()
+env = iotbx_mtz_env.Copy()
 ccp4io_lib = getattr(env_etc, "ccp4io_lib", "cmtz")
   # XXX backward compatibility 2008-09-10
 env.Prepend(LIBS=["cctbx", ccp4io_lib]+env_etc.libm)

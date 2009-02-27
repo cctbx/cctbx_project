@@ -1,10 +1,13 @@
-from iotbx import mtz
+import libtbx.load_env
+if (libtbx.env.has_module("ccp4io")):
+  from iotbx import mtz
+else:
+  mtz = None
 from iotbx.option_parser import option_parser
 from cctbx import sgtbx
 from cctbx import uctbx
 from cctbx.array_family import flex
 from libtbx.test_utils import Exception_expected, approx_equal, show_diff
-import libtbx.load_env
 from itertools import count
 from cStringIO import StringIO
 import sys, os
@@ -1259,6 +1262,9 @@ min & max values of detector coords (pixels): [86.0, 87.0, 88.0, 89.0, 90.0, 91.
       assert dataset.n_batches() == [5,7][dataset.id()]
 
 def exercise():
+  if (mtz is None):
+    print "Skipping iotbx/mtz/tst_ext.py: ccp4io not available"
+    return
   command_line = (option_parser()
     .option(None, "--verbose",
       action="store_true")
@@ -1287,7 +1293,10 @@ def exercise():
   while (command_line.options.forever):
     exercise_basic()
     exercise_modifiers()
+
+def run():
+  exercise()
   print "OK"
 
 if (__name__ == "__main__"):
-  exercise()
+  run()

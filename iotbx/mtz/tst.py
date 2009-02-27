@@ -1,4 +1,8 @@
-from iotbx import mtz
+import libtbx.load_env
+if (libtbx.env.has_module("ccp4io")):
+  from iotbx import mtz
+else:
+  mtz = None
 from cctbx.development import debug_utils
 from cctbx import miller
 from cctbx import crystal
@@ -305,10 +309,17 @@ def exercise_repair_ccp4i_import_merged_data():
   assert approx_equal(miller_arrays[0].data(), [5,6])
   assert approx_equal(miller_arrays[0].sigmas(), [0.5,0.6])
 
-def run():
+def exercise():
+  if (mtz is None):
+    print "Skipping iotbx/mtz/tst.py: ccp4io not available"
+    return
   exercise_extract_delta_anomalous()
   exercise_repair_ccp4i_import_merged_data()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+
+def run():
+  exercise()
+  print "OK"
 
 if (__name__ == "__main__"):
   run()

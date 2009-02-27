@@ -2,9 +2,9 @@ from cctbx import sgtbx
 import libtbx.load_env
 import os
 
-try:
+if (libtbx.env.has_module("ccp4io")):
   ccp4io_dist = libtbx.env.dist_path("ccp4io")
-except KeyError:
+else:
   ccp4io_dist = None
 
 def ccp4_symbol(space_group_info):
@@ -45,6 +45,9 @@ def search_for_ccp4_symbol(space_group_info, file_iter):
   return None
 
 def exercise():
+  if (ccp4io_dist is None):
+    print "Skipping iotbx/mtz/extract_from_symop_lib.py: ccp4io not available"
+    return
   for space_group_number in xrange(1,231):
     space_group_info = sgtbx.space_group_info(
       number=space_group_number,
