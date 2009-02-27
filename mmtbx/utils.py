@@ -757,7 +757,6 @@ def print_header(line, out=None):
   if (out is None): out = sys.stdout
   header_len = 80
   line_len = len(line)
-  assert line_len <= header_len
   fill_len = header_len - line_len
   fill_rl = fill_len/2
   fill_r = fill_rl
@@ -1508,7 +1507,8 @@ def model_simple(pdb_file_names,
     normalization = normalization)
   pdb_hierarchy = \
     mmtbx_pdb_file.processed_pdb_file.all_chain_proxies.pdb_hierarchy
-  result = mmtbx.model.manager(
+  from mmtbx import model
+  result = model.manager(
     processed_pdb_files_srv = mmtbx_pdb_file.processed_pdb_files_srv,
     restraints_manager      = restraints_manager,
     xray_structure          = xray_structure,

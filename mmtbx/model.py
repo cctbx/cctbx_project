@@ -176,7 +176,7 @@ class manager(object):
           sel = sel_pair[0]
           if(self.ias_selection is not None and self.ias_selection.count(True) > 0):
             sel = sel.select(~self.ias_selection)
-          self.geometry_minimization(
+          min_result = self.geometry_minimization(
             selection = sel,
             bond      = True,
             nonbonded = sel_pair[1],
@@ -184,6 +184,7 @@ class manager(object):
             dihedral  = True,
             chirality = True,
             planarity = True)
+      if 0: print min_result.final_target_value
       sites_cart_mac_after = self.xray_structure.sites_cart().select(selx)
       assert approx_equal(flex.max(sites_cart_mac_before.as_double() -
         sites_cart_mac_after.as_double()), 0)
@@ -293,15 +294,12 @@ class manager(object):
       atoms = ag.atoms()
       # do not add H or D to O at or close to special position
       skip = False
+      sps = self.xray_structure.special_position_settings(
+        min_distance_sym_equiv=3.0)
       for atom in atoms:
         if (atom.element.strip() == "O"):
-          site_symmetry = sgtbx.site_symmetry(
-            self.xray_structure.unit_cell(),
-            self.xray_structure.space_group(),
-            self.xray_structure.unit_cell().fractionalize(atom.xyz),
-            3.0,
-            True)
-          if(site_symmetry.n_matrices() != 1):
+          sps_r = sps.site_symmetry(site_cart=atom.xyz).is_point_group_1()
+          if(not sps_r):
             skip = True
             break
       #
@@ -457,6 +455,7 @@ class manager(object):
       else:
         sites_cart_orig = sites_cart
       self.xray_structure.set_sites_cart(sites_cart = sites_cart_orig)
+    return minimized
 
   def rms_b_iso_or_b_equiv_bonded(self):
     result = None

@@ -25,6 +25,7 @@ import random
 import math
 import types
 import sys
+from scitbx import matrix
 
 def _slice_or_none(array, slice_object):
   assert type(slice_object) == types.SliceType
@@ -825,8 +826,10 @@ class set(crystal.symmetry):
       max_prime=max_prime,
       assert_shannon_sampling=assert_shannon_sampling)
 
-  def structure_factors_from_map(self, map, in_place_fft=False):
+  def structure_factors_from_map(self, map, in_place_fft=False,
+      use_scale=False, anomalous_flag=None, use_sg=False):
     assert map.focus_size_1d() > 0 and map.nd() == 3 and map.is_0_based()
+    if(isinstance(map, flex.int)): map = map.as_double()
     assert isinstance(map, flex.double) or isinstance(map, flex.complex_double)
     assert in_place_fft in (False, True)
     if (isinstance(map, flex.double)):
@@ -842,12 +845,27 @@ class set(crystal.symmetry):
         map = map.deep_copy()
       fft = fftpack.complex_to_complex_3d(map.focus())
     map = fft.forward(map)
-    from_map = maptbx.structure_factors.from_map(
-      anomalous_flag=self.anomalous_flag(),
-      miller_indices=self.indices(),
-      complex_map=map,
-      conjugate_flag=True)
-    return array(miller_set=self, data=from_map.data())
+    if(use_scale):
+      scale = self.unit_cell().volume() \
+        / matrix.col(fft.n_real()).product()
+      map = map*scale
+    if(anomalous_flag is None):
+      anomalous_flag = self.anomalous_flag()
+    if(use_sg):
+      from_map = maptbx.structure_factors.from_map(
+        space_group=self.space_group(),
+        anomalous_flag=anomalous_flag,
+        miller_indices=self.indices(),
+        complex_map=map,
+        conjugate_flag=True)
+    else:
+      from_map = maptbx.structure_factors.from_map(
+        anomalous_flag=anomalous_flag,
+        miller_indices=self.indices(),
+        complex_map=map,
+        conjugate_flag=True)
+    data = from_map.data()
+    return array(miller_set=self, data=data)
 
   def structure_factors_from_scatterers(self, xray_structure,
                                         algorithm=None,

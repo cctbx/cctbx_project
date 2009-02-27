@@ -54,23 +54,6 @@ import mmtbx.bulk_solvent.bulk_solvent_and_scaling as bss
 
 ext = boost.python.import_ext("mmtbx_f_model_ext")
 
-def structure_factors(data, miller_set):
-  fft_manager = fftpack.real_to_complex_3d(data.focus())
-  padded_data = maptbx.copy(
-    data.as_double(),
-    flex.grid(fft_manager.m_real()).set_focus(fft_manager.n_real()))
-  map_of_coeff = fft_manager.forward(padded_data)
-  scale = miller_set.unit_cell().volume() \
-        / matrix.col(fft_manager.n_real()).product()
-  map_of_coeff *= scale # XXX scale from_map.data() instead
-  from_map = maptbx.structure_factors.from_map(
-    space_group=miller_set.space_group(),
-    anomalous_flag=False,
-    miller_indices=miller_set.indices(),
-    complex_map=map_of_coeff,
-    conjugate_flag=True)
-  return miller_set.array(data=from_map.data())
-
 class kick_map(object):
 
   def __init__(self, fmodel,
@@ -172,7 +155,9 @@ class kick_map(object):
       self.standard_deviation = statistics.sigma()
       self.map_data /= self.standard_deviation
       #
-      self.map_coeffs = structure_factors(data = self.map_data, miller_set = self.map_coeffs)
+      self.map_coeffs = self.map_coeffs.structure_factors_from_map(
+        map = self.map_data,
+        use_scale = True)
       ###
 
 class model_to_map(object):
