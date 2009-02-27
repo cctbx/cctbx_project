@@ -1,6 +1,10 @@
-from iotbx.command_line import reflection_statistics
+import libtbx.load_env
+if (libtbx.env.has_module("ccp4io")):
+  from iotbx.command_line import reflection_statistics
+  from iotbx import mtz
+else:
+  mtz = None
 from cctbx.array_family import flex
-from iotbx import mtz
 from cctbx import miller
 from cctbx import crystal
 from cctbx import sgtbx
@@ -98,9 +102,17 @@ def run_call_back(flags, space_group_info):
       file_names=file_names,
       verbose=flags.Verbose)
 
-def run():
+def exercise():
+  if (mtz is None):
+    print \
+      "Skipping iotbx/regression/tst_reflection_statistics.py:" \
+      " ccp4io not available"
+    return
   exercise_compare_cb_op_as_hkl()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
+
+def run():
+  exercise()
   print "OK"
 
 if (__name__ == "__main__"):

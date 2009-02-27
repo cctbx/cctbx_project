@@ -1,6 +1,10 @@
-from iotbx import reflection_file_reader
-from iotbx.reflection_file_utils import reflection_file_server
-from iotbx import mtz
+import libtbx.load_env
+if (libtbx.env.has_module("ccp4io")):
+  from iotbx import reflection_file_reader
+  from iotbx.reflection_file_utils import reflection_file_server
+  from iotbx import mtz
+else:
+  mtz = None
 from cctbx import miller
 from cctbx import crystal
 from cctbx.array_family import flex
@@ -585,11 +589,17 @@ No array of experimental phases found.
   else: raise Exception_expected
 
 def exercise():
+  if (mtz is None):
+    print "Skipping iotbx/tst_reflection_file_utils.py: ccp4io not available"
+    return
   exercise_get_amplitudes_and_get_phases_deg()
   exercise_get_xtal_data()
   exercise_get_r_free_flags()
   exercise_get_experimental_phases()
+
+def run():
+  exercise()
   print "OK"
 
 if (__name__ == "__main__"):
-  exercise()
+  run()
