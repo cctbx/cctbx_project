@@ -1,10 +1,14 @@
 import pickle
 from libtbx import adopt_init_args
+from cctbx.sgtbx import subgroups
+from scitbx.array_family import flex
+from cctbx import crystal
 from scitbx import matrix
 from cctbx import sgtbx
 #only need this for legacy table lookup; deprecate later:
 from rstbx.symmetry.sgtbx_adaptor import get_patterson_group
-from cctbx.sgtbx.lattice_symmetry import metric_subgroups as base_subgroups
+from cctbx.sgtbx.lattice_symmetry import metric_supergroup,metric_subgroups as base_subgroups
+from cctbx.sgtbx import bravais_types,change_of_basis_op
 
 #For LABELIT, the derive from the iotbx subgroup list such that the
 #  input cell is NOT reduced to "minimum symmetry".  This allows alignment
@@ -16,7 +20,8 @@ class metric_subgroups(base_subgroups):
         max_delta,
         enforce_max_delta_for_generated_two_folds=True,
         bravais_types_only=True,force_minimum=False,
-        best_monoclinic_beta=True):
+        best_monoclinic_beta=True,
+        interest_focus="metric_symmetry"):
     adopt_init_args(self,locals())
     self.parse_reference()
     self.result_groups = []
@@ -25,7 +30,11 @@ class metric_subgroups(base_subgroups):
     self.cb_op_inp_minimum = sgtbx.change_of_basis_op() #identity
     if force_minimum:
       self.change_input_to_minimum_cell()
-    self.derive_result_group_list()
+    if interest_focus=="metric_symmetry":
+      self.derive_result_group_list(group_of_interest=self.lattice_group_info())
+    elif interest_focus=="input_symmetry":
+      self.derive_result_group_list_original_input(group_of_interest=
+        self.input_symmetry.space_group_info())
 
     #as a future reindexing reference, record the cb_op to best cell
     for i,j in zip(self.result_groups,self.cb_op_best_cell_vector):
@@ -34,6 +43,72 @@ class metric_subgroups(base_subgroups):
   reasonable_cutoff = 10.0 # maximum direct-space mean-square deviation of two orientations
                            # measured in Angstrom^2; larger value indicates no match
                            # later, this could be redefined as a fraction of cell size
+
+  def derive_result_group_list_original_input(self,group_of_interest):
+    # more-or-less a capitulation to code duplication.  Don't want to copy code
+    # from cctbx.sgtbx.lattice_symmetry but can't figure out a quick way around it.
+
+    # Get list of sub-spacegroups
+    subgrs = subgroups.subgroups(group_of_interest).groups_parent_setting()
+
+    # Order sub-groups
+    sort_values = flex.double()
+    for group in subgrs:
+      order_z = group.order_z()
+      space_group_number = sgtbx.space_group_type(group, False).number()
+      assert 1 <= space_group_number <= 230
+      sort_values.append(order_z*1000+space_group_number)
+    perm = flex.sort_permutation(sort_values, True)
+
+    for i_subgr in perm:
+      acentric_subgroup = subgrs[i_subgr]
+      acentric_supergroup = metric_supergroup(acentric_subgroup)
+      # Add centre of inversion to acentric lattice symmetry
+      centric_group = sgtbx.space_group(acentric_subgroup)
+      # Make symmetry object: unit-cell + space-group
+      # The unit cell is potentially modified to be exactly compatible
+      # with the space group symmetry.
+      subsym = crystal.symmetry(
+        unit_cell=self.minimum_symmetry.unit_cell(),
+        space_group=centric_group,
+        assert_is_compatible_unit_cell=False)
+      supersym = crystal.symmetry(
+        unit_cell=self.minimum_symmetry.unit_cell(),
+        space_group=acentric_supergroup,
+        assert_is_compatible_unit_cell=False)
+      # Convert subgroup to reference setting
+      cb_op_minimum_ref = subsym.space_group_info().type().cb_op()
+      ref_subsym = subsym.change_basis(cb_op_minimum_ref)
+      # Ignore unwanted groups
+      if (self.bravais_types_only and
+          not str(ref_subsym.space_group_info()) in bravais_types.centric):
+        continue
+      # Choose best setting for monoclinic and orthorhombic systems
+      cb_op_best_cell = self.change_of_basis_op_to_best_cell(ref_subsym)
+      best_subsym = ref_subsym.change_basis(cb_op_best_cell)
+      # Total basis transformation
+      cb_op_best_cell = change_of_basis_op(str(cb_op_best_cell),stop_chars='',r_den=144,t_den=144)
+      cb_op_minimum_ref=change_of_basis_op(str(cb_op_minimum_ref),stop_chars='',r_den=144,t_den=144)
+      self.cb_op_inp_minimum=change_of_basis_op(str(self.cb_op_inp_minimum),stop_chars='',r_den=144,t_den=144)
+      cb_op_inp_best = cb_op_best_cell * (cb_op_minimum_ref * self.cb_op_inp_minimum)
+      # Use identity change-of-basis operator if possible
+      if (best_subsym.unit_cell().is_similar_to(self.input_symmetry.unit_cell())):
+        cb_op_corr = cb_op_inp_best.inverse()
+        try:
+          best_subsym_corr = best_subsym.change_basis(cb_op_corr)
+        except RuntimeError, e:
+          if (str(e).find("Unsuitable value for rational rotation matrix.") < 0):
+            raise
+        else:
+          if (best_subsym_corr.space_group() == best_subsym.space_group()):
+            cb_op_inp_best = cb_op_corr * cb_op_inp_best
+      self.result_groups.append({'subsym':subsym,
+                                 'supersym':supersym,
+                                 'ref_subsym':ref_subsym,
+                                 'best_subsym':best_subsym,
+                                 'cb_op_inp_best':cb_op_inp_best,
+                                 'max_angular_difference':0
+                                })
 
   def change_of_basis_op_to_best_cell(self,ref_subsym):
 
@@ -135,7 +210,11 @@ class MetricSubgroup(dict):
       sgtbx.space_group_info(group=self['best_group']).type().lookup_symbol(),
       )
 
-
+  def sg_digest(self,add_inv=False):
+    return ' | '.join([
+      self['cb_op_inp_best'].as_xyz(),
+      sgtbx.space_group_info(group=self['reduced_group']).type().lookup_symbol(),
+      ])
 
   def reference_lookup_symbol(self):
     return sgtbx.space_group_info(group=self['best_group']).type().lookup_symbol()
