@@ -1,5 +1,5 @@
 """\
-grid = grid over N-dim box (but there is not array with data!)
+grid = grid over N-dim box (but there is no array with data!)
 
 origin = N-dim indices of lower-left corner of box
  focus = N-dim indices of upper-right corner of box as we want to use it
