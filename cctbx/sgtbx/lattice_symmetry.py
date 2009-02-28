@@ -11,7 +11,7 @@ from libtbx import adopt_init_args
 from cctbx.sgtbx import subgroups
 from scitbx.array_family import flex
 from cctbx import crystal
-from cctbx.sgtbx import bravais_types
+from cctbx.sgtbx import bravais_types, change_of_basis_op
 
 class metric_subgroups:
 
@@ -25,7 +25,7 @@ class metric_subgroups:
     self.result_groups = []
 
     self.change_input_to_minimum_cell()
-    self.derive_result_group_list()
+    self.derive_result_group_list(group_of_interest=self.lattice_group_info())
 
   def change_input_to_minimum_cell(self):
     # Get cell reduction operator
@@ -34,17 +34,19 @@ class metric_subgroups:
     # New symmetry object with changed basis
     self.minimum_symmetry = self.input_symmetry.change_basis(self.cb_op_inp_minimum)
 
-  def derive_result_group_list(self):
+  def lattice_group_info(self):
     # Get highest symmetry compatible with lattice
     lattice_group = sgtbx.lattice_symmetry_group(
       self.minimum_symmetry.unit_cell(),
       max_delta=self.max_delta,
       enforce_max_delta_for_generated_two_folds
         =self.enforce_max_delta_for_generated_two_folds)
-    lattice_group_info = sgtbx.space_group_info(group=lattice_group)
+    return sgtbx.space_group_info(group=lattice_group)
+
+  def derive_result_group_list(self,group_of_interest):
 
     # Get list of sub-spacegroups
-    subgrs = subgroups.subgroups(lattice_group_info).groups_parent_setting()
+    subgrs = subgroups.subgroups(group_of_interest).groups_parent_setting()
 
     # Order sub-groups
     sort_values = flex.double()
@@ -83,6 +85,9 @@ class metric_subgroups:
       cb_op_best_cell = self.change_of_basis_op_to_best_cell(ref_subsym)
       best_subsym = ref_subsym.change_basis(cb_op_best_cell)
       # Total basis transformation
+      cb_op_best_cell = change_of_basis_op(str(cb_op_best_cell),stop_chars='',r_den=144,t_den=144)
+      cb_op_minimum_ref=change_of_basis_op(str(cb_op_minimum_ref),stop_chars='',r_den=144,t_den=144)
+      self.cb_op_inp_minimum=change_of_basis_op(str(self.cb_op_inp_minimum),stop_chars='',r_den=144,t_den=144)
       cb_op_inp_best = cb_op_best_cell * cb_op_minimum_ref * self.cb_op_inp_minimum
       # Use identity change-of-basis operator if possible
       if (best_subsym.unit_cell().is_similar_to(self.input_symmetry.unit_cell())):
