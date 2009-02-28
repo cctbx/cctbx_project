@@ -60,7 +60,8 @@ def bestcmp(a,b):
   return 1
 
 def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
-    space_group_symbol="P 1",force_minimum=False,best_monoclinic_beta=True):
+    space_group_symbol="P 1",force_minimum=False,best_monoclinic_beta=True,
+    interest_focus="metric_symmetry"):
     # with regard to "force_minimum": when autoindexing, the orientation
     # matrix may be derived from comparison to a previously indexed case;
     # the setting may be non-standard; therefore we do not want to
@@ -72,7 +73,8 @@ def iotbx_converter(unit_cell,max_delta,bravais_types_only=True,
                        enforce_max_delta_for_generated_two_folds=True,
                        bravais_types_only=bravais_types_only,
                        force_minimum=force_minimum,
-                       best_monoclinic_beta=best_monoclinic_beta)
+                       best_monoclinic_beta=best_monoclinic_beta,
+                       interest_focus=interest_focus)
   M.labelit_style = []
   for subgroup in M.result_groups:
     # required keys for subgroup:
