@@ -81,6 +81,14 @@ class qstat_items(object):
     if (len(ja_task_id) == 0): return 1
     m = ja_task_id.find("-")
     c = ja_task_id.find(":")
+    a = ja_task_id.find(",")
+    if (a >= 0):
+      assert m < 0
+      assert c < 0
+      flds = ja_task_id.split(",")
+      for f in flds:
+        assert str(int(f)) == f
+      return len(flds)
     if (m < 0):
       assert c < 0
       assert str(int(ja_task_id)) == ja_task_id
