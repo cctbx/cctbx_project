@@ -9,7 +9,7 @@ from cctbx import crystal
 from cctbx.array_family import flex
 from cctbx.regression.tst_miller import generate_random_hl
 from iotbx.regression.utils import random_f_calc
-from libtbx.test_utils import approx_equal, eps_eq
+from libtbx.test_utils import Exception_expected, approx_equal, eps_eq
 import math
 import sys
 
@@ -310,12 +310,88 @@ def exercise_repair_ccp4i_import_merged_data():
   assert approx_equal(miller_arrays[0].data(), [5,6])
   assert approx_equal(miller_arrays[0].sigmas(), [0.5,0.6])
 
+def exercise_hl_ab_only(anomalous_flag):
+  cs = crystal.symmetry(
+    unit_cell=(3.95738, 5.1446, 6.72755, 83, 109, 129),
+    space_group_symbol="P1")
+  if (not anomalous_flag):
+    i = [
+      (-1, 0, 1), (-1, 1, 1), (0, -1, 1), (0, 0, 1),
+      (0, 0, 2), (0, 1, 0), (0, 1, 1), (1, -1, 0)]
+  else:
+    i = [
+      (-1, 0, 1), (1, 0, -1), (-1, 1, 1), (1, -1, -1),
+      (0, -1, 1), (0, 1, -1), (0, 0, 1), (0, 0, -1),
+      (0, 0, 2), (0, 0, -2), (0, 1, 0), (0, -1, 0),
+      (0, 1, 1), (0, -1, -1), (1, -1, 0), (-1, 1, 0)]
+  ms = miller.set(
+    crystal_symmetry=cs,
+    indices=flex.miller_index(i),
+    anomalous_flag=anomalous_flag)
+  ma = ms.array(data=flex.size_t_range(ms.indices().size()).as_double()+1)
+  mtz_dataset = ma.as_mtz_dataset(column_root_label="HA")
+  columns = mtz_dataset.columns()
+  if (not anomalous_flag):
+    assert columns.size() == 4
+    c = columns[3]
+    assert c.label() == "HA"
+    c.set_type("A")
+    values = c.extract_values()
+    selection_valid = c.selection_valid()
+    c = mtz_dataset.add_column(label="HB", type="A")
+    c.set_values(values=-values, selection_valid=selection_valid)
+  else:
+    assert columns.size() == 5
+    for i,l in [(3,"HA(+)"), (4,"HA(-)")]:
+      c = columns[i]
+      assert c.label() == l
+      if (i == 4):
+        c.set_label("HB(+)")
+      c.set_type("A")
+    for i,l in [(3,"HA(-)"), (4,"HB(-)")]:
+      c = columns[i]
+      values = c.extract_values()
+      selection_valid = c.selection_valid()
+      c = mtz_dataset.add_column(label=l, type="A")
+      c.set_values(values=-values, selection_valid=selection_valid)
+  mtz_obj = mtz_dataset.mtz_object()
+  mas = mtz_obj.as_miller_arrays()
+  assert len(mas) == 1
+  assert approx_equal(mas[0].indices(), ma.indices())
+  if (not anomalous_flag):
+    assert approx_equal(mas[0].data(), [
+      (1, -1, 0, 0), (2, -2, 0, 0), (3, -3, 0, 0), (4, -4, 0, 0),
+      (5, -5, 0, 0), (6, -6, 0, 0), (7, -7, 0, 0), (8, -8, 0, 0)])
+  else:
+    assert approx_equal(mas[0].data(), [
+      (1, 2, 0, 0), (-1, -2, 0, 0), (3, 4, 0, 0), (-3, -4, 0, 0),
+      (5, 6, 0, 0), (-5, -6, 0, 0), (7, 8, 0, 0), (-7, -8, 0, 0),
+      (9, 10, 0, 0), (-9, -10, 0, 0), (11, 12, 0, 0), (-11, -12, 0, 0),
+      (13, 14, 0, 0), (-13, -14, 0, 0), (15, 16, 0, 0), (-15, -16, 0, 0)])
+  #
+  columns = mtz_dataset.columns()
+  columns[-1].set_type("F")
+  try:
+    mtz_obj.as_miller_arrays()
+  except RuntimeError, e:
+    if (not anomalous_flag):
+      assert str(e) == 'Invalid MTZ column combination' \
+        ' (incomplete Hendrickson-Lattman array),' \
+        ' column labels: "HA", "HB" column types: "A", "F"'
+    else:
+      assert str(e) == 'Invalid MTZ column combination' \
+        ' (incomplete Hendrickson-Lattman array),' \
+        ' column labels: "HA(-)", "HB(-)" column types: "A", "F"'
+  else: raise Exception_expected
+
 def exercise():
   if (mtz is None):
     print "Skipping iotbx/mtz/tst.py: ccp4io not available"
     return
   exercise_extract_delta_anomalous()
   exercise_repair_ccp4i_import_merged_data()
+  for anomalous_flag in [False, True]:
+    exercise_hl_ab_only(anomalous_flag=anomalous_flag)
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back)
 
 def run():

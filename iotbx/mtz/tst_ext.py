@@ -251,6 +251,13 @@ def exercise_basic():
     assert group.mtz_reflection_indices.size() == 163
     assert group.indices.size() == group.mtz_reflection_indices.size()
     assert group.data.size() == group.mtz_reflection_indices.size()
+    group = mtz_object.extract_hendrickson_lattman_ab_only(
+      column_label_a="Frem",
+      column_label_b="DANOrem")
+    assert not group.anomalous_flag
+    assert group.mtz_reflection_indices.size() == 163
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
     group = mtz_object.extract_hendrickson_lattman_anomalous(
       column_label_a_plus="Frem",
       column_label_b_plus="DANOrem",
@@ -260,6 +267,15 @@ def exercise_basic():
       column_label_b_minus="DANOrem",
       column_label_c_minus="Frem",
       column_label_d_minus="DANOrem")
+    assert group.anomalous_flag
+    assert group.mtz_reflection_indices.size() == 326
+    assert group.indices.size() == group.mtz_reflection_indices.size()
+    assert group.data.size() == group.mtz_reflection_indices.size()
+    group = mtz_object.extract_hendrickson_lattman_anomalous_ab_only(
+      column_label_a_plus="Frem",
+      column_label_b_plus="DANOrem",
+      column_label_a_minus="Frem",
+      column_label_b_minus="DANOrem")
     assert group.anomalous_flag
     assert group.mtz_reflection_indices.size() == 326
     assert group.indices.size() == group.mtz_reflection_indices.size()

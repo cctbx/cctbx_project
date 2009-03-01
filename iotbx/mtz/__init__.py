@@ -483,25 +483,39 @@ class _object(boost.python.injector, ext.object):
         labels = [l0]
         group = self.extract_reals(column_label=l0)
       elif (t0 in "A"): # Hendrickson-Lattman coefficients
-        if (all_column_types[i_column:i_column+4] != "AAAA"):
+        if (all_column_types[i_column:i_column+4] == "AAAA"):
+          if (len(remaining_types) >= 8
+              and remaining_types[4:8] == "AAAA"
+              and are_anomalous_labels("+",
+                    all_column_labels[i_column:i_column+4])
+              and are_anomalous_labels("-",
+                    all_column_labels[i_column+4:i_column+8])):
+            labels = all_column_labels[i_column:i_column+8]
+            i_column += 7
+            group = self.extract_hendrickson_lattman_anomalous(*labels)
+          else:
+            labels = all_column_labels[i_column:i_column+4]
+            if (    are_anomalous_labels("+",
+                      all_column_labels[i_column:i_column+2])
+                and are_anomalous_labels("-",
+                      all_column_labels[i_column+2:i_column+4])):
+              group = self.extract_hendrickson_lattman_anomalous_ab_only(
+                *labels)
+            else:
+              group = self.extract_hendrickson_lattman(*labels)
+            i_column += 3
+        elif (all_column_types[i_column:i_column+2] == "AA"):
+          labels = all_column_labels[i_column:i_column+2]
+          i_column += 1
+          group = self.extract_hendrickson_lattman_ab_only(*labels)
+        else:
           raise RuntimeError(
             'Invalid MTZ column combination'
-            + ' (incomplete Hendrickson-Lattman array), column labels: '
-            + ", ".join(['"%s"' % all_column_labels[i]
-                for i in xrange(i_column,i_column+4)]))
-        if (len(remaining_types) >= 8
-            and remaining_types[4:8] == "AAAA"
-            and are_anomalous_labels("+",
-                  all_column_labels[i_column:i_column+4])
-            and are_anomalous_labels("-",
-                  all_column_labels[i_column+4:i_column+8])):
-          labels = all_column_labels[i_column:i_column+8]
-          i_column += 7
-          group = self.extract_hendrickson_lattman_anomalous(*labels)
-        else:
-          labels = all_column_labels[i_column:i_column+4]
-          i_column += 3
-          group = self.extract_hendrickson_lattman(*labels)
+            ' (incomplete Hendrickson-Lattman array),'
+            + ' column labels: ' + ", ".join(['"%s"' % l
+              for l in all_column_labels[i_column:i_column+4]])
+            + ' column types: ' + ", ".join(['"%s"' % t
+              for t in all_column_types[i_column:i_column+4]]))
       elif (remaining_types[:4] == "FQDQ"):
         labels = all_column_labels[i_column:i_column+4]
         i_column += 3

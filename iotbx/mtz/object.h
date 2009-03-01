@@ -425,6 +425,12 @@ namespace mtz {
 
       //! Read-only access.
       hl_group
+      extract_hendrickson_lattman_ab_only(
+        const char* column_label_a,
+        const char* column_label_b) const;
+
+      //! Read-only access.
+      hl_group
       extract_hendrickson_lattman_anomalous(
         const char* column_label_a_plus,
         const char* column_label_b_plus,
@@ -434,6 +440,14 @@ namespace mtz {
         const char* column_label_b_minus,
         const char* column_label_c_minus,
         const char* column_label_d_minus) const;
+
+      //! Read-only access.
+      hl_group
+      extract_hendrickson_lattman_anomalous_ab_only(
+        const char* column_label_a_plus,
+        const char* column_label_b_plus,
+        const char* column_label_a_minus,
+        const char* column_label_b_minus) const;
 
       //! Read-only access.
       observations_group
