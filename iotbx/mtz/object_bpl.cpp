@@ -167,6 +167,10 @@ namespace {
           arg_("column_label_b"),
           arg_("column_label_c"),
           arg_("column_label_d")))
+        .def("extract_hendrickson_lattman_ab_only",
+            &w_t::extract_hendrickson_lattman_ab_only, (
+          arg_("column_label_a"),
+          arg_("column_label_b")))
         .def("extract_hendrickson_lattman_anomalous",
             &w_t::extract_hendrickson_lattman_anomalous, (
           arg_("column_label_a_plus"),
@@ -177,6 +181,12 @@ namespace {
           arg_("column_label_b_minus"),
           arg_("column_label_c_minus"),
           arg_("column_label_d_minus")))
+        .def("extract_hendrickson_lattman_anomalous_ab_only",
+            &w_t::extract_hendrickson_lattman_anomalous_ab_only, (
+          arg_("column_label_a_plus"),
+          arg_("column_label_b_plus"),
+          arg_("column_label_a_minus"),
+          arg_("column_label_b_minus")))
         .def("extract_observations", &w_t::extract_observations, (
           arg_("column_label_data"),
           arg_("column_label_sigmas")))
