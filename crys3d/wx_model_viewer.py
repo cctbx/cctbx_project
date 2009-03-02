@@ -2,7 +2,7 @@
 from string import strip
 from libtbx.utils import Sorry
 import gltbx.util
-from gltbx import wx_viewer, viewer_utils
+from gltbx import wx_viewer, viewer_utils, quadrics
 from gltbx.gl import *
 from gltbx.glu import *
 from scitbx.array_family import flex, shared
@@ -37,8 +37,8 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     # various settings; override these in subclasses and/or provide
     # a mechanism for changing their values
     self.buffer_factor           = 2
-    self.line_width              = 1
-    self.nonbonded_line_width    = 1
+    self.line_width              = 2
+    self.nonbonded_line_width    = 2
     self._fog_start              = 50
     self._fog_end                = 200
     self.base_atom_color         = (0.6, 0.6, 0.6) # grey
@@ -49,6 +49,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     self.flag_show_lines                   = True
     self.flag_show_points                  = True
     self.flag_show_spheres                 = False
+    self.flag_show_ellipsoids              = False
     self.flag_use_lights                   = True
     self.flag_show_minimum_covering_sphere = False
     self.flag_show_rotation_center         = False
@@ -73,14 +74,20 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
   def initialize_modelview (self) :
     if self.minimum_covering_sphere is not None :
       wx_viewer.wxGLWindow.initialize_modelview(self)
+    else :
+      self.setup_lighting()
 
   def DrawGL(self):
+    if self.GL_uninitialised :
+      return
     if (self.flag_show_points):
       self.draw_points()
     if (self.flag_show_lines):
       self.draw_lines()
     if (self.flag_show_spheres):
       self.draw_spheres()
+    if self.flag_show_ellipsoids :
+      self.draw_ellipsoids()
 
   def OnRedrawGL (self, event=None) :
     if self.minimum_covering_sphere is None :
@@ -139,6 +146,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
   def draw_lines (self) :
     assert self.bonds_visible.size() == self.points.size()
     assert self.atom_colors.size() == self.points.size()
+    glDisable(GL_LIGHTING)
     if self.lines_display_list is None :
       self.lines_display_list = gltbx.gl_managed.display_list()
       self.lines_display_list.compile()
@@ -154,6 +162,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
   def draw_points (self) :
     assert self.points_visible.size() == self.points.size()
     assert self.atom_colors.size() == self.points.size()
+    glDisable(GL_LIGHTING)
     if self.points_display_list is None :
       self.points_display_list = gltbx.gl_managed.display_list()
       self.points_display_list.compile()
@@ -167,6 +176,9 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     self.points_display_list.call()
 
   def draw_spheres (self) :
+    pass
+
+  def draw_ellipsoids (self) :
     pass
 
   def _draw_spheres(self, spheres_visible, atom_colors, atom_radii) :
@@ -193,6 +205,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
       self.spheres_display_list.end()
     self.spheres_display_list.call()
 
+
 class model_viewer_mixin (model_viewer_base) :
   def __init__ (self, *args, **kwds) :
     model_viewer_base.__init__(self, *args, **kwds)
@@ -201,19 +214,39 @@ class model_viewer_mixin (model_viewer_base) :
     self.atoms                   = None
     self.atom_count              = 0
     self.b_cache                 = None # atoms.extract_b()
+    self.uij_cache               = None
     # various settings; override these in subclasses and/or provide
     # a mechanism for changing their values
     self.draw_mode               = "all_atoms"
-    self.color_mode              = "rainbow"
-    self.recolor                 = self.color_rainbow
+    self.color_mode              = "b_factors"
+    self.recolor                 = self.color_b
+    self.scale_b_to_visible      = True
     self.carbon_atom_color       = (1.0, 1.0, 0.0) # yellow
+    self.ellipsoid_display_list  = None
+    #self.proto_ellipsoid = quadrics.proto_ellipsoid(slices=32, stacks=32)
     # toggles for viewable objects
     self.flag_show_trace                   = False
-    self.flag_show_hydrogens               = True
+    self.flag_show_hydrogens               = False
+    self.flag_show_ellipsoids              = False
+
+  def setup_lighting (self) :
+    model_viewer_base.setup_lighting(self)
+
+  def InitGL (self) :
+    model_viewer_base.InitGL(self)
+    if self.flag_use_lights :
+      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.5, 0.5, 0.5, 1.0])
+      glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, (0.2, 0.2, 0.2, 1.))
+      glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, (1, 1, 1, 1.))
+      glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 50.)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+    self.proto_ellipsoid = quadrics.proto_ellipsoid(slices=32, stacks=32)
 
   def update_view (self, redraw_points=True, redraw_lines=True) :
     self.get_drawn_atom_count()
     self.recolor()
+    self.ellipsoid_display_list = None
     model_viewer_base.update_view(self, redraw_points, redraw_lines)
 
   def OnUpdate (self, event=None, recenter=False) :
@@ -224,6 +257,25 @@ class model_viewer_mixin (model_viewer_base) :
       self.update_coords()
     self._structure_was_updated = False
     model_viewer_base.OnUpdate(self, event, recenter)
+
+  def process_key_stroke (self, key) :
+    model_viewer_base.process_key_stroke(self, key)
+    update = False
+    if key == ord('h') :
+      self.flag_show_hydrogens = not self.flag_show_hydrogens
+      update = True
+    elif key == ord('e') :
+      self.flag_show_ellipsoids = not self.flag_show_ellipsoids
+      update = True
+    elif key == ord('p') :
+      self.flag_show_points = not self.flag_show_points
+      update = True
+    elif key == ord('b') :
+      if self.color_mode == "b_factors" : self.set_color_mode("element")
+      else :                              self.set_color_mode("b_factors")
+      update = True
+    if update :
+      self.update_view(True, True)
 
   # Hopefully none of the remaining functions need to be overridden...
 
@@ -270,6 +322,7 @@ class model_viewer_mixin (model_viewer_base) :
   def update_coords (self) :
     self.points = self.atoms.extract_xyz()
     self.b_cache = self.atoms.extract_b()
+    self.uij_cache = self.atoms.extract_uij()
     self.lines_display_list = None
     self.points_display_list = None
     self.selection_display_list = None
@@ -418,6 +471,36 @@ class model_viewer_mixin (model_viewer_base) :
         color = (0.0, 1.0, 1.0)
       atom_colors.append(color)
     self.atom_colors = atom_colors
+
+  # XXX
+  def draw_ellipsoids (self) :
+    glMatrixMode(GL_MODELVIEW)
+    if self.flag_use_lights :
+      glShadeModel(GL_SMOOTH)
+      glEnable(GL_DEPTH_TEST)
+      glEnable(GL_LIGHTING)
+      glEnable(GL_LIGHT0)
+      glEnable(GL_LIGHT1)
+      glEnable(GL_NORMALIZE)
+      glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE)
+      glLightModelfv(GL_LIGHT_MODEL_AMBIENT, [0.5, 0.5, 0.5, 1.0])
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+    proto_ellipsoid = self.proto_ellipsoid
+    if self.ellipsoid_display_list is None :
+      self.ellipsoid_display_list = gltbx.gl_managed.display_list()
+      self.ellipsoid_display_list.compile()
+      points = self.points
+      atoms_visible = self.atoms_visible
+      atom_colors = self.atom_colors
+      for i_seq, uij in enumerate(self.uij_cache) :
+        if atoms_visible[i_seq] and uij[0] != -1 :
+          col = list(atom_colors[i_seq]) + [1.0]
+          glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, col)
+          glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, [0.1, 0.1, 0.1, 1.0])
+          glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, [0.1, 0.1, 0.1, 1.0])
+          proto_ellipsoid.draw(points[i_seq], uij)
+      self.ellipsoid_display_list.end()
+    self.ellipsoid_display_list.call()
 
 ########################################################################
 # ATOM SELECTION VIEWER
@@ -631,10 +714,13 @@ class sites_viewer_mixin (model_viewer_base) :
     self.points = flex.vec3_double()
     self._new_sites = flex.vec3_double()
     self.base_atom_color = (0.8, 0.8, 0.8)
+    self.flag_show_fog = True
     self.flag_show_lines = False
     self.flag_show_points = False
     self.flag_show_spheres = False
-    self.unit_cell = None #uctbx.unit_cell((100,100,100,90,90,90))
+    self.unit_cell = None
+    self.minimum_covering_sphere = minimum_covering_sphere(
+      flex.vec3_double([[0,0,0],[100,100,100],[100,0,0],[0,100,100]]))
 
   def draw_spheres (self) :
     self._draw_spheres(self.spheres_visible, self.atom_colors, self.atom_radii)
@@ -644,6 +730,12 @@ class sites_viewer_mixin (model_viewer_base) :
       self.unit_cell = uctbx.unit_cell(unit_cell)
     else :
       self.unit_cell = unit_cell
+    p = self.unit_cell.orthogonalize((0,0,0))
+    q = self.unit_cell.orthogonalize((1,1,1))
+    r = self.unit_cell.orthogonalize((1, 0, 0))
+    s = self.unit_cell.orthogonalize((0, 1, 1))
+    self.minimum_covering_sphere = minimum_covering_sphere(
+      flex.vec3_double([p,q,r,s]))
 
   def set_sites (self, new_sites) :
     if self.unit_cell is None :
@@ -660,8 +752,6 @@ class sites_viewer_mixin (model_viewer_base) :
     self.spheres_visible = flex.bool(site_count, True)
     self.atom_radii = flex.double(site_count, 0.5)
     self.atom_index = [ "Atom %d" % (i+1) for i in xrange(site_count) ]
-    self.minimum_covering_sphere = minimum_covering_sphere(self.points,
-                                                           epsilon=0.1)
     model_viewer_base.OnUpdate(self, event, recenter)
 
 ########################################################################
@@ -710,8 +800,10 @@ def run (args) :
     raise Sorry("Atomic bonds could not be calculated for this model. "+
       "This is probably due to a missing CRYST1 record in the PDB file.")
   atomic_bonds = grm.shell_sym_tables[0].full_simple_connectivity()
+  #a.frame.Show()
   a.view_objects.update_structure(pdb_hierarchy, atomic_bonds, redraw=True)
   a.frame.Show()
+  #a.view_objects.OnUpdate()
   a.MainLoop()
 
 if __name__ == "__main__" :
