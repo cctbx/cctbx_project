@@ -167,10 +167,17 @@ if (sys.platform == "win32"):
     cl_exe = full_command_path("cl.exe")
     if (cl_exe is None):
       raise RuntimeError("cl.exe not on PATH")
+    VS_UNICODE_OUTPUT = os.environ.get('VS_UNICODE_OUTPUT')
+    if VS_UNICODE_OUTPUT is not None:
+      # Stop output from being redirected to IDE
+      del os.environ['VS_UNICODE_OUTPUT']
     cl_info = easy_run.fully_buffered(
       command='"%s"' % cl_exe,
       join_stdout_stderr=True,
       stdout_splitlines=False).stdout_buffer
+    if VS_UNICODE_OUTPUT is not None:
+      # Reset VS_UNICODE_OUTPUT
+      os.environ['VS_UNICODE_OUTPUT'] = VS_UNICODE_OUTPUT
     if (cl_info.find("Version 13.10") >= 0):
       env_base = Environment(ENV=os.environ, MSVS_VERSION="7.1")
       env_etc.have_manifest_tool = False
