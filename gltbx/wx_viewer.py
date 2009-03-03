@@ -460,6 +460,7 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     winy = []
     winz = []
     rc = self.rotation_center
+    rc_eye = gltbx.util.object_as_eye_coordinates(rc)
     assert gluProject(
       rc[0], rc[1], rc[2],
       model, proj, view,
@@ -476,6 +477,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     scale = abs(dist / (0.5 * win_height))
     x,y = event.GetX(), event.GetY()
     gltbx.util.translate_object(scale, x, y, self.xmouse, self.ymouse)
+    self.rotation_center = tuple(
+      gltbx.util.modelview_matrix_as_rt().inverse() * matrix.col(rc_eye))
     self.OnRedraw()
     self.OnRecordMouse(event)
 

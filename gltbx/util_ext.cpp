@@ -474,6 +474,8 @@ namespace gltbx { namespace util {
     def("get_gl_viewport", get_gl_viewport);
     def("extract_rotation_from_gl_modelview_matrix",
       extract_rotation_from_gl_modelview_matrix);
+    def("extract_translation_from_gl_modelview_matrix",
+      extract_translation_from_gl_modelview_matrix);
     def("object_as_eye_coordinates", object_as_eye_coordinates, (
       arg_("object_coordinates")));
     def("translate_object",
