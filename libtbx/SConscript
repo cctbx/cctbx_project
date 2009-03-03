@@ -227,6 +227,7 @@ libtbx.scons: Warning: compiling with /MDd:
         opts.append("/fp:fast")
     else:
       opts = ["/Od"]
+    opts.append("/DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('/DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
@@ -270,6 +271,7 @@ libtbx.scons: Warning: compiling with /MDd:
     env_etc.cxxflags_base = env_etc.ccflags_base + """
       /GR
       /EHsc
+      /DBOOST_ALL_NO_LIB
       /DBOOST_DISABLE_THREADS
     """.split()
     if (libtbx.env.build_options.optimization):
@@ -357,6 +359,7 @@ else:
       opts = ["-O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    opts.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
@@ -407,6 +410,7 @@ else:
       opts = ["-DNDEBUG", "+O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    opts.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
@@ -491,6 +495,7 @@ else:
       opts = ["-O0", "-fno-inline"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    opts.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
@@ -520,6 +525,7 @@ else:
       opts = ["-O0"]
     if (libtbx.env.build_options.debug_symbols):
       opts.insert(0, "-g")
+    opts.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       opts.append('-DBOOST_DISABLE_THREADS')
     env_etc.cxxflags_base.extend(opts)
@@ -554,6 +560,7 @@ else:
       env_etc.cxxflags_base.insert(0,
         "-I%s/boost/compatibility/cpp_c_headers"
         % libtbx.env.dist_path("boost"))
+    opts.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     env_etc.ccflags_base = ["-woff", "1035"]
@@ -629,6 +636,7 @@ else:
     if (need_fcoalesce_templates):
       env_etc.cxxflags_base.append("-fcoalesce-templates")
     env_etc.cxxflags_base.append("-ftemplate-depth-130")
+    opts.append("-DBOOST_ALL_NO_LIB")
     if not libtbx.env.build_options.enable_boost_threads:
       env_etc.cxxflags_base.append("-DBOOST_DISABLE_THREADS")
     if (libtbx.env.build_options.optimization):
