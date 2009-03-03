@@ -229,7 +229,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     near, far = self.get_clipping_distances()
     if self.orthographic:
       s = self.minimum_covering_sphere
-      c = s.center()
+      #c = s.center()
+      c = self.rotation_center
       r = s.radius()
       rf = self.buffer_factor * r
       left = c[0] - rf
@@ -517,7 +518,8 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     gltbx.util.handle_error()
     s = self.minimum_covering_sphere
     r = self.buffer_factor*s.radius()
-    z = -gltbx.util.object_as_eye_coordinates(s.center())[2]
+    #z = -gltbx.util.object_as_eye_coordinates(s.center())[2]
+    z = -gltbx.util.object_as_eye_coordinates(self.rotation_center)[2]
     self.near = max(self.min_near, z-r)
     self.far = max(self.near*(1.e-6), z+r)
     self.setup_viewing_volume()

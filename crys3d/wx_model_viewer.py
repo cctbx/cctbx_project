@@ -39,8 +39,6 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     self.buffer_factor           = 2
     self.line_width              = 2
     self.nonbonded_line_width    = 2
-    self._fog_start              = 50
-    self._fog_end                = 200
     self.base_atom_color         = (0.6, 0.6, 0.6) # grey
     self.atom_colors             = flex.vec3_double()
     self.orthographic            = False
@@ -51,8 +49,6 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
     self.flag_show_spheres                 = False
     self.flag_show_ellipsoids              = False
     self.flag_use_lights                   = True
-    self.flag_show_minimum_covering_sphere = False
-    self.flag_show_rotation_center         = False
 
   def InitGL(self):
     gltbx.util.handle_error()
@@ -111,6 +107,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
   def recenter_on_atom (self, i_seq) :
     if self.points is not None and i_seq < self.points.size() :
       self.rotation_center = self.points[i_seq]
+      self.move_to_center_of_viewport(self.rotation_center)
 
   def set_selected_atom (self, closest_point_i_seq) :
     self.current_atom_i_seq = closest_point_i_seq
@@ -144,20 +141,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
       self.fit_into_viewport()
 
   def draw_lines (self) :
-    assert self.bonds_visible.size() == self.points.size()
-    assert self.atom_colors.size() == self.points.size()
-    glDisable(GL_LIGHTING)
-    if self.lines_display_list is None :
-      self.lines_display_list = gltbx.gl_managed.display_list()
-      self.lines_display_list.compile()
-      glLineWidth(self.line_width)
-      viewer_utils.draw_bonds(
-        points = self.points,
-        bonds  = self.bonds,
-        atom_colors = self.atom_colors,
-        bonds_visible = self.bonds_visible)
-      self.lines_display_list.end()
-    self.lines_display_list.call()
+    pass
 
   def draw_points (self) :
     assert self.points_visible.size() == self.points.size()
@@ -181,7 +165,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
   def draw_ellipsoids (self) :
     pass
 
-  def _draw_spheres(self, spheres_visible, atom_colors, atom_radii) :
+  def _draw_spheres(self, points, spheres_visible, atom_colors, atom_radii) :
     glMatrixMode(GL_MODELVIEW)
     if self.flag_use_lights :
       glEnable(GL_LIGHTING)
@@ -195,7 +179,7 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
       self.spheres_display_list = gltbx.gl_managed.display_list()
       self.spheres_display_list.compile()
       glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-      for i_seq, point in enumerate(self.points) :
+      for i_seq, point in enumerate(points) :
         if spheres_visible[i_seq] :
           #glColor3f(*atom_colors[i_seq])
           glPushMatrix()
@@ -204,7 +188,6 @@ class model_viewer_base (wx_viewer.wxGLWindow) :
           glPopMatrix()
       self.spheres_display_list.end()
     self.spheres_display_list.call()
-
 
 class model_viewer_mixin (model_viewer_base) :
   def __init__ (self, *args, **kwds) :
@@ -472,6 +455,22 @@ class model_viewer_mixin (model_viewer_base) :
       atom_colors.append(color)
     self.atom_colors = atom_colors
 
+  def draw_lines (self) :
+    assert self.bonds_visible.size() == self.points.size()
+    assert self.atom_colors.size() == self.points.size()
+    glDisable(GL_LIGHTING)
+    if self.lines_display_list is None :
+      self.lines_display_list = gltbx.gl_managed.display_list()
+      self.lines_display_list.compile()
+      glLineWidth(self.line_width)
+      viewer_utils.draw_bonds(
+        points = self.points,
+        bonds  = self.bonds,
+        atom_colors = self.atom_colors,
+        bonds_visible = self.bonds_visible)
+      self.lines_display_list.end()
+    self.lines_display_list.call()
+
   # XXX
   def draw_ellipsoids (self) :
     glMatrixMode(GL_MODELVIEW)
@@ -709,21 +708,27 @@ class atom_label_mixin (wx_viewer.wxGLWindow) :
 
 class sites_viewer_mixin (model_viewer_base) :
   initialize_model_viewer_super = True
+  use_sites_mcs = True
   def __init__ (self, *args, **kwds) :
     model_viewer_base.__init__(self, *args, **kwds)
     self.points = flex.vec3_double()
+    self.atoms_visible = flex.bool()
+    self.atom_radii = flex.double()
+    self.atom_colors = flex.vec3_double()
     self._new_sites = flex.vec3_double()
     self.base_atom_color = (0.8, 0.8, 0.8)
     self.flag_show_fog = True
     self.flag_show_lines = False
     self.flag_show_points = False
-    self.flag_show_spheres = False
+    self.flag_show_spheres = True
     self.unit_cell = None
-    self.minimum_covering_sphere = minimum_covering_sphere(
-      flex.vec3_double([[0,0,0],[100,100,100],[100,0,0],[0,100,100]]))
+    if self.use_sites_mcs :
+      self.minimum_covering_sphere = minimum_covering_sphere(
+        flex.vec3_double([[0,0,0],[100,100,100],[100,0,0],[0,100,100]]))
 
   def draw_spheres (self) :
-    self._draw_spheres(self.spheres_visible, self.atom_colors, self.atom_radii)
+    self._draw_spheres(self.points, self.atoms_visible, self.atom_colors,
+      self.atom_radii)
 
   def set_unit_cell (self, unit_cell) :
     if isinstance(unit_cell, tuple) or isinstance(unit_cell, list) :
@@ -734,8 +739,9 @@ class sites_viewer_mixin (model_viewer_base) :
     q = self.unit_cell.orthogonalize((1,1,1))
     r = self.unit_cell.orthogonalize((1, 0, 0))
     s = self.unit_cell.orthogonalize((0, 1, 1))
-    self.minimum_covering_sphere = minimum_covering_sphere(
-      flex.vec3_double([p,q,r,s]))
+    if self.use_sites_mcs :
+      self.minimum_covering_sphere = minimum_covering_sphere(
+        flex.vec3_double([p,q,r,s]))
 
   def set_sites (self, new_sites) :
     if self.unit_cell is None :
@@ -748,8 +754,6 @@ class sites_viewer_mixin (model_viewer_base) :
     site_count = self.points.size()
     self.atom_colors = flex.vec3_double(site_count, self.base_atom_color)
     self.atoms_visible = flex.bool(site_count, True)
-    self.points_visible = flex.bool(site_count, True)
-    self.spheres_visible = flex.bool(site_count, True)
     self.atom_radii = flex.double(site_count, 0.5)
     self.atom_index = [ "Atom %d" % (i+1) for i in xrange(site_count) ]
     model_viewer_base.OnUpdate(self, event, recenter)
