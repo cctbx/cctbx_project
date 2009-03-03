@@ -243,13 +243,18 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
     # user settings
     self.mesh_line_width = 0.25 # very buggy on OS X + NVidia (and ???)
     self.map_radius      = 10.0
+    self.buffer_factor   = 2 # what does this even do?
     # flags
     self.flag_show_maps = True
     self.flag_use_materials = False
+    self.flag_show_rotation_center = True
     # maps look much better when OpenGL materials are used, but this screws
     # up the model rendering so it's off by default
+    self.minimum_covering_sphere = minimum_covering_sphere(
+      flex.vec3_double([[0,0,0],[100,100,100],[100,0,0],[0,100,100]]))
 
   def InitGL (self) :
+    glClearColor(self.r_back, self.g_back, self.b_back, 0.0)
     gltbx.util.rescale_normals(fallback_to_normalize=True).enable()
     glEnable(GL_DEPTH_TEST)
     glShadeModel(GL_SMOOTH)
@@ -261,14 +266,74 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       glHint(GL_LINE_SMOOTH_HINT, GL_NICEST)
     glEnableClientState(GL_VERTEX_ARRAY)
     glEnableClientState(GL_NORMAL_ARRAY)
+    self.initialize_modelview()
 
   def DrawGL (self) :
-    if self.unit_cell is not None and self.triangles is not None :
-      glMatrixMode(GL_MODELVIEW)
-      glPushMatrix()
-      glMultTransposeMatrixd(self.orthogonaliser)
+    if self.unit_cell is None or self.orthogonaliser is None :
+      return
+    if self.flag_show_maps :
       self.draw_maps()
-      glPopMatrix()
+    if self.flag_show_rotation_center :
+      self.draw_rotation_center()
+
+  def OnTranslate (self, event) :
+    wx_viewer.wxGLWindow.OnTranslate(self, event)
+    self.update_map_objects()
+
+  def draw_rotation_center(self):
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    rc = self.rotation_center
+    (x,y,z) = (rc[0], rc[1], rc[2])
+    glTranslatef(x,y,z)
+    #glScalef(a, b, c)
+    glBegin(GL_LINES)
+    f = 0.5
+    glColor3f(0, 1.0, 0)
+    glVertex3f(-f, 0, 0)
+    glVertex3f(f, 0 ,0)
+    glVertex3f(0, -f, 0)
+    glVertex3f(0, f, 0)
+    glVertex3f(0, 0, -f)
+    glVertex3f(0, 0, f)
+    glEnd()
+    glPopMatrix()
+
+  def setup_fog (self) :
+    if self.flag_show_fog :
+      near, far = self.get_clipping_distances()
+      # TODO: this needs work.
+      fog_start = 0.25*(far - near) + near + self.fog_start_offset
+      fog_end = self.far - self.fog_end_offset
+      glMatrixMode(GL_MODELVIEW)
+      glEnable(GL_FOG)
+      glFogi(GL_FOG_MODE, GL_LINEAR)
+      glFogf(GL_FOG_START, fog_start)
+      glFogf(GL_FOG_END, fog_end)
+      glFogfv(GL_FOG_COLOR, [self.r_back, self.g_back, self.b_back, 1.0])
+    else :
+      glDisable(GL_FOG)
+
+  def OnMouseWheel (self, event) :
+    scale = event.GetWheelRotation()
+    if event.ShiftDown() :
+      self.fog_end_offset -= scale
+    else :
+      self.clip_far -= scale
+
+  def process_key_stroke (self, key) :
+    if key == wx.WXK_UP :
+      self.fog_start_offset += 1
+      self.OnRedrawGL()
+    elif key == wx.WXK_DOWN :
+      self.fog_start_offset -= 1
+      self.OnRedrawGL()
+    elif key == wx.WXK_LEFT :
+      self.fog_end_offset -= 1
+      self.OnRedrawGL()
+    elif key == wx.WXK_RIGHT :
+      self.fog_end_offset += 1
+      self.OnRedrawGL()
 
   def initialize_unit_cell (self, map) :
     self.unit_cell = map.unit_cell()
@@ -277,11 +342,18 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
                            + o[3:6] + (0,)
                            + o[6:9] + (0,)
                            + (0,0,0,1) )
+    p = self.unit_cell.orthogonalize((0,0,0))
+    q = self.unit_cell.orthogonalize((1,1,1))
+    r = self.unit_cell.orthogonalize((1, 0, 0))
+    s = self.unit_cell.orthogonalize((0, 1, 1))
+    self.minimum_covering_sphere = minimum_covering_sphere(
+      flex.vec3_double([p,q,r,s]))
 
   def update_map_objects (self) :
     self.compute_triangulation()
     # this is done to prevent thread clashes (+ ensuing crashes)
     self.triangles = self._triangle_tmp
+    self.OnRedraw()
 
   def set_iso_levels (self, levels) :
     assert len(levels) == len(self.maps)
@@ -331,8 +403,10 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       self._triangle_tmp.append(triangulation)
 
   def draw_maps (self) :
-    if not self.flag_show_maps :
-      return
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+    glMultTransposeMatrixd(self.orthogonaliser)
+    gltbx.util.handle_error()
     if self.flag_use_materials :
       glLightfv(GL_LIGHT0, GL_AMBIENT, [0., 0., 0., 1.])
     for i, triangulation in enumerate(self.triangles) :
@@ -350,6 +424,7 @@ class map_viewer_mixin (wx_viewer.wxGLWindow) :
       va = gltbx.util.vertex_array(triangulation.vertices,
                                    triangulation.normals)
       va.draw_triangles(triangulation.triangles)
+    glPopMatrix()
 
 ########################################################################
 # CLASSES AND METHODS FOR RUNNING map_view
