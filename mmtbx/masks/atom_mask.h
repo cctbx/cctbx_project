@@ -30,7 +30,14 @@ namespace mmtbx {
   typedef af::c_grid<3> grid_t;
   // typedef signed char data_type;
   typedef int data_type;
+  namespace {
+    BOOST_STATIC_ASSERT( std::numeric_limits<data_type>::is_integer );
+  }
   typedef af::versa<data_type, grid_t > mask_array_t;
+  const data_type  mark = std::min(
+      std::abs(std::numeric_limits<data_type>::max()-1),
+      std::abs(std::numeric_limits<data_type>::min()+1)
+      );
 
   //! Flat solvent mask and structure factors.
   /*! \class atom_mask atom_mask.h mmtbx/masks/atom_mask.h
@@ -56,6 +63,7 @@ namespace mmtbx {
         group(group_),
         group_order_z( group.order_z() )
       {
+        MMTBX_ASSERT( mark > 1000 && -mark < -1000 );
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
         MMTBX_ASSERT(gridding_n_real.const_ref().all_gt(0));
@@ -83,6 +91,7 @@ namespace mmtbx {
         asu_atoms(),
         asu_radii()
       {
+        MMTBX_ASSERT( mark > 1000 && -mark < -1000 );
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
         cctbx::sg_vec3 grid;
