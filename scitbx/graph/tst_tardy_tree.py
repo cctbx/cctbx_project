@@ -509,6 +509,7 @@ def run(args):
         assert have == expected, "Note: --verbose for details"
     #
     tt = construct(n_vertices=tc.n_vertices, edge_list=tc.edge_list)
+    assert tt.collinear_bonds_edge_list is None
     cm = tt.cluster_manager
     assert_same("c1:", cm.clusters, tc_c1)
     cm.construct_spanning_trees(edge_sets=tt.edge_sets)
