@@ -68,7 +68,6 @@ namespace {
           const cctbx::sgtbx::space_group &,
           double,
           optional<
-            int,
             double,
             double,
             double >
@@ -76,7 +75,6 @@ namespace {
               arg_("unit_cell"),
               arg_("group"),
               arg_("resolution"),
-              arg_("grid_method"),
               arg_("grid_step_factor"),
               arg_("solvent_radius"),
               arg_("shrink_truncation_radius")
