@@ -47,6 +47,12 @@ namespace mmtbx {
   class atom_mask
   {
     public:
+      //! Allocates memory for mask calculation.
+      /*! gridding_n_real must be compatible with the space_group.
+       * At least the following must be true: every grid point has
+       * to be transformed into grid point by every symmetry operator
+       * of the group.
+       */
       atom_mask(
         const cctbx::uctbx::unit_cell & unit_cell,
         const cctbx::sgtbx::space_group &group_,
@@ -60,8 +66,7 @@ namespace mmtbx {
         contact_surface_fraction(-1.0),
         asu(group_.type()),
         cell(unit_cell),
-        group(group_),
-        group_order_z( group.order_z() )
+        group(group_)
       {
         MMTBX_ASSERT( mark > 1000 && -mark < -1000 );
         MMTBX_ASSERT(solvent_radius >= 0.0);
@@ -71,11 +76,14 @@ namespace mmtbx {
         // mask_asu();
       }
 
+      //! Allocates memory for mask calculation.
+      /*! This constructor will calculate grid size appropriate for the
+       * spacegroup based on resolution and grid_step_factor.
+       */
       atom_mask(
         const cctbx::uctbx::unit_cell & unit_cell,
         const cctbx::sgtbx::space_group &group_,
         double resolution,
-        int grid_method = 0,
         double grid_step_factor = 4.0,
         double solvent_radius_ = 1.11,
         double shrink_truncation_radius_ = 0.9)
@@ -87,7 +95,6 @@ namespace mmtbx {
         asu(group_.type()),
         cell(unit_cell),
         group(group_),
-        group_order_z( group.order_z() ),
         asu_atoms(),
         asu_radii()
       {
@@ -95,14 +102,14 @@ namespace mmtbx {
         MMTBX_ASSERT(solvent_radius >= 0.0);
         MMTBX_ASSERT(shrink_truncation_radius >= 0.0);
         cctbx::sg_vec3 grid;
-        this->determine_gridding(grid, resolution, grid_step_factor, grid_method);
+        this->determine_gridding(grid, resolution, grid_step_factor);
         grid_t gridding_n_real(grid);
         MMTBX_ASSERT(gridding_n_real.const_ref().all_gt(0));
         data.resize(grid_t(gridding_n_real), 0);
         // mask_asu();
       }
 
-
+      //! Clears current if any, and calculates new mask based on atomic data.
       void compute(
         const coord_array_t & sites_frac,
         const double_array_t & atom_radii
@@ -122,10 +129,11 @@ namespace mmtbx {
 
       const mask_array_t & get_mask() const { return data; }
 
+      //! Computes mask structure factors.
       scitbx::af::shared< std::complex<double> > structure_factors(
           const scitbx::af::const_ref< cctbx::miller::index<> > &indices ) const;
 
-      void determine_gridding(cctbx::sg_vec3 &grid, double resolution, double factor = 4.0, int use_symmetry = 0) const;
+      void determine_gridding(cctbx::sg_vec3 &grid, double resolution, double factor = 4.0) const;
 
       mask_array_t data;
       const double solvent_radius;
@@ -139,7 +147,6 @@ namespace mmtbx {
       const direct_space_asu asu;
       const cctbx::uctbx::unit_cell cell;
       const cctbx::sgtbx::space_group group;
-      const size_t group_order_z;
 
 
       static const bool explicit_distance = false;

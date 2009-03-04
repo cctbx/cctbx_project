@@ -119,14 +119,13 @@ def exercize_1(sg, atoms, molvol):
       unit_cell = struc.unit_cell(),
       group = struc.space_group(),
       resolution = fc.d_min(),
-      grid_method = 2,
       grid_step_factor = params.grid_step_factor,
       solvent_radius = params.solvent_radius,
       shrink_truncation_radius = params.shrink_truncation_radius )
   te = time.time()
   time_asu += (te-tb)
   grid =  asu_mask.data.focus()
-  print "asu mask grid = ", grid
+  print "asu mask grid = ", grid, "      expansion to P1 time = ", time_p1
   tb = time.time()
   blk_p1 = masks.bulk_solvent(
     xray_structure = struc_p1,
@@ -139,14 +138,15 @@ def exercize_1(sg, atoms, molvol):
   te = time.time()
   time_p1 += (te-tb)
   blk_p1.show_summary()
+  print "Time ( ms )    P1 = ", time_p1*1000.0, "    asu = ", time_asu*1000.0, "\n"
   radii = get_radii(struc)
   assert len(radii) == len(struc.sites_frac())
   tb = time.time()
   asu_mask.compute( struc.sites_frac(), radii )
-  te = time.time()
-  time_asu = (te-tb)
   fm_asu = asu_mask.structure_factors( fc.indices() )
   fm_asu = fc.set().array( data =  fm_asu )
+  te = time.time()
+  time_asu += (te-tb)
   print "Time ( ms )    P1 = ", time_p1*1000.0, "    asu = ", time_asu*1000.0
   print " solvent content = ", asu_mask.contact_surface_fraction*100.0
   k_asu = scale_factor( fm_asu, fm_p1 )

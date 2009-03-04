@@ -11,6 +11,7 @@
 #include <cctbx/sgtbx/direct_space_asu/proto/small_vec_math.h>
 
 #include "atom_mask.h"
+#include "grid_symop.h"
 
 namespace mmtbx { namespace masks {
 
@@ -61,12 +62,10 @@ namespace mmtbx { namespace masks {
   }
 
 
-  unsigned short site_symmetry_order(const cctbx::sgtbx::space_group &group, const rvector3_t &v, scitbx::double3 &delta)
+  unsigned short site_symmetry_order(const cctbx::sgtbx::space_group &group, const scitbx::double3 &v, scitbx::double3 &delta)
   {
     unsigned short nops = 0;
-    scitbx::double3 dv(boost::rational_cast<double,int>(v[0]),
-      boost::rational_cast<double,int>(v[1]), boost::rational_cast<double,int>(v[2]));
-    dv -= floor(dv);
+    const scitbx::double3 dv = v - scitbx::floor(v);
     for(size_t i=0; i<group.order_z(); ++i)
     {
       const cctbx::sgtbx::rt_mx op = group(i);
@@ -89,6 +88,52 @@ namespace mmtbx { namespace masks {
     return nops;
   }
 
+  inline void translate_into_cell(scitbx::int3 &num, const scitbx::int3 &den)
+  {
+    for(register unsigned char i=0; i<3; ++i)
+    {
+      register int tn = num[i];
+      register const int td = den[i];
+      tn %= td;
+      if( tn < 0 )
+        tn += td;
+      num[i] = tn;
+    }
+  }
+
+  // seems to be of the same speed as the above
+  inline void translate_into_cell_2(scitbx::int3 &num, const scitbx::int3 &den)
+  {
+    for(unsigned char i=0; i<3; ++i)
+    {
+      register int tn = num[i];
+      register const int td = den[i];
+      while( tn<0 )
+        tn += td;
+      while( tn >= td )
+        tn -= td;
+      num[i] = tn;
+    }
+  }
+
+
+  unsigned short site_symmetry_order(const std::vector<cctbx::sgtbx::grid_symop> &symops,
+      const scitbx::int3 &num, const scitbx::int3 &den )
+  {
+    unsigned short nops = 0;
+    // num must be  inside cell
+    for(size_t i=0; i<symops.size(); ++i)
+    {
+      scitbx::int3 sv = symops[i].apply_to( num );
+      translate_into_cell(sv, den);
+      if( scitbx::eq_all(sv , num) )
+        ++nops;
+    }
+    MMTBX_ASSERT( nops>0U );
+    return nops;
+  }
+
+
   void atom_mask::mask_asu()
   {
     unsigned short order = group.order_z();
@@ -98,13 +143,33 @@ namespace mmtbx { namespace masks {
     const scitbx::vec3<int> n(n_[0], n_[1], n_[2]);
     cctbx::sgtbx::asu::rvector3_t mn, mx;
     MMTBX_ASSERT( n[0]>0 && n[1]>0 && n[2] >0 );
-    scitbx::double3 tolerance( 0.05/n[0], 0.05/n[1], 0.05/n[2]);
+    // below is to make sure that is_inside integer
+    // arithmetics will not overflow
+    MMTBX_ASSERT( static_cast<double>(n[0])*static_cast<double>(n[1])*n[2]
+      < static_cast<double>(std::numeric_limits<int>::max())/(4*8) );
+    // prepare grid adapted integer symmetry operators
+    std::vector<cctbx::sgtbx::grid_symop> symops;
+    for(size_t i=0; i<order; ++i)
+    {
+      cctbx::sgtbx::grid_symop grsym( group(i), n );
+      symops.push_back(grsym);
+    }
+    MMTBX_ASSERT( symops.size() == order );
     asu.box_corners(mn,mx);
     mul(mn, n);
     mul(mx, n);
-    cctbx::sg_vec3 imx = ceil(mx), imn = floor(mn);
+    const scitbx::int3 imx = scitbx::ceil(mx), imn = scitbx::floor(mn); // asu boundaries
     MMTBX_ASSERT( imx[0]>imn[0] && imx[1] > imn[1] && imx[2] > imn[2] );
     MMTBX_ASSERT( imx[0] <= n[0]+1 && imx[1] <= n[1] + 1 && imx[2] <= n[2] + 1 ); // this should go away
+
+    scitbx::int3 emn, emx; //  enclosed box boundaries
+    register const bool has_enclosed_box = asu.enclosed_box_corners(emn, emx, n);
+    // std::cout << "\n!!! HAS enclosed box = " << has_enclosed_box << "\n" << std::endl;
+    if( has_enclosed_box )
+    {
+      MMTBX_ASSERT( scitbx::gt_all( emn, imn ) );
+      MMTBX_ASSERT( scitbx::lt_all( emx, imx ) );
+    }
 
     // expand asu by shrink_truncation_radius
     const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
@@ -115,48 +180,57 @@ namespace mmtbx { namespace masks {
     scitbx::vec3<int> low_shrink, high_shrink;
     low_shrink = ifloor( -shrink_box );
     high_shrink = iceil( shrink_box );
-    imn += low_shrink;
-    imx += high_shrink;
+    const scitbx::int3 smn = imn + low_shrink,
+      smx = imx + high_shrink; // expanded asu boundaries
 
-    for(long i=imn[0]-1; i<=imx[0]+1; ++i)
+    for(register long i=smn[0]; i<=smx[0]; ++i)
     {
-      const rational_t x(i,n[0]);
-      long i_c = i % n[0];
+      register long i_c = i % n[0];
       if( i_c<0 )
         i_c += n[0];
-      for(long j=imn[1]-1; j<=imx[1]+1; ++j)
+      for(register long j=smn[1]; j<=smx[1]; ++j)
       {
-        const rational_t y(j,n[1]);
-        long  j_c = j % n[1];
+        register long  j_c = j % n[1];
         if( j_c<0 )
           j_c += n[1];
-        for(long k=imn[2]-1; k<=imx[2]+1; ++k)
+        for(register long k=smn[2]; k<=smx[2]; ++k)
         {
-          const rational_t z(k,n[2]);
-          long  k_c = k % n[2];
+          register long  k_c = k % n[2];
           if( k_c<0 )
             k_c += n[2];
           MMTBX_ASSERT( i_c<n[0] && j_c<n[1] && k_c<n[2] );
           MMTBX_ASSERT( i_c>=0 && j_c>=0 && k_c>=0 );
-          const rvector3_t pos(x,y,z);
 
           // set points wthin shrink_truncation_radius around asu to
           // an arbitrary unique positive value
           if( data_ref(i_c,j_c,k_c) == 0 )
             data_ref(i_c,j_c,k_c) = mark;
 
-          if( asu.is_inside(pos) )
+          const scitbx::int3 pos(i,j,k);
+          if( !(scitbx::ge_all(pos, imn) && scitbx::le_all(pos, imx)) )
+            continue;
+          register unsigned short nops = 0;
+          if( has_enclosed_box )
           {
-            unsigned short nops = site_symmetry_order(group, pos, tolerance);
-            MMTBX_ASSERT( nops>0 );
-            MMTBX_ASSERT( order%nops == 0);
-            nops = order / nops;
-            MMTBX_ASSERT( data_ref(i_c,j_c,k_c)==0 || nops == data_ref(i_c,j_c,k_c)
-                || data_ref(i_c,j_c,k_c)==mark );
-            data_ref(i_c,j_c,k_c) = nops;
+            if( scitbx::ge_all(pos, emn) && scitbx::le_all(pos, emx) )
+              nops = order;
           }
-          //else
-            //data_ref(i_c,j_c,k_c ) = 0;
+          if( nops==0 )
+          {
+            if( asu.is_inside(pos, n) )
+            {
+              nops = site_symmetry_order(symops, scitbx::int3(i_c,j_c,k_c), n);
+              MMTBX_ASSERT( nops>0 );
+              MMTBX_ASSERT( order%nops == 0);
+              nops = order / nops;
+            }
+          }
+          if( nops!=0 )
+          {
+              MMTBX_ASSERT( data_ref(i_c,j_c,k_c)==0 || nops == data_ref(i_c,j_c,k_c)
+                  || data_ref(i_c,j_c,k_c)==mark );
+              data_ref(i_c,j_c,k_c) = nops;
+          }
         }
       }
     }
@@ -170,13 +244,17 @@ namespace mmtbx { namespace masks {
     //
     boost::posix_time::ptime tb = boost::posix_time::microsec_clock::local_time(), te;
     boost::posix_time::time_duration tdif;
-    this->atoms_to_asu(sites_frac, atom_radii);
-    tb = boost::posix_time::microsec_clock::local_time();
+    this->atoms_to_asu(sites_frac, atom_radii); // now this one is the slowest
+    te = boost::posix_time::microsec_clock::local_time();
+    tdif = te - tb;
+    long ltdif = tdif.total_milliseconds();
+    // std::cout << "\n!!! ::atoms_to_asu time = " << ltdif << "    N sym atoms= " << asu_atoms.size() << std::endl;
     this->mask_asu(); // this is the slowest part of this routine
     // looks like due to is_inside, not site_symmetry_order
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
-    long ltdif = tdif.total_milliseconds();
+    ltdif = tdif.total_milliseconds();
+    // std::cout << "\n!!! ::mask_asu time = " << ltdif << std::endl;
     size_t n1 = this->get_mask().size() - std::count( this->get_mask().begin(), this->get_mask().end(), 0 );
     MMTBX_ASSERT( n1>0 );
     size_t nn = 0;
@@ -188,14 +266,24 @@ namespace mmtbx { namespace masks {
     }
     MMTBX_ASSERT( nn > 0 );
     MMTBX_ASSERT( nn == this->get_mask().size() ); // volume(asu)*group_order == volume(cell)
+    //tb = boost::posix_time::microsec_clock::local_time();
     size_t n_solvent = this->compute_accessible_surface(asu_atoms, asu_radii);
+    te = boost::posix_time::microsec_clock::local_time();
+    tdif = te - tb;
+    ltdif = tdif.total_milliseconds();
+    // std::cout << "\n!!! ::accessible_surface time = " << ltdif << std::endl;
     //
     size_t tmp=0;
     tmp = std::count( get_mask().begin(), get_mask().end(), 0);
     tmp = std::count_if( get_mask().begin(), get_mask().end(), std::bind2nd(std::less<data_type>(),0) );
     size_t nn_solv = 0;
     nn_solv = std::accumulate( this->get_mask().begin(), this->get_mask().end(), nn_solv );
+    //tb = boost::posix_time::microsec_clock::local_time();
     this->compute_contact_surface(n_solvent);
+    te = boost::posix_time::microsec_clock::local_time();
+    tdif = te - tb;
+    ltdif = tdif.total_milliseconds();
+    // std::cout << "\n!!! ::contact_surface time = " << ltdif << std::endl;
     // clear points within shrink_truncation_radius around asu
     af::ref<data_type, grid_t > data_ref = data.ref();
     for(af::ref<data_type, grid_t >::iterator msk_it=data_ref.begin(); msk_it!=data_ref.end(); ++msk_it)
@@ -211,7 +299,17 @@ namespace mmtbx { namespace masks {
     MMTBX_ASSERT( tmp==0 );
     te = boost::posix_time::microsec_clock::local_time();
     tdif = te - tb;
+    ltdif = tdif.total_milliseconds();
+    // std::cout << "\n!!! ::compute time = " << ltdif << std::endl;
   }
+
+
+  inline scitbx::double3 conv_(const rvector3_t r)
+  {
+    return scitbx::double3( boost::rational_cast<double,int>(r[0]),
+      boost::rational_cast<double,int>(r[1]), boost::rational_cast<double,int>(r[2]));
+  }
+
 
   void atom_mask::atoms_to_asu(
     const coord_array_t & sites_frac,
@@ -220,33 +318,49 @@ namespace mmtbx { namespace masks {
     MMTBX_ASSERT(sites_frac.size() == atom_radii.size());
     asu_atoms.clear();
     asu_radii.clear();
-    const cctbx::sgtbx::space_group &grp = group;
     const scitbx::af::tiny<double,6> rcell = cell.reciprocal_parameters();
     const scitbx::double3 rp(rcell[0], rcell[1], rcell[2]);
 
     std::vector< scitbx::tiny3 > cells;
     this->asu.get_adjacent_cells(cells);
 
+    scitbx::af::shared< cctbx::sgtbx::rt_mx > symops_ = group.all_ops();
+    scitbx::af::const_ref< cctbx::sgtbx::rt_mx > symops = symops_.const_ref();
+    MMTBX_ASSERT( symops.size() == group.order_z() );
+    const size_t order = symops.size();
+
+    const signed char n_corners = 2;
+    rvector3_t asu_box_r[n_corners];
+    this->asu.box_corners(asu_box_r[0], asu_box_r[1]);
+    const scitbx::double3 asu_box[n_corners] = { conv_(asu_box_r[0]), conv_(asu_box_r[1])};
+    CCTBX_ASSERT( scitbx::ge_all(asu_box[1], asu_box[0]) );
+
     for(size_t iat=0; iat<sites_frac.size(); ++iat)
     {
-      scitbx::double3 at = sites_frac[iat];
+      const scitbx::double3 at = sites_frac[iat];
       const double at_r =  atom_radii[iat];
       // add atoms within shrink_truncation_radius as well
-      const double radius = at_r + solvent_radius + shrink_truncation_radius*3.0;
+      const double radius = at_r + solvent_radius + shrink_truncation_radius*3.0; // 3.0 is good
 
       MMTBX_ASSERT( radius >= 0.0 );
       scitbx::double3 box = rp * radius;
       box *= 1.05;
 
-      for(size_t isym=0; isym<grp.order_z(); ++isym)
+      for(register size_t isym=0; isym<order; ++isym)
       {
-        const cctbx::sgtbx::rt_mx symop = grp(isym);
-        scitbx::double3 sym_at = symop*at;
+        scitbx::double3 sym_at = symops[isym]*at;
         sym_at -= scitbx::floor(sym_at);
         for(size_t icell=0; icell<cells.size(); ++icell)
         {
           const scitbx::double3 sym_at_cell = sym_at + cells[icell];
-          const cctbx::sgtbx::asu::intersection_kind  intersection = asu.does_intersect(sym_at_cell, box);
+          // const cctbx::sgtbx::asu::intersection_kind  intersection = asu.does_intersect(sym_at_cell, box);
+          cctbx::sgtbx::asu::intersection_kind  intersection = cctbx::sgtbx::asu::none;
+          const scitbx::double3 atom_box[n_corners] = { sym_at_cell - box, sym_at_cell + box };
+          CCTBX_ASSERT( scitbx::ge_all(atom_box[1], atom_box[0]) );
+
+          if( scitbx::ge_all(atom_box[1], asu_box[0]) && scitbx::le_all(atom_box[0], asu_box[1]) )
+            intersection =  partially;
+
           if( intersection != cctbx::sgtbx::asu::none )
           {
             this->asu_atoms.push_back(sym_at);
@@ -306,7 +420,7 @@ namespace mmtbx { namespace masks {
   }
 
 
-  void atom_mask::determine_gridding(cctbx::sg_vec3 &grid, double resolution, double factor, int use_symmetry ) const
+  void atom_mask::determine_gridding(cctbx::sg_vec3 &grid, double resolution, double factor) const
   {
     MMTBX_ASSERT( factor > 0.0 );
     double step = resolution/factor;
@@ -314,35 +428,15 @@ namespace mmtbx { namespace masks {
       step = 0.15;
     step = std::min(0.8, step);
     const double d_min = 2.0*step, resolution_factor = 0.5;
-    if( use_symmetry == 2 )
-    {
-      const cctbx::sgtbx::search_symmetry_flags use_all(true,
-          0,
-          true,
-          true,
-          true);
-      grid = cctbx::maptbx::determine_gridding<int>(cell, d_min, resolution_factor, use_all, group.type());
-      grid = group.refine_gridding( grid );
-    }
-    else if( use_symmetry == 1 )
-    {
-      const cctbx::sgtbx::search_symmetry_flags use_all(true,
-          0,
-          true,
-          true,
-          true);
-      grid = cctbx::maptbx::determine_gridding<int>(cell, d_min, resolution_factor, use_all, group.type());
-    }
-    else if( use_symmetry == 3 )
-    {
-      grid = cctbx::maptbx::determine_gridding<int>(cell, d_min, resolution_factor);
-      grid = group.refine_gridding( grid );
-    }
-    else
-    {
-      grid = cctbx::maptbx::determine_gridding<int>(cell, d_min, resolution_factor);
-    }
+    const cctbx::sgtbx::search_symmetry_flags use_all(true,
+        0,
+        true,
+        true,
+        true);
+    grid = cctbx::maptbx::determine_gridding<int>(cell, d_min, resolution_factor, use_all, group.type());
+    // grid = group.refine_gridding( grid );
   }
+
 
   size_t atom_mask::compute_accessible_surface(
     const coord_array_t & sites_frac,
@@ -350,7 +444,7 @@ namespace mmtbx { namespace masks {
   {
     MMTBX_ASSERT( sites_frac.size() == atom_radii.size() );
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
-    const size_t space_group_order_z = this->group_order_z;
+    const size_t space_group_order_z = this->group.order_z();
 
     // Severe code duplication: cctbx/maptbx/average_densities.h
     af::ref<data_type, af::c_grid<3> > data_ref = data.ref();
@@ -565,7 +659,7 @@ namespace mmtbx { namespace masks {
     typedef double f_t;
     typedef data_type data_type;
     cctbx::uctbx::unit_cell const& unit_cell = this->cell;
-    const std::size_t space_group_order_z = this->group_order_z;
+    const std::size_t space_group_order_z = this->group.order_z();
     // const symop_array sym_ops = group.all_ops().const_ref();
     const af::shared< cctbx::sgtbx::rt_mx > sym_ops_ = group.all_ops();
     const symop_array sym_ops = sym_ops_.const_ref();
