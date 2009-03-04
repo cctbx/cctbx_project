@@ -61,14 +61,19 @@ class potential_object(object):
 def run(fmodels, model, target_weights, params, log):
   assert fmodels.fmodel_neutron() is None # not implemented
   assert model.ias_selection is None # tardy+ias is not a useful combination
-  sst = model.restraints_manager.geometry.shell_sym_tables[0]
-  tt = tardy_tree.construct(
-    edge_list=sst.simple_edge_list(), n_vertices=sst.size()).finalize()
   xs = fmodels.fmodel_xray().xray_structure
-  potential_obj = potential_object(
-    fmodels=fmodels, model=model, target_weights=target_weights)
   sites_cart_start = xs.sites_cart()
   sites = matrix.col_list(sites_cart_start)
+  sst = model.restraints_manager.geometry.shell_sym_tables[0]
+  tt = tardy_tree.construct(
+    sites=sites,
+    edge_list=sst.simple_edge_list()).finalize()
+  for i,j in tt.collinear_bonds_edge_list:
+    s = xs.scatterers()
+    print >> log, "tardy collinear bond:", s[i].label
+    print >> log, "                     ", s[j].label
+  potential_obj = potential_object(
+    fmodels=fmodels, model=model, target_weights=target_weights)
   sim = tst_molecules.simulation(
     labels=[sc.label for sc in xs.scatterers()],
     sites=sites,
