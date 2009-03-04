@@ -21,6 +21,9 @@ namespace cctbx { namespace sgtbx { namespace asu { namespace {
     typedef return_value_policy<return_by_value> rbv;
 
     bool (w_t::*const cut_is_inside1)( const rvector3_t &) const = &w_t::is_inside;
+    // below does not work
+    // boost::rational<int> (w_t::*const cut_evaluate_1)( const rvector3_t &) const = &w_t::evaluate;
+    long (w_t::*const cut_evaluate_2)( const scitbx::af::int3 &, const scitbx::af::int3 & ) const = &w_t::evaluate_int;
 
     class_<w_t>("cut", no_init)
       .def(init<
