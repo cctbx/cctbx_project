@@ -905,6 +905,14 @@ Working crystal symmetry is not compatible with crystal symmetry from reflection
   assert ma.min_f_over_sigma() is None
   ma = miller.array(ms, data, sigmas)
   assert approx_equal(ma.min_f_over_sigma(), 2.5)
+  #
+  ma = miller.array(ms, data)
+  maa = ma.combine(other=ma)
+  assert not maa.anomalous_flag()
+  ms = miller.set(xs, mi, anomalous_flag=True)
+  ma = miller.array(ms, data)
+  maa = ma.combine(other=ma)
+  assert maa.anomalous_flag()
 
 def exercise_r1_factor():
   cs = crystal.symmetry((1,2,3), "P21/a")

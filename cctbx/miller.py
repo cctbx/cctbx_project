@@ -599,6 +599,7 @@ class set(crystal.symmetry):
 
   def combine(self, other, scale = True, scale_for_lones = 1):
     assert self.anomalous_flag() == other.anomalous_flag()
+    assert self.sigmas() is None # not implemented
     f1_c, f2_c = self.common_sets(other = other)
     f1_l, f2_l = self.lone_sets(other = other)
     scale_k1 = 1
@@ -612,7 +613,10 @@ class set(crystal.symmetry):
     result_indices = f1_c.indices()
     result_indices.extend(f1_l.indices())
     result_indices.extend(f2_l.indices())
-    ms = set(self.crystal_symmetry(), result_indices)
+    ms = set(
+      crystal_symmetry=self.crystal_symmetry(),
+      indices=result_indices,
+      anomalous_flag=self.anomalous_flag())
     return ms.array(data = result_data)
 
   def generate_r_free_flags_on_lattice_symmetry(self,
